@@ -1,0 +1,56 @@
+<div class="layout" [class.collapsed]="collapsed">
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      @if (!collapsed) {
+        <div class="logo">
+          <i class="pi pi-box"></i>
+          <span>ECM</span>
+        </div>
+      }
+      <button class="toggle-btn" (click)="toggleSidebar()">
+        <i class="pi" [class.pi-angle-left]="!collapsed" [class.pi-angle-right]="collapsed"></i>
+      </button>
+    </div>
+
+    <nav class="sidebar-nav">
+      @for (item of navItems; track item.route) {
+        <a [routerLink]="item.route" routerLinkActive="active" class="nav-item">
+          <i [class]="item.icon"></i>
+          @if (!collapsed) {
+            <span>{{ item.label }}</span>
+          }
+        </a>
+      }
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="user-info">
+        <div class="avatar">JD</div>
+        @if (!collapsed) {
+          <div class="user-details">
+            <span class="user-name">John Doe</span>
+            <span class="user-role">Admin</span>
+          </div>
+        }
+      </div>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <header class="top-bar">
+      <div class="top-bar-left">
+        <h1 class="page-title">Enterprise Content Management</h1>
+      </div>
+      <div class="top-bar-right">
+        <div class="search-box">
+          <i class="pi pi-search"></i>
+          <input type="text" placeholder="Search files..." />
+        </div>
+        <button class="icon-btn"><i class="pi pi-bell"></i></button>
+      </div>
+    </header>
+    <div class="content-area">
+      <router-outlet />
+    </div>
+  </main>
+</div>

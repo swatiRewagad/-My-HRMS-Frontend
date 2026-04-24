@@ -1,0 +1,227 @@
+.dashboard {
+  max-width: 1200px;
+}
+
+.section-header {
+  margin-bottom: 24px;
+  h2 { font-size: 22px; font-weight: 700; }
+  .subtitle { font-size: 13px; color: var(--color-text-muted); margin-top: 4px; }
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.stat-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  border: 1px solid var(--color-border);
+}
+
+.stat-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+
+  &.blue { background: var(--color-primary-bg); color: var(--color-primary); }
+  &.purple { background: var(--color-purple-bg); color: var(--color-purple); }
+  &.green { background: var(--color-green-bg); color: var(--color-green); }
+  &.amber { background: var(--color-amber-bg); color: var(--color-amber); }
+}
+
+.stat-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.stat-value { font-size: 22px; font-weight: 700; }
+.stat-label { font-size: 12px; color: var(--color-text-muted); margin-top: 2px; }
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.card {
+  background: #fff;
+  border-radius: 12px;
+  border: 1px solid var(--color-border);
+  overflow: hidden;
+}
+
+.card-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--color-border-light);
+  h3 { font-size: 15px; font-weight: 600; }
+}
+
+.card-body {
+  padding: 16px 20px;
+}
+
+.storage-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.storage-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.storage-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 140px;
+}
+
+.type-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.type-name { font-size: 13px; font-weight: 500; }
+.type-count { font-size: 11px; color: var(--color-text-muted); }
+
+.storage-bar-wrapper {
+  flex: 1;
+  height: 8px;
+  background: var(--color-bg);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.storage-bar {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.5s ease;
+}
+
+.type-size {
+  font-size: 13px;
+  font-weight: 500;
+  min-width: 50px;
+  text-align: right;
+}
+
+.folder-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.folder-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.folder-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+
+  &.public { background: var(--color-primary-bg); color: var(--color-primary); }
+  &.private { background: var(--color-amber-bg); color: var(--color-amber); }
+  &.blue { background: var(--color-primary-bg); color: var(--color-primary); }
+  &.green { background: var(--color-green-bg); color: var(--color-green); }
+}
+
+.folder-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.folder-name { font-size: 13px; font-weight: 500; }
+.folder-meta { font-size: 11px; color: var(--color-text-muted); }
+
+.visibility-badge {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 3px 10px;
+  border-radius: 12px;
+
+  &.public { background: var(--color-primary-bg); color: var(--color-primary); }
+  &.private { background: var(--color-amber-bg); color: var(--color-amber); }
+}
+
+.file-list, .activity-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.file-item, .activity-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.file-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: var(--color-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+}
+
+.file-info, .activity-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.file-name { font-size: 13px; font-weight: 500; }
+.file-meta { font-size: 11px; color: var(--color-text-muted); }
+
+.activity-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--color-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: var(--color-text-muted);
+}
+
+.activity-text {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  strong { color: var(--color-text); }
+}
+
+.empty-state {
+  text-align: center;
+  padding: 20px;
+  color: var(--color-text-muted);
+  font-size: 13px;
+}

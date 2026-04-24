@@ -1,0 +1,281 @@
+<div class="file-manager">
+  <div class="fm-header">
+    <div class="fm-header-left">
+      <h2>File Manager</h2>
+      <div class="breadcrumbs">
+        <span class="crumb" (click)="goToRoot()">Root</span>
+        @for (b of breadcrumbs; track b.name) {
+          <i class="pi pi-angle-right"></i>
+          <span class="crumb active">{{ b.name }}</span>
+        }
+      </div>
+    </div>
+    <div class="fm-header-right">
+      <div class="search-bar">
+        <i class="pi pi-search"></i>
+        <input type="text" placeholder="Search files..." [(ngModel)]="searchQuery" (keyup.enter)="searchFiles()" />
+      </div>
+      <button class="btn btn-secondary" (click)="openNewFolder()">
+        <i class="pi pi-folder-plus"></i> New Folder
+      </button>
+      @if (selectedFolder) {
+        <button class="btn btn-primary" (click)="showUpload = true">
+          <i class="pi pi-upload"></i> Upload
+        </button>
+      }
+    </div>
+  </div>
+
+  @if (!selectedFolder) {
+    <div class="folders-grid">
+      @for (folder of folders; track folder.id) {
+        <div class="folder-card" (click)="selectFolder(folder)">
+          <div class="folder-card-icon" [class.public]="folder.visibility === 'public'" [class.private]="folder.visibility === 'private'">
+            <i class="pi pi-folder"></i>
+          </div>
+          <div class="folder-card-info">
+            <span class="folder-card-name">{{ folder.name }}</span>
+            <span class="folder-card-meta">{{ folder.visibility }} · {{ folder.fileCount || 0 }} files</span>
+          </div>
+          <span class="visibility-tag" [class.public]="folder.visibility === 'public'" [class.private]="folder.visibility === 'private'">
+            <i class="pi" [class.pi-lock-open]="folder.visibility === 'public'" [class.pi-lock]="folder.visibility === 'private'"></i>
+            {{ folder.visibility }}
+          </span>
+        </div>
+      }
+      @if (folders.length === 0) {
+        <div class="empty-state">
+          <i class="pi pi-folder-open"></i>
+          <p>No folders yet. Create your first folder to get started.</p>
+        </div>
+      }
+    </div>
+  }
+
+  @if (selectedFolder) {
+    <div class="folder-detail">
+      <div class="folder-info-bar">
+        <div class="folder-info-left">
+          <span class="visibility-tag large" [class.public]="selectedFolder.visibility === 'public'" [class.private]="selectedFolder.visibility === 'private'">
+            <i class="pi" [class.pi-lock-open]="selectedFolder.visibility === 'public'" [class.pi-lock]="selectedFolder.visibility === 'private'"></i>
+            {{ selectedFolder.visibility }}
+          </span>
+          @if (selectedFolder.description) {
+            <span class="folder-desc">{{ selectedFolder.description }}</span>
+          }
+        </div>
+        <button class="btn btn-outline" (click)="openAccess()">
+          <i class="pi pi-users"></i> Manage Access
+        </button>
+      </div>
+
+      @if (selectedFolder.accessList?.length) {
+        <div class="access-bar">
+          <span class="access-label">Access:</span>
+          @for (a of selectedFolder.accessList; track a.userId) {
+            <span class="access-chip">
+              {{ a.userName }} ({{ a.permission }})
+              <i class="pi pi-times" (click)="revokeAccess(a.userId)"></i>
+            </span>
+          }
+        </div>
+      }
+
+      <div class="files-table">
+        <div class="table-header">
+          <span class="col-name">Name</span>
+          <span class="col-size">Size</span>
+          <span class="col-type">Type</span>
+          <span class="col-actions">Actions</span>
+        </div>
+        @for (file of files; track file.id) {
+          <div class="table-row">
+            <span class="col-name">
+              <i [class]="getFileIcon(file.contentType)" [style.color]="getFileIconColor(file.contentType)"></i>
+              {{ file.originalName }}
+            </span>
+            <span class="col-size">{{ formatSize(file.size) }}</span>
+            <span class="col-type">{{ file.contentType | slice:0:20 }}</span>
+            <span class="col-actions">
+              <button class="icon-btn" title="Preview" (click)="openPreview(file)"><i class="pi pi-eye"></i></button>
+              <button class="icon-btn" title="Download" (click)="downloadFile(file)"><i class="pi pi-download"></i></button>
+              <button class="icon-btn" title="Share" (click)="openShare(file.id)"><i class="pi pi-share-alt"></i></button>
+              <button class="icon-btn danger" title="Delete" (click)="deleteFile(file)"><i class="pi pi-trash"></i></button>
+            </span>
+          </div>
+        }
+        @if (files.length === 0) {
+          <div class="empty-table">
+            <i class="pi pi-inbox"></i>
+            <p>No files in this folder. Upload your first file.</p>
+          </div>
+        }
+      </div>
+    </div>
+  }
+</div>
+
+<!-- New Folder Modal -->
+@if (showNewFolder) {
+  <div class="modal-overlay" (click)="showNewFolder = false">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Create New Folder</h3>
+        <button class="close-btn" (click)="showNewFolder = false"><i class="pi pi-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Folder Name</label>
+          <input type="text" [(ngModel)]="newFolder.name" placeholder="Enter folder name" />
+        </div>
+        <div class="form-group">
+          <label>Visibility</label>
+          <div class="radio-group">
+            <label class="radio-label">
+              <input type="radio" [(ngModel)]="newFolder.visibility" value="public" /> Public
+            </label>
+            <label class="radio-label">
+              <input type="radio" [(ngModel)]="newFolder.visibility" value="private" /> Private
+            </label>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Description</label>
+          <textarea [(ngModel)]="newFolder.description" placeholder="Optional description" rows="3"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="showNewFolder = false">Cancel</button>
+        <button class="btn btn-primary" (click)="createFolder()">Create</button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Upload Modal -->
+@if (showUpload) {
+  <div class="modal-overlay" (click)="showUpload = false">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Upload File</h3>
+        <button class="close-btn" (click)="showUpload = false"><i class="pi pi-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="upload-zone">
+          <i class="pi pi-cloud-upload"></i>
+          <p>Select a file to upload to <strong>{{ selectedFolder?.name }}</strong></p>
+          <input type="file" (change)="onFileSelect($event)" />
+        </div>
+        @if (selectedFile) {
+          <div class="selected-file">
+            <i class="pi pi-file"></i>
+            <span>{{ selectedFile.name }} ({{ formatSize(selectedFile.size) }})</span>
+          </div>
+        }
+        @if (uploading) {
+          <div class="upload-progress">
+            <div class="progress-bar-wrapper">
+              <div class="progress-bar" [style.width.%]="uploadProgress"></div>
+            </div>
+            <span class="progress-text">{{ uploadProgress }}%</span>
+          </div>
+        }
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="showUpload = false" [disabled]="uploading">Cancel</button>
+        <button class="btn btn-primary" (click)="uploadFile()" [disabled]="!selectedFile || uploading">
+          {{ uploading ? 'Uploading ' + uploadProgress + '%...' : 'Upload' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Access Modal -->
+@if (showAccess) {
+  <div class="modal-overlay" (click)="showAccess = false">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Manage Access - {{ selectedFolder?.name }}</h3>
+        <button class="close-btn" (click)="showAccess = false"><i class="pi pi-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>User</label>
+          <select [(ngModel)]="accessUserId">
+            <option [value]="0" disabled>Select a user</option>
+            @for (user of users; track user.id) {
+              <option [value]="user.id">{{ user.displayName }}</option>
+            }
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Permission</label>
+          <select [(ngModel)]="accessPermission">
+            <option value="read">Read</option>
+            <option value="read-write">Read & Write</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="showAccess = false">Cancel</button>
+        <button class="btn btn-primary" (click)="grantAccess()">Grant Access</button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Share Modal -->
+@if (showShare) {
+  <div class="modal-overlay" (click)="showShare = false">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Share File</h3>
+        <button class="close-btn" (click)="showShare = false"><i class="pi pi-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Share Type</label>
+          <div class="radio-group">
+            <label class="radio-label">
+              <input type="radio" [(ngModel)]="shareType" value="user" /> Share with User
+            </label>
+            <label class="radio-label">
+              <input type="radio" [(ngModel)]="shareType" value="link" /> Shareable Link
+            </label>
+          </div>
+        </div>
+        @if (shareType === 'user') {
+          <div class="form-group">
+            <label>User</label>
+            <select [(ngModel)]="shareUserId">
+              <option [value]="0" disabled>Select a user</option>
+              @for (user of users; track user.id) {
+                <option [value]="user.id">{{ user.displayName }}</option>
+              }
+            </select>
+          </div>
+        }
+        @if (shareType === 'link') {
+          <div class="form-group">
+            <label>Expires In (hours)</label>
+            <input type="number" [(ngModel)]="shareExpiry" min="1" max="720" />
+          </div>
+        }
+        <div class="form-group">
+          <label>Permission</label>
+          <select [(ngModel)]="sharePermission">
+            <option value="read">Read Only</option>
+            <option value="read-write">Read & Write</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="showShare = false">Cancel</button>
+        <button class="btn btn-primary" (click)="shareFile()">Share</button>
+      </div>
+    </div>
+  </div>
+}
+
+<app-file-preview [file]="previewFile" [(visible)]="showPreview"></app-file-preview>

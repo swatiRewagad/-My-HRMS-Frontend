@@ -1,0 +1,105 @@
+.shared-files { max-width: 1200px; }
+
+.section-header {
+  margin-bottom: 24px;
+  h2 { font-size: 22px; font-weight: 700; }
+  .subtitle { font-size: 13px; color: var(--color-text-muted); margin-top: 4px; }
+}
+
+.files-table {
+  background: #fff;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.table-header, .table-row {
+  display: grid;
+  grid-template-columns: 1fr 160px 120px 100px 100px;
+  padding: 12px 20px;
+  align-items: center;
+}
+
+.table-header {
+  background: var(--color-bg);
+  border-bottom: 1px solid var(--color-border);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.table-row {
+  border-bottom: 1px solid var(--color-border-light);
+  font-size: 13px;
+
+  &:last-child { border-bottom: none; }
+
+  .col-name {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 500;
+    i { font-size: 18px; }
+  }
+
+  .col-shared {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+  }
+
+  .col-size { color: var(--color-text-muted); }
+}
+
+.sharer-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.perm-badge {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 3px 10px;
+  border-radius: 12px;
+
+  &.read { background: var(--color-primary-bg); color: var(--color-primary); }
+  &.write { background: var(--color-green-bg); color: var(--color-green); }
+}
+
+.icon-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-muted);
+  &:hover { background: var(--color-bg); color: var(--color-primary); }
+}
+
+.empty-state {
+  text-align: center;
+  padding: 80px 24px;
+  background: #fff;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+
+  i { font-size: 48px; color: var(--color-text-disabled); margin-bottom: 16px; }
+  h3 { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
+  p { font-size: 13px; color: var(--color-text-muted); }
+}

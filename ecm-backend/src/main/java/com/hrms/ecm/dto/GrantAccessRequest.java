@@ -1,0 +1,13 @@
+package com.hrms.ecm.dto;
+
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import lombok.*;
+
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+public class GrantAccessRequest {
+    @NotNull
+    private Long userId;
+    @NotBlank
+    private String permission;
+}

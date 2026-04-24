@@ -1,0 +1,155 @@
+<div class="dashboard">
+  <div class="section-header">
+    <h2>Dashboard</h2>
+    <p class="subtitle">Overview of your content management system</p>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-icon blue"><i class="pi pi-file"></i></div>
+      <div class="stat-info">
+        <span class="stat-value">{{ stats.totalFiles }}</span>
+        <span class="stat-label">Total Files</span>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon purple"><i class="pi pi-folder"></i></div>
+      <div class="stat-info">
+        <span class="stat-value">{{ stats.totalFolders }}</span>
+        <span class="stat-label">Total Folders</span>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon green"><i class="pi pi-database"></i></div>
+      <div class="stat-info">
+        <span class="stat-value">{{ storage.usedFormatted }}</span>
+        <span class="stat-label">Storage Used</span>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon amber"><i class="pi pi-share-alt"></i></div>
+      <div class="stat-info">
+        <span class="stat-value">{{ stats.totalShares }}</span>
+        <span class="stat-label">Shared Files</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-header">
+        <h3>Storage Breakdown</h3>
+      </div>
+      <div class="card-body">
+        <div class="storage-list">
+          @for (item of storageBreakdown; track item.type; let i = $index) {
+            <div class="storage-item">
+              <div class="storage-label">
+                <span class="type-dot" [style.background]="getTypeColor(i)"></span>
+                <span class="type-name">{{ item.type }}</span>
+                <span class="type-count">{{ item.count }} files</span>
+              </div>
+              <div class="storage-bar-wrapper">
+                <div class="storage-bar" [style.width]="getTypeBarWidth(item.count)" [style.background]="getTypeColor(i)"></div>
+              </div>
+              <span class="type-size">{{ item.count }}</span>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h3>Folder Summary</h3>
+      </div>
+      <div class="card-body">
+        <div class="folder-list">
+          <div class="folder-item">
+            <div class="folder-icon public"><i class="pi pi-folder"></i></div>
+            <div class="folder-info">
+              <span class="folder-name">Public Folders</span>
+              <span class="folder-meta">{{ folderSummary.publicFiles }} files</span>
+            </div>
+            <span class="visibility-badge public">{{ folderSummary.publicCount }} folders</span>
+          </div>
+          <div class="folder-item">
+            <div class="folder-icon private"><i class="pi pi-folder"></i></div>
+            <div class="folder-info">
+              <span class="folder-name">Private Folders</span>
+              <span class="folder-meta">{{ folderSummary.privateFiles }} files</span>
+            </div>
+            <span class="visibility-badge private">{{ folderSummary.privateCount }} folders</span>
+          </div>
+          <div class="folder-item">
+            <div class="folder-icon blue"><i class="pi pi-users"></i></div>
+            <div class="folder-info">
+              <span class="folder-name">Total Users</span>
+              <span class="folder-meta">Active members</span>
+            </div>
+            <span class="visibility-badge public">{{ stats.totalUsers }}</span>
+          </div>
+          <div class="folder-item">
+            <div class="folder-icon green"><i class="pi pi-percentage"></i></div>
+            <div class="folder-info">
+              <span class="folder-name">Storage Usage</span>
+              <span class="folder-meta">{{ storage.usedFormatted }} of {{ storage.capacityFormatted }}</span>
+            </div>
+            <span class="visibility-badge public">{{ storage.usedPercent | number:'1.1-1' }}%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-header">
+        <h3>Recent Uploads</h3>
+      </div>
+      <div class="card-body">
+        <div class="file-list">
+          @for (file of recentUploads; track file.id) {
+            <div class="file-item">
+              <div class="file-icon" [style.color]="getFileIconColor(file.contentType)">
+                <i [class]="getFileIcon(file.contentType)"></i>
+              </div>
+              <div class="file-info">
+                <span class="file-name">{{ file.name }}</span>
+                <span class="file-meta">{{ formatSize(file.size) }} · {{ file.folderName }}</span>
+              </div>
+            </div>
+          }
+          @if (recentUploads.length === 0) {
+            <div class="empty-state">No recent uploads</div>
+          }
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h3>Recent Activity</h3>
+      </div>
+      <div class="card-body">
+        <div class="activity-list">
+          @for (act of activities; track $index) {
+            <div class="activity-item">
+              <div class="activity-icon">
+                <i [class]="getActionIcon(act.action)"></i>
+              </div>
+              <div class="activity-info">
+                <span class="activity-text">
+                  <strong>{{ act.userName }}</strong> {{ act.action }} {{ act.entityType }} <strong>{{ act.entityName }}</strong>
+                </span>
+              </div>
+            </div>
+          }
+          @if (activities.length === 0) {
+            <div class="empty-state">No recent activity</div>
+          }
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,63 @@
+<div class="layout" [class.collapsed]="collapsed()">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <img src="assets/logo.png" alt="Logo" class="logo-img" onerror="this.style.display='none'">
+      <div class="logo-text" *ngIf="!collapsed()">
+        <span class="logo-title">भारतीय रिज़र्व बैंक</span>
+        <span class="logo-subtitle">RESERVE BANK OF INDIA</span>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <a *ngFor="let item of navItems"
+         [routerLink]="item.route"
+         routerLinkActive="active"
+         class="nav-item">
+        <i [class]="item.icon"></i>
+        <span *ngIf="!collapsed()" class="nav-label">{{ item.label }}</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-bottom">
+      <a *ngFor="let item of bottomItems"
+         [routerLink]="item.route"
+         routerLinkActive="active"
+         class="nav-item">
+        <i [class]="item.icon"></i>
+        <span *ngIf="!collapsed()" class="nav-label">{{ item.label }}</span>
+      </a>
+      <button class="nav-item collapse-btn" (click)="toggleCollapse()">
+        <i class="pi" [ngClass]="collapsed() ? 'pi-angle-double-right' : 'pi-angle-double-left'"></i>
+        <span *ngIf="!collapsed()" class="nav-label">Collapse</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- Top Bar -->
+  <header class="topbar">
+    <div class="search-box">
+      <i class="pi pi-search"></i>
+      <input type="text" placeholder="Search in app" />
+    </div>
+    <div class="topbar-actions">
+      <button class="icon-btn"><i class="pi pi-refresh"></i></button>
+      <button class="icon-btn text-btn">A</button>
+      <button class="icon-btn text-btn">A<sup>-</sup></button>
+      <button class="icon-btn text-btn">A<sup>+</sup></button>
+      <div class="user-info">
+        <div class="user-avatar">RJ</div>
+        <div class="user-details">
+          <span class="user-name">Rahul Jain</span>
+          <span class="user-meta">Last Signed In on 12/03/26 09:15:08</span>
+        </div>
+        <i class="pi pi-chevron-down"></i>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="main-content">
+    <router-outlet />
+  </main>
+</div>

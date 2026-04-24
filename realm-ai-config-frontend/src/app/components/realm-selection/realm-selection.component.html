@@ -1,0 +1,185 @@
+<div class="realm-selection">
+  <div class="section-header">
+    <div class="title">Select Realm</div>
+    <div class="subtitle">Choose a realm from Kavach UAM. Realm data is read-only and auto-synced.</div>
+  </div>
+
+  <!-- Kavach UAM Info Banner -->
+  <div class="kavach-banner">
+    <div class="banner-left">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" class="shield-icon">
+        <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z" fill="#1a56db"/>
+      </svg>
+      <div>
+        <div class="banner-title">Kavach UAM Controlled — Read Only</div>
+        <div class="banner-desc">
+          Realm list is auto-fetched from <strong>Kavach Identity & Access Management</strong>.
+          Creation and deletion must be done within Kavach directly.
+        </div>
+      </div>
+    </div>
+    <div class="synced-badge">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" fill="#1e7e34"/>
+      </svg>
+      <span>Synced</span>
+    </div>
+  </div>
+
+  <!-- Realm Dropdown -->
+  <div class="field-group">
+    <div class="field-label">
+      <span>Select Realm</span>
+      <span class="required">*</span>
+    </div>
+    <div class="dropdown-wrapper" #dropdownContainer>
+      <button type="button" class="dropdown-trigger" [class.open]="dropdownOpen()" (click)="toggleDropdown()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" class="search-icon">
+          <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" fill="#9e9e9e"/>
+        </svg>
+        <span class="trigger-text" [class.selected]="!!selectedRealm">
+          {{ selectedRealm ? selectedRealm.displayName : 'Search and select a realm...' }}
+        </span>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" [class.rotated]="dropdownOpen()" class="chevron">
+          <path d="M7 10l5 5 5-5H7z" fill="#737373"/>
+        </svg>
+      </button>
+
+      @if (dropdownOpen()) {
+        <div class="dropdown-panel">
+          <div class="dropdown-search">
+            <div class="search-input-wrapper">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" class="search-icon-inner">
+                <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" fill="#9e9e9e"/>
+              </svg>
+              <input
+                type="text"
+                placeholder="Type to filter realms..."
+                [ngModel]="searchTerm()"
+                (ngModelChange)="searchTerm.set($event)"
+                class="search-input"
+              />
+            </div>
+          </div>
+
+          <div class="dropdown-list">
+            @if (filteredRealms().length === 0) {
+              <div class="no-results">No active realms match your search.</div>
+            } @else {
+              @for (realm of filteredRealms(); track realm.id) {
+                <button type="button" class="realm-item" [class.active]="selectedRealm?.id === realm.id" (click)="selectRealm(realm)">
+                  <div class="realm-avatar">{{ realm.initials }}</div>
+                  <div class="realm-info">
+                    <div class="realm-name-row">
+                      <span class="realm-name">{{ realm.displayName }}</span>
+                      @if (getExistingConfig(realm.id)) {
+                        <span class="configured-badge">
+                          <svg width="8" height="8" viewBox="0 0 24 24" fill="none">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" fill="#b45309"/>
+                          </svg>
+                          Configured
+                        </span>
+                      }
+                    </div>
+                    <div class="realm-meta">{{ realm.department }} · {{ realm.type }}</div>
+                  </div>
+                  <span class="status-badge">
+                    <span class="status-dot"></span>
+                    Active
+                  </span>
+                </button>
+              }
+            }
+          </div>
+
+          <div class="dropdown-footer">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z" fill="#9e9e9e"/>
+            </svg>
+            <span>Showing {{ filteredRealms().length }} active realm{{ filteredRealms().length !== 1 ? 's' : '' }}. Inactive realms are hidden.</span>
+          </div>
+        </div>
+      }
+    </div>
+  </div>
+
+  <!-- Existing Configuration Warning -->
+  @if (selectedRealm && hasExistingConfig(selectedRealm) && existingConfig) {
+    <div class="existing-config-warning">
+      <div class="warning-header">
+        <div class="warning-icon-circle">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+            <path d="M12 2L1 21h22L12 2zm0 3.5L20.5 19h-17L12 5.5zM11 10v4h2v-4h-2zm0 6v2h2v-2h-2z" fill="#b45309"/>
+          </svg>
+        </div>
+        <div class="warning-text">
+          <div class="warning-title">Realm Already Configured</div>
+          <div class="warning-subtitle">
+            <strong>{{ selectedRealm.displayName }}</strong> has an existing master configuration. Proceeding will override it.
+          </div>
+        </div>
+        <span class="last-configured-badge">Last configured {{ existingConfig.configuredAt }}</span>
+      </div>
+
+      <div class="config-summary">
+        <div class="config-item">
+          <span class="config-label">Mode:</span>
+          <span class="config-value">{{ existingConfig.mode === 'app-designer' ? 'App Designer' : 'Non-App Designer' }}</span>
+        </div>
+        <div class="config-item">
+          <span class="config-label">Version:</span>
+          <span class="config-value">{{ existingConfig.version }}</span>
+        </div>
+        <div class="config-item">
+          <span class="config-label">Deployment:</span>
+          <span class="config-value">{{ existingConfig.deployType === 'dependent' ? 'Dependent' : 'Independent' }}</span>
+        </div>
+        <div class="config-item">
+          <span class="config-label">By:</span>
+          <span class="config-value">{{ existingConfig.configuredBy }}</span>
+        </div>
+        <div class="config-item">
+          <span class="config-label">Services:</span>
+          <div class="service-tags">
+            @for (svc of existingConfig.services.slice(0, 3); track svc) {
+              <span class="service-tag">{{ svc }}</span>
+            }
+            @if (existingConfig.services.length > 3) {
+              <span class="service-tag">+{{ existingConfig.services.length - 3 }} more</span>
+            }
+          </div>
+        </div>
+      </div>
+
+      <div class="warning-actions">
+        @if (reconfigureConfirmed) {
+          <div class="confirmed-msg">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" fill="#1e7e34"/>
+            </svg>
+            <span>Reconfigure confirmed — click <strong>Next</strong> to proceed.</span>
+            <button type="button" class="cancel-link" (click)="cancelReconfigure()">Cancel</button>
+          </div>
+        } @else {
+          <div class="review-text">Review the existing configuration or confirm you want to override it.</div>
+        }
+        <div class="action-buttons">
+          <button type="button" class="btn-secondary" (click)="viewExistingConfig()">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+              <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z" fill="currentColor"/>
+            </svg>
+            View Config
+          </button>
+          @if (!reconfigureConfirmed) {
+            <button type="button" class="btn-reconfigure" (click)="confirmReconfigure()">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                <path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46A7.93 7.93 0 0 0 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74A7.93 7.93 0 0 0 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z" fill="white"/>
+              </svg>
+              Proceed to Reconfigure
+            </button>
+          }
+        </div>
+      </div>
+    </div>
+  }
+</div>

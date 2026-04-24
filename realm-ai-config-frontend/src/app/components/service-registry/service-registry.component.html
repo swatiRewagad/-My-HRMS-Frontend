@@ -1,0 +1,111 @@
+<!-- Page Header -->
+<div class="page-header">
+  <div>
+    <h1>Service Registry</h1>
+    <p class="page-desc">Manage and monitor all platform services available across Kavach realms.<br>Register, update, and track service health in one place.</p>
+  </div>
+  <button class="btn-register" routerLink="/services/register">
+    <i class="pi pi-plus"></i> Register New Service
+  </button>
+</div>
+
+<!-- Stats Cards -->
+<div class="stats-row">
+  <div class="stat-card">
+    <div class="stat-icon total"><i class="pi pi-list"></i></div>
+    <div class="stat-content">
+      <span class="stat-value">{{ stats.totalServices }}</span>
+      <span class="stat-label">Total Services</span>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon active"><i class="pi pi-check-circle"></i></div>
+    <div class="stat-content">
+      <span class="stat-value">{{ stats.activeServices }}</span>
+      <span class="stat-label">Active</span>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon inactive"><i class="pi pi-exclamation-triangle"></i></div>
+    <div class="stat-content">
+      <span class="stat-value">{{ stats.inactiveServices }}</span>
+      <span class="stat-label">Inactive</span>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon deprecated"><i class="pi pi-stop"></i></div>
+    <div class="stat-content">
+      <span class="stat-value">{{ stats.deprecatedServices }}</span>
+      <span class="stat-label">Deprecated</span>
+    </div>
+  </div>
+</div>
+
+<!-- Registered Services Table -->
+<div class="table-card">
+  <div class="table-header">
+    <div>
+      <h2>Registered Services</h2>
+      <span class="table-count">{{ filteredServices.length }} of {{ stats.totalServices }} services shown</span>
+    </div>
+    <div class="table-filters">
+      <div class="search-box">
+        <i class="pi pi-search"></i>
+        <input type="text" placeholder="Search by name, key or URL..." [(ngModel)]="searchTerm" (input)="onSearch()">
+      </div>
+      <select class="filter-select" [(ngModel)]="selectedCategory" (change)="onCategoryChange()">
+        <option value="">All Categories</option>
+        <option *ngFor="let cat of categories" [value]="cat">{{ cat }}</option>
+      </select>
+      <div class="status-filters">
+        <button class="status-btn" [class.active]="selectedStatus === ''" (click)="onStatusFilter('')">All</button>
+        <button class="status-btn" [class.active]="selectedStatus === 'Active'" (click)="onStatusFilter('Active')">Active</button>
+        <button class="status-btn" [class.active]="selectedStatus === 'Inactive'" (click)="onStatusFilter('Inactive')">Inactive</button>
+        <button class="status-btn" [class.active]="selectedStatus === 'Deprecated'" (click)="onStatusFilter('Deprecated')">Deprecated</button>
+      </div>
+    </div>
+  </div>
+
+  <table class="registry-table">
+    <thead>
+      <tr>
+        <th>SERVICE NAME</th>
+        <th>BASE URL</th>
+        <th>CATEGORY</th>
+        <th>AUTH</th>
+        <th>STATUS</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let svc of filteredServices" class="svc-row">
+        <td>
+          <span class="svc-name">{{ svc.name }}</span>
+          <span class="svc-slug">{{ svc.slug }}</span>
+        </td>
+        <td class="svc-url">{{ svc.baseUrl }}</td>
+        <td>
+          <span class="category-badge" [style.color]="getCategoryColor(svc.category)" [style.background]="getCategoryBg(svc.category)">
+            {{ svc.category }}
+          </span>
+        </td>
+        <td class="svc-auth">{{ svc.authType }}</td>
+        <td>
+          <span class="status-dot" [style.color]="getStatusColor(svc.status)">● {{ svc.status }}</span>
+        </td>
+      </tr>
+      <tr *ngIf="filteredServices.length === 0">
+        <td colspan="5" class="empty-state">No services found matching your criteria.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="table-footer">
+    <span class="footer-text">Showing <strong>{{ filteredServices.length }}</strong> of <strong>{{ stats.totalServices }}</strong> services</span>
+  </div>
+</div>
+
+<!-- Footer -->
+<div class="page-footer">
+  <i class="pi pi-info-circle"></i>
+  Hover over a row to access view options. Click <a routerLink="/services/register"><strong>Register New Service</strong></a> to add a new service to the registry.
+</div>

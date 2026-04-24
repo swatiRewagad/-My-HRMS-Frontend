@@ -1,0 +1,203 @@
+.upload-page { max-width: 700px; }
+
+.section-header {
+  margin-bottom: 24px;
+  h2 { font-size: 22px; font-weight: 700; }
+  .subtitle { font-size: 13px; color: var(--color-text-muted); margin-top: 4px; }
+}
+
+.upload-card {
+  background: #fff;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 24px;
+}
+
+.form-group {
+  margin-bottom: 20px;
+
+  label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 6px;
+    color: var(--color-text-secondary);
+  }
+
+  select {
+    width: 100%;
+    padding: 9px 12px;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    font-size: 13px;
+    font-family: var(--font-primary);
+    outline: none;
+    &:focus { border-color: var(--color-primary); }
+  }
+}
+
+.drop-zone {
+  border: 2px dashed var(--color-border);
+  border-radius: 12px;
+  padding: 48px 24px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  margin-bottom: 20px;
+
+  &.drag-over {
+    border-color: var(--color-primary);
+    background: var(--color-primary-bg);
+  }
+
+  i { font-size: 40px; color: var(--color-primary); margin-bottom: 12px; }
+  h3 { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+  p { font-size: 13px; color: var(--color-text-muted); }
+
+  input[type="file"] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+}
+
+.file-list {
+  margin-bottom: 20px;
+
+  h4 {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 10px;
+  }
+}
+
+.file-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  border: 1px solid var(--color-border-light);
+  border-radius: 8px;
+  margin-bottom: 8px;
+  transition: border-color 0.2s ease;
+
+  &.uploading { border-color: var(--color-primary-border); background: var(--color-primary-bg); }
+  &.completed { border-color: var(--color-green); background: var(--color-green-bg); }
+  &.error { border-color: var(--color-red); background: var(--color-red-bg); }
+}
+
+.file-item-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  i {
+    font-size: 16px;
+    &.pi-file { color: var(--color-primary); }
+    &.pi-spinner { color: var(--color-primary); }
+    &.pi-check-circle { color: var(--color-green); }
+    &.pi-times-circle { color: var(--color-red); }
+  }
+
+  .file-name {
+    flex: 1;
+    font-size: 13px;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .file-size {
+    font-size: 12px;
+    color: var(--color-text-muted);
+    white-space: nowrap;
+  }
+
+  .file-status {
+    font-size: 11px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--color-text-muted);
+    white-space: nowrap;
+  }
+}
+
+.progress-bar-wrapper {
+  width: 100%;
+  height: 6px;
+  background: rgba(0,0,0,0.08);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progress-bar {
+  height: 100%;
+  background: var(--color-primary);
+  border-radius: 3px;
+  transition: width 0.2s ease;
+
+  &.complete { background: var(--color-green); }
+}
+
+.progress-text {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-primary);
+  align-self: flex-end;
+}
+
+.error-text {
+  font-size: 12px;
+  color: var(--color-red);
+}
+
+.remove-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+  &:hover { background: var(--color-red-bg); color: var(--color-red); }
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 20px;
+  border-radius: 8px;
+  border: none;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: var(--font-primary);
+  cursor: pointer;
+
+  &-primary {
+    background: var(--color-primary);
+    color: #fff;
+    &:hover { background: var(--color-primary-dark); }
+    &:disabled { opacity: 0.5; cursor: not-allowed; }
+  }
+  &-secondary {
+    background: #fff;
+    color: var(--color-text);
+    border: 1px solid var(--color-border);
+    &:hover { background: var(--color-bg); }
+  }
+}

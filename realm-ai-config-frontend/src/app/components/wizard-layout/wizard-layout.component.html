@@ -1,0 +1,189 @@
+<div class="wizard-page">
+  <!-- Top Toolbar -->
+  <div class="toolbar">
+    <div class="toolbar-content">
+      <div class="toolbar-left">
+        <button type="button" class="back-arrow-btn" [disabled]="currentStep === 0" (click)="back()">
+          <svg width="14" height="16" viewBox="0 0 24 24" fill="none">
+            <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" fill="currentColor"/>
+          </svg>
+        </button>
+        <div class="divider-vert"></div>
+        <span class="toolbar-title">Realm Configuration</span>
+        <div class="divider-vert"></div>
+      </div>
+      <div class="toolbar-right">
+        <button type="button" class="btn-back" [disabled]="currentStep === 0" (click)="back()">← Back</button>
+        <button type="button" [class]="getNextButtonClass()" [disabled]="!canProceed" (click)="next()">
+          {{ getNextButtonLabel() }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Existing Config Modal -->
+  @if (showExistingModal && selectedRealm && existingConfig) {
+    <div class="modal-overlay" (click)="closeModal()">
+      <div class="modal-card" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <div class="realm-avatar-sm">{{ selectedRealm.initials }}</div>
+          <div class="modal-header-text">
+            <div class="modal-title">Existing Configuration</div>
+            <div class="modal-subtitle">{{ selectedRealm.displayName }} · {{ selectedRealm.realmId }}</div>
+          </div>
+          <button type="button" class="modal-close" (click)="closeModal()">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+              <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" fill="#374252"/>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="modal-info-grid">
+            @for (item of [
+              { label: 'Mode', value: existingConfig.mode === 'app-designer' ? 'App Designer' : 'Non-App Designer', color: '#6941c6', bg: '#f4f0ff', border: '#d3c5f8' },
+              { label: 'Platform Version', value: existingConfig.version, color: '#1a56db', bg: '#eef4ff', border: '#bfd7fa' },
+              { label: 'Deployment Type', value: existingConfig.deployType === 'dependent' ? 'Dependent (Schema Required)' : 'Independent', color: existingConfig.deployType === 'dependent' ? '#b45309' : '#1e7e34', bg: existingConfig.deployType === 'dependent' ? '#fffbeb' : '#f0fdf4', border: existingConfig.deployType === 'dependent' ? '#fcd34d' : '#bbf7d0' },
+              { label: 'Last Configured', value: existingConfig.configuredAt, color: '#374252', bg: '#f8fafc', border: '#e2e8f0' },
+              { label: 'Configured By', value: existingConfig.configuredBy, color: '#374252', bg: '#f8fafc', border: '#e2e8f0' },
+              { label: 'Services', value: existingConfig.services.length + ' service' + (existingConfig.services.length !== 1 ? 's' : ''), color: '#1a56db', bg: '#eef4ff', border: '#bfd7fa' }
+            ]; track item.label) {
+              <div class="info-tile" [style.border-color]="item.border" [style.background]="item.bg">
+                <span class="tile-label">{{ item.label }}</span>
+                <span class="tile-value" [style.color]="item.color">{{ item.value }}</span>
+              </div>
+            }
+          </div>
+          <div class="modal-services">
+            <div class="modal-services-label">Configured Services</div>
+            <div class="service-tags">
+              @for (svc of existingConfig.services; track svc) {
+                <span class="service-tag">
+                  <span class="tag-dot"></span>
+                  {{ svc }}
+                </span>
+              }
+            </div>
+          </div>
+          <div class="modal-warning">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+              <path d="M12 2L1 21h22L12 2zm0 3.5L20.5 19h-17L12 5.5zM11 10v4h2v-4h-2zm0 6v2h2v-2h-2z" fill="#b45309"/>
+            </svg>
+            <span>
+              This is a read-only view of the existing configuration. To make changes, close this modal and click
+              <strong>Proceed to Reconfigure</strong> in the realm selection panel.
+            </span>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-close-modal" (click)="closeModal()">Close</button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Completion Modal -->
+  @if (isComplete) {
+    <div class="modal-overlay">
+      <div class="completion-card">
+        <div class="success-icon">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" fill="#1e8e3e"/>
+          </svg>
+        </div>
+        <div class="success-title">Configuration Complete</div>
+        <div class="success-desc">
+          Realm <strong class="text-primary-dark">{{ selectedRealm?.displayName ?? 'Selected Realm' }}</strong>
+          has been successfully configured and is ready for deployment.
+        </div>
+        <div class="realm-id-bar">
+          <div class="green-dot"></div>
+          <span>Realm ID: <code>{{ selectedRealm?.realmId ?? '—' }}</code></span>
+          <span class="active-tag">Active</span>
+        </div>
+        <button type="button" class="btn-return" (click)="reset()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+            <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" fill="white"/>
+          </svg>
+          Return to Configurations
+        </button>
+      </div>
+    </div>
+  }
+
+  <!-- Main Content -->
+  <div class="wizard-body">
+    <!-- Sidebar Stepper -->
+    <div class="sidebar">
+      <div class="sidebar-card">
+        @for (step of steps; track step.label; let i = $index) {
+          <div class="step-item" [class.active]="i === currentStep">
+            <div class="step-indicator">
+              <div
+                class="step-circle"
+                [class.completed]="i < currentStep"
+                [class.active]="i === currentStep"
+              >
+                @if (i < currentStep) {
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
+                    <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z" fill="white"/>
+                  </svg>
+                } @else {
+                  <span>{{ i + 1 }}</span>
+                }
+              </div>
+              @if (i < steps.length - 1) {
+                <div class="step-line" [class.completed]="i < currentStep"></div>
+              }
+            </div>
+            <div class="step-content">
+              <div class="step-label" [class.completed]="i < currentStep" [class.active]="i === currentStep">
+                {{ step.label }}
+              </div>
+              <!-- Step context badges -->
+              @if ((i < currentStep || i === currentStep)) {
+                @if (i === 0 && selectedRealm) {
+                  <div class="step-badge">
+                    <span class="badge-dot"></span>
+                    <span class="badge-text">{{ selectedRealm.displayName }}</span>
+                  </div>
+                }
+                @if (i === 1 && selectedMode) {
+                  <div class="step-badge">
+                    <span class="badge-dot"></span>
+                    {{ selectedMode === 'app-designer' ? 'App Designer' : 'Non-App Designer' }}
+                  </div>
+                }
+                @if (i === 2 && platformVersion) {
+                  <div class="step-badges">
+                    <div class="step-badge">{{ platformVersion }}</div>
+                    @if (selectedServicesSize > 0) {
+                      <div class="step-badge">{{ selectedServicesSize }} service{{ selectedServicesSize !== 1 ? 's' : '' }} selected</div>
+                    }
+                  </div>
+                }
+                @if (i === 3 && deploySchemaName) {
+                  <div class="step-badge">
+                    <span class="badge-dot"></span>
+                    <span class="badge-text capitalize">{{ deploySchemaName }}</span>
+                  </div>
+                }
+              }
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+
+    <!-- Step Content -->
+    <div class="main-content">
+      <div class="content-card">
+        @switch (currentStep) {
+          @case (0) { <app-realm-selection /> }
+          @case (1) { <app-mode-selection /> }
+          @case (2) { <app-services-selection /> }
+          @case (3) { <app-service-configuration /> }
+        }
+      </div>
+    </div>
+  </div>
+</div>

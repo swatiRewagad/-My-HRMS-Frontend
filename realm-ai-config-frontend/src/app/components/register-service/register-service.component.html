@@ -1,0 +1,164 @@
+<!-- Breadcrumb -->
+<div class="breadcrumb">
+  <a routerLink="/services"><i class="pi pi-arrow-left"></i></a>
+  <a routerLink="/services">Service Registry</a>
+  <span class="separator">/</span>
+  <span>Register New Service</span>
+</div>
+
+<!-- Page Header -->
+<div class="page-header">
+  <div>
+    <h1>Register New Service</h1>
+    <p class="page-desc">Add a new service to the Kavach Service Registry. All fields marked with * are required.</p>
+  </div>
+  <div class="header-actions">
+    <button class="btn-cancel" (click)="cancel()">Cancel</button>
+    <button class="btn-submit" [disabled]="!form.name || !form.baseUrl || submitting" (click)="onSubmit()">
+      <i class="pi pi-check"></i> Register Service
+    </button>
+  </div>
+</div>
+
+<!-- Form Sections -->
+<div class="form-container">
+
+  <!-- 1. Service Identity -->
+  <div class="form-section">
+    <div class="section-header">
+      <span class="section-number">1</span>
+      <div>
+        <h3>Service Identity</h3>
+        <p>Enter the service name and base URL — other details will be auto-populated from the URL.</p>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Service Name *</label>
+      <input type="text" [(ngModel)]="form.name" placeholder="e.g. Centralised OCR Monitor">
+    </div>
+    <div class="form-group">
+      <label>
+        Service Base URL
+        <span class="badge-required" *ngIf="urlValid && form.baseUrl">● Reachable</span>
+        <span class="badge-error" *ngIf="!urlValid">● Invalid URL</span>
+      </label>
+      <div class="url-row">
+        <input type="text" [(ngModel)]="form.baseUrl" placeholder="https://service.internal.kavach.gov.in/api/v1"
+               (blur)="validateUrl()">
+        <button class="btn-validate" (click)="validateUrl()">Paste & Validate</button>
+      </div>
+      <span class="hint">The base URL is the primary identifier. Click <strong>Paste & Validate</strong> to auto-populate registry, version, and alternatives.</span>
+    </div>
+  </div>
+
+  <!-- 2. Service Details -->
+  <div class="form-section">
+    <div class="section-header">
+      <span class="section-number">2</span>
+      <div>
+        <h3>Service Details</h3>
+        <p>Define the service naming, category, version, and description.</p>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Service Key</label>
+        <input type="text" [value]="autoSlug" disabled placeholder="Auto-generated from name">
+        <span class="hint">Unique identifier, auto-generated from name.</span>
+      </div>
+      <div class="form-group">
+        <label>Category</label>
+        <select [(ngModel)]="form.category">
+          <option value="">Select a category</option>
+          <option *ngFor="let cat of categories" [value]="cat">{{ cat }}</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Version</label>
+      <input type="text" [(ngModel)]="form.version" placeholder="e.g. v1.0.0">
+    </div>
+    <div class="form-group">
+      <label>Description</label>
+      <textarea [(ngModel)]="form.description" rows="3" placeholder="Describe the purpose and capabilities of this service..."></textarea>
+    </div>
+  </div>
+
+  <!-- 3. Endpoint Configuration -->
+  <div class="form-section">
+    <div class="section-header">
+      <span class="section-number">3</span>
+      <div>
+        <h3>Endpoint Configuration</h3>
+        <p>Configure the health check path. The base URL is defined in Section 1.</p>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Health Check Endpoint</label>
+      <input type="text" [(ngModel)]="form.healthCheckEndpoint" placeholder="/health">
+      <span class="hint">Relative path appended to the base URL for health monitoring.</span>
+    </div>
+  </div>
+
+  <!-- 4. Authentication -->
+  <div class="form-section">
+    <div class="section-header">
+      <span class="section-number">4</span>
+      <div>
+        <h3>Authentication</h3>
+        <p>Specify how consumers should authenticate when calling this service.</p>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Authentication Type</label>
+      <select [(ngModel)]="form.authType">
+        <option *ngFor="let auth of authTypes" [value]="auth">{{ auth }}</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- 5. Ownership & Status -->
+  <div class="form-section">
+    <div class="section-header">
+      <span class="section-number">5</span>
+      <div>
+        <h3>Ownership & Status</h3>
+        <p>Assign an owner and set the initial operational status of the service.</p>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Owner Name</label>
+        <input type="text" [(ngModel)]="form.ownerName" placeholder="Full name">
+      </div>
+      <div class="form-group">
+        <label>Owner Email</label>
+        <input type="email" [(ngModel)]="form.ownerEmail" placeholder="owner&#64;rbi.org.in">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Tags</label>
+        <input type="text" [(ngModel)]="form.tags" placeholder="e.g. ai,ocr, ml (comma separated)">
+        <span class="hint">Optional tags for filtering and discovery.</span>
+      </div>
+      <div class="form-group">
+        <label>Initial Status</label>
+        <select [(ngModel)]="form.status">
+          <option *ngFor="let s of statuses" [value]="s">{{ s }}</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Form Footer -->
+  <div class="form-footer">
+    <span class="footer-note">Fields marked * are required before you can register.</span>
+    <div class="footer-actions">
+      <button class="btn-cancel" (click)="cancel()">Cancel</button>
+      <button class="btn-submit" [disabled]="!form.name || !form.baseUrl || submitting" (click)="onSubmit()">
+        <i class="pi pi-check"></i> Register Service
+      </button>
+    </div>
+  </div>
+</div>

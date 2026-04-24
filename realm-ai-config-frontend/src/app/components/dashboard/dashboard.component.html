@@ -1,0 +1,207 @@
+<!-- Page Header -->
+<div class="page-header">
+  <h1>Dashboard</h1>
+  <p class="page-desc">A unified view of your Kavach platform — realm configurations, registered services, deployment health, and activity at a glance.</p>
+</div>
+
+<!-- Stats Cards -->
+<div class="stats-row">
+  <div class="stat-card">
+    <div class="stat-icon blue"><i class="pi pi-cog"></i></div>
+    <div class="stat-content">
+      <span class="stat-value">{{ stats.realmsConfigured }}</span>
+      <span class="stat-label">Realms Configured</span>
+      <span class="stat-sub">{{ stats.realmsActive }} active</span>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon indigo"><i class="pi pi-list"></i></div>
+    <div class="stat-content">
+      <span class="stat-value">{{ stats.servicesRegistered }}</span>
+      <span class="stat-label">Services Registered</span>
+      <span class="stat-sub">{{ stats.servicesActive }} active</span>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon red"><i class="pi pi-stop"></i></div>
+    <div class="stat-content">
+      <span class="stat-value">{{ stats.deprecatedServices }}</span>
+      <span class="stat-label">Deprecated Services</span>
+      <span class="stat-sub">Consider removal</span>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon teal"><i class="pi pi-verified"></i></div>
+    <div class="stat-content">
+      <span class="stat-value">{{ stats.platformVersion }}</span>
+      <span class="stat-label">Platform Version</span>
+      <span class="stat-sub">{{ stats.platformReleaseDate }}</span>
+    </div>
+  </div>
+</div>
+
+<!-- Row 2: Services per Realm + Status Distribution -->
+<div class="row-2">
+  <div class="card services-per-realm">
+    <div class="card-header">
+      <div>
+        <h3>Services per Configured Realm</h3>
+        <p class="card-subtitle">Top services across all configured realms</p>
+      </div>
+      <div class="legend">
+        <span class="legend-item"><span class="dot blue"></span> Services configured</span>
+        <span class="legend-item"><span class="dot gray"></span> Capacity</span>
+      </div>
+    </div>
+    <div class="realm-bars">
+      <div class="realm-bar-item" *ngFor="let bar of realmBars">
+        <span class="bar-count">{{ bar.servicesConfigured }}</span>
+        <div class="bar-track">
+          <div class="bar-fill" [style.width.%]="(bar.servicesConfigured / bar.capacity) * 100" [style.background]="bar.color"></div>
+        </div>
+        <span class="bar-label">{{ bar.realmName }}</span>
+      </div>
+    </div>
+    <div class="top-services">
+      <span class="top-label">TOP SERVICES:</span>
+      <span class="service-tag" *ngFor="let svc of topServices">{{ svc }}</span>
+    </div>
+  </div>
+
+  <div class="card status-dist">
+    <h3>Status Distribution</h3>
+    <div class="donut-container">
+      <svg viewBox="0 0 42 42" class="donut-chart">
+        <circle cx="21" cy="21" r="15.91549431" fill="transparent"
+                stroke="#16a34a" stroke-width="4"
+                [attr.stroke-dasharray]="getDonutDash(statusDist.active)"
+                [attr.stroke-dashoffset]="getDonutOffset(0)"/>
+        <circle cx="21" cy="21" r="15.91549431" fill="transparent"
+                stroke="#d97706" stroke-width="4"
+                [attr.stroke-dasharray]="getDonutDash(statusDist.inactive)"
+                [attr.stroke-dashoffset]="getDonutOffset(1)"/>
+        <circle cx="21" cy="21" r="15.91549431" fill="transparent"
+                stroke="#dc2626" stroke-width="4"
+                [attr.stroke-dasharray]="getDonutDash(statusDist.deprecated)"
+                [attr.stroke-dashoffset]="getDonutOffset(2)"/>
+        <text x="21" y="19.5" text-anchor="middle" class="donut-number">{{ statusDist.total }}</text>
+        <text x="21" y="24" text-anchor="middle" class="donut-label">Total</text>
+      </svg>
+    </div>
+    <div class="status-legend">
+      <div class="status-row"><span class="dot green"></span> Active <span class="count">{{ statusDist.active }}</span></div>
+      <div class="status-row"><span class="dot orange"></span> Inactive <span class="count">{{ statusDist.inactive }}</span></div>
+      <div class="status-row"><span class="dot red"></span> Deprecated <span class="count">{{ statusDist.deprecated }}</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- Row 3: Services by Category + Deployment Types -->
+<div class="row-3">
+  <div class="card category-chart">
+    <h3>Services by Category</h3>
+    <p class="card-subtitle">Number of registered services per category</p>
+    <div class="category-bars">
+      <div class="cat-bar-item" *ngFor="let cat of categories">
+        <span class="cat-label">{{ cat.category }}</span>
+        <div class="cat-track">
+          <div class="cat-fill" [style.width.%]="(cat.count / maxCategoryCount) * 100" [style.background]="cat.color"></div>
+        </div>
+        <span class="cat-count">{{ cat.count }}</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card deploy-types">
+    <h3>Deployment Types</h3>
+    <p class="card-subtitle">Realm deployment breakdown</p>
+    <div class="deploy-bars">
+      <div class="deploy-row">
+        <span class="deploy-label">Independent</span>
+        <div class="deploy-track">
+          <div class="deploy-fill" style="background: #1a56db; width: 75%"></div>
+        </div>
+        <span class="deploy-count">{{ deployTypes.independent }}</span>
+      </div>
+      <div class="deploy-row">
+        <span class="deploy-label">Dependent</span>
+        <div class="deploy-track">
+          <div class="deploy-fill" style="background: #d97706; width: 25%"></div>
+        </div>
+        <span class="deploy-count">{{ deployTypes.dependent }}</span>
+      </div>
+    </div>
+    <div class="mode-breakdown">
+      <h4>MODE BREAKDOWN:</h4>
+      <div class="mode-row"><span class="dot blue"></span> App Designer <span class="count">{{ deployTypes.modeBreakdown.appDesigner }}</span></div>
+      <div class="mode-row"><span class="dot dark"></span> Non-App Designer <span class="count">{{ deployTypes.modeBreakdown.nonAppDesigner }}</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- Row 4: Recent Configs + Registered Services + Activity -->
+<div class="row-4">
+  <div class="card recent-configs">
+    <div class="card-header">
+      <h3>Recent Realm Configurations</h3>
+      <a class="view-all" routerLink="/config">View all →</a>
+    </div>
+    <div class="config-list">
+      <div class="config-item" *ngFor="let cfg of recentConfigs">
+        <div class="config-avatar" [style.background]="cfg.color">{{ cfg.realmInitials }}</div>
+        <div class="config-info">
+          <span class="config-name">{{ cfg.realmName }}</span>
+          <span class="config-meta">{{ cfg.version }} · {{ cfg.deployType }}</span>
+        </div>
+        <span class="status-badge" [style.color]="getStatusColor(cfg.status)" [style.background]="getStatusBg(cfg.status)">
+          ● {{ cfg.status }}
+        </span>
+      </div>
+    </div>
+    <a class="add-link" routerLink="/config"><i class="pi pi-plus"></i> Configure new realm</a>
+  </div>
+
+  <div class="card registered-svc">
+    <div class="card-header">
+      <h3>Registered Services</h3>
+      <a class="view-all" routerLink="/services">View all →</a>
+    </div>
+    <div class="svc-list">
+      <div class="svc-item" *ngFor="let svc of registeredServices">
+        <div class="svc-info">
+          <span class="svc-name">{{ svc.name }}</span>
+          <span class="svc-meta">{{ svc.slug }} · {{ svc.version }}</span>
+        </div>
+        <span class="svc-category">{{ svc.category }}</span>
+        <span class="status-badge" [style.color]="getStatusColor(svc.status)" [style.background]="getStatusBg(svc.status)">
+          ● {{ svc.status }}
+        </span>
+      </div>
+    </div>
+    <a class="add-link" routerLink="/services"><i class="pi pi-plus"></i> Register new service</a>
+  </div>
+
+  <div class="card activity-feed">
+    <h3>Recent Activity</h3>
+    <p class="card-subtitle">Latest platform changes</p>
+    <div class="activity-list">
+      <div class="activity-item" *ngFor="let item of activity">
+        <div class="activity-icon" [style.color]="item.iconColor" [style.background]="item.iconBg">
+          <i [class]="item.icon"></i>
+        </div>
+        <div class="activity-content">
+          <span class="activity-title">{{ item.title }}</span>
+          <span class="activity-sub">{{ item.subtitle }}</span>
+          <span class="activity-time">{{ item.time }}</span>
+        </div>
+        <span class="activity-badge" [style.background]="item.badgeBg">{{ item.badge }}</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Footer -->
+<div class="dashboard-footer">
+  <i class="pi pi-info-circle"></i>
+  Data shown reflects the current state of the Kavach admin configuration. Use the <a routerLink="/config">Quick Actions</a> or the sidebar to navigate to a module.
+</div>

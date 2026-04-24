@@ -1,0 +1,48 @@
+<div class="shared-files">
+  <div class="section-header">
+    <h2>Shared with Me</h2>
+    <p class="subtitle">Files that have been shared with you by others</p>
+  </div>
+
+  @if (sharedFiles.length > 0) {
+    <div class="files-table">
+      <div class="table-header">
+        <span class="col-name">File Name</span>
+        <span class="col-shared">Shared By</span>
+        <span class="col-perm">Permission</span>
+        <span class="col-size">Size</span>
+        <span class="col-actions">Actions</span>
+      </div>
+      @for (file of sharedFiles; track file.id) {
+        <div class="table-row">
+          <span class="col-name">
+            <i [class]="getFileIcon(file.contentType)" [style.color]="getFileIconColor(file.contentType)"></i>
+            {{ file.originalName }}
+          </span>
+          <span class="col-shared">
+            <span class="sharer-avatar">{{ file.sharedByInitials || '?' }}</span>
+            {{ file.sharedByName || 'Unknown' }}
+          </span>
+          <span class="col-perm">
+            <span class="perm-badge" [class.read]="file.permission === 'read'" [class.write]="file.permission === 'read-write'">
+              {{ file.permission }}
+            </span>
+          </span>
+          <span class="col-size">{{ formatSize(file.size) }}</span>
+          <span class="col-actions">
+            <button class="icon-btn" title="Preview" (click)="openPreview(file)"><i class="pi pi-eye"></i></button>
+            <button class="icon-btn" title="Download" (click)="downloadFile(file)"><i class="pi pi-download"></i></button>
+          </span>
+        </div>
+      }
+    </div>
+  } @else {
+    <div class="empty-state">
+      <i class="pi pi-share-alt"></i>
+      <h3>No Shared Files</h3>
+      <p>Files shared with you will appear here</p>
+    </div>
+  }
+</div>
+
+<app-file-preview [file]="previewFile" [(visible)]="showPreview"></app-file-preview>

@@ -1,0 +1,128 @@
+@if (visible && file) {
+  <div class="preview-overlay" (click)="close()">
+    <div class="preview-container" (click)="$event.stopPropagation()">
+      <div class="preview-header">
+        <div class="file-info">
+          <i [class]="getFileIcon()"></i>
+          <div class="file-details">
+            <span class="file-name">{{ file.originalName }}</span>
+            <span class="file-meta">{{ formatSize(file.size) }} · {{ file.contentType }}</span>
+          </div>
+        </div>
+        <div class="header-actions">
+          <button class="action-btn" title="Download" (click)="download()">
+            <i class="pi pi-download"></i>
+          </button>
+          <button class="action-btn close" title="Close" (click)="close()">
+            <i class="pi pi-times"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="preview-body">
+        @if (loading) {
+          <div class="loading-state">
+            <i class="pi pi-spinner pi-spin"></i>
+            <p>Loading preview...</p>
+          </div>
+        }
+
+        @if (!loading && previewType === 'pdf' && previewUrl) {
+          <iframe [src]="previewUrl" class="preview-frame"></iframe>
+        }
+
+        @if (!loading && previewType === 'image' && previewUrl) {
+          <div class="image-preview">
+            <img [src]="previewUrl" [alt]="file.originalName" />
+          </div>
+        }
+
+        @if (!loading && previewType === 'audio' && previewUrl) {
+          <div class="media-preview">
+            <div class="media-icon"><i class="pi pi-volume-up"></i></div>
+            <h3>{{ file.originalName }}</h3>
+            <audio controls [src]="previewUrl">
+              Your browser does not support audio playback.
+            </audio>
+          </div>
+        }
+
+        @if (!loading && previewType === 'video' && previewUrl) {
+          <div class="media-preview">
+            <video controls [src]="previewUrl" class="video-player">
+              Your browser does not support video playback.
+            </video>
+          </div>
+        }
+
+        @if (!loading && previewType === 'text') {
+          <div class="text-preview">
+            <pre>{{ textContent }}</pre>
+          </div>
+        }
+
+        @if (!loading && previewType === 'excel') {
+          <div class="excel-preview">
+            <div class="excel-toolbar">
+              @if (sheetNames.length > 1) {
+                <div class="sheet-tabs">
+                  @for (name of sheetNames; track name) {
+                    <button class="sheet-tab" [class.active]="name === activeSheet" (click)="selectSheet(name)">
+                      {{ name }}
+                    </button>
+                  }
+                </div>
+              }
+              <span class="row-count">{{ totalRows }} rows</span>
+            </div>
+            <div class="table-scroll">
+              <table class="excel-table">
+                @for (row of sheetData; track $index; let rowIdx = $index) {
+                  <tr [class.header-row]="rowIdx === 0">
+                    <td class="row-num">{{ rowIdx + 1 }}</td>
+                    @for (cell of row; track $index) {
+                      @if (rowIdx === 0) {
+                        <th>{{ cell }}</th>
+                      } @else {
+                        <td>{{ cell }}</td>
+                      }
+                    }
+                  </tr>
+                }
+              </table>
+              @if (sheetData.length === 0) {
+                <div class="empty-sheet">This sheet is empty</div>
+              }
+              @if (hasMoreRows) {
+                <div class="load-more">
+                  <button class="btn btn-outline" (click)="loadMoreRows()">
+                    Load more rows ({{ totalRows - visibleRows }} remaining)
+                  </button>
+                </div>
+              }
+            </div>
+          </div>
+        }
+
+        @if (!loading && previewType === 'word') {
+          <div class="word-preview">
+            @if (htmlContent) {
+              <div class="word-content" [innerHTML]="htmlContent"></div>
+            }
+          </div>
+        }
+
+        @if (!loading && previewType === 'unsupported') {
+          <div class="unsupported-state">
+            <i [class]="getFileIcon()"></i>
+            <h3>Preview not available</h3>
+            <p>This file type ({{ file.contentType }}) cannot be previewed in the browser.</p>
+            <button class="btn btn-primary" (click)="download()">
+              <i class="pi pi-download"></i> Download File
+            </button>
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+}

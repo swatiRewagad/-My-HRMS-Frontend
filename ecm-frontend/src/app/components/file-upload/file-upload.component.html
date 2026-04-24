@@ -1,0 +1,61 @@
+<div class="upload-page">
+  <div class="section-header">
+    <h2>Upload Files</h2>
+    <p class="subtitle">Drag and drop or browse files to upload — files are uploaded in 1 MB chunks</p>
+  </div>
+
+  <div class="upload-card">
+    <div class="form-group">
+      <label>Destination Folder</label>
+      <select [(ngModel)]="selectedFolderId">
+        <option [value]="0" disabled>Select a folder</option>
+        @for (folder of folders; track folder.id) {
+          <option [value]="folder.id">{{ folder.name }} ({{ folder.visibility }})</option>
+        }
+      </select>
+    </div>
+
+    <div class="drop-zone" [class.drag-over]="dragOver"
+         (dragover)="onDragOver($event)" (dragleave)="onDragLeave()" (drop)="onDrop($event)">
+      <i class="pi pi-cloud-upload"></i>
+      <h3>Drag & Drop files here</h3>
+      <p>or click to browse</p>
+      <input type="file" multiple (change)="onFileSelect($event)" />
+    </div>
+
+    @if (uploadItems.length > 0) {
+      <div class="file-list">
+        <h4>Files ({{ uploadItems.length }})</h4>
+        @for (item of uploadItems; track $index) {
+          <div class="file-item" [class.completed]="item.status === 'completed'" [class.error]="item.status === 'error'" [class.uploading]="item.status === 'uploading'">
+            <div class="file-item-top">
+              <i class="pi" [class.pi-file]="item.status === 'pending'" [class.pi-spin]="item.status === 'uploading'" [class.pi-spinner]="item.status === 'uploading'" [class.pi-check-circle]="item.status === 'completed'" [class.pi-times-circle]="item.status === 'error'"></i>
+              <span class="file-name">{{ item.file.name }}</span>
+              <span class="file-size">{{ formatSize(item.file.size) }}</span>
+              <span class="file-status">{{ item.status }}</span>
+              @if (item.status !== 'uploading') {
+                <button class="remove-btn" (click)="removeFile($index)"><i class="pi pi-times"></i></button>
+              }
+            </div>
+            @if (item.status === 'uploading' || item.status === 'completed') {
+              <div class="progress-bar-wrapper">
+                <div class="progress-bar" [style.width.%]="item.progress" [class.complete]="item.status === 'completed'"></div>
+              </div>
+              <span class="progress-text">{{ item.progress }}%</span>
+            }
+            @if (item.status === 'error' && item.error) {
+              <span class="error-text">{{ item.error }}</span>
+            }
+          </div>
+        }
+      </div>
+    }
+
+    <div class="actions">
+      <button class="btn btn-secondary" (click)="goToFiles()">Back to Files</button>
+      <button class="btn btn-primary" (click)="uploadAll()" [disabled]="!selectedFolderId || !hasPending || uploading">
+        {{ uploading ? 'Uploading...' : allCompleted ? 'All Done' : 'Upload All' }}
+      </button>
+    </div>
+  </div>
+</div>
