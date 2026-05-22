@@ -243,6 +243,63 @@
           </div>
         }
 
+        <!-- Sub-service configuration forms (for Independent deployment) -->
+        @if (svc.subServices?.length && deployType === 'independent') {
+          @for (sub of svc.subServices; track sub.id) {
+            <div class="sub-service-config">
+              <div class="sub-svc-header">
+                <div class="dot-blue"></div>
+                <span class="parent-svc-name">{{ svc.label }}</span>
+                <span class="sub-svc-arrow">›</span>
+                <span class="sub-svc-name">{{ sub.label }}</span>
+                <span class="svc-group-tag" [style.color]="getServiceColor(svc)" [style.background]="getServiceBg(svc)" [style.border-color]="getServiceColor(svc) + '50'">
+                  {{ getGroupLabel(svc) }}
+                </span>
+              </div>
+              <div class="sub-svc-desc">{{ sub.description }}</div>
+
+              @if (sub.configFields?.length) {
+                <div class="sub-svc-fields">
+                  @for (field of sub.configFields; track field.key) {
+                    <div class="form-field" [class.half]="field.halfWidth">
+                      <label>{{ field.label }} @if (field.required) { <span class="required">*</span> }</label>
+                      @if (field.type === 'text' || field.type === 'number') {
+                        <input
+                          [type]="field.type"
+                          [placeholder]="field.placeholder ?? ''"
+                          [ngModel]="getSubServiceFieldValue(sub.id, field.key)"
+                          (ngModelChange)="updateSubServiceField(sub.id, field.key, $event)"
+                        />
+                      }
+                      @if (field.type === 'select') {
+                        <select
+                          [ngModel]="getSubServiceFieldValue(sub.id, field.key)"
+                          (ngModelChange)="updateSubServiceField(sub.id, field.key, $event)"
+                        >
+                          <option value="" disabled>{{ field.placeholder ?? 'Select...' }}</option>
+                          @for (opt of field.options; track opt) {
+                            <option [value]="opt">{{ opt }}</option>
+                          }
+                        </select>
+                      }
+                      @if (field.hint) {
+                        <span class="field-hint">{{ field.hint }}</span>
+                      }
+                    </div>
+                  }
+                </div>
+              } @else {
+                <div class="no-config-notice">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" fill="#1e7e34"/>
+                  </svg>
+                  <span>This sub-service requires no additional configuration.</span>
+                </div>
+              }
+            </div>
+          }
+        }
+
         <!-- Service-specific configuration form -->
         <div class="svc-config-form">
           @if (svc.group === 'ai' && !svc.dependent) {

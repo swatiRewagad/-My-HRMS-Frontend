@@ -1,193 +1,298 @@
-<div class="physical-page">
-  <!-- Header -->
-  <div class="page-header">
-    <div class="header-left">
-      <i class="pi pi-file-edit"></i>
-      <h2>Physical Complaint Simulation</h2>
+<div class="complaint-workspace">
+  <!-- Top Info Bar -->
+  <div class="info-bar">
+    <button class="back-btn" (click)="goBack()">
+      <i class="pi pi-arrow-left"></i>
+    </button>
+    <div class="info-item">
+      <span class="info-label">Complaint ID <i class="pi pi-info-circle"></i></span>
+      <span class="info-value">{{ complaintId }}</span>
     </div>
-    <p class="header-desc">Upload a scanned handwritten complaint letter (Hindi/English). Our OCR module will extract the details and auto-fill the complaint form.</p>
+    <div class="info-item">
+      <span class="info-label">Complaint Number <i class="pi pi-info-circle"></i></span>
+      <span class="info-value">{{ complaintNumber }}</span>
+    </div>
+    <div class="info-item">
+      <span class="info-label">Mode of Receipt <i class="pi pi-info-circle"></i></span>
+      <span class="info-value">Physical Letter</span>
+    </div>
+    <div class="info-item">
+      <span class="info-label">Status <i class="pi pi-info-circle"></i></span>
+      <span class="info-value status-badge" [class]="'status-' + currentStatus">{{ statusLabel }}</span>
+    </div>
+    <div class="info-item">
+      <span class="info-label">Complaint Owner <i class="pi pi-info-circle"></i></span>
+      <span class="info-value">{{ complaintOwner }}</span>
+    </div>
   </div>
 
   <!-- Success Screen -->
   @if (submitted) {
-    <div class="success-card">
-      <div class="success-icon"><i class="pi pi-check-circle"></i></div>
-      <h3>Complaint Registered Successfully!</h3>
-      <p>Your physical complaint has been processed and registered. Reference number:</p>
-      <div class="ref-number">{{ referenceNumber }}</div>
-      <div class="success-actions">
-        <button class="btn-secondary" (click)="resetForm()"><i class="pi pi-refresh"></i> File Another</button>
-        <button class="btn-primary" (click)="goToTrack()"><i class="pi pi-search"></i> Track Complaint</button>
+    <div class="success-overlay">
+      <div class="success-card">
+        <div class="success-icon"><i class="pi pi-check-circle"></i></div>
+        <h3>Complaint Registered Successfully!</h3>
+        <p>Your physical complaint has been processed and registered.</p>
+        <div class="ref-number">{{ referenceNumber }}</div>
+        <div class="success-actions">
+          <button class="btn-secondary" (click)="resetForm()"><i class="pi pi-refresh"></i> File Another</button>
+          <button class="btn-primary" (click)="goToTrack()"><i class="pi pi-search"></i> Track Complaint</button>
+        </div>
       </div>
     </div>
   }
 
+  <!-- Main 3-Panel Layout -->
   @if (!submitted) {
-    <!-- Step 1: Upload -->
-    <div class="upload-card">
-      <div class="card-title">
-        <span class="step-badge">1</span>
-        <h3>Upload Scanned Letter</h3>
-      </div>
-      <p class="card-desc">Upload a scanned image of the handwritten complaint letter. Supported formats: JPG, PNG, PDF, TIFF</p>
-
-      <div class="upload-zone" (click)="fileInput.click()" [class.has-file]="uploadedFile">
-        <input #fileInput type="file" accept=".jpg,.jpeg,.png,.pdf,.tiff,.tif" (change)="onFileSelected($event)" hidden />
-        @if (!uploadedFile) {
-          <div class="upload-placeholder">
-            <i class="pi pi-cloud-upload"></i>
-            <p>Click or drag & drop your scanned letter here</p>
-            <span class="upload-hint">JPG, PNG, PDF, TIFF — Max 10MB</span>
-          </div>
-        } @else {
-          <div class="uploaded-preview">
-            @if (imagePreview) {
-              <img [src]="imagePreview" alt="Scanned letter preview" class="preview-img" />
-            }
-            <div class="file-info">
-              <i class="pi pi-file-word"></i>
-              <div>
-                <span class="file-name">{{ uploadedFile.name }}</span>
-                <span class="file-size">{{ (uploadedFile.size / 1024).toFixed(0) }} KB</span>
+    <div class="panels-container">
+      <!-- Left Panel: Physical Letter Copy -->
+      <div class="panel panel-left">
+        <div class="panel-header">
+          <h3><i class="pi pi-file"></i> Physical Letter Copy</h3>
+          <button class="expand-btn" aria-label="Expand"><i class="pi pi-expand"></i></button>
+        </div>
+        <div class="panel-body">
+          <p class="scan-label">Scan and Upload Physical Letter Copy</p>
+          <div class="upload-zone" (click)="fileInput.click()" [class.has-file]="uploadedFile">
+            <input #fileInput type="file" accept=".jpg,.jpeg,.png,.pdf,.tiff,.tif,.xls,.xl" (change)="onFileSelected($event)" hidden />
+            @if (!uploadedFile) {
+              <div class="upload-placeholder">
+                <i class="pi pi-cloud-upload"></i>
+                <p>Drag and Drop file here or <a>Choose file</a></p>
+                <span class="upload-formats">Support formats: XLS, XL</span>
+                <span class="upload-size">Maximum size: 5MB</span>
               </div>
-              <button class="remove-btn" (click)="removeFile(); $event.stopPropagation()"><i class="pi pi-times"></i></button>
+            } @else {
+              <div class="uploaded-preview">
+                @if (imagePreview) {
+                  <img [src]="imagePreview" alt="Scanned letter preview" class="preview-img" />
+                }
+                <div class="file-info">
+                  <i class="pi pi-file"></i>
+                  <div>
+                    <span class="file-name">{{ uploadedFile.name }}</span>
+                    <span class="file-size">{{ (uploadedFile.size / 1024).toFixed(0) }} KB</span>
+                  </div>
+                  <button class="remove-btn" (click)="removeFile(); $event.stopPropagation()"><i class="pi pi-times"></i></button>
+                </div>
+              </div>
+            }
+          </div>
+
+          @if (uploadedFile && !processed) {
+            <div class="upload-actions">
+              <button class="btn-primary" (click)="processOcr()" [disabled]="processing">
+                @if (processing) {
+                  <i class="pi pi-spin pi-spinner"></i> Processing...
+                } @else {
+                  <i class="pi pi-eye"></i> Extract Text (OCR)
+                }
+              </button>
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Middle Panel: Draft Complaint -->
+      <div class="panel panel-middle">
+        <div class="panel-header">
+          <h3><i class="pi pi-pencil"></i> Draft Complaint</h3>
+        </div>
+        <div class="panel-body">
+          <!-- Stepper -->
+          <div class="stepper">
+            <div class="step" [class.active]="currentStep === 'creation'" [class.completed]="currentStep !== 'creation'">
+              <div class="step-circle"></div>
+              <span>Creation</span>
+            </div>
+            <div class="step-line" [class.active]="currentStep === 'assessment' || currentStep === 'closure'"></div>
+            <div class="step" [class.active]="currentStep === 'assessment'">
+              <div class="step-circle"></div>
+              <span>Assessment</span>
+            </div>
+            <div class="step-line" [class.active]="currentStep === 'closure'"></div>
+            <div class="step" [class.active]="currentStep === 'closure'">
+              <div class="step-circle"></div>
+              <span>Closure</span>
             </div>
           </div>
-        }
+
+          <!-- Form Fields -->
+          <div class="draft-form">
+            <div class="form-field">
+              <label>Subject</label>
+              <input type="text" placeholder="Enter a value" [(ngModel)]="formData.subject" />
+            </div>
+            <div class="form-field">
+              <label>Complaint Details</label>
+              <textarea rows="4" placeholder="Enter text here" [(ngModel)]="formData.complaintDetails"></textarea>
+            </div>
+            <div class="form-field">
+              <label>Comments</label>
+              <div class="comment-input-wrapper">
+                <div class="comment-avatar">A</div>
+                <textarea rows="2" placeholder="Enter text here" [(ngModel)]="formData.comments"></textarea>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-field">
+                <label>Mode of Receipt</label>
+                <input type="text" placeholder="Enter a value" [(ngModel)]="formData.modeOfReceipt" />
+              </div>
+              <div class="form-field">
+                <label>Physical Letter Receipt Date</label>
+                <div class="date-input-wrapper">
+                  <input type="text" placeholder="dd-mm-yyyy" [(ngModel)]="formData.receiptDate" />
+                  <i class="pi pi-calendar"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Actions -->
+          <div class="form-actions">
+            <button class="btn-secondary" (click)="resetForm()">Cancel</button>
+            <button class="btn-primary" (click)="submitComplaint()" [disabled]="submitting">
+              @if (submitting) {
+                <i class="pi pi-spin pi-spinner"></i> Submitting...
+              } @else {
+                Add
+              }
+            </button>
+          </div>
+        </div>
       </div>
 
-      @if (uploadedFile && !processed) {
-        <div class="upload-actions">
-          <button class="btn-primary" (click)="processOcr()" [disabled]="processing">
-            @if (processing) {
-              <i class="pi pi-spin pi-spinner"></i> Processing OCR...
-            } @else {
-              <i class="pi pi-eye"></i> Extract Text (OCR)
-            }
-          </button>
+      <!-- Right Panel: AI Suggestions -->
+      <div class="panel panel-right">
+        <div class="panel-header ai-header">
+          <h3><i class="pi pi-sparkles"></i> AI Suggestions</h3>
+          <button class="nav-arrow" (click)="scrollSuggestions()"><i class="pi pi-arrow-right"></i></button>
         </div>
-      }
+        <div class="panel-body ai-body">
+          <!-- Past Decisions -->
+          <div class="ai-section">
+            <div class="section-title" (click)="pastDecisionsOpen = !pastDecisionsOpen">
+              <i class="pi pi-bookmark"></i>
+              <span>Past Decisions</span>
+              <span class="count-badge">{{ pastDecisions.length }}</span>
+              <i class="pi toggle-icon" [class.pi-chevron-up]="pastDecisionsOpen" [class.pi-chevron-down]="!pastDecisionsOpen"></i>
+            </div>
+            @if (pastDecisionsOpen) {
+              <div class="ai-cards">
+                @for (decision of pastDecisions; track decision.id) {
+                  <div class="decision-card" [class.expanded]="selectedDecision?.id === decision.id" (click)="selectDecision(decision)">
+                    <div class="decision-header">
+                      <span class="decision-id">{{ decision.id }}</span>
+                      <span class="match-badge">{{ decision.matchPercent }}% match</span>
+                    </div>
+                    <h4 class="decision-title">{{ decision.title }}</h4>
+                    <p class="decision-outcome" [class.favorable]="decision.outcome.includes('favor') || decision.outcome.includes('Resolved')">{{ decision.outcome }}</p>
+                    <p class="decision-reason">{{ decision.reason }}</p>
+
+                    <!-- Inline Detail View -->
+                    @if (selectedDecision?.id === decision.id && selectedComplaintDetail) {
+                      <div class="decision-detail" (click)="$event.stopPropagation()">
+                        <div class="detail-divider"></div>
+                        <div class="detail-grid">
+                          <div class="detail-row">
+                            <span class="detail-label">Complaint No</span>
+                            <span class="detail-value">{{ selectedComplaintDetail.complaintNumber }}</span>
+                          </div>
+                          <div class="detail-row">
+                            <span class="detail-label">Complainant</span>
+                            <span class="detail-value">{{ selectedComplaintDetail.complainantName }}</span>
+                          </div>
+                          <div class="detail-row">
+                            <span class="detail-label">Subject</span>
+                            <span class="detail-value">{{ selectedComplaintDetail.subject }}</span>
+                          </div>
+                          <div class="detail-row">
+                            <span class="detail-label">Description</span>
+                            <span class="detail-value desc">{{ selectedComplaintDetail.description }}</span>
+                          </div>
+                          <div class="detail-row">
+                            <span class="detail-label">Status</span>
+                            <span class="detail-value status-tag" [class]="'status-' + selectedComplaintDetail.status">{{ selectedComplaintDetail.status }}</span>
+                          </div>
+                          <div class="detail-row">
+                            <span class="detail-label">Filed On</span>
+                            <span class="detail-value">{{ selectedComplaintDetail.filedAt }}</span>
+                          </div>
+                          @if (selectedComplaintDetail.bankBranch) {
+                            <div class="detail-row">
+                              <span class="detail-label">Bank/Branch</span>
+                              <span class="detail-value">{{ selectedComplaintDetail.bankBranch }}</span>
+                            </div>
+                          }
+                          @if (selectedComplaintDetail.priority) {
+                            <div class="detail-row">
+                              <span class="detail-label">Priority</span>
+                              <span class="detail-value">{{ selectedComplaintDetail.priority }}</span>
+                            </div>
+                          }
+                          @if (selectedComplaintDetail.resolutionRemarks) {
+                            <div class="resolution-box">
+                              <div class="resolution-header">
+                                <i class="pi pi-check-circle"></i>
+                                <span>Resolution / Decision</span>
+                              </div>
+                              <p class="resolution-text">{{ selectedComplaintDetail.resolutionRemarks }}</p>
+                            </div>
+                          }
+                        </div>
+                        <button class="close-detail-btn" (click)="selectedDecision = null; selectedComplaintDetail = null; $event.stopPropagation()">
+                          <i class="pi pi-times"></i> Close
+                        </button>
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
+            }
+          </div>
+
+          <!-- Related Circulars -->
+          <div class="ai-section">
+            <div class="section-title" (click)="circularsOpen = !circularsOpen">
+              <i class="pi pi-book"></i>
+              <span>Related Circulars</span>
+              <span class="count-badge">{{ relatedCirculars.length }}</span>
+              <i class="pi toggle-icon" [class.pi-chevron-up]="circularsOpen" [class.pi-chevron-down]="!circularsOpen"></i>
+            </div>
+            @if (circularsOpen) {
+              <div class="ai-cards">
+                @for (circular of relatedCirculars; track circular.id) {
+                  <div class="circular-card">
+                    <div class="circular-header">
+                      <span class="circular-id">{{ circular.id }}</span>
+                      <span class="match-badge">{{ circular.matchPercent }}% match</span>
+                    </div>
+                    <h4 class="circular-title">{{ circular.title }}</h4>
+                    <p class="circular-date">{{ circular.date }}</p>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+
+          <!-- AI Chat -->
+          <div class="ai-chat-section">
+            <div class="ai-chat-input">
+              <input type="text" placeholder="Ask AI a question..." [(ngModel)]="aiQuestion" (keydown.enter)="askAi()" />
+              <button class="send-btn" (click)="askAi()" [disabled]="!aiQuestion.trim()">
+                <i class="pi pi-send"></i>
+              </button>
+            </div>
+            @if (aiAnswer) {
+              <div class="ai-answer">
+                <i class="pi pi-sparkles"></i>
+                <p>{{ aiAnswer }}</p>
+              </div>
+            }
+          </div>
+        </div>
+      </div>
     </div>
-
-    <!-- Processing Animation -->
-    @if (processing) {
-      <div class="processing-card">
-        <div class="processing-spinner">
-          <div class="spinner-ring"></div>
-        </div>
-        <h4>Processing your letter...</h4>
-        <div class="processing-steps">
-          <div class="p-step done"><i class="pi pi-check-circle"></i> Scanning image</div>
-          <div class="p-step active"><i class="pi pi-spin pi-spinner"></i> Running OCR engine</div>
-          <div class="p-step"><i class="pi pi-circle"></i> Detecting language</div>
-          <div class="p-step"><i class="pi pi-circle"></i> Extracting fields</div>
-        </div>
-      </div>
-    }
-
-    <!-- Step 2: OCR Result + Extracted Fields -->
-    @if (processed && ocrResult) {
-      <div class="result-card">
-        <div class="card-title">
-          <span class="step-badge">2</span>
-          <h3>OCR Result</h3>
-          <div class="ocr-meta">
-            <span class="lang-badge">
-              <i class="pi pi-globe"></i> {{ ocrResult.language }}
-            </span>
-            <span class="confidence-badge">
-              <i class="pi pi-chart-bar"></i> {{ ocrResult.confidence }}% confidence
-            </span>
-          </div>
-        </div>
-
-        <div class="raw-text-section">
-          <h4>Extracted Raw Text</h4>
-          <div class="raw-text-box">{{ ocrResult.rawText }}</div>
-        </div>
-
-        @if (ocrResult.language === 'Hindi') {
-          <div class="translation-banner">
-            <i class="pi pi-language"></i>
-            <span>Hindi text detected — auto-translated to English for form filling</span>
-          </div>
-        }
-      </div>
-
-      <!-- Step 3: Editable Form -->
-      <div class="form-card">
-        <div class="card-title">
-          <span class="step-badge">3</span>
-          <h3>Review & Edit Extracted Details</h3>
-        </div>
-        <p class="card-desc">Verify the extracted information below. You can edit any field before submitting.</p>
-
-        <div class="form-grid">
-          <div class="form-field">
-            <label>Full Name</label>
-            <input type="text" [value]="ocrResult.fields['name']" (input)="updateField('name', $event)" />
-          </div>
-          <div class="form-field">
-            <label>Mobile Number</label>
-            <input type="tel" [value]="ocrResult.fields['mobileNumber']" (input)="updateField('mobileNumber', $event)" maxlength="10" />
-          </div>
-          <div class="form-field">
-            <label>Email</label>
-            <input type="email" [value]="ocrResult.fields['email']" (input)="updateField('email', $event)" placeholder="Optional" />
-          </div>
-          <div class="form-field">
-            <label>Bank / Financial Institution</label>
-            <input type="text" [value]="ocrResult.fields['bankName']" (input)="updateField('bankName', $event)" />
-          </div>
-          <div class="form-field">
-            <label>Account Number</label>
-            <input type="text" [value]="ocrResult.fields['accountNumber']" (input)="updateField('accountNumber', $event)" />
-          </div>
-          <div class="form-field">
-            <label>Branch</label>
-            <input type="text" [value]="ocrResult.fields['branch']" (input)="updateField('branch', $event)" />
-          </div>
-          <div class="form-field">
-            <label>State</label>
-            <input type="text" [value]="ocrResult.fields['state']" (input)="updateField('state', $event)" />
-          </div>
-          <div class="form-field">
-            <label>District</label>
-            <input type="text" [value]="ocrResult.fields['district']" (input)="updateField('district', $event)" />
-          </div>
-          <div class="form-field">
-            <label>Pincode</label>
-            <input type="text" [value]="ocrResult.fields['pincode']" (input)="updateField('pincode', $event)" maxlength="6" />
-          </div>
-          <div class="form-field">
-            <label>Dispute Amount (₹)</label>
-            <input type="text" [value]="ocrResult.fields['disputeAmount']" (input)="updateField('disputeAmount', $event)" />
-          </div>
-          <div class="form-field full-width">
-            <label>Address</label>
-            <input type="text" [value]="ocrResult.fields['address']" (input)="updateField('address', $event)" />
-          </div>
-          <div class="form-field full-width">
-            <label>Complaint Category</label>
-            <input type="text" [value]="ocrResult.fields['complaintCategory']" (input)="updateField('complaintCategory', $event)" />
-          </div>
-          <div class="form-field full-width">
-            <label>Facts of Complaint</label>
-            <textarea rows="4" [value]="ocrResult.fields['facts']" (input)="updateField('facts', $event)"></textarea>
-          </div>
-        </div>
-
-        <div class="form-actions">
-          <button class="btn-secondary" (click)="resetForm()"><i class="pi pi-times"></i> Cancel</button>
-          <button class="btn-primary" (click)="submitComplaint()" [disabled]="submitting">
-            @if (submitting) {
-              <i class="pi pi-spin pi-spinner"></i> Submitting...
-            } @else {
-              <i class="pi pi-check"></i> Submit Complaint
-            }
-          </button>
-        </div>
-      </div>
-    }
   }
 </div>

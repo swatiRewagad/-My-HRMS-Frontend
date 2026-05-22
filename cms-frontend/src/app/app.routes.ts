@@ -10,6 +10,8 @@ export const routes: Routes = [
       { path: 'track-complaint', loadComponent: () => import('./components/track-complaint/track-complaint.component').then(m => m.TrackComplaintComponent) },
       { path: 'email-simulation', loadComponent: () => import('./components/email-simulation/email-simulation.component').then(m => m.EmailSimulationComponent) },
       { path: 'physical-complaint', loadComponent: () => import('./components/physical-complaint/physical-complaint.component').then(m => m.PhysicalComplaintComponent) },
+      { path: 'business-rules', loadComponent: () => import('./components/business-rules/business-rules.component').then(m => m.BusinessRulesComponent) },
+      { path: 'admin', loadComponent: () => import('./components/admin/admin.component').then(m => m.AdminComponent) },
     ],
   },
 ];

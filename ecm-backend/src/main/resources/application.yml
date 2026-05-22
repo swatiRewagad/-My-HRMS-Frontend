@@ -26,6 +26,10 @@ spring:
 ecm:
   storage:
     root-path: ${ECM_STORAGE_PATH:C:/ecm-storage}
+  llm:
+    api-key: ${LLM_API_KEY:}
+    api-url: ${LLM_API_URL:https://api.anthropic.com/v1/messages}
+    model: ${LLM_MODEL:claude-sonnet-4-6-20250514}
 
 logging:
   level:

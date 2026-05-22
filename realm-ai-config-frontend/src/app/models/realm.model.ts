@@ -15,10 +15,22 @@ export interface Realm {
   syncedAt: string;
 }
 
+export interface SubServiceField {
+  key: string;
+  label: string;
+  type: 'text' | 'number' | 'select';
+  placeholder?: string;
+  hint?: string;
+  required?: boolean;
+  options?: string[];
+  halfWidth?: boolean;
+}
+
 export interface SubService {
   id: string;
   label: string;
   description: string;
+  configFields?: SubServiceField[];
 }
 
 export interface PlatformService {
@@ -54,6 +66,8 @@ export interface ExistingConfig {
   configuredAt: string;
   configuredBy: string;
   services: string[];
+  schemaConfig?: SchemaConfig;
+  serviceDetails?: Record<string, SchemaConfig>;
 }
 
 export interface ModeOption {

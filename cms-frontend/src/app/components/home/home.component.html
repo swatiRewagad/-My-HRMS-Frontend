@@ -1,112 +1,25 @@
-<!-- ══════ Logged-In Home View ══════ -->
+<!-- ══════ Welcome Banner (Logged-In Users) ══════ -->
 @if (isLoggedIn) {
-  <section class="dashboard-section" aria-labelledby="dashboard-heading">
-    <div class="dashboard-container">
-      <div class="dashboard-header">
-        <h1 id="dashboard-heading">{{ 'dashboard.home' | translate }}</h1>
-        <a routerLink="/file-complaint" class="file-new-btn">{{ 'dashboard.fileNew' | translate }} <i class="pi pi-arrow-right"></i></a>
-      </div>
-
-      <!-- Complaint History Table -->
-      <div class="complaint-history-card" role="region" aria-labelledby="history-heading">
-        <div class="history-header">
-          <i class="pi pi-list" aria-hidden="true"></i>
-          <h3 id="history-heading">{{ 'dashboard.history' | translate }}</h3>
+  <section class="welcome-banner">
+    <div class="container">
+      <div class="welcome-inner">
+        <div class="welcome-text">
+          <h2><i class="pi pi-user"></i> Welcome back, {{ userName || 'User' }}</h2>
+          <p>You are logged in. View your complaints in <a routerLink="/track-complaint">Track Complaint</a> or file a new one.</p>
         </div>
-
-        <div class="history-table-wrapper">
-          <table class="history-table">
-            <thead>
-              <tr>
-                <th>
-                  <div class="th-content">
-                    <span>{{ 'dashboard.id' | translate }}</span>
-                    <button class="sort-btn" (click)="sortBy('id')"><i class="pi pi-sort-alt"></i></button>
-                  </div>
-                  <div class="th-filter">
-                    <select><option>{{ 'common.search' | translate }}</option></select>
-                  </div>
-                </th>
-                <th>
-                  <div class="th-content">
-                    <span>{{ 'dashboard.against' | translate }}</span>
-                    <button class="sort-btn" (click)="sortBy('complaintAgainst')"><i class="pi pi-sort-alt"></i></button>
-                  </div>
-                  <div class="th-filter">
-                    <select><option>{{ 'common.search' | translate }}</option></select>
-                  </div>
-                </th>
-                <th>
-                  <div class="th-content">
-                    <span>{{ 'dashboard.date' | translate }}</span>
-                    <button class="sort-btn" (click)="sortBy('complaintDate')"><i class="pi pi-sort-alt"></i></button>
-                  </div>
-                  <div class="th-filter">
-                    <input type="text" placeholder="DD-MM-YYYY" />
-                  </div>
-                </th>
-                <th>
-                  <div class="th-content">
-                    <span>{{ 'dashboard.status' | translate }}</span>
-                    <button class="sort-btn" (click)="sortBy('status')"><i class="pi pi-sort-alt"></i></button>
-                  </div>
-                  <div class="th-filter">
-                    <select><option>{{ 'common.search' | translate }}</option></select>
-                  </div>
-                </th>
-                <th>
-                  <div class="th-content">
-                    <span>{{ 'dashboard.comments' | translate }}</span>
-                    <button class="sort-btn" (click)="sortBy('comments')"><i class="pi pi-sort-alt"></i></button>
-                  </div>
-                  <div class="th-filter">
-                    <input type="text" [placeholder]="'common.search' | translate" />
-                  </div>
-                </th>
-                <th>
-                  <span>{{ 'dashboard.action' | translate }}</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (complaint of complaints; track complaint.id + $index) {
-                <tr>
-                  <td>{{ complaint.id }}</td>
-                  <td>{{ complaint.complaintAgainst }}</td>
-                  <td>{{ complaint.complaintDate }}</td>
-                  <td>
-                    <span class="status-badge" [class]="'status-badge status-' + complaint.status">
-                      <span class="status-dot"></span>
-                      {{ complaint.statusLabel }}
-                    </span>
-                  </td>
-                  <td>{{ complaint.comments }}</td>
-                  <td>
-                    <button class="action-btn" [class]="'action-btn action-' + complaint.action">
-                      {{ complaint.action === 'withdraw' ? translate.t('dashboard.withdraw') : complaint.action === 'appeal' ? translate.t('dashboard.appeal') : translate.t('dashboard.act') }}
-                    </button>
-                  </td>
-                </tr>
-              }
-            </tbody>
-          </table>
+        <div class="welcome-actions">
+          @if (hasDraft) {
+            <a routerLink="/file-complaint" [queryParams]="{resume: 'draft'}" class="resume-draft-btn">
+              <i class="pi pi-pencil"></i> Resume Draft
+            </a>
+          }
         </div>
       </div>
-    </div>
-
-    <!-- Floating buttons -->
-    <div class="dashboard-fab">
-      <button class="need-help-fab">
-        <span class="dot-indicator"></span>
-        <span>{{ 'hero.needHelp' | translate }}</span>
-      </button>
-      <button class="accessibility-fab"><i class="pi pi-user"></i></button>
     </div>
   </section>
 }
 
-<!-- ══════ Landing Page (Not Logged In) ══════ -->
-@if (!isLoggedIn) {
+<!-- ══════ Landing Page (Always Visible) ══════ -->
 <!-- Hero Section -->
 <section class="hero" aria-labelledby="hero-title">
   <div class="hero-decorations" aria-hidden="true">
@@ -134,9 +47,6 @@
           <span class="link-dot"></span>
           <a href="javascript:void(0)">{{ 'hero.shareFeedback' | translate }}</a>
         </div>
-        <div class="hero-links-bar">
-          <a routerLink="/email-simulation">{{ 'hero.emailSimulation' | translate }}</a>
-        </div>
       </div>
     </div>
     <div class="hero-circle-image">
@@ -147,6 +57,30 @@
   <div class="hero-fab">
     <button class="need-help-btn">{{ 'hero.needHelp' | translate }}</button>
     <button class="accessibility-btn"><i class="pi pi-user"></i></button>
+  </div>
+</section>
+
+<!-- Quick Actions -->
+<section class="quick-actions-section">
+  <div class="container">
+    <div class="quick-actions-grid">
+      <a routerLink="/file-complaint" class="quick-action-card">
+        <div class="qa-icon qa-icon-blue"><i class="pi pi-file-edit"></i></div>
+        <div class="qa-text">
+          <h4>File Online Complaint</h4>
+          <p>Submit a new complaint against a bank or financial institution</p>
+        </div>
+        <i class="pi pi-arrow-right qa-arrow"></i>
+      </a>
+      <a routerLink="/track-complaint" class="quick-action-card">
+        <div class="qa-icon qa-icon-green"><i class="pi pi-search"></i></div>
+        <div class="qa-text">
+          <h4>Track Complaint</h4>
+          <p>Check the status and history of your existing complaints</p>
+        </div>
+        <i class="pi pi-arrow-right qa-arrow"></i>
+      </a>
+    </div>
   </div>
 </section>
 
@@ -306,4 +240,3 @@
     </div>
   </div>
 </section>
-}

@@ -99,6 +99,11 @@
             <span class="col-actions">
               <button class="icon-btn" title="Preview" (click)="openPreview(file)"><i class="pi pi-eye"></i></button>
               <button class="icon-btn" title="Download" (click)="downloadFile(file)"><i class="pi pi-download"></i></button>
+              @if (isPdf(file)) {
+                <button class="icon-btn extract" title="Extract Invoice" (click)="extractInvoice(file)" [disabled]="extractingFileId === file.id">
+                  <i class="pi" [class.pi-file-check]="extractingFileId !== file.id" [class.pi-spin]="extractingFileId === file.id" [class.pi-spinner]="extractingFileId === file.id"></i>
+                </button>
+              }
               <button class="icon-btn" title="Share" (click)="openShare(file.id)"><i class="pi pi-share-alt"></i></button>
               <button class="icon-btn danger" title="Delete" (click)="deleteFile(file)"><i class="pi pi-trash"></i></button>
             </span>
@@ -273,6 +278,87 @@
       <div class="modal-footer">
         <button class="btn btn-secondary" (click)="showShare = false">Cancel</button>
         <button class="btn btn-primary" (click)="shareFile()">Share</button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Invoice Extraction Modal -->
+@if (showExtraction && activeExtraction) {
+  <div class="modal-overlay" (click)="showExtraction = false">
+    <div class="extraction-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3><i class="pi pi-file-check"></i> Invoice Extraction — {{ activeExtraction.fileName }}</h3>
+        <button class="close-btn" (click)="showExtraction = false"><i class="pi pi-times"></i></button>
+      </div>
+      <div class="extraction-body">
+        @if (activeExtraction.status === 'error') {
+          <div class="ext-error">
+            <i class="pi pi-exclamation-triangle"></i>
+            <p>{{ activeExtraction.errorMessage }}</p>
+          </div>
+        }
+        @if (activeExtraction.status === 'completed') {
+          @if (activeExtraction.errorMessage) {
+            <div class="ext-warning">
+              <i class="pi pi-info-circle"></i>
+              <p>{{ activeExtraction.errorMessage }}</p>
+            </div>
+          }
+          <div class="ext-grid">
+            <div class="ext-card">
+              <h4>Invoice Details</h4>
+              <div class="ext-field"><span>Invoice #</span><strong>{{ activeExtraction.invoiceNumber || '—' }}</strong></div>
+              <div class="ext-field"><span>Date</span><strong>{{ activeExtraction.invoiceDate || '—' }}</strong></div>
+              <div class="ext-field"><span>Due Date</span><strong>{{ activeExtraction.dueDate || '—' }}</strong></div>
+              <div class="ext-field"><span>Currency</span><strong>{{ activeExtraction.currency || '—' }}</strong></div>
+            </div>
+            <div class="ext-card">
+              <h4>Vendor</h4>
+              <div class="ext-field"><span>Name</span><strong>{{ activeExtraction.vendorName || '—' }}</strong></div>
+              <div class="ext-field"><span>Address</span><strong>{{ activeExtraction.vendorAddress || '—' }}</strong></div>
+            </div>
+            <div class="ext-card">
+              <h4>Customer</h4>
+              <div class="ext-field"><span>Name</span><strong>{{ activeExtraction.customerName || '—' }}</strong></div>
+              <div class="ext-field"><span>Address</span><strong>{{ activeExtraction.customerAddress || '—' }}</strong></div>
+            </div>
+            <div class="ext-card">
+              <h4>Amounts</h4>
+              <div class="ext-field"><span>Subtotal</span><strong>{{ activeExtraction.subtotal || '—' }}</strong></div>
+              <div class="ext-field"><span>Tax</span><strong>{{ activeExtraction.tax || '—' }}</strong></div>
+              <div class="ext-field highlight"><span>Total</span><strong class="total-val">{{ activeExtraction.totalAmount || '—' }}</strong></div>
+            </div>
+          </div>
+
+          @if (activeExtraction.lineItems?.length) {
+            <div class="ext-table-section">
+              <h4>Line Items</h4>
+              <div class="ext-table">
+                <div class="ext-thead">
+                  <span class="ext-sn">#</span>
+                  <span class="ext-desc">Description</span>
+                  <span class="ext-num">Qty</span>
+                  <span class="ext-num">Unit Price</span>
+                  <span class="ext-num">Amount</span>
+                  <span class="ext-num">HSN</span>
+                  <span class="ext-num">Tax %</span>
+                </div>
+                @for (li of activeExtraction.lineItems; track li.slNo) {
+                  <div class="ext-trow">
+                    <span class="ext-sn">{{ li.slNo }}</span>
+                    <span class="ext-desc">{{ li.description }}</span>
+                    <span class="ext-num">{{ li.quantity }}</span>
+                    <span class="ext-num">{{ li.unitPrice }}</span>
+                    <span class="ext-num">{{ li.amount }}</span>
+                    <span class="ext-num">{{ li.hsnCode || '—' }}</span>
+                    <span class="ext-num">{{ li.taxRate || '—' }}</span>
+                  </div>
+                }
+              </div>
+            </div>
+          }
+        }
       </div>
     </div>
   </div>

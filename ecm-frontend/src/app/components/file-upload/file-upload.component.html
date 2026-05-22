@@ -5,6 +5,37 @@
   </div>
 
   <div class="upload-card">
+    <div class="form-row-2">
+      <div class="form-group">
+        <label>Project</label>
+        <select [(ngModel)]="selectedProjectId" (ngModelChange)="onProjectChange()">
+          <option [value]="0" disabled>Select a project</option>
+          @for (p of projects; track p.id) {
+            <option [value]="p.id">{{ p.code }} — {{ p.name }}</option>
+          }
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Document Type</label>
+        <select [(ngModel)]="selectedDocTypeId" (ngModelChange)="onDocTypeChange()" [disabled]="!selectedProjectId">
+          <option [value]="0" disabled>Select document type</option>
+          @for (dt of docTypes; track dt.id) {
+            <option [value]="dt.id">{{ dt.typeName }}{{ dt.extractionEnabled ? ' ⚡' : '' }}</option>
+          }
+        </select>
+      </div>
+    </div>
+
+    @if (selectedProject?.uploadConfig) {
+      <div class="config-info">
+        <span><i class="pi pi-file"></i> Max: {{ getMaxFileSizeFormatted() }}</span>
+        <span><i class="pi pi-check-circle"></i> Allowed: {{ getAllowedTypes() }}</span>
+        @if (selectedDocType?.extractionEnabled) {
+          <span class="extraction-badge"><i class="pi pi-bolt"></i> Extraction enabled — {{ selectedDocType.extractionFields?.length || 0 }} fields configured</span>
+        }
+      </div>
+    }
+
     <div class="form-group">
       <label>Destination Folder</label>
       <select [(ngModel)]="selectedFolderId">
@@ -33,6 +64,19 @@
               <span class="file-name">{{ item.file.name }}</span>
               <span class="file-size">{{ formatSize(item.file.size) }}</span>
               <span class="file-status">{{ item.status }}</span>
+              @if (item.extracting) {
+                <span class="extract-btn" style="cursor: default;">
+                  <i class="pi pi-spin pi-spinner"></i> Extracting...
+                </span>
+              } @else if (item.extraction) {
+                <button class="extract-btn extracted" (click)="viewExtraction(item)">
+                  <i class="pi pi-eye"></i> View Extraction
+                </button>
+              } @else if (item.status === 'completed' && isPdf(item) && selectedDocType?.extractionEnabled) {
+                <button class="extract-btn" (click)="extractInvoice(item)">
+                  <i class="pi pi-file-check"></i> Extract Invoice
+                </button>
+              }
               @if (item.status !== 'uploading') {
                 <button class="remove-btn" (click)="removeFile($index)"><i class="pi pi-times"></i></button>
               }
@@ -45,6 +89,9 @@
             }
             @if (item.status === 'error' && item.error) {
               <span class="error-text">{{ item.error }}</span>
+            }
+            @if (item.extractionError) {
+              <span class="error-text">Extraction: {{ item.extractionError }}</span>
             }
           </div>
         }
@@ -59,3 +106,116 @@
     </div>
   </div>
 </div>
+
+@if (showExtraction && activeExtraction) {
+  <div class="modal-overlay" (click)="showExtraction = false">
+    <div class="extraction-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3><i class="pi pi-file-check"></i> Invoice Extraction Results</h3>
+        <button class="close-btn" (click)="showExtraction = false"><i class="pi pi-times"></i></button>
+      </div>
+      <div class="modal-body">
+        @if (activeExtraction.status === 'error') {
+          <div class="extraction-error">
+            <i class="pi pi-exclamation-triangle"></i>
+            <p>{{ activeExtraction.errorMessage }}</p>
+          </div>
+        }
+        @if (activeExtraction.status === 'completed') {
+          @if (activeExtraction.errorMessage) {
+            <div class="extraction-warning">
+              <i class="pi pi-info-circle"></i>
+              <p>{{ activeExtraction.errorMessage }}</p>
+            </div>
+          }
+          <div class="extraction-grid">
+            <div class="extraction-section">
+              <h4>Invoice Details</h4>
+              <div class="field-row">
+                <span class="field-label">Invoice #</span>
+                <span class="field-value">{{ activeExtraction.invoiceNumber || '—' }}</span>
+              </div>
+              <div class="field-row">
+                <span class="field-label">Date</span>
+                <span class="field-value">{{ activeExtraction.invoiceDate || '—' }}</span>
+              </div>
+              <div class="field-row">
+                <span class="field-label">Due Date</span>
+                <span class="field-value">{{ activeExtraction.dueDate || '—' }}</span>
+              </div>
+              <div class="field-row">
+                <span class="field-label">Currency</span>
+                <span class="field-value">{{ activeExtraction.currency || '—' }}</span>
+              </div>
+            </div>
+            <div class="extraction-section">
+              <h4>Vendor</h4>
+              <div class="field-row">
+                <span class="field-label">Name</span>
+                <span class="field-value">{{ activeExtraction.vendorName || '—' }}</span>
+              </div>
+              <div class="field-row">
+                <span class="field-label">Address</span>
+                <span class="field-value">{{ activeExtraction.vendorAddress || '—' }}</span>
+              </div>
+            </div>
+            <div class="extraction-section">
+              <h4>Customer</h4>
+              <div class="field-row">
+                <span class="field-label">Name</span>
+                <span class="field-value">{{ activeExtraction.customerName || '—' }}</span>
+              </div>
+              <div class="field-row">
+                <span class="field-label">Address</span>
+                <span class="field-value">{{ activeExtraction.customerAddress || '—' }}</span>
+              </div>
+            </div>
+            <div class="extraction-section">
+              <h4>Amounts</h4>
+              <div class="field-row">
+                <span class="field-label">Subtotal</span>
+                <span class="field-value">{{ activeExtraction.subtotal || '—' }}</span>
+              </div>
+              <div class="field-row">
+                <span class="field-label">Tax</span>
+                <span class="field-value">{{ activeExtraction.tax || '—' }}</span>
+              </div>
+              <div class="field-row highlight">
+                <span class="field-label">Total</span>
+                <span class="field-value total">{{ activeExtraction.totalAmount || '—' }}</span>
+              </div>
+            </div>
+          </div>
+
+          @if (activeExtraction.lineItems?.length) {
+            <div class="line-items-section">
+              <h4>Line Items</h4>
+              <div class="line-items-table">
+                <div class="li-header">
+                  <span class="li-col-sn">#</span>
+                  <span class="li-col-desc">Description</span>
+                  <span class="li-col-qty">Qty</span>
+                  <span class="li-col-price">Unit Price</span>
+                  <span class="li-col-amt">Amount</span>
+                  <span class="li-col-hsn">HSN</span>
+                  <span class="li-col-tax">Tax %</span>
+                </div>
+                @for (item of activeExtraction.lineItems; track item.slNo) {
+                  <div class="li-row">
+                    <span class="li-col-sn">{{ item.slNo }}</span>
+                    <span class="li-col-desc">{{ item.description }}</span>
+                    <span class="li-col-qty">{{ item.quantity }}</span>
+                    <span class="li-col-price">{{ item.unitPrice }}</span>
+                    <span class="li-col-amt">{{ item.amount }}</span>
+                    <span class="li-col-hsn">{{ item.hsnCode || '—' }}</span>
+                    <span class="li-col-tax">{{ item.taxRate || '—' }}</span>
+                  </div>
+                }
+              </div>
+            </div>
+          }
+        }
+      </div>
+    </div>
+  </div>
+}

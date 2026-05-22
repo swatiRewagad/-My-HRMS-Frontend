@@ -16,6 +16,11 @@ spring:
         dialect: org.hibernate.dialect.MySQLDialect
         format_sql: true
 
+  servlet:
+    multipart:
+      max-file-size: 100MB
+      max-request-size: 500MB
+
   jackson:
     serialization:
       write-dates-as-timestamps: false

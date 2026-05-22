@@ -1,0 +1,71 @@
+<div class="layout" [class.collapsed]="collapsed()">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <div class="realm-badge">
+        <div class="realm-initials">{{ realm()?.initials }}</div>
+        @if (!collapsed()) {
+          <div class="realm-info">
+            <span class="realm-name">{{ realm()?.displayName }}</span>
+            <span class="realm-dept">{{ realm()?.department }}</span>
+          </div>
+        }
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      @for (item of navItems(); track item.route) {
+        <a [routerLink]="item.route" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: item.route === '/portal' }" class="nav-item">
+          <i [class]="item.icon"></i>
+          @if (!collapsed()) {
+            <span class="nav-label">{{ item.label }}</span>
+          }
+        </a>
+      }
+    </nav>
+
+    <div class="sidebar-bottom">
+      <a routerLink="/dashboard" class="nav-item admin-link">
+        <i class="pi pi-cog"></i>
+        @if (!collapsed()) {
+          <span class="nav-label">Admin Panel</span>
+        }
+      </a>
+      <button class="nav-item" (click)="logout()">
+        <i class="pi pi-sign-out"></i>
+        @if (!collapsed()) {
+          <span class="nav-label">Logout</span>
+        }
+      </button>
+      <button class="nav-item collapse-btn" (click)="toggleCollapse()">
+        <i class="pi" [ngClass]="collapsed() ? 'pi-angle-double-right' : 'pi-angle-double-left'"></i>
+        @if (!collapsed()) {
+          <span class="nav-label">Collapse</span>
+        }
+      </button>
+    </div>
+  </aside>
+
+  <!-- Top Bar -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <span class="portal-label">Realm Portal</span>
+      <span class="portal-separator">·</span>
+      <span class="portal-realm">{{ realm()?.displayName }}</span>
+    </div>
+    <div class="topbar-actions">
+      <div class="user-info">
+        <div class="user-avatar">{{ userInitials() }}</div>
+        <div class="user-details">
+          <span class="user-name">{{ user()?.userName }}</span>
+          <span class="user-meta">{{ user()?.role }} · Last signed in {{ user()?.loginTime }}</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="main-content">
+    <router-outlet />
+  </main>
+</div>

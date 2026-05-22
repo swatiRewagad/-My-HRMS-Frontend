@@ -12,7 +12,9 @@ export class SidebarLayoutComponent {
   navItems = [
     { label: 'Dashboard', icon: 'pi pi-th-large', route: '/dashboard' },
     { label: 'File Manager', icon: 'pi pi-folder', route: '/files' },
+    { label: 'Upload', icon: 'pi pi-cloud-upload', route: '/upload' },
     { label: 'Shared with Me', icon: 'pi pi-share-alt', route: '/shared' },
+    { label: 'Admin Settings', icon: 'pi pi-cog', route: '/admin' },
   ];
 
   collapsed = false;

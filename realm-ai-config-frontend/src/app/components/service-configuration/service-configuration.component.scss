@@ -416,3 +416,74 @@
     span { font-size: 12px; color: #14532d; }
   }
 }
+
+// Sub-service configuration
+.sub-service-config {
+  padding: 18px;
+  border-top: 1px solid #e8edf5;
+
+  .sub-svc-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 4px;
+
+    .parent-svc-name { font-size: 13px; color: #1a56db; font-weight: 600; }
+    .sub-svc-arrow { font-size: 14px; color: #9ca3af; }
+    .sub-svc-name { font-size: 14px; font-weight: 700; color: #1c1c1c; }
+    .svc-group-tag { font-size: 10px; padding: 2px 8px; border-radius: 9999px; border: 1px solid; font-weight: 600; margin-left: 4px; }
+  }
+
+  .sub-svc-desc { font-size: 12px; color: #737373; margin-bottom: 16px; }
+
+  .sub-svc-fields {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+
+    .form-field {
+      grid-column: span 2;
+      &.half { grid-column: span 1; }
+
+      label {
+        display: block;
+        font-size: 12px;
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 6px;
+      }
+
+      input, select {
+        width: 100%;
+        padding: 9px 12px;
+        border: 1px solid #d1d7e0;
+        border-radius: 8px;
+        font-size: 13px;
+        font-family: inherit;
+        color: #1c1c1c;
+        background: white;
+        outline: none;
+        &:focus { border-color: #1a56db; box-shadow: 0 0 0 2px rgba(26, 86, 219, 0.1); }
+        &::placeholder { color: #b0b7c3; }
+      }
+
+      select {
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='%23737373'%3E%3Cpath d='M7 10l5 5 5-5H7z'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 12px center;
+        padding-right: 32px;
+      }
+
+      .field-hint { display: block; font-size: 11px; color: #9ca3af; margin-top: 4px; }
+    }
+  }
+}
+
+.dot-blue {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #1a56db;
+  flex-shrink: 0;
+}

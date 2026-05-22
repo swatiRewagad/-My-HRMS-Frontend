@@ -68,6 +68,11 @@ public class ComplaintController {
         return ResponseEntity.noContent().build();
     }
 
+    @GetMapping("/by-phone/{phone}")
+    public List<Complaint> getByPhone(@PathVariable String phone) {
+        return complaintService.getByPhone(phone);
+    }
+
     @GetMapping("/{id}/timeline")
     public List<ComplaintTimeline> getTimeline(@PathVariable Long id) {
         return complaintService.getTimeline(id);

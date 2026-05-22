@@ -28,3 +28,9 @@ Thumbs.db
 
 # Package lock at root (not needed)
 package-lock.json
+
+# Large model/WASM files (served via CDN in production)
+**/public/assets/models/
+**/public/assets/onnx/
+cdn-assets/**/*.onnx
+cdn-assets/**/*.wasm

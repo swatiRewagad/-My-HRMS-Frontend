@@ -241,14 +241,19 @@ $page-padding: 120px;
 // ───── Circle Stepper (Form Steps) ─────
 .circle-stepper {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   gap: 0;
   margin-bottom: 32px;
-  padding: 0 40px;
+  padding: 0 20px;
 }
 
 .circle-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+
   .circle-number {
     width: 32px;
     height: 32px;
@@ -267,17 +272,43 @@ $page-padding: 120px;
     i { font-size: 12px; }
   }
 
-  &.active .circle-number {
-    background: $primary-blue;
-    color: #fff;
-    border-color: $primary-blue;
-    box-shadow: 0 0 0 4px rgba($primary-blue, 0.15);
+  .circle-label {
+    font-size: 10px;
+    color: #999;
+    text-align: center;
+    max-width: 72px;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
-  &.completed .circle-number {
-    background: $completed-green;
-    color: #fff;
-    border-color: $completed-green;
+  &.clickable {
+    cursor: pointer;
+
+    &:hover .circle-number {
+      transform: scale(1.1);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+    }
+  }
+
+  &.active {
+    .circle-number {
+      background: $primary-blue;
+      color: #fff;
+      border-color: $primary-blue;
+      box-shadow: 0 0 0 4px rgba($primary-blue, 0.15);
+    }
+    .circle-label { color: $primary-blue; font-weight: 600; }
+  }
+
+  &.completed {
+    .circle-number {
+      background: $completed-green;
+      color: #fff;
+      border-color: $completed-green;
+    }
+    .circle-label { color: $completed-green; }
   }
 }
 
@@ -285,8 +316,8 @@ $page-padding: 120px;
   flex: 1;
   height: 2px;
   background: #e5e7eb;
-  margin: 0 8px;
-  max-width: 80px;
+  margin: 16px 4px 0;
+  max-width: 60px;
   transition: background 0.2s;
 
   &.completed {
@@ -489,10 +520,32 @@ $page-padding: 120px;
   padding-top: 24px;
 }
 
-.footer-right {
+.footer-right,
+.step-footer-right {
   display: flex;
   gap: 16px;
   align-items: center;
+}
+
+.btn-outline-draft {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 20px;
+  height: 44px;
+  background: #fff;
+  color: #146ef5;
+  border: 1.5px solid #146ef5;
+  border-radius: 10px;
+  font-weight: 500;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    background: #146ef5;
+    color: #fff;
+  }
 }
 
 .btn-primary {
@@ -1157,6 +1210,26 @@ $page-padding: 120px;
 
   a { color: $primary-blue; font-size: 14px; font-weight: 500; text-decoration: none; &:hover { text-decoration: underline; } }
   .dot { color: #999; }
+}
+
+.logout-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 16px;
+  padding: 10px 24px;
+  background: transparent;
+  border: 1px solid #d32f2f;
+  color: #d32f2f;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  &:hover {
+    background: #d32f2f;
+    color: #fff;
+  }
 }
 
 // ───── Need Help Float ─────
@@ -2143,6 +2216,18 @@ $page-padding: 120px;
   .page-title {
     font-size: 22px;
     margin-bottom: 20px;
+  }
+
+  .circle-step .circle-label {
+    display: none;
+  }
+
+  .circle-stepper {
+    align-items: center;
+  }
+
+  .circle-line {
+    margin: 0 4px;
   }
 
   .field-group {

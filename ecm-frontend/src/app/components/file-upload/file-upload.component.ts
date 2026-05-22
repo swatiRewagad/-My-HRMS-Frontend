@@ -9,6 +9,10 @@ interface FileUploadItem {
   progress: number;
   status: 'pending' | 'uploading' | 'completed' | 'error';
   error?: string;
+  uploadedFileId?: number;
+  extracting?: boolean;
+  extraction?: any;
+  extractionError?: string;
 }
 
 @Component({
@@ -24,11 +28,42 @@ export class FileUploadComponent implements OnInit {
   uploadItems: FileUploadItem[] = [];
   uploading = false;
   dragOver = false;
+  showExtraction = false;
+  activeExtraction: any = null;
+
+  projects: any[] = [];
+  selectedProjectId = 0;
+  selectedProject: any = null;
+  docTypes: any[] = [];
+  selectedDocTypeId = 0;
+  selectedDocType: any = null;
 
   constructor(private ecm: EcmService, private router: Router) {}
 
   ngOnInit() {
     this.ecm.getRootFolders().subscribe(f => this.folders = f);
+    this.ecm.getProjects().subscribe(p => this.projects = p);
+  }
+
+  onProjectChange() {
+    this.selectedProject = this.projects.find(p => p.id === +this.selectedProjectId) || null;
+    this.docTypes = this.selectedProject?.documentTypes || [];
+    this.selectedDocTypeId = 0;
+    this.selectedDocType = null;
+  }
+
+  onDocTypeChange() {
+    this.selectedDocType = this.docTypes.find(d => d.id === +this.selectedDocTypeId) || null;
+  }
+
+  getMaxFileSizeFormatted(): string {
+    if (!this.selectedProject?.uploadConfig) return '';
+    return this.selectedProject.uploadConfig.maxFileSizeFormatted;
+  }
+
+  getAllowedTypes(): string {
+    if (!this.selectedProject?.uploadConfig) return '';
+    return this.selectedProject.uploadConfig.allowedContentTypes;
   }
 
   onFileSelect(event: Event) {
@@ -57,8 +92,19 @@ export class FileUploadComponent implements OnInit {
   }
 
   addFiles(files: File[]) {
+    const config = this.selectedProject?.uploadConfig;
     for (const file of files) {
-      this.uploadItems.push({ file, progress: 0, status: 'pending' });
+      let error: string | undefined;
+      if (config) {
+        if (file.size > config.maxFileSizeBytes) {
+          error = `File exceeds max size (${config.maxFileSizeFormatted})`;
+        }
+        const allowed = config.allowedContentTypes?.split(',').map((t: string) => t.trim()) || [];
+        if (allowed.length > 0 && !allowed.includes(file.type)) {
+          error = `File type "${file.type || 'unknown'}" not allowed for this project`;
+        }
+      }
+      this.uploadItems.push({ file, progress: 0, status: error ? 'error' : 'pending', error });
     }
   }
 
@@ -85,6 +131,12 @@ export class FileUploadComponent implements OnInit {
           item.progress = p.percent;
           if (p.status === 'completed') {
             item.status = 'completed';
+            if (p.file?.id) {
+              item.uploadedFileId = p.file.id;
+              if (this.isPdf(item) && this.selectedDocType?.extractionEnabled) {
+                this.extractInvoice(item);
+              }
+            }
           } else if (p.status === 'error') {
             item.status = 'error';
             item.error = p.error;
@@ -116,6 +168,34 @@ export class FileUploadComponent implements OnInit {
     if (bytes < 1024) return bytes + ' B';
     if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
     return (bytes / 1048576).toFixed(1) + ' MB';
+  }
+
+  isPdf(item: FileUploadItem): boolean {
+    return item.file.type === 'application/pdf' || item.file.name.toLowerCase().endsWith('.pdf');
+  }
+
+  extractInvoice(item: FileUploadItem) {
+    if (!item.uploadedFileId) return;
+    item.extracting = true;
+    item.extractionError = undefined;
+    const docTypeId = this.selectedDocType?.extractionEnabled ? this.selectedDocType.id : undefined;
+    this.ecm.extractInvoice(item.uploadedFileId, docTypeId).subscribe({
+      next: (result) => {
+        item.extracting = false;
+        item.extraction = result;
+        this.activeExtraction = result;
+        this.showExtraction = true;
+      },
+      error: (err) => {
+        item.extracting = false;
+        item.extractionError = err.error?.message || err.message || 'Extraction failed';
+      },
+    });
+  }
+
+  viewExtraction(item: FileUploadItem) {
+    this.activeExtraction = item.extraction;
+    this.showExtraction = true;
   }
 
   goToFiles() {

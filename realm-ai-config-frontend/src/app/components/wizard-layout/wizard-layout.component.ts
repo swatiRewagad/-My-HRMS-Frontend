@@ -1,8 +1,9 @@
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { WizardStateService } from '../../services/wizard-state.service';
-import { WIZARD_STEPS } from '../../data/services.data';
+import { ALL_SERVICES, WIZARD_STEPS } from '../../data/services.data';
 import { EXISTING_CONFIGS } from '../../data/realms.data';
+import { SchemaConfig } from '../../models/realm.model';
 import { RealmSelectionComponent } from '../realm-selection/realm-selection.component';
 import { ModeSelectionComponent } from '../mode-selection/mode-selection.component';
 import { ServicesSelectionComponent } from '../services-selection/services-selection.component';
@@ -50,6 +51,42 @@ export class WizardLayoutComponent {
 
   get deploySchemaName(): string {
     return this.wizard.serviceConfigs().__deploy_type__?.schemaName ?? '';
+  }
+
+  get serviceDetailEntries(): { key: string; label: string; config: SchemaConfig; isSubField: boolean; isAi: boolean }[] {
+    const config = this.existingConfig;
+    if (!config?.serviceDetails) return [];
+    const entries: { key: string; label: string; config: SchemaConfig; isSubField: boolean; isAi: boolean }[] = [];
+    for (const [key, val] of Object.entries(config.serviceDetails)) {
+      const hasValue = val.schemaName || val.dbType || val.connectionString || val.secretPath;
+      if (!hasValue) continue;
+
+      const isSubField = key.includes('__');
+      let label = key;
+      let isAi = false;
+
+      if (isSubField) {
+        const [subId, fieldKey] = key.split('__');
+        for (const svc of ALL_SERVICES) {
+          const sub = svc.subServices?.find(s => s.id === subId);
+          if (sub) {
+            const field = sub.configFields?.find(f => f.key === fieldKey);
+            label = `${svc.label} › ${sub.label} › ${field?.label ?? fieldKey}`;
+            isAi = svc.group === 'ai';
+            break;
+          }
+        }
+      } else {
+        const svc = ALL_SERVICES.find(s => s.id === key);
+        if (svc) {
+          label = svc.label;
+          isAi = svc.group === 'ai';
+        }
+      }
+
+      entries.push({ key, label, config: val, isSubField, isAi });
+    }
+    return entries;
   }
 
   next(): void { this.wizard.nextStep(); }

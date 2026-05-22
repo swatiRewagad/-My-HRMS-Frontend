@@ -1,0 +1,101 @@
+<div class="portal">
+  <!-- Welcome Header -->
+  <div class="welcome-section">
+    <div class="welcome-left">
+      <div class="welcome-title">Welcome, {{ user()?.userName }}</div>
+      <div class="welcome-subtitle">
+        You are logged into <strong>{{ realm()?.displayName }}</strong> · {{ realm()?.department }}
+      </div>
+    </div>
+    <div class="welcome-right">
+      <div class="stat-pill">
+        <span class="stat-number">{{ serviceStats().total }}</span>
+        <span class="stat-label">Services</span>
+      </div>
+      <div class="stat-pill basic">
+        <span class="stat-number">{{ serviceStats().basic }}</span>
+        <span class="stat-label">Platform</span>
+      </div>
+      <div class="stat-pill ai">
+        <span class="stat-number">{{ serviceStats().ai }}</span>
+        <span class="stat-label">AI</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Config Summary -->
+  <div class="config-summary-bar">
+    <div class="summary-item">
+      <span class="summary-label">Mode</span>
+      <span class="summary-value">{{ config()?.mode === 'app-designer' ? 'App Designer' : 'Non-App Designer' }}</span>
+    </div>
+    <div class="summary-sep"></div>
+    <div class="summary-item">
+      <span class="summary-label">Version</span>
+      <span class="summary-value">{{ config()?.version }}</span>
+    </div>
+    <div class="summary-sep"></div>
+    <div class="summary-item">
+      <span class="summary-label">Deployment</span>
+      <span class="summary-value" [class.green]="config()?.deployType === 'independent'" [class.amber]="config()?.deployType === 'dependent'">
+        {{ config()?.deployType === 'dependent' ? 'Dependent' : 'Independent' }}
+      </span>
+    </div>
+    <div class="summary-sep"></div>
+    <div class="summary-item">
+      <span class="summary-label">Configured</span>
+      <span class="summary-value">{{ config()?.configuredAt }}</span>
+    </div>
+  </div>
+
+  <!-- Services Section -->
+  <div class="section-header">
+    <div class="section-title">Your Services</div>
+    <div class="section-subtitle">Click on a service to access its portal and features</div>
+  </div>
+
+  <div class="services-grid">
+    @for (svc of services(); track svc.id) {
+      <div class="service-card" [class.clickable]="hasPortal(svc)" (click)="openService(svc)">
+        <div class="svc-card-top">
+          <div class="svc-icon" [style.background]="getServiceBg(svc)" [style.color]="getServiceColor(svc)">
+            <i [class]="getServiceIcon(svc)"></i>
+          </div>
+          <div class="svc-info">
+            <div class="svc-name">{{ svc.label }}</div>
+            <span class="svc-group-tag" [style.color]="getServiceColor(svc)" [style.background]="getServiceBg(svc)" [style.border-color]="getServiceColor(svc) + '40'">
+              {{ svc.group === 'ai' ? 'AI' : 'Platform' }}
+            </span>
+          </div>
+        </div>
+        <div class="svc-desc">{{ svc.description }}</div>
+
+        @if (svc.subServices?.length) {
+          <div class="svc-subs">
+            @for (sub of svc.subServices; track sub.id) {
+              <div class="sub-tag">{{ sub.label }}</div>
+            }
+          </div>
+        }
+
+        <div class="svc-card-footer">
+          @if (hasPortal(svc)) {
+            <button class="open-btn" [style.background]="getServiceColor(svc)">
+              Open Portal
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6-6-6z" fill="white"/>
+              </svg>
+            </button>
+          } @else {
+            <span class="status-active">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none">
+                <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z" fill="#16a34a"/>
+              </svg>
+              Active
+            </span>
+          }
+        </div>
+      </div>
+    }
+  </div>
+</div>

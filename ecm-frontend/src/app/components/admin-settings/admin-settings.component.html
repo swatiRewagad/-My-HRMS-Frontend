@@ -1,0 +1,308 @@
+<div class="admin-page">
+  <!-- Header -->
+  <div class="section-header">
+    @if (selectedProject) {
+      <button class="back-btn" (click)="backToProjects()"><i class="pi pi-arrow-left"></i></button>
+    }
+    <div>
+      <h2>{{ selectedProject ? selectedProject.name + ' — Configuration' : 'Admin Settings' }}</h2>
+      <p class="subtitle">{{ selectedProject ? 'Manage upload config, document types, and extraction fields' : 'Manage projects and their configurations (Super Admin)' }}</p>
+    </div>
+  </div>
+
+  <!-- PROJECT LIST VIEW -->
+  @if (!selectedProject) {
+    <div class="card">
+      <div class="card-header">
+        <h3>Project Masters</h3>
+        <button class="btn btn-primary" (click)="openNewProject()"><i class="pi pi-plus"></i> New Project</button>
+      </div>
+      <div class="projects-grid">
+        @for (p of projects; track p.id) {
+          <div class="project-card" (click)="selectProject(p)">
+            <div class="project-card-top">
+              <div class="project-code">{{ p.code }}</div>
+              <div class="project-actions" (click)="$event.stopPropagation()">
+                <button class="icon-btn" title="Edit" (click)="openEditProject(p)"><i class="pi pi-pencil"></i></button>
+                <button class="icon-btn danger" title="Delete" (click)="deleteProject(p)"><i class="pi pi-trash"></i></button>
+              </div>
+            </div>
+            <div class="project-card-body">
+              <h4>{{ p.name }}</h4>
+              @if (p.description) { <p class="project-desc">{{ p.description }}</p> }
+            </div>
+            <div class="project-card-footer">
+              <span class="tag">{{ p.uploadConfig ? 'Configured' : 'Not Configured' }}</span>
+              <span class="meta">{{ (p.documentTypes?.length || 0) }} doc types</span>
+            </div>
+          </div>
+        }
+        @if (projects.length === 0) {
+          <div class="empty-state">
+            <i class="pi pi-briefcase"></i>
+            <p>No projects yet. Create your first project to get started.</p>
+          </div>
+        }
+      </div>
+    </div>
+  }
+
+  <!-- PROJECT CONFIG VIEW -->
+  @if (selectedProject) {
+    <div class="tabs">
+      <button class="tab" [class.active]="activeTab === 'upload'" (click)="activeTab = 'upload'">
+        <i class="pi pi-cog"></i> Upload Config
+      </button>
+      <button class="tab" [class.active]="activeTab === 'docTypes'" (click)="activeTab = 'docTypes'">
+        <i class="pi pi-file"></i> Document Types
+      </button>
+    </div>
+
+    <!-- UPLOAD CONFIG TAB -->
+    @if (activeTab === 'upload') {
+      <div class="card">
+        <div class="card-header"><h3>Upload Configuration</h3></div>
+        <div class="config-form">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Max File Size (MB)</label>
+              <input type="number" [(ngModel)]="uploadForm.maxFileSizeMb" min="1" max="500" />
+            </div>
+            <div class="form-group">
+              <label>Total Allocated Storage (GB)</label>
+              <input type="number" [(ngModel)]="uploadForm.totalAllocatedStorageGb" min="1" max="100" />
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Allowed Content Types</label>
+            <input type="text" [(ngModel)]="uploadForm.allowedContentTypes" placeholder="application/pdf,image/png,image/jpeg" />
+            <span class="hint">Comma-separated MIME types</span>
+          </div>
+          <div class="form-group">
+            <label>Upload Base Path</label>
+            <input type="text" [(ngModel)]="uploadForm.uploadBasePath" placeholder="C:/ecm-storage/PROJECT_CODE" />
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-primary" (click)="saveUploadConfig()" [disabled]="saving">
+              {{ saving ? 'Saving...' : 'Save Configuration' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- DOCUMENT TYPES TAB -->
+    @if (activeTab === 'docTypes') {
+      <div class="card">
+        <div class="card-header">
+          <h3>Document Types</h3>
+          <button class="btn btn-primary" (click)="openNewDocType()"><i class="pi pi-plus"></i> Add Type</button>
+        </div>
+        <div class="doc-types-list">
+          @for (dt of selectedProject.documentTypes; track dt.id) {
+            <div class="doc-type-card">
+              <div class="dt-top">
+                <div class="dt-info">
+                  <span class="dt-code">{{ dt.typeCode }}</span>
+                  <h4>{{ dt.typeName }}</h4>
+                  @if (dt.description) { <p>{{ dt.description }}</p> }
+                </div>
+                <div class="dt-badges">
+                  @if (dt.extractionEnabled) {
+                    <span class="badge extraction"><i class="pi pi-bolt"></i> Extraction ON</span>
+                  } @else {
+                    <span class="badge plain">No Extraction</span>
+                  }
+                  <span class="badge fields">{{ dt.extractionFields?.length || 0 }} fields</span>
+                </div>
+                <div class="dt-actions">
+                  <button class="icon-btn" title="Edit" (click)="openEditDocType(dt)"><i class="pi pi-pencil"></i></button>
+                  <button class="icon-btn danger" title="Delete" (click)="deleteDocType(dt)"><i class="pi pi-trash"></i></button>
+                </div>
+              </div>
+
+              @if (dt.extractionEnabled && dt.extractionFields?.length) {
+                <div class="dt-fields-preview">
+                  <span class="fields-label">Extraction Fields:</span>
+                  @for (f of dt.extractionFields; track f.fieldKey) {
+                    <span class="field-chip" [class.required]="f.required" [class.lineItem]="f.fieldCategory === 'lineItem'" [class.amount]="f.fieldCategory === 'amount'">
+                      {{ f.fieldName }}
+                      @if (f.required) { <i class="pi pi-star-fill"></i> }
+                    </span>
+                  }
+                </div>
+              }
+            </div>
+          }
+          @if (!selectedProject.documentTypes?.length) {
+            <div class="empty-state small">
+              <i class="pi pi-file-o"></i>
+              <p>No document types configured. Add one to start.</p>
+            </div>
+          }
+        </div>
+      </div>
+    }
+  }
+</div>
+
+<!-- Project Form Modal -->
+@if (showProjectForm) {
+  <div class="modal-overlay" (click)="showProjectForm = false">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>{{ editingProject ? 'Edit Project' : 'New Project' }}</h3>
+        <button class="close-btn" (click)="showProjectForm = false"><i class="pi pi-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Project Code</label>
+          <input type="text" [(ngModel)]="projectForm.code" placeholder="e.g. IPS" [disabled]="!!editingProject" />
+        </div>
+        <div class="form-group">
+          <label>Project Name</label>
+          <input type="text" [(ngModel)]="projectForm.name" placeholder="Enter project name" />
+        </div>
+        <div class="form-group">
+          <label>Description</label>
+          <textarea [(ngModel)]="projectForm.description" rows="3" placeholder="Optional description"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="showProjectForm = false">Cancel</button>
+        <button class="btn btn-primary" (click)="saveProject()" [disabled]="saving">{{ saving ? 'Saving...' : 'Save' }}</button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Document Type Form Modal -->
+@if (showDocTypeForm) {
+  <div class="modal-overlay" (click)="showDocTypeForm = false">
+    <div class="modal wide" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>{{ editingDocType ? 'Edit Document Type' : 'New Document Type' }}</h3>
+        <button class="close-btn" (click)="showDocTypeForm = false"><i class="pi pi-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Document Type</label>
+          <select [ngModel]="docTypeForm.typeCode" (ngModelChange)="onDocTypeSelected($event)" [disabled]="!!editingDocType">
+            <option value="" disabled>Select document type</option>
+            @for (opt of docTypeOptions; track opt.code) {
+              <option [value]="opt.code">{{ opt.label }}</option>
+            }
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Description</label>
+          <textarea [(ngModel)]="docTypeForm.description" rows="2" placeholder="Optional description"></textarea>
+        </div>
+        @if (docTypeForm.typeCode === 'INVOICE') {
+          <div class="extraction-notice">
+            <i class="pi pi-bolt"></i> Invoice type — field extraction (OCR/LLM) is enabled. Configure the fields to extract below.
+          </div>
+        } @else if (docTypeForm.typeCode === 'TEXT') {
+          <div class="extraction-notice plain">
+            <i class="pi pi-file"></i> Text type — no field extraction. Documents will be stored as-is.
+          </div>
+        }
+
+        @if (docTypeForm.extractionEnabled) {
+          <div class="fields-section">
+            <div class="fields-header">
+              <h4>Extraction Fields</h4>
+              <button class="btn btn-secondary btn-sm" (click)="openAddField()"><i class="pi pi-plus"></i> Add Field</button>
+            </div>
+
+            @if (docTypeForm.extractionFields.length > 0) {
+              <div class="fields-table">
+                <div class="ft-header">
+                  <span class="ft-order">#</span>
+                  <span class="ft-name">Field Name</span>
+                  <span class="ft-type">Type</span>
+                  <span class="ft-cat">Category</span>
+                  <span class="ft-req">Req.</span>
+                  <span class="ft-actions"></span>
+                </div>
+                @for (f of docTypeForm.extractionFields; track f.fieldKey; let i = $index) {
+                  <div class="ft-row">
+                    <span class="ft-order">{{ i + 1 }}</span>
+                    <span class="ft-name">{{ f.fieldName }}</span>
+                    <span class="ft-type"><span class="type-badge">{{ f.fieldType }}</span></span>
+                    <span class="ft-cat">
+                      <span class="cat-badge" [class.header]="f.fieldCategory === 'header'" [class.amount]="f.fieldCategory === 'amount'" [class.lineItem]="f.fieldCategory === 'lineItem'">{{ f.fieldCategory }}</span>
+                    </span>
+                    <span class="ft-req">
+                      @if (f.required) { <i class="pi pi-check-circle" style="color: var(--color-green)"></i> }
+                    </span>
+                    <span class="ft-actions">
+                      <button class="icon-btn sm" (click)="moveField(i, -1)" [disabled]="i === 0"><i class="pi pi-chevron-up"></i></button>
+                      <button class="icon-btn sm" (click)="moveField(i, 1)" [disabled]="i === docTypeForm.extractionFields.length - 1"><i class="pi pi-chevron-down"></i></button>
+                      <button class="icon-btn sm danger" (click)="removeField(i)"><i class="pi pi-times"></i></button>
+                    </span>
+                  </div>
+                }
+              </div>
+            } @else {
+              <div class="empty-state small">
+                <p>No extraction fields configured. Add fields that should be extracted from this document type.</p>
+              </div>
+            }
+          </div>
+        }
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="showDocTypeForm = false">Cancel</button>
+        <button class="btn btn-primary" (click)="saveDocType()" [disabled]="saving">{{ saving ? 'Saving...' : 'Save Document Type' }}</button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Add Field Mini-Modal -->
+@if (showFieldForm) {
+  <div class="modal-overlay" (click)="showFieldForm = false" style="z-index: 1100">
+    <div class="modal small" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Add Extraction Field</h3>
+        <button class="close-btn" (click)="showFieldForm = false"><i class="pi pi-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Field Name</label>
+          <input type="text" [(ngModel)]="fieldForm.fieldName" placeholder="e.g. Invoice Number" />
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Type</label>
+            <select [(ngModel)]="fieldForm.fieldType">
+              <option value="text">Text</option>
+              <option value="number">Number</option>
+              <option value="date">Date</option>
+              <option value="currency">Currency</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Category</label>
+            <select [(ngModel)]="fieldForm.fieldCategory">
+              <option value="header">Header</option>
+              <option value="amount">Amount</option>
+              <option value="lineItem">Line Item</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="checkbox-label">
+            <input type="checkbox" [(ngModel)]="fieldForm.required" />
+            Required field
+          </label>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="showFieldForm = false">Cancel</button>
+        <button class="btn btn-primary" (click)="addField()">Add Field</button>
+      </div>
+    </div>
+  </div>
+}

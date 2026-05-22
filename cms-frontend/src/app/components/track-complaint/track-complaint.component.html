@@ -1,4 +1,120 @@
-@if (!showDetail) {
+<!-- ══════ OTP Verification Gate ══════ -->
+@if (!isVerified && !showDetail) {
+<section class="dashboard-section">
+  <div class="dashboard-container">
+    <div class="verification-card">
+      <div class="verification-header">
+        <i class="pi pi-shield"></i>
+        <h2>Verify Your Identity</h2>
+        <p>Enter your registered mobile number to view and track your complaints</p>
+      </div>
+
+      @if (noComplaintsFound) {
+        <div class="no-complaints-msg">
+          <i class="pi pi-info-circle"></i>
+          <p>No complaints found for this mobile number. You need to <a routerLink="/file-complaint">file a complaint</a> first before you can track it.</p>
+        </div>
+      }
+
+      @if (!otpSent) {
+        <div class="verification-form">
+          <div class="field-group">
+            <label>Mobile Number</label>
+            <div class="mobile-input-row">
+              <span class="country-code">+91</span>
+              <input
+                type="tel"
+                maxlength="10"
+                placeholder="Enter 10-digit mobile number"
+                [value]="verificationMobile"
+                (input)="onMobileInput($event)"
+                (keypress)="onMobileKeypress($event)" />
+            </div>
+            @if (mobileError) {
+              <span class="field-error">{{ mobileError }}</span>
+            }
+          </div>
+
+          <div class="field-group">
+            <label>CAPTCHA</label>
+            <div class="captcha-row">
+              <span class="captcha-text">{{ captchaText }}</span>
+              <button class="captcha-refresh" (click)="refreshCaptcha()"><i class="pi pi-refresh"></i></button>
+            </div>
+            <input
+              type="text"
+              placeholder="Enter CAPTCHA shown above"
+              [(ngModel)]="verificationCaptcha"
+              maxlength="6" />
+          </div>
+
+          @if (otpError) {
+            <div class="otp-error">{{ otpError }}</div>
+          }
+
+          <button class="btn-primary verify-btn" (click)="sendOtp()" [disabled]="!isMobileValid">
+            Send OTP
+          </button>
+        </div>
+      }
+
+      @if (otpSent && !otpVerified) {
+        <div class="otp-section">
+          <p class="otp-sent-msg">
+            <i class="pi pi-check-circle"></i>
+            OTP sent to +91 {{ verificationMobile }}
+          </p>
+
+          <div class="otp-inputs">
+            @for (digit of otpDigits; track $index; let i = $index) {
+              <input
+                type="text"
+                maxlength="1"
+                class="otp-box"
+                [value]="otpDigits[i]"
+                (input)="onOtpInput(i, $event)"
+                (keydown)="onOtpKeydown(i, $event)" />
+            }
+          </div>
+
+          @if (otpError) {
+            <div class="otp-error">{{ otpError }}</div>
+          }
+
+          <div class="otp-actions">
+            <button class="btn-primary" (click)="verifyOtp()" [disabled]="otpCode.length < 6 || otpVerifying">
+              @if (otpVerifying) {
+                <i class="pi pi-spin pi-spinner"></i> Verifying...
+              } @else {
+                Verify OTP
+              }
+            </button>
+            <button class="btn-link" (click)="cancelVerification()">Change Number</button>
+          </div>
+
+          <div class="resend-row">
+            @if (resendTimer > 0) {
+              <span class="resend-timer">Resend OTP in {{ resendTimer }}s</span>
+            } @else {
+              <button class="btn-link resend-btn" (click)="resendOtp()">Resend OTP</button>
+            }
+          </div>
+        </div>
+      }
+
+      @if (otpVerified) {
+        <div class="otp-success">
+          <i class="pi pi-check-circle"></i>
+          <span>Verified successfully! Loading your complaints...</span>
+        </div>
+      }
+    </div>
+  </div>
+</section>
+}
+
+<!-- ══════ Complaints List (after verification) ══════ -->
+@if (isVerified && !showDetail) {
 <section class="dashboard-section">
   <div class="dashboard-container">
     <div class="dashboard-header">

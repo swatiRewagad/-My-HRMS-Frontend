@@ -84,6 +84,11 @@ public class ComplaintService {
         return complaintRepository.search(query);
     }
 
+    @Transactional(readOnly = true)
+    public List<Complaint> getByPhone(String phone) {
+        return complaintRepository.findByComplainantPhoneOrderByCreatedAtDesc(phone);
+    }
+
     @CacheEvict(value = "dashboard", allEntries = true)
     @Transactional
     public Complaint fileComplaint(FileComplaintRequest req) {

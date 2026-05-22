@@ -524,7 +524,11 @@
             <!-- Circle Stepper -->
             <div class="circle-stepper">
               @for (step of schema.steps; track step.stepNumber; let i = $index) {
-                <div class="circle-step" [class.completed]="currentStep > step.stepNumber" [class.active]="currentStep === step.stepNumber">
+                <div class="circle-step"
+                  [class.completed]="currentStep > step.stepNumber"
+                  [class.active]="currentStep === step.stepNumber"
+                  [class.clickable]="currentStep > step.stepNumber || currentStep === step.stepNumber"
+                  (click)="goToStep(step.stepNumber)">
                   <div class="circle-number">
                     @if (currentStep > step.stepNumber) {
                       <i class="pi pi-check"></i>
@@ -532,6 +536,7 @@
                       {{ step.stepNumber }}
                     }
                   </div>
+                  <span class="circle-label">{{ step.title }}</span>
                 </div>
                 @if (i < schema.steps.length - 1) {
                   <div class="circle-line" [class.completed]="currentStep > step.stepNumber"></div>
@@ -628,8 +633,15 @@
               <button class="btn-link" (click)="prevStep()">
                 @if (currentStep === 1) { Cancel } @else { Back }
               </button>
-              <button class="btn-primary" [class.btn-green]="currentStep === 2"
-                (click)="nextStep()">Next</button>
+              <div class="step-footer-right">
+                @if (userSession.isLoggedIn) {
+                  <button class="btn-outline-draft" (click)="saveDraft()">
+                    <i class="pi pi-save"></i> Save Draft
+                  </button>
+                }
+                <button class="btn-primary" [class.btn-green]="currentStep === 2"
+                  (click)="nextStep()">Next</button>
+              </div>
             </div>
           </div>
         }
@@ -640,10 +652,11 @@
             <!-- Circle Stepper -->
             <div class="circle-stepper">
               @for (step of schema.steps; track step.stepNumber; let i = $index) {
-                <div class="circle-step completed">
+                <div class="circle-step completed clickable" (click)="goToStep(step.stepNumber)">
                   <div class="circle-number">
                     <i class="pi pi-check"></i>
                   </div>
+                  <span class="circle-label">{{ step.title }}</span>
                 </div>
                 @if (i < schema.steps.length - 1) {
                   <div class="circle-line completed"></div>

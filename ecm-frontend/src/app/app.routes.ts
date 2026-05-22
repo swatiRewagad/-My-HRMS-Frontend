@@ -10,6 +10,7 @@ export const routes: Routes = [
       { path: 'files', loadComponent: () => import('./components/file-manager/file-manager.component').then(m => m.FileManagerComponent) },
       { path: 'upload', loadComponent: () => import('./components/file-upload/file-upload.component').then(m => m.FileUploadComponent) },
       { path: 'shared', loadComponent: () => import('./components/shared-files/shared-files.component').then(m => m.SharedFilesComponent) },
+      { path: 'admin', loadComponent: () => import('./components/admin-settings/admin-settings.component').then(m => m.AdminSettingsComponent) },
     ],
   },
 ];

@@ -1,0 +1,162 @@
+$sidebar-width: 230px;
+$sidebar-collapsed: 60px;
+$topbar-height: 52px;
+$sidebar-bg: #0f1b3d;
+
+.layout {
+  display: grid;
+  grid-template-columns: $sidebar-width 1fr;
+  grid-template-rows: $topbar-height 1fr;
+  grid-template-areas: "sidebar topbar" "sidebar content";
+  min-height: 100vh;
+  transition: grid-template-columns 0.2s;
+
+  &.collapsed { grid-template-columns: $sidebar-collapsed 1fr; }
+}
+
+.sidebar {
+  grid-area: sidebar;
+  background: $sidebar-bg;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.sidebar-header {
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  min-height: 56px;
+}
+
+.realm-badge {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.realm-initials {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #1a56db, #2563eb);
+  color: white;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.realm-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  .realm-name { font-size: 12px; font-weight: 600; color: white; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .realm-dept { font-size: 10px; color: rgba(255, 255, 255, 0.45); }
+}
+
+.sidebar-nav {
+  flex: 1;
+  padding: 8px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  color: rgba(255, 255, 255, 0.7);
+  text-decoration: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+  font-family: 'Noto Sans', sans-serif;
+  transition: background 0.15s, color 0.15s;
+
+  i { font-size: 16px; width: 20px; text-align: center; flex-shrink: 0; }
+
+  &:hover { background: #162d5a; color: #fff; }
+  &.active { background: #1a3a6b; color: #fff; font-weight: 600; }
+}
+
+.nav-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.admin-link {
+  color: rgba(255, 255, 255, 0.45) !important;
+  &:hover { color: rgba(255, 255, 255, 0.7) !important; }
+}
+
+.sidebar-bottom {
+  padding: 8px 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.collapse-btn { font-family: inherit; }
+
+// Topbar
+.topbar {
+  grid-area: topbar;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  border-bottom: 1px solid #e2e8f0;
+
+  .topbar-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    .portal-label { font-size: 14px; font-weight: 700; color: #1c1c1c; }
+    .portal-separator { color: #d1d7e0; }
+    .portal-realm { font-size: 13px; color: #1a56db; font-weight: 600; }
+  }
+}
+
+.topbar-actions { display: flex; align-items: center; }
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.user-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #1a3a6b;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.user-details {
+  display: flex;
+  flex-direction: column;
+  .user-name { font-size: 13px; font-weight: 600; color: #1c1c1c; }
+  .user-meta { font-size: 10px; color: #737373; text-transform: capitalize; }
+}
+
+// Main content
+.main-content {
+  grid-area: content;
+  padding: 20px;
+  overflow-y: auto;
+  background: #eef2f8;
+}

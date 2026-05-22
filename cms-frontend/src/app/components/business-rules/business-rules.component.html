@@ -1,0 +1,265 @@
+<section class="business-rules-section">
+  <div class="container">
+    <!-- Page Header -->
+    <div class="page-header">
+      <div class="header-left">
+        <h1><i class="pi pi-cog"></i> Business Rules - Complaint Categorization</h1>
+        <p class="subtitle">Configure keyword-based rules to auto-categorize complaints from email, physical copies, or online submissions</p>
+      </div>
+      <div class="header-actions">
+        <button class="btn btn-secondary" (click)="toggleTestPanel()">
+          <i class="pi pi-play"></i> {{ showTestPanel ? 'Hide Test' : 'Test Rules' }}
+        </button>
+        <button class="btn btn-primary" (click)="openCreateForm()">
+          <i class="pi pi-plus"></i> Add Rule
+        </button>
+      </div>
+    </div>
+
+    <!-- Test Panel -->
+    @if (showTestPanel) {
+      <div class="test-panel">
+        <div class="test-panel-header">
+          <h3><i class="pi pi-flask"></i> Test Categorization Engine</h3>
+          <p>Paste complaint text below to see which rules match and how complaints will be categorized</p>
+        </div>
+        <div class="test-panel-body">
+          <div class="test-input-row">
+            <div class="test-textarea-wrap">
+              <textarea
+                [(ngModel)]="testText"
+                placeholder="Paste complaint text here... e.g., 'ATM cash not dispensed but Rs 5000 debited from my account'"
+                rows="4"></textarea>
+            </div>
+            <div class="test-controls">
+              <label>Source Filter</label>
+              <select [(ngModel)]="testSource">
+                @for (src of sources; track src.value) {
+                  <option [value]="src.value">{{ src.label }}</option>
+                }
+              </select>
+              <button class="btn btn-primary" (click)="runTest()" [disabled]="testing || !testText.trim()">
+                <i class="pi" [class.pi-play]="!testing" [class.pi-spin]="testing" [class.pi-spinner]="testing"></i>
+                {{ testing ? 'Analyzing...' : 'Run Categorization' }}
+              </button>
+            </div>
+          </div>
+
+          @if (testResults.length > 0) {
+            <div class="test-results">
+              <h4>Matched Categories ({{ testResults.length }})</h4>
+              <div class="results-grid">
+                @for (result of testResults; track result.categoryId) {
+                  <div class="result-card">
+                    <div class="result-header">
+                      <span class="result-category">{{ result.categoryName }}</span>
+                      <span class="confidence-badge" [class]="result.confidence >= 60 ? 'high' : result.confidence >= 30 ? 'medium' : 'low'">
+                        {{ result.confidence }}% match
+                      </span>
+                    </div>
+                    <div class="result-meta">
+                      <span class="result-rule"><i class="pi pi-bookmark"></i> {{ result.matchedRule }}</span>
+                      <span class="result-priority" [class]="getPriorityClass(result.priority)">{{ result.priority }}</span>
+                    </div>
+                    <div class="result-keywords">
+                      @for (kw of result.matchedKeywords; track kw) {
+                        <span class="keyword-chip matched">{{ kw }}</span>
+                      }
+                    </div>
+                  </div>
+                }
+              </div>
+            </div>
+          }
+
+          @if (testResults.length === 0 && testText.trim() && !testing) {
+            <div class="no-results">
+              <i class="pi pi-info-circle"></i>
+              <span>No rules matched the provided text. Consider adding new rules or updating keywords.</span>
+            </div>
+          }
+        </div>
+      </div>
+    }
+
+    <!-- Rules Table -->
+    <div class="rules-card">
+      <div class="rules-header">
+        <h3><i class="pi pi-list"></i> Categorization Rules ({{ rules.length }})</h3>
+        <div class="rules-stats">
+          <span class="stat active">{{ activeCount }} Active</span>
+          <span class="stat inactive">{{ inactiveCount }} Inactive</span>
+        </div>
+      </div>
+
+      @if (loading) {
+        <div class="loading-state">
+          <i class="pi pi-spin pi-spinner"></i>
+          <span>Loading rules...</span>
+        </div>
+      }
+
+      @if (!loading && rules.length === 0) {
+        <div class="empty-state">
+          <i class="pi pi-inbox"></i>
+          <h4>No categorization rules configured</h4>
+          <p>Add your first rule to start auto-categorizing incoming complaints</p>
+          <button class="btn btn-primary" (click)="openCreateForm()">
+            <i class="pi pi-plus"></i> Create First Rule
+          </button>
+        </div>
+      }
+
+      @if (!loading && rules.length > 0) {
+        <div class="rules-table-wrapper">
+          <table class="rules-table">
+            <thead>
+              <tr>
+                <th class="col-order">#</th>
+                <th class="col-name">Rule Name</th>
+                <th class="col-category">Category</th>
+                <th class="col-keywords">Keywords</th>
+                <th class="col-source">Source</th>
+                <th class="col-priority">Priority</th>
+                <th class="col-status">Status</th>
+                <th class="col-actions">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (rule of rules; track rule.id) {
+                <tr [class.inactive-row]="rule.status === 'inactive'">
+                  <td class="col-order">{{ rule.ruleOrder }}</td>
+                  <td class="col-name">
+                    <div class="rule-name-cell">
+                      <span class="rule-name">{{ rule.ruleName }}</span>
+                      @if (rule.description) {
+                        <span class="rule-desc">{{ rule.description }}</span>
+                      }
+                    </div>
+                  </td>
+                  <td class="col-category">
+                    <span class="category-badge">{{ getCategoryName(rule.categoryId) }}</span>
+                  </td>
+                  <td class="col-keywords">
+                    <div class="keywords-wrap">
+                      @for (kw of getKeywordChips(rule.keywords).slice(0, 4); track kw) {
+                        <span class="keyword-chip">{{ kw }}</span>
+                      }
+                      @if (getKeywordChips(rule.keywords).length > 4) {
+                        <span class="keyword-chip more">+{{ getKeywordChips(rule.keywords).length - 4 }}</span>
+                      }
+                    </div>
+                  </td>
+                  <td class="col-source">
+                    <span class="source-badge">{{ rule.source || 'all' }}</span>
+                  </td>
+                  <td class="col-priority">
+                    <span class="priority-badge" [class]="getPriorityClass(rule.priority)">{{ rule.priority }}</span>
+                  </td>
+                  <td class="col-status">
+                    <button class="status-toggle" [class]="getStatusClass(rule.status)" (click)="toggleStatus(rule)">
+                      <span class="toggle-dot"></span>
+                      {{ rule.status }}
+                    </button>
+                  </td>
+                  <td class="col-actions">
+                    @if (deleteConfirmId === rule.id) {
+                      <div class="delete-confirm">
+                        <span>Delete?</span>
+                        <button class="btn-icon danger" (click)="deleteRule(rule.id!)"><i class="pi pi-check"></i></button>
+                        <button class="btn-icon" (click)="cancelDelete()"><i class="pi pi-times"></i></button>
+                      </div>
+                    } @else {
+                      <button class="btn-icon" (click)="openEditForm(rule)" title="Edit"><i class="pi pi-pencil"></i></button>
+                      <button class="btn-icon danger" (click)="confirmDelete(rule.id!)" title="Delete"><i class="pi pi-trash"></i></button>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </div>
+  </div>
+</section>
+
+<!-- Create/Edit Modal -->
+@if (showForm) {
+  <div class="modal-overlay" (click)="closeForm()">
+    <div class="modal-dialog" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>{{ editingRule ? 'Edit Rule' : 'Create New Rule' }}</h3>
+        <button class="btn-icon" (click)="closeForm()"><i class="pi pi-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Rule Name <span class="required">*</span></label>
+          <input type="text" [(ngModel)]="formData.ruleName" placeholder="e.g., ATM Cash Not Dispensed" />
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Category <span class="required">*</span></label>
+            <select [(ngModel)]="formData.categoryId">
+              <option [value]="0" disabled>Select category</option>
+              @for (cat of categories; track cat.id) {
+                <option [value]="cat.id">{{ cat.name }}</option>
+              }
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Source</label>
+            <select [(ngModel)]="formData.source">
+              @for (src of sources; track src.value) {
+                <option [value]="src.value">{{ src.label }}</option>
+              }
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Keywords <span class="required">*</span></label>
+          <textarea
+            [(ngModel)]="formData.keywords"
+            placeholder="Enter comma-separated keywords. e.g., ATM, cash not dispensed, amount debited, money stuck"
+            rows="3"></textarea>
+          <span class="form-hint">Separate keywords with commas. Complaint text is matched against these keywords (case-insensitive).</span>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Priority</label>
+            <select [(ngModel)]="formData.priority">
+              @for (p of priorities; track p.value) {
+                <option [value]="p.value">{{ p.label }}</option>
+              }
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Status</label>
+            <select [(ngModel)]="formData.status">
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Rule Order</label>
+            <input type="number" [(ngModel)]="formData.ruleOrder" min="0" />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Description</label>
+          <input type="text" [(ngModel)]="formData.description" placeholder="Brief description of what this rule matches" />
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="closeForm()">Cancel</button>
+        <button class="btn btn-primary" (click)="saveRule()" [disabled]="!formData.ruleName || !formData.keywords || !formData.categoryId">
+          <i class="pi pi-check"></i> {{ editingRule ? 'Update Rule' : 'Create Rule' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

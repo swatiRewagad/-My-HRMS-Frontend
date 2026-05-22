@@ -15,6 +15,16 @@
         <button class="access-btn" (click)="a11y.increaseFontSize()" aria-label="Increase font size">A+</button>
       </div>
       <div class="divider" aria-hidden="true"></div>
+      <button
+        class="tts-btn"
+        (click)="tts.toggle()"
+        [attr.aria-pressed]="tts.enabled()"
+        [class.active]="tts.enabled()"
+        aria-label="Toggle text to speech for visually impaired users">
+        <i class="pi pi-volume-up"></i>
+        <span class="tts-label">{{ tts.enabled() ? 'Audio On' : 'Audio Off' }}</span>
+      </button>
+      <div class="divider" aria-hidden="true"></div>
       <label class="sr-only" for="lang-select">Select language</label>
       <select
         id="lang-select"
@@ -27,15 +37,29 @@
       </select>
     </div>
     <div class="top-right">
-      <div class="user-info" aria-label="User information">
-        <div class="user-avatar" aria-hidden="true">
-          <i class="pi pi-user"></i>
+      @if (userSession.isLoggedIn) {
+        <div class="user-info" aria-label="User information">
+          <div class="user-avatar" aria-hidden="true">
+            <i class="pi pi-user"></i>
+          </div>
+          <div class="user-details">
+            <span class="user-name">{{ userSession.userName }}</span>
+            <span class="user-last-login">{{ 'header.lastSignedIn' | translate }} {{ userSession.session?.loggedInAt | date:'dd/MM/yyyy HH:mm' }}</span>
+          </div>
+          <button class="header-logout-btn" (click)="logout()" aria-label="Logout">
+            <i class="pi pi-sign-out"></i>
+          </button>
         </div>
-        <div class="user-details">
-          <span class="user-name">Rahul Jain</span>
-          <span class="user-last-login">{{ 'header.lastSignedIn' | translate }} 12/02/2024 01:00</span>
+      } @else {
+        <div class="user-info" aria-label="User information">
+          <div class="user-avatar" aria-hidden="true">
+            <i class="pi pi-user"></i>
+          </div>
+          <div class="user-details">
+            <span class="user-name">Guest</span>
+          </div>
         </div>
-      </div>
+      }
     </div>
   </div>
 </div>
@@ -74,7 +98,6 @@
       <a href="javascript:void(0)">{{ 'header.aboutUs' | translate }}</a>
       <a href="javascript:void(0)">{{ 'header.publicAwareness' | translate }}</a>
       <a href="javascript:void(0)">{{ 'header.contact' | translate }}</a>
-      <a routerLink="/physical-complaint">{{ 'header.physicalFiling' | translate }}</a>
       <button class="nav-search-btn" aria-label="Search"><i class="pi pi-search"></i></button>
       <div class="nav-call-box" role="complementary" aria-label="Helpline number">
         <i class="pi pi-phone" aria-hidden="true"></i>

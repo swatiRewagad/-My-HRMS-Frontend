@@ -116,6 +116,28 @@ export const REALMS: Realm[] = [
 ];
 
 export const EXISTING_CONFIGS: Record<string, ExistingConfig> = {
+  ngcb: {
+    mode: 'non-app-designer',
+    version: 'v2.0 (Latest)',
+    deployType: 'independent',
+    configuredAt: '2026-04-27 09:00',
+    configuredBy: 'Anita Kumar',
+    services: ['Enterprise Content Management', 'Kavach', 'Notifications', 'Audit Trail'],
+    serviceDetails: {
+      'ecm-file-upload__mountPoint': { schemaName: '/test', dbType: '', connectionString: '', secretPath: '', showConn: false },
+      'ecm-file-upload__supportedFileTypes': { schemaName: 'PDF, DOCX, XLSX, Images', dbType: '', connectionString: '', secretPath: '', showConn: false },
+      'ecm-file-upload__volumeSize': { schemaName: '500', dbType: '', connectionString: '', secretPath: '', showConn: false },
+      'ecm-file-upload__maxFileSize': { schemaName: '100', dbType: '', connectionString: '', secretPath: '', showConn: false },
+      'ecm-archival__archivePeriod': { schemaName: '365', dbType: '', connectionString: '', secretPath: '', showConn: false },
+      'ecm-archival__frequency': { schemaName: 'Monthly', dbType: '', connectionString: '', secretPath: '', showConn: false },
+      'ecm-archival__archiveLocation': { schemaName: 's3://kavach-archive/realms/ngcb/', dbType: '', connectionString: '', secretPath: '', showConn: false },
+      'ecm-archival__compression': { schemaName: 'GZIP', dbType: '', connectionString: '', secretPath: '', showConn: false },
+      'ecm-ocr__ocrEngine': { schemaName: 'Tesseract', dbType: '', connectionString: '', secretPath: '', showConn: false },
+      'ecm-ocr__ocrLanguage': { schemaName: 'English + Hindi', dbType: '', connectionString: '', secretPath: '', showConn: false },
+      'ecm-ocr__ocrDpi': { schemaName: '300', dbType: '', connectionString: '', secretPath: '', showConn: false },
+      'ecm-ocr__ocrConfidence': { schemaName: '80', dbType: '', connectionString: '', secretPath: '', showConn: false },
+    },
+  },
   'central-fin-literacy': {
     mode: 'app-designer',
     version: 'v2.0 (Latest)',
@@ -132,4 +154,38 @@ export const EXISTING_CONFIGS: Record<string, ExistingConfig> = {
     configuredBy: 'Vikram Singh',
     services: ['Kavach', 'Audit Trail', 'MDMS'],
   },
+  niass: {
+    mode: 'non-app-designer',
+    version: 'v1.0 (Stable)',
+    deployType: 'independent',
+    configuredAt: '2026-03-10 11:45',
+    configuredBy: 'Priya Nair',
+    services: ['Kavach', 'Audit Trail', 'Holiday Calendar', 'MDMS', 'Notifications'],
+  },
+  ips: {
+    mode: 'app-designer',
+    version: 'v2.0 (Latest)',
+    deployType: 'dependent',
+    configuredAt: '2026-03-22 16:00',
+    configuredBy: 'Amit Roy',
+    services: ['Enterprise Content Management', 'Kavach', 'Audit Trail', 'Workflow Engine', 'Document AI'],
+  },
+  bcms: {
+    mode: 'non-app-designer',
+    version: 'v1.0 (Stable)',
+    deployType: 'independent',
+    configuredAt: '2026-04-01 08:30',
+    configuredBy: 'Neha Gupta',
+    services: ['Kavach', 'Notifications', 'Audit Trail', 'Dashboard Widgets'],
+  },
 };
+
+try {
+  const stored = sessionStorage.getItem('existing_configs');
+  if (stored) {
+    const saved = JSON.parse(stored) as Record<string, ExistingConfig>;
+    for (const [key, val] of Object.entries(saved)) {
+      EXISTING_CONFIGS[key] = val;
+    }
+  }
+} catch { /* ignore */ }

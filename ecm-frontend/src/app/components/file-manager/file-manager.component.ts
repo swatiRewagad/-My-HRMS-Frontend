@@ -41,6 +41,10 @@ export class FileManagerComponent implements OnInit {
   showPreview = false;
   previewFile: any = null;
 
+  showExtraction = false;
+  activeExtraction: any = null;
+  extractingFileId: number | null = null;
+
   constructor(private ecm: EcmService) {}
 
   ngOnInit() {
@@ -173,6 +177,24 @@ export class FileManagerComponent implements OnInit {
       this.files = f;
       this.selectedFolder = null;
       this.breadcrumbs = [{ name: `Search: "${this.searchQuery}"` }];
+    });
+  }
+
+  isPdf(file: any): boolean {
+    return file.contentType === 'application/pdf';
+  }
+
+  extractInvoice(file: any) {
+    this.extractingFileId = file.id;
+    this.ecm.extractInvoice(file.id).subscribe({
+      next: (result) => {
+        this.extractingFileId = null;
+        this.activeExtraction = result;
+        this.showExtraction = true;
+      },
+      error: () => {
+        this.extractingFileId = null;
+      },
     });
   }
 

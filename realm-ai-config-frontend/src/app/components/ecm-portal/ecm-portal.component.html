@@ -1,0 +1,686 @@
+<div class="ecm-portal">
+  <!-- Header -->
+  <div class="ecm-header">
+    <div class="ecm-header-left">
+      <button type="button" class="back-btn" (click)="goBack()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+          <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" fill="currentColor"/>
+        </svg>
+      </button>
+      <div class="ecm-title-group">
+        <div class="ecm-title">
+          <i class="pi pi-folder-open" style="color: #1a56db"></i>
+          Enterprise Content Management
+        </div>
+        <div class="ecm-realm">{{ auth.currentRealm()?.displayName }}</div>
+      </div>
+    </div>
+    <div class="ecm-header-right">
+      <button type="button" class="upload-btn" (click)="openUploadModal()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+          <path d="M9 16h6v-6h4l-7-7-7 7h4v6zm-4 2h14v2H5v-2z" fill="white"/>
+        </svg>
+        Upload Files
+      </button>
+    </div>
+  </div>
+
+  <!-- Config Info Bar -->
+  @if (ecmConfig()) {
+    <div class="config-bar">
+      <div class="config-item">
+        <span class="config-label">Mount Point</span>
+        <span class="config-value mono">{{ ecmConfig()!.mountPoint }}</span>
+      </div>
+      <div class="config-sep"></div>
+      <div class="config-item">
+        <span class="config-label">File Types</span>
+        <span class="config-value">{{ ecmConfig()!.supportedFileTypes }}</span>
+      </div>
+      <div class="config-sep"></div>
+      <div class="config-item">
+        <span class="config-label">Max File</span>
+        <span class="config-value">{{ ecmConfig()!.maxFileSize }} MB</span>
+      </div>
+      <div class="config-sep"></div>
+      <div class="config-item">
+        <span class="config-label">Volume</span>
+        <span class="config-value">{{ usedStorage() }} / {{ ecmConfig()!.volumeSize }} GB</span>
+      </div>
+      <div class="config-sep"></div>
+      <div class="config-item">
+        <span class="config-label">OCR</span>
+        <span class="config-value">{{ ecmConfig()!.ocrEngine }} · {{ ecmConfig()!.ocrLanguage }}</span>
+      </div>
+    </div>
+  }
+
+  <!-- Tabs -->
+  <div class="tab-bar">
+    <button class="tab" [class.active]="activeTab() === 'files'" (click)="activeTab.set('files')">
+      <i class="pi pi-file"></i> Files
+    </button>
+    <button class="tab" [class.active]="activeTab() === 'folders'" (click)="activeTab.set('folders')">
+      <i class="pi pi-folder"></i> Folder Management
+    </button>
+    <button class="tab" [class.active]="activeTab() === 'access'" (click)="activeTab.set('access')">
+      <i class="pi pi-shield"></i> Access Management
+    </button>
+  </div>
+
+  <!-- Files Tab -->
+  @if (activeTab() === 'files') {
+    <div class="files-layout">
+      <!-- Folder tree sidebar -->
+      <div class="folder-sidebar">
+        <div class="folder-sidebar-title">Folders</div>
+        <ng-container *ngTemplateOutlet="folderTemplate; context: { $implicit: folderTree(), depth: 0 }"></ng-container>
+      </div>
+
+      <!-- File list -->
+      <div class="file-list-panel">
+        <div class="file-list-header">
+          <div class="file-path">
+            <i class="pi pi-folder-open" style="color: #1a56db; font-size: 13px;"></i>
+            <span class="path-text">{{ currentFolderPath() }}</span>
+            @if (isPublicFolder()) {
+              <span class="public-badge">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z" fill="currentColor"/></svg>
+                Public — All realm users can edit
+              </span>
+            }
+          </div>
+          <div class="file-count">{{ currentFolderFiles().length }} file(s)</div>
+        </div>
+
+        <!-- Drop zone -->
+        <div class="drop-zone" [class.active]="dragOver()" (dragover)="onDragOver($event)" (dragleave)="onDragLeave()" (drop)="onDrop($event)">
+          @if (currentFolderFiles().length === 0) {
+            <div class="drop-empty">
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none">
+                <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z" fill="#d1d7e0"/>
+              </svg>
+              <div class="drop-text">Drop files here or click Upload</div>
+              <div class="drop-hint">Allowed: {{ ecmConfig()?.supportedFileTypes }} · Max {{ ecmConfig()?.maxFileSize }} MB per file</div>
+            </div>
+          } @else {
+            <table class="file-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Saved At</th>
+                  <th>Size</th>
+                  <th>Type</th>
+                  <th>Uploaded By</th>
+                  <th>Date</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (file of currentFolderFiles(); track file.id) {
+                  <tr>
+                    <td class="file-name-cell">
+                      <i class="pi pi-file" style="color: #1a56db; font-size: 14px;"></i>
+                      {{ file.name }}
+                    </td>
+                    <td class="file-path-cell mono">{{ file.filePath }}</td>
+                    <td>{{ file.size }}</td>
+                    <td><span class="type-tag">{{ file.type }}</span></td>
+                    <td>{{ file.uploadedBy }}</td>
+                    <td>{{ file.uploadedAt }}</td>
+                    <td>
+                      <span class="status-tag" [style.color]="getStatusColor(file.status)" [style.background]="getStatusBg(file.status)">
+                        {{ file.status }}
+                      </span>
+                    </td>
+                    <td>
+                      <div class="action-btns">
+                        <button type="button" class="preview-btn" (click)="openPreview(file)" title="Preview file">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                            <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z" fill="#1a56db"/>
+                          </svg>
+                        </button>
+                        @if (canEditFiles()) {
+                          <button type="button" class="edit-btn" (click)="openEditFile(file)" [title]="isEditableText(file.name) ? 'Edit file content' : 'Replace file'">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                              <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" fill="#d97706"/>
+                            </svg>
+                          </button>
+                        }
+                        <button type="button" class="download-btn" (click)="downloadFile(file)" title="Download file">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                            <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" fill="#16a34a"/>
+                          </svg>
+                        </button>
+                        <button type="button" class="delete-btn" (click)="deleteFile(file)" title="Delete file">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                            <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" fill="#dc2626"/>
+                          </svg>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          }
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Folders Tab -->
+  @if (activeTab() === 'folders') {
+    <div class="folders-panel">
+      <div class="folders-info">
+        <div class="folder-info-card">
+          <div class="info-card-title">Mount Point</div>
+          <div class="info-card-value mono">{{ ecmConfig()?.mountPoint }}</div>
+          <div class="info-card-hint">Base filesystem path for all uploads in this realm</div>
+        </div>
+        <div class="folder-info-card">
+          <div class="info-card-title">Archive Location</div>
+          <div class="info-card-value mono">{{ ecmConfig()?.archiveLocation }}</div>
+          <div class="info-card-hint">Destination for archived files ({{ ecmConfig()?.archiveFrequency }} · {{ ecmConfig()?.compression }} compression)</div>
+        </div>
+        <div class="folder-info-card">
+          <div class="info-card-title">Storage</div>
+          <div class="info-card-value">{{ usedStorage() }} GB used of {{ ecmConfig()?.volumeSize }} GB</div>
+          <div class="storage-bar">
+            <div class="storage-fill" [style.width.%]="(6.2 / +(ecmConfig()?.volumeSize ?? 500)) * 100"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="folder-tree-full">
+        <div class="tree-title">Directory Structure</div>
+        <ng-container *ngTemplateOutlet="folderTreeFull; context: { $implicit: folderTree(), depth: 0 }"></ng-container>
+      </div>
+    </div>
+  }
+
+  <!-- Access Tab -->
+  @if (activeTab() === 'access') {
+    <div class="access-panel">
+      <div class="access-header">
+        <div class="access-title">Access Management</div>
+        <div class="access-subtitle">Manage who can upload, download, delete, and archive files in this ECM instance</div>
+      </div>
+      <table class="access-table">
+        <thead>
+          <tr>
+            <th>User</th>
+            <th>Role</th>
+            <th>Permissions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (entry of accessList(); track entry.userName) {
+            <tr>
+              <td class="user-cell">
+                <div class="user-avatar-sm">{{ getInitials(entry.userName) }}</div>
+                {{ entry.userName }}
+              </td>
+              <td>
+                <span class="role-tag" [class.admin]="entry.role === 'admin'">
+                  {{ entry.role }}
+                </span>
+              </td>
+              <td>
+                <div class="perm-tags">
+                  @for (perm of entry.permissions; track perm) {
+                    <span class="perm-tag">{{ perm }}</span>
+                  }
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+
+  <!-- Preview Modal -->
+  @if (showPreviewModal()) {
+    <div class="modal-overlay preview-overlay" (click)="closePreview()">
+      <div class="preview-modal" [class.with-fields]="showExtractedFields()" (click)="$event.stopPropagation()">
+        <div class="preview-header">
+          <div class="preview-header-left">
+            <i class="pi pi-eye" style="color: #1a56db"></i>
+            <span class="preview-file-name">{{ previewFile$()?.name }}</span>
+            <span class="preview-file-type type-tag">{{ previewFile$()?.type }}</span>
+          </div>
+          <div class="preview-header-right">
+            @if (extractedFields().length > 0) {
+              <button type="button" class="extracted-fields-btn" [class.active]="showExtractedFields()" (click)="toggleExtractedFields()" title="Extracted Fields">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                  <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm-1 9h-2V9h2v2zm0-4h-2V3.5L18.5 9H13V7z" fill="currentColor"/>
+                </svg>
+                Extracted Fields
+                <span class="fields-count">{{ extractedFields().length }}</span>
+              </button>
+            }
+            <button type="button" class="preview-download-btn" (click)="downloadFile(previewFile$()!)" title="Download">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" fill="white"/>
+              </svg>
+              Download
+            </button>
+            <button type="button" class="modal-close" (click)="closePreview()">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" fill="#374252"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div class="preview-content-area">
+          <div class="preview-body">
+            @switch (previewType()) {
+              @case ('pdf') {
+                <iframe [src]="previewUrl()" class="preview-frame"></iframe>
+              }
+              @case ('image') {
+                <div class="preview-image-wrap">
+                  <img [src]="previewUrl()" [alt]="previewFile$()?.name" class="preview-image" />
+                </div>
+              }
+              @case ('video') {
+                <video controls autoplay class="preview-video" [src]="previewUrl()">
+                  Your browser does not support video playback.
+                </video>
+              }
+              @case ('audio') {
+                <div class="preview-audio-wrap">
+                  <div class="audio-visual">
+                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none">
+                      <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" fill="#1a56db"/>
+                    </svg>
+                    <div class="audio-file-name">{{ previewFile$()?.name }}</div>
+                  </div>
+                  <audio controls autoplay [src]="previewUrl()" class="preview-audio">
+                    Your browser does not support audio playback.
+                  </audio>
+                </div>
+              }
+              @case ('office') {
+                @if (officeLoading()) {
+                  <div class="preview-office-wrap">
+                    <i class="pi pi-spin pi-spinner" style="font-size: 24px; color: #1a56db;"></i>
+                    <div class="office-message">
+                      <div class="office-hint">Loading spreadsheet...</div>
+                    </div>
+                  </div>
+                } @else if (officeHtmlLoaded()) {
+                  <div class="office-viewer">
+                    <div class="office-toolbar">
+                      @if (officeSheets().length > 1) {
+                        <div class="sheet-tabs">
+                          @for (sheet of officeSheets(); track sheet) {
+                            <button type="button" class="sheet-tab" [class.active]="officeActiveSheet() === sheet" (click)="switchSheet(sheet)">
+                              {{ sheet }}
+                            </button>
+                          }
+                        </div>
+                      }
+                      <div class="office-toolbar-actions">
+                        <button type="button" class="office-edit-toggle" [class.active]="officeEditing()" (click)="toggleSpreadsheetEdit()">
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                            <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" fill="currentColor"/>
+                          </svg>
+                          {{ officeEditing() ? 'Stop Editing' : 'Edit' }}
+                        </button>
+                        @if (officeEditing() && officeDirty()) {
+                          <button type="button" class="office-save-btn" (click)="saveSpreadsheet()" [disabled]="officeSaving()">
+                            @if (officeSaving()) {
+                              <i class="pi pi-spin pi-spinner" style="font-size: 12px;"></i>
+                              Saving...
+                            } @else {
+                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                                <path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z" fill="white"/>
+                              </svg>
+                              Save
+                            }
+                          </button>
+                        }
+                      </div>
+                    </div>
+                    @if (officeEditing()) {
+                      <div class="office-table-wrap editable">
+                        <table>
+                          @for (row of officeRows(); track $index; let ri = $index) {
+                            <tr>
+                              @for (cell of row; track $index; let ci = $index) {
+                                @if (ri === 0) {
+                                  <th contenteditable="true" (blur)="onCellEdit(ri, ci, $event)">{{ cell }}</th>
+                                } @else {
+                                  <td contenteditable="true" (blur)="onCellEdit(ri, ci, $event)">{{ cell }}</td>
+                                }
+                              }
+                            </tr>
+                          }
+                        </table>
+                      </div>
+                    } @else {
+                      <div class="office-table-wrap" [innerHTML]="officeHtml()"></div>
+                    }
+                  </div>
+                } @else {
+                  <div class="preview-office-wrap">
+                    <div class="office-icon">
+                      <svg width="48" height="48" viewBox="0 0 24 24" fill="none">
+                        <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z" fill="#1a56db"/>
+                      </svg>
+                    </div>
+                    <div class="office-message">
+                      <div class="office-title">{{ previewFile$()?.name }}</div>
+                      <div class="office-hint">Failed to load spreadsheet preview. Download to open.</div>
+                      <button type="button" class="preview-download-btn" (click)="downloadFile(previewFile$()!)">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                          <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" fill="white"/>
+                        </svg>
+                        Download to Open
+                      </button>
+                    </div>
+                  </div>
+                }
+              }
+              @case ('text') {
+                <iframe [src]="previewUrl()" class="preview-frame"></iframe>
+              }
+              @default {
+                <div class="preview-office-wrap">
+                  <div class="office-icon">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none">
+                      <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm4 18H6V4h7v5h5v11z" fill="#737373"/>
+                    </svg>
+                  </div>
+                  <div class="office-message">
+                    <div class="office-title">{{ previewFile$()?.name }}</div>
+                    <div class="office-hint">This file type cannot be previewed. Download it to view.</div>
+                    <button type="button" class="preview-download-btn" (click)="downloadFile(previewFile$()!)">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                        <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" fill="white"/>
+                      </svg>
+                      Download File
+                    </button>
+                  </div>
+                </div>
+              }
+            }
+          </div>
+
+          <!-- Extracted Fields Side Panel -->
+          @if (showExtractedFields()) {
+            <div class="extracted-fields-panel">
+              <div class="ef-panel-header">
+                <div class="ef-panel-title">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                    <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z" fill="#1a56db"/>
+                  </svg>
+                  OCR Extracted Fields
+                </div>
+                <div class="ef-panel-meta">
+                  <span class="ef-engine-tag">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none">
+                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" fill="currentColor"/>
+                    </svg>
+                    {{ extractedFields()[0]?.ocrEngine ?? ecmConfig()?.ocrEngine }}
+                  </span>
+                  <span class="ef-count-tag">{{ extractedFields().length }} fields</span>
+                </div>
+              </div>
+              <div class="ef-panel-body">
+                @if (extractedFieldsLoading()) {
+                  <div class="ef-loading">
+                    <i class="pi pi-spin pi-spinner" style="font-size: 20px; color: #1a56db;"></i>
+                    <span>Extracting fields...</span>
+                  </div>
+                } @else {
+                  @for (field of extractedFields(); track field.id) {
+                    <div class="ef-field-card">
+                      <div class="ef-field-header">
+                        <span class="ef-field-name">{{ field.fieldName }}</span>
+                        <span class="ef-confidence" [style.color]="getConfidenceColor(field.confidence)" [style.background]="getConfidenceBg(field.confidence)">
+                          {{ field.confidence }}%
+                        </span>
+                      </div>
+                      <div class="ef-field-value">{{ field.fieldValue }}</div>
+                    </div>
+                  }
+                }
+              </div>
+              <div class="ef-panel-footer">
+                <div class="ef-ocr-info">
+                  <span>Engine: <strong>{{ ecmConfig()?.ocrEngine }}</strong></span>
+                  <span>Lang: <strong>{{ ecmConfig()?.ocrLanguage }}</strong></span>
+                  <span>DPI: <strong>{{ ecmConfig()?.ocrDpi }}</strong></span>
+                  <span>Min Confidence: <strong>{{ ecmConfig()?.ocrConfidence }}%</strong></span>
+                </div>
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Upload Modal -->
+  @if (showUploadModal()) {
+    <div class="modal-overlay" (click)="closeUploadModal()">
+      <div class="upload-modal" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <div class="modal-title">Upload Files</div>
+          <button type="button" class="modal-close" (click)="closeUploadModal()">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+              <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" fill="#374252"/>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="upload-config-info">
+            <span class="dest-select">
+              Destination:
+              <select [ngModel]="uploadTargetPath()" (ngModelChange)="uploadTargetPath.set($event)" class="folder-select">
+                @for (f of allFolders(); track f.path) {
+                  <option [value]="f.path">{{ f.name }} ({{ f.path }})</option>
+                }
+              </select>
+            </span>
+            <span>Max: <strong>{{ ecmConfig()?.maxFileSize }} MB</strong></span>
+            <span>Types: <strong>{{ ecmConfig()?.supportedFileTypes }}</strong></span>
+          </div>
+
+          @if (uploadQueue().length === 0) {
+            <div class="upload-dropzone" (dragover)="onDragOver($event)" (dragleave)="onDragLeave()" (drop)="onDrop($event)" [class.active]="dragOver()">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+                <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z" fill="#1a56db"/>
+              </svg>
+              <div>Drag & drop files here</div>
+              <label class="browse-btn">
+                Browse Files
+                <input type="file" multiple [accept]="allowedExtensions()" (change)="onFileSelect($event)" hidden />
+              </label>
+            </div>
+          } @else {
+            <div class="upload-list">
+              @for (item of uploadQueue(); track item.file.name) {
+                <div class="upload-item" [class.error]="item.status === 'error'" [class.done]="item.status === 'done'">
+                  <div class="upload-item-info">
+                    <i class="pi pi-file" style="color: #1a56db"></i>
+                    <div class="upload-item-name">{{ item.file.name }}</div>
+                    <div class="upload-item-size">{{ formatFileSize(item.file.size) }}</div>
+                  </div>
+                  @if (item.status === 'error') {
+                    <div class="upload-error">{{ item.errorMsg || 'Upload failed' }}</div>
+                  } @else {
+                    <div class="upload-progress-bar">
+                      <div class="progress-fill" [style.width.%]="item.progress" [class.complete]="item.status === 'done'"></div>
+                    </div>
+                    <div class="upload-percent">{{ item.progress }}%</div>
+                  }
+                </div>
+              }
+            </div>
+            <div class="upload-actions">
+              @if (uploadQueue()[0]?.status === 'pending') {
+                <button type="button" class="start-upload-btn" (click)="startUpload()">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                    <path d="M9 16h6v-6h4l-7-7-7 7h4v6zm-4 2h14v2H5v-2z" fill="white"/>
+                  </svg>
+                  Start Upload
+                </button>
+              }
+              <button type="button" class="close-modal-btn" (click)="closeUploadModal()">Close</button>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Edit Text File Modal -->
+  @if (showEditModal()) {
+    <div class="modal-overlay" (click)="closeEditModal()">
+      <div class="edit-modal" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <div class="modal-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" fill="#d97706"/></svg>
+            Edit — {{ editingFile()?.name }}
+          </div>
+          <button type="button" class="modal-close" (click)="closeEditModal()">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" fill="#374252"/></svg>
+          </button>
+        </div>
+        <div class="edit-modal-body">
+          @if (editLoading()) {
+            <div class="edit-loading">
+              <i class="pi pi-spin pi-spinner" style="font-size: 20px; color: #1a56db;"></i>
+              <span>Loading file content...</span>
+            </div>
+          } @else {
+            <textarea class="edit-textarea" [ngModel]="editContent()" (ngModelChange)="editContent.set($event)" spellcheck="false"></textarea>
+          }
+        </div>
+        <div class="edit-modal-footer">
+          <div class="edit-footer-info">
+            <span class="public-badge-sm">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z" fill="currentColor"/></svg>
+              Public file — editable by all realm users
+            </span>
+          </div>
+          <div class="edit-footer-actions">
+            <button type="button" class="close-modal-btn" (click)="closeEditModal()">Cancel</button>
+            <button type="button" class="save-edit-btn" (click)="saveEditContent()" [disabled]="editSaving()">
+              @if (editSaving()) {
+                <i class="pi pi-spin pi-spinner" style="font-size: 12px;"></i>
+                Saving...
+              } @else {
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z" fill="white"/></svg>
+                Save Changes
+              }
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Replace File Modal -->
+  @if (showReplaceModal()) {
+    <div class="modal-overlay" (click)="closeReplaceModal()">
+      <div class="upload-modal" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <div class="modal-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" fill="#d97706"/></svg>
+            Replace — {{ replaceFile()?.name }}
+          </div>
+          <button type="button" class="modal-close" (click)="closeReplaceModal()">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" fill="#374252"/></svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="replace-info">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z" fill="#d97706"/></svg>
+            <span>Select a new file to replace <strong>{{ replaceFile()?.name }}</strong>. The original filename will be kept.</span>
+          </div>
+          @if (!replaceQueue()) {
+            <div class="upload-dropzone">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z" fill="#1a56db"/></svg>
+              <div>Select replacement file</div>
+              <label class="browse-btn">
+                Browse Files
+                <input type="file" (change)="onReplaceFileSelect($event)" hidden />
+              </label>
+            </div>
+          } @else {
+            <div class="upload-item" [class.error]="replaceQueue()!.status === 'error'" [class.done]="replaceQueue()!.status === 'done'">
+              <div class="upload-item-info">
+                <i class="pi pi-file" style="color: #d97706"></i>
+                <div class="upload-item-name">{{ replaceQueue()!.file.name }}</div>
+                <div class="upload-item-size">{{ formatFileSize(replaceQueue()!.file.size) }}</div>
+              </div>
+              @if (replaceQueue()!.status === 'error') {
+                <div class="upload-error">{{ replaceQueue()!.errorMsg }}</div>
+              }
+              @if (replaceQueue()!.status === 'done') {
+                <div class="replace-success">File replaced successfully</div>
+              }
+            </div>
+            <div class="upload-actions">
+              @if (replaceQueue()!.status === 'pending') {
+                <button type="button" class="start-upload-btn replace-btn" (click)="startReplace()">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" fill="white"/></svg>
+                  Replace File
+                </button>
+              }
+              <button type="button" class="close-modal-btn" (click)="closeReplaceModal()">Close</button>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+  }
+</div>
+
+<!-- Folder tree template (sidebar) -->
+<ng-template #folderTemplate let-node let-depth="depth">
+  <div class="tree-node" [style.padding-left.px]="depth * 16 + 8" [class.selected]="selectedFolder() === node" (click)="selectFolder(node)">
+    @if (node.children.length > 0) {
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" [class.expanded]="node.expanded" class="tree-arrow" (click)="toggleFolder(node); $event.stopPropagation()">
+        <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6-6-6z" fill="#737373"/>
+      </svg>
+    } @else {
+      <span class="tree-spacer"></span>
+    }
+    @if (node.isPublic) {
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z" fill="#16a34a"/></svg>
+    } @else {
+      <i class="pi" [ngClass]="node.expanded ? 'pi-folder-open' : 'pi-folder'" style="font-size: 13px; color: #d97706;"></i>
+    }
+    <span class="tree-label">{{ node.name }}</span>
+    @if (node.files.length > 0) {
+      <span class="tree-count">{{ node.files.length }}</span>
+    }
+  </div>
+  @if (node.expanded && node.children.length > 0) {
+    @for (child of node.children; track child.name) {
+      <ng-container *ngTemplateOutlet="folderTemplate; context: { $implicit: child, depth: depth + 1 }"></ng-container>
+    }
+  }
+</ng-template>
+
+<!-- Folder tree template (full view) -->
+<ng-template #folderTreeFull let-node let-depth="depth">
+  <div class="tree-node-full" [style.padding-left.px]="depth * 24 + 12">
+    <i class="pi pi-folder" style="color: #d97706; font-size: 14px;"></i>
+    <span class="tree-full-name">{{ node.name }}/</span>
+    <span class="tree-full-path">{{ node.path }}</span>
+    @if (node.files.length > 0) {
+      <span class="tree-full-files">{{ node.files.length }} file(s)</span>
+    }
+  </div>
+  @for (child of node.children; track child.name) {
+    <ng-container *ngTemplateOutlet="folderTreeFull; context: { $implicit: child, depth: depth + 1 }"></ng-container>
+  }
+</ng-template>

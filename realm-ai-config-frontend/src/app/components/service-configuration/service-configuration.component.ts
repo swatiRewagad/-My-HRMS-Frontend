@@ -90,6 +90,15 @@ export class ServiceConfigurationComponent {
     navigator.clipboard.writeText(text);
   }
 
+  getSubServiceFieldValue(subServiceId: string, fieldKey: string): string {
+    const config = this.wizard.serviceConfigs()[`${subServiceId}__${fieldKey}`];
+    return config?.schemaName ?? '';
+  }
+
+  updateSubServiceField(subServiceId: string, fieldKey: string, value: string): void {
+    this.wizard.updateServiceConfig(`${subServiceId}__${fieldKey}`, { ...this.emptySchema(), schemaName: value });
+  }
+
   private emptySchema(): SchemaConfig {
     return { schemaName: '', dbType: '', connectionString: '', secretPath: '', showConn: false };
   }

@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, NgZone } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -8,6 +8,7 @@ import { ComplaintStoreService } from '../../services/complaint-store.service';
 import { FileUploadService } from '../../services/file-upload.service';
 import { InputSanitizerService } from '../../services/input-sanitizer.service';
 import { FileCacheService } from '../../services/file-cache.service';
+import { UserSessionService } from '../../services/user-session.service';
 import { jsPDF } from 'jspdf';
 
 interface ComplaintRecord {
@@ -28,11 +29,22 @@ interface ComplaintRecord {
   styleUrl: './track-complaint.component.scss',
 })
 export class TrackComplaintComponent implements OnInit {
-  complaints: ComplaintRecord[] = [
-    { id: 'CMS-20260415-100234', complaintAgainst: 'Adarsh Bank', complaintDate: '15-08-2026', status: 'in_progress', statusLabel: 'In Progress', comments: 'Missing details ple...', action: 'withdraw' },
-    { id: 'CMS-20260203-200456', complaintAgainst: 'Varada Bank', complaintDate: '03-02-2026', status: 'request_sent_back', statusLabel: 'Request Sent Back', comments: 'Missing details ple...', action: 'appeal' },
-    { id: 'CMS-20251122-300789', complaintAgainst: 'Kaveri Bank', complaintDate: '22-11-2025', status: 'rejected', statusLabel: 'Rejected', comments: 'Missing details ple...', action: 'act' },
-  ];
+  // ── Verification gate ──
+  isVerified = false;
+  verificationMobile = '';
+  verificationCaptcha = '';
+  captchaText = '';
+  otpSent = false;
+  otpDigits: string[] = ['', '', '', '', '', ''];
+  otpVerifying = false;
+  otpVerified = false;
+  otpError = '';
+  mobileError = '';
+  resendTimer = 0;
+  private resendInterval: any = null;
+  private readonly PHONE_RE = /^[6-9]\d{9}$/;
+
+  complaints: ComplaintRecord[] = [];
 
   sortColumn = '';
   sortDirection: 'asc' | 'desc' = 'asc';
@@ -74,15 +86,56 @@ export class TrackComplaintComponent implements OnInit {
     private sanitizer: InputSanitizerService,
     private domSanitizer: DomSanitizer,
     private fileCache: FileCacheService,
+    public userSession: UserSessionService,
+    private ngZone: NgZone,
   ) {}
 
   ngOnInit() {
-    this.cms.getComplaints().subscribe({
+    if (this.userSession.isLoggedIn) {
+      this.verificationMobile = this.userSession.userPhone;
+      this.cms.getComplaintsByPhone(this.verificationMobile).subscribe({
+        next: (data: any[]) => {
+          const localComplaints = this.complaintStore.complaints.filter(
+            lc => !data?.some(d => (d.complaintNumber || d.id) === lc.id)
+          );
+          const totalComplaints = (data?.length || 0) + localComplaints.length;
+
+          if (totalComplaints > 0) {
+            this.isVerified = true;
+            if (data && data.length > 0) {
+              this.complaints = data.map(c => ({
+                id: c.complaintNumber || c.id || '',
+                complaintAgainst: c.bankName || c.complaintAgainst || c.subject || '',
+                complaintDate: c.createdAt ? new Date(c.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-') : '',
+                status: this.mapStatus(c.status),
+                statusLabel: c.status || '',
+                comments: c.comments || c.description?.substring(0, 20) + '...' || '',
+                action: this.mapAction(c.status),
+              }));
+            }
+            this.mergeLocalComplaints();
+          } else {
+            this.noComplaintsFound = true;
+            this.generateCaptcha();
+          }
+        },
+        error: () => {
+          this.isVerified = true;
+          this.mergeLocalComplaints();
+        },
+      });
+    } else {
+      this.generateCaptcha();
+    }
+  }
+
+  private loadComplaintsByPhone() {
+    this.cms.getComplaintsByPhone(this.verificationMobile).subscribe({
       next: (data: any[]) => {
         if (data && data.length > 0) {
           this.complaints = data.map(c => ({
             id: c.complaintNumber || c.id || '',
-            complaintAgainst: c.bankName || c.complaintAgainst || '',
+            complaintAgainst: c.bankName || c.complaintAgainst || c.subject || '',
             complaintDate: c.createdAt ? new Date(c.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-') : '',
             status: this.mapStatus(c.status),
             statusLabel: c.status || '',
@@ -96,6 +149,185 @@ export class TrackComplaintComponent implements OnInit {
         this.mergeLocalComplaints();
       },
     });
+  }
+
+  // ── Verification Methods ──
+
+  generateCaptcha() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+    this.captchaText = Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+  }
+
+  refreshCaptcha() {
+    this.verificationCaptcha = '';
+    this.generateCaptcha();
+  }
+
+  onMobileKeypress(event: KeyboardEvent) {
+    if (!/\d/.test(event.key)) {
+      event.preventDefault();
+    }
+  }
+
+  onMobileInput(event: Event) {
+    const input = event.target as HTMLInputElement;
+    input.value = input.value.replace(/\D/g, '');
+    this.verificationMobile = input.value;
+    this.mobileError = '';
+  }
+
+  get isMobileValid(): boolean {
+    return this.PHONE_RE.test(this.verificationMobile);
+  }
+
+  sendOtp() {
+    this.mobileError = '';
+    if (!this.verificationMobile) {
+      this.mobileError = 'Mobile number is required.';
+      return;
+    }
+    if (!this.PHONE_RE.test(this.verificationMobile)) {
+      this.mobileError = 'Enter a valid 10-digit Indian mobile number starting with 6-9.';
+      return;
+    }
+    if (this.verificationCaptcha !== this.captchaText) {
+      this.otpError = 'Invalid CAPTCHA. Please try again.';
+      this.refreshCaptcha();
+      return;
+    }
+    this.otpError = '';
+    this.otpSent = true;
+    this.otpDigits = ['', '', '', '', '', ''];
+    this.startResendTimer();
+  }
+
+  onOtpInput(index: number, event: Event) {
+    const input = event.target as HTMLInputElement;
+    const val = input.value.replace(/\D/g, '');
+    this.otpDigits[index] = val ? val[0] : '';
+    if (val && index < 5) {
+      const next = input.parentElement?.querySelectorAll('input')[index + 1] as HTMLInputElement;
+      if (next) next.focus();
+    }
+  }
+
+  onOtpKeydown(index: number, event: KeyboardEvent) {
+    if (event.key === 'Backspace' && !this.otpDigits[index] && index > 0) {
+      const prev = (event.target as HTMLElement).parentElement?.querySelectorAll('input')[index - 1] as HTMLInputElement;
+      if (prev) prev.focus();
+    }
+  }
+
+  get otpCode(): string {
+    return this.otpDigits.join('');
+  }
+
+  noComplaintsFound = false;
+
+  verifyOtp() {
+    if (this.otpCode.length < 6) return;
+    this.otpVerifying = true;
+    this.otpError = '';
+    this.noComplaintsFound = false;
+
+    setTimeout(() => {
+      this.otpVerifying = false;
+
+      this.cms.getComplaintsByPhone(this.verificationMobile).subscribe({
+        next: (data: any[]) => {
+          const localComplaints = this.complaintStore.complaints;
+          const hasComplaints = (data && data.length > 0) || localComplaints.length > 0;
+
+          if (!hasComplaints) {
+            this.noComplaintsFound = true;
+            this.otpError = 'No complaints found for this mobile number. Please file a complaint first.';
+            this.otpSent = false;
+            this.otpDigits = ['', '', '', '', '', ''];
+            this.clearResendTimer();
+            return;
+          }
+
+          this.otpVerified = true;
+          this.userSession.loginWithOtp(this.verificationMobile).subscribe({
+            next: () => {
+              setTimeout(() => {
+                this.isVerified = true;
+                this.complaints = data.map(c => ({
+                  id: c.complaintNumber || c.id || '',
+                  complaintAgainst: c.bankName || c.complaintAgainst || c.subject || '',
+                  complaintDate: c.createdAt ? new Date(c.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-') : '',
+                  status: this.mapStatus(c.status),
+                  statusLabel: c.status || '',
+                  comments: c.comments || c.description?.substring(0, 20) + '...' || '',
+                  action: this.mapAction(c.status),
+                }));
+                this.mergeLocalComplaints();
+              }, 600);
+            },
+            error: () => {
+              setTimeout(() => {
+                this.isVerified = true;
+                this.complaints = data.map(c => ({
+                  id: c.complaintNumber || c.id || '',
+                  complaintAgainst: c.bankName || c.complaintAgainst || c.subject || '',
+                  complaintDate: c.createdAt ? new Date(c.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-') : '',
+                  status: this.mapStatus(c.status),
+                  statusLabel: c.status || '',
+                  comments: c.comments || c.description?.substring(0, 20) + '...' || '',
+                  action: this.mapAction(c.status),
+                }));
+                this.mergeLocalComplaints();
+              }, 600);
+            },
+          });
+        },
+        error: () => {
+          this.otpVerified = true;
+          this.userSession.loginWithOtp(this.verificationMobile).subscribe();
+          setTimeout(() => {
+            this.isVerified = true;
+            this.mergeLocalComplaints();
+          }, 600);
+        },
+      });
+
+      this.clearResendTimer();
+    }, 1000);
+  }
+
+  resendOtp() {
+    if (this.resendTimer > 0) return;
+    this.otpDigits = ['', '', '', '', '', ''];
+    this.otpError = '';
+    this.startResendTimer();
+  }
+
+  cancelVerification() {
+    this.otpSent = false;
+    this.otpDigits = ['', '', '', '', '', ''];
+    this.otpError = '';
+    this.clearResendTimer();
+  }
+
+  private startResendTimer() {
+    this.clearResendTimer();
+    this.resendTimer = 30;
+    this.resendInterval = setInterval(() => {
+      this.ngZone.run(() => {
+        this.resendTimer--;
+        if (this.resendTimer <= 0) {
+          this.clearResendTimer();
+        }
+      });
+    }, 1000);
+  }
+
+  private clearResendTimer() {
+    if (this.resendInterval) {
+      clearInterval(this.resendInterval);
+      this.resendInterval = null;
+    }
+    this.resendTimer = 0;
   }
 
   private mergeLocalComplaints() {
@@ -129,6 +361,17 @@ export class TrackComplaintComponent implements OnInit {
     if (s.includes('reject')) return 'act';
     if (s.includes('sent back') || s.includes('request')) return 'appeal';
     return 'withdraw';
+  }
+
+  logout() {
+    this.userSession.logout();
+    this.isVerified = false;
+    this.verificationMobile = '';
+    this.complaints = [];
+    this.otpSent = false;
+    this.otpVerified = false;
+    this.otpDigits = ['', '', '', '', '', ''];
+    this.generateCaptcha();
   }
 
   get filteredComplaints(): ComplaintRecord[] {

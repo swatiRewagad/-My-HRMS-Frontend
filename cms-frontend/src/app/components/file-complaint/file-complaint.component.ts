@@ -1,7 +1,7 @@
 import { Component, OnInit, OnDestroy, NgZone } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormGroup, FormControl, Validators, FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { RouterLink, ActivatedRoute } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { last } from 'rxjs/operators';
 import { CmsService } from '../../services/cms.service';
@@ -11,6 +11,7 @@ import { FileUploadService, UploadProgress } from '../../services/file-upload.se
 import { InputSanitizerService } from '../../services/input-sanitizer.service';
 import { ComplaintStoreService } from '../../services/complaint-store.service';
 import { FileCacheService } from '../../services/file-cache.service';
+import { UserSessionService } from '../../services/user-session.service';
 import { DynamicFieldComponent } from '../dynamic-field/dynamic-field.component';
 import { FormSchema, FormStep, FormField, PreFilingOption } from '../../models/form-schema.model';
 import { SecureValidators, MAX_FILE_SIZES, INPUT_LIMITS } from '../../validators/form-validators';
@@ -186,6 +187,8 @@ export class FileComplaintComponent implements OnInit, OnDestroy {
   uploadProgress: UploadProgress[] = [];
   uploadingFiles = false;
 
+  private resumeDraft = false;
+
   constructor(
     private cms: CmsService,
     private parser: ComplaintParserService,
@@ -195,6 +198,8 @@ export class FileComplaintComponent implements OnInit, OnDestroy {
     private sanitizer: InputSanitizerService,
     private complaintStore: ComplaintStoreService,
     private fileCache: FileCacheService,
+    public userSession: UserSessionService,
+    private route: ActivatedRoute,
   ) {}
 
   ngOnDestroy() {
@@ -202,6 +207,10 @@ export class FileComplaintComponent implements OnInit, OnDestroy {
     this.recordingSessionId++;
     this.destroyRecognition();
     this.clearResendTimer();
+
+    if (!this.submitted && this.userSession.isLoggedIn) {
+      this.saveDraft();
+    }
   }
 
   ngOnInit() {
@@ -209,6 +218,21 @@ export class FileComplaintComponent implements OnInit, OnDestroy {
     this.ensureAssistanceOption();
     this.buildForms();
     this.loading = false;
+
+    this.route.queryParams.subscribe(params => {
+      if (params['resume'] === 'draft') {
+        this.resumeDraft = true;
+      }
+    });
+
+    if (this.resumeDraft && this.userSession.isLoggedIn && this.userSession.hasDraft()) {
+      this.showPreFilingModal = false;
+      this.showVerification = false;
+      this.otpVerified = true;
+      this.verificationMobile = this.userSession.userPhone;
+      this.currentStep = 1;
+      setTimeout(() => this.loadDraftIfAvailable(), 0);
+    }
 
     this.cms.getCategories().subscribe({
       next: cats => this.categories = cats,
@@ -613,15 +637,72 @@ export class FileComplaintComponent implements OnInit, OnDestroy {
       this.otpVerified = true;
       this.clearResendTimer();
 
+      this.userSession.loginWithOtp(this.verificationMobile).subscribe({
+        next: (profile) => {
+          if (profile && profile.name && this.stepForms.length > 0) {
+            const step1 = this.stepForms[0];
+            if (!step1.get('name')?.value && profile.name) {
+              step1.get('name')?.setValue(profile.name);
+            }
+            if (!step1.get('email')?.value && profile.email) {
+              step1.get('email')?.setValue(profile.email);
+            }
+            if (!step1.get('address')?.value && profile.address) {
+              step1.get('address')?.setValue(profile.address);
+            }
+            if (!step1.get('pincode')?.value && profile.pincode) {
+              step1.get('pincode')?.setValue(profile.pincode);
+            }
+            if (!step1.get('state')?.value && profile.state) {
+              step1.get('state')?.setValue(profile.state);
+            }
+            if (!step1.get('district')?.value && profile.district) {
+              step1.get('district')?.setValue(profile.district);
+            }
+          }
+        },
+        error: () => {},
+      });
+
       setTimeout(() => {
         this.showVerification = false;
         if (this.filingType === 'need_assistance') {
           this.showAssistanceScreen = true;
         } else {
           this.currentStep = 1;
+          this.loadDraftIfAvailable();
         }
       }, 800);
     }, 1000);
+  }
+
+  private loadDraftIfAvailable() {
+    const draft = this.userSession.getDraft();
+    if (!draft) return;
+
+    for (let i = 0; i < this.stepForms.length; i++) {
+      const form = this.stepForms[i];
+      Object.keys(form.controls).forEach(key => {
+        if (draft[key] !== undefined && draft[key] !== null && draft[key] !== '') {
+          form.get(key)?.setValue(draft[key]);
+        }
+      });
+    }
+  }
+
+  saveDraft() {
+    const allValues: Record<string, any> = {};
+    this.stepForms.forEach(form => {
+      Object.keys(form.controls).forEach(key => {
+        const val = form.get(key)?.value;
+        if (val !== null && val !== undefined && val !== '') {
+          allValues[key] = val;
+        }
+      });
+    });
+    if (Object.keys(allValues).length > 0) {
+      this.userSession.saveDraft(allValues);
+    }
   }
 
   cancelVerification() {
@@ -895,7 +976,7 @@ export class FileComplaintComponent implements OnInit, OnDestroy {
     const payload = {
       complainantName: allValues['name'] || this.parsedFields['name'] || 'Anonymous',
       complainantEmail: allValues['email'] || this.parsedFields['email'] || '',
-      complainantPhone: allValues['mobileNumber'] || this.parsedFields['mobileNumber'] || '',
+      complainantPhone: this.verificationMobile || allValues['mobileNumber'] || this.parsedFields['mobileNumber'] || '',
       complainantAddress: allValues['address'] || this.parsedFields['address'] || '',
       bankId: typeof bankId === 'number' ? bankId : null,
       bankBranch: allValues['branch'] || this.parsedFields['branch'] || '',
@@ -916,6 +997,7 @@ export class FileComplaintComponent implements OnInit, OnDestroy {
         this.submitted = true;
         this.showAssistanceScreen = false;
         this.referenceNumber = res.complaintNumber;
+        this.onComplaintSubmitted(payload);
       },
       error: (err) => {
         this.submitting = false;
@@ -972,6 +1054,14 @@ export class FileComplaintComponent implements OnInit, OnDestroy {
       this.currentStep--;
     } else {
       this.showPreFilingModal = true;
+    }
+  }
+
+  goToStep(stepNumber: number) {
+    if (stepNumber <= this.currentStep) {
+      this.stepValidationError = '';
+      this.submitError = '';
+      this.currentStep = stepNumber;
     }
   }
 
@@ -1397,7 +1487,7 @@ export class FileComplaintComponent implements OnInit, OnDestroy {
     const payload = {
       complainantName: this.sanitizer.sanitizeText(allValues['name'] || ''),
       complainantEmail: this.sanitizer.sanitizeText(allValues['email'] || ''),
-      complainantPhone: this.sanitizer.sanitizeNumeric(allValues['mobileNumber'] || ''),
+      complainantPhone: this.verificationMobile || this.sanitizer.sanitizeNumeric(allValues['mobileNumber'] || ''),
       complainantAddress: this.sanitizer.sanitizeText(allValues['address'] || ''),
       bankId: allValues['entityName'] || null,
       bankBranch: this.sanitizer.sanitizeText(allValues['branch'] || ''),
@@ -1419,6 +1509,7 @@ export class FileComplaintComponent implements OnInit, OnDestroy {
         const complaintNumber = res.complaintNumber;
 
         this.storeLocalComplaint(this.referenceNumber, payload, complaintId);
+        this.onComplaintSubmitted(payload);
 
         if (this.allAttachments.length > 0 && complaintId && complaintNumber) {
           this.uploadingFiles = true;
@@ -1431,6 +1522,7 @@ export class FileComplaintComponent implements OnInit, OnDestroy {
       error: () => {
         this.referenceNumber = 'N' + Date.now().toString().slice(0, 13);
         this.storeLocalComplaint(this.referenceNumber, payload);
+        this.onComplaintSubmitted(payload);
         this.submitting = false;
         this.submitted = true;
       },
@@ -1481,6 +1573,29 @@ export class FileComplaintComponent implements OnInit, OnDestroy {
     if (this.allAttachments.length > 0) {
       this.fileCache.store(refNumber, this.allAttachments);
     }
+  }
+
+  private onComplaintSubmitted(payload: any) {
+    if (this.userSession.isLoggedIn) {
+      const profileData: any = {};
+      if (payload.complainantName) profileData.name = payload.complainantName;
+      if (payload.complainantEmail) profileData.email = payload.complainantEmail;
+      if (payload.complainantAddress) profileData.address = payload.complainantAddress;
+
+      const step1 = this.stepForms[0];
+      if (step1?.get('pincode')?.value) profileData.pincode = step1.get('pincode')?.value;
+      if (step1?.get('state')?.value) profileData.state = step1.get('state')?.value;
+      if (step1?.get('district')?.value) profileData.district = step1.get('district')?.value;
+
+      if (Object.keys(profileData).length > 0) {
+        this.userSession.updateProfile(profileData).subscribe();
+      }
+    }
+    this.userSession.clearDraft();
+  }
+
+  logout() {
+    this.userSession.logout();
   }
 
   downloadPDF() {

@@ -27,6 +27,8 @@ public interface ComplaintRepository extends JpaRepository<Complaint, Long> {
     @Query("SELECT c FROM Complaint c WHERE LOWER(c.subject) LIKE LOWER(CONCAT('%', :q, '%')) OR c.complaintNumber LIKE CONCAT('%', :q, '%') OR LOWER(c.complainantName) LIKE LOWER(CONCAT('%', :q, '%')) ORDER BY c.createdAt DESC")
     Page<Complaint> searchPaged(@Param("q") String query, Pageable pageable);
 
+    List<Complaint> findByComplainantPhoneOrderByCreatedAtDesc(String complainantPhone);
+
     long countByStatus(String status);
     long countByPriority(String priority);
 }

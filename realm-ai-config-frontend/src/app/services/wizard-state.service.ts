@@ -111,8 +111,49 @@ export class WizardStateService {
     if (this.currentStep() < 3) {
       this.currentStep.update((s) => s + 1);
     } else {
+      this.saveExistingConfig();
       this.isComplete.set(true);
     }
+  }
+
+  private saveExistingConfig(): void {
+    const realm = this.selectedRealm();
+    if (!realm) return;
+
+    const selectedIds = this.selectedServices();
+    const serviceLabels = ALL_SERVICES
+      .filter((s) => selectedIds.has(s.id))
+      .map((s) => s.label);
+
+    const now = new Date();
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    const timestamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+
+    const configs = this.serviceConfigs();
+    const deployType = (configs.__deploy_type__?.schemaName as 'dependent' | 'independent') || 'independent';
+    const schemaConfig = deployType === 'dependent' ? configs.__deploy_schema__ : undefined;
+
+    const serviceDetails: Record<string, SchemaConfig> = {};
+    for (const [key, val] of Object.entries(configs)) {
+      if (!key.startsWith('__')) {
+        serviceDetails[key] = val;
+      }
+    }
+
+    EXISTING_CONFIGS[realm.id] = {
+      mode: this.selectedMode()!,
+      version: this.platformVersion(),
+      deployType,
+      configuredAt: timestamp,
+      configuredBy: realm.owner,
+      services: serviceLabels,
+      schemaConfig,
+      serviceDetails: Object.keys(serviceDetails).length > 0 ? serviceDetails : undefined,
+    };
+
+    try {
+      sessionStorage.setItem('existing_configs', JSON.stringify(EXISTING_CONFIGS));
+    } catch { /* ignore storage errors */ }
   }
 
   prevStep(): void {

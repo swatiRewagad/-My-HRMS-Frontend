@@ -93,6 +93,65 @@ export class EcmService {
     return this.http.get<any[]>(`${this.api}/users`);
   }
 
+  extractInvoice(fileId: number, docTypeConfigId?: number): Observable<any> {
+    const params = docTypeConfigId ? new HttpParams().set('docTypeConfigId', docTypeConfigId.toString()) : undefined;
+    return this.http.post(`${this.api}/invoice/extract/${fileId}`, {}, { params });
+  }
+
+  getInvoiceExtraction(fileId: number): Observable<any> {
+    return this.http.get(`${this.api}/invoice/extraction/${fileId}`);
+  }
+
+  // ───── Admin Config APIs ─────
+
+  getProjects(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.api}/admin/projects`);
+  }
+
+  getProject(id: number): Observable<any> {
+    return this.http.get(`${this.api}/admin/projects/${id}`);
+  }
+
+  createProject(data: { code: string; name: string; description?: string }): Observable<any> {
+    return this.http.post(`${this.api}/admin/projects`, data, { headers: this.headers });
+  }
+
+  updateProject(id: number, data: { code: string; name: string; description?: string }): Observable<any> {
+    return this.http.put(`${this.api}/admin/projects/${id}`, data);
+  }
+
+  deleteProject(id: number): Observable<any> {
+    return this.http.delete(`${this.api}/admin/projects/${id}`);
+  }
+
+  saveUploadConfig(projectId: number, data: any): Observable<any> {
+    return this.http.post(`${this.api}/admin/projects/${projectId}/upload-config`, data);
+  }
+
+  getDocTypes(projectId: number): Observable<any[]> {
+    return this.http.get<any[]>(`${this.api}/admin/projects/${projectId}/doc-types`);
+  }
+
+  createDocType(projectId: number, data: any): Observable<any> {
+    return this.http.post(`${this.api}/admin/projects/${projectId}/doc-types`, data);
+  }
+
+  updateDocType(docTypeId: number, data: any): Observable<any> {
+    return this.http.put(`${this.api}/admin/doc-types/${docTypeId}`, data);
+  }
+
+  deleteDocType(docTypeId: number): Observable<any> {
+    return this.http.delete(`${this.api}/admin/doc-types/${docTypeId}`);
+  }
+
+  getExtractionFields(docTypeId: number): Observable<any[]> {
+    return this.http.get<any[]>(`${this.api}/admin/doc-types/${docTypeId}/fields`);
+  }
+
+  saveExtractionFields(docTypeId: number, fields: any[]): Observable<any[]> {
+    return this.http.post<any[]>(`${this.api}/admin/doc-types/${docTypeId}/fields`, fields);
+  }
+
   uploadFileChunked(file: File, folderId: number): Subject<ChunkUploadProgress> {
     const progress$ = new Subject<ChunkUploadProgress>();
     const totalChunks = Math.ceil(file.size / this.chunkSize);

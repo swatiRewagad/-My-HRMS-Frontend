@@ -1,0 +1,1904 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CMS Developer Guide</title>
+  
+<style>
+  @media print {
+    body { font-size: 11pt; }
+    pre { page-break-inside: avoid; }
+    table { page-break-inside: avoid; }
+    h2 { page-break-before: always; }
+    h2:first-of-type { page-break-before: avoid; }
+  }
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 40px 30px;
+    color: #1a1a1a;
+    line-height: 1.6;
+  }
+  h1 { color: #1a365d; border-bottom: 3px solid #2B579A; padding-bottom: 10px; font-size: 28pt; }
+  h2 { color: #2B579A; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; margin-top: 40px; }
+  h3 { color: #2d3748; margin-top: 25px; }
+  h4 { color: #4a5568; }
+  table { border-collapse: collapse; width: 100%; margin: 15px 0; font-size: 10pt; }
+  th { background: #2B579A; color: white; padding: 10px 12px; text-align: left; font-weight: 600; }
+  td { padding: 8px 12px; border: 1px solid #e2e8f0; }
+  tr:nth-child(even) { background: #f7fafc; }
+  tr:hover { background: #edf2f7; }
+  pre {
+    background: #1e1e1e;
+    color: #d4d4d4;
+    padding: 16px;
+    border-radius: 6px;
+    overflow-x: auto;
+    font-size: 9pt;
+    line-height: 1.4;
+  }
+  code {
+    background: #edf2f7;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 0.9em;
+  }
+  pre code { background: none; padding: 0; }
+  ul, ol { padding-left: 25px; }
+  li { margin-bottom: 4px; }
+  hr { border: none; border-top: 2px solid #e2e8f0; margin: 30px 0; }
+  .cover {
+    text-align: center;
+    padding: 100px 0 60px;
+    page-break-after: always;
+  }
+  .cover h1 { border: none; font-size: 32pt; }
+  .cover .subtitle { font-size: 18pt; color: #4a5568; margin: 10px 0; }
+  .cover .meta { font-size: 12pt; color: #718096; margin-top: 40px; }
+  blockquote {
+    border-left: 4px solid #2B579A;
+    margin: 15px 0;
+    padding: 10px 20px;
+    background: #f7fafc;
+  }
+</style>
+
+</head>
+<body>
+  
+    <div class="cover">
+      <h1>CMS — Complaint Management System</h1>
+      <div class="subtitle">Developer Reference Guide</div>
+      <div class="meta">
+        <p><strong>Version 1.0</strong></p>
+        <p>Tech Stack: Angular 20 + Spring Boot 3.2.5 + MySQL + Redis</p>
+        <p>Date: May 2026</p>
+        <p style="margin-top: 60px; font-size: 10pt; color: #a0aec0;">
+          This document covers architecture, APIs, security, validation, testing, and modification guides.<br>
+          Print this page or Save as PDF from your browser (Ctrl+P → Save as PDF).
+        </p>
+      </div>
+    </div>
+    
+  <h1 id="cms-complaint-management-system-developer-guide">CMS (Complaint Management System) — Developer Guide</h1>
+<h2 id="table-of-contents">Table of Contents</h2>
+<ol>
+<li><a href="#architecture-overview">Architecture Overview</a></li>
+<li><a href="#features-implemented">Features Implemented</a></li>
+<li><a href="#user-session-auth">User Session &amp; Authentication</a></li>
+<li><a href="#project-structure">Project Structure</a></li>
+<li><a href="#api-reference">API Reference</a></li>
+<li><a href="#security--validation">Security &amp; Validation</a></li>
+<li><a href="#caching-strategy">Caching Strategy</a></li>
+<li><a href="#file-upload-system">File Upload System</a></li>
+<li><a href="#configuration-guide">Configuration Guide</a></li>
+<li><a href="#test-coverage">Test Coverage</a></li>
+<li><a href="#developer-modification-guide">Developer Modification Guide</a></li>
+<li><a href="#feature-library-mapping">Feature &amp; Library/JAR Mapping</a></li>
+</ol>
+<hr />
+<h2 id="architecture-overview">Architecture Overview</h2>
+<pre><code>┌─────────────────────────────────────────────────────────────────────────┐
+│                         FRONTEND (Angular 20)                            │
+│  Port: 4200                                                              │
+│  ┌──────────┐ ┌───────────┐ ┌──────────────┐ ┌───────────────────────┐ │
+│  │   Home   │ │File       │ │Track         │ │Email Simulation       │ │
+│  │Dashboard │ │Complaint  │ │Complaint     │ │(Email-based flow)     │ │
+│  └──────────┘ └───────────┘ └──────────────┘ └───────────────────────┘ │
+│  ┌───────────────┐ ┌─────────────────┐ ┌───────────────────────────┐   │
+│  │Physical       │ │Business Rules   │ │Admin (Back Office)        │   │
+│  │Complaint (AI) │ │(Categorization) │ │(Internal modules hub)     │   │
+│  └───────────────┘ └─────────────────┘ └───────────────────────────┘   │
+│  ┌──────────────────────────────────────────────────────────────────┐   │
+│  │  Interceptors: Security (CSRF) + Rate Limiting (client-side)     │   │
+│  └──────────────────────────────────────────────────────────────────┘   │
+│  ┌──────────────────────────────────────────────────────────────────┐   │
+│  │  Services: CMS | FileUpload | InputSanitizer | Translate         │   │
+│  │   | Accessibility | OCR | ComplaintParser | Store | UserSession  │   │
+│  │   | CategorizationRule | TTS                                      │   │
+│  └──────────────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────┬───────────────────────────────────┘
+                                      │ HTTP (REST API)
+┌─────────────────────────────────────▼───────────────────────────────────┐
+│                      BACKEND (Spring Boot 3.2.5)                          │
+│  Port: 8082                                                              │
+│  ┌──────────────────────────────────────────────────────────────────┐   │
+│  │  Filters: CORS → Rate Limit (Bucket4j) → Controllers             │   │
+│  └──────────────────────────────────────────────────────────────────┘   │
+│  ┌──────────────────────────────────────────────────────────────────┐   │
+│  │  Controllers: Complaint | File | Dashboard | Email | Bank         │   │
+│  │               Category | FormConfig | User | CategorizationRule   │   │
+│  │               OCR                                                  │   │
+│  └──────────────────────────────────────────────────────────────────┘   │
+│  ┌──────────────────────────────────────────────────────────────────┐   │
+│  │  Services: ComplaintService | FileStorageService | CmsUserService │   │
+│  │            EmailSimulationService | FormConfigService              │   │
+│  │            CategorizationRuleService | OcrService                  │   │
+│  └──────────────────────────────────────────────────────────────────┘   │
+│  ┌──────────────────────────────────────────────────────────────────┐   │
+│  │  Repositories (JPA): Complaint | Attachment | Timeline | CmsUser │   │
+│  │            Bank | Category | FormConfig | Email | CatRule         │   │
+│  └──────────────────────────────────────────────────────────────────┘   │
+│  ┌────────────────┐  ┌───────────────┐  ┌───────────────────────┐      │
+│  │  MySQL / H2    │  │  Redis Cache  │  │  File System Storage  │      │
+│  └────────────────┘  └───────────────┘  └───────────────────────┘      │
+└─────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│                      USER SESSION / AUTH FLOW                             │
+│                                                                          │
+│  ┌────────────┐    ┌────────────┐    ┌────────────┐    ┌────────────┐  │
+│  │ Mobile No. │───▶│ OTP Verify │───▶│ Login API  │───▶│ Dashboard  │  │
+│  │ + CAPTCHA  │    │ (6-digit)  │    │ /users/    │    │ (Logged In)│  │
+│  └────────────┘    └────────────┘    │  login     │    └────────────┘  │
+│                                      └─────┬──────┘                     │
+│                                            │                            │
+│                    ┌───────────────────────▼─────────────────────┐      │
+│                    │ CMS_USERS Table                              │      │
+│                    │ (id, name, phone, email, address, state,    │      │
+│                    │  district, pincode, lastLoginAt, createdAt) │      │
+│                    └─────────────────────────────────────────────┘      │
+│                                                                          │
+│  Flow:                                                                   │
+│  1. First visit → File complaint → OTP verification → User created      │
+│  2. Complaint submitted → Profile updated with name/address/etc.         │
+│  3. Return visit → Same mobile + OTP → Profile loaded, form pre-filled  │
+│  4. Draft auto-saved on navigate away, resumed on next login             │
+│  5. Dashboard shows all complaints filed by this phone number            │
+└─────────────────────────────────────────────────────────────────────────┘
+</code></pre>
+<h3 id="tech-stack">Tech Stack</h3>
+<table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>Technology</th>
+<th>Version</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Frontend</td>
+<td>Angular (Standalone Components)</td>
+<td>20</td>
+</tr>
+<tr>
+<td>Backend</td>
+<td>Spring Boot</td>
+<td>3.2.5</td>
+</tr>
+<tr>
+<td>Language</td>
+<td>Java / TypeScript</td>
+<td>17 / 5</td>
+</tr>
+<tr>
+<td>Database</td>
+<td>MySQL (prod) / H2 (dev/test)</td>
+<td>8+ / 2</td>
+</tr>
+<tr>
+<td>Cache</td>
+<td>Redis</td>
+<td>7+</td>
+</tr>
+<tr>
+<td>Build</td>
+<td>Maven / Angular CLI</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Testing</td>
+<td>JUnit 5 + Mockito / Jest</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="features-implemented">Features Implemented</h2>
+<h3 id="1-complaint-management-core">1. Complaint Management (Core)</h3>
+<ul>
+<li>Multi-step complaint filing with dynamic form schema</li>
+<li>Complaint tracking by complaint number</li>
+<li>Status workflow: <code>pending → in_progress → resolved/escalated → closed</code></li>
+<li>Priority management: <code>low</code>, <code>medium</code>, <code>high</code></li>
+<li>Full timeline/audit trail per complaint</li>
+<li>Pagination and search (by subject, name, complaint number)</li>
+</ul>
+<h3 id="2-file-upload-system">2. File Upload System</h3>
+<ul>
+<li><strong>Chunked upload</strong> for large files (&gt;5MB) with resume capability</li>
+<li><strong>Single upload</strong> for small files</li>
+<li>File assembly from chunks using <code>FileChannel</code></li>
+<li>SHA-256 checksum verification after assembly</li>
+<li>Configurable limits (max size, allowed types, max files per complaint)</li>
+<li>Stale upload cleanup (temp chunks older than 1 hour)</li>
+<li>Media streaming with HTTP Range requests (206 Partial Content)</li>
+</ul>
+<h3 id="3-email-based-complaint-flow">3. Email-Based Complaint Flow</h3>
+<ul>
+<li>Simulated email intake: user sends email → system auto-replies with form → user replies with details → confirmation</li>
+<li>Thread-based email tracking</li>
+<li>Email statistics (total threads, awaiting form, completed)</li>
+<li>Downloadable form templates</li>
+</ul>
+<h3 id="4-dynamic-form-configuration">4. Dynamic Form Configuration</h3>
+<ul>
+<li>JSON-based form schema (stored in DB)</li>
+<li>Multi-step wizard support</li>
+<li>Pre-filing modal with conditional fields</li>
+<li>Supports field types: text, email, tel, select, textarea, radio, file, date</li>
+<li>Field dependencies (<code>dependsOn</code>) and dynamic options (<code>optionsSource</code>)</li>
+</ul>
+<h3 id="5-dashboard-analytics">5. Dashboard &amp; Analytics</h3>
+<ul>
+<li>Real-time stats: total, pending, in-progress, resolved, closed, escalated</li>
+<li>Priority distribution: high, medium, low</li>
+<li>Cached for performance (2-minute TTL)</li>
+</ul>
+<h3 id="6-multilingual-support-frontend">6. Multilingual Support (Frontend)</h3>
+<ul>
+<li>English and Hindi language support</li>
+<li>Complaint text processing with Hindi-to-English translation</li>
+<li>OCR service integration for document text extraction</li>
+<li>Auto-detect language from text input</li>
+</ul>
+<h3 id="7-accessibility-frontend">7. Accessibility (Frontend)</h3>
+<ul>
+<li>High contrast mode</li>
+<li>Reduced motion support</li>
+<li>Configurable font sizes</li>
+<li>Screen reader announcements via live regions</li>
+<li><strong>Text-to-Speech (TTS)</strong> — Toggle button in header toolbar reads aloud any focused/clicked element using browser's SpeechSynthesis API (no external dependency)</li>
+<li>Skip-to-content link</li>
+<li>Focus-visible styling with orange outline</li>
+</ul>
+<h3 id="8-physical-complaint-support">8. Physical Complaint Support (AI-Assisted)</h3>
+<ul>
+<li><strong>3-Panel Layout</strong> — Upload panel + Draft form + AI Suggestions (matches Figma design)</li>
+<li><strong>Real OCR via Google Gemini AI</strong> — Extracts text from scanned letters (Hindi/English), auto-fills form</li>
+<li><strong>Configurable OCR Providers</strong> — Strategy pattern: switch between Gemini and OpenAI via config</li>
+<li>NLP-based field extraction from free text</li>
+<li>Auto-detection of: name, phone, email, bank, account number, category, state, district, pincode</li>
+<li>Stepper workflow: Creation → Assessment → Closure</li>
+</ul>
+<h3 id="9-ai-suggestions">9. AI Suggestions Panel</h3>
+<ul>
+<li><strong>Past Decisions</strong> — Fetches real logged complaints from backend, calculates keyword similarity, shows match percentage</li>
+<li><strong>Inline Detail View</strong> — Click any past decision to expand and see full complaint details + resolution remarks</li>
+<li><strong>Resolution Comments</strong> — Resolved complaints show the exact resolution/decision so officers can reference them for current cases</li>
+<li><strong>Related Circulars</strong> — Matches complaint keywords against RBI circular titles</li>
+<li><strong>AI Chat</strong> — Ask questions, get answers based on logged complaint statistics and similar cases</li>
+<li>Auto-refreshes suggestions after OCR extraction</li>
+</ul>
+<h3 id="10-ocr-service">10. OCR Service (Backend)</h3>
+<ul>
+<li><strong>Strategy Pattern</strong> — <code>OcrProvider</code> interface with pluggable implementations</li>
+<li><strong>GeminiOcrProvider</strong> — Google Gemini 2.0 Flash (default, free tier: 15 req/min)</li>
+<li><strong>OpenAiOcrProvider</strong> — GPT-4o Vision (ready for future use)</li>
+<li>Switch provider via <code>cms.ocr.provider</code> config or <code>OCR_PROVIDER</code> env var</li>
+<li>REST endpoint: <code>POST /api/ocr/extract</code> (multipart file upload)</li>
+<li>Fallback to mock data if API key not configured</li>
+</ul>
+<h3 id="11-auto-categorization">11. Auto-Categorization (Business Rules Engine)</h3>
+<ul>
+<li><strong>Keyword-based rule engine</strong> — configurable rules with keyword lists, category mapping, priority, and source filtering</li>
+<li><strong>Confidence scoring</strong> — each rule calculates match confidence based on keyword hit ratio</li>
+<li><strong>Rule ordering</strong> — rules processed in order; first high-confidence match wins</li>
+<li><strong>Source filtering</strong> — rules can target specific sources (email, physical, online) or all</li>
+<li><strong>Admin CRUD UI</strong> — full management screen at <code>/business-rules</code> with test categorization panel</li>
+<li><strong>Auto-categorization on email intake</strong> — complaints from email simulation are auto-categorized</li>
+<li>20 pre-seeded rules covering common banking complaint categories</li>
+</ul>
+<h3 id="12-user-session-auth">12. User Session &amp; Authentication (Mobile + OTP)</h3>
+<ul>
+<li><strong>OTP-based login</strong> — user verifies via 10-digit mobile number + 6-digit OTP</li>
+<li><strong>Auto-registration</strong> — first OTP verification creates a <code>CmsUser</code> record in database</li>
+<li><strong>Returning users</strong> — same mobile + OTP loads existing profile, pre-fills form fields (name, email, address, state, district, pincode)</li>
+<li><strong>Profile persistence</strong> — on complaint submission, user profile is updated server-side with latest details</li>
+<li><strong>Session management</strong> — localStorage-based session with server-side backup (<code>CMS_USERS</code> table)</li>
+<li><strong>Track Complaint access gate</strong> — OTP verification on Track Complaint page checks if complaints exist for the phone number; if no complaints found, login is denied with message to file a complaint first</li>
+<li><strong>Home page always visible</strong> — full landing page (hero, quick actions, complaint types, stats, FAQ, education, press) is always shown regardless of login; logged-in users see an additional welcome banner at top</li>
+<li><strong>Draft saving</strong> — form data auto-saved to localStorage on navigate away; resumable via "Resume Draft" button</li>
+<li><strong>Header integration</strong> — displays logged-in user's name, last login timestamp, and logout button (single global logout)</li>
+<li><strong>Logout</strong> — single logout button in the header (next to username), clears session from localStorage, redirects to homepage</li>
+<li><strong>Graceful fallback</strong> — if backend is unreachable, user is allowed through (cannot confirm/deny complaints when server is down)</li>
+</ul>
+<h3 id="13-admin-back-office">13. Admin / Back Office Module</h3>
+<ul>
+<li>Separate <code>/admin</code> route — not shown in customer navigation</li>
+<li>Hub page with links to: Email Simulation, Physical Complaint, Business Rules</li>
+<li>Accessible only by direct URL (no nav link for customers)</li>
+</ul>
+<hr />
+<h2 id="user-session-auth">User Session &amp; Authentication</h2>
+<h3>Architecture</h3>
+<p>The CMS uses a phone-based OTP verification system for user identity. There is no password — the mobile number serves as the unique identifier and OTP as the authentication factor.</p>
+
+<h4>Database Entity: <code>CMS_USERS</code></h4>
+<table>
+<thead>
+<tr><th>Column</th><th>Type</th><th>Description</th></tr>
+</thead>
+<tbody>
+<tr><td><code>id</code></td><td>BIGINT (PK, auto)</td><td>Primary key</td></tr>
+<tr><td><code>name</code></td><td>VARCHAR(200)</td><td>User's full name (populated on first complaint)</td></tr>
+<tr><td><code>phone</code></td><td>VARCHAR(15), UNIQUE</td><td>10-digit Indian mobile number (login identifier)</td></tr>
+<tr><td><code>email</code></td><td>VARCHAR(200)</td><td>Optional email address</td></tr>
+<tr><td><code>address</code></td><td>VARCHAR(500)</td><td>Postal address</td></tr>
+<tr><td><code>pincode</code></td><td>VARCHAR(10)</td><td>PIN code</td></tr>
+<tr><td><code>state</code></td><td>VARCHAR(50)</td><td>State code (e.g., MH, DL)</td></tr>
+<tr><td><code>district</code></td><td>VARCHAR(100)</td><td>District name</td></tr>
+<tr><td><code>last_login_at</code></td><td>DATETIME</td><td>Last OTP verification timestamp</td></tr>
+<tr><td><code>created_at</code></td><td>DATETIME</td><td>Registration timestamp</td></tr>
+<tr><td><code>updated_at</code></td><td>DATETIME</td><td>Last profile update</td></tr>
+</tbody>
+</table>
+
+<h4>Login Flow (Sequence)</h4>
+<pre><code>User                    Frontend                   Backend
+ │                         │                          │
+ │── Enter Mobile No. ────▶│                          │
+ │── Enter CAPTCHA ───────▶│                          │
+ │                         │── Validate CAPTCHA ──▶   │
+ │◀── Show OTP Input ─────│                          │
+ │── Enter 6-digit OTP ──▶│                          │
+ │                         │── POST /users/login ───▶│
+ │                         │   { phone: "9876543210" }│
+ │                         │                          │── findByPhone()
+ │                         │                          │── If exists: update lastLoginAt
+ │                         │                          │── If not: create new CmsUser
+ │                         │◀── UserProfileResponse ──│
+ │                         │   { id, name, phone,     │
+ │                         │     email, newUser, ... } │
+ │                         │                          │
+ │                         │── Save to localStorage   │
+ │                         │── Pre-fill form fields   │
+ │◀── Show Form (Step 1) ─│   (if returning user)    │
+ │                         │                          │
+ │── Submit Complaint ────▶│                          │
+ │                         │── POST /complaints ────▶│
+ │                         │── PUT /users/profile ──▶│
+ │                         │   { name, email, addr }  │── Update CmsUser record
+ │                         │                          │
+ │◀── Success + RefNo. ───│                          │
+</code></pre>
+
+<h4>Track Complaint — Access Control Flow</h4>
+<pre><code>User                    Frontend                      Backend
+ │                         │                             │
+ │── Navigate to /track ──▶│                             │
+ │                         │── Check session (localStorage)
+ │                         │                             │
+ │  ┌─ IF session exists ─────────────────────────────────────────┐
+ │  │                      │── GET /complaints/by-phone/{phone} ─▶│
+ │  │                      │                             │         │
+ │  │  ┌─ IF complaints found ───────────────────────────────┐    │
+ │  │  │                   │◀── Array of complaints ─────────│    │
+ │  │  │                   │── isVerified = true             │    │
+ │  │  │                   │── Show complaints table         │    │
+ │  │  └─────────────────────────────────────────────────────┘    │
+ │  │  ┌─ IF empty array (no complaints) ───────────────────┐    │
+ │  │  │                   │── noComplaintsFound = true      │    │
+ │  │  │                   │── Show: "No complaints found"   │    │
+ │  │  │                   │── Do NOT allow login            │    │
+ │  │  └─────────────────────────────────────────────────────┘    │
+ │  │  ┌─ IF backend unreachable (error) ───────────────────┐    │
+ │  │  │                   │── isVerified = true (allow)     │    │
+ │  │  │                   │── Graceful fallback             │    │
+ │  │  └─────────────────────────────────────────────────────┘    │
+ │  └─────────────────────────────────────────────────────────────┘
+ │                         │                             │
+ │  ┌─ IF no session (fresh user) ────────────────────────────────┐
+ │  │                      │── Show OTP verification form    │    │
+ │  │── Enter Mobile + OTP▶│                             │         │
+ │  │                      │── GET /complaints/by-phone/{phone} ─▶│
+ │  │  ┌─ IF complaints found ───────────────────────────────┐    │
+ │  │  │                   │── loginWithOtp() → create session│   │
+ │  │  │                   │── isVerified = true             │    │
+ │  │  │                   │── Show complaints               │    │
+ │  │  └─────────────────────────────────────────────────────┘    │
+ │  │  ┌─ IF no complaints ─────────────────────────────────┐    │
+ │  │  │                   │── Block login                   │    │
+ │  │  │                   │── Show: "File complaint first"  │    │
+ │  │  │                   │── Reset to verification screen  │    │
+ │  │  └─────────────────────────────────────────────────────┘    │
+ │  └─────────────────────────────────────────────────────────────┘
+</code></pre>
+
+<h4>Logout — Global Header Button</h4>
+<pre><code>┌──────────────────────────────────────────────────────────────┐
+│  Header (top-strip, right side)                              │
+│  ┌────────┐ ┌──────────────────────┐ ┌──────────────────┐   │
+│  │ Avatar │ │ Name + Last Login    │ │ 🔓 Logout Button │   │
+│  │  (PI)  │ │ "Swati Rewagad"     │ │ (circular icon)  │   │
+│  └────────┘ │ "Last signed in..." │ └──────────────────┘   │
+│             └──────────────────────┘                         │
+└──────────────────────────────────────────────────────────────┘
+
+Logout action:
+1. Calls userSession.logout() → clears localStorage
+2. Redirects to "/" (home page)
+3. Header reverts to "Guest" display
+
+Key design decision:
+- Single logout button in header — visible on ALL pages when logged in
+- No duplicate logout buttons on individual pages
+- Consistent UX across Home, File Complaint, Track Complaint
+</code></pre>
+
+<h4>Home Page — Always-Visible Landing</h4>
+<pre><code>Page structure (regardless of login state):
+┌───────────────────────────────────────┐
+│  @if (isLoggedIn) → Welcome Banner    │  ← Only for logged-in users
+├───────────────────────────────────────┤
+│  Hero Section                         │  ← Always visible
+│  Quick Actions (File / Track)         │  ← Always visible
+│  Complaint Types                      │  ← Always visible
+│  What We Do + Statistics              │  ← Always visible
+│  Press Releases                       │  ← Always visible
+│  Education &amp; Awareness               │  ← Always visible
+│  FAQ Accordion                        │  ← Always visible
+└───────────────────────────────────────┘
+
+Welcome Banner (logged-in only):
+- Green gradient background
+- "Welcome back, {userName}"
+- Link to Track Complaint
+- "Resume Draft" button (if draft exists)
+</code></pre>
+
+<h4>Draft Saving Flow</h4>
+<pre><code>1. User starts filling complaint form (any step)
+2. User navigates away without submitting
+3. ngOnDestroy() fires → saveDraft() stores form data in localStorage
+4. Draft key: "cms_draft_complaint" → { phone, savedAt, data: { formFieldValues } }
+5. User returns → HomeComponent shows "Resume Draft" button
+6. Click "Resume Draft" → navigates to /file-complaint?resume=draft
+7. Component detects query param + existing session
+8. Skips pre-filing modal + OTP (already verified)
+9. Loads saved form values into form controls
+10. User continues from where they left off
+</code></pre>
+
+<h4>Frontend Service: <code>UserSessionService</code></h4>
+<table>
+<thead>
+<tr><th>Method</th><th>Description</th></tr>
+</thead>
+<tbody>
+<tr><td><code>loginWithOtp(phone)</code></td><td>Calls backend POST /users/login, stores session in localStorage</td></tr>
+<tr><td><code>updateProfile(data)</code></td><td>Calls backend PUT /users/profile/{phone}, syncs session locally</td></tr>
+<tr><td><code>logout()</code></td><td>Clears localStorage session</td></tr>
+<tr><td><code>saveDraft(formData)</code></td><td>Saves current form state to localStorage</td></tr>
+<tr><td><code>getDraft()</code></td><td>Returns saved draft if it belongs to current user</td></tr>
+<tr><td><code>clearDraft()</code></td><td>Removes draft after successful submission</td></tr>
+<tr><td><code>isLoggedIn</code></td><td>Getter — checks if session exists</td></tr>
+<tr><td><code>userName</code></td><td>Getter — returns user's display name</td></tr>
+<tr><td><code>userPhone</code></td><td>Getter — returns phone for API calls</td></tr>
+</tbody>
+</table>
+
+<h4>Frontend Component: <code>TrackComplaintComponent</code> — Access Control</h4>
+<table>
+<thead>
+<tr><th>Property / Method</th><th>Description</th></tr>
+</thead>
+<tbody>
+<tr><td><code>isVerified</code></td><td>Boolean — controls showing verification screen vs complaints table</td></tr>
+<tr><td><code>noComplaintsFound</code></td><td>Boolean — true when backend confirms no complaints for this phone</td></tr>
+<tr><td><code>verifyOtp()</code></td><td>After OTP entry: checks backend for existing complaints → allows login only if complaints exist</td></tr>
+<tr><td><code>ngOnInit()</code></td><td>If session exists: verifies complaints exist before showing table; if backend down: allows through (graceful)</td></tr>
+<tr><td><code>logout()</code></td><td>Clears session, resets verification state, regenerates CAPTCHA</td></tr>
+</tbody>
+</table>
+
+<h4>Frontend Component: <code>HeaderComponent</code> — Logout</h4>
+<table>
+<thead>
+<tr><th>Method</th><th>Description</th></tr>
+</thead>
+<tbody>
+<tr><td><code>logout()</code></td><td>Calls <code>userSession.logout()</code> then <code>window.location.href = '/'</code> to redirect home</td></tr>
+</tbody>
+</table>
+
+<h4>Backend Service: <code>CmsUserService</code></h4>
+<table>
+<thead>
+<tr><th>Method</th><th>Description</th></tr>
+</thead>
+<tbody>
+<tr><td><code>loginOrRegister(phone)</code></td><td>Finds or creates user by phone, updates lastLoginAt</td></tr>
+<tr><td><code>getByPhone(phone)</code></td><td>Returns user profile</td></tr>
+<tr><td><code>updateProfile(phone, req)</code></td><td>Updates user's name, email, address, pincode, state, district</td></tr>
+</tbody>
+</table>
+
+<hr />
+<h2 id="project-structure">Project Structure</h2>
+<h3 id="backend">Backend</h3>
+<pre><code>cms-backend/
+├── src/main/java/com/hrms/cms/
+│   ├── CmsApplication.java              # Main Spring Boot entry point
+│   ├── config/
+│   │   ├── AsyncConfig.java             # Thread pool (10 core, 50 max)
+│   │   ├── CorsConfig.java             # CORS for localhost:4200-4202
+│   │   ├── DataInitializer.java        # Seeds categories, banks, form schema, sample complaints
+│   │   ├── FileStorageConfig.java      # File storage properties bean
+│   │   ├── GlobalExceptionHandler.java # @RestControllerAdvice error handling
+│   │   └── RateLimitFilter.java        # Bucket4j per-IP rate limiting
+│   ├── controller/
+│   │   ├── BankController.java         # GET /api/banks
+│   │   ├── CategorizationRuleController.java # CRUD /api/categorization-rules
+│   │   ├── CategoryController.java     # GET /api/categories
+│   │   ├── ComplaintController.java    # CRUD /api/complaints
+│   │   ├── DashboardController.java    # GET /api/dashboard
+│   │   ├── EmailSimulationController.java # /api/email-simulation
+│   │   ├── FileUploadController.java   # /api/files (upload/download/stream)
+│   │   ├── FormConfigController.java   # /api/form-config
+│   │   ├── OcrController.java          # POST /api/ocr/extract (AI OCR)
+│   │   └── UserController.java         # /api/users (login, profile)
+│   ├── service/ocr/
+│   │   ├── OcrProvider.java            # Strategy interface
+│   │   ├── OcrResult.java              # OCR response DTO
+│   │   ├── OcrService.java             # Delegates to active provider
+│   │   ├── GeminiOcrProvider.java      # Google Gemini implementation
+│   │   └── OpenAiOcrProvider.java      # OpenAI GPT-4o implementation
+│   ├── dto/
+│   │   ├── CategorizationResult.java   # Auto-categorization result DTO
+│   │   ├── CategorizationRuleRequest.java # Rule CRUD request DTO
+│   │   ├── ChunkUploadResponse.java    # Chunk upload status response
+│   │   ├── DashboardResponse.java      # Dashboard statistics DTO
+│   │   ├── EmailReplyWithFormRequest.java # Form reply request
+│   │   ├── FileComplaintRequest.java   # Complaint filing request
+│   │   ├── IncomingEmailRequest.java   # Incoming email request
+│   │   ├── UpdateComplaintRequest.java # Complaint update request
+│   │   ├── UserLoginRequest.java       # Login request (phone + otp)
+│   │   ├── UserProfileResponse.java    # User profile response DTO
+│   │   └── UserUpdateRequest.java      # Profile update request DTO
+│   ├── entity/
+│   │   ├── Bank.java                   # Bank/financial institution
+│   │   ├── CategorizationRule.java    # Auto-categorization keyword rules
+│   │   ├── CmsUser.java              # User profile (phone-based identity)
+│   │   ├── Complaint.java             # Core complaint entity
+│   │   ├── ComplaintAttachment.java   # File attachment metadata
+│   │   ├── ComplaintCategory.java     # Hierarchical categories
+│   │   ├── ComplaintTimeline.java     # Audit trail entries
+│   │   ├── FormConfig.java           # Dynamic form schemas
+│   │   └── SimulatedEmail.java       # Email thread messages
+│   ├── repository/
+│   │   ├── BankRepository.java
+│   │   ├── CategorizationRuleRepository.java
+│   │   ├── CmsUserRepository.java     # findByPhone, existsByPhone
+│   │   ├── ComplaintAttachmentRepository.java
+│   │   ├── ComplaintCategoryRepository.java
+│   │   ├── ComplaintRepository.java   # findByComplainantPhone, search
+│   │   ├── ComplaintTimelineRepository.java
+│   │   ├── FormConfigRepository.java
+│   │   └── SimulatedEmailRepository.java
+│   └── service/
+│       ├── CategorizationRuleService.java # Rule engine + categorize()
+│       ├── CmsUserService.java        # Login/register + profile update
+│       ├── ComplaintService.java      # Core business logic
+│       ├── EmailSimulationService.java # Email flow logic
+│       ├── FileStorageService.java    # File I/O operations
+│       └── FormConfigService.java     # Form schema CRUD
+├── src/main/resources/
+│   └── application.yml                # Multi-profile config
+└── src/test/                          # Unit tests (140 tests)
+</code></pre>
+<h3 id="frontend">Frontend</h3>
+<pre><code>cms-frontend/
+├── src/app/
+│   ├── app.routes.ts                  # Lazy-loaded routes
+│   ├── components/
+│   │   ├── admin/                     # Back office hub (/admin, direct URL only)
+│   │   ├── business-rules/            # Auto-categorization rule CRUD UI
+│   │   ├── dynamic-field/             # Generic form field renderer
+│   │   ├── email-simulation/          # Email intake UI
+│   │   ├── file-complaint/            # Multi-step complaint form + OTP + draft
+│   │   ├── footer/                    # App footer
+│   │   ├── header/                    # App header with user session display
+│   │   ├── home/                      # Dashboard (logged-in) + Landing (guest)
+│   │   ├── layout/                    # Shell layout (header+footer+router)
+│   │   ├── physical-complaint/        # AI-assisted physical complaint (OCR)
+│   │   └── track-complaint/           # Complaint tracking page
+│   ├── interceptors/
+│   │   ├── rate-limit.interceptor.ts  # Client-side rate limiting
+│   │   └── security.interceptor.ts    # CSRF token + security headers
+│   ├── models/
+│   │   └── form-schema.model.ts       # TypeScript interfaces for form schema
+│   ├── pipes/
+│   │   └── translate.pipe.ts          # i18n pipe
+│   ├── services/
+│   │   ├── accessibility.service.ts   # A11y preferences
+│   │   ├── categorization-rule.service.ts # Rule engine API client
+│   │   ├── cms.service.ts             # HTTP client for all complaint APIs
+│   │   ├── complaint-parser.service.ts # NLP field extraction
+│   │   ├── complaint-store.service.ts  # Client-side complaint state
+│   │   ├── complaint-text-processor.service.ts # Language detection + translation
+│   │   ├── file-cache.service.ts      # IndexedDB file caching
+│   │   ├── file-upload.service.ts     # Chunked upload logic
+│   │   ├── input-sanitizer.service.ts # XSS/SQL/path traversal protection
+│   │   ├── ocr.service.ts            # Document text extraction
+│   │   ├── translate.service.ts       # i18n translations
+│   │   ├── tts.service.ts            # Text-to-Speech toggle
+│   │   └── user-session.service.ts    # User auth, session, draft management
+│   └── validators/
+│       └── form-validators.ts         # Secure form validators + file constants
+└── src/test-mocks/                    # Jest test mocking infrastructure
+</code></pre>
+<hr />
+<h2 id="api-reference">API Reference</h2>
+<h3 id="base-url-httplocalhost8082api">Base URL: <code>http://localhost:8082/api</code></h3>
+<h3 id="complaints">Complaints</h3>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Endpoint</th>
+<th>Description</th>
+<th>Parameters</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GET</td>
+<td><code>/complaints</code></td>
+<td>List all complaints</td>
+<td><code>?status=pending&amp;search=query</code></td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/complaints/paged</code></td>
+<td>Paginated list</td>
+<td><code>?page=0&amp;size=20&amp;status=&amp;search=</code></td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/complaints/{id}</code></td>
+<td>Get by ID</td>
+<td>—</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/complaints/track/{number}</code></td>
+<td>Track by complaint number</td>
+<td>—</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/complaints</code></td>
+<td>File new complaint</td>
+<td>Body: <code>FileComplaintRequest</code></td>
+</tr>
+<tr>
+<td>PUT</td>
+<td><code>/complaints/{id}</code></td>
+<td>Update complaint</td>
+<td>Body: <code>UpdateComplaintRequest</code></td>
+</tr>
+<tr>
+<td>DELETE</td>
+<td><code>/complaints/{id}</code></td>
+<td>Delete complaint</td>
+<td>—</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/complaints/{id}/timeline</code></td>
+<td>Get audit timeline</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<h4 id="filecomplaintrequest-post-body">FileComplaintRequest (POST Body)</h4>
+<pre><code class="language-json">{
+  &quot;complainantName&quot;: &quot;John Doe&quot;,
+  &quot;complainantEmail&quot;: &quot;john@example.com&quot;,
+  &quot;complainantPhone&quot;: &quot;9876543210&quot;,
+  &quot;complainantAddress&quot;: &quot;123 Main St, Mumbai&quot;,
+  &quot;bankId&quot;: 1,
+  &quot;bankBranch&quot;: &quot;Main Branch&quot;,
+  &quot;accountNumber&quot;: &quot;1234567890&quot;,
+  &quot;categoryId&quot;: 1,
+  &quot;subject&quot;: &quot;ATM transaction failed&quot;,
+  &quot;description&quot;: &quot;Money debited but not dispensed&quot;,
+  &quot;reliefSought&quot;: &quot;Refund of debited amount&quot;,
+  &quot;priority&quot;: &quot;high&quot;,
+  &quot;filingType&quot;: &quot;online&quot;,
+  &quot;bankComplaintReference&quot;: &quot;REF-123&quot;,
+  &quot;bankComplaintDate&quot;: &quot;2026-01-15&quot;
+}
+</code></pre>
+<h4 id="updatecomplaintrequest-put-body">UpdateComplaintRequest (PUT Body)</h4>
+<pre><code class="language-json">{
+  &quot;status&quot;: &quot;resolved&quot;,
+  &quot;priority&quot;: &quot;high&quot;,
+  &quot;assignedOfficer&quot;: &quot;Officer Smith&quot;,
+  &quot;remarks&quot;: &quot;Issue resolved after investigation&quot;
+}
+</code></pre>
+<h3 id="ocr-ai">OCR (AI-Powered Text Extraction)</h3>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Endpoint</th>
+<th>Description</th>
+<th>Parameters</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>POST</td>
+<td><code>/ocr/extract</code></td>
+<td>Extract text from image using AI (Gemini/OpenAI)</td>
+<td>Multipart: <code>file</code> (image/pdf)</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/ocr/provider</code></td>
+<td>Get active OCR provider name</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<h4 id="ocr-response">OCR Extract Response</h4>
+<pre><code class="language-json">{
+  &quot;rawText&quot;: &quot;Extracted text from the scanned letter...&quot;,
+  &quot;language&quot;: &quot;Hindi&quot;,
+  &quot;confidence&quot;: 92,
+  &quot;provider&quot;: &quot;gemini&quot;
+}
+</code></pre>
+<h4 id="switching-ocr-provider">Switching OCR Provider</h4>
+<pre><code class="language-yaml"># application.yml — switch to OpenAI
+cms:
+  ocr:
+    provider: openai      # Change from &quot;gemini&quot; to &quot;openai&quot;
+    openai:
+      api-key: sk-xxxxx   # Your OpenAI key
+      model: gpt-4o       # Or gpt-4o-mini for cheaper
+</code></pre>
+<h3 id="dashboard">Dashboard</h3>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Endpoint</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GET</td>
+<td><code>/dashboard</code></td>
+<td>Get complaint statistics</td>
+</tr>
+</tbody>
+</table>
+<h4 id="response">Response</h4>
+<pre><code class="language-json">{
+  &quot;totalComplaints&quot;: 100,
+  &quot;pendingComplaints&quot;: 30,
+  &quot;inProgressComplaints&quot;: 20,
+  &quot;resolvedComplaints&quot;: 25,
+  &quot;closedComplaints&quot;: 15,
+  &quot;escalatedComplaints&quot;: 10,
+  &quot;highPriority&quot;: 20,
+  &quot;mediumPriority&quot;: 50,
+  &quot;lowPriority&quot;: 30
+}
+</code></pre>
+<h3 id="file-upload">File Upload</h3>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Endpoint</th>
+<th>Description</th>
+<th>Parameters</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>POST</td>
+<td><code>/files/upload/chunk</code></td>
+<td>Upload file chunk</td>
+<td>multipart: <code>file</code>, params: <code>uploadId, chunkIndex, totalChunks, fileName, complaintNumber, complaintId, totalFileSize</code></td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/files/upload</code></td>
+<td>Single file upload</td>
+<td>multipart: <code>file</code>, params: <code>complaintNumber, complaintId</code></td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/files/download/{id}</code></td>
+<td>Download attachment</td>
+<td>Returns file with Content-Disposition</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/files/stream/{id}</code></td>
+<td>Stream media (Range support)</td>
+<td><code>Range: bytes=0-1023</code> header</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/files/complaint/{id}</code></td>
+<td>List attachments for complaint</td>
+<td>—</td>
+</tr>
+<tr>
+<td>DELETE</td>
+<td><code>/files/{id}</code></td>
+<td>Delete attachment</td>
+<td>—</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/files/cleanup</code></td>
+<td>Trigger stale upload cleanup</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<h4 id="chunkuploadresponse">ChunkUploadResponse</h4>
+<pre><code class="language-json">{
+  &quot;uploadId&quot;: &quot;uuid-string&quot;,
+  &quot;chunkIndex&quot;: 2,
+  &quot;totalChunks&quot;: 5,
+  &quot;complete&quot;: true,
+  &quot;attachmentId&quot;: 10,
+  &quot;fileName&quot;: &quot;document.pdf&quot;,
+  &quot;storagePath&quot;: &quot;CMS-20260515-ABC123/uuid_document.pdf&quot;,
+  &quot;message&quot;: &quot;Upload complete&quot;
+}
+</code></pre>
+<h3 id="banks">Banks</h3>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Endpoint</th>
+<th>Description</th>
+<th>Parameters</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GET</td>
+<td><code>/banks</code></td>
+<td>List all active banks</td>
+<td><code>?type=public</code> or <code>?type=private</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="categories">Categories</h3>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Endpoint</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GET</td>
+<td><code>/categories</code></td>
+<td>All active categories</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/categories/root</code></td>
+<td>Root (top-level) categories</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/categories/{parentId}/sub</code></td>
+<td>Sub-categories under parent</td>
+</tr>
+</tbody>
+</table>
+<h3 id="form-configuration">Form Configuration</h3>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Endpoint</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GET</td>
+<td><code>/form-config/{formKey}</code></td>
+<td>Get form JSON schema</td>
+</tr>
+<tr>
+<td>PUT</td>
+<td><code>/form-config/{formKey}</code></td>
+<td>Update form schema (JSON body)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="email-simulation">Email Simulation</h3>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Endpoint</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>POST</td>
+<td><code>/email-simulation/receive</code></td>
+<td>Simulate incoming email</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/email-simulation/reply-with-form</code></td>
+<td>Submit form reply</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/email-simulation/threads</code></td>
+<td>List all email threads</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/email-simulation/threads/{threadId}</code></td>
+<td>Get single thread</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/email-simulation/inbox</code></td>
+<td>Get inbound emails</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/email-simulation/sent</code></td>
+<td>Get outbound emails</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/email-simulation/form-template/{number}</code></td>
+<td>Get form template for complaint</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/email-simulation/stats</code></td>
+<td>Email statistics</td>
+</tr>
+</tbody>
+</table>
+<h3 id="user-management">User Management</h3>
+<table>
+<thead>
+<tr><th>Method</th><th>Endpoint</th><th>Description</th><th>Parameters</th></tr>
+</thead>
+<tbody>
+<tr><td>POST</td><td><code>/users/login</code></td><td>Login or register user by phone</td><td>Body: <code>{ "phone": "9876543210", "otp": "123456" }</code></td></tr>
+<tr><td>GET</td><td><code>/users/profile/{phone}</code></td><td>Get user profile by phone</td><td>—</td></tr>
+<tr><td>PUT</td><td><code>/users/profile/{phone}</code></td><td>Update user profile</td><td>Body: <code>UserUpdateRequest</code></td></tr>
+<tr><td>GET</td><td><code>/complaints/by-phone/{phone}</code></td><td>Get all complaints by phone</td><td>—</td></tr>
+</tbody>
+</table>
+<h4>UserProfileResponse</h4>
+<pre><code class="language-json">{
+  "id": 1,
+  "name": "Rahul Jain",
+  "phone": "9876543210",
+  "email": "rahul@example.com",
+  "address": "123 Main St, Mumbai",
+  "pincode": "400001",
+  "state": "MH",
+  "district": "mumbai",
+  "newUser": false,
+  "lastLoginAt": "2026-05-22T10:30:00",
+  "createdAt": "2026-05-15T08:00:00"
+}
+</code></pre>
+<h4>UserUpdateRequest (PUT Body)</h4>
+<pre><code class="language-json">{
+  "name": "Rahul Jain",
+  "email": "rahul@example.com",
+  "address": "456 Park Road, Pune",
+  "pincode": "411001",
+  "state": "MH",
+  "district": "pune"
+}
+</code></pre>
+<h3 id="categorization-rules-api">Categorization Rules</h3>
+<table>
+<thead>
+<tr><th>Method</th><th>Endpoint</th><th>Description</th><th>Parameters</th></tr>
+</thead>
+<tbody>
+<tr><td>GET</td><td><code>/categorization-rules</code></td><td>List all rules</td><td>—</td></tr>
+<tr><td>POST</td><td><code>/categorization-rules</code></td><td>Create new rule</td><td>Body: <code>CategorizationRuleRequest</code></td></tr>
+<tr><td>PUT</td><td><code>/categorization-rules/{id}</code></td><td>Update rule</td><td>Body: <code>CategorizationRuleRequest</code></td></tr>
+<tr><td>DELETE</td><td><code>/categorization-rules/{id}</code></td><td>Delete rule</td><td>—</td></tr>
+<tr><td>POST</td><td><code>/categorization-rules/categorize</code></td><td>Test categorization</td><td>Body: <code>{ "text": "...", "source": "all" }</code></td></tr>
+</tbody>
+</table>
+<h4>CategorizationRuleRequest</h4>
+<pre><code class="language-json">{
+  "ruleName": "ATM Transaction Issues",
+  "keywords": "atm,failed,debited,not dispensed,cash",
+  "categoryId": 3,
+  "priority": "high",
+  "status": "active",
+  "source": "all",
+  "ruleOrder": 1
+}
+</code></pre>
+<h4>Categorize Response (Array)</h4>
+<pre><code class="language-json">[
+  {
+    "categoryId": 3,
+    "categoryName": "ATM / Debit Card Issues",
+    "matchedRule": "ATM Transaction Issues",
+    "matchedKeywords": ["atm", "failed", "debited"],
+    "priority": "high",
+    "confidence": 0.85
+  }
+]
+</code></pre>
+<hr />
+<h2 id="security-validation">Security &amp; Validation</h2>
+<h3 id="backend-security">Backend Security</h3>
+<table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>Mechanism</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Network</td>
+<td>CORS Filter</td>
+<td>Only allows <code>localhost:4200-4202</code> origins</td>
+</tr>
+<tr>
+<td>Transport</td>
+<td>Rate Limiting</td>
+<td>Bucket4j: 100 req/sec + 3000 req/min per IP</td>
+</tr>
+<tr>
+<td>Input</td>
+<td>GlobalExceptionHandler</td>
+<td>Catches all exceptions, returns structured errors</td>
+</tr>
+<tr>
+<td>Input</td>
+<td>File type validation</td>
+<td>Allowlist: <code>pdf,png,jpg,jpeg,doc,docx,xls,xlsx,txt,csv,zip,mp4,webm,ogg</code></td>
+</tr>
+<tr>
+<td>Input</td>
+<td>File size validation</td>
+<td>Max 50MB per file, max 10 files per complaint</td>
+</tr>
+<tr>
+<td>Storage</td>
+<td>File name sanitization</td>
+<td>Strips all non-alphanumeric chars except <code>._-</code></td>
+</tr>
+<tr>
+<td>Storage</td>
+<td>UUID file naming</td>
+<td>Stored files get UUID prefix to prevent collisions</td>
+</tr>
+<tr>
+<td>Data</td>
+<td>JPA parameterized queries</td>
+<td>Prevents SQL injection</td>
+</tr>
+<tr>
+<td>Data</td>
+<td>Transactional operations</td>
+<td><code>@Transactional</code> on all service methods</td>
+</tr>
+</tbody>
+</table>
+<h3 id="frontend-security">Frontend Security</h3>
+<table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>Mechanism</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>HTTP</td>
+<td>Security Interceptor</td>
+<td>Adds CSRF token, <code>X-Requested-With</code>, <code>X-Content-Type-Options</code></td>
+</tr>
+<tr>
+<td>HTTP</td>
+<td>Rate Limit Interceptor</td>
+<td>Client-side throttling per endpoint (5 complaints/min, 20 uploads/min)</td>
+</tr>
+<tr>
+<td>Input</td>
+<td>InputSanitizerService</td>
+<td>XSS stripping, SQL injection detection, path traversal detection</td>
+</tr>
+<tr>
+<td>Input</td>
+<td>SecureValidators</td>
+<td>Form validation with XSS/SQL checks on every field</td>
+</tr>
+<tr>
+<td>Input</td>
+<td>File magic byte validation</td>
+<td>Validates file headers match declared type</td>
+</tr>
+<tr>
+<td>Input</td>
+<td>Double extension detection</td>
+<td>Blocks <code>file.exe.pdf</code> tricks</td>
+</tr>
+<tr>
+<td>Input</td>
+<td>Complaint number sanitization</td>
+<td>Only <code>[a-zA-Z0-9-]</code>, max 30 chars</td>
+</tr>
+</tbody>
+</table>
+<h3 id="validation-rules-form-validators">Validation Rules (Form Validators)</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Rule</th>
+<th>Max Length</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Name</td>
+<td>Unicode letters, spaces, <code>.',-</code> only</td>
+<td>100</td>
+</tr>
+<tr>
+<td>Email</td>
+<td>RFC 5322 format, local ≤64, domain ≤253</td>
+<td>254</td>
+</tr>
+<tr>
+<td>Phone</td>
+<td>Indian mobile: starts 6-9, exactly 10 digits</td>
+<td>10</td>
+</tr>
+<tr>
+<td>Pincode</td>
+<td>6 digits, cannot start with 0</td>
+<td>6</td>
+</tr>
+<tr>
+<td>Account Number</td>
+<td>Alphanumeric, 6-20 chars</td>
+<td>20</td>
+</tr>
+<tr>
+<td>Amount</td>
+<td>Up to 12 digits + 2 decimals, no negatives</td>
+<td>15</td>
+</tr>
+<tr>
+<td>Description</td>
+<td>Max 5000 chars, XSS checked</td>
+<td>5000</td>
+</tr>
+<tr>
+<td>Subject</td>
+<td>Max 200 chars</td>
+<td>200</td>
+</tr>
+<tr>
+<td>Address</td>
+<td>Max 500 chars</td>
+<td>500</td>
+</tr>
+<tr>
+<td>Complaint Number</td>
+<td>Pattern: <code>XX-XXXXXXXX-XXXXXX</code></td>
+<td>30</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="caching-strategy">Caching Strategy</h2>
+<table>
+<thead>
+<tr>
+<th>Cache Name</th>
+<th>TTL</th>
+<th>Evicted On</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>dashboard</code></td>
+<td>2 min</td>
+<td>fileComplaint, updateComplaint</td>
+<td>Dashboard stats</td>
+</tr>
+<tr>
+<td><code>categories</code></td>
+<td>1 hour</td>
+<td>—</td>
+<td>Active categories list</td>
+</tr>
+<tr>
+<td><code>categories-root</code></td>
+<td>1 hour</td>
+<td>—</td>
+<td>Root categories</td>
+</tr>
+<tr>
+<td><code>categories-sub</code></td>
+<td>1 hour (keyed by parentId)</td>
+<td>—</td>
+<td>Sub-categories</td>
+</tr>
+<tr>
+<td><code>banks</code></td>
+<td>1 hour</td>
+<td>—</td>
+<td>Active banks</td>
+</tr>
+<tr>
+<td><code>banks-by-type</code></td>
+<td>1 hour (keyed by type)</td>
+<td>—</td>
+<td>Banks filtered by type</td>
+</tr>
+<tr>
+<td><code>form-config</code></td>
+<td>6 hours (keyed by formKey)</td>
+<td>updateSchema</td>
+<td>Form JSON schemas</td>
+</tr>
+<tr>
+<td><code>email-stats</code></td>
+<td>3 min</td>
+<td>receiveEmail, receiveFormReply</td>
+<td>Email thread statistics</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Test/Dev</strong>: Cache disabled (<code>spring.cache.type: none</code> or <code>simple</code>)
+<strong>Production</strong>: Redis with JSON serialization</p>
+<hr />
+<h2 id="file-upload-system">File Upload System</h2>
+<h3 id="chunked-upload-flow">Chunked Upload Flow</h3>
+<pre><code>Frontend                              Backend
+   │                                     │
+   │  POST /files/upload/chunk           │
+   │  (chunk 0/N, uploadId=null)         │
+   │────────────────────────────────────▶│
+   │                                     │ Generate uploadId
+   │                                     │ Save chunk to temp-chunks/{uploadId}/chunk_00000
+   │  Response: {uploadId, complete:false}│
+   │◀────────────────────────────────────│
+   │                                     │
+   │  POST /files/upload/chunk           │
+   │  (chunk 1/N, uploadId=xxx)          │
+   │────────────────────────────────────▶│
+   │                                     │ Save chunk_00001
+   │  ...repeat until last chunk...      │
+   │                                     │
+   │  POST /files/upload/chunk           │
+   │  (chunk N-1/N, uploadId=xxx)        │
+   │────────────────────────────────────▶│
+   │                                     │ All N chunks received
+   │                                     │ assembleChunks() via FileChannel
+   │                                     │ computeChecksum(SHA-256)
+   │                                     │ Save ComplaintAttachment to DB
+   │                                     │ Cleanup temp chunks
+   │  Response: {complete:true,          │
+   │   attachmentId, storagePath}        │
+   │◀────────────────────────────────────│
+</code></pre>
+<h3 id="file-storage-layout">File Storage Layout</h3>
+<pre><code>{cms.attachments.root-path}/
+├── temp-chunks/
+│   ├── {uploadId-1}/
+│   │   ├── chunk_00000
+│   │   ├── chunk_00001
+│   │   └── ...
+│   └── {uploadId-2}/
+│       └── ...
+├── CMS-20260515-ABC123/
+│   ├── uuid1_document.pdf
+│   └── uuid2_photo.jpg
+└── CMS-20260516-DEF456/
+    └── uuid3_report.xlsx
+</code></pre>
+<hr />
+<h2 id="configuration-guide">Configuration Guide</h2>
+<h3 id="environment-variables">Environment Variables</h3>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>DB_URL</code></td>
+<td><code>jdbc:mysql://localhost:3306/cms_db</code></td>
+<td>Database JDBC URL</td>
+</tr>
+<tr>
+<td><code>DB_USERNAME</code></td>
+<td><code>root</code></td>
+<td>Database username</td>
+</tr>
+<tr>
+<td><code>DB_PASSWORD</code></td>
+<td><code>root</code></td>
+<td>Database password</td>
+</tr>
+<tr>
+<td><code>REDIS_HOST</code></td>
+<td><code>localhost</code></td>
+<td>Redis host</td>
+</tr>
+<tr>
+<td><code>REDIS_PORT</code></td>
+<td><code>6379</code></td>
+<td>Redis port</td>
+</tr>
+<tr>
+<td><code>CMS_ATTACHMENTS_PATH</code></td>
+<td><code>C:/cms-attachments</code></td>
+<td>File storage root</td>
+</tr>
+<tr>
+<td><code>CMS_MAX_FILE_SIZE</code></td>
+<td><code>52428800</code> (50MB)</td>
+<td>Max file size in bytes</td>
+</tr>
+<tr>
+<td><code>CMS_CHUNK_SIZE</code></td>
+<td><code>5242880</code> (5MB)</td>
+<td>Chunk size for uploads</td>
+</tr>
+<tr>
+<td><code>CMS_ALLOWED_TYPES</code></td>
+<td><code>pdf,png,jpg,...</code></td>
+<td>Comma-separated allowed extensions</td>
+</tr>
+<tr>
+<td><code>CMS_MAX_FILES</code></td>
+<td><code>10</code></td>
+<td>Max files per complaint</td>
+</tr>
+<tr>
+<td><code>RATE_LIMIT_RPS</code></td>
+<td><code>100</code></td>
+<td>API requests per second per IP</td>
+</tr>
+<tr>
+<td><code>OCR_PROVIDER</code></td>
+<td><code>gemini</code></td>
+<td>OCR provider: <code>gemini</code> or <code>openai</code></td>
+</tr>
+<tr>
+<td><code>GEMINI_API_KEY</code></td>
+<td>(empty)</td>
+<td>Google Gemini API key (free at aistudio.google.com/apikey)</td>
+</tr>
+<tr>
+<td><code>GEMINI_MODEL</code></td>
+<td><code>gemini-2.0-flash</code></td>
+<td>Gemini model for OCR</td>
+</tr>
+<tr>
+<td><code>OPENAI_API_KEY</code></td>
+<td>(empty)</td>
+<td>OpenAI API key (for future use)</td>
+</tr>
+<tr>
+<td><code>OPENAI_MODEL</code></td>
+<td><code>gpt-4o</code></td>
+<td>OpenAI model for OCR</td>
+</tr>
+</tbody>
+</table>
+<h3 id="profiles">Profiles</h3>
+<table>
+<thead>
+<tr>
+<th>Profile</th>
+<th>Database</th>
+<th>Cache</th>
+<th>Use Case</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>(default)</td>
+<td>MySQL</td>
+<td>Redis</td>
+<td>Standard deployment</td>
+</tr>
+<tr>
+<td><code>dev</code></td>
+<td>H2 (in-memory)</td>
+<td>Simple (in-memory)</td>
+<td>Local development</td>
+</tr>
+<tr>
+<td><code>prod</code></td>
+<td>MySQL (SSL, 100 pool)</td>
+<td>Redis (pooled)</td>
+<td>Production</td>
+</tr>
+</tbody>
+</table>
+<h3 id="running-locally">Running Locally</h3>
+<pre><code class="language-bash"># Backend (dev profile with H2)
+cd cms-backend
+mvn spring-boot:run -Dspring-boot.run.profiles=dev
+
+# Backend (default with MySQL + Redis)
+cd cms-backend
+mvn spring-boot:run
+
+# Frontend
+cd cms-frontend
+ng serve --port 4200
+</code></pre>
+<hr />
+<h2 id="test-coverage">Test Coverage</h2>
+<h3 id="backend-140-tests-junit-5-mockito">Backend (140 tests, JUnit 5 + Mockito)</h3>
+<table>
+<thead>
+<tr>
+<th>Test Class</th>
+<th>Tests</th>
+<th>Coverage Area</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ComplaintServiceTest</code></td>
+<td>35</td>
+<td>All CRUD, dashboard, categories, banks, timeline</td>
+</tr>
+<tr>
+<td><code>FileStorageServiceTest</code></td>
+<td>17</td>
+<td>Chunk upload, single upload, delete, cleanup</td>
+</tr>
+<tr>
+<td><code>EmailSimulationServiceTest</code></td>
+<td>17</td>
+<td>Email receive/reply, threads, stats, templates</td>
+</tr>
+<tr>
+<td><code>FormConfigServiceTest</code></td>
+<td>6</td>
+<td>Schema get/save/update, invalid JSON handling</td>
+</tr>
+<tr>
+<td><code>ComplaintControllerTest</code></td>
+<td>14</td>
+<td>All REST endpoints via MockMvc</td>
+</tr>
+<tr>
+<td><code>FileUploadControllerTest</code></td>
+<td>11</td>
+<td>Upload/download/stream/delete endpoints</td>
+</tr>
+<tr>
+<td><code>EmailSimulationControllerTest</code></td>
+<td>8</td>
+<td>All email simulation endpoints</td>
+</tr>
+<tr>
+<td><code>DashboardControllerTest</code></td>
+<td>1</td>
+<td>Dashboard endpoint</td>
+</tr>
+<tr>
+<td><code>BankControllerTest</code></td>
+<td>2</td>
+<td>Bank listing with type filter</td>
+</tr>
+<tr>
+<td><code>CategoryControllerTest</code></td>
+<td>3</td>
+<td>Category tree endpoints</td>
+</tr>
+<tr>
+<td><code>FormConfigControllerTest</code></td>
+<td>3</td>
+<td>Form schema CRUD endpoints</td>
+</tr>
+<tr>
+<td><code>FileStorageConfigTest</code></td>
+<td>20</td>
+<td>Allowed types, paths, init, defaults</td>
+</tr>
+</tbody>
+</table>
+<h3 id="frontend-16-test-suites-312-tests-jest">Frontend (16 test suites, 312 tests, Jest)</h3>
+<table>
+<thead>
+<tr>
+<th>Test File</th>
+<th>Tests</th>
+<th>Coverage Area</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>complaint-parser.service.spec.ts</code></td>
+<td>Entity, category, bank, state detection</td>
+<td></td>
+</tr>
+<tr>
+<td><code>complaint-text-processor.service.spec.ts</code></td>
+<td>Language detection, Hindi→English</td>
+<td></td>
+</tr>
+<tr>
+<td><code>translate.service.spec.ts</code></td>
+<td>Language switching, key translation</td>
+<td></td>
+</tr>
+<tr>
+<td><code>accessibility.service.spec.ts</code></td>
+<td>Contrast, motion, font size</td>
+<td></td>
+</tr>
+<tr>
+<td><code>rate-limit.interceptor.spec.ts</code></td>
+<td>GET passthrough, POST limiting, 429</td>
+<td></td>
+</tr>
+<tr>
+<td><code>security.interceptor.spec.ts</code></td>
+<td>CSRF injection, security headers</td>
+<td></td>
+</tr>
+<tr>
+<td><code>cms.service.spec.ts</code></td>
+<td>All HTTP API calls</td>
+<td></td>
+</tr>
+<tr>
+<td><code>file-upload.service.spec.ts</code></td>
+<td>Stream URL, cancel, clear</td>
+<td></td>
+</tr>
+<tr>
+<td><code>input-sanitizer.service.spec.ts</code></td>
+<td>XSS, SQL, path traversal</td>
+<td></td>
+</tr>
+<tr>
+<td><code>form-validators.spec.ts</code></td>
+<td>All secure validators</td>
+<td></td>
+</tr>
+<tr>
+<td><code>translate.pipe.spec.ts</code></td>
+<td>Pipe transform</td>
+<td></td>
+</tr>
+<tr>
+<td><code>ocr.service.spec.ts</code></td>
+<td>Observable interface</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="running-tests">Running Tests</h3>
+<pre><code class="language-bash"># Backend
+cd cms-backend
+mvn test
+
+# Frontend
+cd cms-frontend
+npx jest --coverage
+</code></pre>
+<hr />
+<h2 id="developer-modification-guide">Developer Modification Guide</h2>
+<h3 id="adding-a-new-complaint-status">Adding a New Complaint Status</h3>
+<ol>
+<li><strong>Backend</strong>: No enum — statuses are strings. Just use the new status in <code>UpdateComplaintRequest</code>:</li>
+<li>Update <code>ComplaintService.updateComplaint()</code> if you need special timestamp handling (like <code>resolvedAt</code>)</li>
+<li>
+<p>Add timeline action mapping in the same method</p>
+</li>
+<li>
+<p><strong>Frontend</strong>: Update status dropdown options in the form schema or component</p>
+</li>
+<li>
+<p><strong>Dashboard</strong>: Add count method if you want it displayed:</p>
+</li>
+<li>Add field to <code>DashboardResponse.java</code></li>
+<li>Add <code>countByStatus("new_status")</code> call in <code>ComplaintService.getDashboard()</code></li>
+<li>Cache auto-evicts on complaint changes</li>
+</ol>
+<h3 id="adding-a-new-api-endpoint">Adding a New API Endpoint</h3>
+<ol>
+<li>Create/modify <strong>Controller</strong> in <code>cms-backend/src/main/java/com/hrms/cms/controller/</code></li>
+<li>Add business logic in the corresponding <strong>Service</strong></li>
+<li>Create <strong>DTO</strong> if new request/response shape needed (<code>dto/</code> package)</li>
+<li>Add <strong>Repository</strong> method if new query needed</li>
+<li>Add <strong>frontend service method</strong> in <code>cms.service.ts</code></li>
+<li>Write <strong>tests</strong> for both layers</li>
+</ol>
+<h3 id="adding-a-new-entity-table">Adding a New Entity / Table</h3>
+<ol>
+<li>Create entity class in <code>entity/</code> with JPA annotations:
+   <code>java
+   @Entity @Table(name = "MY_TABLE")
+   @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+   public class MyEntity {
+       @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+       private Long id;
+       // ... fields
+       @PrePersist
+       protected void onCreate() { /* set defaults */ }
+   }</code></li>
+<li>Create repository interface extending <code>JpaRepository&lt;MyEntity, Long&gt;</code></li>
+<li>Add seed data in <code>DataInitializer.run()</code> if needed</li>
+<li>DDL is auto-managed (<code>ddl-auto: update</code> in dev)</li>
+</ol>
+<h3 id="adding-a-new-file-type">Adding a New File Type</h3>
+<ol>
+<li><strong>Backend</strong>: Add extension to <code>cms.attachments.allowed-types</code> in <code>application.yml</code></li>
+<li><strong>Backend</strong>: Add MIME type mapping in <code>FileStorageService.detectContentType()</code></li>
+<li><strong>Frontend</strong>: Add to <code>ALLOWED_FILE_TYPES</code> and <code>ALLOWED_MIME_TYPES</code> in <code>form-validators.ts</code></li>
+<li><strong>Frontend</strong>: Add magic bytes in <code>FILE_MAGIC_BYTES</code> if available</li>
+</ol>
+<h3 id="modifying-form-schema-no-code-change-needed">Modifying Form Schema (No Code Change Needed)</h3>
+<p>The complaint form is <strong>fully driven by JSON</strong> stored in the <code>FORM_CONFIGS</code> table:
+- Call <code>PUT /api/form-config/raise-complaint</code> with updated JSON
+- Or modify <code>DataInitializer.seedComplaintForm()</code> for initial seeding
+- Frontend automatically renders based on schema (field types, dependencies, validation)</p>
+<h3 id="adding-a-new-cache">Adding a New Cache</h3>
+<ol>
+<li>Add <code>@Cacheable(value = "my-cache")</code> on service method</li>
+<li>Add <code>@CacheEvict(value = "my-cache", allEntries = true)</code> on mutation methods</li>
+<li>Register TTL in <code>RedisCacheConfig.java</code>:
+   <code>java
+   cacheConfigs.put("my-cache", defaultConfig.entryTtl(Duration.ofMinutes(10)));</code></li>
+</ol>
+<h3 id="adding-a-new-language-frontend">Adding a New Language (Frontend)</h3>
+<ol>
+<li>Add translations in <code>translate.service.ts</code> translations map</li>
+<li>Add language option in the language switcher component</li>
+<li>The <code>TranslatePipe</code> and service handle rendering automatically</li>
+</ol>
+<h3 id="modifying-rate-limits">Modifying Rate Limits</h3>
+<ul>
+<li><strong>Backend</strong>: Change <code>cms.rate-limit.api-requests-per-second</code> in <code>application.yml</code></li>
+<li><strong>Frontend</strong>: Modify <code>RATE_LIMITS</code> map in <code>rate-limit.interceptor.ts</code></li>
+</ul>
+<h3 id="database-schema-changes">Database Schema Changes</h3>
+<ul>
+<li><strong>Dev/Default</strong>: <code>ddl-auto: update</code> — JPA auto-applies schema changes</li>
+<li><strong>Production</strong>: <code>ddl-auto: validate</code> — You MUST create migration scripts manually</li>
+<li>Always add <code>@Index</code> annotations for query performance</li>
+</ul>
+<h3 id="key-design-decisions">Key Design Decisions</h3>
+<table>
+<thead>
+<tr>
+<th>Decision</th>
+<th>Rationale</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>String-based statuses (not enum)</td>
+<td>Flexibility to add new statuses without code changes</td>
+</tr>
+<tr>
+<td>Chunked upload with FileChannel</td>
+<td>Memory-efficient large file handling</td>
+</tr>
+<tr>
+<td>UUID-prefixed file names</td>
+<td>Prevent filename collisions across uploads</td>
+</tr>
+<tr>
+<td>Client-side + server-side rate limiting</td>
+<td>Defense in depth — client reduces load, server enforces</td>
+</tr>
+<tr>
+<td>Redis cache with per-cache TTL</td>
+<td>Dashboard needs freshness (2min), reference data can be stale (1hr)</td>
+</tr>
+<tr>
+<td><code>@Async</code> for timeline writes</td>
+<td>Non-blocking — complaint response returns before timeline is written</td>
+</tr>
+<tr>
+<td>JSON-driven forms</td>
+<td>Non-developers can modify form fields without deployment</td>
+</tr>
+<tr>
+<td>Standalone Angular components</td>
+<td>Better tree-shaking, no NgModule boilerplate</td>
+</tr>
+<tr>
+<td>Functional interceptors (HttpInterceptorFn)</td>
+<td>Modern Angular pattern, simpler than class-based</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="error-response-format">Error Response Format</h2>
+<p>All errors return a consistent structure:</p>
+<pre><code class="language-json">{
+  &quot;timestamp&quot;: &quot;2026-05-17T12:00:00&quot;,
+  &quot;status&quot;: 400,
+  &quot;error&quot;: &quot;Bad Request&quot;,
+  &quot;message&quot;: &quot;Complaint not found&quot;
+}
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Status</th>
+<th>When</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>400</td>
+<td>RuntimeException (validation failures, not found)</td>
+</tr>
+<tr>
+<td>400</td>
+<td>MethodArgumentNotValidException (bean validation)</td>
+</tr>
+<tr>
+<td>413</td>
+<td>MaxUploadSizeExceededException</td>
+</tr>
+<tr>
+<td>429</td>
+<td>Rate limit exceeded</td>
+</tr>
+<tr>
+<td>500</td>
+<td>Unexpected/unhandled exceptions</td>
+</tr>
+</tbody>
+</table>
+
+<h2 id="feature-library-mapping">Feature &amp; Library/JAR Mapping</h2>
+<p>Complete mapping of every CMS feature to the specific library, JAR, or npm package that supports it.</p>
+
+<h3>Backend Dependencies (Spring Boot 3.2.5 / Java 17)</h3>
+<table>
+<thead>
+<tr><th>#</th><th>Feature</th><th>Library / JAR</th><th>Version</th><th>Purpose</th></tr>
+</thead>
+<tbody>
+<tr><td>1</td><td>REST APIs &amp; Web Server</td><td><code>spring-boot-starter-web</code></td><td>3.2.5</td><td>Embedded Tomcat, Spring MVC, REST controllers, multipart file upload</td></tr>
+<tr><td>2</td><td>Database ORM &amp; Repositories</td><td><code>spring-boot-starter-data-jpa</code></td><td>3.2.5</td><td>Hibernate 6.4.4, JPA repositories, @Entity mapping, @Transactional</td></tr>
+<tr><td>3</td><td>MySQL Database (Production)</td><td><code>mysql-connector-j</code></td><td>8.x</td><td>MySQL JDBC driver for production database</td></tr>
+<tr><td>4</td><td>H2 In-Memory DB (Dev/Test)</td><td><code>h2</code></td><td>2.x</td><td>In-memory database for local development &amp; testing</td></tr>
+<tr><td>5</td><td>Input Validation</td><td><code>spring-boot-starter-validation</code></td><td>3.2.5</td><td>Jakarta Bean Validation (Hibernate Validator), @NotNull, @Size</td></tr>
+<tr><td>6</td><td>Application-Level Caching</td><td><code>spring-boot-starter-cache</code></td><td>3.2.5</td><td>@Cacheable, @CacheEvict for dashboard, categories, banks</td></tr>
+<tr><td>7</td><td>Redis Distributed Cache (Prod)</td><td><code>spring-boot-starter-data-redis</code></td><td>3.2.5</td><td>Lettuce Redis client, distributed cache in production</td></tr>
+<tr><td>8</td><td>OCR — Gemini AI API Calls</td><td><code>spring-boot-starter-webflux</code></td><td>3.2.5</td><td>WebClient (non-blocking HTTP) for Gemini generateContent API</td></tr>
+<tr><td>9</td><td>API Rate Limiting</td><td><code>bucket4j-core</code></td><td>8.10.1</td><td>Token-bucket algorithm for complaint submission rate limiting</td></tr>
+<tr><td>10</td><td>JSON Serialization/Parsing</td><td><code>jackson-databind</code></td><td>2.15.x</td><td>Request/response JSON, Gemini OCR response parsing</td></tr>
+<tr><td>11</td><td>Boilerplate Reduction</td><td><code>lombok</code></td><td>1.18.x</td><td>@Getter, @Setter, @Builder, @RequiredArgsConstructor, @Slf4j</td></tr>
+<tr><td>12</td><td>Health &amp; Metrics Endpoints</td><td><code>spring-boot-starter-actuator</code></td><td>3.2.5</td><td>/actuator/health, /actuator/info, /actuator/metrics</td></tr>
+<tr><td>13</td><td>Prometheus Monitoring</td><td><code>micrometer-registry-prometheus</code></td><td>1.12.x</td><td>Metrics export to Prometheus for Grafana dashboards</td></tr>
+<tr><td>14</td><td>Unit &amp; Integration Testing</td><td><code>spring-boot-starter-test</code></td><td>3.2.5</td><td>JUnit 5, Mockito, MockMvc, AssertJ</td></tr>
+</tbody>
+</table>
+
+<h3>Frontend Dependencies (Angular 21 / TypeScript 5.9)</h3>
+<table>
+<thead>
+<tr><th>#</th><th>Feature</th><th>Library / Package</th><th>Version</th><th>Purpose</th></tr>
+</thead>
+<tbody>
+<tr><td>1</td><td>Core SPA Framework</td><td><code>@angular/core</code>, <code>@angular/common</code></td><td>21.2.0</td><td>Components, dependency injection, change detection, pipes</td></tr>
+<tr><td>2</td><td>Routing &amp; Lazy Loading</td><td><code>@angular/router</code></td><td>21.2.0</td><td>Route-based navigation, lazy-loaded standalone components</td></tr>
+<tr><td>3</td><td>Reactive Forms &amp; Validation</td><td><code>@angular/forms</code></td><td>21.2.0</td><td>FormGroup, FormControl, Validators, custom validators</td></tr>
+<tr><td>4</td><td>HTTP Client (REST calls)</td><td><code>@angular/common/http</code></td><td>21.2.0</td><td>HttpClient for all backend API communication</td></tr>
+<tr><td>5</td><td>Animations &amp; Transitions</td><td><code>@angular/animations</code></td><td>21.2.0</td><td>Route transitions, component animations</td></tr>
+<tr><td>6</td><td>UI Icons</td><td><code>primeicons</code></td><td>7.0.0</td><td>200+ vector icons used across all components (pi pi-*)</td></tr>
+<tr><td>7</td><td>UI Component Library</td><td><code>primeng</code> + <code>@primeng/themes</code></td><td>21.1.6</td><td>PrimeNG components &amp; theming engine</td></tr>
+<tr><td>8</td><td>PDF Generation</td><td><code>jspdf</code></td><td>4.2.1</td><td>Client-side complaint form PDF download</td></tr>
+<tr><td>9</td><td>Word Document Generation</td><td><code>docx</code></td><td>9.6.1</td><td>Generate .docx formatted complaint documents</td></tr>
+<tr><td>10</td><td>File Download Trigger</td><td><code>file-saver</code></td><td>2.0.5</td><td>saveAs() to trigger browser file downloads</td></tr>
+<tr><td>11</td><td>ZIP Compression</td><td><code>jszip</code></td><td>3.10.1</td><td>Bundle multiple attachments into downloadable ZIP</td></tr>
+<tr><td>12</td><td>Reactive Streams</td><td><code>rxjs</code></td><td>7.8.0</td><td>Observables, operators (map, switchMap, catchError, forkJoin)</td></tr>
+<tr><td>13</td><td>Voice Input (Speech-to-Text)</td><td>Browser Web Speech API</td><td>Native</td><td>SpeechRecognition for assisted complaint filing (11 languages)</td></tr>
+<tr><td>14</td><td>Text-to-Speech (TTS)</td><td>Browser SpeechSynthesis API</td><td>Native</td><td>Accessibility — read aloud for visually impaired users</td></tr>
+<tr><td>15</td><td>Unit Testing</td><td><code>jest</code> + <code>ts-jest</code></td><td>30.4.2</td><td>Component &amp; service unit testing framework</td></tr>
+<tr><td>16</td><td>IndexedDB Mock (Testing)</td><td><code>fake-indexeddb</code></td><td>6.2.5</td><td>Mock IndexedDB for file-cache service tests</td></tr>
+<tr><td>17</td><td>Build &amp; CLI Toolchain</td><td><code>@angular/build</code>, <code>@angular/cli</code></td><td>21.2.8</td><td>esbuild compilation, dev server, code generation</td></tr>
+</tbody>
+</table>
+
+<h3>Feature-to-Library Cross Reference</h3>
+<table>
+<thead>
+<tr><th>CMS Feature</th><th>Backend Library</th><th>Frontend Library</th></tr>
+</thead>
+<tbody>
+<tr><td>Multi-Step Complaint Filing</td><td><code>spring-boot-starter-web</code> + <code>data-jpa</code></td><td><code>@angular/forms</code> + <code>@angular/router</code></td></tr>
+<tr><td>OCR (Gemini AI — Handwritten/Printed)</td><td><code>spring-boot-starter-webflux</code> (WebClient)</td><td><code>rxjs</code> (HttpClient Observable)</td></tr>
+<tr><td>Auto-Categorization (Business Rules)</td><td><code>data-jpa</code> (keyword match engine)</td><td><code>@angular/common/http</code></td></tr>
+<tr><td>Email Simulation &amp; Processing</td><td><code>data-jpa</code> + <code>jackson-databind</code></td><td><code>rxjs</code> + HttpClient</td></tr>
+<tr><td>Chunked File Upload</td><td><code>spring-boot-starter-web</code> (MultipartFile)</td><td><code>rxjs</code> (progress tracking)</td></tr>
+<tr><td>PDF Complaint Download</td><td>—</td><td><code>jspdf</code></td></tr>
+<tr><td>DOCX Complaint Download</td><td>—</td><td><code>docx</code> + <code>file-saver</code></td></tr>
+<tr><td>ZIP Attachments Bundle</td><td>—</td><td><code>jszip</code> + <code>file-saver</code></td></tr>
+<tr><td>Accessibility (TTS, Font Size, Contrast)</td><td>—</td><td>Native Browser APIs (SpeechSynthesis)</td></tr>
+<tr><td>Voice Input (11 Indian Languages)</td><td>—</td><td>Native Browser API (SpeechRecognition)</td></tr>
+<tr><td>AI Suggestions (Past Resolutions)</td><td><code>data-jpa</code> (resolved complaint lookup)</td><td><code>rxjs</code> + HttpClient</td></tr>
+<tr><td>Complaint Tracking &amp; Timeline</td><td><code>data-jpa</code> (ComplaintTimeline entity)</td><td><code>@angular/router</code> + HttpClient</td></tr>
+<tr><td>Dashboard &amp; Statistics</td><td><code>spring-boot-starter-cache</code> + <code>data-jpa</code></td><td>HttpClient + PrimeNG</td></tr>
+<tr><td>Multi-Language UI (i18n)</td><td>—</td><td>Custom TranslateService + TranslatePipe</td></tr>
+<tr><td>Form Schema (Dynamic Fields)</td><td><code>jackson-databind</code> (JSON schema storage)</td><td><code>@angular/forms</code> (DynamicFieldComponent)</td></tr>
+<tr><td>Rate Limiting</td><td><code>bucket4j-core</code></td><td>—</td></tr>
+<tr><td>Monitoring &amp; Observability</td><td><code>actuator</code> + <code>micrometer-prometheus</code></td><td>—</td></tr>
+<tr><td>Caching (Categories, Dashboard, Banks)</td><td><code>spring-boot-starter-cache</code> / <code>data-redis</code></td><td>—</td></tr>
+<tr><td>User Session &amp; Authentication (OTP)</td><td><code>data-jpa</code> (CmsUser entity + repository)</td><td><code>@angular/common/http</code> + <code>rxjs</code> + localStorage</td></tr>
+<tr><td>Draft Saving &amp; Resume</td><td>—</td><td>localStorage (UserSessionService)</td></tr>
+<tr><td>Auto-Profile Pre-fill (Returning Users)</td><td><code>data-jpa</code> (CmsUserService.getByPhone)</td><td><code>@angular/forms</code> (setValue on FormControl)</td></tr>
+<tr><td>Complaint History by Phone</td><td><code>data-jpa</code> (findByComplainantPhone)</td><td>HttpClient + <code>rxjs</code></td></tr>
+<tr><td>Admin Back Office Module</td><td>—</td><td><code>@angular/router</code> (lazy-loaded /admin route)</td></tr>
+</tbody>
+</table>
+
+</body>
+</html>

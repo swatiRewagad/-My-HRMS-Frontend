@@ -8,9 +8,33 @@ export const ALL_SERVICES: PlatformService[] = [
     group: 'basic',
     dependent: false,
     subServices: [
-      { id: 'ecm-file-upload', label: 'File Upload', description: 'Secure multi-format file ingestion with virus scanning' },
-      { id: 'ecm-archival', label: 'Archival', description: 'Long-term document retention with configurable retention policies' },
-      { id: 'ecm-ocr', label: 'OCR', description: 'Optical character recognition embedded in the ECM pipeline' },
+      {
+        id: 'ecm-file-upload', label: 'File Upload', description: 'Secure multi-format file ingestion with virus scanning',
+        configFields: [
+          { key: 'mountPoint', label: 'Mount Point', type: 'text', placeholder: '/mnt/kavach/realms/ecm/uploads', hint: 'Filesystem path where uploaded files are stored.', required: true },
+          { key: 'supportedFileTypes', label: 'Supported File Types', type: 'select', placeholder: 'Select file types...', hint: 'File type preset allowed for upload in this service.', required: true, options: ['PDF', 'PDF, DOCX', 'PDF, DOCX, XLSX', 'PDF, DOCX, XLSX, Images', 'All file types'] },
+          { key: 'volumeSize', label: 'Volume Size (GB)', type: 'number', placeholder: 'e.g. 500', hint: 'Total volume capacity allocated for file uploads.', required: true, halfWidth: true },
+          { key: 'maxFileSize', label: 'Max File Size (MB)', type: 'number', placeholder: 'e.g. 50', hint: 'Maximum size allowed per individual file upload.', required: true, halfWidth: true },
+        ],
+      },
+      {
+        id: 'ecm-archival', label: 'Archival', description: 'Long-term document retention with configurable retention policies',
+        configFields: [
+          { key: 'archivePeriod', label: 'Archive Period (days)', type: 'number', placeholder: 'e.g. 365', hint: 'Days before documents are moved to archival storage.', required: true, halfWidth: true },
+          { key: 'frequency', label: 'Frequency', type: 'select', placeholder: 'Select frequency...', required: true, halfWidth: true, options: ['Daily', 'Weekly', 'Monthly', 'Quarterly'] },
+          { key: 'archiveLocation', label: 'Archive Location', type: 'text', placeholder: 's3://kavach-archive/realms/ecm/ or nfs://archive.internal/ecm', hint: 'Destination path or bucket URL for archived documents.', required: true },
+          { key: 'compression', label: 'Compression', type: 'select', placeholder: 'Select compression...', hint: 'Compression algorithm applied during archival. None = store as-is.', required: false, options: ['None', 'GZIP', 'ZSTD', 'LZ4', 'Snappy'] },
+        ],
+      },
+      {
+        id: 'ecm-ocr', label: 'OCR', description: 'Optical character recognition embedded in the ECM pipeline',
+        configFields: [
+          { key: 'ocrEngine', label: 'OCR Engine', type: 'select', placeholder: 'Select engine...', required: true, halfWidth: true, options: ['Tesseract', 'Google Vision', 'Azure Computer Vision', 'AWS Textract'] },
+          { key: 'ocrLanguage', label: 'Language', type: 'select', placeholder: 'Select language...', required: true, halfWidth: true, options: ['English', 'Hindi', 'English + Hindi', 'Auto-detect'] },
+          { key: 'ocrDpi', label: 'Render DPI', type: 'number', placeholder: 'e.g. 300', hint: 'DPI used to render PDF pages before OCR. Higher = better accuracy.', required: false, halfWidth: true },
+          { key: 'ocrConfidence', label: 'Min Confidence (%)', type: 'number', placeholder: 'e.g. 80', hint: 'Minimum confidence threshold to accept OCR results.', required: false, halfWidth: true },
+        ],
+      },
     ],
   },
   {

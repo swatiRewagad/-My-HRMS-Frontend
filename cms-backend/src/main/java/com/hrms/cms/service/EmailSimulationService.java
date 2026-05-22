@@ -1,5 +1,6 @@
 package com.hrms.cms.service;
 
+import com.hrms.cms.dto.CategorizationResult;
 import com.hrms.cms.dto.EmailReplyWithFormRequest;
 import com.hrms.cms.dto.IncomingEmailRequest;
 import com.hrms.cms.entity.Complaint;
@@ -29,6 +30,7 @@ public class EmailSimulationService {
     private final SimulatedEmailRepository emailRepository;
     private final ComplaintRepository complaintRepository;
     private final ComplaintTimelineRepository timelineRepository;
+    private final CategorizationRuleService categorizationService;
 
     @CacheEvict(value = "email-stats", allEntries = true)
     @Transactional
@@ -64,11 +66,24 @@ public class EmailSimulationService {
         inbound.setComplaintId(savedComplaint.getId());
         emailRepository.save(inbound);
 
+        // Auto-categorize based on business rules
+        String textToAnalyze = request.getSubject() + " " + request.getBody();
+        List<CategorizationResult> categories = categorizationService.categorize(textToAnalyze, "email");
+        if (!categories.isEmpty()) {
+            CategorizationResult topMatch = categories.get(0);
+            savedComplaint.setCategoryId(topMatch.getCategoryId());
+            if (topMatch.getPriority() != null) {
+                savedComplaint.setPriority(topMatch.getPriority());
+            }
+            complaintRepository.save(savedComplaint);
+        }
+
         timelineRepository.save(ComplaintTimeline.builder()
                 .complaintId(savedComplaint.getId())
                 .action("filed")
                 .performedBy("Email System")
-                .remarks("Complaint initiated via email from " + request.getFromEmail())
+                .remarks("Complaint initiated via email from " + request.getFromEmail()
+                    + (categories.isEmpty() ? "" : ". Auto-categorized: " + categories.get(0).getCategoryName()))
                 .toStatus("awaiting_details")
                 .build());
 

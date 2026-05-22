@@ -1,0 +1,60 @@
+<section class="admin-section">
+  <div class="container">
+    <div class="admin-header">
+      <div class="admin-badge"><i class="pi pi-shield"></i></div>
+      <h1>CMS Back Office</h1>
+      <p>Internal modules for complaint processing, categorization, and administration</p>
+    </div>
+
+    <div class="modules-grid">
+      <a routerLink="/email-simulation" class="module-card">
+        <div class="module-icon email"><i class="pi pi-envelope"></i></div>
+        <div class="module-content">
+          <h3>Email Simulation (Demo)</h3>
+          <p>Simulate email-based complaint filing. Incoming emails are auto-parsed, categorized, and a structured form is sent back to the complainant.</p>
+          <ul class="module-features">
+            <li><i class="pi pi-check"></i> Inbound email parsing</li>
+            <li><i class="pi pi-check"></i> Auto-categorization via business rules</li>
+            <li><i class="pi pi-check"></i> Auto-reply with complaint form</li>
+            <li><i class="pi pi-check"></i> Thread tracking</li>
+          </ul>
+        </div>
+        <div class="module-arrow"><i class="pi pi-arrow-right"></i></div>
+      </a>
+
+      <a routerLink="/physical-complaint" class="module-card">
+        <div class="module-icon physical"><i class="pi pi-file"></i></div>
+        <div class="module-content">
+          <h3>Physical Complaint (AI Assisted)</h3>
+          <p>Process scanned handwritten/printed complaint letters using Gemini OCR. AI extracts text, identifies fields, suggests categories, and provides resolution recommendations.</p>
+          <ul class="module-features">
+            <li><i class="pi pi-check"></i> Gemini AI-powered OCR</li>
+            <li><i class="pi pi-check"></i> Hindi + English handwriting support</li>
+            <li><i class="pi pi-check"></i> Auto field extraction</li>
+            <li><i class="pi pi-check"></i> AI suggestions from past resolutions</li>
+          </ul>
+        </div>
+        <div class="module-arrow"><i class="pi pi-arrow-right"></i></div>
+      </a>
+
+      <a routerLink="/business-rules" class="module-card">
+        <div class="module-icon rules"><i class="pi pi-cog"></i></div>
+        <div class="module-content">
+          <h3>Business Rules - Auto Categorization</h3>
+          <p>Configure keyword-based rules to automatically categorize incoming complaints from any source (email, physical, online). Rules determine category and priority assignment.</p>
+          <ul class="module-features">
+            <li><i class="pi pi-check"></i> Keyword-based rule engine</li>
+            <li><i class="pi pi-check"></i> Source-specific rules (email/physical/online)</li>
+            <li><i class="pi pi-check"></i> Priority auto-assignment</li>
+            <li><i class="pi pi-check"></i> Test panel to validate rules</li>
+          </ul>
+        </div>
+        <div class="module-arrow"><i class="pi pi-arrow-right"></i></div>
+      </a>
+    </div>
+
+    <div class="admin-footer">
+      <p><i class="pi pi-lock"></i> This page is for internal RBI CMS staff only. Not visible to complainants.</p>
+    </div>
+  </div>
+</section>

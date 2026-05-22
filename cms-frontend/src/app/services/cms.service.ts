@@ -31,6 +31,10 @@ export class CmsService {
     return this.http.get(`${this.api}/complaints/track/${complaintNumber}`);
   }
 
+  getComplaintsByPhone(phone: string): Observable<any[]> {
+    return this.http.get<any[]>(`${this.api}/complaints/by-phone/${phone}`);
+  }
+
   fileComplaint(data: any): Observable<any> {
     return this.http.post(`${this.api}/complaints`, data);
   }
@@ -65,6 +69,12 @@ export class CmsService {
 
   getFormSchema(formKey: string): Observable<FormSchema> {
     return this.http.get<FormSchema>(`${this.api}/form-config/${formKey}`);
+  }
+
+  // ───── Categorization ─────
+
+  categorizeComplaint(text: string, source: string = 'all'): Observable<any[]> {
+    return this.http.post<any[]>(`${this.api}/categorization-rules/categorize`, { text, source });
   }
 
   // ───── Email Simulation ─────

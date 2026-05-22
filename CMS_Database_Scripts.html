@@ -1,0 +1,1328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CMS Database Scripts - Developer Download</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      min-height: 100vh;
+    }
+    .header {
+      background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+      border-bottom: 1px solid #334155;
+      padding: 30px 40px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+    .header-left h1 {
+      font-size: 24px;
+      color: #f1f5f9;
+      font-weight: 700;
+    }
+    .header-left p {
+      color: #94a3b8;
+      font-size: 14px;
+      margin-top: 4px;
+    }
+    .header-right {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-decoration: none;
+    }
+    .btn:hover { transform: translateY(-1px); }
+    .btn-primary {
+      background: #3b82f6;
+      color: white;
+    }
+    .btn-primary:hover { background: #2563eb; }
+    .btn-success {
+      background: #10b981;
+      color: white;
+    }
+    .btn-success:hover { background: #059669; }
+    .btn-outline {
+      background: transparent;
+      color: #94a3b8;
+      border: 1px solid #475569;
+    }
+    .btn-outline:hover {
+      background: #1e293b;
+      color: #e2e8f0;
+      border-color: #64748b;
+    }
+    .btn-sm {
+      padding: 6px 14px;
+      font-size: 12px;
+    }
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 30px 20px;
+    }
+    .stats-bar {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px;
+      margin-bottom: 30px;
+    }
+    .stat-card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 10px;
+      padding: 16px;
+      text-align: center;
+    }
+    .stat-card .number {
+      font-size: 28px;
+      font-weight: 800;
+      color: #3b82f6;
+    }
+    .stat-card .label {
+      font-size: 11px;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-top: 4px;
+    }
+    .section {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      overflow: hidden;
+    }
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px;
+      background: #1e293b;
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.15s;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .section-header:hover { background: #263349; }
+    .section-header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .section-header-left .badge {
+      background: #3b82f6;
+      color: white;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 20px;
+      white-space: nowrap;
+    }
+    .section-header-left .badge.ddl { background: #8b5cf6; }
+    .section-header-left .badge.dml { background: #f59e0b; color: #1e293b; }
+    .section-header-left .badge.query { background: #06b6d4; }
+    .section-header-left .badge.danger { background: #ef4444; }
+    .section-header-left .badge.setup { background: #10b981; }
+    .section-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: #f1f5f9;
+    }
+    .section-header-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .chevron {
+      transition: transform 0.2s;
+      color: #64748b;
+      font-size: 18px;
+    }
+    .section.open .chevron { transform: rotate(180deg); }
+    .section-body {
+      display: none;
+      border-top: 1px solid #334155;
+    }
+    .section.open .section-body { display: block; }
+    .code-wrapper {
+      position: relative;
+    }
+    .code-wrapper pre {
+      background: #0f172a;
+      color: #e2e8f0;
+      padding: 20px;
+      overflow-x: auto;
+      font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+      font-size: 13px;
+      line-height: 1.6;
+      margin: 0;
+      tab-size: 4;
+    }
+    .code-actions {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      display: flex;
+      gap: 6px;
+    }
+    .copy-btn, .dl-btn {
+      background: #334155;
+      color: #94a3b8;
+      border: 1px solid #475569;
+      padding: 5px 12px;
+      border-radius: 6px;
+      font-size: 11px;
+      cursor: pointer;
+      transition: all 0.15s;
+      font-weight: 600;
+    }
+    .copy-btn:hover, .dl-btn:hover {
+      background: #475569;
+      color: #e2e8f0;
+    }
+    .copy-btn.copied {
+      background: #10b981;
+      color: white;
+      border-color: #10b981;
+    }
+    .table-info {
+      padding: 16px 20px;
+      background: #162032;
+      border-bottom: 1px solid #334155;
+    }
+    .table-info table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    .table-info th {
+      text-align: left;
+      color: #94a3b8;
+      font-weight: 600;
+      padding: 6px 12px;
+      border-bottom: 1px solid #334155;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .table-info td {
+      padding: 6px 12px;
+      color: #cbd5e1;
+      border-bottom: 1px solid #1e293b;
+    }
+    .table-info tr:last-child td { border-bottom: none; }
+    .tag {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .tag-pk { background: #7c3aed22; color: #a78bfa; border: 1px solid #7c3aed44; }
+    .tag-nn { background: #ef444422; color: #fca5a5; border: 1px solid #ef444444; }
+    .tag-uq { background: #06b6d422; color: #67e8f9; border: 1px solid #06b6d444; }
+    .tag-idx { background: #f59e0b22; color: #fcd34d; border: 1px solid #f59e0b44; }
+    .tag-fk { background: #10b98122; color: #6ee7b7; border: 1px solid #10b98144; }
+    .tag-def { background: #64748b22; color: #94a3b8; border: 1px solid #64748b44; }
+    .footer {
+      text-align: center;
+      padding: 30px;
+      color: #64748b;
+      font-size: 12px;
+    }
+    .toast {
+      position: fixed;
+      bottom: 30px;
+      right: 30px;
+      background: #10b981;
+      color: white;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 14px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+      transform: translateY(100px);
+      opacity: 0;
+      transition: all 0.3s;
+      z-index: 1000;
+    }
+    .toast.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+    .sql-comment { color: #6b7280; }
+    .sql-keyword { color: #c084fc; }
+    .sql-string { color: #34d399; }
+    .sql-number { color: #fbbf24; }
+    .sql-function { color: #60a5fa; }
+    @media (max-width: 640px) {
+      .header { padding: 20px; }
+      .header-left h1 { font-size: 18px; }
+      .code-wrapper pre { font-size: 11px; padding: 12px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="header-left">
+      <h1>CMS Database Scripts</h1>
+      <p>Complaint Management System &mdash; MySQL 8+ &bull; Version 1.1 &bull; May 2026</p>
+    </div>
+    <div class="header-right">
+      <button class="btn btn-outline" onclick="expandAll()">Expand All</button>
+      <button class="btn btn-outline" onclick="collapseAll()">Collapse All</button>
+      <button class="btn btn-primary" onclick="copyFullScript()">Copy All</button>
+      <button class="btn btn-success" onclick="downloadFullScript()">Download .sql</button>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="stats-bar">
+      <div class="stat-card">
+        <div class="number">7</div>
+        <div class="label">Tables</div>
+      </div>
+      <div class="stat-card">
+        <div class="number">19</div>
+        <div class="label">Indexes</div>
+      </div>
+      <div class="stat-card">
+        <div class="number">10</div>
+        <div class="label">Categories</div>
+      </div>
+      <div class="stat-card">
+        <div class="number">12</div>
+        <div class="label">Banks</div>
+      </div>
+      <div class="stat-card">
+        <div class="number">7</div>
+        <div class="label">Sample Complaints</div>
+      </div>
+    </div>
+
+    <!-- SECTION 1: Database Setup -->
+    <div class="section open" id="sec-setup">
+      <div class="section-header" onclick="toggleSection('sec-setup')">
+        <div class="section-header-left">
+          <span class="badge setup">SETUP</span>
+          <span class="section-title">1. Database &amp; Schema Setup</span>
+        </div>
+        <div class="section-header-right">
+          <button class="btn btn-outline btn-sm" onclick="event.stopPropagation(); downloadSection('setup')">Download</button>
+          <button class="btn btn-outline btn-sm" onclick="event.stopPropagation(); copySection('setup')">Copy</button>
+          <span class="chevron">&#9660;</span>
+        </div>
+      </div>
+      <div class="section-body">
+        <div class="code-wrapper">
+          <pre id="code-setup"><span class="sql-comment">-- ============================================================================
+-- DATABASE &amp; SCHEMA SETUP
+-- ============================================================================</span>
+
+<span class="sql-keyword">CREATE DATABASE IF NOT EXISTS</span> cms_db
+    <span class="sql-keyword">CHARACTER SET</span> utf8mb4
+    <span class="sql-keyword">COLLATE</span> utf8mb4_unicode_ci;
+
+<span class="sql-keyword">USE</span> cms_db;</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 2.1: BANKS -->
+    <div class="section" id="sec-banks">
+      <div class="section-header" onclick="toggleSection('sec-banks')">
+        <div class="section-header-left">
+          <span class="badge ddl">DDL</span>
+          <span class="section-title">2.1 BANKS</span>
+        </div>
+        <div class="section-header-right">
+          <button class="btn btn-outline btn-sm" onclick="event.stopPropagation(); downloadSection('banks')">Download</button>
+          <button class="btn btn-outline btn-sm" onclick="event.stopPropagation(); copySection('banks')">Copy</button>
+          <span class="chevron">&#9660;</span>
+        </div>
+      </div>
+      <div class="section-body">
+        <div class="table-info">
+          <table>
+            <tr><th>Column</th><th>Type</th><th>Constraints</th></tr>
+            <tr><td>id</td><td>BIGINT</td><td><span class="tag tag-pk">PK</span> <span class="tag tag-nn">AUTO_INCREMENT</span></td></tr>
+            <tr><td>name</td><td>VARCHAR(300)</td><td><span class="tag tag-nn">NOT NULL</span></td></tr>
+            <tr><td>code</td><td>VARCHAR(50)</td><td></td></tr>
+            <tr><td>type</td><td>VARCHAR(100)</td><td><span class="tag tag-idx">INDEXED</span></td></tr>
+            <tr><td>status</td><td>VARCHAR(20)</td><td><span class="tag tag-def">DEFAULT 'active'</span> <span class="tag tag-idx">INDEXED</span></td></tr>
+            <tr><td>created_at</td><td>DATETIME(6)</td><td></td></tr>
+          </table>
+        </div>
+        <div class="code-wrapper">
+          <pre id="code-banks"><span class="sql-keyword">CREATE TABLE IF NOT EXISTS</span> BANKS (
+    id          <span class="sql-keyword">BIGINT</span>       <span class="sql-keyword">NOT NULL</span> <span class="sql-keyword">AUTO_INCREMENT</span>,
+    name        <span class="sql-keyword">VARCHAR</span>(<span class="sql-number">300</span>) <span class="sql-keyword">NOT NULL</span>,
+    code        <span class="sql-keyword">VARCHAR</span>(<span class="sql-number">50</span>),
+    type        <span class="sql-keyword">VARCHAR</span>(<span class="sql-number">100</span>),
+    status      <span class="sql-keyword">VARCHAR</span>(<span class="sql-number">20</span>)  <span class="sql-keyword">DEFAULT</span> <span class="sql-string">'active'</span>,
+    created_at  <span class="sql-keyword">DATETIME</span>(<span class="sql-number">6</span>),
+    <span class="sql-keyword">PRIMARY KEY</span> (id),
+    <span class="sql-keyword">INDEX</span> idx_bank_type   (type),
+    <span class="sql-keyword">INDEX</span> idx_bank_status (status)
+) <span class="sql-keyword">ENGINE</span>=InnoDB <span class="sql-keyword">DEFAULT CHARSET</span>=utf8mb4 <span class="sql-keyword">COLLATE</span>=utf8mb4_unicode_ci;</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 2.2: COMPLAINT_CATEGORIES -->
+    <div class="section" id="sec-categories">
+      <div class="section-header" onclick="toggleSection('sec-categories')">
+        <div class="section-header-left">
+          <span class="badge ddl">DDL</span>
+          <span class="section-title">2.2 COMPLAINT_CATEGORIES</span>
+        </div>
+        <div class="section-header-right">
+          <button class="btn btn-outline btn-sm" onclick="event.stopPropagation(); downloadSection('categories')">Download</button>
+          <button class="btn btn-outline btn-sm" onclick="event.stopPropagation(); copySection('categories')">Copy</button>
+          <span class="chevron">&#9660;</span>
+        </div>
+      </div>
+      <div class="section-body">
+        <div class="table-info">
+          <table>
+            <tr><th>Column</th><th>Type</th><th>Constraints</th></tr>
+            <tr><td>id</td><td>BIGINT</td><td><span class="tag tag-pk">PK</span> <span class="tag tag-nn">AUTO_INCREMENT</span></td></tr>
+            <tr><td>name</td><td>VARCHAR(200)</td><td><span class="tag tag-nn">NOT NULL</span></td></tr>
+            <tr><td>description</td><td>VARCHAR(500)</td><td></td></tr>
+            <tr><td>parent_id</td><td>BIGINT</td><td><span class="tag tag-idx">INDEXED</span> <span class="tag tag-fk">SELF-REF</span></td></tr>
+            <tr><td>status</td><td>VARCHAR(20)</td><td><span class="tag tag-def">DEFAULT 'active'</span> <span class="tag tag-idx">INDEXED</span></td></tr>
+            <tr><td>sort_order</td><td>INT</td><td><span class="tag tag-def">DEFAULT 0</span></td></tr>
+            <tr><td>created_at</td><td>DATETIME(6)</td><td></td></tr>
+          </table>
+        </div>
+        <div class="code-wrapper">
+          <pre id="code-categories"><span class="sql-keyword">CREATE TABLE IF NOT EXISTS</span> COMPLAINT_CATEGORIES (
+    id          <span class="sql-keyword">BIGINT</span>       <span class="sql-keyword">NOT NULL</span> <span class="sql-keyword">AUTO_INCREMENT</span>,
+    name        <span class="sql-keyword">VARCHAR</span>(<span class="sql-number">200</span>) <span class="sql-keyword">NOT NULL</span>,
+    description <span class="sql-keyword">VARCHAR</span>(<span class="sql-number">500</span>),
+    parent_id   <span class="sql-keyword">BIGINT</span>,
+    status      <span class="sql-keyword">VARCHAR</span>(<span class="sql-number">20</span>)  <span class="sql-keyword">DEFAULT</span> <span class="sql-string">'active'</span>,
+    sort_order  <span class="sql-keyword">INT</span>          <span class="sql-keyword">DEFAULT</span> <span class="sql-number">0</span>,
+    created_at  <span class="sql-keyword">DATETIME</span>(<span class="sql-number">6</span>),
+    <span class="sql-keyword">PRIMARY KEY</span> (id),
+    <span class="sql-keyword">INDEX</span> idx_category_parent (parent_id),
+    <span class="sql-keyword">INDEX</span> idx_category_status (status)
+) <span class="sql-keyword">ENGINE</span>=InnoDB <span class="sql-keyword">DEFAULT CHARSET</span>=utf8mb4 <span class="sql-keyword">COLLATE</span>=utf8mb4_unicode_ci;</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 2.3: COMPLAINTS -->
+    <div class="section" id="sec-complaints">
+      <div class="section-header" onclick="toggleSection('sec-complaints')">
+        <div class="section-header-left">
+          <span class="badge ddl">DDL</span>
+          <span class="section-title">2.3 COMPLAINTS (Core Entity)</span>
+        </div>
+        <div class="section-header-right">
+          <button class="btn btn-outline btn-sm" onclick="event.stopPropagation(); downloadSection('complaints')">Download</button>
+          <button class="btn btn-outline btn-sm" onclick="event.stopPropagation(); copySection('complaints')">Copy</button>
+          <span class="chevron">&#9660;</span>
+        </div>
+      </div>
+      <div class="section-body">
+        <div class="table-info">
+          <table>
+            <tr><th>Column</th><th>Type</th><th>Constraints</th></tr>
+            <tr><td>id</td><td>BIGINT</td><td><span class="tag tag-pk">PK</span> <span class="tag tag-nn">AUTO_INCREMENT</span></td></tr>
+            <tr><td>complaint_number</td><td>VARCHAR(50)</td><td><span class="tag tag-nn">NOT NULL</span> <span class="tag tag-uq">UNIQUE</span></td></tr>
+            <tr><td>complainant_name</td><td>VARCHAR(200)</td><td><span class="tag tag-nn">NOT NULL</span></td></tr>
+            <tr><td>complainant_email</td><td>VARCHAR(200)</td><td><span class="tag tag-idx">INDEXED</span></td></tr>
+            <tr><td>complainant_phone</td><td>VARCHAR(20)</td><td></td></tr>
+            <tr><td>complainant_address</td><td>VARCHAR(500)</td><td></td></tr>
+            <tr><td>bank_id</td><td>BIGINT</td><td><span class="tag tag-idx">INDEXED</span> <span class="tag tag-fk">FK &rarr; BANKS</span></td></tr>
+            <tr><td>bank_branch</td><td>VARCHAR(300)</td><td></td></tr>
+            <tr><td>account_number</td><td>VARCHAR(100)</td><td></td></tr>
+            <tr><td>category_id</td><td>BIGINT</td><td><span class="tag tag-idx">INDEXED</span> <span class="tag tag-fk">FK &rarr; CATEGORIES</span></td></tr>
+            <tr><td>subject</td><td>VARCHAR(500)</td><td><span class="tag tag-nn">NOT NULL</span></td></tr>
+            <tr><td>description</td><td>TEXT</td><td></td></tr>
+            <tr><td>relief_sought</td><td>TEXT</td><td></td></tr>
+            <tr><td>status</td><td>VARCHAR(30)</td><td><span class="tag tag-nn">NOT NULL</span> <span class="tag tag-def">DEFAULT 'pending'</span> <span class="tag tag-idx">INDEXED</span></td></tr>
+            <tr><td>priority</td><td>VARCHAR(20)</td><td><span class="tag tag-def">DEFAULT 'medium'</span> <span class="tag tag-idx">INDEXED</span></td></tr>
+            <tr><td>filing_type</td><td>VARCHAR(50)</td><td></td></tr>
+            <tr><td>bank_complaint_reference</td><td>VARCHAR(200)</td><td></td></tr>
+            <tr><td>bank_complaint_date</td><td>DATETIME(6)</td><td></td></tr>
+            <tr><td>assigned_officer</td><td>VARCHAR(200)</td><td></td></tr>
+            <tr><td>filed_at</td><td>DATETIME(6)</td><td></td></tr>
+            <tr><td>resolved_at</td><td>DATETIME(6)</td><td></td></tr>
+            <tr><td>closed_at</td><td>DATETIME(6)</td><td></td></tr>
+            <tr><td>escalated_at</td><td>DATETIME(6)</td><td></td></tr>
+            <tr><td>created_at</td><td>DATETIME(6)</td><td><span class="tag tag-idx">INDEXED</span></td></tr>
+            <tr><td>updated_at</td><td>DATETIME(6)</td><td></td></tr>
+          </table>
+        </div>
+        <div class="code-wrapper">
+          <pre id="code-complaints"><span class="sql-keyword">CREATE TABLE IF NOT EXISTS</span> COMPLAINTS (
+    id                        <span class="sql-keyword">BIGINT</span>       <span class="sql-keyword">NOT NULL</span> <span class="sql-keyword">AUTO_INCREMENT</span>,
+    complaint_number          <span class="sql-keyword">VARCHAR</span>(<span class="sql-number">50</span>)  <span class="sql-keyword">NOT NULL</span>,
+    complainant_name          <span class="sql-keyword">VARCHAR</span>(<span class="sql-number">200</span>) <span class="sql-keyword">NOT NULL</span>,
+    complainant_email         <span class="sql-keyword">VARCHAR</span>(<span class="sql-number">200</span>),
+    complainant_phone         <span class="sql-keyword">VARCHAR</span>(<span class="sql-number">20</span>),
+    complainant_address       <span class="sql-keyword">VARCHAR</span>(<span class="sql-number">500</span>),
+    bank_id                   <span class="sql-keyword">BIGINT</span>,
+    bank_branch               <span class="sql-keyword">VARCHAR</span>(<span class="sql-number">300</span>),
+    account_number            <span class="sql-keyword">VARCHAR</span>(<span class="sql-number">100</span>),
+    category_id               <span class="sql-keyword">BIGINT</span>,
+    subject                   <span class="sql-keyword">VARCHAR</span>(<span class="sql-number">500</span>) <span class="sql-keyword">NOT NULL</span>,
+    description               <span class="sql-keyword">TEXT</span>,
+    relief_sought             <span class="sql-keyword">TEXT</span>,
+    status                    <span class="sql-keyword">VARCHAR</span>(<span class="sql-number">30</span>)  <span class="sql-keyword">NOT NULL DEFAULT</span> <span class="sql-string">'pending'</span>,
+    priority                  <span class="sql-keyword">VARCHAR</span>(<span class="sql-number">20</span>)  <span class="sql-keyword">DEFAULT</span> <span class="sql-string">'medium'</span>,
+    filing_type               <span class="sql-keyword">VARCHAR</span>(<span class="sql-number">50</span>),
+    bank_complaint_reference  <span class="sql-keyword">VARCHAR</span>(<span class="sql-number">200</span>),
+    bank_complaint_date       <span class="sql-keyword">DATETIME</span>(<span class="sql-number">6</span>),
+    assigned_officer          <span class="sql-keyword">VARCHAR</span>(<span class="sql-number">200</span>),
+    filed_at                  <span class="sql-keyword">DATETIME</span>(<span class="sql-number">6</span>),
+    resolved_at               <span class="sql-keyword">DATETIME</span>(<span class="sql-number">6</span>),
+    closed_at                 <span class="sql-keyword">DATETIME</span>(<span class="sql-number">6</span>),
+    escalated_at              <span class="sql-keyword">DATETIME</span>(<span class="sql-number">6</span>),
+    created_at                <span class="sql-keyword">DATETIME</span>(<span class="sql-number">6</span>),
+    updated_at                <span class="sql-keyword">DATETIME</span>(<span class="sql-number">6</span>),
+    <span class="sql-keyword">PRIMARY KEY</span> (id),
+    <span class="sql-keyword">UNIQUE KEY</span>  idx_complaint_number         (complaint_number),
+    <span class="sql-keyword">INDEX</span>       idx_complaint_status         (status),
+    <span class="sql-keyword">INDEX</span>       idx_complaint_priority       (priority),
+    <span class="sql-keyword">INDEX</span>       idx_complaint_email          (complainant_email),
+    <span class="sql-keyword">INDEX</span>       idx_complaint_category       (category_id),
+    <span class="sql-keyword">INDEX</span>       idx_complaint_bank           (bank_id),
+    <span class="sql-keyword">INDEX</span>       idx_complaint_created        (created_at),
+    <span class="sql-keyword">INDEX</span>       idx_complaint_status_created (status, created_at)
+) <span class="sql-keyword">ENGINE</span>=InnoDB <span class="sql-keyword">DEFAULT CHARSET</span>=utf8mb4 <span class="sql-keyword">COLLATE</span>=utf8mb4_unicode_ci;</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 2.4: COMPLAINT_ATTACHMENTS -->
+    <div class="section" id="sec-attachments">
+      <div class="section-header" onclick="toggleSection('sec-attachments')">
+        <div class="section-header-left">
+          <span class="badge ddl">DDL</span>
+          <span class="section-title">2.4 COMPLAINT_ATTACHMENTS</span>
+        </div>
+        <div class="section-header-right">
+          <button class="btn btn-outline btn-sm" onclick="event.stopPropagation(); downloadSection('attachments')">Download</button>
+          <button class="btn btn-outline btn-sm" onclick="event.stopPropagation(); copySection('attachments')">Copy</button>
+          <span class="chevron">&#9660;</span>
+        </div>
+      </div>
+      <div class="section-body">
+        <div class="table-info">
+          <table>
+            <tr><th>Column</th><th>Type</th><th>Constraints</th></tr>
+            <tr><td>id</td><td>BIGINT</td><td><span class="tag tag-pk">PK</span> <span class="tag tag-nn">AUTO_INCREMENT</span></td></tr>
+            <tr><td>complaint_id</td><td>BIGINT</td><td><span class="tag tag-nn">NOT NULL</span> <span class="tag tag-idx">INDEXED</span> <span class="tag tag-fk">FK &rarr; COMPLAINTS</span></td></tr>
+            <tr><td>file_name</td><td>VARCHAR(500)</td><td><span class="tag tag-nn">NOT NULL</span></td></tr>
+            <tr><td>original_name</td><td>VARCHAR(500)</td><td><span class="tag tag-nn">NOT NULL</span></td></tr>
+            <tr><td>content_type</td><td>VARCHAR(100)</td><td></td></tr>
+            <tr><td>file_size</td><td>BIGINT</td><td></td></tr>
+            <tr><td>storage_path</td><td>VARCHAR(1000)</td><td></td></tr>
+            <tr><td>uploaded_at</td><td>DATETIME(6)</td><td></td></tr>
+          </table>
+        </div>
+        <div class="code-wrapper">
+          <pre id="code-attachments"><span class="sql-keyword">CREATE TABLE IF NOT EXISTS</span> COMPLAINT_ATTACHMENTS (
+    id            <span class="sql-keyword">BIGINT</span>       <span class="sql-keyword">NOT NULL</span> <span class="sql-keyword">AUTO_INCREMENT</span>,
+    complaint_id  <span class="sql-keyword">BIGINT</span>       <span class="sql-keyword">NOT NULL</span>,
+    file_name     <span class="sql-keyword">VARCHAR</span>(<span class="sql-number">500</span>) <span class="sql-keyword">NOT NULL</span>,
+    original_name <span class="sql-keyword">VARCHAR</span>(<span class="sql-number">500</span>) <span class="sql-keyword">NOT NULL</span>,
+    content_type  <span class="sql-keyword">VARCHAR</span>(<span class="sql-number">100</span>),
+    file_size     <span class="sql-keyword">BIGINT</span>,
+    storage_path  <span class="sql-keyword">VARCHAR</span>(<span class="sql-number">1000</span>),
+    uploaded_at   <span class="sql-keyword">DATETIME</span>(<span class="sql-number">6</span>),
+    <span class="sql-keyword">PRIMARY KEY</span> (id),
+    <span class="sql-keyword">INDEX</span> idx_attachment_complaint (complaint_id)
+) <span class="sql-keyword">ENGINE</span>=InnoDB <span class="sql-keyword">DEFAULT CHARSET</span>=utf8mb4 <span class="sql-keyword">COLLATE</span>=utf8mb4_unicode_ci;</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 2.5: COMPLAINT_TIMELINE -->
+    <div class="section" id="sec-timeline">
+      <div class="section-header" onclick="toggleSection('sec-timeline')">
+        <div class="section-header-left">
+          <span class="badge ddl">DDL</span>
+          <span class="section-title">2.5 COMPLAINT_TIMELINE (Audit Trail)</span>
+        </div>
+        <div class="section-header-right">
+          <button class="btn btn-outline btn-sm" onclick="event.stopPropagation(); downloadSection('timeline')">Download</button>
+          <button class="btn btn-outline btn-sm" onclick="event.stopPropagation(); copySection('timeline')">Copy</button>
+          <span class="chevron">&#9660;</span>
+        </div>
+      </div>
+      <div class="section-body">
+        <div class="table-info">
+          <table>
+            <tr><th>Column</th><th>Type</th><th>Constraints</th></tr>
+            <tr><td>id</td><td>BIGINT</td><td><span class="tag tag-pk">PK</span> <span class="tag tag-nn">AUTO_INCREMENT</span></td></tr>
+            <tr><td>complaint_id</td><td>BIGINT</td><td><span class="tag tag-nn">NOT NULL</span> <span class="tag tag-idx">INDEXED</span> <span class="tag tag-fk">FK &rarr; COMPLAINTS</span></td></tr>
+            <tr><td>action</td><td>VARCHAR(50)</td><td><span class="tag tag-nn">NOT NULL</span></td></tr>
+            <tr><td>performed_by</td><td>VARCHAR(200)</td><td></td></tr>
+            <tr><td>remarks</td><td>TEXT</td><td></td></tr>
+            <tr><td>from_status</td><td>VARCHAR(30)</td><td></td></tr>
+            <tr><td>to_status</td><td>VARCHAR(30)</td><td></td></tr>
+            <tr><td>performed_at</td><td>DATETIME(6)</td><td><span class="tag tag-idx">INDEXED</span></td></tr>
+          </table>
+        </div>
+        <div class="code-wrapper">
+          <pre id="code-timeline"><span class="sql-keyword">CREATE TABLE IF NOT EXISTS</span> COMPLAINT_TIMELINE (
+    id            <span class="sql-keyword">BIGINT</span>       <span class="sql-keyword">NOT NULL</span> <span class="sql-keyword">AUTO_INCREMENT</span>,
+    complaint_id  <span class="sql-keyword">BIGINT</span>       <span class="sql-keyword">NOT NULL</span>,
+    action        <span class="sql-keyword">VARCHAR</span>(<span class="sql-number">50</span>)  <span class="sql-keyword">NOT NULL</span>,
+    performed_by  <span class="sql-keyword">VARCHAR</span>(<span class="sql-number">200</span>),
+    remarks       <span class="sql-keyword">TEXT</span>,
+    from_status   <span class="sql-keyword">VARCHAR</span>(<span class="sql-number">30</span>),
+    to_status     <span class="sql-keyword">VARCHAR</span>(<span class="sql-number">30</span>),
+    performed_at  <span class="sql-keyword">DATETIME</span>(<span class="sql-number">6</span>),
+    <span class="sql-keyword">PRIMARY KEY</span> (id),
+    <span class="sql-keyword">INDEX</span> idx_timeline_complaint    (complaint_id),
+    <span class="sql-keyword">INDEX</span> idx_timeline_performed_at (performed_at)
+) <span class="sql-keyword">ENGINE</span>=InnoDB <span class="sql-keyword">DEFAULT CHARSET</span>=utf8mb4 <span class="sql-keyword">COLLATE</span>=utf8mb4_unicode_ci;</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 2.6: FORM_CONFIGS -->
+    <div class="section" id="sec-formconfig">
+      <div class="section-header" onclick="toggleSection('sec-formconfig')">
+        <div class="section-header-left">
+          <span class="badge ddl">DDL</span>
+          <span class="section-title">2.6 FORM_CONFIGS (Dynamic JSON Schemas)</span>
+        </div>
+        <div class="section-header-right">
+          <button class="btn btn-outline btn-sm" onclick="event.stopPropagation(); downloadSection('formconfig')">Download</button>
+          <button class="btn btn-outline btn-sm" onclick="event.stopPropagation(); copySection('formconfig')">Copy</button>
+          <span class="chevron">&#9660;</span>
+        </div>
+      </div>
+      <div class="section-body">
+        <div class="table-info">
+          <table>
+            <tr><th>Column</th><th>Type</th><th>Constraints</th></tr>
+            <tr><td>id</td><td>BIGINT</td><td><span class="tag tag-pk">PK</span> <span class="tag tag-nn">AUTO_INCREMENT</span></td></tr>
+            <tr><td>form_key</td><td>VARCHAR(100)</td><td><span class="tag tag-nn">NOT NULL</span> <span class="tag tag-uq">UNIQUE</span></td></tr>
+            <tr><td>form_name</td><td>VARCHAR(200)</td><td></td></tr>
+            <tr><td>schema_json</td><td>JSON</td><td></td></tr>
+            <tr><td>active</td><td>BIT(1)</td><td><span class="tag tag-nn">NOT NULL</span> <span class="tag tag-def">DEFAULT 1</span></td></tr>
+            <tr><td>version</td><td>VARCHAR(50)</td><td></td></tr>
+            <tr><td>created_at</td><td>DATETIME(6)</td><td></td></tr>
+            <tr><td>updated_at</td><td>DATETIME(6)</td><td></td></tr>
+          </table>
+        </div>
+        <div class="code-wrapper">
+          <pre id="code-formconfig"><span class="sql-keyword">CREATE TABLE IF NOT EXISTS</span> FORM_CONFIGS (
+    id          <span class="sql-keyword">BIGINT</span>       <span class="sql-keyword">NOT NULL</span> <span class="sql-keyword">AUTO_INCREMENT</span>,
+    form_key    <span class="sql-keyword">VARCHAR</span>(<span class="sql-number">100</span>) <span class="sql-keyword">NOT NULL</span>,
+    form_name   <span class="sql-keyword">VARCHAR</span>(<span class="sql-number">200</span>),
+    schema_json <span class="sql-keyword">JSON</span>,
+    active      <span class="sql-keyword">BIT</span>(<span class="sql-number">1</span>)       <span class="sql-keyword">NOT NULL DEFAULT</span> <span class="sql-number">1</span>,
+    version     <span class="sql-keyword">VARCHAR</span>(<span class="sql-number">50</span>),
+    created_at  <span class="sql-keyword">DATETIME</span>(<span class="sql-number">6</span>),
+    updated_at  <span class="sql-keyword">DATETIME</span>(<span class="sql-number">6</span>),
+    <span class="sql-keyword">PRIMARY KEY</span> (id),
+    <span class="sql-keyword">UNIQUE KEY</span> uk_form_key (form_key)
+) <span class="sql-keyword">ENGINE</span>=InnoDB <span class="sql-keyword">DEFAULT CHARSET</span>=utf8mb4 <span class="sql-keyword">COLLATE</span>=utf8mb4_unicode_ci;</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 2.7: SIMULATED_EMAILS -->
+    <div class="section" id="sec-emails">
+      <div class="section-header" onclick="toggleSection('sec-emails')">
+        <div class="section-header-left">
+          <span class="badge ddl">DDL</span>
+          <span class="section-title">2.7 SIMULATED_EMAILS</span>
+        </div>
+        <div class="section-header-right">
+          <button class="btn btn-outline btn-sm" onclick="event.stopPropagation(); downloadSection('emails')">Download</button>
+          <button class="btn btn-outline btn-sm" onclick="event.stopPropagation(); copySection('emails')">Copy</button>
+          <span class="chevron">&#9660;</span>
+        </div>
+      </div>
+      <div class="section-body">
+        <div class="table-info">
+          <table>
+            <tr><th>Column</th><th>Type</th><th>Constraints</th></tr>
+            <tr><td>id</td><td>BIGINT</td><td><span class="tag tag-pk">PK</span> <span class="tag tag-nn">AUTO_INCREMENT</span></td></tr>
+            <tr><td>message_id</td><td>VARCHAR(100)</td><td><span class="tag tag-nn">NOT NULL</span> <span class="tag tag-uq">UNIQUE</span></td></tr>
+            <tr><td>thread_id</td><td>VARCHAR(100)</td><td><span class="tag tag-nn">NOT NULL</span> <span class="tag tag-idx">INDEXED</span></td></tr>
+            <tr><td>from_email</td><td>VARCHAR(200)</td><td><span class="tag tag-nn">NOT NULL</span></td></tr>
+            <tr><td>to_email</td><td>VARCHAR(200)</td><td><span class="tag tag-nn">NOT NULL</span></td></tr>
+            <tr><td>subject</td><td>VARCHAR(500)</td><td><span class="tag tag-nn">NOT NULL</span></td></tr>
+            <tr><td>body</td><td>TEXT</td><td></td></tr>
+            <tr><td>direction</td><td>VARCHAR(10)</td><td><span class="tag tag-nn">NOT NULL</span> <span class="tag tag-idx">INDEXED</span></td></tr>
+            <tr><td>status</td><td>VARCHAR(20)</td><td><span class="tag tag-nn">NOT NULL</span> <span class="tag tag-def">DEFAULT 'UNREAD'</span></td></tr>
+            <tr><td>complaint_id</td><td>BIGINT</td><td><span class="tag tag-idx">INDEXED</span> <span class="tag tag-fk">FK &rarr; COMPLAINTS</span></td></tr>
+            <tr><td>complaint_number</td><td>VARCHAR(50)</td><td><span class="tag tag-idx">INDEXED</span></td></tr>
+            <tr><td>attachment_url</td><td>VARCHAR(500)</td><td></td></tr>
+            <tr><td>sent_at</td><td>DATETIME(6)</td><td><span class="tag tag-idx">INDEXED</span></td></tr>
+            <tr><td>received_at</td><td>DATETIME(6)</td><td></td></tr>
+            <tr><td>processed_at</td><td>DATETIME(6)</td><td></td></tr>
+          </table>
+        </div>
+        <div class="code-wrapper">
+          <pre id="code-emails"><span class="sql-keyword">CREATE TABLE IF NOT EXISTS</span> SIMULATED_EMAILS (
+    id                <span class="sql-keyword">BIGINT</span>       <span class="sql-keyword">NOT NULL</span> <span class="sql-keyword">AUTO_INCREMENT</span>,
+    message_id        <span class="sql-keyword">VARCHAR</span>(<span class="sql-number">100</span>) <span class="sql-keyword">NOT NULL</span>,
+    thread_id         <span class="sql-keyword">VARCHAR</span>(<span class="sql-number">100</span>) <span class="sql-keyword">NOT NULL</span>,
+    from_email        <span class="sql-keyword">VARCHAR</span>(<span class="sql-number">200</span>) <span class="sql-keyword">NOT NULL</span>,
+    to_email          <span class="sql-keyword">VARCHAR</span>(<span class="sql-number">200</span>) <span class="sql-keyword">NOT NULL</span>,
+    subject           <span class="sql-keyword">VARCHAR</span>(<span class="sql-number">500</span>) <span class="sql-keyword">NOT NULL</span>,
+    body              <span class="sql-keyword">TEXT</span>,
+    direction         <span class="sql-keyword">VARCHAR</span>(<span class="sql-number">10</span>)  <span class="sql-keyword">NOT NULL</span>,
+    status            <span class="sql-keyword">VARCHAR</span>(<span class="sql-number">20</span>)  <span class="sql-keyword">NOT NULL DEFAULT</span> <span class="sql-string">'UNREAD'</span>,
+    complaint_id      <span class="sql-keyword">BIGINT</span>,
+    complaint_number  <span class="sql-keyword">VARCHAR</span>(<span class="sql-number">50</span>),
+    attachment_url    <span class="sql-keyword">VARCHAR</span>(<span class="sql-number">500</span>),
+    sent_at           <span class="sql-keyword">DATETIME</span>(<span class="sql-number">6</span>),
+    received_at       <span class="sql-keyword">DATETIME</span>(<span class="sql-number">6</span>),
+    processed_at      <span class="sql-keyword">DATETIME</span>(<span class="sql-number">6</span>),
+    <span class="sql-keyword">PRIMARY KEY</span> (id),
+    <span class="sql-keyword">UNIQUE KEY</span> uk_message_id            (message_id),
+    <span class="sql-keyword">INDEX</span> idx_email_thread              (thread_id),
+    <span class="sql-keyword">INDEX</span> idx_email_direction           (direction),
+    <span class="sql-keyword">INDEX</span> idx_email_complaint           (complaint_id),
+    <span class="sql-keyword">INDEX</span> idx_email_complaint_number    (complaint_number),
+    <span class="sql-keyword">INDEX</span> idx_email_sent_at             (sent_at)
+) <span class="sql-keyword">ENGINE</span>=InnoDB <span class="sql-keyword">DEFAULT CHARSET</span>=utf8mb4 <span class="sql-keyword">COLLATE</span>=utf8mb4_unicode_ci;</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 3: SEED DATA -->
+    <div class="section" id="sec-seed">
+      <div class="section-header" onclick="toggleSection('sec-seed')">
+        <div class="section-header-left">
+          <span class="badge dml">DML</span>
+          <span class="section-title">3. Seed Data (Categories, Banks, Form Schema, Complaints)</span>
+        </div>
+        <div class="section-header-right">
+          <button class="btn btn-outline btn-sm" onclick="event.stopPropagation(); downloadSection('seed')">Download</button>
+          <button class="btn btn-outline btn-sm" onclick="event.stopPropagation(); copySection('seed')">Copy</button>
+          <span class="chevron">&#9660;</span>
+        </div>
+      </div>
+      <div class="section-body">
+        <div class="code-wrapper">
+          <pre id="code-seed"><span class="sql-comment">-- 3.1 Seed Complaint Categories</span>
+<span class="sql-keyword">INSERT INTO</span> COMPLAINT_CATEGORIES (name, description, sort_order, status, created_at) <span class="sql-keyword">VALUES</span>
+    (<span class="sql-string">'ATM / Debit Card'</span>,       <span class="sql-string">'Issues related to ATM transactions and debit cards'</span>,          <span class="sql-number">1</span>,  <span class="sql-string">'active'</span>, <span class="sql-function">NOW()</span>),
+    (<span class="sql-string">'Credit Card'</span>,            <span class="sql-string">'Issues related to credit card transactions and billing'</span>,       <span class="sql-number">2</span>,  <span class="sql-string">'active'</span>, <span class="sql-function">NOW()</span>),
+    (<span class="sql-string">'Internet Banking'</span>,       <span class="sql-string">'Issues with online banking services'</span>,                          <span class="sql-number">3</span>,  <span class="sql-string">'active'</span>, <span class="sql-function">NOW()</span>),
+    (<span class="sql-string">'Mobile Banking / UPI'</span>,   <span class="sql-string">'Issues with mobile banking apps and UPI transactions'</span>,         <span class="sql-number">4</span>,  <span class="sql-string">'active'</span>, <span class="sql-function">NOW()</span>),
+    (<span class="sql-string">'Loan / Advances'</span>,        <span class="sql-string">'Issues with loan processing, EMI, interest rates'</span>,             <span class="sql-number">5</span>,  <span class="sql-string">'active'</span>, <span class="sql-function">NOW()</span>),
+    (<span class="sql-string">'Deposit Accounts'</span>,       <span class="sql-string">'Issues with savings, current, or fixed deposit accounts'</span>,      <span class="sql-number">6</span>,  <span class="sql-string">'active'</span>, <span class="sql-function">NOW()</span>),
+    (<span class="sql-string">'Pension'</span>,                <span class="sql-string">'Pension related grievances'</span>,                                    <span class="sql-number">7</span>,  <span class="sql-string">'active'</span>, <span class="sql-function">NOW()</span>),
+    (<span class="sql-string">'Remittance / Transfer'</span>,  <span class="sql-string">'Issues with fund transfers, NEFT, RTGS, IMPS'</span>,                 <span class="sql-number">8</span>,  <span class="sql-string">'active'</span>, <span class="sql-function">NOW()</span>),
+    (<span class="sql-string">'Insurance'</span>,              <span class="sql-string">'Insurance related complaints'</span>,                                  <span class="sql-number">9</span>,  <span class="sql-string">'active'</span>, <span class="sql-function">NOW()</span>),
+    (<span class="sql-string">'Others'</span>,                 <span class="sql-string">'Other banking related complaints'</span>,                             <span class="sql-number">10</span>, <span class="sql-string">'active'</span>, <span class="sql-function">NOW()</span>);
+
+
+<span class="sql-comment">-- 3.2 Seed Banks</span>
+<span class="sql-keyword">INSERT INTO</span> BANKS (name, code, type, status, created_at) <span class="sql-keyword">VALUES</span>
+    (<span class="sql-string">'State Bank of India'</span>,    <span class="sql-string">'SBI'</span>,      <span class="sql-string">'public'</span>,  <span class="sql-string">'active'</span>, <span class="sql-function">NOW()</span>),
+    (<span class="sql-string">'Punjab National Bank'</span>,   <span class="sql-string">'PNB'</span>,      <span class="sql-string">'public'</span>,  <span class="sql-string">'active'</span>, <span class="sql-function">NOW()</span>),
+    (<span class="sql-string">'Bank of Baroda'</span>,         <span class="sql-string">'BOB'</span>,      <span class="sql-string">'public'</span>,  <span class="sql-string">'active'</span>, <span class="sql-function">NOW()</span>),
+    (<span class="sql-string">'Canara Bank'</span>,            <span class="sql-string">'CANARA'</span>,   <span class="sql-string">'public'</span>,  <span class="sql-string">'active'</span>, <span class="sql-function">NOW()</span>),
+    (<span class="sql-string">'Union Bank of India'</span>,    <span class="sql-string">'UNION'</span>,    <span class="sql-string">'public'</span>,  <span class="sql-string">'active'</span>, <span class="sql-function">NOW()</span>),
+    (<span class="sql-string">'HDFC Bank'</span>,              <span class="sql-string">'HDFC'</span>,     <span class="sql-string">'private'</span>, <span class="sql-string">'active'</span>, <span class="sql-function">NOW()</span>),
+    (<span class="sql-string">'ICICI Bank'</span>,             <span class="sql-string">'ICICI'</span>,    <span class="sql-string">'private'</span>, <span class="sql-string">'active'</span>, <span class="sql-function">NOW()</span>),
+    (<span class="sql-string">'Axis Bank'</span>,              <span class="sql-string">'AXIS'</span>,     <span class="sql-string">'private'</span>, <span class="sql-string">'active'</span>, <span class="sql-function">NOW()</span>),
+    (<span class="sql-string">'Kotak Mahindra Bank'</span>,    <span class="sql-string">'KOTAK'</span>,    <span class="sql-string">'private'</span>, <span class="sql-string">'active'</span>, <span class="sql-function">NOW()</span>),
+    (<span class="sql-string">'IndusInd Bank'</span>,          <span class="sql-string">'INDUSIND'</span>, <span class="sql-string">'private'</span>, <span class="sql-string">'active'</span>, <span class="sql-function">NOW()</span>),
+    (<span class="sql-string">'Yes Bank'</span>,               <span class="sql-string">'YES'</span>,      <span class="sql-string">'private'</span>, <span class="sql-string">'active'</span>, <span class="sql-function">NOW()</span>),
+    (<span class="sql-string">'IDBI Bank'</span>,              <span class="sql-string">'IDBI'</span>,     <span class="sql-string">'public'</span>,  <span class="sql-string">'active'</span>, <span class="sql-function">NOW()</span>);
+
+
+<span class="sql-comment">-- 3.3 Seed Form Configuration (Raise Complaint Form Schema)</span>
+<span class="sql-keyword">INSERT INTO</span> FORM_CONFIGS (form_key, form_name, schema_json, active, version, created_at, updated_at) <span class="sql-keyword">VALUES</span>
+(<span class="sql-string">'raise-complaint'</span>, <span class="sql-string">'Raise a Complaint'</span>, <span class="sql-string">'{"formTitle":"Raise a Complaint","steps":[{"stepNumber":1,"title":"Tell Us About You","description":"Share some basic details about yourself.","fields":[{"key":"complainantCategory","label":"Complainant Category","type":"select","required":true,"options":[{"label":"Individual","value":"individual"},{"label":"Business","value":"business"},{"label":"Other","value":"other"}]},{"key":"name","label":"Name","type":"text","required":true},{"key":"mobileNumber","label":"Mobile Number","type":"tel","required":true,"prefix":"+91"},{"key":"email","label":"Email","type":"email","required":false},{"key":"pincode","label":"Pincode","type":"text","required":true,"maxLength":6},{"key":"district","label":"District","type":"select","required":true,"optionsSource":"districts"},{"key":"state","label":"State","type":"select","required":true,"optionsSource":"states"},{"key":"address","label":"Address","type":"textarea","required":true,"rows":3}]},{"stepNumber":2,"title":"Entity Details","description":"Tell us about the bank or financial institution.","fields":[{"key":"entityType","label":"Entity Type","type":"select","required":true,"options":[{"label":"Bank","value":"bank"},{"label":"NBFC","value":"nbfc"},{"label":"Payment System","value":"payment"}]},{"key":"entityName","label":"Entity Name","type":"select","required":true,"optionsSource":"banks"},{"key":"branch","label":"Branch","type":"text","required":false},{"key":"accountNumber","label":"Account Number","type":"text","required":false}]},{"stepNumber":3,"title":"Share Your Complaint","description":"Describe your complaint and attach documents.","fields":[{"key":"complaintCategory","label":"Complaint Category","type":"select","required":true,"optionsSource":"categories"},{"key":"subCategory1","label":"Sub-Category 1","type":"select","required":false,"optionsSource":"subCategories1","dependsOn":"complaintCategory"},{"key":"subCategory2","label":"Sub-Category 2","type":"select","required":false,"optionsSource":"subCategories2","dependsOn":"subCategory1"},{"key":"facts","label":"Facts of the complaint","type":"textarea","required":true,"rows":4},{"key":"isSubJudice","label":"Is your complaint sub-judice?","type":"radio","required":true,"options":[{"label":"Yes","value":true},{"label":"No","value":false}]},{"key":"throughAdvocate","label":"Through an advocate?","type":"radio","required":true,"options":[{"label":"Yes","value":true},{"label":"No","value":false}]},{"key":"alreadyWithOmbudsman","label":"Already with Ombudsman?","type":"radio","required":true,"options":[{"label":"Yes","value":true},{"label":"No","value":false}]},{"key":"regulatedEntityStaff","label":"Staff of regulated entity?","type":"radio","required":true,"options":[{"label":"Yes","value":true},{"label":"No","value":false}]},{"key":"attachments","label":"Attachments","type":"file","required":false,"accept":".pdf,.jpg,.png","multiple":true,"maxSize":5242880},{"key":"authorizeRepresentative","label":"Authorize representative?","type":"radio","required":false,"options":[{"label":"Yes","value":true},{"label":"No","value":false}]}]}],"preFilingModal":{"title":"Before Filing a Complaint","options":[{"id":"not_contacted","number":1,"title":"I have not contacted my bank"},{"id":"already_filed","number":2,"title":"I have filed a complaint with bank","conditionalFields":[{"key":"bankComplaintDate","label":"When did you file?","type":"date","required":true},{"key":"receivedReply","label":"Received reply?","type":"radio","required":true,"options":[{"label":"Yes","value":"yes"},{"label":"No","value":"no"}]}]}]}}'</span>,
+<span class="sql-number">1</span>, <span class="sql-string">'1.0'</span>, <span class="sql-function">NOW()</span>, <span class="sql-function">NOW()</span>);</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 3.4: SAMPLE COMPLAINTS -->
+    <div class="section" id="sec-samplecomplaints">
+      <div class="section-header" onclick="toggleSection('sec-samplecomplaints')">
+        <div class="section-header-left">
+          <span class="badge dml">DML</span>
+          <span class="section-title">3.4 Sample Complaints Seed Data</span>
+        </div>
+        <div class="section-header-right">
+          <button class="btn btn-outline btn-sm" onclick="event.stopPropagation(); downloadSection('samplecomplaints')">Download</button>
+          <button class="btn btn-outline btn-sm" onclick="event.stopPropagation(); copySection('samplecomplaints')">Copy</button>
+          <span class="chevron">&#9660;</span>
+        </div>
+      </div>
+      <div class="section-body">
+        <div class="code-wrapper">
+          <pre id="code-samplecomplaints"><span class="sql-comment">-- 3.4 Seed Sample Complaints (7 complaints matching DataInitializer)</span>
+
+<span class="sql-keyword">INSERT INTO</span> COMPLAINTS (complaint_number, complainant_name, complainant_email, complainant_phone, complainant_address, bank_branch, account_number, subject, description, relief_sought, status, priority, filing_type, created_at) <span class="sql-keyword">VALUES</span>
+(<span class="sql-string">'CMS-20260401-A1B2C3'</span>, <span class="sql-string">'Rajesh Kumar'</span>, <span class="sql-string">'rajesh@gmail.com'</span>, <span class="sql-string">'9876543210'</span>, <span class="sql-string">'Shivaji Nagar, Pune, Maharashtra'</span>, <span class="sql-string">'SBI Pune Main Branch'</span>, <span class="sql-string">'1234567890'</span>,
+ <span class="sql-string">'ATM cash not dispensed but account debited Rs 5000'</span>,
+ <span class="sql-string">'On 15th April I tried to withdraw Rs 5000 from ATM at MG Road branch. Cash was not dispensed but amount was debited. Bank has not resolved in 30 days despite multiple follow-ups.'</span>,
+ <span class="sql-string">'RESOLVED: Bank was directed to credit Rs 5000 back to customer account with Rs 100/day compensation for delay as per RBI circular. Bank failed to reverse within T+5 days as mandated. Total compensation: Rs 5000 + Rs 3000 delay penalty.'</span>,
+ <span class="sql-string">'resolved'</span>, <span class="sql-string">'high'</span>, <span class="sql-string">'physical'</span>, <span class="sql-function">NOW()</span>),
+
+(<span class="sql-string">'CMS-20260312-D4E5F6'</span>, <span class="sql-string">'Sunita Devi'</span>, <span class="sql-string">'sunita@gmail.com'</span>, <span class="sql-string">'7654321098'</span>, <span class="sql-string">'Andheri West, Mumbai'</span>, <span class="sql-string">'HDFC Mumbai Andheri Branch'</span>, <span class="sql-string">'5678901234'</span>,
+ <span class="sql-string">'Unauthorized credit card transaction of Rs 12000'</span>,
+ <span class="sql-string">'An unauthorized transaction of Rs 12000 on my credit card on 10th March. Reported to bank within 24 hours. No resolution in 45 days. Card was in my possession.'</span>,
+ <span class="sql-string">'RESOLVED: Bank failed to prove customer authorization. As per RBI zero-liability policy, customer reported within 3 days hence entitled to full reversal. Bank directed to reverse Rs 12000 + waive interest charged on disputed amount + Rs 2000 compensation for mental agony.'</span>,
+ <span class="sql-string">'resolved'</span>, <span class="sql-string">'high'</span>, <span class="sql-string">'online'</span>, <span class="sql-function">NOW()</span>),
+
+(<span class="sql-string">'CMS-20260225-G7H8I9'</span>, <span class="sql-string">'Amit Verma'</span>, <span class="sql-string">'amit@gmail.com'</span>, <span class="sql-string">'8123456789'</span>, <span class="sql-string">'Gomti Nagar, Lucknow'</span>, <span class="sql-string">'ICICI Lucknow Branch'</span>, <span class="sql-string">'3456789012'</span>,
+ <span class="sql-string">'Home loan EMI interest rate increased without notice'</span>,
+ <span class="sql-string">'Bank unilaterally increased home loan interest from 8.5% to 11% without prior notice. Rs 25000 extra charged over 3 months. Written complaint ignored.'</span>,
+ <span class="sql-string">''</span>,
+ <span class="sql-string">'pending'</span>, <span class="sql-string">'medium'</span>, <span class="sql-string">'physical'</span>, <span class="sql-function">NOW()</span>),
+
+(<span class="sql-string">'CMS-20260320-J1K2L3'</span>, <span class="sql-string">'Priya Sharma'</span>, <span class="sql-string">'priya@email.com'</span>, <span class="sql-string">'8765432109'</span>, <span class="sql-string">'Mumbai Fort'</span>, <span class="sql-string">'HDFC Mumbai Fort Branch'</span>, <span class="sql-string">'9876543210'</span>,
+ <span class="sql-string">'Unauthorized UPI debit of Rs 15000 from savings account'</span>,
+ <span class="sql-string">'Rs 15000 debited via UPI without authorization on 20th March. Suspected fraud. Bank complaint filed on 22nd March but no refund or action taken in 30 days.'</span>,
+ <span class="sql-string">'RESOLVED: Investigation confirmed unauthorized transaction - no OTP was generated on customer&#39;s registered mobile. Bank directed to reverse Rs 15000 within 10 days + Rs 5000 compensation. Bank also instructed to strengthen UPI security protocols.'</span>,
+ <span class="sql-string">'resolved'</span>, <span class="sql-string">'high'</span>, <span class="sql-string">'online'</span>, <span class="sql-function">NOW()</span>),
+
+(<span class="sql-string">'CMS-20260410-M4N5O6'</span>, <span class="sql-string">'Vikram Singh'</span>, <span class="sql-string">'vikram@email.com'</span>, <span class="sql-string">'9012345678'</span>, <span class="sql-string">'Malviya Nagar, Jaipur'</span>, <span class="sql-string">'Axis Bank Jaipur MI Road'</span>, <span class="sql-string">'7890123456'</span>,
+ <span class="sql-string">'Recovery agent harassment and abusive threatening calls'</span>,
+ <span class="sql-string">'Receiving abusive and threatening calls from recovery agents despite making regular EMI payments on time. Rs 8000 wrongly charged as penalty. Agents visited home and threatened family.'</span>,
+ <span class="sql-string">''</span>,
+ <span class="sql-string">'pending'</span>, <span class="sql-string">'high'</span>, <span class="sql-string">'physical'</span>, <span class="sql-function">NOW()</span>),
+
+(<span class="sql-string">'CMS-20260118-P7Q8R9'</span>, <span class="sql-string">'Meena Patel'</span>, <span class="sql-string">'meena@email.com'</span>, <span class="sql-string">'7890123456'</span>, <span class="sql-string">'Navrangpura, Ahmedabad'</span>, <span class="sql-string">'Bank of Baroda Ahmedabad'</span>, <span class="sql-string">'4567890123'</span>,
+ <span class="sql-string">'Fixed deposit premature closure without consent'</span>,
+ <span class="sql-string">'Bank closed my FD of Rs 5 lakh prematurely without my consent and adjusted against a loan I had already repaid. Interest loss of Rs 18000. No proper explanation given.'</span>,
+ <span class="sql-string">'REJECTED: Upon investigation, bank produced signed lien authorization form from account opening. Customer had given standing instruction for auto-adjustment. Complaint dismissed as bank acted within terms of agreement.'</span>,
+ <span class="sql-string">'rejected'</span>, <span class="sql-string">'medium'</span>, <span class="sql-string">'online'</span>, <span class="sql-function">NOW()</span>),
+
+(<span class="sql-string">'CMS-20260505-S1T2U3'</span>, <span class="sql-string">'Deepak Joshi'</span>, <span class="sql-string">'deepak@email.com'</span>, <span class="sql-string">'8901234567'</span>, <span class="sql-string">'Koregaon Park, Pune'</span>, <span class="sql-string">'Kotak Mahindra Pune Branch'</span>, <span class="sql-string">'6789012345'</span>,
+ <span class="sql-string">'Internet banking fund transfer failed but amount debited'</span>,
+ <span class="sql-string">'NEFT transfer of Rs 50000 failed on 5th May but amount debited from account. Beneficiary did not receive funds. Bank says it will take 7 working days but 15 days have passed.'</span>,
+ <span class="sql-string">''</span>,
+ <span class="sql-string">'pending'</span>, <span class="sql-string">'medium'</span>, <span class="sql-string">'online'</span>, <span class="sql-function">NOW()</span>);</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 4: USEFUL QUERIES -->
+    <div class="section" id="sec-queries">
+      <div class="section-header" onclick="toggleSection('sec-queries')">
+        <div class="section-header-left">
+          <span class="badge query">QUERY</span>
+          <span class="section-title">4. Useful Developer Queries</span>
+        </div>
+        <div class="section-header-right">
+          <button class="btn btn-outline btn-sm" onclick="event.stopPropagation(); downloadSection('queries')">Download</button>
+          <button class="btn btn-outline btn-sm" onclick="event.stopPropagation(); copySection('queries')">Copy</button>
+          <span class="chevron">&#9660;</span>
+        </div>
+      </div>
+      <div class="section-body">
+        <div class="code-wrapper">
+          <pre id="code-queries"><span class="sql-comment">-- 4.1 Dashboard Statistics</span>
+<span class="sql-keyword">SELECT</span>
+    <span class="sql-function">COUNT</span>(*)                                                      <span class="sql-keyword">AS</span> total_complaints,
+    <span class="sql-function">SUM</span>(<span class="sql-keyword">CASE WHEN</span> status = <span class="sql-string">'pending'</span>     <span class="sql-keyword">THEN</span> <span class="sql-number">1</span> <span class="sql-keyword">ELSE</span> <span class="sql-number">0</span> <span class="sql-keyword">END</span>)      <span class="sql-keyword">AS</span> pending_complaints,
+    <span class="sql-function">SUM</span>(<span class="sql-keyword">CASE WHEN</span> status = <span class="sql-string">'in_progress'</span> <span class="sql-keyword">THEN</span> <span class="sql-number">1</span> <span class="sql-keyword">ELSE</span> <span class="sql-number">0</span> <span class="sql-keyword">END</span>)      <span class="sql-keyword">AS</span> in_progress_complaints,
+    <span class="sql-function">SUM</span>(<span class="sql-keyword">CASE WHEN</span> status = <span class="sql-string">'resolved'</span>    <span class="sql-keyword">THEN</span> <span class="sql-number">1</span> <span class="sql-keyword">ELSE</span> <span class="sql-number">0</span> <span class="sql-keyword">END</span>)      <span class="sql-keyword">AS</span> resolved_complaints,
+    <span class="sql-function">SUM</span>(<span class="sql-keyword">CASE WHEN</span> status = <span class="sql-string">'closed'</span>      <span class="sql-keyword">THEN</span> <span class="sql-number">1</span> <span class="sql-keyword">ELSE</span> <span class="sql-number">0</span> <span class="sql-keyword">END</span>)      <span class="sql-keyword">AS</span> closed_complaints,
+    <span class="sql-function">SUM</span>(<span class="sql-keyword">CASE WHEN</span> status = <span class="sql-string">'escalated'</span>   <span class="sql-keyword">THEN</span> <span class="sql-number">1</span> <span class="sql-keyword">ELSE</span> <span class="sql-number">0</span> <span class="sql-keyword">END</span>)      <span class="sql-keyword">AS</span> escalated_complaints,
+    <span class="sql-function">SUM</span>(<span class="sql-keyword">CASE WHEN</span> priority = <span class="sql-string">'high'</span>      <span class="sql-keyword">THEN</span> <span class="sql-number">1</span> <span class="sql-keyword">ELSE</span> <span class="sql-number">0</span> <span class="sql-keyword">END</span>)      <span class="sql-keyword">AS</span> high_priority,
+    <span class="sql-function">SUM</span>(<span class="sql-keyword">CASE WHEN</span> priority = <span class="sql-string">'medium'</span>    <span class="sql-keyword">THEN</span> <span class="sql-number">1</span> <span class="sql-keyword">ELSE</span> <span class="sql-number">0</span> <span class="sql-keyword">END</span>)      <span class="sql-keyword">AS</span> medium_priority,
+    <span class="sql-function">SUM</span>(<span class="sql-keyword">CASE WHEN</span> priority = <span class="sql-string">'low'</span>       <span class="sql-keyword">THEN</span> <span class="sql-number">1</span> <span class="sql-keyword">ELSE</span> <span class="sql-number">0</span> <span class="sql-keyword">END</span>)      <span class="sql-keyword">AS</span> low_priority
+<span class="sql-keyword">FROM</span> COMPLAINTS;
+
+
+<span class="sql-comment">-- 4.2 Complaints with Bank &amp; Category names</span>
+<span class="sql-keyword">SELECT</span>
+    c.id, c.complaint_number, c.complainant_name, c.subject,
+    c.status, c.priority, c.created_at,
+    b.name <span class="sql-keyword">AS</span> bank_name,
+    cat.name <span class="sql-keyword">AS</span> category_name
+<span class="sql-keyword">FROM</span> COMPLAINTS c
+<span class="sql-keyword">LEFT JOIN</span> BANKS b <span class="sql-keyword">ON</span> c.bank_id = b.id
+<span class="sql-keyword">LEFT JOIN</span> COMPLAINT_CATEGORIES cat <span class="sql-keyword">ON</span> c.category_id = cat.id
+<span class="sql-keyword">ORDER BY</span> c.created_at <span class="sql-keyword">DESC</span>;
+
+
+<span class="sql-comment">-- 4.3 Complaint timeline/audit trail</span>
+<span class="sql-keyword">SELECT</span>
+    ct.action, ct.from_status, ct.to_status,
+    ct.performed_by, ct.remarks, ct.performed_at
+<span class="sql-keyword">FROM</span> COMPLAINT_TIMELINE ct
+<span class="sql-keyword">WHERE</span> ct.complaint_id = <span class="sql-comment">/* your_complaint_id */</span>
+<span class="sql-keyword">ORDER BY</span> ct.performed_at <span class="sql-keyword">ASC</span>;
+
+
+<span class="sql-comment">-- 4.4 Attachments for a complaint</span>
+<span class="sql-keyword">SELECT</span>
+    ca.id, ca.file_name, ca.original_name,
+    ca.content_type, ca.file_size, ca.storage_path, ca.uploaded_at
+<span class="sql-keyword">FROM</span> COMPLAINT_ATTACHMENTS ca
+<span class="sql-keyword">WHERE</span> ca.complaint_id = <span class="sql-comment">/* your_complaint_id */</span>
+<span class="sql-keyword">ORDER BY</span> ca.uploaded_at <span class="sql-keyword">DESC</span>;
+
+
+<span class="sql-comment">-- 4.5 Email threads with complaint info</span>
+<span class="sql-keyword">SELECT</span>
+    se.thread_id, se.from_email, se.to_email,
+    se.subject, se.direction, se.status,
+    se.complaint_number, se.sent_at
+<span class="sql-keyword">FROM</span> SIMULATED_EMAILS se
+<span class="sql-keyword">ORDER BY</span> se.thread_id, se.sent_at <span class="sql-keyword">ASC</span>;
+
+
+<span class="sql-comment">-- 4.6 Banks by type</span>
+<span class="sql-keyword">SELECT</span> id, name, code, type <span class="sql-keyword">FROM</span> BANKS <span class="sql-keyword">WHERE</span> status = <span class="sql-string">'active'</span> <span class="sql-keyword">AND</span> type = <span class="sql-string">'public'</span>;
+<span class="sql-keyword">SELECT</span> id, name, code, type <span class="sql-keyword">FROM</span> BANKS <span class="sql-keyword">WHERE</span> status = <span class="sql-string">'active'</span> <span class="sql-keyword">AND</span> type = <span class="sql-string">'private'</span>;
+
+
+<span class="sql-comment">-- 4.7 Category hierarchy</span>
+<span class="sql-keyword">SELECT</span> id, name, description, sort_order <span class="sql-keyword">FROM</span> COMPLAINT_CATEGORIES <span class="sql-keyword">WHERE</span> parent_id <span class="sql-keyword">IS NULL AND</span> status = <span class="sql-string">'active'</span> <span class="sql-keyword">ORDER BY</span> sort_order;
+<span class="sql-keyword">SELECT</span> id, name, description, parent_id   <span class="sql-keyword">FROM</span> COMPLAINT_CATEGORIES <span class="sql-keyword">WHERE</span> parent_id = <span class="sql-comment">/* parent_id */</span> <span class="sql-keyword">AND</span> status = <span class="sql-string">'active'</span> <span class="sql-keyword">ORDER BY</span> sort_order;
+
+
+<span class="sql-comment">-- 4.8 Resolved complaints with resolution remarks (for AI Suggestions)</span>
+<span class="sql-keyword">SELECT</span> c.complaint_number, c.subject, c.description, c.relief_sought, c.status, c.priority
+<span class="sql-keyword">FROM</span> COMPLAINTS c
+<span class="sql-keyword">WHERE</span> c.status <span class="sql-keyword">IN</span> (<span class="sql-string">'resolved'</span>, <span class="sql-string">'rejected'</span>) <span class="sql-keyword">AND</span> c.relief_sought <span class="sql-keyword">IS NOT NULL AND</span> c.relief_sought != <span class="sql-string">''</span>
+<span class="sql-keyword">ORDER BY</span> c.created_at <span class="sql-keyword">DESC</span>;</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 5: DROP TABLES -->
+    <div class="section" id="sec-drop">
+      <div class="section-header" onclick="toggleSection('sec-drop')">
+        <div class="section-header-left">
+          <span class="badge danger">DANGER</span>
+          <span class="section-title">5. Drop All Tables (Use with Caution!)</span>
+        </div>
+        <div class="section-header-right">
+          <button class="btn btn-outline btn-sm" onclick="event.stopPropagation(); copySection('drop')">Copy</button>
+          <span class="chevron">&#9660;</span>
+        </div>
+      </div>
+      <div class="section-body">
+        <div class="code-wrapper">
+          <pre id="code-drop"><span class="sql-comment">-- WARNING: This will delete all data permanently!</span>
+
+<span class="sql-keyword">DROP TABLE IF EXISTS</span> SIMULATED_EMAILS;
+<span class="sql-keyword">DROP TABLE IF EXISTS</span> COMPLAINT_ATTACHMENTS;
+<span class="sql-keyword">DROP TABLE IF EXISTS</span> COMPLAINT_TIMELINE;
+<span class="sql-keyword">DROP TABLE IF EXISTS</span> COMPLAINTS;
+<span class="sql-keyword">DROP TABLE IF EXISTS</span> COMPLAINT_CATEGORIES;
+<span class="sql-keyword">DROP TABLE IF EXISTS</span> BANKS;
+<span class="sql-keyword">DROP TABLE IF EXISTS</span> FORM_CONFIGS;</pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      CMS Database Scripts &bull; Version 1.1 &bull; Generated May 2026 &bull; MySQL 8+
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const fullScript = `-- ============================================================================
+-- CMS (Complaint Management System) - Complete Database Scripts
+-- Database: MySQL 8+
+-- ============================================================================
+
+-- ============================================================================
+-- SECTION 1: DATABASE & USER SETUP
+-- ============================================================================
+
+CREATE DATABASE IF NOT EXISTS cms_db
+    CHARACTER SET utf8mb4
+    COLLATE utf8mb4_unicode_ci;
+
+USE cms_db;
+
+-- ============================================================================
+-- SECTION 2: TABLE CREATION (DDL)
+-- ============================================================================
+
+-- 2.1 BANKS
+CREATE TABLE IF NOT EXISTS BANKS (
+    id          BIGINT       NOT NULL AUTO_INCREMENT,
+    name        VARCHAR(300) NOT NULL,
+    code        VARCHAR(50),
+    type        VARCHAR(100),
+    status      VARCHAR(20)  DEFAULT 'active',
+    created_at  DATETIME(6),
+    PRIMARY KEY (id),
+    INDEX idx_bank_type   (type),
+    INDEX idx_bank_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- 2.2 COMPLAINT CATEGORIES
+CREATE TABLE IF NOT EXISTS COMPLAINT_CATEGORIES (
+    id          BIGINT       NOT NULL AUTO_INCREMENT,
+    name        VARCHAR(200) NOT NULL,
+    description VARCHAR(500),
+    parent_id   BIGINT,
+    status      VARCHAR(20)  DEFAULT 'active',
+    sort_order  INT          DEFAULT 0,
+    created_at  DATETIME(6),
+    PRIMARY KEY (id),
+    INDEX idx_category_parent (parent_id),
+    INDEX idx_category_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- 2.3 COMPLAINTS
+CREATE TABLE IF NOT EXISTS COMPLAINTS (
+    id                        BIGINT       NOT NULL AUTO_INCREMENT,
+    complaint_number          VARCHAR(50)  NOT NULL,
+    complainant_name          VARCHAR(200) NOT NULL,
+    complainant_email         VARCHAR(200),
+    complainant_phone         VARCHAR(20),
+    complainant_address       VARCHAR(500),
+    bank_id                   BIGINT,
+    bank_branch               VARCHAR(300),
+    account_number            VARCHAR(100),
+    category_id               BIGINT,
+    subject                   VARCHAR(500) NOT NULL,
+    description               TEXT,
+    relief_sought             TEXT,
+    status                    VARCHAR(30)  NOT NULL DEFAULT 'pending',
+    priority                  VARCHAR(20)  DEFAULT 'medium',
+    filing_type               VARCHAR(50),
+    bank_complaint_reference  VARCHAR(200),
+    bank_complaint_date       DATETIME(6),
+    assigned_officer          VARCHAR(200),
+    filed_at                  DATETIME(6),
+    resolved_at               DATETIME(6),
+    closed_at                 DATETIME(6),
+    escalated_at              DATETIME(6),
+    created_at                DATETIME(6),
+    updated_at                DATETIME(6),
+    PRIMARY KEY (id),
+    UNIQUE KEY  idx_complaint_number         (complaint_number),
+    INDEX       idx_complaint_status         (status),
+    INDEX       idx_complaint_priority       (priority),
+    INDEX       idx_complaint_email          (complainant_email),
+    INDEX       idx_complaint_category       (category_id),
+    INDEX       idx_complaint_bank           (bank_id),
+    INDEX       idx_complaint_created        (created_at),
+    INDEX       idx_complaint_status_created (status, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- 2.4 COMPLAINT ATTACHMENTS
+CREATE TABLE IF NOT EXISTS COMPLAINT_ATTACHMENTS (
+    id            BIGINT       NOT NULL AUTO_INCREMENT,
+    complaint_id  BIGINT       NOT NULL,
+    file_name     VARCHAR(500) NOT NULL,
+    original_name VARCHAR(500) NOT NULL,
+    content_type  VARCHAR(100),
+    file_size     BIGINT,
+    storage_path  VARCHAR(1000),
+    uploaded_at   DATETIME(6),
+    PRIMARY KEY (id),
+    INDEX idx_attachment_complaint (complaint_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- 2.5 COMPLAINT TIMELINE (Audit Trail)
+CREATE TABLE IF NOT EXISTS COMPLAINT_TIMELINE (
+    id            BIGINT       NOT NULL AUTO_INCREMENT,
+    complaint_id  BIGINT       NOT NULL,
+    action        VARCHAR(50)  NOT NULL,
+    performed_by  VARCHAR(200),
+    remarks       TEXT,
+    from_status   VARCHAR(30),
+    to_status     VARCHAR(30),
+    performed_at  DATETIME(6),
+    PRIMARY KEY (id),
+    INDEX idx_timeline_complaint    (complaint_id),
+    INDEX idx_timeline_performed_at (performed_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- 2.6 FORM CONFIGS (Dynamic JSON Form Schemas)
+CREATE TABLE IF NOT EXISTS FORM_CONFIGS (
+    id          BIGINT       NOT NULL AUTO_INCREMENT,
+    form_key    VARCHAR(100) NOT NULL,
+    form_name   VARCHAR(200),
+    schema_json JSON,
+    active      BIT(1)       NOT NULL DEFAULT 1,
+    version     VARCHAR(50),
+    created_at  DATETIME(6),
+    updated_at  DATETIME(6),
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_form_key (form_key)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- 2.7 SIMULATED EMAILS
+CREATE TABLE IF NOT EXISTS SIMULATED_EMAILS (
+    id                BIGINT       NOT NULL AUTO_INCREMENT,
+    message_id        VARCHAR(100) NOT NULL,
+    thread_id         VARCHAR(100) NOT NULL,
+    from_email        VARCHAR(200) NOT NULL,
+    to_email          VARCHAR(200) NOT NULL,
+    subject           VARCHAR(500) NOT NULL,
+    body              TEXT,
+    direction         VARCHAR(10)  NOT NULL,
+    status            VARCHAR(20)  NOT NULL DEFAULT 'UNREAD',
+    complaint_id      BIGINT,
+    complaint_number  VARCHAR(50),
+    attachment_url    VARCHAR(500),
+    sent_at           DATETIME(6),
+    received_at       DATETIME(6),
+    processed_at      DATETIME(6),
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_message_id            (message_id),
+    INDEX idx_email_thread              (thread_id),
+    INDEX idx_email_direction           (direction),
+    INDEX idx_email_complaint           (complaint_id),
+    INDEX idx_email_complaint_number    (complaint_number),
+    INDEX idx_email_sent_at             (sent_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- ============================================================================
+-- SECTION 3: SEED DATA (DML)
+-- ============================================================================
+
+-- 3.1 Seed Complaint Categories
+INSERT INTO COMPLAINT_CATEGORIES (name, description, sort_order, status, created_at) VALUES
+    ('ATM / Debit Card',       'Issues related to ATM transactions and debit cards',          1,  'active', NOW()),
+    ('Credit Card',            'Issues related to credit card transactions and billing',       2,  'active', NOW()),
+    ('Internet Banking',       'Issues with online banking services',                          3,  'active', NOW()),
+    ('Mobile Banking / UPI',   'Issues with mobile banking apps and UPI transactions',         4,  'active', NOW()),
+    ('Loan / Advances',        'Issues with loan processing, EMI, interest rates',             5,  'active', NOW()),
+    ('Deposit Accounts',       'Issues with savings, current, or fixed deposit accounts',      6,  'active', NOW()),
+    ('Pension',                'Pension related grievances',                                    7,  'active', NOW()),
+    ('Remittance / Transfer',  'Issues with fund transfers, NEFT, RTGS, IMPS',                 8,  'active', NOW()),
+    ('Insurance',              'Insurance related complaints',                                  9,  'active', NOW()),
+    ('Others',                 'Other banking related complaints',                             10,  'active', NOW());
+
+
+-- 3.2 Seed Banks
+INSERT INTO BANKS (name, code, type, status, created_at) VALUES
+    ('State Bank of India',    'SBI',      'public',  'active', NOW()),
+    ('Punjab National Bank',   'PNB',      'public',  'active', NOW()),
+    ('Bank of Baroda',         'BOB',      'public',  'active', NOW()),
+    ('Canara Bank',            'CANARA',   'public',  'active', NOW()),
+    ('Union Bank of India',    'UNION',    'public',  'active', NOW()),
+    ('HDFC Bank',              'HDFC',     'private', 'active', NOW()),
+    ('ICICI Bank',             'ICICI',    'private', 'active', NOW()),
+    ('Axis Bank',              'AXIS',     'private', 'active', NOW()),
+    ('Kotak Mahindra Bank',    'KOTAK',    'private', 'active', NOW()),
+    ('IndusInd Bank',          'INDUSIND', 'private', 'active', NOW()),
+    ('Yes Bank',               'YES',      'private', 'active', NOW()),
+    ('IDBI Bank',              'IDBI',     'public',  'active', NOW());
+
+
+-- 3.3 Seed Form Configuration
+INSERT INTO FORM_CONFIGS (form_key, form_name, schema_json, active, version, created_at, updated_at) VALUES
+('raise-complaint', 'Raise a Complaint', '{"formTitle":"Raise a Complaint","steps":[{"stepNumber":1,"title":"Tell Us About You","fields":[{"key":"complainantCategory","label":"Complainant Category","type":"select","required":true,"options":[{"label":"Individual","value":"individual"},{"label":"Business","value":"business"},{"label":"Other","value":"other"}]},{"key":"name","label":"Name","type":"text","required":true},{"key":"mobileNumber","label":"Mobile Number","type":"tel","required":true,"prefix":"+91"},{"key":"email","label":"Email","type":"email","required":false},{"key":"pincode","label":"Pincode","type":"text","required":true,"maxLength":6},{"key":"district","label":"District","type":"select","required":true,"optionsSource":"districts"},{"key":"state","label":"State","type":"select","required":true,"optionsSource":"states"},{"key":"address","label":"Address","type":"textarea","required":true,"rows":3}]},{"stepNumber":2,"title":"Entity Details","fields":[{"key":"entityType","label":"Entity Type","type":"select","required":true,"options":[{"label":"Bank","value":"bank"},{"label":"NBFC","value":"nbfc"},{"label":"Payment System","value":"payment"}]},{"key":"entityName","label":"Entity Name","type":"select","required":true,"optionsSource":"banks"},{"key":"branch","label":"Branch","type":"text","required":false},{"key":"accountNumber","label":"Account Number","type":"text","required":false}]},{"stepNumber":3,"title":"Share Your Complaint","fields":[{"key":"complaintCategory","label":"Complaint Category","type":"select","required":true,"optionsSource":"categories"},{"key":"subCategory1","label":"Sub-Category 1","type":"select","required":false,"dependsOn":"complaintCategory"},{"key":"subCategory2","label":"Sub-Category 2","type":"select","required":false,"dependsOn":"subCategory1"},{"key":"facts","label":"Facts","type":"textarea","required":true,"rows":4},{"key":"isSubJudice","label":"Sub-judice?","type":"radio","required":true,"options":[{"label":"Yes","value":true},{"label":"No","value":false}]},{"key":"throughAdvocate","label":"Through advocate?","type":"radio","required":true,"options":[{"label":"Yes","value":true},{"label":"No","value":false}]},{"key":"alreadyWithOmbudsman","label":"With Ombudsman?","type":"radio","required":true,"options":[{"label":"Yes","value":true},{"label":"No","value":false}]},{"key":"regulatedEntityStaff","label":"Staff complaint?","type":"radio","required":true,"options":[{"label":"Yes","value":true},{"label":"No","value":false}]},{"key":"attachments","label":"Attachments","type":"file","required":false,"accept":".pdf,.jpg,.png","multiple":true,"maxSize":5242880},{"key":"authorizeRepresentative","label":"Authorize representative?","type":"radio","required":false,"options":[{"label":"Yes","value":true},{"label":"No","value":false}]}]}]}',
+1, '1.0', NOW(), NOW());
+
+
+-- 3.4 Seed Sample Complaints
+INSERT INTO COMPLAINTS (complaint_number, complainant_name, complainant_email, complainant_phone, complainant_address, bank_branch, account_number, subject, description, relief_sought, status, priority, filing_type, created_at) VALUES
+('CMS-20260401-A1B2C3', 'Rajesh Kumar', 'rajesh@gmail.com', '9876543210', 'Shivaji Nagar, Pune, Maharashtra', 'SBI Pune Main Branch', '1234567890',
+ 'ATM cash not dispensed but account debited Rs 5000',
+ 'On 15th April I tried to withdraw Rs 5000 from ATM at MG Road branch. Cash was not dispensed but amount was debited. Bank has not resolved in 30 days despite multiple follow-ups.',
+ 'RESOLVED: Bank was directed to credit Rs 5000 back to customer account with Rs 100/day compensation for delay as per RBI circular. Bank failed to reverse within T+5 days as mandated. Total compensation: Rs 5000 + Rs 3000 delay penalty.',
+ 'resolved', 'high', 'physical', NOW()),
+
+('CMS-20260312-D4E5F6', 'Sunita Devi', 'sunita@gmail.com', '7654321098', 'Andheri West, Mumbai', 'HDFC Mumbai Andheri Branch', '5678901234',
+ 'Unauthorized credit card transaction of Rs 12000',
+ 'An unauthorized transaction of Rs 12000 on my credit card on 10th March. Reported to bank within 24 hours. No resolution in 45 days. Card was in my possession.',
+ 'RESOLVED: Bank failed to prove customer authorization. As per RBI zero-liability policy, customer reported within 3 days hence entitled to full reversal. Bank directed to reverse Rs 12000 + waive interest charged on disputed amount + Rs 2000 compensation for mental agony.',
+ 'resolved', 'high', 'online', NOW()),
+
+('CMS-20260225-G7H8I9', 'Amit Verma', 'amit@gmail.com', '8123456789', 'Gomti Nagar, Lucknow', 'ICICI Lucknow Branch', '3456789012',
+ 'Home loan EMI interest rate increased without notice',
+ 'Bank unilaterally increased home loan interest from 8.5% to 11% without prior notice. Rs 25000 extra charged over 3 months. Written complaint ignored.',
+ '',
+ 'pending', 'medium', 'physical', NOW()),
+
+('CMS-20260320-J1K2L3', 'Priya Sharma', 'priya@email.com', '8765432109', 'Mumbai Fort', 'HDFC Mumbai Fort Branch', '9876543210',
+ 'Unauthorized UPI debit of Rs 15000 from savings account',
+ 'Rs 15000 debited via UPI without authorization on 20th March. Suspected fraud. Bank complaint filed on 22nd March but no refund or action taken in 30 days.',
+ 'RESOLVED: Investigation confirmed unauthorized transaction - no OTP was generated on customer\\'s registered mobile. Bank directed to reverse Rs 15000 within 10 days + Rs 5000 compensation. Bank also instructed to strengthen UPI security protocols.',
+ 'resolved', 'high', 'online', NOW()),
+
+('CMS-20260410-M4N5O6', 'Vikram Singh', 'vikram@email.com', '9012345678', 'Malviya Nagar, Jaipur', 'Axis Bank Jaipur MI Road', '7890123456',
+ 'Recovery agent harassment and abusive threatening calls',
+ 'Receiving abusive and threatening calls from recovery agents despite making regular EMI payments on time. Rs 8000 wrongly charged as penalty. Agents visited home and threatened family.',
+ '',
+ 'pending', 'high', 'physical', NOW()),
+
+('CMS-20260118-P7Q8R9', 'Meena Patel', 'meena@email.com', '7890123456', 'Navrangpura, Ahmedabad', 'Bank of Baroda Ahmedabad', '4567890123',
+ 'Fixed deposit premature closure without consent',
+ 'Bank closed my FD of Rs 5 lakh prematurely without my consent and adjusted against a loan I had already repaid. Interest loss of Rs 18000. No proper explanation given.',
+ 'REJECTED: Upon investigation, bank produced signed lien authorization form from account opening. Customer had given standing instruction for auto-adjustment. Complaint dismissed as bank acted within terms of agreement.',
+ 'rejected', 'medium', 'online', NOW()),
+
+('CMS-20260505-S1T2U3', 'Deepak Joshi', 'deepak@email.com', '8901234567', 'Koregaon Park, Pune', 'Kotak Mahindra Pune Branch', '6789012345',
+ 'Internet banking fund transfer failed but amount debited',
+ 'NEFT transfer of Rs 50000 failed on 5th May but amount debited from account. Beneficiary did not receive funds. Bank says it will take 7 working days but 15 days have passed.',
+ '',
+ 'pending', 'medium', 'online', NOW());
+
+
+-- ============================================================================
+-- SECTION 4: USEFUL QUERIES
+-- ============================================================================
+
+-- 4.1 Dashboard Statistics
+SELECT
+    COUNT(*)                                                      AS total_complaints,
+    SUM(CASE WHEN status = 'pending'     THEN 1 ELSE 0 END)      AS pending_complaints,
+    SUM(CASE WHEN status = 'in_progress' THEN 1 ELSE 0 END)      AS in_progress_complaints,
+    SUM(CASE WHEN status = 'resolved'    THEN 1 ELSE 0 END)      AS resolved_complaints,
+    SUM(CASE WHEN status = 'closed'      THEN 1 ELSE 0 END)      AS closed_complaints,
+    SUM(CASE WHEN status = 'escalated'   THEN 1 ELSE 0 END)      AS escalated_complaints,
+    SUM(CASE WHEN priority = 'high'      THEN 1 ELSE 0 END)      AS high_priority,
+    SUM(CASE WHEN priority = 'medium'    THEN 1 ELSE 0 END)      AS medium_priority,
+    SUM(CASE WHEN priority = 'low'       THEN 1 ELSE 0 END)      AS low_priority
+FROM COMPLAINTS;
+
+-- 4.2 Complaints with Bank & Category names
+SELECT
+    c.id, c.complaint_number, c.complainant_name, c.subject,
+    c.status, c.priority, c.created_at,
+    b.name AS bank_name,
+    cat.name AS category_name
+FROM COMPLAINTS c
+LEFT JOIN BANKS b ON c.bank_id = b.id
+LEFT JOIN COMPLAINT_CATEGORIES cat ON c.category_id = cat.id
+ORDER BY c.created_at DESC;
+
+-- 4.3 Complaint timeline/audit trail
+SELECT ct.action, ct.from_status, ct.to_status, ct.performed_by, ct.remarks, ct.performed_at
+FROM COMPLAINT_TIMELINE ct
+WHERE ct.complaint_id = ? -- replace with complaint ID
+ORDER BY ct.performed_at ASC;
+
+-- 4.4 Attachments for a complaint
+SELECT ca.id, ca.file_name, ca.original_name, ca.content_type, ca.file_size, ca.storage_path, ca.uploaded_at
+FROM COMPLAINT_ATTACHMENTS ca
+WHERE ca.complaint_id = ? -- replace with complaint ID
+ORDER BY ca.uploaded_at DESC;
+
+-- 4.5 Email threads
+SELECT se.thread_id, se.from_email, se.to_email, se.subject, se.direction, se.status, se.complaint_number, se.sent_at
+FROM SIMULATED_EMAILS se
+ORDER BY se.thread_id, se.sent_at ASC;
+
+-- 4.6 Banks by type
+SELECT id, name, code, type FROM BANKS WHERE status = 'active' AND type = 'public';
+SELECT id, name, code, type FROM BANKS WHERE status = 'active' AND type = 'private';
+
+-- 4.7 Category hierarchy
+SELECT id, name, description, sort_order FROM COMPLAINT_CATEGORIES WHERE parent_id IS NULL AND status = 'active' ORDER BY sort_order;
+
+-- 4.8 Resolved complaints with resolution remarks (for AI Suggestions)
+SELECT c.complaint_number, c.subject, c.description, c.relief_sought, c.status, c.priority
+FROM COMPLAINTS c
+WHERE c.status IN ('resolved', 'rejected') AND c.relief_sought IS NOT NULL AND c.relief_sought != ''
+ORDER BY c.created_at DESC;
+
+
+-- ============================================================================
+-- SECTION 5: DROP ALL TABLES (USE WITH CAUTION!)
+-- ============================================================================
+
+-- DROP TABLE IF EXISTS SIMULATED_EMAILS;
+-- DROP TABLE IF EXISTS COMPLAINT_ATTACHMENTS;
+-- DROP TABLE IF EXISTS COMPLAINT_TIMELINE;
+-- DROP TABLE IF EXISTS COMPLAINTS;
+-- DROP TABLE IF EXISTS COMPLAINT_CATEGORIES;
+-- DROP TABLE IF EXISTS BANKS;
+-- DROP TABLE IF EXISTS FORM_CONFIGS;
+`;
+
+    function toggleSection(id) {
+      document.getElementById(id).classList.toggle('open');
+    }
+
+    function expandAll() {
+      document.querySelectorAll('.section').forEach(s => s.classList.add('open'));
+    }
+
+    function collapseAll() {
+      document.querySelectorAll('.section').forEach(s => s.classList.remove('open'));
+    }
+
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 2500);
+    }
+
+    function getPlainText(id) {
+      const el = document.getElementById('code-' + id);
+      return el.textContent || el.innerText;
+    }
+
+    function copySection(id) {
+      const text = getPlainText(id);
+      navigator.clipboard.writeText(text).then(() => showToast('Copied to clipboard!'));
+    }
+
+    function downloadSection(id) {
+      const text = getPlainText(id);
+      downloadFile('cms_' + id + '.sql', text);
+    }
+
+    function copyFullScript() {
+      navigator.clipboard.writeText(fullScript).then(() => showToast('Full script copied to clipboard!'));
+    }
+
+    function downloadFullScript() {
+      downloadFile('cms_database_scripts.sql', fullScript);
+    }
+
+    function downloadFile(filename, content) {
+      const blob = new Blob([content], { type: 'application/sql' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast('Downloaded ' + filename);
+    }
+  </script>
+</body>
+</html>

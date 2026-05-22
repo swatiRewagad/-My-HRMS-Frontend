@@ -5,6 +5,8 @@ import { FormsModule } from '@angular/forms';
 import { CmsService } from '../../services/cms.service';
 import { TranslateService } from '../../services/translate.service';
 import { TranslatePipe } from '../../pipes/translate.pipe';
+import { UserSessionService } from '../../services/user-session.service';
+import { ComplaintStoreService } from '../../services/complaint-store.service';
 
 interface ComplaintRecord {
   id: string;
@@ -25,12 +27,10 @@ interface ComplaintRecord {
 })
 export class HomeComponent implements OnInit {
   isLoggedIn = false;
+  userName = '';
+  hasDraft = false;
 
-  complaints: ComplaintRecord[] = [
-    { id: '1234', complaintAgainst: 'Adarsh Bank', complaintDate: '15-08-2026', status: 'in_progress', statusLabel: 'In Progress', comments: 'Missing details ple...', action: 'withdraw' },
-    { id: '1234', complaintAgainst: 'Varada Bank', complaintDate: '03-02-2026', status: 'request_sent_back', statusLabel: 'Request Sent Back', comments: 'Missing details ple...', action: 'appeal' },
-    { id: '1234', complaintAgainst: 'Kaveri Bank', complaintDate: '22-11-2025', status: 'rejected', statusLabel: 'Rejected', comments: 'Missing details ple...', action: 'act' },
-  ];
+  complaints: ComplaintRecord[] = [];
 
   // Table filters
   filterIdSearch = '';
@@ -75,15 +75,32 @@ export class HomeComponent implements OnInit {
     { questionKey: 'faq.q3', answerKey: 'faq.a3', open: false },
   ];
 
-  constructor(private cms: CmsService, public translate: TranslateService) {}
+  constructor(
+    private cms: CmsService,
+    public translate: TranslateService,
+    public userSession: UserSessionService,
+    private complaintStore: ComplaintStoreService,
+  ) {}
 
   ngOnInit() {
-    this.cms.getComplaints().subscribe({
+    if (this.userSession.isLoggedIn) {
+      this.isLoggedIn = true;
+      this.userName = this.userSession.userName;
+      this.hasDraft = this.userSession.hasDraft();
+      this.loadUserComplaints();
+    }
+  }
+
+  private loadUserComplaints() {
+    const phone = this.userSession.userPhone;
+    if (!phone) return;
+
+    this.cms.getComplaintsByPhone(phone).subscribe({
       next: (data: any[]) => {
         if (data && data.length > 0) {
           this.complaints = data.map(c => ({
             id: c.complaintNumber || c.id || '',
-            complaintAgainst: c.bankName || c.complaintAgainst || '',
+            complaintAgainst: c.bankName || c.complaintAgainst || c.subject || '',
             complaintDate: c.createdAt ? new Date(c.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-') : '',
             status: this.mapStatus(c.status),
             statusLabel: c.status || '',
@@ -91,9 +108,37 @@ export class HomeComponent implements OnInit {
             action: this.mapAction(c.status),
           }));
         }
+        this.mergeLocalComplaints();
       },
-      error: () => {},
+      error: () => {
+        this.mergeLocalComplaints();
+      },
     });
+  }
+
+  private mergeLocalComplaints() {
+    const local = this.complaintStore.complaints;
+    const existingIds = new Set(this.complaints.map(c => c.id));
+    for (const lc of local) {
+      if (!existingIds.has(lc.id)) {
+        this.complaints.unshift({
+          id: lc.id,
+          complaintAgainst: lc.complaintAgainst,
+          complaintDate: lc.complaintDate,
+          status: lc.status,
+          statusLabel: lc.statusLabel,
+          comments: lc.comments,
+          action: lc.action,
+        });
+      }
+    }
+  }
+
+  logout() {
+    this.userSession.logout();
+    this.isLoggedIn = false;
+    this.userName = '';
+    this.complaints = [];
   }
 
   private mapStatus(status: string): ComplaintRecord['status'] {
