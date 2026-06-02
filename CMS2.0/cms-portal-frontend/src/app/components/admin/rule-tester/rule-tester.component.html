@@ -1,0 +1,117 @@
+<div class="rule-tester">
+  <div class="header">
+    <h1>Rule Sandbox Tester</h1>
+    <button class="btn btn-back" (click)="back()">← Back to Rules</button>
+  </div>
+
+  <p class="subtitle">Test rules against sample input without affecting live data</p>
+
+  @if (errorMessage()) {
+    <div class="alert alert-error">{{ errorMessage() }}</div>
+  }
+
+  <div class="test-container">
+    <div class="input-panel">
+      <h3>Test Input</h3>
+
+      <div class="form-group">
+        <label>Rule Category</label>
+        <select [(ngModel)]="selectedCategory">
+          <option value="ASSIGNMENT">Assignment Rules</option>
+          <option value="ESCALATION">Escalation Rules</option>
+        </select>
+      </div>
+
+      @if (selectedCategory() === 'ASSIGNMENT') {
+        <div class="form-group">
+          <label>Complaint Category</label>
+          <select [(ngModel)]="assignmentInput.category">
+            @for (cat of assignmentCategories; track cat) {
+              <option [value]="cat">{{ cat }}</option>
+            }
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Priority</label>
+          <select [(ngModel)]="assignmentInput.priority">
+            @for (p of priorities; track p) {
+              <option [value]="p">{{ p }}</option>
+            }
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Amount Involved (₹)</label>
+          <input type="number" [(ngModel)]="assignmentInput.amountInvolved" />
+        </div>
+      }
+
+      @if (selectedCategory() === 'ESCALATION') {
+        <div class="form-group">
+          <label>SLA % Elapsed</label>
+          <input type="number" [(ngModel)]="escalationInput.slaPercentElapsed" min="0" max="200" />
+          <div class="slider-labels">
+            <span>0%</span><span>80% (L1)</span><span>100% (L2)</span><span>150% (L3)</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Amount Involved (₹)</label>
+          <input type="number" [(ngModel)]="escalationInput.amountInvolved" />
+          <small>High value threshold: ₹10,00,000</small>
+        </div>
+        <div class="form-group">
+          <label>Days Open</label>
+          <input type="number" [(ngModel)]="escalationInput.currentDaysOpen" />
+        </div>
+      }
+
+      <button class="btn btn-run" (click)="runTest()" [disabled]="loading()">
+        {{ loading() ? 'Executing...' : 'Run Test' }}
+      </button>
+    </div>
+
+    <div class="output-panel">
+      <h3>Test Results</h3>
+
+      @if (result(); as r) {
+        @if (r.executed) {
+          <div class="result-card success">
+            <div class="result-header">
+              <span class="badge">{{ r.rulesFireCount }} rule(s) fired</span>
+            </div>
+
+            <div class="output-section">
+              <h4>Output</h4>
+              <div class="output-grid">
+                @for (entry of r.outputFacts | keyvalue; track entry.key) {
+                  <div class="output-item">
+                    <span class="key">{{ entry.key }}</span>
+                    <span class="value" [class.highlight]="entry.value !== null && entry.value !== false && entry.value !== 0">
+                      {{ entry.value ?? 'null' }}
+                    </span>
+                  </div>
+                }
+              </div>
+            </div>
+
+            <div class="output-section">
+              <h4>Rules Fired (in order)</h4>
+              <ol class="rules-list">
+                @for (rule of r.rulesFired; track rule) {
+                  <li>{{ rule }}</li>
+                }
+              </ol>
+            </div>
+          </div>
+        } @else {
+          <div class="result-card error">
+            <p>Execution failed: {{ r.error }}</p>
+          </div>
+        }
+      } @else {
+        <div class="placeholder">
+          <p>Configure inputs and click "Run Test" to see results</p>
+        </div>
+      }
+    </div>
+  </div>
+</div>

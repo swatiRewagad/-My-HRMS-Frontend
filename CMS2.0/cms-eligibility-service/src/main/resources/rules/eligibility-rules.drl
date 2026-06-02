@@ -1,0 +1,58 @@
+package com.rbi.cms.eligibility.rules;
+
+import com.rbi.cms.eligibility.dto.EligibilityFact;
+
+rule "Court Matter Pending - Not Eligible"
+    salience 100
+    when
+        $fact : EligibilityFact(courtMatterPending == true)
+    then
+        $fact.setEligible(false);
+        $fact.setReasonCode("COURT_MATTER_PENDING");
+        $fact.setReasonMessage("Matter is currently sub-judice. Complaint cannot be registered.");
+        update($fact);
+end
+
+rule "Bank Not Approached - Not Eligible"
+    salience 90
+    when
+        $fact : EligibilityFact(approachedBank == false, eligible == true)
+    then
+        $fact.setEligible(false);
+        $fact.setReasonCode("BANK_NOT_APPROACHED");
+        $fact.setReasonMessage("Customer has not approached the bank/financial institution first.");
+        update($fact);
+end
+
+rule "Waiting Period Not Completed - Not Eligible"
+    salience 80
+    when
+        $fact : EligibilityFact(waitingPeriodCompleted == false, approachedBank == true, eligible == true)
+    then
+        $fact.setEligible(false);
+        $fact.setReasonCode("WAITING_PERIOD_NOT_COMPLETED");
+        $fact.setReasonMessage("Mandatory 30-day waiting period from bank approach date has not been completed.");
+        update($fact);
+end
+
+rule "Duplicate Complaint - Not Eligible"
+    salience 70
+    when
+        $fact : EligibilityFact(duplicateComplaint == true, eligible == true)
+    then
+        $fact.setEligible(false);
+        $fact.setReasonCode("DUPLICATE_COMPLAINT");
+        $fact.setReasonMessage("A complaint with similar details already exists in the system.");
+        update($fact);
+end
+
+rule "All Checks Passed - Eligible"
+    salience 10
+    when
+        $fact : EligibilityFact(courtMatterPending == false, approachedBank == true,
+                                waitingPeriodCompleted == true, duplicateComplaint == false,
+                                eligible == true)
+    then
+        $fact.setReasonCode("ALL_CHECKS_PASSED");
+        $fact.setReasonMessage("All eligibility criteria met. Proceed to complaint registration.");
+end

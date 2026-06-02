@@ -1,0 +1,36 @@
+server:
+  port: 8087
+  servlet:
+    context-path: /cms-notification
+
+spring:
+  application:
+    name: cms-notification-service
+
+  mail:
+    host: ${SMTP_HOST:smtp.rbi.org.in}
+    port: ${SMTP_PORT:587}
+    username: ${SMTP_USER:cms-notifications}
+    password: ${SMTP_PASSWORD:}
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: cms-notification-group
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+
+logging:
+  level:
+    com.rbi.cms: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [%X{correlationId}] %-5level %logger{36} - %msg%n"

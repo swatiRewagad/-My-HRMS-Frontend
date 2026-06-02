@@ -1,0 +1,128 @@
+<div class="tracker-container">
+  <h2>Track Your Complaint</h2>
+  <p class="subtitle">Enter your complaint reference number to check the current status.</p>
+
+  <div class="search-box">
+    <input type="text"
+           [ngModel]="searchId()"
+           (ngModelChange)="searchId.set($event)"
+           placeholder="Enter Complaint ID (e.g., CMP-20260525-000001)"
+           (keydown.enter)="track()">
+    <button (click)="track()" [disabled]="!searchId() || loading()">
+      @if (loading()) {
+        <i class="pi pi-spin pi-spinner"></i>
+      } @else {
+        <i class="pi pi-search"></i> Track
+      }
+    </button>
+  </div>
+
+  @if (error()) {
+    <div class="error-message">
+      <i class="pi pi-exclamation-triangle"></i> {{ error() }}
+    </div>
+  }
+
+  @if (status(); as s) {
+    <div class="status-card">
+      <div class="status-header">
+        <h3>{{ s.complaintId }}</h3>
+        <span class="status-badge" [attr.data-status]="s.status">{{ s.status }}</span>
+      </div>
+
+      <div class="status-details">
+        <div class="detail-row">
+          <span class="label">Category:</span>
+          <span>{{ s.category }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="label">Registered:</span>
+          <span>{{ s.registeredAt | date:'dd MMM yyyy, hh:mm a' }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="label">SLA Due:</span>
+          <span>{{ s.slaDueDate | date:'dd MMM yyyy' }}</span>
+        </div>
+        @if (s.assignedTeam) {
+          <div class="detail-row">
+            <span class="label">Assigned Team:</span>
+            <span>{{ s.assignedTeam }}</span>
+          </div>
+        }
+        @if (s.resolutionSummary) {
+          <div class="detail-row resolution">
+            <span class="label">Resolution:</span>
+            <span>{{ s.resolutionSummary }}</span>
+          </div>
+        }
+      </div>
+
+      @if (s.timeline && s.timeline.length > 0) {
+        <div class="timeline-section">
+          <h4>Complaint Timeline</h4>
+          <div class="timeline">
+            @for (entry of s.timeline; track entry.timestamp) {
+              <div class="timeline-entry">
+                <div class="timeline-dot"></div>
+                <div class="timeline-content">
+                  <span class="timeline-action">{{ entry.action }}</span>
+                  <span class="timeline-status">{{ entry.fromStatus }} → {{ entry.toStatus }}</span>
+                  <span class="timeline-date">{{ entry.timestamp | date:'dd MMM yyyy, hh:mm a' }}</span>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+      <!-- FR-G-024: Communication History -->
+      @if (s.communications && s.communications.length > 0) {
+        <div class="communications-section">
+          <h4><i class="pi pi-comments"></i> Communication History</h4>
+          <div class="comm-list">
+            @for (comm of s.communications; track comm.id) {
+              <div class="comm-item">
+                <div class="comm-header">
+                  <span class="comm-type" [attr.data-type]="comm.type">{{ comm.type | uppercase }}</span>
+                  <span class="comm-date">{{ comm.timestamp | date:'dd MMM yyyy, hh:mm a' }}</span>
+                </div>
+                <p class="comm-subject"><strong>{{ comm.subject }}</strong></p>
+                <p class="comm-message">{{ comm.message }}</p>
+                <div class="comm-meta">
+                  <span>From: {{ comm.from }}</span> <span>To: {{ comm.to }}</span>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+      <!-- FR-G-025: Documents -->
+      @if (s.documents && s.documents.length > 0) {
+        <div class="documents-section">
+          <h4><i class="pi pi-file"></i> Documents</h4>
+          <div class="doc-list">
+            @for (doc of s.documents; track doc.id) {
+              <div class="doc-item">
+                <i class="pi pi-file-pdf"></i>
+                <div class="doc-info">
+                  <span class="doc-name">{{ doc.name }}</span>
+                  <span class="doc-meta">Uploaded {{ doc.uploadedAt | date:'dd MMM yyyy' }} by {{ doc.uploadedBy }}</span>
+                </div>
+                @if (doc.url) {
+                  <a [href]="doc.url" target="_blank" class="doc-download"><i class="pi pi-download"></i></a>
+                }
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+      <!-- FR-G-026: Feedback link -->
+      <div class="feedback-section">
+        <p>Was your complaint resolved satisfactorily?</p>
+        <a routerLink="/public/feedback" class="feedback-link"><i class="pi pi-star"></i> Share Your Feedback</a>
+      </div>
+    </div>
+  }
+</div>

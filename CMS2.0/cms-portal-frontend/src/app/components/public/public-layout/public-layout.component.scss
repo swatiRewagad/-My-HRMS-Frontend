@@ -1,0 +1,170 @@
+:host { display: flex; flex-direction: column; min-height: 100vh; }
+
+.container { max-width: 1126px; margin: 0 auto; padding: 0 24px; }
+.main-content { flex: 1; }
+
+// Top Strip
+.top-strip {
+  background: linear-gradient(90deg, #2460b9 0%, #472192 100%);
+  color: #fff;
+  font-size: 14px;
+  padding: 8px 0;
+  z-index: 200;
+}
+
+.top-strip-inner { display: flex; justify-content: space-between; align-items: center; }
+.top-left { display: flex; align-items: center; gap: 16px; }
+.divider { width: 1px; height: 20px; background: rgba(255,255,255,0.3); }
+.accessibility { display: flex; gap: 4px; }
+
+.access-btn {
+  background: none; border: none; color: rgba(255,255,255,0.8);
+  padding: 2px 8px; font-size: 14px; cursor: pointer; font-weight: 500;
+  &:hover { color: #fff; }
+}
+
+.contrast-btn {
+  background: none; border: none; color: #fff; cursor: pointer; font-size: 16px; opacity: 0.9;
+  &:hover { opacity: 1; }
+}
+
+.lang-select {
+  background: rgba(255,255,255,0.15); color: #fff;
+  border: 1px solid rgba(255,255,255,0.3); border-radius: 6px;
+  padding: 4px 10px; font-size: 13px; cursor: pointer; outline: none;
+  option { background: #fff; color: #202124; }
+}
+
+// Header
+.main-header {
+  background: #fff; padding: 14px 0;
+  position: sticky; top: 0; z-index: 100;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+
+.header-inner { display: flex; align-items: center; justify-content: space-between; }
+
+.brand { display: flex; align-items: center; text-decoration: none; }
+.logo-group { display: flex; align-items: center; gap: 12px; }
+.emblem-seal {
+  width: 48px; height: 48px; display: flex; align-items: center; justify-content: center;
+  img { height: 44px; width: auto; object-fit: contain; }
+}
+
+.brand-text {
+  display: flex; flex-direction: column; margin-left: 4px;
+  .brand-hindi { font-size: 12px; font-weight: 600; color: #202124; }
+  .brand-english { font-size: 10px; color: #5b5d61; margin-top: 2px; }
+}
+
+.main-nav {
+  display: flex; align-items: center; gap: 28px;
+  a {
+    text-decoration: none; color: #5b5d61; font-size: 15px; font-weight: 500;
+    &:hover { color: #202124; }
+    &.active { color: #146ef5; font-weight: 700; }
+  }
+}
+
+.nav-search-btn {
+  background: none; border: none; cursor: pointer; padding: 6px; color: #374252; font-size: 16px;
+  &:hover { color: #146ef5; }
+}
+
+.nav-call-box {
+  display: flex; align-items: center; gap: 6px;
+  color: #374252; font-size: 15px; font-weight: 600;
+  border: 1.5px solid #d1d7e0; border-radius: 8px; padding: 8px 16px;
+  i { font-size: 14px; color: #146ef5; }
+}
+
+.login-btn {
+  padding: 8px 20px; background: #2460b9; color: #fff; border: none; border-radius: 6px;
+  font-size: 14px; font-weight: 600; cursor: pointer;
+  &:hover { background: #1a4fa0; }
+}
+
+.hamburger-btn {
+  display: none; background: none; border: none; font-size: 22px; color: #374252; cursor: pointer;
+}
+
+// Help FAB
+.help-fab {
+  position: fixed; bottom: 24px; right: 24px; z-index: 500;
+  display: flex; align-items: center; gap: 8px;
+}
+
+.need-help-btn {
+  background: #fff; border: 1px solid #e0e0e0; border-radius: 24px;
+  padding: 10px 20px; font-size: 14px; font-weight: 500; color: #333;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1); cursor: pointer;
+  &:hover { background: #f5f5f5; }
+}
+
+.accessibility-fab {
+  width: 40px; height: 40px; border-radius: 50%;
+  background: #333; border: none; color: #fff; font-size: 16px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+// Assistance & Footer
+.assistance-section { background: #222; padding: 48px 0 0; }
+
+.assistance-banner {
+  background: linear-gradient(90deg, #2460b9 0%, #472192 100%);
+  color: #fff; padding: 48px; border-radius: 32px; text-align: center;
+  h2 { font-size: 36px; font-weight: 500; margin-bottom: 16px; }
+  p { font-size: 15px; line-height: 1.7; color: #efefef; margin-bottom: 24px; max-width: 700px; margin-inline: auto; }
+}
+
+.contact-btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 12px 28px; background: #181824; color: #fff;
+  border: none; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 500;
+  &:hover { background: #2a2a3a; }
+}
+
+.main-footer { background: #222; color: #fff; padding: 48px 0 0; }
+
+.footer-inner {
+  display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 48px;
+  padding-bottom: 32px; border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.footer-logo { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+.footer-emblem { width: 40px; height: 40px; border-radius: 50%; filter: brightness(0) invert(1); opacity: 0.9; }
+.footer-brand-text {
+  display: flex; flex-direction: column;
+  .brand-hindi { font-size: 14px; font-weight: 600; color: #fff; }
+  .brand-english { font-size: 11px; color: rgba(255,255,255,0.7); margin-top: 2px; }
+}
+
+.footer-desc { font-size: 12px; color: rgba(255,255,255,0.6); line-height: 1.6; max-width: 320px; }
+
+.footer-links {
+  display: flex; flex-direction: column; gap: 12px;
+  h4 { font-size: 14px; font-weight: 700; color: #fcfcfc; margin-bottom: 4px; }
+  a { color: rgba(255,255,255,0.8); text-decoration: none; font-size: 14px; &:hover { color: #fff; } }
+}
+
+.footer-bottom { padding: 16px 0; }
+.footer-bottom-inner {
+  display: flex; justify-content: space-between; font-size: 12px; color: rgba(255,255,255,0.5);
+}
+
+// Mobile
+@media (max-width: 768px) {
+  .accessibility, .divider { display: none; }
+  .main-nav {
+    display: none; position: absolute; top: 100%; left: 0; right: 0;
+    background: #fff; flex-direction: column; gap: 0; padding: 8px 0;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1); z-index: 1000;
+    &.mobile-open { display: flex; }
+    a { padding: 12px 24px; width: 100%; border-bottom: 1px solid #f3f4f6; }
+    .nav-search-btn, .nav-call-box { display: none; }
+  }
+  .hamburger-btn { display: block; }
+  .footer-inner { grid-template-columns: 1fr; gap: 24px; }
+  .footer-bottom-inner { flex-direction: column; gap: 8px; text-align: center; }
+}

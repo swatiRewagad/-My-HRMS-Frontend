@@ -1,0 +1,197 @@
+<!-- Hero Section -->
+<section class="hero">
+  <div class="hero-decorations">
+    <div class="hero-photo hero-photo-1"></div>
+    <div class="hero-photo hero-photo-2"></div>
+    <div class="hero-dot hero-dot-1"></div>
+    <div class="hero-dot hero-dot-2"></div>
+    <div class="hero-dot hero-dot-3"></div>
+    <div class="hero-photo hero-photo-3"></div>
+    <div class="hero-photo hero-photo-4"></div>
+  </div>
+
+  <div class="container hero-layout">
+    <div class="hero-content">
+      <h1>Making complaint<br>resolution <span class="highlight">Easier</span></h1>
+      <p class="hero-subtitle">Your trusted platform for complaint resolution - effortlessly file and track grievances against Regulated Entities.</p>
+      <a routerLink="/public/file-complaint" class="hero-btn">File a Complaint <i class="pi pi-arrow-right"></i></a>
+
+      <div class="hero-bottom">
+        <span class="already-filed">Already Filed a Complaint?</span>
+        <div class="hero-links">
+          <a routerLink="/public/track">Track Complaint</a>
+          <span class="dot"></span>
+          <a routerLink="/public/withdraw">Withdraw Complaint</a>
+          <span class="dot"></span>
+          <a routerLink="/public/appeal">File an Appeal</a>
+          <span class="dot"></span>
+          <a routerLink="/public/feedback">Share Your Feedback</a>
+        </div>
+      </div>
+    </div>
+    <div class="hero-circle-image">
+      <img src="assets/farmer.png" alt="Citizen with phone" />
+    </div>
+  </div>
+</section>
+
+<!-- Other Methods Section -->
+<section class="other-methods">
+  <div class="container">
+    <p class="methods-title">Other Methods to File a Complaint</p>
+    <div class="methods-grid">
+      <div class="method-card">
+        <div class="method-icon"><i class="pi pi-envelope"></i></div>
+        <div class="method-text">
+          <h4>Email your complaint to Us</h4>
+          <p>You can send us a completely filled form with complaint details via email.</p>
+          <a href="javascript:void(0)" class="read-more">Read more</a>
+        </div>
+      </div>
+      <div class="method-card">
+        <div class="method-icon"><i class="pi pi-file"></i></div>
+        <div class="method-text">
+          <h4>Post your complaint to us via Physical Letter</h4>
+          <p>You can send us a physical copy of completely filled form with complaint details.</p>
+          <a href="javascript:void(0)" class="read-more">Read more</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Complaint Types Section -->
+<section class="complaint-types">
+  <div class="container ct-layout">
+    <div class="ct-left">
+      <span class="ct-tag">FIND YOUR FINANCIAL INSTITUTION</span>
+      <h2>You can file complaints about</h2>
+      <div class="ct-icons">
+        @for (type of complaintTypes; track type.label) {
+          <div class="ct-icon-card">
+            <div class="ct-circle"><i [class]="type.icon"></i></div>
+            <span>{{ type.label }}</span>
+          </div>
+        }
+      </div>
+      <div class="ct-search">
+        <div class="ct-search-input">
+          <i class="pi pi-search"></i>
+          <input type="text" placeholder="Search Entity" />
+        </div>
+        <p class="ct-search-hint"><i class="pi pi-info-circle"></i> Enter name or keyword of the bank or financial institution you want to search</p>
+      </div>
+    </div>
+    <div class="ct-right">
+      <div class="ct-image-box"></div>
+    </div>
+  </div>
+</section>
+
+<!-- What We Do Section -->
+<section class="whatwedo">
+  <div class="container wwd-layout">
+    <div class="wwd-video">
+      <div class="video-thumb">
+        <div class="play-btn"><i class="pi pi-play"></i></div>
+      </div>
+    </div>
+    <div class="wwd-content">
+      <span class="wwd-tag">WHAT WE DO</span>
+      <h2>RBI streamlines the complaint resolution process for Indian Citizens.</h2>
+      <p>RBI simplifies and expedites the complaint resolution process for Indian citizens, ensuring fair and timely resolutions.</p>
+      <div class="wwd-actions">
+        <a routerLink="/public/file-complaint" class="wwd-btn-primary">How to file a complaint</a>
+        <a href="javascript:void(0)" class="wwd-btn-outline">What we can & can't help with</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Statistics -->
+<section class="stats-section">
+  <div class="container">
+    <span class="stats-tag">STATISTICS</span>
+    <div class="stats-grid">
+      @for (stat of stats; track stat.label) {
+        <div class="stat-item">
+          <span class="stat-value">{{ stat.value }}</span>
+          <span class="stat-label">{{ stat.label }}</span>
+        </div>
+      }
+    </div>
+  </div>
+</section>
+
+<!-- Press Releases -->
+<section class="press-section">
+  <div class="container">
+    <div class="section-header">
+      <h2>Press Release</h2>
+      <a href="javascript:void(0)" class="view-all">View All</a>
+    </div>
+    <div class="press-grid">
+      <div class="press-card">
+        <div class="press-date"><span class="day">07</span><span class="month">DECEMBER</span></div>
+        <div class="press-content">
+          <h4>RBI.GoIndia - A financial inclusion Approach of Financial Results</h4>
+          <p>Lorem ipsum dolor sit amet consectetur...</p>
+        </div>
+      </div>
+      <div class="press-card">
+        <div class="press-date"><span class="day">08</span><span class="month">DECEMBER</span></div>
+        <div class="press-content">
+          <h4>NBFC/HFCs: DIGITAL SOLUTIONS MEETING GLOBAL DEMANDS</h4>
+          <p>Lorem ipsum dolor sit amet consectetur...</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Education & Awareness -->
+<section class="education-section">
+  <div class="container">
+    <div class="section-header">
+      <div>
+        <span class="section-tag">PUBLIC AWARENESS</span>
+        <h2>Education and Awareness</h2>
+      </div>
+      <a href="javascript:void(0)" class="view-all">View All</a>
+    </div>
+    <div class="education-grid">
+      @for (card of educationCards; track card.title) {
+        <div class="education-card">
+          <div class="edu-badge">{{ card.badge }}</div>
+          <h4>{{ card.title }}</h4>
+          <p>{{ card.subtitle }}</p>
+        </div>
+      }
+    </div>
+  </div>
+</section>
+
+<!-- FAQ Section -->
+<section class="faq-section">
+  <div class="container">
+    <div class="section-header">
+      <h2>Frequently Asked Questions</h2>
+      <a href="javascript:void(0)" class="view-all">View All</a>
+    </div>
+    <div class="faq-list">
+      @for (faq of faqs; track faq.question; let i = $index) {
+        <div class="faq-item" [class.open]="faq.open">
+          <button class="faq-question" (click)="toggleFaq(i)">
+            <span>{{ faq.question }}</span>
+            <i class="pi" [class.pi-chevron-up]="faq.open" [class.pi-chevron-down]="!faq.open"></i>
+          </button>
+          @if (faq.open) {
+            <div class="faq-answer">
+              <p>{{ faq.answer }}</p>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  </div>
+</section>

@@ -1,0 +1,203 @@
+<div class="deo-home">
+  <!-- User Bar -->
+  <div class="user-bar">
+    <div class="user-info">
+      <i class="pi pi-user"></i>
+      <span class="user-name">{{ loggedInUser?.name }}</span>
+      <span class="user-role">{{ loggedInUser?.role }}</span>
+      <span class="user-id">({{ loggedInUser?.id }})</span>
+    </div>
+    <button class="btn btn-outline btn-logout" (click)="logout()">
+      <i class="pi pi-sign-out"></i> Logout
+    </button>
+  </div>
+
+  <!-- Stats Bar -->
+  <div class="stats-bar">
+    <div class="stat-card" (click)="filterStatus = ''">
+      <span class="stat-value">{{ stats().total }}</span>
+      <span class="stat-label">Total Drafts</span>
+    </div>
+    <div class="stat-card draft" (click)="filterStatus = 'DRAFT'">
+      <span class="stat-value">{{ stats().draft }}</span>
+      <span class="stat-label">Draft</span>
+    </div>
+    <div class="stat-card sent" (click)="filterStatus = 'SENT_TO_REVIEWER'">
+      <span class="stat-value">{{ stats().sentToReviewer }}</span>
+      <span class="stat-label">Sent to Reviewer</span>
+    </div>
+    <div class="stat-card rejected" (click)="filterStatus = 'REJECTED_BY_REVIEWER'">
+      <span class="stat-value">{{ stats().rejected }}</span>
+      <span class="stat-label">Rejected</span>
+    </div>
+    <div class="stat-card approved" (click)="filterStatus = 'APPROVED'">
+      <span class="stat-value">{{ stats().approved }}</span>
+      <span class="stat-label">Approved</span>
+    </div>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <div class="toolbar-left">
+      <h2>My Assigned Drafts</h2>
+      <button class="btn btn-primary" (click)="createPhysicalLetter()">
+        <i class="pi pi-plus"></i> Create Complaint (Physical Letter)
+      </button>
+    </div>
+    <div class="toolbar-right">
+      <input
+        type="text"
+        class="search-input"
+        placeholder="Search by ID, name, entity..."
+        [(ngModel)]="searchText"
+        aria-label="Search drafts"
+      />
+      <button class="btn btn-outline" (click)="showColumnConfig.set(!showColumnConfig())">
+        <i class="pi pi-cog"></i> Columns
+      </button>
+    </div>
+  </div>
+
+  <!-- Column Configuration Panel -->
+  @if (showColumnConfig()) {
+    <div class="column-config-panel">
+      <h4>Toggle Columns</h4>
+      <div class="column-options">
+        @for (col of allColumns; track col.key) {
+          <label class="column-option">
+            <input
+              type="checkbox"
+              [checked]="col.visible"
+              (change)="toggleColumnVisibility(col.key)"
+            />
+            {{ col.label }}
+          </label>
+        }
+      </div>
+    </div>
+  }
+
+  <!-- Filters -->
+  <div class="filters-row">
+    <select [(ngModel)]="filterStatus" aria-label="Filter by status">
+      <option value="">All Statuses</option>
+      <option value="DRAFT">Draft</option>
+      <option value="SENT_TO_REVIEWER">Sent to Reviewer</option>
+      <option value="REJECTED_BY_REVIEWER">Rejected by Reviewer</option>
+      <option value="APPROVED">Approved</option>
+    </select>
+
+    <select [(ngModel)]="filterMode" aria-label="Filter by mode of receipt">
+      <option value="">All Modes</option>
+      <option value="EMAIL">Email</option>
+      <option value="PHYSICAL_LETTER">Physical Letter</option>
+      <option value="PORTAL">Portal</option>
+      <option value="CPGRAMS">CPGRAMS</option>
+    </select>
+
+    <select [(ngModel)]="filterEmailType" aria-label="Filter by email type">
+      <option value="">All Email Types</option>
+      <option value="TO">TO</option>
+      <option value="CC_BCC">CC/BCC</option>
+    </select>
+
+    <select [(ngModel)]="filterSuggestion" aria-label="Filter by system suggestion">
+      <option value="">All Suggestions</option>
+      <option value="MAINTAINABLE">Maintainable</option>
+      <option value="NON_MAINTAINABLE">Non-Maintainable</option>
+      <option value="PENDING">Pending</option>
+    </select>
+  </div>
+
+  <!-- Bulk Actions -->
+  @if (selectedIds().size > 0) {
+    <div class="bulk-actions">
+      <span>{{ selectedIds().size }} selected</span>
+      <button class="btn btn-danger" (click)="bulkMarkNotComplaint()">
+        <i class="pi pi-ban"></i> Mark as Not a Complaint
+      </button>
+    </div>
+  }
+
+  <!-- Data Grid -->
+  <div class="grid-container">
+    @if (loading()) {
+      <div class="loading-overlay">
+        <div class="spinner"></div>
+        <span>Loading drafts...</span>
+      </div>
+    }
+
+    <table class="data-grid" aria-label="Assigned drafts table">
+      <thead>
+        <tr>
+          <th class="checkbox-col">
+            <input
+              type="checkbox"
+              [checked]="selectedIds().size === filteredDrafts().length && filteredDrafts().length > 0"
+              (change)="toggleSelectAll()"
+              aria-label="Select all"
+            />
+          </th>
+          @for (col of visibleColumns(); track col.key) {
+            <th>{{ col.label }}</th>
+          }
+          <th class="actions-col">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (draft of filteredDrafts(); track draft.draftId) {
+          <tr
+            [class.selected]="selectedIds().has(draft.draftId)"
+            [class.high-priority]="draft.priority === 'HIGH'"
+            [class.sla-critical]="draft.slaRemaining <= 12"
+          >
+            <td class="checkbox-col">
+              <input
+                type="checkbox"
+                [checked]="selectedIds().has(draft.draftId)"
+                (change)="toggleSelect(draft.draftId)"
+                [attr.aria-label]="'Select draft ' + draft.draftId"
+              />
+            </td>
+            @for (col of visibleColumns(); track col.key) {
+              <td [class]="'cell-' + col.key">
+                @if (col.key === 'status') {
+                  <span class="status-badge" [attr.data-status]="draft.status">
+                    {{ getCellValue(draft, col.key) }}
+                  </span>
+                } @else if (col.key === 'systemSuggestion') {
+                  <span class="suggestion-badge" [attr.data-suggestion]="draft.systemSuggestion">
+                    {{ getCellValue(draft, col.key) }}
+                  </span>
+                } @else if (col.key === 'priority') {
+                  <span class="priority-badge" [attr.data-priority]="draft.priority">
+                    {{ draft.priority }}
+                  </span>
+                } @else if (col.key === 'slaRemaining') {
+                  <span class="sla-badge" [class.sla-warning]="draft.slaRemaining <= 24" [class.sla-critical]="draft.slaRemaining <= 12">
+                    {{ draft.slaRemaining }}h
+                  </span>
+                } @else {
+                  {{ getCellValue(draft, col.key) }}
+                }
+              </td>
+            }
+            <td class="actions-col">
+              <button class="btn btn-sm btn-primary" (click)="openDraft(draft.draftId)" title="Open Draft">
+                <i class="pi pi-pencil"></i> Open
+              </button>
+            </td>
+          </tr>
+        } @empty {
+          <tr>
+            <td [attr.colspan]="visibleColumns().length + 2" class="empty-state">
+              <i class="pi pi-inbox"></i>
+              <p>No drafts found matching your filters.</p>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</div>

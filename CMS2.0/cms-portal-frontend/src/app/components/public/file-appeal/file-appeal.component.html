@@ -1,0 +1,132 @@
+<!-- FR-G-032: Search complaint to appeal -->
+@if (phase() === 'search') {
+  <div class="page-container">
+    <div class="card">
+      <h2>File an Appeal</h2>
+      <p class="subtitle">If you are dissatisfied with the resolution of your complaint, you may file an appeal within 30 days of the decision.</p>
+
+      <div class="info-box">
+        <i class="pi pi-info-circle"></i>
+        <div>
+          <strong>Eligibility for Appeal:</strong>
+          <ul>
+            <li>The complaint must have been closed/resolved by the Ombudsman</li>
+            <li>The appeal must be filed within 30 days of the decision</li>
+            <li>You must provide grounds for appeal</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Original Complaint Reference Number <span class="required">*</span></label>
+        <input type="text" class="form-input" [(ngModel)]="complaintId" name="complaintId"
+               placeholder="e.g., CMP-20260525-000001" (keydown.enter)="searchComplaint()">
+      </div>
+
+      @if (error) {
+        <div class="error-msg"><i class="pi pi-exclamation-circle"></i> {{ error }}</div>
+      }
+
+      <div class="form-actions">
+        <button class="btn-secondary" (click)="goHome()">Cancel</button>
+        <button class="btn-primary" (click)="searchComplaint()">
+          <i class="pi pi-search"></i> Find Complaint
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- FR-G-033: Appeal details form -->
+@if (phase() === 'form') {
+  <div class="page-container">
+    <div class="card">
+      <h2>Appeal Details</h2>
+      <p class="subtitle">Filing appeal against complaint <strong>{{ complaintId }}</strong></p>
+
+      <div class="form-group">
+        <label>Ground for Appeal <span class="required">*</span></label>
+        <div class="radio-group">
+          @for (g of appealGrounds; track g) {
+            <label class="radio-label" [class.selected]="appealGround === g">
+              <input type="radio" name="appealGround" [value]="g" [(ngModel)]="appealGround">
+              {{ g }}
+            </label>
+          }
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Details Supporting Your Appeal <span class="required">*</span></label>
+        <textarea class="form-textarea" [(ngModel)]="appealDetails" name="appealDetails" rows="5"
+                  placeholder="Explain in detail why you believe the decision should be reviewed..."></textarea>
+      </div>
+
+      <div class="form-group">
+        <label>Relief Sought</label>
+        <textarea class="form-textarea" [(ngModel)]="reliefSought" name="reliefSought" rows="3"
+                  placeholder="What outcome are you seeking from this appeal?"></textarea>
+      </div>
+
+      <div class="form-group">
+        <label>Supporting Documents</label>
+        <div class="file-upload-area">
+          <input type="file" id="appealFiles" multiple (change)="onFilesSelected($event)" accept=".pdf,.jpg,.jpeg,.png"
+                 class="file-input-hidden">
+          <label for="appealFiles" class="file-upload-label">
+            <i class="pi pi-cloud-upload"></i>
+            <span>Click to upload documents</span>
+            <small>PDF, JPG, PNG (Max 5MB each)</small>
+          </label>
+        </div>
+        @if (appealAttachments.length > 0) {
+          <div class="file-list">
+            @for (f of appealAttachments; track $index; let i = $index) {
+              <div class="file-chip">
+                <i class="pi pi-file"></i> {{ f.name }}
+                <button class="remove-file" (click)="removeFile(i)" type="button"><i class="pi pi-times"></i></button>
+              </div>
+            }
+          </div>
+        }
+      </div>
+
+      <div class="declaration-box">
+        <label class="checkbox-label">
+          <input type="checkbox" [(ngModel)]="declarationChecked" name="declaration">
+          <span>I hereby declare that the information provided above is true and correct. I understand that filing a frivolous or misleading appeal may result in dismissal.</span>
+        </label>
+      </div>
+
+      @if (error) {
+        <div class="error-msg"><i class="pi pi-exclamation-circle"></i> {{ error }}</div>
+      }
+
+      <!-- FR-G-034: Submit -->
+      <div class="form-actions">
+        <button class="btn-secondary" (click)="phase.set('search')">Back</button>
+        <button class="btn-primary" (click)="submitAppeal()" [disabled]="submitting()">
+          @if (submitting()) { <i class="pi pi-spinner pi-spin"></i> Submitting... }
+          @else { <i class="pi pi-send"></i> Submit Appeal }
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Success -->
+@if (phase() === 'success') {
+  <div class="page-container">
+    <div class="card success-card">
+      <div class="success-icon"><i class="pi pi-check-circle"></i></div>
+      <h2>Appeal Filed Successfully</h2>
+      <p class="ref-label">Your Appeal Reference Number:</p>
+      <div class="ref-number">{{ appealRefNumber }}</div>
+      <p>Your appeal against complaint <strong>{{ complaintId }}</strong> has been registered. You will receive updates via SMS and email.</p>
+      <div class="form-actions center">
+        <button class="btn-primary" (click)="trackAppeal()"><i class="pi pi-search"></i> Track Appeal</button>
+        <button class="btn-secondary" (click)="goHome()"><i class="pi pi-home"></i> Go to Homepage</button>
+      </div>
+    </div>
+  </div>
+}

@@ -1,0 +1,237 @@
+<div class="email-page">
+  <!-- Header Bar -->
+  <div class="email-header">
+    <div class="email-header-left">
+      <i class="pi pi-envelope"></i>
+      <h2>Email Complaint Simulation</h2>
+    </div>
+    <div class="email-header-right">
+      <div class="stat-badges">
+        <span class="badge total">Total: {{ stats.totalThreads }}</span>
+        <span class="badge awaiting">Pending: {{ stats.awaitingForm }}</span>
+        <span class="badge completed">Completed: {{ stats.completed }}</span>
+      </div>
+      <button class="compose-btn" (click)="openCompose()">
+        <i class="pi pi-pencil"></i> Compose Email
+      </button>
+    </div>
+  </div>
+
+  <!-- Compose View -->
+  @if (view === 'compose') {
+    <div class="email-card">
+      <div class="card-header">
+        <button class="back-btn" (click)="backToList()"><i class="pi pi-arrow-left"></i> Back</button>
+        <h3>Compose New Email to CMS</h3>
+      </div>
+      <div class="compose-form">
+        <div class="form-row">
+          <label>From (Email)</label>
+          <input type="email" [(ngModel)]="compose.fromEmail" placeholder="e.g. john.doe@example.com" />
+        </div>
+        <div class="form-row">
+          <label>Your Name</label>
+          <input type="text" [(ngModel)]="compose.fromName" placeholder="e.g. John Doe" />
+        </div>
+        <div class="form-row">
+          <label>Subject</label>
+          <input type="text" [(ngModel)]="compose.subject" placeholder="e.g. Credit Card Overcharging Issue" />
+        </div>
+        <div class="form-row">
+          <label>Body</label>
+          <textarea [(ngModel)]="compose.body" rows="6" placeholder="Describe your complaint briefly..."></textarea>
+        </div>
+        <div class="form-row">
+          <div class="to-info">
+            <i class="pi pi-info-circle"></i>
+            <span>This email will be sent to: <strong>complaints&#64;cms.rbi.org.in</strong></span>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="btn-secondary" (click)="backToList()">Cancel</button>
+          <button class="btn-primary" (click)="sendEmail()" [disabled]="sending || !compose.fromEmail || !compose.subject">
+            @if (sending) { <i class="pi pi-spin pi-spinner"></i> Sending... } @else { <i class="pi pi-send"></i> Send to CMS }
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Thread List View -->
+  @if (view === 'list') {
+    <div class="email-card">
+      <div class="card-header">
+        <h3>Email Threads</h3>
+        <div class="filter-tabs">
+          <button [class.active]="filterStatus === 'all'" (click)="filterStatus = 'all'">All</button>
+          <button [class.active]="filterStatus === 'AWAITING_FORM'" (click)="filterStatus = 'AWAITING_FORM'">Awaiting Form</button>
+          <button [class.active]="filterStatus === 'COMPLETED'" (click)="filterStatus = 'COMPLETED'">Completed</button>
+        </div>
+      </div>
+
+      @if (filteredThreads.length === 0) {
+        <div class="empty-state">
+          <i class="pi pi-inbox"></i>
+          <h4>No email threads yet</h4>
+          <p>Click "Compose Email" to simulate sending a complaint via email.</p>
+        </div>
+      } @else {
+        <div class="thread-list">
+          @for (thread of filteredThreads; track thread.threadId) {
+            <div class="thread-item" (click)="openThread(thread)">
+              <div class="thread-avatar">
+                <i class="pi pi-user"></i>
+              </div>
+              <div class="thread-content">
+                <div class="thread-top">
+                  <span class="thread-from">{{ thread.fromEmail }}</span>
+                  <span class="thread-date">{{ formatDate(thread.sentAt) }}</span>
+                </div>
+                <div class="thread-subject">{{ thread.subject }}</div>
+                <div class="thread-meta">
+                  <span class="thread-complaint">#{{ thread.complaintNumber }}</span>
+                  <span class="status-badge" [class]="thread.status.toLowerCase()">
+                    {{ thread.status === 'AWAITING_FORM' ? 'Awaiting Form' : 'Completed' }}
+                  </span>
+                  <span class="thread-count"><i class="pi pi-comments"></i> {{ thread.emailCount }}</span>
+                </div>
+              </div>
+              <i class="pi pi-chevron-right thread-arrow"></i>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  }
+
+  <!-- Thread Detail View -->
+  @if (view === 'thread' && selectedThread) {
+    <div class="email-card">
+      <div class="card-header">
+        <button class="back-btn" (click)="backToList()"><i class="pi pi-arrow-left"></i> Back</button>
+        <div class="thread-header-info">
+          <h3>{{ selectedThread.emails[0]?.subject }}</h3>
+          <div class="thread-header-meta">
+            <span class="status-badge" [class]="selectedThread.status.toLowerCase()">
+              {{ selectedThread.status === 'AWAITING_FORM' ? 'Awaiting Form' : 'Completed' }}
+            </span>
+            <span class="complaint-ref">#{{ selectedThread.complaintNumber }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="email-conversation">
+        @for (email of selectedThread.emails; track email.messageId) {
+          <div class="email-message" [class.outbound]="email.direction === 'OUTBOUND'" [class.inbound]="email.direction === 'INBOUND'">
+            <div class="message-header">
+              <div class="message-from">
+                <i class="pi" [class.pi-user]="email.direction === 'INBOUND'" [class.pi-building]="email.direction === 'OUTBOUND'"></i>
+                <strong>{{ email.fromEmail }}</strong>
+                <span class="message-direction">{{ email.direction === 'INBOUND' ? '(Citizen)' : '(CMS System)' }}</span>
+              </div>
+              <span class="message-time">{{ formatDate(email.sentAt) }}</span>
+            </div>
+            <div class="message-to">To: {{ email.toEmail }}</div>
+            <div class="message-body">{{ email.body }}</div>
+
+            <!-- Attachment: HTML Form -->
+            @if (email.attachmentUrl && email.direction === 'OUTBOUND') {
+              <div class="message-attachment">
+                <i class="pi pi-file"></i>
+                <div class="attachment-info">
+                  <span class="attachment-name">Complaint_Form_{{ email.complaintNumber }}.html</span>
+                  <span class="attachment-hint">Opens in browser — fill details, save, and attach in reply</span>
+                </div>
+                @if (selectedThread.status === 'AWAITING_FORM') {
+                  <button class="download-form-btn" (click)="downloadComplaintForm()">
+                    <i class="pi pi-download"></i> Download Form
+                  </button>
+                } @else {
+                  <span class="attachment-done"><i class="pi pi-check"></i> Submitted</span>
+                }
+              </div>
+            }
+          </div>
+        }
+      </div>
+
+      <!-- Action: Reply with Form -->
+      @if (selectedThread.status === 'AWAITING_FORM' && !showReplyForm) {
+        <div class="thread-action">
+          <div class="action-steps">
+            <div class="action-step">
+              <span class="step-num">1</span>
+              <span>Download the form (opens in any browser)</span>
+            </div>
+            <div class="action-step">
+              <span class="step-num">2</span>
+              <span>Fill your details & click "Save Filled Form"</span>
+            </div>
+            <div class="action-step">
+              <span class="step-num">3</span>
+              <span>Attach the saved form below and send reply</span>
+            </div>
+          </div>
+          <button class="btn-primary" (click)="openReplySection()">
+            <i class="pi pi-reply"></i> Reply with Filled Form
+          </button>
+        </div>
+      }
+
+      <!-- Reply Section: Upload filled form -->
+      @if (showReplyForm) {
+        <div class="reply-form-section">
+          <h4><i class="pi pi-upload"></i> Reply — Attach Filled Form</h4>
+          <p class="reply-hint">Attach the filled Word form (.docx) below. The system will read the details automatically.</p>
+
+          <div class="upload-zone" (click)="fileInput.click()" (dragover)="$event.preventDefault()" (drop)="$event.preventDefault()">
+            <input #fileInput type="file" accept=".html,.htm" (change)="onFileSelected($event)" hidden />
+            @if (!uploadedFile) {
+              <i class="pi pi-cloud-upload"></i>
+              <p>Click to select the filled <strong>.html</strong> form</p>
+            } @else {
+              <i class="pi pi-file-word uploaded-icon"></i>
+              <p class="uploaded-name">{{ uploadedFile.name }}</p>
+              <span class="uploaded-size">{{ (uploadedFile.size / 1024).toFixed(0) }} KB</span>
+            }
+          </div>
+
+          <!-- Parsed Data Preview -->
+          @if (parsedFormData) {
+            <div class="parsed-preview">
+              <h5><i class="pi pi-check-circle"></i> Extracted Details from Form</h5>
+              <div class="parsed-grid">
+                @for (entry of parsedFormData | keyvalue; track entry.key) {
+                  @if (entry.value) {
+                    <div class="parsed-item">
+                      <label>{{ entry.key }}</label>
+                      <span>{{ entry.value }}</span>
+                    </div>
+                  }
+                }
+              </div>
+            </div>
+          }
+
+          <div class="reply-actions">
+            <button class="btn-secondary" (click)="showReplyForm = false; uploadedFile = null; parsedFormData = null">Cancel</button>
+            <button class="btn-primary" (click)="submitReply()" [disabled]="replying || !parsedFormData">
+              @if (replying) { <i class="pi pi-spin pi-spinner"></i> Submitting... } @else { <i class="pi pi-send"></i> Send Reply to CMS }
+            </button>
+          </div>
+        </div>
+      }
+
+      <!-- Completed Banner -->
+      @if (selectedThread.status === 'COMPLETED') {
+        <div class="completed-banner">
+          <i class="pi pi-check-circle"></i>
+          <div>
+            <strong>Complaint Complete</strong>
+            <p>All details have been received. Complaint #{{ selectedThread.complaintNumber }} is now under review.</p>
+          </div>
+        </div>
+      }
+    </div>
+  }
+</div>

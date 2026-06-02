@@ -1,0 +1,117 @@
+<div class="dashboard">
+  <header class="dashboard-header">
+    <div class="header-left">
+      <h1>Officer Dashboard</h1>
+      <p class="subtitle">Manage assigned complaints and track resolutions</p>
+    </div>
+    <div class="header-right">
+      <div class="officer-info">
+        <label>Officer Name</label>
+        <input type="text" [ngModel]="officerName()" (ngModelChange)="officerName.set($event)" placeholder="Your name">
+      </div>
+    </div>
+  </header>
+
+  <!-- Stats Cards -->
+  <div class="stats-grid">
+    <div class="stat-card total">
+      <div class="stat-number">{{ stats().total }}</div>
+      <div class="stat-label">Total Complaints</div>
+    </div>
+    <div class="stat-card assigned">
+      <div class="stat-number">{{ stats().assigned }}</div>
+      <div class="stat-label">Awaiting Action</div>
+    </div>
+    <div class="stat-card progress">
+      <div class="stat-number">{{ stats().inProgress }}</div>
+      <div class="stat-label">In Progress</div>
+    </div>
+    <div class="stat-card escalated">
+      <div class="stat-number">{{ stats().escalated }}</div>
+      <div class="stat-label">Escalated</div>
+    </div>
+    <div class="stat-card sla">
+      <div class="stat-number">{{ stats().slaBreach }}</div>
+      <div class="stat-label">SLA At Risk</div>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="filters">
+    <div class="filter-group">
+      <label>Team</label>
+      <select [ngModel]="selectedTeam()" (ngModelChange)="selectedTeam.set($event); onTeamChange()">
+        @for (team of teams; track team) {
+          <option [value]="team">{{ team.replace('_', ' ') }}</option>
+        }
+      </select>
+    </div>
+    <div class="filter-group">
+      <label>Status</label>
+      <select [ngModel]="selectedStatus()" (ngModelChange)="selectedStatus.set($event); onStatusChange()">
+        @for (status of statuses; track status) {
+          <option [value]="status">{{ status }}</option>
+        }
+      </select>
+    </div>
+    <button class="btn-refresh" (click)="loadComplaints()" [disabled]="loading()">
+      Refresh
+    </button>
+  </div>
+
+  @if (error()) {
+    <div class="alert-error">{{ error() }}</div>
+  }
+
+  @if (loading()) {
+    <div class="loading-state">Loading complaints...</div>
+  }
+
+  <!-- Complaints Table -->
+  @if (!loading() && complaints().length > 0) {
+    <div class="complaints-table-wrapper">
+      <table class="complaints-table">
+        <thead>
+          <tr>
+            <th>Complaint ID</th>
+            <th>Subject</th>
+            <th>Category</th>
+            <th>Priority</th>
+            <th>Status</th>
+            <th>Complainant</th>
+            <th>SLA</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (complaint of complaints(); track complaint.complaintId) {
+            <tr [class]="getSlaClass(complaint.slaPercentage)">
+              <td class="complaint-id">{{ complaint.complaintId }}</td>
+              <td class="subject">{{ complaint.subject }}</td>
+              <td><span class="category-badge">{{ complaint.category }}</span></td>
+              <td><span class="priority-badge" [attr.data-priority]="complaint.priority">{{ complaint.priority }}</span></td>
+              <td><span class="status-badge" [attr.data-status]="complaint.status">{{ complaint.status }}</span></td>
+              <td>{{ complaint.complainantName }}</td>
+              <td class="sla-cell">
+                <span [class]="'sla-indicator ' + getSlaClass(complaint.slaPercentage)">
+                  {{ getDaysRemaining(complaint.slaDueDate) }}
+                </span>
+              </td>
+              <td>
+                <button class="btn-view" (click)="viewComplaint(complaint.complaintId)">
+                  View & Act
+                </button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+
+  @if (!loading() && complaints().length === 0 && !error()) {
+    <div class="empty-state">
+      <p>No complaints found for the selected filters.</p>
+    </div>
+  }
+</div>

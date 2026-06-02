@@ -1,0 +1,28 @@
+server:
+  port: 8090
+  servlet:
+    context-path: /cms-storage
+
+spring:
+  application:
+    name: cms-storage-service
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 100MB
+
+cms:
+  storage:
+    root-path: ${STORAGE_ROOT:/data/cms/storage}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+
+logging:
+  level:
+    com.rbi.cms: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [%X{correlationId}] %-5level %logger{36} - %msg%n"

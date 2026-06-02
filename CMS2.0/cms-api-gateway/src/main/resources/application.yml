@@ -1,0 +1,109 @@
+server:
+  port: 8080
+  servlet:
+    context-path: /
+
+spring:
+  application:
+    name: cms-api-gateway
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8180/realms/cms}
+          jwk-set-uri: ${KEYCLOAK_JWK_URI:http://localhost:8180/realms/cms/protocol/openid-connect/certs}
+
+  cloud:
+    gateway:
+      mvc:
+        routes:
+          - id: eligibility-service
+            uri: http://${ELIGIBILITY_HOST:localhost}:8081
+            predicates:
+              - Path=/api/v1/eligibility/**
+            filters:
+              - PrefixPath=/cms-eligibility
+
+          - id: email-syndication
+            uri: http://${INGESTION_HOST:localhost}:8082
+            predicates:
+              - Path=/api/v1/email-syndication/**
+            filters:
+              - PrefixPath=/cms-ingestion
+
+          - id: ingestion-service
+            uri: http://${INGESTION_HOST:localhost}:8082
+            predicates:
+              - Path=/api/v1/complaints/**
+            filters:
+              - PrefixPath=/cms-ingestion
+
+          - id: admin-dashboard
+            uri: http://${INGESTION_HOST:localhost}:8082
+            predicates:
+              - Path=/api/v1/admin/**
+            filters:
+              - PrefixPath=/cms-ingestion
+
+          - id: sla-monitor
+            uri: http://${INGESTION_HOST:localhost}:8082
+            predicates:
+              - Path=/api/v1/sla/**
+            filters:
+              - PrefixPath=/cms-ingestion
+
+          - id: workflow-service
+            uri: http://${WORKFLOW_HOST:localhost}:8083
+            predicates:
+              - Path=/api/v1/workflow/**
+            filters:
+              - PrefixPath=/cms-workflow
+
+          - id: rules-service
+            uri: http://${RULES_HOST:localhost}:8084
+            predicates:
+              - Path=/api/v1/rules/**
+            filters:
+              - PrefixPath=/cms-rules
+
+          - id: assignment-service
+            uri: http://${ASSIGNMENT_HOST:localhost}:8085
+            predicates:
+              - Path=/api/v1/assignment/**
+            filters:
+              - PrefixPath=/cms-assignment
+
+          - id: audit-service
+            uri: http://${AUDIT_HOST:localhost}:8088
+            predicates:
+              - Path=/api/v1/audit/**
+            filters:
+              - PrefixPath=/cms-audit
+
+          - id: search-service
+            uri: http://${SEARCH_HOST:localhost}:8091
+            predicates:
+              - Path=/api/v1/search/**
+            filters:
+              - PrefixPath=/cms-search
+
+          - id: storage-service
+            uri: http://${STORAGE_HOST:localhost}:8090
+            predicates:
+              - Path=/api/v1/storage/**
+            filters:
+              - PrefixPath=/cms-storage
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,gateway
+
+logging:
+  level:
+    com.rbi.cms: INFO
+    org.springframework.cloud.gateway: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [%X{correlationId}] %-5level %logger{36} - %msg%n"

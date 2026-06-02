@@ -1,0 +1,87 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cms-ingestion-service
+  namespace: rbi-cms
+  labels:
+    app: cms-ingestion-service
+    app.kubernetes.io/part-of: rbi-cms
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: cms-ingestion-service
+  template:
+    metadata:
+      labels:
+        app: cms-ingestion-service
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8082"
+        prometheus.io/path: "/cms-ingestion/actuator/prometheus"
+    spec:
+      containers:
+        - name: cms-ingestion-service
+          image: registry.rbi.internal/cms/ingestion-service:1.0.0-SNAPSHOT
+          ports:
+            - containerPort: 8082
+          envFrom:
+            - configMapRef:
+                name: cms-common-config
+            - secretRef:
+                name: cms-db-credentials
+          env:
+            - name: STORAGE_PATH
+              value: "/data/cms/attachments"
+          volumeMounts:
+            - name: attachment-storage
+              mountPath: /data/cms/attachments
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1Gi
+            limits:
+              cpu: 2000m
+              memory: 2Gi
+          livenessProbe:
+            httpGet:
+              path: /cms-ingestion/actuator/health/liveness
+              port: 8082
+            initialDelaySeconds: 60
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /cms-ingestion/actuator/health/readiness
+              port: 8082
+            initialDelaySeconds: 30
+            periodSeconds: 5
+      volumes:
+        - name: attachment-storage
+          persistentVolumeClaim:
+            claimName: cms-attachment-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cms-ingestion-service
+  namespace: rbi-cms
+spec:
+  selector:
+    app: cms-ingestion-service
+  ports:
+    - port: 8082
+      targetPort: 8082
+  type: ClusterIP
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: cms-attachment-pvc
+  namespace: rbi-cms
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 100Gi
+  storageClassName: ocs-storagecluster-cephfs

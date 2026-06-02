@@ -1,0 +1,20 @@
+server:
+  port: 8084
+  servlet:
+    context-path: /cms-rules
+
+spring:
+  application:
+    name: cms-rules-service
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+
+logging:
+  level:
+    com.rbi.cms: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [%X{correlationId}] %-5level %logger{36} - %msg%n"

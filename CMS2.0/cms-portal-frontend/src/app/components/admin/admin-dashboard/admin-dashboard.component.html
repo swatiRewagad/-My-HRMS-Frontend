@@ -1,0 +1,190 @@
+<div class="admin-dashboard">
+  <header class="dashboard-header">
+    <div class="header-left">
+      <button class="back-btn" (click)="goBack()">← Back</button>
+      <h1>Admin Dashboard</h1>
+      <span class="subtitle">CMS Analytics & Monitoring</span>
+    </div>
+    <div class="header-right">
+      @if (lastRefreshed()) {
+        <span class="refresh-info">Last updated: {{ lastRefreshed() }}</span>
+      }
+      <button class="refresh-btn" (click)="loadStats()" [disabled]="loading()">
+        ↻ Refresh
+      </button>
+    </div>
+  </header>
+
+  @if (loading() && !stats()) {
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <p>Loading dashboard...</p>
+    </div>
+  }
+
+  @if (error()) {
+    <div class="error-state">
+      <p>{{ error() }}</p>
+      <button (click)="loadStats()">Retry</button>
+    </div>
+  }
+
+  @if (stats(); as s) {
+    <!-- KPI Cards -->
+    <section class="kpi-cards">
+      <div class="kpi-card total">
+        <div class="kpi-value">{{ s.totalComplaints }}</div>
+        <div class="kpi-label">Total Complaints</div>
+      </div>
+      <div class="kpi-card open">
+        <div class="kpi-value">{{ s.openComplaints }}</div>
+        <div class="kpi-label">Open</div>
+      </div>
+      <div class="kpi-card resolved">
+        <div class="kpi-value">{{ s.resolvedComplaints }}</div>
+        <div class="kpi-label">Resolved</div>
+      </div>
+      <div class="kpi-card escalated">
+        <div class="kpi-value">{{ s.escalatedComplaints }}</div>
+        <div class="kpi-label">Escalated</div>
+      </div>
+      <div class="kpi-card sla">
+        <div class="kpi-value">{{ s.slaBreached }}</div>
+        <div class="kpi-label">SLA Breached</div>
+      </div>
+      <div class="kpi-card resolution">
+        <div class="kpi-value">{{ s.avgResolutionHours }}h</div>
+        <div class="kpi-label">Avg Resolution</div>
+      </div>
+    </section>
+
+    <!-- Charts Section -->
+    <section class="charts-grid">
+      <!-- Status Breakdown -->
+      <div class="chart-card">
+        <h3>Status Breakdown</h3>
+        <div class="bar-chart">
+          @for (key of getStatusKeys(); track key) {
+            <div class="bar-row">
+              <span class="bar-label">{{ key }}</span>
+              <div class="bar-track">
+                <div class="bar-fill" [style.width.%]="getBarWidth(s.statusBreakdown[key])"
+                     [style.background-color]="getStatusColor(key)"></div>
+              </div>
+              <span class="bar-value">{{ s.statusBreakdown[key] }}</span>
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Category Breakdown -->
+      <div class="chart-card">
+        <h3>By Category</h3>
+        <div class="bar-chart">
+          @for (key of getCategoryKeys(); track key) {
+            <div class="bar-row">
+              <span class="bar-label">{{ key }}</span>
+              <div class="bar-track">
+                <div class="bar-fill" [style.width.%]="getBarWidth(s.categoryBreakdown[key])"
+                     style="background-color: #3498db;"></div>
+              </div>
+              <span class="bar-value">{{ s.categoryBreakdown[key] }}</span>
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Priority Breakdown -->
+      <div class="chart-card">
+        <h3>By Priority</h3>
+        <div class="bar-chart">
+          @for (key of getPriorityKeys(); track key) {
+            <div class="bar-row">
+              <span class="bar-label">{{ key }}</span>
+              <div class="bar-track">
+                <div class="bar-fill" [style.width.%]="getBarWidth(s.priorityBreakdown[key])"
+                     [style.background-color]="getPriorityColor(key)"></div>
+              </div>
+              <span class="bar-value">{{ s.priorityBreakdown[key] }}</span>
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Team Workload -->
+      <div class="chart-card">
+        <h3>Team Workload</h3>
+        <div class="bar-chart">
+          @for (key of getTeamKeys(); track key) {
+            <div class="bar-row">
+              <span class="bar-label">{{ key }}</span>
+              <div class="bar-track">
+                <div class="bar-fill" [style.width.%]="getBarWidth(s.teamWorkload[key])"
+                     style="background-color: #8e44ad;"></div>
+              </div>
+              <span class="bar-value">{{ s.teamWorkload[key] }}</span>
+            </div>
+          }
+        </div>
+      </div>
+    </section>
+
+    <!-- SLA Breached Table -->
+    @if (s.slaBreachedComplaints && s.slaBreachedComplaints.length > 0) {
+      <section class="table-section sla-section">
+        <h3>⚠ SLA Breached Complaints</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Complaint ID</th>
+              <th>Subject</th>
+              <th>Status</th>
+              <th>Team</th>
+              <th>Overdue</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (c of s.slaBreachedComplaints; track c.complaintId) {
+              <tr class="clickable" (click)="navigateToComplaint(c.complaintId)">
+                <td class="id-cell">{{ c.complaintId }}</td>
+                <td>{{ c.subject }}</td>
+                <td><span class="badge" [attr.data-status]="c.status">{{ c.status }}</span></td>
+                <td>{{ c.assignedTeam || '-' }}</td>
+                <td class="overdue">{{ c.overdueDays }} days</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </section>
+    }
+
+    <!-- Recent Complaints -->
+    <section class="table-section">
+      <h3>Recent Complaints</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Complaint ID</th>
+            <th>Subject</th>
+            <th>Category</th>
+            <th>Status</th>
+            <th>Priority</th>
+            <th>Team</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (c of s.recentComplaints; track c.complaintId) {
+            <tr class="clickable" (click)="navigateToComplaint(c.complaintId)">
+              <td class="id-cell">{{ c.complaintId }}</td>
+              <td>{{ c.subject }}</td>
+              <td>{{ c.category }}</td>
+              <td><span class="badge" [attr.data-status]="c.status">{{ c.status }}</span></td>
+              <td><span class="priority-badge" [attr.data-priority]="c.priority">{{ c.priority }}</span></td>
+              <td>{{ c.assignedTeam || '-' }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </section>
+  }
+</div>

@@ -1,0 +1,98 @@
+<div class="rules-management">
+  <div class="header">
+    <h1>Rules Management</h1>
+    <div class="header-actions">
+      <button class="btn btn-primary" (click)="createRule()">+ New Rule</button>
+      <button class="btn btn-secondary" (click)="testRules()">Sandbox Test</button>
+      <button class="btn btn-deploy" (click)="deployRules()" [disabled]="loading()">
+        {{ loading() ? 'Deploying...' : 'Deploy Rules' }}
+      </button>
+    </div>
+  </div>
+
+  @if (successMessage()) {
+    <div class="alert alert-success">{{ successMessage() }}</div>
+  }
+  @if (errorMessage()) {
+    <div class="alert alert-error">{{ errorMessage() }}</div>
+  }
+  @if (deploymentResult(); as dep) {
+    <div class="deployment-banner" [class.success]="dep.status === 'SUCCESS'" [class.failed]="dep.status !== 'SUCCESS'">
+      Deployment {{ dep.status }} — {{ dep.rulesDeployed }} rules deployed
+      <span class="deployment-id">ID: {{ dep.deploymentId | slice:0:8 }}</span>
+    </div>
+  }
+
+  <div class="controls">
+    <div class="user-context">
+      <label>Current User:</label>
+      <input type="text" [(ngModel)]="currentUser" placeholder="Your username" />
+      <label>Approver:</label>
+      <input type="text" [(ngModel)]="approverUser" placeholder="Checker username" />
+    </div>
+    <div class="filters">
+      <select [(ngModel)]="selectedCategory">
+        <option value="">All Categories</option>
+        @for (cat of categories(); track cat.id) {
+          <option [value]="cat.code">{{ cat.name }}</option>
+        }
+      </select>
+      <select [(ngModel)]="selectedStatus">
+        <option value="">All Statuses</option>
+        <option value="ACTIVE">Active</option>
+        <option value="DRAFT">Draft</option>
+        <option value="INACTIVE">Inactive</option>
+        <option value="ARCHIVED">Archived</option>
+      </select>
+    </div>
+  </div>
+
+  @if (loading()) {
+    <div class="loading">Loading rules...</div>
+  } @else {
+    <div class="rules-table">
+      <table>
+        <thead>
+          <tr>
+            <th>Rule Name</th>
+            <th>Code</th>
+            <th>Category</th>
+            <th>Status</th>
+            <th>Version</th>
+            <th>Created By</th>
+            <th>Approved By</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (rule of filteredRules(); track rule.id) {
+            <tr>
+              <td class="rule-name">{{ rule.ruleName }}</td>
+              <td class="rule-code">{{ rule.ruleCode }}</td>
+              <td>{{ rule.categoryName }}</td>
+              <td><span class="status-badge" [class]="getStatusClass(rule.status)">{{ rule.status }}</span></td>
+              <td class="center">v{{ rule.version }}</td>
+              <td>{{ rule.createdBy }}</td>
+              <td>{{ rule.approvedBy || '—' }}</td>
+              <td class="actions">
+                <button class="btn-sm btn-edit" (click)="editRule(rule)" title="Edit">Edit</button>
+                @if (rule.status === 'DRAFT' || rule.status === 'INACTIVE') {
+                  <button class="btn-sm btn-activate" (click)="activateRule(rule)" title="Activate">Activate</button>
+                }
+                @if (rule.status === 'ACTIVE') {
+                  <button class="btn-sm btn-deactivate" (click)="deactivateRule(rule)" title="Deactivate">Deactivate</button>
+                }
+                @if (rule.version > 1) {
+                  <button class="btn-sm btn-rollback" (click)="rollbackRule(rule)" title="Rollback">Rollback</button>
+                }
+                <button class="btn-sm btn-history" (click)="viewHistory(rule)" title="History">History</button>
+              </td>
+            </tr>
+          } @empty {
+            <tr><td colspan="8" class="empty">No rules found</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>

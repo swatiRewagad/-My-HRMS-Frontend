@@ -1,0 +1,177 @@
+version: '3.8'
+
+services:
+  # ── MySQL ──
+  cms-mysql:
+    image: mysql:8.0
+    container_name: cms-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-cms_root_pass}
+      MYSQL_DATABASE: cms_db
+      MYSQL_USER: ${MYSQL_USER:-cms_user}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-cms_pass}
+    ports:
+      - "3307:3306"
+    volumes:
+      - cms-mysql-data:/var/lib/mysql
+      - ./mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    command: >
+      --max-connections=500
+      --innodb-buffer-pool-size=1G
+      --innodb-log-file-size=256M
+      --innodb-flush-log-at-trx-commit=2
+      --innodb-flush-method=O_DIRECT
+      --slow-query-log=1
+      --long-query-time=2
+      --query-cache-type=0
+      --thread-cache-size=64
+      --table-open-cache=4000
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-cms_root_pass}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - cms-network
+
+  # ── Redis ──
+  cms-redis:
+    image: redis:7-alpine
+    container_name: cms-redis
+    restart: unless-stopped
+    ports:
+      - "6380:6379"
+    command: >
+      redis-server
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+      --save 60 1000
+      --tcp-backlog 511
+    volumes:
+      - cms-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - cms-network
+
+  # ── Backend Instance 1 ──
+  cms-backend-1:
+    build:
+      context: ../cms-backend
+      dockerfile: Dockerfile
+    container_name: cms-backend-1
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      DB_URL: jdbc:mysql://cms-mysql:3306/cms_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&rewriteBatchedStatements=true&cachePrepStmts=true&prepStmtCacheSize=250&prepStmtCacheSqlLimit=2048&useServerPrepStmts=true
+      DB_USERNAME: ${MYSQL_USER:-cms_user}
+      DB_PASSWORD: ${MYSQL_PASSWORD:-cms_pass}
+      REDIS_HOST: cms-redis
+      REDIS_PORT: 6379
+      CMS_ATTACHMENTS_PATH: /cms-attachments
+      JAVA_OPTS: "-Xms512m -Xmx1g"
+    volumes:
+      - cms-attachments:/cms-attachments
+    depends_on:
+      cms-mysql:
+        condition: service_healthy
+      cms-redis:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 1536M
+          cpus: '2.0'
+        reservations:
+          memory: 768M
+          cpus: '0.5'
+    networks:
+      - cms-network
+
+  # ── Backend Instance 2 ──
+  cms-backend-2:
+    build:
+      context: ../cms-backend
+      dockerfile: Dockerfile
+    container_name: cms-backend-2
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      DB_URL: jdbc:mysql://cms-mysql:3306/cms_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&rewriteBatchedStatements=true&cachePrepStmts=true&prepStmtCacheSize=250&prepStmtCacheSqlLimit=2048&useServerPrepStmts=true
+      DB_USERNAME: ${MYSQL_USER:-cms_user}
+      DB_PASSWORD: ${MYSQL_PASSWORD:-cms_pass}
+      REDIS_HOST: cms-redis
+      REDIS_PORT: 6379
+      CMS_ATTACHMENTS_PATH: /cms-attachments
+      JAVA_OPTS: "-Xms512m -Xmx1g"
+    volumes:
+      - cms-attachments:/cms-attachments
+    depends_on:
+      cms-mysql:
+        condition: service_healthy
+      cms-redis:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 1536M
+          cpus: '2.0'
+        reservations:
+          memory: 768M
+          cpus: '0.5'
+    networks:
+      - cms-network
+
+  # ── Frontend ──
+  cms-frontend:
+    build:
+      context: ../cms-frontend
+      dockerfile: Dockerfile
+    container_name: cms-frontend
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
+    networks:
+      - cms-network
+
+  # ── Nginx Gateway / Load Balancer ──
+  cms-gateway:
+    image: nginx:1.27-alpine
+    container_name: cms-gateway
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - cms-nginx-cache:/var/cache/nginx/cms
+    depends_on:
+      - cms-backend-1
+      - cms-backend-2
+      - cms-frontend
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '1.0'
+    networks:
+      - cms-network
+
+volumes:
+  cms-mysql-data:
+  cms-redis-data:
+  cms-attachments:
+  cms-nginx-cache:
+
+networks:
+  cms-network:
+    driver: bridge

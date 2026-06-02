@@ -1,0 +1,237 @@
+<div class="complaint-action">
+  <button class="btn-back" (click)="goBack()">← Back to Dashboard</button>
+
+  @if (loading()) {
+    <div class="loading">Loading complaint details...</div>
+  }
+
+  @if (error()) {
+    <div class="alert alert-error">{{ error() }}</div>
+  }
+
+  @if (successMessage()) {
+    <div class="alert alert-success">{{ successMessage() }}</div>
+  }
+
+  @if (complaint(); as c) {
+    <!-- Progress Stepper -->
+    <div class="progress-stepper">
+      <div class="step" [class.active]="getStatusStep(c.status) >= 0" [class.current]="c.status === 'NEW'">
+        <div class="step-dot"></div>
+        <span>New</span>
+      </div>
+      <div class="step-line" [class.active]="getStatusStep(c.status) >= 1"></div>
+      <div class="step" [class.active]="getStatusStep(c.status) >= 1" [class.current]="c.status === 'ASSIGNED'">
+        <div class="step-dot"></div>
+        <span>Assigned</span>
+      </div>
+      <div class="step-line" [class.active]="getStatusStep(c.status) >= 2"></div>
+      <div class="step" [class.active]="getStatusStep(c.status) >= 2" [class.current]="c.status === 'IN_PROGRESS'">
+        <div class="step-dot"></div>
+        <span>In Progress</span>
+      </div>
+      <div class="step-line" [class.active]="getStatusStep(c.status) >= 3"></div>
+      <div class="step" [class.active]="getStatusStep(c.status) >= 3" [class.current]="c.status === 'UNDER_REVIEW' || c.status === 'ESCALATED'">
+        <div class="step-dot"></div>
+        <span>{{ c.status === 'ESCALATED' ? 'Escalated' : 'Under Review' }}</span>
+      </div>
+      <div class="step-line" [class.active]="getStatusStep(c.status) >= 4"></div>
+      <div class="step" [class.active]="getStatusStep(c.status) >= 4" [class.current]="c.status === 'RESOLVED'">
+        <div class="step-dot"></div>
+        <span>Resolved</span>
+      </div>
+      <div class="step-line" [class.active]="getStatusStep(c.status) >= 5"></div>
+      <div class="step" [class.active]="getStatusStep(c.status) >= 5" [class.current]="c.status === 'CLOSED'">
+        <div class="step-dot"></div>
+        <span>Closed</span>
+      </div>
+    </div>
+
+    <!-- Complaint Header -->
+    <div class="complaint-header">
+      <div class="header-info">
+        <h2>{{ c.complaintId }}</h2>
+        <h3>{{ c.subject }}</h3>
+      </div>
+      <span class="status-badge" [attr.data-status]="c.status">{{ c.status }}</span>
+    </div>
+
+    <!-- Main Content Grid -->
+    <div class="content-grid">
+      <!-- Left: Details -->
+      <div class="details-panel">
+        <div class="panel-section">
+          <h4>Complaint Details</h4>
+          <div class="detail-grid">
+            <div class="detail-item">
+              <span class="label">Category</span>
+              <span class="value">{{ c.category }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="label">Priority</span>
+              <span class="value priority" [attr.data-priority]="c.priority">{{ c.priority }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="label">Amount</span>
+              <span class="value">{{ c.amountInvolved ? '₹' + c.amountInvolved : 'N/A' }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="label">Transaction Date</span>
+              <span class="value">{{ c.transactionDate || 'N/A' }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="label">Registered</span>
+              <span class="value">{{ c.createdAt | date:'dd MMM yyyy, hh:mm a' }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="label">SLA Due</span>
+              <span class="value">{{ c.slaDueDate | date:'dd MMM yyyy' }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel-section">
+          <h4>Description</h4>
+          <p class="description-text">{{ c.description }}</p>
+        </div>
+
+        <div class="panel-section">
+          <h4>Complainant</h4>
+          <div class="detail-grid">
+            <div class="detail-item">
+              <span class="label">Name</span>
+              <span class="value">{{ c.complainantName }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="label">Email</span>
+              <span class="value">{{ c.complainantEmail || 'N/A' }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="label">Phone</span>
+              <span class="value">{{ c.complainantPhone || 'N/A' }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="label">Entity</span>
+              <span class="value">{{ c.entityName }} ({{ c.entityType }})</span>
+            </div>
+          </div>
+        </div>
+
+        @if (c.resolutionSummary) {
+          <div class="panel-section resolution-section">
+            <h4>Resolution</h4>
+            <p class="resolution-text">{{ c.resolutionSummary }}</p>
+            @if (c.resolvedAt) {
+              <span class="resolved-date">Resolved on {{ c.resolvedAt | date:'dd MMM yyyy, hh:mm a' }}</span>
+            }
+          </div>
+        }
+      </div>
+
+      <!-- Right: Actions & Timeline -->
+      <div class="actions-panel">
+        <!-- Actions Section -->
+        <div class="panel-section actions-section">
+          <h4>Actions</h4>
+
+          @if (c.status === 'ASSIGNED' || c.status === 'NEW') {
+            <button class="btn-action btn-accept" (click)="acceptComplaint()" [disabled]="actionLoading()">
+              Accept & Start Investigation
+            </button>
+          }
+
+          @if (c.status === 'IN_PROGRESS') {
+            <button class="btn-action btn-review" (click)="moveToUnderReview()" [disabled]="actionLoading()">
+              Mark Investigation Complete
+            </button>
+            <div class="form-group" style="margin-top: 0.5rem;">
+              <input type="text" [ngModel]="remarks()" (ngModelChange)="remarks.set($event)" placeholder="Investigation notes (optional)">
+            </div>
+
+            <div class="action-divider">or</div>
+
+            <button class="btn-action btn-escalate-toggle" (click)="showEscalateForm.set(!showEscalateForm())" [disabled]="actionLoading()">
+              Escalate to Senior Officer
+            </button>
+          }
+
+          @if (c.status === 'UNDER_REVIEW') {
+            <button class="btn-action btn-resolve-toggle" (click)="showResolveForm.set(!showResolveForm())" [disabled]="actionLoading()">
+              Submit Resolution
+            </button>
+          }
+
+          @if (c.status === 'ESCALATED') {
+            <button class="btn-action btn-resolve-toggle" (click)="showResolveForm.set(!showResolveForm())" [disabled]="actionLoading()">
+              Submit Resolution (Escalated)
+            </button>
+          }
+
+          @if (c.status === 'RESOLVED' || c.status === 'CLOSED') {
+            <div class="action-complete">
+              <span>No further actions required.</span>
+            </div>
+          }
+        </div>
+
+        <!-- Resolution Form -->
+        @if (showResolveForm()) {
+          <div class="panel-section form-section">
+            <h4>Submit Resolution</h4>
+            <textarea
+              [ngModel]="resolutionText()"
+              (ngModelChange)="resolutionText.set($event)"
+              placeholder="Describe the resolution provided to the customer..."
+              rows="5"></textarea>
+            <div class="form-actions">
+              <button class="btn-submit" (click)="submitResolution()" [disabled]="!resolutionText() || actionLoading()">
+                Submit Resolution
+              </button>
+              <button class="btn-cancel" (click)="showResolveForm.set(false)">Cancel</button>
+            </div>
+          </div>
+        }
+
+        <!-- Escalation Form -->
+        @if (showEscalateForm()) {
+          <div class="panel-section form-section escalation">
+            <h4>Escalate Complaint</h4>
+            <textarea
+              [ngModel]="escalationReason()"
+              (ngModelChange)="escalationReason.set($event)"
+              placeholder="Reason for escalation..."
+              rows="3"></textarea>
+            <div class="form-actions">
+              <button class="btn-submit btn-escalate" (click)="submitEscalation()" [disabled]="!escalationReason() || actionLoading()">
+                Confirm Escalation
+              </button>
+              <button class="btn-cancel" (click)="showEscalateForm.set(false)">Cancel</button>
+            </div>
+          </div>
+        }
+
+        <!-- Timeline -->
+        @if (c.timeline && c.timeline.length > 0) {
+          <div class="panel-section timeline-section">
+            <h4>Activity Timeline</h4>
+            <div class="timeline">
+              @for (entry of c.timeline; track entry.timestamp) {
+                <div class="timeline-entry">
+                  <div class="timeline-dot"></div>
+                  <div class="timeline-content">
+                    <span class="timeline-action">{{ entry.action }}</span>
+                    <span class="timeline-transition">{{ entry.fromStatus }} → {{ entry.toStatus }}</span>
+                    @if (entry.remarks) {
+                      <span class="timeline-remarks">{{ entry.remarks }}</span>
+                    }
+                    <span class="timeline-date">{{ entry.timestamp | date:'dd MMM yyyy, hh:mm a' }}</span>
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  }
+</div>

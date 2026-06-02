@@ -1,0 +1,156 @@
+<div class="reviewer-management">
+  <button class="btn btn-outline" (click)="goBack()">
+    <i class="pi pi-arrow-left"></i> Back
+  </button>
+
+  <div class="page-header">
+    <div>
+      <h2>Reviewer Management</h2>
+      <p class="subtitle">Manage Reviewers, load capacity, and round-robin assignment</p>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-primary" (click)="showAddForm.set(true)">
+        <i class="pi pi-plus"></i> Add Reviewer
+      </button>
+      <button class="btn btn-outline" (click)="resetRoundRobin()">
+        <i class="pi pi-refresh"></i> Reset Round-Robin
+      </button>
+    </div>
+  </div>
+
+  <!-- Summary Stats -->
+  <div class="summary-stats">
+    <div class="summary-card">
+      <span class="summary-value">{{ reviewers().length }}</span>
+      <span class="summary-label">Total Reviewers</span>
+    </div>
+    <div class="summary-card active">
+      <span class="summary-value">{{ activeCount() }}</span>
+      <span class="summary-label">Active</span>
+    </div>
+    <div class="summary-card">
+      <span class="summary-value">{{ totalLoad() }} / {{ totalCapacity() }}</span>
+      <span class="summary-label">Current Load / Capacity</span>
+    </div>
+  </div>
+
+  @if (error()) {
+    <div class="alert alert-error">
+      <i class="pi pi-times-circle"></i> {{ error() }}
+    </div>
+  }
+  @if (success()) {
+    <div class="alert alert-success">
+      <i class="pi pi-check-circle"></i> {{ success() }}
+    </div>
+  }
+
+  <!-- Add Reviewer Form -->
+  @if (showAddForm()) {
+    <div class="add-form card">
+      <h3>Add New Reviewer</h3>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Reviewer ID <span class="required">*</span></label>
+          <input type="text" [ngModel]="newReviewer().id" (ngModelChange)="updateNewReviewer('id', $event)" placeholder="e.g. REV-006" />
+        </div>
+        <div class="form-group">
+          <label>Display Name <span class="required">*</span></label>
+          <input type="text" [ngModel]="newReviewer().displayName" (ngModelChange)="updateNewReviewer('displayName', $event)" placeholder="e.g. Mr. Sunil Rao" />
+        </div>
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" [ngModel]="newReviewer().email" (ngModelChange)="updateNewReviewer('email', $event)" placeholder="e.g. sunil.rao@rbi.org.in" />
+        </div>
+        <div class="form-group">
+          <label>Max Load</label>
+          <input type="number" [ngModel]="newReviewer().maxLoad" (ngModelChange)="updateNewReviewer('maxLoad', $event)" min="1" max="50" />
+        </div>
+        <div class="form-group">
+          <label>Region</label>
+          <select [ngModel]="newReviewer().region" (ngModelChange)="updateNewReviewer('region', $event)">
+            @for (r of regions; track r) {
+              <option [value]="r">{{ r }}</option>
+            }
+          </select>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" (click)="addReviewer()" [disabled]="!newReviewer().id || !newReviewer().displayName">
+          <i class="pi pi-check"></i> Add Reviewer
+        </button>
+        <button class="btn btn-outline" (click)="showAddForm.set(false)">Cancel</button>
+      </div>
+    </div>
+  }
+
+  @if (loading()) {
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <span>Loading reviewers...</span>
+    </div>
+  }
+
+  <!-- Reviewer Cards -->
+  <div class="reviewer-grid">
+    @for (rev of reviewers(); track rev.id) {
+      <div class="reviewer-card" [class.inactive]="!rev.isActive" [class.on-leave]="rev.isOnLeave">
+        <div class="card-header">
+          <div class="reviewer-info">
+            <h3>{{ rev.displayName }}</h3>
+            <span class="reviewer-id">{{ rev.id }}</span>
+            <span class="reviewer-email">{{ rev.email }}</span>
+          </div>
+          <div class="badges">
+            @if (!rev.isActive) {
+              <span class="badge badge-inactive">Inactive</span>
+            } @else if (rev.isOnLeave) {
+              <span class="badge badge-leave">On Leave</span>
+            } @else {
+              <span class="badge badge-active">Active</span>
+            }
+            <span class="badge badge-region">{{ rev.region }}</span>
+          </div>
+        </div>
+
+        <div class="workload-section">
+          <div class="workload-header">
+            <span>Workload</span>
+            <span class="workload-count">{{ rev.currentLoad }} / {{ rev.maxLoad }}</span>
+          </div>
+          <div class="progress-bar">
+            <div
+              class="progress-fill"
+              [style.width.%]="getUtilization(rev)"
+              [class.high]="getUtilization(rev) >= 80"
+              [class.medium]="getUtilization(rev) >= 50 && getUtilization(rev) < 80"
+            ></div>
+          </div>
+        </div>
+
+        <div class="card-actions">
+          <div class="threshold-control">
+            <label>Max Load:</label>
+            <input type="number" [ngModel]="rev.maxLoad" (ngModelChange)="updateThreshold(rev.id, $event)" min="1" max="50" />
+          </div>
+          <div class="action-buttons">
+            <button class="btn btn-sm" [class.btn-outline]="rev.isActive" [class.btn-primary]="!rev.isActive" (click)="toggleActive(rev.id)">
+              {{ rev.isActive ? 'Deactivate' : 'Activate' }}
+            </button>
+            <button class="btn btn-sm btn-outline" (click)="toggleLeave(rev.id)" [disabled]="!rev.isActive">
+              {{ rev.isOnLeave ? 'Return from Leave' : 'Mark on Leave' }}
+            </button>
+            <button class="btn btn-sm btn-danger" (click)="removeReviewer(rev.id)" title="Remove Reviewer">
+              <i class="pi pi-trash"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    } @empty {
+      <div class="empty-state">
+        <i class="pi pi-users"></i>
+        <p>No reviewers configured. Add a reviewer to get started.</p>
+      </div>
+    }
+  </div>
+</div>

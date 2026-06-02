@@ -1,0 +1,299 @@
+<div class="physical-letter">
+  @if (!submitted()) {
+    <div class="page-header">
+      <button class="btn btn-outline" (click)="goBack()">
+        <i class="pi pi-arrow-left"></i> Back
+      </button>
+      <h2>New Physical Letter Draft</h2>
+    </div>
+
+    <!-- Step Indicator -->
+    <div class="step-indicator" role="navigation" aria-label="Draft creation steps">
+      @for (step of [1, 2, 3, 4]; track step) {
+        <div class="step" [class.active]="currentStep() === step" [class.completed]="currentStep() > step">
+          <span class="step-number">{{ step }}</span>
+          <span class="step-label">
+            @switch (step) {
+              @case (1) { Scan/Upload }
+              @case (2) { Complainant }
+              @case (3) { Complaint }
+              @case (4) { Screening }
+            }
+          </span>
+        </div>
+      }
+    </div>
+
+    <!-- Step 1: Scan/Upload -->
+    @if (currentStep() === 1) {
+      <div class="step-content">
+        <h3>Upload Scanned Letter</h3>
+        <p class="step-desc">Upload a scanned copy of the physical letter received. Supported formats: PDF, JPEG, PNG, TIFF (max 10 MB).</p>
+
+        <div class="upload-area" [class.has-file]="scannedFile">
+          @if (!scannedFile) {
+            <i class="pi pi-cloud-upload"></i>
+            <p>Click or drag to upload scanned letter</p>
+            <input type="file" (change)="onFileSelected($event)" accept=".pdf,.jpg,.jpeg,.png,.tiff,.tif" aria-label="Upload scanned letter" />
+          } @else {
+            <i class="pi pi-file"></i>
+            <p>{{ scannedFile.name }} ({{ (scannedFile.size / 1024 / 1024).toFixed(2) }} MB)</p>
+            <button class="btn btn-sm btn-outline" (click)="scannedFile = null">Remove</button>
+          }
+        </div>
+
+        @if (scanError) {
+          <p class="error-text">{{ scanError }}</p>
+        }
+
+        @if (scannedFile && !ocrComplete()) {
+          <div class="ocr-section">
+            <p>Run OCR to auto-extract complainant details from the letter?</p>
+            <div class="ocr-actions">
+              <button class="btn btn-primary" (click)="runOcr()" [disabled]="ocrInProgress()">
+                @if (ocrInProgress()) {
+                  <span class="spinner-sm"></span> Processing...
+                } @else {
+                  <i class="pi pi-eye"></i> Run OCR
+                }
+              </button>
+              <button class="btn btn-outline" (click)="skipOcr()">Skip OCR</button>
+            </div>
+          </div>
+        }
+
+        @if (ocrComplete()) {
+          <p class="success-text"><i class="pi pi-check-circle"></i> OCR complete — fields pre-filled. Please verify and correct on the next step.</p>
+        }
+
+        <div class="step-actions">
+          <button class="btn btn-primary" (click)="nextStep()" [disabled]="!canProceedStep1()">
+            Next <i class="pi pi-arrow-right"></i>
+          </button>
+        </div>
+      </div>
+    }
+
+    <!-- Step 2: Complainant Details -->
+    @if (currentStep() === 2) {
+      <div class="step-content">
+        <h3>Complainant Details</h3>
+        <p class="step-desc">Verify and complete the complainant information. Fields marked with * are mandatory.</p>
+
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="compName">Name *</label>
+            <input id="compName" type="text" [(ngModel)]="complainantName" placeholder="Full name" />
+          </div>
+
+          <div class="form-group full-width">
+            <label for="compAddress">Address</label>
+            <textarea id="compAddress" [(ngModel)]="complainantAddress" rows="2" placeholder="Complete address"></textarea>
+          </div>
+
+          <div class="form-group">
+            <label for="compState">State *</label>
+            <select id="compState" [(ngModel)]="complainantState">
+              <option value="">Select State</option>
+              @for (s of states; track s) {
+                <option [value]="s">{{ s }}</option>
+              }
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="compDistrict">District</label>
+            <input id="compDistrict" type="text" [(ngModel)]="complainantDistrict" placeholder="District" />
+          </div>
+
+          <div class="form-group">
+            <label for="compPincode">Pincode</label>
+            <input id="compPincode" type="text" [(ngModel)]="complainantPincode" maxlength="6" placeholder="6-digit pincode" />
+          </div>
+
+          <div class="form-group">
+            <label for="compPhone">Phone</label>
+            <input id="compPhone" type="tel" [(ngModel)]="complainantPhone" maxlength="10" placeholder="10-digit mobile" />
+          </div>
+
+          <div class="form-group">
+            <label for="compEmail">Email</label>
+            <input id="compEmail" type="email" [(ngModel)]="complainantEmail" placeholder="Email address" />
+          </div>
+
+          <div class="form-group">
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="vernacular" />
+              Letter is in a regional language (Vernacular)
+            </label>
+          </div>
+
+          @if (vernacular) {
+            <div class="form-group">
+              <label for="vernLang">Language</label>
+              <input id="vernLang" type="text" [(ngModel)]="vernacularLanguage" placeholder="e.g., Hindi, Marathi, Tamil" />
+            </div>
+          }
+        </div>
+
+        <div class="step-actions">
+          <button class="btn btn-outline" (click)="prevStep()">
+            <i class="pi pi-arrow-left"></i> Back
+          </button>
+          <button class="btn btn-primary" (click)="nextStep()" [disabled]="!canProceedStep2()">
+            Next <i class="pi pi-arrow-right"></i>
+          </button>
+        </div>
+      </div>
+    }
+
+    <!-- Step 3: Complaint Details -->
+    @if (currentStep() === 3) {
+      <div class="step-content">
+        <h3>Complaint Details</h3>
+        <p class="step-desc">Enter the complaint specifics from the physical letter.</p>
+
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="category">Category *</label>
+            <select id="category" [(ngModel)]="category">
+              <option value="">Select Category</option>
+              @for (cat of categories; track cat) {
+                <option [value]="cat">{{ cat }}</option>
+              }
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="entityName">Entity Name *</label>
+            <input id="entityName" type="text" [(ngModel)]="entityName" placeholder="Bank/NBFC name" />
+          </div>
+
+          <div class="form-group">
+            <label for="entityType">Entity Type</label>
+            <select id="entityType" [(ngModel)]="entityType">
+              <option value="BANK">Bank</option>
+              <option value="NBFC">NBFC</option>
+              <option value="PAYMENT_SYSTEM">Payment System</option>
+              <option value="CREDIT_BUREAU">Credit Bureau</option>
+            </select>
+          </div>
+
+          <div class="form-group full-width">
+            <label for="subject">Subject *</label>
+            <input id="subject" type="text" [(ngModel)]="subject" placeholder="Brief subject line" />
+          </div>
+
+          <div class="form-group full-width">
+            <label for="description">Description</label>
+            <textarea id="description" [(ngModel)]="description" rows="4" placeholder="Complaint details as stated in the letter"></textarea>
+          </div>
+
+          <div class="form-group">
+            <label for="amount">Amount Involved (₹)</label>
+            <input id="amount" type="number" [(ngModel)]="amountInvolved" placeholder="0.00" />
+          </div>
+
+          <div class="form-group">
+            <label for="txnDate">Transaction Date</label>
+            <input id="txnDate" type="date" [(ngModel)]="transactionDate" />
+          </div>
+
+          <div class="form-group">
+            <label for="letterDate">Letter Date</label>
+            <input id="letterDate" type="date" [(ngModel)]="letterDate" />
+          </div>
+
+          <div class="form-group">
+            <label for="recvDate">Received Date</label>
+            <input id="recvDate" type="date" [(ngModel)]="receivedDate" />
+          </div>
+        </div>
+
+        <div class="step-actions">
+          <button class="btn btn-outline" (click)="prevStep()">
+            <i class="pi pi-arrow-left"></i> Back
+          </button>
+          <button class="btn btn-primary" (click)="nextStep()" [disabled]="!canProceedStep3()">
+            Next <i class="pi pi-arrow-right"></i>
+          </button>
+        </div>
+      </div>
+    }
+
+    <!-- Step 4: Auto-Closure Screening -->
+    @if (currentStep() === 4) {
+      <div class="step-content">
+        <h3>Auto-Closure Screening</h3>
+        <p class="step-desc">Answer the following questions to determine if the complaint qualifies for auto-closure.</p>
+
+        <div class="screening-questions">
+          @for (q of screeningQuestions; track q.id) {
+            <div class="screening-item" [class.auto-close-flag]="q.autoCloseIfYes && q.answer === 'YES'">
+              <p class="question-text">{{ q.id }}. {{ q.question }}</p>
+              <div class="answer-options">
+                <label>
+                  <input type="radio" [name]="q.id" value="YES" [(ngModel)]="q.answer" (ngModelChange)="onScreeningAnswerChange()" />
+                  Yes
+                </label>
+                <label>
+                  <input type="radio" [name]="q.id" value="NO" [(ngModel)]="q.answer" (ngModelChange)="onScreeningAnswerChange()" />
+                  No
+                </label>
+              </div>
+              @if (q.autoCloseIfYes && q.answer === 'YES') {
+                <p class="warning-text"><i class="pi pi-exclamation-triangle"></i> This triggers auto-closure recommendation.</p>
+              }
+            </div>
+          }
+        </div>
+
+        @if (autoCloseTriggered()) {
+          <div class="auto-close-banner">
+            <i class="pi pi-exclamation-circle"></i>
+            <div>
+              <strong>Auto-Closure Recommended</strong>
+              <p>Based on screening response: "{{ autoCloseReason() }}"</p>
+              <p>This draft will be flagged for auto-closure. DEO can still override and send to Reviewer.</p>
+            </div>
+          </div>
+        }
+
+        <div class="step-actions">
+          <button class="btn btn-outline" (click)="prevStep()">
+            <i class="pi pi-arrow-left"></i> Back
+          </button>
+          <button
+            class="btn btn-primary"
+            (click)="submitDraft()"
+            [disabled]="!allScreeningAnswered() || submitting()"
+          >
+            @if (submitting()) {
+              <span class="spinner-sm"></span> Saving...
+            } @else {
+              <i class="pi pi-check"></i> Create Draft
+            }
+          </button>
+        </div>
+      </div>
+    }
+  } @else {
+    <!-- Success -->
+    <div class="success-page">
+      <div class="success-icon">
+        <i class="pi pi-check-circle"></i>
+      </div>
+      <h2>Draft Created Successfully</h2>
+      <p class="draft-id">Draft ID: <strong>{{ draftId() }}</strong></p>
+      <p class="redirect-note">Scanned letter auto-attached to Attachment module.</p>
+      <p class="redirect-note">Redirecting to Draft view (Summary, Attachments, Email, History)...</p>
+      @if (autoCloseTriggered()) {
+        <p class="auto-close-note"><i class="pi pi-info-circle"></i> Flagged for auto-closure review.</p>
+      }
+      <div class="success-actions">
+        <button class="btn btn-primary" (click)="openDraft()">Open Draft Now</button>
+        <button class="btn btn-outline" (click)="goBack()">Back to Home</button>
+      </div>
+    </div>
+  }
+</div>

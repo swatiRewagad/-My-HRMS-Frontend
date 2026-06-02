@@ -1,0 +1,120 @@
+@if (!acknowledgement()) {
+  <div class="complaint-form-container">
+    <h2>File a Complaint</h2>
+    <p class="subtitle">Please provide details of your complaint against the bank/financial institution.</p>
+
+    @if (error()) {
+      <div class="error-message">
+        <i class="pi pi-exclamation-triangle"></i> {{ error() }}
+      </div>
+    }
+
+    <form class="form-grid" (ngSubmit)="submit()">
+      <div class="form-section">
+        <h3>Complainant Details</h3>
+
+        <div class="form-group">
+          <label>Full Name <span class="required">*</span></label>
+          <input type="text" [ngModel]="form().complainantName" (ngModelChange)="updateField('complainantName', $event)" name="name" required>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Email</label>
+            <input type="email" [ngModel]="form().complainantEmail" (ngModelChange)="updateField('complainantEmail', $event)" name="email">
+          </div>
+          <div class="form-group">
+            <label>Phone (10 digits)</label>
+            <input type="tel" [ngModel]="form().complainantPhone" (ngModelChange)="updateField('complainantPhone', $event)" name="phone" pattern="[0-9]{10}">
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <h3>Complaint Details</h3>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Category <span class="required">*</span></label>
+            <select [ngModel]="form().category" (ngModelChange)="updateField('category', $event)" name="category" required>
+              <option value="">Select Category</option>
+              @for (cat of categories; track cat) {
+                <option [value]="cat">{{ cat }}</option>
+              }
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Entity Type</label>
+            <select [ngModel]="form().entityType" (ngModelChange)="updateField('entityType', $event)" name="entityType">
+              <option value="">Select Type</option>
+              @for (type of entityTypes; track type) {
+                <option [value]="type">{{ type }}</option>
+              }
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Bank/Institution Name <span class="required">*</span></label>
+          <input type="text" [ngModel]="form().entityName" (ngModelChange)="updateField('entityName', $event)" name="entityName" required>
+        </div>
+
+        <div class="form-group">
+          <label>Subject <span class="required">*</span></label>
+          <input type="text" [ngModel]="form().subject" (ngModelChange)="updateField('subject', $event)" name="subject" required maxlength="500">
+        </div>
+
+        <div class="form-group">
+          <label>Description <span class="required">*</span></label>
+          <textarea [ngModel]="form().description" (ngModelChange)="updateField('description', $event)" name="description" rows="5" required maxlength="4000"></textarea>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Amount Involved (₹)</label>
+            <input type="number" [ngModel]="form().amountInvolved" (ngModelChange)="updateField('amountInvolved', $event)" name="amount">
+          </div>
+          <div class="form-group">
+            <label>Transaction Date</label>
+            <input type="date" [ngModel]="form().transactionDate" (ngModelChange)="updateField('transactionDate', $event)" name="txnDate">
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <h3>Supporting Documents</h3>
+        <div class="form-group">
+          <label>Attach Files (optional)</label>
+          <input type="file" multiple (change)="onFilesSelected($event)" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx">
+          @if (attachments().length > 0) {
+            <p class="file-count">{{ attachments().length }} file(s) selected</p>
+          }
+        </div>
+      </div>
+
+      <button type="submit" class="submit-btn" [disabled]="!isValid || submitting()">
+        @if (submitting()) {
+          <i class="pi pi-spin pi-spinner"></i> Submitting...
+        } @else {
+          Submit Complaint
+        }
+      </button>
+    </form>
+  </div>
+} @else {
+  <div class="acknowledgement-container">
+    <div class="ack-card">
+      <i class="pi pi-check-circle ack-icon"></i>
+      <h2>Complaint Registered Successfully</h2>
+      <div class="ack-details">
+        <p><strong>Reference Number:</strong> {{ acknowledgement()!.complaintId }}</p>
+        <p><strong>Status:</strong> {{ acknowledgement()!.status }}</p>
+        <p><strong>Expected Resolution By:</strong> {{ acknowledgement()!.slaDueDate | date:'dd MMM yyyy' }}</p>
+      </div>
+      <p class="ack-message">{{ acknowledgement()!.acknowledgementMessage }}</p>
+      <button class="track-btn" (click)="trackComplaint()">
+        <i class="pi pi-search"></i> Track Your Complaint
+      </button>
+    </div>
+  </div>
+}

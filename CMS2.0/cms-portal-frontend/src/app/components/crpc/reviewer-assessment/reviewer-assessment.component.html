@@ -1,0 +1,383 @@
+<div class="reviewer-assessment">
+  @if (loading()) {
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <p>Loading draft...</p>
+    </div>
+  } @else if (submitted()) {
+    <div class="success-page">
+      <div class="success-icon"><i class="pi pi-check-circle"></i></div>
+      @if (reviewerDecision === 'APPROVE') {
+        <h2>Complaint Approved</h2>
+        <p>Complaint Number: <strong class="complaint-number">{{ generatedComplaintNumber() }}</strong></p>
+        <p>Routed to: {{ targetRegionalOffice }}</p>
+      } @else if (reviewerDecision === 'SENT_BACK_TO_DEO') {
+        <h2>Sent Back to DEO</h2>
+        <p>Draft returned to <strong>{{ sentBackToDeoId }}</strong> with comments.</p>
+        <p class="reviewer-note">Reviewer comments are read-only for DEO.</p>
+      } @else {
+        <h2>Closed — Not a Complaint</h2>
+        <p>Disposition: <strong>{{ notComplaintDisposition }}</strong></p>
+        <p class="reviewer-note">No complaint number generated.</p>
+      }
+      <button class="btn btn-primary" (click)="goBack()">Back to Home</button>
+    </div>
+  } @else {
+    <!-- Header -->
+    <div class="page-header">
+      <button class="btn btn-outline" (click)="goBack()">
+        <i class="pi pi-arrow-left"></i> Back
+      </button>
+      <div class="header-info">
+        <h2>Reviewer — Draft {{ draftId }}</h2>
+        <div class="header-badges">
+          <span class="deo-decision-badge" [attr.data-decision]="deoDecision">
+            DEO: {{ deoDecision }}
+          </span>
+          <span class="score-badge">Score: {{ maintainabilityScore }}%</span>
+        </div>
+      </div>
+      <button class="btn btn-outline" (click)="toggleEditMode()">
+        <i class="pi pi-pencil"></i> {{ editMode() ? 'Lock Fields' : 'Edit' }}
+      </button>
+    </div>
+
+    <!-- 4 Modules (BRD: Summary, Email Communication, Attachment, History) + Action -->
+    <div class="tabs">
+      <button class="tab" [class.active]="currentTab() === 'summary'" (click)="currentTab.set('summary')">
+        <i class="pi pi-file"></i> Summary
+      </button>
+      <button class="tab" [class.active]="currentTab() === 'email'" (click)="currentTab.set('email')">
+        <i class="pi pi-envelope"></i> Email Communication
+      </button>
+      <button class="tab" [class.active]="currentTab() === 'attachments'" (click)="currentTab.set('attachments')">
+        <i class="pi pi-paperclip"></i> Attachments
+        <span class="tab-count">{{ attachments().length }}</span>
+      </button>
+      <button class="tab" [class.active]="currentTab() === 'history'" (click)="currentTab.set('history')">
+        <i class="pi pi-clock"></i> History
+      </button>
+      <button class="tab" [class.active]="currentTab() === 'action'" (click)="currentTab.set('action')">
+        <i class="pi pi-bolt"></i> Reviewer Action
+      </button>
+    </div>
+
+    <!-- ═══ Module 1: Summary ═══ -->
+    @if (currentTab() === 'summary') {
+      <div class="tab-content">
+        <div class="read-only-notice" [class.edit-active]="editMode()">
+          @if (!editMode()) {
+            <i class="pi pi-lock"></i> Read-only. Click "Edit" to modify fields.
+          } @else {
+            <i class="pi pi-lock-open"></i> Edit mode active — changes will be logged in audit trail.
+          }
+        </div>
+
+        <h4>Complainant</h4>
+        <div class="detail-grid">
+          <div class="field-row">
+            <label>Name</label>
+            @if (editMode()) {
+              <input type="text" [(ngModel)]="complainantName" />
+            } @else {
+              <span>{{ complainantName }}</span>
+            }
+          </div>
+          <div class="field-row">
+            <label>State</label>
+            @if (editMode()) {
+              <select [(ngModel)]="complainantState">
+                @for (s of states; track s) { <option [value]="s">{{ s }}</option> }
+              </select>
+            } @else {
+              <span>{{ complainantState }}</span>
+            }
+          </div>
+          <div class="field-row">
+            <label>District</label>
+            @if (editMode()) {
+              <input type="text" [(ngModel)]="complainantDistrict" />
+            } @else {
+              <span>{{ complainantDistrict }}</span>
+            }
+          </div>
+          <div class="field-row">
+            <label>Phone</label>
+            @if (editMode()) {
+              <input type="tel" [(ngModel)]="complainantPhone" />
+            } @else {
+              <span>{{ complainantPhone || '—' }}</span>
+            }
+          </div>
+          <div class="field-row">
+            <label>Email</label>
+            @if (editMode()) {
+              <input type="email" [(ngModel)]="complainantEmail" />
+            } @else {
+              <span>{{ complainantEmail || '—' }}</span>
+            }
+          </div>
+          <div class="field-row full-width">
+            <label>Address</label>
+            @if (editMode()) {
+              <input type="text" [(ngModel)]="complainantAddress" />
+            } @else {
+              <span>{{ complainantAddress || '—' }}</span>
+            }
+          </div>
+        </div>
+
+        <h4>Complaint Info</h4>
+        <div class="detail-grid">
+          <div class="field-row">
+            <label>Mode</label>
+            <span>{{ modeOfReceipt }}</span>
+          </div>
+          <div class="field-row">
+            <label>Category</label>
+            @if (editMode()) {
+              <select [(ngModel)]="category">
+                @for (c of categories; track c) { <option [value]="c">{{ c }}</option> }
+              </select>
+            } @else {
+              <span>{{ category }}</span>
+            }
+          </div>
+          <div class="field-row">
+            <label>Entity</label>
+            @if (editMode()) {
+              <input type="text" [(ngModel)]="entityName" />
+            } @else {
+              <span>{{ entityName }}</span>
+            }
+          </div>
+          <div class="field-row">
+            <label>Amount</label>
+            <span>{{ amountInvolved ? '₹' + amountInvolved : '—' }}</span>
+          </div>
+          <div class="field-row">
+            <label>Transaction Date</label>
+            <span>{{ transactionDate || '—' }}</span>
+          </div>
+          <div class="field-row">
+            <label>Vernacular</label>
+            <span>{{ vernacular ? 'Yes (' + vernacularLanguage + ')' : 'No' }}</span>
+          </div>
+          <div class="field-row full-width">
+            <label>Subject</label>
+            @if (editMode()) {
+              <input type="text" [(ngModel)]="subject" />
+            } @else {
+              <span>{{ subject }}</span>
+            }
+          </div>
+          <div class="field-row full-width">
+            <label>Description</label>
+            <p class="description-text">{{ description }}</p>
+          </div>
+        </div>
+
+        <h4>DEO Assessment Summary</h4>
+        <div class="deo-summary">
+          <div class="field-row"><label>Decision</label><span class="badge" [attr.data-decision]="deoDecision">{{ deoDecision }}</span></div>
+          <div class="field-row"><label>Score</label><span>{{ maintainabilityScore }}%</span></div>
+          <div class="field-row full-width"><label>DEO Remarks</label><p class="remarks-text">{{ deoRemarks }}</p></div>
+          @if (deoNonMaintainableReason) {
+            <div class="field-row"><label>NM Reason</label><span>{{ deoNonMaintainableReason }}</span></div>
+          }
+          @if (deoClosureTag) {
+            <div class="field-row"><label>Closure Tag</label><span>{{ deoClosureTag }}</span></div>
+          }
+        </div>
+      </div>
+    }
+
+    <!-- ═══ Module 2: Email Communication ═══ -->
+    @if (currentTab() === 'email') {
+      <div class="tab-content">
+        <div class="read-only-notice"><i class="pi pi-lock"></i> Complete email thread — preserved for reference.</div>
+
+        <div class="email-thread">
+          @for (email of emailThread(); track email.id) {
+            <div class="email-item" [class.received]="email.direction === 'RECEIVED'" [class.sent]="email.direction === 'SENT'">
+              <div class="email-meta">
+                <span class="direction">{{ email.direction }}</span>
+                <span class="date">{{ email.sentAt | date:'dd-MMM-yyyy HH:mm' }}</span>
+              </div>
+              <p class="email-from"><strong>From:</strong> {{ email.from }}</p>
+              <p class="email-to"><strong>To:</strong> {{ email.to }}</p>
+              <p class="email-subj"><strong>Subject:</strong> {{ email.subject }}</p>
+              <div class="email-body">{{ email.body }}</div>
+            </div>
+          } @empty {
+            <p class="empty-note">No email correspondence for this draft.</p>
+          }
+        </div>
+      </div>
+    }
+
+    <!-- ═══ Module 3: Attachments ═══ -->
+    @if (currentTab() === 'attachments') {
+      <div class="tab-content">
+        <div class="read-only-notice"><i class="pi pi-lock"></i> Files can be viewed. Upload via edit action only.</div>
+
+        <div class="attachment-list">
+          @for (att of attachments(); track att.id) {
+            <div class="attachment-card">
+              <i class="pi pi-paperclip"></i>
+              <div class="att-info">
+                <span class="att-name">{{ att.name }}</span>
+                <span class="att-meta">{{ att.size }} · {{ att.uploadedBy }} · {{ att.uploadedAt | date:'dd-MMM-yyyy' }}</span>
+              </div>
+              <button class="btn btn-sm btn-outline"><i class="pi pi-eye"></i> View</button>
+            </div>
+          } @empty {
+            <p class="empty-note">No attachments.</p>
+          }
+        </div>
+      </div>
+    }
+
+    <!-- ═══ Module 4: History (Audit Trail) ═══ -->
+    @if (currentTab() === 'history') {
+      <div class="tab-content">
+        <div class="read-only-notice"><i class="pi pi-lock"></i> Full audit trail — read-only for all roles.</div>
+
+        <div class="history-timeline">
+          @for (entry of history(); track entry.id) {
+            <div class="history-item">
+              <div class="timeline-dot"></div>
+              <div class="history-content">
+                <div class="history-meta">
+                  <span class="action-badge">{{ entry.action }}</span>
+                  <span class="timestamp">{{ entry.timestamp | date:'dd-MMM-yyyy HH:mm' }}</span>
+                </div>
+                <p class="history-performer">{{ entry.performedBy }} <span class="role-tag">({{ entry.role }})</span></p>
+                <p class="history-remarks">{{ entry.remarks }}</p>
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+    }
+
+    <!-- ═══ Reviewer Action Tab ═══ -->
+    @if (currentTab() === 'action') {
+      <div class="tab-content">
+        <h3>Reviewer Decision</h3>
+
+        <div class="decision-options">
+          <label class="decision-card approve" [class.selected]="reviewerDecision === 'APPROVE'">
+            <input type="radio" name="revDecision" value="APPROVE" [(ngModel)]="reviewerDecision" />
+            <i class="pi pi-check-circle"></i>
+            <span>Approve</span>
+            <small>Generate complaint number, route to regional office</small>
+          </label>
+          <label class="decision-card sent-back" [class.selected]="reviewerDecision === 'SENT_BACK_TO_DEO'">
+            <input type="radio" name="revDecision" value="SENT_BACK_TO_DEO" [(ngModel)]="reviewerDecision" />
+            <i class="pi pi-replay"></i>
+            <span>Sent Back to DEO</span>
+            <small>Return with comments for clarification</small>
+          </label>
+          <label class="decision-card not-complaint" [class.selected]="reviewerDecision === 'NOT_A_COMPLAINT'">
+            <input type="radio" name="revDecision" value="NOT_A_COMPLAINT" [(ngModel)]="reviewerDecision" />
+            <i class="pi pi-ban"></i>
+            <span>Not a Complaint</span>
+            <small>Finalize as closed, no complaint number</small>
+          </label>
+        </div>
+
+        <!-- Approve: Route to Regional Office -->
+        @if (reviewerDecision === 'APPROVE') {
+          <div class="action-detail">
+            <h4>Route Approved Complaint To</h4>
+            <select [(ngModel)]="targetRegionalOffice" class="full-select">
+              <option value="">— Select Regional Office / Department —</option>
+              @for (office of regionalOffices; track office.id) {
+                <option [value]="office.id">{{ office.name }}</option>
+              }
+            </select>
+          </div>
+        }
+
+        <!-- Sent Back to DEO -->
+        @if (reviewerDecision === 'SENT_BACK_TO_DEO') {
+          <div class="action-detail">
+            <h4>Reassign to DEO</h4>
+            <p class="help-text">System will reassign to previous DEO if active. Otherwise select another active DEO.</p>
+            <select [(ngModel)]="sentBackToDeoId" class="full-select">
+              <option value="">— Select DEO —</option>
+              @for (deo of activeDeos; track deo.id) {
+                @if (deo.active) {
+                  <option [value]="deo.id">{{ deo.name }} ({{ deo.id }})</option>
+                }
+              }
+            </select>
+          </div>
+        }
+
+        <!-- Not a Complaint: Disposition -->
+        @if (reviewerDecision === 'NOT_A_COMPLAINT') {
+          <div class="action-detail">
+            <h4>Disposition</h4>
+            <div class="disposition-options">
+              <label [class.selected]="notComplaintDisposition === 'CLOSED'">
+                <input type="radio" name="disposition" value="CLOSED" [(ngModel)]="notComplaintDisposition" />
+                Closed
+              </label>
+              <label [class.selected]="notComplaintDisposition === 'SENT_TO_OTHER_DEPARTMENT'">
+                <input type="radio" name="disposition" value="SENT_TO_OTHER_DEPARTMENT" [(ngModel)]="notComplaintDisposition" />
+                Sent to Other Department
+              </label>
+              <label [class.selected]="notComplaintDisposition === 'SUGGESTION'">
+                <input type="radio" name="disposition" value="SUGGESTION" [(ngModel)]="notComplaintDisposition" />
+                Suggestion
+              </label>
+            </div>
+            @if (notComplaintDisposition === 'SENT_TO_OTHER_DEPARTMENT') {
+              <div class="sub-field">
+                <label>Target Department</label>
+                <input type="text" [(ngModel)]="targetDepartment" placeholder="Department name" />
+              </div>
+            }
+            <p class="disposition-note"><i class="pi pi-info-circle"></i> No complaint number will be generated. If closed as Suggestion, communications will be sent and record marked as "Sent to Other Department".</p>
+          </div>
+        }
+
+        <!-- Reviewer Remarks -->
+        <div class="remarks-section">
+          <h4>Reviewer Comments</h4>
+          <p class="help-text">Comments are read-only for DEOs when sent back.</p>
+          <div class="template-row">
+            <select [(ngModel)]="savedTemplateId" (ngModelChange)="applyTemplate($event)">
+              <option value="">— Saved Comment Template —</option>
+              @for (tmpl of commentTemplates; track tmpl.id) {
+                <option [value]="tmpl.id">{{ tmpl.label }}</option>
+              }
+            </select>
+          </div>
+          <textarea [(ngModel)]="reviewerRemarks" rows="4" placeholder="Add reviewer comments (mandatory)..."></textarea>
+        </div>
+
+        <!-- Submit -->
+        <div class="submit-actions">
+          <button
+            class="btn btn-primary btn-lg"
+            (click)="submitDecision()"
+            [disabled]="!canSubmit() || submitting()"
+          >
+            @if (submitting()) {
+              <span class="spinner-sm"></span> Processing...
+            } @else if (reviewerDecision === 'APPROVE') {
+              <i class="pi pi-check"></i> Approve & Generate Complaint No.
+            } @else if (reviewerDecision === 'SENT_BACK_TO_DEO') {
+              <i class="pi pi-replay"></i> Send Back to DEO
+            } @else {
+              <i class="pi pi-ban"></i> Close as Not a Complaint
+            }
+          </button>
+        </div>
+      </div>
+    }
+  }
+</div>

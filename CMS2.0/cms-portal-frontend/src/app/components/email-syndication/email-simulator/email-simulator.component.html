@@ -1,0 +1,137 @@
+<div class="simulator-container">
+  <button class="back-btn" (click)="goBack()">← Back to Queue</button>
+
+  <div class="page-header">
+    <div>
+      <h2>Email Simulator</h2>
+      <p class="subtitle">Simulate incoming emails to crpc&#64;rbi.org.in for testing the syndication pipeline</p>
+    </div>
+  </div>
+
+  <!-- Mode Toggle -->
+  <div class="mode-toggle">
+    <button [class.active]="mode() === 'manual'" (click)="mode.set('manual')">Manual Send</button>
+    <button [class.active]="mode() === 'batch'" (click)="mode.set('batch')">Batch Simulation</button>
+  </div>
+
+  <!-- Manual Mode -->
+  @if (mode() === 'manual') {
+    <div class="manual-section">
+      <div class="form-card">
+        <h3>Compose Email</h3>
+
+        <div class="sample-buttons">
+          <span class="sample-label">Quick fill:</span>
+          @for (sample of sampleEmails; track $index) {
+            <button class="sample-btn" (click)="fillSample($index)" [title]="sample.subject">
+              Sample {{ $index + 1 }}
+            </button>
+          }
+        </div>
+
+        <div class="form-group">
+          <label>From (Sender Email) <span class="required">*</span></label>
+          <input type="email" [ngModel]="manualEmail().senderEmail" (ngModelChange)="updateManualField('senderEmail', $event)"
+                 name="sender" placeholder="customer@gmail.com">
+        </div>
+
+        <div class="form-group">
+          <label>Subject <span class="required">*</span></label>
+          <input type="text" [ngModel]="manualEmail().subject" (ngModelChange)="updateManualField('subject', $event)"
+                 name="subject" placeholder="Complaint about...">
+        </div>
+
+        <div class="form-group">
+          <label>Email Body</label>
+          <textarea [ngModel]="manualEmail().body" (ngModelChange)="updateManualField('body', $event)"
+                    name="body" rows="8" placeholder="Dear Sir/Madam..."></textarea>
+        </div>
+
+        <button class="send-btn" (click)="sendManual()"
+                [disabled]="sending() || !manualEmail().senderEmail || !manualEmail().subject">
+          @if (sending()) {
+            Sending...
+          } @else {
+            Send to crpc&#64;rbi.org.in
+          }
+        </button>
+      </div>
+    </div>
+  }
+
+  <!-- Batch Mode -->
+  @if (mode() === 'batch') {
+    <div class="batch-section">
+      <div class="form-card">
+        <h3>Batch Email Simulation</h3>
+        <p class="batch-desc">Sends multiple sample emails with configurable delay to test round-robin assignment and queue processing.</p>
+
+        <div class="batch-controls">
+          <div class="form-group">
+            <label>Number of Emails</label>
+            <input type="number" [(ngModel)]="batchCount" name="count" min="1" max="50">
+          </div>
+          <div class="form-group">
+            <label>Delay between emails (ms)</label>
+            <input type="number" [(ngModel)]="batchDelay" name="delay" min="100" max="10000" step="100">
+          </div>
+        </div>
+
+        @if (batchRunning()) {
+          <div class="progress-section">
+            <div class="progress-bar">
+              <div class="progress-fill" [style.width.%]="(batchProgress() / batchCount()) * 100"></div>
+            </div>
+            <span class="progress-text">{{ batchProgress() }} / {{ batchCount() }} emails sent</span>
+          </div>
+        }
+
+        <button class="send-btn batch-btn" (click)="runBatch()" [disabled]="batchRunning()">
+          @if (batchRunning()) {
+            Running... ({{ batchProgress() }}/{{ batchCount() }})
+          } @else {
+            Run Batch Simulation
+          }
+        </button>
+
+        <div class="sample-preview">
+          <h4>Sample emails that will be sent:</h4>
+          @for (sample of sampleEmails; track $index) {
+            <div class="preview-item">
+              <span class="preview-from">{{ sample.senderEmail }}</span>
+              <span class="preview-subject">{{ sample.subject }}</span>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Results Log -->
+  @if (results().length > 0) {
+    <div class="results-section">
+      <div class="results-header">
+        <h3>Simulation Log ({{ results().length }} emails)</h3>
+        <button class="clear-btn" (click)="clearResults()">Clear</button>
+      </div>
+
+      <div class="results-list">
+        @for (result of results(); track $index) {
+          <div class="result-item" [ngClass]="'result-' + result.status">
+            <div class="result-icon">
+              @if (result.status === 'success') { <span class="icon-success">&#10003;</span> }
+              @if (result.status === 'ignored') { <span class="icon-ignored">&#8709;</span> }
+              @if (result.status === 'error') { <span class="icon-error">&#10007;</span> }
+            </div>
+            <div class="result-details">
+              <div class="result-from">{{ result.email.senderEmail }}</div>
+              <div class="result-subject">{{ result.email.subject }}</div>
+              <div class="result-message">{{ result.message }}</div>
+            </div>
+            <div class="result-time">{{ result.timestamp | date:'HH:mm:ss' }}</div>
+          </div>
+        }
+      </div>
+    </div>
+  }
+</div>

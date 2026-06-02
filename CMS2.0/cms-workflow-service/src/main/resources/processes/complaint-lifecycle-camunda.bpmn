@@ -1,0 +1,275 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+                  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+                  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+                  xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  id="Definitions_1"
+                  targetNamespace="http://www.rbi.cms/complaint"
+                  exporter="Camunda Modeler"
+                  exporterVersion="5.28.0">
+
+  <bpmn:process id="com.rbi.cms.complaint-lifecycle" name="Complaint Lifecycle" isExecutable="true">
+
+    <!-- START -->
+    <bpmn:startEvent id="StartEvent" name="Complaint Ingested">
+      <bpmn:outgoing>Flow_Start_Assignment</bpmn:outgoing>
+    </bpmn:startEvent>
+
+    <!-- ASSIGNMENT (Business Rule Task - Drools) -->
+    <bpmn:businessRuleTask id="AssignmentTask" name="Auto Assignment" camunda:decisionRef="assignment-rules">
+      <bpmn:documentation>Calls Drools rules with ruleFlowGroup="assignment"
+Determines: assignedTeam, escalated, escalationLevel</bpmn:documentation>
+      <bpmn:incoming>Flow_Start_Assignment</bpmn:incoming>
+      <bpmn:outgoing>Flow_Assignment_HumanTask</bpmn:outgoing>
+    </bpmn:businessRuleTask>
+
+    <!-- OFFICER REVIEW (Human Task) -->
+    <bpmn:userTask id="OfficerReviewTask" name="Officer Review &amp; Accept" camunda:assignee="#{assignedTeam}">
+      <bpmn:documentation>Assigned to: #{assignedTeam}
+Officer accepts the complaint and begins investigation.
+Inputs: complaintId, category
+Output: accepted (boolean)</bpmn:documentation>
+      <bpmn:incoming>Flow_Assignment_HumanTask</bpmn:incoming>
+      <bpmn:incoming>Flow_Reassign_Back</bpmn:incoming>
+      <bpmn:outgoing>Flow_HumanTask_InProgress</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <!-- INVESTIGATION GATEWAY -->
+    <bpmn:exclusiveGateway id="InvestigationGateway" name="Investigation Outcome">
+      <bpmn:incoming>Flow_HumanTask_InProgress</bpmn:incoming>
+      <bpmn:outgoing>Flow_ToUnderReview</bpmn:outgoing>
+      <bpmn:outgoing>Flow_ToEscalation</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <!-- DRAFT RESOLUTION (Human Task) -->
+    <bpmn:userTask id="UnderReviewTask" name="Draft Resolution">
+      <bpmn:documentation>Officer drafts resolution for the complaint.
+Input: complaintId
+Output: resolutionSummary</bpmn:documentation>
+      <bpmn:incoming>Flow_ToUnderReview</bpmn:incoming>
+      <bpmn:outgoing>Flow_UnderReview_Resolution</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <!-- ESCALATED REVIEW (Human Task) -->
+    <bpmn:userTask id="EscalationTask" name="Escalated Review">
+      <bpmn:documentation>Senior officer handles escalated complaint.
+Triggered by: SLA breach (30 days) OR manual escalation by officer.</bpmn:documentation>
+      <bpmn:incoming>Flow_ToEscalation</bpmn:incoming>
+      <bpmn:incoming>Flow_SLABreach</bpmn:incoming>
+      <bpmn:outgoing>Flow_Escalation_Resolution</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <!-- RESOLUTION GATEWAY (Converging) -->
+    <bpmn:exclusiveGateway id="ResolutionGateway" name="Resolution Complete?">
+      <bpmn:incoming>Flow_UnderReview_Resolution</bpmn:incoming>
+      <bpmn:incoming>Flow_Escalation_Resolution</bpmn:incoming>
+      <bpmn:outgoing>Flow_Resolution_Notify</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <!-- NOTIFY CUSTOMER (Service Task) -->
+    <bpmn:serviceTask id="NotifyCustomerTask" name="Notify Customer of Resolution" camunda:class="com.rbi.cms.workflow.handler.NotificationHandler">
+      <bpmn:documentation>Sends email/SMS to customer about resolution.
+Implementation: com.rbi.cms.workflow.handler.NotificationHandler</bpmn:documentation>
+      <bpmn:incoming>Flow_Resolution_Notify</bpmn:incoming>
+      <bpmn:outgoing>Flow_Notify_ConfirmClose</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <!-- CLOSURE TIMER (7 days auto-close) -->
+    <bpmn:intermediateCatchEvent id="ClosureTimer" name="Wait for Confirmation&#10;(7 days)">
+      <bpmn:documentation>Auto-closes complaint after 7 days if customer doesn't respond.
+Change P7D to P14D for 14-day wait.</bpmn:documentation>
+      <bpmn:incoming>Flow_Notify_ConfirmClose</bpmn:incoming>
+      <bpmn:outgoing>Flow_Timer_Close</bpmn:outgoing>
+      <bpmn:timerEventDefinition id="TimerDef_Closure">
+        <bpmn:timeDuration xsi:type="bpmn:tFormalExpression">P7D</bpmn:timeDuration>
+      </bpmn:timerEventDefinition>
+    </bpmn:intermediateCatchEvent>
+
+    <!-- END EVENT -->
+    <bpmn:endEvent id="EndEvent" name="Complaint Closed">
+      <bpmn:incoming>Flow_Timer_Close</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <!-- SLA BOUNDARY TIMER (30 days on Officer Review) -->
+    <bpmn:boundaryEvent id="SLATimerBoundary" name="SLA Breach&#10;(30 days)" attachedToRef="OfficerReviewTask" cancelActivity="false">
+      <bpmn:documentation>Non-interrupting timer: fires after 30 days.
+Sends complaint to Escalated Review.
+Change P30D to P15D for high-priority SLA.</bpmn:documentation>
+      <bpmn:outgoing>Flow_SLABreach</bpmn:outgoing>
+      <bpmn:timerEventDefinition id="TimerDef_SLA">
+        <bpmn:timeDuration xsi:type="bpmn:tFormalExpression">P30D</bpmn:timeDuration>
+      </bpmn:timerEventDefinition>
+    </bpmn:boundaryEvent>
+
+    <!-- SEQUENCE FLOWS -->
+    <bpmn:sequenceFlow id="Flow_Start_Assignment" sourceRef="StartEvent" targetRef="AssignmentTask"/>
+    <bpmn:sequenceFlow id="Flow_Assignment_HumanTask" sourceRef="AssignmentTask" targetRef="OfficerReviewTask"/>
+    <bpmn:sequenceFlow id="Flow_HumanTask_InProgress" sourceRef="OfficerReviewTask" targetRef="InvestigationGateway"/>
+
+    <bpmn:sequenceFlow id="Flow_ToUnderReview" name="No Escalation" sourceRef="InvestigationGateway" targetRef="UnderReviewTask">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">#{escalationReason == null}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+
+    <bpmn:sequenceFlow id="Flow_ToEscalation" name="Needs Escalation" sourceRef="InvestigationGateway" targetRef="EscalationTask">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">#{escalationReason != null}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+
+    <bpmn:sequenceFlow id="Flow_UnderReview_Resolution" sourceRef="UnderReviewTask" targetRef="ResolutionGateway"/>
+    <bpmn:sequenceFlow id="Flow_Escalation_Resolution" sourceRef="EscalationTask" targetRef="ResolutionGateway"/>
+    <bpmn:sequenceFlow id="Flow_Resolution_Notify" sourceRef="ResolutionGateway" targetRef="NotifyCustomerTask"/>
+    <bpmn:sequenceFlow id="Flow_Notify_ConfirmClose" sourceRef="NotifyCustomerTask" targetRef="ClosureTimer"/>
+    <bpmn:sequenceFlow id="Flow_Timer_Close" sourceRef="ClosureTimer" targetRef="EndEvent"/>
+    <bpmn:sequenceFlow id="Flow_SLABreach" name="SLA Breached" sourceRef="SLATimerBoundary" targetRef="EscalationTask"/>
+    <bpmn:sequenceFlow id="Flow_Reassign_Back" sourceRef="EscalationTask" targetRef="OfficerReviewTask"/>
+
+  </bpmn:process>
+
+  <!-- DIAGRAM LAYOUT -->
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="com.rbi.cms.complaint-lifecycle">
+
+      <bpmndi:BPMNShape id="StartEvent_di" bpmnElement="StartEvent">
+        <dc:Bounds x="152" y="232" width="36" height="36"/>
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="130" y="275" width="80" height="14"/>
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="AssignmentTask_di" bpmnElement="AssignmentTask">
+        <dc:Bounds x="250" y="210" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="OfficerReviewTask_di" bpmnElement="OfficerReviewTask">
+        <dc:Bounds x="420" y="210" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="SLATimerBoundary_di" bpmnElement="SLATimerBoundary">
+        <dc:Bounds x="452" y="272" width="36" height="36"/>
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="430" y="315" width="80" height="27"/>
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="InvestigationGateway_di" bpmnElement="InvestigationGateway" isMarkerVisible="true">
+        <dc:Bounds x="585" y="225" width="50" height="50"/>
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="570" y="195" width="80" height="27"/>
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="UnderReviewTask_di" bpmnElement="UnderReviewTask">
+        <dc:Bounds x="700" y="130" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="EscalationTask_di" bpmnElement="EscalationTask">
+        <dc:Bounds x="700" y="310" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="ResolutionGateway_di" bpmnElement="ResolutionGateway" isMarkerVisible="true">
+        <dc:Bounds x="875" y="225" width="50" height="50"/>
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="855" y="195" width="90" height="27"/>
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="NotifyCustomerTask_di" bpmnElement="NotifyCustomerTask">
+        <dc:Bounds x="990" y="210" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="ClosureTimer_di" bpmnElement="ClosureTimer">
+        <dc:Bounds x="1152" y="232" width="36" height="36"/>
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1125" y="275" width="90" height="27"/>
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="EndEvent_di" bpmnElement="EndEvent">
+        <dc:Bounds x="1252" y="232" width="36" height="36"/>
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1225" y="275" width="90" height="14"/>
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <!-- Sequence Flow Edges -->
+      <bpmndi:BPMNEdge id="Flow_Start_Assignment_di" bpmnElement="Flow_Start_Assignment">
+        <di:waypoint x="188" y="250"/>
+        <di:waypoint x="250" y="250"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Flow_Assignment_HumanTask_di" bpmnElement="Flow_Assignment_HumanTask">
+        <di:waypoint x="350" y="250"/>
+        <di:waypoint x="420" y="250"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Flow_HumanTask_InProgress_di" bpmnElement="Flow_HumanTask_InProgress">
+        <di:waypoint x="520" y="250"/>
+        <di:waypoint x="585" y="250"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Flow_ToUnderReview_di" bpmnElement="Flow_ToUnderReview">
+        <di:waypoint x="610" y="225"/>
+        <di:waypoint x="610" y="170"/>
+        <di:waypoint x="700" y="170"/>
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="620" y="153" width="72" height="14"/>
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Flow_ToEscalation_di" bpmnElement="Flow_ToEscalation">
+        <di:waypoint x="610" y="275"/>
+        <di:waypoint x="610" y="350"/>
+        <di:waypoint x="700" y="350"/>
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="615" y="363" width="88" height="14"/>
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Flow_UnderReview_Resolution_di" bpmnElement="Flow_UnderReview_Resolution">
+        <di:waypoint x="800" y="170"/>
+        <di:waypoint x="900" y="170"/>
+        <di:waypoint x="900" y="225"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Flow_Escalation_Resolution_di" bpmnElement="Flow_Escalation_Resolution">
+        <di:waypoint x="800" y="350"/>
+        <di:waypoint x="900" y="350"/>
+        <di:waypoint x="900" y="275"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Flow_Resolution_Notify_di" bpmnElement="Flow_Resolution_Notify">
+        <di:waypoint x="925" y="250"/>
+        <di:waypoint x="990" y="250"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Flow_Notify_ConfirmClose_di" bpmnElement="Flow_Notify_ConfirmClose">
+        <di:waypoint x="1090" y="250"/>
+        <di:waypoint x="1152" y="250"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Flow_Timer_Close_di" bpmnElement="Flow_Timer_Close">
+        <di:waypoint x="1188" y="250"/>
+        <di:waypoint x="1252" y="250"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Flow_SLABreach_di" bpmnElement="Flow_SLABreach">
+        <di:waypoint x="470" y="308"/>
+        <di:waypoint x="470" y="350"/>
+        <di:waypoint x="700" y="350"/>
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="530" y="333" width="68" height="14"/>
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Flow_Reassign_Back_di" bpmnElement="Flow_Reassign_Back">
+        <di:waypoint x="750" y="310"/>
+        <di:waypoint x="750" y="420"/>
+        <di:waypoint x="470" y="420"/>
+        <di:waypoint x="470" y="290"/>
+      </bpmndi:BPMNEdge>
+
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+
+</bpmn:definitions>

@@ -1,0 +1,23 @@
+spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+  h2:
+    console:
+      enabled: false
+
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      auto-offset-reset: earliest
+      group-id: cms-workflow-dev
+      enable-auto-commit: false
+    listener:
+      type: single
+      missing-topics-fatal: false
+      ack-mode: manual
+
+logging:
+  level:
+    com.rbi.cms: DEBUG

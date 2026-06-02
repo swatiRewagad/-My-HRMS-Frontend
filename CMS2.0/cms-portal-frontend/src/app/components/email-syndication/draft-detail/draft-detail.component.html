@@ -1,0 +1,139 @@
+<div class="draft-detail-container">
+  <button class="back-btn" (click)="goBack()">← Back to Queue</button>
+
+  @if (loading()) {
+    <div class="loading">Loading draft...</div>
+  }
+
+  @if (error()) {
+    <div class="error-msg">{{ error() }}</div>
+  }
+
+  @if (success()) {
+    <div class="success-msg">{{ success() }}</div>
+  }
+
+  @if (draft(); as d) {
+    <div class="draft-header">
+      <div class="header-info">
+        <h2>{{ d.draftId }}</h2>
+        <span class="status-badge" [ngClass]="'status-' + d.status.toLowerCase()">{{ d.status }}</span>
+      </div>
+      <div class="header-meta">
+        <span><strong>From:</strong> {{ d.senderEmail }}</span>
+        <span><strong>Received:</strong> {{ d.receivedAt | date:'dd MMM yyyy, HH:mm' }}</span>
+        <span><strong>Assigned:</strong> {{ d.assignedTo || 'Unassigned' }}</span>
+      </div>
+    </div>
+
+    <div class="content-grid">
+      <!-- Email Body (read-only) -->
+      <div class="section email-body-section">
+        <h3>Original Email</h3>
+        <div class="email-subject"><strong>Subject:</strong> {{ d.subject }}</div>
+        <div class="email-body">{{ d.body }}</div>
+
+        @if (d.attachments && d.attachments.length > 0) {
+          <div class="attachments">
+            <h4>Attachments ({{ d.attachments.length }})</h4>
+            @for (att of d.attachments; track att.id) {
+              <div class="attachment-item">
+                <span class="file-name">{{ att.fileName }}</span>
+                <span class="file-size">{{ (att.fileSize || 0) / 1024 | number:'1.0-0' }} KB</span>
+                @if (att.ocrText) {
+                  <span class="ocr-tag">OCR</span>
+                }
+              </div>
+            }
+          </div>
+        }
+      </div>
+
+      <!-- Editable Fields -->
+      <div class="section edit-section">
+        <h3>Complaint Details (Editable)</h3>
+
+        <div class="form-group">
+          <label>Complainant Name</label>
+          <input type="text" [ngModel]="form().complainantName" (ngModelChange)="updateField('complainantName', $event)" name="name">
+        </div>
+
+        <div class="form-group">
+          <label>Phone</label>
+          <input type="tel" [ngModel]="form().complainantPhone" (ngModelChange)="updateField('complainantPhone', $event)" name="phone">
+        </div>
+
+        <div class="form-group">
+          <label>CPGRAMS Number</label>
+          <input type="text" [ngModel]="form().cpgramsNumber" (ngModelChange)="updateField('cpgramsNumber', $event)" name="cpgrams">
+        </div>
+
+        <div class="form-group">
+          <label>Category</label>
+          <select [ngModel]="form().category" (ngModelChange)="updateField('category', $event)" name="category">
+            <option value="">Select Category</option>
+            @for (cat of categories; track cat) {
+              <option [value]="cat">{{ cat }}</option>
+            }
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Complaint Summary</label>
+          <textarea [ngModel]="form().complaintSummary" (ngModelChange)="updateField('complaintSummary', $event)" name="summary" rows="4"></textarea>
+        </div>
+
+        @if (d.ocrProcessed) {
+          <div class="ocr-notice">
+            OCR processed (confidence: {{ (d.ocrConfidence || 0) * 100 | number:'1.0-0' }}%)
+          </div>
+        }
+
+        <div class="action-buttons">
+          <button class="save-btn" (click)="saveDraft()" [disabled]="saving() || d.status === 'CONVERTED' || d.status === 'ASSIGNED'">
+            @if (saving()) { Saving... } @else { Save Draft }
+          </button>
+          <button class="reassign-btn" (click)="showReassign.set(true)" [disabled]="d.status === 'CONVERTED'">
+            Assign / Reassign to DEO
+          </button>
+        </div>
+        <p class="admin-note">
+          <i>Note: Only DEOs can assess and route to Reviewer. Only Reviewers can approve and generate complaint numbers.</i>
+        </p>
+      </div>
+    </div>
+
+    <!-- Reassign Modal -->
+    @if (showReassign()) {
+      <div class="modal-overlay" (click)="showReassign.set(false)">
+        <div class="modal" (click)="$event.stopPropagation()">
+          <h3>Reassign Draft</h3>
+          <select [(ngModel)]="selectedDeo" name="deo">
+            <option value="">Select DEO</option>
+            @for (deo of deos(); track deo.userId) {
+              <option [value]="deo.userId">{{ deo.displayName }} ({{ deo.currentAssignedCount }}/{{ deo.maxThreshold }})</option>
+            }
+          </select>
+          <div class="modal-actions">
+            <button (click)="reassignDraft()" [disabled]="!selectedDeo()">Reassign</button>
+            <button class="cancel" (click)="showReassign.set(false)">Cancel</button>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- Suggested Related -->
+    @if (d.suggestedRelated && d.suggestedRelated.length > 0) {
+      <div class="section related-section">
+        <h3>Suggested Related Complaints</h3>
+        @for (related of d.suggestedRelated; track related.draftId) {
+          <div class="related-item">
+            <span class="related-id">{{ related.draftId }}</span>
+            <span>{{ related.subject }}</span>
+            <span class="related-status">{{ related.status }}</span>
+          </div>
+        }
+      </div>
+    }
+  }
+</div>

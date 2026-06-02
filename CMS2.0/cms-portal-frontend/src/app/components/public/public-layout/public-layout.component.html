@@ -1,0 +1,120 @@
+<a class="skip-link" href="#main-content">Skip to main content</a>
+<div class="top-strip">
+  <div class="container top-strip-inner">
+    <div class="top-left">
+      <button class="contrast-btn" aria-label="Toggle high contrast">
+        <i class="pi pi-moon"></i>
+      </button>
+      <div class="divider"></div>
+      <div class="accessibility">
+        <button class="access-btn" (click)="decreaseFontSize()">A-</button>
+        <button class="access-btn" (click)="resetFontSize()">A</button>
+        <button class="access-btn" (click)="increaseFontSize()">A+</button>
+      </div>
+      <div class="divider"></div>
+      <select class="lang-select" (change)="changeLanguage($event)">
+        <option value="en" selected>English</option>
+        <option value="hi">हिन्दी</option>
+        <option value="mr">मराठी</option>
+        <option value="bn">বাংলা</option>
+        <option value="ta">தமிழ்</option>
+        <option value="te">తెలుగు</option>
+        <option value="kn">ಕನ್ನಡ</option>
+        <option value="gu">ગુજરાતી</option>
+        <option value="ml">മലയാളം</option>
+        <option value="pa">ਪੰਜਾਬੀ</option>
+        <option value="or">ଓଡ଼ିଆ</option>
+      </select>
+    </div>
+  </div>
+</div>
+
+<header class="main-header">
+  <div class="container header-inner">
+    <a class="brand" routerLink="/public">
+      <div class="logo-group">
+        <div class="emblem-seal">
+          <img src="assets/rbi-seal.svg" alt="India Emblem" onerror="this.style.display='none'" />
+        </div>
+        <div class="emblem-seal">
+          <img src="assets/rbi-logo.svg" alt="RBI Logo" onerror="this.style.display='none'" />
+        </div>
+        <div class="brand-text">
+          <span class="brand-hindi">भारतीय रिज़र्व बैंक</span>
+          <span class="brand-english">Complaint Management System</span>
+        </div>
+      </div>
+    </a>
+
+    <button class="hamburger-btn" (click)="mobileMenuOpen = !mobileMenuOpen" aria-label="Menu">
+      <i class="pi" [class.pi-bars]="!mobileMenuOpen" [class.pi-times]="mobileMenuOpen"></i>
+    </button>
+
+    <nav class="main-nav" [class.mobile-open]="mobileMenuOpen" (click)="mobileMenuOpen = false">
+      <a routerLink="/public" class="active">Home</a>
+      <a href="javascript:void(0)">About us</a>
+      <a href="javascript:void(0)">Public Awareness</a>
+      <a href="javascript:void(0)">Contact</a>
+      <button class="nav-search-btn" aria-label="Search"><i class="pi pi-search"></i></button>
+      <div class="nav-call-box">
+        <i class="pi pi-phone"></i>
+        <span>14448</span>
+      </div>
+      <button class="login-btn">Login</button>
+    </nav>
+  </div>
+</header>
+
+<main class="main-content" id="main-content" role="main" aria-label="Main content">
+  <router-outlet />
+</main>
+
+<!-- Need Help FAB -->
+<div class="help-fab">
+  <button class="need-help-btn">Need help ?</button>
+  <button class="accessibility-fab"><i class="pi pi-user"></i></button>
+</div>
+
+<!-- Assistance Banner + Footer -->
+<section class="assistance-section">
+  <div class="container">
+    <div class="assistance-banner">
+      <h2>Need Assistance? Call 14448</h2>
+      <p>The contact center (#14448) with Interactive Voice Response System (IVRS) is available 24x7, while the facility to connect to Contact Centre personnel is available from Monday to Saturday except for National Holidays, between 8:00 AM to 10:00 PM for English, Hindi, and ten regional languages.</p>
+      <a href="tel:14448" class="contact-btn">Contact <i class="pi pi-arrow-right"></i></a>
+    </div>
+  </div>
+</section>
+
+<footer class="main-footer">
+  <div class="container footer-inner">
+    <div class="footer-brand">
+      <div class="footer-logo">
+        <img src="assets/rbi-seal.svg" alt="RBI" class="footer-emblem" onerror="this.style.display='none'" />
+        <div class="footer-brand-text">
+          <span class="brand-hindi">शिकायत प्रबंध प्रणाली</span>
+          <span class="brand-english">Complaint Management System</span>
+        </div>
+      </div>
+      <p class="footer-desc">Your trusted platform for complaint resolution - effortlessly file and track grievances against Regulated Entities.</p>
+    </div>
+    <nav class="footer-links">
+      <h4>Quick Links</h4>
+      <a href="javascript:void(0)">Contact</a>
+      <a href="javascript:void(0)">Download Complaint Form</a>
+      <a href="javascript:void(0)">Sitemap</a>
+    </nav>
+    <nav class="footer-links">
+      <h4>Legal</h4>
+      <a href="javascript:void(0)">Terms and Conditions</a>
+      <a href="javascript:void(0)">Privacy Policy</a>
+      <a href="javascript:void(0)">Data Protection Information</a>
+    </nav>
+  </div>
+  <div class="footer-bottom">
+    <div class="container footer-bottom-inner">
+      <span>&copy; Reserve Bank of India. All Rights Reserved.</span>
+      <span>Developed and Maintained by Reserve Bank Information Technology Pvt. Ltd</span>
+    </div>
+  </div>
+</footer>

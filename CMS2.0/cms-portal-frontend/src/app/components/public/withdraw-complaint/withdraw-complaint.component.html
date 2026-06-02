@@ -1,0 +1,89 @@
+<!-- FR-G-027: Search complaint to withdraw -->
+@if (phase() === 'search') {
+  <div class="page-container">
+    <div class="card">
+      <h2>Withdraw Complaint</h2>
+      <p class="subtitle">Enter your complaint reference number to initiate withdrawal.</p>
+
+      <div class="form-group">
+        <label>Complaint Reference Number <span class="required">*</span></label>
+        <input type="text" class="form-input" [(ngModel)]="complaintId" name="complaintId"
+               placeholder="e.g., CMP-20260525-000001" (keydown.enter)="searchComplaint()">
+      </div>
+
+      @if (error) {
+        <div class="error-msg"><i class="pi pi-exclamation-circle"></i> {{ error }}</div>
+      }
+
+      <div class="form-actions">
+        <button class="btn-secondary" (click)="goHome()">Cancel</button>
+        <button class="btn-primary" (click)="searchComplaint()" [disabled]="loading()">
+          @if (loading()) { <i class="pi pi-spinner pi-spin"></i> Searching... }
+          @else { <i class="pi pi-search"></i> Find Complaint }
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- FR-G-028: Reason for withdrawal -->
+@if (phase() === 'confirm') {
+  <div class="page-container">
+    <div class="card">
+      <h2>Confirm Withdrawal</h2>
+      <p class="subtitle">Complaint <strong>{{ complaintId }}</strong> found. Please provide the reason for withdrawal.</p>
+
+      <div class="warning-box">
+        <i class="pi pi-exclamation-triangle"></i>
+        <p>Once withdrawn, this complaint cannot be re-opened. You will need to file a new complaint if you wish to pursue the matter again.</p>
+      </div>
+
+      <div class="form-group">
+        <label>Reason for Withdrawal <span class="required">*</span></label>
+        <div class="radio-group">
+          @for (r of reasons; track r) {
+            <label class="radio-label" [class.selected]="reason === r">
+              <input type="radio" name="reason" [value]="r" [(ngModel)]="reason">
+              {{ r }}
+            </label>
+          }
+        </div>
+      </div>
+
+      @if (reason === 'Other') {
+        <div class="form-group">
+          <label>Please specify</label>
+          <textarea class="form-textarea" [(ngModel)]="additionalRemarks" name="additionalRemarks" rows="3"
+                    placeholder="Enter your reason..."></textarea>
+        </div>
+      }
+
+      @if (error) {
+        <div class="error-msg"><i class="pi pi-exclamation-circle"></i> {{ error }}</div>
+      }
+
+      <!-- FR-G-029: Confirmation -->
+      <div class="form-actions">
+        <button class="btn-secondary" (click)="phase.set('search')">Back</button>
+        <button class="btn-submit" (click)="confirmWithdraw()" [disabled]="loading()">
+          @if (loading()) { <i class="pi pi-spinner pi-spin"></i> Processing... }
+          @else { <i class="pi pi-times-circle"></i> Confirm Withdrawal }
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Success -->
+@if (phase() === 'success') {
+  <div class="page-container">
+    <div class="card success-card">
+      <div class="success-icon"><i class="pi pi-check-circle"></i></div>
+      <h2>Complaint Withdrawn Successfully</h2>
+      <p>Your complaint <strong>{{ withdrawnRef }}</strong> has been withdrawn. You will receive a confirmation via SMS/Email.</p>
+      <div class="form-actions center">
+        <button class="btn-primary" (click)="goHome()"><i class="pi pi-home"></i> Go to Homepage</button>
+      </div>
+    </div>
+  </div>
+}

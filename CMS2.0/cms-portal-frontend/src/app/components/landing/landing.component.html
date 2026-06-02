@@ -1,0 +1,79 @@
+<div class="landing-page">
+  @if (!showEligibility()) {
+    <section class="hero">
+      <div class="hero-content">
+        <img src="assets/rbi-logo.png" alt="RBI" class="rbi-logo" onerror="this.style.display='none'">
+        <h1>RBI Complaint Management System</h1>
+        <p class="tagline">Integrated Ombudsman Scheme - File and Track Complaints Against Regulated Entities</p>
+
+        <div class="action-cards">
+
+          <div class="action-card officer-card" (click)="navigateToOfficer()">
+            <i class="pi pi-users"></i>
+            <h3>Officer Portal</h3>
+            <p>Review, investigate, and resolve assigned complaints</p>
+          </div>
+
+          <div class="action-card search-card" (click)="navigateToSearch()">
+            <i class="pi pi-search"></i>
+            <h3>Search Complaints</h3>
+            <p>Full-text search across all complaints with advanced filters</p>
+          </div>
+
+          <div class="action-card admin-card" (click)="navigateToAdmin()">
+            <i class="pi pi-chart-bar"></i>
+            <h3>Admin Dashboard</h3>
+            <p>Monitor SLA metrics, view analytics, and manage system health</p>
+          </div>
+
+          <div class="action-card simulator-card" (click)="navigateToEmailSimulator()">
+            <i class="pi pi-bolt"></i>
+            <h3>Email Simulation</h3>
+            <p>Simulate incoming emails to test ingestion, OCR, and Round Robin assignment</p>
+          </div>
+
+          <div class="action-card crpc-admin-card" (click)="navigateToCrpcAdmin()">
+            <i class="pi pi-cog"></i>
+            <h3>CRPC Admin</h3>
+            <p>Email queue monitoring, ignore list, DEO management, workload thresholds</p>
+          </div>
+
+          <div class="action-card deo-card" (click)="navigateToCrpcLogin()">
+            <i class="pi pi-sign-in"></i>
+            <h3>DEO / Reviewer Login</h3>
+            <p>CRPC staff login — DEO, Reviewer, Head, Admin, In-Charge, Help Desk</p>
+          </div>
+
+          <div class="action-card public-card" (click)="navigateToPublicPortal()">
+            <i class="pi pi-globe"></i>
+            <h3>Public Portal</h3>
+            <p>Complainant-facing portal — file, track, withdraw, appeal, feedback</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="info-section">
+      <h2>Before You File</h2>
+      <div class="info-grid">
+        <div class="info-item">
+          <i class="pi pi-building"></i>
+          <h4>Approach Your Bank First</h4>
+          <p>You must first approach your bank/financial institution with your grievance.</p>
+        </div>
+        <div class="info-item">
+          <i class="pi pi-clock"></i>
+          <h4>Wait 30 Days</h4>
+          <p>Allow 30 days for the bank to respond before filing with RBI.</p>
+        </div>
+        <div class="info-item">
+          <i class="pi pi-check-square"></i>
+          <h4>Eligibility Check</h4>
+          <p>An eligibility questionnaire will verify your complaint meets RBI criteria.</p>
+        </div>
+      </div>
+    </section>
+  } @else {
+    <app-eligibility-questionnaire (eligible)="onEligible()"/>
+  }
+</div>

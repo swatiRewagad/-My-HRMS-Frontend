@@ -1,0 +1,47 @@
+package com.rbi.cms.rules.escalation;
+
+import com.rbi.cms.common.dto.EscalationFact;
+
+rule "SLA Breach Level 1 - 80% elapsed"
+    salience 100
+    when
+        $fact : EscalationFact(slaPercentElapsed >= 80, slaPercentElapsed < 100, escalationLevel == 0)
+    then
+        $fact.setEscalationLevel(1);
+        $fact.setEscalationAction("NOTIFY_OFFICER");
+        $fact.setEscalationMessage("SLA approaching breach - 80% time elapsed for complaint " + $fact.getComplaintId());
+        update($fact);
+end
+
+rule "SLA Breach Level 2 - 100% elapsed"
+    salience 90
+    when
+        $fact : EscalationFact(slaPercentElapsed >= 100, escalationLevel < 2)
+    then
+        $fact.setEscalationLevel(2);
+        $fact.setEscalationAction("REASSIGN_SUPERVISOR");
+        $fact.setEscalationMessage("SLA breached for complaint " + $fact.getComplaintId() + ". Reassigning to supervisor.");
+        update($fact);
+end
+
+rule "SLA Breach Level 3 - 150% elapsed (Critical)"
+    salience 80
+    when
+        $fact : EscalationFact(slaPercentElapsed >= 150, escalationLevel < 3)
+    then
+        $fact.setEscalationLevel(3);
+        $fact.setEscalationAction("ESCALATE_MANAGEMENT");
+        $fact.setEscalationMessage("Critical SLA breach for complaint " + $fact.getComplaintId() + ". Escalating to management.");
+        update($fact);
+end
+
+rule "High Value Complaint Escalation"
+    salience 70
+    when
+        $fact : EscalationFact(amountInvolved > 1000000, escalationLevel < 2)
+    then
+        $fact.setEscalationLevel(2);
+        $fact.setEscalationAction("ASSIGN_SENIOR_OFFICER");
+        $fact.setEscalationMessage("High value complaint (> 10L) requires senior officer attention.");
+        update($fact);
+end

@@ -1,0 +1,285 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+             xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+             xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+             xmlns:tns="http://www.jboss.org/drools"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             id="Definition"
+             targetNamespace="http://www.rbi.cms/complaint"
+             expressionLanguage="http://www.mvel.org/2.0"
+             typeLanguage="http://www.java.com/javaTypes">
+
+    <itemDefinition id="_complaintIdItem" structureRef="String"/>
+    <itemDefinition id="_categoryItem" structureRef="String"/>
+    <itemDefinition id="_priorityItem" structureRef="String"/>
+    <itemDefinition id="_assignedTeamItem" structureRef="String"/>
+    <itemDefinition id="_assignedOfficerItem" structureRef="String"/>
+    <itemDefinition id="_resolutionSummaryItem" structureRef="String"/>
+    <itemDefinition id="_escalationReasonItem" structureRef="String"/>
+
+    <process id="com.rbi.cms.complaint-lifecycle" name="Complaint Lifecycle" isExecutable="true"
+             processType="Private" tns:packageName="com.rbi.cms.workflow">
+
+        <!-- Process Variables -->
+        <property id="complaintId" itemSubjectRef="_complaintIdItem"/>
+        <property id="category" itemSubjectRef="_categoryItem"/>
+        <property id="priority" itemSubjectRef="_priorityItem"/>
+        <property id="assignedTeam" itemSubjectRef="_assignedTeamItem"/>
+        <property id="assignedOfficer" itemSubjectRef="_assignedOfficerItem"/>
+        <property id="resolutionSummary" itemSubjectRef="_resolutionSummaryItem"/>
+        <property id="escalationReason" itemSubjectRef="_escalationReasonItem"/>
+
+        <!-- START -->
+        <startEvent id="StartEvent" name="Complaint Ingested">
+            <outgoing>Flow_Start_Assignment</outgoing>
+        </startEvent>
+
+        <!-- ASSIGNMENT (Business Rule Task - Drools) -->
+        <businessRuleTask id="AssignmentTask" name="Auto Assignment"
+                          implementation="http://www.jboss.org/drools/rule"
+                          tns:ruleFlowGroup="assignment">
+            <incoming>Flow_Start_Assignment</incoming>
+            <outgoing>Flow_Assignment_HumanTask</outgoing>
+        </businessRuleTask>
+
+        <!-- ASSIGNED - Human Task: Officer reviews and starts work -->
+        <userTask id="OfficerReviewTask" name="Officer Review &amp; Accept">
+            <incoming>Flow_Assignment_HumanTask</incoming>
+            <incoming>Flow_Reassign_Back</incoming>
+            <outgoing>Flow_HumanTask_InProgress</outgoing>
+            <ioSpecification>
+                <dataInput id="TaskInput_complaintId" name="complaintId"/>
+                <dataInput id="TaskInput_category" name="category"/>
+                <dataOutput id="TaskOutput_accepted" name="accepted"/>
+                <inputSet>
+                    <dataInputRefs>TaskInput_complaintId</dataInputRefs>
+                    <dataInputRefs>TaskInput_category</dataInputRefs>
+                </inputSet>
+                <outputSet>
+                    <dataOutputRefs>TaskOutput_accepted</dataOutputRefs>
+                </outputSet>
+            </ioSpecification>
+            <potentialOwner>
+                <resourceAssignmentExpression>
+                    <formalExpression>#{assignedTeam}</formalExpression>
+                </resourceAssignmentExpression>
+            </potentialOwner>
+        </userTask>
+
+        <!-- IN_PROGRESS - Investigation Gateway -->
+        <exclusiveGateway id="InvestigationGateway" name="Investigation Outcome" gatewayDirection="Diverging">
+            <incoming>Flow_HumanTask_InProgress</incoming>
+            <outgoing>Flow_ToUnderReview</outgoing>
+            <outgoing>Flow_ToEscalation</outgoing>
+        </exclusiveGateway>
+
+        <!-- UNDER_REVIEW - Human Task: Resolution drafting -->
+        <userTask id="UnderReviewTask" name="Draft Resolution">
+            <incoming>Flow_ToUnderReview</incoming>
+            <outgoing>Flow_UnderReview_Resolution</outgoing>
+            <ioSpecification>
+                <dataInput id="ReviewInput_complaintId" name="complaintId"/>
+                <dataOutput id="ReviewOutput_resolution" name="resolutionSummary"/>
+                <inputSet>
+                    <dataInputRefs>ReviewInput_complaintId</dataInputRefs>
+                </inputSet>
+                <outputSet>
+                    <dataOutputRefs>ReviewOutput_resolution</dataOutputRefs>
+                </outputSet>
+            </ioSpecification>
+        </userTask>
+
+        <!-- ESCALATION - Boundary Timer for SLA -->
+        <userTask id="EscalationTask" name="Escalated Review">
+            <incoming>Flow_ToEscalation</incoming>
+            <incoming>Flow_SLABreach</incoming>
+            <outgoing>Flow_Escalation_Resolution</outgoing>
+        </userTask>
+
+        <!-- RESOLUTION Gateway -->
+        <exclusiveGateway id="ResolutionGateway" name="Resolution Complete?" gatewayDirection="Converging">
+            <incoming>Flow_UnderReview_Resolution</incoming>
+            <incoming>Flow_Escalation_Resolution</incoming>
+            <outgoing>Flow_Resolution_Notify</outgoing>
+        </exclusiveGateway>
+
+        <!-- RESOLVED - Notification Service Task -->
+        <serviceTask id="NotifyCustomerTask" name="Notify Customer of Resolution"
+                     implementation="java"
+                     operationRef="com.rbi.cms.workflow.handler.NotificationHandler">
+            <incoming>Flow_Resolution_Notify</incoming>
+            <outgoing>Flow_Notify_ConfirmClose</outgoing>
+        </serviceTask>
+
+        <!-- CLOSURE - Wait for customer confirmation or auto-close timer -->
+        <intermediateCatchEvent id="ClosureTimer" name="Wait for Confirmation (7 days)">
+            <incoming>Flow_Notify_ConfirmClose</incoming>
+            <outgoing>Flow_Timer_Close</outgoing>
+            <timerEventDefinition>
+                <timeDuration>P7D</timeDuration>
+            </timerEventDefinition>
+        </intermediateCatchEvent>
+
+        <!-- END - CLOSED -->
+        <endEvent id="EndEvent" name="Complaint Closed">
+            <incoming>Flow_Timer_Close</incoming>
+        </endEvent>
+
+        <!-- SLA Boundary Timer on Officer Review (30 days) -->
+        <boundaryEvent id="SLATimerBoundary" name="SLA Breach Timer" attachedToRef="OfficerReviewTask" cancelActivity="false">
+            <outgoing>Flow_SLABreach</outgoing>
+            <timerEventDefinition>
+                <timeDuration>P30D</timeDuration>
+            </timerEventDefinition>
+        </boundaryEvent>
+
+        <!-- SEQUENCE FLOWS -->
+        <sequenceFlow id="Flow_Start_Assignment" sourceRef="StartEvent" targetRef="AssignmentTask"/>
+        <sequenceFlow id="Flow_Assignment_HumanTask" sourceRef="AssignmentTask" targetRef="OfficerReviewTask"/>
+        <sequenceFlow id="Flow_HumanTask_InProgress" sourceRef="OfficerReviewTask" targetRef="InvestigationGateway"/>
+        <sequenceFlow id="Flow_ToUnderReview" sourceRef="InvestigationGateway" targetRef="UnderReviewTask">
+            <conditionExpression xsi:type="tFormalExpression">#{escalationReason == null}</conditionExpression>
+        </sequenceFlow>
+        <sequenceFlow id="Flow_ToEscalation" sourceRef="InvestigationGateway" targetRef="EscalationTask">
+            <conditionExpression xsi:type="tFormalExpression">#{escalationReason != null}</conditionExpression>
+        </sequenceFlow>
+        <sequenceFlow id="Flow_UnderReview_Resolution" sourceRef="UnderReviewTask" targetRef="ResolutionGateway"/>
+        <sequenceFlow id="Flow_Escalation_Resolution" sourceRef="EscalationTask" targetRef="ResolutionGateway"/>
+        <sequenceFlow id="Flow_Resolution_Notify" sourceRef="ResolutionGateway" targetRef="NotifyCustomerTask"/>
+        <sequenceFlow id="Flow_Notify_ConfirmClose" sourceRef="NotifyCustomerTask" targetRef="ClosureTimer"/>
+        <sequenceFlow id="Flow_Timer_Close" sourceRef="ClosureTimer" targetRef="EndEvent"/>
+        <sequenceFlow id="Flow_SLABreach" sourceRef="SLATimerBoundary" targetRef="EscalationTask"/>
+        <sequenceFlow id="Flow_Reassign_Back" sourceRef="EscalationTask" targetRef="OfficerReviewTask"/>
+
+    </process>
+
+    <!-- BPMN Diagram Information (for visual rendering in Camunda Modeler) -->
+    <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+        <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="com.rbi.cms.complaint-lifecycle">
+            <!-- Start Event -->
+            <bpmndi:BPMNShape id="StartEvent_di" bpmnElement="StartEvent">
+                <dc:Bounds x="152" y="232" width="36" height="36"/>
+            </bpmndi:BPMNShape>
+
+            <!-- Assignment Task -->
+            <bpmndi:BPMNShape id="AssignmentTask_di" bpmnElement="AssignmentTask">
+                <dc:Bounds x="250" y="210" width="100" height="80"/>
+            </bpmndi:BPMNShape>
+
+            <!-- Officer Review Task -->
+            <bpmndi:BPMNShape id="OfficerReviewTask_di" bpmnElement="OfficerReviewTask">
+                <dc:Bounds x="420" y="210" width="100" height="80"/>
+            </bpmndi:BPMNShape>
+
+            <!-- SLA Timer Boundary -->
+            <bpmndi:BPMNShape id="SLATimerBoundary_di" bpmnElement="SLATimerBoundary">
+                <dc:Bounds x="452" y="272" width="36" height="36"/>
+            </bpmndi:BPMNShape>
+
+            <!-- Investigation Gateway -->
+            <bpmndi:BPMNShape id="InvestigationGateway_di" bpmnElement="InvestigationGateway" isMarkerVisible="true">
+                <dc:Bounds x="585" y="225" width="50" height="50"/>
+            </bpmndi:BPMNShape>
+
+            <!-- Under Review Task -->
+            <bpmndi:BPMNShape id="UnderReviewTask_di" bpmnElement="UnderReviewTask">
+                <dc:Bounds x="700" y="140" width="100" height="80"/>
+            </bpmndi:BPMNShape>
+
+            <!-- Escalation Task -->
+            <bpmndi:BPMNShape id="EscalationTask_di" bpmnElement="EscalationTask">
+                <dc:Bounds x="700" y="300" width="100" height="80"/>
+            </bpmndi:BPMNShape>
+
+            <!-- Resolution Gateway -->
+            <bpmndi:BPMNShape id="ResolutionGateway_di" bpmnElement="ResolutionGateway" isMarkerVisible="true">
+                <dc:Bounds x="865" y="225" width="50" height="50"/>
+            </bpmndi:BPMNShape>
+
+            <!-- Notify Customer Task -->
+            <bpmndi:BPMNShape id="NotifyCustomerTask_di" bpmnElement="NotifyCustomerTask">
+                <dc:Bounds x="980" y="210" width="100" height="80"/>
+            </bpmndi:BPMNShape>
+
+            <!-- Closure Timer -->
+            <bpmndi:BPMNShape id="ClosureTimer_di" bpmnElement="ClosureTimer">
+                <dc:Bounds x="1142" y="232" width="36" height="36"/>
+            </bpmndi:BPMNShape>
+
+            <!-- End Event -->
+            <bpmndi:BPMNShape id="EndEvent_di" bpmnElement="EndEvent">
+                <dc:Bounds x="1242" y="232" width="36" height="36"/>
+            </bpmndi:BPMNShape>
+
+            <!-- Sequence Flows -->
+            <bpmndi:BPMNEdge id="Flow_Start_Assignment_di" bpmnElement="Flow_Start_Assignment">
+                <di:waypoint x="188" y="250"/>
+                <di:waypoint x="250" y="250"/>
+            </bpmndi:BPMNEdge>
+
+            <bpmndi:BPMNEdge id="Flow_Assignment_HumanTask_di" bpmnElement="Flow_Assignment_HumanTask">
+                <di:waypoint x="350" y="250"/>
+                <di:waypoint x="420" y="250"/>
+            </bpmndi:BPMNEdge>
+
+            <bpmndi:BPMNEdge id="Flow_HumanTask_InProgress_di" bpmnElement="Flow_HumanTask_InProgress">
+                <di:waypoint x="520" y="250"/>
+                <di:waypoint x="585" y="250"/>
+            </bpmndi:BPMNEdge>
+
+            <bpmndi:BPMNEdge id="Flow_ToUnderReview_di" bpmnElement="Flow_ToUnderReview">
+                <di:waypoint x="610" y="225"/>
+                <di:waypoint x="610" y="180"/>
+                <di:waypoint x="700" y="180"/>
+            </bpmndi:BPMNEdge>
+
+            <bpmndi:BPMNEdge id="Flow_ToEscalation_di" bpmnElement="Flow_ToEscalation">
+                <di:waypoint x="610" y="275"/>
+                <di:waypoint x="610" y="340"/>
+                <di:waypoint x="700" y="340"/>
+            </bpmndi:BPMNEdge>
+
+            <bpmndi:BPMNEdge id="Flow_UnderReview_Resolution_di" bpmnElement="Flow_UnderReview_Resolution">
+                <di:waypoint x="800" y="180"/>
+                <di:waypoint x="890" y="180"/>
+                <di:waypoint x="890" y="225"/>
+            </bpmndi:BPMNEdge>
+
+            <bpmndi:BPMNEdge id="Flow_Escalation_Resolution_di" bpmnElement="Flow_Escalation_Resolution">
+                <di:waypoint x="800" y="340"/>
+                <di:waypoint x="890" y="340"/>
+                <di:waypoint x="890" y="275"/>
+            </bpmndi:BPMNEdge>
+
+            <bpmndi:BPMNEdge id="Flow_Resolution_Notify_di" bpmnElement="Flow_Resolution_Notify">
+                <di:waypoint x="915" y="250"/>
+                <di:waypoint x="980" y="250"/>
+            </bpmndi:BPMNEdge>
+
+            <bpmndi:BPMNEdge id="Flow_Notify_ConfirmClose_di" bpmnElement="Flow_Notify_ConfirmClose">
+                <di:waypoint x="1080" y="250"/>
+                <di:waypoint x="1142" y="250"/>
+            </bpmndi:BPMNEdge>
+
+            <bpmndi:BPMNEdge id="Flow_Timer_Close_di" bpmnElement="Flow_Timer_Close">
+                <di:waypoint x="1178" y="250"/>
+                <di:waypoint x="1242" y="250"/>
+            </bpmndi:BPMNEdge>
+
+            <bpmndi:BPMNEdge id="Flow_SLABreach_di" bpmnElement="Flow_SLABreach">
+                <di:waypoint x="470" y="308"/>
+                <di:waypoint x="470" y="340"/>
+                <di:waypoint x="700" y="340"/>
+            </bpmndi:BPMNEdge>
+
+            <bpmndi:BPMNEdge id="Flow_Reassign_Back_di" bpmnElement="Flow_Reassign_Back">
+                <di:waypoint x="750" y="300"/>
+                <di:waypoint x="750" y="400"/>
+                <di:waypoint x="470" y="400"/>
+                <di:waypoint x="470" y="290"/>
+            </bpmndi:BPMNEdge>
+        </bpmndi:BPMNPlane>
+    </bpmndi:BPMNDiagram>
+
+</definitions>

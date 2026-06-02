@@ -1,0 +1,103 @@
+<div class="email-queue-container">
+  <div class="page-header">
+    <div class="header-left">
+      <h2>Email Syndication</h2>
+      <p class="subtitle">Incoming emails to crpc&#64;rbi.org.in — Draft complaint queue</p>
+    </div>
+    <div class="header-actions">
+      <button class="action-btn simulator-btn" (click)="navigateToSimulator()">
+        Simulate Email
+      </button>
+      <button class="action-btn" (click)="navigateToIgnoreList()">
+        Ignore List
+      </button>
+      <button class="action-btn" (click)="navigateToDeoManagement()">
+        DEO Management
+      </button>
+      <button class="action-btn" (click)="navigateToReviewerManagement()">
+        Reviewer Management
+      </button>
+    </div>
+  </div>
+
+  @if (stats(); as s) {
+    <div class="stats-bar">
+      <div class="stat-card">
+        <span class="stat-value">{{ s.totalDrafts }}</span>
+        <span class="stat-label">Total</span>
+      </div>
+      <div class="stat-card pending">
+        <span class="stat-value">{{ s.pendingCount }}</span>
+        <span class="stat-label">Pending</span>
+      </div>
+      <div class="stat-card assigned">
+        <span class="stat-value">{{ s.assignedCount }}</span>
+        <span class="stat-label">Assigned</span>
+      </div>
+      <div class="stat-card progress">
+        <span class="stat-value">{{ s.inProgressCount }}</span>
+        <span class="stat-label">In Progress</span>
+      </div>
+      <div class="stat-card converted">
+        <span class="stat-value">{{ s.convertedCount }}</span>
+        <span class="stat-label">Converted</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-value">{{ s.activeDeoCount }}</span>
+        <span class="stat-label">Active DEOs</span>
+      </div>
+    </div>
+  }
+
+  <div class="filter-bar">
+    <button class="filter-btn" [class.active]="selectedStatus() === ''" (click)="filterByStatus('')">All</button>
+    @for (status of statusOptions; track status) {
+      <button class="filter-btn" [class.active]="selectedStatus() === status" (click)="filterByStatus(status)">
+        {{ status }}
+      </button>
+    }
+  </div>
+
+  @if (loading()) {
+    <div class="loading">Loading queue...</div>
+  }
+
+  <div class="queue-table">
+    <table>
+      <thead>
+        <tr>
+          <th>Draft ID</th>
+          <th>Sender</th>
+          <th>Subject</th>
+          <th>Category</th>
+          <th>Assigned To</th>
+          <th>Status</th>
+          <th>Received</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (draft of drafts(); track draft.draftId) {
+          <tr (click)="openDraft(draft.draftId)" class="clickable-row">
+            <td class="draft-id">{{ draft.draftId }}</td>
+            <td class="sender">{{ draft.senderEmail }}</td>
+            <td class="subject">{{ draft.subject || '(No subject)' }}</td>
+            <td>
+              @if (draft.category) {
+                <span class="category-badge">{{ draft.category }}</span>
+              } @else {
+                <span class="uncategorized">—</span>
+              }
+            </td>
+            <td>{{ draft.assignedTo || '—' }}</td>
+            <td><span class="status-badge" [ngClass]="getStatusClass(draft.status)">{{ draft.status }}</span></td>
+            <td class="time">{{ getTimeSince(draft.receivedAt) }}</td>
+          </tr>
+        } @empty {
+          <tr>
+            <td colspan="7" class="empty-state">No email drafts found</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</div>

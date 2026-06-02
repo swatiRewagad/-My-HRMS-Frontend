@@ -1,0 +1,629 @@
+<div class="draft-assessment">
+  @if (loading()) {
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <p>Loading draft...</p>
+    </div>
+  } @else if (submitted()) {
+    <!-- Success: Sent for Approval -->
+    <div class="success-page">
+      <div class="success-icon"><i class="pi pi-check-circle"></i></div>
+      <h2>Assessment Sent for Approval</h2>
+      <p>Draft <strong>{{ draftId }}</strong> has been routed to
+        <strong>{{ selectedReviewer }}</strong> as
+        @if (deoDecision === 'MAINTAINABLE') {
+          <span class="badge maintainable">New Complaint (Maintainable)</span>
+        } @else {
+          <span class="badge non-maintainable">Not a Complaint (Non-Maintainable)</span>
+        }
+      </p>
+      @if (vernacular) {
+        <p class="flag-note"><i class="pi pi-flag"></i> Vernacular flag applied — {{ vernacularLanguage }}</p>
+      }
+      @if (autoClosureTriggered()) {
+        <p class="flag-note"><i class="pi pi-exclamation-triangle"></i> Auto-closure clause proposed: {{ autoClosureClause() }}</p>
+      }
+      <button class="btn btn-primary" (click)="goBack()">Back to Home</button>
+    </div>
+  } @else {
+    <!-- Header -->
+    <div class="page-header">
+      <button class="btn btn-outline" (click)="goBack()">
+        <i class="pi pi-arrow-left"></i> Back
+      </button>
+      <div class="header-info">
+        <h2>Draft Complaint — {{ draftId }}</h2>
+        <div class="header-badges">
+          <span class="mode-badge">{{ modeOfReceipt }}</span>
+          @if (systemSuggestion !== 'PENDING') {
+            <span class="suggestion-badge" [attr.data-suggestion]="systemSuggestion">
+              AI: {{ systemSuggestion }}
+            </span>
+          }
+          @if (emailType) {
+            <span class="email-type-badge">Email: {{ emailType }}</span>
+          }
+        </div>
+      </div>
+      <div class="header-actions">
+        <button class="btn btn-outline" (click)="saveDraft()" [disabled]="savingDraft()">
+          @if (savingDraft()) { Saving... } @else { <i class="pi pi-save"></i> Save Draft }
+        </button>
+        @if (draftSaved()) {
+          <span class="save-confirmation"><i class="pi pi-check"></i> Saved</span>
+        }
+      </div>
+    </div>
+
+    <!-- Mandatory Fields Warning -->
+    @if (missingMandatoryFields().length > 0) {
+      <div class="mandatory-warning">
+        <i class="pi pi-exclamation-triangle"></i>
+        <span>Mandatory fields incomplete: {{ missingMandatoryFields().join(', ') }}</span>
+      </div>
+    }
+
+    <!-- 4 Module Tabs (BRD: Summary, Email Communication, Attachment, History) + Assessment + Routing -->
+    <div class="tabs">
+      <button class="tab" [class.active]="currentTab() === 'details'" (click)="currentTab.set('details')">
+        <i class="pi pi-file-edit"></i> Summary
+      </button>
+      <button class="tab" [class.active]="currentTab() === 'attachments'" (click)="currentTab.set('attachments')">
+        <i class="pi pi-paperclip"></i> Attachments
+        <span class="tab-count">{{ attachments().length }}</span>
+      </button>
+      <button class="tab" [class.active]="currentTab() === 'assessment'" (click)="currentTab.set('assessment')">
+        <i class="pi pi-check-square"></i> Maintainability
+      </button>
+      <button class="tab" [class.active]="currentTab() === 'screening'" (click)="currentTab.set('screening')">
+        <i class="pi pi-shield"></i> Auto-Closure Screening
+      </button>
+      <button class="tab" [class.active]="currentTab() === 'route'" (click)="currentTab.set('route')">
+        <i class="pi pi-send"></i> Sent for Approval
+      </button>
+    </div>
+
+    <!-- ═══════════ TAB 1: Summary (Editable by DEO) ═══════════ -->
+    @if (currentTab() === 'details') {
+      <div class="tab-content">
+        <div class="section-header">
+          <h3>Complainant Details</h3>
+          <p class="ocr-note" title="Fields prefilled from OCR/email parsing. Review and correct if necessary.">
+            <i class="pi pi-info-circle"></i> Prefilled from OCR/parsing — please verify and correct
+          </p>
+        </div>
+
+        <div class="form-grid">
+          <div class="form-group required">
+            <label for="compName">Complainant Name *</label>
+            <input id="compName" type="text" [(ngModel)]="complainantName" placeholder="Full name" />
+          </div>
+
+          <div class="form-group required">
+            <label for="compState">State *</label>
+            <select id="compState" [(ngModel)]="complainantState">
+              <option value="">Select State</option>
+              @for (s of states; track s) {
+                <option [value]="s">{{ s }}</option>
+              }
+            </select>
+          </div>
+
+          <div class="form-group required">
+            <label for="compDistrict">District *</label>
+            <input id="compDistrict" type="text" [(ngModel)]="complainantDistrict" placeholder="District" />
+          </div>
+
+          <div class="form-group">
+            <label for="compPincode">Pincode</label>
+            <input id="compPincode" type="text" [(ngModel)]="complainantPincode" maxlength="6" placeholder="6-digit" />
+          </div>
+
+          <div class="form-group required">
+            <label for="compPhone">Phone *</label>
+            <input id="compPhone" type="tel" [(ngModel)]="complainantPhone" maxlength="10" placeholder="10-digit mobile" />
+          </div>
+
+          <div class="form-group required">
+            <label for="compEmail">Email *</label>
+            <input id="compEmail" type="email" [(ngModel)]="complainantEmail" placeholder="Email" />
+          </div>
+
+          <div class="form-group full-width">
+            <label for="compAddress">Address</label>
+            <textarea id="compAddress" [(ngModel)]="complainantAddress" rows="2" placeholder="Complete address"></textarea>
+          </div>
+
+          <div class="form-group">
+            <label for="contactPref">Contact Preference</label>
+            <select id="contactPref" [(ngModel)]="contactPreference">
+              <option value="EMAIL">Email</option>
+              <option value="PHONE">Phone</option>
+              <option value="POST">Post</option>
+            </select>
+          </div>
+        </div>
+
+        <hr class="section-divider" />
+
+        <h3>Complaint Details</h3>
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="mode">Mode of Receipt</label>
+            <select id="mode" [(ngModel)]="modeOfReceipt">
+              <option value="EMAIL">Email</option>
+              <option value="PHYSICAL_LETTER">Physical Letter</option>
+              <option value="PORTAL">Portal</option>
+              <option value="CPGRAMS">CPGRAMS</option>
+            </select>
+          </div>
+
+          @if (modeOfReceipt === 'CPGRAMS') {
+            <div class="form-group">
+              <label for="cpgrams">CPGRAMS Reference No.</label>
+              <input id="cpgrams" type="text" [(ngModel)]="cpgramsReference" placeholder="CPGRAMS Ref #" />
+            </div>
+          }
+
+          <div class="form-group required">
+            <label for="cat">Category *</label>
+            <select id="cat" [(ngModel)]="category">
+              <option value="">Select Category</option>
+              @for (c of categories; track c) {
+                <option [value]="c">{{ c }}</option>
+              }
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="subCat">Sub-Category</label>
+            <input id="subCat" type="text" [(ngModel)]="subCategory" placeholder="Sub-category" />
+          </div>
+
+          <div class="form-group required">
+            <label for="entity">Entity Name *</label>
+            <input id="entity" type="text" [(ngModel)]="entityName" placeholder="Bank/NBFC/Payment System" />
+          </div>
+
+          <div class="form-group">
+            <label for="entityType">Entity Type</label>
+            <select id="entityType" [(ngModel)]="entityType">
+              <option value="BANK">Bank</option>
+              <option value="NBFC">NBFC</option>
+              <option value="PAYMENT_SYSTEM">Payment System Operator</option>
+              <option value="CREDIT_BUREAU">Credit Information Company</option>
+            </select>
+          </div>
+
+          <div class="form-group full-width required">
+            <label for="subj">Subject *</label>
+            <input id="subj" type="text" [(ngModel)]="subject" placeholder="Brief subject" />
+          </div>
+
+          <div class="form-group full-width">
+            <label for="desc">Description / Complaint Narrative</label>
+            <textarea id="desc" [(ngModel)]="description" rows="5" placeholder="Full complaint details"></textarea>
+          </div>
+
+          <div class="form-group">
+            <label for="amount">Amount Involved (₹)</label>
+            <input id="amount" type="number" [(ngModel)]="amountInvolved" placeholder="0.00" />
+          </div>
+
+          <div class="form-group">
+            <label for="txnDate">Transaction Date</label>
+            <input id="txnDate" type="date" [(ngModel)]="transactionDate" />
+          </div>
+
+          <div class="form-group">
+            <label for="letterDate">Letter/Email Date</label>
+            <input id="letterDate" type="date" [(ngModel)]="letterDate" />
+          </div>
+
+          <div class="form-group">
+            <label for="recvDate">Received Date</label>
+            <input id="recvDate" type="date" [(ngModel)]="receivedDate" />
+          </div>
+
+          <div class="form-group">
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="vernacular" />
+              Vernacular Complaint (Regional Language)
+            </label>
+          </div>
+
+          @if (vernacular) {
+            <div class="form-group">
+              <label for="vernLang">Language</label>
+              <input id="vernLang" type="text" [(ngModel)]="vernacularLanguage" placeholder="e.g. Hindi, Marathi, Tamil" />
+            </div>
+          }
+        </div>
+
+        <!-- Email Communication Section (inline in Summary for quick access) -->
+        <hr class="section-divider" />
+        <div class="section-header">
+          <h3>Email Communication</h3>
+          <button class="btn btn-sm btn-outline" (click)="openEmailComposer()">
+            <i class="pi pi-envelope"></i> Request Additional Info
+          </button>
+        </div>
+
+        <div class="email-thread">
+          @for (email of emailCorrespondence(); track email.id) {
+            <div class="email-item" [class.sent]="email.direction === 'SENT'" [class.received]="email.direction === 'RECEIVED'">
+              <div class="email-header">
+                <span class="direction-badge">{{ email.direction === 'SENT' ? '↑ Sent' : '↓ Received' }}</span>
+                <span class="email-date">{{ email.sentAt | date:'dd-MMM-yyyy HH:mm' }}</span>
+              </div>
+              <p class="email-subject"><strong>{{ email.subject }}</strong></p>
+              <p class="email-to">To: {{ email.to }}</p>
+              <p class="email-body">{{ email.body }}</p>
+            </div>
+          } @empty {
+            <p class="empty-note">No email correspondence yet.</p>
+          }
+        </div>
+
+        <!-- Email Composer Modal -->
+        @if (showEmailComposer()) {
+          <div class="email-composer">
+            <h4>Compose Email — Request Additional Information</h4>
+            <div class="form-group">
+              <label>To</label>
+              <input type="email" [(ngModel)]="emailTo" placeholder="Recipient email" />
+            </div>
+            <div class="form-group">
+              <label>Subject</label>
+              <input type="text" [(ngModel)]="emailSubject" />
+            </div>
+            <div class="form-group">
+              <label>Body</label>
+              <textarea [(ngModel)]="emailBody" rows="5" placeholder="Type your message..."></textarea>
+            </div>
+
+            <!-- Editable PDF Form Attachment -->
+            <div class="pdf-form-section">
+              <label class="checkbox-label">
+                <input type="checkbox" [(ngModel)]="attachFormPdf" />
+                Attach editable PDF form (complainant can fill & return)
+              </label>
+              @if (attachFormPdf) {
+                <div class="pdf-form-fields">
+                  <p class="help-text">Select fields to include in the editable PDF form:</p>
+                  <div class="field-checkboxes">
+                    @for (field of formPdfFields; track field.key) {
+                      <label class="field-option">
+                        <input type="checkbox" [(ngModel)]="field.include" />
+                        {{ field.label }}
+                      </label>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+
+            <div class="composer-actions">
+              <button class="btn btn-primary" (click)="sendEmail()" [disabled]="sendingEmail() || !emailBody">
+                @if (sendingEmail()) { Sending... } @else { <i class="pi pi-send"></i> Send }
+              </button>
+              @if (attachFormPdf) {
+                <button class="btn btn-outline" (click)="downloadFormPdf()">
+                  <i class="pi pi-download"></i> Preview PDF
+                </button>
+              }
+              <button class="btn btn-outline" (click)="cancelEmail()">Cancel</button>
+            </div>
+          </div>
+        }
+      </div>
+    }
+
+    <!-- ═══════════ TAB 2: Attachments ═══════════ -->
+    @if (currentTab() === 'attachments') {
+      <div class="tab-content">
+        <div class="section-header">
+          <h3>Attachment Module</h3>
+          <p class="help-text">All files received with the complaint (email attachments or scanned physical letters)</p>
+        </div>
+
+        <div class="attachment-grid">
+          @for (att of attachments(); track att.id) {
+            <div class="attachment-card">
+              <div class="att-icon">
+                @if (att.type.includes('pdf')) {
+                  <i class="pi pi-file-pdf"></i>
+                } @else if (att.type.includes('image')) {
+                  <i class="pi pi-image"></i>
+                } @else {
+                  <i class="pi pi-file"></i>
+                }
+              </div>
+              <div class="att-info">
+                <span class="att-name">{{ att.name }}</span>
+                <span class="att-meta">{{ att.size }} · {{ att.uploadedBy }} · {{ att.uploadedAt | date:'dd-MMM-yyyy' }}</span>
+              </div>
+              <div class="att-actions">
+                <button class="btn btn-sm btn-outline" title="View/Download"><i class="pi pi-eye"></i></button>
+                @if (att.uploadedBy === 'DEO') {
+                  <button class="btn btn-sm btn-danger" (click)="removeAttachment(att.id)" title="Remove"><i class="pi pi-trash"></i></button>
+                }
+              </div>
+            </div>
+          } @empty {
+            <p class="empty-note">No attachments linked to this draft.</p>
+          }
+        </div>
+
+        @if (uploadError) {
+          <p class="error-text">{{ uploadError }}</p>
+        }
+
+        <div class="upload-section">
+          <label class="upload-btn">
+            <i class="pi pi-cloud-upload"></i> Upload Supporting Document
+            <input type="file" (change)="onFileUpload($event)" accept=".pdf,.jpg,.jpeg,.png,.tiff,.tif,.eml" hidden />
+          </label>
+          <span class="upload-hint">Max 10 MB · PDF, JPEG, PNG, TIFF, EML</span>
+        </div>
+      </div>
+    }
+
+    <!-- ═══════════ TAB 3: Maintainability Questionnaire ═══════════ -->
+    @if (currentTab() === 'assessment') {
+      <div class="tab-content">
+        <div class="section-header">
+          <h3>Maintainability Assessment</h3>
+          <p class="help-text">Complete the questionnaire to determine if the complaint is Maintainable or Non-Maintainable.</p>
+        </div>
+
+        <div class="score-bar">
+          <span class="score-label">Maintainability Score:</span>
+          <div class="score-track">
+            <div class="score-fill" [style.width.%]="maintainabilityScore()"></div>
+          </div>
+          <span class="score-value" [class.high]="maintainabilityScore() >= 70" [class.low]="maintainabilityScore() < 40">
+            {{ maintainabilityScore() }}%
+          </span>
+        </div>
+
+        <div class="questions-list">
+          @for (q of maintainabilityQuestions; track q.id) {
+            <div class="question-item">
+              <p class="q-text">{{ q.id }}. {{ q.question }}</p>
+              <div class="q-options">
+                <label><input type="radio" [name]="q.id" value="YES" [(ngModel)]="q.answer" /> Yes</label>
+                <label><input type="radio" [name]="q.id" value="NO" [(ngModel)]="q.answer" /> No</label>
+                <label><input type="radio" [name]="q.id" value="NA" [(ngModel)]="q.answer" /> N/A</label>
+              </div>
+            </div>
+          }
+        </div>
+
+        @if (allQuestionsAnswered()) {
+          <div class="assessment-result">
+            @if (maintainabilityScore() >= 70) {
+              <p class="result-text maintainable"><i class="pi pi-check-circle"></i> Assessment indicates <strong>Maintainable</strong>.</p>
+            } @else if (maintainabilityScore() >= 40) {
+              <p class="result-text borderline"><i class="pi pi-exclamation-circle"></i> Borderline — DEO discretion required.</p>
+            } @else {
+              <p class="result-text non-maintainable"><i class="pi pi-times-circle"></i> Assessment indicates <strong>Non-Maintainable</strong>.</p>
+            }
+          </div>
+        }
+      </div>
+    }
+
+    <!-- ═══════════ TAB 4: Auto-Closure Screening (Sequential) ═══════════ -->
+    @if (currentTab() === 'screening') {
+      <div class="tab-content">
+        <div class="section-header">
+          <h3>Auto-Closure Screening Questions</h3>
+          <p class="help-text">Answer sequentially. If any answer triggers auto-closure, a closure clause will be proposed.</p>
+        </div>
+
+        <div class="screening-progress">
+          <span>Progress: {{ currentScreeningIndex() + (screeningQuestions()[currentScreeningIndex()].answer ? 1 : 0) }} / {{ screeningQuestions().length }}</span>
+          <button class="btn btn-sm btn-outline" (click)="resetScreening()"><i class="pi pi-refresh"></i> Reset</button>
+        </div>
+
+        <div class="screening-questions">
+          @for (q of screeningQuestions(); track q.id; let i = $index) {
+            <div class="screening-item"
+              [class.current]="i === currentScreeningIndex()"
+              [class.answered]="q.answer !== null"
+              [class.triggered]="q.answer === 'YES'"
+              [class.disabled]="i > currentScreeningIndex() && !screeningQuestions()[i-1]?.answer"
+            >
+              <div class="sq-number">{{ q.id }}</div>
+              <div class="sq-content">
+                <p class="sq-text">{{ q.question }}</p>
+                @if (i <= currentScreeningIndex() || q.answer !== null) {
+                  <div class="sq-options">
+                    <label [class.selected]="q.answer === 'YES'">
+                      <input type="radio" [name]="'screen_' + q.id" value="YES"
+                        [checked]="q.answer === 'YES'"
+                        (change)="answerScreening('YES')"
+                        [disabled]="q.answer !== null && i < currentScreeningIndex()" />
+                      Yes
+                    </label>
+                    <label [class.selected]="q.answer === 'NO'">
+                      <input type="radio" [name]="'screen_' + q.id" value="NO"
+                        [checked]="q.answer === 'NO'"
+                        (change)="answerScreening('NO')"
+                        [disabled]="q.answer !== null && i < currentScreeningIndex()" />
+                      No
+                    </label>
+                  </div>
+                  @if (q.answer === 'YES') {
+                    <p class="trigger-note"><i class="pi pi-exclamation-triangle"></i> Auto-closure clause: <strong>{{ q.closureClause }}</strong></p>
+                  }
+                }
+              </div>
+            </div>
+          }
+        </div>
+
+        @if (autoClosureTriggered()) {
+          <div class="auto-close-banner">
+            <i class="pi pi-exclamation-circle"></i>
+            <div>
+              <strong>Auto-Closure Recommended</strong>
+              <p>Clause: {{ autoClosureClause() }}. DEO can still override and proceed with routing to Reviewer.</p>
+            </div>
+          </div>
+        }
+
+        @if (allScreeningComplete() && !autoClosureTriggered()) {
+          <div class="screening-clear">
+            <i class="pi pi-check-circle"></i>
+            <span>All screening questions passed — no auto-closure triggers identified.</span>
+          </div>
+        }
+      </div>
+    }
+
+    <!-- ═══════════ TAB 5: Decision & Route — "Sent for Approval" ═══════════ -->
+    @if (currentTab() === 'route') {
+      <div class="tab-content">
+        <div class="section-header">
+          <h3>Decision & Routing</h3>
+          <p class="help-text">Mark as Maintainable or Non-Maintainable and route to Reviewer for approval.</p>
+        </div>
+
+        <!-- Decision -->
+        <div class="decision-section">
+          <h4>DEO Decision</h4>
+          <div class="decision-options">
+            <label class="decision-card" [class.selected]="deoDecision === 'MAINTAINABLE'">
+              <input type="radio" name="decision" value="MAINTAINABLE" [(ngModel)]="deoDecision" />
+              <i class="pi pi-check-circle"></i>
+              <span>New Complaint (Maintainable)</span>
+              <small>Complete all mandatory fields, attach documents, answer screening</small>
+            </label>
+            <label class="decision-card" [class.selected]="deoDecision === 'NON_MAINTAINABLE'">
+              <input type="radio" name="decision" value="NON_MAINTAINABLE" [(ngModel)]="deoDecision" />
+              <i class="pi pi-times-circle"></i>
+              <span>Not a Complaint (Non-Maintainable)</span>
+              <small>Select mandatory reason from dropdown, complete required fields</small>
+            </label>
+          </div>
+        </div>
+
+        <!-- Non-Maintainable Reason (Mandatory Dropdown) -->
+        @if (deoDecision === 'NON_MAINTAINABLE') {
+          <div class="nm-reason-section">
+            <h4>Non-Maintainable Reason *</h4>
+            <select [(ngModel)]="nonMaintainableReason" class="full-width-select">
+              <option value="">— Select Mandatory Reason —</option>
+              @for (r of nonMaintainableReasons; track r.value) {
+                <option [value]="r.value">{{ r.label }}</option>
+              }
+            </select>
+
+            <h4>Closure Tag</h4>
+            <select [(ngModel)]="closureTag">
+              <option value="">— Select Closure Tag (Optional) —</option>
+              @for (tag of closureTags; track tag.value) {
+                <option [value]="tag.value">{{ tag.label }}</option>
+              }
+            </select>
+          </div>
+        }
+
+        <!-- Vernacular Flag -->
+        @if (vernacular) {
+          <div class="vernacular-flag-section">
+            <i class="pi pi-flag"></i>
+            <span>This complaint is flagged as <strong>Vernacular</strong> ({{ vernacularLanguage || 'Language not specified' }}). Translation may be required before final assessment.</span>
+          </div>
+        }
+
+        <!-- Reviewer Routing -->
+        <div class="reviewer-section">
+          <h4>Route to Reviewer</h4>
+          <div class="routing-method">
+            <button class="btn btn-sm btn-primary" (click)="useRoundRobin()">
+              <i class="pi pi-sync"></i> Round Robin (Auto-Select)
+            </button>
+            <span class="or-text">or manually select below</span>
+          </div>
+
+          <div class="reviewer-list">
+            @for (rev of activeReviewers(); track rev.id) {
+              <label class="reviewer-card" [class.selected]="selectedReviewer === rev.id" [class.high-load]="rev.currentLoad >= 20">
+                <input type="radio" name="reviewer" [value]="rev.id" [(ngModel)]="selectedReviewer" />
+                <div class="rev-info">
+                  <strong>{{ rev.displayName }}</strong>
+                  <span class="load-indicator">{{ rev.currentLoad }}/{{ rev.maxLoad }} cases</span>
+                </div>
+                <div class="load-bar">
+                  <div class="load-fill" [style.width.%]="(rev.currentLoad / rev.maxLoad) * 100"></div>
+                </div>
+              </label>
+            }
+          </div>
+        </div>
+
+        <!-- DEO Remarks with Saved Comment Templates -->
+        <div class="remarks-section">
+          <h4>DEO Remarks (Audit Trail)</h4>
+          <div class="template-row">
+            <label>Saved Comment Template:</label>
+            <select [(ngModel)]="savedTemplateId" (ngModelChange)="applyTemplate($event)">
+              <option value="">— System Generated Templates (CRPC Admin maintained) —</option>
+              @for (tmpl of commentTemplates; track tmpl.id) {
+                <option [value]="tmpl.id">{{ tmpl.label }}</option>
+              }
+            </select>
+          </div>
+          <textarea
+            [(ngModel)]="deoRemarks"
+            rows="4"
+            placeholder="Add remarks for audit trail. These will be visible to the Reviewer."
+            aria-label="DEO remarks"
+          ></textarea>
+        </div>
+
+        <!-- Validation Summary -->
+        @if (deoDecision && !canSendForApproval()) {
+          <div class="validation-summary">
+            <h4><i class="pi pi-exclamation-triangle"></i> Cannot submit — resolve the following:</h4>
+            <ul>
+              @if (missingMandatoryFields().length > 0) {
+                <li>Complete mandatory fields: {{ missingMandatoryFields().join(', ') }}</li>
+              }
+              @if (deoDecision === 'NON_MAINTAINABLE' && !nonMaintainableReason) {
+                <li>Select a mandatory Non-Maintainable reason from the dropdown</li>
+              }
+              @if (deoDecision === 'MAINTAINABLE' && !allScreeningComplete()) {
+                <li>Complete all Auto-Closure Screening questions (Screening tab)</li>
+              }
+              @if (!selectedReviewer) {
+                <li>Select a Reviewer (Round Robin or manual override)</li>
+              }
+            </ul>
+          </div>
+        }
+
+        <!-- Sent for Approval Button -->
+        <div class="submit-actions">
+          <button class="btn btn-outline" (click)="saveDraft()" [disabled]="savingDraft()">
+            <i class="pi pi-save"></i> Save Draft
+          </button>
+          <button
+            class="btn btn-primary btn-lg"
+            (click)="sendForApproval()"
+            [disabled]="!canSendForApproval() || submitting()"
+          >
+            @if (submitting()) {
+              <span class="spinner-sm"></span> Sending...
+            } @else {
+              <i class="pi pi-send"></i> Sent for Approval
+            }
+          </button>
+        </div>
+      </div>
+    }
+  }
+</div>

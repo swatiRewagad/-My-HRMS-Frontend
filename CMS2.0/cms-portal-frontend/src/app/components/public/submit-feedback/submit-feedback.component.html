@@ -1,0 +1,113 @@
+@if (phase() === 'form') {
+  <div class="page-container">
+    <div class="card">
+      <h2>Share Your Feedback</h2>
+      <p class="subtitle">Help us improve by sharing your experience with the complaint resolution process.</p>
+
+      <!-- FR-G-030: Feedback form -->
+      <div class="form-group">
+        <label>Complaint Reference Number <span class="required">*</span></label>
+        <input type="text" class="form-input" [(ngModel)]="complaintId" name="complaintId"
+               placeholder="e.g., CMP-20260525-000001">
+      </div>
+
+      <!-- FR-G-031: Rating -->
+      <div class="rating-section">
+        <h3>Rate Your Experience</h3>
+
+        <div class="rating-group">
+          <label>Overall Experience <span class="required">*</span></label>
+          <div class="stars">
+            @for (star of [1,2,3,4,5]; track star) {
+              <button class="star-btn" [class.active]="star <= overallRating" (click)="setRating('overallRating', star)" type="button">
+                <i class="pi" [class.pi-star-fill]="star <= overallRating" [class.pi-star]="star > overallRating"></i>
+              </button>
+            }
+            @if (overallRating > 0) {
+              <span class="rating-text">{{ ratingLabels[overallRating] }}</span>
+            }
+          </div>
+        </div>
+
+        <div class="rating-group">
+          <label>Timeliness of Resolution</label>
+          <div class="stars">
+            @for (star of [1,2,3,4,5]; track star) {
+              <button class="star-btn" [class.active]="star <= timelinessRating" (click)="setRating('timelinessRating', star)" type="button">
+                <i class="pi" [class.pi-star-fill]="star <= timelinessRating" [class.pi-star]="star > timelinessRating"></i>
+              </button>
+            }
+            @if (timelinessRating > 0) {
+              <span class="rating-text">{{ ratingLabels[timelinessRating] }}</span>
+            }
+          </div>
+        </div>
+
+        <div class="rating-group">
+          <label>Communication Quality</label>
+          <div class="stars">
+            @for (star of [1,2,3,4,5]; track star) {
+              <button class="star-btn" [class.active]="star <= communicationRating" (click)="setRating('communicationRating', star)" type="button">
+                <i class="pi" [class.pi-star-fill]="star <= communicationRating" [class.pi-star]="star > communicationRating"></i>
+              </button>
+            }
+            @if (communicationRating > 0) {
+              <span class="rating-text">{{ ratingLabels[communicationRating] }}</span>
+            }
+          </div>
+        </div>
+
+        <div class="rating-group">
+          <label>Satisfaction with Outcome</label>
+          <div class="stars">
+            @for (star of [1,2,3,4,5]; track star) {
+              <button class="star-btn" [class.active]="star <= satisfactionRating" (click)="setRating('satisfactionRating', star)" type="button">
+                <i class="pi" [class.pi-star-fill]="star <= satisfactionRating" [class.pi-star]="star > satisfactionRating"></i>
+              </button>
+            }
+            @if (satisfactionRating > 0) {
+              <span class="rating-text">{{ ratingLabels[satisfactionRating] }}</span>
+            }
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Additional Feedback</label>
+        <textarea class="form-textarea" [(ngModel)]="feedbackText" name="feedbackText" rows="4"
+                  placeholder="Share your experience in detail..."></textarea>
+      </div>
+
+      <div class="form-group">
+        <label>Suggestions for Improvement</label>
+        <textarea class="form-textarea" [(ngModel)]="suggestions" name="suggestions" rows="3"
+                  placeholder="Any suggestions to improve our services?"></textarea>
+      </div>
+
+      @if (error) {
+        <div class="error-msg"><i class="pi pi-exclamation-circle"></i> {{ error }}</div>
+      }
+
+      <div class="form-actions">
+        <button class="btn-secondary" (click)="goHome()">Cancel</button>
+        <button class="btn-primary" (click)="submit()" [disabled]="submitting()">
+          @if (submitting()) { <i class="pi pi-spinner pi-spin"></i> Submitting... }
+          @else { <i class="pi pi-send"></i> Submit Feedback }
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (phase() === 'success') {
+  <div class="page-container">
+    <div class="card success-card">
+      <div class="success-icon"><i class="pi pi-check-circle"></i></div>
+      <h2>Thank You for Your Feedback!</h2>
+      <p>Your feedback for complaint <strong>{{ complaintId }}</strong> has been recorded. It helps us improve our services.</p>
+      <div class="form-actions center">
+        <button class="btn-primary" (click)="goHome()"><i class="pi pi-home"></i> Go to Homepage</button>
+      </div>
+    </div>
+  </div>
+}

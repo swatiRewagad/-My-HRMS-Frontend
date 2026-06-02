@@ -1,0 +1,106 @@
+/* Poppins font loaded locally - no external CDN dependency */
+
+:root {
+  --font-primary: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --color-primary: #626ff2;
+  --color-primary-dark: #3c45a2;
+  --color-accent: #eb5a00;
+  --color-accent-hover: #d14e00;
+  --color-text: #1a1a1a;
+  --color-text-secondary: #5b5d61;
+  --color-text-muted: #797a80;
+  --color-border: #d1d7e0;
+  --color-bg: #ffffff;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: var(--font-primary);
+  background: var(--color-bg);
+  color: var(--color-text);
+  -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #d1d7e0; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #b0b8c4; }
+
+// ═══════ Accessibility: Focus Visible ═══════
+*:focus-visible {
+  outline: 3px solid #ff8c00;
+  outline-offset: 2px;
+}
+
+// ═══════ Accessibility: Reduced Motion ═══════
+.reduced-motion,
+.reduced-motion * {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
+// ═══════ Accessibility: High Contrast Mode ═══════
+.high-contrast {
+  --color-bg: #000000;
+  --color-text: #ffffff;
+  --color-text-secondary: #ffff00;
+  --color-text-muted: #00ffff;
+  --color-border: #ffff00;
+  --color-primary: #ffff00;
+  --color-primary-dark: #ffff00;
+  --color-accent: #00ff00;
+  --color-accent-hover: #00cc00;
+
+  background: #000 !important;
+  color: #fff !important;
+
+  a { color: #ffff00 !important; }
+  a:hover { color: #ffffff !important; text-decoration: underline !important; }
+
+  button {
+    border: 1px solid #ffff00 !important;
+    color: #ffff00 !important;
+    background: #000 !important;
+    &:hover { background: #333 !important; color: #fff !important; }
+  }
+
+  input, select, textarea {
+    background: #000 !important;
+    color: #fff !important;
+    border: 2px solid #ffff00 !important;
+  }
+
+  img { filter: grayscale(100%) contrast(1.5); }
+
+  section, .press-card, .education-card, .stat-item, .faq-item, .ct-icon-card {
+    border: 1px solid #ffff00 !important;
+  }
+
+  .status-badge {
+    border: 1px solid #ffff00 !important;
+    color: #ffff00 !important;
+    background: transparent !important;
+  }
+
+  table {
+    border: 1px solid #ffff00 !important;
+    th, td { border: 1px solid #ffff00 !important; color: #fff !important; }
+    th { background: #222 !important; }
+  }
+}
+
+// ═══════ Accessibility: Screen reader only utility ═══════
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

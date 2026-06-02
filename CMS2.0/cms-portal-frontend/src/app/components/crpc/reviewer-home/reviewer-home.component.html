@@ -1,0 +1,97 @@
+<div class="reviewer-home">
+  <!-- User Bar -->
+  <div class="user-bar">
+    <div class="user-info">
+      <i class="pi pi-user"></i>
+      <span class="user-name">{{ loggedInUser?.name }}</span>
+      <span class="user-role">{{ loggedInUser?.role }}</span>
+      <span class="user-id">({{ loggedInUser?.id }})</span>
+    </div>
+    <button class="btn btn-outline btn-logout" (click)="logout()">
+      <i class="pi pi-sign-out"></i> Logout
+    </button>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-bar">
+    <div class="stat-card" (click)="filterStatus = ''">
+      <span class="stat-value">{{ stats().total }}</span>
+      <span class="stat-label">Total</span>
+    </div>
+    <div class="stat-card pending" (click)="filterStatus = 'PENDING_REVIEW'">
+      <span class="stat-value">{{ stats().pending }}</span>
+      <span class="stat-label">Pending Review</span>
+    </div>
+    <div class="stat-card approved" (click)="filterStatus = 'APPROVED'">
+      <span class="stat-value">{{ stats().approved }}</span>
+      <span class="stat-label">Approved</span>
+    </div>
+    <div class="stat-card sent-back" (click)="filterStatus = 'SENT_BACK'">
+      <span class="stat-value">{{ stats().sentBack }}</span>
+      <span class="stat-label">Sent Back</span>
+    </div>
+    <div class="stat-card closed" (click)="filterStatus = 'CLOSED_NM'">
+      <span class="stat-value">{{ stats().closedNm }}</span>
+      <span class="stat-label">Closed (NM)</span>
+    </div>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <h2>Reviewer Queue</h2>
+    <div class="toolbar-right">
+      <input type="text" class="search-input" placeholder="Search..." [(ngModel)]="searchText" aria-label="Search" />
+      <select [(ngModel)]="filterDeoDecision" aria-label="Filter by DEO decision">
+        <option value="">All Decisions</option>
+        <option value="MAINTAINABLE">Maintainable</option>
+        <option value="NON_MAINTAINABLE">Non-Maintainable</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Grid -->
+  <div class="grid-container">
+    @if (loading()) {
+      <div class="loading-overlay"><div class="spinner"></div></div>
+    }
+
+    <table class="data-grid" aria-label="Reviewer queue">
+      <thead>
+        <tr>
+          <th>Draft ID</th>
+          <th>Subject</th>
+          <th>Category</th>
+          <th>DEO Decision</th>
+          <th>DEO</th>
+          <th>Mode</th>
+          <th>Ageing</th>
+          <th>Priority</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (draft of filteredDrafts(); track draft.draftId) {
+          <tr [class.vernacular-row]="draft.vernacular">
+            <td><a class="draft-link" (click)="openDraft(draft.draftId)">{{ draft.draftId }}</a></td>
+            <td class="subject-cell">{{ draft.subject }}</td>
+            <td>{{ draft.category }}</td>
+            <td>
+              <span class="deo-badge" [attr.data-decision]="draft.deoDecision">{{ draft.deoDecision }}</span>
+            </td>
+            <td>{{ draft.deoName }}</td>
+            <td>{{ draft.modeOfReceipt }}</td>
+            <td>{{ draft.ageing }}d</td>
+            <td><span class="priority-badge" [attr.data-priority]="draft.priority">{{ draft.priority }}</span></td>
+            <td><span class="status-badge" [attr.data-status]="draft.status">{{ draft.status }}</span></td>
+            <td>
+              <button class="btn btn-sm btn-primary" (click)="openDraft(draft.draftId)">Review</button>
+            </td>
+          </tr>
+        } @empty {
+          <tr><td colspan="10" class="empty-state"><p>No drafts pending review.</p></td></tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</div>

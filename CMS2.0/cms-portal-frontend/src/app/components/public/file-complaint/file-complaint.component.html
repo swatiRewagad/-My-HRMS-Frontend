@@ -1,0 +1,751 @@
+<!-- Session Timer Bar -->
+@if (sessionActive()) {
+  <div class="session-bar">
+    <div class="container session-bar-inner">
+      <span><i class="pi pi-clock"></i> Session Time: {{ sessionMinutes }}</span>
+      <div class="session-actions">
+        @if (draftSaved()) {
+          <span class="draft-badge"><i class="pi pi-check"></i> Draft Saved</span>
+        }
+        <button class="btn-link" (click)="saveDraft()"><i class="pi pi-save"></i> Save Draft</button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ══════ LOGIN PHASE ══════ -->
+@if (phase() === 'login') {
+  <div class="page-container">
+    <div class="login-card">
+      <h2>File a Complaint</h2>
+      <p class="login-subtitle">Login to proceed with your complaint filing</p>
+
+      <!-- Login Mode Tabs -->
+      <div class="login-tabs">
+        <button class="login-tab" [class.active]="loginMode() === 'mobile'" (click)="switchLoginMode('mobile')">
+          <i class="pi pi-mobile"></i> Mobile + OTP
+        </button>
+        <button class="login-tab" [class.active]="loginMode() === 'email'" (click)="switchLoginMode('email')">
+          <i class="pi pi-envelope"></i> Email + Password
+        </button>
+      </div>
+
+      <!-- Mobile + OTP Mode -->
+      @if (loginMode() === 'mobile') {
+        @if (!otpSent()) {
+          <div class="login-form">
+            <div class="form-group">
+              <label>Mobile Number <span class="required">*</span></label>
+              <div class="phone-input-wrapper">
+                <span class="country-code">+91</span>
+                <input type="tel" class="form-input" [(ngModel)]="loginMobile" name="loginMobile"
+                       placeholder="Enter 10-digit mobile number" maxlength="10">
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Enter Captcha <span class="required">*</span></label>
+              <div class="captcha-row">
+                <div class="captcha-display">{{ captchaText }}</div>
+                <button class="refresh-captcha" (click)="generateCaptcha()" type="button">
+                  <i class="pi pi-refresh"></i>
+                </button>
+                <input type="text" class="form-input captcha-input" [(ngModel)]="captchaInput" name="captcha"
+                       placeholder="Enter captcha text">
+              </div>
+            </div>
+            @if (loginError) {
+              <div class="error-msg"><i class="pi pi-exclamation-circle"></i> {{ loginError }}</div>
+            }
+            <button class="btn-primary full-width" (click)="sendOtp()">Send OTP</button>
+          </div>
+        } @else {
+          <div class="otp-section">
+            <h3>Verify OTP</h3>
+            <p class="otp-subtitle">We have sent a 6-digit code to +91 {{ loginMobile }}</p>
+            <div class="otp-inputs">
+              @for (d of otpDigits; track $index; let i = $index) {
+                <input type="text" maxlength="1" class="otp-digit"
+                       [value]="otpDigits[i]"
+                       (input)="onOtpInput(i, $event)"
+                       (keydown)="onOtpKeydown(i, $event)">
+              }
+            </div>
+            @if (otpError) {
+              <div class="error-msg"><i class="pi pi-exclamation-circle"></i> {{ otpError }}</div>
+            }
+            <p class="resend-link">
+              Didn't receive the code?
+              <button class="link-btn" (click)="resendOtp()" [disabled]="resendTimer > 0">
+                Resend {{ resendTimer > 0 ? '(' + resendTimer + 's)' : '' }}
+              </button>
+            </p>
+            <div class="otp-actions">
+              <button class="btn-secondary" (click)="cancelVerification()">Cancel</button>
+              <button class="btn-primary" (click)="verifyOtp()">Verify & Proceed</button>
+            </div>
+          </div>
+        }
+      }
+
+      <!-- Email + Password Mode -->
+      @if (loginMode() === 'email') {
+        <div class="login-form">
+          <div class="form-group">
+            <label>Email Address <span class="required">*</span></label>
+            <input type="email" class="form-input" [(ngModel)]="loginEmail" name="loginEmail"
+                   placeholder="Enter your email address">
+          </div>
+          <div class="form-group">
+            <label>Password <span class="required">*</span></label>
+            <input type="password" class="form-input" [(ngModel)]="loginPassword" name="loginPassword"
+                   placeholder="Enter your password">
+          </div>
+          <div class="form-group">
+            <label>Enter Captcha <span class="required">*</span></label>
+            <div class="captcha-row">
+              <div class="captcha-display">{{ captchaText }}</div>
+              <button class="refresh-captcha" (click)="generateCaptcha()" type="button">
+                <i class="pi pi-refresh"></i>
+              </button>
+              <input type="text" class="form-input captcha-input" [(ngModel)]="captchaInput" name="captchaEmail"
+                     placeholder="Enter captcha text">
+            </div>
+          </div>
+          @if (loginError) {
+            <div class="error-msg"><i class="pi pi-exclamation-circle"></i> {{ loginError }}</div>
+          }
+          <button class="btn-primary full-width" (click)="loginWithPassword()">Login & Proceed</button>
+        </div>
+      }
+    </div>
+  </div>
+}
+
+<!-- ══════ ELIGIBILITY PHASE ══════ -->
+@if (phase() === 'eligibility') {
+  <div class="page-container">
+    <div class="eligibility-card">
+      <h2>Eligibility Check</h2>
+      <p class="eligibility-subtitle">Please answer the following questions to determine if your complaint is eligible.</p>
+
+      <!-- Progress -->
+      <div class="step-progress">
+        @for (q of eligibilityQuestions; track q.key; let i = $index) {
+          <div class="progress-dot" [class.active]="i < eligibilityStep()" [class.current]="i === eligibilityStep() - 1"></div>
+          @if (i < eligibilityQuestions.length - 1) {
+            <div class="progress-line" [class.active]="i < eligibilityStep() - 1"></div>
+          }
+        }
+      </div>
+
+      <!-- Question -->
+      <div class="question-content">
+        <p class="question-number">Question {{ eligibilityStep() }} of {{ totalEligibilitySteps }}</p>
+        <p class="question-text">{{ currentQuestion.question }}</p>
+
+        @if (currentQuestion.type === 'select') {
+          <select class="form-select" [ngModel]="eligibilityAnswers[currentQuestion.key]"
+                  (ngModelChange)="selectEligibilityAnswer($event)" [attr.name]="currentQuestion.key">
+            <option value="">-- Select --</option>
+            @for (opt of currentQuestion.options; track opt.value) {
+              <option [value]="opt.value">{{ opt.label }}</option>
+            }
+          </select>
+        }
+
+        @if (currentQuestion.type === 'radio') {
+          <div class="radio-group">
+            @for (opt of currentQuestion.options; track opt.value) {
+              <label class="radio-label" [class.selected]="eligibilityAnswers[currentQuestion.key] === opt.value">
+                <input type="radio" [name]="currentQuestion.key" [value]="opt.value"
+                       [ngModel]="eligibilityAnswers[currentQuestion.key]" (ngModelChange)="selectEligibilityAnswer($event)">
+                {{ opt.label }}
+              </label>
+            }
+          </div>
+        }
+
+        @if (currentQuestion.key === 'filedWithRE' && eligibilityAnswers['filedWithRE'] === 'yes') {
+          <div class="sub-field">
+            <label>Date on which the complaint was first filed with the Regulated Entity</label>
+            <input type="date" class="form-input" [(ngModel)]="formData['bankComplaintDate']" name="bankComplaintDate">
+          </div>
+          <div class="info-note">
+            <i class="pi pi-info-circle"></i>
+            You will be asked to upload a screenshot/copy of the filed complaint in the next steps.
+          </div>
+        }
+      </div>
+
+      @if (eligibilityBlocked()) {
+        <div class="block-note">
+          <div class="block-note-header">
+            <i class="pi pi-exclamation-triangle"></i>
+            <h4>Non-Maintainable</h4>
+          </div>
+          <p>{{ eligibilityBlockMessage() }}</p>
+          @if (currentQuestion.nonMaintainable) {
+            <button class="btn-primary" (click)="nextEligibility()">Create Complaint Closure</button>
+          }
+        </div>
+      }
+
+      @if (!eligibilityBlocked() && eligibilityStep() === totalEligibilitySteps && eligibilityAnswers[currentQuestion.key]) {
+        <div class="eligibility-passed">
+          <i class="pi pi-check-circle"></i>
+          <div>
+            <strong>Eligibility Passed</strong>
+            <p>You are eligible to file a complaint under RBI Integrated Ombudsman Scheme, 2021.</p>
+          </div>
+        </div>
+      }
+
+      @if (!eligibilityBlocked()) {
+        <div class="form-actions">
+          <button class="btn-secondary" (click)="prevEligibility()" [disabled]="eligibilityStep() === 1">Back</button>
+          <button class="btn-primary" (click)="nextEligibility()"
+                  [disabled]="!eligibilityAnswers[currentQuestion.key]">
+            {{ eligibilityStep() === totalEligibilitySteps ? 'Proceed to Complaint Form' : 'Next' }}
+          </button>
+        </div>
+      }
+    </div>
+  </div>
+}
+
+<!-- ══════ MULTI-STEP FORM PHASE ══════ -->
+@if (phase() === 'form') {
+  <div class="page-container">
+    <div class="form-card">
+      <!-- Step Progress Bar -->
+      <div class="step-header">
+        <div class="step-bar">
+          @for (title of stepTitles; track title; let i = $index) {
+            <div class="step-item" [class.active]="i < currentStep()" [class.current]="i === currentStep() - 1"
+                 (click)="goToStep(i + 1)">
+              <div class="step-number">{{ i + 1 }}</div>
+              <span class="step-title">{{ title }}</span>
+            </div>
+            @if (i < stepTitles.length - 1) {
+              <div class="step-connector" [class.active]="i < currentStep() - 1"></div>
+            }
+          }
+        </div>
+      </div>
+
+      <!-- Step 1: Complainant Details -->
+      @if (currentStep() === 1) {
+        <div class="step-content" (keydown)="onStepKeydown($event)">
+          <h3>Complainant Details</h3>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Full Name <span class="required">*</span> <i class="pi pi-info-circle tooltip-icon" [title]="tooltips['name']"></i></label>
+              <input type="text" class="form-input" [class.invalid]="validationErrors['name']" [(ngModel)]="formData['name']" name="name" placeholder="Enter full name">
+              @if (validationErrors['name']) { <span class="field-error">{{ validationErrors['name'] }}</span> }
+            </div>
+            <div class="form-group">
+              <label>Email ID <i class="pi pi-info-circle tooltip-icon" [title]="tooltips['email']"></i></label>
+              <input type="email" class="form-input" [class.invalid]="validationErrors['email']" [(ngModel)]="formData['email']" name="email" placeholder="email@example.com">
+              @if (validationErrors['email']) { <span class="field-error">{{ validationErrors['email'] }}</span> }
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Complainant Category <i class="pi pi-info-circle tooltip-icon" [title]="tooltips['complainantCategory']"></i></label>
+              <select class="form-select" [(ngModel)]="formData['complainantCategory']" name="complainantCategory">
+                <option value="individual">Individual</option>
+                <option value="business">Business Entity</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Mobile Number</label>
+              <input type="tel" class="form-input" [(ngModel)]="formData['phone']" name="phone" readonly>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>State <span class="required">*</span> <i class="pi pi-info-circle tooltip-icon" [title]="tooltips['state']"></i></label>
+              <select class="form-select" [class.invalid]="validationErrors['state']" [(ngModel)]="formData['state']" name="state">
+                <option value="">Select State</option>
+                @for (s of states; track s.value) {
+                  <option [value]="s.value">{{ s.label }}</option>
+                }
+              </select>
+              @if (validationErrors['state']) { <span class="field-error">{{ validationErrors['state'] }}</span> }
+            </div>
+            <div class="form-group">
+              <label>District</label>
+              <input type="text" class="form-input" [(ngModel)]="formData['district']" name="district" placeholder="Enter district">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Pincode <span class="required">*</span> <i class="pi pi-info-circle tooltip-icon" [title]="tooltips['pincode']"></i></label>
+              <input type="text" class="form-input" [class.invalid]="validationErrors['pincode']" [(ngModel)]="formData['pincode']" name="pincode" maxlength="6" placeholder="6-digit pincode">
+              @if (validationErrors['pincode']) { <span class="field-error">{{ validationErrors['pincode'] }}</span> }
+            </div>
+          </div>
+          <div class="form-group full-width">
+            <label>Address</label>
+            <textarea class="form-textarea" [(ngModel)]="formData['address']" name="address" rows="3" placeholder="Enter complete address"></textarea>
+          </div>
+        </div>
+      }
+
+      <!-- Step 2: Regulated Entity Details -->
+      @if (currentStep() === 2) {
+        <div class="step-content">
+          <h3>Regulated Entity Details</h3>
+          <div class="entity-banner">
+            <i class="pi pi-building"></i>
+            <strong>{{ getSelectedBankName() }}</strong>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Date of complaint filed with RE</label>
+              <input type="date" class="form-input" [value]="formData['bankComplaintDate']" readonly>
+            </div>
+            <div class="form-group">
+              <label>Complaint Reference Number (from RE)</label>
+              <input type="text" class="form-input" [(ngModel)]="formData['bankComplaintRef']" name="bankComplaintRef"
+                     placeholder="Enter reference number">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Date of the disputed transaction</label>
+            <input type="date" class="form-input" [(ngModel)]="formData['disputeDate']" name="disputeDate">
+          </div>
+
+          <div class="form-group full-width">
+            <label>Have you received any reply from the Regulated Entity?</label>
+            <div class="radio-group horizontal">
+              <label class="radio-label" [class.selected]="formData['receivedReplyFromEntity'] === 'yes'">
+                <input type="radio" name="receivedReply" value="yes" [(ngModel)]="formData['receivedReplyFromEntity']"> Yes
+              </label>
+              <label class="radio-label" [class.selected]="formData['receivedReplyFromEntity'] === 'no'">
+                <input type="radio" name="receivedReply" value="no" [(ngModel)]="formData['receivedReplyFromEntity']"> No
+              </label>
+            </div>
+          </div>
+
+          @if (formData['receivedReplyFromEntity'] === 'yes') {
+            <div class="form-group">
+              <label>Date of reply received</label>
+              <input type="date" class="form-input" [(ngModel)]="formData['replyDate']" name="replyDate">
+            </div>
+          }
+
+          <div class="form-group full-width">
+            <label>Is your complaint against the wallet of the Regulated Entity?</label>
+            <div class="radio-group horizontal">
+              <label class="radio-label" [class.selected]="formData['isWalletComplaint'] === 'yes'">
+                <input type="radio" name="wallet" value="yes" [(ngModel)]="formData['isWalletComplaint']"> Yes
+              </label>
+              <label class="radio-label" [class.selected]="formData['isWalletComplaint'] === 'no'">
+                <input type="radio" name="wallet" value="no" [(ngModel)]="formData['isWalletComplaint']"> No
+              </label>
+            </div>
+          </div>
+
+          @if (formData['isWalletComplaint'] === 'yes') {
+            <div class="form-row">
+              <div class="form-group">
+                <label>Name of the Wallet</label>
+                <input type="text" class="form-input" [(ngModel)]="formData['walletName']" name="walletName" placeholder="Enter wallet name">
+              </div>
+              <div class="form-group">
+                <label>Transaction / Reference Number</label>
+                <input type="text" class="form-input" [(ngModel)]="formData['transactionRefNumber']" name="transactionRefNumber"
+                       placeholder="Enter transaction ref">
+              </div>
+            </div>
+          }
+
+          <div class="form-group full-width">
+            <label>Is your complaint against a Business Correspondent?</label>
+            <div class="radio-group horizontal">
+              <label class="radio-label" [class.selected]="formData['isBusinessCorrespondent'] === 'yes'">
+                <input type="radio" name="bizCorr" value="yes" [(ngModel)]="formData['isBusinessCorrespondent']"> Yes
+              </label>
+              <label class="radio-label" [class.selected]="formData['isBusinessCorrespondent'] === 'no'">
+                <input type="radio" name="bizCorr" value="no" [(ngModel)]="formData['isBusinessCorrespondent']"> No
+              </label>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>ATM / Credit / Debit Card Number</label>
+              <input type="text" class="form-input" [(ngModel)]="formData['cardNumber']" name="cardNumber" placeholder="Enter card number">
+            </div>
+            <div class="form-group">
+              <label>Loan / Deposit Account Number</label>
+              <input type="text" class="form-input" [(ngModel)]="formData['loanAccountNumber']" name="loanAccountNumber"
+                     placeholder="Enter account number">
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- Step 3: Complaint Details -->
+      @if (currentStep() === 3) {
+        <div class="step-content" (keydown)="onStepKeydown($event)">
+          <h3>Complaint Details</h3>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Complaint Category <span class="required">*</span> <i class="pi pi-info-circle tooltip-icon" [title]="tooltips['complaintCategory']"></i></label>
+              <select class="form-select" [class.invalid]="validationErrors['complaintCategory']" [(ngModel)]="formData['complaintCategory']" name="complaintCategory"
+                      (ngModelChange)="onCategoryChange()">
+                <option value="">Select Category</option>
+                @for (c of categories; track c.value) {
+                  <option [value]="c.value">{{ c.label }}</option>
+                }
+              </select>
+              @if (validationErrors['complaintCategory']) { <span class="field-error">{{ validationErrors['complaintCategory'] }}</span> }
+            </div>
+            <div class="form-group">
+              <label>Sub-Category <span class="required">*</span> <i class="pi pi-info-circle tooltip-icon" [title]="tooltips['subCategory1']"></i></label>
+              <select class="form-select" [class.invalid]="validationErrors['subCategory1']" [(ngModel)]="formData['subCategory1']" name="subCategory1"
+                      [disabled]="!formData['complaintCategory']">
+                <option value="">Select Sub-Category</option>
+                @for (sc of filteredSubCategories; track sc.value) {
+                  <option [value]="sc.value">{{ sc.label }}</option>
+                }
+              </select>
+              @if (validationErrors['subCategory1']) { <span class="field-error">{{ validationErrors['subCategory1'] }}</span> }
+            </div>
+          </div>
+
+          <div class="form-group full-width">
+            <label>Facts of the Complaint / Deficiency in Service <span class="required">*</span> <i class="pi pi-info-circle tooltip-icon" [title]="tooltips['complaintText']"></i></label>
+            <div class="textarea-wrapper">
+              <textarea class="form-textarea" [class.invalid]="validationErrors['complaintText']" [(ngModel)]="formData['complaintText']" name="complaintText" rows="6"
+                        placeholder="Describe your complaint in detail..."></textarea>
+              @if (speechSupported) {
+                <button class="speech-btn" [class.recording]="isRecording()" (click)="toggleRecording()"
+                        type="button" title="Voice input">
+                  <i class="pi" [class.pi-microphone]="!isRecording()" [class.pi-stop]="isRecording()"></i>
+                </button>
+              }
+            </div>
+            @if (validationErrors['complaintText']) { <span class="field-error">{{ validationErrors['complaintText'] }}</span> }
+            @if (isRecording()) {
+              <span class="recording-indicator"><i class="pi pi-circle-fill"></i> Recording...</span>
+            }
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Dispute Amount (₹) <i class="pi pi-info-circle tooltip-icon" [title]="tooltips['disputeAmount']"></i></label>
+              <input type="text" class="form-input" [(ngModel)]="formData['disputeAmount']" name="disputeAmount"
+                     placeholder="Enter amount">
+            </div>
+            <div class="form-group">
+              <label>Compensation Sought (₹) <i class="pi pi-info-circle tooltip-icon" [title]="tooltips['compensationSought']"></i></label>
+              <input type="text" class="form-input" [(ngModel)]="formData['compensationSought']" name="compensationSought"
+                     placeholder="Enter amount">
+            </div>
+          </div>
+
+          <div class="form-group full-width">
+            <label>Relief Sought <i class="pi pi-info-circle tooltip-icon" [title]="tooltips['reliefSought']"></i></label>
+            <textarea class="form-textarea" [(ngModel)]="formData['reliefSought']" name="reliefSought" rows="3"
+                      placeholder="Describe the relief you are seeking..."></textarea>
+          </div>
+
+          <!-- File Upload (NFR-006: Validated) -->
+          <div class="form-group full-width">
+            <label>Upload Supporting Documents</label>
+            <div class="file-upload-area">
+              <input type="file" id="fileInput" multiple (change)="onFilesSelected($event)"
+                     accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.xls,.xlsx"
+                     class="file-input-hidden" aria-describedby="fileHint">
+              <label for="fileInput" class="file-upload-label">
+                <i class="pi pi-cloud-upload"></i>
+                <span>Click to upload or drag and drop</span>
+                <small id="fileHint">PDF, DOC, JPG, PNG, XLS (Max 5MB each, 10 files max)</small>
+              </label>
+            </div>
+            @if (fileUploadError) {
+              <div class="error-msg"><i class="pi pi-exclamation-circle"></i> {{ fileUploadError }}</div>
+            }
+            @if (attachmentPreviews.length > 0) {
+              <div class="file-list">
+                @for (f of attachmentPreviews; track $index; let i = $index) {
+                  <div class="file-chip">
+                    <i class="pi pi-file"></i>
+                    <span class="file-name">{{ f.name }}</span>
+                    <button class="preview-file" (click)="previewAttachment(i)" type="button" title="Preview">
+                      <i class="pi pi-eye"></i>
+                    </button>
+                    <button class="remove-file" (click)="removeAttachment(i)" type="button" title="Remove">
+                      <i class="pi pi-times"></i>
+                    </button>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+      <!-- Step 4: Authorised Representative -->
+      @if (currentStep() === 4) {
+        <div class="step-content">
+          <h3>Authorised Representative</h3>
+          <p class="step-subtitle">The system does not accept complaint filed through an advocate (unless you are yourself an advocate).</p>
+
+          <div class="form-group full-width">
+            <label>Are you filing the complaint through an advocate?</label>
+            <div class="radio-group horizontal">
+              <label class="radio-label" [class.selected]="formData['throughAdvocate'] === 'yes'">
+                <input type="radio" name="throughAdvocate" value="yes" [(ngModel)]="formData['throughAdvocate']"> Yes
+              </label>
+              <label class="radio-label" [class.selected]="formData['throughAdvocate'] === 'no'">
+                <input type="radio" name="throughAdvocate" value="no" [(ngModel)]="formData['throughAdvocate']"> No
+              </label>
+            </div>
+          </div>
+
+          <div class="form-group full-width">
+            <label>Do you wish to authorize a representative to appear before the Ombudsman on your behalf?</label>
+            <div class="radio-group horizontal">
+              <label class="radio-label" [class.selected]="formData['authorizeRepresentative'] === 'yes'">
+                <input type="radio" name="authRep" value="yes" [(ngModel)]="formData['authorizeRepresentative']"> Yes
+              </label>
+              <label class="radio-label" [class.selected]="formData['authorizeRepresentative'] === 'no'">
+                <input type="radio" name="authRep" value="no" [(ngModel)]="formData['authorizeRepresentative']"> No
+              </label>
+            </div>
+          </div>
+
+          @if (formData['authorizeRepresentative'] === 'yes') {
+            <div class="rep-details">
+              <h4>Representative Details</h4>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Representative Name <span class="required">*</span></label>
+                  <input type="text" class="form-input" [(ngModel)]="formData['repName']" name="repName"
+                         placeholder="Enter name">
+                </div>
+                <div class="form-group">
+                  <label>Phone Number</label>
+                  <input type="tel" class="form-input" [(ngModel)]="formData['repPhone']" name="repPhone"
+                         placeholder="Enter phone number">
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Email</label>
+                  <input type="email" class="form-input" [(ngModel)]="formData['repEmail']" name="repEmail"
+                         placeholder="Enter email">
+                </div>
+              </div>
+              <div class="form-group full-width">
+                <label>Address</label>
+                <textarea class="form-textarea" [(ngModel)]="formData['repAddress']" name="repAddress" rows="2"
+                          placeholder="Enter address"></textarea>
+              </div>
+            </div>
+          }
+        </div>
+      }
+
+      <!-- Step 5: Declaration -->
+      @if (currentStep() === 5) {
+        <div class="step-content">
+          <h3>Declaration</h3>
+          <div class="declaration-box">
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="declarationChecked" name="declaration">
+              <span>I, the above named complainant, hereby declare that:</span>
+            </label>
+            <ul class="declaration-list">
+              <li>The particulars given above are true and correct to the best of my knowledge and belief.</li>
+              <li>I have not concealed or misrepresented any fact stated above or in the documents submitted herewith.</li>
+              <li>The complaint is filed before the expiry of a period of one year, reckoned in accordance with the provisions of clause 10(1) of the Reserve Bank - Integrated Ombudsman Scheme, 2021.</li>
+              <li>The subject matter of the complaint is not pending before / has not been dealt with by any other forum / Court / Arbitrator.</li>
+            </ul>
+          </div>
+        </div>
+      }
+
+      <!-- Step 6: Review and Submit -->
+      @if (currentStep() === 6) {
+        <div class="step-content review-step">
+          <h3>Review and Submit</h3>
+          <p class="review-subtitle">Please review all details before submitting your complaint.</p>
+
+          <div class="review-section">
+            <h4>Complainant Details</h4>
+            <div class="review-grid">
+              <div class="review-row">
+                <span class="review-label">Name</span>
+                <span class="review-value">{{ formData['name'] || '—' }}</span>
+              </div>
+              <div class="review-row">
+                <span class="review-label">Mobile</span>
+                <span class="review-value">+91 {{ formData['phone'] || '—' }}</span>
+              </div>
+              <div class="review-row">
+                <span class="review-label">Email</span>
+                <span class="review-value">{{ formData['email'] || '—' }}</span>
+              </div>
+              <div class="review-row">
+                <span class="review-label">State</span>
+                <span class="review-value">{{ formData['state'] || '—' }}</span>
+              </div>
+              <div class="review-row">
+                <span class="review-label">Pincode</span>
+                <span class="review-value">{{ formData['pincode'] || '—' }}</span>
+              </div>
+              <div class="review-row full-width">
+                <span class="review-label">Address</span>
+                <span class="review-value">{{ formData['address'] || '—' }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="review-section">
+            <h4>Regulated Entity</h4>
+            <div class="review-grid">
+              <div class="review-row">
+                <span class="review-label">Entity Name</span>
+                <span class="review-value">{{ getSelectedBankName() }}</span>
+              </div>
+              <div class="review-row">
+                <span class="review-label">Complaint Date (with RE)</span>
+                <span class="review-value">{{ formData['bankComplaintDate'] || '—' }}</span>
+              </div>
+              <div class="review-row">
+                <span class="review-label">Dispute Transaction Date</span>
+                <span class="review-value">{{ formData['disputeDate'] || '—' }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="review-section">
+            <h4>Complaint Details</h4>
+            <div class="review-grid">
+              <div class="review-row">
+                <span class="review-label">Category</span>
+                <span class="review-value">{{ formData['complaintCategory'] || '—' }}</span>
+              </div>
+              <div class="review-row">
+                <span class="review-label">Dispute Amount</span>
+                <span class="review-value">{{ formData['disputeAmount'] ? '₹' + formData['disputeAmount'] : '—' }}</span>
+              </div>
+              <div class="review-row full-width">
+                <span class="review-label">Complaint Facts</span>
+                <span class="review-value">{{ formData['complaintText'] || '—' }}</span>
+              </div>
+            </div>
+          </div>
+
+          @if (attachmentPreviews.length > 0) {
+            <div class="review-section">
+              <h4>Attachments ({{ attachmentPreviews.length }})</h4>
+              <div class="file-list">
+                @for (f of attachmentPreviews; track $index; let i = $index) {
+                  <div class="file-chip">
+                    <i class="pi pi-file"></i>
+                    <span class="file-name">{{ f.name }}</span>
+                    <button class="preview-file" (click)="previewAttachment(i)" type="button"><i class="pi pi-eye"></i></button>
+                  </div>
+                }
+              </div>
+            </div>
+          }
+        </div>
+      }
+
+      <!-- Form Navigation -->
+      <div class="form-actions">
+        @if (currentStep() > 1) {
+          <button class="btn-secondary" (click)="prevStep()">
+            <i class="pi pi-arrow-left"></i> Previous
+          </button>
+        }
+        <div class="form-actions-right">
+          <button class="btn-outline" (click)="saveDraft()" type="button">
+            <i class="pi pi-save"></i> Save Draft
+          </button>
+          @if (currentStep() < totalSteps) {
+            <button class="btn-primary" (click)="nextStep()">
+              Next <i class="pi pi-arrow-right"></i>
+            </button>
+          } @else {
+            <button class="btn-submit" (click)="submit()" [disabled]="submitting() || !declarationChecked">
+              @if (submitting()) {
+                <i class="pi pi-spinner pi-spin"></i> Submitting...
+              } @else {
+                <i class="pi pi-check"></i> Submit Complaint
+              }
+            </button>
+          }
+        </div>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ══════ NON-MAINTAINABLE PHASE ══════ -->
+@if (phase() === 'non-maintainable') {
+  <div class="page-container">
+    <div class="nm-card">
+      <div class="nm-icon"><i class="pi pi-exclamation-triangle"></i></div>
+      <h2>Complaint Closed as Non-Maintainable</h2>
+      <div class="nm-details">
+        <div class="nm-row">
+          <span class="nm-label">Case ID</span>
+          <span class="nm-value">{{ nonMaintainableCaseId }}</span>
+        </div>
+        <div class="nm-row">
+          <span class="nm-label">Date</span>
+          <span class="nm-value">{{ today }}</span>
+        </div>
+      </div>
+      <div class="nm-reason">
+        <h4>Reason for Closure</h4>
+        <p>{{ eligibilityBlockMessage() }}</p>
+      </div>
+      <div class="nm-actions">
+        <button class="btn-primary" (click)="downloadClosureLetter()">
+          <i class="pi pi-download"></i> Download Closure Letter
+        </button>
+        <button class="btn-secondary" (click)="goHome()">Go to Home</button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ══════ SUCCESS PHASE ══════ -->
+@if (phase() === 'success') {
+  <div class="page-container success-page">
+    <div class="success-card">
+      <div class="success-icon"><i class="pi pi-check-circle"></i></div>
+      <h2>Complaint Submitted Successfully!</h2>
+      <p class="success-ref">Your Complaint Reference Number:</p>
+      <div class="ref-number">{{ referenceNumber }}</div>
+      <p class="success-msg">We have received your complaint and will review it thoroughly. You will receive updates via SMS and email. You can track the status of your complaint using the reference number provided above.</p>
+      <div class="success-actions">
+        <button class="btn-primary" (click)="downloadAcknowledgement()">
+          <i class="pi pi-download"></i> Download Acknowledgement
+        </button>
+        <button class="btn-outline" (click)="trackComplaint()">
+          <i class="pi pi-search"></i> Track Your Complaint
+        </button>
+        <button class="btn-outline" (click)="withdrawComplaint()">
+          <i class="pi pi-undo"></i> Withdraw Complaint
+        </button>
+        <button class="btn-secondary" (click)="goHome()">
+          <i class="pi pi-home"></i> Go to Homepage
+        </button>
+      </div>
+    </div>
+  </div>
+}

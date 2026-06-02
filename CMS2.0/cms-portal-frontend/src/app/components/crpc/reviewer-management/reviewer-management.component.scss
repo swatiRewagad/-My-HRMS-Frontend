@@ -1,0 +1,374 @@
+.reviewer-management {
+  padding: 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin: 20px 0;
+
+  h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    color: #1a1a2e;
+  }
+
+  .subtitle {
+    margin: 4px 0 0;
+    color: #666;
+    font-size: 0.9rem;
+  }
+
+  .header-actions {
+    display: flex;
+    gap: 10px;
+  }
+}
+
+.summary-stats {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 20px;
+
+  .summary-card {
+    flex: 1;
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    padding: 16px;
+    text-align: center;
+
+    &.active {
+      border-color: #28a745;
+      background: #f0fff4;
+    }
+
+    .summary-value {
+      display: block;
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #1a1a2e;
+    }
+
+    .summary-label {
+      display: block;
+      font-size: 0.8rem;
+      color: #666;
+      margin-top: 4px;
+    }
+  }
+}
+
+.alert {
+  padding: 12px 16px;
+  border-radius: 6px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+
+  &.alert-error {
+    background: #fff0f0;
+    border: 1px solid #ffcdd2;
+    color: #c62828;
+  }
+
+  &.alert-success {
+    background: #f0fff4;
+    border: 1px solid #c8e6c9;
+    color: #2e7d32;
+  }
+}
+
+.add-form {
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px;
+
+  h3 {
+    margin: 0 0 16px;
+    font-size: 1.1rem;
+  }
+
+  .form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 12px;
+  }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+
+    label {
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: #333;
+
+      .required {
+        color: #e53935;
+      }
+    }
+
+    input, select {
+      padding: 8px 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 0.9rem;
+
+      &:focus {
+        outline: none;
+        border-color: #1976d2;
+        box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.1);
+      }
+    }
+  }
+
+  .form-actions {
+    margin-top: 16px;
+    display: flex;
+    gap: 10px;
+  }
+}
+
+.loading-state {
+  text-align: center;
+  padding: 40px;
+  color: #666;
+
+  .spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid #e0e0e0;
+    border-top-color: #1976d2;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 12px;
+  }
+}
+
+.reviewer-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 16px;
+}
+
+.reviewer-card {
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 16px;
+  transition: box-shadow 0.2s;
+
+  &:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  }
+
+  &.inactive {
+    opacity: 0.7;
+    border-color: #ccc;
+  }
+
+  &.on-leave {
+    border-left: 4px solid #ff9800;
+  }
+
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+
+    .reviewer-info {
+      h3 {
+        margin: 0;
+        font-size: 1rem;
+        color: #1a1a2e;
+      }
+
+      .reviewer-id {
+        display: block;
+        font-size: 0.8rem;
+        color: #888;
+        font-family: monospace;
+      }
+
+      .reviewer-email {
+        display: block;
+        font-size: 0.8rem;
+        color: #666;
+      }
+    }
+
+    .badges {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      align-items: flex-end;
+    }
+  }
+
+  .badge {
+    font-size: 0.7rem;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+
+    &.badge-active {
+      background: #e8f5e9;
+      color: #2e7d32;
+    }
+
+    &.badge-inactive {
+      background: #fafafa;
+      color: #999;
+    }
+
+    &.badge-leave {
+      background: #fff3e0;
+      color: #e65100;
+    }
+
+    &.badge-region {
+      background: #e3f2fd;
+      color: #1565c0;
+    }
+  }
+
+  .workload-section {
+    margin-bottom: 12px;
+
+    .workload-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.85rem;
+      margin-bottom: 4px;
+
+      .workload-count {
+        font-weight: 600;
+      }
+    }
+
+    .progress-bar {
+      height: 6px;
+      background: #e9ecef;
+      border-radius: 3px;
+      overflow: hidden;
+
+      .progress-fill {
+        height: 100%;
+        background: #4caf50;
+        border-radius: 3px;
+        transition: width 0.3s;
+
+        &.medium {
+          background: #ff9800;
+        }
+
+        &.high {
+          background: #f44336;
+        }
+      }
+    }
+  }
+
+  .card-actions {
+    border-top: 1px solid #f0f0f0;
+    padding-top: 12px;
+
+    .threshold-control {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+
+      label {
+        font-size: 0.85rem;
+        color: #555;
+      }
+
+      input {
+        width: 70px;
+        padding: 4px 8px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 0.85rem;
+      }
+    }
+
+    .action-buttons {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+  }
+}
+
+.empty-state {
+  text-align: center;
+  padding: 40px;
+  color: #999;
+  grid-column: 1 / -1;
+
+  i {
+    font-size: 2rem;
+    margin-bottom: 8px;
+  }
+}
+
+// ─── Buttons ───
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &.btn-primary {
+    background: #1976d2;
+    color: #fff;
+
+    &:hover { background: #1565c0; }
+  }
+
+  &.btn-outline {
+    background: transparent;
+    border: 1px solid #ddd;
+    color: #555;
+
+    &:hover { border-color: #1976d2; color: #1976d2; }
+  }
+
+  &.btn-danger {
+    background: #f44336;
+    color: #fff;
+
+    &:hover { background: #d32f2f; }
+  }
+
+  &.btn-sm {
+    padding: 4px 10px;
+    font-size: 0.8rem;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}

@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cms-common-config
+  namespace: rbi-cms
+  labels:
+    app.kubernetes.io/part-of: rbi-cms
+data:
+  DB_HOST: "oracle-db-service.rbi-cms.svc.cluster.local"
+  DB_PORT: "1521"
+  DB_SERVICE: "CMSDB"
+  KAFKA_BOOTSTRAP_SERVERS: "kafka-service.rbi-cms.svc.cluster.local:9092"
+  KEYCLOAK_ISSUER_URI: "http://keycloak-service.rbi-cms.svc.cluster.local:8180/realms/cms"
+  KEYCLOAK_JWK_URI: "http://keycloak-service.rbi-cms.svc.cluster.local:8180/realms/cms/protocol/openid-connect/certs"
+  OPENSEARCH_HOST: "opensearch-service.rbi-cms.svc.cluster.local"
+  OPENSEARCH_PORT: "9200"
+  OPENSEARCH_SCHEME: "http"
+  STORAGE_ROOT: "/data/cms/storage"
+  SMTP_HOST: "smtp-relay.rbi-cms.svc.cluster.local"
+  SMTP_PORT: "587"
