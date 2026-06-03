@@ -620,3 +620,658 @@ Output: `dist/cms-portal-frontend/`
 | ADMIN001 | admin123 | Admin | System Admin |
 | IC001 | ic123 | In-Charge | Regional IC |
 | HD001 | hd123 | Help Desk | Help Desk |
+
+---
+
+## 12. Developer Guidance
+
+### 12.1 Adding a New Component
+
+```bash
+# 1. Create the component directory
+mkdir src/app/components/crpc/new-component
+
+# 2. Create files: new-component.component.ts, .html, .scss
+# 3. Follow this template:
+```
+
+```typescript
+import { Component, OnInit, inject, signal, computed } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
+
+@Component({
+  selector: 'app-new-component',
+  standalone: true,
+  imports: [CommonModule, FormsModule],
+  templateUrl: './new-component.component.html',
+  styleUrl: './new-component.component.scss'
+})
+export class NewComponent implements OnInit {
+  private router = inject(Router);
+
+  // Use signals for reactive state
+  data = signal<any[]>([]);
+  loading = signal(false);
+
+  // Use computed for derived state
+  filteredData = computed(() => this.data().filter(d => d.active));
+
+  ngOnInit() {
+    this.loadData();
+  }
+
+  loadData() {
+    this.loading.set(true);
+    // Service call here
+    this.loading.set(false);
+  }
+}
+```
+
+```bash
+# 4. Add lazy-loaded route in app.routes.ts:
+{
+  path: 'crpc/new-page',
+  loadComponent: () => import('./components/crpc/new-component/new-component.component')
+    .then(m => m.NewComponent)
+}
+```
+
+### 12.2 Adding a New Service
+
+```typescript
+// src/app/services/new.service.ts
+import { Injectable, inject } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
+import { environment } from '../../environments/environment';
+import { ApiResponse } from '../models/api-response.model';
+
+@Injectable({ providedIn: 'root' })
+export class NewService {
+  private http = inject(HttpClient);
+  private baseUrl = `${environment.apiBaseUrl}/api/v1/new-endpoint`;
+
+  getItems(): Observable<Item[]> {
+    return this.http.get<ApiResponse<Item[]>>(this.baseUrl)
+      .pipe(map(res => res.data));
+  }
+}
+```
+
+### 12.3 Signal Best Practices
+
+**DO:**
+```typescript
+// Immutable updates for arrays (triggers computed re-evaluation)
+this.items.set([...this.items(), newItem]);
+this.items.set(this.items().map(i => i.id === id ? { ...i, updated: true } : i));
+this.items.set(this.items().filter(i => i.id !== id));
+
+// Use computed for derived state
+total = computed(() => this.items().length);
+activeItems = computed(() => this.items().filter(i => i.active));
+```
+
+**DON'T:**
+```typescript
+// NEVER mutate arrays in place (computed won't detect change)
+this.items().push(newItem);        // BAD - no reactivity
+this.items()[0].name = 'new';      // BAD - no reactivity
+
+// NEVER use plain arrays for reactive data that computed signals depend on
+maintainabilityQuestions = [...];    // BAD if used in computed()
+// Instead use: maintainabilityQuestions = signal([...]);
+```
+
+### 12.4 Template Patterns (Angular 17+ Control Flow)
+
+```html
+<!-- Conditional rendering -->
+@if (loading()) {
+  <div class="spinner"></div>
+} @else {
+  <div class="content">...</div>
+}
+
+<!-- Loops with tracking -->
+@for (item of items(); track item.id) {
+  <div>{{ item.name }}</div>
+} @empty {
+  <p>No items found.</p>
+}
+
+<!-- Switch -->
+@switch (status) {
+  @case ('DRAFT') { <span class="badge-draft">Draft</span> }
+  @case ('APPROVED') { <span class="badge-approved">Approved</span> }
+  @default { <span>Unknown</span> }
+}
+```
+
+### 12.5 Adding a New Role
+
+1. Add user credentials in `crpc-login.component.ts` → `mockUsers` array
+2. Add routing logic in the `switch(user.role)` block
+3. Create role-specific home component if needed
+4. Add session reading in the new component's `ngOnInit()`
+
+### 12.6 Adding Fields to the Draft Assessment
+
+1. Add property in `draft-assessment.component.ts`
+2. Add to the HTML template in the appropriate tab
+3. If mandatory, add validation in `mandatoryFieldsComplete` computed signal
+4. If mandatory, add label in `missingMandatoryFields` computed signal
+5. For physical letter flow, add field to sessionStorage save in `physical-letter.component.ts` → `submitDraft()`
+6. Add field reading in `draft-assessment.component.ts` → `loadDraft()` physical letter branch
+
+### 12.7 Adding a New Screening Question
+
+```typescript
+// In draft-assessment.component.ts → screeningQuestions signal:
+{ id: 'SQ9', question: 'Your new question?', answer: null as ('YES' | 'NO' | null), closureClause: 'NEW_CLAUSE' }
+```
+
+The sequential screening, auto-closure detection, and validation will work automatically.
+
+### 12.8 Adding a Comment Template
+
+```typescript
+// In draft-assessment.component.ts → commentTemplates array:
+{ id: 'T8', label: 'Template Label', text: 'Full template text that will be applied to DEO remarks.' }
+```
+
+### 12.9 Adding PDF Form Fields
+
+```typescript
+// In draft-assessment.component.ts → formPdfFields array:
+{ key: 'newField', label: 'Display Label', include: false }
+
+// If pre-fill value exists, add to getFieldPrefillValue():
+newField: this.someExistingProperty || '',
+```
+
+---
+
+## 13. Tech Stack Deep Dive
+
+### 13.1 Angular 20 Standalone Components
+
+Every component uses `standalone: true` — no NgModule declarations needed. Components declare their own imports:
+
+```typescript
+@Component({
+  standalone: true,
+  imports: [CommonModule, FormsModule],  // Each component imports what it needs
+})
+```
+
+**Why standalone:**
+- Simpler mental model (no module dependency graph)
+- Better tree-shaking (only imports what's used)
+- Easier lazy loading (direct component reference in routes)
+
+### 13.2 Angular Signals (Reactive State)
+
+Signals replace traditional BehaviorSubject/Observable patterns for local component state:
+
+| Concept | Usage | Example |
+|---------|-------|---------|
+| `signal()` | Mutable state | `loading = signal(false)` |
+| `computed()` | Derived state (auto-updates) | `total = computed(() => this.items().length)` |
+| `.set()` | Replace value | `this.loading.set(true)` |
+| `.update()` | Transform value | `this.count.update(c => c + 1)` |
+| `()` call | Read value (in template or code) | `{{ loading() }}` or `if (this.loading())` |
+
+**Key gotcha:** `computed()` only detects changes when signal references change. For arrays, you must create a new array reference (`[...arr]` or `.map()`) — in-place `.push()` won't trigger.
+
+### 13.3 jsPDF + AcroForm (Editable PDFs)
+
+```typescript
+// Lazy-load jsPDF (reduces initial bundle size)
+const { jsPDF } = await import('jspdf');
+const doc = new jsPDF();
+
+// Create editable text field
+const textField = new doc.AcroFormTextField();
+textField.fieldName = 'uniqueFieldName';
+textField.x = 14;           // X position (mm)
+textField.y = 50;           // Y position (mm)
+textField.width = 180;      // Field width (mm)
+textField.height = 10;      // Field height (mm)
+textField.fontSize = 10;
+textField.value = 'Pre-filled value';      // Current value
+textField.defaultValue = 'Pre-filled value'; // Reset value
+textField.multiline = false;  // true for textarea-like fields
+textField.readOnly = false;   // false = editable by user
+doc.addField(textField);
+
+doc.save('filename.pdf');
+```
+
+**Supported field types:** TextField, PasswordField, ComboBox, ListBox, RadioButton, PushButton, CheckBox
+
+### 13.4 Session Management Pattern
+
+```typescript
+// Login (crpc-login.component.ts)
+sessionStorage.setItem('crpc_user', JSON.stringify({
+  id: user.id,
+  name: user.name,
+  role: user.role,
+  username: user.username,
+  loginTime: new Date().toISOString()
+}));
+
+// Read session (any component)
+const stored = sessionStorage.getItem('crpc_user');
+if (stored) {
+  this.loggedInUser = JSON.parse(stored);
+}
+
+// Logout
+sessionStorage.removeItem('crpc_user');
+this.router.navigate(['/crpc/login']);
+```
+
+**Why sessionStorage (not localStorage):**
+- Cleared on tab close (security requirement for bank systems)
+- Per-tab isolation (multiple users can test in different tabs)
+
+### 13.5 Route-Level Lazy Loading
+
+```typescript
+// Every route uses loadComponent() for code splitting
+{
+  path: 'crpc/home',
+  loadComponent: () => import('./components/crpc/deo-home/deo-home.component')
+    .then(m => m.DeoHomeComponent)
+}
+```
+
+**Result:** Each page is a separate JS chunk, loaded only when navigated to. Initial bundle stays small.
+
+### 13.6 SCSS Conventions
+
+- Each component has its own `.scss` file (ViewEncapsulation.Emulated by default)
+- Common patterns: `.btn`, `.btn-primary`, `.btn-outline`, `.btn-danger`, `.btn-sm`
+- Grid layouts: CSS Grid (`grid-template-columns: repeat(auto-fill, minmax(320px, 1fr))`)
+- Color scheme: `#1a237e` (primary navy), `#1976d2` (blue), `#4caf50` (green), `#f44336` (red), `#ff9800` (orange)
+- Border radius: `6-8px` for cards, `4px` for inputs, `10-12px` for badges
+
+### 13.7 Mock Data Pattern (Backend-Ready)
+
+All services currently use mock data via `setTimeout` (simulating API latency). To connect to real backend:
+
+```typescript
+// Current (mock):
+loadDrafts() {
+  this.loading.set(true);
+  setTimeout(() => {
+    this.drafts.set(this.getMockDrafts());
+    this.loading.set(false);
+  }, 500);
+}
+
+// Production (real API):
+loadDrafts() {
+  this.loading.set(true);
+  this.crpcService.getDrafts().subscribe({
+    next: (data) => { this.drafts.set(data); this.loading.set(false); },
+    error: () => this.loading.set(false)
+  });
+}
+```
+
+The `CrpcService` uses internal signals for mock state. Replace with `HttpClient` calls when backend is ready.
+
+---
+
+## 14. Troubleshooting & Known Issues
+
+### 14.1 Common Build Errors
+
+| Error | Cause | Fix |
+|-------|-------|-----|
+| `NG8001: 'app-xyz' is not a known element` | Component not imported | Add to parent's `imports` array |
+| `NG8002: Can't bind to 'ngModel'` | FormsModule not imported | Add `FormsModule` to component's `imports` |
+| `Property 'x' does not exist on type` | Signal called without `()` | Use `items()` not `items` in template |
+| `Module 'jspdf' has no exported member` | Wrong import syntax | Use `const { jsPDF } = await import('jspdf')` |
+| `CommonJS or AMD dependencies` (warning) | jsPDF/html2canvas are CJS | Safe to ignore — not an error |
+
+### 14.2 Runtime Issues
+
+| Issue | Cause | Fix |
+|-------|-------|-----|
+| Screening validation won't clear after answering all questions | `screeningQuestions` was plain array, computed can't detect mutations | Convert to `signal([...])`, use immutable `.map()` + `.set()` updates |
+| Physical letter draft shows empty fields after wizard | `loadDraft()` was resetting fields to empty for physical letter drafts | Save wizard data to `sessionStorage`, read in `loadDraft()` |
+| PDF downloads as .txt | Using Blob with wrong MIME type | Use jsPDF `doc.save()` which handles MIME correctly |
+| PDF form not editable | Using `doc.text()` instead of AcroForm | Use `doc.AcroFormTextField()` with `readOnly: false` |
+| Reviewer list empty in route tab | Hardcoded array replaced by signal but no load call | Add `this.crpcService.getReviewers().subscribe(...)` in `ngOnInit()` |
+
+### 14.3 Signal Reactivity Issues
+
+**Symptom:** UI doesn't update after changing data.
+
+**Diagnosis checklist:**
+1. Is the data stored in a `signal()`? (Plain properties won't trigger computed)
+2. Are you using `.set()` with a **new** array/object reference?
+3. In the template, are you calling the signal with `()` — e.g., `items()` not `items`?
+4. For radio buttons / checkboxes tied to signal arrays, use `[checked]` + `(change)` pattern instead of `[(ngModel)]`:
+
+```html
+<!-- CORRECT for signal-backed arrays -->
+<input type="radio" [checked]="q.answer === 'YES'" (change)="answerQuestion(q.id, 'YES')" />
+
+<!-- WRONG (ngModel won't trigger signal update on array item) -->
+<input type="radio" [(ngModel)]="q.answer" />
+```
+
+### 14.4 PDF Generation Issues
+
+| Issue | Fix |
+|-------|-----|
+| Text overflows page | Check `y > 270` before adding content, call `doc.addPage()` |
+| Unicode characters not rendering | jsPDF default fonts don't support all Unicode. Use `doc.addFont()` for custom fonts |
+| AcroForm fields not visible in some viewers | Some viewers (old Chrome) don't render AcroForm. Test in Adobe Acrobat |
+| Pre-fill values not showing | Ensure both `textField.value` AND `textField.defaultValue` are set |
+
+### 14.5 Routing Issues
+
+| Issue | Fix |
+|-------|-----|
+| Page shows blank after navigation | Check component is exported and route path matches exactly |
+| Query params lost on navigation | Use `this.router.navigate(['/path'], { queryParams: {...} })` |
+| ActivatedRoute params empty | Ensure route has `:param` placeholder. Use `snapshot.paramMap.get('param')` |
+| Wildcard catch redirects everything | Ensure `'**'` route is LAST in the routes array |
+
+---
+
+## 15. Data Flow Diagrams
+
+### 15.1 Email Ingestion → Complaint Resolution
+
+```
+                    ┌─────────────────────────────────────────────────────────────┐
+                    │                    EMAIL FLOW                                │
+                    └─────────────────────────────────────────────────────────────┘
+
+  ┌──────────┐     ┌──────────────┐     ┌──────────────┐     ┌──────────────┐
+  │ Incoming │────▶│ Email Syndic │────▶│  Admin Queue │────▶│ Assign DEO   │
+  │ Email    │     │ (Auto-ingest)│     │ (Monitor)    │     │ (Round-Robin) │
+  └──────────┘     └──────────────┘     └──────────────┘     └──────────────┘
+                                                                      │
+                         ┌────────────────────────────────────────────┘
+                         │
+                         ▼
+  ┌──────────────────────────────────────────────────────────────────────┐
+  │                        DEO WORKFLOW                                   │
+  │                                                                      │
+  │  ┌──────────┐  ┌────────────┐  ┌────────────┐  ┌──────────────┐   │
+  │  │ Summary  │  │ Attachments│  │ Assessment │  │  Screening   │   │
+  │  │ (Edit)   │  │ (Upload)   │  │ (8 Qs)     │  │ (Sequential) │   │
+  │  └──────────┘  └────────────┘  └────────────┘  └──────────────┘   │
+  │                                                                      │
+  │  ┌──────────────────────────────────────────────────────────────┐   │
+  │  │ Route Tab: Decision + Reviewer Selection + Send for Approval │   │
+  │  └──────────────────────────────────────────────────────────────┘   │
+  └──────────────────────────────────────────────────────────────────────┘
+                         │
+                         │ "Sent for Approval"
+                         ▼
+  ┌──────────────────────────────────────────────────────────────────────┐
+  │                      REVIEWER WORKFLOW                                │
+  │                                                                      │
+  │  ┌──────────┐  ┌──────────┐  ┌────────────┐  ┌──────────────┐     │
+  │  │ Summary  │  │ Email    │  │ Attachments│  │   History    │     │
+  │  │(ReadOnly)│  │ (Thread) │  │ (View)     │  │ (Audit log)  │     │
+  │  └──────────┘  └──────────┘  └────────────┘  └──────────────┘     │
+  │                                                                      │
+  │  ┌──────────────────────────────────────────────────────────────┐   │
+  │  │ Action: APPROVE │ SEND BACK TO DEO │ NOT A COMPLAINT         │   │
+  │  └──────────────────────────────────────────────────────────────┘   │
+  └──────────────────────────────────────────────────────────────────────┘
+                         │
+              ┌──────────┼──────────┐
+              │          │          │
+              ▼          ▼          ▼
+      ┌───────────┐ ┌────────┐ ┌────────────┐
+      │ Complaint │ │  Back  │ │   Closed   │
+      │ # Created │ │ to DEO │ │ (Disposed) │
+      └───────────┘ └────────┘ └────────────┘
+```
+
+### 15.2 Physical Letter Flow
+
+```
+  ┌──────────────┐
+  │ Physical     │
+  │ Letter Rcvd  │
+  └──────┬───────┘
+         │
+         ▼
+  ┌──────────────────────────────────────────────┐
+  │         PHYSICAL LETTER WIZARD               │
+  │                                              │
+  │  Step 1: Scan/Upload ──▶ Step 2: OCR/Fill   │
+  │  (PDF/JPG/PNG/TIFF)     (Name, Addr, State) │
+  │                                              │
+  │  Step 3: Complaint ────▶ Step 4: Screening  │
+  │  (Category, Entity,     (Auto-closure Qs)   │
+  │   Subject, Amount)                           │
+  └──────────────────┬───────────────────────────┘
+                     │
+                     │ Submit → Save to sessionStorage
+                     │ → Generate DRF-YYYYMMDD-XXXXXX
+                     │ → Auto-navigate to /crpc/draft/:id
+                     ▼
+  ┌──────────────────────────────────────────────┐
+  │    SAME DEO 5-TAB VIEW (draft-assessment)    │
+  │    - Fields pre-filled from wizard           │
+  │    - Scanned letter in Attachments           │
+  │    - Complete assessment → Sent for Approval │
+  └──────────────────────────────────────────────┘
+```
+
+### 15.3 Admin Management Flow
+
+```
+  ┌─────────────────────────────────────────────────────┐
+  │            ADMIN DASHBOARD (/email-syndication)      │
+  │                                                     │
+  │  ┌────────────┐  ┌──────────────┐  ┌───────────┐  │
+  │  │ Email Queue│  │ Ignore List  │  │ Simulator │  │
+  │  │ (Monitor)  │  │ (Block spam) │  │ (Test)    │  │
+  │  └────────────┘  └──────────────┘  └───────────┘  │
+  │                                                     │
+  │  ┌──────────────────┐  ┌───────────────────────┐   │
+  │  │ DEO Management   │  │ Reviewer Management   │   │
+  │  │ - Add/Remove DEO │  │ - Add/Remove Reviewer │   │
+  │  │ - Set threshold  │  │ - Set max load        │   │
+  │  │ - Toggle active  │  │ - Toggle active/leave │   │
+  │  │ - Mark on leave  │  │ - Region assignment   │   │
+  │  │ - Reset RR ptr   │  │ - Reset RR pointer    │   │
+  │  └──────────────────┘  └───────────────────────┘   │
+  └─────────────────────────────────────────────────────┘
+```
+
+---
+
+## 16. API Integration Guide (When Backend is Ready)
+
+### 16.1 Environment Configuration
+
+```typescript
+// src/environments/environment.ts (development)
+export const environment = {
+  production: false,
+  apiBaseUrl: 'http://localhost:8080'
+};
+
+// src/environments/environment.prod.ts (production)
+export const environment = {
+  production: true,
+  apiBaseUrl: 'https://cms-api.rbi.org.in'
+};
+```
+
+### 16.2 Expected Backend APIs (CRPC Module)
+
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| GET | `/api/v1/crpc/drafts` | Get DEO's assigned drafts |
+| GET | `/api/v1/crpc/drafts/:id` | Get draft details |
+| PUT | `/api/v1/crpc/drafts/:id` | Update draft fields |
+| POST | `/api/v1/crpc/drafts/:id/send-for-approval` | Route to reviewer |
+| POST | `/api/v1/crpc/drafts/:id/request-info` | Send email with PDF form |
+| POST | `/api/v1/crpc/physical-letter` | Create draft from physical letter |
+| POST | `/api/v1/crpc/physical-letter/ocr` | Run OCR on uploaded file |
+| GET | `/api/v1/crpc/reviewer/queue` | Get reviewer's queue |
+| POST | `/api/v1/crpc/reviewer/drafts/:id/approve` | Approve and generate complaint# |
+| POST | `/api/v1/crpc/reviewer/drafts/:id/send-back` | Send back to DEO |
+| POST | `/api/v1/crpc/reviewer/drafts/:id/close` | Close as not-a-complaint |
+| GET | `/api/v1/crpc/reviewers` | List all reviewers |
+| POST | `/api/v1/crpc/reviewers` | Add reviewer |
+| PUT | `/api/v1/crpc/reviewers/:id` | Update reviewer |
+| DELETE | `/api/v1/crpc/reviewers/:id` | Remove reviewer |
+
+### 16.3 API Response Format
+
+All APIs should return:
+
+```json
+{
+  "success": true,
+  "data": { ... },
+  "message": "Operation successful",
+  "timestamp": "2026-06-02T10:30:00Z"
+}
+```
+
+Error format:
+
+```json
+{
+  "success": false,
+  "data": null,
+  "message": "Validation failed: Complainant name is required",
+  "errorCode": "VALIDATION_ERROR",
+  "timestamp": "2026-06-02T10:30:00Z"
+}
+```
+
+### 16.4 OCR Integration (Backend)
+
+When backend is ready, replace the simulated OCR:
+
+```typescript
+// Current (simulated)
+runOcr() {
+  setTimeout(() => { this.complainantName = 'Suresh Patel'; ... }, 2000);
+}
+
+// Production (real API)
+runOcr() {
+  const formData = new FormData();
+  formData.append('file', this.scannedFile!);
+  this.http.post('/api/v1/crpc/physical-letter/ocr', formData).subscribe({
+    next: (res: any) => {
+      this.complainantName = res.data.name || '';
+      this.complainantAddress = res.data.address || '';
+      this.complainantState = res.data.state || '';
+      // ... map all extracted fields
+    }
+  });
+}
+```
+
+Recommended OCR services: Azure Document Intelligence, Google Cloud Vision, AWS Textract
+
+---
+
+## 17. Security Considerations
+
+| Area | Implementation | Notes |
+|------|---------------|-------|
+| **Authentication** | sessionStorage-based (dev), Keycloak JWT (prod) | Session clears on tab close |
+| **Authorization** | Role-based routing after login | DEOs can't access reviewer pages |
+| **File Upload** | Type whitelist (PDF/JPG/PNG/TIFF/EML), 10MB limit | Server should re-validate |
+| **XSS Prevention** | Angular auto-escapes template bindings | Never use `innerHTML` with user data |
+| **CSRF** | Not applicable (no cookies in API calls) | JWT in Authorization header |
+| **Input Validation** | Mandatory fields checked before submission | Server must re-validate all inputs |
+| **PDF Form** | Editable but not executable | No JavaScript in generated PDFs |
+| **Data Sensitivity** | Complainant PII visible only to assigned DEO/Reviewer | Enforce at API level |
+
+---
+
+## 18. Deployment Notes
+
+### 18.1 Production Build
+
+```bash
+ng build --configuration production
+# Output: dist/cms-portal-frontend/browser/
+```
+
+### 18.2 Nginx Configuration (Recommended)
+
+```nginx
+server {
+    listen 80;
+    server_name cms-portal.rbi.org.in;
+    root /var/www/cms-portal-frontend/browser;
+    index index.html;
+
+    # SPA routing — all paths serve index.html
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # API proxy to backend gateway
+    location /api/ {
+        proxy_pass http://cms-api-gateway:8080/api/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+
+    # Cache static assets aggressively
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff2)$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+}
+```
+
+### 18.3 Docker
+
+```dockerfile
+FROM node:20-alpine AS build
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+COPY . .
+RUN npx ng build --configuration production
+
+FROM nginx:alpine
+COPY --from=build /app/dist/cms-portal-frontend/browser /usr/share/nginx/html
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+EXPOSE 80
+```
+
+### 18.4 Environment Variables (Runtime)
+
+For runtime configuration without rebuild, use `assets/config.json`:
+
+```json
+{
+  "apiBaseUrl": "https://cms-api.rbi.org.in",
+  "keycloakUrl": "https://auth.rbi.org.in",
+  "keycloakRealm": "cms",
+  "keycloakClientId": "cms-portal"
+}
+```
+
+Load in `APP_INITIALIZER` before bootstrap.
