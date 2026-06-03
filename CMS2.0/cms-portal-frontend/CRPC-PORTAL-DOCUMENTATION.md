@@ -1275,3 +1275,130 @@ For runtime configuration without rebuild, use `assets/config.json`:
 ```
 
 Load in `APP_INITIALIZER` before bootstrap.
+
+---
+
+## 19. Non-Functional Requirements (NFR) — Public Portal
+
+### 19.1 Performance & Scalability Requirements (BRD Section 1.1)
+
+| Requirement | Target | Implementation Strategy |
+|-------------|--------|------------------------|
+| 10,000 concurrent user sessions | No degradation | Horizontal auto-scaling (K8s HPA), stateless frontend (session in browser), CDN for static assets |
+| Complaint submission end-to-end < 5 seconds | Form load → complaint number display | Route-level lazy loading, async form submission, backend responds with ID synchronously |
+| OTP delivery within 30 seconds | Any Indian mobile network | Backend integration with multi-provider SMS gateway (failover: primary + fallback), retry queue |
+| Database queries for status tracking < 2 seconds | Result display | OpenSearch index for read queries, Redis cache for frequently accessed complaints, connection pooling |
+| Horizontal auto-scaling for burst traffic | Cloud infrastructure | Kubernetes HPA (CPU/memory triggers), stateless pods, CDN + edge caching |
+
+### 19.2 Frontend Performance Optimizations (Implemented)
+
+| Optimization | Location | Impact |
+|--------------|----------|--------|
+| **Route-level lazy loading** | `app.routes.ts` (all routes use `loadComponent()`) | Initial bundle < 200KB, pages load on demand |
+| **jsPDF lazy import** | `import('jspdf')` — dynamic | jsPDF (300KB+) only loaded when user downloads PDF |
+| **Session timer (15 min)** | `file-complaint.component.ts` | Prevents resource hogging from idle sessions |
+| **Auto-save every 60s** | Draft saved to localStorage | No data loss on session timeout, reduces re-entry |
+| **Debounced search** | DEO home grid | API called only after user stops typing (300ms) |
+| **Immutable signal updates** | All signal-based components | Angular change detection skips unchanged subtrees |
+| **OnPush-compatible** | Standalone components with signals | Minimal DOM diffing on state changes |
+| **Minimal third-party deps** | Only jsPDF, PrimeIcons | Small bundle, fast first paint |
+
+### 19.3 Backend Requirements for NFR Compliance
+
+| Area | Requirement | Implementation |
+|------|-------------|----------------|
+| **Load Balancing** | Distribute 10K sessions across instances | Nginx/ALB with sticky sessions OFF (stateless API) |
+| **Database** | < 2s query for status tracking | Indexed queries on `complaint_number`, Redis cache (5 min TTL) |
+| **OTP Service** | < 30s delivery | Multi-provider SMS: MSG91 (primary) + Twilio (fallback), Kafka-based async queue |
+| **File Upload** | Large files don't block requests | Chunked upload (5MB chunks), streaming to object storage |
+| **Connection Pool** | Handle burst | HikariCP: max 100 connections (prod), 3s timeout |
+| **Cache** | Reduce DB load | Redis: complaint status (5 min), eligibility questions (1 hr), bank list (24 hr) |
+| **CDN** | Static asset delivery | CloudFront/Akamai for JS/CSS/images, 1-year cache with content hash |
+| **API Gateway** | Rate limiting | Bucket4j: 100 req/sec per IP, 10 complaint submissions per minute per user |
+
+### 19.4 Scalability Architecture
+
+```
+                    ┌─────────────────────────────────────────────────────────────┐
+                    │                    PRODUCTION DEPLOYMENT                     │
+                    └─────────────────────────────────────────────────────────────┘
+
+  [10,000 Users]
+       │
+       ▼
+  ┌──────────┐     ┌──────────────┐     ┌──────────────────────────────────┐
+  │   CDN    │────▶│  Load        │────▶│  Angular Static Files            │
+  │(CloudFront)│    │  Balancer   │     │  (Nginx pods × N, auto-scaled)   │
+  └──────────┘     │  (ALB/Nginx) │     └──────────────────────────────────┘
+                   │              │
+                   │              │────▶┌──────────────────────────────────┐
+                   └──────────────┘     │  API Gateway (Spring Cloud)      │
+                                        │  (Pods × N, HPA: CPU > 60%)     │
+                                        └─────────────────┬────────────────┘
+                                                          │
+                                        ┌─────────────────┼─────────────────┐
+                                        │                 │                 │
+                                        ▼                 ▼                 ▼
+                               ┌──────────────┐  ┌──────────────┐  ┌──────────────┐
+                               │ Complaint Svc│  │  OTP Service │  │ Search Svc   │
+                               │ (Pods × N)   │  │  (Pods × N)  │  │ (Pods × N)   │
+                               └──────┬───────┘  └──────┬───────┘  └──────┬───────┘
+                                      │                  │                 │
+                               ┌──────▼───────┐  ┌──────▼───────┐  ┌─────▼────────┐
+                               │ Oracle DB    │  │ SMS Gateway  │  │ OpenSearch   │
+                               │ (Primary +   │  │ (MSG91 +     │  │ (3-node      │
+                               │  Standby)    │  │  Twilio)     │  │  cluster)    │
+                               └──────────────┘  └──────────────┘  └──────────────┘
+                                      │
+                               ┌──────▼───────┐
+                               │ Redis Cache  │
+                               │ (Cluster)    │
+                               └──────────────┘
+```
+
+### 19.5 Performance Testing Checklist
+
+| Test Type | Tool | Target |
+|-----------|------|--------|
+| Load test (10K concurrent) | Apache JMeter / k6 | < 5s response time at P95 |
+| Stress test (burst: 20K) | k6 with ramp-up | Auto-scale triggers within 30s |
+| Soak test (8 hours) | JMeter | No memory leaks, stable response time |
+| OTP delivery latency | Custom monitor | P95 < 30s, P99 < 45s |
+| Database query time | APM (Grafana + Prometheus) | Status lookup P95 < 2s |
+| Frontend FCP (First Contentful Paint) | Lighthouse | < 1.5s on 4G connection |
+| Frontend TTI (Time to Interactive) | Lighthouse | < 3s on 4G connection |
+| Bundle size | `ng build --stats-json` | Initial chunk < 200KB gzipped |
+
+### 19.6 Monitoring & Alerting (Production)
+
+| Metric | Alert Threshold | Dashboard |
+|--------|----------------|-----------|
+| Response time P95 | > 3s | Grafana: API Latency |
+| Error rate (5xx) | > 1% | Grafana: Error Dashboard |
+| Active sessions | > 8,000 (80% capacity) | Prometheus: session_gauge |
+| Pod CPU usage | > 70% sustained 2 min | K8s HPA auto-scale trigger |
+| OTP delivery failure | > 5% in 5 min window | PagerDuty alert |
+| Database connection pool | > 80% utilization | HikariCP metrics → Prometheus |
+| Redis cache hit ratio | < 60% | Grafana: Cache Performance |
+
+### 19.7 Public Portal Features (Already Implemented)
+
+| BRD Requirement | Implementation | Status |
+|-----------------|---------------|--------|
+| OTP-based login (mobile) | 6-digit OTP input, 30s resend timer, CAPTCHA | Done |
+| Email + password login | Alternate login mode with CAPTCHA | Done |
+| 15-minute session timeout | Auto-expire, countdown display, redirect to login | Done |
+| Eligibility questionnaire | Sequential questions, block on ineligibility, non-maintainable closure | Done |
+| Multi-step complaint form (6 steps) | Complainant → RE Details → Complaint → Auth Rep → Declaration → Review | Done |
+| Auto-save every 60s | localStorage draft persistence | Done |
+| Complaint categories + sub-categories | 8 categories, 40+ sub-categories | Done |
+| File attachments | Multi-file, type validation, size limit | Done |
+| Speech-to-text | Web Speech API integration | Done |
+| Keyboard/tab navigation | Tab through fields, auto-advance steps | Done |
+| Field tooltips | Hover help text for all fields | Done |
+| PDF acknowledgement download | jsPDF with RBI header, reference number, complaint details | Done |
+| Non-maintainable closure letter | Case ID generated, closure reason, download | Done |
+| Complaint tracking | Reference number lookup → status display | Done |
+| Withdraw complaint | Enter reference → submit withdrawal | Done |
+| Submit feedback | Rating + comments | Done |
+| File appeal | Against closed complaint | Done |
