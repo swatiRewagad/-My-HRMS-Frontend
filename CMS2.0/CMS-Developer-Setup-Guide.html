@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CMS 2.0 - Developer Setup Guide (Local PC + OpenShift)</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f8f9fa; color: #333; line-height: 1.7; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+        h1 { color: #1a237e; font-size: 2.2rem; margin-bottom: 0.5rem; }
+        h2 { color: #1565c0; font-size: 1.6rem; margin: 2.5rem 0 1rem; border-bottom: 2px solid #e3f2fd; padding-bottom: 0.5rem; }
+        h3 { color: #0d47a1; font-size: 1.2rem; margin: 1.5rem 0 0.75rem; }
+        h4 { color: #333; font-size: 1rem; margin: 1rem 0 0.5rem; }
+        .subtitle { color: #666; font-size: 1rem; margin-bottom: 2rem; }
+        .card { background: #fff; border-radius: 10px; padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.06); border: 1px solid #e0e0e0; }
+        table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.9rem; }
+        th, td { padding: 10px 14px; border: 1px solid #e0e0e0; text-align: left; }
+        th { background: #1a237e; color: #fff; font-weight: 600; }
+        tr:nth-child(even) { background: #f5f5f5; }
+        td code { background: #e8eaf6; padding: 1px 5px; border-radius: 3px; }
+        code { background: #e8eaf6; padding: 2px 6px; border-radius: 4px; font-family: 'Consolas', monospace; font-size: 0.85rem; }
+        pre { background: #1a1a2e; color: #e0e0e0; padding: 1.25rem; border-radius: 8px; overflow-x: auto; font-size: 0.85rem; line-height: 1.5; margin: 1rem 0; }
+        pre .comment { color: #6a9955; }
+        pre .cmd { color: #4ec9b0; }
+        pre .flag { color: #ce9178; }
+        .highlight-box { background: #e8f5e9; border-left: 4px solid #4caf50; padding: 1rem 1.5rem; border-radius: 0 8px 8px 0; margin: 1rem 0; }
+        .warning-box { background: #fff3e0; border-left: 4px solid #ff9800; padding: 1rem 1.5rem; border-radius: 0 8px 8px 0; margin: 1rem 0; }
+        .error-box { background: #fce4ec; border-left: 4px solid #e53935; padding: 1rem 1.5rem; border-radius: 0 8px 8px 0; margin: 1rem 0; }
+        .info-box { background: #e3f2fd; border-left: 4px solid #1565c0; padding: 1rem 1.5rem; border-radius: 0 8px 8px 0; margin: 1rem 0; }
+        .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+        @media (max-width: 768px) { .two-col { grid-template-columns: 1fr; } }
+        .step { counter-increment: step-counter; position: relative; padding-left: 3rem; margin-bottom: 1.5rem; }
+        .step::before { content: counter(step-counter); position: absolute; left: 0; top: 0; width: 2rem; height: 2rem; background: #1565c0; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem; }
+        .steps { counter-reset: step-counter; }
+        .port-map { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; }
+        .port-item { background: #f5f5f5; padding: 1rem; border-radius: 8px; border-left: 4px solid #1565c0; }
+        .port-item .port { font-size: 1.2rem; font-weight: 700; color: #1565c0; }
+        .port-item .service { font-size: 0.85rem; color: #666; }
+        .toc { background: #fff; padding: 1.5rem; border-radius: 10px; border: 1px solid #e0e0e0; margin-bottom: 2rem; }
+        .toc ul { list-style: none; padding-left: 0; columns: 2; }
+        .toc li { padding: 4px 0; break-inside: avoid; }
+        .toc a { color: #1565c0; text-decoration: none; font-size: 0.9rem; }
+        .toc a:hover { text-decoration: underline; }
+        .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
+        .badge-required { background: #fce4ec; color: #c62828; }
+        .badge-optional { background: #e8f5e9; color: #2e7d32; }
+        .badge-dev { background: #e3f2fd; color: #1565c0; }
+        .badge-prod { background: #f3e5f5; color: #6a1b9a; }
+        ul, ol { padding-left: 1.5rem; margin: 0.5rem 0; }
+        li { margin: 0.3rem 0; }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <h1>CMS 2.0 - Developer Setup Guide</h1>
+    <p class="subtitle">Prerequisites, Software Installation, Local (IntelliJ) & OpenShift Dev Deployment</p>
+
+    <div class="toc">
+        <h3>Table of Contents</h3>
+        <ul>
+            <li><a href="#prerequisites">1. Prerequisites & Software</a></li>
+            <li><a href="#versions">2. Version Matrix</a></li>
+            <li><a href="#architecture">3. Architecture Overview</a></li>
+            <li><a href="#ports">4. Port Map</a></li>
+            <li><a href="#local-infra">5. Local Infrastructure Setup</a></li>
+            <li><a href="#backend-setup">6. Backend Setup (IntelliJ)</a></li>
+            <li><a href="#frontend-setup">7. Frontend Setup (VS Code)</a></li>
+            <li><a href="#keycloak-setup">8. Keycloak Configuration</a></li>
+            <li><a href="#kafka-setup">9. Kafka Setup</a></li>
+            <li><a href="#opensearch-setup">10. OpenSearch Setup</a></li>
+            <li><a href="#run-all">11. Running Everything Together</a></li>
+            <li><a href="#openshift">12. OpenShift Deployment</a></li>
+            <li><a href="#env-vars">13. Environment Variables</a></li>
+            <li><a href="#troubleshooting">14. Troubleshooting</a></li>
+            <li><a href="#test-users">15. Test Users & Credentials</a></li>
+        </ul>
+    </div>
+
+    <!-- Section 1: Prerequisites -->
+    <h2 id="prerequisites">1. Prerequisites & Software Required</h2>
+
+    <div class="card">
+        <h3>Required Software (Must Install)</h3>
+        <table>
+            <tr><th>Software</th><th>Version</th><th>Purpose</th><th>Download</th></tr>
+            <tr><td><strong>JDK</strong></td><td>21 (LTS)</td><td>Backend microservices</td><td>Eclipse Temurin / Oracle JDK 21</td></tr>
+            <tr><td><strong>Maven</strong></td><td>3.9+</td><td>Build tool for Java</td><td>apache-maven-3.9.x-bin.zip</td></tr>
+            <tr><td><strong>Node.js</strong></td><td>22.x (LTS)</td><td>Frontend build</td><td>nodejs.org</td></tr>
+            <tr><td><strong>Angular CLI</strong></td><td>21.x</td><td>Frontend development</td><td><code>npm install -g @angular/cli</code></td></tr>
+            <tr><td><strong>IntelliJ IDEA</strong></td><td>2024.x Ultimate</td><td>Backend IDE</td><td>JetBrains</td></tr>
+            <tr><td><strong>VS Code</strong></td><td>Latest</td><td>Frontend IDE</td><td>code.visualstudio.com</td></tr>
+            <tr><td><strong>Git</strong></td><td>2.40+</td><td>Version control</td><td>git-scm.com</td></tr>
+        </table>
+    </div>
+
+    <div class="card">
+        <h3>Infrastructure Services (Required)</h3>
+        <table>
+            <tr><th>Service</th><th>Version</th><th>Purpose</th><th>Local Mode</th></tr>
+            <tr><td><strong>Keycloak</strong></td><td>26.0.0</td><td>SSO / Identity Management</td><td>Standalone (bin/kc.bat start-dev)</td></tr>
+            <tr><td><strong>Apache Kafka</strong></td><td>3.7.0</td><td>Event streaming</td><td>KRaft mode (no Zookeeper)</td></tr>
+            <tr><td><strong>MySQL</strong></td><td>8.0+</td><td>Primary database (prod)</td><td>H2 in-memory (dev profile) OR MySQL</td></tr>
+            <tr><td><strong>OpenSearch</strong></td><td>2.18.0</td><td>Full-text search</td><td>Standalone</td></tr>
+            <tr><td><strong>Redis</strong></td><td>7.x</td><td>Caching</td><td>Optional for dev (uses simple cache)</td></tr>
+        </table>
+    </div>
+
+    <div class="card">
+        <h3>Optional Tools</h3>
+        <table>
+            <tr><th>Tool</th><th>Version</th><th>Purpose</th></tr>
+            <tr><td>Docker Desktop</td><td>Latest</td><td>Run all infra via docker-compose</td></tr>
+            <tr><td>Prometheus</td><td>2.54.0</td><td>Metrics collection</td></tr>
+            <tr><td>Grafana</td><td>11.3.0</td><td>Metrics dashboards</td></tr>
+            <tr><td>Kafka UI</td><td>Latest</td><td>Visual Kafka topic management</td></tr>
+            <tr><td>OpenSearch Dashboards</td><td>2.18.0</td><td>Search index visualization</td></tr>
+            <tr><td>Postman / Insomnia</td><td>Latest</td><td>API testing</td></tr>
+            <tr><td>Camunda Modeler</td><td>5.x</td><td>BPMN workflow editing</td></tr>
+            <tr><td>oc CLI</td><td>4.x</td><td>OpenShift command line</td></tr>
+        </table>
+    </div>
+
+    <!-- Section 2: Version Matrix -->
+    <h2 id="versions">2. Version Matrix</h2>
+    <div class="card">
+        <h3>Backend Stack</h3>
+        <table>
+            <tr><th>Library</th><th>Version</th><th>Notes</th></tr>
+            <tr><td>Java</td><td>21</td><td>Required (virtual threads, pattern matching)</td></tr>
+            <tr><td>Spring Boot</td><td>3.4.1</td><td>Parent POM (microservices)</td></tr>
+            <tr><td>Spring Boot (cms-backend)</td><td>3.2.5</td><td>Standalone backend module</td></tr>
+            <tr><td>Spring Cloud</td><td>2024.0.0</td><td>Gateway, Config</td></tr>
+            <tr><td>Keycloak</td><td>26.0.0</td><td>OAuth2/OIDC provider</td></tr>
+            <tr><td>Drools</td><td>9.44.0.Final</td><td>Business rules engine (assignment)</td></tr>
+            <tr><td>jBPM</td><td>7.74.1.Final</td><td>BPMN workflow execution</td></tr>
+            <tr><td>Lombok</td><td>1.18.36</td><td>Boilerplate reduction</td></tr>
+            <tr><td>MapStruct</td><td>1.6.3</td><td>DTO mapping</td></tr>
+            <tr><td>Oracle JDBC</td><td>23.4.0.24.05</td><td>Production DB driver</td></tr>
+            <tr><td>H2 Database</td><td>2.2.224</td><td>Local dev in-memory DB</td></tr>
+            <tr><td>SpringDoc OpenAPI</td><td>2.7.0</td><td>API documentation (Swagger)</td></tr>
+            <tr><td>Micrometer</td><td>1.14.2</td><td>Metrics/Prometheus export</td></tr>
+            <tr><td>MySQL Connector</td><td>(managed)</td><td>Dev/Staging DB driver</td></tr>
+        </table>
+
+        <h3>Frontend Stack</h3>
+        <table>
+            <tr><th>Library</th><th>Version</th><th>Notes</th></tr>
+            <tr><td>Angular</td><td>21.2.8</td><td>Core framework</td></tr>
+            <tr><td>TypeScript</td><td>5.9.2</td><td>Language</td></tr>
+            <tr><td>PrimeNG</td><td>21.1.6</td><td>UI component library</td></tr>
+            <tr><td>PrimeIcons</td><td>7.0.0</td><td>Icon library</td></tr>
+            <tr><td>keycloak-js</td><td>26.2.4</td><td>Keycloak adapter</td></tr>
+            <tr><td>jsPDF</td><td>4.2.1</td><td>PDF generation (physical letters)</td></tr>
+            <tr><td>RxJS</td><td>7.8.x</td><td>Reactive programming</td></tr>
+            <tr><td>Zone.js</td><td>0.16.1</td><td>Angular change detection</td></tr>
+        </table>
+    </div>
+
+    <!-- Section 3: Architecture -->
+    <h2 id="architecture">3. Architecture Overview</h2>
+    <div class="card">
+        <h3>Microservices</h3>
+        <table>
+            <tr><th>#</th><th>Service</th><th>Port</th><th>Description</th></tr>
+            <tr><td>1</td><td>cms-api-gateway</td><td>8080</td><td>Entry point - authentication, RBAC, rate limiting, routing</td></tr>
+            <tr><td>2</td><td>cms-backend</td><td>8082</td><td>Core module - complaints, email syndication, workflow, OCR</td></tr>
+            <tr><td>3</td><td>cms-ingestion-service</td><td>8083</td><td>Complaint registration, outbox events</td></tr>
+            <tr><td>4</td><td>cms-workflow-service</td><td>8084</td><td>BPMN process management (jBPM)</td></tr>
+            <tr><td>5</td><td>cms-assignment-service</td><td>8085</td><td>Drools rules-based officer assignment</td></tr>
+            <tr><td>6</td><td>cms-search-service</td><td>8086</td><td>OpenSearch indexing and full-text search</td></tr>
+            <tr><td>7</td><td>cms-notification-service</td><td>8087</td><td>SMS/Email notifications</td></tr>
+            <tr><td>8</td><td>cms-sla-monitor-service</td><td>8088</td><td>SLA breach detection and escalation</td></tr>
+            <tr><td>9</td><td>cms-eligibility-service</td><td>8089</td><td>Complaint eligibility check</td></tr>
+            <tr><td>10</td><td>cms-audit-service</td><td>8091</td><td>Audit trail logging</td></tr>
+            <tr><td>11</td><td>cms-outbox-publisher</td><td>8092</td><td>Reliable Kafka event publishing</td></tr>
+            <tr><td>12</td><td>cms-rules-service</td><td>8093</td><td>Rules management UI/API</td></tr>
+            <tr><td>13</td><td>cms-storage-service</td><td>8094</td><td>File/attachment storage</td></tr>
+            <tr><td>14</td><td>cms-portal-frontend</td><td>4300</td><td>Angular SPA - portal UI</td></tr>
+        </table>
+
+        <div class="info-box">
+            <strong>For local development:</strong> You only need to run <code>cms-backend</code> (port 8082) and <code>cms-portal-frontend</code> (port 4300). The other microservices are needed for full integration testing.
+        </div>
+    </div>
+
+    <!-- Section 4: Ports -->
+    <h2 id="ports">4. Port Map</h2>
+    <div class="card">
+        <h3>All Ports Used</h3>
+        <div class="port-map">
+            <div class="port-item"><div class="port">4300</div><div class="service">Angular Frontend</div></div>
+            <div class="port-item"><div class="port">8080</div><div class="service">API Gateway</div></div>
+            <div class="port-item"><div class="port">8082</div><div class="service">CMS Backend</div></div>
+            <div class="port-item"><div class="port">8180</div><div class="service">Keycloak</div></div>
+            <div class="port-item"><div class="port">9092</div><div class="service">Kafka</div></div>
+            <div class="port-item"><div class="port">9200</div><div class="service">OpenSearch</div></div>
+            <div class="port-item"><div class="port">5601</div><div class="service">OpenSearch Dashboards</div></div>
+            <div class="port-item"><div class="port">3306</div><div class="service">MySQL (prod profile)</div></div>
+            <div class="port-item"><div class="port">1521</div><div class="service">Oracle DB (OpenShift)</div></div>
+            <div class="port-item"><div class="port">6379</div><div class="service">Redis (optional)</div></div>
+            <div class="port-item"><div class="port">9090</div><div class="service">Prometheus</div></div>
+            <div class="port-item"><div class="port">3000</div><div class="service">Grafana</div></div>
+            <div class="port-item"><div class="port">8090</div><div class="service">Kafka UI</div></div>
+        </div>
+    </div>
+
+    <!-- Section 5: Local Infrastructure -->
+    <h2 id="local-infra">5. Local Infrastructure Setup</h2>
+
+    <div class="card">
+        <h3>Option A: Docker Compose (Recommended - All-in-One)</h3>
+        <pre>
+<span class="cmd">cd</span> CMS2.0/deployment/docker
+<span class="cmd">docker-compose up -d</span>
+
+<span class="comment"># This starts: Oracle, Kafka, Keycloak, OpenSearch, Prometheus, Grafana, Kafka UI</span>
+<span class="comment"># Wait 2-3 minutes for all services to be healthy</span>
+<span class="cmd">docker-compose ps</span>   <span class="comment"># Verify all are "Up (healthy)"</span>
+        </pre>
+    </div>
+
+    <div class="card">
+        <h3>Option B: Manual (Without Docker)</h3>
+
+        <h4>5.1 Keycloak</h4>
+        <pre>
+<span class="comment"># Download: https://github.com/keycloak/keycloak/releases/tag/26.0.0</span>
+<span class="comment"># Extract to C:\tools\keycloak-26.0.0</span>
+
+<span class="cmd">cd</span> C:\tools\keycloak-26.0.0
+<span class="cmd">bin\kc.bat start-dev --http-port=8180</span>
+
+<span class="comment"># First run: access http://localhost:8180</span>
+<span class="comment"># Create admin user: admin / admin</span>
+        </pre>
+
+        <h4>5.2 Apache Kafka (KRaft - No Zookeeper)</h4>
+        <pre>
+<span class="comment"># Download: https://kafka.apache.org/downloads (Binary: kafka_2.13-3.7.0.tgz)</span>
+<span class="comment"># Extract to C:\tools\kafka-3.7.0</span>
+
+<span class="comment"># Generate cluster ID</span>
+<span class="cmd">bin\windows\kafka-storage.bat random-uuid</span>
+
+<span class="comment"># Format storage (replace CLUSTER_ID with output above)</span>
+<span class="cmd">bin\windows\kafka-storage.bat format -t CLUSTER_ID -c config\kraft\server.properties</span>
+
+<span class="comment"># Start Kafka</span>
+<span class="cmd">bin\windows\kafka-server-start.bat config\kraft\server.properties</span>
+
+<span class="comment"># Verify (in another terminal)</span>
+<span class="cmd">bin\windows\kafka-topics.bat --bootstrap-server localhost:9092 --list</span>
+        </pre>
+
+        <h4>5.3 OpenSearch</h4>
+        <pre>
+<span class="comment"># Download: https://opensearch.org/downloads.html (Version 2.18.0)</span>
+<span class="comment"># Extract to C:\tools\opensearch-2.18.0</span>
+
+<span class="comment"># Disable security for local dev (opensearch.yml):</span>
+<span class="comment"># plugins.security.disabled: true</span>
+
+<span class="cmd">bin\opensearch.bat</span>
+
+<span class="comment"># Verify: curl http://localhost:9200</span>
+        </pre>
+
+        <h4>5.4 MySQL (Only if NOT using dev/H2 profile)</h4>
+        <pre>
+<span class="comment"># Download: https://dev.mysql.com/downloads/installer/</span>
+<span class="comment"># Install MySQL 8.0, create database:</span>
+
+<span class="cmd">mysql -u root -p</span>
+CREATE DATABASE cms_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+<span class="comment"># OR skip MySQL entirely - use dev profile with H2 in-memory DB</span>
+        </pre>
+
+        <h4>5.5 Redis (Optional for dev)</h4>
+        <pre>
+<span class="comment"># Dev profile uses 'simple' cache (no Redis needed)</span>
+<span class="comment"># For full testing: download Redis for Windows or use Docker</span>
+<span class="cmd">docker run -d --name redis -p 6379:6379 redis:7-alpine</span>
+        </pre>
+    </div>
+
+    <!-- Section 6: Backend Setup -->
+    <h2 id="backend-setup">6. Backend Setup (IntelliJ IDEA)</h2>
+
+    <div class="card">
+        <h3>IntelliJ Configuration</h3>
+        <div class="steps">
+            <div class="step">
+                <h4>Install Required Plugins</h4>
+                <ul>
+                    <li><strong>Lombok</strong> - File > Settings > Plugins > search "Lombok" > Install</li>
+                    <li><strong>Spring Boot</strong> (bundled in Ultimate)</li>
+                    <li><strong>MapStruct Support</strong> (optional but helpful)</li>
+                </ul>
+            </div>
+            <div class="step">
+                <h4>Enable Annotation Processing</h4>
+                <p>File > Settings > Build, Execution, Deployment > Compiler > Annotation Processors > <strong>Enable annotation processing</strong> ✓</p>
+            </div>
+            <div class="step">
+                <h4>Set JDK 21</h4>
+                <p>File > Project Structure > Project > SDK: <strong>temurin-21</strong> (or Oracle JDK 21)</p>
+                <p>File > Project Structure > Project > Language Level: <strong>21</strong></p>
+            </div>
+            <div class="step">
+                <h4>Import Project</h4>
+                <p>File > Open > select <code>CMS2.0/</code> folder > Import as Maven project</p>
+                <p>Wait for Maven to resolve all dependencies (may take 5-10 minutes first time)</p>
+            </div>
+            <div class="step">
+                <h4>Configure Run Configuration for cms-backend</h4>
+                <ul>
+                    <li>Run > Edit Configurations > + > Spring Boot</li>
+                    <li>Main class: <code>com.hrms.cms.CmsApplication</code></li>
+                    <li>Active profiles: <code>dev</code></li>
+                    <li>VM options: <code>-Dspring.profiles.active=dev</code></li>
+                    <li>Working directory: <code>CMS2.0/cms-backend</code></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>Running cms-backend (Command Line)</h3>
+        <pre>
+<span class="cmd">cd</span> CMS2.0/cms-backend
+
+<span class="comment"># Build</span>
+<span class="cmd">mvn clean install -DskipTests</span>
+
+<span class="comment"># Run with dev profile (H2 in-memory, no MySQL needed)</span>
+<span class="cmd">mvn spring-boot:run -Dspring-boot.run.profiles=dev</span>
+
+<span class="comment"># OR with MySQL (default profile)</span>
+<span class="cmd">mvn spring-boot:run</span>
+
+<span class="comment"># Verify: http://localhost:8082/actuator/health</span>
+        </pre>
+
+        <div class="highlight-box">
+            <strong>Dev Profile Benefits:</strong> Uses H2 in-memory DB (no MySQL install needed), auto-creates tables, uses simple cache (no Redis needed), includes test data via DataInitializer.
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>Running Microservices (Full Stack)</h3>
+        <pre>
+<span class="comment"># Build all modules from parent POM</span>
+<span class="cmd">cd</span> CMS2.0
+<span class="cmd">mvn clean install -DskipTests</span>
+
+<span class="comment"># Run each service with dev-local profile (each in separate terminal)</span>
+<span class="cmd">cd</span> cms-api-gateway && <span class="cmd">mvn spring-boot:run -Dspring-boot.run.profiles=dev-local</span>
+<span class="cmd">cd</span> cms-ingestion-service && <span class="cmd">mvn spring-boot:run -Dspring-boot.run.profiles=dev-local</span>
+<span class="cmd">cd</span> cms-workflow-service && <span class="cmd">mvn spring-boot:run -Dspring-boot.run.profiles=dev-local</span>
+<span class="cmd">cd</span> cms-assignment-service && <span class="cmd">mvn spring-boot:run -Dspring-boot.run.profiles=dev-local</span>
+<span class="cmd">cd</span> cms-search-service && <span class="cmd">mvn spring-boot:run -Dspring-boot.run.profiles=dev-local</span>
+<span class="cmd">cd</span> cms-notification-service && <span class="cmd">mvn spring-boot:run -Dspring-boot.run.profiles=dev-local</span>
+
+<span class="comment"># Note: dev-local profile uses H2 + localhost Kafka + localhost OpenSearch</span>
+        </pre>
+
+        <div class="warning-box">
+            <strong>Minimum for local dev:</strong> You only NEED <code>cms-backend</code> (dev profile) + frontend. Other microservices are for integration testing.
+        </div>
+    </div>
+
+    <!-- Section 7: Frontend Setup -->
+    <h2 id="frontend-setup">7. Frontend Setup (VS Code / Terminal)</h2>
+
+    <div class="card">
+        <h3>VS Code Extensions (Recommended)</h3>
+        <ul>
+            <li><strong>Angular Language Service</strong> - Intellisense for templates</li>
+            <li><strong>ESLint</strong> - Code quality</li>
+            <li><strong>Prettier</strong> - Formatting</li>
+            <li><strong>SCSS IntelliSense</strong> - Style autocompletion</li>
+        </ul>
+
+        <h3>Setup & Run</h3>
+        <pre>
+<span class="cmd">cd</span> CMS2.0/cms-portal-frontend
+
+<span class="comment"># Install dependencies</span>
+<span class="cmd">npm install</span>
+
+<span class="comment"># Start dev server (port 4300)</span>
+<span class="cmd">ng serve --port 4300</span>
+<span class="comment"># OR</span>
+<span class="cmd">npm start</span>
+
+<span class="comment"># Access: http://localhost:4300</span>
+        </pre>
+
+        <h3>Environment Configuration</h3>
+        <p>File: <code>src/environments/environment.ts</code></p>
+        <pre>
+export const environment = {
+  production: false,
+  apiBaseUrl: <span class="flag">'http://localhost:8082'</span>,     <span class="comment">// Backend API</span>
+  keycloakUrl: <span class="flag">'http://localhost:8180'</span>,    <span class="comment">// Keycloak server</span>
+  realm: <span class="flag">'cms'</span>,                            <span class="comment">// Keycloak realm name</span>
+};
+        </pre>
+
+        <h3>Production Build</h3>
+        <pre>
+<span class="cmd">ng build --configuration production</span>
+<span class="comment"># Output: dist/cms-portal-frontend/</span>
+<span class="comment"># Deploy this to nginx/Apache on OpenShift</span>
+        </pre>
+    </div>
+
+    <!-- Section 8: Keycloak -->
+    <h2 id="keycloak-setup">8. Keycloak Configuration</h2>
+
+    <div class="card">
+        <h3>Initial Setup (First Time Only)</h3>
+        <div class="steps">
+            <div class="step">
+                <h4>Start Keycloak</h4>
+                <pre><span class="cmd">cd</span> C:\tools\keycloak-26.0.0
+<span class="cmd">bin\kc.bat start-dev --http-port=8180</span></pre>
+            </div>
+            <div class="step">
+                <h4>Access Admin Console</h4>
+                <p>Open <a href="http://localhost:8180/admin">http://localhost:8180/admin</a></p>
+                <p>Login: <code>admin</code> / <code>admin</code></p>
+            </div>
+            <div class="step">
+                <h4>Create Realm: "cms"</h4>
+                <p>Top-left dropdown > Create Realm > Name: <code>cms</code> > Create</p>
+            </div>
+            <div class="step">
+                <h4>Create Realm Roles</h4>
+                <p>Realm Roles > Create Role (for each):</p>
+                <table>
+                    <tr><th>Department</th><th>Roles to Create</th></tr>
+                    <tr><td>RBIO</td><td><code>RBIO_OFFICER</code>, <code>RBIO_SUPERVISOR</code>, <code>RBIO_CONCILIATOR</code>, <code>RBIO_ADJUDICATOR</code></td></tr>
+                    <tr><td>CEPC</td><td><code>CEPC_OFFICER</code>, <code>CEPC_SUPERVISOR</code>, <code>CEPC_CONCILIATOR</code>, <code>CEPC_ADJUDICATOR</code></td></tr>
+                    <tr><td>CRPC</td><td><code>DEO</code>, <code>REVIEWER</code>, <code>CRPC_HEAD</code>, <code>CRPC_ADMIN</code>, <code>CRPC_INCHARGE</code></td></tr>
+                    <tr><td>Other</td><td><code>ADMIN</code>, <code>OFFICER</code>, <code>TOLL_FREE_HELPDESK</code></td></tr>
+                </table>
+            </div>
+            <div class="step">
+                <h4>Create Users & Assign Roles</h4>
+                <p>Users > Add User > Set password (Credentials tab) > Role Mappings > Assign realm role</p>
+                <table>
+                    <tr><th>Username</th><th>Password</th><th>Role</th></tr>
+                    <tr><td>rbio.officer</td><td>password</td><td>RBIO_OFFICER</td></tr>
+                    <tr><td>cepc.officer</td><td>password</td><td>CEPC_OFFICER</td></tr>
+                    <tr><td>cepc.supervisor</td><td>password</td><td>CEPC_SUPERVISOR</td></tr>
+                    <tr><td>deo.user</td><td>password</td><td>DEO</td></tr>
+                    <tr><td>reviewer.user</td><td>password</td><td>REVIEWER</td></tr>
+                    <tr><td>cms.admin</td><td>password</td><td>ADMIN</td></tr>
+                </table>
+            </div>
+            <div class="step">
+                <h4>Create Client: "cms-portal"</h4>
+                <p>Clients > Create > Client ID: <code>cms-portal</code></p>
+                <ul>
+                    <li>Client authentication: OFF (public client)</li>
+                    <li>Valid redirect URIs: <code>http://localhost:4300/*</code></li>
+                    <li>Web origins: <code>http://localhost:4300</code></li>
+                    <li>Post logout redirect URIs: <code>http://localhost:4300/*</code></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section 9: Kafka -->
+    <h2 id="kafka-setup">9. Kafka Setup</h2>
+
+    <div class="card">
+        <h3>Create Required Topics</h3>
+        <pre>
+<span class="comment"># After Kafka is running, create all CMS topics:</span>
+
+<span class="cmd">bin\windows\kafka-topics.bat --create --bootstrap-server localhost:9092 --topic complaint.ingested --partitions 6 --replication-factor 1</span>
+<span class="cmd">bin\windows\kafka-topics.bat --create --bootstrap-server localhost:9092 --topic complaint.assigned --partitions 6 --replication-factor 1</span>
+<span class="cmd">bin\windows\kafka-topics.bat --create --bootstrap-server localhost:9092 --topic complaint.inprogress --partitions 6 --replication-factor 1</span>
+<span class="cmd">bin\windows\kafka-topics.bat --create --bootstrap-server localhost:9092 --topic complaint.escalated --partitions 6 --replication-factor 1</span>
+<span class="cmd">bin\windows\kafka-topics.bat --create --bootstrap-server localhost:9092 --topic complaint.resolved --partitions 6 --replication-factor 1</span>
+<span class="cmd">bin\windows\kafka-topics.bat --create --bootstrap-server localhost:9092 --topic complaint.closed --partitions 6 --replication-factor 1</span>
+<span class="cmd">bin\windows\kafka-topics.bat --create --bootstrap-server localhost:9092 --topic complaint.dlq --partitions 3 --replication-factor 1</span>
+
+<span class="comment"># Verify</span>
+<span class="cmd">bin\windows\kafka-topics.bat --bootstrap-server localhost:9092 --list</span>
+        </pre>
+
+        <div class="info-box">
+            <strong>Note:</strong> For local dev with <code>missing-topics-fatal: false</code>, topics are auto-created on first produce. Manual creation is for production/OpenShift.
+        </div>
+    </div>
+
+    <!-- Section 10: OpenSearch -->
+    <h2 id="opensearch-setup">10. OpenSearch Setup</h2>
+
+    <div class="card">
+        <pre>
+<span class="comment"># Start OpenSearch</span>
+<span class="cmd">cd</span> C:\tools\opensearch-2.18.0
+<span class="cmd">bin\opensearch.bat</span>
+
+<span class="comment"># Verify</span>
+<span class="cmd">curl http://localhost:9200</span>
+
+<span class="comment"># The search service auto-creates indices on first complaint indexing</span>
+<span class="comment"># No manual index creation needed for dev</span>
+        </pre>
+    </div>
+
+    <!-- Section 11: Run All -->
+    <h2 id="run-all">11. Running Everything Together</h2>
+
+    <div class="card">
+        <h3>Minimum Setup (Quick Start)</h3>
+        <div class="highlight-box">
+            <strong>Just need 2 terminals + Keycloak:</strong>
+        </div>
+        <pre>
+<span class="comment"># Terminal 1: Keycloak</span>
+<span class="cmd">cd</span> C:\tools\keycloak-26.0.0 && <span class="cmd">bin\kc.bat start-dev --http-port=8180</span>
+
+<span class="comment"># Terminal 2: Backend (dev profile - H2 DB, no MySQL/Redis needed)</span>
+<span class="cmd">cd</span> CMS2.0/cms-backend && <span class="cmd">mvn spring-boot:run -Dspring-boot.run.profiles=dev</span>
+
+<span class="comment"># Terminal 3: Frontend</span>
+<span class="cmd">cd</span> CMS2.0/cms-portal-frontend && <span class="cmd">npm start</span>
+
+<span class="comment"># Access: http://localhost:4300</span>
+        </pre>
+    </div>
+
+    <div class="card">
+        <h3>Full Stack (All Microservices)</h3>
+        <pre>
+<span class="comment"># Start infrastructure first:</span>
+1. Keycloak (port 8180)
+2. Kafka (port 9092)
+3. OpenSearch (port 9200)
+
+<span class="comment"># Then start services in order:</span>
+4. cms-api-gateway (8080) - first, as it's the entry point
+5. cms-backend (8082) - core module
+6. cms-ingestion-service (8083)
+7. cms-workflow-service (8084)
+8. cms-assignment-service (8085)
+9. cms-search-service (8086)
+10. cms-notification-service (8087)
+11. cms-portal-frontend (4300)
+        </pre>
+    </div>
+
+    <!-- Section 12: OpenShift -->
+    <h2 id="openshift">12. OpenShift Deployment</h2>
+
+    <div class="card">
+        <h3>Prerequisites for OpenShift</h3>
+        <ul>
+            <li><code>oc</code> CLI installed and logged in to cluster</li>
+            <li>Access to internal container registry: <code>registry.rbi.internal/cms/</code></li>
+            <li>Namespace <code>rbi-cms</code> created</li>
+            <li>Oracle DB provisioned on cluster</li>
+            <li>Kafka cluster (AMQ Streams / Strimzi) available</li>
+            <li>Keycloak operator deployed</li>
+        </ul>
+
+        <h3>Step-by-Step Deployment</h3>
+        <div class="steps">
+            <div class="step">
+                <h4>Create Namespace & Configs</h4>
+                <pre>
+<span class="cmd">oc apply -f</span> deployment/openshift/namespace.yaml
+<span class="cmd">oc apply -f</span> deployment/openshift/configmap-common.yaml
+<span class="cmd">oc apply -f</span> deployment/openshift/secret-db.yaml
+                </pre>
+            </div>
+            <div class="step">
+                <h4>Build & Push Docker Images</h4>
+                <pre>
+<span class="comment"># For each service:</span>
+<span class="cmd">cd</span> CMS2.0/cms-api-gateway
+<span class="cmd">mvn clean package -DskipTests</span>
+<span class="cmd">docker build -t registry.rbi.internal/cms/api-gateway:1.0.0-SNAPSHOT .</span>
+<span class="cmd">docker push registry.rbi.internal/cms/api-gateway:1.0.0-SNAPSHOT</span>
+
+<span class="comment"># Repeat for all services...</span>
+                </pre>
+            </div>
+            <div class="step">
+                <h4>Deploy Services</h4>
+                <pre>
+<span class="cmd">oc apply -f</span> deployment/openshift/deployment-api-gateway.yaml
+<span class="cmd">oc apply -f</span> deployment/openshift/deployment-ingestion-service.yaml
+<span class="cmd">oc apply -f</span> deployment/openshift/deployment-workflow-service.yaml
+<span class="cmd">oc apply -f</span> deployment/openshift/deployment-outbox-publisher.yaml
+<span class="cmd">oc apply -f</span> deployment/openshift/deployment-eligibility-service.yaml
+                </pre>
+            </div>
+            <div class="step">
+                <h4>Deploy Frontend (Nginx)</h4>
+                <pre>
+<span class="cmd">cd</span> CMS2.0/cms-portal-frontend
+<span class="cmd">ng build --configuration production</span>
+
+<span class="comment"># Dockerfile for frontend:</span>
+FROM nginx:alpine
+COPY dist/cms-portal-frontend/browser/ /usr/share/nginx/html/
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+<span class="cmd">docker build -t registry.rbi.internal/cms/portal-frontend:1.0.0 .</span>
+<span class="cmd">docker push registry.rbi.internal/cms/portal-frontend:1.0.0</span>
+                </pre>
+            </div>
+            <div class="step">
+                <h4>Verify Deployment</h4>
+                <pre>
+<span class="cmd">oc get pods -n rbi-cms</span>
+<span class="cmd">oc get routes -n rbi-cms</span>
+<span class="comment"># External URL: https://cms.rbi.org.in</span>
+                </pre>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>OpenShift ConfigMap Reference</h3>
+        <table>
+            <tr><th>Key</th><th>Value</th></tr>
+            <tr><td>DB_HOST</td><td><code>oracle-db-service.rbi-cms.svc.cluster.local</code></td></tr>
+            <tr><td>DB_PORT</td><td><code>1521</code></td></tr>
+            <tr><td>DB_SERVICE</td><td><code>CMSDB</code></td></tr>
+            <tr><td>KAFKA_BOOTSTRAP_SERVERS</td><td><code>kafka-service.rbi-cms.svc.cluster.local:9092</code></td></tr>
+            <tr><td>KEYCLOAK_ISSUER_URI</td><td><code>http://keycloak-service.rbi-cms.svc.cluster.local:8180/realms/cms</code></td></tr>
+            <tr><td>OPENSEARCH_HOST</td><td><code>opensearch-service.rbi-cms.svc.cluster.local</code></td></tr>
+            <tr><td>OPENSEARCH_PORT</td><td><code>9200</code></td></tr>
+            <tr><td>STORAGE_ROOT</td><td><code>/data/cms/storage</code></td></tr>
+            <tr><td>SMTP_HOST</td><td><code>smtp-relay.rbi-cms.svc.cluster.local</code></td></tr>
+        </table>
+    </div>
+
+    <!-- Section 13: Environment Variables -->
+    <h2 id="env-vars">13. Environment Variables Reference</h2>
+
+    <div class="card">
+        <table>
+            <tr><th>Variable</th><th>Default (Local)</th><th>Purpose</th><th>Required?</th></tr>
+            <tr><td>DB_URL</td><td>jdbc:mysql://localhost:3306/cms_db</td><td>Database connection</td><td><span class="badge badge-dev">Dev: No (H2)</span></td></tr>
+            <tr><td>DB_USERNAME</td><td>root</td><td>DB user</td><td><span class="badge badge-prod">Prod: Yes</span></td></tr>
+            <tr><td>DB_PASSWORD</td><td>root</td><td>DB password</td><td><span class="badge badge-prod">Prod: Yes</span></td></tr>
+            <tr><td>KAFKA_BOOTSTRAP</td><td>localhost:9092</td><td>Kafka broker</td><td><span class="badge badge-required">Yes (for full stack)</span></td></tr>
+            <tr><td>REDIS_HOST</td><td>localhost</td><td>Redis server</td><td><span class="badge badge-optional">Optional</span></td></tr>
+            <tr><td>REDIS_PORT</td><td>6379</td><td>Redis port</td><td><span class="badge badge-optional">Optional</span></td></tr>
+            <tr><td>OCR_PROVIDER</td><td>gemini</td><td>OCR engine (gemini/openai/groq/azure)</td><td><span class="badge badge-optional">Optional</span></td></tr>
+            <tr><td>GEMINI_API_KEY</td><td>(empty)</td><td>Google Gemini API key</td><td><span class="badge badge-optional">For OCR</span></td></tr>
+            <tr><td>GROQ_API_KEY</td><td>(empty)</td><td>Groq API key (free)</td><td><span class="badge badge-optional">For OCR</span></td></tr>
+            <tr><td>CMS_ATTACHMENTS_PATH</td><td>C:/cms-attachments</td><td>File storage root</td><td><span class="badge badge-dev">Create folder</span></td></tr>
+        </table>
+    </div>
+
+    <!-- Section 14: Troubleshooting -->
+    <h2 id="troubleshooting">14. Troubleshooting</h2>
+
+    <div class="card">
+        <h3>Common Issues</h3>
+
+        <div class="error-box">
+            <strong>Port already in use (8082)</strong><br>
+            <code>netstat -ano | findstr :8082</code> then <code>taskkill /PID &lt;pid&gt; /F</code>
+        </div>
+
+        <div class="error-box">
+            <strong>MySQL not running / Connection refused</strong><br>
+            Use dev profile: <code>mvn spring-boot:run -Dspring-boot.run.profiles=dev</code> (uses H2 in-memory DB)
+        </div>
+
+        <div class="error-box">
+            <strong>Lombok not working in IntelliJ</strong><br>
+            1. Install Lombok plugin<br>
+            2. Enable annotation processing (Settings > Build > Compiler > Annotation Processors)<br>
+            3. Rebuild project (Build > Rebuild Project)
+        </div>
+
+        <div class="error-box">
+            <strong>Angular CLI version mismatch</strong><br>
+            <code>npm install -g @angular/cli@21</code> (must match project version)
+        </div>
+
+        <div class="error-box">
+            <strong>Keycloak "invalid redirect_uri"</strong><br>
+            In Keycloak admin > Clients > cms-portal > Valid Redirect URIs: add <code>http://localhost:4300/*</code>
+        </div>
+
+        <div class="error-box">
+            <strong>Kafka connection refused</strong><br>
+            Services with <code>missing-topics-fatal: false</code> will start without Kafka. For full flow, ensure Kafka is running on 9092.
+        </div>
+
+        <div class="error-box">
+            <strong>CORS errors on API calls</strong><br>
+            Backend has CORS configured for <code>localhost:4300</code>. If using different port, update backend CORS config.
+        </div>
+
+        <div class="error-box">
+            <strong>Maven build fails on cms-common</strong><br>
+            Build parent first: <code>cd CMS2.0 && mvn clean install -DskipTests</code> (installs all modules to local .m2)
+        </div>
+    </div>
+
+    <!-- Section 15: Test Users -->
+    <h2 id="test-users">15. Test Users & Credentials</h2>
+
+    <div class="card">
+        <h3>CRPC Login (Mock - No Keycloak Needed)</h3>
+        <p>URL: <code>http://localhost:4300/crpc/login</code></p>
+        <table>
+            <tr><th>Username</th><th>Password</th><th>Role</th><th>Name</th></tr>
+            <tr><td>amit</td><td>deo123</td><td>DEO</td><td>Amit Verma</td></tr>
+            <tr><td>sneha</td><td>deo123</td><td>DEO</td><td>Sneha Patil</td></tr>
+            <tr><td>ramesh</td><td>deo123</td><td>DEO</td><td>Ramesh Iyer</td></tr>
+            <tr><td>reviewer1</td><td>rev123</td><td>REVIEWER</td><td>A.K. Singh</td></tr>
+            <tr><td>reviewer2</td><td>rev123</td><td>REVIEWER</td><td>Priya Gupta</td></tr>
+            <tr><td>crpchead</td><td>head123</td><td>CRPC_HEAD</td><td>Dr. S. Menon</td></tr>
+            <tr><td>crpcadmin</td><td>admin123</td><td>CRPC_ADMIN</td><td>R. Sharma</td></tr>
+            <tr><td>incharge</td><td>ic123</td><td>CRPC_INCHARGE</td><td>M. Krishnan</td></tr>
+            <tr><td>helpdesk</td><td>hd123</td><td>TOLL_FREE_HELPDESK</td><td>Support Agent</td></tr>
+        </table>
+    </div>
+
+    <div class="card">
+        <h3>Staff Portal (Keycloak SSO)</h3>
+        <p>URL: <code>http://localhost:4300/staff/login</code> (redirects to Keycloak)</p>
+        <table>
+            <tr><th>Username</th><th>Password</th><th>Role</th><th>Department</th></tr>
+            <tr><td>cepc.officer</td><td>password</td><td>CEPC_OFFICER</td><td>CEPC</td></tr>
+            <tr><td>cepc.supervisor</td><td>password</td><td>CEPC_SUPERVISOR</td><td>CEPC</td></tr>
+            <tr><td>rbio.officer</td><td>password</td><td>RBIO_OFFICER</td><td>RBIO</td></tr>
+            <tr><td>rbio.supervisor</td><td>password</td><td>RBIO_SUPERVISOR</td><td>RBIO</td></tr>
+            <tr><td>cms.admin</td><td>password</td><td>ADMIN</td><td>ADMIN</td></tr>
+        </table>
+    </div>
+
+    <div class="card">
+        <h3>Infrastructure Admin Consoles</h3>
+        <table>
+            <tr><th>Service</th><th>URL</th><th>Credentials</th></tr>
+            <tr><td>Keycloak Admin</td><td><a href="http://localhost:8180/admin">http://localhost:8180/admin</a></td><td>admin / admin</td></tr>
+            <tr><td>H2 Console (dev profile)</td><td><a href="http://localhost:8082/h2-console">http://localhost:8082/h2-console</a></td><td>JDBC URL: jdbc:h2:mem:cms_db, User: sa</td></tr>
+            <tr><td>Kafka UI</td><td><a href="http://localhost:8090">http://localhost:8090</a></td><td>No auth</td></tr>
+            <tr><td>OpenSearch</td><td><a href="http://localhost:9200">http://localhost:9200</a></td><td>No auth (security disabled)</td></tr>
+            <tr><td>OpenSearch Dashboards</td><td><a href="http://localhost:5601">http://localhost:5601</a></td><td>No auth</td></tr>
+            <tr><td>Prometheus</td><td><a href="http://localhost:9090">http://localhost:9090</a></td><td>No auth</td></tr>
+            <tr><td>Grafana</td><td><a href="http://localhost:3000">http://localhost:3000</a></td><td>admin / admin</td></tr>
+            <tr><td>Swagger (Backend)</td><td><a href="http://localhost:8082/swagger-ui.html">http://localhost:8082/swagger-ui.html</a></td><td>No auth</td></tr>
+        </table>
+    </div>
+
+    <div class="card">
+        <h3>Quick Verification Checklist</h3>
+        <table>
+            <tr><th>#</th><th>Check</th><th>Command / URL</th><th>Expected</th></tr>
+            <tr><td>1</td><td>Java version</td><td><code>java -version</code></td><td>openjdk 21.x</td></tr>
+            <tr><td>2</td><td>Maven version</td><td><code>mvn -version</code></td><td>Apache Maven 3.9.x</td></tr>
+            <tr><td>3</td><td>Node version</td><td><code>node -v</code></td><td>v22.x</td></tr>
+            <tr><td>4</td><td>Angular CLI</td><td><code>ng version</code></td><td>Angular CLI: 21.x</td></tr>
+            <tr><td>5</td><td>Keycloak</td><td><code>curl http://localhost:8180</code></td><td>Redirect (302)</td></tr>
+            <tr><td>6</td><td>Backend health</td><td><code>curl http://localhost:8082/actuator/health</code></td><td>{"status":"UP"}</td></tr>
+            <tr><td>7</td><td>Frontend</td><td>Open http://localhost:4300</td><td>Landing page loads</td></tr>
+            <tr><td>8</td><td>Kafka</td><td><code>kafka-topics.bat --bootstrap-server localhost:9092 --list</code></td><td>Topic list</td></tr>
+            <tr><td>9</td><td>OpenSearch</td><td><code>curl http://localhost:9200</code></td><td>Cluster info JSON</td></tr>
+        </table>
+    </div>
+
+    <div style="text-align: center; margin-top: 3rem; padding: 1.5rem; background: #e8eaf6; border-radius: 10px;">
+        <p style="color: #1a237e; font-weight: 600;">CMS 2.0 - Developer Setup Guide</p>
+        <p style="color: #666; font-size: 0.85rem;">Generated: June 2026 | RBI Complaint Management System</p>
+        <p style="color: #888; font-size: 0.8rem;">For support: Contact CMS Development Team</p>
+    </div>
+
+</div>
+</body>
+</html>
