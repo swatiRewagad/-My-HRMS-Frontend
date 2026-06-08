@@ -2,6 +2,7 @@ package com.hrms.cms.service;
 
 import com.hrms.cms.dto.*;
 import com.hrms.cms.entity.*;
+import com.hrms.cms.event.ComplaintEventPublisher;
 import com.hrms.cms.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
@@ -27,6 +28,7 @@ public class ComplaintService {
     private final BankRepository bankRepository;
     private final ComplaintTimelineRepository timelineRepository;
     private final ComplaintAttachmentRepository attachmentRepository;
+    private final ComplaintEventPublisher eventPublisher;
 
     @Cacheable(value = "dashboard", unless = "#result == null")
     @Transactional(readOnly = true)
@@ -109,6 +111,8 @@ public class ComplaintService {
         Complaint saved = complaintRepository.save(complaint);
 
         addTimelineAsync(saved.getId(), "filed", "System", "Complaint filed successfully", null, "pending");
+
+        eventPublisher.publishComplaintIngested(saved);
 
         return saved;
     }

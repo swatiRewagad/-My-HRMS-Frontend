@@ -2,6 +2,8 @@ import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { EmailSyndicationService } from '../../../services/email-syndication.service';
+import { EmailDraft } from '../../../models/email-syndication.model';
 
 interface DraftComplaint {
   draftId: string;
@@ -101,6 +103,7 @@ export class DeoHomeComponent implements OnInit {
     };
   });
 
+  private emailService = inject(EmailSyndicationService);
   loggedInUser: { id: string; name: string; role: string } | null = null;
 
   ngOnInit() {
@@ -118,11 +121,46 @@ export class DeoHomeComponent implements OnInit {
 
   loadDrafts() {
     this.loading.set(true);
-    // Mock data - replace with service call
-    setTimeout(() => {
-      this.drafts.set(this.getMockDrafts());
-      this.loading.set(false);
-    }, 500);
+    this.emailService.getQueue().subscribe({
+      next: (queueDrafts) => {
+        const myName = this.loggedInUser?.name || '';
+        const myDrafts = queueDrafts
+          .filter(d => !myName || d.assignedTo === myName)
+          .map(d => this.mapToDraftComplaint(d));
+        const combined = [...myDrafts, ...this.getMockDrafts()];
+        this.drafts.set(combined);
+        this.loading.set(false);
+      },
+      error: () => {
+        this.drafts.set(this.getMockDrafts());
+        this.loading.set(false);
+      }
+    });
+  }
+
+  private mapToDraftComplaint(d: EmailDraft): DraftComplaint {
+    const hours = (Date.now() - new Date(d.receivedAt).getTime()) / 3600000;
+    return {
+      draftId: d.draftId,
+      complaintNumber: d.parentComplaintId || '',
+      complainantName: d.complainantName || '',
+      fromEmailId: d.senderEmail || '',
+      subject: d.subject || '',
+      modeOfReceipt: (d.modeOfReceipt as any) || 'EMAIL',
+      status: d.status === 'CONVERTED' ? 'APPROVED' : 'DRAFT',
+      category: d.category || 'GENERAL',
+      entityName: '',
+      state: '',
+      district: '',
+      systemSuggestion: 'PENDING',
+      emailType: 'TO',
+      vernacular: false,
+      assignedAt: d.createdAt || new Date().toISOString(),
+      createdAt: d.receivedAt || new Date().toISOString(),
+      priority: 'MEDIUM',
+      slaRemaining: Math.max(0, 72 - Math.floor(hours)),
+      ageing: Math.max(0, Math.floor(hours / 24)),
+    };
   }
 
   openDraft(draftId: string) {

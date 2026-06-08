@@ -54,6 +54,17 @@ export class EmailSyndicationService {
       .pipe(map(res => res.data));
   }
 
+  ingestEmailWithAttachment(request: EmailIngestRequest, file: File): Observable<EmailDraft> {
+    const formData = new FormData();
+    formData.append('senderEmail', request.senderEmail);
+    formData.append('subject', request.subject);
+    formData.append('body', request.body || '');
+    formData.append('messageId', request.messageId || '');
+    formData.append('attachment', file);
+    return this.http.post<ApiResponse<EmailDraft>>(`${this.baseUrl}/ingest-with-attachment`, formData)
+      .pipe(map(res => res.data));
+  }
+
   getStats(): Observable<EmailQueueStats> {
     return this.http.get<ApiResponse<EmailQueueStats>>(`${this.baseUrl}/stats`)
       .pipe(map(res => res.data));

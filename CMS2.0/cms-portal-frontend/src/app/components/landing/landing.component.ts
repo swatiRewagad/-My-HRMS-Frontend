@@ -52,7 +52,19 @@ export class LandingComponent {
     this.router.navigate(['/crpc/login']);
   }
 
+  navigateToStaffPortal() {
+    this.router.navigate(['/staff/login']);
+  }
+
   navigateToPublicPortal() {
     this.router.navigate(['/public']);
+  }
+
+  navigateToKeycloakAdmin() {
+    window.open('http://localhost:8180/admin', '_blank');
+  }
+
+  navigateToRulesConfig() {
+    this.router.navigate(['/admin/rules']);
   }
 }

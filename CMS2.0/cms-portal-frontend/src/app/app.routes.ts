@@ -1,4 +1,6 @@
 import { Routes } from '@angular/router';
+import { publicAuthGuard } from './guards/public-auth.guard';
+import { staffAuthGuard } from './guards/staff-auth.guard';
 
 export const routes: Routes = [
   {
@@ -69,6 +71,63 @@ export const routes: Routes = [
     path: 'officer/complaint/:id',
     loadComponent: () => import('./components/officer/complaint-action/complaint-action.component').then(m => m.ComplaintActionComponent)
   },
+  // ── Staff Portal (Keycloak SSO) ──
+  {
+    path: 'staff/login',
+    loadComponent: () => import('./components/staff/staff-login/staff-login.component').then(m => m.StaffLoginComponent)
+  },
+  {
+    path: 'staff/dashboard',
+    canActivate: [staffAuthGuard],
+    runGuardsAndResolvers: 'always',
+    loadComponent: () => import('./components/staff/staff-dashboard/staff-dashboard.component').then(m => m.StaffDashboardComponent)
+  },
+  {
+    path: 'staff/unauthorized',
+    loadComponent: () => import('./components/staff/staff-unauthorized/staff-unauthorized.component').then(m => m.StaffUnauthorizedComponent)
+  },
+  {
+    path: 'staff/rbio/tasks',
+    canActivate: [staffAuthGuard],
+    runGuardsAndResolvers: 'always',
+    loadComponent: () => import('./components/staff/rbio-tasks/rbio-tasks.component').then(m => m.RbioTasksComponent)
+  },
+  {
+    path: 'staff/rbio/task/:id',
+    canActivate: [staffAuthGuard],
+    loadComponent: () => import('./components/staff/task-action/task-action.component').then(m => m.TaskActionComponent)
+  },
+  {
+    path: 'staff/rbio/history',
+    canActivate: [staffAuthGuard],
+    runGuardsAndResolvers: 'always',
+    loadComponent: () => import('./components/staff/rbio-tasks/rbio-tasks.component').then(m => m.RbioTasksComponent)
+  },
+  {
+    path: 'staff/rbio/escalations',
+    canActivate: [staffAuthGuard],
+    loadComponent: () => import('./components/staff/rbio-tasks/rbio-tasks.component').then(m => m.RbioTasksComponent)
+  },
+  {
+    path: 'staff/cepc/tasks',
+    canActivate: [staffAuthGuard],
+    loadComponent: () => import('./components/staff/cepc-tasks/cepc-tasks.component').then(m => m.CepcTasksComponent)
+  },
+  {
+    path: 'staff/cepc/task/:id',
+    canActivate: [staffAuthGuard],
+    loadComponent: () => import('./components/staff/task-action/task-action.component').then(m => m.TaskActionComponent)
+  },
+  {
+    path: 'staff/cepc/history',
+    canActivate: [staffAuthGuard],
+    loadComponent: () => import('./components/staff/cepc-tasks/cepc-tasks.component').then(m => m.CepcTasksComponent)
+  },
+  {
+    path: 'staff/cepc/escalations',
+    canActivate: [staffAuthGuard],
+    loadComponent: () => import('./components/staff/cepc-tasks/cepc-tasks.component').then(m => m.CepcTasksComponent)
+  },
   // ── CRPC (DEO / Reviewer) ──
   {
     path: 'crpc/login',
@@ -104,13 +163,15 @@ export const routes: Routes = [
     loadComponent: () => import('./components/public/public-layout/public-layout.component').then(m => m.PublicLayoutComponent),
     children: [
       { path: '', loadComponent: () => import('./components/public/public-home/public-home.component').then(m => m.PublicHomeComponent) },
-      { path: 'file-complaint', loadComponent: () => import('./components/public/file-complaint/file-complaint.component').then(m => m.PublicFileComplaintComponent) },
+      { path: 'login', loadComponent: () => import('./components/public/public-login/public-login.component').then(m => m.PublicLoginComponent) },
       { path: 'track', loadComponent: () => import('./components/complaint-tracker/complaint-tracker.component').then(m => m.ComplaintTrackerComponent) },
       { path: 'track/:id', loadComponent: () => import('./components/complaint-tracker/complaint-tracker.component').then(m => m.ComplaintTrackerComponent) },
-      { path: 'withdraw', loadComponent: () => import('./components/public/withdraw-complaint/withdraw-complaint.component').then(m => m.WithdrawComplaintComponent) },
-      { path: 'withdraw/:id', loadComponent: () => import('./components/public/withdraw-complaint/withdraw-complaint.component').then(m => m.WithdrawComplaintComponent) },
-      { path: 'feedback', loadComponent: () => import('./components/public/submit-feedback/submit-feedback.component').then(m => m.SubmitFeedbackComponent) },
-      { path: 'appeal', loadComponent: () => import('./components/public/file-appeal/file-appeal.component').then(m => m.FileAppealComponent) },
+      // Protected routes — require active session (NFR-005: 15-minute session)
+      { path: 'file-complaint', canActivate: [publicAuthGuard], loadComponent: () => import('./components/public/file-complaint/file-complaint.component').then(m => m.PublicFileComplaintComponent) },
+      { path: 'withdraw', canActivate: [publicAuthGuard], loadComponent: () => import('./components/public/withdraw-complaint/withdraw-complaint.component').then(m => m.WithdrawComplaintComponent) },
+      { path: 'withdraw/:id', canActivate: [publicAuthGuard], loadComponent: () => import('./components/public/withdraw-complaint/withdraw-complaint.component').then(m => m.WithdrawComplaintComponent) },
+      { path: 'feedback', canActivate: [publicAuthGuard], loadComponent: () => import('./components/public/submit-feedback/submit-feedback.component').then(m => m.SubmitFeedbackComponent) },
+      { path: 'appeal', canActivate: [publicAuthGuard], loadComponent: () => import('./components/public/file-appeal/file-appeal.component').then(m => m.FileAppealComponent) },
     ]
   },
   {

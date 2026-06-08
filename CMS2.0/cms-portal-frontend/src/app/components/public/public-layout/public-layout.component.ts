@@ -1,6 +1,7 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterOutlet, RouterLink } from '@angular/router';
+import { RouterOutlet, RouterLink, Router } from '@angular/router';
+import { PublicAuthService } from '../../../services/public-auth.service';
 
 @Component({
   selector: 'app-public-layout',
@@ -10,9 +11,17 @@ import { RouterOutlet, RouterLink } from '@angular/router';
   styleUrl: './public-layout.component.scss'
 })
 export class PublicLayoutComponent {
+  private router = inject(Router);
+  authService = inject(PublicAuthService);
+
   mobileMenuOpen = false;
   fontSize = 16;
   currentLang = 'en';
+
+  logout() {
+    this.authService.logout();
+    this.router.navigate(['/public']);
+  }
 
   // FR-G-035: Multi-language support
   changeLanguage(event: Event) {

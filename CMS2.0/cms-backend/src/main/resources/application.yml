@@ -47,6 +47,13 @@ spring:
   jackson:
     serialization:
       write-dates-as-timestamps: false
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all
+      retries: 3
   data:
     redis:
       host: ${REDIS_HOST:localhost}
@@ -59,6 +66,26 @@ spring:
       cache-null-values: false
 
 cms:
+  ocr:
+    # Provider: gemini | openai | huggingface | azure
+    provider: ${OCR_PROVIDER:gemini}
+    # ── Gemini (default) ──
+    gemini-api-key: ${GEMINI_API_KEY:}
+    gemini-model: ${GEMINI_MODEL:gemini-2.0-flash}
+    # ── OpenAI ──
+    openai-api-key: ${OPENAI_API_KEY:}
+    openai-model: ${OPENAI_MODEL:gpt-4o-mini}
+    # ── HuggingFace ──
+    huggingface-api-key: ${HUGGINGFACE_API_KEY:}
+    huggingface-model: ${HUGGINGFACE_MODEL:microsoft/trocr-large-printed}
+    huggingface-inference-url: ${HUGGINGFACE_URL:https://api-inference.huggingface.co/models/}
+    # ── Groq (free, fast) ──
+    groq-api-key: ${GROQ_API_KEY:}
+    groq-model: ${GROQ_MODEL:meta-llama/llama-4-scout-17b-16e-instruct}
+    # ── Azure Document Intelligence ──
+    azure-endpoint: ${AZURE_DOC_ENDPOINT:}
+    azure-api-key: ${AZURE_DOC_API_KEY:}
+    azure-model: ${AZURE_DOC_MODEL:prebuilt-read}
   attachments:
     root-path: ${CMS_ATTACHMENTS_PATH:C:/cms-attachments}
     max-file-size: ${CMS_MAX_FILE_SIZE:52428800}
@@ -114,11 +141,19 @@ spring:
   cache:
     type: simple
 
+cms:
+  ocr:
+    provider: groq
+    groq-api-key: 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
+
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics
+        include: health,info,metrics,prometheus
+  metrics:
+    tags:
+      application: cms-backend
 
 logging:
   level:

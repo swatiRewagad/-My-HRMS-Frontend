@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CMS Email Simulation Flow - Sequence Diagram (No SMTP)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f2f5; padding: 30px; color: #333; }
+  .container { max-width: 1200px; margin: 0 auto; }
+
+  .header { text-align: center; margin-bottom: 40px; }
+  .header h1 { font-size: 24px; color: #2B3990; margin-bottom: 8px; }
+  .header h2 { font-size: 16px; font-weight: 400; color: #666; }
+  .header .date { font-size: 12px; color: #999; margin-top: 8px; }
+  .header .badge { display: inline-block; background: #dcfce7; color: #166534; font-size: 11px; padding: 4px 12px; border-radius: 12px; margin-top: 8px; }
+
+  .section { background: #fff; border-radius: 12px; box-shadow: 0 2px 20px rgba(0,0,0,0.08); padding: 40px; margin-bottom: 40px; overflow-x: auto; }
+  .section h3 { font-size: 18px; color: #2B3990; margin-bottom: 24px; border-bottom: 2px solid #e5e7eb; padding-bottom: 12px; }
+
+  .legend { display: flex; gap: 24px; flex-wrap: wrap; margin-top: 20px; padding: 16px; background: #f8f9ff; border-radius: 8px; }
+  .legend-item { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+  .legend-color { width: 20px; height: 4px; border-radius: 2px; }
+
+  .notes { background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 16px; margin-top: 24px; }
+  .notes h4 { font-size: 13px; color: #92400e; margin-bottom: 8px; }
+  .notes ul { font-size: 12px; color: #78350f; padding-left: 20px; line-height: 1.8; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { background: #2B3990; color: #fff; padding: 12px 16px; text-align: left; }
+  td { padding: 10px 16px; border-bottom: 1px solid #e5e7eb; }
+  tr:nth-child(even) td { background: #f8f9ff; }
+
+  .code-block { background: #1e1e2e; color: #cdd6f4; padding: 20px; border-radius: 8px; font-family: 'Consolas', 'Courier New', monospace; font-size: 12px; line-height: 1.6; overflow-x: auto; white-space: pre; }
+
+  @media print {
+    body { background: #fff; padding: 10px; }
+    .section { box-shadow: none; border: 1px solid #ddd; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1>CMS - Email Simulation Flow (Current Implementation)</h1>
+    <h2>Sequence Diagram &amp; Technical Reference</h2>
+    <span class="badge">No SMTP - Fully Simulated</span>
+    <p class="date">Document Date: June 2026 | Project: RBI Complaint Management System</p>
+  </div>
+
+  <!-- SEQUENCE DIAGRAM -->
+  <div class="section">
+    <h3>1. Sequence Diagram — Email Simulation (Current)</h3>
+    <svg viewBox="0 0 1050 880" xmlns="http://www.w3.org/2000/svg" style="width:100%; min-width:900px;">
+
+      <!-- Actor boxes at top -->
+      <rect x="60" y="10" width="130" height="40" rx="6" fill="#2B3990" />
+      <text x="125" y="35" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold">User (Browser)</text>
+      <text x="125" y="62" text-anchor="middle" fill="#666" font-size="9">email-simulation.component</text>
+
+      <rect x="310" y="10" width="130" height="40" rx="6" fill="#7c3aed" />
+      <text x="375" y="35" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold">Angular Frontend</text>
+      <text x="375" y="62" text-anchor="middle" fill="#666" font-size="9">CmsService (HTTP)</text>
+
+      <rect x="560" y="10" width="150" height="40" rx="6" fill="#059669" />
+      <text x="635" y="35" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold">Spring Boot Backend</text>
+      <text x="635" y="62" text-anchor="middle" fill="#666" font-size="9">EmailSimulationController</text>
+
+      <rect x="830" y="10" width="120" height="40" rx="6" fill="#dc2626" />
+      <text x="890" y="35" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold">MySQL Database</text>
+      <text x="890" y="62" text-anchor="middle" fill="#666" font-size="9">simulated_emails + complaints</text>
+
+      <!-- Lifelines -->
+      <line x1="125" y1="75" x2="125" y2="850" stroke="#ccc" stroke-dasharray="4,4" />
+      <line x1="375" y1="75" x2="375" y2="850" stroke="#ccc" stroke-dasharray="4,4" />
+      <line x1="635" y1="75" x2="635" y2="850" stroke="#ccc" stroke-dasharray="4,4" />
+      <line x1="890" y1="75" x2="890" y2="850" stroke="#ccc" stroke-dasharray="4,4" />
+
+      <!-- PHASE 1: Send Email -->
+      <rect x="20" y="80" width="1010" height="20" rx="3" fill="#eff6ff" />
+      <text x="30" y="94" fill="#1e40af" font-size="10" font-weight="bold">PHASE 1: Citizen Sends Complaint Email (Simulated)</text>
+
+      <!-- Step 1 -->
+      <line x1="125" y1="115" x2="365" y2="115" stroke="#2B3990" stroke-width="2" marker-end="url(#arrBlue)" />
+      <text x="245" y="108" text-anchor="middle" fill="#2B3990" font-size="10" font-weight="bold">1. Fill compose form & click Send</text>
+      <text x="245" y="128" text-anchor="middle" fill="#888" font-size="9">fromEmail, fromName, subject, body</text>
+
+      <!-- Step 2 -->
+      <line x1="375" y1="150" x2="625" y2="150" stroke="#7c3aed" stroke-width="2" marker-end="url(#arrPurple)" />
+      <text x="500" y="143" text-anchor="middle" fill="#7c3aed" font-size="10" font-weight="bold">2. POST /api/email-simulation/receive</text>
+      <text x="500" y="163" text-anchor="middle" fill="#888" font-size="9">simulateIncomingEmail(sanitizedPayload)</text>
+
+      <!-- Step 3 -->
+      <line x1="635" y1="185" x2="880" y2="185" stroke="#059669" stroke-width="2" marker-end="url(#arrGreen)" />
+      <text x="757" y="178" text-anchor="middle" fill="#059669" font-size="10" font-weight="bold">3. Save INBOUND SimulatedEmail</text>
+      <text x="757" y="198" text-anchor="middle" fill="#888" font-size="9">direction: INBOUND, status: PROCESSED</text>
+
+      <!-- Step 4 -->
+      <line x1="635" y1="220" x2="880" y2="220" stroke="#059669" stroke-width="2" marker-end="url(#arrGreen)" />
+      <text x="757" y="213" text-anchor="middle" fill="#059669" font-size="10" font-weight="bold">4. Create Complaint record</text>
+      <text x="757" y="233" text-anchor="middle" fill="#888" font-size="9">status: awaiting_details, filingType: email</text>
+
+      <!-- Step 5 -->
+      <line x1="635" y1="255" x2="880" y2="255" stroke="#059669" stroke-width="2" marker-end="url(#arrGreen)" />
+      <text x="757" y="248" text-anchor="middle" fill="#059669" font-size="10" font-weight="bold">5. Save OUTBOUND auto-reply email</text>
+      <text x="757" y="268" text-anchor="middle" fill="#888" font-size="9">direction: OUTBOUND, attachmentUrl: /form-template/...</text>
+
+      <!-- Step 6 -->
+      <line x1="635" y1="290" x2="880" y2="290" stroke="#059669" stroke-width="2" marker-end="url(#arrGreen)" />
+      <text x="757" y="283" text-anchor="middle" fill="#059669" font-size="10" font-weight="bold">6. Save ComplaintTimeline</text>
+      <text x="757" y="303" text-anchor="middle" fill="#888" font-size="9">action: filed, toStatus: awaiting_details</text>
+
+      <!-- Response back -->
+      <line x1="625" y1="325" x2="385" y2="325" stroke="#059669" stroke-width="1.5" stroke-dasharray="6,3" marker-end="url(#arrGreenL)" />
+      <text x="500" y="318" text-anchor="middle" fill="#059669" font-size="10">7. Return thread {threadId, complaintNumber, emails[]}</text>
+
+      <line x1="365" y1="345" x2="135" y2="345" stroke="#7c3aed" stroke-width="1.5" stroke-dasharray="6,3" marker-end="url(#arrPurpleL)" />
+      <text x="245" y="338" text-anchor="middle" fill="#7c3aed" font-size="10">8. Show thread view with auto-reply</text>
+
+      <!-- PHASE 2: Download Form -->
+      <rect x="20" y="370" width="1010" height="20" rx="3" fill="#f0fdf4" />
+      <text x="30" y="384" fill="#166534" font-size="10" font-weight="bold">PHASE 2: Download &amp; Fill Complaint Form (Client-Side Only)</text>
+
+      <!-- Step 9 -->
+      <rect x="45" y="400" width="160" height="30" rx="4" fill="#fff7ed" stroke="#f97316" />
+      <text x="125" y="419" text-anchor="middle" fill="#9a3412" font-size="10" font-weight="bold">9. Click "Download Form"</text>
+
+      <!-- Step 10 - self call -->
+      <rect x="85" y="440" width="190" height="55" rx="4" fill="#fefce8" stroke="#eab308" stroke-dasharray="3,2" />
+      <text x="180" y="456" text-anchor="middle" fill="#854d0e" font-size="9" font-weight="bold">10. downloadComplaintForm()</text>
+      <text x="180" y="470" text-anchor="middle" fill="#854d0e" font-size="9">Generate full HTML document</text>
+      <text x="180" y="484" text-anchor="middle" fill="#854d0e" font-size="9">(inline CSS + JS + pre-filled fields)</text>
+
+      <!-- Step 11 -->
+      <rect x="45" y="505" width="160" height="40" rx="4" fill="#fff7ed" stroke="#f97316" />
+      <text x="125" y="522" text-anchor="middle" fill="#9a3412" font-size="9" font-weight="bold">11. Blob + file-saver</text>
+      <text x="125" y="536" text-anchor="middle" fill="#9a3412" font-size="9">Downloads .html to user's PC</text>
+
+      <!-- Step 12 -->
+      <rect x="45" y="555" width="160" height="40" rx="4" fill="#fef2f2" stroke="#ef4444" stroke-dasharray="3,2" />
+      <text x="125" y="572" text-anchor="middle" fill="#991b1b" font-size="9" font-weight="bold">12. User opens HTML form</text>
+      <text x="125" y="586" text-anchor="middle" fill="#991b1b" font-size="9">Fills fields, clicks "Save Filled Form"</text>
+
+      <!-- PHASE 3: Upload & Parse -->
+      <rect x="20" y="610" width="1010" height="20" rx="3" fill="#faf5ff" />
+      <text x="30" y="624" fill="#6b21a8" font-size="10" font-weight="bold">PHASE 3: Upload Filled Form &amp; Complete Complaint</text>
+
+      <!-- Step 13 -->
+      <line x1="125" y1="650" x2="365" y2="650" stroke="#2B3990" stroke-width="2" marker-end="url(#arrBlue)" />
+      <text x="245" y="643" text-anchor="middle" fill="#2B3990" font-size="10" font-weight="bold">13. Upload filled .html file</text>
+      <text x="245" y="663" text-anchor="middle" fill="#888" font-size="9">onFileSelected() event</text>
+
+      <!-- Step 14 - client parse -->
+      <rect x="295" y="675" width="160" height="40" rx="4" fill="#fefce8" stroke="#eab308" stroke-dasharray="3,2" />
+      <text x="375" y="692" text-anchor="middle" fill="#854d0e" font-size="9" font-weight="bold">14. parseHtmlForm(file)</text>
+      <text x="375" y="706" text-anchor="middle" fill="#854d0e" font-size="9">DOMParser → extract by element ID</text>
+
+      <!-- Step 15 -->
+      <line x1="125" y1="735" x2="365" y2="735" stroke="#2B3990" stroke-width="2" marker-end="url(#arrBlue)" />
+      <text x="245" y="728" text-anchor="middle" fill="#2B3990" font-size="10" font-weight="bold">15. Click "Submit Reply"</text>
+
+      <!-- Step 16 -->
+      <line x1="375" y1="755" x2="625" y2="755" stroke="#7c3aed" stroke-width="2" marker-end="url(#arrPurple)" />
+      <text x="500" y="748" text-anchor="middle" fill="#7c3aed" font-size="10" font-weight="bold">16. POST /api/email-simulation/reply-with-form</text>
+      <text x="500" y="768" text-anchor="middle" fill="#888" font-size="9">replyWithForm({threadId, parsed fields...})</text>
+
+      <!-- Step 17 -->
+      <line x1="635" y1="790" x2="880" y2="790" stroke="#059669" stroke-width="2" marker-end="url(#arrGreen)" />
+      <text x="757" y="783" text-anchor="middle" fill="#059669" font-size="10" font-weight="bold">17. Update Complaint (status → pending)</text>
+      <text x="757" y="803" text-anchor="middle" fill="#888" font-size="9">+ Save form-reply email + confirmation email</text>
+
+      <!-- Response back -->
+      <line x1="625" y1="825" x2="385" y2="825" stroke="#059669" stroke-width="1.5" stroke-dasharray="6,3" marker-end="url(#arrGreenL)" />
+      <text x="500" y="818" text-anchor="middle" fill="#059669" font-size="10">18. Return updated thread (status: COMPLETED)</text>
+
+      <line x1="365" y1="845" x2="135" y2="845" stroke="#7c3aed" stroke-width="1.5" stroke-dasharray="6,3" marker-end="url(#arrPurpleL)" />
+      <text x="245" y="838" text-anchor="middle" fill="#7c3aed" font-size="10">19. Show full thread with confirmation</text>
+
+      <!-- Arrow markers -->
+      <defs>
+        <marker id="arrBlue" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <polygon points="0 0, 8 3, 0 6" fill="#2B3990" />
+        </marker>
+        <marker id="arrPurple" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <polygon points="0 0, 8 3, 0 6" fill="#7c3aed" />
+        </marker>
+        <marker id="arrGreen" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <polygon points="0 0, 8 3, 0 6" fill="#059669" />
+        </marker>
+        <marker id="arrGreenL" markerWidth="8" markerHeight="6" refX="0" refY="3" orient="auto">
+          <polygon points="8 0, 0 3, 8 6" fill="#059669" />
+        </marker>
+        <marker id="arrPurpleL" markerWidth="8" markerHeight="6" refX="0" refY="3" orient="auto">
+          <polygon points="8 0, 0 3, 8 6" fill="#7c3aed" />
+        </marker>
+      </defs>
+    </svg>
+
+    <div class="legend">
+      <div class="legend-item"><div class="legend-color" style="background:#2B3990"></div> User interaction</div>
+      <div class="legend-item"><div class="legend-color" style="background:#7c3aed"></div> Angular HTTP calls</div>
+      <div class="legend-item"><div class="legend-color" style="background:#059669"></div> Backend processing</div>
+      <div class="legend-item"><div class="legend-color" style="background:#dc2626"></div> Database operations</div>
+      <div class="legend-item"><div class="legend-color" style="background:#eab308; height:4px; border:1px dashed #eab308;"></div> Client-side only (no server)</div>
+    </div>
+  </div>
+
+  <!-- DETAILED STEPS -->
+  <div class="section">
+    <h3>2. Step-by-Step Technical Details</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Step</th>
+          <th>Component / Service</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>1</td>
+          <td>Compose email</td>
+          <td>EmailSimulationComponent</td>
+          <td>User fills fromEmail, fromName, subject, body. Input sanitized (XSS check, email format validation)</td>
+        </tr>
+        <tr>
+          <td>2</td>
+          <td>Send email</td>
+          <td>CmsService.simulateIncomingEmail()</td>
+          <td>POST to <code>/api/email-simulation/receive</code> with sanitized payload</td>
+        </tr>
+        <tr>
+          <td>3</td>
+          <td>Save inbound</td>
+          <td>EmailSimulationService.receiveEmail()</td>
+          <td>Creates SimulatedEmail (INBOUND, PROCESSED) with new threadId + complaintNumber</td>
+        </tr>
+        <tr>
+          <td>4</td>
+          <td>Create complaint</td>
+          <td>ComplaintRepository.save()</td>
+          <td>Complaint created: status=awaiting_details, priority=medium, filingType=email</td>
+        </tr>
+        <tr>
+          <td>5</td>
+          <td>Auto-reply</td>
+          <td>EmailSimulationService</td>
+          <td>Creates OUTBOUND SimulatedEmail with reply body + attachmentUrl (form template link)</td>
+        </tr>
+        <tr>
+          <td>6</td>
+          <td>Timeline</td>
+          <td>ComplaintTimelineRepository</td>
+          <td>Records: action=filed, performedBy="Email System", toStatus=awaiting_details</td>
+        </tr>
+        <tr>
+          <td>7-8</td>
+          <td>Show thread</td>
+          <td>Component view='thread'</td>
+          <td>Displays email thread UI with inbound + auto-reply messages</td>
+        </tr>
+        <tr>
+          <td>9-11</td>
+          <td>Download form</td>
+          <td>downloadComplaintForm()</td>
+          <td>Generates HTML form as Blob (pre-filled with sender info, banks, categories, states). Uses file-saver to trigger download. <strong>No server call.</strong></td>
+        </tr>
+        <tr>
+          <td>12</td>
+          <td>Fill form</td>
+          <td>User (offline)</td>
+          <td>Opens downloaded .html in browser, fills fields, clicks embedded "Save Filled Form" JS button</td>
+        </tr>
+        <tr>
+          <td>13-14</td>
+          <td>Upload & parse</td>
+          <td>parseHtmlForm(file)</td>
+          <td>Reads file as text → DOMParser → extracts values by element ID (complainantName, phone, etc.). <strong>No server call.</strong></td>
+        </tr>
+        <tr>
+          <td>15-16</td>
+          <td>Submit reply</td>
+          <td>CmsService.replyWithForm()</td>
+          <td>POST to <code>/api/email-simulation/reply-with-form</code> with extracted form data + threadId</td>
+        </tr>
+        <tr>
+          <td>17</td>
+          <td>Complete complaint</td>
+          <td>EmailSimulationService.receiveFormReply()</td>
+          <td>Updates Complaint with full details (name, phone, address, bank, category, description). Status → pending. Saves form-reply + confirmation emails to DB.</td>
+        </tr>
+        <tr>
+          <td>18-19</td>
+          <td>Show result</td>
+          <td>Component</td>
+          <td>Full thread displayed with 4 emails (inbound → auto-reply → form-reply → confirmation)</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- DATA FLOW -->
+  <div class="section">
+    <h3>3. Data Model &amp; Thread Status</h3>
+    <svg viewBox="0 0 900 300" xmlns="http://www.w3.org/2000/svg" style="width:100%; min-width:700px;">
+      <!-- Thread status flow -->
+      <rect x="50" y="30" width="160" height="60" rx="8" fill="#fef3c7" stroke="#d97706" stroke-width="2" />
+      <text x="130" y="55" text-anchor="middle" fill="#92400e" font-size="11" font-weight="bold">AWAITING_FORM</text>
+      <text x="130" y="72" text-anchor="middle" fill="#92400e" font-size="9">1 inbound email</text>
+      <text x="130" y="85" text-anchor="middle" fill="#92400e" font-size="9">(initial complaint)</text>
+
+      <line x1="210" y1="60" x2="310" y2="60" stroke="#333" stroke-width="2" marker-end="url(#arrBlack)" />
+      <text x="260" y="52" text-anchor="middle" fill="#333" font-size="9">User replies</text>
+      <text x="260" y="75" text-anchor="middle" fill="#333" font-size="9">with form</text>
+
+      <rect x="310" y="30" width="160" height="60" rx="8" fill="#dcfce7" stroke="#16a34a" stroke-width="2" />
+      <text x="390" y="55" text-anchor="middle" fill="#166534" font-size="11" font-weight="bold">COMPLETED</text>
+      <text x="390" y="72" text-anchor="middle" fill="#166534" font-size="9">2+ inbound emails</text>
+      <text x="390" y="85" text-anchor="middle" fill="#166534" font-size="9">(form data received)</text>
+
+      <!-- Email records in thread -->
+      <text x="50" y="140" fill="#333" font-size="12" font-weight="bold">Emails in a complete thread (SimulatedEmail table):</text>
+
+      <rect x="50" y="155" width="180" height="35" rx="4" fill="#eff6ff" stroke="#2B3990" />
+      <text x="140" y="172" text-anchor="middle" fill="#2B3990" font-size="9" font-weight="bold">1. INBOUND</text>
+      <text x="140" y="185" text-anchor="middle" fill="#666" font-size="8">Citizen's original email</text>
+
+      <text x="240" y="175" fill="#999" font-size="14">→</text>
+
+      <rect x="260" y="155" width="180" height="35" rx="4" fill="#f0fdf4" stroke="#059669" />
+      <text x="350" y="172" text-anchor="middle" fill="#059669" font-size="9" font-weight="bold">2. OUTBOUND</text>
+      <text x="350" y="185" text-anchor="middle" fill="#666" font-size="8">Auto-reply + form link</text>
+
+      <text x="450" y="175" fill="#999" font-size="14">→</text>
+
+      <rect x="470" y="155" width="180" height="35" rx="4" fill="#eff6ff" stroke="#2B3990" />
+      <text x="560" y="172" text-anchor="middle" fill="#2B3990" font-size="9" font-weight="bold">3. INBOUND</text>
+      <text x="560" y="185" text-anchor="middle" fill="#666" font-size="8">Citizen's form reply</text>
+
+      <text x="660" y="175" fill="#999" font-size="14">→</text>
+
+      <rect x="680" y="155" width="180" height="35" rx="4" fill="#f0fdf4" stroke="#059669" />
+      <text x="770" y="172" text-anchor="middle" fill="#059669" font-size="9" font-weight="bold">4. OUTBOUND</text>
+      <text x="770" y="185" text-anchor="middle" fill="#666" font-size="8">Confirmation email</text>
+
+      <!-- Complaint status -->
+      <text x="50" y="225" fill="#333" font-size="12" font-weight="bold">Complaint status transition:</text>
+
+      <rect x="50" y="240" width="120" height="30" rx="15" fill="#fef3c7" stroke="#d97706" />
+      <text x="110" y="259" text-anchor="middle" fill="#92400e" font-size="10">awaiting_details</text>
+
+      <line x1="170" y1="255" x2="240" y2="255" stroke="#333" stroke-width="2" marker-end="url(#arrBlack)" />
+
+      <rect x="240" y="240" width="100" height="30" rx="15" fill="#dbeafe" stroke="#2563eb" />
+      <text x="290" y="259" text-anchor="middle" fill="#1e40af" font-size="10">pending</text>
+
+      <line x1="340" y1="255" x2="410" y2="255" stroke="#333" stroke-width="2" marker-end="url(#arrBlack)" />
+
+      <rect x="410" y="240" width="100" height="30" rx="15" fill="#e0e7ff" stroke="#4f46e5" />
+      <text x="460" y="259" text-anchor="middle" fill="#3730a3" font-size="10">assigned</text>
+
+      <line x1="510" y1="255" x2="580" y2="255" stroke="#333" stroke-width="2" marker-end="url(#arrBlack)" />
+
+      <rect x="580" y="240" width="100" height="30" rx="15" fill="#fae8ff" stroke="#a855f7" />
+      <text x="630" y="259" text-anchor="middle" fill="#6b21a8" font-size="10">in_progress</text>
+
+      <line x1="680" y1="255" x2="750" y2="255" stroke="#333" stroke-width="2" marker-end="url(#arrBlack)" />
+
+      <rect x="750" y="240" width="100" height="30" rx="15" fill="#dcfce7" stroke="#16a34a" />
+      <text x="800" y="259" text-anchor="middle" fill="#166534" font-size="10">resolved</text>
+
+      <defs>
+        <marker id="arrBlack" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <polygon points="0 0, 8 3, 0 6" fill="#333" />
+        </marker>
+      </defs>
+    </svg>
+  </div>
+
+  <!-- API ENDPOINTS -->
+  <div class="section">
+    <h3>4. API Endpoints (EmailSimulationController)</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Method</th>
+          <th>Endpoint</th>
+          <th>Purpose</th>
+          <th>Returns</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>POST</strong></td>
+          <td>/api/email-simulation/receive</td>
+          <td>Simulate incoming email → creates complaint + auto-reply</td>
+          <td>{threadId, complaintNumber, status, emails[]}</td>
+        </tr>
+        <tr>
+          <td><strong>POST</strong></td>
+          <td>/api/email-simulation/reply-with-form</td>
+          <td>Submit filled form data → completes complaint</td>
+          <td>{threadId, complaintNumber, status: COMPLETED, emails[]}</td>
+        </tr>
+        <tr>
+          <td><strong>GET</strong></td>
+          <td>/api/email-simulation/threads</td>
+          <td>List all email threads with status</td>
+          <td>[{threadId, complaintNumber, fromEmail, subject, emailCount, status}]</td>
+        </tr>
+        <tr>
+          <td><strong>GET</strong></td>
+          <td>/api/email-simulation/threads/{threadId}</td>
+          <td>Get single thread with all emails</td>
+          <td>{threadId, complaintNumber, status, emails[]}</td>
+        </tr>
+        <tr>
+          <td><strong>GET</strong></td>
+          <td>/api/email-simulation/stats</td>
+          <td>Dashboard stats (cached in Redis)</td>
+          <td>{totalThreads, awaitingForm, completed}</td>
+        </tr>
+        <tr>
+          <td><strong>GET</strong></td>
+          <td>/api/email-simulation/form-template/{complaintNumber}</td>
+          <td>Form field definitions (metadata only)</td>
+          <td>{complaintNumber, complainantEmail, fields[]}</td>
+        </tr>
+        <tr>
+          <td><strong>GET</strong></td>
+          <td>/api/email-simulation/inbox</td>
+          <td>All inbound emails</td>
+          <td>SimulatedEmail[]</td>
+        </tr>
+        <tr>
+          <td><strong>GET</strong></td>
+          <td>/api/email-simulation/sent</td>
+          <td>All outbound emails</td>
+          <td>SimulatedEmail[]</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- KEY FILES -->
+  <div class="section">
+    <h3>5. Source File Reference</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Layer</th>
+          <th>File</th>
+          <th>Responsibility</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Frontend Component</td>
+          <td>cms-frontend/src/app/components/email-simulation/email-simulation.component.ts</td>
+          <td>UI logic: compose, thread view, form download/parse/upload</td>
+        </tr>
+        <tr>
+          <td>Frontend Service</td>
+          <td>cms-frontend/src/app/services/cms.service.ts</td>
+          <td>HTTP calls: simulateIncomingEmail(), getEmailThreads(), replyWithForm()</td>
+        </tr>
+        <tr>
+          <td>Backend Controller</td>
+          <td>cms-backend/src/main/java/.../controller/EmailSimulationController.java</td>
+          <td>REST endpoints for email simulation</td>
+        </tr>
+        <tr>
+          <td>Backend Service</td>
+          <td>cms-backend/src/main/java/.../service/EmailSimulationService.java</td>
+          <td>Core logic: receiveEmail(), receiveFormReply(), thread management</td>
+        </tr>
+        <tr>
+          <td>Entity</td>
+          <td>cms-backend/src/main/java/.../entity/SimulatedEmail.java</td>
+          <td>DB entity: messageId, threadId, direction, body, attachmentUrl</td>
+        </tr>
+        <tr>
+          <td>Entity</td>
+          <td>cms-backend/src/main/java/.../entity/Complaint.java</td>
+          <td>Core complaint record linked to email thread</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- NOTES -->
+  <div class="section">
+    <h3>6. Design Decisions</h3>
+    <div class="notes">
+      <h4>Why Simulation (No SMTP)?</h4>
+      <ul>
+        <li><strong>Development speed</strong> — No mail server setup required; works fully offline</li>
+        <li><strong>Testability</strong> — Entire email flow testable without external dependencies</li>
+        <li><strong>Demo-friendly</strong> — Can demonstrate end-to-end complaint-via-email flow in any environment</li>
+        <li><strong>Form parsing client-side</strong> — Avoids server dependency for HTML parsing; user sees preview before submit</li>
+        <li><strong>Thread status derived from email count</strong> — Simple logic: 1 inbound = AWAITING, 2+ = COMPLETED</li>
+        <li><strong>Redis caching on stats</strong> — @Cacheable("email-stats") with @CacheEvict on writes</li>
+        <li><strong>Security</strong> — Input sanitization (XSS, email format, length) applied before sending to backend</li>
+      </ul>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

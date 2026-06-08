@@ -8,13 +8,7 @@
 
         <div class="action-cards">
 
-          <div class="action-card officer-card" (click)="navigateToOfficer()">
-            <i class="pi pi-users"></i>
-            <h3>Officer Portal</h3>
-            <p>Review, investigate, and resolve assigned complaints</p>
-          </div>
-
-          <div class="action-card search-card" (click)="navigateToSearch()">
+<div class="action-card search-card" (click)="navigateToSearch()">
             <i class="pi pi-search"></i>
             <h3>Search Complaints</h3>
             <p>Full-text search across all complaints with advanced filters</p>
@@ -32,22 +26,28 @@
             <p>Simulate incoming emails to test ingestion, OCR, and Round Robin assignment</p>
           </div>
 
-          <div class="action-card crpc-admin-card" (click)="navigateToCrpcAdmin()">
-            <i class="pi pi-cog"></i>
-            <h3>CRPC Admin</h3>
-            <p>Email queue monitoring, ignore list, DEO management, workload thresholds</p>
-          </div>
-
-          <div class="action-card deo-card" (click)="navigateToCrpcLogin()">
-            <i class="pi pi-sign-in"></i>
-            <h3>DEO / Reviewer Login</h3>
-            <p>CRPC staff login — DEO, Reviewer, Head, Admin, In-Charge, Help Desk</p>
+<div class="action-card staff-card" (click)="navigateToStaffPortal()">
+            <i class="pi pi-lock"></i>
+            <h3>Staff Portal (SSO)</h3>
+            <p>RBIO / CEPC officers — Keycloak SSO login for complaint processing</p>
           </div>
 
           <div class="action-card public-card" (click)="navigateToPublicPortal()">
             <i class="pi pi-globe"></i>
             <h3>Public Portal</h3>
             <p>Complainant-facing portal — file, track, withdraw, appeal, feedback</p>
+          </div>
+
+          <div class="action-card keycloak-card" (click)="navigateToKeycloakAdmin()">
+            <i class="pi pi-users"></i>
+            <h3>Keycloak Admin</h3>
+            <p>Manage users, roles, realm settings, and department access mappings</p>
+          </div>
+
+          <div class="action-card rules-card" (click)="navigateToRulesConfig()">
+            <i class="pi pi-cog"></i>
+            <h3>Rules Config</h3>
+            <p>Configure business rules — SLA thresholds, routing logic, escalation policies</p>
           </div>
         </div>
       </div>

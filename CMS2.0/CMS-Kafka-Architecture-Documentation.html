@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CMS Kafka Architecture - Event-Driven Communication</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f8f9fa; color: #333; line-height: 1.6; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+        h1 { color: #1a237e; font-size: 2rem; margin-bottom: 0.5rem; }
+        h2 { color: #1565c0; font-size: 1.5rem; margin: 2rem 0 1rem; border-bottom: 2px solid #e3f2fd; padding-bottom: 0.5rem; }
+        h3 { color: #0d47a1; font-size: 1.15rem; margin: 1.5rem 0 0.75rem; }
+        .subtitle { color: #666; font-size: 1rem; margin-bottom: 2rem; }
+        .card { background: #fff; border-radius: 10px; padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.06); border: 1px solid #e0e0e0; }
+        .card h3 { margin-top: 0; }
+        table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+        th, td { padding: 10px 14px; border: 1px solid #e0e0e0; text-align: left; font-size: 0.9rem; }
+        th { background: #1a237e; color: #fff; font-weight: 600; }
+        tr:nth-child(even) { background: #f5f5f5; }
+        code { background: #e8eaf6; padding: 2px 6px; border-radius: 4px; font-family: 'Consolas', monospace; font-size: 0.85rem; }
+        pre { background: #1a1a2e; color: #e0e0e0; padding: 1.25rem; border-radius: 8px; overflow-x: auto; font-size: 0.85rem; line-height: 1.5; margin: 1rem 0; }
+        pre .comment { color: #6a9955; }
+        pre .keyword { color: #569cd6; }
+        pre .string { color: #ce9178; }
+        pre .highlight { color: #4ec9b0; }
+        .flow-diagram { background: #fff; border: 1px solid #e0e0e0; border-radius: 10px; padding: 1.5rem; margin: 1.5rem 0; font-family: 'Consolas', monospace; font-size: 0.8rem; white-space: pre; overflow-x: auto; line-height: 1.6; }
+        .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; margin: 2px; }
+        .badge-topic { background: #e3f2fd; color: #1565c0; }
+        .badge-service { background: #e8f5e9; color: #2e7d32; }
+        .badge-action { background: #fff3e0; color: #e65100; }
+        .highlight-box { background: #e8f5e9; border-left: 4px solid #4caf50; padding: 1rem 1.5rem; border-radius: 0 8px 8px 0; margin: 1rem 0; }
+        .warning-box { background: #fff3e0; border-left: 4px solid #ff9800; padding: 1rem 1.5rem; border-radius: 0 8px 8px 0; margin: 1rem 0; }
+        .key-concept { background: #e3f2fd; border-left: 4px solid #1565c0; padding: 1rem 1.5rem; border-radius: 0 8px 8px 0; margin: 1rem 0; }
+        .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+        @media (max-width: 768px) { .two-col { grid-template-columns: 1fr; } }
+        .toc { background: #fff; padding: 1.5rem; border-radius: 10px; border: 1px solid #e0e0e0; margin-bottom: 2rem; }
+        .toc ul { list-style: none; padding-left: 0; }
+        .toc li { padding: 4px 0; }
+        .toc a { color: #1565c0; text-decoration: none; }
+        .toc a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <h1>CMS Kafka Architecture</h1>
+    <p class="subtitle">Event-Driven Microservice Communication - How Services Coordinate via Apache Kafka</p>
+
+    <div class="toc">
+        <h3>Table of Contents</h3>
+        <ul>
+            <li><a href="#overview">1. Overview - Role of Kafka in CMS</a></li>
+            <li><a href="#topics">2. Kafka Topics</a></li>
+            <li><a href="#lifecycle">3. Complaint Lifecycle Flow</a></li>
+            <li><a href="#consumer-groups">4. Consumer Groups - How Services Know "It's For Me"</a></li>
+            <li><a href="#publishers">5. Who Publishes vs Who Consumes</a></li>
+            <li><a href="#escalation">6. Escalation Flow (complaint.escalated)</a></li>
+            <li><a href="#assignment">7. Assignment Service & Drools Rules</a></li>
+            <li><a href="#officer-view">8. How Complaints Reach an Officer's Screen</a></li>
+            <li><a href="#partitions">9. Partitions & Ordering Guarantees</a></li>
+            <li><a href="#topic-routing">10. Topic Routing - How It's Decided</a></li>
+            <li><a href="#outbox">11. Outbox Pattern - Reliability</a></li>
+            <li><a href="#config">12. Configuration Reference</a></li>
+        </ul>
+    </div>
+
+    <!-- Section 1: Overview -->
+    <h2 id="overview">1. Overview - Role of Kafka in CMS</h2>
+    <div class="card">
+        <p>Apache Kafka acts as the <strong>central nervous system</strong> connecting all CMS microservices. When a complaint moves through its lifecycle, events are published to Kafka topics, and multiple services react independently.</p>
+
+        <div class="key-concept">
+            <strong>Key Principle:</strong> Kafka decouples complaint processing. The backend just says "complaint arrived" and 4+ services independently do their jobs (assign, route workflow, index for search, notify complainant).
+        </div>
+
+        <h3>Why Kafka?</h3>
+        <ul style="margin: 1rem 0; padding-left: 1.5rem;">
+            <li><strong>Decoupling:</strong> Services don't call each other directly</li>
+            <li><strong>Fan-out:</strong> One event triggers multiple independent actions</li>
+            <li><strong>Resilience:</strong> If a service is down, messages wait in the topic</li>
+            <li><strong>Ordering:</strong> Per-complaint ordering guaranteed via partition keys</li>
+            <li><strong>Scalability:</strong> Add more instances without changing code</li>
+        </ul>
+    </div>
+
+    <!-- Section 2: Topics -->
+    <h2 id="topics">2. Kafka Topics</h2>
+    <div class="card">
+        <p>Defined in <code>cms-common/.../KafkaTopics.java</code>:</p>
+        <table>
+            <tr><th>Topic</th><th>Trigger</th><th>Partitions</th><th>Replicas</th></tr>
+            <tr><td><code>complaint.ingested</code></td><td>New complaint formally registered (DEO submits)</td><td>6</td><td>3</td></tr>
+            <tr><td><code>complaint.assigned</code></td><td>Drools rules assign team/officer</td><td>6</td><td>3</td></tr>
+            <tr><td><code>complaint.inprogress</code></td><td>Officer starts working on complaint</td><td>6</td><td>3</td></tr>
+            <tr><td><code>complaint.escalated</code></td><td>SLA breach OR manual escalation by officer</td><td>6</td><td>3</td></tr>
+            <tr><td><code>complaint.resolved</code></td><td>Officer resolves complaint</td><td>6</td><td>3</td></tr>
+            <tr><td><code>complaint.closed</code></td><td>Final closure after resolution</td><td>6</td><td>3</td></tr>
+            <tr><td><code>complaint.dlq</code></td><td>Dead letter queue for failed processing</td><td>3</td><td>3</td></tr>
+        </table>
+    </div>
+
+    <!-- Section 3: Lifecycle Flow -->
+    <h2 id="lifecycle">3. Complaint Lifecycle Flow</h2>
+    <div class="card">
+        <h3>When Does Kafka Get Involved?</h3>
+        <table>
+            <tr><th>Stage</th><th>What Happens</th><th>Kafka?</th></tr>
+            <tr><td>Email arrives</td><td>Saved as draft, DEO assigned (round-robin)</td><td style="color:#d32f2f;">NO</td></tr>
+            <tr><td>DEO reviews draft</td><td>DEO opens, fills form</td><td style="color:#d32f2f;">NO</td></tr>
+            <tr><td>DEO submits complaint</td><td><code>registerComplaint()</code> called</td><td style="color:#2e7d32;"><strong>YES - complaint.ingested</strong></td></tr>
+            <tr><td>Assignment rules run</td><td>Drools decides team/officer</td><td style="color:#2e7d32;"><strong>YES - complaint.assigned</strong></td></tr>
+            <tr><td>Officer starts work</td><td>Status changes to IN_PROGRESS</td><td style="color:#2e7d32;"><strong>YES - complaint.inprogress</strong></td></tr>
+            <tr><td>SLA breach detected</td><td>Cron job detects overdue</td><td style="color:#2e7d32;"><strong>YES - complaint.escalated</strong></td></tr>
+            <tr><td>Officer resolves</td><td>Final resolution recorded</td><td style="color:#2e7d32;"><strong>YES - complaint.resolved</strong></td></tr>
+            <tr><td>Complaint closed</td><td>Final closure</td><td style="color:#2e7d32;"><strong>YES - complaint.closed</strong></td></tr>
+        </table>
+
+        <div class="warning-box">
+            <strong>Important:</strong> Kafka only enters the picture AFTER human (DEO) validation and formal submission. Email drafts, DEO assignment, and review happen WITHOUT Kafka.
+        </div>
+    </div>
+
+    <div class="flow-diagram">
+Email Arrives
+     |
+     v
++-----------------------------------+
+| Email Syndication (cms-backend)   |
+| - Saves draft                     |
+| - Assigns DEO (round-robin)      |
+| - Status: DRAFT / ASSIGNED       |
+| X Does NOT publish to Kafka       |
++-----------------------------------+
+     |
+     v  DEO logs in, reviews, fills form, submits
+     |
++-----------------------------------+
+| Complaint Registration            |
+| (cms-ingestion-service)           |
+| - Validates, saves to DB          |
+| - Status: NEW                     |
+| V Publishes -> complaint.ingested |
++-----------------------------------+
+     |
+     v  NOW Kafka services wake up
+     |
+     +-----> Assignment Service (Drools rules) -> publishes complaint.assigned
+     +-----> Workflow Service -> starts BPMN process
+     +-----> Search Service -> indexes in OpenSearch
+     +-----> Notification Service -> sends SMS/email to complainant
+    </div>
+
+    <!-- Section 4: Consumer Groups -->
+    <h2 id="consumer-groups">4. Consumer Groups - How Services Know "It's For Me"</h2>
+    <div class="card">
+        <div class="key-concept">
+            <strong>Key Insight:</strong> Events are NOT "for" one service. Every event goes to ALL subscribed services. Each consumer group gets its OWN independent copy of every message.
+        </div>
+
+        <h3>Consumer Groups in CMS</h3>
+        <table>
+            <tr><th>Service</th><th>Consumer Group ID</th><th>Topics Subscribed</th></tr>
+            <tr><td>Workflow Service</td><td><code>cms-workflow-group</code></td><td>complaint.ingested</td></tr>
+            <tr><td>Assignment Service</td><td><code>cms-assignment-group</code></td><td>complaint.ingested</td></tr>
+            <tr><td>Search Service</td><td><code>cms-search-group</code></td><td>ALL topics (ingested, assigned, escalated, resolved, closed)</td></tr>
+            <tr><td>Notification Service</td><td><code>cms-notification-group</code></td><td>ingested, assigned, resolved, escalated</td></tr>
+            <tr><td>Audit Service</td><td><code>cms-audit-group</code></td><td>ALL topics</td></tr>
+        </table>
+
+        <h3>How Kafka Delivers Messages</h3>
+        <div class="flow-diagram">
+complaint.ingested fires (1 message published)
+         |
+         |  Kafka delivers a COPY to each consumer group
+         |
+         +---> cms-workflow-group     -> Starts BPMN process       [DELIVERED]
+         +---> cms-assignment-group   -> Runs Drools, assigns team [DELIVERED]
+         +---> cms-search-group      -> Indexes in OpenSearch      [DELIVERED]
+         +---> cms-notification-group -> Sends SMS/email ack       [DELIVERED]
+
+All 4 services process the SAME event simultaneously. Nobody "claims" it.
+        </div>
+
+        <h3>Why a Service Does NOT Process an Event</h3>
+        <p>Example: Why doesn't Assignment Service react to <code>complaint.escalated</code>?</p>
+        <div class="flow-diagram">
+Kafka Broker has topic: complaint.escalated
+         |
+         |  "Who subscribed to me?"
+         |
+         +-- cms-notification-group -> YES (has @KafkaListener) -> DELIVER
+         +-- cms-search-group      -> YES (has @KafkaListener) -> DELIVER
+         +-- cms-workflow-group     -> NO  (never subscribed)   -> SKIP
+         +-- cms-assignment-group   -> NO  (never subscribed)   -> SKIP
+        </div>
+
+        <div class="highlight-box">
+            <strong>Analogy:</strong> It's like a mailing list. You only get emails if you subscribed. The sender doesn't choose recipients.
+        </div>
+    </div>
+
+    <!-- Section 5: Publishers vs Consumers -->
+    <h2 id="publishers">5. Who Publishes vs Who Consumes</h2>
+    <div class="card">
+        <table>
+            <tr><th>Service</th><th>Publishes</th><th>Consumes</th></tr>
+            <tr>
+                <td><strong>cms-backend / cms-ingestion</strong></td>
+                <td><code>complaint.ingested</code></td>
+                <td>-</td>
+            </tr>
+            <tr>
+                <td><strong>cms-assignment-service</strong></td>
+                <td><code>complaint.assigned</code></td>
+                <td><code>complaint.ingested</code> -> runs Drools rules, assigns officer</td>
+            </tr>
+            <tr>
+                <td><strong>cms-workflow-service</strong></td>
+                <td><code>complaint.inprogress</code>, <code>complaint.resolved</code></td>
+                <td><code>complaint.ingested</code> -> starts BPMN workflow</td>
+            </tr>
+            <tr>
+                <td><strong>cms-search-service</strong></td>
+                <td>-</td>
+                <td>ALL topics -> indexes/updates OpenSearch</td>
+            </tr>
+            <tr>
+                <td><strong>cms-notification-service</strong></td>
+                <td>-</td>
+                <td><code>ingested</code>, <code>assigned</code>, <code>resolved</code>, <code>escalated</code> -> sends SMS/email</td>
+            </tr>
+            <tr>
+                <td><strong>cms-sla-monitor-service</strong></td>
+                <td><code>complaint.escalated</code></td>
+                <td>- (scheduled cron, checks DB for SLA breaches)</td>
+            </tr>
+        </table>
+    </div>
+
+    <!-- Section 6: Escalation Flow -->
+    <h2 id="escalation">6. Escalation Flow (complaint.escalated)</h2>
+    <div class="card">
+        <h3>Two Triggers for Escalation</h3>
+        <div class="two-col">
+            <div class="card">
+                <h3>1. SLA Monitor (Automatic)</h3>
+                <p>Cron job queries DB for overdue complaints and publishes escalation events.</p>
+                <pre>
+<span class="comment">// SlaMonitorService.java</span>
+<span class="keyword">SELECT</span> COMPLAINT_ID <span class="keyword">FROM</span> COMPLAINT_MASTER
+<span class="keyword">WHERE</span> STATUS <span class="keyword">NOT IN</span> ('RESOLVED', 'CLOSED')
+<span class="keyword">AND</span> SLA_DUE_DATE < NOW()
+
+<span class="comment">// For each breached complaint:</span>
+kafkaTemplate.send(<span class="string">"complaint.escalated"</span>,
+    complaintId, <span class="string">"{reason: SLA_BREACH}"</span>);</pre>
+            </div>
+            <div class="card">
+                <h3>2. Officer Action (Manual)</h3>
+                <p>Officer clicks "Escalate" in the UI.</p>
+                <pre>
+<span class="comment">// WorkflowController.java</span>
+<span class="keyword">case</span> <span class="string">"ESCALATE"</span>:
+    c.setStatus(<span class="string">"escalated"</span>);
+    c.setAssignedRole(
+        getNextRole(dept, currentRole)
+    );
+<span class="comment">// Promotes up the chain</span></pre>
+            </div>
+        </div>
+
+        <h3>What Happens When complaint.escalated Fires</h3>
+        <div class="flow-diagram">
+complaint.escalated fires
+         |
+         +---> Notification Service
+         |         |
+         |         v
+         |    Sends SMS/Email to complainant:
+         |    "Your complaint has been escalated for priority resolution"
+         |
+         +---> Search Service
+                   |
+                   v
+              Updates OpenSearch index:
+              status = "ESCALATED"
+        </div>
+
+        <h3>Escalation Ladder (Role Promotion)</h3>
+        <table>
+            <tr><th>Level</th><th>Role</th><th>Can Do</th></tr>
+            <tr><td>1</td><td><code>CEPC_OFFICER / RBIO_OFFICER</code></td><td>Process, Resolve, or Escalate up</td></tr>
+            <tr><td>2</td><td><code>CEPC_SUPERVISOR / RBIO_SUPERVISOR</code></td><td>Review, Resolve, Return down, or Escalate up</td></tr>
+            <tr><td>3</td><td><code>CEPC_CONCILIATOR / RBIO_CONCILIATOR</code></td><td>Mediate between bank & complainant</td></tr>
+            <tr><td>4</td><td><code>CEPC_ADJUDICATOR / RBIO_ADJUDICATOR</code></td><td>Final binding award (if conciliation fails)</td></tr>
+        </table>
+
+        <div class="flow-diagram">
+CEPC_OFFICER can't resolve
+         |
+         v  clicks "Escalate"
+    DB updated:
+      status = "escalated"
+      assignedRole = "CEPC_SUPERVISOR"  <-- promoted up
+         |
+         v  Kafka: complaint.escalated
+         |
+         +---> Notification -> SMS to complainant
+         +---> Search -> index updated
+
+CEPC_SUPERVISOR logs in
+         |
+         v  GET /api/v1/workflow/cepc/tasks?role=CEPC_SUPERVISOR
+         |
+         v  Sees the escalated complaint in their task list
+        </div>
+    </div>
+
+    <!-- Section 7: Assignment Service -->
+    <h2 id="assignment">7. Assignment Service & Drools Rules</h2>
+    <div class="card">
+        <h3>What It Does</h3>
+        <p>Listens to <code>complaint.ingested</code>, runs Drools business rules to decide which team/officer handles the complaint, then publishes <code>complaint.assigned</code>.</p>
+
+        <pre>
+<span class="comment">// AssignmentService.java</span>
+AssignmentFact fact = AssignmentFact.builder()
+    .complaintId(complaintId)
+    .category(category)        <span class="comment">// e.g., "ATM", "LOAN", "UPI"</span>
+    .priority(priority)        <span class="comment">// e.g., "HIGH", "MEDIUM"</span>
+    .amountInvolved(amount)
+    .build();
+
+KieSession kieSession = kieContainer.newKieSession();
+kieSession.insert(fact);
+kieSession.fireAllRules();     <span class="comment">// Drools rules decide team</span>
+
+<span class="comment">// After rules fire, fact is populated with:</span>
+<span class="comment">// fact.assignedTeam = "RBIO_TEAM_A"</span>
+<span class="comment">// fact.assignedOfficer = "officer name"</span>
+<span class="comment">// fact.isEscalated = false</span>
+        </pre>
+
+        <h3>Then Publishes Second Kafka Event</h3>
+        <pre>
+<span class="comment">// ComplaintIngestedAssignmentListener.java</span>
+ComplaintEvent assignedEvent = ComplaintEvent.builder()
+    .complaintId(event.getComplaintId())
+    .currentStatus(ComplaintStatus.<span class="highlight">ASSIGNED</span>)
+    .assignedTo(result.getAssignedTeam())
+    .build();
+
+kafkaTemplate.send(KafkaTopics.<span class="highlight">COMPLAINT_ASSIGNED</span>,
+    event.getComplaintId(), payload);
+        </pre>
+
+        <div class="highlight-box">
+            <strong>Summary:</strong> Assignment Service is a decision-maker. Takes complaint facts in -> applies Drools business rules -> outputs team assignment -> tells the rest of the system via Kafka.
+        </div>
+    </div>
+
+    <!-- Section 8: Officer View -->
+    <h2 id="officer-view">8. How Complaints Reach an Officer's Screen</h2>
+    <div class="card">
+        <div class="key-concept">
+            <strong>Key Insight:</strong> It's NOT push (Kafka -> browser). It's pull (officer logs in -> API query -> DB filter). The DB is the bridge between Kafka and the UI.
+        </div>
+
+        <h3>Step-by-Step</h3>
+        <div class="flow-diagram">
+1. Kafka: complaint.ingested
+        |
+        v
+2. Assignment Service (Drools rules):
+   category=ATM, priority=HIGH -> team=CEPC, role=CEPC_OFFICER
+        |
+        v
+3. DB Updated:
+   complaint.department = "CEPC"
+   complaint.assignedRole = "CEPC_OFFICER"
+   complaint.assignedOfficer = "cepc.officer"
+   complaint.status = "assigned"
+        |
+        v
+4. Kafka: complaint.assigned (tells Search & Notification services)
+        |
+        v
+5. Officer logs in via Keycloak SSO
+   - Token contains roles: ["CEPC_OFFICER"]
+   - Frontend detects department = CEPC
+        |
+        v
+6. Frontend calls API:
+   GET /api/v1/workflow/cepc/tasks?role=CEPC_OFFICER
+        |
+        v
+7. Backend queries DB (WorkflowController.java):
+   WHERE department="CEPC" AND assignedRole="CEPC_OFFICER"
+   AND status NOT IN (resolved, closed...)
+        |
+        v
+8. Returns only complaints assigned to that role/officer
+        </div>
+
+        <h3>The Bridge Pattern</h3>
+        <div class="flow-diagram">
+Kafka (async, event-driven)    DB (state store)         UI (sync, request-driven)
+                                    |
+Assignment Service --writes-->  complaint table  <--reads-- Officer's browser
+                                department="CEPC"
+                                assignedRole="CEPC_OFFICER"
+                                status="assigned"
+        </div>
+
+        <div class="highlight-box">
+            <strong>Analogy:</strong> Manager puts file in your desk drawer (Assignment writes to DB). You come to office, open drawer, see files (Officer logs in, frontend queries API, sees assigned complaints).
+        </div>
+    </div>
+
+    <!-- Section 9: Partitions -->
+    <h2 id="partitions">9. Partitions & Ordering Guarantees</h2>
+    <div class="card">
+        <h3>Topic Configuration</h3>
+        <pre>
+<span class="comment">// KafkaTopicConfig.java</span>
+<span class="keyword">private static final int</span> PARTITIONS = <span class="string">6</span>;
+<span class="keyword">private static final int</span> REPLICAS = <span class="string">3</span>;
+        </pre>
+
+        <h3>Message Key = Complaint Number</h3>
+        <pre>
+kafkaTemplate.send(TOPIC, complaint.getComplaintNumber(), message);
+<span class="comment">//                        ^^^^^^^^ KEY ^^^^^^^^</span>
+        </pre>
+
+        <div class="two-col">
+            <div class="card">
+                <h3>Why 6 Partitions?</h3>
+                <p>Allows up to 6 parallel consumers per group. If you run 3 instances of the workflow service (all with <code>groupId = "cms-workflow-group"</code>), Kafka assigns 2 partitions to each instance.</p>
+            </div>
+            <div class="card">
+                <h3>Why Complaint Number as Key?</h3>
+                <p>All events for the same complaint always go to the same partition -> same consumer instance -> <strong>guarantees ordering per complaint</strong>. You'll never process "ASSIGNED" before "INGESTED" for the same complaint.</p>
+            </div>
+        </div>
+
+        <table>
+            <tr><th>Concept</th><th>Analogy</th><th>Purpose</th></tr>
+            <tr><td><strong>Topic</strong></td><td>TV channel</td><td>Subscribe to what you want</td></tr>
+            <tr><td><strong>Consumer Group</strong></td><td>Each department gets its own TV</td><td>No fighting for messages</td></tr>
+            <tr><td><strong>Partition</strong></td><td>Multiple cashiers</td><td>Load balancing within one group</td></tr>
+            <tr><td><strong>Message Key</strong></td><td>Customer loyalty card</td><td>Same customer -> same cashier (ordering)</td></tr>
+        </table>
+    </div>
+
+    <!-- Section 10: Topic Routing -->
+    <h2 id="topic-routing">10. Topic Routing - How It's Decided</h2>
+    <div class="card">
+        <div class="warning-box">
+            <strong>Answer:</strong> Topic routing is HARDCODED in each service's code, NOT configurable at runtime. There is no broker-side routing or dynamic configuration.
+        </div>
+
+        <h3>Each Service Always Publishes to the Same Topic</h3>
+        <table>
+            <tr><th>Service</th><th>Always Publishes To</th><th>Decided By</th></tr>
+            <tr><td>Ingestion Service</td><td><code>complaint.ingested</code></td><td>Hardcoded constant</td></tr>
+            <tr><td>Assignment Service</td><td><code>complaint.assigned</code></td><td>Hardcoded constant</td></tr>
+            <tr><td>SLA Monitor</td><td><code>complaint.escalated</code></td><td>Hardcoded constant</td></tr>
+        </table>
+
+        <h3>Status-Based Switch (Only in IngestionService)</h3>
+        <pre>
+<span class="comment">// IngestionService.java - for status transitions</span>
+String topic = <span class="keyword">switch</span> (newStatus) {
+    <span class="keyword">case</span> RESOLVED   -> KafkaTopics.<span class="highlight">COMPLAINT_RESOLVED</span>;
+    <span class="keyword">case</span> ESCALATED  -> KafkaTopics.<span class="highlight">COMPLAINT_ESCALATED</span>;
+    <span class="keyword">case</span> CLOSED     -> KafkaTopics.<span class="highlight">COMPLAINT_CLOSED</span>;
+    <span class="keyword">case</span> IN_PROGRESS -> KafkaTopics.<span class="highlight">COMPLAINT_IN_PROGRESS</span>;
+    <span class="keyword">case</span> ASSIGNED   -> KafkaTopics.<span class="highlight">COMPLAINT_ASSIGNED</span>;
+    <span class="keyword">default</span>        -> <span class="keyword">null</span>;
+};
+        </pre>
+        <p>Even this is a code-level mapping (compile-time), not an external configuration.</p>
+
+        <h3>Similarly, Listeners are Hardcoded</h3>
+        <pre>
+<span class="comment">// Each service's listener decides what to subscribe to at compile time</span>
+@KafkaListener(topics = KafkaTopics.COMPLAINT_INGESTED, groupId = <span class="string">"cms-workflow-group"</span>)
+@KafkaListener(topics = KafkaTopics.COMPLAINT_INGESTED, groupId = <span class="string">"cms-assignment-group"</span>)
+@KafkaListener(topics = KafkaTopics.COMPLAINT_ESCALATED, groupId = <span class="string">"cms-notification-group"</span>)
+        </pre>
+    </div>
+
+    <!-- Section 11: Outbox Pattern -->
+    <h2 id="outbox">11. Outbox Pattern - Reliability</h2>
+    <div class="card">
+        <p>The <code>cms-outbox-publisher</code> service ensures events are published reliably even if Kafka is temporarily down.</p>
+
+        <h3>How It Works</h3>
+        <div class="flow-diagram">
+Normal Flow:
+  DB Save + Kafka Publish (in same transaction? NO - dual write problem!)
+
+Outbox Pattern:
+  1. DB Save + Write event to OUTBOX table (same transaction - atomic)
+  2. Outbox Publisher polls OUTBOX table
+  3. Publishes to Kafka
+  4. Marks outbox entry as published
+
+If Kafka is down:
+  - Outbox entries accumulate in DB
+  - When Kafka recovers, publisher catches up
+  - No events lost!
+        </div>
+
+        <div class="highlight-box">
+            <strong>Guarantee:</strong> If the complaint is in the DB, the event WILL eventually reach Kafka. No data loss even during Kafka outages.
+        </div>
+    </div>
+
+    <!-- Section 12: Configuration -->
+    <h2 id="config">12. Configuration Reference</h2>
+    <div class="card">
+        <h3>application.yml - Consumer Configuration</h3>
+        <pre>
+spring:
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      group-id: cms-workflow-group       <span class="comment"># Unique per service</span>
+      auto-offset-reset: earliest        <span class="comment"># Start from beginning if no offset</span>
+      enable-auto-commit: false          <span class="comment"># Manual ack for at-least-once</span>
+    listener:
+      ack-mode: MANUAL                   <span class="comment"># Explicit acknowledgement</span>
+        </pre>
+
+        <h3>Key Design Choices</h3>
+        <table>
+            <tr><th>Choice</th><th>Value</th><th>Reason</th></tr>
+            <tr><td>Ack mode</td><td>MANUAL</td><td>At-least-once delivery - message redelivered if consumer crashes before ack</td></tr>
+            <tr><td>Auto-commit</td><td>false</td><td>Consumer controls when offset is committed</td></tr>
+            <tr><td>Offset reset</td><td>earliest</td><td>New consumers start from beginning - no missed events</td></tr>
+            <tr><td>Partitions</td><td>6</td><td>Allows 6x parallelism per consumer group</td></tr>
+            <tr><td>Replicas</td><td>3</td><td>Survives 2 broker failures</td></tr>
+        </table>
+
+        <h3>File References</h3>
+        <table>
+            <tr><th>File</th><th>Purpose</th></tr>
+            <tr><td><code>cms-common/.../KafkaTopics.java</code></td><td>All topic name constants</td></tr>
+            <tr><td><code>cms-infrastructure/.../KafkaTopicConfig.java</code></td><td>Topic creation (partitions, replicas)</td></tr>
+            <tr><td><code>cms-backend/.../ComplaintEventPublisher.java</code></td><td>Publishes complaint.ingested</td></tr>
+            <tr><td><code>cms-assignment-service/.../ComplaintIngestedAssignmentListener.java</code></td><td>Listens & publishes complaint.assigned</td></tr>
+            <tr><td><code>cms-workflow-service/.../ComplaintIngestedListener.java</code></td><td>Starts BPMN workflow</td></tr>
+            <tr><td><code>cms-search-service/.../ComplaintIndexingListener.java</code></td><td>Indexes in OpenSearch</td></tr>
+            <tr><td><code>cms-notification-service/.../ComplaintEventNotificationListener.java</code></td><td>Sends SMS/email</td></tr>
+            <tr><td><code>cms-sla-monitor-service/.../SlaMonitorService.java</code></td><td>Publishes complaint.escalated</td></tr>
+            <tr><td><code>cms-outbox-publisher/.../OutboxPublisherService.java</code></td><td>Reliable event publishing</td></tr>
+        </table>
+    </div>
+
+    <div style="text-align: center; margin-top: 3rem; padding: 1.5rem; background: #e8eaf6; border-radius: 10px;">
+        <p style="color: #1a237e; font-weight: 600;">CMS 2.0 - Kafka Architecture Documentation</p>
+        <p style="color: #666; font-size: 0.85rem;">Generated: June 2026 | RBI Complaint Management System</p>
+    </div>
+
+</div>
+</body>
+</html>

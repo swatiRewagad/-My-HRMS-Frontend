@@ -2,12 +2,21 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { HttpClient } from '@angular/common/http';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
+import { environment } from '../../../../environments/environment';
 
-interface ScreeningQuestion {
+interface Suggestion {
   id: string;
-  question: string;
-  answer: 'YES' | 'NO' | null;
-  autoCloseIfYes: boolean;
+  field: string;
+  value: string;
+}
+
+interface PastComplaint {
+  complaintNumber: string;
+  subject: string;
+  entityName: string;
+  date: string;
 }
 
 @Component({
@@ -20,57 +29,60 @@ interface ScreeningQuestion {
 export class PhysicalLetterComponent implements OnInit {
 
   private router = inject(Router);
+  private http = inject(HttpClient);
+  private sanitizer = inject(DomSanitizer);
 
-  currentStep = signal(1);
-  totalSteps = 4;
+  // Header
+  complaintNumber = '';
+  assignedOfficer = '';
+  activeTab = signal<'creation' | 'assignment'>('creation');
 
-  // Step 1: Scan/Upload
+  // Left panel
   scannedFile: File | null = null;
   scanError = '';
   ocrInProgress = signal(false);
   ocrComplete = signal(false);
+  pdfExpanded = signal(false);
+  pdfPage = signal(1);
+  pdfPreviewUrl = signal<SafeResourceUrl | null>(null);
 
-  // Step 2: Complainant Details (OCR-prefilled, editable)
-  complainantName = '';
-  complainantAddress = '';
-  complainantState = '';
-  complainantDistrict = '';
-  complainantPincode = '';
-  complainantPhone = '';
-  complainantEmail = '';
-  vernacular = false;
-  vernacularLanguage = '';
-
-  // Step 3: Complaint Details
-  category = '';
-  subCategory = '';
-  entityName = '';
-  entityType = 'BANK';
+  // Form fields
   subject = '';
   description = '';
+  comments = '';
+  modeOfReceipt = 'PHYSICAL_LETTER';
+  receivedDate = '';
+  letterDate = '';
+  category = '';
+  complaintType = 'COMPLAINT';
+  isRbiEComplaint = 'NO';
+  nonEComplaintReason = '';
+  entityName = '';
+  entityType = 'BANK';
+  branchName = '';
+  branchPincode = '';
+  complainantName = '';
+  complainantPhone = '';
+  complainantEmail = '';
+  complainantState = '';
+  complainantAddress = '';
+  complainantDistrict = '';
+  complainantPincode = '';
   amountInvolved: number | null = null;
   transactionDate = '';
-  letterDate = '';
-  receivedDate = '';
 
-  // Step 4: Auto-closure Screening
-  screeningQuestions: ScreeningQuestion[] = [
-    { id: 'Q1', question: 'Is the complaint addressed to a specific Regulated Entity (RE)?', answer: null, autoCloseIfYes: false },
-    { id: 'Q2', question: 'Has the complainant already approached the concerned RE and received a final response?', answer: null, autoCloseIfYes: false },
-    { id: 'Q3', question: 'Is the complaint older than 1 year from the date of cause of action?', answer: null, autoCloseIfYes: true },
-    { id: 'Q4', question: 'Is the matter already sub-judice or decided by any court/forum?', answer: null, autoCloseIfYes: true },
-    { id: 'Q5', question: 'Is the complaint regarding service charges/interest rates which are within the purview of the RE?', answer: null, autoCloseIfYes: true },
-    { id: 'Q6', question: 'Is the complaint anonymous (no name/address of complainant)?', answer: null, autoCloseIfYes: true },
-  ];
+  // Right panel
+  suggestions = signal<Suggestion[]>([]);
+  pastComplaints = signal<PastComplaint[]>([]);
+  pastSearch = '';
 
-  autoCloseTriggered = signal(false);
-  autoCloseReason = signal('');
-
-  // Submission
+  // State
+  saving = signal(false);
   submitting = signal(false);
   submitted = signal(false);
   draftId = signal('');
 
+  // Reference data
   categories = [
     'ATM', 'CREDIT_CARD', 'UPI', 'LOAN', 'DEPOSIT', 'INSURANCE', 'NEFT_RTGS', 'GENERAL'
   ];
@@ -81,8 +93,11 @@ export class PhysicalLetterComponent implements OnInit {
     'SK', 'TN', 'TS', 'TR', 'UK', 'UP', 'WB'
   ];
 
+  protected Math = Math;
+
   ngOnInit() {
     this.receivedDate = new Date().toISOString().split('T')[0];
+    this.loadPastComplaints();
   }
 
   onFileSelected(event: Event) {
@@ -104,70 +119,98 @@ export class PhysicalLetterComponent implements OnInit {
 
     this.scannedFile = file;
     this.scanError = '';
+
+    if (file.type === 'application/pdf') {
+      const url = URL.createObjectURL(file);
+      this.pdfPreviewUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(url));
+    }
+  }
+
+  removeFile() {
+    this.scannedFile = null;
+    this.pdfPreviewUrl.set(null);
+    this.ocrComplete.set(false);
   }
 
   runOcr() {
     if (!this.scannedFile) return;
     this.ocrInProgress.set(true);
+    this.scanError = '';
 
-    setTimeout(() => {
-      this.complainantName = 'Suresh Patel';
-      this.complainantAddress = '12, Nehru Nagar, Sector 5, Jaipur';
-      this.complainantState = 'RJ';
-      this.complainantDistrict = 'Jaipur';
-      this.complainantPincode = '302001';
-      this.complainantPhone = '9412345678';
-      this.ocrInProgress.set(false);
-      this.ocrComplete.set(true);
-    }, 2000);
+    const formData = new FormData();
+    formData.append('file', this.scannedFile);
+
+    this.http.post<any>(`${environment.apiBaseUrl}/api/v1/ocr/extract`, formData)
+      .subscribe({
+        next: (res) => {
+          const data = res?.data || {};
+          const fieldCount = Object.keys(data).length;
+
+          if (fieldCount === 0) {
+            this.ocrInProgress.set(false);
+            this.scanError = 'AI extraction returned no data. API quota may be exhausted. Please fill manually or try again later.';
+            return;
+          }
+
+          if (data.complainantName) this.complainantName = data.complainantName;
+          if (data.complainantAddress) this.complainantAddress = data.complainantAddress;
+          if (data.complainantState) this.complainantState = data.complainantState;
+          if (data.complainantDistrict) this.complainantDistrict = data.complainantDistrict;
+          if (data.complainantPincode) this.complainantPincode = data.complainantPincode;
+          if (data.complainantPhone) this.complainantPhone = data.complainantPhone;
+          if (data.complainantEmail) this.complainantEmail = data.complainantEmail;
+          if (data.subject) this.subject = data.subject;
+          if (data.description) this.description = data.description;
+          if (data.entityName) this.entityName = data.entityName;
+          if (data.entityType) this.entityType = data.entityType;
+          if (data.category) this.category = data.category;
+          if (data.branchName) this.branchName = data.branchName;
+          if (data.amountInvolved) this.amountInvolved = Number(data.amountInvolved) || null;
+          if (data.letterDate) this.letterDate = data.letterDate;
+          if (data.transactionDate) this.transactionDate = data.transactionDate;
+
+          // Build suggestions from extracted data
+          const suggs: Suggestion[] = [];
+          if (data.entityName) suggs.push({ id: '1', field: 'Entity', value: data.entityName });
+          if (data.category) suggs.push({ id: '2', field: 'Category', value: data.category });
+          if (data.amountInvolved) suggs.push({ id: '3', field: 'Amount', value: `₹${data.amountInvolved}` });
+          if (data.subject) suggs.push({ id: '4', field: 'Subject', value: data.subject });
+          this.suggestions.set(suggs);
+
+          this.ocrInProgress.set(false);
+          this.ocrComplete.set(true);
+        },
+        error: (err) => {
+          console.error('OCR extraction failed:', err);
+          this.ocrInProgress.set(false);
+          this.scanError = 'AI extraction failed: ' + (err.error?.message || 'Service unavailable. Please fill manually.');
+        }
+      });
   }
 
   skipOcr() {
     this.ocrComplete.set(true);
   }
 
-  nextStep() {
-    if (this.currentStep() < this.totalSteps) {
-      this.currentStep.set(this.currentStep() + 1);
+  applySuggestion(s: Suggestion) {
+    switch (s.field) {
+      case 'Entity': this.entityName = s.value; break;
+      case 'Category': this.category = 'CREDIT_CARD'; break;
+      case 'Amount': this.amountInvolved = 15000; break;
     }
   }
 
-  prevStep() {
-    if (this.currentStep() > 1) {
-      this.currentStep.set(this.currentStep() - 1);
-    }
-  }
-
-  canProceedStep1(): boolean {
-    return this.scannedFile !== null;
-  }
-
-  canProceedStep2(): boolean {
+  canSubmit(): boolean {
     return this.complainantName.trim().length > 0 &&
-           this.complainantState.trim().length > 0;
+           this.subject.trim().length > 0 &&
+           this.category.trim().length > 0;
   }
 
-  canProceedStep3(): boolean {
-    return this.category.trim().length > 0 &&
-           this.entityName.trim().length > 0 &&
-           this.subject.trim().length > 0;
-  }
-
-  onScreeningAnswerChange() {
-    const triggered = this.screeningQuestions.find(
-      q => q.autoCloseIfYes && q.answer === 'YES'
-    );
-    if (triggered) {
-      this.autoCloseTriggered.set(true);
-      this.autoCloseReason.set(triggered.question);
-    } else {
-      this.autoCloseTriggered.set(false);
-      this.autoCloseReason.set('');
-    }
-  }
-
-  allScreeningAnswered(): boolean {
-    return this.screeningQuestions.every(q => q.answer !== null);
+  saveDraft() {
+    this.saving.set(true);
+    setTimeout(() => {
+      this.saving.set(false);
+    }, 800);
   }
 
   submitDraft() {
@@ -189,8 +232,6 @@ export class PhysicalLetterComponent implements OnInit {
         complainantState: this.complainantState,
         complainantDistrict: this.complainantDistrict,
         complainantPincode: this.complainantPincode,
-        vernacular: this.vernacular,
-        vernacularLanguage: this.vernacularLanguage,
         category: this.category,
         entityName: this.entityName,
         entityType: this.entityType,
@@ -200,14 +241,33 @@ export class PhysicalLetterComponent implements OnInit {
         transactionDate: this.transactionDate,
         letterDate: this.letterDate,
         receivedDate: this.receivedDate,
+        modeOfReceipt: this.modeOfReceipt,
         fileName: this.scannedFile?.name || 'scanned_letter.pdf',
         fileSize: this.scannedFile ? (this.scannedFile.size / 1024 / 1024).toFixed(2) + ' MB' : '2.4 MB',
       }));
 
       setTimeout(() => {
         this.router.navigate(['/crpc/draft', newDraftId]);
-      }, 2000);
+      }, 2500);
     }, 1500);
+  }
+
+  private loadPastComplaints() {
+    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/complaints/recent?limit=10`)
+      .subscribe({
+        next: (res) => {
+          const items = (res?.data || []).map((c: any) => ({
+            complaintNumber: c.complaintNumber,
+            subject: c.subject || 'N/A',
+            entityName: c.entityName || 'N/A',
+            date: c.date || '',
+          }));
+          this.pastComplaints.set(items);
+        },
+        error: () => {
+          this.pastComplaints.set([]);
+        }
+      });
   }
 
   goBack() {

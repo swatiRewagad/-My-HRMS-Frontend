@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { ComplaintService } from '../../../services/complaint.service';
+import { PublicAuthService } from '../../../services/public-auth.service';
 import { validateFile, validateFileSet, MAX_FILE_COUNT } from '../../../utils/file-validator';
 import { announceToScreenReader, setPageTitle } from '../../../utils/accessibility';
 
@@ -27,30 +28,11 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
 
   private complaintService = inject(ComplaintService);
   private router = inject(Router);
-  private sessionTimer: any = null;
+  private publicAuth = inject(PublicAuthService);
   private autoSaveTimer: any = null;
 
-  // FR-G-007: Flow phases in correct order
-  phase = signal<'login' | 'eligibility' | 'form' | 'success' | 'non-maintainable'>('login');
-
-  // FR-G-002/003: Login
-  loginMode = signal<'mobile' | 'email'>('mobile');
-  loginMobile = '';
-  loginEmail = '';
-  loginPassword = '';
-  captchaText = '';
-  captchaInput = '';
-  otpSent = signal(false);
-  otpDigits = ['', '', '', '', '', ''];
-  otpVerified = signal(false);
-  loginError = '';
-  otpError = '';
-  resendTimer = 0;
-  private resendInterval: any = null;
-
-  // FR-G-004: Session (15 min)
-  sessionActive = signal(false);
-  sessionTimeLeft = 900;
+  // FR-G-007: Flow phases — login handled by PublicAuthService + guard
+  phase = signal<'eligibility' | 'form' | 'success' | 'non-maintainable'>('eligibility');
 
   // Eligibility (FR-G-007 step 2)
   eligibilityStep = signal(1);
@@ -284,144 +266,19 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
   ngOnInit() {
     setPageTitle('File a Complaint');
     this.eligibilityQuestions[0].options = this.banks.map(b => ({ label: b.name, value: String(b.id) }));
-    this.generateCaptcha();
     this.speechSupported = !!(window as any).SpeechRecognition || !!(window as any).webkitSpeechRecognition;
     this.loadDraft();
+    this.formData['phone'] = this.publicAuth.userIdentifier();
+    this.autoSaveTimer = setInterval(() => this.saveDraft(), 60000);
   }
 
   ngOnDestroy() {
-    this.clearResendTimer();
-    if (this.sessionTimer) clearInterval(this.sessionTimer);
     if (this.autoSaveTimer) clearInterval(this.autoSaveTimer);
     this.stopRecording();
   }
 
-  // ══════ FR-G-002/003: LOGIN ══════
-  switchLoginMode(mode: 'mobile' | 'email') {
-    this.loginMode.set(mode);
-    this.loginError = '';
-  }
-
-  generateCaptcha() {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
-    this.captchaText = Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
-  }
-
-  sendOtp() {
-    this.loginError = '';
-    if (this.loginMode() === 'mobile') {
-      if (!/^[6-9]\d{9}$/.test(this.loginMobile)) {
-        this.loginError = 'Enter a valid 10-digit Indian mobile number starting with 6-9.';
-        return;
-      }
-    } else {
-      if (!this.loginEmail || !this.loginEmail.includes('@')) {
-        this.loginError = 'Enter a valid email address.';
-        return;
-      }
-    }
-    if (this.captchaInput !== this.captchaText) {
-      this.loginError = 'Invalid CAPTCHA. Please try again.';
-      this.generateCaptcha();
-      this.captchaInput = '';
-      return;
-    }
-    this.otpSent.set(true);
-    this.otpDigits = ['', '', '', '', '', ''];
-    this.startResendTimer();
-  }
-
-  loginWithPassword() {
-    this.loginError = '';
-    if (!this.loginEmail || !this.loginPassword) {
-      this.loginError = 'Please enter email and password.';
-      return;
-    }
-    if (this.captchaInput !== this.captchaText) {
-      this.loginError = 'Invalid CAPTCHA. Please try again.';
-      this.generateCaptcha();
-      this.captchaInput = '';
-      return;
-    }
-    this.startSession();
-    this.phase.set('eligibility');
-  }
-
-  onOtpInput(index: number, event: Event) {
-    const input = event.target as HTMLInputElement;
-    const val = input.value.replace(/\D/g, '');
-    this.otpDigits[index] = val ? val[0] : '';
-    if (val && index < 5) {
-      const next = input.parentElement?.querySelectorAll('input')[index + 1] as HTMLInputElement;
-      if (next) next.focus();
-    }
-  }
-
-  onOtpKeydown(index: number, event: KeyboardEvent) {
-    if (event.key === 'Backspace' && !this.otpDigits[index] && index > 0) {
-      const prev = (event.target as HTMLElement).parentElement?.querySelectorAll('input')[index - 1] as HTMLInputElement;
-      if (prev) prev.focus();
-    }
-  }
-
-  verifyOtp() {
-    const code = this.otpDigits.join('');
-    if (code.length < 6) { this.otpError = 'Enter all 6 digits'; return; }
-    this.otpError = '';
-    this.otpVerified.set(true);
-    this.clearResendTimer();
-    this.formData['phone'] = this.loginMobile;
-    this.startSession();
-    setTimeout(() => this.phase.set('eligibility'), 600);
-  }
-
-  resendOtp() {
-    if (this.resendTimer > 0) return;
-    this.otpDigits = ['', '', '', '', '', ''];
-    this.startResendTimer();
-  }
-
-  cancelVerification() {
-    this.otpSent.set(false);
-    this.otpDigits = ['', '', '', '', '', ''];
-    this.otpError = '';
-    this.clearResendTimer();
-  }
-
-  private startResendTimer() {
-    this.clearResendTimer();
-    this.resendTimer = 30;
-    this.resendInterval = setInterval(() => {
-      this.resendTimer--;
-      if (this.resendTimer <= 0) this.clearResendTimer();
-    }, 1000);
-  }
-
-  private clearResendTimer() {
-    if (this.resendInterval) { clearInterval(this.resendInterval); this.resendInterval = null; }
-    this.resendTimer = 0;
-  }
-
-  // FR-G-004: Session Management
-  private startSession() {
-    this.sessionActive.set(true);
-    this.sessionTimeLeft = 900;
-    this.sessionTimer = setInterval(() => {
-      this.sessionTimeLeft--;
-      if (this.sessionTimeLeft <= 0) {
-        this.sessionActive.set(false);
-        clearInterval(this.sessionTimer);
-        this.phase.set('login');
-      }
-    }, 1000);
-    // Auto-save every 60 seconds
-    this.autoSaveTimer = setInterval(() => this.saveDraft(), 60000);
-  }
-
   get sessionMinutes(): string {
-    const m = Math.floor(this.sessionTimeLeft / 60);
-    const s = this.sessionTimeLeft % 60;
-    return `${m}:${s.toString().padStart(2, '0')}`;
+    return this.publicAuth.getFormattedTime();
   }
 
   // ══════ ELIGIBILITY (FR-G-007 step 2) ══════

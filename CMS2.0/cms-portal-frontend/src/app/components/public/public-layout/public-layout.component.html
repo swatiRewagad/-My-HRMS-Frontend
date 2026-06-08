@@ -60,10 +60,31 @@
         <i class="pi pi-phone"></i>
         <span>14448</span>
       </div>
-      <button class="login-btn">Login</button>
+      @if (authService.isAuthenticated()) {
+        <button class="login-btn logged-in" (click)="logout()">Logout</button>
+      } @else {
+        <a class="login-btn" routerLink="/public/login">Login</a>
+      }
     </nav>
   </div>
 </header>
+
+<!-- Session Bar: shows remaining time when logged in -->
+@if (authService.isAuthenticated()) {
+  <div class="session-bar" role="status" aria-live="polite">
+    <div class="container session-bar-inner">
+      <span class="session-user">
+        <i class="pi pi-user"></i> Logged in as: <strong>{{ authService.userIdentifier() }}</strong>
+      </span>
+      <span class="session-timer" [class.warning]="authService.remainingSeconds() < 120">
+        <i class="pi pi-clock"></i> Session expires in: {{ authService.getFormattedTime() }}
+      </span>
+      <button class="session-logout-btn" (click)="logout()">
+        <i class="pi pi-sign-out"></i> Logout
+      </button>
+    </div>
+  </div>
+}
 
 <main class="main-content" id="main-content" role="main" aria-label="Main content">
   <router-outlet />

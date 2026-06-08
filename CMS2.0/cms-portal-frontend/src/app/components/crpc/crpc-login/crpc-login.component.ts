@@ -19,10 +19,11 @@ export class CrpcLoginComponent {
   loginError = '';
   loading = signal(false);
 
-  // Mock users for all CRPC roles
+  // Mock users for all CRPC roles (DEO names match email syndication pool)
   private mockUsers = [
-    { username: 'deo1', password: 'deo123', role: 'DEO', name: 'Ramesh Patil', id: 'DEO-001' },
-    { username: 'deo2', password: 'deo123', role: 'DEO', name: 'Kavitha Nair', id: 'DEO-002' },
+    { username: 'amit', password: 'deo123', role: 'DEO', name: 'Amit Verma', id: 'deo_001' },
+    { username: 'sneha', password: 'deo123', role: 'DEO', name: 'Sneha Patil', id: 'deo_002' },
+    { username: 'ramesh', password: 'deo123', role: 'DEO', name: 'Ramesh Iyer', id: 'deo_003' },
     { username: 'reviewer1', password: 'rev123', role: 'REVIEWER', name: 'A.K. Singh', id: 'REV-001' },
     { username: 'reviewer2', password: 'rev123', role: 'REVIEWER', name: 'Priya Gupta', id: 'REV-002' },
     { username: 'crpchead', password: 'head123', role: 'CRPC_HEAD', name: 'Dr. S. Menon', id: 'HEAD-001' },

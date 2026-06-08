@@ -1,6 +1,6 @@
 export const environment = {
   production: false,
-  apiBaseUrl: 'http://localhost:8080',
+  apiBaseUrl: 'http://localhost:8082',
   keycloakUrl: 'http://localhost:8180',
   realm: 'cms',
 

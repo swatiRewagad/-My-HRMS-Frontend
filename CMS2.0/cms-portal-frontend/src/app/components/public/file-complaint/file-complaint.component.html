@@ -1,125 +1,15 @@
-<!-- Session Timer Bar -->
-@if (sessionActive()) {
-  <div class="session-bar">
-    <div class="container session-bar-inner">
-      <span><i class="pi pi-clock"></i> Session Time: {{ sessionMinutes }}</span>
-      <div class="session-actions">
-        @if (draftSaved()) {
-          <span class="draft-badge"><i class="pi pi-check"></i> Draft Saved</span>
-        }
-        <button class="btn-link" (click)="saveDraft()"><i class="pi pi-save"></i> Save Draft</button>
-      </div>
+<!-- Draft Save Actions -->
+<div class="session-bar">
+  <div class="container session-bar-inner">
+    <span><i class="pi pi-clock"></i> Session Time: {{ sessionMinutes }}</span>
+    <div class="session-actions">
+      @if (draftSaved()) {
+        <span class="draft-badge"><i class="pi pi-check"></i> Draft Saved</span>
+      }
+      <button class="btn-link" (click)="saveDraft()"><i class="pi pi-save"></i> Save Draft</button>
     </div>
   </div>
-}
-
-<!-- ══════ LOGIN PHASE ══════ -->
-@if (phase() === 'login') {
-  <div class="page-container">
-    <div class="login-card">
-      <h2>File a Complaint</h2>
-      <p class="login-subtitle">Login to proceed with your complaint filing</p>
-
-      <!-- Login Mode Tabs -->
-      <div class="login-tabs">
-        <button class="login-tab" [class.active]="loginMode() === 'mobile'" (click)="switchLoginMode('mobile')">
-          <i class="pi pi-mobile"></i> Mobile + OTP
-        </button>
-        <button class="login-tab" [class.active]="loginMode() === 'email'" (click)="switchLoginMode('email')">
-          <i class="pi pi-envelope"></i> Email + Password
-        </button>
-      </div>
-
-      <!-- Mobile + OTP Mode -->
-      @if (loginMode() === 'mobile') {
-        @if (!otpSent()) {
-          <div class="login-form">
-            <div class="form-group">
-              <label>Mobile Number <span class="required">*</span></label>
-              <div class="phone-input-wrapper">
-                <span class="country-code">+91</span>
-                <input type="tel" class="form-input" [(ngModel)]="loginMobile" name="loginMobile"
-                       placeholder="Enter 10-digit mobile number" maxlength="10">
-              </div>
-            </div>
-            <div class="form-group">
-              <label>Enter Captcha <span class="required">*</span></label>
-              <div class="captcha-row">
-                <div class="captcha-display">{{ captchaText }}</div>
-                <button class="refresh-captcha" (click)="generateCaptcha()" type="button">
-                  <i class="pi pi-refresh"></i>
-                </button>
-                <input type="text" class="form-input captcha-input" [(ngModel)]="captchaInput" name="captcha"
-                       placeholder="Enter captcha text">
-              </div>
-            </div>
-            @if (loginError) {
-              <div class="error-msg"><i class="pi pi-exclamation-circle"></i> {{ loginError }}</div>
-            }
-            <button class="btn-primary full-width" (click)="sendOtp()">Send OTP</button>
-          </div>
-        } @else {
-          <div class="otp-section">
-            <h3>Verify OTP</h3>
-            <p class="otp-subtitle">We have sent a 6-digit code to +91 {{ loginMobile }}</p>
-            <div class="otp-inputs">
-              @for (d of otpDigits; track $index; let i = $index) {
-                <input type="text" maxlength="1" class="otp-digit"
-                       [value]="otpDigits[i]"
-                       (input)="onOtpInput(i, $event)"
-                       (keydown)="onOtpKeydown(i, $event)">
-              }
-            </div>
-            @if (otpError) {
-              <div class="error-msg"><i class="pi pi-exclamation-circle"></i> {{ otpError }}</div>
-            }
-            <p class="resend-link">
-              Didn't receive the code?
-              <button class="link-btn" (click)="resendOtp()" [disabled]="resendTimer > 0">
-                Resend {{ resendTimer > 0 ? '(' + resendTimer + 's)' : '' }}
-              </button>
-            </p>
-            <div class="otp-actions">
-              <button class="btn-secondary" (click)="cancelVerification()">Cancel</button>
-              <button class="btn-primary" (click)="verifyOtp()">Verify & Proceed</button>
-            </div>
-          </div>
-        }
-      }
-
-      <!-- Email + Password Mode -->
-      @if (loginMode() === 'email') {
-        <div class="login-form">
-          <div class="form-group">
-            <label>Email Address <span class="required">*</span></label>
-            <input type="email" class="form-input" [(ngModel)]="loginEmail" name="loginEmail"
-                   placeholder="Enter your email address">
-          </div>
-          <div class="form-group">
-            <label>Password <span class="required">*</span></label>
-            <input type="password" class="form-input" [(ngModel)]="loginPassword" name="loginPassword"
-                   placeholder="Enter your password">
-          </div>
-          <div class="form-group">
-            <label>Enter Captcha <span class="required">*</span></label>
-            <div class="captcha-row">
-              <div class="captcha-display">{{ captchaText }}</div>
-              <button class="refresh-captcha" (click)="generateCaptcha()" type="button">
-                <i class="pi pi-refresh"></i>
-              </button>
-              <input type="text" class="form-input captcha-input" [(ngModel)]="captchaInput" name="captchaEmail"
-                     placeholder="Enter captcha text">
-            </div>
-          </div>
-          @if (loginError) {
-            <div class="error-msg"><i class="pi pi-exclamation-circle"></i> {{ loginError }}</div>
-          }
-          <button class="btn-primary full-width" (click)="loginWithPassword()">Login & Proceed</button>
-        </div>
-      }
-    </div>
-  </div>
-}
+</div>
 
 <!-- ══════ ELIGIBILITY PHASE ══════ -->
 @if (phase() === 'eligibility') {

@@ -1,14 +1,18 @@
 package com.hrms.cms.config;
 
 import com.hrms.cms.entity.Bank;
+import com.hrms.cms.entity.Complaint;
 import com.hrms.cms.entity.ComplaintCategory;
 import com.hrms.cms.entity.FormConfig;
 import com.hrms.cms.repository.BankRepository;
 import com.hrms.cms.repository.ComplaintCategoryRepository;
+import com.hrms.cms.repository.ComplaintRepository;
 import com.hrms.cms.repository.FormConfigRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
+
+import java.time.LocalDateTime;
 
 @Component
 @RequiredArgsConstructor
@@ -17,6 +21,7 @@ public class DataInitializer implements CommandLineRunner {
     private final ComplaintCategoryRepository categoryRepo;
     private final BankRepository bankRepo;
     private final FormConfigRepository formConfigRepo;
+    private final ComplaintRepository complaintRepo;
 
     @Override
     public void run(String... args) {
@@ -29,6 +34,188 @@ public class DataInitializer implements CommandLineRunner {
         if (formConfigRepo.count() == 0) {
             seedComplaintForm();
         }
+        if (complaintRepo.count() == 0) {
+            seedComplaints();
+        }
+    }
+
+    private void seedComplaints() {
+        LocalDateTime now = LocalDateTime.now();
+
+        complaintRepo.save(Complaint.builder()
+                .complaintNumber("CMS-20260601-A1B2C3")
+                .complainantName("Rajesh Kumar")
+                .complainantEmail("rajesh.kumar@email.com")
+                .complainantPhone("9876543210")
+                .bankId(1L).categoryId(1L)
+                .subject("ATM did not dispense cash but account debited Rs. 10,000")
+                .description("Tried to withdraw Rs 10,000 from SBI ATM near MG Road. Machine showed error but amount was debited.")
+                .status("pending").priority("high")
+                .filingType("WEB_PORTAL")
+                .createdAt(now.minusDays(2)).updatedAt(now.minusDays(2)).filedAt(now.minusDays(2))
+                .build());
+
+        complaintRepo.save(Complaint.builder()
+                .complaintNumber("CMS-20260601-D4E5F6")
+                .complainantName("Priya Sharma")
+                .complainantEmail("priya.sharma@email.com")
+                .complainantPhone("9123456789")
+                .bankId(6L).categoryId(4L)
+                .subject("UPI transaction failed but Rs. 5,000 debited from account")
+                .description("Made UPI payment to merchant. Transaction shows failed but money debited. No refund received in 7 days.")
+                .status("in_progress").priority("high")
+                .filingType("WEB_PORTAL").assignedOfficer("Team Alpha")
+                .createdAt(now.minusDays(5)).updatedAt(now.minusDays(1)).filedAt(now.minusDays(5))
+                .build());
+
+        complaintRepo.save(Complaint.builder()
+                .complaintNumber("CMS-20260530-G7H8I9")
+                .complainantName("Amit Patel")
+                .complainantEmail("amit.patel@email.com")
+                .complainantPhone("9988776655")
+                .bankId(7L).categoryId(5L)
+                .subject("Excessive interest charged on home loan EMI")
+                .description("Bank increased interest rate without prior notice. EMI increased by Rs 3,500 per month.")
+                .status("in_progress").priority("medium")
+                .filingType("WEB_PORTAL").assignedOfficer("Team Beta")
+                .createdAt(now.minusDays(8)).updatedAt(now.minusDays(3)).filedAt(now.minusDays(8))
+                .build());
+
+        complaintRepo.save(Complaint.builder()
+                .complaintNumber("CMS-20260528-J1K2L3")
+                .complainantName("Sunita Devi")
+                .complainantEmail("sunita.d@email.com")
+                .complainantPhone("9876501234")
+                .bankId(2L).categoryId(2L)
+                .subject("Unauthorized credit card transaction of Rs. 25,000")
+                .description("Found unauthorized online transaction on credit card statement. Card was in my possession.")
+                .status("escalated").priority("high")
+                .filingType("EMAIL").assignedOfficer("Escalation Desk")
+                .createdAt(now.minusDays(12)).updatedAt(now.minusDays(1)).filedAt(now.minusDays(12))
+                .escalatedAt(now.minusDays(2))
+                .build());
+
+        complaintRepo.save(Complaint.builder()
+                .complaintNumber("CMS-20260525-M4N5O6")
+                .complainantName("Mohammed Farooq")
+                .complainantEmail("farooq.m@email.com")
+                .complainantPhone("9012345678")
+                .bankId(3L).categoryId(6L)
+                .subject("Fixed deposit maturity amount not credited")
+                .description("FD matured on 15th May but amount still not credited to savings account. Multiple branch visits done.")
+                .status("resolved").priority("medium")
+                .filingType("WEB_PORTAL").assignedOfficer("Team Gamma")
+                .createdAt(now.minusDays(20)).updatedAt(now.minusDays(5)).filedAt(now.minusDays(20))
+                .resolvedAt(now.minusDays(5))
+                .build());
+
+        complaintRepo.save(Complaint.builder()
+                .complaintNumber("CMS-20260520-P7Q8R9")
+                .complainantName("Kavita Reddy")
+                .complainantEmail("kavita.r@email.com")
+                .complainantPhone("9876509876")
+                .bankId(8L).categoryId(3L)
+                .subject("Internet banking account locked without reason")
+                .description("Online banking access blocked. Branch says technical issue. Unable to access account for 10 days.")
+                .status("resolved").priority("low")
+                .filingType("WEB_PORTAL").assignedOfficer("Team Alpha")
+                .createdAt(now.minusDays(25)).updatedAt(now.minusDays(10)).filedAt(now.minusDays(25))
+                .resolvedAt(now.minusDays(10))
+                .build());
+
+        complaintRepo.save(Complaint.builder()
+                .complaintNumber("CMS-20260518-S1T2U3")
+                .complainantName("Deepak Gupta")
+                .complainantEmail("deepak.g@email.com")
+                .complainantPhone("9011223344")
+                .bankId(1L).categoryId(8L)
+                .subject("NEFT transfer of Rs. 2,00,000 not credited to beneficiary")
+                .description("Initiated NEFT transfer 5 days ago. Amount debited from my account but not received by beneficiary.")
+                .status("closed").priority("high")
+                .filingType("WEB_PORTAL").assignedOfficer("Team Beta")
+                .createdAt(now.minusDays(30)).updatedAt(now.minusDays(15)).filedAt(now.minusDays(30))
+                .resolvedAt(now.minusDays(18)).closedAt(now.minusDays(15))
+                .build());
+
+        complaintRepo.save(Complaint.builder()
+                .complaintNumber("CMS-20260515-V4W5X6")
+                .complainantName("Anita Mishra")
+                .complainantEmail("anita.m@email.com")
+                .complainantPhone("9988001122")
+                .bankId(4L).categoryId(7L)
+                .subject("Pension amount not credited for 3 months")
+                .description("Monthly pension from PNB not received for April, May, and June. Visited branch multiple times.")
+                .status("escalated").priority("high")
+                .filingType("PHYSICAL_LETTER").assignedOfficer("Escalation Desk")
+                .createdAt(now.minusDays(35)).updatedAt(now.minusDays(3)).filedAt(now.minusDays(35))
+                .escalatedAt(now.minusDays(5))
+                .build());
+
+        complaintRepo.save(Complaint.builder()
+                .complaintNumber("CMS-20260601-Y7Z8A9")
+                .complainantName("Vikram Singh")
+                .complainantEmail("vikram.s@email.com")
+                .complainantPhone("9876512345")
+                .bankId(9L).categoryId(4L)
+                .subject("Unauthorized UPI debit of Rs. 15,000 from savings account")
+                .description("Received SMS about Rs 15,000 UPI debit. Did not authorize any transaction. Suspect fraud.")
+                .status("pending").priority("high")
+                .filingType("WEB_PORTAL")
+                .createdAt(now.minusHours(6)).updatedAt(now.minusHours(6)).filedAt(now.minusHours(6))
+                .build());
+
+        complaintRepo.save(Complaint.builder()
+                .complaintNumber("CMS-20260531-B1C2D3")
+                .complainantName("Lakshmi Iyer")
+                .complainantEmail("lakshmi.i@email.com")
+                .complainantPhone("9090909090")
+                .bankId(5L).categoryId(9L)
+                .subject("Insurance claim rejected without valid reason")
+                .description("Health insurance claim for hospitalization rejected citing pre-existing condition. Policy is 5 years old.")
+                .status("under_review").priority("medium")
+                .filingType("WEB_PORTAL").assignedOfficer("Team Gamma")
+                .createdAt(now.minusDays(4)).updatedAt(now.minusDays(1)).filedAt(now.minusDays(4))
+                .build());
+
+        complaintRepo.save(Complaint.builder()
+                .complaintNumber("CMS-20260529-E4F5G6")
+                .complainantName("Ravi Shankar")
+                .complainantEmail("ravi.s@email.com")
+                .complainantPhone("9876567890")
+                .bankId(10L).categoryId(5L)
+                .subject("Harassment by loan recovery agents")
+                .description("Recovery agents visiting home at odd hours, using abusive language. Loan EMI was delayed by only 5 days.")
+                .status("in_progress").priority("high")
+                .filingType("WEB_PORTAL").assignedOfficer("Team Alpha")
+                .createdAt(now.minusDays(7)).updatedAt(now.minusDays(2)).filedAt(now.minusDays(7))
+                .build());
+
+        complaintRepo.save(Complaint.builder()
+                .complaintNumber("CMS-20260527-H7I8J9")
+                .complainantName("Neha Kapoor")
+                .complainantEmail("neha.k@email.com")
+                .complainantPhone("9123498765")
+                .bankId(6L).categoryId(10L)
+                .subject("Bank refusing to close savings account")
+                .description("Requested account closure 3 weeks ago. Bank keeps asking for additional documents and delaying.")
+                .status("pending").priority("low")
+                .filingType("WEB_PORTAL")
+                .createdAt(now.minusDays(10)).updatedAt(now.minusDays(10)).filedAt(now.minusDays(10))
+                .build());
+
+        complaintRepo.save(Complaint.builder()
+                .complaintNumber("CMS-20260522-K1L2M3")
+                .complainantName("Suresh Babu")
+                .complainantEmail("suresh.b@email.com")
+                .complainantPhone("9000112233")
+                .bankId(2L).categoryId(1L)
+                .subject("Debit card cloned - multiple unauthorized transactions")
+                .description("Found 8 unauthorized ATM withdrawals from different cities. Total loss Rs 80,000. Card was with me.")
+                .status("closed").priority("high")
+                .filingType("EMAIL").assignedOfficer("Team Beta")
+                .createdAt(now.minusDays(40)).updatedAt(now.minusDays(20)).filedAt(now.minusDays(40))
+                .resolvedAt(now.minusDays(25)).closedAt(now.minusDays(20))
+                .build());
     }
 
     private void seedComplaintForm() {

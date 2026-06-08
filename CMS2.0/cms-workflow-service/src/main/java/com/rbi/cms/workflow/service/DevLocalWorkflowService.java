@@ -55,21 +55,32 @@ public class DevLocalWorkflowService implements ComplaintWorkflowProcessor {
             case "CREDIT_CARD" -> assignedTeam = "CARDS_TEAM";
         }
 
+        String department = "RBIO";
+        String role = department + "_OFFICER";
+        String officer = "rbio.officer";
+
         taskQueryService.registerTask(event.getComplaintId(), category, priority, assignedTeam);
 
-        // Update DB via ingestion service using POST (PATCH not supported by default HttpURLConnection on Windows)
+        // Route complaint to RBIO/CEPC via workflow API
         try {
             RestTemplate restTemplate = new RestTemplate();
-            String assignUrl = String.format(
-                    "http://localhost:8082/cms-ingestion/api/v1/complaints/%s/assignment?team=%s",
-                    event.getComplaintId(), assignedTeam);
-            restTemplate.exchange(assignUrl, HttpMethod.POST, HttpEntity.EMPTY, Void.class);
+            String routeUrl = String.format("http://localhost:8082/api/v1/workflow/route/%s", event.getComplaintId());
+            Map<String, String> body = Map.of(
+                    "department", department,
+                    "role", role,
+                    "officer", officer
+            );
+            HttpEntity<Map<String, String>> request = new HttpEntity<>(body, new org.springframework.http.HttpHeaders() {{
+                setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
+            }});
+            restTemplate.exchange(routeUrl, HttpMethod.POST, request, Void.class);
+            log.info("[DEV-LOCAL WORKFLOW] Routed {} to {} - {} ({})", event.getComplaintId(), department, role, officer);
         } catch (Exception e) {
-            log.warn("[DEV-LOCAL WORKFLOW] Could not update assignment in DB: {}", e.getMessage());
+            log.warn("[DEV-LOCAL WORKFLOW] Could not route complaint in DB: {}", e.getMessage());
         }
 
-        log.info("[DEV-LOCAL WORKFLOW] Started process {} for complaint: {} → team: {} (status: ASSIGNED)",
-                processId, event.getComplaintId(), assignedTeam);
+        log.info("[DEV-LOCAL WORKFLOW] Started process {} for complaint: {} → dept: {} role: {} (status: ASSIGNED)",
+                processId, event.getComplaintId(), department, role);
         return processId;
     }
 

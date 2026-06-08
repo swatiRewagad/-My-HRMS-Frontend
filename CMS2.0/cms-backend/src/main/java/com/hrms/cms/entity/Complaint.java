@@ -75,6 +75,12 @@ public class Complaint {
     @Column(length = 200)
     private String assignedOfficer;
 
+    @Column(length = 20)
+    private String department;
+
+    @Column(length = 50)
+    private String assignedRole;
+
     private LocalDateTime filedAt;
     private LocalDateTime resolvedAt;
     private LocalDateTime closedAt;

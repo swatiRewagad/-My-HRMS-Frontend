@@ -1,0 +1,119 @@
+<div class="login-container">
+  <div class="login-card">
+    <div class="login-header">
+      <h2>Login to CMS Portal</h2>
+      <p>Please login to file a complaint, provide feedback, or withdraw a complaint. Your session will remain active for 15 minutes.</p>
+    </div>
+
+    <!-- Login Mode Tabs -->
+    <div class="login-tabs">
+      <button class="tab-btn" [class.active]="loginMode() === 'mobile'" (click)="switchMode('mobile')">
+        <i class="pi pi-mobile"></i> Mobile OTP
+      </button>
+      <button class="tab-btn" [class.active]="loginMode() === 'email'" (click)="switchMode('email')">
+        <i class="pi pi-envelope"></i> Email Login
+      </button>
+    </div>
+
+    <!-- Error Message -->
+    @if (loginError) {
+      <div class="error-banner" role="alert">
+        <i class="pi pi-exclamation-circle"></i>
+        {{ loginError }}
+      </div>
+    }
+
+    <!-- Mobile OTP Login -->
+    @if (loginMode() === 'mobile' && !otpSent()) {
+      <div class="login-form">
+        <div class="form-group">
+          <label for="mobile">Mobile Number</label>
+          <div class="input-with-prefix">
+            <span class="prefix">+91</span>
+            <input id="mobile" type="tel" maxlength="10" [(ngModel)]="mobile"
+                   placeholder="Enter 10-digit mobile number" autocomplete="tel" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="captcha-input">CAPTCHA</label>
+          <div class="captcha-row">
+            <span class="captcha-display">{{ captchaText }}</span>
+            <button class="refresh-captcha" (click)="generateCaptcha()" title="Refresh CAPTCHA">
+              <i class="pi pi-refresh"></i>
+            </button>
+          </div>
+          <input id="captcha-input" type="text" [(ngModel)]="captchaInput" placeholder="Enter CAPTCHA" />
+        </div>
+        <button class="submit-btn" (click)="sendOtp()" [disabled]="!mobile">
+          Send OTP
+        </button>
+      </div>
+    }
+
+    <!-- OTP Verification -->
+    @if (otpSent() && !otpVerified()) {
+      <div class="otp-section">
+        <p class="otp-info">
+          An OTP has been sent to <strong>{{ loginMode() === 'mobile' ? '+91 ' + mobile : email }}</strong>
+        </p>
+        <div class="otp-inputs" aria-label="Enter OTP digits">
+          @for (digit of otpDigits; track $index) {
+            <input type="text" maxlength="1" [value]="otpDigits[$index]"
+                   (input)="onOtpInput($index, $event)"
+                   (keydown)="onOtpKeydown($index, $event)"
+                   class="otp-box" inputmode="numeric" />
+          }
+        </div>
+        @if (otpError) {
+          <p class="field-error">{{ otpError }}</p>
+        }
+        <div class="otp-actions">
+          <button class="submit-btn" (click)="verifyOtp()">Verify OTP</button>
+          <button class="link-btn" (click)="resendOtp()" [disabled]="resendTimer > 0">
+            {{ resendTimer > 0 ? 'Resend in ' + resendTimer + 's' : 'Resend OTP' }}
+          </button>
+          <button class="link-btn cancel" (click)="cancelVerification()">Cancel</button>
+        </div>
+      </div>
+    }
+
+    <!-- Email Login -->
+    @if (loginMode() === 'email' && !otpSent()) {
+      <div class="login-form">
+        <div class="form-group">
+          <label for="email">Email Address</label>
+          <input id="email" type="email" [(ngModel)]="email" placeholder="Enter your email" autocomplete="email" />
+        </div>
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input id="password" type="password" [(ngModel)]="password" placeholder="Enter password" autocomplete="current-password" />
+        </div>
+        <div class="form-group">
+          <label for="captcha-email">CAPTCHA</label>
+          <div class="captcha-row">
+            <span class="captcha-display">{{ captchaText }}</span>
+            <button class="refresh-captcha" (click)="generateCaptcha()" title="Refresh CAPTCHA">
+              <i class="pi pi-refresh"></i>
+            </button>
+          </div>
+          <input id="captcha-email" type="text" [(ngModel)]="captchaInput" placeholder="Enter CAPTCHA" />
+        </div>
+        <div class="login-form-actions">
+          <button class="submit-btn" (click)="loginWithPassword()" [disabled]="!email || !password">
+            Login
+          </button>
+          <button class="link-btn" (click)="sendOtp()" [disabled]="!email">
+            Login via OTP instead
+          </button>
+        </div>
+      </div>
+    }
+
+    <div class="login-footer">
+      <p class="session-note">
+        <i class="pi pi-info-circle"></i>
+        Once logged in, you can file complaints, provide feedback, or withdraw complaints without logging in again for 15 minutes.
+      </p>
+    </div>
+  </div>
+</div>

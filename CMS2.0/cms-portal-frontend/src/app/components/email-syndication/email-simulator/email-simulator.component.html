@@ -47,14 +47,51 @@
                     name="body" rows="8" placeholder="Dear Sir/Madam..."></textarea>
         </div>
 
+        <div class="form-group attachment-group">
+          <label>Attachment (scanned letter — PDF, JPEG, PNG, TIFF)</label>
+          <div class="attachment-input">
+            <input type="file" accept=".pdf,.jpg,.jpeg,.png,.tiff,.tif"
+                   (change)="onFileAttached($event)" #fileInput>
+            @if (attachedFile()) {
+              <div class="attached-file">
+                <span class="file-name">📎 {{ attachedFile()!.name }}</span>
+                <span class="file-size">({{ (attachedFile()!.size / 1024).toFixed(0) }} KB)</span>
+                <button type="button" class="remove-file" (click)="removeAttachment(); fileInput.value = ''">✕</button>
+              </div>
+              <p class="ocr-hint">OCR will extract complaint fields from this attachment automatically</p>
+            }
+          </div>
+        </div>
+
         <button class="send-btn" (click)="sendManual()"
                 [disabled]="sending() || !manualEmail().senderEmail || !manualEmail().subject">
           @if (sending()) {
-            Sending...
+            @if (attachedFile()) {
+              Sending & Running OCR...
+            } @else {
+              Sending...
+            }
           } @else {
             Send to crpc&#64;rbi.org.in
           }
         </button>
+
+        @if (ocrExtracted()) {
+          <div class="ocr-results">
+            <h4>📋 OCR Extracted Fields</h4>
+            <div class="ocr-fields">
+              @for (entry of ocrExtracted() | keyvalue; track entry.key) {
+                @if (entry.value) {
+                  <div class="ocr-field">
+                    <span class="ocr-label">{{ entry.key }}</span>
+                    <span class="ocr-value">{{ entry.value }}</span>
+                  </div>
+                }
+              }
+            </div>
+            <p class="ocr-note">These fields have been auto-filled in the draft. DEO can review and correct before converting to complaint.</p>
+          </div>
+        }
       </div>
     </div>
   }

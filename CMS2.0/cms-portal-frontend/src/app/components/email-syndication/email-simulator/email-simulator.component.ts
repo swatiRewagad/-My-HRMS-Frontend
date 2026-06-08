@@ -1,5 +1,5 @@
 import { Component, inject, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, KeyValuePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { EmailSyndicationService } from '../../../services/email-syndication.service';
@@ -16,7 +16,7 @@ interface SimulationResult {
 @Component({
   selector: 'app-email-simulator',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, KeyValuePipe],
   templateUrl: './email-simulator.component.html',
   styleUrl: './email-simulator.component.scss'
 })
@@ -36,6 +36,10 @@ export class EmailSimulatorComponent {
     body: '',
     messageId: ''
   });
+
+  // Attachment
+  attachedFile = signal<File | null>(null);
+  ocrExtracted = signal<Record<string, string> | null>(null);
 
   // Batch simulation
   batchCount = signal(5);
@@ -94,6 +98,25 @@ export class EmailSimulatorComponent {
     }
   ];
 
+  onFileAttached(event: Event) {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files[0]) {
+      const file = input.files[0];
+      const allowed = ['application/pdf', 'image/jpeg', 'image/png', 'image/tiff'];
+      if (!allowed.includes(file.type)) {
+        this.attachedFile.set(null);
+        input.value = '';
+        return;
+      }
+      this.attachedFile.set(file);
+    }
+  }
+
+  removeAttachment() {
+    this.attachedFile.set(null);
+    this.ocrExtracted.set(null);
+  }
+
   updateManualField(field: string, value: string) {
     this.manualEmail.update(prev => ({ ...prev, [field]: value }));
   }
@@ -107,17 +130,34 @@ export class EmailSimulatorComponent {
     }
 
     this.sending.set(true);
-    this.emailService.ingestEmail(email).subscribe({
+    const file = this.attachedFile();
+
+    const request$ = file
+      ? this.emailService.ingestEmailWithAttachment(email, file)
+      : this.emailService.ingestEmail(email);
+
+    request$.subscribe({
       next: (response) => {
+        const ocrFields = (response as any)?.ocrExtractedFields || null;
+        if (ocrFields) {
+          this.ocrExtracted.set(ocrFields);
+        }
+
+        const hasOcr = response?.ocrProcessed;
+        const attachmentInfo = file ? ` [📎 ${file.name}${hasOcr ? ' → OCR extracted' : ''}]` : '';
+
         this.results.update(prev => [{
           email,
           response,
-          message: response ? `Draft created: ${response.draftId} → Assigned to ${response.assignedTo}` : 'Email ignored (on ignore list)',
+          message: response
+            ? `Draft created: ${response.draftId} → Assigned to ${response.assignedTo}${attachmentInfo}`
+            : 'Email ignored (on ignore list)',
           status: response ? 'success' : 'ignored',
           timestamp: new Date()
         }, ...prev]);
         this.sending.set(false);
         this.manualEmail.set({ senderEmail: '', subject: '', body: '', messageId: '' });
+        this.attachedFile.set(null);
       },
       error: (err) => {
         this.results.update(prev => [{
