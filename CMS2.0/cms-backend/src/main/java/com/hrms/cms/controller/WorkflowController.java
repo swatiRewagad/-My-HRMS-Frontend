@@ -118,8 +118,14 @@ public class WorkflowController {
 
     private ResponseEntity<Map<String, Object>> getCompletedByDepartment(String dept, String officer) {
         List<Complaint> completed = new java.util.ArrayList<>();
-        for (String status : CLOSED_STATUSES) {
-            completed.addAll(complaintRepository.findByDepartmentAndStatusOrderByCreatedAtDesc(dept, status));
+        if (officer != null && !officer.isBlank()) {
+            for (String status : CLOSED_STATUSES) {
+                completed.addAll(complaintRepository.findByDepartmentAndAssignedOfficerAndStatusOrderByCreatedAtDesc(dept, officer, status));
+            }
+        } else {
+            for (String status : CLOSED_STATUSES) {
+                completed.addAll(complaintRepository.findByDepartmentAndStatusOrderByCreatedAtDesc(dept, status));
+            }
         }
         return buildResponse(true, "Completed tasks", buildTaskList(completed));
     }
@@ -134,7 +140,7 @@ public class WorkflowController {
             tasks = complaintRepository.findByDepartmentAndAssignedRoleAndStatusNotInOrderByCreatedAtDesc(
                     dept, role, CLOSED_STATUSES);
         } else {
-            tasks = complaintRepository.findByDepartmentAndStatusOrderByCreatedAtDesc(dept, "assigned");
+            tasks = complaintRepository.findByDepartmentAndStatusNotInOrderByCreatedAtDesc(dept, CLOSED_STATUSES);
         }
 
         return buildResponse(true, "Tasks retrieved", buildTaskList(tasks));
@@ -181,6 +187,10 @@ public class WorkflowController {
         String prevStatus = c.getStatus();
 
         switch (action) {
+            case "ACCEPT":
+                c.setStatus("in_progress");
+                c.setAssignedOfficer(actor);
+                break;
             case "APPROVE":
                 c.setStatus("approved");
                 c.setAssignedRole(getNextRole(dept, c.getAssignedRole()));

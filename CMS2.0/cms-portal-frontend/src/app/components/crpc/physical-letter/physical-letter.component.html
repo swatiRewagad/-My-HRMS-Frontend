@@ -342,7 +342,7 @@
             <p class="empty-hint">No matching past complaints found.</p>
           } @else {
             @for (pc of pastComplaints(); track pc.complaintNumber) {
-              <div class="past-complaint-item">
+              <div class="past-complaint-item clickable" (click)="openPastComplaintDetail(pc.complaintNumber)">
                 <div class="pc-header">
                   <span class="pc-number">{{ pc.complaintNumber }}</span>
                   <span class="pc-date">{{ pc.date }}</span>
@@ -386,11 +386,92 @@
       <div class="success-icon"><i class="pi pi-check-circle"></i></div>
       <h2>Draft Created Successfully</h2>
       <p class="draft-id">Draft ID: <strong>{{ draftId() }}</strong></p>
-      <p class="redirect-note">Redirecting to assessment view...</p>
+      <p class="redirect-note">Click below to proceed to DEO Assessment</p>
       <div class="success-actions">
-        <button class="btn btn-primary" (click)="openDraft()">Open Draft</button>
+        <button class="btn btn-primary" (click)="openDraft()">Proceed to Assessment</button>
         <button class="btn btn-outline" (click)="goBack()">Back to Home</button>
       </div>
+    </div>
+  </div>
+}
+
+<!-- Past Complaint Detail Modal -->
+@if (showPastComplaintDetail()) {
+  <div class="modal-overlay" (click)="closePastComplaintDetail()">
+    <div class="modal-content past-detail-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Complaint Detail — {{ pastComplaintDetail()?.complaintId }}</h3>
+        <button class="modal-close" (click)="closePastComplaintDetail()">&times;</button>
+      </div>
+
+      @if (loadingPastDetail()) {
+        <div class="modal-body"><p>Loading...</p></div>
+      } @else if (pastComplaintDetail(); as d) {
+        <div class="modal-body">
+          <div class="detail-grid">
+            <div class="detail-item"><label>Status</label><span class="status-badge">{{ d.status }}</span></div>
+            <div class="detail-item"><label>Priority</label><span>{{ d.priority }}</span></div>
+            <div class="detail-item"><label>Department</label><span>{{ d.department }}</span></div>
+            <div class="detail-item"><label>Filed</label><span>{{ d.filedDate }}</span></div>
+            <div class="detail-item"><label>Filing Type</label><span>{{ d.filingType }}</span></div>
+            <div class="detail-item"><label>Assigned Officer</label><span>{{ d.assignedOfficer || 'Unassigned' }}</span></div>
+          </div>
+
+          <div class="detail-section">
+            <h4>Complainant</h4>
+            <p><strong>{{ d.complainantName }}</strong></p>
+            <p>{{ d.complainantEmail }} | {{ d.complainantPhone }}</p>
+          </div>
+
+          <div class="detail-section">
+            <h4>Subject</h4>
+            <p>{{ d.subject }}</p>
+          </div>
+
+          <div class="detail-section">
+            <h4>Description</h4>
+            <p class="description-text">{{ d.description }}</p>
+          </div>
+
+          @if (d.reliefSought) {
+            <div class="detail-section">
+              <h4>Relief Sought</h4>
+              <p>{{ d.reliefSought }}</p>
+            </div>
+          }
+
+          @if (d.resolvedAt) {
+            <div class="detail-section resolution-section">
+              <h4>Resolution</h4>
+              <p>Resolved on: <strong>{{ d.resolvedAt }}</strong></p>
+            </div>
+          }
+
+          @if (d.timeline && d.timeline.length > 0) {
+            <div class="detail-section">
+              <h4>Timeline</h4>
+              <div class="timeline-list">
+                @for (t of d.timeline; track t.timestamp) {
+                  <div class="timeline-entry">
+                    <div class="timeline-dot"></div>
+                    <div class="timeline-content">
+                      <div class="timeline-header">
+                        <span class="timeline-action">{{ t.action }}</span>
+                        <span class="timeline-time">{{ t.timestamp }}</span>
+                      </div>
+                      <p class="timeline-by">By: {{ t.performedBy }}</p>
+                      @if (t.remarks) { <p class="timeline-remarks">{{ t.remarks }}</p> }
+                      @if (t.fromStatus && t.toStatus) {
+                        <p class="timeline-transition">{{ t.fromStatus }} → {{ t.toStatus }}</p>
+                      }
+                    </div>
+                  </div>
+                }
+              </div>
+            </div>
+          }
+        </div>
+      }
     </div>
   </div>
 }

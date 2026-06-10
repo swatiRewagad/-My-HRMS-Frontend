@@ -202,6 +202,31 @@
   .result-from { font-size: 0.85rem; color: #1565c0; font-weight: 500; }
   .result-subject { font-size: 0.9rem; color: #333; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .result-message { font-size: 0.8rem; color: #666; margin-top: 0.2rem; }
+
+  .result-language {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: 0.3rem;
+
+    .lang-badge {
+      font-size: 0.75rem;
+      padding: 0.15rem 0.5rem;
+      border-radius: 10px;
+      font-weight: 500;
+
+      &.vernacular {
+        background: #fff3e0;
+        color: #e65100;
+        border: 1px solid #ffcc80;
+      }
+    }
+
+    .lang-confidence {
+      font-size: 0.75rem;
+      color: #888;
+    }
+  }
 }
 
 .result-time { font-size: 0.8rem; color: #999; white-space: nowrap; }

@@ -287,16 +287,22 @@
           </label>
         </div>
 
-        <!-- Approve: Route to Regional Office -->
+        <!-- Approve: Auto-Routed Office (based on entity/state rules) -->
         @if (reviewerDecision === 'APPROVE') {
           <div class="action-detail">
             <h4>Route Approved Complaint To</h4>
-            <select [(ngModel)]="targetRegionalOffice" class="full-select">
-              <option value="">— Select Regional Office / Department —</option>
-              @for (office of regionalOffices; track office.id) {
-                <option [value]="office.id">{{ office.name }}</option>
-              }
-            </select>
+            <div class="auto-route-info">
+              <span class="route-badge">{{ targetRegionalOffice }}</span>
+              <span class="route-reason">{{ routingReason }}</span>
+            </div>
+            <details class="override-details">
+              <summary>Override routing (optional)</summary>
+              <select [(ngModel)]="targetRegionalOffice" class="full-select">
+                @for (office of regionalOffices; track office.id) {
+                  <option [value]="office.id">{{ office.name }}</option>
+                }
+              </select>
+            </details>
           </div>
         }
 
@@ -307,7 +313,7 @@
             <p class="help-text">System will reassign to previous DEO if active. Otherwise select another active DEO.</p>
             <select [(ngModel)]="sentBackToDeoId" class="full-select">
               <option value="">— Select DEO —</option>
-              @for (deo of activeDeos; track deo.id) {
+              @for (deo of activeDeos(); track deo.id) {
                 @if (deo.active) {
                   <option [value]="deo.id">{{ deo.name }} ({{ deo.id }})</option>
                 }

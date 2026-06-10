@@ -5,6 +5,7 @@ import com.hrms.cms.entity.Complaint;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -22,6 +23,7 @@ public class ComplaintEventPublisher {
     private final KafkaTemplate<String, String> kafkaTemplate;
     private final ObjectMapper objectMapper;
 
+    @Async("taskExecutor")
     public void publishComplaintIngested(Complaint complaint) {
         try {
             Map<String, Object> event = new LinkedHashMap<>();
@@ -38,6 +40,10 @@ public class ComplaintEventPublisher {
             payload.put("category", "GENERAL");
             payload.put("bankId", complaint.getBankId());
             payload.put("complainantName", complaint.getComplainantName());
+            payload.put("channel", complaint.getFilingType());
+            payload.put("filingType", complaint.getFilingType());
+            payload.put("entityCode", complaint.getEntityCode() != null ? complaint.getEntityCode() : "");
+            payload.put("department", complaint.getDepartment());
             event.put("payload", objectMapper.writeValueAsString(payload));
 
             String message = objectMapper.writeValueAsString(event);

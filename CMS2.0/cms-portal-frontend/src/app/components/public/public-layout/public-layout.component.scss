@@ -47,14 +47,15 @@
 .brand { display: flex; align-items: center; text-decoration: none; }
 .logo-group { display: flex; align-items: center; gap: 12px; }
 .emblem-seal {
-  width: 48px; height: 48px; display: flex; align-items: center; justify-content: center;
-  img { height: 44px; width: auto; object-fit: contain; }
+  width: 52px; height: 52px; display: flex; align-items: center; justify-content: center;
+  img { height: 50px; width: 50px; object-fit: contain; border-radius: 50%; }
 }
 
 .brand-text {
   display: flex; flex-direction: column; margin-left: 4px;
-  .brand-hindi { font-size: 12px; font-weight: 600; color: #202124; }
-  .brand-english { font-size: 10px; color: #5b5d61; margin-top: 2px; }
+  .brand-hindi { font-size: 13px; font-weight: 700; color: #1a237e; }
+  .brand-english { font-size: 12px; font-weight: 600; color: #202124; margin-top: 1px; }
+  .brand-sub { font-size: 10px; color: #5b5d61; margin-top: 1px; }
 }
 
 .main-nav {

@@ -25,6 +25,19 @@ public class OcrController {
         ));
     }
 
+    @PostMapping("/extract-from-draft")
+    public ResponseEntity<Map<String, Object>> extractFromDraft(@RequestBody Map<String, Object> request) {
+        // In production, this would retrieve the stored attachment file and run OCR
+        // For now, it returns a placeholder indicating that OCR should be done via file upload
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("success", true);
+        response.put("message", "Use /api/v1/ocr/extract with file upload for OCR scanning");
+        response.put("data", Map.of());
+        response.put("provider", ocrService.getActiveProviderName());
+        response.put("timestamp", LocalDateTime.now().toString());
+        return ResponseEntity.ok(response);
+    }
+
     @PostMapping("/extract")
     public ResponseEntity<Map<String, Object>> extractFromDocument(
             @RequestParam("file") MultipartFile file) {

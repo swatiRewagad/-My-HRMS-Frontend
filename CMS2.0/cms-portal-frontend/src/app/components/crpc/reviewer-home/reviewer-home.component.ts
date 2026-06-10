@@ -2,6 +2,9 @@ import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { HttpClient } from '@angular/common/http';
+import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
+import { environment } from '../../../../environments/environment';
 
 interface ReviewDraft {
   draftId: string;
@@ -30,6 +33,8 @@ interface ReviewDraft {
 export class ReviewerHomeComponent implements OnInit {
 
   private router = inject(Router);
+  private http = inject(HttpClient);
+  private auth = inject(KeycloakAuthService);
 
   drafts = signal<ReviewDraft[]>([]);
   loading = signal(false);
@@ -70,26 +75,61 @@ export class ReviewerHomeComponent implements OnInit {
     const stored = sessionStorage.getItem('crpc_user');
     if (stored) {
       this.loggedInUser = JSON.parse(stored);
+    } else {
+      const user = this.auth.currentUser();
+      if (user) {
+        const role = this.auth.getRoles().find(r => ['REVIEWER', 'CRPC_HEAD', 'DEO'].includes(r)) || 'REVIEWER';
+        this.loggedInUser = { id: user.username, name: `${user.firstName} ${user.lastName}`.trim() || user.username, role };
+        sessionStorage.setItem('crpc_user', JSON.stringify(this.loggedInUser));
+      }
     }
     this.loadDrafts();
   }
 
   logout() {
     sessionStorage.removeItem('crpc_user');
-    this.router.navigate(['/crpc/login']);
+    this.auth.logout();
   }
 
   loadDrafts() {
     this.loading.set(true);
-    setTimeout(() => {
-      this.drafts.set([
-        { draftId: 'DRF-001', complainantName: 'Rajesh Kumar', fromEmailId: 'rajesh@example.com', subject: 'ATM cash not dispensed', modeOfReceipt: 'EMAIL', status: 'PENDING_REVIEW', category: 'ATM', entityName: 'SBI', deoDecision: 'MAINTAINABLE', deoName: 'Ramesh Patil', assignedAt: '2026-06-01T14:31:00Z', ageing: 1, priority: 'MEDIUM', vernacular: false },
-        { draftId: 'DRF-003', complainantName: 'अमित पटेल', fromEmailId: 'amit@gmail.com', subject: 'UPI transaction failed', modeOfReceipt: 'EMAIL', status: 'PENDING_REVIEW', category: 'UPI', entityName: 'ICICI Bank', deoDecision: 'NON_MAINTAINABLE', deoName: 'Kavitha Nair', assignedAt: '2026-05-31T16:00:00Z', ageing: 2, priority: 'LOW', vernacular: true },
-        { draftId: 'DRF-006', complainantName: 'Anita Roy', fromEmailId: 'anita.r@outlook.com', subject: 'Loan processing delay', modeOfReceipt: 'CPGRAMS', status: 'PENDING_REVIEW', category: 'LOAN', entityName: 'BOB', deoDecision: 'MAINTAINABLE', deoName: 'Arjun Singh', assignedAt: '2026-06-02T09:00:00Z', ageing: 0, priority: 'HIGH', vernacular: false },
-        { draftId: 'DRF-004', complainantName: 'Sunita Devi', fromEmailId: '', subject: 'Credit card charges', modeOfReceipt: 'CPGRAMS', status: 'APPROVED', category: 'CREDIT_CARD', entityName: 'Axis Bank', deoDecision: 'MAINTAINABLE', deoName: 'Ramesh Patil', assignedAt: '2026-05-30T10:00:00Z', ageing: 3, priority: 'HIGH', vernacular: false },
-      ]);
-      this.loading.set(false);
-    }, 500);
+
+    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/email-syndication/queue`, {
+      params: { status: 'SENT_TO_REVIEWER' }
+    }).subscribe({
+        next: (res) => {
+          console.log('[ReviewerHome] API response:', res);
+          const queueDrafts = (res?.data || []).map((d: any) => this.mapQueueToDraft(d));
+          console.log('[ReviewerHome] Mapped drafts:', queueDrafts.length);
+          this.drafts.set(queueDrafts);
+          this.loading.set(false);
+        },
+        error: (err) => {
+          console.error('[ReviewerHome] API error:', err);
+          this.drafts.set([]);
+          this.loading.set(false);
+        }
+      });
+  }
+
+  private mapQueueToDraft(d: any): ReviewDraft {
+    const hours = (Date.now() - new Date(d.receivedAt || d.createdAt).getTime()) / 3600000;
+    return {
+      draftId: d.draftId || '',
+      complainantName: d.complainantName || '',
+      fromEmailId: d.senderEmail || '',
+      subject: d.subject || '',
+      modeOfReceipt: d.modeOfReceipt || 'EMAIL',
+      status: 'PENDING_REVIEW',
+      category: d.category || 'GENERAL',
+      entityName: d.entityName || '',
+      deoDecision: 'MAINTAINABLE',
+      deoName: d.assignedTo || '',
+      assignedAt: d.createdAt || new Date().toISOString(),
+      ageing: Math.max(0, Math.floor(hours / 24)),
+      priority: hours > 48 ? 'HIGH' : hours > 24 ? 'MEDIUM' : 'LOW',
+      vernacular: d.isVernacular || false,
+    };
   }
 
   openDraft(draftId: string) {

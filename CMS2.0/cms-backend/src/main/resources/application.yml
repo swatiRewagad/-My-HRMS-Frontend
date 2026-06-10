@@ -54,21 +54,33 @@ spring:
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
       acks: all
       retries: 3
+      properties:
+        max.block.ms: ${KAFKA_MAX_BLOCK_MS:5000}
+        delivery.timeout.ms: ${KAFKA_DELIVERY_TIMEOUT:10000}
+        request.timeout.ms: ${KAFKA_REQUEST_TIMEOUT:5000}
   data:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
       timeout: 2000
   cache:
-    type: redis
+    type: ${CACHE_TYPE:simple}
     redis:
       time-to-live: 300000
       cache-null-values: false
 
+keycloak:
+  admin:
+    server-url: ${KEYCLOAK_URL:http://localhost:8180}
+    realm: ${KEYCLOAK_REALM:cms}
+    client-id: ${KEYCLOAK_ADMIN_CLIENT:admin-cli}
+    username: ${KEYCLOAK_ADMIN_USER:admin}
+    password: ${KEYCLOAK_ADMIN_PASSWORD:admin}
+
 cms:
   ocr:
     # Provider: gemini | openai | huggingface | azure
-    provider: ${OCR_PROVIDER:gemini}
+    provider: ${OCR_PROVIDER:groq}
     # ── Gemini (default) ──
     gemini-api-key: ${GEMINI_API_KEY:}
     gemini-model: ${GEMINI_MODEL:gemini-2.0-flash}
@@ -80,7 +92,7 @@ cms:
     huggingface-model: ${HUGGINGFACE_MODEL:microsoft/trocr-large-printed}
     huggingface-inference-url: ${HUGGINGFACE_URL:https://api-inference.huggingface.co/models/}
     # ── Groq (free, fast) ──
-    groq-api-key: ${GROQ_API_KEY:}
+    groq-api-key: ${GROQ_API_KEY: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}
     groq-model: ${GROQ_MODEL:meta-llama/llama-4-scout-17b-16e-instruct}
     # ── Azure Document Intelligence ──
     azure-endpoint: ${AZURE_DOC_ENDPOINT:}
@@ -113,51 +125,6 @@ logging:
   level:
     com.hrms.cms: INFO
     org.hibernate.SQL: WARN
-
----
-spring:
-  config:
-    activate:
-      on-profile: dev
-  datasource:
-    url: jdbc:h2:mem:cms_db;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
-    username: sa
-    password:
-    driver-class-name: org.h2.Driver
-    hikari:
-      maximum-pool-size: 10
-  h2:
-    console:
-      enabled: true
-      path: /h2-console
-  jpa:
-    properties:
-      hibernate:
-        dialect: org.hibernate.dialect.H2Dialect
-  data:
-    redis:
-      host: localhost
-      port: 6379
-  cache:
-    type: simple
-
-cms:
-  ocr:
-    provider: groq
-    groq-api-key: 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
-
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info,metrics,prometheus
-  metrics:
-    tags:
-      application: cms-backend
-
-logging:
-  level:
-    com.hrms.cms: DEBUG
 
 ---
 spring:

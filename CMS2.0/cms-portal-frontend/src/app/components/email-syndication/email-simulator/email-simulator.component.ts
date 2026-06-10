@@ -11,6 +11,12 @@ interface SimulationResult {
   message: string;
   status: 'success' | 'ignored' | 'error';
   timestamp: Date;
+  languageInfo?: {
+    detectedLanguage: string;
+    languageName: string;
+    isVernacular: boolean;
+    translationConfidence: number;
+  };
 }
 
 @Component({
@@ -95,6 +101,67 @@ export class EmailSimulatorComponent {
       subject: 'Pension not credited for 3 months',
       body: 'Respected Sir/Madam,\n\nI am a retired government employee. My pension (Rs 45,000/month) has not been credited for May, June 2026 by Union Bank of India.\n\nPension A/C: 5432109876 (Union Bank, Varanasi branch)\nPPO No: PPO/2015/UP/34567\n\nI am 72 years old and this is my only source of income. The bank says \"technical issue\" but 3 months is unacceptable.\n\nDeepa Agarwal\nPhone: 8877665544\nVaranasi, UP',
       messageId: ''
+    },
+    // Regional language samples
+    {
+      senderEmail: 'rajesh.sharma@gmail.com',
+      subject: 'ATM से पैसे कटे लेकिन नहीं मिले (Hindi)',
+      body: 'महोदय,\n\nमैं राजेश शर्मा, खाता संख्या 3456789012 (भारतीय स्टेट बैंक, जयपुर शाखा)। दिनांक 25 मई 2026 को मैंने SBI ATM (ID: SBI-ATM-7890) से ₹10,000 निकालने का प्रयास किया। मशीन से पैसे नहीं निकले लेकिन मेरे खाते से ₹10,000 कट गए।\n\nमैंने बैंक शाखा में शिकायत दर्ज कराई (शिकायत संख्या: CMP/2026/JAI/4567) लेकिन 30 दिन बीत जाने के बाद भी कोई समाधान नहीं मिला।\n\nकृपया मेरी सहायता करें।\n\nराजेश शर्मा\nफोन: 9414567890\nजयपुर, राजस्थान',
+      messageId: ''
+    },
+    {
+      senderEmail: 'ananya.das@yahoo.com',
+      subject: 'ব্যাংক থেকে অননুমোদিত লেনদেন (Bengali)',
+      body: 'মাননীয় মহোদয়,\n\nআমি অনন্যা দাস, অ্যাকাউন্ট নম্বর 7890123456 (পাঞ্জাব ন্যাশনাল ব্যাংক, কলকাতা শাখা)। গত 20 মে 2026 তারিখে আমার অ্যাকাউন্ট থেকে আমার অজান্তেই ₹35,000 টাকা UPI-র মাধ্যমে কেটে নেওয়া হয়েছে।\n\nUPI Ref: 723456789012\n\nআমি কোনো লেনদেন করিনি এবং আমার UPI PIN কাউকে দিইনি। ব্যাংকে অভিযোগ করেছি কিন্তু কোনো সমাধান পাইনি।\n\nঅনন্যা দাস\nফোন: 9830123456\nকলকাতা, পশ্চিমবঙ্গ',
+      messageId: ''
+    },
+    {
+      senderEmail: 'murugan.s@gmail.com',
+      subject: 'வங்கிக் கடன் அதிக வட்டி (Tamil)',
+      body: 'மதிப்பிற்குரிய அய்யா,\n\nஎன் பெயர் முருகன், கணக்கு எண் 5678901234 (இந்தியன் வங்கி, சென்னை கிளை). நான் ₹5,00,000 தனிநபர் கடன் பெற்றேன். ஒப்பந்தத்தின்படி வட்டி விகிதம் 10.5% ஆக இருக்க வேண்டும், ஆனால் வங்கி 14% வட்டி வசூலிக்கிறது.\n\nநான் பல முறை வங்கிக் கிளையில் புகார் அளித்தேன் (புகார் எண்: CMP/2026/CHN/8901) ஆனால் எந்த நடவடிக்கையும் எடுக்கவில்லை.\n\nதயவுசெய்து எனக்கு உதவுங்கள்.\n\nமுருகன் எஸ்\nதொலைபேசி: 9442345678\nசென்னை, தமிழ்நாடு',
+      messageId: ''
+    },
+    {
+      senderEmail: 'sneha.patil@gmail.com',
+      subject: 'बँकेने चुकीचे व्याज आकारले (Marathi)',
+      body: 'महोदय,\n\nमाझे नाव स्नेहा पाटील, खाते क्रमांक 2345678901 (बँक ऑफ महाराष्ट्र, पुणे शाखा). माझ्या गृहकर्जाचा EMI ₹28,000 वरून ₹35,000 करण्यात आला आहे, कोणतीही पूर्वसूचना न देता.\n\nकर्ज खाते: HL/2023/PUN/56789\n\nमी बँकेत 3 वेळा तक्रार केली (दि. 01-एप्रिल, 15-एप्रिल, 01-मे 2026) परंतु कोणतेही समाधानकारक उत्तर मिळाले नाही.\n\nकृपया मदत करा.\n\nस्नेहा पाटील\nफोन: 9822345678\nपुणे, महाराष्ट्र',
+      messageId: ''
+    },
+    {
+      senderEmail: 'hardik.patel@gmail.com',
+      subject: 'FD માં ખોટી પેનલ્ટી લગાવી (Gujarati)',
+      body: 'માનનીય મહોદય,\n\nમારું નામ હાર્દિક પટેલ છે, ખાતા નંબર 8901234567 (બેંક ઓફ બરોડા, અમદાવાદ શાખા). મારી ₹8,00,000 ની FD (FD No: FD/2024/AMD/34567) ને તબીબી કટોકટીને કારણે સમય પહેલાં બંધ કરવી પડી.\n\nબેંકે ₹60,000 પેનલ્ટી કાપી જે RBI માર્ગદર્શિકા (મહત્તમ 1%) કરતાં વધારે છે.\n\nહાર્દિક પટેલ\nફોન: 9879012345\nઅમદાવાદ, ગુજરાત',
+      messageId: ''
+    },
+    {
+      senderEmail: 'venkat.reddy@gmail.com',
+      subject: 'బ్యాంకు ఖాతా నుండి అనధికార డెబిట్ (Telugu)',
+      body: 'గౌరవనీయ మహోదయా,\n\nనా పేరు వెంకట్ రెడ్డి, ఖాతా నంబర్ 6789012345 (ఆంధ్రా బ్యాంక్, హైదరాబాద్ శాఖ). 2026 మే 18న నా ఖాతా నుండి నాకు తెలియకుండా ₹25,000 డెబిట్ అయింది.\n\nTransaction Ref: TXN/2026/HYD/78901\n\nనేను ఎటువంటి లావాదేవీ చేయలేదు. బ్యాంకుకు ఫిర్యాదు చేసినా 45 రోజులుగా ఎటువంటి పరిష్కారం లేదు.\n\nదయచేసి సహాయం చేయండి.\n\nవెంకట్ రెడ్డి\nఫోన్: 9848012345\nహైదరాబాద్, తెలంగాణ',
+      messageId: ''
+    },
+    {
+      senderEmail: 'prakash.gowda@gmail.com',
+      subject: 'ಸಾಲದ ಮೇಲೆ ಅಧಿಕ ಬಡ್ಡಿ ವಿಧಿಸಲಾಗಿದೆ (Kannada)',
+      body: 'ಗೌರವಾನ್ವಿತ ಮಹೋದಯರೇ,\n\nನನ್ನ ಹೆಸರು ಪ್ರಕಾಶ್ ಗೌಡ, ಖಾತೆ ಸಂಖ್ಯೆ 4567890123 (ಕೆನರಾ ಬ್ಯಾಂಕ್, ಬೆಂಗಳೂರು ಶಾಖೆ). ನಾನು ₹3,00,000 ವೈಯಕ್ತಿಕ ಸಾಲ ಪಡೆದಿದ್ದೇನೆ. ಒಪ್ಪಂದದ ಪ್ರಕಾರ ಬಡ್ಡಿ ದರ 11% ಆಗಿರಬೇಕು, ಆದರೆ ಬ್ಯಾಂಕ್ 15.5% ಬಡ್ಡಿ ವಿಧಿಸುತ್ತಿದೆ.\n\nSanction Letter: PL/2025/BLR/23456\n\nನಾನು ಬ್ಯಾಂಕ್ ಶಾಖೆಯಲ್ಲಿ ಹಲವು ಬಾರಿ ದೂರು ನೀಡಿದ್ದೇನೆ ಆದರೆ ಯಾವುದೇ ಪರಿಹಾರ ಸಿಕ್ಕಿಲ್ಲ.\n\nಪ್ರಕಾಶ್ ಗೌಡ\nಫೋನ್: 9900123456\nಬೆಂಗಳೂರು, ಕರ್ನಾಟಕ',
+      messageId: ''
+    },
+    {
+      senderEmail: 'arun.nair@gmail.com',
+      subject: 'ബാങ്ക് ലോക്കർ തുറക്കാൻ അനുവദിക്കുന്നില്ല (Malayalam)',
+      body: 'ബഹുമാനപ്പെട്ട മഹോദയൻ,\n\nഎന്റെ പേര് അരുൺ നായർ, അക്കൗണ്ട് നമ്പർ 3456789012 (ഫെഡറൽ ബാങ്ക്, കൊച്ചി ശാഖ). എന്റെ ബാങ്ക് ലോക്കർ (Locker No: LKR/2022/KCH/567) തുറക്കാൻ ബാങ്ക് അനുവദിക്കുന്നില്ല. കഴിഞ്ഞ 2 മാസമായി ലോക്കർ ആക്‌സസ് നിഷേധിച്ചിരിക്കുന്നു.\n\nലോക്കർ വാടക കൃത്യമായി അടച്ചിട്ടുണ്ട്. ബാങ്ക് ഒരു കാരണവും പറയുന്നില്ല.\n\nദയവായി സഹായിക്കുക.\n\nഅരുൺ നായർ\nഫോൺ: 9446012345\nകൊച്ചി, കേരളം',
+      messageId: ''
+    },
+    {
+      senderEmail: 'gurpreet.singh@gmail.com',
+      subject: 'ਬੈਂਕ ਨੇ ਲੋਨ ਬਿਨਾਂ ਸੂਚਨਾ ਰੱਦ ਕੀਤਾ (Punjabi)',
+      body: 'ਮਾਨਯੋਗ ਮਹੋਦਯ,\n\nਮੇਰਾ ਨਾਮ ਗੁਰਪ੍ਰੀਤ ਸਿੰਘ ਹੈ, ਖਾਤਾ ਨੰਬਰ 5678901234 (ਪੰਜਾਬ ਨੈਸ਼ਨਲ ਬੈਂਕ, ਅੰਮ੍ਰਿਤਸਰ ਸ਼ਾਖਾ). ਮੈਨੂੰ ₹10,00,000 ਦਾ ਹੋਮ ਲੋਨ ਮਨਜ਼ੂਰ ਹੋਇਆ ਸੀ (Sanction Ref: HL/2026/ASR/12345) ਪਰ ਬੈਂਕ ਨੇ ਬਿਨਾਂ ਕੋਈ ਕਾਰਨ ਦੱਸੇ ਲੋਨ ਰੱਦ ਕਰ ਦਿੱਤਾ।\n\nਮੈਂ ਪਹਿਲਾਂ ਹੀ ₹50,000 ਪ੍ਰੋਸੈਸਿੰਗ ਫੀਸ ਅਦਾ ਕਰ ਚੁੱਕਾ ਹਾਂ ਜੋ ਵਾਪਸ ਨਹੀਂ ਕੀਤੀ ਗਈ।\n\nਗੁਰਪ੍ਰੀਤ ਸਿੰਘ\nਫ਼ੋਨ: 9876543210\nਅੰਮ੍ਰਿਤਸਰ, ਪੰਜਾਬ',
+      messageId: ''
+    },
+    {
+      senderEmail: 'bijay.mohapatra@gmail.com',
+      subject: 'ବ୍ୟାଙ୍କ ଖାତାରୁ ଅନଧିକୃତ ଟଙ୍କା କାଟିବା (Odia)',
+      body: 'ମାନ୍ୟବର ମହୋଦୟ,\n\nମୋ ନାମ ବିଜୟ ମହାପାତ୍ର, ଖାତା ନମ୍ବର 7890123456 (ଷ୍ଟେଟ ବ୍ୟାଙ୍କ ଅଫ ଇଣ୍ଡିଆ, ଭୁବନେଶ୍ୱର ଶାଖା). ଗତ 15 ମଇ 2026 ତାରିଖରେ ମୋ ଖାତାରୁ ₹18,000 ଟଙ୍କା ମୋ ଅଜ୍ଞାତରେ କାଟି ନିଆଯାଇଛି।\n\nTransaction Ref: SBI/2026/BBR/45678\n\nମୁଁ ଏହି ଲେନଦେନ କରି ନାହିଁ। ବ୍ୟାଙ୍କରେ ଅଭିଯୋଗ କରିଛି କିନ୍ତୁ 40 ଦିନ ହେଲା କୌଣସି ସମାଧାନ ମିଳିନାହିଁ।\n\nବିଜୟ ମହାପାତ୍ର\nଫୋନ: 9437012345\nଭୁବନେଶ୍ୱର, ଓଡ଼ିଶା',
+      messageId: ''
     }
   ];
 
@@ -146,14 +213,24 @@ export class EmailSimulatorComponent {
         const hasOcr = response?.ocrProcessed;
         const attachmentInfo = file ? ` [📎 ${file.name}${hasOcr ? ' → OCR extracted' : ''}]` : '';
 
+        const langInfo = (response as any)?.isVernacular ? {
+          detectedLanguage: (response as any).detectedLanguage,
+          languageName: (response as any).languageName,
+          isVernacular: (response as any).isVernacular,
+          translationConfidence: (response as any).translationConfidence
+        } : undefined;
+
+        const langLabel = langInfo ? ` [🌐 ${langInfo.languageName} → English]` : '';
+
         this.results.update(prev => [{
           email,
           response,
           message: response
-            ? `Draft created: ${response.draftId} → Assigned to ${response.assignedTo}${attachmentInfo}`
+            ? `Draft created: ${response.draftId} → Assigned to ${response.assignedTo}${attachmentInfo}${langLabel}`
             : 'Email ignored (on ignore list)',
           status: response ? 'success' : 'ignored',
-          timestamp: new Date()
+          timestamp: new Date(),
+          languageInfo: langInfo
         }, ...prev]);
         this.sending.set(false);
         this.manualEmail.set({ senderEmail: '', subject: '', body: '', messageId: '' });

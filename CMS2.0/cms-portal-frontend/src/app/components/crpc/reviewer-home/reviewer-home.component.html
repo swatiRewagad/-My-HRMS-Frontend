@@ -3,11 +3,10 @@
   <div class="user-bar">
     <div class="user-info">
       <i class="pi pi-user"></i>
-      <span class="user-name">{{ loggedInUser?.name }}</span>
-      <span class="user-role">{{ loggedInUser?.role }}</span>
-      <span class="user-id">({{ loggedInUser?.id }})</span>
+      <span class="user-name">{{ loggedInUser?.name || 'Reviewer' }}</span>
+      <span class="user-role">{{ loggedInUser?.role || 'REVIEWER' }}</span>
     </div>
-    <button class="btn btn-outline btn-logout" (click)="logout()">
+    <button class="btn-logout" (click)="logout()">
       <i class="pi pi-sign-out"></i> Logout
     </button>
   </div>

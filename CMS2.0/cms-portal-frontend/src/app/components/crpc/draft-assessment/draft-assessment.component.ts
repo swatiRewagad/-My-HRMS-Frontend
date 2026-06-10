@@ -2,8 +2,12 @@ import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
+import { HttpClient } from '@angular/common/http';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { CrpcService } from '../../../services/crpc.service';
+import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
 import { ReviewerUser } from '../../../models/crpc.model';
+import { environment } from '../../../../environments/environment';
 
 interface MaintainabilityQuestion {
   id: string;
@@ -42,8 +46,53 @@ export class DraftAssessmentComponent implements OnInit {
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   private crpcService = inject(CrpcService);
+  private auth = inject(KeycloakAuthService);
+  private http = inject(HttpClient);
+  private sanitizer = inject(DomSanitizer);
+
+  // ─── Stepper ───
+  activeStep = signal<'creation' | 'assignment'>('creation');
+
+  // ─── PDF Preview (Physical Letter) ───
+  pdfPreviewUrl = signal<SafeResourceUrl | null>(null);
+  pdfExpanded = signal(false);
+
+  // ─── Suggestions (AI-extracted) ───
+  suggestions = signal<{ field: string; value: string; applied: boolean }[]>([]);
+
+  // ─── Confirmation Dialog ───
+  showConfirmDialog = signal(false);
+
+  // ─── Attachments Side Panel ───
+  showAttachmentsPanel = signal(false);
+  viewingAttachment = signal<Attachment | null>(null);
+  pdfCurrentPage = signal(1);
+  pdfTotalPages = signal(5);
+
+  // ─── Email Communication Tab ───
+  emailSections = { open: true, drafts: true, closed: false };
+  selectedEmail = signal<EmailCorrespondence | null>(null);
+
+  // ─── History Panel ───
+  showHistoryPanel = signal(false);
+  historyEntries = signal<any[]>([]);
+  loadingHistory = signal(false);
+
+  // ─── Assignment Mode ───
+  assignmentMode = 'Manual';
+
+  // ─── Collapsible Sections ───
+  sectionOpen = {
+    complaint: true,
+    eligibility: false,
+    entity: true,
+    complainant: false,
+  };
 
   draftId = '';
+  draftStatus = 'DRAFT';
+  deoAssessmentRemarks = '';
+  deoAssessmentDecision = '';
   loading = signal(true);
 
   currentTab = signal<'details' | 'attachments' | 'assessment' | 'screening' | 'route'>('details');
@@ -193,6 +242,12 @@ export class DraftAssessmentComponent implements OnInit {
     return sorted[0]?.id || '';
   });
 
+  reviewerOnLeave = computed(() => {
+    if (!this.selectedReviewer) return false;
+    const rev = this.reviewers().find(r => r.id === this.selectedReviewer);
+    return rev?.isOnLeave || false;
+  });
+
   maintainabilityScore = computed(() => {
     let score = 0;
     let maxScore = 0;
@@ -208,8 +263,13 @@ export class DraftAssessmentComponent implements OnInit {
     return this.maintainabilityQuestions.every(q => q.answer !== null);
   });
 
+  // ─── Read-Only Mode (view-only for statuses beyond DRAFT/ASSIGNED) ───
+  get isReadOnly(): boolean {
+    return this.draftStatus === 'SENT_TO_REVIEWER' || this.draftStatus === 'APPROVED' || this.draftStatus === 'APPROVED_ROUTED';
+  }
+
   // ─── Mandatory Field Validation ───
-  mandatoryFieldsComplete = computed(() => {
+  mandatoryFieldsComplete(): boolean {
     return this.complainantName.trim().length > 0 &&
            this.complainantState.trim().length > 0 &&
            this.complainantDistrict.trim().length > 0 &&
@@ -217,9 +277,9 @@ export class DraftAssessmentComponent implements OnInit {
            this.category.trim().length > 0 &&
            this.entityName.trim().length > 0 &&
            this.subject.trim().length > 0;
-  });
+  }
 
-  missingMandatoryFields = computed(() => {
+  missingMandatoryFields(): string[] {
     const missing: string[] = [];
     if (!this.complainantName.trim()) missing.push('Complainant Name');
     if (!this.complainantState.trim()) missing.push('State');
@@ -229,7 +289,7 @@ export class DraftAssessmentComponent implements OnInit {
     if (!this.entityName.trim()) missing.push('Entity Name');
     if (!this.subject.trim()) missing.push('Subject');
     return missing;
-  });
+  }
 
   submitting = signal(false);
   submitted = signal(false);
@@ -244,87 +304,320 @@ export class DraftAssessmentComponent implements OnInit {
     'SK', 'TN', 'TS', 'TR', 'UK', 'UP', 'WB'
   ];
 
+  loggedInUser: { id: string; name: string; role: string } | null = null;
+
+  // ─── Past & Similar Complaints ───
+  pastComplaints = signal<any[]>([]);
+  similarCases = signal<any[]>([]);
+  loadingPastComplaints = signal(false);
+  loadingSimilarCases = signal(false);
+
+  // ─── Past Complaint Detail Modal ───
+  showPastComplaintDetail = signal(false);
+  pastComplaintDetail = signal<any>(null);
+  loadingPastDetail = signal(false);
+
   ngOnInit() {
+    const stored = sessionStorage.getItem('crpc_user');
+    if (stored) {
+      this.loggedInUser = JSON.parse(stored);
+    } else {
+      const user = this.auth.currentUser();
+      if (user) {
+        const role = this.auth.getRoles().find(r => ['DEO', 'REVIEWER', 'CRPC_HEAD'].includes(r)) || 'DEO';
+        this.loggedInUser = { id: user.username, name: `${user.firstName} ${user.lastName}`.trim() || user.username, role };
+        sessionStorage.setItem('crpc_user', JSON.stringify(this.loggedInUser));
+      }
+    }
     this.draftId = this.route.snapshot.paramMap.get('id') || '';
     this.loadDraft();
     this.crpcService.getReviewers().subscribe(data => this.reviewers.set(data));
+  }
+
+  loadPastComplaints() {
+    if (!this.complainantEmail && !this.complainantPhone) return;
+    this.loadingPastComplaints.set(true);
+
+    const params: any = { excludeId: this.draftId };
+    if (this.complainantEmail) params.email = this.complainantEmail;
+    if (this.complainantPhone) params.phone = this.complainantPhone;
+
+    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/past-complaints/by-complainant`, { params })
+      .subscribe({
+        next: (res) => {
+          this.pastComplaints.set(res?.data || []);
+          this.loadingPastComplaints.set(false);
+        },
+        error: () => this.loadingPastComplaints.set(false)
+      });
+  }
+
+  loadSimilarCases() {
+    if (!this.subject) return;
+    this.loadingSimilarCases.set(true);
+
+    this.http.post<any>(`${environment.apiBaseUrl}/api/v1/past-complaints/similar`, {
+      subject: this.subject,
+      description: this.description,
+      category: this.category,
+      excludeId: this.draftId
+    }).subscribe({
+      next: (res) => {
+        this.similarCases.set(res?.data || []);
+        this.loadingSimilarCases.set(false);
+      },
+      error: () => this.loadingSimilarCases.set(false)
+    });
+  }
+
+  openPastComplaintDetail(complaintId: string) {
+    this.showPastComplaintDetail.set(true);
+    this.loadingPastDetail.set(true);
+    this.pastComplaintDetail.set(null);
+
+    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/past-complaints/detail/${complaintId}`)
+      .subscribe({
+        next: (res) => {
+          this.pastComplaintDetail.set(res?.data || null);
+          this.loadingPastDetail.set(false);
+        },
+        error: () => {
+          this.loadingPastDetail.set(false);
+          this.showPastComplaintDetail.set(false);
+        }
+      });
+  }
+
+  closePastComplaintDetail() {
+    this.showPastComplaintDetail.set(false);
+    this.pastComplaintDetail.set(null);
+  }
+
+  applySuggestion(index: number) {
+    const suggs = this.suggestions();
+    const s = suggs[index];
+    if (!s || s.applied) return;
+
+    switch (s.field) {
+      case 'Entity': this.entityName = s.value; break;
+      case 'Category': this.category = s.value; break;
+      case 'Subject': this.subject = s.value; break;
+      case 'Amount': this.amountInvolved = Number(s.value.replace(/[^\d.]/g, '')) || null; break;
+      case 'State': this.complainantState = s.value; break;
+      case 'District': this.complainantDistrict = s.value; break;
+    }
+
+    const updated = suggs.map((sg, i) => i === index ? { ...sg, applied: true } : sg);
+    this.suggestions.set(updated);
+  }
+
+  togglePdfExpand() {
+    this.pdfExpanded.set(!this.pdfExpanded());
+  }
+
+  openAttachmentsPanel() {
+    this.showAttachmentsPanel.set(true);
+  }
+
+  closeAttachmentsPanel() {
+    this.showAttachmentsPanel.set(false);
+    this.viewingAttachment.set(null);
+  }
+
+  viewAttachment(att: Attachment) {
+    this.viewingAttachment.set(att);
+    this.pdfCurrentPage.set(1);
+  }
+
+  closeViewingAttachment() {
+    this.viewingAttachment.set(null);
+  }
+
+  pdfNextPage() {
+    if (this.pdfCurrentPage() < this.pdfTotalPages()) {
+      this.pdfCurrentPage.set(this.pdfCurrentPage() + 1);
+    }
+  }
+
+  pdfPrevPage() {
+    if (this.pdfCurrentPage() > 1) {
+      this.pdfCurrentPage.set(this.pdfCurrentPage() - 1);
+    }
+  }
+
+  toggleHistoryPanel() {
+    if (this.showHistoryPanel()) {
+      this.showHistoryPanel.set(false);
+    } else {
+      this.showHistoryPanel.set(true);
+      this.showAttachmentsPanel.set(false);
+      this.loadHistory();
+    }
+  }
+
+  loadHistory() {
+    this.loadingHistory.set(true);
+    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/complaints/${this.draftId}/timeline`)
+      .subscribe({
+        next: (res) => {
+          this.historyEntries.set(res?.data || []);
+          this.loadingHistory.set(false);
+        },
+        error: () => {
+          // Fallback mock data for demo
+          this.historyEntries.set([
+            { status: 'Sent to RBI', statusType: 'sent', modifiedOn: new Date().toISOString(), modifiedBy: 'RBI NO Chandigarh', assignedTo: 'Sharmila Thakur', assignedInitials: 'ST', assignedColor: '#7c3aed' },
+            { status: 'Advisory Issued', statusType: 'advisory', modifiedOn: new Date(Date.now() - 86400000).toISOString(), modifiedBy: 'Lakshya Kumar Chd', assignedTo: 'Bhag Singh NO-Chd', assignedInitials: 'BS', assignedColor: '#f59e0b', description: 'Core banking systems are the central nervous system of any bank. They process a range of transactions, deposits and withdrawals to loan payments and...' },
+            { status: 'Sent to RBI', statusType: 'sent', modifiedOn: new Date(Date.now() - 172800000).toISOString(), modifiedBy: 'RBI NO Chandigarh', assignedTo: 'Sharmila Thakur', assignedInitials: 'ST', assignedColor: '#7c3aed' },
+            { status: 'Information Required', statusType: 'info', modifiedOn: new Date(Date.now() - 259200000).toISOString(), modifiedBy: 'Lakshya Kumar Chd', assignedTo: 'Bhag Singh NO-Chd', assignedInitials: 'BS', assignedColor: '#f59e0b' },
+            { status: 'Sent to RBI', statusType: 'sent', modifiedOn: new Date(Date.now() - 345600000).toISOString(), modifiedBy: 'Sharmila Thakur', assignedTo: 'Bhag Singh NO-Chd', assignedInitials: 'BS', assignedColor: '#f59e0b' },
+          ]);
+          this.loadingHistory.set(false);
+        }
+      });
   }
 
   loadDraft() {
     this.loading.set(true);
     const isPhysicalLetter = this.draftId.startsWith('DRF-2026');
 
-    setTimeout(() => {
-      if (isPhysicalLetter) {
-        // Physical Letter draft — OCR-prefilled fields from wizard, scanned file auto-attached
-        const saved = sessionStorage.getItem('physicalLetterDraft');
-        const draft = saved ? JSON.parse(saved) : null;
+    if (isPhysicalLetter) {
+      const saved = sessionStorage.getItem('physicalLetterDraft');
+      const draft = saved ? JSON.parse(saved) : null;
 
-        this.complainantName = draft?.complainantName || 'Suresh Patel';
-        this.complainantPhone = draft?.complainantPhone || '9412345678';
-        this.complainantEmail = draft?.complainantEmail || '';
-        this.complainantAddress = draft?.complainantAddress || '12, Nehru Nagar, Sector 5, Jaipur';
-        this.complainantState = draft?.complainantState || 'RJ';
-        this.complainantDistrict = draft?.complainantDistrict || 'Jaipur';
-        this.complainantPincode = draft?.complainantPincode || '302001';
-        this.contactPreference = 'POST';
+      this.complainantName = draft?.complainantName || '';
+      this.complainantPhone = draft?.complainantPhone || '';
+      this.complainantEmail = draft?.complainantEmail || '';
+      this.complainantAddress = draft?.complainantAddress || '';
+      this.complainantState = draft?.complainantState || '';
+      this.complainantDistrict = draft?.complainantDistrict || '';
+      this.complainantPincode = draft?.complainantPincode || '';
+      this.contactPreference = 'POST';
 
-        this.modeOfReceipt = 'PHYSICAL_LETTER';
-        this.category = draft?.category || '';
-        this.entityName = draft?.entityName || '';
-        this.entityType = draft?.entityType || 'BANK';
-        this.subject = draft?.subject || '';
-        this.description = draft?.description || '';
-        this.amountInvolved = draft?.amountInvolved || null;
-        this.transactionDate = draft?.transactionDate || '';
-        this.letterDate = draft?.letterDate || '';
-        this.receivedDate = draft?.receivedDate || new Date().toISOString().split('T')[0];
-        this.emailType = '';
-        this.systemSuggestion = 'PENDING';
-        this.vernacular = draft?.vernacular || false;
-        this.vernacularLanguage = draft?.vernacularLanguage || '';
+      this.modeOfReceipt = 'PHYSICAL_LETTER';
+      this.category = draft?.category || '';
+      this.entityName = draft?.entityName || '';
+      this.entityType = draft?.entityType || 'BANK';
+      this.subject = draft?.subject || '';
+      this.description = draft?.description || '';
+      this.amountInvolved = draft?.amountInvolved || null;
+      this.transactionDate = draft?.transactionDate || '';
+      this.letterDate = draft?.letterDate || '';
+      this.receivedDate = draft?.receivedDate || new Date().toISOString().split('T')[0];
+      this.emailType = '';
+      this.systemSuggestion = 'PENDING';
+      this.vernacular = draft?.vernacular || false;
+      this.vernacularLanguage = draft?.vernacularLanguage || '';
 
-        this.attachments.set([
-          { id: 'ATT-001', name: draft?.fileName || 'scanned_letter.pdf', size: draft?.fileSize || '2.4 MB', type: 'application/pdf', uploadedAt: new Date().toISOString(), uploadedBy: 'DEO' },
-        ]);
+      this.attachments.set([
+        { id: 'ATT-001', name: draft?.fileName || 'scanned_letter.pdf', size: draft?.fileSize || '2.4 MB', type: 'application/pdf', uploadedAt: new Date().toISOString(), uploadedBy: 'DEO' },
+      ]);
 
-        this.emailCorrespondence.set([]);
-      } else {
-        // Email-originated draft — prefilled from OCR/parsing
-        this.complainantName = 'Rajesh Kumar';
-        this.complainantPhone = '9876543210';
-        this.complainantEmail = 'rajesh@example.com';
-        this.complainantAddress = '42, MG Road, Mumbai';
-        this.complainantState = 'MH';
-        this.complainantDistrict = 'Mumbai';
-        this.complainantPincode = '400001';
-        this.contactPreference = 'EMAIL';
+      // Build suggestions from OCR-extracted data
+      const suggs: { field: string; value: string; applied: boolean }[] = [];
+      if (draft?.entityName) suggs.push({ field: 'Entity', value: draft.entityName, applied: false });
+      if (draft?.category) suggs.push({ field: 'Category', value: draft.category, applied: false });
+      if (draft?.amountInvolved) suggs.push({ field: 'Amount', value: `₹${draft.amountInvolved}`, applied: false });
+      if (draft?.subject) suggs.push({ field: 'Subject', value: draft.subject, applied: false });
+      this.suggestions.set(suggs);
 
-        this.modeOfReceipt = 'EMAIL';
-        this.category = 'ATM';
-        this.entityName = 'SBI';
-        this.entityType = 'BANK';
-        this.subject = 'ATM cash not dispensed but account debited';
-        this.description = 'On 28-May-2026, I tried to withdraw Rs. 10,000 from SBI ATM at Andheri branch. The machine showed "Transaction Successful" but no cash was dispensed. My account was debited Rs. 10,000. I have attached the mini statement.';
-        this.amountInvolved = 10000;
-        this.transactionDate = '2026-05-28';
-        this.receivedDate = '2026-06-01';
-        this.emailType = 'TO';
-        this.systemSuggestion = 'MAINTAINABLE';
-        this.vernacular = false;
-
-        this.attachments.set([
-          { id: 'ATT-001', name: 'original_email.eml', size: '156 KB', type: 'message/rfc822', uploadedAt: '2026-06-01T10:00:00Z', uploadedBy: 'SYSTEM' },
-          { id: 'ATT-002', name: 'mini_statement.jpg', size: '450 KB', type: 'image/jpeg', uploadedAt: '2026-06-01T10:00:00Z', uploadedBy: 'SYSTEM' },
-        ]);
-
-        this.emailCorrespondence.set([
-          { id: 'EC-001', direction: 'RECEIVED', subject: 'ATM cash not dispensed', to: 'crpc@rbi.org.in', sentAt: '2026-05-29T14:30:00Z', body: 'Original complaint email received.' },
-        ]);
+      // Load PDF preview from sessionStorage blob if available
+      const pdfBlob = sessionStorage.getItem('physicalLetterPdfUrl');
+      if (pdfBlob) {
+        this.pdfPreviewUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(pdfBlob));
       }
 
+      this.emailCorrespondence.set([]);
       this.loading.set(false);
-    }, 800);
+      this.loadPastComplaints();
+      this.loadSimilarCases();
+    } else {
+      this.http.get<any>(`${environment.apiBaseUrl}/api/v1/email-syndication/drafts/${this.draftId}`)
+        .subscribe({
+          next: (res) => {
+            const draft = res?.data || {};
+            this.complainantName = draft.complainantName || '';
+            this.complainantPhone = draft.complainantPhone || '';
+            this.complainantEmail = draft.senderEmail || '';
+            this.complainantAddress = draft.complainantAddress || '';
+            this.complainantState = draft.complainantState || '';
+            this.complainantDistrict = draft.complainantDistrict || '';
+            this.complainantPincode = draft.complainantPincode || '';
+            this.contactPreference = 'EMAIL';
+
+            this.modeOfReceipt = (draft.modeOfReceipt as any) || 'EMAIL';
+            this.cpgramsReference = draft.cpgramsNumber || '';
+            this.category = draft.category || '';
+            this.entityName = draft.entityName || '';
+            this.entityType = draft.entityType || 'BANK';
+            this.subject = draft.subject || draft.complaintSummary || '';
+            this.description = draft.body || '';
+            this.amountInvolved = draft.amountInvolved || null;
+            this.transactionDate = draft.transactionDate || '';
+            this.receivedDate = draft.receivedAt ? draft.receivedAt.split('T')[0] : '';
+            this.emailType = 'TO';
+            this.draftStatus = draft.status || 'ASSIGNED';
+            this.selectedReviewer = draft.assignedTo || '';
+            this.deoAssessmentDecision = draft.deoDecision || '';
+            this.deoAssessmentRemarks = draft.deoRemarks || '';
+            this.systemSuggestion = draft.systemSuggestion || 'PENDING';
+            this.vernacular = draft.isVernacular || false;
+            this.vernacularLanguage = draft.languageName || '';
+
+            const attachments = (draft.attachments || []).map((a: any, i: number) => ({
+              id: a.id || `ATT-${i + 1}`,
+              name: a.fileName || `attachment_${i + 1}`,
+              size: a.fileSize ? this.formatFileSize(a.fileSize) : 'Unknown',
+              type: a.fileType || 'application/octet-stream',
+              uploadedAt: a.createdAt || new Date().toISOString(),
+              uploadedBy: 'SYSTEM',
+            }));
+            this.attachments.set(attachments);
+
+            // Apply OCR-extracted fields if available from ingest
+            if (draft.ocrExtractedFields) {
+              this.applyOcrFields(draft.ocrExtractedFields);
+              this.ocrApplied.set(true);
+            } else if (draft.ocrProcessed && draft.ocrConfidence > 0) {
+              this.ocrApplied.set(true);
+            }
+
+            // Build suggestions from draft data
+            const suggs: { field: string; value: string; applied: boolean }[] = [];
+            if (draft.entityName) suggs.push({ field: 'Entity', value: draft.entityName, applied: false });
+            if (draft.category) suggs.push({ field: 'Category', value: draft.category, applied: false });
+            if (draft.amountInvolved) suggs.push({ field: 'Amount', value: `₹${draft.amountInvolved}`, applied: false });
+            if (draft.ocrExtractedFields?.subject) suggs.push({ field: 'Subject', value: draft.ocrExtractedFields.subject, applied: false });
+            this.suggestions.set(suggs);
+
+            if (draft.senderEmail) {
+              this.emailCorrespondence.set([{
+                id: 'EC-001',
+                direction: 'RECEIVED',
+                subject: draft.subject || '',
+                to: 'crpc@rbi.org.in',
+                sentAt: draft.receivedAt || '',
+                body: draft.body || 'Original complaint email received.',
+              }]);
+            } else {
+              this.emailCorrespondence.set([]);
+            }
+
+            this.loading.set(false);
+            this.loadPastComplaints();
+            this.loadSimilarCases();
+          },
+          error: () => {
+            this.loading.set(false);
+          }
+        });
+    }
+  }
+
+  private formatFileSize(bytes: number): string {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + ' KB';
+    return (bytes / 1024 / 1024).toFixed(1) + ' MB';
   }
 
   // ─── Attachment Management ───
@@ -358,6 +651,110 @@ export class DraftAssessmentComponent implements OnInit {
 
   removeAttachment(id: string) {
     this.attachments.set(this.attachments().filter(a => a.id !== id));
+  }
+
+  // ─── OCR Scanning ───
+  ocrScanning = signal(false);
+  ocrApplied = signal(false);
+  ocrError = signal('');
+  ocrFieldsExtracted = signal<Record<string, string>>({});
+
+  scanAttachmentOcr(att: Attachment) {
+    this.ocrScanning.set(true);
+    this.ocrError.set('');
+
+    // For attachments already on the server, call OCR endpoint with the attachment reference
+    this.http.post<any>(`${environment.apiBaseUrl}/api/v1/ocr/extract-from-draft`, {
+      draftId: this.draftId,
+      attachmentId: att.id,
+      fileName: att.name
+    }).subscribe({
+      next: (res) => {
+        const data = res?.data || {};
+        if (Object.keys(data).length === 0) {
+          this.ocrError.set('OCR extraction returned no data. Try uploading a clearer scan.');
+          this.ocrScanning.set(false);
+          return;
+        }
+        this.applyOcrFields(data);
+        this.ocrFieldsExtracted.set(data);
+        this.ocrApplied.set(true);
+        this.ocrScanning.set(false);
+      },
+      error: (err) => {
+        this.ocrError.set(err.error?.message || 'OCR extraction failed. Please fill fields manually.');
+        this.ocrScanning.set(false);
+      }
+    });
+  }
+
+  scanUploadedFileOcr(event: Event) {
+    const input = event.target as HTMLInputElement;
+    if (!input.files?.length) return;
+
+    const file = input.files[0];
+    const allowed = ['application/pdf', 'image/jpeg', 'image/png', 'image/tiff'];
+    if (!allowed.includes(file.type)) {
+      this.ocrError.set('Only PDF, JPEG, PNG, or TIFF files can be scanned.');
+      return;
+    }
+
+    this.ocrScanning.set(true);
+    this.ocrError.set('');
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    this.http.post<any>(`${environment.apiBaseUrl}/api/v1/ocr/extract`, formData)
+      .subscribe({
+        next: (res) => {
+          const data = res?.data || {};
+          if (Object.keys(data).length === 0) {
+            this.ocrError.set('AI extraction returned no data. API quota may be exhausted.');
+            this.ocrScanning.set(false);
+            return;
+          }
+          this.applyOcrFields(data);
+          this.ocrFieldsExtracted.set(data);
+          this.ocrApplied.set(true);
+          this.ocrScanning.set(false);
+
+          // Also add to attachments list
+          const newAtt: Attachment = {
+            id: 'ATT-' + Date.now(),
+            name: file.name,
+            size: (file.size / 1024).toFixed(0) + ' KB',
+            type: file.type,
+            uploadedAt: new Date().toISOString(),
+            uploadedBy: 'DEO'
+          };
+          this.attachments.set([...this.attachments(), newAtt]);
+        },
+        error: (err) => {
+          this.ocrError.set(err.error?.message || 'OCR failed. Please fill fields manually.');
+          this.ocrScanning.set(false);
+        }
+      });
+
+    input.value = '';
+  }
+
+  private applyOcrFields(data: Record<string, string>) {
+    if (data['complainantName'] && !this.complainantName) this.complainantName = data['complainantName'];
+    if (data['complainantPhone'] && !this.complainantPhone) this.complainantPhone = data['complainantPhone'];
+    if (data['complainantEmail'] && !this.complainantEmail) this.complainantEmail = data['complainantEmail'];
+    if (data['complainantAddress'] && !this.complainantAddress) this.complainantAddress = data['complainantAddress'];
+    if (data['complainantState'] && !this.complainantState) this.complainantState = data['complainantState'];
+    if (data['complainantDistrict'] && !this.complainantDistrict) this.complainantDistrict = data['complainantDistrict'];
+    if (data['complainantPincode'] && !this.complainantPincode) this.complainantPincode = data['complainantPincode'];
+    if (data['subject'] && !this.subject) this.subject = data['subject'];
+    if (data['description'] && !this.description) this.description = data['description'];
+    if (data['entityName'] && !this.entityName) this.entityName = data['entityName'];
+    if (data['entityType'] && !this.entityType) this.entityType = data['entityType'];
+    if (data['category'] && !this.category) this.category = data['category'];
+    if (data['amountInvolved'] && !this.amountInvolved) this.amountInvolved = Number(data['amountInvolved']) || null;
+    if (data['transactionDate'] && !this.transactionDate) this.transactionDate = data['transactionDate'];
+    if (data['letterDate'] && !this.letterDate) this.letterDate = data['letterDate'];
   }
 
   // ─── Email: Request Additional Information ───
@@ -536,25 +933,51 @@ export class DraftAssessmentComponent implements OnInit {
     this.selectedReviewer = this.suggestedReviewer();
   }
 
+  onAssignmentModeChange(mode: string) {
+    if (mode === 'RoundRobin') {
+      this.useRoundRobin();
+    } else {
+      this.selectedReviewer = '';
+    }
+  }
+
+  getReviewerName(id: string): string {
+    const rev = this.reviewers().find(r => r.id === id);
+    return rev?.displayName || id || '';
+  }
+
   // ─── Save Draft (without sending) ───
   saveDraft() {
     this.savingDraft.set(true);
-    setTimeout(() => {
-      this.savingDraft.set(false);
-      this.draftSaved.set(true);
-      setTimeout(() => this.draftSaved.set(false), 3000);
-    }, 800);
+
+    this.http.put<any>(`${environment.apiBaseUrl}/api/v1/email-syndication/drafts/${this.draftId}`, {
+      complainantName: this.complainantName,
+      complainantPhone: this.complainantPhone,
+      complainantAddress: this.complainantAddress,
+      complainantState: this.complainantState,
+      complainantDistrict: this.complainantDistrict,
+      complainantPincode: this.complainantPincode,
+      subject: this.subject,
+      body: this.description,
+      category: this.category,
+      entityName: this.entityName,
+      entityType: this.entityType,
+      cpgramsNumber: this.cpgramsReference,
+    }).subscribe({
+      next: () => {
+        this.savingDraft.set(false);
+        this.draftSaved.set(true);
+        setTimeout(() => this.draftSaved.set(false), 3000);
+      },
+      error: () => {
+        this.savingDraft.set(false);
+      }
+    });
   }
 
   // ─── Validation for Send for Approval ───
   canSendForApproval(): boolean {
-    if (!this.deoDecision) return false;
-    if (!this.mandatoryFieldsComplete()) return false;
     if (!this.selectedReviewer) return false;
-
-    if (this.deoDecision === 'NON_MAINTAINABLE' && !this.nonMaintainableReason) return false;
-    if (this.deoDecision === 'MAINTAINABLE' && !this.allScreeningComplete()) return false;
-
     return true;
   }
 
@@ -562,13 +985,71 @@ export class DraftAssessmentComponent implements OnInit {
     if (!this.canSendForApproval()) return;
     this.submitting.set(true);
 
-    setTimeout(() => {
-      this.submitting.set(false);
-      this.submitted.set(true);
-    }, 1500);
+    const payload = {
+      draftId: this.draftId,
+      status: 'SENT_TO_REVIEWER',
+      assignedTo: this.selectedReviewer,
+      processedBy: this.loggedInUser?.name || 'DEO',
+      complainantName: this.complainantName,
+      complainantPhone: this.complainantPhone,
+      complainantAddress: this.complainantAddress,
+      complainantState: this.complainantState,
+      complainantDistrict: this.complainantDistrict,
+      complainantPincode: this.complainantPincode,
+      senderEmail: this.complainantEmail,
+      subject: this.subject,
+      body: this.description,
+      category: this.category,
+      entityName: this.entityName,
+      entityType: this.entityType,
+      modeOfReceipt: this.modeOfReceipt,
+      deoDecision: this.deoDecision,
+      deoRemarks: this.deoRemarks,
+      nonMaintainableReason: this.nonMaintainableReason,
+      receivedAt: this.receivedDate ? this.receivedDate + 'T00:00:00' : new Date().toISOString(),
+    };
+
+    const isPhysicalLetter = this.draftId.startsWith('DRF-');
+
+    if (isPhysicalLetter) {
+      // Physical letter drafts don't exist in DB yet — create them
+      this.http.post<any>(`${environment.apiBaseUrl}/api/v1/email-syndication/drafts`, payload)
+        .subscribe({
+          next: () => {
+            this.submitting.set(false);
+            this.submitted.set(true);
+            this.showConfirmDialog.set(false);
+          },
+          error: () => {
+            this.submitting.set(false);
+          }
+        });
+    } else {
+      // Email drafts already exist — update them
+      this.http.put<any>(`${environment.apiBaseUrl}/api/v1/email-syndication/drafts/${this.draftId}`, payload)
+        .subscribe({
+          next: () => {
+            this.submitting.set(false);
+            this.submitted.set(true);
+            this.showConfirmDialog.set(false);
+          },
+          error: () => {
+            this.submitting.set(false);
+          }
+        });
+    }
+  }
+
+  confirmAndSend() {
+    this.sendForApproval();
   }
 
   goBack() {
     this.router.navigate(['/crpc/home']);
+  }
+
+  logout() {
+    sessionStorage.removeItem('crpc_user');
+    this.auth.logout();
   }
 }

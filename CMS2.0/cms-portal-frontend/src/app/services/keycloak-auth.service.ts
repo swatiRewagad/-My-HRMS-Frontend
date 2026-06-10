@@ -76,15 +76,29 @@ export class KeycloakAuthService {
     });
   }
 
+  async loginWithRedirect(redirectUri: string): Promise<void> {
+    if (!this.initialized) {
+      await this.init();
+    }
+    await this.keycloak.login({ redirectUri });
+  }
+
   async logout(): Promise<void> {
     this.isAuthenticated.set(false);
     this.currentUser.set(null);
     this.token.set('');
+
+    const wasInitialized = this.initialized;
     this.initialized = false;
     this.initPromise = null;
-    await this.keycloak.logout({
-      redirectUri: window.location.origin + '/staff/login'
-    });
+
+    if (wasInitialized && this.keycloak.authenticated) {
+      await this.keycloak.logout({
+        redirectUri: window.location.origin + '/staff/login'
+      });
+    } else {
+      window.location.href = window.location.origin + '/staff/login';
+    }
   }
 
   async refreshToken(): Promise<boolean> {

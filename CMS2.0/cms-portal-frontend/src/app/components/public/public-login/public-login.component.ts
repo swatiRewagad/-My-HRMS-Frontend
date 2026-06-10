@@ -17,10 +17,7 @@ export class PublicLoginComponent {
   private route = inject(ActivatedRoute);
   private authService = inject(PublicAuthService);
 
-  loginMode = signal<'mobile' | 'email'>('mobile');
   mobile = '';
-  email = '';
-  password = '';
   captchaText = '';
   captchaInput = '';
   otpSent = signal(false);
@@ -38,11 +35,6 @@ export class PublicLoginComponent {
     }
   }
 
-  switchMode(mode: 'mobile' | 'email') {
-    this.loginMode.set(mode);
-    this.loginError = '';
-  }
-
   generateCaptcha() {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
     this.captchaText = Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
@@ -50,16 +42,9 @@ export class PublicLoginComponent {
 
   sendOtp() {
     this.loginError = '';
-    if (this.loginMode() === 'mobile') {
-      if (!/^[6-9]\d{9}$/.test(this.mobile)) {
-        this.loginError = 'Enter a valid 10-digit Indian mobile number starting with 6-9.';
-        return;
-      }
-    } else {
-      if (!this.email || !this.email.includes('@')) {
-        this.loginError = 'Enter a valid email address.';
-        return;
-      }
+    if (!/^[6-9]\d{9}$/.test(this.mobile)) {
+      this.loginError = 'Enter a valid 10-digit Indian mobile number starting with 6-9.';
+      return;
     }
     if (this.captchaInput !== this.captchaText) {
       this.loginError = 'Invalid CAPTCHA. Please try again.';
@@ -70,21 +55,6 @@ export class PublicLoginComponent {
     this.otpSent.set(true);
     this.otpDigits = ['', '', '', '', '', ''];
     this.startResendTimer();
-  }
-
-  loginWithPassword() {
-    this.loginError = '';
-    if (!this.email || !this.password) {
-      this.loginError = 'Please enter email and password.';
-      return;
-    }
-    if (this.captchaInput !== this.captchaText) {
-      this.loginError = 'Invalid CAPTCHA. Please try again.';
-      this.generateCaptcha();
-      this.captchaInput = '';
-      return;
-    }
-    this.completeLogin(this.email);
   }
 
   onOtpInput(index: number, event: Event) {
@@ -110,8 +80,7 @@ export class PublicLoginComponent {
     this.otpError = '';
     this.otpVerified.set(true);
     this.clearResendTimer();
-    const identifier = this.loginMode() === 'mobile' ? this.mobile : this.email;
-    this.completeLogin(identifier);
+    this.completeLogin(this.mobile);
   }
 
   resendOtp() {
@@ -130,7 +99,6 @@ export class PublicLoginComponent {
   private completeLogin(identifier: string) {
     const mockToken = 'pub_' + Date.now().toString(36);
     this.authService.login(identifier, mockToken);
-
     const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl');
     this.router.navigateByUrl(returnUrl || '/public');
   }

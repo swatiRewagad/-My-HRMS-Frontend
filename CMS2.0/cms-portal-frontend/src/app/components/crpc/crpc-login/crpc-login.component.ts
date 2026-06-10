@@ -2,6 +2,7 @@ import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
 
 @Component({
   selector: 'app-crpc-login',
@@ -13,73 +14,47 @@ import { Router } from '@angular/router';
 export class CrpcLoginComponent {
 
   private router = inject(Router);
+  private auth = inject(KeycloakAuthService);
 
   username = '';
   password = '';
   loginError = '';
   loading = signal(false);
 
-  // Mock users for all CRPC roles (DEO names match email syndication pool)
-  private mockUsers = [
-    { username: 'amit', password: 'deo123', role: 'DEO', name: 'Amit Verma', id: 'deo_001' },
-    { username: 'sneha', password: 'deo123', role: 'DEO', name: 'Sneha Patil', id: 'deo_002' },
-    { username: 'ramesh', password: 'deo123', role: 'DEO', name: 'Ramesh Iyer', id: 'deo_003' },
-    { username: 'reviewer1', password: 'rev123', role: 'REVIEWER', name: 'A.K. Singh', id: 'REV-001' },
-    { username: 'reviewer2', password: 'rev123', role: 'REVIEWER', name: 'Priya Gupta', id: 'REV-002' },
-    { username: 'crpchead', password: 'head123', role: 'CRPC_HEAD', name: 'Dr. S. Menon', id: 'HEAD-001' },
-    { username: 'crpcadmin', password: 'admin123', role: 'CRPC_ADMIN', name: 'R. Sharma', id: 'ADM-001' },
-    { username: 'incharge', password: 'ic123', role: 'CRPC_INCHARGE', name: 'M. Krishnan', id: 'IC-001' },
-    { username: 'helpdesk', password: 'hd123', role: 'TOLL_FREE_HELPDESK', name: 'Support Agent', id: 'HD-001' },
-  ];
-
-  login() {
-    this.loginError = '';
-    if (!this.username.trim() || !this.password.trim()) {
-      this.loginError = 'Please enter username and password.';
-      return;
+  async ngOnInit() {
+    const authenticated = await this.auth.init();
+    if (authenticated) {
+      this.routeByRole();
     }
+  }
 
+  async login() {
+    this.loginError = '';
     this.loading.set(true);
+    if (!this.auth.isAuthenticated()) {
+      await this.auth.init();
+    }
+    await this.auth.loginWithRedirect(window.location.origin + '/crpc/login');
+  }
 
-    setTimeout(() => {
-      const user = this.mockUsers.find(
-        u => u.username === this.username.trim() && u.password === this.password.trim()
-      );
+  private routeByRole() {
+    const roles = this.auth.getRoles();
+    const user = this.auth.currentUser();
 
-      if (!user) {
-        this.loginError = 'Invalid credentials. Please try again.';
-        this.loading.set(false);
-        return;
-      }
-
-      // Store session
+    if (user) {
       sessionStorage.setItem('crpc_user', JSON.stringify({
-        id: user.id,
-        name: user.name,
-        role: user.role,
+        id: user.username,
+        name: `${user.firstName} ${user.lastName}`,
+        role: roles.find(r => ['DEO', 'REVIEWER', 'CRPC_HEAD', 'CRPC_ADMIN', 'CRPC_INCHARGE', 'TOLL_FREE_HELPDESK'].includes(r)) || 'DEO',
         username: user.username,
         loginTime: new Date().toISOString()
       }));
+    }
 
-      this.loading.set(false);
-
-      // Route based on role
-      switch (user.role) {
-        case 'DEO':
-          this.router.navigate(['/crpc/home']);
-          break;
-        case 'REVIEWER':
-          this.router.navigate(['/crpc/reviewer']);
-          break;
-        case 'CRPC_HEAD':
-        case 'CRPC_ADMIN':
-        case 'CRPC_INCHARGE':
-        case 'TOLL_FREE_HELPDESK':
-          this.router.navigate(['/crpc/home']);
-          break;
-        default:
-          this.router.navigate(['/crpc/home']);
-      }
-    }, 800);
+    if (roles.includes('REVIEWER')) {
+      this.router.navigate(['/crpc/reviewer']);
+    } else {
+      this.router.navigate(['/crpc/home']);
+    }
   }
 }

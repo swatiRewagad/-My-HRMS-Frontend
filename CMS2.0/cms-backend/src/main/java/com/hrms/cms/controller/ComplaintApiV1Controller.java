@@ -33,6 +33,7 @@ public class ComplaintApiV1Controller {
         req.setSubject((String) request.getOrDefault("subject", ""));
         req.setDescription((String) request.getOrDefault("description", ""));
         req.setPriority((String) request.getOrDefault("priority", "medium"));
+        req.setFilingType((String) request.getOrDefault("channel", request.getOrDefault("filingType", "WEB_PORTAL")));
 
         Complaint c = complaintService.fileComplaint(req);
 
@@ -51,6 +52,37 @@ public class ComplaintApiV1Controller {
         response.put("timestamp", LocalDateTime.now().toString());
 
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @GetMapping
+    public ResponseEntity<Map<String, Object>> getComplaintsByPhone(@RequestParam String phone) {
+        List<Complaint> complaints = complaintService.getByComplainantPhone(phone);
+
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd-MM-yyyy");
+
+        List<Map<String, Object>> items = complaints.stream().map(c -> {
+            String bankName = "";
+            if (c.getBankId() != null) {
+                bankName = bankRepository.findById(c.getBankId())
+                        .map(b -> b.getName()).orElse("");
+            }
+
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("complaintId", c.getComplaintNumber());
+            item.put("entityName", bankName.isEmpty() ? c.getSubject() : bankName);
+            item.put("complaintDate", c.getCreatedAt() != null ? c.getCreatedAt().format(fmt) : "");
+            item.put("status", c.getStatus() != null ? c.getStatus().toUpperCase() : "PENDING");
+            item.put("comments", c.getDescription() != null ? c.getDescription().substring(0, Math.min(c.getDescription().length(), 50)) : "");
+            return item;
+        }).collect(Collectors.toList());
+
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("success", true);
+        response.put("message", "Complaints retrieved");
+        response.put("data", items);
+        response.put("timestamp", LocalDateTime.now().toString());
+
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/{complaintNumber}")

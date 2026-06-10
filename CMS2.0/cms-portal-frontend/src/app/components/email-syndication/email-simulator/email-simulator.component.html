@@ -164,6 +164,12 @@
               <div class="result-from">{{ result.email.senderEmail }}</div>
               <div class="result-subject">{{ result.email.subject }}</div>
               <div class="result-message">{{ result.message }}</div>
+              @if (result.languageInfo) {
+                <div class="result-language">
+                  <span class="lang-badge vernacular">🌐 {{ result.languageInfo.languageName }}</span>
+                  <span class="lang-confidence">Translation confidence: {{ result.languageInfo.translationConfidence }}%</span>
+                </div>
+              }
             </div>
             <div class="result-time">{{ result.timestamp | date:'HH:mm:ss' }}</div>
           </div>

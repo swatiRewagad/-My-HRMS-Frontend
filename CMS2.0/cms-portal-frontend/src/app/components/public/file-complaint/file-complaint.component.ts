@@ -1,7 +1,8 @@
 import { Component, OnInit, OnDestroy, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { HttpClient } from '@angular/common/http';
+import { Router, RouterLink } from '@angular/router';
 import { ComplaintService } from '../../../services/complaint.service';
 import { PublicAuthService } from '../../../services/public-auth.service';
 import { validateFile, validateFileSet, MAX_FILE_COUNT } from '../../../utils/file-validator';
@@ -20,13 +21,14 @@ interface EligibilityQuestion {
 @Component({
   selector: 'app-public-file-complaint',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, RouterLink],
   templateUrl: './file-complaint.component.html',
   styleUrl: './file-complaint.component.scss'
 })
 export class PublicFileComplaintComponent implements OnInit, OnDestroy {
 
   private complaintService = inject(ComplaintService);
+  private http = inject(HttpClient);
   private router = inject(Router);
   private publicAuth = inject(PublicAuthService);
   private autoSaveTimer: any = null;
@@ -54,11 +56,11 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
     { id: 10, name: 'IndusInd Bank' },
   ];
 
-  // FR-G-007 step 1: RE selection done in eligibility
+  // FR-G-007 step 1: RE selection done in eligibility (9-step as per RBI CMS production)
   eligibilityQuestions: EligibilityQuestion[] = [
     {
       key: 'regulatedEntity',
-      question: 'Select Bank or Financial Institution against which the complaint is being filed',
+      question: 'Select Regulated Entity Name',
       type: 'select',
       options: [],
       blockOn: null,
@@ -66,7 +68,7 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
     },
     {
       key: 'filedWithRE',
-      question: 'Have you filed a written/electronic complaint with the selected Regulated Entity?',
+      question: 'Have you filed a written / electronic complaint with the <RE Name>?',
       type: 'radio',
       options: [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }],
       blockOn: 'no',
@@ -74,21 +76,72 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
       nonMaintainable: true,
     },
     {
+      key: 'receivedReply',
+      question: 'Have you received any reply from the Entity?',
+      type: 'radio',
+      options: [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }],
+      blockOn: null,
+      blockMessage: '',
+    },
+    {
+      key: 'sentReminder',
+      question: 'Have you sent any reminder to the <RE Name>?',
+      type: 'radio',
+      options: [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }],
+      blockOn: null,
+      blockMessage: '',
+    },
+    {
       key: 'isSubJudice',
-      question: 'Is your complaint sub-judice/under arbitration/already dealt with on merits by a Court/Tribunal/Arbitrator/Authority?',
+      question: 'Is the complaint relating to the same grievance which is already pending before any Court, Tribunal, Arbitrator or any other judicial or quasi-judicial forum (excluding criminal proceedings pending or decided before a Court/ Tribunal or any police investigation initiated in a criminal offence)?',
       type: 'radio',
       options: [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }],
       blockOn: 'yes',
-      blockMessage: 'As your complaint is sub-judice/under arbitration/already dealt with on merits by a Court/Tribunal/Arbitrator/Authority, it will be closed as Non-Maintainable under clause 10(2)(b)(ii) of the Reserve Bank - Integrated Ombudsman Scheme, 2021. To download your complaint closure letter, please click Create Complaint Closure.',
+      blockMessage: 'As your complaint is sub-judice/under arbitration/already dealt with on merits by a Court/Tribunal/Arbitrator/Authority, it will be closed as Non-Maintainable under clause 10(2)(b)(ii) of the Reserve Bank - Integrated Ombudsman Scheme, 2021.',
       nonMaintainable: true,
     },
     {
-      key: 'alreadyWithOmbudsman',
-      question: 'Has your complaint already been dealt with or is under process on the same ground with the Ombudsman?',
+      key: 'alreadySettled',
+      question: 'Is the complaint relating to the same grievance which is already settled or dealt before any Court, Tribunal, Arbitrator or any other judicial or quasi-judicial forum (excluding criminal proceedings pending or decided before a Court/ Tribunal or any police investigation initiated in a criminal offence)?',
       type: 'radio',
       options: [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }],
       blockOn: 'yes',
-      blockMessage: 'Your complaint has already been dealt with or is under process on the same ground with the Ombudsman. Duplicate complaints cannot be filed.',
+      blockMessage: 'As your complaint has already been settled or dealt with by a Court/Tribunal/Arbitrator/Authority, it will be closed as Non-Maintainable under the Reserve Bank - Integrated Ombudsman Scheme, 2021.',
+      nonMaintainable: true,
+    },
+    {
+      key: 'throughAdvocateEligibility',
+      question: 'Whether your complaint is being made through an advocate?',
+      type: 'radio',
+      options: [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }],
+      blockOn: null,
+      blockMessage: '',
+    },
+    {
+      key: 'pendingBeforeOmbudsman',
+      question: 'Is the complaint relating to the same grievance which is already pending before the Ombudsman?',
+      type: 'radio',
+      options: [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }],
+      blockOn: 'yes',
+      blockMessage: 'Your complaint is already pending before the Ombudsman on the same grievance. Duplicate complaints cannot be filed.',
+      nonMaintainable: true,
+    },
+    {
+      key: 'settledByOmbudsman',
+      question: 'Is the complaint relating to the same grievance which is already settled or dealt with on merits by the Ombudsman?',
+      type: 'radio',
+      options: [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }],
+      blockOn: 'yes',
+      blockMessage: 'Your complaint has already been settled or dealt with on merits by the Ombudsman. You cannot file a fresh complaint on the same issue.',
+      nonMaintainable: true,
+    },
+    {
+      key: 'staffOfRE',
+      question: 'Is the Complainant a staff of the RE and complaint involves employer-employee relationship?',
+      type: 'radio',
+      options: [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }],
+      blockOn: 'yes',
+      blockMessage: 'Complaints involving employer-employee relationship between the complainant and the Regulated Entity cannot be filed under the Integrated Ombudsman Scheme.',
       nonMaintainable: true,
     },
   ];
@@ -97,14 +150,13 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
   // Step 1: Complainant Details, Step 2: Regulated Entity Details, Step 3: Complaint Details,
   // Step 4: Authorised Representative, Step 5: Declaration & Review, Step 6: Preview/Submit
   currentStep = signal(1);
-  totalSteps = 6;
+  totalSteps = 5;
   stepTitles = [
     'Complainant Details',
     'Regulated Entity Details',
     'Complaint Details',
-    'Authorised Representative',
-    'Declaration',
-    'Review and Submit'
+    'Representative Authorization',
+    'Declaration'
   ];
 
   declarationChecked = false;
@@ -117,7 +169,11 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
   // Form data
   formData: Record<string, any> = {
     // Complainant
-    name: '',
+    firstName: '',
+    middleName: '',
+    lastName: '',
+    age: '',
+    gender: '',
     email: '',
     complainantCategory: 'individual',
     phone: '',
@@ -142,6 +198,10 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
     subCategory1: '',
     subCategory2: '',
     complaintText: '',
+    hasAccountWithRE: '',
+    accountType: '',
+    savingsAccountNumber: '',
+    atmDebitCardNumber: '',
     disputeAmount: '',
     compensationSought: '',
     reliefSought: '',
@@ -158,15 +218,34 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
   attachmentPreviews: { name: string; url: string; type: string }[] = [];
 
   categories = [
-    { label: 'ATM / Debit Cards', value: 'ATM' },
-    { label: 'UPI / Mobile Banking', value: 'UPI' },
-    { label: 'NEFT / RTGS', value: 'NEFT_RTGS' },
+    { label: 'ATM/CDM/Debit card', value: 'ATM' },
     { label: 'Loans and Advances', value: 'LOAN' },
+    { label: 'Mobile / Electronic Banking', value: 'MOBILE_BANKING' },
+    { label: 'Notes and Coins', value: 'NOTES_COINS' },
     { label: 'Credit Card', value: 'CREDIT_CARD' },
-    { label: 'Deposit', value: 'DEPOSIT' },
-    { label: 'Insurance', value: 'INSURANCE' },
-    { label: 'General', value: 'GENERAL' },
+    { label: 'Opening/Operation of Deposit accounts', value: 'DEPOSIT' },
+    { label: 'Remittance and collection of instruments', value: 'REMITTANCE' },
+    { label: 'Pension related', value: 'PENSION' },
+    { label: 'Other products and services', value: 'OTHER' },
   ];
+
+  accountTypes = [
+    { label: 'Savings Account', value: 'savings', checked: false },
+    { label: 'Loan Account', value: 'loan', checked: false },
+    { label: 'ATM/Debit Card', value: 'atm_debit', checked: false },
+    { label: 'Credit Card', value: 'credit_card', checked: false },
+  ];
+
+  accountTypeDropdownOpen = false;
+
+  toggleAccountTypeDropdown() {
+    this.accountTypeDropdownOpen = !this.accountTypeDropdownOpen;
+  }
+
+  get selectedAccountTypes(): string {
+    const selected = this.accountTypes.filter(a => a.checked);
+    return selected.length ? selected.map(a => a.label).join(', ') : '';
+  }
 
   subCategories: Record<string, { label: string; value: string }[]> = {
     ATM: [
@@ -258,6 +337,46 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
     { label: 'West Bengal', value: 'WB' }, { label: 'Jammu & Kashmir', value: 'JK' },
   ];
 
+  // Pincode lookup
+  pincodeLoading = false;
+
+  onPincodeInput() {
+    const value = this.formData['pincode'];
+    if (value && value.length === 6 && /^\d{6}$/.test(value)) {
+      this.pincodeLoading = true;
+      this.formData['state'] = '';
+      this.formData['district'] = '';
+
+      // Uses proxy: /api/pincode/{code} -> https://api.postalpincode.in/pincode/{code}
+      this.http.get<any[]>(`/api/pincode/${value}`).subscribe({
+        next: (res) => {
+          this.pincodeLoading = false;
+          if (res && res[0] && res[0].Status === 'Success' && res[0].PostOffice?.length) {
+            const po = res[0].PostOffice[0];
+            this.formData['state'] = po.State || '';
+            this.formData['district'] = po.District || '';
+          }
+        },
+        error: () => {
+          this.pincodeLoading = false;
+        }
+      });
+    } else {
+      this.formData['state'] = '';
+      this.formData['district'] = '';
+    }
+  }
+
+  // Eligibility file upload
+  eligibilityFileName = '';
+
+  onEligibilityFileSelected(event: Event) {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files[0]) {
+      this.eligibilityFileName = input.files[0].name;
+    }
+  }
+
   // FR-G-013: Speech to text
   isRecording = signal(false);
   speechSupported = false;
@@ -267,9 +386,7 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
     setPageTitle('File a Complaint');
     this.eligibilityQuestions[0].options = this.banks.map(b => ({ label: b.name, value: String(b.id) }));
     this.speechSupported = !!(window as any).SpeechRecognition || !!(window as any).webkitSpeechRecognition;
-    this.loadDraft();
-    this.formData['phone'] = this.publicAuth.userIdentifier();
-    this.autoSaveTimer = setInterval(() => this.saveDraft(), 60000);
+    this.formData['phone'] = this.publicAuth.userIdentifier() || '';
   }
 
   ngOnDestroy() {
@@ -373,13 +490,12 @@ Department of Consumer Education and Protection
     const step = this.currentStep();
 
     if (step === 1) {
-      if (!this.formData['name']?.trim()) this.validationErrors['name'] = 'Full name is required';
-      if (!this.formData['state']) this.validationErrors['state'] = 'State is required';
+      if (!this.formData['firstName']?.trim()) this.validationErrors['name'] = 'First name is required';
       if (!this.formData['pincode'] || !/^\d{6}$/.test(this.formData['pincode'])) this.validationErrors['pincode'] = 'Valid 6-digit pincode is required';
+      if (!this.formData['state']) this.validationErrors['state'] = 'Enter valid pincode to auto-fill state';
       if (this.formData['email'] && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.formData['email'])) this.validationErrors['email'] = 'Invalid email format';
     } else if (step === 3) {
       if (!this.formData['complaintCategory']) this.validationErrors['complaintCategory'] = 'Category is required';
-      if (!this.formData['subCategory1']) this.validationErrors['subCategory1'] = 'Sub-category is required';
       if (!this.formData['complaintText']?.trim()) this.validationErrors['complaintText'] = 'Complaint description is required';
     } else if (step === 4) {
       if (this.formData['authorizeRepresentative'] === 'yes') {
@@ -429,6 +545,16 @@ Department of Consumer Education and Protection
       const pageWidth = doc.internal.pageSize.getWidth();
       let y = 20;
 
+      const addRow = (label: string, value: string) => {
+        if (y > 270) { doc.addPage(); y = 20; }
+        doc.setFont('helvetica', 'bold');
+        doc.text(`${label}:`, 25, y);
+        doc.setFont('helvetica', 'normal');
+        const lines = doc.splitTextToSize(value || 'N/A', pageWidth - 90);
+        doc.text(lines, 80, y);
+        y += lines.length * 5 + 3;
+      };
+
       // Header
       doc.setFontSize(16);
       doc.setFont('helvetica', 'bold');
@@ -448,41 +574,109 @@ Department of Consumer Education and Protection
       doc.line(40, y, pageWidth - 40, y);
       y += 12;
 
-      // Reference details
+      // Reference
       doc.setFontSize(10);
-      doc.setFont('helvetica', 'bold');
-      doc.text('Complaint Reference Number:', 20, y);
-      doc.setFont('helvetica', 'normal');
-      doc.text(this.referenceNumber, 80, y);
-      y += 7;
-      doc.setFont('helvetica', 'bold');
-      doc.text('Date of Filing:', 20, y);
-      doc.setFont('helvetica', 'normal');
-      doc.text(new Date().toLocaleDateString('en-IN'), 80, y);
-      y += 14;
+      addRow('Reference Number', this.referenceNumber);
+      addRow('Date of Filing', new Date().toLocaleDateString('en-IN'));
+      y += 5;
 
-      // Body
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'normal');
-      const name = this.formData['name'] || 'Complainant';
-      doc.text(`Dear ${name},`, 20, y);
+      // Complainant Details
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.text('1. Complainant Details', 20, y);
       y += 8;
+      doc.setFontSize(10);
 
-      const bodyText = `This is to acknowledge receipt of your complaint filed against ${this.getSelectedBankName()} under the Reserve Bank - Integrated Ombudsman Scheme, 2021.`;
-      const bodyLines = doc.splitTextToSize(bodyText, pageWidth - 40);
-      doc.text(bodyLines, 20, y);
-      y += bodyLines.length * 5 + 10;
+      const fullName = [this.formData['firstName'], this.formData['middleName'], this.formData['lastName']].filter(Boolean).join(' ');
+      addRow('Name', fullName);
+      addRow('Category', this.formData['complainantCategory']);
+      addRow('Age', this.formData['age']);
+      addRow('Gender', this.formData['gender']);
+      addRow('Email', this.formData['email']);
+      addRow('Mobile', this.formData['phone']);
+      addRow('Pincode', this.formData['pincode']);
+      addRow('State', this.formData['state']);
+      addRow('District', this.formData['district']);
+      addRow('Address', this.formData['address']);
+      y += 5;
+
+      // Regulated Entity Details
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.text('2. Regulated Entity Details', 20, y);
+      y += 8;
+      doc.setFontSize(10);
+
+      addRow('Entity Name', this.getSelectedBankName());
+      addRow('Complaint Date with RE', this.formData['bankComplaintDate']);
+      addRow('Complaint Ref (RE)', this.formData['bankComplaintRef']);
+      addRow('Dispute Date', this.formData['disputeDate']);
+      addRow('Reply from Entity', this.formData['receivedReplyFromEntity']);
+      if (this.formData['receivedReplyFromEntity'] === 'yes') {
+        addRow('Reply Date', this.formData['replyDate']);
+      }
+      addRow('Wallet Complaint', this.formData['isWalletComplaint']);
+      if (this.formData['isWalletComplaint'] === 'yes') {
+        addRow('Wallet Name', this.formData['walletName']);
+        addRow('Transaction Ref', this.formData['transactionRefNumber']);
+      }
+      addRow('Business Correspondent', this.formData['isBusinessCorrespondent']);
+      y += 5;
 
       // Complaint Details
+      if (y > 250) { doc.addPage(); y = 20; }
+      doc.setFontSize(11);
       doc.setFont('helvetica', 'bold');
-      doc.text('Complaint Details:', 20, y);
-      y += 7;
-      doc.setFont('helvetica', 'normal');
-      doc.text(`Category: ${this.formData['complaintCategory'] || 'N/A'}`, 25, y);
-      y += 6;
-      doc.text(`Dispute Amount: Rs. ${this.formData['disputeAmount'] || 'N/A'}`, 25, y);
-      y += 12;
+      doc.text('3. Complaint Details', 20, y);
+      y += 8;
+      doc.setFontSize(10);
 
+      addRow('Category', this.formData['complaintCategory']);
+      addRow('Account with RE', this.formData['hasAccountWithRE']);
+      addRow('Account Type', this.formData['accountType']);
+      addRow('Savings A/C No.', this.formData['savingsAccountNumber']);
+      addRow('Loan A/C No.', this.formData['loanAccountNumber']);
+      addRow('ATM/Debit Card No.', this.formData['atmDebitCardNumber']);
+      addRow('Credit Card No.', this.formData['cardNumber']);
+      addRow('Dispute Amount', this.formData['disputeAmount'] ? `Rs. ${this.formData['disputeAmount']}` : '');
+      addRow('Compensation Sought', this.formData['compensationSought'] ? `Rs. ${this.formData['compensationSought']}` : '');
+      addRow('Relief Sought', this.formData['reliefSought']);
+
+      if (y > 250) { doc.addPage(); y = 20; }
+      doc.setFont('helvetica', 'bold');
+      doc.text('Facts of Complaint:', 25, y);
+      y += 6;
+      doc.setFont('helvetica', 'normal');
+      const factLines = doc.splitTextToSize(this.formData['complaintText'] || 'N/A', pageWidth - 40);
+      doc.text(factLines, 25, y);
+      y += factLines.length * 5 + 8;
+
+      // Representative
+      if (y > 250) { doc.addPage(); y = 20; }
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.text('4. Representative Authorization', 20, y);
+      y += 8;
+      doc.setFontSize(10);
+
+      addRow('Through Advocate', this.formData['throughAdvocate']);
+      addRow('Authorize Rep', this.formData['authorizeRepresentative']);
+      if (this.formData['authorizeRepresentative'] === 'yes') {
+        addRow('Rep Name', this.formData['repName']);
+        addRow('Rep Phone', this.formData['repPhone']);
+        addRow('Rep Email', this.formData['repEmail']);
+        addRow('Rep Address', this.formData['repAddress']);
+      }
+      y += 5;
+
+      // Attachments
+      if (this.attachmentPreviews.length > 0) {
+        addRow('Attachments', this.attachmentPreviews.map(f => f.name).join(', '));
+      }
+      y += 10;
+
+      // Footer
+      if (y > 250) { doc.addPage(); y = 20; }
       const trackText = `Your complaint has been registered and will be processed as per the provisions of the Scheme. You may track the status using your reference number: ${this.referenceNumber}`;
       const trackLines = doc.splitTextToSize(trackText, pageWidth - 40);
       doc.text(trackLines, 20, y);
@@ -494,7 +688,6 @@ Department of Consumer Education and Protection
       doc.text(' Within 30 days from the date of receipt.', 72, y);
       y += 14;
 
-      // Contact
       doc.setFont('helvetica', 'bold');
       doc.text('For any queries, please contact:', 20, y);
       y += 7;
@@ -504,7 +697,6 @@ Department of Consumer Education and Protection
       doc.text('Website: https://cms.rbi.org.in', 25, y);
       y += 14;
 
-      // Footer
       doc.setFontSize(9);
       doc.setTextColor(100);
       doc.text('This is a system-generated acknowledgement.', 20, y);
@@ -542,9 +734,11 @@ Department of Consumer Education and Protection
     }
   }
 
+  private readonly DRAFT_VERSION = 3;
+
   // FR-G-008: Save Draft
   saveDraft() {
-    const draft = { formData: this.formData, eligibilityAnswers: this.eligibilityAnswers, currentStep: this.currentStep() };
+    const draft = { version: this.DRAFT_VERSION, formData: this.formData, eligibilityAnswers: this.eligibilityAnswers, currentStep: this.currentStep() };
     localStorage.setItem('cms_complaint_draft', JSON.stringify(draft));
     this.draftSaved.set(true);
     setTimeout(() => this.draftSaved.set(false), 2000);
@@ -555,7 +749,18 @@ Department of Consumer Education and Protection
     if (saved) {
       try {
         const draft = JSON.parse(saved);
-        if (draft.formData) Object.assign(this.formData, draft.formData);
+        if (draft.version !== this.DRAFT_VERSION) {
+          localStorage.removeItem('cms_complaint_draft');
+          return;
+        }
+        if (draft.formData) {
+          const validKeys = Object.keys(this.formData);
+          for (const key of validKeys) {
+            if (draft.formData[key] !== undefined) {
+              this.formData[key] = draft.formData[key];
+            }
+          }
+        }
         if (draft.eligibilityAnswers) this.eligibilityAnswers = draft.eligibilityAnswers;
       } catch (e) {}
     }
@@ -655,7 +860,7 @@ Department of Consumer Education and Protection
     const payload = {
       channel: 'WEB_PORTAL',
       category: this.formData['complaintCategory'] || 'GENERAL',
-      complainantName: this.formData['name'],
+      complainantName: [this.formData['firstName'], this.formData['middleName'], this.formData['lastName']].filter(Boolean).join(' '),
       complainantEmail: this.formData['email'],
       complainantPhone: this.formData['phone'],
       entityName: this.getSelectedBankName(),

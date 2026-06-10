@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { EmailSyndicationService } from '../../../services/email-syndication.service';
 import { EmailDraft } from '../../../models/email-syndication.model';
+import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
 
 interface DraftComplaint {
   draftId: string;
@@ -12,12 +13,12 @@ interface DraftComplaint {
   fromEmailId: string;
   subject: string;
   modeOfReceipt: 'EMAIL' | 'PHYSICAL_LETTER' | 'PORTAL' | 'CPGRAMS';
-  status: 'DRAFT' | 'SENT_TO_REVIEWER' | 'REJECTED_BY_REVIEWER' | 'APPROVED';
+  status: string;
   category: string;
   entityName: string;
   state: string;
   district: string;
-  systemSuggestion: 'MAINTAINABLE' | 'NON_MAINTAINABLE' | 'PENDING';
+  systemSuggestion: string;
   emailType: 'TO' | 'CC_BCC' | null;
   vernacular: boolean;
   assignedAt: string;
@@ -25,6 +26,7 @@ interface DraftComplaint {
   priority: string;
   slaRemaining: number;
   ageing: number;
+  proposedCategory: string;
 }
 
 @Component({
@@ -36,7 +38,7 @@ interface DraftComplaint {
 })
 export class DeoHomeComponent implements OnInit {
 
-  private router = inject(Router);
+  router = inject(Router);
 
   drafts = signal<DraftComplaint[]>([]);
   loading = signal(false);
@@ -44,54 +46,112 @@ export class DeoHomeComponent implements OnInit {
 
   // Filters
   filterStatus = '';
-  filterMode = '';
-  filterEmailType = '';
-  filterSuggestion = '';
   searchText = '';
+  columnFilters: Record<string, string> = {};
+  columnSearchText = '';
 
-  // Column configuration (F.11: predefined columns per BRD)
+  // Sorting
+  sortColumn = '';
+  sortDirection: 'asc' | 'desc' = 'asc';
+
+  // Pagination
+  currentPage = signal(1);
+  pageSize = 10;
+
+  // Dialogs
+  showColumnConfig = signal(false);
+  showAdvancedSearch = signal(false);
+
+  // Advanced Search
+  advSearch = {
+    complaintNumber: '', complaintId: '', statusCode: '',
+    complainantName: '', mobileNumber: '', email: '',
+    fromEmailId: '', modeOfReceipt: '', entityName: '',
+    subject: '', ndiContactPerson: '', category: ''
+  };
+
+  // Column configuration
   allColumns = [
-    { key: 'draftId', label: 'Draft Complaint ID', visible: true },
-    { key: 'category', label: 'Category', visible: true },
-    { key: 'subject', label: 'Subject', visible: true },
-    { key: 'fromEmailId', label: 'From Email ID', visible: true },
-    { key: 'ageing', label: 'Ageing (days)', visible: true },
-    { key: 'assignedAt', label: 'Date & Time', visible: true },
-    { key: 'status', label: 'Status Code', visible: true },
-    { key: 'modeOfReceipt', label: 'Mode of Receipt', visible: true },
-    { key: 'systemSuggestion', label: 'System Suggestion', visible: true },
-    { key: 'emailType', label: 'Email Type', visible: true },
-    { key: 'complainantName', label: 'Complainant', visible: false },
-    { key: 'entityName', label: 'Entity Name', visible: false },
+    { key: 'draftId', label: 'Complaint Id', visible: true },
+    { key: 'complaintNumber', label: 'Complaint Number', visible: true },
+    { key: 'fromEmailId', label: 'From', visible: true },
+    { key: 'ageing', label: 'Pending', visible: true },
+    { key: 'modeOfReceipt', label: 'Mode', visible: true },
+    { key: 'complainantName', label: 'Complainant Name', visible: true },
+    { key: 'status', label: 'Status', visible: true },
+    { key: 'entityName', label: 'Entity Name', visible: true },
+    { key: 'proposedCategory', label: 'Proposed Com...', visible: true },
+    { key: 'createdAt', label: 'Creation Date', visible: true },
+    { key: 'subject', label: 'Subject', visible: false },
+    { key: 'category', label: 'Category', visible: false },
+    { key: 'priority', label: 'Priority', visible: false },
+    { key: 'slaRemaining', label: 'SLA (hrs)', visible: false },
     { key: 'state', label: 'State', visible: false },
     { key: 'district', label: 'District', visible: false },
+    { key: 'systemSuggestion', label: 'System Suggestion', visible: false },
+    { key: 'emailType', label: 'Email Type', visible: false },
     { key: 'vernacular', label: 'Vernacular', visible: false },
-    { key: 'priority', label: 'Priority', visible: true },
-    { key: 'slaRemaining', label: 'SLA (hrs)', visible: true },
   ];
 
-  showColumnConfig = signal(false);
-
   visibleColumns = computed(() => this.allColumns.filter(c => c.visible));
+
+  filteredColumns = computed(() => {
+    if (!this.columnSearchText) return this.allColumns;
+    const q = this.columnSearchText.toLowerCase();
+    return this.allColumns.filter(c => c.label.toLowerCase().includes(q));
+  });
 
   filteredDrafts = computed(() => {
     let result = this.drafts();
     if (this.filterStatus) result = result.filter(d => d.status === this.filterStatus);
-    if (this.filterMode) result = result.filter(d => d.modeOfReceipt === this.filterMode);
-    if (this.filterEmailType) result = result.filter(d => d.emailType === this.filterEmailType);
-    if (this.filterSuggestion) result = result.filter(d => d.systemSuggestion === this.filterSuggestion);
     if (this.searchText) {
       const q = this.searchText.toLowerCase();
       result = result.filter(d =>
         d.draftId.toLowerCase().includes(q) ||
         d.complainantName.toLowerCase().includes(q) ||
-        d.entityName.toLowerCase().includes(q)
+        d.entityName.toLowerCase().includes(q) ||
+        d.subject.toLowerCase().includes(q)
       );
+    }
+    // Column-level filters
+    for (const [key, val] of Object.entries(this.columnFilters)) {
+      if (val) {
+        const q = val.toLowerCase();
+        result = result.filter(d => String((d as any)[key] || '').toLowerCase().includes(q));
+      }
+    }
+    // Sorting
+    if (this.sortColumn) {
+      result = [...result].sort((a, b) => {
+        const av = (a as any)[this.sortColumn] || '';
+        const bv = (b as any)[this.sortColumn] || '';
+        const cmp = String(av).localeCompare(String(bv), undefined, { numeric: true });
+        return this.sortDirection === 'asc' ? cmp : -cmp;
+      });
     }
     return result;
   });
 
-  // Stats
+  totalPages = computed(() => Math.max(1, Math.ceil(this.filteredDrafts().length / this.pageSize)));
+
+  paginatedDrafts = computed(() => {
+    const start = (this.currentPage() - 1) * this.pageSize;
+    return this.filteredDrafts().slice(start, start + this.pageSize);
+  });
+
+  paginationStart = computed(() => this.filteredDrafts().length === 0 ? 0 : (this.currentPage() - 1) * this.pageSize + 1);
+  paginationEnd = computed(() => Math.min(this.currentPage() * this.pageSize, this.filteredDrafts().length));
+
+  pageNumbers = computed(() => {
+    const total = this.totalPages();
+    const current = this.currentPage();
+    const pages: number[] = [];
+    const start = Math.max(1, current - 2);
+    const end = Math.min(total, current + 2);
+    for (let i = start; i <= end; i++) pages.push(i);
+    return pages;
+  });
+
   stats = computed(() => {
     const all = this.drafts();
     return {
@@ -104,35 +164,45 @@ export class DeoHomeComponent implements OnInit {
   });
 
   private emailService = inject(EmailSyndicationService);
+  private auth = inject(KeycloakAuthService);
   loggedInUser: { id: string; name: string; role: string } | null = null;
 
   ngOnInit() {
     const stored = sessionStorage.getItem('crpc_user');
     if (stored) {
       this.loggedInUser = JSON.parse(stored);
+    } else {
+      const user = this.auth.currentUser();
+      if (user) {
+        const role = this.auth.getRoles().find(r => ['DEO', 'REVIEWER', 'CRPC_HEAD'].includes(r)) || 'DEO';
+        this.loggedInUser = { id: user.username, name: `${user.firstName} ${user.lastName}`.trim() || user.username, role };
+        sessionStorage.setItem('crpc_user', JSON.stringify(this.loggedInUser));
+      }
     }
+
+    if (this.loggedInUser?.role === 'REVIEWER') {
+      this.router.navigate(['/crpc/reviewer']);
+      return;
+    }
+
     this.loadDrafts();
   }
 
   logout() {
     sessionStorage.removeItem('crpc_user');
-    this.router.navigate(['/crpc/login']);
+    this.auth.logout();
   }
 
   loadDrafts() {
     this.loading.set(true);
     this.emailService.getQueue().subscribe({
       next: (queueDrafts) => {
-        const myName = this.loggedInUser?.name || '';
-        const myDrafts = queueDrafts
-          .filter(d => !myName || d.assignedTo === myName)
-          .map(d => this.mapToDraftComplaint(d));
-        const combined = [...myDrafts, ...this.getMockDrafts()];
-        this.drafts.set(combined);
+        const myDrafts = queueDrafts.map(d => this.mapToDraftComplaint(d));
+        this.drafts.set(myDrafts);
         this.loading.set(false);
       },
       error: () => {
-        this.drafts.set(this.getMockDrafts());
+        this.drafts.set([]);
         this.loading.set(false);
       }
     });
@@ -147,7 +217,7 @@ export class DeoHomeComponent implements OnInit {
       fromEmailId: d.senderEmail || '',
       subject: d.subject || '',
       modeOfReceipt: (d.modeOfReceipt as any) || 'EMAIL',
-      status: d.status === 'CONVERTED' ? 'APPROVED' : 'DRAFT',
+      status: this.mapStatus(d.status),
       category: d.category || 'GENERAL',
       entityName: '',
       state: '',
@@ -160,7 +230,28 @@ export class DeoHomeComponent implements OnInit {
       priority: 'MEDIUM',
       slaRemaining: Math.max(0, 72 - Math.floor(hours)),
       ageing: Math.max(0, Math.floor(hours / 24)),
+      proposedCategory: d.category || '',
     };
+  }
+
+  private mapStatus(status: string): string {
+    switch (status) {
+      case 'SENT_TO_REVIEWER': return 'SENT_TO_REVIEWER';
+      case 'APPROVED_ROUTED':
+      case 'CONVERTED': return 'APPROVED';
+      case 'SENT_BACK_TO_DEO':
+      case 'CLOSED_NOT_A_COMPLAINT': return 'REJECTED_BY_REVIEWER';
+      default: return 'DRAFT';
+    }
+  }
+
+  sortBy(column: string) {
+    if (this.sortColumn === column) {
+      this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
+    } else {
+      this.sortColumn = column;
+      this.sortDirection = 'asc';
+    }
   }
 
   openDraft(draftId: string) {
@@ -171,8 +262,6 @@ export class DeoHomeComponent implements OnInit {
     this.router.navigate(['/crpc/physical-letter']);
   }
 
-
-  // Bulk actions
   toggleSelect(draftId: string) {
     const ids = new Set(this.selectedIds());
     if (ids.has(draftId)) ids.delete(draftId);
@@ -189,19 +278,27 @@ export class DeoHomeComponent implements OnInit {
     }
   }
 
-  bulkMarkNotComplaint() {
-    const ids = Array.from(this.selectedIds());
-    if (ids.length === 0) return;
-    if (!confirm(`Mark ${ids.length} drafts as "Not a Complaint"? This action will be logged in audit trail.`)) return;
-    // API call: mark selected as not-a-complaint
-    console.log('Bulk mark not-a-complaint:', ids);
-    this.selectedIds.set(new Set());
-    this.loadDrafts();
-  }
-
   toggleColumnVisibility(key: string) {
     const col = this.allColumns.find(c => c.key === key);
     if (col) col.visible = !col.visible;
+  }
+
+  applyAdvancedSearch() {
+    const q = this.advSearch;
+    let result = this.drafts();
+    if (q.complaintNumber) result = result.filter(d => d.complaintNumber.includes(q.complaintNumber));
+    if (q.complaintId) result = result.filter(d => d.draftId.includes(q.complaintId));
+    if (q.statusCode) result = result.filter(d => d.status === q.statusCode);
+    if (q.complainantName) result = result.filter(d => d.complainantName.toLowerCase().includes(q.complainantName.toLowerCase()));
+    if (q.mobileNumber) result = result.filter(d => d.fromEmailId.includes(q.mobileNumber));
+    if (q.email) result = result.filter(d => d.fromEmailId.toLowerCase().includes(q.email.toLowerCase()));
+    if (q.fromEmailId) result = result.filter(d => d.fromEmailId.toLowerCase().includes(q.fromEmailId.toLowerCase()));
+    if (q.modeOfReceipt) result = result.filter(d => d.modeOfReceipt === q.modeOfReceipt);
+    if (q.entityName) result = result.filter(d => d.entityName.toLowerCase().includes(q.entityName.toLowerCase()));
+    if (q.subject) result = result.filter(d => d.subject.toLowerCase().includes(q.subject.toLowerCase()));
+    if (q.category) result = result.filter(d => d.category === q.category);
+    this.searchText = JSON.stringify(q);
+    this.showAdvancedSearch.set(false);
   }
 
   getCellValue(draft: DraftComplaint, key: string): string {
@@ -209,16 +306,7 @@ export class DeoHomeComponent implements OnInit {
     if (val === null || val === undefined) return '—';
     if (key === 'vernacular') return val ? 'Yes' : 'No';
     if (key === 'assignedAt' || key === 'createdAt') return new Date(val).toLocaleDateString('en-IN');
+    if (key === 'ageing') return val + ' day' + (val !== 1 ? 's' : '');
     return String(val);
-  }
-
-  private getMockDrafts(): DraftComplaint[] {
-    return [
-      { draftId: 'DRF-001', complaintNumber: '', complainantName: 'Rajesh Kumar', fromEmailId: 'rajesh@example.com', subject: 'ATM cash not dispensed', modeOfReceipt: 'EMAIL', status: 'DRAFT', category: 'ATM', entityName: 'SBI', state: 'MH', district: 'Mumbai', systemSuggestion: 'MAINTAINABLE', emailType: 'TO', vernacular: false, assignedAt: '2026-06-01T10:00:00Z', createdAt: '2026-06-01T09:30:00Z', priority: 'MEDIUM', slaRemaining: 48, ageing: 1 },
-      { draftId: 'DRF-002', complaintNumber: '', complainantName: 'Priya Sharma', fromEmailId: '', subject: 'Loan EMI overcharge', modeOfReceipt: 'PHYSICAL_LETTER', status: 'DRAFT', category: 'LOAN', entityName: 'HDFC Bank', state: 'DL', district: 'New Delhi', systemSuggestion: 'PENDING', emailType: null, vernacular: false, assignedAt: '2026-06-01T11:00:00Z', createdAt: '2026-06-01T10:45:00Z', priority: 'HIGH', slaRemaining: 24, ageing: 1 },
-      { draftId: 'DRF-003', complaintNumber: '', complainantName: 'अमित पटेल', fromEmailId: 'amit.patel@gmail.com', subject: 'UPI transaction failed', modeOfReceipt: 'EMAIL', status: 'SENT_TO_REVIEWER', category: 'UPI', entityName: 'ICICI Bank', state: 'GJ', district: 'Ahmedabad', systemSuggestion: 'NON_MAINTAINABLE', emailType: 'CC_BCC', vernacular: true, assignedAt: '2026-05-31T14:00:00Z', createdAt: '2026-05-31T13:00:00Z', priority: 'LOW', slaRemaining: 72, ageing: 2 },
-      { draftId: 'DRF-004', complaintNumber: '', complainantName: 'Sunita Devi', fromEmailId: '', subject: 'Credit card charges disputed', modeOfReceipt: 'CPGRAMS', status: 'REJECTED_BY_REVIEWER', category: 'CREDIT_CARD', entityName: 'Axis Bank', state: 'UP', district: 'Lucknow', systemSuggestion: 'MAINTAINABLE', emailType: null, vernacular: false, assignedAt: '2026-05-30T09:00:00Z', createdAt: '2026-05-30T08:30:00Z', priority: 'HIGH', slaRemaining: 12, ageing: 3 },
-      { draftId: 'DRF-005', complaintNumber: 'CMP-20260530-000012', complainantName: 'Mohammed Iqbal', fromEmailId: 'iqbal.m@yahoo.com', subject: 'Fixed deposit premature closure', modeOfReceipt: 'PORTAL', status: 'APPROVED', category: 'DEPOSIT', entityName: 'PNB', state: 'BR', district: 'Patna', systemSuggestion: 'MAINTAINABLE', emailType: null, vernacular: false, assignedAt: '2026-05-29T16:00:00Z', createdAt: '2026-05-29T15:00:00Z', priority: 'MEDIUM', slaRemaining: 96, ageing: 4 },
-    ];
   }
 }

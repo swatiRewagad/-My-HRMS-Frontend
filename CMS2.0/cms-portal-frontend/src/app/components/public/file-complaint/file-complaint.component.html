@@ -13,30 +13,21 @@
 
 <!-- ══════ ELIGIBILITY PHASE ══════ -->
 @if (phase() === 'eligibility') {
-  <div class="page-container">
-    <div class="eligibility-card">
-      <h2>Eligibility Check</h2>
-      <p class="eligibility-subtitle">Please answer the following questions to determine if your complaint is eligible.</p>
+  <div class="page-container eligibility-page">
 
-      <!-- Progress -->
-      <div class="step-progress">
-        @for (q of eligibilityQuestions; track q.key; let i = $index) {
-          <div class="progress-dot" [class.active]="i < eligibilityStep()" [class.current]="i === eligibilityStep() - 1"></div>
-          @if (i < eligibilityQuestions.length - 1) {
-            <div class="progress-line" [class.active]="i < eligibilityStep() - 1"></div>
-          }
-        }
-      </div>
+    <div class="eligibility-card">
+      @if (currentQuestion.type !== 'select') {
+        <p class="mandatory-note"><i class="pi pi-info-circle"></i> All fields are mandatory unless marked as Optional.</p>
+      }
 
       <!-- Question -->
-      <div class="question-content">
-        <p class="question-number">Question {{ eligibilityStep() }} of {{ totalEligibilitySteps }}</p>
-        <p class="question-text">{{ currentQuestion.question }}</p>
-
+      <div class="question-block">
         @if (currentQuestion.type === 'select') {
-          <select class="form-select" [ngModel]="eligibilityAnswers[currentQuestion.key]"
+          <h3 class="select-heading">{{ currentQuestion.question }}</h3>
+          <p class="select-desc">Lorem ipsum dolor sit amet consectetur Luctus scelerisque.</p>
+          <select class="form-select entity-select" [ngModel]="eligibilityAnswers[currentQuestion.key]"
                   (ngModelChange)="selectEligibilityAnswer($event)" [attr.name]="currentQuestion.key">
-            <option value="">-- Select --</option>
+            <option value="">Select a Value</option>
             @for (opt of currentQuestion.options; track opt.value) {
               <option [value]="opt.value">{{ opt.label }}</option>
             }
@@ -44,29 +35,111 @@
         }
 
         @if (currentQuestion.type === 'radio') {
-          <div class="radio-group">
+          <p class="question-text">
+            <span class="q-number">{{ eligibilityStep() - 1 }}.</span>
+            {{ currentQuestion.question }}
+          </p>
+          <div class="radio-list">
             @for (opt of currentQuestion.options; track opt.value) {
-              <label class="radio-label" [class.selected]="eligibilityAnswers[currentQuestion.key] === opt.value">
+              <label class="radio-option" [class.selected]="eligibilityAnswers[currentQuestion.key] === opt.value">
                 <input type="radio" [name]="currentQuestion.key" [value]="opt.value"
                        [ngModel]="eligibilityAnswers[currentQuestion.key]" (ngModelChange)="selectEligibilityAnswer($event)">
-                {{ opt.label }}
+                <span>{{ opt.label }}</span>
               </label>
             }
           </div>
         }
 
+        <!-- Sub-fields when "Yes" to filed with RE -->
         @if (currentQuestion.key === 'filedWithRE' && eligibilityAnswers['filedWithRE'] === 'yes') {
-          <div class="sub-field">
-            <label>Date on which the complaint was first filed with the Regulated Entity</label>
-            <input type="date" class="form-input" [(ngModel)]="formData['bankComplaintDate']" name="bankComplaintDate">
+          <div class="sub-fields-row">
+            <div class="sub-field">
+              <label>{{ eligibilityStep() - 1 }}.2. Date on which the complaint was first filed with the &lt;RE Name&gt;</label>
+              <div class="date-input-wrapper">
+                <input type="date" class="form-input" [(ngModel)]="formData['bankComplaintDate']" name="bankComplaintDate" placeholder="Select Date">
+              </div>
+            </div>
+            <div class="sub-field">
+              <label>{{ eligibilityStep() - 1 }}.3. Upload a copy of the complaint to the &lt;RE Name&gt;</label>
+              <div class="upload-box">
+                <input type="file" id="eligibilityFile" class="file-hidden" accept=".pdf,.jpg,.png"
+                       (change)="onEligibilityFileSelected($event)">
+                <label for="eligibilityFile" class="upload-label">
+                  <span class="upload-text">Browse File</span>
+                </label>
+                <p class="upload-hint">Support formats: PDF, JPG, PNG <span class="upload-size">Maximum size: 5MB</span></p>
+              </div>
+            </div>
           </div>
-          <div class="info-note">
-            <i class="pi pi-info-circle"></i>
-            You will be asked to upload a screenshot/copy of the filed complaint in the next steps.
+        }
+
+        <!-- Sub-fields when "Yes" to advocate question -->
+        @if (currentQuestion.key === 'throughAdvocateEligibility' && eligibilityAnswers['throughAdvocateEligibility'] === 'yes') {
+          <div class="sub-fields-stacked">
+            <div class="sub-field">
+              <label>{{ eligibilityStep() - 1 }}.1. If Yes, then are you the Complainant?</label>
+              <div class="radio-list">
+                <label class="radio-option" [class.selected]="formData['isComplainantSelf'] === 'yes'">
+                  <input type="radio" name="isComplainantSelf" value="yes" [(ngModel)]="formData['isComplainantSelf']">
+                  <span>Yes</span>
+                </label>
+                <label class="radio-option" [class.selected]="formData['isComplainantSelf'] === 'no'">
+                  <input type="radio" name="isComplainantSelf" value="no" [(ngModel)]="formData['isComplainantSelf']">
+                  <span>No</span>
+                </label>
+              </div>
+            </div>
+          </div>
+        }
+
+        <!-- Sub-fields when "Yes" to sent reminder -->
+        @if (currentQuestion.key === 'sentReminder' && eligibilityAnswers['sentReminder'] === 'yes') {
+          <div class="sub-fields-stacked">
+            <div class="sub-field">
+              <label>{{ eligibilityStep() - 1 }}.1. If Yes, Date of Reminder</label>
+              <div class="date-input-wrapper">
+                <input type="date" class="form-input" [(ngModel)]="formData['reminderDate']" name="reminderDate" placeholder="Select Date">
+              </div>
+            </div>
+            <div class="sub-field">
+              <label>{{ eligibilityStep() - 1 }}.2. Upload Reminder Copy</label>
+              <div class="upload-box">
+                <input type="file" id="reminderFile" class="file-hidden" accept=".pdf,.jpg,.png"
+                       (change)="onEligibilityFileSelected($event)">
+                <label for="reminderFile" class="upload-label">
+                  <span class="upload-text">Browse File</span>
+                </label>
+                <p class="upload-hint">Support formats: PDF, JPG, PNG <span class="upload-size">Maximum size: 5MB</span></p>
+              </div>
+            </div>
+          </div>
+        }
+
+        <!-- Sub-fields when "Yes" to received reply -->
+        @if (currentQuestion.key === 'receivedReply' && eligibilityAnswers['receivedReply'] === 'yes') {
+          <div class="sub-fields-stacked">
+            <div class="sub-field">
+              <label>{{ eligibilityStep() - 1 }}.1. Date on which the complaint was first filed with the &lt;RE Name&gt;</label>
+              <div class="date-input-wrapper">
+                <input type="date" class="form-input" [(ngModel)]="formData['replyDate']" name="replyDate" placeholder="Select Date">
+              </div>
+            </div>
+            <div class="sub-field">
+              <label>{{ eligibilityStep() - 1 }}.2. Upload Reply Copy</label>
+              <div class="upload-box">
+                <input type="file" id="replyFile" class="file-hidden" accept=".pdf,.jpg,.png"
+                       (change)="onEligibilityFileSelected($event)">
+                <label for="replyFile" class="upload-label">
+                  <span class="upload-text">Browse File</span>
+                </label>
+                <p class="upload-hint">Support formats: PDF, JPG, PNG <span class="upload-size">Maximum size: 5MB</span></p>
+              </div>
+            </div>
           </div>
         }
       </div>
 
+      <!-- Blocked / Non-Maintainable -->
       @if (eligibilityBlocked()) {
         <div class="block-note">
           <div class="block-note-header">
@@ -80,6 +153,7 @@
         </div>
       }
 
+      <!-- Eligibility Passed -->
       @if (!eligibilityBlocked() && eligibilityStep() === totalEligibilitySteps && eligibilityAnswers[currentQuestion.key]) {
         <div class="eligibility-passed">
           <i class="pi pi-check-circle"></i>
@@ -90,13 +164,17 @@
         </div>
       }
 
+      <!-- Actions: Cancel | Go Back | Next -->
       @if (!eligibilityBlocked()) {
-        <div class="form-actions">
-          <button class="btn-secondary" (click)="prevEligibility()" [disabled]="eligibilityStep() === 1">Back</button>
-          <button class="btn-primary" (click)="nextEligibility()"
-                  [disabled]="!eligibilityAnswers[currentQuestion.key]">
-            {{ eligibilityStep() === totalEligibilitySteps ? 'Proceed to Complaint Form' : 'Next' }}
-          </button>
+        <div class="eligibility-actions">
+          <button class="btn-cancel" (click)="goHome()">Cancel</button>
+          <div class="actions-right">
+            <button class="btn-go-back" (click)="prevEligibility()" [disabled]="eligibilityStep() === 1">Go Back</button>
+            <button class="btn-next" (click)="nextEligibility()"
+                    [disabled]="!eligibilityAnswers[currentQuestion.key]">
+              {{ eligibilityStep() === totalEligibilitySteps ? 'Proceed' : 'Next' }}
+            </button>
+          </div>
         </div>
       }
     </div>
@@ -105,7 +183,9 @@
 
 <!-- ══════ MULTI-STEP FORM PHASE ══════ -->
 @if (phase() === 'form') {
-  <div class="page-container">
+  <div class="page-container complaint-form-page">
+    <h1 class="form-page-title">{{ stepTitles[currentStep() - 1] }}</h1>
+
     <div class="form-card">
       <!-- Step Progress Bar -->
       <div class="step-header">
@@ -113,8 +193,15 @@
           @for (title of stepTitles; track title; let i = $index) {
             <div class="step-item" [class.active]="i < currentStep()" [class.current]="i === currentStep() - 1"
                  (click)="goToStep(i + 1)">
-              <div class="step-number">{{ i + 1 }}</div>
-              <span class="step-title">{{ title }}</span>
+              <div class="step-circle-num">
+                @if (i < currentStep() - 1) {
+                  <i class="pi pi-check"></i>
+                }
+              </div>
+              <div class="step-label">
+                <span class="step-label-num">Step {{ i + 1 }}</span>
+                <span class="step-label-title">{{ title }}</span>
+              </div>
             </div>
             @if (i < stepTitles.length - 1) {
               <div class="step-connector" [class.active]="i < currentStep() - 1"></div>
@@ -123,62 +210,90 @@
         </div>
       </div>
 
+      <p class="mandatory-note"><i class="pi pi-info-circle"></i> All fields are mandatory unless marked as Optional.</p>
+
       <!-- Step 1: Complainant Details -->
       @if (currentStep() === 1) {
         <div class="step-content" (keydown)="onStepKeydown($event)">
-          <h3>Complainant Details</h3>
           <div class="form-row">
             <div class="form-group">
-              <label>Full Name <span class="required">*</span> <i class="pi pi-info-circle tooltip-icon" [title]="tooltips['name']"></i></label>
-              <input type="text" class="form-input" [class.invalid]="validationErrors['name']" [(ngModel)]="formData['name']" name="name" placeholder="Enter full name">
-              @if (validationErrors['name']) { <span class="field-error">{{ validationErrors['name'] }}</span> }
-            </div>
-            <div class="form-group">
-              <label>Email ID <i class="pi pi-info-circle tooltip-icon" [title]="tooltips['email']"></i></label>
-              <input type="email" class="form-input" [class.invalid]="validationErrors['email']" [(ngModel)]="formData['email']" name="email" placeholder="email@example.com">
-              @if (validationErrors['email']) { <span class="field-error">{{ validationErrors['email'] }}</span> }
-            </div>
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Complainant Category <i class="pi pi-info-circle tooltip-icon" [title]="tooltips['complainantCategory']"></i></label>
+              <label>Complainant Category</label>
               <select class="form-select" [(ngModel)]="formData['complainantCategory']" name="complainantCategory">
                 <option value="individual">Individual</option>
                 <option value="business">Business Entity</option>
                 <option value="other">Other</option>
               </select>
             </div>
+          </div>
+          <div class="form-row three-col">
             <div class="form-group">
-              <label>Mobile Number</label>
-              <input type="tel" class="form-input" [(ngModel)]="formData['phone']" name="phone" readonly>
+              <label>First Name <span class="required">*</span></label>
+              <input type="text" class="form-input" [class.invalid]="validationErrors['name']" [(ngModel)]="formData['firstName']" name="firstName" placeholder="Enter Value">
+              @if (validationErrors['name']) { <span class="field-error">{{ validationErrors['name'] }}</span> }
+            </div>
+            <div class="form-group">
+              <label>Middle Name <span class="optional">(Optional)</span></label>
+              <input type="text" class="form-input" [(ngModel)]="formData['middleName']" name="middleName" placeholder="Select Value">
+            </div>
+            <div class="form-group">
+              <label>Last Name</label>
+              <input type="text" class="form-input" [(ngModel)]="formData['lastName']" name="lastName" placeholder="Enter Value">
             </div>
           </div>
-          <div class="form-row">
+          <div class="form-row three-col">
             <div class="form-group">
-              <label>State <span class="required">*</span> <i class="pi pi-info-circle tooltip-icon" [title]="tooltips['state']"></i></label>
-              <select class="form-select" [class.invalid]="validationErrors['state']" [(ngModel)]="formData['state']" name="state">
-                <option value="">Select State</option>
-                @for (s of states; track s.value) {
-                  <option [value]="s.value">{{ s.label }}</option>
-                }
+              <label>Age</label>
+              <input type="text" class="form-input" [(ngModel)]="formData['age']" name="age" placeholder="Enter Value">
+            </div>
+            <div class="form-group">
+              <label>Gender</label>
+              <select class="form-select" [(ngModel)]="formData['gender']" name="gender">
+                <option value="">Select Value</option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+                <option value="other">Other</option>
               </select>
+            </div>
+            <div class="form-group">
+              <label>Email ID</label>
+              <input type="email" class="form-input" [class.invalid]="validationErrors['email']" [(ngModel)]="formData['email']" name="email" placeholder="Enter Value">
+              @if (validationErrors['email']) { <span class="field-error">{{ validationErrors['email'] }}</span> }
+            </div>
+          </div>
+          <div class="form-row three-col">
+            <div class="form-group">
+              <label>Mobile Number</label>
+              <input type="tel" class="form-input" [(ngModel)]="formData['phone']" name="phone" placeholder="Enter 10-digit m..." readonly>
+            </div>
+            <div class="form-group">
+              <!-- empty spacer -->
+            </div>
+            <div class="form-group">
+              <!-- empty spacer -->
+            </div>
+          </div>
+          <div class="form-row three-col">
+            <div class="form-group">
+              <label>Pincode</label>
+              <input type="text" class="form-input" [class.invalid]="validationErrors['pincode']" [(ngModel)]="formData['pincode']" name="pincode"
+                     placeholder="Enter Value" maxlength="6" (ngModelChange)="onPincodeInput()">
+              @if (validationErrors['pincode']) { <span class="field-error">{{ validationErrors['pincode'] }}</span> }
+              @if (pincodeLoading) { <span class="hint">Loading...</span> }
+            </div>
+            <div class="form-group">
+              <label>Complainants State of Residence</label>
+              <input type="text" class="form-input" [class.invalid]="validationErrors['state']" [value]="formData['state']" name="state"
+                     placeholder="Select Value" readonly>
               @if (validationErrors['state']) { <span class="field-error">{{ validationErrors['state'] }}</span> }
             </div>
             <div class="form-group">
-              <label>District</label>
-              <input type="text" class="form-input" [(ngModel)]="formData['district']" name="district" placeholder="Enter district">
-            </div>
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Pincode <span class="required">*</span> <i class="pi pi-info-circle tooltip-icon" [title]="tooltips['pincode']"></i></label>
-              <input type="text" class="form-input" [class.invalid]="validationErrors['pincode']" [(ngModel)]="formData['pincode']" name="pincode" maxlength="6" placeholder="6-digit pincode">
-              @if (validationErrors['pincode']) { <span class="field-error">{{ validationErrors['pincode'] }}</span> }
+              <label>Complainants District of Residence</label>
+              <input type="text" class="form-input" [value]="formData['district']" name="district" placeholder="Select Value" readonly>
             </div>
           </div>
           <div class="form-group full-width">
-            <label>Address</label>
-            <textarea class="form-textarea" [(ngModel)]="formData['address']" name="address" rows="3" placeholder="Enter complete address"></textarea>
+            <label>Address Details <span class="optional">(Optional)</span></label>
+            <textarea class="form-textarea" [(ngModel)]="formData['address']" name="address" rows="3" placeholder="Enter Value"></textarea>
           </div>
         </div>
       }
@@ -283,38 +398,23 @@
       <!-- Step 3: Complaint Details -->
       @if (currentStep() === 3) {
         <div class="step-content" (keydown)="onStepKeydown($event)">
-          <h3>Complaint Details</h3>
-
-          <div class="form-row">
-            <div class="form-group">
-              <label>Complaint Category <span class="required">*</span> <i class="pi pi-info-circle tooltip-icon" [title]="tooltips['complaintCategory']"></i></label>
-              <select class="form-select" [class.invalid]="validationErrors['complaintCategory']" [(ngModel)]="formData['complaintCategory']" name="complaintCategory"
-                      (ngModelChange)="onCategoryChange()">
-                <option value="">Select Category</option>
-                @for (c of categories; track c.value) {
-                  <option [value]="c.value">{{ c.label }}</option>
-                }
-              </select>
-              @if (validationErrors['complaintCategory']) { <span class="field-error">{{ validationErrors['complaintCategory'] }}</span> }
-            </div>
-            <div class="form-group">
-              <label>Sub-Category <span class="required">*</span> <i class="pi pi-info-circle tooltip-icon" [title]="tooltips['subCategory1']"></i></label>
-              <select class="form-select" [class.invalid]="validationErrors['subCategory1']" [(ngModel)]="formData['subCategory1']" name="subCategory1"
-                      [disabled]="!formData['complaintCategory']">
-                <option value="">Select Sub-Category</option>
-                @for (sc of filteredSubCategories; track sc.value) {
-                  <option [value]="sc.value">{{ sc.label }}</option>
-                }
-              </select>
-              @if (validationErrors['subCategory1']) { <span class="field-error">{{ validationErrors['subCategory1'] }}</span> }
-            </div>
+          <div class="form-group">
+            <label>Select a complaint Category <span class="required">*</span></label>
+            <select class="form-select" [class.invalid]="validationErrors['complaintCategory']" [(ngModel)]="formData['complaintCategory']" name="complaintCategory"
+                    (ngModelChange)="onCategoryChange()">
+              <option value="">Select Value</option>
+              @for (c of categories; track c.value) {
+                <option [value]="c.value">{{ c.label }}</option>
+              }
+            </select>
+            @if (validationErrors['complaintCategory']) { <span class="field-error">{{ validationErrors['complaintCategory'] }}</span> }
           </div>
 
           <div class="form-group full-width">
-            <label>Facts of the Complaint / Deficiency in Service <span class="required">*</span> <i class="pi pi-info-circle tooltip-icon" [title]="tooltips['complaintText']"></i></label>
+            <label>Facts of the complaint <span class="required">*</span></label>
             <div class="textarea-wrapper">
-              <textarea class="form-textarea" [class.invalid]="validationErrors['complaintText']" [(ngModel)]="formData['complaintText']" name="complaintText" rows="6"
-                        placeholder="Describe your complaint in detail..."></textarea>
+              <textarea class="form-textarea" [class.invalid]="validationErrors['complaintText']" [(ngModel)]="formData['complaintText']" name="complaintText" rows="4"
+                        placeholder="Write in detail"></textarea>
               @if (speechSupported) {
                 <button class="speech-btn" [class.recording]="isRecording()" (click)="toggleRecording()"
                         type="button" title="Voice input">
@@ -328,37 +428,133 @@
             }
           </div>
 
-          <div class="form-row">
-            <div class="form-group">
-              <label>Dispute Amount (₹) <i class="pi pi-info-circle tooltip-icon" [title]="tooltips['disputeAmount']"></i></label>
-              <input type="text" class="form-input" [(ngModel)]="formData['disputeAmount']" name="disputeAmount"
-                     placeholder="Enter amount">
-            </div>
-            <div class="form-group">
-              <label>Compensation Sought (₹) <i class="pi pi-info-circle tooltip-icon" [title]="tooltips['compensationSought']"></i></label>
-              <input type="text" class="form-input" [(ngModel)]="formData['compensationSought']" name="compensationSought"
-                     placeholder="Enter amount">
+          <div class="form-group full-width">
+            <label>Do you have an account with &lt;RE&gt;?</label>
+            <div class="radio-group horizontal">
+              <label class="radio-label" [class.selected]="formData['hasAccountWithRE'] === 'yes'">
+                <input type="radio" name="hasAccountWithRE" value="yes" [(ngModel)]="formData['hasAccountWithRE']"> Yes
+              </label>
+              <label class="radio-label" [class.selected]="formData['hasAccountWithRE'] === 'no'">
+                <input type="radio" name="hasAccountWithRE" value="no" [(ngModel)]="formData['hasAccountWithRE']"> No
+              </label>
             </div>
           </div>
 
+          @if (formData['hasAccountWithRE'] === 'yes') {
+            <div class="form-group">
+              <label>Type of Account with &lt;RE&gt;</label>
+              <p class="hint">Lorem ipsum dolor sit amet consectetur Luctus scelerisque.</p>
+              <div class="multiselect-dropdown">
+                <div class="multiselect-trigger" (click)="toggleAccountTypeDropdown()">
+                  <span class="multiselect-placeholder">{{ selectedAccountTypes || 'Select Value' }}</span>
+                  <i class="pi pi-chevron-down"></i>
+                </div>
+                @if (accountTypeDropdownOpen) {
+                  <div class="multiselect-options">
+                    @for (opt of accountTypes; track opt.value) {
+                      <label class="multiselect-option" [class.checked]="opt.checked">
+                        <input type="checkbox" [(ngModel)]="opt.checked" [name]="'acctType_' + opt.value">
+                        <span>{{ opt.label }}</span>
+                      </label>
+                    }
+                  </div>
+                }
+              </div>
+            </div>
+
+            <div class="form-row three-col">
+              <div class="form-group">
+                <label>Savings Account Number</label>
+                <input type="text" class="form-input" [(ngModel)]="formData['savingsAccountNumber']" name="savingsAccountNumber" placeholder="Enter Value">
+              </div>
+              <div class="form-group">
+                <label>Loan Account Number</label>
+                <input type="text" class="form-input" [(ngModel)]="formData['loanAccountNumber']" name="loanAccountNumber" placeholder="Enter Value">
+              </div>
+              <div class="form-group">
+                <label>ATM/Debit Card Number</label>
+                <input type="text" class="form-input" [(ngModel)]="formData['atmDebitCardNumber']" name="atmDebitCardNumber" placeholder="Enter Value">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>Credit Card Number</label>
+              <input type="text" class="form-input" [(ngModel)]="formData['cardNumber']" name="cardNumber" placeholder="Enter Value">
+            </div>
+          }
+
           <div class="form-group full-width">
-            <label>Relief Sought <i class="pi pi-info-circle tooltip-icon" [title]="tooltips['reliefSought']"></i></label>
-            <textarea class="form-textarea" [(ngModel)]="formData['reliefSought']" name="reliefSought" rows="3"
-                      placeholder="Describe the relief you are seeking..."></textarea>
+            <label>Is your complaint against the wallet of the Regulated Entity?</label>
+            <div class="radio-group horizontal">
+              <label class="radio-label" [class.selected]="formData['isWalletComplaint'] === 'yes'">
+                <input type="radio" name="wallet" value="yes" [(ngModel)]="formData['isWalletComplaint']"> Yes
+              </label>
+              <label class="radio-label" [class.selected]="formData['isWalletComplaint'] === 'no'">
+                <input type="radio" name="wallet" value="no" [(ngModel)]="formData['isWalletComplaint']"> No
+              </label>
+            </div>
           </div>
 
-          <!-- File Upload (NFR-006: Validated) -->
+          @if (formData['isWalletComplaint'] === 'yes') {
+            <div class="form-row">
+              <div class="form-group">
+                <label>Name of Wallet</label>
+                <input type="text" class="form-input" [(ngModel)]="formData['walletName']" name="walletName" placeholder="Enter Value">
+              </div>
+              <div class="form-group">
+                <label>Transaction/Reference Number</label>
+                <input type="text" class="form-input" [(ngModel)]="formData['transactionRefNumber']" name="transactionRefNumber" placeholder="Enter Value">
+              </div>
+            </div>
+          }
+
           <div class="form-group full-width">
-            <label>Upload Supporting Documents</label>
+            <label>Is your complaint against a Business Correspondent?</label>
+            <div class="radio-group horizontal">
+              <label class="radio-label" [class.selected]="formData['isBusinessCorrespondent'] === 'yes'">
+                <input type="radio" name="bizCorr" value="yes" [(ngModel)]="formData['isBusinessCorrespondent']"> Yes
+              </label>
+              <label class="radio-label" [class.selected]="formData['isBusinessCorrespondent'] === 'no'">
+                <input type="radio" name="bizCorr" value="no" [(ngModel)]="formData['isBusinessCorrespondent']"> No
+              </label>
+            </div>
+          </div>
+
+          <div class="form-row three-col">
+            <div class="form-group">
+              <label>Amount involved in the transaction/dispute, if any</label>
+              <div class="rupee-input">
+                <span class="rupee-symbol">₹</span>
+                <input type="text" class="form-input" [(ngModel)]="formData['disputeAmount']" name="disputeAmount" placeholder="Enter Value">
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Compensation sought for dispute, if any</label>
+              <div class="rupee-input">
+                <span class="rupee-symbol">₹</span>
+                <input type="text" class="form-input" [(ngModel)]="formData['compensationSought']" name="compensationSought" placeholder="Enter Value">
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Compensation sought, if any</label>
+              <div class="rupee-input">
+                <span class="rupee-symbol">₹</span>
+                <input type="text" class="form-input" [(ngModel)]="formData['reliefSought']" name="reliefSought" placeholder="Enter Value">
+              </div>
+            </div>
+          </div>
+
+          <!-- File Upload -->
+          <div class="form-group full-width">
+            <label>Upload any additional documents relevant to the complaint</label>
             <div class="file-upload-area">
               <input type="file" id="fileInput" multiple (change)="onFilesSelected($event)"
-                     accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.xls,.xlsx"
+                     accept=".pdf,.jpg,.jpeg,.png"
                      class="file-input-hidden" aria-describedby="fileHint">
               <label for="fileInput" class="file-upload-label">
-                <i class="pi pi-cloud-upload"></i>
-                <span>Click to upload or drag and drop</span>
-                <small id="fileHint">PDF, DOC, JPG, PNG, XLS (Max 5MB each, 10 files max)</small>
+                <span class="upload-text">Browse File</span>
               </label>
+              <p class="upload-hint" id="fileHint">Support formats: PDF, JPG, PNG <span class="upload-size">Maximum size: 5MB</span></p>
             </div>
             @if (fileUploadError) {
               <div class="error-msg"><i class="pi pi-exclamation-circle"></i> {{ fileUploadError }}</div>
@@ -464,116 +660,20 @@
         </div>
       }
 
-      <!-- Step 6: Review and Submit -->
-      @if (currentStep() === 6) {
-        <div class="step-content review-step">
-          <h3>Review and Submit</h3>
-          <p class="review-subtitle">Please review all details before submitting your complaint.</p>
-
-          <div class="review-section">
-            <h4>Complainant Details</h4>
-            <div class="review-grid">
-              <div class="review-row">
-                <span class="review-label">Name</span>
-                <span class="review-value">{{ formData['name'] || '—' }}</span>
-              </div>
-              <div class="review-row">
-                <span class="review-label">Mobile</span>
-                <span class="review-value">+91 {{ formData['phone'] || '—' }}</span>
-              </div>
-              <div class="review-row">
-                <span class="review-label">Email</span>
-                <span class="review-value">{{ formData['email'] || '—' }}</span>
-              </div>
-              <div class="review-row">
-                <span class="review-label">State</span>
-                <span class="review-value">{{ formData['state'] || '—' }}</span>
-              </div>
-              <div class="review-row">
-                <span class="review-label">Pincode</span>
-                <span class="review-value">{{ formData['pincode'] || '—' }}</span>
-              </div>
-              <div class="review-row full-width">
-                <span class="review-label">Address</span>
-                <span class="review-value">{{ formData['address'] || '—' }}</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="review-section">
-            <h4>Regulated Entity</h4>
-            <div class="review-grid">
-              <div class="review-row">
-                <span class="review-label">Entity Name</span>
-                <span class="review-value">{{ getSelectedBankName() }}</span>
-              </div>
-              <div class="review-row">
-                <span class="review-label">Complaint Date (with RE)</span>
-                <span class="review-value">{{ formData['bankComplaintDate'] || '—' }}</span>
-              </div>
-              <div class="review-row">
-                <span class="review-label">Dispute Transaction Date</span>
-                <span class="review-value">{{ formData['disputeDate'] || '—' }}</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="review-section">
-            <h4>Complaint Details</h4>
-            <div class="review-grid">
-              <div class="review-row">
-                <span class="review-label">Category</span>
-                <span class="review-value">{{ formData['complaintCategory'] || '—' }}</span>
-              </div>
-              <div class="review-row">
-                <span class="review-label">Dispute Amount</span>
-                <span class="review-value">{{ formData['disputeAmount'] ? '₹' + formData['disputeAmount'] : '—' }}</span>
-              </div>
-              <div class="review-row full-width">
-                <span class="review-label">Complaint Facts</span>
-                <span class="review-value">{{ formData['complaintText'] || '—' }}</span>
-              </div>
-            </div>
-          </div>
-
-          @if (attachmentPreviews.length > 0) {
-            <div class="review-section">
-              <h4>Attachments ({{ attachmentPreviews.length }})</h4>
-              <div class="file-list">
-                @for (f of attachmentPreviews; track $index; let i = $index) {
-                  <div class="file-chip">
-                    <i class="pi pi-file"></i>
-                    <span class="file-name">{{ f.name }}</span>
-                    <button class="preview-file" (click)="previewAttachment(i)" type="button"><i class="pi pi-eye"></i></button>
-                  </div>
-                }
-              </div>
-            </div>
-          }
-        </div>
-      }
 
       <!-- Form Navigation -->
-      <div class="form-actions">
-        @if (currentStep() > 1) {
-          <button class="btn-secondary" (click)="prevStep()">
-            <i class="pi pi-arrow-left"></i> Previous
-          </button>
-        }
-        <div class="form-actions-right">
-          <button class="btn-outline" (click)="saveDraft()" type="button">
-            <i class="pi pi-save"></i> Save Draft
-          </button>
+      <div class="eligibility-actions">
+        <button class="btn-cancel" (click)="goHome()">Cancel</button>
+        <div class="actions-right">
+          <button class="btn-go-back" (click)="prevStep()" [disabled]="currentStep() === 1">Go Back</button>
           @if (currentStep() < totalSteps) {
-            <button class="btn-primary" (click)="nextStep()">
-              Next <i class="pi pi-arrow-right"></i>
-            </button>
+            <button class="btn-next" (click)="nextStep()">Next</button>
           } @else {
-            <button class="btn-submit" (click)="submit()" [disabled]="submitting() || !declarationChecked">
+            <button class="btn-next" (click)="submit()" [disabled]="submitting() || !declarationChecked">
               @if (submitting()) {
-                <i class="pi pi-spinner pi-spin"></i> Submitting...
+                Submitting...
               } @else {
-                <i class="pi pi-check"></i> Submit Complaint
+                Submit
               }
             </button>
           }
@@ -631,6 +731,9 @@
         </button>
         <button class="btn-outline" (click)="withdrawComplaint()">
           <i class="pi pi-undo"></i> Withdraw Complaint
+        </button>
+        <button class="btn-outline" routerLink="/public/history">
+          <i class="pi pi-list"></i> View Complaint History
         </button>
         <button class="btn-secondary" (click)="goHome()">
           <i class="pi pi-home"></i> Go to Homepage

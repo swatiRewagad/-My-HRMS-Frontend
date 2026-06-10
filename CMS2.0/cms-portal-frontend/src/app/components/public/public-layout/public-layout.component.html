@@ -34,14 +34,12 @@
     <a class="brand" routerLink="/public">
       <div class="logo-group">
         <div class="emblem-seal">
-          <img src="assets/rbi-seal.svg" alt="India Emblem" onerror="this.style.display='none'" />
-        </div>
-        <div class="emblem-seal">
-          <img src="assets/rbi-logo.svg" alt="RBI Logo" onerror="this.style.display='none'" />
+          <img src="assets/rbi-logo.jpg" alt="RBI Logo" onerror="this.src='assets/rbi-logo.svg'" />
         </div>
         <div class="brand-text">
           <span class="brand-hindi">भारतीय रिज़र्व बैंक</span>
-          <span class="brand-english">Complaint Management System</span>
+          <span class="brand-english">Reserve Bank of India</span>
+          <span class="brand-sub">Complaint Management System</span>
         </div>
       </div>
     </a>
@@ -55,6 +53,9 @@
       <a href="javascript:void(0)">About us</a>
       <a href="javascript:void(0)">Public Awareness</a>
       <a href="javascript:void(0)">Contact</a>
+      @if (authService.isAuthenticated()) {
+        <a routerLink="/public/history">My Complaints</a>
+      }
       <button class="nav-search-btn" aria-label="Search"><i class="pi pi-search"></i></button>
       <div class="nav-call-box">
         <i class="pi pi-phone"></i>
@@ -111,9 +112,9 @@
   <div class="container footer-inner">
     <div class="footer-brand">
       <div class="footer-logo">
-        <img src="assets/rbi-seal.svg" alt="RBI" class="footer-emblem" onerror="this.style.display='none'" />
+        <img src="assets/rbi-logo.jpg" alt="RBI" class="footer-emblem" onerror="this.src='assets/rbi-logo.svg'" />
         <div class="footer-brand-text">
-          <span class="brand-hindi">शिकायत प्रबंध प्रणाली</span>
+          <span class="brand-hindi">भारतीय रिज़र्व बैंक</span>
           <span class="brand-english">Complaint Management System</span>
         </div>
       </div>

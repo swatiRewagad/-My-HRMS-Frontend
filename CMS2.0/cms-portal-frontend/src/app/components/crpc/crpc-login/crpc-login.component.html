@@ -8,66 +8,34 @@
       <p>Central Receipt & Processing Cell Login</p>
     </div>
 
-    <form (ngSubmit)="login()" class="login-form">
-      <div class="form-group">
-        <label for="username">Username</label>
-        <div class="input-wrapper">
-          <i class="pi pi-user"></i>
-          <input
-            id="username"
-            type="text"
-            [(ngModel)]="username"
-            name="username"
-            placeholder="Enter your username"
-            autocomplete="username"
-          />
-        </div>
+    @if (loginError) {
+      <div class="error-message">
+        <i class="pi pi-exclamation-circle"></i>
+        {{ loginError }}
       </div>
+    }
 
-      <div class="form-group">
-        <label for="password">Password</label>
-        <div class="input-wrapper">
-          <i class="pi pi-lock"></i>
-          <input
-            id="password"
-            type="password"
-            [(ngModel)]="password"
-            name="password"
-            placeholder="Enter your password"
-            autocomplete="current-password"
-          />
-        </div>
-      </div>
-
-      @if (loginError) {
-        <div class="error-message">
-          <i class="pi pi-exclamation-circle"></i>
-          {{ loginError }}
-        </div>
+    <button type="button" class="btn btn-primary btn-block" [disabled]="loading()" (click)="login()">
+      @if (loading()) {
+        <span class="spinner-sm"></span> Redirecting to Login...
+      } @else {
+        <i class="pi pi-sign-in"></i> Login with Keycloak
       }
-
-      <button type="submit" class="btn btn-primary btn-block" [disabled]="loading()">
-        @if (loading()) {
-          <span class="spinner-sm"></span> Authenticating...
-        } @else {
-          <i class="pi pi-sign-in"></i> Login
-        }
-      </button>
-    </form>
+    </button>
 
     <div class="demo-credentials">
-      <h4>Demo Credentials</h4>
+      <h4>CRPC Credentials (Keycloak)</h4>
       <table>
         <thead>
           <tr><th>Role</th><th>Username</th><th>Password</th></tr>
         </thead>
         <tbody>
-          <tr><td>DEO</td><td>deo1</td><td>deo123</td></tr>
-          <tr><td>Reviewer</td><td>reviewer1</td><td>rev123</td></tr>
-          <tr><td>CRPC Head</td><td>crpchead</td><td>head123</td></tr>
-          <tr><td>CRPC Admin</td><td>crpcadmin</td><td>admin123</td></tr>
-          <tr><td>In-Charge</td><td>incharge</td><td>ic123</td></tr>
-          <tr><td>Help Desk</td><td>helpdesk</td><td>hd123</td></tr>
+          <tr><td>DEO</td><td>deo_001</td><td>Test&#64;123</td></tr>
+          <tr><td>DEO</td><td>deo_002</td><td>Test&#64;123</td></tr>
+          <tr><td>DEO</td><td>deo_003</td><td>Test&#64;123</td></tr>
+          <tr><td>Reviewer</td><td>priya.gupta</td><td>Test&#64;123</td></tr>
+          <tr><td>Reviewer</td><td>reviewer.user</td><td>Test&#64;123</td></tr>
+          <tr><td>CRPC Head</td><td>crpc.head</td><td>Test&#64;123</td></tr>
         </tbody>
       </table>
     </div>

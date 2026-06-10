@@ -451,16 +451,31 @@ export const environment = {
             </div>
             <div class="step">
                 <h4>Create Users & Assign Roles</h4>
-                <p>Users > Add User > Set password (Credentials tab) > Role Mappings > Assign realm role</p>
+                <p>Users > Add User > Set password (Credentials tab, Temporary = OFF) > Role Mappings > Assign realm role</p>
                 <table>
-                    <tr><th>Username</th><th>Password</th><th>Role</th></tr>
-                    <tr><td>rbio.officer</td><td>password</td><td>RBIO_OFFICER</td></tr>
-                    <tr><td>cepc.officer</td><td>password</td><td>CEPC_OFFICER</td></tr>
-                    <tr><td>cepc.supervisor</td><td>password</td><td>CEPC_SUPERVISOR</td></tr>
-                    <tr><td>deo.user</td><td>password</td><td>DEO</td></tr>
-                    <tr><td>reviewer.user</td><td>password</td><td>REVIEWER</td></tr>
-                    <tr><td>cms.admin</td><td>password</td><td>ADMIN</td></tr>
+                    <tr><th>#</th><th>Username</th><th>Display Name</th><th>Password</th><th>Role</th><th>Department</th></tr>
+                    <tr><td>1</td><td><code>cms.admin</code></td><td>Cms Admin</td><td><code>Test@123</code></td><td>ADMIN</td><td>System</td></tr>
+                    <tr><td>2</td><td><code>deo.user</code></td><td>Deo User</td><td><code>Test@123</code></td><td>DEO</td><td>CRPC</td></tr>
+                    <tr><td>3</td><td><code>deo_001</code></td><td>Amit Verma</td><td><code>Test@123</code></td><td>DEO</td><td>CRPC (Email Syndication Pool)</td></tr>
+                    <tr><td>4</td><td><code>deo_002</code></td><td>Sneha Patil</td><td><code>Test@123</code></td><td>DEO</td><td>CRPC (Email Syndication Pool)</td></tr>
+                    <tr><td>5</td><td><code>deo_003</code></td><td>Ramesh Iyer</td><td><code>Test@123</code></td><td>DEO</td><td>CRPC (Email Syndication Pool)</td></tr>
+                    <tr><td>6</td><td><code>reviewer.user</code></td><td>Reviewer User</td><td><code>Test@123</code></td><td>REVIEWER</td><td>CRPC</td></tr>
+                    <tr><td>7</td><td><code>crpc.head</code></td><td>Crpc Head</td><td><code>Test@123</code></td><td>CRPC_HEAD</td><td>CRPC</td></tr>
+                    <tr><td>8</td><td><code>cepc.officer</code></td><td>Cepc Officer</td><td><code>Test@123</code></td><td>CEPC_OFFICER</td><td>CEPC</td></tr>
+                    <tr><td>9</td><td><code>cepc.supervisor</code></td><td>Cepc Supervisor</td><td><code>Test@123</code></td><td>CEPC_SUPERVISOR</td><td>CEPC</td></tr>
+                    <tr><td>10</td><td><code>cepc.conciliator</code></td><td>Cepc Conciliator</td><td><code>Test@123</code></td><td>CEPC_CONCILIATOR</td><td>CEPC</td></tr>
+                    <tr><td>11</td><td><code>cepc.adjudicator</code></td><td>Cepc Adjudicator</td><td><code>Test@123</code></td><td>CEPC_ADJUDICATOR</td><td>CEPC</td></tr>
+                    <tr><td>12</td><td><code>rbio.officer</code></td><td>Rbio Officer</td><td><code>Test@123</code></td><td>RBIO_OFFICER</td><td>RBIO</td></tr>
+                    <tr><td>13</td><td><code>rbio.supervisor</code></td><td>Rbio Supervisor</td><td><code>Test@123</code></td><td>RBIO_SUPERVISOR</td><td>RBIO</td></tr>
+                    <tr><td>14</td><td><code>rbio.conciliator</code></td><td>Rbio Conciliator</td><td><code>Test@123</code></td><td>RBIO_CONCILIATOR</td><td>RBIO</td></tr>
+                    <tr><td>15</td><td><code>rbio.adjudicator</code></td><td>Rbio Adjudicator</td><td><code>Test@123</code></td><td>RBIO_ADJUDICATOR</td><td>RBIO</td></tr>
                 </table>
+                <div class="info-box">
+                    <strong>All user passwords:</strong> <code>Test@123</code><br>
+                    <strong>Keycloak Admin Console:</strong> <a href="http://localhost:8180/admin">http://localhost:8180/admin</a> &mdash; Username: <code>admin</code> / Password: <code>admin</code><br>
+                    <strong>Keycloak Client ID:</strong> <code>cms-frontend</code> (public client, used for token requests)<br>
+                    <strong>Realm:</strong> <code>cms</code>
+                </div>
             </div>
             <div class="step">
                 <h4>Create Client: "cms-portal"</h4>
@@ -738,14 +753,28 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
     <div class="card">
         <h3>Staff Portal (Keycloak SSO)</h3>
         <p>URL: <code>http://localhost:4300/staff/login</code> (redirects to Keycloak)</p>
+        <p>Keycloak Client ID: <code>cms-frontend</code> | Realm: <code>cms</code></p>
         <table>
-            <tr><th>Username</th><th>Password</th><th>Role</th><th>Department</th></tr>
-            <tr><td>cepc.officer</td><td>password</td><td>CEPC_OFFICER</td><td>CEPC</td></tr>
-            <tr><td>cepc.supervisor</td><td>password</td><td>CEPC_SUPERVISOR</td><td>CEPC</td></tr>
-            <tr><td>rbio.officer</td><td>password</td><td>RBIO_OFFICER</td><td>RBIO</td></tr>
-            <tr><td>rbio.supervisor</td><td>password</td><td>RBIO_SUPERVISOR</td><td>RBIO</td></tr>
-            <tr><td>cms.admin</td><td>password</td><td>ADMIN</td><td>ADMIN</td></tr>
+            <tr><th>#</th><th>Username</th><th>Password</th><th>Display Name</th><th>Role</th><th>Department</th></tr>
+            <tr><td>1</td><td><code>cms.admin</code></td><td><code>Test@123</code></td><td>Cms Admin</td><td>ADMIN</td><td>System</td></tr>
+            <tr><td>2</td><td><code>deo.user</code></td><td><code>Test@123</code></td><td>Deo User</td><td>DEO</td><td>CRPC</td></tr>
+            <tr><td>3</td><td><code>deo_001</code></td><td><code>Test@123</code></td><td>Amit Verma</td><td>DEO</td><td>CRPC (Email Syndication Pool)</td></tr>
+            <tr><td>4</td><td><code>deo_002</code></td><td><code>Test@123</code></td><td>Sneha Patil</td><td>DEO</td><td>CRPC (Email Syndication Pool)</td></tr>
+            <tr><td>5</td><td><code>deo_003</code></td><td><code>Test@123</code></td><td>Ramesh Iyer</td><td>DEO</td><td>CRPC (Email Syndication Pool)</td></tr>
+            <tr><td>6</td><td><code>reviewer.user</code></td><td><code>Test@123</code></td><td>Reviewer User</td><td>REVIEWER</td><td>CRPC</td></tr>
+            <tr><td>7</td><td><code>crpc.head</code></td><td><code>Test@123</code></td><td>Crpc Head</td><td>CRPC_HEAD</td><td>CRPC</td></tr>
+            <tr><td>8</td><td><code>cepc.officer</code></td><td><code>Test@123</code></td><td>Cepc Officer</td><td>CEPC_OFFICER</td><td>CEPC</td></tr>
+            <tr><td>9</td><td><code>cepc.supervisor</code></td><td><code>Test@123</code></td><td>Cepc Supervisor</td><td>CEPC_SUPERVISOR</td><td>CEPC</td></tr>
+            <tr><td>10</td><td><code>cepc.conciliator</code></td><td><code>Test@123</code></td><td>Cepc Conciliator</td><td>CEPC_CONCILIATOR</td><td>CEPC</td></tr>
+            <tr><td>11</td><td><code>cepc.adjudicator</code></td><td><code>Test@123</code></td><td>Cepc Adjudicator</td><td>CEPC_ADJUDICATOR</td><td>CEPC</td></tr>
+            <tr><td>12</td><td><code>rbio.officer</code></td><td><code>Test@123</code></td><td>Rbio Officer</td><td>RBIO_OFFICER</td><td>RBIO</td></tr>
+            <tr><td>13</td><td><code>rbio.supervisor</code></td><td><code>Test@123</code></td><td>Rbio Supervisor</td><td>RBIO_SUPERVISOR</td><td>RBIO</td></tr>
+            <tr><td>14</td><td><code>rbio.conciliator</code></td><td><code>Test@123</code></td><td>Rbio Conciliator</td><td>RBIO_CONCILIATOR</td><td>RBIO</td></tr>
+            <tr><td>15</td><td><code>rbio.adjudicator</code></td><td><code>Test@123</code></td><td>Rbio Adjudicator</td><td>RBIO_ADJUDICATOR</td><td>RBIO</td></tr>
         </table>
+        <div class="highlight-box">
+            <strong>All Keycloak user passwords are: <code>Test@123</code></strong>
+        </div>
     </div>
 
     <div class="card">

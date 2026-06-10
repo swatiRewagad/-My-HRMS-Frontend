@@ -159,10 +159,11 @@ export class CepcTasksComponent implements OnInit {
 
   private loadTasks() {
     this.loading.set(true);
-    const role = this.auth.getRoles().find(r => r.startsWith('CEPC_')) || '';
+    const role = this.auth.getRoles().find(r => r.startsWith('CEPC_')) || 'CEPC_OFFICER';
+    const officer = this.auth.currentUser()?.username || '';
 
     const url = this.isHistoryView()
-      ? `${environment.apiBaseUrl}/api/v1/workflow/cepc/completed`
+      ? `${environment.apiBaseUrl}/api/v1/workflow/cepc/completed?officer=${officer}`
       : `${environment.apiBaseUrl}/api/v1/workflow/cepc/tasks?role=${role}`;
 
     this.http.get<any>(url)

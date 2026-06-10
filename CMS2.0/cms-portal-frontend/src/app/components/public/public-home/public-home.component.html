@@ -1,4 +1,71 @@
-<!-- Hero Section -->
+<!-- Authenticated Home: Complaint History -->
+@if (authService.isAuthenticated()) {
+<section class="home-section">
+  <div class="container">
+    <div class="home-header">
+      <h1 class="home-title">Home</h1>
+      <a routerLink="/public/file-complaint" class="file-new-btn">File a New Complaint <i class="pi pi-chevron-right"></i></a>
+    </div>
+
+    <div class="history-card">
+      <div class="history-card-header">
+        <i class="pi pi-refresh"></i>
+        <h3>Complaint History</h3>
+      </div>
+
+      <div class="table-wrapper">
+        <table class="complaints-table">
+          <thead>
+            <tr class="header-row">
+              <th>ID <i class="pi pi-sort-alt"></i></th>
+              <th>Complaint Against <i class="pi pi-sort-alt"></i></th>
+              <th>Complaint Date <i class="pi pi-sort-alt"></i></th>
+              <th>Status <i class="pi pi-sort-alt"></i></th>
+              <th>Comments <i class="pi pi-sort-alt"></i></th>
+              <th>Action</th>
+            </tr>
+            <tr class="filter-row">
+              <th><input type="text" [(ngModel)]="filterById" placeholder="Search" class="filter-input"></th>
+              <th><input type="text" [(ngModel)]="filterByEntity" placeholder="Search" class="filter-input"></th>
+              <th><input type="text" [(ngModel)]="filterByDate" placeholder="DD-MM-YYYY" class="filter-input filter-date"></th>
+              <th><input type="text" [(ngModel)]="filterByStatus" placeholder="Search" class="filter-input"></th>
+              <th><input type="text" [(ngModel)]="filterByComments" placeholder="Search" class="filter-input"></th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            @if (loading()) {
+              <tr><td colspan="6" class="loading-cell"><i class="pi pi-spinner pi-spin"></i> Loading...</td></tr>
+            } @else if (filteredComplaints.length === 0) {
+              <tr><td colspan="6" class="empty-cell">No complaints found</td></tr>
+            } @else {
+              @for (c of filteredComplaints; track c.complaintId) {
+                <tr>
+                  <td>{{ c.complaintId }}</td>
+                  <td>{{ c.entityName }}</td>
+                  <td>{{ formatDate(c.complaintDate) }}</td>
+                  <td>
+                    <span class="status-badge" [class]="getStatusClass(c.status)">
+                      <span class="status-dot"></span> {{ getStatusLabel(c.status) }}
+                    </span>
+                  </td>
+                  <td class="comments-cell">{{ c.comments }}</td>
+                  <td>
+                    <button class="action-btn" [class]="'action-' + getActionLabel(c.status).toLowerCase()">
+                      {{ getActionLabel(c.status) }}
+                    </button>
+                  </td>
+                </tr>
+              }
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+} @else {
+<!-- Public Landing: Hero Section -->
 <section class="hero">
   <div class="hero-decorations">
     <div class="hero-photo hero-photo-1"></div>
@@ -19,7 +86,9 @@
       <div class="hero-bottom">
         <span class="already-filed">Already Filed a Complaint?</span>
         <div class="hero-links">
-          <a routerLink="/public/track">Track Complaint</a>
+          <a routerLink="/public/track">Complaint Search</a>
+          <span class="dot"></span>
+          <a routerLink="/public/history">Complaint History</a>
           <span class="dot"></span>
           <a routerLink="/public/withdraw">Withdraw Complaint</a>
           <span class="dot"></span>
@@ -34,6 +103,7 @@
     </div>
   </div>
 </section>
+}
 
 <!-- Other Methods Section -->
 <section class="other-methods">

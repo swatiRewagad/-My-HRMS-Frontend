@@ -1,0 +1,64 @@
+<div class="history-container">
+  <div class="history-header">
+    <h2>Complaint History</h2>
+    <p>View and track all complaints filed from your registered mobile number.</p>
+  </div>
+
+  @if (loading()) {
+    <div class="loading-state">
+      <i class="pi pi-spinner pi-spin"></i>
+      <span>Loading complaints...</span>
+    </div>
+  } @else if (complaints().length === 0) {
+    <div class="empty-state">
+      <i class="pi pi-inbox"></i>
+      <h3>No Complaints Found</h3>
+      <p>You have not filed any complaints yet.</p>
+      <a routerLink="/public/file-complaint" class="btn-primary">File a Complaint</a>
+    </div>
+  } @else {
+    <div class="table-wrapper">
+      <table class="complaints-table">
+        <thead>
+          <tr>
+            <th>Complaint ID</th>
+            <th>Complaint Against</th>
+            <th>Complaint Date</th>
+            <th>Status</th>
+            <th>Comments</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (c of complaints(); track c.complaintId) {
+            <tr>
+              <td class="id-cell">{{ c.complaintId }}</td>
+              <td>{{ c.entityName }}</td>
+              <td>{{ formatDate(c.complaintDate) }}</td>
+              <td>
+                <span class="status-badge" [class]="getStatusClass(c.status)">
+                  {{ getStatusLabel(c.status) }}
+                </span>
+              </td>
+              <td class="comments-cell">{{ c.comments }}</td>
+              <td class="action-cell">
+                <a [routerLink]="['/public/track', c.complaintId]" class="action-link">
+                  <i class="pi pi-eye"></i> View
+                </a>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <div class="history-actions">
+      <a routerLink="/public/file-complaint" class="btn-primary">
+        <i class="pi pi-plus"></i> File New Complaint
+      </a>
+      <a routerLink="/public" class="btn-secondary">
+        <i class="pi pi-home"></i> Back to Home
+      </a>
+    </div>
+  }
+</div>

@@ -4,15 +4,18 @@ import com.hrms.cms.entity.Bank;
 import com.hrms.cms.entity.Complaint;
 import com.hrms.cms.entity.ComplaintCategory;
 import com.hrms.cms.entity.FormConfig;
+import com.hrms.cms.entity.RegulatedEntity;
 import com.hrms.cms.repository.BankRepository;
 import com.hrms.cms.repository.ComplaintCategoryRepository;
 import com.hrms.cms.repository.ComplaintRepository;
 import com.hrms.cms.repository.FormConfigRepository;
+import com.hrms.cms.repository.RegulatedEntityRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Component
 @RequiredArgsConstructor
@@ -22,6 +25,7 @@ public class DataInitializer implements CommandLineRunner {
     private final BankRepository bankRepo;
     private final FormConfigRepository formConfigRepo;
     private final ComplaintRepository complaintRepo;
+    private final RegulatedEntityRepository regulatedEntityRepo;
 
     @Override
     public void run(String... args) {
@@ -36,6 +40,9 @@ public class DataInitializer implements CommandLineRunner {
         }
         if (complaintRepo.count() == 0) {
             seedComplaints();
+        }
+        if (regulatedEntityRepo.count() == 0) {
+            seedRegulatedEntities();
         }
     }
 
@@ -518,5 +525,180 @@ public class DataInitializer implements CommandLineRunner {
         bankRepo.save(Bank.builder().name("IndusInd Bank").code("INDUSIND").type("private").build());
         bankRepo.save(Bank.builder().name("Yes Bank").code("YES").type("private").build());
         bankRepo.save(Bank.builder().name("IDBI Bank").code("IDBI").type("public").build());
+    }
+
+    private void seedRegulatedEntities() {
+        // CEPC entities (from CEPC_English_Portal.pdf — 8,609 entities)
+        // Representative sample: NBFCs, Cooperative Banks, Fintech companies, Payment operators
+        List<String[]> cepcEntities = List.of(
+            new String[]{"Bajaj Finance Limited", "NBFC"},
+            new String[]{"Muthoot Finance Ltd", "NBFC"},
+            new String[]{"Manappuram Finance Limited", "NBFC"},
+            new String[]{"Shriram Finance Limited", "NBFC"},
+            new String[]{"Mahindra & Mahindra Financial Services Limited", "NBFC"},
+            new String[]{"Tata Capital Financial Services Limited", "NBFC"},
+            new String[]{"L&T Finance Limited", "NBFC"},
+            new String[]{"Piramal Capital & Housing Finance Limited", "NBFC"},
+            new String[]{"HDB Financial Services Limited", "NBFC"},
+            new String[]{"Aditya Birla Finance Limited", "NBFC"},
+            new String[]{"Fullerton India Credit Company Limited", "NBFC"},
+            new String[]{"IIFL Finance Limited", "NBFC"},
+            new String[]{"Hero FinCorp Limited", "NBFC"},
+            new String[]{"Cholamandalam Investment and Finance Company Limited", "NBFC"},
+            new String[]{"Sundaram Finance Limited", "NBFC"},
+            new String[]{"Muthoot Fincorp Limited", "NBFC"},
+            new String[]{"Ujjivan Financial Services Limited", "NBFC"},
+            new String[]{"CreditAccess Grameen Limited", "NBFC"},
+            new String[]{"Arohan Financial Services Limited", "NBFC"},
+            new String[]{"Satin Creditcare Network Limited", "NBFC"},
+            new String[]{"Asirvad Microfinance Limited", "NBFC"},
+            new String[]{"Annapurna Finance Private Limited", "NBFC"},
+            new String[]{"Fusion Micro Finance Limited", "NBFC"},
+            new String[]{"Northern Arc Capital Limited", "NBFC"},
+            new String[]{"Five Star Business Finance Limited", "NBFC"},
+            new String[]{"Home First Finance Company India Limited", "NBFC"},
+            new String[]{"Aptus Value Housing Finance India Limited", "NBFC"},
+            new String[]{"AAVAS Financiers Limited", "NBFC"},
+            new String[]{"Can Fin Homes Limited", "NBFC"},
+            new String[]{"India Shelter Finance Corporation Limited", "NBFC"},
+            new String[]{"PNB Housing Finance Limited", "NBFC"},
+            new String[]{"LIC Housing Finance Limited", "NBFC"},
+            new String[]{"HDFC Credila Financial Services Limited", "NBFC"},
+            new String[]{"Indiabulls Housing Finance Limited", "NBFC"},
+            new String[]{"Repco Home Finance Limited", "NBFC"},
+            new String[]{"Saraswat Co-operative Bank Limited", "Cooperative Bank"},
+            new String[]{"Cosmos Co-operative Bank Limited", "Cooperative Bank"},
+            new String[]{"Shamrao Vithal Co-operative Bank Limited", "Cooperative Bank"},
+            new String[]{"Bharat Co-operative Bank (Mumbai) Limited", "Cooperative Bank"},
+            new String[]{"TJSB Sahakari Bank Limited", "Cooperative Bank"},
+            new String[]{"Bassein Catholic Co-operative Bank Limited", "Cooperative Bank"},
+            new String[]{"Citizen Credit Co-operative Bank Limited", "Cooperative Bank"},
+            new String[]{"Abhyudaya Co-operative Bank Limited", "Cooperative Bank"},
+            new String[]{"Apna Sahakari Bank Limited", "Cooperative Bank"},
+            new String[]{"Janata Sahakari Bank Limited", "Cooperative Bank"},
+            new String[]{"New India Co-operative Bank Limited", "Cooperative Bank"},
+            new String[]{"Nutan Nagarik Sahakari Bank Limited", "Cooperative Bank"},
+            new String[]{"Kalupur Commercial Co-operative Bank Limited", "Cooperative Bank"},
+            new String[]{"Mehsana Urban Co-operative Bank Limited", "Cooperative Bank"},
+            new String[]{"Rajkot Nagrik Sahakari Bank Limited", "Cooperative Bank"},
+            new String[]{"Surat People's Co-operative Bank Limited", "Cooperative Bank"},
+            new String[]{"Ahmednagar Merchants Co-operative Bank Limited", "Cooperative Bank"},
+            new String[]{"Sangli Urban Co-operative Bank Limited", "Cooperative Bank"},
+            new String[]{"Rajarambapu Sahakari Bank Limited", "Cooperative Bank"},
+            new String[]{"Dombivli Nagari Sahakari Bank Limited", "Cooperative Bank"},
+            new String[]{"Thane Bharat Sahakari Bank Limited", "Cooperative Bank"},
+            new String[]{"GP Parsik Sahakari Bank Limited", "Cooperative Bank"},
+            new String[]{"Maharashtra State Co-operative Bank Limited", "Cooperative Bank"},
+            new String[]{"The AP Mahesh Co-operative Urban Bank Limited", "Cooperative Bank"},
+            new String[]{"PhonePe Private Limited", "Payment System Operator"},
+            new String[]{"Google Pay (Google India Digital Services)", "Payment System Operator"},
+            new String[]{"Paytm Payments Bank Limited", "Payment System Operator"},
+            new String[]{"Amazon Pay (India) Private Limited", "Payment System Operator"},
+            new String[]{"BharatPe (Resilient Innovations Private Limited)", "Payment System Operator"},
+            new String[]{"MobiKwik Systems Limited", "Payment System Operator"},
+            new String[]{"Freecharge Payment Technologies Private Limited", "Payment System Operator"},
+            new String[]{"Razorpay Software Private Limited", "Payment System Operator"},
+            new String[]{"PayU Payments Private Limited", "Payment System Operator"},
+            new String[]{"Pine Labs Private Limited", "Payment System Operator"},
+            new String[]{"Slice (Quadrillion Finance Private Limited)", "Payment System Operator"},
+            new String[]{"Jupiter Money (Amica Financial Technologies)", "Payment System Operator"},
+            new String[]{"CRED (Dreamplug Technologies Private Limited)", "Payment System Operator"},
+            new String[]{"Navi Finserv Limited", "NBFC"},
+            new String[]{"Poonawalla Fincorp Limited", "NBFC"},
+            new String[]{"JM Financial Products Limited", "NBFC"},
+            new String[]{"Reliance Commercial Finance Limited", "NBFC"},
+            new String[]{"SMFG India Credit Company Limited", "NBFC"},
+            new String[]{"Deutsche Bank AG", "Foreign Bank"},
+            new String[]{"Standard Chartered Bank", "Foreign Bank"},
+            new String[]{"Citibank N.A.", "Foreign Bank"},
+            new String[]{"HSBC Limited", "Foreign Bank"},
+            new String[]{"Barclays Bank PLC", "Foreign Bank"},
+            new String[]{"DBS Bank India Limited", "Foreign Bank"},
+            new String[]{"Bank of America", "Foreign Bank"},
+            new String[]{"JP Morgan Chase Bank N.A.", "Foreign Bank"},
+            new String[]{"BNP Paribas", "Foreign Bank"}
+        );
+
+        // RBIO entities (from RBIO_English_Portal.pdf — 3,080 entities)
+        // Scheduled Commercial Banks (Public Sector, Private Sector, SFBs, Payment Banks)
+        List<String[]> rbioEntities = List.of(
+            new String[]{"State Bank of India", "Public Sector Bank"},
+            new String[]{"Punjab National Bank", "Public Sector Bank"},
+            new String[]{"Bank of Baroda", "Public Sector Bank"},
+            new String[]{"Canara Bank", "Public Sector Bank"},
+            new String[]{"Union Bank of India", "Public Sector Bank"},
+            new String[]{"Bank of India", "Public Sector Bank"},
+            new String[]{"Indian Bank", "Public Sector Bank"},
+            new String[]{"Central Bank of India", "Public Sector Bank"},
+            new String[]{"Indian Overseas Bank", "Public Sector Bank"},
+            new String[]{"UCO Bank", "Public Sector Bank"},
+            new String[]{"Bank of Maharashtra", "Public Sector Bank"},
+            new String[]{"Punjab & Sind Bank", "Public Sector Bank"},
+            new String[]{"IDBI Bank Limited", "Public Sector Bank"},
+            new String[]{"HDFC Bank Limited", "Private Sector Bank"},
+            new String[]{"ICICI Bank Limited", "Private Sector Bank"},
+            new String[]{"Axis Bank Limited", "Private Sector Bank"},
+            new String[]{"Kotak Mahindra Bank Limited", "Private Sector Bank"},
+            new String[]{"IndusInd Bank Limited", "Private Sector Bank"},
+            new String[]{"Yes Bank Limited", "Private Sector Bank"},
+            new String[]{"IDFC First Bank Limited", "Private Sector Bank"},
+            new String[]{"Bandhan Bank Limited", "Private Sector Bank"},
+            new String[]{"Federal Bank Limited", "Private Sector Bank"},
+            new String[]{"RBL Bank Limited", "Private Sector Bank"},
+            new String[]{"South Indian Bank Limited", "Private Sector Bank"},
+            new String[]{"City Union Bank Limited", "Private Sector Bank"},
+            new String[]{"Karur Vysya Bank Limited", "Private Sector Bank"},
+            new String[]{"Tamilnad Mercantile Bank Limited", "Private Sector Bank"},
+            new String[]{"DCB Bank Limited", "Private Sector Bank"},
+            new String[]{"Dhanlaxmi Bank Limited", "Private Sector Bank"},
+            new String[]{"CSB Bank Limited", "Private Sector Bank"},
+            new String[]{"Nainital Bank Limited", "Private Sector Bank"},
+            new String[]{"Jammu & Kashmir Bank Limited", "Private Sector Bank"},
+            new String[]{"Karnataka Bank Limited", "Private Sector Bank"},
+            new String[]{"Lakshmi Vilas Bank Limited", "Private Sector Bank"},
+            new String[]{"Au Small Finance Bank Limited", "Small Finance Bank"},
+            new String[]{"Equitas Small Finance Bank Limited", "Small Finance Bank"},
+            new String[]{"Ujjivan Small Finance Bank Limited", "Small Finance Bank"},
+            new String[]{"Jana Small Finance Bank Limited", "Small Finance Bank"},
+            new String[]{"Suryoday Small Finance Bank Limited", "Small Finance Bank"},
+            new String[]{"Fincare Small Finance Bank Limited", "Small Finance Bank"},
+            new String[]{"ESAF Small Finance Bank Limited", "Small Finance Bank"},
+            new String[]{"North East Small Finance Bank Limited", "Small Finance Bank"},
+            new String[]{"Capital Small Finance Bank Limited", "Small Finance Bank"},
+            new String[]{"Unity Small Finance Bank Limited", "Small Finance Bank"},
+            new String[]{"Shivalik Small Finance Bank Limited", "Small Finance Bank"},
+            new String[]{"Airtel Payments Bank Limited", "Payments Bank"},
+            new String[]{"India Post Payments Bank Limited", "Payments Bank"},
+            new String[]{"Fino Payments Bank Limited", "Payments Bank"},
+            new String[]{"Jio Payments Bank Limited", "Payments Bank"},
+            new String[]{"NSDL Payments Bank Limited", "Payments Bank"},
+            new String[]{"National Payments Corporation of India", "Payment Infrastructure"},
+            new String[]{"Clearing Corporation of India Limited", "Payment Infrastructure"},
+            new String[]{"HDFC Bank", "Private Sector Bank"},
+            new String[]{"ICICI Bank", "Private Sector Bank"},
+            new String[]{"Axis Bank", "Private Sector Bank"},
+            new String[]{"Kotak Mahindra Bank", "Private Sector Bank"},
+            new String[]{"SBI", "Public Sector Bank"},
+            new String[]{"PNB", "Public Sector Bank"},
+            new String[]{"BOB", "Public Sector Bank"}
+        );
+
+        for (String[] e : cepcEntities) {
+            regulatedEntityRepo.save(RegulatedEntity.builder()
+                    .name(e[0])
+                    .nameNormalized(RegulatedEntity.normalize(e[0]))
+                    .department("CEPC")
+                    .entityType(e[1])
+                    .build());
+        }
+
+        for (String[] e : rbioEntities) {
+            regulatedEntityRepo.save(RegulatedEntity.builder()
+                    .name(e[0])
+                    .nameNormalized(RegulatedEntity.normalize(e[0]))
+                    .department("RBIO")
+                    .entityType(e[1])
+                    .build());
+        }
     }
 }

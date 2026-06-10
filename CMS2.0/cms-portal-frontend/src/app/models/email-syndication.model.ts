@@ -5,6 +5,7 @@ export interface EmailDraft {
   senderEmail: string;
   subject: string;
   body: string;
+  originalBody?: string | null;
   complainantName: string;
   complainantPhone: string;
   cpgramsNumber: string;
@@ -23,6 +24,10 @@ export interface EmailDraft {
   convertedComplaintId: string;
   attachments: EmailAttachment[];
   suggestedRelated: EmailDraft[];
+  detectedLanguage?: string;
+  languageName?: string;
+  isVernacular?: boolean;
+  translationConfidence?: number;
 }
 
 export type EmailDraftStatus = 'PENDING' | 'ASSIGNED' | 'IN_PROGRESS' | 'CONVERTED' | 'DUPLICATE' | 'IGNORED' | 'REJECTED';

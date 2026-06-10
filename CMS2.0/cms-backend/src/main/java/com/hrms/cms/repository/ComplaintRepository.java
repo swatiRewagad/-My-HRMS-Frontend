@@ -14,6 +14,7 @@ public interface ComplaintRepository extends JpaRepository<Complaint, Long> {
     Optional<Complaint> findByComplaintNumber(String complaintNumber);
     List<Complaint> findByStatusOrderByCreatedAtDesc(String status);
     List<Complaint> findByComplainantEmailOrderByCreatedAtDesc(String email);
+    List<Complaint> findByComplainantPhoneOrderByCreatedAtDesc(String phone);
     List<Complaint> findByCategoryIdOrderByCreatedAtDesc(Long categoryId);
     List<Complaint> findByBankIdOrderByCreatedAtDesc(Long bankId);
     List<Complaint> findAllByOrderByCreatedAtDesc();
@@ -37,6 +38,11 @@ public interface ComplaintRepository extends JpaRepository<Complaint, Long> {
             String department, String assignedOfficer, List<String> excludeStatuses);
 
     List<Complaint> findByDepartmentAndStatusOrderByCreatedAtDesc(String department, String status);
+
+    List<Complaint> findByDepartmentAndStatusNotInOrderByCreatedAtDesc(String department, List<String> excludeStatuses);
+
+    List<Complaint> findByDepartmentAndAssignedOfficerAndStatusOrderByCreatedAtDesc(
+            String department, String assignedOfficer, String status);
 
     List<Complaint> findByStatusAndDepartmentIsNullOrderByCreatedAtDesc(String status);
 }

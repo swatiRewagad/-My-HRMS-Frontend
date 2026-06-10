@@ -246,35 +246,54 @@ export class TaskActionComponent implements OnInit {
 
   private determineActions() {
     const roles = this.auth.getRoles();
+    const status = (this.complaint()?.status || '').toLowerCase();
     const actions: {label: string; value: string; style: string}[] = [];
 
+    if (this.isTerminalState()) {
+      this.availableActions.set([]);
+      return;
+    }
+
     if (roles.includes('RBIO_OFFICER') || roles.includes('CEPC_OFFICER')) {
-      actions.push({ label: 'Approve & Escalate', value: 'APPROVE', style: 'approve' });
-      actions.push({ label: 'Resolve', value: 'RESOLVE', style: 'resolve' });
-      actions.push({ label: 'Reject', value: 'REJECT', style: 'reject' });
+      if (status === 'pending' || status === 'assigned' || status === 'new') {
+        actions.push({ label: 'Accept & Start Investigation', value: 'ACCEPT', style: 'approve' });
+      }
+      if (status === 'in_progress') {
+        actions.push({ label: 'Escalate', value: 'ESCALATE', style: 'escalate' });
+        actions.push({ label: 'Resolve', value: 'RESOLVE', style: 'resolve' });
+        actions.push({ label: 'Reject', value: 'REJECT', style: 'reject' });
+      }
     }
 
     if (roles.includes('RBIO_SUPERVISOR') || roles.includes('CEPC_SUPERVISOR')) {
-      actions.push({ label: 'Approve & Escalate', value: 'APPROVE', style: 'approve' });
-      actions.push({ label: 'Return to Officer', value: 'RETURN_TO_OFFICER', style: 'return' });
-      actions.push({ label: 'Resolve', value: 'RESOLVE', style: 'resolve' });
+      if (status === 'escalated' || status === 'in_progress' || status === 'under_review') {
+        actions.push({ label: 'Approve & Escalate', value: 'APPROVE', style: 'approve' });
+        actions.push({ label: 'Return to Officer', value: 'RETURN_TO_OFFICER', style: 'return' });
+        actions.push({ label: 'Resolve', value: 'RESOLVE', style: 'resolve' });
+      }
     }
 
     if (roles.includes('RBIO_CONCILIATOR') || roles.includes('CEPC_CONCILIATOR')) {
-      actions.push({ label: 'Conciliation Success', value: 'CONCILIATION_SUCCESS', style: 'approve' });
-      actions.push({ label: 'Conciliation Failed', value: 'CONCILIATION_FAILED', style: 'escalate' });
+      if (status === 'conciliation' || status === 'escalated') {
+        actions.push({ label: 'Conciliation Success', value: 'CONCILIATION_SUCCESS', style: 'approve' });
+        actions.push({ label: 'Conciliation Failed', value: 'CONCILIATION_FAILED', style: 'escalate' });
+      }
     }
 
     if (roles.includes('RBIO_ADJUDICATOR') || roles.includes('CEPC_ADJUDICATOR')) {
-      actions.push({ label: 'Award (Adjudication)', value: 'ADJUDICATION_AWARD', style: 'approve' });
-      actions.push({ label: 'Reject', value: 'REJECT', style: 'reject' });
+      if (status === 'adjudication' || status === 'escalated') {
+        actions.push({ label: 'Award (Adjudication)', value: 'ADJUDICATION_AWARD', style: 'approve' });
+        actions.push({ label: 'Reject', value: 'REJECT', style: 'reject' });
+      }
     }
 
     if (roles.includes('ADMIN')) {
-      actions.push({ label: 'Approve', value: 'APPROVE', style: 'approve' });
-      actions.push({ label: 'Escalate', value: 'ESCALATE', style: 'escalate' });
-      actions.push({ label: 'Resolve', value: 'RESOLVE', style: 'resolve' });
-      actions.push({ label: 'Reject', value: 'REJECT', style: 'reject' });
+      if (status !== 'resolved' && status !== 'closed' && status !== 'rejected') {
+        actions.push({ label: 'Approve', value: 'APPROVE', style: 'approve' });
+        actions.push({ label: 'Escalate', value: 'ESCALATE', style: 'escalate' });
+        actions.push({ label: 'Resolve', value: 'RESOLVE', style: 'resolve' });
+        actions.push({ label: 'Reject', value: 'REJECT', style: 'reject' });
+      }
     }
 
     this.availableActions.set(actions);
@@ -322,7 +341,7 @@ export class TaskActionComponent implements OnInit {
 
   isTerminalState(): boolean {
     const status = (this.complaint()?.status || '').toLowerCase();
-    return ['resolved', 'closed', 'rejected', 'withdrawn', 'adjudicated', 'conciliated'].includes(status);
+    return ['resolved', 'closed', 'rejected', 'withdrawn', 'adjudicated', 'conciliated', 'approved'].includes(status);
   }
 
   goBack() {

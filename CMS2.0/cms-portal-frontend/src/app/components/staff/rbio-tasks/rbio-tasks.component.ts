@@ -159,10 +159,11 @@ export class RbioTasksComponent implements OnInit {
 
   private loadTasks() {
     this.loading.set(true);
-    const role = this.auth.getRoles().find(r => r.startsWith('RBIO_')) || '';
+    const role = this.auth.getRoles().find(r => r.startsWith('RBIO_')) || 'RBIO_OFFICER';
+    const officer = this.auth.currentUser()?.username || '';
 
     const url = this.isHistoryView()
-      ? `${environment.apiBaseUrl}/api/v1/workflow/rbio/completed`
+      ? `${environment.apiBaseUrl}/api/v1/workflow/rbio/completed?officer=${officer}`
       : `${environment.apiBaseUrl}/api/v1/workflow/rbio/tasks?role=${role}`;
 
     this.http.get<any>(url)

@@ -1,7 +1,19 @@
 package com.hrms.cms.controller;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hrms.cms.dto.IncomingEmailRequest;
+import com.hrms.cms.entity.Complaint;
+import com.hrms.cms.entity.EmailDraft;
+import com.hrms.cms.entity.EmailDraftAttachment;
+import com.hrms.cms.repository.ComplaintRepository;
+import com.hrms.cms.repository.EmailDraftAttachmentRepository;
+import com.hrms.cms.repository.EmailDraftRepository;
+import com.hrms.cms.service.ComplaintRoutingService;
+import com.hrms.cms.service.ComplaintService;
 import com.hrms.cms.service.EmailSimulationService;
+import com.hrms.cms.service.KeycloakUserService;
+import com.hrms.cms.service.LanguageTranslationService;
 import com.hrms.cms.service.OcrExtractionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,17 +32,34 @@ public class EmailSyndicationApiController {
 
     private final EmailSimulationService emailService;
     private final OcrExtractionService ocrService;
+    private final LanguageTranslationService translationService;
+    private final KeycloakUserService keycloakUserService;
+    private final EmailDraftRepository draftRepository;
+    private final EmailDraftAttachmentRepository draftAttachmentRepository;
+    private final ComplaintRepository complaintRepository;
+    private final ComplaintRoutingService routingService;
+    private final ComplaintService complaintService;
+    private final ObjectMapper objectMapper;
 
-    private static final List<Map<String, Object>> deoPool = List.of(
-            Map.of("userId", "deo_001", "displayName", "Amit Verma", "maxThreshold", 20),
-            Map.of("userId", "deo_002", "displayName", "Sneha Patil", "maxThreshold", 15),
-            Map.of("userId", "deo_003", "displayName", "Ramesh Iyer", "maxThreshold", 20)
-    );
     private int roundRobinPointer = 0;
 
+    private List<Map<String, Object>> getDeoPool() {
+        List<Map<String, Object>> keycloakDeos = keycloakUserService.getDeos();
+        if (!keycloakDeos.isEmpty()) {
+            return keycloakDeos;
+        }
+        return List.of(
+                Map.of("userId", "deo_001", "displayName", "Amit Verma", "maxThreshold", 20),
+                Map.of("userId", "deo_002", "displayName", "Sneha Patil", "maxThreshold", 15),
+                Map.of("userId", "deo_003", "displayName", "Ramesh Iyer", "maxThreshold", 20)
+        );
+    }
+
     private String assignToNextDeo() {
-        String assignee = (String) deoPool.get(roundRobinPointer % deoPool.size()).get("displayName");
-        roundRobinPointer = (roundRobinPointer + 1) % deoPool.size();
+        List<Map<String, Object>> pool = getDeoPool();
+        if (pool.isEmpty()) return "Unassigned";
+        String assignee = (String) pool.get(roundRobinPointer % pool.size()).get("displayName");
+        roundRobinPointer = (roundRobinPointer + 1) % pool.size();
         return assignee;
     }
 
@@ -73,7 +102,6 @@ public class EmailSyndicationApiController {
         boolean ocrProcessed = false;
         int ocrConfidence = 0;
         Map<String, String> ocrExtracted = Collections.emptyMap();
-        List<Map<String, Object>> attachments = new ArrayList<>();
         String complainantName = extractName(senderEmail);
         String complainantPhone = "";
         String category = "General";
@@ -83,15 +111,6 @@ public class EmailSyndicationApiController {
             String contentType = attachment.getContentType();
             Set<String> allowedTypes = Set.of("application/pdf", "image/jpeg", "image/png", "image/tiff");
 
-            Map<String, Object> attachmentInfo = new LinkedHashMap<>();
-            attachmentInfo.put("id", 1);
-            attachmentInfo.put("fileName", attachment.getOriginalFilename());
-            attachmentInfo.put("fileType", contentType);
-            attachmentInfo.put("fileSize", attachment.getSize());
-            attachmentInfo.put("ocrText", "");
-            attachmentInfo.put("ocrConfidence", 0);
-            attachmentInfo.put("createdAt", LocalDateTime.now().toString());
-
             if (contentType != null && allowedTypes.contains(contentType)) {
                 try {
                     byte[] fileBytes = attachment.getBytes();
@@ -100,8 +119,6 @@ public class EmailSyndicationApiController {
                     if (!ocrExtracted.isEmpty()) {
                         ocrProcessed = true;
                         ocrConfidence = 85;
-                        attachmentInfo.put("ocrText", ocrExtracted.toString());
-                        attachmentInfo.put("ocrConfidence", ocrConfidence);
 
                         if (ocrExtracted.containsKey("complainantName") && !ocrExtracted.get("complainantName").isEmpty()) {
                             complainantName = ocrExtracted.get("complainantName");
@@ -124,137 +141,321 @@ public class EmailSyndicationApiController {
                 }
             }
 
-            attachments.add(attachmentInfo);
+            // Save attachment to database
+            EmailDraftAttachment att = EmailDraftAttachment.builder()
+                    .draftId(threadId)
+                    .fileName(attachment.getOriginalFilename())
+                    .fileType(contentType)
+                    .fileSize(attachment.getSize())
+                    .ocrText(ocrExtracted.isEmpty() ? "" : ocrExtracted.toString())
+                    .ocrConfidence(ocrConfidence)
+                    .uploadedBy("SYSTEM")
+                    .build();
+            draftAttachmentRepository.save(att);
         }
 
-        Map<String, Object> draft = new LinkedHashMap<>();
-        draft.put("id", 1);
-        draft.put("draftId", threadId);
-        draft.put("messageId", messageId == null || messageId.isEmpty() ? UUID.randomUUID().toString() : messageId);
-        draft.put("senderEmail", senderEmail);
-        draft.put("subject", subject);
-        draft.put("body", body);
-        draft.put("complainantName", complainantName);
-        draft.put("complainantPhone", complainantPhone);
-        draft.put("cpgramsNumber", ocrExtracted.getOrDefault("cpgramsNumber", ""));
-        draft.put("complaintSummary", complaintSummary);
-        draft.put("category", category);
-        draft.put("modeOfReceipt", "EMAIL");
-        draft.put("status", "ASSIGNED");
-        draft.put("assignedTo", assignedTo);
-        draft.put("parentComplaintId", complaintNumber);
-        draft.put("isDuplicate", false);
-        draft.put("ocrProcessed", ocrProcessed);
-        draft.put("ocrConfidence", ocrConfidence);
-        draft.put("receivedAt", LocalDateTime.now().toString());
-        draft.put("createdAt", LocalDateTime.now().toString());
-        draft.put("processedBy", "");
-        draft.put("convertedComplaintId", "");
-        draft.put("attachments", attachments);
-        draft.put("suggestedRelated", List.of());
+        // Language detection and translation
+        Map<String, Object> languageResult = translationService.detectAndTranslate(body);
+        boolean isVernacular = (boolean) languageResult.getOrDefault("isVernacular", false);
+        String translatedBody = (String) languageResult.getOrDefault("translatedText", body);
 
-        // Include OCR extracted fields so frontend can auto-fill
+        // Persist draft to database
+        String ocrJson = "";
         if (!ocrExtracted.isEmpty()) {
-            draft.put("ocrExtractedFields", ocrExtracted);
+            try {
+                ocrJson = objectMapper.writeValueAsString(ocrExtracted);
+            } catch (Exception e) {
+                ocrJson = "";
+            }
         }
 
-        return wrapResponse(draft);
+        EmailDraft draft = EmailDraft.builder()
+                .draftId(threadId)
+                .threadId(threadId)
+                .messageId(messageId == null || messageId.isEmpty() ? UUID.randomUUID().toString() : messageId)
+                .senderEmail(senderEmail)
+                .subject(subject)
+                .body(isVernacular ? translatedBody : body)
+                .complainantName(complainantName)
+                .complainantPhone(complainantPhone)
+                .complainantAddress(ocrExtracted.getOrDefault("complainantAddress", ""))
+                .complainantState(ocrExtracted.getOrDefault("complainantState", ""))
+                .complainantDistrict(ocrExtracted.getOrDefault("complainantDistrict", ""))
+                .complainantPincode(ocrExtracted.getOrDefault("complainantPincode", ""))
+                .cpgramsNumber(ocrExtracted.getOrDefault("cpgramsNumber", ""))
+                .complaintSummary(complaintSummary)
+                .category(category)
+                .modeOfReceipt("EMAIL")
+                .status("ASSIGNED")
+                .assignedTo(assignedTo)
+                .parentComplaintId(complaintNumber)
+                .isDuplicate(false)
+                .ocrProcessed(ocrProcessed)
+                .ocrConfidence(ocrConfidence)
+                .ocrExtractedFieldsJson(ocrJson)
+                .entityName(ocrExtracted.getOrDefault("entityName", ""))
+                .entityType(ocrExtracted.getOrDefault("entityType", ""))
+                .amountInvolved(parseAmount(ocrExtracted.getOrDefault("amountInvolved", "")))
+                .processedBy("")
+                .convertedComplaintId("")
+                .detectedLanguage((String) languageResult.get("detectedLanguage"))
+                .languageName((String) languageResult.get("languageName"))
+                .isVernacular(isVernacular)
+                .translationConfidence(languageResult.get("confidence") != null ?
+                        ((Number) languageResult.get("confidence")).doubleValue() : null)
+                .translatedBody(isVernacular ? body : null)
+                .receivedAt(LocalDateTime.now())
+                .build();
+
+        EmailDraft saved = draftRepository.save(draft);
+        log.info("Draft saved to DB: id={}, draftId={}, assignedTo={}", saved.getId(), saved.getDraftId(), saved.getAssignedTo());
+
+        return wrapResponse(toResponseMap(saved));
     }
 
     @GetMapping("/queue")
     public Map<String, Object> getQueue(@RequestParam(required = false) String status) {
-        List<Map<String, Object>> threads = emailService.getAllThreads();
-        List<Map<String, Object>> drafts = threads.stream().map(t -> {
-            Map<String, Object> draft = new LinkedHashMap<>();
-            int index = threads.indexOf(t);
-            draft.put("id", index + 1);
-            draft.put("draftId", t.get("threadId"));
-            draft.put("messageId", UUID.randomUUID().toString());
-            draft.put("senderEmail", t.get("fromEmail"));
-            draft.put("subject", t.get("subject"));
-            draft.put("body", "");
-            draft.put("complainantName", extractName((String) t.get("fromEmail")));
-            draft.put("complainantPhone", "");
-            draft.put("cpgramsNumber", "");
-            draft.put("complaintSummary", t.get("subject"));
-            draft.put("category", "General");
-            draft.put("modeOfReceipt", "EMAIL");
-            String threadStatus = (String) t.getOrDefault("status", "ASSIGNED");
-            draft.put("status", "COMPLETED".equals(threadStatus) ? "CONVERTED" : "ASSIGNED");
-            String assignee = (String) deoPool.get(index % deoPool.size()).get("displayName");
-            draft.put("assignedTo", assignee);
-            draft.put("parentComplaintId", t.get("complaintNumber"));
-            draft.put("isDuplicate", false);
-            draft.put("ocrProcessed", false);
-            draft.put("ocrConfidence", 0);
-            draft.put("receivedAt", t.get("sentAt") != null ? t.get("sentAt").toString() : LocalDateTime.now().toString());
-            draft.put("createdAt", t.get("sentAt") != null ? t.get("sentAt").toString() : LocalDateTime.now().toString());
-            draft.put("processedBy", "");
-            draft.put("convertedComplaintId", "");
-            draft.put("attachments", List.of());
-            draft.put("suggestedRelated", List.of());
-            return draft;
-        }).collect(Collectors.toList());
-
+        List<EmailDraft> drafts;
         if (status != null && !status.isEmpty()) {
-            drafts = drafts.stream()
-                    .filter(d -> status.equalsIgnoreCase((String) d.get("status")))
-                    .collect(Collectors.toList());
+            drafts = draftRepository.findByStatusOrderByCreatedAtDesc(status);
+        } else {
+            drafts = draftRepository.findAllByOrderByCreatedAtDesc();
         }
 
-        return wrapResponse(drafts);
+        List<Map<String, Object>> results = drafts.stream()
+                .map(this::toResponseMap)
+                .collect(Collectors.toList());
+
+        return wrapResponse(results);
     }
 
     @GetMapping("/drafts/{draftId}")
     public Map<String, Object> getDraft(@PathVariable String draftId) {
-        Map<String, Object> thread = emailService.getThread(draftId);
+        EmailDraft draft = draftRepository.findByDraftId(draftId).orElse(null);
 
-        Map<String, Object> draft = new LinkedHashMap<>();
-        draft.put("id", 1);
-        draft.put("draftId", draftId);
-        draft.put("messageId", UUID.randomUUID().toString());
-        draft.put("senderEmail", thread.get("fromEmail"));
-        draft.put("subject", thread.get("subject"));
-        draft.put("body", "");
-        draft.put("complainantName", extractName((String) thread.get("fromEmail")));
-        draft.put("complainantPhone", "");
-        draft.put("cpgramsNumber", "");
-        draft.put("complaintSummary", thread.get("subject"));
-        draft.put("category", "General");
-        draft.put("modeOfReceipt", "EMAIL");
-        String threadStatus = (String) thread.getOrDefault("status", "ASSIGNED");
-        draft.put("status", "COMPLETED".equals(threadStatus) ? "CONVERTED" : "ASSIGNED");
-        draft.put("assignedTo", assignToNextDeo());
-        draft.put("parentComplaintId", thread.get("complaintNumber"));
-        draft.put("isDuplicate", false);
-        draft.put("ocrProcessed", false);
-        draft.put("ocrConfidence", 0);
-        draft.put("receivedAt", LocalDateTime.now().toString());
-        draft.put("createdAt", LocalDateTime.now().toString());
-        draft.put("processedBy", "");
-        draft.put("convertedComplaintId", "");
-        draft.put("attachments", List.of());
-        draft.put("suggestedRelated", List.of());
+        if (draft != null) {
+            Map<String, Object> response = toResponseMap(draft);
+            return wrapResponse(response);
+        }
 
-        return wrapResponse(draft);
+        // Fallback: try to find from email thread (for legacy data before migration)
+        try {
+            Map<String, Object> thread = emailService.getThread(draftId);
+            String emailBody = "";
+            String senderEmail = (String) thread.get("fromEmail");
+            String sentAt = "";
+            List<?> emails = (List<?>) thread.get("emails");
+            if (emails != null) {
+                for (Object emailObj : emails) {
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> email = (Map<String, Object>) emailObj;
+                    if ("INBOUND".equals(email.get("direction"))) {
+                        emailBody = (String) email.getOrDefault("body", "");
+                        if (email.get("sentAt") != null) sentAt = email.get("sentAt").toString();
+                        break;
+                    }
+                }
+            }
+
+            Map<String, Object> fallback = new LinkedHashMap<>();
+            fallback.put("id", 0);
+            fallback.put("draftId", draftId);
+            fallback.put("messageId", UUID.randomUUID().toString());
+            fallback.put("senderEmail", senderEmail);
+            fallback.put("subject", thread.get("subject"));
+            fallback.put("body", emailBody);
+            fallback.put("complainantName", extractName(senderEmail));
+            fallback.put("complainantPhone", "");
+            fallback.put("cpgramsNumber", "");
+            fallback.put("complaintSummary", thread.get("subject"));
+            fallback.put("category", "General");
+            fallback.put("modeOfReceipt", "EMAIL");
+            fallback.put("status", "ASSIGNED");
+            fallback.put("assignedTo", assignToNextDeo());
+            fallback.put("parentComplaintId", thread.get("complaintNumber"));
+            fallback.put("isDuplicate", false);
+            fallback.put("ocrProcessed", false);
+            fallback.put("ocrConfidence", 0);
+            fallback.put("receivedAt", sentAt.isEmpty() ? LocalDateTime.now().toString() : sentAt);
+            fallback.put("createdAt", sentAt.isEmpty() ? LocalDateTime.now().toString() : sentAt);
+            fallback.put("processedBy", "");
+            fallback.put("convertedComplaintId", "");
+            fallback.put("attachments", List.of());
+            fallback.put("suggestedRelated", List.of());
+            return wrapResponse(fallback);
+        } catch (Exception e) {
+            return wrapResponse(Map.of("error", "Draft not found: " + draftId));
+        }
+    }
+
+    @PostMapping("/drafts")
+    public Map<String, Object> createDraft(@RequestBody Map<String, Object> request) {
+        try {
+            String draftId = (String) request.getOrDefault("draftId", "DRF-" + System.currentTimeMillis());
+            EmailDraft draft = draftRepository.findByDraftId(draftId).orElse(new EmailDraft());
+            draft.setDraftId(draftId);
+            draft.setStatus((String) request.getOrDefault("status", "DRAFT"));
+            draft.setSubject((String) request.get("subject"));
+            draft.setBody((String) request.get("body"));
+            draft.setSenderEmail((String) request.get("senderEmail"));
+            draft.setComplainantName((String) request.get("complainantName"));
+            draft.setComplainantPhone((String) request.get("complainantPhone"));
+            draft.setComplainantAddress((String) request.get("complainantAddress"));
+            draft.setComplainantState((String) request.get("complainantState"));
+            draft.setComplainantDistrict((String) request.get("complainantDistrict"));
+            draft.setComplainantPincode((String) request.get("complainantPincode"));
+            draft.setCategory((String) request.get("category"));
+            draft.setEntityName((String) request.get("entityName"));
+            draft.setEntityType((String) request.get("entityType"));
+            draft.setModeOfReceipt((String) request.getOrDefault("modeOfReceipt", "PHYSICAL_LETTER"));
+            draft.setAssignedTo((String) request.get("assignedTo"));
+            draft.setProcessedBy((String) request.get("processedBy"));
+            draft.setDeoDecision((String) request.get("deoDecision"));
+            draft.setDeoRemarks((String) request.get("deoRemarks"));
+            draft.setNonMaintainableReason((String) request.get("nonMaintainableReason"));
+            draft.setReceivedAt(java.time.LocalDateTime.now());
+
+            draftRepository.save(draft);
+            return wrapResponse(Map.of("draftId", draft.getDraftId(), "status", draft.getStatus()));
+        } catch (Exception e) {
+            return wrapResponse(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PutMapping("/drafts/{draftId}")
+    public Map<String, Object> updateDraft(@PathVariable String draftId, @RequestBody Map<String, Object> request) {
+        EmailDraft draft = draftRepository.findByDraftId(draftId).orElse(null);
+        if (draft == null) {
+            return wrapResponse(Map.of("error", "Draft not found"));
+        }
+
+        if (request.containsKey("subject")) draft.setSubject((String) request.get("subject"));
+        if (request.containsKey("body")) draft.setBody((String) request.get("body"));
+        if (request.containsKey("complainantName")) draft.setComplainantName((String) request.get("complainantName"));
+        if (request.containsKey("complainantPhone")) draft.setComplainantPhone((String) request.get("complainantPhone"));
+        if (request.containsKey("complainantAddress")) draft.setComplainantAddress((String) request.get("complainantAddress"));
+        if (request.containsKey("complainantState")) draft.setComplainantState((String) request.get("complainantState"));
+        if (request.containsKey("complainantDistrict")) draft.setComplainantDistrict((String) request.get("complainantDistrict"));
+        if (request.containsKey("complainantPincode")) draft.setComplainantPincode((String) request.get("complainantPincode"));
+        if (request.containsKey("cpgramsNumber")) draft.setCpgramsNumber((String) request.get("cpgramsNumber"));
+        if (request.containsKey("complaintSummary")) draft.setComplaintSummary((String) request.get("complaintSummary"));
+        if (request.containsKey("category")) draft.setCategory((String) request.get("category"));
+        if (request.containsKey("entityName")) draft.setEntityName((String) request.get("entityName"));
+        if (request.containsKey("entityType")) draft.setEntityType((String) request.get("entityType"));
+        if (request.containsKey("status")) draft.setStatus((String) request.get("status"));
+        if (request.containsKey("assignedTo")) draft.setAssignedTo((String) request.get("assignedTo"));
+        if (request.containsKey("processedBy")) draft.setProcessedBy((String) request.get("processedBy"));
+        if (request.containsKey("deoDecision")) draft.setDeoDecision((String) request.get("deoDecision"));
+        if (request.containsKey("deoRemarks")) draft.setDeoRemarks((String) request.get("deoRemarks"));
+        if (request.containsKey("nonMaintainableReason")) draft.setNonMaintainableReason((String) request.get("nonMaintainableReason"));
+        if (request.containsKey("reviewerDecision")) draft.setReviewerDecision((String) request.get("reviewerDecision"));
+        if (request.containsKey("reviewerRemarks")) draft.setReviewerRemarks((String) request.get("reviewerRemarks"));
+        if (request.containsKey("targetOffice")) draft.setTargetOffice((String) request.get("targetOffice"));
+
+        draftRepository.save(draft);
+
+        // When reviewer approves → create a Complaint record and route to RBIO/CEPC
+        String newStatus = (String) request.get("status");
+        if ("APPROVED_ROUTED".equals(newStatus)) {
+            createComplaintFromDraft(draft);
+        }
+
+        return wrapResponse(toResponseMap(draft));
+    }
+
+    private void createComplaintFromDraft(EmailDraft draft) {
+        String entityName = draft.getEntityName() != null ? draft.getEntityName() : "";
+        String department = routingService.resolveDepartment(entityName);
+        String targetOffice = draft.getTargetOffice() != null ? draft.getTargetOffice() : department;
+
+        // Determine the department from the target office
+        if (targetOffice.startsWith("RBIO")) department = "RBIO";
+        else if (targetOffice.startsWith("CEPC") || targetOffice.equals("CEPC")) department = "CEPC";
+
+        String assignedRole = "RBIO".equals(department) ? "RBIO_OFFICER" : "CEPC_OFFICER";
+
+        // Generate complaint number
+        String dateStr = LocalDateTime.now().toString().substring(0, 10).replace("-", "");
+        String rand = String.valueOf((int) (100000 + Math.random() * 900000));
+        String complaintNumber = "CMP-" + dateStr + "-" + rand;
+
+        Complaint complaint = Complaint.builder()
+                .complaintNumber(complaintNumber)
+                .complainantName(draft.getComplainantName() != null ? draft.getComplainantName() : "Unknown")
+                .complainantEmail(draft.getSenderEmail())
+                .complainantPhone(draft.getComplainantPhone())
+                .complainantAddress(draft.getComplainantAddress())
+                .subject(draft.getSubject() != null ? draft.getSubject() : "Email Complaint")
+                .description(draft.getBody())
+                .status("assigned")
+                .priority("medium")
+                .filingType(draft.getModeOfReceipt() != null ? draft.getModeOfReceipt() : "EMAIL")
+                .department(department)
+                .assignedRole(assignedRole)
+                .assignedOfficer(targetOffice)
+                .entityCode(entityName)
+                .workflowStage("INITIAL_REVIEW")
+                .build();
+
+        Complaint saved = complaintRepository.save(complaint);
+
+        // Update draft with generated complaint number
+        draft.setConvertedComplaintId(complaintNumber);
+        draft.setStatus("APPROVED_ROUTED");
+        draftRepository.save(draft);
+
+        // Add timeline entry
+        complaintService.addTimeline(saved.getId(), "CREATED_FROM_CRPC", "REVIEWER",
+                "Complaint created from CRPC draft " + draft.getDraftId() + ". Routed to " + department + " (" + targetOffice + ")",
+                null, "assigned");
+
+        log.info("Complaint {} created from draft {} → routed to {} ({})",
+                complaintNumber, draft.getDraftId(), department, targetOffice);
+    }
+
+    @PostMapping("/drafts/{draftId}/convert")
+    public Map<String, Object> convertDraft(@PathVariable String draftId) {
+        EmailDraft draft = draftRepository.findByDraftId(draftId).orElse(null);
+        if (draft == null) {
+            return wrapResponse(Map.of("error", "Draft not found"));
+        }
+
+        draft.setStatus("CONVERTED");
+        draft.setConvertedComplaintId(draft.getParentComplaintId());
+        draft.setProcessedBy("System");
+        draftRepository.save(draft);
+
+        return wrapResponse(toResponseMap(draft));
+    }
+
+    @PostMapping("/drafts/{draftId}/reassign")
+    public Map<String, Object> reassignDraft(@PathVariable String draftId, @RequestParam String targetDeoId) {
+        EmailDraft draft = draftRepository.findByDraftId(draftId).orElse(null);
+        if (draft == null) {
+            return wrapResponse(Map.of("error", "Draft not found"));
+        }
+
+        draft.setAssignedTo(targetDeoId);
+        draftRepository.save(draft);
+        return wrapResponse(toResponseMap(draft));
     }
 
     @GetMapping("/stats")
     public Map<String, Object> getStats() {
-        Map<String, Object> emailStats = emailService.getStats();
-        int total = (int) emailStats.getOrDefault("totalThreads", 0);
-        long completed = (long) emailStats.getOrDefault("completed", 0L);
-        long awaiting = (long) emailStats.getOrDefault("awaitingForm", 0L);
+        long total = draftRepository.count();
+        long assigned = draftRepository.countByStatus("ASSIGNED");
+        long converted = draftRepository.countByStatus("CONVERTED");
+        long inProgress = draftRepository.countByStatus("IN_PROGRESS");
 
         Map<String, Object> stats = new LinkedHashMap<>();
         stats.put("totalDrafts", total);
         stats.put("pendingCount", 0);
-        stats.put("assignedCount", awaiting);
-        stats.put("inProgressCount", 0);
-        stats.put("convertedCount", completed);
+        stats.put("assignedCount", assigned);
+        stats.put("inProgressCount", inProgress);
+        stats.put("convertedCount", converted);
         stats.put("duplicateCount", 0);
         stats.put("ignoredCount", 0);
-        stats.put("activeDeoCount", deoPool.size());
+        stats.put("activeDeoCount", getDeoPool().size());
 
         return wrapResponse(stats);
     }
@@ -296,22 +497,23 @@ public class EmailSyndicationApiController {
 
     @GetMapping("/deo")
     public Map<String, Object> getDeos() {
+        List<Map<String, Object>> keycloakDeos = keycloakUserService.getDeos();
         List<Map<String, Object>> deos = new ArrayList<>();
-        deos.add(Map.of(
-                "id", 1, "userId", "deo_001", "displayName", "Amit Verma",
-                "email", "amit.verma@rbi.org.in", "isActive", true, "isOnLeave", false,
-                "maxThreshold", 20, "currentAssignedCount", 5, "sortOrder", 1
-        ));
-        deos.add(Map.of(
-                "id", 2, "userId", "deo_002", "displayName", "Sneha Patil",
-                "email", "sneha.patil@rbi.org.in", "isActive", true, "isOnLeave", false,
-                "maxThreshold", 15, "currentAssignedCount", 8, "sortOrder", 2
-        ));
-        deos.add(Map.of(
-                "id", 3, "userId", "deo_003", "displayName", "Ramesh Iyer",
-                "email", "ramesh.iyer@rbi.org.in", "isActive", true, "isOnLeave", true,
-                "maxThreshold", 20, "currentAssignedCount", 0, "sortOrder", 3
-        ));
+        int sortOrder = 1;
+        for (Map<String, Object> kc : keycloakDeos) {
+            Map<String, Object> deo = new LinkedHashMap<>();
+            deo.put("id", sortOrder);
+            deo.put("userId", kc.get("userId"));
+            deo.put("displayName", kc.get("displayName"));
+            deo.put("email", kc.getOrDefault("email", ""));
+            deo.put("isActive", Boolean.TRUE.equals(kc.get("enabled")));
+            deo.put("isOnLeave", false);
+            deo.put("maxThreshold", 20);
+            deo.put("currentAssignedCount", draftRepository.findByAssignedToOrderByCreatedAtDesc(
+                    (String) kc.get("displayName")).size());
+            deo.put("sortOrder", sortOrder++);
+            deos.add(deo);
+        }
         return wrapResponse(deos);
     }
 
@@ -365,74 +567,8 @@ public class EmailSyndicationApiController {
 
     @PostMapping("/deo/reset-pointer")
     public Map<String, Object> resetPointer() {
-        return wrapResponse(null);
-    }
-
-    @PutMapping("/drafts/{draftId}")
-    public Map<String, Object> updateDraft(@PathVariable String draftId, @RequestBody Map<String, Object> request) {
-        Map<String, Object> thread = emailService.getThread(draftId);
-        Map<String, Object> draft = new LinkedHashMap<>();
-        draft.put("id", 1);
-        draft.put("draftId", draftId);
-        draft.put("messageId", UUID.randomUUID().toString());
-        draft.put("senderEmail", thread.get("fromEmail"));
-        draft.put("subject", request.getOrDefault("subject", thread.get("subject")));
-        draft.put("body", request.getOrDefault("body", ""));
-        draft.put("complainantName", request.getOrDefault("complainantName", ""));
-        draft.put("complainantPhone", request.getOrDefault("complainantPhone", ""));
-        draft.put("cpgramsNumber", request.getOrDefault("cpgramsNumber", ""));
-        draft.put("complaintSummary", request.getOrDefault("complaintSummary", ""));
-        draft.put("category", request.getOrDefault("category", "General"));
-        draft.put("modeOfReceipt", "EMAIL");
-        draft.put("status", "IN_PROGRESS");
-        draft.put("assignedTo", "");
-        draft.put("parentComplaintId", thread.get("complaintNumber"));
-        draft.put("isDuplicate", false);
-        draft.put("ocrProcessed", false);
-        draft.put("ocrConfidence", 0);
-        draft.put("receivedAt", LocalDateTime.now().toString());
-        draft.put("createdAt", LocalDateTime.now().toString());
-        draft.put("processedBy", "");
-        draft.put("convertedComplaintId", "");
-        draft.put("attachments", List.of());
-        draft.put("suggestedRelated", List.of());
-        return wrapResponse(draft);
-    }
-
-    @PostMapping("/drafts/{draftId}/convert")
-    public Map<String, Object> convertDraft(@PathVariable String draftId) {
-        Map<String, Object> thread = emailService.getThread(draftId);
-        Map<String, Object> draft = new LinkedHashMap<>();
-        draft.put("id", 1);
-        draft.put("draftId", draftId);
-        draft.put("messageId", UUID.randomUUID().toString());
-        draft.put("senderEmail", thread.get("fromEmail"));
-        draft.put("subject", thread.get("subject"));
-        draft.put("body", "");
-        draft.put("complainantName", extractName((String) thread.get("fromEmail")));
-        draft.put("complainantPhone", "");
-        draft.put("cpgramsNumber", "");
-        draft.put("complaintSummary", thread.get("subject"));
-        draft.put("category", "General");
-        draft.put("modeOfReceipt", "EMAIL");
-        draft.put("status", "CONVERTED");
-        draft.put("assignedTo", "");
-        draft.put("parentComplaintId", thread.get("complaintNumber"));
-        draft.put("isDuplicate", false);
-        draft.put("ocrProcessed", false);
-        draft.put("ocrConfidence", 0);
-        draft.put("receivedAt", LocalDateTime.now().toString());
-        draft.put("createdAt", LocalDateTime.now().toString());
-        draft.put("processedBy", "System");
-        draft.put("convertedComplaintId", thread.get("complaintNumber"));
-        draft.put("attachments", List.of());
-        draft.put("suggestedRelated", List.of());
-        return wrapResponse(draft);
-    }
-
-    @PostMapping("/drafts/{draftId}/reassign")
-    public Map<String, Object> reassignDraft(@PathVariable String draftId, @RequestParam String targetDeoId) {
-        return wrapResponse(null);
+        roundRobinPointer = 0;
+        return wrapResponse(Map.of("message", "Round-robin pointer reset", "pointer", 0));
     }
 
     @DeleteMapping("/ignore-list/{id}")
@@ -448,6 +584,88 @@ public class EmailSyndicationApiController {
         entry.put("isActive", true);
         entry.put("createdAt", LocalDateTime.now().toString());
         return wrapResponse(entry);
+    }
+
+    // ─── Helper methods ───
+
+    private Map<String, Object> toResponseMap(EmailDraft draft) {
+        List<EmailDraftAttachment> attachments = draftAttachmentRepository
+                .findByDraftIdOrderByCreatedAtAsc(draft.getDraftId());
+
+        List<Map<String, Object>> attachmentList = attachments.stream().map(a -> {
+            Map<String, Object> att = new LinkedHashMap<>();
+            att.put("id", "ATT-" + a.getId());
+            att.put("fileName", a.getFileName());
+            att.put("fileType", a.getFileType());
+            att.put("fileSize", a.getFileSize());
+            att.put("ocrText", a.getOcrText());
+            att.put("ocrConfidence", a.getOcrConfidence());
+            att.put("createdAt", a.getCreatedAt() != null ? a.getCreatedAt().toString() : "");
+            att.put("uploadedBy", a.getUploadedBy());
+            return att;
+        }).collect(Collectors.toList());
+
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("id", draft.getId());
+        response.put("draftId", draft.getDraftId());
+        response.put("messageId", draft.getMessageId());
+        response.put("senderEmail", draft.getSenderEmail());
+        response.put("subject", draft.getSubject());
+        response.put("body", draft.getBody());
+        response.put("complainantName", draft.getComplainantName());
+        response.put("complainantPhone", draft.getComplainantPhone());
+        response.put("complainantAddress", draft.getComplainantAddress());
+        response.put("complainantState", draft.getComplainantState());
+        response.put("complainantDistrict", draft.getComplainantDistrict());
+        response.put("complainantPincode", draft.getComplainantPincode());
+        response.put("cpgramsNumber", draft.getCpgramsNumber());
+        response.put("complaintSummary", draft.getComplaintSummary());
+        response.put("category", draft.getCategory());
+        response.put("modeOfReceipt", draft.getModeOfReceipt());
+        response.put("status", draft.getStatus());
+        response.put("assignedTo", draft.getAssignedTo());
+        response.put("parentComplaintId", draft.getParentComplaintId());
+        response.put("isDuplicate", draft.isDuplicate());
+        response.put("ocrProcessed", draft.isOcrProcessed());
+        response.put("ocrConfidence", draft.getOcrConfidence());
+        response.put("entityName", draft.getEntityName());
+        response.put("entityType", draft.getEntityType());
+        response.put("amountInvolved", draft.getAmountInvolved());
+        response.put("receivedAt", draft.getReceivedAt() != null ? draft.getReceivedAt().toString() : "");
+        response.put("createdAt", draft.getCreatedAt() != null ? draft.getCreatedAt().toString() : "");
+        response.put("processedBy", draft.getProcessedBy());
+        response.put("convertedComplaintId", draft.getConvertedComplaintId());
+        response.put("attachments", attachmentList);
+        response.put("suggestedRelated", List.of());
+
+        // DEO assessment
+        response.put("deoDecision", draft.getDeoDecision());
+        response.put("deoRemarks", draft.getDeoRemarks());
+        response.put("nonMaintainableReason", draft.getNonMaintainableReason());
+
+        // Reviewer
+        response.put("reviewerDecision", draft.getReviewerDecision());
+        response.put("reviewerRemarks", draft.getReviewerRemarks());
+        response.put("targetOffice", draft.getTargetOffice());
+
+        // Language info
+        response.put("detectedLanguage", draft.getDetectedLanguage());
+        response.put("languageName", draft.getLanguageName());
+        response.put("isVernacular", draft.isVernacular());
+        response.put("translationConfidence", draft.getTranslationConfidence());
+
+        // OCR extracted fields
+        if (draft.isOcrProcessed() && draft.getOcrExtractedFieldsJson() != null && !draft.getOcrExtractedFieldsJson().isEmpty()) {
+            try {
+                Map<String, String> ocrFields = objectMapper.readValue(
+                        draft.getOcrExtractedFieldsJson(), new TypeReference<Map<String, String>>() {});
+                response.put("ocrExtractedFields", ocrFields);
+            } catch (Exception e) {
+                log.warn("Failed to parse OCR fields JSON for draft {}", draft.getDraftId());
+            }
+        }
+
+        return response;
     }
 
     private Map<String, Object> wrapResponse(Object data) {
@@ -467,5 +685,14 @@ public class EmailSyndicationApiController {
         return Arrays.stream(parts)
                 .map(p -> p.substring(0, 1).toUpperCase() + p.substring(1))
                 .collect(Collectors.joining(" "));
+    }
+
+    private Double parseAmount(String amountStr) {
+        if (amountStr == null || amountStr.isEmpty()) return null;
+        try {
+            return Double.parseDouble(amountStr.replaceAll("[^0-9.]", ""));
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 }

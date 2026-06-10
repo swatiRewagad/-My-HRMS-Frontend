@@ -4,6 +4,7 @@ import com.rbi.cms.common.dto.ApiResponse;
 import com.rbi.cms.common.enums.ComplaintStatus;
 import com.rbi.cms.workflow.dto.OfficerTaskResponse;
 import com.rbi.cms.workflow.service.ComplaintWorkflowProcessor;
+import com.rbi.cms.workflow.service.DevLocalWorkflowService;
 import com.rbi.cms.workflow.service.TaskQueryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -51,5 +52,29 @@ public class WorkflowController {
 
         workflowService.escalateComplaint(complaintId, reason);
         return ResponseEntity.ok(ApiResponse.success(null, "Complaint escalated successfully"));
+    }
+
+    @PostMapping("/{complaintId}/transfer")
+    @Operation(summary = "Transfer between departments", description = "Transfer complaint between RBIO and CEPC")
+    public ResponseEntity<ApiResponse<Void>> transferDepartment(
+            @PathVariable String complaintId,
+            @RequestParam String fromDepartment,
+            @RequestParam String toDepartment,
+            @RequestParam(required = false) String reason) {
+
+        if (workflowService instanceof DevLocalWorkflowService devLocal) {
+            devLocal.transferDepartment(complaintId, fromDepartment, toDepartment, reason);
+        }
+        return ResponseEntity.ok(ApiResponse.success(null, "Transferred from " + fromDepartment + " to " + toDepartment));
+    }
+
+    @PostMapping("/{complaintId}/forward-from-crpc")
+    @Operation(summary = "Forward from CRPC", description = "Forward complaint from CRPC pipeline to target department (RBIO/CEPC) after DEO+Reviewer approval")
+    public ResponseEntity<ApiResponse<Void>> forwardFromCrpc(@PathVariable String complaintId) {
+
+        if (workflowService instanceof DevLocalWorkflowService devLocal) {
+            devLocal.forwardFromCrpc(complaintId);
+        }
+        return ResponseEntity.ok(ApiResponse.success(null, "Forwarded from CRPC to target department"));
     }
 }

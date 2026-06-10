@@ -58,16 +58,8 @@ export class EmailQueueComponent implements OnInit {
     this.router.navigate(['/email-syndication/ignore-list']);
   }
 
-  navigateToDeoManagement() {
-    this.router.navigate(['/email-syndication/deo-management']);
-  }
-
   navigateToSimulator() {
     this.router.navigate(['/email-syndication/simulator']);
-  }
-
-  navigateToReviewerManagement() {
-    this.router.navigate(['/crpc/reviewer-management']);
   }
 
   getStatusClass(status: string): string {

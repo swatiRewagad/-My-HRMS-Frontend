@@ -11,6 +11,12 @@ export const sessionTimeoutInterceptor: HttpInterceptorFn = (req, next) => {
   const sessionService = inject(SessionService);
   const router = inject(Router);
 
+  // Skip session management for CRPC routes (uses Keycloak auth instead)
+  const isCrpcRoute = router.url.startsWith('/crpc');
+  if (isCrpcRoute) {
+    return next(req);
+  }
+
   const hasSession = sessionService.getToken() !== null;
 
   if (hasSession && sessionService.isExpired()) {

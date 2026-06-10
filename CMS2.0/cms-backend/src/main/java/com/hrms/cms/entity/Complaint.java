@@ -81,6 +81,12 @@ public class Complaint {
     @Column(length = 50)
     private String assignedRole;
 
+    @Column(length = 50)
+    private String entityCode;
+
+    @Column(length = 50)
+    private String workflowStage;
+
     private LocalDateTime filedAt;
     private LocalDateTime resolvedAt;
     private LocalDateTime closedAt;

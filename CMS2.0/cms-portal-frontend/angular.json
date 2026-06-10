@@ -44,6 +44,9 @@
         },
         "serve": {
           "builder": "@angular/build:dev-server",
+          "options": {
+            "proxyConfig": "proxy.conf.json"
+          },
           "configurations": {
             "production": { "buildTarget": "cms-portal-frontend:build:production" },
             "development": { "buildTarget": "cms-portal-frontend:build:development" }

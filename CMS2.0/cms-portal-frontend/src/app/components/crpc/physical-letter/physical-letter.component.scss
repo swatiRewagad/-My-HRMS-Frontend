@@ -633,3 +633,67 @@
   font-size: 0.8rem;
   margin-top: 6px;
 }
+
+// ═══ CLICKABLE PAST COMPLAINT CARDS ═══
+.past-complaint-item.clickable {
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  &:hover { background: #e8f0fe; border-color: #1565c0; }
+}
+
+// ═══ PAST COMPLAINT DETAIL MODAL ═══
+.modal-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.5); z-index: 9999;
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+}
+
+.past-detail-modal {
+  background: white; border-radius: 12px; width: 100%; max-width: 700px;
+  max-height: 85vh; display: flex; flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+
+.modal-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 16px 24px; border-bottom: 1px solid #e0e0e0;
+  h3 { margin: 0; font-size: 16px; color: #1a237e; }
+  .modal-close { background: none; border: none; font-size: 24px; cursor: pointer; color: #666; &:hover { color: #d32f2f; } }
+}
+
+.modal-body { padding: 20px 24px; overflow-y: auto; flex: 1; }
+
+.detail-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+  margin-bottom: 20px; padding: 12px; background: #f5f7fa; border-radius: 8px;
+  .detail-item {
+    label { display: block; font-size: 11px; color: #666; text-transform: uppercase; margin-bottom: 2px; }
+    span { font-size: 13px; font-weight: 500; color: #333; }
+    .status-badge { color: #1565c0; font-weight: 600; }
+  }
+}
+
+.detail-section {
+  margin-bottom: 16px;
+  h4 { margin: 0 0 6px; font-size: 13px; color: #1a237e; text-transform: uppercase; }
+  p { margin: 2px 0; font-size: 13px; color: #444; }
+  .description-text { white-space: pre-wrap; background: #f9f9f9; padding: 10px; border-radius: 6px; font-size: 12px; }
+}
+
+.resolution-section { background: #e8f5e9; padding: 12px; border-radius: 8px; border-left: 4px solid #2e7d32; }
+
+.timeline-list { padding-left: 16px; border-left: 2px solid #e0e0e0; }
+
+.timeline-entry {
+  position: relative; padding: 8px 0 8px 16px; margin-bottom: 8px;
+  .timeline-dot { position: absolute; left: -23px; top: 12px; width: 8px; height: 8px; border-radius: 50%; background: #1565c0; }
+  .timeline-content {
+    .timeline-header { display: flex; justify-content: space-between; align-items: center;
+      .timeline-action { font-weight: 600; font-size: 12px; color: #333; text-transform: uppercase; }
+      .timeline-time { font-size: 11px; color: #888; }
+    }
+    .timeline-by { font-size: 11px; color: #666; margin: 2px 0; }
+    .timeline-remarks { font-size: 12px; color: #444; margin: 4px 0; background: #f5f5f5; padding: 6px 8px; border-radius: 4px; }
+    .timeline-transition { font-size: 11px; color: #888; font-style: italic; }
+  }
+}

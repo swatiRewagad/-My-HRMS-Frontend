@@ -29,6 +29,7 @@ public class ComplaintService {
     private final ComplaintTimelineRepository timelineRepository;
     private final ComplaintAttachmentRepository attachmentRepository;
     private final ComplaintEventPublisher eventPublisher;
+    private final ComplaintRoutingService routingService;
 
     @Cacheable(value = "dashboard", unless = "#result == null")
     @Transactional(readOnly = true)
@@ -77,6 +78,11 @@ public class ComplaintService {
     }
 
     @Transactional(readOnly = true)
+    public List<Complaint> getByComplainantPhone(String phone) {
+        return complaintRepository.findByComplainantPhoneOrderByCreatedAtDesc(phone);
+    }
+
+    @Transactional(readOnly = true)
     public List<Complaint> getByStatus(String status) {
         return complaintRepository.findByStatusOrderByCreatedAtDesc(status);
     }
@@ -108,9 +114,24 @@ public class ComplaintService {
                 .bankComplaintDate(req.getBankComplaintDate() != null ? LocalDateTime.parse(req.getBankComplaintDate() + "T00:00:00") : null)
                 .build();
 
+        // Apply routing based on filing type and entity (mirrors jBPM DepartmentRoutingTask)
+        String entityCode = "";
+        if (complaint.getBankId() != null) {
+            entityCode = bankRepository.findById(complaint.getBankId())
+                    .map(Bank::getCode).orElse("");
+        }
+        complaint.setEntityCode(entityCode);
+        ComplaintRoutingService.RoutingDecision routing = routingService.routeComplaint(complaint, entityCode);
+        complaint.setDepartment(routing.getDepartment());
+        complaint.setAssignedRole(routing.getAssignedRole());
+        complaint.setAssignedOfficer(routing.getAssignedOfficer());
+        complaint.setWorkflowStage(routing.getStage());
+
         Complaint saved = complaintRepository.save(complaint);
 
-        addTimelineAsync(saved.getId(), "filed", "System", "Complaint filed successfully", null, "pending");
+        addTimeline(saved.getId(), "filed", "System",
+                "Complaint filed and routed to " + routing.getDepartment() + " (" + routing.getReason() + ")",
+                null, "pending");
 
         eventPublisher.publishComplaintIngested(saved);
 

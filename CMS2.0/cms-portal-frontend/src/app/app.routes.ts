@@ -36,10 +36,6 @@ export const routes: Routes = [
     loadComponent: () => import('./components/email-syndication/ignore-list/ignore-list.component').then(m => m.IgnoreListComponent)
   },
   {
-    path: 'email-syndication/deo-management',
-    loadComponent: () => import('./components/email-syndication/deo-management/deo-management.component').then(m => m.DeoManagementComponent)
-  },
-  {
     path: 'email-syndication/simulator',
     loadComponent: () => import('./components/email-syndication/email-simulator/email-simulator.component').then(m => m.EmailSimulatorComponent)
   },
@@ -146,10 +142,6 @@ export const routes: Routes = [
     loadComponent: () => import('./components/crpc/draft-assessment/draft-assessment.component').then(m => m.DraftAssessmentComponent)
   },
   {
-    path: 'crpc/reviewer-management',
-    loadComponent: () => import('./components/crpc/reviewer-management/reviewer-management.component').then(m => m.ReviewerManagementComponent)
-  },
-  {
     path: 'crpc/reviewer',
     loadComponent: () => import('./components/crpc/reviewer-home/reviewer-home.component').then(m => m.ReviewerHomeComponent)
   },
@@ -172,6 +164,7 @@ export const routes: Routes = [
       { path: 'withdraw/:id', canActivate: [publicAuthGuard], loadComponent: () => import('./components/public/withdraw-complaint/withdraw-complaint.component').then(m => m.WithdrawComplaintComponent) },
       { path: 'feedback', canActivate: [publicAuthGuard], loadComponent: () => import('./components/public/submit-feedback/submit-feedback.component').then(m => m.SubmitFeedbackComponent) },
       { path: 'appeal', canActivate: [publicAuthGuard], loadComponent: () => import('./components/public/file-appeal/file-appeal.component').then(m => m.FileAppealComponent) },
+      { path: 'history', canActivate: [publicAuthGuard], loadComponent: () => import('./components/public/complaint-history/complaint-history.component').then(m => m.ComplaintHistoryComponent) },
     ]
   },
   {

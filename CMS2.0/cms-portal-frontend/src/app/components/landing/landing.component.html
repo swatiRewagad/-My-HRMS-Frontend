@@ -2,7 +2,7 @@
   @if (!showEligibility()) {
     <section class="hero">
       <div class="hero-content">
-        <img src="assets/rbi-logo.png" alt="RBI" class="rbi-logo" onerror="this.style.display='none'">
+        <img src="assets/rbi-logo.jpg" alt="RBI" class="rbi-logo" onerror="this.src='assets/rbi-logo.svg'">
         <h1>RBI Complaint Management System</h1>
         <p class="tagline">Integrated Ombudsman Scheme - File and Track Complaints Against Regulated Entities</p>
 
@@ -12,12 +12,6 @@
             <i class="pi pi-search"></i>
             <h3>Search Complaints</h3>
             <p>Full-text search across all complaints with advanced filters</p>
-          </div>
-
-          <div class="action-card admin-card" (click)="navigateToAdmin()">
-            <i class="pi pi-chart-bar"></i>
-            <h3>Admin Dashboard</h3>
-            <p>Monitor SLA metrics, view analytics, and manage system health</p>
           </div>
 
           <div class="action-card simulator-card" (click)="navigateToEmailSimulator()">
@@ -44,11 +38,6 @@
             <p>Manage users, roles, realm settings, and department access mappings</p>
           </div>
 
-          <div class="action-card rules-card" (click)="navigateToRulesConfig()">
-            <i class="pi pi-cog"></i>
-            <h3>Rules Config</h3>
-            <p>Configure business rules — SLA thresholds, routing logic, escalation policies</p>
-          </div>
         </div>
       </div>
     </section>

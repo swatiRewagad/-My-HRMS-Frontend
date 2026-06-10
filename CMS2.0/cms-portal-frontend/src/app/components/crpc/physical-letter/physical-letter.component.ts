@@ -76,6 +76,11 @@ export class PhysicalLetterComponent implements OnInit {
   pastComplaints = signal<PastComplaint[]>([]);
   pastSearch = '';
 
+  // Past Complaint Detail Modal
+  showPastComplaintDetail = signal(false);
+  pastComplaintDetail = signal<any>(null);
+  loadingPastDetail = signal(false);
+
   // State
   saving = signal(false);
   submitting = signal(false);
@@ -245,10 +250,6 @@ export class PhysicalLetterComponent implements OnInit {
         fileName: this.scannedFile?.name || 'scanned_letter.pdf',
         fileSize: this.scannedFile ? (this.scannedFile.size / 1024 / 1024).toFixed(2) + ' MB' : '2.4 MB',
       }));
-
-      setTimeout(() => {
-        this.router.navigate(['/crpc/draft', newDraftId]);
-      }, 2500);
     }, 1500);
   }
 
@@ -268,6 +269,29 @@ export class PhysicalLetterComponent implements OnInit {
           this.pastComplaints.set([]);
         }
       });
+  }
+
+  openPastComplaintDetail(complaintNumber: string) {
+    this.showPastComplaintDetail.set(true);
+    this.loadingPastDetail.set(true);
+    this.pastComplaintDetail.set(null);
+
+    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/past-complaints/detail/${complaintNumber}`)
+      .subscribe({
+        next: (res) => {
+          this.pastComplaintDetail.set(res?.data || null);
+          this.loadingPastDetail.set(false);
+        },
+        error: () => {
+          this.loadingPastDetail.set(false);
+          this.showPastComplaintDetail.set(false);
+        }
+      });
+  }
+
+  closePastComplaintDetail() {
+    this.showPastComplaintDetail.set(false);
+    this.pastComplaintDetail.set(null);
   }
 
   goBack() {
