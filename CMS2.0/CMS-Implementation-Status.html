@@ -668,6 +668,60 @@
                         <td><span class="badge badge-done">Done</span></td>
                         <td>Topic config, producer/consumer setup</td>
                     </tr>
+                    <tr>
+                        <td><strong>CRPC DEO Home</strong></td>
+                        <td>UI Component</td>
+                        <td><span class="badge badge-done">Done</span></td>
+                        <td>Complaint queue, filters, CSV/Excel export, sequential IDs (C001)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>CRPC Draft Assessment</strong></td>
+                        <td>UI Component</td>
+                        <td><span class="badge badge-done">Done</span></td>
+                        <td>DEO complaint entry form, OCR, vernacular detection</td>
+                    </tr>
+                    <tr>
+                        <td><strong>CRPC Reviewer Home</strong></td>
+                        <td>UI Component</td>
+                        <td><span class="badge badge-done">Done</span></td>
+                        <td>Review queue, approve/reject/send-back workflow</td>
+                    </tr>
+                    <tr>
+                        <td><strong>CRPC Ops Head</strong></td>
+                        <td>UI Component</td>
+                        <td><span class="badge badge-done">Done</span></td>
+                        <td>Transfer list, detail view, forward panel (language/territory)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Email Syndication / OCR</strong></td>
+                        <td>Backend API</td>
+                        <td><span class="badge badge-done">Done</span></td>
+                        <td>Email ingest, OCR processing, round-robin DEO assignment</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Session Management</strong></td>
+                        <td>Feature</td>
+                        <td><span class="badge badge-done">Done</span></td>
+                        <td>Configurable timeout, activity detection, extend-session popup</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Hazelcast Cache</strong></td>
+                        <td>Infrastructure</td>
+                        <td><span class="badge badge-done">Done</span></td>
+                        <td>Embedded Hazelcast replaces Redis (no external dependency)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>CEPC Dashboard</strong></td>
+                        <td>UI Component</td>
+                        <td><span class="badge badge-done">Done</span></td>
+                        <td>CEPC complaint list and detail view</td>
+                    </tr>
+                    <tr>
+                        <td><strong>RBIO Tasks</strong></td>
+                        <td>UI Component</td>
+                        <td><span class="badge badge-done">Done</span></td>
+                        <td>RBIO officer task queue and actions</td>
+                    </tr>
                 </tbody>
             </table>
 
@@ -728,8 +782,8 @@
                     <tr>
                         <td><strong>Keycloak / Auth</strong></td>
                         <td>Infrastructure</td>
-                        <td><span class="badge badge-partial">Partial</span></td>
-                        <td>Disabled in dev-local; realm config exists</td>
+                        <td><span class="badge badge-done">Done</span></td>
+                        <td>SSO integrated, session timeout with extend popup, role-based redirect</td>
                     </tr>
                     <tr>
                         <td><strong>Customer Notification on Status Change</strong></td>
@@ -755,8 +809,8 @@
                     <tr>
                         <td><strong>Admin Dashboard</strong></td>
                         <td>UI Feature</td>
-                        <td><span class="badge badge-not-started">Not Started</span></td>
-                        <td>System configuration, user management UI</td>
+                        <td><span class="badge badge-done">Done</span></td>
+                        <td>Real DB stats, Chart.js visualizations, department/date/mode/status filters</td>
                     </tr>
                     <tr>
                         <td><strong>Senior Officer / Escalation View</strong></td>
@@ -882,9 +936,9 @@
   <span class="highlight-header">--- Infrastructure Layer ---</span>
 
   <span class="highlight-infra">+----------+  +----------+  +----------+  +----------+  +----------+</span>
-  <span class="highlight-infra">|  MySQL   |  |    H2    |  |  Redis   |  |OpenSearch|  | Keycloak |</span>
+  <span class="highlight-infra">|  MySQL   |  |    H2    |  |Hazelcast |  |OpenSearch|  | Keycloak |</span>
   <span class="highlight-infra">| (prod)   |  |  (dev)   |  | (cache)  |  | (search) |  |  (auth)  |</span>
-  <span class="highlight-port">|  :3306   |</span>  <span class="highlight-port">| embedded |</span>  <span class="highlight-port">|  :6379   |</span>  <span class="highlight-port">|  :9200   |</span>  <span class="highlight-port">|  :8180   |</span>
+  <span class="highlight-port">|  :3306   |</span>  <span class="highlight-port">| embedded |</span>  <span class="highlight-port">| embedded |</span>  <span class="highlight-port">|  :9200   |</span>  <span class="highlight-port">|  :8180   |</span>
   <span class="highlight-infra">+----------+  +----------+  +----------+  +----------+  +----------+</span></div>
         </div>
     </div>
@@ -923,7 +977,7 @@
                 </div>
                 <div class="tech-card">
                     <h4>Caching</h4>
-                    <p>Redis</p>
+                    <p>Hazelcast (Embedded)</p>
                 </div>
                 <div class="tech-card">
                     <h4>Search Engine</h4>

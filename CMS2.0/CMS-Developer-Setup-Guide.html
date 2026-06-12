@@ -103,7 +103,7 @@
             <tr><td><strong>Apache Kafka</strong></td><td>3.7.0</td><td>Event streaming</td><td>KRaft mode (no Zookeeper)</td></tr>
             <tr><td><strong>MySQL</strong></td><td>8.0+</td><td>Primary database (prod)</td><td>H2 in-memory (dev profile) OR MySQL</td></tr>
             <tr><td><strong>OpenSearch</strong></td><td>2.18.0</td><td>Full-text search</td><td>Standalone</td></tr>
-            <tr><td><strong>Redis</strong></td><td>7.x</td><td>Caching</td><td>Optional for dev (uses simple cache)</td></tr>
+            <tr><td><strong>Hazelcast</strong></td><td>5.x</td><td>Caching</td><td>Embedded (no external install needed)</td></tr>
         </table>
     </div>
 
@@ -199,7 +199,7 @@
             <div class="port-item"><div class="port">5601</div><div class="service">OpenSearch Dashboards</div></div>
             <div class="port-item"><div class="port">3306</div><div class="service">MySQL (prod profile)</div></div>
             <div class="port-item"><div class="port">1521</div><div class="service">Oracle DB (OpenShift)</div></div>
-            <div class="port-item"><div class="port">6379</div><div class="service">Redis (optional)</div></div>
+            <div class="port-item"><div class="port">5701</div><div class="service">Hazelcast (embedded)</div></div>
             <div class="port-item"><div class="port">9090</div><div class="service">Prometheus</div></div>
             <div class="port-item"><div class="port">3000</div><div class="service">Grafana</div></div>
             <div class="port-item"><div class="port">8090</div><div class="service">Kafka UI</div></div>
@@ -278,11 +278,12 @@ CREATE DATABASE cms_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 <span class="comment"># OR skip MySQL entirely - use dev profile with H2 in-memory DB</span>
         </pre>
 
-        <h4>5.5 Redis (Optional for dev)</h4>
+        <h4>5.5 Hazelcast (Embedded - No Setup Required)</h4>
         <pre>
-<span class="comment"># Dev profile uses 'simple' cache (no Redis needed)</span>
-<span class="comment"># For full testing: download Redis for Windows or use Docker</span>
-<span class="cmd">docker run -d --name redis -p 6379:6379 redis:7-alpine</span>
+<span class="comment"># Hazelcast runs embedded within the Spring Boot application</span>
+<span class="comment"># No external installation or Docker container needed</span>
+<span class="comment"># Cache is automatically configured via HazelcastCacheConfig.java</span>
+<span class="comment"># Management port: 5701 (auto-assigned)</span>
         </pre>
     </div>
 
@@ -345,7 +346,7 @@ CREATE DATABASE cms_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
         </pre>
 
         <div class="highlight-box">
-            <strong>Dev Profile Benefits:</strong> Uses H2 in-memory DB (no MySQL install needed), auto-creates tables, uses simple cache (no Redis needed), includes test data via DataInitializer.
+            <strong>Dev Profile Benefits:</strong> Uses H2 in-memory DB (no MySQL install needed), auto-creates tables, embedded Hazelcast cache (no external cache needed), includes test data via DataInitializer.
         </div>
     </div>
 
@@ -544,7 +545,7 @@ export const environment = {
 <span class="comment"># Terminal 1: Keycloak</span>
 <span class="cmd">cd</span> C:\tools\keycloak-26.0.0 && <span class="cmd">bin\kc.bat start-dev --http-port=8180</span>
 
-<span class="comment"># Terminal 2: Backend (dev profile - H2 DB, no MySQL/Redis needed)</span>
+<span class="comment"># Terminal 2: Backend (dev profile - H2 DB, embedded Hazelcast cache)</span>
 <span class="cmd">cd</span> CMS2.0/cms-backend && <span class="cmd">mvn spring-boot:run -Dspring-boot.run.profiles=dev</span>
 
 <span class="comment"># Terminal 3: Frontend</span>
@@ -672,8 +673,8 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
             <tr><td>DB_USERNAME</td><td>root</td><td>DB user</td><td><span class="badge badge-prod">Prod: Yes</span></td></tr>
             <tr><td>DB_PASSWORD</td><td>root</td><td>DB password</td><td><span class="badge badge-prod">Prod: Yes</span></td></tr>
             <tr><td>KAFKA_BOOTSTRAP</td><td>localhost:9092</td><td>Kafka broker</td><td><span class="badge badge-required">Yes (for full stack)</span></td></tr>
-            <tr><td>REDIS_HOST</td><td>localhost</td><td>Redis server</td><td><span class="badge badge-optional">Optional</span></td></tr>
-            <tr><td>REDIS_PORT</td><td>6379</td><td>Redis port</td><td><span class="badge badge-optional">Optional</span></td></tr>
+            <tr><td>HAZELCAST_CLUSTER</td><td>cms-cache</td><td>Hazelcast cluster name</td><td><span class="badge badge-dev">Embedded (auto)</span></td></tr>
+            <tr><td>SESSION_TIMEOUT_MIN</td><td>15</td><td>Session timeout (minutes)</td><td><span class="badge badge-optional">Configurable</span></td></tr>
             <tr><td>OCR_PROVIDER</td><td>gemini</td><td>OCR engine (gemini/openai/groq/azure)</td><td><span class="badge badge-optional">Optional</span></td></tr>
             <tr><td>GEMINI_API_KEY</td><td>(empty)</td><td>Google Gemini API key</td><td><span class="badge badge-optional">For OCR</span></td></tr>
             <tr><td>GROQ_API_KEY</td><td>(empty)</td><td>Groq API key (free)</td><td><span class="badge badge-optional">For OCR</span></td></tr>
