@@ -21,9 +21,10 @@ export class EmailSyndicationService {
   private baseUrl = `${environment.apiBaseUrl}/api/v1/email-syndication`;
 
   // Queue & Drafts
-  getQueue(status?: string): Observable<EmailDraft[]> {
+  getQueue(status?: string, assignedTo?: string): Observable<EmailDraft[]> {
     const params: Record<string, string> = {};
     if (status) params['status'] = status;
+    if (assignedTo) params['assignedTo'] = assignedTo;
     return this.http.get<ApiResponse<EmailDraft[]>>(`${this.baseUrl}/queue`, { params })
       .pipe(map(res => res.data));
   }

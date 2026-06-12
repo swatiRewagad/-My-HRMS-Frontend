@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
+import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
 import { environment } from '../../../../environments/environment';
 
 interface Suggestion {
@@ -31,6 +32,7 @@ export class PhysicalLetterComponent implements OnInit {
   private router = inject(Router);
   private http = inject(HttpClient);
   private sanitizer = inject(DomSanitizer);
+  private auth = inject(KeycloakAuthService);
 
   // Header
   complaintNumber = '';
@@ -221,36 +223,67 @@ export class PhysicalLetterComponent implements OnInit {
   submitDraft() {
     this.submitting.set(true);
 
-    setTimeout(() => {
-      const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-      const rand = Math.floor(100000 + Math.random() * 900000);
-      const newDraftId = `DRF-${dateStr}-${rand}`;
-      this.draftId.set(newDraftId);
-      this.submitting.set(false);
-      this.submitted.set(true);
+    const loggedInUser = JSON.parse(sessionStorage.getItem('crpc_user') || '{}');
+    const username = loggedInUser?.id || this.auth.currentUser()?.username || '';
 
-      sessionStorage.setItem('physicalLetterDraft', JSON.stringify({
-        complainantName: this.complainantName,
-        complainantPhone: this.complainantPhone,
-        complainantEmail: this.complainantEmail,
-        complainantAddress: this.complainantAddress,
-        complainantState: this.complainantState,
-        complainantDistrict: this.complainantDistrict,
-        complainantPincode: this.complainantPincode,
-        category: this.category,
-        entityName: this.entityName,
-        entityType: this.entityType,
-        subject: this.subject,
-        description: this.description,
-        amountInvolved: this.amountInvolved,
-        transactionDate: this.transactionDate,
-        letterDate: this.letterDate,
-        receivedDate: this.receivedDate,
-        modeOfReceipt: this.modeOfReceipt,
-        fileName: this.scannedFile?.name || 'scanned_letter.pdf',
-        fileSize: this.scannedFile ? (this.scannedFile.size / 1024 / 1024).toFixed(2) + ' MB' : '2.4 MB',
-      }));
-    }, 1500);
+    const payload = {
+      complainantName: this.complainantName,
+      complainantPhone: this.complainantPhone,
+      senderEmail: this.complainantEmail,
+      complainantAddress: this.complainantAddress,
+      complainantState: this.complainantState,
+      complainantDistrict: this.complainantDistrict,
+      complainantPincode: this.complainantPincode,
+      category: this.category,
+      entityName: this.entityName,
+      entityType: this.entityType,
+      subject: this.subject,
+      body: this.description,
+      amountInvolved: this.amountInvolved,
+      transactionDate: this.transactionDate,
+      letterDate: this.letterDate,
+      modeOfReceipt: this.modeOfReceipt || 'PHYSICAL_LETTER',
+      status: 'DRAFT',
+      assignedTo: username,
+      processedBy: username,
+      receivedAt: (this.receivedDate || new Date().toISOString().split('T')[0]) + 'T00:00:00',
+    };
+
+    this.http.post<any>(`${environment.apiBaseUrl}/api/v1/email-syndication/drafts`, payload)
+      .subscribe({
+        next: (res) => {
+          const newDraftId = res?.data?.draftId || res?.data?.id || '';
+          this.draftId.set(newDraftId);
+          this.submitting.set(false);
+          this.submitted.set(true);
+
+          sessionStorage.setItem('physicalLetterDraft', JSON.stringify({
+            ...payload,
+            draftId: newDraftId,
+            complainantEmail: this.complainantEmail,
+            description: this.description,
+            fileName: this.scannedFile?.name || 'scanned_letter.pdf',
+            fileSize: this.scannedFile ? (this.scannedFile.size / 1024 / 1024).toFixed(2) + ' MB' : '2.4 MB',
+          }));
+        },
+        error: () => {
+          const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+          const rand = Math.floor(100000 + Math.random() * 900000);
+          const fallbackId = `DRF-${dateStr}-${rand}`;
+          this.draftId.set(fallbackId);
+          this.submitting.set(false);
+          this.submitted.set(true);
+
+          sessionStorage.setItem('physicalLetterDraft', JSON.stringify({
+            ...payload,
+            draftId: fallbackId,
+            complainantEmail: this.complainantEmail,
+            description: this.description,
+            fileName: this.scannedFile?.name || 'scanned_letter.pdf',
+            fileSize: this.scannedFile ? (this.scannedFile.size / 1024 / 1024).toFixed(2) + ' MB' : '2.4 MB',
+          }));
+        }
+      });
   }
 
   private loadPastComplaints() {

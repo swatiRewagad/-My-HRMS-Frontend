@@ -1,17 +1,19 @@
-<div class="deo-home">
+<div class="rbio-home">
   <!-- Header Bar -->
   <header class="cms-header">
     <div class="header-left">
       <img src="assets/rbi-logo.png" alt="RBI" class="rbi-logo" onerror="this.style.display='none'" />
       <span class="cms-title">CMS</span>
-      <span class="cms-subtitle">Complaint Management System</span>
+      <span class="cms-subtitle">RBIO - Complaint Management</span>
     </div>
     <div class="header-right">
-      <span class="user-avatar">{{ (loggedInUser?.name || 'U').charAt(0) }}</span>
-      <div class="user-details">
-        <span class="user-name">{{ loggedInUser?.name || 'Staff' }}</span>
-        <span class="user-role">CRPC Data Entry Operator</span>
-      </div>
+      @if (auth.currentUser(); as user) {
+        <span class="user-avatar">{{ (user.firstName || 'U').charAt(0) }}</span>
+        <div class="user-details">
+          <span class="user-name">{{ user.firstName }} {{ user.lastName }}</span>
+          <span class="user-role">RBIO Officer</span>
+        </div>
+      }
       <button class="btn-logout" (click)="logout()"><i class="pi pi-sign-out"></i></button>
     </div>
   </header>
@@ -22,9 +24,9 @@
     <aside class="sidebar">
       <div class="sidebar-item active">
         <i class="pi pi-list"></i>
-        <span>CRPC Complaints</span>
+        <span>RBIO Complaints</span>
       </div>
-      <div class="sidebar-item" (click)="router.navigate(['/admin/dashboard'], {queryParams: {department: 'CRPC'}})">
+      <div class="sidebar-item">
         <i class="pi pi-chart-bar"></i>
         <span>Dashboard</span>
       </div>
@@ -33,66 +35,63 @@
     <!-- Main Content -->
     <main class="content">
       <div class="content-header">
-        <h1>CRPC Complaints</h1>
+        <h1>RBIO Complaints</h1>
         <div class="header-actions">
           <button class="btn btn-link" (click)="showAdvancedSearch.set(true)">Advanced Search</button>
           <select class="queue-select" [value]="filterStatus()" (change)="filterStatus.set($any($event.target).value)">
-            <option value="">CRPC Complaints</option>
-            <option value="DRAFT">Draft</option>
-            <option value="IN_PROGRESS">In Progress</option>
-            <option value="REJECTED_BY_REVIEWER">Sent Back</option>
-            <option value="APPROVED">Assessment Complete</option>
+            <option value="">All Complaints</option>
+            <option value="assigned">Assigned</option>
+            <option value="in_progress">In Progress</option>
+            <option value="escalated">Escalated</option>
+            <option value="resolved">Resolved</option>
+            <option value="rejected">Rejected</option>
           </select>
-          <select class="queue-select">
-            <option>Complaints Assigned To Me</option>
-            <option>All Complaints</option>
-          </select>
-          <button class="btn btn-primary create-btn" (click)="createPhysicalLetter()">
-            <i class="pi pi-plus"></i> Create Complaint
-          </button>
         </div>
       </div>
 
       <!-- Stats Cards -->
       <div class="stats-bar">
-        <div class="stat-card" (click)="filterStatus.set(''); filterMode.set('ALL')">
+        <div class="stat-card" (click)="filterStatus.set('')">
           <span class="stat-value">{{ stats().total }}</span>
           <span class="stat-label">Total Complaints</span>
         </div>
-        <div class="stat-card" (click)="filterStatus.set(''); filterMode.set('DIRECT')">
-          <span class="stat-value">{{ stats().direct }}</span>
-          <span class="stat-label">Direct Complaints</span>
+        <div class="stat-card" (click)="filterStatus.set('assigned')">
+          <span class="stat-value">{{ stats().assigned }}</span>
+          <span class="stat-label">Assigned</span>
         </div>
-        <div class="stat-card" (click)="filterStatus.set(''); filterMode.set('ABR')">
-          <span class="stat-value">{{ stats().viaAbr }}</span>
-          <span class="stat-label">Complaints via ABR</span>
-        </div>
-        <div class="stat-card" (click)="filterStatus.set('IN_PROGRESS'); filterMode.set('ALL')">
+        <div class="stat-card" (click)="filterStatus.set('in_progress')">
           <span class="stat-value">{{ stats().inProgress }}</span>
           <span class="stat-label">In Progress</span>
         </div>
-        <div class="stat-card" (click)="filterStatus.set('APPROVED'); filterMode.set('ALL')">
-          <span class="stat-value">{{ stats().approved }}</span>
-          <span class="stat-label">IGMRC Complaints</span>
+        <div class="stat-card" (click)="filterStatus.set('escalated')">
+          <span class="stat-value">{{ stats().escalated }}</span>
+          <span class="stat-label">Escalated</span>
+        </div>
+        <div class="stat-card" (click)="filterStatus.set('resolved')">
+          <span class="stat-value">{{ stats().resolved }}</span>
+          <span class="stat-label">Resolved</span>
         </div>
       </div>
 
       <!-- Status Tabs -->
       <div class="status-tabs">
-        <button class="tab" [class.active]="filterStatus() === '' && filterMode() === 'ALL'" (click)="filterStatus.set(''); filterMode.set('ALL')">
+        <button class="tab" [class.active]="filterStatus() === ''" (click)="filterStatus.set('')">
           All <span class="tab-count">{{ stats().total }}</span>
         </button>
-        <button class="tab" [class.active]="filterStatus() === 'DRAFT'" (click)="filterStatus.set('DRAFT'); filterMode.set('ALL')">
-          Draft <span class="tab-count">{{ stats().draft }}</span>
+        <button class="tab" [class.active]="filterStatus() === 'assigned'" (click)="filterStatus.set('assigned')">
+          Assigned <span class="tab-count">{{ stats().assigned }}</span>
         </button>
-        <button class="tab" [class.active]="filterStatus() === 'IN_PROGRESS'" (click)="filterStatus.set('IN_PROGRESS'); filterMode.set('ALL')">
-          In Progress
+        <button class="tab" [class.active]="filterStatus() === 'in_progress'" (click)="filterStatus.set('in_progress')">
+          In Progress <span class="tab-count">{{ stats().inProgress }}</span>
         </button>
-        <button class="tab" [class.active]="filterStatus() === 'REJECTED_BY_REVIEWER'" (click)="filterStatus.set('REJECTED_BY_REVIEWER'); filterMode.set('ALL')">
-          Sent Back
+        <button class="tab" [class.active]="filterStatus() === 'escalated'" (click)="filterStatus.set('escalated')">
+          Escalated <span class="tab-count">{{ stats().escalated }}</span>
         </button>
-        <button class="tab" [class.active]="filterStatus() === 'APPROVED'" (click)="filterStatus.set('APPROVED'); filterMode.set('ALL')">
-          Assessment Complete
+        <button class="tab" [class.active]="filterStatus() === 'resolved'" (click)="filterStatus.set('resolved')">
+          Resolved <span class="tab-count">{{ stats().resolved }}</span>
+        </button>
+        <button class="tab" [class.active]="filterStatus() === 'rejected'" (click)="filterStatus.set('rejected')">
+          Rejected <span class="tab-count">{{ stats().rejected }}</span>
         </button>
       </div>
 
@@ -100,17 +99,9 @@
       <div class="table-section">
         <div class="table-header-row">
           <h3>Complaints</h3>
-          <div class="table-actions">
-            <button class="btn btn-icon" (click)="exportToCSV()" title="Download CSV">
-              <i class="pi pi-download"></i>
-            </button>
-            <button class="btn btn-icon" (click)="exportToExcel()" title="Download Excel">
-              <i class="pi pi-file-excel"></i>
-            </button>
-            <button class="btn btn-icon" (click)="showColumnConfig.set(true)" title="Column Selection">
-              <i class="pi pi-cog"></i>
-            </button>
-          </div>
+          <button class="btn btn-icon" (click)="showColumnConfig.set(true)" title="Column Selection">
+            <i class="pi pi-cog"></i>
+          </button>
         </div>
 
         @if (loading()) {
@@ -126,7 +117,7 @@
               <tr>
                 <th class="checkbox-col">
                   <input type="checkbox"
-                    [checked]="selectedIds().size === filteredDrafts().length && filteredDrafts().length > 0"
+                    [checked]="selectedIds().size === filteredTasks().length && filteredTasks().length > 0"
                     (change)="toggleSelectAll()" />
                 </th>
                 @for (col of visibleColumns(); track col.key) {
@@ -150,23 +141,21 @@
               </tr>
             </thead>
             <tbody>
-              @for (draft of paginatedDrafts(); track draft.draftId; let i = $index) {
-                <tr [class.selected]="selectedIds().has(draft.draftId)" (click)="openDraft(draft.draftId)">
+              @for (task of paginatedTasks(); track task.complaintNumber) {
+                <tr [class.selected]="selectedIds().has(task.complaintId)" (click)="openTask(task)">
                   <td class="checkbox-col" (click)="$event.stopPropagation()">
                     <input type="checkbox"
-                      [checked]="selectedIds().has(draft.draftId)"
-                      (change)="toggleSelect(draft.draftId)" />
+                      [checked]="selectedIds().has(task.complaintId)"
+                      (change)="toggleSelect(task.complaintId)" />
                   </td>
                   @for (col of visibleColumns(); track col.key) {
                     <td [class]="'cell-' + col.key">
                       @if (col.key === 'status') {
-                        <span class="status-badge" [attr.data-status]="draft.status">{{ draft.status }}</span>
-                      } @else if (col.key === 'modeOfReceipt') {
-                        <span class="mode-badge" [attr.data-mode]="draft.modeOfReceipt">{{ draft.modeOfReceipt === 'PHYSICAL_LETTER' ? 'Letter' : 'Email' }}</span>
+                        <span class="status-badge" [attr.data-status]="task.status?.toLowerCase()">{{ task.status }}</span>
                       } @else if (col.key === 'priority') {
-                        <span class="priority-dot" [attr.data-priority]="draft.priority"></span>
+                        <span class="priority-dot" [attr.data-priority]="task.priority?.toUpperCase()"></span> {{ task.priority }}
                       } @else {
-                        {{ getCellValue(draft, col.key) }}
+                        {{ getCellValue(task, col.key) }}
                       }
                     </td>
                   }
@@ -184,7 +173,7 @@
 
         <!-- Pagination -->
         <div class="pagination">
-          <span class="page-info">Showing {{ paginationStart() }} to {{ paginationEnd() }} of {{ filteredDrafts().length }} entries</span>
+          <span class="page-info">Showing {{ paginationStart() }} to {{ paginationEnd() }} of {{ filteredTasks().length }} entries</span>
           <div class="page-controls">
             <button class="page-btn" (click)="currentPage.set(1)" [disabled]="currentPage() === 1">&laquo;</button>
             <button class="page-btn" (click)="currentPage.set(currentPage() - 1)" [disabled]="currentPage() === 1">&lsaquo;</button>
@@ -249,13 +238,14 @@
           <input type="text" [(ngModel)]="advSearch.complaintId" placeholder="Enter a value" />
         </div>
         <div class="search-field">
-          <label>Status Code</label>
+          <label>Status</label>
           <select [(ngModel)]="advSearch.statusCode">
             <option value="">Select a Value</option>
-            <option value="DRAFT">Draft</option>
-            <option value="IN_PROGRESS">In Progress</option>
-            <option value="SENT_TO_REVIEWER">Sent to Reviewer</option>
-            <option value="APPROVED">Approved</option>
+            <option value="assigned">Assigned</option>
+            <option value="in_progress">In Progress</option>
+            <option value="escalated">Escalated</option>
+            <option value="resolved">Resolved</option>
+            <option value="rejected">Rejected</option>
           </select>
         </div>
         <div class="search-field">
@@ -263,52 +253,25 @@
           <input type="text" [(ngModel)]="advSearch.complainantName" placeholder="Enter a value" />
         </div>
         <div class="search-field">
-          <label>Complainant Mobile Number</label>
-          <input type="text" [(ngModel)]="advSearch.mobileNumber" placeholder="Enter a value" />
-        </div>
-        <div class="search-field">
-          <label>Complainant Email</label>
-          <input type="text" [(ngModel)]="advSearch.email" placeholder="Enter a value" />
-        </div>
-        <div class="search-field">
-          <label>From Email Id</label>
-          <input type="text" [(ngModel)]="advSearch.fromEmailId" placeholder="Enter a value" />
-        </div>
-        <div class="search-field">
-          <label>Mode of Receipt</label>
-          <select [(ngModel)]="advSearch.modeOfReceipt">
-            <option value="">Select a Value</option>
-            <option value="EMAIL">Email</option>
-            <option value="PHYSICAL_LETTER">Physical Letter</option>
-            <option value="PORTAL">Portal</option>
-            <option value="CPGRAMS">CPGRAMS</option>
-          </select>
-        </div>
-        <div class="search-field">
           <label>Entity Name</label>
-          <input type="text" [(ngModel)]="advSearch.entityName" placeholder="Select a Value" />
+          <input type="text" [(ngModel)]="advSearch.entityName" placeholder="Enter a value" />
+        </div>
+        <div class="search-field">
+          <label>Priority</label>
+          <select [(ngModel)]="advSearch.priority">
+            <option value="">Select a Value</option>
+            <option value="HIGH">High</option>
+            <option value="MEDIUM">Medium</option>
+            <option value="LOW">Low</option>
+          </select>
         </div>
         <div class="search-field full-width">
           <label>Subject</label>
           <input type="text" [(ngModel)]="advSearch.subject" placeholder="Enter a value" />
         </div>
         <div class="search-field">
-          <label>NDI Contact Person</label>
-          <input type="text" [(ngModel)]="advSearch.ndiContactPerson" placeholder="Enter a value" />
-        </div>
-        <div class="search-field">
-          <label>Complaint Main Category</label>
-          <select [(ngModel)]="advSearch.category">
-            <option value="">Select a Value</option>
-            <option value="ATM">ATM</option>
-            <option value="CREDIT_CARD">Credit Card</option>
-            <option value="UPI">UPI</option>
-            <option value="LOAN">Loan</option>
-            <option value="DEPOSIT">Deposit</option>
-            <option value="INSURANCE">Insurance</option>
-            <option value="NEFT_RTGS">NEFT/RTGS</option>
-            <option value="GENERAL">General</option>
-          </select>
+          <label>Assigned Officer</label>
+          <input type="text" [(ngModel)]="advSearch.assignedOfficer" placeholder="Enter a value" />
         </div>
       </div>
       <div class="modal-actions">

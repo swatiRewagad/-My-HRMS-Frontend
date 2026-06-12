@@ -39,9 +39,9 @@ export class ReviewerHomeComponent implements OnInit {
   drafts = signal<ReviewDraft[]>([]);
   loading = signal(false);
 
-  filterStatus = '';
-  filterDeoDecision = '';
-  searchText = '';
+  filterStatus = signal('');
+  filterDeoDecision = signal('');
+  searchText = signal('');
 
   stats = computed(() => {
     const all = this.drafts();
@@ -56,10 +56,13 @@ export class ReviewerHomeComponent implements OnInit {
 
   filteredDrafts = computed(() => {
     let result = this.drafts();
-    if (this.filterStatus) result = result.filter(d => d.status === this.filterStatus);
-    if (this.filterDeoDecision) result = result.filter(d => d.deoDecision === this.filterDeoDecision);
-    if (this.searchText) {
-      const q = this.searchText.toLowerCase();
+    const status = this.filterStatus();
+    const deoDecision = this.filterDeoDecision();
+    const search = this.searchText();
+    if (status) result = result.filter(d => d.status === status);
+    if (deoDecision) result = result.filter(d => d.deoDecision === deoDecision);
+    if (search) {
+      const q = search.toLowerCase();
       result = result.filter(d =>
         d.draftId.toLowerCase().includes(q) ||
         d.complainantName.toLowerCase().includes(q) ||
@@ -93,19 +96,19 @@ export class ReviewerHomeComponent implements OnInit {
 
   loadDrafts() {
     this.loading.set(true);
+    const username = this.loggedInUser?.id || '';
 
     this.http.get<any>(`${environment.apiBaseUrl}/api/v1/email-syndication/queue`, {
-      params: { status: 'SENT_TO_REVIEWER' }
+      params: { assignedTo: username }
     }).subscribe({
         next: (res) => {
-          console.log('[ReviewerHome] API response:', res);
-          const queueDrafts = (res?.data || []).map((d: any) => this.mapQueueToDraft(d));
-          console.log('[ReviewerHome] Mapped drafts:', queueDrafts.length);
+          const queueDrafts = (res?.data || [])
+            .filter((d: any) => ['SENT_TO_REVIEWER', 'APPROVED_ROUTED', 'SENT_BACK_TO_DEO', 'CLOSED_NOT_A_COMPLAINT'].includes(d.status))
+            .map((d: any) => this.mapQueueToDraft(d));
           this.drafts.set(queueDrafts);
           this.loading.set(false);
         },
-        error: (err) => {
-          console.error('[ReviewerHome] API error:', err);
+        error: () => {
           this.drafts.set([]);
           this.loading.set(false);
         }
@@ -120,16 +123,25 @@ export class ReviewerHomeComponent implements OnInit {
       fromEmailId: d.senderEmail || '',
       subject: d.subject || '',
       modeOfReceipt: d.modeOfReceipt || 'EMAIL',
-      status: 'PENDING_REVIEW',
+      status: this.mapReviewerStatus(d.status),
       category: d.category || 'GENERAL',
       entityName: d.entityName || '',
       deoDecision: 'MAINTAINABLE',
-      deoName: d.assignedTo || '',
+      deoName: d.processedBy || d.assignedTo || '',
       assignedAt: d.createdAt || new Date().toISOString(),
       ageing: Math.max(0, Math.floor(hours / 24)),
       priority: hours > 48 ? 'HIGH' : hours > 24 ? 'MEDIUM' : 'LOW',
       vernacular: d.isVernacular || false,
     };
+  }
+
+  private mapReviewerStatus(status: string): 'PENDING_REVIEW' | 'APPROVED' | 'SENT_BACK' | 'CLOSED_NM' {
+    switch (status) {
+      case 'APPROVED_ROUTED': return 'APPROVED';
+      case 'SENT_BACK_TO_DEO': return 'SENT_BACK';
+      case 'CLOSED_NOT_A_COMPLAINT': return 'CLOSED_NM';
+      default: return 'PENDING_REVIEW';
+    }
   }
 
   openDraft(draftId: string) {

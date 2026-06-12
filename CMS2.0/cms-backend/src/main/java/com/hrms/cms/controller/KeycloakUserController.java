@@ -54,6 +54,11 @@ public class KeycloakUserController {
         return wrapResponse(keycloakUserService.getAllCrpcUsers());
     }
 
+    @GetMapping("/users/by-role")
+    public List<Map<String, Object>> getUsersByRole(@RequestParam String role) {
+        return keycloakUserService.getUsersByRole(role);
+    }
+
     private Map<String, Object> wrapResponse(Object data) {
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("success", true);

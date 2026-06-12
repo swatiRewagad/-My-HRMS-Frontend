@@ -239,9 +239,39 @@
           @if (sectionOpen.entity) {
             <div class="section-body">
               <div class="field-grid-2">
-                <div class="field-item">
+                <div class="field-item entity-search-field">
                   <label>Entity Name</label>
-                  <span class="field-value">{{ entityName || '—' }}</span>
+                  @if (isReadOnly) {
+                    <span class="field-value">{{ entityName || '—' }}</span>
+                  } @else {
+                    <div class="entity-search-wrapper">
+                      <input type="text"
+                        [value]="entityName"
+                        (input)="onEntitySearchInput($any($event.target).value)"
+                        (focus)="entityName && onEntitySearchInput(entityName)"
+                        (blur)="onEntityBlur()"
+                        placeholder="Search entity from database..."
+                        class="entity-search-input" />
+                      @if (entitySearchLoading()) {
+                        <span class="entity-search-spinner">⟳</span>
+                      }
+                      @if (showEntityDropdown() && entitySearchResults().length > 0) {
+                        <ul class="entity-dropdown">
+                          @for (entity of entitySearchResults(); track entity.id) {
+                            <li (mousedown)="selectEntity(entity)" class="entity-option">
+                              <span class="entity-name">{{ entity.name }}</span>
+                              <span class="entity-dept" [class.cepc]="entity.department === 'CEPC'" [class.rbio]="entity.department === 'RBIO'">{{ entity.department }}</span>
+                            </li>
+                          }
+                        </ul>
+                      }
+                      @if (showEntityDropdown() && !entitySearchLoading() && entitySearchResults().length === 0 && entitySearchText.length >= 2) {
+                        <ul class="entity-dropdown">
+                          <li class="entity-option no-results">No matching entities found</li>
+                        </ul>
+                      }
+                    </div>
+                  }
                 </div>
                 <div class="field-item">
                   <label>Module Name</label>

@@ -1,190 +1,170 @@
 <div class="admin-dashboard">
-  <header class="dashboard-header">
+  <!-- Header -->
+  <header class="dash-header">
     <div class="header-left">
-      <button class="back-btn" (click)="goBack()">← Back</button>
-      <h1>Admin Dashboard</h1>
-      <span class="subtitle">CMS Analytics & Monitoring</span>
+      <img src="assets/rbi-logo.png" alt="RBI" class="rbi-logo" onerror="this.style.display='none'" />
+      <div class="brand">
+        <span class="brand-title">CMS</span>
+        <span class="brand-sub">Complaint Management System</span>
+      </div>
     </div>
     <div class="header-right">
-      @if (lastRefreshed()) {
-        <span class="refresh-info">Last updated: {{ lastRefreshed() }}</span>
+      @if (auth.currentUser(); as user) {
+        <span class="user-avatar">{{ (user.firstName || 'A').charAt(0) }}{{ (user.lastName || '').charAt(0) }}</span>
+        <div class="user-info">
+          <span class="user-name">{{ user.firstName }} {{ user.lastName }}</span>
+          <span class="user-role">Administrator</span>
+        </div>
       }
-      <button class="refresh-btn" (click)="loadStats()" [disabled]="loading()">
-        ↻ Refresh
-      </button>
+      <button class="btn-logout" (click)="logout()">Logout</button>
     </div>
   </header>
 
-  @if (loading() && !stats()) {
-    <div class="loading-state">
-      <div class="spinner"></div>
-      <p>Loading dashboard...</p>
-    </div>
-  }
+  <div class="main-layout">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-item" [class.active]="sidebarItem() === 'complaints'" (click)="navigateTo('complaints')">
+        <i class="pi pi-list"></i>
+        <span>CRPC Complaints</span>
+      </div>
+      <div class="sidebar-item" [class.active]="sidebarItem() === 'dashboard'" (click)="navigateTo('dashboard')">
+        <i class="pi pi-chart-bar"></i>
+        <span>Dashboard</span>
+      </div>
+    </aside>
 
-  @if (error()) {
-    <div class="error-state">
-      <p>{{ error() }}</p>
-      <button (click)="loadStats()">Retry</button>
-    </div>
-  }
+    <!-- Content -->
+    <main class="content">
+      <div class="content-header">
+        <h1>Dashboard @if (filterDepartment) { <span class="filter-tag">{{ filterDepartment }}</span> }</h1>
+        <button class="filters-btn" (click)="toggleFilters()" [class.active]="showFilters()">
+          <i class="pi pi-filter"></i> Filters
+        </button>
+      </div>
 
-  @if (stats(); as s) {
-    <!-- KPI Cards -->
-    <section class="kpi-cards">
-      <div class="kpi-card total">
-        <div class="kpi-value">{{ s.totalComplaints }}</div>
-        <div class="kpi-label">Total Complaints</div>
-      </div>
-      <div class="kpi-card open">
-        <div class="kpi-value">{{ s.openComplaints }}</div>
-        <div class="kpi-label">Open</div>
-      </div>
-      <div class="kpi-card resolved">
-        <div class="kpi-value">{{ s.resolvedComplaints }}</div>
-        <div class="kpi-label">Resolved</div>
-      </div>
-      <div class="kpi-card escalated">
-        <div class="kpi-value">{{ s.escalatedComplaints }}</div>
-        <div class="kpi-label">Escalated</div>
-      </div>
-      <div class="kpi-card sla">
-        <div class="kpi-value">{{ s.slaBreached }}</div>
-        <div class="kpi-label">SLA Breached</div>
-      </div>
-      <div class="kpi-card resolution">
-        <div class="kpi-value">{{ s.avgResolutionHours }}h</div>
-        <div class="kpi-label">Avg Resolution</div>
-      </div>
-    </section>
-
-    <!-- Charts Section -->
-    <section class="charts-grid">
-      <!-- Status Breakdown -->
-      <div class="chart-card">
-        <h3>Status Breakdown</h3>
-        <div class="bar-chart">
-          @for (key of getStatusKeys(); track key) {
-            <div class="bar-row">
-              <span class="bar-label">{{ key }}</span>
-              <div class="bar-track">
-                <div class="bar-fill" [style.width.%]="getBarWidth(s.statusBreakdown[key])"
-                     [style.background-color]="getStatusColor(key)"></div>
-              </div>
-              <span class="bar-value">{{ s.statusBreakdown[key] }}</span>
+      <!-- Filter Panel -->
+      @if (showFilters()) {
+        <div class="filter-panel">
+          <div class="filter-row">
+            <div class="filter-group">
+              <label>From Date</label>
+              <input type="date" [(ngModel)]="filterFromDate" />
             </div>
-          }
-        </div>
-      </div>
-
-      <!-- Category Breakdown -->
-      <div class="chart-card">
-        <h3>By Category</h3>
-        <div class="bar-chart">
-          @for (key of getCategoryKeys(); track key) {
-            <div class="bar-row">
-              <span class="bar-label">{{ key }}</span>
-              <div class="bar-track">
-                <div class="bar-fill" [style.width.%]="getBarWidth(s.categoryBreakdown[key])"
-                     style="background-color: #3498db;"></div>
-              </div>
-              <span class="bar-value">{{ s.categoryBreakdown[key] }}</span>
+            <div class="filter-group">
+              <label>To Date</label>
+              <input type="date" [(ngModel)]="filterToDate" />
             </div>
-          }
-        </div>
-      </div>
-
-      <!-- Priority Breakdown -->
-      <div class="chart-card">
-        <h3>By Priority</h3>
-        <div class="bar-chart">
-          @for (key of getPriorityKeys(); track key) {
-            <div class="bar-row">
-              <span class="bar-label">{{ key }}</span>
-              <div class="bar-track">
-                <div class="bar-fill" [style.width.%]="getBarWidth(s.priorityBreakdown[key])"
-                     [style.background-color]="getPriorityColor(key)"></div>
-              </div>
-              <span class="bar-value">{{ s.priorityBreakdown[key] }}</span>
+            <div class="filter-group">
+              <label>Department</label>
+              <select [(ngModel)]="filterDepartment">
+                <option value="">All Departments</option>
+                <option value="CRPC">CRPC</option>
+                <option value="RBIO">RBIO</option>
+                <option value="CEPC">CEPC</option>
+                <option value="APPELLATE">Appellate Authority</option>
+              </select>
             </div>
-          }
-        </div>
-      </div>
-
-      <!-- Team Workload -->
-      <div class="chart-card">
-        <h3>Team Workload</h3>
-        <div class="bar-chart">
-          @for (key of getTeamKeys(); track key) {
-            <div class="bar-row">
-              <span class="bar-label">{{ key }}</span>
-              <div class="bar-track">
-                <div class="bar-fill" [style.width.%]="getBarWidth(s.teamWorkload[key])"
-                     style="background-color: #8e44ad;"></div>
-              </div>
-              <span class="bar-value">{{ s.teamWorkload[key] }}</span>
+            <div class="filter-group">
+              <label>Mode of Receipt</label>
+              <select [(ngModel)]="filterMode">
+                <option value="">All Modes</option>
+                <option value="EMAIL">Email</option>
+                <option value="PHYSICAL_LETTER">Physical Letter</option>
+                <option value="PORTAL">Portal</option>
+                <option value="CPGRAMS">CPGRAMS</option>
+              </select>
             </div>
-          }
+            <div class="filter-group">
+              <label>Status</label>
+              <select [(ngModel)]="filterStatus">
+                <option value="">All Statuses</option>
+                <option value="pending">Pending</option>
+                <option value="in_progress">In Progress</option>
+                <option value="escalated">Escalated</option>
+                <option value="resolved">Resolved</option>
+                <option value="closed">Closed</option>
+              </select>
+            </div>
+          </div>
+          <div class="filter-actions">
+            <button class="btn-apply" (click)="applyFilters()">Apply Filters</button>
+            <button class="btn-reset" (click)="resetFilters()">Reset</button>
+          </div>
         </div>
-      </div>
-    </section>
+      }
 
-    <!-- SLA Breached Table -->
-    @if (s.slaBreachedComplaints && s.slaBreachedComplaints.length > 0) {
-      <section class="table-section sla-section">
-        <h3>⚠ SLA Breached Complaints</h3>
-        <table>
-          <thead>
-            <tr>
-              <th>Complaint ID</th>
-              <th>Subject</th>
-              <th>Status</th>
-              <th>Team</th>
-              <th>Overdue</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (c of s.slaBreachedComplaints; track c.complaintId) {
-              <tr class="clickable" (click)="navigateToComplaint(c.complaintId)">
-                <td class="id-cell">{{ c.complaintId }}</td>
-                <td>{{ c.subject }}</td>
-                <td><span class="badge" [attr.data-status]="c.status">{{ c.status }}</span></td>
-                <td>{{ c.assignedTeam || '-' }}</td>
-                <td class="overdue">{{ c.overdueDays }} days</td>
-              </tr>
-            }
-          </tbody>
-        </table>
-      </section>
-    }
+      @if (loading()) {
+        <div class="loading-state">
+          <div class="spinner"></div>
+          <p>Loading dashboard...</p>
+        </div>
+      } @else {
+        <!-- Charts Grid - Row 1 -->
+        <div class="charts-grid">
+          <div class="chart-card">
+            <div class="chart-header">
+              <h3>Complaints Received by Type</h3>
+              <a class="view-details">View Details</a>
+            </div>
+            <div class="chart-body">
+              <canvas id="chart-complaints-type"></canvas>
+            </div>
+          </div>
 
-    <!-- Recent Complaints -->
-    <section class="table-section">
-      <h3>Recent Complaints</h3>
-      <table>
-        <thead>
-          <tr>
-            <th>Complaint ID</th>
-            <th>Subject</th>
-            <th>Category</th>
-            <th>Status</th>
-            <th>Priority</th>
-            <th>Team</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (c of s.recentComplaints; track c.complaintId) {
-            <tr class="clickable" (click)="navigateToComplaint(c.complaintId)">
-              <td class="id-cell">{{ c.complaintId }}</td>
-              <td>{{ c.subject }}</td>
-              <td>{{ c.category }}</td>
-              <td><span class="badge" [attr.data-status]="c.status">{{ c.status }}</span></td>
-              <td><span class="priority-badge" [attr.data-priority]="c.priority">{{ c.priority }}</span></td>
-              <td>{{ c.assignedTeam || '-' }}</td>
-            </tr>
-          }
-        </tbody>
-      </table>
-    </section>
-  }
+          <div class="chart-card">
+            <div class="chart-header">
+              <h3>Maintainability Percentage</h3>
+              <a class="view-details">View Details</a>
+            </div>
+            <div class="chart-body">
+              <canvas id="chart-maintainability"></canvas>
+            </div>
+          </div>
+
+          <div class="chart-card">
+            <div class="chart-header">
+              <h3>Complaints by Mode of Receipt</h3>
+              <a class="view-details">View Details</a>
+            </div>
+            <div class="chart-body">
+              <canvas id="chart-mode-receipt"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Charts Grid - Row 2 -->
+        <div class="charts-grid">
+          <div class="chart-card">
+            <div class="chart-header">
+              <h3>Maintainability Percentage</h3>
+              <a class="view-details">View Details</a>
+            </div>
+            <div class="chart-body">
+              <canvas id="chart-maintainability-detail"></canvas>
+            </div>
+          </div>
+
+          <div class="chart-card">
+            <div class="chart-header">
+              <h3>Actions Taken on Complaints</h3>
+              <a class="view-details">View Details</a>
+            </div>
+            <div class="chart-body">
+              <canvas id="chart-actions"></canvas>
+            </div>
+          </div>
+
+          <div class="chart-card">
+            <div class="chart-header">
+              <h3>Turn Around Time (TAT)</h3>
+              <a class="view-details">View Details</a>
+            </div>
+            <div class="chart-body">
+              <canvas id="chart-tat"></canvas>
+            </div>
+          </div>
+        </div>
+      }
+    </main>
+  </div>
 </div>

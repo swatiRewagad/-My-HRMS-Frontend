@@ -1,0 +1,323 @@
+<div class="ops-head-container">
+  <!-- Header -->
+  <header class="dash-header">
+    <div class="header-left">
+      <img src="assets/rbi-logo.png" alt="RBI" class="rbi-logo" onerror="this.style.display='none'" />
+      <div class="brand">
+        <span class="brand-title">CMS</span>
+        <span class="brand-sub">CRPC Operational Head</span>
+      </div>
+    </div>
+    <div class="header-right">
+      @if (auth.currentUser(); as user) {
+        <span class="user-avatar">{{ (user.firstName || 'O').charAt(0) }}{{ (user.lastName || 'H').charAt(0) }}</span>
+        <div class="user-info">
+          <span class="user-name">{{ user.firstName }} {{ user.lastName }}</span>
+          <span class="user-role">CRPC Operational Head</span>
+        </div>
+      }
+      <button class="btn-logout" (click)="logout()">Logout</button>
+    </div>
+  </header>
+
+  <div class="main-layout">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-item" [class.active]="sidebarItem() === 'transfers'" (click)="sidebarItem.set('transfers')">
+        <i class="pi pi-exchange"></i>
+        <span>Transfers</span>
+      </div>
+      <div class="sidebar-item" [class.active]="sidebarItem() === 'home'" (click)="navigateTo('home')">
+        <i class="pi pi-list"></i>
+        <span>CRPC Complaints</span>
+      </div>
+      <div class="sidebar-item" [class.active]="sidebarItem() === 'reviewer'" (click)="navigateTo('reviewer')">
+        <i class="pi pi-check-circle"></i>
+        <span>Reviewer Queue</span>
+      </div>
+    </aside>
+
+    <!-- Content Area -->
+    <main class="content">
+      @if (!selectedComplaint()) {
+        <!-- List View -->
+        <div class="content-header">
+          <h1>Transfer Complaints</h1>
+          <div class="header-actions">
+            <div class="search-box">
+              <i class="pi pi-search"></i>
+              <input type="text" placeholder="Search complaints..." [ngModel]="searchText()" (ngModelChange)="searchText.set($event)" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Stats Cards -->
+        <div class="stats-row">
+          <div class="stat-card total">
+            <div class="stat-value">{{ stats().total }}</div>
+            <div class="stat-label">Total Complaints</div>
+          </div>
+          <div class="stat-card transfers">
+            <div class="stat-value">{{ stats().totalTransfers }}</div>
+            <div class="stat-label">Total Transfers</div>
+          </div>
+          <div class="stat-card intra">
+            <div class="stat-value">{{ stats().intraRbio }}</div>
+            <div class="stat-label">Intra RBIO Office</div>
+          </div>
+          <div class="stat-card within">
+            <div class="stat-value">{{ stats().withinCrpc }}</div>
+            <div class="stat-label">Within CRPC Office</div>
+          </div>
+          <div class="stat-card r2c">
+            <div class="stat-value">{{ stats().rbioToCrpc }}</div>
+            <div class="stat-label">RBIO to CRPC</div>
+          </div>
+          <div class="stat-card c2r">
+            <div class="stat-value">{{ stats().crpcToRbio }}</div>
+            <div class="stat-label">CRPC to RBIO</div>
+          </div>
+          <div class="stat-card dept">
+            <div class="stat-value">{{ stats().crpcToRbioDept }}</div>
+            <div class="stat-label">CRPC to RBI Dept</div>
+          </div>
+        </div>
+
+        <!-- Data Grid -->
+        @if (loading()) {
+          <div class="loading-state">
+            <div class="spinner"></div>
+            <p>Loading transfers...</p>
+          </div>
+        } @else {
+          <div class="data-grid-wrapper">
+            <table class="data-grid">
+              <thead>
+                <tr>
+                  <th (click)="sortBy('complaintId')">Complaint Id <span class="sort-icon">{{ sortColumn === 'complaintId' ? (sortDirection === 'asc' ? '▲' : '▼') : '⇅' }}</span></th>
+                  <th (click)="sortBy('complaintNumber')">Complaint Number <span class="sort-icon">{{ sortColumn === 'complaintNumber' ? (sortDirection === 'asc' ? '▲' : '▼') : '⇅' }}</span></th>
+                  <th (click)="sortBy('from')">From <span class="sort-icon">{{ sortColumn === 'from' ? (sortDirection === 'asc' ? '▲' : '▼') : '⇅' }}</span></th>
+                  <th (click)="sortBy('pending')">Pending <span class="sort-icon">{{ sortColumn === 'pending' ? (sortDirection === 'asc' ? '▲' : '▼') : '⇅' }}</span></th>
+                  <th (click)="sortBy('fromOffice')">From Office <span class="sort-icon">{{ sortColumn === 'fromOffice' ? (sortDirection === 'asc' ? '▲' : '▼') : '⇅' }}</span></th>
+                  <th (click)="sortBy('targetOffice')">Target Office <span class="sort-icon">{{ sortColumn === 'targetOffice' ? (sortDirection === 'asc' ? '▲' : '▼') : '⇅' }}</span></th>
+                  <th (click)="sortBy('status')">Status <span class="sort-icon">{{ sortColumn === 'status' ? (sortDirection === 'asc' ? '▲' : '▼') : '⇅' }}</span></th>
+                  <th (click)="sortBy('entityName')">Entity Name <span class="sort-icon">{{ sortColumn === 'entityName' ? (sortDirection === 'asc' ? '▲' : '▼') : '⇅' }}</span></th>
+                  <th (click)="sortBy('proposedCategory')">Proposed Com... <span class="sort-icon">{{ sortColumn === 'proposedCategory' ? (sortDirection === 'asc' ? '▲' : '▼') : '⇅' }}</span></th>
+                  <th (click)="sortBy('creationDate')">Creation Date <span class="sort-icon">{{ sortColumn === 'creationDate' ? (sortDirection === 'asc' ? '▲' : '▼') : '⇅' }}</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (c of paginatedComplaints(); track c.complaintId) {
+                  <tr (click)="openComplaint(c)" class="clickable-row">
+                    <td>{{ c.complaintId }}</td>
+                    <td>{{ c.complaintNumber }}</td>
+                    <td>{{ c.from }}</td>
+                    <td><span class="pending-badge">{{ c.pending }} days</span></td>
+                    <td>{{ c.fromOffice }}</td>
+                    <td>{{ c.targetOffice }}</td>
+                    <td><span class="status-chip" [attr.data-status]="c.status">{{ c.status }}</span></td>
+                    <td>{{ c.entityName }}</td>
+                    <td>{{ c.proposedCategory }}</td>
+                    <td>{{ c.creationDate }}</td>
+                  </tr>
+                } @empty {
+                  <tr><td colspan="10" class="empty-row">No transfer complaints found</td></tr>
+                }
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Pagination -->
+          <div class="pagination">
+            <span class="page-info">Showing {{ paginationStart() }}–{{ paginationEnd() }} of {{ filteredComplaints().length }}</span>
+            <div class="page-controls">
+              <button [disabled]="currentPage() === 1" (click)="currentPage.set(currentPage() - 1)">‹</button>
+              @for (p of pageNumbers(); track p) {
+                <button [class.active]="p === currentPage()" (click)="currentPage.set(p)">{{ p }}</button>
+              }
+              <button [disabled]="currentPage() === totalPages()" (click)="currentPage.set(currentPage() + 1)">›</button>
+            </div>
+          </div>
+        }
+      } @else {
+        <!-- Detail View -->
+        <div class="detail-view">
+          <div class="detail-topbar">
+            <button class="back-btn" (click)="closeDetail()"><i class="pi pi-arrow-left"></i> Back to List</button>
+            <h2>{{ selectedComplaint()!.complaintNumber }}</h2>
+            <span class="status-chip" [attr.data-status]="selectedComplaint()!.status">{{ selectedComplaint()!.status }}</span>
+          </div>
+
+          <div class="detail-body">
+            <!-- Left: Complaint Info -->
+            <div class="detail-left">
+              <!-- Summary Tab -->
+              <div class="tabs">
+                <button class="tab active">Summary</button>
+                <button class="tab">Email Communication</button>
+              </div>
+
+              <div class="complaint-info-card">
+                <div class="info-grid">
+                  <div class="info-item">
+                    <label>Complaint ID</label>
+                    <p>{{ selectedComplaint()!.complaintId }}</p>
+                  </div>
+                  <div class="info-item">
+                    <label>Complainant</label>
+                    <p>{{ selectedComplaint()!.complainantName }}</p>
+                  </div>
+                  <div class="info-item">
+                    <label>Email</label>
+                    <p>{{ selectedComplaint()!.complainantEmail }}</p>
+                  </div>
+                  <div class="info-item">
+                    <label>Phone</label>
+                    <p>{{ selectedComplaint()!.complainantPhone || 'N/A' }}</p>
+                  </div>
+                  <div class="info-item">
+                    <label>Entity</label>
+                    <p>{{ selectedComplaint()!.entityName }}</p>
+                  </div>
+                  <div class="info-item">
+                    <label>Category</label>
+                    <p>{{ selectedComplaint()!.proposedCategory }}</p>
+                  </div>
+                  <div class="info-item">
+                    <label>From Office</label>
+                    <p>{{ selectedComplaint()!.fromOffice }}</p>
+                  </div>
+                  <div class="info-item">
+                    <label>Target Office</label>
+                    <p>{{ selectedComplaint()!.targetOffice }}</p>
+                  </div>
+                  <div class="info-item full-width">
+                    <label>Subject</label>
+                    <p>{{ selectedComplaint()!.subject }}</p>
+                  </div>
+                  <div class="info-item full-width">
+                    <label>Description</label>
+                    <p>{{ selectedComplaint()!.description }}</p>
+                  </div>
+                </div>
+
+                <!-- Timeline -->
+                @if (selectedComplaint()!.timeline?.length) {
+                  <div class="timeline-section">
+                    <h4>Timeline</h4>
+                    @for (entry of selectedComplaint()!.timeline; track entry.timestamp) {
+                      <div class="timeline-entry">
+                        <div class="timeline-dot"></div>
+                        <div class="timeline-content">
+                          <span class="timeline-action">{{ entry.action }}</span>
+                          <span class="timeline-flow">{{ entry.fromStatus }} → {{ entry.toStatus }}</span>
+                          <span class="timeline-time">{{ entry.timestamp | date:'dd MMM yyyy, HH:mm' }}</span>
+                          @if (entry.remarks) {
+                            <span class="timeline-remarks">{{ entry.remarks }}</span>
+                          }
+                        </div>
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
+            </div>
+
+            <!-- Right: Forward Panel -->
+            <div class="detail-right">
+              <div class="forward-panel">
+                <h3>Forward</h3>
+
+                <div class="form-group">
+                  <label>Language</label>
+                  <select [(ngModel)]="forwardLanguage">
+                    <option value="">Select Language</option>
+                    @for (lang of languages; track lang) {
+                      <option [value]="lang">{{ lang }}</option>
+                    }
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label>Territory</label>
+                  <select [(ngModel)]="forwardTerritory">
+                    <option value="">Select Territory</option>
+                    @for (t of territories; track t) {
+                      <option [value]="t">{{ t }}</option>
+                    }
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label>Reassign Territory</label>
+                  <select [(ngModel)]="reassignTerritory">
+                    <option value="">Select Territory (Optional)</option>
+                    @for (t of territories; track t) {
+                      <option [value]="t">{{ t }}</option>
+                    }
+                  </select>
+                </div>
+
+                <div class="forward-actions">
+                  <button class="btn-approve" (click)="openConfirmDialog('approve')" [disabled]="processing()">
+                    <i class="pi pi-check"></i> Approve
+                  </button>
+                  <button class="btn-reject" (click)="openConfirmDialog('reject')" [disabled]="processing()">
+                    <i class="pi pi-times"></i> Reject
+                  </button>
+                </div>
+
+                @if (actionResult()) {
+                  <div class="action-result" [class.success]="actionSuccess()" [class.error]="!actionSuccess()">
+                    {{ actionResult() }}
+                  </div>
+                }
+              </div>
+            </div>
+          </div>
+        </div>
+      }
+    </main>
+  </div>
+
+  <!-- Confirmation Dialog -->
+  @if (showConfirmDialog()) {
+    <div class="dialog-overlay" (click)="cancelConfirm()">
+      <div class="confirm-dialog" (click)="$event.stopPropagation()">
+        <div class="dialog-header">
+          <h3>Are you sure you want to {{ confirmAction() }} the request?</h3>
+          <button class="dialog-close" (click)="cancelConfirm()">×</button>
+        </div>
+        <div class="dialog-body">
+          <div class="form-group">
+            <label>Comments</label>
+            <textarea [(ngModel)]="confirmComments" rows="4" placeholder="Enter your comments..."></textarea>
+          </div>
+          <div class="expected-status">
+            <label>Expected Status Change</label>
+            <div class="status-change-box">
+              <span class="from-status">{{ selectedComplaint()!.status }}</span>
+              <span class="arrow">→</span>
+              <span class="to-status">{{ confirmAction() === 'approve' ? 'Sent to DO' : 'Sent Back to Deputy Ombudsman' }}</span>
+            </div>
+          </div>
+        </div>
+        <div class="dialog-footer">
+          <button class="btn-cancel" (click)="cancelConfirm()">Cancel</button>
+          <button
+            class="btn-confirm"
+            [class.approve]="confirmAction() === 'approve'"
+            [class.reject]="confirmAction() === 'reject'"
+            [disabled]="processing()"
+            (click)="submitConfirm()">
+            @if (processing()) {
+              Processing...
+            } @else {
+              Confirm {{ confirmAction() === 'approve' ? 'Approve' : 'Reject' }}
+            }
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+</div>

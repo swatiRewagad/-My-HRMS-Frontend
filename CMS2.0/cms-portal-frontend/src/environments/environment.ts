@@ -1,7 +1,7 @@
 export const environment = {
   production: false,
   apiBaseUrl: 'http://localhost:8082',
-  keycloakUrl: 'http://localhost:8180',
+  keycloakUrl: 'http://localhost:8080',
   realm: 'cms',
 
   // NFR-005: Session timeout in minutes

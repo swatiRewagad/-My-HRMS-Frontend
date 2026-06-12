@@ -13,23 +13,23 @@
 
   <!-- Stats -->
   <div class="stats-bar">
-    <div class="stat-card" (click)="filterStatus = ''">
+    <div class="stat-card" (click)="filterStatus.set('')">
       <span class="stat-value">{{ stats().total }}</span>
       <span class="stat-label">Total</span>
     </div>
-    <div class="stat-card pending" (click)="filterStatus = 'PENDING_REVIEW'">
+    <div class="stat-card pending" (click)="filterStatus.set('PENDING_REVIEW')">
       <span class="stat-value">{{ stats().pending }}</span>
       <span class="stat-label">Pending Review</span>
     </div>
-    <div class="stat-card approved" (click)="filterStatus = 'APPROVED'">
+    <div class="stat-card approved" (click)="filterStatus.set('APPROVED')">
       <span class="stat-value">{{ stats().approved }}</span>
       <span class="stat-label">Approved</span>
     </div>
-    <div class="stat-card sent-back" (click)="filterStatus = 'SENT_BACK'">
+    <div class="stat-card sent-back" (click)="filterStatus.set('SENT_BACK')">
       <span class="stat-value">{{ stats().sentBack }}</span>
       <span class="stat-label">Sent Back</span>
     </div>
-    <div class="stat-card closed" (click)="filterStatus = 'CLOSED_NM'">
+    <div class="stat-card closed" (click)="filterStatus.set('CLOSED_NM')">
       <span class="stat-value">{{ stats().closedNm }}</span>
       <span class="stat-label">Closed (NM)</span>
     </div>
@@ -39,8 +39,8 @@
   <div class="toolbar">
     <h2>Reviewer Queue</h2>
     <div class="toolbar-right">
-      <input type="text" class="search-input" placeholder="Search..." [(ngModel)]="searchText" aria-label="Search" />
-      <select [(ngModel)]="filterDeoDecision" aria-label="Filter by DEO decision">
+      <input type="text" class="search-input" placeholder="Search..." [value]="searchText()" (input)="searchText.set($any($event.target).value)" aria-label="Search" />
+      <select [value]="filterDeoDecision()" (change)="filterDeoDecision.set($any($event.target).value)" aria-label="Filter by DEO decision">
         <option value="">All Decisions</option>
         <option value="MAINTAINABLE">Maintainable</option>
         <option value="NON_MAINTAINABLE">Non-Maintainable</option>

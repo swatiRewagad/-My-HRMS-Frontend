@@ -306,6 +306,13 @@ export class DraftAssessmentComponent implements OnInit {
 
   loggedInUser: { id: string; name: string; role: string } | null = null;
 
+  // ─── Entity Search (from REGULATED_ENTITIES table) ───
+  entitySearchText = '';
+  entitySearchResults = signal<{ id: number; name: string; department: string; entityType: string }[]>([]);
+  entitySearchLoading = signal(false);
+  showEntityDropdown = signal(false);
+  private entitySearchTimeout: any = null;
+
   // ─── Past & Similar Complaints ───
   pastComplaints = signal<any[]>([]);
   similarCases = signal<any[]>([]);
@@ -332,6 +339,45 @@ export class DraftAssessmentComponent implements OnInit {
     this.draftId = this.route.snapshot.paramMap.get('id') || '';
     this.loadDraft();
     this.crpcService.getReviewers().subscribe(data => this.reviewers.set(data));
+  }
+
+  onEntitySearchInput(value: string) {
+    this.entitySearchText = value;
+    if (this.entitySearchTimeout) clearTimeout(this.entitySearchTimeout);
+    if (!value || value.length < 2) {
+      this.entitySearchResults.set([]);
+      this.showEntityDropdown.set(false);
+      return;
+    }
+    this.entitySearchTimeout = setTimeout(() => this.searchEntities(value), 300);
+  }
+
+  searchEntities(query: string) {
+    this.entitySearchLoading.set(true);
+    this.showEntityDropdown.set(true);
+    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/routing/entities/list`, {
+      params: { search: query }
+    }).subscribe({
+      next: (res) => {
+        this.entitySearchResults.set(res?.data || []);
+        this.entitySearchLoading.set(false);
+      },
+      error: () => {
+        this.entitySearchResults.set([]);
+        this.entitySearchLoading.set(false);
+      }
+    });
+  }
+
+  selectEntity(entity: { id: number; name: string; department: string; entityType: string }) {
+    this.entityName = entity.name;
+    this.entityType = entity.entityType || 'BANK';
+    this.entitySearchText = entity.name;
+    this.showEntityDropdown.set(false);
+  }
+
+  onEntityBlur() {
+    setTimeout(() => this.showEntityDropdown.set(false), 200);
   }
 
   loadPastComplaints() {
@@ -989,7 +1035,7 @@ export class DraftAssessmentComponent implements OnInit {
       draftId: this.draftId,
       status: 'SENT_TO_REVIEWER',
       assignedTo: this.selectedReviewer,
-      processedBy: this.loggedInUser?.name || 'DEO',
+      processedBy: this.loggedInUser?.id || 'DEO',
       complainantName: this.complainantName,
       complainantPhone: this.complainantPhone,
       complainantAddress: this.complainantAddress,

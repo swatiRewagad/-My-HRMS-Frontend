@@ -10,7 +10,8 @@
       @if (reviewerDecision === 'APPROVE') {
         <h2>Complaint Approved</h2>
         <p>Complaint Number: <strong class="complaint-number">{{ generatedComplaintNumber() }}</strong></p>
-        <p>Routed to: {{ targetRegionalOffice }}</p>
+        <p>Routed to: <strong>{{ targetRegionalOffice }}</strong></p>
+        <p>Assigned to: <strong>{{ assignedToUser() }}</strong> (login with this username / Test&#64;123)</p>
       } @else if (reviewerDecision === 'SENT_BACK_TO_DEO') {
         <h2>Sent Back to DEO</h2>
         <p>Draft returned to <strong>{{ sentBackToDeoId }}</strong> with comments.</p>

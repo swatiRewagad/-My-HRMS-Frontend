@@ -124,6 +124,17 @@ export const routes: Routes = [
     canActivate: [staffAuthGuard],
     loadComponent: () => import('./components/staff/cepc-tasks/cepc-tasks.component').then(m => m.CepcTasksComponent)
   },
+  // ── CEPC Module ──
+  {
+    path: 'cepc/dashboard',
+    canActivate: [staffAuthGuard],
+    loadComponent: () => import('./components/cepc/cepc-dashboard/cepc-dashboard.component').then(m => m.CepcDashboardComponent)
+  },
+  {
+    path: 'cepc/complaint/:id',
+    canActivate: [staffAuthGuard],
+    loadComponent: () => import('./components/cepc/cepc-complaint-detail/cepc-complaint-detail.component').then(m => m.CepcComplaintDetailComponent)
+  },
   // ── CRPC (DEO / Reviewer) ──
   {
     path: 'crpc/login',
@@ -140,6 +151,10 @@ export const routes: Routes = [
   {
     path: 'crpc/draft/:id',
     loadComponent: () => import('./components/crpc/draft-assessment/draft-assessment.component').then(m => m.DraftAssessmentComponent)
+  },
+  {
+    path: 'crpc/ops-head',
+    loadComponent: () => import('./components/crpc/ops-head/ops-head.component').then(m => m.OpsHeadComponent)
   },
   {
     path: 'crpc/reviewer',

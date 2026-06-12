@@ -125,6 +125,7 @@ export class ReviewerAssessmentComponent implements OnInit {
   submitting = signal(false);
   submitted = signal(false);
   generatedComplaintNumber = signal('');
+  assignedToUser = signal('');
 
   categories = ['ATM', 'CREDIT_CARD', 'UPI', 'LOAN', 'DEPOSIT', 'INSURANCE', 'NEFT_RTGS', 'GENERAL'];
   states = [
@@ -208,6 +209,21 @@ export class ReviewerAssessmentComponent implements OnInit {
             { id: 'H2', timestamp: draft.createdAt || '', action: 'ASSIGNED_TO_DEO', performedBy: 'SYSTEM', role: 'SYSTEM', remarks: `Assigned to ${draft.assignedTo || 'DEO'} via Round Robin.` },
             { id: 'H3', timestamp: draft.createdAt || '', action: 'SENT_TO_REVIEWER', performedBy: draft.assignedTo || 'DEO', role: 'DEO', remarks: `Routed to reviewer via Round Robin.` },
           ]);
+
+          if (draft.convertedComplaintId) {
+            this.generatedComplaintNumber.set(draft.convertedComplaintId);
+            this.reviewerDecision = 'APPROVE';
+            this.targetRegionalOffice = draft.targetOffice || 'CEPC';
+            this.assignedToUser.set(draft.assignedTo || '');
+            this.submitted.set(true);
+          } else if (draft.status === 'SENT_BACK_TO_DEO') {
+            this.reviewerDecision = 'SENT_BACK_TO_DEO';
+            this.sentBackToDeoId = draft.processedBy || '';
+            this.submitted.set(true);
+          } else if (draft.status === 'CLOSED_NOT_A_COMPLAINT') {
+            this.reviewerDecision = 'NOT_A_COMPLAINT';
+            this.submitted.set(true);
+          }
 
           this.computeAutoRouting();
           this.loading.set(false);
@@ -318,11 +334,18 @@ export class ReviewerAssessmentComponent implements OnInit {
       targetOffice: this.targetRegionalOffice,
       assignedTo: this.reviewerDecision === 'SENT_BACK_TO_DEO' ? this.sentBackToDeoId : this.targetRegionalOffice,
     }).subscribe({
-      next: () => {
+      next: (res) => {
         if (this.reviewerDecision === 'APPROVE') {
-          const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-          const rand = Math.floor(100000 + Math.random() * 900000);
-          this.generatedComplaintNumber.set(`CMP-${dateStr}-${rand}`);
+          const complaintId = res?.data?.convertedComplaintId;
+          const assignedTo = res?.data?.assignedTo;
+          if (complaintId) {
+            this.generatedComplaintNumber.set(complaintId);
+          } else {
+            const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+            const rand = Math.floor(100000 + Math.random() * 900000);
+            this.generatedComplaintNumber.set(`CMP-${dateStr}-${rand}`);
+          }
+          this.assignedToUser.set(assignedTo || this.targetRegionalOffice);
         }
         this.submitting.set(false);
         this.submitted.set(true);

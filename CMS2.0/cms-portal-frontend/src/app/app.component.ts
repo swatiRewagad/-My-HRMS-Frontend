@@ -1,5 +1,6 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { RouterOutlet, RouterLink } from '@angular/router';
+import { KeycloakAuthService } from './services/keycloak-auth.service';
 
 @Component({
   selector: 'app-root',
@@ -24,6 +25,22 @@ import { RouterOutlet, RouterLink } from '@angular/router';
     <footer class="app-footer">
       <p>© Reserve Bank of India | Integrated Ombudsman Scheme 2021</p>
     </footer>
+
+    <!-- Session Expiry Popup -->
+    @if (auth.sessionExpiring()) {
+      <div class="session-overlay">
+        <div class="session-dialog">
+          <div class="session-icon">&#9200;</div>
+          <h3>Session Expiring</h3>
+          <p>Your session will expire in <strong>{{ auth.sessionRemainingSeconds() }}</strong> seconds due to inactivity.</p>
+          <p class="session-sub">Do you want to extend your session?</p>
+          <div class="session-actions">
+            <button class="btn-extend" (click)="auth.extendSession()">Extend Session</button>
+            <button class="btn-logout" (click)="auth.logout()">Logout</button>
+          </div>
+        </div>
+      </div>
+    }
   `,
   styles: [`
     .app-header {
@@ -61,6 +78,48 @@ import { RouterOutlet, RouterLink } from '@angular/router';
       padding: 1rem;
       font-size: 0.85rem;
     }
+    .session-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      backdrop-filter: blur(3px);
+    }
+    .session-dialog {
+      background: white;
+      border-radius: 12px;
+      padding: 32px 40px;
+      text-align: center;
+      max-width: 420px;
+      width: 90%;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      animation: popIn 0.3s ease;
+    }
+    @keyframes popIn {
+      from { opacity: 0; transform: scale(0.9); }
+      to { opacity: 1; transform: scale(1); }
+    }
+    .session-icon { font-size: 48px; margin-bottom: 12px; }
+    .session-dialog h3 { margin: 0 0 12px; font-size: 20px; color: #1e293b; }
+    .session-dialog p { margin: 0 0 8px; font-size: 14px; color: #475569; }
+    .session-dialog .session-sub { color: #64748b; font-size: 13px; margin-bottom: 20px; }
+    .session-dialog strong { color: #dc2626; font-size: 18px; }
+    .session-actions { display: flex; gap: 12px; justify-content: center; }
+    .session-actions .btn-extend {
+      padding: 10px 24px; background: #3b82f6; color: white; border: none;
+      border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer;
+    }
+    .session-actions .btn-extend:hover { background: #2563eb; }
+    .session-actions .btn-logout {
+      padding: 10px 24px; background: white; color: #dc2626; border: 1px solid #fca5a5;
+      border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer;
+    }
+    .session-actions .btn-logout:hover { background: #fef2f2; }
   `]
 })
-export class AppComponent {}
+export class AppComponent {
+  auth = inject(KeycloakAuthService);
+}

@@ -8,6 +8,7 @@ import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
 
 interface DraftComplaint {
   draftId: string;
+  displayId: string;
   complaintNumber: string;
   complainantName: string;
   fromEmailId: string;
@@ -45,8 +46,9 @@ export class DeoHomeComponent implements OnInit {
   selectedIds = signal<Set<string>>(new Set());
 
   // Filters
-  filterStatus = '';
-  searchText = '';
+  filterStatus = signal('');
+  filterMode = signal<'ALL' | 'DIRECT' | 'ABR'>('ALL');
+  searchText = signal('');
   columnFilters: Record<string, string> = {};
   columnSearchText = '';
 
@@ -72,7 +74,7 @@ export class DeoHomeComponent implements OnInit {
 
   // Column configuration
   allColumns = [
-    { key: 'draftId', label: 'Complaint Id', visible: true },
+    { key: 'displayId', label: 'Complaint Id', visible: true },
     { key: 'complaintNumber', label: 'Complaint Number', visible: true },
     { key: 'fromEmailId', label: 'From', visible: true },
     { key: 'ageing', label: 'Pending', visible: true },
@@ -103,9 +105,14 @@ export class DeoHomeComponent implements OnInit {
 
   filteredDrafts = computed(() => {
     let result = this.drafts();
-    if (this.filterStatus) result = result.filter(d => d.status === this.filterStatus);
-    if (this.searchText) {
-      const q = this.searchText.toLowerCase();
+    const status = this.filterStatus();
+    const mode = this.filterMode();
+    const search = this.searchText();
+    if (status) result = result.filter(d => d.status === status);
+    if (mode === 'DIRECT') result = result.filter(d => d.modeOfReceipt === 'PHYSICAL_LETTER' || d.modeOfReceipt === 'PORTAL');
+    if (mode === 'ABR') result = result.filter(d => d.modeOfReceipt === 'EMAIL' || d.modeOfReceipt === 'CPGRAMS');
+    if (search) {
+      const q = search.toLowerCase();
       result = result.filter(d =>
         d.draftId.toLowerCase().includes(q) ||
         d.complainantName.toLowerCase().includes(q) ||
@@ -157,9 +164,11 @@ export class DeoHomeComponent implements OnInit {
     return {
       total: all.length,
       draft: all.filter(d => d.status === 'DRAFT').length,
-      sentToReviewer: all.filter(d => d.status === 'SENT_TO_REVIEWER').length,
+      inProgress: all.filter(d => d.status === 'IN_PROGRESS').length,
       rejected: all.filter(d => d.status === 'REJECTED_BY_REVIEWER').length,
       approved: all.filter(d => d.status === 'APPROVED').length,
+      direct: all.filter(d => d.modeOfReceipt === 'PHYSICAL_LETTER' || d.modeOfReceipt === 'PORTAL').length,
+      viaAbr: all.filter(d => d.modeOfReceipt === 'EMAIL' || d.modeOfReceipt === 'CPGRAMS').length,
     };
   });
 
@@ -185,6 +194,11 @@ export class DeoHomeComponent implements OnInit {
       return;
     }
 
+    if (this.loggedInUser?.role === 'CRPC_HEAD') {
+      this.router.navigate(['/crpc/ops-head']);
+      return;
+    }
+
     this.loadDrafts();
   }
 
@@ -195,9 +209,10 @@ export class DeoHomeComponent implements OnInit {
 
   loadDrafts() {
     this.loading.set(true);
-    this.emailService.getQueue().subscribe({
+    const username = this.loggedInUser?.id || '';
+    this.emailService.getQueue(undefined, username).subscribe({
       next: (queueDrafts) => {
-        const myDrafts = queueDrafts.map(d => this.mapToDraftComplaint(d));
+        const myDrafts = queueDrafts.map((d, i) => this.mapToDraftComplaint(d, i + 1));
         this.drafts.set(myDrafts);
         this.loading.set(false);
       },
@@ -208,10 +223,11 @@ export class DeoHomeComponent implements OnInit {
     });
   }
 
-  private mapToDraftComplaint(d: EmailDraft): DraftComplaint {
+  private mapToDraftComplaint(d: EmailDraft, index: number): DraftComplaint {
     const hours = (Date.now() - new Date(d.receivedAt).getTime()) / 3600000;
     return {
       draftId: d.draftId,
+      displayId: d.displayId || ('C' + String(index).padStart(3, '0')),
       complaintNumber: d.parentComplaintId || '',
       complainantName: d.complainantName || '',
       fromEmailId: d.senderEmail || '',
@@ -236,11 +252,13 @@ export class DeoHomeComponent implements OnInit {
 
   private mapStatus(status: string): string {
     switch (status) {
-      case 'SENT_TO_REVIEWER': return 'SENT_TO_REVIEWER';
+      case 'SENT_TO_REVIEWER':
+      case 'ASSIGNED': return 'IN_PROGRESS';
       case 'APPROVED_ROUTED':
       case 'CONVERTED': return 'APPROVED';
       case 'SENT_BACK_TO_DEO':
       case 'CLOSED_NOT_A_COMPLAINT': return 'REJECTED_BY_REVIEWER';
+      case 'DRAFT': return 'DRAFT';
       default: return 'DRAFT';
     }
   }
@@ -297,7 +315,7 @@ export class DeoHomeComponent implements OnInit {
     if (q.entityName) result = result.filter(d => d.entityName.toLowerCase().includes(q.entityName.toLowerCase()));
     if (q.subject) result = result.filter(d => d.subject.toLowerCase().includes(q.subject.toLowerCase()));
     if (q.category) result = result.filter(d => d.category === q.category);
-    this.searchText = JSON.stringify(q);
+    this.searchText.set(JSON.stringify(q));
     this.showAdvancedSearch.set(false);
   }
 
@@ -308,5 +326,48 @@ export class DeoHomeComponent implements OnInit {
     if (key === 'assignedAt' || key === 'createdAt') return new Date(val).toLocaleDateString('en-IN');
     if (key === 'ageing') return val + ' day' + (val !== 1 ? 's' : '');
     return String(val);
+  }
+
+  exportToCSV() {
+    const columns = this.visibleColumns();
+    const data = this.filteredDrafts();
+    const header = columns.map(c => c.label).join(',');
+    const rows = data.map(d => columns.map(c => {
+      const val = this.getCellValue(d, c.key);
+      return `"${val.replace(/"/g, '""')}"`;
+    }).join(','));
+    const csv = [header, ...rows].join('\n');
+    this.downloadFile(csv, 'crpc-complaints.csv', 'text/csv');
+  }
+
+  exportToExcel() {
+    const columns = this.visibleColumns();
+    const data = this.filteredDrafts();
+    let html = '<table><thead><tr>';
+    columns.forEach(c => html += `<th>${c.label}</th>`);
+    html += '</tr></thead><tbody>';
+    data.forEach(d => {
+      html += '<tr>';
+      columns.forEach(c => html += `<td>${this.getCellValue(d, c.key)}</td>`);
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+    const blob = new Blob([`<html><head><meta charset="UTF-8"></head><body>${html}</body></html>`], { type: 'application/vnd.ms-excel' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'crpc-complaints.xls';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  private downloadFile(content: string, filename: string, type: string) {
+    const blob = new Blob([content], { type });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
   }
 }

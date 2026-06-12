@@ -169,8 +169,11 @@ public class EmailSyndicationApiController {
             }
         }
 
+        long nextSeq = draftRepository.count() + 1;
+        String generatedDraftId = "DRF-" + String.format("%06d", nextSeq);
+
         EmailDraft draft = EmailDraft.builder()
-                .draftId(threadId)
+                .draftId(generatedDraftId)
                 .threadId(threadId)
                 .messageId(messageId == null || messageId.isEmpty() ? UUID.randomUUID().toString() : messageId)
                 .senderEmail(senderEmail)
@@ -214,9 +217,21 @@ public class EmailSyndicationApiController {
     }
 
     @GetMapping("/queue")
-    public Map<String, Object> getQueue(@RequestParam(required = false) String status) {
+    public Map<String, Object> getQueue(
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String assignedTo) {
         List<EmailDraft> drafts;
-        if (status != null && !status.isEmpty()) {
+        if (assignedTo != null && !assignedTo.isEmpty() && status != null && !status.isEmpty()) {
+            drafts = draftRepository.findByAssignedToAndStatusOrderByCreatedAtDesc(assignedTo, status);
+        } else if (assignedTo != null && !assignedTo.isEmpty()) {
+            // Show drafts assigned to user OR processed by user (so DEO sees sent items)
+            List<EmailDraft> assigned = draftRepository.findByAssignedToOrderByCreatedAtDesc(assignedTo);
+            List<EmailDraft> processed = draftRepository.findByProcessedByOrderByCreatedAtDesc(assignedTo);
+            java.util.Set<Long> seen = new java.util.HashSet<>();
+            drafts = new java.util.ArrayList<>();
+            for (EmailDraft d : assigned) { if (seen.add(d.getId())) drafts.add(d); }
+            for (EmailDraft d : processed) { if (seen.add(d.getId())) drafts.add(d); }
+        } else if (status != null && !status.isEmpty()) {
             drafts = draftRepository.findByStatusOrderByCreatedAtDesc(status);
         } else {
             drafts = draftRepository.findAllByOrderByCreatedAtDesc();
@@ -291,9 +306,16 @@ public class EmailSyndicationApiController {
     @PostMapping("/drafts")
     public Map<String, Object> createDraft(@RequestBody Map<String, Object> request) {
         try {
-            String draftId = (String) request.getOrDefault("draftId", "DRF-" + System.currentTimeMillis());
-            EmailDraft draft = draftRepository.findByDraftId(draftId).orElse(new EmailDraft());
-            draft.setDraftId(draftId);
+            String draftId = (String) request.get("draftId");
+            EmailDraft draft;
+            if (draftId != null && !draftId.isBlank()) {
+                draft = draftRepository.findByDraftId(draftId).orElse(new EmailDraft());
+                draft.setDraftId(draftId);
+            } else {
+                draft = new EmailDraft();
+                long nextSeq = draftRepository.count() + 1;
+                draft.setDraftId("DRF-" + String.format("%06d", nextSeq));
+            }
             draft.setStatus((String) request.getOrDefault("status", "DRAFT"));
             draft.setSubject((String) request.get("subject"));
             draft.setBody((String) request.get("body"));
@@ -372,7 +394,26 @@ public class EmailSyndicationApiController {
         if (targetOffice.startsWith("RBIO")) department = "RBIO";
         else if (targetOffice.startsWith("CEPC") || targetOffice.equals("CEPC")) department = "CEPC";
 
-        String assignedRole = "RBIO".equals(department) ? "RBIO_OFFICER" : "CEPC_OFFICER";
+        String assignedRole = "RBIO".equals(department) ? "RBIO_OFFICER" : "CEPC_DO";
+
+        // Assign to a specific user via round robin
+        String assignedUser = targetOffice;
+        if ("CEPC".equals(department)) {
+            List<Map<String, Object>> cepcDOs = keycloakUserService.getUsersByRole("CEPC_DO");
+            if (!cepcDOs.isEmpty()) {
+                assignedUser = roundRobinAssign(cepcDOs, "CEPC");
+            }
+        } else if ("RBIO".equals(department)) {
+            List<Map<String, Object>> rbioOfficers = keycloakUserService.getUsersByRole("RBIO_OFFICER");
+            List<Map<String, Object>> regionFiltered = rbioOfficers.stream()
+                    .filter(u -> targetOffice == null || matchesRegion(u, targetOffice))
+                    .collect(Collectors.toList());
+            if (!regionFiltered.isEmpty()) {
+                assignedUser = roundRobinAssign(regionFiltered, "RBIO_" + targetOffice);
+            } else if (!rbioOfficers.isEmpty()) {
+                assignedUser = roundRobinAssign(rbioOfficers, "RBIO");
+            }
+        }
 
         // Generate complaint number
         String dateStr = LocalDateTime.now().toString().substring(0, 10).replace("-", "");
@@ -392,16 +433,17 @@ public class EmailSyndicationApiController {
                 .filingType(draft.getModeOfReceipt() != null ? draft.getModeOfReceipt() : "EMAIL")
                 .department(department)
                 .assignedRole(assignedRole)
-                .assignedOfficer(targetOffice)
+                .assignedOfficer(assignedUser)
                 .entityCode(entityName)
                 .workflowStage("INITIAL_REVIEW")
                 .build();
 
         Complaint saved = complaintRepository.save(complaint);
 
-        // Update draft with generated complaint number
+        // Update draft with generated complaint number and assignment
         draft.setConvertedComplaintId(complaintNumber);
         draft.setStatus("APPROVED_ROUTED");
+        draft.setAssignedTo(assignedUser);
         draftRepository.save(draft);
 
         // Add timeline entry
@@ -409,8 +451,30 @@ public class EmailSyndicationApiController {
                 "Complaint created from CRPC draft " + draft.getDraftId() + ". Routed to " + department + " (" + targetOffice + ")",
                 null, "assigned");
 
-        log.info("Complaint {} created from draft {} → routed to {} ({})",
-                complaintNumber, draft.getDraftId(), department, targetOffice);
+        log.info("Complaint {} created from draft {} → routed to {} ({}) assigned to {}",
+                complaintNumber, draft.getDraftId(), department, targetOffice, assignedUser);
+    }
+
+    private static final Map<String, Integer> roundRobinCounters = new java.util.concurrent.ConcurrentHashMap<>();
+
+    private String roundRobinAssign(List<Map<String, Object>> users, String counterKey) {
+        int index = roundRobinCounters.getOrDefault(counterKey, 0);
+        if (index >= users.size()) index = 0;
+        String userId = (String) users.get(index).get("userId");
+        roundRobinCounters.put(counterKey, index + 1);
+        return userId;
+    }
+
+    private boolean matchesRegion(Map<String, Object> user, String targetOffice) {
+        String username = (String) user.getOrDefault("userId", "");
+        if (targetOffice == null) return true;
+        switch (targetOffice) {
+            case "RBIO-MUM": return username.contains("mum");
+            case "RBIO-DEL": return username.contains("del");
+            case "RBIO-CHE": return username.contains("che");
+            case "RBIO-KOL": return username.contains("kol");
+            default: return true;
+        }
     }
 
     @PostMapping("/drafts/{draftId}/convert")
@@ -608,6 +672,7 @@ public class EmailSyndicationApiController {
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("id", draft.getId());
         response.put("draftId", draft.getDraftId());
+        response.put("displayId", "C" + String.format("%03d", draft.getId()));
         response.put("messageId", draft.getMessageId());
         response.put("senderEmail", draft.getSenderEmail());
         response.put("subject", draft.getSubject());

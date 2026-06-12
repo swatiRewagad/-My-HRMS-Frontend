@@ -250,49 +250,94 @@ export class TaskActionComponent implements OnInit {
     const actions: {label: string; value: string; style: string}[] = [];
 
     if (this.isTerminalState()) {
-      this.availableActions.set([]);
+      // Allow reopen for Closing Authority / Admin on closed complaints
+      if (roles.includes('CEPC_CLOSING_AUTHORITY') || roles.includes('CEPC_ADMIN') || roles.includes('ADMIN')) {
+        if (status === 'closed' || status === 'resolved') {
+          actions.push({ label: 'Reopen Complaint', value: 'REOPEN', style: 'escalate' });
+        }
+      }
+      this.availableActions.set(actions);
       return;
     }
 
-    if (roles.includes('RBIO_OFFICER') || roles.includes('CEPC_OFFICER')) {
-      if (status === 'pending' || status === 'assigned' || status === 'new') {
-        actions.push({ label: 'Accept & Start Investigation', value: 'ACCEPT', style: 'approve' });
+    // ═══ CEPC DO (Dealing Official) ═══
+    if (roles.includes('CEPC_DO')) {
+      if (status === 'assigned' || status === 'in_progress' || status === 'sent_back') {
+        actions.push({ label: 'Forward to Reviewer', value: 'SUBMIT_FOR_REVIEW', style: 'approve' });
+        actions.push({ label: 'Forward to In-Charge', value: 'FORWARD_TO_INCHARGE', style: 'approve' });
+        actions.push({ label: 'Request Info', value: 'REQUEST_INFO', style: 'escalate' });
+        actions.push({ label: 'Forward to Contact Person', value: 'FORWARD_TO_CONTACT', style: 'resolve' });
       }
-      if (status === 'in_progress') {
+    }
+
+    // ═══ CEPC Reviewer ═══
+    if (roles.includes('CEPC_REVIEWER')) {
+      if (status === 'reviewer_review' || status === 'in_progress') {
+        actions.push({ label: 'Forward to In-Charge', value: 'APPROVE_REVIEW', style: 'approve' });
+        actions.push({ label: 'Forward to Closing Authority', value: 'FORWARD_TO_CLOSING_AUTHORITY', style: 'approve' });
+        actions.push({ label: 'Send Back to DO', value: 'SEND_BACK_DO', style: 'return' });
+      }
+    }
+
+    // ═══ CEPC In-Charge ═══
+    if (roles.includes('CEPC_INCHARGE')) {
+      if (status === 'incharge_review' || status === 'in_progress') {
+        actions.push({ label: 'Forward to Closing Authority', value: 'APPROVE_CLOSURE', style: 'approve' });
+        actions.push({ label: 'Send Back to Reviewer', value: 'SEND_BACK_REVIEWER', style: 'return' });
+        actions.push({ label: 'Send Back to DO', value: 'SEND_BACK_DO', style: 'return' });
+      }
+    }
+
+    // ═══ CEPC Closing Authority ═══
+    if (roles.includes('CEPC_CLOSING_AUTHORITY')) {
+      if (status === 'awaiting_closure' || status === 'in_progress') {
+        actions.push({ label: 'Close Complaint', value: 'CLOSE_COMPLAINT', style: 'approve' });
+        actions.push({ label: 'Send Back to In-Charge', value: 'SEND_BACK_INCHARGE', style: 'return' });
+        actions.push({ label: 'Forward to Other Office', value: 'FORWARD_TO_OTHER_OFFICE', style: 'escalate' });
+        actions.push({ label: 'Forward to Regulatory Body', value: 'FORWARD_TO_REGULATORY_BODY', style: 'escalate' });
+        actions.push({ label: 'Forward to Other RBI Dept', value: 'FORWARD_TO_OTHER_RBI_DEPT', style: 'escalate' });
+      }
+    }
+
+    // ═══ RBIO Officer ═══
+    if (roles.includes('RBIO_OFFICER')) {
+      if (status === 'pending' || status === 'assigned' || status === 'in_progress') {
         actions.push({ label: 'Escalate', value: 'ESCALATE', style: 'escalate' });
         actions.push({ label: 'Resolve', value: 'RESOLVE', style: 'resolve' });
         actions.push({ label: 'Reject', value: 'REJECT', style: 'reject' });
       }
     }
 
-    if (roles.includes('RBIO_SUPERVISOR') || roles.includes('CEPC_SUPERVISOR')) {
-      if (status === 'escalated' || status === 'in_progress' || status === 'under_review') {
+    // ═══ RBIO Supervisor ═══
+    if (roles.includes('RBIO_SUPERVISOR')) {
+      if (status === 'escalated' || status === 'in_progress') {
         actions.push({ label: 'Approve & Escalate', value: 'APPROVE', style: 'approve' });
         actions.push({ label: 'Return to Officer', value: 'RETURN_TO_OFFICER', style: 'return' });
         actions.push({ label: 'Resolve', value: 'RESOLVE', style: 'resolve' });
       }
     }
 
-    if (roles.includes('RBIO_CONCILIATOR') || roles.includes('CEPC_CONCILIATOR')) {
-      if (status === 'conciliation' || status === 'escalated') {
+    // ═══ RBIO Conciliator ═══
+    if (roles.includes('RBIO_CONCILIATOR')) {
+      if (status === 'escalated' || status === 'conciliation') {
         actions.push({ label: 'Conciliation Success', value: 'CONCILIATION_SUCCESS', style: 'approve' });
         actions.push({ label: 'Conciliation Failed', value: 'CONCILIATION_FAILED', style: 'escalate' });
       }
     }
 
-    if (roles.includes('RBIO_ADJUDICATOR') || roles.includes('CEPC_ADJUDICATOR')) {
-      if (status === 'adjudication' || status === 'escalated') {
+    // ═══ RBIO Adjudicator ═══
+    if (roles.includes('RBIO_ADJUDICATOR')) {
+      if (status === 'escalated' || status === 'adjudication') {
         actions.push({ label: 'Award (Adjudication)', value: 'ADJUDICATION_AWARD', style: 'approve' });
         actions.push({ label: 'Reject', value: 'REJECT', style: 'reject' });
       }
     }
 
-    if (roles.includes('ADMIN')) {
-      if (status !== 'resolved' && status !== 'closed' && status !== 'rejected') {
-        actions.push({ label: 'Approve', value: 'APPROVE', style: 'approve' });
-        actions.push({ label: 'Escalate', value: 'ESCALATE', style: 'escalate' });
-        actions.push({ label: 'Resolve', value: 'RESOLVE', style: 'resolve' });
-        actions.push({ label: 'Reject', value: 'REJECT', style: 'reject' });
+    // ═══ CEPC Admin ═══
+    if (roles.includes('CEPC_ADMIN') || roles.includes('ADMIN')) {
+      actions.push({ label: 'Reassign', value: 'REASSIGN', style: 'resolve' });
+      if (status === 'closed' || status === 'resolved') {
+        actions.push({ label: 'Reopen', value: 'REOPEN', style: 'escalate' });
       }
     }
 

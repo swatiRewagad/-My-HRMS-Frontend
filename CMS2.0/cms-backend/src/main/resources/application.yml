@@ -1,5 +1,8 @@
 server:
   port: 8082
+  error:
+    include-message: always
+    include-stacktrace: on_param
   tomcat:
     threads:
       max: 400
@@ -58,20 +61,12 @@ spring:
         max.block.ms: ${KAFKA_MAX_BLOCK_MS:5000}
         delivery.timeout.ms: ${KAFKA_DELIVERY_TIMEOUT:10000}
         request.timeout.ms: ${KAFKA_REQUEST_TIMEOUT:5000}
-  data:
-    redis:
-      host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT:6379}
-      timeout: 2000
   cache:
-    type: ${CACHE_TYPE:simple}
-    redis:
-      time-to-live: 300000
-      cache-null-values: false
+    type: none
 
 keycloak:
   admin:
-    server-url: ${KEYCLOAK_URL:http://localhost:8180}
+    server-url: ${KEYCLOAK_URL:http://localhost:8080}
     realm: ${KEYCLOAK_REALM:cms}
     client-id: ${KEYCLOAK_ADMIN_CLIENT:admin-cli}
     username: ${KEYCLOAK_ADMIN_USER:admin}
@@ -150,19 +145,8 @@ spring:
       hibernate:
         jdbc:
           batch_size: 50
-  data:
-    redis:
-      host: ${REDIS_HOST:cms-redis}
-      port: ${REDIS_PORT:6379}
-      password: ${REDIS_PASSWORD:}
-      lettuce:
-        pool:
-          max-active: 32
-          max-idle: 16
-          min-idle: 8
   cache:
-    redis:
-      time-to-live: 600000
+    type: none
 
 server:
   tomcat:

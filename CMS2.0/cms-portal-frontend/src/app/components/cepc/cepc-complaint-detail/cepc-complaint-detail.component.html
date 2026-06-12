@@ -1,0 +1,257 @@
+<div class="cepc-detail">
+  <header class="topbar">
+    <div class="topbar-left">
+      <button class="back-btn" (click)="goBack()">&larr;</button>
+      <h2>CEPC Complaint Examination</h2>
+    </div>
+    <div class="topbar-right">
+      @if (auth.currentUser(); as user) {
+        <span class="role-badge">{{ userRole() }}</span>
+        <span>{{ user.firstName }} {{ user.lastName }}</span>
+      }
+    </div>
+  </header>
+
+  <main class="content">
+    @if (loading()) {
+      <div class="loading">Loading complaint details...</div>
+    } @else if (!complaint()) {
+      <div class="error-state">Complaint not found.</div>
+    } @else {
+      <div class="detail-layout">
+        <!-- Left: Complaint Details -->
+        <div class="detail-panel">
+          <!-- Header -->
+          <div class="complaint-header">
+            <div class="header-left">
+              <h3>{{ complaint().complaintNumber || complaint().complaintId }}</h3>
+              <span class="status-badge" [attr.data-status]="complaint().status">{{ getStatusLabel(complaint().status) }}</span>
+              <span class="priority-badge" [attr.data-priority]="complaint().priority">{{ complaint().priority }}</span>
+            </div>
+            <div class="header-meta">
+              <span>Filed: {{ complaint().registeredAt | date:'dd MMM yyyy' }}</span>
+              <span>SLA Due: {{ complaint().slaDueDate | date:'dd MMM yyyy' }}</span>
+            </div>
+          </div>
+
+          <!-- Complainant Details -->
+          <section class="detail-section">
+            <h4>Complainant Details</h4>
+            <div class="field-grid">
+              <div class="field">
+                <label>Name</label>
+                <span>{{ complaint().complainantName }}</span>
+              </div>
+              <div class="field">
+                <label>Email</label>
+                <span>{{ complaint().complainantEmail || '—' }}</span>
+              </div>
+              <div class="field">
+                <label>Phone</label>
+                <span>{{ complaint().complainantPhone || '—' }}</span>
+              </div>
+              <div class="field">
+                <label>Address</label>
+                <span>{{ complaint().complainantAddress || '—' }}</span>
+              </div>
+            </div>
+          </section>
+
+          <!-- Entity Details -->
+          <section class="detail-section">
+            <h4>Entity Details</h4>
+            <div class="field-grid">
+              <div class="field">
+                <label>Entity Name</label>
+                <span>{{ complaint().entityName || '—' }}</span>
+              </div>
+              <div class="field">
+                <label>Entity Type</label>
+                <span>{{ complaint().entityType || '—' }}</span>
+              </div>
+              <div class="field">
+                <label>Department</label>
+                <span class="dept-badge">CEPC</span>
+              </div>
+              <div class="field">
+                <label>Assigned To</label>
+                <span>{{ complaint().assignedTo || complaint().assignedTeam || '—' }}</span>
+              </div>
+            </div>
+          </section>
+
+          <!-- Complaint Details -->
+          <section class="detail-section">
+            <h4>Complaint Information</h4>
+            <div class="field full-width">
+              <label>Subject</label>
+              <span>{{ complaint().subject }}</span>
+            </div>
+            <div class="field full-width">
+              <label>Description</label>
+              <p class="description-text">{{ complaint().description || '—' }}</p>
+            </div>
+            <div class="field-grid">
+              <div class="field">
+                <label>Category</label>
+                <span>{{ complaint().category || '—' }}</span>
+              </div>
+              <div class="field">
+                <label>Amount Involved</label>
+                <span>{{ complaint().amountInvolved ? '₹' + complaint().amountInvolved : '—' }}</span>
+              </div>
+              <div class="field">
+                <label>Transaction Date</label>
+                <span>{{ complaint().transactionDate | date:'dd MMM yyyy' }}</span>
+              </div>
+              <div class="field">
+                <label>Filing Type</label>
+                <span>{{ complaint().filingType || '—' }}</span>
+              </div>
+            </div>
+          </section>
+
+          <!-- Documents -->
+          <section class="detail-section">
+            <h4>Documents</h4>
+            <div class="documents-area">
+              @if (documents().length > 0) {
+                <div class="doc-list">
+                  @for (doc of documents(); track doc.id) {
+                    <div class="doc-item">
+                      <span class="doc-icon">&#128196;</span>
+                      <div class="doc-info">
+                        <span class="doc-name">{{ doc.name }}</span>
+                        <span class="doc-meta">{{ doc.size }} &middot; {{ doc.uploadedBy }} &middot; {{ doc.uploadedAt | date:'dd MMM yyyy' }}</span>
+                      </div>
+                    </div>
+                  }
+                </div>
+              } @else {
+                <p class="no-docs">No documents uploaded yet.</p>
+              }
+              @if (!isTerminalState()) {
+                <div class="upload-area">
+                  <label class="upload-btn">
+                    <input type="file" (change)="onDocumentUpload($event)" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" hidden />
+                    &#128206; Upload Document
+                  </label>
+                  @if (uploadingDoc()) {
+                    <span class="uploading">Uploading...</span>
+                  }
+                </div>
+              }
+            </div>
+          </section>
+
+          <!-- Audit Trail / Timeline -->
+          @if (complaint().timeline?.length) {
+            <section class="detail-section">
+              <h4>Audit Trail</h4>
+              <div class="timeline">
+                @for (entry of complaint().timeline; track entry.timestamp) {
+                  <div class="timeline-item">
+                    <div class="timeline-dot"></div>
+                    <div class="timeline-content">
+                      <div class="timeline-header">
+                        <span class="timeline-action">{{ entry.action }}</span>
+                        <span class="timeline-time">{{ entry.timestamp | date:'dd MMM yyyy HH:mm' }}</span>
+                      </div>
+                      @if (entry.remarks) {
+                        <p class="timeline-remarks">{{ entry.remarks }}</p>
+                      }
+                      <span class="timeline-flow">{{ entry.fromStatus }} → {{ entry.toStatus }}</span>
+                    </div>
+                  </div>
+                }
+              </div>
+            </section>
+          }
+        </div>
+
+        <!-- Right: Action Panel -->
+        <div class="action-panel">
+          @if (isTerminalState()) {
+            <div class="closed-banner">
+              <span class="closed-icon">&#10003;</span>
+              <h4>Complaint {{ complaint().status | uppercase }}</h4>
+              <p>This complaint has been closed. No further actions available.</p>
+            </div>
+          } @else {
+            <h4>Available Actions</h4>
+            <p class="action-hint">Select an action to perform on this complaint.</p>
+
+            <div class="action-list">
+              @for (action of availableActions(); track action.id) {
+                <button class="action-card" [class]="action.style"
+                        [class.selected]="selectedAction()?.id === action.id"
+                        (click)="selectAction(action)">
+                  <span class="action-label">{{ action.label }}</span>
+                  <span class="action-desc">{{ action.description }}</span>
+                </button>
+              }
+            </div>
+
+            @if (selectedAction(); as action) {
+              <div class="action-form">
+                <h5>{{ action.label }}</h5>
+
+                @if (action.requiresTarget && action.targetType === 'department') {
+                  <div class="form-field">
+                    <label>Target Department</label>
+                    <select [(ngModel)]="targetDepartment">
+                      <option value="">Select Department</option>
+                      @for (dept of rbiDepartments; track dept) {
+                        <option [value]="dept">{{ dept }}</option>
+                      }
+                    </select>
+                  </div>
+                }
+
+                @if (action.requiresTarget && action.targetType === 'user') {
+                  <div class="form-field">
+                    <label>Assign To</label>
+                    <select [(ngModel)]="targetUser">
+                      <option value="">Select {{ action.id === 'FORWARD_TO_CONTACT' || action.id === 'CONTACT_REASSIGN' ? 'Contact Person' : 'Officer' }}</option>
+                      @if (action.id === 'FORWARD_TO_CONTACT' || action.id === 'CONTACT_REASSIGN') {
+                        @for (cp of contactPersons(); track cp.id) {
+                          <option [value]="cp.id">{{ cp.name }}</option>
+                        }
+                      } @else {
+                        @for (officer of cepcOfficers(); track officer.id) {
+                          <option [value]="officer.id">{{ officer.name }}</option>
+                        }
+                      }
+                    </select>
+                  </div>
+                }
+
+                @if (action.requiresRemarks) {
+                  <div class="form-field">
+                    <label>Remarks</label>
+                    <textarea [(ngModel)]="remarks" rows="4"
+                              placeholder="Enter remarks (required)..."></textarea>
+                  </div>
+                }
+
+                <div class="form-actions">
+                  <button class="submit-btn" [disabled]="processing() || (action.requiresRemarks && !remarks.trim())"
+                          (click)="submitAction()">
+                    @if (processing()) { Processing... } @else { Confirm {{ action.label }} }
+                  </button>
+                  <button class="cancel-btn" (click)="cancelAction()">Cancel</button>
+                </div>
+              </div>
+            }
+
+            @if (actionResult()) {
+              <div class="result-msg" [class.success]="actionSuccess()" [class.error]="!actionSuccess()">
+                {{ actionResult() }}
+              </div>
+            }
+          }
+        </div>
+      </div>
+    }
+  </main>
+</div>

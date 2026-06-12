@@ -165,6 +165,44 @@ public class ComplaintRoutingController {
         return wrapResponse(Map.of("CEPC", cepc, "RBIO", rbio, "total", cepc + rbio));
     }
 
+    @GetMapping("/entities/list")
+    public Map<String, Object> listEntities(
+            @RequestParam(required = false) String department,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String entityType) {
+
+        List<RegulatedEntity> entities;
+        if (search != null && !search.isBlank()) {
+            String normalized = RegulatedEntity.normalize(search);
+            entities = regulatedEntityRepo.searchByNormalizedName(normalized);
+            if (department != null && !department.isBlank()) {
+                String dept = department.toUpperCase();
+                entities = entities.stream().filter(e -> dept.equals(e.getDepartment())).collect(java.util.stream.Collectors.toList());
+            }
+        } else if (department != null && !department.isBlank()) {
+            entities = regulatedEntityRepo.findByDepartment(department.toUpperCase());
+        } else {
+            entities = regulatedEntityRepo.findAll();
+        }
+
+        if (entityType != null && !entityType.isBlank()) {
+            entities = entities.stream().filter(e -> entityType.equalsIgnoreCase(e.getEntityType())).collect(java.util.stream.Collectors.toList());
+        }
+
+        List<Map<String, Object>> result = entities.stream().map(e -> {
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("id", e.getId());
+            item.put("name", e.getName());
+            item.put("department", e.getDepartment());
+            item.put("entityType", e.getEntityType());
+            item.put("city", e.getCity());
+            item.put("state", e.getState());
+            return item;
+        }).collect(java.util.stream.Collectors.toList());
+
+        return wrapResponse(result);
+    }
+
     private Map<String, Object> wrapResponse(Object data) {
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("success", true);

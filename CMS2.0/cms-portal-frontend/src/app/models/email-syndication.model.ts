@@ -1,6 +1,7 @@
 export interface EmailDraft {
   id: number;
   draftId: string;
+  displayId: string;
   messageId: string;
   senderEmail: string;
   subject: string;

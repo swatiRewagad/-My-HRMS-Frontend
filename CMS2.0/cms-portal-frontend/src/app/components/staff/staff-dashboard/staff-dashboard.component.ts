@@ -183,6 +183,29 @@ export class StaffDashboardComponent implements OnInit, OnDestroy {
       this.router.navigate(['/staff/login']);
       return;
     }
+
+    // Auto-redirect based on department/role
+    const dept = this.auth.currentUser()?.department?.toUpperCase();
+    const roles = this.auth.getRoles();
+
+    if (roles.includes('ADMIN')) {
+      this.router.navigate(['/admin/dashboard']);
+      return;
+    }
+    if (dept === 'CRPC' || roles.includes('DEO') || roles.includes('REVIEWER') || roles.includes('CRPC_HEAD')) {
+      this.router.navigate(['/crpc/home']);
+      return;
+    }
+    if (dept === 'RBIO' || roles.some(r => r.startsWith('RBIO_'))) {
+      this.router.navigate(['/staff/rbio/tasks']);
+      return;
+    }
+    if (dept === 'CEPC' || roles.some(r => r.startsWith('CEPC_'))) {
+      this.router.navigate(['/cepc/dashboard']);
+      return;
+    }
+
+    // Fallback: stay on this page
     this.loadCounts();
 
     this.routeSub = this.router.events

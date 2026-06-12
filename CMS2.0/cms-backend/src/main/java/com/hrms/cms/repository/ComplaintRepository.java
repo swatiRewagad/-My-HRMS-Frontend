@@ -45,4 +45,13 @@ public interface ComplaintRepository extends JpaRepository<Complaint, Long> {
             String department, String assignedOfficer, String status);
 
     List<Complaint> findByStatusAndDepartmentIsNullOrderByCreatedAtDesc(String status);
+
+    List<Complaint> findByDepartmentAndAssignedRoleAndAssignedOfficerAndStatusNotInOrderByCreatedAtDesc(
+            String department, String assignedRole, String assignedOfficer, List<String> excludeStatuses);
+
+    List<Complaint> findByDepartmentAndAssignedOfficerOrderByCreatedAtDesc(String department, String assignedOfficer);
+
+    List<Complaint> findByDepartmentOrderByCreatedAtDesc(String department);
+
+    List<Complaint> findByDepartmentAndStatusInOrderByCreatedAtDesc(String department, List<String> statuses);
 }

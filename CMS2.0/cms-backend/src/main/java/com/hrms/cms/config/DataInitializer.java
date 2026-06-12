@@ -223,6 +223,138 @@ public class DataInitializer implements CommandLineRunner {
                 .createdAt(now.minusDays(40)).updatedAt(now.minusDays(20)).filedAt(now.minusDays(40))
                 .resolvedAt(now.minusDays(25)).closedAt(now.minusDays(20))
                 .build());
+
+        // ═══ CEPC Complaints (routed based on entity in REGULATED_ENTITIES table) ═══
+        complaintRepo.save(Complaint.builder()
+                .complaintNumber("CMP-20260605-100001")
+                .complainantName("Arun Verma")
+                .complainantEmail("arun.v@email.com")
+                .complainantPhone("9876500001")
+                .subject("Bajaj Finance charged excessive processing fee on personal loan")
+                .description("Applied for personal loan via Bajaj Finance. Processing fee charged was 4% instead of advertised 1.5%. No prior disclosure.")
+                .status("assigned").priority("high")
+                .filingType("EMAIL").department("CEPC").assignedRole("CEPC_DO")
+                .entityCode("Bajaj Finance Limited").workflowStage("INITIAL_REVIEW")
+                .createdAt(now.minusDays(3)).updatedAt(now.minusDays(3)).filedAt(now.minusDays(3))
+                .build());
+
+        complaintRepo.save(Complaint.builder()
+                .complaintNumber("CMP-20260604-100002")
+                .complainantName("Meera Joshi")
+                .complainantEmail("meera.j@email.com")
+                .complainantPhone("9876500002")
+                .subject("Muthoot Finance not releasing gold ornaments after loan repayment")
+                .description("Fully repaid gold loan on 15th May. Multiple visits to branch. They keep saying system issue and not releasing pledged gold.")
+                .status("in_progress").priority("high")
+                .filingType("PHYSICAL_LETTER").department("CEPC").assignedRole("CEPC_DO").assignedOfficer("cepc.officer1")
+                .entityCode("Muthoot Finance Ltd").workflowStage("EXAMINATION")
+                .createdAt(now.minusDays(5)).updatedAt(now.minusDays(1)).filedAt(now.minusDays(5))
+                .build());
+
+        complaintRepo.save(Complaint.builder()
+                .complaintNumber("CMP-20260603-100003")
+                .complainantName("Sanjay Patil")
+                .complainantEmail("sanjay.p@email.com")
+                .complainantPhone("9876500003")
+                .subject("PhonePe unauthorized debit of Rs. 8,500 - no refund after 45 days")
+                .description("PhonePe deducted Rs 8,500 from linked bank account without authorization. Raised complaint 45 days ago. No resolution.")
+                .status("reviewer_review").priority("medium")
+                .filingType("WEB_PORTAL").department("CEPC").assignedRole("CEPC_REVIEWER").assignedOfficer("cepc.reviewer1")
+                .entityCode("PhonePe Private Limited").workflowStage("REVIEWER_REVIEW")
+                .createdAt(now.minusDays(7)).updatedAt(now.minusDays(2)).filedAt(now.minusDays(7))
+                .build());
+
+        complaintRepo.save(Complaint.builder()
+                .complaintNumber("CMP-20260602-100004")
+                .complainantName("Divya Rao")
+                .complainantEmail("divya.r@email.com")
+                .complainantPhone("9876500004")
+                .subject("Saraswat Co-op Bank refusing to update nominee details")
+                .description("Visited branch 4 times to update nominee on FD. Each time they ask for different documents. Seems deliberate delay.")
+                .status("incharge_review").priority("medium")
+                .filingType("EMAIL").department("CEPC").assignedRole("CEPC_INCHARGE")
+                .entityCode("Saraswat Co-operative Bank Limited").workflowStage("INCHARGE_REVIEW")
+                .createdAt(now.minusDays(10)).updatedAt(now.minusDays(3)).filedAt(now.minusDays(10))
+                .build());
+
+        complaintRepo.save(Complaint.builder()
+                .complaintNumber("CMP-20260601-100005")
+                .complainantName("Kiran Deshmukh")
+                .complainantEmail("kiran.d@email.com")
+                .complainantPhone("9876500005")
+                .subject("IIFL Finance harassment - recovery agents threatening family")
+                .description("Recovery agents from IIFL Finance visiting home at 6 AM, threatening family members. EMI was delayed by 10 days due to medical emergency.")
+                .status("awaiting_closure").priority("high")
+                .filingType("EMAIL").department("CEPC").assignedRole("CEPC_CLOSING_AUTHORITY")
+                .entityCode("IIFL Finance Limited").workflowStage("AWAITING_CLOSURE")
+                .createdAt(now.minusDays(15)).updatedAt(now.minusDays(4)).filedAt(now.minusDays(15))
+                .build());
+
+        complaintRepo.save(Complaint.builder()
+                .complaintNumber("CMP-20260530-100006")
+                .complainantName("Prakash Mehta")
+                .complainantEmail("prakash.m@email.com")
+                .complainantPhone("9876500006")
+                .subject("Razorpay holding merchant settlement for 3 weeks")
+                .description("Payment gateway Razorpay holding Rs 2.5 lakhs settlement amount for 3 weeks. No clear reason given. Affecting business operations.")
+                .status("info_requested").priority("medium")
+                .filingType("WEB_PORTAL").department("CEPC").assignedRole("CEPC_DO").assignedOfficer("cepc.officer1")
+                .entityCode("Razorpay Software Private Limited").workflowStage("AWAITING_INFO")
+                .createdAt(now.minusDays(12)).updatedAt(now.minusDays(5)).filedAt(now.minusDays(12))
+                .build());
+
+        complaintRepo.save(Complaint.builder()
+                .complaintNumber("CMP-20260528-100007")
+                .complainantName("Rekha Sharma")
+                .complainantEmail("rekha.s@email.com")
+                .complainantPhone("9876500007")
+                .subject("Standard Chartered Bank closed NRE account without notice")
+                .description("NRE savings account closed by Standard Chartered without any prior notice or communication. Balance Rs 12 lakhs not transferred.")
+                .status("escalated").priority("high")
+                .filingType("EMAIL").department("CEPC").assignedRole("CEPC_INCHARGE")
+                .entityCode("Standard Chartered Bank").workflowStage("ESCALATED")
+                .createdAt(now.minusDays(8)).updatedAt(now.minusDays(2)).filedAt(now.minusDays(8))
+                .build());
+
+        // ═══ RBIO Complaints ═══
+        complaintRepo.save(Complaint.builder()
+                .complaintNumber("CMP-20260605-200001")
+                .complainantName("Ramesh Gupta")
+                .complainantEmail("ramesh.g@email.com")
+                .complainantPhone("9876600001")
+                .subject("SBI ATM swallowed card and debited Rs 20,000")
+                .description("SBI ATM at Connaught Place swallowed my card. Amount Rs 20,000 debited but no cash dispensed. Card not returned.")
+                .status("assigned").priority("high")
+                .filingType("WEB_PORTAL").department("RBIO").assignedRole("RBIO_OFFICER")
+                .entityCode("State Bank of India").workflowStage("INITIAL_REVIEW")
+                .createdAt(now.minusDays(2)).updatedAt(now.minusDays(2)).filedAt(now.minusDays(2))
+                .build());
+
+        complaintRepo.save(Complaint.builder()
+                .complaintNumber("CMP-20260604-200002")
+                .complainantName("Pooja Singh")
+                .complainantEmail("pooja.s@email.com")
+                .complainantPhone("9876600002")
+                .subject("PNB wrong NEFT transfer - money sent to wrong account")
+                .description("NEFT transfer of Rs 5,00,000 sent to wrong beneficiary account by PNB branch. Bank not helping with reversal.")
+                .status("in_progress").priority("high")
+                .filingType("WEB_PORTAL").department("RBIO").assignedRole("RBIO_OFFICER").assignedOfficer("rbio.officer1")
+                .entityCode("Punjab National Bank").workflowStage("INVESTIGATION")
+                .createdAt(now.minusDays(4)).updatedAt(now.minusDays(1)).filedAt(now.minusDays(4))
+                .build());
+
+        complaintRepo.save(Complaint.builder()
+                .complaintNumber("CMP-20260603-200003")
+                .complainantName("Vijay Nair")
+                .complainantEmail("vijay.n@email.com")
+                .complainantPhone("9876600003")
+                .subject("Canara Bank refusing education loan despite eligibility")
+                .description("Applied for education loan for IIT admission. Meet all criteria. Branch manager verbally refused without giving written reason.")
+                .status("assigned").priority("medium")
+                .filingType("WEB_PORTAL").department("RBIO").assignedRole("RBIO_OFFICER")
+                .entityCode("Canara Bank").workflowStage("INITIAL_REVIEW")
+                .createdAt(now.minusDays(6)).updatedAt(now.minusDays(6)).filedAt(now.minusDays(6))
+                .build());
     }
 
     private void seedComplaintForm() {
