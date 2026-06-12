@@ -3,10 +3,16 @@
   <header class="cms-header">
     <div class="header-left">
       <img src="assets/rbi-logo.png" alt="RBI" class="rbi-logo" onerror="this.style.display='none'" />
+      <img src="assets/cms-logo.png" alt="CMS" class="cms-logo" onerror="this.style.display='none'" />
       <span class="cms-title">CMS</span>
       <span class="cms-subtitle">Complaint Management System</span>
     </div>
     <div class="header-right">
+      <div class="header-icons">
+        <button title="Font size"><i class="pi pi-text-size"></i></button>
+        <button title="Language"><i class="pi pi-globe"></i></button>
+        <button title="Notifications"><i class="pi pi-bell"></i></button>
+      </div>
       <span class="user-avatar">{{ (loggedInUser?.name || 'U').charAt(0) }}</span>
       <div class="user-details">
         <span class="user-name">{{ loggedInUser?.name || 'Staff' }}</span>
@@ -27,6 +33,10 @@
       <div class="sidebar-item" (click)="router.navigate(['/admin/dashboard'], {queryParams: {department: 'CRPC'}})">
         <i class="pi pi-chart-bar"></i>
         <span>Dashboard</span>
+      </div>
+      <div class="sidebar-collapse">
+        <i class="pi pi-angle-double-left"></i>
+        <span>Collapse</span>
       </div>
     </aside>
 
@@ -56,24 +66,39 @@
       <!-- Stats Cards -->
       <div class="stats-bar">
         <div class="stat-card" (click)="filterStatus.set(''); filterMode.set('ALL')">
-          <span class="stat-value">{{ stats().total }}</span>
-          <span class="stat-label">Total Complaints</span>
+          <div class="stat-icon"><i class="pi pi-inbox"></i></div>
+          <div class="stat-content">
+            <span class="stat-value">{{ stats().total }}</span>
+            <span class="stat-label">Total Complaints</span>
+          </div>
         </div>
         <div class="stat-card" (click)="filterStatus.set(''); filterMode.set('DIRECT')">
-          <span class="stat-value">{{ stats().direct }}</span>
-          <span class="stat-label">Direct Complaints</span>
+          <div class="stat-icon"><i class="pi pi-file"></i></div>
+          <div class="stat-content">
+            <span class="stat-value">{{ stats().direct }}</span>
+            <span class="stat-label">Direct Complaints</span>
+          </div>
         </div>
         <div class="stat-card" (click)="filterStatus.set(''); filterMode.set('ABR')">
-          <span class="stat-value">{{ stats().viaAbr }}</span>
-          <span class="stat-label">Complaints via ABR</span>
+          <div class="stat-icon"><i class="pi pi-envelope"></i></div>
+          <div class="stat-content">
+            <span class="stat-value">{{ stats().viaAbr }}</span>
+            <span class="stat-label">Complaints via ABR</span>
+          </div>
         </div>
         <div class="stat-card" (click)="filterStatus.set('IN_PROGRESS'); filterMode.set('ALL')">
-          <span class="stat-value">{{ stats().inProgress }}</span>
-          <span class="stat-label">In Progress</span>
+          <div class="stat-icon"><i class="pi pi-spinner"></i></div>
+          <div class="stat-content">
+            <span class="stat-value">{{ stats().inProgress }}</span>
+            <span class="stat-label">In Progress</span>
+          </div>
         </div>
         <div class="stat-card" (click)="filterStatus.set('APPROVED'); filterMode.set('ALL')">
-          <span class="stat-value">{{ stats().approved }}</span>
-          <span class="stat-label">IGMRC Complaints</span>
+          <div class="stat-icon"><i class="pi pi-check-circle"></i></div>
+          <div class="stat-content">
+            <span class="stat-value">{{ stats().approved }}</span>
+            <span class="stat-label">CC/BCC Complaints</span>
+          </div>
         </div>
       </div>
 
@@ -160,9 +185,11 @@
                   @for (col of visibleColumns(); track col.key) {
                     <td [class]="'cell-' + col.key">
                       @if (col.key === 'status') {
-                        <span class="status-badge" [attr.data-status]="draft.status">{{ draft.status }}</span>
+                        <span class="status-badge" [attr.data-status]="draft.status">{{ getStatusLabel(draft.status) }}</span>
                       } @else if (col.key === 'modeOfReceipt') {
                         <span class="mode-badge" [attr.data-mode]="draft.modeOfReceipt">{{ draft.modeOfReceipt === 'PHYSICAL_LETTER' ? 'Letter' : 'Email' }}</span>
+                      } @else if (col.key === 'ageing') {
+                        <span class="ageing-badge" [class.green]="draft.ageing <= 1" [class.orange]="draft.ageing > 1 && draft.ageing <= 3" [class.red]="draft.ageing > 3">{{ draft.ageing }} {{ draft.ageing === 1 ? 'day' : 'days' }}</span>
                       } @else if (col.key === 'priority') {
                         <span class="priority-dot" [attr.data-priority]="draft.priority"></span>
                       } @else {

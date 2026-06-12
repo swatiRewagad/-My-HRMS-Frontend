@@ -23,6 +23,7 @@ interface Attachment {
   type: string;
   uploadedAt: string;
   uploadedBy: string;
+  url?: string;
 }
 
 interface EmailCorrespondence {
@@ -50,7 +51,8 @@ export class DraftAssessmentComponent implements OnInit {
   private http = inject(HttpClient);
   private sanitizer = inject(DomSanitizer);
 
-  // ─── Stepper ───
+  // ─── View Mode ───
+  editMode = signal(false);
   activeStep = signal<'creation' | 'assignment'>('creation');
 
   // ─── PDF Preview (Physical Letter) ───
@@ -80,6 +82,13 @@ export class DraftAssessmentComponent implements OnInit {
 
   // ─── Assignment Mode ───
   assignmentMode = 'Manual';
+
+  // ─── Panel Expand/Collapse ───
+  expandedPanel = signal<'email' | 'complaint' | ''>('');
+
+  toggleExpand(panel: 'email' | 'complaint') {
+    this.expandedPanel.set(this.expandedPanel() === panel ? '' : panel);
+  }
 
   // ─── Collapsible Sections ───
   sectionOpen = {
@@ -113,6 +122,7 @@ export class DraftAssessmentComponent implements OnInit {
   subCategory = '';
   entityName = '';
   entityType = 'BANK';
+  entityState = '';
   subject = '';
   description = '';
   amountInvolved: number | null = null;
@@ -197,6 +207,7 @@ export class DraftAssessmentComponent implements OnInit {
   nonMaintainableReason = '';
   closureTag = '';
   selectedReviewer = '';
+  assignmentType = 'MANUAL';
   deoRemarks = '';
   savedTemplateId = '';
 
@@ -298,11 +309,9 @@ export class DraftAssessmentComponent implements OnInit {
 
   categories = ['ATM', 'CREDIT_CARD', 'UPI', 'LOAN', 'DEPOSIT', 'INSURANCE', 'NEFT_RTGS', 'GENERAL'];
 
-  states = [
-    'AN', 'AP', 'AR', 'AS', 'BR', 'CH', 'CT', 'DL', 'GA', 'GJ', 'HP', 'HR', 'JH', 'JK',
-    'KA', 'KL', 'LA', 'MH', 'ML', 'MN', 'MP', 'MZ', 'NL', 'OD', 'PB', 'PY', 'RJ',
-    'SK', 'TN', 'TS', 'TR', 'UK', 'UP', 'WB'
-  ];
+  states = signal<string[]>([]);
+  districts = signal<string[]>([]);
+  pincodeLoading = signal(false);
 
   loggedInUser: { id: string; name: string; role: string } | null = null;
 
@@ -312,6 +321,9 @@ export class DraftAssessmentComponent implements OnInit {
   entitySearchLoading = signal(false);
   showEntityDropdown = signal(false);
   private entitySearchTimeout: any = null;
+  entityDropdownTop = 0;
+  entityDropdownLeft = 0;
+  entityDropdownWidth = 300;
 
   // ─── Past & Similar Complaints ───
   pastComplaints = signal<any[]>([]);
@@ -338,26 +350,68 @@ export class DraftAssessmentComponent implements OnInit {
     }
     this.draftId = this.route.snapshot.paramMap.get('id') || '';
     this.loadDraft();
+    this.loadStates();
     this.crpcService.getReviewers().subscribe(data => this.reviewers.set(data));
+  }
+
+  loadStates() {
+    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/location/states`).subscribe({
+      next: (res) => this.states.set(res?.data || []),
+      error: () => {}
+    });
+  }
+
+  onStateChange(state: string) {
+    this.complainantState = state;
+    this.complainantDistrict = '';
+    this.districts.set([]);
+    if (state) {
+      this.loadDistrictsForState(state);
+    }
+  }
+
+  loadDistrictsForState(state: string) {
+    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/location/districts`, { params: { state } }).subscribe({
+      next: (res) => this.districts.set(res?.data || []),
+      error: () => {}
+    });
+  }
+
+  onPincodeInput(value: string) {
+    this.complainantPincode = value;
+    if (value && value.length === 6 && /^\d{6}$/.test(value)) {
+      this.pincodeLoading.set(true);
+      this.http.get<any[]>(`/api/pincode/${value}`).subscribe({
+        next: (res) => {
+          this.pincodeLoading.set(false);
+          if (res && res[0] && res[0].Status === 'Success' && res[0].PostOffice?.length) {
+            const po = res[0].PostOffice[0];
+            if (po.State) {
+              this.complainantState = po.State;
+              this.onStateChange(po.State);
+            }
+            if (po.District) {
+              this.complainantDistrict = po.District;
+            }
+          }
+        },
+        error: () => this.pincodeLoading.set(false)
+      });
+    }
   }
 
   onEntitySearchInput(value: string) {
     this.entitySearchText = value;
     if (this.entitySearchTimeout) clearTimeout(this.entitySearchTimeout);
-    if (!value || value.length < 2) {
-      this.entitySearchResults.set([]);
-      this.showEntityDropdown.set(false);
-      return;
-    }
     this.entitySearchTimeout = setTimeout(() => this.searchEntities(value), 300);
   }
 
   searchEntities(query: string) {
     this.entitySearchLoading.set(true);
     this.showEntityDropdown.set(true);
-    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/routing/entities/list`, {
-      params: { search: query }
-    }).subscribe({
+    const params: any = {};
+    if (query) params.search = query;
+    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/routing/entities/list`, { params }).subscribe({
       next: (res) => {
         this.entitySearchResults.set(res?.data || []);
         this.entitySearchLoading.set(false);
@@ -369,11 +423,21 @@ export class DraftAssessmentComponent implements OnInit {
     });
   }
 
-  selectEntity(entity: { id: number; name: string; department: string; entityType: string }) {
+  selectEntity(entity: { id: number; name: string; department: string; entityType: string; state?: string }) {
     this.entityName = entity.name;
     this.entityType = entity.entityType || 'BANK';
+    this.entityState = (entity as any).state || '';
     this.entitySearchText = entity.name;
     this.showEntityDropdown.set(false);
+  }
+
+  onEntityFocus(inputEl: HTMLInputElement) {
+    const rect = inputEl.getBoundingClientRect();
+    this.entityDropdownTop = rect.bottom + 2;
+    this.entityDropdownLeft = rect.left;
+    this.entityDropdownWidth = rect.width;
+    this.showEntityDropdown.set(true);
+    this.searchEntities(this.entitySearchText || '');
   }
 
   onEntityBlur() {
@@ -543,6 +607,7 @@ export class DraftAssessmentComponent implements OnInit {
       this.modeOfReceipt = 'PHYSICAL_LETTER';
       this.category = draft?.category || '';
       this.entityName = draft?.entityName || '';
+      this.entitySearchText = this.entityName;
       this.entityType = draft?.entityType || 'BANK';
       this.subject = draft?.subject || '';
       this.description = draft?.description || '';
@@ -575,6 +640,7 @@ export class DraftAssessmentComponent implements OnInit {
 
       this.emailCorrespondence.set([]);
       this.loading.set(false);
+      if (this.complainantState) this.loadDistrictsForState(this.complainantState);
       this.loadPastComplaints();
       this.loadSimilarCases();
     } else {
@@ -595,6 +661,7 @@ export class DraftAssessmentComponent implements OnInit {
             this.cpgramsReference = draft.cpgramsNumber || '';
             this.category = draft.category || '';
             this.entityName = draft.entityName || '';
+            this.entitySearchText = this.entityName;
             this.entityType = draft.entityType || 'BANK';
             this.subject = draft.subject || draft.complaintSummary || '';
             this.description = draft.body || '';
@@ -610,14 +677,19 @@ export class DraftAssessmentComponent implements OnInit {
             this.vernacular = draft.isVernacular || false;
             this.vernacularLanguage = draft.languageName || '';
 
-            const attachments = (draft.attachments || []).map((a: any, i: number) => ({
-              id: a.id || `ATT-${i + 1}`,
-              name: a.fileName || `attachment_${i + 1}`,
-              size: a.fileSize ? this.formatFileSize(a.fileSize) : 'Unknown',
-              type: a.fileType || 'application/octet-stream',
-              uploadedAt: a.createdAt || new Date().toISOString(),
-              uploadedBy: 'SYSTEM',
-            }));
+            const attachments = (draft.attachments || []).map((a: any, i: number) => {
+              const attId = a.id || `ATT-${i + 1}`;
+              const numericId = String(attId).replace('ATT-', '');
+              return {
+                id: attId,
+                name: a.fileName || `attachment_${i + 1}`,
+                size: a.fileSize ? this.formatFileSize(a.fileSize) : 'Unknown',
+                type: a.fileType || 'application/octet-stream',
+                uploadedAt: a.createdAt || new Date().toISOString(),
+                uploadedBy: 'SYSTEM',
+                url: `${environment.apiBaseUrl}/api/files/download/${numericId}`
+              };
+            });
             this.attachments.set(attachments);
 
             // Apply OCR-extracted fields if available from ingest
@@ -650,6 +722,7 @@ export class DraftAssessmentComponent implements OnInit {
             }
 
             this.loading.set(false);
+            if (this.complainantState) this.loadDistrictsForState(this.complainantState);
             this.loadPastComplaints();
             this.loadSimilarCases();
           },
@@ -683,16 +756,40 @@ export class DraftAssessmentComponent implements OnInit {
     }
 
     this.uploadError = '';
+    const objectUrl = URL.createObjectURL(file);
     const newAtt: Attachment = {
       id: 'ATT-' + Date.now(),
       name: file.name,
       size: (file.size / 1024).toFixed(0) + ' KB',
       type: file.type,
       uploadedAt: new Date().toISOString(),
-      uploadedBy: 'DEO'
+      uploadedBy: 'DEO',
+      url: objectUrl
     };
     this.attachments.set([...this.attachments(), newAtt]);
     input.value = '';
+  }
+
+  activePreviewIndex = signal(0);
+
+  activePreviewAttachment = computed(() => {
+    const atts = this.attachments();
+    const idx = this.activePreviewIndex();
+    return atts.length > 0 ? atts[Math.min(idx, atts.length - 1)] : null;
+  });
+
+  getSafeUrl(url: string): SafeResourceUrl {
+    return this.sanitizer.bypassSecurityTrustResourceUrl(url);
+  }
+
+  prevDocument() {
+    const idx = this.activePreviewIndex();
+    if (idx > 0) this.activePreviewIndex.set(idx - 1);
+  }
+
+  nextDocument() {
+    const idx = this.activePreviewIndex();
+    if (idx < this.attachments().length - 1) this.activePreviewIndex.set(idx + 1);
   }
 
   removeAttachment(id: string) {
@@ -766,13 +863,15 @@ export class DraftAssessmentComponent implements OnInit {
           this.ocrScanning.set(false);
 
           // Also add to attachments list
+          const objectUrl = URL.createObjectURL(file);
           const newAtt: Attachment = {
             id: 'ATT-' + Date.now(),
             name: file.name,
             size: (file.size / 1024).toFixed(0) + ' KB',
             type: file.type,
             uploadedAt: new Date().toISOString(),
-            uploadedBy: 'DEO'
+            uploadedBy: 'DEO',
+            url: objectUrl
           };
           this.attachments.set([...this.attachments(), newAtt]);
         },
@@ -1090,7 +1189,29 @@ export class DraftAssessmentComponent implements OnInit {
     this.sendForApproval();
   }
 
+  enterEditMode() {
+    this.editMode.set(true);
+    this.activeStep.set('creation');
+    this.sectionOpen.complaint = true;
+  }
+
+  goToAssignment() {
+    this.activeStep.set('assignment');
+  }
+
+  goToCreation() {
+    this.activeStep.set('creation');
+  }
+
   goBack() {
+    if (this.editMode() && this.activeStep() === 'assignment') {
+      this.activeStep.set('creation');
+      return;
+    }
+    if (this.editMode()) {
+      this.editMode.set(false);
+      return;
+    }
     this.router.navigate(['/crpc/home']);
   }
 

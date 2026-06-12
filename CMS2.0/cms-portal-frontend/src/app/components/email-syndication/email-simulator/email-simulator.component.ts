@@ -226,7 +226,7 @@ export class EmailSimulatorComponent {
           email,
           response,
           message: response
-            ? `Draft created: ${response.draftId} → Assigned to ${response.assignedTo}${attachmentInfo}${langLabel}`
+            ? `Draft created: ${(response as any).displayId || response.draftId} → Assigned to ${response.assignedTo}${attachmentInfo}${langLabel}`
             : 'Email ignored (on ignore list)',
           status: response ? 'success' : 'ignored',
           timestamp: new Date(),

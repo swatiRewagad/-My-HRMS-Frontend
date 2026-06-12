@@ -4,6 +4,7 @@ import com.hrms.cms.entity.Complaint;
 import com.hrms.cms.repository.BankRepository;
 import com.hrms.cms.repository.ComplaintRepository;
 import com.hrms.cms.service.ComplaintService;
+import com.hrms.cms.service.KeycloakUserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -11,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 @RestController
@@ -21,6 +23,9 @@ public class WorkflowController {
     private final ComplaintRepository complaintRepository;
     private final ComplaintService complaintService;
     private final BankRepository bankRepository;
+    private final KeycloakUserService keycloakUserService;
+
+    private final Map<String, Integer> roundRobinCounters = new ConcurrentHashMap<>();
 
     private static final List<String> CLOSED_STATUSES = List.of("resolved", "closed", "rejected", "withdrawn", "adjudicated", "conciliated");
 
@@ -393,26 +398,36 @@ public class WorkflowController {
                 c.setStatus("reviewer_review");
                 c.setAssignedRole("CEPC_REVIEWER");
                 c.setWorkflowStage("REVIEWER_REVIEW");
+                String reviewer = assignByRole("CEPC_REVIEWER");
+                if (reviewer != null) c.setAssignedOfficer(reviewer);
                 break;
             case "APPROVE_REVIEW":
                 c.setStatus("incharge_review");
                 c.setAssignedRole("CEPC_INCHARGE");
                 c.setWorkflowStage("INCHARGE_REVIEW");
+                String incharge = assignByRole("CEPC_INCHARGE");
+                if (incharge != null) c.setAssignedOfficer(incharge);
                 break;
             case "SEND_BACK_DO":
                 c.setStatus("sent_back");
                 c.setAssignedRole("CEPC_DO");
                 c.setWorkflowStage("SENT_BACK_TO_DO");
+                String backToDo = request.getOrDefault("targetUser", "");
+                if (!backToDo.isEmpty()) c.setAssignedOfficer(backToDo);
                 break;
             case "SEND_BACK_REVIEWER":
                 c.setStatus("reviewer_review");
                 c.setAssignedRole("CEPC_REVIEWER");
                 c.setWorkflowStage("REVIEWER_REVIEW");
+                String backToRev = request.getOrDefault("targetUser", "");
+                if (!backToRev.isEmpty()) c.setAssignedOfficer(backToRev);
                 break;
             case "SEND_BACK_INCHARGE":
                 c.setStatus("incharge_review");
                 c.setAssignedRole("CEPC_INCHARGE");
                 c.setWorkflowStage("INCHARGE_REVIEW");
+                String backToIc = request.getOrDefault("targetUser", "");
+                if (!backToIc.isEmpty()) c.setAssignedOfficer(backToIc);
                 break;
             case "APPROVE_CLOSURE":
                 c.setStatus("awaiting_closure");
@@ -462,11 +477,15 @@ public class WorkflowController {
                 c.setStatus("incharge_review");
                 c.setAssignedRole("CEPC_INCHARGE");
                 c.setWorkflowStage("INCHARGE_REVIEW");
+                String ic = assignByRole("CEPC_INCHARGE");
+                if (ic != null) c.setAssignedOfficer(ic);
                 break;
             case "FORWARD_TO_CLOSING_AUTHORITY":
                 c.setStatus("awaiting_closure");
                 c.setAssignedRole("CEPC_CLOSING_AUTHORITY");
                 c.setWorkflowStage("AWAITING_CLOSURE");
+                String ca = assignByRole("CEPC_CLOSING_AUTHORITY");
+                if (ca != null) c.setAssignedOfficer(ca);
                 break;
             case "FORWARD_TO_OTHER_OFFICE":
                 c.setStatus("forwarded_external");
@@ -511,6 +530,7 @@ public class WorkflowController {
         data.put("action", action);
         data.put("newStatus", c.getStatus());
         data.put("assignedRole", c.getAssignedRole());
+        data.put("assignedOfficer", c.getAssignedOfficer());
 
         return buildResponse(true, "Action performed: " + action, data);
     }
@@ -557,5 +577,19 @@ public class WorkflowController {
         response.put("data", data);
         response.put("timestamp", LocalDateTime.now().toString());
         return ResponseEntity.ok(response);
+    }
+
+    private String assignByRole(String role) {
+        try {
+            List<Map<String, Object>> users = keycloakUserService.getUsersByRole(role);
+            if (users.isEmpty()) return null;
+            int index = roundRobinCounters.getOrDefault(role, 0);
+            if (index >= users.size()) index = 0;
+            String userId = (String) users.get(index).get("userId");
+            roundRobinCounters.put(role, index + 1);
+            return userId;
+        } catch (Exception e) {
+            return null;
+        }
     }
 }

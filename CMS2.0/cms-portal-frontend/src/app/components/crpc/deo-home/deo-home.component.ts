@@ -319,6 +319,16 @@ export class DeoHomeComponent implements OnInit {
     this.showAdvancedSearch.set(false);
   }
 
+  getStatusLabel(status: string): string {
+    switch (status) {
+      case 'DRAFT': return 'Draft';
+      case 'IN_PROGRESS': return 'In Progress';
+      case 'APPROVED': return 'Approved';
+      case 'REJECTED_BY_REVIEWER': return 'Sent Back';
+      default: return status;
+    }
+  }
+
   getCellValue(draft: DraftComplaint, key: string): string {
     const val = (draft as any)[key];
     if (val === null || val === undefined) return '—';

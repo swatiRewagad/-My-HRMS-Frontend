@@ -29,15 +29,6 @@ export class KeycloakAuthService {
       realm: environment.realm,
       clientId: 'cms-frontend'
     });
-
-    window.addEventListener('beforeunload', () => {
-      if (this.isAuthenticated() && this.keycloak.idToken) {
-        sessionStorage.removeItem('crpc_user');
-        sessionStorage.setItem('cms_session_ended', 'true');
-        const logoutUrl = `${environment.keycloakUrl}/realms/${environment.realm}/protocol/openid-connect/logout?id_token_hint=${this.keycloak.idToken}&post_logout_redirect_uri=${encodeURIComponent(window.location.origin)}`;
-        navigator.sendBeacon(logoutUrl);
-      }
-    });
   }
 
   async init(): Promise<boolean> {
@@ -55,15 +46,11 @@ export class KeycloakAuthService {
 
   private async doInit(): Promise<boolean> {
     try {
-      if (sessionStorage.getItem('cms_session_ended')) {
-        sessionStorage.removeItem('cms_session_ended');
-      }
-
       const authenticated = await this.keycloak.init({
         onLoad: 'check-sso',
         pkceMethod: 'S256',
         checkLoginIframe: false,
-        redirectUri: window.location.origin + '/staff/dashboard'
+        redirectUri: window.location.href
       });
 
       this.initialized = true;
@@ -85,7 +72,7 @@ export class KeycloakAuthService {
       await this.init();
     }
     await this.keycloak.login({
-      redirectUri: window.location.origin + '/staff/dashboard'
+      redirectUri: window.location.href
     });
   }
 
@@ -103,13 +90,15 @@ export class KeycloakAuthService {
     this.initialized = false;
     this.initPromise = null;
     sessionStorage.removeItem('crpc_user');
+    if (this.warningTimer) clearInterval(this.warningTimer);
+    if (this.sessionTimer) clearTimeout(this.sessionTimer);
 
     try {
       await this.keycloak.logout({
-        redirectUri: window.location.origin + '/crpc/login'
+        redirectUri: window.location.origin
       });
     } catch {
-      window.location.href = '/crpc/login';
+      window.location.href = '/';
     }
   }
 
@@ -162,6 +151,7 @@ export class KeycloakAuthService {
 
   private sessionTimer: any;
   private warningTimer: any;
+  private activityDebounce: any;
   sessionExpiring = signal(false);
   sessionRemainingSeconds = signal(0);
 
@@ -173,6 +163,24 @@ export class KeycloakAuthService {
     }, 60000);
 
     this.startSessionTimer();
+    this.setupActivityListeners();
+  }
+
+  private setupActivityListeners(): void {
+    const onActivity = () => {
+      if (this.sessionExpiring()) return;
+      if (this.activityDebounce) clearTimeout(this.activityDebounce);
+      this.activityDebounce = setTimeout(() => this.resetSessionTimer(), 5000);
+    };
+    ['click', 'keydown', 'mousemove', 'scroll'].forEach(event => {
+      document.addEventListener(event, onActivity, { passive: true });
+    });
+  }
+
+  private resetSessionTimer(): void {
+    if (this.warningTimer) clearInterval(this.warningTimer);
+    if (this.sessionTimer) clearTimeout(this.sessionTimer);
+    this.startSessionTimer();
   }
 
   private startSessionTimer(): void {
@@ -180,7 +188,7 @@ export class KeycloakAuthService {
     if (this.sessionTimer) clearTimeout(this.sessionTimer);
 
     const timeoutMs = environment.sessionTimeoutMinutes * 60 * 1000;
-    const warningMs = timeoutMs - 60000; // Show warning 60s before expiry
+    const warningMs = timeoutMs - 60000;
 
     this.sessionExpiring.set(false);
 
@@ -196,17 +204,6 @@ export class KeycloakAuthService {
         }
       }, 1000);
     }, warningMs);
-
-    // Reset timer on user activity
-    const resetActivity = () => {
-      if (!this.sessionExpiring()) {
-        this.startSessionTimer();
-      }
-    };
-    ['click', 'keydown', 'mousemove', 'scroll'].forEach(event => {
-      document.removeEventListener(event, resetActivity);
-      document.addEventListener(event, resetActivity, { once: true });
-    });
   }
 
   extendSession(): void {

@@ -3,11 +3,13 @@ package com.hrms.cms.config;
 import com.hrms.cms.entity.Bank;
 import com.hrms.cms.entity.Complaint;
 import com.hrms.cms.entity.ComplaintCategory;
+import com.hrms.cms.entity.EmailDraft;
 import com.hrms.cms.entity.FormConfig;
 import com.hrms.cms.entity.RegulatedEntity;
 import com.hrms.cms.repository.BankRepository;
 import com.hrms.cms.repository.ComplaintCategoryRepository;
 import com.hrms.cms.repository.ComplaintRepository;
+import com.hrms.cms.repository.EmailDraftRepository;
 import com.hrms.cms.repository.FormConfigRepository;
 import com.hrms.cms.repository.RegulatedEntityRepository;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +28,7 @@ public class DataInitializer implements CommandLineRunner {
     private final FormConfigRepository formConfigRepo;
     private final ComplaintRepository complaintRepo;
     private final RegulatedEntityRepository regulatedEntityRepo;
+    private final EmailDraftRepository emailDraftRepo;
 
     @Override
     public void run(String... args) {
@@ -43,6 +46,26 @@ public class DataInitializer implements CommandLineRunner {
         }
         if (regulatedEntityRepo.count() == 0) {
             seedRegulatedEntities();
+        }
+        migrateUuidDraftIds();
+    }
+
+    private void migrateUuidDraftIds() {
+        List<EmailDraft> drafts = emailDraftRepo.findAll();
+        for (EmailDraft draft : drafts) {
+            boolean changed = false;
+            if (draft.getDraftId() != null && draft.getDraftId().contains("-") && draft.getDraftId().length() > 20) {
+                draft.setDraftId("DRF-" + String.format("%06d", draft.getId()));
+                changed = true;
+            }
+            // Migrate displayName assignments to userId
+            String assigned = draft.getAssignedTo();
+            if ("Amit Verma".equals(assigned)) { draft.setAssignedTo("deo_001"); changed = true; }
+            else if ("Sneha Patil".equals(assigned)) { draft.setAssignedTo("deo_002"); changed = true; }
+            else if ("Ramesh Iyer".equals(assigned)) { draft.setAssignedTo("deo_003"); changed = true; }
+            else if ("Priya Sharma".equals(assigned)) { draft.setAssignedTo("deo_001"); changed = true; }
+
+            if (changed) emailDraftRepo.save(draft);
         }
     }
 

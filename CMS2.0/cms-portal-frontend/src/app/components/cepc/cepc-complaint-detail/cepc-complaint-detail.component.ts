@@ -266,7 +266,8 @@ export class CepcComplaintDetailComponent implements OnInit {
     ).subscribe({
       next: (res) => {
         this.actionSuccess.set(true);
-        this.actionResult.set(`Action "${action.label}" completed successfully. New status: ${res?.data?.newStatus || 'updated'}`);
+        const assignedTo = res?.data?.assignedOfficer ? ` Assigned to: ${res.data.assignedOfficer}` : '';
+        this.actionResult.set(`Action "${action.label}" completed successfully. New status: ${res?.data?.newStatus || 'updated'}.${assignedTo}`);
         this.processing.set(false);
         this.selectedAction.set(null);
         this.loadComplaint(complaintNumber);

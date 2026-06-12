@@ -58,7 +58,7 @@ public class EmailSyndicationApiController {
     private String assignToNextDeo() {
         List<Map<String, Object>> pool = getDeoPool();
         if (pool.isEmpty()) return "Unassigned";
-        String assignee = (String) pool.get(roundRobinPointer % pool.size()).get("displayName");
+        String assignee = (String) pool.get(roundRobinPointer % pool.size()).get("userId");
         roundRobinPointer = (roundRobinPointer + 1) % pool.size();
         return assignee;
     }
@@ -248,6 +248,14 @@ public class EmailSyndicationApiController {
     public Map<String, Object> getDraft(@PathVariable String draftId) {
         EmailDraft draft = draftRepository.findByDraftId(draftId).orElse(null);
 
+        // Fallback: try looking up by displayId (e.g., C017 → id=17)
+        if (draft == null && draftId.matches("C\\d+")) {
+            try {
+                long numericId = Long.parseLong(draftId.substring(1));
+                draft = draftRepository.findById(numericId).orElse(null);
+            } catch (NumberFormatException ignored) {}
+        }
+
         if (draft != null) {
             Map<String, Object> response = toResponseMap(draft);
             return wrapResponse(response);
@@ -347,6 +355,12 @@ public class EmailSyndicationApiController {
     @PutMapping("/drafts/{draftId}")
     public Map<String, Object> updateDraft(@PathVariable String draftId, @RequestBody Map<String, Object> request) {
         EmailDraft draft = draftRepository.findByDraftId(draftId).orElse(null);
+        if (draft == null && draftId.matches("C\\d+")) {
+            try {
+                long numericId = Long.parseLong(draftId.substring(1));
+                draft = draftRepository.findById(numericId).orElse(null);
+            } catch (NumberFormatException ignored) {}
+        }
         if (draft == null) {
             return wrapResponse(Map.of("error", "Draft not found"));
         }
