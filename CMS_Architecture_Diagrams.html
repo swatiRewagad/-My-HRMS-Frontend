@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CMS 2.0 - Architecture Diagrams</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f4f8; color: #1a202c; }
+
+        .nav-tabs { display: flex; background: #1a237e; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
+        .nav-tabs button { padding: 16px 28px; border: none; background: transparent; color: rgba(255,255,255,0.7); font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.3s; border-bottom: 3px solid transparent; }
+        .nav-tabs button:hover { background: rgba(255,255,255,0.1); color: #fff; }
+        .nav-tabs button.active { color: #fff; border-bottom-color: #ffc107; background: rgba(255,255,255,0.08); }
+        .nav-tabs .nav-title { padding: 16px 28px; color: #ffc107; font-weight: 700; font-size: 16px; letter-spacing: 0.5px; }
+
+        .tab-content { display: none; padding: 30px; max-width: 1600px; margin: 0 auto; }
+        .tab-content.active { display: block; }
+
+        h1 { text-align: center; margin-bottom: 8px; font-size: 28px; color: #1a237e; }
+        h2 { font-size: 20px; color: #1a237e; margin: 24px 0 12px; padding-bottom: 8px; border-bottom: 2px solid #e2e8f0; }
+        .subtitle { text-align: center; color: #64748b; margin-bottom: 30px; font-size: 14px; }
+
+        .diagram-container { background: #fff; border-radius: 12px; padding: 30px; margin-bottom: 30px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); overflow-x: auto; }
+
+        /* SVG Diagram Styles */
+        svg { display: block; margin: 0 auto; }
+        .box { stroke-width: 2; rx: 8; ry: 8; }
+        .box-primary { fill: #e8eaf6; stroke: #3949ab; }
+        .box-secondary { fill: #e3f2fd; stroke: #1976d2; }
+        .box-success { fill: #e8f5e9; stroke: #388e3c; }
+        .box-warning { fill: #fff8e1; stroke: #f57c00; }
+        .box-danger { fill: #fce4ec; stroke: #c62828; }
+        .box-purple { fill: #f3e5f5; stroke: #7b1fa2; }
+        .box-teal { fill: #e0f2f1; stroke: #00695c; }
+        .box-dark { fill: #eceff1; stroke: #37474f; }
+        .box-orange { fill: #fff3e0; stroke: #e65100; }
+        .box-cyan { fill: #e0f7fa; stroke: #0097a7; }
+        .label { font-size: 12px; font-weight: 700; text-anchor: middle; fill: #1a202c; }
+        .sublabel { font-size: 10px; text-anchor: middle; fill: #64748b; }
+        .arrow { stroke: #64748b; stroke-width: 1.5; fill: none; marker-end: url(#arrowhead); }
+        .arrow-kafka { stroke: #f57c00; stroke-width: 2; fill: none; stroke-dasharray: 5,3; marker-end: url(#arrowhead-orange); }
+        .zone-label { font-size: 14px; font-weight: 800; fill: #1a237e; text-anchor: start; }
+        .zone-box { fill: none; stroke: #cbd5e0; stroke-width: 1; stroke-dasharray: 8,4; rx: 12; ry: 12; }
+        .nfr-badge { font-size: 9px; fill: #fff; text-anchor: middle; }
+
+        /* Legend */
+        .legend { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 20px; padding: 16px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0; }
+        .legend-item { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+        .legend-color { width: 24px; height: 14px; border-radius: 3px; border: 1.5px solid; }
+
+        /* NFR Table */
+        .nfr-table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+        .nfr-table th, .nfr-table td { padding: 10px 14px; text-align: left; border: 1px solid #e2e8f0; font-size: 13px; }
+        .nfr-table th { background: #1a237e; color: #fff; font-weight: 600; }
+        .nfr-table tr:nth-child(even) { background: #f8fafc; }
+        .nfr-table .nfr-cat { font-weight: 700; color: #1a237e; }
+
+        /* Info boxes */
+        .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; margin-top: 16px; }
+        .info-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; }
+        .info-card h4 { font-size: 13px; color: #1a237e; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .info-card ul { list-style: none; padding: 0; }
+        .info-card li { font-size: 12px; padding: 3px 0; color: #475569; }
+        .info-card li::before { content: ""; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #3949ab; margin-right: 8px; }
+    </style>
+</head>
+<body>
+
+<div class="nav-tabs">
+    <span class="nav-title">RBI CMS 2.0</span>
+    <button class="active" onclick="showTab('conceptual')">Conceptual Architecture</button>
+    <button onclick="showTab('logical')">Logical Architecture</button>
+    <button onclick="showTab('physical')">Physical Architecture</button>
+    <button onclick="showTab('nfr')">NFR Architecture View</button>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- TAB 1: CONCEPTUAL ARCHITECTURE -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div id="conceptual" class="tab-content active">
+    <h1>Conceptual Architecture Diagram</h1>
+    <p class="subtitle">Reserve Bank of India - Complaint Management System 2.0 | High-Level Business Capabilities</p>
+
+    <div class="diagram-container">
+        <svg width="1200" height="820" viewBox="0 0 1200 820">
+            <defs>
+                <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+                    <polygon points="0 0, 10 3.5, 0 7" fill="#64748b"/>
+                </marker>
+                <marker id="arrowhead-orange" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+                    <polygon points="0 0, 10 3.5, 0 7" fill="#f57c00"/>
+                </marker>
+            </defs>
+
+            <!-- Users/Actors Zone -->
+            <rect x="20" y="20" width="1160" height="120" class="zone-box"/>
+            <text x="40" y="45" class="zone-label">USERS / ACTORS</text>
+
+            <rect x="60" y="55" width="140" height="65" class="box box-warning"/>
+            <text x="130" y="82" class="label">Public</text>
+            <text x="130" y="97" class="sublabel">Complainants</text>
+
+            <rect x="240" y="55" width="140" height="65" class="box box-primary"/>
+            <text x="310" y="82" class="label">CRPC Officers</text>
+            <text x="310" y="97" class="sublabel">DEO / Reviewer / OpsHead</text>
+
+            <rect x="420" y="55" width="140" height="65" class="box box-purple"/>
+            <text x="490" y="82" class="label">CEPC Officers</text>
+            <text x="490" y="97" class="sublabel">DO / Reviewer / InCharge</text>
+
+            <rect x="600" y="55" width="140" height="65" class="box box-teal"/>
+            <text x="670" y="82" class="label">RBIO Staff</text>
+            <text x="670" y="97" class="sublabel">Regional Officers</text>
+
+            <rect x="780" y="55" width="140" height="65" class="box box-danger"/>
+            <text x="850" y="82" class="label">Admin</text>
+            <text x="850" y="97" class="sublabel">System Administrators</text>
+
+            <rect x="960" y="55" width="140" height="65" class="box box-dark"/>
+            <text x="1030" y="82" class="label">Regulated Entities</text>
+            <text x="1030" y="97" class="sublabel">Banks / NBFCs</text>
+
+            <!-- Channel Layer -->
+            <rect x="20" y="160" width="1160" height="90" class="zone-box"/>
+            <text x="40" y="185" class="zone-label">CHANNELS</text>
+
+            <rect x="80" y="195" width="130" height="40" class="box box-secondary"/>
+            <text x="145" y="220" class="label">Web Portal</text>
+
+            <rect x="250" y="195" width="130" height="40" class="box box-secondary"/>
+            <text x="315" y="220" class="label">Email (IMAP)</text>
+
+            <rect x="420" y="195" width="140" height="40" class="box box-secondary"/>
+            <text x="490" y="220" class="label">Physical Letter</text>
+
+            <rect x="600" y="195" width="130" height="40" class="box box-secondary"/>
+            <text x="665" y="220" class="label">CPGRAMS</text>
+
+            <rect x="770" y="195" width="130" height="40" class="box box-secondary"/>
+            <text x="835" y="220" class="label">Mobile App</text>
+
+            <rect x="940" y="195" width="140" height="40" class="box box-secondary"/>
+            <text x="1010" y="220" class="label">IVR / Call Center</text>
+
+            <!-- Core Business Capabilities -->
+            <rect x="20" y="270" width="1160" height="280" class="zone-box"/>
+            <text x="40" y="295" class="zone-label">CORE BUSINESS CAPABILITIES</text>
+
+            <rect x="50" y="310" width="200" height="70" class="box box-success"/>
+            <text x="150" y="340" class="label">Complaint Ingestion</text>
+            <text x="150" y="355" class="sublabel">Email Syndication | OCR | AI Extract</text>
+            <text x="150" y="368" class="sublabel">Letter Digitization | Auto-classify</text>
+
+            <rect x="270" y="310" width="200" height="70" class="box box-success"/>
+            <text x="370" y="340" class="label">Eligibility Check</text>
+            <text x="370" y="355" class="sublabel">Maintainability Assessment</text>
+            <text x="370" y="368" class="sublabel">Rule Engine | Questionnaire</text>
+
+            <rect x="490" y="310" width="200" height="70" class="box box-success"/>
+            <text x="590" y="340" class="label">Workflow Engine</text>
+            <text x="590" y="355" class="sublabel">CRPC | CEPC | RBIO Flows</text>
+            <text x="590" y="368" class="sublabel">Auto-routing | Escalation</text>
+
+            <rect x="710" y="310" width="200" height="70" class="box box-success"/>
+            <text x="810" y="340" class="label">Assignment</text>
+            <text x="810" y="355" class="sublabel">Round-Robin | Load Balanced</text>
+            <text x="810" y="368" class="sublabel">Role-based | Manual Override</text>
+
+            <rect x="930" y="310" width="200" height="70" class="box box-success"/>
+            <text x="1030" y="340" class="label">SLA Monitor</text>
+            <text x="1030" y="355" class="sublabel">TAT Tracking | Breach Alerts</text>
+            <text x="1030" y="368" class="sublabel">Escalation Engine</text>
+
+            <rect x="50" y="400" width="200" height="70" class="box box-success"/>
+            <text x="150" y="430" class="label">Search & Discovery</text>
+            <text x="150" y="445" class="sublabel">Full-text | Fuzzy | Filters</text>
+            <text x="150" y="458" class="sublabel">Cross-complaint correlation</text>
+
+            <rect x="270" y="400" width="200" height="70" class="box box-success"/>
+            <text x="370" y="430" class="label">Notification</text>
+            <text x="370" y="445" class="sublabel">Email | SMS | In-App</text>
+            <text x="370" y="458" class="sublabel">Status Updates | Reminders</text>
+
+            <rect x="490" y="400" width="200" height="70" class="box box-success"/>
+            <text x="590" y="430" class="label">Audit & Compliance</text>
+            <text x="590" y="445" class="sublabel">Action Timeline | Immutable Log</text>
+            <text x="590" y="458" class="sublabel">Regulatory Reporting</text>
+
+            <rect x="710" y="400" width="200" height="70" class="box box-success"/>
+            <text x="810" y="430" class="label">Document Mgmt</text>
+            <text x="810" y="445" class="sublabel">Upload | Preview | Storage</text>
+            <text x="810" y="458" class="sublabel">Chunked Upload | Virus Scan</text>
+
+            <rect x="930" y="400" width="200" height="70" class="box box-success"/>
+            <text x="1030" y="430" class="label">Analytics & Reports</text>
+            <text x="1030" y="445" class="sublabel">Dashboards | KPIs | MIS</text>
+            <text x="1030" y="458" class="sublabel">Trend Analysis | Export</text>
+
+            <!-- Arrows from channels to capabilities -->
+            <line x1="500" y1="235" x2="500" y2="310" class="arrow"/>
+
+            <!-- Cross-Cutting -->
+            <rect x="20" y="570" width="1160" height="100" class="zone-box"/>
+            <text x="40" y="595" class="zone-label">CROSS-CUTTING CONCERNS</text>
+
+            <rect x="50" y="610" width="160" height="45" class="box box-dark"/>
+            <text x="130" y="637" class="label">Identity & Access</text>
+
+            <rect x="230" y="610" width="160" height="45" class="box box-dark"/>
+            <text x="310" y="637" class="label">API Gateway</text>
+
+            <rect x="410" y="610" width="160" height="45" class="box box-dark"/>
+            <text x="490" y="637" class="label">Event Bus</text>
+
+            <rect x="590" y="610" width="160" height="45" class="box box-dark"/>
+            <text x="670" y="637" class="label">Observability</text>
+
+            <rect x="770" y="610" width="160" height="45" class="box box-dark"/>
+            <text x="850" y="637" class="label">Caching Layer</text>
+
+            <rect x="950" y="610" width="170" height="45" class="box box-dark"/>
+            <text x="1035" y="637" class="label">Configuration Mgmt</text>
+
+            <!-- Data Layer -->
+            <rect x="20" y="690" width="1160" height="110" class="zone-box"/>
+            <text x="40" y="715" class="zone-label">DATA STORES</text>
+
+            <rect x="80" y="730" width="180" height="50" class="box box-orange"/>
+            <text x="170" y="755" class="label">Relational DB</text>
+            <text x="170" y="770" class="sublabel">Oracle (Prod) | MySQL (Dev)</text>
+
+            <rect x="300" y="730" width="180" height="50" class="box box-orange"/>
+            <text x="390" y="755" class="label">Search Engine</text>
+            <text x="390" y="770" class="sublabel">OpenSearch 2.18</text>
+
+            <rect x="520" y="730" width="180" height="50" class="box box-orange"/>
+            <text x="610" y="755" class="label">Cache</text>
+            <text x="610" y="770" class="sublabel">Hazelcast / Redis</text>
+
+            <rect x="740" y="730" width="180" height="50" class="box box-orange"/>
+            <text x="830" y="755" class="label">Object Storage</text>
+            <text x="830" y="770" class="sublabel">File System / NFS</text>
+
+            <rect x="960" y="730" width="180" height="50" class="box box-orange"/>
+            <text x="1050" y="755" class="label">Message Broker</text>
+            <text x="1050" y="770" class="sublabel">Apache Kafka (KRaft)</text>
+        </svg>
+    </div>
+
+    <div class="legend">
+        <div class="legend-item"><div class="legend-color" style="background:#fff8e1; border-color:#f57c00;"></div> External Users</div>
+        <div class="legend-item"><div class="legend-color" style="background:#e3f2fd; border-color:#1976d2;"></div> Channels</div>
+        <div class="legend-item"><div class="legend-color" style="background:#e8f5e9; border-color:#388e3c;"></div> Business Capabilities</div>
+        <div class="legend-item"><div class="legend-color" style="background:#eceff1; border-color:#37474f;"></div> Cross-Cutting</div>
+        <div class="legend-item"><div class="legend-color" style="background:#fff3e0; border-color:#e65100;"></div> Data Stores</div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- TAB 2: LOGICAL ARCHITECTURE -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div id="logical" class="tab-content">
+    <h1>Logical Architecture Diagram</h1>
+    <p class="subtitle">Microservices Decomposition | Service Boundaries | Inter-Service Communication</p>
+
+    <div class="diagram-container">
+        <svg width="1300" height="1000" viewBox="0 0 1300 1000">
+            <defs>
+                <marker id="arrowhead2" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+                    <polygon points="0 0, 10 3.5, 0 7" fill="#64748b"/>
+                </marker>
+                <marker id="arrowhead-kafka2" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+                    <polygon points="0 0, 10 3.5, 0 7" fill="#f57c00"/>
+                </marker>
+            </defs>
+
+            <!-- Presentation Tier -->
+            <rect x="20" y="15" width="1260" height="130" class="zone-box" style="fill:#f8fafc;"/>
+            <text x="40" y="38" class="zone-label">PRESENTATION TIER</text>
+
+            <rect x="60" y="50" width="220" height="75" class="box box-secondary"/>
+            <text x="170" y="75" class="label">CMS Portal Frontend</text>
+            <text x="170" y="90" class="sublabel">Angular 20 | Standalone Components</text>
+            <text x="170" y="103" class="sublabel">Signals | Lazy Loading | PWA</text>
+            <text x="170" y="116" class="sublabel">Port: 4200 (dev) | Nginx (prod)</text>
+
+            <rect x="320" y="50" width="220" height="75" class="box box-secondary"/>
+            <text x="430" y="75" class="label">Public Complaint Portal</text>
+            <text x="430" y="90" class="sublabel">File Complaint | Track Status</text>
+            <text x="430" y="103" class="sublabel">Eligibility Questionnaire</text>
+            <text x="430" y="116" class="sublabel">Multi-language Support</text>
+
+            <rect x="580" y="50" width="220" height="75" class="box box-secondary"/>
+            <text x="690" y="75" class="label">Admin Dashboard</text>
+            <text x="690" y="90" class="sublabel">Rules Management | Config</text>
+            <text x="690" y="103" class="sublabel">System Monitoring | Reports</text>
+            <text x="690" y="116" class="sublabel">User Management</text>
+
+            <rect x="840" y="50" width="220" height="75" class="box box-secondary"/>
+            <text x="950" y="75" class="label">Email Simulator</text>
+            <text x="950" y="90" class="sublabel">Inbound Email Testing</text>
+            <text x="950" y="103" class="sublabel">Attachment Upload | Preview</text>
+            <text x="950" y="116" class="sublabel">Draft Management</text>
+
+            <!-- API Gateway -->
+            <rect x="20" y="160" width="1260" height="75" class="zone-box" style="fill:#e8eaf6;"/>
+            <text x="40" y="183" class="zone-label">API GATEWAY TIER</text>
+
+            <rect x="350" y="175" width="600" height="45" class="box box-primary"/>
+            <text x="650" y="197" class="label">CMS API Gateway (Spring Cloud Gateway MVC) - Port 8080</text>
+            <text x="650" y="212" class="sublabel">JWT Validation | Rate Limiting | CORS | Request Routing | Load Balancing | Circuit Breaking</text>
+
+            <!-- Microservices Tier -->
+            <rect x="20" y="250" width="1260" height="370" class="zone-box" style="fill:#f0fdf4;"/>
+            <text x="40" y="275" class="zone-label">MICROSERVICES TIER (Domain Services)</text>
+
+            <!-- Row 1 -->
+            <rect x="50" y="290" width="230" height="95" class="box box-success"/>
+            <text x="165" y="312" class="label">Ingestion Service</text>
+            <text x="165" y="327" class="sublabel">Port: 8082 | Oracle DB</text>
+            <text x="165" y="342" class="sublabel">Email Syndication | OCR Pipeline</text>
+            <text x="165" y="357" class="sublabel">Draft Management | File Upload</text>
+            <text x="165" y="372" class="sublabel">Complaint CRUD | Dashboard API</text>
+
+            <rect x="300" y="290" width="230" height="95" class="box box-success"/>
+            <text x="415" y="312" class="label">Eligibility Service</text>
+            <text x="415" y="327" class="sublabel">Port: 8081 | Oracle DB</text>
+            <text x="415" y="342" class="sublabel">Rule Engine Evaluation</text>
+            <text x="415" y="357" class="sublabel">Maintainability Check</text>
+            <text x="415" y="372" class="sublabel">Questionnaire Logic</text>
+
+            <rect x="550" y="290" width="230" height="95" class="box box-success"/>
+            <text x="665" y="312" class="label">Workflow Service</text>
+            <text x="665" y="327" class="sublabel">Port: 8083 | Oracle DB | Kafka</text>
+            <text x="665" y="342" class="sublabel">CRPC / CEPC / RBIO Flows</text>
+            <text x="665" y="357" class="sublabel">State Machine | Transitions</text>
+            <text x="665" y="372" class="sublabel">Escalation Logic</text>
+
+            <rect x="800" y="290" width="230" height="95" class="box box-success"/>
+            <text x="915" y="312" class="label">Assignment Service</text>
+            <text x="915" y="327" class="sublabel">Port: 8085 | Oracle DB | Kafka</text>
+            <text x="915" y="342" class="sublabel">Round-Robin Algorithm</text>
+            <text x="915" y="357" class="sublabel">Load-Balanced Distribution</text>
+            <text x="915" y="372" class="sublabel">Keycloak Role Lookup</text>
+
+            <rect x="1050" y="290" width="210" height="95" class="box box-success"/>
+            <text x="1155" y="312" class="label">Rules Service</text>
+            <text x="1155" y="327" class="sublabel">Port: 8084</text>
+            <text x="1155" y="342" class="sublabel">Dynamic Rule CRUD</text>
+            <text x="1155" y="357" class="sublabel">Category Classification</text>
+            <text x="1155" y="372" class="sublabel">Entity Matching</text>
+
+            <!-- Row 2 -->
+            <rect x="50" y="405" width="230" height="95" class="box box-success"/>
+            <text x="165" y="427" class="label">Search Service</text>
+            <text x="165" y="442" class="sublabel">Port: 8091 | OpenSearch</text>
+            <text x="165" y="457" class="sublabel">Full-text Indexing</text>
+            <text x="165" y="472" class="sublabel">Fuzzy Search | Faceted</text>
+            <text x="165" y="487" class="sublabel">Complaint Correlation</text>
+
+            <rect x="300" y="405" width="230" height="95" class="box box-success"/>
+            <text x="415" y="427" class="label">Notification Service</text>
+            <text x="415" y="442" class="sublabel">Port: 8087 | Kafka Consumer</text>
+            <text x="415" y="457" class="sublabel">SMTP Email Delivery</text>
+            <text x="415" y="472" class="sublabel">SMS Gateway Integration</text>
+            <text x="415" y="487" class="sublabel">Template Engine</text>
+
+            <rect x="550" y="405" width="230" height="95" class="box box-success"/>
+            <text x="665" y="427" class="label">SLA Monitor Service</text>
+            <text x="665" y="442" class="sublabel">Port: 8086 | Oracle | Kafka</text>
+            <text x="665" y="457" class="sublabel">Cron: Every 15 min TAT Check</text>
+            <text x="665" y="472" class="sublabel">Breach Detection</text>
+            <text x="665" y="487" class="sublabel">Warning Notifications</text>
+
+            <rect x="800" y="405" width="230" height="95" class="box box-success"/>
+            <text x="915" y="427" class="label">Audit Service</text>
+            <text x="915" y="442" class="sublabel">Port: 8088 | Oracle | Kafka</text>
+            <text x="915" y="457" class="sublabel">Immutable Event Log</text>
+            <text x="915" y="472" class="sublabel">Action Timeline</text>
+            <text x="915" y="487" class="sublabel">Compliance Reporting</text>
+
+            <rect x="1050" y="405" width="210" height="95" class="box box-success"/>
+            <text x="1155" y="427" class="label">Storage Service</text>
+            <text x="1155" y="442" class="sublabel">Port: 8090</text>
+            <text x="1155" y="457" class="sublabel">Chunked Upload (5MB)</text>
+            <text x="1155" y="472" class="sublabel">Max 50MB per file</text>
+            <text x="1155" y="487" class="sublabel">Streaming / Range</text>
+
+            <!-- Row 3 - Outbox -->
+            <rect x="50" y="520" width="230" height="75" class="box box-purple"/>
+            <text x="165" y="545" class="label">Outbox Publisher</text>
+            <text x="165" y="560" class="sublabel">Port: 8089 | Oracle DB | Kafka</text>
+            <text x="165" y="575" class="sublabel">Transactional Outbox Pattern</text>
+            <text x="165" y="588" class="sublabel">Poll: 5s | Batch: 100 | Retry: 5</text>
+
+            <!-- Event Bus -->
+            <rect x="20" y="635" width="1260" height="70" class="zone-box" style="fill:#fff8e1;"/>
+            <text x="40" y="658" class="zone-label">EVENT BUS</text>
+            <rect x="200" y="655" width="900" height="35" class="box box-warning"/>
+            <text x="650" y="677" class="label">Apache Kafka (KRaft Mode) - Topics: complaint.created | complaint.assigned | sla.breach | notification.send | audit.log</text>
+
+            <!-- Identity -->
+            <rect x="20" y="720" width="1260" height="70" class="zone-box" style="fill:#f3e5f5;"/>
+            <text x="40" y="743" class="zone-label">IDENTITY & ACCESS MANAGEMENT</text>
+            <rect x="200" y="738" width="900" height="38" class="box box-purple"/>
+            <text x="650" y="758" class="label">Keycloak 26.0 (OAuth2 / OIDC / JWT)</text>
+            <text x="650" y="771" class="sublabel">Realm: CMS | Roles: CRPC_DEO, CRPC_REVIEWER, CRPC_OPS_HEAD, CEPC_DO, CEPC_REVIEWER, CEPC_INCHARGE, CEPC_CLOSING_AUTHORITY, ADMIN</text>
+
+            <!-- Data Tier -->
+            <rect x="20" y="805" width="1260" height="180" class="zone-box" style="fill:#fff3e0;"/>
+            <text x="40" y="828" class="zone-label">DATA TIER</text>
+
+            <rect x="60" y="840" width="220" height="65" class="box box-orange"/>
+            <text x="170" y="863" class="label">Oracle Database</text>
+            <text x="170" y="878" class="sublabel">Production | Schemas per service</text>
+            <text x="170" y="893" class="sublabel">CMS_INGESTION | CMS_WORKFLOW | ...</text>
+
+            <rect x="310" y="840" width="200" height="65" class="box box-orange"/>
+            <text x="410" y="863" class="label">MySQL 8.0</text>
+            <text x="410" y="878" class="sublabel">Development / Local</text>
+            <text x="410" y="893" class="sublabel">HikariCP Pool: 50 max</text>
+
+            <rect x="540" y="840" width="200" height="65" class="box box-orange"/>
+            <text x="640" y="863" class="label">OpenSearch 2.18</text>
+            <text x="640" y="878" class="sublabel">Full-Text Search Index</text>
+            <text x="640" y="893" class="sublabel">Complaint Docs | Fuzzy</text>
+
+            <rect x="770" y="840" width="200" height="65" class="box box-orange"/>
+            <text x="870" y="863" class="label">Hazelcast / Redis</text>
+            <text x="870" y="878" class="sublabel">Session Cache | API Cache</text>
+            <text x="870" y="893" class="sublabel">LRU Eviction | 512MB</text>
+
+            <rect x="1000" y="840" width="240" height="65" class="box box-orange"/>
+            <text x="1120" y="863" class="label">File System (NFS)</text>
+            <text x="1120" y="878" class="sublabel">/cms-attachments</text>
+            <text x="1120" y="893" class="sublabel">PDF | Images | EML | Scans</text>
+
+            <!-- PostgreSQL for Keycloak -->
+            <rect x="60" y="920" width="220" height="50" class="box box-cyan"/>
+            <text x="170" y="945" class="label">PostgreSQL 16</text>
+            <text x="170" y="960" class="sublabel">Keycloak Identity Store</text>
+
+            <!-- Communication arrows -->
+            <line x1="650" y1="220" x2="650" y2="175" class="arrow" style="marker-end:url(#arrowhead2)"/>
+            <line x1="650" y1="125" x2="650" y2="160" class="arrow" style="marker-end:url(#arrowhead2)"/>
+        </svg>
+    </div>
+
+    <div class="legend">
+        <div class="legend-item"><div class="legend-color" style="background:#e3f2fd; border-color:#1976d2;"></div> Presentation Layer</div>
+        <div class="legend-item"><div class="legend-color" style="background:#e8eaf6; border-color:#3949ab;"></div> API Gateway</div>
+        <div class="legend-item"><div class="legend-color" style="background:#e8f5e9; border-color:#388e3c;"></div> Domain Microservices</div>
+        <div class="legend-item"><div class="legend-color" style="background:#f3e5f5; border-color:#7b1fa2;"></div> Outbox / Identity</div>
+        <div class="legend-item"><div class="legend-color" style="background:#fff8e1; border-color:#f57c00;"></div> Event Bus (Kafka)</div>
+        <div class="legend-item"><div class="legend-color" style="background:#fff3e0; border-color:#e65100;"></div> Data Stores</div>
+    </div>
+
+    <h2>Service Communication Matrix</h2>
+    <div class="info-grid">
+        <div class="info-card">
+            <h4>Synchronous (REST/HTTP)</h4>
+            <ul>
+                <li>Frontend &rarr; API Gateway &rarr; Services</li>
+                <li>Gateway validates JWT, routes to service</li>
+                <li>Ingestion &rarr; Keycloak (user lookup)</li>
+                <li>Workflow &rarr; Assignment (officer assign)</li>
+            </ul>
+        </div>
+        <div class="info-card">
+            <h4>Asynchronous (Kafka Events)</h4>
+            <ul>
+                <li>Ingestion &rarr; complaint.created</li>
+                <li>Workflow &rarr; complaint.assigned</li>
+                <li>SLA Monitor &rarr; sla.breach</li>
+                <li>Outbox Publisher &rarr; All topics (reliable)</li>
+                <li>Notification consumes: notification.send</li>
+                <li>Audit consumes: audit.log</li>
+                <li>Search consumes: complaint.* (re-index)</li>
+            </ul>
+        </div>
+        <div class="info-card">
+            <h4>Outbox Pattern</h4>
+            <ul>
+                <li>Services write to OUTBOX table in same TX</li>
+                <li>Outbox Publisher polls every 5 seconds</li>
+                <li>Publishes to Kafka with exactly-once semantics</li>
+                <li>Batch size: 100 | Max retries: 5</li>
+                <li>Ensures data consistency across services</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- TAB 3: PHYSICAL ARCHITECTURE -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div id="physical" class="tab-content">
+    <h1>Physical Architecture Diagram</h1>
+    <p class="subtitle">Infrastructure Deployment | OpenShift Topology | Network Zones | Hardware Specs</p>
+
+    <div class="diagram-container">
+        <svg width="1300" height="1050" viewBox="0 0 1300 1050">
+            <defs>
+                <marker id="arrowhead3" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+                    <polygon points="0 0, 10 3.5, 0 7" fill="#64748b"/>
+                </marker>
+            </defs>
+
+            <!-- Internet Zone -->
+            <rect x="20" y="15" width="1260" height="90" class="zone-box" style="fill:#fef2f2;"/>
+            <text x="40" y="38" class="zone-label" style="fill:#b91c1c;">INTERNET ZONE (Untrusted)</text>
+
+            <rect x="100" y="45" width="180" height="45" class="box box-danger"/>
+            <text x="190" y="67" class="label">Public Users</text>
+            <text x="190" y="82" class="sublabel">Browsers / Mobile</text>
+
+            <rect x="350" y="45" width="180" height="45" class="box box-danger"/>
+            <text x="440" y="67" class="label">CPGRAMS</text>
+            <text x="440" y="82" class="sublabel">Govt Portal Integration</text>
+
+            <rect x="600" y="45" width="180" height="45" class="box box-danger"/>
+            <text x="690" y="67" class="label">Email Server</text>
+            <text x="690" y="82" class="sublabel">IMAP/SMTP</text>
+
+            <rect x="850" y="45" width="180" height="45" class="box box-danger"/>
+            <text x="940" y="67" class="label">Regulated Entities</text>
+            <text x="940" y="82" class="sublabel">Banks / NBFCs APIs</text>
+
+            <!-- DMZ -->
+            <rect x="20" y="120" width="1260" height="100" class="zone-box" style="fill:#fef9c3;"/>
+            <text x="40" y="143" class="zone-label" style="fill:#854d0e;">DMZ (Perimeter Network)</text>
+
+            <rect x="100" y="150" width="250" height="55" class="box box-warning"/>
+            <text x="225" y="172" class="label">F5 Load Balancer / WAF</text>
+            <text x="225" y="187" class="sublabel">SSL Termination | DDoS Protection | IP Whitelisting</text>
+
+            <rect x="420" y="150" width="250" height="55" class="box box-warning"/>
+            <text x="545" y="172" class="label">Nginx Reverse Proxy</text>
+            <text x="545" y="187" class="sublabel">Static Assets | Gzip | Cache | Rate Limit</text>
+
+            <rect x="740" y="150" width="250" height="55" class="box box-warning"/>
+            <text x="865" y="172" class="label">CDN (Static Assets)</text>
+            <text x="865" y="187" class="sublabel">Angular Build | Fonts | Images</text>
+
+            <!-- Arrows -->
+            <line x1="190" y1="90" x2="225" y2="150" class="arrow" style="marker-end:url(#arrowhead3)"/>
+            <line x1="325" y1="178" x2="420" y2="178" class="arrow" style="marker-end:url(#arrowhead3)"/>
+
+            <!-- Application Zone - OpenShift -->
+            <rect x="20" y="235" width="1260" height="420" class="zone-box" style="fill:#ecfdf5;"/>
+            <text x="40" y="258" class="zone-label" style="fill:#065f46;">APPLICATION ZONE - OpenShift Container Platform (Namespace: rbi-cms)</text>
+
+            <!-- Frontend Pod -->
+            <rect x="50" y="270" width="280" height="60" class="box box-secondary"/>
+            <text x="190" y="293" class="label">Frontend Pod (x2 replicas)</text>
+            <text x="190" y="308" class="sublabel">Nginx 1.27 | Angular 20 SSR | Port 80</text>
+            <text x="190" y="323" class="sublabel">256MB RAM | 0.5 CPU</text>
+
+            <!-- API Gateway Pod -->
+            <rect x="400" y="270" width="320" height="60" class="box box-primary"/>
+            <text x="560" y="293" class="label">API Gateway Pod (x2 replicas)</text>
+            <text x="560" y="308" class="sublabel">Spring Cloud Gateway MVC | Port 8080 | JWT Filter</text>
+            <text x="560" y="323" class="sublabel">512MB-1GB RAM | 0.25-1.0 CPU</text>
+
+            <!-- Keycloak Pod -->
+            <rect x="790" y="270" width="250" height="60" class="box box-purple"/>
+            <text x="915" y="293" class="label">Keycloak Pod (x2 HA)</text>
+            <text x="915" y="308" class="sublabel">v26.0 | OAuth2/OIDC | Port 8180</text>
+            <text x="915" y="323" class="sublabel">1GB-2GB RAM | 1.0 CPU</text>
+
+            <!-- Service Pods Row 1 -->
+            <rect x="50" y="350" width="230" height="60" class="box box-success"/>
+            <text x="165" y="370" class="label">Ingestion Pod (x2)</text>
+            <text x="165" y="385" class="sublabel">Port 8082 | 512MB-1.5GB</text>
+            <text x="165" y="398" class="sublabel">OCR + File Processing</text>
+
+            <rect x="300" y="350" width="200" height="60" class="box box-success"/>
+            <text x="400" y="370" class="label">Eligibility Pod (x2)</text>
+            <text x="400" y="385" class="sublabel">Port 8081 | 512MB-1GB</text>
+            <text x="400" y="398" class="sublabel">Rule Engine</text>
+
+            <rect x="520" y="350" width="200" height="60" class="box box-success"/>
+            <text x="620" y="370" class="label">Workflow Pod (x2)</text>
+            <text x="620" y="385" class="sublabel">Port 8083 | 512MB-1GB</text>
+            <text x="620" y="398" class="sublabel">State Machine</text>
+
+            <rect x="740" y="350" width="200" height="60" class="box box-success"/>
+            <text x="840" y="370" class="label">Assignment Pod (x2)</text>
+            <text x="840" y="385" class="sublabel">Port 8085 | 512MB-1GB</text>
+            <text x="840" y="398" class="sublabel">Round-Robin</text>
+
+            <rect x="960" y="350" width="200" height="60" class="box box-success"/>
+            <text x="1060" y="370" class="label">Rules Pod (x1)</text>
+            <text x="1060" y="385" class="sublabel">Port 8084 | 256MB-512MB</text>
+            <text x="1060" y="398" class="sublabel">Dynamic Rules</text>
+
+            <!-- Service Pods Row 2 -->
+            <rect x="50" y="430" width="200" height="60" class="box box-success"/>
+            <text x="150" y="450" class="label">Search Pod (x2)</text>
+            <text x="150" y="465" class="sublabel">Port 8091 | 512MB-1GB</text>
+            <text x="150" y="478" class="sublabel">OpenSearch Client</text>
+
+            <rect x="270" y="430" width="210" height="60" class="box box-success"/>
+            <text x="375" y="450" class="label">Notification Pod (x2)</text>
+            <text x="375" y="465" class="sublabel">Port 8087 | 256MB-512MB</text>
+            <text x="375" y="478" class="sublabel">SMTP + Kafka Consumer</text>
+
+            <rect x="500" y="430" width="200" height="60" class="box box-success"/>
+            <text x="600" y="450" class="label">SLA Monitor Pod (x1)</text>
+            <text x="600" y="465" class="sublabel">Port 8086 | 512MB-1GB</text>
+            <text x="600" y="478" class="sublabel">Scheduled Cron</text>
+
+            <rect x="720" y="430" width="200" height="60" class="box box-success"/>
+            <text x="820" y="450" class="label">Audit Pod (x2)</text>
+            <text x="820" y="465" class="sublabel">Port 8088 | 256MB-512MB</text>
+            <text x="820" y="478" class="sublabel">Event Consumer</text>
+
+            <rect x="940" y="430" width="200" height="60" class="box box-success"/>
+            <text x="1040" y="450" class="label">Storage Pod (x2)</text>
+            <text x="1040" y="465" class="sublabel">Port 8090 | 256MB-512MB</text>
+            <text x="1040" y="478" class="sublabel">NFS Mount</text>
+
+            <!-- Outbox Publisher -->
+            <rect x="50" y="510" width="230" height="55" class="box box-purple"/>
+            <text x="165" y="530" class="label">Outbox Publisher Pod (x1)</text>
+            <text x="165" y="545" class="sublabel">Port 8089 | Singleton | Leader Election</text>
+            <text x="165" y="558" class="sublabel">Poll 5s | Batch 100</text>
+
+            <!-- Monitoring Sidecar -->
+            <rect x="750" y="510" width="500" height="55" class="box box-teal"/>
+            <text x="1000" y="530" class="label">Observability Stack (Sidecar Pattern)</text>
+            <text x="1000" y="545" class="sublabel">Prometheus Agent | Micrometer Metrics | Structured JSON Logging</text>
+            <text x="1000" y="558" class="sublabel">Correlation ID Propagation | Health Checks (Liveness + Readiness)</text>
+
+            <!-- OpenShift Route -->
+            <rect x="50" y="580" width="1200" height="40" class="box box-dark"/>
+            <text x="650" y="600" class="label">OpenShift Route: cms.rbi.org.in &rarr; TLS Edge Termination &rarr; ClusterIP Services</text>
+            <text x="650" y="615" class="sublabel">Internal Service Mesh | mTLS between pods | Network Policies (namespace isolation)</text>
+
+            <!-- Data Zone -->
+            <rect x="20" y="670" width="1260" height="170" class="zone-box" style="fill:#fff7ed;"/>
+            <text x="40" y="693" class="zone-label" style="fill:#9a3412;">DATA ZONE (Restricted Network)</text>
+
+            <rect x="50" y="705" width="240" height="60" class="box box-orange"/>
+            <text x="170" y="725" class="label">Oracle DB (RAC)</text>
+            <text x="170" y="740" class="sublabel">Primary + Standby | Data Guard</text>
+            <text x="170" y="753" class="sublabel">HikariCP: 100 pool | Encrypted at rest</text>
+
+            <rect x="310" y="705" width="200" height="60" class="box box-orange"/>
+            <text x="410" y="725" class="label">Kafka Cluster (3 Brokers)</text>
+            <text x="410" y="740" class="sublabel">KRaft Mode | Replication 3</text>
+            <text x="410" y="753" class="sublabel">Retention: 7 days | Compacted</text>
+
+            <rect x="530" y="705" width="200" height="60" class="box box-orange"/>
+            <text x="630" y="725" class="label">OpenSearch Cluster</text>
+            <text x="630" y="740" class="sublabel">3 Nodes | 1 Replica</text>
+            <text x="630" y="753" class="sublabel">512MB-1GB JVM Heap</text>
+
+            <rect x="750" y="705" width="200" height="60" class="box box-orange"/>
+            <text x="850" y="725" class="label">Redis/Hazelcast</text>
+            <text x="850" y="740" class="sublabel">Session + API Cache</text>
+            <text x="850" y="753" class="sublabel">512MB | LRU Eviction</text>
+
+            <rect x="970" y="705" width="240" height="60" class="box box-orange"/>
+            <text x="1090" y="725" class="label">NFS Storage (PV)</text>
+            <text x="1090" y="740" class="sublabel">/cms-attachments | Shared Volume</text>
+            <text x="1090" y="753" class="sublabel">Max 50MB/file | Virus Scanned</text>
+
+            <rect x="50" y="780" width="240" height="45" class="box box-cyan"/>
+            <text x="170" y="802" class="label">PostgreSQL 16 (Keycloak)</text>
+            <text x="170" y="817" class="sublabel">Identity Store | Realm Config</text>
+
+            <!-- Monitoring Zone -->
+            <rect x="20" y="855" width="1260" height="90" class="zone-box" style="fill:#f5f3ff;"/>
+            <text x="40" y="878" class="zone-label" style="fill:#5b21b6;">MONITORING & OBSERVABILITY ZONE</text>
+
+            <rect x="80" y="890" width="220" height="40" class="box box-purple"/>
+            <text x="190" y="915" class="label">Prometheus v2.54</text>
+
+            <rect x="330" y="890" width="220" height="40" class="box box-purple"/>
+            <text x="440" y="915" class="label">Grafana v11.3</text>
+
+            <rect x="580" y="890" width="240" height="40" class="box box-purple"/>
+            <text x="700" y="915" class="label">OpenSearch Dashboards</text>
+
+            <rect x="850" y="890" width="220" height="40" class="box box-purple"/>
+            <text x="960" y="915" class="label">Kafka UI</text>
+
+            <!-- DR Zone -->
+            <rect x="20" y="960" width="1260" height="70" class="zone-box" style="fill:#fef2f2;"/>
+            <text x="40" y="983" class="zone-label" style="fill:#991b1b;">DISASTER RECOVERY (DR Site)</text>
+            <rect x="200" y="988" width="900" height="30" class="box box-danger"/>
+            <text x="650" y="1008" class="label">Standby DC: Oracle Data Guard | Kafka MirrorMaker | OpenSearch Cross-Cluster Replication | NFS Rsync</text>
+        </svg>
+    </div>
+
+    <h2>Deployment Specifications</h2>
+    <div class="info-grid">
+        <div class="info-card">
+            <h4>Container Platform</h4>
+            <ul>
+                <li>OpenShift Container Platform 4.x</li>
+                <li>Namespace: rbi-cms</li>
+                <li>Registry: registry.rbi.internal/cms/</li>
+                <li>Java 21 (Eclipse Temurin)</li>
+                <li>Node 22 (LTS) for Angular build</li>
+                <li>Nginx 1.27-alpine for static serving</li>
+            </ul>
+        </div>
+        <div class="info-card">
+            <h4>Network Configuration</h4>
+            <ul>
+                <li>External: cms.rbi.org.in (TLS 1.3)</li>
+                <li>Internal: ClusterIP services</li>
+                <li>mTLS between all pods</li>
+                <li>NetworkPolicy: namespace isolation</li>
+                <li>F5 WAF at perimeter</li>
+                <li>IP whitelisting for admin APIs</li>
+            </ul>
+        </div>
+        <div class="info-card">
+            <h4>Scaling Strategy</h4>
+            <ul>
+                <li>HPA: CPU > 70% triggers scale-out</li>
+                <li>Min 2 replicas (HA) for critical services</li>
+                <li>Singleton for SLA Monitor + Outbox (leader election)</li>
+                <li>Database: Connection pool per pod (20-50)</li>
+                <li>Kafka: Partition count = max consumers</li>
+            </ul>
+        </div>
+        <div class="info-card">
+            <h4>Backup & DR</h4>
+            <ul>
+                <li>Oracle: RMAN daily full + hourly incremental</li>
+                <li>RPO: 1 hour | RTO: 4 hours</li>
+                <li>Kafka: MirrorMaker 2 to DR</li>
+                <li>File storage: Rsync every 6 hours</li>
+                <li>DR site: Active-passive (warm standby)</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- TAB 4: NFR ARCHITECTURE VIEW -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div id="nfr" class="tab-content">
+    <h1>NFR Architecture View</h1>
+    <p class="subtitle">Non-Functional Requirements | Performance | Security | Availability | Scalability | Observability</p>
+
+    <div class="diagram-container">
+        <svg width="1200" height="700" viewBox="0 0 1200 700">
+            <!-- Performance -->
+            <rect x="20" y="20" width="370" height="320" class="zone-box" style="fill:#e8f5e9;"/>
+            <text x="40" y="48" class="zone-label" style="fill:#1b5e20;">PERFORMANCE</text>
+
+            <rect x="40" y="60" width="330" height="40" class="box box-success"/>
+            <text x="205" y="80" class="label">Response Time</text>
+            <text x="205" y="94" class="sublabel">API: &lt;500ms (P95) | Search: &lt;200ms | Page Load: &lt;3s</text>
+
+            <rect x="40" y="110" width="330" height="40" class="box box-success"/>
+            <text x="205" y="130" class="label">Throughput</text>
+            <text x="205" y="144" class="sublabel">1000 concurrent users | 100 req/sec | 10 complaints/min rate limit</text>
+
+            <rect x="40" y="160" width="330" height="40" class="box box-success"/>
+            <text x="205" y="180" class="label">Connection Pooling</text>
+            <text x="205" y="194" class="sublabel">HikariCP: 50 (dev) / 100 (prod) | Idle: 300s | Leak: 30s</text>
+
+            <rect x="40" y="210" width="330" height="40" class="box box-success"/>
+            <text x="205" y="230" class="label">Caching Strategy</text>
+            <text x="205" y="244" class="sublabel">Hazelcast L2 Cache | Redis Session | Nginx Static Cache</text>
+
+            <rect x="40" y="260" width="330" height="40" class="box box-success"/>
+            <text x="205" y="280" class="label">Async Processing</text>
+            <text x="205" y="294" class="sublabel">Kafka Event-Driven | Batch OCR | Non-blocking I/O</text>
+
+            <rect x="40" y="310" width="330" height="25" class="box box-success"/>
+            <text x="205" y="327" class="label">Tomcat: 400-800 threads | 10K-20K connections | Gzip enabled</text>
+
+            <!-- Security -->
+            <rect x="410" y="20" width="370" height="320" class="zone-box" style="fill:#fce4ec;"/>
+            <text x="430" y="48" class="zone-label" style="fill:#880e4f;">SECURITY</text>
+
+            <rect x="430" y="60" width="330" height="40" class="box box-danger"/>
+            <text x="595" y="80" class="label">Authentication</text>
+            <text x="595" y="94" class="sublabel">Keycloak OAuth2/OIDC | JWT RS256 | Session: 30min</text>
+
+            <rect x="430" y="110" width="330" height="40" class="box box-danger"/>
+            <text x="595" y="130" class="label">Authorization</text>
+            <text x="595" y="144" class="sublabel">RBAC: 8+ roles | Resource-level | API Gateway enforced</text>
+
+            <rect x="430" y="160" width="330" height="40" class="box box-danger"/>
+            <text x="595" y="180" class="label">Data Protection</text>
+            <text x="595" y="194" class="sublabel">TLS 1.3 in transit | AES-256 at rest | PII masking in logs</text>
+
+            <rect x="430" y="210" width="330" height="40" class="box box-danger"/>
+            <text x="595" y="230" class="label">Input Validation</text>
+            <text x="595" y="244" class="sublabel">XSS/SQLi prevention | File type whitelist | Size limits</text>
+
+            <rect x="430" y="260" width="330" height="40" class="box box-danger"/>
+            <text x="595" y="280" class="label">Rate Limiting</text>
+            <text x="595" y="294" class="sublabel">100 req/sec API | 10 complaints/min | IP-based throttle</text>
+
+            <rect x="430" y="310" width="330" height="25" class="box box-danger"/>
+            <text x="595" y="327" class="label">Security Headers | CORS strict | WAF | Virus scan uploads</text>
+
+            <!-- Availability -->
+            <rect x="800" y="20" width="380" height="320" class="zone-box" style="fill:#e3f2fd;"/>
+            <text x="820" y="48" class="zone-label" style="fill:#0d47a1;">AVAILABILITY & RESILIENCE</text>
+
+            <rect x="820" y="60" width="340" height="40" class="box box-secondary"/>
+            <text x="990" y="80" class="label">Target: 99.9% Uptime</text>
+            <text x="990" y="94" class="sublabel">Max 8.7 hrs downtime/year | Planned maintenance window</text>
+
+            <rect x="820" y="110" width="340" height="40" class="box box-secondary"/>
+            <text x="990" y="130" class="label">High Availability</text>
+            <text x="990" y="144" class="sublabel">Min 2 replicas per service | No SPOF | Active-Active</text>
+
+            <rect x="820" y="160" width="340" height="40" class="box box-secondary"/>
+            <text x="990" y="180" class="label">Fault Tolerance</text>
+            <text x="990" y="194" class="sublabel">Circuit Breaker | Retry (3x) | Graceful Degradation</text>
+
+            <rect x="820" y="210" width="340" height="40" class="box box-secondary"/>
+            <text x="990" y="230" class="label">Health Monitoring</text>
+            <text x="990" y="244" class="sublabel">Liveness Probe: 60s init | Readiness: 30s init | Period: 10s</text>
+
+            <rect x="820" y="260" width="340" height="40" class="box box-secondary"/>
+            <text x="990" y="280" class="label">Disaster Recovery</text>
+            <text x="990" y="294" class="sublabel">RPO: 1 hour | RTO: 4 hours | DR Site: Warm Standby</text>
+
+            <rect x="820" y="310" width="340" height="25" class="box box-secondary"/>
+            <text x="990" y="327" class="label">Oracle Data Guard | Kafka Mirror | NFS Rsync | PV Backup</text>
+
+            <!-- Scalability -->
+            <rect x="20" y="360" width="370" height="170" class="zone-box" style="fill:#fff8e1;"/>
+            <text x="40" y="388" class="zone-label" style="fill:#e65100;">SCALABILITY</text>
+
+            <rect x="40" y="400" width="330" height="35" class="box box-warning"/>
+            <text x="205" y="422" class="label">Horizontal: HPA CPU > 70% | Max 8 pods per service</text>
+
+            <rect x="40" y="445" width="330" height="35" class="box box-warning"/>
+            <text x="205" y="467" class="label">Vertical: 256MB min &rarr; 2GB max per pod</text>
+
+            <rect x="40" y="490" width="330" height="30" class="box box-warning"/>
+            <text x="205" y="509" class="label">DB Pool: 20 min &rarr; 100 max connections</text>
+
+            <!-- Observability -->
+            <rect x="410" y="360" width="370" height="170" class="zone-box" style="fill:#f3e5f5;"/>
+            <text x="430" y="388" class="zone-label" style="fill:#4a148c;">OBSERVABILITY</text>
+
+            <rect x="430" y="400" width="330" height="35" class="box box-purple"/>
+            <text x="595" y="422" class="label">Metrics: Prometheus + Grafana | 15s scrape interval</text>
+
+            <rect x="430" y="445" width="330" height="35" class="box box-purple"/>
+            <text x="595" y="467" class="label">Logging: Structured JSON | Correlation ID | ELK/OpenSearch</text>
+
+            <rect x="430" y="490" width="330" height="30" class="box box-purple"/>
+            <text x="595" y="509" class="label">Tracing: Spring Micrometer | Actuator Endpoints exposed</text>
+
+            <!-- Reliability -->
+            <rect x="800" y="360" width="380" height="170" class="zone-box" style="fill:#e0f2f1;"/>
+            <text x="820" y="388" class="zone-label" style="fill:#004d40;">DATA RELIABILITY</text>
+
+            <rect x="820" y="400" width="340" height="35" class="box box-teal"/>
+            <text x="990" y="422" class="label">Transactional Outbox: Exactly-once delivery guarantee</text>
+
+            <rect x="820" y="445" width="340" height="35" class="box box-teal"/>
+            <text x="990" y="467" class="label">Kafka: acks=all | idempotent | replication=3</text>
+
+            <rect x="820" y="490" width="340" height="30" class="box box-teal"/>
+            <text x="990" y="509" class="label">Immutable Audit Trail | Timeline per complaint</text>
+
+            <!-- Compliance & Maintainability -->
+            <rect x="20" y="550" width="570" height="130" class="zone-box" style="fill:#eceff1;"/>
+            <text x="40" y="578" class="zone-label">COMPLIANCE & GOVERNANCE</text>
+
+            <rect x="40" y="590" width="250" height="35" class="box box-dark"/>
+            <text x="165" y="612" class="label">RBI IT Governance Framework</text>
+
+            <rect x="310" y="590" width="250" height="35" class="box box-dark"/>
+            <text x="435" y="612" class="label">DPDP Act Compliance (India)</text>
+
+            <rect x="40" y="635" width="250" height="35" class="box box-dark"/>
+            <text x="165" y="657" class="label">Data Retention: 7 years minimum</text>
+
+            <rect x="310" y="635" width="250" height="35" class="box box-dark"/>
+            <text x="435" y="657" class="label">Audit: ISO 27001 aligned</text>
+
+            <!-- Maintainability -->
+            <rect x="610" y="550" width="570" height="130" class="zone-box" style="fill:#e8eaf6;"/>
+            <text x="630" y="578" class="zone-label">MAINTAINABILITY & DEPLOYABILITY</text>
+
+            <rect x="630" y="590" width="250" height="35" class="box box-primary"/>
+            <text x="755" y="612" class="label">CI/CD: OpenShift Pipelines (Tekton)</text>
+
+            <rect x="900" y="590" width="250" height="35" class="box box-primary"/>
+            <text x="1025" y="612" class="label">Blue-Green Deployments</text>
+
+            <rect x="630" y="635" width="250" height="35" class="box box-primary"/>
+            <text x="755" y="657" class="label">Microservices: Independent Deploy</text>
+
+            <rect x="900" y="635" width="250" height="35" class="box box-primary"/>
+            <text x="1025" y="657" class="label">Feature Flags | Config Maps</text>
+        </svg>
+    </div>
+
+    <h2>Detailed NFR Specifications</h2>
+    <table class="nfr-table">
+        <thead>
+            <tr><th>Category</th><th>Requirement</th><th>Target</th><th>Implementation</th></tr>
+        </thead>
+        <tbody>
+            <tr><td class="nfr-cat" rowspan="5">Performance</td><td>API Response Time (P95)</td><td>&lt; 500ms</td><td>HikariCP pooling, Hazelcast cache, async processing</td></tr>
+            <tr><td>Search Response Time</td><td>&lt; 200ms</td><td>OpenSearch with optimized indices, field-level boosting</td></tr>
+            <tr><td>Page Load Time</td><td>&lt; 3 seconds</td><td>Angular lazy loading, AOT, tree-shaking, CDN</td></tr>
+            <tr><td>Concurrent Users</td><td>1000+</td><td>Tomcat 400-800 threads, 10K-20K connections, LB</td></tr>
+            <tr><td>File Upload</td><td>50MB max, chunked 5MB</td><td>Multipart chunked upload, streaming, NFS</td></tr>
+
+            <tr><td class="nfr-cat" rowspan="5">Security</td><td>Authentication</td><td>OAuth2/OIDC + JWT</td><td>Keycloak 26.0, RS256, token refresh, session timeout</td></tr>
+            <tr><td>Authorization</td><td>RBAC, 8+ roles</td><td>API Gateway JWT filter, role-based route guards</td></tr>
+            <tr><td>Encryption</td><td>TLS 1.3 / AES-256</td><td>Edge termination at F5/Nginx, DB TDE</td></tr>
+            <tr><td>Rate Limiting</td><td>100 req/s, 10 complaints/min</td><td>Custom RateLimitFilter, token bucket algorithm</td></tr>
+            <tr><td>File Security</td><td>Whitelist + Virus Scan</td><td>Type validation (pdf,png,jpg,doc), ClamAV integration</td></tr>
+
+            <tr><td class="nfr-cat" rowspan="4">Availability</td><td>Uptime SLA</td><td>99.9%</td><td>Multi-replica, no SPOF, health probes, auto-restart</td></tr>
+            <tr><td>RPO (Data Loss)</td><td>&lt; 1 hour</td><td>Oracle Data Guard, Kafka replication, hourly backup</td></tr>
+            <tr><td>RTO (Recovery Time)</td><td>&lt; 4 hours</td><td>Warm standby DR, automated failover scripts</td></tr>
+            <tr><td>Zero-Downtime Deploy</td><td>Rolling updates</td><td>Blue-green via OpenShift, readiness gates</td></tr>
+
+            <tr><td class="nfr-cat" rowspan="3">Scalability</td><td>Horizontal Scaling</td><td>Auto (HPA)</td><td>CPU > 70% trigger, max 8 pods, stateless services</td></tr>
+            <tr><td>Database Scaling</td><td>Read replicas</td><td>Oracle RAC, connection pool per pod (20-100)</td></tr>
+            <tr><td>Event Processing</td><td>10K events/sec</td><td>Kafka partitioning, consumer groups, batch processing</td></tr>
+
+            <tr><td class="nfr-cat" rowspan="3">Observability</td><td>Metrics</td><td>All services</td><td>Micrometer + Prometheus (15s) + Grafana dashboards</td></tr>
+            <tr><td>Logging</td><td>Structured, searchable</td><td>JSON format, correlation ID, OpenSearch/ELK</td></tr>
+            <tr><td>Alerting</td><td>SLA breach, errors</td><td>Prometheus AlertManager, Grafana alerts, email/SMS</td></tr>
+
+            <tr><td class="nfr-cat" rowspan="3">Compliance</td><td>Audit Trail</td><td>Immutable, complete</td><td>Kafka audit topic, timeline per complaint, no deletion</td></tr>
+            <tr><td>Data Retention</td><td>7+ years</td><td>Oracle partitioning, archival strategy, cold storage</td></tr>
+            <tr><td>Privacy (DPDP)</td><td>PII protection</td><td>Data masking in logs, consent tracking, right to access</td></tr>
+        </tbody>
+    </table>
+</div>
+
+<script>
+    function showTab(tabId) {
+        document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.nav-tabs button').forEach(b => b.classList.remove('active'));
+        document.getElementById(tabId).classList.add('active');
+        event.target.classList.add('active');
+    }
+</script>
+
+</body>
+</html>
