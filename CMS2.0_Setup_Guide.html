@@ -1,0 +1,1259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CMS 2.0 - Complete Setup & Configuration Guide</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f8fafc; color: #1e293b; line-height: 1.7; }
+
+        .top-bar { background: linear-gradient(135deg, #1a237e 0%, #283593 100%); color: #fff; padding: 20px 40px; position: sticky; top: 0; z-index: 100; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+        .top-bar h1 { font-size: 22px; font-weight: 700; }
+        .top-bar .subtitle { font-size: 13px; color: rgba(255,255,255,0.7); margin-top: 4px; }
+
+        .layout { display: grid; grid-template-columns: 280px 1fr; min-height: calc(100vh - 80px); }
+
+        /* Sidebar TOC */
+        .sidebar { background: #fff; border-right: 1px solid #e2e8f0; padding: 20px 0; position: sticky; top: 80px; height: calc(100vh - 80px); overflow-y: auto; }
+        .sidebar h3 { padding: 0 20px; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #94a3b8; margin-bottom: 12px; }
+        .sidebar a { display: block; padding: 8px 20px; font-size: 13px; color: #475569; text-decoration: none; border-left: 3px solid transparent; transition: all 0.2s; }
+        .sidebar a:hover { background: #f1f5f9; color: #1a237e; border-left-color: #1a237e; }
+        .sidebar a.section-head { font-weight: 700; color: #1e293b; padding-top: 16px; font-size: 14px; }
+        .sidebar .divider { height: 1px; background: #e2e8f0; margin: 12px 20px; }
+
+        /* Main content */
+        .main { padding: 40px 50px; max-width: 1100px; }
+        .main h2 { font-size: 24px; color: #1a237e; margin: 40px 0 16px; padding-bottom: 10px; border-bottom: 2px solid #e2e8f0; }
+        .main h2:first-child { margin-top: 0; }
+        .main h3 { font-size: 18px; color: #334155; margin: 28px 0 12px; }
+        .main h4 { font-size: 15px; color: #475569; margin: 20px 0 8px; font-weight: 600; }
+        .main p { margin-bottom: 12px; font-size: 14px; }
+        .main ul, .main ol { margin: 8px 0 16px 24px; font-size: 14px; }
+        .main li { margin-bottom: 6px; }
+
+        /* Code blocks */
+        pre { background: #1e293b; color: #e2e8f0; padding: 16px 20px; border-radius: 8px; overflow-x: auto; margin: 12px 0 20px; font-size: 13px; line-height: 1.6; }
+        code { font-family: 'Cascadia Code', 'Fira Code', Consolas, monospace; }
+        .inline-code { background: #e2e8f0; color: #1e293b; padding: 2px 6px; border-radius: 4px; font-size: 12px; }
+
+        /* Tables */
+        table { width: 100%; border-collapse: collapse; margin: 12px 0 24px; font-size: 13px; }
+        th, td { padding: 10px 14px; text-align: left; border: 1px solid #e2e8f0; }
+        th { background: #1a237e; color: #fff; font-weight: 600; }
+        tr:nth-child(even) { background: #f8fafc; }
+        td code { background: #e2e8f0; padding: 1px 4px; border-radius: 3px; font-size: 12px; }
+
+        /* Info boxes */
+        .info-box { padding: 14px 18px; border-radius: 8px; margin: 16px 0; font-size: 13px; border-left: 4px solid; }
+        .info-box.why { background: #eff6ff; border-color: #3b82f6; }
+        .info-box.warning { background: #fffbeb; border-color: #f59e0b; }
+        .info-box.success { background: #f0fdf4; border-color: #22c55e; }
+        .info-box.danger { background: #fef2f2; border-color: #ef4444; }
+        .info-box .label { font-weight: 700; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; margin-bottom: 4px; }
+        .info-box.why .label { color: #1d4ed8; }
+        .info-box.warning .label { color: #d97706; }
+        .info-box.success .label { color: #16a34a; }
+        .info-box.danger .label { color: #dc2626; }
+
+        /* Option cards */
+        .options-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; margin: 16px 0; }
+        .option-card { border: 2px solid #e2e8f0; border-radius: 10px; padding: 20px; background: #fff; transition: border-color 0.2s; }
+        .option-card:hover { border-color: #3b82f6; }
+        .option-card h5 { font-size: 15px; color: #1a237e; margin-bottom: 8px; }
+        .option-card p { font-size: 13px; color: #64748b; margin-bottom: 8px; }
+        .option-card .tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+        .option-card .tag.recommended { background: #dcfce7; color: #166534; }
+        .option-card .tag.advanced { background: #e0e7ff; color: #3730a3; }
+        .option-card .tag.quick { background: #fef9c3; color: #854d0e; }
+
+        /* Step counter */
+        .step { counter-increment: step-counter; position: relative; padding-left: 48px; margin-bottom: 24px; }
+        .step::before { content: counter(step-counter); position: absolute; left: 0; top: 0; width: 32px; height: 32px; background: #1a237e; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; }
+        .steps-container { counter-reset: step-counter; }
+
+        /* Badges */
+        .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+        .badge-port { background: #dbeafe; color: #1e40af; }
+        .badge-required { background: #fee2e2; color: #991b1b; }
+        .badge-optional { background: #e2e8f0; color: #475569; }
+
+        /* Diagram flow */
+        .flow-diagram { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px; margin: 20px 0; text-align: center; }
+        .flow-diagram svg { max-width: 100%; }
+
+        /* Print */
+        @media print { .sidebar { display: none; } .layout { grid-template-columns: 1fr; } .top-bar { position: relative; } }
+    </style>
+</head>
+<body>
+
+<div class="top-bar">
+    <h1>CMS 2.0 — Complete Setup & Configuration Guide</h1>
+    <div class="subtitle">Reserve Bank of India | Complaint Management System | Dev Environment Setup | v1.0 — June 2026</div>
+</div>
+
+<div class="layout">
+    <!-- SIDEBAR TOC -->
+    <nav class="sidebar">
+        <h3>Table of Contents</h3>
+        <a href="#overview" class="section-head">Overview</a>
+        <a href="#architecture">Architecture Summary</a>
+        <a href="#prerequisites">Prerequisites</a>
+        <div class="divider"></div>
+        <a href="#mysql" class="section-head">1. MySQL Setup</a>
+        <a href="#mysql-install">Installation</a>
+        <a href="#mysql-config">Configuration</a>
+        <a href="#mysql-schema">Schema & Data</a>
+        <div class="divider"></div>
+        <a href="#kafka" class="section-head">2. Kafka Setup</a>
+        <a href="#kafka-options">Deployment Options</a>
+        <a href="#kafka-ocp">Option A: OCP Operator</a>
+        <a href="#kafka-standalone">Option B: Standalone</a>
+        <a href="#kafka-topics">Topic Creation</a>
+        <a href="#kafka-verify">Verification</a>
+        <div class="divider"></div>
+        <a href="#keycloak" class="section-head">3. Keycloak Setup</a>
+        <a href="#kc-install">Installation</a>
+        <a href="#kc-config">Configuration</a>
+        <a href="#kc-realm">Realm Setup</a>
+        <a href="#kc-clients">Client Registration</a>
+        <a href="#kc-roles">Roles</a>
+        <a href="#kc-users">Users</a>
+        <a href="#kc-verify">Verification</a>
+        <div class="divider"></div>
+        <a href="#opensearch" class="section-head">4. OpenSearch (Optional)</a>
+        <div class="divider"></div>
+        <a href="#backend" class="section-head">5. Backend Setup</a>
+        <a href="#backend-config">Configuration</a>
+        <a href="#backend-run">Run</a>
+        <div class="divider"></div>
+        <a href="#frontend" class="section-head">6. Frontend Setup</a>
+        <div class="divider"></div>
+        <a href="#monitoring" class="section-head">7. Monitoring</a>
+        <div class="divider"></div>
+        <a href="#verify-all" class="section-head">8. Verify All</a>
+        <a href="#troubleshooting">Troubleshooting</a>
+        <a href="#port-map">Port Map</a>
+    </nav>
+
+    <!-- MAIN CONTENT -->
+    <main class="main">
+
+        <!-- ═══════════════ OVERVIEW ═══════════════ -->
+        <h2 id="overview">Overview</h2>
+        <p>This guide covers complete setup of CMS 2.0 infrastructure and application on a <strong>Dev environment</strong> (Linux server / OpenShift) and connecting from a <strong>local laptop</strong> (Windows) for development.</p>
+
+        <h3 id="architecture">Architecture Summary</h3>
+        <div class="flow-diagram">
+            <svg width="900" height="180" viewBox="0 0 900 180">
+                <defs>
+                    <marker id="arr" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#64748b"/></marker>
+                </defs>
+                <!-- Laptop -->
+                <rect x="10" y="50" width="140" height="80" rx="8" fill="#e3f2fd" stroke="#1976d2" stroke-width="2"/>
+                <text x="80" y="82" text-anchor="middle" font-size="12" font-weight="700" fill="#1e293b">Your Laptop</text>
+                <text x="80" y="98" text-anchor="middle" font-size="10" fill="#64748b">Angular :4200</text>
+                <text x="80" y="112" text-anchor="middle" font-size="10" fill="#64748b">Backend :8082</text>
+                <!-- Arrow -->
+                <line x1="150" y1="90" x2="220" y2="90" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+                <text x="185" y="82" text-anchor="middle" font-size="9" fill="#64748b">connects to</text>
+                <!-- Dev Server -->
+                <rect x="220" y="20" width="670" height="150" rx="10" fill="#f0fdf4" stroke="#16a34a" stroke-width="2" stroke-dasharray="6,3"/>
+                <text x="240" y="42" font-size="12" font-weight="700" fill="#065f46">DEV ENVIRONMENT (OCP / Linux Server)</text>
+                <!-- MySQL -->
+                <rect x="240" y="55" width="130" height="50" rx="6" fill="#fff3e0" stroke="#e65100" stroke-width="1.5"/>
+                <text x="305" y="77" text-anchor="middle" font-size="11" font-weight="600" fill="#1e293b">MySQL 8.0</text>
+                <text x="305" y="93" text-anchor="middle" font-size="10" fill="#64748b">:3306</text>
+                <!-- Kafka -->
+                <rect x="390" y="55" width="150" height="50" rx="6" fill="#fff8e1" stroke="#f57c00" stroke-width="1.5"/>
+                <text x="465" y="77" text-anchor="middle" font-size="11" font-weight="600" fill="#1e293b">Kafka (Strimzi)</text>
+                <text x="465" y="93" text-anchor="middle" font-size="10" fill="#64748b">:9092</text>
+                <!-- Keycloak -->
+                <rect x="560" y="55" width="140" height="50" rx="6" fill="#f3e5f5" stroke="#7b1fa2" stroke-width="1.5"/>
+                <text x="630" y="77" text-anchor="middle" font-size="11" font-weight="600" fill="#1e293b">Keycloak 26</text>
+                <text x="630" y="93" text-anchor="middle" font-size="10" fill="#64748b">:8080</text>
+                <!-- OpenSearch -->
+                <rect x="720" y="55" width="150" height="50" rx="6" fill="#e0f7fa" stroke="#0097a7" stroke-width="1.5"/>
+                <text x="795" y="77" text-anchor="middle" font-size="11" font-weight="600" fill="#1e293b">OpenSearch</text>
+                <text x="795" y="93" text-anchor="middle" font-size="10" fill="#64748b">:9200 (optional)</text>
+                <!-- Monitoring -->
+                <rect x="240" y="115" width="130" height="40" rx="6" fill="#eceff1" stroke="#546e7a" stroke-width="1"/>
+                <text x="305" y="140" text-anchor="middle" font-size="10" fill="#475569">Prometheus :9090</text>
+                <rect x="390" y="115" width="130" height="40" rx="6" fill="#eceff1" stroke="#546e7a" stroke-width="1"/>
+                <text x="455" y="140" text-anchor="middle" font-size="10" fill="#475569">Grafana :3000</text>
+            </svg>
+        </div>
+
+        <!-- ═══════════════ PREREQUISITES ═══════════════ -->
+        <h3 id="prerequisites">Prerequisites</h3>
+
+        <h4>On Your Local Laptop (Windows)</h4>
+        <table>
+            <tr><th>Tool</th><th>Version</th><th>Purpose</th><th>Required?</th></tr>
+            <tr><td>Java JDK</td><td>17+</td><td>Run cms-backend</td><td><span class="badge badge-required">Required</span></td></tr>
+            <tr><td>Apache Maven</td><td>3.9+</td><td>Build backend</td><td><span class="badge badge-required">Required</span></td></tr>
+            <tr><td>Node.js</td><td>22 LTS</td><td>Angular CLI / npm</td><td><span class="badge badge-required">Required</span></td></tr>
+            <tr><td>Angular CLI</td><td>19+</td><td><code>ng serve</code></td><td><span class="badge badge-required">Required</span></td></tr>
+            <tr><td>Git</td><td>2.40+</td><td>Clone code</td><td><span class="badge badge-required">Required</span></td></tr>
+            <tr><td>oc CLI</td><td>4.x</td><td>OCP access (port-forward, kafka)</td><td><span class="badge badge-optional">Optional</span></td></tr>
+        </table>
+
+        <h4>On Dev Server (Linux / OCP)</h4>
+        <table>
+            <tr><th>Tool</th><th>Version</th><th>Purpose</th><th>Required?</th></tr>
+            <tr><td>MySQL</td><td>8.0</td><td>Application database</td><td><span class="badge badge-required">Required</span></td></tr>
+            <tr><td>Apache Kafka</td><td>3.7+</td><td>Event bus between services</td><td><span class="badge badge-required">Required</span></td></tr>
+            <tr><td>Keycloak</td><td>26.0</td><td>Identity & Access Management</td><td><span class="badge badge-required">Required</span></td></tr>
+            <tr><td>PostgreSQL</td><td>16</td><td>Keycloak database</td><td><span class="badge badge-required">Required</span></td></tr>
+            <tr><td>OpenSearch</td><td>2.18</td><td>Full-text search</td><td><span class="badge badge-optional">Optional</span></td></tr>
+            <tr><td>Prometheus</td><td>2.54</td><td>Metrics collection</td><td><span class="badge badge-optional">Optional</span></td></tr>
+            <tr><td>Grafana</td><td>11.3</td><td>Dashboards</td><td><span class="badge badge-optional">Optional</span></td></tr>
+        </table>
+
+        <!-- ═══════════════ MYSQL ═══════════════ -->
+        <h2 id="mysql">1. MySQL Database Setup</h2>
+
+        <div class="info-box why">
+            <div class="label">Why MySQL?</div>
+            CMS stores all complaint data, entities, timelines, attachments metadata, and email drafts in MySQL. The <code>cms-backend</code> (monolith) uses MySQL directly with HikariCP connection pooling. Production uses Oracle, but dev uses MySQL for simplicity.
+        </div>
+
+        <h3 id="mysql-install">1.1 Installation</h3>
+
+        <h4>Option A: Install on Linux Server</h4>
+<pre><code># RHEL/CentOS
+sudo dnf install mysql-server
+sudo systemctl start mysqld
+sudo systemctl enable mysqld
+
+# Get temporary root password
+sudo grep 'temporary password' /var/log/mysqld.log
+
+# Secure installation
+sudo mysql_secure_installation</code></pre>
+
+        <h4>Option B: Docker Container</h4>
+<pre><code>docker run -d \
+  --name cms-mysql \
+  -e MYSQL_ROOT_PASSWORD=root \
+  -e MYSQL_DATABASE=cms_db \
+  -e MYSQL_USER=cms_user \
+  -e MYSQL_PASSWORD=cms_pass \
+  -p 3306:3306 \
+  --restart unless-stopped \
+  mysql:8.0 \
+  --max-connections=500 \
+  --character-set-server=utf8mb4 \
+  --collation-server=utf8mb4_unicode_ci</code></pre>
+
+        <h4>Option C: Already Running on Dev</h4>
+        <p>If MySQL is already on the dev server, just get the connection details (host, port, username, password, database name) from your DBA/admin.</p>
+
+        <h3 id="mysql-config">1.2 Configuration</h3>
+
+        <div class="steps-container">
+            <div class="step">
+                <h4>Create Database & User</h4>
+<pre><code>mysql -u root -p
+
+CREATE DATABASE cms_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER 'cms_user'@'%' IDENTIFIED BY 'cms_pass';
+GRANT ALL PRIVILEGES ON cms_db.* TO 'cms_user'@'%';
+FLUSH PRIVILEGES;</code></pre>
+                <div class="info-box why">
+                    <div class="label">Why '%' host?</div>
+                    Allows connections from any IP — needed so your laptop can connect to the dev server's MySQL.
+                </div>
+            </div>
+
+            <div class="step">
+                <h4>Allow Remote Connections</h4>
+                <p>Edit <code>/etc/mysql/mysql.conf.d/mysqld.cnf</code> (or <code>/etc/my.cnf</code>):</p>
+<pre><code>[mysqld]
+bind-address = 0.0.0.0
+port = 3306
+max_connections = 500
+innodb_buffer_pool_size = 1G
+character-set-server = utf8mb4</code></pre>
+                <p>Restart MySQL:</p>
+<pre><code>sudo systemctl restart mysqld</code></pre>
+            </div>
+
+            <div class="step">
+                <h4>Open Firewall</h4>
+<pre><code>sudo firewall-cmd --add-port=3306/tcp --permanent
+sudo firewall-cmd --reload</code></pre>
+            </div>
+        </div>
+
+        <h3 id="mysql-schema">1.3 Schema & Initial Data</h3>
+        <p>The backend auto-creates tables on first startup (<code>ddl-auto: update</code>), but you can also run the schema script:</p>
+<pre><code>mysql -u cms_user -p cms_db < CMS2.0/cms-backend/src/main/resources/db/cms_database_scripts.sql</code></pre>
+
+        <div class="info-box success">
+            <div class="label">Auto-Initialization</div>
+            The <code>DataInitializer.java</code> class seeds sample data (entities, categories, complaints) on first boot. No manual data load required.
+        </div>
+
+        <h3>1.4 Verify MySQL</h3>
+<pre><code># From dev server
+mysql -u cms_user -p -e "SELECT 1; SHOW DATABASES;"
+
+# From your laptop
+mysql -h DEV_SERVER_IP -u cms_user -p -e "SELECT 1;"</code></pre>
+
+        <!-- ═══════════════ KAFKA ═══════════════ -->
+        <h2 id="kafka">2. Apache Kafka Setup</h2>
+
+        <div class="info-box why">
+            <div class="label">Why Kafka?</div>
+            CMS uses event-driven architecture. When a complaint is filed, Kafka distributes events to multiple services:
+            <ul style="margin-top:8px;">
+                <li><strong>complaint.ingested</strong> → Workflow starts processing, Assignment finds officer, Search indexes it</li>
+                <li><strong>complaint.assigned</strong> → Notification sends email/SMS to assigned officer</li>
+                <li><strong>complaint.escalated</strong> → SLA Monitor alerts supervisor</li>
+                <li><strong>complaint.resolved/closed</strong> → Audit logs final state, Notification informs complainant</li>
+            </ul>
+            Without Kafka, services can't communicate asynchronously — you'd lose event-driven decoupling.
+        </div>
+
+        <h3 id="kafka-options">2.1 Deployment Options</h3>
+
+        <div class="options-grid">
+            <div class="option-card">
+                <h5>Option A: OCP Strimzi Operator</h5>
+                <span class="tag recommended">Recommended for OCP</span>
+                <p>Kafka managed by Strimzi/AMQ Streams operator on OpenShift. Fully automated lifecycle.</p>
+                <p><strong>When:</strong> Your dev environment is on OpenShift (OCP)</p>
+                <p><strong>URL pattern:</strong> <code>my-cluster-bootstrap.demo-kafka.svc.cluster.local:9092</code></p>
+            </div>
+            <div class="option-card">
+                <h5>Option B: Standalone (KRaft)</h5>
+                <span class="tag advanced">Advanced</span>
+                <p>Manual Kafka installation on Linux server. No Zookeeper needed (KRaft mode).</p>
+                <p><strong>When:</strong> Dev server is a plain Linux VM (no OCP)</p>
+            </div>
+            <div class="option-card">
+                <h5>Option C: Docker Compose</h5>
+                <span class="tag quick">Quick Start</span>
+                <p>Single docker-compose for all infra. Good for local dev.</p>
+                <p><strong>When:</strong> Want everything on one machine quickly</p>
+            </div>
+        </div>
+
+        <!-- KAFKA OPTION A: OCP -->
+        <h3 id="kafka-ocp">2.2 Option A: Kafka on OCP (Strimzi Operator)</h3>
+
+        <div class="info-box warning">
+            <div class="label">Your Current Setup</div>
+            Your Kafka is already on OCP with:<br>
+            Bootstrap: <code>my-cluster-bootstrap.demo-kafka.svc.cluster.local:9092</code><br>
+            Kafka UI: <code>https://my-console.apps.ocpcl.rebit.local/</code><br>
+            You do NOT need to know if it's KRaft or ZooKeeper — the operator manages that.
+        </div>
+
+        <div class="steps-container">
+            <div class="step">
+                <h4>Login to OCP</h4>
+<pre><code>oc login https://api.ocpcl.rebit.local:6443 -u YOUR_USERNAME -p YOUR_PASSWORD
+
+# Verify access to kafka namespace
+oc project demo-kafka
+oc get kafka</code></pre>
+            </div>
+
+            <div class="step">
+                <h4>Check Kafka Cluster Status</h4>
+<pre><code># See cluster details
+oc get kafka my-cluster -o yaml
+
+# Check listeners (important - tells you how to connect)
+oc get kafka my-cluster -o jsonpath='{.status.listeners}' | python -m json.tool
+
+# Check if external listener exists
+oc get routes -n demo-kafka</code></pre>
+                <div class="info-box why">
+                    <div class="label">Why Check Listeners?</div>
+                    Kafka can have multiple listeners: <code>plain</code> (internal), <code>tls</code> (encrypted internal), <code>external</code> (for outside OCP). You need to know which one to use based on where your backend runs.
+                </div>
+            </div>
+
+            <div class="step">
+                <h4>Determine Connection Method</h4>
+                <table>
+                    <tr><th>Your Backend Runs On</th><th>Kafka Bootstrap URL</th><th>Auth</th></tr>
+                    <tr><td>Same OCP cluster (same namespace)</td><td><code>my-cluster-kafka-bootstrap:9092</code></td><td>None (PLAINTEXT)</td></tr>
+                    <tr><td>Same OCP cluster (different namespace)</td><td><code>my-cluster-kafka-bootstrap.demo-kafka.svc.cluster.local:9092</code></td><td>None (PLAINTEXT)</td></tr>
+                    <tr><td>Your laptop (via port-forward)</td><td><code>localhost:9092</code></td><td>None</td></tr>
+                    <tr><td>Your laptop (via external route)</td><td><code>my-cluster-kafka-bootstrap-demo-kafka.apps.ocpcl.rebit.local:443</code></td><td>TLS</td></tr>
+                </table>
+            </div>
+
+            <div class="step">
+                <h4>Port-Forward for Local Laptop Development</h4>
+<pre><code># Open a terminal and keep it running
+oc port-forward svc/my-cluster-kafka-bootstrap 9092:9092 -n demo-kafka</code></pre>
+                <p>Now your laptop can connect to Kafka at <code>localhost:9092</code></p>
+                <div class="info-box warning">
+                    <div class="label">Important</div>
+                    Port-forward must stay running in a terminal. If you close it, Kafka connection is lost. Use <code>tmux</code> or a separate terminal window.
+                </div>
+            </div>
+
+            <div class="step">
+                <h4>If External Route Exists (Check First)</h4>
+<pre><code># Check if external bootstrap route exists
+oc get routes -n demo-kafka | grep bootstrap
+
+# If it shows a route like:
+# my-cluster-kafka-bootstrap   my-cluster-kafka-bootstrap-demo-kafka.apps.ocpcl.rebit.local
+# Then you can use it directly from laptop (no port-forward needed)</code></pre>
+                <p>For TLS connection, configure:</p>
+<pre><code># application.yml
+spring:
+  kafka:
+    bootstrap-servers: my-cluster-kafka-bootstrap-demo-kafka.apps.ocpcl.rebit.local:443
+    properties:
+      security.protocol: SSL
+    ssl:
+      trust-store-location: classpath:kafka-truststore.jks
+      trust-store-password: changeit</code></pre>
+            </div>
+        </div>
+
+        <!-- KAFKA OPTION B: STANDALONE -->
+        <h3 id="kafka-standalone">2.3 Option B: Standalone Kafka (KRaft Mode)</h3>
+        <p>Use this if your dev server is a plain Linux VM without OpenShift.</p>
+
+        <div class="steps-container">
+            <div class="step">
+                <h4>Download & Install</h4>
+<pre><code>cd /opt
+wget https://downloads.apache.org/kafka/3.7.0/kafka_2.13-3.7.0.tgz
+tar -xzf kafka_2.13-3.7.0.tgz
+ln -s kafka_2.13-3.7.0 kafka
+mkdir -p /var/kafka-data
+</code></pre>
+            </div>
+
+            <div class="step">
+                <h4>Configure KRaft (No Zookeeper)</h4>
+                <p>Edit <code>/opt/kafka/config/kraft/server.properties</code>:</p>
+<pre><code># Node configuration
+node.id=1
+process.roles=broker,controller
+
+# IMPORTANT: Replace DEV_SERVER_IP with actual IP
+listeners=PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+advertised.listeners=PLAINTEXT://DEV_SERVER_IP:9092
+
+# Controller
+controller.listener.names=CONTROLLER
+controller.quorum.voters=1@localhost:9093
+listener.security.protocol.map=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+
+# Storage
+log.dirs=/var/kafka-data
+
+# Topic defaults
+num.partitions=3
+default.replication.factor=1
+auto.create.topics.enable=true
+
+# Retention (7 days)
+log.retention.hours=168
+log.segment.bytes=1073741824
+
+# Performance
+num.network.threads=3
+num.io.threads=8
+socket.send.buffer.bytes=102400
+socket.receive.buffer.bytes=102400</code></pre>
+                <div class="info-box why">
+                    <div class="label">Why KRaft?</div>
+                    KRaft eliminates ZooKeeper — fewer moving parts, simpler setup, single process. Apache Kafka has deprecated ZooKeeper in favor of KRaft.
+                </div>
+            </div>
+
+            <div class="step">
+                <h4>Initialize & Start</h4>
+<pre><code># Generate cluster ID (one-time)
+KAFKA_CLUSTER_ID=$(/opt/kafka/bin/kafka-storage.sh random-uuid)
+echo "Cluster ID: $KAFKA_CLUSTER_ID"
+
+# Format storage (one-time)
+/opt/kafka/bin/kafka-storage.sh format \
+  -t $KAFKA_CLUSTER_ID \
+  -c /opt/kafka/config/kraft/server.properties
+
+# Start Kafka
+/opt/kafka/bin/kafka-server-start.sh -daemon /opt/kafka/config/kraft/server.properties
+
+# Verify it's running
+/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list</code></pre>
+            </div>
+
+            <div class="step">
+                <h4>Create systemd Service</h4>
+<pre><code>sudo tee /etc/systemd/system/kafka.service &lt;&lt; 'EOF'
+[Unit]
+Description=Apache Kafka (KRaft)
+After=network.target
+
+[Service]
+Type=simple
+User=kafka
+Environment="KAFKA_HEAP_OPTS=-Xms512m -Xmx1g"
+ExecStart=/opt/kafka/bin/kafka-server-start.sh /opt/kafka/config/kraft/server.properties
+ExecStop=/opt/kafka/bin/kafka-server-stop.sh
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+sudo systemctl daemon-reload
+sudo systemctl enable kafka
+sudo systemctl start kafka</code></pre>
+                <div class="info-box why">
+                    <div class="label">Why systemd?</div>
+                    Ensures Kafka auto-starts on server reboot and auto-restarts on crash. Essential for a shared dev environment.
+                </div>
+            </div>
+
+            <div class="step">
+                <h4>Open Firewall</h4>
+<pre><code>sudo firewall-cmd --add-port=9092/tcp --permanent
+sudo firewall-cmd --reload</code></pre>
+            </div>
+        </div>
+
+        <!-- KAFKA TOPICS -->
+        <h3 id="kafka-topics">2.4 Create CMS Topics</h3>
+
+        <div class="info-box why">
+            <div class="label">Why Pre-Create Topics?</div>
+            While <code>auto.create.topics.enable=true</code> works, pre-creating gives you control over partition count and retention. More partitions = more parallel consumers = higher throughput.
+        </div>
+
+        <h4>Option A: Via Kafka UI (Easiest)</h4>
+        <ol>
+            <li>Open <code>https://my-console.apps.ocpcl.rebit.local/</code></li>
+            <li>Navigate to Topics → Create Topic</li>
+            <li>Create each topic with settings below</li>
+        </ol>
+
+        <h4>Option B: Via CLI (Standalone)</h4>
+<pre><code>BOOTSTRAP=localhost:9092   # or DEV_SERVER_IP:9092
+
+# Create all CMS topics
+for topic in complaint.ingested complaint.assigned complaint.inprogress \
+             complaint.escalated complaint.resolved complaint.closed; do
+  /opt/kafka/bin/kafka-topics.sh --bootstrap-server $BOOTSTRAP \
+    --create --topic $topic --partitions 3 --replication-factor 1 \
+    --config retention.ms=604800000
+done
+
+# Dead Letter Queue (single partition, longer retention)
+/opt/kafka/bin/kafka-topics.sh --bootstrap-server $BOOTSTRAP \
+  --create --topic complaint.dlq --partitions 1 --replication-factor 1 \
+  --config retention.ms=2592000000</code></pre>
+
+        <h4>Option C: Via OCP KafkaTopic CRD (Strimzi)</h4>
+<pre><code>cat &lt;&lt;'EOF' | oc apply -n demo-kafka -f -
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: complaint.ingested
+  labels:
+    strimzi.io/cluster: my-cluster
+spec:
+  partitions: 3
+  replicas: 1
+  config:
+    retention.ms: "604800000"
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: complaint.assigned
+  labels:
+    strimzi.io/cluster: my-cluster
+spec:
+  partitions: 3
+  replicas: 1
+  config:
+    retention.ms: "604800000"
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: complaint.inprogress
+  labels:
+    strimzi.io/cluster: my-cluster
+spec:
+  partitions: 3
+  replicas: 1
+  config:
+    retention.ms: "604800000"
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: complaint.escalated
+  labels:
+    strimzi.io/cluster: my-cluster
+spec:
+  partitions: 3
+  replicas: 1
+  config:
+    retention.ms: "604800000"
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: complaint.resolved
+  labels:
+    strimzi.io/cluster: my-cluster
+spec:
+  partitions: 3
+  replicas: 1
+  config:
+    retention.ms: "604800000"
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: complaint.closed
+  labels:
+    strimzi.io/cluster: my-cluster
+spec:
+  partitions: 3
+  replicas: 1
+  config:
+    retention.ms: "604800000"
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: complaint.dlq
+  labels:
+    strimzi.io/cluster: my-cluster
+spec:
+  partitions: 1
+  replicas: 1
+  config:
+    retention.ms: "2592000000"
+EOF</code></pre>
+
+        <h4>Topic Reference</h4>
+        <table>
+            <tr><th>Topic</th><th>Partitions</th><th>Retention</th><th>Producer</th><th>Consumer(s)</th></tr>
+            <tr><td><code>complaint.ingested</code></td><td>3</td><td>7 days</td><td>Ingestion Service</td><td>Workflow, Assignment, Search, Audit</td></tr>
+            <tr><td><code>complaint.assigned</code></td><td>3</td><td>7 days</td><td>Workflow</td><td>Notification, Audit</td></tr>
+            <tr><td><code>complaint.inprogress</code></td><td>3</td><td>7 days</td><td>Workflow</td><td>SLA Monitor, Audit</td></tr>
+            <tr><td><code>complaint.escalated</code></td><td>3</td><td>7 days</td><td>SLA Monitor</td><td>Notification, Audit</td></tr>
+            <tr><td><code>complaint.resolved</code></td><td>3</td><td>7 days</td><td>Workflow</td><td>Notification, Audit, Search</td></tr>
+            <tr><td><code>complaint.closed</code></td><td>3</td><td>7 days</td><td>Workflow</td><td>Notification, Audit, Search</td></tr>
+            <tr><td><code>complaint.dlq</code></td><td>1</td><td>30 days</td><td>Any (on failure)</td><td>Admin monitoring</td></tr>
+        </table>
+
+        <h3 id="kafka-verify">2.5 Verify Kafka</h3>
+<pre><code># List topics
+/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list
+
+# Or via OCP
+oc get kafkatopics -n demo-kafka
+
+# Test produce/consume
+echo '{"test":"hello CMS"}' | /opt/kafka/bin/kafka-console-producer.sh \
+  --bootstrap-server localhost:9092 --topic complaint.ingested
+
+/opt/kafka/bin/kafka-console-consumer.sh \
+  --bootstrap-server localhost:9092 --topic complaint.ingested \
+  --from-beginning --max-messages 1</code></pre>
+
+        <!-- ═══════════════ KEYCLOAK ═══════════════ -->
+        <h2 id="keycloak">3. Keycloak Setup</h2>
+
+        <div class="info-box why">
+            <div class="label">Why Keycloak?</div>
+            CMS 2.0 uses Keycloak for:
+            <ul style="margin-top:8px;">
+                <li><strong>Authentication:</strong> OAuth2/OIDC login — no custom auth code needed</li>
+                <li><strong>Authorization:</strong> Role-based access control (11 roles for CRPC/CEPC/RBIO workflows)</li>
+                <li><strong>User Management:</strong> Officers, admins stored centrally with role assignments</li>
+                <li><strong>JWT Tokens:</strong> API Gateway validates tokens issued by Keycloak</li>
+                <li><strong>Round-Robin:</strong> Backend queries Keycloak Admin API for users-by-role to distribute work</li>
+                <li><strong>SSO:</strong> Single sign-on across all CMS modules</li>
+            </ul>
+        </div>
+
+        <h3 id="kc-install">3.1 Installation</h3>
+
+        <div class="options-grid">
+            <div class="option-card">
+                <h5>Option A: Standalone (Dev Server)</h5>
+                <span class="tag recommended">Recommended</span>
+                <p>Direct install on Linux. Uses PostgreSQL for persistence.</p>
+            </div>
+            <div class="option-card">
+                <h5>Option B: Docker</h5>
+                <span class="tag quick">Quick</span>
+                <p>Single container with embedded H2 or external PostgreSQL.</p>
+            </div>
+            <div class="option-card">
+                <h5>Option C: OCP Operator</h5>
+                <span class="tag advanced">Enterprise</span>
+                <p>Red Hat SSO / Keycloak Operator on OpenShift.</p>
+            </div>
+        </div>
+
+        <h4>Option A: Standalone Installation</h4>
+<pre><code># Download
+cd /opt
+wget https://github.com/keycloak/keycloak/releases/download/26.0.0/keycloak-26.0.0.tar.gz
+tar -xzf keycloak-26.0.0.tar.gz
+ln -s keycloak-26.0.0 keycloak
+
+# Create keycloak user
+sudo useradd -r -s /bin/false keycloak
+sudo chown -R keycloak:keycloak /opt/keycloak-26.0.0</code></pre>
+
+        <h4>Option B: Docker</h4>
+<pre><code>docker run -d \
+  --name cms-keycloak \
+  -e KEYCLOAK_ADMIN=admin \
+  -e KEYCLOAK_ADMIN_PASSWORD=admin \
+  -e KC_DB=postgres \
+  -e KC_DB_URL=jdbc:postgresql://DEV_SERVER_IP:5432/keycloak \
+  -e KC_DB_USERNAME=keycloak \
+  -e KC_DB_PASSWORD=keycloak_password \
+  -e KC_HOSTNAME=DEV_SERVER_IP \
+  -e KC_HTTP_ENABLED=true \
+  -p 8080:8080 \
+  --restart unless-stopped \
+  quay.io/keycloak/keycloak:26.0.0 start-dev</code></pre>
+
+        <h3 id="kc-config">3.2 Configuration</h3>
+
+        <div class="steps-container">
+            <div class="step">
+                <h4>Setup PostgreSQL (Keycloak's Database)</h4>
+<pre><code># Install PostgreSQL
+sudo dnf install postgresql-server postgresql
+sudo postgresql-setup --initdb
+sudo systemctl start postgresql
+sudo systemctl enable postgresql
+
+# Create database for Keycloak
+sudo -u postgres psql &lt;&lt;SQL
+CREATE USER keycloak WITH PASSWORD 'keycloak_password';
+CREATE DATABASE keycloak OWNER keycloak;
+GRANT ALL PRIVILEGES ON DATABASE keycloak TO keycloak;
+SQL</code></pre>
+                <div class="info-box why">
+                    <div class="label">Why PostgreSQL for Keycloak?</div>
+                    Keycloak stores realms, users, sessions, roles, and client configurations. H2 (embedded) is unstable under load and loses data on restart. PostgreSQL provides durability for a shared dev environment.
+                </div>
+            </div>
+
+            <div class="step">
+                <h4>Configure Keycloak</h4>
+                <p>Edit <code>/opt/keycloak/conf/keycloak.conf</code>:</p>
+<pre><code># ─── Database ───
+db=postgres
+db-url=jdbc:postgresql://localhost:5432/keycloak
+db-username=keycloak
+db-password=keycloak_password
+
+# ─── HTTP ───
+http-enabled=true
+http-port=8080
+http-host=0.0.0.0
+
+# ─── Hostname (IMPORTANT: use dev server IP) ───
+hostname=DEV_SERVER_IP
+hostname-strict=false
+hostname-strict-https=false
+
+# ─── Proxy (if behind load balancer) ───
+proxy-headers=xforwarded
+
+# ─── Logging ───
+log-level=INFO</code></pre>
+                <div class="info-box why">
+                    <div class="label">Why hostname=DEV_SERVER_IP?</div>
+                    JWT tokens contain an <code>issuer</code> URL. If this doesn't match what your backend expects, token validation fails with "Invalid issuer". The hostname must be what clients (your laptop) use to reach Keycloak.
+                </div>
+            </div>
+
+            <div class="step">
+                <h4>Start Keycloak</h4>
+<pre><code># Dev mode (no HTTPS required, all features enabled)
+/opt/keycloak/bin/kc.sh start-dev --http-port=8080
+
+# OR as background service
+nohup /opt/keycloak/bin/kc.sh start-dev --http-port=8080 > /var/log/keycloak.log 2>&1 &</code></pre>
+            </div>
+
+            <div class="step">
+                <h4>Create systemd Service</h4>
+<pre><code>sudo tee /etc/systemd/system/keycloak.service &lt;&lt; 'EOF'
+[Unit]
+Description=Keycloak Identity Server
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=keycloak
+WorkingDirectory=/opt/keycloak
+ExecStart=/opt/keycloak/bin/kc.sh start-dev --http-port=8080
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+sudo systemctl daemon-reload
+sudo systemctl enable keycloak
+sudo systemctl start keycloak</code></pre>
+            </div>
+
+            <div class="step">
+                <h4>Open Firewall</h4>
+<pre><code>sudo firewall-cmd --add-port=8080/tcp --permanent
+sudo firewall-cmd --reload</code></pre>
+            </div>
+        </div>
+
+        <h3 id="kc-realm">3.3 Create CMS Realm</h3>
+
+        <div class="steps-container">
+            <div class="step">
+                <h4>Access Admin Console</h4>
+                <p>Open <code>http://DEV_SERVER_IP:8080/admin</code></p>
+                <p>Login: <strong>admin / admin</strong></p>
+            </div>
+
+            <div class="step">
+                <h4>Create Realm</h4>
+                <ol>
+                    <li>Click realm dropdown (top-left, shows "master")</li>
+                    <li>Click <strong>Create Realm</strong></li>
+                    <li>Realm name: <code>cms</code></li>
+                    <li>Enabled: ON</li>
+                    <li>Click <strong>Create</strong></li>
+                </ol>
+                <div class="info-box why">
+                    <div class="label">Why a Separate Realm?</div>
+                    Isolates CMS users, roles, and clients from other applications. The "master" realm is for Keycloak admin only — never use it for application users.
+                </div>
+            </div>
+
+            <div class="step">
+                <h4>Configure Realm Settings</h4>
+                <p>In the <code>cms</code> realm → Realm Settings:</p>
+                <ul>
+                    <li>Login tab → User registration: OFF (staff accounts are admin-created)</li>
+                    <li>Login tab → Email as username: OFF</li>
+                    <li>Tokens tab → Access Token Lifespan: <strong>30 minutes</strong></li>
+                    <li>Tokens tab → SSO Session Idle: <strong>60 minutes</strong></li>
+                </ul>
+            </div>
+        </div>
+
+        <h3 id="kc-clients">3.4 Client Registration</h3>
+
+        <div class="info-box why">
+            <div class="label">Why Clients?</div>
+            A "client" in Keycloak represents an application that wants to authenticate users. CMS needs two clients:
+            <ul style="margin-top:6px;">
+                <li><strong>cms-portal</strong> (public): For the Angular frontend — browser-based login</li>
+                <li><strong>admin-cli</strong> (confidential): For the backend — server-to-server Keycloak Admin API calls (user lookup, role queries)</li>
+            </ul>
+        </div>
+
+        <h4>Client 1: cms-portal (Frontend)</h4>
+        <div class="steps-container">
+            <div class="step">
+                <p>Go to <strong>Clients</strong> → <strong>Create client</strong></p>
+                <table>
+                    <tr><th>Field</th><th>Value</th><th>Why</th></tr>
+                    <tr><td>Client type</td><td>OpenID Connect</td><td>Standard auth protocol</td></tr>
+                    <tr><td>Client ID</td><td><code>cms-portal</code></td><td>Referenced in Angular keycloak-js config</td></tr>
+                    <tr><td>Name</td><td>CMS Portal Frontend</td><td>Display name</td></tr>
+                    <tr><td>Client authentication</td><td><strong>OFF</strong></td><td>Public client (SPA can't keep secrets)</td></tr>
+                    <tr><td>Authorization</td><td>OFF</td><td>Not using fine-grained auth</td></tr>
+                </table>
+            </div>
+
+            <div class="step">
+                <p>On the next page, set Access Settings:</p>
+                <table>
+                    <tr><th>Field</th><th>Value</th><th>Why</th></tr>
+                    <tr><td>Root URL</td><td><code>http://localhost:4200</code></td><td>Angular dev server</td></tr>
+                    <tr><td>Valid redirect URIs</td><td><code>http://localhost:4200/*</code><br><code>http://DEV_SERVER_IP:4200/*</code></td><td>Where Keycloak can redirect after login</td></tr>
+                    <tr><td>Valid post logout redirect URIs</td><td><code>http://localhost:4200/*</code></td><td>Where to go after logout</td></tr>
+                    <tr><td>Web origins</td><td><code>http://localhost:4200</code><br><code>+</code></td><td>CORS — allows browser to call Keycloak</td></tr>
+                </table>
+                <div class="info-box warning">
+                    <div class="label">CORS Issue Prevention</div>
+                    If you get CORS errors in browser, add <code>*</code> temporarily to Web Origins. For production, restrict to exact domains.
+                </div>
+            </div>
+        </div>
+
+        <h4>Client 2: admin-cli (Backend Admin API)</h4>
+        <div class="steps-container">
+            <div class="step">
+                <p>Go to <strong>Clients</strong> → <strong>Create client</strong></p>
+                <table>
+                    <tr><th>Field</th><th>Value</th><th>Why</th></tr>
+                    <tr><td>Client ID</td><td><code>admin-cli</code></td><td>Backend uses this to call Keycloak Admin REST API</td></tr>
+                    <tr><td>Client authentication</td><td><strong>ON</strong></td><td>Confidential — backend stores the secret</td></tr>
+                    <tr><td>Service accounts roles</td><td><strong>ON</strong></td><td>Allows backend to get token without user login</td></tr>
+                    <tr><td>Direct access grants</td><td>ON</td><td>Resource owner password flow</td></tr>
+                </table>
+            </div>
+            <div class="step">
+                <p>After saving → <strong>Credentials</strong> tab → Copy the <strong>Client Secret</strong></p>
+                <p>You'll use this in <code>application.yml</code>:</p>
+<pre><code>keycloak:
+  admin:
+    server-url: http://DEV_SERVER_IP:8080
+    realm: cms
+    client-id: admin-cli
+    username: admin
+    password: admin</code></pre>
+                <div class="info-box why">
+                    <div class="label">Why Backend Needs Admin API?</div>
+                    The backend calls <code>GET /admin/realms/cms/users?briefRepresentation=true</code> to fetch users by role for round-robin assignment. Without this, you can't auto-assign complaints to officers.
+                </div>
+            </div>
+        </div>
+
+        <h3 id="kc-roles">3.5 Create Realm Roles</h3>
+
+        <p>Go to <strong>Realm Roles</strong> → <strong>Create role</strong> for each:</p>
+
+        <table>
+            <tr><th>Role Name</th><th>Module</th><th>Purpose</th><th>Workflow Stage</th></tr>
+            <tr><td><code>CRPC_DEO</code></td><td>CRPC</td><td>Data Entry Operator</td><td>Draft creation, OCR scan, form filling</td></tr>
+            <tr><td><code>CRPC_REVIEWER</code></td><td>CRPC</td><td>Reviewer</td><td>Review & approve/reject DEO drafts</td></tr>
+            <tr><td><code>CRPC_OPS_HEAD</code></td><td>CRPC</td><td>Operations Head</td><td>Final approval, route to CEPC/RBIO</td></tr>
+            <tr><td><code>CEPC_DO</code></td><td>CEPC</td><td>Dealing Officer</td><td>Examine complaint, gather info</td></tr>
+            <tr><td><code>CEPC_REVIEWER</code></td><td>CEPC</td><td>CEPC Reviewer</td><td>Review DO examination</td></tr>
+            <tr><td><code>CEPC_INCHARGE</code></td><td>CEPC</td><td>In-Charge Officer</td><td>Approve for closure or send back</td></tr>
+            <tr><td><code>CEPC_CLOSING_AUTHORITY</code></td><td>CEPC</td><td>Closing Authority</td><td>Final close/reopen/forward</td></tr>
+            <tr><td><code>CEPC_ADMIN</code></td><td>CEPC</td><td>CEPC Admin</td><td>Reassign, escalate, admin close</td></tr>
+            <tr><td><code>CEPC_CONTACT_PERSON</code></td><td>CEPC</td><td>Entity Contact Person</td><td>Respond to queries from banks/NBFCs</td></tr>
+            <tr><td><code>RBIO_OFFICER</code></td><td>RBIO</td><td>Regional Office</td><td>Handle regional complaints</td></tr>
+            <tr><td><code>ADMIN</code></td><td>System</td><td>System Administrator</td><td>Full access, config, reports</td></tr>
+        </table>
+
+        <div class="info-box why">
+            <div class="label">Why These Specific Roles?</div>
+            Each role maps to a stage in the complaint lifecycle workflow. The frontend shows/hides action buttons based on role. The backend routes complaints to users with specific roles using round-robin. Without roles, there's no access control or work distribution.
+        </div>
+
+        <h3 id="kc-users">3.6 Create Users</h3>
+
+        <p>Go to <strong>Users</strong> → <strong>Add user</strong>. For each user:</p>
+        <ol>
+            <li>Fill Username, First Name, Last Name</li>
+            <li>Email Verified: <strong>ON</strong></li>
+            <li>Click Create</li>
+            <li>Go to <strong>Credentials</strong> tab → Set password → Temporary: <strong>OFF</strong></li>
+            <li>Go to <strong>Role Mappings</strong> tab → Assign realm roles → Select appropriate role</li>
+        </ol>
+
+        <table>
+            <tr><th>Username</th><th>Password</th><th>First Name</th><th>Role(s)</th><th>Purpose</th></tr>
+            <tr><td><code>crpc_deo1</code></td><td>Test@123</td><td>DEO One</td><td>CRPC_DEO</td><td>Data entry testing</td></tr>
+            <tr><td><code>crpc_deo2</code></td><td>Test@123</td><td>DEO Two</td><td>CRPC_DEO</td><td>Round-robin test</td></tr>
+            <tr><td><code>crpc_reviewer1</code></td><td>Test@123</td><td>Reviewer One</td><td>CRPC_REVIEWER</td><td>Review drafts</td></tr>
+            <tr><td><code>crpc_opshead1</code></td><td>Test@123</td><td>OpsHead One</td><td>CRPC_OPS_HEAD</td><td>Final approval</td></tr>
+            <tr><td><code>cepc_do1</code></td><td>Test@123</td><td>DO One</td><td>CEPC_DO</td><td>Examine complaints</td></tr>
+            <tr><td><code>cepc_do2</code></td><td>Test@123</td><td>DO Two</td><td>CEPC_DO</td><td>Round-robin test</td></tr>
+            <tr><td><code>cepc_reviewer1</code></td><td>Test@123</td><td>CEPC Reviewer</td><td>CEPC_REVIEWER</td><td>Review examination</td></tr>
+            <tr><td><code>cepc_incharge1</code></td><td>Test@123</td><td>InCharge One</td><td>CEPC_INCHARGE</td><td>Approve closure</td></tr>
+            <tr><td><code>cepc_ca1</code></td><td>Test@123</td><td>Closing Auth</td><td>CEPC_CLOSING_AUTHORITY</td><td>Final decision</td></tr>
+            <tr><td><code>cepc_admin1</code></td><td>Test@123</td><td>CEPC Admin</td><td>CEPC_ADMIN</td><td>Admin operations</td></tr>
+            <tr><td><code>cepc_contact1</code></td><td>Test@123</td><td>Contact Person</td><td>CEPC_CONTACT_PERSON</td><td>Entity response</td></tr>
+            <tr><td><code>rbio_officer1</code></td><td>Test@123</td><td>RBIO Officer</td><td>RBIO_OFFICER</td><td>Regional tasks</td></tr>
+            <tr><td><code>cms_admin</code></td><td>Admin@123</td><td>System Admin</td><td>ADMIN</td><td>Full system access</td></tr>
+        </table>
+
+        <div class="info-box why">
+            <div class="label">Why Multiple Users Per Role?</div>
+            Round-robin assignment needs at least 2 users per role to distribute work. With only 1 user, every complaint goes to the same person — defeating the purpose of load balancing.
+        </div>
+
+        <h3 id="kc-verify">3.7 Verify Keycloak</h3>
+
+<pre><code># Test realm endpoint (from laptop)
+curl http://DEV_SERVER_IP:8080/realms/cms
+
+# Test well-known configuration
+curl http://DEV_SERVER_IP:8080/realms/cms/.well-known/openid-configuration
+
+# Test login (get token)
+curl -X POST http://DEV_SERVER_IP:8080/realms/cms/protocol/openid-connect/token \
+  -d "client_id=cms-portal" \
+  -d "username=crpc_deo1" \
+  -d "password=Test@123" \
+  -d "grant_type=password"
+
+# Should return JSON with access_token, refresh_token, etc.</code></pre>
+
+        <div class="info-box success">
+            <div class="label">Success Criteria</div>
+            If you get an <code>access_token</code> in the response, Keycloak is correctly configured for CMS.
+        </div>
+
+        <!-- ═══════════════ OPENSEARCH ═══════════════ -->
+        <h2 id="opensearch">4. OpenSearch Setup (Optional)</h2>
+
+        <div class="info-box why">
+            <div class="label">Why OpenSearch?</div>
+            Provides full-text search across complaints — fuzzy matching, filters, faceted search. The application works without it (search falls back to database queries), but advanced search features won't be available.
+        </div>
+
+        <h4>Option A: Standalone</h4>
+<pre><code># Download
+cd /opt
+wget https://artifacts.opensearch.org/releases/bundle/opensearch/2.18.0/opensearch-2.18.0-linux-x64.tar.gz
+tar -xzf opensearch-2.18.0-linux-x64.tar.gz
+
+# Disable security plugin for dev
+echo "plugins.security.disabled: true" >> opensearch-2.18.0/config/opensearch.yml
+
+# Start
+./opensearch-2.18.0/bin/opensearch -d
+
+# Verify
+curl http://localhost:9200</code></pre>
+
+        <h4>Option B: Docker</h4>
+<pre><code>docker run -d \
+  --name cms-opensearch \
+  -e "discovery.type=single-node" \
+  -e "DISABLE_SECURITY_PLUGIN=true" \
+  -e "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m" \
+  -p 9200:9200 \
+  --restart unless-stopped \
+  opensearchproject/opensearch:2.18.0</code></pre>
+
+        <!-- ═══════════════ BACKEND ═══════════════ -->
+        <h2 id="backend">5. Backend Application Setup</h2>
+
+        <h3 id="backend-config">5.1 Configuration</h3>
+
+        <p>Set environment variables on your laptop pointing to the dev server:</p>
+
+        <h4>Windows CMD</h4>
+<pre><code>set DB_URL=jdbc:mysql://DEV_SERVER_IP:3306/cms_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+set DB_USERNAME=cms_user
+set DB_PASSWORD=cms_pass
+set KAFKA_BOOTSTRAP=DEV_SERVER_IP:9092
+set KEYCLOAK_URL=http://DEV_SERVER_IP:8080
+set KEYCLOAK_REALM=cms
+set KEYCLOAK_ADMIN_USER=admin
+set KEYCLOAK_ADMIN_PASSWORD=admin</code></pre>
+
+        <h4>Windows PowerShell</h4>
+<pre><code>$env:DB_URL="jdbc:mysql://DEV_SERVER_IP:3306/cms_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC"
+$env:DB_USERNAME="cms_user"
+$env:DB_PASSWORD="cms_pass"
+$env:KAFKA_BOOTSTRAP="DEV_SERVER_IP:9092"
+$env:KEYCLOAK_URL="http://DEV_SERVER_IP:8080"
+$env:KEYCLOAK_REALM="cms"
+$env:KEYCLOAK_ADMIN_USER="admin"
+$env:KEYCLOAK_ADMIN_PASSWORD="admin"</code></pre>
+
+        <h4>Linux/Mac (or Git Bash on Windows)</h4>
+<pre><code>export DB_URL="jdbc:mysql://DEV_SERVER_IP:3306/cms_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC"
+export DB_USERNAME="cms_user"
+export DB_PASSWORD="cms_pass"
+export KAFKA_BOOTSTRAP="DEV_SERVER_IP:9092"
+export KEYCLOAK_URL="http://DEV_SERVER_IP:8080"
+export KEYCLOAK_REALM="cms"
+export KEYCLOAK_ADMIN_USER="admin"
+export KEYCLOAK_ADMIN_PASSWORD="admin"</code></pre>
+
+        <div class="info-box warning">
+            <div class="label">If Using OCP Kafka via Port-Forward</div>
+            First run <code>oc port-forward svc/my-cluster-kafka-bootstrap 9092:9092 -n demo-kafka</code> in a separate terminal, then set <code>KAFKA_BOOTSTRAP=localhost:9092</code>
+        </div>
+
+        <h3 id="backend-run">5.2 Build & Run</h3>
+
+<pre><code># Navigate to backend
+cd CMS2.0/cms-backend
+
+# Build (first time or after code changes)
+mvn clean install -DskipTests
+
+# Run
+mvn spring-boot:run</code></pre>
+
+        <p>Watch for these log messages:</p>
+<pre><code># ✓ Good signs:
+HikariPool-1 - Starting...
+HikariPool-1 - Start completed.
+Tomcat started on port 8082
+Started CmsApplication in X seconds
+
+# ✗ Bad signs:
+Communications link failure → MySQL not reachable
+Connection to node -1 could not be established → Kafka not reachable
+ConnectException: Connection refused → Keycloak not reachable</code></pre>
+
+        <!-- ═══════════════ FRONTEND ═══════════════ -->
+        <h2 id="frontend">6. Frontend Application Setup</h2>
+
+        <div class="steps-container">
+            <div class="step">
+                <h4>Configure Environment</h4>
+                <p>Edit <code>CMS2.0/cms-portal-frontend/src/environments/environment.ts</code>:</p>
+<pre><code>export const environment = {
+  production: false,
+  apiBaseUrl: 'http://localhost:8082',         // Your local backend
+  keycloakUrl: 'http://DEV_SERVER_IP:8080',    // Dev Keycloak
+  realm: 'cms',
+  sessionTimeoutMinutes: 15,
+  maxFileSizeMB: 5,
+  maxTotalUploadSizeMB: 25,
+  maxFileCount: 10,
+  allowedFileExtensions: ['.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png', '.xls', '.xlsx'],
+  maxConcurrentRequests: 6,
+  integrations: {
+    ekamev: 'http://localhost:9001/ekamev',
+    cdr: 'http://localhost:9002/cdr',
+    siem: 'http://localhost:9003/siem',
+    smsGateway: 'http://localhost:9004/sms',
+    smtp: 'http://localhost:9005/mail',
+  },
+  retentionPeriodYears: 7,
+};</code></pre>
+            </div>
+
+            <div class="step">
+                <h4>Install Dependencies & Run</h4>
+<pre><code>cd CMS2.0/cms-portal-frontend
+
+# Install (first time)
+npm install
+
+# Start dev server
+ng serve --port 4200</code></pre>
+                <p>Open <code>http://localhost:4200</code> in browser.</p>
+            </div>
+
+            <div class="step">
+                <h4>Login & Test</h4>
+                <p>Use any user created in Keycloak:</p>
+                <ul>
+                    <li>CRPC DEO: <code>crpc_deo1</code> / <code>Test@123</code></li>
+                    <li>CEPC DO: <code>cepc_do1</code> / <code>Test@123</code></li>
+                    <li>Admin: <code>cms_admin</code> / <code>Admin@123</code></li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- ═══════════════ MONITORING ═══════════════ -->
+        <h2 id="monitoring">7. Monitoring Setup (Optional)</h2>
+
+        <div class="info-box why">
+            <div class="label">Why Monitoring?</div>
+            Prometheus scrapes metrics from the backend (request count, latency, JVM stats). Grafana visualizes them. Not required for development, but helps identify performance issues.
+        </div>
+
+        <h4>Prometheus</h4>
+<pre><code># prometheus.yml (already configured at C:\tools\prometheus-2.54.0.windows-amd64\)
+# Points to localhost:8082 for cms-backend metrics
+
+# Start
+cd C:\tools\prometheus-2.54.0.windows-amd64
+prometheus.exe --config.file=prometheus.yml
+
+# Verify: http://localhost:9090/targets</code></pre>
+
+        <h4>Grafana</h4>
+<pre><code># Start
+cd C:\tools\grafana-v11.3.0
+bin\grafana-server.exe --homepath .
+
+# Access: http://localhost:3000 (admin/admin)
+# Add Data Source → Prometheus → URL: http://localhost:9090 → Save & Test</code></pre>
+
+        <!-- ═══════════════ VERIFY ALL ═══════════════ -->
+        <h2 id="verify-all">8. Verify Complete Setup</h2>
+
+        <h3>Checklist</h3>
+        <table>
+            <tr><th>#</th><th>Check</th><th>Command / URL</th><th>Expected</th></tr>
+            <tr><td>1</td><td>MySQL reachable</td><td><code>mysql -h DEV_IP -u cms_user -p -e "SELECT 1;"</code></td><td>Returns 1</td></tr>
+            <tr><td>2</td><td>Kafka reachable</td><td><code>telnet DEV_IP 9092</code> or port-forward active</td><td>Connected</td></tr>
+            <tr><td>3</td><td>Kafka topics exist</td><td>Check Kafka UI or <code>kafka-topics.sh --list</code></td><td>7 topics listed</td></tr>
+            <tr><td>4</td><td>Keycloak realm</td><td><code>curl http://DEV_IP:8080/realms/cms</code></td><td>JSON response</td></tr>
+            <tr><td>5</td><td>Keycloak login</td><td>POST token endpoint with user creds</td><td>access_token returned</td></tr>
+            <tr><td>6</td><td>Backend health</td><td><code>http://localhost:8082/actuator/health</code></td><td><code>{"status":"UP"}</code></td></tr>
+            <tr><td>7</td><td>Backend metrics</td><td><code>http://localhost:8082/actuator/prometheus</code></td><td>Prometheus metrics text</td></tr>
+            <tr><td>8</td><td>Frontend loads</td><td><code>http://localhost:4200</code></td><td>Login page</td></tr>
+            <tr><td>9</td><td>Login works</td><td>Login as crpc_deo1</td><td>Redirects to DEO Home</td></tr>
+            <tr><td>10</td><td>API works</td><td><code>http://localhost:8082/api/v1/entities?search=</code></td><td>Returns entity list</td></tr>
+        </table>
+
+        <h3 id="troubleshooting">Troubleshooting</h3>
+        <table>
+            <tr><th>Error</th><th>Cause</th><th>Fix</th></tr>
+            <tr><td><code>Communications link failure</code></td><td>MySQL unreachable from laptop</td><td>Check firewall, VPN, bind-address=0.0.0.0</td></tr>
+            <tr><td><code>Connection to node -1 could not be established</code></td><td>Kafka unreachable</td><td>Check port-forward running, or advertised.listeners correct</td></tr>
+            <tr><td><code>Connection refused</code> on 8080</td><td>Keycloak not started</td><td>Start Keycloak, check port 8080 listening</td></tr>
+            <tr><td>CORS error in browser</td><td>Keycloak Web Origins missing</td><td>Add <code>http://localhost:4200</code> to cms-portal client Web Origins</td></tr>
+            <tr><td><code>401 Unauthorized</code></td><td>JWT issuer mismatch</td><td>Ensure frontend keycloakUrl and backend keycloak.admin.server-url use same IP</td></tr>
+            <tr><td><code>Invalid issuer</code></td><td>Keycloak hostname mismatch</td><td>Set hostname=DEV_SERVER_IP in keycloak.conf</td></tr>
+            <tr><td><code>User not found</code> on login</td><td>User not in cms realm</td><td>Verify user is in 'cms' realm (not 'master')</td></tr>
+            <tr><td><code>Access denied</code> after login</td><td>Role not assigned</td><td>Check user Role Mappings in Keycloak</td></tr>
+            <tr><td>Port-forward drops</td><td>OC session expired</td><td>Re-login: <code>oc login</code>, restart port-forward</td></tr>
+            <tr><td>Kafka: <code>LEADER_NOT_AVAILABLE</code></td><td>Topic just created</td><td>Wait 10-15 seconds, retry</td></tr>
+            <tr><td>Backend starts but Kafka logs errors</td><td>Topics don't exist yet</td><td>Create topics (auto-create may be disabled on OCP)</td></tr>
+        </table>
+
+        <h3 id="port-map">Complete Port Map</h3>
+        <table>
+            <tr><th>Service</th><th>Port</th><th>Runs On</th><th>Required</th></tr>
+            <tr><td>Angular Frontend</td><td>4200</td><td>Your Laptop</td><td><span class="badge badge-required">Yes</span></td></tr>
+            <tr><td>Spring Boot Backend</td><td>8082</td><td>Your Laptop</td><td><span class="badge badge-required">Yes</span></td></tr>
+            <tr><td>MySQL</td><td>3306</td><td>Dev Server</td><td><span class="badge badge-required">Yes</span></td></tr>
+            <tr><td>Kafka</td><td>9092</td><td>Dev Server / OCP</td><td><span class="badge badge-required">Yes</span></td></tr>
+            <tr><td>Keycloak</td><td>8080</td><td>Dev Server</td><td><span class="badge badge-required">Yes</span></td></tr>
+            <tr><td>PostgreSQL (Keycloak)</td><td>5432</td><td>Dev Server</td><td><span class="badge badge-required">Yes</span></td></tr>
+            <tr><td>OpenSearch</td><td>9200</td><td>Dev Server</td><td><span class="badge badge-optional">Optional</span></td></tr>
+            <tr><td>Prometheus</td><td>9090</td><td>Your Laptop</td><td><span class="badge badge-optional">Optional</span></td></tr>
+            <tr><td>Grafana</td><td>3000</td><td>Your Laptop</td><td><span class="badge badge-optional">Optional</span></td></tr>
+            <tr><td>Kafka UI</td><td>443 (HTTPS)</td><td>OCP Route</td><td><span class="badge badge-optional">Optional</span></td></tr>
+        </table>
+
+        <br><br>
+        <div class="info-box success">
+            <div class="label">You're Done!</div>
+            Once all checks pass, your local laptop is fully connected to the dev environment. You can develop frontend/backend locally while using shared Kafka, MySQL, and Keycloak on the dev server. All team members use the same dev infrastructure.
+        </div>
+
+        <br>
+        <p style="text-align:center; color:#94a3b8; font-size:12px;">
+            CMS 2.0 Setup Guide — Reserve Bank of India — Generated June 2026
+        </p>
+    </main>
+</div>
+
+</body>
+</html>
