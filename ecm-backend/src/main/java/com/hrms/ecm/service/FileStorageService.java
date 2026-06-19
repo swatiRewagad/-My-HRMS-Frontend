@@ -18,7 +18,7 @@ public class FileStorageService {
 
     public String store(MultipartFile file, String folderPath) throws IOException {
         String uniqueName = UUID.randomUUID() + "_" + file.getOriginalFilename();
-        Path dir = Paths.get(rootPath, folderPath);
+        Path dir = Paths.get(rootPath, "files");
         Files.createDirectories(dir);
         Path target = dir.resolve(uniqueName);
         file.transferTo(target.toFile());
@@ -43,7 +43,7 @@ public class FileStorageService {
     public String mergeChunks(String uploadId, int totalChunks, String folderPath, String originalName) throws IOException {
         Path chunkDir = Paths.get(rootPath, "chunks", uploadId);
         String uniqueName = UUID.randomUUID() + "_" + originalName;
-        Path dir = Paths.get(rootPath, folderPath);
+        Path dir = Paths.get(rootPath, "files");
         Files.createDirectories(dir);
         Path target = dir.resolve(uniqueName);
 

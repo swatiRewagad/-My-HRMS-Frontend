@@ -92,8 +92,17 @@ public class EcmService {
 
     public List<FolderDto> getRootFolders() {
         return folderRepo.findByParentIdIsNullOrderByNameAsc().stream()
-                .map(this::toFolderDto)
+                .map(this::toFolderDtoWithChildren)
                 .toList();
+    }
+
+    private FolderDto toFolderDtoWithChildren(Folder f) {
+        FolderDto dto = toFolderDto(f);
+        List<FolderDto> children = folderRepo.findByParentIdOrderByNameAsc(f.getId()).stream()
+                .map(this::toFolderDtoWithChildren)
+                .toList();
+        dto.setChildren(children);
+        return dto;
     }
 
     public FolderDto getFolderById(Long id) {
@@ -217,6 +226,16 @@ public class EcmService {
                 .filter(Objects::nonNull)
                 .map(this::toFileDto)
                 .toList();
+    }
+
+    public FileEntity getFileByShareToken(String token) {
+        FileShare share = shareRepo.findByShareToken(token)
+                .orElseThrow(() -> new RuntimeException("Invalid or expired share link"));
+        if (share.getExpiresAt() != null && share.getExpiresAt().isBefore(LocalDateTime.now())) {
+            throw new RuntimeException("Share link has expired");
+        }
+        return fileRepo.findById(share.getFileId())
+                .orElseThrow(() -> new RuntimeException("File not found"));
     }
 
     public List<EcmUser> getAllUsers() {

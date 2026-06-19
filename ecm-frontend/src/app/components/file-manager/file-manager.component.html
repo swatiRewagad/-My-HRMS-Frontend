@@ -4,9 +4,9 @@
       <h2>File Manager</h2>
       <div class="breadcrumbs">
         <span class="crumb" (click)="goToRoot()">Root</span>
-        @for (b of breadcrumbs; track b.name) {
+        @for (b of breadcrumbs; track b.id) {
           <i class="pi pi-angle-right"></i>
-          <span class="crumb active">{{ b.name }}</span>
+          <span class="crumb" [class.active]="b.id === selectedFolder?.id" (click)="selectFolder(b)">{{ b.name }}</span>
         }
       </div>
     </div>
@@ -26,99 +26,121 @@
     </div>
   </div>
 
-  @if (!selectedFolder) {
-    <div class="folders-grid">
-      @for (folder of folders; track folder.id) {
-        <div class="folder-card" (click)="selectFolder(folder)">
-          <div class="folder-card-icon" [class.public]="folder.visibility === 'public'" [class.private]="folder.visibility === 'private'">
-            <i class="pi pi-folder"></i>
+  <div class="fm-body">
+    <!-- Folder Tree Sidebar -->
+    <div class="fm-sidebar">
+      <div class="tree-header">
+        <span>Folders</span>
+      </div>
+      <div class="tree-container">
+        @if (folders.length === 0) {
+          <div class="tree-empty">
+            <i class="pi pi-folder-open"></i>
+            <p>No folders yet</p>
           </div>
-          <div class="folder-card-info">
-            <span class="folder-card-name">{{ folder.name }}</span>
-            <span class="folder-card-meta">{{ folder.visibility }} · {{ folder.fileCount || 0 }} files</span>
+        }
+        <ng-container *ngTemplateOutlet="folderTree; context: { folders: folders, level: 0 }"></ng-container>
+      </div>
+    </div>
+
+    <!-- File Content Area -->
+    <div class="fm-content">
+      @if (selectedFolder) {
+        <div class="folder-info-bar">
+          <div class="folder-info-left">
+            <span class="visibility-tag" [class.public]="selectedFolder.visibility === 'public'" [class.private]="selectedFolder.visibility === 'private'">
+              <i class="pi" [class.pi-lock-open]="selectedFolder.visibility === 'public'" [class.pi-lock]="selectedFolder.visibility === 'private'"></i>
+              {{ selectedFolder.visibility }}
+            </span>
+            @if (selectedFolder.description) {
+              <span class="folder-desc">{{ selectedFolder.description }}</span>
+            }
           </div>
-          <span class="visibility-tag" [class.public]="folder.visibility === 'public'" [class.private]="folder.visibility === 'private'">
-            <i class="pi" [class.pi-lock-open]="folder.visibility === 'public'" [class.pi-lock]="folder.visibility === 'private'"></i>
-            {{ folder.visibility }}
-          </span>
+          <button class="btn btn-outline" (click)="openAccess()">
+            <i class="pi pi-users"></i> Manage Access
+          </button>
         </div>
-      }
-      @if (folders.length === 0) {
+
+        @if (selectedFolder.accessList?.length) {
+          <div class="access-bar">
+            <span class="access-label">Access:</span>
+            @for (a of selectedFolder.accessList; track a.userId) {
+              <span class="access-chip">
+                {{ a.userName }} ({{ a.permission }})
+                <i class="pi pi-times" (click)="revokeAccess(a.userId)"></i>
+              </span>
+            }
+          </div>
+        }
+
+        <div class="files-table">
+          <div class="table-header">
+            <span class="col-name">Name</span>
+            <span class="col-size">Size</span>
+            <span class="col-type">Type</span>
+            <span class="col-actions">Actions</span>
+          </div>
+          @for (file of files; track file.id) {
+            <div class="table-row">
+              <span class="col-name">
+                <i [class]="getFileIcon(file.contentType)" [style.color]="getFileIconColor(file.contentType)"></i>
+                {{ file.originalName }}
+              </span>
+              <span class="col-size">{{ formatSize(file.size) }}</span>
+              <span class="col-type">{{ file.contentType | slice:0:20 }}</span>
+              <span class="col-actions">
+                <button class="icon-btn" title="Preview" (click)="openPreview(file)"><i class="pi pi-eye"></i></button>
+                <button class="icon-btn" title="Download" (click)="downloadFile(file)"><i class="pi pi-download"></i></button>
+                @if (isPdf(file)) {
+                  <button class="icon-btn extract" title="Extract Invoice" (click)="extractInvoice(file)" [disabled]="extractingFileId === file.id">
+                    <i class="pi" [class.pi-file-check]="extractingFileId !== file.id" [class.pi-spin]="extractingFileId === file.id" [class.pi-spinner]="extractingFileId === file.id"></i>
+                  </button>
+                }
+                <button class="icon-btn" title="Share" (click)="openShare(file.id)"><i class="pi pi-share-alt"></i></button>
+                <button class="icon-btn danger" title="Delete" (click)="deleteFile(file)"><i class="pi pi-trash"></i></button>
+              </span>
+            </div>
+          }
+          @if (files.length === 0) {
+            <div class="empty-table">
+              <i class="pi pi-inbox"></i>
+              <p>No files in this folder. Upload your first file.</p>
+            </div>
+          }
+        </div>
+      } @else {
         <div class="empty-state">
-          <i class="pi pi-folder-open"></i>
-          <p>No folders yet. Create your first folder to get started.</p>
+          <i class="pi pi-arrow-left"></i>
+          <p>Select a folder from the tree to view its files.</p>
         </div>
       }
     </div>
-  }
-
-  @if (selectedFolder) {
-    <div class="folder-detail">
-      <div class="folder-info-bar">
-        <div class="folder-info-left">
-          <span class="visibility-tag large" [class.public]="selectedFolder.visibility === 'public'" [class.private]="selectedFolder.visibility === 'private'">
-            <i class="pi" [class.pi-lock-open]="selectedFolder.visibility === 'public'" [class.pi-lock]="selectedFolder.visibility === 'private'"></i>
-            {{ selectedFolder.visibility }}
-          </span>
-          @if (selectedFolder.description) {
-            <span class="folder-desc">{{ selectedFolder.description }}</span>
-          }
-        </div>
-        <button class="btn btn-outline" (click)="openAccess()">
-          <i class="pi pi-users"></i> Manage Access
-        </button>
-      </div>
-
-      @if (selectedFolder.accessList?.length) {
-        <div class="access-bar">
-          <span class="access-label">Access:</span>
-          @for (a of selectedFolder.accessList; track a.userId) {
-            <span class="access-chip">
-              {{ a.userName }} ({{ a.permission }})
-              <i class="pi pi-times" (click)="revokeAccess(a.userId)"></i>
-            </span>
-          }
-        </div>
-      }
-
-      <div class="files-table">
-        <div class="table-header">
-          <span class="col-name">Name</span>
-          <span class="col-size">Size</span>
-          <span class="col-type">Type</span>
-          <span class="col-actions">Actions</span>
-        </div>
-        @for (file of files; track file.id) {
-          <div class="table-row">
-            <span class="col-name">
-              <i [class]="getFileIcon(file.contentType)" [style.color]="getFileIconColor(file.contentType)"></i>
-              {{ file.originalName }}
-            </span>
-            <span class="col-size">{{ formatSize(file.size) }}</span>
-            <span class="col-type">{{ file.contentType | slice:0:20 }}</span>
-            <span class="col-actions">
-              <button class="icon-btn" title="Preview" (click)="openPreview(file)"><i class="pi pi-eye"></i></button>
-              <button class="icon-btn" title="Download" (click)="downloadFile(file)"><i class="pi pi-download"></i></button>
-              @if (isPdf(file)) {
-                <button class="icon-btn extract" title="Extract Invoice" (click)="extractInvoice(file)" [disabled]="extractingFileId === file.id">
-                  <i class="pi" [class.pi-file-check]="extractingFileId !== file.id" [class.pi-spin]="extractingFileId === file.id" [class.pi-spinner]="extractingFileId === file.id"></i>
-                </button>
-              }
-              <button class="icon-btn" title="Share" (click)="openShare(file.id)"><i class="pi pi-share-alt"></i></button>
-              <button class="icon-btn danger" title="Delete" (click)="deleteFile(file)"><i class="pi pi-trash"></i></button>
-            </span>
-          </div>
-        }
-        @if (files.length === 0) {
-          <div class="empty-table">
-            <i class="pi pi-inbox"></i>
-            <p>No files in this folder. Upload your first file.</p>
-          </div>
-        }
-      </div>
-    </div>
-  }
+  </div>
 </div>
+
+<!-- Folder Tree Template -->
+<ng-template #folderTree let-folders="folders" let-level="level">
+  @for (folder of folders; track folder.id) {
+    <div class="tree-node" [style.padding-left.px]="level * 20">
+      <div class="tree-node-row" [class.selected]="selectedFolder?.id === folder.id" (click)="selectFolder(folder)">
+        <span class="tree-toggle" (click)="toggleFolder(folder, $event)">
+          @if (folder.children?.length) {
+            <i class="pi" [class.pi-chevron-right]="!expandedFolders.has(folder.id)" [class.pi-chevron-down]="expandedFolders.has(folder.id)"></i>
+          } @else {
+            <i class="pi pi-minus" style="opacity: 0.3; font-size: 10px;"></i>
+          }
+        </span>
+        <i class="pi pi-folder" [class.pi-folder-open]="expandedFolders.has(folder.id)"
+           [style.color]="folder.visibility === 'private' ? '#dc2626' : '#f59e0b'"></i>
+        <span class="tree-node-name">{{ folder.name }}</span>
+        <span class="tree-node-count">{{ folder.fileCount || 0 }}</span>
+      </div>
+      @if (expandedFolders.has(folder.id) && folder.children?.length) {
+        <ng-container *ngTemplateOutlet="folderTree; context: { folders: folder.children, level: level + 1 }"></ng-container>
+      }
+    </div>
+  }
+</ng-template>
 
 <!-- New Folder Modal -->
 @if (showNewFolder) {
@@ -275,9 +297,22 @@
           </select>
         </div>
       </div>
+      @if (generatedShareLink) {
+        <div class="share-link-result">
+          <label>Shareable Link</label>
+          <div class="share-link-box">
+            <input type="text" [value]="generatedShareLink" readonly />
+            <button class="btn btn-primary btn-sm" (click)="copyShareLink()">
+              {{ linkCopied ? 'Copied!' : 'Copy' }}
+            </button>
+          </div>
+        </div>
+      }
       <div class="modal-footer">
-        <button class="btn btn-secondary" (click)="showShare = false">Cancel</button>
-        <button class="btn btn-primary" (click)="shareFile()">Share</button>
+        <button class="btn btn-secondary" (click)="showShare = false; generatedShareLink = ''">Cancel</button>
+        @if (!generatedShareLink) {
+          <button class="btn btn-primary" (click)="shareFile()">Share</button>
+        }
       </div>
     </div>
   </div>

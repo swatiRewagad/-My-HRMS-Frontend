@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { EcmService } from '../../services/ecm.service';
+import { environment } from '../../../environments/environment';
 import { FilePreviewComponent } from '../file-preview/file-preview.component';
 
 @Component({
@@ -16,6 +17,7 @@ export class FileManagerComponent implements OnInit {
   files: any[] = [];
   users: any[] = [];
   selectedFolder: any = null;
+  expandedFolders: Set<number> = new Set();
   breadcrumbs: any[] = [];
   searchQuery = '';
 
@@ -37,6 +39,8 @@ export class FileManagerComponent implements OnInit {
   shareUserId = 0;
   sharePermission = 'read';
   shareExpiry = 24;
+  generatedShareLink = '';
+  linkCopied = false;
 
   showPreview = false;
   previewFile: any = null;
@@ -56,10 +60,41 @@ export class FileManagerComponent implements OnInit {
     this.ecm.getRootFolders().subscribe(f => this.folders = f);
   }
 
+  toggleFolder(folder: any, event: Event) {
+    event.stopPropagation();
+    if (this.expandedFolders.has(folder.id)) {
+      this.expandedFolders.delete(folder.id);
+    } else {
+      this.expandedFolders.add(folder.id);
+    }
+  }
+
   selectFolder(folder: any) {
     this.selectedFolder = folder;
-    this.breadcrumbs = [folder];
+    this.expandedFolders.add(folder.id);
+    this.buildBreadcrumbs(folder);
     this.ecm.getFilesByFolder(folder.id).subscribe(f => this.files = f);
+  }
+
+  buildBreadcrumbs(folder: any) {
+    this.breadcrumbs = [folder];
+    let current = this.findParentFolder(folder.parentId, this.folders);
+    while (current) {
+      this.breadcrumbs.unshift(current);
+      current = this.findParentFolder(current.parentId, this.folders);
+    }
+  }
+
+  private findParentFolder(parentId: number | null, folders: any[]): any {
+    if (!parentId) return null;
+    for (const f of folders) {
+      if (f.id === parentId) return f;
+      if (f.children?.length) {
+        const found = this.findParentFolder(parentId, f.children);
+        if (found) return found;
+      }
+    }
+    return null;
   }
 
   goToRoot() {
@@ -162,13 +197,29 @@ export class FileManagerComponent implements OnInit {
     this.shareUserId = 0;
     this.sharePermission = 'read';
     this.shareExpiry = 24;
+    this.generatedShareLink = '';
+    this.linkCopied = false;
   }
 
   shareFile() {
     const data: any = { fileId: this.shareFileId, shareType: this.shareType, permission: this.sharePermission };
     if (this.shareType === 'user') data.sharedWith = this.shareUserId;
     if (this.shareType === 'link') data.expiresInHours = this.shareExpiry;
-    this.ecm.shareFile(data).subscribe(() => this.showShare = false);
+    this.ecm.shareFile(data).subscribe((resp: any) => {
+      if (this.shareType === 'link' && resp?.shareToken) {
+        this.generatedShareLink = `${environment.apiUrl}/files/shared/${resp.shareToken}`;
+        this.linkCopied = false;
+      } else {
+        this.showShare = false;
+      }
+    });
+  }
+
+  copyShareLink() {
+    navigator.clipboard.writeText(this.generatedShareLink).then(() => {
+      this.linkCopied = true;
+      setTimeout(() => this.linkCopied = false, 3000);
+    });
   }
 
   searchFiles() {

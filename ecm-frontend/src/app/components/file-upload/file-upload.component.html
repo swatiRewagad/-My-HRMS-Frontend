@@ -38,12 +38,23 @@
 
     <div class="form-group">
       <label>Destination Folder</label>
-      <select [(ngModel)]="selectedFolderId">
-        <option [value]="0" disabled>Select a folder</option>
-        @for (folder of folders; track folder.id) {
-          <option [value]="folder.id">{{ folder.name }} ({{ folder.visibility }})</option>
+      <div class="folder-tree-picker">
+        <div class="folder-tree-select" (click)="showFolderTree = !showFolderTree">
+          <span class="folder-tree-value">
+            @if (selectedFolderName) {
+              <i class="pi pi-folder" style="color: #f59e0b;"></i> {{ selectedFolderName }}
+            } @else {
+              <span class="placeholder">Select a folder</span>
+            }
+          </span>
+          <i class="pi" [class.pi-chevron-down]="!showFolderTree" [class.pi-chevron-up]="showFolderTree"></i>
+        </div>
+        @if (showFolderTree) {
+          <div class="folder-tree-dropdown">
+            <ng-container *ngTemplateOutlet="uploadFolderTree; context: { folders: folders, level: 0 }"></ng-container>
+          </div>
         }
-      </select>
+      </div>
     </div>
 
     <div class="drop-zone" [class.drag-over]="dragOver"
@@ -106,6 +117,32 @@
     </div>
   </div>
 </div>
+
+<!-- Folder Tree Template -->
+<ng-template #uploadFolderTree let-folders="folders" let-level="level">
+  @for (folder of folders; track folder.id) {
+    <div class="tree-item" [style.padding-left.px]="level * 20 + 12">
+      <div class="tree-item-row"
+           [class.selected]="selectedFolderId === folder.id"
+           [class.disabled]="folder.visibility === 'private'"
+           (click)="pickFolder(folder)">
+        <span class="tree-item-toggle" (click)="togglePickerFolder(folder, $event)">
+          @if (folder.children?.length) {
+            <i class="pi" [class.pi-chevron-right]="!expandedPickerFolders.has(folder.id)" [class.pi-chevron-down]="expandedPickerFolders.has(folder.id)"></i>
+          }
+        </span>
+        <i class="pi pi-folder" [style.color]="folder.visibility === 'private' ? '#dc2626' : '#f59e0b'"></i>
+        <span class="tree-item-name">{{ folder.name }}</span>
+        @if (folder.visibility === 'private') {
+          <i class="pi pi-lock" style="font-size: 10px; color: #dc2626; margin-left: auto;"></i>
+        }
+      </div>
+      @if (expandedPickerFolders.has(folder.id) && folder.children?.length) {
+        <ng-container *ngTemplateOutlet="uploadFolderTree; context: { folders: folder.children, level: level + 1 }"></ng-container>
+      }
+    </div>
+  }
+</ng-template>
 
 @if (showExtraction && activeExtraction) {
   <div class="modal-overlay" (click)="showExtraction = false">

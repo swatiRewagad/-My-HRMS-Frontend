@@ -24,7 +24,11 @@ interface FileUploadItem {
 })
 export class FileUploadComponent implements OnInit {
   folders: any[] = [];
+  flatFolders: { id: number; name: string; level: number; visibility: string }[] = [];
   selectedFolderId = 0;
+  selectedFolderName = '';
+  showFolderTree = false;
+  expandedPickerFolders: Set<number> = new Set();
   uploadItems: FileUploadItem[] = [];
   uploading = false;
   dragOver = false;
@@ -41,8 +45,37 @@ export class FileUploadComponent implements OnInit {
   constructor(private ecm: EcmService, private router: Router) {}
 
   ngOnInit() {
-    this.ecm.getRootFolders().subscribe(f => this.folders = f);
+    this.ecm.getRootFolders().subscribe(f => {
+      this.folders = f;
+      this.flatFolders = [];
+      this.flattenFolders(f, 0);
+    });
     this.ecm.getProjects().subscribe(p => this.projects = p);
+  }
+
+  private flattenFolders(folders: any[], level: number) {
+    for (const folder of folders) {
+      this.flatFolders.push({ id: folder.id, name: folder.name, level, visibility: folder.visibility });
+      if (folder.children?.length) {
+        this.flattenFolders(folder.children, level + 1);
+      }
+    }
+  }
+
+  togglePickerFolder(folder: any, event: Event) {
+    event.stopPropagation();
+    if (this.expandedPickerFolders.has(folder.id)) {
+      this.expandedPickerFolders.delete(folder.id);
+    } else {
+      this.expandedPickerFolders.add(folder.id);
+    }
+  }
+
+  pickFolder(folder: any) {
+    if (folder.visibility === 'private') return;
+    this.selectedFolderId = folder.id;
+    this.selectedFolderName = folder.name;
+    this.showFolderTree = false;
   }
 
   onProjectChange() {

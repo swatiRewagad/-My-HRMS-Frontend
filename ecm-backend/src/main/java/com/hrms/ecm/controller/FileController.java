@@ -133,6 +133,16 @@ public class FileController {
         return ResponseEntity.ok(ecmService.getSharedWithMe(userId));
     }
 
+    @GetMapping("/shared/{token}")
+    public ResponseEntity<byte[]> downloadByShareToken(@PathVariable String token) throws IOException {
+        FileEntity fileEntity = ecmService.getFileByShareToken(token);
+        byte[] data = ecmService.downloadFile(fileEntity.getId());
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + fileEntity.getOriginalName() + "\"")
+                .contentType(MediaType.parseMediaType(fileEntity.getContentType() != null ? fileEntity.getContentType() : "application/octet-stream"))
+                .body(data);
+    }
+
     @PostMapping("/upload/init")
     public ResponseEntity<ChunkUploadResponse> initChunkUpload(
             @Valid @RequestBody ChunkUploadInitRequest request,
