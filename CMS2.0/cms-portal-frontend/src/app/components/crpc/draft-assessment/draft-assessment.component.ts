@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal, computed } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
@@ -42,7 +42,7 @@ interface EmailCorrespondence {
   templateUrl: './draft-assessment.component.html',
   styleUrl: './draft-assessment.component.scss'
 })
-export class DraftAssessmentComponent implements OnInit {
+export class DraftAssessmentComponent implements OnInit, OnDestroy {
 
   private router = inject(Router);
   private route = inject(ActivatedRoute);
@@ -65,6 +65,10 @@ export class DraftAssessmentComponent implements OnInit {
   // ─── Confirmation Dialog ───
   showConfirmDialog = signal(false);
 
+  // ─── Blob URL cache: maps attachment id → safe blob URL (avoids X-Frame-Options block) ───
+  private blobUrlCache = new Map<string, string>();
+  attachmentBlobUrls = signal<Record<string, SafeResourceUrl>>({});
+
   // ─── Attachments Side Panel ───
   showAttachmentsPanel = signal(false);
   viewingAttachment = signal<Attachment | null>(null);
@@ -77,6 +81,7 @@ export class DraftAssessmentComponent implements OnInit {
 
   // ─── History Panel ───
   showHistoryPanel = signal(false);
+  showSimilarPanel = signal(false);
   historyEntries = signal<any[]>([]);
   loadingHistory = signal(false);
 
@@ -526,12 +531,25 @@ export class DraftAssessmentComponent implements OnInit {
   }
 
   openAttachmentsPanel() {
+    // Open every attachment as its own tab and activate the first one
+    const atts = this.attachments();
+    if (atts.length === 0) { this.showAttachmentsPanel.set(true); return; }
+    atts.forEach(att => {
+      if (!this.openedDocTabs().find(t => t.id === att.id)) {
+        this.openedDocTabs.update(tabs => [...tabs, att]);
+      }
+      this.loadBlobUrl(att);
+    });
+    this.activeDocTabId.set(atts[0].id);
     this.showAttachmentsPanel.set(true);
   }
 
   closeAttachmentsPanel() {
     this.showAttachmentsPanel.set(false);
     this.viewingAttachment.set(null);
+    // Reset tab viewer back to pinned email/document tab
+    this.openedDocTabs.set([]);
+    this.activeDocTabId.set(null);
   }
 
   viewAttachment(att: Attachment) {
@@ -560,8 +578,20 @@ export class DraftAssessmentComponent implements OnInit {
       this.showHistoryPanel.set(false);
     } else {
       this.showHistoryPanel.set(true);
+      this.showSimilarPanel.set(false);
       this.showAttachmentsPanel.set(false);
       this.loadHistory();
+    }
+  }
+
+  toggleSimilarPanel() {
+    if (this.showSimilarPanel()) {
+      this.showSimilarPanel.set(false);
+    } else {
+      this.showSimilarPanel.set(true);
+      this.showHistoryPanel.set(false);
+      this.showAttachmentsPanel.set(false);
+      this.loadSimilarCases();
     }
   }
 
@@ -687,7 +717,7 @@ export class DraftAssessmentComponent implements OnInit {
                 type: a.fileType || 'application/octet-stream',
                 uploadedAt: a.createdAt || new Date().toISOString(),
                 uploadedBy: 'SYSTEM',
-                url: `${environment.apiBaseUrl}/api/files/download/${numericId}`
+                url: `${environment.apiBaseUrl}/api/files/email-draft/${numericId}`
               };
             });
             this.attachments.set(attachments);
@@ -776,6 +806,52 @@ export class DraftAssessmentComponent implements OnInit {
     const atts = this.attachments();
     const idx = this.activePreviewIndex();
     return atts.length > 0 ? atts[Math.min(idx, atts.length - 1)] : null;
+  });
+
+  // ─── Attachment Tabs ───
+  openedDocTabs = signal<Attachment[]>([]);
+  activeDocTabId = signal<string | null>(null);
+
+  openAttachmentTab(att: Attachment) {
+    if (!this.openedDocTabs().find(t => t.id === att.id)) {
+      this.openedDocTabs.update(tabs => [...tabs, att]);
+    }
+    this.activeDocTabId.set(att.id);
+    this.loadBlobUrl(att);
+  }
+
+  private loadBlobUrl(att: Attachment) {
+    if (!att.url || this.blobUrlCache.has(att.id)) return;
+    this.http.get(att.url, { responseType: 'blob' }).subscribe({
+      next: (blob) => {
+        const objectUrl = URL.createObjectURL(blob);
+        this.blobUrlCache.set(att.id, objectUrl);
+        this.attachmentBlobUrls.update(map => ({
+          ...map,
+          [att.id]: this.sanitizer.bypassSecurityTrustResourceUrl(objectUrl)
+        }));
+      },
+      error: () => {}
+    });
+  }
+
+  ngOnDestroy() {
+    this.blobUrlCache.forEach(url => URL.revokeObjectURL(url));
+    this.blobUrlCache.clear();
+  }
+
+  closeAttachmentTab(id: string, event: Event) {
+    event.stopPropagation();
+    const remaining = this.openedDocTabs().filter(t => t.id !== id);
+    this.openedDocTabs.set(remaining);
+    if (this.activeDocTabId() === id) {
+      this.activeDocTabId.set(remaining.length > 0 ? remaining[remaining.length - 1].id : null);
+    }
+  }
+
+  activeDocTabAttachment = computed(() => {
+    const id = this.activeDocTabId();
+    return id ? this.openedDocTabs().find(t => t.id === id) ?? null : null;
   });
 
   getSafeUrl(url: string): SafeResourceUrl {

@@ -24,7 +24,6 @@ services:
       --innodb-flush-method=O_DIRECT
       --slow-query-log=1
       --long-query-time=2
-      --query-cache-type=0
       --thread-cache-size=64
       --table-open-cache=4000
       --character-set-server=utf8mb4
@@ -76,6 +75,8 @@ services:
       REDIS_PORT: 6379
       CMS_ATTACHMENTS_PATH: /cms-attachments
       JAVA_OPTS: "-Xms512m -Xmx1g"
+      CMS_CORS_ALLOWED_ORIGINS: "http://localhost:4200,http://localhost:4201,http://localhost:4202,http://localhost:4300,http://localhost"
+      GROQ_API_KEY: "${GROQ_API_KEY}"
     volumes:
       - cms-attachments:/cms-attachments
     depends_on:
@@ -110,6 +111,8 @@ services:
       REDIS_PORT: 6379
       CMS_ATTACHMENTS_PATH: /cms-attachments
       JAVA_OPTS: "-Xms512m -Xmx1g"
+      CMS_CORS_ALLOWED_ORIGINS: "http://localhost:4200,http://localhost:4201,http://localhost:4202,http://localhost:4300,http://localhost"
+      GROQ_API_KEY: "${GROQ_API_KEY}"
     volumes:
       - cms-attachments:/cms-attachments
     depends_on:
@@ -124,6 +127,26 @@ services:
           cpus: '2.0'
         reservations:
           memory: 768M
+          cpus: '0.5'
+    networks:
+      - cms-network
+
+  # ── PaddleOCR sidecar (OCR fallback — no API key needed) ──
+  cms-paddle-ocr:
+    build:
+      context: ../cms-paddle-ocr
+      dockerfile: Dockerfile
+    container_name: cms-paddle-ocr
+    restart: unless-stopped
+    ports:
+      - "8100:8100"
+    deploy:
+      resources:
+        limits:
+          memory: 2G      # PaddleOCR models need ~1.5 GB RAM
+          cpus: '2.0'
+        reservations:
+          memory: 512M
           cpus: '0.5'
     networks:
       - cms-network

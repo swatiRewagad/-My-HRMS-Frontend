@@ -74,22 +74,39 @@ keycloak:
 
 cms:
   ocr:
-    # Provider: gemini | openai | huggingface | azure
-    provider: ${OCR_PROVIDER:groq}
-    # ── Gemini (default) ──
+    # ── Provider chain (ordered, comma-separated) ──────────────────────────────
+    # Providers are tried left-to-right; first non-empty result wins.
+    # Supported names: groq | paddle | gemini | openai | huggingface | azure
+    # Add your own: implement OcrProvider, annotate @Component, add name here.
+    #
+    # Examples:
+    #   chain: groq, paddle            ← Groq first; PaddleOCR sidecar as fallback
+    #   chain: groq, gemini, paddle    ← three-level chain
+    #   chain: paddle                  ← PaddleOCR only (no external API needed)
+    chain: ${OCR_CHAIN:groq, paddle}
+
+    # ── Groq ──────────────────────────────────────────────────────────────────
+    groq-api-key: ${GROQ_API_KEY:}
+    groq-model: ${GROQ_MODEL:meta-llama/llama-4-scout-17b-16e-instruct}
+
+    # ── PaddleOCR sidecar (self-hosted, no API key needed) ───────────────────
+    # Set to empty string to exclude PaddleOCR from the chain even if listed.
+    paddle-ocr-url: ${PADDLE_OCR_URL:http://cms-paddle-ocr:8100}
+
+    # ── Gemini ────────────────────────────────────────────────────────────────
     gemini-api-key: ${GEMINI_API_KEY:}
     gemini-model: ${GEMINI_MODEL:gemini-2.0-flash}
-    # ── OpenAI ──
+
+    # ── OpenAI ────────────────────────────────────────────────────────────────
     openai-api-key: ${OPENAI_API_KEY:}
     openai-model: ${OPENAI_MODEL:gpt-4o-mini}
-    # ── HuggingFace ──
+
+    # ── HuggingFace ───────────────────────────────────────────────────────────
     huggingface-api-key: ${HUGGINGFACE_API_KEY:}
     huggingface-model: ${HUGGINGFACE_MODEL:microsoft/trocr-large-printed}
     huggingface-inference-url: ${HUGGINGFACE_URL:https://api-inference.huggingface.co/models/}
-    # ── Groq (free, fast) ──
-    groq-api-key: ${GROQ_API_KEY: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}
-    groq-model: ${GROQ_MODEL:meta-llama/llama-4-scout-17b-16e-instruct}
-    # ── Azure Document Intelligence ──
+
+    # ── Azure Document Intelligence ───────────────────────────────────────────
     azure-endpoint: ${AZURE_DOC_ENDPOINT:}
     azure-api-key: ${AZURE_DOC_API_KEY:}
     azure-model: ${AZURE_DOC_MODEL:prebuilt-read}
@@ -140,7 +157,7 @@ spring:
       leak-detection-threshold: 60000
   jpa:
     hibernate:
-      ddl-auto: validate
+      ddl-auto: update
     properties:
       hibernate:
         jdbc:

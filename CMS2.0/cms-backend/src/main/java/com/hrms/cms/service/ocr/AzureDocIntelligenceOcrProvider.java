@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.*;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
@@ -13,7 +12,6 @@ import java.util.*;
 
 @Component
 @Slf4j
-@ConditionalOnProperty(name = "cms.ocr.provider", havingValue = "azure")
 public class AzureDocIntelligenceOcrProvider implements OcrProvider {
 
     @Value("${cms.ocr.azure-endpoint:}")
@@ -29,16 +27,13 @@ public class AzureDocIntelligenceOcrProvider implements OcrProvider {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
-    public String getProviderName() {
-        return "azure";
-    }
+    public String getProviderName() { return "azure"; }
+
+    @Override
+    public boolean isAvailable() { return apiKey != null && !apiKey.isBlank() && endpoint != null && !endpoint.isBlank(); }
 
     @Override
     public Map<String, String> extractFields(byte[] fileBytes, String mimeType) {
-        if (apiKey == null || apiKey.isBlank() || endpoint == null || endpoint.isBlank()) {
-            log.warn("Azure Document Intelligence not configured (cms.ocr.azure-endpoint, cms.ocr.azure-api-key)");
-            return Collections.emptyMap();
-        }
 
         try {
             // Step 1: Submit document for analysis

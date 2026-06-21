@@ -40,10 +40,19 @@
 
     <!-- ═══ SUB-HEADER TAB ═══ -->
     <div class="sub-header">
-      <div class="complaint-tab">
+      <!-- Pinned complaint tab -->
+      <div class="complaint-tab" [class.active]="activeDocTabId() === null" (click)="activeDocTabId.set(null)">
         <i class="pi pi-file"></i>
         Complaint {{ draftId }} <i class="pi pi-pencil tab-edit-icon"></i>
       </div>
+      <!-- Attachment tabs opened via paperclip -->
+      @for (tab of openedDocTabs(); track tab.id) {
+        <div class="complaint-tab att-tab" [class.active]="activeDocTabId() === tab.id" (click)="activeDocTabId.set(tab.id)">
+          @if (tab.type.includes('image')) { <i class="pi pi-image"></i> } @else { <i class="pi pi-file-pdf"></i> }
+          <span class="att-tab-name">{{ tab.name }}</span>
+          <button class="att-tab-close" (click)="closeAttachmentTab(tab.id, $event)" title="Close"><i class="pi pi-times"></i></button>
+        </div>
+      }
     </div>
 
     <!-- ═══ META ROW ═══ -->
@@ -135,7 +144,9 @@
       @if (!editMode() || activeStep() === 'creation') {
         <div class="col-email-syndicate" [class.panel-expanded]="expandedPanel() === 'email'" [class.panel-hidden]="expandedPanel() === 'complaint'">
           <div class="panel-header">
-            @if (modeOfReceipt === 'PHYSICAL_LETTER') {
+            @if (activeDocTabAttachment(); as tabAtt) {
+              <h3>@if (tabAtt.type.includes('image')) { <i class="pi pi-image"></i> } @else { <i class="pi pi-file-pdf"></i> } {{ tabAtt.name }}</h3>
+            } @else if (modeOfReceipt === 'PHYSICAL_LETTER') {
               <h3><i class="pi pi-file-pdf"></i> Physical Letter Copy</h3>
             } @else {
               <h3><i class="pi pi-inbox"></i> Email Syndicate</h3>
@@ -145,8 +156,31 @@
             </button>
           </div>
 
-          @if (modeOfReceipt === 'PHYSICAL_LETTER') {
-            <!-- Physical Letter Document Viewer -->
+          <!-- ── Attachment viewer (takes over when a tab is active) ── -->
+          @if (activeDocTabAttachment(); as tabAtt) {
+            <div class="att-panel-viewer">
+              @if (attachmentBlobUrls()[tabAtt.id]; as blobUrl) {
+                @if (tabAtt.type.includes('image')) {
+                  <img [src]="blobUrl" [alt]="tabAtt.name" class="doc-preview-image" />
+                } @else {
+                  <iframe [src]="blobUrl" class="doc-preview-pdf" frameborder="0"></iframe>
+                }
+              } @else if (tabAtt.url) {
+                <div class="doc-loading-state">
+                  <i class="pi pi-spin pi-spinner"></i>
+                  <p>Loading document…</p>
+                </div>
+              } @else {
+                <div class="doc-file-placeholder">
+                  <i class="pi pi-file"></i>
+                  <span>{{ tabAtt.name }}</span>
+                  <p>Preview not available</p>
+                </div>
+              }
+            </div>
+
+          <!-- ── Physical Letter viewer (no attachment tab active) ── -->
+          } @else if (modeOfReceipt === 'PHYSICAL_LETTER') {
             <div class="document-viewer-body">
               @if (attachments().length > 0) {
                 <div class="doc-viewer-toolbar">
@@ -159,30 +193,25 @@
                 </div>
                 <div class="doc-preview-area">
                   @if (activePreviewAttachment(); as att) {
-                    @if (att.url) {
+                    @if (attachmentBlobUrls()[att.id]; as blobUrl) {
                       @if (att.type.includes('image')) {
-                        <img [src]="att.url" [alt]="att.name" class="doc-preview-image" />
-                      } @else if (att.type.includes('pdf')) {
-                        <iframe [src]="getSafeUrl(att.url)" class="doc-preview-pdf" frameborder="0"></iframe>
+                        <img [src]="blobUrl" [alt]="att.name" class="doc-preview-image" />
                       } @else {
-                        <div class="doc-file-placeholder">
-                          <i class="pi pi-file"></i>
-                          <span>{{ att.name }}</span>
-                          <a [href]="att.url" target="_blank" class="doc-download-link">Open File</a>
-                        </div>
+                        <iframe [src]="blobUrl" class="doc-preview-pdf" frameborder="0"></iframe>
                       }
-                    } @else {
-                      <div class="doc-file-placeholder">
-                        <i class="pi pi-file"></i>
-                        <span>{{ att.name }}</span>
+                    } @else if (att.url) {
+                      <div class="doc-loading-state">
+                        <i class="pi pi-spin pi-spinner"></i>
+                        <p>Loading document…</p>
                       </div>
+                    } @else {
+                      <div class="doc-file-placeholder"><i class="pi pi-file"></i><span>{{ att.name }}</span></div>
                     }
                   }
                 </div>
               } @else {
                 <div class="doc-empty-state">
-                  <i class="pi pi-upload"></i>
-                  <p>No document uploaded</p>
+                  <i class="pi pi-upload"></i><p>No document uploaded</p>
                 </div>
               }
               @if (editMode()) {
@@ -192,10 +221,9 @@
                   <button class="btn btn-outline btn-danger" (click)="activePreviewAttachment() && removeAttachment(activePreviewAttachment()!.id)"><i class="pi pi-times"></i> Remove File</button>
                 </div>
               }
-              <!-- Document list -->
               <div class="doc-file-list">
                 @for (att of attachments(); track att.id; let i = $index) {
-                  <div class="doc-file-item" [class.active]="i === activePreviewIndex()" (click)="activePreviewIndex.set(i)">
+                  <div class="doc-file-item" [class.active]="i === activePreviewIndex()" (click)="activePreviewIndex.set(i); openAttachmentTab(att)">
                     <div class="doc-file-icon">
                       @if (att.type.includes('pdf')) { <i class="pi pi-file-pdf"></i> }
                       @else if (att.type.includes('image')) { <i class="pi pi-image"></i> }
@@ -209,8 +237,9 @@
                 }
               </div>
             </div>
+
+          <!-- ── Email Syndicate content (no attachment tab active) ── -->
           } @else {
-            <!-- Email Syndicate Content -->
             <div class="email-syndicate-body">
               <h4 class="email-subject-title">{{ subject || 'No Subject' }}</h4>
               <div class="email-sender-row">
@@ -224,12 +253,12 @@
               @if (attachments().length > 0) {
                 <div class="email-attachments-bar">
                   @for (att of attachments(); track att.id) {
-                    <div class="email-att-chip">
+                    <div class="email-att-chip" (click)="openAttachmentTab(att)" title="Click to open in tab">
                       <i class="pi pi-file"></i>
                       <span>{{ att.name }}</span>
                       <small>{{ att.size }}</small>
-                      <button title="View"><i class="pi pi-eye"></i></button>
-                      <button title="Download"><i class="pi pi-download"></i></button>
+                      <button title="View in tab" (click)="openAttachmentTab(att); $event.stopPropagation()"><i class="pi pi-eye"></i></button>
+                      <button title="Download" (click)="$event.stopPropagation()"><i class="pi pi-download"></i></button>
                     </div>
                   }
                 </div>
@@ -868,6 +897,48 @@
       </div>
     }
 
+    <!-- ═══ SIMILAR CASES PANEL (slides in from right) ═══ -->
+    @if (showSimilarPanel()) {
+      <div class="history-panel similar-panel">
+        <div class="history-panel-header">
+          <h3><i class="pi pi-search"></i> Similar Cases</h3>
+          <button class="expand-btn" (click)="showSimilarPanel.set(false)"><i class="pi pi-chevron-right"></i></button>
+        </div>
+
+        @if (loadingSimilarCases()) {
+          <div class="history-loading"><i class="pi pi-spin pi-spinner"></i> Searching...</div>
+        } @else if (similarCases().length > 0) {
+          <div class="similar-cases-list">
+            @for (sc of similarCases(); track sc.complaintId) {
+              <div class="past-complaint-card" (click)="openPastComplaintDetail(sc.complaintId)">
+                <div class="pc-header">
+                  <span class="pc-id">{{ sc.complaintId }}</span>
+                  <span class="pc-status" [class.active]="sc.status === 'ACTIVE'" [class.completed]="sc.status === 'COMPLETED' || sc.status === 'RESOLVED'">{{ sc.status }}</span>
+                </div>
+                <p class="pc-subject">{{ sc.subject }}</p>
+                @if (sc.similarityScore) {
+                  <div class="similarity-score">
+                    <span class="score-label">Match</span>
+                    <span class="score-bar-wrap"><span class="score-bar" [style.width.%]="sc.similarityScore * 100"></span></span>
+                    <span class="score-pct">{{ (sc.similarityScore * 100) | number:'1.0-0' }}%</span>
+                  </div>
+                }
+                <span class="pc-date">{{ sc.filedDate }}</span>
+              </div>
+            }
+          </div>
+        } @else {
+          <div class="similar-empty">
+            <i class="pi pi-search"></i>
+            <p>No similar cases found</p>
+            <button class="btn btn-outline" style="margin-top:12px;font-size:12px;" (click)="loadSimilarCases()">
+              <i class="pi pi-refresh"></i> Retry
+            </button>
+          </div>
+        }
+      </div>
+    }
+
     <!-- ═══ HISTORY PANEL (slides in from right) ═══ -->
     @if (showHistoryPanel()) {
       <div class="history-panel">
@@ -910,8 +981,15 @@
 
     <!-- ═══ RIGHT ICON SIDEBAR ═══ -->
     <div class="icon-sidebar">
-      <button class="icon-sidebar-btn" title="Notes"><i class="pi pi-file-edit"></i></button>
-      <button class="icon-sidebar-btn" [class.active]="showAttachmentsPanel()" title="Attachments" (click)="showAttachmentsPanel() ? closeAttachmentsPanel() : openAttachmentsPanel()"><i class="pi pi-paperclip"></i></button>
+      <button class="icon-sidebar-btn" [class.active]="showSimilarPanel()" title="Search similar cases" (click)="toggleSimilarPanel()"><i class="pi pi-search"></i></button>
+      <button class="icon-sidebar-btn att-icon-btn" [class.active]="showAttachmentsPanel()"
+        title="Attachments ({{ attachments().length }})"
+        (click)="showAttachmentsPanel() ? closeAttachmentsPanel() : openAttachmentsPanel()">
+        <i class="pi pi-paperclip"></i>
+        @if (attachments().length > 0) {
+          <span class="att-badge">{{ attachments().length }}</span>
+        }
+      </button>
       <button class="icon-sidebar-btn" [class.active]="showHistoryPanel()" title="History" (click)="toggleHistoryPanel()"><i class="pi pi-history"></i></button>
     </div>
 

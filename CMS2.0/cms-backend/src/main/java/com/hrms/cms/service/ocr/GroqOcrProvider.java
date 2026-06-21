@@ -3,8 +3,10 @@ package com.hrms.cms.service.ocr;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.pdfbox.Loader;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.text.PDFTextStripper;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.*;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
@@ -13,7 +15,6 @@ import java.util.*;
 
 @Component
 @Slf4j
-@ConditionalOnProperty(name = "cms.ocr.provider", havingValue = "groq")
 public class GroqOcrProvider implements OcrProvider {
 
     @Value("${cms.ocr.groq-api-key:}")
@@ -28,16 +29,13 @@ public class GroqOcrProvider implements OcrProvider {
     private static final String GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 
     @Override
-    public String getProviderName() {
-        return "groq";
-    }
+    public String getProviderName() { return "groq"; }
+
+    @Override
+    public boolean isAvailable() { return apiKey != null && !apiKey.isBlank(); }
 
     @Override
     public Map<String, String> extractFields(byte[] fileBytes, String mimeType) {
-        if (apiKey == null || apiKey.isBlank()) {
-            log.warn("Groq API key not configured (cms.ocr.groq-api-key)");
-            return Collections.emptyMap();
-        }
 
         try {
             // Groq vision only supports images, not PDFs
@@ -55,14 +53,26 @@ public class GroqOcrProvider implements OcrProvider {
             headers.setContentType(MediaType.APPLICATION_JSON);
             headers.setBearerAuth(apiKey);
 
-            ResponseEntity<String> response = restTemplate.exchange(
-                    GROQ_URL, HttpMethod.POST, new HttpEntity<>(requestBody, headers), String.class);
+            try {
+                ResponseEntity<String> response = restTemplate.exchange(
+                        GROQ_URL, HttpMethod.POST, new HttpEntity<>(requestBody, headers), String.class);
 
-            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                return parseResponse(response.getBody());
+                if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                    return parseResponse(response.getBody());
+                }
+                log.error("Groq returned: {}", response.getStatusCode());
+            } catch (org.springframework.web.client.HttpClientErrorException e) {
+                // Groq returns 400 json_validate_failed when the model produces imperfect JSON.
+                // The error body contains a "failed_generation" field with the partial output — try to salvage it.
+                String errorBody = e.getResponseBodyAsString();
+                log.warn("Groq 400 error — attempting to salvage failed_generation. Body snippet: {}",
+                        errorBody.length() > 300 ? errorBody.substring(0, 300) : errorBody);
+                Map<String, String> salvaged = salvageFailedGeneration(errorBody);
+                if (!salvaged.isEmpty()) {
+                    log.info("Salvaged {} fields from failed_generation", salvaged.size());
+                    return salvaged;
+                }
             }
-
-            log.error("Groq returned: {}", response.getStatusCode());
             return Collections.emptyMap();
 
         } catch (Exception e) {
@@ -82,14 +92,22 @@ public class GroqOcrProvider implements OcrProvider {
         log.info("Extracted {} chars from PDF, sending to Groq for structuring", pdfText.length());
 
         // Send extracted text to Groq for field extraction
+        Map<String, Object> systemMsg = Map.of(
+                "role", "system",
+                "content", "You are a JSON-only extraction assistant. You MUST respond with ONLY a valid JSON object. No markdown, no code fences, no explanation text. Start your response with '{' and end with '}'."
+        );
+
         Map<String, Object> textContent = Map.of("type", "text",
                 "text", OcrPrompts.EXTRACTION_PROMPT + "\n\nHere is the text from the complaint letter:\n\n" + pdfText);
 
         Map<String, Object> userMsg = Map.of("role", "user", "content", List.of(textContent));
 
+        // Do NOT use response_format:json_object here — Groq's strict JSON validator
+        // rejects the output with 400 json_validate_failed for multilingual/complex docs.
+        // We handle imperfect JSON ourselves in OcrResponseParser + salvageFailedGeneration.
         Map<String, Object> requestBody = Map.of(
                 "model", model,
-                "messages", List.of(userMsg),
+                "messages", List.of(systemMsg, userMsg),
                 "temperature", 0.1,
                 "max_tokens", 2048
         );
@@ -105,6 +123,16 @@ public class GroqOcrProvider implements OcrProvider {
             if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
                 return parseResponse(response.getBody());
             }
+        } catch (org.springframework.web.client.HttpClientErrorException e) {
+            // Groq 400 json_validate_failed — salvage whatever it generated
+            String errorBody = e.getResponseBodyAsString();
+            log.warn("Groq 400 on PDF text extraction — salvaging failed_generation. Snippet: {}",
+                    errorBody.length() > 200 ? errorBody.substring(0, 200) : errorBody);
+            Map<String, String> salvaged = salvageFailedGeneration(errorBody);
+            if (!salvaged.isEmpty()) {
+                log.info("Salvaged {} fields from failed PDF text extraction", salvaged.size());
+                return salvaged;
+            }
         } catch (Exception e) {
             log.error("Groq text extraction failed: {}", e.getMessage());
         }
@@ -112,43 +140,27 @@ public class GroqOcrProvider implements OcrProvider {
     }
 
     private String extractTextFromPdf(byte[] pdfBytes) {
-        // Simple PDF text extraction — look for text between BT/ET markers or stream content
-        try {
-            String content = new String(pdfBytes, java.nio.charset.StandardCharsets.ISO_8859_1);
-            StringBuilder text = new StringBuilder();
-
-            // Try to find readable text in PDF (works for text-based PDFs)
-            String[] lines = content.split("\n");
-            for (String line : lines) {
-                // PDF text objects contain parenthesized strings
-                int idx = 0;
-                while ((idx = line.indexOf('(', idx)) >= 0) {
-                    int end = line.indexOf(')', idx);
-                    if (end > idx) {
-                        String fragment = line.substring(idx + 1, end);
-                        if (fragment.length() > 1 && fragment.matches(".*[a-zA-Z].*")) {
-                            text.append(fragment).append(" ");
-                        }
-                        idx = end + 1;
-                    } else {
-                        break;
-                    }
-                }
-            }
-
-            String result = text.toString().trim();
-            // If we couldn't extract text, the PDF is likely image-based
-            if (result.length() < 20) {
-                log.info("PDF appears to be image-based (no extractable text). Consider uploading as image instead.");
+        try (PDDocument doc = Loader.loadPDF(pdfBytes)) {
+            PDFTextStripper stripper = new PDFTextStripper();
+            String text = stripper.getText(doc).trim();
+            log.info("PDFBox extracted {} chars from PDF ({} pages)", text.length(), doc.getNumberOfPages());
+            if (text.length() < 20) {
+                log.warn("PDF appears to be image-based — insufficient text extracted ({})", text.length());
                 return "";
             }
-            return result;
+            return text;
         } catch (Exception e) {
+            log.error("PDFBox text extraction failed: {}", e.getMessage());
             return "";
         }
     }
 
     private Map<String, Object> buildRequest(String dataUrl) {
+        Map<String, Object> systemMsg = Map.of(
+                "role", "system",
+                "content", "You are a JSON-only extraction assistant. You MUST respond with ONLY a valid JSON object. No markdown, no code fences, no explanation text. Start your response with '{' and end with '}'."
+        );
+
         Map<String, Object> textContent = Map.of("type", "text", "text", OcrPrompts.EXTRACTION_PROMPT);
         Map<String, Object> imageUrl = Map.of("url", dataUrl);
         Map<String, Object> imageContent = Map.of("type", "image_url", "image_url", imageUrl);
@@ -158,9 +170,11 @@ public class GroqOcrProvider implements OcrProvider {
                 "content", List.of(textContent, imageContent)
         );
 
+        // Note: no response_format here — vision models sometimes produce imperfect JSON
+        // which triggers Groq's 400 json_validate_failed; we handle that with salvageFailedGeneration()
         return Map.of(
                 "model", model,
-                "messages", List.of(userMsg),
+                "messages", List.of(systemMsg, userMsg),
                 "temperature", 0.1,
                 "max_tokens", 2048
         );
@@ -169,6 +183,20 @@ public class GroqOcrProvider implements OcrProvider {
     private Map<String, String> parseResponse(String responseBody) throws Exception {
         JsonNode root = objectMapper.readTree(responseBody);
         String text = root.path("choices").get(0).path("message").path("content").asText("");
+        log.info("Groq raw LLM response (first 500 chars): {}", text.length() > 500 ? text.substring(0, 500) : text);
         return OcrResponseParser.parseJsonFromLlmResponse(text, objectMapper);
+    }
+
+    private Map<String, String> salvageFailedGeneration(String errorBody) {
+        try {
+            JsonNode root = objectMapper.readTree(errorBody);
+            String partial = root.path("error").path("failed_generation").asText("");
+            if (partial.isBlank()) return Collections.emptyMap();
+            log.info("Salvaging failed_generation ({} chars)", partial.length());
+            return OcrResponseParser.parseJsonFromLlmResponse(partial, objectMapper);
+        } catch (Exception e) {
+            log.warn("Could not salvage failed_generation: {}", e.getMessage());
+            return Collections.emptyMap();
+        }
     }
 }

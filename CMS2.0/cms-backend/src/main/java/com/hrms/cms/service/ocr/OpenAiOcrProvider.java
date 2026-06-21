@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.*;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
@@ -13,7 +12,6 @@ import java.util.*;
 
 @Component
 @Slf4j
-@ConditionalOnProperty(name = "cms.ocr.provider", havingValue = "openai")
 public class OpenAiOcrProvider implements OcrProvider {
 
     @Value("${cms.ocr.openai-api-key:}")
@@ -28,16 +26,13 @@ public class OpenAiOcrProvider implements OcrProvider {
     private static final String OPENAI_URL = "https://api.openai.com/v1/chat/completions";
 
     @Override
-    public String getProviderName() {
-        return "openai";
-    }
+    public String getProviderName() { return "openai"; }
+
+    @Override
+    public boolean isAvailable() { return apiKey != null && !apiKey.isBlank(); }
 
     @Override
     public Map<String, String> extractFields(byte[] fileBytes, String mimeType) {
-        if (apiKey == null || apiKey.isBlank()) {
-            log.warn("OpenAI API key not configured (cms.ocr.openai-api-key)");
-            return Collections.emptyMap();
-        }
 
         try {
             String base64Data = Base64.getEncoder().encodeToString(fileBytes);

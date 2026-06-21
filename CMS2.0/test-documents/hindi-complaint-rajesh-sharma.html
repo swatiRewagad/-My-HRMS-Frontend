@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>बैंकिंग शिकायत पत्र — राजेश शर्मा</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Noto Sans Devanagari', 'Mangal', 'Arial Unicode MS', sans-serif;
+      font-size: 14px;
+      line-height: 1.8;
+      color: #111;
+      background: #f5f5f5;
+    }
+
+    .page {
+      width: 210mm;
+      min-height: 297mm;
+      margin: 20px auto;
+      background: #fff;
+      padding: 20mm 22mm 20mm 25mm;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+      position: relative;
+    }
+
+    /* ── Letterhead ── */
+    .letterhead {
+      border-bottom: 3px double #1a237e;
+      padding-bottom: 12px;
+      margin-bottom: 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+
+    .letterhead-left h1 {
+      font-size: 15px;
+      font-weight: 700;
+      color: #1a237e;
+      letter-spacing: 0.5px;
+    }
+
+    .letterhead-left p {
+      font-size: 11px;
+      color: #555;
+      margin-top: 2px;
+    }
+
+    .stamp-box {
+      border: 2px solid #c62828;
+      border-radius: 50%;
+      width: 70px;
+      height: 70px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      font-size: 9px;
+      font-weight: 700;
+      color: #c62828;
+      padding: 6px;
+      transform: rotate(-10deg);
+    }
+
+    /* ── Reference block ── */
+    .ref-block {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 16px;
+      font-size: 12.5px;
+    }
+
+    .ref-block .field { margin-bottom: 4px; }
+    .ref-block .label { font-weight: 600; color: #444; }
+
+    /* ── Subject ── */
+    .subject-line {
+      background: #e8eaf6;
+      border-left: 4px solid #1a237e;
+      padding: 8px 14px;
+      margin-bottom: 18px;
+      font-weight: 700;
+      font-size: 13.5px;
+    }
+
+    /* ── Salutation ── */
+    .salutation { margin-bottom: 12px; font-weight: 600; }
+
+    /* ── Body ── */
+    .body-section { margin-bottom: 12px; text-align: justify; }
+
+    /* ── Info table ── */
+    .info-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 14px 0;
+      font-size: 13px;
+    }
+
+    .info-table th {
+      background: #1a237e;
+      color: #fff;
+      text-align: left;
+      padding: 8px 12px;
+      font-weight: 600;
+    }
+
+    .info-table td {
+      padding: 7px 12px;
+      border-bottom: 1px solid #ddd;
+      vertical-align: top;
+    }
+
+    .info-table tr:nth-child(even) td { background: #f3f4fb; }
+    .info-table .key { font-weight: 600; width: 45%; color: #333; }
+    .info-table .val { color: #111; }
+
+    /* ── Highlight box ── */
+    .highlight-box {
+      border: 1.5px solid #e53935;
+      border-radius: 4px;
+      padding: 10px 14px;
+      margin: 14px 0;
+      background: #fff8f8;
+    }
+
+    .highlight-box .title {
+      font-weight: 700;
+      color: #c62828;
+      margin-bottom: 6px;
+      font-size: 13px;
+    }
+
+    /* ── Declaration ── */
+    .declaration {
+      border-top: 1px dashed #999;
+      padding-top: 10px;
+      margin-top: 16px;
+      font-size: 12.5px;
+      color: #444;
+      font-style: italic;
+    }
+
+    /* ── Signature ── */
+    .signature-block {
+      margin-top: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+
+    .sig-left { font-size: 13px; }
+    .sig-left .name { font-weight: 700; font-size: 14.5px; margin-top: 28px; }
+    .sig-left .detail { color: #555; font-size: 12px; }
+
+    .sig-right {
+      text-align: center;
+      font-size: 12px;
+      color: #888;
+    }
+
+    .sig-right .sig-line {
+      border-top: 1px solid #333;
+      width: 130px;
+      margin: 0 auto 4px;
+    }
+
+    /* ── Footer ── */
+    .footer {
+      position: absolute;
+      bottom: 12mm;
+      left: 25mm;
+      right: 22mm;
+      border-top: 1px solid #ccc;
+      padding-top: 6px;
+      font-size: 10px;
+      color: #888;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    /* ── Print ── */
+    @media print {
+      body { background: white; }
+      .page { margin: 0; box-shadow: none; width: 100%; padding: 15mm 20mm 15mm 22mm; }
+      .footer { position: fixed; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="page">
+
+  <!-- Letterhead -->
+  <div class="letterhead">
+    <div class="letterhead-left">
+      <h1>भारतीय रिज़र्व बैंक — केंद्रीय शिकायत निवारण केंद्र</h1>
+      <p>बैंकिंग लोकपाल योजना, 2006 के अंतर्गत शिकायत</p>
+      <p>Reserve Bank of India — Centralised Receipt &amp; Processing Centre (CRPC)</p>
+    </div>
+    <div class="stamp-box">शिकायत<br>पंजीकृत<br>REGISTERED</div>
+  </div>
+
+  <!-- Reference block -->
+  <div class="ref-block">
+    <div>
+      <div class="field"><span class="label">दिनांक / Date: </span>25 मई 2026</div>
+      <div class="field"><span class="label">शिकायत संख्या: </span>CMP/2026/JAI/4567</div>
+    </div>
+    <div style="text-align:right;">
+      <div class="field"><span class="label">प्रेषक: </span>राजेश शर्मा</div>
+      <div class="field"><span class="label">मोबाइल: </span>9414567890</div>
+    </div>
+  </div>
+
+  <!-- Addressee -->
+  <div class="body-section" style="margin-bottom:14px;">
+    <strong>सेवा में,</strong><br>
+    श्रीमान बैंकिंग लोकपाल महोदय,<br>
+    भारतीय रिज़र्व बैंक,<br>
+    CRPC, मुंबई — 400 001
+  </div>
+
+  <!-- Subject -->
+  <div class="subject-line">
+    विषय: ATM से राशि न निकलने पर भी खाते से ₹10,000 की कटौती — तत्काल निवारण हेतु
+  </div>
+
+  <!-- Salutation -->
+  <div class="salutation">महोदय,</div>
+
+  <!-- Body Para 1 -->
+  <div class="body-section">
+    सविनय निवेदन है कि मैं राजेश शर्मा, खाता संख्या <strong>3456789012</strong>, भारतीय स्टेट बैंक, जयपुर शाखा (IFSC: SBIN0001234) का खाताधारक हूँ। दिनांक <strong>25 मई 2026</strong> को रात्रि 09:30 बजे मैंने SBI ATM (ATM पहचान संख्या: SBI-ATM-7890), सिविल लाइन्स, जयपुर, राजस्थान से <strong>₹10,000</strong> (दस हज़ार रुपए) निकालने का प्रयास किया।
+  </div>
+
+  <!-- Info Table -->
+  <table class="info-table">
+    <tr>
+      <th colspan="2">शिकायतकर्ता का विवरण / Complainant Details</th>
+    </tr>
+    <tr>
+      <td class="key">पूरा नाम</td>
+      <td class="val">राजेश शर्मा</td>
+    </tr>
+    <tr>
+      <td class="key">खाता संख्या</td>
+      <td class="val">3456789012</td>
+    </tr>
+    <tr>
+      <td class="key">बैंक / शाखा</td>
+      <td class="val">भारतीय स्टेट बैंक, जयपुर शाखा</td>
+    </tr>
+    <tr>
+      <td class="key">IFSC कोड</td>
+      <td class="val">SBIN0001234</td>
+    </tr>
+    <tr>
+      <td class="key">पता</td>
+      <td class="val">12, सुभाष नगर, सिविल लाइन्स, जयपुर — 302006</td>
+    </tr>
+    <tr>
+      <td class="key">पिनकोड</td>
+      <td class="val">302006</td>
+    </tr>
+    <tr>
+      <td class="key">मोबाइल नंबर</td>
+      <td class="val">9414567890</td>
+    </tr>
+    <tr>
+      <td class="key">ईमेल</td>
+      <td class="val">rajesh.sharma.jaipur@gmail.com</td>
+    </tr>
+    <tr>
+      <td class="key">राज्य / जिला</td>
+      <td class="val">राजस्थान / जयपुर</td>
+    </tr>
+  </table>
+
+  <!-- Highlight box — incident -->
+  <div class="highlight-box">
+    <div class="title">घटना का विवरण / Incident Details</div>
+    <table style="width:100%; font-size:13px; border-collapse:collapse;">
+      <tr>
+        <td style="width:45%; font-weight:600; padding:3px 0;">ATM पहचान संख्या:</td>
+        <td>SBI-ATM-7890, सिविल लाइन्स, जयपुर</td>
+      </tr>
+      <tr>
+        <td style="font-weight:600; padding:3px 0;">लेनदेन दिनांक व समय:</td>
+        <td>25 मई 2026, रात्रि 09:30 बजे</td>
+      </tr>
+      <tr>
+        <td style="font-weight:600; padding:3px 0;">अनुरोधित राशि:</td>
+        <td>₹10,000 (दस हज़ार रुपए)</td>
+      </tr>
+      <tr>
+        <td style="font-weight:600; padding:3px 0;">लेनदेन संदर्भ संख्या:</td>
+        <td>TXN/2026/SBI/JAI/000789</td>
+      </tr>
+      <tr>
+        <td style="font-weight:600; padding:3px 0;">समस्या का विवरण:</td>
+        <td>ATM मशीन से नकद राशि नहीं निकली, परंतु खाते से ₹10,000 का डेबिट हो गया।</td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- Body Para 2 -->
+  <div class="body-section">
+    उपर्युक्त लेनदेन में ATM स्क्रीन पर <em>"Transaction Unsuccessful"</em> का संदेश प्रदर्शित हुआ और मशीन से कोई नकद राशि नहीं निकली। इसके बावजूद मेरे खाते से ₹10,000 की कटौती हो गई, जो मेरे मोबाइल पर SMS से सूचित हुई।
+  </div>
+
+  <!-- Body Para 3 — complaint steps -->
+  <div class="body-section">
+    मैंने इस समस्या के निवारण हेतु निम्नलिखित कदम उठाए:
+    <ol style="margin: 8px 0 8px 20px; line-height:2;">
+      <li>26 मई 2026 को SBI शाखा, जयपुर में लिखित शिकायत दर्ज कराई। <strong>शिकायत संख्या: CMP/2026/JAI/4567</strong></li>
+      <li>SBI ग्राहक सेवा केंद्र पर दूरभाष (1800-11-2211) द्वारा शिकायत दर्ज कराई।</li>
+      <li>30 कार्य-दिवस (30 Days) बीत जाने के बाद भी बैंक द्वारा कोई समाधान या प्रतिक्रिया प्राप्त नहीं हुई।</li>
+    </ol>
+    RBI के दिशा-निर्देशों के अनुसार बैंक को 7 कार्य-दिवस के भीतर राशि वापस करनी चाहिए थी, किंतु बैंक ने ऐसा नहीं किया।
+  </div>
+
+  <!-- Relief sought -->
+  <div class="body-section">
+    <strong>अनुरोधित राहत (Relief Sought):</strong>
+    <ol style="margin: 6px 0 6px 20px; line-height:2;">
+      <li>खाते से अनुचित रूप से कटी हुई राशि <strong>₹10,000</strong> तत्काल वापस की जाए।</li>
+      <li>विलम्ब के कारण हुई असुविधा के लिए उचित मुआवज़ा प्रदान किया जाए।</li>
+      <li>बैंक के विरुद्ध उचित अनुशासनात्मक कार्रवाई की जाए।</li>
+    </ol>
+  </div>
+
+  <!-- Declaration -->
+  <div class="declaration">
+    मैं घोषणा करता हूँ कि ऊपर दी गई सभी जानकारी मेरी जानकारी में सत्य एवं सही है। यह शिकायत किसी न्यायालय, लोकपाल या उपभोक्ता फोरम में विचाराधीन नहीं है।
+    <br><br>
+    I hereby declare that the information provided above is true and correct to the best of my knowledge.
+  </div>
+
+  <!-- Signature -->
+  <div class="signature-block">
+    <div class="sig-left">
+      भवदीय / Yours Faithfully,
+      <div class="name">राजेश शर्मा</div>
+      <div class="detail">खाता संख्या: 3456789012</div>
+      <div class="detail">मोबाइल: 9414567890</div>
+      <div class="detail">ईमेल: rajesh.sharma.jaipur@gmail.com</div>
+      <div class="detail">दिनांक: 25 मई 2026</div>
+    </div>
+    <div class="sig-right">
+      <div class="sig-line"></div>
+      हस्ताक्षर / Signature
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <span>शिकायत संदर्भ: CMP/2026/JAI/4567 | बैंक: SBI जयपुर | राशि: ₹10,000</span>
+    <span>पृष्ठ 1/1 | दिनांक: 25-05-2026</span>
+  </div>
+
+</div>
+
+<!-- Print button (hidden during print) -->
+<div style="text-align:center; margin: 10px 0 30px; font-family:sans-serif;">
+  <button onclick="window.print()"
+    style="padding:10px 28px; background:#1a237e; color:#fff; border:none; border-radius:6px; font-size:14px; cursor:pointer;">
+    🖨️ Save / Print as PDF
+  </button>
+  <p style="color:#666; font-size:12px; margin-top:8px;">
+    Click above → In print dialog, choose <strong>"Save as PDF"</strong> as the destination
+  </p>
+</div>
+
+</body>
+</html>

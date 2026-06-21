@@ -5,53 +5,102 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
- * Facade service that delegates OCR extraction to the configured provider.
+ * Orchestrates OCR extraction through a configurable, ordered provider chain.
  *
- * Configuration in application.yml:
+ * Configuration (application.yml):
  *
- *   cms.ocr.provider: gemini | openai | huggingface | azure
+ *   cms.ocr.chain: groq, paddle        # try Groq first; fall back to PaddleOCR
+ *   cms.ocr.chain: groq, gemini, paddle # three-level chain
  *
- * Each provider has its own config keys:
- *   - gemini:      cms.ocr.gemini-api-key, cms.ocr.gemini-model
- *   - openai:      cms.ocr.openai-api-key, cms.ocr.openai-model
- *   - huggingface: cms.ocr.huggingface-api-key, cms.ocr.huggingface-model
- *   - azure:       cms.ocr.azure-endpoint, cms.ocr.azure-api-key, cms.ocr.azure-model
+ * Each name must match the value returned by OcrProvider.getProviderName().
+ * Providers absent from the chain, or whose isAvailable() returns false, are skipped.
+ *
+ * Adding your own OCR provider:
+ *   1. Implement OcrProvider and annotate with @Component.
+ *   2. Return a unique name from getProviderName() (e.g. "myocr").
+ *   3. Return false from isAvailable() when the provider is not configured.
+ *   4. Add "myocr" to cms.ocr.chain in application.yml — done.
  */
 @Service
 @Slf4j
 public class OcrExtractionService {
 
-    private final OcrProvider activeProvider;
+    /** Ordered provider chain, e.g. "groq, paddle" or "groq, gemini, paddle" */
+    @Value("${cms.ocr.chain:groq}")
+    private String chainConfig;
 
-    @Value("${cms.ocr.provider:gemini}")
-    private String configuredProvider;
+    private final List<OcrProvider> orderedChain;
 
-    public OcrExtractionService(List<OcrProvider> providers) {
-        if (providers.isEmpty()) {
-            log.warn("No OCR providers found. Extraction will return empty results.");
-            this.activeProvider = null;
+    public OcrExtractionService(List<OcrProvider> allProviders,
+                                @Value("${cms.ocr.chain:groq}") String chainConfig) {
+        Map<String, OcrProvider> byName = allProviders.stream()
+                .collect(Collectors.toMap(OcrProvider::getProviderName, p -> p));
+
+        this.orderedChain = Arrays.stream(chainConfig.split("[,\\s]+"))
+                .map(String::trim)
+                .filter(name -> !name.isEmpty())
+                .map(name -> {
+                    OcrProvider p = byName.get(name);
+                    if (p == null) {
+                        log.warn("OCR chain: unknown provider '{}' — skipping", name);
+                    } else if (!p.isAvailable()) {
+                        log.warn("OCR chain: provider '{}' is not configured (missing API key/URL) — skipping", name);
+                    }
+                    return p;
+                })
+                .filter(p -> p != null && p.isAvailable())
+                .collect(Collectors.toList());
+
+        if (orderedChain.isEmpty()) {
+            log.warn("OCR chain is empty — no providers available. Check cms.ocr.chain and provider credentials.");
         } else {
-            this.activeProvider = providers.get(0);
-            log.info("OCR provider active: {}", this.activeProvider.getProviderName());
+            log.info("OCR provider chain: {}",
+                    orderedChain.stream().map(OcrProvider::getProviderName).collect(Collectors.joining(" → ")));
         }
     }
 
+    /**
+     * Run OCR through the provider chain.
+     * Returns the result of the first provider that produces at least one field.
+     * Returns an empty map if every provider in the chain fails or returns nothing.
+     */
     public Map<String, String> extractFromImage(byte[] fileBytes, String mimeType) {
-        if (activeProvider == null) {
-            log.warn("No OCR provider configured. Set cms.ocr.provider and provide API keys.");
+        if (orderedChain.isEmpty()) {
+            log.warn("No OCR providers available. Set cms.ocr.chain and provide credentials.");
             return Collections.emptyMap();
         }
 
-        log.info("Running OCR extraction using provider: {}", activeProvider.getProviderName());
-        return activeProvider.extractFields(fileBytes, mimeType);
+        for (OcrProvider provider : orderedChain) {
+            log.info("OCR attempt: provider '{}'", provider.getProviderName());
+            try {
+                Map<String, String> result = provider.extractFields(fileBytes, mimeType);
+                if (result != null && !result.isEmpty()) {
+                    log.info("OCR success via '{}': {} fields extracted", provider.getProviderName(), result.size());
+                    return result;
+                }
+                log.warn("OCR provider '{}' returned empty result — trying next in chain", provider.getProviderName());
+            } catch (Exception e) {
+                log.error("OCR provider '{}' threw exception: {} — trying next in chain",
+                        provider.getProviderName(), e.getMessage());
+            }
+        }
+
+        log.error("All OCR providers exhausted — returning empty result");
+        return Collections.emptyMap();
     }
 
+    /** Returns names of all active (available + in chain) providers, in order. */
+    public List<String> getActiveChain() {
+        return orderedChain.stream().map(OcrProvider::getProviderName).collect(Collectors.toList());
+    }
+
+    /** @deprecated Use getActiveChain() */
+    @Deprecated
     public String getActiveProviderName() {
-        return activeProvider != null ? activeProvider.getProviderName() : "none";
+        return orderedChain.isEmpty() ? "none" : orderedChain.get(0).getProviderName();
     }
 }

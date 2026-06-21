@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.*;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
@@ -13,7 +12,6 @@ import java.util.*;
 
 @Component
 @Slf4j
-@ConditionalOnProperty(name = "cms.ocr.provider", havingValue = "huggingface")
 public class HuggingFaceOcrProvider implements OcrProvider {
 
     @Value("${cms.ocr.huggingface-api-key:}")
@@ -29,16 +27,13 @@ public class HuggingFaceOcrProvider implements OcrProvider {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
-    public String getProviderName() {
-        return "huggingface";
-    }
+    public String getProviderName() { return "huggingface"; }
+
+    @Override
+    public boolean isAvailable() { return apiKey != null && !apiKey.isBlank(); }
 
     @Override
     public Map<String, String> extractFields(byte[] fileBytes, String mimeType) {
-        if (apiKey == null || apiKey.isBlank()) {
-            log.warn("HuggingFace API key not configured (cms.ocr.huggingface-api-key)");
-            return Collections.emptyMap();
-        }
 
         try {
             // Step 1: Use HuggingFace Inference API for OCR (image-to-text)

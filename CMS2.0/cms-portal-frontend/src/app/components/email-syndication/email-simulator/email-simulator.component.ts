@@ -43,9 +43,43 @@ export class EmailSimulatorComponent {
     messageId: ''
   });
 
-  // Attachment
-  attachedFile = signal<File | null>(null);
+  // Attachments (multiple)
+  attachedFiles = signal<File[]>([]);
   ocrExtracted = signal<Record<string, string> | null>(null);
+
+  // backward-compat alias used in template
+  get attachedFile() { return this.attachedFiles().length > 0 ? this.attachedFiles()[0] : null; }
+
+  // Speech-to-Text
+  isListening = signal(false);
+  sttSupported = typeof window !== 'undefined' && ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
+  private recognition: any = null;
+
+  toggleSpeechToText() {
+    if (this.isListening()) {
+      this.recognition?.stop();
+      this.isListening.set(false);
+      return;
+    }
+    if (!this.sttSupported) return;
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    this.recognition = new SpeechRecognition();
+    this.recognition.lang = 'en-IN';
+    this.recognition.continuous = true;
+    this.recognition.interimResults = false;
+    this.recognition.onresult = (event: any) => {
+      const transcript = Array.from(event.results as any[])
+        .slice(event.resultIndex)
+        .map((r: any) => r[0].transcript)
+        .join(' ');
+      const current = this.manualEmail().body;
+      this.updateManualField('body', current ? current + ' ' + transcript : transcript);
+    };
+    this.recognition.onerror = () => this.isListening.set(false);
+    this.recognition.onend = () => this.isListening.set(false);
+    this.recognition.start();
+    this.isListening.set(true);
+  }
 
   // Batch simulation
   batchCount = signal(5);
@@ -167,20 +201,25 @@ export class EmailSimulatorComponent {
 
   onFileAttached(event: Event) {
     const input = event.target as HTMLInputElement;
-    if (input.files && input.files[0]) {
-      const file = input.files[0];
-      const allowed = ['application/pdf', 'image/jpeg', 'image/png', 'image/tiff'];
-      if (!allowed.includes(file.type)) {
-        this.attachedFile.set(null);
-        input.value = '';
-        return;
-      }
-      this.attachedFile.set(file);
+    if (!input.files) return;
+    const allowed = ['application/pdf', 'image/jpeg', 'image/png', 'image/tiff'];
+    const valid = Array.from(input.files).filter(f => allowed.includes(f.type));
+    if (valid.length > 0) {
+      this.attachedFiles.update(prev => {
+        const existing = new Set(prev.map(f => f.name + f.size));
+        return [...prev, ...valid.filter(f => !existing.has(f.name + f.size))];
+      });
     }
+    input.value = '';
   }
 
-  removeAttachment() {
-    this.attachedFile.set(null);
+  removeAttachment(index: number) {
+    this.attachedFiles.update(prev => prev.filter((_, i) => i !== index));
+    if (this.attachedFiles().length === 0) this.ocrExtracted.set(null);
+  }
+
+  removeAllAttachments() {
+    this.attachedFiles.set([]);
     this.ocrExtracted.set(null);
   }
 
@@ -197,10 +236,10 @@ export class EmailSimulatorComponent {
     }
 
     this.sending.set(true);
-    const file = this.attachedFile();
+    const files = this.attachedFiles();
 
-    const request$ = file
-      ? this.emailService.ingestEmailWithAttachment(email, file)
+    const request$ = files.length > 0
+      ? this.emailService.ingestEmailWithAttachment(email, files)
       : this.emailService.ingestEmail(email);
 
     request$.subscribe({
@@ -211,7 +250,9 @@ export class EmailSimulatorComponent {
         }
 
         const hasOcr = response?.ocrProcessed;
-        const attachmentInfo = file ? ` [📎 ${file.name}${hasOcr ? ' → OCR extracted' : ''}]` : '';
+        const attachmentInfo = files.length > 0
+          ? ` [📎 ${files.length} file${files.length > 1 ? 's' : ''}${hasOcr ? ' → OCR extracted' : ''}]`
+          : '';
 
         const langInfo = (response as any)?.isVernacular ? {
           detectedLanguage: (response as any).detectedLanguage,
@@ -234,7 +275,7 @@ export class EmailSimulatorComponent {
         }, ...prev]);
         this.sending.set(false);
         this.manualEmail.set({ senderEmail: '', subject: '', body: '', messageId: '' });
-        this.attachedFile.set(null);
+        this.attachedFiles.set([]);
       },
       error: (err) => {
         this.results.update(prev => [{

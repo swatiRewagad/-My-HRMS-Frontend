@@ -42,23 +42,52 @@
         </div>
 
         <div class="form-group">
-          <label>Email Body</label>
+          <div class="label-row">
+            <label>Email Body</label>
+            <button class="stt-btn" [class.listening]="isListening()" [disabled]="!sttSupported"
+                    (click)="toggleSpeechToText()"
+                    [title]="!sttSupported ? 'Use Chrome or Edge for voice input' : isListening() ? 'Stop listening' : 'Dictate using microphone'">
+              <span class="stt-icon">
+                @if (isListening()) { <span class="stt-pulse"></span> }
+                <i class="pi" [class.pi-microphone]="!isListening()" [class.pi-stop-circle]="isListening()"></i>
+              </span>
+              {{ isListening() ? 'Stop' : 'Speak' }}
+            </button>
+          </div>
           <textarea [ngModel]="manualEmail().body" (ngModelChange)="updateManualField('body', $event)"
-                    name="body" rows="8" placeholder="Dear Sir/Madam..."></textarea>
+                    name="body" rows="8" placeholder="Dear Sir/Madam..."
+                    [class.listening-active]="isListening()"></textarea>
+          @if (isListening()) {
+            <p class="stt-hint"><i class="pi pi-circle-fill stt-dot"></i> Listening… speak your complaint clearly</p>
+          }
         </div>
 
         <div class="form-group attachment-group">
-          <label>Attachment (scanned letter — PDF, JPEG, PNG, TIFF)</label>
+          <label>Attachments <span class="label-hint">(PDF, JPEG, PNG, TIFF — first file used for OCR)</span></label>
           <div class="attachment-input">
-            <input type="file" accept=".pdf,.jpg,.jpeg,.png,.tiff,.tif"
-                   (change)="onFileAttached($event)" #fileInput>
-            @if (attachedFile()) {
-              <div class="attached-file">
-                <span class="file-name">📎 {{ attachedFile()!.name }}</span>
-                <span class="file-size">({{ (attachedFile()!.size / 1024).toFixed(0) }} KB)</span>
-                <button type="button" class="remove-file" (click)="removeAttachment(); fileInput.value = ''">✕</button>
+            <label class="file-pick-btn" for="fileInputEl">
+              + Add File(s)
+            </label>
+            <input id="fileInputEl" type="file" accept=".pdf,.jpg,.jpeg,.png,.tiff,.tif"
+                   multiple (change)="onFileAttached($event)" style="display:none">
+
+            @if (attachedFiles().length > 0) {
+              <div class="attached-files-list">
+                @for (f of attachedFiles(); track f.name; let i = $index) {
+                  <div class="attached-file" [class.primary-file]="i === 0">
+                    <span class="file-badge">{{ i === 0 ? 'OCR' : 'Doc' }}</span>
+                    <span class="file-name">{{ f.name }}</span>
+                    <span class="file-size">{{ (f.size / 1024).toFixed(0) }} KB</span>
+                    <button type="button" class="remove-file" (click)="removeAttachment(i)">✕</button>
+                  </div>
+                }
               </div>
-              <p class="ocr-hint">OCR will extract complaint fields from this attachment automatically</p>
+              <p class="ocr-hint">
+                First file will be OCR-scanned for complaint fields.
+                @if (attachedFiles().length > 1) {
+                  Remaining {{ attachedFiles().length - 1 }} file(s) saved as supporting documents.
+                }
+              </p>
             }
           </div>
         </div>
@@ -66,13 +95,17 @@
         <button class="send-btn" (click)="sendManual()"
                 [disabled]="sending() || !manualEmail().senderEmail || !manualEmail().subject">
           @if (sending()) {
-            @if (attachedFile()) {
+            @if (attachedFiles().length > 0) {
               Sending & Running OCR...
             } @else {
               Sending...
             }
           } @else {
-            Send to crpc&#64;rbi.org.in
+            @if (attachedFiles().length > 0) {
+              Send with {{ attachedFiles().length }} Attachment{{ attachedFiles().length > 1 ? 's' : '' }}
+            } @else {
+              Send to crpc&#64;rbi.org.in
+            }
           }
         </button>
 
