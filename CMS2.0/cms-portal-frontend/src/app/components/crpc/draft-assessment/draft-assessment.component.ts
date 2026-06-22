@@ -63,6 +63,8 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
 
   // ─── Suggestions (AI-extracted) ───
   suggestions = signal<{ field: string; value: string; applied: boolean }[]>([]);
+  showSuggestionsPanel = signal(false);
+  selectedSuggestionIdx = signal<number>(0);
 
   // ─── Confirmation Dialog ───
   showConfirmDialog = signal(false);
@@ -526,6 +528,13 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
 
     const updated = suggs.map((sg, i) => i === index ? { ...sg, applied: true } : sg);
     this.suggestions.set(updated);
+  }
+
+  applyAllSuggestions() {
+    const suggs = this.suggestions();
+    suggs.forEach((_, i) => {
+      if (!suggs[i].applied) this.applySuggestion(i);
+    });
   }
 
   togglePdfExpand() {

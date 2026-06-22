@@ -895,7 +895,11 @@
       <!-- INLINE ICON BAR -->
       @if (!editMode()) {
         <div class="inline-icon-bar">
-          <button class="iib-btn" [class.active]="showSimilarPanel()" title="Similar cases" (click)="toggleSimilarPanel()"><i class="pi pi-search"></i></button>
+          <button class="iib-btn iib-suggestions-btn" [class.active]="showSuggestionsPanel()" title="AI Suggestions" (click)="showSuggestionsPanel.set(!showSuggestionsPanel())">
+            <i class="pi pi-sparkles"></i>
+          </button>
+          <button class="iib-btn" [class.active]="showSimilarPanel()" title="Similar cases" (click)="toggleSimilarPanel()"><i class="pi pi-copy"></i></button>
+          <button class="iib-btn" [class.active]="showHistoryPanel()" title="History" (click)="toggleHistoryPanel()"><i class="pi pi-search"></i></button>
           <button class="iib-btn att-icon-inline" [class.has-attachments]="attachments().length > 0"
             title="Attachments ({{ attachments().length }})"
             (click)="showAttachmentsPanel() ? closeAttachmentsPanel() : openAttachmentsPanel()">
@@ -904,7 +908,32 @@
               <span class="iib-badge">{{ attachments().length }}</span>
             }
           </button>
-          <button class="iib-btn" [class.active]="showHistoryPanel()" title="History" (click)="toggleHistoryPanel()"><i class="pi pi-history"></i></button>
+
+          <!-- Suggestions Popover -->
+          @if (showSuggestionsPanel() && suggestions().length > 0) {
+            <div class="suggestions-popover">
+              <div class="suggestions-header">
+                <i class="pi pi-lightbulb"></i>
+                <span>Suggestions</span>
+              </div>
+              <div class="suggestions-list">
+                @for (s of suggestions(); track $index) {
+                  <div class="suggestion-item" [class.applied]="s.applied" [class.selected]="selectedSuggestionIdx() === $index" (click)="selectedSuggestionIdx.set($index)">
+                    <span class="suggestion-field">{{ s.field | uppercase }}</span>
+                    <span class="suggestion-value">{{ s.value }}</span>
+                    @if (!s.applied) {
+                      <button class="suggestion-apply-btn" (click)="applySuggestion($index); $event.stopPropagation()" title="Apply">
+                        <i class="pi pi-check"></i>
+                      </button>
+                    } @else {
+                      <i class="pi pi-check-circle suggestion-applied-icon"></i>
+                    }
+                  </div>
+                }
+              </div>
+              <button class="suggestions-apply-all" (click)="applyAllSuggestions()">Apply All</button>
+            </div>
+          }
         </div>
       }
 
