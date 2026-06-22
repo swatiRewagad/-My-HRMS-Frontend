@@ -66,7 +66,10 @@
 
         <div class="form-group">
           <label>Description <span class="required">*</span></label>
-          <textarea [ngModel]="form().description" (ngModelChange)="updateField('description', $event)" name="description" rows="5" required maxlength="4000"></textarea>
+          <div class="textarea-with-speech">
+            <textarea [ngModel]="form().description" (ngModelChange)="updateField('description', $event)" name="description" rows="5" required maxlength="4000"></textarea>
+            <app-speech-button (transcription)="updateField('description', (form().description || '') + ' ' + $event)"></app-speech-button>
+          </div>
         </div>
 
         <div class="form-row">

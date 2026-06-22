@@ -53,8 +53,11 @@
       @if (reason === 'Other') {
         <div class="form-group">
           <label>Please specify</label>
-          <textarea class="form-textarea" [(ngModel)]="additionalRemarks" name="additionalRemarks" rows="3"
-                    placeholder="Enter your reason..."></textarea>
+          <div class="textarea-with-speech">
+            <textarea class="form-textarea" [(ngModel)]="additionalRemarks" name="additionalRemarks" rows="3"
+                      placeholder="Enter your reason..."></textarea>
+            <app-speech-button (transcription)="additionalRemarks = additionalRemarks + ' ' + $event"></app-speech-button>
+          </div>
         </div>
       }
 

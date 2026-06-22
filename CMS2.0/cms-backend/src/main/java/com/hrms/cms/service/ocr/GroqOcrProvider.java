@@ -5,12 +5,16 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.rendering.PDFRenderer;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
 import java.util.*;
 
 @Component
@@ -38,10 +42,37 @@ public class GroqOcrProvider implements OcrProvider {
     public Map<String, String> extractFields(byte[] fileBytes, String mimeType) {
 
         try {
-            // Groq vision only supports images, not PDFs
-            // For PDFs, fall back to text-only extraction prompt
             if ("application/pdf".equals(mimeType)) {
-                return extractFromPdfAsText(fileBytes);
+                // First try text-based extraction
+                Map<String, String> textResult = extractFromPdfAsText(fileBytes);
+                if (!textResult.isEmpty()) {
+                    return textResult;
+                }
+                // PDF is image-based — render first page as image and use vision API
+                log.info("PDF text extraction empty, falling back to vision API (render page 1 as image)");
+                byte[] pageImage = renderFirstPageAsImage(fileBytes);
+                if (pageImage != null) {
+                    String base64Data = Base64.getEncoder().encodeToString(pageImage);
+                    String dataUrl = "data:image/jpeg;base64," + base64Data;
+                    Map<String, Object> requestBody = buildRequest(dataUrl);
+                    HttpHeaders headers = new HttpHeaders();
+                    headers.setContentType(MediaType.APPLICATION_JSON);
+                    headers.setBearerAuth(apiKey);
+                    try {
+                        ResponseEntity<String> response = restTemplate.exchange(
+                                GROQ_URL, HttpMethod.POST, new HttpEntity<>(requestBody, headers), String.class);
+                        if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                            return parseResponse(response.getBody());
+                        }
+                    } catch (org.springframework.web.client.HttpClientErrorException e) {
+                        String errorBody = e.getResponseBodyAsString();
+                        log.warn("Groq vision 400 on PDF image — salvaging. Snippet: {}",
+                                errorBody.length() > 200 ? errorBody.substring(0, 200) : errorBody);
+                        Map<String, String> salvaged = salvageFailedGeneration(errorBody);
+                        if (!salvaged.isEmpty()) return salvaged;
+                    }
+                }
+                return Collections.emptyMap();
             }
 
             String base64Data = Base64.getEncoder().encodeToString(fileBytes);
@@ -152,6 +183,53 @@ public class GroqOcrProvider implements OcrProvider {
         } catch (Exception e) {
             log.error("PDFBox text extraction failed: {}", e.getMessage());
             return "";
+        }
+    }
+
+    private byte[] renderFirstPageAsImage(byte[] pdfBytes) {
+        try (PDDocument doc = Loader.loadPDF(pdfBytes)) {
+            PDFRenderer renderer = new PDFRenderer(doc);
+            int pageCount = doc.getNumberOfPages();
+            // Use lower DPI for many pages to keep image size reasonable for API
+            int dpi = pageCount <= 2 ? 200 : (pageCount <= 4 ? 150 : 120);
+
+            if (pageCount == 1) {
+                BufferedImage image = renderer.renderImageWithDPI(0, dpi);
+                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                ImageIO.write(image, "jpeg", baos);
+                log.info("Rendered PDF page 1 as JPEG image ({} bytes)", baos.size());
+                return baos.toByteArray();
+            }
+
+            // Render all pages and stitch vertically so AI can see entire document
+            BufferedImage[] pages = new BufferedImage[pageCount];
+            int totalHeight = 0;
+            int maxWidth = 0;
+            for (int i = 0; i < pageCount; i++) {
+                pages[i] = renderer.renderImageWithDPI(i, dpi);
+                totalHeight += pages[i].getHeight();
+                maxWidth = Math.max(maxWidth, pages[i].getWidth());
+            }
+
+            BufferedImage combined = new BufferedImage(maxWidth, totalHeight, BufferedImage.TYPE_INT_RGB);
+            var g = combined.createGraphics();
+            g.setColor(java.awt.Color.WHITE);
+            g.fillRect(0, 0, maxWidth, totalHeight);
+            int yOffset = 0;
+            for (int i = 0; i < pageCount; i++) {
+                g.drawImage(pages[i], 0, yOffset, null);
+                yOffset += pages[i].getHeight();
+            }
+            g.dispose();
+
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            ImageIO.write(combined, "jpeg", baos);
+            log.info("Rendered all {} PDF pages as combined JPEG image ({} bytes, {}x{} px)",
+                    pageCount, baos.size(), maxWidth, totalHeight);
+            return baos.toByteArray();
+        } catch (Exception e) {
+            log.error("Failed to render PDF page as image: {}", e.getMessage());
+            return null;
         }
     }
 

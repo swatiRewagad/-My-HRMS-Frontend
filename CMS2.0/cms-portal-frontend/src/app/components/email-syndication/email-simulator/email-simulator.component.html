@@ -11,7 +11,7 @@
   <!-- Mode Toggle -->
   <div class="mode-toggle">
     <button [class.active]="mode() === 'manual'" (click)="mode.set('manual')">Manual Send</button>
-    <button [class.active]="mode() === 'batch'" (click)="mode.set('batch')">Batch Simulation</button>
+    <button [class.active]="mode() === 'batch'" disabled title="Batch simulation is temporarily disabled">Batch Simulation</button>
   </div>
 
   <!-- Manual Mode -->

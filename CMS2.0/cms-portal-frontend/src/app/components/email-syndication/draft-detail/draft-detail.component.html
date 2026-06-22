@@ -80,7 +80,10 @@
 
         <div class="form-group">
           <label>Complaint Summary</label>
-          <textarea [ngModel]="form().complaintSummary" (ngModelChange)="updateField('complaintSummary', $event)" name="summary" rows="4"></textarea>
+          <div class="textarea-with-speech">
+            <textarea [ngModel]="form().complaintSummary" (ngModelChange)="updateField('complaintSummary', $event)" name="summary" rows="4"></textarea>
+            <app-speech-button (transcription)="updateField('complaintSummary', (form().complaintSummary || '') + ' ' + $event)"></app-speech-button>
+          </div>
         </div>
 
         @if (d.ocrProcessed) {

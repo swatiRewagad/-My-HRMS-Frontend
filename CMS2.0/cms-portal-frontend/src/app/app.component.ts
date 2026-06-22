@@ -1,5 +1,5 @@
-import { Component, inject } from '@angular/core';
-import { RouterOutlet, RouterLink } from '@angular/router';
+import { Component, inject, computed } from '@angular/core';
+import { RouterOutlet, RouterLink, Router } from '@angular/router';
 import { KeycloakAuthService } from './services/keycloak-auth.service';
 
 @Component({
@@ -7,24 +7,28 @@ import { KeycloakAuthService } from './services/keycloak-auth.service';
   standalone: true,
   imports: [RouterOutlet, RouterLink],
   template: `
-    <header class="app-header">
-      <div class="header-content">
-        <a routerLink="/" class="brand">
-          <span class="brand-text">RBI CMS</span>
-          <span class="brand-subtitle">Complaint Management System</span>
-        </a>
-        <nav class="header-nav">
-          <a routerLink="/" class="nav-link">Home</a>
-          <a routerLink="/track" class="nav-link">Track Complaint</a>
-        </nav>
-      </div>
-    </header>
+    @if (!isStaffRoute()) {
+      <header class="app-header">
+        <div class="header-content">
+          <a routerLink="/" class="brand">
+            <span class="brand-text">RBI CMS</span>
+            <span class="brand-subtitle">Complaint Management System</span>
+          </a>
+          <nav class="header-nav">
+            <a routerLink="/" class="nav-link">Home</a>
+            <a routerLink="/track" class="nav-link">Track Complaint</a>
+          </nav>
+        </div>
+      </header>
+    }
     <main>
       <router-outlet/>
     </main>
-    <footer class="app-footer">
-      <p>© Reserve Bank of India | Integrated Ombudsman Scheme 2021</p>
-    </footer>
+    @if (!isStaffRoute()) {
+      <footer class="app-footer">
+        <p>© Reserve Bank of India | Integrated Ombudsman Scheme 2021</p>
+      </footer>
+    }
 
     <!-- Session Expiry Popup -->
     @if (auth.sessionExpiring()) {
@@ -122,4 +126,10 @@ import { KeycloakAuthService } from './services/keycloak-auth.service';
 })
 export class AppComponent {
   auth = inject(KeycloakAuthService);
+  private router = inject(Router);
+
+  isStaffRoute() {
+    const url = this.router.url;
+    return url.startsWith('/crpc') || url.startsWith('/staff') || url.startsWith('/cepc');
+  }
 }

@@ -2,11 +2,12 @@ import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { SpeechButtonComponent } from '../../../shared/speech-button/speech-button.component';
 
 @Component({
   selector: 'app-file-appeal',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, SpeechButtonComponent],
   templateUrl: './file-appeal.component.html',
   styleUrl: './file-appeal.component.scss'
 })

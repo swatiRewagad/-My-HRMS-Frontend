@@ -4,11 +4,12 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { EmailSyndicationService } from '../../../services/email-syndication.service';
 import { EmailDraft, EmailDraftUpdateRequest, DeoUser } from '../../../models/email-syndication.model';
+import { SpeechButtonComponent } from '../../../shared/speech-button/speech-button.component';
 
 @Component({
   selector: 'app-draft-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, SpeechButtonComponent],
   templateUrl: './draft-detail.component.html',
   styleUrl: './draft-detail.component.scss'
 })

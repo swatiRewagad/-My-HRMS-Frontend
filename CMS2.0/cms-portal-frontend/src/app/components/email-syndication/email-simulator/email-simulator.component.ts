@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { EmailSyndicationService } from '../../../services/email-syndication.service';
 import { EmailIngestRequest, EmailDraft } from '../../../models/email-syndication.model';
+import { SpeechButtonComponent } from '../../../shared/speech-button/speech-button.component';
 
 interface SimulationResult {
   email: EmailIngestRequest;
@@ -22,7 +23,7 @@ interface SimulationResult {
 @Component({
   selector: 'app-email-simulator',
   standalone: true,
-  imports: [CommonModule, FormsModule, KeyValuePipe],
+  imports: [CommonModule, FormsModule, KeyValuePipe, SpeechButtonComponent],
   templateUrl: './email-simulator.component.html',
   styleUrl: './email-simulator.component.scss'
 })
@@ -239,7 +240,7 @@ export class EmailSimulatorComponent {
     const files = this.attachedFiles();
 
     const request$ = files.length > 0
-      ? this.emailService.ingestEmailWithAttachment(email, files)
+      ? this.emailService.ingestEmailWithAttachment(email, files[0])
       : this.emailService.ingestEmail(email);
 
     request$.subscribe({

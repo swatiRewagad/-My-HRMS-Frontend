@@ -2,6 +2,8 @@ package com.hrms.cms.controller;
 
 import com.hrms.cms.dto.ChunkUploadResponse;
 import com.hrms.cms.entity.ComplaintAttachment;
+import com.hrms.cms.entity.EmailDraftAttachment;
+import com.hrms.cms.repository.EmailDraftAttachmentRepository;
 import com.hrms.cms.service.FileStorageService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -15,6 +17,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 
 @RestController
@@ -23,6 +26,7 @@ import java.util.List;
 public class FileUploadController {
 
     private final FileStorageService fileStorageService;
+    private final EmailDraftAttachmentRepository draftAttachmentRepository;
 
     /**
      * Chunked upload endpoint.
@@ -145,6 +149,39 @@ public class FileUploadController {
     public ResponseEntity<Void> deleteAttachment(@PathVariable Long attachmentId) throws IOException {
         fileStorageService.deleteAttachment(attachmentId);
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Serve an email-draft attachment file by its DB id.
+     */
+    @GetMapping("/email-draft/{attachmentId}")
+    public ResponseEntity<Resource> downloadDraftAttachment(@PathVariable Long attachmentId) throws IOException {
+        EmailDraftAttachment att = draftAttachmentRepository.findById(attachmentId).orElse(null);
+        if (att == null || att.getStoragePath() == null || att.getStoragePath().isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        Path filePath = Paths.get(att.getStoragePath());
+        if (!Files.exists(filePath)) {
+            return ResponseEntity.notFound().build();
+        }
+
+        Resource resource = new FileSystemResource(filePath);
+        String contentType = att.getFileType() != null ? att.getFileType() : "application/octet-stream";
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(contentType))
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "inline; filename=\"" + att.getFileName() + "\"")
+                .body(resource);
+    }
+
+    /**
+     * List email-draft attachments by draft ID.
+     */
+    @GetMapping("/email-draft/by-draft/{draftId}")
+    public ResponseEntity<List<EmailDraftAttachment>> listDraftAttachments(@PathVariable String draftId) {
+        return ResponseEntity.ok(draftAttachmentRepository.findByDraftIdOrderByCreatedAtAsc(draftId));
     }
 
     /**

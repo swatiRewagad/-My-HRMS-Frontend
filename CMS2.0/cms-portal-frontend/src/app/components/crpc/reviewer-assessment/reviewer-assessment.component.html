@@ -363,7 +363,10 @@
               }
             </select>
           </div>
-          <textarea [(ngModel)]="reviewerRemarks" rows="4" placeholder="Add reviewer comments (mandatory)..."></textarea>
+          <div class="textarea-with-speech">
+            <textarea [(ngModel)]="reviewerRemarks" rows="4" placeholder="Add reviewer comments (mandatory)..."></textarea>
+            <app-speech-button (transcription)="reviewerRemarks = reviewerRemarks + ' ' + $event"></app-speech-button>
+          </div>
         </div>
 
         <!-- Submit -->

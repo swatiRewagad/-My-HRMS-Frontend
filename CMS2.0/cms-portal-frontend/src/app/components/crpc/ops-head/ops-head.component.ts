@@ -5,6 +5,7 @@ import { Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
 import { environment } from '../../../../environments/environment';
+import { SpeechButtonComponent } from '../../../shared/speech-button/speech-button.component';
 
 interface TransferComplaint {
   complaintId: string;
@@ -30,7 +31,7 @@ interface TransferComplaint {
 @Component({
   selector: 'app-ops-head',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, SpeechButtonComponent],
   templateUrl: './ops-head.component.html',
   styleUrl: './ops-head.component.scss'
 })

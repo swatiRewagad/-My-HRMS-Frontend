@@ -3,6 +3,7 @@ package com.hrms.cms.controller;
 import com.hrms.cms.entity.Complaint;
 import com.hrms.cms.repository.BankRepository;
 import com.hrms.cms.repository.ComplaintRepository;
+import com.hrms.cms.repository.ComplaintTimelineRepository;
 import com.hrms.cms.service.ComplaintService;
 import com.hrms.cms.service.KeycloakUserService;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +25,7 @@ public class WorkflowController {
     private final ComplaintService complaintService;
     private final BankRepository bankRepository;
     private final KeycloakUserService keycloakUserService;
+    private final ComplaintTimelineRepository complaintTimelineRepository;
 
     private final Map<String, Integer> roundRobinCounters = new ConcurrentHashMap<>();
 
@@ -93,6 +95,17 @@ public class WorkflowController {
     public ResponseEntity<Map<String, Object>> getCepcCompleted(
             @RequestParam(required = false) String officer) {
         return getCompletedByDepartment("CEPC", officer);
+    }
+
+    @GetMapping("/my-actions")
+    public ResponseEntity<Map<String, Object>> getMyActions(@RequestParam String officer) {
+        List<Long> complaintIds = complaintTimelineRepository.findDistinctComplaintIdsByPerformedBy(officer);
+        if (complaintIds.isEmpty()) {
+            return buildResponse(true, "My actions", List.of());
+        }
+        List<Complaint> complaints = complaintRepository.findAllById(complaintIds);
+        complaints.sort((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()));
+        return buildResponse(true, "My actions", buildTaskList(complaints));
     }
 
     @GetMapping("/unassigned")

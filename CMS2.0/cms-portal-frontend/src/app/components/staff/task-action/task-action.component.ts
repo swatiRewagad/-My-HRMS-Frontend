@@ -5,11 +5,12 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
 import { environment } from '../../../../environments/environment';
+import { SpeechButtonComponent } from '../../../shared/speech-button/speech-button.component';
 
 @Component({
   selector: 'app-task-action',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, SpeechButtonComponent],
   template: `
     <div class="action-container">
       <header class="topbar">
@@ -115,7 +116,10 @@ import { environment } from '../../../../environments/environment';
             @if (selectedAction()) {
               <div class="remarks-section">
                 <label>Remarks for "{{ selectedAction() }}"</label>
-                <textarea [(ngModel)]="remarks" rows="3" placeholder="Enter remarks (required)..."></textarea>
+                <div class="textarea-with-speech">
+                  <textarea [(ngModel)]="remarks" rows="3" placeholder="Enter remarks (required)..."></textarea>
+                  <app-speech-button (transcription)="remarks = remarks + ' ' + $event"></app-speech-button>
+                </div>
                 <div class="confirm-actions">
                   <button class="confirm-btn" [disabled]="!remarks.trim() || processing()" (click)="submitAction()">
                     @if (processing()) {

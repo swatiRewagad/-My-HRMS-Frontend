@@ -17,9 +17,14 @@ import com.hrms.cms.service.LanguageTranslationService;
 import com.hrms.cms.service.OcrExtractionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -40,6 +45,9 @@ public class EmailSyndicationApiController {
     private final ComplaintRoutingService routingService;
     private final ComplaintService complaintService;
     private final ObjectMapper objectMapper;
+
+    @Value("${cms.attachments.root-path:C:/cms-attachments}")
+    private String attachmentsRootPath;
 
     private int roundRobinPointer = 0;
 
@@ -141,17 +149,6 @@ public class EmailSyndicationApiController {
                 }
             }
 
-            // Save attachment to database
-            EmailDraftAttachment att = EmailDraftAttachment.builder()
-                    .draftId(threadId)
-                    .fileName(attachment.getOriginalFilename())
-                    .fileType(contentType)
-                    .fileSize(attachment.getSize())
-                    .ocrText(ocrExtracted.isEmpty() ? "" : ocrExtracted.toString())
-                    .ocrConfidence(ocrConfidence)
-                    .uploadedBy("SYSTEM")
-                    .build();
-            draftAttachmentRepository.save(att);
         }
 
         // Language detection and translation
@@ -212,6 +209,33 @@ public class EmailSyndicationApiController {
 
         EmailDraft saved = draftRepository.save(draft);
         log.info("Draft saved to DB: id={}, draftId={}, assignedTo={}", saved.getId(), saved.getDraftId(), saved.getAssignedTo());
+
+        // Save attachment to database and disk (after draft so we use the correct draftId)
+        if (attachment != null && !attachment.isEmpty()) {
+            String storagePath = "";
+            try {
+                Path draftDir = Paths.get(attachmentsRootPath, "email-drafts", saved.getDraftId());
+                Files.createDirectories(draftDir);
+                Path targetFile = draftDir.resolve(attachment.getOriginalFilename());
+                attachment.transferTo(targetFile.toFile());
+                storagePath = targetFile.toString();
+                log.info("Attachment stored at: {}", storagePath);
+            } catch (IOException e) {
+                log.error("Failed to store attachment file to disk: {}", e.getMessage());
+            }
+
+            EmailDraftAttachment att = EmailDraftAttachment.builder()
+                    .draftId(saved.getDraftId())
+                    .fileName(attachment.getOriginalFilename())
+                    .fileType(attachment.getContentType())
+                    .fileSize(attachment.getSize())
+                    .storagePath(storagePath)
+                    .ocrText(ocrExtracted.isEmpty() ? "" : ocrExtracted.toString())
+                    .ocrConfidence(ocrConfidence)
+                    .uploadedBy("SYSTEM")
+                    .build();
+            draftAttachmentRepository.save(att);
+        }
 
         return wrapResponse(toResponseMap(saved));
     }
@@ -308,6 +332,97 @@ public class EmailSyndicationApiController {
             return wrapResponse(fallback);
         } catch (Exception e) {
             return wrapResponse(Map.of("error", "Draft not found: " + draftId));
+        }
+    }
+
+    @PostMapping(value = "/drafts/physical-letter", consumes = "multipart/form-data")
+    public Map<String, Object> createPhysicalLetterDraft(
+            @RequestParam(value = "complainantName", required = false, defaultValue = "") String complainantName,
+            @RequestParam(value = "complainantPhone", required = false, defaultValue = "") String complainantPhone,
+            @RequestParam(value = "senderEmail", required = false, defaultValue = "") String senderEmail,
+            @RequestParam(value = "complainantAddress", required = false, defaultValue = "") String complainantAddress,
+            @RequestParam(value = "complainantState", required = false, defaultValue = "") String complainantState,
+            @RequestParam(value = "complainantDistrict", required = false, defaultValue = "") String complainantDistrict,
+            @RequestParam(value = "complainantPincode", required = false, defaultValue = "") String complainantPincode,
+            @RequestParam(value = "category", required = false, defaultValue = "") String category,
+            @RequestParam(value = "entityName", required = false, defaultValue = "") String entityName,
+            @RequestParam(value = "entityType", required = false, defaultValue = "BANK") String entityType,
+            @RequestParam(value = "subject", required = false, defaultValue = "") String subject,
+            @RequestParam(value = "body", required = false, defaultValue = "") String body,
+            @RequestParam(value = "amountInvolved", required = false) String amountInvolved,
+            @RequestParam(value = "transactionDate", required = false, defaultValue = "") String transactionDate,
+            @RequestParam(value = "letterDate", required = false, defaultValue = "") String letterDate,
+            @RequestParam(value = "modeOfReceipt", required = false, defaultValue = "PHYSICAL_LETTER") String modeOfReceipt,
+            @RequestParam(value = "status", required = false, defaultValue = "DRAFT") String status,
+            @RequestParam(value = "assignedTo", required = false, defaultValue = "") String assignedTo,
+            @RequestParam(value = "processedBy", required = false, defaultValue = "") String processedBy,
+            @RequestParam(value = "receivedAt", required = false, defaultValue = "") String receivedAt,
+            @RequestParam(value = "attachment", required = false) MultipartFile attachment) {
+
+        try {
+            long nextSeq = draftRepository.count() + 1;
+            String draftId = "DRF-" + String.format("%06d", nextSeq);
+
+            EmailDraft draft = EmailDraft.builder()
+                    .draftId(draftId)
+                    .threadId(UUID.randomUUID().toString())
+                    .messageId(UUID.randomUUID().toString())
+                    .senderEmail(senderEmail)
+                    .subject(subject)
+                    .body(body)
+                    .complainantName(complainantName)
+                    .complainantPhone(complainantPhone)
+                    .complainantAddress(complainantAddress)
+                    .complainantState(complainantState)
+                    .complainantDistrict(complainantDistrict)
+                    .complainantPincode(complainantPincode)
+                    .category(category)
+                    .entityName(entityName)
+                    .entityType(entityType)
+                    .modeOfReceipt(modeOfReceipt)
+                    .status(status)
+                    .assignedTo(assignedTo)
+                    .processedBy(processedBy)
+                    .amountInvolved(parseAmount(amountInvolved != null ? amountInvolved : ""))
+                    .isDuplicate(false)
+                    .ocrProcessed(true)
+                    .receivedAt(java.time.LocalDateTime.now())
+                    .build();
+
+            EmailDraft saved = draftRepository.save(draft);
+            log.info("Physical letter draft saved: draftId={}", saved.getDraftId());
+
+            // Store attachment if present
+            if (attachment != null && !attachment.isEmpty()) {
+                String storagePath = "";
+                try {
+                    Path draftDir = Paths.get(attachmentsRootPath, "email-drafts", saved.getDraftId());
+                    Files.createDirectories(draftDir);
+                    Path targetFile = draftDir.resolve(attachment.getOriginalFilename());
+                    attachment.transferTo(targetFile.toFile());
+                    storagePath = targetFile.toString();
+                    log.info("Physical letter attachment stored at: {}", storagePath);
+                } catch (IOException e) {
+                    log.error("Failed to store physical letter attachment: {}", e.getMessage());
+                }
+
+                EmailDraftAttachment att = EmailDraftAttachment.builder()
+                        .draftId(saved.getDraftId())
+                        .fileName(attachment.getOriginalFilename())
+                        .fileType(attachment.getContentType())
+                        .fileSize(attachment.getSize())
+                        .storagePath(storagePath)
+                        .ocrText("")
+                        .ocrConfidence(0)
+                        .uploadedBy(assignedTo.isEmpty() ? "DEO" : assignedTo)
+                        .build();
+                draftAttachmentRepository.save(att);
+            }
+
+            return wrapResponse(toResponseMap(saved));
+        } catch (Exception e) {
+            log.error("Physical letter draft creation failed: {}", e.getMessage());
+            return wrapResponse(Map.of("error", e.getMessage()));
         }
     }
 

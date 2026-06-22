@@ -291,7 +291,10 @@
         <div class="dialog-body">
           <div class="form-group">
             <label>Comments</label>
-            <textarea [(ngModel)]="confirmComments" rows="4" placeholder="Enter your comments..."></textarea>
+            <div class="textarea-with-speech">
+              <textarea [(ngModel)]="confirmComments" rows="4" placeholder="Enter your comments..."></textarea>
+              <app-speech-button (transcription)="confirmComments = confirmComments + ' ' + $event"></app-speech-button>
+            </div>
           </div>
           <div class="expected-status">
             <label>Expected Status Change</label>

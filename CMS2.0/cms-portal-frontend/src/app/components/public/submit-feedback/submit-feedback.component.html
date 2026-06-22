@@ -74,14 +74,20 @@
 
       <div class="form-group">
         <label>Additional Feedback</label>
-        <textarea class="form-textarea" [(ngModel)]="feedbackText" name="feedbackText" rows="4"
-                  placeholder="Share your experience in detail..."></textarea>
+        <div class="textarea-with-speech">
+          <textarea class="form-textarea" [(ngModel)]="feedbackText" name="feedbackText" rows="4"
+                    placeholder="Share your experience in detail..."></textarea>
+          <app-speech-button (transcription)="feedbackText = feedbackText + ' ' + $event"></app-speech-button>
+        </div>
       </div>
 
       <div class="form-group">
         <label>Suggestions for Improvement</label>
-        <textarea class="form-textarea" [(ngModel)]="suggestions" name="suggestions" rows="3"
-                  placeholder="Any suggestions to improve our services?"></textarea>
+        <div class="textarea-with-speech">
+          <textarea class="form-textarea" [(ngModel)]="suggestions" name="suggestions" rows="3"
+                    placeholder="Any suggestions to improve our services?"></textarea>
+          <app-speech-button (transcription)="suggestions = suggestions + ' ' + $event"></app-speech-button>
+        </div>
       </div>
 
       @if (error) {

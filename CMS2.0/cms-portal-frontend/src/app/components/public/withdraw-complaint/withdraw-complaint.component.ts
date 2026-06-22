@@ -3,11 +3,12 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
 import { ComplaintService } from '../../../services/complaint.service';
+import { SpeechButtonComponent } from '../../../shared/speech-button/speech-button.component';
 
 @Component({
   selector: 'app-withdraw-complaint',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, SpeechButtonComponent],
   templateUrl: './withdraw-complaint.component.html',
   styleUrl: './withdraw-complaint.component.scss'
 })

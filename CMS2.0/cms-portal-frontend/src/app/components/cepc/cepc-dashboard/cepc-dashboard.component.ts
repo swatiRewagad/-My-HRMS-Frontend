@@ -5,6 +5,7 @@ import { Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
 import { environment } from '../../../../environments/environment';
+import { SpeechButtonComponent } from '../../../shared/speech-button/speech-button.component';
 
 interface CepcComplaint {
   complaintId: string;
@@ -30,7 +31,7 @@ type CepcRole = 'CEPC_DO' | 'CEPC_REVIEWER' | 'CEPC_INCHARGE' | 'CEPC_CLOSING_AU
 @Component({
   selector: 'app-cepc-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, SpeechButtonComponent],
   templateUrl: './cepc-dashboard.component.html',
   styleUrl: './cepc-dashboard.component.scss'
 })
@@ -156,8 +157,22 @@ export class CepcDashboardComponent implements OnInit {
 
     this.http.get<any>(url).subscribe({
       next: (res) => {
-        this.complaints.set(res?.data || []);
-        this.loading.set(false);
+        const roleTasks = res?.data || [];
+        // Also fetch complaints this officer acted on (history)
+        this.http.get<any>(`${environment.apiBaseUrl}/api/v1/workflow/my-actions?officer=${officer}`).subscribe({
+          next: (actionsRes) => {
+            const actionTasks: CepcComplaint[] = actionsRes?.data || [];
+            // Merge: add action-history complaints not already in role tasks
+            const existingIds = new Set(roleTasks.map((t: any) => t.complaintNumber));
+            const merged = [...roleTasks, ...actionTasks.filter((t: any) => !existingIds.has(t.complaintNumber))];
+            this.complaints.set(merged);
+            this.loading.set(false);
+          },
+          error: () => {
+            this.complaints.set(roleTasks);
+            this.loading.set(false);
+          }
+        });
       },
       error: () => {
         this.complaints.set([]);

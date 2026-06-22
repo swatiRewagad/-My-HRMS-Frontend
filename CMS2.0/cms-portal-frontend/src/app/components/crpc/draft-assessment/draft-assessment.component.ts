@@ -8,6 +8,7 @@ import { CrpcService } from '../../../services/crpc.service';
 import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
 import { ReviewerUser } from '../../../models/crpc.model';
 import { environment } from '../../../../environments/environment';
+import { SpeechButtonComponent } from '../../../shared/speech-button/speech-button.component';
 
 interface MaintainabilityQuestion {
   id: string;
@@ -38,7 +39,7 @@ interface EmailCorrespondence {
 @Component({
   selector: 'app-draft-assessment',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, SpeechButtonComponent],
   templateUrl: './draft-assessment.component.html',
   styleUrl: './draft-assessment.component.scss'
 })
@@ -54,6 +55,7 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
   // ─── View Mode ───
   editMode = signal(false);
   activeStep = signal<'creation' | 'assignment'>('creation');
+  showAiWarning = true;
 
   // ─── PDF Preview (Physical Letter) ───
   pdfPreviewUrl = signal<SafeResourceUrl | null>(null);
@@ -531,8 +533,8 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
   }
 
   openAttachmentsPanel() {
-    // Open every attachment as its own tab and activate the first one
     const atts = this.attachments();
+    console.log('[Attachments] Opening panel, count:', atts.length, atts.map(a => ({ id: a.id, name: a.name, url: a.url })));
     if (atts.length === 0) { this.showAttachmentsPanel.set(true); return; }
     atts.forEach(att => {
       if (!this.openedDocTabs().find(t => t.id === att.id)) {
@@ -555,6 +557,49 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
   viewAttachment(att: Attachment) {
     this.viewingAttachment.set(att);
     this.pdfCurrentPage.set(1);
+  }
+
+  viewAttachmentInNewTab(att: Attachment) {
+    if (!att.url) return;
+    const cached = this.blobUrlCache.get(att.id);
+    if (cached) {
+      window.open(cached, '_blank');
+    } else {
+      this.http.get(att.url, { responseType: 'blob' }).subscribe({
+        next: (blob) => {
+          const url = URL.createObjectURL(blob);
+          window.open(url, '_blank');
+        },
+        error: () => {
+          window.open(att.url, '_blank');
+        }
+      });
+    }
+  }
+
+  downloadAttachment(att: Attachment) {
+    if (!att.url) return;
+    const cached = this.blobUrlCache.get(att.id);
+    if (cached) {
+      const a = document.createElement('a');
+      a.href = cached;
+      a.download = att.name;
+      a.click();
+    } else {
+      this.http.get(att.url, { responseType: 'blob' }).subscribe({
+        next: (blob) => {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = att.name;
+          a.click();
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+        },
+        error: () => {
+          window.open(att.url, '_blank');
+        }
+      });
+    }
   }
 
   closeViewingAttachment() {
@@ -831,7 +876,15 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
           [att.id]: this.sanitizer.bypassSecurityTrustResourceUrl(objectUrl)
         }));
       },
-      error: () => {}
+      error: (err) => {
+        console.error('Failed to load attachment blob:', att.url, err);
+        if (att.url) {
+          this.attachmentBlobUrls.update(map => ({
+            ...map,
+            [att.id]: this.sanitizer.bypassSecurityTrustResourceUrl(att.url!)
+          }));
+        }
+      }
     });
   }
 

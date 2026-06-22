@@ -4,11 +4,12 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { ComplaintService } from '../../services/complaint.service';
 import { ComplaintRegistrationRequest, ComplaintAcknowledgement, ComplaintCategory } from '../../models/complaint.model';
+import { SpeechButtonComponent } from '../../shared/speech-button/speech-button.component';
 
 @Component({
   selector: 'app-complaint-form',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, SpeechButtonComponent],
   templateUrl: './complaint-form.component.html',
   styleUrl: './complaint-form.component.scss'
 })

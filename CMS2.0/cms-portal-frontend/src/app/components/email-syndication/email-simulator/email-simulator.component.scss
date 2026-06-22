@@ -35,6 +35,7 @@
 
     &.active { background: #1565c0; color: #fff; }
     &:not(.active):hover { background: #e3f2fd; }
+    &:disabled { background: #e5e7eb; color: #9ca3af; cursor: not-allowed; border-left: 1px solid #d1d5db; }
   }
 }
 

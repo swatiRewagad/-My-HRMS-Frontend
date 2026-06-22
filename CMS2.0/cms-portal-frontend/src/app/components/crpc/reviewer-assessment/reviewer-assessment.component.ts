@@ -6,6 +6,7 @@ import { HttpClient } from '@angular/common/http';
 import { CrpcService } from '../../../services/crpc.service';
 import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
 import { environment } from '../../../../environments/environment';
+import { SpeechButtonComponent } from '../../../shared/speech-button/speech-button.component';
 
 interface Attachment {
   id: string;
@@ -28,7 +29,7 @@ interface HistoryEntry {
 @Component({
   selector: 'app-reviewer-assessment',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, SpeechButtonComponent],
   templateUrl: './reviewer-assessment.component.html',
   styleUrl: './reviewer-assessment.component.scss'
 })

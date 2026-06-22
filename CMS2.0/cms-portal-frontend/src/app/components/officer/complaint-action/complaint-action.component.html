@@ -178,11 +178,14 @@
         @if (showResolveForm()) {
           <div class="panel-section form-section">
             <h4>Submit Resolution</h4>
-            <textarea
-              [ngModel]="resolutionText()"
-              (ngModelChange)="resolutionText.set($event)"
-              placeholder="Describe the resolution provided to the customer..."
-              rows="5"></textarea>
+            <div class="textarea-with-speech">
+              <textarea
+                [ngModel]="resolutionText()"
+                (ngModelChange)="resolutionText.set($event)"
+                placeholder="Describe the resolution provided to the customer..."
+                rows="5"></textarea>
+              <app-speech-button (transcription)="resolutionText.set((resolutionText() || '') + ' ' + $event)"></app-speech-button>
+            </div>
             <div class="form-actions">
               <button class="btn-submit" (click)="submitResolution()" [disabled]="!resolutionText() || actionLoading()">
                 Submit Resolution
@@ -196,11 +199,14 @@
         @if (showEscalateForm()) {
           <div class="panel-section form-section escalation">
             <h4>Escalate Complaint</h4>
-            <textarea
-              [ngModel]="escalationReason()"
-              (ngModelChange)="escalationReason.set($event)"
-              placeholder="Reason for escalation..."
-              rows="3"></textarea>
+            <div class="textarea-with-speech">
+              <textarea
+                [ngModel]="escalationReason()"
+                (ngModelChange)="escalationReason.set($event)"
+                placeholder="Reason for escalation..."
+                rows="3"></textarea>
+              <app-speech-button (transcription)="escalationReason.set((escalationReason() || '') + ' ' + $event)"></app-speech-button>
+            </div>
             <div class="form-actions">
               <button class="btn-submit btn-escalate" (click)="submitEscalation()" [disabled]="!escalationReason() || actionLoading()">
                 Confirm Escalation

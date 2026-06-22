@@ -3,11 +3,12 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { OfficerService, ComplaintDetail } from '../../../services/officer.service';
+import { SpeechButtonComponent } from '../../../shared/speech-button/speech-button.component';
 
 @Component({
   selector: 'app-complaint-action',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, SpeechButtonComponent],
   templateUrl: './complaint-action.component.html',
   styleUrl: './complaint-action.component.scss'
 })

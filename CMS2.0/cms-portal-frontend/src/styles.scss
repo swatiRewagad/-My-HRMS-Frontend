@@ -66,3 +66,13 @@ button { font-family: inherit; }
     border: 2px solid ButtonText;
   }
 }
+
+/* Speech-to-text textarea wrapper */
+.textarea-with-speech {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  textarea { flex: 1; }
+  app-speech-button { margin-top: 6px; }
+}

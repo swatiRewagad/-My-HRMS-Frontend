@@ -176,7 +176,10 @@
               </div>
               <div class="form-field full">
                 <label>Description</label>
-                <textarea [(ngModel)]="newComplaint.description" rows="4" placeholder="Detailed description..."></textarea>
+                <div class="textarea-with-speech">
+                  <textarea [(ngModel)]="newComplaint.description" rows="4" placeholder="Detailed description..."></textarea>
+                  <app-speech-button (transcription)="newComplaint.description = newComplaint.description + ' ' + $event"></app-speech-button>
+                </div>
               </div>
               <div class="form-field">
                 <label>Priority</label>

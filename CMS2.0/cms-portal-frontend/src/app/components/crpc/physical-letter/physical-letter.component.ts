@@ -6,6 +6,7 @@ import { HttpClient } from '@angular/common/http';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
 import { environment } from '../../../../environments/environment';
+import { SpeechButtonComponent } from '../../../shared/speech-button/speech-button.component';
 
 interface Suggestion {
   id: string;
@@ -23,7 +24,7 @@ interface PastComplaint {
 @Component({
   selector: 'app-physical-letter',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, SpeechButtonComponent],
   templateUrl: './physical-letter.component.html',
   styleUrl: './physical-letter.component.scss'
 })
@@ -226,30 +227,33 @@ export class PhysicalLetterComponent implements OnInit {
     const loggedInUser = JSON.parse(sessionStorage.getItem('crpc_user') || '{}');
     const username = loggedInUser?.id || this.auth.currentUser()?.username || '';
 
-    const payload = {
-      complainantName: this.complainantName,
-      complainantPhone: this.complainantPhone,
-      senderEmail: this.complainantEmail,
-      complainantAddress: this.complainantAddress,
-      complainantState: this.complainantState,
-      complainantDistrict: this.complainantDistrict,
-      complainantPincode: this.complainantPincode,
-      category: this.category,
-      entityName: this.entityName,
-      entityType: this.entityType,
-      subject: this.subject,
-      body: this.description,
-      amountInvolved: this.amountInvolved,
-      transactionDate: this.transactionDate,
-      letterDate: this.letterDate,
-      modeOfReceipt: this.modeOfReceipt || 'PHYSICAL_LETTER',
-      status: 'DRAFT',
-      assignedTo: username,
-      processedBy: username,
-      receivedAt: (this.receivedDate || new Date().toISOString().split('T')[0]) + 'T00:00:00',
-    };
+    const formData = new FormData();
+    formData.append('complainantName', this.complainantName);
+    formData.append('complainantPhone', this.complainantPhone);
+    formData.append('senderEmail', this.complainantEmail);
+    formData.append('complainantAddress', this.complainantAddress);
+    formData.append('complainantState', this.complainantState);
+    formData.append('complainantDistrict', this.complainantDistrict);
+    formData.append('complainantPincode', this.complainantPincode);
+    formData.append('category', this.category);
+    formData.append('entityName', this.entityName);
+    formData.append('entityType', this.entityType);
+    formData.append('subject', this.subject);
+    formData.append('body', this.description);
+    if (this.amountInvolved) formData.append('amountInvolved', String(this.amountInvolved));
+    if (this.transactionDate) formData.append('transactionDate', this.transactionDate);
+    if (this.letterDate) formData.append('letterDate', this.letterDate);
+    formData.append('modeOfReceipt', this.modeOfReceipt || 'PHYSICAL_LETTER');
+    formData.append('status', 'DRAFT');
+    formData.append('assignedTo', username);
+    formData.append('processedBy', username);
+    formData.append('receivedAt', (this.receivedDate || new Date().toISOString().split('T')[0]) + 'T00:00:00');
 
-    this.http.post<any>(`${environment.apiBaseUrl}/api/v1/email-syndication/drafts`, payload)
+    if (this.scannedFile) {
+      formData.append('attachment', this.scannedFile);
+    }
+
+    this.http.post<any>(`${environment.apiBaseUrl}/api/v1/email-syndication/ingest`, formData)
       .subscribe({
         next: (res) => {
           const newDraftId = res?.data?.draftId || res?.data?.id || '';
@@ -258,10 +262,23 @@ export class PhysicalLetterComponent implements OnInit {
           this.submitted.set(true);
 
           sessionStorage.setItem('physicalLetterDraft', JSON.stringify({
-            ...payload,
-            draftId: newDraftId,
+            complainantName: this.complainantName,
+            complainantPhone: this.complainantPhone,
             complainantEmail: this.complainantEmail,
+            complainantAddress: this.complainantAddress,
+            complainantState: this.complainantState,
+            complainantDistrict: this.complainantDistrict,
+            complainantPincode: this.complainantPincode,
+            category: this.category,
+            entityName: this.entityName,
+            entityType: this.entityType,
+            subject: this.subject,
             description: this.description,
+            amountInvolved: this.amountInvolved,
+            transactionDate: this.transactionDate,
+            letterDate: this.letterDate,
+            modeOfReceipt: this.modeOfReceipt,
+            draftId: newDraftId,
             fileName: this.scannedFile?.name || 'scanned_letter.pdf',
             fileSize: this.scannedFile ? (this.scannedFile.size / 1024 / 1024).toFixed(2) + ' MB' : '2.4 MB',
           }));
@@ -275,10 +292,12 @@ export class PhysicalLetterComponent implements OnInit {
           this.submitted.set(true);
 
           sessionStorage.setItem('physicalLetterDraft', JSON.stringify({
-            ...payload,
-            draftId: fallbackId,
+            complainantName: this.complainantName,
+            complainantPhone: this.complainantPhone,
             complainantEmail: this.complainantEmail,
+            subject: this.subject,
             description: this.description,
+            draftId: fallbackId,
             fileName: this.scannedFile?.name || 'scanned_letter.pdf',
             fileSize: this.scannedFile ? (this.scannedFile.size / 1024 / 1024).toFixed(2) + ' MB' : '2.4 MB',
           }));

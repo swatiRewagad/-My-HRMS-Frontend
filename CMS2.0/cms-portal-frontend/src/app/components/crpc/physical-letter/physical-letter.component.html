@@ -143,11 +143,17 @@
             </div>
             <div class="form-group full-width">
               <label>Complaint Details</label>
-              <textarea [(ngModel)]="description" rows="3" placeholder="Detailed description of the complaint"></textarea>
+              <div class="textarea-with-speech">
+                <textarea [(ngModel)]="description" rows="3" placeholder="Detailed description of the complaint"></textarea>
+                <app-speech-button (transcription)="description = description + ' ' + $event"></app-speech-button>
+              </div>
             </div>
             <div class="form-group full-width">
               <label>Comments</label>
-              <textarea [(ngModel)]="comments" rows="2" placeholder="Internal DEO comments (max 3 KB)" maxlength="3072"></textarea>
+              <div class="textarea-with-speech">
+                <textarea [(ngModel)]="comments" rows="2" placeholder="Internal DEO comments (max 3 KB)" maxlength="3072"></textarea>
+                <app-speech-button (transcription)="comments = comments + ' ' + $event"></app-speech-button>
+              </div>
             </div>
           </div>
         </section>

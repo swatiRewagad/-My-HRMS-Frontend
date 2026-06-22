@@ -2,12 +2,31 @@
   <!-- ═══ HEADER BAR ═══ -->
   <header class="cms-header">
     <div class="header-left">
-      <img src="assets/rbi-logo.png" alt="RBI" class="rbi-logo" onerror="this.style.display='none'" />
-      <img src="assets/cms-logo.png" alt="CMS" class="cms-logo" onerror="this.style.display='none'" />
-      <span class="cms-title">CMS</span>
-      <span class="cms-subtitle">Complaint Management System</span>
+      <img src="assets/corporates-rbi-logo.jpg" alt="RBI" class="rbi-logo" />
+      <div class="rbi-text">
+        <span class="rbi-hindi">भारतीय रिज़र्व बैंक</span>
+        <span class="rbi-english">RESERVE BANK OF INDIA</span>
+      </div>
+      <div class="header-divider-v"></div>
+      <img src="assets/rbi-logo.png" alt="CMS" class="cms-logo" onerror="this.style.display='none'" />
+      <div class="header-brand">
+        <span class="cms-title">CMS</span>
+        <span class="cms-subtitle">Complaint Management System</span>
+      </div>
     </div>
     <div class="header-right">
+      <div class="accessibility-controls">
+        <button class="acc-btn" title="Phone"><i class="pi pi-phone"></i></button>
+        <span class="acc-divider">|</span>
+        <button class="acc-btn" title="Decrease font">A-</button>
+        <button class="acc-btn acc-btn-mid" title="Normal font">A</button>
+        <button class="acc-btn" title="Increase font">A+</button>
+        <span class="acc-divider">|</span>
+        <button class="acc-btn lang-btn" title="Language">English <i class="pi pi-chevron-down"></i></button>
+        <span class="acc-divider">|</span>
+        <button class="acc-btn" title="Notifications"><i class="pi pi-bell"></i></button>
+      </div>
+      <div class="header-divider"></div>
       <span class="user-avatar">{{ (loggedInUser?.name || 'U').charAt(0) }}</span>
       <div class="user-details">
         <span class="user-name">{{ loggedInUser?.name || 'Staff' }}</span>
@@ -40,6 +59,11 @@
 
     <!-- ═══ SUB-HEADER TAB ═══ -->
     <div class="sub-header">
+      <!-- Left nav icons -->
+      <div class="sub-header-nav">
+        <button class="nav-icon-btn active" title="Complaint view"><i class="pi pi-file"></i></button>
+        <button class="nav-icon-btn" title="Dashboard" (click)="goBack()"><i class="pi pi-chart-bar"></i></button>
+      </div>
       <!-- Pinned complaint tab -->
       <div class="complaint-tab" [class.active]="activeDocTabId() === null" (click)="activeDocTabId.set(null)">
         <i class="pi pi-file"></i>
@@ -53,89 +77,116 @@
           <button class="att-tab-close" (click)="closeAttachmentTab(tab.id, $event)" title="Close"><i class="pi pi-times"></i></button>
         </div>
       }
-    </div>
-
-    <!-- ═══ META ROW ═══ -->
-    <div class="meta-row">
-      <button class="back-arrow" (click)="goBack()">
-        <i class="pi pi-arrow-left"></i>
-      </button>
-      <div class="meta-item">
-        <span class="meta-label">Complaint ID <i class="pi pi-info-circle"></i></span>
-        <span class="meta-value"><i class="pi pi-id-card"></i> {{ draftId }}</span>
-      </div>
-      <div class="meta-item">
-        <span class="meta-label">Complaint Number <i class="pi pi-info-circle"></i></span>
-        <span class="meta-value">{{ cpgramsReference || 'Not Generated' }}</span>
-      </div>
-      <div class="meta-item">
-        <span class="meta-label">Mode of Receipt <i class="pi pi-info-circle"></i></span>
-        <span class="meta-value"><i class="pi pi-envelope"></i> {{ modeOfReceipt === 'PHYSICAL_LETTER' ? 'Physical Letter' : 'Email' }}</span>
-      </div>
-      <div class="meta-item">
-        <span class="meta-label">Status <i class="pi pi-info-circle"></i></span>
-        <span class="meta-value status-badge" [class.sent]="draftStatus === 'SENT_TO_REVIEWER'" [class.approved]="draftStatus === 'APPROVED_ROUTED'">
-          <i class="pi pi-flag"></i> {{ draftStatus === 'SENT_TO_REVIEWER' ? 'Sent to Reviewer' : 'Draft' }}
-        </span>
-      </div>
-      <div class="meta-item">
-        <span class="meta-label">Complaint Owner <i class="pi pi-info-circle"></i></span>
-        <span class="meta-value owner-name"><i class="pi pi-user"></i> {{ loggedInUser?.name || 'DEO' }}</span>
-      </div>
-      <div class="meta-actions">
-        @if (!editMode() && !isReadOnly) {
-          <button class="btn btn-primary btn-edit" type="button" (click)="enterEditMode()"><i class="pi pi-pencil"></i> Edit</button>
-        }
-        @if (editMode() && activeStep() === 'creation') {
-          <button class="btn btn-outline btn-sm" (click)="goBack()"><i class="pi pi-chevron-left"></i> Back</button>
-          <button class="btn btn-save" (click)="saveDraft()" [disabled]="savingDraft()">
-            @if (savingDraft()) { <i class="pi pi-spin pi-spinner"></i> } @else { <i class="pi pi-save"></i> }
-            Save
-          </button>
-          <button class="btn btn-primary" (click)="goToAssignment()">Next <i class="pi pi-chevron-right"></i></button>
-        }
-        @if (editMode() && activeStep() === 'assignment') {
-          <button class="btn btn-outline btn-sm" (click)="goToCreation()"><i class="pi pi-chevron-left"></i> Back</button>
-          <button class="btn btn-save" (click)="saveDraft()" [disabled]="savingDraft()">
-            @if (savingDraft()) { <i class="pi pi-spin pi-spinner"></i> } @else { <i class="pi pi-save"></i> }
-            Save
-          </button>
-          <button class="btn btn-primary" (click)="showConfirmDialog.set(true)" [disabled]="!canSendForApproval() || submitting()">
-            Send for Approval
-          </button>
-        }
-        @if (isReadOnly) {
-          <span class="readonly-badge"><i class="pi pi-lock"></i> View Only</span>
-        }
+      <!-- Add tab button - opens CRPC home -->
+      <div class="complaint-tab add-tab" (click)="goBack()" title="Open CRPC Complaints">
+        <i class="pi pi-plus"></i>
       </div>
     </div>
 
-    <!-- ═══ TABS (Read-only mode only) ═══ -->
-    @if (!editMode()) {
-      <div class="page-tabs">
-        <button class="page-tab" [class.active]="currentTab() === 'details'" (click)="currentTab.set('details')">Summary</button>
-        <button class="page-tab" [class.active]="currentTab() === 'attachments'" (click)="currentTab.set('attachments')">Email Communication</button>
-      </div>
-    }
+    <!-- ═══ PAGE BODY: Left Main + Right Sidebar ═══ -->
+    <div class="page-body-layout" [class.has-sidebar]="!editMode()">
 
-    <!-- ═══ STEPPER BAR (Edit mode only) ═══ -->
-    @if (editMode()) {
-      <div class="stepper-bar">
-        <div class="stepper-step" [class.completed]="activeStep() === 'assignment'" [class.active]="activeStep() === 'creation'">
-          <div class="step-circle">@if (activeStep() === 'assignment') { <i class="pi pi-check"></i> } @else { 1 }</div>
-          <span class="step-label">Creation</span>
-        </div>
-        <div class="stepper-connector" [class.active]="activeStep() === 'assignment'"></div>
-        <div class="stepper-step" [class.active]="activeStep() === 'assignment'">
-          <div class="step-circle">2</div>
-          <span class="step-label">Assignment</span>
-        </div>
-      </div>
-    }
+      <!-- LEFT MAIN AREA -->
+      <div class="left-main-area">
 
-    <!-- ═══ MAIN CONTENT ═══ -->
-    @if (currentTab() === 'details' || editMode()) {
-    <div class="main-content-layout" [class.three-col]="!editMode()" [class.two-col]="editMode()">
+        <!-- ═══ META ROW ═══ -->
+        <div class="meta-row">
+          <button class="back-arrow" (click)="goBack()">
+            <i class="pi pi-arrow-left"></i>
+          </button>
+          <div class="meta-item">
+            <span class="meta-icon"><i class="pi pi-id-card"></i></span>
+            <div class="meta-text">
+              <span class="meta-label">Complaint ID <i class="pi pi-info-circle"></i></span>
+              <span class="meta-value">{{ draftId }}</span>
+            </div>
+          </div>
+          <div class="meta-item">
+            <span class="meta-icon"><i class="pi pi-file"></i></span>
+            <div class="meta-text">
+              <span class="meta-label">Complaint Number <i class="pi pi-info-circle"></i></span>
+              <span class="meta-value">{{ cpgramsReference || 'Not Generated' }}</span>
+            </div>
+          </div>
+          <div class="meta-item">
+            <span class="meta-icon"><i class="pi pi-envelope"></i></span>
+            <div class="meta-text">
+              <span class="meta-label">Mode of Receipt <i class="pi pi-info-circle"></i></span>
+              <span class="meta-value">{{ modeOfReceipt === 'PHYSICAL_LETTER' ? 'Physical Letter' : 'Email' }}</span>
+            </div>
+          </div>
+          <div class="meta-item">
+            <span class="meta-icon"><i class="pi pi-chart-bar"></i></span>
+            <div class="meta-text">
+              <span class="meta-label">Status <i class="pi pi-info-circle"></i></span>
+              <span class="meta-value status-badge" [class.sent]="draftStatus === 'SENT_TO_REVIEWER'" [class.approved]="draftStatus === 'APPROVED_ROUTED'">
+                <i class="pi pi-flag"></i> {{ draftStatus === 'SENT_TO_REVIEWER' ? 'Sent to Reviewer' : 'Draft' }}
+              </span>
+            </div>
+          </div>
+          <div class="meta-item">
+            <span class="meta-icon owner"><i class="pi pi-user"></i></span>
+            <div class="meta-text">
+              <span class="meta-label">Complaint Owner <i class="pi pi-info-circle"></i></span>
+              <span class="meta-value">{{ loggedInUser?.name || 'DEO' }}</span>
+            </div>
+          </div>
+          <div class="meta-actions">
+            @if (!editMode() && !isReadOnly) {
+              <button class="btn btn-outline btn-edit" type="button" (click)="enterEditMode()"><i class="pi pi-pencil"></i> Edit</button>
+              <button class="btn btn-primary" (click)="showConfirmDialog.set(true)" [disabled]="!canSendForApproval() || submitting()">Send for Approval</button>
+            }
+            @if (editMode() && activeStep() === 'creation') {
+              <button class="btn btn-outline btn-sm" (click)="goBack()"><i class="pi pi-chevron-left"></i> Back</button>
+              <button class="btn btn-save" (click)="saveDraft()" [disabled]="savingDraft()">
+                @if (savingDraft()) { <i class="pi pi-spin pi-spinner"></i> } @else { <i class="pi pi-save"></i> }
+                Save
+              </button>
+              <button class="btn btn-primary" (click)="goToAssignment()">Next <i class="pi pi-chevron-right"></i></button>
+            }
+            @if (editMode() && activeStep() === 'assignment') {
+              <button class="btn btn-outline btn-sm" (click)="goToCreation()"><i class="pi pi-chevron-left"></i> Back</button>
+              <button class="btn btn-save" (click)="saveDraft()" [disabled]="savingDraft()">
+                @if (savingDraft()) { <i class="pi pi-spin pi-spinner"></i> } @else { <i class="pi pi-save"></i> }
+                Save
+              </button>
+              <button class="btn btn-primary" (click)="showConfirmDialog.set(true)" [disabled]="!canSendForApproval() || submitting()">
+                Send for Approval
+              </button>
+            }
+            @if (isReadOnly) {
+              <span class="readonly-badge"><i class="pi pi-lock"></i> View Only</span>
+            }
+          </div>
+          <button class="btn-more" title="More options"><i class="pi pi-ellipsis-v"></i></button>
+        </div>
+
+        <!-- ═══ TABS (Read-only mode only) ═══ -->
+        @if (!editMode()) {
+          <div class="page-tabs">
+            <button class="page-tab" [class.active]="currentTab() === 'details'" (click)="currentTab.set('details')">Summary</button>
+            <button class="page-tab" [class.active]="currentTab() === 'attachments'" (click)="currentTab.set('attachments')">Email Communication</button>
+          </div>
+        }
+
+        <!-- ═══ STEPPER BAR (Edit mode only) ═══ -->
+        @if (editMode()) {
+          <div class="stepper-bar">
+            <div class="stepper-step" [class.completed]="activeStep() === 'assignment'" [class.active]="activeStep() === 'creation'">
+              <div class="step-circle">@if (activeStep() === 'assignment') { <i class="pi pi-check"></i> } @else { 1 }</div>
+              <span class="step-label">Creation</span>
+            </div>
+            <div class="stepper-connector" [class.active]="activeStep() === 'assignment'"></div>
+            <div class="stepper-step" [class.active]="activeStep() === 'assignment'">
+              <div class="step-circle">2</div>
+              <span class="step-label">Assignment</span>
+            </div>
+          </div>
+        }
+
+        <!-- ═══ MAIN CONTENT ═══ -->
+        @if (currentTab() === 'details' || editMode()) {
+        <div class="main-content-layout" [class.two-col]="true">
 
       <!-- ════════════════════════════════════════════════════ -->
       <!-- LEFT: Email Syndicate Panel                          -->
@@ -258,7 +309,7 @@
                       <span>{{ att.name }}</span>
                       <small>{{ att.size }}</small>
                       <button title="View in tab" (click)="openAttachmentTab(att); $event.stopPropagation()"><i class="pi pi-eye"></i></button>
-                      <button title="Download" (click)="$event.stopPropagation()"><i class="pi pi-download"></i></button>
+                      <button title="Download" (click)="downloadAttachment(att); $event.stopPropagation()"><i class="pi pi-download"></i></button>
                     </div>
                   }
                 </div>
@@ -272,41 +323,65 @@
       }
 
       @if (!editMode() || activeStep() === 'creation') {
-        <!-- MIDDLE: Draft Complaint -->
+        <!-- MIDDLE: Complaint -->
         <div class="col-complaint" [class.panel-expanded]="expandedPanel() === 'complaint'" [class.panel-hidden]="expandedPanel() === 'email'">
           <div class="panel-header">
-            <h3><i class="pi pi-file-edit"></i> Draft Complaint</h3>
+            <h3><i class="pi pi-file-edit"></i> Complaint</h3>
             <button class="expand-btn" (click)="toggleExpand('complaint')">
               @if (expandedPanel() === 'complaint') { <i class="pi pi-window-minimize"></i> } @else { <i class="pi pi-window-maximize"></i> }
             </button>
           </div>
 
-          <!-- Complaint Details -->
+          <!-- AI Extraction Warning -->
+          @if (!editMode() && showAiWarning) {
+            <div class="ai-warning-banner">
+              <i class="pi pi-exclamation-circle"></i>
+              <span>Content extraction may not be 100% accurate. Please verify all information against the original document before proceeding.</span>
+              <button class="banner-close" (click)="showAiWarning = false"><i class="pi pi-times"></i></button>
+            </div>
+          }
+
+          <!-- Basic Details -->
           <div class="form-section" [class.open]="sectionOpen.complaint">
             <div class="section-header" (click)="sectionOpen.complaint = !sectionOpen.complaint">
-              <span><i class="pi pi-star"></i> Complaint Details</span>
+              <span><i class="pi pi-star"></i> Basic Details</span>
               <i class="pi" [class.pi-chevron-down]="sectionOpen.complaint" [class.pi-chevron-right]="!sectionOpen.complaint"></i>
             </div>
             @if (sectionOpen.complaint) {
               <div class="section-body">
                 <div class="field-grid-2">
                   <div class="field-item">
-                    <label>Subject</label>
+                    <label>Complainant Name</label>
                     @if (editMode()) {
-                      <input type="text" [(ngModel)]="subject" placeholder="Subject" />
+                      <input type="text" [(ngModel)]="complainantName" placeholder="Name" />
                     } @else {
-                      <span class="field-value">{{ subject || '—' }}</span>
+                      <span class="field-value">{{ complainantName || '—' }}</span>
                     }
                   </div>
                   <div class="field-item">
-                    <label>Complainant Email</label>
-                    <span class="field-value">{{ complainantEmail || '—' }}</span>
+                    <label>Email ID</label>
+                    @if (editMode()) {
+                      <input type="email" [(ngModel)]="complainantEmail" placeholder="Email" />
+                    } @else {
+                      <span class="field-value">{{ complainantEmail || '—' }}</span>
+                    }
                   </div>
+                </div>
+                <div class="field-item full">
+                  <label>Subject</label>
+                  @if (editMode()) {
+                    <input type="text" [(ngModel)]="subject" placeholder="Subject" />
+                  } @else {
+                    <span class="field-value">{{ subject || '—' }}</span>
+                  }
                 </div>
                 <div class="field-item full">
                   <label>Complaint Details</label>
                   @if (editMode()) {
-                    <textarea [(ngModel)]="description" rows="3" placeholder="Complaint description"></textarea>
+                    <div class="textarea-with-speech">
+                      <textarea [(ngModel)]="description" rows="3" placeholder="Complaint description"></textarea>
+                      <app-speech-button (transcription)="description = description + ' ' + $event"></app-speech-button>
+                    </div>
                   } @else {
                     <p class="field-readonly">{{ description ? (description.length > 200 ? description.substring(0,200) + '...' : description) : '—' }}</p>
                   }
@@ -314,7 +389,10 @@
                 <div class="field-item full">
                   <label>Comments</label>
                   @if (editMode()) {
-                    <textarea [(ngModel)]="deoRemarks" rows="2" placeholder="Enter comments"></textarea>
+                    <div class="textarea-with-speech">
+                      <textarea [(ngModel)]="deoRemarks" rows="2" placeholder="Enter comments"></textarea>
+                      <app-speech-button (transcription)="deoRemarks = deoRemarks + ' ' + $event"></app-speech-button>
+                    </div>
                   } @else {
                     <span class="field-value">{{ deoRemarks || '—' }}</span>
                   }
@@ -330,7 +408,7 @@
               <span class="field-static">{{ modeOfReceipt === 'PHYSICAL_LETTER' ? 'Physical Letter' : 'Email' }}</span>
             </div>
             <div class="field-item">
-              <label>Physical Letter Receipt Date</label>
+              <label>Receipt Date</label>
               @if (editMode()) {
                 <input type="date" [(ngModel)]="receivedDate" />
               } @else {
@@ -529,91 +607,6 @@
           </div>
         </div>
 
-        <!-- RIGHT: Sidebar (read-only mode only) -->
-        @if (!editMode()) {
-          <div class="col-right-sidebar" [class.panel-hidden]="expandedPanel() !== ''">
-            <!-- Reference Section -->
-            <div class="sidebar-section">
-              <div class="sidebar-section-header">
-                <h4><i class="pi pi-link"></i> Reference</h4>
-                <button class="sidebar-expand-btn"><i class="pi pi-arrow-up-right"></i></button>
-              </div>
-              <div class="sidebar-section-body">
-                <div class="reference-item">
-                  <span class="ref-label">Complaint ID</span>
-                  <span class="ref-value">{{ draftId }}</span>
-                </div>
-                <div class="reference-item">
-                  <span class="ref-label">CPGRAMS Ref</span>
-                  <span class="ref-value">{{ cpgramsReference || '—' }}</span>
-                </div>
-                <div class="reference-item">
-                  <span class="ref-label">Category</span>
-                  <span class="ref-value">{{ category || '—' }}</span>
-                </div>
-                <div class="reference-item">
-                  <span class="ref-label">Entity</span>
-                  <span class="ref-value">{{ entityName || '—' }}</span>
-                </div>
-              </div>
-            </div>
-
-            <!-- Past Complaints Section -->
-            <div class="sidebar-section">
-              <div class="sidebar-section-header">
-                <h4><i class="pi pi-history"></i> Past Complaints</h4>
-                <button class="sidebar-expand-btn" (click)="loadPastComplaints()"><i class="pi pi-refresh"></i></button>
-              </div>
-              <div class="sidebar-section-body">
-                @if (loadingPastComplaints()) {
-                  <p class="sidebar-loading"><i class="pi pi-spin pi-spinner"></i> Loading...</p>
-                } @else if (pastComplaints().length > 0) {
-                  @for (pc of pastComplaints(); track pc.complaintId) {
-                    <div class="past-complaint-card" (click)="openPastComplaintDetail(pc.complaintId)">
-                      <div class="pc-header">
-                        <span class="pc-id">{{ pc.complaintId }}</span>
-                        <span class="pc-status" [class.active]="pc.status === 'ACTIVE'" [class.completed]="pc.status === 'COMPLETED' || pc.status === 'RESOLVED'">{{ pc.status }}</span>
-                      </div>
-                      <p class="pc-subject">{{ pc.subject }}</p>
-                      <span class="pc-date">{{ pc.filedDate }}</span>
-                    </div>
-                  }
-                } @else {
-                  <p class="sidebar-empty">No past complaints found</p>
-                }
-              </div>
-            </div>
-
-            <!-- Documents Section -->
-            <div class="sidebar-section">
-              <div class="sidebar-section-header">
-                <h4><i class="pi pi-file"></i> Documents</h4>
-                <span class="doc-count">{{ attachments().length }}</span>
-              </div>
-              <div class="sidebar-section-body">
-                @for (att of attachments(); track att.id) {
-                  <div class="doc-item">
-                    <div class="doc-icon">
-                      @if (att.type.includes('pdf')) { <i class="pi pi-file-pdf"></i> }
-                      @else if (att.type.includes('image')) { <i class="pi pi-image"></i> }
-                      @else { <i class="pi pi-file"></i> }
-                    </div>
-                    <div class="doc-info">
-                      <span class="doc-name">{{ att.name }}</span>
-                      <span class="doc-meta">{{ att.size }} · {{ att.uploadedBy || 'System' }}</span>
-                    </div>
-                    <div class="doc-actions">
-                      <button title="View"><i class="pi pi-eye"></i></button>
-                      <button title="Download"><i class="pi pi-download"></i></button>
-                    </div>
-                  </div>
-                } @empty {
-                  <p class="sidebar-empty">No documents attached</p>
-                }
-              </div>
-            </div>
-          </div>
-        }
       }
 
       <!-- ════════════════════════════════════════════════════ -->
@@ -883,7 +876,7 @@
                 </div>
                 <div class="field-item"><label>To</label><input type="email" [(ngModel)]="emailTo" /></div>
                 <div class="field-item"><label>Subject</label><input type="text" [(ngModel)]="emailSubject" /></div>
-                <div class="field-item"><label>Body</label><textarea [(ngModel)]="emailBody" rows="6"></textarea></div>
+                <div class="field-item"><label>Body</label><div class="textarea-with-speech"><textarea [(ngModel)]="emailBody" rows="6"></textarea><app-speech-button (transcription)="emailBody = emailBody + ' ' + $event"></app-speech-button></div></div>
                 <div class="composer-actions">
                   <button class="btn btn-primary btn-sm" (click)="sendEmail()" [disabled]="sendingEmail() || !emailBody">
                     @if (sendingEmail()) { Sending... } @else { <i class="pi pi-send"></i> Send }
@@ -896,6 +889,106 @@
         </div>
       </div>
     }
+
+      </div><!-- /left-main-area -->
+
+      <!-- INLINE ICON BAR -->
+      @if (!editMode()) {
+        <div class="inline-icon-bar">
+          <button class="iib-btn" [class.active]="showSimilarPanel()" title="Similar cases" (click)="toggleSimilarPanel()"><i class="pi pi-search"></i></button>
+          <button class="iib-btn att-icon-inline" [class.has-attachments]="attachments().length > 0"
+            title="Attachments ({{ attachments().length }})"
+            (click)="showAttachmentsPanel() ? closeAttachmentsPanel() : openAttachmentsPanel()">
+            <i class="pi pi-paperclip"></i>
+            @if (attachments().length > 0) {
+              <span class="iib-badge">{{ attachments().length }}</span>
+            }
+          </button>
+          <button class="iib-btn" [class.active]="showHistoryPanel()" title="History" (click)="toggleHistoryPanel()"><i class="pi pi-history"></i></button>
+        </div>
+      }
+
+      <!-- RIGHT SIDEBAR -->
+      @if (!editMode()) {
+        <div class="col-right-sidebar">
+          <!-- Reference Section -->
+          <div class="sidebar-section reference-section">
+            <div class="sidebar-section-header">
+              <h4><i class="pi pi-cog"></i> Reference</h4>
+              <button class="sidebar-expand-btn"><i class="pi pi-chevron-right"></i></button>
+            </div>
+          </div>
+
+          <!-- Past Complaints Section -->
+          <div class="sidebar-section">
+            <div class="sidebar-section-header">
+              <h4><i class="pi pi-history"></i> Past Complaints <span class="sidebar-count-badge">{{ pastComplaints().length }}</span></h4>
+              <button class="sidebar-expand-btn" (click)="loadPastComplaints()"><i class="pi pi-refresh"></i></button>
+            </div>
+            <div class="sidebar-section-body">
+              <div class="sidebar-search">
+                <i class="pi pi-search"></i>
+                <input type="text" placeholder="Search" />
+              </div>
+              @if (loadingPastComplaints()) {
+                <p class="sidebar-loading"><i class="pi pi-spin pi-spinner"></i> Loading...</p>
+              } @else if (pastComplaints().length > 0) {
+                @for (pc of pastComplaints(); track pc.complaintId) {
+                  <div class="past-complaint-card" (click)="openPastComplaintDetail(pc.complaintId)">
+                    <span class="pc-status" [class.active]="pc.status === 'ACTIVE'" [class.completed]="pc.status === 'COMPLETED' || pc.status === 'RESOLVED'">
+                      <i class="pi pi-circle-fill"></i> {{ pc.status === 'COMPLETED' || pc.status === 'RESOLVED' ? 'Completed' : 'Active' }}
+                    </span>
+                    <div class="pc-details">
+                      <span class="pc-field"><strong>Complaint Id:</strong> {{ pc.complaintId }}</span>
+                      <span class="pc-field"><strong>Modified Date:</strong> {{ pc.filedDate }}</span>
+                      <span class="pc-field"><strong>Processing Office:</strong> Chandigarh CEPC</span>
+                      <span class="pc-field"><strong>Entity:</strong> {{ pc.entity || '—' }}</span>
+                    </div>
+                    <p class="pc-subject">{{ pc.subject }}</p>
+                  </div>
+                }
+              } @else {
+                <p class="sidebar-empty">No past complaints found</p>
+              }
+            </div>
+          </div>
+
+          <!-- Documents Section -->
+          <div class="sidebar-section">
+            <div class="sidebar-section-header">
+              <h4><i class="pi pi-file"></i> Documents</h4>
+            </div>
+            <div class="sidebar-section-body">
+              <div class="sidebar-search">
+                <i class="pi pi-search"></i>
+                <input type="text" placeholder="Search" />
+              </div>
+              @for (att of attachments(); track att.id) {
+                <div class="doc-item">
+                  <div class="doc-icon" [class.doc-icon-pdf]="att.type.includes('pdf')">
+                    @if (att.type.includes('pdf')) { <i class="pi pi-file-pdf"></i> }
+                    @else if (att.type.includes('image')) { <i class="pi pi-image"></i> }
+                    @else if (att.type.includes('sheet') || att.type.includes('excel') || att.name.endsWith('.xls') || att.name.endsWith('.xlsx')) { <i class="pi pi-file-excel"></i> }
+                    @else { <i class="pi pi-file"></i> }
+                  </div>
+                  <div class="doc-info">
+                    <span class="doc-name">{{ att.name }}</span>
+                    <span class="doc-meta">{{ att.size }} Uploaded by {{ att.uploadedBy || 'Kushal M' }}</span>
+                  </div>
+                  <div class="doc-actions">
+                    <button title="View" (click)="openAttachmentTab(att)"><i class="pi pi-eye"></i></button>
+                    <button title="Download" (click)="downloadAttachment(att)"><i class="pi pi-download"></i></button>
+                  </div>
+                </div>
+              } @empty {
+                <p class="sidebar-empty">No documents attached</p>
+              }
+            </div>
+          </div>
+        </div>
+      }
+
+    </div><!-- /page-body-layout -->
 
     <!-- ═══ SIMILAR CASES PANEL (slides in from right) ═══ -->
     @if (showSimilarPanel()) {
@@ -979,18 +1072,49 @@
       </div>
     }
 
-    <!-- ═══ RIGHT ICON SIDEBAR ═══ -->
+    <!-- ═══ COMMENT BAR ═══ -->
+    @if (!editMode()) {
+      <div class="comment-bar">
+        <input type="text" class="comment-input" placeholder="Add a comment" />
+        <button class="comment-send-btn"><i class="pi pi-send"></i></button>
+      </div>
+    }
+
+    <!-- ═══ LEFT ICON SIDEBAR ═══ -->
     <div class="icon-sidebar">
-      <button class="icon-sidebar-btn" [class.active]="showSimilarPanel()" title="Search similar cases" (click)="toggleSimilarPanel()"><i class="pi pi-search"></i></button>
+      <button class="icon-sidebar-btn active" title="Complaint view"><i class="pi pi-file"></i></button>
+      <button class="icon-sidebar-btn" title="Dashboard" (click)="goBack()"><i class="pi pi-chart-bar"></i></button>
+      <div class="sidebar-spacer"></div>
+      <button class="icon-sidebar-btn" [class.active]="showSimilarPanel()" title="Similar cases" (click)="toggleSimilarPanel()"><i class="pi pi-search"></i></button>
       <button class="icon-sidebar-btn att-icon-btn" [class.active]="showAttachmentsPanel()"
+        [class.has-attachments]="attachments().length > 0"
         title="Attachments ({{ attachments().length }})"
         (click)="showAttachmentsPanel() ? closeAttachmentsPanel() : openAttachmentsPanel()">
         <i class="pi pi-paperclip"></i>
         @if (attachments().length > 0) {
-          <span class="att-badge">{{ attachments().length }}</span>
+          <span class="att-badge" [ngStyle]="{
+            position: 'absolute',
+            top: '-5px',
+            right: '-5px',
+            'min-width': '18px',
+            height: '18px',
+            background: '#f59e0b',
+            color: '#fff',
+            'font-size': '11px',
+            'font-weight': '700',
+            'border-radius': '4px',
+            display: 'flex',
+            'align-items': 'center',
+            'justify-content': 'center',
+            padding: '2px 5px',
+            'line-height': '1',
+            'z-index': '2',
+            'box-shadow': '0 1px 4px rgba(245,158,11,0.5)'
+          }">{{ attachments().length }}</span>
         }
       </button>
       <button class="icon-sidebar-btn" [class.active]="showHistoryPanel()" title="History" (click)="toggleHistoryPanel()"><i class="pi pi-history"></i></button>
+      <div class="sidebar-spacer"></div>
     </div>
 
   }

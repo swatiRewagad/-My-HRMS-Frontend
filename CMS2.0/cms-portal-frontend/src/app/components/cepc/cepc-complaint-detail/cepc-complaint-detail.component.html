@@ -229,8 +229,11 @@
                 @if (action.requiresRemarks) {
                   <div class="form-field">
                     <label>Remarks</label>
-                    <textarea [(ngModel)]="remarks" rows="4"
-                              placeholder="Enter remarks (required)..."></textarea>
+                    <div class="textarea-with-speech">
+                      <textarea [(ngModel)]="remarks" rows="4"
+                                placeholder="Enter remarks (required)..."></textarea>
+                      <app-speech-button (transcription)="remarks = remarks + ' ' + $event"></app-speech-button>
+                    </div>
                   </div>
                 }
 
