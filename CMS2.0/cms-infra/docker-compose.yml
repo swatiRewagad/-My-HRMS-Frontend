@@ -168,6 +168,344 @@ services:
     networks:
       - cms-network
 
+  # ══════════════════════════════════════════════════════════════
+  # MICROSERVICES (built from parent POM using shared Dockerfile)
+  # ══════════════════════════════════════════════════════════════
+
+  # ── API Gateway (Port 8080) ──
+  cms-api-gateway:
+    build:
+      context: ..
+      dockerfile: cms-infra/Dockerfile.microservice
+      args:
+        SERVICE_NAME: cms-api-gateway
+    container_name: cms-api-gateway
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      KEYCLOAK_ISSUER_URI: http://cms-keycloak:8180/realms/cms
+      KAFKA_BOOTSTRAP: cms-kafka:9092
+      SERVER_PORT: 8080
+    ports:
+      - "8080:8080"
+    depends_on:
+      cms-kafka:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+          cpus: '1.0'
+    networks:
+      - cms-network
+
+  # ── Eligibility Service (Port 8081) ──
+  cms-eligibility-service:
+    build:
+      context: ..
+      dockerfile: cms-infra/Dockerfile.microservice
+      args:
+        SERVICE_NAME: cms-eligibility-service
+    container_name: cms-eligibility-service
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      KAFKA_BOOTSTRAP: cms-kafka:9092
+      SERVER_PORT: 8081
+    depends_on:
+      cms-kafka:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+          cpus: '1.0'
+    networks:
+      - cms-network
+
+  # ── Ingestion Service (Port 8082) ──
+  cms-ingestion-service:
+    build:
+      context: ..
+      dockerfile: cms-infra/Dockerfile.microservice
+      args:
+        SERVICE_NAME: cms-ingestion-service
+    container_name: cms-ingestion-service
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_URL: jdbc:mysql://cms-mysql:3306/cms_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      DB_USERNAME: ${MYSQL_USER:-cms_user}
+      DB_PASSWORD: ${MYSQL_PASSWORD:-cms_pass}
+      KAFKA_BOOTSTRAP: cms-kafka:9092
+      SERVER_PORT: 8082
+    depends_on:
+      cms-mysql:
+        condition: service_healthy
+      cms-kafka:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+          cpus: '1.0'
+    networks:
+      - cms-network
+
+  # ── Workflow Service (Port 8083) ──
+  cms-workflow-service:
+    build:
+      context: ..
+      dockerfile: cms-infra/Dockerfile.microservice
+      args:
+        SERVICE_NAME: cms-workflow-service
+    container_name: cms-workflow-service
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_URL: jdbc:mysql://cms-mysql:3306/cms_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      DB_USERNAME: ${MYSQL_USER:-cms_user}
+      DB_PASSWORD: ${MYSQL_PASSWORD:-cms_pass}
+      KAFKA_BOOTSTRAP: cms-kafka:9092
+      SERVER_PORT: 8083
+    depends_on:
+      cms-mysql:
+        condition: service_healthy
+      cms-kafka:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 1024M
+          cpus: '1.0'
+    networks:
+      - cms-network
+
+  # ── Rules Service (Port 8084) ──
+  cms-rules-service:
+    build:
+      context: ..
+      dockerfile: cms-infra/Dockerfile.microservice
+      args:
+        SERVICE_NAME: cms-rules-service
+    container_name: cms-rules-service
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_URL: jdbc:mysql://cms-mysql:3306/cms_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      DB_USERNAME: ${MYSQL_USER:-cms_user}
+      DB_PASSWORD: ${MYSQL_PASSWORD:-cms_pass}
+      KAFKA_BOOTSTRAP: cms-kafka:9092
+      SERVER_PORT: 8084
+    depends_on:
+      cms-mysql:
+        condition: service_healthy
+      cms-kafka:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+          cpus: '1.0'
+    networks:
+      - cms-network
+
+  # ── Assignment Service (Port 8085) ──
+  cms-assignment-service:
+    build:
+      context: ..
+      dockerfile: cms-infra/Dockerfile.microservice
+      args:
+        SERVICE_NAME: cms-assignment-service
+    container_name: cms-assignment-service
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_URL: jdbc:mysql://cms-mysql:3306/cms_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      DB_USERNAME: ${MYSQL_USER:-cms_user}
+      DB_PASSWORD: ${MYSQL_PASSWORD:-cms_pass}
+      KAFKA_BOOTSTRAP: cms-kafka:9092
+      SERVER_PORT: 8085
+    depends_on:
+      cms-mysql:
+        condition: service_healthy
+      cms-kafka:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+          cpus: '1.0'
+    networks:
+      - cms-network
+
+  # ── SLA Monitor Service (Port 8086) ──
+  cms-sla-monitor-service:
+    build:
+      context: ..
+      dockerfile: cms-infra/Dockerfile.microservice
+      args:
+        SERVICE_NAME: cms-sla-monitor-service
+    container_name: cms-sla-monitor-service
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_URL: jdbc:mysql://cms-mysql:3306/cms_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      DB_USERNAME: ${MYSQL_USER:-cms_user}
+      DB_PASSWORD: ${MYSQL_PASSWORD:-cms_pass}
+      KAFKA_BOOTSTRAP: cms-kafka:9092
+      SERVER_PORT: 8086
+    depends_on:
+      cms-mysql:
+        condition: service_healthy
+      cms-kafka:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+          cpus: '1.0'
+    networks:
+      - cms-network
+
+  # ── Notification Service (Port 8087) ──
+  cms-notification-service:
+    build:
+      context: ..
+      dockerfile: cms-infra/Dockerfile.microservice
+      args:
+        SERVICE_NAME: cms-notification-service
+    container_name: cms-notification-service
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      KAFKA_BOOTSTRAP: cms-kafka:9092
+      SERVER_PORT: 8087
+    depends_on:
+      cms-kafka:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+    networks:
+      - cms-network
+
+  # ── Audit Service (Port 8088) ──
+  cms-audit-service:
+    build:
+      context: ..
+      dockerfile: cms-infra/Dockerfile.microservice
+      args:
+        SERVICE_NAME: cms-audit-service
+    container_name: cms-audit-service
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_URL: jdbc:mysql://cms-mysql:3306/cms_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      DB_USERNAME: ${MYSQL_USER:-cms_user}
+      DB_PASSWORD: ${MYSQL_PASSWORD:-cms_pass}
+      KAFKA_BOOTSTRAP: cms-kafka:9092
+      SERVER_PORT: 8088
+    depends_on:
+      cms-mysql:
+        condition: service_healthy
+      cms-kafka:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+    networks:
+      - cms-network
+
+  # ── Outbox Publisher (Port 8089) ──
+  cms-outbox-publisher:
+    build:
+      context: ..
+      dockerfile: cms-infra/Dockerfile.microservice
+      args:
+        SERVICE_NAME: cms-outbox-publisher
+    container_name: cms-outbox-publisher
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_URL: jdbc:mysql://cms-mysql:3306/cms_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      DB_USERNAME: ${MYSQL_USER:-cms_user}
+      DB_PASSWORD: ${MYSQL_PASSWORD:-cms_pass}
+      KAFKA_BOOTSTRAP: cms-kafka:9092
+      SERVER_PORT: 8089
+    depends_on:
+      cms-mysql:
+        condition: service_healthy
+      cms-kafka:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+    networks:
+      - cms-network
+
+  # ── Storage Service (Port 8090) ──
+  cms-storage-service:
+    build:
+      context: ..
+      dockerfile: cms-infra/Dockerfile.microservice
+      args:
+        SERVICE_NAME: cms-storage-service
+    container_name: cms-storage-service
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      CMS_ATTACHMENTS_PATH: /cms-attachments
+      SERVER_PORT: 8090
+    volumes:
+      - cms-attachments:/cms-attachments
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+    networks:
+      - cms-network
+
+  # ── Search Service (Port 8091) ──
+  cms-search-service:
+    build:
+      context: ..
+      dockerfile: cms-infra/Dockerfile.microservice
+      args:
+        SERVICE_NAME: cms-search-service
+    container_name: cms-search-service
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      OPENSEARCH_HOST: cms-opensearch
+      OPENSEARCH_PORT: 9200
+      OPENSEARCH_SCHEME: http
+      KAFKA_BOOTSTRAP: cms-kafka:9092
+      SERVER_PORT: 8091
+    depends_on:
+      cms-opensearch:
+        condition: service_healthy
+      cms-kafka:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+          cpus: '1.0'
+    networks:
+      - cms-network
+
+  # ══════════════════════════════════════════════════════════════
+  # INFRASTRUCTURE SERVICES
+  # ══════════════════════════════════════════════════════════════
+
   # ── OpenSearch 2.18 (Full-Text Search) ──
   cms-opensearch:
     image: opensearchproject/opensearch:2.18.0

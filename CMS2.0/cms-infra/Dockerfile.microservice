@@ -1,0 +1,39 @@
+ARG SERVICE_NAME
+
+FROM eclipse-temurin:21-jdk-alpine AS build
+ARG SERVICE_NAME
+WORKDIR /app
+
+# Copy parent POM and shared modules first (cacheable layer)
+COPY pom.xml .
+COPY cms-common/pom.xml cms-common/pom.xml
+COPY cms-common/src cms-common/src
+COPY cms-infrastructure/pom.xml cms-infrastructure/pom.xml
+COPY cms-infrastructure/src cms-infrastructure/src
+
+# Copy target service
+COPY ${SERVICE_NAME}/pom.xml ${SERVICE_NAME}/pom.xml
+COPY ${SERVICE_NAME}/src ${SERVICE_NAME}/src
+
+# Build only the shared modules + target service
+RUN apk add --no-cache maven \
+    && mvn install -pl cms-common,cms-infrastructure -am -DskipTests -q \
+    && mvn package -pl ${SERVICE_NAME} -am -DskipTests -q
+
+FROM eclipse-temurin:21-jre-alpine
+ARG SERVICE_NAME
+WORKDIR /app
+RUN addgroup -S cms && adduser -S cms -G cms
+COPY --from=build /app/${SERVICE_NAME}/target/*.jar app.jar
+USER cms
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
+  CMD wget -qO- http://localhost:${SERVER_PORT:-8080}/actuator/health || exit 1
+
+ENTRYPOINT ["java", \
+  "-XX:+UseG1GC", \
+  "-XX:MaxGCPauseMillis=200", \
+  "-XX:InitialRAMPercentage=50.0", \
+  "-XX:MaxRAMPercentage=75.0", \
+  "-Djava.security.egd=file:/dev/./urandom", \
+  "-jar", "app.jar"]

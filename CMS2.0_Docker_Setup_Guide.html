@@ -294,22 +294,46 @@ GROQ_API_KEY=gsk_your_groq_api_key_here
     </div>
 
     <h3>1.4 Understand the Docker Compose Configuration</h3>
-    <p>The <code>cms-infra/docker-compose.yml</code> defines <strong>14 services</strong>:</p>
+    <p>The <code>cms-infra/docker-compose.yml</code> defines <strong>26 containers</strong> — the entire platform runs with one command:</p>
+
+    <h4>Infrastructure Services</h4>
     <table>
-        <tr><th>Service</th><th>What It Does</th><th>Health Check</th></tr>
-        <tr><td>cms-mysql</td><td>Starts MySQL 8.0, creates <code>cms_db</code> database, runs <code>init.sql</code></td><td>mysqladmin ping</td></tr>
-        <tr><td>cms-redis</td><td>Starts Redis 7 with 512 MB cache, LRU eviction</td><td>redis-cli ping</td></tr>
-        <tr><td>cms-kafka</td><td>Apache Kafka 3.7 in KRaft mode (event streaming, no Zookeeper)</td><td>kafka-topics.sh --list</td></tr>
-        <tr><td>cms-opensearch</td><td>OpenSearch 2.18 for full-text search indexing</td><td>HTTP /_cluster/health</td></tr>
-        <tr><td>cms-keycloak</td><td>Keycloak 26.0 for SSO/OAuth2/OIDC authentication</td><td>—</td></tr>
-        <tr><td>cms-keycloak-db</td><td>PostgreSQL 16 backing store for Keycloak</td><td>pg_isready</td></tr>
-        <tr><td>cms-backend-1/2</td><td>Builds backend from source (Maven in Docker), runs Spring Boot</td><td>HTTP /actuator/health</td></tr>
-        <tr><td>cms-paddle-ocr</td><td>Builds Python OCR service, downloads PaddleOCR models</td><td>HTTP /health</td></tr>
-        <tr><td>cms-frontend</td><td>Builds Angular app (ng build), serves via Nginx</td><td>HTTP /</td></tr>
-        <tr><td>cms-gateway</td><td>Nginx reverse proxy: routes /api/ to backends, / to frontend</td><td>—</td></tr>
-        <tr><td>cms-kafka-ui</td><td>Visual Kafka management: topics, messages, consumer groups</td><td>—</td></tr>
-        <tr><td>cms-prometheus</td><td>Scrapes metrics from all Spring Boot actuator endpoints</td><td>—</td></tr>
-        <tr><td>cms-grafana</td><td>Monitoring dashboards, alerting rules</td><td>—</td></tr>
+        <tr><th>Service</th><th>What It Does</th><th>Port</th></tr>
+        <tr><td>cms-mysql</td><td>Primary database (MySQL 8.0, utf8mb4)</td><td>3307</td></tr>
+        <tr><td>cms-redis</td><td>Caching (Redis 7, 512 MB LRU)</td><td>6380</td></tr>
+        <tr><td>cms-kafka</td><td>Event streaming (Kafka 3.7, KRaft mode)</td><td>29092</td></tr>
+        <tr><td>cms-opensearch</td><td>Full-text search indexing (OpenSearch 2.18)</td><td>9200</td></tr>
+        <tr><td>cms-keycloak</td><td>SSO/OAuth2/OIDC (Keycloak 26.0)</td><td>8180</td></tr>
+        <tr><td>cms-keycloak-db</td><td>PostgreSQL for Keycloak</td><td>—</td></tr>
+    </table>
+
+    <h4>Backend Microservices (all built from shared Dockerfile)</h4>
+    <table>
+        <tr><th>Service</th><th>Port</th><th>Purpose</th></tr>
+        <tr><td>cms-backend-1 / cms-backend-2</td><td>8082 (internal)</td><td>Core module — complaints, email syndication, OCR, AI</td></tr>
+        <tr><td>cms-api-gateway</td><td>8080</td><td>Auth gateway, RBAC, routing, rate limiting</td></tr>
+        <tr><td>cms-eligibility-service</td><td>8081</td><td>Complaint eligibility validation</td></tr>
+        <tr><td>cms-ingestion-service</td><td>8082</td><td>Complaint registration, outbox events</td></tr>
+        <tr><td>cms-workflow-service</td><td>8083</td><td>BPMN/jBPM workflow execution</td></tr>
+        <tr><td>cms-rules-service</td><td>8084</td><td>Drools dynamic business rules</td></tr>
+        <tr><td>cms-assignment-service</td><td>8085</td><td>Officer assignment (rules-based)</td></tr>
+        <tr><td>cms-sla-monitor-service</td><td>8086</td><td>SLA breach detection & escalation</td></tr>
+        <tr><td>cms-notification-service</td><td>8087</td><td>Email/SMS notifications</td></tr>
+        <tr><td>cms-audit-service</td><td>8088</td><td>Audit trail logging</td></tr>
+        <tr><td>cms-outbox-publisher</td><td>8089</td><td>Reliable Kafka event publishing</td></tr>
+        <tr><td>cms-storage-service</td><td>8090</td><td>File/attachment storage</td></tr>
+        <tr><td>cms-search-service</td><td>8091</td><td>OpenSearch indexing & search</td></tr>
+    </table>
+
+    <h4>Frontend & Supporting</h4>
+    <table>
+        <tr><th>Service</th><th>Port</th><th>Purpose</th></tr>
+        <tr><td>cms-frontend</td><td>— (via gateway)</td><td>Angular SPA (production build)</td></tr>
+        <tr><td>cms-gateway</td><td>80, 443</td><td>Nginx reverse proxy & load balancer</td></tr>
+        <tr><td>cms-paddle-ocr</td><td>8100</td><td>PaddleOCR document extraction</td></tr>
+        <tr><td>cms-kafka-ui</td><td>8090</td><td>Kafka topic management UI</td></tr>
+        <tr><td>cms-prometheus</td><td>9090</td><td>Metrics collection from all services</td></tr>
+        <tr><td>cms-grafana</td><td>3000</td><td>Monitoring dashboards</td></tr>
     </table>
 </div>
 
