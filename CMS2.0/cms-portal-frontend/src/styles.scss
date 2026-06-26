@@ -67,6 +67,33 @@ button { font-family: inherit; }
   }
 }
 
+/* High contrast toggle */
+body.high-contrast {
+  background: #000 !important;
+  color: #fff !important;
+
+  * {
+    color: #fff !important;
+    border-color: #fff !important;
+  }
+
+  a { color: #ffff00 !important; }
+
+  .main-header, .scheme-card, .history-card, .press-card, .faq-item {
+    background: #1a1a1a !important;
+  }
+
+  .hero-outlined-btn, .action-btn, .filter-input {
+    background: #1a1a1a !important;
+    color: #fff !important;
+  }
+
+  .hero-btn, .file-new-btn, .login-btn, .wwd-btn-primary {
+    background: #ff6b35 !important;
+    color: #000 !important;
+  }
+}
+
 /* Speech-to-text textarea wrapper */
 .textarea-with-speech {
   position: relative;

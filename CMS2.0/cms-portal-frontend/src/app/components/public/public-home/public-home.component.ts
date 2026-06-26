@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -25,6 +25,8 @@ export class PublicHomeComponent implements OnInit {
 
   private http = inject(HttpClient);
   authService = inject(PublicAuthService);
+
+  @ViewChild('eduScroll') eduScroll!: ElementRef;
 
   complaints = signal<ComplaintRecord[]>([]);
   loading = signal(true);
@@ -121,6 +123,13 @@ export class PublicHomeComponent implements OnInit {
     { icon: 'pi pi-credit-card', label: 'Payment System Participants' },
   ];
 
+  schemeCards = [
+    { icon: 'pi pi-indian-rupee', title: 'Reserve Bank - Integrated Ombudsman Scheme, 2026', hasDownload: true },
+    { icon: 'pi pi-indian-rupee', title: 'Regulated entities not covered under Reserve Bank - Integrated Ombudsman Scheme, 2026', hasDownload: true },
+    { icon: 'pi pi-map-marker', title: 'Address of Centralised Receipt and Processing Centre', hasDownload: false },
+    { icon: 'pi pi-map-marker', title: 'Address of Consumer Education and Protection Cell', hasDownload: false },
+  ];
+
   stats = [
     { value: '9,50,000', label: 'Complaints Received' },
     { value: '8,75,000', label: 'Complaints Handled' },
@@ -128,10 +137,10 @@ export class PublicHomeComponent implements OnInit {
   ];
 
   educationCards = [
-    { title: 'Data Savings Bank', subtitle: 'Customer liability in...', badge: 'RBI/KARENE' },
-    { title: 'Customer Liability in...', subtitle: 'Unauthorized Electronic...', badge: 'RBI/KARENE' },
-    { title: '#BEAWARE', subtitle: 'Stay alert from fraud...', badge: '#BEAWARE' },
-    { title: 'Customer Complaint', subtitle: 'How to file complaint...', badge: 'GUIDE' },
+    { title: 'Basic Savings Bank...', subtitle: 'Basic Savings Bank Deposit Account BSBDA', image: 'assets/img3.jpg', footerIcon: 'pi pi-play-circle', action: 'WATCH' },
+    { title: 'Customer Liability in...', subtitle: 'Customer Liability in Unauthorised Electronic Banking Transactions', image: 'assets/img3.jpg', footerIcon: 'pi pi-play-circle', action: 'WATCH' },
+    { title: 'BE(A)WARE', subtitle: 'A booklet on modus operandi of financial fraudster', image: 'assets/img3.jpg', footerIcon: 'pi pi-book', action: 'READ' },
+    { title: 'Customer Liability in...', subtitle: 'Basic Savings Bank Deposit Account BSBDA', image: 'assets/img3.jpg', footerIcon: 'pi pi-play-circle', action: 'WATCH' },
   ];
 
   faqs = [
@@ -142,5 +151,13 @@ export class PublicHomeComponent implements OnInit {
 
   toggleFaq(index: number) {
     this.faqs[index].open = !this.faqs[index].open;
+  }
+
+  scrollEducation(direction: 'left' | 'right') {
+    const el = this.eduScroll?.nativeElement;
+    if (el) {
+      const scrollAmount = 300;
+      el.scrollBy({ left: direction === 'right' ? scrollAmount : -scrollAmount, behavior: 'smooth' });
+    }
   }
 }

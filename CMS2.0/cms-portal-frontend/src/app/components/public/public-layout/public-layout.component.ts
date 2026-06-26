@@ -17,10 +17,16 @@ export class PublicLayoutComponent {
   mobileMenuOpen = false;
   fontSize = 16;
   currentLang = 'en';
+  highContrast = false;
 
   logout() {
     this.authService.logout();
     this.router.navigate(['/public']);
+  }
+
+  toggleContrast() {
+    this.highContrast = !this.highContrast;
+    document.body.classList.toggle('high-contrast', this.highContrast);
   }
 
   // FR-G-035: Multi-language support
@@ -32,16 +38,16 @@ export class PublicLayoutComponent {
 
   increaseFontSize() {
     this.fontSize = Math.min(this.fontSize + 2, 24);
-    document.documentElement.style.fontSize = this.fontSize + 'px';
+    document.body.style.zoom = `${(this.fontSize / 16) * 100}%`;
   }
 
   decreaseFontSize() {
     this.fontSize = Math.max(this.fontSize - 2, 12);
-    document.documentElement.style.fontSize = this.fontSize + 'px';
+    document.body.style.zoom = `${(this.fontSize / 16) * 100}%`;
   }
 
   resetFontSize() {
     this.fontSize = 16;
-    document.documentElement.style.fontSize = '16px';
+    document.body.style.zoom = '100%';
   }
 }
