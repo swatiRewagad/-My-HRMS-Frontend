@@ -168,6 +168,116 @@ services:
     networks:
       - cms-network
 
+  # ── OpenSearch 2.18 (Full-Text Search) ──
+  cms-opensearch:
+    image: opensearchproject/opensearch:2.18.0
+    container_name: cms-opensearch
+    restart: unless-stopped
+    environment:
+      discovery.type: single-node
+      DISABLE_SECURITY_PLUGIN: "true"
+      OPENSEARCH_JAVA_OPTS: "-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+    volumes:
+      - cms-opensearch-data:/usr/share/opensearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9200/_cluster/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+    networks:
+      - cms-network
+
+  # ── Keycloak 26.0 (Identity & Access Management) ──
+  cms-keycloak:
+    image: quay.io/keycloak/keycloak:26.0
+    container_name: cms-keycloak
+    restart: unless-stopped
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://cms-keycloak-db:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: keycloak
+      KC_HTTP_PORT: 8180
+      KC_HOSTNAME_STRICT: "false"
+      KC_PROXY_HEADERS: xforwarded
+    command: start-dev
+    ports:
+      - "8180:8180"
+    depends_on:
+      cms-keycloak-db:
+        condition: service_healthy
+    networks:
+      - cms-network
+
+  cms-keycloak-db:
+    image: postgres:16-alpine
+    container_name: cms-keycloak-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: keycloak
+    volumes:
+      - cms-keycloak-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U keycloak"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - cms-network
+
+  # ── Kafka UI (Management Console) ──
+  cms-kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: cms-kafka-ui
+    restart: unless-stopped
+    environment:
+      KAFKA_CLUSTERS_0_NAME: cms-local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: cms-kafka:9092
+    ports:
+      - "8090:8080"
+    depends_on:
+      cms-kafka:
+        condition: service_healthy
+    networks:
+      - cms-network
+
+  # ── Prometheus (Metrics Collection) ──
+  cms-prometheus:
+    image: prom/prometheus:v2.54.0
+    container_name: cms-prometheus
+    restart: unless-stopped
+    volumes:
+      - ../deployment/docker/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - cms-network
+
+  # ── Grafana (Dashboards & Monitoring) ──
+  cms-grafana:
+    image: grafana/grafana:11.3.0
+    container_name: cms-grafana
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    ports:
+      - "3000:3000"
+    volumes:
+      - cms-grafana-data:/var/lib/grafana
+    depends_on:
+      - cms-prometheus
+    networks:
+      - cms-network
+
   # ── PaddleOCR sidecar (OCR fallback — no API key needed) ──
   cms-paddle-ocr:
     build:
@@ -230,6 +340,9 @@ volumes:
   cms-mysql-data:
   cms-redis-data:
   cms-kafka-data:
+  cms-opensearch-data:
+  cms-keycloak-db-data:
+  cms-grafana-data:
   cms-attachments:
   cms-nginx-cache:
 

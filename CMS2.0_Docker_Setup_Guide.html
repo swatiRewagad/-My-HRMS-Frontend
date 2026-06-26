@@ -52,7 +52,7 @@
 
 <div class="header">
     <h1>CMS 2.0 — Complete Docker Desktop Setup Guide</h1>
-    <p>Pull the repo and run the entire CMS application on Docker Desktop — No MySQL, Kafka, or Redis installation needed</p>
+    <p>Pull the repo and run the entire CMS platform on Docker Desktop — full microservices stack, zero local installations</p>
 </div>
 
 <nav class="nav">
@@ -82,7 +82,7 @@ cd My-HRMS-Frontend/CMS2.0/cms-infra
 <span class="comment"># 2. Create .env (optional - only needed for AI features)</span>
 echo "GROQ_API_KEY=gsk_your_key_here" > .env
 
-<span class="comment"># 3. Start everything (MySQL, Redis, Kafka, 2x Backend, PaddleOCR, Frontend, Nginx)</span>
+<span class="comment"># 3. Start everything (MySQL, Redis, Kafka, OpenSearch, Keycloak, Prometheus, Grafana, 2x Backend, PaddleOCR, Frontend, Nginx)</span>
 docker compose up -d --build
 
 <span class="comment"># 4. Wait ~3-4 minutes for all containers to be healthy</span>
@@ -106,7 +106,7 @@ docker compose ps
     </table>
 
     <div class="info">
-        <strong>You do NOT need to install:</strong> Java, Maven, Node.js, MySQL, Redis, Kafka, or any other tool.
+        <strong>You do NOT need to install:</strong> Java, Maven, Node.js, MySQL, Redis, Kafka, OpenSearch, Keycloak, Prometheus, Grafana, or any other tool.
         Everything runs inside Docker containers. The Dockerfiles handle all builds internally.
     </div>
 
@@ -114,8 +114,8 @@ docker compose ps
     <table>
         <tr><th>Resource</th><th>Minimum</th><th>Recommended</th></tr>
         <tr><td>RAM (total system)</td><td>16 GB</td><td>32 GB</td></tr>
-        <tr><td>RAM (Docker allocation)</td><td>8 GB</td><td>12 GB</td></tr>
-        <tr><td>Disk</td><td>20 GB free</td><td>40 GB free</td></tr>
+        <tr><td>RAM (Docker allocation)</td><td>10 GB</td><td>12 GB</td></tr>
+        <tr><td>Disk</td><td>40 GB free</td><td>60 GB free</td></tr>
         <tr><td>CPU</td><td>4 cores</td><td>8 cores</td></tr>
         <tr><td>Windows</td><td>Windows 10 21H2+</td><td>Windows 11</td></tr>
     </table>
@@ -124,9 +124,9 @@ docker compose ps
     <p>Open Docker Desktop → <strong>Settings</strong> (gear icon) → <strong>Resources</strong>:</p>
     <table>
         <tr><th>Setting</th><th>Value</th><th>Why</th></tr>
-        <tr><td>Memory</td><td><strong>8 GB</strong> (minimum)</td><td>PaddleOCR needs ~2 GB, MySQL/Redis/Backend need the rest</td></tr>
-        <tr><td>CPUs</td><td><strong>4</strong></td><td>Backend builds use multi-threaded Maven</td></tr>
-        <tr><td>Disk image size</td><td><strong>40 GB</strong></td><td>Docker images + volumes for MySQL data</td></tr>
+        <tr><td>Memory</td><td><strong>10 GB</strong> (minimum), 12 GB recommended</td><td>14 containers: PaddleOCR (~2 GB), OpenSearch (~512 MB), Backends (~3 GB), Kafka, Keycloak, etc.</td></tr>
+        <tr><td>CPUs</td><td><strong>4</strong> (minimum), 6 recommended</td><td>Backend builds use multi-threaded Maven, Kafka + OpenSearch are CPU-hungry</td></tr>
+        <tr><td>Disk image size</td><td><strong>50 GB</strong></td><td>Docker images + volumes (MySQL, OpenSearch indices, Kafka logs, Grafana)</td></tr>
         <tr><td>WSL 2 backend</td><td><strong>Enabled</strong></td><td>Better performance on Windows</td></tr>
     </table>
 
@@ -149,8 +149,12 @@ docker info               <span class="comment"># Should show "Server: Docker De
         <tr><td>3307</td><td>MySQL</td><td><code>netstat -ano | findstr :3307</code></td></tr>
         <tr><td>6380</td><td>Redis</td><td><code>netstat -ano | findstr :6380</code></td></tr>
         <tr><td>29092</td><td>Kafka</td><td><code>netstat -ano | findstr :29092</code></td></tr>
+        <tr><td>9200</td><td>OpenSearch</td><td><code>netstat -ano | findstr :9200</code></td></tr>
+        <tr><td>8180</td><td>Keycloak</td><td><code>netstat -ano | findstr :8180</code></td></tr>
+        <tr><td>8090</td><td>Kafka UI</td><td><code>netstat -ano | findstr :8090</code></td></tr>
+        <tr><td>9090</td><td>Prometheus</td><td><code>netstat -ano | findstr :9090</code></td></tr>
+        <tr><td>3000</td><td>Grafana</td><td><code>netstat -ano | findstr :3000</code></td></tr>
         <tr><td>8100</td><td>PaddleOCR</td><td><code>netstat -ano | findstr :8100</code></td></tr>
-        <tr><td>8180</td><td>Keycloak (if using)</td><td><code>netstat -ano | findstr :8180</code></td></tr>
     </table>
     <div class="info">If port 80 is taken by IIS or Skype, you can stop them: <code>net stop w3svc</code> (IIS) or disable "Use port 80" in Skype settings.</div>
 </div>
@@ -159,35 +163,46 @@ docker info               <span class="comment"># Should show "Server: Docker De
 <div class="step" id="architecture">
     <h2><span class="step-num">A</span> Architecture Overview</h2>
     <div class="arch-diagram">
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                     DOCKER DESKTOP (All Containers)                          │
-│                                                                             │
-│  ┌─────────────────────────────────────────────────────────────────────┐   │
-│  │                    NGINX GATEWAY (Port 80)                           │   │
-│  │         Load Balancer • Caching • Rate Limiting • SSL                │   │
-│  └──────────┬──────────────────────────────┬───────────────────────────┘   │
-│             │ /api/*                        │ /*                            │
-│             ▼                               ▼                              │
-│  ┌─────────────────────┐        ┌──────────────────────┐                  │
-│  │  CMS Backend × 2    │        │   Angular Frontend   │                  │
-│  │  (Spring Boot 8082) │        │   (Nginx static)     │                  │
-│  │  • REST APIs        │        │   • SPA Application  │                  │
-│  │  • Email Syndication│        │   • CRPC Portal      │                  │
-│  │  • AI Suggestions   │        │   • Admin Dashboard  │                  │
-│  └──┬───────┬───────┬──┘        └──────────────────────┘                  │
-│     │       │       │                                                      │
-│     ▼       ▼       ▼                                                      │
-│  ┌───────┐ ┌───────┐ ┌───────┐  ┌──────────────┐                         │
-│  │ MySQL │ │ Redis │ │ Kafka │  │  PaddleOCR   │                         │
-│  │  8.0  │ │  7.x  │ │ 3.7.0 │  │  (Python)    │                         │
-│  │ :3307 │ │ :6380 │ │:29092 │  │   :8100      │                         │
-│  │       │ │512 MB │ │KRaft  │  │  OCR Engine  │                         │
-│  └───────┘ └───────┘ └───────┘  └──────────────┘                         │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────────────┐
+│                        DOCKER DESKTOP (All Containers)                            │
+│                                                                                  │
+│  ┌────────────────────────────────────────────────────────────────────────────┐ │
+│  │                       NGINX GATEWAY (Port 80/443)                           │ │
+│  │            Load Balancer • Caching • Rate Limiting • Security               │ │
+│  └──────────┬────────────────────────────────────┬────────────────────────────┘ │
+│             │ /api/*                              │ /*                            │
+│             ▼                                     ▼                              │
+│  ┌────────────────────────┐          ┌──────────────────────┐                   │
+│  │   CMS Backend × 2      │          │   Angular Frontend   │                   │
+│  │   (Spring Boot :8082)   │          │   (Nginx static)     │                   │
+│  │   • REST APIs           │          │   • CRPC Portal      │                   │
+│  │   • Email Syndication   │          │   • Admin Dashboard  │                   │
+│  │   • AI Suggestions      │          │   • Public Portal    │                   │
+│  └──┬──────┬──────┬──────┬┘          └──────────────────────┘                   │
+│     │      │      │      │                                                       │
+│     ▼      ▼      ▼      ▼                                                       │
+│  ┌──────┐┌──────┐┌──────┐┌────────────┐  ┌──────────────┐  ┌──────────────┐    │
+│  │MySQL ││Redis ││Kafka ││ OpenSearch  │  │  Keycloak    │  │  PaddleOCR   │    │
+│  │ 8.0  ││ 7.x  ││ 3.7  ││   2.18.0   │  │    26.0      │  │  (Python)    │    │
+│  │:3307 ││:6380 ││:29092││   :9200    │  │   :8180      │  │   :8100      │    │
+│  │  DB  ││Cache ││Events││Full-Text   │  │  SSO/Auth    │  │  OCR Engine  │    │
+│  └──────┘└──────┘└──────┘└────────────┘  └──────────────┘  └──────────────┘    │
+│                                                                                  │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐                          │
+│  │  Prometheus  │  │   Grafana    │  │  Kafka UI    │                          │
+│  │    :9090     │  │    :3000     │  │    :8090     │                          │
+│  │   Metrics    │  │  Dashboards  │  │  Topic Mgmt  │                          │
+│  └──────────────┘  └──────────────┘  └──────────────┘                          │
+│                                                                                  │
+└──────────────────────────────────────────────────────────────────────────────────┘
 
 Access from your browser:
   • http://localhost        → Application (via Nginx)
+  • http://localhost:8180   → Keycloak Admin Console (admin/admin)
+  • http://localhost:9200   → OpenSearch API
+  • http://localhost:8090   → Kafka UI (topic management)
+  • http://localhost:9090   → Prometheus (metrics)
+  • http://localhost:3000   → Grafana (dashboards, admin/admin)
   • http://localhost:8100   → OCR Service (direct)
   • localhost:3307          → MySQL (via client tools)
   • localhost:6380          → Redis (via redis-cli)
@@ -200,15 +215,21 @@ Access from your browser:
         <tr><td><code>cms-mysql</code></td><td>mysql:8.0</td><td>3307→3306</td><td>~500 MB</td><td>Primary database (complaints, users, drafts)</td></tr>
         <tr><td><code>cms-redis</code></td><td>redis:7-alpine</td><td>6380→6379</td><td>512 MB max</td><td>Cache layer (sessions, frequently accessed data)</td></tr>
         <tr><td><code>cms-kafka</code></td><td>apache/kafka:3.7.0</td><td>29092</td><td>~512 MB</td><td>Event streaming (KRaft mode, no Zookeeper)</td></tr>
+        <tr><td><code>cms-opensearch</code></td><td>opensearchproject/opensearch:2.18.0</td><td>9200</td><td>512 MB</td><td>Full-text search indexing & querying</td></tr>
+        <tr><td><code>cms-keycloak</code></td><td>quay.io/keycloak/keycloak:26.0</td><td>8180</td><td>~512 MB</td><td>SSO, Identity & Access Management (OAuth2/OIDC)</td></tr>
+        <tr><td><code>cms-keycloak-db</code></td><td>postgres:16-alpine</td><td>internal</td><td>~128 MB</td><td>PostgreSQL for Keycloak metadata</td></tr>
         <tr><td><code>cms-backend-1</code></td><td>Built from Dockerfile</td><td>internal</td><td>1.5 GB</td><td>Spring Boot API instance 1</td></tr>
         <tr><td><code>cms-backend-2</code></td><td>Built from Dockerfile</td><td>internal</td><td>1.5 GB</td><td>Spring Boot API instance 2 (load balanced)</td></tr>
         <tr><td><code>cms-paddle-ocr</code></td><td>Built from Dockerfile</td><td>8100</td><td>2 GB</td><td>OCR extraction for scanned documents/PDFs</td></tr>
         <tr><td><code>cms-frontend</code></td><td>Built from Dockerfile</td><td>internal</td><td>256 MB</td><td>Angular SPA (compiled, served by Nginx)</td></tr>
         <tr><td><code>cms-gateway</code></td><td>nginx:1.27-alpine</td><td>80, 443</td><td>256 MB</td><td>Reverse proxy, load balancer, caching</td></tr>
+        <tr><td><code>cms-kafka-ui</code></td><td>provectuslabs/kafka-ui</td><td>8090</td><td>~256 MB</td><td>Visual Kafka topic management console</td></tr>
+        <tr><td><code>cms-prometheus</code></td><td>prom/prometheus:v2.54.0</td><td>9090</td><td>~256 MB</td><td>Metrics collection from all services</td></tr>
+        <tr><td><code>cms-grafana</code></td><td>grafana/grafana:11.3.0</td><td>3000</td><td>~256 MB</td><td>Monitoring dashboards & alerting</td></tr>
     </table>
 
     <div class="info">
-        <strong>Total Docker RAM needed:</strong> ~7 GB (that's why 8 GB allocation is the minimum).
+        <strong>Total Docker RAM needed:</strong> ~9-10 GB. Set Docker Desktop memory to at least <strong>10 GB</strong> (recommended: 12 GB).
     </div>
 </div>
 
@@ -273,16 +294,22 @@ GROQ_API_KEY=gsk_your_groq_api_key_here
     </div>
 
     <h3>1.4 Understand the Docker Compose Configuration</h3>
-    <p>The <code>cms-infra/docker-compose.yml</code> defines these services:</p>
+    <p>The <code>cms-infra/docker-compose.yml</code> defines <strong>14 services</strong>:</p>
     <table>
         <tr><th>Service</th><th>What It Does</th><th>Health Check</th></tr>
         <tr><td>cms-mysql</td><td>Starts MySQL 8.0, creates <code>cms_db</code> database, runs <code>init.sql</code></td><td>mysqladmin ping</td></tr>
         <tr><td>cms-redis</td><td>Starts Redis 7 with 512 MB cache, LRU eviction</td><td>redis-cli ping</td></tr>
-        <tr><td>cms-kafka</td><td>Starts Apache Kafka 3.7 in KRaft mode (no Zookeeper needed)</td><td>kafka-topics.sh --list</td></tr>
+        <tr><td>cms-kafka</td><td>Apache Kafka 3.7 in KRaft mode (event streaming, no Zookeeper)</td><td>kafka-topics.sh --list</td></tr>
+        <tr><td>cms-opensearch</td><td>OpenSearch 2.18 for full-text search indexing</td><td>HTTP /_cluster/health</td></tr>
+        <tr><td>cms-keycloak</td><td>Keycloak 26.0 for SSO/OAuth2/OIDC authentication</td><td>—</td></tr>
+        <tr><td>cms-keycloak-db</td><td>PostgreSQL 16 backing store for Keycloak</td><td>pg_isready</td></tr>
         <tr><td>cms-backend-1/2</td><td>Builds backend from source (Maven in Docker), runs Spring Boot</td><td>HTTP /actuator/health</td></tr>
         <tr><td>cms-paddle-ocr</td><td>Builds Python OCR service, downloads PaddleOCR models</td><td>HTTP /health</td></tr>
         <tr><td>cms-frontend</td><td>Builds Angular app (ng build), serves via Nginx</td><td>HTTP /</td></tr>
         <tr><td>cms-gateway</td><td>Nginx reverse proxy: routes /api/ to backends, / to frontend</td><td>—</td></tr>
+        <tr><td>cms-kafka-ui</td><td>Visual Kafka management: topics, messages, consumer groups</td><td>—</td></tr>
+        <tr><td>cms-prometheus</td><td>Scrapes metrics from all Spring Boot actuator endpoints</td><td>—</td></tr>
+        <tr><td>cms-grafana</td><td>Monitoring dashboards, alerting rules</td><td>—</td></tr>
     </table>
 </div>
 
@@ -325,26 +352,38 @@ docker compose logs -f cms-backend-1
 docker compose ps
 
 <span class="comment"># Expected output:</span>
-<span class="comment"># NAME              IMAGE                STATUS                  PORTS</span>
-<span class="comment"># cms-mysql         mysql:8.0            Up (healthy)            0.0.0.0:3307->3306</span>
-<span class="comment"># cms-redis         redis:7-alpine       Up (healthy)            0.0.0.0:6380->6379</span>
-<span class="comment"># cms-kafka         apache/kafka:3.7.0   Up (healthy)            0.0.0.0:29092->29092</span>
-<span class="comment"># cms-backend-1    cms-infra-...         Up (healthy)            </span>
-<span class="comment"># cms-backend-2    cms-infra-...         Up (healthy)            </span>
-<span class="comment"># cms-paddle-ocr   cms-infra-...         Up (healthy)            0.0.0.0:8100->8100</span>
-<span class="comment"># cms-frontend     cms-infra-...         Up (healthy)            </span>
-<span class="comment"># cms-gateway      nginx:1.27-alpine     Up                      0.0.0.0:80->80</span></pre>
+<span class="comment"># NAME              IMAGE                      STATUS                  PORTS</span>
+<span class="comment"># cms-mysql         mysql:8.0                  Up (healthy)            0.0.0.0:3307->3306</span>
+<span class="comment"># cms-redis         redis:7-alpine             Up (healthy)            0.0.0.0:6380->6379</span>
+<span class="comment"># cms-kafka         apache/kafka:3.7.0         Up (healthy)            0.0.0.0:29092->29092</span>
+<span class="comment"># cms-opensearch    opensearchproject/...      Up (healthy)            0.0.0.0:9200->9200</span>
+<span class="comment"># cms-keycloak      quay.io/keycloak/...       Up                      0.0.0.0:8180->8180</span>
+<span class="comment"># cms-keycloak-db   postgres:16-alpine         Up (healthy)</span>
+<span class="comment"># cms-backend-1     cms-infra-...              Up (healthy)</span>
+<span class="comment"># cms-backend-2     cms-infra-...              Up (healthy)</span>
+<span class="comment"># cms-paddle-ocr    cms-infra-...              Up (healthy)            0.0.0.0:8100->8100</span>
+<span class="comment"># cms-frontend      cms-infra-...              Up (healthy)</span>
+<span class="comment"># cms-gateway       nginx:1.27-alpine          Up                      0.0.0.0:80->80</span>
+<span class="comment"># cms-kafka-ui      provectuslabs/kafka-ui     Up                      0.0.0.0:8090->8080</span>
+<span class="comment"># cms-prometheus    prom/prometheus:v2.54.0    Up                      0.0.0.0:9090->9090</span>
+<span class="comment"># cms-grafana       grafana/grafana:11.3.0     Up                      0.0.0.0:3000->3000</span></pre>
 
     <h3>2.4 Startup Order (Automatic)</h3>
     <p>Docker Compose handles the startup order automatically via <code>depends_on</code> + health checks:</p>
     <ol>
-        <li><strong>MySQL</strong> starts first → waits until healthy (accepts connections)</li>
-        <li><strong>Redis</strong> starts first → waits until healthy (responds to PING)</li>
-        <li><strong>Kafka</strong> starts first → waits until healthy (broker ready, KRaft mode)</li>
+        <li><strong>MySQL</strong> starts → waits until healthy (accepts connections)</li>
+        <li><strong>Redis</strong> starts → waits until healthy (responds to PING)</li>
+        <li><strong>Kafka</strong> starts → waits until healthy (broker ready, KRaft mode)</li>
+        <li><strong>OpenSearch</strong> starts → waits until cluster health OK</li>
+        <li><strong>Keycloak DB (Postgres)</strong> starts → waits until healthy</li>
+        <li><strong>Keycloak</strong> waits for its Postgres DB</li>
         <li><strong>Backend 1 & 2</strong> wait for MySQL + Redis + Kafka to be healthy, then start</li>
         <li><strong>PaddleOCR</strong> starts independently (no dependencies)</li>
         <li><strong>Frontend</strong> starts independently</li>
         <li><strong>Gateway (Nginx)</strong> waits for both backends + frontend</li>
+        <li><strong>Kafka UI</strong> waits for Kafka to be healthy</li>
+        <li><strong>Prometheus</strong> starts independently, scrapes backend metrics</li>
+        <li><strong>Grafana</strong> waits for Prometheus</li>
     </ol>
 
     <div class="success">
@@ -357,33 +396,20 @@ docker compose ps
 <div class="step" id="step3">
     <h2><span class="step-num">3</span> Keycloak Setup (Authentication)</h2>
 
-    <div class="info">
-        <strong>Note:</strong> Keycloak is NOT included in the Docker Compose file. If you need SSO/authentication,
-        run Keycloak separately. For testing without auth, the app works with session-based login
-        (hardcoded users via <code>sessionStorage</code>).
+    <div class="success">
+        <strong>Keycloak is included in Docker Compose!</strong> It starts automatically at <code>http://localhost:8180</code>
+        with admin credentials: <code>admin</code> / <code>admin</code>. You just need to configure the realm, roles, and users below.
     </div>
 
-    <h3>Option A: Skip Keycloak (Quick Testing)</h3>
-    <p>The CRPC module uses session-based authentication by default. You can test without Keycloak:</p>
-    <pre><span class="comment"># Just open the app - CRPC module auto-assigns user via session</span>
-http://localhost
+    <h3>3.1 Access Keycloak Admin Console</h3>
+    <pre><span class="comment"># Open in browser (wait ~30s after docker compose up):</span>
+http://localhost:8180
 
-<span class="comment"># Navigate to CRPC staff portal</span>
-http://localhost/crpc</pre>
+<span class="comment"># Login:</span>
+Username: admin
+Password: admin</pre>
 
-    <h3>Option B: Run Keycloak (Full SSO)</h3>
-    <p>If you want proper Keycloak SSO, start it separately:</p>
-    <pre><span class="comment"># Run Keycloak in Docker (separate from main compose)</span>
-docker run -d --name cms-keycloak \
-  -p 8180:8080 \
-  -e KEYCLOAK_ADMIN=admin \
-  -e KEYCLOAK_ADMIN_PASSWORD=admin \
-  quay.io/keycloak/keycloak:26.0 start-dev
-
-<span class="comment"># Wait 30 seconds, then access:</span>
-<span class="comment"># http://localhost:8180</span></pre>
-
-    <h3>Keycloak Configuration (If Using)</h3>
+    <h3>3.2 Configure Realm, Client, Roles, Users</h3>
     <ol>
         <li>Open <code>http://localhost:8180</code> → Login: <code>admin</code> / <code>admin</code></li>
         <li>Create Realm: <code>cms</code></li>
@@ -450,13 +476,25 @@ docker exec cms-redis redis-cli ping
 docker exec cms-kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list
 <span class="comment"># → (empty or topic list — no error means OK)</span>
 
+<span class="comment"># OpenSearch cluster</span>
+curl http://localhost:9200/_cluster/health
+<span class="comment"># → {"status":"green" or "yellow", "cluster_name":"docker-cluster"}</span>
+
+<span class="comment"># Keycloak</span>
+curl http://localhost:8180/realms/master
+<span class="comment"># → JSON with realm info</span>
+
 <span class="comment"># Backend health (through gateway)</span>
 curl http://localhost/api/actuator/health
 <span class="comment"># → {"status":"UP"}</span>
 
 <span class="comment"># PaddleOCR health</span>
 curl http://localhost:8100/health
-<span class="comment"># → {"status":"ok"}</span></pre>
+<span class="comment"># → {"status":"ok"}</span>
+
+<span class="comment"># Prometheus targets</span>
+curl http://localhost:9090/api/v1/targets
+<span class="comment"># → JSON with scrape targets</span></pre>
 
     <h3>4.2 Open in Browser</h3>
     <table>
@@ -464,20 +502,31 @@ curl http://localhost:8100/health
         <tr><td><a href="http://localhost">http://localhost</a></td><td>CMS Landing Page / Public Portal</td></tr>
         <tr><td><a href="http://localhost/crpc">http://localhost/crpc</a></td><td>CRPC Staff Portal (DEO Home)</td></tr>
         <tr><td><a href="http://localhost/admin/dashboard">http://localhost/admin/dashboard</a></td><td>Admin Dashboard</td></tr>
+        <tr><td><a href="http://localhost:8180">http://localhost:8180</a></td><td>Keycloak Admin Console (admin/admin)</td></tr>
+        <tr><td><a href="http://localhost:8090">http://localhost:8090</a></td><td>Kafka UI — Topics, Messages, Consumers</td></tr>
+        <tr><td><a href="http://localhost:9090">http://localhost:9090</a></td><td>Prometheus — Metrics & Targets</td></tr>
+        <tr><td><a href="http://localhost:3000">http://localhost:3000</a></td><td>Grafana — Dashboards (admin/admin)</td></tr>
+        <tr><td><a href="http://localhost:9200">http://localhost:9200</a></td><td>OpenSearch — REST API (cluster info)</td></tr>
     </table>
 
     <h3>4.3 Docker Desktop Visual Check</h3>
-    <p>Open Docker Desktop → <strong>Containers</strong> tab. You should see:</p>
+    <p>Open Docker Desktop → <strong>Containers</strong> tab. You should see all 14 containers:</p>
     <table>
         <tr><th>Container</th><th>Status</th><th>Port</th></tr>
         <tr><td>cms-mysql</td><td><span class="badge badge-green">Running (healthy)</span></td><td>3307:3306</td></tr>
         <tr><td>cms-redis</td><td><span class="badge badge-green">Running (healthy)</span></td><td>6380:6379</td></tr>
         <tr><td>cms-kafka</td><td><span class="badge badge-green">Running (healthy)</span></td><td>29092:29092</td></tr>
+        <tr><td>cms-opensearch</td><td><span class="badge badge-green">Running (healthy)</span></td><td>9200:9200</td></tr>
+        <tr><td>cms-keycloak</td><td><span class="badge badge-blue">Running</span></td><td>8180:8180</td></tr>
+        <tr><td>cms-keycloak-db</td><td><span class="badge badge-green">Running (healthy)</span></td><td>—</td></tr>
         <tr><td>cms-backend-1</td><td><span class="badge badge-green">Running (healthy)</span></td><td>—</td></tr>
         <tr><td>cms-backend-2</td><td><span class="badge badge-green">Running (healthy)</span></td><td>—</td></tr>
         <tr><td>cms-paddle-ocr</td><td><span class="badge badge-green">Running (healthy)</span></td><td>8100:8100</td></tr>
         <tr><td>cms-frontend</td><td><span class="badge badge-green">Running (healthy)</span></td><td>—</td></tr>
         <tr><td>cms-gateway</td><td><span class="badge badge-blue">Running</span></td><td>80:80, 443:443</td></tr>
+        <tr><td>cms-kafka-ui</td><td><span class="badge badge-blue">Running</span></td><td>8090:8080</td></tr>
+        <tr><td>cms-prometheus</td><td><span class="badge badge-blue">Running</span></td><td>9090:9090</td></tr>
+        <tr><td>cms-grafana</td><td><span class="badge badge-blue">Running</span></td><td>3000:3000</td></tr>
     </table>
 
     <h3>4.4 Test the API</h3>
@@ -778,8 +827,12 @@ docker image prune -a</pre>
         <tr><td><strong>3307</strong></td><td>MySQL 8.0</td><td>DB client</td><td>Maps to internal 3306</td></tr>
         <tr><td><strong>6380</strong></td><td>Redis 7</td><td>redis-cli</td><td>Maps to internal 6379</td></tr>
         <tr><td><strong>29092</strong></td><td>Apache Kafka 3.7</td><td>Kafka clients</td><td>EXTERNAL listener (KRaft mode)</td></tr>
+        <tr><td><strong>9200</strong></td><td>OpenSearch 2.18</td><td>cURL/API</td><td>Full-text search REST API</td></tr>
+        <tr><td><strong>8180</strong></td><td>Keycloak 26.0</td><td>Browser</td><td>Admin console (admin/admin)</td></tr>
+        <tr><td><strong>8090</strong></td><td>Kafka UI</td><td>Browser</td><td>Topic & consumer management</td></tr>
+        <tr><td><strong>9090</strong></td><td>Prometheus</td><td>Browser</td><td>Metrics & targets dashboard</td></tr>
+        <tr><td><strong>3000</strong></td><td>Grafana</td><td>Browser</td><td>Monitoring dashboards (admin/admin)</td></tr>
         <tr><td><strong>8100</strong></td><td>PaddleOCR</td><td>cURL/API</td><td>OCR API endpoint</td></tr>
-        <tr><td><strong>8180</strong></td><td>Keycloak (optional)</td><td>Browser</td><td>Only if running separately</td></tr>
         <tr><td>4300</td><td>Angular dev server</td><td>Browser</td><td>Only in dev mode (Step 5)</td></tr>
     </table>
 </div>
