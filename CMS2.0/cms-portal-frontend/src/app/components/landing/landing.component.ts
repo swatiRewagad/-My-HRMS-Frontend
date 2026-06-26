@@ -67,4 +67,8 @@ export class LandingComponent {
   navigateToRulesConfig() {
     this.router.navigate(['/admin/rules']);
   }
+
+  navigateToExtractionRules() {
+    this.router.navigate(['/admin/extraction-rules']);
+  }
 }

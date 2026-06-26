@@ -131,12 +131,20 @@
         <div class="table-header-row">
           <h3>Complaints</h3>
           <div class="table-actions">
-            <button class="btn btn-icon" (click)="exportToCSV()" title="Download CSV">
-              <i class="pi pi-download"></i>
-            </button>
-            <button class="btn btn-icon" (click)="exportToExcel()" title="Download Excel">
-              <i class="pi pi-file-excel"></i>
-            </button>
+            <label class="toggle-filter">
+              <span class="toggle-switch" [class.active]="filterUnread()">
+                <input type="checkbox" [checked]="filterUnread()" (change)="filterUnread.set(!filterUnread())" />
+                <span class="toggle-slider"></span>
+              </span>
+              Unread
+            </label>
+            <label class="toggle-filter">
+              <span class="toggle-switch" [class.active]="filterWithoutAttachments()">
+                <input type="checkbox" [checked]="filterWithoutAttachments()" (change)="filterWithoutAttachments.set(!filterWithoutAttachments())" />
+                <span class="toggle-slider"></span>
+              </span>
+              Without Attachments
+            </label>
             <button class="btn btn-icon" (click)="showColumnConfig.set(true)" title="Column Selection">
               <i class="pi pi-cog"></i>
             </button>
@@ -181,7 +189,7 @@
             </thead>
             <tbody>
               @for (draft of paginatedDrafts(); track draft.draftId; let i = $index) {
-                <tr [class.selected]="selectedIds().has(draft.draftId)" (click)="openDraft(draft.draftId)">
+                <tr [class.selected]="selectedIds().has(draft.draftId)" [class.visited]="visitedIds().has(draft.draftId)" (click)="openDraft(draft.draftId)">
                   <td class="checkbox-col" (click)="$event.stopPropagation()">
                     <input type="checkbox"
                       [checked]="selectedIds().has(draft.draftId)"
@@ -248,8 +256,16 @@
       <p class="modal-subtitle">Select and manage visible columns</p>
       <input type="text" class="column-search" placeholder="Search Column Name" [(ngModel)]="columnSearchText" />
       <div class="column-list">
-        @for (col of filteredColumns(); track col.key) {
-          <label class="column-option">
+        @for (col of filteredColumns(); track col.key; let i = $index) {
+          <label class="column-option"
+            draggable="true"
+            (dragstart)="onColumnDragStart(i)"
+            (dragover)="onColumnDragOver($event, i)"
+            (drop)="onColumnDrop(i)"
+            (dragend)="onColumnDragEnd()"
+            [class.dragging]="dragIndex === i"
+            [class.drag-over]="dragOverIndex === i">
+            <i class="pi pi-bars drag-handle"></i>
             <input type="checkbox" [checked]="col.visible" (change)="toggleColumnVisibility(col.key)" />
             {{ col.label }}
           </label>

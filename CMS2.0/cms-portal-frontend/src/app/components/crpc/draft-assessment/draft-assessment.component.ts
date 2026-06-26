@@ -105,7 +105,13 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
     eligibility: false,
     entity: true,
     complainant: false,
-  };
+    classification: false,
+    financial: false,
+    legal: false,
+    flags: false,
+    linkage: false,
+    declaration: false,
+  } as any;
 
   draftId = '';
   draftStatus = 'DRAFT';
@@ -132,6 +138,21 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
   entityName = '';
   entityType = 'BANK';
   entityState = '';
+  entityCategory = '';
+  entityBsrCode = '';
+  entityPincode = '';
+  entityCountry = '';
+  entityDistrict = '';
+  entityCity = '';
+  entityBranchName = '';
+  entityBranchCategory = '';
+  entityAddress = '';
+  branchCenterName = '';
+  cosmosCode = '';
+  assetSizeInCrores: number | null = null;
+  depositTakingEntity = false;
+  assetSizeGreater100Crores = false;
+  liquidatedPresent = false;
   subject = '';
   description = '';
   amountInvolved: number | null = null;
@@ -142,6 +163,48 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
   vernacularLanguage = '';
   emailType: 'TO' | 'CC_BCC' | '' = '';
   systemSuggestion: 'MAINTAINABLE' | 'NON_MAINTAINABLE' | 'PENDING' = 'PENDING';
+
+  otherEntityName = '';
+  registrationWithRbiDate = '';
+
+  // ─── Complaint Classification ───
+  complaintCategory = '';
+  complaintSubCategory1 = '';
+  complaintSubCategory2 = '';
+  filingDate = '';
+  registrationDateValid = true;
+
+  // ─── Reminder & Financial Details ───
+  reminderSent = true;
+  disputedAmount: number | null = null;
+  compensationSought = '';
+  compensationSoughtYesNo = true;
+
+  // ─── Legal & Case Details ───
+  legalCaseFiled = false;
+  preEnquiryReceived = false;
+  highPriority = false;
+  loanDisposalAmount: number | null = null;
+
+  // ─── Flags & Indicators ───
+  pensionComplaint = false;
+  businessCorrespondent = false;
+  atmCreditDebitCard = false;
+  schemeFlag = '';
+  rboCgpcOld = '';
+  groundsFlag = '';
+
+  // ─── Complaint Linkage ───
+  freeMarkedComplaint = false;
+  currentComplaintNumber = '';
+  replyWithin30Days: 'YES' | 'NO' | 'NA' = 'NA';
+
+  // ─── Additional Info ───
+  crpcProposedAction = '';
+  additionalComments = '';
+
+  // ─── Declaration ───
+  declarationChecked = false;
 
   // ─── Attachments ───
   attachments = signal<Attachment[]>([]);
@@ -686,6 +749,9 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
       this.complainantState = draft?.complainantState || '';
       this.complainantDistrict = draft?.complainantDistrict || '';
       this.complainantPincode = draft?.complainantPincode || '';
+      if (this.complainantPincode && !this.complainantState) {
+        this.onPincodeInput(this.complainantPincode);
+      }
       this.contactPreference = 'POST';
 
       this.modeOfReceipt = 'PHYSICAL_LETTER';
@@ -739,6 +805,9 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
             this.complainantState = draft.complainantState || '';
             this.complainantDistrict = draft.complainantDistrict || '';
             this.complainantPincode = draft.complainantPincode || '';
+            if (this.complainantPincode && !this.complainantState) {
+              this.onPincodeInput(this.complainantPincode);
+            }
             this.contactPreference = 'EMAIL';
 
             this.modeOfReceipt = (draft.modeOfReceipt as any) || 'EMAIL';
@@ -1029,7 +1098,10 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
     if (data['complainantAddress'] && !this.complainantAddress) this.complainantAddress = data['complainantAddress'];
     if (data['complainantState'] && !this.complainantState) this.complainantState = data['complainantState'];
     if (data['complainantDistrict'] && !this.complainantDistrict) this.complainantDistrict = data['complainantDistrict'];
-    if (data['complainantPincode'] && !this.complainantPincode) this.complainantPincode = data['complainantPincode'];
+    if (data['complainantPincode'] && !this.complainantPincode) {
+      this.complainantPincode = data['complainantPincode'];
+      this.onPincodeInput(data['complainantPincode']);
+    }
     if (data['subject'] && !this.subject) this.subject = data['subject'];
     if (data['description'] && !this.description) this.description = data['description'];
     if (data['entityName'] && !this.entityName) this.entityName = data['entityName'];
@@ -1356,5 +1428,24 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
   logout() {
     sessionStorage.removeItem('crpc_user');
     this.auth.logout();
+  }
+
+  amountInWords(num: number | null): string {
+    if (!num || num === 0) return '';
+    const ones = ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine',
+      'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen'];
+    const tens = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety'];
+
+    const convert = (n: number): string => {
+      if (n === 0) return '';
+      if (n < 20) return ones[n];
+      if (n < 100) return tens[Math.floor(n / 10)] + (n % 10 ? '-' + ones[n % 10] : '');
+      if (n < 1000) return ones[Math.floor(n / 100)] + ' hundred' + (n % 100 ? ' ' + convert(n % 100) : '');
+      if (n < 100000) return convert(Math.floor(n / 1000)) + ' thousand' + (n % 1000 ? ' ' + convert(n % 1000) : '');
+      if (n < 10000000) return convert(Math.floor(n / 100000)) + ' lakh' + (n % 100000 ? ' ' + convert(n % 100000) : '');
+      return convert(Math.floor(n / 10000000)) + ' crore' + (n % 10000000 ? ' ' + convert(n % 10000000) : '');
+    };
+
+    return convert(Math.round(num)).replace(/^\w/, c => c.toUpperCase()) + ' rupees';
   }
 }

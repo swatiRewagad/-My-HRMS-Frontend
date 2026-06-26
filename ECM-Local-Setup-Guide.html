@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ECM Local Setup Guide</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, sans-serif;
+      line-height: 1.6;
+      color: #1a202c;
+      background: #f7fafc;
+      padding: 40px 20px;
+    }
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+      padding: 48px 56px;
+    }
+    h1 {
+      font-size: 2rem;
+      color: #1a365d;
+      margin-bottom: 8px;
+      border-bottom: 3px solid #3182ce;
+      padding-bottom: 12px;
+    }
+    .subtitle {
+      color: #718096;
+      font-size: 0.95rem;
+      margin-bottom: 32px;
+    }
+    h2 {
+      font-size: 1.4rem;
+      color: #2d3748;
+      margin-top: 40px;
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    h3 {
+      font-size: 1.1rem;
+      color: #4a5568;
+      margin-top: 24px;
+      margin-bottom: 12px;
+    }
+    p { margin-bottom: 12px; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0;
+      font-size: 0.9rem;
+    }
+    th {
+      background: #edf2f7;
+      color: #2d3748;
+      font-weight: 600;
+      text-align: left;
+      padding: 10px 14px;
+      border: 1px solid #e2e8f0;
+    }
+    td {
+      padding: 10px 14px;
+      border: 1px solid #e2e8f0;
+    }
+    tr:nth-child(even) td { background: #f7fafc; }
+    a { color: #3182ce; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    pre {
+      background: #1a202c;
+      color: #e2e8f0;
+      padding: 16px 20px;
+      border-radius: 8px;
+      overflow-x: auto;
+      margin: 12px 0;
+      font-size: 0.85rem;
+      line-height: 1.7;
+    }
+    code {
+      font-family: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', Consolas, monospace;
+    }
+    .inline-code {
+      background: #edf2f7;
+      color: #c53030;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.85rem;
+    }
+    .note {
+      background: #ebf8ff;
+      border-left: 4px solid #3182ce;
+      padding: 14px 18px;
+      border-radius: 0 8px 8px 0;
+      margin: 16px 0;
+      font-size: 0.9rem;
+    }
+    .note strong { color: #2b6cb0; }
+    .warning {
+      background: #fffbeb;
+      border-left: 4px solid #d69e2e;
+      padding: 14px 18px;
+      border-radius: 0 8px 8px 0;
+      margin: 16px 0;
+      font-size: 0.9rem;
+    }
+    ol, ul {
+      margin: 12px 0;
+      padding-left: 24px;
+    }
+    li { margin-bottom: 8px; }
+    .step-number {
+      display: inline-block;
+      width: 28px;
+      height: 28px;
+      background: #3182ce;
+      color: #fff;
+      border-radius: 50%;
+      text-align: center;
+      line-height: 28px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-right: 10px;
+    }
+    .config-summary {
+      background: #f0fff4;
+      border: 1px solid #c6f6d5;
+      border-radius: 8px;
+      padding: 20px;
+      margin: 16px 0;
+    }
+    .quick-start {
+      background: #fffff0;
+      border: 1px solid #fefcbf;
+      border-radius: 8px;
+      padding: 20px;
+      margin: 24px 0;
+    }
+    .troubleshoot-item {
+      background: #fff5f5;
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin: 12px 0;
+    }
+    .troubleshoot-item h4 {
+      color: #c53030;
+      font-size: 0.95rem;
+      margin-bottom: 8px;
+    }
+    .troubleshoot-item ul { margin: 4px 0; padding-left: 20px; }
+    .troubleshoot-item li { font-size: 0.9rem; margin-bottom: 4px; }
+    hr {
+      border: none;
+      border-top: 1px solid #e2e8f0;
+      margin: 32px 0;
+    }
+    .badge {
+      display: inline-block;
+      background: #ebf8ff;
+      color: #2b6cb0;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>ECM Local Setup Guide</h1>
+    <p class="subtitle">Enterprise Content Management - Developer Setup for Windows</p>
+
+    <!-- Prerequisites -->
+    <h2><span class="step-number">&nbsp;</span> Prerequisites</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Tool</th>
+          <th>Version</th>
+          <th>Download</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Java JDK</td>
+          <td><span class="badge">21+</span></td>
+          <td><a href="https://adoptium.net/temurin/releases/?version=21" target="_blank">Adoptium Temurin</a></td>
+        </tr>
+        <tr>
+          <td>Node.js</td>
+          <td><span class="badge">20+</span></td>
+          <td><a href="https://nodejs.org/" target="_blank">nodejs.org</a></td>
+        </tr>
+        <tr>
+          <td>npm</td>
+          <td><span class="badge">10+</span></td>
+          <td>(comes with Node.js)</td>
+        </tr>
+        <tr>
+          <td>MySQL</td>
+          <td><span class="badge">8.0+</span></td>
+          <td><a href="https://dev.mysql.com/downloads/installer/" target="_blank">MySQL Installer</a></td>
+        </tr>
+        <tr>
+          <td>Maven</td>
+          <td><span class="badge">3.9+</span></td>
+          <td><a href="https://maven.apache.org/download.cgi" target="_blank">maven.apache.org</a></td>
+        </tr>
+        <tr>
+          <td>Git</td>
+          <td><span class="badge">latest</span></td>
+          <td><a href="https://git-scm.com/downloads" target="_blank">git-scm.com</a></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <hr>
+
+    <!-- DB Script Section -->
+    <h2><span class="step-number">DB</span> Complete Database Script</h2>
+    <div class="note">
+      <strong>Note:</strong> Spring Boot <span class="inline-code">ddl-auto: update</span> auto-creates all tables on startup. This script is for manual setup or reference only.
+    </div>
+
+    <h3>Create Database</h3>
+    <pre><code>CREATE DATABASE IF NOT EXISTS ecm_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE ecm_db;</code></pre>
+
+    <h3>Table: ECM_USERS</h3>
+    <pre><code>CREATE TABLE ECM_USERS (
+    id              BIGINT AUTO_INCREMENT PRIMARY KEY,
+    username        VARCHAR(100) NOT NULL UNIQUE,
+    display_name    VARCHAR(200) NOT NULL,
+    email           VARCHAR(200),
+    role            VARCHAR(50),
+    initials        VARCHAR(10),
+    created_at      DATETIME
+);</code></pre>
+
+    <h3>Table: PROJECTS</h3>
+    <pre><code>CREATE TABLE PROJECTS (
+    id              BIGINT AUTO_INCREMENT PRIMARY KEY,
+    code            VARCHAR(50) NOT NULL UNIQUE,
+    name            VARCHAR(200) NOT NULL,
+    description     VARCHAR(500),
+    status          VARCHAR(20) NOT NULL DEFAULT 'active',
+    created_by      BIGINT,
+    created_at      DATETIME,
+    updated_at      DATETIME
+);</code></pre>
+
+    <h3>Table: FOLDERS</h3>
+    <pre><code>CREATE TABLE FOLDERS (
+    id              BIGINT AUTO_INCREMENT PRIMARY KEY,
+    name            VARCHAR(300) NOT NULL,
+    visibility      VARCHAR(20) NOT NULL,
+    description     VARCHAR(1000),
+    parent_id       BIGINT,
+    owner_id        BIGINT NOT NULL,
+    path            VARCHAR(500),
+    created_at      DATETIME,
+    updated_at      DATETIME,
+    FOREIGN KEY (parent_id) REFERENCES FOLDERS(id),
+    FOREIGN KEY (owner_id) REFERENCES ECM_USERS(id)
+);</code></pre>
+
+    <h3>Table: FILES</h3>
+    <pre><code>CREATE TABLE FILES (
+    id              BIGINT AUTO_INCREMENT PRIMARY KEY,
+    name            VARCHAR(500) NOT NULL,
+    original_name   VARCHAR(500) NOT NULL,
+    content_type    VARCHAR(100),
+    size            BIGINT,
+    storage_path    VARCHAR(1000),
+    folder_id       BIGINT NOT NULL,
+    uploaded_by     BIGINT NOT NULL,
+    status          VARCHAR(50) DEFAULT 'active',
+    uploaded_at     DATETIME,
+    updated_at      DATETIME,
+    FOREIGN KEY (folder_id) REFERENCES FOLDERS(id),
+    FOREIGN KEY (uploaded_by) REFERENCES ECM_USERS(id)
+);</code></pre>
+
+    <h3>Table: FOLDER_ACCESS</h3>
+    <pre><code>CREATE TABLE FOLDER_ACCESS (
+    id              BIGINT AUTO_INCREMENT PRIMARY KEY,
+    folder_id       BIGINT NOT NULL,
+    user_id         BIGINT NOT NULL,
+    permission      VARCHAR(20) NOT NULL,
+    granted_at      DATETIME,
+    FOREIGN KEY (folder_id) REFERENCES FOLDERS(id),
+    FOREIGN KEY (user_id) REFERENCES ECM_USERS(id)
+);</code></pre>
+
+    <h3>Table: FILE_SHARES</h3>
+    <pre><code>CREATE TABLE FILE_SHARES (
+    id              BIGINT AUTO_INCREMENT PRIMARY KEY,
+    file_id         BIGINT NOT NULL,
+    shared_by       BIGINT NOT NULL,
+    shared_with     BIGINT,
+    share_type      VARCHAR(20) NOT NULL,
+    share_token     VARCHAR(100) UNIQUE,
+    permission      VARCHAR(20),
+    expires_at      DATETIME,
+    shared_at       DATETIME,
+    FOREIGN KEY (file_id) REFERENCES FILES(id),
+    FOREIGN KEY (shared_by) REFERENCES ECM_USERS(id),
+    FOREIGN KEY (shared_with) REFERENCES ECM_USERS(id)
+);</code></pre>
+
+    <h3>Table: ECM_ACTIVITY_LOG</h3>
+    <pre><code>CREATE TABLE ECM_ACTIVITY_LOG (
+    id              BIGINT AUTO_INCREMENT PRIMARY KEY,
+    action          VARCHAR(50) NOT NULL,
+    entity_type     VARCHAR(20) NOT NULL,
+    entity_name     VARCHAR(500),
+    user_id         BIGINT,
+    user_name       VARCHAR(200),
+    performed_at    DATETIME,
+    FOREIGN KEY (user_id) REFERENCES ECM_USERS(id)
+);</code></pre>
+
+    <h3>Table: CHUNK_UPLOADS</h3>
+    <pre><code>CREATE TABLE CHUNK_UPLOADS (
+    id              BIGINT AUTO_INCREMENT PRIMARY KEY,
+    upload_id       VARCHAR(100) NOT NULL UNIQUE,
+    file_name       VARCHAR(500) NOT NULL,
+    content_type    VARCHAR(100),
+    total_size      BIGINT,
+    total_chunks    INT,
+    chunks_received INT DEFAULT 0,
+    folder_id       BIGINT NOT NULL,
+    uploaded_by     BIGINT NOT NULL,
+    status          VARCHAR(20) DEFAULT 'uploading',
+    created_at      DATETIME,
+    updated_at      DATETIME,
+    FOREIGN KEY (folder_id) REFERENCES FOLDERS(id),
+    FOREIGN KEY (uploaded_by) REFERENCES ECM_USERS(id)
+);</code></pre>
+
+    <h3>Table: INVOICE_EXTRACTIONS</h3>
+    <pre><code>CREATE TABLE INVOICE_EXTRACTIONS (
+    id              BIGINT AUTO_INCREMENT PRIMARY KEY,
+    file_id         BIGINT NOT NULL,
+    invoice_number  VARCHAR(200),
+    invoice_date    VARCHAR(200),
+    due_date        VARCHAR(200),
+    vendor_name     VARCHAR(500),
+    vendor_address  VARCHAR(500),
+    customer_name   VARCHAR(500),
+    customer_address VARCHAR(500),
+    subtotal        VARCHAR(100),
+    tax             VARCHAR(100),
+    total_amount    VARCHAR(100),
+    currency        VARCHAR(100),
+    line_items_json TEXT,
+    raw_text        TEXT,
+    status          VARCHAR(50) DEFAULT 'completed',
+    error_message   VARCHAR(1000),
+    extracted_at    DATETIME,
+    FOREIGN KEY (file_id) REFERENCES FILES(id)
+);</code></pre>
+
+    <h3>Table: PROJECT_UPLOAD_CONFIGS</h3>
+    <pre><code>CREATE TABLE PROJECT_UPLOAD_CONFIGS (
+    id                          BIGINT AUTO_INCREMENT PRIMARY KEY,
+    project_id                  BIGINT NOT NULL UNIQUE,
+    max_file_size_bytes         BIGINT NOT NULL,
+    total_allocated_storage_bytes BIGINT NOT NULL,
+    allowed_content_types       VARCHAR(500) NOT NULL,
+    upload_base_path            VARCHAR(1000) NOT NULL,
+    created_at                  DATETIME,
+    updated_at                  DATETIME,
+    FOREIGN KEY (project_id) REFERENCES PROJECTS(id)
+);</code></pre>
+
+    <h3>Table: DOCUMENT_TYPE_CONFIGS</h3>
+    <pre><code>CREATE TABLE DOCUMENT_TYPE_CONFIGS (
+    id                  BIGINT AUTO_INCREMENT PRIMARY KEY,
+    project_id          BIGINT NOT NULL,
+    type_name           VARCHAR(100) NOT NULL,
+    type_code           VARCHAR(50) NOT NULL,
+    description         VARCHAR(500),
+    extraction_enabled  BOOLEAN NOT NULL DEFAULT FALSE,
+    status              VARCHAR(20) NOT NULL DEFAULT 'active',
+    created_at          DATETIME,
+    updated_at          DATETIME,
+    FOREIGN KEY (project_id) REFERENCES PROJECTS(id)
+);</code></pre>
+
+    <h3>Table: INVOICE_FIELD_CONFIGS</h3>
+    <pre><code>CREATE TABLE INVOICE_FIELD_CONFIGS (
+    id                  BIGINT AUTO_INCREMENT PRIMARY KEY,
+    doc_type_config_id  BIGINT NOT NULL,
+    field_name          VARCHAR(100) NOT NULL,
+    field_key           VARCHAR(100) NOT NULL,
+    field_type          VARCHAR(50) NOT NULL,
+    required            BOOLEAN NOT NULL DEFAULT FALSE,
+    display_order       INT NOT NULL DEFAULT 0,
+    field_category      VARCHAR(50) NOT NULL DEFAULT 'header',
+    created_at          DATETIME,
+    FOREIGN KEY (doc_type_config_id) REFERENCES DOCUMENT_TYPE_CONFIGS(id)
+);</code></pre>
+
+    <h3>Seed Data (Default Users)</h3>
+    <pre><code>INSERT INTO ECM_USERS (username, display_name, email, role, initials, created_at) VALUES
+('super.admin', 'Super Admin', 'super.admin@rbi.org.in', 'SUPER_ADMIN', 'SA', NOW()),
+('rahul.jain', 'Rahul Jain', 'rahul.jain@rbi.org.in', 'ADMIN', 'RJ', NOW()),
+('anita.kumar', 'Anita Kumar', 'anita.kumar@rbi.org.in', 'Manager', 'AK', NOW()),
+('vikram.singh', 'Vikram Singh', 'vikram.singh@rbi.org.in', 'User', 'VS', NOW()),
+('priya.nair', 'Priya Nair', 'priya.nair@rbi.org.in', 'User', 'PN', NOW()),
+('amit.roy', 'Amit Roy', 'amit.roy@rbi.org.in', 'User', 'AR', NOW());</code></pre>
+
+    <h3>Seed Data (Projects)</h3>
+    <pre><code>INSERT INTO PROJECTS (code, name, description, status, created_by, created_at, updated_at) VALUES
+('IPS', 'Integrated Payment System', 'Payment processing and settlement system', 'active', 1, NOW(), NOW()),
+('DICGC', 'Deposit Insurance & Credit Guarantee', 'Insurance and credit guarantee management', 'active', 1, NOW(), NOW()),
+('CMS', 'Complaint Management System', 'Centralized complaint handling and resolution', 'active', 1, NOW(), NOW());</code></pre>
+
+    <div class="warning">
+      <strong>Tip:</strong> You don't need to run these scripts manually. Spring Boot auto-creates tables and the <span class="inline-code">DataInitializer</span> class seeds sample data on first run. Use these scripts only if you need to reset or recreate the database manually.
+    </div>
+
+    <hr>
+
+    <!-- Step 1 -->
+    <h2><span class="step-number">1</span> Clone the Repository</h2>
+    <pre><code>git clone https://github.com/swatiRewagad/-My-HRMS-Frontend.git
+cd My-HRMS-Frontend</code></pre>
+
+    <hr>
+
+    <!-- Step 2 -->
+    <h2><span class="step-number">2</span> MySQL Database Setup</h2>
+    <ol>
+      <li>Start MySQL service</li>
+      <li>Login to MySQL:
+        <pre><code>mysql -u root -p</code></pre>
+      </li>
+      <li>Create the database (auto-created by Spring Boot, but you can do it manually):
+        <pre><code>CREATE DATABASE IF NOT EXISTS ecm_db;</code></pre>
+      </li>
+      <li>Verify:
+        <pre><code>SHOW DATABASES;</code></pre>
+      </li>
+    </ol>
+    <div class="note">
+      <strong>Note:</strong> Default credentials are <span class="inline-code">root</span> / <span class="inline-code">root</span>. If your MySQL password is different, set the <span class="inline-code">DB_PASSWORD</span> environment variable.
+    </div>
+
+    <hr>
+
+    <!-- Step 3 -->
+    <h2><span class="step-number">3</span> ECM Backend Setup</h2>
+
+    <h3>3.1 Navigate to backend directory</h3>
+    <pre><code>cd ecm-backend</code></pre>
+
+    <h3>3.2 Set environment variables (if needed)</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Variable</th>
+          <th>Default</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="inline-code">DB_PASSWORD</span></td>
+          <td>root</td>
+          <td>MySQL root password</td>
+        </tr>
+        <tr>
+          <td><span class="inline-code">ECM_STORAGE_PATH</span></td>
+          <td>C:/ecm-storage</td>
+          <td>Local folder for file storage</td>
+        </tr>
+        <tr>
+          <td><span class="inline-code">LLM_API_KEY</span></td>
+          <td>(empty)</td>
+          <td>Optional: Anthropic API key for AI features</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>Windows (PowerShell):</h3>
+    <pre><code>$env:DB_PASSWORD = "root"
+$env:ECM_STORAGE_PATH = "C:/ecm-storage"</code></pre>
+
+    <h3>Windows (CMD):</h3>
+    <pre><code>set DB_PASSWORD=root
+set ECM_STORAGE_PATH=C:/ecm-storage</code></pre>
+
+    <h3>3.3 Create storage directory</h3>
+    <pre><code>mkdir C:\ecm-storage</code></pre>
+
+    <h3>3.4 Build and Run</h3>
+    <pre><code>mvn clean install -DskipTests
+mvn spring-boot:run</code></pre>
+
+    <h3>3.5 Verify</h3>
+    <ul>
+      <li>Backend starts on: <strong><a href="http://localhost:8081">http://localhost:8081</a></strong></li>
+      <li>Health check: Open <a href="http://localhost:8081/api/files">http://localhost:8081/api/files</a> in browser (should return JSON)</li>
+    </ul>
+
+    <hr>
+
+    <!-- Step 4 -->
+    <h2><span class="step-number">4</span> ECM Frontend Setup</h2>
+
+    <h3>4.1 Navigate to frontend directory</h3>
+    <pre><code>cd ecm-frontend</code></pre>
+
+    <h3>4.2 Install dependencies</h3>
+    <pre><code>npm install</code></pre>
+
+    <h3>4.3 Start development server</h3>
+    <pre><code>npm start</code></pre>
+
+    <h3>4.4 Verify</h3>
+    <ul>
+      <li>Frontend starts on: <strong><a href="http://localhost:4200">http://localhost:4200</a></strong></li>
+      <li>Open <a href="http://localhost:4200">http://localhost:4200</a> in browser</li>
+    </ul>
+
+    <hr>
+
+    <!-- Step 5 -->
+    <h2><span class="step-number">5</span> Verify End-to-End</h2>
+    <ol>
+      <li>Open <strong><a href="http://localhost:4200">http://localhost:4200</a></strong> in Chrome/Edge</li>
+      <li>You should see the ECM file manager interface</li>
+      <li>Try uploading a file &mdash; it should save to <span class="inline-code">C:/ecm-storage</span></li>
+      <li>Try creating folders, sharing links, previewing documents</li>
+    </ol>
+
+    <hr>
+
+    <!-- Configuration Summary -->
+    <h2>Configuration Summary</h2>
+    <div class="config-summary">
+      <table>
+        <thead>
+          <tr>
+            <th>Service</th>
+            <th>Port</th>
+            <th>URL</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>ECM Backend</td>
+            <td>8081</td>
+            <td><a href="http://localhost:8081">http://localhost:8081</a></td>
+          </tr>
+          <tr>
+            <td>ECM Frontend</td>
+            <td>4200</td>
+            <td><a href="http://localhost:4200">http://localhost:4200</a></td>
+          </tr>
+          <tr>
+            <td>MySQL</td>
+            <td>3306</td>
+            <td>localhost:3306</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <hr>
+
+    <!-- Troubleshooting -->
+    <h2>Troubleshooting</h2>
+
+    <div class="troubleshoot-item">
+      <h4>MySQL connection refused</h4>
+      <ul>
+        <li>Ensure MySQL service is running: <span class="inline-code">net start MySQL80</span> (Windows)</li>
+        <li>Check port 3306 is not blocked</li>
+        <li>Verify credentials: <span class="inline-code">mysql -u root -proot</span></li>
+      </ul>
+    </div>
+
+    <div class="troubleshoot-item">
+      <h4>Port 8081 already in use</h4>
+      <ul>
+        <li>Kill the process: <span class="inline-code">netstat -ano | findstr :8081</span> then <span class="inline-code">taskkill /F /PID &lt;pid&gt;</span></li>
+        <li>Or change port in <span class="inline-code">ecm-backend/src/main/resources/application.yml</span></li>
+      </ul>
+    </div>
+
+    <div class="troubleshoot-item">
+      <h4>Port 4200 already in use</h4>
+      <ul>
+        <li>Run on different port: <span class="inline-code">ng serve --port 4201</span></li>
+      </ul>
+    </div>
+
+    <div class="troubleshoot-item">
+      <h4>npm install fails</h4>
+      <ul>
+        <li>Clear cache: <span class="inline-code">npm cache clean --force</span></li>
+        <li>Delete node_modules and retry: <span class="inline-code">rm -rf node_modules && npm install</span></li>
+      </ul>
+    </div>
+
+    <div class="troubleshoot-item">
+      <h4>Backend build fails (Java version)</h4>
+      <ul>
+        <li>Ensure Java 21 is installed: <span class="inline-code">java -version</span></li>
+        <li>Set JAVA_HOME to JDK 21 path</li>
+      </ul>
+    </div>
+
+    <div class="troubleshoot-item">
+      <h4>File upload fails</h4>
+      <ul>
+        <li>Ensure <span class="inline-code">C:/ecm-storage</span> directory exists and is writable</li>
+        <li>Check backend logs for errors</li>
+      </ul>
+    </div>
+
+    <hr>
+
+    <!-- Quick Start -->
+    <h2>Quick Start (All Commands)</h2>
+    <div class="quick-start">
+      <pre><code># Terminal 1: Backend
+cd C:\Projects\My-HRMS-Frontend\ecm-backend
+mvn spring-boot:run
+
+# Terminal 2: Frontend
+cd C:\Projects\My-HRMS-Frontend\ecm-frontend
+npm start</code></pre>
+      <p style="margin-top: 12px;">Then open <strong><a href="http://localhost:4200">http://localhost:4200</a></strong> in your browser.</p>
+    </div>
+
+  </div>
+</body>
+</html>

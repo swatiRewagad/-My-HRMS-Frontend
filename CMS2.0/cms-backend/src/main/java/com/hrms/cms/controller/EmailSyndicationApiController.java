@@ -15,6 +15,7 @@ import com.hrms.cms.service.EmailSimulationService;
 import com.hrms.cms.service.KeycloakUserService;
 import com.hrms.cms.service.LanguageTranslationService;
 import com.hrms.cms.service.OcrExtractionService;
+import com.hrms.cms.service.RuleBasedExtractor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -37,6 +38,7 @@ public class EmailSyndicationApiController {
 
     private final EmailSimulationService emailService;
     private final OcrExtractionService ocrService;
+    private final RuleBasedExtractor ruleBasedExtractor;
     private final LanguageTranslationService translationService;
     private final KeycloakUserService keycloakUserService;
     private final EmailDraftRepository draftRepository;
@@ -106,14 +108,20 @@ public class EmailSyndicationApiController {
         String threadId = (String) result.get("threadId");
         String assignedTo = assignToNextDeo();
 
+        // RULE-BASED EXTRACTION: apply admin-defined regex/keyword rules to email text
+        Map<String, String> ruleExtracted = ruleBasedExtractor.extract(subject, body);
+        if (!ruleExtracted.isEmpty()) {
+            log.info("Rule-based extraction produced {} fields for complaint {}", ruleExtracted.size(), complaintNumber);
+        }
+
         // OCR processing if attachment is present
         boolean ocrProcessed = false;
         int ocrConfidence = 0;
         Map<String, String> ocrExtracted = Collections.emptyMap();
-        String complainantName = extractName(senderEmail);
-        String complainantPhone = "";
-        String category = "General";
-        String complaintSummary = subject;
+        String complainantName = ruleExtracted.getOrDefault("complainantName", extractName(senderEmail));
+        String complainantPhone = ruleExtracted.getOrDefault("complainantPhone", "");
+        String category = ruleExtracted.getOrDefault("category", "General");
+        String complaintSummary = ruleExtracted.getOrDefault("subject", subject);
 
         if (attachment != null && !attachment.isEmpty()) {
             String contentType = attachment.getContentType();
@@ -156,11 +164,15 @@ public class EmailSyndicationApiController {
         boolean isVernacular = (boolean) languageResult.getOrDefault("isVernacular", false);
         String translatedBody = (String) languageResult.getOrDefault("translatedText", body);
 
+        // Merge: OCR fields as base, rule-extracted fields override
+        Map<String, String> mergedFields = new LinkedHashMap<>(ocrExtracted);
+        mergedFields.putAll(ruleExtracted);
+
         // Persist draft to database
         String ocrJson = "";
-        if (!ocrExtracted.isEmpty()) {
+        if (!mergedFields.isEmpty()) {
             try {
-                ocrJson = objectMapper.writeValueAsString(ocrExtracted);
+                ocrJson = objectMapper.writeValueAsString(mergedFields);
             } catch (Exception e) {
                 ocrJson = "";
             }
@@ -178,11 +190,11 @@ public class EmailSyndicationApiController {
                 .body(isVernacular ? translatedBody : body)
                 .complainantName(complainantName)
                 .complainantPhone(complainantPhone)
-                .complainantAddress(ocrExtracted.getOrDefault("complainantAddress", ""))
-                .complainantState(ocrExtracted.getOrDefault("complainantState", ""))
-                .complainantDistrict(ocrExtracted.getOrDefault("complainantDistrict", ""))
-                .complainantPincode(ocrExtracted.getOrDefault("complainantPincode", ""))
-                .cpgramsNumber(ocrExtracted.getOrDefault("cpgramsNumber", ""))
+                .complainantAddress(mergedFields.getOrDefault("complainantAddress", ""))
+                .complainantState(mergedFields.getOrDefault("complainantState", ""))
+                .complainantDistrict(mergedFields.getOrDefault("complainantDistrict", ""))
+                .complainantPincode(mergedFields.getOrDefault("complainantPincode", ""))
+                .cpgramsNumber(mergedFields.getOrDefault("cpgramsNumber", ""))
                 .complaintSummary(complaintSummary)
                 .category(category)
                 .modeOfReceipt("EMAIL")
@@ -193,9 +205,9 @@ public class EmailSyndicationApiController {
                 .ocrProcessed(ocrProcessed)
                 .ocrConfidence(ocrConfidence)
                 .ocrExtractedFieldsJson(ocrJson)
-                .entityName(ocrExtracted.getOrDefault("entityName", ""))
-                .entityType(ocrExtracted.getOrDefault("entityType", ""))
-                .amountInvolved(parseAmount(ocrExtracted.getOrDefault("amountInvolved", "")))
+                .entityName(mergedFields.getOrDefault("entityName", ""))
+                .entityType(mergedFields.getOrDefault("entityType", ""))
+                .amountInvolved(parseAmount(mergedFields.getOrDefault("amountInvolved", "")))
                 .processedBy("")
                 .convertedComplaintId("")
                 .detectedLanguage((String) languageResult.get("detectedLanguage"))

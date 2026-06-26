@@ -1,6 +1,7 @@
 package com.hrms.cms.controller;
 
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.RestTemplate;
 import java.util.*;
 
 @RestController
@@ -43,6 +44,21 @@ public class LocationController {
         STATE_DISTRICTS.put("Jammu and Kashmir", List.of("Anantnag", "Bandipora", "Baramulla", "Budgam", "Doda", "Ganderbal", "Jammu", "Kathua", "Kishtwar", "Kulgam", "Kupwara", "Poonch", "Pulwama", "Rajouri", "Ramban", "Reasi", "Samba", "Shopian", "Srinagar", "Udhampur"));
         STATE_DISTRICTS.put("Ladakh", List.of("Kargil", "Leh"));
         STATE_DISTRICTS.put("Puducherry", List.of("Karaikal", "Mahe", "Puducherry", "Yanam"));
+    }
+
+    @GetMapping("/pincode/{pincode}")
+    public Object lookupPincode(@PathVariable String pincode) {
+        try {
+            RestTemplate restTemplate = new RestTemplate();
+            Object result = restTemplate.getForObject(
+                "https://api.postalpincode.in/pincode/" + pincode, Object.class);
+            return result;
+        } catch (Exception e) {
+            Map<String, Object> error = new LinkedHashMap<>();
+            error.put("Status", "Error");
+            error.put("Message", "Pincode lookup failed");
+            return List.of(error);
+        }
     }
 
     @GetMapping("/districts")

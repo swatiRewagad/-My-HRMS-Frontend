@@ -48,6 +48,10 @@ export const routes: Routes = [
     loadComponent: () => import('./components/admin/rules-management/rules-management.component').then(m => m.RulesManagementComponent)
   },
   {
+    path: 'admin/extraction-rules',
+    loadComponent: () => import('./components/admin/extraction-rules/extraction-rules.component').then(m => m.ExtractionRulesComponent)
+  },
+  {
     path: 'admin/rules/new',
     loadComponent: () => import('./components/admin/rule-editor/rule-editor.component').then(m => m.RuleEditorComponent)
   },

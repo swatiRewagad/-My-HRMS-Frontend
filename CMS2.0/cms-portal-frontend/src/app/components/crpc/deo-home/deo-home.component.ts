@@ -28,6 +28,7 @@ interface DraftComplaint {
   slaRemaining: number;
   ageing: number;
   proposedCategory: string;
+  hasAttachments: boolean;
 }
 
 @Component({
@@ -44,11 +45,14 @@ export class DeoHomeComponent implements OnInit {
   drafts = signal<DraftComplaint[]>([]);
   loading = signal(false);
   selectedIds = signal<Set<string>>(new Set());
+  visitedIds = signal<Set<string>>(new Set());
 
   // Filters
   filterStatus = signal('');
   filterMode = signal<'ALL' | 'DIRECT' | 'ABR'>('ALL');
   searchText = signal('');
+  filterUnread = signal(false);
+  filterWithoutAttachments = signal(false);
   columnFilters: Record<string, string> = {};
   columnSearchText = '';
 
@@ -73,7 +77,7 @@ export class DeoHomeComponent implements OnInit {
   };
 
   // Column configuration
-  allColumns = [
+  allColumns = signal([
     { key: 'displayId', label: 'Complaint Id', visible: true },
     { key: 'complaintNumber', label: 'Complaint Number', visible: true },
     { key: 'fromEmailId', label: 'From', visible: true },
@@ -93,14 +97,14 @@ export class DeoHomeComponent implements OnInit {
     { key: 'systemSuggestion', label: 'System Suggestion', visible: false },
     { key: 'emailType', label: 'Email Type', visible: false },
     { key: 'vernacular', label: 'Vernacular', visible: false },
-  ];
+  ]);
 
-  visibleColumns = computed(() => this.allColumns.filter(c => c.visible));
+  visibleColumns = computed(() => this.allColumns().filter(c => c.visible));
 
   filteredColumns = computed(() => {
-    if (!this.columnSearchText) return this.allColumns;
+    if (!this.columnSearchText) return this.allColumns();
     const q = this.columnSearchText.toLowerCase();
-    return this.allColumns.filter(c => c.label.toLowerCase().includes(q));
+    return this.allColumns().filter(c => c.label.toLowerCase().includes(q));
   });
 
   filteredDrafts = computed(() => {
@@ -126,6 +130,13 @@ export class DeoHomeComponent implements OnInit {
         const q = val.toLowerCase();
         result = result.filter(d => String((d as any)[key] || '').toLowerCase().includes(q));
       }
+    }
+    // Toggle filters
+    if (this.filterUnread()) {
+      result = result.filter(d => !this.visitedIds().has(d.draftId));
+    }
+    if (this.filterWithoutAttachments()) {
+      result = result.filter(d => !d.hasAttachments);
     }
     // Sorting
     if (this.sortColumn) {
@@ -177,6 +188,11 @@ export class DeoHomeComponent implements OnInit {
   loggedInUser: { id: string; name: string; role: string } | null = null;
 
   ngOnInit() {
+    try {
+      const visited = localStorage.getItem('visitedComplaintIds');
+      if (visited) this.visitedIds.set(new Set(JSON.parse(visited)));
+    } catch {}
+
     const stored = sessionStorage.getItem('crpc_user');
     if (stored) {
       this.loggedInUser = JSON.parse(stored);
@@ -247,6 +263,7 @@ export class DeoHomeComponent implements OnInit {
       slaRemaining: Math.max(0, 72 - Math.floor(hours)),
       ageing: Math.max(0, Math.floor(hours / 24)),
       proposedCategory: d.category || '',
+      hasAttachments: (d.attachments && d.attachments.length > 0) || false,
     };
   }
 
@@ -273,6 +290,7 @@ export class DeoHomeComponent implements OnInit {
   }
 
   openDraft(draftId: string) {
+    this.visitedIds.update(ids => { const s = new Set(ids); s.add(draftId); localStorage.setItem('visitedComplaintIds', JSON.stringify([...s])); return s; });
     this.router.navigate(['/crpc/draft', draftId]);
   }
 
@@ -297,8 +315,37 @@ export class DeoHomeComponent implements OnInit {
   }
 
   toggleColumnVisibility(key: string) {
-    const col = this.allColumns.find(c => c.key === key);
-    if (col) col.visible = !col.visible;
+    this.allColumns.update(cols => cols.map(c => c.key === key ? { ...c, visible: !c.visible } : c));
+  }
+
+  dragIndex: number | null = null;
+  dragOverIndex: number | null = null;
+
+  onColumnDragStart(index: number) {
+    this.dragIndex = index;
+  }
+
+  onColumnDragOver(event: DragEvent, index: number) {
+    event.preventDefault();
+    this.dragOverIndex = index;
+  }
+
+  onColumnDrop(index: number) {
+    if (this.dragIndex !== null && this.dragIndex !== index) {
+      this.allColumns.update(cols => {
+        const updated = [...cols];
+        const [item] = updated.splice(this.dragIndex!, 1);
+        updated.splice(index, 0, item);
+        return updated;
+      });
+    }
+    this.dragIndex = null;
+    this.dragOverIndex = null;
+  }
+
+  onColumnDragEnd() {
+    this.dragIndex = null;
+    this.dragOverIndex = null;
   }
 
   applyAdvancedSearch() {

@@ -89,7 +89,7 @@
       <!-- LEFT MAIN AREA -->
       <div class="left-main-area">
 
-        <!-- ═══ META ROW ═══ -->
+        <!-- ═══ KPI BOX (standalone) ═══ -->
         <div class="meta-row">
           <button class="back-arrow" (click)="goBack()">
             <i class="pi pi-arrow-left"></i>
@@ -160,7 +160,6 @@
           </div>
           <button class="btn-more" title="More options"><i class="pi pi-ellipsis-v"></i></button>
         </div>
-
         <!-- ═══ TABS (Read-only mode only) ═══ -->
         @if (!editMode()) {
           <div class="page-tabs">
@@ -184,6 +183,8 @@
           </div>
         }
 
+        <!-- ═══ CONTENT BOX (Email + Complaint panels) ═══ -->
+        <div class="content-box">
         <!-- ═══ MAIN CONTENT ═══ -->
         @if (currentTab() === 'details' || editMode()) {
         <div class="main-content-layout" [class.two-col]="true">
@@ -326,9 +327,9 @@
         <!-- MIDDLE: Complaint -->
         <div class="col-complaint" [class.panel-expanded]="expandedPanel() === 'complaint'" [class.panel-hidden]="expandedPanel() === 'email'">
           <div class="panel-header">
-            <h3><i class="pi pi-file-edit"></i> Complaint</h3>
+            <h3><i class="pi pi-th-large"></i> Complaint</h3>
             <button class="expand-btn" (click)="toggleExpand('complaint')">
-              @if (expandedPanel() === 'complaint') { <i class="pi pi-window-minimize"></i> } @else { <i class="pi pi-window-maximize"></i> }
+              @if (expandedPanel() === 'complaint') { <i class="pi pi-window-minimize"></i> } @else { <i class="pi pi-arrows-alt"></i> }
             </button>
           </div>
 
@@ -344,8 +345,8 @@
           <!-- Basic Details -->
           <div class="form-section" [class.open]="sectionOpen.complaint">
             <div class="section-header" (click)="sectionOpen.complaint = !sectionOpen.complaint">
-              <span><i class="pi pi-star"></i> Basic Details</span>
-              <i class="pi" [class.pi-chevron-down]="sectionOpen.complaint" [class.pi-chevron-right]="!sectionOpen.complaint"></i>
+              <span><i class="pi pi-chart-bar"></i> Basic Details</span>
+              <i class="pi" [class.pi-chevron-down]="sectionOpen.complaint" [class.pi-chevron-up]="!sectionOpen.complaint"></i>
             </div>
             @if (sectionOpen.complaint) {
               <div class="section-body">
@@ -397,31 +398,29 @@
                     <span class="field-value">{{ deoRemarks || '—' }}</span>
                   }
                 </div>
+                <div class="field-grid-2">
+                  <div class="field-item">
+                    <label>Mode of Receipt</label>
+                    <span class="field-value">{{ modeOfReceipt === 'PHYSICAL_LETTER' ? 'Physical Letter' : 'Email' }}</span>
+                  </div>
+                  <div class="field-item">
+                    <label>Receipt Date</label>
+                    @if (editMode()) {
+                      <input type="date" [(ngModel)]="receivedDate" />
+                    } @else {
+                      <span class="field-value">{{ receivedDate || '—' }}</span>
+                    }
+                  </div>
+                </div>
               </div>
             }
-          </div>
-
-          <!-- Mode of Receipt -->
-          <div class="inline-fields">
-            <div class="field-item">
-              <label>Mode of Receipt</label>
-              <span class="field-static">{{ modeOfReceipt === 'PHYSICAL_LETTER' ? 'Physical Letter' : 'Email' }}</span>
-            </div>
-            <div class="field-item">
-              <label>Receipt Date</label>
-              @if (editMode()) {
-                <input type="date" [(ngModel)]="receivedDate" />
-              } @else {
-                <span class="field-static">{{ receivedDate || '—' }}</span>
-              }
-            </div>
           </div>
 
           <!-- Eligibility -->
           <div class="form-section" [class.open]="sectionOpen.eligibility">
             <div class="section-header" (click)="sectionOpen.eligibility = !sectionOpen.eligibility">
-              <span><i class="pi pi-sliders-h"></i> Eligibility</span>
-              <i class="pi" [class.pi-chevron-down]="sectionOpen.eligibility" [class.pi-chevron-right]="!sectionOpen.eligibility"></i>
+              <span><i class="pi pi-chart-bar"></i> Eligibility</span>
+              <i class="pi" [class.pi-chevron-down]="sectionOpen.eligibility" [class.pi-chevron-up]="!sectionOpen.eligibility"></i>
             </div>
             @if (sectionOpen.eligibility) {
               <div class="section-body">
@@ -459,8 +458,8 @@
           <!-- Entity Details -->
           <div class="form-section" [class.open]="sectionOpen.entity">
             <div class="section-header" (click)="sectionOpen.entity = !sectionOpen.entity">
-              <span><i class="pi pi-building"></i> Entity Details</span>
-              <i class="pi" [class.pi-chevron-down]="sectionOpen.entity" [class.pi-chevron-right]="!sectionOpen.entity"></i>
+              <span><i class="pi pi-chart-bar"></i> Entity Details</span>
+              <i class="pi" [class.pi-chevron-down]="sectionOpen.entity" [class.pi-chevron-up]="!sectionOpen.entity"></i>
             </div>
             @if (sectionOpen.entity) {
               <div class="section-body">
@@ -487,37 +486,189 @@
                   </div>
                   <div class="field-item">
                     <label>Module Name</label>
-                    <span class="field-value">{{ entityType || 'Bank' }}</span>
+                    <span class="field-value">{{ entityType === 'BANK' ? 'Bank' : entityType || '—' }}</span>
                   </div>
                   <div class="field-item">
                     <label>Entity Category</label>
                     @if (editMode()) {
-                      <select [(ngModel)]="category">
+                      <select [(ngModel)]="entityCategory">
                         <option value="">Select</option>
-                        @for (c of categories; track c) { <option [value]="c">{{ c }}</option> }
+                        <option value="Nationalised Bank">Nationalised Bank</option>
+                        <option value="Private Bank">Private Bank</option>
+                        <option value="Foreign Bank">Foreign Bank</option>
+                        <option value="Cooperative Bank">Cooperative Bank</option>
+                        <option value="NBFC">NBFC</option>
+                        <option value="Payment Bank">Payment Bank</option>
+                        <option value="Small Finance Bank">Small Finance Bank</option>
                       </select>
                     } @else {
-                      <span class="field-value">{{ category || '—' }}</span>
+                      <span class="field-value">{{ entityCategory || '—' }}</span>
                     }
                   </div>
                   <div class="field-item">
                     <label>Entity Type</label>
-                    <span class="field-value">Financial Banking services</span>
+                    @if (editMode()) {
+                      <select [(ngModel)]="entityType">
+                        <option value="">Select</option>
+                        <option value="BANK">Financial Banking services</option>
+                        <option value="LOAN_COMPANY">Loan Company</option>
+                        <option value="NBFC">NBFC</option>
+                        <option value="INSURANCE">Insurance</option>
+                      </select>
+                    } @else {
+                      <span class="field-value">{{ entityType === 'BANK' ? 'Financial Banking services' : entityType === 'LOAN_COMPANY' ? 'Loan Company' : entityType || '—' }}</span>
+                    }
+                  </div>
+                  <div class="field-item">
+                    <label>BSR Code</label>
+                    @if (editMode()) {
+                      <input type="text" [(ngModel)]="entityBsrCode" placeholder="Enter BSR code" />
+                    } @else {
+                      <span class="field-value">{{ entityBsrCode || '—' }}</span>
+                    }
+                  </div>
+                  <div class="field-item">
+                    <label>Pincode</label>
+                    @if (editMode()) {
+                      <input type="text" [(ngModel)]="entityPincode" placeholder="Enter Country name" maxlength="6" />
+                    } @else {
+                      <span class="field-value">{{ entityPincode || '—' }}</span>
+                    }
+                  </div>
+                  <div class="field-item">
+                    <label>Country</label>
+                    @if (editMode()) {
+                      <input type="text" [(ngModel)]="entityCountry" placeholder="Enter Country name" />
+                    } @else {
+                      <span class="field-value">{{ entityCountry || '—' }}</span>
+                    }
                   </div>
                   <div class="field-item">
                     <label>State</label>
                     @if (editMode()) {
-                      <select [(ngModel)]="entityState">
-                        <option value="">Select</option>
-                        @for (s of states(); track s) { <option [value]="s">{{ s }}</option> }
-                      </select>
+                      <div class="search-input-wrapper">
+                        <select [(ngModel)]="entityState">
+                          <option value="">Select state name</option>
+                          @for (s of states(); track s) { <option [value]="s">{{ s }}</option> }
+                        </select>
+                      </div>
                     } @else {
                       <span class="field-value">{{ entityState || '—' }}</span>
                     }
                   </div>
                   <div class="field-item">
+                    <label>District</label>
+                    @if (editMode()) {
+                      <div class="search-input-wrapper">
+                        <select [(ngModel)]="entityDistrict">
+                          <option value="">Select district name</option>
+                          @for (d of districts(); track d) { <option [value]="d">{{ d }}</option> }
+                        </select>
+                      </div>
+                    } @else {
+                      <span class="field-value">{{ entityDistrict || '—' }}</span>
+                    }
+                  </div>
+                  <div class="field-item">
+                    <label>City</label>
+                    @if (editMode()) {
+                      <div class="search-input-wrapper">
+                        <input type="text" [(ngModel)]="entityCity" placeholder="Select city name" />
+                      </div>
+                    } @else {
+                      <span class="field-value">{{ entityCity || '—' }}</span>
+                    }
+                  </div>
+                  <div class="field-item">
+                    <label>Entity Branch Name</label>
+                    @if (editMode()) {
+                      <div class="search-input-wrapper">
+                        <input type="text" [(ngModel)]="entityBranchName" placeholder="Select entity branch name" />
+                      </div>
+                    } @else {
+                      <span class="field-value">{{ entityBranchName || '—' }}</span>
+                    }
+                  </div>
+                  <div class="field-item">
                     <label>Entity Branch Category</label>
-                    <span class="field-value">—</span>
+                    @if (editMode()) {
+                      <div class="search-input-wrapper">
+                        <input type="text" [(ngModel)]="entityBranchCategory" placeholder="Select entity branch category" />
+                      </div>
+                    } @else {
+                      <span class="field-value">{{ entityBranchCategory || '—' }}</span>
+                    }
+                  </div>
+                  <div class="field-item">
+                    <label>Entity Address</label>
+                    @if (editMode()) {
+                      <input type="text" [(ngModel)]="entityAddress" placeholder="Enter entity address" />
+                    } @else {
+                      <span class="field-value">{{ entityAddress || '—' }}</span>
+                    }
+                  </div>
+                  <div class="field-item">
+                    <label>Branch Center Name</label>
+                    @if (editMode()) {
+                      <input type="text" [(ngModel)]="branchCenterName" placeholder="Enter branch center name" />
+                    } @else {
+                      <span class="field-value">{{ branchCenterName || '—' }}</span>
+                    }
+                  </div>
+                  <div class="field-item">
+                    <label>COSMOS Code</label>
+                    @if (editMode()) {
+                      <input type="text" [(ngModel)]="cosmosCode" placeholder="Enter Country name" />
+                    } @else {
+                      <span class="field-value">{{ cosmosCode || '—' }}</span>
+                    }
+                  </div>
+                  <div class="field-item">
+                    <label>Asset Size in Crores</label>
+                    @if (editMode()) {
+                      <div class="amount-input-wrapper">
+                        <span class="currency-prefix">₹</span>
+                        <input type="number" [(ngModel)]="assetSizeInCrores" placeholder="Enter Amount" />
+                      </div>
+                    } @else {
+                      <span class="field-value">{{ assetSizeInCrores ? '₹ ' + assetSizeInCrores.toLocaleString('en-IN') : '—' }}</span>
+                    }
+                  </div>
+                </div>
+                <!-- Yes/No radio fields -->
+                <div class="radio-field-list">
+                  <div class="radio-field-row">
+                    <label>Whether Deposit Taking/Non-Deposit Taking Entity</label>
+                    <div class="radio-group">
+                      @if (editMode()) {
+                        <label><input type="radio" [ngModel]="depositTakingEntity" [value]="true" (ngModelChange)="depositTakingEntity = $event" /> Yes</label>
+                        <label><input type="radio" [ngModel]="depositTakingEntity" [value]="false" (ngModelChange)="depositTakingEntity = $event" /> No</label>
+                      } @else {
+                        <span class="field-value">{{ depositTakingEntity ? 'Yes' : 'No' }}</span>
+                      }
+                    </div>
+                  </div>
+                  <div class="radio-field-row">
+                    <label>Whether Asset Size is greater than 100 Crores</label>
+                    <div class="radio-group">
+                      @if (editMode()) {
+                        <label><input type="radio" [ngModel]="assetSizeGreater100Crores" [value]="true" (ngModelChange)="assetSizeGreater100Crores = $event" /> Yes</label>
+                        <label><input type="radio" [ngModel]="assetSizeGreater100Crores" [value]="false" (ngModelChange)="assetSizeGreater100Crores = $event" /> No</label>
+                      } @else {
+                        <span class="field-value">{{ assetSizeGreater100Crores ? 'Yes' : 'No' }}</span>
+                      }
+                    </div>
+                  </div>
+                  <div class="radio-field-row">
+                    <label>Whether Liquidated present</label>
+                    <div class="radio-group">
+                      @if (editMode()) {
+                        <label><input type="radio" [ngModel]="liquidatedPresent" [value]="true" (ngModelChange)="liquidatedPresent = $event" /> Yes</label>
+                        <label><input type="radio" [ngModel]="liquidatedPresent" [value]="false" (ngModelChange)="liquidatedPresent = $event" /> No</label>
+                      } @else {
+                        <span class="field-value">{{ liquidatedPresent ? 'Yes' : 'No' }}</span>
+                      }
+                    </div>
                   </div>
                 </div>
               </div>
@@ -527,84 +678,384 @@
           <!-- Complainant Details -->
           <div class="form-section" [class.open]="sectionOpen.complainant">
             <div class="section-header" (click)="sectionOpen.complainant = !sectionOpen.complainant">
-              <span><i class="pi pi-user"></i> Complainant Details</span>
-              <i class="pi" [class.pi-chevron-down]="sectionOpen.complainant" [class.pi-chevron-right]="!sectionOpen.complainant"></i>
+              <span><i class="pi pi-chart-bar"></i> Complainant Details</span>
+              <i class="pi" [class.pi-chevron-down]="sectionOpen.complainant" [class.pi-chevron-up]="!sectionOpen.complainant"></i>
             </div>
             @if (sectionOpen.complainant) {
               <div class="section-body">
+                <h4 class="sub-section-title">Basic Identification</h4>
                 <div class="field-grid-2">
                   <div class="field-item">
-                    <label>Name</label>
+                    <label>Email ID</label>
                     @if (editMode()) {
-                      <input type="text" [(ngModel)]="complainantName" />
-                    } @else {
-                      <span class="field-value">{{ complainantName || '—' }}</span>
-                    }
-                  </div>
-                  <div class="field-item">
-                    <label>Phone</label>
-                    @if (editMode()) {
-                      <input type="tel" [(ngModel)]="complainantPhone" maxlength="10" />
-                    } @else {
-                      <span class="field-value">{{ complainantPhone || '—' }}</span>
-                    }
-                  </div>
-                  <div class="field-item">
-                    <label>Email</label>
-                    @if (editMode()) {
-                      <input type="email" [(ngModel)]="complainantEmail" />
+                      <input type="email" [(ngModel)]="complainantEmail" placeholder="Enter email" />
                     } @else {
                       <span class="field-value">{{ complainantEmail || '—' }}</span>
                     }
                   </div>
                   <div class="field-item">
-                    <label>State</label>
+                    <label>Entity Name</label>
+                    <span class="field-value">{{ entityName || '—' }}</span>
+                  </div>
+                  <div class="field-item">
+                    <label>Other Entity Name <small>(Optional)</small></label>
                     @if (editMode()) {
-                      <select [ngModel]="complainantState" (ngModelChange)="onStateChange($event)">
-                        <option value="">Select</option>
-                        @for (s of states(); track s) { <option [value]="s">{{ s }}</option> }
-                      </select>
+                      <input type="text" [(ngModel)]="otherEntityName" placeholder="Enter other entity name" />
                     } @else {
-                      <span class="field-value">{{ complainantState || '—' }}</span>
+                      <span class="field-value">{{ otherEntityName || '—' }}</span>
                     }
                   </div>
                   <div class="field-item">
-                    <label>District</label>
+                    <label>Date of Registration with RBI</label>
                     @if (editMode()) {
-                      <select [(ngModel)]="complainantDistrict">
-                        <option value="">Select</option>
-                        @for (d of districts(); track d) { <option [value]="d">{{ d }}</option> }
-                      </select>
+                      <input type="date" [(ngModel)]="registrationWithRbiDate" />
                     } @else {
-                      <span class="field-value">{{ complainantDistrict || '—' }}</span>
-                    }
-                  </div>
-                  <div class="field-item">
-                    <label>Pincode</label>
-                    @if (editMode()) {
-                      <div class="pincode-field">
-                        <input type="text" [ngModel]="complainantPincode" (ngModelChange)="onPincodeInput($event)" maxlength="6" placeholder="6-digit pincode" />
-                        @if (pincodeLoading()) { <span class="pincode-spinner"><i class="pi pi-spin pi-spinner"></i></span> }
-                      </div>
-                    } @else {
-                      <span class="field-value">{{ complainantPincode || '—' }}</span>
+                      <span class="field-value">{{ registrationWithRbiDate || '—' }}</span>
                     }
                   </div>
                 </div>
-                @if (editMode()) {
-                  <div class="field-item full">
-                    <label>Address</label>
-                    <textarea [(ngModel)]="complainantAddress" rows="2"></textarea>
+
+                <hr class="sub-section-divider" />
+                <h4 class="sub-section-title">Complaint Classification</h4>
+                <div class="field-grid-2">
+                  <div class="field-item">
+                    <label>Complaint Category</label>
+                    @if (editMode()) {
+                      <input type="text" [(ngModel)]="complaintCategory" placeholder="e.g. Loan" />
+                    } @else {
+                      <span class="field-value">{{ complaintCategory || '—' }}</span>
+                    }
                   </div>
-                } @else {
-                  <div class="field-item full">
-                    <label>Address</label>
-                    <span class="field-value">{{ complainantAddress || '—' }}</span>
+                  <div class="field-item">
+                    <label>Complaint Sub-Category 1</label>
+                    @if (editMode()) {
+                      <input type="text" [(ngModel)]="complaintSubCategory1" placeholder="Sub-category" />
+                    } @else {
+                      <span class="field-value">{{ complaintSubCategory1 || '—' }}</span>
+                    }
                   </div>
-                }
+                  <div class="field-item">
+                    <label>Complaint Sub-Category 2</label>
+                    @if (editMode()) {
+                      <input type="text" [(ngModel)]="complaintSubCategory2" placeholder="Sub-category 2" />
+                    } @else {
+                      <span class="field-value">{{ complaintSubCategory2 || '—' }}</span>
+                    }
+                  </div>
+                  <div class="field-item">
+                    <label>Date of Filing the Complaint</label>
+                    @if (editMode()) {
+                      <input type="date" [(ngModel)]="filingDate" />
+                    } @else {
+                      <span class="field-value">{{ filingDate || '—' }}</span>
+                    }
+                  </div>
+                  <div class="field-item">
+                    <label>Complaint Registration Date Valid</label>
+                    @if (editMode()) {
+                      <div class="radio-group">
+                        <label><input type="radio" [ngModel]="registrationDateValid" [value]="true" (ngModelChange)="registrationDateValid = $event" /> Yes</label>
+                        <label><input type="radio" [ngModel]="registrationDateValid" [value]="false" (ngModelChange)="registrationDateValid = $event" /> No</label>
+                      </div>
+                    } @else {
+                      <div class="radio-group">
+                        <label><input type="radio" [checked]="registrationDateValid" disabled /> Yes</label>
+                        <label><input type="radio" [checked]="!registrationDateValid" disabled /> No</label>
+                      </div>
+                    }
+                  </div>
+                </div>
+
+                <hr class="sub-section-divider" />
+                <h4 class="sub-section-title">Reminder & Financial Details</h4>
+                <div class="field-grid-2">
+                  <div class="field-item">
+                    <label>Whether any Reminder was sent by the Complainant</label>
+                    @if (editMode()) {
+                      <div class="radio-group">
+                        <label><input type="radio" [ngModel]="reminderSent" [value]="true" (ngModelChange)="reminderSent = $event" /> Yes</label>
+                        <label><input type="radio" [ngModel]="reminderSent" [value]="false" (ngModelChange)="reminderSent = $event" /> No</label>
+                      </div>
+                    } @else {
+                      <div class="radio-group">
+                        <label><input type="radio" [checked]="reminderSent" disabled /> Yes</label>
+                        <label><input type="radio" [checked]="!reminderSent" disabled /> No</label>
+                      </div>
+                    }
+                  </div>
+                  <div class="field-item">
+                    <label>Disputed Amount Involved</label>
+                    @if (editMode()) {
+                      <div class="amount-input-wrapper">
+                        <span class="currency-prefix">₹</span>
+                        <input type="number" [(ngModel)]="disputedAmount" placeholder="Enter Amount" />
+                      </div>
+                    } @else {
+                      <div class="amount-display">
+                        <span class="amount-value">₹  {{ disputedAmount ? disputedAmount.toLocaleString('en-IN') : '—' }}</span>
+                        @if (disputedAmount) {
+                          <span class="amount-words">{{ amountInWords(disputedAmount) }}</span>
+                        }
+                      </div>
+                    }
+                  </div>
+                  <div class="field-item">
+                    <label>Date of Filing the Complaint</label>
+                    <span class="field-value">{{ filingDate || '—' }}</span>
+                  </div>
+                  <div class="field-item">
+                    <label>Compensation Sought for Expenses Incurred, Harassment and Mental Anguish (if any)</label>
+                    @if (editMode()) {
+                      <div class="radio-group">
+                        <label><input type="radio" [ngModel]="compensationSoughtYesNo" [value]="true" (ngModelChange)="compensationSoughtYesNo = $event" /> Yes</label>
+                        <label><input type="radio" [ngModel]="compensationSoughtYesNo" [value]="false" (ngModelChange)="compensationSoughtYesNo = $event" /> No</label>
+                      </div>
+                    } @else {
+                      <div class="radio-group">
+                        <label><input type="radio" [checked]="compensationSoughtYesNo" disabled /> Yes</label>
+                        <label><input type="radio" [checked]="!compensationSoughtYesNo" disabled /> No</label>
+                      </div>
+                    }
+                  </div>
+                </div>
+
+                <hr class="sub-section-divider" />
+                <h4 class="sub-section-title">Legal & Case Details</h4>
+                <div class="field-grid-2">
+                  <div class="field-item">
+                    <label>Whether Legal Case is Filed</label>
+                    @if (editMode()) {
+                      <div class="radio-group">
+                        <label><input type="radio" [ngModel]="legalCaseFiled" [value]="true" (ngModelChange)="legalCaseFiled = $event" /> Yes</label>
+                        <label><input type="radio" [ngModel]="legalCaseFiled" [value]="false" (ngModelChange)="legalCaseFiled = $event" /> No</label>
+                      </div>
+                    } @else {
+                      <div class="radio-group">
+                        <label><input type="radio" [checked]="legalCaseFiled" disabled /> Yes</label>
+                        <label><input type="radio" [checked]="!legalCaseFiled" disabled /> No</label>
+                      </div>
+                    }
+                  </div>
+                  <div class="field-item">
+                    <label>Date of Filing the Complaint</label>
+                    <span class="field-value">{{ filingDate || '—' }}</span>
+                  </div>
+                  <div class="field-item">
+                    <label>Pre Enquiry Received</label>
+                    @if (editMode()) {
+                      <div class="radio-group">
+                        <label><input type="radio" [ngModel]="preEnquiryReceived" [value]="true" (ngModelChange)="preEnquiryReceived = $event" /> Yes</label>
+                        <label><input type="radio" [ngModel]="preEnquiryReceived" [value]="false" (ngModelChange)="preEnquiryReceived = $event" /> No</label>
+                      </div>
+                    } @else {
+                      <div class="radio-group">
+                        <label><input type="radio" [checked]="preEnquiryReceived" disabled /> Yes</label>
+                        <label><input type="radio" [checked]="!preEnquiryReceived" disabled /> No</label>
+                      </div>
+                    }
+                  </div>
+                  <div class="field-item">
+                    <label>High Priority Complaint</label>
+                    @if (editMode()) {
+                      <div class="radio-group">
+                        <label><input type="radio" [ngModel]="highPriority" [value]="true" (ngModelChange)="highPriority = $event" /> Yes</label>
+                        <label><input type="radio" [ngModel]="highPriority" [value]="false" (ngModelChange)="highPriority = $event" /> No</label>
+                      </div>
+                    } @else {
+                      <div class="radio-group">
+                        <label><input type="radio" [checked]="highPriority" disabled /> Yes</label>
+                        <label><input type="radio" [checked]="!highPriority" disabled /> No</label>
+                      </div>
+                    }
+                  </div>
+                  <div class="field-item full">
+                    <label>Loan / Disposal Account</label>
+                    @if (editMode()) {
+                      <div class="amount-input-wrapper">
+                        <span class="currency-prefix">₹</span>
+                        <input type="number" [(ngModel)]="loanDisposalAmount" placeholder="Enter Amount" />
+                      </div>
+                    } @else {
+                      <div class="amount-display">
+                        <span class="amount-value">₹  {{ loanDisposalAmount ? loanDisposalAmount.toLocaleString('en-IN') : '—' }}</span>
+                        @if (loanDisposalAmount) {
+                          <span class="amount-words">{{ amountInWords(loanDisposalAmount) }}</span>
+                        }
+                      </div>
+                    }
+                  </div>
+                </div>
+
+                <hr class="sub-section-divider" />
+                <h4 class="sub-section-title">Additional Information</h4>
+                <div class="field-grid-2">
+                  <div class="field-item">
+                    <label>Additional Comments</label>
+                    @if (editMode()) {
+                      <input type="text" [(ngModel)]="additionalComments" placeholder="Comments" />
+                    } @else {
+                      <span class="field-value">{{ additionalComments || '—' }}</span>
+                    }
+                  </div>
+                  <div class="field-item">
+                    <label>CRPC Proposed Action</label>
+                    @if (editMode()) {
+                      <select [(ngModel)]="crpcProposedAction">
+                        <option value="">Select</option>
+                        <option value="Maintainable">Maintainable</option>
+                        <option value="Non-Maintainable">Non-Maintainable</option>
+                        <option value="Duplicate">Duplicate</option>
+                      </select>
+                    } @else {
+                      <span class="field-value">{{ crpcProposedAction || '—' }}</span>
+                    }
+                  </div>
+                  <div class="field-item">
+                    <label>Vernacular Language</label>
+                    @if (editMode()) {
+                      <input type="text" [(ngModel)]="vernacularLanguage" placeholder="e.g. Hindi" />
+                    } @else {
+                      <span class="field-value">{{ vernacularLanguage || '—' }}</span>
+                    }
+                  </div>
+                  <div class="field-item">
+                    <label>Date of Filing the Complaint</label>
+                    <span class="field-value">{{ filingDate || '—' }}</span>
+                  </div>
+                </div>
+
+                <hr class="sub-section-divider" />
+                <h4 class="sub-section-title">Flags & Indicators</h4>
+                <div class="field-grid-2">
+                  <div class="field-item">
+                    <label>Is Complaint Regarding Pension</label>
+                    @if (editMode()) {
+                      <div class="radio-group">
+                        <label><input type="radio" [ngModel]="pensionComplaint" [value]="true" (ngModelChange)="pensionComplaint = $event" /> Yes</label>
+                        <label><input type="radio" [ngModel]="pensionComplaint" [value]="false" (ngModelChange)="pensionComplaint = $event" /> No</label>
+                      </div>
+                    } @else {
+                      <div class="radio-group">
+                        <label><input type="radio" [checked]="pensionComplaint" disabled /> Yes</label>
+                        <label><input type="radio" [checked]="!pensionComplaint" disabled /> No</label>
+                      </div>
+                    }
+                  </div>
+                  <div class="field-item">
+                    <label>Is Complaint Against a Business Correspondent</label>
+                    @if (editMode()) {
+                      <div class="radio-group">
+                        <label><input type="radio" [ngModel]="businessCorrespondent" [value]="true" (ngModelChange)="businessCorrespondent = $event" /> Yes</label>
+                        <label><input type="radio" [ngModel]="businessCorrespondent" [value]="false" (ngModelChange)="businessCorrespondent = $event" /> No</label>
+                      </div>
+                    } @else {
+                      <div class="radio-group">
+                        <label><input type="radio" [checked]="businessCorrespondent" disabled /> Yes</label>
+                        <label><input type="radio" [checked]="!businessCorrespondent" disabled /> No</label>
+                      </div>
+                    }
+                  </div>
+                  <div class="field-item">
+                    <label>ATM / Credit / Debit Card</label>
+                    @if (editMode()) {
+                      <div class="radio-group">
+                        <label><input type="radio" [ngModel]="atmCreditDebitCard" [value]="true" (ngModelChange)="atmCreditDebitCard = $event" /> Yes</label>
+                        <label><input type="radio" [ngModel]="atmCreditDebitCard" [value]="false" (ngModelChange)="atmCreditDebitCard = $event" /> No</label>
+                      </div>
+                    } @else {
+                      <div class="radio-group">
+                        <label><input type="radio" [checked]="atmCreditDebitCard" disabled /> Yes</label>
+                        <label><input type="radio" [checked]="!atmCreditDebitCard" disabled /> No</label>
+                      </div>
+                    }
+                  </div>
+                  <div class="field-item">
+                    <label>Scheme Flag</label>
+                    @if (editMode()) {
+                      <input type="text" [(ngModel)]="schemeFlag" placeholder="e.g. Scheme JDY" />
+                    } @else {
+                      <span class="field-value">{{ schemeFlag || '—' }}</span>
+                    }
+                  </div>
+                  <div class="field-item">
+                    <label>RBO CGPC (Old)</label>
+                    @if (editMode()) {
+                      <input type="text" [(ngModel)]="rboCgpcOld" placeholder="Reference number" />
+                    } @else {
+                      <span class="field-value">{{ rboCgpcOld || '—' }}</span>
+                    }
+                  </div>
+                  <div class="field-item">
+                    <label>Grounds Flag</label>
+                    @if (editMode()) {
+                      <input type="text" [(ngModel)]="groundsFlag" placeholder="Reference number" />
+                    } @else {
+                      <span class="field-value">{{ groundsFlag || '—' }}</span>
+                    }
+                  </div>
+                </div>
+
+                <hr class="sub-section-divider" />
+                <h4 class="sub-section-title">Complaint Linkage</h4>
+                <div class="field-grid-2">
+                  <div class="field-item">
+                    <label>Is Complaint Pertaining to a Free Marked Complaint</label>
+                    @if (editMode()) {
+                      <div class="radio-group">
+                        <label><input type="radio" [ngModel]="freeMarkedComplaint" [value]="true" (ngModelChange)="freeMarkedComplaint = $event" /> Yes</label>
+                        <label><input type="radio" [ngModel]="freeMarkedComplaint" [value]="false" (ngModelChange)="freeMarkedComplaint = $event" /> No</label>
+                      </div>
+                    } @else {
+                      <div class="radio-group">
+                        <label><input type="radio" [checked]="freeMarkedComplaint" disabled /> Yes</label>
+                        <label><input type="radio" [checked]="!freeMarkedComplaint" disabled /> No</label>
+                      </div>
+                    }
+                  </div>
+                  <div class="field-item">
+                    <label>Current Complaint Number</label>
+                    @if (editMode()) {
+                      <input type="text" [(ngModel)]="currentComplaintNumber" placeholder="Complaint number" />
+                    } @else {
+                      <span class="field-value">{{ currentComplaintNumber || '—' }}</span>
+                    }
+                  </div>
+                  <div class="field-item full">
+                    <label>Received any Reply within 30 Days (or within time stipulated by RBI / NPCI / Card Network)</label>
+                    @if (editMode()) {
+                      <div class="radio-group">
+                        <label><input type="radio" [ngModel]="replyWithin30Days" value="YES" (ngModelChange)="replyWithin30Days = $event" /> Yes</label>
+                        <label><input type="radio" [ngModel]="replyWithin30Days" value="NO" (ngModelChange)="replyWithin30Days = $event" /> No</label>
+                        <label><input type="radio" [ngModel]="replyWithin30Days" value="NA" (ngModelChange)="replyWithin30Days = $event" /> Not Applicable</label>
+                      </div>
+                    } @else {
+                      <div class="radio-group">
+                        <label><input type="radio" [checked]="replyWithin30Days === 'YES'" disabled /> Yes</label>
+                        <label><input type="radio" [checked]="replyWithin30Days === 'NO'" disabled /> No</label>
+                        <label><input type="radio" [checked]="replyWithin30Days === 'NA'" disabled /> Not Applicable</label>
+                      </div>
+                    }
+                    <p class="field-hint">After the Regulated Entity received the complaint, or if the Complainant is not satisfied with the reply / resolution provided by the Regulated Entity.</p>
+                  </div>
+                </div>
+
               </div>
             }
           </div>
+
+          <!-- Declaration -->
+          <div class="form-section">
+            <div class="section-header">
+              <span><i class="pi pi-chart-bar"></i> Declaration</span>
+            </div>
+            <div class="section-body">
+              <label class="checkbox-label">
+                <input type="checkbox" [(ngModel)]="declarationChecked" [disabled]="!editMode()" />
+                All data/information entered by me in the system is correct as per my understanding
+              </label>
+            </div>
+          </div>
+
         </div>
 
       }
@@ -744,7 +1195,7 @@
           <!-- Open Activities -->
           <div class="email-activity-group">
             <div class="activity-group-header" (click)="emailSections.open = !emailSections.open">
-              <i class="pi" [class.pi-chevron-down]="emailSections.open" [class.pi-chevron-right]="!emailSections.open"></i>
+              <i class="pi" [class.pi-chevron-down]="emailSections.open" [class.pi-chevron-up]="!emailSections.open"></i>
               <span>Open Activities</span>
             </div>
             @if (emailSections.open) {
@@ -764,7 +1215,7 @@
           <!-- Draft Emails -->
           <div class="email-activity-group">
             <div class="activity-group-header" (click)="emailSections.drafts = !emailSections.drafts">
-              <i class="pi" [class.pi-chevron-down]="emailSections.drafts" [class.pi-chevron-right]="!emailSections.drafts"></i>
+              <i class="pi" [class.pi-chevron-down]="emailSections.drafts" [class.pi-chevron-up]="!emailSections.drafts"></i>
               <span>Draft Emails</span>
             </div>
             @if (emailSections.drafts) {
@@ -784,7 +1235,7 @@
           <!-- Closed Activities -->
           <div class="email-activity-group">
             <div class="activity-group-header" (click)="emailSections.closed = !emailSections.closed">
-              <i class="pi" [class.pi-chevron-down]="emailSections.closed" [class.pi-chevron-right]="!emailSections.closed"></i>
+              <i class="pi" [class.pi-chevron-down]="emailSections.closed" [class.pi-chevron-up]="!emailSections.closed"></i>
               <span>Closed Activities</span>
             </div>
             @if (emailSections.closed) {
@@ -890,24 +1341,28 @@
       </div>
     }
 
+        </div><!-- /content-box -->
       </div><!-- /left-main-area -->
 
       <!-- INLINE ICON BAR -->
-      @if (!editMode()) {
+      @if (true) {
         <div class="inline-icon-bar">
-          <button class="iib-btn iib-suggestions-btn" [class.active]="showSuggestionsPanel()" title="AI Suggestions" (click)="showSuggestionsPanel.set(!showSuggestionsPanel())">
-            <i class="pi pi-sparkles"></i>
-          </button>
-          <button class="iib-btn" [class.active]="showSimilarPanel()" title="Similar cases" (click)="toggleSimilarPanel()"><i class="pi pi-copy"></i></button>
-          <button class="iib-btn" [class.active]="showHistoryPanel()" title="History" (click)="toggleHistoryPanel()"><i class="pi pi-search"></i></button>
-          <button class="iib-btn att-icon-inline" [class.has-attachments]="attachments().length > 0"
-            title="Attachments ({{ attachments().length }})"
-            (click)="showAttachmentsPanel() ? closeAttachmentsPanel() : openAttachmentsPanel()">
-            <i class="pi pi-paperclip"></i>
-            @if (attachments().length > 0) {
-              <span class="iib-badge">{{ attachments().length }}</span>
-            }
-          </button>
+          <div class="iib-btn-group">
+            <button class="iib-btn iib-search-btn" [class.active]="showSimilarPanel()" title="Search / Similar cases" (click)="toggleSimilarPanel()">
+              <i class="pi pi-search"></i>
+            </button>
+            <button class="iib-btn iib-attach-btn" [class.has-attachments]="attachments().length > 0"
+              title="Attachments ({{ attachments().length }})"
+              (click)="showAttachmentsPanel() ? closeAttachmentsPanel() : openAttachmentsPanel()">
+              <i class="pi pi-paperclip"></i>
+              @if (attachments().length > 0) {
+                <span class="iib-badge">{{ attachments().length }}</span>
+              }
+            </button>
+            <button class="iib-btn iib-history-btn" [class.active]="showHistoryPanel()" title="History" (click)="toggleHistoryPanel()">
+              <i class="pi pi-history"></i>
+            </button>
+          </div>
 
           <!-- Suggestions Popover -->
           @if (showSuggestionsPanel() && suggestions().length > 0) {
@@ -938,10 +1393,10 @@
       }
 
       <!-- RIGHT SIDEBAR -->
-      @if (!editMode()) {
+      @if (true) {
         <div class="col-right-sidebar">
           <!-- Reference Section -->
-          <div class="sidebar-section reference-section">
+          <div class="sidebar-section">
             <div class="sidebar-section-header">
               <h4><i class="pi pi-cog"></i> Reference</h4>
               <button class="sidebar-expand-btn"><i class="pi pi-chevron-right"></i></button>
@@ -951,7 +1406,7 @@
           <!-- Past Complaints Section -->
           <div class="sidebar-section">
             <div class="sidebar-section-header">
-              <h4><i class="pi pi-history"></i> Past Complaints <span class="sidebar-count-badge">{{ pastComplaints().length }}</span></h4>
+              <h4><img src="assets/pastComplint.png" alt="" class="sidebar-icon-img" /> Past Complaints <span class="sidebar-count-badge">{{ pastComplaints().length }}</span></h4>
               <button class="sidebar-expand-btn" (click)="loadPastComplaints()"><i class="pi pi-refresh"></i></button>
             </div>
             <div class="sidebar-section-body">
@@ -962,17 +1417,27 @@
               @if (loadingPastComplaints()) {
                 <p class="sidebar-loading"><i class="pi pi-spin pi-spinner"></i> Loading...</p>
               } @else if (pastComplaints().length > 0) {
-                @for (pc of pastComplaints(); track pc.complaintId) {
-                  <div class="past-complaint-card" (click)="openPastComplaintDetail(pc.complaintId)">
-                    <span class="pc-status" [class.active]="pc.status === 'ACTIVE'" [class.completed]="pc.status === 'COMPLETED' || pc.status === 'RESOLVED'">
-                      <i class="pi pi-circle-fill"></i> {{ pc.status === 'COMPLETED' || pc.status === 'RESOLVED' ? 'Completed' : 'Active' }}
-                    </span>
-                    <div class="pc-details">
-                      <span class="pc-field"><strong>Complaint Id:</strong> {{ pc.complaintId }}</span>
-                      <span class="pc-field"><strong>Modified Date:</strong> {{ pc.filedDate }}</span>
-                      <span class="pc-field"><strong>Processing Office:</strong> Chandigarh CEPC</span>
-                      <span class="pc-field"><strong>Entity:</strong> {{ pc.entity || '—' }}</span>
+                @for (pc of pastComplaints(); track pc.complaintId; let idx = $index) {
+                  <div class="past-complaint-card" [class.pc-active-card]="pc.status !== 'COMPLETED' && pc.status !== 'RESOLVED'" [class.pc-completed-card]="pc.status === 'COMPLETED' || pc.status === 'RESOLVED'" (click)="openPastComplaintDetail(pc.complaintId)">
+                    <div class="pc-status-row">
+                      <span class="pc-status" [class.active]="pc.status !== 'COMPLETED' && pc.status !== 'RESOLVED'" [class.completed]="pc.status === 'COMPLETED' || pc.status === 'RESOLVED'">
+                        @if (pc.status === 'COMPLETED' || pc.status === 'RESOLVED') {
+                          <i class="pi pi-file"></i>
+                        } @else {
+                          <i class="pi pi-check-circle"></i>
+                        }
+                        {{ pc.status === 'COMPLETED' || pc.status === 'RESOLVED' ? 'Completed' : 'Active' }}
+                      </span>
+                      @if (pc.status === 'COMPLETED' || pc.status === 'RESOLVED') {
+                        <span class="pc-clock-icon"><i class="pi pi-history"></i></span>
+                      }
                     </div>
+                    <div class="pc-details">
+                      <span class="pc-field">Complaint Id: <strong>{{ pc.complaintId }}</strong></span>
+                      <span class="pc-field">Modified Date: <strong>{{ pc.filedDate }}</strong></span>
+                      <span class="pc-field">Processing Office: <strong>Chandigarh CEPC</strong></span>
+                    </div>
+                    <p class="pc-entity">Entity: <strong>{{ pc.entity || '—' }}</strong></p>
                     <p class="pc-subject">{{ pc.subject }}</p>
                   </div>
                 }
@@ -982,10 +1447,10 @@
             </div>
           </div>
 
-          <!-- Documents Section -->
+          <!-- Reference Documents Section -->
           <div class="sidebar-section">
             <div class="sidebar-section-header">
-              <h4><i class="pi pi-file"></i> Documents</h4>
+              <h4><i class="pi pi-file"></i> Reference Documents</h4>
             </div>
             <div class="sidebar-section-body">
               <div class="sidebar-search">
@@ -1101,13 +1566,6 @@
       </div>
     }
 
-    <!-- ═══ COMMENT BAR ═══ -->
-    @if (!editMode()) {
-      <div class="comment-bar">
-        <input type="text" class="comment-input" placeholder="Add a comment" />
-        <button class="comment-send-btn"><i class="pi pi-send"></i></button>
-      </div>
-    }
 
     <!-- ═══ LEFT ICON SIDEBAR ═══ -->
     <div class="icon-sidebar">

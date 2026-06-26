@@ -93,6 +93,52 @@
         </div>
       }
 
+      <!-- Rule Engine KPI Cards -->
+      <div class="kpi-grid">
+        <div class="kpi-card" (click)="navigateTo('rules')">
+          <div class="kpi-icon rules-total"><i class="pi pi-book"></i></div>
+          <div class="kpi-body">
+            <span class="kpi-value">{{ ruleStats().totalRules }}</span>
+            <span class="kpi-label">Total Rules</span>
+          </div>
+        </div>
+        <div class="kpi-card" (click)="navigateTo('rules')">
+          <div class="kpi-icon rules-active"><i class="pi pi-check-circle"></i></div>
+          <div class="kpi-body">
+            <span class="kpi-value">{{ ruleStats().activeRules }}</span>
+            <span class="kpi-label">Active Rules</span>
+          </div>
+        </div>
+        <div class="kpi-card" (click)="navigateTo('rules')">
+          <div class="kpi-icon rules-pending"><i class="pi pi-clock"></i></div>
+          <div class="kpi-body">
+            <span class="kpi-value">{{ ruleStats().pendingReview }}</span>
+            <span class="kpi-label">Pending Review</span>
+          </div>
+        </div>
+        <div class="kpi-card" (click)="navigateTo('rules')">
+          <div class="kpi-icon rules-draft"><i class="pi pi-file-edit"></i></div>
+          <div class="kpi-body">
+            <span class="kpi-value">{{ ruleStats().draftRules }}</span>
+            <span class="kpi-label">Draft Rules</span>
+          </div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon rules-fired"><i class="pi pi-bolt"></i></div>
+          <div class="kpi-body">
+            <span class="kpi-value">{{ ruleStats().firedToday }}</span>
+            <span class="kpi-label">Fired Today</span>
+          </div>
+        </div>
+        <div class="kpi-card" (click)="navigateTo('rules')">
+          <div class="kpi-icon rules-categories"><i class="pi pi-th-large"></i></div>
+          <div class="kpi-body">
+            <span class="kpi-value">{{ ruleStats().categories }}</span>
+            <span class="kpi-label">Categories</span>
+          </div>
+        </div>
+      </div>
+
       @if (loading()) {
         <div class="loading-state">
           <div class="spinner"></div>

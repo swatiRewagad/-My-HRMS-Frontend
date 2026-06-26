@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
+import { RulesService } from '../../../services/rules.service';
 import { environment } from '../../../../environments/environment';
 import { Chart, registerables } from 'chart.js';
 
@@ -20,12 +21,14 @@ export class AdminDashboardComponent implements OnInit, OnDestroy, AfterViewInit
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   private http = inject(HttpClient);
+  private rulesService = inject(RulesService);
   auth = inject(KeycloakAuthService);
 
   loading = signal(true);
   sidebarItem = signal('dashboard');
   stats = signal<any>(null);
   showFilters = signal(false);
+  ruleStats = signal({ totalRules: 0, activeRules: 0, pendingReview: 0, draftRules: 0, firedToday: 0, categories: 0 });
 
   // Filter fields
   filterFromDate = '';
@@ -53,6 +56,7 @@ export class AdminDashboardComponent implements OnInit, OnDestroy, AfterViewInit
     if (params['status']) this.filterStatus = params['status'];
 
     this.loadDashboardData();
+    this.loadRuleStats();
     this.refreshInterval = setInterval(() => this.loadDashboardData(), 60000);
   }
 
@@ -248,10 +252,35 @@ export class AdminDashboardComponent implements OnInit, OnDestroy, AfterViewInit
     }));
   }
 
+  loadRuleStats() {
+    this.rulesService.getRules().subscribe({
+      next: (rules) => {
+        this.ruleStats.set({
+          totalRules: rules.length,
+          activeRules: rules.filter(r => r.status === 'ACTIVE').length,
+          pendingReview: rules.filter(r => r.status === 'PENDING_REVIEW').length,
+          draftRules: rules.filter(r => r.status === 'DRAFT').length,
+          firedToday: 0,
+          categories: new Set(rules.map(r => r.categoryCode)).size
+        });
+      },
+      error: () => {}
+    });
+
+    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/rules/stats/fired-today`).subscribe({
+      next: (res) => this.ruleStats.update(s => ({ ...s, firedToday: res.count || 0 })),
+      error: () => {}
+    });
+  }
+
   navigateTo(item: string) {
     this.sidebarItem.set(item);
     if (item === 'complaints') {
       this.router.navigate(['/crpc/home']);
+    } else if (item === 'rules') {
+      this.router.navigate(['/admin/rules']);
+    } else if (item === 'extraction-rules') {
+      this.router.navigate(['/admin/extraction-rules']);
     }
   }
 
