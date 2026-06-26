@@ -36,6 +36,37 @@ services:
     networks:
       - cms-network
 
+  # ── Kafka (KRaft mode - No Zookeeper) ──
+  cms-kafka:
+    image: apache/kafka:3.7.0
+    container_name: cms-kafka
+    restart: unless-stopped
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093,EXTERNAL://0.0.0.0:29092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://cms-kafka:9092,EXTERNAL://localhost:29092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@cms-kafka:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+      CLUSTER_ID: 'cms-kafka-local-001'
+    ports:
+      - "29092:29092"
+    volumes:
+      - cms-kafka-data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+    networks:
+      - cms-network
+
   # ── Redis ──
   cms-redis:
     image: redis:7-alpine
@@ -76,6 +107,7 @@ services:
       CMS_ATTACHMENTS_PATH: /cms-attachments
       JAVA_OPTS: "-Xms512m -Xmx1g"
       CMS_CORS_ALLOWED_ORIGINS: "http://localhost:4200,http://localhost:4201,http://localhost:4202,http://localhost:4300,http://localhost"
+      KAFKA_BOOTSTRAP: cms-kafka:9092
       GROQ_API_KEY: "${GROQ_API_KEY}"
     volumes:
       - cms-attachments:/cms-attachments
@@ -83,6 +115,8 @@ services:
       cms-mysql:
         condition: service_healthy
       cms-redis:
+        condition: service_healthy
+      cms-kafka:
         condition: service_healthy
     deploy:
       resources:
@@ -112,6 +146,7 @@ services:
       CMS_ATTACHMENTS_PATH: /cms-attachments
       JAVA_OPTS: "-Xms512m -Xmx1g"
       CMS_CORS_ALLOWED_ORIGINS: "http://localhost:4200,http://localhost:4201,http://localhost:4202,http://localhost:4300,http://localhost"
+      KAFKA_BOOTSTRAP: cms-kafka:9092
       GROQ_API_KEY: "${GROQ_API_KEY}"
     volumes:
       - cms-attachments:/cms-attachments
@@ -119,6 +154,8 @@ services:
       cms-mysql:
         condition: service_healthy
       cms-redis:
+        condition: service_healthy
+      cms-kafka:
         condition: service_healthy
     deploy:
       resources:
@@ -192,6 +229,7 @@ services:
 volumes:
   cms-mysql-data:
   cms-redis-data:
+  cms-kafka-data:
   cms-attachments:
   cms-nginx-cache:
 

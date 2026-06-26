@@ -52,7 +52,7 @@
 
 <div class="header">
     <h1>CMS 2.0 — Complete Docker Desktop Setup Guide</h1>
-    <p>Pull the repo and run the entire CMS application on Docker Desktop — No Kafka, MySQL, or Redis installation needed</p>
+    <p>Pull the repo and run the entire CMS application on Docker Desktop — No MySQL, Kafka, or Redis installation needed</p>
 </div>
 
 <nav class="nav">
@@ -82,7 +82,7 @@ cd My-HRMS-Frontend/CMS2.0/cms-infra
 <span class="comment"># 2. Create .env (optional - only needed for AI features)</span>
 echo "GROQ_API_KEY=gsk_your_key_here" > .env
 
-<span class="comment"># 3. Start everything (MySQL, Redis, 2x Backend, PaddleOCR, Frontend, Nginx)</span>
+<span class="comment"># 3. Start everything (MySQL, Redis, Kafka, 2x Backend, PaddleOCR, Frontend, Nginx)</span>
 docker compose up -d --build
 
 <span class="comment"># 4. Wait ~3-4 minutes for all containers to be healthy</span>
@@ -148,6 +148,7 @@ docker info               <span class="comment"># Should show "Server: Docker De
         <tr><td>80</td><td>Nginx (App URL)</td><td><code>netstat -ano | findstr :80</code></td></tr>
         <tr><td>3307</td><td>MySQL</td><td><code>netstat -ano | findstr :3307</code></td></tr>
         <tr><td>6380</td><td>Redis</td><td><code>netstat -ano | findstr :6380</code></td></tr>
+        <tr><td>29092</td><td>Kafka</td><td><code>netstat -ano | findstr :29092</code></td></tr>
         <tr><td>8100</td><td>PaddleOCR</td><td><code>netstat -ano | findstr :8100</code></td></tr>
         <tr><td>8180</td><td>Keycloak (if using)</td><td><code>netstat -ano | findstr :8180</code></td></tr>
     </table>
@@ -173,15 +174,15 @@ docker info               <span class="comment"># Should show "Server: Docker De
 │  │  • REST APIs        │        │   • SPA Application  │                  │
 │  │  • Email Syndication│        │   • CRPC Portal      │                  │
 │  │  • AI Suggestions   │        │   • Admin Dashboard  │                  │
-│  └────┬─────────┬──────┘        └──────────────────────┘                  │
-│       │         │                                                          │
-│       ▼         ▼                                                          │
-│  ┌─────────┐ ┌─────────┐  ┌──────────────┐                               │
-│  │  MySQL  │ │  Redis  │  │  PaddleOCR   │                               │
-│  │  8.0    │ │  7.x    │  │  (Python)    │                               │
-│  │ :3307   │ │ :6380   │  │   :8100      │                               │
-│  │         │ │ 512 MB  │  │  OCR Engine  │                               │
-│  └─────────┘ └─────────┘  └──────────────┘                               │
+│  └──┬───────┬───────┬──┘        └──────────────────────┘                  │
+│     │       │       │                                                      │
+│     ▼       ▼       ▼                                                      │
+│  ┌───────┐ ┌───────┐ ┌───────┐  ┌──────────────┐                         │
+│  │ MySQL │ │ Redis │ │ Kafka │  │  PaddleOCR   │                         │
+│  │  8.0  │ │  7.x  │ │ 3.7.0 │  │  (Python)    │                         │
+│  │ :3307 │ │ :6380 │ │:29092 │  │   :8100      │                         │
+│  │       │ │512 MB │ │KRaft  │  │  OCR Engine  │                         │
+│  └───────┘ └───────┘ └───────┘  └──────────────┘                         │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 
@@ -190,6 +191,7 @@ Access from your browser:
   • http://localhost:8100   → OCR Service (direct)
   • localhost:3307          → MySQL (via client tools)
   • localhost:6380          → Redis (via redis-cli)
+  • localhost:29092         → Kafka (EXTERNAL listener)
 </div>
 
     <h3>What Each Container Does</h3>
@@ -197,6 +199,7 @@ Access from your browser:
         <tr><th>Container</th><th>Image</th><th>Port</th><th>RAM</th><th>Purpose</th></tr>
         <tr><td><code>cms-mysql</code></td><td>mysql:8.0</td><td>3307→3306</td><td>~500 MB</td><td>Primary database (complaints, users, drafts)</td></tr>
         <tr><td><code>cms-redis</code></td><td>redis:7-alpine</td><td>6380→6379</td><td>512 MB max</td><td>Cache layer (sessions, frequently accessed data)</td></tr>
+        <tr><td><code>cms-kafka</code></td><td>apache/kafka:3.7.0</td><td>29092</td><td>~512 MB</td><td>Event streaming (KRaft mode, no Zookeeper)</td></tr>
         <tr><td><code>cms-backend-1</code></td><td>Built from Dockerfile</td><td>internal</td><td>1.5 GB</td><td>Spring Boot API instance 1</td></tr>
         <tr><td><code>cms-backend-2</code></td><td>Built from Dockerfile</td><td>internal</td><td>1.5 GB</td><td>Spring Boot API instance 2 (load balanced)</td></tr>
         <tr><td><code>cms-paddle-ocr</code></td><td>Built from Dockerfile</td><td>8100</td><td>2 GB</td><td>OCR extraction for scanned documents/PDFs</td></tr>
@@ -205,7 +208,7 @@ Access from your browser:
     </table>
 
     <div class="info">
-        <strong>Total Docker RAM needed:</strong> ~6.5 GB (that's why 8 GB allocation is the minimum).
+        <strong>Total Docker RAM needed:</strong> ~7 GB (that's why 8 GB allocation is the minimum).
     </div>
 </div>
 
@@ -275,6 +278,7 @@ GROQ_API_KEY=gsk_your_groq_api_key_here
         <tr><th>Service</th><th>What It Does</th><th>Health Check</th></tr>
         <tr><td>cms-mysql</td><td>Starts MySQL 8.0, creates <code>cms_db</code> database, runs <code>init.sql</code></td><td>mysqladmin ping</td></tr>
         <tr><td>cms-redis</td><td>Starts Redis 7 with 512 MB cache, LRU eviction</td><td>redis-cli ping</td></tr>
+        <tr><td>cms-kafka</td><td>Starts Apache Kafka 3.7 in KRaft mode (no Zookeeper needed)</td><td>kafka-topics.sh --list</td></tr>
         <tr><td>cms-backend-1/2</td><td>Builds backend from source (Maven in Docker), runs Spring Boot</td><td>HTTP /actuator/health</td></tr>
         <tr><td>cms-paddle-ocr</td><td>Builds Python OCR service, downloads PaddleOCR models</td><td>HTTP /health</td></tr>
         <tr><td>cms-frontend</td><td>Builds Angular app (ng build), serves via Nginx</td><td>HTTP /</td></tr>
@@ -324,6 +328,7 @@ docker compose ps
 <span class="comment"># NAME              IMAGE                STATUS                  PORTS</span>
 <span class="comment"># cms-mysql         mysql:8.0            Up (healthy)            0.0.0.0:3307->3306</span>
 <span class="comment"># cms-redis         redis:7-alpine       Up (healthy)            0.0.0.0:6380->6379</span>
+<span class="comment"># cms-kafka         apache/kafka:3.7.0   Up (healthy)            0.0.0.0:29092->29092</span>
 <span class="comment"># cms-backend-1    cms-infra-...         Up (healthy)            </span>
 <span class="comment"># cms-backend-2    cms-infra-...         Up (healthy)            </span>
 <span class="comment"># cms-paddle-ocr   cms-infra-...         Up (healthy)            0.0.0.0:8100->8100</span>
@@ -335,7 +340,8 @@ docker compose ps
     <ol>
         <li><strong>MySQL</strong> starts first → waits until healthy (accepts connections)</li>
         <li><strong>Redis</strong> starts first → waits until healthy (responds to PING)</li>
-        <li><strong>Backend 1 & 2</strong> wait for MySQL + Redis to be healthy, then start</li>
+        <li><strong>Kafka</strong> starts first → waits until healthy (broker ready, KRaft mode)</li>
+        <li><strong>Backend 1 & 2</strong> wait for MySQL + Redis + Kafka to be healthy, then start</li>
         <li><strong>PaddleOCR</strong> starts independently (no dependencies)</li>
         <li><strong>Frontend</strong> starts independently</li>
         <li><strong>Gateway (Nginx)</strong> waits for both backends + frontend</li>
@@ -440,6 +446,10 @@ docker exec cms-mysql mysqladmin ping -u cms_user -pcms_pass
 docker exec cms-redis redis-cli ping
 <span class="comment"># → PONG</span>
 
+<span class="comment"># Kafka broker</span>
+docker exec cms-kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list
+<span class="comment"># → (empty or topic list — no error means OK)</span>
+
 <span class="comment"># Backend health (through gateway)</span>
 curl http://localhost/api/actuator/health
 <span class="comment"># → {"status":"UP"}</span>
@@ -462,6 +472,7 @@ curl http://localhost:8100/health
         <tr><th>Container</th><th>Status</th><th>Port</th></tr>
         <tr><td>cms-mysql</td><td><span class="badge badge-green">Running (healthy)</span></td><td>3307:3306</td></tr>
         <tr><td>cms-redis</td><td><span class="badge badge-green">Running (healthy)</span></td><td>6380:6379</td></tr>
+        <tr><td>cms-kafka</td><td><span class="badge badge-green">Running (healthy)</span></td><td>29092:29092</td></tr>
         <tr><td>cms-backend-1</td><td><span class="badge badge-green">Running (healthy)</span></td><td>—</td></tr>
         <tr><td>cms-backend-2</td><td><span class="badge badge-green">Running (healthy)</span></td><td>—</td></tr>
         <tr><td>cms-paddle-ocr</td><td><span class="badge badge-green">Running (healthy)</span></td><td>8100:8100</td></tr>
@@ -766,6 +777,7 @@ docker image prune -a</pre>
         <tr><td><strong>443</strong></td><td>Nginx Gateway (HTTPS)</td><td>Browser</td><td>SSL (if configured)</td></tr>
         <tr><td><strong>3307</strong></td><td>MySQL 8.0</td><td>DB client</td><td>Maps to internal 3306</td></tr>
         <tr><td><strong>6380</strong></td><td>Redis 7</td><td>redis-cli</td><td>Maps to internal 6379</td></tr>
+        <tr><td><strong>29092</strong></td><td>Apache Kafka 3.7</td><td>Kafka clients</td><td>EXTERNAL listener (KRaft mode)</td></tr>
         <tr><td><strong>8100</strong></td><td>PaddleOCR</td><td>cURL/API</td><td>OCR API endpoint</td></tr>
         <tr><td><strong>8180</strong></td><td>Keycloak (optional)</td><td>Browser</td><td>Only if running separately</td></tr>
         <tr><td>4300</td><td>Angular dev server</td><td>Browser</td><td>Only in dev mode (Step 5)</td></tr>
