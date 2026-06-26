@@ -57,6 +57,36 @@
     <h1>CMS 2.0 - Developer Setup Guide</h1>
     <p class="subtitle">Prerequisites, Software Installation, Local (IntelliJ) & OpenShift Dev Deployment</p>
 
+    <!-- Quick Start Box -->
+    <div class="card" style="border-left: 4px solid #4caf50; background: #f1f8e9;">
+        <h3 style="color: #2e7d32; margin-bottom: 12px;">⚡ Quick Start (5 minutes)</h3>
+        <p>To run the full CMS 2.0 on your local machine using Docker:</p>
+        <pre>
+<span class="comment"># 1. Clone the repository</span>
+<span class="cmd">git clone</span> https://github.com/swatiRewagad/-My-HRMS-Frontend.git
+<span class="cmd">cd</span> My-HRMS-Frontend/CMS2.0/cms-infra
+
+<span class="comment"># 2. (Optional) Create .env file for API keys</span>
+<span class="cmd">echo</span> "GROQ_API_KEY=your_key_here" > .env
+
+<span class="comment"># 3. Start all services (MySQL, Redis, Backend x2, OCR, Frontend, Nginx)</span>
+<span class="cmd">docker-compose up -d</span>
+
+<span class="comment"># 4. Wait ~2 min, then open http://localhost in browser</span>
+        </pre>
+        <p style="margin-top: 8px;"><strong>For development without Docker</strong> (frontend hot-reload):</p>
+        <pre>
+<span class="comment"># Terminal 1: Start backend (uses H2 in-memory DB - no MySQL needed)</span>
+<span class="cmd">cd</span> CMS2.0/cms-backend
+<span class="cmd">mvn spring-boot:run -Dspring-boot.run.profiles=dev</span>
+
+<span class="comment"># Terminal 2: Start frontend (hot-reload at http://localhost:4300)</span>
+<span class="cmd">cd</span> CMS2.0/cms-portal-frontend
+<span class="cmd">npm install</span>
+<span class="cmd">ng serve --port 4300</span>
+        </pre>
+    </div>
+
     <div class="toc">
         <h3>Table of Contents</h3>
         <ul>
@@ -191,19 +221,17 @@
     <div class="card">
         <h3>All Ports Used</h3>
         <div class="port-map">
-            <div class="port-item"><div class="port">4300</div><div class="service">Angular Frontend</div></div>
-            <div class="port-item"><div class="port">8080</div><div class="service">API Gateway</div></div>
+            <div class="port-item"><div class="port">80</div><div class="service">Nginx Gateway (Docker)</div></div>
+            <div class="port-item"><div class="port">4300</div><div class="service">Angular Frontend (dev)</div></div>
             <div class="port-item"><div class="port">8082</div><div class="service">CMS Backend</div></div>
+            <div class="port-item"><div class="port">8100</div><div class="service">PaddleOCR</div></div>
             <div class="port-item"><div class="port">8180</div><div class="service">Keycloak</div></div>
-            <div class="port-item"><div class="port">9092</div><div class="service">Kafka</div></div>
-            <div class="port-item"><div class="port">9200</div><div class="service">OpenSearch</div></div>
-            <div class="port-item"><div class="port">5601</div><div class="service">OpenSearch Dashboards</div></div>
-            <div class="port-item"><div class="port">3306</div><div class="service">MySQL (prod profile)</div></div>
-            <div class="port-item"><div class="port">1521</div><div class="service">Oracle DB (OpenShift)</div></div>
-            <div class="port-item"><div class="port">5701</div><div class="service">Hazelcast (embedded)</div></div>
+            <div class="port-item"><div class="port">3307</div><div class="service">MySQL (Docker)</div></div>
+            <div class="port-item"><div class="port">6380</div><div class="service">Redis (Docker)</div></div>
+            <div class="port-item"><div class="port">9092</div><div class="service">Kafka (optional)</div></div>
+            <div class="port-item"><div class="port">9200</div><div class="service">OpenSearch (optional)</div></div>
             <div class="port-item"><div class="port">9090</div><div class="service">Prometheus</div></div>
             <div class="port-item"><div class="port">3000</div><div class="service">Grafana</div></div>
-            <div class="port-item"><div class="port">8090</div><div class="service">Kafka UI</div></div>
         </div>
     </div>
 
@@ -212,14 +240,85 @@
 
     <div class="card">
         <h3>Option A: Docker Compose (Recommended - All-in-One)</h3>
+        <div class="info-box">
+            <strong>This is the fastest way to get everything running.</strong> A single <code>docker-compose up</code> starts MySQL, Redis, 2 backend instances, PaddleOCR, the Angular frontend, and an Nginx load-balancer gateway.
+        </div>
+
+        <h4>Step 1: Prerequisites</h4>
+        <ul>
+            <li><strong>Docker Desktop</strong> (Windows/Mac) or <strong>Docker Engine + Compose V2</strong> (Linux)</li>
+            <li>At least <strong>8 GB RAM</strong> allocated to Docker (PaddleOCR alone needs ~2 GB)</li>
+            <li>Ports <strong>80, 3307, 6380, 8100</strong> must be free</li>
+        </ul>
+
+        <h4>Step 2: Create <code>.env</code> file (optional overrides)</h4>
         <pre>
-<span class="cmd">cd</span> CMS2.0/deployment/docker
+<span class="comment"># Create CMS2.0/cms-infra/.env with any overrides (all have sensible defaults)</span>
+MYSQL_ROOT_PASSWORD=cms_root_pass
+MYSQL_USER=cms_user
+MYSQL_PASSWORD=cms_pass
+GROQ_API_KEY=your_groq_api_key_here   <span class="comment"># Required for AI suggestions</span>
+        </pre>
+
+        <h4>Step 3: Start all services</h4>
+        <pre>
+<span class="cmd">cd</span> CMS2.0/cms-infra
 <span class="cmd">docker-compose up -d</span>
 
-<span class="comment"># This starts: Oracle, Kafka, Keycloak, OpenSearch, Prometheus, Grafana, Kafka UI</span>
-<span class="comment"># Wait 2-3 minutes for all services to be healthy</span>
+<span class="comment"># Wait 1-2 minutes for MySQL & Redis health checks to pass</span>
 <span class="cmd">docker-compose ps</span>   <span class="comment"># Verify all are "Up (healthy)"</span>
         </pre>
+
+        <h4>Services started by Docker Compose</h4>
+        <table>
+            <tr><th>Container</th><th>Image</th><th>Host Port</th><th>Purpose</th></tr>
+            <tr><td>cms-mysql</td><td>mysql:8.0</td><td>3307</td><td>Primary database (utf8mb4, InnoDB optimized)</td></tr>
+            <tr><td>cms-redis</td><td>redis:7-alpine</td><td>6380</td><td>Caching (512 MB, LRU eviction)</td></tr>
+            <tr><td>cms-backend-1</td><td>cms-backend (built)</td><td>—</td><td>Spring Boot instance 1</td></tr>
+            <tr><td>cms-backend-2</td><td>cms-backend (built)</td><td>—</td><td>Spring Boot instance 2</td></tr>
+            <tr><td>cms-paddle-ocr</td><td>cms-paddle-ocr (built)</td><td>8100</td><td>OCR extraction (PaddleOCR)</td></tr>
+            <tr><td>cms-frontend</td><td>cms-frontend (built)</td><td>—</td><td>Angular SPA (served via Nginx)</td></tr>
+            <tr><td>cms-gateway</td><td>nginx:1.27-alpine</td><td>80, 443</td><td>Load balancer, caching, rate limiting</td></tr>
+        </table>
+
+        <h4>Step 4: Verify</h4>
+        <pre>
+<span class="comment"># Application UI</span>
+<span class="cmd">curl</span> http://localhost/health         <span class="comment"># → {"status":"UP"}</span>
+<span class="comment"># Open browser: http://localhost</span>
+
+<span class="comment"># MySQL</span>
+<span class="cmd">mysql</span> -h 127.0.0.1 -P 3307 -u cms_user -pcms_pass cms_db
+
+<span class="comment"># Redis</span>
+<span class="cmd">redis-cli</span> -p 6380 ping              <span class="comment"># → PONG</span>
+
+<span class="comment"># PaddleOCR</span>
+<span class="cmd">curl</span> http://localhost:8100/health    <span class="comment"># OCR service health</span>
+        </pre>
+
+        <h4>Step 5: Useful commands</h4>
+        <pre>
+<span class="comment"># View logs</span>
+<span class="cmd">docker-compose logs -f</span> cms-backend-1
+<span class="cmd">docker-compose logs -f</span> cms-gateway
+
+<span class="comment"># Restart a single service</span>
+<span class="cmd">docker-compose restart</span> cms-backend-1
+
+<span class="comment"># Rebuild after code changes</span>
+<span class="cmd">docker-compose up -d --build</span> cms-backend-1 cms-backend-2 cms-frontend
+
+<span class="comment"># Stop everything (data persists in volumes)</span>
+<span class="cmd">docker-compose down</span>
+
+<span class="comment"># Stop and DELETE all data (fresh start)</span>
+<span class="cmd">docker-compose down -v</span>
+        </pre>
+
+        <div class="warning-box">
+            <strong>Note:</strong> Backend images are built from <code>../cms-backend/Dockerfile</code> and frontend from <code>../cms-frontend/Dockerfile</code>. Make sure you have built these modules first (<code>mvn package -DskipTests</code> for backend, <code>ng build</code> for frontend) or the Dockerfiles handle the build.
+        </div>
     </div>
 
     <div class="card">
