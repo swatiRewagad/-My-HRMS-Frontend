@@ -1,218 +1,93 @@
-.history-container {
-  max-width: 1000px;
-  margin: 0 auto;
-  padding: 2rem 1.5rem;
+.my-complaints-page {
+  background: url('/assets/images/bg3.png') center center / cover no-repeat;
+  min-height: 100vh;
+  padding-bottom: 0;
 }
 
-.history-header {
-  margin-bottom: 1.5rem;
-
-  h2 {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: #1a237e;
-    margin: 0 0 0.5rem;
-  }
-
-  p {
-    color: #666;
-    font-size: 0.9rem;
-    margin: 0;
-  }
+.page-header {
+  display: flex; justify-content: space-between; align-items: center;
+  max-width: 1100px; margin: 0 auto; padding: 40px 24px 24px;
 }
 
-.loading-state {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.75rem;
-  padding: 3rem;
-  color: #666;
-  font-size: 0.95rem;
-
-  i { font-size: 1.25rem; color: #2460b9; }
+.page-title {
+  font-size: 28px; font-weight: 700; color: #111; margin: 0;
 }
 
-.empty-state {
-  text-align: center;
-  padding: 4rem 2rem;
-  background: #f8f9fc;
-  border-radius: 12px;
-  border: 1px dashed #d1d7e0;
-
-  i {
-    font-size: 3rem;
-    color: #ccc;
-    margin-bottom: 1rem;
-  }
-
-  h3 {
-    font-size: 1.1rem;
-    color: #333;
-    margin: 0 0 0.5rem;
-  }
-
-  p {
-    color: #666;
-    font-size: 0.9rem;
-    margin: 0 0 1.5rem;
-  }
+.btn-create-new {
+  padding: 12px 24px; background: #472192; color: #fff;
+  border-radius: 8px; font-size: 14px; font-weight: 600;
+  text-decoration: none; display: inline-block;
+  &:hover { background: #3a1b78; }
 }
 
-.table-wrapper {
+.table-card {
+  max-width: 1100px; margin: 0 auto 40px; padding: 0 24px;
   overflow-x: auto;
-  border-radius: 12px;
-  border: 1px solid #e0e0e0;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
 .complaints-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.875rem;
+  width: 100%; border-collapse: collapse;
+  background: #fff; border-radius: 12px; overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
 
   th {
-    background: #f0f4ff;
-    color: #1a237e;
-    font-weight: 600;
-    padding: 0.75rem 1rem;
-    text-align: left;
-    white-space: nowrap;
-    border-bottom: 2px solid #d1d7e0;
+    background: #fff; padding: 14px 16px 4px;
+    font-size: 13px; font-weight: 700; color: #222;
+    text-align: left; white-space: nowrap; vertical-align: top;
+    border-bottom: 1px solid #f0f0f0;
+    i { font-size: 11px; color: #aaa; margin-left: 4px; }
   }
 
   td {
-    padding: 0.75rem 1rem;
-    border-bottom: 1px solid #f0f0f0;
-    color: #333;
-    vertical-align: middle;
+    padding: 14px 16px; font-size: 13px; color: #333;
+    border-bottom: 1px solid #f5f5f5; vertical-align: middle;
   }
 
-  tbody tr {
-    transition: background 0.15s;
-    &:hover { background: #f8fbff; }
-    &:last-child td { border-bottom: none; }
-  }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: #fafbff; }
 }
 
-.id-cell {
-  font-family: 'Courier New', monospace;
-  font-size: 0.8rem;
-  color: #2460b9;
-  font-weight: 600;
+.thead-row th { border-bottom: 2px solid #eee; }
+
+.col-search { margin-top: 8px; padding-bottom: 10px; }
+
+.col-filter-input {
+  width: 100%; padding: 6px 10px; border: 1px solid #e0e0e0; border-radius: 6px;
+  font-size: 12px; color: #333; background: #fafafa;
+  &:focus { outline: none; border-color: #2460b9; background: #fff; }
 }
+
+.id-cell { font-size: 13px; color: #333; font-weight: 500; }
 
 .comments-cell {
-  max-width: 200px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  color: #666;
+  max-width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #666;
 }
 
-.action-cell {
-  white-space: nowrap;
-}
+.empty-cell { text-align: center; padding: 40px; color: #999; font-size: 14px; }
 
-.action-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  color: #2460b9;
-  text-decoration: none;
-  font-weight: 500;
-  font-size: 0.8rem;
-  padding: 4px 10px;
-  border-radius: 4px;
-  border: 1px solid #2460b9;
-  transition: all 0.2s;
-
-  &:hover {
-    background: #2460b9;
-    color: #fff;
-  }
-}
-
+// Status badges
 .status-badge {
-  display: inline-block;
-  padding: 3px 10px;
-  border-radius: 12px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600;
 }
 
-.status-pending {
-  background: #fff3e0;
-  color: #e65100;
+.status-dot {
+  width: 7px; height: 7px; border-radius: 50%; background: currentColor;
 }
 
-.status-review {
-  background: #e3f2fd;
-  color: #1565c0;
+.status-inprogress { background: #e3f2fd; color: #1565c0; }
+.status-closed { background: #e8f5e9; color: #2e7d32; }
+.status-info-required { background: #fce4ec; color: #c62828; }
+.status-pending { background: #fff3e0; color: #e65100; }
+
+.loading-state {
+  text-align: center; padding: 60px; color: #666; font-size: 15px;
+  i { margin-right: 8px; color: #2460b9; }
 }
 
-.status-resolved {
-  background: #e8f5e9;
-  color: #2e7d32;
-}
-
-.status-rejected {
-  background: #fce4ec;
-  color: #c62828;
-}
-
-.history-actions {
-  display: flex;
-  gap: 0.75rem;
-  margin-top: 1.5rem;
-  flex-wrap: wrap;
-}
-
-.btn-primary {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 10px 20px;
-  background: #2460b9;
-  color: #fff;
-  border: none;
-  border-radius: 6px;
-  font-size: 0.875rem;
-  font-weight: 600;
-  text-decoration: none;
-  cursor: pointer;
-  transition: background 0.2s;
-
-  &:hover { background: #1a4fa0; }
-}
-
-.btn-secondary {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 10px 20px;
-  background: #fff;
-  color: #333;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  font-size: 0.875rem;
-  font-weight: 600;
-  text-decoration: none;
-  cursor: pointer;
-  transition: all 0.2s;
-
-  &:hover { background: #f5f5f5; }
-}
-
-@media (max-width: 768px) {
-  .history-container { padding: 1rem; }
-
-  .complaints-table {
-    font-size: 0.8rem;
-    th, td { padding: 0.5rem 0.75rem; }
-  }
-
-  .comments-cell { max-width: 120px; }
+.assistance-banner {
+  background: linear-gradient(135deg, #3a1b78, #2460b9);
+  padding: 48px; text-align: center; color: #fff; margin-top: 20px;
+  h3 { font-size: 26px; font-weight: 700; margin-bottom: 14px; }
+  p { font-size: 14px; line-height: 1.7; max-width: 680px; margin: 0 auto; opacity: 0.9; }
 }

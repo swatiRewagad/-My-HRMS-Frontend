@@ -1,213 +1,254 @@
-<div class="simulator-container">
-  <button class="back-btn" (click)="goBack()">← Back to Queue</button>
-
-  <div class="page-header">
-    <div>
-      <h2>Email Simulator</h2>
-      <p class="subtitle">Simulate incoming emails to crpc&#64;rbi.org.in for testing the syndication pipeline</p>
+<!-- Top Strip -->
+<div class="sim-top-strip">
+  <div class="sim-top-inner">
+    <div class="sim-top-left">
+      <div class="sim-accessibility">
+        <button class="sim-access-btn">A-</button>
+        <button class="sim-access-btn">A</button>
+        <button class="sim-access-btn">A+</button>
+      </div>
+      <div class="sim-divider"></div>
+      <div class="sim-lang-wrapper">
+        <i class="pi pi-globe"></i>
+        <select class="sim-lang-select">
+          <option value="en">En</option>
+          <option value="hi">हिन्दी</option>
+          <option value="mr">मराठी</option>
+          <option value="ta">தமிழ்</option>
+        </select>
+      </div>
     </div>
   </div>
+</div>
 
-  <!-- Mode Toggle -->
-  <div class="mode-toggle">
-    <button [class.active]="mode() === 'manual'" (click)="mode.set('manual')">Manual Send</button>
-    <button [class.active]="mode() === 'batch'" disabled title="Batch simulation is temporarily disabled">Batch Simulation</button>
+<!-- Header with Logo -->
+<header class="sim-header">
+  <div class="sim-header-inner">
+    <a class="sim-brand" href="/">
+      <img src="assets/rbi_logo_new.png" alt="RBI CMS" class="sim-brand-logo" />
+    </a>
   </div>
+</header>
 
-  <!-- Manual Mode -->
-  @if (mode() === 'manual') {
-    <div class="manual-section">
-      <div class="form-card">
-        <h3>Compose Email</h3>
+<!-- Main Content -->
+<div class="sim-page">
+  <div class="simulator-container">
+    <div class="page-header">
+      <div class="header-left">
+        <h2>Email Simulator</h2>
+        <p class="subtitle">Simulate incoming emails to crpc&#64;rbi.org.in for testing the syndication pipeline</p>
+      </div>
+      <div class="header-actions">
+        <button class="action-btn" (click)="goBack()">← Back to Queue</button>
+      </div>
+    </div>
 
-        <div class="sample-buttons">
-          <span class="sample-label">Quick fill:</span>
-          @for (sample of sampleEmails; track $index) {
-            <button class="sample-btn" (click)="fillSample($index)" [title]="sample.subject">
-              Sample {{ $index + 1 }}
-            </button>
-          }
-        </div>
+    <!-- Mode Toggle -->
+    <div class="mode-toggle">
+      <button [class.active]="mode() === 'manual'" (click)="mode.set('manual')">Manual Send</button>
+      <button [class.active]="mode() === 'batch'" disabled title="Batch simulation is temporarily disabled">Batch Simulation</button>
+    </div>
 
-        <div class="form-group">
-          <label>From (Sender Email) <span class="required">*</span></label>
-          <input type="email" [ngModel]="manualEmail().senderEmail" (ngModelChange)="updateManualField('senderEmail', $event)"
-                 name="sender" placeholder="customer@gmail.com">
-        </div>
+    <!-- Manual Mode -->
+    @if (mode() === 'manual') {
+      <div class="manual-section">
+        <div class="form-card">
+          <h3>Compose Email</h3>
 
-        <div class="form-group">
-          <label>Subject <span class="required">*</span></label>
-          <input type="text" [ngModel]="manualEmail().subject" (ngModelChange)="updateManualField('subject', $event)"
-                 name="subject" placeholder="Complaint about...">
-        </div>
-
-        <div class="form-group">
-          <div class="label-row">
-            <label>Email Body</label>
-            <button class="stt-btn" [class.listening]="isListening()" [disabled]="!sttSupported"
-                    (click)="toggleSpeechToText()"
-                    [title]="!sttSupported ? 'Use Chrome or Edge for voice input' : isListening() ? 'Stop listening' : 'Dictate using microphone'">
-              <span class="stt-icon">
-                @if (isListening()) { <span class="stt-pulse"></span> }
-                <i class="pi" [class.pi-microphone]="!isListening()" [class.pi-stop-circle]="isListening()"></i>
-              </span>
-              {{ isListening() ? 'Stop' : 'Speak' }}
-            </button>
+          <div class="sample-buttons">
+            <span class="sample-label">Quick fill:</span>
+            @for (sample of sampleEmails; track $index) {
+              <button class="sample-btn" (click)="fillSample($index)" [title]="sample.subject">
+                Sample {{ $index + 1 }}
+              </button>
+            }
           </div>
-          <textarea [ngModel]="manualEmail().body" (ngModelChange)="updateManualField('body', $event)"
-                    name="body" rows="8" placeholder="Dear Sir/Madam..."
-                    [class.listening-active]="isListening()"></textarea>
-          @if (isListening()) {
-            <p class="stt-hint"><i class="pi pi-circle-fill stt-dot"></i> Listening… speak your complaint clearly</p>
+
+          <div class="form-group">
+            <label>From (Sender Email) <span class="required">*</span></label>
+            <input type="email" [ngModel]="manualEmail().senderEmail" (ngModelChange)="updateManualField('senderEmail', $event)"
+                   name="sender" placeholder="customer@gmail.com">
+          </div>
+
+          <div class="form-group">
+            <label>Subject <span class="required">*</span></label>
+            <input type="text" [ngModel]="manualEmail().subject" (ngModelChange)="updateManualField('subject', $event)"
+                   name="subject" placeholder="Complaint about...">
+          </div>
+
+          <div class="form-group">
+            <div class="label-row">
+              <label>Email Body</label>
+              <button class="stt-btn" [class.listening]="isListening()" [disabled]="!sttSupported"
+                      (click)="toggleSpeechToText()"
+                      [title]="!sttSupported ? 'Use Chrome or Edge for voice input' : isListening() ? 'Stop listening' : 'Dictate using microphone'">
+                <span class="stt-icon">
+                  @if (isListening()) { <span class="stt-pulse"></span> }
+                  <i class="pi" [class.pi-microphone]="!isListening()" [class.pi-stop-circle]="isListening()"></i>
+                </span>
+                {{ isListening() ? 'Stop' : 'Speak' }}
+              </button>
+            </div>
+            <textarea [ngModel]="manualEmail().body" (ngModelChange)="updateManualField('body', $event)"
+                      name="body" rows="8" placeholder="Dear Sir/Madam..."
+                      [class.listening-active]="isListening()"></textarea>
+            @if (isListening()) {
+              <p class="stt-hint"><i class="pi pi-circle-fill stt-dot"></i> Listening… speak your complaint clearly</p>
+            }
+          </div>
+
+          <div class="form-group attachment-group">
+            <label>Attachments <span class="label-hint">(PDF, JPEG, PNG, TIFF — first file used for OCR)</span></label>
+            <div class="attachment-input">
+              <label class="file-pick-btn" for="fileInputEl">
+                + Add File(s)
+              </label>
+              <input id="fileInputEl" type="file" accept=".pdf,.jpg,.jpeg,.png,.tiff,.tif"
+                     multiple (change)="onFileAttached($event)" style="display:none">
+
+              @if (attachedFiles().length > 0) {
+                <div class="attached-files-list">
+                  @for (f of attachedFiles(); track f.name; let i = $index) {
+                    <div class="attached-file" [class.primary-file]="i === 0">
+                      <span class="file-badge">{{ i === 0 ? 'OCR' : 'Doc' }}</span>
+                      <span class="file-name">{{ f.name }}</span>
+                      <span class="file-size">{{ (f.size / 1024).toFixed(0) }} KB</span>
+                      <button type="button" class="remove-file" (click)="removeAttachment(i)">✕</button>
+                    </div>
+                  }
+                </div>
+                <p class="ocr-hint">
+                  First file will be OCR-scanned for complaint fields.
+                  @if (attachedFiles().length > 1) {
+                    Remaining {{ attachedFiles().length - 1 }} file(s) saved as supporting documents.
+                  }
+                </p>
+              }
+            </div>
+          </div>
+
+          <button class="send-btn" (click)="sendManual()"
+                  [disabled]="sending() || !manualEmail().senderEmail || !manualEmail().subject">
+            @if (sending()) {
+              @if (attachedFiles().length > 0) {
+                Sending & Running OCR...
+              } @else {
+                Sending...
+              }
+            } @else {
+              @if (attachedFiles().length > 0) {
+                Send with {{ attachedFiles().length }} Attachment{{ attachedFiles().length > 1 ? 's' : '' }}
+              } @else {
+                Send to crpc&#64;rbi.org.in
+              }
+            }
+          </button>
+
+          @if (ocrExtracted()) {
+            <div class="ocr-results">
+              <h4>📋 OCR Extracted Fields</h4>
+              <div class="ocr-fields">
+                @for (entry of ocrExtracted() | keyvalue; track entry.key) {
+                  @if (entry.value) {
+                    <div class="ocr-field">
+                      <span class="ocr-label">{{ entry.key }}</span>
+                      <span class="ocr-value">{{ entry.value }}</span>
+                    </div>
+                  }
+                }
+              </div>
+              <p class="ocr-note">These fields have been auto-filled in the draft. DEO can review and correct before converting to complaint.</p>
+            </div>
           }
         </div>
+      </div>
+    }
 
-        <div class="form-group attachment-group">
-          <label>Attachments <span class="label-hint">(PDF, JPEG, PNG, TIFF — first file used for OCR)</span></label>
-          <div class="attachment-input">
-            <label class="file-pick-btn" for="fileInputEl">
-              + Add File(s)
-            </label>
-            <input id="fileInputEl" type="file" accept=".pdf,.jpg,.jpeg,.png,.tiff,.tif"
-                   multiple (change)="onFileAttached($event)" style="display:none">
+    <!-- Batch Mode -->
+    @if (mode() === 'batch') {
+      <div class="batch-section">
+        <div class="form-card">
+          <h3>Batch Email Simulation</h3>
+          <p class="batch-desc">Sends multiple sample emails with configurable delay to test round-robin assignment and queue processing.</p>
 
-            @if (attachedFiles().length > 0) {
-              <div class="attached-files-list">
-                @for (f of attachedFiles(); track f.name; let i = $index) {
-                  <div class="attached-file" [class.primary-file]="i === 0">
-                    <span class="file-badge">{{ i === 0 ? 'OCR' : 'Doc' }}</span>
-                    <span class="file-name">{{ f.name }}</span>
-                    <span class="file-size">{{ (f.size / 1024).toFixed(0) }} KB</span>
-                    <button type="button" class="remove-file" (click)="removeAttachment(i)">✕</button>
+          <div class="batch-controls">
+            <div class="form-group">
+              <label>Number of Emails</label>
+              <input type="number" [(ngModel)]="batchCount" name="count" min="1" max="50">
+            </div>
+            <div class="form-group">
+              <label>Delay between emails (ms)</label>
+              <input type="number" [(ngModel)]="batchDelay" name="delay" min="100" max="10000" step="100">
+            </div>
+          </div>
+
+          @if (batchRunning()) {
+            <div class="progress-section">
+              <div class="progress-bar">
+                <div class="progress-fill" [style.width.%]="(batchProgress() / batchCount()) * 100"></div>
+              </div>
+              <span class="progress-text">{{ batchProgress() }} / {{ batchCount() }} emails sent</span>
+            </div>
+          }
+
+          <button class="send-btn batch-btn" (click)="runBatch()" [disabled]="batchRunning()">
+            @if (batchRunning()) {
+              Running... ({{ batchProgress() }}/{{ batchCount() }})
+            } @else {
+              Run Batch Simulation
+            }
+          </button>
+
+          <div class="sample-preview">
+            <h4>Sample emails that will be sent:</h4>
+            @for (sample of sampleEmails; track $index) {
+              <div class="preview-item">
+                <span class="preview-from">{{ sample.senderEmail }}</span>
+                <span class="preview-subject">{{ sample.subject }}</span>
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- Results Log -->
+    @if (results().length > 0) {
+      <div class="results-section">
+        <div class="results-header">
+          <h3>Simulation Log ({{ results().length }} emails)</h3>
+          <button class="clear-btn" (click)="clearResults()">Clear</button>
+        </div>
+
+        <div class="results-list">
+          @for (result of results(); track $index) {
+            <div class="result-item" [ngClass]="'result-' + result.status">
+              <div class="result-icon">
+                @if (result.status === 'success') { <span class="icon-success">&#10003;</span> }
+                @if (result.status === 'ignored') { <span class="icon-ignored">&#8709;</span> }
+                @if (result.status === 'error') { <span class="icon-error">&#10007;</span> }
+              </div>
+              <div class="result-details">
+                <div class="result-from">{{ result.email.senderEmail }}</div>
+                <div class="result-subject">{{ result.email.subject }}</div>
+                <div class="result-message">{{ result.message }}</div>
+                @if (result.languageInfo) {
+                  <div class="result-language">
+                    <span class="lang-badge vernacular">🌐 {{ result.languageInfo.languageName }}</span>
+                    <span class="lang-confidence">Translation confidence: {{ result.languageInfo.translationConfidence }}%</span>
                   </div>
                 }
               </div>
-              <p class="ocr-hint">
-                First file will be OCR-scanned for complaint fields.
-                @if (attachedFiles().length > 1) {
-                  Remaining {{ attachedFiles().length - 1 }} file(s) saved as supporting documents.
-                }
-              </p>
-            }
-          </div>
-        </div>
-
-        <button class="send-btn" (click)="sendManual()"
-                [disabled]="sending() || !manualEmail().senderEmail || !manualEmail().subject">
-          @if (sending()) {
-            @if (attachedFiles().length > 0) {
-              Sending & Running OCR...
-            } @else {
-              Sending...
-            }
-          } @else {
-            @if (attachedFiles().length > 0) {
-              Send with {{ attachedFiles().length }} Attachment{{ attachedFiles().length > 1 ? 's' : '' }}
-            } @else {
-              Send to crpc&#64;rbi.org.in
-            }
-          }
-        </button>
-
-        @if (ocrExtracted()) {
-          <div class="ocr-results">
-            <h4>📋 OCR Extracted Fields</h4>
-            <div class="ocr-fields">
-              @for (entry of ocrExtracted() | keyvalue; track entry.key) {
-                @if (entry.value) {
-                  <div class="ocr-field">
-                    <span class="ocr-label">{{ entry.key }}</span>
-                    <span class="ocr-value">{{ entry.value }}</span>
-                  </div>
-                }
-              }
-            </div>
-            <p class="ocr-note">These fields have been auto-filled in the draft. DEO can review and correct before converting to complaint.</p>
-          </div>
-        }
-      </div>
-    </div>
-  }
-
-  <!-- Batch Mode -->
-  @if (mode() === 'batch') {
-    <div class="batch-section">
-      <div class="form-card">
-        <h3>Batch Email Simulation</h3>
-        <p class="batch-desc">Sends multiple sample emails with configurable delay to test round-robin assignment and queue processing.</p>
-
-        <div class="batch-controls">
-          <div class="form-group">
-            <label>Number of Emails</label>
-            <input type="number" [(ngModel)]="batchCount" name="count" min="1" max="50">
-          </div>
-          <div class="form-group">
-            <label>Delay between emails (ms)</label>
-            <input type="number" [(ngModel)]="batchDelay" name="delay" min="100" max="10000" step="100">
-          </div>
-        </div>
-
-        @if (batchRunning()) {
-          <div class="progress-section">
-            <div class="progress-bar">
-              <div class="progress-fill" [style.width.%]="(batchProgress() / batchCount()) * 100"></div>
-            </div>
-            <span class="progress-text">{{ batchProgress() }} / {{ batchCount() }} emails sent</span>
-          </div>
-        }
-
-        <button class="send-btn batch-btn" (click)="runBatch()" [disabled]="batchRunning()">
-          @if (batchRunning()) {
-            Running... ({{ batchProgress() }}/{{ batchCount() }})
-          } @else {
-            Run Batch Simulation
-          }
-        </button>
-
-        <div class="sample-preview">
-          <h4>Sample emails that will be sent:</h4>
-          @for (sample of sampleEmails; track $index) {
-            <div class="preview-item">
-              <span class="preview-from">{{ sample.senderEmail }}</span>
-              <span class="preview-subject">{{ sample.subject }}</span>
+              <div class="result-time">{{ result.timestamp | date:'HH:mm:ss' }}</div>
             </div>
           }
         </div>
       </div>
-    </div>
-  }
-
-  <!-- Results Log -->
-  @if (results().length > 0) {
-    <div class="results-section">
-      <div class="results-header">
-        <h3>Simulation Log ({{ results().length }} emails)</h3>
-        <button class="clear-btn" (click)="clearResults()">Clear</button>
-      </div>
-
-      <div class="results-list">
-        @for (result of results(); track $index) {
-          <div class="result-item" [ngClass]="'result-' + result.status">
-            <div class="result-icon">
-              @if (result.status === 'success') { <span class="icon-success">&#10003;</span> }
-              @if (result.status === 'ignored') { <span class="icon-ignored">&#8709;</span> }
-              @if (result.status === 'error') { <span class="icon-error">&#10007;</span> }
-            </div>
-            <div class="result-details">
-              <div class="result-from">{{ result.email.senderEmail }}</div>
-              <div class="result-subject">{{ result.email.subject }}</div>
-              <div class="result-message">{{ result.message }}</div>
-              @if (result.languageInfo) {
-                <div class="result-language">
-                  <span class="lang-badge vernacular">🌐 {{ result.languageInfo.languageName }}</span>
-                  <span class="lang-confidence">Translation confidence: {{ result.languageInfo.translationConfidence }}%</span>
-                </div>
-              }
-            </div>
-            <div class="result-time">{{ result.timestamp | date:'HH:mm:ss' }}</div>
-          </div>
-        }
-      </div>
-    </div>
-  }
+    }
+  </div>
 </div>
+
+<!-- Footer -->
+<footer class="sim-footer">
+  <img src="assets/bottom2.png" alt="Footer" class="sim-footer-img" />
+</footer>

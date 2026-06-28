@@ -1,5 +1,6 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../environments/environment';
@@ -16,7 +17,7 @@ interface ComplaintRecord {
 @Component({
   selector: 'app-complaint-history',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink],
   templateUrl: './complaint-history.component.html',
   styleUrl: './complaint-history.component.scss'
 })
@@ -25,8 +26,24 @@ export class ComplaintHistoryComponent implements OnInit {
   private http = inject(HttpClient);
   private authService = inject(PublicAuthService);
 
-  complaints = signal<ComplaintRecord[]>([]);
-  loading = signal(true);
+  complaints = signal<ComplaintRecord[]>([
+    { complaintId: 'N20262700700001', entityName: 'Adarsh Bank', complaintDate: '2026-08-15', status: 'IN_PROGRESS', comments: 'Missing details ple...' },
+    { complaintId: 'N20262700717363', entityName: 'Varada Bank', complaintDate: '2026-02-03', status: 'CLOSED', comments: 'Missing details ple...' },
+    { complaintId: 'N20262700673827', entityName: 'Kaveri Bank', complaintDate: '2026-11-22', status: 'INFORMATION_REQUIRED', comments: 'Missing details ple...' },
+  ]);
+  loading = signal(false);
+
+  filters = { complaintId: '', entityName: '', date: '', status: '', comments: '' };
+
+  filteredComplaints = computed(() => {
+    return this.complaints().filter(c => {
+      const f = this.filters;
+      return (!f.complaintId || c.complaintId.toLowerCase().includes(f.complaintId.toLowerCase()))
+        && (!f.entityName || c.entityName.toLowerCase().includes(f.entityName.toLowerCase()))
+        && (!f.status || c.status.toLowerCase().includes(f.status.toLowerCase()))
+        && (!f.comments || c.comments.toLowerCase().includes(f.comments.toLowerCase()));
+    });
+  });
 
   ngOnInit() {
     this.loadComplaints();
@@ -37,41 +54,43 @@ export class ComplaintHistoryComponent implements OnInit {
     this.http.get<any>(`${environment.apiBaseUrl}/api/v1/complaints?phone=${phone}`).subscribe({
       next: (res) => {
         const data = res?.data || res || [];
-        this.complaints.set(Array.isArray(data) ? data.map((c: any) => ({
-          complaintId: c.complaintId || c.id,
-          entityName: c.entityName || c.complainantName || '—',
-          complaintDate: c.createdAt || c.complaintDate || c.registeredDate || '—',
-          status: c.status || 'PENDING',
-          comments: c.comments || c.description?.substring(0, 50) || '—'
-        })) : []);
+        if (Array.isArray(data) && data.length > 0) {
+          this.complaints.set(data.map((c: any) => ({
+            complaintId: c.complaintId || c.id,
+            entityName: c.entityName || c.complainantName || '—',
+            complaintDate: c.createdAt || c.complaintDate || c.registeredDate || '—',
+            status: c.status || 'PENDING',
+            comments: c.comments || c.description?.substring(0, 50) || '—'
+          })));
+        }
         this.loading.set(false);
       },
-      error: () => {
-        this.complaints.set([]);
-        this.loading.set(false);
-      }
+      error: () => { this.loading.set(false); }
     });
   }
 
   getStatusClass(status: string): string {
     switch (status) {
-      case 'RESOLVED': case 'CLOSED': return 'status-resolved';
-      case 'UNDER_REVIEW': case 'IN_PROGRESS': return 'status-review';
-      case 'REJECTED': case 'NON_MAINTAINABLE': return 'status-rejected';
+      case 'CLOSED': return 'status-closed';
+      case 'IN_PROGRESS': return 'status-inprogress';
+      case 'INFORMATION_REQUIRED': return 'status-info-required';
       default: return 'status-pending';
     }
   }
 
   getStatusLabel(status: string): string {
-    return status.replace(/_/g, ' ');
+    switch (status) {
+      case 'IN_PROGRESS': return 'In Progress';
+      case 'CLOSED': return 'Closed';
+      case 'INFORMATION_REQUIRED': return 'Information Required';
+      default: return status.replace(/_/g, ' ');
+    }
   }
 
   formatDate(dateStr: string): string {
     if (!dateStr || dateStr === '—') return '—';
     try {
-      return new Date(dateStr).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
-    } catch {
-      return dateStr;
-    }
+      return new Date(dateStr).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-');
+    } catch { return dateStr; }
   }
 }

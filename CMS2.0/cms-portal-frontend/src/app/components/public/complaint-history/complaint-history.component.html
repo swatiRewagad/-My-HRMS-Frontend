@@ -1,64 +1,61 @@
-<div class="history-container">
-  <div class="history-header">
-    <h2>Complaint History</h2>
-    <p>View and track all complaints filed from your registered mobile number.</p>
+<div class="my-complaints-page">
+
+  <div class="page-header">
+    <h1 class="page-title">My Complaints</h1>
+    <a routerLink="/public/file-complaint" class="btn-create-new">Create New Complaint</a>
   </div>
 
   @if (loading()) {
     <div class="loading-state">
-      <i class="pi pi-spinner pi-spin"></i>
-      <span>Loading complaints...</span>
-    </div>
-  } @else if (complaints().length === 0) {
-    <div class="empty-state">
-      <i class="pi pi-inbox"></i>
-      <h3>No Complaints Found</h3>
-      <p>You have not filed any complaints yet.</p>
-      <a routerLink="/public/file-complaint" class="btn-primary">File a Complaint</a>
+      <i class="pi pi-spinner pi-spin"></i> Loading complaints...
     </div>
   } @else {
-    <div class="table-wrapper">
+    <div class="table-card">
       <table class="complaints-table">
         <thead>
-          <tr>
-            <th>Complaint ID</th>
-            <th>Complaint Against</th>
-            <th>Complaint Date</th>
-            <th>Status</th>
-            <th>Comments</th>
-            <th>Action</th>
+          <tr class="thead-row">
+            <th>Complaint Number <i class="pi pi-sort-alt"></i>
+              <div class="col-search"><input type="text" placeholder="Search" [(ngModel)]="filters.complaintId" class="col-filter-input"></div>
+            </th>
+            <th>Complaint Against <i class="pi pi-sort-alt"></i>
+              <div class="col-search"><input type="text" placeholder="Search" [(ngModel)]="filters.entityName" class="col-filter-input"></div>
+            </th>
+            <th>Complaint Date <i class="pi pi-sort-alt"></i>
+              <div class="col-search"><input type="text" placeholder="DD-MM-YYYY" [(ngModel)]="filters.date" class="col-filter-input"></div>
+            </th>
+            <th>Status <i class="pi pi-sort-alt"></i>
+              <div class="col-search"><input type="text" placeholder="Search" [(ngModel)]="filters.status" class="col-filter-input"></div>
+            </th>
+            <th>Comments <i class="pi pi-sort-alt"></i>
+              <div class="col-search"><input type="text" placeholder="Search" [(ngModel)]="filters.comments" class="col-filter-input"></div>
+            </th>
           </tr>
         </thead>
         <tbody>
-          @for (c of complaints(); track c.complaintId) {
-            <tr>
+          @if (filteredComplaints().length === 0) {
+            <tr><td colspan="5" class="empty-cell">No complaints found.</td></tr>
+          }
+          @for (c of filteredComplaints(); track c.complaintId) {
+            <tr class="tbody-row">
               <td class="id-cell">{{ c.complaintId }}</td>
               <td>{{ c.entityName }}</td>
               <td>{{ formatDate(c.complaintDate) }}</td>
               <td>
                 <span class="status-badge" [class]="getStatusClass(c.status)">
-                  {{ getStatusLabel(c.status) }}
+                  <span class="status-dot"></span> {{ getStatusLabel(c.status) }}
                 </span>
               </td>
               <td class="comments-cell">{{ c.comments }}</td>
-              <td class="action-cell">
-                <a [routerLink]="['/public/track', c.complaintId]" class="action-link">
-                  <i class="pi pi-eye"></i> View
-                </a>
-              </td>
             </tr>
           }
         </tbody>
       </table>
     </div>
-
-    <div class="history-actions">
-      <a routerLink="/public/file-complaint" class="btn-primary">
-        <i class="pi pi-plus"></i> File New Complaint
-      </a>
-      <a routerLink="/public" class="btn-secondary">
-        <i class="pi pi-home"></i> Back to Home
-      </a>
-    </div>
   }
+
+  <div class="assistance-banner">
+    <h3>Need Assistance? Call 14448</h3>
+    <p>The contact center (#14448) with Interactive Voice Response System (IVRS) is available 24x7, while the facility to connect to Contact Centre personnel is available from Monday to Saturday except for National Holidays, between 8:00 AM to 10:00 PM for English, Hindi, and ten regional languages.</p>
+  </div>
+
 </div>

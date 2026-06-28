@@ -130,6 +130,6 @@ export class AppComponent {
 
   isStaffRoute() {
     const url = this.router.url;
-    return url.startsWith('/crpc') || url.startsWith('/staff') || url.startsWith('/cepc') || url.startsWith('/public');
+    return url.startsWith('/crpc') || url.startsWith('/staff') || url.startsWith('/cepc') || url.startsWith('/public') || url.startsWith('/email-syndication');
   }
 }

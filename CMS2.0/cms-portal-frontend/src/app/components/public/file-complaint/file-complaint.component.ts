@@ -16,6 +16,7 @@ interface EligibilityQuestion {
   blockOn: string | null;
   blockMessage: string;
   nonMaintainable?: boolean;
+  simplifiedText?: string;
 }
 
 @Component({
@@ -42,6 +43,7 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
   eligibilityBlocked = signal(false);
   eligibilityBlockMessage = signal('');
   nonMaintainableCaseId = '';
+  showSimplified = signal(false);
 
   banks = [
     { id: 1, name: 'State Bank of India' },
@@ -72,7 +74,7 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
       type: 'radio',
       options: [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }],
       blockOn: 'no',
-      blockMessage: 'You must first file a complaint with your bank or financial institution before approaching the Ombudsman. Please contact your bank and file a complaint first.',
+      blockMessage: 'in terms of clause 10(1)(j) of Reserve Bank – Integrated Ombudsman Scheme, 2026, the complaint cannot be processed under the Scheme.',
       nonMaintainable: true,
     },
     {
@@ -99,6 +101,7 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
       blockOn: 'yes',
       blockMessage: 'As your complaint is sub-judice/under arbitration/already dealt with on merits by a Court/Tribunal/Arbitrator/Authority, it will be closed as Non-Maintainable under clause 10(2)(b)(ii) of the Reserve Bank - Integrated Ombudsman Scheme, 2021.',
       nonMaintainable: true,
+      simplifiedText: 'Have you already taken this exact problem to a court, arbitrator, or another official legal authority (excluding criminal cases or police investigations)?',
     },
     {
       key: 'alreadySettled',
@@ -108,14 +111,16 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
       blockOn: 'yes',
       blockMessage: 'As your complaint has already been settled or dealt with by a Court/Tribunal/Arbitrator/Authority, it will be closed as Non-Maintainable under the Reserve Bank - Integrated Ombudsman Scheme, 2021.',
       nonMaintainable: true,
+      simplifiedText: 'Has this exact problem already been resolved by a court, arbitrator, or another official legal authority (excluding criminal cases or police investigations)?',
     },
     {
       key: 'throughAdvocateEligibility',
-      question: 'Whether your complaint is being made through an advocate?',
+      question: 'Is your complaint being made through an advocate?',
       type: 'radio',
       options: [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }],
       blockOn: null,
       blockMessage: '',
+      simplifiedText: 'Are you filing this complaint with the help of a lawyer or legal representative?',
     },
     {
       key: 'pendingBeforeOmbudsman',
@@ -125,6 +130,7 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
       blockOn: 'yes',
       blockMessage: 'Your complaint is already pending before the Ombudsman on the same grievance. Duplicate complaints cannot be filed.',
       nonMaintainable: true,
+      simplifiedText: 'Have you already filed a complaint about this same issue with the Ombudsman and it is still under review?',
     },
     {
       key: 'settledByOmbudsman',
@@ -134,6 +140,7 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
       blockOn: 'yes',
       blockMessage: 'Your complaint has already been settled or dealt with on merits by the Ombudsman. You cannot file a fresh complaint on the same issue.',
       nonMaintainable: true,
+      simplifiedText: 'Has the Ombudsman already reviewed and resolved this same complaint in the past?',
     },
     {
       key: 'staffOfRE',
@@ -143,6 +150,7 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
       blockOn: 'yes',
       blockMessage: 'Complaints involving employer-employee relationship between the complainant and the Regulated Entity cannot be filed under the Integrated Ombudsman Scheme.',
       nonMaintainable: true,
+      simplifiedText: 'Are you an employee of the bank/NBFC you are complaining against, and is your complaint about your job or employment?',
     },
   ];
 
@@ -150,16 +158,18 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
   // Step 1: Complainant Details, Step 2: Regulated Entity Details, Step 3: Complaint Details,
   // Step 4: Authorised Representative, Step 5: Declaration & Review, Step 6: Preview/Submit
   currentStep = signal(1);
-  totalSteps = 5;
+  totalSteps = 6;
   stepTitles = [
     'Complainant Details',
     'Regulated Entity Details',
     'Complaint Details',
     'Representative Authorization',
-    'Declaration'
+    'Declaration',
+    'Review and Submit'
   ];
 
   declarationChecked = false;
+  declaration2Checked = false;
   submitting = signal(false);
   referenceNumber = '';
 
@@ -347,8 +357,7 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
       this.formData['state'] = '';
       this.formData['district'] = '';
 
-      // Uses proxy: /api/pincode/{code} -> https://api.postalpincode.in/pincode/{code}
-      this.http.get<any[]>(`/api/pincode/${value}`).subscribe({
+      this.http.get<any[]>(`/api/v1/location/pincode/${value}`).subscribe({
         next: (res) => {
           this.pincodeLoading = false;
           if (res && res[0] && res[0].Status === 'Success' && res[0].PostOffice?.length) {
@@ -407,6 +416,16 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
     return this.eligibilityQuestions.length;
   }
 
+  get selectedEntityName(): string {
+    const val = this.eligibilityAnswers['regulatedEntity'];
+    const opt = this.eligibilityQuestions[0].options.find(o => o.value === val);
+    return opt?.label ?? 'the Regulated Entity';
+  }
+
+  get currentQuestionText(): string {
+    return this.currentQuestion.question.replace(/<RE Name>/g, this.selectedEntityName);
+  }
+
   selectEligibilityAnswer(value: string) {
     const q = this.currentQuestion;
     this.eligibilityAnswers[q.key] = value;
@@ -433,6 +452,7 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
     if (!this.eligibilityAnswers[q.key]) return;
 
     if (this.eligibilityStep() < this.totalEligibilitySteps) {
+      this.showSimplified.set(false);
       this.eligibilityStep.update(s => s + 1);
       this.eligibilityBlocked.set(false);
       this.eligibilityBlockMessage.set('');
@@ -444,6 +464,7 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
 
   prevEligibility() {
     if (this.eligibilityStep() > 1) {
+      this.showSimplified.set(false);
       this.eligibilityStep.update(s => s - 1);
       this.eligibilityBlocked.set(false);
       this.eligibilityBlockMessage.set('');
@@ -502,7 +523,7 @@ Department of Consumer Education and Protection
         if (!this.formData['repName']?.trim()) this.validationErrors['repName'] = 'Representative name is required';
       }
     } else if (step === 5) {
-      if (!this.declarationChecked) this.validationErrors['declaration'] = 'You must accept the declaration to proceed';
+      if (!this.declarationChecked || !this.declaration2Checked) this.validationErrors['declaration'] = 'You must accept all declarations to proceed';
     }
 
     return Object.keys(this.validationErrors).length === 0;

@@ -1,18 +1,87 @@
+// ── Top Strip ──
+.sim-top-strip {
+  background: linear-gradient(90deg, #6a11cb 0%, #4a3fc7 50%, #2575fc 100%);
+  color: #fff;
+  padding: 6px 0;
+}
+.sim-top-inner {
+  max-width: 1366px; margin: 0 auto; padding: 0 40px;
+  display: flex; justify-content: flex-end; align-items: center;
+}
+.sim-top-left { display: flex; align-items: center; gap: 16px; }
+.sim-accessibility { display: flex; gap: 4px; }
+.sim-access-btn {
+  background: none; border: none; color: rgba(255,255,255,0.8);
+  padding: 2px 8px; font-size: 14px; cursor: pointer; font-weight: 500;
+  &:hover { color: #fff; }
+}
+.sim-divider { width: 1px; height: 20px; background: rgba(255,255,255,0.3); }
+.sim-lang-wrapper {
+  display: flex; align-items: center; gap: 6px; color: #fff;
+  i { font-size: 16px; opacity: 0.9; }
+}
+.sim-lang-select {
+  background: rgba(255,255,255,0.15); color: #fff;
+  border: 1px solid rgba(255,255,255,0.3); border-radius: 6px;
+  padding: 4px 10px; font-size: 13px; cursor: pointer; outline: none;
+  option { background: #fff; color: #202124; }
+}
+
+// ── Header ──
+.sim-header {
+  background: #fff; padding: 14px 0;
+  border-bottom: 1px solid #e8e8e8;
+}
+.sim-header-inner {
+  max-width: 1366px; margin: 0 auto; padding: 0 40px;
+  display: flex; align-items: center;
+}
+.sim-brand { display: flex; align-items: center; text-decoration: none; }
+.sim-brand-logo { height: 52px; object-fit: contain; }
+
+// ── Page background ──
+.sim-page {
+  background: url('/assets/verification.png') center center / cover no-repeat;
+  min-height: calc(100vh - 160px);
+  padding: 8px 0 32px;
+}
+
+// ── Footer ──
+.sim-footer { width: 100%; }
+.sim-footer-img { width: 100%; display: block; }
+
+// ── Content ──
 .simulator-container {
   max-width: 1000px;
   margin: 0 auto;
   padding: 2rem;
 }
 
-.back-btn {
-  background: none; border: none; color: #1565c0; cursor: pointer; font-size: 0.95rem; margin-bottom: 1rem; padding: 0;
-  &:hover { text-decoration: underline; }
-}
-
 .page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
   margin-bottom: 1.5rem;
+
   h2 { color: #1a237e; margin-bottom: 0.25rem; }
   .subtitle { color: #666; font-size: 0.9rem; }
+}
+
+.header-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.action-btn {
+  padding: 0.5rem 1rem;
+  border: 1px solid #1565c0;
+  border-radius: 6px;
+  background: #fff;
+  color: #1565c0;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s;
+  &:hover { background: #e3f2fd; }
 }
 
 .mode-toggle {
