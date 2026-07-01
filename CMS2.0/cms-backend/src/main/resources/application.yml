@@ -130,6 +130,11 @@ cms:
   geo:
     enabled: ${GEO_ENABLED:false}
     maxmind-db-path: ${GEO_MAXMIND_DB:}
+  tat:
+    business-hour-start: ${TAT_HOUR_START:9}
+    business-hour-end: ${TAT_HOUR_END:18}
+    timezone: ${TAT_TIMEZONE:Asia/Kolkata}
+    default-sla-hours: ${TAT_DEFAULT_SLA:240}
   auth:
     otp:
       length: ${OTP_LENGTH:6}

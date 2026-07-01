@@ -43,6 +43,9 @@ public class HazelcastCacheConfig {
         config.addMapConfig(new MapConfig("email-stats")
                 .setTimeToLiveSeconds(180));
 
+        config.addMapConfig(new MapConfig("holidays")
+                .setTimeToLiveSeconds(86400));
+
         config.addMapConfig(new MapConfig("translations")
                 .setTimeToLiveSeconds(1800));
 
