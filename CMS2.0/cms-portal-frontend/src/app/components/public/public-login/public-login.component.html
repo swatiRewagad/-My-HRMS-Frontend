@@ -4,76 +4,155 @@
   <div class="verify-card">
     <h2>Verify Phone Number</h2>
 
-    <!-- Error Message -->
+    <!-- Error/Cooloff Message -->
     @if (loginError) {
-      <div class="error-banner" role="alert">
-        <i class="pi pi-exclamation-circle"></i>
+      <div class="error-banner" role="alert" aria-live="assertive">
+        <i class="pi pi-exclamation-circle" aria-hidden="true"></i>
         {{ loginError }}
+        @if (cooloffActive()) {
+          <span class="cooloff-timer"> ({{ cooloffSeconds() }}s remaining)</span>
+        }
       </div>
     }
 
-    <!-- Step 1: Phone + Captcha -->
+    <!-- Step 1: Phone + CAPTCHA -->
     @if (!otpSent()) {
       <div class="verify-form">
         <div class="form-group">
-          <label>Mobile Number</label>
+          <label for="mobile-input">Mobile Number</label>
           <div class="phone-input">
-            <span class="country-code">+91</span>
-            <input type="tel" maxlength="10" [(ngModel)]="mobile"
-                   placeholder="Enter Mobile Number" autocomplete="tel" />
+            <span class="country-code" aria-hidden="true">+91</span>
+            <input id="mobile-input" type="tel" maxlength="10" [(ngModel)]="mobile"
+                   placeholder="Enter Mobile Number" autocomplete="tel"
+                   aria-label="Indian mobile number" [disabled]="cooloffActive() || loading()" />
           </div>
         </div>
 
-        <div class="captcha-section">
-          <label class="captcha-label">Captcha</label>
-          <div class="captcha-row">
-            <div class="captcha-image-box">
-              <span class="captcha-rendered">{{ captchaText }}</span>
+        <div class="captcha-section" role="group" aria-labelledby="captcha-label">
+          <label id="captcha-label" class="captcha-label">
+            {{ captchaType() === 'VISUAL' ? 'Enter the text shown below' : 'Answer the question' }}
+          </label>
+
+          @if (captchaType() === 'VISUAL') {
+            <div class="captcha-row">
+              <div class="captcha-image-box" aria-hidden="true">
+                @if (captchaData()?.imageData) {
+                  <img [src]="captchaData()!.imageData" alt="CAPTCHA image" class="captcha-img" />
+                } @else {
+                  <span class="captcha-loading">Loading...</span>
+                }
+              </div>
+              <input type="text" [(ngModel)]="captchaInput" placeholder="Enter text"
+                     class="captcha-input" autocomplete="off"
+                     aria-label="Enter the CAPTCHA text shown in the image"
+                     [disabled]="cooloffActive() || loading()" />
             </div>
-            <input type="text" [(ngModel)]="captchaInput" placeholder="" class="captcha-input" />
-          </div>
+          } @else {
+            <div class="captcha-math">
+              <p class="math-question" aria-live="polite">{{ captchaData()?.audioQuestion }}</p>
+              <input type="text" [(ngModel)]="captchaInput" placeholder="Your answer"
+                     class="captcha-input" autocomplete="off" inputmode="numeric"
+                     aria-label="Enter the answer to the math question"
+                     [disabled]="cooloffActive() || loading()" />
+            </div>
+          }
+
           <div class="captcha-actions">
-            <button class="icon-btn" (click)="generateCaptcha()" title="Refresh" type="button">
-              <i class="pi pi-refresh"></i>
+            <button class="icon-btn" (click)="loadCaptcha()" title="Refresh CAPTCHA" type="button"
+                    aria-label="Get a new CAPTCHA" [disabled]="captchaLoading()">
+              <i class="pi pi-refresh" aria-hidden="true"></i>
             </button>
-            <button class="icon-btn" title="Audio CAPTCHA" type="button">
-              <i class="pi pi-volume-up"></i>
+            <button class="icon-btn" (click)="switchCaptchaType()" type="button"
+                    [title]="captchaType() === 'VISUAL' ? 'Switch to audio/math CAPTCHA' : 'Switch to visual CAPTCHA'"
+                    [attr.aria-label]="captchaType() === 'VISUAL' ? 'Switch to accessible math question' : 'Switch to visual CAPTCHA'">
+              <i [class]="captchaType() === 'VISUAL' ? 'pi pi-volume-up' : 'pi pi-image'" aria-hidden="true"></i>
             </button>
           </div>
         </div>
 
-        <button class="send-otp-btn" (click)="sendOtp()" [disabled]="!mobile || !captchaInput">
-          Send OTP
+        <button class="send-otp-btn" (click)="sendOtp()"
+                [disabled]="!mobile || !captchaInput || cooloffActive() || loading()">
+          @if (loading()) {
+            <i class="pi pi-spinner pi-spin" aria-hidden="true"></i> Sending...
+          } @else {
+            Send OTP
+          }
         </button>
+
+        <!-- Email Fallback -->
+        <div class="email-fallback-section">
+          <button class="link-btn" (click)="toggleEmailFallback()" type="button">
+            {{ showEmailFallback() ? 'Hide email option' : 'Send OTP to email instead' }}
+          </button>
+
+          @if (showEmailFallback()) {
+            <div class="email-fallback-form">
+              <div class="form-group">
+                <label for="email-input">Verified Email Address</label>
+                <input id="email-input" type="email" [(ngModel)]="emailForOtp"
+                       placeholder="Enter your verified email"
+                       aria-label="Email address for OTP delivery"
+                       [disabled]="cooloffActive() || loading()" />
+              </div>
+
+              @if (emailVerificationSent()) {
+                <div class="info-banner" role="status">
+                  <i class="pi pi-info-circle" aria-hidden="true"></i>
+                  {{ emailVerificationMessage }}
+                </div>
+              }
+
+              <div class="email-actions">
+                <button class="send-otp-btn secondary" (click)="sendOtpViaEmail()"
+                        [disabled]="!emailForOtp || !captchaInput || cooloffActive() || loading()">
+                  Send OTP to Email
+                </button>
+                <button class="link-btn small" (click)="initiateEmailVerification()" type="button"
+                        [disabled]="!emailForOtp || !mobile">
+                  Verify this email first
+                </button>
+              </div>
+            </div>
+          }
+        </div>
       </div>
     }
 
     <!-- Step 2: OTP Verification -->
     @if (otpSent() && !otpVerified()) {
       <div class="otp-section">
-        <div class="otp-sent-msg">
-          <i class="pi pi-check-circle"></i>
+        <div class="otp-sent-msg" role="status">
+          <i class="pi pi-check-circle" aria-hidden="true"></i>
           OTP sent to <strong>+91 {{ mobile }}</strong>
         </div>
 
-        <label class="otp-label">Enter OTP</label>
-        <div class="otp-inputs">
+        <label class="otp-label" id="otp-label">Enter OTP</label>
+        <div class="otp-inputs" role="group" aria-labelledby="otp-label">
           @for (digit of otpDigits; track $index) {
             <input type="text" maxlength="1" [value]="otpDigits[$index]"
                    (input)="onOtpInput($index, $event)"
                    (keydown)="onOtpKeydown($index, $event)"
-                   class="otp-box" inputmode="numeric" />
+                   class="otp-box" inputmode="numeric"
+                   [attr.aria-label]="'OTP digit ' + ($index + 1) + ' of 6'"
+                   [disabled]="cooloffActive() || loading()" />
           }
         </div>
 
         @if (otpError) {
-          <p class="field-error">{{ otpError }}</p>
+          <p class="field-error" role="alert" aria-live="assertive">{{ otpError }}</p>
         }
 
-        <button class="send-otp-btn" (click)="verifyOtp()">Verify OTP</button>
+        <button class="send-otp-btn" (click)="verifyOtp()"
+                [disabled]="cooloffActive() || loading()">
+          @if (loading()) {
+            <i class="pi pi-spinner pi-spin" aria-hidden="true"></i> Verifying...
+          } @else {
+            Verify OTP
+          }
+        </button>
 
         <div class="otp-footer">
-          <button class="link-btn" (click)="resendOtp()" [disabled]="resendTimer > 0">
+          <button class="link-btn" (click)="resendOtp()" [disabled]="resendTimer > 0 || cooloffActive()">
             {{ resendTimer > 0 ? 'Resend OTP in ' + resendTimer + 's' : 'Resend OTP' }}
           </button>
           <button class="link-btn" (click)="cancelVerification()">Change Number</button>

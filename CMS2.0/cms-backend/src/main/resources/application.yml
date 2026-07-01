@@ -62,7 +62,7 @@ spring:
         delivery.timeout.ms: ${KAFKA_DELIVERY_TIMEOUT:10000}
         request.timeout.ms: ${KAFKA_REQUEST_TIMEOUT:5000}
   cache:
-    type: none
+    type: hazelcast
 
 keycloak:
   admin:
@@ -120,6 +120,25 @@ cms:
   rate-limit:
     complaints-per-minute: ${RATE_LIMIT_CPM:10}
     api-requests-per-second: ${RATE_LIMIT_RPS:100}
+  auth:
+    otp:
+      length: ${OTP_LENGTH:6}
+      expiry-minutes: ${OTP_EXPIRY_MINUTES:5}
+      max-resend-per-hour: ${OTP_MAX_RESEND_PER_HOUR:5}
+      max-verify-attempts-per-otp: ${OTP_MAX_VERIFY_ATTEMPTS:3}
+    captcha:
+      length: ${CAPTCHA_LENGTH:6}
+      expiry-minutes: ${CAPTCHA_EXPIRY_MINUTES:5}
+      image-width: ${CAPTCHA_WIDTH:200}
+      image-height: ${CAPTCHA_HEIGHT:60}
+    cooloff:
+      progression-seconds: ${COOLOFF_PROGRESSION:30,60,120,300,600}
+      max-ceiling-seconds: ${COOLOFF_MAX:600}
+      reset-after-minutes: ${COOLOFF_RESET_MINUTES:60}
+    rate-limit:
+      otp-requests-per-mobile-per-hour: ${OTP_RATE_MOBILE_HOUR:5}
+      otp-requests-per-ip-per-hour: ${OTP_RATE_IP_HOUR:20}
+      login-attempts-per-ip-per-minute: ${LOGIN_RATE_IP_MINUTE:10}
 
 management:
   endpoints:
@@ -163,7 +182,7 @@ spring:
         jdbc:
           batch_size: 50
   cache:
-    type: none
+    type: hazelcast
 
 server:
   tomcat:
