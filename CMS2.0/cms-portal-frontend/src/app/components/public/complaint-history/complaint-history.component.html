@@ -6,28 +6,28 @@
   </div>
 
   @if (loading()) {
-    <div class="loading-state">
-      <i class="pi pi-spinner pi-spin"></i> Loading complaints...
+    <div class="loading-state" role="status" aria-live="polite">
+      <i class="pi pi-spinner pi-spin" aria-hidden="true"></i> Loading complaints...
     </div>
   } @else {
     <div class="table-card">
       <table class="complaints-table">
         <thead>
           <tr class="thead-row">
-            <th>Complaint Number <i class="pi pi-sort-alt"></i>
-              <div class="col-search"><input type="text" placeholder="Search" [(ngModel)]="filters.complaintId" class="col-filter-input"></div>
+            <th>Complaint Number <i class="pi pi-sort-alt" aria-hidden="true"></i>
+              <div class="col-search"><input type="text" placeholder="Search" [(ngModel)]="filters.complaintId" class="col-filter-input" aria-label="Filter by complaint number"></div>
             </th>
-            <th>Complaint Against <i class="pi pi-sort-alt"></i>
-              <div class="col-search"><input type="text" placeholder="Search" [(ngModel)]="filters.entityName" class="col-filter-input"></div>
+            <th>Complaint Against <i class="pi pi-sort-alt" aria-hidden="true"></i>
+              <div class="col-search"><input type="text" placeholder="Search" [(ngModel)]="filters.entityName" class="col-filter-input" aria-label="Filter by entity name"></div>
             </th>
-            <th>Complaint Date <i class="pi pi-sort-alt"></i>
-              <div class="col-search"><input type="text" placeholder="DD-MM-YYYY" [(ngModel)]="filters.date" class="col-filter-input"></div>
+            <th>Complaint Date <i class="pi pi-sort-alt" aria-hidden="true"></i>
+              <div class="col-search"><input type="text" placeholder="DD-MM-YYYY" [(ngModel)]="filters.date" class="col-filter-input" aria-label="Filter by complaint date"></div>
             </th>
-            <th>Status <i class="pi pi-sort-alt"></i>
-              <div class="col-search"><input type="text" placeholder="Search" [(ngModel)]="filters.status" class="col-filter-input"></div>
+            <th>Status <i class="pi pi-sort-alt" aria-hidden="true"></i>
+              <div class="col-search"><input type="text" placeholder="Search" [(ngModel)]="filters.status" class="col-filter-input" aria-label="Filter by status"></div>
             </th>
-            <th>Comments <i class="pi pi-sort-alt"></i>
-              <div class="col-search"><input type="text" placeholder="Search" [(ngModel)]="filters.comments" class="col-filter-input"></div>
+            <th>Comments <i class="pi pi-sort-alt" aria-hidden="true"></i>
+              <div class="col-search"><input type="text" placeholder="Search" [(ngModel)]="filters.comments" class="col-filter-input" aria-label="Filter by comments"></div>
             </th>
           </tr>
         </thead>

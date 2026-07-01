@@ -33,8 +33,8 @@
       <h2>Confirm Withdrawal</h2>
       <p class="subtitle">Complaint <strong>{{ complaintId }}</strong> found. Please provide the reason for withdrawal.</p>
 
-      <div class="warning-box">
-        <i class="pi pi-exclamation-triangle"></i>
+      <div class="warning-box" role="alert">
+        <i class="pi pi-exclamation-triangle" aria-hidden="true"></i>
         <p>Once withdrawn, this complaint cannot be re-opened. You will need to file a new complaint if you wish to pursue the matter again.</p>
       </div>
 
@@ -80,8 +80,8 @@
 <!-- Success -->
 @if (phase() === 'success') {
   <div class="page-container">
-    <div class="card success-card">
-      <div class="success-icon"><i class="pi pi-check-circle"></i></div>
+    <div class="card success-card" role="alert" aria-live="polite">
+      <div class="success-icon"><i class="pi pi-check-circle" aria-hidden="true"></i></div>
       <h2>Complaint Withdrawn Successfully</h2>
       <p>Your complaint <strong>{{ withdrawnRef }}</strong> has been withdrawn. You will receive a confirmation via SMS/Email.</p>
       <div class="form-actions center">

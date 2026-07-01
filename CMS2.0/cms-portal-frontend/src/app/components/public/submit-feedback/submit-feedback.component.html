@@ -16,57 +16,61 @@
         <h3>Rate Your Experience</h3>
 
         <div class="rating-group">
-          <label>Overall Experience <span class="required">*</span></label>
-          <div class="stars">
+          <label id="overall-rating-label">Overall Experience <span class="required">*</span></label>
+          <div class="stars" role="group" aria-labelledby="overall-rating-label">
             @for (star of [1,2,3,4,5]; track star) {
-              <button class="star-btn" [class.active]="star <= overallRating" (click)="setRating('overallRating', star)" type="button">
-                <i class="pi" [class.pi-star-fill]="star <= overallRating" [class.pi-star]="star > overallRating"></i>
+              <button class="star-btn" [class.active]="star <= overallRating" (click)="setRating('overallRating', star)" type="button"
+                      [attr.aria-label]="star + ' star' + (star > 1 ? 's' : '')" [attr.aria-pressed]="star <= overallRating">
+                <i class="pi" [class.pi-star-fill]="star <= overallRating" [class.pi-star]="star > overallRating" aria-hidden="true"></i>
               </button>
             }
             @if (overallRating > 0) {
-              <span class="rating-text">{{ ratingLabels[overallRating] }}</span>
+              <span class="rating-text" aria-live="polite">{{ ratingLabels[overallRating] }}</span>
             }
           </div>
         </div>
 
         <div class="rating-group">
-          <label>Timeliness of Resolution</label>
-          <div class="stars">
+          <label id="timeliness-rating-label">Timeliness of Resolution</label>
+          <div class="stars" role="group" aria-labelledby="timeliness-rating-label">
             @for (star of [1,2,3,4,5]; track star) {
-              <button class="star-btn" [class.active]="star <= timelinessRating" (click)="setRating('timelinessRating', star)" type="button">
-                <i class="pi" [class.pi-star-fill]="star <= timelinessRating" [class.pi-star]="star > timelinessRating"></i>
+              <button class="star-btn" [class.active]="star <= timelinessRating" (click)="setRating('timelinessRating', star)" type="button"
+                      [attr.aria-label]="star + ' star' + (star > 1 ? 's' : '')" [attr.aria-pressed]="star <= timelinessRating">
+                <i class="pi" [class.pi-star-fill]="star <= timelinessRating" [class.pi-star]="star > timelinessRating" aria-hidden="true"></i>
               </button>
             }
             @if (timelinessRating > 0) {
-              <span class="rating-text">{{ ratingLabels[timelinessRating] }}</span>
+              <span class="rating-text" aria-live="polite">{{ ratingLabels[timelinessRating] }}</span>
             }
           </div>
         </div>
 
         <div class="rating-group">
-          <label>Communication Quality</label>
-          <div class="stars">
+          <label id="communication-rating-label">Communication Quality</label>
+          <div class="stars" role="group" aria-labelledby="communication-rating-label">
             @for (star of [1,2,3,4,5]; track star) {
-              <button class="star-btn" [class.active]="star <= communicationRating" (click)="setRating('communicationRating', star)" type="button">
-                <i class="pi" [class.pi-star-fill]="star <= communicationRating" [class.pi-star]="star > communicationRating"></i>
+              <button class="star-btn" [class.active]="star <= communicationRating" (click)="setRating('communicationRating', star)" type="button"
+                      [attr.aria-label]="star + ' star' + (star > 1 ? 's' : '')" [attr.aria-pressed]="star <= communicationRating">
+                <i class="pi" [class.pi-star-fill]="star <= communicationRating" [class.pi-star]="star > communicationRating" aria-hidden="true"></i>
               </button>
             }
             @if (communicationRating > 0) {
-              <span class="rating-text">{{ ratingLabels[communicationRating] }}</span>
+              <span class="rating-text" aria-live="polite">{{ ratingLabels[communicationRating] }}</span>
             }
           </div>
         </div>
 
         <div class="rating-group">
-          <label>Satisfaction with Outcome</label>
-          <div class="stars">
+          <label id="satisfaction-rating-label">Satisfaction with Outcome</label>
+          <div class="stars" role="group" aria-labelledby="satisfaction-rating-label">
             @for (star of [1,2,3,4,5]; track star) {
-              <button class="star-btn" [class.active]="star <= satisfactionRating" (click)="setRating('satisfactionRating', star)" type="button">
-                <i class="pi" [class.pi-star-fill]="star <= satisfactionRating" [class.pi-star]="star > satisfactionRating"></i>
+              <button class="star-btn" [class.active]="star <= satisfactionRating" (click)="setRating('satisfactionRating', star)" type="button"
+                      [attr.aria-label]="star + ' star' + (star > 1 ? 's' : '')" [attr.aria-pressed]="star <= satisfactionRating">
+                <i class="pi" [class.pi-star-fill]="star <= satisfactionRating" [class.pi-star]="star > satisfactionRating" aria-hidden="true"></i>
               </button>
             }
             @if (satisfactionRating > 0) {
-              <span class="rating-text">{{ ratingLabels[satisfactionRating] }}</span>
+              <span class="rating-text" aria-live="polite">{{ ratingLabels[satisfactionRating] }}</span>
             }
           </div>
         </div>
@@ -107,8 +111,8 @@
 
 @if (phase() === 'success') {
   <div class="page-container">
-    <div class="card success-card">
-      <div class="success-icon"><i class="pi pi-check-circle"></i></div>
+    <div class="card success-card" role="alert" aria-live="polite">
+      <div class="success-icon"><i class="pi pi-check-circle" aria-hidden="true"></i></div>
       <h2>Thank You for Your Feedback!</h2>
       <p>Your feedback for complaint <strong>{{ complaintId }}</strong> has been recorded. It helps us improve our services.</p>
       <div class="form-actions center">
