@@ -89,6 +89,11 @@
             <artifactId>pdfbox</artifactId>
             <version>3.0.4</version>
         </dependency>
+        <dependency>
+            <groupId>com.maxmind.geoip2</groupId>
+            <artifactId>geoip2</artifactId>
+            <version>4.2.0</version>
+        </dependency>
     </dependencies>
 
     <build>

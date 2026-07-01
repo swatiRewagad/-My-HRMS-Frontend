@@ -156,7 +156,18 @@
 ## Phase 7 — Geo-Location
 | Test | Result | Date |
 |------|--------|------|
-| — | Not started | — |
+| GeoLocationService graceful when disabled | ✅ Pass | 2026-06-30 |
+| isAvailable() returns false when no DB loaded | ✅ Pass | 2026-06-30 |
+| Loopback/private IPs return empty (no external call) | ✅ Pass | 2026-06-30 |
+| GeoResult.toMap() contains expected keys | ✅ Pass | 2026-06-30 |
+| GeoResult handles null fields gracefully | ✅ Pass | 2026-06-30 |
+| REST API GET /api/v1/geo/locate | ✅ Pass | 2026-06-30 |
+| REST API GET /api/v1/geo/jurisdiction (maps state → Ombudsman office) | ✅ Pass | 2026-06-30 |
+| MaxMind GeoLite2 local DB integration (per D-004) | ✅ Pass | 2026-06-30 |
+| Configuration: cms.geo.enabled + cms.geo.maxmind-db-path | ✅ Pass | 2026-06-30 |
+| Angular GeoLocationService (signal-based, lazy detect) | ✅ Pass | 2026-06-30 |
+| Frontend + backend build succeeds | ✅ Pass | 2026-06-30 |
+| Total new tests: 5, all pass | ✅ Pass | 2026-06-30 |
 
 ## Phase 8 — Performance Audit
 | Test | Result | Date |
