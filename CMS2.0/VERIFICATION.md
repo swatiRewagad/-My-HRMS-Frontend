@@ -225,7 +225,19 @@
 ## Phase 11 — Similar-Cases
 | Test | Result | Date |
 |------|--------|------|
-| — | Not started | — |
+| SimilarCasesProvider interface (provider abstraction, per D-005) | ✅ Pass | 2026-07-01 |
+| OpenSearchSimilarCasesProvider (more_like_this query builder) | ✅ Pass | 2026-07-01 |
+| SimilarCasesService: returns empty when no provider available | ✅ Pass | 2026-07-01 |
+| SimilarCasesService: uses first available provider | ✅ Pass | 2026-07-01 |
+| getActiveProvider returns 'none' when unavailable | ✅ Pass | 2026-07-01 |
+| getActiveProvider returns correct name | ✅ Pass | 2026-07-01 |
+| REST POST /api/v1/similar-cases/search | ✅ Pass | 2026-07-01 |
+| REST GET /api/v1/similar-cases/status | ✅ Pass | 2026-07-01 |
+| Graceful degradation when OpenSearch offline | ✅ Pass | 2026-07-01 |
+| Configuration: cms.similar-cases.* | ✅ Pass | 2026-07-01 |
+| Provider can be swapped without code changes | ✅ Pass | 2026-07-01 |
+| Backend compiles cleanly | ✅ Pass | 2026-07-01 |
+| Total new tests: 4, all pass | ✅ Pass | 2026-07-01 |
 
 ## Phase 12 — WCAG 2.1 AA
 | Test | Result | Date |

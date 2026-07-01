@@ -127,6 +127,10 @@ cms:
     velocity-threshold: ${ANTI_AUTO_VELOCITY_THRESHOLD:30}
     min-form-submission-ms: ${ANTI_AUTO_MIN_FORM_MS:3000}
     require-standard-headers: ${ANTI_AUTO_REQUIRE_HEADERS:true}
+  similar-cases:
+    enabled: ${SIMILAR_CASES_ENABLED:false}
+    opensearch-url: ${OPENSEARCH_URL:http://localhost:9200}
+    index: ${SIMILAR_CASES_INDEX:complaints}
   geo:
     enabled: ${GEO_ENABLED:false}
     maxmind-db-path: ${GEO_MAXMIND_DB:}
