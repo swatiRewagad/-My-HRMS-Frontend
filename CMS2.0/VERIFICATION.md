@@ -129,7 +129,16 @@
 ## Phase 5 — Asset Performance
 | Test | Result | Date |
 |------|--------|------|
-| — | Not started | — |
+| Image lazy loading (loading="lazy") on below-fold images | ✅ Pass | 2026-06-30 |
+| Hero image fetchpriority="high" for LCP optimization | ✅ Pass | 2026-06-30 |
+| decoding="async" on all images | ✅ Pass | 2026-06-30 |
+| Preconnect hint to API origin | ✅ Pass | 2026-06-30 |
+| DNS-prefetch fallback for older browsers | ✅ Pass | 2026-06-30 |
+| Backend security headers (X-Content-Type-Options, X-Frame-Options, Referrer-Policy) | ✅ Pass | 2026-06-30 |
+| Server-side gzip compression enabled (application.yml) | ✅ Pass | 2026-06-30 |
+| Output hashing enabled for cache-busting | ✅ Pass | 2026-06-30 |
+| Angular production build succeeds | ✅ Pass | 2026-06-30 |
+| Backend compiles cleanly | ✅ Pass | 2026-06-30 |
 
 ## Phase 6 — Mobile-Responsive
 | Test | Result | Date |
