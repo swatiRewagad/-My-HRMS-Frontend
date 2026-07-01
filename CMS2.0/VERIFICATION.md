@@ -242,9 +242,46 @@
 ## Phase 12 — WCAG 2.1 AA
 | Test | Result | Date |
 |------|--------|------|
-| — | Not started | — |
+| aria-label on font-size buttons (A-, A, A+) | ✅ Pass | 2026-07-01 |
+| aria-expanded on mobile hamburger menu toggle | ✅ Pass | 2026-07-01 |
+| aria-controls linking hamburger to nav element | ✅ Pass | 2026-07-01 |
+| aria-label on navigation landmark | ✅ Pass | 2026-07-01 |
+| aria-hidden on all decorative icons (sort, spinner, chevron) | ✅ Pass | 2026-07-01 |
+| aria-label on filter inputs (complaint tables) | ✅ Pass | 2026-07-01 |
+| aria-expanded on FAQ accordion buttons | ✅ Pass | 2026-07-01 |
+| aria-controls linking FAQ button to answer panel | ✅ Pass | 2026-07-01 |
+| role=region on FAQ answer panels | ✅ Pass | 2026-07-01 |
+| aria-label on carousel prev/next buttons | ✅ Pass | 2026-07-01 |
+| Play button uses \<button\> with aria-label | ✅ Pass | 2026-07-01 |
+| aria-pressed on all toggle button groups (Yes/No) | ✅ Pass | 2026-07-01 |
+| role=group with aria-labelledby on toggle groups | ✅ Pass | 2026-07-01 |
+| Star rating buttons have aria-label and aria-pressed | ✅ Pass | 2026-07-01 |
+| Star rating groups have role=group with aria-labelledby | ✅ Pass | 2026-07-01 |
+| aria-live=polite on rating text display | ✅ Pass | 2026-07-01 |
+| role=alert on success cards | ✅ Pass | 2026-07-01 |
+| role=alert on warning boxes | ✅ Pass | 2026-07-01 |
+| role=progressbar on eligibility step indicator | ✅ Pass | 2026-07-01 |
+| role=navigation on form step progress bar | ✅ Pass | 2026-07-01 |
+| aria-label on help/accessibility FAB buttons | ✅ Pass | 2026-07-01 |
+| aria-label on microphone/recording button | ✅ Pass | 2026-07-01 |
+| aria-label on file preview/remove buttons | ✅ Pass | 2026-07-01 |
+| Decorative footer image uses empty alt="" | ✅ Pass | 2026-07-01 |
+| role=status and aria-live on loading states | ✅ Pass | 2026-07-01 |
+| Angular production build succeeds | ✅ Pass | 2026-07-01 |
+| 7 files changed, 105 insertions, 87 deletions | ✅ Pass | 2026-07-01 |
 
 ## Phase 13 — Adversarial Verification
 | Test | Result | Date |
 |------|--------|------|
-| — | Not started | — |
+| Backend `mvn compile` — zero errors | ✅ Pass | 2026-07-01 |
+| Backend unit tests: 34 run, 0 failures | ✅ Pass | 2026-07-01 |
+| Frontend `ng build --production` — zero errors | ✅ Pass | 2026-07-01 |
+| All 17 Angular services use `providedIn: 'root'` | ✅ Pass | 2026-07-01 |
+| 50 Spring-managed beans, all wire correctly | ✅ Pass | 2026-07-01 |
+| GlobalExceptionHandler covers RuntimeException + generic | ✅ Pass | 2026-07-01 |
+| Global CorsFilter for /api/** (configurable origins) | ✅ Pass | 2026-07-01 |
+| All repositories referenced by services exist | ✅ Pass | 2026-07-01 |
+| No dead imports or missing dependencies found | ✅ Pass | 2026-07-01 |
+| Provider pattern consistent (OCR chain, SimilarCases) | ✅ Pass | 2026-07-01 |
+| Hazelcast cache maps configured (translations, holidays, dashboard) | ✅ Pass | 2026-07-01 |
+| All phases 1-12 integrate cleanly | ✅ Pass | 2026-07-01 |
