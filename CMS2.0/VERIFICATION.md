@@ -191,7 +191,25 @@
 ## Phase 9 — TAT Timer
 | Test | Result | Date |
 |------|--------|------|
-| — | Not started | — |
+| Weekday identified as business day | ✅ Pass | 2026-07-01 |
+| Saturday not a business day | ✅ Pass | 2026-07-01 |
+| Sunday not a business day | ✅ Pass | 2026-07-01 |
+| Holiday not a business day (DB-driven) | ✅ Pass | 2026-07-01 |
+| 10 AM within business hours | ✅ Pass | 2026-07-01 |
+| 7 AM not within business hours | ✅ Pass | 2026-07-01 |
+| 6 PM not within business hours (end exclusive) | ✅ Pass | 2026-07-01 |
+| Due date calculation spans days correctly | ✅ Pass | 2026-07-01 |
+| Due date skips weekends | ✅ Pass | 2026-07-01 |
+| Elapsed hours same-day calculation | ✅ Pass | 2026-07-01 |
+| Elapsed hours skip weekends | ✅ Pass | 2026-07-01 |
+| Business hours per day = 9 (9AM-6PM) | ✅ Pass | 2026-07-01 |
+| Holiday entity with year index | ✅ Pass | 2026-07-01 |
+| TAT REST API /api/v1/tat/complaint/{number} | ✅ Pass | 2026-07-01 |
+| Holiday CRUD endpoints (GET/POST/DELETE) | ✅ Pass | 2026-07-01 |
+| Angular TatService | ✅ Pass | 2026-07-01 |
+| Configuration: cms.tat.* (hours, timezone) | ✅ Pass | 2026-07-01 |
+| Frontend + backend build succeeds | ✅ Pass | 2026-07-01 |
+| Total new tests: 12, all pass | ✅ Pass | 2026-07-01 |
 
 ## Phase 10 — Officer Dashboard
 | Test | Result | Date |
