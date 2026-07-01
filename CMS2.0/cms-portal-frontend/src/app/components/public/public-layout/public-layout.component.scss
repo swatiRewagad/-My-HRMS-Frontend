@@ -188,9 +188,21 @@
   display: block;
 }
 
+// Tablet
+@media (max-width: 1024px) {
+  .container { padding: 0 24px; }
+  .main-nav { gap: 16px; }
+  .nav-call-box { padding: 6px 12px; font-size: 13px; }
+}
+
 // Mobile
 @media (max-width: 768px) {
+  .container { padding: 0 16px; }
   .accessibility, .divider { display: none; }
+  .top-strip-inner { justify-content: space-between; }
+  .contrast-btn { font-size: 14px; }
+  .main-header { padding: 10px 0; }
+  .brand-logo { height: 36px; }
   .main-nav {
     display: none; position: absolute; top: 100%; left: 0; right: 0;
     background: #fff; flex-direction: column; gap: 0; padding: 8px 0;
@@ -198,8 +210,27 @@
     &.mobile-open { display: flex; }
     a { padding: 12px 24px; width: 100%; border-bottom: 1px solid #f3f4f6; }
     .nav-search-btn, .nav-call-box { display: none; }
+    .login-btn { margin: 8px 24px; text-align: center; }
   }
   .hamburger-btn { display: block; }
+  .session-bar-inner {
+    flex-wrap: wrap;
+    gap: 8px;
+    font-size: 12px;
+  }
+  .session-user { font-size: 12px; }
+  .footer-banner { width: 90%; margin-bottom: -60px; }
   .footer-inner { grid-template-columns: 1fr; gap: 24px; }
   .footer-bottom-inner { flex-direction: column; gap: 8px; text-align: center; }
+  .help-fab { bottom: 16px; right: 16px; }
+  .need-help-btn { padding: 8px 14px; font-size: 12px; }
+}
+
+// Small phone
+@media (max-width: 480px) {
+  .container { padding: 0 12px; }
+  .top-strip { padding: 4px 0; font-size: 12px; }
+  .lang-select { padding: 2px 6px; font-size: 11px; }
+  .brand-logo { height: 30px; }
+  .session-bar-inner { flex-direction: column; align-items: flex-start; }
 }
