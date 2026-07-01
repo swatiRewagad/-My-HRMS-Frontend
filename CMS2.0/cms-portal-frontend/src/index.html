@@ -12,6 +12,9 @@
   <meta name="theme-color" content="#6a11cb">
   <!-- NFR-013: Security headers (CSP set via server in production) -->
   <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <!-- Performance: preconnect to API origin -->
+  <link rel="preconnect" href="http://localhost:8082" crossorigin>
+  <link rel="dns-prefetch" href="http://localhost:8082">
 </head>
 <body>
   <!-- NFR-003: No-JS fallback -->

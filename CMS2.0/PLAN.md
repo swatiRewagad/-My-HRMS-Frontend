@@ -36,7 +36,7 @@ Each phase branch is merged to master on completion and tagged `phase-N-complete
 | 2 | Anti-Automation / Bot Defense | ✅ Complete | `security/phase-1-otp-captcha` | — |
 | 3 | PII Field-Level Encryption | ✅ Complete | `security/phase-1-otp-captcha` | — |
 | 4 | Multi-Language (10 languages) | ✅ Complete | `feature/phase-4-i18n` | — |
-| 5 | Asset Performance | 🔲 Not started | `feature/phase-5-performance` | — |
+| 5 | Asset Performance | ✅ Complete | `feature/phase-5-performance` | — |
 | 6 | Mobile-Responsive | 🔲 Not started | `feature/phase-6-responsive` | — |
 | 7 | Geo-Location Notice | 🔲 Not started | `feature/phase-7-geo-notice` | — |
 | 8 | Performance Audit | 🔲 Not started | `audit/phase-8-perf-audit` | — |
