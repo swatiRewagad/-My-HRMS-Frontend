@@ -6,6 +6,7 @@ import com.hrms.cms.service.CaptchaService.CaptchaChallenge;
 import com.hrms.cms.service.CooloffService;
 import com.hrms.cms.service.CooloffService.CooloffStatus;
 import com.hrms.cms.service.CitizenSessionService;
+import com.hrms.cms.service.EncryptionKeyService;
 import com.hrms.cms.service.OtpService;
 import com.hrms.cms.service.OtpService.OtpVerificationResult;
 import jakarta.servlet.http.Cookie;
@@ -32,6 +33,7 @@ public class CitizenAuthController {
     private final CaptchaService captchaService;
     private final CooloffService cooloffService;
     private final CitizenSessionService sessionService;
+    private final EncryptionKeyService encryptionKeyService;
     private final AuthSecurityProperties authProps;
 
     private static final String FINGERPRINT_COOKIE = "cms_fp";
@@ -269,6 +271,19 @@ public class CitizenAuthController {
             return ResponseEntity.status(401).body(Map.of("valid", false));
         }
         return ResponseEntity.ok(Map.of("valid", true));
+    }
+
+    @PostMapping("/encryption-key")
+    public ResponseEntity<?> getEncryptionKey(@RequestBody Map<String, String> body) {
+        String token = body.get("token");
+        String sessionId = body.get("sessionId");
+
+        if (token == null || !sessionService.isSessionValid(token)) {
+            return ResponseEntity.status(401).body(Map.of("error", "UNAUTHORIZED"));
+        }
+
+        String key = encryptionKeyService.deriveSessionKey(sessionId != null ? sessionId : token);
+        return ResponseEntity.ok(Map.of("key", key));
     }
 
     @PostMapping("/logout")

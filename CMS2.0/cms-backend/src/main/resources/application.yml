@@ -120,6 +120,8 @@ cms:
   rate-limit:
     complaints-per-minute: ${RATE_LIMIT_CPM:10}
     api-requests-per-second: ${RATE_LIMIT_RPS:100}
+  encryption:
+    server-secret: ${CMS_ENCRYPTION_SECRET:cms-encryption-secret-must-change-in-production}
   anti-automation:
     velocity-window-seconds: ${ANTI_AUTO_VELOCITY_WINDOW:60}
     velocity-threshold: ${ANTI_AUTO_VELOCITY_THRESHOLD:30}
