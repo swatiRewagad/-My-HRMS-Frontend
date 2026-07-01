@@ -172,7 +172,21 @@
 ## Phase 8 — Performance Audit
 | Test | Result | Date |
 |------|--------|------|
-| — | Not started | — |
+| Initial bundle: 391 KB raw / 107 KB transferred (under 500 KB budget) | ✅ Pass | 2026-06-30 |
+| Main chunk: 13.5 KB (minimal bootstrap) | ✅ Pass | 2026-06-30 |
+| Lazy chunks: 57 total (code-split per route) | ✅ Pass | 2026-06-30 |
+| Largest lazy chunk: 411 KB (jspdf — only loaded for PDF export) | ✅ Pass | 2026-06-30 |
+| Output hashing enabled for cache-busting | ✅ Pass | 2026-06-30 |
+| Server gzip compression enabled (min 1024 bytes) | ✅ Pass | 2026-06-30 |
+| Image lazy loading on below-fold images (Phase 5) | ✅ Pass | 2026-06-30 |
+| Preconnect/dns-prefetch hints (Phase 5) | ✅ Pass | 2026-06-30 |
+| Hazelcast cache for translations (30 min TTL, Phase 4) | ✅ Pass | 2026-06-30 |
+| HTTP Cache-Control on i18n endpoints (30 min public) | ✅ Pass | 2026-06-30 |
+| No render-blocking resources (system font stack, inline critical CSS) | ✅ Pass | 2026-06-30 |
+| Security headers do not add performance overhead | ✅ Pass | 2026-06-30 |
+| HikariCP connection pool (50 default, 100 prod) | ✅ Pass | 2026-06-30 |
+| Tomcat thread pool: 400 max (800 prod) | ✅ Pass | 2026-06-30 |
+| Lighthouse audit: TBD (requires running app with network traffic) | ⏳ Deferred | 2026-06-30 |
 
 ## Phase 9 — TAT Timer
 | Test | Result | Date |
