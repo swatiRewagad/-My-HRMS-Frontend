@@ -32,9 +32,9 @@ Each phase branch is merged to master on completion and tagged `phase-N-complete
 | Phase | Title | Status | Merge Bucket | Tag |
 |-------|-------|--------|--------------|-----|
 | 0 | Discovery & Baseline | ✅ Complete | N/A (docs only) | `phase-0-complete` |
-| 1 | OTP, CAPTCHA, Cooloff, Email Fallback | 🔲 Not started | `security/phase-1-otp-captcha` | — |
-| 2 | Anti-Automation / Bot Defense | 🔲 Not started | `security/phase-2-anti-automation` | — |
-| 3 | PII Field-Level Encryption | 🔲 Not started | `security/phase-3-pii-encryption` | — |
+| 1 | OTP, CAPTCHA, Cooloff, Email Fallback | ✅ Complete | `security/phase-1-otp-captcha` | — |
+| 2 | Anti-Automation / Bot Defense | ✅ Complete | `security/phase-1-otp-captcha` | — |
+| 3 | PII Field-Level Encryption | ✅ Complete | `security/phase-1-otp-captcha` | — |
 | 4 | Multi-Language (10 languages) | 🔲 Not started | `feature/phase-4-i18n` | — |
 | 5 | Asset Performance | 🔲 Not started | `feature/phase-5-performance` | — |
 | 6 | Mobile-Responsive | 🔲 Not started | `feature/phase-6-responsive` | — |

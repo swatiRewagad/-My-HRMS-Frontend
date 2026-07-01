@@ -48,17 +48,55 @@
 ## Phase 1 — OTP/CAPTCHA/Cooloff
 | Test | Result | Date |
 |------|--------|------|
-| — | Not started | — |
+| OTP generation (secure random, 6 digits) | ✅ Pass | 2026-06-30 |
+| OTP hashed storage (SHA-256, never plaintext) | ✅ Pass | 2026-06-30 |
+| OTP verify correct code | ✅ Pass | 2026-06-30 |
+| OTP verify incorrect code → INVALID | ✅ Pass | 2026-06-30 |
+| OTP max attempts (3) → locks out | ✅ Pass | 2026-06-30 |
+| OTP expired → EXPIRED_OR_NOT_FOUND | ✅ Pass | 2026-06-30 |
+| Rate limit by mobile (5/hour) | ✅ Pass | 2026-06-30 |
+| CAPTCHA image generation (PNG base64) | ✅ Pass | 2026-06-30 |
+| CAPTCHA math alternative | ✅ Pass | 2026-06-30 |
+| CAPTCHA verify correct (case-insensitive) | ✅ Pass | 2026-06-30 |
+| CAPTCHA reject incorrect | ✅ Pass | 2026-06-30 |
+| CAPTCHA reject expired/used token | ✅ Pass | 2026-06-30 |
+| CAPTCHA reject null inputs | ✅ Pass | 2026-06-30 |
+| Cooloff inactive when none exists | ✅ Pass | 2026-06-30 |
+| Cooloff detected by IP/fingerprint | ✅ Pass | 2026-06-30 |
+| Cooloff detected by mobile number | ✅ Pass | 2026-06-30 |
+| Cooloff first failure = 30s | ✅ Pass | 2026-06-30 |
+| Cooloff escalation (30→60→120→300→600) | ✅ Pass | 2026-06-30 |
+| Cooloff caps at 600s maximum | ✅ Pass | 2026-06-30 |
+| Cooloff resets after 60 min inactivity | ✅ Pass | 2026-06-30 |
+| Cooloff cleared on successful login | ✅ Pass | 2026-06-30 |
+| Angular build succeeds with new components | ✅ Pass | 2026-06-30 |
+| Backend compiles cleanly | ✅ Pass | 2026-06-30 |
+| Total new tests: 24, all pass | ✅ Pass | 2026-06-30 |
 
 ## Phase 2 — Anti-Automation
 | Test | Result | Date |
 |------|--------|------|
-| — | Not started | — |
+| Honeypot header filled → instant block (429) | ✅ Pass | 2026-06-30 |
+| Honeypot absent → request passes | ✅ Pass | 2026-06-30 |
+| Form submitted in <3s → flag + require CAPTCHA | ✅ Pass | 2026-06-30 |
+| Form submitted in normal time → pass | ✅ Pass | 2026-06-30 |
+| Missing User-Agent → flag | ✅ Pass | 2026-06-30 |
+| Known automation tool UA → flag | ✅ Pass | 2026-06-30 |
+| Velocity >30 req/min → hard block | ✅ Pass | 2026-06-30 |
+| Non-protected paths unaffected | ✅ Pass | 2026-06-30 |
+| Total new tests: 8, all pass | ✅ Pass | 2026-06-30 |
 
 ## Phase 3 — PII Encryption
 | Test | Result | Date |
 |------|--------|------|
-| — | Not started | — |
+| Key derivation produces 256-bit (32 bytes) | ✅ Pass | 2026-06-30 |
+| Same session → same key (deterministic) | ✅ Pass | 2026-06-30 |
+| Different sessions → different keys | ✅ Pass | 2026-06-30 |
+| AES-256-GCM encrypt/decrypt round-trip | ✅ Pass | 2026-06-30 |
+| Cross-session isolation (A cannot decrypt B) | ✅ Pass | 2026-06-30 |
+| Tampered ciphertext rejected (AEAD tag fail) | ✅ Pass | 2026-06-30 |
+| Frontend + backend build cleanly | ✅ Pass | 2026-06-30 |
+| Total new tests: 6, all pass | ✅ Pass | 2026-06-30 |
 
 ## Phase 4 — Multi-Language
 | Test | Result | Date |

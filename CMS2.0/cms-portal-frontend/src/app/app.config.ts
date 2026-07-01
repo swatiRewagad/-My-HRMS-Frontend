@@ -6,6 +6,7 @@ import { sessionTimeoutInterceptor } from './interceptors/session-timeout.interc
 import { errorHandlerInterceptor } from './interceptors/error-handler.interceptor';
 import { securityHeadersInterceptor } from './interceptors/security-headers.interceptor';
 import { keycloakTokenInterceptor } from './interceptors/keycloak-token.interceptor';
+import { antiAutomationInterceptor } from './interceptors/anti-automation.interceptor';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -19,6 +20,7 @@ export const appConfig: ApplicationConfig = {
       withInterceptors([
         keycloakTokenInterceptor,
         securityHeadersInterceptor,
+        antiAutomationInterceptor,
         sessionTimeoutInterceptor,
         errorHandlerInterceptor,
       ])
