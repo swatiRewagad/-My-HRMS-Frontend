@@ -214,7 +214,13 @@
 ## Phase 10 — Officer Dashboard
 | Test | Result | Date |
 |------|--------|------|
-| — | Not started | — |
+| DashboardService with server-side Hazelcast cache (2 min TTL) | ✅ Pass | 2026-07-01 |
+| GET /api/v1/dashboard/summary (cached officer stats) | ✅ Pass | 2026-07-01 |
+| GET /api/v1/dashboard/summary/{department} | ✅ Pass | 2026-07-01 |
+| POST /api/v1/dashboard/refresh (cache eviction, per D-008) | ✅ Pass | 2026-07-01 |
+| Cache-Control: max-age=120, private on responses | ✅ Pass | 2026-07-01 |
+| Resolution rate calculation | ✅ Pass | 2026-07-01 |
+| Backend compiles cleanly | ✅ Pass | 2026-07-01 |
 
 ## Phase 11 — Similar-Cases
 | Test | Result | Date |

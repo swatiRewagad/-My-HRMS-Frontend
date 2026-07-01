@@ -30,6 +30,8 @@ public interface ComplaintRepository extends JpaRepository<Complaint, Long> {
 
     long countByStatus(String status);
     long countByPriority(String priority);
+    long countByDepartment(String department);
+    long countByDepartmentAndStatus(String department, String status);
 
     List<Complaint> findByDepartmentAndAssignedRoleAndStatusNotInOrderByCreatedAtDesc(
             String department, String assignedRole, List<String> excludeStatuses);
