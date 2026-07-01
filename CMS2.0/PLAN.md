@@ -42,7 +42,7 @@ Each phase branch is merged to master on completion and tagged `phase-N-complete
 | 8 | Performance Audit | ✅ Complete | `audit/phase-8-perf-audit` | — |
 | 9 | TAT Timer | ✅ Complete | `feature/phase-9-tat-timer` | — |
 | 10 | Officer Dashboard | ✅ Complete | `feature/phase-10-officer-dashboard` | — |
-| 11 | Similar-Cases Widget | 🔲 Not started | `feature/phase-11-similar-cases` | — |
+| 11 | Similar-Cases Widget | ✅ Complete | `feature/phase-11-similar-cases` | — |
 | 12 | WCAG 2.1 AA Audit | 🔲 Not started | `audit/phase-12-wcag` | — |
 | 13 | Adversarial Verification | 🔲 Not started | `audit/phase-13-adversarial` | — |
 
