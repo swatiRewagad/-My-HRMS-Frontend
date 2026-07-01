@@ -2,21 +2,23 @@ import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterOutlet, RouterLink, Router } from '@angular/router';
 import { PublicAuthService } from '../../../services/public-auth.service';
+import { TranslationService } from '../../../services/translation.service';
+import { TranslatePipe } from '../../../pipes/translate.pipe';
 
 @Component({
   selector: 'app-public-layout',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, RouterLink],
+  imports: [CommonModule, RouterOutlet, RouterLink, TranslatePipe],
   templateUrl: './public-layout.component.html',
   styleUrl: './public-layout.component.scss'
 })
 export class PublicLayoutComponent {
   private router = inject(Router);
   authService = inject(PublicAuthService);
+  translationService = inject(TranslationService);
 
   mobileMenuOpen = false;
   fontSize = 16;
-  currentLang = 'en';
   highContrast = false;
 
   logout() {
@@ -29,11 +31,9 @@ export class PublicLayoutComponent {
     document.body.classList.toggle('high-contrast', this.highContrast);
   }
 
-  // FR-G-035: Multi-language support
   changeLanguage(event: Event) {
     const select = event.target as HTMLSelectElement;
-    this.currentLang = select.value;
-    document.documentElement.setAttribute('lang', this.currentLang);
+    this.translationService.setLocale(select.value);
   }
 
   increaseFontSize() {

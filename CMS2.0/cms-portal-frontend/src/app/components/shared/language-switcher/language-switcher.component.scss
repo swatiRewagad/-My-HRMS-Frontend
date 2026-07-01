@@ -1,0 +1,108 @@
+.language-switcher {
+  position: relative;
+  display: inline-block;
+}
+
+.switcher-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 13px;
+  color: #374151;
+  transition: border-color 0.2s, box-shadow 0.2s;
+
+  &:hover {
+    border-color: #2563eb;
+  }
+
+  &:focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 2px;
+  }
+}
+
+.globe-icon {
+  font-size: 16px;
+}
+
+.chevron {
+  font-size: 10px;
+  transition: transform 0.2s;
+
+  &.open {
+    transform: rotate(180deg);
+  }
+}
+
+.locale-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 1000;
+  min-width: 200px;
+  max-height: 320px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 4px 0;
+  list-style: none;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    cursor: pointer;
+    transition: background 0.15s;
+
+    &:hover,
+    &:focus-visible {
+      background: #f3f4f6;
+    }
+
+    &.active {
+      background: #eff6ff;
+      font-weight: 500;
+    }
+
+    &:focus-visible {
+      outline: 2px solid #2563eb;
+      outline-offset: -2px;
+    }
+  }
+
+  .native-name {
+    flex: 1;
+    font-size: 14px;
+  }
+
+  .english-name {
+    font-size: 12px;
+    color: #6b7280;
+  }
+
+  .check {
+    color: #2563eb;
+    font-weight: bold;
+  }
+}
+
+// RTL support
+:host-context([dir='rtl']) {
+  .locale-dropdown {
+    right: auto;
+    left: 0;
+  }
+
+  .switcher-btn {
+    flex-direction: row-reverse;
+  }
+}
