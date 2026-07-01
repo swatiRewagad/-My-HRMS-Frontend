@@ -120,6 +120,11 @@ cms:
   rate-limit:
     complaints-per-minute: ${RATE_LIMIT_CPM:10}
     api-requests-per-second: ${RATE_LIMIT_RPS:100}
+  anti-automation:
+    velocity-window-seconds: ${ANTI_AUTO_VELOCITY_WINDOW:60}
+    velocity-threshold: ${ANTI_AUTO_VELOCITY_THRESHOLD:30}
+    min-form-submission-ms: ${ANTI_AUTO_MIN_FORM_MS:3000}
+    require-standard-headers: ${ANTI_AUTO_REQUIRE_HEADERS:true}
   auth:
     otp:
       length: ${OTP_LENGTH:6}
