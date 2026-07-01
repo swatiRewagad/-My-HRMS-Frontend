@@ -101,7 +101,30 @@
 ## Phase 4 — Multi-Language
 | Test | Result | Date |
 |------|--------|------|
-| — | Not started | — |
+| Normalized schema (TranslationKey + Translation entities) | ✅ Pass | 2026-06-30 |
+| SupportedLocale enum (10 languages, Urdu RTL) | ✅ Pass | 2026-06-30 |
+| TranslationService returns translations by locale | ✅ Pass | 2026-06-30 |
+| Fallback to English for unsupported locale | ✅ Pass | 2026-06-30 |
+| Missing translations filled with defaultValue | ✅ Pass | 2026-06-30 |
+| Filter translations by module | ✅ Pass | 2026-06-30 |
+| Returns all 10 supported locales with metadata | ✅ Pass | 2026-06-30 |
+| Upsert existing translation | ✅ Pass | 2026-06-30 |
+| Create new translation for locale | ✅ Pass | 2026-06-30 |
+| Reject upsert to non-existent key | ✅ Pass | 2026-06-30 |
+| Create new translation key | ✅ Pass | 2026-06-30 |
+| Reject duplicate key creation | ✅ Pass | 2026-06-30 |
+| Urdu locale identified as RTL | ✅ Pass | 2026-06-30 |
+| English locale identified as LTR | ✅ Pass | 2026-06-30 |
+| Unsupported locale code defaults to English | ✅ Pass | 2026-06-30 |
+| Hazelcast cache configured for translations (30 min TTL) | ✅ Pass | 2026-06-30 |
+| REST API GET /api/v1/i18n/locales | ✅ Pass | 2026-06-30 |
+| REST API GET /api/v1/i18n/translations/{locale} | ✅ Pass | 2026-06-30 |
+| Angular TranslatePipe and TranslationService | ✅ Pass | 2026-06-30 |
+| Language switcher with server-driven locale list | ✅ Pass | 2026-06-30 |
+| RTL direction applied for Urdu | ✅ Pass | 2026-06-30 |
+| Seed data: 90+ keys, all 10 languages seeded | ✅ Pass | 2026-06-30 |
+| Angular production build succeeds | ✅ Pass | 2026-06-30 |
+| Total new tests: 13, all pass | ✅ Pass | 2026-06-30 |
 
 ## Phase 5 — Asset Performance
 | Test | Result | Date |
