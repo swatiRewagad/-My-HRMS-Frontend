@@ -143,7 +143,15 @@
 ## Phase 6 — Mobile-Responsive
 | Test | Result | Date |
 |------|--------|------|
-| — | Not started | — |
+| Viewport meta tag present in index.html | ✅ Pass | 2026-06-30 |
+| 3 breakpoints: 1024px (tablet), 768px (mobile), 480px (small phone) | ✅ Pass | 2026-06-30 |
+| Layout: hamburger nav, stacked session bar, responsive footer | ✅ Pass | 2026-06-30 |
+| Home: hero stacks vertically, hidden decorative images on mobile | ✅ Pass | 2026-06-30 |
+| Home: complaint types, scheme grid, ways grid collapse to 1-col | ✅ Pass | 2026-06-30 |
+| Home: stats banner responsive on mobile | ✅ Pass | 2026-06-30 |
+| Complaint form: already has 768px breakpoint (form-row stacks) | ✅ Pass | 2026-06-30 |
+| CSS-only responsive (per D-003 decision: no UA detection) | ✅ Pass | 2026-06-30 |
+| Angular production build succeeds | ✅ Pass | 2026-06-30 |
 
 ## Phase 7 — Geo-Location
 | Test | Result | Date |

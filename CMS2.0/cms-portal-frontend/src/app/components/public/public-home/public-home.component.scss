@@ -686,19 +686,59 @@
 .faq-item.open .faq-question span { color: #4a3fc7; }
 .faq-answer { padding: 0 24px 18px; p { font-size: 14px; color: #555; line-height: 1.7; } }
 
+// ══════ Tablet ══════
+@media (max-width: 1024px) {
+  .container { padding: 0 24px; }
+  .ct-layout { gap: 32px; }
+  .ct-right { flex: 0 0 320px; }
+  .ct-image-frame img { height: 280px; }
+  .ways-grid { grid-template-columns: repeat(2, 1fr); }
+  .education-card { flex: 0 0 calc(33.33% - 14px); }
+  .stats-banner { margin: 0 24px; }
+  .stats-grid { gap: 40px; }
+}
+
 // ══════ Mobile ══════
 @media (max-width: 768px) {
+  .container { padding: 0 16px; }
   .hero { padding: 48px 0 40px; min-height: auto; }
   .hero-content h1 { font-size: 26px; }
+  .hero-content .hero-subtitle { font-size: 14px; }
   .hero-bg-decorations { display: none; }
   .hero-circle-image { display: none; }
   .hero-image-right { display: none; }
   .hero-action-buttons { flex-direction: column; align-items: center; }
+  .hero-btn { width: 100%; justify-content: center; }
   .ct-layout { flex-direction: column; }
   .ct-right { flex: auto; width: 100%; }
+  .ct-left h2 { font-size: 24px; }
+  .ct-icons { gap: 20px; }
+  .ct-icon-card { width: 100px; }
   .wwd-layout { flex-direction: column; }
+  .video-thumb { height: 200px; }
   .stats-grid { flex-direction: column; gap: 24px; }
+  .stats-banner { border-radius: 16px; margin: 0 16px; padding: 32px 0; }
+  .stat-value { font-size: 28px; }
   .press-grid { grid-template-columns: 1fr; }
-  .education-grid { grid-template-columns: 1fr 1fr; }
+  .education-grid { overflow-x: auto; }
+  .education-card { flex: 0 0 200px; min-width: 200px; }
   .scheme-grid { grid-template-columns: 1fr; }
+  .ways-grid { grid-template-columns: 1fr; }
+  .home-header { flex-direction: column; align-items: flex-start; gap: 12px; }
+  .home-title { font-size: 22px; }
+  .complaints-table { font-size: 12px; }
+}
+
+// ══════ Small Phone ══════
+@media (max-width: 480px) {
+  .container { padding: 0 12px; }
+  .hero { padding: 32px 0 24px; }
+  .hero-content h1 { font-size: 22px; }
+  .hero-btn { padding: 12px 24px; font-size: 14px; }
+  .hero-outlined-btn { padding: 8px 16px; font-size: 12px; }
+  .ct-left h2 { font-size: 20px; }
+  .ct-regulated-card { padding: 16px; }
+  .scheme-card { padding: 14px 16px; }
+  .faq-question { padding: 14px 16px; }
+  .faq-question span { font-size: 13px; }
 }
