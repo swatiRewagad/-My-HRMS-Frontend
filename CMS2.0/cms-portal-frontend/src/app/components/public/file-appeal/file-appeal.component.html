@@ -5,8 +5,8 @@
       <h2>File an Appeal</h2>
       <p class="subtitle">If you are dissatisfied with the resolution of your complaint, you may file an appeal within 30 days of the decision.</p>
 
-      <div class="info-box">
-        <i class="pi pi-info-circle"></i>
+      <div class="info-box" role="note">
+        <i class="pi pi-info-circle" aria-hidden="true"></i>
         <div>
           <strong>Eligibility for Appeal:</strong>
           <ul>
@@ -90,7 +90,7 @@
             @for (f of appealAttachments; track $index; let i = $index) {
               <div class="file-chip">
                 <i class="pi pi-file"></i> {{ f.name }}
-                <button class="remove-file" (click)="removeFile(i)" type="button"><i class="pi pi-times"></i></button>
+                <button class="remove-file" (click)="removeFile(i)" type="button" [attr.aria-label]="'Remove ' + f.name"><i class="pi pi-times" aria-hidden="true"></i></button>
               </div>
             }
           </div>
@@ -123,8 +123,8 @@
 <!-- Success -->
 @if (phase() === 'success') {
   <div class="page-container">
-    <div class="card success-card">
-      <div class="success-icon"><i class="pi pi-check-circle"></i></div>
+    <div class="card success-card" role="alert" aria-live="polite">
+      <div class="success-icon"><i class="pi pi-check-circle" aria-hidden="true"></i></div>
       <h2>Appeal Filed Successfully</h2>
       <p class="ref-label">Your Appeal Reference Number:</p>
       <div class="ref-number">{{ appealRefNumber }}</div>

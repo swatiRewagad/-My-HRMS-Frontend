@@ -11,9 +11,9 @@
       </button>
       <div class="divider"></div>
       <div class="accessibility">
-        <button class="access-btn" (click)="decreaseFontSize()">A-</button>
-        <button class="access-btn" (click)="resetFontSize()">A</button>
-        <button class="access-btn" (click)="increaseFontSize()">A+</button>
+        <button class="access-btn" (click)="decreaseFontSize()" aria-label="Decrease font size">A-</button>
+        <button class="access-btn" (click)="resetFontSize()" aria-label="Reset font size">A</button>
+        <button class="access-btn" (click)="increaseFontSize()" aria-label="Increase font size">A+</button>
       </div>
       <div class="divider"></div>
       <div class="lang-wrapper">
@@ -36,11 +36,12 @@
       <img src="assets/navb2.png" alt="Complaint Management System" class="brand-logo" />
     </a>
 
-    <button class="hamburger-btn" (click)="mobileMenuOpen = !mobileMenuOpen" aria-label="Menu">
-      <i class="pi" [class.pi-bars]="!mobileMenuOpen" [class.pi-times]="mobileMenuOpen"></i>
+    <button class="hamburger-btn" (click)="mobileMenuOpen = !mobileMenuOpen"
+            [attr.aria-expanded]="mobileMenuOpen" aria-controls="main-nav" aria-label="Toggle navigation menu">
+      <i class="pi" [class.pi-bars]="!mobileMenuOpen" [class.pi-times]="mobileMenuOpen" aria-hidden="true"></i>
     </button>
 
-    <nav class="main-nav" [class.mobile-open]="mobileMenuOpen" (click)="mobileMenuOpen = false">
+    <nav id="main-nav" class="main-nav" [class.mobile-open]="mobileMenuOpen" (click)="mobileMenuOpen = false" aria-label="Main navigation">
       <a href="javascript:void(0)">About us</a>
       <a href="javascript:void(0)">Public Awareness</a>
       @if (authService.isAuthenticated()) {
@@ -84,13 +85,13 @@
 
 <!-- Need Help FAB -->
 <div class="help-fab">
-  <button class="need-help-btn">Need help ?</button>
-  <button class="accessibility-fab"><i class="pi pi-user"></i></button>
+  <button class="need-help-btn" aria-label="Need help? Open support chat">Need help ?</button>
+  <button class="accessibility-fab" aria-label="Accessibility options"><i class="pi pi-user" aria-hidden="true"></i></button>
 </div>
 
 <!-- Footer -->
 <footer class="main-footer">
   <img src="assets/f1.png" alt="Need Assistance? Call 14448" class="footer-banner" loading="lazy" decoding="async" />
   <img src="assets/f3.png" alt="" class="footer-wave" loading="lazy" decoding="async" />
-  <img src="assets/ft2.png" alt="Footer" class="footer-image" loading="lazy" decoding="async" />
+  <img src="assets/ft2.png" alt="" class="footer-image" loading="lazy" decoding="async" />
 </footer>

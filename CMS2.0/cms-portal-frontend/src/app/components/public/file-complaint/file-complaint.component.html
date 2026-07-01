@@ -22,7 +22,9 @@
 
     <div class="eligibility-card">
       <!-- Progress Bar -->
-      <div class="eligibility-progress">
+      <div class="eligibility-progress" role="progressbar"
+           [attr.aria-valuenow]="eligibilityStep()" aria-valuemin="1" [attr.aria-valuemax]="eligibilityQuestions.length"
+           [attr.aria-label]="'Step ' + eligibilityStep() + ' of ' + eligibilityQuestions.length">
         @for (q of eligibilityQuestions; track q.key; let i = $index) {
           <div class="ep-step"
                [class.completed]="i + 1 < eligibilityStep()"
@@ -240,7 +242,7 @@
 
     <div class="form-card">
       <!-- Step Progress Bar -->
-      <div class="step-header">
+      <div class="step-header" role="navigation" aria-label="Form progress">
         <div class="step-bar">
           @for (title of stepTitles; track title; let i = $index) {
             <div class="step-item" [class.active]="i < currentStep()" [class.current]="i === currentStep() - 1"
@@ -361,11 +363,13 @@
           </div>
 
           <div class="form-group full-width">
-            <label>Is your complaint related to credit card? <span class="required">*</span></label>
-            <div class="toggle-btn-group">
+            <label id="credit-card-label">Is your complaint related to credit card? <span class="required">*</span></label>
+            <div class="toggle-btn-group" role="group" aria-labelledby="credit-card-label">
               <button class="toggle-btn" [class.active]="formData['isCreditCardComplaint'] === 'yes'"
+                      [attr.aria-pressed]="formData['isCreditCardComplaint'] === 'yes'"
                       (click)="formData['isCreditCardComplaint'] = 'yes'" type="button">Yes</button>
               <button class="toggle-btn" [class.active]="formData['isCreditCardComplaint'] === 'no'"
+                      [attr.aria-pressed]="formData['isCreditCardComplaint'] === 'no'"
                       (click)="formData['isCreditCardComplaint'] = 'no'" type="button">No</button>
             </div>
           </div>
@@ -428,8 +432,8 @@
                         [(ngModel)]="formData['complaintText']" name="complaintText" rows="5"
                         placeholder="Write in detail"></textarea>
               <button class="mic-pill-btn" [class.recording]="isRecording()" (click)="toggleRecording()"
-                      type="button">
-                <i class="pi" [class.pi-microphone]="!isRecording()" [class.pi-stop]="isRecording()"></i>
+                      type="button" [attr.aria-label]="isRecording() ? 'Stop voice recording' : 'Start voice recording'">
+                <i class="pi" [class.pi-microphone]="!isRecording()" [class.pi-stop]="isRecording()" aria-hidden="true"></i>
                 {{ isRecording() ? 'Stop' : 'Use Microphone' }}
               </button>
             </div>
@@ -439,11 +443,13 @@
           <!-- Account section -->
           <div class="form-row three-col" style="align-items: flex-end;">
             <div class="form-group">
-              <label>Do You Have An Account With {{ selectedEntityName }}? <span class="required">*</span></label>
-              <div class="toggle-btn-group">
+              <label id="has-account-label">Do You Have An Account With {{ selectedEntityName }}? <span class="required">*</span></label>
+              <div class="toggle-btn-group" role="group" aria-labelledby="has-account-label">
                 <button class="toggle-btn" [class.active]="formData['hasAccountWithRE'] === 'yes'"
+                        [attr.aria-pressed]="formData['hasAccountWithRE'] === 'yes'"
                         (click)="formData['hasAccountWithRE'] = 'yes'" type="button">Yes</button>
                 <button class="toggle-btn" [class.active]="formData['hasAccountWithRE'] === 'no'"
+                        [attr.aria-pressed]="formData['hasAccountWithRE'] === 'no'"
                         (click)="formData['hasAccountWithRE'] = 'no'" type="button">No</button>
               </div>
             </div>
@@ -482,11 +488,13 @@
           <!-- Wallet section -->
           <div class="form-row three-col" style="align-items: flex-end;">
             <div class="form-group">
-              <label>Is your complaint against the wallet of the Regulated Entity? <span class="required">*</span></label>
-              <div class="toggle-btn-group">
+              <label id="wallet-label">Is your complaint against the wallet of the Regulated Entity? <span class="required">*</span></label>
+              <div class="toggle-btn-group" role="group" aria-labelledby="wallet-label">
                 <button class="toggle-btn" [class.active]="formData['isWalletComplaint'] === 'yes'"
+                        [attr.aria-pressed]="formData['isWalletComplaint'] === 'yes'"
                         (click)="formData['isWalletComplaint'] = 'yes'" type="button">Yes</button>
                 <button class="toggle-btn" [class.active]="formData['isWalletComplaint'] === 'no'"
+                        [attr.aria-pressed]="formData['isWalletComplaint'] === 'no'"
                         (click)="formData['isWalletComplaint'] = 'no'" type="button">No</button>
               </div>
             </div>
@@ -502,11 +510,13 @@
 
           <!-- Business Correspondent -->
           <div class="form-group">
-            <label>Is your complaint against a Business Correspondent? <span class="required">*</span></label>
-            <div class="toggle-btn-group">
+            <label id="biz-corr-label">Is your complaint against a Business Correspondent? <span class="required">*</span></label>
+            <div class="toggle-btn-group" role="group" aria-labelledby="biz-corr-label">
               <button class="toggle-btn" [class.active]="formData['isBusinessCorrespondent'] === 'yes'"
+                      [attr.aria-pressed]="formData['isBusinessCorrespondent'] === 'yes'"
                       (click)="formData['isBusinessCorrespondent'] = 'yes'" type="button">Yes</button>
               <button class="toggle-btn" [class.active]="formData['isBusinessCorrespondent'] === 'no'"
+                      [attr.aria-pressed]="formData['isBusinessCorrespondent'] === 'no'"
                       (click)="formData['isBusinessCorrespondent'] = 'no'" type="button">No</button>
             </div>
           </div>
@@ -557,8 +567,8 @@
                   <div class="file-chip">
                     <i class="pi pi-file"></i>
                     <span class="file-name">{{ f.name }}</span>
-                    <button class="preview-file" (click)="previewAttachment(i)" type="button"><i class="pi pi-eye"></i></button>
-                    <button class="remove-file" (click)="removeAttachment(i)" type="button"><i class="pi pi-times"></i></button>
+                    <button class="preview-file" (click)="previewAttachment(i)" type="button" [attr.aria-label]="'Preview ' + f.name"><i class="pi pi-eye" aria-hidden="true"></i></button>
+                    <button class="remove-file" (click)="removeAttachment(i)" type="button" [attr.aria-label]="'Remove ' + f.name"><i class="pi pi-times" aria-hidden="true"></i></button>
                   </div>
                 }
               </div>
@@ -573,11 +583,13 @@
         <div class="step-content">
 
           <div class="form-group">
-            <label>Is the complaint being filed through an Authorised Representative on behalf of you / complainant? <span class="required">*</span></label>
-            <div class="toggle-btn-group">
+            <label id="auth-rep-label">Is the complaint being filed through an Authorised Representative on behalf of you / complainant? <span class="required">*</span></label>
+            <div class="toggle-btn-group" role="group" aria-labelledby="auth-rep-label">
               <button class="toggle-btn" [class.active]="formData['hasAuthRep'] === 'yes'"
+                      [attr.aria-pressed]="formData['hasAuthRep'] === 'yes'"
                       (click)="formData['hasAuthRep'] = 'yes'" type="button">Yes</button>
               <button class="toggle-btn" [class.active]="formData['hasAuthRep'] === 'no'"
+                      [attr.aria-pressed]="formData['hasAuthRep'] === 'no'"
                       (click)="formData['hasAuthRep'] = 'no'" type="button">No</button>
             </div>
           </div>

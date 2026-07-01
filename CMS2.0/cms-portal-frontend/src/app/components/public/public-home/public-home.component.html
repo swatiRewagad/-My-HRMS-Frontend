@@ -9,7 +9,7 @@
 
     <div class="history-card">
       <div class="history-card-header">
-        <i class="pi pi-refresh"></i>
+        <i class="pi pi-refresh" aria-hidden="true"></i>
         <h3>Complaint History</h3>
       </div>
 
@@ -17,19 +17,19 @@
         <table class="complaints-table">
           <thead>
             <tr class="header-row">
-              <th>ID <i class="pi pi-sort-alt"></i></th>
-              <th>Complaint Against <i class="pi pi-sort-alt"></i></th>
-              <th>Complaint Date <i class="pi pi-sort-alt"></i></th>
-              <th>Status <i class="pi pi-sort-alt"></i></th>
-              <th>Comments <i class="pi pi-sort-alt"></i></th>
+              <th>ID <i class="pi pi-sort-alt" aria-hidden="true"></i></th>
+              <th>Complaint Against <i class="pi pi-sort-alt" aria-hidden="true"></i></th>
+              <th>Complaint Date <i class="pi pi-sort-alt" aria-hidden="true"></i></th>
+              <th>Status <i class="pi pi-sort-alt" aria-hidden="true"></i></th>
+              <th>Comments <i class="pi pi-sort-alt" aria-hidden="true"></i></th>
               <th>Action</th>
             </tr>
             <tr class="filter-row">
-              <th><input type="text" [(ngModel)]="filterById" placeholder="Search" class="filter-input"></th>
-              <th><input type="text" [(ngModel)]="filterByEntity" placeholder="Search" class="filter-input"></th>
-              <th><input type="text" [(ngModel)]="filterByDate" placeholder="DD-MM-YYYY" class="filter-input filter-date"></th>
-              <th><input type="text" [(ngModel)]="filterByStatus" placeholder="Search" class="filter-input"></th>
-              <th><input type="text" [(ngModel)]="filterByComments" placeholder="Search" class="filter-input"></th>
+              <th><input type="text" [(ngModel)]="filterById" placeholder="Search" class="filter-input" aria-label="Filter by complaint ID"></th>
+              <th><input type="text" [(ngModel)]="filterByEntity" placeholder="Search" class="filter-input" aria-label="Filter by entity name"></th>
+              <th><input type="text" [(ngModel)]="filterByDate" placeholder="DD-MM-YYYY" class="filter-input filter-date" aria-label="Filter by complaint date"></th>
+              <th><input type="text" [(ngModel)]="filterByStatus" placeholder="Search" class="filter-input" aria-label="Filter by status"></th>
+              <th><input type="text" [(ngModel)]="filterByComments" placeholder="Search" class="filter-input" aria-label="Filter by comments"></th>
               <th></th>
             </tr>
           </thead>
@@ -162,7 +162,7 @@
     <div class="wwd-video">
       <div class="video-thumb">
         <img src="assets/img3.jpg" alt="Citizens" loading="lazy" decoding="async" />
-        <div class="play-btn"><i class="pi pi-play"></i></div>
+        <button class="play-btn" aria-label="Play video"><i class="pi pi-play" aria-hidden="true"></i></button>
       </div>
     </div>
     <div class="wwd-content">
@@ -211,8 +211,8 @@
       <a href="javascript:void(0)" class="view-all">View All</a>
     </div>
     <div class="education-carousel">
-      <button class="carousel-arrow carousel-prev" (click)="scrollEducation('left')">
-        <i class="pi pi-chevron-left"></i>
+      <button class="carousel-arrow carousel-prev" (click)="scrollEducation('left')" aria-label="Scroll education cards left">
+        <i class="pi pi-chevron-left" aria-hidden="true"></i>
       </button>
       <div class="education-grid" #eduScroll>
         @for (card of educationCards; track card.title) {
@@ -231,8 +231,8 @@
           </div>
         }
       </div>
-      <button class="carousel-arrow carousel-next" (click)="scrollEducation('right')">
-        <i class="pi pi-chevron-right"></i>
+      <button class="carousel-arrow carousel-next" (click)="scrollEducation('right')" aria-label="Scroll education cards right">
+        <i class="pi pi-chevron-right" aria-hidden="true"></i>
       </button>
     </div>
   </div>
@@ -265,12 +265,13 @@
     <div class="faq-list">
       @for (faq of faqs; track faq.question; let i = $index) {
         <div class="faq-item" [class.open]="faq.open">
-          <button class="faq-question" (click)="toggleFaq(i)">
+          <button class="faq-question" (click)="toggleFaq(i)"
+                  [attr.aria-expanded]="faq.open" [attr.aria-controls]="'faq-answer-' + i">
             <span>{{ faq.question }}</span>
-            <i class="pi" [class.pi-chevron-up]="faq.open" [class.pi-chevron-down]="!faq.open"></i>
+            <i class="pi" [class.pi-chevron-up]="faq.open" [class.pi-chevron-down]="!faq.open" aria-hidden="true"></i>
           </button>
           @if (faq.open) {
-            <div class="faq-answer">
+            <div class="faq-answer" [id]="'faq-answer-' + i" role="region" [attr.aria-labelledby]="'faq-btn-' + i">
               <p>{{ faq.answer }}</p>
             </div>
           }
