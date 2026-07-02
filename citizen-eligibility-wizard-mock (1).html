@@ -1,0 +1,597 @@
+<!--
+  ============================================================================
+  BEHAVIOURAL / VISUAL SPEC  —  "Can RBI help?" citizen eligibility wizard
+  ============================================================================
+  Purpose: a pre-filing self-check that tells a citizen, in plain language,
+  whether the RBI Ombudsman can take up their complaint *yet* — BEFORE they
+  invest effort filling the full complaint form. It reduces non-maintainable
+  intake at the source (Gaurav's item 3 pain point) while never hard-blocking
+  a citizen's right to file.
+
+  THIS IS A SPEC, NOT PRODUCTION CODE. Hand it to the coding agent as the
+  reference for behaviour, states, copy tone and visual language. In the real
+  app it is an Angular feature; all citizen-facing strings come from the
+  DB-driven i18n platform (all 10 languages, RTL for Urdu) — shown here in
+  English only. Data entry stays English; this wizard is comprehension-facing
+  so it IS multilingual.
+
+  LEGAL SOURCE — every gate below maps to RB-IOS, 2026 (effective 01-Jul-2026).
+  Q# refers to the RBI FAQ. The wizard is ADVISORY. Final maintainability is a
+  human/quasi-judicial decision — the wizard must never issue a binding refusal.
+    - Entity coverage ......... Q13  (banks / certain NBFCs / PPI issuers / CICs)
+    - Prior RE complaint ...... Q16, Q17 (must approach RE first, with proof)
+    - 30-day RE window ........ Q17 (file only after 30 days OR the NPCI/card-network
+                                     window whichever is higher, UNLESS replied & dissatisfied)
+    - 90-day filing window .... Q16, Q17 (from timeline expiry / last RE communication, later)
+    - "No deficiency in service / mere suggestion/rant" ... Q16, Q26, Q27
+  NOTE: the FAQ itself disclaims legal authority — validate the encoded rule
+  set against the actual Scheme text + legal/compliance before go-live.
+  ============================================================================
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Can RBI help? — eligibility check (spec mock)</title>
+<style>
+  /* ---- Design tokens ------------------------------------------------------
+     Direction: "civic clarity". Deep institutional indigo anchors trust;
+     warm neutral surface keeps it human, not bureaucratic-grey; semantic
+     colours carry each outcome (calm green = go, patient amber = wait,
+     steady slate = caution). Signature element = the eligibility timeline. */
+  :root{
+    --ink:#16203a;           /* primary text */
+    --ink-soft:#4a5673;      /* secondary text */
+    --indigo:#1f3c88;        /* institutional anchor */
+    --indigo-deep:#152a63;
+    --surface:#fbfaf7;       /* warm off-white page */
+    --card:#ffffff;
+    --line:#e5e2da;
+    --go:#137a4b; --go-bg:#e8f5ee;
+    --wait:#9a6212; --wait-bg:#fdf3e2;
+    --caution:#3f4a63; --caution-bg:#eef0f5;
+    --accent:#c8621a;        /* single warm accent, used sparingly */
+    --focus:#1f3c88;
+    --radius:16px;
+    --shadow:0 1px 2px rgba(21,42,99,.06), 0 8px 24px rgba(21,42,99,.08);
+    --font: "Segoe UI", system-ui, -apple-system, "Noto Sans", "Noto Sans Devanagari", Roboto, Arial, sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    font-family:var(--font); color:var(--ink); background:var(--surface);
+    line-height:1.55; -webkit-font-smoothing:antialiased;
+    display:flex; flex-direction:column; min-height:100vh;
+  }
+
+  /* ---- Demo-only chrome (NOT part of the citizen flow) ------------------- */
+  .demobar{
+    background:var(--indigo-deep); color:#dfe6f7; font-size:.82rem;
+    display:flex; gap:.5rem; align-items:center; flex-wrap:wrap;
+    padding:.55rem .9rem;
+  }
+  .demobar strong{color:#fff; font-weight:600}
+  .demobar .spacer{flex:1}
+  .demobar button{
+    font:inherit; font-size:.78rem; color:#fff; background:rgba(255,255,255,.12);
+    border:1px solid rgba(255,255,255,.25); border-radius:999px;
+    padding:.28rem .7rem; cursor:pointer;
+  }
+  .demobar button:hover{background:rgba(255,255,255,.22)}
+  .demobar button:focus-visible{outline:3px solid #9db6ff; outline-offset:2px}
+
+  /* ---- App shell --------------------------------------------------------- */
+  .topbar{
+    display:flex; align-items:center; gap:.7rem;
+    padding:1rem 1.2rem; border-bottom:1px solid var(--line); background:var(--card);
+  }
+  .seal{
+    width:38px; height:38px; border-radius:50%; flex:none;
+    background:var(--indigo); color:#fff; display:grid; place-items:center;
+    font-weight:700; font-size:.9rem; letter-spacing:.02em;
+  }
+  .brand b{display:block; font-size:.98rem; line-height:1.2}
+  .brand span{display:block; font-size:.76rem; color:var(--ink-soft)}
+  .lang{
+    margin-left:auto; font-size:.8rem; color:var(--ink-soft);
+    border:1px solid var(--line); border-radius:999px; padding:.3rem .7rem; background:var(--surface);
+  }
+
+  .wrap{ flex:1; width:100%; max-width:640px; margin:0 auto; padding:1.4rem 1.1rem 3rem; }
+
+  /* progress */
+  .progress{ display:flex; align-items:center; gap:.5rem; margin-bottom:1.4rem; }
+  .dots{display:flex; gap:.4rem}
+  .dot{width:10px; height:10px; border-radius:50%; background:var(--line)}
+  .dot.done{background:var(--indigo)}
+  .dot.now{background:var(--indigo); box-shadow:0 0 0 4px rgba(31,60,136,.18)}
+  .steptxt{font-size:.78rem; color:var(--ink-soft)}
+
+  /* card + steps */
+  .card{
+    background:var(--card); border:1px solid var(--line); border-radius:var(--radius);
+    box-shadow:var(--shadow); padding:1.6rem 1.5rem;
+  }
+  .step{display:none}
+  .step.active{display:block; animation:rise .28s ease both}
+  @keyframes rise{from{opacity:0; transform:translateY(8px)} to{opacity:1; transform:none}}
+
+  .eyebrow{font-size:.74rem; letter-spacing:.09em; text-transform:uppercase; color:var(--accent); font-weight:700; margin:0 0 .5rem}
+  h1{font-size:1.5rem; line-height:1.25; margin:0 0 .5rem; letter-spacing:-.01em}
+  h2{font-size:1.28rem; line-height:1.3; margin:0 0 .5rem; letter-spacing:-.01em}
+  .lede{color:var(--ink-soft); margin:0 0 1.3rem; font-size:1rem}
+  .fineprint{font-size:.8rem; color:var(--ink-soft)}
+
+  /* choice list */
+  .choices{display:flex; flex-direction:column; gap:.65rem; margin:0 0 1rem}
+  .choice{
+    display:flex; align-items:center; gap:.85rem; width:100%; text-align:left;
+    font:inherit; font-size:1rem; color:var(--ink); cursor:pointer;
+    background:var(--surface); border:1.5px solid var(--line); border-radius:12px;
+    padding:.95rem 1rem;
+  }
+  .choice:hover{border-color:var(--indigo); background:#fff}
+  .choice:focus-visible{outline:3px solid var(--focus); outline-offset:2px}
+  .choice .ic{
+    width:34px; height:34px; border-radius:9px; flex:none; display:grid; place-items:center;
+    background:#eaeefb; color:var(--indigo); font-size:1.05rem;
+  }
+  .choice .sub{display:block; font-size:.82rem; color:var(--ink-soft)}
+
+  label.fld{display:block; font-weight:600; font-size:.95rem; margin:.2rem 0 .4rem}
+  input[type=date]{
+    font:inherit; font-size:1rem; padding:.7rem .8rem; width:100%;
+    border:1.5px solid var(--line); border-radius:10px; background:var(--surface); color:var(--ink);
+  }
+  input[type=date]:focus-visible{outline:3px solid var(--focus); outline-offset:2px; border-color:var(--indigo)}
+
+  /* buttons */
+  .row{display:flex; gap:.7rem; align-items:center; margin-top:1.2rem; flex-wrap:wrap}
+  .btn{
+    font:inherit; font-size:1rem; font-weight:600; cursor:pointer; border-radius:10px;
+    padding:.8rem 1.3rem; border:1.5px solid transparent;
+  }
+  .btn-primary{background:var(--indigo); color:#fff}
+  .btn-primary:hover{background:var(--indigo-deep)}
+  .btn-ghost{background:transparent; color:var(--indigo); border-color:var(--line)}
+  .btn-ghost:hover{border-color:var(--indigo)}
+  .btn:focus-visible{outline:3px solid var(--focus); outline-offset:2px}
+  .btn[disabled]{opacity:.45; cursor:not-allowed}
+  .backlink{font:inherit; background:none; border:none; color:var(--ink-soft); cursor:pointer; padding:.4rem .2rem; font-size:.9rem}
+  .backlink:hover{color:var(--indigo); text-decoration:underline}
+
+  /* ---- Outcome screen ---------------------------------------------------- */
+  .outcome{border-radius:var(--radius); padding:1.5rem; border:1.5px solid var(--line); background:var(--card)}
+  .verdict{display:flex; align-items:flex-start; gap:.9rem; margin-bottom:1.1rem}
+  .badge{
+    width:46px; height:46px; border-radius:12px; flex:none; display:grid; place-items:center; font-size:1.4rem;
+  }
+  .verdict h2{margin:.1rem 0 .2rem}
+  .verdict p{margin:0; color:var(--ink-soft)}
+  .o-go   .badge{background:var(--go-bg); color:var(--go)}
+  .o-go   .tag{color:var(--go)}
+  .o-wait .badge{background:var(--wait-bg); color:var(--wait)}
+  .o-wait .tag{color:var(--wait)}
+  .o-caution .badge{background:var(--caution-bg); color:var(--caution)}
+  .o-caution .tag{color:var(--caution)}
+  .tag{font-size:.74rem; letter-spacing:.09em; text-transform:uppercase; font-weight:700}
+
+  .why{background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:.95rem 1.05rem; margin:1rem 0; font-size:.92rem}
+  .why b{display:block; margin-bottom:.3rem; font-size:.82rem; letter-spacing:.04em; text-transform:uppercase; color:var(--ink-soft)}
+
+  /* SIGNATURE: eligibility timeline — makes the date rules tangible */
+  .timeline{margin:1.2rem 0 .4rem}
+  .timeline .cap{font-size:.78rem; color:var(--ink-soft); margin-bottom:.7rem}
+  .track{position:relative; height:8px; border-radius:99px; background:linear-gradient(90deg,#f0d9c3 0%,#f0d9c3 25%,#cfe8db 25%,#cfe8db 100%);}
+  .track.late{background:linear-gradient(90deg,#f0d9c3 0%,#f0d9c3 22%,#cfe8db 22%,#cfe8db 80%,#e7d0d0 80%);}
+  .node{position:absolute; top:50%; width:14px; height:14px; border-radius:50%; transform:translate(-50%,-50%); border:2.5px solid #fff; box-shadow:0 0 0 1px var(--line)}
+  .node.re{background:var(--ink-soft); left:6%}
+  .node.open{background:var(--go); left:25%}
+  .node.due{background:var(--wait); left:100%}
+  .node.today{background:var(--indigo); width:16px; height:16px; box-shadow:0 0 0 4px rgba(31,60,136,.2)}
+  .tlabels{display:flex; justify-content:space-between; margin-top:.6rem; font-size:.72rem; color:var(--ink-soft)}
+  .tlabels span{max-width:32%}
+  .tlabels b{display:block; color:var(--ink); font-weight:600}
+
+  .note{font-size:.86rem; color:var(--ink-soft); margin-top:1rem}
+  .reminder{
+    display:flex; gap:.6rem; align-items:center; background:#fff; border:1px dashed var(--line);
+    border-radius:10px; padding:.7rem .9rem; margin-top:.9rem; font-size:.9rem;
+  }
+  .reminder .ic{color:var(--indigo)}
+
+  .sr-only{position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); border:0}
+  footer{color:var(--ink-soft); font-size:.76rem; text-align:center; padding:1.2rem}
+
+  @media (prefers-reduced-motion: reduce){ .step.active{animation:none} }
+  @media (max-width:480px){
+    .card{padding:1.25rem 1.1rem}
+    h1{font-size:1.32rem}
+  }
+</style>
+</head>
+<body>
+
+<!-- DEMO-ONLY: lets seniors preview every outcome without hunting for inputs.
+     Remove entirely in production. -->
+<div class="demobar" role="region" aria-label="Demo controls (not part of the citizen experience)">
+  <strong>SPEC MOCK</strong> — preview outcome states:
+  <span class="spacer"></span>
+  <button type="button" onclick="demo('go')">Eligible</button>
+  <button type="button" onclick="demo('early')">Too early</button>
+  <button type="button" onclick="demo('late')">Too late</button>
+  <button type="button" onclick="demo('re')">RE first</button>
+  <button type="button" onclick="demo('redirect')">Not covered</button>
+  <button type="button" onclick="demo('rant')">May not qualify</button>
+  <button type="button" onclick="restart()">Restart flow</button>
+</div>
+
+<div class="topbar">
+  <div class="seal" aria-hidden="true">RBI</div>
+  <div class="brand">
+    <b>RBI Ombudsman — Complaint Portal</b>
+    <span>Alternate Grievance Redress • RB-IOS 2026</span>
+  </div>
+  <span class="lang" title="In production, switches all text across 10 languages (Urdu RTL). English shown here.">🌐 English ▾</span>
+</div>
+
+<main class="wrap">
+  <!-- progress -->
+  <div class="progress" aria-hidden="true">
+    <div class="dots" id="dots"></div>
+    <div class="steptxt" id="steptxt"></div>
+  </div>
+
+  <!-- polite announcements for screen readers on step/outcome change -->
+  <div class="sr-only" role="status" aria-live="polite" id="live"></div>
+
+  <div class="card">
+
+    <!-- STEP 0 — intro -->
+    <section class="step active" id="s-intro" tabindex="-1" aria-labelledby="s-intro-h">
+      <p class="eyebrow">Before you begin</p>
+      <h1 id="s-intro-h">Let's check if we can help — it takes about a minute</h1>
+      <p class="lede">The RBI Ombudsman handles complaints about a <em>deficiency in service</em> by
+        banks and other regulated organisations. A few quick questions will tell you whether your
+        complaint is ready to file today, or whether there's a step to complete first. You can still
+        file either way — this just saves you time.</p>
+      <div class="row">
+        <button class="btn btn-primary" onclick="go('s-entity')">Start the check</button>
+        <button class="btn btn-ghost" onclick="skip()">Skip and go straight to the form</button>
+      </div>
+    </section>
+
+    <!-- STEP 1 — entity coverage (Q13) -->
+    <section class="step" id="s-entity" tabindex="-1" aria-labelledby="s-entity-h">
+      <p class="eyebrow">Question 1 of 4</p>
+      <h2 id="s-entity-h">Who is your complaint about?</h2>
+      <p class="lede">Choose the organisation your complaint is against.</p>
+      <div class="choices" role="group" aria-label="Type of organisation">
+        <button class="choice" onclick="ans('entity','bank')"><span class="ic" aria-hidden="true">🏦</span>
+          <span>A bank<span class="sub">Commercial, cooperative, regional rural, or small finance bank</span></span></button>
+        <button class="choice" onclick="ans('entity','nbfc')"><span class="ic" aria-hidden="true">💳</span>
+          <span>A finance company (NBFC)<span class="sub">A registered non-banking finance company</span></span></button>
+        <button class="choice" onclick="ans('entity','ppi')"><span class="ic" aria-hidden="true">📲</span>
+          <span>A prepaid wallet or card (PPI)<span class="sub">A non-bank prepaid payment instrument issuer</span></span></button>
+        <button class="choice" onclick="ans('entity','cic')"><span class="ic" aria-hidden="true">📄</span>
+          <span>A credit bureau (CIC)<span class="sub">A credit information company</span></span></button>
+        <button class="choice" onclick="ans('entity','other')"><span class="ic" aria-hidden="true">❔</span>
+          <span>Something else<span class="sub">Insurance, shares, a merchant, or another organisation</span></span></button>
+      </div>
+      <button class="backlink" onclick="go('s-intro')">← Back</button>
+    </section>
+
+    <!-- STEP 2 — prior RE complaint (Q16/Q17) -->
+    <section class="step" id="s-re" tabindex="-1" aria-labelledby="s-re-h">
+      <p class="eyebrow">Question 2 of 4</p>
+      <h2 id="s-re-h">Have you already complained to them directly?</h2>
+      <p class="lede">RBI can step in only after you've raised the matter with the organisation itself
+        and given them a chance to resolve it.</p>
+      <div class="choices" role="group" aria-label="Complained to the organisation">
+        <button class="choice" onclick="ans('re','yes')"><span class="ic" aria-hidden="true">✅</span>
+          <span>Yes, I've complained to them<span class="sub">And I have the complaint reference or acknowledgement</span></span></button>
+        <button class="choice" onclick="ans('re','no')"><span class="ic" aria-hidden="true">➡️</span>
+          <span>Not yet<span class="sub">I want to come straight to RBI</span></span></button>
+      </div>
+      <button class="backlink" onclick="go('s-entity')">← Back</button>
+    </section>
+
+    <!-- STEP 3 — dates + reply status (Q17) -->
+    <section class="step" id="s-dates" tabindex="-1" aria-labelledby="s-dates-h">
+      <p class="eyebrow">Question 3 of 4</p>
+      <h2 id="s-dates-h">When did you complain to them, and did they reply?</h2>
+      <p class="lede">This tells us whether the waiting period is complete.</p>
+      <label class="fld" for="redate">Date you complained to the organisation</label>
+      <input type="date" id="redate" onchange="checkDateBtn()" aria-describedby="redate-help">
+      <p id="redate-help" class="fineprint" style="margin:.4rem 0 1rem">Use the date on your complaint or acknowledgement.</p>
+      <div class="choices" role="group" aria-label="Their reply status">
+        <button class="choice" onclick="ans('reply','none')" id="rep-none" disabled><span class="ic" aria-hidden="true">⏳</span>
+          <span>No reply yet<span class="sub">They haven't responded</span></span></button>
+        <button class="choice" onclick="ans('reply','unhappy')" id="rep-unhappy" disabled><span class="ic" aria-hidden="true">😕</span>
+          <span>They replied, but I'm not satisfied<span class="sub">The response didn't resolve my problem</span></span></button>
+        <button class="choice" onclick="ans('reply','resolved')" id="rep-resolved" disabled><span class="ic" aria-hidden="true">🙂</span>
+          <span>They replied and it's resolved<span class="sub">My issue was sorted out</span></span></button>
+      </div>
+      <button class="backlink" onclick="go('s-re')">← Back</button>
+    </section>
+
+    <!-- STEP 4 — gentle subjective gate (Q16/Q26/Q27) : catches "rants" at source -->
+    <section class="step" id="s-nature" tabindex="-1" aria-labelledby="s-nature-h">
+      <p class="eyebrow">Question 4 of 4</p>
+      <h2 id="s-nature-h">What best describes your complaint?</h2>
+      <p class="lede">The RBI Ombudsman looks into a specific failure in service — not general
+        feedback or a company's business decision. This helps us point you the right way.</p>
+      <div class="choices" role="group" aria-label="Nature of complaint">
+        <button class="choice" onclick="ans('nature','service')"><span class="ic" aria-hidden="true">🧾</span>
+          <span>A specific service problem<span class="sub">Wrong charge, failed transaction, delay, account issue, mis-selling…</span></span></button>
+        <button class="choice" onclick="ans('nature','soft')"><span class="ic" aria-hidden="true">💬</span>
+          <span>Unhappy with behaviour or general feedback<span class="sub">Staff was rude, or I want to share an opinion</span></span></button>
+        <button class="choice" onclick="ans('nature','commercial')"><span class="ic" aria-hidden="true">⚖️</span>
+          <span>A business decision of the organisation<span class="sub">e.g. interest rate offered, loan declined on merit</span></span></button>
+      </div>
+      <button class="backlink" onclick="go('s-dates')">← Back</button>
+    </section>
+
+    <!-- OUTCOME -->
+    <section class="step" id="s-out" tabindex="-1" aria-labelledby="s-out-h">
+      <div class="outcome" id="outcome-box">
+        <div class="verdict">
+          <div class="badge" id="o-badge" aria-hidden="true">✓</div>
+          <div>
+            <div class="tag" id="o-tag">Result</div>
+            <h2 id="s-out-h">—</h2>
+            <p id="o-sub">—</p>
+          </div>
+        </div>
+
+        <div class="why" id="o-why-wrap">
+          <b>Why we're saying this</b>
+          <span id="o-why">—</span>
+        </div>
+
+        <!-- signature timeline, shown only for the date-driven outcomes -->
+        <div class="timeline" id="o-timeline" hidden>
+          <div class="cap">Your eligibility window</div>
+          <div class="track" id="o-track">
+            <div class="node re"    title="You complained to the organisation"></div>
+            <div class="node open"  title="RBI window opens"></div>
+            <div class="node today" id="o-today" title="Today"></div>
+            <div class="node due"   title="Last day to file with RBI"></div>
+          </div>
+          <div class="tlabels">
+            <span><b id="tl-re">—</b>You complained</span>
+            <span style="text-align:center"><b id="tl-open">—</b>RBI window opens</span>
+            <span style="text-align:right"><b id="tl-due">—</b>File by</span>
+          </div>
+        </div>
+
+        <div class="reminder" id="o-reminder" hidden>
+          <span class="ic" aria-hidden="true">🔔</span>
+          <span>We can remind you by SMS or email on <strong id="o-remind-date">—</strong>, the day your window opens.</span>
+        </div>
+
+        <p class="note" id="o-note"></p>
+
+        <div class="row">
+          <button class="btn btn-primary" id="o-primary" onclick="skip()">Continue to complaint form</button>
+          <button class="btn btn-ghost" onclick="restart()">Start over</button>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <p class="fineprint" style="text-align:center;margin-top:1.1rem">
+    This check is guidance only and does not decide your complaint. You always have the right to file.
+  </p>
+</main>
+
+<footer>Behavioural spec for the coding agent • strings shown in English come from the DB i18n platform in production</footer>
+
+<script>
+/* ==========================================================================
+   WIZARD LOGIC  (deterministic — mirrors the shared Maintainability Rules
+   Engine the agent will build in Java. Kept here so the agent sees the exact
+   date arithmetic and state machine expected.)
+   ========================================================================== */
+
+const RE_WINDOW_DAYS = 30;   // Q17 — minimum wait before approaching RBI
+const FILE_WINDOW_DAYS = 90; // Q16/Q17 — window to file, from timeline expiry
+// NOTE for agent: the effective RE window is MAX(30, applicable NPCI/card-network
+// window). That per-category override lives in config in the real engine.
+
+const state = { entity:null, re:null, redate:null, reply:null, nature:null };
+const order = ['s-intro','s-entity','s-re','s-dates','s-nature','s-out'];
+
+function fmt(d){ return d.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}); }
+function addDays(d,n){ const x=new Date(d); x.setDate(x.getDate()+n); return x; }
+function announce(msg){ document.getElementById('live').textContent = msg; }
+
+function renderProgress(id){
+  const idx = order.indexOf(id);
+  const dots = document.getElementById('dots'); dots.innerHTML='';
+  for(let i=0;i<order.length;i++){
+    const el=document.createElement('span'); el.className='dot';
+    if(i<idx) el.classList.add('done'); if(i===idx) el.classList.add('now');
+    dots.appendChild(el);
+  }
+  const names=['Start','Organisation','Prior complaint','Timing','Your complaint','Result'];
+  document.getElementById('steptxt').textContent = names[idx];
+}
+
+function go(id){
+  document.querySelectorAll('.step').forEach(s=>s.classList.remove('active'));
+  const el=document.getElementById(id); el.classList.add('active');
+  renderProgress(id);
+  el.focus();
+  const h=el.querySelector('h1,h2'); announce(h?h.textContent:'');
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+function ans(key,val){
+  state[key]=val;
+  // branch immediately on the gates that end the flow early
+  if(key==='entity' && val==='other'){ return outcome('redirect'); }
+  if(key==='re' && val==='no'){ return outcome('re'); }
+  // routing between remaining steps
+  if(key==='entity') return go('s-re');
+  if(key==='re')     return go('s-dates');
+  if(key==='reply')  return go('s-nature');
+  if(key==='nature') return evaluate();
+}
+
+function checkDateBtn(){
+  const v=document.getElementById('redate').value;
+  state.redate = v || null;
+  ['rep-none','rep-unhappy','rep-resolved'].forEach(id=>{
+    document.getElementById(id).disabled = !v;
+  });
+}
+
+/* ---- Core evaluation : produces one of the outcome states --------------- */
+function evaluate(){
+  // subjective gate first (advisory) — this is the "rant" catcher
+  if(state.nature==='soft')       return outcome('rant');
+  if(state.nature==='commercial') return outcome('commercial');
+
+  // if resolved to their satisfaction, they likely don't need us (advisory)
+  if(state.reply==='resolved')    return outcome('resolved');
+
+  // date-driven path
+  const re = new Date(state.redate);
+  const today = new Date(); today.setHours(0,0,0,0);
+  const windowOpens = addDays(re, RE_WINDOW_DAYS);
+  const fileBy = addDays(windowOpens, FILE_WINDOW_DAYS);
+  const daysSince = Math.floor((today - re)/86400000);
+
+  // replied & dissatisfied → eligible regardless of the 30-day wait (Q17)
+  if(state.reply==='unhappy'){
+    if(today > fileBy) return outcome('late',{re,windowOpens,fileBy,today});
+    return outcome('go',{re,windowOpens:re,fileBy,today}); // window effectively open now
+  }
+
+  // no reply yet
+  if(daysSince < RE_WINDOW_DAYS) return outcome('early',{re,windowOpens,fileBy,today});
+  if(today > fileBy)             return outcome('late',{re,windowOpens,fileBy,today});
+  return outcome('go',{re,windowOpens,fileBy,today});
+}
+
+/* ---- Outcome renderer --------------------------------------------------- */
+function outcome(kind,t){
+  go('s-out');
+  const box=document.getElementById('outcome-box');
+  box.className='outcome '+({go:'o-go',early:'o-wait',late:'o-caution',re:'o-caution',
+    redirect:'o-caution',rant:'o-caution',commercial:'o-caution',resolved:'o-caution'}[kind]);
+
+  const badge=document.getElementById('o-badge');
+  const tl=document.getElementById('o-timeline');
+  const rem=document.getElementById('o-reminder');
+  tl.hidden=true; rem.hidden=true;
+  document.getElementById('o-note').textContent='';
+  document.getElementById('o-primary').textContent='Continue to complaint form';
+
+  const set=(tag,badgeChar,h,sub,why)=>{
+    document.getElementById('o-tag').textContent=tag;
+    badge.textContent=badgeChar;
+    document.getElementById('s-out-h').textContent=h;
+    document.getElementById('o-sub').textContent=sub;
+    document.getElementById('o-why').textContent=why;
+    announce(h+'. '+sub);
+  };
+
+  /* Copy uses backtick template literals so apostrophes never break parsing. */
+  switch(kind){
+    case 'go':
+      set(`Ready to file`,`✓`,`You can file this with the RBI Ombudsman`,
+        `Your complaint looks ready. Continue to the form to submit it.`,
+        `You raised it with the organisation and the required waiting period is complete, so RBI can take it up.`);
+      if(t) drawTimeline(t,false);
+      break;
+
+    case 'early': {
+      const opens=fmt(t.windowOpens);
+      set(`Almost there`,`⏳`,`Please wait a little longer`,
+        `The organisation still has time to respond to you. Your RBI window opens on ${opens}.`,
+        `RBI can step in only after the organisation has had ${RE_WINDOW_DAYS} days to resolve your complaint (or the longer period set for certain card and payment disputes).`);
+      drawTimeline(t,false);
+      rem.hidden=false; document.getElementById('o-remind-date').textContent=opens;
+      document.getElementById('o-note').textContent=`If they reply before then and you're not satisfied, you can come back and file straight away.`;
+      document.getElementById('o-primary').textContent='File anyway';
+      break; }
+
+    case 'late':
+      set(`Outside the usual window`,`!`,`This may be past the time limit — but you can still file`,
+        `It looks like more than 90 days have passed since your window opened. RBI may still consider it in some cases.`,
+        `Complaints are normally filed within 90 days of the organisation's response deadline or their last reply. Yours appears to fall outside that window, so it may be treated as time-barred — but only a reviewing officer can decide that.`);
+      drawTimeline(t,true);
+      break;
+
+    case 're':
+      set(`One step first`,`➡️`,`Please complain to the organisation first`,
+        `Raise your complaint with the bank or organisation directly and keep the acknowledgement. You can come to RBI after that.`,
+        `The Scheme requires you to give the organisation a chance to resolve the matter, with proof of that complaint, before RBI can take it up.`);
+      document.getElementById('o-primary').textContent='I understand — file anyway';
+      break;
+
+    case 'redirect':
+      set(`Different office`,`↗`,`This organisation may be outside RBI Ombudsman's remit`,
+        `Complaints about insurance, securities, or non-RBI-regulated organisations are handled elsewhere. We can still record your complaint and guide you.`,
+        `The RBI Ombudsman covers banks, certain finance companies (NBFCs), prepaid wallet issuers and credit bureaus. Other organisations fall under different regulators.`);
+      document.getElementById('o-primary').textContent='Continue anyway';
+      break;
+
+    case 'rant':
+      set(`Let's make sure it fits`,`💬`,`This might not be something RBI can act on`,
+        `The RBI Ombudsman looks into specific service failures rather than general feedback or conduct issues. If there's an underlying service problem, you can describe it in the form.`,
+        `General dissatisfaction or feedback about behaviour, without a specific deficiency in service, usually can't be taken up as a formal complaint.`);
+      break;
+
+    case 'commercial':
+      set(`Let's make sure it fits`,`⚖️`,`Business decisions usually can't be reviewed`,
+        `An organisation's commercial decisions — like the rate offered or a loan declined on merit — are generally outside the Ombudsman's remit. If the issue is really about a service failure, continue and describe it.`,
+        `The Scheme does not cover complaints about the commercial judgment or business decisions of a regulated organisation.`);
+      break;
+
+    case 'resolved':
+      set(`Sounds sorted`,`🙂`,`It looks like your issue is already resolved`,
+        `That's great to hear. If something is still outstanding, you can continue and tell us what remains.`,
+        `You told us the organisation replied and the matter is resolved, so there may be nothing left for RBI to take up.`);
+      break;
+  }
+}
+
+function drawTimeline(t,late){
+  const tl=document.getElementById('o-timeline');
+  tl.hidden=false;
+  document.getElementById('o-track').className='track'+(late?' late':'');
+  document.getElementById('tl-re').textContent=fmt(t.re);
+  document.getElementById('tl-open').textContent=fmt(t.windowOpens);
+  document.getElementById('tl-due').textContent=fmt(t.fileBy);
+  // position "today" node proportionally between RE date and fileBy
+  const span=(t.fileBy - t.re)||1;
+  let pct=((t.today - t.re)/span)*100;
+  pct=Math.max(2,Math.min(100,pct));
+  document.getElementById('o-today').style.left=pct+'%';
+}
+
+/* ---- flow helpers ------------------------------------------------------- */
+function skip(){ alert('DEMO: continues to the existing complaint form.\n\nCaptured so far:\n'+JSON.stringify(state,null,2)); }
+function restart(){ for(const k in state) state[k]=null; document.getElementById('redate').value=''; checkDateBtn(); go('s-intro'); }
+
+/* ---- demo state switcher (remove in production) ------------------------- */
+function demo(kind){
+  const today=new Date(); today.setHours(0,0,0,0);
+  if(kind==='go'){   const re=addDays(today,-45); outcome('go',{re,windowOpens:addDays(re,30),fileBy:addDays(re,120),today}); }
+  if(kind==='early'){const re=addDays(today,-10); outcome('early',{re,windowOpens:addDays(re,30),fileBy:addDays(re,120),today}); }
+  if(kind==='late'){ const re=addDays(today,-160);outcome('late',{re,windowOpens:addDays(re,30),fileBy:addDays(re,120),today}); }
+  if(kind==='re')       outcome('re');
+  if(kind==='redirect') outcome('redirect');
+  if(kind==='rant')     outcome('rant');
+}
+
+/* init */
+renderProgress('s-intro');
+</script>
+</body>
+</html>
