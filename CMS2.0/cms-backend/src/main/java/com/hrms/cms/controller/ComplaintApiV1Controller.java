@@ -5,6 +5,9 @@ import com.hrms.cms.entity.Complaint;
 import com.hrms.cms.entity.ComplaintTimeline;
 import com.hrms.cms.repository.BankRepository;
 import com.hrms.cms.service.ComplaintService;
+import com.hrms.cms.service.triage.IntakeTriageService;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -14,6 +17,7 @@ import org.springframework.data.domain.PageRequest;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @RestController
@@ -23,6 +27,8 @@ public class ComplaintApiV1Controller {
 
     private final ComplaintService complaintService;
     private final BankRepository bankRepository;
+    private final IntakeTriageService triageService;
+    private final Validator validator;
 
     @PostMapping
     public ResponseEntity<Map<String, Object>> registerComplaint(@RequestBody Map<String, Object> request) {
@@ -35,7 +41,35 @@ public class ComplaintApiV1Controller {
         req.setPriority((String) request.getOrDefault("priority", "medium"));
         req.setFilingType((String) request.getOrDefault("channel", request.getOrDefault("filingType", "WEB_PORTAL")));
 
+        if (request.get("priorReComplaint") != null) {
+            req.setPriorReComplaint(Boolean.valueOf(request.get("priorReComplaint").toString()));
+        }
+        if (request.get("reComplaintDate") != null) {
+            req.setReComplaintDate(java.time.LocalDate.parse(request.get("reComplaintDate").toString()));
+        }
+        if (request.get("reComplaintReference") != null) {
+            req.setReComplaintReference(request.get("reComplaintReference").toString());
+        }
+        if (request.get("reRepliedAndDissatisfied") != null) {
+            req.setReRepliedAndDissatisfied(Boolean.valueOf(request.get("reRepliedAndDissatisfied").toString()));
+        }
+
+        Set<ConstraintViolation<FileComplaintRequest>> violations = validator.validate(req);
+        if (!violations.isEmpty()) {
+            String errors = violations.stream()
+                    .map(v -> v.getPropertyPath() + ": " + v.getMessage())
+                    .collect(Collectors.joining("; "));
+            return ResponseEntity.badRequest().body(Map.of(
+                    "success", false, "message", "Validation failed: " + errors));
+        }
+
         Complaint c = complaintService.fileComplaint(req);
+
+        try {
+            triageService.triageOnRegistration(c);
+        } catch (Exception e) {
+            // Triage failure must not block complaint registration
+        }
 
         Map<String, Object> ack = new LinkedHashMap<>();
         ack.put("complaintId", c.getComplaintNumber());
@@ -112,7 +146,9 @@ public class ComplaintApiV1Controller {
         String slaDueDate = c.getCreatedAt() != null ? c.getCreatedAt().plusDays(30).toString() : "";
 
         Map<String, Object> detail = new LinkedHashMap<>();
+        detail.put("id", c.getId());
         detail.put("complaintId", c.getComplaintNumber());
+        detail.put("complaintNumber", c.getComplaintNumber());
         detail.put("category", "General");
         detail.put("priority", c.getPriority() != null ? c.getPriority().toUpperCase() : "MEDIUM");
         detail.put("status", c.getStatus() != null ? c.getStatus().toUpperCase() : "NEW");
@@ -143,6 +179,9 @@ public class ComplaintApiV1Controller {
         }).collect(Collectors.toList()));
         detail.put("communications", List.of());
         detail.put("documents", List.of());
+        detail.put("triageSignal", c.getTriageSignal());
+        detail.put("triageFlags", c.getTriageFlags());
+        detail.put("eligibilityTimeline", c.getEligibilityTimeline());
 
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("success", true);

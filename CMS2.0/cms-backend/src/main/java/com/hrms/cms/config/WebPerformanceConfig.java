@@ -21,6 +21,10 @@ public class WebPerformanceConfig implements Filter {
         httpResponse.setHeader("X-Frame-Options", "DENY");
         httpResponse.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
         httpResponse.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=(self)");
+        httpResponse.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+        httpResponse.setHeader("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'");
+        httpResponse.setHeader("X-XSS-Protection", "1; mode=block");
+        httpResponse.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
 
         chain.doFilter(request, response);
     }

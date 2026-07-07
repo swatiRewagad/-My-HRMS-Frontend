@@ -7,6 +7,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.annotation.Order;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
@@ -18,7 +19,15 @@ import java.util.concurrent.ConcurrentHashMap;
 @Order(1)
 public class RateLimitFilter implements Filter {
 
+    private static final int MAX_BUCKETS = 50_000;
     private final Map<String, Bucket> buckets = new ConcurrentHashMap<>();
+
+    @Scheduled(fixedDelay = 600_000)
+    void evictBuckets() {
+        if (buckets.size() > MAX_BUCKETS) {
+            buckets.clear();
+        }
+    }
 
     @Value("${cms.rate-limit.api-requests-per-second:100}")
     private int requestsPerSecond;

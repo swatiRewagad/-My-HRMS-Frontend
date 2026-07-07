@@ -10,7 +10,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/dashboard")
-@CrossOrigin(origins = "*")
+
 public class OfficerDashboardController {
 
     private final DashboardService dashboardService;

@@ -5,6 +5,7 @@ import com.hrms.cms.dto.UpdateComplaintRequest;
 import com.hrms.cms.entity.Complaint;
 import com.hrms.cms.entity.ComplaintTimeline;
 import com.hrms.cms.service.ComplaintService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -53,7 +54,7 @@ public class ComplaintController {
     }
 
     @PostMapping
-    public Complaint file(@RequestBody FileComplaintRequest request) {
+    public Complaint file(@Valid @RequestBody FileComplaintRequest request) {
         return complaintService.fileComplaint(request);
     }
 

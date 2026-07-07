@@ -1,5 +1,6 @@
 package com.hrms.cms.service;
 
+import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -15,8 +16,20 @@ import java.util.Base64;
 @Service
 public class EncryptionKeyService {
 
-    @Value("${cms.encryption.server-secret:cms-encryption-secret-must-change-in-production}")
+    @Value("${cms.encryption.server-secret:}")
     private String serverSecret;
+
+    @PostConstruct
+    void validateSecret() {
+        if (serverSecret == null || serverSecret.isBlank()) {
+            throw new IllegalStateException(
+                    "CMS_ENCRYPTION_SECRET must be set. Cannot start without PII encryption key.");
+        }
+        if (serverSecret.length() < 16) {
+            throw new IllegalStateException(
+                    "CMS_ENCRYPTION_SECRET must be at least 16 characters.");
+        }
+    }
 
     private static final String HKDF_ALGORITHM = "HmacSHA256";
     private static final String INFO_CONTEXT = "cms-pii-encryption-v1";

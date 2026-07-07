@@ -157,6 +157,10 @@ public class FileStorageService {
         return attachmentRepository.save(attachment);
     }
 
+    public String getRootPath() {
+        return config.getRootPath();
+    }
+
     @Transactional(readOnly = true)
     public Path getFilePath(Long attachmentId) {
         ComplaintAttachment attachment = attachmentRepository.findById(attachmentId)

@@ -1,9 +1,10 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy, signal, computed, ElementRef, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
+import { TatService, TatResult } from '../../../services/tat.service';
 import { environment } from '../../../../environments/environment';
 import { SpeechButtonComponent } from '../../../shared/speech-button/speech-button.component';
 
@@ -11,206 +12,17 @@ import { SpeechButtonComponent } from '../../../shared/speech-button/speech-butt
   selector: 'app-task-action',
   standalone: true,
   imports: [CommonModule, FormsModule, SpeechButtonComponent],
-  template: `
-    <div class="action-container">
-      <header class="topbar">
-        <div class="topbar-left">
-          <button class="back-btn" (click)="goBack()">&larr;</button>
-          <h2>Complaint Action</h2>
-        </div>
-        <div class="topbar-right">
-          @if (auth.currentUser(); as user) {
-            <span class="role-badge">{{ user.roles[0] }}</span>
-            <span>{{ user.firstName }} {{ user.lastName }}</span>
-          }
-        </div>
-      </header>
-
-      <main class="content">
-        @if (loading()) {
-          <div class="loading">Loading complaint details...</div>
-        } @else if (complaint()) {
-          <div class="complaint-detail">
-            <div class="detail-header">
-              <h3>{{ complaint()!.complaintNumber }}</h3>
-              <span class="priority-badge" [class]="complaint()!.priority?.toLowerCase()">{{ complaint()!.priority }}</span>
-              <span class="status-badge">{{ complaint()!.status }}</span>
-            </div>
-
-            <div class="detail-grid">
-              <div class="detail-item">
-                <label>Subject</label>
-                <p>{{ complaint()!.subject }}</p>
-              </div>
-              <div class="detail-item">
-                <label>Description</label>
-                <p>{{ complaint()!.description }}</p>
-              </div>
-              <div class="detail-item">
-                <label>Complainant</label>
-                <p>{{ complaint()!.complainantName }} ({{ complaint()!.complainantEmail }})</p>
-              </div>
-              <div class="detail-item">
-                <label>Phone</label>
-                <p>{{ complaint()!.complainantPhone || 'N/A' }}</p>
-              </div>
-              <div class="detail-item">
-                <label>Entity</label>
-                <p>{{ complaint()!.entityName || 'N/A' }}</p>
-              </div>
-              <div class="detail-item">
-                <label>Registered At</label>
-                <p>{{ complaint()!.registeredAt }}</p>
-              </div>
-              <div class="detail-item">
-                <label>SLA Due Date</label>
-                <p>{{ complaint()!.slaDueDate }}</p>
-              </div>
-              <div class="detail-item">
-                <label>Assigned To</label>
-                <p>{{ complaint()!.assignedTo || 'Unassigned' }}</p>
-              </div>
-            </div>
-
-            <!-- Timeline -->
-            @if (complaint()!.timeline?.length) {
-              <div class="timeline-section">
-                <h4>Timeline</h4>
-                @for (entry of complaint()!.timeline; track entry.timestamp) {
-                  <div class="timeline-entry">
-                    <span class="timeline-action">{{ entry.action }}</span>
-                    <span class="timeline-flow">{{ entry.fromStatus }} &rarr; {{ entry.toStatus }}</span>
-                    <span class="timeline-time">{{ entry.timestamp }}</span>
-                    @if (entry.remarks) {
-                      <span class="timeline-remarks">{{ entry.remarks }}</span>
-                    }
-                  </div>
-                }
-              </div>
-            }
-          </div>
-
-          <!-- Action Panel -->
-          <div class="action-panel">
-            @if (isTerminalState()) {
-              <div class="closed-banner">
-                <span class="closed-icon">&#10003;</span>
-                <h4>Complaint {{ complaint()!.status }}</h4>
-                <p>No further actions available. This complaint has been processed.</p>
-              </div>
-            } @else {
-            <h4>Take Action</h4>
-
-            <div class="action-buttons">
-              @for (action of availableActions(); track action.value) {
-                <button
-                  class="action-btn"
-                  [class]="action.style"
-                  [disabled]="processing()"
-                  (click)="selectAction(action.value)">
-                  {{ action.label }}
-                </button>
-              }
-            </div>
-
-            @if (selectedAction()) {
-              <div class="remarks-section">
-                <label>Remarks for "{{ selectedAction() }}"</label>
-                <div class="textarea-with-speech">
-                  <textarea [(ngModel)]="remarks" rows="3" placeholder="Enter remarks (required)..."></textarea>
-                  <app-speech-button (transcription)="remarks = remarks + ' ' + $event"></app-speech-button>
-                </div>
-                <div class="confirm-actions">
-                  <button class="confirm-btn" [disabled]="!remarks.trim() || processing()" (click)="submitAction()">
-                    @if (processing()) {
-                      Processing...
-                    } @else {
-                      Confirm {{ selectedAction() }}
-                    }
-                  </button>
-                  <button class="cancel-btn" (click)="cancelAction()">Cancel</button>
-                </div>
-              </div>
-            }
-
-            @if (actionResult()) {
-              <div class="result-msg" [class.success]="actionSuccess()" [class.error]="!actionSuccess()">
-                {{ actionResult() }}
-              </div>
-            }
-            }
-          </div>
-        } @else {
-          <div class="error-state">Complaint not found.</div>
-        }
-      </main>
-    </div>
-  `,
-  styles: [`
-    .action-container { min-height: 100vh; background: #f4f6f9; }
-    .topbar { background: #1b5e20; color: white; padding: 12px 24px; display: flex; justify-content: space-between; align-items: center; }
-    .topbar-left { display: flex; align-items: center; gap: 12px; }
-    .topbar h2 { margin: 0; font-size: 18px; }
-    .back-btn { background: none; border: none; color: white; font-size: 20px; cursor: pointer; }
-    .topbar-right { display: flex; align-items: center; gap: 10px; font-size: 14px; }
-    .role-badge { background: rgba(255,255,255,0.2); padding: 2px 8px; border-radius: 4px; font-size: 11px; }
-    .content { max-width: 900px; margin: 0 auto; padding: 24px 20px; }
-    .loading, .error-state { text-align: center; padding: 40px; color: #666; }
-    .complaint-detail { background: white; border-radius: 8px; padding: 24px; margin-bottom: 20px; }
-    .detail-header { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
-    .detail-header h3 { margin: 0; color: #1b5e20; font-size: 18px; }
-    .priority-badge { padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; color: white; }
-    .priority-badge.high { background: #d32f2f; }
-    .priority-badge.medium { background: #f57c00; }
-    .priority-badge.low { background: #388e3c; }
-    .status-badge { padding: 2px 8px; border-radius: 4px; font-size: 11px; background: #e3f2fd; color: #1565c0; }
-    .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-    .detail-item label { font-size: 11px; text-transform: uppercase; color: #888; font-weight: 600; }
-    .detail-item p { margin: 4px 0 0; font-size: 14px; color: #333; }
-    .timeline-section { margin-top: 20px; border-top: 1px solid #eee; padding-top: 16px; }
-    .timeline-section h4 { margin: 0 0 12px; font-size: 14px; color: #444; }
-    .timeline-entry { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid #f5f5f5; font-size: 13px; }
-    .timeline-action { font-weight: 600; color: #1b5e20; min-width: 80px; }
-    .timeline-flow { color: #666; }
-    .timeline-time { color: #999; margin-left: auto; font-size: 12px; }
-    .timeline-remarks { color: #555; font-style: italic; }
-    .action-panel { background: white; border-radius: 8px; padding: 24px; border: 2px solid #e8f5e9; }
-    .action-panel h4 { margin: 0 0 16px; color: #1b5e20; }
-    .action-buttons { display: flex; gap: 12px; flex-wrap: wrap; }
-    .action-btn { padding: 10px 20px; border: 2px solid #ccc; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600; background: white; transition: all 0.2s; }
-    .action-btn:hover:not(:disabled) { transform: translateY(-1px); }
-    .action-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-    .action-btn.approve { border-color: #2e7d32; color: #2e7d32; }
-    .action-btn.approve:hover:not(:disabled) { background: #e8f5e9; }
-    .action-btn.escalate { border-color: #f57c00; color: #f57c00; }
-    .action-btn.escalate:hover:not(:disabled) { background: #fff3e0; }
-    .action-btn.reject { border-color: #d32f2f; color: #d32f2f; }
-    .action-btn.reject:hover:not(:disabled) { background: #fbe9e7; }
-    .action-btn.resolve { border-color: #1565c0; color: #1565c0; }
-    .action-btn.resolve:hover:not(:disabled) { background: #e3f2fd; }
-    .action-btn.return { border-color: #6a1b9a; color: #6a1b9a; }
-    .action-btn.return:hover:not(:disabled) { background: #f3e5f5; }
-    .remarks-section { margin-top: 16px; padding-top: 16px; border-top: 1px solid #eee; }
-    .remarks-section label { font-size: 13px; font-weight: 600; color: #444; display: block; margin-bottom: 8px; }
-    .remarks-section textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; resize: vertical; font-family: inherit; }
-    .confirm-actions { display: flex; gap: 12px; margin-top: 12px; }
-    .confirm-btn { padding: 10px 24px; background: #1b5e20; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600; }
-    .confirm-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-    .cancel-btn { padding: 10px 24px; background: white; border: 1px solid #ccc; border-radius: 6px; cursor: pointer; font-size: 14px; }
-    .result-msg { margin-top: 16px; padding: 12px; border-radius: 6px; font-size: 14px; }
-    .result-msg.success { background: #e8f5e9; color: #2e7d32; }
-    .result-msg.error { background: #fbe9e7; color: #d32f2f; }
-    .closed-banner { text-align: center; padding: 24px; }
-    .closed-banner .closed-icon { font-size: 40px; color: #2e7d32; display: block; margin-bottom: 8px; }
-    .closed-banner h4 { margin: 0 0 8px; color: #2e7d32; font-size: 18px; text-transform: uppercase; }
-    .closed-banner p { margin: 0; color: #666; font-size: 14px; }
-  `]
+  templateUrl: './task-action.component.html',
+  styleUrls: ['./task-action.component.scss']
 })
-export class TaskActionComponent implements OnInit {
+export class TaskActionComponent implements OnInit, OnDestroy {
   auth = inject(KeycloakAuthService);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private http = inject(HttpClient);
+  private tatService = inject(TatService);
+
+  @ViewChild('actionSection') actionSectionEl!: ElementRef;
 
   complaint = signal<any>(null);
   loading = signal(true);
@@ -220,6 +32,51 @@ export class TaskActionComponent implements OnInit {
   actionSuccess = signal(false);
   availableActions = signal<{label: string; value: string; style: string}[]>([]);
   remarks = '';
+
+  // TAT Timer
+  tatData = signal<TatResult | null>(null);
+  tatTimerDisplay = signal('');
+  private tatInterval: any;
+  Math = Math;
+
+  // MRE Copilot
+  copilotData = signal<any>(null);
+  copilotLoading = signal(false);
+  showCopilot = signal(false);
+
+  // Panel expand/collapse
+  expandedPanel = signal<'email' | 'complaint' | null>(null);
+
+  // Section open state
+  sectionOpen = {
+    basic: true,
+    complainant: true,
+    entity: false,
+    copilot: false,
+    actions: true,
+    timeline: false
+  };
+
+  // Sliding panels
+  showSimilarPanel = signal(false);
+  showHistoryPanel = signal(false);
+  loadingSimilarCases = signal(false);
+  similarCases = signal<any[]>([]);
+
+  // Right sidebar - Past Complaints
+  pastComplaints = signal<any[]>([]);
+  loadingPastComplaints = signal(false);
+  pastComplaintSearch = '';
+
+  filteredPastComplaints = computed(() => {
+    const search = this.pastComplaintSearch.toLowerCase().trim();
+    const list = this.pastComplaints();
+    if (!search) return list;
+    return list.filter((pc: any) =>
+      (pc.complaintId || '').toLowerCase().includes(search) ||
+      (pc.subject || '').toLowerCase().includes(search)
+    );
+  });
 
   async ngOnInit() {
     const authenticated = await this.auth.init();
@@ -232,6 +89,10 @@ export class TaskActionComponent implements OnInit {
     this.loadComplaint(id);
   }
 
+  ngOnDestroy() {
+    if (this.tatInterval) clearInterval(this.tatInterval);
+  }
+
   private loadComplaint(complaintNumber: string) {
     this.loading.set(true);
     this.http.get<any>(`${environment.apiBaseUrl}/api/v1/complaints/${complaintNumber}`)
@@ -240,6 +101,8 @@ export class TaskActionComponent implements OnInit {
           this.complaint.set(res.data);
           this.determineActions();
           this.loading.set(false);
+          this.loadTat(complaintNumber);
+          this.loadPastComplaints();
         },
         error: () => {
           this.complaint.set(null);
@@ -248,13 +111,133 @@ export class TaskActionComponent implements OnInit {
       });
   }
 
+  private loadTat(complaintNumber: string) {
+    this.tatService.getComplaintTat(complaintNumber).subscribe({
+      next: (tat) => {
+        this.tatData.set(tat);
+        this.updateTatDisplay();
+        if (!tat.breached && tat.status !== 'RESOLVED') {
+          this.tatInterval = setInterval(() => this.updateTatDisplay(), 60000);
+        }
+      },
+      error: () => {}
+    });
+  }
+
+  private updateTatDisplay() {
+    const tat = this.tatData();
+    if (!tat) return;
+    if (tat.breached) {
+      this.tatTimerDisplay.set('SLA BREACHED');
+    } else if (tat.remainingBusinessHours <= 0) {
+      this.tatTimerDisplay.set('SLA BREACHED');
+    } else {
+      const days = Math.floor(tat.remainingBusinessHours / 9);
+      const hrs = Math.round(tat.remainingBusinessHours % 9);
+      this.tatTimerDisplay.set(`${days}d ${hrs}h remaining`);
+    }
+  }
+
+  getTatProgressColor(): string {
+    const tat = this.tatData();
+    if (!tat) return '#2e7d32';
+    if (tat.percentUsed >= 90 || tat.breached) return '#c62828';
+    if (tat.percentUsed >= 70) return '#f57c00';
+    return '#2e7d32';
+  }
+
+  loadCopilot() {
+    if (this.copilotData() || this.copilotLoading()) return;
+    const c = this.complaint();
+    const cid = c?.id || c?.complaintId;
+    if (!cid) return;
+    this.copilotLoading.set(true);
+    this.showCopilot.set(true);
+    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/copilot/maintainability/${cid}`)
+      .subscribe({
+        next: (res) => {
+          this.copilotData.set(res);
+          this.copilotLoading.set(false);
+        },
+        error: () => {
+          this.copilotData.set({ error: true, suggestedDetermination: 'UNABLE_TO_ASSESS', mreVerdict: { overallSignal: 'Service unavailable', grounds: [] } });
+          this.copilotLoading.set(false);
+        }
+      });
+  }
+
+  toggleExpand(panel: 'email' | 'complaint') {
+    this.expandedPanel.set(this.expandedPanel() === panel ? null : panel);
+  }
+
+  toggleSimilarPanel() {
+    const isOpen = !this.showSimilarPanel();
+    this.showSimilarPanel.set(isOpen);
+    if (isOpen && this.similarCases().length === 0) {
+      this.loadSimilarCases();
+    }
+  }
+
+  toggleHistoryPanel() {
+    this.showHistoryPanel.set(!this.showHistoryPanel());
+  }
+
+  loadSimilarCases() {
+    const c = this.complaint();
+    const cid = c?.id || c?.complaintId;
+    if (!cid) return;
+    this.loadingSimilarCases.set(true);
+    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/complaints/${cid}/similar`)
+      .subscribe({
+        next: (res) => {
+          this.similarCases.set(res.data || res || []);
+          this.loadingSimilarCases.set(false);
+        },
+        error: () => {
+          this.similarCases.set([]);
+          this.loadingSimilarCases.set(false);
+        }
+      });
+  }
+
+  loadPastComplaints() {
+    const c = this.complaint();
+    const email = c?.complainantEmail;
+    if (!email) return;
+    this.loadingPastComplaints.set(true);
+    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/complaints`, { params: { complainantEmail: email } })
+      .subscribe({
+        next: (res) => {
+          const list = res.data || res.content || res || [];
+          this.pastComplaints.set(Array.isArray(list) ? list : []);
+          this.loadingPastComplaints.set(false);
+        },
+        error: () => {
+          this.pastComplaints.set([]);
+          this.loadingPastComplaints.set(false);
+        }
+      });
+  }
+
+  getDepartmentLabel(): string {
+    const dept = this.auth.currentUser()?.department || 'RBIO';
+    if (dept === 'CEPC') return 'CEPC, Chandigarh';
+    return `RBIO, Mumbai`;
+  }
+
+  scrollToActions() {
+    this.sectionOpen['actions'] = true;
+    setTimeout(() => {
+      this.actionSectionEl?.nativeElement?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 100);
+  }
+
   private determineActions() {
     const roles = this.auth.getRoles();
     const status = (this.complaint()?.status || '').toLowerCase();
     const actions: {label: string; value: string; style: string}[] = [];
 
     if (this.isTerminalState()) {
-      // Allow reopen for Closing Authority / Admin on closed complaints
       if (roles.includes('CEPC_CLOSING_AUTHORITY') || roles.includes('CEPC_ADMIN') || roles.includes('ADMIN')) {
         if (status === 'closed' || status === 'resolved') {
           actions.push({ label: 'Reopen Complaint', value: 'REOPEN', style: 'escalate' });
@@ -264,7 +247,6 @@ export class TaskActionComponent implements OnInit {
       return;
     }
 
-    // ═══ CEPC DO (Dealing Official) ═══
     if (roles.includes('CEPC_DO')) {
       if (status === 'assigned' || status === 'in_progress' || status === 'sent_back') {
         actions.push({ label: 'Forward to Reviewer', value: 'SUBMIT_FOR_REVIEW', style: 'approve' });
@@ -274,7 +256,6 @@ export class TaskActionComponent implements OnInit {
       }
     }
 
-    // ═══ CEPC Reviewer ═══
     if (roles.includes('CEPC_REVIEWER')) {
       if (status === 'reviewer_review' || status === 'in_progress') {
         actions.push({ label: 'Forward to In-Charge', value: 'APPROVE_REVIEW', style: 'approve' });
@@ -283,7 +264,6 @@ export class TaskActionComponent implements OnInit {
       }
     }
 
-    // ═══ CEPC In-Charge ═══
     if (roles.includes('CEPC_INCHARGE')) {
       if (status === 'incharge_review' || status === 'in_progress') {
         actions.push({ label: 'Forward to Closing Authority', value: 'APPROVE_CLOSURE', style: 'approve' });
@@ -292,7 +272,6 @@ export class TaskActionComponent implements OnInit {
       }
     }
 
-    // ═══ CEPC Closing Authority ═══
     if (roles.includes('CEPC_CLOSING_AUTHORITY')) {
       if (status === 'awaiting_closure' || status === 'in_progress') {
         actions.push({ label: 'Close Complaint', value: 'CLOSE_COMPLAINT', style: 'approve' });
@@ -303,7 +282,6 @@ export class TaskActionComponent implements OnInit {
       }
     }
 
-    // ═══ RBIO Officer ═══
     if (roles.includes('RBIO_OFFICER')) {
       if (status === 'pending' || status === 'assigned' || status === 'in_progress') {
         actions.push({ label: 'Escalate', value: 'ESCALATE', style: 'escalate' });
@@ -312,7 +290,6 @@ export class TaskActionComponent implements OnInit {
       }
     }
 
-    // ═══ RBIO Supervisor ═══
     if (roles.includes('RBIO_SUPERVISOR')) {
       if (status === 'escalated' || status === 'in_progress') {
         actions.push({ label: 'Approve & Escalate', value: 'APPROVE', style: 'approve' });
@@ -321,7 +298,6 @@ export class TaskActionComponent implements OnInit {
       }
     }
 
-    // ═══ RBIO Conciliator ═══
     if (roles.includes('RBIO_CONCILIATOR')) {
       if (status === 'escalated' || status === 'conciliation') {
         actions.push({ label: 'Conciliation Success', value: 'CONCILIATION_SUCCESS', style: 'approve' });
@@ -329,7 +305,6 @@ export class TaskActionComponent implements OnInit {
       }
     }
 
-    // ═══ RBIO Adjudicator ═══
     if (roles.includes('RBIO_ADJUDICATOR')) {
       if (status === 'escalated' || status === 'adjudication') {
         actions.push({ label: 'Award (Adjudication)', value: 'ADJUDICATION_AWARD', style: 'approve' });
@@ -337,7 +312,6 @@ export class TaskActionComponent implements OnInit {
       }
     }
 
-    // ═══ CEPC Admin ═══
     if (roles.includes('CEPC_ADMIN') || roles.includes('ADMIN')) {
       actions.push({ label: 'Reassign', value: 'REASSIGN', style: 'resolve' });
       if (status === 'closed' || status === 'resolved') {

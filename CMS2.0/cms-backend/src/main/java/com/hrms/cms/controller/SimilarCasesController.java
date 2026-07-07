@@ -9,7 +9,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/similar-cases")
-@CrossOrigin(origins = "*")
+
 public class SimilarCasesController {
 
     private final SimilarCasesService similarCasesService;

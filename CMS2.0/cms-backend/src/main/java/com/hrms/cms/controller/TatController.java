@@ -14,7 +14,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/tat")
-@CrossOrigin(origins = "*")
+
 public class TatController {
 
     private final TatCalculationService tatService;

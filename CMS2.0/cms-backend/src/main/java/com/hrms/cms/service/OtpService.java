@@ -41,7 +41,7 @@ public class OtpService {
                 .build();
 
         otpAttemptRepository.save(attempt);
-        log.info("OTP generated for mobile: {}**** via {}", mobileNumber.substring(0, 4), channel);
+        log.info("OTP generated for mobile: ****{} via {}", mobileNumber.substring(mobileNumber.length() - 4), channel);
         return otp;
     }
 

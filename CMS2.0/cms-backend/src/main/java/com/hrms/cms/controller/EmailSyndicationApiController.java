@@ -28,6 +28,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -51,7 +52,7 @@ public class EmailSyndicationApiController {
     @Value("${cms.attachments.root-path:C:/cms-attachments}")
     private String attachmentsRootPath;
 
-    private int roundRobinPointer = 0;
+    private final AtomicInteger roundRobinPointer = new AtomicInteger(0);
 
     private List<Map<String, Object>> getDeoPool() {
         List<Map<String, Object>> keycloakDeos = keycloakUserService.getDeos();
@@ -68,9 +69,20 @@ public class EmailSyndicationApiController {
     private String assignToNextDeo() {
         List<Map<String, Object>> pool = getDeoPool();
         if (pool.isEmpty()) return "Unassigned";
-        String assignee = (String) pool.get(roundRobinPointer % pool.size()).get("userId");
-        roundRobinPointer = (roundRobinPointer + 1) % pool.size();
-        return assignee;
+        int index = roundRobinPointer.getAndUpdate(i -> (i + 1) % pool.size());
+        return (String) pool.get(index % pool.size()).get("userId");
+    }
+
+    private String sanitizeFileName(String originalFilename) {
+        if (originalFilename == null || originalFilename.isBlank()) {
+            return UUID.randomUUID().toString();
+        }
+        String name = Paths.get(originalFilename).getFileName().toString();
+        name = name.replaceAll("[^a-zA-Z0-9._-]", "_");
+        if (name.isEmpty() || name.equals(".") || name.equals("..")) {
+            return UUID.randomUUID().toString();
+        }
+        return name;
     }
 
     @PostMapping("/ingest")
@@ -224,21 +236,22 @@ public class EmailSyndicationApiController {
 
         // Save attachment to database and disk (after draft so we use the correct draftId)
         if (attachment != null && !attachment.isEmpty()) {
+            String safeFileName = sanitizeFileName(attachment.getOriginalFilename());
             String storagePath = "";
             try {
                 Path draftDir = Paths.get(attachmentsRootPath, "email-drafts", saved.getDraftId());
                 Files.createDirectories(draftDir);
-                Path targetFile = draftDir.resolve(attachment.getOriginalFilename());
+                Path targetFile = draftDir.resolve(safeFileName);
                 attachment.transferTo(targetFile.toFile());
                 storagePath = targetFile.toString();
-                log.info("Attachment stored at: {}", storagePath);
+                log.info("Attachment stored for draft: {}", saved.getDraftId());
             } catch (IOException e) {
-                log.error("Failed to store attachment file to disk: {}", e.getMessage());
+                log.error("Failed to store attachment file to disk for draft: {}", saved.getDraftId());
             }
 
             EmailDraftAttachment att = EmailDraftAttachment.builder()
                     .draftId(saved.getDraftId())
-                    .fileName(attachment.getOriginalFilename())
+                    .fileName(safeFileName)
                     .fileType(attachment.getContentType())
                     .fileSize(attachment.getSize())
                     .storagePath(storagePath)
@@ -406,21 +419,22 @@ public class EmailSyndicationApiController {
 
             // Store attachment if present
             if (attachment != null && !attachment.isEmpty()) {
+                String safeFileName = sanitizeFileName(attachment.getOriginalFilename());
                 String storagePath = "";
                 try {
                     Path draftDir = Paths.get(attachmentsRootPath, "email-drafts", saved.getDraftId());
                     Files.createDirectories(draftDir);
-                    Path targetFile = draftDir.resolve(attachment.getOriginalFilename());
+                    Path targetFile = draftDir.resolve(safeFileName);
                     attachment.transferTo(targetFile.toFile());
                     storagePath = targetFile.toString();
-                    log.info("Physical letter attachment stored at: {}", storagePath);
+                    log.info("Physical letter attachment stored for draft: {}", saved.getDraftId());
                 } catch (IOException e) {
-                    log.error("Failed to store physical letter attachment: {}", e.getMessage());
+                    log.error("Failed to store physical letter attachment for draft: {}", saved.getDraftId());
                 }
 
                 EmailDraftAttachment att = EmailDraftAttachment.builder()
                         .draftId(saved.getDraftId())
-                        .fileName(attachment.getOriginalFilename())
+                        .fileName(safeFileName)
                         .fileType(attachment.getContentType())
                         .fileSize(attachment.getSize())
                         .storagePath(storagePath)
@@ -772,7 +786,7 @@ public class EmailSyndicationApiController {
 
     @PostMapping("/deo/reset-pointer")
     public Map<String, Object> resetPointer() {
-        roundRobinPointer = 0;
+        roundRobinPointer.set(0);
         return wrapResponse(Map.of("message", "Round-robin pointer reset", "pointer", 0));
     }
 

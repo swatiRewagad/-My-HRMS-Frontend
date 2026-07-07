@@ -2,8 +2,10 @@ package com.hrms.cms.service;
 
 import com.hrms.cms.entity.CitizenEmailVerification;
 import com.hrms.cms.repository.CitizenEmailVerificationRepository;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,19 +26,43 @@ public class CitizenSessionService {
 
     private final CitizenEmailVerificationRepository emailVerificationRepository;
 
-    private static final String SESSION_SECRET = System.getenv().getOrDefault(
-            "CMS_SESSION_SECRET", "cms-default-secret-change-in-production");
+    private static final String SESSION_SECRET;
+    static {
+        String secret = System.getenv("CMS_SESSION_SECRET");
+        if (secret == null || secret.isBlank()) {
+            secret = UUID.randomUUID().toString();
+        }
+        SESSION_SECRET = secret;
+    }
     private static final long SESSION_TIMEOUT_MS = 15 * 60 * 1000;
+    private static final int MAX_SESSIONS = 100_000;
 
     private final Map<String, SessionData> activeSessions = new ConcurrentHashMap<>();
 
+    @PostConstruct
+    void warnIfDefaultSecret() {
+        if (System.getenv("CMS_SESSION_SECRET") == null) {
+            log.warn("CMS_SESSION_SECRET not set — using random ephemeral secret. Sessions will not survive restarts.");
+        }
+    }
+
+    @Scheduled(fixedDelay = 300_000)
+    void evictExpiredSessions() {
+        long now = Instant.now().toEpochMilli();
+        activeSessions.entrySet().removeIf(e ->
+                now - e.getValue().lastActivity().toEpochMilli() > SESSION_TIMEOUT_MS);
+    }
+
     public String createSession(String mobileNumber) {
+        if (activeSessions.size() >= MAX_SESSIONS) {
+            evictExpiredSessions();
+        }
         String tokenId = UUID.randomUUID().toString();
         String signature = sign(tokenId + ":" + mobileNumber);
         String token = tokenId + "." + signature;
 
         activeSessions.put(token, new SessionData(mobileNumber, Instant.now()));
-        log.info("Session created for mobile: {}****", mobileNumber.substring(0, 4));
+        log.info("Session created for mobile: ****{}", mobileNumber.substring(mobileNumber.length() - 4));
         return token;
     }
 
@@ -92,7 +118,7 @@ public class CitizenSessionService {
         v.setVerified(true);
         v.setVerifiedAt(LocalDateTime.now());
         emailVerificationRepository.save(v);
-        log.info("Email verified: {} for mobile {}****", v.getEmail(), v.getMobileNumber().substring(0, 4));
+        log.info("Email verified for mobile: ****{}", v.getMobileNumber().substring(v.getMobileNumber().length() - 4));
         return true;
     }
 

@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.HashMap;
 import java.util.HexFormat;
 import java.util.Map;
 import java.util.UUID;
@@ -96,14 +97,20 @@ public class CitizenAuthController {
         String sessionId = UUID.randomUUID().toString();
         String otp = otpService.generateOtp(mobile, sessionId, "SMS", null);
 
-        // TODO: Integrate with actual SMS gateway (environment.integrations.smsGateway)
-        log.info("OTP for {}: {} (would be sent via SMS in production)", mobile, otp);
+        // TODO: Integrate with actual SMS gateway
+        log.info("OTP sent to mobile: ****{}", mobile.substring(mobile.length() - 4));
 
-        return ResponseEntity.ok(Map.of(
+        Map<String, Object> responseBody = new HashMap<>(Map.of(
                 "success", true,
                 "message", "OTP sent to your mobile number.",
                 "sessionId", sessionId,
                 "expiresInSeconds", authProps.getOtp().getExpiryMinutes() * 60));
+
+        if (authProps.getOtp().isDevAutoPopulate()) {
+            responseBody.put("devOtp", otp);
+        }
+
+        return ResponseEntity.ok(responseBody);
     }
 
     @PostMapping("/send-otp-email")
@@ -161,14 +168,20 @@ public class CitizenAuthController {
         String sessionId = UUID.randomUUID().toString();
         String otp = otpService.generateOtp(mobile, sessionId, "EMAIL", email);
 
-        // TODO: Integrate with actual SMTP service (environment.integrations.smtp)
-        log.info("Email OTP for {} to {}: {} (would be sent via email in production)", mobile, email, otp);
+        // TODO: Integrate with actual SMTP service
+        log.info("OTP sent to email for mobile: ****{}", mobile.substring(mobile.length() - 4));
 
-        return ResponseEntity.ok(Map.of(
+        Map<String, Object> emailBody = new HashMap<>(Map.of(
                 "success", true,
                 "message", "OTP sent to your verified email address.",
                 "sessionId", sessionId,
                 "expiresInSeconds", authProps.getOtp().getExpiryMinutes() * 60));
+
+        if (authProps.getOtp().isDevAutoPopulate()) {
+            emailBody.put("devOtp", otp);
+        }
+
+        return ResponseEntity.ok(emailBody);
     }
 
     @PostMapping("/verify-otp")

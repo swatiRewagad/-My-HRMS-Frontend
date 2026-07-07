@@ -161,18 +161,23 @@ public class FileUploadController {
             return ResponseEntity.notFound().build();
         }
 
-        Path filePath = Paths.get(att.getStoragePath());
+        Path filePath = Paths.get(att.getStoragePath()).normalize();
+        Path allowedRoot = Paths.get(fileStorageService.getRootPath()).normalize();
+        if (!filePath.startsWith(allowedRoot)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
         if (!Files.exists(filePath)) {
             return ResponseEntity.notFound().build();
         }
 
         Resource resource = new FileSystemResource(filePath);
         String contentType = att.getFileType() != null ? att.getFileType() : "application/octet-stream";
+        String safeFileName = Paths.get(att.getFileName()).getFileName().toString();
 
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(contentType))
                 .header(HttpHeaders.CONTENT_DISPOSITION,
-                        "inline; filename=\"" + att.getFileName() + "\"")
+                        "inline; filename=\"" + safeFileName + "\"")
                 .body(resource);
     }
 

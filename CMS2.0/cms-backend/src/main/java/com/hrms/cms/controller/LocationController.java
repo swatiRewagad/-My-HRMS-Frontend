@@ -48,6 +48,12 @@ public class LocationController {
 
     @GetMapping("/pincode/{pincode}")
     public Object lookupPincode(@PathVariable String pincode) {
+        if (pincode == null || !pincode.matches("^\\d{6}$")) {
+            Map<String, Object> error = new LinkedHashMap<>();
+            error.put("Status", "Error");
+            error.put("Message", "Invalid pincode format. Must be 6 digits.");
+            return List.of(error);
+        }
         try {
             RestTemplate restTemplate = new RestTemplate();
             Object result = restTemplate.getForObject(

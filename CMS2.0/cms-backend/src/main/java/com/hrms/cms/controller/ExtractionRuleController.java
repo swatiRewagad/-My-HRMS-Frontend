@@ -13,7 +13,7 @@ import java.util.*;
 
 @RestController
 @RequestMapping("/api/v1/extraction-rules")
-@CrossOrigin(origins = "*")
+
 @RequiredArgsConstructor
 public class ExtractionRuleController {
 

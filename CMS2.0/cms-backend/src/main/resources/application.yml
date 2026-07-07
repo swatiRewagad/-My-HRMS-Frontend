@@ -2,7 +2,7 @@ server:
   port: 8082
   error:
     include-message: always
-    include-stacktrace: on_param
+    include-stacktrace: never
   tomcat:
     threads:
       max: 400
@@ -17,9 +17,9 @@ server:
 
 spring:
   datasource:
-    url: ${DB_URL:jdbc:mysql://localhost:3306/cms_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&rewriteBatchedStatements=true}
-    username: ${DB_USERNAME:root}
-    password: ${DB_PASSWORD:root}
+    url: ${DB_URL:jdbc:mysql://localhost:3306/cms_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&rewriteBatchedStatements=true&characterEncoding=UTF-8&useUnicode=true}
+    username: ${DB_USERNAME:cms_user}
+    password: ${DB_PASSWORD:}
     driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
       maximum-pool-size: 50
@@ -69,8 +69,8 @@ keycloak:
     server-url: ${KEYCLOAK_URL:http://localhost:8180}
     realm: ${KEYCLOAK_REALM:cms}
     client-id: ${KEYCLOAK_ADMIN_CLIENT:admin-cli}
-    username: ${KEYCLOAK_ADMIN_USER:admin}
-    password: ${KEYCLOAK_ADMIN_PASSWORD:admin}
+    username: ${KEYCLOAK_ADMIN_USER:}
+    password: ${KEYCLOAK_ADMIN_PASSWORD:}
 
 cms:
   ocr:
@@ -121,14 +121,24 @@ cms:
     complaints-per-minute: ${RATE_LIMIT_CPM:10}
     api-requests-per-second: ${RATE_LIMIT_RPS:100}
   encryption:
-    server-secret: ${CMS_ENCRYPTION_SECRET:cms-encryption-secret-must-change-in-production}
+    server-secret: ${CMS_ENCRYPTION_SECRET:}
   anti-automation:
     velocity-window-seconds: ${ANTI_AUTO_VELOCITY_WINDOW:60}
     velocity-threshold: ${ANTI_AUTO_VELOCITY_THRESHOLD:30}
     min-form-submission-ms: ${ANTI_AUTO_MIN_FORM_MS:3000}
     require-standard-headers: ${ANTI_AUTO_REQUIRE_HEADERS:true}
+  mre:
+    version: ${MRE_VERSION:1}
+    re-window-days: ${MRE_RE_WINDOW:30}
+    npci-window-days: ${MRE_NPCI_WINDOW:30}
+    card-network-window-days: ${MRE_CARD_WINDOW:60}
+    filing-deadline-days: ${MRE_FILING_DEADLINE:90}
+    limitation-period-years: ${MRE_LIMITATION_YEARS:3}
+    window-basis: ${MRE_WINDOW_BASIS:BUSINESS}
+  cors:
+    allowed-origins: ${CMS_CORS_ORIGINS:http://localhost:4200,http://localhost:4201,http://localhost:4202,http://localhost:4300}
   similar-cases:
-    enabled: ${SIMILAR_CASES_ENABLED:false}
+    enabled: ${SIMILAR_CASES_ENABLED:true}
     opensearch-url: ${OPENSEARCH_URL:http://localhost:9200}
     index: ${SIMILAR_CASES_INDEX:complaints}
   geo:
@@ -145,6 +155,7 @@ cms:
       expiry-minutes: ${OTP_EXPIRY_MINUTES:5}
       max-resend-per-hour: ${OTP_MAX_RESEND_PER_HOUR:5}
       max-verify-attempts-per-otp: ${OTP_MAX_VERIFY_ATTEMPTS:3}
+      dev-auto-populate: ${OTP_DEV_AUTO_POPULATE:false}
     captcha:
       length: ${CAPTCHA_LENGTH:6}
       expiry-minutes: ${CAPTCHA_EXPIRY_MINUTES:5}
@@ -195,7 +206,7 @@ spring:
       leak-detection-threshold: 60000
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     properties:
       hibernate:
         jdbc:
@@ -210,6 +221,11 @@ server:
       min-spare: 100
     max-connections: 20000
     accept-count: 1000
+
+cms:
+  auth:
+    otp:
+      dev-auto-populate: false
 
 logging:
   level:

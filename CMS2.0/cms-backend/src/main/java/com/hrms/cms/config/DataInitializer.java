@@ -14,6 +14,7 @@ import com.hrms.cms.repository.FormConfigRepository;
 import com.hrms.cms.repository.RegulatedEntityRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.context.annotation.Profile;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
@@ -21,6 +22,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @Component
+@Profile("!prod")
 @RequiredArgsConstructor
 @Order(1)
 public class DataInitializer implements CommandLineRunner {

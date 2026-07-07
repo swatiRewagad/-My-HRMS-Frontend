@@ -2,16 +2,18 @@ package com.hrms.cms.controller;
 
 import com.hrms.cms.service.TranslationService;
 import org.springframework.http.CacheControl;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/i18n")
-@CrossOrigin(origins = "*")
+
 public class TranslationController {
 
     private final TranslationService translationService;
@@ -29,8 +31,10 @@ public class TranslationController {
 
     @GetMapping("/translations/{locale}")
     public ResponseEntity<Map<String, String>> getTranslations(@PathVariable String locale) {
+        MediaType utf8Json = new MediaType(MediaType.APPLICATION_JSON, StandardCharsets.UTF_8);
         return ResponseEntity.ok()
-            .cacheControl(CacheControl.maxAge(Duration.ofMinutes(30)).cachePublic())
+            .contentType(utf8Json)
+            .cacheControl(CacheControl.noCache())
             .body(translationService.getTranslationsForLocale(locale));
     }
 
@@ -38,8 +42,10 @@ public class TranslationController {
     public ResponseEntity<Map<String, String>> getTranslationsByModule(
             @PathVariable String locale,
             @PathVariable String module) {
+        MediaType utf8Json = new MediaType(MediaType.APPLICATION_JSON, StandardCharsets.UTF_8);
         return ResponseEntity.ok()
-            .cacheControl(CacheControl.maxAge(Duration.ofMinutes(30)).cachePublic())
+            .contentType(utf8Json)
+            .cacheControl(CacheControl.noCache())
             .body(translationService.getTranslationsForLocaleAndModule(locale, module));
     }
 
@@ -50,7 +56,10 @@ public class TranslationController {
     }
 
     @PostMapping("/translations/bulk")
-    public ResponseEntity<Void> bulkUpsert(@RequestBody List<Map<String, String>> entries) {
+    public ResponseEntity<?> bulkUpsert(@RequestBody List<Map<String, String>> entries) {
+        if (entries == null || entries.size() > 1000) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Bulk upsert limited to 1000 entries"));
+        }
         translationService.bulkUpsert(entries);
         return ResponseEntity.ok().build();
     }

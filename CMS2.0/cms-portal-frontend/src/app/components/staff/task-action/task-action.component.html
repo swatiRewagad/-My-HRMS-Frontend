@@ -1,0 +1,612 @@
+<div class="task-action-page">
+  <!-- ═══ HEADER BAR ═══ -->
+  <header class="cms-header">
+    <div class="header-left">
+      <img src="assets/corporates-rbi-logo.jpg" alt="RBI" class="rbi-logo" />
+      <div class="rbi-text">
+        <span class="rbi-hindi">भारतीय रिज़र्व बैंक</span>
+        <span class="rbi-english">RESERVE BANK OF INDIA</span>
+      </div>
+      <div class="header-divider-v"></div>
+      <img src="assets/rbi-logo.png" alt="CMS" class="cms-logo" onerror="this.style.display='none'" />
+      <div class="header-brand">
+        <span class="cms-title">CMS</span>
+        <span class="cms-subtitle">Complaint Management System</span>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="accessibility-controls">
+        <button class="acc-btn" title="Phone"><i class="pi pi-phone"></i></button>
+        <span class="acc-divider">|</span>
+        <button class="acc-btn" title="Decrease font">A-</button>
+        <button class="acc-btn acc-btn-mid" title="Normal font">A</button>
+        <button class="acc-btn" title="Increase font">A+</button>
+        <span class="acc-divider">|</span>
+        <button class="acc-btn lang-btn" title="Language">English <i class="pi pi-chevron-down"></i></button>
+        <span class="acc-divider">|</span>
+        <button class="acc-btn" title="Notifications"><i class="pi pi-bell"></i></button>
+      </div>
+      <div class="header-divider"></div>
+      @if (auth.currentUser(); as user) {
+        <span class="user-avatar">{{ (user.firstName || 'U').charAt(0) }}</span>
+        <div class="user-details">
+          <span class="user-name">{{ user.firstName }} {{ user.lastName }}</span>
+          <span class="user-role">{{ user.roles[0] | titlecase }}</span>
+        </div>
+      }
+      <button class="btn-logout" (click)="goBack()" title="Logout"><i class="pi pi-sign-out"></i></button>
+    </div>
+  </header>
+
+  @if (loading()) {
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <p>Loading complaint details...</p>
+    </div>
+  } @else if (!complaint()) {
+    <div class="loading-state">
+      <i class="pi pi-exclamation-circle" style="font-size:3rem;color:#d32f2f;"></i>
+      <p>Complaint not found.</p>
+      <button class="btn btn-primary" (click)="goBack()">Back to Tasks</button>
+    </div>
+  } @else {
+
+    <!-- ═══ SUB-HEADER TAB ═══ -->
+    <div class="sub-header">
+      <div class="complaint-tab active">
+        <i class="pi pi-file"></i>
+        Complaint {{ complaint()!.complaintNumber }}
+      </div>
+      <div class="complaint-tab add-tab" (click)="goBack()" title="Back to Tasks">
+        <i class="pi pi-plus"></i>
+      </div>
+    </div>
+
+    <!-- ═══ PAGE BODY: Three Columns + Icon Sidebar ═══ -->
+    <div class="page-body-layout has-sidebar">
+
+      <!-- LEFT MAIN AREA -->
+      <div class="left-main-area">
+
+        <!-- ═══ KPI / META ROW ═══ -->
+        <div class="meta-row">
+          <button class="back-arrow" (click)="goBack()">
+            <i class="pi pi-arrow-left"></i>
+          </button>
+          <div class="meta-item">
+            <span class="meta-icon"><i class="pi pi-id-card"></i></span>
+            <div class="meta-text">
+              <span class="meta-label">Complaint ID</span>
+              <span class="meta-value">{{ complaint()!.complaintId || complaint()!.id }}</span>
+            </div>
+          </div>
+          <div class="meta-item">
+            <span class="meta-icon"><i class="pi pi-file"></i></span>
+            <div class="meta-text">
+              <span class="meta-label">Complaint Number</span>
+              <span class="meta-value">{{ complaint()!.complaintNumber }}</span>
+            </div>
+          </div>
+          <div class="meta-item">
+            <span class="meta-icon"><i class="pi pi-chart-bar"></i></span>
+            <div class="meta-text">
+              <span class="meta-label">Status</span>
+              <span class="meta-value status-badge" [class.resolved]="isTerminalState()">
+                <i class="pi pi-flag"></i> {{ complaint()!.status }}
+              </span>
+            </div>
+          </div>
+          <div class="meta-item">
+            <span class="meta-icon"><i class="pi pi-tag"></i></span>
+            <div class="meta-text">
+              <span class="meta-label">Priority</span>
+              <span class="meta-value priority-text" [class]="complaint()!.priority?.toLowerCase()">{{ complaint()!.priority }}</span>
+            </div>
+          </div>
+          <div class="meta-item">
+            <span class="meta-icon owner"><i class="pi pi-user"></i></span>
+            <div class="meta-text">
+              <span class="meta-label">Assigned To</span>
+              <span class="meta-value">{{ complaint()!.assignedTo || 'Unassigned' }}</span>
+            </div>
+          </div>
+          <div class="meta-actions">
+            @if (!isTerminalState()) {
+              <button class="btn btn-primary" (click)="scrollToActions()">Take Action</button>
+            }
+          </div>
+        </div>
+
+        <!-- ═══ TAT TIMER ═══ -->
+        @if (tatData()) {
+          <div class="tat-timer-bar">
+            <div class="tat-timer-label">
+              <span class="tat-icon">⏱</span>
+              <span class="tat-title">SLA Timer (Business Hours)</span>
+            </div>
+            <div class="tat-progress-container">
+              <div class="tat-progress-bar" [style.width.%]="Math.min(tatData()!.percentUsed, 100)" [style.background]="getTatProgressColor()"></div>
+            </div>
+            <div class="tat-details">
+              <span class="tat-remaining" [style.color]="getTatProgressColor()">{{ tatTimerDisplay() }}</span>
+              <span class="tat-meta">{{ tatData()!.businessDaysElapsed }}d elapsed / {{ tatData()!.businessDaysElapsed + tatData()!.businessDaysRemaining }}d total</span>
+            </div>
+          </div>
+        }
+
+        <!-- ═══ CONTENT BOX (Email + Complaint panels) ═══ -->
+        <div class="content-box">
+          <div class="main-content-layout two-col">
+
+            <!-- ════════════════════════════════════════════ -->
+            <!-- LEFT PANEL: Document / Email Viewer         -->
+            <!-- ════════════════════════════════════════════ -->
+            <div class="col-email-syndicate" [class.panel-expanded]="expandedPanel() === 'email'" [class.panel-hidden]="expandedPanel() === 'complaint'">
+              <div class="panel-header">
+                <h3><i class="pi pi-inbox"></i> Documents &amp; Communication</h3>
+                <button class="expand-btn" (click)="toggleExpand('email')">
+                  @if (expandedPanel() === 'email') { <i class="pi pi-window-minimize"></i> } @else { <i class="pi pi-window-maximize"></i> }
+                </button>
+              </div>
+
+              <!-- Email content / document viewer -->
+              <div class="email-syndicate-body">
+                @if (complaint()!.subject || complaint()!.description) {
+                  <h4 class="email-subject-title">{{ complaint()!.subject || 'Complaint Communication' }}</h4>
+                  <div class="email-sender-row">
+                    <div class="sender-avatar-circle">{{ (complaint()!.complainantName || 'U').charAt(0) }}</div>
+                    <div class="sender-info">
+                      <span class="sender-name-text">{{ complaint()!.complainantName || 'Unknown' }} &lt;{{ complaint()!.complainantEmail }}&gt;</span>
+                      <span class="sender-meta">To: {{ getDepartmentLabel() }}</span>
+                    </div>
+                    <span class="email-date">{{ complaint()!.registeredAt }}</span>
+                  </div>
+                  @if (complaint()!.attachments?.length) {
+                    <div class="email-attachments-bar">
+                      @for (att of complaint()!.attachments; track att.id || $index) {
+                        <div class="email-att-chip">
+                          <i class="pi pi-file"></i>
+                          <span>{{ att.name }}</span>
+                          <small>{{ att.size }}</small>
+                        </div>
+                      }
+                    </div>
+                  }
+                  <div class="email-body-display">
+                    <p class="email-body-text">{{ complaint()!.description || 'No description provided.' }}</p>
+                  </div>
+                } @else {
+                  <div class="doc-empty-state">
+                    <i class="pi pi-inbox"></i>
+                    <p>No communication available</p>
+                  </div>
+                }
+              </div>
+            </div>
+
+            <!-- ════════════════════════════════════════════ -->
+            <!-- MIDDLE PANEL: Complaint Details              -->
+            <!-- ════════════════════════════════════════════ -->
+            <div class="col-complaint" [class.panel-expanded]="expandedPanel() === 'complaint'" [class.panel-hidden]="expandedPanel() === 'email'">
+              <div class="panel-header">
+                <h3><i class="pi pi-th-large"></i> Complaint Details</h3>
+                <button class="expand-btn" (click)="toggleExpand('complaint')">
+                  @if (expandedPanel() === 'complaint') { <i class="pi pi-window-minimize"></i> } @else { <i class="pi pi-arrows-alt"></i> }
+                </button>
+              </div>
+
+              <!-- Basic Details Section -->
+              <div class="form-section" [class.open]="sectionOpen.basic">
+                <div class="section-header" (click)="sectionOpen.basic = !sectionOpen.basic">
+                  <span><i class="pi pi-chart-bar"></i> Basic Details</span>
+                  <i class="pi" [class.pi-chevron-down]="sectionOpen.basic" [class.pi-chevron-up]="!sectionOpen.basic"></i>
+                </div>
+                @if (sectionOpen.basic) {
+                  <div class="section-body">
+                    <div class="field-grid-2">
+                      <div class="field-item">
+                        <label>Subject</label>
+                        <span class="field-value">{{ complaint()!.subject || '—' }}</span>
+                      </div>
+                      <div class="field-item">
+                        <label>Category</label>
+                        <span class="field-value">{{ complaint()!.category || '—' }}</span>
+                      </div>
+                    </div>
+                    <div class="field-item full">
+                      <label>Description</label>
+                      <p class="field-readonly">{{ complaint()!.description || '—' }}</p>
+                    </div>
+                    <div class="field-grid-2">
+                      <div class="field-item">
+                        <label>Registered At</label>
+                        <span class="field-value">{{ complaint()!.registeredAt || '—' }}</span>
+                      </div>
+                      <div class="field-item">
+                        <label>SLA Due Date</label>
+                        <span class="field-value">{{ complaint()!.slaDueDate || '—' }}</span>
+                      </div>
+                    </div>
+                  </div>
+                }
+              </div>
+
+              <!-- Complainant Details Section -->
+              <div class="form-section" [class.open]="sectionOpen.complainant">
+                <div class="section-header" (click)="sectionOpen.complainant = !sectionOpen.complainant">
+                  <span><i class="pi pi-user"></i> Complainant Details</span>
+                  <i class="pi" [class.pi-chevron-down]="sectionOpen.complainant" [class.pi-chevron-up]="!sectionOpen.complainant"></i>
+                </div>
+                @if (sectionOpen.complainant) {
+                  <div class="section-body">
+                    <div class="field-grid-2">
+                      <div class="field-item">
+                        <label>Name</label>
+                        <span class="field-value">{{ complaint()!.complainantName || '—' }}</span>
+                      </div>
+                      <div class="field-item">
+                        <label>Email</label>
+                        <span class="field-value">{{ complaint()!.complainantEmail || '—' }}</span>
+                      </div>
+                    </div>
+                    <div class="field-grid-2">
+                      <div class="field-item">
+                        <label>Phone</label>
+                        <span class="field-value">{{ complaint()!.complainantPhone || '—' }}</span>
+                      </div>
+                      <div class="field-item">
+                        <label>Address</label>
+                        <span class="field-value">{{ complaint()!.complainantAddress || '—' }}</span>
+                      </div>
+                    </div>
+                  </div>
+                }
+              </div>
+
+              <!-- Entity Details Section -->
+              <div class="form-section" [class.open]="sectionOpen.entity">
+                <div class="section-header" (click)="sectionOpen.entity = !sectionOpen.entity">
+                  <span><i class="pi pi-building"></i> Entity Details</span>
+                  <i class="pi" [class.pi-chevron-down]="sectionOpen.entity" [class.pi-chevron-up]="!sectionOpen.entity"></i>
+                </div>
+                @if (sectionOpen.entity) {
+                  <div class="section-body">
+                    <div class="field-grid-2">
+                      <div class="field-item">
+                        <label>Entity Name</label>
+                        <span class="field-value">{{ complaint()!.entityName || '—' }}</span>
+                      </div>
+                      <div class="field-item">
+                        <label>Entity Type</label>
+                        <span class="field-value">{{ complaint()!.entityType || '—' }}</span>
+                      </div>
+                    </div>
+                    <div class="field-grid-2">
+                      <div class="field-item">
+                        <label>Branch</label>
+                        <span class="field-value">{{ complaint()!.entityBranch || '—' }}</span>
+                      </div>
+                      <div class="field-item">
+                        <label>Location</label>
+                        <span class="field-value">{{ complaint()!.entityLocation || '—' }}</span>
+                      </div>
+                    </div>
+                  </div>
+                }
+              </div>
+
+              <!-- MRE Copilot Assessment Section -->
+              <div class="form-section copilot-section" [class.open]="sectionOpen.copilot">
+                <div class="section-header" (click)="sectionOpen.copilot = !sectionOpen.copilot; sectionOpen.copilot && loadCopilot()">
+                  <span><i class="pi pi-bolt"></i> MRE Copilot — Maintainability Assessment</span>
+                  <i class="pi" [class.pi-chevron-down]="sectionOpen.copilot" [class.pi-chevron-up]="!sectionOpen.copilot"></i>
+                </div>
+                @if (sectionOpen.copilot) {
+                  <div class="section-body">
+                    @if (copilotLoading()) {
+                      <div class="copilot-loading"><i class="pi pi-spin pi-spinner"></i> Analyzing complaint against RB-IOS 2026 rules...</div>
+                    } @else if (copilotData()?.error) {
+                      <div class="copilot-error">
+                        <i class="pi pi-exclamation-triangle"></i>
+                        <span>MRE Assessment service unavailable. Please try again later.</span>
+                      </div>
+                    } @else if (copilotData()) {
+                      <div class="copilot-content">
+                        <div class="copilot-verdict">
+                          <span class="verdict-badge" [class.maintainable]="copilotData().suggestedDetermination === 'MAINTAINABLE'" [class.non-maintainable]="copilotData().suggestedDetermination !== 'MAINTAINABLE'">
+                            {{ copilotData().suggestedDetermination }}
+                          </span>
+                          <span class="verdict-signal">Overall: {{ copilotData().mreVerdict?.overallSignal }}</span>
+                        </div>
+                        @if (copilotData().mreVerdict?.grounds?.length) {
+                          <div class="copilot-grounds">
+                            <h5>Objective Grounds (RB-IOS 2026)</h5>
+                            @for (ground of copilotData().mreVerdict.grounds; track ground.groundId) {
+                              <div class="ground-item" [class.pass]="ground.verdict === 'PASS'" [class.fail]="ground.verdict === 'FAIL'">
+                                <span class="ground-status">{{ ground.verdict === 'PASS' ? '✓' : ground.verdict === 'FAIL' ? '✗' : '?' }}</span>
+                                <span class="ground-desc">{{ ground.description }}</span>
+                                <span class="ground-clause">{{ ground.clauseRef }}</span>
+                              </div>
+                            }
+                          </div>
+                        }
+                        @if (copilotData().compensationBand) {
+                          <div class="copilot-compensation">
+                            <h5>Compensation Precedent (₹30L cap)</h5>
+                            <p>Similar cases: ₹{{ copilotData().compensationBand.minAmount | number }} — ₹{{ copilotData().compensationBand.maxAmount | number }}</p>
+                            <p class="comp-note">Cap: ₹30,00,000 consequential + ₹3,00,000 time/harassment (RB-IOS Q22/Q23)</p>
+                          </div>
+                        }
+                        @if (copilotData().draftRationale) {
+                          <div class="copilot-rationale">
+                            <h5>Draft Rationale (editable)</h5>
+                            <textarea class="rationale-text" rows="4">{{ copilotData().draftRationale }}</textarea>
+                          </div>
+                        }
+                        @if (copilotData().precedentCases?.length) {
+                          <div class="copilot-precedents">
+                            <h5>Similar Precedents ({{ copilotData().precedentCases.length }})</h5>
+                            @for (pc of copilotData().precedentCases.slice(0, 3); track $index) {
+                              <div class="precedent-item">
+                                <span class="prec-outcome">{{ pc.outcome }}</span>
+                                <span class="prec-reason">{{ pc.reason }}</span>
+                                <span class="prec-entity">{{ pc.entityCode }}</span>
+                              </div>
+                            }
+                          </div>
+                        }
+                      </div>
+                    } @else {
+                      <button class="btn btn-outline copilot-trigger-btn" (click)="loadCopilot()">
+                        <i class="pi pi-bolt"></i> Run MRE Assessment
+                      </button>
+                    }
+                  </div>
+                }
+              </div>
+
+              <!-- Action Panel Section -->
+              <div class="form-section action-section" [class.open]="sectionOpen.actions" #actionSection>
+                <div class="section-header" (click)="sectionOpen.actions = !sectionOpen.actions">
+                  <span><i class="pi pi-send"></i> Take Action</span>
+                  <i class="pi" [class.pi-chevron-down]="sectionOpen.actions" [class.pi-chevron-up]="!sectionOpen.actions"></i>
+                </div>
+                @if (sectionOpen.actions) {
+                  <div class="section-body">
+                    @if (isTerminalState()) {
+                      <div class="closed-banner">
+                        <span class="closed-icon"><i class="pi pi-check-circle"></i></span>
+                        <h4>Complaint {{ complaint()!.status }}</h4>
+                        <p>No further actions available. This complaint has been processed.</p>
+                      </div>
+                    } @else {
+                      <div class="action-buttons">
+                        @for (action of availableActions(); track action.value) {
+                          <button class="action-btn" [class]="action.style" [disabled]="processing()" (click)="selectAction(action.value)">
+                            {{ action.label }}
+                          </button>
+                        }
+                      </div>
+
+                      @if (selectedAction()) {
+                        <div class="remarks-section">
+                          <label>Remarks for "{{ selectedAction() }}"</label>
+                          <div class="textarea-with-speech">
+                            <textarea [(ngModel)]="remarks" rows="3" placeholder="Enter remarks (required)..."></textarea>
+                            <app-speech-button (transcription)="remarks = remarks + ' ' + $event"></app-speech-button>
+                          </div>
+                          <div class="confirm-actions">
+                            <button class="btn btn-primary" [disabled]="!remarks.trim() || processing()" (click)="submitAction()">
+                              @if (processing()) { <i class="pi pi-spin pi-spinner"></i> Processing... } @else { Confirm {{ selectedAction() }} }
+                            </button>
+                            <button class="btn btn-outline" (click)="cancelAction()">Cancel</button>
+                          </div>
+                        </div>
+                      }
+
+                      @if (actionResult()) {
+                        <div class="result-msg" [class.success]="actionSuccess()" [class.error]="!actionSuccess()">
+                          {{ actionResult() }}
+                        </div>
+                      }
+                    }
+                  </div>
+                }
+              </div>
+
+              <!-- Timeline Section -->
+              @if (complaint()!.timeline?.length) {
+                <div class="form-section" [class.open]="sectionOpen.timeline">
+                  <div class="section-header" (click)="sectionOpen.timeline = !sectionOpen.timeline">
+                    <span><i class="pi pi-history"></i> Timeline</span>
+                    <i class="pi" [class.pi-chevron-down]="sectionOpen.timeline" [class.pi-chevron-up]="!sectionOpen.timeline"></i>
+                  </div>
+                  @if (sectionOpen.timeline) {
+                    <div class="section-body">
+                      <div class="timeline-list">
+                        @for (entry of complaint()!.timeline; track entry.timestamp) {
+                          <div class="timeline-entry">
+                            <div class="timeline-dot"></div>
+                            <div class="timeline-content">
+                              <div class="timeline-header-row">
+                                <span class="timeline-action">{{ entry.action }}</span>
+                                <span class="timeline-time">{{ entry.timestamp }}</span>
+                              </div>
+                              <span class="timeline-flow">{{ entry.fromStatus }} → {{ entry.toStatus }}</span>
+                              @if (entry.remarks) { <p class="timeline-remarks">{{ entry.remarks }}</p> }
+                            </div>
+                          </div>
+                        }
+                      </div>
+                    </div>
+                  }
+                </div>
+              }
+
+            </div><!-- /col-complaint -->
+
+          </div><!-- /main-content-layout -->
+        </div><!-- /content-box -->
+
+      </div><!-- /left-main-area -->
+
+      <!-- ═══ RIGHT SIDEBAR ═══ -->
+      <div class="col-right-sidebar">
+        <!-- Reference Section -->
+        <div class="sidebar-section">
+          <div class="sidebar-section-header">
+            <h4><i class="pi pi-cog"></i> Reference</h4>
+          </div>
+        </div>
+
+        <!-- Past Complaints Section -->
+        <div class="sidebar-section">
+          <div class="sidebar-section-header">
+            <h4><i class="pi pi-folder"></i> Past Complaints <span class="sidebar-count-badge">{{ pastComplaints().length }}</span></h4>
+            <button class="sidebar-expand-btn" (click)="loadPastComplaints()"><i class="pi pi-refresh"></i></button>
+          </div>
+          <div class="sidebar-section-body">
+            <div class="sidebar-search">
+              <i class="pi pi-search"></i>
+              <input type="text" placeholder="Search past complaints" [(ngModel)]="pastComplaintSearch" />
+            </div>
+            @if (loadingPastComplaints()) {
+              <p class="sidebar-loading"><i class="pi pi-spin pi-spinner"></i> Loading...</p>
+            } @else if (filteredPastComplaints().length > 0) {
+              @for (pc of filteredPastComplaints(); track pc.complaintId) {
+                <div class="past-complaint-card" [class.pc-completed-card]="pc.status === 'RESOLVED' || pc.status === 'CLOSED'">
+                  <div class="pc-status-row">
+                    <span class="pc-status" [class.completed]="pc.status === 'RESOLVED' || pc.status === 'CLOSED'" [class.active]="pc.status !== 'RESOLVED' && pc.status !== 'CLOSED'">
+                      @if (pc.status === 'RESOLVED' || pc.status === 'CLOSED') {
+                        <i class="pi pi-check-circle"></i>
+                      } @else {
+                        <i class="pi pi-circle-fill"></i>
+                      }
+                      {{ pc.status }}
+                    </span>
+                  </div>
+                  <div class="pc-details">
+                    <span class="pc-field">ID: <strong>{{ pc.complaintId }}</strong></span>
+                    <span class="pc-field">Filed: <strong>{{ pc.filedDate }}</strong></span>
+                  </div>
+                  <p class="pc-subject">{{ pc.subject }}</p>
+                </div>
+              }
+            } @else {
+              <p class="sidebar-empty">No past complaints found</p>
+            }
+          </div>
+        </div>
+
+        <!-- Reference Documents Section -->
+        <div class="sidebar-section">
+          <div class="sidebar-section-header">
+            <h4><i class="pi pi-file"></i> Reference Documents</h4>
+          </div>
+          <div class="sidebar-section-body">
+            @if (complaint()!.attachments?.length) {
+              @for (att of complaint()!.attachments; track att.id || $index) {
+                <div class="doc-item">
+                  <div class="doc-icon">
+                    @if (att.type?.includes('pdf')) { <i class="pi pi-file-pdf"></i> }
+                    @else if (att.type?.includes('image')) { <i class="pi pi-image"></i> }
+                    @else { <i class="pi pi-file"></i> }
+                  </div>
+                  <div class="doc-info">
+                    <span class="doc-name">{{ att.name }}</span>
+                    <span class="doc-meta">{{ att.size }}</span>
+                  </div>
+                  <div class="doc-actions">
+                    <button title="View"><i class="pi pi-eye"></i></button>
+                    <button title="Download"><i class="pi pi-download"></i></button>
+                  </div>
+                </div>
+              }
+            } @else {
+              <p class="sidebar-empty">No documents attached</p>
+            }
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /page-body-layout -->
+
+    <!-- ═══ SIMILAR CASES PANEL (slides in from right) ═══ -->
+    @if (showSimilarPanel()) {
+      <div class="history-panel similar-panel">
+        <div class="history-panel-header">
+          <h3><i class="pi pi-search"></i> Similar Cases</h3>
+          <button class="expand-btn" (click)="showSimilarPanel.set(false)"><i class="pi pi-chevron-right"></i></button>
+        </div>
+        @if (loadingSimilarCases()) {
+          <div class="history-loading"><i class="pi pi-spin pi-spinner"></i> Searching...</div>
+        } @else if (similarCases().length > 0) {
+          <div class="similar-cases-list">
+            @for (sc of similarCases(); track sc.complaintId) {
+              <div class="past-complaint-card">
+                <div class="pc-header">
+                  <span class="pc-id">{{ sc.complaintId }}</span>
+                  <span class="pc-status" [class.completed]="sc.status === 'RESOLVED'">{{ sc.status }}</span>
+                </div>
+                <p class="pc-subject">{{ sc.subject }}</p>
+                @if (sc.similarityScore) {
+                  <div class="similarity-score">
+                    <span class="score-label">Match</span>
+                    <span class="score-bar-wrap"><span class="score-bar" [style.width.%]="sc.similarityScore * 100"></span></span>
+                    <span class="score-pct">{{ (sc.similarityScore * 100) | number:'1.0-0' }}%</span>
+                  </div>
+                }
+                <span class="pc-date">{{ sc.filedDate }}</span>
+              </div>
+            }
+          </div>
+        } @else {
+          <div class="similar-empty">
+            <i class="pi pi-search"></i>
+            <p>No similar cases found</p>
+            <button class="btn btn-outline" (click)="loadSimilarCases()"><i class="pi pi-refresh"></i> Retry</button>
+          </div>
+        }
+      </div>
+    }
+
+    <!-- ═══ HISTORY PANEL (slides in from right) ═══ -->
+    @if (showHistoryPanel()) {
+      <div class="history-panel">
+        <div class="history-panel-header">
+          <h3><i class="pi pi-history"></i> History</h3>
+          <button class="expand-btn" (click)="showHistoryPanel.set(false)"><i class="pi pi-chevron-right"></i></button>
+        </div>
+        @if (complaint()!.timeline?.length) {
+          <div class="history-timeline">
+            @for (entry of complaint()!.timeline; track entry.timestamp) {
+              <div class="history-entry">
+                <div class="history-status-badge">{{ entry.action }}</div>
+                <p class="history-description">{{ entry.fromStatus }} → {{ entry.toStatus }}</p>
+                <div class="history-meta">
+                  <span class="history-date">{{ entry.timestamp }}</span>
+                </div>
+                @if (entry.remarks) {
+                  <p class="history-remarks">{{ entry.remarks }}</p>
+                }
+              </div>
+            }
+          </div>
+        } @else {
+          <p class="empty-text">No history available</p>
+        }
+      </div>
+    }
+
+    <!-- ═══ LEFT ICON SIDEBAR ═══ -->
+    <div class="icon-sidebar">
+      <button class="icon-sidebar-btn active" title="Complaint view"><i class="pi pi-file"></i></button>
+      <button class="icon-sidebar-btn" title="Back to Tasks" (click)="goBack()"><i class="pi pi-chart-bar"></i></button>
+      <div class="sidebar-spacer"></div>
+      <button class="icon-sidebar-btn" [class.active]="showSimilarPanel()" title="Similar cases" (click)="toggleSimilarPanel()"><i class="pi pi-search"></i></button>
+      <button class="icon-sidebar-btn" [class.active]="showHistoryPanel()" title="History" (click)="toggleHistoryPanel()"><i class="pi pi-history"></i></button>
+      <div class="sidebar-spacer"></div>
+    </div>
+
+  }
+</div>

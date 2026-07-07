@@ -131,6 +131,9 @@ public class ComplaintRoutingController {
 
     @PostMapping("/entities/bulk-import")
     public Map<String, Object> bulkImportEntities(@RequestBody List<Map<String, String>> entities) {
+        if (entities == null || entities.size() > 1000) {
+            return wrapResponse(Map.of("error", "Bulk import limited to 1000 entries"));
+        }
         int imported = 0;
         for (Map<String, String> entry : entities) {
             String name = entry.getOrDefault("name", "").trim();

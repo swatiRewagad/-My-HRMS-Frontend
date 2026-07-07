@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Set;
 
 @Configuration
 @ConfigurationProperties(prefix = "cms.attachments")
@@ -45,8 +46,9 @@ public class FileStorageConfig {
     }
 
     public boolean isAllowedType(String fileName) {
-        if (fileName == null) return false;
+        if (fileName == null || !fileName.contains(".")) return false;
         String ext = fileName.substring(fileName.lastIndexOf('.') + 1).toLowerCase();
-        return allowedTypes.contains(ext);
+        Set<String> allowed = Set.of(allowedTypes.split(","));
+        return allowed.contains(ext);
     }
 }
