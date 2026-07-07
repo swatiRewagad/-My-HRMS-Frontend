@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CMS 2.0 — Email Syndication Process Flow</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f4f8; color: #1a1a2e; padding: 2rem; }
+        h1 { text-align: center; font-size: 1.8rem; color: #1a1a2e; margin-bottom: 0.5rem; }
+        .subtitle { text-align: center; color: #666; font-size: 0.95rem; margin-bottom: 2rem; }
+        .flow-container { max-width: 1200px; margin: 0 auto; }
+
+        /* Swim lanes */
+        .swimlane { margin-bottom: 2rem; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+        .swimlane-header { padding: 0.75rem 1.5rem; font-weight: 700; font-size: 0.9rem; letter-spacing: 0.5px; color: #fff; }
+        .swimlane-body { padding: 1.5rem; background: #fff; display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+
+        .lane-ingest .swimlane-header { background: linear-gradient(135deg, #667eea, #764ba2); }
+        .lane-processing .swimlane-header { background: linear-gradient(135deg, #f093fb, #f5576c); }
+        .lane-deo .swimlane-header { background: linear-gradient(135deg, #4facfe, #00f2fe); }
+        .lane-reviewer .swimlane-header { background: linear-gradient(135deg, #43e97b, #38f9d7); }
+        .lane-routing .swimlane-header { background: linear-gradient(135deg, #fa709a, #fee140); }
+        .lane-outcome .swimlane-header { background: linear-gradient(135deg, #a18cd1, #fbc2eb); }
+
+        /* Nodes */
+        .node { padding: 0.7rem 1.2rem; border-radius: 8px; font-size: 0.82rem; font-weight: 500; text-align: center; min-width: 130px; position: relative; line-height: 1.4; }
+        .node-start { background: #e8f5e9; border: 2px solid #43a047; color: #2e7d32; border-radius: 24px; }
+        .node-process { background: #e3f2fd; border: 2px solid #1e88e5; color: #0d47a1; }
+        .node-decision { background: #fff3e0; border: 2px solid #ef6c00; color: #e65100; transform: rotate(0deg); clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%); padding: 1.2rem 1.5rem; min-width: 150px; }
+        .node-decision-box { background: #fff3e0; border: 2px solid #ef6c00; color: #e65100; border-radius: 4px; }
+        .node-action { background: #f3e5f5; border: 2px solid #8e24aa; color: #4a148c; }
+        .node-end { background: #fce4ec; border: 2px solid #c62828; color: #b71c1c; border-radius: 24px; }
+        .node-success { background: #e8f5e9; border: 2px solid #2e7d32; color: #1b5e20; border-radius: 24px; }
+        .node-data { background: #e0f7fa; border: 2px solid #00838f; color: #004d40; border-radius: 4px; border-left: 5px solid #00838f; }
+        .node-kafka { background: #fff8e1; border: 2px solid #f9a825; color: #f57f17; }
+
+        /* Arrows */
+        .arrow { font-size: 1.3rem; color: #90a4ae; font-weight: bold; flex-shrink: 0; }
+        .arrow-down { display: block; text-align: center; font-size: 1.5rem; color: #90a4ae; margin: 0.5rem 0; }
+
+        /* Section dividers */
+        .section-title { font-size: 1.1rem; font-weight: 700; color: #37474f; margin: 2rem 0 1rem; padding-left: 0.5rem; border-left: 4px solid #667eea; }
+
+        /* Legend */
+        .legend { display: flex; flex-wrap: wrap; gap: 1rem; margin: 2rem 0; padding: 1rem; background: #fff; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
+        .legend-item { display: flex; align-items: center; gap: 0.4rem; font-size: 0.8rem; }
+        .legend-box { width: 20px; height: 20px; border-radius: 4px; border: 2px solid; }
+
+        /* Detail flow */
+        .detail-flow { display: flex; flex-direction: column; gap: 0.5rem; padding: 1.5rem; background: #fff; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); margin-bottom: 1.5rem; }
+        .flow-row { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+        .flow-row.indent { padding-left: 2rem; }
+        .branch-label { font-size: 0.72rem; color: #ef6c00; font-weight: 700; background: #fff3e0; padding: 2px 8px; border-radius: 10px; }
+
+        /* Info cards */
+        .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-top: 1.5rem; }
+        .info-card { background: #fff; padding: 1.25rem; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-top: 3px solid #667eea; }
+        .info-card h3 { font-size: 0.95rem; color: #1a1a2e; margin-bottom: 0.5rem; }
+        .info-card ul { padding-left: 1.2rem; font-size: 0.82rem; color: #555; line-height: 1.8; }
+        .info-card code { background: #f5f5f5; padding: 1px 5px; border-radius: 3px; font-size: 0.78rem; }
+
+        /* Status table */
+        .status-table { width: 100%; border-collapse: collapse; margin-top: 1rem; font-size: 0.82rem; }
+        .status-table th, .status-table td { padding: 0.5rem 0.75rem; border: 1px solid #e0e0e0; text-align: left; }
+        .status-table th { background: #f5f5f5; font-weight: 600; }
+        .status-badge { padding: 2px 8px; border-radius: 10px; font-size: 0.72rem; font-weight: 600; }
+        .badge-pending { background: #fff3e0; color: #e65100; }
+        .badge-assigned { background: #e3f2fd; color: #0d47a1; }
+        .badge-progress { background: #f3e5f5; color: #4a148c; }
+        .badge-review { background: #e8f5e9; color: #2e7d32; }
+        .badge-approved { background: #c8e6c9; color: #1b5e20; }
+        .badge-rejected { background: #fce4ec; color: #c62828; }
+
+        @media (max-width: 768px) {
+            .swimlane-body { flex-direction: column; }
+            .arrow { transform: rotate(90deg); }
+            body { padding: 1rem; }
+        }
+    </style>
+</head>
+<body>
+
+<h1>CMS 2.0 — Email Syndication Process Flow</h1>
+<p class="subtitle">Complaint Receipt Processing Centre (CRPC) — Email/Physical Letter Ingestion to Complaint Routing</p>
+
+<div class="flow-container">
+
+    <!-- Legend -->
+    <div class="legend">
+        <div class="legend-item"><div class="legend-box" style="background:#e8f5e9;border-color:#43a047;border-radius:12px;"></div> Start/End</div>
+        <div class="legend-item"><div class="legend-box" style="background:#e3f2fd;border-color:#1e88e5;"></div> Process</div>
+        <div class="legend-item"><div class="legend-box" style="background:#fff3e0;border-color:#ef6c00;"></div> Decision</div>
+        <div class="legend-item"><div class="legend-box" style="background:#f3e5f5;border-color:#8e24aa;"></div> Action</div>
+        <div class="legend-item"><div class="legend-box" style="background:#e0f7fa;border-color:#00838f;border-left:4px solid #00838f;"></div> Data Store</div>
+        <div class="legend-item"><div class="legend-box" style="background:#fff8e1;border-color:#f9a825;"></div> Kafka Event</div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section-title">Phase 1 — Email Ingestion & Pre-processing</div>
+
+    <div class="swimlane lane-ingest">
+        <div class="swimlane-header">INGESTION LAYER (Automated)</div>
+        <div class="swimlane-body">
+            <div class="node node-start">Email arrives<br><small>crpc@rbi.org.in</small></div>
+            <span class="arrow">→</span>
+            <div class="node node-decision-box">On Ignore<br>List?</div>
+            <span class="arrow">→</span>
+            <div class="node node-process">Duplicate<br>Check</div>
+            <span class="arrow">→</span>
+            <div class="node node-process">Language<br>Detection</div>
+            <span class="arrow">→</span>
+            <div class="node node-process">Vernacular<br>Translation</div>
+            <span class="arrow">→</span>
+            <div class="node node-action">Rule-Based<br>Extraction</div>
+            <span class="arrow">→</span>
+            <div class="node node-data">Create Draft<br>Record</div>
+        </div>
+    </div>
+
+    <div class="detail-flow">
+        <div class="flow-row">
+            <div class="node node-start" style="min-width:auto;padding:0.4rem 0.8rem;">Email / Physical Letter / CPGRAMS</div>
+            <span class="arrow">→</span>
+            <div class="node node-process">POST /api/v1/email-syndication/ingest</div>
+            <span class="arrow">→</span>
+            <div class="node node-decision-box">Ignore List?</div>
+        </div>
+        <div class="flow-row indent">
+            <span class="branch-label">YES</span>
+            <span class="arrow">→</span>
+            <div class="node node-end">Discard (not saved)</div>
+        </div>
+        <div class="flow-row indent">
+            <span class="branch-label">NO</span>
+            <span class="arrow">→</span>
+            <div class="node node-decision-box">Duplicate?</div>
+        </div>
+        <div class="flow-row indent" style="padding-left:4rem;">
+            <span class="branch-label">YES + Open Parent</span>
+            <span class="arrow">→</span>
+            <div class="node node-data">Attach to parent (status: DUPLICATE)</div>
+        </div>
+        <div class="flow-row indent" style="padding-left:4rem;">
+            <span class="branch-label">NO</span>
+            <span class="arrow">→</span>
+            <div class="node node-process">Detect Language → Translate if Vernacular</div>
+            <span class="arrow">→</span>
+            <div class="node node-action">OCR (if attachment)</div>
+            <span class="arrow">→</span>
+            <div class="node node-action">Rule-Based Extraction</div>
+        </div>
+        <div class="flow-row indent" style="padding-left:4rem;">
+            <span class="arrow">→</span>
+            <div class="node node-process">Round-Robin Assignment → DEO</div>
+            <span class="arrow">→</span>
+            <div class="node node-data">Draft (status: ASSIGNED)</div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section-title">Phase 2 — DEO Assessment</div>
+
+    <div class="swimlane lane-deo">
+        <div class="swimlane-header">DEO (Data Entry Operator) — CRPC Staff</div>
+        <div class="swimlane-body">
+            <div class="node node-data">DEO Queue<br><small>/crpc/home</small></div>
+            <span class="arrow">→</span>
+            <div class="node node-process">Open Draft<br><small>/crpc/draft/:id</small></div>
+            <span class="arrow">→</span>
+            <div class="node node-action">Verify/Edit<br>OCR Fields</div>
+            <span class="arrow">→</span>
+            <div class="node node-action">Fill Missing<br>Data</div>
+            <span class="arrow">→</span>
+            <div class="node node-decision-box">DEO<br>Decision</div>
+            <span class="arrow">→</span>
+            <div class="node node-process">Submit for<br>Review</div>
+        </div>
+    </div>
+
+    <div class="detail-flow">
+        <div class="flow-row">
+            <div class="node node-data">DEO Dashboard</div>
+            <span class="arrow">→</span>
+            <div class="node node-process">View assigned drafts (filter by status, mode)</div>
+        </div>
+        <div class="flow-row">
+            <span class="arrow" style="visibility:hidden;">→</span>
+            <span class="arrow">↓</span>
+        </div>
+        <div class="flow-row">
+            <div class="node node-action">Draft Assessment Form</div>
+            <span class="arrow">→</span>
+            <div class="node node-process">Verify: Name, Phone, Address, Entity, Category, Summary</div>
+        </div>
+        <div class="flow-row">
+            <span class="arrow" style="visibility:hidden;">→</span>
+            <span class="arrow">↓</span>
+        </div>
+        <div class="flow-row">
+            <div class="node node-decision-box">Decision?</div>
+        </div>
+        <div class="flow-row indent">
+            <span class="branch-label">MAINTAINABLE</span>
+            <span class="arrow">→</span>
+            <div class="node node-action">Status → PENDING_REVIEW</div>
+            <span class="arrow">→</span>
+            <div class="node node-process">Goes to Reviewer queue</div>
+        </div>
+        <div class="flow-row indent">
+            <span class="branch-label">NON-MAINTAINABLE</span>
+            <span class="arrow">→</span>
+            <div class="node node-action">Add reason → Status: NON_MAINTAINABLE</div>
+            <span class="arrow">→</span>
+            <div class="node node-end">Closed (no further action)</div>
+        </div>
+        <div class="flow-row indent">
+            <span class="branch-label">NEED_MORE_INFO</span>
+            <span class="arrow">→</span>
+            <div class="node node-action">Mark incomplete → back to queue</div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section-title">Phase 3 — Reviewer Assessment & Routing</div>
+
+    <div class="swimlane lane-reviewer">
+        <div class="swimlane-header">REVIEWER — CRPC Senior Staff</div>
+        <div class="swimlane-body">
+            <div class="node node-data">Reviewer Queue<br><small>/crpc/reviewer</small></div>
+            <span class="arrow">→</span>
+            <div class="node node-process">Open Draft<br><small>/crpc/reviewer/draft/:id</small></div>
+            <span class="arrow">→</span>
+            <div class="node node-action">Validate DEO<br>Assessment</div>
+            <span class="arrow">→</span>
+            <div class="node node-decision-box">Reviewer<br>Decision</div>
+            <span class="arrow">→</span>
+            <div class="node node-action">Select Target<br>Office</div>
+            <span class="arrow">→</span>
+            <div class="node node-success">Approve &<br>Route</div>
+        </div>
+    </div>
+
+    <div class="detail-flow">
+        <div class="flow-row">
+            <div class="node node-decision-box">Reviewer Decision?</div>
+        </div>
+        <div class="flow-row indent">
+            <span class="branch-label">APPROVE</span>
+            <span class="arrow">→</span>
+            <div class="node node-action">Select Target Office (RBIO-MUM, RBIO-DEL, CEPC, etc.)</div>
+            <span class="arrow">→</span>
+            <div class="node node-success">Status → APPROVED_ROUTED</div>
+        </div>
+        <div class="flow-row indent">
+            <span class="branch-label">REJECT</span>
+            <span class="arrow">→</span>
+            <div class="node node-action">Add remarks</div>
+            <span class="arrow">→</span>
+            <div class="node node-end">Status → REJECTED</div>
+        </div>
+        <div class="flow-row indent">
+            <span class="branch-label">SEND BACK</span>
+            <span class="arrow">→</span>
+            <div class="node node-action">Return to DEO with remarks</div>
+            <span class="arrow">→</span>
+            <div class="node node-data">Back to DEO queue (ASSIGNED)</div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section-title">Phase 4 — Complaint Creation & Routing</div>
+
+    <div class="swimlane lane-routing">
+        <div class="swimlane-header">ROUTING ENGINE (Automated on Approval)</div>
+        <div class="swimlane-body">
+            <div class="node node-success">APPROVED_ROUTED</div>
+            <span class="arrow">→</span>
+            <div class="node node-process">Create<br>Complaint</div>
+            <span class="arrow">→</span>
+            <div class="node node-process">Resolve<br>Department</div>
+            <span class="arrow">→</span>
+            <div class="node node-process">Round-Robin<br>Officer Assign</div>
+            <span class="arrow">→</span>
+            <div class="node node-kafka">Kafka Event<br><small>complaint.ingested</small></div>
+            <span class="arrow">→</span>
+            <div class="node node-data">Complaint<br>(status: assigned)</div>
+        </div>
+    </div>
+
+    <div class="detail-flow">
+        <div class="flow-row">
+            <div class="node node-success">Reviewer Approves</div>
+            <span class="arrow">→</span>
+            <div class="node node-process">createComplaintFromDraft()</div>
+        </div>
+        <div class="flow-row indent">
+            <span class="arrow">→</span>
+            <div class="node node-process">Generate CMP-YYYYMMDD-XXXXXX</div>
+            <span class="arrow">→</span>
+            <div class="node node-action">routingService.resolveDepartment(entityName)</div>
+        </div>
+        <div class="flow-row indent">
+            <span class="arrow">→</span>
+            <div class="node node-decision-box">Department?</div>
+        </div>
+        <div class="flow-row indent" style="padding-left:4rem;">
+            <span class="branch-label">RBIO</span>
+            <span class="arrow">→</span>
+            <div class="node node-action">Assign to RBIO_OFFICER (region-filtered)</div>
+        </div>
+        <div class="flow-row indent" style="padding-left:4rem;">
+            <span class="branch-label">CEPC</span>
+            <span class="arrow">→</span>
+            <div class="node node-action">Assign to CEPC_DO (round-robin)</div>
+        </div>
+        <div class="flow-row indent">
+            <span class="arrow">→</span>
+            <div class="node node-data">Save Complaint (workflow: INITIAL_REVIEW)</div>
+            <span class="arrow">→</span>
+            <div class="node node-kafka">Publish complaint.ingested → Kafka</div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section-title">Status Lifecycle</div>
+
+    <table class="status-table">
+        <thead>
+            <tr>
+                <th>Status</th>
+                <th>Actor</th>
+                <th>Description</th>
+                <th>Next Step</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><span class="status-badge badge-pending">PENDING</span></td>
+                <td>System</td>
+                <td>Email received, no DEO available</td>
+                <td>Wait for assignment</td>
+            </tr>
+            <tr>
+                <td><span class="status-badge badge-assigned">ASSIGNED</span></td>
+                <td>System → DEO</td>
+                <td>Round-robin assigned to DEO</td>
+                <td>DEO opens & processes</td>
+            </tr>
+            <tr>
+                <td><span class="status-badge badge-progress">IN_PROGRESS</span></td>
+                <td>DEO</td>
+                <td>DEO has opened and is editing the draft</td>
+                <td>DEO submits decision</td>
+            </tr>
+            <tr>
+                <td><span class="status-badge badge-progress">DRAFT</span></td>
+                <td>DEO</td>
+                <td>Physical letter manually entered, saved as draft</td>
+                <td>DEO completes entry</td>
+            </tr>
+            <tr>
+                <td><span class="status-badge badge-review">PENDING_REVIEW</span></td>
+                <td>DEO → Reviewer</td>
+                <td>DEO assessed as maintainable, awaiting reviewer</td>
+                <td>Reviewer approves/rejects</td>
+            </tr>
+            <tr>
+                <td><span class="status-badge badge-approved">APPROVED_ROUTED</span></td>
+                <td>Reviewer → System</td>
+                <td>Reviewer approved, complaint created & routed</td>
+                <td>RBIO/CEPC handles complaint</td>
+            </tr>
+            <tr>
+                <td><span class="status-badge badge-rejected">REJECTED</span></td>
+                <td>Reviewer</td>
+                <td>Reviewer rejected the draft</td>
+                <td>No further action</td>
+            </tr>
+            <tr>
+                <td><span class="status-badge badge-rejected">NON_MAINTAINABLE</span></td>
+                <td>DEO</td>
+                <td>Not within RBI Ombudsman jurisdiction</td>
+                <td>Closed</td>
+            </tr>
+            <tr>
+                <td><span class="status-badge badge-pending">DUPLICATE</span></td>
+                <td>System</td>
+                <td>Same sender+subject as existing open complaint</td>
+                <td>Linked to parent</td>
+            </tr>
+            <tr>
+                <td><span class="status-badge badge-approved">CONVERTED</span></td>
+                <td>System</td>
+                <td>Legacy status (direct conversion without review)</td>
+                <td>Complete</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section-title">Key Components & APIs</div>
+
+    <div class="info-grid">
+        <div class="info-card">
+            <h3>Backend APIs</h3>
+            <ul>
+                <li><code>POST /ingest</code> — Ingest email (JSON)</li>
+                <li><code>POST /ingest-with-attachment</code> — Ingest with file (multipart)</li>
+                <li><code>POST /drafts/physical-letter</code> — Physical letter entry</li>
+                <li><code>GET /queue</code> — List drafts (filter: status, assignedTo)</li>
+                <li><code>GET /drafts/:id</code> — Draft detail</li>
+                <li><code>PUT /drafts/:id</code> — Update fields, status, decision</li>
+                <li><code>POST /drafts/:id/convert</code> — Direct convert (legacy)</li>
+                <li><code>POST /drafts/:id/reassign</code> — Reassign to another DEO</li>
+                <li><code>GET /stats</code> — Queue statistics</li>
+                <li><code>GET /deo</code> — DEO pool management</li>
+                <li><code>GET/POST /ignore-list</code> — Manage ignore patterns</li>
+            </ul>
+        </div>
+        <div class="info-card">
+            <h3>Frontend Routes (CRPC Portal)</h3>
+            <ul>
+                <li><code>/crpc/login</code> — Keycloak SSO login</li>
+                <li><code>/crpc/home</code> — DEO dashboard & queue</li>
+                <li><code>/crpc/draft/:id</code> — DEO assessment form</li>
+                <li><code>/crpc/physical-letter</code> — Physical letter entry</li>
+                <li><code>/crpc/reviewer</code> — Reviewer queue</li>
+                <li><code>/crpc/reviewer/draft/:id</code> — Reviewer assessment</li>
+                <li><code>/crpc/ops-head</code> — Operations head dashboard</li>
+                <li><code>/email-syndication/simulator</code> — Email simulator (dev)</li>
+                <li><code>/email-syndication/queue</code> — Email queue view</li>
+                <li><code>/email-syndication/ignore-list</code> — Ignore list manager</li>
+            </ul>
+        </div>
+        <div class="info-card">
+            <h3>Intelligence Layer</h3>
+            <ul>
+                <li><strong>OCR:</strong> Extracts name, phone, address, amount from attachments (PDF/JPG/PNG)</li>
+                <li><strong>Rule-Based Extraction:</strong> Admin-defined regex/keyword rules for field extraction</li>
+                <li><strong>Language Detection:</strong> Auto-detects 10 Indian languages</li>
+                <li><strong>Vernacular Translation:</strong> Translates non-English emails to English</li>
+                <li><strong>Duplicate Detection:</strong> Same sender + subject → links to parent</li>
+                <li><strong>Ignore List:</strong> Email/domain patterns to auto-reject spam</li>
+            </ul>
+        </div>
+        <div class="info-card">
+            <h3>Assignment & Routing</h3>
+            <ul>
+                <li><strong>DEO Assignment:</strong> Round-robin across active DEOs (max threshold per DEO)</li>
+                <li><strong>Complaint Routing:</strong> Entity name → Department (RBIO vs CEPC)</li>
+                <li><strong>Officer Assignment:</strong> Region-filtered round-robin for RBIO; role-based for CEPC</li>
+                <li><strong>Target Offices:</strong> RBIO-MUM, RBIO-DEL, RBIO-CHE, RBIO-KOL, CEPC</li>
+                <li><strong>Kafka Events:</strong> complaint.ingested published for downstream services</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section-title">End-to-End Summary</div>
+
+    <div class="swimlane lane-outcome">
+        <div class="swimlane-header">COMPLETE FLOW — From Email to Complaint Resolution</div>
+        <div class="swimlane-body" style="flex-wrap: wrap; justify-content: center;">
+            <div class="node node-start">Email /<br>Letter</div>
+            <span class="arrow">→</span>
+            <div class="node node-process">Ingest +<br>OCR + NLP</div>
+            <span class="arrow">→</span>
+            <div class="node node-action">Auto-Assign<br>to DEO</div>
+            <span class="arrow">→</span>
+            <div class="node node-action">DEO<br>Assessment</div>
+            <span class="arrow">→</span>
+            <div class="node node-action">Reviewer<br>Approval</div>
+            <span class="arrow">→</span>
+            <div class="node node-process">Create<br>Complaint</div>
+            <span class="arrow">→</span>
+            <div class="node node-process">Route to<br>RBIO/CEPC</div>
+            <span class="arrow">→</span>
+            <div class="node node-success">Officer<br>Handles</div>
+        </div>
+    </div>
+
+</div>
+
+<footer style="text-align:center; margin-top:3rem; color:#999; font-size:0.8rem;">
+    CMS 2.0 — RBI Integrated Ombudsman Scheme | Email Syndication Architecture | Generated 2026-07-02
+</footer>
+
+</body>
+</html>

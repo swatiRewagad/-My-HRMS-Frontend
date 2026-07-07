@@ -1,0 +1,51 @@
+<div class="cepc-timeline">
+  <div class="timeline-header">
+    <h4>Audit Trail</h4>
+    <button class="refresh-btn" (click)="loadTimeline()" [disabled]="loading()">
+      &#x21bb; Refresh
+    </button>
+  </div>
+
+  @if (loading()) {
+    <div class="loading-state">Loading timeline...</div>
+  } @else if (entries().length === 0) {
+    <p class="empty-timeline">No timeline entries yet.</p>
+  } @else {
+    <div class="timeline">
+      @for (entry of entries(); track entry.timestamp; let i = $index) {
+        <div class="timeline-item" [class.expanded]="expandedIndex() === i">
+          <div class="timeline-dot">
+            <span class="action-icon">{{ getActionIcon(entry.action) }}</span>
+          </div>
+          <div class="timeline-content" (click)="toggleExpand(i)">
+            <div class="timeline-main">
+              <span class="timeline-action">{{ getActionLabel(entry.action) }}</span>
+              <span class="timeline-time">{{ entry.timestamp | date:'dd MMM yyyy HH:mm' }}</span>
+            </div>
+            @if (entry.performedBy) {
+              <span class="timeline-actor">By: {{ entry.performedBy }}</span>
+            }
+
+            @if (expandedIndex() === i) {
+              <div class="timeline-detail">
+                @if (entry.remarks) {
+                  <p class="timeline-remarks">{{ entry.remarks }}</p>
+                }
+                <span class="timeline-flow">{{ entry.fromStatus }} &rarr; {{ entry.toStatus }}</span>
+                @if (entry.documents && entry.documents.length > 0) {
+                  <div class="timeline-docs">
+                    @for (doc of entry.documents; track doc.id) {
+                      <a class="doc-link" [href]="doc.url || '#'" target="_blank">
+                        &#128196; {{ doc.name }}
+                      </a>
+                    }
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  }
+</div>

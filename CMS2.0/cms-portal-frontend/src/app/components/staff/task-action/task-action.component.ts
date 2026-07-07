@@ -7,11 +7,15 @@ import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
 import { TatService, TatResult } from '../../../services/tat.service';
 import { environment } from '../../../../environments/environment';
 import { SpeechButtonComponent } from '../../../shared/speech-button/speech-button.component';
+import { RbioConciliationComponent } from '../../rbio/rbio-conciliation/rbio-conciliation.component';
+import { RbioAdjudicationComponent } from '../../rbio/rbio-adjudication/rbio-adjudication.component';
+import { RbioAdvisoryComponent } from '../../rbio/rbio-advisory/rbio-advisory.component';
+import { RbioSlaProgressComponent } from '../../rbio/rbio-sla-progress/rbio-sla-progress.component';
 
 @Component({
   selector: 'app-task-action',
   standalone: true,
-  imports: [CommonModule, FormsModule, SpeechButtonComponent],
+  imports: [CommonModule, FormsModule, SpeechButtonComponent, RbioConciliationComponent, RbioAdjudicationComponent, RbioAdvisoryComponent, RbioSlaProgressComponent],
   templateUrl: './task-action.component.html',
   styleUrls: ['./task-action.component.scss']
 })
@@ -147,10 +151,12 @@ export class TaskActionComponent implements OnInit, OnDestroy {
   }
 
   loadCopilot() {
-    if (this.copilotData() || this.copilotLoading()) return;
+    const existing = this.copilotData();
+    if ((existing && !existing.error) || this.copilotLoading()) return;
     const c = this.complaint();
     const cid = c?.id || c?.complaintId;
     if (!cid) return;
+    this.copilotData.set(null);
     this.copilotLoading.set(true);
     this.showCopilot.set(true);
     this.http.get<any>(`${environment.apiBaseUrl}/api/v1/copilot/maintainability/${cid}`)
@@ -372,5 +378,36 @@ export class TaskActionComponent implements OnInit, OnDestroy {
     this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => {
       this.router.navigate([`/staff/${dept}/tasks`]);
     });
+  }
+
+  // RBIO component visibility helpers
+  isRbioComplaint(): boolean {
+    const dept = this.auth.currentUser()?.department || '';
+    return dept.toUpperCase() === 'RBIO';
+  }
+
+  showRbioConciliation(): boolean {
+    if (!this.isRbioComplaint()) return false;
+    const roles = this.auth.getRoles();
+    const status = (this.complaint()?.status || '').toLowerCase();
+    return roles.includes('RBIO_CONCILIATOR') && (status === 'conciliation' || status === 'escalated');
+  }
+
+  showRbioAdjudication(): boolean {
+    if (!this.isRbioComplaint()) return false;
+    const roles = this.auth.getRoles();
+    const status = (this.complaint()?.status || '').toLowerCase();
+    return roles.includes('RBIO_ADJUDICATOR') && (status === 'adjudication' || status === 'escalated');
+  }
+
+  showRbioAdvisory(): boolean {
+    if (!this.isRbioComplaint()) return false;
+    const roles = this.auth.getRoles();
+    const isOfficerOrSupervisor = roles.includes('RBIO_OFFICER') || roles.includes('RBIO_SUPERVISOR');
+    return isOfficerOrSupervisor && !this.isTerminalState();
+  }
+
+  getRbioCurrentStage(): string {
+    return this.complaint()?.workflowStage || this.complaint()?.status || '';
   }
 }

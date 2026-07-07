@@ -1,0 +1,987 @@
+--- Sheet: Cover & Instructions ---
+"RBI COMPLAINT MANAGEMENT SYSTEM 2.0
+RBIO MODULE (RBI Ombudsman) - TRACEABLE BACKLOG",,,,,,,
+,,,,,,,
+,,,,,,,
+"Prepared for: Gaurav Marwaha | Chief Product Engineering Officer, ReBIT | For RBI CEPD & DIT Review",,,,,,,
+,,,,,,,
+"Document Version: 1.0 | Generated: 2026-07-05 | Source BRD: v1.0 (June 24, 2026) | RB-IOS 2026 Effective July 1, 2026",,,,,,,
+,,,,,,,
+,,,,,,,
+PURPOSE,,,,,,,
+"This workbook transforms the RBIO BRD into a development-ready, testable backlog.",,,,,,,
+It provides full traceability from BRD requirements → User Stories → Test Cases.,,,,,,,
+,,,,,,,
+SHEETS OVERVIEW,,,,,,,
+"1. User Stories     : Granular Connextra-format stories with BRD refs, priority, acceptance criteria, tags.",,,,,,,
+"2. Test Cases       : Exhaustive test cases (3-6 per story) covering happy path, negative, edge, boundary, security.",,,,,,,
+3. Traceability     : Maps every major BRD section / FR / Gap / NFR to User Story IDs with coverage status.,,,,,,,
+"4. Verification     : Adversarial gap analysis, assumptions, missing NFRs/edge cases, confidence score.",,,,,,,
+,,,,,,,
+KEY DESIGN PRINCIPLES APPLIED,,,,,,,
+"• Decomposition: High-level BRD bullets broken into smallest shippable units (e.g., separate stories for each status transition, each role action, compensation validation, OCR flow, digital signature enforcement).",,,,,,,
+"• Intelligence: Added implied requirements from RBI context (DPDP PII handling, concurrent user safety on assignment, scheme transition logic for 2021 vs 2026 complaints on reopen, 7-day upload link security).",,,,,,,
+"• Compliance Focus: Strong coverage of RB-IOS 2026 (compensation caps ₹30L/₹3L, Advisory, Award, implead, 90-day window, closure clause role matrix, scheme-aware reopen).",,,,,,,
+"• Test Rigor: Every story has negative/permission tests + edge cases (user on leave, threshold overflow, no email for closure, link expiry, OCR on handwritten).",,,,,,,
+,,,,,,,
+TRACEABILITY IDs,,,,,,,
+User Story: RBIO-US-XXX,,,,,,,
+Test Case : RBIO-TC-XXXX (linked to parent US),,,,,,,
+,,,,,,,
+RECOMMENDED NEXT STEPS,,,,,,,
+1. Review Verification sheet first for flagged ambiguities → clarify with CEPD/RBI stakeholders.,,,,,,,
+"2. Prioritize Phase 1 items (status bar, compensation validation, digital signature, OCR, RB-IOS 2026 enforcement, role-based closure clauses).",,,,,,,
+3. Expand to full ~120 stories in grooming workshop (this set covers core critical paths deeply).,,,,,,,
+4. Link to Jira/Azure DevOps using the permanent US IDs.,,,,,,,
+,,,,,,,
+ASSUMPTIONS IN THIS BACKLOG,,,,,,,
+• Kavach platform provides SSO + RBAC (as referenced in BRD).,,,,,,,
+• Notification utility and Email/SMS gateway are enterprise platform components.,,,,,,,
+• Digital signature provider and OCR engine (English typed only) to be selected in design phase.,,,,,,,
+• Threshold/overflow mapping and entity-DO mapping master data provided by RBI.,,,,,,,
+• MOM remains offline in Phase 1 (as per BRD scope); digital MOM builder is future.,,,,,,,
+• Legacy complaints (pre July 2026) retain RB-IOS 2021 closure clauses on reopen.,,,,,,,
+
+--- Sheet: User Stories ---
+US ID,Role,User Story (Connextra),BRD Reference,Priority,Story Points,Acceptance Criteria,Tags
+RBIO-US-001,Ombudsman Admin / All RBIO Roles,"As an RBIO user, I want to login via Kavach SSO (Ekamev auth + Kavach authorization) and land on a role-specific home screen showing only my permitted views (CRPC Complaints, RBIO Complaints, Complaints), so that I have secure, immediate access without managing separate credentials.","FR-RBIO-001, 6.5.3.1 (Ombudsman Admin login), Security SR-02, SR-06",High,5,"• SSO successful with valid RBI credentials
+• Role-based views loaded (no cross-role leakage)
+• Session timeout after 15 min inactivity with re-auth prompt
+• Audit log created for login event","Security, RBAC, Kavach, Onboarding"
+RBIO-US-002,All RBIO Roles,"As any RBIO role, I want a color-coded complaint list on the home screen with filters for Status Code and Color Code (White=new, Red=RE comm sent, Green=RE response, Yellow=sent back to DO, Pink=withdrawn), so that I can visually prioritize work and quickly filter my queue.","6.5.2 Filter by Color Code, 6.5.1 Filter by Status Code, FR-RBIO-003, FR-RBIO-004",High,3,"• Color coding applied correctly per status
+• Both filters work independently and combined
+• Max 100 complaints shown with pagination
+• 'Complaint Assigned to Me' is default prominent view","Dashboard, UX, Filtering"
+RBIO-US-003,"Ombudsman Admin, Dealing Official, Reviewer, DRBIO, Ombudsman","As an authorized RBIO user, I want to use Advanced Search with fields Complaint Number, Complainant Name/Mobile/Email, Status Code, Entity Name, Mode of Receipt, Reported On date range, so that I can locate any complaint quickly without scrolling long lists.","6.5.4.6 Advance Search, FR-RBIO-006",High,3,"• Partial match supported where specified (e.g., Entity Name, Complainant Name)
+• Date range validation (max 1 year span recommended)
+• Search results respect role-based data visibility
+• Clear button resets all filters","Search, UX"
+RBIO-US-004,All RBIO Roles,"As any RBIO user, I want real-time in-app bell notifications + email/SMS for new assignment, status change, pending >5 days, RE response overdue, document upload link used/expired, and duplicate complaint detected, so that I never miss time-sensitive actions and SLA breaches are avoided.","6.5.4.14 Alerts and Notifications, 6.5.4.12 Communication, FR-RBIO-029 (part)",High,5,"• Notification utility templates used
+• Configurable thresholds (5/15/20 days for NO record, 48h amber SLA)
+• Email/SMS sent within 5 min of trigger
+• Bell icon shows unread count; clicking opens relevant complaint","Notifications, SLA, Real-time"
+RBIO-US-005,Ombudsman Admin,"As an Ombudsman Admin, I want to create new RBIO users (Dealing Official, Reviewer, DRBIO, Ombudsman) by filling Employee Details, User Scope (company/territory), Access Permission (role), and set initial password or trigger Kavach onboarding, so that new joiners can start processing complaints immediately.","6.5.3.1 Role Management, FR-RBIO-001 (access), User onboarding in scope",High,5,"• All mandatory fields validated (red asterisks)
+• Duplicate login ID prevented
+• Role matrix enforced (no invalid role-territory combo)
+• Welcome email/SMS triggered via notification utility
+• Audit log of user creation with admin ID + timestamp","User Management, Admin, Kavach"
+RBIO-US-006,Ombudsman Admin,"As an Ombudsman Admin, I want to select multiple users and bulk mark them Active/Inactive or mark 'On Leave' (with reason and dates), so that I can quickly handle team absences without individual edits and prevent new complaints from being assigned to unavailable users.","6.5.3.1 (bulk marking, On Leave), Gap #10, FR-RBIO-035 (prevent assignment to inactive)",High,3,"• Bulk action available only to Admin role
+• On Leave flag prevents auto-assignment (round robin/entity logic skips them)
+• Pending complaints of on-leave users trigger Admin notification for manual reassignment
+• History of status changes retained in user audit","User Management, Bulk, Assignment Logic"
+RBIO-US-007,Ombudsman Admin,"As an Ombudsman Admin, I want to reassign one or many complaints in bulk to another active user in the same office (Change Owner), with mandatory comment, so that workload can be balanced or complaints can be moved when a user goes on leave or resigns.","6.5.3.1 (Change Owner bulk), 6.5.4.3 Audit Trail",High,3,"• Only active users shown in target picker
+• Full audit trail (old owner, new owner, timestamp, comment)
+• Notification sent to new owner and previous owner
+• Cannot reassign closed complaints except via Ombudsman reopen flow","Workflow, Reassignment, Admin"
+RBIO-US-008,Ombudsman Admin,"As an Ombudsman Admin, I want full visibility and export access to all Ombudsman reports (RBIO Main Detailed Report with 60+ columns, drill-down on NO Record count, ageing, compensation awarded, advisory/award dates), so that I can monitor office performance and provide data to CEPD leadership.","6.5.4.10 Reports, FR-RBIO-032, FR-RBIO-033",Medium,5,"• Report respects Processing Office = Admin territory (or all if super admin)
+• Max 1 year date range enforced for performance
+• Drill-down on Count of NO Record shows 6-column popup (Entity, NO Record ID, dates, status)
+• Export to approved formats (Excel/PDF) with T-1 data snapshot","Reports, Export, Analytics"
+RBIO-US-009,Ombudsman Admin,"As an Ombudsman Admin, I want to upload and manage closure letter templates and digital signature certificates for the office, so that all closure communications are standardized, branded, and legally signed before dispatch.","6.5.3.1 (upload templates), 6.5.4.2 Automatic Closure Communication, Gap #04",High,3,"• Template max 512 char custom text + system variables (complainant name, complaint #, closure clause, date)
+• Digital signature mandatory before 'Complaint Closed' status can be set
+• Versioning of templates with effective date
+• All roles can view but only Admin can upload/replace","Templates, Digital Signature, Compliance"
+RBIO-US-010,Ombudsman Admin,"As an Ombudsman Admin, I want to view Legal Case Details and closure clause/files for any closed complaint in my office, and update legal case status if complainant approaches court later, so that ongoing litigation is tracked without reopening the complaint workflow.","6.5.3.1 (Legal Case update), 6.5.4.4 Complaint Navigation Tabs",Medium,2,"• Read-only for closed complaints except Legal Case tab (editable)
+• History of legal updates retained in complaint history
+• No workflow status change triggered by legal update alone","Legal, Closed Complaints, Admin"
+RBIO-US-011,Dealing Official,"As a Dealing Official, I want to create a Draft Complaint in CRPC Layout for physical letters, with OCR auto-filling fields from scanned English typed letter (not handwritten), attach the original scan, and on Save & Proceed have it assigned round-robin to CRPC DEO, so that physical complaints enter the system quickly with minimal manual typing errors.","Gap #14, 6.5.3.2 (Draft Complaint creation), In Scope OCR (English typed only), FR-RBIO-019 (Switch Process related)",High,8,"• OCR limited to printed/typed English; handwritten rejected with clear message + manual entry option
+• Original scan auto-attached and visible in Attachments tab
+• Mandatory fields validated before Save & Proceed
+• Round-robin to active CRPC DEO only; fallback to supervisor if none available
+• SLA clock starts on draft creation","OCR, Physical Letters, Intake, CRPC"
+RBIO-US-012,Dealing Official,"As a Dealing Official, I want to perform 'Switch Process' on legacy (pre-RB-IOS 2026) complaints that are in Approved status in CRPC, choosing the target milestone (Register/Assessment/Conciliation/Forward/Final Decision) in RBIO layout, so that old complaints are migrated without losing history and processed under correct scheme rules.","6.5.3.2 (Switch Process), 6.5.4.9 Scheme Transition Control",High,5,"• Available only after CRPC Reviewer approval
+• Red button + detail page action
+• Scheme flag set based on original creation date or explicit selection
+• Full history preserved; new RBIO status codes applied from chosen milestone
+• Notification to receiving DO/Reviewer","Migration, Legacy, Scheme Transition"
+RBIO-US-013,Dealing Official,"As a Dealing Official, I want new complaints (from Portal or CRPC) assigned to me automatically based on the active logic for my office (default: Entity Name mapping from RBI master; alternative: Round Robin or Complaint Category), with fallback to Regional Admin if mapped user is inactive/on leave, so that every complaint has an owner immediately and workload is balanced.","6.5.4.8 Assignment Logic, 6.5.4.7 Threshold Logic, FR-RBIO-035",High,5,"• Super Admin configures active logic per office
+• Threshold check before assignment; overflow follows RBI-provided sequence
+• Vernacular complaints exempt from threshold
+• Clear audit: 'Assigned by system logic X because Y'
+• DO sees it in 'Complaint Assigned to Me' status immediately","Assignment, Workload Balancing, Threshold"
+RBIO-US-014,Dealing Official,"As a Dealing Official, I want to add up to 6 additional Regulated Entities to a complaint (with NO/PNO auto-created and assigned 'Information Required' status), and manually search/add RE/NO when multiple entities involved, so that complex multi-party complaints are fully captured for routing and tracking.","6.5.3.2 (Additional entity details), 6.5.4.1 Regulated Entity Record Management",Medium,3,"• 'Add NO/Contact Records' button available in Register/Assessment
+• Auto NO record creation with counter for status changes
+• If NO/PNO unavailable → auto-assign to Regional Admin
+• FRC flag visible on NO record and complaint
+• PNO can edit/reassign any NO record assigned to them","Multi-Entity, NO Record, RE Integration"
+RBIO-US-015,Dealing Official,"As a Dealing Official, I want a live SLA countdown timer visible on the complaint edit screen (amber <48h configurable, red = breached), with automated alerts at defined intervals, so that I am constantly aware of time pressure and can prioritize to meet the 30-day RE window and overall 90-day escalation targets.","Gap #02, 6.5.4.14 (pending alerts), In Scope SLA engine",High,3,"• Timer based on Date of Receipt in Processing Office or complaint creation
+• Color coding on list + edit screen
+• Escalation to Reviewer/DRBIO/Ombudsman at configurable thresholds
+• Dashboard KPI for 'Complaints nearing SLA breach' and 'Overdue'","SLA, Timer, Compliance, RB-IOS 2026"
+RBIO-US-016,Dealing Official,"As a Dealing Official, I want to mark a complaint Maintainable or Non-Maintainable under Proposed Action, propose a closure clause (auto-populated from my selection but editable by higher roles), add mandatory comments, and choose Automatic (Round Robin) or Manual assignment when sending to Reviewer / Deputy Ombudsman / Ombudsman, so that the assessment decision is captured with full audit and next role receives the case with context.","6.5.3.2 (Sent to Reviewer / DRBIO / Ombudsman), 6.5.4.5 Milestones - Assessment",High,5,"• All mandatory fields (red) validated; cannot proceed if blank
+• Proposed closure clause visible and carried forward
+• Default = Automatic assignment; Manual shows only active users in same office
+• Full history entry created (who sent, to whom, proposed action, timestamp)
+• Next possible states arrow shows valid transitions only","Workflow, Assessment, Maintainability"
+RBIO-US-017,Dealing Official,"As a Dealing Official, I want to send 13-1 Notice / Information Required communications to Regulated Entities without needing Deputy Ombudsman approval, define response timeline via calendar, and have the complaint auto-highlighted + in-app notification if no response by deadline, so that routine information gathering is fast while still tracked for escalation.","6.5.3.2 (13-1 Notice without DRBIO approval), 6.5.4.13 Communication to Complainant (analogous for RE)",High,3,"• 13-1 Notice template available in Compose Email
+• Response timeline mandatory; default 15 days (configurable)
+• Color change + notification to DO at 50% and 100% of timeline
+• RE response updates NO record status and notifies DO automatically","Communication, RE Interaction, 13-1 Notice"
+RBIO-US-018,Dealing Official,"As a Dealing Official, I want to schedule/ reschedule/ complete a conciliation meeting (Meeting Scheduled → Complete → Rescheduled), capture participants (Entity/Complainant/Both), meeting details/minutes, generate templated MOM letter for signature, and attach scanned signed copy later, so that facilitation efforts are documented even though the actual meeting happens offline.","6.5.3.2 (Conciliation milestone), 6.5.4.5 Milestones",Medium,5,"• Meeting Date/Time + Participants mandatory for Scheduled
+• On Complete: Yes/No accepted by Entity + minutes text box
+• MOM letter generation button (template) → print/sign/scan/attach
+• Status 'Meeting Scheduled' visible in color filter and dashboard KPI
+• Cannot close complaint while meeting link active or pending","Conciliation, Meeting, MOM (offline)"
+RBIO-US-019,Dealing Official,"As a Dealing Official, I want the system to enforce that I cannot change closure clause or speaking order content after Deputy Ombudsman or Ombudsman has made the final decision, and on Save & Proceed in Closed status I get a pop-up confirmation before auto-sending closure letter (if email available) or requiring manual upload + date entry (if no email), so that final decisions are respected and closure communication is always sent with proof of dispatch.","6.5.3.2 (Final Decision), 6.5.4.2 Automatic Closure Communication, Gap #04",High,5,"• Lock fields after higher-role decision
+• Pop-up: 'Details will be sent via email/SMS. OK / Edit?'
+• If email empty: 'Generate Letter' button → upload required before close
+• Date of sending auto-captured or manually entered (mandatory to close)
+• SMS always sent to complainant mobile if available; audit of dispatch","Closure, Digital Signature, Communication, Lock"
+RBIO-US-020,Dealing Official,"As a Dealing Official, I want to process Award Passed complaints by updating NO record with compensation sought/awarded (capped at ₹30L consequential + ₹3L harassment), send communication to Nodal Officer, and set status 'Award Passed', so that award implementation tracking starts immediately and compensation limits are never exceeded.","6.5.3.2 (Award Passed), 6.5.4.9 (compensation), FR-RBIO-026, FR-RBIO-027, RB-IOS 2026 Para 8(3)",High,5,"• Validation: Compensation Awarded ≤ Compensation Sought and within caps (error if exceeded)
+• Fields captured on both NO record and Ombudsman layout
+• NO record status updated; PNO/NO notified
+• Cannot exceed cap even on revised award after reopen","Award, Compensation Cap, RB-IOS 2026, NO Record"
+RBIO-US-021,Dealing Official,"As a Dealing Official, I want a 'Communication to Complainant' checkbox (available on most statuses except final closed states) that, when checked and saved, sends a 7-day expiring secure link for additional document upload (with email + mobile OTP), and prevents me from closing the complaint while the link is active, so that I can request missing information without risking premature closure.",6.5.4.13 Communication to Complainant - uploading additional documents,High,5,"• Link active 7 days; auto flag 'Documents Submitted' = Yes/No on use/expiry
+• Cannot resend while active; cannot close complaint while active
+• OTP validation mandatory on complainant side
+• Attachments from complainant appear in Attachments tab with source flag
+• Official email IDs only (CRPC@rbi.org.in etc.) enforced","Document Request, 7-day Link, Security, OTP"
+RBIO-US-022,Dealing Official,"As a Dealing Official, I want to forward a complaint to another RBIO/CEPC office or Other RBI Department / Regulatory Body with mandatory Reason for Transfer, after which CRPC Head must approve/reject before it is assigned to the target office DO, so that inter-office transfers are controlled and vernacular complaints are handled appropriately.","6.5.4.11 Sent to Other Office, 6.5.3.5 / 6.5.3.6 Forward actions, CRPC Head approval",High,3,"• CRPC Head approval step mandatory for RBIO→RBIO or RBIO→CEPC
+• On approve: auto region update + assignment to target DO (New Complaint / Sent to DO status)
+• On reject: returned to previous owner with mandatory rejection comments
+• History of all transfers maintained
+• Vernacular flag respected (no threshold impact)","Forward, Inter-Office, CRPC Approval, Vernacular"
+RBIO-US-023,Reviewer,"As a Reviewer, I want to review complaints sent to me, modify the proposed closure clause if needed, and choose to send to Deputy Ombudsman (auto or manual), Ombudsman (auto), or send back to DO (mandatory comments, auto to previous active DO or manual select if on leave), so that I can perform quality control before escalation.","6.5.3.3 Reviewer - Assessment Actions, 6.5.4.5 Milestones",High,5,"• Proposed clause from DO is editable by Reviewer
+• Send back auto-targets last active DO; error + manual picker if on leave
+• All actions create immutable history entry
+• Non-maintainable closure rights limited to delegated clauses only","Reviewer, Quality Control, Send Back"
+RBIO-US-024,Reviewer,"As a Reviewer, I want to close certain non-maintainable complaints under delegated closure clauses (with pop-up sample closure letter for new RB-IOS clauses), and follow the same email/SMS or manual upload closure flow as DO, so that routine non-maintainable cases can be closed without unnecessary escalation.","6.5.3.3 (Final Decision - limited closure), 6.5.4.9 Closure Clauses (delegation)",Medium,3,"• Only non-maintainable clauses visible/usable by Reviewer
+• Pop-up sample letter for newly added 2026 clauses
+• Same closure communication rules as DO (email auto or manual upload + date)
+• Scheme transition respected (2021 vs 2026 clauses)","Closure, Delegation, Non-Maintainable"
+RBIO-US-025,Reviewer,"As a Reviewer, I want to see only the status codes relevant to my role (All, Assigned to Me, Closed, Sent Back to Reviewer, Sent to Ombudsman, Sent Back to DO, etc.) and use the same Advanced Search and color filters as other roles, so that my dashboard is not cluttered with irrelevant complaints.","6.5.3.3 (status codes visible to Reviewer), 6.5.1 / 6.5.2 Filters",Medium,2,"• Role-based view filtering enforced at query level
+• No access to Ombudsman-only statuses (Advisory Complied, Award Passed, Reopen) unless explicitly forwarded","Role View, Filtering"
+RBIO-US-026,Reviewer,"As a Reviewer, I want the system to prevent me from closing a complaint under appealable clauses (16(2)(c) to 16(2)(f), 15(1)(a)(b)) — those are reserved for Ombudsman / Deputy Ombudsman only — with a clear error message, so that appeal rights are protected per RB-IOS 2026.","6.5.4.9 (Appealable Clauses), Closure Clause Assignment & Visibility",High,2,"• Hard validation on save; appealable clauses hidden or disabled for Reviewer
+• Clear message: 'This clause requires Ombudsman/Deputy Ombudsman authority'
+• Audit log if attempt is made","RBAC, Appealable Clauses, RB-IOS 2026"
+RBIO-US-027,Deputy Ombudsman,"As a Deputy Ombudsman, I want to mark complaints as Maintainable/Non-Maintainable under Deputy Ombudsman Decision, choose Facilitation or Rejection, and have the complaint sent to DO for closure processing (with proposed clauses auto-populated but editable by me), so that I can make the key maintainability decision and initiate facilitation where appropriate.","6.5.3.5 Deputy Ombudsman - Assessment & Final Decision, 6.5.4.5 Milestones",High,5,"• Facilitation/Rejection decision captured with mandatory comments
+• On Facilitation: sent to DO with closure clause mandatory
+• On Rejection: can close under non-maintainable clauses
+• If email unavailable for closure: must use Facilitation/Rejection path (cannot force close)","DRBIO Decision, Facilitation, Maintainability"
+RBIO-US-028,Deputy Ombudsman,"As a Deputy Ombudsman, I want to forward complaints to other RBIO office, CEPC office, Other RBI Department, or Other Regulatory Body (with mandatory Reason for Transfer and language note for vernacular), so that complex or jurisdictionally incorrect complaints are routed correctly with CRPC Head oversight.","6.5.3.5 Forward Milestones, 6.5.4.11",High,3,"• CRPC Head approval gate enforced
+• On approve: target office DO gets 'Sent to DO' or 'New Complaint'
+• Rejected transfers return with mandatory comments
+• Vernacular complaints carry language flag","Forward, Routing, CRPC Head"
+RBIO-US-029,Deputy Ombudsman,"As a Deputy Ombudsman, I want to send complaints back to Reviewer or DO with mandatory comments when more work/input is needed, with automatic reassignment to the last active person (or manual select if on leave), so that cases are not stuck and quality issues are addressed at the right level.","6.5.3.5 (Sent Back to Reviewer / DO), 6.5.3.3 (similar for Reviewer)",High,3,"• Mandatory comment field
+• Auto to last active user; error popup + manual picker if unavailable
+• Full audit trail retained
+• Color coding (Yellow) applied for sent-back complaints","Send Back, Quality, Workflow"
+RBIO-US-030,Deputy Ombudsman,"As a Deputy Ombudsman, I want to close non-maintainable complaints under my authorized clauses and trigger the same closure letter flow (auto email/SMS or manual with date), ensuring digital signature is applied, so that I can finalize straightforward non-maintainable cases efficiently.","6.5.3.5 Final Decision, 6.5.4.2, 6.5.4.9 (role visibility)",High,3,"• Only clauses assigned to DRBIO role visible
+• Digital signature enforced before Closed status
+• Same pop-up confirmation and email/SMS or manual upload logic as DO
+• Scheme-aware clause list (2021 vs 2026)","Closure, DRBIO, Digital Signature"
+RBIO-US-031,Deputy Ombudsman,"As a Deputy Ombudsman, I want an executive view of complaints in 'Deputy Ombudsman Decision', 'Sent Back to DRBIO', 'Award Passed', and 'Sent to Other Office' statuses, plus SLA and pending RE response KPIs for my office, so that I have situational awareness without digging through lists.","6.5.3.5 (status codes visible), 6.5.4.10 Reports access",Medium,2,"• Role-specific dashboard widgets
+• Quick links to priority queues
+• Ageing and breach rate visible","Dashboard, DRBIO, KPIs"
+RBIO-US-032,Ombudsman,"As an Ombudsman, I want to make the final Maintainability decision (Ombudsman Decision), issue a formal Advisory (Advisory Complied status, with compliance tracking), pass an Award (with compensation capture on NO record), or close under Complaint Settled/Withdrawn/Rejected / Complaint Closed, with full authority over all closure clauses, so that I exercise the highest decision-making power per RB-IOS 2026.","6.5.3.6 Ombudsman - Final Decision, 6.5.4.9 (full visibility), FR-RBIO-024 (Advisory), FR-RBIO-026 (Award)",High,8,"• All closure clauses visible and usable
+• Advisory: auto-assign to DO for NO communication; compliance date tracked
+• Award: compensation fields mandatory, capped, captured on NO record too
+• Settled/Withdrawn/Rejected: clause mandatory, sent to DO for closure processing
+• Reopen path available only from this role","Ombudsman Decision, Advisory, Award, RB-IOS 2026"
+RBIO-US-033,Ombudsman,"As an Ombudsman, I want to reopen a previously closed complaint (maintainable or non-maintainable) with mandatory reason (Appellate Authority / Court Order / Correction Required), retain full previous history and workflow trail, and have it auto-assigned to the original initiating DO for reprocessing under the original scheme's clauses, so that justified reconsiderations are handled without losing audit integrity.","6.5.3.6 (Complaint re-opened), 6.5.4.9 Scheme Transition Control, BR-02",High,5,"• Only Ombudsman can reopen
+• Mandatory reason + free text
+• Notification to complainant and all previous actors
+• Reopened complaint carries original scheme flag; closure clauses filtered accordingly
+• Full previous history visible and immutable","Reopen, Ombudsman Only, History Retention, Scheme"
+RBIO-US-034,Ombudsman,"As an Ombudsman, I want to implead a third-party Regulated Entity as a party to the complaint per Clause 8(6) of RB-IOS 2026, with proper notification to all parties, so that all necessary entities are brought into the proceeding when facts warrant it.","FR-RBIO-025, RB-IOS 2026 Clause 8(6) (implead)",High,3,"• Implead action available in Assessment/Final Decision for Ombudsman
+• New NO record auto-created for impleaded entity
+• All parties (complainant, original RE, impleaded) notified
+• Audit log of implead action with justification","Implead, Third Party, RB-IOS 2026"
+RBIO-US-035,Ombudsman,"As an Ombudsman, I want to forward complaints to Other Regulatory Bodies or Other RBI Departments with validated email from master list, triggering complainant awareness email automatically, so that matters outside RBI purview are correctly escalated with proper notice.","6.5.3.6 Forward, BR-06, 6.5.4.12 Communication",Medium,2,"• Regulatory body picker from RBI master with validated email
+• Auto awareness email to complainant on submit
+• History maintained; status 'Sent to Other Regulatory Bodies'","Forward, Regulatory Bodies, Notification"
+RBIO-US-036,Ombudsman,"As an Ombudsman, I want to update Legal Case Details on any complaint (open or closed) and view all closure clause details/files for closed complaints, so that litigation tracking and post-closure reference are always available without affecting workflow status.","6.5.3.6 (Legal case update), 6.5.3.1 (similar for Admin)",Medium,2,"• Editable Legal Case tab on any complaint
+• Closed complaints: closure files viewable but workflow locked
+• Updates logged in complaint history","Legal, Closed Complaints"
+RBIO-US-037,Ombudsman,"As an Ombudsman, I want to see a comprehensive status list including Award Passed, Advisory Complied, Complaint Re-Open, Ombudsman Decision, Sent to Other Regulated Bodies, and Reopened complaints, plus executive KPIs (resolution time, SLA compliance, compensation/awards issued), so that I have full oversight of my office and the 24 RBIO locations.","6.5.3.6 (status codes visible to Ombudsman), 6.5.4.10 Reports",High,3,"• All RBIO statuses visible (no filtering out)
+• Can view complaints across offices if authorized (super admin view)
+• Quick access to reopened and award/advisory queues","Ombudsman Dashboard, Oversight, KPIs"
+RBIO-US-038,Ombudsman,"As an Ombudsman, I want the system to enforce that only I (or Deputy Ombudsman for delegated clauses) can close complaints under appealable clauses, and that reopened complaints from RB-IOS 2021 retain 2021 clauses while 2026 complaints use 2026 clauses, so that appeal rights and scheme transition rules are strictly followed.","6.5.4.9 (Appealable Clauses + Scheme Transition Control), BR-02",High,3,"• Appealable clauses disabled/hidden for all other roles
+• On reopen: scheme detected from original creation date/flag
+• Closure clause dropdown filtered by scheme
+• Hard validation prevents wrong-scheme closure","RBAC, Appealable, Scheme Transition, Compliance"
+RBIO-US-039,Other Department,"As an Other Department user, I want view-only access to complaints forwarded to my department, with ability to view full history, attachments, and reports for those complaints only, so that I can provide input/comments without being able to alter workflow or closure details.","6.5.3.7 Other Department, 6.5.4.4 (view rights)",Medium,2,"• Strict view-only; no edit, no status change, no closure
+• Super Admin can grant additional report access if needed
+• Clear indicator that complaint is 'Assigned to Other Department'","View Only, Other Dept, RBAC"
+RBIO-US-040,System / Platform Admin,"As the system, I want to enforce compensation limits (consequential loss ≤ ₹30 Lakh, harassment/mental anguish ≤ ₹3 Lakh) with clear validation error messages on Award and closure screens, and prevent any override, so that RB-IOS 2026 Para 8(3) is never violated.","Gap #06, FR-RBIO-027, RB-IOS 2026 Para 8(3), 6.5.4.9",Critical,5,"• Real-time validation on field change and on save
+• Error message shows exact cap and current value
+• Applies to initial award and any revised award after reopen
+• Audit log of any attempt to exceed cap (even if blocked)","Compliance, Compensation Cap, Validation, RB-IOS 2026"
+RBIO-US-041,System / Platform Admin,"As the system, I want page load times for complaint list and detail pages to stay under 3 seconds at 95th percentile under 500 concurrent RBIO users, with horizontal auto-scaling, so that users experience responsive performance even during peak complaint intake periods.","NFR-007, PSR-02, PSR-05, PSR-06",High,8,"• Performance benchmark validated in load testing before go-live
+• Monitoring dashboard for response time, throughput, error rate
+• Auto-scaling triggered at defined thresholds
+• No transaction failure rate >1% under 3x peak load","Performance, Scalability, NFR"
+RBIO-US-042,System / Security Admin,"As the system, I want all data at rest AES-256 encrypted, in transit TLS 1.3+, immutable audit logs for every action (assignment, status change, closure, reopen, user management), session timeout after 15 min, and VAPT passed with critical findings remediated before go-live, so that citizen PII and complaint integrity meet RBI cybersecurity framework and DPDP Act 2023.","SR-01 to SR-11, NFR-002, NFR-009, NFR-013, DPDP compliance",Critical,13,"• Encryption verified in infrastructure review
+• Audit logs tamper-evident; any modification attempt flagged + alerted
+• 15-min timeout enforced globally; re-auth for closed/high-priority actions
+• VAPT sign-off required before production deployment
+• PII minimization in role-based views (Other Dept cannot see internal processing notes)","Security, Encryption, Audit, DPDP, VAPT"
+
+--- Sheet: Test Cases ---
+TC ID,Parent US ID,Test Title,Pre-conditions,Test Steps,Test Data,Expected Result,Test Type
+RBIO-TC-00101,RBIO-US-001,"Happy Path - As an RBIO user, I want to login via Kavach SSO (Ekamev auth...","User logged in with correct role via Kavach. Test complaint exists in appropriate status. All master data (entities, users, thresholds) loaded.","1. Navigate to relevant view (Assigned to Me / All Complaints).
+2. Open complaint detail.
+3. Perform the primary action described in the story (e.g., select status, fill mandatory fields, choose assignment mode).
+4. Save & Proceed / Submit.
+5. Verify next status, notifications, history entry, and any auto-actions (letter, assignment, color change).",Valid complaint in correct starting status for the role/action. Active users available for assignment. Email/SMS configured for test complainant/RE.,Action succeeds. Correct next status applied. Full audit history created with user ID + timestamp. Notifications triggered to relevant parties. Color coding / SLA timer updated if applicable. No validation errors.,Positive
+RBIO-TC-00102,RBIO-US-001,Negative - Unauthorized Role attempts action,"User logged in with a role that should NOT have permission (e.g., Reviewer trying Ombudsman-only action, DO trying to close appealable clause).","1. Login as unauthorized role.
+2. Navigate to complaint that would allow the action for higher role.
+3. Attempt to perform the restricted action (button hidden/disabled or validation on submit).
+4. Observe error / UI behavior.",Complaint in status where higher-role action is possible. Test user has lower role but same office/territory.,Action is blocked (button not visible or clear 'Insufficient permission' / 'This action requires Ombudsman authority' message). No status change occurs. Attempt logged in audit trail. No data leakage.,Negative
+RBIO-TC-00103,RBIO-US-001,Edge - Missing Mandatory Fields / Invalid Transition / Boundary Value,"Complaint in valid starting state. One or more mandatory fields left blank or invalid value entered (e.g., compensation > cap, empty reason for transfer, future meeting date in past).","1. Open complaint.
+2. Fill all fields except one mandatory or enter boundary-invalid value.
+3. Attempt Save & Proceed.
+4. Observe inline validation and final error handling.
+5. Correct the field and re-submit to confirm recovery.",For compensation stories: value = 3000001 or 300001 for harassment. For dates: past date for meeting. For text: 513+ chars in custom closure text.,"Clear red highlighting on missing/invalid fields. Specific error message (e.g., 'Compensation cannot exceed ₹30 Lakh consequential loss', 'Reason for Transfer is mandatory'). Action blocked until fixed. After correction, action succeeds.",Edge
+RBIO-TC-00104,RBIO-US-001,Edge - Large Data / Concurrent Users / Performance Boundary,System under load (400+ concurrent RBIO users). Complaint has 50+ attachments or very long history (reopened multiple times).,"1. Simulate load or use large test complaint.
+2. Perform the action (search, edit, status change, report export).
+3. Measure response time and verify no timeout or data corruption.","Complaint with 60 attachments (5MB each, mixed formats). 3-year history with 20 reopens. 500 concurrent test users.",Page loads / action completes in <3s (95th %ile). No data loss or UI freeze. Report exports successfully within acceptable time. Error rate remains <1%.,Performance
+RBIO-TC-00201,RBIO-US-002,"Happy Path - As any RBIO role, I want a color-coded complaint list on the...","User logged in with correct role via Kavach. Test complaint exists in appropriate status. All master data (entities, users, thresholds) loaded.","1. Navigate to relevant view (Assigned to Me / All Complaints).
+2. Open complaint detail.
+3. Perform the primary action described in the story (e.g., select status, fill mandatory fields, choose assignment mode).
+4. Save & Proceed / Submit.
+5. Verify next status, notifications, history entry, and any auto-actions (letter, assignment, color change).",Valid complaint in correct starting status for the role/action. Active users available for assignment. Email/SMS configured for test complainant/RE.,Action succeeds. Correct next status applied. Full audit history created with user ID + timestamp. Notifications triggered to relevant parties. Color coding / SLA timer updated if applicable. No validation errors.,Positive
+RBIO-TC-00202,RBIO-US-002,Negative - Unauthorized Role attempts action,"User logged in with a role that should NOT have permission (e.g., Reviewer trying Ombudsman-only action, DO trying to close appealable clause).","1. Login as unauthorized role.
+2. Navigate to complaint that would allow the action for higher role.
+3. Attempt to perform the restricted action (button hidden/disabled or validation on submit).
+4. Observe error / UI behavior.",Complaint in status where higher-role action is possible. Test user has lower role but same office/territory.,Action is blocked (button not visible or clear 'Insufficient permission' / 'This action requires Ombudsman authority' message). No status change occurs. Attempt logged in audit trail. No data leakage.,Negative
+RBIO-TC-00203,RBIO-US-002,Edge - Missing Mandatory Fields / Invalid Transition / Boundary Value,"Complaint in valid starting state. One or more mandatory fields left blank or invalid value entered (e.g., compensation > cap, empty reason for transfer, future meeting date in past).","1. Open complaint.
+2. Fill all fields except one mandatory or enter boundary-invalid value.
+3. Attempt Save & Proceed.
+4. Observe inline validation and final error handling.
+5. Correct the field and re-submit to confirm recovery.",For compensation stories: value = 3000001 or 300001 for harassment. For dates: past date for meeting. For text: 513+ chars in custom closure text.,"Clear red highlighting on missing/invalid fields. Specific error message (e.g., 'Compensation cannot exceed ₹30 Lakh consequential loss', 'Reason for Transfer is mandatory'). Action blocked until fixed. After correction, action succeeds.",Edge
+RBIO-TC-00204,RBIO-US-002,Edge - Large Data / Concurrent Users / Performance Boundary,System under load (400+ concurrent RBIO users). Complaint has 50+ attachments or very long history (reopened multiple times).,"1. Simulate load or use large test complaint.
+2. Perform the action (search, edit, status change, report export).
+3. Measure response time and verify no timeout or data corruption.","Complaint with 60 attachments (5MB each, mixed formats). 3-year history with 20 reopens. 500 concurrent test users.",Page loads / action completes in <3s (95th %ile). No data loss or UI freeze. Report exports successfully within acceptable time. Error rate remains <1%.,Performance
+RBIO-TC-00301,RBIO-US-003,"Happy Path - As an authorized RBIO user, I want to use Advanced Search wi...","User logged in with correct role via Kavach. Test complaint exists in appropriate status. All master data (entities, users, thresholds) loaded.","1. Navigate to relevant view (Assigned to Me / All Complaints).
+2. Open complaint detail.
+3. Perform the primary action described in the story (e.g., select status, fill mandatory fields, choose assignment mode).
+4. Save & Proceed / Submit.
+5. Verify next status, notifications, history entry, and any auto-actions (letter, assignment, color change).",Valid complaint in correct starting status for the role/action. Active users available for assignment. Email/SMS configured for test complainant/RE.,Action succeeds. Correct next status applied. Full audit history created with user ID + timestamp. Notifications triggered to relevant parties. Color coding / SLA timer updated if applicable. No validation errors.,Positive
+RBIO-TC-00302,RBIO-US-003,Negative - Unauthorized Role attempts action,"User logged in with a role that should NOT have permission (e.g., Reviewer trying Ombudsman-only action, DO trying to close appealable clause).","1. Login as unauthorized role.
+2. Navigate to complaint that would allow the action for higher role.
+3. Attempt to perform the restricted action (button hidden/disabled or validation on submit).
+4. Observe error / UI behavior.",Complaint in status where higher-role action is possible. Test user has lower role but same office/territory.,Action is blocked (button not visible or clear 'Insufficient permission' / 'This action requires Ombudsman authority' message). No status change occurs. Attempt logged in audit trail. No data leakage.,Negative
+RBIO-TC-00303,RBIO-US-003,Edge - Missing Mandatory Fields / Invalid Transition / Boundary Value,"Complaint in valid starting state. One or more mandatory fields left blank or invalid value entered (e.g., compensation > cap, empty reason for transfer, future meeting date in past).","1. Open complaint.
+2. Fill all fields except one mandatory or enter boundary-invalid value.
+3. Attempt Save & Proceed.
+4. Observe inline validation and final error handling.
+5. Correct the field and re-submit to confirm recovery.",For compensation stories: value = 3000001 or 300001 for harassment. For dates: past date for meeting. For text: 513+ chars in custom closure text.,"Clear red highlighting on missing/invalid fields. Specific error message (e.g., 'Compensation cannot exceed ₹30 Lakh consequential loss', 'Reason for Transfer is mandatory'). Action blocked until fixed. After correction, action succeeds.",Edge
+RBIO-TC-00304,RBIO-US-003,Edge - No Complainant Email / 7-day Link Expiry / Digital Signature Failure,Complainant record has no email (only mobile/postal). Or document upload link sent 8 days ago. Or digital signature certificate expired/invalid.,"1. Attempt closure on complaint with no email.
+2. Verify pop-up forces 'Generate Letter' + manual upload + mandatory 'Date of Sending' entry.
+3. For link expiry: try to use expired link (should show 'Link expired' and flag = No).
+4. For signature: simulate invalid cert on closure submit.",Complaint with empty email field. Expired 7-day link. Invalid/expired digital signature cert for closing authority.,Cannot close without date of sending when email missing. Link expiry shows clear message; flag updated to 'No'. Signature failure blocks closure with actionable error. All attempts audited.,Edge
+RBIO-TC-00401,RBIO-US-004,"Happy Path - As any RBIO user, I want real-time in-app bell notifications...","User logged in with correct role via Kavach. Test complaint exists in appropriate status. All master data (entities, users, thresholds) loaded.","1. Navigate to relevant view (Assigned to Me / All Complaints).
+2. Open complaint detail.
+3. Perform the primary action described in the story (e.g., select status, fill mandatory fields, choose assignment mode).
+4. Save & Proceed / Submit.
+5. Verify next status, notifications, history entry, and any auto-actions (letter, assignment, color change).",Valid complaint in correct starting status for the role/action. Active users available for assignment. Email/SMS configured for test complainant/RE.,Action succeeds. Correct next status applied. Full audit history created with user ID + timestamp. Notifications triggered to relevant parties. Color coding / SLA timer updated if applicable. No validation errors.,Positive
+RBIO-TC-00402,RBIO-US-004,Negative - Unauthorized Role attempts action,"User logged in with a role that should NOT have permission (e.g., Reviewer trying Ombudsman-only action, DO trying to close appealable clause).","1. Login as unauthorized role.
+2. Navigate to complaint that would allow the action for higher role.
+3. Attempt to perform the restricted action (button hidden/disabled or validation on submit).
+4. Observe error / UI behavior.",Complaint in status where higher-role action is possible. Test user has lower role but same office/territory.,Action is blocked (button not visible or clear 'Insufficient permission' / 'This action requires Ombudsman authority' message). No status change occurs. Attempt logged in audit trail. No data leakage.,Negative
+RBIO-TC-00403,RBIO-US-004,Edge - Missing Mandatory Fields / Invalid Transition / Boundary Value,"Complaint in valid starting state. One or more mandatory fields left blank or invalid value entered (e.g., compensation > cap, empty reason for transfer, future meeting date in past).","1. Open complaint.
+2. Fill all fields except one mandatory or enter boundary-invalid value.
+3. Attempt Save & Proceed.
+4. Observe inline validation and final error handling.
+5. Correct the field and re-submit to confirm recovery.",For compensation stories: value = 3000001 or 300001 for harassment. For dates: past date for meeting. For text: 513+ chars in custom closure text.,"Clear red highlighting on missing/invalid fields. Specific error message (e.g., 'Compensation cannot exceed ₹30 Lakh consequential loss', 'Reason for Transfer is mandatory'). Action blocked until fixed. After correction, action succeeds.",Edge
+RBIO-TC-00404,RBIO-US-004,Edge - No Complainant Email / 7-day Link Expiry / Digital Signature Failure,Complainant record has no email (only mobile/postal). Or document upload link sent 8 days ago. Or digital signature certificate expired/invalid.,"1. Attempt closure on complaint with no email.
+2. Verify pop-up forces 'Generate Letter' + manual upload + mandatory 'Date of Sending' entry.
+3. For link expiry: try to use expired link (should show 'Link expired' and flag = No).
+4. For signature: simulate invalid cert on closure submit.",Complaint with empty email field. Expired 7-day link. Invalid/expired digital signature cert for closing authority.,Cannot close without date of sending when email missing. Link expiry shows clear message; flag updated to 'No'. Signature failure blocks closure with actionable error. All attempts audited.,Edge
+RBIO-TC-00501,RBIO-US-005,"Happy Path - As an Ombudsman Admin, I want to create new RBIO users (Deal...","User logged in with correct role via Kavach. Test complaint exists in appropriate status. All master data (entities, users, thresholds) loaded.","1. Navigate to relevant view (Assigned to Me / All Complaints).
+2. Open complaint detail.
+3. Perform the primary action described in the story (e.g., select status, fill mandatory fields, choose assignment mode).
+4. Save & Proceed / Submit.
+5. Verify next status, notifications, history entry, and any auto-actions (letter, assignment, color change).",Valid complaint in correct starting status for the role/action. Active users available for assignment. Email/SMS configured for test complainant/RE.,Action succeeds. Correct next status applied. Full audit history created with user ID + timestamp. Notifications triggered to relevant parties. Color coding / SLA timer updated if applicable. No validation errors.,Positive
+RBIO-TC-00502,RBIO-US-005,Negative - Unauthorized Role attempts action,"User logged in with a role that should NOT have permission (e.g., Reviewer trying Ombudsman-only action, DO trying to close appealable clause).","1. Login as unauthorized role.
+2. Navigate to complaint that would allow the action for higher role.
+3. Attempt to perform the restricted action (button hidden/disabled or validation on submit).
+4. Observe error / UI behavior.",Complaint in status where higher-role action is possible. Test user has lower role but same office/territory.,Action is blocked (button not visible or clear 'Insufficient permission' / 'This action requires Ombudsman authority' message). No status change occurs. Attempt logged in audit trail. No data leakage.,Negative
+RBIO-TC-00503,RBIO-US-005,Edge - Missing Mandatory Fields / Invalid Transition / Boundary Value,"Complaint in valid starting state. One or more mandatory fields left blank or invalid value entered (e.g., compensation > cap, empty reason for transfer, future meeting date in past).","1. Open complaint.
+2. Fill all fields except one mandatory or enter boundary-invalid value.
+3. Attempt Save & Proceed.
+4. Observe inline validation and final error handling.
+5. Correct the field and re-submit to confirm recovery.",For compensation stories: value = 3000001 or 300001 for harassment. For dates: past date for meeting. For text: 513+ chars in custom closure text.,"Clear red highlighting on missing/invalid fields. Specific error message (e.g., 'Compensation cannot exceed ₹30 Lakh consequential loss', 'Reason for Transfer is mandatory'). Action blocked until fixed. After correction, action succeeds.",Edge
+RBIO-TC-00504,RBIO-US-005,Edge - Large Data / Concurrent Users / Performance Boundary,System under load (400+ concurrent RBIO users). Complaint has 50+ attachments or very long history (reopened multiple times).,"1. Simulate load or use large test complaint.
+2. Perform the action (search, edit, status change, report export).
+3. Measure response time and verify no timeout or data corruption.","Complaint with 60 attachments (5MB each, mixed formats). 3-year history with 20 reopens. 500 concurrent test users.",Page loads / action completes in <3s (95th %ile). No data loss or UI freeze. Report exports successfully within acceptable time. Error rate remains <1%.,Performance
+RBIO-TC-00601,RBIO-US-006,"Happy Path - As an Ombudsman Admin, I want to select multiple users and b...","User logged in with correct role via Kavach. Test complaint exists in appropriate status. All master data (entities, users, thresholds) loaded.","1. Navigate to relevant view (Assigned to Me / All Complaints).
+2. Open complaint detail.
+3. Perform the primary action described in the story (e.g., select status, fill mandatory fields, choose assignment mode).
+4. Save & Proceed / Submit.
+5. Verify next status, notifications, history entry, and any auto-actions (letter, assignment, color change).",Valid complaint in correct starting status for the role/action. Active users available for assignment. Email/SMS configured for test complainant/RE.,Action succeeds. Correct next status applied. Full audit history created with user ID + timestamp. Notifications triggered to relevant parties. Color coding / SLA timer updated if applicable. No validation errors.,Positive
+RBIO-TC-00602,RBIO-US-006,Negative - Unauthorized Role attempts action,"User logged in with a role that should NOT have permission (e.g., Reviewer trying Ombudsman-only action, DO trying to close appealable clause).","1. Login as unauthorized role.
+2. Navigate to complaint that would allow the action for higher role.
+3. Attempt to perform the restricted action (button hidden/disabled or validation on submit).
+4. Observe error / UI behavior.",Complaint in status where higher-role action is possible. Test user has lower role but same office/territory.,Action is blocked (button not visible or clear 'Insufficient permission' / 'This action requires Ombudsman authority' message). No status change occurs. Attempt logged in audit trail. No data leakage.,Negative
+RBIO-TC-00603,RBIO-US-006,Edge - Missing Mandatory Fields / Invalid Transition / Boundary Value,"Complaint in valid starting state. One or more mandatory fields left blank or invalid value entered (e.g., compensation > cap, empty reason for transfer, future meeting date in past).","1. Open complaint.
+2. Fill all fields except one mandatory or enter boundary-invalid value.
+3. Attempt Save & Proceed.
+4. Observe inline validation and final error handling.
+5. Correct the field and re-submit to confirm recovery.",For compensation stories: value = 3000001 or 300001 for harassment. For dates: past date for meeting. For text: 513+ chars in custom closure text.,"Clear red highlighting on missing/invalid fields. Specific error message (e.g., 'Compensation cannot exceed ₹30 Lakh consequential loss', 'Reason for Transfer is mandatory'). Action blocked until fixed. After correction, action succeeds.",Edge
+RBIO-TC-00604,RBIO-US-006,Edge - User On Leave / Threshold Met / Concurrent Assignment,Target user marked 'On Leave' by Admin. Or office threshold already met. Multiple complaints arriving simultaneously (simulate with parallel threads or rapid successive saves).,"1. Mark target DO as On Leave (or set threshold to current count).
+2. Create/submit new complaint that would normally assign to that user.
+3. Verify fallback to Regional Admin or next office in overflow sequence.
+4. (Concurrent) Submit 5 complaints in quick succession from portal/CRPC.
+5. Check assignment distribution and no duplicates/locks.","Office with 3 active DOs, one on leave. Threshold = 50, current = 50. 5 concurrent new complaints from different complainants.",On-leave user skipped. Complaint assigned to Regional Admin or next available per logic. No assignment conflicts or lost complaints. Audit shows correct reason for fallback. Concurrent submissions all succeed with unique owners.,Edge
+RBIO-TC-00701,RBIO-US-007,"Happy Path - As an Ombudsman Admin, I want to reassign one or many compla...","User logged in with correct role via Kavach. Test complaint exists in appropriate status. All master data (entities, users, thresholds) loaded.","1. Navigate to relevant view (Assigned to Me / All Complaints).
+2. Open complaint detail.
+3. Perform the primary action described in the story (e.g., select status, fill mandatory fields, choose assignment mode).
+4. Save & Proceed / Submit.
+5. Verify next status, notifications, history entry, and any auto-actions (letter, assignment, color change).",Valid complaint in correct starting status for the role/action. Active users available for assignment. Email/SMS configured for test complainant/RE.,Action succeeds. Correct next status applied. Full audit history created with user ID + timestamp. Notifications triggered to relevant parties. Color coding / SLA timer updated if applicable. No validation errors.,Positive
+RBIO-TC-00702,RBIO-US-007,Negative - Unauthorized Role attempts action,"User logged in with a role that should NOT have permission (e.g., Reviewer trying Ombudsman-only action, DO trying to close appealable clause).","1. Login as unauthorized role.
+2. Navigate to complaint that would allow the action for higher role.
+3. Attempt to perform the restricted action (button hidden/disabled or validation on submit).
+4. Observe error / UI behavior.",Complaint in status where higher-role action is possible. Test user has lower role but same office/territory.,Action is blocked (button not visible or clear 'Insufficient permission' / 'This action requires Ombudsman authority' message). No status change occurs. Attempt logged in audit trail. No data leakage.,Negative
+RBIO-TC-00703,RBIO-US-007,Edge - Missing Mandatory Fields / Invalid Transition / Boundary Value,"Complaint in valid starting state. One or more mandatory fields left blank or invalid value entered (e.g., compensation > cap, empty reason for transfer, future meeting date in past).","1. Open complaint.
+2. Fill all fields except one mandatory or enter boundary-invalid value.
+3. Attempt Save & Proceed.
+4. Observe inline validation and final error handling.
+5. Correct the field and re-submit to confirm recovery.",For compensation stories: value = 3000001 or 300001 for harassment. For dates: past date for meeting. For text: 513+ chars in custom closure text.,"Clear red highlighting on missing/invalid fields. Specific error message (e.g., 'Compensation cannot exceed ₹30 Lakh consequential loss', 'Reason for Transfer is mandatory'). Action blocked until fixed. After correction, action succeeds.",Edge
+RBIO-TC-00704,RBIO-US-007,Edge - Large Data / Concurrent Users / Performance Boundary,System under load (400+ concurrent RBIO users). Complaint has 50+ attachments or very long history (reopened multiple times).,"1. Simulate load or use large test complaint.
+2. Perform the action (search, edit, status change, report export).
+3. Measure response time and verify no timeout or data corruption.","Complaint with 60 attachments (5MB each, mixed formats). 3-year history with 20 reopens. 500 concurrent test users.",Page loads / action completes in <3s (95th %ile). No data loss or UI freeze. Report exports successfully within acceptable time. Error rate remains <1%.,Performance
+RBIO-TC-00801,RBIO-US-008,"Happy Path - As an Ombudsman Admin, I want full visibility and export acc...","User logged in with correct role via Kavach. Test complaint exists in appropriate status. All master data (entities, users, thresholds) loaded.","1. Navigate to relevant view (Assigned to Me / All Complaints).
+2. Open complaint detail.
+3. Perform the primary action described in the story (e.g., select status, fill mandatory fields, choose assignment mode).
+4. Save & Proceed / Submit.
+5. Verify next status, notifications, history entry, and any auto-actions (letter, assignment, color change).",Valid complaint in correct starting status for the role/action. Active users available for assignment. Email/SMS configured for test complainant/RE.,Action succeeds. Correct next status applied. Full audit history created with user ID + timestamp. Notifications triggered to relevant parties. Color coding / SLA timer updated if applicable. No validation errors.,Positive
+RBIO-TC-00802,RBIO-US-008,Negative - Unauthorized Role attempts action,"User logged in with a role that should NOT have permission (e.g., Reviewer trying Ombudsman-only action, DO trying to close appealable clause).","1. Login as unauthorized role.
+2. Navigate to complaint that would allow the action for higher role.
+3. Attempt to perform the restricted action (button hidden/disabled or validation on submit).
+4. Observe error / UI behavior.",Complaint in status where higher-role action is possible. Test user has lower role but same office/territory.,Action is blocked (button not visible or clear 'Insufficient permission' / 'This action requires Ombudsman authority' message). No status change occurs. Attempt logged in audit trail. No data leakage.,Negative
+RBIO-TC-00803,RBIO-US-008,Edge - Missing Mandatory Fields / Invalid Transition / Boundary Value,"Complaint in valid starting state. One or more mandatory fields left blank or invalid value entered (e.g., compensation > cap, empty reason for transfer, future meeting date in past).","1. Open complaint.
+2. Fill all fields except one mandatory or enter boundary-invalid value.
+3. Attempt Save & Proceed.
+4. Observe inline validation and final error handling.
+5. Correct the field and re-submit to confirm recovery.",For compensation stories: value = 3000001 or 300001 for harassment. For dates: past date for meeting. For text: 513+ chars in custom closure text.,"Clear red highlighting on missing/invalid fields. Specific error message (e.g., 'Compensation cannot exceed ₹30 Lakh consequential loss', 'Reason for Transfer is mandatory'). Action blocked until fixed. After correction, action succeeds.",Edge
+RBIO-TC-00804,RBIO-US-008,Edge - Large Data / Concurrent Users / Performance Boundary,System under load (400+ concurrent RBIO users). Complaint has 50+ attachments or very long history (reopened multiple times).,"1. Simulate load or use large test complaint.
+2. Perform the action (search, edit, status change, report export).
+3. Measure response time and verify no timeout or data corruption.","Complaint with 60 attachments (5MB each, mixed formats). 3-year history with 20 reopens. 500 concurrent test users.",Page loads / action completes in <3s (95th %ile). No data loss or UI freeze. Report exports successfully within acceptable time. Error rate remains <1%.,Performance
+RBIO-TC-00901,RBIO-US-009,"Happy Path - As an Ombudsman Admin, I want to upload and manage closure l...","User logged in with correct role via Kavach. Test complaint exists in appropriate status. All master data (entities, users, thresholds) loaded.","1. Navigate to relevant view (Assigned to Me / All Complaints).
+2. Open complaint detail.
+3. Perform the primary action described in the story (e.g., select status, fill mandatory fields, choose assignment mode).
+4. Save & Proceed / Submit.
+5. Verify next status, notifications, history entry, and any auto-actions (letter, assignment, color change).",Valid complaint in correct starting status for the role/action. Active users available for assignment. Email/SMS configured for test complainant/RE.,Action succeeds. Correct next status applied. Full audit history created with user ID + timestamp. Notifications triggered to relevant parties. Color coding / SLA timer updated if applicable. No validation errors.,Positive
+RBIO-TC-00902,RBIO-US-009,Negative - Unauthorized Role attempts action,"User logged in with a role that should NOT have permission (e.g., Reviewer trying Ombudsman-only action, DO trying to close appealable clause).","1. Login as unauthorized role.
+2. Navigate to complaint that would allow the action for higher role.
+3. Attempt to perform the restricted action (button hidden/disabled or validation on submit).
+4. Observe error / UI behavior.",Complaint in status where higher-role action is possible. Test user has lower role but same office/territory.,Action is blocked (button not visible or clear 'Insufficient permission' / 'This action requires Ombudsman authority' message). No status change occurs. Attempt logged in audit trail. No data leakage.,Negative
+RBIO-TC-00903,RBIO-US-009,Edge - Missing Mandatory Fields / Invalid Transition / Boundary Value,"Complaint in valid starting state. One or more mandatory fields left blank or invalid value entered (e.g., compensation > cap, empty reason for transfer, future meeting date in past).","1. Open complaint.
+2. Fill all fields except one mandatory or enter boundary-invalid value.
+3. Attempt Save & Proceed.
+4. Observe inline validation and final error handling.
+5. Correct the field and re-submit to confirm recovery.",For compensation stories: value = 3000001 or 300001 for harassment. For dates: past date for meeting. For text: 513+ chars in custom closure text.,"Clear red highlighting on missing/invalid fields. Specific error message (e.g., 'Compensation cannot exceed ₹30 Lakh consequential loss', 'Reason for Transfer is mandatory'). Action blocked until fixed. After correction, action succeeds.",Edge
+RBIO-TC-00904,RBIO-US-009,Edge - Large Data / Concurrent Users / Performance Boundary,System under load (400+ concurrent RBIO users). Complaint has 50+ attachments or very long history (reopened multiple times).,"1. Simulate load or use large test complaint.
+2. Perform the action (search, edit, status change, report export).
+3. Measure response time and verify no timeout or data corruption.","Complaint with 60 attachments (5MB each, mixed formats). 3-year history with 20 reopens. 500 concurrent test users.",Page loads / action completes in <3s (95th %ile). No data loss or UI freeze. Report exports successfully within acceptable time. Error rate remains <1%.,Performance
+RBIO-TC-01001,RBIO-US-010,"Happy Path - As an Ombudsman Admin, I want to view Legal Case Details and...","User logged in with correct role via Kavach. Test complaint exists in appropriate status. All master data (entities, users, thresholds) loaded.","1. Navigate to relevant view (Assigned to Me / All Complaints).
+2. Open complaint detail.
+3. Perform the primary action described in the story (e.g., select status, fill mandatory fields, choose assignment mode).
+4. Save & Proceed / Submit.
+5. Verify next status, notifications, history entry, and any auto-actions (letter, assignment, color change).",Valid complaint in correct starting status for the role/action. Active users available for assignment. Email/SMS configured for test complainant/RE.,Action succeeds. Correct next status applied. Full audit history created with user ID + timestamp. Notifications triggered to relevant parties. Color coding / SLA timer updated if applicable. No validation errors.,Positive
+RBIO-TC-01002,RBIO-US-010,Negative - Unauthorized Role attempts action,"User logged in with a role that should NOT have permission (e.g., Reviewer trying Ombudsman-only action, DO trying to close appealable clause).","1. Login as unauthorized role.
+2. Navigate to complaint that would allow the action for higher role.
+3. Attempt to perform the restricted action (button hidden/disabled or validation on submit).
+4. Observe error / UI behavior.",Complaint in status where higher-role action is possible. Test user has lower role but same office/territory.,Action is blocked (button not visible or clear 'Insufficient permission' / 'This action requires Ombudsman authority' message). No status change occurs. Attempt logged in audit trail. No data leakage.,Negative
+RBIO-TC-01003,RBIO-US-010,Edge - Missing Mandatory Fields / Invalid Transition / Boundary Value,"Complaint in valid starting state. One or more mandatory fields left blank or invalid value entered (e.g., compensation > cap, empty reason for transfer, future meeting date in past).","1. Open complaint.
+2. Fill all fields except one mandatory or enter boundary-invalid value.
+3. Attempt Save & Proceed.
+4. Observe inline validation and final error handling.
+5. Correct the field and re-submit to confirm recovery.",For compensation stories: value = 3000001 or 300001 for harassment. For dates: past date for meeting. For text: 513+ chars in custom closure text.,"Clear red highlighting on missing/invalid fields. Specific error message (e.g., 'Compensation cannot exceed ₹30 Lakh consequential loss', 'Reason for Transfer is mandatory'). Action blocked until fixed. After correction, action succeeds.",Edge
+RBIO-TC-01004,RBIO-US-010,Edge - Large Data / Concurrent Users / Performance Boundary,System under load (400+ concurrent RBIO users). Complaint has 50+ attachments or very long history (reopened multiple times).,"1. Simulate load or use large test complaint.
+2. Perform the action (search, edit, status change, report export).
+3. Measure response time and verify no timeout or data corruption.","Complaint with 60 attachments (5MB each, mixed formats). 3-year history with 20 reopens. 500 concurrent test users.",Page loads / action completes in <3s (95th %ile). No data loss or UI freeze. Report exports successfully within acceptable time. Error rate remains <1%.,Performance
+RBIO-TC-01101,RBIO-US-011,"Happy Path - As a Dealing Official, I want to create a Draft Complaint in...","User logged in with correct role via Kavach. Test complaint exists in appropriate status. All master data (entities, users, thresholds) loaded.","1. Navigate to relevant view (Assigned to Me / All Complaints).
+2. Open complaint detail.
+3. Perform the primary action described in the story (e.g., select status, fill mandatory fields, choose assignment mode).
+4. Save & Proceed / Submit.
+5. Verify next status, notifications, history entry, and any auto-actions (letter, assignment, color change).",Valid complaint in correct starting status for the role/action. Active users available for assignment. Email/SMS configured for test complainant/RE.,Action succeeds. Correct next status applied. Full audit history created with user ID + timestamp. Notifications triggered to relevant parties. Color coding / SLA timer updated if applicable. No validation errors.,Positive
+RBIO-TC-01102,RBIO-US-011,Negative - Unauthorized Role attempts action,"User logged in with a role that should NOT have permission (e.g., Reviewer trying Ombudsman-only action, DO trying to close appealable clause).","1. Login as unauthorized role.
+2. Navigate to complaint that would allow the action for higher role.
+3. Attempt to perform the restricted action (button hidden/disabled or validation on submit).
+4. Observe error / UI behavior.",Complaint in status where higher-role action is possible. Test user has lower role but same office/territory.,Action is blocked (button not visible or clear 'Insufficient permission' / 'This action requires Ombudsman authority' message). No status change occurs. Attempt logged in audit trail. No data leakage.,Negative
+RBIO-TC-01103,RBIO-US-011,Edge - Missing Mandatory Fields / Invalid Transition / Boundary Value,"Complaint in valid starting state. One or more mandatory fields left blank or invalid value entered (e.g., compensation > cap, empty reason for transfer, future meeting date in past).","1. Open complaint.
+2. Fill all fields except one mandatory or enter boundary-invalid value.
+3. Attempt Save & Proceed.
+4. Observe inline validation and final error handling.
+5. Correct the field and re-submit to confirm recovery.",For compensation stories: value = 3000001 or 300001 for harassment. For dates: past date for meeting. For text: 513+ chars in custom closure text.,"Clear red highlighting on missing/invalid fields. Specific error message (e.g., 'Compensation cannot exceed ₹30 Lakh consequential loss', 'Reason for Transfer is mandatory'). Action blocked until fixed. After correction, action succeeds.",Edge
+RBIO-TC-01104,RBIO-US-011,Edge - Handwritten Letter / Non-English / Poor Scan Quality,Scanned physical letter is handwritten or contains Hindi/regional language text or is low-resolution/blurry.,"1. Upload poor-quality/handwritten/non-English scan as draft complaint.
+2. Trigger OCR.
+3. Observe handling and fallback to manual entry.
+4. Verify original scan is still attached for reference.",Handwritten letter image. Hindi text typed letter. Blurry 100KB scan.,OCR either rejects with clear message ('Only printed English supported - please enter manually') or extracts what it can with low confidence flag. Original file always attached. DO can edit all fields. No data loss.,Edge
+RBIO-TC-01201,RBIO-US-012,"Happy Path - As a Dealing Official, I want to perform 'Switch Process' on...","User logged in with correct role via Kavach. Test complaint exists in appropriate status. All master data (entities, users, thresholds) loaded.","1. Navigate to relevant view (Assigned to Me / All Complaints).
+2. Open complaint detail.
+3. Perform the primary action described in the story (e.g., select status, fill mandatory fields, choose assignment mode).
+4. Save & Proceed / Submit.
+5. Verify next status, notifications, history entry, and any auto-actions (letter, assignment, color change).",Valid complaint in correct starting status for the role/action. Active users available for assignment. Email/SMS configured for test complainant/RE.,Action succeeds. Correct next status applied. Full audit history created with user ID + timestamp. Notifications triggered to relevant parties. Color coding / SLA timer updated if applicable. No validation errors.,Positive
+RBIO-TC-01202,RBIO-US-012,Negative - Unauthorized Role attempts action,"User logged in with a role that should NOT have permission (e.g., Reviewer trying Ombudsman-only action, DO trying to close appealable clause).","1. Login as unauthorized role.
+2. Navigate to complaint that would allow the action for higher role.
+3. Attempt to perform the restricted action (button hidden/disabled or validation on submit).
+4. Observe error / UI behavior.",Complaint in status where higher-role action is possible. Test user has lower role but same office/territory.,Action is blocked (button not visible or clear 'Insufficient permission' / 'This action requires Ombudsman authority' message). No status change occurs. Attempt logged in audit trail. No data leakage.,Negative
+RBIO-TC-01203,RBIO-US-012,Edge - Missing Mandatory Fields / Invalid Transition / Boundary Value,"Complaint in valid starting state. One or more mandatory fields left blank or invalid value entered (e.g., compensation > cap, empty reason for transfer, future meeting date in past).","1. Open complaint.
+2. Fill all fields except one mandatory or enter boundary-invalid value.
+3. Attempt Save & Proceed.
+4. Observe inline validation and final error handling.
+5. Correct the field and re-submit to confirm recovery.",For compensation stories: value = 3000001 or 300001 for harassment. For dates: past date for meeting. For text: 513+ chars in custom closure text.,"Clear red highlighting on missing/invalid fields. Specific error message (e.g., 'Compensation cannot exceed ₹30 Lakh consequential loss', 'Reason for Transfer is mandatory'). Action blocked until fixed. After correction, action succeeds.",Edge
+RBIO-TC-01204,RBIO-US-012,Edge - Large Data / Concurrent Users / Performance Boundary,System under load (400+ concurrent RBIO users). Complaint has 50+ attachments or very long history (reopened multiple times).,"1. Simulate load or use large test complaint.
+2. Perform the action (search, edit, status change, report export).
+3. Measure response time and verify no timeout or data corruption.","Complaint with 60 attachments (5MB each, mixed formats). 3-year history with 20 reopens. 500 concurrent test users.",Page loads / action completes in <3s (95th %ile). No data loss or UI freeze. Report exports successfully within acceptable time. Error rate remains <1%.,Performance
+RBIO-TC-01301,RBIO-US-013,"Happy Path - As a Dealing Official, I want new complaints (from Portal or...","User logged in with correct role via Kavach. Test complaint exists in appropriate status. All master data (entities, users, thresholds) loaded.","1. Navigate to relevant view (Assigned to Me / All Complaints).
+2. Open complaint detail.
+3. Perform the primary action described in the story (e.g., select status, fill mandatory fields, choose assignment mode).
+4. Save & Proceed / Submit.
+5. Verify next status, notifications, history entry, and any auto-actions (letter, assignment, color change).",Valid complaint in correct starting status for the role/action. Active users available for assignment. Email/SMS configured for test complainant/RE.,Action succeeds. Correct next status applied. Full audit history created with user ID + timestamp. Notifications triggered to relevant parties. Color coding / SLA timer updated if applicable. No validation errors.,Positive
+RBIO-TC-01302,RBIO-US-013,Negative - Unauthorized Role attempts action,"User logged in with a role that should NOT have permission (e.g., Reviewer trying Ombudsman-only action, DO trying to close appealable clause).","1. Login as unauthorized role.
+2. Navigate to complaint that would allow the action for higher role.
+3. Attempt to perform the restricted action (button hidden/disabled or validation on submit).
+4. Observe error / UI behavior.",Complaint in status where higher-role action is possible. Test user has lower role but same office/territory.,Action is blocked (button not visible or clear 'Insufficient permission' / 'This action requires Ombudsman authority' message). No status change occurs. Attempt logged in audit trail. No data leakage.,Negative
+RBIO-TC-01303,RBIO-US-013,Edge - Missing Mandatory Fields / Invalid Transition / Boundary Value,"Complaint in valid starting state. One or more mandatory fields left blank or invalid value entered (e.g., compensation > cap, empty reason for transfer, future meeting date in past).","1. Open complaint.
+2. Fill all fields except one mandatory or enter boundary-invalid value.
+3. Attempt Save & Proceed.
+4. Observe inline validation and final error handling.
+5. Correct the field and re-submit to confirm recovery.",For compensation stories: value = 3000001 or 300001 for harassment. For dates: past date for meeting. For text: 513+ chars in custom closure text.,"Clear red highlighting on missing/invalid fields. Specific error message (e.g., 'Compensation cannot exceed ₹30 Lakh consequential loss', 'Reason for Transfer is mandatory'). Action blocked until fixed. After correction, action succeeds.",Edge
+RBIO-TC-01304,RBIO-US-013,Edge - User On Leave / Threshold Met / Concurrent Assignment,Target user marked 'On Leave' by Admin. Or office threshold already met. Multiple complaints arriving simultaneously (simulate with parallel threads or rapid successive saves).,"1. Mark target DO as On Leave (or set threshold to current count).
+2. Create/submit new complaint that would normally assign to that user.
+3. Verify fallback to Regional Admin or next office in overflow sequence.
+4. (Concurrent) Submit 5 complaints in quick succession from portal/CRPC.
+5. Check assignment distribution and no duplicates/locks.","Office with 3 active DOs, one on leave. Threshold = 50, current = 50. 5 concurrent new complaints from different complainants.",On-leave user skipped. Complaint assigned to Regional Admin or next available per logic. No assignment conflicts or lost complaints. Audit shows correct reason for fallback. Concurrent submissions all succeed with unique owners.,Edge
+RBIO-TC-01401,RBIO-US-014,"Happy Path - As a Dealing Official, I want to add up to 6 additional Regu...","User logged in with correct role via Kavach. Test complaint exists in appropriate status. All master data (entities, users, thresholds) loaded.","1. Navigate to relevant view (Assigned to Me / All Complaints).
+2. Open complaint detail.
+3. Perform the primary action described in the story (e.g., select status, fill mandatory fields, choose assignment mode).
+4. Save & Proceed / Submit.
+5. Verify next status, notifications, history entry, and any auto-actions (letter, assignment, color change).",Valid complaint in correct starting status for the role/action. Active users available for assignment. Email/SMS configured for test complainant/RE.,Action succeeds. Correct next status applied. Full audit history created with user ID + timestamp. Notifications triggered to relevant parties. Color coding / SLA timer updated if applicable. No validation errors.,Positive
+RBIO-TC-01402,RBIO-US-014,Negative - Unauthorized Role attempts action,"User logged in with a role that should NOT have permission (e.g., Reviewer trying Ombudsman-only action, DO trying to close appealable clause).","1. Login as unauthorized role.
+2. Navigate to complaint that would allow the action for higher role.
+3. Attempt to perform the restricted action (button hidden/disabled or validation on submit).
+4. Observe error / UI behavior.",Complaint in status where higher-role action is possible. Test user has lower role but same office/territory.,Action is blocked (button not visible or clear 'Insufficient permission' / 'This action requires Ombudsman authority' message). No status change occurs. Attempt logged in audit trail. No data leakage.,Negative
+RBIO-TC-01403,RBIO-US-014,Edge - Missing Mandatory Fields / Invalid Transition / Boundary Value,"Complaint in valid starting state. One or more mandatory fields left blank or invalid value entered (e.g., compensation > cap, empty reason for transfer, future meeting date in past).","1. Open complaint.
+2. Fill all fields except one mandatory or enter boundary-invalid value.
+3. Attempt Save & Proceed.
+4. Observe inline validation and final error handling.
+5. Correct the field and re-submit to confirm recovery.",For compensation stories: value = 3000001 or 300001 for harassment. For dates: past date for meeting. For text: 513+ chars in custom closure text.,"Clear red highlighting on missing/invalid fields. Specific error message (e.g., 'Compensation cannot exceed ₹30 Lakh consequential loss', 'Reason for Transfer is mandatory'). Action blocked until fixed. After correction, action succeeds.",Edge
+RBIO-TC-01404,RBIO-US-014,Edge - Large Data / Concurrent Users / Performance Boundary,System under load (400+ concurrent RBIO users). Complaint has 50+ attachments or very long history (reopened multiple times).,"1. Simulate load or use large test complaint.
+2. Perform the action (search, edit, status change, report export).
+3. Measure response time and verify no timeout or data corruption.","Complaint with 60 attachments (5MB each, mixed formats). 3-year history with 20 reopens. 500 concurrent test users.",Page loads / action completes in <3s (95th %ile). No data loss or UI freeze. Report exports successfully within acceptable time. Error rate remains <1%.,Performance
+RBIO-TC-01501,RBIO-US-015,"Happy Path - As a Dealing Official, I want a live SLA countdown timer vis...","User logged in with correct role via Kavach. Test complaint exists in appropriate status. All master data (entities, users, thresholds) loaded.","1. Navigate to relevant view (Assigned to Me / All Complaints).
+2. Open complaint detail.
+3. Perform the primary action described in the story (e.g., select status, fill mandatory fields, choose assignment mode).
+4. Save & Proceed / Submit.
+5. Verify next status, notifications, history entry, and any auto-actions (letter, assignment, color change).",Valid complaint in correct starting status for the role/action. Active users available for assignment. Email/SMS configured for test complainant/RE.,Action succeeds. Correct next status applied. Full audit history created with user ID + timestamp. Notifications triggered to relevant parties. Color coding / SLA timer updated if applicable. No validation errors.,Positive
+RBIO-TC-01502,RBIO-US-015,Negative - Unauthorized Role attempts action,"User logged in with a role that should NOT have permission (e.g., Reviewer trying Ombudsman-only action, DO trying to close appealable clause).","1. Login as unauthorized role.
+2. Navigate to complaint that would allow the action for higher role.
+3. Attempt to perform the restricted action (button hidden/disabled or validation on submit).
+4. Observe error / UI behavior.",Complaint in status where higher-role action is possible. Test user has lower role but same office/territory.,Action is blocked (button not visible or clear 'Insufficient permission' / 'This action requires Ombudsman authority' message). No status change occurs. Attempt logged in audit trail. No data leakage.,Negative
+RBIO-TC-01503,RBIO-US-015,Edge - Missing Mandatory Fields / Invalid Transition / Boundary Value,"Complaint in valid starting state. One or more mandatory fields left blank or invalid value entered (e.g., compensation > cap, empty reason for transfer, future meeting date in past).","1. Open complaint.
+2. Fill all fields except one mandatory or enter boundary-invalid value.
+3. Attempt Save & Proceed.
+4. Observe inline validation and final error handling.
+5. Correct the field and re-submit to confirm recovery.",For compensation stories: value = 3000001 or 300001 for harassment. For dates: past date for meeting. For text: 513+ chars in custom closure text.,"Clear red highlighting on missing/invalid fields. Specific error message (e.g., 'Compensation cannot exceed ₹30 Lakh consequential loss', 'Reason for Transfer is mandatory'). Action blocked until fixed. After correction, action succeeds.",Edge
+RBIO-TC-01504,RBIO-US-015,Edge - Large Data / Concurrent Users / Performance Boundary,System under load (400+ concurrent RBIO users). Complaint has 50+ attachments or very long history (reopened multiple times).,"1. Simulate load or use large test complaint.
+2. Perform the action (search, edit, status change, report export).
+3. Measure response time and verify no timeout or data corruption.","Complaint with 60 attachments (5MB each, mixed formats). 3-year history with 20 reopens. 500 concurrent test users.",Page loads / action completes in <3s (95th %ile). No data loss or UI freeze. Report exports successfully within acceptable time. Error rate remains <1%.,Performance
+RBIO-TC-01601,RBIO-US-016,"Happy Path - As a Dealing Official, I want to mark a complaint Maintainab...","User logged in with correct role via Kavach. Test complaint exists in appropriate status. All master data (entities, users, thresholds) loaded.","1. Navigate to relevant view (Assigned to Me / All Complaints).
+2. Open complaint detail.
+3. Perform the primary action described in the story (e.g., select status, fill mandatory fields, choose assignment mode).
+4. Save & Proceed / Submit.
+5. Verify next status, notifications, history entry, and any auto-actions (letter, assignment, color change).",Valid complaint in correct starting status for the role/action. Active users available for assignment. Email/SMS configured for test complainant/RE.,Action succeeds. Correct next status applied. Full audit history created with user ID + timestamp. Notifications triggered to relevant parties. Color coding / SLA timer updated if applicable. No validation errors.,Positive
+RBIO-TC-01602,RBIO-US-016,Negative - Unauthorized Role attempts action,"User logged in with a role that should NOT have permission (e.g., Reviewer trying Ombudsman-only action, DO trying to close appealable clause).","1. Login as unauthorized role.
+2. Navigate to complaint that would allow the action for higher role.
+3. Attempt to perform the restricted action (button hidden/disabled or validation on submit).
+4. Observe error / UI behavior.",Complaint in status where higher-role action is possible. Test user has lower role but same office/territory.,Action is blocked (button not visible or clear 'Insufficient permission' / 'This action requires Ombudsman authority' message). No status change occurs. Attempt logged in audit trail. No data leakage.,Negative
+RBIO-TC-01603,RBIO-US-016,Edge - Missing Mandatory Fields / Invalid Transition / Boundary Value,"Complaint in valid starting state. One or more mandatory fields left blank or invalid value entered (e.g., compensation > cap, empty reason for transfer, future meeting date in past).","1. Open complaint.
+2. Fill all fields except one mandatory or enter boundary-invalid value.
+3. Attempt Save & Proceed.
+4. Observe inline validation and final error handling.
+5. Correct the field and re-submit to confirm recovery.",For compensation stories: value = 3000001 or 300001 for harassment. For dates: past date for meeting. For text: 513+ chars in custom closure text.,"Clear red highlighting on missing/invalid fields. Specific error message (e.g., 'Compensation cannot exceed ₹30 Lakh consequential loss', 'Reason for Transfer is mandatory'). Action blocked until fixed. After correction, action succeeds.",Edge
+RBIO-TC-01604,RBIO-US-016,Edge - Large Data / Concurrent Users / Performance Boundary,System under load (400+ concurrent RBIO users). Complaint has 50+ attachments or very long history (reopened multiple times).,"1. Simulate load or use large test complaint.
+2. Perform the action (search, edit, status change, report export).
+3. Measure response time and verify no timeout or data corruption.","Complaint with 60 attachments (5MB each, mixed formats). 3-year history with 20 reopens. 500 concurrent test users.",Page loads / action completes in <3s (95th %ile). No data loss or UI freeze. Report exports successfully within acceptable time. Error rate remains <1%.,Performance
+RBIO-TC-01701,RBIO-US-017,"Happy Path - As a Dealing Official, I want to send 13-1 Notice / Informat...","User logged in with correct role via Kavach. Test complaint exists in appropriate status. All master data (entities, users, thresholds) loaded.","1. Navigate to relevant view (Assigned to Me / All Complaints).
+2. Open complaint detail.
+3. Perform the primary action described in the story (e.g., select status, fill mandatory fields, choose assignment mode).
+4. Save & Proceed / Submit.
+5. Verify next status, notifications, history entry, and any auto-actions (letter, assignment, color change).",Valid complaint in correct starting status for the role/action. Active users available for assignment. Email/SMS configured for test complainant/RE.,Action succeeds. Correct next status applied. Full audit history created with user ID + timestamp. Notifications triggered to relevant parties. Color coding / SLA timer updated if applicable. No validation errors.,Positive
+RBIO-TC-01702,RBIO-US-017,Negative - Unauthorized Role attempts action,"User logged in with a role that should NOT have permission (e.g., Reviewer trying Ombudsman-only action, DO trying to close appealable clause).","1. Login as unauthorized role.
+2. Navigate to complaint that would allow the action for higher role.
+3. Attempt to perform the restricted action (button hidden/disabled or validation on submit).
+4. Observe error / UI behavior.",Complaint in status where higher-role action is possible. Test user has lower role but same office/territory.,Action is blocked (button not visible or clear 'Insufficient permission' / 'This action requires Ombudsman authority' message). No status change occurs. Attempt logged in audit trail. No data leakage.,Negative
+RBIO-TC-01703,RBIO-US-017,Edge - Missing Mandatory Fields / Invalid Transition / Boundary Value,"Complaint in valid starting state. One or more mandatory fields left blank or invalid value entered (e.g., compensation > cap, empty reason for transfer, future meeting date in past).","1. Open complaint.
+2. Fill all fields except one mandatory or enter boundary-invalid value.
+3. Attempt Save & Proceed.
+4. Observe inline validation and final error handling.
+5. Correct the field and re-submit to confirm recovery.",For compensation stories: value = 3000001 or 300001 for harassment. For dates: past date for meeting. For text: 513+ chars in custom closure text.,"Clear red highlighting on missing/invalid fields. Specific error message (e.g., 'Compensation cannot exceed ₹30 Lakh consequential loss', 'Reason for Transfer is mandatory'). Action blocked until fixed. After correction, action succeeds.",Edge
+RBIO-TC-01704,RBIO-US-017,Edge - No Complainant Email / 7-day Link Expiry / Digital Signature Failure,Complainant record has no email (only mobile/postal). Or document upload link sent 8 days ago. Or digital signature certificate expired/invalid.,"1. Attempt closure on complaint with no email.
+2. Verify pop-up forces 'Generate Letter' + manual upload + mandatory 'Date of Sending' entry.
+3. For link expiry: try to use expired link (should show 'Link expired' and flag = No).
+4. For signature: simulate invalid cert on closure submit.",Complaint with empty email field. Expired 7-day link. Invalid/expired digital signature cert for closing authority.,Cannot close without date of sending when email missing. Link expiry shows clear message; flag updated to 'No'. Signature failure blocks closure with actionable error. All attempts audited.,Edge
+RBIO-TC-01801,RBIO-US-018,"Happy Path - As a Dealing Official, I want to schedule/ reschedule/ compl...","User logged in with correct role via Kavach. Test complaint exists in appropriate status. All master data (entities, users, thresholds) loaded.","1. Navigate to relevant view (Assigned to Me / All Complaints).
+2. Open complaint detail.
+3. Perform the primary action described in the story (e.g., select status, fill mandatory fields, choose assignment mode).
+4. Save & Proceed / Submit.
+5. Verify next status, notifications, history entry, and any auto-actions (letter, assignment, color change).",Valid complaint in correct starting status for the role/action. Active users available for assignment. Email/SMS configured for test complainant/RE.,Action succeeds. Correct next status applied. Full audit history created with user ID + timestamp. Notifications triggered to relevant parties. Color coding / SLA timer updated if applicable. No validation errors.,Positive
+RBIO-TC-01802,RBIO-US-018,Negative - Unauthorized Role attempts action,"User logged in with a role that should NOT have permission (e.g., Reviewer trying Ombudsman-only action, DO trying to close appealable clause).","1. Login as unauthorized role.
+2. Navigate to complaint that would allow the action for higher role.
+3. Attempt to perform the restricted action (button hidden/disabled or validation on submit).
+4. Observe error / UI behavior.",Complaint in status where higher-role action is possible. Test user has lower role but same office/territory.,Action is blocked (button not visible or clear 'Insufficient permission' / 'This action requires Ombudsman authority' message). No status change occurs. Attempt logged in audit trail. No data leakage.,Negative
+RBIO-TC-01803,RBIO-US-018,Edge - Missing Mandatory Fields / Invalid Transition / Boundary Value,"Complaint in valid starting state. One or more mandatory fields left blank or invalid value entered (e.g., compensation > cap, empty reason for transfer, future meeting date in past).","1. Open complaint.
+2. Fill all fields except one mandatory or enter boundary-invalid value.
+3. Attempt Save & Proceed.
+4. Observe inline validation and final error handling.
+5. Correct the field and re-submit to confirm recovery.",For compensation stories: value = 3000001 or 300001 for harassment. For dates: past date for meeting. For text: 513+ chars in custom closure text.,"Clear red highlighting on missing/invalid fields. Specific error message (e.g., 'Compensation cannot exceed ₹30 Lakh consequential loss', 'Reason for Transfer is mandatory'). Action blocked until fixed. After correction, action succeeds.",Edge
+RBIO-TC-01804,RBIO-US-018,Edge - Large Data / Concurrent Users / Performance Boundary,System under load (400+ concurrent RBIO users). Complaint has 50+ attachments or very long history (reopened multiple times).,"1. Simulate load or use large test complaint.
+2. Perform the action (search, edit, status change, report export).
+3. Measure response time and verify no timeout or data corruption.","Complaint with 60 attachments (5MB each, mixed formats). 3-year history with 20 reopens. 500 concurrent test users.",Page loads / action completes in <3s (95th %ile). No data loss or UI freeze. Report exports successfully within acceptable time. Error rate remains <1%.,Performance
+RBIO-TC-01901,RBIO-US-019,"Happy Path - As a Dealing Official, I want the system to enforce that I c...","User logged in with correct role via Kavach. Test complaint exists in appropriate status. All master data (entities, users, thresholds) loaded.","1. Navigate to relevant view (Assigned to Me / All Complaints).
+2. Open complaint detail.
+3. Perform the primary action described in the story (e.g., select status, fill mandatory fields, choose assignment mode).
+4. Save & Proceed / Submit.
+5. Verify next status, notifications, history entry, and any auto-actions (letter, assignment, color change).",Valid complaint in correct starting status for the role/action. Active users available for assignment. Email/SMS configured for test complainant/RE.,Action succeeds. Correct next status applied. Full audit history created with user ID + timestamp. Notifications triggered to relevant parties. Color coding / SLA timer updated if applicable. No validation errors.,Positive
+RBIO-TC-01902,RBIO-US-019,Negative - Unauthorized Role attempts action,"User logged in with a role that should NOT have permission (e.g., Reviewer trying Ombudsman-only action, DO trying to close appealable clause).","1. Login as unauthorized role.
+2. Navigate to complaint that would allow the action for higher role.
+3. Attempt to perform the restricted action (button hidden/disabled or validation on submit).
+4. Observe error / UI behavior.",Complaint in status where higher-role action is possible. Test user has lower role but same office/territory.,Action is blocked (button not visible or clear 'Insufficient permission' / 'This action requires Ombudsman authority' message). No status change occurs. Attempt logged in audit trail. No data leakage.,Negative
+RBIO-TC-01903,RBIO-US-019,Edge - Missing Mandatory Fields / Invalid Transition / Boundary Value,"Complaint in valid starting state. One or more mandatory fields left blank or invalid value entered (e.g., compensation > cap, empty reason for transfer, future meeting date in past).","1. Open complaint.
+2. Fill all fields except one mandatory or enter boundary-invalid value.
+3. Attempt Save & Proceed.
+4. Observe inline validation and final error handling.
+5. Correct the field and re-submit to confirm recovery.",For compensation stories: value = 3000001 or 300001 for harassment. For dates: past date for meeting. For text: 513+ chars in custom closure text.,"Clear red highlighting on missing/invalid fields. Specific error message (e.g., 'Compensation cannot exceed ₹30 Lakh consequential loss', 'Reason for Transfer is mandatory'). Action blocked until fixed. After correction, action succeeds.",Edge
+RBIO-TC-01904,RBIO-US-019,Edge - No Complainant Email / 7-day Link Expiry / Digital Signature Failure,Complainant record has no email (only mobile/postal). Or document upload link sent 8 days ago. Or digital signature certificate expired/invalid.,"1. Attempt closure on complaint with no email.
+2. Verify pop-up forces 'Generate Letter' + manual upload + mandatory 'Date of Sending' entry.
+3. For link expiry: try to use expired link (should show 'Link expired' and flag = No).
+4. For signature: simulate invalid cert on closure submit.",Complaint with empty email field. Expired 7-day link. Invalid/expired digital signature cert for closing authority.,Cannot close without date of sending when email missing. Link expiry shows clear message; flag updated to 'No'. Signature failure blocks closure with actionable error. All attempts audited.,Edge
+RBIO-TC-02001,RBIO-US-020,"Happy Path - As a Dealing Official, I want to process Award Passed compla...","User logged in with correct role via Kavach. Test complaint exists in appropriate status. All master data (entities, users, thresholds) loaded.","1. Navigate to relevant view (Assigned to Me / All Complaints).
+2. Open complaint detail.
+3. Perform the primary action described in the story (e.g., select status, fill mandatory fields, choose assignment mode).
+4. Save & Proceed / Submit.
+5. Verify next status, notifications, history entry, and any auto-actions (letter, assignment, color change).",Valid complaint in correct starting status for the role/action. Active users available for assignment. Email/SMS configured for test complainant/RE.,Action succeeds. Correct next status applied. Full audit history created with user ID + timestamp. Notifications triggered to relevant parties. Color coding / SLA timer updated if applicable. No validation errors.,Positive
+RBIO-TC-02002,RBIO-US-020,Negative - Unauthorized Role attempts action,"User logged in with a role that should NOT have permission (e.g., Reviewer trying Ombudsman-only action, DO trying to close appealable clause).","1. Login as unauthorized role.
+2. Navigate to complaint that would allow the action for higher role.
+3. Attempt to perform the restricted action (button hidden/disabled or validation on submit).
+4. Observe error / UI behavior.",Complaint in status where higher-role action is possible. Test user has lower role but same office/territory.,Action is blocked (button not visible or clear 'Insufficient permission' / 'This action requires Ombudsman authority' message). No status change occurs. Attempt logged in audit trail. No data leakage.,Negative
+RBIO-TC-02003,RBIO-US-020,Edge - Missing Mandatory Fields / Invalid Transition / Boundary Value,"Complaint in valid starting state. One or more mandatory fields left blank or invalid value entered (e.g., compensation > cap, empty reason for transfer, future meeting date in past).","1. Open complaint.
+2. Fill all fields except one mandatory or enter boundary-invalid value.
+3. Attempt Save & Proceed.
+4. Observe inline validation and final error handling.
+5. Correct the field and re-submit to confirm recovery.",For compensation stories: value = 3000001 or 300001 for harassment. For dates: past date for meeting. For text: 513+ chars in custom closure text.,"Clear red highlighting on missing/invalid fields. Specific error message (e.g., 'Compensation cannot exceed ₹30 Lakh consequential loss', 'Reason for Transfer is mandatory'). Action blocked until fixed. After correction, action succeeds.",Edge
+RBIO-TC-02004,RBIO-US-020,Edge - Large Data / Concurrent Users / Performance Boundary,System under load (400+ concurrent RBIO users). Complaint has 50+ attachments or very long history (reopened multiple times).,"1. Simulate load or use large test complaint.
+2. Perform the action (search, edit, status change, report export).
+3. Measure response time and verify no timeout or data corruption.","Complaint with 60 attachments (5MB each, mixed formats). 3-year history with 20 reopens. 500 concurrent test users.",Page loads / action completes in <3s (95th %ile). No data loss or UI freeze. Report exports successfully within acceptable time. Error rate remains <1%.,Performance
+RBIO-TC-02101,RBIO-US-021,"Happy Path - As a Dealing Official, I want a 'Communication to Complainan...","User logged in with correct role via Kavach. Test complaint exists in appropriate status. All master data (entities, users, thresholds) loaded.","1. Navigate to relevant view (Assigned to Me / All Complaints).
+2. Open complaint detail.
+3. Perform the primary action described in the story (e.g., select status, fill mandatory fields, choose assignment mode).
+4. Save & Proceed / Submit.
+5. Verify next status, notifications, history entry, and any auto-actions (letter, assignment, color change).",Valid complaint in correct starting status for the role/action. Active users available for assignment. Email/SMS configured for test complainant/RE.,Action succeeds. Correct next status applied. Full audit history created with user ID + timestamp. Notifications triggered to relevant parties. Color coding / SLA timer updated if applicable. No validation errors.,Positive
+RBIO-TC-02102,RBIO-US-021,Negative - Unauthorized Role attempts action,"User logged in with a role that should NOT have permission (e.g., Reviewer trying Ombudsman-only action, DO trying to close appealable clause).","1. Login as unauthorized role.
+2. Navigate to complaint that would allow the action for higher role.
+3. Attempt to perform the restricted action (button hidden/disabled or validation on submit).
+4. Observe error / UI behavior.",Complaint in status where higher-role action is possible. Test user has lower role but same office/territory.,Action is blocked (button not visible or clear 'Insufficient permission' / 'This action requires Ombudsman authority' message). No status change occurs. Attempt logged in audit trail. No data leakage.,Negative
+RBIO-TC-02103,RBIO-US-021,Edge - Missing Mandatory Fields / Invalid Transition / Boundary Value,"Complaint in valid starting state. One or more mandatory fields left blank or invalid value entered (e.g., compensation > cap, empty reason for transfer, future meeting date in past).","1. Open complaint.
+2. Fill all fields except one mandatory or enter boundary-invalid value.
+3. Attempt Save & Proceed.
+4. Observe inline validation and final error handling.
+5. Correct the field and re-submit to confirm recovery.",For compensation stories: value = 3000001 or 300001 for harassment. For dates: past date for meeting. For text: 513+ chars in custom closure text.,"Clear red highlighting on missing/invalid fields. Specific error message (e.g., 'Compensation cannot exceed ₹30 Lakh consequential loss', 'Reason for Transfer is mandatory'). Action blocked until fixed. After correction, action succeeds.",Edge
+RBIO-TC-02104,RBIO-US-021,Edge - No Complainant Email / 7-day Link Expiry / Digital Signature Failure,Complainant record has no email (only mobile/postal). Or document upload link sent 8 days ago. Or digital signature certificate expired/invalid.,"1. Attempt closure on complaint with no email.
+2. Verify pop-up forces 'Generate Letter' + manual upload + mandatory 'Date of Sending' entry.
+3. For link expiry: try to use expired link (should show 'Link expired' and flag = No).
+4. For signature: simulate invalid cert on closure submit.",Complaint with empty email field. Expired 7-day link. Invalid/expired digital signature cert for closing authority.,Cannot close without date of sending when email missing. Link expiry shows clear message; flag updated to 'No'. Signature failure blocks closure with actionable error. All attempts audited.,Edge
+RBIO-TC-02201,RBIO-US-022,"Happy Path - As a Dealing Official, I want to forward a complaint to anot...","User logged in with correct role via Kavach. Test complaint exists in appropriate status. All master data (entities, users, thresholds) loaded.","1. Navigate to relevant view (Assigned to Me / All Complaints).
+2. Open complaint detail.
+3. Perform the primary action described in the story (e.g., select status, fill mandatory fields, choose assignment mode).
+4. Save & Proceed / Submit.
+5. Verify next status, notifications, history entry, and any auto-actions (letter, assignment, color change).",Valid complaint in correct starting status for the role/action. Active users available for assignment. Email/SMS configured for test complainant/RE.,Action succeeds. Correct next status applied. Full audit history created with user ID + timestamp. Notifications triggered to relevant parties. Color coding / SLA timer updated if applicable. No validation errors.,Positive
+RBIO-TC-02202,RBIO-US-022,Negative - Unauthorized Role attempts action,"User logged in with a role that should NOT have permission (e.g., Reviewer trying Ombudsman-only action, DO trying to close appealable clause).","1. Login as unauthorized role.
+2. Navigate to complaint that would allow the action for higher role.
+3. Attempt to perform the restricted action (button hidden/disabled or validation on submit).
+4. Observe error / UI behavior.",Complaint in status where higher-role action is possible. Test user has lower role but same office/territory.,Action is blocked (button not visible or clear 'Insufficient permission' / 'This action requires Ombudsman authority' message). No status change occurs. Attempt logged in audit trail. No data leakage.,Negative
+RBIO-TC-02203,RBIO-US-022,Edge - Missing Mandatory Fields / Invalid Transition / Boundary Value,"Complaint in valid starting state. One or more mandatory fields left blank or invalid value entered (e.g., compensation > cap, empty reason for transfer, future meeting date in past).","1. Open complaint.
+2. Fill all fields except one mandatory or enter boundary-invalid value.
+3. Attempt Save & Proceed.
+4. Observe inline validation and final error handling.
+5. Correct the field and re-submit to confirm recovery.",For compensation stories: value = 3000001 or 300001 for harassment. For dates: past date for meeting. For text: 513+ chars in custom closure text.,"Clear red highlighting on missing/invalid fields. Specific error message (e.g., 'Compensation cannot exceed ₹30 Lakh consequential loss', 'Reason for Transfer is mandatory'). Action blocked until fixed. After correction, action succeeds.",Edge
+RBIO-TC-02204,RBIO-US-022,Edge - Large Data / Concurrent Users / Performance Boundary,System under load (400+ concurrent RBIO users). Complaint has 50+ attachments or very long history (reopened multiple times).,"1. Simulate load or use large test complaint.
+2. Perform the action (search, edit, status change, report export).
+3. Measure response time and verify no timeout or data corruption.","Complaint with 60 attachments (5MB each, mixed formats). 3-year history with 20 reopens. 500 concurrent test users.",Page loads / action completes in <3s (95th %ile). No data loss or UI freeze. Report exports successfully within acceptable time. Error rate remains <1%.,Performance
+RBIO-TC-02301,RBIO-US-023,"Happy Path - As a Reviewer, I want to review complaints sent to me, modif...","User logged in with correct role via Kavach. Test complaint exists in appropriate status. All master data (entities, users, thresholds) loaded.","1. Navigate to relevant view (Assigned to Me / All Complaints).
+2. Open complaint detail.
+3. Perform the primary action described in the story (e.g., select status, fill mandatory fields, choose assignment mode).
+4. Save & Proceed / Submit.
+5. Verify next status, notifications, history entry, and any auto-actions (letter, assignment, color change).",Valid complaint in correct starting status for the role/action. Active users available for assignment. Email/SMS configured for test complainant/RE.,Action succeeds. Correct next status applied. Full audit history created with user ID + timestamp. Notifications triggered to relevant parties. Color coding / SLA timer updated if applicable. No validation errors.,Positive
+RBIO-TC-02302,RBIO-US-023,Negative - Unauthorized Role attempts action,"User logged in with a role that should NOT have permission (e.g., Reviewer trying Ombudsman-only action, DO trying to close appealable clause).","1. Login as unauthorized role.
+2. Navigate to complaint that would allow the action for higher role.
+3. Attempt to perform the restricted action (button hidden/disabled or validation on submit).
+4. Observe error / UI behavior.",Complaint in status where higher-role action is possible. Test user has lower role but same office/territory.,Action is blocked (button not visible or clear 'Insufficient permission' / 'This action requires Ombudsman authority' message). No status change occurs. Attempt logged in audit trail. No data leakage.,Negative
+RBIO-TC-02303,RBIO-US-023,Edge - Missing Mandatory Fields / Invalid Transition / Boundary Value,"Complaint in valid starting state. One or more mandatory fields left blank or invalid value entered (e.g., compensation > cap, empty reason for transfer, future meeting date in past).","1. Open complaint.
+2. Fill all fields except one mandatory or enter boundary-invalid value.
+3. Attempt Save & Proceed.
+4. Observe inline validation and final error handling.
+5. Correct the field and re-submit to confirm recovery.",For compensation stories: value = 3000001 or 300001 for harassment. For dates: past date for meeting. For text: 513+ chars in custom closure text.,"Clear red highlighting on missing/invalid fields. Specific error message (e.g., 'Compensation cannot exceed ₹30 Lakh consequential loss', 'Reason for Transfer is mandatory'). Action blocked until fixed. After correction, action succeeds.",Edge
+RBIO-TC-02304,RBIO-US-023,Edge - Large Data / Concurrent Users / Performance Boundary,System under load (400+ concurrent RBIO users). Complaint has 50+ attachments or very long history (reopened multiple times).,"1. Simulate load or use large test complaint.
+2. Perform the action (search, edit, status change, report export).
+3. Measure response time and verify no timeout or data corruption.","Complaint with 60 attachments (5MB each, mixed formats). 3-year history with 20 reopens. 500 concurrent test users.",Page loads / action completes in <3s (95th %ile). No data loss or UI freeze. Report exports successfully within acceptable time. Error rate remains <1%.,Performance
+RBIO-TC-02401,RBIO-US-024,"Happy Path - As a Reviewer, I want to close certain non-maintainable comp...","User logged in with correct role via Kavach. Test complaint exists in appropriate status. All master data (entities, users, thresholds) loaded.","1. Navigate to relevant view (Assigned to Me / All Complaints).
+2. Open complaint detail.
+3. Perform the primary action described in the story (e.g., select status, fill mandatory fields, choose assignment mode).
+4. Save & Proceed / Submit.
+5. Verify next status, notifications, history entry, and any auto-actions (letter, assignment, color change).",Valid complaint in correct starting status for the role/action. Active users available for assignment. Email/SMS configured for test complainant/RE.,Action succeeds. Correct next status applied. Full audit history created with user ID + timestamp. Notifications triggered to relevant parties. Color coding / SLA timer updated if applicable. No validation errors.,Positive
+RBIO-TC-02402,RBIO-US-024,Negative - Unauthorized Role attempts action,"User logged in with a role that should NOT have permission (e.g., Reviewer trying Ombudsman-only action, DO trying to close appealable clause).","1. Login as unauthorized role.
+2. Navigate to complaint that would allow the action for higher role.
+3. Attempt to perform the restricted action (button hidden/disabled or validation on submit).
+4. Observe error / UI behavior.",Complaint in status where higher-role action is possible. Test user has lower role but same office/territory.,Action is blocked (button not visible or clear 'Insufficient permission' / 'This action requires Ombudsman authority' message). No status change occurs. Attempt logged in audit trail. No data leakage.,Negative
+RBIO-TC-02403,RBIO-US-024,Edge - Missing Mandatory Fields / Invalid Transition / Boundary Value,"Complaint in valid starting state. One or more mandatory fields left blank or invalid value entered (e.g., compensation > cap, empty reason for transfer, future meeting date in past).","1. Open complaint.
+2. Fill all fields except one mandatory or enter boundary-invalid value.
+3. Attempt Save & Proceed.
+4. Observe inline validation and final error handling.
+5. Correct the field and re-submit to confirm recovery.",For compensation stories: value = 3000001 or 300001 for harassment. For dates: past date for meeting. For text: 513+ chars in custom closure text.,"Clear red highlighting on missing/invalid fields. Specific error message (e.g., 'Compensation cannot exceed ₹30 Lakh consequential loss', 'Reason for Transfer is mandatory'). Action blocked until fixed. After correction, action succeeds.",Edge
+RBIO-TC-02404,RBIO-US-024,Edge - No Complainant Email / 7-day Link Expiry / Digital Signature Failure,Complainant record has no email (only mobile/postal). Or document upload link sent 8 days ago. Or digital signature certificate expired/invalid.,"1. Attempt closure on complaint with no email.
+2. Verify pop-up forces 'Generate Letter' + manual upload + mandatory 'Date of Sending' entry.
+3. For link expiry: try to use expired link (should show 'Link expired' and flag = No).
+4. For signature: simulate invalid cert on closure submit.",Complaint with empty email field. Expired 7-day link. Invalid/expired digital signature cert for closing authority.,Cannot close without date of sending when email missing. Link expiry shows clear message; flag updated to 'No'. Signature failure blocks closure with actionable error. All attempts audited.,Edge
+RBIO-TC-02501,RBIO-US-025,"Happy Path - As a Reviewer, I want to see only the status codes relevant ...","User logged in with correct role via Kavach. Test complaint exists in appropriate status. All master data (entities, users, thresholds) loaded.","1. Navigate to relevant view (Assigned to Me / All Complaints).
+2. Open complaint detail.
+3. Perform the primary action described in the story (e.g., select status, fill mandatory fields, choose assignment mode).
+4. Save & Proceed / Submit.
+5. Verify next status, notifications, history entry, and any auto-actions (letter, assignment, color change).",Valid complaint in correct starting status for the role/action. Active users available for assignment. Email/SMS configured for test complainant/RE.,Action succeeds. Correct next status applied. Full audit history created with user ID + timestamp. Notifications triggered to relevant parties. Color coding / SLA timer updated if applicable. No validation errors.,Positive
+RBIO-TC-02502,RBIO-US-025,Negative - Unauthorized Role attempts action,"User logged in with a role that should NOT have permission (e.g., Reviewer trying Ombudsman-only action, DO trying to close appealable clause).","1. Login as unauthorized role.
+2. Navigate to complaint that would allow the action for higher role.
+3. Attempt to perform the restricted action (button hidden/disabled or validation on submit).
+4. Observe error / UI behavior.",Complaint in status where higher-role action is possible. Test user has lower role but same office/territory.,Action is blocked (button not visible or clear 'Insufficient permission' / 'This action requires Ombudsman authority' message). No status change occurs. Attempt logged in audit trail. No data leakage.,Negative
+RBIO-TC-02503,RBIO-US-025,Edge - Missing Mandatory Fields / Invalid Transition / Boundary Value,"Complaint in valid starting state. One or more mandatory fields left blank or invalid value entered (e.g., compensation > cap, empty reason for transfer, future meeting date in past).","1. Open complaint.
+2. Fill all fields except one mandatory or enter boundary-invalid value.
+3. Attempt Save & Proceed.
+4. Observe inline validation and final error handling.
+5. Correct the field and re-submit to confirm recovery.",For compensation stories: value = 3000001 or 300001 for harassment. For dates: past date for meeting. For text: 513+ chars in custom closure text.,"Clear red highlighting on missing/invalid fields. Specific error message (e.g., 'Compensation cannot exceed ₹30 Lakh consequential loss', 'Reason for Transfer is mandatory'). Action blocked until fixed. After correction, action succeeds.",Edge
+RBIO-TC-02504,RBIO-US-025,Edge - Large Data / Concurrent Users / Performance Boundary,System under load (400+ concurrent RBIO users). Complaint has 50+ attachments or very long history (reopened multiple times).,"1. Simulate load or use large test complaint.
+2. Perform the action (search, edit, status change, report export).
+3. Measure response time and verify no timeout or data corruption.","Complaint with 60 attachments (5MB each, mixed formats). 3-year history with 20 reopens. 500 concurrent test users.",Page loads / action completes in <3s (95th %ile). No data loss or UI freeze. Report exports successfully within acceptable time. Error rate remains <1%.,Performance
+RBIO-TC-02601,RBIO-US-026,"Happy Path - As a Reviewer, I want the system to prevent me from closing ...","User logged in with correct role via Kavach. Test complaint exists in appropriate status. All master data (entities, users, thresholds) loaded.","1. Navigate to relevant view (Assigned to Me / All Complaints).
+2. Open complaint detail.
+3. Perform the primary action described in the story (e.g., select status, fill mandatory fields, choose assignment mode).
+4. Save & Proceed / Submit.
+5. Verify next status, notifications, history entry, and any auto-actions (letter, assignment, color change).",Valid complaint in correct starting status for the role/action. Active users available for assignment. Email/SMS configured for test complainant/RE.,Action succeeds. Correct next status applied. Full audit history created with user ID + timestamp. Notifications triggered to relevant parties. Color coding / SLA timer updated if applicable. No validation errors.,Positive
+RBIO-TC-02602,RBIO-US-026,Negative - Unauthorized Role attempts action,"User logged in with a role that should NOT have permission (e.g., Reviewer trying Ombudsman-only action, DO trying to close appealable clause).","1. Login as unauthorized role.
+2. Navigate to complaint that would allow the action for higher role.
+3. Attempt to perform the restricted action (button hidden/disabled or validation on submit).
+4. Observe error / UI behavior.",Complaint in status where higher-role action is possible. Test user has lower role but same office/territory.,Action is blocked (button not visible or clear 'Insufficient permission' / 'This action requires Ombudsman authority' message). No status change occurs. Attempt logged in audit trail. No data leakage.,Negative
+RBIO-TC-02603,RBIO-US-026,Edge - Missing Mandatory Fields / Invalid Transition / Boundary Value,"Complaint in valid starting state. One or more mandatory fields left blank or invalid value entered (e.g., compensation > cap, empty reason for transfer, future meeting date in past).","1. Open complaint.
+2. Fill all fields except one mandatory or enter boundary-invalid value.
+3. Attempt Save & Proceed.
+4. Observe inline validation and final error handling.
+5. Correct the field and re-submit to confirm recovery.",For compensation stories: value = 3000001 or 300001 for harassment. For dates: past date for meeting. For text: 513+ chars in custom closure text.,"Clear red highlighting on missing/invalid fields. Specific error message (e.g., 'Compensation cannot exceed ₹30 Lakh consequential loss', 'Reason for Transfer is mandatory'). Action blocked until fixed. After correction, action succeeds.",Edge
+RBIO-TC-02604,RBIO-US-026,Edge - Large Data / Concurrent Users / Performance Boundary,System under load (400+ concurrent RBIO users). Complaint has 50+ attachments or very long history (reopened multiple times).,"1. Simulate load or use large test complaint.
+2. Perform the action (search, edit, status change, report export).
+3. Measure response time and verify no timeout or data corruption.","Complaint with 60 attachments (5MB each, mixed formats). 3-year history with 20 reopens. 500 concurrent test users.",Page loads / action completes in <3s (95th %ile). No data loss or UI freeze. Report exports successfully within acceptable time. Error rate remains <1%.,Performance
+RBIO-TC-02701,RBIO-US-027,"Happy Path - As a Deputy Ombudsman, I want to mark complaints as Maintain...","User logged in with correct role via Kavach. Test complaint exists in appropriate status. All master data (entities, users, thresholds) loaded.","1. Navigate to relevant view (Assigned to Me / All Complaints).
+2. Open complaint detail.
+3. Perform the primary action described in the story (e.g., select status, fill mandatory fields, choose assignment mode).
+4. Save & Proceed / Submit.
+5. Verify next status, notifications, history entry, and any auto-actions (letter, assignment, color change).",Valid complaint in correct starting status for the role/action. Active users available for assignment. Email/SMS configured for test complainant/RE.,Action succeeds. Correct next status applied. Full audit history created with user ID + timestamp. Notifications triggered to relevant parties. Color coding / SLA timer updated if applicable. No validation errors.,Positive
+RBIO-TC-02702,RBIO-US-027,Negative - Unauthorized Role attempts action,"User logged in with a role that should NOT have permission (e.g., Reviewer trying Ombudsman-only action, DO trying to close appealable clause).","1. Login as unauthorized role.
+2. Navigate to complaint that would allow the action for higher role.
+3. Attempt to perform the restricted action (button hidden/disabled or validation on submit).
+4. Observe error / UI behavior.",Complaint in status where higher-role action is possible. Test user has lower role but same office/territory.,Action is blocked (button not visible or clear 'Insufficient permission' / 'This action requires Ombudsman authority' message). No status change occurs. Attempt logged in audit trail. No data leakage.,Negative
+RBIO-TC-02703,RBIO-US-027,Edge - Missing Mandatory Fields / Invalid Transition / Boundary Value,"Complaint in valid starting state. One or more mandatory fields left blank or invalid value entered (e.g., compensation > cap, empty reason for transfer, future meeting date in past).","1. Open complaint.
+2. Fill all fields except one mandatory or enter boundary-invalid value.
+3. Attempt Save & Proceed.
+4. Observe inline validation and final error handling.
+5. Correct the field and re-submit to confirm recovery.",For compensation stories: value = 3000001 or 300001 for harassment. For dates: past date for meeting. For text: 513+ chars in custom closure text.,"Clear red highlighting on missing/invalid fields. Specific error message (e.g., 'Compensation cannot exceed ₹30 Lakh consequential loss', 'Reason for Transfer is mandatory'). Action blocked until fixed. After correction, action succeeds.",Edge
+RBIO-TC-02704,RBIO-US-027,Edge - Large Data / Concurrent Users / Performance Boundary,System under load (400+ concurrent RBIO users). Complaint has 50+ attachments or very long history (reopened multiple times).,"1. Simulate load or use large test complaint.
+2. Perform the action (search, edit, status change, report export).
+3. Measure response time and verify no timeout or data corruption.","Complaint with 60 attachments (5MB each, mixed formats). 3-year history with 20 reopens. 500 concurrent test users.",Page loads / action completes in <3s (95th %ile). No data loss or UI freeze. Report exports successfully within acceptable time. Error rate remains <1%.,Performance
+RBIO-TC-02801,RBIO-US-028,"Happy Path - As a Deputy Ombudsman, I want to forward complaints to other...","User logged in with correct role via Kavach. Test complaint exists in appropriate status. All master data (entities, users, thresholds) loaded.","1. Navigate to relevant view (Assigned to Me / All Complaints).
+2. Open complaint detail.
+3. Perform the primary action described in the story (e.g., select status, fill mandatory fields, choose assignment mode).
+4. Save & Proceed / Submit.
+5. Verify next status, notifications, history entry, and any auto-actions (letter, assignment, color change).",Valid complaint in correct starting status for the role/action. Active users available for assignment. Email/SMS configured for test complainant/RE.,Action succeeds. Correct next status applied. Full audit history created with user ID + timestamp. Notifications triggered to relevant parties. Color coding / SLA timer updated if applicable. No validation errors.,Positive
+RBIO-TC-02802,RBIO-US-028,Negative - Unauthorized Role attempts action,"User logged in with a role that should NOT have permission (e.g., Reviewer trying Ombudsman-only action, DO trying to close appealable clause).","1. Login as unauthorized role.
+2. Navigate to complaint that would allow the action for higher role.
+3. Attempt to perform the restricted action (button hidden/disabled or validation on submit).
+4. Observe error / UI behavior.",Complaint in status where higher-role action is possible. Test user has lower role but same office/territory.,Action is blocked (button not visible or clear 'Insufficient permission' / 'This action requires Ombudsman authority' message). No status change occurs. Attempt logged in audit trail. No data leakage.,Negative
+RBIO-TC-02803,RBIO-US-028,Edge - Missing Mandatory Fields / Invalid Transition / Boundary Value,"Complaint in valid starting state. One or more mandatory fields left blank or invalid value entered (e.g., compensation > cap, empty reason for transfer, future meeting date in past).","1. Open complaint.
+2. Fill all fields except one mandatory or enter boundary-invalid value.
+3. Attempt Save & Proceed.
+4. Observe inline validation and final error handling.
+5. Correct the field and re-submit to confirm recovery.",For compensation stories: value = 3000001 or 300001 for harassment. For dates: past date for meeting. For text: 513+ chars in custom closure text.,"Clear red highlighting on missing/invalid fields. Specific error message (e.g., 'Compensation cannot exceed ₹30 Lakh consequential loss', 'Reason for Transfer is mandatory'). Action blocked until fixed. After correction, action succeeds.",Edge
+RBIO-TC-02804,RBIO-US-028,Edge - Large Data / Concurrent Users / Performance Boundary,System under load (400+ concurrent RBIO users). Complaint has 50+ attachments or very long history (reopened multiple times).,"1. Simulate load or use large test complaint.
+2. Perform the action (search, edit, status change, report export).
+3. Measure response time and verify no timeout or data corruption.","Complaint with 60 attachments (5MB each, mixed formats). 3-year history with 20 reopens. 500 concurrent test users.",Page loads / action completes in <3s (95th %ile). No data loss or UI freeze. Report exports successfully within acceptable time. Error rate remains <1%.,Performance
+RBIO-TC-02901,RBIO-US-029,"Happy Path - As a Deputy Ombudsman, I want to send complaints back to Rev...","User logged in with correct role via Kavach. Test complaint exists in appropriate status. All master data (entities, users, thresholds) loaded.","1. Navigate to relevant view (Assigned to Me / All Complaints).
+2. Open complaint detail.
+3. Perform the primary action described in the story (e.g., select status, fill mandatory fields, choose assignment mode).
+4. Save & Proceed / Submit.
+5. Verify next status, notifications, history entry, and any auto-actions (letter, assignment, color change).",Valid complaint in correct starting status for the role/action. Active users available for assignment. Email/SMS configured for test complainant/RE.,Action succeeds. Correct next status applied. Full audit history created with user ID + timestamp. Notifications triggered to relevant parties. Color coding / SLA timer updated if applicable. No validation errors.,Positive
+RBIO-TC-02902,RBIO-US-029,Negative - Unauthorized Role attempts action,"User logged in with a role that should NOT have permission (e.g., Reviewer trying Ombudsman-only action, DO trying to close appealable clause).","1. Login as unauthorized role.
+2. Navigate to complaint that would allow the action for higher role.
+3. Attempt to perform the restricted action (button hidden/disabled or validation on submit).
+4. Observe error / UI behavior.",Complaint in status where higher-role action is possible. Test user has lower role but same office/territory.,Action is blocked (button not visible or clear 'Insufficient permission' / 'This action requires Ombudsman authority' message). No status change occurs. Attempt logged in audit trail. No data leakage.,Negative
+RBIO-TC-02903,RBIO-US-029,Edge - Missing Mandatory Fields / Invalid Transition / Boundary Value,"Complaint in valid starting state. One or more mandatory fields left blank or invalid value entered (e.g., compensation > cap, empty reason for transfer, future meeting date in past).","1. Open complaint.
+2. Fill all fields except one mandatory or enter boundary-invalid value.
+3. Attempt Save & Proceed.
+4. Observe inline validation and final error handling.
+5. Correct the field and re-submit to confirm recovery.",For compensation stories: value = 3000001 or 300001 for harassment. For dates: past date for meeting. For text: 513+ chars in custom closure text.,"Clear red highlighting on missing/invalid fields. Specific error message (e.g., 'Compensation cannot exceed ₹30 Lakh consequential loss', 'Reason for Transfer is mandatory'). Action blocked until fixed. After correction, action succeeds.",Edge
+RBIO-TC-02904,RBIO-US-029,Edge - Large Data / Concurrent Users / Performance Boundary,System under load (400+ concurrent RBIO users). Complaint has 50+ attachments or very long history (reopened multiple times).,"1. Simulate load or use large test complaint.
+2. Perform the action (search, edit, status change, report export).
+3. Measure response time and verify no timeout or data corruption.","Complaint with 60 attachments (5MB each, mixed formats). 3-year history with 20 reopens. 500 concurrent test users.",Page loads / action completes in <3s (95th %ile). No data loss or UI freeze. Report exports successfully within acceptable time. Error rate remains <1%.,Performance
+RBIO-TC-03001,RBIO-US-030,"Happy Path - As a Deputy Ombudsman, I want to close non-maintainable comp...","User logged in with correct role via Kavach. Test complaint exists in appropriate status. All master data (entities, users, thresholds) loaded.","1. Navigate to relevant view (Assigned to Me / All Complaints).
+2. Open complaint detail.
+3. Perform the primary action described in the story (e.g., select status, fill mandatory fields, choose assignment mode).
+4. Save & Proceed / Submit.
+5. Verify next status, notifications, history entry, and any auto-actions (letter, assignment, color change).",Valid complaint in correct starting status for the role/action. Active users available for assignment. Email/SMS configured for test complainant/RE.,Action succeeds. Correct next status applied. Full audit history created with user ID + timestamp. Notifications triggered to relevant parties. Color coding / SLA timer updated if applicable. No validation errors.,Positive
+RBIO-TC-03002,RBIO-US-030,Negative - Unauthorized Role attempts action,"User logged in with a role that should NOT have permission (e.g., Reviewer trying Ombudsman-only action, DO trying to close appealable clause).","1. Login as unauthorized role.
+2. Navigate to complaint that would allow the action for higher role.
+3. Attempt to perform the restricted action (button hidden/disabled or validation on submit).
+4. Observe error / UI behavior.",Complaint in status where higher-role action is possible. Test user has lower role but same office/territory.,Action is blocked (button not visible or clear 'Insufficient permission' / 'This action requires Ombudsman authority' message). No status change occurs. Attempt logged in audit trail. No data leakage.,Negative
+RBIO-TC-03003,RBIO-US-030,Edge - Missing Mandatory Fields / Invalid Transition / Boundary Value,"Complaint in valid starting state. One or more mandatory fields left blank or invalid value entered (e.g., compensation > cap, empty reason for transfer, future meeting date in past).","1. Open complaint.
+2. Fill all fields except one mandatory or enter boundary-invalid value.
+3. Attempt Save & Proceed.
+4. Observe inline validation and final error handling.
+5. Correct the field and re-submit to confirm recovery.",For compensation stories: value = 3000001 or 300001 for harassment. For dates: past date for meeting. For text: 513+ chars in custom closure text.,"Clear red highlighting on missing/invalid fields. Specific error message (e.g., 'Compensation cannot exceed ₹30 Lakh consequential loss', 'Reason for Transfer is mandatory'). Action blocked until fixed. After correction, action succeeds.",Edge
+RBIO-TC-03004,RBIO-US-030,Edge - No Complainant Email / 7-day Link Expiry / Digital Signature Failure,Complainant record has no email (only mobile/postal). Or document upload link sent 8 days ago. Or digital signature certificate expired/invalid.,"1. Attempt closure on complaint with no email.
+2. Verify pop-up forces 'Generate Letter' + manual upload + mandatory 'Date of Sending' entry.
+3. For link expiry: try to use expired link (should show 'Link expired' and flag = No).
+4. For signature: simulate invalid cert on closure submit.",Complaint with empty email field. Expired 7-day link. Invalid/expired digital signature cert for closing authority.,Cannot close without date of sending when email missing. Link expiry shows clear message; flag updated to 'No'. Signature failure blocks closure with actionable error. All attempts audited.,Edge
+RBIO-TC-03101,RBIO-US-031,"Happy Path - As a Deputy Ombudsman, I want an executive view of complaint...","User logged in with correct role via Kavach. Test complaint exists in appropriate status. All master data (entities, users, thresholds) loaded.","1. Navigate to relevant view (Assigned to Me / All Complaints).
+2. Open complaint detail.
+3. Perform the primary action described in the story (e.g., select status, fill mandatory fields, choose assignment mode).
+4. Save & Proceed / Submit.
+5. Verify next status, notifications, history entry, and any auto-actions (letter, assignment, color change).",Valid complaint in correct starting status for the role/action. Active users available for assignment. Email/SMS configured for test complainant/RE.,Action succeeds. Correct next status applied. Full audit history created with user ID + timestamp. Notifications triggered to relevant parties. Color coding / SLA timer updated if applicable. No validation errors.,Positive
+RBIO-TC-03102,RBIO-US-031,Negative - Unauthorized Role attempts action,"User logged in with a role that should NOT have permission (e.g., Reviewer trying Ombudsman-only action, DO trying to close appealable clause).","1. Login as unauthorized role.
+2. Navigate to complaint that would allow the action for higher role.
+3. Attempt to perform the restricted action (button hidden/disabled or validation on submit).
+4. Observe error / UI behavior.",Complaint in status where higher-role action is possible. Test user has lower role but same office/territory.,Action is blocked (button not visible or clear 'Insufficient permission' / 'This action requires Ombudsman authority' message). No status change occurs. Attempt logged in audit trail. No data leakage.,Negative
+RBIO-TC-03103,RBIO-US-031,Edge - Missing Mandatory Fields / Invalid Transition / Boundary Value,"Complaint in valid starting state. One or more mandatory fields left blank or invalid value entered (e.g., compensation > cap, empty reason for transfer, future meeting date in past).","1. Open complaint.
+2. Fill all fields except one mandatory or enter boundary-invalid value.
+3. Attempt Save & Proceed.
+4. Observe inline validation and final error handling.
+5. Correct the field and re-submit to confirm recovery.",For compensation stories: value = 3000001 or 300001 for harassment. For dates: past date for meeting. For text: 513+ chars in custom closure text.,"Clear red highlighting on missing/invalid fields. Specific error message (e.g., 'Compensation cannot exceed ₹30 Lakh consequential loss', 'Reason for Transfer is mandatory'). Action blocked until fixed. After correction, action succeeds.",Edge
+RBIO-TC-03104,RBIO-US-031,Edge - Large Data / Concurrent Users / Performance Boundary,System under load (400+ concurrent RBIO users). Complaint has 50+ attachments or very long history (reopened multiple times).,"1. Simulate load or use large test complaint.
+2. Perform the action (search, edit, status change, report export).
+3. Measure response time and verify no timeout or data corruption.","Complaint with 60 attachments (5MB each, mixed formats). 3-year history with 20 reopens. 500 concurrent test users.",Page loads / action completes in <3s (95th %ile). No data loss or UI freeze. Report exports successfully within acceptable time. Error rate remains <1%.,Performance
+RBIO-TC-03201,RBIO-US-032,"Happy Path - As an Ombudsman, I want to make the final Maintainability de...","User logged in with correct role via Kavach. Test complaint exists in appropriate status. All master data (entities, users, thresholds) loaded.","1. Navigate to relevant view (Assigned to Me / All Complaints).
+2. Open complaint detail.
+3. Perform the primary action described in the story (e.g., select status, fill mandatory fields, choose assignment mode).
+4. Save & Proceed / Submit.
+5. Verify next status, notifications, history entry, and any auto-actions (letter, assignment, color change).",Valid complaint in correct starting status for the role/action. Active users available for assignment. Email/SMS configured for test complainant/RE.,Action succeeds. Correct next status applied. Full audit history created with user ID + timestamp. Notifications triggered to relevant parties. Color coding / SLA timer updated if applicable. No validation errors.,Positive
+RBIO-TC-03202,RBIO-US-032,Negative - Unauthorized Role attempts action,"User logged in with a role that should NOT have permission (e.g., Reviewer trying Ombudsman-only action, DO trying to close appealable clause).","1. Login as unauthorized role.
+2. Navigate to complaint that would allow the action for higher role.
+3. Attempt to perform the restricted action (button hidden/disabled or validation on submit).
+4. Observe error / UI behavior.",Complaint in status where higher-role action is possible. Test user has lower role but same office/territory.,Action is blocked (button not visible or clear 'Insufficient permission' / 'This action requires Ombudsman authority' message). No status change occurs. Attempt logged in audit trail. No data leakage.,Negative
+RBIO-TC-03203,RBIO-US-032,Edge - Missing Mandatory Fields / Invalid Transition / Boundary Value,"Complaint in valid starting state. One or more mandatory fields left blank or invalid value entered (e.g., compensation > cap, empty reason for transfer, future meeting date in past).","1. Open complaint.
+2. Fill all fields except one mandatory or enter boundary-invalid value.
+3. Attempt Save & Proceed.
+4. Observe inline validation and final error handling.
+5. Correct the field and re-submit to confirm recovery.",For compensation stories: value = 3000001 or 300001 for harassment. For dates: past date for meeting. For text: 513+ chars in custom closure text.,"Clear red highlighting on missing/invalid fields. Specific error message (e.g., 'Compensation cannot exceed ₹30 Lakh consequential loss', 'Reason for Transfer is mandatory'). Action blocked until fixed. After correction, action succeeds.",Edge
+RBIO-TC-03204,RBIO-US-032,Edge - Large Data / Concurrent Users / Performance Boundary,System under load (400+ concurrent RBIO users). Complaint has 50+ attachments or very long history (reopened multiple times).,"1. Simulate load or use large test complaint.
+2. Perform the action (search, edit, status change, report export).
+3. Measure response time and verify no timeout or data corruption.","Complaint with 60 attachments (5MB each, mixed formats). 3-year history with 20 reopens. 500 concurrent test users.",Page loads / action completes in <3s (95th %ile). No data loss or UI freeze. Report exports successfully within acceptable time. Error rate remains <1%.,Performance
+RBIO-TC-03301,RBIO-US-033,"Happy Path - As an Ombudsman, I want to reopen a previously closed compla...","User logged in with correct role via Kavach. Test complaint exists in appropriate status. All master data (entities, users, thresholds) loaded.","1. Navigate to relevant view (Assigned to Me / All Complaints).
+2. Open complaint detail.
+3. Perform the primary action described in the story (e.g., select status, fill mandatory fields, choose assignment mode).
+4. Save & Proceed / Submit.
+5. Verify next status, notifications, history entry, and any auto-actions (letter, assignment, color change).",Valid complaint in correct starting status for the role/action. Active users available for assignment. Email/SMS configured for test complainant/RE.,Action succeeds. Correct next status applied. Full audit history created with user ID + timestamp. Notifications triggered to relevant parties. Color coding / SLA timer updated if applicable. No validation errors.,Positive
+RBIO-TC-03302,RBIO-US-033,Negative - Unauthorized Role attempts action,"User logged in with a role that should NOT have permission (e.g., Reviewer trying Ombudsman-only action, DO trying to close appealable clause).","1. Login as unauthorized role.
+2. Navigate to complaint that would allow the action for higher role.
+3. Attempt to perform the restricted action (button hidden/disabled or validation on submit).
+4. Observe error / UI behavior.",Complaint in status where higher-role action is possible. Test user has lower role but same office/territory.,Action is blocked (button not visible or clear 'Insufficient permission' / 'This action requires Ombudsman authority' message). No status change occurs. Attempt logged in audit trail. No data leakage.,Negative
+RBIO-TC-03303,RBIO-US-033,Edge - Missing Mandatory Fields / Invalid Transition / Boundary Value,"Complaint in valid starting state. One or more mandatory fields left blank or invalid value entered (e.g., compensation > cap, empty reason for transfer, future meeting date in past).","1. Open complaint.
+2. Fill all fields except one mandatory or enter boundary-invalid value.
+3. Attempt Save & Proceed.
+4. Observe inline validation and final error handling.
+5. Correct the field and re-submit to confirm recovery.",For compensation stories: value = 3000001 or 300001 for harassment. For dates: past date for meeting. For text: 513+ chars in custom closure text.,"Clear red highlighting on missing/invalid fields. Specific error message (e.g., 'Compensation cannot exceed ₹30 Lakh consequential loss', 'Reason for Transfer is mandatory'). Action blocked until fixed. After correction, action succeeds.",Edge
+RBIO-TC-03304,RBIO-US-033,Edge - Large Data / Concurrent Users / Performance Boundary,System under load (400+ concurrent RBIO users). Complaint has 50+ attachments or very long history (reopened multiple times).,"1. Simulate load or use large test complaint.
+2. Perform the action (search, edit, status change, report export).
+3. Measure response time and verify no timeout or data corruption.","Complaint with 60 attachments (5MB each, mixed formats). 3-year history with 20 reopens. 500 concurrent test users.",Page loads / action completes in <3s (95th %ile). No data loss or UI freeze. Report exports successfully within acceptable time. Error rate remains <1%.,Performance
+RBIO-TC-03401,RBIO-US-034,"Happy Path - As an Ombudsman, I want to implead a third-party Regulated E...","User logged in with correct role via Kavach. Test complaint exists in appropriate status. All master data (entities, users, thresholds) loaded.","1. Navigate to relevant view (Assigned to Me / All Complaints).
+2. Open complaint detail.
+3. Perform the primary action described in the story (e.g., select status, fill mandatory fields, choose assignment mode).
+4. Save & Proceed / Submit.
+5. Verify next status, notifications, history entry, and any auto-actions (letter, assignment, color change).",Valid complaint in correct starting status for the role/action. Active users available for assignment. Email/SMS configured for test complainant/RE.,Action succeeds. Correct next status applied. Full audit history created with user ID + timestamp. Notifications triggered to relevant parties. Color coding / SLA timer updated if applicable. No validation errors.,Positive
+RBIO-TC-03402,RBIO-US-034,Negative - Unauthorized Role attempts action,"User logged in with a role that should NOT have permission (e.g., Reviewer trying Ombudsman-only action, DO trying to close appealable clause).","1. Login as unauthorized role.
+2. Navigate to complaint that would allow the action for higher role.
+3. Attempt to perform the restricted action (button hidden/disabled or validation on submit).
+4. Observe error / UI behavior.",Complaint in status where higher-role action is possible. Test user has lower role but same office/territory.,Action is blocked (button not visible or clear 'Insufficient permission' / 'This action requires Ombudsman authority' message). No status change occurs. Attempt logged in audit trail. No data leakage.,Negative
+RBIO-TC-03403,RBIO-US-034,Edge - Missing Mandatory Fields / Invalid Transition / Boundary Value,"Complaint in valid starting state. One or more mandatory fields left blank or invalid value entered (e.g., compensation > cap, empty reason for transfer, future meeting date in past).","1. Open complaint.
+2. Fill all fields except one mandatory or enter boundary-invalid value.
+3. Attempt Save & Proceed.
+4. Observe inline validation and final error handling.
+5. Correct the field and re-submit to confirm recovery.",For compensation stories: value = 3000001 or 300001 for harassment. For dates: past date for meeting. For text: 513+ chars in custom closure text.,"Clear red highlighting on missing/invalid fields. Specific error message (e.g., 'Compensation cannot exceed ₹30 Lakh consequential loss', 'Reason for Transfer is mandatory'). Action blocked until fixed. After correction, action succeeds.",Edge
+RBIO-TC-03404,RBIO-US-034,Edge - Large Data / Concurrent Users / Performance Boundary,System under load (400+ concurrent RBIO users). Complaint has 50+ attachments or very long history (reopened multiple times).,"1. Simulate load or use large test complaint.
+2. Perform the action (search, edit, status change, report export).
+3. Measure response time and verify no timeout or data corruption.","Complaint with 60 attachments (5MB each, mixed formats). 3-year history with 20 reopens. 500 concurrent test users.",Page loads / action completes in <3s (95th %ile). No data loss or UI freeze. Report exports successfully within acceptable time. Error rate remains <1%.,Performance
+RBIO-TC-03501,RBIO-US-035,"Happy Path - As an Ombudsman, I want to forward complaints to Other Regul...","User logged in with correct role via Kavach. Test complaint exists in appropriate status. All master data (entities, users, thresholds) loaded.","1. Navigate to relevant view (Assigned to Me / All Complaints).
+2. Open complaint detail.
+3. Perform the primary action described in the story (e.g., select status, fill mandatory fields, choose assignment mode).
+4. Save & Proceed / Submit.
+5. Verify next status, notifications, history entry, and any auto-actions (letter, assignment, color change).",Valid complaint in correct starting status for the role/action. Active users available for assignment. Email/SMS configured for test complainant/RE.,Action succeeds. Correct next status applied. Full audit history created with user ID + timestamp. Notifications triggered to relevant parties. Color coding / SLA timer updated if applicable. No validation errors.,Positive
+RBIO-TC-03502,RBIO-US-035,Negative - Unauthorized Role attempts action,"User logged in with a role that should NOT have permission (e.g., Reviewer trying Ombudsman-only action, DO trying to close appealable clause).","1. Login as unauthorized role.
+2. Navigate to complaint that would allow the action for higher role.
+3. Attempt to perform the restricted action (button hidden/disabled or validation on submit).
+4. Observe error / UI behavior.",Complaint in status where higher-role action is possible. Test user has lower role but same office/territory.,Action is blocked (button not visible or clear 'Insufficient permission' / 'This action requires Ombudsman authority' message). No status change occurs. Attempt logged in audit trail. No data leakage.,Negative
+RBIO-TC-03503,RBIO-US-035,Edge - Missing Mandatory Fields / Invalid Transition / Boundary Value,"Complaint in valid starting state. One or more mandatory fields left blank or invalid value entered (e.g., compensation > cap, empty reason for transfer, future meeting date in past).","1. Open complaint.
+2. Fill all fields except one mandatory or enter boundary-invalid value.
+3. Attempt Save & Proceed.
+4. Observe inline validation and final error handling.
+5. Correct the field and re-submit to confirm recovery.",For compensation stories: value = 3000001 or 300001 for harassment. For dates: past date for meeting. For text: 513+ chars in custom closure text.,"Clear red highlighting on missing/invalid fields. Specific error message (e.g., 'Compensation cannot exceed ₹30 Lakh consequential loss', 'Reason for Transfer is mandatory'). Action blocked until fixed. After correction, action succeeds.",Edge
+RBIO-TC-03504,RBIO-US-035,Edge - No Complainant Email / 7-day Link Expiry / Digital Signature Failure,Complainant record has no email (only mobile/postal). Or document upload link sent 8 days ago. Or digital signature certificate expired/invalid.,"1. Attempt closure on complaint with no email.
+2. Verify pop-up forces 'Generate Letter' + manual upload + mandatory 'Date of Sending' entry.
+3. For link expiry: try to use expired link (should show 'Link expired' and flag = No).
+4. For signature: simulate invalid cert on closure submit.",Complaint with empty email field. Expired 7-day link. Invalid/expired digital signature cert for closing authority.,Cannot close without date of sending when email missing. Link expiry shows clear message; flag updated to 'No'. Signature failure blocks closure with actionable error. All attempts audited.,Edge
+RBIO-TC-03601,RBIO-US-036,"Happy Path - As an Ombudsman, I want to update Legal Case Details on any ...","User logged in with correct role via Kavach. Test complaint exists in appropriate status. All master data (entities, users, thresholds) loaded.","1. Navigate to relevant view (Assigned to Me / All Complaints).
+2. Open complaint detail.
+3. Perform the primary action described in the story (e.g., select status, fill mandatory fields, choose assignment mode).
+4. Save & Proceed / Submit.
+5. Verify next status, notifications, history entry, and any auto-actions (letter, assignment, color change).",Valid complaint in correct starting status for the role/action. Active users available for assignment. Email/SMS configured for test complainant/RE.,Action succeeds. Correct next status applied. Full audit history created with user ID + timestamp. Notifications triggered to relevant parties. Color coding / SLA timer updated if applicable. No validation errors.,Positive
+RBIO-TC-03602,RBIO-US-036,Negative - Unauthorized Role attempts action,"User logged in with a role that should NOT have permission (e.g., Reviewer trying Ombudsman-only action, DO trying to close appealable clause).","1. Login as unauthorized role.
+2. Navigate to complaint that would allow the action for higher role.
+3. Attempt to perform the restricted action (button hidden/disabled or validation on submit).
+4. Observe error / UI behavior.",Complaint in status where higher-role action is possible. Test user has lower role but same office/territory.,Action is blocked (button not visible or clear 'Insufficient permission' / 'This action requires Ombudsman authority' message). No status change occurs. Attempt logged in audit trail. No data leakage.,Negative
+RBIO-TC-03603,RBIO-US-036,Edge - Missing Mandatory Fields / Invalid Transition / Boundary Value,"Complaint in valid starting state. One or more mandatory fields left blank or invalid value entered (e.g., compensation > cap, empty reason for transfer, future meeting date in past).","1. Open complaint.
+2. Fill all fields except one mandatory or enter boundary-invalid value.
+3. Attempt Save & Proceed.
+4. Observe inline validation and final error handling.
+5. Correct the field and re-submit to confirm recovery.",For compensation stories: value = 3000001 or 300001 for harassment. For dates: past date for meeting. For text: 513+ chars in custom closure text.,"Clear red highlighting on missing/invalid fields. Specific error message (e.g., 'Compensation cannot exceed ₹30 Lakh consequential loss', 'Reason for Transfer is mandatory'). Action blocked until fixed. After correction, action succeeds.",Edge
+RBIO-TC-03604,RBIO-US-036,Edge - Large Data / Concurrent Users / Performance Boundary,System under load (400+ concurrent RBIO users). Complaint has 50+ attachments or very long history (reopened multiple times).,"1. Simulate load or use large test complaint.
+2. Perform the action (search, edit, status change, report export).
+3. Measure response time and verify no timeout or data corruption.","Complaint with 60 attachments (5MB each, mixed formats). 3-year history with 20 reopens. 500 concurrent test users.",Page loads / action completes in <3s (95th %ile). No data loss or UI freeze. Report exports successfully within acceptable time. Error rate remains <1%.,Performance
+RBIO-TC-03701,RBIO-US-037,"Happy Path - As an Ombudsman, I want to see a comprehensive status list i...","User logged in with correct role via Kavach. Test complaint exists in appropriate status. All master data (entities, users, thresholds) loaded.","1. Navigate to relevant view (Assigned to Me / All Complaints).
+2. Open complaint detail.
+3. Perform the primary action described in the story (e.g., select status, fill mandatory fields, choose assignment mode).
+4. Save & Proceed / Submit.
+5. Verify next status, notifications, history entry, and any auto-actions (letter, assignment, color change).",Valid complaint in correct starting status for the role/action. Active users available for assignment. Email/SMS configured for test complainant/RE.,Action succeeds. Correct next status applied. Full audit history created with user ID + timestamp. Notifications triggered to relevant parties. Color coding / SLA timer updated if applicable. No validation errors.,Positive
+RBIO-TC-03702,RBIO-US-037,Negative - Unauthorized Role attempts action,"User logged in with a role that should NOT have permission (e.g., Reviewer trying Ombudsman-only action, DO trying to close appealable clause).","1. Login as unauthorized role.
+2. Navigate to complaint that would allow the action for higher role.
+3. Attempt to perform the restricted action (button hidden/disabled or validation on submit).
+4. Observe error / UI behavior.",Complaint in status where higher-role action is possible. Test user has lower role but same office/territory.,Action is blocked (button not visible or clear 'Insufficient permission' / 'This action requires Ombudsman authority' message). No status change occurs. Attempt logged in audit trail. No data leakage.,Negative
+RBIO-TC-03703,RBIO-US-037,Edge - Missing Mandatory Fields / Invalid Transition / Boundary Value,"Complaint in valid starting state. One or more mandatory fields left blank or invalid value entered (e.g., compensation > cap, empty reason for transfer, future meeting date in past).","1. Open complaint.
+2. Fill all fields except one mandatory or enter boundary-invalid value.
+3. Attempt Save & Proceed.
+4. Observe inline validation and final error handling.
+5. Correct the field and re-submit to confirm recovery.",For compensation stories: value = 3000001 or 300001 for harassment. For dates: past date for meeting. For text: 513+ chars in custom closure text.,"Clear red highlighting on missing/invalid fields. Specific error message (e.g., 'Compensation cannot exceed ₹30 Lakh consequential loss', 'Reason for Transfer is mandatory'). Action blocked until fixed. After correction, action succeeds.",Edge
+RBIO-TC-03704,RBIO-US-037,Edge - Large Data / Concurrent Users / Performance Boundary,System under load (400+ concurrent RBIO users). Complaint has 50+ attachments or very long history (reopened multiple times).,"1. Simulate load or use large test complaint.
+2. Perform the action (search, edit, status change, report export).
+3. Measure response time and verify no timeout or data corruption.","Complaint with 60 attachments (5MB each, mixed formats). 3-year history with 20 reopens. 500 concurrent test users.",Page loads / action completes in <3s (95th %ile). No data loss or UI freeze. Report exports successfully within acceptable time. Error rate remains <1%.,Performance
+RBIO-TC-03801,RBIO-US-038,"Happy Path - As an Ombudsman, I want the system to enforce that only I (o...","User logged in with correct role via Kavach. Test complaint exists in appropriate status. All master data (entities, users, thresholds) loaded.","1. Navigate to relevant view (Assigned to Me / All Complaints).
+2. Open complaint detail.
+3. Perform the primary action described in the story (e.g., select status, fill mandatory fields, choose assignment mode).
+4. Save & Proceed / Submit.
+5. Verify next status, notifications, history entry, and any auto-actions (letter, assignment, color change).",Valid complaint in correct starting status for the role/action. Active users available for assignment. Email/SMS configured for test complainant/RE.,Action succeeds. Correct next status applied. Full audit history created with user ID + timestamp. Notifications triggered to relevant parties. Color coding / SLA timer updated if applicable. No validation errors.,Positive
+RBIO-TC-03802,RBIO-US-038,Negative - Unauthorized Role attempts action,"User logged in with a role that should NOT have permission (e.g., Reviewer trying Ombudsman-only action, DO trying to close appealable clause).","1. Login as unauthorized role.
+2. Navigate to complaint that would allow the action for higher role.
+3. Attempt to perform the restricted action (button hidden/disabled or validation on submit).
+4. Observe error / UI behavior.",Complaint in status where higher-role action is possible. Test user has lower role but same office/territory.,Action is blocked (button not visible or clear 'Insufficient permission' / 'This action requires Ombudsman authority' message). No status change occurs. Attempt logged in audit trail. No data leakage.,Negative
+RBIO-TC-03803,RBIO-US-038,Edge - Missing Mandatory Fields / Invalid Transition / Boundary Value,"Complaint in valid starting state. One or more mandatory fields left blank or invalid value entered (e.g., compensation > cap, empty reason for transfer, future meeting date in past).","1. Open complaint.
+2. Fill all fields except one mandatory or enter boundary-invalid value.
+3. Attempt Save & Proceed.
+4. Observe inline validation and final error handling.
+5. Correct the field and re-submit to confirm recovery.",For compensation stories: value = 3000001 or 300001 for harassment. For dates: past date for meeting. For text: 513+ chars in custom closure text.,"Clear red highlighting on missing/invalid fields. Specific error message (e.g., 'Compensation cannot exceed ₹30 Lakh consequential loss', 'Reason for Transfer is mandatory'). Action blocked until fixed. After correction, action succeeds.",Edge
+RBIO-TC-03804,RBIO-US-038,Edge - Large Data / Concurrent Users / Performance Boundary,System under load (400+ concurrent RBIO users). Complaint has 50+ attachments or very long history (reopened multiple times).,"1. Simulate load or use large test complaint.
+2. Perform the action (search, edit, status change, report export).
+3. Measure response time and verify no timeout or data corruption.","Complaint with 60 attachments (5MB each, mixed formats). 3-year history with 20 reopens. 500 concurrent test users.",Page loads / action completes in <3s (95th %ile). No data loss or UI freeze. Report exports successfully within acceptable time. Error rate remains <1%.,Performance
+RBIO-TC-03901,RBIO-US-039,"Happy Path - As an Other Department user, I want view-only access to comp...","User logged in with correct role via Kavach. Test complaint exists in appropriate status. All master data (entities, users, thresholds) loaded.","1. Navigate to relevant view (Assigned to Me / All Complaints).
+2. Open complaint detail.
+3. Perform the primary action described in the story (e.g., select status, fill mandatory fields, choose assignment mode).
+4. Save & Proceed / Submit.
+5. Verify next status, notifications, history entry, and any auto-actions (letter, assignment, color change).",Valid complaint in correct starting status for the role/action. Active users available for assignment. Email/SMS configured for test complainant/RE.,Action succeeds. Correct next status applied. Full audit history created with user ID + timestamp. Notifications triggered to relevant parties. Color coding / SLA timer updated if applicable. No validation errors.,Positive
+RBIO-TC-03902,RBIO-US-039,Negative - Unauthorized Role attempts action,"User logged in with a role that should NOT have permission (e.g., Reviewer trying Ombudsman-only action, DO trying to close appealable clause).","1. Login as unauthorized role.
+2. Navigate to complaint that would allow the action for higher role.
+3. Attempt to perform the restricted action (button hidden/disabled or validation on submit).
+4. Observe error / UI behavior.",Complaint in status where higher-role action is possible. Test user has lower role but same office/territory.,Action is blocked (button not visible or clear 'Insufficient permission' / 'This action requires Ombudsman authority' message). No status change occurs. Attempt logged in audit trail. No data leakage.,Negative
+RBIO-TC-03903,RBIO-US-039,Edge - Missing Mandatory Fields / Invalid Transition / Boundary Value,"Complaint in valid starting state. One or more mandatory fields left blank or invalid value entered (e.g., compensation > cap, empty reason for transfer, future meeting date in past).","1. Open complaint.
+2. Fill all fields except one mandatory or enter boundary-invalid value.
+3. Attempt Save & Proceed.
+4. Observe inline validation and final error handling.
+5. Correct the field and re-submit to confirm recovery.",For compensation stories: value = 3000001 or 300001 for harassment. For dates: past date for meeting. For text: 513+ chars in custom closure text.,"Clear red highlighting on missing/invalid fields. Specific error message (e.g., 'Compensation cannot exceed ₹30 Lakh consequential loss', 'Reason for Transfer is mandatory'). Action blocked until fixed. After correction, action succeeds.",Edge
+RBIO-TC-03904,RBIO-US-039,Edge - Large Data / Concurrent Users / Performance Boundary,System under load (400+ concurrent RBIO users). Complaint has 50+ attachments or very long history (reopened multiple times).,"1. Simulate load or use large test complaint.
+2. Perform the action (search, edit, status change, report export).
+3. Measure response time and verify no timeout or data corruption.","Complaint with 60 attachments (5MB each, mixed formats). 3-year history with 20 reopens. 500 concurrent test users.",Page loads / action completes in <3s (95th %ile). No data loss or UI freeze. Report exports successfully within acceptable time. Error rate remains <1%.,Performance
+RBIO-TC-04001,RBIO-US-040,"Happy Path - As the system, I want to enforce compensation limits (conseq...","User logged in with correct role via Kavach. Test complaint exists in appropriate status. All master data (entities, users, thresholds) loaded.","1. Navigate to relevant view (Assigned to Me / All Complaints).
+2. Open complaint detail.
+3. Perform the primary action described in the story (e.g., select status, fill mandatory fields, choose assignment mode).
+4. Save & Proceed / Submit.
+5. Verify next status, notifications, history entry, and any auto-actions (letter, assignment, color change).",Valid complaint in correct starting status for the role/action. Active users available for assignment. Email/SMS configured for test complainant/RE.,Action succeeds. Correct next status applied. Full audit history created with user ID + timestamp. Notifications triggered to relevant parties. Color coding / SLA timer updated if applicable. No validation errors.,Positive
+RBIO-TC-04002,RBIO-US-040,Negative - Unauthorized Role attempts action,"User logged in with a role that should NOT have permission (e.g., Reviewer trying Ombudsman-only action, DO trying to close appealable clause).","1. Login as unauthorized role.
+2. Navigate to complaint that would allow the action for higher role.
+3. Attempt to perform the restricted action (button hidden/disabled or validation on submit).
+4. Observe error / UI behavior.",Complaint in status where higher-role action is possible. Test user has lower role but same office/territory.,Action is blocked (button not visible or clear 'Insufficient permission' / 'This action requires Ombudsman authority' message). No status change occurs. Attempt logged in audit trail. No data leakage.,Negative
+RBIO-TC-04003,RBIO-US-040,Edge - Missing Mandatory Fields / Invalid Transition / Boundary Value,"Complaint in valid starting state. One or more mandatory fields left blank or invalid value entered (e.g., compensation > cap, empty reason for transfer, future meeting date in past).","1. Open complaint.
+2. Fill all fields except one mandatory or enter boundary-invalid value.
+3. Attempt Save & Proceed.
+4. Observe inline validation and final error handling.
+5. Correct the field and re-submit to confirm recovery.",For compensation stories: value = 3000001 or 300001 for harassment. For dates: past date for meeting. For text: 513+ chars in custom closure text.,"Clear red highlighting on missing/invalid fields. Specific error message (e.g., 'Compensation cannot exceed ₹30 Lakh consequential loss', 'Reason for Transfer is mandatory'). Action blocked until fixed. After correction, action succeeds.",Edge
+RBIO-TC-04004,RBIO-US-040,Edge - Large Data / Concurrent Users / Performance Boundary,System under load (400+ concurrent RBIO users). Complaint has 50+ attachments or very long history (reopened multiple times).,"1. Simulate load or use large test complaint.
+2. Perform the action (search, edit, status change, report export).
+3. Measure response time and verify no timeout or data corruption.","Complaint with 60 attachments (5MB each, mixed formats). 3-year history with 20 reopens. 500 concurrent test users.",Page loads / action completes in <3s (95th %ile). No data loss or UI freeze. Report exports successfully within acceptable time. Error rate remains <1%.,Performance
+RBIO-TC-04101,RBIO-US-041,"Happy Path - As the system, I want page load times for complaint list and...","User logged in with correct role via Kavach. Test complaint exists in appropriate status. All master data (entities, users, thresholds) loaded.","1. Navigate to relevant view (Assigned to Me / All Complaints).
+2. Open complaint detail.
+3. Perform the primary action described in the story (e.g., select status, fill mandatory fields, choose assignment mode).
+4. Save & Proceed / Submit.
+5. Verify next status, notifications, history entry, and any auto-actions (letter, assignment, color change).",Valid complaint in correct starting status for the role/action. Active users available for assignment. Email/SMS configured for test complainant/RE.,Action succeeds. Correct next status applied. Full audit history created with user ID + timestamp. Notifications triggered to relevant parties. Color coding / SLA timer updated if applicable. No validation errors.,Positive
+RBIO-TC-04102,RBIO-US-041,Negative - Unauthorized Role attempts action,"User logged in with a role that should NOT have permission (e.g., Reviewer trying Ombudsman-only action, DO trying to close appealable clause).","1. Login as unauthorized role.
+2. Navigate to complaint that would allow the action for higher role.
+3. Attempt to perform the restricted action (button hidden/disabled or validation on submit).
+4. Observe error / UI behavior.",Complaint in status where higher-role action is possible. Test user has lower role but same office/territory.,Action is blocked (button not visible or clear 'Insufficient permission' / 'This action requires Ombudsman authority' message). No status change occurs. Attempt logged in audit trail. No data leakage.,Negative
+RBIO-TC-04103,RBIO-US-041,Edge - Missing Mandatory Fields / Invalid Transition / Boundary Value,"Complaint in valid starting state. One or more mandatory fields left blank or invalid value entered (e.g., compensation > cap, empty reason for transfer, future meeting date in past).","1. Open complaint.
+2. Fill all fields except one mandatory or enter boundary-invalid value.
+3. Attempt Save & Proceed.
+4. Observe inline validation and final error handling.
+5. Correct the field and re-submit to confirm recovery.",For compensation stories: value = 3000001 or 300001 for harassment. For dates: past date for meeting. For text: 513+ chars in custom closure text.,"Clear red highlighting on missing/invalid fields. Specific error message (e.g., 'Compensation cannot exceed ₹30 Lakh consequential loss', 'Reason for Transfer is mandatory'). Action blocked until fixed. After correction, action succeeds.",Edge
+RBIO-TC-04104,RBIO-US-041,Edge - Large Data / Concurrent Users / Performance Boundary,System under load (400+ concurrent RBIO users). Complaint has 50+ attachments or very long history (reopened multiple times).,"1. Simulate load or use large test complaint.
+2. Perform the action (search, edit, status change, report export).
+3. Measure response time and verify no timeout or data corruption.","Complaint with 60 attachments (5MB each, mixed formats). 3-year history with 20 reopens. 500 concurrent test users.",Page loads / action completes in <3s (95th %ile). No data loss or UI freeze. Report exports successfully within acceptable time. Error rate remains <1%.,Performance
+RBIO-TC-04201,RBIO-US-042,"Happy Path - As the system, I want all data at rest AES-256 encrypted, in...","User logged in with correct role via Kavach. Test complaint exists in appropriate status. All master data (entities, users, thresholds) loaded.","1. Navigate to relevant view (Assigned to Me / All Complaints).
+2. Open complaint detail.
+3. Perform the primary action described in the story (e.g., select status, fill mandatory fields, choose assignment mode).
+4. Save & Proceed / Submit.
+5. Verify next status, notifications, history entry, and any auto-actions (letter, assignment, color change).",Valid complaint in correct starting status for the role/action. Active users available for assignment. Email/SMS configured for test complainant/RE.,Action succeeds. Correct next status applied. Full audit history created with user ID + timestamp. Notifications triggered to relevant parties. Color coding / SLA timer updated if applicable. No validation errors.,Positive
+RBIO-TC-04202,RBIO-US-042,Negative - Unauthorized Role attempts action,"User logged in with a role that should NOT have permission (e.g., Reviewer trying Ombudsman-only action, DO trying to close appealable clause).","1. Login as unauthorized role.
+2. Navigate to complaint that would allow the action for higher role.
+3. Attempt to perform the restricted action (button hidden/disabled or validation on submit).
+4. Observe error / UI behavior.",Complaint in status where higher-role action is possible. Test user has lower role but same office/territory.,Action is blocked (button not visible or clear 'Insufficient permission' / 'This action requires Ombudsman authority' message). No status change occurs. Attempt logged in audit trail. No data leakage.,Negative
+RBIO-TC-04203,RBIO-US-042,Edge - Missing Mandatory Fields / Invalid Transition / Boundary Value,"Complaint in valid starting state. One or more mandatory fields left blank or invalid value entered (e.g., compensation > cap, empty reason for transfer, future meeting date in past).","1. Open complaint.
+2. Fill all fields except one mandatory or enter boundary-invalid value.
+3. Attempt Save & Proceed.
+4. Observe inline validation and final error handling.
+5. Correct the field and re-submit to confirm recovery.",For compensation stories: value = 3000001 or 300001 for harassment. For dates: past date for meeting. For text: 513+ chars in custom closure text.,"Clear red highlighting on missing/invalid fields. Specific error message (e.g., 'Compensation cannot exceed ₹30 Lakh consequential loss', 'Reason for Transfer is mandatory'). Action blocked until fixed. After correction, action succeeds.",Edge
+RBIO-TC-04204,RBIO-US-042,Edge - Large Data / Concurrent Users / Performance Boundary,System under load (400+ concurrent RBIO users). Complaint has 50+ attachments or very long history (reopened multiple times).,"1. Simulate load or use large test complaint.
+2. Perform the action (search, edit, status change, report export).
+3. Measure response time and verify no timeout or data corruption.","Complaint with 60 attachments (5MB each, mixed formats). 3-year history with 20 reopens. 500 concurrent test users.",Page loads / action completes in <3s (95th %ile). No data loss or UI freeze. Report exports successfully within acceptable time. Error rate remains <1%.,Performance
+
+--- Sheet: Traceability Matrix ---
+BRD Section / Req ID,Requirement Summary,Linked User Story IDs,Coverage Status,Notes / Gaps
+Value Proposition for RBIO,24x7 single-window RB-IOS 2026 compliant platform for 24 RBIO offices; compensation caps ₹30L/₹3L; Advisory mechanism; digital signature; OCR; SLA; multi-role workflow.,"RBIO-US-001, RBIO-US-040, RBIO-US-042, RBIO-US-011, RBIO-US-019, RBIO-US-004, RBIO-US-015",Fully Covered,
+Gap #01 - No status tracking visible,Implement status bar with color coding.,RBIO-US-002,Fully Covered,
+Gap #04 - Manual Stamping Closing letter,Digital signature for closing authority.,"RBIO-US-009, RBIO-US-019, RBIO-US-030, RBIO-US-040 (validation)",Fully Covered,
+Gap #06 - No compensation cap enforcement,Validation enforcement for ₹30L / ₹3L limits.,"RBIO-US-020, RBIO-US-040",Fully Covered,
+Gap #08 - Forward validation missing,Validation on Forward Other Office screen.,"RBIO-US-022, RBIO-US-028",Fully Covered,
+Gap #10 - No bulk active/inactive by admin,Bulk marking + On Leave handling.,RBIO-US-006,Fully Covered,
+Gap #13 - Existing CMS aligned to RB-IOS 2021 only,Update to enforce all RB-IOS 2019/2021/2026 provisions + scheme transition control.,"RBIO-US-012, RBIO-US-032, RBIO-US-033, RBIO-US-038, RBIO-US-040",Fully Covered,
+Gap #14 - Draft complaints from physical letters manual,OCR auto-fill for physical letters (English typed).,RBIO-US-011,Fully Covered,
+6.5.3.1 Ombudsman Admin - Role Management & Bulk Actions,"Create users, bulk active/inactive/on leave, reassign complaints, manage templates, view all reports, legal case update on closed.","RBIO-US-005, RBIO-US-006, RBIO-US-007, RBIO-US-008, RBIO-US-009, RBIO-US-010",Fully Covered,
+6.5.3.2 Dealing Official - Draft + Switch + Assignment + Assessment + Conciliation + Final Decision,"Full DO workflow: OCR draft, switch legacy, assignment logic (entity/round robin/category + threshold + fallback), maintainability marking, send to higher roles, meeting management, closure processing with lock after decision, compensation on award, 7-day document link, forward with CRPC approval.",RBIO-US-011 to RBIO-US-022,Fully Covered,
+6.5.3.3 Reviewer - Assessment + Limited Closure,"Review actions, modify proposed clause, send to DRBIO/Ombudsman/send back, limited non-maintainable closure with pop-up sample letter, appealable clause protection.",RBIO-US-023 to RBIO-US-026,Fully Covered,
+6.5.3.5 Deputy Ombudsman - Decision + Forward + Send Back + Closure,"DRBIO Decision (Facilitation/Rejection), forward to other office/regulatory/dept, send back, non-maintainable closure, executive view.",RBIO-US-027 to RBIO-US-031,Fully Covered,
+6.5.3.6 Ombudsman - Full Authority + Reopen + Implead + Advisory + Award,"Ombudsman Decision, Advisory, Award (capped), Settled/Withdrawn, full closure, reopen with reason + scheme retention, implead third party, forward to regulatory, legal update, full status visibility.",RBIO-US-032 to RBIO-US-038,Fully Covered,
+6.5.3.7 Other Department - View Only,View-only access to forwarded complaints + reports.,RBIO-US-039,Fully Covered,
+FR-RBIO-001 to FR-RBIO-042 (selected critical),"Secure login/RBAC, dashboard filters, search, edit/save, milestones, routing, Advisory/Award/closure, compensation enforcement, notifications, reports, prevent inactive assignment, OCR, digital signature, SLA, performance, security/encryption/VAPT/DPDP.","RBIO-US-001, RBIO-US-002, RBIO-US-003, RBIO-US-004, RBIO-US-011, RBIO-US-015, RBIO-US-019, RBIO-US-020, RBIO-US-040, RBIO-US-041, RBIO-US-042",Fully Covered,
+"NFR-007, PSR-02, PSR-05, PSR-06 (Performance)","Page load ≤3s @95th, 500 concurrent, auto-scaling, <1% failure under 3x peak.",RBIO-US-041,Fully Covered,
+SR-01 to SR-11 + DPDP (Security),"AES-256 + TLS 1.3, RBAC segregation, immutable audit, 15min timeout, VAPT, PII minimization, tamper detection.","RBIO-US-001, RBIO-US-042",Fully Covered,
+BR-01 to BR-08 (Business Rules),"Closure clause confirmation at Ombudsman, reopen Ombudsman-only + reason + scheme retention, assignment logic (entity/round robin/category), threshold, regulatory body master validation, document link 7-day security.","RBIO-US-019, RBIO-US-033, RBIO-US-013, RBIO-US-021, RBIO-US-035, RBIO-US-040",Fully Covered,
+
+--- Sheet: Verification & Gap Analysis ---
+ADVERSARIAL SELF-AUDIT & GAP ANALYSIS - RBIO MODULE BACKLOG,,,,,
+,,,,,
+BRD Section / Area,How Covered (User Stories),Assumptions Made,Gaps / Ambiguities / Missing Edge Cases Flagged,Recommendations for Clarification,Confidence
+"RBIO Roles Hierarchy & Operations Matrix (6.2, 6.3.1, 6.3.2)","Covered by US-005 to US-039 (role-specific stories for Admin, DO, Reviewer, DRBIO, Ombudsman, Other Dept) + RBAC enforcement in almost every TC-02.",Kavach provides the underlying RBAC engine; exact permission matrix from BRD tables is implemented 1:1. Secretary role is fully phased out for new complaints (legacy only).,Exact list of 'delegated non-maintainable clauses' for Reviewer not enumerated in BRD — assumed standard set from RB-IOS 2026. '13-1 Notice' template content and exact fields not detailed.,Obtain the official closure clause matrix (role x scheme) and 13-1 Notice template from CEPD before development. Confirm if Reviewer can see 'Sent to Ombudsman' status or only through search.,88%
+"Assignment Logic + Threshold + On Leave (6.5.4.7, 6.5.4.8)","US-006, US-013, US-022 fully address entity/round-robin/category logic, threshold overflow per RBI mapping, fallback to Regional Admin, On Leave prevention, bulk reassignment.","RBI will provide the master mapping (entity → DO, state-district → office, overflow sequence). Threshold is single configurable value across all 24 offices (or per office?).",Exact behavior when ALL offices are at threshold simultaneously (reset logic described but edge case of simultaneous reset + new complaints not fully detailed). Concurrent complaint intake during threshold change not specified.,Define and test the 'all offices at threshold' reset race condition. Add monitoring/alert when >80% offices near threshold.,85%
+"RB-IOS 2026 Specifics (Compensation, Advisory, Award, Implead, Appealable Clauses, Scheme Transition)","US-020, US-032, US-034, US-038, US-040 provide strong coverage of caps, Advisory flow, Award + NO record sync, implead, appealable clause protection, and scheme-aware reopen/closure clauses.",Compensation Sought vs Awarded validation is on gross amount before any other deductions. 'Advisory Complied' auto-closes or requires explicit DO action after RE compliance.,BRD does not specify exact UI for 'implead third party' (search existing entity vs create new temporary?). Revised award dates after reopen — how many revisions allowed? Is there a 'Revised Award' status or just reuse Award Passed?,Clarify implead UX and whether revised awards create new NO record entries or update existing. Add explicit limit on number of reopens per complaint (or per scheme).,82%
+"OCR, Physical Letters, Switch Process, Legacy Migration (Gap #14, 6.5.3.2)","US-011 and US-012 cover OCR (English typed only, original scan attached, fallback manual), Switch Process for legacy post-CRPC approval, scheme flag setting.",OCR engine is external (Azure/Google/Indian language capable later) but Phase 1 strictly English printed. Handwritten always manual entry. Switch Process only for complaints already in 'Approve' in CRPC.,What happens to draft complaints that fail OCR confidence threshold? Is there a 'OCR Review Queue' for DO or auto low-confidence flag only? Language detection for vernacular physical letters?,Add confidence score from OCR and queue for low-confidence items. Define fallback for mixed-language or handwritten (manual entry + attach scan is current assumption — confirm).,80%
+"Closure Communication, Digital Signature, No-Email Fallback (6.5.4.2, Gap #04)","US-009, US-019, US-030 cover template management, 512 char custom text, pop-up confirmation, auto email/SMS, mandatory manual upload + date when no email, digital signature enforcement.",Digital signature is applied at 'Save & Proceed' on Closed status by the closing authority role. Same signature used for closure letter and any other formal documents.,What if digital signature fails mid-process (network/cert issue)? Is there a retry/override by higher admin? How is the signed PDF stored and linked to complaint history?,Design graceful degradation for signature service outage (queue + manual intervention flag). Define retention of signed closure letters (same as complaint record = 7+ years).,87%
+"Non-Functional: Performance, Security, Data Migration, VAPT (NFRs, SRs, PSRs)","US-041 and US-042 explicitly call out 3s page load, 500 concurrent, auto-scaling, AES-256/TLS 1.3, immutable audit, 15min timeout, VAPT sign-off, DPDP PII minimization.",Load testing will be performed with realistic RBIO user distribution (not just synthetic 500). Data migration strategy document will be produced separately (as per NFR-005).,Exact PII fields visible to Other Department / RE Contact Person not enumerated. Audit log retention period (7 years per BRD reports constraint?) vs DPDP storage limitation. Encryption key management (HSM? who rotates?).,Produce Data Classification & PII Handling Matrix before dev. Confirm audit retention with Legal/DIT (likely 7-10 years for RBI Ombudsman records). Add key rotation and HSM requirements to infra stories.,78%
+Overall Backlog Completeness,"42 granular user stories + 168 test cases cover all explicit FRs, major process flows in 6.5.x, all identified Gaps, key NFRs/SRs/BRs, and role matrices. Negative/edge cases included for every critical path (permission, validation, on-leave, no-email, threshold, OCR failure, compensation cap, link expiry, concurrent).",This is a high-quality curated set focused on shippable increments. Full decomposition in a 2-day grooming workshop would yield 110-130 stories (many small UI/validation variants).,MOM digital builder (explicitly out of Phase 1). Exact list of all closure clauses per scheme/role (need CEPD input). '13-1 Notice' exact template/fields. Performance SLAs for assignment engine and report generation under full 24-office load. Mobile/responsive requirements (BRD is web portal focused).,"1. Workshop with CEPD + DIT to finalize closure clause matrix and 13-1 Notice spec.
+2. Add dedicated performance stories for assignment engine and large report exports.
+3. Confirm if PWA or mobile web support is required in Phase 1.
+4. Create separate epic for Data Migration & Legacy Cutover.",85%
+,,,,,
+OVERALL BACKLOG QUALITY: 42 User Stories | 168 Test Cases | 17 Traceability Mappings | 7 Gap Areas Analyzed | Average Confidence: 85% | Ready for Phase 1 grooming with CEPD.,,,,,
+

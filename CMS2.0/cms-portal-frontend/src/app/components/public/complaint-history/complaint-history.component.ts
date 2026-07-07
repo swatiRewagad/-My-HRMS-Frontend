@@ -26,12 +26,8 @@ export class ComplaintHistoryComponent implements OnInit {
   private http = inject(HttpClient);
   private authService = inject(PublicAuthService);
 
-  complaints = signal<ComplaintRecord[]>([
-    { complaintId: 'N20262700700001', entityName: 'Adarsh Bank', complaintDate: '2026-08-15', status: 'IN_PROGRESS', comments: 'Missing details ple...' },
-    { complaintId: 'N20262700717363', entityName: 'Varada Bank', complaintDate: '2026-02-03', status: 'CLOSED', comments: 'Missing details ple...' },
-    { complaintId: 'N20262700673827', entityName: 'Kaveri Bank', complaintDate: '2026-11-22', status: 'INFORMATION_REQUIRED', comments: 'Missing details ple...' },
-  ]);
-  loading = signal(false);
+  complaints = signal<ComplaintRecord[]>([]);
+  loading = signal(true);
 
   filters = { complaintId: '', entityName: '', date: '', status: '', comments: '' };
 
@@ -54,18 +50,19 @@ export class ComplaintHistoryComponent implements OnInit {
     this.http.get<any>(`${environment.apiBaseUrl}/api/v1/complaints?phone=${phone}`).subscribe({
       next: (res) => {
         const data = res?.data || res || [];
-        if (Array.isArray(data) && data.length > 0) {
-          this.complaints.set(data.map((c: any) => ({
-            complaintId: c.complaintId || c.id,
-            entityName: c.entityName || c.complainantName || '—',
-            complaintDate: c.createdAt || c.complaintDate || c.registeredDate || '—',
-            status: c.status || 'PENDING',
-            comments: c.comments || c.description?.substring(0, 50) || '—'
-          })));
-        }
+        this.complaints.set(Array.isArray(data) ? data.map((c: any) => ({
+          complaintId: c.complaintId || c.id,
+          entityName: c.entityName || c.complainantName || '—',
+          complaintDate: c.createdAt || c.complaintDate || c.registeredDate || '—',
+          status: c.status || 'PENDING',
+          comments: c.comments || c.description?.substring(0, 50) || '—'
+        })) : []);
         this.loading.set(false);
       },
-      error: () => { this.loading.set(false); }
+      error: () => {
+        this.complaints.set([]);
+        this.loading.set(false);
+      }
     });
   }
 

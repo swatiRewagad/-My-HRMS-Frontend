@@ -28,8 +28,14 @@
 
           <div class="action-card public-card" (click)="navigateToPublicPortal()">
             <i class="pi pi-globe"></i>
-            <h3>Public Portal</h3>
-            <p>Complainant-facing portal — file, track, withdraw, appeal, feedback</p>
+            <h3>Public Portal 1</h3>
+            <p>Standard complaint filing — eligibility check, multi-step form, track, withdraw, appeal</p>
+          </div>
+
+          <div class="action-card public-card portal2-card" (click)="navigateToPortal2()">
+            <i class="pi pi-question-circle"></i>
+            <h3>Public Portal 2</h3>
+            <p>"Can RBI help?" — guided eligibility wizard with timeline visualization before filing</p>
           </div>
 
           <div class="action-card keycloak-card" (click)="navigateToKeycloakAdmin()">

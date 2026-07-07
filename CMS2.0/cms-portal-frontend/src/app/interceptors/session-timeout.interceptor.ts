@@ -11,9 +11,9 @@ export const sessionTimeoutInterceptor: HttpInterceptorFn = (req, next) => {
   const sessionService = inject(SessionService);
   const router = inject(Router);
 
-  // Skip session management for CRPC routes (uses Keycloak auth instead)
-  const isCrpcRoute = router.url.startsWith('/crpc');
-  if (isCrpcRoute) {
+  // Skip session management for non-staff routes (CRPC uses Keycloak, public uses PublicAuthService)
+  const currentUrl = router.url;
+  if (currentUrl.startsWith('/crpc') || currentUrl.startsWith('/public') || currentUrl === '/') {
     return next(req);
   }
 
@@ -21,7 +21,7 @@ export const sessionTimeoutInterceptor: HttpInterceptorFn = (req, next) => {
 
   if (hasSession && sessionService.isExpired()) {
     sessionService.clearSession();
-    router.navigate(['/public']);
+    router.navigate(['/staff/login']);
     throw new Error('Session expired');
   }
 

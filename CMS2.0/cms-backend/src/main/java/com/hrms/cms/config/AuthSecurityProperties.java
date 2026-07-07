@@ -23,6 +23,7 @@ public class AuthSecurityProperties {
         private int expiryMinutes = 5;
         private int maxResendPerHour = 5;
         private int maxVerifyAttemptsPerOtp = 3;
+        private boolean devAutoPopulate = false;
     }
 
     @Getter @Setter

@@ -109,6 +109,11 @@ export const routes: Routes = [
     loadComponent: () => import('./components/staff/rbio-tasks/rbio-tasks.component').then(m => m.RbioTasksComponent)
   },
   {
+    path: 'rbio/supervisor-dashboard',
+    canActivate: [staffAuthGuard],
+    loadComponent: () => import('./components/rbio/rbio-supervisor-dashboard/rbio-supervisor-dashboard.component').then(m => m.RbioSupervisorDashboardComponent)
+  },
+  {
     path: 'staff/cepc/tasks',
     canActivate: [staffAuthGuard],
     loadComponent: () => import('./components/staff/cepc-tasks/cepc-tasks.component').then(m => m.CepcTasksComponent)
@@ -139,6 +144,22 @@ export const routes: Routes = [
     canActivate: [staffAuthGuard],
     loadComponent: () => import('./components/cepc/cepc-complaint-detail/cepc-complaint-detail.component').then(m => m.CepcComplaintDetailComponent)
   },
+  {
+    path: 'cepc/sla-dashboard',
+    canActivate: [staffAuthGuard],
+    loadComponent: () => import('./components/cepc/cepc-sla-dashboard/cepc-sla-dashboard.component').then(m => m.CepcSlaDashboardComponent)
+  },
+  // ── Report Builder & Senior Dashboard ──
+  {
+    path: 'staff/reports',
+    canActivate: [staffAuthGuard],
+    loadComponent: () => import('./components/report-builder/report-builder.component').then(m => m.ReportBuilderComponent)
+  },
+  {
+    path: 'staff/senior-dashboard',
+    canActivate: [staffAuthGuard],
+    loadComponent: () => import('./components/senior-dashboard/senior-dashboard.component').then(m => m.SeniorDashboardComponent)
+  },
   // ── CRPC (DEO / Reviewer) ──
   {
     path: 'crpc/login',
@@ -168,6 +189,33 @@ export const routes: Routes = [
     path: 'crpc/reviewer/draft/:id',
     loadComponent: () => import('./components/crpc/reviewer-assessment/reviewer-assessment.component').then(m => m.ReviewerAssessmentComponent)
   },
+  // ── RE Portal (Regulated Entity) ──
+  {
+    path: 're-portal/login',
+    loadComponent: () => import('./components/re-portal/re-login/re-login.component').then(m => m.ReLoginComponent)
+  },
+  {
+    path: 're-portal',
+    loadComponent: () => import('./components/re-portal/re-layout/re-layout.component').then(m => m.ReLayoutComponent),
+    canActivate: [staffAuthGuard],
+    children: [
+      { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
+      { path: 'dashboard', loadComponent: () => import('./components/re-portal/re-dashboard/re-dashboard.component').then(m => m.ReDashboardComponent) },
+      { path: 'complaints/:complaintNumber', loadComponent: () => import('./components/re-portal/re-complaint-detail/re-complaint-detail.component').then(m => m.ReComplaintDetailComponent) },
+      { path: 'profile', loadComponent: () => import('./components/re-portal/re-profile/re-profile.component').then(m => m.ReProfileComponent) },
+    ]
+  },
+  // ── Appellate Authority (AA) Module ──
+  {
+    path: 'aa/dashboard',
+    canActivate: [staffAuthGuard],
+    loadComponent: () => import('./components/aa/aa-dashboard/aa-dashboard.component').then(m => m.AaDashboardComponent)
+  },
+  {
+    path: 'aa/appeal/:appealNumber',
+    canActivate: [staffAuthGuard],
+    loadComponent: () => import('./components/aa/aa-appeal-detail/aa-appeal-detail.component').then(m => m.AaAppealDetailComponent)
+  },
   // ── Public-facing Complaint Portal ──
   {
     path: 'public',
@@ -175,6 +223,7 @@ export const routes: Routes = [
     children: [
       { path: '', loadComponent: () => import('./components/public/public-home/public-home.component').then(m => m.PublicHomeComponent) },
       { path: 'login', loadComponent: () => import('./components/public/public-login/public-login.component').then(m => m.PublicLoginComponent) },
+      { path: 'eligibility-wizard', loadComponent: () => import('./components/public/eligibility-wizard/eligibility-wizard.component').then(m => m.EligibilityWizardComponent) },
       { path: 'track', loadComponent: () => import('./components/complaint-tracker/complaint-tracker.component').then(m => m.ComplaintTrackerComponent) },
       { path: 'track/:id', loadComponent: () => import('./components/complaint-tracker/complaint-tracker.component').then(m => m.ComplaintTrackerComponent) },
       // Protected routes — require active session (NFR-005: 15-minute session)

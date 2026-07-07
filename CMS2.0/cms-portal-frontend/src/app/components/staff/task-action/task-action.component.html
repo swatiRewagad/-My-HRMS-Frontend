@@ -134,6 +134,11 @@
           </div>
         }
 
+        <!-- ═══ RBIO SLA PROGRESS (multi-stage) ═══ -->
+        @if (isRbioComplaint() && complaint()) {
+          <app-rbio-sla-progress [complaint]="complaint()!" [currentStage]="getRbioCurrentStage()"></app-rbio-sla-progress>
+        }
+
         <!-- ═══ CONTENT BOX (Email + Complaint panels) ═══ -->
         <div class="content-box">
           <div class="main-content-layout two-col">
@@ -364,6 +369,27 @@
                   </div>
                 }
               </div>
+
+              <!-- ═══ RBIO CONCILIATION ═══ -->
+              @if (showRbioConciliation()) {
+                <div class="form-section" [class.open]="true">
+                  <app-rbio-conciliation [complaint]="complaint()!"></app-rbio-conciliation>
+                </div>
+              }
+
+              <!-- ═══ RBIO ADJUDICATION ═══ -->
+              @if (showRbioAdjudication()) {
+                <div class="form-section" [class.open]="true">
+                  <app-rbio-adjudication [complaint]="complaint()!"></app-rbio-adjudication>
+                </div>
+              }
+
+              <!-- ═══ RBIO ADVISORY ═══ -->
+              @if (showRbioAdvisory()) {
+                <div class="form-section" [class.open]="true">
+                  <app-rbio-advisory [complaint]="complaint()!"></app-rbio-advisory>
+                </div>
+              }
 
               <!-- Action Panel Section -->
               <div class="form-section action-section" [class.open]="sectionOpen.actions" #actionSection>

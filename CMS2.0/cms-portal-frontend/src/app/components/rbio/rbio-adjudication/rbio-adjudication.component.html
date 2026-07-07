@@ -1,0 +1,178 @@
+<div class="rbio-adjudication">
+  <h4>Adjudication Proceedings</h4>
+
+  <!-- Case Summary -->
+  <div class="case-summary">
+    <h5>Case Summary</h5>
+    <p class="summary-text">{{ caseSummary }}</p>
+  </div>
+
+  <!-- Parties -->
+  <div class="parties-section">
+    <h5>Parties</h5>
+    <div class="parties-list">
+      @for (party of partiesInvolved; track party.role) {
+        <div class="party-item">
+          <span class="party-role">{{ party.role }}</span>
+          <span class="party-name">{{ party.name }}</span>
+        </div>
+      }
+    </div>
+  </div>
+
+  <!-- Impleaded Parties -->
+  @if (impleadedParties.length > 0) {
+    <div class="impleaded-section">
+      <h5>Impleaded Parties</h5>
+      <div class="parties-list">
+        @for (party of impleadedParties; track party.name) {
+          <div class="party-item impleaded">
+            <span class="party-role">{{ party.type }}</span>
+            <span class="party-name">{{ party.name }}</span>
+          </div>
+        }
+      </div>
+    </div>
+  }
+
+  <!-- Hearing Dates -->
+  @if (hearingDates.length > 0) {
+    <div class="hearing-dates-section">
+      <h5>Hearing Dates</h5>
+      <div class="dates-list">
+        @for (date of hearingDates; track $index) {
+          <span class="date-chip">{{ date }}</span>
+        }
+      </div>
+    </div>
+  }
+
+  <!-- Action Buttons -->
+  <div class="adjudication-actions">
+    <button class="action-btn notice" (click)="openForm('NOTICE')">Issue 13-1 Notice</button>
+    <button class="action-btn implead" (click)="openForm('IMPLEAD')">Implead Party</button>
+    <button class="action-btn award" (click)="openForm('AWARD')">Pass Award</button>
+    <button class="action-btn reject" (click)="openForm('REJECT')">Reject</button>
+  </div>
+
+  <!-- 13-1 Notice Form -->
+  @if (activeForm() === 'NOTICE') {
+    <div class="form-section">
+      <h5>Issue 13-1 Notice</h5>
+      <div class="form-grid">
+        <div class="form-field full">
+          <label>Target Party *</label>
+          <input type="text" [(ngModel)]="noticeTargetParty" placeholder="Name of the party to receive notice" />
+        </div>
+        <div class="form-field full">
+          <label>Notice Content *</label>
+          <textarea [(ngModel)]="noticeContent" rows="5" placeholder="Draft the 13-1 notice content..."></textarea>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="submit-btn" [disabled]="processing() || !noticeContent.trim() || !noticeTargetParty.trim()" (click)="submitNotice()">
+          @if (processing()) { Issuing... } @else { Issue Notice }
+        </button>
+        <button class="cancel-btn" (click)="cancelForm()">Cancel</button>
+      </div>
+    </div>
+  }
+
+  <!-- Implead Party Form -->
+  @if (activeForm() === 'IMPLEAD') {
+    <div class="form-section">
+      <h5>Implead Party</h5>
+      <div class="form-grid">
+        <div class="form-field">
+          <label>Party Name *</label>
+          <input type="text" [(ngModel)]="impleadPartyName" placeholder="Full name of the party" />
+        </div>
+        <div class="form-field">
+          <label>Party Type *</label>
+          <select [(ngModel)]="impleadPartyType">
+            <option value="">Select type...</option>
+            <option value="REGULATED_ENTITY">Regulated Entity</option>
+            <option value="THIRD_PARTY">Third Party</option>
+            <option value="GUARANTOR">Guarantor</option>
+            <option value="AGENT">Agent</option>
+            <option value="OTHER">Other</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="submit-btn" [disabled]="processing() || !impleadPartyName.trim() || !impleadPartyType" (click)="submitImplead()">
+          @if (processing()) { Adding... } @else { Add Party }
+        </button>
+        <button class="cancel-btn" (click)="cancelForm()">Cancel</button>
+      </div>
+    </div>
+  }
+
+  <!-- Pass Award Form -->
+  @if (activeForm() === 'AWARD') {
+    <div class="form-section">
+      <h5>Pass Adjudication Award</h5>
+      <div class="form-grid">
+        <div class="form-field full">
+          <label>Compensation Type *</label>
+          <select [(ngModel)]="awardCompensationType">
+            <option value="CONSEQUENTIAL_LOSS">Consequential Loss (Cap: 30L)</option>
+            <option value="TIME_HARASSMENT">Time/Harassment (Cap: 3L)</option>
+          </select>
+        </div>
+        <div class="form-field full">
+          <label>Compensation Amount (INR) *</label>
+          <input type="number" [(ngModel)]="awardAmount" placeholder="Enter amount" min="0" />
+          <!-- Real-time cap validation -->
+          @if (awardAmountNumeric > 0) {
+            <div class="cap-feedback" [class.ok]="!awardApproachesCap && !awardExceedsCap" [class.warning]="awardApproachesCap" [class.error]="awardExceedsCap">
+              @if (awardExceedsCap) {
+                <span class="cap-icon error-icon">&#10060;</span> Exceeds cap of {{ formatCurrency(currentCap) }}. Cannot pass award.
+              } @else if (awardApproachesCap) {
+                <span class="cap-icon warning-icon">&#9888;</span> {{ awardPercentOfCap | number:'1.0-0' }}% of cap ({{ formatCurrency(currentCap) }}). Approaching limit.
+              } @else {
+                <span class="cap-icon ok-icon">&#9989;</span> {{ awardPercentOfCap | number:'1.0-0' }}% of cap ({{ formatCurrency(currentCap) }}). Within limits.
+              }
+            </div>
+          }
+        </div>
+        <div class="form-field full">
+          <label>Award Summary *</label>
+          <textarea [(ngModel)]="awardSummary" rows="5" placeholder="Detailed award summary including rationale, compensation breakdown, and directions to entity..."></textarea>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="submit-btn" [disabled]="processing() || !awardSummary.trim() || awardExceedsCap" (click)="submitAward()">
+          @if (processing()) { Passing Award... } @else { Pass Award }
+        </button>
+        <button class="cancel-btn" (click)="cancelForm()">Cancel</button>
+      </div>
+    </div>
+  }
+
+  <!-- Reject Form -->
+  @if (activeForm() === 'REJECT') {
+    <div class="form-section">
+      <h5>Reject Complaint</h5>
+      <div class="form-grid">
+        <div class="form-field full">
+          <label>Detailed Grounds for Rejection *</label>
+          <textarea [(ngModel)]="rejectionGrounds" rows="5" placeholder="Provide detailed grounds citing relevant clauses and evidence..."></textarea>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="submit-btn reject-btn" [disabled]="processing() || !rejectionGrounds.trim()" (click)="submitReject()">
+          @if (processing()) { Rejecting... } @else { Confirm Rejection }
+        </button>
+        <button class="cancel-btn" (click)="cancelForm()">Cancel</button>
+      </div>
+    </div>
+  }
+
+  <!-- Result Message -->
+  @if (resultMessage()) {
+    <div class="result-msg" [class.success]="resultSuccess()" [class.error]="!resultSuccess()">
+      {{ resultMessage() }}
+    </div>
+  }
+</div>

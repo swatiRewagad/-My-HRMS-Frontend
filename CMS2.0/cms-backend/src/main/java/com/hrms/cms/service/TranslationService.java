@@ -39,11 +39,9 @@ public class TranslationService {
                 (v1, v2) -> v2
             ));
 
-        if (!"en".equals(resolvedLocale)) {
-            List<TranslationKey> allKeys = translationKeyRepository.findAll();
-            for (TranslationKey key : allKeys) {
-                result.putIfAbsent(key.getCode(), key.getDefaultValue() != null ? key.getDefaultValue() : key.getCode());
-            }
+        List<TranslationKey> allKeys = translationKeyRepository.findAll();
+        for (TranslationKey key : allKeys) {
+            result.putIfAbsent(key.getCode(), key.getDefaultValue() != null ? key.getDefaultValue() : key.getCode());
         }
 
         return result;
@@ -63,11 +61,9 @@ public class TranslationService {
                 (v1, v2) -> v2
             ));
 
-        if (!"en".equals(resolvedLocale)) {
-            List<TranslationKey> moduleKeys = translationKeyRepository.findByModule(module);
-            for (TranslationKey key : moduleKeys) {
-                result.putIfAbsent(key.getCode(), key.getDefaultValue() != null ? key.getDefaultValue() : key.getCode());
-            }
+        List<TranslationKey> moduleKeys = translationKeyRepository.findByModule(module);
+        for (TranslationKey key : moduleKeys) {
+            result.putIfAbsent(key.getCode(), key.getDefaultValue() != null ? key.getDefaultValue() : key.getCode());
         }
 
         return result;
@@ -130,9 +126,18 @@ public class TranslationService {
             String value = entry.get("value");
 
             Optional<TranslationKey> keyOpt = translationKeyRepository.findByCode(code);
-            if (keyOpt.isEmpty()) continue;
+            TranslationKey key;
+            if (keyOpt.isEmpty()) {
+                key = new TranslationKey();
+                key.setCode(code);
+                key.setModule(code.contains(".") ? code.substring(0, code.indexOf('.')) : "general");
+                key.setDescription(code);
+                key.setDefaultValue(value);
+                key = translationKeyRepository.save(key);
+            } else {
+                key = keyOpt.get();
+            }
 
-            TranslationKey key = keyOpt.get();
             List<Translation> existing = translationRepository.findByKeyIdAndLocale(key.getId(), locale);
 
             if (!existing.isEmpty()) {

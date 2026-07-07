@@ -2,14 +2,23 @@ package com.hrms.cms.controller;
 
 import com.hrms.cms.entity.Complaint;
 import com.hrms.cms.repository.BankRepository;
+import com.hrms.cms.repository.ComplaintAttachmentRepository;
 import com.hrms.cms.repository.ComplaintRepository;
 import com.hrms.cms.repository.ComplaintTimelineRepository;
+import com.hrms.cms.security.CepcRoleGuard;
+import com.hrms.cms.security.RbioRoleGuard;
+import com.hrms.cms.service.CepcSlaService;
+import com.hrms.cms.service.CepcWorkflowService;
 import com.hrms.cms.service.ComplaintService;
 import com.hrms.cms.service.KeycloakUserService;
+import com.hrms.cms.service.RbioCompensationService;
+import com.hrms.cms.service.RbioSlaService;
+import com.hrms.cms.service.RbioWorkflowService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -22,16 +31,23 @@ import java.util.stream.Collectors;
 public class WorkflowController {
 
     private final ComplaintRepository complaintRepository;
+    private final ComplaintAttachmentRepository complaintAttachmentRepository;
     private final ComplaintService complaintService;
     private final BankRepository bankRepository;
     private final KeycloakUserService keycloakUserService;
     private final ComplaintTimelineRepository complaintTimelineRepository;
+    private final CepcWorkflowService cepcWorkflowService;
+    private final CepcSlaService cepcSlaService;
+    private final RbioWorkflowService rbioWorkflowService;
+    private final RbioSlaService rbioSlaService;
+    private final RbioCompensationService rbioCompensationService;
 
     private final Map<String, Integer> roundRobinCounters = new ConcurrentHashMap<>();
 
     private static final List<String> CLOSED_STATUSES = List.of("resolved", "closed", "rejected", "withdrawn", "adjudicated", "conciliated");
 
     @GetMapping("/rbio/tasks")
+    @RbioRoleGuard(roles = {"RBIO_OFFICER", "RBIO_SUPERVISOR", "RBIO_CONCILIATOR", "RBIO_ADJUDICATOR", "RBIO_ADMIN"})
     public ResponseEntity<Map<String, Object>> getRbioTasks(
             @RequestParam(required = false) String role,
             @RequestParam(required = false) String officer) {
@@ -39,12 +55,14 @@ public class WorkflowController {
     }
 
     @GetMapping("/rbio/all-tasks")
+    @RbioRoleGuard(roles = {"RBIO_OFFICER", "RBIO_SUPERVISOR", "RBIO_CONCILIATOR", "RBIO_ADJUDICATOR", "RBIO_ADMIN"})
     public ResponseEntity<Map<String, Object>> getRbioAllTasks(
             @RequestParam(required = false) String officer) {
         return getAllTasksByDepartment("RBIO", officer);
     }
 
     @GetMapping("/cepc/tasks")
+    @CepcRoleGuard(roles = {"CEPC_DO", "CEPC_REVIEWER", "CEPC_INCHARGE", "CEPC_CLOSING_AUTHORITY", "CEPC_ADMIN", "CEPC_CONTACT_PERSON"})
     public ResponseEntity<Map<String, Object>> getCepcTasks(
             @RequestParam(required = false) String role,
             @RequestParam(required = false) String officer) {
@@ -52,12 +70,14 @@ public class WorkflowController {
     }
 
     @GetMapping("/cepc/all-tasks")
+    @CepcRoleGuard(roles = {"CEPC_DO", "CEPC_REVIEWER", "CEPC_INCHARGE", "CEPC_CLOSING_AUTHORITY", "CEPC_ADMIN", "CEPC_CONTACT_PERSON"})
     public ResponseEntity<Map<String, Object>> getCepcAllTasks(
             @RequestParam(required = false) String officer) {
         return getAllTasksByDepartment("CEPC", officer);
     }
 
     @PostMapping("/rbio/assign/{complaintNumber}")
+    @RbioRoleGuard(roles = {"RBIO_OFFICER", "RBIO_SUPERVISOR", "RBIO_ADMIN"})
     public ResponseEntity<Map<String, Object>> assignToRbio(
             @PathVariable String complaintNumber,
             @RequestBody Map<String, String> request) {
@@ -65,6 +85,7 @@ public class WorkflowController {
     }
 
     @PostMapping("/cepc/assign/{complaintNumber}")
+    @CepcRoleGuard(roles = {"CEPC_DO", "CEPC_INCHARGE", "CEPC_ADMIN"})
     public ResponseEntity<Map<String, Object>> assignToCepc(
             @PathVariable String complaintNumber,
             @RequestBody Map<String, String> request) {
@@ -72,6 +93,7 @@ public class WorkflowController {
     }
 
     @PostMapping("/rbio/action/{complaintNumber}")
+    @RbioRoleGuard(roles = {"RBIO_OFFICER", "RBIO_SUPERVISOR", "RBIO_CONCILIATOR", "RBIO_ADJUDICATOR", "RBIO_ADMIN"})
     public ResponseEntity<Map<String, Object>> rbioAction(
             @PathVariable String complaintNumber,
             @RequestBody Map<String, String> request) {
@@ -79,6 +101,7 @@ public class WorkflowController {
     }
 
     @PostMapping("/cepc/action/{complaintNumber}")
+    @CepcRoleGuard(roles = {"CEPC_DO", "CEPC_REVIEWER", "CEPC_INCHARGE", "CEPC_CLOSING_AUTHORITY", "CEPC_ADMIN", "CEPC_CONTACT_PERSON"})
     public ResponseEntity<Map<String, Object>> cepcAction(
             @PathVariable String complaintNumber,
             @RequestBody Map<String, String> request) {
@@ -86,12 +109,62 @@ public class WorkflowController {
     }
 
     @GetMapping("/rbio/completed")
+    @RbioRoleGuard(roles = {"RBIO_OFFICER", "RBIO_SUPERVISOR", "RBIO_CONCILIATOR", "RBIO_ADJUDICATOR", "RBIO_ADMIN"})
     public ResponseEntity<Map<String, Object>> getRbioCompleted(
             @RequestParam(required = false) String officer) {
         return getCompletedByDepartment("RBIO", officer);
     }
 
+    @GetMapping("/rbio/available-actions/{complaintNumber}")
+    @RbioRoleGuard(roles = {"RBIO_OFFICER", "RBIO_SUPERVISOR", "RBIO_CONCILIATOR", "RBIO_ADJUDICATOR", "RBIO_ADMIN"})
+    public ResponseEntity<Map<String, Object>> getRbioAvailableActions(
+            @PathVariable String complaintNumber,
+            @RequestParam String userRole) {
+        List<String> actions = rbioWorkflowService.getAvailableActions(complaintNumber, userRole);
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("complaintNumber", complaintNumber);
+        data.put("userRole", userRole);
+        data.put("availableActions", actions);
+        return buildResponse(true, "Available actions", data);
+    }
+
+    @GetMapping("/rbio/sla-stats")
+    @RbioRoleGuard(roles = {"RBIO_OFFICER", "RBIO_SUPERVISOR", "RBIO_CONCILIATOR", "RBIO_ADJUDICATOR", "RBIO_ADMIN"})
+    public ResponseEntity<Map<String, Object>> getRbioSlaStats() {
+        Map<String, Long> stats = rbioSlaService.getComplianceStats();
+        return buildResponse(true, "RBIO SLA compliance stats", stats);
+    }
+
+    @PostMapping("/rbio/validate-award")
+    @RbioRoleGuard(roles = {"RBIO_ADJUDICATOR", "RBIO_ADMIN"})
+    public ResponseEntity<Map<String, Object>> validateRbioAward(
+            @RequestBody Map<String, String> request) {
+        String amountStr = request.getOrDefault("amount", "0");
+        String compensationType = request.getOrDefault("compensationType", "COMBINED");
+
+        try {
+            BigDecimal amount = new BigDecimal(amountStr);
+            rbioCompensationService.validateAward(amount, compensationType);
+
+            Map<String, Object> data = new LinkedHashMap<>();
+            data.put("amount", amountStr);
+            data.put("compensationType", compensationType);
+            data.put("valid", true);
+            data.put("band", rbioCompensationService.calculateCompensationBand(amount));
+            data.put("maxAllowed", rbioCompensationService.getMaxAllowed(compensationType).toPlainString());
+            return buildResponse(true, "Award amount is within permitted limits", data);
+        } catch (IllegalArgumentException e) {
+            Map<String, Object> data = new LinkedHashMap<>();
+            data.put("amount", amountStr);
+            data.put("compensationType", compensationType);
+            data.put("valid", false);
+            data.put("reason", e.getMessage());
+            return buildResponse(false, e.getMessage(), data);
+        }
+    }
+
     @GetMapping("/cepc/completed")
+    @CepcRoleGuard(roles = {"CEPC_DO", "CEPC_REVIEWER", "CEPC_INCHARGE", "CEPC_CLOSING_AUTHORITY", "CEPC_ADMIN", "CEPC_CONTACT_PERSON"})
     public ResponseEntity<Map<String, Object>> getCepcCompleted(
             @RequestParam(required = false) String officer) {
         return getCompletedByDepartment("CEPC", officer);
@@ -115,6 +188,7 @@ public class WorkflowController {
     }
 
     @GetMapping("/cepc/contact-person/tasks")
+    @CepcRoleGuard(roles = {"CEPC_CONTACT_PERSON", "CEPC_DO", "CEPC_ADMIN"})
     public ResponseEntity<Map<String, Object>> getContactPersonTasks(
             @RequestParam(required = false) String officer) {
         List<Complaint> tasks;
@@ -129,6 +203,7 @@ public class WorkflowController {
     }
 
     @PostMapping("/cepc/create-complaint")
+    @CepcRoleGuard(roles = {"CEPC_DO", "CEPC_ADMIN"})
     public ResponseEntity<Map<String, Object>> cepcCreateComplaint(
             @RequestBody Map<String, String> request) {
         String number = "CMP-" + java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd").format(java.time.LocalDate.now())
@@ -150,6 +225,11 @@ public class WorkflowController {
         c.setAssignedOfficer(request.getOrDefault("createdBy", ""));
         c.setStatus("assigned");
         c.setWorkflowStage("CREATED");
+        c.setReopenCount(0);
+
+        // Apply SLA deadline based on priority
+        cepcSlaService.applySlaDeadline(c);
+
         complaintRepository.save(c);
 
         complaintService.addTimeline(c.getId(), "CREATED", request.getOrDefault("createdBy", "system"),
@@ -231,6 +311,39 @@ public class WorkflowController {
         data.put("action", action);
         data.put("newStatus", c.getStatus());
         return buildResponse(true, "Transfer action performed", data);
+    }
+
+    @GetMapping("/cepc/sla-stats")
+    @CepcRoleGuard(roles = {"CEPC_DO", "CEPC_REVIEWER", "CEPC_INCHARGE", "CEPC_CLOSING_AUTHORITY", "CEPC_ADMIN"})
+    public ResponseEntity<Map<String, Object>> getCepcSlaStats() {
+        Map<String, Long> stats = cepcSlaService.getComplianceStats("CEPC");
+        return buildResponse(true, "SLA compliance stats", stats);
+    }
+
+    @GetMapping("/cepc/available-actions/{complaintNumber}")
+    @CepcRoleGuard(roles = {"CEPC_DO", "CEPC_REVIEWER", "CEPC_INCHARGE", "CEPC_CLOSING_AUTHORITY", "CEPC_ADMIN", "CEPC_CONTACT_PERSON"})
+    public ResponseEntity<Map<String, Object>> getCepcAvailableActions(
+            @PathVariable String complaintNumber,
+            @RequestParam String userRole) {
+        List<String> actions = cepcWorkflowService.getAvailableActions(complaintNumber, userRole);
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("complaintNumber", complaintNumber);
+        data.put("userRole", userRole);
+        data.put("availableActions", actions);
+        return buildResponse(true, "Available actions", data);
+    }
+
+    @GetMapping("/cepc/validate-action")
+    @CepcRoleGuard(roles = {"CEPC_DO", "CEPC_REVIEWER", "CEPC_INCHARGE", "CEPC_CLOSING_AUTHORITY", "CEPC_ADMIN", "CEPC_CONTACT_PERSON"})
+    public ResponseEntity<Map<String, Object>> validateCepcAction(
+            @RequestParam String userRole,
+            @RequestParam String action) {
+        boolean authorized = cepcWorkflowService.validateRoleAuthorization(userRole, action);
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("userRole", userRole);
+        data.put("action", action);
+        data.put("authorized", authorized);
+        return buildResponse(true, "Role authorization check", data);
     }
 
     @PostMapping("/route/{complaintNumber}")
@@ -335,13 +448,35 @@ public class WorkflowController {
     }
 
     private ResponseEntity<Map<String, Object>> performAction(String complaintNumber, String dept, Map<String, String> request) {
+        String action = request.getOrDefault("action", "").toUpperCase();
+
+        // Delegate CEPC-specific actions to CepcWorkflowService
+        if ("CEPC".equals(dept) && cepcWorkflowService.isCepcAction(action)) {
+            try {
+                Map<String, Object> data = cepcWorkflowService.performAction(complaintNumber, action, request);
+                return buildResponse(true, "Action performed: " + action, data);
+            } catch (IllegalArgumentException e) {
+                return buildResponse(false, e.getMessage(), null);
+            }
+        }
+
+        // Delegate RBIO-specific actions to RbioWorkflowService
+        if ("RBIO".equals(dept) && rbioWorkflowService.isRbioAction(action)) {
+            try {
+                Map<String, Object> data = rbioWorkflowService.performAction(complaintNumber, action, request);
+                return buildResponse(true, "Action performed: " + action, data);
+            } catch (IllegalArgumentException e) {
+                return buildResponse(false, e.getMessage(), null);
+            }
+        }
+
+        // Generic/fallback actions for departments without dedicated service
         Optional<Complaint> opt = complaintRepository.findByComplaintNumber(complaintNumber);
         if (opt.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
 
         Complaint c = opt.get();
-        String action = request.getOrDefault("action", "").toUpperCase();
         String remarks = request.getOrDefault("remarks", "");
         String actor = request.getOrDefault("actor", "");
         String prevStatus = c.getStatus();
@@ -386,151 +521,6 @@ public class WorkflowController {
                 c.setStatus("adjudicated");
                 c.setResolvedAt(LocalDateTime.now());
                 break;
-
-            // ═══ CEPC Workflow Actions ═══
-            case "REQUEST_INFO":
-                c.setStatus("info_requested");
-                c.setWorkflowStage("AWAITING_INFO");
-                break;
-            case "INFO_RECEIVED":
-                c.setStatus("in_progress");
-                c.setWorkflowStage("EXAMINATION");
-                break;
-            case "FORWARD_DEPT":
-                c.setStatus("forwarded");
-                c.setWorkflowStage("DEPT_CONSULTATION");
-                break;
-            case "COMMENTS_RECEIVED":
-                c.setStatus("in_progress");
-                c.setWorkflowStage("EXAMINATION");
-                break;
-            case "SCHEDULE_MEETING":
-                c.setWorkflowStage("MEETING_SCHEDULED");
-                break;
-            case "SUBMIT_FOR_REVIEW":
-                c.setStatus("reviewer_review");
-                c.setAssignedRole("CEPC_REVIEWER");
-                c.setWorkflowStage("REVIEWER_REVIEW");
-                String reviewer = assignByRole("CEPC_REVIEWER");
-                if (reviewer != null) c.setAssignedOfficer(reviewer);
-                break;
-            case "APPROVE_REVIEW":
-                c.setStatus("incharge_review");
-                c.setAssignedRole("CEPC_INCHARGE");
-                c.setWorkflowStage("INCHARGE_REVIEW");
-                String incharge = assignByRole("CEPC_INCHARGE");
-                if (incharge != null) c.setAssignedOfficer(incharge);
-                break;
-            case "SEND_BACK_DO":
-                c.setStatus("sent_back");
-                c.setAssignedRole("CEPC_DO");
-                c.setWorkflowStage("SENT_BACK_TO_DO");
-                String backToDo = request.getOrDefault("targetUser", "");
-                if (!backToDo.isEmpty()) c.setAssignedOfficer(backToDo);
-                break;
-            case "SEND_BACK_REVIEWER":
-                c.setStatus("reviewer_review");
-                c.setAssignedRole("CEPC_REVIEWER");
-                c.setWorkflowStage("REVIEWER_REVIEW");
-                String backToRev = request.getOrDefault("targetUser", "");
-                if (!backToRev.isEmpty()) c.setAssignedOfficer(backToRev);
-                break;
-            case "SEND_BACK_INCHARGE":
-                c.setStatus("incharge_review");
-                c.setAssignedRole("CEPC_INCHARGE");
-                c.setWorkflowStage("INCHARGE_REVIEW");
-                String backToIc = request.getOrDefault("targetUser", "");
-                if (!backToIc.isEmpty()) c.setAssignedOfficer(backToIc);
-                break;
-            case "APPROVE_CLOSURE":
-                c.setStatus("awaiting_closure");
-                c.setAssignedRole("CEPC_CLOSING_AUTHORITY");
-                c.setWorkflowStage("AWAITING_CLOSURE");
-                break;
-            case "CLOSE_COMPLAINT":
-                c.setStatus("closed");
-                c.setClosedAt(LocalDateTime.now());
-                c.setResolvedAt(LocalDateTime.now());
-                c.setWorkflowStage("CLOSED");
-                break;
-            case "REASSIGN":
-                String targetUser = request.getOrDefault("targetUser", "");
-                if (!targetUser.isEmpty()) {
-                    c.setAssignedOfficer(targetUser);
-                }
-                c.setStatus("assigned");
-                c.setWorkflowStage("REASSIGNED");
-                break;
-
-            // ═══ Contact Person Actions ═══
-            case "FORWARD_TO_CONTACT":
-                String contactPerson = request.getOrDefault("targetUser", "");
-                c.setStatus("forwarded_to_contact");
-                c.setAssignedRole("CEPC_CONTACT_PERSON");
-                if (!contactPerson.isEmpty()) {
-                    c.setAssignedOfficer(contactPerson);
-                }
-                c.setWorkflowStage("CONTACT_PERSON_REVIEW");
-                break;
-            case "CONTACT_RESPONSE":
-                c.setStatus("in_progress");
-                c.setAssignedRole("CEPC_DO");
-                c.setWorkflowStage("EXAMINATION");
-                break;
-            case "CONTACT_REASSIGN":
-                String reassignTo = request.getOrDefault("targetUser", "");
-                if (!reassignTo.isEmpty()) {
-                    c.setAssignedOfficer(reassignTo);
-                }
-                c.setWorkflowStage("CONTACT_PERSON_REVIEW");
-                break;
-
-            // ═══ Additional CEPC Workflow Actions (per diagram) ═══
-            case "FORWARD_TO_INCHARGE":
-                c.setStatus("incharge_review");
-                c.setAssignedRole("CEPC_INCHARGE");
-                c.setWorkflowStage("INCHARGE_REVIEW");
-                String ic = assignByRole("CEPC_INCHARGE");
-                if (ic != null) c.setAssignedOfficer(ic);
-                break;
-            case "FORWARD_TO_CLOSING_AUTHORITY":
-                c.setStatus("awaiting_closure");
-                c.setAssignedRole("CEPC_CLOSING_AUTHORITY");
-                c.setWorkflowStage("AWAITING_CLOSURE");
-                String ca = assignByRole("CEPC_CLOSING_AUTHORITY");
-                if (ca != null) c.setAssignedOfficer(ca);
-                break;
-            case "FORWARD_TO_OTHER_OFFICE":
-                c.setStatus("forwarded_external");
-                c.setWorkflowStage("FORWARDED_OTHER_OFFICE");
-                String otherOffice = request.getOrDefault("targetOffice", "");
-                if (!otherOffice.isEmpty()) {
-                    c.setAssignedOfficer(otherOffice);
-                }
-                break;
-            case "FORWARD_TO_REGULATORY_BODY":
-                c.setStatus("forwarded_external");
-                c.setWorkflowStage("FORWARDED_REGULATORY_BODY");
-                String regulatoryBody = request.getOrDefault("targetBody", "");
-                if (!regulatoryBody.isEmpty()) {
-                    c.setAssignedOfficer(regulatoryBody);
-                }
-                break;
-            case "FORWARD_TO_OTHER_RBI_DEPT":
-                c.setStatus("forwarded_external");
-                c.setWorkflowStage("FORWARDED_OTHER_RBI_DEPT");
-                String rbiDept = request.getOrDefault("targetDept", "");
-                if (!rbiDept.isEmpty()) {
-                    c.setAssignedOfficer(rbiDept);
-                }
-                break;
-            case "REOPEN":
-                c.setStatus("in_progress");
-                c.setResolvedAt(null);
-                c.setClosedAt(null);
-                c.setWorkflowStage("REOPENED");
-                break;
-
             default:
                 return buildResponse(false, "Unknown action: " + action, null);
         }
@@ -568,7 +558,8 @@ public class WorkflowController {
             task.put("priority", c.getPriority() != null ? c.getPriority().toUpperCase() : "MEDIUM");
             task.put("status", c.getStatus() != null ? c.getStatus().toUpperCase() : "PENDING");
             task.put("assignedAt", c.getUpdatedAt() != null ? c.getUpdatedAt().toString() : "");
-            task.put("slaDueDate", c.getCreatedAt() != null ? c.getCreatedAt().plusDays(30).toString() : "");
+            task.put("slaDueDate", c.getSlaDeadline() != null ? c.getSlaDeadline().toString()
+                    : (c.getCreatedAt() != null ? c.getCreatedAt().plusDays(30).toString() : ""));
             String entityName = "";
             if (c.getEntityCode() != null && !c.getEntityCode().isBlank()) {
                 entityName = c.getEntityCode();
@@ -579,6 +570,8 @@ public class WorkflowController {
             task.put("department", c.getDepartment());
             task.put("assignedRole", c.getAssignedRole());
             task.put("assignedOfficer", c.getAssignedOfficer());
+            task.put("triageSignal", c.getTriageSignal());
+            task.put("hasAttachments", complaintAttachmentRepository.existsByComplaintId(c.getId()));
             return task;
         }).collect(Collectors.toList());
     }

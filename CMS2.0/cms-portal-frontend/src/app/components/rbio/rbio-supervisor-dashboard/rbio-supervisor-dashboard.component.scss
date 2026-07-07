@@ -1,0 +1,153 @@
+.rbio-supervisor-dashboard {
+  min-height: 100vh; background: #f0f2f5; padding: 0;
+  font-family: 'Inter', 'Segoe UI', sans-serif;
+}
+
+.dashboard-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 14px 24px; background: white; border-bottom: 1px solid #e2e8f0;
+
+  .header-left {
+    display: flex; align-items: center; gap: 12px;
+    h1 { margin: 0; font-size: 18px; font-weight: 600; color: #1e293b; }
+  }
+
+  .back-btn {
+    background: none; border: 1px solid #e2e8f0; border-radius: 6px;
+    padding: 6px 12px; cursor: pointer; font-size: 16px; color: #475569;
+    &:hover { background: #f1f5f9; }
+  }
+
+  .header-right {
+    .user-info { font-size: 13px; color: #64748b; }
+  }
+}
+
+.loading-state {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 4rem; color: #64748b;
+  .spinner { width: 36px; height: 36px; border: 3px solid #e2e8f0; border-top-color: #3b82f6; border-radius: 50%; animation: spin 0.8s linear infinite; }
+  p { margin-top: 0.75rem; }
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+// Stats Grid
+.stats-grid {
+  display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px;
+  padding: 20px 24px;
+}
+
+.stat-card {
+  background: white; border: 1px solid #e2e8f0; border-radius: 8px;
+  padding: 16px; text-align: center; transition: border-color 0.2s;
+  &:hover { border-color: #3b82f6; }
+  .stat-value { display: block; font-size: 24px; font-weight: 700; color: #1e293b; }
+  .stat-label { font-size: 11px; color: #64748b; margin-top: 4px; display: block; }
+  &.pending { border-top: 3px solid #f59e0b; }
+  &.breached { border-top: 3px solid #dc2626; }
+  &.conciliation { border-top: 3px solid #0891b2; }
+  &.adjudication { border-top: 3px solid #7c3aed; }
+}
+
+// Section Card
+.section-card {
+  background: white; border: 1px solid #e2e8f0; border-radius: 8px;
+  margin: 0 24px 20px; padding: 20px;
+  h3 { margin: 0 0 16px; font-size: 15px; font-weight: 600; color: #1e293b; }
+}
+
+// SLA Chart
+.sla-chart {
+  .sla-bar-container {
+    display: flex; height: 24px; border-radius: 6px; overflow: hidden; background: #f1f5f9;
+  }
+  .sla-bar {
+    transition: width 0.3s;
+    &.on-track { background: #16a34a; }
+    &.at-risk { background: #f59e0b; }
+    &.breached { background: #dc2626; }
+  }
+  .sla-legend {
+    display: flex; gap: 20px; margin-top: 12px;
+    .legend-item {
+      display: flex; align-items: center; gap: 6px; font-size: 12px; color: #475569;
+      .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+      &.on-track .legend-dot { background: #16a34a; }
+      &.at-risk .legend-dot { background: #f59e0b; }
+      &.breached .legend-dot { background: #dc2626; }
+    }
+  }
+}
+
+// Data Table
+.table-wrapper { overflow-x: auto; }
+
+.data-table {
+  width: 100%; border-collapse: collapse; font-size: 13px;
+
+  thead tr {
+    background: #f8fafc;
+    th {
+      padding: 10px 12px; text-align: left; font-weight: 600; color: #475569;
+      border-bottom: 1px solid #e2e8f0; white-space: nowrap;
+    }
+  }
+
+  tbody tr {
+    border-bottom: 1px solid #f1f5f9; cursor: pointer; transition: background 0.15s;
+    &:hover { background: #f8fafc; }
+    td { padding: 10px 12px; color: #1e293b; }
+  }
+
+  .complaint-num { font-weight: 600; color: #0d47a1; }
+  .subject-cell { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .priority-badge {
+    padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500;
+    &[data-priority="HIGH"] { background: #fee2e2; color: #991b1b; }
+    &[data-priority="MEDIUM"] { background: #fef3c7; color: #92400e; }
+    &[data-priority="LOW"] { background: #d1fae5; color: #065f46; }
+  }
+
+  .actions-cell { white-space: nowrap; }
+}
+
+.quick-btn {
+  padding: 4px 8px; border: 1px solid #d1d5db; border-radius: 4px;
+  font-size: 11px; cursor: pointer; margin-right: 4px; font-weight: 500;
+  background: white; transition: all 0.2s;
+  &:hover:not(:disabled) { background: #f1f5f9; }
+  &:disabled { opacity: 0.5; cursor: default; }
+  &.approve { color: #059669; border-color: #a7f3d0; &:hover:not(:disabled) { background: #ecfdf5; } }
+  &.return { color: #d97706; border-color: #fde68a; &:hover:not(:disabled) { background: #fffbeb; } }
+  &.forward { color: #7c3aed; border-color: #ddd6fe; &:hover:not(:disabled) { background: #f5f3ff; } }
+}
+
+// Officer Workload
+.workload-list { display: flex; flex-direction: column; gap: 10px; }
+
+.workload-row {
+  display: flex; align-items: center; gap: 12px;
+  .officer-name { font-size: 13px; color: #1e293b; font-weight: 500; min-width: 140px; }
+  .workload-bar-container { flex: 1; height: 20px; background: #f1f5f9; border-radius: 4px; overflow: hidden; }
+  .workload-bar { height: 100%; background: #3b82f6; border-radius: 4px; transition: width 0.3s; }
+  .workload-count { font-size: 13px; font-weight: 600; color: #475569; min-width: 30px; text-align: right; }
+}
+
+.empty-state { text-align: center; padding: 30px; color: #94a3b8; font-size: 14px; }
+
+.action-result {
+  position: fixed; bottom: 24px; right: 24px; padding: 12px 20px;
+  border-radius: 8px; font-size: 13px; font-weight: 500; z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  &.success { background: #e8f5e9; color: #2e7d32; border: 1px solid #a5d6a7; }
+  &.error { background: #fbe9e7; color: #d32f2f; border: 1px solid #ef9a9a; }
+}
+
+@media (max-width: 1024px) {
+  .stats-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media (max-width: 768px) {
+  .stats-grid { grid-template-columns: repeat(2, 1fr); }
+}

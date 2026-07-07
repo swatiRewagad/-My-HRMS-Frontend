@@ -1,0 +1,3325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CMS 2.0 - Deployment &amp; Architecture Guide</title>
+    <style>
+        :root {
+            --primary: #1a237e;
+            --accent: #0d47a1;
+            --success: #2e7d32;
+            --warning: #f57c00;
+            --danger: #c62828;
+            --bg: #fafafa;
+            --card: #ffffff;
+            --text: #212121;
+            --muted: #616161;
+            --border: #e0e0e0;
+            --code-bg: #263238;
+            --code-text: #eeffff;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.7;
+            padding: 0;
+        }
+        .header {
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            color: white;
+            padding: 60px 40px;
+            text-align: center;
+        }
+        .header h1 { font-size: 2.5rem; margin-bottom: 10px; }
+        .header p { font-size: 1.1rem; opacity: 0.9; }
+        .header .meta { margin-top: 15px; font-size: 0.9rem; opacity: 0.7; }
+        nav.toc {
+            position: sticky;
+            top: 0;
+            background: var(--card);
+            border-bottom: 1px solid var(--border);
+            padding: 15px 40px;
+            z-index: 100;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        nav.toc a {
+            color: var(--accent);
+            text-decoration: none;
+            margin-right: 20px;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+        nav.toc a:hover { text-decoration: underline; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 40px; }
+        section { margin-bottom: 60px; }
+        h2 {
+            color: var(--primary);
+            font-size: 1.8rem;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid var(--accent);
+        }
+        h3 {
+            color: var(--accent);
+            font-size: 1.3rem;
+            margin: 25px 0 12px;
+        }
+        h4 {
+            color: var(--muted);
+            font-size: 1.05rem;
+            margin: 18px 0 8px;
+        }
+        p, li { margin-bottom: 8px; }
+        ul, ol { padding-left: 25px; margin-bottom: 15px; }
+        pre {
+            background: var(--code-bg);
+            color: var(--code-text);
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 15px 0;
+            font-size: 0.88rem;
+            line-height: 1.5;
+        }
+        code {
+            background: #eceff1;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 0.88rem;
+            color: #c62828;
+        }
+        pre code { background: none; padding: 0; color: inherit; }
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 25px;
+            margin: 15px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+        }
+        .card.warning {
+            border-left: 4px solid var(--warning);
+            background: #fff8e1;
+        }
+        .card.danger {
+            border-left: 4px solid var(--danger);
+            background: #fce4ec;
+        }
+        .card.success {
+            border-left: 4px solid var(--success);
+            background: #e8f5e9;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+            font-size: 0.9rem;
+        }
+        th, td {
+            border: 1px solid var(--border);
+            padding: 10px 14px;
+            text-align: left;
+        }
+        th { background: #e3f2fd; color: var(--primary); font-weight: 600; }
+        tr:nth-child(even) { background: #f5f5f5; }
+        .badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .badge-blue { background: #e3f2fd; color: #1565c0; }
+        .badge-green { background: #e8f5e9; color: #2e7d32; }
+        .badge-orange { background: #fff3e0; color: #e65100; }
+        .badge-red { background: #fce4ec; color: #c62828; }
+        .step-number {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            background: var(--accent);
+            color: white;
+            border-radius: 50%;
+            font-weight: 700;
+            font-size: 0.85rem;
+            margin-right: 10px;
+        }
+        .step { display: flex; align-items: flex-start; margin: 15px 0; }
+        .step-content { flex: 1; }
+        .diagram-container {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 30px;
+            margin: 20px 0;
+            overflow-x: auto;
+        }
+        .diagram-container svg { max-width: 100%; height: auto; }
+        .env-table td:first-child { font-family: monospace; font-weight: 600; color: var(--accent); }
+        @media (max-width: 768px) {
+            .container { padding: 20px; }
+            .header { padding: 30px 20px; }
+            .header h1 { font-size: 1.8rem; }
+            nav.toc { padding: 10px 15px; overflow-x: auto; white-space: nowrap; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>CMS 2.0 - Complaint Management System</h1>
+    <p>Deployment, Architecture &amp; Database Documentation</p>
+    <div class="meta">Version 1.0.0 | Spring Boot 3.2.5 | Angular 21 | MySQL 8 | Keycloak 26 | Generated: July 2026</div>
+</div>
+
+<nav class="toc">
+    <a href="#docker-setup">Docker Setup</a>
+    <a href="#config-files">Config Files</a>
+    <a href="#missing-files">Create Missing Files</a>
+    <a href="#openshift-deploy">OpenShift Deploy</a>
+    <a href="#database-scripts">Database Scripts</a>
+    <a href="#architecture">Architecture</a>
+    <a href="#flow-diagrams">Flow Diagrams</a>
+    <a href="#troubleshooting">Troubleshooting</a>
+</nav>
+
+<div class="container">
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- SECTION 1: DOCKER DESKTOP SETUP -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<section id="docker-setup">
+<h2>1. Docker Desktop Setup on Local Machine</h2>
+
+<h3>1.1 Prerequisites</h3>
+<table>
+    <tr><th>Requirement</th><th>Minimum</th><th>Recommended</th></tr>
+    <tr><td>OS</td><td>Windows 10 Pro (64-bit)</td><td>Windows 11 Pro</td></tr>
+    <tr><td>RAM</td><td>8 GB</td><td>16 GB</td></tr>
+    <tr><td>Disk Space</td><td>20 GB free</td><td>50 GB SSD</td></tr>
+    <tr><td>CPU</td><td>4 cores with virtualization</td><td>8 cores</td></tr>
+    <tr><td>Docker Desktop</td><td>4.25+</td><td>Latest stable</td></tr>
+    <tr><td>Java</td><td>JDK 17</td><td>JDK 17 (Eclipse Temurin)</td></tr>
+    <tr><td>Node.js</td><td>20.x</td><td>22.x LTS</td></tr>
+    <tr><td>Maven</td><td>3.9.x</td><td>3.9.6+</td></tr>
+</table>
+
+<h3>1.2 Install Docker Desktop</h3>
+
+<div class="step">
+    <span class="step-number">1</span>
+    <div class="step-content">
+        <strong>Enable Virtualization in BIOS</strong>
+        <p>Restart your PC, enter BIOS (F2/DEL/F10), enable Intel VT-x or AMD-V under CPU settings.</p>
+    </div>
+</div>
+
+<div class="step">
+    <span class="step-number">2</span>
+    <div class="step-content">
+        <strong>Enable WSL 2 (Windows Subsystem for Linux)</strong>
+        <pre><code># Open PowerShell as Administrator
+wsl --install
+# Restart PC when prompted
+# After restart, set WSL 2 as default
+wsl --set-default-version 2</code></pre>
+    </div>
+</div>
+
+<div class="step">
+    <span class="step-number">3</span>
+    <div class="step-content">
+        <strong>Download &amp; Install Docker Desktop</strong>
+        <p>Download from <code>https://www.docker.com/products/docker-desktop/</code></p>
+        <p>Run the installer, check "Use WSL 2 instead of Hyper-V" option.</p>
+    </div>
+</div>
+
+<div class="step">
+    <span class="step-number">4</span>
+    <div class="step-content">
+        <strong>Configure Docker Desktop Resources</strong>
+        <p>Open Docker Desktop &rarr; Settings &rarr; Resources:</p>
+        <ul>
+            <li>Memory: 6 GB minimum (8 GB recommended)</li>
+            <li>CPUs: 4 minimum</li>
+            <li>Swap: 2 GB</li>
+            <li>Disk image size: 40 GB+</li>
+        </ul>
+    </div>
+</div>
+
+<div class="step">
+    <span class="step-number">5</span>
+    <div class="step-content">
+        <strong>Verify Installation</strong>
+        <pre><code>docker --version
+docker compose version
+docker run hello-world</code></pre>
+    </div>
+</div>
+
+<h3>1.3 Create Docker Compose for CMS 2.0</h3>
+
+<p>Create <code>docker-compose.yml</code> in the <code>CMS2.0/</code> root directory:</p>
+
+<pre><code># CMS2.0/docker-compose.yml
+version: '3.9'
+
+services:
+  # ═══ MySQL Database ═══
+  cms-mysql:
+    image: mysql:8.0
+    container_name: cms-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: cms_root_2026
+      MYSQL_DATABASE: cms_db
+      MYSQL_USER: cms_user
+      MYSQL_PASSWORD: cms_pass_2026
+    ports:
+      - "3306:3306"
+    volumes:
+      - cms-mysql-data:/var/lib/mysql
+      - ./db-scripts/init.sql:/docker-entrypoint-initdb.d/01-init.sql
+    command: >
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --max-connections=500
+      --innodb-buffer-pool-size=512M
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ═══ Keycloak SSO ═══
+  cms-keycloak:
+    image: quay.io/keycloak/keycloak:26.0
+    container_name: cms-keycloak
+    restart: unless-stopped
+    environment:
+      KC_DB: dev-file
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_HOSTNAME_STRICT: "false"
+      KC_HTTP_ENABLED: "true"
+      KC_PROXY_HEADERS: xforwarded
+    ports:
+      - "8180:8080"
+    command: start-dev
+    volumes:
+      - cms-keycloak-data:/opt/keycloak/data
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3&lt;&gt;/dev/tcp/localhost/8080 &amp;&amp; echo -e 'GET /health HTTP/1.1\\r\\nHost: localhost\\r\\n\\r\\n' &gt;&amp;3"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+  # ═══ Kafka (Event Streaming) ═══
+  cms-kafka:
+    image: bitnami/kafka:3.7
+    container_name: cms-kafka
+    restart: unless-stopped
+    environment:
+      KAFKA_CFG_NODE_ID: 1
+      KAFKA_CFG_PROCESS_ROLES: broker,controller
+      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
+      KAFKA_CFG_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://cms-kafka:9092
+      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+    ports:
+      - "9092:9092"
+    volumes:
+      - cms-kafka-data:/bitnami/kafka
+
+  # ═══ OpenSearch (Full-text search) ═══
+  cms-opensearch:
+    image: opensearchproject/opensearch:2.18.0
+    container_name: cms-opensearch
+    restart: unless-stopped
+    environment:
+      discovery.type: single-node
+      DISABLE_SECURITY_PLUGIN: "true"
+      OPENSEARCH_JAVA_OPTS: "-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+    volumes:
+      - cms-opensearch-data:/usr/share/opensearch/data
+
+  # ═══ PaddleOCR Sidecar ═══
+  cms-paddle-ocr:
+    image: paddlecloud/paddleocr:latest
+    container_name: cms-paddle-ocr
+    restart: unless-stopped
+    ports:
+      - "8100:8100"
+
+  # ═══ CMS Backend (Spring Boot) ═══
+  cms-backend:
+    build:
+      context: ./cms-backend
+      dockerfile: Dockerfile
+    container_name: cms-backend
+    restart: unless-stopped
+    ports:
+      - "8082:8082"
+    environment:
+      DB_URL: jdbc:mysql://cms-mysql:3306/cms_db?useSSL=false&amp;allowPublicKeyRetrieval=true&amp;serverTimezone=UTC
+      DB_USERNAME: cms_user
+      DB_PASSWORD: cms_pass_2026
+      KEYCLOAK_URL: http://cms-keycloak:8080
+      KEYCLOAK_REALM: cms
+      KAFKA_BOOTSTRAP: cms-kafka:9092
+      PADDLE_OCR_URL: http://cms-paddle-ocr:8100
+      CMS_CORS_ORIGINS: http://localhost:4200,http://localhost:4201
+      SPRING_PROFILES_ACTIVE: docker
+    depends_on:
+      cms-mysql:
+        condition: service_healthy
+      cms-keycloak:
+        condition: service_healthy
+
+  # ═══ CMS Frontend (Angular / Nginx) ═══
+  cms-frontend:
+    build:
+      context: ./cms-portal-frontend
+      dockerfile: Dockerfile
+    container_name: cms-frontend
+    restart: unless-stopped
+    ports:
+      - "4200:80"
+    depends_on:
+      - cms-backend
+
+volumes:
+  cms-mysql-data:
+  cms-keycloak-data:
+  cms-kafka-data:
+  cms-opensearch-data:
+</code></pre>
+
+<h3>1.4 Backend Dockerfile</h3>
+<p>Create <code>CMS2.0/cms-backend/Dockerfile</code>:</p>
+<pre><code># Multi-stage build for Spring Boot
+FROM eclipse-temurin:17-jdk-alpine AS builder
+WORKDIR /app
+COPY pom.xml .
+COPY src ./src
+RUN apk add --no-cache maven &amp;&amp; \
+    mvn clean package -DskipTests -q
+
+FROM eclipse-temurin:17-jre-alpine
+WORKDIR /app
+COPY --from=builder /app/target/cms-1.0.0.jar app.jar
+
+# Create non-root user
+RUN addgroup -S cms &amp;&amp; adduser -S cms -G cms
+USER cms
+
+EXPOSE 8082
+ENTRYPOINT ["java", "-Xms512m", "-Xmx1024m", "-jar", "app.jar"]</code></pre>
+
+<h3>1.5 Frontend Dockerfile</h3>
+<p>Create <code>CMS2.0/cms-portal-frontend/Dockerfile</code>:</p>
+<pre><code># Multi-stage build for Angular
+FROM node:22-alpine AS builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+COPY . .
+RUN npx ng build --configuration=production
+
+FROM nginx:alpine
+COPY --from=builder /app/dist/cms-portal-frontend/browser /usr/share/nginx/html
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]</code></pre>
+
+<h3>1.6 Nginx Config for Frontend</h3>
+<p>Create <code>CMS2.0/cms-portal-frontend/nginx.conf</code>:</p>
+<pre><code>server {
+    listen 80;
+    server_name localhost;
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # Angular SPA routing
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # API proxy to backend
+    location /api/ {
+        proxy_pass http://cms-backend:8082/api/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Cache static assets
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff2)$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+
+    # Security headers
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+}</code></pre>
+
+<h3>1.7 Running the Stack</h3>
+<pre><code># Navigate to project root
+cd CMS2.0/
+
+# Build and start all services
+docker compose up -d --build
+
+# Check status
+docker compose ps
+
+# View logs
+docker compose logs -f cms-backend
+
+# Stop all services
+docker compose down
+
+# Stop and remove volumes (clean slate)
+docker compose down -v</code></pre>
+
+<div class="card success">
+    <strong>Verification Checklist:</strong>
+    <ul>
+        <li>MySQL: <code>localhost:3306</code> &mdash; Connect with DBeaver/MySQL Workbench</li>
+        <li>Keycloak: <code>http://localhost:8180</code> &mdash; Admin console (admin/admin)</li>
+        <li>Backend: <code>http://localhost:8082/actuator/health</code> &mdash; Should return <code>{"status":"UP"}</code></li>
+        <li>Frontend: <code>http://localhost:4200</code> &mdash; CMS Portal landing page</li>
+        <li>OpenSearch: <code>http://localhost:9200</code> &mdash; Cluster info JSON</li>
+    </ul>
+</div>
+
+<h3>1.8 Keycloak Realm Setup</h3>
+<div class="step">
+    <span class="step-number">1</span>
+    <div class="step-content">
+        <strong>Create Realm</strong>
+        <p>Go to <code>http://localhost:8180</code> &rarr; Admin Console &rarr; Create Realm &rarr; Name: <code>cms</code></p>
+    </div>
+</div>
+<div class="step">
+    <span class="step-number">2</span>
+    <div class="step-content">
+        <strong>Create Clients</strong>
+        <table>
+            <tr><th>Client ID</th><th>Access Type</th><th>Redirect URIs</th></tr>
+            <tr><td>cms-frontend</td><td>public</td><td>http://localhost:4200/*</td></tr>
+            <tr><td>cms-backend</td><td>confidential (bearer-only)</td><td>-</td></tr>
+            <tr><td>admin-cli</td><td>confidential</td><td>-</td></tr>
+        </table>
+    </div>
+</div>
+<div class="step">
+    <span class="step-number">3</span>
+    <div class="step-content">
+        <strong>Create Realm Roles</strong>
+        <pre><code># CEPC Module
+CEPC_DO, CEPC_REVIEWER, CEPC_INCHARGE, CEPC_CLOSING_AUTHORITY, CEPC_ADMIN, CEPC_CONTACT_PERSON
+
+# RBIO Module
+RBIO_OFFICER, RBIO_SUPERVISOR, RBIO_CONCILIATOR, RBIO_ADJUDICATOR, RBIO_ADMIN
+
+# RE Portal
+RE_NODAL_OFFICER, RE_PNO, RE_ADMIN
+
+# AA (Appellate Authority)
+AA_REGISTRAR, AA_BENCH_OFFICER, AA_AUTHORITY, AA_ADMIN</code></pre>
+    </div>
+</div>
+<div class="step">
+    <span class="step-number">4</span>
+    <div class="step-content">
+        <strong>Create Test Users</strong>
+        <p>Create users for each role and assign respective realm roles. Set temporary passwords.</p>
+    </div>
+</div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- SECTION: CONFIG FILES REFERENCE -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<section id="config-files">
+<h2>2. Configuration Files Reference</h2>
+
+<div class="card warning">
+    <strong>Important:</strong> The repository contains BOTH the current monolith configs and some legacy/outdated configs from an earlier microservices design.
+    Use only the files marked <span class="badge badge-green">ACTIVE</span> below.
+</div>
+
+<h3>2.1 File Inventory &mdash; What to Use vs. Ignore</h3>
+<table>
+    <tr><th>File Path</th><th>Status</th><th>Purpose</th><th>Action Required</th></tr>
+    <tr>
+        <td><code>cms-infra/docker-compose.yml</code></td>
+        <td><span class="badge badge-green">ACTIVE</span></td>
+        <td>Full Docker Compose stack (MySQL, Kafka, Redis, Keycloak, OpenSearch, Backend x2, Nginx LB, PaddleOCR, Prometheus, Grafana)</td>
+        <td>Use this. Create <code>.env</code> file alongside it.</td>
+    </tr>
+    <tr>
+        <td><code>cms-infra/nginx/nginx.conf</code></td>
+        <td><span class="badge badge-green">ACTIVE</span></td>
+        <td>Nginx gateway config: LB upstream, rate limiting, proxy cache, security headers</td>
+        <td>No changes needed for Docker Desktop</td>
+    </tr>
+    <tr>
+        <td><code>cms-backend/Dockerfile</code></td>
+        <td><span class="badge badge-green">ACTIVE</span></td>
+        <td>Multi-stage build: eclipse-temurin:17, G1GC, healthcheck, non-root user</td>
+        <td>No changes needed</td>
+    </tr>
+    <tr>
+        <td><code>cms-backend/src/main/resources/application.yml</code></td>
+        <td><span class="badge badge-green">ACTIVE</span></td>
+        <td>All Spring Boot config with env-var substitution. Contains <code>prod</code> profile section.</td>
+        <td>No changes &mdash; all values injected via env vars</td>
+    </tr>
+    <tr>
+        <td><code>cms-portal-frontend/src/environments/environment.ts</code></td>
+        <td><span class="badge badge-green">ACTIVE</span></td>
+        <td>Local dev config: <code>apiBaseUrl=localhost:8082</code>, <code>keycloakUrl=localhost:8180</code></td>
+        <td>No changes for local dev</td>
+    </tr>
+    <tr>
+        <td><code>cms-portal-frontend/src/environments/environment.prod.ts</code></td>
+        <td><span class="badge badge-green">ACTIVE</span></td>
+        <td>Prod config: <code>apiBaseUrl=https://cms.rbi.org.in</code></td>
+        <td>Update domain for your deployment</td>
+    </tr>
+    <tr>
+        <td><code>cms-portal-frontend/Dockerfile</code></td>
+        <td><span class="badge badge-red">MISSING</span></td>
+        <td>Needed to containerize the Angular frontend</td>
+        <td><strong>CREATE</strong> &mdash; see Section 3</td>
+    </tr>
+    <tr>
+        <td><code>cms-portal-frontend/nginx.conf</code></td>
+        <td><span class="badge badge-red">MISSING</span></td>
+        <td>SPA routing + static asset caching inside frontend container</td>
+        <td><strong>CREATE</strong> &mdash; see Section 3</td>
+    </tr>
+    <tr>
+        <td><code>cms-infra/.env</code></td>
+        <td><span class="badge badge-red">MISSING</span></td>
+        <td>Docker Compose environment variables (secrets, passwords)</td>
+        <td><strong>CREATE</strong> &mdash; see Section 3</td>
+    </tr>
+    <tr>
+        <td><code>deployment/docker/docker-compose.yml</code></td>
+        <td><span class="badge badge-red">OUTDATED</span></td>
+        <td>Old compose using Oracle DB &mdash; from earlier design</td>
+        <td><strong>DO NOT USE</strong></td>
+    </tr>
+    <tr>
+        <td><code>deployment/openshift/configmap-common.yaml</code></td>
+        <td><span class="badge badge-red">OUTDATED</span></td>
+        <td>References Oracle DB_HOST and microservice images</td>
+        <td><strong>DO NOT USE</strong> &mdash; use new manifests from Section 4</td>
+    </tr>
+    <tr>
+        <td><code>deployment/openshift/deployment-api-gateway.yaml</code></td>
+        <td><span class="badge badge-red">OUTDATED</span></td>
+        <td>Microservices-era API gateway deployment</td>
+        <td><strong>DO NOT USE</strong></td>
+    </tr>
+    <tr>
+        <td><code>cms-frontend/Dockerfile</code></td>
+        <td><span class="badge badge-orange">LEGACY</span></td>
+        <td>Old frontend container (cms-frontend, not cms-portal-frontend)</td>
+        <td>Not needed &mdash; use new Dockerfile for cms-portal-frontend</td>
+    </tr>
+</table>
+
+<h3>2.2 Docker Desktop &mdash; Config Files to Update</h3>
+
+<h4>Step 1: Create <code>.env</code> file in <code>cms-infra/</code></h4>
+<p>The docker-compose.yml in <code>cms-infra/</code> reads variables from a <code>.env</code> file placed in the same directory. Create this file with your local values:</p>
+<pre><code># File: CMS2.0/cms-infra/.env
+# ─── Database ───
+MYSQL_ROOT_PASSWORD=cms_root_pass
+MYSQL_USER=cms_user
+MYSQL_PASSWORD=cms_pass
+
+# ─── API Keys (at least one OCR provider) ───
+GROQ_API_KEY=gsk_your_groq_api_key_here
+
+# ─── Encryption (PII at-rest encryption, exactly 32 characters) ───
+CMS_ENCRYPTION_SECRET=your-32-character-secret-key!!!!
+
+# ─── Optional: Gemini / OpenAI if using multi-provider OCR chain ───
+# GEMINI_API_KEY=
+# OPENAI_API_KEY=</code></pre>
+
+<h4>Step 2: Update Frontend Environment (for Docker)</h4>
+<p>If running the frontend inside Docker (via the Nginx gateway on port 80), update <code>cms-portal-frontend/src/environments/environment.prod.ts</code>:</p>
+<pre><code>export const environment = {
+  production: true,
+  apiBaseUrl: '',        // Empty string = same-origin (Nginx proxies /api/ to backend)
+  keycloakUrl: 'http://localhost:8180',
+  realm: 'cms',
+  // ... rest unchanged
+};</code></pre>
+
+<h4>Step 3: No Changes Needed</h4>
+<p>These files work as-is for Docker Desktop:</p>
+<ul>
+    <li><code>cms-infra/docker-compose.yml</code> &mdash; already has correct service names, ports, and healthchecks</li>
+    <li><code>cms-infra/nginx/nginx.conf</code> &mdash; upstreams point to <code>cms-backend-1:8082</code> and <code>cms-backend-2:8082</code></li>
+    <li><code>cms-backend/Dockerfile</code> &mdash; multi-stage build, production-ready</li>
+    <li><code>cms-backend/src/main/resources/application.yml</code> &mdash; all values via <code>${ENV_VAR:default}</code></li>
+</ul>
+
+<h3>2.3 OpenShift &mdash; Config Files to Update</h3>
+
+<h4>What&rsquo;s Different from Docker Desktop</h4>
+<table>
+    <tr><th>Concern</th><th>Docker Desktop</th><th>OpenShift</th></tr>
+    <tr><td>Service discovery</td><td>Docker DNS (container names)</td><td>Kubernetes Services (ClusterIP)</td></tr>
+    <tr><td>Secrets</td><td><code>.env</code> file</td><td>OpenShift Secrets (base64 encoded)</td></tr>
+    <tr><td>Config</td><td>Docker Compose env vars</td><td>ConfigMaps</td></tr>
+    <tr><td>Ingress</td><td>Nginx gateway on port 80</td><td>OpenShift Routes (TLS edge termination)</td></tr>
+    <tr><td>Storage</td><td>Docker volumes</td><td>PersistentVolumeClaims</td></tr>
+    <tr><td>Image registry</td><td>Local build</td><td>Internal registry or Quay.io</td></tr>
+    <tr><td>Spring profile</td><td><code>prod</code></td><td><code>openshift</code> (or reuse <code>prod</code>)</td></tr>
+</table>
+
+<h4>Files to Update for OpenShift</h4>
+<ol>
+    <li><strong><code>cms-portal-frontend/src/environments/environment.prod.ts</code></strong> &mdash; change <code>apiBaseUrl</code> and <code>keycloakUrl</code> to your OpenShift route domains:
+<pre><code>export const environment = {
+  production: true,
+  apiBaseUrl: 'https://cms-api.your-domain.com',
+  keycloakUrl: 'https://cms-auth.your-domain.com',
+  realm: 'cms',
+  // ...
+};</code></pre>
+    </li>
+    <li><strong>OpenShift Secrets</strong> &mdash; must include these keys (created via <code>oc create secret</code>):
+        <ul>
+            <li><code>DB_URL</code>, <code>DB_USERNAME</code>, <code>DB_PASSWORD</code></li>
+            <li><code>CMS_ENCRYPTION_SECRET</code> (32-char key)</li>
+            <li><code>GROQ_API_KEY</code></li>
+            <li><code>KEYCLOAK_ADMIN</code>, <code>KEYCLOAK_ADMIN_PASSWORD</code></li>
+        </ul>
+    </li>
+    <li><strong>OpenShift ConfigMap</strong> &mdash; non-secret config:
+        <ul>
+            <li><code>KEYCLOAK_URL=http://cms-keycloak:8080</code></li>
+            <li><code>KEYCLOAK_REALM=cms</code></li>
+            <li><code>KAFKA_BOOTSTRAP=cms-kafka:9092</code></li>
+            <li><code>PADDLE_OCR_URL=http://cms-paddle-ocr:8100</code></li>
+            <li><code>OPENSEARCH_URL=http://cms-opensearch:9200</code></li>
+            <li><code>CMS_CORS_ORIGINS=https://cms.your-domain.com</code></li>
+            <li><code>SPRING_PROFILES_ACTIVE=prod</code></li>
+            <li><code>CMS_ATTACHMENTS_PATH=/cms-attachments</code></li>
+        </ul>
+    </li>
+</ol>
+
+<div class="card danger">
+    <strong>Do NOT use the existing files in <code>deployment/openshift/</code></strong> &mdash; they reference Oracle DB and a microservices architecture that was never completed. Use the new YAML manifests from Section 4 below.
+</div>
+
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- SECTION: MISSING FILES TO CREATE -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<section id="missing-files">
+<h2>3. Files to Create (Missing from Repository)</h2>
+
+<div class="card">
+    <strong>These files must be created before Docker/OpenShift deployment will work.</strong>
+    Copy the content below into the specified file paths.
+</div>
+
+<h3>3.1 Frontend Dockerfile</h3>
+<p>Create file: <code>CMS2.0/cms-portal-frontend/Dockerfile</code></p>
+<pre><code># ═══════════════════════════════════════════════════════════════════
+# CMS 2.0 Frontend - Multi-stage Docker Build
+# ═══════════════════════════════════════════════════════════════════
+
+# Stage 1: Build Angular application
+FROM node:22-alpine AS builder
+WORKDIR /app
+
+# Install dependencies first (better layer caching)
+COPY package.json package-lock.json ./
+RUN npm ci --prefer-offline --no-audit
+
+# Copy source and build
+COPY . .
+RUN npx ng build --configuration=production
+
+# Stage 2: Serve with Nginx
+FROM nginx:1.27-alpine
+
+# Remove default nginx config
+RUN rm /etc/nginx/conf.d/default.conf
+
+# Copy custom nginx config
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+# Copy built Angular app
+COPY --from=builder /app/dist/cms-portal-frontend/browser /usr/share/nginx/html
+
+# Create non-root user
+RUN addgroup -S frontend &amp;&amp; adduser -S frontend -G frontend &amp;&amp; \
+    chown -R frontend:frontend /var/cache/nginx /var/log/nginx /etc/nginx/conf.d &amp;&amp; \
+    touch /var/run/nginx.pid &amp;&amp; chown frontend:frontend /var/run/nginx.pid
+
+USER frontend
+
+EXPOSE 80
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD wget -qO- http://localhost:80/ || exit 1
+
+CMD ["nginx", "-g", "daemon off;"]</code></pre>
+
+<h3>3.2 Frontend Nginx Config</h3>
+<p>Create file: <code>CMS2.0/cms-portal-frontend/nginx.conf</code></p>
+<pre><code># ═══════════════════════════════════════════════════════════════════
+# CMS 2.0 Frontend - Nginx Configuration (inside container)
+# ═══════════════════════════════════════════════════════════════════
+server {
+    listen 80;
+    server_name _;
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # ── Angular SPA Routing ──
+    # All routes fall back to index.html (Angular Router handles them)
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # ── Gzip Compression ──
+    gzip on;
+    gzip_vary on;
+    gzip_proxied any;
+    gzip_comp_level 5;
+    gzip_min_length 1024;
+    gzip_types
+        text/plain
+        text/css
+        application/json
+        application/javascript
+        text/xml
+        application/xml
+        text/javascript
+        image/svg+xml
+        application/font-woff2;
+
+    # ── Static Asset Caching ──
+    # Angular CLI generates hashed filenames for cache-busting
+    location ~* \.(js|css|woff2|woff|ttf|eot)$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+        access_log off;
+    }
+
+    location ~* \.(png|jpg|jpeg|gif|ico|svg|webp)$ {
+        expires 30d;
+        add_header Cache-Control "public";
+        access_log off;
+    }
+
+    # ── Security Headers ──
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+
+    # ── Disable access to hidden files ──
+    location ~ /\. {
+        deny all;
+        access_log off;
+        log_not_found off;
+    }
+
+    # ── Health check endpoint ──
+    location /healthz {
+        access_log off;
+        return 200 '{"status":"UP"}';
+        add_header Content-Type application/json;
+    }
+}</code></pre>
+
+<h3>3.3 Docker Compose Environment File</h3>
+<p>Create file: <code>CMS2.0/cms-infra/.env</code></p>
+<pre><code># ═══════════════════════════════════════════════════════════════════
+# CMS 2.0 - Docker Compose Environment Variables
+# Copy this file and fill in actual values before running docker compose
+# ═══════════════════════════════════════════════════════════════════
+
+# ─── MySQL Database ───────────────────────────────────────────────
+MYSQL_ROOT_PASSWORD=cms_root_pass
+MYSQL_USER=cms_user
+MYSQL_PASSWORD=cms_pass
+
+# ─── Encryption (REQUIRED - exactly 32 characters) ───────────────
+# Used for PII field encryption at rest (AES-256)
+CMS_ENCRYPTION_SECRET=change-me-to-32-char-secret-key!
+
+# ─── OCR Provider API Keys ────────────────────────────────────────
+# At minimum, provide GROQ_API_KEY (primary OCR provider)
+# PaddleOCR sidecar works without any API key (self-hosted)
+GROQ_API_KEY=gsk_your_groq_api_key_here
+
+# Optional: Additional OCR providers for fallback chain
+# GEMINI_API_KEY=your_gemini_api_key
+# OPENAI_API_KEY=your_openai_api_key
+# HUGGINGFACE_API_KEY=your_hf_api_key
+
+# ─── Keycloak (leave as-is for local dev) ─────────────────────────
+KEYCLOAK_ADMIN=admin
+KEYCLOAK_ADMIN_PASSWORD=admin
+
+# ─── CORS (comma-separated allowed origins) ──────────────────────
+CMS_CORS_ALLOWED_ORIGINS=http://localhost:4200,http://localhost:4201,http://localhost:4300,http://localhost</code></pre>
+
+<h3>3.4 MySQL Init Script</h3>
+<p>Create file: <code>CMS2.0/cms-infra/mysql/init.sql</code></p>
+<p>The docker-compose.yml mounts this file to <code>/docker-entrypoint-initdb.d/init.sql</code>. It runs once on first container start.</p>
+<pre><code>-- CMS 2.0 MySQL Init Script
+-- This runs automatically on first container creation.
+-- Tables are auto-created by Hibernate (ddl-auto=update), so this just sets up the user.
+
+CREATE DATABASE IF NOT EXISTS cms_db
+  CHARACTER SET utf8mb4
+  COLLATE utf8mb4_unicode_ci;
+
+-- Grant full privileges to the application user
+GRANT ALL PRIVILEGES ON cms_db.* TO 'cms_user'@'%';
+FLUSH PRIVILEGES;
+
+-- Set MySQL tuning for complaint management workload
+SET GLOBAL innodb_buffer_pool_size = 1073741824;  -- 1GB
+SET GLOBAL max_connections = 500;
+SET GLOBAL innodb_flush_log_at_trx_commit = 2;</code></pre>
+
+<h3>3.5 Prometheus Config</h3>
+<p>Create file: <code>CMS2.0/cms-infra/prometheus/prometheus.yml</code></p>
+<p>(Or update the existing reference at <code>deployment/docker/prometheus.yml</code>)</p>
+<pre><code># CMS 2.0 Prometheus Configuration
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'cms-backend-1'
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ['cms-backend-1:8082']
+
+  - job_name: 'cms-backend-2'
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ['cms-backend-2:8082']
+
+  - job_name: 'nginx-gateway'
+    static_configs:
+      - targets: ['cms-gateway:80']
+    metrics_path: /health</code></pre>
+
+<h3>3.6 Frontend <code>.dockerignore</code></h3>
+<p>Create file: <code>CMS2.0/cms-portal-frontend/.dockerignore</code></p>
+<pre><code>node_modules
+dist
+.angular
+.git
+*.md
+.vscode
+.idea
+e2e
+coverage
+*.spec.ts</code></pre>
+
+<h3>3.7 Complete Launch Sequence (After Creating All Files)</h3>
+<pre><code># 1. Navigate to infrastructure directory
+cd CMS2.0/cms-infra
+
+# 2. Create the mysql init directory if not exists
+mkdir -p mysql
+
+# 3. Verify .env file exists with your values
+cat .env
+
+# 4. Build and launch entire stack
+docker compose up -d --build
+
+# 5. Wait for services to become healthy (2-3 minutes)
+docker compose ps
+
+# 6. Verify service health
+#    MySQL:
+docker exec cms-mysql mysqladmin ping -h localhost -u root -pcms_root_pass
+
+#    Backend:
+curl http://localhost:8082/actuator/health
+
+#    Frontend (via Nginx gateway):
+curl http://localhost/
+
+#    Keycloak:
+curl http://localhost:8180/realms/cms
+
+#    OpenSearch:
+curl http://localhost:9200/_cluster/health
+
+#    Kafka UI:
+#    Open http://localhost:8090 in browser
+
+# 7. Access the application
+#    Full stack via Nginx: http://localhost
+#    Direct frontend dev: http://localhost:4200 (if running ng serve separately)
+#    Keycloak Admin: http://localhost:8180 (admin/admin)
+#    Grafana: http://localhost:3000 (admin/admin)
+#    Prometheus: http://localhost:9090</code></pre>
+
+<div class="card success">
+    <strong>Port Reference (Docker Desktop):</strong>
+    <table>
+        <tr><th>Service</th><th>Port</th><th>URL</th></tr>
+        <tr><td>Nginx Gateway (Frontend + API)</td><td>80</td><td><code>http://localhost</code></td></tr>
+        <tr><td>MySQL</td><td>3307</td><td>Connect via client on <code>localhost:3307</code></td></tr>
+        <tr><td>Kafka (External)</td><td>29092</td><td><code>localhost:29092</code></td></tr>
+        <tr><td>Redis</td><td>6380</td><td><code>localhost:6380</code></td></tr>
+        <tr><td>Keycloak</td><td>8180</td><td><code>http://localhost:8180</code></td></tr>
+        <tr><td>OpenSearch</td><td>9200</td><td><code>http://localhost:9200</code></td></tr>
+        <tr><td>Kafka UI</td><td>8090</td><td><code>http://localhost:8090</code></td></tr>
+        <tr><td>PaddleOCR</td><td>8100</td><td><code>http://localhost:8100</code></td></tr>
+        <tr><td>Prometheus</td><td>9090</td><td><code>http://localhost:9090</code></td></tr>
+        <tr><td>Grafana</td><td>3000</td><td><code>http://localhost:3000</code></td></tr>
+    </table>
+</div>
+
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- SECTION: OPENSHIFT DEPLOYMENT -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<section id="openshift-deploy">
+<h2>4. OpenShift Deployment Guide</h2>
+
+<h3>4.1 Prerequisites</h3>
+<table>
+    <tr><th>Requirement</th><th>Details</th></tr>
+    <tr><td>OpenShift CLI</td><td><code>oc</code> v4.12+ installed and logged in</td></tr>
+    <tr><td>Cluster Version</td><td>OpenShift 4.12+ (Kubernetes 1.25+)</td></tr>
+    <tr><td>Container Registry</td><td>OpenShift internal registry or Quay.io</td></tr>
+    <tr><td>Kafka Cluster</td><td>AMQ Streams (Strimzi) operator installed &mdash; cluster available in namespace</td></tr>
+    <tr><td>Storage</td><td>PVCs available (MySQL: 10Gi, Keycloak-DB: 5Gi, Attachments: 50Gi, OpenSearch: 20Gi)</td></tr>
+    <tr><td>Operators</td><td>AMQ Streams (Kafka), OpenSearch Operator (optional)</td></tr>
+</table>
+
+<pre><code># Login to OpenShift
+oc login https://api.your-cluster.example.com:6443 --token=&lt;your-token&gt;
+
+# Create project/namespace
+oc new-project cms2
+oc project cms2
+
+# Verify AMQ Streams (Kafka) operator is available
+oc get csv -n openshift-operators | grep amq-streams
+# Should show: amqstreams.v2.x.x    Succeeded</code></pre>
+
+<h3>4.2 Infrastructure Overview</h3>
+<div class="card">
+    <strong>CMS 2.0 requires these infrastructure services on OpenShift:</strong>
+    <table>
+        <tr><th>Service</th><th>Approach</th><th>Connection Config</th></tr>
+        <tr><td>MySQL 8.0</td><td>StatefulSet or managed DB (RDS)</td><td><code>DB_URL=jdbc:mysql://cms-mysql:3306/cms_db</code></td></tr>
+        <tr><td>Kafka 3.7</td><td>AMQ Streams Kafka CRD (cluster-provided)</td><td><code>KAFKA_BOOTSTRAP=cms-kafka-kafka-bootstrap:9092</code></td></tr>
+        <tr><td>OpenSearch 2.18</td><td>Deployment or OpenSearch Operator</td><td><code>OPENSEARCH_URL=http://cms-opensearch:9200</code></td></tr>
+        <tr><td>Keycloak 26</td><td>Deployment + PostgreSQL backend</td><td><code>KEYCLOAK_URL=http://cms-keycloak:8080</code></td></tr>
+        <tr><td>PaddleOCR</td><td>Sidecar Deployment</td><td><code>PADDLE_OCR_URL=http://cms-paddle-ocr:8100</code></td></tr>
+        <tr><td>Redis 7 (optional)</td><td>Deployment (for session/rate-limit offload)</td><td><code>REDIS_HOST=cms-redis</code> / <code>REDIS_PORT=6379</code></td></tr>
+    </table>
+</div>
+
+<h3>4.3 Create Secrets &amp; ConfigMaps</h3>
+
+<pre><code># ═══════════════════════════════════════════════════════════════
+# STEP 1: Create all Secrets
+# ═══════════════════════════════════════════════════════════════
+
+# Database credentials
+oc create secret generic cms-db-secret \
+  --from-literal=DB_URL='jdbc:mysql://cms-mysql:3306/cms_db?useSSL=false&amp;allowPublicKeyRetrieval=true&amp;serverTimezone=UTC&amp;rewriteBatchedStatements=true' \
+  --from-literal=DB_USERNAME='cms_user' \
+  --from-literal=DB_PASSWORD='&lt;strong-db-password&gt;' \
+  --from-literal=MYSQL_ROOT_PASSWORD='&lt;strong-root-password&gt;'
+
+# Keycloak admin credentials
+oc create secret generic cms-keycloak-secret \
+  --from-literal=KEYCLOAK_ADMIN='admin' \
+  --from-literal=KEYCLOAK_ADMIN_PASSWORD='&lt;strong-kc-password&gt;' \
+  --from-literal=KEYCLOAK_ADMIN_USER='admin' \
+  --from-literal=KEYCLOAK_ADMIN_PASSWORD_BACKEND='&lt;strong-kc-password&gt;'
+
+# Application secrets (encryption + API keys)
+oc create secret generic cms-app-secret \
+  --from-literal=CMS_ENCRYPTION_SECRET='&lt;exactly-32-character-secret-key&gt;' \
+  --from-literal=GROQ_API_KEY='gsk_your_production_key' \
+  --from-literal=GEMINI_API_KEY='&lt;optional-gemini-key&gt;'
+
+# Kafka authentication (if cluster uses SASL)
+# Only needed if your Kafka cluster requires credentials
+oc create secret generic cms-kafka-secret \
+  --from-literal=KAFKA_SASL_USERNAME='cms-app' \
+  --from-literal=KAFKA_SASL_PASSWORD='&lt;kafka-password&gt;'
+
+# ═══════════════════════════════════════════════════════════════
+# STEP 2: Create ConfigMap (non-secret environment config)
+# ═══════════════════════════════════════════════════════════════
+
+oc create configmap cms-config \
+  --from-literal=SPRING_PROFILES_ACTIVE='prod' \
+  --from-literal=KEYCLOAK_URL='http://cms-keycloak:8080' \
+  --from-literal=KEYCLOAK_REALM='cms' \
+  --from-literal=KEYCLOAK_ADMIN_CLIENT='admin-cli' \
+  --from-literal=KAFKA_BOOTSTRAP='cms-kafka-kafka-bootstrap:9092' \
+  --from-literal=KAFKA_MAX_BLOCK_MS='10000' \
+  --from-literal=KAFKA_DELIVERY_TIMEOUT='30000' \
+  --from-literal=KAFKA_REQUEST_TIMEOUT='10000' \
+  --from-literal=OPENSEARCH_URL='http://cms-opensearch:9200' \
+  --from-literal=SIMILAR_CASES_ENABLED='true' \
+  --from-literal=SIMILAR_CASES_INDEX='complaints' \
+  --from-literal=PADDLE_OCR_URL='http://cms-paddle-ocr:8100' \
+  --from-literal=OCR_CHAIN='groq, paddle' \
+  --from-literal=REDIS_HOST='cms-redis' \
+  --from-literal=REDIS_PORT='6379' \
+  --from-literal=CMS_ATTACHMENTS_PATH='/cms-attachments' \
+  --from-literal=CMS_CORS_ORIGINS='https://cms.your-domain.com' \
+  --from-literal=CMS_MAX_FILE_SIZE='52428800' \
+  --from-literal=CMS_MAX_FILES='10' \
+  --from-literal=TAT_TIMEZONE='Asia/Kolkata' \
+  --from-literal=TAT_DEFAULT_SLA='240' \
+  --from-literal=MRE_VERSION='1' \
+  --from-literal=MRE_RE_WINDOW='30' \
+  --from-literal=MRE_FILING_DEADLINE='90'</code></pre>
+
+<!-- ═══════════════ KAFKA SECTION ═══════════════ -->
+<h3>4.4 Kafka Configuration (AMQ Streams / Strimzi)</h3>
+
+<div class="card warning">
+    <strong>Kafka cluster is assumed to already exist on OpenShift</strong> (managed by AMQ Streams operator).
+    This section shows how to: (a) create a KafkaTopic for CMS, (b) create a KafkaUser for auth, and (c) configure the CMS backend to connect.
+</div>
+
+<h4>4.4.1 Verify Existing Kafka Cluster</h4>
+<pre><code># Check that Kafka cluster exists in your namespace (or a shared namespace)
+oc get kafka -A
+
+# Example output:
+# NAMESPACE    NAME         DESIRED KAFKA REPLICAS   DESIRED ZK REPLICAS
+# kafka-ns     my-cluster   3                        3
+
+# Get the bootstrap service address
+oc get kafka my-cluster -n kafka-ns -o jsonpath='{.status.listeners[?(@.name=="plain")].bootstrapServers}'
+# Output: my-cluster-kafka-bootstrap.kafka-ns.svc:9092
+
+# If Kafka is in a different namespace, use the full DNS:
+# my-cluster-kafka-bootstrap.kafka-ns.svc.cluster.local:9092</code></pre>
+
+<h4>4.4.2 Create KafkaTopic for CMS</h4>
+<p>CMS 2.0 uses the topic <code>complaint.ingested</code> for async event processing.</p>
+<pre><code># cms-kafka-topics.yaml
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: complaint-ingested
+  labels:
+    strimzi.io/cluster: cms-kafka    # ← Change to your Kafka cluster name
+spec:
+  topicName: complaint.ingested
+  partitions: 6
+  replicas: 3
+  config:
+    retention.ms: "604800000"         # 7 days
+    cleanup.policy: "delete"
+    min.insync.replicas: "2"
+    compression.type: "lz4"
+    max.message.bytes: "1048576"      # 1 MB
+    segment.bytes: "1073741824"       # 1 GB
+---
+# Additional topics for future use (notification, audit)
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: complaint-status-changed
+  labels:
+    strimzi.io/cluster: cms-kafka
+spec:
+  topicName: complaint.status.changed
+  partitions: 6
+  replicas: 3
+  config:
+    retention.ms: "604800000"
+    cleanup.policy: "delete"
+    min.insync.replicas: "2"
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: complaint-notification
+  labels:
+    strimzi.io/cluster: cms-kafka
+spec:
+  topicName: complaint.notification
+  partitions: 3
+  replicas: 3
+  config:
+    retention.ms: "259200000"         # 3 days
+    cleanup.policy: "delete"
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: audit-events
+  labels:
+    strimzi.io/cluster: cms-kafka
+spec:
+  topicName: audit.events
+  partitions: 3
+  replicas: 3
+  config:
+    retention.ms: "2592000000"        # 30 days
+    cleanup.policy: "delete"</code></pre>
+
+<h4>4.4.3 Create KafkaUser (ACL-based Access)</h4>
+<p>If your Kafka cluster has authentication enabled (SASL/SCRAM or mTLS), create a KafkaUser:</p>
+<pre><code># cms-kafka-user.yaml
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaUser
+metadata:
+  name: cms-app
+  labels:
+    strimzi.io/cluster: cms-kafka    # ← Your Kafka cluster name
+spec:
+  authentication:
+    type: scram-sha-512
+  authorization:
+    type: simple
+    acls:
+    # Producer: write to complaint topics
+    - resource:
+        type: topic
+        name: complaint
+        patternType: prefix
+      operations: ["Write", "Describe", "Create"]
+      host: "*"
+    # Producer: write to audit topic
+    - resource:
+        type: topic
+        name: audit.events
+      operations: ["Write", "Describe"]
+      host: "*"
+    # Consumer: read from all cms topics
+    - resource:
+        type: topic
+        name: complaint
+        patternType: prefix
+      operations: ["Read", "Describe"]
+      host: "*"
+    - resource:
+        type: topic
+        name: audit.events
+      operations: ["Read", "Describe"]
+      host: "*"
+    # Consumer group
+    - resource:
+        type: group
+        name: cms-backend
+        patternType: prefix
+      operations: ["Read"]
+      host: "*"</code></pre>
+
+<h4>4.4.4 Backend Kafka Connection Config</h4>
+<div class="card">
+    <strong>Depending on your Kafka cluster's security, choose the correct configuration:</strong>
+</div>
+
+<p><strong>Option A: Plain (no auth) &mdash; Internal cluster, same namespace:</strong></p>
+<pre><code># In cms-config ConfigMap:
+KAFKA_BOOTSTRAP=cms-kafka-kafka-bootstrap:9092
+
+# No additional config needed. The application.yml defaults work:
+# spring.kafka.bootstrap-servers: ${KAFKA_BOOTSTRAP:localhost:9092}
+# spring.kafka.producer.acks: all
+# spring.kafka.producer.retries: 3</code></pre>
+
+<p><strong>Option B: Plain &mdash; Kafka in different namespace:</strong></p>
+<pre><code># Use full cluster DNS in cms-config ConfigMap:
+KAFKA_BOOTSTRAP=my-cluster-kafka-bootstrap.kafka-ns.svc.cluster.local:9092</code></pre>
+
+<p><strong>Option C: SASL/SCRAM Authentication (recommended for production):</strong></p>
+<pre><code># After creating KafkaUser 'cms-app', Strimzi creates a secret with credentials:
+oc get secret cms-app -o jsonpath='{.data.password}' | base64 -d
+
+# Add SASL properties to cms-config ConfigMap:
+oc create configmap cms-kafka-config \
+  --from-literal=KAFKA_BOOTSTRAP='cms-kafka-kafka-bootstrap:9093' \
+  --from-literal=KAFKA_SECURITY_PROTOCOL='SASL_PLAINTEXT' \
+  --from-literal=KAFKA_SASL_MECHANISM='SCRAM-SHA-512' \
+  --from-literal=KAFKA_SASL_JAAS_CONFIG='org.apache.kafka.common.security.scram.ScramLoginModule required username="cms-app" password="&lt;from-secret&gt;";'</code></pre>
+
+<p><strong>Option D: mTLS Authentication:</strong></p>
+<pre><code># Strimzi generates certificates in the KafkaUser secret
+# Mount them as volume in backend deployment:
+# Add to backend Deployment spec.containers[0]:
+        volumeMounts:
+        - name: kafka-certs
+          mountPath: /opt/kafka/certs
+          readOnly: true
+      volumes:
+      - name: kafka-certs
+        secret:
+          secretName: cms-app   # KafkaUser secret
+
+# ConfigMap values:
+KAFKA_BOOTSTRAP=cms-kafka-kafka-bootstrap:9093
+KAFKA_SECURITY_PROTOCOL=SSL
+KAFKA_SSL_TRUSTSTORE_LOCATION=/opt/kafka/certs/ca.p12
+KAFKA_SSL_TRUSTSTORE_PASSWORD=&lt;from cluster CA secret&gt;
+KAFKA_SSL_KEYSTORE_LOCATION=/opt/kafka/certs/user.p12
+KAFKA_SSL_KEYSTORE_PASSWORD=&lt;from user secret&gt;</code></pre>
+
+<h4>4.4.5 Spring Boot Kafka Properties (application.yml)</h4>
+<p>For SASL or TLS, add these to the <code>application.yml</code> prod profile or pass as env vars:</p>
+<pre><code># Additional env vars for SASL/SCRAM (add to ConfigMap or Secret):
+SPRING_KAFKA_PROPERTIES_SECURITY_PROTOCOL=SASL_PLAINTEXT
+SPRING_KAFKA_PROPERTIES_SASL_MECHANISM=SCRAM-SHA-512
+SPRING_KAFKA_PROPERTIES_SASL_JAAS_CONFIG=org.apache.kafka.common.security.scram.ScramLoginModule required username="cms-app" password="PASSWORD";
+
+# For TLS:
+SPRING_KAFKA_PROPERTIES_SECURITY_PROTOCOL=SSL
+SPRING_KAFKA_SSL_TRUST_STORE_LOCATION=/opt/kafka/certs/ca.p12
+SPRING_KAFKA_SSL_TRUST_STORE_PASSWORD=PASSWORD
+SPRING_KAFKA_SSL_KEY_STORE_LOCATION=/opt/kafka/certs/user.p12
+SPRING_KAFKA_SSL_KEY_STORE_PASSWORD=PASSWORD</code></pre>
+
+<h4>4.4.6 Apply Kafka Resources</h4>
+<pre><code># Apply topic definitions
+oc apply -f cms-kafka-topics.yaml
+
+# Apply user (if SASL/mTLS)
+oc apply -f cms-kafka-user.yaml
+
+# Verify topics created
+oc get kafkatopic | grep complaint
+# complaint-ingested         complaint.ingested         6   3   True
+
+# Verify user ready
+oc get kafkauser cms-app
+# NAME      CLUSTER     AUTHENTICATION   AUTHORIZATION   READY
+# cms-app   cms-kafka   scram-sha-512    simple          True
+
+# Test connectivity from a pod
+oc run kafka-test --rm -it --image=quay.io/strimzi/kafka:latest-kafka-3.7.0 -- \
+  bin/kafka-topics.sh --bootstrap-server cms-kafka-kafka-bootstrap:9092 --list</code></pre>
+
+<!-- ═══════════════ OPENSEARCH SECTION ═══════════════ -->
+<h3>4.5 OpenSearch Deployment</h3>
+
+<pre><code># cms-opensearch-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cms-opensearch
+  labels:
+    app: cms-opensearch
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cms-opensearch
+  template:
+    metadata:
+      labels:
+        app: cms-opensearch
+    spec:
+      initContainers:
+      - name: sysctl
+        image: busybox
+        command: ["sh", "-c", "sysctl -w vm.max_map_count=262144"]
+        securityContext:
+          privileged: true
+      containers:
+      - name: opensearch
+        image: opensearchproject/opensearch:2.18.0
+        ports:
+        - containerPort: 9200
+          name: http
+        - containerPort: 9300
+          name: transport
+        env:
+        - name: discovery.type
+          value: "single-node"
+        - name: DISABLE_SECURITY_PLUGIN
+          value: "true"
+        - name: OPENSEARCH_JAVA_OPTS
+          value: "-Xms1g -Xmx1g"
+        - name: bootstrap.memory_lock
+          value: "true"
+        volumeMounts:
+        - name: opensearch-data
+          mountPath: /usr/share/opensearch/data
+        resources:
+          requests:
+            memory: "1536Mi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "2000m"
+        readinessProbe:
+          httpGet:
+            path: /_cluster/health
+            port: 9200
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /_cluster/health
+            port: 9200
+          initialDelaySeconds: 60
+          periodSeconds: 15
+      volumes:
+      - name: opensearch-data
+        persistentVolumeClaim:
+          claimName: cms-opensearch-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cms-opensearch
+spec:
+  selector:
+    app: cms-opensearch
+  ports:
+  - port: 9200
+    targetPort: 9200
+    name: http
+  - port: 9300
+    targetPort: 9300
+    name: transport
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: cms-opensearch-pvc
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi</code></pre>
+
+<!-- ═══════════════ REDIS SECTION ═══════════════ -->
+<h3>4.6 Redis Deployment</h3>
+<p>Redis is used in the Docker Compose setup for rate-limiting and session offload. On OpenShift, deploy a Redis instance:</p>
+
+<pre><code># cms-redis-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cms-redis
+  labels:
+    app: cms-redis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cms-redis
+  template:
+    metadata:
+      labels:
+        app: cms-redis
+    spec:
+      containers:
+      - name: redis
+        image: redis:7-alpine
+        ports:
+        - containerPort: 6379
+        command: ["redis-server"]
+        args:
+        - "--maxmemory"
+        - "512mb"
+        - "--maxmemory-policy"
+        - "allkeys-lru"
+        - "--save"
+        - "60"
+        - "1000"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "768Mi"
+            cpu: "500m"
+        readinessProbe:
+          exec:
+            command: ["redis-cli", "ping"]
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        livenessProbe:
+          exec:
+            command: ["redis-cli", "ping"]
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        volumeMounts:
+        - name: redis-data
+          mountPath: /data
+      volumes:
+      - name: redis-data
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cms-redis
+spec:
+  selector:
+    app: cms-redis
+  ports:
+  - port: 6379
+    targetPort: 6379</code></pre>
+
+<!-- ═══════════════ PADDLEOCR SECTION ═══════════════ -->
+<h3>4.7 PaddleOCR Sidecar Deployment</h3>
+
+<pre><code># cms-paddle-ocr-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cms-paddle-ocr
+  labels:
+    app: cms-paddle-ocr
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cms-paddle-ocr
+  template:
+    metadata:
+      labels:
+        app: cms-paddle-ocr
+    spec:
+      containers:
+      - name: paddle-ocr
+        image: image-registry.openshift-image-registry.svc:5000/cms2/cms-paddle-ocr:latest
+        ports:
+        - containerPort: 8100
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "2000m"
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8100
+          initialDelaySeconds: 60
+          periodSeconds: 15
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8100
+          initialDelaySeconds: 90
+          periodSeconds: 30
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cms-paddle-ocr
+spec:
+  selector:
+    app: cms-paddle-ocr
+  ports:
+  - port: 8100
+    targetPort: 8100</code></pre>
+
+<!-- ═══════════════ MYSQL SECTION ═══════════════ -->
+<h3>4.8 MySQL Deployment</h3>
+
+<pre><code># cms-mysql-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cms-mysql
+  labels:
+    app: cms-mysql
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: cms-mysql
+  template:
+    metadata:
+      labels:
+        app: cms-mysql
+    spec:
+      containers:
+      - name: mysql
+        image: mysql:8.0
+        ports:
+        - containerPort: 3306
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: cms-db-secret
+              key: MYSQL_ROOT_PASSWORD
+        - name: MYSQL_DATABASE
+          value: "cms_db"
+        - name: MYSQL_USER
+          valueFrom:
+            secretKeyRef:
+              name: cms-db-secret
+              key: DB_USERNAME
+        - name: MYSQL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: cms-db-secret
+              key: DB_PASSWORD
+        args:
+        - "--character-set-server=utf8mb4"
+        - "--collation-server=utf8mb4_unicode_ci"
+        - "--max-connections=500"
+        - "--innodb-buffer-pool-size=1G"
+        - "--innodb-log-file-size=256M"
+        - "--innodb-flush-log-at-trx-commit=2"
+        - "--slow-query-log=1"
+        - "--long-query-time=2"
+        volumeMounts:
+        - name: mysql-data
+          mountPath: /var/lib/mysql
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "2000m"
+        livenessProbe:
+          exec:
+            command: ["mysqladmin", "ping", "-h", "localhost"]
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          exec:
+            command: ["mysqladmin", "ping", "-h", "localhost"]
+          initialDelaySeconds: 15
+          periodSeconds: 5
+      volumes:
+      - name: mysql-data
+        persistentVolumeClaim:
+          claimName: cms-mysql-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cms-mysql
+spec:
+  selector:
+    app: cms-mysql
+  ports:
+  - port: 3306
+    targetPort: 3306
+  clusterIP: None
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: cms-mysql-pvc
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: gp3    # ← Change to your cluster's StorageClass</code></pre>
+
+<!-- ═══════════════ KEYCLOAK SECTION ═══════════════ -->
+<h3>4.9 Keycloak Deployment (with PostgreSQL backend)</h3>
+
+<pre><code># cms-keycloak-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cms-keycloak-db
+  labels:
+    app: cms-keycloak-db
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: cms-keycloak-db
+  template:
+    metadata:
+      labels:
+        app: cms-keycloak-db
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:16-alpine
+        ports:
+        - containerPort: 5432
+        env:
+        - name: POSTGRES_DB
+          value: "keycloak"
+        - name: POSTGRES_USER
+          value: "keycloak"
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: cms-keycloak-secret
+              key: KEYCLOAK_ADMIN_PASSWORD
+        volumeMounts:
+        - name: keycloak-db-data
+          mountPath: /var/lib/postgresql/data
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        readinessProbe:
+          exec:
+            command: ["pg_isready", "-U", "keycloak"]
+          initialDelaySeconds: 5
+          periodSeconds: 5
+      volumes:
+      - name: keycloak-db-data
+        persistentVolumeClaim:
+          claimName: cms-keycloak-db-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cms-keycloak-db
+spec:
+  selector:
+    app: cms-keycloak-db
+  ports:
+  - port: 5432
+    targetPort: 5432
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: cms-keycloak-db-pvc
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+---
+# Keycloak application
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cms-keycloak
+  labels:
+    app: cms-keycloak
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cms-keycloak
+  template:
+    metadata:
+      labels:
+        app: cms-keycloak
+    spec:
+      containers:
+      - name: keycloak
+        image: quay.io/keycloak/keycloak:26.0
+        args: ["start", "--hostname-strict=false", "--http-enabled=true", "--proxy-headers=xforwarded"]
+        ports:
+        - containerPort: 8080
+        env:
+        - name: KC_DB
+          value: "postgres"
+        - name: KC_DB_URL
+          value: "jdbc:postgresql://cms-keycloak-db:5432/keycloak"
+        - name: KC_DB_USERNAME
+          value: "keycloak"
+        - name: KC_DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: cms-keycloak-secret
+              key: KEYCLOAK_ADMIN_PASSWORD
+        - name: KEYCLOAK_ADMIN
+          valueFrom:
+            secretKeyRef:
+              name: cms-keycloak-secret
+              key: KEYCLOAK_ADMIN
+        - name: KEYCLOAK_ADMIN_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: cms-keycloak-secret
+              key: KEYCLOAK_ADMIN_PASSWORD
+        - name: KC_HEALTH_ENABLED
+          value: "true"
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "1536Mi"
+            cpu: "1500m"
+        readinessProbe:
+          httpGet:
+            path: /health/ready
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /health/live
+            port: 8080
+          initialDelaySeconds: 60
+          periodSeconds: 15
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cms-keycloak
+spec:
+  selector:
+    app: cms-keycloak
+  ports:
+  - port: 8080
+    targetPort: 8080</code></pre>
+
+<!-- ═══════════════ BACKEND SECTION ═══════════════ -->
+<h3>4.10 CMS Backend Deployment</h3>
+
+<pre><code># cms-backend-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cms-backend
+  labels:
+    app: cms-backend
+    version: v1
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: cms-backend
+  template:
+    metadata:
+      labels:
+        app: cms-backend
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8082"
+        prometheus.io/path: "/actuator/prometheus"
+    spec:
+      containers:
+      - name: backend
+        image: image-registry.openshift-image-registry.svc:5000/cms2/cms-backend:latest
+        ports:
+        - containerPort: 8082
+          name: http
+        envFrom:
+        - secretRef:
+            name: cms-db-secret
+        - secretRef:
+            name: cms-app-secret
+        - configMapRef:
+            name: cms-config
+        env:
+        # Kafka SASL config (only if using authenticated Kafka)
+        # Uncomment below if your Kafka cluster requires SASL
+        # - name: SPRING_KAFKA_PROPERTIES_SECURITY_PROTOCOL
+        #   value: "SASL_PLAINTEXT"
+        # - name: SPRING_KAFKA_PROPERTIES_SASL_MECHANISM
+        #   value: "SCRAM-SHA-512"
+        # - name: SPRING_KAFKA_PROPERTIES_SASL_JAAS_CONFIG
+        #   valueFrom:
+        #     secretKeyRef:
+        #       name: cms-kafka-secret
+        #       key: KAFKA_SASL_JAAS_CONFIG
+        - name: JAVA_OPTS
+          value: "-Xms512m -Xmx1g -XX:+UseG1GC"
+        volumeMounts:
+        - name: attachments
+          mountPath: /cms-attachments
+        resources:
+          requests:
+            memory: "768Mi"
+            cpu: "500m"
+          limits:
+            memory: "1536Mi"
+            cpu: "2000m"
+        livenessProbe:
+          httpGet:
+            path: /actuator/health/liveness
+            port: 8082
+          initialDelaySeconds: 90
+          periodSeconds: 15
+          failureThreshold: 5
+        readinessProbe:
+          httpGet:
+            path: /actuator/health/readiness
+            port: 8082
+          initialDelaySeconds: 45
+          periodSeconds: 10
+          failureThreshold: 3
+        startupProbe:
+          httpGet:
+            path: /actuator/health
+            port: 8082
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          failureThreshold: 15
+      volumes:
+      - name: attachments
+        persistentVolumeClaim:
+          claimName: cms-attachments-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cms-backend
+spec:
+  selector:
+    app: cms-backend
+  ports:
+  - port: 8082
+    targetPort: 8082
+    name: http
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: cms-attachments-pvc
+spec:
+  accessModes:
+  - ReadWriteMany    # RWX for multiple backend replicas
+  resources:
+    requests:
+      storage: 50Gi
+  storageClassName: nfs    # ← Use RWX-capable StorageClass (NFS, EFS, etc.)</code></pre>
+
+<!-- ═══════════════ FRONTEND SECTION ═══════════════ -->
+<h3>4.11 CMS Frontend Deployment</h3>
+<pre><code># cms-frontend-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cms-frontend
+  labels:
+    app: cms-frontend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: cms-frontend
+  template:
+    metadata:
+      labels:
+        app: cms-frontend
+    spec:
+      containers:
+      - name: frontend
+        image: image-registry.openshift-image-registry.svc:5000/cms2/cms-frontend:latest
+        ports:
+        - containerPort: 80
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 80
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cms-frontend
+spec:
+  selector:
+    app: cms-frontend
+  ports:
+  - port: 80
+    targetPort: 80</code></pre>
+
+<!-- ═══════════════ ROUTES SECTION ═══════════════ -->
+<h3>4.12 OpenShift Routes (Ingress / TLS)</h3>
+<pre><code># cms-routes.yaml
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: cms-frontend-route
+  annotations:
+    haproxy.router.openshift.io/timeout: 60s
+spec:
+  host: cms.your-domain.com
+  to:
+    kind: Service
+    name: cms-frontend
+  port:
+    targetPort: 80
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: cms-backend-route
+  annotations:
+    haproxy.router.openshift.io/timeout: 120s
+    haproxy.router.openshift.io/balance: leastconn
+spec:
+  host: cms-api.your-domain.com
+  to:
+    kind: Service
+    name: cms-backend
+  port:
+    targetPort: 8082
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: cms-keycloak-route
+  annotations:
+    haproxy.router.openshift.io/timeout: 60s
+spec:
+  host: cms-auth.your-domain.com
+  to:
+    kind: Service
+    name: cms-keycloak
+  port:
+    targetPort: 8080
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect</code></pre>
+
+<!-- ═══════════════ NETWORK POLICY ═══════════════ -->
+<h3>4.13 NetworkPolicy (Pod-to-Pod Security)</h3>
+
+<pre><code># cms-network-policy.yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: cms-backend-policy
+spec:
+  podSelector:
+    matchLabels:
+      app: cms-backend
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: cms-frontend
+    ports:
+    - port: 8082
+  - from:
+    - namespaceSelector: {}    # Allow from OpenShift router
+    ports:
+    - port: 8082
+  egress:
+  - to:
+    - podSelector:
+        matchLabels:
+          app: cms-mysql
+    ports:
+    - port: 3306
+  - to:
+    - podSelector:
+        matchLabels:
+          app: cms-redis
+    ports:
+    - port: 6379
+  - to:
+    - podSelector:
+        matchLabels:
+          app: cms-opensearch
+    ports:
+    - port: 9200
+  - to:
+    - podSelector:
+        matchLabels:
+          app: cms-keycloak
+    ports:
+    - port: 8080
+  - to:
+    - podSelector:
+        matchLabels:
+          app: cms-paddle-ocr
+    ports:
+    - port: 8100
+  - to:    # Kafka (may be in different namespace)
+    - namespaceSelector: {}
+      podSelector:
+        matchLabels:
+          strimzi.io/kind: Kafka
+    ports:
+    - port: 9092
+    - port: 9093
+  - to:    # DNS resolution
+    - namespaceSelector: {}
+      podSelector:
+        matchLabels:
+          k8s-app: kube-dns
+    ports:
+    - port: 53
+      protocol: UDP
+---
+# MySQL: only accept from backend
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: cms-mysql-policy
+spec:
+  podSelector:
+    matchLabels:
+      app: cms-mysql
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: cms-backend
+    ports:
+    - port: 3306</code></pre>
+
+<!-- ═══════════════ BUILD & DEPLOY ═══════════════ -->
+<h3>4.14 Build &amp; Deploy Commands</h3>
+<pre><code># ═══════════════════════════════════════════════════════════════
+# STEP 1: Build Images
+# ═══════════════════════════════════════════════════════════════
+
+# Build backend image
+oc new-build --binary --name=cms-backend --strategy=docker
+oc start-build cms-backend --from-dir=./cms-backend --follow
+
+# Build frontend image
+oc new-build --binary --name=cms-frontend --strategy=docker
+oc start-build cms-frontend --from-dir=./cms-portal-frontend --follow
+
+# Build PaddleOCR image (if not using pre-built)
+oc new-build --binary --name=cms-paddle-ocr --strategy=docker
+oc start-build cms-paddle-ocr --from-dir=./cms-paddle-ocr --follow
+
+# ═══════════════════════════════════════════════════════════════
+# STEP 2: Apply Infrastructure
+# ═══════════════════════════════════════════════════════════════
+
+# Create secrets and configmaps first
+oc apply -f cms-secrets.yaml       # or use oc create secret commands above
+oc apply -f cms-configmap.yaml
+
+# Deploy infrastructure services
+oc apply -f cms-mysql-deployment.yaml
+oc apply -f cms-keycloak-deployment.yaml
+oc apply -f cms-opensearch-deployment.yaml
+oc apply -f cms-redis-deployment.yaml
+oc apply -f cms-paddle-ocr-deployment.yaml
+
+# Wait for infra to be ready
+oc rollout status deployment/cms-mysql --timeout=120s
+oc rollout status deployment/cms-keycloak --timeout=180s
+oc rollout status deployment/cms-opensearch --timeout=120s
+oc rollout status deployment/cms-redis --timeout=60s
+
+# ═══════════════════════════════════════════════════════════════
+# STEP 3: Apply Kafka Topics (AMQ Streams)
+# ═══════════════════════════════════════════════════════════════
+
+oc apply -f cms-kafka-topics.yaml
+# Optional: oc apply -f cms-kafka-user.yaml (if SASL required)
+
+# Verify topics
+oc get kafkatopic | grep complaint
+
+# ═══════════════════════════════════════════════════════════════
+# STEP 4: Deploy Application
+# ═══════════════════════════════════════════════════════════════
+
+oc apply -f cms-backend-deployment.yaml
+oc apply -f cms-frontend-deployment.yaml
+oc apply -f cms-routes.yaml
+oc apply -f cms-network-policy.yaml
+
+# Monitor rollout
+oc rollout status deployment/cms-backend --timeout=300s
+oc rollout status deployment/cms-frontend --timeout=120s
+
+# ═══════════════════════════════════════════════════════════════
+# STEP 5: Verify Everything
+# ═══════════════════════════════════════════════════════════════
+
+# Check all pods
+oc get pods
+
+# Check routes
+oc get routes
+
+# Test backend health
+oc exec deployment/cms-backend -- wget -qO- http://localhost:8082/actuator/health
+
+# Test Kafka connectivity from backend
+oc logs deployment/cms-backend | grep -i kafka
+
+# View application logs
+oc logs -f deployment/cms-backend --tail=100</code></pre>
+
+<!-- ═══════════════ HPA & PDB ═══════════════ -->
+<h3>4.15 Autoscaling &amp; Pod Disruption Budget</h3>
+<pre><code># cms-hpa.yaml
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: cms-backend-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: cms-backend
+  minReplicas: 2
+  maxReplicas: 6
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+      - type: Pods
+        value: 2
+        periodSeconds: 60
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Pods
+        value: 1
+        periodSeconds: 120
+---
+# PodDisruptionBudget - ensures at least 1 pod always running during updates
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: cms-backend-pdb
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: cms-backend
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: cms-frontend-pdb
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: cms-frontend</code></pre>
+
+<!-- ═══════════════ MONITORING ═══════════════ -->
+<h3>4.16 Monitoring (Prometheus ServiceMonitor)</h3>
+<p>If OpenShift Monitoring (Prometheus) is enabled in your cluster:</p>
+<pre><code># cms-servicemonitor.yaml
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: cms-backend-monitor
+  labels:
+    team: cms
+spec:
+  selector:
+    matchLabels:
+      app: cms-backend
+  endpoints:
+  - port: http
+    path: /actuator/prometheus
+    interval: 15s
+  namespaceSelector:
+    matchNames:
+    - cms2</code></pre>
+
+<h3>4.17 Complete Infrastructure Checklist</h3>
+<div class="card success">
+    <strong>Before deploying the CMS backend, ensure ALL infrastructure is UP:</strong>
+    <table>
+        <tr><th>#</th><th>Service</th><th>Verification Command</th><th>Expected</th></tr>
+        <tr><td>1</td><td>MySQL</td><td><code>oc exec deploy/cms-mysql -- mysqladmin ping -h localhost</code></td><td><code>mysqld is alive</code></td></tr>
+        <tr><td>2</td><td>Kafka Cluster</td><td><code>oc get kafka</code></td><td>Status: Ready</td></tr>
+        <tr><td>3</td><td>Kafka Topics</td><td><code>oc get kafkatopic | grep complaint</code></td><td>Ready: True</td></tr>
+        <tr><td>4</td><td>OpenSearch</td><td><code>oc exec deploy/cms-opensearch -- curl -s localhost:9200/_cluster/health</code></td><td><code>"status":"green"</code> or <code>"yellow"</code></td></tr>
+        <tr><td>5</td><td>Redis</td><td><code>oc exec deploy/cms-redis -- redis-cli ping</code></td><td><code>PONG</code></td></tr>
+        <tr><td>6</td><td>Keycloak</td><td><code>oc exec deploy/cms-keycloak -- curl -s localhost:8080/health/ready</code></td><td><code>"status":"UP"</code></td></tr>
+        <tr><td>7</td><td>PaddleOCR</td><td><code>oc exec deploy/cms-paddle-ocr -- curl -s localhost:8100/health</code></td><td>200 OK</td></tr>
+        <tr><td>8</td><td>Attachments PVC</td><td><code>oc get pvc cms-attachments-pvc</code></td><td>Status: Bound</td></tr>
+    </table>
+</div>
+
+<div class="card warning">
+    <strong>Production Considerations:</strong>
+    <ul>
+        <li>Use a managed MySQL (RDS/Cloud SQL) or MySQL Operator instead of a single-pod MySQL</li>
+        <li>For Kafka: use dedicated Kafka cluster with 3+ brokers, rack-aware replication</li>
+        <li>OpenSearch: production should use 3-node cluster (via OpenSearch Operator) with dedicated master nodes</li>
+        <li>Redis: consider Redis Sentinel or Redis Cluster for HA</li>
+        <li>Keycloak: use <code>start</code> (not <code>start-dev</code>) with proper hostname config and production DB</li>
+        <li>Set up proper TLS certificates (Let's Encrypt / organizational CA) on all routes</li>
+        <li>Enable audit logging on the namespace for compliance</li>
+        <li>Configure resource quotas on the namespace to prevent noisy-neighbor issues</li>
+    </ul>
+</div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- SECTION 5: DATABASE SCRIPTS -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<section id="database-scripts">
+<h2>5. Database Scripts</h2>
+
+<div class="card">
+    <strong>Note:</strong> The application uses <code>spring.jpa.hibernate.ddl-auto=update</code> so tables are auto-created on first boot.
+    The scripts below are provided for manual provisioning, DBA review, and disaster recovery.
+</div>
+
+<h3>5.1 Schema Creation Script</h3>
+
+<pre><code>-- ═══════════════════════════════════════════════════════════════════════
+-- CMS 2.0 Database Schema - MySQL 8.0
+-- Generated from JPA Entity definitions
+-- ═══════════════════════════════════════════════════════════════════════
+
+CREATE DATABASE IF NOT EXISTS cms_db
+  CHARACTER SET utf8mb4
+  COLLATE utf8mb4_unicode_ci;
+
+USE cms_db;
+
+-- ═══ Create Application User ═══
+CREATE USER IF NOT EXISTS 'cms_user'@'%' IDENTIFIED BY 'cms_pass_2026';
+GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, ALTER, INDEX, DROP
+  ON cms_db.* TO 'cms_user'@'%';
+FLUSH PRIVILEGES;
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- TABLE: COMPLAINTS (Core entity)
+-- ═══════════════════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS COMPLAINTS (
+    id                          BIGINT AUTO_INCREMENT PRIMARY KEY,
+    complaint_number            VARCHAR(50) NOT NULL UNIQUE,
+    complainant_name            VARCHAR(200) NOT NULL,
+    complainant_email           VARCHAR(200),
+    complainant_phone           VARCHAR(20),
+    complainant_address         VARCHAR(500),
+    bank_id                     BIGINT,
+    bank_branch                 VARCHAR(300),
+    account_number              VARCHAR(100),
+    category_id                 BIGINT,
+    subject                     VARCHAR(500) NOT NULL,
+    description                 TEXT,
+    relief_sought               TEXT,
+    status                      VARCHAR(30) NOT NULL DEFAULT 'pending',
+    priority                    VARCHAR(20) DEFAULT 'medium',
+    filing_type                 VARCHAR(50),
+    bank_complaint_reference    VARCHAR(200),
+    bank_complaint_date         DATETIME,
+    assigned_officer            VARCHAR(200),
+    department                  VARCHAR(20),
+    assigned_role               VARCHAR(50),
+    entity_code                 VARCHAR(50),
+    workflow_stage              VARCHAR(50),
+    prior_re_complaint          TINYINT(1),
+    re_complaint_date           DATE,
+    re_complaint_reference      VARCHAR(200),
+    re_replied_and_dissatisfied TINYINT(1),
+    triage_signal               VARCHAR(10),
+    triage_flags                TEXT,
+    eligibility_timeline        TEXT,
+    maintainability_determination VARCHAR(30),
+    maintainability_determined_by VARCHAR(200),
+    maintainability_determined_at DATETIME,
+    award_amount                DECIMAL(15,2),
+    -- SLA fields
+    sla_deadline                DATETIME,
+    sla_priority                VARCHAR(10),
+    -- CEPC Conciliation/Adjudication
+    conciliation_date           DATETIME,
+    conciliation_outcome        VARCHAR(100),
+    adjudication_date           DATETIME,
+    adjudication_outcome        VARCHAR(100),
+    -- Closure tracking
+    closure_cause               VARCHAR(50),
+    reopen_count                INT DEFAULT 0,
+    last_reopened_at            DATETIME,
+    -- RBIO-specific
+    advisory_text               TEXT,
+    advisory_issued_at          DATETIME,
+    notice_13_1_issued_at       DATETIME,
+    impleaded_parties           VARCHAR(1000),
+    compensation_type           VARCHAR(30),
+    scheme_version              VARCHAR(20),
+    current_stage_deadline      DATETIME,
+    stage_assigned_at           DATETIME,
+    -- Timestamps
+    filed_at                    DATETIME,
+    resolved_at                 DATETIME,
+    closed_at                   DATETIME,
+    escalated_at                DATETIME,
+    created_at                  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at                  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    INDEX idx_complaint_number (complaint_number),
+    INDEX idx_complaint_status (status),
+    INDEX idx_complaint_priority (priority),
+    INDEX idx_complaint_email (complainant_email),
+    INDEX idx_complaint_category (category_id),
+    INDEX idx_complaint_bank (bank_id),
+    INDEX idx_complaint_created (created_at),
+    INDEX idx_complaint_status_created (status, created_at),
+    INDEX idx_complaint_re_date (re_complaint_date),
+    INDEX idx_complaint_triage (triage_signal),
+    INDEX idx_complaint_maintainability (maintainability_determination),
+    INDEX idx_complaint_award (award_amount)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- TABLE: APPEALS (Appellate Authority)
+-- ═══════════════════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS APPEALS (
+    id                          BIGINT AUTO_INCREMENT PRIMARY KEY,
+    appeal_number               VARCHAR(50) NOT NULL UNIQUE,
+    original_complaint_number   VARCHAR(50) NOT NULL,
+    classification_type         VARCHAR(20) NOT NULL COMMENT 'APPEAL or REPRESENTATION - IMMUTABLE after creation',
+    appeal_ground               TEXT,
+    relief_sought               TEXT,
+    appellant_name              VARCHAR(200) NOT NULL,
+    appellant_email             VARCHAR(200),
+    appellant_phone             VARCHAR(20),
+    status                      VARCHAR(30) NOT NULL DEFAULT 'filed',
+    assigned_officer            VARCHAR(200),
+    assigned_role               VARCHAR(50),
+    priority                    VARCHAR(20) DEFAULT 'high',
+    workflow_stage              VARCHAR(50),
+    filed_at                    DATETIME,
+    hearing_date                DATETIME,
+    hearing_venue               VARCHAR(500),
+    order_date                  DATETIME,
+    order_summary               TEXT,
+    order_outcome               VARCHAR(30),
+    award_modified_amount       DECIMAL(15,2),
+    closure_cause               VARCHAR(50),
+    closed_at                   DATETIME,
+    created_at                  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at                  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    INDEX idx_appeal_number (appeal_number),
+    INDEX idx_appeal_original_complaint (original_complaint_number),
+    INDEX idx_appeal_status (status),
+    INDEX idx_appeal_assigned_role (assigned_role),
+    INDEX idx_appeal_assigned_officer (assigned_officer),
+    INDEX idx_appeal_created (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- TABLE: APPEAL_TIMELINE
+-- ═══════════════════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS APPEAL_TIMELINE (
+    id                  BIGINT AUTO_INCREMENT PRIMARY KEY,
+    appeal_number       VARCHAR(50) NOT NULL,
+    action              VARCHAR(50) NOT NULL,
+    performed_by        VARCHAR(200),
+    performed_by_role   VARCHAR(50),
+    remarks             TEXT,
+    from_status         VARCHAR(30),
+    to_status           VARCHAR(30),
+    performed_at        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    INDEX idx_appeal_timeline_number (appeal_number),
+    INDEX idx_appeal_timeline_action (action)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- TABLE: AUDIT_LOG (Immutable audit trail)
+-- ═══════════════════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS AUDIT_LOG (
+    id                  BIGINT AUTO_INCREMENT PRIMARY KEY,
+    complaint_number    VARCHAR(50) NOT NULL,
+    action              VARCHAR(50) NOT NULL,
+    actor               VARCHAR(200) NOT NULL,
+    actor_role          VARCHAR(50),
+    timestamp           DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    remarks             TEXT,
+    metadata            TEXT,
+    ip_address          VARCHAR(50),
+    previous_state      VARCHAR(50),
+    new_state           VARCHAR(50),
+
+    INDEX idx_audit_complaint (complaint_number),
+    INDEX idx_audit_action (action),
+    INDEX idx_audit_actor (actor),
+    INDEX idx_audit_timestamp (timestamp)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- TABLE: COMPLAINT_TIMELINE
+-- ═══════════════════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS COMPLAINT_TIMELINE (
+    id                  BIGINT AUTO_INCREMENT PRIMARY KEY,
+    complaint_id        BIGINT NOT NULL,
+    action              VARCHAR(50) NOT NULL,
+    performed_by        VARCHAR(200),
+    performed_by_role   VARCHAR(50),
+    remarks             TEXT,
+    from_status         VARCHAR(30),
+    to_status           VARCHAR(30),
+    performed_at        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    INDEX idx_timeline_complaint (complaint_id),
+    INDEX idx_timeline_action (action),
+    FOREIGN KEY (complaint_id) REFERENCES COMPLAINTS(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- TABLE: REGULATED_ENTITIES
+-- ═══════════════════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS REGULATED_ENTITIES (
+    id                          BIGINT AUTO_INCREMENT PRIMARY KEY,
+    name                        VARCHAR(500) NOT NULL,
+    name_normalized             VARCHAR(500),
+    department                  VARCHAR(10) NOT NULL,
+    entity_type                 VARCHAR(100),
+    city                        VARCHAR(100),
+    state                       VARCHAR(50),
+    status                      VARCHAR(20) DEFAULT 'active',
+    nodal_officer_name          VARCHAR(200),
+    nodal_officer_email         VARCHAR(200),
+    nodal_officer_phone         VARCHAR(20),
+    nodal_officer_designation   VARCHAR(100),
+    pno_name                    VARCHAR(200),
+    pno_email                   VARCHAR(200),
+    pno_phone                   VARCHAR(20),
+    registration_date           DATETIME,
+    last_login_at               DATETIME,
+    portal_enabled              TINYINT(1) NOT NULL DEFAULT 1,
+    created_at                  DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+    INDEX idx_re_department (department),
+    INDEX idx_re_name (name),
+    INDEX idx_re_entity_type (entity_type)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- TABLE: RE_RESPONSE_TRACKER
+-- ═══════════════════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS RE_RESPONSE_TRACKER (
+    id                      BIGINT AUTO_INCREMENT PRIMARY KEY,
+    complaint_id            BIGINT NOT NULL,
+    regulated_entity_id     BIGINT NOT NULL,
+    forwarded_at            DATETIME NOT NULL,
+    responded_at            DATETIME,
+    window_days             INT NOT NULL DEFAULT 15,
+    window_expires_at       DATETIME,
+    breached                TINYINT(1) NOT NULL DEFAULT 0,
+    ex_parte_eligible       TINYINT(1) DEFAULT 0,
+    notes                   VARCHAR(500),
+    response_text           TEXT,
+    query_text              TEXT,
+    query_raised_at         DATETIME,
+    extension_granted       TINYINT(1) DEFAULT 0,
+    extension_days          INT,
+    created_at              DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at              DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    INDEX idx_re_tracker_complaint (complaint_id),
+    INDEX idx_re_tracker_re (regulated_entity_id),
+    INDEX idx_re_tracker_breached (breached),
+    INDEX idx_re_tracker_forwarded (forwarded_at),
+    FOREIGN KEY (complaint_id) REFERENCES COMPLAINTS(id) ON DELETE CASCADE,
+    FOREIGN KEY (regulated_entity_id) REFERENCES REGULATED_ENTITIES(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- TABLE: BANKS
+-- ═══════════════════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS BANKS (
+    id          BIGINT AUTO_INCREMENT PRIMARY KEY,
+    name        VARCHAR(300) NOT NULL,
+    code        VARCHAR(50),
+    category    VARCHAR(50),
+    status      VARCHAR(20) DEFAULT 'active',
+    created_at  DATETIME DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- TABLE: COMPLAINT_CATEGORIES
+-- ═══════════════════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS COMPLAINT_CATEGORIES (
+    id              BIGINT AUTO_INCREMENT PRIMARY KEY,
+    name            VARCHAR(200) NOT NULL,
+    code            VARCHAR(50),
+    parent_id       BIGINT,
+    department      VARCHAR(10),
+    status          VARCHAR(20) DEFAULT 'active',
+    sort_order      INT DEFAULT 0,
+    created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (parent_id) REFERENCES COMPLAINT_CATEGORIES(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- TABLE: COMPLAINT_ATTACHMENTS
+-- ═══════════════════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS COMPLAINT_ATTACHMENTS (
+    id              BIGINT AUTO_INCREMENT PRIMARY KEY,
+    complaint_id    BIGINT NOT NULL,
+    file_name       VARCHAR(500) NOT NULL,
+    file_path       VARCHAR(1000) NOT NULL,
+    file_size       BIGINT,
+    content_type    VARCHAR(100),
+    uploaded_at     DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (complaint_id) REFERENCES COMPLAINTS(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- TABLE: HOLIDAYS (Business hours calculation)
+-- ═══════════════════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS HOLIDAYS (
+    id          BIGINT AUTO_INCREMENT PRIMARY KEY,
+    date        DATE NOT NULL UNIQUE,
+    name        VARCHAR(200),
+    type        VARCHAR(50) DEFAULT 'NATIONAL',
+    created_at  DATETIME DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- TABLE: FORM_CONFIGS
+-- ═══════════════════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS FORM_CONFIGS (
+    id              BIGINT AUTO_INCREMENT PRIMARY KEY,
+    form_key        VARCHAR(100) NOT NULL UNIQUE,
+    schema_json     LONGTEXT NOT NULL,
+    version         INT DEFAULT 1,
+    active          TINYINT(1) DEFAULT 1,
+    created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at      DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- TABLE: TRANSLATIONS (i18n)
+-- ═══════════════════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS TRANSLATIONS (
+    id          BIGINT AUTO_INCREMENT PRIMARY KEY,
+    locale      VARCHAR(10) NOT NULL,
+    key_name    VARCHAR(255) NOT NULL,
+    value       TEXT NOT NULL,
+    created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+    UNIQUE KEY uk_translation (locale, key_name),
+    INDEX idx_translation_locale (locale)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- TABLE: EXTRACTION_RULES (Email/OCR extraction)
+-- ═══════════════════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS EXTRACTION_RULES (
+    id              BIGINT AUTO_INCREMENT PRIMARY KEY,
+    name            VARCHAR(200) NOT NULL,
+    rule_type       VARCHAR(50) NOT NULL,
+    pattern         TEXT NOT NULL,
+    target_field    VARCHAR(100) NOT NULL,
+    priority        INT DEFAULT 0,
+    active          TINYINT(1) DEFAULT 1,
+    created_at      DATETIME DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- TABLE: REPORT_DEFINITIONS
+-- ═══════════════════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS REPORT_DEFINITIONS (
+    id              BIGINT AUTO_INCREMENT PRIMARY KEY,
+    name            VARCHAR(200) NOT NULL,
+    description     TEXT,
+    query_json      LONGTEXT NOT NULL,
+    created_by      VARCHAR(200),
+    shared          TINYINT(1) DEFAULT 0,
+    created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at      DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;</code></pre>
+
+<h3>5.2 Seed Data Script</h3>
+<pre><code>-- ═══ Initial Seed Data ═══
+
+-- Default Holidays (India 2026)
+INSERT INTO HOLIDAYS (date, name, type) VALUES
+('2026-01-26', 'Republic Day', 'NATIONAL'),
+('2026-03-30', 'Holi', 'NATIONAL'),
+('2026-04-02', 'Good Friday', 'NATIONAL'),
+('2026-04-14', 'Dr. Ambedkar Jayanti', 'NATIONAL'),
+('2026-05-01', 'May Day', 'NATIONAL'),
+('2026-08-15', 'Independence Day', 'NATIONAL'),
+('2026-10-02', 'Gandhi Jayanti', 'NATIONAL'),
+('2026-10-20', 'Dussehra', 'NATIONAL'),
+('2026-11-09', 'Diwali', 'NATIONAL'),
+('2026-11-10', 'Diwali (Day 2)', 'NATIONAL'),
+('2026-12-25', 'Christmas', 'NATIONAL');
+
+-- Sample Banks
+INSERT INTO BANKS (name, code, category) VALUES
+('State Bank of India', 'SBI', 'PUBLIC_SECTOR'),
+('HDFC Bank', 'HDFC', 'PRIVATE_SECTOR'),
+('ICICI Bank', 'ICICI', 'PRIVATE_SECTOR'),
+('Punjab National Bank', 'PNB', 'PUBLIC_SECTOR'),
+('Bank of Baroda', 'BOB', 'PUBLIC_SECTOR'),
+('Axis Bank', 'AXIS', 'PRIVATE_SECTOR'),
+('Kotak Mahindra Bank', 'KOTAK', 'PRIVATE_SECTOR'),
+('Union Bank of India', 'UNION', 'PUBLIC_SECTOR');
+
+-- Complaint Categories
+INSERT INTO COMPLAINT_CATEGORIES (name, code, department) VALUES
+('Deposits', 'DEP', 'RBIO'),
+('Loans &amp; Advances', 'LOAN', 'RBIO'),
+('Credit Card', 'CC', 'RBIO'),
+('Internet Banking', 'IB', 'RBIO'),
+('Mobile Banking', 'MB', 'RBIO'),
+('ATM/Debit Card', 'ATM', 'RBIO'),
+('Insurance', 'INS', 'CEPC'),
+('Pension', 'PEN', 'CEPC'),
+('Digital Payment', 'UPI', 'RBIO'),
+('NBFC Related', 'NBFC', 'CEPC');
+
+-- Sample Regulated Entities
+INSERT INTO REGULATED_ENTITIES (name, name_normalized, department, entity_type, city, state, portal_enabled) VALUES
+('State Bank of India', 'state bank of india', 'RBIO', 'SCB', 'Mumbai', 'Maharashtra', 1),
+('HDFC Bank Ltd', 'hdfc bank ltd', 'RBIO', 'PVT', 'Mumbai', 'Maharashtra', 1),
+('ICICI Bank Ltd', 'icici bank ltd', 'RBIO', 'PVT', 'Mumbai', 'Maharashtra', 1),
+('Bajaj Finance Ltd', 'bajaj finance ltd', 'CEPC', 'NBFC', 'Pune', 'Maharashtra', 1),
+('LIC of India', 'lic of india', 'CEPC', 'INS', 'Mumbai', 'Maharashtra', 1);</code></pre>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- SECTION 6: ARCHITECTURE DIAGRAM -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<section id="architecture">
+<h2>6. Architecture Diagram</h2>
+
+<h3>6.1 High-Level System Architecture</h3>
+
+<div class="diagram-container">
+<svg viewBox="0 0 1100 700" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, sans-serif">
+    <!-- Background layers -->
+    <rect x="10" y="10" width="1080" height="120" rx="8" fill="#e3f2fd" stroke="#1565c0" stroke-width="1.5" stroke-dasharray="5,5"/>
+    <text x="30" y="35" font-size="12" fill="#1565c0" font-weight="bold">CLIENT LAYER</text>
+
+    <rect x="10" y="150" width="1080" height="120" rx="8" fill="#e8f5e9" stroke="#2e7d32" stroke-width="1.5" stroke-dasharray="5,5"/>
+    <text x="30" y="175" font-size="12" fill="#2e7d32" font-weight="bold">API GATEWAY / FRONTEND</text>
+
+    <rect x="10" y="290" width="1080" height="200" rx="8" fill="#fff3e0" stroke="#e65100" stroke-width="1.5" stroke-dasharray="5,5"/>
+    <text x="30" y="315" font-size="12" fill="#e65100" font-weight="bold">BACKEND SERVICES</text>
+
+    <rect x="10" y="510" width="1080" height="180" rx="8" fill="#fce4ec" stroke="#c62828" stroke-width="1.5" stroke-dasharray="5,5"/>
+    <text x="30" y="535" font-size="12" fill="#c62828" font-weight="bold">DATA &amp; INFRASTRUCTURE</text>
+
+    <!-- Client boxes -->
+    <rect x="40" y="50" width="160" height="60" rx="6" fill="#1565c0" stroke="none"/>
+    <text x="120" y="77" text-anchor="middle" fill="white" font-size="11" font-weight="bold">Citizen Portal</text>
+    <text x="120" y="95" text-anchor="middle" fill="#bbdefb" font-size="9">File Complaint / Track</text>
+
+    <rect x="230" y="50" width="160" height="60" rx="6" fill="#1565c0" stroke="none"/>
+    <text x="310" y="77" text-anchor="middle" fill="white" font-size="11" font-weight="bold">Staff Portal</text>
+    <text x="310" y="95" text-anchor="middle" fill="#bbdefb" font-size="9">CEPC / RBIO Officers</text>
+
+    <rect x="420" y="50" width="160" height="60" rx="6" fill="#1565c0" stroke="none"/>
+    <text x="500" y="77" text-anchor="middle" fill="white" font-size="11" font-weight="bold">RE Portal</text>
+    <text x="500" y="95" text-anchor="middle" fill="#bbdefb" font-size="9">Bank Nodal Officers</text>
+
+    <rect x="610" y="50" width="160" height="60" rx="6" fill="#1565c0" stroke="none"/>
+    <text x="690" y="77" text-anchor="middle" fill="white" font-size="11" font-weight="bold">AA Portal</text>
+    <text x="690" y="95" text-anchor="middle" fill="#bbdefb" font-size="9">Appellate Authority</text>
+
+    <rect x="800" y="50" width="160" height="60" rx="6" fill="#1565c0" stroke="none"/>
+    <text x="880" y="77" text-anchor="middle" fill="white" font-size="11" font-weight="bold">Admin Dashboard</text>
+    <text x="880" y="95" text-anchor="middle" fill="#bbdefb" font-size="9">System Admin</text>
+
+    <!-- Frontend/Gateway -->
+    <rect x="40" y="180" width="280" height="60" rx="6" fill="#2e7d32" stroke="none"/>
+    <text x="180" y="207" text-anchor="middle" fill="white" font-size="12" font-weight="bold">Angular 21 SPA (Nginx)</text>
+    <text x="180" y="225" text-anchor="middle" fill="#c8e6c9" font-size="9">Standalone Components | Signals | Keycloak-JS</text>
+
+    <rect x="380" y="180" width="280" height="60" rx="6" fill="#2e7d32" stroke="none"/>
+    <text x="520" y="207" text-anchor="middle" fill="white" font-size="12" font-weight="bold">Keycloak 26 SSO</text>
+    <text x="520" y="225" text-anchor="middle" fill="#c8e6c9" font-size="9">OAuth2 / OIDC | Realm Roles | JWT</text>
+
+    <rect x="720" y="180" width="280" height="60" rx="6" fill="#2e7d32" stroke="none"/>
+    <text x="860" y="207" text-anchor="middle" fill="white" font-size="12" font-weight="bold">API Rate Limiter</text>
+    <text x="860" y="225" text-anchor="middle" fill="#c8e6c9" font-size="9">Bucket4j | Anti-Automation | PII Filter</text>
+
+    <!-- Backend services -->
+    <rect x="40" y="330" width="190" height="60" rx="6" fill="#e65100" stroke="none"/>
+    <text x="135" y="357" text-anchor="middle" fill="white" font-size="11" font-weight="bold">CEPC Module</text>
+    <text x="135" y="373" text-anchor="middle" fill="#ffe0b2" font-size="9">Priority SLA | Workflow</text>
+
+    <rect x="250" y="330" width="190" height="60" rx="6" fill="#e65100" stroke="none"/>
+    <text x="345" y="357" text-anchor="middle" fill="white" font-size="11" font-weight="bold">RBIO Module</text>
+    <text x="345" y="373" text-anchor="middle" fill="#ffe0b2" font-size="9">Multi-stage SLA | Compensation</text>
+
+    <rect x="460" y="330" width="190" height="60" rx="6" fill="#e65100" stroke="none"/>
+    <text x="555" y="357" text-anchor="middle" fill="white" font-size="11" font-weight="bold">RE Portal Service</text>
+    <text x="555" y="373" text-anchor="middle" fill="#ffe0b2" font-size="9">Response Window | Profile</text>
+
+    <rect x="670" y="330" width="190" height="60" rx="6" fill="#e65100" stroke="none"/>
+    <text x="765" y="357" text-anchor="middle" fill="white" font-size="11" font-weight="bold">AA Module</text>
+    <text x="765" y="373" text-anchor="middle" fill="#ffe0b2" font-size="9">Appeal Workflow | Eligibility</text>
+
+    <rect x="880" y="330" width="190" height="60" rx="6" fill="#e65100" stroke="none"/>
+    <text x="975" y="357" text-anchor="middle" fill="white" font-size="11" font-weight="bold">Common Services</text>
+    <text x="975" y="373" text-anchor="middle" fill="#ffe0b2" font-size="9">OCR | Email | Reports</text>
+
+    <!-- Shared services row -->
+    <rect x="40" y="410" width="150" height="50" rx="6" fill="#bf360c" stroke="none"/>
+    <text x="115" y="433" text-anchor="middle" fill="white" font-size="10" font-weight="bold">Business Hours</text>
+    <text x="115" y="448" text-anchor="middle" fill="#ffccbc" font-size="8">SLA Calculation</text>
+
+    <rect x="210" y="410" width="150" height="50" rx="6" fill="#bf360c" stroke="none"/>
+    <text x="285" y="433" text-anchor="middle" fill="white" font-size="10" font-weight="bold">Audit Service</text>
+    <text x="285" y="448" text-anchor="middle" fill="#ffccbc" font-size="8">Immutable Log</text>
+
+    <rect x="380" y="410" width="150" height="50" rx="6" fill="#bf360c" stroke="none"/>
+    <text x="455" y="433" text-anchor="middle" fill="white" font-size="10" font-weight="bold">Complaint Routing</text>
+    <text x="455" y="448" text-anchor="middle" fill="#ffccbc" font-size="8">MRE + Triage</text>
+
+    <rect x="550" y="410" width="150" height="50" rx="6" fill="#bf360c" stroke="none"/>
+    <text x="625" y="433" text-anchor="middle" fill="white" font-size="10" font-weight="bold">Notification</text>
+    <text x="625" y="448" text-anchor="middle" fill="#ffccbc" font-size="8">Email / SMS</text>
+
+    <rect x="720" y="410" width="150" height="50" rx="6" fill="#bf360c" stroke="none"/>
+    <text x="795" y="433" text-anchor="middle" fill="white" font-size="10" font-weight="bold">Role Guard AOP</text>
+    <text x="795" y="448" text-anchor="middle" fill="#ffccbc" font-size="8">CEPC|RBIO|RE|AA</text>
+
+    <rect x="890" y="410" width="150" height="50" rx="6" fill="#bf360c" stroke="none"/>
+    <text x="965" y="433" text-anchor="middle" fill="white" font-size="10" font-weight="bold">Hazelcast Cache</text>
+    <text x="965" y="448" text-anchor="middle" fill="#ffccbc" font-size="8">Distributed</text>
+
+    <!-- Data layer -->
+    <rect x="40" y="555" width="200" height="60" rx="6" fill="#c62828" stroke="none"/>
+    <text x="140" y="582" text-anchor="middle" fill="white" font-size="12" font-weight="bold">MySQL 8.0</text>
+    <text x="140" y="600" text-anchor="middle" fill="#ffcdd2" font-size="9">Primary DB | HikariCP Pool</text>
+
+    <rect x="270" y="555" width="200" height="60" rx="6" fill="#c62828" stroke="none"/>
+    <text x="370" y="582" text-anchor="middle" fill="white" font-size="12" font-weight="bold">OpenSearch 2.18</text>
+    <text x="370" y="600" text-anchor="middle" fill="#ffcdd2" font-size="9">Full-text | Similar Cases</text>
+
+    <rect x="500" y="555" width="200" height="60" rx="6" fill="#c62828" stroke="none"/>
+    <text x="600" y="582" text-anchor="middle" fill="white" font-size="12" font-weight="bold">Kafka 3.7</text>
+    <text x="600" y="600" text-anchor="middle" fill="#ffcdd2" font-size="9">Event Streaming | Async</text>
+
+    <rect x="730" y="555" width="200" height="60" rx="6" fill="#c62828" stroke="none"/>
+    <text x="830" y="582" text-anchor="middle" fill="white" font-size="12" font-weight="bold">File Storage</text>
+    <text x="830" y="600" text-anchor="middle" fill="#ffcdd2" font-size="9">Attachments | Chunk Upload</text>
+
+    <rect x="40" y="635" width="200" height="45" rx="6" fill="#880e4f" stroke="none"/>
+    <text x="140" y="660" text-anchor="middle" fill="white" font-size="10" font-weight="bold">Prometheus + Grafana</text>
+    <text x="140" y="673" text-anchor="middle" fill="#f8bbd0" font-size="8">Metrics / Alerting</text>
+
+    <rect x="270" y="635" width="200" height="45" rx="6" fill="#880e4f" stroke="none"/>
+    <text x="370" y="660" text-anchor="middle" fill="white" font-size="10" font-weight="bold">PaddleOCR Sidecar</text>
+    <text x="370" y="673" text-anchor="middle" fill="#f8bbd0" font-size="8">Document Extraction</text>
+
+    <!-- Arrows -->
+    <defs><marker id="arrowhead" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#555"/></marker></defs>
+    <line x1="120" y1="110" x2="120" y2="180" stroke="#555" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+    <line x1="310" y1="110" x2="310" y2="180" stroke="#555" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+    <line x1="500" y1="110" x2="500" y2="180" stroke="#555" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+    <line x1="690" y1="110" x2="690" y2="180" stroke="#555" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+    <line x1="880" y1="110" x2="880" y2="180" stroke="#555" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+    <line x1="180" y1="240" x2="180" y2="330" stroke="#555" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+    <line x1="345" y1="390" x2="345" y2="410" stroke="#555" stroke-width="1" marker-end="url(#arrowhead)"/>
+    <line x1="140" y1="460" x2="140" y2="555" stroke="#555" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+</svg>
+</div>
+
+<h3>6.2 Technology Stack Summary</h3>
+<table>
+    <tr><th>Layer</th><th>Technology</th><th>Version</th><th>Purpose</th></tr>
+    <tr><td>Frontend</td><td>Angular</td><td>21.x</td><td>SPA with standalone components, signals</td></tr>
+    <tr><td>Auth</td><td>Keycloak</td><td>26.0</td><td>OAuth2/OIDC SSO, realm role management</td></tr>
+    <tr><td>Backend</td><td>Spring Boot</td><td>3.2.5</td><td>REST API, JPA, AOP role guards</td></tr>
+    <tr><td>Language</td><td>Java</td><td>17 (LTS)</td><td>Backend runtime</td></tr>
+    <tr><td>Database</td><td>MySQL</td><td>8.0</td><td>Primary relational store</td></tr>
+    <tr><td>Search</td><td>OpenSearch</td><td>2.18</td><td>Full-text search, similar cases</td></tr>
+    <tr><td>Messaging</td><td>Apache Kafka</td><td>3.7</td><td>Event streaming, async processing</td></tr>
+    <tr><td>Cache</td><td>Hazelcast</td><td>5.3</td><td>Distributed caching</td></tr>
+    <tr><td>OCR</td><td>PaddleOCR + Groq</td><td>-</td><td>Document text extraction</td></tr>
+    <tr><td>Monitoring</td><td>Prometheus + Micrometer</td><td>-</td><td>Metrics, health checks</td></tr>
+    <tr><td>Container</td><td>Docker / OpenShift</td><td>4.x</td><td>Orchestration &amp; deployment</td></tr>
+</table>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- SECTION 7: FLOW DIAGRAMS -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<section id="flow-diagrams">
+<h2>7. Flow Diagrams</h2>
+
+<h3>7.1 Complaint Lifecycle Flow</h3>
+
+<div class="diagram-container">
+<svg viewBox="0 0 1100 500" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, sans-serif">
+    <defs>
+        <marker id="arr" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#37474f"/></marker>
+        <marker id="arr-green" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#2e7d32"/></marker>
+        <marker id="arr-red" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#c62828"/></marker>
+    </defs>
+
+    <!-- Start -->
+    <circle cx="60" cy="60" r="20" fill="#1565c0"/>
+    <text x="60" y="65" text-anchor="middle" fill="white" font-size="10" font-weight="bold">START</text>
+
+    <!-- Filing -->
+    <rect x="120" y="35" width="140" height="50" rx="6" fill="#1565c0"/>
+    <text x="190" y="57" text-anchor="middle" fill="white" font-size="10" font-weight="bold">Citizen Files</text>
+    <text x="190" y="72" text-anchor="middle" fill="#bbdefb" font-size="9">Complaint</text>
+    <line x1="80" y1="60" x2="120" y2="60" stroke="#37474f" stroke-width="1.5" marker-end="url(#arr)"/>
+
+    <!-- Triage -->
+    <rect x="300" y="35" width="140" height="50" rx="6" fill="#ff6f00"/>
+    <text x="370" y="57" text-anchor="middle" fill="white" font-size="10" font-weight="bold">Auto Triage</text>
+    <text x="370" y="72" text-anchor="middle" fill="#fff8e1" font-size="9">MRE + Eligibility</text>
+    <line x1="260" y1="60" x2="300" y2="60" stroke="#37474f" stroke-width="1.5" marker-end="url(#arr)"/>
+
+    <!-- Route to CEPC/RBIO -->
+    <polygon points="480,60 520,35 560,60 520,85" fill="#4a148c"/>
+    <text x="520" y="64" text-anchor="middle" fill="white" font-size="9" font-weight="bold">Route</text>
+    <line x1="440" y1="60" x2="480" y2="60" stroke="#37474f" stroke-width="1.5" marker-end="url(#arr)"/>
+
+    <!-- CEPC Path -->
+    <rect x="600" y="15" width="140" height="40" rx="6" fill="#2e7d32"/>
+    <text x="670" y="38" text-anchor="middle" fill="white" font-size="10" font-weight="bold">CEPC Workflow</text>
+    <line x1="560" y1="50" x2="600" y2="38" stroke="#2e7d32" stroke-width="1.5" marker-end="url(#arr-green)"/>
+
+    <!-- RBIO Path -->
+    <rect x="600" y="75" width="140" height="40" rx="6" fill="#e65100"/>
+    <text x="670" y="98" text-anchor="middle" fill="white" font-size="10" font-weight="bold">RBIO Workflow</text>
+    <line x1="560" y1="70" x2="600" y2="88" stroke="#37474f" stroke-width="1.5" marker-end="url(#arr)"/>
+
+    <!-- CEPC stages -->
+    <rect x="780" y="5" width="120" height="30" rx="4" fill="#388e3c"/>
+    <text x="840" y="24" text-anchor="middle" fill="white" font-size="9">DO &rarr; Reviewer</text>
+    <line x1="740" y1="30" x2="780" y2="20" stroke="#2e7d32" stroke-width="1" marker-end="url(#arr-green)"/>
+
+    <rect x="780" y="40" width="120" height="30" rx="4" fill="#388e3c"/>
+    <text x="840" y="59" text-anchor="middle" fill="white" font-size="9">Incharge &rarr; Close</text>
+    <line x1="740" y1="38" x2="780" y2="50" stroke="#2e7d32" stroke-width="1" marker-end="url(#arr-green)"/>
+
+    <!-- RBIO stages -->
+    <rect x="780" y="80" width="120" height="25" rx="4" fill="#bf360c"/>
+    <text x="840" y="96" text-anchor="middle" fill="white" font-size="9">Officer Assessment</text>
+    <line x1="740" y1="92" x2="780" y2="92" stroke="#37474f" stroke-width="1" marker-end="url(#arr)"/>
+
+    <rect x="780" y="110" width="120" height="25" rx="4" fill="#bf360c"/>
+    <text x="840" y="126" text-anchor="middle" fill="white" font-size="9">Conciliation</text>
+
+    <rect x="780" y="140" width="120" height="25" rx="4" fill="#bf360c"/>
+    <text x="840" y="156" text-anchor="middle" fill="white" font-size="9">Adjudication</text>
+
+    <line x1="840" y1="105" x2="840" y2="110" stroke="#37474f" stroke-width="1" marker-end="url(#arr)"/>
+    <line x1="840" y1="135" x2="840" y2="140" stroke="#37474f" stroke-width="1" marker-end="url(#arr)"/>
+
+    <!-- Forward to RE -->
+    <rect x="40" y="200" width="180" height="50" rx="6" fill="#0d47a1"/>
+    <text x="130" y="222" text-anchor="middle" fill="white" font-size="10" font-weight="bold">Forward to RE</text>
+    <text x="130" y="237" text-anchor="middle" fill="#bbdefb" font-size="9">15-day response window</text>
+
+    <rect x="260" y="200" width="180" height="50" rx="6" fill="#0d47a1"/>
+    <text x="350" y="222" text-anchor="middle" fill="white" font-size="10" font-weight="bold">RE Responds</text>
+    <text x="350" y="237" text-anchor="middle" fill="#bbdefb" font-size="9">Or raises query/extension</text>
+    <line x1="220" y1="225" x2="260" y2="225" stroke="#37474f" stroke-width="1.5" marker-end="url(#arr)"/>
+
+    <!-- Resolution -->
+    <rect x="490" y="200" width="180" height="50" rx="6" fill="#2e7d32"/>
+    <text x="580" y="222" text-anchor="middle" fill="white" font-size="10" font-weight="bold">Resolution</text>
+    <text x="580" y="237" text-anchor="middle" fill="#c8e6c9" font-size="9">Resolved / Award / Advisory</text>
+    <line x1="440" y1="225" x2="490" y2="225" stroke="#37474f" stroke-width="1.5" marker-end="url(#arr)"/>
+
+    <!-- Appeal path -->
+    <polygon points="720,225 760,200 800,225 760,250" fill="#4a148c"/>
+    <text x="760" y="228" text-anchor="middle" fill="white" font-size="8">30d?</text>
+    <line x1="670" y1="225" x2="720" y2="225" stroke="#37474f" stroke-width="1.5" marker-end="url(#arr)"/>
+
+    <rect x="840" y="200" width="180" height="50" rx="6" fill="#6a1b9a"/>
+    <text x="930" y="222" text-anchor="middle" fill="white" font-size="10" font-weight="bold">Appeal (AA)</text>
+    <text x="930" y="237" text-anchor="middle" fill="#e1bee7" font-size="9">APPEAL / REPRESENTATION</text>
+    <line x1="800" y1="225" x2="840" y2="225" stroke="#37474f" stroke-width="1.5" marker-end="url(#arr)"/>
+
+    <!-- AA Workflow -->
+    <rect x="40" y="310" width="150" height="40" rx="4" fill="#6a1b9a"/>
+    <text x="115" y="334" text-anchor="middle" fill="white" font-size="9" font-weight="bold">AA Registrar</text>
+    <text x="115" y="346" text-anchor="middle" fill="#e1bee7" font-size="8">Accept / Reject</text>
+
+    <rect x="220" y="310" width="150" height="40" rx="4" fill="#6a1b9a"/>
+    <text x="295" y="334" text-anchor="middle" fill="white" font-size="9" font-weight="bold">Bench Officer</text>
+    <text x="295" y="346" text-anchor="middle" fill="#e1bee7" font-size="8">Schedule Hearing</text>
+    <line x1="190" y1="330" x2="220" y2="330" stroke="#37474f" stroke-width="1" marker-end="url(#arr)"/>
+
+    <rect x="400" y="310" width="150" height="40" rx="4" fill="#6a1b9a"/>
+    <text x="475" y="334" text-anchor="middle" fill="white" font-size="9" font-weight="bold">AA Authority</text>
+    <text x="475" y="346" text-anchor="middle" fill="#e1bee7" font-size="8">Pass Order</text>
+    <line x1="370" y1="330" x2="400" y2="330" stroke="#37474f" stroke-width="1" marker-end="url(#arr)"/>
+
+    <!-- Outcomes -->
+    <rect x="590" y="310" width="150" height="40" rx="4" fill="#1b5e20"/>
+    <text x="665" y="327" text-anchor="middle" fill="white" font-size="9" font-weight="bold">Order Outcome</text>
+    <text x="665" y="343" text-anchor="middle" fill="#c8e6c9" font-size="8">UPHELD | MODIFIED</text>
+    <line x1="550" y1="330" x2="590" y2="330" stroke="#37474f" stroke-width="1" marker-end="url(#arr)"/>
+
+    <rect x="780" y="310" width="150" height="40" rx="4" fill="#b71c1c"/>
+    <text x="855" y="327" text-anchor="middle" fill="white" font-size="9" font-weight="bold">REMAND</text>
+    <text x="855" y="343" text-anchor="middle" fill="#ffcdd2" font-size="8">Reopen Original</text>
+    <line x1="740" y1="330" x2="780" y2="330" stroke="#c62828" stroke-width="1" marker-end="url(#arr-red)"/>
+
+    <!-- SLA Info -->
+    <rect x="40" y="400" width="1020" height="80" rx="8" fill="#f5f5f5" stroke="#bdbdbd"/>
+    <text x="60" y="425" font-size="12" fill="#37474f" font-weight="bold">SLA Rules</text>
+    <text x="60" y="450" font-size="10" fill="#616161">CEPC: CRITICAL=7d | HIGH=15d | MEDIUM=30d | LOW=45d (business days)</text>
+    <text x="60" y="470" font-size="10" fill="#616161">RBIO: Officer=30d | Conciliation=30d | Adjudication=60d | Total lifecycle=120d (business days)</text>
+</svg>
+</div>
+
+<h3>7.2 Authentication &amp; Authorization Flow</h3>
+
+<div class="diagram-container">
+<svg viewBox="0 0 900 350" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, sans-serif">
+    <defs><marker id="a2" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#37474f"/></marker></defs>
+
+    <!-- Actors -->
+    <rect x="30" y="30" width="100" height="40" rx="6" fill="#1565c0"/>
+    <text x="80" y="55" text-anchor="middle" fill="white" font-size="10" font-weight="bold">User</text>
+
+    <rect x="230" y="30" width="120" height="40" rx="6" fill="#2e7d32"/>
+    <text x="290" y="55" text-anchor="middle" fill="white" font-size="10" font-weight="bold">Angular App</text>
+
+    <rect x="450" y="30" width="120" height="40" rx="6" fill="#ff6f00"/>
+    <text x="510" y="55" text-anchor="middle" fill="white" font-size="10" font-weight="bold">Keycloak</text>
+
+    <rect x="670" y="30" width="140" height="40" rx="6" fill="#e65100"/>
+    <text x="740" y="55" text-anchor="middle" fill="white" font-size="10" font-weight="bold">Spring Boot API</text>
+
+    <!-- Sequence lines -->
+    <line x1="80" y1="70" x2="80" y2="330" stroke="#bdbdbd" stroke-width="1" stroke-dasharray="4,4"/>
+    <line x1="290" y1="70" x2="290" y2="330" stroke="#bdbdbd" stroke-width="1" stroke-dasharray="4,4"/>
+    <line x1="510" y1="70" x2="510" y2="330" stroke="#bdbdbd" stroke-width="1" stroke-dasharray="4,4"/>
+    <line x1="740" y1="70" x2="740" y2="330" stroke="#bdbdbd" stroke-width="1" stroke-dasharray="4,4"/>
+
+    <!-- Step 1 -->
+    <line x1="80" y1="100" x2="290" y2="100" stroke="#37474f" stroke-width="1.5" marker-end="url(#a2)"/>
+    <text x="185" y="95" text-anchor="middle" font-size="9" fill="#37474f">1. Login click</text>
+
+    <!-- Step 2 -->
+    <line x1="290" y1="120" x2="510" y2="120" stroke="#37474f" stroke-width="1.5" marker-end="url(#a2)"/>
+    <text x="400" y="115" text-anchor="middle" font-size="9" fill="#37474f">2. Redirect to Keycloak login</text>
+
+    <!-- Step 3 -->
+    <line x1="510" y1="140" x2="80" y2="140" stroke="#37474f" stroke-width="1.5" marker-end="url(#a2)"/>
+    <text x="295" y="135" text-anchor="middle" font-size="9" fill="#37474f">3. User enters credentials</text>
+
+    <!-- Step 4 -->
+    <line x1="510" y1="165" x2="290" y2="165" stroke="#2e7d32" stroke-width="1.5" marker-end="url(#a2)"/>
+    <text x="400" y="160" text-anchor="middle" font-size="9" fill="#2e7d32">4. JWT Token (with realm_access.roles)</text>
+
+    <!-- Step 5 -->
+    <line x1="290" y1="195" x2="740" y2="195" stroke="#37474f" stroke-width="1.5" marker-end="url(#a2)"/>
+    <text x="515" y="190" text-anchor="middle" font-size="9" fill="#37474f">5. API call + Authorization: Bearer &lt;JWT&gt;</text>
+
+    <!-- Step 6 -->
+    <rect x="660" y="210" width="160" height="50" rx="4" fill="#fff3e0" stroke="#e65100"/>
+    <text x="740" y="230" text-anchor="middle" font-size="9" fill="#e65100" font-weight="bold">6. AOP Role Guard</text>
+    <text x="740" y="245" text-anchor="middle" font-size="8" fill="#bf360c">@CepcRoleGuard / @RbioRoleGuard</text>
+    <text x="740" y="258" text-anchor="middle" font-size="8" fill="#bf360c">@ReRoleGuard / @AaRoleGuard</text>
+
+    <!-- Step 7a -->
+    <line x1="740" y1="270" x2="740" y2="290" stroke="#2e7d32" stroke-width="1.5" marker-end="url(#a2)"/>
+    <text x="810" y="285" font-size="9" fill="#2e7d32">7a. Authorized &#10004;</text>
+
+    <!-- Step 7b -->
+    <line x1="660" y1="240" x2="290" y2="300" stroke="#c62828" stroke-width="1" stroke-dasharray="3,3" marker-end="url(#a2)"/>
+    <text x="440" y="290" font-size="9" fill="#c62828">7b. 403 Forbidden &#10008;</text>
+
+    <!-- Step 8 -->
+    <line x1="740" y1="300" x2="290" y2="320" stroke="#2e7d32" stroke-width="1.5" marker-end="url(#a2)"/>
+    <text x="515" y="315" text-anchor="middle" font-size="9" fill="#2e7d32">8. Response data</text>
+</svg>
+</div>
+
+<h3>7.3 Module Interaction Matrix</h3>
+<table>
+    <tr>
+        <th>Module</th>
+        <th>Roles</th>
+        <th>Key Endpoints</th>
+        <th>SLA Rule</th>
+    </tr>
+    <tr>
+        <td><span class="badge badge-green">CEPC</span></td>
+        <td>CEPC_DO, CEPC_REVIEWER, CEPC_INCHARGE, CEPC_CLOSING_AUTHORITY, CEPC_ADMIN, CEPC_CONTACT_PERSON</td>
+        <td><code>/api/v1/workflow/cepc/*</code></td>
+        <td>Priority-based: 7/15/30/45 business days</td>
+    </tr>
+    <tr>
+        <td><span class="badge badge-orange">RBIO</span></td>
+        <td>RBIO_OFFICER, RBIO_SUPERVISOR, RBIO_CONCILIATOR, RBIO_ADJUDICATOR, RBIO_ADMIN</td>
+        <td><code>/api/v1/workflow/rbio/*</code></td>
+        <td>Stage-based: 30+30+60 = 120 business days max</td>
+    </tr>
+    <tr>
+        <td><span class="badge badge-blue">RE Portal</span></td>
+        <td>RE_NODAL_OFFICER, RE_PNO, RE_ADMIN</td>
+        <td><code>/api/v1/re-portal/*</code></td>
+        <td>15-day response window</td>
+    </tr>
+    <tr>
+        <td><span class="badge badge-red">AA</span></td>
+        <td>AA_REGISTRAR, AA_BENCH_OFFICER, AA_AUTHORITY, AA_ADMIN</td>
+        <td><code>/api/v1/appeals/*</code></td>
+        <td>30-day filing window from closure</td>
+    </tr>
+</table>
+
+<h3>7.4 Environment Variables Reference</h3>
+<table class="env-table">
+    <tr><th>Variable</th><th>Default</th><th>Description</th></tr>
+    <tr><td>DB_URL</td><td>jdbc:mysql://localhost:3306/cms_db</td><td>MySQL JDBC connection URL</td></tr>
+    <tr><td>DB_USERNAME</td><td>cms_user</td><td>Database username</td></tr>
+    <tr><td>DB_PASSWORD</td><td>(empty)</td><td>Database password</td></tr>
+    <tr><td>KEYCLOAK_URL</td><td>http://localhost:8180</td><td>Keycloak server URL</td></tr>
+    <tr><td>KEYCLOAK_REALM</td><td>cms</td><td>Keycloak realm name</td></tr>
+    <tr><td>KAFKA_BOOTSTRAP</td><td>localhost:9092</td><td>Kafka broker address</td></tr>
+    <tr><td>PADDLE_OCR_URL</td><td>http://cms-paddle-ocr:8100</td><td>PaddleOCR sidecar URL</td></tr>
+    <tr><td>GROQ_API_KEY</td><td>(empty)</td><td>Groq LLM API key for OCR</td></tr>
+    <tr><td>CMS_ENCRYPTION_SECRET</td><td>(empty)</td><td>PII encryption key (32 chars)</td></tr>
+    <tr><td>CMS_CORS_ORIGINS</td><td>http://localhost:4200</td><td>Allowed CORS origins (comma-separated)</td></tr>
+    <tr><td>CMS_ATTACHMENTS_PATH</td><td>C:/cms-attachments</td><td>File storage root path</td></tr>
+    <tr><td>SPRING_PROFILES_ACTIVE</td><td>(default)</td><td>Active Spring profile (docker, openshift)</td></tr>
+</table>
+
+</section>
+
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- SECTION 8: TROUBLESHOOTING -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<section id="troubleshooting">
+<h2>8. Troubleshooting &amp; Common Issues</h2>
+
+<h3>8.1 Docker Desktop Issues</h3>
+
+<table>
+    <tr><th>Problem</th><th>Cause</th><th>Solution</th></tr>
+    <tr>
+        <td>Backend fails to start with <code>Communications link failure</code></td>
+        <td>MySQL not ready when backend starts</td>
+        <td>The compose has <code>depends_on: condition: service_healthy</code>. If still failing, increase MySQL healthcheck <code>start_period</code> or run <code>docker compose restart cms-backend-1 cms-backend-2</code></td>
+    </tr>
+    <tr>
+        <td>Kafka container keeps restarting</td>
+        <td>Insufficient disk space or port conflict on 29092</td>
+        <td>Run <code>docker system prune -a --volumes</code> to free space. Check no other process uses port 29092.</td>
+    </tr>
+    <tr>
+        <td>Frontend shows blank page</td>
+        <td>Missing <code>nginx.conf</code> in cms-portal-frontend or wrong <code>dist</code> path</td>
+        <td>Verify the <code>Dockerfile</code> copies from <code>/app/dist/cms-portal-frontend/browser</code>. Check that <code>ng build</code> produced output in that path.</td>
+    </tr>
+    <tr>
+        <td><code>ENOSPC: no space left on device</code></td>
+        <td>Docker disk image full</td>
+        <td>Docker Desktop &rarr; Settings &rarr; Resources &rarr; Increase disk image size. Or prune: <code>docker system prune --all --volumes</code></td>
+    </tr>
+    <tr>
+        <td>Keycloak <code>connection refused</code> on port 8180</td>
+        <td>KC_HTTP_PORT not matching or still starting up</td>
+        <td>Keycloak 26 takes 30-60s to start. Wait and retry. Confirm <code>KC_HTTP_PORT: 8180</code> in compose.</td>
+    </tr>
+    <tr>
+        <td>Backend <code>EncryptionKeyService</code> error</td>
+        <td><code>CMS_ENCRYPTION_SECRET</code> not set or less than 32 chars</td>
+        <td>Set in <code>.env</code>: <code>CMS_ENCRYPTION_SECRET=exactly-32-characters-long-key!!</code></td>
+    </tr>
+    <tr>
+        <td>OpenSearch <code>max virtual memory areas vm.max_map_count [65530] is too low</code></td>
+        <td>Linux kernel limit (WSL2)</td>
+        <td>In WSL terminal: <code>sudo sysctl -w vm.max_map_count=262144</code>. Make permanent: add to <code>/etc/sysctl.conf</code></td>
+    </tr>
+    <tr>
+        <td>Port 80 already in use</td>
+        <td>IIS, Apache, or another web server running</td>
+        <td>Stop IIS: <code>net stop w3svc</code> or change Nginx port in compose to <code>8088:80</code></td>
+    </tr>
+</table>
+
+<h3>8.2 OpenShift Issues</h3>
+
+<table>
+    <tr><th>Problem</th><th>Cause</th><th>Solution</th></tr>
+    <tr>
+        <td>Pod <code>CrashLoopBackOff</code></td>
+        <td>Missing secret or configmap</td>
+        <td><code>oc logs pod/cms-backend-xxx</code> &mdash; look for missing env var errors. Ensure all secrets/configmaps are created first.</td>
+    </tr>
+    <tr>
+        <td>ImagePullBackOff</td>
+        <td>Image not in registry or wrong tag</td>
+        <td><code>oc get is</code> to check image streams. Rebuild: <code>oc start-build cms-backend --follow</code></td>
+    </tr>
+    <tr>
+        <td>Route returns 503</td>
+        <td>No ready pods backing the service</td>
+        <td><code>oc get endpoints cms-backend</code> &mdash; should list pod IPs. Check readinessProbe is passing.</td>
+    </tr>
+    <tr>
+        <td>PVC stuck in Pending</td>
+        <td>No StorageClass or insufficient storage</td>
+        <td><code>oc get sc</code> to list available StorageClasses. Add <code>storageClassName</code> to PVC spec.</td>
+    </tr>
+    <tr>
+        <td>Keycloak redirect fails with <code>invalid_redirect_uri</code></td>
+        <td>Client redirect URIs not matching OpenShift route</td>
+        <td>In Keycloak admin, update <code>cms-frontend</code> client's Valid Redirect URIs to <code>https://cms.your-domain.com/*</code></td>
+    </tr>
+</table>
+
+<h3>8.3 Application-Level Issues</h3>
+
+<table>
+    <tr><th>Problem</th><th>Cause</th><th>Solution</th></tr>
+    <tr>
+        <td>Login works but API returns 403</td>
+        <td>User missing realm roles in Keycloak</td>
+        <td>Assign correct roles (e.g., <code>CEPC_DO</code>, <code>RBIO_OFFICER</code>) to the user in Keycloak admin &rarr; Users &rarr; Role Mapping</td>
+    </tr>
+    <tr>
+        <td>OCR returns empty text</td>
+        <td>GROQ_API_KEY invalid or PaddleOCR unreachable</td>
+        <td>Test Groq: check API key at groq.com. Test Paddle: <code>curl http://localhost:8100/health</code></td>
+    </tr>
+    <tr>
+        <td>Similar Cases not working</td>
+        <td>OpenSearch index not created yet</td>
+        <td>Index auto-creates on first complaint. Or manually: <code>curl -X PUT http://localhost:9200/complaints</code></td>
+    </tr>
+    <tr>
+        <td>Kafka events not being consumed</td>
+        <td>Kafka not ready when backend started, or topic doesn&rsquo;t exist</td>
+        <td>Topics auto-create. Restart backend: <code>docker compose restart cms-backend-1</code>. Check Kafka UI at port 8090.</td>
+    </tr>
+    <tr>
+        <td>File upload fails with 413</td>
+        <td>Nginx <code>client_max_body_size</code> too small</td>
+        <td>The gateway nginx.conf sets <code>client_max_body_size 50m</code>. If you changed it, increase back to 50m.</td>
+    </tr>
+</table>
+
+<h3>8.4 Useful Debug Commands</h3>
+<pre><code># ── Docker Desktop ──
+# View all container logs
+docker compose -f cms-infra/docker-compose.yml logs --tail=100
+
+# Enter backend container
+docker exec -it cms-backend-1 sh
+
+# Check MySQL connectivity from backend
+docker exec cms-backend-1 wget -qO- http://localhost:8082/actuator/health
+
+# Inspect Kafka topics
+docker exec cms-kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list
+
+# Redis cache check
+docker exec cms-redis redis-cli INFO memory
+
+# ── OpenShift ──
+# Pod logs (follow)
+oc logs -f deployment/cms-backend
+
+# Remote shell into pod
+oc rsh deployment/cms-backend
+
+# Check pod resource usage
+oc adm top pod
+
+# Describe pod (shows events, errors)
+oc describe pod/cms-backend-xxx
+
+# Port-forward for local debugging
+oc port-forward svc/cms-backend 8082:8082
+oc port-forward svc/cms-keycloak 8180:8080</code></pre>
+
+</section>
+
+<footer style="background: var(--primary); color: white; text-align: center; padding: 30px; margin-top: 40px;">
+    <p><strong>CMS 2.0 - Complaint Management System</strong></p>
+    <p style="opacity: 0.7; font-size: 0.9rem;">Spring Boot 3.2.5 | Angular 21 | MySQL 8.0 | Keycloak 26 | OpenShift 4.x</p>
+    <p style="opacity: 0.5; font-size: 0.8rem; margin-top: 10px;">Document generated: July 2026</p>
+</footer>
+
+</body>
+</html>

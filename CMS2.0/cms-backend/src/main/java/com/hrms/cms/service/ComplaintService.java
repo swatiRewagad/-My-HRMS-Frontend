@@ -95,6 +95,8 @@ public class ComplaintService {
     @CacheEvict(value = "dashboard", allEntries = true)
     @Transactional
     public Complaint fileComplaint(FileComplaintRequest req) {
+        validatePriorReComplaintFields(req);
+
         Complaint complaint = Complaint.builder()
                 .complaintNumber(generateComplaintNumber())
                 .complainantName(req.getComplainantName())
@@ -112,6 +114,10 @@ public class ComplaintService {
                 .filingType(req.getFilingType())
                 .bankComplaintReference(req.getBankComplaintReference())
                 .bankComplaintDate(req.getBankComplaintDate() != null ? LocalDateTime.parse(req.getBankComplaintDate() + "T00:00:00") : null)
+                .priorReComplaint(req.getPriorReComplaint())
+                .reComplaintDate(req.getReComplaintDate())
+                .reComplaintReference(req.getReComplaintReference())
+                .reRepliedAndDissatisfied(req.getReRepliedAndDissatisfied())
                 .build();
 
         // Apply routing based on filing type and entity (mirrors jBPM DepartmentRoutingTask)
@@ -236,6 +242,30 @@ public class ComplaintService {
     @Transactional
     public ComplaintAttachment saveAttachment(ComplaintAttachment attachment) {
         return attachmentRepository.save(attachment);
+    }
+
+    @CacheEvict(value = "dashboard", allEntries = true)
+    @Transactional
+    public Complaint updateMaintainability(Complaint complaint) {
+        Complaint saved = complaintRepository.save(complaint);
+        addTimelineAsync(saved.getId(), "maintainability_decision", complaint.getMaintainabilityDeterminedBy(),
+                "Determination: " + complaint.getMaintainabilityDetermination(),
+                null, complaint.getStatus());
+        return saved;
+    }
+
+    private void validatePriorReComplaintFields(FileComplaintRequest req) {
+        if (Boolean.TRUE.equals(req.getPriorReComplaint())) {
+            if (req.getReComplaintDate() == null) {
+                throw new IllegalArgumentException("RE complaint date is required when prior complaint to RE is indicated");
+            }
+            if (req.getReComplaintReference() == null || req.getReComplaintReference().isBlank()) {
+                throw new IllegalArgumentException("RE complaint reference is required when prior complaint to RE is indicated");
+            }
+            if (req.getReComplaintDate().isAfter(java.time.LocalDate.now())) {
+                throw new IllegalArgumentException("RE complaint date cannot be in the future");
+            }
+        }
     }
 
     private String generateComplaintNumber() {

@@ -126,6 +126,13 @@
           OTP sent to <strong>+91 {{ mobile }}</strong>
         </div>
 
+        @if (devOtpPopulated()) {
+          <div class="dev-otp-notice" role="status">
+            <i class="pi pi-info-circle" aria-hidden="true"></i>
+            OTP auto-populated (dev mode) — click Verify to proceed
+          </div>
+        }
+
         <label class="otp-label" id="otp-label">Enter OTP</label>
         <div class="otp-inputs" role="group" aria-labelledby="otp-label">
           @for (digit of otpDigits; track $index) {

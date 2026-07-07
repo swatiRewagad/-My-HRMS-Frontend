@@ -1,0 +1,135 @@
+<div class="cepc-sla-dashboard">
+  <header class="topbar">
+    <div class="topbar-left">
+      <button class="back-btn" (click)="goBack()">&larr;</button>
+      <div class="title-block">
+        <h2>CEPC - SLA Compliance Dashboard</h2>
+        <span class="subtitle">Service Level Agreement Monitoring</span>
+      </div>
+    </div>
+    <div class="topbar-right">
+      @if (auth.currentUser(); as user) {
+        <span class="user-name">{{ user.firstName }} {{ user.lastName }}</span>
+      }
+      <button class="refresh-btn" (click)="loadTasks()">&#x21bb; Refresh</button>
+    </div>
+  </header>
+
+  <main class="content">
+    @if (loading()) {
+      <div class="loading-state">
+        <div class="spinner"></div>
+        <span>Loading SLA data...</span>
+      </div>
+    } @else {
+      <!-- Stats Cards -->
+      <div class="stats-row">
+        <div class="stat-card total">
+          <span class="stat-value">{{ stats().total }}</span>
+          <span class="stat-label">Total Active</span>
+        </div>
+        <div class="stat-card on-track">
+          <span class="stat-value">{{ stats().onTrack }}</span>
+          <span class="stat-label">On Track</span>
+        </div>
+        <div class="stat-card at-risk">
+          <span class="stat-value">{{ stats().atRisk }}</span>
+          <span class="stat-label">At Risk (&lt;2 days)</span>
+        </div>
+        <div class="stat-card breached">
+          <span class="stat-value">{{ stats().breached }}</span>
+          <span class="stat-label">Breached</span>
+        </div>
+      </div>
+
+      <!-- Compliance Chart (CSS bar chart) -->
+      <div class="chart-section">
+        <h3>SLA Compliance</h3>
+        <div class="bar-chart">
+          <div class="bar-row">
+            <span class="bar-label">On Track</span>
+            <div class="bar-track">
+              <div class="bar-fill green" [style.width.%]="stats().total ? (stats().onTrack / stats().total * 100) : 0"></div>
+            </div>
+            <span class="bar-value">{{ stats().onTrack }}</span>
+          </div>
+          <div class="bar-row">
+            <span class="bar-label">At Risk</span>
+            <div class="bar-track">
+              <div class="bar-fill orange" [style.width.%]="stats().total ? (stats().atRisk / stats().total * 100) : 0"></div>
+            </div>
+            <span class="bar-value">{{ stats().atRisk }}</span>
+          </div>
+          <div class="bar-row">
+            <span class="bar-label">Breached</span>
+            <div class="bar-track">
+              <div class="bar-fill red" [style.width.%]="stats().total ? (stats().breached / stats().total * 100) : 0"></div>
+            </div>
+            <span class="bar-value">{{ stats().breached }}</span>
+          </div>
+        </div>
+        <div class="compliance-pct">
+          <span class="pct-value">{{ compliancePercent() }}%</span>
+          <span class="pct-label">Overall Compliance</span>
+        </div>
+      </div>
+
+      <!-- Breached / At-Risk Table -->
+      @if (breachedComplaints().length > 0 || atRiskComplaints().length > 0) {
+        <div class="alert-section">
+          <h3>Attention Required</h3>
+          <div class="table-container">
+            <table class="sla-table">
+              <thead>
+                <tr>
+                  <th>Complaint No.</th>
+                  <th>Subject</th>
+                  <th>Officer</th>
+                  <th>SLA Status</th>
+                  <th>Days</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (c of breachedComplaints(); track c.complaintNumber) {
+                  <tr class="row-breached">
+                    <td class="complaint-num">{{ c.complaintNumber }}</td>
+                    <td class="subject-cell">{{ c.subject }}</td>
+                    <td>{{ c.assignedOfficer || '—' }}</td>
+                    <td>
+                      <app-cepc-sla-indicator [slaDueDate]="c.slaDueDate" [status]="c.status"></app-cepc-sla-indicator>
+                    </td>
+                    <td class="days-overdue">{{ c.daysOverdue }}d overdue</td>
+                    <td>
+                      <button class="action-link" (click)="openComplaint(c.complaintNumber)">View</button>
+                    </td>
+                  </tr>
+                }
+                @for (c of atRiskComplaints(); track c.complaintNumber) {
+                  <tr class="row-at-risk">
+                    <td class="complaint-num">{{ c.complaintNumber }}</td>
+                    <td class="subject-cell">{{ c.subject }}</td>
+                    <td>{{ c.assignedOfficer || '—' }}</td>
+                    <td>
+                      <app-cepc-sla-indicator [slaDueDate]="c.slaDueDate" [status]="c.status"></app-cepc-sla-indicator>
+                    </td>
+                    <td class="days-remaining">{{ c.daysRemaining }}d left</td>
+                    <td>
+                      <button class="action-link" (click)="openComplaint(c.complaintNumber)">View</button>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      } @else {
+        <div class="all-clear">
+          <span class="all-clear-icon">&#10003;</span>
+          <h3>All Clear</h3>
+          <p>No breached or at-risk complaints.</p>
+        </div>
+      }
+    }
+  </main>
+</div>

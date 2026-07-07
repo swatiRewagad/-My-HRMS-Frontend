@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email Syndication — Logical & Conceptual Architecture (Ingestion to Draft)</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0f172a; color: #e2e8f0; padding: 2rem; min-height: 100vh; }
+        h1 { text-align: center; font-size: 1.6rem; color: #f8fafc; margin-bottom: 0.25rem; letter-spacing: -0.5px; }
+        .subtitle { text-align: center; color: #94a3b8; font-size: 0.88rem; margin-bottom: 2.5rem; }
+
+        .container { max-width: 1300px; margin: 0 auto; }
+
+        /* ── Section headers ── */
+        .section-header { font-size: 1.15rem; font-weight: 700; color: #f1f5f9; margin: 2.5rem 0 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid #334155; display: flex; align-items: center; gap: 0.6rem; }
+        .section-header .badge { font-size: 0.7rem; background: #6366f1; color: #fff; padding: 2px 10px; border-radius: 10px; font-weight: 600; }
+
+        /* ── Conceptual view ── */
+        .conceptual-diagram { display: grid; grid-template-columns: 1fr; gap: 0; position: relative; }
+        .concept-layer { padding: 1.5rem; border: 1px solid #334155; position: relative; }
+        .concept-layer:first-child { border-radius: 12px 12px 0 0; }
+        .concept-layer:last-child { border-radius: 0 0 12px 12px; }
+        .concept-layer .layer-label { position: absolute; top: -10px; left: 1.5rem; background: #0f172a; padding: 0 8px; font-size: 0.7rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
+        .layer-source .layer-label { color: #60a5fa; }
+        .layer-ingestion .layer-label { color: #a78bfa; }
+        .layer-intelligence .layer-label { color: #f472b6; }
+        .layer-persistence .layer-label { color: #34d399; }
+
+        .layer-source { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); }
+        .layer-ingestion { background: linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%); }
+        .layer-intelligence { background: linear-gradient(135deg, #2d1b3e 0%, #0f172a 100%); }
+        .layer-persistence { background: linear-gradient(135deg, #0f2922 0%, #0f172a 100%); }
+
+        .layer-content { display: flex; align-items: center; justify-content: center; gap: 1.2rem; flex-wrap: wrap; padding-top: 0.5rem; }
+
+        /* ── Nodes ── */
+        .c-node { padding: 0.75rem 1.1rem; border-radius: 10px; font-size: 0.78rem; font-weight: 500; text-align: center; line-height: 1.4; min-width: 110px; }
+        .c-node small { display: block; font-size: 0.65rem; opacity: 0.7; margin-top: 2px; }
+
+        .n-source { background: #1e3a5f; border: 1.5px solid #3b82f6; color: #93c5fd; }
+        .n-ingest { background: #312e81; border: 1.5px solid #818cf8; color: #c7d2fe; }
+        .n-intel { background: #4a1d5e; border: 1.5px solid #c084fc; color: #e9d5ff; }
+        .n-store { background: #064e3b; border: 1.5px solid #34d399; color: #a7f3d0; }
+        .n-output { background: #1c4532; border: 1.5px solid #4ade80; color: #bbf7d0; border-radius: 20px; }
+        .n-event { background: #78350f; border: 1.5px solid #fbbf24; color: #fef3c7; }
+        .n-config { background: #44403c; border: 1.5px solid #a8a29e; color: #e7e5e4; border-style: dashed; }
+
+        .c-arrow { color: #64748b; font-size: 1.2rem; flex-shrink: 0; }
+        .c-arrow-down { display: block; text-align: center; color: #475569; font-size: 1.5rem; margin: 0.25rem 0; }
+
+        /* ── Logical view (detailed pipeline) ── */
+        .pipeline { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 2rem; position: relative; overflow: hidden; }
+        .pipeline::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, #6366f1, #ec4899, #f59e0b, #10b981); }
+
+        .pipe-stage { margin-bottom: 2rem; }
+        .pipe-stage:last-child { margin-bottom: 0; }
+        .stage-label { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem; }
+        .stage-num { width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.65rem; font-weight: 800; }
+
+        .s1 .stage-label { color: #60a5fa; }
+        .s1 .stage-num { background: #1e3a5f; color: #60a5fa; border: 1.5px solid #3b82f6; }
+        .s2 .stage-label { color: #a78bfa; }
+        .s2 .stage-num { background: #312e81; color: #a78bfa; border: 1.5px solid #818cf8; }
+        .s3 .stage-label { color: #f472b6; }
+        .s3 .stage-num { background: #4a1d5e; color: #f472b6; border: 1.5px solid #c084fc; }
+        .s4 .stage-label { color: #fb923c; }
+        .s4 .stage-num { background: #78350f; color: #fb923c; border: 1.5px solid #f97316; }
+        .s5 .stage-label { color: #34d399; }
+        .s5 .stage-num { background: #064e3b; color: #34d399; border: 1.5px solid #34d399; }
+        .s6 .stage-label { color: #fbbf24; }
+        .s6 .stage-num { background: #78350f; color: #fbbf24; border: 1.5px solid #fbbf24; }
+
+        .stage-flow { display: flex; align-items: stretch; gap: 0; flex-wrap: wrap; }
+        .stage-box { background: #0f172a; border: 1px solid #475569; border-radius: 8px; padding: 0.7rem 1rem; min-width: 160px; max-width: 220px; position: relative; }
+        .stage-box .box-title { font-size: 0.78rem; font-weight: 700; color: #f1f5f9; margin-bottom: 0.3rem; }
+        .stage-box .box-detail { font-size: 0.68rem; color: #94a3b8; line-height: 1.5; }
+        .stage-box .box-tech { font-size: 0.62rem; color: #6366f1; margin-top: 0.3rem; font-family: monospace; }
+        .stage-box.highlight { border-color: #6366f1; box-shadow: 0 0 12px rgba(99, 102, 241, 0.15); }
+        .stage-box.decision { border-color: #f59e0b; background: #1c1917; }
+        .stage-box.output { border-color: #10b981; background: #022c22; }
+
+        .pipe-arrow { display: flex; align-items: center; justify-content: center; min-width: 36px; color: #475569; font-size: 1rem; }
+        .pipe-arrow.branch-down { flex-direction: column; font-size: 0.8rem; min-width: 50px; }
+        .branch-text { font-size: 0.6rem; color: #f59e0b; font-weight: 700; }
+
+        /* ── Component diagram ── */
+        .comp-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.25rem; }
+        .comp-card { background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 1.25rem; position: relative; overflow: hidden; }
+        .comp-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; }
+        .comp-card.card-service::before { background: #6366f1; }
+        .comp-card.card-provider::before { background: #ec4899; }
+        .comp-card.card-data::before { background: #10b981; }
+        .comp-card.card-external::before { background: #f59e0b; }
+        .comp-card h3 { font-size: 0.88rem; color: #f1f5f9; margin-bottom: 0.4rem; }
+        .comp-card .comp-type { font-size: 0.65rem; color: #6366f1; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 0.5rem; }
+        .comp-card ul { padding-left: 1rem; font-size: 0.75rem; color: #94a3b8; line-height: 1.9; list-style-type: '›  '; }
+        .comp-card code { background: #334155; padding: 1px 5px; border-radius: 3px; font-size: 0.7rem; color: #e2e8f0; }
+
+        /* ── Data flow ── */
+        .data-flow-table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+        .data-flow-table th, .data-flow-table td { padding: 0.6rem 0.8rem; border: 1px solid #334155; }
+        .data-flow-table th { background: #1e293b; color: #e2e8f0; font-weight: 600; text-align: left; }
+        .data-flow-table td { color: #cbd5e1; }
+        .data-flow-table tr:hover td { background: #1e293b; }
+        .field-tag { display: inline-block; background: #312e81; color: #c7d2fe; padding: 1px 6px; border-radius: 4px; font-size: 0.65rem; margin: 1px; }
+
+        /* ── OCR Chain diagram ── */
+        .chain-visual { display: flex; align-items: center; gap: 0; flex-wrap: wrap; padding: 1rem 0; }
+        .chain-node { padding: 0.6rem 1rem; border-radius: 8px; font-size: 0.75rem; font-weight: 600; text-align: center; min-width: 100px; }
+        .chain-primary { background: #312e81; border: 2px solid #818cf8; color: #c7d2fe; }
+        .chain-fallback { background: #1e293b; border: 2px dashed #64748b; color: #94a3b8; }
+        .chain-arrow { padding: 0 0.5rem; color: #64748b; font-size: 0.9rem; display: flex; flex-direction: column; align-items: center; }
+        .chain-arrow small { font-size: 0.6rem; color: #ef4444; }
+
+        @media (max-width: 900px) {
+            .stage-flow { flex-direction: column; align-items: stretch; }
+            .pipe-arrow { transform: rotate(90deg); min-width: auto; min-height: 30px; }
+            body { padding: 1rem; }
+        }
+    </style>
+</head>
+<body>
+
+<h1>Email Syndication — Logical & Conceptual Architecture</h1>
+<p class="subtitle">From Email Receipt → Intelligence Extraction → Draft Complaint Creation</p>
+
+<div class="container">
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div class="section-header">
+        <span class="badge">CONCEPTUAL</span>
+        Layered Architecture Overview
+    </div>
+
+    <div class="conceptual-diagram">
+        <!-- Source Layer -->
+        <div class="concept-layer layer-source">
+            <span class="layer-label">Source Channels</span>
+            <div class="layer-content">
+                <div class="c-node n-source">📧 Email<small>crpc@rbi.org.in</small></div>
+                <div class="c-node n-source">📄 Physical Letter<small>Scanned PDF/Image</small></div>
+                <div class="c-node n-source">🔗 CPGRAMS<small>Gov Portal Integration</small></div>
+                <div class="c-node n-source">🌐 Email Simulator<small>Dev/Test Tool</small></div>
+            </div>
+        </div>
+
+        <div class="c-arrow-down">▼</div>
+
+        <!-- Ingestion Layer -->
+        <div class="concept-layer layer-ingestion">
+            <span class="layer-label">Ingestion & Validation Layer</span>
+            <div class="layer-content">
+                <div class="c-node n-ingest">🚫 Ignore List<small>Email/Domain filter</small></div>
+                <div class="c-arrow">→</div>
+                <div class="c-node n-ingest">🔍 Duplicate Detect<small>Sender + Subject match</small></div>
+                <div class="c-arrow">→</div>
+                <div class="c-node n-ingest">🌐 Language Detect<small>Script pattern analysis</small></div>
+                <div class="c-arrow">→</div>
+                <div class="c-node n-ingest">🔄 Translation<small>Vernacular → English</small></div>
+            </div>
+        </div>
+
+        <div class="c-arrow-down">▼</div>
+
+        <!-- Intelligence Layer -->
+        <div class="concept-layer layer-intelligence">
+            <span class="layer-label">Intelligence & Extraction Layer</span>
+            <div class="layer-content">
+                <div class="c-node n-intel">📐 Rule Engine<small>Regex + Keyword rules</small></div>
+                <div class="c-arrow">→</div>
+                <div class="c-node n-intel">🤖 OCR Chain<small>Groq → Gemini → Paddle</small></div>
+                <div class="c-arrow">→</div>
+                <div class="c-node n-intel">🧬 Field Merge<small>OCR ∪ Rules (rules win)</small></div>
+                <div class="c-arrow">→</div>
+                <div class="c-node n-intel">👤 DEO Assignment<small>Round-Robin</small></div>
+            </div>
+        </div>
+
+        <div class="c-arrow-down">▼</div>
+
+        <!-- Persistence Layer -->
+        <div class="concept-layer layer-persistence">
+            <span class="layer-label">Persistence & Output Layer</span>
+            <div class="layer-content">
+                <div class="c-node n-store">💾 EmailDraft<small>MySQL table</small></div>
+                <div class="c-node n-store">📎 Attachments<small>DB + Filesystem</small></div>
+                <div class="c-node n-output">✅ Draft Complaint<small>Status: ASSIGNED</small></div>
+                <div class="c-node n-event">📡 Kafka Event<small>complaint.ingested</small></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div class="section-header">
+        <span class="badge">LOGICAL</span>
+        Detailed Processing Pipeline
+    </div>
+
+    <div class="pipeline">
+
+        <!-- Stage 1: Email Receipt -->
+        <div class="pipe-stage s1">
+            <div class="stage-label"><span class="stage-num">1</span> EMAIL RECEIPT & VALIDATION</div>
+            <div class="stage-flow">
+                <div class="stage-box">
+                    <div class="box-title">Incoming Email</div>
+                    <div class="box-detail">Email arrives at crpc@rbi.org.in or via simulator POST</div>
+                    <div class="box-tech">POST /api/v1/email-syndication/ingest</div>
+                </div>
+                <div class="pipe-arrow">→</div>
+                <div class="stage-box decision">
+                    <div class="box-title">Ignore List Check</div>
+                    <div class="box-detail">Match sender against exact email or *@domain patterns</div>
+                    <div class="box-tech">EmailIgnoreListRepository.findMatchingPatterns()</div>
+                </div>
+                <div class="pipe-arrow branch-down">
+                    <span class="branch-text">PASS</span>→
+                </div>
+                <div class="stage-box decision">
+                    <div class="box-title">Duplicate Detection</div>
+                    <div class="box-detail">Same sender + subject as existing open complaint → link to parent</div>
+                    <div class="box-tech">draftRepo.findBySenderEmailAndSubject()</div>
+                </div>
+                <div class="pipe-arrow branch-down">
+                    <span class="branch-text">NEW</span>→
+                </div>
+                <div class="stage-box">
+                    <div class="box-title">Accept for Processing</div>
+                    <div class="box-detail">Email passes validation gates, proceeds to intelligence layer</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stage 2: Language Processing -->
+        <div class="pipe-stage s2">
+            <div class="stage-label"><span class="stage-num">2</span> LANGUAGE DETECTION & TRANSLATION</div>
+            <div class="stage-flow">
+                <div class="stage-box">
+                    <div class="box-title">Script Detection</div>
+                    <div class="box-detail">Unicode range analysis:<br>Devanagari, Bengali, Tamil, Telugu, Kannada, Malayalam, Gujarati, Urdu (Arabic), Punjabi, Odia</div>
+                    <div class="box-tech">LanguageTranslationService.detectLanguage()</div>
+                </div>
+                <div class="pipe-arrow">→</div>
+                <div class="stage-box decision">
+                    <div class="box-title">Is Vernacular?</div>
+                    <div class="box-detail">If &gt;15% characters match a non-Latin script → vernacular=true</div>
+                </div>
+                <div class="pipe-arrow branch-down">
+                    <span class="branch-text">YES</span>→
+                </div>
+                <div class="stage-box highlight">
+                    <div class="box-title">LLM Translation</div>
+                    <div class="box-detail">Translate to English preserving names, amounts, dates, account numbers</div>
+                    <div class="box-tech">Groq (Llama-4-Scout) or Gemini 2.0 Flash</div>
+                </div>
+                <div class="pipe-arrow">→</div>
+                <div class="stage-box">
+                    <div class="box-title">Store Both</div>
+                    <div class="box-detail">Original vernacular → translatedBody<br>English translation → body<br>Confidence score calculated</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stage 3: Rule-Based Extraction -->
+        <div class="pipe-stage s3">
+            <div class="stage-label"><span class="stage-num">3</span> RULE-BASED FIELD EXTRACTION</div>
+            <div class="stage-flow">
+                <div class="stage-box">
+                    <div class="box-title">Load Active Rules</div>
+                    <div class="box-detail">Admin-defined extraction rules from DB, ordered by priority</div>
+                    <div class="box-tech">ExtractionRuleRepository.findByIsActiveTrueOrderByPriorityAsc()</div>
+                </div>
+                <div class="pipe-arrow">→</div>
+                <div class="stage-box highlight">
+                    <div class="box-title">Pattern Matching</div>
+                    <div class="box-detail">
+                        <strong>REGEX:</strong> Named groups with extractGroup index<br>
+                        <strong>KEYWORD:</strong> Comma-separated keyword lists<br>
+                        <strong>Scope:</strong> SUBJECT / BODY / BOTH
+                    </div>
+                    <div class="box-tech">RuleBasedExtractor.extract(subject, body)</div>
+                </div>
+                <div class="pipe-arrow">→</div>
+                <div class="stage-box">
+                    <div class="box-title">Extracted Fields</div>
+                    <div class="box-detail">complainantName, phone, email, address, state, district, pincode, entityName, entityType, category, amount, dates, cpgramsNumber</div>
+                    <div class="box-tech">Transform: UPPERCASE / LOWERCASE / TRIM</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stage 4: OCR Processing -->
+        <div class="pipe-stage s4">
+            <div class="stage-label"><span class="stage-num">4</span> OCR — ATTACHMENT CONTENT EXTRACTION</div>
+            <div class="stage-flow">
+                <div class="stage-box decision">
+                    <div class="box-title">Has Attachment?</div>
+                    <div class="box-detail">Allowed types:<br>PDF, JPEG, PNG, TIFF</div>
+                </div>
+                <div class="pipe-arrow branch-down">
+                    <span class="branch-text">YES</span>→
+                </div>
+                <div class="stage-box highlight">
+                    <div class="box-title">OCR Provider Chain</div>
+                    <div class="box-detail">Configurable fallback chain:<br>Try providers in order until one returns fields</div>
+                    <div class="box-tech">cms.ocr.chain: groq, gemini, paddle</div>
+                </div>
+                <div class="pipe-arrow">→</div>
+                <div class="stage-box">
+                    <div class="box-title">Structured Extraction</div>
+                    <div class="box-detail">LLM-prompted to extract complaint fields from document image/text (name, phone, bank, amount, etc.)</div>
+                    <div class="box-tech">OcrPrompts → OcrResponseParser</div>
+                </div>
+                <div class="pipe-arrow">→</div>
+                <div class="stage-box">
+                    <div class="box-title">Store Attachment</div>
+                    <div class="box-detail">File → disk (cms-attachments/email-drafts/{draftId}/)<br>Metadata → EmailDraftAttachment table</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stage 5: Merge & Assign -->
+        <div class="pipe-stage s5">
+            <div class="stage-label"><span class="stage-num">5</span> FIELD MERGE & DEO ASSIGNMENT</div>
+            <div class="stage-flow">
+                <div class="stage-box">
+                    <div class="box-title">Merge Strategy</div>
+                    <div class="box-detail">
+                        Base: OCR-extracted fields<br>
+                        Override: Rule-extracted fields<br>
+                        <em>(Admin rules have higher confidence than OCR)</em>
+                    </div>
+                    <div class="box-tech">mergedFields = OCR ∪ Rules (rules win)</div>
+                </div>
+                <div class="pipe-arrow">→</div>
+                <div class="stage-box">
+                    <div class="box-title">Round-Robin Assignment</div>
+                    <div class="box-detail">Select next available DEO from pool (Keycloak role: DEO). Respects max threshold per DEO.</div>
+                    <div class="box-tech">assignToNextDeo() → deo_001, deo_002, ...</div>
+                </div>
+                <div class="pipe-arrow">→</div>
+                <div class="stage-box output">
+                    <div class="box-title">Generate Draft ID</div>
+                    <div class="box-detail">Sequential: DRF-000001, DRF-000002...<br>Display: C001, C002...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stage 6: Persist Draft -->
+        <div class="pipe-stage s6">
+            <div class="stage-label"><span class="stage-num">6</span> DRAFT COMPLAINT CREATION</div>
+            <div class="stage-flow">
+                <div class="stage-box output">
+                    <div class="box-title">EmailDraft Entity</div>
+                    <div class="box-detail">
+                        Status: <strong>ASSIGNED</strong><br>
+                        Pre-filled: name, phone, address, entity, category, summary<br>
+                        Metadata: language, OCR confidence, attachment refs<br>
+                        Assignment: DEO userId
+                    </div>
+                    <div class="box-tech">draftRepository.save(draft)</div>
+                </div>
+                <div class="pipe-arrow">→</div>
+                <div class="stage-box">
+                    <div class="box-title">Ready for DEO</div>
+                    <div class="box-detail">Draft appears in DEO's queue at /crpc/home with pre-populated fields for review & correction</div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div class="section-header">
+        <span class="badge">LOGICAL</span>
+        OCR Provider Chain Architecture
+    </div>
+
+    <div class="pipeline" style="padding: 1.5rem;">
+        <div class="chain-visual">
+            <div class="chain-node chain-primary">
+                <strong>Groq</strong><br>
+                <small style="font-size:0.65rem;">Llama-4-Scout-17B<br>Vision + NLP</small>
+            </div>
+            <div class="chain-arrow">
+                <small>fail</small>→
+            </div>
+            <div class="chain-node chain-fallback">
+                <strong>Gemini</strong><br>
+                <small style="font-size:0.65rem;">Gemini 2.0 Flash<br>Multimodal</small>
+            </div>
+            <div class="chain-arrow">
+                <small>fail</small>→
+            </div>
+            <div class="chain-node chain-fallback">
+                <strong>OpenAI</strong><br>
+                <small style="font-size:0.65rem;">GPT-4 Vision<br>Fallback</small>
+            </div>
+            <div class="chain-arrow">
+                <small>fail</small>→
+            </div>
+            <div class="chain-node chain-fallback">
+                <strong>Azure Doc Intel</strong><br>
+                <small style="font-size:0.65rem;">Form Recognizer<br>Enterprise</small>
+            </div>
+            <div class="chain-arrow">
+                <small>fail</small>→
+            </div>
+            <div class="chain-node chain-fallback">
+                <strong>PaddleOCR</strong><br>
+                <small style="font-size:0.65rem;">Self-hosted<br>No API key needed</small>
+            </div>
+            <div class="chain-arrow">
+                <small>fail</small>→
+            </div>
+            <div class="chain-node" style="background:#450a0a;border:1.5px solid #ef4444;color:#fca5a5;">
+                <strong>Empty Result</strong><br>
+                <small style="font-size:0.65rem;">All providers failed<br>Manual entry by DEO</small>
+            </div>
+        </div>
+        <div style="margin-top:1rem;font-size:0.72rem;color:#94a3b8;">
+            <strong>Strategy Pattern:</strong> Each provider implements <code>OcrProvider</code> interface. Chain order is configurable via <code>cms.ocr.chain</code> in application.yml.
+            First provider to return non-empty fields wins. Unavailable providers (missing API key) are auto-skipped.
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div class="section-header">
+        <span class="badge">COMPONENTS</span>
+        Service & Component Map
+    </div>
+
+    <div class="comp-grid">
+        <div class="comp-card card-service">
+            <div class="comp-type">Controller</div>
+            <h3>EmailSyndicationApiController</h3>
+            <ul>
+                <li><code>POST /ingest</code> — JSON email ingestion</li>
+                <li><code>POST /ingest-with-attachment</code> — Multipart</li>
+                <li><code>POST /drafts/physical-letter</code> — Manual letter</li>
+                <li>Orchestrates the full pipeline</li>
+                <li>Calls all services in sequence</li>
+            </ul>
+        </div>
+        <div class="comp-card card-service">
+            <div class="comp-type">Service</div>
+            <h3>LanguageTranslationService</h3>
+            <ul>
+                <li>Unicode script pattern detection (11 languages)</li>
+                <li>15% threshold for vernacular classification</li>
+                <li>Translation via Groq or Gemini LLM</li>
+                <li>Preserves financial data (names, amounts, dates)</li>
+                <li>Returns confidence score</li>
+            </ul>
+        </div>
+        <div class="comp-card card-service">
+            <div class="comp-type">Service</div>
+            <h3>RuleBasedExtractor</h3>
+            <ul>
+                <li>Admin-configurable extraction rules from DB</li>
+                <li>Two pattern types: REGEX, KEYWORD</li>
+                <li>Source scope: SUBJECT, BODY, or BOTH</li>
+                <li>Priority ordering (first match per field wins)</li>
+                <li>16 target fields supported</li>
+                <li>Transforms: UPPERCASE, LOWERCASE, TRIM</li>
+            </ul>
+        </div>
+        <div class="comp-card card-provider">
+            <div class="comp-type">Service</div>
+            <h3>OcrExtractionService</h3>
+            <ul>
+                <li>Orchestrator for OCR provider chain</li>
+                <li>Configurable via <code>cms.ocr.chain</code></li>
+                <li>Strategy pattern with fallback</li>
+                <li>Auto-skips unavailable providers</li>
+                <li>Returns first non-empty result</li>
+            </ul>
+        </div>
+        <div class="comp-card card-provider">
+            <div class="comp-type">Provider</div>
+            <h3>OCR Providers (6 implementations)</h3>
+            <ul>
+                <li><code>GroqOcrProvider</code> — Llama-4 Vision</li>
+                <li><code>GeminiOcrProvider</code> — Gemini 2.0</li>
+                <li><code>OpenAiOcrProvider</code> — GPT-4V</li>
+                <li><code>AzureDocIntelligenceOcrProvider</code></li>
+                <li><code>HuggingFaceOcrProvider</code></li>
+                <li><code>PaddleOcrProvider</code> — Self-hosted</li>
+            </ul>
+        </div>
+        <div class="comp-card card-data">
+            <div class="comp-type">Entity</div>
+            <h3>EmailDraft (Draft Complaint)</h3>
+            <ul>
+                <li>draftId, messageId, threadId</li>
+                <li>Complainant: name, phone, email, address, state, district, pincode</li>
+                <li>Complaint: subject, body, summary, category</li>
+                <li>Entity: name, type, amount</li>
+                <li>Language: detected, translated, confidence</li>
+                <li>OCR: processed flag, confidence, extracted JSON</li>
+                <li>Workflow: status, assignedTo, processedBy, deoDecision</li>
+            </ul>
+        </div>
+        <div class="comp-card card-data">
+            <div class="comp-type">Entity</div>
+            <h3>ExtractionRule</h3>
+            <ul>
+                <li>ruleCode, ruleName, description</li>
+                <li>patternType: REGEX | KEYWORD</li>
+                <li>pattern: regex string or keyword list</li>
+                <li>targetField: one of 16 allowed fields</li>
+                <li>sourceScope: SUBJECT | BODY | BOTH</li>
+                <li>extractGroup: regex capture group index</li>
+                <li>priority: lower = higher precedence</li>
+                <li>isActive: enable/disable without deletion</li>
+            </ul>
+        </div>
+        <div class="comp-card card-external">
+            <div class="comp-type">External</div>
+            <h3>Infrastructure</h3>
+            <ul>
+                <li><strong>MySQL:</strong> EmailDraft, ExtractionRule, EmailDraftAttachment</li>
+                <li><strong>Filesystem:</strong> C:/cms-attachments/email-drafts/{draftId}/</li>
+                <li><strong>Keycloak:</strong> DEO user pool (role: DEO)</li>
+                <li><strong>Groq API:</strong> OCR + Translation</li>
+                <li><strong>Gemini API:</strong> OCR + Translation fallback</li>
+                <li><strong>Kafka:</strong> complaint.ingested event (post-approval)</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div class="section-header">
+        <span class="badge">DATA</span>
+        Extracted Fields — Source Priority Matrix
+    </div>
+
+    <div style="overflow-x: auto;">
+    <table class="data-flow-table">
+        <thead>
+            <tr>
+                <th>Field</th>
+                <th>Rule-Based (Priority 1)</th>
+                <th>OCR Attachment (Priority 2)</th>
+                <th>Email Header/Body (Fallback)</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><span class="field-tag">complainantName</span></td>
+                <td>Regex: <code>Name:\s*(.+)</code></td>
+                <td>LLM extraction from letter/receipt</td>
+                <td>Derived from email local-part (john.doe → John Doe)</td>
+            </tr>
+            <tr>
+                <td><span class="field-tag">complainantPhone</span></td>
+                <td>Regex: <code>\b[6-9]\d{9}\b</code></td>
+                <td>LLM extraction from document</td>
+                <td>—</td>
+            </tr>
+            <tr>
+                <td><span class="field-tag">complainantAddress</span></td>
+                <td>Regex: multi-line address pattern</td>
+                <td>LLM extraction from letter header</td>
+                <td>—</td>
+            </tr>
+            <tr>
+                <td><span class="field-tag">entityName</span></td>
+                <td>Keyword list: SBI, HDFC, ICICI, Axis...</td>
+                <td>LLM extraction from complaint text</td>
+                <td>—</td>
+            </tr>
+            <tr>
+                <td><span class="field-tag">category</span></td>
+                <td>Keyword: ATM, Credit Card, Loan, UPI...</td>
+                <td>LLM classification from content</td>
+                <td>Default: "General"</td>
+            </tr>
+            <tr>
+                <td><span class="field-tag">amountInvolved</span></td>
+                <td>Regex: <code>Rs\.?\s*[\d,]+\.?\d*</code></td>
+                <td>LLM extraction from receipt/letter</td>
+                <td>—</td>
+            </tr>
+            <tr>
+                <td><span class="field-tag">cpgramsNumber</span></td>
+                <td>Regex: <code>CPGRAMS?\s*[:#]?\s*(\w+)</code></td>
+                <td>LLM extraction if visible in scan</td>
+                <td>—</td>
+            </tr>
+            <tr>
+                <td><span class="field-tag">subject</span></td>
+                <td>Rule extraction from body if email subject is generic</td>
+                <td>LLM-generated summary of scanned letter</td>
+                <td>Email subject line</td>
+            </tr>
+        </tbody>
+    </table>
+    </div>
+
+</div>
+
+<footer style="text-align:center; margin-top:3rem; padding:1rem; color:#64748b; font-size:0.75rem; border-top: 1px solid #334155;">
+    CMS 2.0 — RBI Integrated Ombudsman Scheme | Email Syndication Logical & Conceptual Architecture | Generated 2026-07-02
+</footer>
+
+</body>
+</html>

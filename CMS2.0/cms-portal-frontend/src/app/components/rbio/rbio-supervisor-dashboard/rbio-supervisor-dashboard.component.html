@@ -1,0 +1,138 @@
+<div class="rbio-supervisor-dashboard">
+  <!-- Header -->
+  <header class="dashboard-header">
+    <div class="header-left">
+      <button class="back-btn" (click)="goBack()">&larr;</button>
+      <h1>RBIO Supervisor Dashboard</h1>
+    </div>
+    <div class="header-right">
+      @if (auth.currentUser(); as user) {
+        <span class="user-info">{{ user.firstName }} {{ user.lastName }} (Supervisor)</span>
+      }
+    </div>
+  </header>
+
+  @if (loading()) {
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <p>Loading supervisor data...</p>
+    </div>
+  } @else {
+    <!-- Stats Cards -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <span class="stat-value">{{ stats().total }}</span>
+        <span class="stat-label">Total Assigned</span>
+      </div>
+      <div class="stat-card pending">
+        <span class="stat-value">{{ stats().pendingReview }}</span>
+        <span class="stat-label">Pending Review</span>
+      </div>
+      <div class="stat-card breached">
+        <span class="stat-value">{{ stats().breachedSla }}</span>
+        <span class="stat-label">Breached SLA</span>
+      </div>
+      <div class="stat-card conciliation">
+        <span class="stat-value">{{ stats().inConciliation }}</span>
+        <span class="stat-label">In Conciliation</span>
+      </div>
+      <div class="stat-card adjudication">
+        <span class="stat-value">{{ stats().inAdjudication }}</span>
+        <span class="stat-label">In Adjudication</span>
+      </div>
+    </div>
+
+    <!-- SLA Compliance Chart -->
+    <div class="section-card">
+      <h3>SLA Compliance</h3>
+      <div class="sla-chart">
+        <div class="sla-bar-container">
+          <div class="sla-bar on-track" [style.width.%]="slaComplianceData().onTrackPct"></div>
+          <div class="sla-bar at-risk" [style.width.%]="slaComplianceData().atRiskPct"></div>
+          <div class="sla-bar breached" [style.width.%]="slaComplianceData().breachedPct"></div>
+        </div>
+        <div class="sla-legend">
+          <span class="legend-item on-track">
+            <span class="legend-dot"></span> On Track ({{ slaComplianceData().onTrack }})
+          </span>
+          <span class="legend-item at-risk">
+            <span class="legend-dot"></span> At Risk ({{ slaComplianceData().atRisk }})
+          </span>
+          <span class="legend-item breached">
+            <span class="legend-dot"></span> Breached ({{ slaComplianceData().breached }})
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Escalated Complaints Table -->
+    <div class="section-card">
+      <h3>Complaints Needing Supervisor Action</h3>
+      @if (escalatedComplaints().length > 0) {
+        <div class="table-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Complaint #</th>
+                <th>Subject</th>
+                <th>Entity</th>
+                <th>Officer</th>
+                <th>Priority</th>
+                <th>SLA Due</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (c of escalatedComplaints(); track c.complaintNumber) {
+                <tr (click)="openComplaint(c.complaintNumber)">
+                  <td class="complaint-num">{{ c.complaintNumber }}</td>
+                  <td class="subject-cell">{{ c.subject }}</td>
+                  <td>{{ c.entityName }}</td>
+                  <td>{{ c.assignedOfficer }}</td>
+                  <td>
+                    <span class="priority-badge" [attr.data-priority]="c.priority">{{ c.priority }}</span>
+                  </td>
+                  <td>{{ c.slaDueDate }}</td>
+                  <td class="actions-cell" (click)="$event.stopPropagation()">
+                    <button class="quick-btn approve" [disabled]="processing()" (click)="quickAction(c.complaintNumber, 'APPROVE')" title="Approve">Approve</button>
+                    <button class="quick-btn return" [disabled]="processing()" (click)="quickAction(c.complaintNumber, 'RETURN_TO_OFFICER')" title="Return">Return</button>
+                    <button class="quick-btn forward" [disabled]="processing()" (click)="quickAction(c.complaintNumber, 'FORWARD_TO_ADJUDICATION')" title="Forward to Adjudication">Adjudicate</button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      } @else {
+        <p class="empty-state">No complaints currently escalated to supervisor.</p>
+      }
+    </div>
+
+    <!-- Officer Workload -->
+    <div class="section-card">
+      <h3>Officer Workload Distribution</h3>
+      @if (officerWorkload().length > 0) {
+        <div class="workload-list">
+          @for (item of officerWorkload(); track item.officer) {
+            <div class="workload-row">
+              <span class="officer-name">{{ item.officer }}</span>
+              <div class="workload-bar-container">
+                <div class="workload-bar" [style.width.%]="(item.count / maxWorkload()) * 100"></div>
+              </div>
+              <span class="workload-count">{{ item.count }}</span>
+            </div>
+          }
+        </div>
+      } @else {
+        <p class="empty-state">No workload data available.</p>
+      }
+    </div>
+
+    <!-- Action Result -->
+    @if (actionResult()) {
+      <div class="action-result" [class.success]="actionSuccess()" [class.error]="!actionSuccess()">
+        {{ actionResult() }}
+      </div>
+    }
+  }
+</div>

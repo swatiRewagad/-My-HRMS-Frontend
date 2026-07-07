@@ -1,0 +1,124 @@
+<div class="cepc-conciliation">
+  <h4>Conciliation Proceedings</h4>
+
+  <!-- Status -->
+  <div class="conciliation-status">
+    <span class="status-label">Status:</span>
+    <span class="status-value" [attr.data-status]="conciliationStatus">
+      @switch (conciliationStatus) {
+        @case ('SETTLED') { Settled }
+        @case ('FAILED') { Failed }
+        @case ('IN_PROGRESS') { In Progress }
+        @default { Not Started }
+      }
+    </span>
+  </div>
+
+  <!-- Parties Involved -->
+  @if (partiesInvolved.length > 0) {
+    <div class="parties-section">
+      <h5>Parties Involved</h5>
+      <div class="parties-list">
+        @for (party of partiesInvolved; track party.role) {
+          <div class="party-item">
+            <span class="party-role">{{ party.role }}</span>
+            <span class="party-name">{{ party.name }}</span>
+          </div>
+        }
+      </div>
+    </div>
+  }
+
+  <!-- Actions -->
+  @if (conciliationStatus !== 'SETTLED' && conciliationStatus !== 'FAILED') {
+    <div class="conciliation-actions">
+      <button class="action-btn schedule" (click)="openScheduleForm()">
+        &#128197; Schedule Hearing
+      </button>
+      <button class="action-btn outcome" (click)="openOutcomeForm()">
+        &#9998; Record Outcome
+      </button>
+      <label class="action-btn upload">
+        <input type="file" (change)="onMinutesUpload($event)" accept=".pdf,.doc,.docx" hidden />
+        &#128206; Upload Minutes
+      </label>
+    </div>
+
+    @if (uploadingMinutes()) {
+      <p class="upload-status">Uploading minutes...</p>
+    }
+    @if (minutesUploaded()) {
+      <p class="upload-status success">Minutes uploaded successfully.</p>
+    }
+  }
+
+  <!-- Schedule Hearing Form -->
+  @if (showScheduleForm()) {
+    <div class="form-section">
+      <h5>Schedule Conciliation Hearing</h5>
+      <div class="form-grid">
+        <div class="form-field">
+          <label>Date *</label>
+          <input type="date" [(ngModel)]="hearingDate" />
+        </div>
+        <div class="form-field">
+          <label>Time *</label>
+          <input type="time" [(ngModel)]="hearingTime" />
+        </div>
+        <div class="form-field full">
+          <label>Venue</label>
+          <input type="text" [(ngModel)]="hearingVenue" placeholder="Meeting venue or video link" />
+        </div>
+        <div class="form-field full">
+          <label>Notes</label>
+          <textarea [(ngModel)]="hearingNotes" rows="3" placeholder="Additional instructions..."></textarea>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="submit-btn" [disabled]="processing() || !hearingDate || !hearingTime" (click)="submitScheduleHearing()">
+          @if (processing()) { Scheduling... } @else { Confirm Schedule }
+        </button>
+        <button class="cancel-btn" (click)="cancelForm()">Cancel</button>
+      </div>
+    </div>
+  }
+
+  <!-- Outcome Form -->
+  @if (showOutcomeForm()) {
+    <div class="form-section">
+      <h5>Record Conciliation Outcome</h5>
+      <div class="form-grid">
+        <div class="form-field full">
+          <label>Outcome *</label>
+          <select [(ngModel)]="outcomeType">
+            <option value="SETTLED">Settled</option>
+            <option value="FAILED">Failed</option>
+          </select>
+        </div>
+        @if (outcomeType === 'SETTLED') {
+          <div class="form-field full">
+            <label>Compensation Amount (if applicable)</label>
+            <input type="number" [(ngModel)]="compensationAmount" placeholder="Amount in INR" />
+          </div>
+        }
+        <div class="form-field full">
+          <label>Summary Notes *</label>
+          <textarea [(ngModel)]="summaryNotes" rows="4" placeholder="Conciliation outcome summary..."></textarea>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="submit-btn" [disabled]="processing() || !summaryNotes.trim()" (click)="submitOutcome()">
+          @if (processing()) { Recording... } @else { Record Outcome }
+        </button>
+        <button class="cancel-btn" (click)="cancelForm()">Cancel</button>
+      </div>
+    </div>
+  }
+
+  <!-- Result Message -->
+  @if (resultMessage()) {
+    <div class="result-msg" [class.success]="resultSuccess()" [class.error]="!resultSuccess()">
+      {{ resultMessage() }}
+    </div>
+  }
+</div>

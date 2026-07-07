@@ -21,6 +21,7 @@ export class TranslationService {
   private _currentLocale = signal<string>(this.getStoredLocale());
   private _locales = signal<LocaleInfo[]>([]);
   private _loading = signal(false);
+  private _loaded = false;
 
   readonly currentLocale = this._currentLocale.asReadonly();
   readonly locales = this._locales.asReadonly();
@@ -36,6 +37,9 @@ export class TranslationService {
   }
 
   translate(key: string, params?: Record<string, string>): string {
+    if (!this._loaded && !this._loading()) {
+      this.loadTranslations(this._currentLocale());
+    }
     let value = this.translations()[key] || key;
     if (params) {
       Object.entries(params).forEach(([k, v]) => {
@@ -59,13 +63,27 @@ export class TranslationService {
       const data = await this.http
         .get<Record<string, string>>(`${environment.apiBaseUrl}/api/v1/i18n/translations/${locale}`)
         .toPromise();
-      this.translations.set(data || {});
-    } catch {
-      if (locale !== DEFAULT_LOCALE) {
+      if (data && Object.keys(data).length > 0) {
+        this.translations.set(data);
+        this._loaded = true;
+      } else if (locale !== DEFAULT_LOCALE) {
         const fallback = await this.http
           .get<Record<string, string>>(`${environment.apiBaseUrl}/api/v1/i18n/translations/${DEFAULT_LOCALE}`)
           .toPromise();
         this.translations.set(fallback || {});
+        this._loaded = (fallback && Object.keys(fallback).length > 0) || false;
+      }
+    } catch {
+      if (locale !== DEFAULT_LOCALE) {
+        try {
+          const fallback = await this.http
+            .get<Record<string, string>>(`${environment.apiBaseUrl}/api/v1/i18n/translations/${DEFAULT_LOCALE}`)
+            .toPromise();
+          this.translations.set(fallback || {});
+          this._loaded = (fallback && Object.keys(fallback).length > 0) || false;
+        } catch {
+          this._loaded = false;
+        }
       }
     } finally {
       this._loading.set(false);

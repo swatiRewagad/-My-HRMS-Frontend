@@ -1,0 +1,268 @@
+<div class="aa-detail">
+  <header class="topbar">
+    <div class="topbar-left">
+      <button class="back-btn" (click)="goBack()">&larr;</button>
+      <h2>Appeal Examination</h2>
+    </div>
+    <div class="topbar-right">
+      @if (auth.currentUser(); as user) {
+        <span class="role-badge">{{ roleLabels[userRole()] }}</span>
+        <span>{{ user.firstName }} {{ user.lastName }}</span>
+      }
+    </div>
+  </header>
+
+  <main class="content">
+    @if (loading()) {
+      <div class="loading">Loading appeal details...</div>
+    } @else if (!appeal()) {
+      <div class="error-state">Appeal not found.</div>
+    } @else {
+      <div class="detail-layout">
+        <!-- Left: Appeal Details -->
+        <div class="detail-panel">
+          <!-- Header -->
+          <div class="appeal-header">
+            <div class="header-left">
+              <h3>{{ appeal().appealNumber }}</h3>
+              <span class="classification-badge" [attr.data-classification]="appeal().classification">
+                {{ appeal().classification }}
+              </span>
+              <span class="immutable-tag">IMMUTABLE</span>
+              <span class="status-badge" [attr.data-status]="appeal().status">{{ getStatusLabel(appeal().status) }}</span>
+            </div>
+            <div class="header-meta">
+              <span>Filed: {{ appeal().filedDate | date:'dd MMM yyyy' }}</span>
+            </div>
+          </div>
+
+          <!-- Appeal Info -->
+          <section class="detail-section">
+            <h4>Appeal Information</h4>
+            <div class="field-grid">
+              <div class="field">
+                <label>Ground for Appeal</label>
+                <span>{{ appeal().ground || '—' }}</span>
+              </div>
+              <div class="field">
+                <label>Relief Sought</label>
+                <span>{{ appeal().reliefSought || '—' }}</span>
+              </div>
+              <div class="field">
+                <label>Filed Date</label>
+                <span>{{ appeal().filedDate | date:'dd MMM yyyy' }}</span>
+              </div>
+              <div class="field">
+                <label>Original Complaint</label>
+                <span class="complaint-link">{{ appeal().originalComplaintNumber }}</span>
+              </div>
+            </div>
+          </section>
+
+          <!-- Appellant Info -->
+          <section class="detail-section">
+            <h4>Appellant Details</h4>
+            <div class="field-grid">
+              <div class="field">
+                <label>Name</label>
+                <span>{{ appeal().appellantName || '—' }}</span>
+              </div>
+              <div class="field">
+                <label>Email</label>
+                <span>{{ appeal().appellantEmail || '—' }}</span>
+              </div>
+              <div class="field">
+                <label>Phone</label>
+                <span>{{ appeal().appellantPhone || '—' }}</span>
+              </div>
+              <div class="field">
+                <label>Assigned To</label>
+                <span>{{ appeal().assignedTo || '—' }}</span>
+              </div>
+            </div>
+          </section>
+
+          <!-- Hearing Info -->
+          <section class="detail-section">
+            <h4>Hearing Information</h4>
+            <div class="field-grid">
+              <div class="field">
+                <label>Scheduled Date</label>
+                <span>{{ appeal().hearingDate ? (appeal().hearingDate | date:'dd MMM yyyy, HH:mm') : 'Not scheduled' }}</span>
+              </div>
+              <div class="field">
+                <label>Venue</label>
+                <span>{{ appeal().hearingVenue || '—' }}</span>
+              </div>
+            </div>
+            @if (appeal().hearingHistory && appeal().hearingHistory.length > 0) {
+              <div class="hearing-history">
+                <h5>Past Hearings</h5>
+                <table class="history-table">
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Venue</th>
+                      <th>Outcome</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (h of appeal().hearingHistory; track h.date) {
+                      <tr>
+                        <td>{{ h.date | date:'dd MMM yyyy' }}</td>
+                        <td>{{ h.venue }}</td>
+                        <td>{{ h.outcome || 'Adjourned' }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            }
+          </section>
+
+          <!-- Order Section (if order passed) -->
+          @if (appeal().order) {
+            <section class="detail-section order-section">
+              <h4>Order Details</h4>
+              <div class="field-grid">
+                <div class="field">
+                  <label>Outcome</label>
+                  <span class="outcome-badge" [attr.data-outcome]="appeal().order.outcome">{{ appeal().order.outcome }}</span>
+                </div>
+                <div class="field">
+                  <label>Modified Amount</label>
+                  <span>{{ appeal().order.modifiedAmount ? '\u20B9' + appeal().order.modifiedAmount : '—' }}</span>
+                </div>
+              </div>
+              <div class="field full-width">
+                <label>Order Summary</label>
+                <p class="description-text">{{ appeal().order.summary }}</p>
+              </div>
+            </section>
+          }
+
+          <!-- Timeline -->
+          <section class="detail-section">
+            <div class="timeline-header">
+              <h4>Appeal Timeline</h4>
+            </div>
+            @if (timelineLoading()) {
+              <div class="loading-inline">Loading timeline...</div>
+            } @else if (timeline().length === 0) {
+              <p class="empty-timeline">No timeline entries yet.</p>
+            } @else {
+              <div class="timeline">
+                @for (entry of timeline(); track entry.timestamp; let i = $index) {
+                  <div class="timeline-item">
+                    <div class="timeline-dot">
+                      <span class="action-icon">{{ getTimelineIcon(entry.action) }}</span>
+                    </div>
+                    <div class="timeline-content">
+                      <div class="timeline-main">
+                        <span class="timeline-action">{{ getTimelineLabel(entry.action) }}</span>
+                        <span class="timeline-time">{{ entry.timestamp | date:'dd MMM yyyy HH:mm' }}</span>
+                      </div>
+                      @if (entry.performedBy) {
+                        <span class="timeline-actor">By: {{ entry.performedBy }}</span>
+                      }
+                      @if (entry.remarks) {
+                        <p class="timeline-remarks">{{ entry.remarks }}</p>
+                      }
+                      <span class="timeline-flow">{{ entry.fromStatus }} &rarr; {{ entry.toStatus }}</span>
+                    </div>
+                  </div>
+                }
+              </div>
+            }
+          </section>
+        </div>
+
+        <!-- Right: Action Panel -->
+        <div class="action-panel">
+          @if (isTerminalState()) {
+            <div class="closed-banner">
+              <span class="closed-icon">&#10003;</span>
+              <h4>Appeal {{ appeal().status | uppercase }}</h4>
+              <p>This appeal has reached its final state. No further actions available.</p>
+            </div>
+            @if (userRole() === 'AA_ADMIN') {
+              <div class="admin-actions">
+                @for (action of availableActions(); track action.id) {
+                  <button class="action-card" [class]="action.style" (click)="selectAction(action)">
+                    <span class="action-label">{{ action.label }}</span>
+                    <span class="action-desc">{{ action.description }}</span>
+                  </button>
+                }
+              </div>
+            }
+          } @else {
+            <h4>Available Actions</h4>
+            <p class="action-hint">Select an action to perform on this appeal.</p>
+
+            <div class="action-list">
+              @for (action of availableActions(); track action.id) {
+                <button class="action-card" [class]="action.style"
+                        [class.selected]="selectedAction()?.id === action.id"
+                        (click)="selectAction(action)">
+                  <span class="action-label">{{ action.label }}</span>
+                  <span class="action-desc">{{ action.description }}</span>
+                </button>
+              }
+            </div>
+
+            <!-- Hearing Panel -->
+            @if (showHearingPanel()) {
+              <app-aa-hearing [appeal]="appeal()" (hearingScheduled)="onHearingScheduled()" (cancelled)="cancelAction()"></app-aa-hearing>
+            }
+
+            <!-- Order Panel -->
+            @if (showOrderPanel()) {
+              <app-aa-order [appeal]="appeal()" (orderPassed)="onOrderPassed()" (cancelled)="cancelAction()"></app-aa-order>
+            }
+
+            <!-- Generic Action Form -->
+            @if (selectedAction(); as action) {
+              <div class="action-form">
+                <h5>{{ action.label }}</h5>
+
+                @if (action.requiresTarget && action.targetType === 'user') {
+                  <div class="form-field">
+                    <label>Assign To</label>
+                    <select [(ngModel)]="targetUser">
+                      <option value="">Select Officer</option>
+                      @for (officer of aaOfficers(); track officer.id) {
+                        <option [value]="officer.id">{{ officer.name }}</option>
+                      }
+                    </select>
+                  </div>
+                }
+
+                @if (action.requiresRemarks) {
+                  <div class="form-field">
+                    <label>Remarks</label>
+                    <textarea [(ngModel)]="remarks" rows="4"
+                              placeholder="Enter remarks..."></textarea>
+                  </div>
+                }
+
+                <div class="form-actions">
+                  <button class="submit-btn" [disabled]="processing() || (action.requiresRemarks && !remarks.trim())"
+                          (click)="submitAction()">
+                    @if (processing()) { Processing... } @else { Confirm {{ action.label }} }
+                  </button>
+                  <button class="cancel-btn" (click)="cancelAction()">Cancel</button>
+                </div>
+              </div>
+            }
+
+            @if (actionResult()) {
+              <div class="result-msg" [class.success]="actionSuccess()" [class.error]="!actionSuccess()">
+                {{ actionResult() }}
+              </div>
+            }
+          }
+        </div>
+      </div>
+    }
+  </main>
+</div>

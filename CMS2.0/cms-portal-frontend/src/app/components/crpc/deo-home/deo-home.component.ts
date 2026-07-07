@@ -53,6 +53,7 @@ export class DeoHomeComponent implements OnInit {
   searchText = signal('');
   filterUnread = signal(false);
   filterWithoutAttachments = signal(false);
+  filterSatisfiesRules = signal(false);
   columnFilters: Record<string, string> = {};
   columnSearchText = '';
 
@@ -69,6 +70,7 @@ export class DeoHomeComponent implements OnInit {
   showAdvancedSearch = signal(false);
 
   // Advanced Search
+  advSearchActive = signal(false);
   advSearch = {
     complaintNumber: '', complaintId: '', statusCode: '',
     complainantName: '', mobileNumber: '', email: '',
@@ -115,13 +117,28 @@ export class DeoHomeComponent implements OnInit {
     if (status) result = result.filter(d => d.status === status);
     if (mode === 'DIRECT') result = result.filter(d => d.modeOfReceipt === 'PHYSICAL_LETTER' || d.modeOfReceipt === 'PORTAL');
     if (mode === 'ABR') result = result.filter(d => d.modeOfReceipt === 'EMAIL' || d.modeOfReceipt === 'CPGRAMS');
-    if (search) {
+    if (this.advSearchActive()) {
+      const q = this.advSearch;
+      if (q.complaintNumber) result = result.filter(d => d.complaintNumber.toLowerCase().includes(q.complaintNumber.toLowerCase()));
+      if (q.complaintId) result = result.filter(d => d.draftId.toLowerCase().includes(q.complaintId.toLowerCase()));
+      if (q.statusCode) result = result.filter(d => d.status === q.statusCode);
+      if (q.complainantName) result = result.filter(d => d.complainantName.toLowerCase().includes(q.complainantName.toLowerCase()));
+      if (q.mobileNumber) result = result.filter(d => d.fromEmailId.includes(q.mobileNumber));
+      if (q.email) result = result.filter(d => d.fromEmailId.toLowerCase().includes(q.email.toLowerCase()));
+      if (q.fromEmailId) result = result.filter(d => d.fromEmailId.toLowerCase().includes(q.fromEmailId.toLowerCase()));
+      if (q.modeOfReceipt) result = result.filter(d => d.modeOfReceipt === q.modeOfReceipt);
+      if (q.entityName) result = result.filter(d => d.entityName.toLowerCase().includes(q.entityName.toLowerCase()));
+      if (q.subject) result = result.filter(d => d.subject.toLowerCase().includes(q.subject.toLowerCase()));
+      if (q.category) result = result.filter(d => d.category === q.category);
+    } else if (search) {
       const q = search.toLowerCase();
       result = result.filter(d =>
         d.draftId.toLowerCase().includes(q) ||
         d.complainantName.toLowerCase().includes(q) ||
         d.entityName.toLowerCase().includes(q) ||
-        d.subject.toLowerCase().includes(q)
+        d.subject.toLowerCase().includes(q) ||
+        d.fromEmailId.toLowerCase().includes(q) ||
+        d.complaintNumber.toLowerCase().includes(q)
       );
     }
     // Column-level filters
@@ -137,6 +154,9 @@ export class DeoHomeComponent implements OnInit {
     }
     if (this.filterWithoutAttachments()) {
       result = result.filter(d => !d.hasAttachments);
+    }
+    if (this.filterSatisfiesRules()) {
+      result = result.filter(d => (d as any).triageSignal === 'OBJECTIVELY_CLEAR');
     }
     // Sorting
     if (this.sortColumn) {
@@ -349,21 +369,20 @@ export class DeoHomeComponent implements OnInit {
   }
 
   applyAdvancedSearch() {
-    const q = this.advSearch;
-    let result = this.drafts();
-    if (q.complaintNumber) result = result.filter(d => d.complaintNumber.includes(q.complaintNumber));
-    if (q.complaintId) result = result.filter(d => d.draftId.includes(q.complaintId));
-    if (q.statusCode) result = result.filter(d => d.status === q.statusCode);
-    if (q.complainantName) result = result.filter(d => d.complainantName.toLowerCase().includes(q.complainantName.toLowerCase()));
-    if (q.mobileNumber) result = result.filter(d => d.fromEmailId.includes(q.mobileNumber));
-    if (q.email) result = result.filter(d => d.fromEmailId.toLowerCase().includes(q.email.toLowerCase()));
-    if (q.fromEmailId) result = result.filter(d => d.fromEmailId.toLowerCase().includes(q.fromEmailId.toLowerCase()));
-    if (q.modeOfReceipt) result = result.filter(d => d.modeOfReceipt === q.modeOfReceipt);
-    if (q.entityName) result = result.filter(d => d.entityName.toLowerCase().includes(q.entityName.toLowerCase()));
-    if (q.subject) result = result.filter(d => d.subject.toLowerCase().includes(q.subject.toLowerCase()));
-    if (q.category) result = result.filter(d => d.category === q.category);
-    this.searchText.set(JSON.stringify(q));
+    this.searchText.set('');
+    this.advSearchActive.set(true);
+    this.currentPage.set(1);
     this.showAdvancedSearch.set(false);
+  }
+
+  clearAdvancedSearch() {
+    this.advSearch = {
+      complaintNumber: '', complaintId: '', statusCode: '',
+      complainantName: '', mobileNumber: '', email: '',
+      fromEmailId: '', modeOfReceipt: '', entityName: '',
+      subject: '', ndiContactPerson: '', category: ''
+    };
+    this.advSearchActive.set(false);
   }
 
   getStatusLabel(status: string): string {

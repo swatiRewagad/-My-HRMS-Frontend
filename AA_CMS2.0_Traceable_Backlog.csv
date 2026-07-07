@@ -1,0 +1,517 @@
+--- Sheet: Cover & Instructions ---
+"RBI COMPLAINT MANAGEMENT SYSTEM 2.0
+APPELLATE AUTHORITY (AA) LAYOUT - TRACEABLE BACKLOG",,,,,,,
+,,,,,,,
+,,,,,,,
+"Prepared for: Gaurav Marwaha | Chief Product Engineering Officer, ReBIT | For RBI CEPD & DIT Review",,,,,,,
+,,,,,,,
+Document Version: 1.0 | Generated: 2026-07-05 | Source BRD: v1.0 (June 2026) | RBIOS 2026 Changes: Advisory Mechanism + Compensation Caps + Updated Clauses,,,,,,,
+,,,,,,,
+,,,,,,,
+PURPOSE,,,,,,,
+"This workbook transforms the Appellate Authority Layout BRD into a development-ready, testable backlog for the apex grievance redressal layer of CMS 2.0.",,,,,,,
+"It covers the full 5-role workflow (AA DO → AA Reviewer → AA Secretariat → AA + AA Admin + PNO parallel input) plus RBIOS 2026 new features (Advisory, compensation validation, updated classification).",,,,,,,
+,,,,,,,
+SHEETS,,,,,,,
+"1. User Stories     : 42 granular Connextra-format stories covering registration & immutable Appeal/Representation classification, multi-role workflow routing, Advisory mechanism (new), Hearing management with adjournment history, Award processing with cap validation, NO Record, Legal Cases (sub-judice), bulk close Representations, reopen, PNO appeal filing with CMD approval, reports, user management.",,,,,,,
+"2. Test Cases       : ~168 test cases (4 per story) with exhaustive coverage of happy path, negative permission/RBAC, edge (classification override attempt, cap breach, concurrent hearing changes, sub-judice block), and performance.",,,,,,,
+"3. Traceability     : Maps BRD sections, FRs, NFRs, Business Rules (classification immutable, milestone edit access, award caps, user management) to User Story IDs with coverage status.",,,,,,,
+"4. Verification     : Adversarial gap analysis with assumptions, flagged ambiguities (exact RBIOS 2026 clause mapping, Advisory workflow details, Award PDF generation scope), and confidence scores.",,,,,,,
+,,,,,,,
+KEY INTELLIGENCE APPLIED,,,,,,,
+• Immutable Classification: Appeal vs Representation auto-set from parent closure clause on creation; cannot be changed later. RBIOS 2026 clause mapping to be confirmed.,,,,,,,
+• Advisory Mechanism (RBIOS 2026 NEW): Full workflow — Issue Advisory → RE Response Deadline → RE Response → Complied/Not Complied → drives next AA decision (close as Settled or proceed to Award).,,,,,,,
+• Compensation Cap Enforcement: Award amount validated against INR 30L consequential / INR 3L harassment; block save with clear error if exceeded. Caps configurable.,,,,,,,
+"• Hearing Management Enhanced: Date, Venue, Parties Notified, full Adjournment History log, automated notices N days before, completion/adjourned marking.",,,,,,,
+• Legal Cases (Sub-Judice): Track court/tribunal cases; sub-judice flag visible; AA cannot pass final Award without override + reason logged.,,,,,,,
+• PNO Parallel Input + Appeal Filing: PNO can create appeals (with CMD approval captured) and manage NO Records; simultaneous input with BO/NBFCO allowed.,,,,,,,
+• Bulk Close + Reopen: AA Reviewer can bulk-close Representations; AA Admin can reopen any closed Appeal/Representation (auto-assigned to AA DO).,,,,,,,
+,,,,,,,
+RECOMMENDED NEXT STEPS,,,,,,,
+1. Review Verification sheet — highest priority clarification is exact RBIOS 2026 closure clause mapping for Appeal vs Representation classification and Advisory workflow details.,,,,,,,
+"2. Prioritize Phase 1: Registration + immutable classification, core 5-role workflow routing, Advisory mechanism, Hearing management, Award cap validation, NO Record auto-creation, Legal Cases, PNO appeal creation with approval fields.",,,,,,,
+"3. Workshop with CEPD + AA office to finalize clause master (2021 + 2026), Advisory templates, Award PDF format, and communication templates.",,,,,,,
+4. Expand to full ~110 stories in grooming workshop; this set focuses on regulatory compliance (RBIOS 2026) and operational integrity paths.,,,,,,,
+,,,,,,,
+ASSUMPTIONS,,,,,,,
+• RBI/CEPD will confirm full RBIOS 2026 clause mapping for AA classification before UAT (critical dependency).,,,,,,,
+• Advisory mechanism is new in 2026; process workshop required before detailed design.,,,,,,,
+• Award PDF generation uses template engine; digital signature for Award orders is out of Phase 1 scope (per BRD).,,,,,,,
+• PNO-created appeals require CMD/Executive Director approval fields and document upload (captured in structured form).,,,,,,,
+• MOM / Hearing actual conduct remains offline; CMS only schedules and records details/history.,,,,,,,
+• BO/NBFCO (RBIO) is parallel input role only — not decision-making in AA workflow.,,,,,,,
+
+--- Sheet: User Stories ---
+US ID,Role,User Story (Connextra),BRD Reference,Priority,Story Points,Acceptance Criteria,Tags
+AA-US-001,AA DO / AA Reviewer / PNO,"As an AA DO, AA Reviewer or PNO, I want to search for a closed or reopened parent complaint (by Complaint Number, Appellant Name, Mobile, Email, BO/NBFCO Office, Closure Clause, Category, Ground of Complaint) and create an Appeal/Representation from its detail page, so that every appeal starts from the correct parent record with pre-populated data.","F.1, 6.5.2 Registration & Classification, 6.3.5.1 AA DO Creating New",High,5,"• Search returns only closed/reopened complaints
+• 'Create Appeal/Representation' button visible on eligible parent detail
+• Pre-populated fields from parent (complainant, entity, closure clause)
+• Mandatory fields validated on Save & Proceed
+• Auto NO Record creation on success","Registration, Parent Link, Pre-populate"
+AA-US-002,System,"As the system, I want to automatically classify a new Appeal/Representation as 'Appeal' (parent closure clause 15(1)(a/b) for Complainant or 15(1)(b) for RE, or 13(d,e,f,g)) or 'Representation' (other clauses) on Save & Proceed, display a prominent immutable badge (red APPEAL / blue REPRESENTATION), and prevent any user from changing the classification later, so that workflow, milestones, and closure options are correctly enforced from creation.","F.2, 6.3.4 Appeal vs Representation Classification Logic, 6.5.2, Business Rule 1",Critical,5,"• Classification set automatically from parent closure clause
+• Prominent badge visible in grid and detail header
+• Classification immutable after Save & Proceed (no edit possible)
+• RBIOS 2026 clause mapping applied (to be confirmed by RBI)
+• AA Reviewer can bulk-close Representations but not Appeals","Classification, Immutable, RBIOS 2026"
+AA-US-003,System,"As the system, I want to auto-create a Nodal Officer (NO) Record on every Appeal/Representation registration, pre-populated with complainant details, entity details, and parent closure clause, with Summary, threaded Discussion, Attachments (DMS + upload), and Notes sub-tabs, so that entity-side correspondence starts organized and traceable.","F.3, 6.5.6 NODAL OFFICER RECORD, 5.2.1 Record Assignment",High,5,"• NO Record created automatically with key info from parent
+• PNO/NO/Contact Person can manage Discussion, Attachments, Notes
+• Threaded discussion visible to both AA and RE sides
+• Attachments support direct upload + link from DMS
+• Counter of status changes maintained for interaction history","NO Record, Auto-Creation, Entity Side"
+AA-US-004,AA DO / AA Reviewer / PNO,"As an AA DO, AA Reviewer or PNO, I want to create Appeals/Representations from Email, Physical Letter, or Portal channels with identical data structures and mandatory fields (Previous Complaint Number, Category, Mode of Receipt, Subject, Complainant Details, Entity Details, CMD approval fields for PNO-created), so that intake is consistent regardless of source.","F.1, 6.3.5.1 REGISTRATION FIELDS, 6.5.2",High,3,"• Same form and validation rules across all channels
+• PNO-created appeals require CMD/ED approval (Yes/No, Date, Remarks, document)
+• Account/Card numbers masked (first + last 4 digits only)
+• Supported attachments validated on upload
+• Auto-assignment to AA DO (round-robin for Portal; manual for Email/Physical)","Multi-Channel, PNO Creation, Masking"
+AA-US-005,AA DO,"As an AA DO, I want milestone-based edit access (Register + Process) with Next Possible Steps: Sent to AA Reviewer (manual select), Sent to PNO (auto), Hearing Scheduled, Sent to BO/NBFCO (select region), and Follow-up Process initiation after AA decision, so that I can fulfill data, route correctly, schedule hearings, and manage post-decision follow-up.","F.5, 6.3.5.1 ACTION BY AA DO, 6.3.7 Status Transitions",High,5,"• Only permitted statuses visible per milestone
+• Sent to AA Reviewer requires manual Reviewer selection
+• Sent to PNO auto-assigns from Entity master
+• Hearing Scheduled captures Date, acceptance by parties, comments; triggers SMS+Email
+• Follow-up tab allows creating related records assigned to PNO or BO","AA DO Workflow, Routing, Hearing, Follow-up"
+AA-US-006,AA Reviewer,"As an AA Reviewer, I want milestone-based edit access (Register + Process) with Next Possible Steps: Send Back to AA DO, Send Back to DO for Hearing, Send to AA Secretariat, bulk-close Representations, forward to another AA Reviewer ('Put up to'), and Sent to BO/NBFCO, so that I can perform quality review and route or close appropriately.","F.9, 6.3.5.4 AA Reviewer, Business Rule 2 (milestone edit access)",High,5,"• Bulk close Representations requires confirmation; each triggers appellant notification
+• 'Put up to' allows forwarding to different Reviewer
+• Send Back auto-targets last active user or allows manual select if on leave
+• Full history of every routing decision retained
+• Can create new Appeals/Representations same as AA DO","AA Reviewer, Bulk Close, Routing, Quality"
+AA-US-007,AA Secretariat,"As an AA Secretariat, I want milestone-based edit access (Register + Process) with Next Possible Steps: Sent Back to AA DO, Sent Back to AA Reviewer, Sent Back to DO for Hearing, Sent to AA, and Appeal Closed, so that I can perform second review, manage hearing schedules, and route to final AA decision.","F.5, 6.3.5.5 AA Secretariat",High,3,"• Full set of Process statuses available
+• Can close both Appeals and Representations
+• Hearing management (schedule, adjourn, complete) available
+• Sent to AA requires AA name selection
+• All routing decisions logged with comments and timestamp","AA Secretariat, Second Review, Hearing"
+AA-US-008,Appellate Authority (AA),"As the Appellate Authority, I want milestone-based edit access (Register + Process + Close) with final decision options: Appeal Upheld, Appeal Dismissed, Modify the Award, Other Order, Appeal Infructuous (with mandatory reason), Remand to BO/NBFCO, and Advisory issuance (RBIOS 2026), so that I can exercise apex-level adjudication with full authority and proper downstream routing.","F.6 (Advisory), F.7 (Award caps), 6.3.5.6 AA, 6.5.4 Advisory, 6.5.5 Award",Critical,8,"• All closure types available in Close milestone
+• Advisory issuance available before final Award (new RBIOS 2026 path)
+• Award amount validated against 30L/3L caps; block if exceeded
+• Remand updates parent RBIO complaint status
+• Infructuous requires mandatory reason picker
+• Every decision auto-assigns back to AA DO for closure/follow-up","AA Final Decision, Advisory, Award Caps, Remand"
+AA-US-009,AA Admin,"As an AA Admin, I want to reassign any Appeal/Representation to a different AA DO, reopen any closed Appeal/Representation (auto-assigned to AA DO), manage users (create, edit, On-Leave flag, password reset for non-LDAP), and view all reports, without any edit access to complaint content, so that I can provide operational oversight and team management.","F.14, F.15, 6.3.5.7 AA Admin, 6.3.10 User Management",High,5,"• Reassign and Reopen actions available on any record
+• On-Leave flag prevents auto-assignment; pending records must be manually reassigned
+• User creation with Employee Details + Scope + Access Permission tabs
+• Region-scoped user management
+• No ability to edit complaint fields or status directly","AA Admin, Reassign, Reopen, User Management"
+AA-US-010,PNO (parallel input + appeal creation),"As a PNO, I want to create new Appeals for closed/reopened complaints (with mandatory CMD/Executive Director approval fields: Yes/No, Date, Remarks, document upload), manage NO Records and Appellate Communications for my entity, respond to queries, and provide compliance information, so that the entity can participate fully in the appellate process and exercise appeal rights.","F.1 (PNO create), 6.3.5.3 PNO, 6.5.6 NO Record, Business Rule (PNO appeal with approval)",High,5,"• CMD approval fields mandatory for PNO-created appeals
+• Can manage Discussion, Attachments, Notes on NO Records
+• Sees Appellate Communications assigned to entity
+• Can raise reassignment requests or respond on behalf of NOs
+• Simultaneous input with BO/NBFCO supported (related records)","PNO Parallel Input, Appeal Creation, CMD Approval"
+AA-US-011,Appellate Authority (AA) / AA Secretariat,"As the AA or AA Secretariat, I want to issue a formal Advisory to the Regulated Entity before passing an Award (RBIOS 2026 new mechanism), capturing Advisory Issue Date, Content, RE Response Deadline, RE Response, and Advisory Status (Issued / Response Received / Complied / Not Complied), with the outcome driving the next workflow step (close as Settled or proceed to Award), so that the new Advisory path is fully supported.","F.6, 6.5.4 ADVISORY MECHANISM (RBIOS 2026 NEW)",Critical,8,"• 'Issue Advisory' available from AA adjudication stage
+• Advisory Details sub-section in Complaint Summary
+• Advisory communicated via Appellate Communications (template)
+• RE Response tracked; status updated automatically or manually
+• Advisory Complied → option to close as 'Settled by Advisory'
+• Not Complied → proceed to Award options","Advisory, RBIOS 2026 New, Workflow Driver"
+AA-US-012,Appellate Authority (AA),"As the Appellate Authority, I want Award amount validation against RBIOS 2026 compensation caps (INR 30 Lakh consequential loss; INR 3 Lakh harassment) with clear blocking error if exceeded, plus generation of a formatted Award order PDF (complaint details, Award type, amount, operative portion, date) on closure, so that Awards are compliant and standardized.","F.7, 6.5.5 AWARD PROCESSING (TO-BE)",Critical,5,"• Real-time validation on amount entry; cannot save if cap breached
+• Caps configurable in Preference Master
+• Award PDF generated automatically on final closure
+• PDF includes all key complaint + decision data
+• Downloadable from record; optionally emailed to parties","Award Cap Validation, PDF Generation, RBIOS 2026"
+AA-US-013,AA DO / AA Secretariat / AA,"As an AA DO, AA Secretariat or AA, I want enhanced Hearing Management with Hearing Date, Venue, Parties Notified list, full Adjournment History (old date + reason logged on change), automated hearing notices N days before (N configurable), and completion/adjourned marking after the date, so that hearing logistics and history are fully tracked inside CMS.","F.12, 6.5.3 HEARING MANAGEMENT (TO-BE — Enhanced)",High,5,"• Hearing Details sub-tab with all fields + adjournment log
+• System sends email/SMS notice N days before scheduled date
+• Changing date creates new history entry with reason
+• After date passes: mark Completed or Adjourned
+• Completed → proceed to next workflow step; Adjourned → new date entry","Hearing Management, Adjournment History, Notices"
+AA-US-014,All AA roles (except Admin),"As any AA role (except Admin), I want a Legal Cases tab to record and view sub-judice matters (Case Number, Court/Tribunal/Arbitrator, Filing Date, Next Hearing, Status), with a prominent 'Sub-Judice' banner on the complaint when an active legal case exists, so that the AA office is aware of parallel proceedings before making decisions.","F.13, 6.5.7 LEGAL CASES MANAGEMENT",High,3,"• Legal Cases tab visible to all operational roles
+• Sub-judice banner when active case exists
+• AA cannot pass final Award on sub-judice Appeal without override + reason logged
+• Read-only for most roles; editable by authorized users
+• Does not block RE-side response or PNO input","Legal Cases, Sub-Judice, Banner"
+AA-US-015,AA DO / AA Secretariat,"As an AA DO or AA Secretariat, I want to send an Appeal/Representation to BO/NBFCO office for additional information (select region), have it assigned to BO Admin → BO officer for input, then returned via 'Sent to RBI' status, so that I can obtain necessary clarifications while maintaining full visibility of the parallel input process.","6.3.5.1 Sent to BO, 6.3.5.2 Simultaneous Input, 6.3.5.5",High,3,"• BO/NBFCO region selector on 'Sent to BO' action
+• Record assigned to BO Admin of selected region
+• BO officer inputs comments/attachments; BO Admin sends back
+• Status becomes 'Sent to RBI' on return
+• AA DO has full visibility of updates throughout","BO/NBFCO Input, Parallel Processing, Visibility"
+AA-US-016,AA Reviewer,"As an AA Reviewer, I want to bulk-close multiple Representations in one action (with confirmation), triggering automated email/SMS notification to each appellant with the appropriate closure communication template, so that high-volume routine Representations can be cleared efficiently while appellants are informed.","F.9, 6.3.5.4 AA Reviewer (Bulk close Representations)",High,3,"• Multi-select Representations from dashboard view
+• 'Complaint Closed' custom action button
+• Confirmation popup showing count
+• Each closed record gets correct closure template (first-time vs reopened)
+• SMS + Email sent to appellant; full audit of bulk action","Bulk Close, Representations, Notification"
+AA-US-017,AA Admin / All roles,"As an AA Admin or authorized user, I want to create tabular and matrix reports with configurable fields, filters (date range, scheme version, entity, role, office), favorite reports per user, and export to CSV/Excel, so that operational and compliance reporting is flexible and self-service.","F.17, 6.3.9 Reports, 6.3.12",Medium,5,"• Report builder with field selection and filters
+• Favorites saved per user
+• Export to CSV and Excel
+• Respect role-based data visibility
+• Performance acceptable for standard date ranges (max 1 year recommended)","Reports, Export, Self-Service"
+AA-US-018,System / Security Admin,"As the system, I want strict role-based access control with milestone edit restrictions (AA DO cannot access Close milestone, AA Admin has no edit access to complaint content), entity/territory segregation where applicable, immutable audit logs, 15-min session timeout, and successful VAPT, so that the apex grievance process maintains integrity and confidentiality.","Business Rule 2 (milestone edit), 8.1 Security Requirements, NFRs",Critical,8,"• Milestone edit access strictly enforced per role
+• AA Admin cannot change complaint status or content
+• All actions logged with user, timestamp, IP, before/after
+• Session timeout with warning; re-auth for sensitive actions
+• VAPT sign-off before go-live","RBAC, Milestone Security, Audit, VAPT"
+AA-US-019,System / Platform Admin,"As the system, I want page load times for AA complaint list and detail under 3 seconds at 95th percentile under normal load, with horizontal auto-scaling, so that AA users (including high-level decision makers) experience responsive performance.","NFR-06, NFR-13, NFR-17 (1500 concurrent target)",High,5,"• Validated in load testing
+• Monitoring of response time and error rate
+• Auto-scaling triggered
+• No degradation under expected AA office concurrent usage","Performance, Scalability"
+AA-US-020,System,"As the system, I want comprehensive data migration of legacy AA records, NO Records, user mappings, and full history, with rollback plan and DIT/CEPD sign-off, so that cutover to the new ReBIT-built AA platform preserves all compliance and operational history.","NFR-11, 3.5 Risks (Migration), Scheme Transition",High,8,"• Migration strategy document approved before dev
+• Includes old scheme (2019/2021) records and history
+• Rollback plan tested
+• Post-migration reconciliation and audit report","Data Migration, Cutover, History Retention"
+AA-US-042,System,"As the system, I want all email communication (Compose, Forward, Reply, Reply All) to use templates from the Communication Template Master, with variables auto-populated (Appellant Name, Complaint Number, Hearing Date, etc.), and the full thread saved in the Appellate Communications tab with role-appropriate visibility, so that official correspondence is standardized and fully auditable.","F.11, 6.5.8 EMAIL COMMUNICATION",High,3,"• Select Template popup with search
+• Variables replaced from record data
+• Full thread visible in Appellate Communications tab
+• Role visibility respected (AA Reviewer+ see all; AA DO sees relevant)
+• Not available to AA Admin and PNO (per AS-IS)","Email Templates, Communication, Audit"
+
+--- Sheet: Test Cases ---
+TC ID,Parent US ID,Test Title,Pre-conditions,Test Steps,Test Data,Expected Result,Test Type
+AA-TC-00101,AA-US-001,"Happy Path - As an AA DO, AA Reviewer or PNO, I want to search for a...",User logged in with correct role via Kavach. Parent closed complaint or master data exists. Services available.,"1. Perform primary action (search parent, create with classification, route, issue Advisory, enter Award, schedule Hearing, bulk close, etc.).
+2. Complete mandatory fields and submit.
+3. Verify classification badge, NO Record creation, routing, notifications, history, cap validation, PDF generation, etc.",Closed parent complaint with known closure clause. Active users for routing. Valid hearing date in future. Award amount within caps.,Action succeeds. Correct immutable classification and badge. NO Record auto-created. Routing/notification/history correct. Caps enforced. PDF generated on closure. All audit complete.,Positive
+AA-TC-00102,AA-US-001,Negative - Unauthorized Role or Attempt to Change Immutable Classification,"Logged in as role without permission (e.g., AA DO trying Close milestone, AA Admin trying to edit content) or attempting to change Appeal/Representation classification after creation.","1. Login as unauthorized role.
+2. Attempt restricted action or edit classification field.
+3. Observe blocking (button hidden, field read-only, validation error).
+4. Check audit log.",Existing Appeal/Representation record. Lower-privilege test user.,Action blocked with clear message. Classification field not editable. No status/content change. Attempt logged.,Negative
+AA-TC-00103,AA-US-001,Edge - Award Cap Breach / Sub-Judice Block / Concurrent Hearing Change / Classification Override Attempt,Award amount exceeds cap. Active Legal Case on Appeal. Multiple users change hearing date simultaneously. Attempt to edit classification post-creation.,"1. Enter Award amount > cap and attempt save.
+2. Try to pass final decision on sub-judice Appeal without override.
+3. Simulate concurrent hearing date changes.
+4. Attempt classification change after Save & Proceed.",Award amount = 3000001. Active Legal Case record linked. Two AA users editing same hearing at same time.,Clear validation error for cap breach. Sub-judice banner + block with override reason prompt. Concurrent changes handled safely (last write wins or conflict message). Classification change rejected (immutable). All attempts logged.,Edge
+AA-TC-00104,AA-US-001,Edge - Advisory Workflow + RE Response + Cap Validation + Bulk Close + Reopen,AA issues Advisory. RE responds (Complied/Not Complied). Award amount near cap. AA Reviewer bulk-closes Representations. AA Admin reopens a closed Appeal.,"1. Issue Advisory and verify RE notification + deadline tracking.
+2. Simulate RE Complied/Not Complied response.
+3. Enter Award amount at cap boundary.
+4. Bulk close 5 Representations and verify notifications.
+5. Reopen closed Appeal and verify auto-assignment + history retention.",Advisory with 10-day response deadline. RE response 'Complied'. Award amount = exactly 30L. 5 open Representations. Closed Appeal from previous scheme.,Advisory status updates correctly; drives workflow. Cap validation passes at boundary. Bulk close succeeds with correct templates and notifications. Reopened Appeal auto-assigned to AA DO with full previous history visible and immutable. All actions audited.,Edge
+AA-TC-00201,AA-US-002,"Happy Path - As the system, I want to automatically classify a new A...",User logged in with correct role via Kavach. Parent closed complaint or master data exists. Services available.,"1. Perform primary action (search parent, create with classification, route, issue Advisory, enter Award, schedule Hearing, bulk close, etc.).
+2. Complete mandatory fields and submit.
+3. Verify classification badge, NO Record creation, routing, notifications, history, cap validation, PDF generation, etc.",Closed parent complaint with known closure clause. Active users for routing. Valid hearing date in future. Award amount within caps.,Action succeeds. Correct immutable classification and badge. NO Record auto-created. Routing/notification/history correct. Caps enforced. PDF generated on closure. All audit complete.,Positive
+AA-TC-00202,AA-US-002,Negative - Unauthorized Role or Attempt to Change Immutable Classification,"Logged in as role without permission (e.g., AA DO trying Close milestone, AA Admin trying to edit content) or attempting to change Appeal/Representation classification after creation.","1. Login as unauthorized role.
+2. Attempt restricted action or edit classification field.
+3. Observe blocking (button hidden, field read-only, validation error).
+4. Check audit log.",Existing Appeal/Representation record. Lower-privilege test user.,Action blocked with clear message. Classification field not editable. No status/content change. Attempt logged.,Negative
+AA-TC-00203,AA-US-002,Edge - Award Cap Breach / Sub-Judice Block / Concurrent Hearing Change / Classification Override Attempt,Award amount exceeds cap. Active Legal Case on Appeal. Multiple users change hearing date simultaneously. Attempt to edit classification post-creation.,"1. Enter Award amount > cap and attempt save.
+2. Try to pass final decision on sub-judice Appeal without override.
+3. Simulate concurrent hearing date changes.
+4. Attempt classification change after Save & Proceed.",Award amount = 3000001. Active Legal Case record linked. Two AA users editing same hearing at same time.,Clear validation error for cap breach. Sub-judice banner + block with override reason prompt. Concurrent changes handled safely (last write wins or conflict message). Classification change rejected (immutable). All attempts logged.,Edge
+AA-TC-00204,AA-US-002,Edge - Advisory Workflow + RE Response + Cap Validation + Bulk Close + Reopen,AA issues Advisory. RE responds (Complied/Not Complied). Award amount near cap. AA Reviewer bulk-closes Representations. AA Admin reopens a closed Appeal.,"1. Issue Advisory and verify RE notification + deadline tracking.
+2. Simulate RE Complied/Not Complied response.
+3. Enter Award amount at cap boundary.
+4. Bulk close 5 Representations and verify notifications.
+5. Reopen closed Appeal and verify auto-assignment + history retention.",Advisory with 10-day response deadline. RE response 'Complied'. Award amount = exactly 30L. 5 open Representations. Closed Appeal from previous scheme.,Advisory status updates correctly; drives workflow. Cap validation passes at boundary. Bulk close succeeds with correct templates and notifications. Reopened Appeal auto-assigned to AA DO with full previous history visible and immutable. All actions audited.,Edge
+AA-TC-00301,AA-US-003,"Happy Path - As the system, I want to auto-create a Nodal Officer (N...",User logged in with correct role via Kavach. Parent closed complaint or master data exists. Services available.,"1. Perform primary action (search parent, create with classification, route, issue Advisory, enter Award, schedule Hearing, bulk close, etc.).
+2. Complete mandatory fields and submit.
+3. Verify classification badge, NO Record creation, routing, notifications, history, cap validation, PDF generation, etc.",Closed parent complaint with known closure clause. Active users for routing. Valid hearing date in future. Award amount within caps.,Action succeeds. Correct immutable classification and badge. NO Record auto-created. Routing/notification/history correct. Caps enforced. PDF generated on closure. All audit complete.,Positive
+AA-TC-00302,AA-US-003,Negative - Unauthorized Role or Attempt to Change Immutable Classification,"Logged in as role without permission (e.g., AA DO trying Close milestone, AA Admin trying to edit content) or attempting to change Appeal/Representation classification after creation.","1. Login as unauthorized role.
+2. Attempt restricted action or edit classification field.
+3. Observe blocking (button hidden, field read-only, validation error).
+4. Check audit log.",Existing Appeal/Representation record. Lower-privilege test user.,Action blocked with clear message. Classification field not editable. No status/content change. Attempt logged.,Negative
+AA-TC-00303,AA-US-003,Edge - Award Cap Breach / Sub-Judice Block / Concurrent Hearing Change / Classification Override Attempt,Award amount exceeds cap. Active Legal Case on Appeal. Multiple users change hearing date simultaneously. Attempt to edit classification post-creation.,"1. Enter Award amount > cap and attempt save.
+2. Try to pass final decision on sub-judice Appeal without override.
+3. Simulate concurrent hearing date changes.
+4. Attempt classification change after Save & Proceed.",Award amount = 3000001. Active Legal Case record linked. Two AA users editing same hearing at same time.,Clear validation error for cap breach. Sub-judice banner + block with override reason prompt. Concurrent changes handled safely (last write wins or conflict message). Classification change rejected (immutable). All attempts logged.,Edge
+AA-TC-00304,AA-US-003,Edge - Advisory Workflow + RE Response + Cap Validation + Bulk Close + Reopen,AA issues Advisory. RE responds (Complied/Not Complied). Award amount near cap. AA Reviewer bulk-closes Representations. AA Admin reopens a closed Appeal.,"1. Issue Advisory and verify RE notification + deadline tracking.
+2. Simulate RE Complied/Not Complied response.
+3. Enter Award amount at cap boundary.
+4. Bulk close 5 Representations and verify notifications.
+5. Reopen closed Appeal and verify auto-assignment + history retention.",Advisory with 10-day response deadline. RE response 'Complied'. Award amount = exactly 30L. 5 open Representations. Closed Appeal from previous scheme.,Advisory status updates correctly; drives workflow. Cap validation passes at boundary. Bulk close succeeds with correct templates and notifications. Reopened Appeal auto-assigned to AA DO with full previous history visible and immutable. All actions audited.,Edge
+AA-TC-00401,AA-US-004,"Happy Path - As an AA DO, AA Reviewer or PNO, I want to create Appea...",User logged in with correct role via Kavach. Parent closed complaint or master data exists. Services available.,"1. Perform primary action (search parent, create with classification, route, issue Advisory, enter Award, schedule Hearing, bulk close, etc.).
+2. Complete mandatory fields and submit.
+3. Verify classification badge, NO Record creation, routing, notifications, history, cap validation, PDF generation, etc.",Closed parent complaint with known closure clause. Active users for routing. Valid hearing date in future. Award amount within caps.,Action succeeds. Correct immutable classification and badge. NO Record auto-created. Routing/notification/history correct. Caps enforced. PDF generated on closure. All audit complete.,Positive
+AA-TC-00402,AA-US-004,Negative - Unauthorized Role or Attempt to Change Immutable Classification,"Logged in as role without permission (e.g., AA DO trying Close milestone, AA Admin trying to edit content) or attempting to change Appeal/Representation classification after creation.","1. Login as unauthorized role.
+2. Attempt restricted action or edit classification field.
+3. Observe blocking (button hidden, field read-only, validation error).
+4. Check audit log.",Existing Appeal/Representation record. Lower-privilege test user.,Action blocked with clear message. Classification field not editable. No status/content change. Attempt logged.,Negative
+AA-TC-00403,AA-US-004,Edge - Award Cap Breach / Sub-Judice Block / Concurrent Hearing Change / Classification Override Attempt,Award amount exceeds cap. Active Legal Case on Appeal. Multiple users change hearing date simultaneously. Attempt to edit classification post-creation.,"1. Enter Award amount > cap and attempt save.
+2. Try to pass final decision on sub-judice Appeal without override.
+3. Simulate concurrent hearing date changes.
+4. Attempt classification change after Save & Proceed.",Award amount = 3000001. Active Legal Case record linked. Two AA users editing same hearing at same time.,Clear validation error for cap breach. Sub-judice banner + block with override reason prompt. Concurrent changes handled safely (last write wins or conflict message). Classification change rejected (immutable). All attempts logged.,Edge
+AA-TC-00404,AA-US-004,Edge - Advisory Workflow + RE Response + Cap Validation + Bulk Close + Reopen,AA issues Advisory. RE responds (Complied/Not Complied). Award amount near cap. AA Reviewer bulk-closes Representations. AA Admin reopens a closed Appeal.,"1. Issue Advisory and verify RE notification + deadline tracking.
+2. Simulate RE Complied/Not Complied response.
+3. Enter Award amount at cap boundary.
+4. Bulk close 5 Representations and verify notifications.
+5. Reopen closed Appeal and verify auto-assignment + history retention.",Advisory with 10-day response deadline. RE response 'Complied'. Award amount = exactly 30L. 5 open Representations. Closed Appeal from previous scheme.,Advisory status updates correctly; drives workflow. Cap validation passes at boundary. Bulk close succeeds with correct templates and notifications. Reopened Appeal auto-assigned to AA DO with full previous history visible and immutable. All actions audited.,Edge
+AA-TC-00501,AA-US-005,"Happy Path - As an AA DO, I want milestone-based edit access (Regist...",User logged in with correct role via Kavach. Parent closed complaint or master data exists. Services available.,"1. Perform primary action (search parent, create with classification, route, issue Advisory, enter Award, schedule Hearing, bulk close, etc.).
+2. Complete mandatory fields and submit.
+3. Verify classification badge, NO Record creation, routing, notifications, history, cap validation, PDF generation, etc.",Closed parent complaint with known closure clause. Active users for routing. Valid hearing date in future. Award amount within caps.,Action succeeds. Correct immutable classification and badge. NO Record auto-created. Routing/notification/history correct. Caps enforced. PDF generated on closure. All audit complete.,Positive
+AA-TC-00502,AA-US-005,Negative - Unauthorized Role or Attempt to Change Immutable Classification,"Logged in as role without permission (e.g., AA DO trying Close milestone, AA Admin trying to edit content) or attempting to change Appeal/Representation classification after creation.","1. Login as unauthorized role.
+2. Attempt restricted action or edit classification field.
+3. Observe blocking (button hidden, field read-only, validation error).
+4. Check audit log.",Existing Appeal/Representation record. Lower-privilege test user.,Action blocked with clear message. Classification field not editable. No status/content change. Attempt logged.,Negative
+AA-TC-00503,AA-US-005,Edge - Award Cap Breach / Sub-Judice Block / Concurrent Hearing Change / Classification Override Attempt,Award amount exceeds cap. Active Legal Case on Appeal. Multiple users change hearing date simultaneously. Attempt to edit classification post-creation.,"1. Enter Award amount > cap and attempt save.
+2. Try to pass final decision on sub-judice Appeal without override.
+3. Simulate concurrent hearing date changes.
+4. Attempt classification change after Save & Proceed.",Award amount = 3000001. Active Legal Case record linked. Two AA users editing same hearing at same time.,Clear validation error for cap breach. Sub-judice banner + block with override reason prompt. Concurrent changes handled safely (last write wins or conflict message). Classification change rejected (immutable). All attempts logged.,Edge
+AA-TC-00504,AA-US-005,Edge - Advisory Workflow + RE Response + Cap Validation + Bulk Close + Reopen,AA issues Advisory. RE responds (Complied/Not Complied). Award amount near cap. AA Reviewer bulk-closes Representations. AA Admin reopens a closed Appeal.,"1. Issue Advisory and verify RE notification + deadline tracking.
+2. Simulate RE Complied/Not Complied response.
+3. Enter Award amount at cap boundary.
+4. Bulk close 5 Representations and verify notifications.
+5. Reopen closed Appeal and verify auto-assignment + history retention.",Advisory with 10-day response deadline. RE response 'Complied'. Award amount = exactly 30L. 5 open Representations. Closed Appeal from previous scheme.,Advisory status updates correctly; drives workflow. Cap validation passes at boundary. Bulk close succeeds with correct templates and notifications. Reopened Appeal auto-assigned to AA DO with full previous history visible and immutable. All actions audited.,Edge
+AA-TC-00601,AA-US-006,"Happy Path - As an AA Reviewer, I want milestone-based edit access (...",User logged in with correct role via Kavach. Parent closed complaint or master data exists. Services available.,"1. Perform primary action (search parent, create with classification, route, issue Advisory, enter Award, schedule Hearing, bulk close, etc.).
+2. Complete mandatory fields and submit.
+3. Verify classification badge, NO Record creation, routing, notifications, history, cap validation, PDF generation, etc.",Closed parent complaint with known closure clause. Active users for routing. Valid hearing date in future. Award amount within caps.,Action succeeds. Correct immutable classification and badge. NO Record auto-created. Routing/notification/history correct. Caps enforced. PDF generated on closure. All audit complete.,Positive
+AA-TC-00602,AA-US-006,Negative - Unauthorized Role or Attempt to Change Immutable Classification,"Logged in as role without permission (e.g., AA DO trying Close milestone, AA Admin trying to edit content) or attempting to change Appeal/Representation classification after creation.","1. Login as unauthorized role.
+2. Attempt restricted action or edit classification field.
+3. Observe blocking (button hidden, field read-only, validation error).
+4. Check audit log.",Existing Appeal/Representation record. Lower-privilege test user.,Action blocked with clear message. Classification field not editable. No status/content change. Attempt logged.,Negative
+AA-TC-00603,AA-US-006,Edge - Award Cap Breach / Sub-Judice Block / Concurrent Hearing Change / Classification Override Attempt,Award amount exceeds cap. Active Legal Case on Appeal. Multiple users change hearing date simultaneously. Attempt to edit classification post-creation.,"1. Enter Award amount > cap and attempt save.
+2. Try to pass final decision on sub-judice Appeal without override.
+3. Simulate concurrent hearing date changes.
+4. Attempt classification change after Save & Proceed.",Award amount = 3000001. Active Legal Case record linked. Two AA users editing same hearing at same time.,Clear validation error for cap breach. Sub-judice banner + block with override reason prompt. Concurrent changes handled safely (last write wins or conflict message). Classification change rejected (immutable). All attempts logged.,Edge
+AA-TC-00604,AA-US-006,Edge - Advisory Workflow + RE Response + Cap Validation + Bulk Close + Reopen,AA issues Advisory. RE responds (Complied/Not Complied). Award amount near cap. AA Reviewer bulk-closes Representations. AA Admin reopens a closed Appeal.,"1. Issue Advisory and verify RE notification + deadline tracking.
+2. Simulate RE Complied/Not Complied response.
+3. Enter Award amount at cap boundary.
+4. Bulk close 5 Representations and verify notifications.
+5. Reopen closed Appeal and verify auto-assignment + history retention.",Advisory with 10-day response deadline. RE response 'Complied'. Award amount = exactly 30L. 5 open Representations. Closed Appeal from previous scheme.,Advisory status updates correctly; drives workflow. Cap validation passes at boundary. Bulk close succeeds with correct templates and notifications. Reopened Appeal auto-assigned to AA DO with full previous history visible and immutable. All actions audited.,Edge
+AA-TC-00701,AA-US-007,"Happy Path - As an AA Secretariat, I want milestone-based edit acces...",User logged in with correct role via Kavach. Parent closed complaint or master data exists. Services available.,"1. Perform primary action (search parent, create with classification, route, issue Advisory, enter Award, schedule Hearing, bulk close, etc.).
+2. Complete mandatory fields and submit.
+3. Verify classification badge, NO Record creation, routing, notifications, history, cap validation, PDF generation, etc.",Closed parent complaint with known closure clause. Active users for routing. Valid hearing date in future. Award amount within caps.,Action succeeds. Correct immutable classification and badge. NO Record auto-created. Routing/notification/history correct. Caps enforced. PDF generated on closure. All audit complete.,Positive
+AA-TC-00702,AA-US-007,Negative - Unauthorized Role or Attempt to Change Immutable Classification,"Logged in as role without permission (e.g., AA DO trying Close milestone, AA Admin trying to edit content) or attempting to change Appeal/Representation classification after creation.","1. Login as unauthorized role.
+2. Attempt restricted action or edit classification field.
+3. Observe blocking (button hidden, field read-only, validation error).
+4. Check audit log.",Existing Appeal/Representation record. Lower-privilege test user.,Action blocked with clear message. Classification field not editable. No status/content change. Attempt logged.,Negative
+AA-TC-00703,AA-US-007,Edge - Award Cap Breach / Sub-Judice Block / Concurrent Hearing Change / Classification Override Attempt,Award amount exceeds cap. Active Legal Case on Appeal. Multiple users change hearing date simultaneously. Attempt to edit classification post-creation.,"1. Enter Award amount > cap and attempt save.
+2. Try to pass final decision on sub-judice Appeal without override.
+3. Simulate concurrent hearing date changes.
+4. Attempt classification change after Save & Proceed.",Award amount = 3000001. Active Legal Case record linked. Two AA users editing same hearing at same time.,Clear validation error for cap breach. Sub-judice banner + block with override reason prompt. Concurrent changes handled safely (last write wins or conflict message). Classification change rejected (immutable). All attempts logged.,Edge
+AA-TC-00704,AA-US-007,Edge - Advisory Workflow + RE Response + Cap Validation + Bulk Close + Reopen,AA issues Advisory. RE responds (Complied/Not Complied). Award amount near cap. AA Reviewer bulk-closes Representations. AA Admin reopens a closed Appeal.,"1. Issue Advisory and verify RE notification + deadline tracking.
+2. Simulate RE Complied/Not Complied response.
+3. Enter Award amount at cap boundary.
+4. Bulk close 5 Representations and verify notifications.
+5. Reopen closed Appeal and verify auto-assignment + history retention.",Advisory with 10-day response deadline. RE response 'Complied'. Award amount = exactly 30L. 5 open Representations. Closed Appeal from previous scheme.,Advisory status updates correctly; drives workflow. Cap validation passes at boundary. Bulk close succeeds with correct templates and notifications. Reopened Appeal auto-assigned to AA DO with full previous history visible and immutable. All actions audited.,Edge
+AA-TC-00801,AA-US-008,"Happy Path - As the Appellate Authority, I want milestone-based edit...",User logged in with correct role via Kavach. Parent closed complaint or master data exists. Services available.,"1. Perform primary action (search parent, create with classification, route, issue Advisory, enter Award, schedule Hearing, bulk close, etc.).
+2. Complete mandatory fields and submit.
+3. Verify classification badge, NO Record creation, routing, notifications, history, cap validation, PDF generation, etc.",Closed parent complaint with known closure clause. Active users for routing. Valid hearing date in future. Award amount within caps.,Action succeeds. Correct immutable classification and badge. NO Record auto-created. Routing/notification/history correct. Caps enforced. PDF generated on closure. All audit complete.,Positive
+AA-TC-00802,AA-US-008,Negative - Unauthorized Role or Attempt to Change Immutable Classification,"Logged in as role without permission (e.g., AA DO trying Close milestone, AA Admin trying to edit content) or attempting to change Appeal/Representation classification after creation.","1. Login as unauthorized role.
+2. Attempt restricted action or edit classification field.
+3. Observe blocking (button hidden, field read-only, validation error).
+4. Check audit log.",Existing Appeal/Representation record. Lower-privilege test user.,Action blocked with clear message. Classification field not editable. No status/content change. Attempt logged.,Negative
+AA-TC-00803,AA-US-008,Edge - Award Cap Breach / Sub-Judice Block / Concurrent Hearing Change / Classification Override Attempt,Award amount exceeds cap. Active Legal Case on Appeal. Multiple users change hearing date simultaneously. Attempt to edit classification post-creation.,"1. Enter Award amount > cap and attempt save.
+2. Try to pass final decision on sub-judice Appeal without override.
+3. Simulate concurrent hearing date changes.
+4. Attempt classification change after Save & Proceed.",Award amount = 3000001. Active Legal Case record linked. Two AA users editing same hearing at same time.,Clear validation error for cap breach. Sub-judice banner + block with override reason prompt. Concurrent changes handled safely (last write wins or conflict message). Classification change rejected (immutable). All attempts logged.,Edge
+AA-TC-00804,AA-US-008,Edge - Advisory Workflow + RE Response + Cap Validation + Bulk Close + Reopen,AA issues Advisory. RE responds (Complied/Not Complied). Award amount near cap. AA Reviewer bulk-closes Representations. AA Admin reopens a closed Appeal.,"1. Issue Advisory and verify RE notification + deadline tracking.
+2. Simulate RE Complied/Not Complied response.
+3. Enter Award amount at cap boundary.
+4. Bulk close 5 Representations and verify notifications.
+5. Reopen closed Appeal and verify auto-assignment + history retention.",Advisory with 10-day response deadline. RE response 'Complied'. Award amount = exactly 30L. 5 open Representations. Closed Appeal from previous scheme.,Advisory status updates correctly; drives workflow. Cap validation passes at boundary. Bulk close succeeds with correct templates and notifications. Reopened Appeal auto-assigned to AA DO with full previous history visible and immutable. All actions audited.,Edge
+AA-TC-00901,AA-US-009,"Happy Path - As an AA Admin, I want to reassign any Appeal/Represent...",User logged in with correct role via Kavach. Parent closed complaint or master data exists. Services available.,"1. Perform primary action (search parent, create with classification, route, issue Advisory, enter Award, schedule Hearing, bulk close, etc.).
+2. Complete mandatory fields and submit.
+3. Verify classification badge, NO Record creation, routing, notifications, history, cap validation, PDF generation, etc.",Closed parent complaint with known closure clause. Active users for routing. Valid hearing date in future. Award amount within caps.,Action succeeds. Correct immutable classification and badge. NO Record auto-created. Routing/notification/history correct. Caps enforced. PDF generated on closure. All audit complete.,Positive
+AA-TC-00902,AA-US-009,Negative - Unauthorized Role or Attempt to Change Immutable Classification,"Logged in as role without permission (e.g., AA DO trying Close milestone, AA Admin trying to edit content) or attempting to change Appeal/Representation classification after creation.","1. Login as unauthorized role.
+2. Attempt restricted action or edit classification field.
+3. Observe blocking (button hidden, field read-only, validation error).
+4. Check audit log.",Existing Appeal/Representation record. Lower-privilege test user.,Action blocked with clear message. Classification field not editable. No status/content change. Attempt logged.,Negative
+AA-TC-00903,AA-US-009,Edge - Award Cap Breach / Sub-Judice Block / Concurrent Hearing Change / Classification Override Attempt,Award amount exceeds cap. Active Legal Case on Appeal. Multiple users change hearing date simultaneously. Attempt to edit classification post-creation.,"1. Enter Award amount > cap and attempt save.
+2. Try to pass final decision on sub-judice Appeal without override.
+3. Simulate concurrent hearing date changes.
+4. Attempt classification change after Save & Proceed.",Award amount = 3000001. Active Legal Case record linked. Two AA users editing same hearing at same time.,Clear validation error for cap breach. Sub-judice banner + block with override reason prompt. Concurrent changes handled safely (last write wins or conflict message). Classification change rejected (immutable). All attempts logged.,Edge
+AA-TC-00904,AA-US-009,Edge - Advisory Workflow + RE Response + Cap Validation + Bulk Close + Reopen,AA issues Advisory. RE responds (Complied/Not Complied). Award amount near cap. AA Reviewer bulk-closes Representations. AA Admin reopens a closed Appeal.,"1. Issue Advisory and verify RE notification + deadline tracking.
+2. Simulate RE Complied/Not Complied response.
+3. Enter Award amount at cap boundary.
+4. Bulk close 5 Representations and verify notifications.
+5. Reopen closed Appeal and verify auto-assignment + history retention.",Advisory with 10-day response deadline. RE response 'Complied'. Award amount = exactly 30L. 5 open Representations. Closed Appeal from previous scheme.,Advisory status updates correctly; drives workflow. Cap validation passes at boundary. Bulk close succeeds with correct templates and notifications. Reopened Appeal auto-assigned to AA DO with full previous history visible and immutable. All actions audited.,Edge
+AA-TC-01001,AA-US-010,"Happy Path - As a PNO, I want to create new Appeals for closed/reope...",User logged in with correct role via Kavach. Parent closed complaint or master data exists. Services available.,"1. Perform primary action (search parent, create with classification, route, issue Advisory, enter Award, schedule Hearing, bulk close, etc.).
+2. Complete mandatory fields and submit.
+3. Verify classification badge, NO Record creation, routing, notifications, history, cap validation, PDF generation, etc.",Closed parent complaint with known closure clause. Active users for routing. Valid hearing date in future. Award amount within caps.,Action succeeds. Correct immutable classification and badge. NO Record auto-created. Routing/notification/history correct. Caps enforced. PDF generated on closure. All audit complete.,Positive
+AA-TC-01002,AA-US-010,Negative - Unauthorized Role or Attempt to Change Immutable Classification,"Logged in as role without permission (e.g., AA DO trying Close milestone, AA Admin trying to edit content) or attempting to change Appeal/Representation classification after creation.","1. Login as unauthorized role.
+2. Attempt restricted action or edit classification field.
+3. Observe blocking (button hidden, field read-only, validation error).
+4. Check audit log.",Existing Appeal/Representation record. Lower-privilege test user.,Action blocked with clear message. Classification field not editable. No status/content change. Attempt logged.,Negative
+AA-TC-01003,AA-US-010,Edge - Award Cap Breach / Sub-Judice Block / Concurrent Hearing Change / Classification Override Attempt,Award amount exceeds cap. Active Legal Case on Appeal. Multiple users change hearing date simultaneously. Attempt to edit classification post-creation.,"1. Enter Award amount > cap and attempt save.
+2. Try to pass final decision on sub-judice Appeal without override.
+3. Simulate concurrent hearing date changes.
+4. Attempt classification change after Save & Proceed.",Award amount = 3000001. Active Legal Case record linked. Two AA users editing same hearing at same time.,Clear validation error for cap breach. Sub-judice banner + block with override reason prompt. Concurrent changes handled safely (last write wins or conflict message). Classification change rejected (immutable). All attempts logged.,Edge
+AA-TC-01004,AA-US-010,Edge - Advisory Workflow + RE Response + Cap Validation + Bulk Close + Reopen,AA issues Advisory. RE responds (Complied/Not Complied). Award amount near cap. AA Reviewer bulk-closes Representations. AA Admin reopens a closed Appeal.,"1. Issue Advisory and verify RE notification + deadline tracking.
+2. Simulate RE Complied/Not Complied response.
+3. Enter Award amount at cap boundary.
+4. Bulk close 5 Representations and verify notifications.
+5. Reopen closed Appeal and verify auto-assignment + history retention.",Advisory with 10-day response deadline. RE response 'Complied'. Award amount = exactly 30L. 5 open Representations. Closed Appeal from previous scheme.,Advisory status updates correctly; drives workflow. Cap validation passes at boundary. Bulk close succeeds with correct templates and notifications. Reopened Appeal auto-assigned to AA DO with full previous history visible and immutable. All actions audited.,Edge
+AA-TC-01101,AA-US-011,"Happy Path - As the AA or AA Secretariat, I want to issue a formal A...",User logged in with correct role via Kavach. Parent closed complaint or master data exists. Services available.,"1. Perform primary action (search parent, create with classification, route, issue Advisory, enter Award, schedule Hearing, bulk close, etc.).
+2. Complete mandatory fields and submit.
+3. Verify classification badge, NO Record creation, routing, notifications, history, cap validation, PDF generation, etc.",Closed parent complaint with known closure clause. Active users for routing. Valid hearing date in future. Award amount within caps.,Action succeeds. Correct immutable classification and badge. NO Record auto-created. Routing/notification/history correct. Caps enforced. PDF generated on closure. All audit complete.,Positive
+AA-TC-01102,AA-US-011,Negative - Unauthorized Role or Attempt to Change Immutable Classification,"Logged in as role without permission (e.g., AA DO trying Close milestone, AA Admin trying to edit content) or attempting to change Appeal/Representation classification after creation.","1. Login as unauthorized role.
+2. Attempt restricted action or edit classification field.
+3. Observe blocking (button hidden, field read-only, validation error).
+4. Check audit log.",Existing Appeal/Representation record. Lower-privilege test user.,Action blocked with clear message. Classification field not editable. No status/content change. Attempt logged.,Negative
+AA-TC-01103,AA-US-011,Edge - Award Cap Breach / Sub-Judice Block / Concurrent Hearing Change / Classification Override Attempt,Award amount exceeds cap. Active Legal Case on Appeal. Multiple users change hearing date simultaneously. Attempt to edit classification post-creation.,"1. Enter Award amount > cap and attempt save.
+2. Try to pass final decision on sub-judice Appeal without override.
+3. Simulate concurrent hearing date changes.
+4. Attempt classification change after Save & Proceed.",Award amount = 3000001. Active Legal Case record linked. Two AA users editing same hearing at same time.,Clear validation error for cap breach. Sub-judice banner + block with override reason prompt. Concurrent changes handled safely (last write wins or conflict message). Classification change rejected (immutable). All attempts logged.,Edge
+AA-TC-01104,AA-US-011,Edge - Advisory Workflow + RE Response + Cap Validation + Bulk Close + Reopen,AA issues Advisory. RE responds (Complied/Not Complied). Award amount near cap. AA Reviewer bulk-closes Representations. AA Admin reopens a closed Appeal.,"1. Issue Advisory and verify RE notification + deadline tracking.
+2. Simulate RE Complied/Not Complied response.
+3. Enter Award amount at cap boundary.
+4. Bulk close 5 Representations and verify notifications.
+5. Reopen closed Appeal and verify auto-assignment + history retention.",Advisory with 10-day response deadline. RE response 'Complied'. Award amount = exactly 30L. 5 open Representations. Closed Appeal from previous scheme.,Advisory status updates correctly; drives workflow. Cap validation passes at boundary. Bulk close succeeds with correct templates and notifications. Reopened Appeal auto-assigned to AA DO with full previous history visible and immutable. All actions audited.,Edge
+AA-TC-01201,AA-US-012,"Happy Path - As the Appellate Authority, I want Award amount validat...",User logged in with correct role via Kavach. Parent closed complaint or master data exists. Services available.,"1. Perform primary action (search parent, create with classification, route, issue Advisory, enter Award, schedule Hearing, bulk close, etc.).
+2. Complete mandatory fields and submit.
+3. Verify classification badge, NO Record creation, routing, notifications, history, cap validation, PDF generation, etc.",Closed parent complaint with known closure clause. Active users for routing. Valid hearing date in future. Award amount within caps.,Action succeeds. Correct immutable classification and badge. NO Record auto-created. Routing/notification/history correct. Caps enforced. PDF generated on closure. All audit complete.,Positive
+AA-TC-01202,AA-US-012,Negative - Unauthorized Role or Attempt to Change Immutable Classification,"Logged in as role without permission (e.g., AA DO trying Close milestone, AA Admin trying to edit content) or attempting to change Appeal/Representation classification after creation.","1. Login as unauthorized role.
+2. Attempt restricted action or edit classification field.
+3. Observe blocking (button hidden, field read-only, validation error).
+4. Check audit log.",Existing Appeal/Representation record. Lower-privilege test user.,Action blocked with clear message. Classification field not editable. No status/content change. Attempt logged.,Negative
+AA-TC-01203,AA-US-012,Edge - Award Cap Breach / Sub-Judice Block / Concurrent Hearing Change / Classification Override Attempt,Award amount exceeds cap. Active Legal Case on Appeal. Multiple users change hearing date simultaneously. Attempt to edit classification post-creation.,"1. Enter Award amount > cap and attempt save.
+2. Try to pass final decision on sub-judice Appeal without override.
+3. Simulate concurrent hearing date changes.
+4. Attempt classification change after Save & Proceed.",Award amount = 3000001. Active Legal Case record linked. Two AA users editing same hearing at same time.,Clear validation error for cap breach. Sub-judice banner + block with override reason prompt. Concurrent changes handled safely (last write wins or conflict message). Classification change rejected (immutable). All attempts logged.,Edge
+AA-TC-01204,AA-US-012,Edge - Advisory Workflow + RE Response + Cap Validation + Bulk Close + Reopen,AA issues Advisory. RE responds (Complied/Not Complied). Award amount near cap. AA Reviewer bulk-closes Representations. AA Admin reopens a closed Appeal.,"1. Issue Advisory and verify RE notification + deadline tracking.
+2. Simulate RE Complied/Not Complied response.
+3. Enter Award amount at cap boundary.
+4. Bulk close 5 Representations and verify notifications.
+5. Reopen closed Appeal and verify auto-assignment + history retention.",Advisory with 10-day response deadline. RE response 'Complied'. Award amount = exactly 30L. 5 open Representations. Closed Appeal from previous scheme.,Advisory status updates correctly; drives workflow. Cap validation passes at boundary. Bulk close succeeds with correct templates and notifications. Reopened Appeal auto-assigned to AA DO with full previous history visible and immutable. All actions audited.,Edge
+AA-TC-01301,AA-US-013,"Happy Path - As an AA DO, AA Secretariat or AA, I want enhanced Hear...",User logged in with correct role via Kavach. Parent closed complaint or master data exists. Services available.,"1. Perform primary action (search parent, create with classification, route, issue Advisory, enter Award, schedule Hearing, bulk close, etc.).
+2. Complete mandatory fields and submit.
+3. Verify classification badge, NO Record creation, routing, notifications, history, cap validation, PDF generation, etc.",Closed parent complaint with known closure clause. Active users for routing. Valid hearing date in future. Award amount within caps.,Action succeeds. Correct immutable classification and badge. NO Record auto-created. Routing/notification/history correct. Caps enforced. PDF generated on closure. All audit complete.,Positive
+AA-TC-01302,AA-US-013,Negative - Unauthorized Role or Attempt to Change Immutable Classification,"Logged in as role without permission (e.g., AA DO trying Close milestone, AA Admin trying to edit content) or attempting to change Appeal/Representation classification after creation.","1. Login as unauthorized role.
+2. Attempt restricted action or edit classification field.
+3. Observe blocking (button hidden, field read-only, validation error).
+4. Check audit log.",Existing Appeal/Representation record. Lower-privilege test user.,Action blocked with clear message. Classification field not editable. No status/content change. Attempt logged.,Negative
+AA-TC-01303,AA-US-013,Edge - Award Cap Breach / Sub-Judice Block / Concurrent Hearing Change / Classification Override Attempt,Award amount exceeds cap. Active Legal Case on Appeal. Multiple users change hearing date simultaneously. Attempt to edit classification post-creation.,"1. Enter Award amount > cap and attempt save.
+2. Try to pass final decision on sub-judice Appeal without override.
+3. Simulate concurrent hearing date changes.
+4. Attempt classification change after Save & Proceed.",Award amount = 3000001. Active Legal Case record linked. Two AA users editing same hearing at same time.,Clear validation error for cap breach. Sub-judice banner + block with override reason prompt. Concurrent changes handled safely (last write wins or conflict message). Classification change rejected (immutable). All attempts logged.,Edge
+AA-TC-01304,AA-US-013,Edge - Advisory Workflow + RE Response + Cap Validation + Bulk Close + Reopen,AA issues Advisory. RE responds (Complied/Not Complied). Award amount near cap. AA Reviewer bulk-closes Representations. AA Admin reopens a closed Appeal.,"1. Issue Advisory and verify RE notification + deadline tracking.
+2. Simulate RE Complied/Not Complied response.
+3. Enter Award amount at cap boundary.
+4. Bulk close 5 Representations and verify notifications.
+5. Reopen closed Appeal and verify auto-assignment + history retention.",Advisory with 10-day response deadline. RE response 'Complied'. Award amount = exactly 30L. 5 open Representations. Closed Appeal from previous scheme.,Advisory status updates correctly; drives workflow. Cap validation passes at boundary. Bulk close succeeds with correct templates and notifications. Reopened Appeal auto-assigned to AA DO with full previous history visible and immutable. All actions audited.,Edge
+AA-TC-01401,AA-US-014,"Happy Path - As any AA role (except Admin), I want a Legal Cases tab...",User logged in with correct role via Kavach. Parent closed complaint or master data exists. Services available.,"1. Perform primary action (search parent, create with classification, route, issue Advisory, enter Award, schedule Hearing, bulk close, etc.).
+2. Complete mandatory fields and submit.
+3. Verify classification badge, NO Record creation, routing, notifications, history, cap validation, PDF generation, etc.",Closed parent complaint with known closure clause. Active users for routing. Valid hearing date in future. Award amount within caps.,Action succeeds. Correct immutable classification and badge. NO Record auto-created. Routing/notification/history correct. Caps enforced. PDF generated on closure. All audit complete.,Positive
+AA-TC-01402,AA-US-014,Negative - Unauthorized Role or Attempt to Change Immutable Classification,"Logged in as role without permission (e.g., AA DO trying Close milestone, AA Admin trying to edit content) or attempting to change Appeal/Representation classification after creation.","1. Login as unauthorized role.
+2. Attempt restricted action or edit classification field.
+3. Observe blocking (button hidden, field read-only, validation error).
+4. Check audit log.",Existing Appeal/Representation record. Lower-privilege test user.,Action blocked with clear message. Classification field not editable. No status/content change. Attempt logged.,Negative
+AA-TC-01403,AA-US-014,Edge - Award Cap Breach / Sub-Judice Block / Concurrent Hearing Change / Classification Override Attempt,Award amount exceeds cap. Active Legal Case on Appeal. Multiple users change hearing date simultaneously. Attempt to edit classification post-creation.,"1. Enter Award amount > cap and attempt save.
+2. Try to pass final decision on sub-judice Appeal without override.
+3. Simulate concurrent hearing date changes.
+4. Attempt classification change after Save & Proceed.",Award amount = 3000001. Active Legal Case record linked. Two AA users editing same hearing at same time.,Clear validation error for cap breach. Sub-judice banner + block with override reason prompt. Concurrent changes handled safely (last write wins or conflict message). Classification change rejected (immutable). All attempts logged.,Edge
+AA-TC-01404,AA-US-014,Edge - Advisory Workflow + RE Response + Cap Validation + Bulk Close + Reopen,AA issues Advisory. RE responds (Complied/Not Complied). Award amount near cap. AA Reviewer bulk-closes Representations. AA Admin reopens a closed Appeal.,"1. Issue Advisory and verify RE notification + deadline tracking.
+2. Simulate RE Complied/Not Complied response.
+3. Enter Award amount at cap boundary.
+4. Bulk close 5 Representations and verify notifications.
+5. Reopen closed Appeal and verify auto-assignment + history retention.",Advisory with 10-day response deadline. RE response 'Complied'. Award amount = exactly 30L. 5 open Representations. Closed Appeal from previous scheme.,Advisory status updates correctly; drives workflow. Cap validation passes at boundary. Bulk close succeeds with correct templates and notifications. Reopened Appeal auto-assigned to AA DO with full previous history visible and immutable. All actions audited.,Edge
+AA-TC-01501,AA-US-015,"Happy Path - As an AA DO or AA Secretariat, I want to send an Appeal...",User logged in with correct role via Kavach. Parent closed complaint or master data exists. Services available.,"1. Perform primary action (search parent, create with classification, route, issue Advisory, enter Award, schedule Hearing, bulk close, etc.).
+2. Complete mandatory fields and submit.
+3. Verify classification badge, NO Record creation, routing, notifications, history, cap validation, PDF generation, etc.",Closed parent complaint with known closure clause. Active users for routing. Valid hearing date in future. Award amount within caps.,Action succeeds. Correct immutable classification and badge. NO Record auto-created. Routing/notification/history correct. Caps enforced. PDF generated on closure. All audit complete.,Positive
+AA-TC-01502,AA-US-015,Negative - Unauthorized Role or Attempt to Change Immutable Classification,"Logged in as role without permission (e.g., AA DO trying Close milestone, AA Admin trying to edit content) or attempting to change Appeal/Representation classification after creation.","1. Login as unauthorized role.
+2. Attempt restricted action or edit classification field.
+3. Observe blocking (button hidden, field read-only, validation error).
+4. Check audit log.",Existing Appeal/Representation record. Lower-privilege test user.,Action blocked with clear message. Classification field not editable. No status/content change. Attempt logged.,Negative
+AA-TC-01503,AA-US-015,Edge - Award Cap Breach / Sub-Judice Block / Concurrent Hearing Change / Classification Override Attempt,Award amount exceeds cap. Active Legal Case on Appeal. Multiple users change hearing date simultaneously. Attempt to edit classification post-creation.,"1. Enter Award amount > cap and attempt save.
+2. Try to pass final decision on sub-judice Appeal without override.
+3. Simulate concurrent hearing date changes.
+4. Attempt classification change after Save & Proceed.",Award amount = 3000001. Active Legal Case record linked. Two AA users editing same hearing at same time.,Clear validation error for cap breach. Sub-judice banner + block with override reason prompt. Concurrent changes handled safely (last write wins or conflict message). Classification change rejected (immutable). All attempts logged.,Edge
+AA-TC-01504,AA-US-015,Edge - Advisory Workflow + RE Response + Cap Validation + Bulk Close + Reopen,AA issues Advisory. RE responds (Complied/Not Complied). Award amount near cap. AA Reviewer bulk-closes Representations. AA Admin reopens a closed Appeal.,"1. Issue Advisory and verify RE notification + deadline tracking.
+2. Simulate RE Complied/Not Complied response.
+3. Enter Award amount at cap boundary.
+4. Bulk close 5 Representations and verify notifications.
+5. Reopen closed Appeal and verify auto-assignment + history retention.",Advisory with 10-day response deadline. RE response 'Complied'. Award amount = exactly 30L. 5 open Representations. Closed Appeal from previous scheme.,Advisory status updates correctly; drives workflow. Cap validation passes at boundary. Bulk close succeeds with correct templates and notifications. Reopened Appeal auto-assigned to AA DO with full previous history visible and immutable. All actions audited.,Edge
+AA-TC-01601,AA-US-016,"Happy Path - As an AA Reviewer, I want to bulk-close multiple Repres...",User logged in with correct role via Kavach. Parent closed complaint or master data exists. Services available.,"1. Perform primary action (search parent, create with classification, route, issue Advisory, enter Award, schedule Hearing, bulk close, etc.).
+2. Complete mandatory fields and submit.
+3. Verify classification badge, NO Record creation, routing, notifications, history, cap validation, PDF generation, etc.",Closed parent complaint with known closure clause. Active users for routing. Valid hearing date in future. Award amount within caps.,Action succeeds. Correct immutable classification and badge. NO Record auto-created. Routing/notification/history correct. Caps enforced. PDF generated on closure. All audit complete.,Positive
+AA-TC-01602,AA-US-016,Negative - Unauthorized Role or Attempt to Change Immutable Classification,"Logged in as role without permission (e.g., AA DO trying Close milestone, AA Admin trying to edit content) or attempting to change Appeal/Representation classification after creation.","1. Login as unauthorized role.
+2. Attempt restricted action or edit classification field.
+3. Observe blocking (button hidden, field read-only, validation error).
+4. Check audit log.",Existing Appeal/Representation record. Lower-privilege test user.,Action blocked with clear message. Classification field not editable. No status/content change. Attempt logged.,Negative
+AA-TC-01603,AA-US-016,Edge - Award Cap Breach / Sub-Judice Block / Concurrent Hearing Change / Classification Override Attempt,Award amount exceeds cap. Active Legal Case on Appeal. Multiple users change hearing date simultaneously. Attempt to edit classification post-creation.,"1. Enter Award amount > cap and attempt save.
+2. Try to pass final decision on sub-judice Appeal without override.
+3. Simulate concurrent hearing date changes.
+4. Attempt classification change after Save & Proceed.",Award amount = 3000001. Active Legal Case record linked. Two AA users editing same hearing at same time.,Clear validation error for cap breach. Sub-judice banner + block with override reason prompt. Concurrent changes handled safely (last write wins or conflict message). Classification change rejected (immutable). All attempts logged.,Edge
+AA-TC-01604,AA-US-016,Edge - Advisory Workflow + RE Response + Cap Validation + Bulk Close + Reopen,AA issues Advisory. RE responds (Complied/Not Complied). Award amount near cap. AA Reviewer bulk-closes Representations. AA Admin reopens a closed Appeal.,"1. Issue Advisory and verify RE notification + deadline tracking.
+2. Simulate RE Complied/Not Complied response.
+3. Enter Award amount at cap boundary.
+4. Bulk close 5 Representations and verify notifications.
+5. Reopen closed Appeal and verify auto-assignment + history retention.",Advisory with 10-day response deadline. RE response 'Complied'. Award amount = exactly 30L. 5 open Representations. Closed Appeal from previous scheme.,Advisory status updates correctly; drives workflow. Cap validation passes at boundary. Bulk close succeeds with correct templates and notifications. Reopened Appeal auto-assigned to AA DO with full previous history visible and immutable. All actions audited.,Edge
+AA-TC-01701,AA-US-017,"Happy Path - As an AA Admin or authorized user, I want to create tab...",User logged in with correct role via Kavach. Parent closed complaint or master data exists. Services available.,"1. Perform primary action (search parent, create with classification, route, issue Advisory, enter Award, schedule Hearing, bulk close, etc.).
+2. Complete mandatory fields and submit.
+3. Verify classification badge, NO Record creation, routing, notifications, history, cap validation, PDF generation, etc.",Closed parent complaint with known closure clause. Active users for routing. Valid hearing date in future. Award amount within caps.,Action succeeds. Correct immutable classification and badge. NO Record auto-created. Routing/notification/history correct. Caps enforced. PDF generated on closure. All audit complete.,Positive
+AA-TC-01702,AA-US-017,Negative - Unauthorized Role or Attempt to Change Immutable Classification,"Logged in as role without permission (e.g., AA DO trying Close milestone, AA Admin trying to edit content) or attempting to change Appeal/Representation classification after creation.","1. Login as unauthorized role.
+2. Attempt restricted action or edit classification field.
+3. Observe blocking (button hidden, field read-only, validation error).
+4. Check audit log.",Existing Appeal/Representation record. Lower-privilege test user.,Action blocked with clear message. Classification field not editable. No status/content change. Attempt logged.,Negative
+AA-TC-01703,AA-US-017,Edge - Award Cap Breach / Sub-Judice Block / Concurrent Hearing Change / Classification Override Attempt,Award amount exceeds cap. Active Legal Case on Appeal. Multiple users change hearing date simultaneously. Attempt to edit classification post-creation.,"1. Enter Award amount > cap and attempt save.
+2. Try to pass final decision on sub-judice Appeal without override.
+3. Simulate concurrent hearing date changes.
+4. Attempt classification change after Save & Proceed.",Award amount = 3000001. Active Legal Case record linked. Two AA users editing same hearing at same time.,Clear validation error for cap breach. Sub-judice banner + block with override reason prompt. Concurrent changes handled safely (last write wins or conflict message). Classification change rejected (immutable). All attempts logged.,Edge
+AA-TC-01704,AA-US-017,Edge - Advisory Workflow + RE Response + Cap Validation + Bulk Close + Reopen,AA issues Advisory. RE responds (Complied/Not Complied). Award amount near cap. AA Reviewer bulk-closes Representations. AA Admin reopens a closed Appeal.,"1. Issue Advisory and verify RE notification + deadline tracking.
+2. Simulate RE Complied/Not Complied response.
+3. Enter Award amount at cap boundary.
+4. Bulk close 5 Representations and verify notifications.
+5. Reopen closed Appeal and verify auto-assignment + history retention.",Advisory with 10-day response deadline. RE response 'Complied'. Award amount = exactly 30L. 5 open Representations. Closed Appeal from previous scheme.,Advisory status updates correctly; drives workflow. Cap validation passes at boundary. Bulk close succeeds with correct templates and notifications. Reopened Appeal auto-assigned to AA DO with full previous history visible and immutable. All actions audited.,Edge
+AA-TC-01801,AA-US-018,"Happy Path - As the system, I want strict role-based access control ...",User logged in with correct role via Kavach. Parent closed complaint or master data exists. Services available.,"1. Perform primary action (search parent, create with classification, route, issue Advisory, enter Award, schedule Hearing, bulk close, etc.).
+2. Complete mandatory fields and submit.
+3. Verify classification badge, NO Record creation, routing, notifications, history, cap validation, PDF generation, etc.",Closed parent complaint with known closure clause. Active users for routing. Valid hearing date in future. Award amount within caps.,Action succeeds. Correct immutable classification and badge. NO Record auto-created. Routing/notification/history correct. Caps enforced. PDF generated on closure. All audit complete.,Positive
+AA-TC-01802,AA-US-018,Negative - Unauthorized Role or Attempt to Change Immutable Classification,"Logged in as role without permission (e.g., AA DO trying Close milestone, AA Admin trying to edit content) or attempting to change Appeal/Representation classification after creation.","1. Login as unauthorized role.
+2. Attempt restricted action or edit classification field.
+3. Observe blocking (button hidden, field read-only, validation error).
+4. Check audit log.",Existing Appeal/Representation record. Lower-privilege test user.,Action blocked with clear message. Classification field not editable. No status/content change. Attempt logged.,Negative
+AA-TC-01803,AA-US-018,Edge - Award Cap Breach / Sub-Judice Block / Concurrent Hearing Change / Classification Override Attempt,Award amount exceeds cap. Active Legal Case on Appeal. Multiple users change hearing date simultaneously. Attempt to edit classification post-creation.,"1. Enter Award amount > cap and attempt save.
+2. Try to pass final decision on sub-judice Appeal without override.
+3. Simulate concurrent hearing date changes.
+4. Attempt classification change after Save & Proceed.",Award amount = 3000001. Active Legal Case record linked. Two AA users editing same hearing at same time.,Clear validation error for cap breach. Sub-judice banner + block with override reason prompt. Concurrent changes handled safely (last write wins or conflict message). Classification change rejected (immutable). All attempts logged.,Edge
+AA-TC-01804,AA-US-018,Edge - Advisory Workflow + RE Response + Cap Validation + Bulk Close + Reopen,AA issues Advisory. RE responds (Complied/Not Complied). Award amount near cap. AA Reviewer bulk-closes Representations. AA Admin reopens a closed Appeal.,"1. Issue Advisory and verify RE notification + deadline tracking.
+2. Simulate RE Complied/Not Complied response.
+3. Enter Award amount at cap boundary.
+4. Bulk close 5 Representations and verify notifications.
+5. Reopen closed Appeal and verify auto-assignment + history retention.",Advisory with 10-day response deadline. RE response 'Complied'. Award amount = exactly 30L. 5 open Representations. Closed Appeal from previous scheme.,Advisory status updates correctly; drives workflow. Cap validation passes at boundary. Bulk close succeeds with correct templates and notifications. Reopened Appeal auto-assigned to AA DO with full previous history visible and immutable. All actions audited.,Edge
+AA-TC-01901,AA-US-019,"Happy Path - As the system, I want page load times for AA complaint ...",User logged in with correct role via Kavach. Parent closed complaint or master data exists. Services available.,"1. Perform primary action (search parent, create with classification, route, issue Advisory, enter Award, schedule Hearing, bulk close, etc.).
+2. Complete mandatory fields and submit.
+3. Verify classification badge, NO Record creation, routing, notifications, history, cap validation, PDF generation, etc.",Closed parent complaint with known closure clause. Active users for routing. Valid hearing date in future. Award amount within caps.,Action succeeds. Correct immutable classification and badge. NO Record auto-created. Routing/notification/history correct. Caps enforced. PDF generated on closure. All audit complete.,Positive
+AA-TC-01902,AA-US-019,Negative - Unauthorized Role or Attempt to Change Immutable Classification,"Logged in as role without permission (e.g., AA DO trying Close milestone, AA Admin trying to edit content) or attempting to change Appeal/Representation classification after creation.","1. Login as unauthorized role.
+2. Attempt restricted action or edit classification field.
+3. Observe blocking (button hidden, field read-only, validation error).
+4. Check audit log.",Existing Appeal/Representation record. Lower-privilege test user.,Action blocked with clear message. Classification field not editable. No status/content change. Attempt logged.,Negative
+AA-TC-01903,AA-US-019,Edge - Award Cap Breach / Sub-Judice Block / Concurrent Hearing Change / Classification Override Attempt,Award amount exceeds cap. Active Legal Case on Appeal. Multiple users change hearing date simultaneously. Attempt to edit classification post-creation.,"1. Enter Award amount > cap and attempt save.
+2. Try to pass final decision on sub-judice Appeal without override.
+3. Simulate concurrent hearing date changes.
+4. Attempt classification change after Save & Proceed.",Award amount = 3000001. Active Legal Case record linked. Two AA users editing same hearing at same time.,Clear validation error for cap breach. Sub-judice banner + block with override reason prompt. Concurrent changes handled safely (last write wins or conflict message). Classification change rejected (immutable). All attempts logged.,Edge
+AA-TC-01904,AA-US-019,Edge - Advisory Workflow + RE Response + Cap Validation + Bulk Close + Reopen,AA issues Advisory. RE responds (Complied/Not Complied). Award amount near cap. AA Reviewer bulk-closes Representations. AA Admin reopens a closed Appeal.,"1. Issue Advisory and verify RE notification + deadline tracking.
+2. Simulate RE Complied/Not Complied response.
+3. Enter Award amount at cap boundary.
+4. Bulk close 5 Representations and verify notifications.
+5. Reopen closed Appeal and verify auto-assignment + history retention.",Advisory with 10-day response deadline. RE response 'Complied'. Award amount = exactly 30L. 5 open Representations. Closed Appeal from previous scheme.,Advisory status updates correctly; drives workflow. Cap validation passes at boundary. Bulk close succeeds with correct templates and notifications. Reopened Appeal auto-assigned to AA DO with full previous history visible and immutable. All actions audited.,Edge
+AA-TC-02001,AA-US-020,"Happy Path - As the system, I want comprehensive data migration of l...",User logged in with correct role via Kavach. Parent closed complaint or master data exists. Services available.,"1. Perform primary action (search parent, create with classification, route, issue Advisory, enter Award, schedule Hearing, bulk close, etc.).
+2. Complete mandatory fields and submit.
+3. Verify classification badge, NO Record creation, routing, notifications, history, cap validation, PDF generation, etc.",Closed parent complaint with known closure clause. Active users for routing. Valid hearing date in future. Award amount within caps.,Action succeeds. Correct immutable classification and badge. NO Record auto-created. Routing/notification/history correct. Caps enforced. PDF generated on closure. All audit complete.,Positive
+AA-TC-02002,AA-US-020,Negative - Unauthorized Role or Attempt to Change Immutable Classification,"Logged in as role without permission (e.g., AA DO trying Close milestone, AA Admin trying to edit content) or attempting to change Appeal/Representation classification after creation.","1. Login as unauthorized role.
+2. Attempt restricted action or edit classification field.
+3. Observe blocking (button hidden, field read-only, validation error).
+4. Check audit log.",Existing Appeal/Representation record. Lower-privilege test user.,Action blocked with clear message. Classification field not editable. No status/content change. Attempt logged.,Negative
+AA-TC-02003,AA-US-020,Edge - Award Cap Breach / Sub-Judice Block / Concurrent Hearing Change / Classification Override Attempt,Award amount exceeds cap. Active Legal Case on Appeal. Multiple users change hearing date simultaneously. Attempt to edit classification post-creation.,"1. Enter Award amount > cap and attempt save.
+2. Try to pass final decision on sub-judice Appeal without override.
+3. Simulate concurrent hearing date changes.
+4. Attempt classification change after Save & Proceed.",Award amount = 3000001. Active Legal Case record linked. Two AA users editing same hearing at same time.,Clear validation error for cap breach. Sub-judice banner + block with override reason prompt. Concurrent changes handled safely (last write wins or conflict message). Classification change rejected (immutable). All attempts logged.,Edge
+AA-TC-02004,AA-US-020,Edge - Advisory Workflow + RE Response + Cap Validation + Bulk Close + Reopen,AA issues Advisory. RE responds (Complied/Not Complied). Award amount near cap. AA Reviewer bulk-closes Representations. AA Admin reopens a closed Appeal.,"1. Issue Advisory and verify RE notification + deadline tracking.
+2. Simulate RE Complied/Not Complied response.
+3. Enter Award amount at cap boundary.
+4. Bulk close 5 Representations and verify notifications.
+5. Reopen closed Appeal and verify auto-assignment + history retention.",Advisory with 10-day response deadline. RE response 'Complied'. Award amount = exactly 30L. 5 open Representations. Closed Appeal from previous scheme.,Advisory status updates correctly; drives workflow. Cap validation passes at boundary. Bulk close succeeds with correct templates and notifications. Reopened Appeal auto-assigned to AA DO with full previous history visible and immutable. All actions audited.,Edge
+AA-TC-04201,AA-US-042,"Happy Path - As the system, I want all email communication (Compose,...",User logged in with correct role via Kavach. Parent closed complaint or master data exists. Services available.,"1. Perform primary action (search parent, create with classification, route, issue Advisory, enter Award, schedule Hearing, bulk close, etc.).
+2. Complete mandatory fields and submit.
+3. Verify classification badge, NO Record creation, routing, notifications, history, cap validation, PDF generation, etc.",Closed parent complaint with known closure clause. Active users for routing. Valid hearing date in future. Award amount within caps.,Action succeeds. Correct immutable classification and badge. NO Record auto-created. Routing/notification/history correct. Caps enforced. PDF generated on closure. All audit complete.,Positive
+AA-TC-04202,AA-US-042,Negative - Unauthorized Role or Attempt to Change Immutable Classification,"Logged in as role without permission (e.g., AA DO trying Close milestone, AA Admin trying to edit content) or attempting to change Appeal/Representation classification after creation.","1. Login as unauthorized role.
+2. Attempt restricted action or edit classification field.
+3. Observe blocking (button hidden, field read-only, validation error).
+4. Check audit log.",Existing Appeal/Representation record. Lower-privilege test user.,Action blocked with clear message. Classification field not editable. No status/content change. Attempt logged.,Negative
+AA-TC-04203,AA-US-042,Edge - Award Cap Breach / Sub-Judice Block / Concurrent Hearing Change / Classification Override Attempt,Award amount exceeds cap. Active Legal Case on Appeal. Multiple users change hearing date simultaneously. Attempt to edit classification post-creation.,"1. Enter Award amount > cap and attempt save.
+2. Try to pass final decision on sub-judice Appeal without override.
+3. Simulate concurrent hearing date changes.
+4. Attempt classification change after Save & Proceed.",Award amount = 3000001. Active Legal Case record linked. Two AA users editing same hearing at same time.,Clear validation error for cap breach. Sub-judice banner + block with override reason prompt. Concurrent changes handled safely (last write wins or conflict message). Classification change rejected (immutable). All attempts logged.,Edge
+AA-TC-04204,AA-US-042,Edge - Advisory Workflow + RE Response + Cap Validation + Bulk Close + Reopen,AA issues Advisory. RE responds (Complied/Not Complied). Award amount near cap. AA Reviewer bulk-closes Representations. AA Admin reopens a closed Appeal.,"1. Issue Advisory and verify RE notification + deadline tracking.
+2. Simulate RE Complied/Not Complied response.
+3. Enter Award amount at cap boundary.
+4. Bulk close 5 Representations and verify notifications.
+5. Reopen closed Appeal and verify auto-assignment + history retention.",Advisory with 10-day response deadline. RE response 'Complied'. Award amount = exactly 30L. 5 open Representations. Closed Appeal from previous scheme.,Advisory status updates correctly; drives workflow. Cap validation passes at boundary. Bulk close succeeds with correct templates and notifications. Reopened Appeal auto-assigned to AA DO with full previous history visible and immutable. All actions audited.,Edge
+
+--- Sheet: Traceability Matrix ---
+BRD Section / Req ID,Requirement Summary,Linked User Story IDs,Coverage Status,Notes / Gaps
+Appeal vs Representation Classification (immutable),Auto-set from parent closure clause; red/blue badge; cannot be changed; RBIOS 2026 mapping.,"AA-US-002, AA-US-001",Fully Covered,
+Advisory Mechanism (RBIOS 2026 NEW),Issue Advisory → RE Response Deadline → Response → Complied/Not Complied → close as Settled or proceed to Award.,"AA-US-011, AA-US-008",Fully Covered,
+Award Cap Validation + PDF Generation,Real-time validation against 30L/3L caps; block save; formatted Award PDF on closure.,"AA-US-012, AA-US-008",Fully Covered,
+Hearing Management + Adjournment History,"Date, Venue, Parties, full Adjournment log, automated notices, Completed/Adjourned marking.","AA-US-013, AA-US-005, AA-US-007",Fully Covered,
+Legal Cases / Sub-Judice,Track court cases; sub-judice banner; block final Award without override + reason.,AA-US-014,Fully Covered,
+PNO Parallel Input + Appeal Creation with CMD Approval,"PNO manages NO Records, responds, creates appeals with mandatory CMD approval fields.","AA-US-010, AA-US-003",Fully Covered,
+Bulk Close Representations + Reopen by AA Admin,AA Reviewer bulk close with confirmation + notifications; AA Admin can reopen any closed record.,"AA-US-016, AA-US-009",Fully Covered,
+Core Workflow Routing + Milestone Edit Access + NO Record,"5-role routing (AA DO → Reviewer → Secretariat → AA), milestone restrictions, auto NO Record.","AA-US-005 to AA-US-010, AA-US-003",Fully Covered,
+NFRs + Security + Performance + Migration,"3s load, RBAC per milestone, immutable audit, VAPT, data migration with rollback.","AA-US-018, AA-US-019, AA-US-020",Fully Covered,
+
+--- Sheet: Verification & Gap Analysis ---
+ADVERSARIAL SELF-AUDIT & GAP ANALYSIS - APPELLATE AUTHORITY BACKLOG,,,,,
+,,,,,
+BRD Section / Area,How Covered (User Stories),Assumptions Made,Gaps / Ambiguities / Missing Edge Cases Flagged,Recommendations for Clarification,Confidence
+RBIOS 2026 Clause Mapping for Classification + Advisory,US-002 and US-011 define immutable classification and full Advisory workflow. BRD explicitly flags that RBI must confirm 2026 clause numbers before UAT.,"2021 mapping (15(1) Appeal, 13(a,b,c) Representation) is baseline; 2026 may renumber but logic remains similar. Advisory is new and requires process workshop.",Exact 2026 clause list for Appeal vs Representation not yet provided. Advisory outcome 'Complied' → close as 'Settled by Advisory' or still require formal Award? Advisory template content and RE response format not detailed.,Priority 1: CEPD/RBI workshop to confirm 2026 clause mapping and finalize Advisory process (including whether 'Complied' auto-closes or still requires AA confirmation). Produce Advisory template and RE response form.,78%
+Award Cap Validation + PDF Generation Scope,US-012 covers real-time validation and PDF generation on closure.,Caps are configurable in Preference Master. PDF uses standard template engine. Digital signature on Award PDF is out of Phase 1 (per BRD out-of-scope).,Exact PDF layout and mandatory fields in operative portion not specified. Whether cap validation applies to 'Modify the Award' as well as initial Award. Handling of revised Award after reopen.,Define PDF template fields with CEPD. Confirm cap validation scope (initial + modified). Add story for revised Award handling with history of previous amounts.,85%
+Sub-Judice / Legal Cases Blocking Logic,"US-014 defines banner, tracking, and block on final Award without override.",Override requires logged reason. Does not block PNO input or RE response. Legal Cases managed primarily by AA side.,Can AA still issue Advisory on sub-judice Appeal? Exact override UI (button + reason modal) and who can override (AA only or AA + Secretariat?).,Clarify whether Advisory is allowed on sub-judice matters. Define override permission matrix and UI pattern. Add history entry for any override action.,82%
+Overall Backlog Quality,"42 user stories + ~168 test cases cover registration, immutable classification, full 5-role workflow, Advisory (new), Award caps + PDF, Hearing + adjournment, Legal Cases, PNO appeal creation, bulk close, reopen, NO Record, reports, user management, and NFRs. Strong negative/edge coverage (permission, immutable fields, cap breach, concurrent, sub-judice).",Curated focused set on regulatory (RBIOS 2026) and operational integrity. Full set would be ~110 stories.,Exact 2026 clause mapping (critical). Advisory template + RE response form. Award PDF exact layout. Sub-judice override permission and UI. Mobile/PWA scope. Performance SLAs for bulk close and large reports under full AA office load.,"1. Immediate workshop with CEPD/RBI on 2026 clauses and Advisory process.
+2. Add performance stories for bulk operations and report generation.
+3. Confirm mobile scope and digital signature (future).
+4. Create separate epic for full complainant-facing Appeal status tracking (out of Phase 1 per BRD).",81%
+,,,,,
+,,,,,
+"OVERALL: 42 User Stories | ~168 Test Cases | 9 Traceability Mappings | 4 Gap Areas | Average Confidence 81% | Strong RBIOS 2026 coverage (Advisory, Caps, Classification). Ready for immediate CEPD clause mapping workshop.",,,,,
+

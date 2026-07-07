@@ -1,0 +1,768 @@
+--- Sheet: Cover & Instructions ---
+"RBI COMPLAINT MANAGEMENT SYSTEM 2.0
+RE MODULE (NO / PNO / Contact Person) - TRACEABLE BACKLOG",,,,,,,
+,,,,,,,
+,,,,,,,
+"Prepared for: Gaurav Marwaha | Chief Product Engineering Officer, ReBIT | For RBI CEPD & DIT Review",,,,,,,
+,,,,,,,
+Document Version: 1.0 | Generated: 2026-07-05 | Source BRD: v1.0 (July 2026) | Unified RE Portal for CEPC + RBIOS Workflows | 15-day SLA Enforcement,,,,,,,
+,,,,,,,
+,,,,,,,
+PURPOSE,,,,,,,
+"This workbook transforms the RE Module BRD into a development-ready, testable backlog.",,,,,,,
+It covers the unified RE portal serving both CEPC (Contact Person) and RBIOS (NO/PNO) workflows from a single login.,,,,,,,
+,,,,,,,
+SHEETS,,,,,,,
+"1. User Stories     : 40 granular Connextra-format stories covering SLA visibility, structured responses, reassignment workflows (PNO bulk + NO request), RE Activity Tracker, Draft Save, in-system query channel, NO Record management, self-onboarding.",,,,,,,
+"2. Test Cases       : ~160 test cases (4 per story) with exhaustive coverage of happy path, negative permission, edge/validation, SLA breach, concurrent reassignment, no-email closure, etc.",,,,,,,
+"3. Traceability     : Maps BRD sections, Gaps (esp. Gap 04 from CEPC), FRs, NFRs, Business Rules to User Story IDs.",,,,,,,
+"4. Verification     : Adversarial gap analysis with assumptions, flagged ambiguities (e.g., exact delegated clauses, 13-1 equivalent, MOM digital), and confidence scores.",,,,,,,
+,,,,,,,
+KEY INTELLIGENCE APPLIED,,,,,,,
+• Unified portal: Same RE user sees records from both CEPC and RBIOS flows with appropriate status codes and compliance fields.,,,,,,,
+• 15-day SLA is central: Live countdown visible on list + edit screen for RE users (addresses Gap 03).,,,,,,,
+• Structured forms: Status-aware mandatory fields replace free-text Nodal Officer Comments (addresses Gap 02).,,,,,,,
+• PNO power: Bulk + single reassignment with workload indicator + mandatory reason + dual notification (addresses Gap 05).,,,,,,,
+• NO empowerment: Structured reassignment request workflow to PNO (no direct authority).,,,,,,,
+• Real-time visibility: 7-level RE Activity Status Tracker (Not Opened → Overdue) surfaced to CEPC/RBI users (directly solves CEPC BRD Gap 04).,,,,,,,
+"• In-system query: Structured channel (document request, clarification, deadline extension, meeting) logged in History.",,,,,,,
+• Self-onboarding: RE interface for Contact Person/NO/PNO onboarding (addresses Gap 01).,,,,,,,
+,,,,,,,
+RECOMMENDED NEXT STEPS,,,,,,,
+1. Review Verification sheet — clarify delegated closure clauses for Reviewer/In-Charge and exact RE Activity event definitions.,,,,,,,
+"2. Prioritize Phase 1: 15-day SLA engine + countdown UI, structured response forms, PNO reassignment (single + bulk), RE Activity Tracker, Draft Save, Kavach SSO.",,,,,,,
+3. Workshop with CEPD + RE representatives for template content (structured forms per status) and notification thresholds.,,,,,,,
+4. Expand to full ~95 stories in grooming; this set focuses on high-risk compliance and usability paths.,,,,,,,
+,,,,,,,
+ASSUMPTIONS,,,,,,,
+• Kavach + Ekamev for SSO/RBAC (consistent with CEPC/RBIO).,,,,,,,
+• Notification utility and SMS gateway available.,,,,,,,
+• Entity → NO/PNO/Contact Person mapping master data maintained by Admin.,,,,,,,
+• MOM remains offline (as per CEPC/RBIO scope).,,,,,,,
+• Formal Award/Compensation tracking is TO-BE suggestion (basic date fields enforced in structured forms for Phase 1).,,,,,,,
+
+--- Sheet: User Stories ---
+US ID,Role,User Story (Connextra),BRD Reference,Priority,Story Points,Acceptance Criteria,Tags
+RE-US-001,Contact Person / NO / PNO,"As an RE user (Contact Person, NO or PNO), I want to login via Kavach SSO from a single portal and see a unified dashboard showing all my records from both CEPC and RBIOS workflows, with KPI cards for pending, nearing 15-day SLA (amber), overdue (red), and submitted this week, so that I have complete visibility without switching systems.","FR-RE-001, FR-RE-003, Value Proposition, 5.4.1/5.4.2 Login & Dashboard",High,5,"• SSO via Ekamev + Kavach RBAC
+• Unified 'Assigned to Me', 'Sent to RBI', 'All Complaints' views across both workflows
+• Live SLA countdown column in list view
+• Configurable thresholds (default 5/10/15 days)
+• Role-specific KPIs (PNO sees entity-wide)","SSO, Dashboard, Unified Portal, SLA"
+RE-US-002,Contact Person / NO / PNO,"As an RE user, I want a prominent live 15-day SLA countdown (days + hours) displayed on both the record list view and the edit/response screen, with color coding (amber within 5 days, red past deadline), so that I have constant in-context awareness of urgency and never miss the response window.","Gap #03, FR-RE-004, FR-RE-015, 5.4.1/5.4.2 SLA countdown",Critical,5,"• Countdown visible immediately on list and edit
+• Color coding matches dashboard KPIs
+• SLA clock starts from assignment timestamp
+• Does not pause on weekends/holidays unless configured
+• Overdue records flagged in red with escalation notification","SLA, Countdown, Urgency, Gap 03"
+RE-US-003,Contact Person / NO / PNO,"As an RE user, I want Advanced Search (8 fields: Record Number, Complaint Number, Complainant Name/Mobile/Email, Subject, Transaction Ref, Account Number) with AND logic default + optional OR mode for power users, plus export to Excel/PDF, so that I can efficiently locate and extract records for reporting or follow-up.","FR-RE-005, FR-RE-006, FR-RE-008, 5.4.1 Record Search",High,3,"• Partial match on name/entity fields
+• AND default; OR toggle available
+• Export includes current filter set
+• Max 1-year date range for performance
+• Results respect entity/territory RBAC","Search, Export, UX"
+RE-US-004,Contact Person / NO / PNO,"As an RE user, I want real-time bell + email/SMS notifications for new record assignment, reassignment, response submission confirmation, pending at 5/10 days, overdue at 15 days, and FRC flag, so that I stay informed without constantly refreshing the portal.","FR-RE-017, 5.7 Notifications, Gap #03 (visibility)",High,3,"• Notification utility templates used
+• Configurable thresholds
+• Dispatch within 5 min of trigger
+• Bell icon with unread count and deep links
+• Escalation to PNO/CEPC In-Charge on 15-day breach","Notifications, SLA, Real-time"
+RE-US-005,RE Admin / PNO,"As an RE Admin or PNO, I want a self-onboarding interface for Contact Persons, NOs and PNOs (with entity mapping, role assignment, and Kavach credentialing), so that new RE users can be added quickly without dependency on RBIOS/CEPC Admins for every onboarding.","Gap #01, FR-RE-007, Value Proposition (RE will have interface to onboard themselves)",High,5,"• Self-service master maintenance for entity users
+• Role-based access matrix enforced
+• Automatic Kavach user provisioning where possible
+• Audit log of onboarding actions
+• PNO can manage NOs within entity; Admin oversees region","Onboarding, Self-Service, Gap 01"
+RE-US-006,Contact Person / NO / PNO,"As an RE user, I want the Edit/Response screen to present a structured, status-aware form that dynamically shows mandatory fields based on the selected status code (e.g., implementation date + supporting document when 'Award Implemented' is chosen), replacing the current free-text-only Nodal Officer Comments field, so that responses are complete, consistent, and compliant.","Gap #02, FR-RE-014, FR-RE-018, 5.4.1/5.4.2 Edit and Respond",Critical,8,"• Form adapts immediately on status selection
+• Mandatory fields enforced before save (red asterisks + validation)
+• RBIOS-specific date fields (Implementation, Acceptance, Advisory Complied) mandatory for relevant statuses
+• Supporting document upload prompted where required
+• Free-text summary still available but structured fields take precedence","Structured Form, Compliance, Gap 02"
+RE-US-007,Contact Person / NO / PNO,"As an RE user, I want a 'Save as Draft' button on the response edit screen that allows me to partially complete a response and return later without losing data, with all saved drafts visible in a 'My Drafts' view, so that I can handle interruptions or gather information without data loss.","Gap #04, FR-RE-016, 5.4.1/5.4.2 Draft Save",High,3,"• Draft Save available at any point before final submit
+• Drafts listed in personal 'My Drafts' queue with last saved timestamp
+• On return, form restores exactly as left
+• Drafts do not trigger notifications or status changes
+• Auto-save option configurable (every 2 minutes)","Draft Save, UX, Gap 04"
+RE-US-008,Contact Person / NO / PNO,"As an RE user, I want in-browser preview of all attached documents (without download) plus bulk download option, with automatic virus scanning on every upload, so that I can quickly review supporting files safely and efficiently.","FR-RE-012, FR-RE-013, 5.5 RE Record Detail Tabs - Attachments",High,3,"• Preview available for all permitted formats (pdf, jpg, png, docx, xlsx, etc.)
+• Bulk download as zip
+• Virus scan blocks malicious files with clear message
+• Max 5 MB per file; 12 permitted extensions enforced
+• Upload history shows who uploaded and when","Attachments, Preview, Security"
+RE-US-009,Contact Person / NO / PNO,"As an RE user, I want a Delete option on erroneously uploaded attachments (before final submission) with audit logging of who deleted what and when, so that mistakes can be corrected without polluting the record history.","FR-RE-032, 5.4.1/5.4.3 File Management",Medium,2,"• Delete available only on own uploads before final response submit
+• Confirmation prompt with reason optional
+• Deletion logged in History with actor and timestamp
+• File remains in audit trail but marked deleted","File Management, UX"
+RE-US-010,PNO,"As a PNO, I want to reassign single or multiple records (bulk) to other NOs/Contact Persons within my entity, with a mandatory reason dropdown (Workload Balancing, User on Leave, Subject Matter Expertise, Other), workload indicator (current open count) for each candidate user, and automatic notifications to both previous and new owner with the reason, so that I can balance workload intelligently and maintain full accountability.","Gap #05, FR-RE-022, FR-RE-023, 5.4.3 PNO Reassignment (Single + Bulk)",Critical,8,"• Workload indicator shown in reassign popup for every candidate
+• Mandatory reason from dropdown + optional free text
+• Reason logged immutably in History
+• Notifications sent to both old and new owner with reason
+• Bulk action shows count of records successfully reassigned
+• Only active users in same entity/territory shown","PNO Reassignment, Workload, Accountability, Gap 05"
+RE-US-011,NO / Contact Person,"As an NO or Contact Person, I want to raise a structured reassignment request (with mandatory reason) that is routed to my PNO for one-click approval or rejection with comments, so that I have an escalation path for workload or expertise issues without bypassing PNO authority.","FR-RE-021, 5.4.2 NO Reassignment Request Workflow",High,5,"• Request form with reason dropdown + free text
+• Routed to PNO's 'Pending Reassignment Requests' queue
+• PNO can approve (record moves) or reject (with reason) in one click
+• Requester notified of outcome with PNO comments
+• Full audit trail of request lifecycle","NO Request, Escalation, PNO Approval"
+RE-US-012,Contact Person,"As a Contact Person, I want to reassign a record to another Contact Person within my entity with mandatory reason and dual-party notification, so that I can handle absences or expertise mismatches at my level without always escalating to PNO.","FR-RE-020, 5.4.1 Record Reassignment (Contact Person)",High,3,"• Only same-entity Contact Persons shown
+• Mandatory reason + optional note
+• Both previous and new owner notified with reason
+• Logged in History
+• PNO has visibility of all reassignments in entity",Contact Person Reassignment
+RE-US-013,PNO,"As a PNO, I want pending reassignment requests from my NOs/Contact Persons to appear in a dedicated section of my dashboard for one-click approve/reject, so that I can manage team workload efficiently without hunting through lists.","FR-RE-024, 5.4.3 PNO Dashboard",High,2,"• Dedicated 'Pending Reassignment Requests' widget
+• One-click approve/reject with optional comment
+• Request details (record #, current owner, reason) visible
+• Approved requests trigger immediate reassignment + notifications","PNO Dashboard, Reassignment Requests"
+RE-US-014,PNO / RE Admin,"As a PNO or RE Admin, I want to see entity-wide or region-wide KPIs (total pending, nearing SLA by NO, overdue by NO, capacity issues) so that I can proactively balance workload and identify training or staffing needs.","FR-RE-003 (PNO entity-wide), 5.4.3 PNO Dashboard",Medium,3,"• PNO sees all NOs in entity; Admin sees region
+• Breakdown by NO of pending, amber, red
+• Quick links to drill into specific NO queues
+• Trend indicators (this week vs last week)","Dashboard, Workload Visibility, PNO"
+RE-US-015,System (for CEPC/RBI users),"As the system, I want to automatically capture and surface a 7-level RE Activity Status Tracker (Not Opened, Opened, Under Review, Response Being Prepared, Documents Uploaded, Response Submitted, Overdue) in real time on the CEPC/RBI complaint detail page, so that CEPC DOs and Reviewers know exactly whether the RE has started working on the record without needing phone or email follow-up.","Gap #04 (from CEPC BRD), FR-RE-026, FR-RE-027, Value Proposition (real-time visibility)",Critical,8,"• Events emitted automatically from RE-side actions (open record, save draft, upload, submit)
+• Status reflected on CEPC/RBI side within 60 seconds
+• Color-coded indicator on complaint detail
+• Nudge alerts configurable when stuck in early statuses
+• Read-only on CEPC/RBI side; RE cannot manually set","RE Activity Tracker, Real-time Visibility, Gap 04"
+RE-US-016,Contact Person / NO / PNO,"As an RE user, I want my actions (opening a record, saving a draft, uploading documents, submitting response) to automatically update the RE Activity Status visible to the assigning CEPC/RBI team, so that they have transparency into my progress without me having to send separate updates.","FR-RE-027, 5.7 Notifications / Nudge System",High,3,"• Open record → 'Opened'
+• Save Draft → 'Under Review' or 'Response Being Prepared'
+• Upload document → 'Documents Uploaded'
+• Final submit with valid status → 'Response Submitted'
+• No manual override possible by RE user","Activity Tracking, Transparency"
+RE-US-017,CEPC DO / Reviewer / RBIOS user,"As a CEPC or RBIOS user, I want to see the current RE Activity Status (with timestamp of last change) directly on the complaint detail page, plus receive automated nudges when a record is stuck in early statuses beyond configurable thresholds, so that I can follow up proactively only when truly needed.","Gap #04, FR-RE-026, FR-RE-027",High,3,"• Status badge with last updated time
+• Nudge rules configurable (e.g., >3 days in 'Opened' or 'Under Review')
+• Nudges via bell + email to assigned CEPC/RBI user
+• History of status changes visible
+• Does not replace formal SLA breach escalation","Visibility, Nudge, Proactive Follow-up"
+RE-US-018,CEPC DO / Reviewer / RBIOS user + RE user,"As a CEPC/RBIOS user or RE user, I want an in-system structured query channel (document request, clarification needed, deadline extension request, meeting request) posted on the record, visible to the other party as a notification, with all exchanges logged in the History tab, so that clarifications happen inside CMS with full audit trail instead of phone/email outside the system.","Gap #07, FR-RE-028, 5.4 Solution Components (In-System Query Channel)",High,5,"• Query types from predefined list + free text
+• Posted query appears as notification to recipient
+• Threaded discussion visible in History
+• All exchanges immutable and timestamped
+• Does not pause SLA clock unless extension explicitly approved","Query Channel, Audit Trail, Gap 07"
+RE-US-019,PNO / NO / Contact Person,"As a PNO, NO or Contact Person, I want to manage the NO Record associated with each complaint (Summary with key info + classification, threaded Discussion, Attachments with DMS link option, Notes), so that all entity-side correspondence and documents are organized and visible to both RE and AA/RBIOS teams.","FR-RE-003 (part), 5.5 RE Record Detail Tabs, 5.7 Regulated Entity Record",High,5,"• Auto-created on assignment with pre-populated data from parent complaint
+• Discussion thread for back-and-forth with AA/RBIOS
+• Attachments support direct upload + link from DMS
+• Internal Notes visible only to RE side
+• PNO has full management rights; NO/Contact Person has appropriate subset","NO Record, Entity Side, Discussion"
+RE-US-020,PNO,"As a PNO, I want to see all NO Records and Appellate Communications assigned to my entity in dedicated views, with ability to respond, attach documents, and manage reassignments, so that I maintain complete oversight of entity compliance obligations.","5.4.3 PNO role, 5.7 Regulated Entity Record",High,3,"• 'Assigned to Me' and 'Entity Overview' views
+• Can respond on behalf of any NO in entity
+• Full visibility of all reassignments and status changes
+• Can escalate or reassign internally","PNO Oversight, NO Record"
+RE-US-021,System,"As the system, I want to automatically create an NO Record and assign it to the correct PNO/NO/Contact Person based on Entity Name mapping when a new complaint is referred from CEPC or RBIOS, and maintain a counter of status changes for interaction history tracking, so that every referral starts with a complete, traceable entity-side record.","5.2.1 Record Assignment and Auto-Creation, 5.7",High,3,"• Mapping from Entity master
+• If no mapping: fallback to Regional Admin / PNO
+• Counter increments on every status change
+• FRC flag propagated and visible
+• PNO can edit/reassign any NO Record in entity","Auto-Creation, NO Record, Mapping"
+RE-US-022,NO / PNO (RBIOS workflow),"As an NO or PNO in the RBIOS workflow, I want structured mandatory date fields (Date of Implementation of Award, Date of Acceptance of Award, Date by which Advisory to be Complied, Advisory Complied On) to appear and be enforced when I select relevant status codes (Award Implemented, Advisory Complied, etc.), so that basic compliance tracking data is captured even while full Award tracking remains a future enhancement.","FR-RE-018, 5.4.2 Edit and Respond (RBIOS-specific), Business Rule (award date fields)",High,3,"• Fields appear dynamically based on status
+• Cannot save without completing mandatory dates + at least one supporting document where required
+• Validation against RBIOS 2026 caps if amount entered (future formal tracking)
+• Dates flow back to RBIOS complaint record for visibility","Award Compliance, Structured Dates, RBIOS"
+RE-US-023,Contact Person / NO / PNO,"As an RE user, I want a clear 'FRC' (First Resort Complaint) flag visible on records that were not first registered with the entity, so that I know immediately whether this is a fresh complaint or one that bypassed the entity's internal redressal process.","5.7 Regulated Entity Record, Business Rule (FRC flag)",Medium,2,"• FRC flag prominently displayed on record
+• Different handling or SLA may apply (configurable)
+• Visible in list views and detail
+• Propagated from upstream CEPC/RBIOS creation","FRC Flag, Context"
+RE-US-024,PNO / NO (RBIOS),"As a PNO or NO, I want to file an appeal against an Award within 30 days (with CMD/Executive Director approval captured for PNO-created appeals), including approval date and remarks, so that the entity can exercise its appeal rights under RBIOS 2026 in a structured, auditable way.","FR-RE-031, 5.4.3 Creating New Appeal (PNO), Business Rule (PNO appeal with approval)",High,5,"• 30-day window enforced from Award date
+• PNO-created appeals require CMD/ED approval fields (Yes/No, Date, Remarks, document upload)
+• Auto-assigned to AA DO after creation
+• Full history of appeal creation and approval captured","Appeal Filing, PNO, RBIOS 2026"
+RE-US-025,PNO / NO / Contact Person,"As an RE user, I want to see Legal Case details (if any) linked to the complaint on the Summary tab, with sub-judice indicators, so that I am aware when a matter is already before a court or tribunal and can provide appropriate input.","5.5 RE Record Detail Tabs, 6.5.7 Legal Cases (analogous)",Medium,2,"• Legal Case summary visible (Case Number, Forum, Status, Next Hearing)
+• Sub-judice banner if active legal case exists
+• Read-only for RE users; managed by AA/RBIOS side
+• Does not block RE response but provides context","Legal Cases, Sub-Judice, Context"
+RE-US-026,System / Security Admin,"As the system, I want strict entity + territory-based RBAC so that no RE user can ever see or access records belonging to another entity, with all access enforced at the database query level, so that data privacy and regulatory segregation are guaranteed.","NFR-RE-004, 7.1 Security Requirements, Constraints (cross-entity prohibited)",Critical,5,"• Every query filters by entity + territory of logged-in user
+• Attempted cross-entity access blocked and logged
+• PII minimization: RE users see only necessary complainant fields
+• Session timeout 15 min (configurable) with re-auth for sensitive actions","RBAC, Segregation, Privacy, Security"
+RE-US-027,System / Platform Admin,"As the system, I want page load times for RE record list and detail to stay under 3 seconds at 95th percentile under 500 concurrent users, with horizontal auto-scaling, so that RE users experience responsive performance even during peak complaint periods.","NFR-RE-007, PSR (adapted), NFR-RE-017 (1500 concurrent target)",High,8,"• Validated in load testing before go-live
+• Monitoring dashboard for response time and error rate
+• Auto-scaling triggered at defined thresholds
+• No degradation when daily volume doubles to 10,000 emails/records","Performance, Scalability, NFR"
+RE-US-028,System / Security Admin,"As the system, I want AES-256 encryption at rest, TLS 1.3+ in transit, immutable tamper-evident audit logs for every RE action (status change, reassignment, upload, submit, query), 15-min session timeout, and successful VAPT before go-live, so that RE-side data and actions meet RBI cybersecurity and DPDP requirements.","NFR-RE-005, NFR-RE-003, 7.1 Security Requirements",Critical,13,"• Encryption verified in infrastructure review
+• Every action logged with user, IP, timestamp, before/after values where applicable
+• Tampering attempt detected and alerted
+• VAPT sign-off mandatory pre-production
+• 7-year retention for audit logs per RBI norms","Security, Encryption, Audit, DPDP, VAPT"
+RE-US-029,System,"As the system, I want automated 15-day SLA enforcement with alerts at 5 and 10 days (configurable) to the RE user and escalation to CEPC In-Charge / RBIOS owner on breach, plus real-time RE Activity Status updates, so that both RE accountability and RBIOS/CEPC visibility are maintained without manual chasing.","FR-RE-004, FR-RE-017, Business Rule (15-day SLA enforcement)",Critical,5,"• SLA clock starts on assignment
+• Alerts via bell + email/SMS at configured thresholds
+• Breach triggers escalation path
+• RE Activity Status changes do not pause SLA unless explicit extension granted via query channel","SLA Enforcement, Escalation, Accountability"
+RE-US-030,System / Platform Admin,"As the system, I want comprehensive data migration of existing NO/PNO records, user mappings, and interaction history from the legacy CMS, with rollback plan and signed-off strategy by DIT/CEPD, so that cutover to the new unified RE portal is safe and does not lose compliance history.","NFR-RE (Data Migration), 3.5 Risks (Migration)",High,8,"• Strategy document produced and approved before development
+• Includes legacy NO Record data, status history, attachments
+• Rollback plan tested in staging
+• Post-migration reconciliation report generated","Data Migration, Cutover, Risk"
+RE-US-031,Contact Person / NO / PNO,"As an RE user, I want to view entity-level complaint reports (pending, closed, SLA compliance, response quality metrics) with export capability, so that I can monitor my team's performance and identify improvement areas.","FR-RE-030, 8. Reports",Medium,3,"• Role-appropriate report access
+• Filters by date, status, category
+• Export to Excel/PDF
+• PNO sees entity-wide; individual NO sees own queue metrics","Reports, Performance, Entity"
+RE-US-040,System,"As the system, I want all file uploads to be virus-scanned before acceptance, unsupported extensions rejected with clear validation message, and a configurable file retention policy aligned with 7-year RBI data retention, so that document handling is secure and compliant.","FR-RE-012, NFRs (security + retention)",High,3,"• Virus scan on every upload; malicious files blocked with message
+• Clear error for unsupported extensions (instead of silent ignore)
+• Retention policy enforced (soft delete after 7 years or per policy)
+• Bulk download respects same security rules","File Security, Retention, Compliance"
+
+--- Sheet: Test Cases ---
+TC ID,Parent US ID,Test Title,Pre-conditions,Test Steps,Test Data,Expected Result,Test Type
+RE-TC-00101,RE-US-001,"Happy Path - As an RE user (Contact Person, NO or PNO), I want to lo...","User logged in with correct role and entity via Kavach. Relevant record or master data exists. Services (notification, virus scan, SLA engine) available.","1. Navigate to appropriate view or edit screen.
+2. Perform primary action (select status, fill structured fields, reassign, save draft, raise query, etc.).
+3. Submit / Save & Proceed.
+4. Verify status change, notifications, history entry, SLA timer, activity tracker update, and any downstream effects.",Valid record in correct starting status. Active users available for reassignment. Test complainant/RE with email + mobile. Supporting documents ready for upload.,Action succeeds. Correct next status or draft saved. Full immutable history created. Notifications triggered to relevant parties. SLA countdown and RE Activity Status updated in real time. No validation errors.,Positive
+RE-TC-00102,RE-US-001,Negative - Unauthorized Role or Cross-Entity Access Attempt,"Logged in as role or entity that should not have permission (e.g., NO trying PNO bulk reassignment, user from Entity A trying to access Entity B record).","1. Login as unauthorized user/entity.
+2. Attempt restricted action or navigate to cross-entity record.
+3. Observe blocking behavior (button hidden, validation error, or access denied).
+4. Check audit log for attempt.",Record belonging to different entity. Lower-privilege test user in same or different territory.,Action completely blocked. Clear message ('Insufficient permission' or 'Record not accessible to your entity'). No data leakage. Attempt logged with user ID and IP.,Negative
+RE-TC-00103,RE-US-001,Edge - Missing Mandatory Structured Field / Invalid Date / Cap Breach / Concurrent Reassignment,"Record in state where structured form or reassignment is possible. One mandatory field left blank, invalid date entered, award amount exceeds cap, or multiple users attempt reassignment simultaneously.","1. Open edit or reassign popup.
+2. Leave mandatory field blank or enter invalid value (past date, amount > cap, etc.).
+3. Attempt submit.
+4. Observe inline validation and final error.
+5. Correct and re-submit to confirm recovery. For concurrent: simulate two PNOs reassigning same record at same time.",Award Implemented status with amount = 3000001. Past implementation date. Two PNOs attempting bulk reassignment of overlapping records simultaneously.,"Clear red highlighting + specific error (e.g., 'Implementation Date cannot be in past', 'Amount exceeds ₹30 Lakh consequential loss cap'). Submit blocked. Concurrent reassignments handled safely (one succeeds, other gets clear conflict message). After correction, succeeds.",Edge
+RE-TC-00104,RE-US-001,Edge - SLA Breach + Weekend/Holiday + Config Change Mid-Clock,Record assigned just before configurable weekend/holiday period. Thresholds changed mid-SLA by Admin. Record reaches 15-day breach.,"1. Assign record near end of business day before holiday.
+2. Change SLA threshold configuration.
+3. Advance system date past 15 days without response.
+4. Verify alerts, escalation, and color coding behave correctly.",Record assigned Friday 4pm. Config changed from 15 to 10 days mid-cycle. System date advanced 16 days.,SLA clock respects configured calendar (or explicit 'do not pause' rule). Alerts fire at correct new thresholds. Breach triggers proper escalation path. Color coding accurate. History shows config change event.,Edge
+RE-TC-00201,RE-US-002,"Happy Path - As an RE user, I want a prominent live 15-day SLA count...","User logged in with correct role and entity via Kavach. Relevant record or master data exists. Services (notification, virus scan, SLA engine) available.","1. Navigate to appropriate view or edit screen.
+2. Perform primary action (select status, fill structured fields, reassign, save draft, raise query, etc.).
+3. Submit / Save & Proceed.
+4. Verify status change, notifications, history entry, SLA timer, activity tracker update, and any downstream effects.",Valid record in correct starting status. Active users available for reassignment. Test complainant/RE with email + mobile. Supporting documents ready for upload.,Action succeeds. Correct next status or draft saved. Full immutable history created. Notifications triggered to relevant parties. SLA countdown and RE Activity Status updated in real time. No validation errors.,Positive
+RE-TC-00202,RE-US-002,Negative - Unauthorized Role or Cross-Entity Access Attempt,"Logged in as role or entity that should not have permission (e.g., NO trying PNO bulk reassignment, user from Entity A trying to access Entity B record).","1. Login as unauthorized user/entity.
+2. Attempt restricted action or navigate to cross-entity record.
+3. Observe blocking behavior (button hidden, validation error, or access denied).
+4. Check audit log for attempt.",Record belonging to different entity. Lower-privilege test user in same or different territory.,Action completely blocked. Clear message ('Insufficient permission' or 'Record not accessible to your entity'). No data leakage. Attempt logged with user ID and IP.,Negative
+RE-TC-00203,RE-US-002,Edge - Missing Mandatory Structured Field / Invalid Date / Cap Breach / Concurrent Reassignment,"Record in state where structured form or reassignment is possible. One mandatory field left blank, invalid date entered, award amount exceeds cap, or multiple users attempt reassignment simultaneously.","1. Open edit or reassign popup.
+2. Leave mandatory field blank or enter invalid value (past date, amount > cap, etc.).
+3. Attempt submit.
+4. Observe inline validation and final error.
+5. Correct and re-submit to confirm recovery. For concurrent: simulate two PNOs reassigning same record at same time.",Award Implemented status with amount = 3000001. Past implementation date. Two PNOs attempting bulk reassignment of overlapping records simultaneously.,"Clear red highlighting + specific error (e.g., 'Implementation Date cannot be in past', 'Amount exceeds ₹30 Lakh consequential loss cap'). Submit blocked. Concurrent reassignments handled safely (one succeeds, other gets clear conflict message). After correction, succeeds.",Edge
+RE-TC-00204,RE-US-002,Edge - SLA Breach + Weekend/Holiday + Config Change Mid-Clock,Record assigned just before configurable weekend/holiday period. Thresholds changed mid-SLA by Admin. Record reaches 15-day breach.,"1. Assign record near end of business day before holiday.
+2. Change SLA threshold configuration.
+3. Advance system date past 15 days without response.
+4. Verify alerts, escalation, and color coding behave correctly.",Record assigned Friday 4pm. Config changed from 15 to 10 days mid-cycle. System date advanced 16 days.,SLA clock respects configured calendar (or explicit 'do not pause' rule). Alerts fire at correct new thresholds. Breach triggers proper escalation path. Color coding accurate. History shows config change event.,Edge
+RE-TC-00301,RE-US-003,"Happy Path - As an RE user, I want Advanced Search (8 fields: Record...","User logged in with correct role and entity via Kavach. Relevant record or master data exists. Services (notification, virus scan, SLA engine) available.","1. Navigate to appropriate view or edit screen.
+2. Perform primary action (select status, fill structured fields, reassign, save draft, raise query, etc.).
+3. Submit / Save & Proceed.
+4. Verify status change, notifications, history entry, SLA timer, activity tracker update, and any downstream effects.",Valid record in correct starting status. Active users available for reassignment. Test complainant/RE with email + mobile. Supporting documents ready for upload.,Action succeeds. Correct next status or draft saved. Full immutable history created. Notifications triggered to relevant parties. SLA countdown and RE Activity Status updated in real time. No validation errors.,Positive
+RE-TC-00302,RE-US-003,Negative - Unauthorized Role or Cross-Entity Access Attempt,"Logged in as role or entity that should not have permission (e.g., NO trying PNO bulk reassignment, user from Entity A trying to access Entity B record).","1. Login as unauthorized user/entity.
+2. Attempt restricted action or navigate to cross-entity record.
+3. Observe blocking behavior (button hidden, validation error, or access denied).
+4. Check audit log for attempt.",Record belonging to different entity. Lower-privilege test user in same or different territory.,Action completely blocked. Clear message ('Insufficient permission' or 'Record not accessible to your entity'). No data leakage. Attempt logged with user ID and IP.,Negative
+RE-TC-00303,RE-US-003,Edge - Missing Mandatory Structured Field / Invalid Date / Cap Breach / Concurrent Reassignment,"Record in state where structured form or reassignment is possible. One mandatory field left blank, invalid date entered, award amount exceeds cap, or multiple users attempt reassignment simultaneously.","1. Open edit or reassign popup.
+2. Leave mandatory field blank or enter invalid value (past date, amount > cap, etc.).
+3. Attempt submit.
+4. Observe inline validation and final error.
+5. Correct and re-submit to confirm recovery. For concurrent: simulate two PNOs reassigning same record at same time.",Award Implemented status with amount = 3000001. Past implementation date. Two PNOs attempting bulk reassignment of overlapping records simultaneously.,"Clear red highlighting + specific error (e.g., 'Implementation Date cannot be in past', 'Amount exceeds ₹30 Lakh consequential loss cap'). Submit blocked. Concurrent reassignments handled safely (one succeeds, other gets clear conflict message). After correction, succeeds.",Edge
+RE-TC-00304,RE-US-003,Edge - Large Attachment / Concurrent Users / Draft Recovery / Query Thread,System under load. Large file near 5MB limit. User has multiple drafts. Complex threaded query conversation exists.,"1. Upload 4.9MB valid file + attempt 5.1MB invalid.
+2. Simulate 400 concurrent RE users performing actions.
+3. Close browser mid-draft, reopen, recover draft.
+4. Post multiple queries and replies; verify thread integrity and notifications.",4.9MB PDF + 5.1MB file. 400 concurrent test users. Draft with 2 pages of text. 5-query threaded conversation.,Valid file accepted; invalid rejected with clear message. All concurrent actions succeed without data loss or corruption. Draft recovers exactly. Thread displays chronologically with correct actors and timestamps. Notifications accurate.,Edge
+RE-TC-00401,RE-US-004,"Happy Path - As an RE user, I want real-time bell + email/SMS notifi...","User logged in with correct role and entity via Kavach. Relevant record or master data exists. Services (notification, virus scan, SLA engine) available.","1. Navigate to appropriate view or edit screen.
+2. Perform primary action (select status, fill structured fields, reassign, save draft, raise query, etc.).
+3. Submit / Save & Proceed.
+4. Verify status change, notifications, history entry, SLA timer, activity tracker update, and any downstream effects.",Valid record in correct starting status. Active users available for reassignment. Test complainant/RE with email + mobile. Supporting documents ready for upload.,Action succeeds. Correct next status or draft saved. Full immutable history created. Notifications triggered to relevant parties. SLA countdown and RE Activity Status updated in real time. No validation errors.,Positive
+RE-TC-00402,RE-US-004,Negative - Unauthorized Role or Cross-Entity Access Attempt,"Logged in as role or entity that should not have permission (e.g., NO trying PNO bulk reassignment, user from Entity A trying to access Entity B record).","1. Login as unauthorized user/entity.
+2. Attempt restricted action or navigate to cross-entity record.
+3. Observe blocking behavior (button hidden, validation error, or access denied).
+4. Check audit log for attempt.",Record belonging to different entity. Lower-privilege test user in same or different territory.,Action completely blocked. Clear message ('Insufficient permission' or 'Record not accessible to your entity'). No data leakage. Attempt logged with user ID and IP.,Negative
+RE-TC-00403,RE-US-004,Edge - Missing Mandatory Structured Field / Invalid Date / Cap Breach / Concurrent Reassignment,"Record in state where structured form or reassignment is possible. One mandatory field left blank, invalid date entered, award amount exceeds cap, or multiple users attempt reassignment simultaneously.","1. Open edit or reassign popup.
+2. Leave mandatory field blank or enter invalid value (past date, amount > cap, etc.).
+3. Attempt submit.
+4. Observe inline validation and final error.
+5. Correct and re-submit to confirm recovery. For concurrent: simulate two PNOs reassigning same record at same time.",Award Implemented status with amount = 3000001. Past implementation date. Two PNOs attempting bulk reassignment of overlapping records simultaneously.,"Clear red highlighting + specific error (e.g., 'Implementation Date cannot be in past', 'Amount exceeds ₹30 Lakh consequential loss cap'). Submit blocked. Concurrent reassignments handled safely (one succeeds, other gets clear conflict message). After correction, succeeds.",Edge
+RE-TC-00404,RE-US-004,Edge - SLA Breach + Weekend/Holiday + Config Change Mid-Clock,Record assigned just before configurable weekend/holiday period. Thresholds changed mid-SLA by Admin. Record reaches 15-day breach.,"1. Assign record near end of business day before holiday.
+2. Change SLA threshold configuration.
+3. Advance system date past 15 days without response.
+4. Verify alerts, escalation, and color coding behave correctly.",Record assigned Friday 4pm. Config changed from 15 to 10 days mid-cycle. System date advanced 16 days.,SLA clock respects configured calendar (or explicit 'do not pause' rule). Alerts fire at correct new thresholds. Breach triggers proper escalation path. Color coding accurate. History shows config change event.,Edge
+RE-TC-00501,RE-US-005,"Happy Path - As an RE Admin or PNO, I want a self-onboarding interfa...","User logged in with correct role and entity via Kavach. Relevant record or master data exists. Services (notification, virus scan, SLA engine) available.","1. Navigate to appropriate view or edit screen.
+2. Perform primary action (select status, fill structured fields, reassign, save draft, raise query, etc.).
+3. Submit / Save & Proceed.
+4. Verify status change, notifications, history entry, SLA timer, activity tracker update, and any downstream effects.",Valid record in correct starting status. Active users available for reassignment. Test complainant/RE with email + mobile. Supporting documents ready for upload.,Action succeeds. Correct next status or draft saved. Full immutable history created. Notifications triggered to relevant parties. SLA countdown and RE Activity Status updated in real time. No validation errors.,Positive
+RE-TC-00502,RE-US-005,Negative - Unauthorized Role or Cross-Entity Access Attempt,"Logged in as role or entity that should not have permission (e.g., NO trying PNO bulk reassignment, user from Entity A trying to access Entity B record).","1. Login as unauthorized user/entity.
+2. Attempt restricted action or navigate to cross-entity record.
+3. Observe blocking behavior (button hidden, validation error, or access denied).
+4. Check audit log for attempt.",Record belonging to different entity. Lower-privilege test user in same or different territory.,Action completely blocked. Clear message ('Insufficient permission' or 'Record not accessible to your entity'). No data leakage. Attempt logged with user ID and IP.,Negative
+RE-TC-00503,RE-US-005,Edge - Missing Mandatory Structured Field / Invalid Date / Cap Breach / Concurrent Reassignment,"Record in state where structured form or reassignment is possible. One mandatory field left blank, invalid date entered, award amount exceeds cap, or multiple users attempt reassignment simultaneously.","1. Open edit or reassign popup.
+2. Leave mandatory field blank or enter invalid value (past date, amount > cap, etc.).
+3. Attempt submit.
+4. Observe inline validation and final error.
+5. Correct and re-submit to confirm recovery. For concurrent: simulate two PNOs reassigning same record at same time.",Award Implemented status with amount = 3000001. Past implementation date. Two PNOs attempting bulk reassignment of overlapping records simultaneously.,"Clear red highlighting + specific error (e.g., 'Implementation Date cannot be in past', 'Amount exceeds ₹30 Lakh consequential loss cap'). Submit blocked. Concurrent reassignments handled safely (one succeeds, other gets clear conflict message). After correction, succeeds.",Edge
+RE-TC-00504,RE-US-005,Edge - Large Attachment / Concurrent Users / Draft Recovery / Query Thread,System under load. Large file near 5MB limit. User has multiple drafts. Complex threaded query conversation exists.,"1. Upload 4.9MB valid file + attempt 5.1MB invalid.
+2. Simulate 400 concurrent RE users performing actions.
+3. Close browser mid-draft, reopen, recover draft.
+4. Post multiple queries and replies; verify thread integrity and notifications.",4.9MB PDF + 5.1MB file. 400 concurrent test users. Draft with 2 pages of text. 5-query threaded conversation.,Valid file accepted; invalid rejected with clear message. All concurrent actions succeed without data loss or corruption. Draft recovers exactly. Thread displays chronologically with correct actors and timestamps. Notifications accurate.,Edge
+RE-TC-00601,RE-US-006,"Happy Path - As an RE user, I want the Edit/Response screen to prese...","User logged in with correct role and entity via Kavach. Relevant record or master data exists. Services (notification, virus scan, SLA engine) available.","1. Navigate to appropriate view or edit screen.
+2. Perform primary action (select status, fill structured fields, reassign, save draft, raise query, etc.).
+3. Submit / Save & Proceed.
+4. Verify status change, notifications, history entry, SLA timer, activity tracker update, and any downstream effects.",Valid record in correct starting status. Active users available for reassignment. Test complainant/RE with email + mobile. Supporting documents ready for upload.,Action succeeds. Correct next status or draft saved. Full immutable history created. Notifications triggered to relevant parties. SLA countdown and RE Activity Status updated in real time. No validation errors.,Positive
+RE-TC-00602,RE-US-006,Negative - Unauthorized Role or Cross-Entity Access Attempt,"Logged in as role or entity that should not have permission (e.g., NO trying PNO bulk reassignment, user from Entity A trying to access Entity B record).","1. Login as unauthorized user/entity.
+2. Attempt restricted action or navigate to cross-entity record.
+3. Observe blocking behavior (button hidden, validation error, or access denied).
+4. Check audit log for attempt.",Record belonging to different entity. Lower-privilege test user in same or different territory.,Action completely blocked. Clear message ('Insufficient permission' or 'Record not accessible to your entity'). No data leakage. Attempt logged with user ID and IP.,Negative
+RE-TC-00603,RE-US-006,Edge - Missing Mandatory Structured Field / Invalid Date / Cap Breach / Concurrent Reassignment,"Record in state where structured form or reassignment is possible. One mandatory field left blank, invalid date entered, award amount exceeds cap, or multiple users attempt reassignment simultaneously.","1. Open edit or reassign popup.
+2. Leave mandatory field blank or enter invalid value (past date, amount > cap, etc.).
+3. Attempt submit.
+4. Observe inline validation and final error.
+5. Correct and re-submit to confirm recovery. For concurrent: simulate two PNOs reassigning same record at same time.",Award Implemented status with amount = 3000001. Past implementation date. Two PNOs attempting bulk reassignment of overlapping records simultaneously.,"Clear red highlighting + specific error (e.g., 'Implementation Date cannot be in past', 'Amount exceeds ₹30 Lakh consequential loss cap'). Submit blocked. Concurrent reassignments handled safely (one succeeds, other gets clear conflict message). After correction, succeeds.",Edge
+RE-TC-00604,RE-US-006,Edge - Large Attachment / Concurrent Users / Draft Recovery / Query Thread,System under load. Large file near 5MB limit. User has multiple drafts. Complex threaded query conversation exists.,"1. Upload 4.9MB valid file + attempt 5.1MB invalid.
+2. Simulate 400 concurrent RE users performing actions.
+3. Close browser mid-draft, reopen, recover draft.
+4. Post multiple queries and replies; verify thread integrity and notifications.",4.9MB PDF + 5.1MB file. 400 concurrent test users. Draft with 2 pages of text. 5-query threaded conversation.,Valid file accepted; invalid rejected with clear message. All concurrent actions succeed without data loss or corruption. Draft recovers exactly. Thread displays chronologically with correct actors and timestamps. Notifications accurate.,Edge
+RE-TC-00701,RE-US-007,"Happy Path - As an RE user, I want a 'Save as Draft' button on the r...","User logged in with correct role and entity via Kavach. Relevant record or master data exists. Services (notification, virus scan, SLA engine) available.","1. Navigate to appropriate view or edit screen.
+2. Perform primary action (select status, fill structured fields, reassign, save draft, raise query, etc.).
+3. Submit / Save & Proceed.
+4. Verify status change, notifications, history entry, SLA timer, activity tracker update, and any downstream effects.",Valid record in correct starting status. Active users available for reassignment. Test complainant/RE with email + mobile. Supporting documents ready for upload.,Action succeeds. Correct next status or draft saved. Full immutable history created. Notifications triggered to relevant parties. SLA countdown and RE Activity Status updated in real time. No validation errors.,Positive
+RE-TC-00702,RE-US-007,Negative - Unauthorized Role or Cross-Entity Access Attempt,"Logged in as role or entity that should not have permission (e.g., NO trying PNO bulk reassignment, user from Entity A trying to access Entity B record).","1. Login as unauthorized user/entity.
+2. Attempt restricted action or navigate to cross-entity record.
+3. Observe blocking behavior (button hidden, validation error, or access denied).
+4. Check audit log for attempt.",Record belonging to different entity. Lower-privilege test user in same or different territory.,Action completely blocked. Clear message ('Insufficient permission' or 'Record not accessible to your entity'). No data leakage. Attempt logged with user ID and IP.,Negative
+RE-TC-00703,RE-US-007,Edge - Missing Mandatory Structured Field / Invalid Date / Cap Breach / Concurrent Reassignment,"Record in state where structured form or reassignment is possible. One mandatory field left blank, invalid date entered, award amount exceeds cap, or multiple users attempt reassignment simultaneously.","1. Open edit or reassign popup.
+2. Leave mandatory field blank or enter invalid value (past date, amount > cap, etc.).
+3. Attempt submit.
+4. Observe inline validation and final error.
+5. Correct and re-submit to confirm recovery. For concurrent: simulate two PNOs reassigning same record at same time.",Award Implemented status with amount = 3000001. Past implementation date. Two PNOs attempting bulk reassignment of overlapping records simultaneously.,"Clear red highlighting + specific error (e.g., 'Implementation Date cannot be in past', 'Amount exceeds ₹30 Lakh consequential loss cap'). Submit blocked. Concurrent reassignments handled safely (one succeeds, other gets clear conflict message). After correction, succeeds.",Edge
+RE-TC-00704,RE-US-007,Edge - Large Attachment / Concurrent Users / Draft Recovery / Query Thread,System under load. Large file near 5MB limit. User has multiple drafts. Complex threaded query conversation exists.,"1. Upload 4.9MB valid file + attempt 5.1MB invalid.
+2. Simulate 400 concurrent RE users performing actions.
+3. Close browser mid-draft, reopen, recover draft.
+4. Post multiple queries and replies; verify thread integrity and notifications.",4.9MB PDF + 5.1MB file. 400 concurrent test users. Draft with 2 pages of text. 5-query threaded conversation.,Valid file accepted; invalid rejected with clear message. All concurrent actions succeed without data loss or corruption. Draft recovers exactly. Thread displays chronologically with correct actors and timestamps. Notifications accurate.,Edge
+RE-TC-00801,RE-US-008,"Happy Path - As an RE user, I want in-browser preview of all attache...","User logged in with correct role and entity via Kavach. Relevant record or master data exists. Services (notification, virus scan, SLA engine) available.","1. Navigate to appropriate view or edit screen.
+2. Perform primary action (select status, fill structured fields, reassign, save draft, raise query, etc.).
+3. Submit / Save & Proceed.
+4. Verify status change, notifications, history entry, SLA timer, activity tracker update, and any downstream effects.",Valid record in correct starting status. Active users available for reassignment. Test complainant/RE with email + mobile. Supporting documents ready for upload.,Action succeeds. Correct next status or draft saved. Full immutable history created. Notifications triggered to relevant parties. SLA countdown and RE Activity Status updated in real time. No validation errors.,Positive
+RE-TC-00802,RE-US-008,Negative - Unauthorized Role or Cross-Entity Access Attempt,"Logged in as role or entity that should not have permission (e.g., NO trying PNO bulk reassignment, user from Entity A trying to access Entity B record).","1. Login as unauthorized user/entity.
+2. Attempt restricted action or navigate to cross-entity record.
+3. Observe blocking behavior (button hidden, validation error, or access denied).
+4. Check audit log for attempt.",Record belonging to different entity. Lower-privilege test user in same or different territory.,Action completely blocked. Clear message ('Insufficient permission' or 'Record not accessible to your entity'). No data leakage. Attempt logged with user ID and IP.,Negative
+RE-TC-00803,RE-US-008,Edge - Missing Mandatory Structured Field / Invalid Date / Cap Breach / Concurrent Reassignment,"Record in state where structured form or reassignment is possible. One mandatory field left blank, invalid date entered, award amount exceeds cap, or multiple users attempt reassignment simultaneously.","1. Open edit or reassign popup.
+2. Leave mandatory field blank or enter invalid value (past date, amount > cap, etc.).
+3. Attempt submit.
+4. Observe inline validation and final error.
+5. Correct and re-submit to confirm recovery. For concurrent: simulate two PNOs reassigning same record at same time.",Award Implemented status with amount = 3000001. Past implementation date. Two PNOs attempting bulk reassignment of overlapping records simultaneously.,"Clear red highlighting + specific error (e.g., 'Implementation Date cannot be in past', 'Amount exceeds ₹30 Lakh consequential loss cap'). Submit blocked. Concurrent reassignments handled safely (one succeeds, other gets clear conflict message). After correction, succeeds.",Edge
+RE-TC-00804,RE-US-008,Edge - Large Attachment / Concurrent Users / Draft Recovery / Query Thread,System under load. Large file near 5MB limit. User has multiple drafts. Complex threaded query conversation exists.,"1. Upload 4.9MB valid file + attempt 5.1MB invalid.
+2. Simulate 400 concurrent RE users performing actions.
+3. Close browser mid-draft, reopen, recover draft.
+4. Post multiple queries and replies; verify thread integrity and notifications.",4.9MB PDF + 5.1MB file. 400 concurrent test users. Draft with 2 pages of text. 5-query threaded conversation.,Valid file accepted; invalid rejected with clear message. All concurrent actions succeed without data loss or corruption. Draft recovers exactly. Thread displays chronologically with correct actors and timestamps. Notifications accurate.,Edge
+RE-TC-00901,RE-US-009,"Happy Path - As an RE user, I want a Delete option on erroneously up...","User logged in with correct role and entity via Kavach. Relevant record or master data exists. Services (notification, virus scan, SLA engine) available.","1. Navigate to appropriate view or edit screen.
+2. Perform primary action (select status, fill structured fields, reassign, save draft, raise query, etc.).
+3. Submit / Save & Proceed.
+4. Verify status change, notifications, history entry, SLA timer, activity tracker update, and any downstream effects.",Valid record in correct starting status. Active users available for reassignment. Test complainant/RE with email + mobile. Supporting documents ready for upload.,Action succeeds. Correct next status or draft saved. Full immutable history created. Notifications triggered to relevant parties. SLA countdown and RE Activity Status updated in real time. No validation errors.,Positive
+RE-TC-00902,RE-US-009,Negative - Unauthorized Role or Cross-Entity Access Attempt,"Logged in as role or entity that should not have permission (e.g., NO trying PNO bulk reassignment, user from Entity A trying to access Entity B record).","1. Login as unauthorized user/entity.
+2. Attempt restricted action or navigate to cross-entity record.
+3. Observe blocking behavior (button hidden, validation error, or access denied).
+4. Check audit log for attempt.",Record belonging to different entity. Lower-privilege test user in same or different territory.,Action completely blocked. Clear message ('Insufficient permission' or 'Record not accessible to your entity'). No data leakage. Attempt logged with user ID and IP.,Negative
+RE-TC-00903,RE-US-009,Edge - Missing Mandatory Structured Field / Invalid Date / Cap Breach / Concurrent Reassignment,"Record in state where structured form or reassignment is possible. One mandatory field left blank, invalid date entered, award amount exceeds cap, or multiple users attempt reassignment simultaneously.","1. Open edit or reassign popup.
+2. Leave mandatory field blank or enter invalid value (past date, amount > cap, etc.).
+3. Attempt submit.
+4. Observe inline validation and final error.
+5. Correct and re-submit to confirm recovery. For concurrent: simulate two PNOs reassigning same record at same time.",Award Implemented status with amount = 3000001. Past implementation date. Two PNOs attempting bulk reassignment of overlapping records simultaneously.,"Clear red highlighting + specific error (e.g., 'Implementation Date cannot be in past', 'Amount exceeds ₹30 Lakh consequential loss cap'). Submit blocked. Concurrent reassignments handled safely (one succeeds, other gets clear conflict message). After correction, succeeds.",Edge
+RE-TC-00904,RE-US-009,Edge - Large Attachment / Concurrent Users / Draft Recovery / Query Thread,System under load. Large file near 5MB limit. User has multiple drafts. Complex threaded query conversation exists.,"1. Upload 4.9MB valid file + attempt 5.1MB invalid.
+2. Simulate 400 concurrent RE users performing actions.
+3. Close browser mid-draft, reopen, recover draft.
+4. Post multiple queries and replies; verify thread integrity and notifications.",4.9MB PDF + 5.1MB file. 400 concurrent test users. Draft with 2 pages of text. 5-query threaded conversation.,Valid file accepted; invalid rejected with clear message. All concurrent actions succeed without data loss or corruption. Draft recovers exactly. Thread displays chronologically with correct actors and timestamps. Notifications accurate.,Edge
+RE-TC-01001,RE-US-010,"Happy Path - As a PNO, I want to reassign single or multiple records...","User logged in with correct role and entity via Kavach. Relevant record or master data exists. Services (notification, virus scan, SLA engine) available.","1. Navigate to appropriate view or edit screen.
+2. Perform primary action (select status, fill structured fields, reassign, save draft, raise query, etc.).
+3. Submit / Save & Proceed.
+4. Verify status change, notifications, history entry, SLA timer, activity tracker update, and any downstream effects.",Valid record in correct starting status. Active users available for reassignment. Test complainant/RE with email + mobile. Supporting documents ready for upload.,Action succeeds. Correct next status or draft saved. Full immutable history created. Notifications triggered to relevant parties. SLA countdown and RE Activity Status updated in real time. No validation errors.,Positive
+RE-TC-01002,RE-US-010,Negative - Unauthorized Role or Cross-Entity Access Attempt,"Logged in as role or entity that should not have permission (e.g., NO trying PNO bulk reassignment, user from Entity A trying to access Entity B record).","1. Login as unauthorized user/entity.
+2. Attempt restricted action or navigate to cross-entity record.
+3. Observe blocking behavior (button hidden, validation error, or access denied).
+4. Check audit log for attempt.",Record belonging to different entity. Lower-privilege test user in same or different territory.,Action completely blocked. Clear message ('Insufficient permission' or 'Record not accessible to your entity'). No data leakage. Attempt logged with user ID and IP.,Negative
+RE-TC-01003,RE-US-010,Edge - Missing Mandatory Structured Field / Invalid Date / Cap Breach / Concurrent Reassignment,"Record in state where structured form or reassignment is possible. One mandatory field left blank, invalid date entered, award amount exceeds cap, or multiple users attempt reassignment simultaneously.","1. Open edit or reassign popup.
+2. Leave mandatory field blank or enter invalid value (past date, amount > cap, etc.).
+3. Attempt submit.
+4. Observe inline validation and final error.
+5. Correct and re-submit to confirm recovery. For concurrent: simulate two PNOs reassigning same record at same time.",Award Implemented status with amount = 3000001. Past implementation date. Two PNOs attempting bulk reassignment of overlapping records simultaneously.,"Clear red highlighting + specific error (e.g., 'Implementation Date cannot be in past', 'Amount exceeds ₹30 Lakh consequential loss cap'). Submit blocked. Concurrent reassignments handled safely (one succeeds, other gets clear conflict message). After correction, succeeds.",Edge
+RE-TC-01004,RE-US-010,Edge - Large Attachment / Concurrent Users / Draft Recovery / Query Thread,System under load. Large file near 5MB limit. User has multiple drafts. Complex threaded query conversation exists.,"1. Upload 4.9MB valid file + attempt 5.1MB invalid.
+2. Simulate 400 concurrent RE users performing actions.
+3. Close browser mid-draft, reopen, recover draft.
+4. Post multiple queries and replies; verify thread integrity and notifications.",4.9MB PDF + 5.1MB file. 400 concurrent test users. Draft with 2 pages of text. 5-query threaded conversation.,Valid file accepted; invalid rejected with clear message. All concurrent actions succeed without data loss or corruption. Draft recovers exactly. Thread displays chronologically with correct actors and timestamps. Notifications accurate.,Edge
+RE-TC-01101,RE-US-011,"Happy Path - As an NO or Contact Person, I want to raise a structure...","User logged in with correct role and entity via Kavach. Relevant record or master data exists. Services (notification, virus scan, SLA engine) available.","1. Navigate to appropriate view or edit screen.
+2. Perform primary action (select status, fill structured fields, reassign, save draft, raise query, etc.).
+3. Submit / Save & Proceed.
+4. Verify status change, notifications, history entry, SLA timer, activity tracker update, and any downstream effects.",Valid record in correct starting status. Active users available for reassignment. Test complainant/RE with email + mobile. Supporting documents ready for upload.,Action succeeds. Correct next status or draft saved. Full immutable history created. Notifications triggered to relevant parties. SLA countdown and RE Activity Status updated in real time. No validation errors.,Positive
+RE-TC-01102,RE-US-011,Negative - Unauthorized Role or Cross-Entity Access Attempt,"Logged in as role or entity that should not have permission (e.g., NO trying PNO bulk reassignment, user from Entity A trying to access Entity B record).","1. Login as unauthorized user/entity.
+2. Attempt restricted action or navigate to cross-entity record.
+3. Observe blocking behavior (button hidden, validation error, or access denied).
+4. Check audit log for attempt.",Record belonging to different entity. Lower-privilege test user in same or different territory.,Action completely blocked. Clear message ('Insufficient permission' or 'Record not accessible to your entity'). No data leakage. Attempt logged with user ID and IP.,Negative
+RE-TC-01103,RE-US-011,Edge - Missing Mandatory Structured Field / Invalid Date / Cap Breach / Concurrent Reassignment,"Record in state where structured form or reassignment is possible. One mandatory field left blank, invalid date entered, award amount exceeds cap, or multiple users attempt reassignment simultaneously.","1. Open edit or reassign popup.
+2. Leave mandatory field blank or enter invalid value (past date, amount > cap, etc.).
+3. Attempt submit.
+4. Observe inline validation and final error.
+5. Correct and re-submit to confirm recovery. For concurrent: simulate two PNOs reassigning same record at same time.",Award Implemented status with amount = 3000001. Past implementation date. Two PNOs attempting bulk reassignment of overlapping records simultaneously.,"Clear red highlighting + specific error (e.g., 'Implementation Date cannot be in past', 'Amount exceeds ₹30 Lakh consequential loss cap'). Submit blocked. Concurrent reassignments handled safely (one succeeds, other gets clear conflict message). After correction, succeeds.",Edge
+RE-TC-01104,RE-US-011,Edge - Large Attachment / Concurrent Users / Draft Recovery / Query Thread,System under load. Large file near 5MB limit. User has multiple drafts. Complex threaded query conversation exists.,"1. Upload 4.9MB valid file + attempt 5.1MB invalid.
+2. Simulate 400 concurrent RE users performing actions.
+3. Close browser mid-draft, reopen, recover draft.
+4. Post multiple queries and replies; verify thread integrity and notifications.",4.9MB PDF + 5.1MB file. 400 concurrent test users. Draft with 2 pages of text. 5-query threaded conversation.,Valid file accepted; invalid rejected with clear message. All concurrent actions succeed without data loss or corruption. Draft recovers exactly. Thread displays chronologically with correct actors and timestamps. Notifications accurate.,Edge
+RE-TC-01201,RE-US-012,"Happy Path - As a Contact Person, I want to reassign a record to ano...","User logged in with correct role and entity via Kavach. Relevant record or master data exists. Services (notification, virus scan, SLA engine) available.","1. Navigate to appropriate view or edit screen.
+2. Perform primary action (select status, fill structured fields, reassign, save draft, raise query, etc.).
+3. Submit / Save & Proceed.
+4. Verify status change, notifications, history entry, SLA timer, activity tracker update, and any downstream effects.",Valid record in correct starting status. Active users available for reassignment. Test complainant/RE with email + mobile. Supporting documents ready for upload.,Action succeeds. Correct next status or draft saved. Full immutable history created. Notifications triggered to relevant parties. SLA countdown and RE Activity Status updated in real time. No validation errors.,Positive
+RE-TC-01202,RE-US-012,Negative - Unauthorized Role or Cross-Entity Access Attempt,"Logged in as role or entity that should not have permission (e.g., NO trying PNO bulk reassignment, user from Entity A trying to access Entity B record).","1. Login as unauthorized user/entity.
+2. Attempt restricted action or navigate to cross-entity record.
+3. Observe blocking behavior (button hidden, validation error, or access denied).
+4. Check audit log for attempt.",Record belonging to different entity. Lower-privilege test user in same or different territory.,Action completely blocked. Clear message ('Insufficient permission' or 'Record not accessible to your entity'). No data leakage. Attempt logged with user ID and IP.,Negative
+RE-TC-01203,RE-US-012,Edge - Missing Mandatory Structured Field / Invalid Date / Cap Breach / Concurrent Reassignment,"Record in state where structured form or reassignment is possible. One mandatory field left blank, invalid date entered, award amount exceeds cap, or multiple users attempt reassignment simultaneously.","1. Open edit or reassign popup.
+2. Leave mandatory field blank or enter invalid value (past date, amount > cap, etc.).
+3. Attempt submit.
+4. Observe inline validation and final error.
+5. Correct and re-submit to confirm recovery. For concurrent: simulate two PNOs reassigning same record at same time.",Award Implemented status with amount = 3000001. Past implementation date. Two PNOs attempting bulk reassignment of overlapping records simultaneously.,"Clear red highlighting + specific error (e.g., 'Implementation Date cannot be in past', 'Amount exceeds ₹30 Lakh consequential loss cap'). Submit blocked. Concurrent reassignments handled safely (one succeeds, other gets clear conflict message). After correction, succeeds.",Edge
+RE-TC-01204,RE-US-012,Edge - Large Attachment / Concurrent Users / Draft Recovery / Query Thread,System under load. Large file near 5MB limit. User has multiple drafts. Complex threaded query conversation exists.,"1. Upload 4.9MB valid file + attempt 5.1MB invalid.
+2. Simulate 400 concurrent RE users performing actions.
+3. Close browser mid-draft, reopen, recover draft.
+4. Post multiple queries and replies; verify thread integrity and notifications.",4.9MB PDF + 5.1MB file. 400 concurrent test users. Draft with 2 pages of text. 5-query threaded conversation.,Valid file accepted; invalid rejected with clear message. All concurrent actions succeed without data loss or corruption. Draft recovers exactly. Thread displays chronologically with correct actors and timestamps. Notifications accurate.,Edge
+RE-TC-01301,RE-US-013,"Happy Path - As a PNO, I want pending reassignment requests from my ...","User logged in with correct role and entity via Kavach. Relevant record or master data exists. Services (notification, virus scan, SLA engine) available.","1. Navigate to appropriate view or edit screen.
+2. Perform primary action (select status, fill structured fields, reassign, save draft, raise query, etc.).
+3. Submit / Save & Proceed.
+4. Verify status change, notifications, history entry, SLA timer, activity tracker update, and any downstream effects.",Valid record in correct starting status. Active users available for reassignment. Test complainant/RE with email + mobile. Supporting documents ready for upload.,Action succeeds. Correct next status or draft saved. Full immutable history created. Notifications triggered to relevant parties. SLA countdown and RE Activity Status updated in real time. No validation errors.,Positive
+RE-TC-01302,RE-US-013,Negative - Unauthorized Role or Cross-Entity Access Attempt,"Logged in as role or entity that should not have permission (e.g., NO trying PNO bulk reassignment, user from Entity A trying to access Entity B record).","1. Login as unauthorized user/entity.
+2. Attempt restricted action or navigate to cross-entity record.
+3. Observe blocking behavior (button hidden, validation error, or access denied).
+4. Check audit log for attempt.",Record belonging to different entity. Lower-privilege test user in same or different territory.,Action completely blocked. Clear message ('Insufficient permission' or 'Record not accessible to your entity'). No data leakage. Attempt logged with user ID and IP.,Negative
+RE-TC-01303,RE-US-013,Edge - Missing Mandatory Structured Field / Invalid Date / Cap Breach / Concurrent Reassignment,"Record in state where structured form or reassignment is possible. One mandatory field left blank, invalid date entered, award amount exceeds cap, or multiple users attempt reassignment simultaneously.","1. Open edit or reassign popup.
+2. Leave mandatory field blank or enter invalid value (past date, amount > cap, etc.).
+3. Attempt submit.
+4. Observe inline validation and final error.
+5. Correct and re-submit to confirm recovery. For concurrent: simulate two PNOs reassigning same record at same time.",Award Implemented status with amount = 3000001. Past implementation date. Two PNOs attempting bulk reassignment of overlapping records simultaneously.,"Clear red highlighting + specific error (e.g., 'Implementation Date cannot be in past', 'Amount exceeds ₹30 Lakh consequential loss cap'). Submit blocked. Concurrent reassignments handled safely (one succeeds, other gets clear conflict message). After correction, succeeds.",Edge
+RE-TC-01304,RE-US-013,Edge - Large Attachment / Concurrent Users / Draft Recovery / Query Thread,System under load. Large file near 5MB limit. User has multiple drafts. Complex threaded query conversation exists.,"1. Upload 4.9MB valid file + attempt 5.1MB invalid.
+2. Simulate 400 concurrent RE users performing actions.
+3. Close browser mid-draft, reopen, recover draft.
+4. Post multiple queries and replies; verify thread integrity and notifications.",4.9MB PDF + 5.1MB file. 400 concurrent test users. Draft with 2 pages of text. 5-query threaded conversation.,Valid file accepted; invalid rejected with clear message. All concurrent actions succeed without data loss or corruption. Draft recovers exactly. Thread displays chronologically with correct actors and timestamps. Notifications accurate.,Edge
+RE-TC-01401,RE-US-014,"Happy Path - As a PNO or RE Admin, I want to see entity-wide or regi...","User logged in with correct role and entity via Kavach. Relevant record or master data exists. Services (notification, virus scan, SLA engine) available.","1. Navigate to appropriate view or edit screen.
+2. Perform primary action (select status, fill structured fields, reassign, save draft, raise query, etc.).
+3. Submit / Save & Proceed.
+4. Verify status change, notifications, history entry, SLA timer, activity tracker update, and any downstream effects.",Valid record in correct starting status. Active users available for reassignment. Test complainant/RE with email + mobile. Supporting documents ready for upload.,Action succeeds. Correct next status or draft saved. Full immutable history created. Notifications triggered to relevant parties. SLA countdown and RE Activity Status updated in real time. No validation errors.,Positive
+RE-TC-01402,RE-US-014,Negative - Unauthorized Role or Cross-Entity Access Attempt,"Logged in as role or entity that should not have permission (e.g., NO trying PNO bulk reassignment, user from Entity A trying to access Entity B record).","1. Login as unauthorized user/entity.
+2. Attempt restricted action or navigate to cross-entity record.
+3. Observe blocking behavior (button hidden, validation error, or access denied).
+4. Check audit log for attempt.",Record belonging to different entity. Lower-privilege test user in same or different territory.,Action completely blocked. Clear message ('Insufficient permission' or 'Record not accessible to your entity'). No data leakage. Attempt logged with user ID and IP.,Negative
+RE-TC-01403,RE-US-014,Edge - Missing Mandatory Structured Field / Invalid Date / Cap Breach / Concurrent Reassignment,"Record in state where structured form or reassignment is possible. One mandatory field left blank, invalid date entered, award amount exceeds cap, or multiple users attempt reassignment simultaneously.","1. Open edit or reassign popup.
+2. Leave mandatory field blank or enter invalid value (past date, amount > cap, etc.).
+3. Attempt submit.
+4. Observe inline validation and final error.
+5. Correct and re-submit to confirm recovery. For concurrent: simulate two PNOs reassigning same record at same time.",Award Implemented status with amount = 3000001. Past implementation date. Two PNOs attempting bulk reassignment of overlapping records simultaneously.,"Clear red highlighting + specific error (e.g., 'Implementation Date cannot be in past', 'Amount exceeds ₹30 Lakh consequential loss cap'). Submit blocked. Concurrent reassignments handled safely (one succeeds, other gets clear conflict message). After correction, succeeds.",Edge
+RE-TC-01404,RE-US-014,Edge - Large Attachment / Concurrent Users / Draft Recovery / Query Thread,System under load. Large file near 5MB limit. User has multiple drafts. Complex threaded query conversation exists.,"1. Upload 4.9MB valid file + attempt 5.1MB invalid.
+2. Simulate 400 concurrent RE users performing actions.
+3. Close browser mid-draft, reopen, recover draft.
+4. Post multiple queries and replies; verify thread integrity and notifications.",4.9MB PDF + 5.1MB file. 400 concurrent test users. Draft with 2 pages of text. 5-query threaded conversation.,Valid file accepted; invalid rejected with clear message. All concurrent actions succeed without data loss or corruption. Draft recovers exactly. Thread displays chronologically with correct actors and timestamps. Notifications accurate.,Edge
+RE-TC-01501,RE-US-015,"Happy Path - As the system, I want to automatically capture and surf...","User logged in with correct role and entity via Kavach. Relevant record or master data exists. Services (notification, virus scan, SLA engine) available.","1. Navigate to appropriate view or edit screen.
+2. Perform primary action (select status, fill structured fields, reassign, save draft, raise query, etc.).
+3. Submit / Save & Proceed.
+4. Verify status change, notifications, history entry, SLA timer, activity tracker update, and any downstream effects.",Valid record in correct starting status. Active users available for reassignment. Test complainant/RE with email + mobile. Supporting documents ready for upload.,Action succeeds. Correct next status or draft saved. Full immutable history created. Notifications triggered to relevant parties. SLA countdown and RE Activity Status updated in real time. No validation errors.,Positive
+RE-TC-01502,RE-US-015,Negative - Unauthorized Role or Cross-Entity Access Attempt,"Logged in as role or entity that should not have permission (e.g., NO trying PNO bulk reassignment, user from Entity A trying to access Entity B record).","1. Login as unauthorized user/entity.
+2. Attempt restricted action or navigate to cross-entity record.
+3. Observe blocking behavior (button hidden, validation error, or access denied).
+4. Check audit log for attempt.",Record belonging to different entity. Lower-privilege test user in same or different territory.,Action completely blocked. Clear message ('Insufficient permission' or 'Record not accessible to your entity'). No data leakage. Attempt logged with user ID and IP.,Negative
+RE-TC-01503,RE-US-015,Edge - Missing Mandatory Structured Field / Invalid Date / Cap Breach / Concurrent Reassignment,"Record in state where structured form or reassignment is possible. One mandatory field left blank, invalid date entered, award amount exceeds cap, or multiple users attempt reassignment simultaneously.","1. Open edit or reassign popup.
+2. Leave mandatory field blank or enter invalid value (past date, amount > cap, etc.).
+3. Attempt submit.
+4. Observe inline validation and final error.
+5. Correct and re-submit to confirm recovery. For concurrent: simulate two PNOs reassigning same record at same time.",Award Implemented status with amount = 3000001. Past implementation date. Two PNOs attempting bulk reassignment of overlapping records simultaneously.,"Clear red highlighting + specific error (e.g., 'Implementation Date cannot be in past', 'Amount exceeds ₹30 Lakh consequential loss cap'). Submit blocked. Concurrent reassignments handled safely (one succeeds, other gets clear conflict message). After correction, succeeds.",Edge
+RE-TC-01504,RE-US-015,Edge - RE Activity Status Sequence + Stuck Record Nudge + 60s Latency,RE user performs sequence of actions. Record left in early status beyond nudge threshold. Measure propagation delay to CEPC/RBI side.,"1. RE opens record → verify 'Opened'.
+2. Saves draft → verify 'Under Review' or 'Response Being Prepared'.
+3. Uploads document → verify 'Documents Uploaded'.
+4. Leaves record for > configured nudge days.
+5. Measure time from RE action to status visible on CEPC complaint detail.",Nudge threshold = 3 days in 'Under Review'. Test record left untouched for 4 days.,Status progresses correctly through 7 levels. Nudge fired to CEPC/RBI user after threshold. Status visible on CEPC side within 60 seconds. No manual override possible by RE. Full history of status changes retained.,Edge
+RE-TC-01601,RE-US-016,"Happy Path - As an RE user, I want my actions (opening a record, sav...","User logged in with correct role and entity via Kavach. Relevant record or master data exists. Services (notification, virus scan, SLA engine) available.","1. Navigate to appropriate view or edit screen.
+2. Perform primary action (select status, fill structured fields, reassign, save draft, raise query, etc.).
+3. Submit / Save & Proceed.
+4. Verify status change, notifications, history entry, SLA timer, activity tracker update, and any downstream effects.",Valid record in correct starting status. Active users available for reassignment. Test complainant/RE with email + mobile. Supporting documents ready for upload.,Action succeeds. Correct next status or draft saved. Full immutable history created. Notifications triggered to relevant parties. SLA countdown and RE Activity Status updated in real time. No validation errors.,Positive
+RE-TC-01602,RE-US-016,Negative - Unauthorized Role or Cross-Entity Access Attempt,"Logged in as role or entity that should not have permission (e.g., NO trying PNO bulk reassignment, user from Entity A trying to access Entity B record).","1. Login as unauthorized user/entity.
+2. Attempt restricted action or navigate to cross-entity record.
+3. Observe blocking behavior (button hidden, validation error, or access denied).
+4. Check audit log for attempt.",Record belonging to different entity. Lower-privilege test user in same or different territory.,Action completely blocked. Clear message ('Insufficient permission' or 'Record not accessible to your entity'). No data leakage. Attempt logged with user ID and IP.,Negative
+RE-TC-01603,RE-US-016,Edge - Missing Mandatory Structured Field / Invalid Date / Cap Breach / Concurrent Reassignment,"Record in state where structured form or reassignment is possible. One mandatory field left blank, invalid date entered, award amount exceeds cap, or multiple users attempt reassignment simultaneously.","1. Open edit or reassign popup.
+2. Leave mandatory field blank or enter invalid value (past date, amount > cap, etc.).
+3. Attempt submit.
+4. Observe inline validation and final error.
+5. Correct and re-submit to confirm recovery. For concurrent: simulate two PNOs reassigning same record at same time.",Award Implemented status with amount = 3000001. Past implementation date. Two PNOs attempting bulk reassignment of overlapping records simultaneously.,"Clear red highlighting + specific error (e.g., 'Implementation Date cannot be in past', 'Amount exceeds ₹30 Lakh consequential loss cap'). Submit blocked. Concurrent reassignments handled safely (one succeeds, other gets clear conflict message). After correction, succeeds.",Edge
+RE-TC-01604,RE-US-016,Edge - RE Activity Status Sequence + Stuck Record Nudge + 60s Latency,RE user performs sequence of actions. Record left in early status beyond nudge threshold. Measure propagation delay to CEPC/RBI side.,"1. RE opens record → verify 'Opened'.
+2. Saves draft → verify 'Under Review' or 'Response Being Prepared'.
+3. Uploads document → verify 'Documents Uploaded'.
+4. Leaves record for > configured nudge days.
+5. Measure time from RE action to status visible on CEPC complaint detail.",Nudge threshold = 3 days in 'Under Review'. Test record left untouched for 4 days.,Status progresses correctly through 7 levels. Nudge fired to CEPC/RBI user after threshold. Status visible on CEPC side within 60 seconds. No manual override possible by RE. Full history of status changes retained.,Edge
+RE-TC-01701,RE-US-017,"Happy Path - As a CEPC or RBIOS user, I want to see the current RE A...","User logged in with correct role and entity via Kavach. Relevant record or master data exists. Services (notification, virus scan, SLA engine) available.","1. Navigate to appropriate view or edit screen.
+2. Perform primary action (select status, fill structured fields, reassign, save draft, raise query, etc.).
+3. Submit / Save & Proceed.
+4. Verify status change, notifications, history entry, SLA timer, activity tracker update, and any downstream effects.",Valid record in correct starting status. Active users available for reassignment. Test complainant/RE with email + mobile. Supporting documents ready for upload.,Action succeeds. Correct next status or draft saved. Full immutable history created. Notifications triggered to relevant parties. SLA countdown and RE Activity Status updated in real time. No validation errors.,Positive
+RE-TC-01702,RE-US-017,Negative - Unauthorized Role or Cross-Entity Access Attempt,"Logged in as role or entity that should not have permission (e.g., NO trying PNO bulk reassignment, user from Entity A trying to access Entity B record).","1. Login as unauthorized user/entity.
+2. Attempt restricted action or navigate to cross-entity record.
+3. Observe blocking behavior (button hidden, validation error, or access denied).
+4. Check audit log for attempt.",Record belonging to different entity. Lower-privilege test user in same or different territory.,Action completely blocked. Clear message ('Insufficient permission' or 'Record not accessible to your entity'). No data leakage. Attempt logged with user ID and IP.,Negative
+RE-TC-01703,RE-US-017,Edge - Missing Mandatory Structured Field / Invalid Date / Cap Breach / Concurrent Reassignment,"Record in state where structured form or reassignment is possible. One mandatory field left blank, invalid date entered, award amount exceeds cap, or multiple users attempt reassignment simultaneously.","1. Open edit or reassign popup.
+2. Leave mandatory field blank or enter invalid value (past date, amount > cap, etc.).
+3. Attempt submit.
+4. Observe inline validation and final error.
+5. Correct and re-submit to confirm recovery. For concurrent: simulate two PNOs reassigning same record at same time.",Award Implemented status with amount = 3000001. Past implementation date. Two PNOs attempting bulk reassignment of overlapping records simultaneously.,"Clear red highlighting + specific error (e.g., 'Implementation Date cannot be in past', 'Amount exceeds ₹30 Lakh consequential loss cap'). Submit blocked. Concurrent reassignments handled safely (one succeeds, other gets clear conflict message). After correction, succeeds.",Edge
+RE-TC-01704,RE-US-017,Edge - Large Attachment / Concurrent Users / Draft Recovery / Query Thread,System under load. Large file near 5MB limit. User has multiple drafts. Complex threaded query conversation exists.,"1. Upload 4.9MB valid file + attempt 5.1MB invalid.
+2. Simulate 400 concurrent RE users performing actions.
+3. Close browser mid-draft, reopen, recover draft.
+4. Post multiple queries and replies; verify thread integrity and notifications.",4.9MB PDF + 5.1MB file. 400 concurrent test users. Draft with 2 pages of text. 5-query threaded conversation.,Valid file accepted; invalid rejected with clear message. All concurrent actions succeed without data loss or corruption. Draft recovers exactly. Thread displays chronologically with correct actors and timestamps. Notifications accurate.,Edge
+RE-TC-01801,RE-US-018,"Happy Path - As a CEPC/RBIOS user or RE user, I want an in-system st...","User logged in with correct role and entity via Kavach. Relevant record or master data exists. Services (notification, virus scan, SLA engine) available.","1. Navigate to appropriate view or edit screen.
+2. Perform primary action (select status, fill structured fields, reassign, save draft, raise query, etc.).
+3. Submit / Save & Proceed.
+4. Verify status change, notifications, history entry, SLA timer, activity tracker update, and any downstream effects.",Valid record in correct starting status. Active users available for reassignment. Test complainant/RE with email + mobile. Supporting documents ready for upload.,Action succeeds. Correct next status or draft saved. Full immutable history created. Notifications triggered to relevant parties. SLA countdown and RE Activity Status updated in real time. No validation errors.,Positive
+RE-TC-01802,RE-US-018,Negative - Unauthorized Role or Cross-Entity Access Attempt,"Logged in as role or entity that should not have permission (e.g., NO trying PNO bulk reassignment, user from Entity A trying to access Entity B record).","1. Login as unauthorized user/entity.
+2. Attempt restricted action or navigate to cross-entity record.
+3. Observe blocking behavior (button hidden, validation error, or access denied).
+4. Check audit log for attempt.",Record belonging to different entity. Lower-privilege test user in same or different territory.,Action completely blocked. Clear message ('Insufficient permission' or 'Record not accessible to your entity'). No data leakage. Attempt logged with user ID and IP.,Negative
+RE-TC-01803,RE-US-018,Edge - Missing Mandatory Structured Field / Invalid Date / Cap Breach / Concurrent Reassignment,"Record in state where structured form or reassignment is possible. One mandatory field left blank, invalid date entered, award amount exceeds cap, or multiple users attempt reassignment simultaneously.","1. Open edit or reassign popup.
+2. Leave mandatory field blank or enter invalid value (past date, amount > cap, etc.).
+3. Attempt submit.
+4. Observe inline validation and final error.
+5. Correct and re-submit to confirm recovery. For concurrent: simulate two PNOs reassigning same record at same time.",Award Implemented status with amount = 3000001. Past implementation date. Two PNOs attempting bulk reassignment of overlapping records simultaneously.,"Clear red highlighting + specific error (e.g., 'Implementation Date cannot be in past', 'Amount exceeds ₹30 Lakh consequential loss cap'). Submit blocked. Concurrent reassignments handled safely (one succeeds, other gets clear conflict message). After correction, succeeds.",Edge
+RE-TC-01804,RE-US-018,Edge - Large Attachment / Concurrent Users / Draft Recovery / Query Thread,System under load. Large file near 5MB limit. User has multiple drafts. Complex threaded query conversation exists.,"1. Upload 4.9MB valid file + attempt 5.1MB invalid.
+2. Simulate 400 concurrent RE users performing actions.
+3. Close browser mid-draft, reopen, recover draft.
+4. Post multiple queries and replies; verify thread integrity and notifications.",4.9MB PDF + 5.1MB file. 400 concurrent test users. Draft with 2 pages of text. 5-query threaded conversation.,Valid file accepted; invalid rejected with clear message. All concurrent actions succeed without data loss or corruption. Draft recovers exactly. Thread displays chronologically with correct actors and timestamps. Notifications accurate.,Edge
+RE-TC-01901,RE-US-019,"Happy Path - As a PNO, NO or Contact Person, I want to manage the NO...","User logged in with correct role and entity via Kavach. Relevant record or master data exists. Services (notification, virus scan, SLA engine) available.","1. Navigate to appropriate view or edit screen.
+2. Perform primary action (select status, fill structured fields, reassign, save draft, raise query, etc.).
+3. Submit / Save & Proceed.
+4. Verify status change, notifications, history entry, SLA timer, activity tracker update, and any downstream effects.",Valid record in correct starting status. Active users available for reassignment. Test complainant/RE with email + mobile. Supporting documents ready for upload.,Action succeeds. Correct next status or draft saved. Full immutable history created. Notifications triggered to relevant parties. SLA countdown and RE Activity Status updated in real time. No validation errors.,Positive
+RE-TC-01902,RE-US-019,Negative - Unauthorized Role or Cross-Entity Access Attempt,"Logged in as role or entity that should not have permission (e.g., NO trying PNO bulk reassignment, user from Entity A trying to access Entity B record).","1. Login as unauthorized user/entity.
+2. Attempt restricted action or navigate to cross-entity record.
+3. Observe blocking behavior (button hidden, validation error, or access denied).
+4. Check audit log for attempt.",Record belonging to different entity. Lower-privilege test user in same or different territory.,Action completely blocked. Clear message ('Insufficient permission' or 'Record not accessible to your entity'). No data leakage. Attempt logged with user ID and IP.,Negative
+RE-TC-01903,RE-US-019,Edge - Missing Mandatory Structured Field / Invalid Date / Cap Breach / Concurrent Reassignment,"Record in state where structured form or reassignment is possible. One mandatory field left blank, invalid date entered, award amount exceeds cap, or multiple users attempt reassignment simultaneously.","1. Open edit or reassign popup.
+2. Leave mandatory field blank or enter invalid value (past date, amount > cap, etc.).
+3. Attempt submit.
+4. Observe inline validation and final error.
+5. Correct and re-submit to confirm recovery. For concurrent: simulate two PNOs reassigning same record at same time.",Award Implemented status with amount = 3000001. Past implementation date. Two PNOs attempting bulk reassignment of overlapping records simultaneously.,"Clear red highlighting + specific error (e.g., 'Implementation Date cannot be in past', 'Amount exceeds ₹30 Lakh consequential loss cap'). Submit blocked. Concurrent reassignments handled safely (one succeeds, other gets clear conflict message). After correction, succeeds.",Edge
+RE-TC-01904,RE-US-019,Edge - Large Attachment / Concurrent Users / Draft Recovery / Query Thread,System under load. Large file near 5MB limit. User has multiple drafts. Complex threaded query conversation exists.,"1. Upload 4.9MB valid file + attempt 5.1MB invalid.
+2. Simulate 400 concurrent RE users performing actions.
+3. Close browser mid-draft, reopen, recover draft.
+4. Post multiple queries and replies; verify thread integrity and notifications.",4.9MB PDF + 5.1MB file. 400 concurrent test users. Draft with 2 pages of text. 5-query threaded conversation.,Valid file accepted; invalid rejected with clear message. All concurrent actions succeed without data loss or corruption. Draft recovers exactly. Thread displays chronologically with correct actors and timestamps. Notifications accurate.,Edge
+RE-TC-02001,RE-US-020,"Happy Path - As a PNO, I want to see all NO Records and Appellate Co...","User logged in with correct role and entity via Kavach. Relevant record or master data exists. Services (notification, virus scan, SLA engine) available.","1. Navigate to appropriate view or edit screen.
+2. Perform primary action (select status, fill structured fields, reassign, save draft, raise query, etc.).
+3. Submit / Save & Proceed.
+4. Verify status change, notifications, history entry, SLA timer, activity tracker update, and any downstream effects.",Valid record in correct starting status. Active users available for reassignment. Test complainant/RE with email + mobile. Supporting documents ready for upload.,Action succeeds. Correct next status or draft saved. Full immutable history created. Notifications triggered to relevant parties. SLA countdown and RE Activity Status updated in real time. No validation errors.,Positive
+RE-TC-02002,RE-US-020,Negative - Unauthorized Role or Cross-Entity Access Attempt,"Logged in as role or entity that should not have permission (e.g., NO trying PNO bulk reassignment, user from Entity A trying to access Entity B record).","1. Login as unauthorized user/entity.
+2. Attempt restricted action or navigate to cross-entity record.
+3. Observe blocking behavior (button hidden, validation error, or access denied).
+4. Check audit log for attempt.",Record belonging to different entity. Lower-privilege test user in same or different territory.,Action completely blocked. Clear message ('Insufficient permission' or 'Record not accessible to your entity'). No data leakage. Attempt logged with user ID and IP.,Negative
+RE-TC-02003,RE-US-020,Edge - Missing Mandatory Structured Field / Invalid Date / Cap Breach / Concurrent Reassignment,"Record in state where structured form or reassignment is possible. One mandatory field left blank, invalid date entered, award amount exceeds cap, or multiple users attempt reassignment simultaneously.","1. Open edit or reassign popup.
+2. Leave mandatory field blank or enter invalid value (past date, amount > cap, etc.).
+3. Attempt submit.
+4. Observe inline validation and final error.
+5. Correct and re-submit to confirm recovery. For concurrent: simulate two PNOs reassigning same record at same time.",Award Implemented status with amount = 3000001. Past implementation date. Two PNOs attempting bulk reassignment of overlapping records simultaneously.,"Clear red highlighting + specific error (e.g., 'Implementation Date cannot be in past', 'Amount exceeds ₹30 Lakh consequential loss cap'). Submit blocked. Concurrent reassignments handled safely (one succeeds, other gets clear conflict message). After correction, succeeds.",Edge
+RE-TC-02004,RE-US-020,Edge - Large Attachment / Concurrent Users / Draft Recovery / Query Thread,System under load. Large file near 5MB limit. User has multiple drafts. Complex threaded query conversation exists.,"1. Upload 4.9MB valid file + attempt 5.1MB invalid.
+2. Simulate 400 concurrent RE users performing actions.
+3. Close browser mid-draft, reopen, recover draft.
+4. Post multiple queries and replies; verify thread integrity and notifications.",4.9MB PDF + 5.1MB file. 400 concurrent test users. Draft with 2 pages of text. 5-query threaded conversation.,Valid file accepted; invalid rejected with clear message. All concurrent actions succeed without data loss or corruption. Draft recovers exactly. Thread displays chronologically with correct actors and timestamps. Notifications accurate.,Edge
+RE-TC-02101,RE-US-021,"Happy Path - As the system, I want to automatically create an NO Rec...","User logged in with correct role and entity via Kavach. Relevant record or master data exists. Services (notification, virus scan, SLA engine) available.","1. Navigate to appropriate view or edit screen.
+2. Perform primary action (select status, fill structured fields, reassign, save draft, raise query, etc.).
+3. Submit / Save & Proceed.
+4. Verify status change, notifications, history entry, SLA timer, activity tracker update, and any downstream effects.",Valid record in correct starting status. Active users available for reassignment. Test complainant/RE with email + mobile. Supporting documents ready for upload.,Action succeeds. Correct next status or draft saved. Full immutable history created. Notifications triggered to relevant parties. SLA countdown and RE Activity Status updated in real time. No validation errors.,Positive
+RE-TC-02102,RE-US-021,Negative - Unauthorized Role or Cross-Entity Access Attempt,"Logged in as role or entity that should not have permission (e.g., NO trying PNO bulk reassignment, user from Entity A trying to access Entity B record).","1. Login as unauthorized user/entity.
+2. Attempt restricted action or navigate to cross-entity record.
+3. Observe blocking behavior (button hidden, validation error, or access denied).
+4. Check audit log for attempt.",Record belonging to different entity. Lower-privilege test user in same or different territory.,Action completely blocked. Clear message ('Insufficient permission' or 'Record not accessible to your entity'). No data leakage. Attempt logged with user ID and IP.,Negative
+RE-TC-02103,RE-US-021,Edge - Missing Mandatory Structured Field / Invalid Date / Cap Breach / Concurrent Reassignment,"Record in state where structured form or reassignment is possible. One mandatory field left blank, invalid date entered, award amount exceeds cap, or multiple users attempt reassignment simultaneously.","1. Open edit or reassign popup.
+2. Leave mandatory field blank or enter invalid value (past date, amount > cap, etc.).
+3. Attempt submit.
+4. Observe inline validation and final error.
+5. Correct and re-submit to confirm recovery. For concurrent: simulate two PNOs reassigning same record at same time.",Award Implemented status with amount = 3000001. Past implementation date. Two PNOs attempting bulk reassignment of overlapping records simultaneously.,"Clear red highlighting + specific error (e.g., 'Implementation Date cannot be in past', 'Amount exceeds ₹30 Lakh consequential loss cap'). Submit blocked. Concurrent reassignments handled safely (one succeeds, other gets clear conflict message). After correction, succeeds.",Edge
+RE-TC-02104,RE-US-021,Edge - Large Attachment / Concurrent Users / Draft Recovery / Query Thread,System under load. Large file near 5MB limit. User has multiple drafts. Complex threaded query conversation exists.,"1. Upload 4.9MB valid file + attempt 5.1MB invalid.
+2. Simulate 400 concurrent RE users performing actions.
+3. Close browser mid-draft, reopen, recover draft.
+4. Post multiple queries and replies; verify thread integrity and notifications.",4.9MB PDF + 5.1MB file. 400 concurrent test users. Draft with 2 pages of text. 5-query threaded conversation.,Valid file accepted; invalid rejected with clear message. All concurrent actions succeed without data loss or corruption. Draft recovers exactly. Thread displays chronologically with correct actors and timestamps. Notifications accurate.,Edge
+RE-TC-02201,RE-US-022,"Happy Path - As an NO or PNO in the RBIOS workflow, I want structure...","User logged in with correct role and entity via Kavach. Relevant record or master data exists. Services (notification, virus scan, SLA engine) available.","1. Navigate to appropriate view or edit screen.
+2. Perform primary action (select status, fill structured fields, reassign, save draft, raise query, etc.).
+3. Submit / Save & Proceed.
+4. Verify status change, notifications, history entry, SLA timer, activity tracker update, and any downstream effects.",Valid record in correct starting status. Active users available for reassignment. Test complainant/RE with email + mobile. Supporting documents ready for upload.,Action succeeds. Correct next status or draft saved. Full immutable history created. Notifications triggered to relevant parties. SLA countdown and RE Activity Status updated in real time. No validation errors.,Positive
+RE-TC-02202,RE-US-022,Negative - Unauthorized Role or Cross-Entity Access Attempt,"Logged in as role or entity that should not have permission (e.g., NO trying PNO bulk reassignment, user from Entity A trying to access Entity B record).","1. Login as unauthorized user/entity.
+2. Attempt restricted action or navigate to cross-entity record.
+3. Observe blocking behavior (button hidden, validation error, or access denied).
+4. Check audit log for attempt.",Record belonging to different entity. Lower-privilege test user in same or different territory.,Action completely blocked. Clear message ('Insufficient permission' or 'Record not accessible to your entity'). No data leakage. Attempt logged with user ID and IP.,Negative
+RE-TC-02203,RE-US-022,Edge - Missing Mandatory Structured Field / Invalid Date / Cap Breach / Concurrent Reassignment,"Record in state where structured form or reassignment is possible. One mandatory field left blank, invalid date entered, award amount exceeds cap, or multiple users attempt reassignment simultaneously.","1. Open edit or reassign popup.
+2. Leave mandatory field blank or enter invalid value (past date, amount > cap, etc.).
+3. Attempt submit.
+4. Observe inline validation and final error.
+5. Correct and re-submit to confirm recovery. For concurrent: simulate two PNOs reassigning same record at same time.",Award Implemented status with amount = 3000001. Past implementation date. Two PNOs attempting bulk reassignment of overlapping records simultaneously.,"Clear red highlighting + specific error (e.g., 'Implementation Date cannot be in past', 'Amount exceeds ₹30 Lakh consequential loss cap'). Submit blocked. Concurrent reassignments handled safely (one succeeds, other gets clear conflict message). After correction, succeeds.",Edge
+RE-TC-02204,RE-US-022,Edge - Large Attachment / Concurrent Users / Draft Recovery / Query Thread,System under load. Large file near 5MB limit. User has multiple drafts. Complex threaded query conversation exists.,"1. Upload 4.9MB valid file + attempt 5.1MB invalid.
+2. Simulate 400 concurrent RE users performing actions.
+3. Close browser mid-draft, reopen, recover draft.
+4. Post multiple queries and replies; verify thread integrity and notifications.",4.9MB PDF + 5.1MB file. 400 concurrent test users. Draft with 2 pages of text. 5-query threaded conversation.,Valid file accepted; invalid rejected with clear message. All concurrent actions succeed without data loss or corruption. Draft recovers exactly. Thread displays chronologically with correct actors and timestamps. Notifications accurate.,Edge
+RE-TC-02301,RE-US-023,"Happy Path - As an RE user, I want a clear 'FRC' (First Resort Compl...","User logged in with correct role and entity via Kavach. Relevant record or master data exists. Services (notification, virus scan, SLA engine) available.","1. Navigate to appropriate view or edit screen.
+2. Perform primary action (select status, fill structured fields, reassign, save draft, raise query, etc.).
+3. Submit / Save & Proceed.
+4. Verify status change, notifications, history entry, SLA timer, activity tracker update, and any downstream effects.",Valid record in correct starting status. Active users available for reassignment. Test complainant/RE with email + mobile. Supporting documents ready for upload.,Action succeeds. Correct next status or draft saved. Full immutable history created. Notifications triggered to relevant parties. SLA countdown and RE Activity Status updated in real time. No validation errors.,Positive
+RE-TC-02302,RE-US-023,Negative - Unauthorized Role or Cross-Entity Access Attempt,"Logged in as role or entity that should not have permission (e.g., NO trying PNO bulk reassignment, user from Entity A trying to access Entity B record).","1. Login as unauthorized user/entity.
+2. Attempt restricted action or navigate to cross-entity record.
+3. Observe blocking behavior (button hidden, validation error, or access denied).
+4. Check audit log for attempt.",Record belonging to different entity. Lower-privilege test user in same or different territory.,Action completely blocked. Clear message ('Insufficient permission' or 'Record not accessible to your entity'). No data leakage. Attempt logged with user ID and IP.,Negative
+RE-TC-02303,RE-US-023,Edge - Missing Mandatory Structured Field / Invalid Date / Cap Breach / Concurrent Reassignment,"Record in state where structured form or reassignment is possible. One mandatory field left blank, invalid date entered, award amount exceeds cap, or multiple users attempt reassignment simultaneously.","1. Open edit or reassign popup.
+2. Leave mandatory field blank or enter invalid value (past date, amount > cap, etc.).
+3. Attempt submit.
+4. Observe inline validation and final error.
+5. Correct and re-submit to confirm recovery. For concurrent: simulate two PNOs reassigning same record at same time.",Award Implemented status with amount = 3000001. Past implementation date. Two PNOs attempting bulk reassignment of overlapping records simultaneously.,"Clear red highlighting + specific error (e.g., 'Implementation Date cannot be in past', 'Amount exceeds ₹30 Lakh consequential loss cap'). Submit blocked. Concurrent reassignments handled safely (one succeeds, other gets clear conflict message). After correction, succeeds.",Edge
+RE-TC-02304,RE-US-023,Edge - Large Attachment / Concurrent Users / Draft Recovery / Query Thread,System under load. Large file near 5MB limit. User has multiple drafts. Complex threaded query conversation exists.,"1. Upload 4.9MB valid file + attempt 5.1MB invalid.
+2. Simulate 400 concurrent RE users performing actions.
+3. Close browser mid-draft, reopen, recover draft.
+4. Post multiple queries and replies; verify thread integrity and notifications.",4.9MB PDF + 5.1MB file. 400 concurrent test users. Draft with 2 pages of text. 5-query threaded conversation.,Valid file accepted; invalid rejected with clear message. All concurrent actions succeed without data loss or corruption. Draft recovers exactly. Thread displays chronologically with correct actors and timestamps. Notifications accurate.,Edge
+RE-TC-02401,RE-US-024,"Happy Path - As a PNO or NO, I want to file an appeal against an Awa...","User logged in with correct role and entity via Kavach. Relevant record or master data exists. Services (notification, virus scan, SLA engine) available.","1. Navigate to appropriate view or edit screen.
+2. Perform primary action (select status, fill structured fields, reassign, save draft, raise query, etc.).
+3. Submit / Save & Proceed.
+4. Verify status change, notifications, history entry, SLA timer, activity tracker update, and any downstream effects.",Valid record in correct starting status. Active users available for reassignment. Test complainant/RE with email + mobile. Supporting documents ready for upload.,Action succeeds. Correct next status or draft saved. Full immutable history created. Notifications triggered to relevant parties. SLA countdown and RE Activity Status updated in real time. No validation errors.,Positive
+RE-TC-02402,RE-US-024,Negative - Unauthorized Role or Cross-Entity Access Attempt,"Logged in as role or entity that should not have permission (e.g., NO trying PNO bulk reassignment, user from Entity A trying to access Entity B record).","1. Login as unauthorized user/entity.
+2. Attempt restricted action or navigate to cross-entity record.
+3. Observe blocking behavior (button hidden, validation error, or access denied).
+4. Check audit log for attempt.",Record belonging to different entity. Lower-privilege test user in same or different territory.,Action completely blocked. Clear message ('Insufficient permission' or 'Record not accessible to your entity'). No data leakage. Attempt logged with user ID and IP.,Negative
+RE-TC-02403,RE-US-024,Edge - Missing Mandatory Structured Field / Invalid Date / Cap Breach / Concurrent Reassignment,"Record in state where structured form or reassignment is possible. One mandatory field left blank, invalid date entered, award amount exceeds cap, or multiple users attempt reassignment simultaneously.","1. Open edit or reassign popup.
+2. Leave mandatory field blank or enter invalid value (past date, amount > cap, etc.).
+3. Attempt submit.
+4. Observe inline validation and final error.
+5. Correct and re-submit to confirm recovery. For concurrent: simulate two PNOs reassigning same record at same time.",Award Implemented status with amount = 3000001. Past implementation date. Two PNOs attempting bulk reassignment of overlapping records simultaneously.,"Clear red highlighting + specific error (e.g., 'Implementation Date cannot be in past', 'Amount exceeds ₹30 Lakh consequential loss cap'). Submit blocked. Concurrent reassignments handled safely (one succeeds, other gets clear conflict message). After correction, succeeds.",Edge
+RE-TC-02404,RE-US-024,Edge - Large Attachment / Concurrent Users / Draft Recovery / Query Thread,System under load. Large file near 5MB limit. User has multiple drafts. Complex threaded query conversation exists.,"1. Upload 4.9MB valid file + attempt 5.1MB invalid.
+2. Simulate 400 concurrent RE users performing actions.
+3. Close browser mid-draft, reopen, recover draft.
+4. Post multiple queries and replies; verify thread integrity and notifications.",4.9MB PDF + 5.1MB file. 400 concurrent test users. Draft with 2 pages of text. 5-query threaded conversation.,Valid file accepted; invalid rejected with clear message. All concurrent actions succeed without data loss or corruption. Draft recovers exactly. Thread displays chronologically with correct actors and timestamps. Notifications accurate.,Edge
+RE-TC-02501,RE-US-025,"Happy Path - As an RE user, I want to see Legal Case details (if any...","User logged in with correct role and entity via Kavach. Relevant record or master data exists. Services (notification, virus scan, SLA engine) available.","1. Navigate to appropriate view or edit screen.
+2. Perform primary action (select status, fill structured fields, reassign, save draft, raise query, etc.).
+3. Submit / Save & Proceed.
+4. Verify status change, notifications, history entry, SLA timer, activity tracker update, and any downstream effects.",Valid record in correct starting status. Active users available for reassignment. Test complainant/RE with email + mobile. Supporting documents ready for upload.,Action succeeds. Correct next status or draft saved. Full immutable history created. Notifications triggered to relevant parties. SLA countdown and RE Activity Status updated in real time. No validation errors.,Positive
+RE-TC-02502,RE-US-025,Negative - Unauthorized Role or Cross-Entity Access Attempt,"Logged in as role or entity that should not have permission (e.g., NO trying PNO bulk reassignment, user from Entity A trying to access Entity B record).","1. Login as unauthorized user/entity.
+2. Attempt restricted action or navigate to cross-entity record.
+3. Observe blocking behavior (button hidden, validation error, or access denied).
+4. Check audit log for attempt.",Record belonging to different entity. Lower-privilege test user in same or different territory.,Action completely blocked. Clear message ('Insufficient permission' or 'Record not accessible to your entity'). No data leakage. Attempt logged with user ID and IP.,Negative
+RE-TC-02503,RE-US-025,Edge - Missing Mandatory Structured Field / Invalid Date / Cap Breach / Concurrent Reassignment,"Record in state where structured form or reassignment is possible. One mandatory field left blank, invalid date entered, award amount exceeds cap, or multiple users attempt reassignment simultaneously.","1. Open edit or reassign popup.
+2. Leave mandatory field blank or enter invalid value (past date, amount > cap, etc.).
+3. Attempt submit.
+4. Observe inline validation and final error.
+5. Correct and re-submit to confirm recovery. For concurrent: simulate two PNOs reassigning same record at same time.",Award Implemented status with amount = 3000001. Past implementation date. Two PNOs attempting bulk reassignment of overlapping records simultaneously.,"Clear red highlighting + specific error (e.g., 'Implementation Date cannot be in past', 'Amount exceeds ₹30 Lakh consequential loss cap'). Submit blocked. Concurrent reassignments handled safely (one succeeds, other gets clear conflict message). After correction, succeeds.",Edge
+RE-TC-02504,RE-US-025,Edge - Large Attachment / Concurrent Users / Draft Recovery / Query Thread,System under load. Large file near 5MB limit. User has multiple drafts. Complex threaded query conversation exists.,"1. Upload 4.9MB valid file + attempt 5.1MB invalid.
+2. Simulate 400 concurrent RE users performing actions.
+3. Close browser mid-draft, reopen, recover draft.
+4. Post multiple queries and replies; verify thread integrity and notifications.",4.9MB PDF + 5.1MB file. 400 concurrent test users. Draft with 2 pages of text. 5-query threaded conversation.,Valid file accepted; invalid rejected with clear message. All concurrent actions succeed without data loss or corruption. Draft recovers exactly. Thread displays chronologically with correct actors and timestamps. Notifications accurate.,Edge
+RE-TC-02601,RE-US-026,"Happy Path - As the system, I want strict entity + territory-based R...","User logged in with correct role and entity via Kavach. Relevant record or master data exists. Services (notification, virus scan, SLA engine) available.","1. Navigate to appropriate view or edit screen.
+2. Perform primary action (select status, fill structured fields, reassign, save draft, raise query, etc.).
+3. Submit / Save & Proceed.
+4. Verify status change, notifications, history entry, SLA timer, activity tracker update, and any downstream effects.",Valid record in correct starting status. Active users available for reassignment. Test complainant/RE with email + mobile. Supporting documents ready for upload.,Action succeeds. Correct next status or draft saved. Full immutable history created. Notifications triggered to relevant parties. SLA countdown and RE Activity Status updated in real time. No validation errors.,Positive
+RE-TC-02602,RE-US-026,Negative - Unauthorized Role or Cross-Entity Access Attempt,"Logged in as role or entity that should not have permission (e.g., NO trying PNO bulk reassignment, user from Entity A trying to access Entity B record).","1. Login as unauthorized user/entity.
+2. Attempt restricted action or navigate to cross-entity record.
+3. Observe blocking behavior (button hidden, validation error, or access denied).
+4. Check audit log for attempt.",Record belonging to different entity. Lower-privilege test user in same or different territory.,Action completely blocked. Clear message ('Insufficient permission' or 'Record not accessible to your entity'). No data leakage. Attempt logged with user ID and IP.,Negative
+RE-TC-02603,RE-US-026,Edge - Missing Mandatory Structured Field / Invalid Date / Cap Breach / Concurrent Reassignment,"Record in state where structured form or reassignment is possible. One mandatory field left blank, invalid date entered, award amount exceeds cap, or multiple users attempt reassignment simultaneously.","1. Open edit or reassign popup.
+2. Leave mandatory field blank or enter invalid value (past date, amount > cap, etc.).
+3. Attempt submit.
+4. Observe inline validation and final error.
+5. Correct and re-submit to confirm recovery. For concurrent: simulate two PNOs reassigning same record at same time.",Award Implemented status with amount = 3000001. Past implementation date. Two PNOs attempting bulk reassignment of overlapping records simultaneously.,"Clear red highlighting + specific error (e.g., 'Implementation Date cannot be in past', 'Amount exceeds ₹30 Lakh consequential loss cap'). Submit blocked. Concurrent reassignments handled safely (one succeeds, other gets clear conflict message). After correction, succeeds.",Edge
+RE-TC-02604,RE-US-026,Edge - Large Attachment / Concurrent Users / Draft Recovery / Query Thread,System under load. Large file near 5MB limit. User has multiple drafts. Complex threaded query conversation exists.,"1. Upload 4.9MB valid file + attempt 5.1MB invalid.
+2. Simulate 400 concurrent RE users performing actions.
+3. Close browser mid-draft, reopen, recover draft.
+4. Post multiple queries and replies; verify thread integrity and notifications.",4.9MB PDF + 5.1MB file. 400 concurrent test users. Draft with 2 pages of text. 5-query threaded conversation.,Valid file accepted; invalid rejected with clear message. All concurrent actions succeed without data loss or corruption. Draft recovers exactly. Thread displays chronologically with correct actors and timestamps. Notifications accurate.,Edge
+RE-TC-02701,RE-US-027,"Happy Path - As the system, I want page load times for RE record lis...","User logged in with correct role and entity via Kavach. Relevant record or master data exists. Services (notification, virus scan, SLA engine) available.","1. Navigate to appropriate view or edit screen.
+2. Perform primary action (select status, fill structured fields, reassign, save draft, raise query, etc.).
+3. Submit / Save & Proceed.
+4. Verify status change, notifications, history entry, SLA timer, activity tracker update, and any downstream effects.",Valid record in correct starting status. Active users available for reassignment. Test complainant/RE with email + mobile. Supporting documents ready for upload.,Action succeeds. Correct next status or draft saved. Full immutable history created. Notifications triggered to relevant parties. SLA countdown and RE Activity Status updated in real time. No validation errors.,Positive
+RE-TC-02702,RE-US-027,Negative - Unauthorized Role or Cross-Entity Access Attempt,"Logged in as role or entity that should not have permission (e.g., NO trying PNO bulk reassignment, user from Entity A trying to access Entity B record).","1. Login as unauthorized user/entity.
+2. Attempt restricted action or navigate to cross-entity record.
+3. Observe blocking behavior (button hidden, validation error, or access denied).
+4. Check audit log for attempt.",Record belonging to different entity. Lower-privilege test user in same or different territory.,Action completely blocked. Clear message ('Insufficient permission' or 'Record not accessible to your entity'). No data leakage. Attempt logged with user ID and IP.,Negative
+RE-TC-02703,RE-US-027,Edge - Missing Mandatory Structured Field / Invalid Date / Cap Breach / Concurrent Reassignment,"Record in state where structured form or reassignment is possible. One mandatory field left blank, invalid date entered, award amount exceeds cap, or multiple users attempt reassignment simultaneously.","1. Open edit or reassign popup.
+2. Leave mandatory field blank or enter invalid value (past date, amount > cap, etc.).
+3. Attempt submit.
+4. Observe inline validation and final error.
+5. Correct and re-submit to confirm recovery. For concurrent: simulate two PNOs reassigning same record at same time.",Award Implemented status with amount = 3000001. Past implementation date. Two PNOs attempting bulk reassignment of overlapping records simultaneously.,"Clear red highlighting + specific error (e.g., 'Implementation Date cannot be in past', 'Amount exceeds ₹30 Lakh consequential loss cap'). Submit blocked. Concurrent reassignments handled safely (one succeeds, other gets clear conflict message). After correction, succeeds.",Edge
+RE-TC-02704,RE-US-027,Edge - Large Attachment / Concurrent Users / Draft Recovery / Query Thread,System under load. Large file near 5MB limit. User has multiple drafts. Complex threaded query conversation exists.,"1. Upload 4.9MB valid file + attempt 5.1MB invalid.
+2. Simulate 400 concurrent RE users performing actions.
+3. Close browser mid-draft, reopen, recover draft.
+4. Post multiple queries and replies; verify thread integrity and notifications.",4.9MB PDF + 5.1MB file. 400 concurrent test users. Draft with 2 pages of text. 5-query threaded conversation.,Valid file accepted; invalid rejected with clear message. All concurrent actions succeed without data loss or corruption. Draft recovers exactly. Thread displays chronologically with correct actors and timestamps. Notifications accurate.,Edge
+RE-TC-02801,RE-US-028,"Happy Path - As the system, I want AES-256 encryption at rest, TLS 1...","User logged in with correct role and entity via Kavach. Relevant record or master data exists. Services (notification, virus scan, SLA engine) available.","1. Navigate to appropriate view or edit screen.
+2. Perform primary action (select status, fill structured fields, reassign, save draft, raise query, etc.).
+3. Submit / Save & Proceed.
+4. Verify status change, notifications, history entry, SLA timer, activity tracker update, and any downstream effects.",Valid record in correct starting status. Active users available for reassignment. Test complainant/RE with email + mobile. Supporting documents ready for upload.,Action succeeds. Correct next status or draft saved. Full immutable history created. Notifications triggered to relevant parties. SLA countdown and RE Activity Status updated in real time. No validation errors.,Positive
+RE-TC-02802,RE-US-028,Negative - Unauthorized Role or Cross-Entity Access Attempt,"Logged in as role or entity that should not have permission (e.g., NO trying PNO bulk reassignment, user from Entity A trying to access Entity B record).","1. Login as unauthorized user/entity.
+2. Attempt restricted action or navigate to cross-entity record.
+3. Observe blocking behavior (button hidden, validation error, or access denied).
+4. Check audit log for attempt.",Record belonging to different entity. Lower-privilege test user in same or different territory.,Action completely blocked. Clear message ('Insufficient permission' or 'Record not accessible to your entity'). No data leakage. Attempt logged with user ID and IP.,Negative
+RE-TC-02803,RE-US-028,Edge - Missing Mandatory Structured Field / Invalid Date / Cap Breach / Concurrent Reassignment,"Record in state where structured form or reassignment is possible. One mandatory field left blank, invalid date entered, award amount exceeds cap, or multiple users attempt reassignment simultaneously.","1. Open edit or reassign popup.
+2. Leave mandatory field blank or enter invalid value (past date, amount > cap, etc.).
+3. Attempt submit.
+4. Observe inline validation and final error.
+5. Correct and re-submit to confirm recovery. For concurrent: simulate two PNOs reassigning same record at same time.",Award Implemented status with amount = 3000001. Past implementation date. Two PNOs attempting bulk reassignment of overlapping records simultaneously.,"Clear red highlighting + specific error (e.g., 'Implementation Date cannot be in past', 'Amount exceeds ₹30 Lakh consequential loss cap'). Submit blocked. Concurrent reassignments handled safely (one succeeds, other gets clear conflict message). After correction, succeeds.",Edge
+RE-TC-02804,RE-US-028,Edge - Large Attachment / Concurrent Users / Draft Recovery / Query Thread,System under load. Large file near 5MB limit. User has multiple drafts. Complex threaded query conversation exists.,"1. Upload 4.9MB valid file + attempt 5.1MB invalid.
+2. Simulate 400 concurrent RE users performing actions.
+3. Close browser mid-draft, reopen, recover draft.
+4. Post multiple queries and replies; verify thread integrity and notifications.",4.9MB PDF + 5.1MB file. 400 concurrent test users. Draft with 2 pages of text. 5-query threaded conversation.,Valid file accepted; invalid rejected with clear message. All concurrent actions succeed without data loss or corruption. Draft recovers exactly. Thread displays chronologically with correct actors and timestamps. Notifications accurate.,Edge
+RE-TC-02901,RE-US-029,"Happy Path - As the system, I want automated 15-day SLA enforcement ...","User logged in with correct role and entity via Kavach. Relevant record or master data exists. Services (notification, virus scan, SLA engine) available.","1. Navigate to appropriate view or edit screen.
+2. Perform primary action (select status, fill structured fields, reassign, save draft, raise query, etc.).
+3. Submit / Save & Proceed.
+4. Verify status change, notifications, history entry, SLA timer, activity tracker update, and any downstream effects.",Valid record in correct starting status. Active users available for reassignment. Test complainant/RE with email + mobile. Supporting documents ready for upload.,Action succeeds. Correct next status or draft saved. Full immutable history created. Notifications triggered to relevant parties. SLA countdown and RE Activity Status updated in real time. No validation errors.,Positive
+RE-TC-02902,RE-US-029,Negative - Unauthorized Role or Cross-Entity Access Attempt,"Logged in as role or entity that should not have permission (e.g., NO trying PNO bulk reassignment, user from Entity A trying to access Entity B record).","1. Login as unauthorized user/entity.
+2. Attempt restricted action or navigate to cross-entity record.
+3. Observe blocking behavior (button hidden, validation error, or access denied).
+4. Check audit log for attempt.",Record belonging to different entity. Lower-privilege test user in same or different territory.,Action completely blocked. Clear message ('Insufficient permission' or 'Record not accessible to your entity'). No data leakage. Attempt logged with user ID and IP.,Negative
+RE-TC-02903,RE-US-029,Edge - Missing Mandatory Structured Field / Invalid Date / Cap Breach / Concurrent Reassignment,"Record in state where structured form or reassignment is possible. One mandatory field left blank, invalid date entered, award amount exceeds cap, or multiple users attempt reassignment simultaneously.","1. Open edit or reassign popup.
+2. Leave mandatory field blank or enter invalid value (past date, amount > cap, etc.).
+3. Attempt submit.
+4. Observe inline validation and final error.
+5. Correct and re-submit to confirm recovery. For concurrent: simulate two PNOs reassigning same record at same time.",Award Implemented status with amount = 3000001. Past implementation date. Two PNOs attempting bulk reassignment of overlapping records simultaneously.,"Clear red highlighting + specific error (e.g., 'Implementation Date cannot be in past', 'Amount exceeds ₹30 Lakh consequential loss cap'). Submit blocked. Concurrent reassignments handled safely (one succeeds, other gets clear conflict message). After correction, succeeds.",Edge
+RE-TC-02904,RE-US-029,Edge - SLA Breach + Weekend/Holiday + Config Change Mid-Clock,Record assigned just before configurable weekend/holiday period. Thresholds changed mid-SLA by Admin. Record reaches 15-day breach.,"1. Assign record near end of business day before holiday.
+2. Change SLA threshold configuration.
+3. Advance system date past 15 days without response.
+4. Verify alerts, escalation, and color coding behave correctly.",Record assigned Friday 4pm. Config changed from 15 to 10 days mid-cycle. System date advanced 16 days.,SLA clock respects configured calendar (or explicit 'do not pause' rule). Alerts fire at correct new thresholds. Breach triggers proper escalation path. Color coding accurate. History shows config change event.,Edge
+RE-TC-03001,RE-US-030,"Happy Path - As the system, I want comprehensive data migration of e...","User logged in with correct role and entity via Kavach. Relevant record or master data exists. Services (notification, virus scan, SLA engine) available.","1. Navigate to appropriate view or edit screen.
+2. Perform primary action (select status, fill structured fields, reassign, save draft, raise query, etc.).
+3. Submit / Save & Proceed.
+4. Verify status change, notifications, history entry, SLA timer, activity tracker update, and any downstream effects.",Valid record in correct starting status. Active users available for reassignment. Test complainant/RE with email + mobile. Supporting documents ready for upload.,Action succeeds. Correct next status or draft saved. Full immutable history created. Notifications triggered to relevant parties. SLA countdown and RE Activity Status updated in real time. No validation errors.,Positive
+RE-TC-03002,RE-US-030,Negative - Unauthorized Role or Cross-Entity Access Attempt,"Logged in as role or entity that should not have permission (e.g., NO trying PNO bulk reassignment, user from Entity A trying to access Entity B record).","1. Login as unauthorized user/entity.
+2. Attempt restricted action or navigate to cross-entity record.
+3. Observe blocking behavior (button hidden, validation error, or access denied).
+4. Check audit log for attempt.",Record belonging to different entity. Lower-privilege test user in same or different territory.,Action completely blocked. Clear message ('Insufficient permission' or 'Record not accessible to your entity'). No data leakage. Attempt logged with user ID and IP.,Negative
+RE-TC-03003,RE-US-030,Edge - Missing Mandatory Structured Field / Invalid Date / Cap Breach / Concurrent Reassignment,"Record in state where structured form or reassignment is possible. One mandatory field left blank, invalid date entered, award amount exceeds cap, or multiple users attempt reassignment simultaneously.","1. Open edit or reassign popup.
+2. Leave mandatory field blank or enter invalid value (past date, amount > cap, etc.).
+3. Attempt submit.
+4. Observe inline validation and final error.
+5. Correct and re-submit to confirm recovery. For concurrent: simulate two PNOs reassigning same record at same time.",Award Implemented status with amount = 3000001. Past implementation date. Two PNOs attempting bulk reassignment of overlapping records simultaneously.,"Clear red highlighting + specific error (e.g., 'Implementation Date cannot be in past', 'Amount exceeds ₹30 Lakh consequential loss cap'). Submit blocked. Concurrent reassignments handled safely (one succeeds, other gets clear conflict message). After correction, succeeds.",Edge
+RE-TC-03004,RE-US-030,Edge - Large Attachment / Concurrent Users / Draft Recovery / Query Thread,System under load. Large file near 5MB limit. User has multiple drafts. Complex threaded query conversation exists.,"1. Upload 4.9MB valid file + attempt 5.1MB invalid.
+2. Simulate 400 concurrent RE users performing actions.
+3. Close browser mid-draft, reopen, recover draft.
+4. Post multiple queries and replies; verify thread integrity and notifications.",4.9MB PDF + 5.1MB file. 400 concurrent test users. Draft with 2 pages of text. 5-query threaded conversation.,Valid file accepted; invalid rejected with clear message. All concurrent actions succeed without data loss or corruption. Draft recovers exactly. Thread displays chronologically with correct actors and timestamps. Notifications accurate.,Edge
+RE-TC-03101,RE-US-031,"Happy Path - As an RE user, I want to view entity-level complaint re...","User logged in with correct role and entity via Kavach. Relevant record or master data exists. Services (notification, virus scan, SLA engine) available.","1. Navigate to appropriate view or edit screen.
+2. Perform primary action (select status, fill structured fields, reassign, save draft, raise query, etc.).
+3. Submit / Save & Proceed.
+4. Verify status change, notifications, history entry, SLA timer, activity tracker update, and any downstream effects.",Valid record in correct starting status. Active users available for reassignment. Test complainant/RE with email + mobile. Supporting documents ready for upload.,Action succeeds. Correct next status or draft saved. Full immutable history created. Notifications triggered to relevant parties. SLA countdown and RE Activity Status updated in real time. No validation errors.,Positive
+RE-TC-03102,RE-US-031,Negative - Unauthorized Role or Cross-Entity Access Attempt,"Logged in as role or entity that should not have permission (e.g., NO trying PNO bulk reassignment, user from Entity A trying to access Entity B record).","1. Login as unauthorized user/entity.
+2. Attempt restricted action or navigate to cross-entity record.
+3. Observe blocking behavior (button hidden, validation error, or access denied).
+4. Check audit log for attempt.",Record belonging to different entity. Lower-privilege test user in same or different territory.,Action completely blocked. Clear message ('Insufficient permission' or 'Record not accessible to your entity'). No data leakage. Attempt logged with user ID and IP.,Negative
+RE-TC-03103,RE-US-031,Edge - Missing Mandatory Structured Field / Invalid Date / Cap Breach / Concurrent Reassignment,"Record in state where structured form or reassignment is possible. One mandatory field left blank, invalid date entered, award amount exceeds cap, or multiple users attempt reassignment simultaneously.","1. Open edit or reassign popup.
+2. Leave mandatory field blank or enter invalid value (past date, amount > cap, etc.).
+3. Attempt submit.
+4. Observe inline validation and final error.
+5. Correct and re-submit to confirm recovery. For concurrent: simulate two PNOs reassigning same record at same time.",Award Implemented status with amount = 3000001. Past implementation date. Two PNOs attempting bulk reassignment of overlapping records simultaneously.,"Clear red highlighting + specific error (e.g., 'Implementation Date cannot be in past', 'Amount exceeds ₹30 Lakh consequential loss cap'). Submit blocked. Concurrent reassignments handled safely (one succeeds, other gets clear conflict message). After correction, succeeds.",Edge
+RE-TC-03104,RE-US-031,Edge - Large Attachment / Concurrent Users / Draft Recovery / Query Thread,System under load. Large file near 5MB limit. User has multiple drafts. Complex threaded query conversation exists.,"1. Upload 4.9MB valid file + attempt 5.1MB invalid.
+2. Simulate 400 concurrent RE users performing actions.
+3. Close browser mid-draft, reopen, recover draft.
+4. Post multiple queries and replies; verify thread integrity and notifications.",4.9MB PDF + 5.1MB file. 400 concurrent test users. Draft with 2 pages of text. 5-query threaded conversation.,Valid file accepted; invalid rejected with clear message. All concurrent actions succeed without data loss or corruption. Draft recovers exactly. Thread displays chronologically with correct actors and timestamps. Notifications accurate.,Edge
+RE-TC-04001,RE-US-040,"Happy Path - As the system, I want all file uploads to be virus-scan...","User logged in with correct role and entity via Kavach. Relevant record or master data exists. Services (notification, virus scan, SLA engine) available.","1. Navigate to appropriate view or edit screen.
+2. Perform primary action (select status, fill structured fields, reassign, save draft, raise query, etc.).
+3. Submit / Save & Proceed.
+4. Verify status change, notifications, history entry, SLA timer, activity tracker update, and any downstream effects.",Valid record in correct starting status. Active users available for reassignment. Test complainant/RE with email + mobile. Supporting documents ready for upload.,Action succeeds. Correct next status or draft saved. Full immutable history created. Notifications triggered to relevant parties. SLA countdown and RE Activity Status updated in real time. No validation errors.,Positive
+RE-TC-04002,RE-US-040,Negative - Unauthorized Role or Cross-Entity Access Attempt,"Logged in as role or entity that should not have permission (e.g., NO trying PNO bulk reassignment, user from Entity A trying to access Entity B record).","1. Login as unauthorized user/entity.
+2. Attempt restricted action or navigate to cross-entity record.
+3. Observe blocking behavior (button hidden, validation error, or access denied).
+4. Check audit log for attempt.",Record belonging to different entity. Lower-privilege test user in same or different territory.,Action completely blocked. Clear message ('Insufficient permission' or 'Record not accessible to your entity'). No data leakage. Attempt logged with user ID and IP.,Negative
+RE-TC-04003,RE-US-040,Edge - Missing Mandatory Structured Field / Invalid Date / Cap Breach / Concurrent Reassignment,"Record in state where structured form or reassignment is possible. One mandatory field left blank, invalid date entered, award amount exceeds cap, or multiple users attempt reassignment simultaneously.","1. Open edit or reassign popup.
+2. Leave mandatory field blank or enter invalid value (past date, amount > cap, etc.).
+3. Attempt submit.
+4. Observe inline validation and final error.
+5. Correct and re-submit to confirm recovery. For concurrent: simulate two PNOs reassigning same record at same time.",Award Implemented status with amount = 3000001. Past implementation date. Two PNOs attempting bulk reassignment of overlapping records simultaneously.,"Clear red highlighting + specific error (e.g., 'Implementation Date cannot be in past', 'Amount exceeds ₹30 Lakh consequential loss cap'). Submit blocked. Concurrent reassignments handled safely (one succeeds, other gets clear conflict message). After correction, succeeds.",Edge
+RE-TC-04004,RE-US-040,Edge - Large Attachment / Concurrent Users / Draft Recovery / Query Thread,System under load. Large file near 5MB limit. User has multiple drafts. Complex threaded query conversation exists.,"1. Upload 4.9MB valid file + attempt 5.1MB invalid.
+2. Simulate 400 concurrent RE users performing actions.
+3. Close browser mid-draft, reopen, recover draft.
+4. Post multiple queries and replies; verify thread integrity and notifications.",4.9MB PDF + 5.1MB file. 400 concurrent test users. Draft with 2 pages of text. 5-query threaded conversation.,Valid file accepted; invalid rejected with clear message. All concurrent actions succeed without data loss or corruption. Draft recovers exactly. Thread displays chronologically with correct actors and timestamps. Notifications accurate.,Edge
+
+--- Sheet: Traceability Matrix ---
+BRD Section / Req ID,Requirement Summary,Linked User Story IDs,Coverage Status,Notes / Gaps
+Value Proposition + Gap #03 (SLA visibility),15-day SLA countdown visible to RE on list + edit; real-time RE Activity Tracker for CEPC/RBI users.,"RE-US-001, RE-US-002, RE-US-015, RE-US-016, RE-US-017, RE-US-029",Fully Covered,
+Gap #01 (Self-onboarding),RE self-onboarding interface for Contact Person/NO/PNO.,RE-US-005,Fully Covered,
+Gap #02 (Free-text only),"Structured, status-aware response forms with mandatory fields.","RE-US-006, RE-US-022",Fully Covered,
+Gap #04 (Draft save),Save as Draft + My Drafts recovery.,RE-US-007,Fully Covered,
+Gap #05 (Reassignment audit + workload),PNO bulk/single reassignment with workload indicator + mandatory reason + dual notification; NO request workflow.,"RE-US-010, RE-US-011, RE-US-012, RE-US-013, RE-US-014",Fully Covered,
+Gap #07 (In-system query),"Structured query channel (document request, clarification, extension, meeting) with full History logging.",RE-US-018,Fully Covered,
+FR-RE-001 to FR-RE-032 (key),"SSO, unified dashboard, SLA countdown, structured forms, draft save, PNO/NO reassignment, RE Activity Tracker, in-system query, NO Record, reports, security, performance.",RE-US-001 to RE-US-030,Fully Covered,
+NFRs + Security + Performance,"3s page load, 500+ concurrent, AES-256/TLS 1.3, immutable audit, 15min timeout, VAPT, entity segregation, 7-year retention.","RE-US-026, RE-US-027, RE-US-028, RE-US-040",Fully Covered,
+
+--- Sheet: Verification & Gap Analysis ---
+ADVERSARIAL SELF-AUDIT & GAP ANALYSIS - RE MODULE BACKLOG,,,,,
+,,,,,
+BRD Section / Area,How Covered (User Stories),Assumptions Made,Gaps / Ambiguities / Missing Edge Cases Flagged,Recommendations for Clarification,Confidence
+RE Activity Status Tracker (Gap #04 from CEPC BRD),"US-015, US-016, US-017 fully define the 7-level tracker, automatic event emission, 60s propagation, nudge logic, and read-only visibility on CEPC/RBI side.","Events are emitted from frontend actions (open, draft save, upload, submit). Backend can also detect inactivity for 'Overdue' state. Exact 7 level names and transition rules confirmed with CEPD.","Precise definition of each level (e.g., does 'Under Review' start on first field edit or on draft save?). Nudge thresholds per status or global? Can RE user see the status they are emitting (for transparency)?","Workshop with CEPD to finalize exact level definitions, transition triggers, and nudge rules. Add 'RE Activity History' sub-tab visible to both sides for full transparency.",82%
+PNO Reassignment + Workload Indicator (Gap #05),"US-010 to US-014 cover single/bulk, mandatory reason, workload indicator, dual notification, NO request workflow, and PNO dashboard queue.",Workload = current open count in 'Assigned to Me'. Thresholds per user configurable. Bulk action is atomic or best-effort with clear reporting of successes/failures.,Exact workload calculation (only 'Assigned to Me' or includes 'Sent to RBI'?). Behavior when multiple PNOs reassign overlapping records concurrently. Whether reason is editable after reassignment.,Define workload formula explicitly. Add optimistic locking or queue for concurrent bulk reassignments. Make reassignment reason immutable after action for audit integrity.,85%
+Structured Response Forms + Award Date Fields,"US-006 and US-022 define dynamic mandatory fields per status, including RBIOS award/advisory dates and document prompts.",Form is driven by status code master + field configuration (not hard-coded per status in UI). Basic date enforcement in Phase 1; full Award tracking module is future.,Exact list of mandatory fields per status code (need CEPD sign-off on matrix). Whether 'Additional Information Required' status triggers specific fields. Validation rules for date sequences (implementation before acceptance).,Produce Status Code → Mandatory Fields matrix with CEPD before development. Add client + server validation for logical date order. Consider making some fields conditionally mandatory based on other values.,80%
+Overall Backlog Quality,"40 user stories + ~160 test cases cover all explicit FRs, Gaps 01-05 + 07, key NFRs, Business Rules, reassignment workflows, RE Activity Tracker, structured forms, SLA enforcement, and security/performance. Strong negative/edge coverage throughout.",This is a high-quality curated set focused on critical compliance and usability paths. Full decomposition would yield ~95 stories.,Exact delegated closure clauses for CEPC Reviewer/In-Charge (if any apply to RE side). Precise RE Activity event definitions and nudge rules. MOM digital vs offline decision. 13-1 Notice equivalent for CEPC RE flow. Mobile/PWA requirements.,"1. Workshop with CEPD + sample RE users to finalize structured form fields per status and RE Activity level definitions.
+2. Add dedicated performance stories for bulk reassignment and large entity reports.
+3. Confirm mobile web scope for Phase 1.
+4. Create separate epic for full Award/Compensation tracking module (beyond basic dates).",83%
+,,,,,
+,,,,,
+"OVERALL: 40 User Stories | ~160 Test Cases | 8 Traceability Mappings | 5 Gap Areas Analyzed | Average Confidence 83% | Focused on SLA, Reassignment, Structured Forms, Activity Tracker, and Security. Ready for CEPD + RE user workshop.",,,,,
+

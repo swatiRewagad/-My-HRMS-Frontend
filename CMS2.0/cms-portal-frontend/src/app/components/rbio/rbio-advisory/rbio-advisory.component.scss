@@ -1,0 +1,85 @@
+.rbio-advisory {
+  background: white; border-radius: 8px; padding: 20px; border: 1px solid #e0e0e0;
+
+  h4 { margin: 0 0 16px; font-size: 14px; color: #1e293b; border-bottom: 1px solid #f0f0f0; padding-bottom: 8px; }
+}
+
+.advisory-form {
+  .form-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+  }
+
+  .form-field {
+    display: flex; flex-direction: column; gap: 4px;
+    &.full { grid-column: 1 / -1; }
+    label { font-size: 12px; font-weight: 600; color: #475569; }
+    input, select, textarea {
+      padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; font-family: inherit;
+      &:focus { outline: none; border-color: #0d47a1; box-shadow: 0 0 0 3px rgba(13, 71, 161, 0.1); }
+    }
+    textarea { resize: vertical; min-height: 120px; }
+  }
+}
+
+.advisory-preview {
+  .preview-header {
+    display: flex; align-items: center; gap: 10px; margin-bottom: 16px;
+    .preview-badge {
+      padding: 2px 8px; background: #dbeafe; color: #1e40af;
+      border-radius: 4px; font-size: 10px; font-weight: 700; letter-spacing: 0.5px;
+    }
+    .classification-badge {
+      padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;
+      &[data-type="OPERATIONAL"] { background: #d1fae5; color: #065f46; }
+      &[data-type="PROCEDURAL"] { background: #dbeafe; color: #1e40af; }
+      &[data-type="POLICY"] { background: #fef3c7; color: #92400e; }
+    }
+  }
+
+  .preview-content {
+    background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px;
+  }
+
+  .preview-field {
+    display: flex; gap: 8px; align-items: baseline; margin-bottom: 8px;
+    .preview-label { font-size: 12px; font-weight: 600; color: #64748b; min-width: 100px; }
+    .preview-value { font-size: 13px; color: #1e293b; }
+  }
+
+  .preview-body {
+    margin-top: 12px; padding-top: 12px; border-top: 1px solid #e2e8f0;
+    .preview-label { font-size: 12px; font-weight: 600; color: #64748b; display: block; margin-bottom: 6px; }
+    .preview-text { font-size: 13px; color: #1e293b; line-height: 1.6; margin: 0; white-space: pre-wrap; }
+  }
+}
+
+.form-actions {
+  display: flex; gap: 10px; margin-top: 14px;
+}
+
+.submit-btn {
+  padding: 8px 18px; background: #0d47a1; color: white; border: none;
+  border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;
+  &:hover:not(:disabled) { background: #0a3a85; }
+  &:disabled { opacity: 0.5; cursor: default; }
+  &.preview-btn { background: #475569; &:hover:not(:disabled) { background: #334155; } }
+}
+
+.cancel-btn {
+  padding: 8px 18px; background: #f1f5f9; border: 1px solid #d1d5db;
+  border-radius: 6px; font-size: 13px; cursor: pointer;
+  &:hover { background: #e2e8f0; }
+}
+
+.result-msg {
+  margin-top: 12px; padding: 10px; border-radius: 6px; font-size: 13px;
+  display: flex; align-items: center; gap: 12px;
+  &.success { background: #e8f5e9; color: #2e7d32; }
+  &.error { background: #fbe9e7; color: #d32f2f; }
+}
+
+.reset-btn {
+  padding: 4px 12px; background: white; border: 1px solid #2e7d32;
+  border-radius: 4px; font-size: 12px; color: #2e7d32; cursor: pointer;
+  &:hover { background: #f0fdf4; }
+}
