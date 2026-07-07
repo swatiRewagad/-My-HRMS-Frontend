@@ -52,6 +52,18 @@ public class HazelcastCacheConfig {
         config.addMapConfig(new MapConfig("translations-module")
                 .setTimeToLiveSeconds(1800));
 
+        config.addMapConfig(new MapConfig("mre-rules")
+                .setTimeToLiveSeconds(3600));
+
+        config.addMapConfig(new MapConfig("copilot-precedent")
+                .setTimeToLiveSeconds(600));
+
+        config.addMapConfig(new MapConfig("report-results")
+                .setTimeToLiveSeconds(300));
+
+        config.addMapConfig(new MapConfig("analytics-summary")
+                .setTimeToLiveSeconds(300));
+
         config.addMapConfig(new MapConfig("default")
                 .setTimeToLiveSeconds(300));
 

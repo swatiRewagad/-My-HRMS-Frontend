@@ -44,6 +44,7 @@ export class PublicLoginComponent implements OnDestroy {
   cooloffSeconds = signal(0);
   private cooloffInterval: any = null;
 
+  devOtpPopulated = signal(false);
   loading = signal(false);
 
   constructor() {
@@ -103,6 +104,11 @@ export class PublicLoginComponent implements OnDestroy {
         this.sessionId = res.sessionId;
         this.otpSent.set(true);
         this.otpDigits = ['', '', '', '', '', ''];
+        this.devOtpPopulated.set(false);
+        if (res.devOtp) {
+          this.otpDigits = res.devOtp.split('').slice(0, 6);
+          this.devOtpPopulated.set(true);
+        }
         this.startResendTimer();
         this.loading.set(false);
       },
@@ -145,6 +151,9 @@ export class PublicLoginComponent implements OnDestroy {
         this.otpSent.set(true);
         this.showEmailFallback.set(false);
         this.otpDigits = ['', '', '', '', '', ''];
+        if (res.devOtp) {
+          this.otpDigits = res.devOtp.split('').slice(0, 6);
+        }
         this.startResendTimer();
         this.loading.set(false);
       },

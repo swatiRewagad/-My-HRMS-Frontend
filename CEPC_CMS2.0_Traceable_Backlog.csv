@@ -1,0 +1,863 @@
+--- Sheet: Cover & Instructions ---
+"RBI COMPLAINT MANAGEMENT SYSTEM 2.0
+CEPC LAYOUT - TRACEABLE BACKLOG",,,,,,,
+,,,,,,,
+,,,,,,,
+"Prepared for: Gaurav Marwaha | Chief Product Engineering Officer, ReBIT | For RBI CEPD & DIT Review",,,,,,,
+,,,,,,,
+Document Version: 1.0 | Generated: 2026-07-05 | Source BRD: v1.3 (23 June 2026) | For Regulated Entities NOT covered under RB-IOS 2021/2026,,,,,,,
+,,,,,,,
+,,,,,,,
+PURPOSE,,,,,,,
+"This workbook transforms the CEPC BRD into a development-ready, testable backlog for the CEPC Layout of CMS 2.0.",,,,,,,
+"CEPC handles complaints against Regulated Entities (banks, NBFCs, etc.) that are NOT part of the RBI Integrated Ombudsman Scheme.",,,,,,,
+,,,,,,,
+SHEETS,,,,,,,
+"1. User Stories     : 38 granular Connextra-format stories decomposed from role descriptions, milestones, gaps, and NFRs.",,,,,,,
+"2. Test Cases       : ~152 test cases (4 per story) covering happy path, negative permission, edge/validation, and special scenarios (on leave, threshold, no email, link expiry, OCR).",,,,,,,
+"3. Traceability     : Maps BRD sections, FRs, Gaps, NFRs, Business Rules to User Story IDs with coverage status.",,,,,,,
+"4. Verification     : Adversarial gap analysis with assumptions, flagged ambiguities, missing NFRs, and confidence scores.",,,,,,,
+,,,,,,,
+KEY DECOMPOSITION APPLIED,,,,,,,
+"• Role-specific: Separate stories for CEPC DO (draft + assessment + meeting + closure), Reviewer (review + limited close), In-Charge (escalation + forward), Closing Authority (final decision + reopen), Admin (user mgmt + bulk + reopen).",,,,,,,
+"• Workflow: Full milestone coverage (Register → Assessment → Conciliation → Forward → Final Decision) with send-back, forward with CRPC approval, and closure communication.",,,,,,,
+"• Compliance & NFR: OCR (English typed), digital signature, SLA engine, 7-day document link, Kavach SSO/RBAC, notifications, performance (3s load), security (AES-256/TLS), DPDP.",,,,,,,
+"• Intelligence added: Threshold-based assignment with fallback, On Leave prevention, concurrent intake safety, no-email closure fallback, scheme (none for CEPC but legacy handling), RE Contact Person record auto-creation and alerts.",,,,,,,
+,,,,,,,
+CEPC vs RBIO DIFFERENCES HIGHLIGHTED,,,,,,,
+• No Ombudsman/Deputy Ombudsman / Advisory / Award / Implead (those are RBIO-only).,,,,,,,
+"• Closing Authority is the highest decision maker (can close under all clauses, reopen).",,,,,,,
+"• In-Charge has strong routing/forward role (other office, regulatory body, RBI dept).",,,,,,,
+• Contact Person (RE) has view/edit on assigned NO records + reassign rights in RE Layout.,,,,,,,
+• No compensation caps or appealable clauses (not applicable to CEPC entities).,,,,,,,
+,,,,,,,
+RECOMMENDED NEXT STEPS,,,,,,,
+"1. Review Verification sheet — several items need CEPD clarification (exact delegated closure clauses for Reviewer/In-Charge, MOM digital vs offline decision, 13-1 Notice equivalent for CEPC).",,,,,,,
+"2. Prioritize Phase 1: OCR, digital signature, SLA engine, user management via Kavach, assignment logic, closure communication.",,,,,,,
+3. Expand to full set (~90 stories) in grooming workshop; this set focuses on critical paths and high-risk areas.,,,,,,,
+"4. Link permanent IDs (CEPC-US-XXX, CEPC-TC-XXXX) to Jira/Azure DevOps.",,,,,,,
+,,,,,,,
+ASSUMPTIONS,,,,,,,
+• Kavach + Ekamev for auth/authz (as in RBIO).,,,,,,,
+• MOM remains offline/manual in Phase 1 (BRD scope).,,,,,,,
+• Threshold/assignment master data and regulatory body master provided by RBI.,,,,,,,
+• No RB-IOS 2026 changes impact CEPC layout (explicitly stated).,,,,,,,
+• Data migration strategy separate (NFR-005).,,,,,,,
+
+--- Sheet: User Stories ---
+US ID,Role,User Story (Connextra),BRD Reference,Priority,Story Points,Acceptance Criteria,Tags
+CEPC-US-001,All CEPC Roles + RE Contact Person,"As any CEPC user or RE Contact Person, I want to login via Kavach SSO and see a role-specific dashboard with KPI cards (total assigned, nearing SLA breach amber, overdue red, pending RE response, Meeting Scheduled) and status/color filters, so that I have immediate, secure, prioritized visibility into my workload.","FR-CEPC-001, FR-CEPC-003, 5.6 (Login and Dashboard for all roles), NFR-005 (Kavach)",High,5,"• SSO via Ekamev auth + Kavach RBAC
+• Role-based views and KPIs loaded
+• 15-min session timeout + re-auth
+• Color coding (White new, Red RE comm, Green RE response, Yellow sent back, Pink withdrawn) works with filters","Security, RBAC, Kavach, Dashboard, SLA"
+CEPC-US-002,All CEPC Roles,"As any CEPC role, I want Advanced Search (Complaint Number, Complainant Name/Mobile/Email, Draft ID, Email Subject, Status, Mode of Receipt, Entity Name) and column filters on the list view, so that I can locate complaints quickly regardless of volume.","5.8 Advance Search, FR-CEPC-006",High,3,"• Partial match on name/entity
+• Date range max 1 year for performance
+• Results respect role/territory visibility
+• Clear all filters button","Search, UX"
+CEPC-US-003,All CEPC Roles + RE Contact Person,"As any user, I want real-time bell + email/SMS notifications for new assignment, status change, pending 5/10/15 days, RE response overdue (configurable), document upload link activity, duplicate complaint, and closure, so that nothing falls through the cracks and SLA compliance is maintained.","5.11 Notifications and Alerts, FR-CEPC-028",High,5,"• Notification utility templates used
+• Configurable thresholds (5/10/15 days for RE response)
+• Dispatch within 5 min
+• Bell shows unread; deep link to complaint","Notifications, SLA, Real-time"
+CEPC-US-004,CEPC Admin,"As a CEPC Admin, I want to create/edit CEPC users (DO, Reviewer, In-Charge, Closing Authority) with Employee Details, territory, role, reporting manager, and mark On Leave or bulk Active/Inactive, so that team changes are handled quickly without assignment to unavailable users.","5.6.4 CEPC Administrator - User Access Management, 5.6.5, FR-CEPC-033",High,5,"• Kavach integration for user provisioning
+• Bulk actions available only to Admin
+• On Leave prevents new assignments (fallback to supervisor)
+• Pending complaints of absent users trigger Admin notification for reassignment
+• Full audit of user changes","User Management, Admin, Kavach, Bulk"
+CEPC-US-005,CEPC Admin,"As a CEPC Admin, I want to reassign one or many complaints in bulk to another active user in my territory (Change Owner) with mandatory comment, so that workload can be balanced or moved when someone is on leave or leaves the team.","5.6.4 (Reassignment of Complaints), 5.6.5",High,3,"• Only active same-territory users shown
+• Audit trail (old/new owner, timestamp, comment)
+• Notifications to both parties
+• Closed complaints cannot be reassigned except via reopen flow","Reassignment, Workflow, Admin"
+CEPC-US-006,CEPC Admin,"As a CEPC Admin, I want to reopen any closed complaint (with mandatory reason: Appellate Authority / Court Order / Correction Required) and have it auto-assigned to the original initiating DO, so that justified reconsiderations are handled with full history retention.","5.6.4 (Reopen), BR (reopen exclusively Closing Authority + Admin)",High,3,"• Only Admin + Closing Authority can reopen
+• Mandatory reason + free text
+• Notification to complainant + previous actors
+• Full previous history visible and immutable
+• Auto-assigned to original DO","Reopen, Admin, History"
+CEPC-US-007,CEPC Admin,"As a CEPC Admin, I want view access to all complaint categories (CRPC Drafts, Forwarded, All, Re-Opened, Closed, Mark for Closure, Meeting Scheduled, etc.) across my region, with ability to search but not edit (except reopen), so that I have full oversight without day-to-day processing rights.","5.6.4 (View Complaints section), 5.9 Complaints List View",Medium,2,"• All status views available to Admin
+• No create/edit except reopen
+• Territory filtering respected","Admin Dashboard, Oversight"
+CEPC-US-008,CEPC Dealing Official,"As a CEPC DO, I want to create Draft Complaints in CRPC Layout for physical letters, with OCR auto-filling English typed text (not handwritten), attach original scan, validate mandatory fields, and on Save & Proceed have it round-robin assigned to CRPC DEO, so that physical complaints enter the system fast with minimal manual effort.","5.6 (Draft Complaint), In Scope OCR (English typed only), Gap # (manual process for physical)",High,8,"• OCR rejects handwritten/non-English with clear message + manual fallback
+• Original scan always attached
+• Round-robin only to active CRPC DEO
+• SLA clock starts on draft creation
+• Switch Process available for legacy after CRPC Reviewer approval","OCR, Physical Letters, Intake, CRPC"
+CEPC-US-009,CEPC Dealing Official,"As a CEPC DO, I want new complaints (Portal/CRPC) assigned to me via configured logic (Entity Name mapping default, or Round Robin, or Category) with threshold check and fallback to supervisor if mapped user unavailable/on leave, so that every complaint has an immediate owner and workload is balanced.","Business Rule (assignment logic), 5.6 (Assignment to DO)",High,5,"• Super Admin sets active logic per office
+• Threshold respected; overflow to next eligible
+• On Leave / inactive users skipped with audit reason
+• DO sees it in 'Assigned to Me' immediately","Assignment, Threshold, Workload"
+CEPC-US-010,CEPC Dealing Official,"As a CEPC DO, I want to add/assign Contact Person (RE) manually or via auto-creation when new complaint registered, with NO record status set to 'Information Required' and counter for status changes, so that RE is engaged promptly and responses are tracked.","5.7 Regulated Entity Record, 5.6 (Assign Contact Person)",High,3,"• Auto NO record on complaint creation
+• If NO/PNO unavailable → Regional Admin
+• FRC flag visible
+• PNO can edit/reassign any assigned NO record
+• Alerts to Contact Person on assignment and after 5/10 days","RE Contact, NO Record, FRC"
+CEPC-US-011,CEPC Dealing Official,"As a CEPC DO, I want a live SLA countdown timer on edit screen (amber <48h, red breached) and cannot close while a 7-day document upload link to complainant is active, so that I stay aware of time pressure and do not close prematurely while waiting for documents.","5.6 (SLA), 5.11 (pending alerts), 5.7 (document link rules)",High,3,"• Timer visible and color-coded
+• Link expiry auto-updates flag to 'No'
+• Close action blocked while link active
+• Configurable thresholds","SLA, Timer, Document Link"
+CEPC-US-012,CEPC Dealing Official,"As a CEPC DO, I want to perform Assessment actions: send to CEPC In-Charge / Reviewer / Closing Authority (with proposed non-maintainable closure clause), mark Sub-Judice, or close under certain non-maintainable clauses, with mandatory fields validated and assignment mode (auto/manual), so that I can progress the complaint with full context.","5.6 (Assessment milestone), 5.10 Milestones",High,5,"• All mandatory fields red-validated
+• Proposed clause carried forward and editable by higher roles
+• Auto or manual assignment to active users
+• Sub-Judice template populates correctly
+• Full history entry created","Assessment, Workflow, Maintainability"
+CEPC-US-013,CEPC Dealing Official,"As a CEPC DO, I want to schedule/reschedule/complete meetings under Conciliation (Meeting Scheduled → Complete with Yes/No Entity acceptance + minutes, or Rescheduled with reason), generate templated MOM letter for offline signature, and attach scanned copy later, so that facilitation efforts are documented even though meetings happen outside CMS.","5.6 (Conciliation), 5.10 Milestones, Gap (MOM offline)",Medium,5,"• Date/Time + Participants mandatory for Scheduled
+• On Complete: acceptance Yes/No + minutes text
+• MOM letter generation button (template)
+• Status visible in color filter and KPI
+• Cannot close while meeting pending","Conciliation, Meeting, MOM (offline)"
+CEPC-US-014,CEPC Dealing Official,"As a CEPC DO, I want to forward a complaint to other office / RBI Department / Regulatory Body with mandatory Reason for Transfer, so that matters outside CEPC scope are routed correctly (CRPC Head approval for inter-office).","5.6 (Forward milestone), 5.5.1 status codes",High,3,"• Mandatory reason
+• CRPC Head approval gate for other office
+• On approve: target DO gets notification and correct status
+• On reject: returned with comments
+• History maintained","Forward, Routing, CRPC Head"
+CEPC-US-015,CEPC Dealing Official,"As a CEPC DO, I want to process closure after Closing Authority advice (Mark for Closure), using closure templates (max 512 char custom text), with pop-up confirmation, auto email/SMS if complainant email exists, or mandatory manual upload + date entry if no email, and digital signature enforcement, so that closure communication is always sent with proof of dispatch.","5.6 (Final Decision), 5.6.3 (closure flow), Gap (manual stamping), Digital Signature in scope",High,5,"• Lock after higher-role advice
+• Pop-up confirmation before send
+• No email → Generate Letter + upload + mandatory date
+• Digital signature required before Closed status
+• SMS to mobile always attempted; full dispatch audit","Closure, Digital Signature, Communication"
+CEPC-US-016,CEPC Reviewer,"As a CEPC Reviewer, I want to review complaints sent to me, modify proposed closure clause, and send to In-Charge / Closing Authority or send back to DO (mandatory comments, auto to last active DO or manual if on leave), so that I provide quality control before escalation.",5.6.1 CEPC Reviewer - Assessment Actions,High,5,"• Proposed clause editable
+• Send back auto-targets last active DO; error + manual picker if unavailable
+• Full immutable history
+• Limited non-maintainable closure rights only","Reviewer, Quality, Send Back"
+CEPC-US-017,CEPC Reviewer,"As a CEPC Reviewer, I want to close certain non-maintainable complaints under delegated clauses (with sample closure letter pop-up for new clauses), following the same email/manual upload + digital signature flow, so that routine cases can be finalized without unnecessary escalation.",5.6.1 (Final Decision - limited closure),Medium,3,"• Only delegated non-maintainable clauses visible
+• Same closure communication rules as DO
+• Digital signature enforced","Closure, Delegation, Non-Maintainable"
+CEPC-US-018,CEPC Reviewer,"As a CEPC Reviewer, I want to see only status codes relevant to my role (All, Assigned to Me, Closed, Sent Back to Reviewer, Sent to In-Charge, Sent to Closing Authority, etc.) and use the same search/filters, so that my view is focused and not cluttered.","5.6.1 (status codes visible to Reviewer), 5.9 Views",Medium,2,"• Role-based filtering enforced
+• No access to Closing Authority-only actions unless forwarded","Role View, Filtering"
+CEPC-US-019,CEPC Reviewer,"As a CEPC Reviewer, I want the system to prevent me from performing actions reserved for In-Charge or Closing Authority (e.g., forward to other regulatory body, reopen, close under certain clauses) with clear messages, so that segregation of duties is maintained.","5.3 Roles matrix, 5.6.1 (actions available)",High,2,"• Restricted actions hidden or blocked with specific message
+• Attempt logged
+• No data leakage or status change","RBAC, Segregation, Security"
+CEPC-US-020,CEPC In-Charge,"As a CEPC In-Charge, I want to receive escalated complaints and decide to send to Closing Authority, send back to Reviewer/DO, schedule meeting, or forward to other office / RBI Department / Regulatory Body (mandatory reason), so that I act as the key routing and quality gatekeeper for the office.","5.6.2 CEPC In-Charge - Assessment, Forward, Conciliation",High,5,"• All relevant statuses visible (Sent to In-Charge, Sent Back to In-Charge, etc.)
+• Forward requires mandatory reason
+• CRPC Head approval for other office transfers
+• Meeting schedule available
+• Full audit trail","In-Charge, Routing, Forward, Escalation"
+CEPC-US-021,CEPC In-Charge,"As a CEPC In-Charge, I want to close complaints under my authorized non-maintainable clauses or mark for closure (sending to Closing Authority for advice), with the same digital signature + communication rules, so that I can finalize appropriate cases at my level.",5.6.2 (Final Decision - Complaint Closed / Mark for Closure),High,3,"• Authorized clauses only
+• Mark for Closure sends to Closing Authority with context
+• Digital signature + email/SMS or manual upload flow enforced","Closure, In-Charge, Digital Signature"
+CEPC-US-022,CEPC In-Charge,"As a CEPC In-Charge, I want executive KPIs for my office (SLA compliance %, breach rates by DO, pending RE responses, forwarded complaints, complaints awaiting my action) so that I have real-time situational awareness.","5.6.2 (Login and Dashboard), 5.9 Views",Medium,3,"• Role-specific KPI dashboard
+• Quick links to priority queues
+• Ageing and breach visibility","Dashboard, KPIs, In-Charge"
+CEPC-US-023,CEPC In-Charge,"As a CEPC In-Charge, I want to send complaints back to Reviewer or DO with mandatory comments when more work is needed, with automatic reassignment to last active person (or manual if on leave), so that quality issues are addressed without delay.",5.6.2 (Send back to CEPC DO / Reviewer),High,3,"• Mandatory comment
+• Auto to last active; error + manual picker if unavailable
+• Yellow color coding applied
+• Full history retained","Send Back, Quality, Workflow"
+CEPC-US-024,CEPC In-Charge,"As a CEPC In-Charge, I want to forward complaints to other RBI Department, other office, or other Regulatory Body (with validated email from master) and trigger automatic complainant awareness notification, so that out-of-scope matters are correctly escalated with notice.","5.6.2 (Forward), Business Rule (regulatory body master)",High,3,"• Regulatory body picker from validated master
+• Auto awareness email to complainant
+• CRPC Head approval for office transfers
+• Full transfer history","Forward, Regulatory, Notification"
+CEPC-US-025,CEPC Closing Authority,"As a CEPC Closing Authority, I want full authority to make final decisions on all complaints escalated to me, close under any clause (with mandatory closure clause), mark for closure, or reopen previously closed complaints with mandatory reason, so that I am the ultimate decision maker for CEPC cases.","5.6.3 CEPC Closing Authority - Final Decision, Re-open, 5.3 Roles",High,8,"• All closure clauses available
+• Digital signature mandatory before Closed
+• Reopen only by Closing Authority + Admin
+• Mandatory reason for reopen (Appellate / Court Order / Correction)
+• Auto-assign reopened to original DO
+• Full history retained","Closing Authority, Final Decision, Reopen"
+CEPC-US-026,CEPC Closing Authority,"As a CEPC Closing Authority, I want to forward complaints to other office, RBI Department, or Regulatory Body when needed (mandatory reason), with CRPC Head approval for inter-office, so that jurisdictionally incorrect or complex cases are routed correctly.",5.6.3 (Forward milestone),High,3,"• Mandatory reason for transfer
+• CRPC Head approval gate
+• Target office gets correct status and owner
+• Rejected transfers returned with comments","Forward, Routing, Closing Authority"
+CEPC-US-027,CEPC Closing Authority,"As a CEPC Closing Authority, I want an executive dashboard showing total open complaints across offices under my jurisdiction, average resolution time, SLA compliance %, pending my action, and reopened complaints, so that I have complete oversight.",5.6.3 (Login and Dashboard - Executive Dashboard),High,3,"• Cross-office view if authorized
+• Quick links to priority queues (reopened, pending my action)
+• Resolution time and SLA % visible","Dashboard, Oversight, Closing Authority"
+CEPC-US-028,CEPC Closing Authority,"As a CEPC Closing Authority, I want to update Legal Case Details on any complaint and view closure files for closed complaints without changing workflow status, so that litigation tracking is always possible.",5.6.3 (Legal Case Details tab),Medium,2,"• Editable Legal Case tab on any complaint
+• Closed complaints: files viewable, workflow locked
+• Updates logged in history","Legal, Closed Complaints"
+CEPC-US-029,CEPC Closing Authority,"As a CEPC Closing Authority, I want the system to enforce that only I (and Admin) can reopen closed complaints, and that digital signature is applied before any complaint reaches Closed status, so that finality and legal validity of closures are protected.","Business Rule (reopen exclusively Closing Authority + Admin), Digital Signature in scope",High,3,"• Reopen action hidden/disabled for all other roles
+• Digital signature validation before Closed status set
+• Any bypass attempt logged and blocked","RBAC, Reopen, Digital Signature, Compliance"
+CEPC-US-030,CEPC Closing Authority,"As a CEPC Closing Authority, I want to receive system alerts/pop-ups if a complainant has no email when I try to close (forcing manual letter + date entry), so that I am guided to complete closure communication correctly even when email is missing.","5.6.3 (closure letter rules), Constraint (email conditional)",High,2,"• Clear validation message when email missing
+• Generate Letter button appears
+• Date of sending mandatory to close
+• Audit of manual dispatch","Closure, No Email, Validation"
+CEPC-US-031,RE Contact Person,"As an RE Contact Person, I want to receive NO records assigned to me with status 'Information Required', view complaint details (FRC flag visible), respond/update status, and reassign within my entity if needed, so that I can fulfill my regulatory response obligation within the configured timeline (15 days default).","5.3 Roles (Contact Person RE), 5.7 Regulated Entity Record",High,5,"• Auto-assigned on complaint creation
+• Alerts on assignment + 5/10 day reminders
+• Can update status and add documents
+• Can reassign to another Contact Person in same entity
+• FRC flag clearly visible","RE Contact, NO Record, Response Obligation"
+CEPC-US-032,RE Contact Person,"As an RE Contact Person, I want view-only access to reports and complaint history for complaints assigned to me, with no ability to alter workflow or closure, so that I have transparency without overstepping into RBI internal processes.",5.3 Roles matrix (Contact Person view rights),Medium,2,"• Strict view-only on assigned complaints
+• Reports limited to own complaints
+• Clear separation from RBI internal notes","RE Contact, View Only, RBAC"
+CEPC-US-033,System / Platform Admin,"As the system, I want to enforce that closure letters are digitally signed by an authorized Closing Authority before status can be set to Closed, with graceful handling if signature service is unavailable, so that legal validity of closures is never compromised.","Digital Signature in scope, Gap (manual stamping), Constraint (email conditional)",Critical,5,"• Signature required before Closed status
+• Clear error if cert invalid/expired
+• Queue + admin intervention path for outage
+• Signed PDF linked to complaint history","Digital Signature, Compliance, Closure"
+CEPC-US-034,System / Platform Admin,"As the system, I want page load for complaint list and detail ≤3 seconds at 95th percentile under 500 concurrent CEPC users, with horizontal auto-scaling, so that performance remains responsive during peak periods.","NFR-006, PSR-02 (adapted for CEPC)",High,8,"• Validated in load testing pre go-live
+• Monitoring of response time/error rate
+• Auto-scaling triggered
+• <1% failure under 3x peak","Performance, Scalability, NFR"
+CEPC-US-035,System / Security Admin,"As the system, I want AES-256 encryption at rest, TLS 1.3+ in transit, immutable tamper-evident audit logs for all actions, 15-min session timeout, and successful VAPT with critical findings remediated before go-live, so that citizen data and complaint integrity meet RBI standards and DPDP Act 2023.","NFR-004, NFR-009, 7.1 Security Requirements (adapted)",Critical,13,"• Encryption verified in infra review
+• Audit logs immutable; tampering attempt flagged + alerted
+• 15-min timeout global
+• VAPT sign-off mandatory pre-production
+• PII minimization per role (Contact Person sees only assigned)","Security, Encryption, Audit, DPDP, VAPT"
+CEPC-US-036,System / Platform Admin,"As the system, I want the 7-day document upload link sent to complainants to require email + mobile OTP, auto-expire after 7 days (updating flag to No), and block closure while active, so that additional document collection is secure and controlled.","5.7 (document upload link rules), analogous to RBIO 6.5.4.13",High,5,"• OTP mandatory on complainant side
+• Link expires after exactly 7 days
+• Flag auto-updates; cannot resend while active
+• Close action blocked while active
+• Attachments appear with source flag in tab","Document Link, Security, OTP, 7-day Expiry"
+CEPC-US-037,System / Platform Admin,"As the system, I want OCR limited to printed/typed English text on physical letters (handwritten rejected with clear message and manual entry option), with original scan always attached, so that data quality is maintained without promising unsupported capabilities.","In Scope OCR (English typed only), Gap (manual physical)",High,3,"• OCR rejects handwritten/non-English with actionable message
+• Original scan always attached for reference
+• DO can edit all fields post-OCR
+• No data loss on fallback","OCR, Physical Letters, Limitation"
+CEPC-US-038,System / Platform Admin,"As the system, I want comprehensive data migration strategy (reviewed/sign-off by DIT/CEPD) covering legacy complaints, user mappings, NO records, and history, with rollback plan, so that cutover to CMS 2.0 CEPC layout is safe and auditable.","NFR-005 (Data Migration Strategy), 3.5 Risks (Migration)",High,8,"• Strategy document produced and signed before dev
+• Includes legacy cutover, scheme flag (N/A for CEPC but history), user/territory mapping
+• Rollback plan tested
+• Audit of migration runs","Data Migration, Cutover, Risk"
+
+--- Sheet: Test Cases ---
+TC ID,Parent US ID,Test Title,Pre-conditions,Test Steps,Test Data,Expected Result,Test Type
+CEPC-TC-00101,CEPC-US-001,"Happy Path - As any CEPC user or RE Contact Person, I want to login ...",User logged in with correct role via Kavach. Relevant master data and test complaint/NO record in correct starting state. Email/SMS/OCR services available.,"1. Navigate to role-appropriate view.
+2. Open complaint or perform primary action (create draft, send to next role, close, assign Contact Person, etc.).
+3. Fill mandatory fields, choose assignment mode if applicable.
+4. Save & Proceed / Submit.
+5. Verify status change, history, notifications, and any auto-actions (letter, assignment, color, SLA timer).",Valid starting complaint/NO record. Active users available. Test complainant with email + mobile. English printed letter scan for OCR stories.,Action succeeds cleanly. Correct next status. Full audit history with user + timestamp. Notifications triggered. Color/SLA updated. No validation errors.,Positive
+CEPC-TC-00102,CEPC-US-001,Negative - Unauthorized Role or Permission Denied,"Logged in as role without permission for the action (e.g., Reviewer trying to forward to Regulatory Body, DO trying to reopen).","1. Login as unauthorized role.
+2. Attempt restricted action on eligible complaint.
+3. Observe UI (button hidden/disabled) or validation error.
+4. Check audit log for attempt.",Complaint in state where higher-role action is possible. Lower-role test user in same territory.,Action blocked with clear message ('Insufficient permission' or specific role requirement). No status change. Attempt logged. No data leakage.,Negative
+CEPC-TC-00103,CEPC-US-001,Edge - Missing Mandatory / Invalid Value / Boundary,"Complaint in valid state. One mandatory field blank or invalid data entered (e.g., future date in past, 513 char custom text, empty reason for transfer).","1. Open form.
+2. Leave one mandatory blank or enter invalid value.
+3. Submit and observe inline + final error.
+4. Correct and re-submit to confirm recovery.",513+ chars in custom closure text. Past date for meeting. Empty mandatory reason. Compensation-like field if applicable (though not core to CEPC).,"Red highlighting on invalid fields. Specific actionable error message. Submit blocked until fixed. After correction, succeeds cleanly.",Edge
+CEPC-TC-00104,CEPC-US-001,Edge - Large History / Concurrent Users / Performance,System under 400+ concurrent load. Complaint has very long history or many attachments.,"1. Use large test complaint or simulate load.
+2. Perform action (search, edit, status change, report).
+3. Verify response time and integrity.",Complaint with 40+ attachments and 3-year history. 400 concurrent test users.,"Action completes in <3s (95th). No freeze, data loss, or corruption. Error rate <1%.",Performance
+CEPC-TC-00201,CEPC-US-002,"Happy Path - As any CEPC role, I want Advanced Search (Complaint Num...",User logged in with correct role via Kavach. Relevant master data and test complaint/NO record in correct starting state. Email/SMS/OCR services available.,"1. Navigate to role-appropriate view.
+2. Open complaint or perform primary action (create draft, send to next role, close, assign Contact Person, etc.).
+3. Fill mandatory fields, choose assignment mode if applicable.
+4. Save & Proceed / Submit.
+5. Verify status change, history, notifications, and any auto-actions (letter, assignment, color, SLA timer).",Valid starting complaint/NO record. Active users available. Test complainant with email + mobile. English printed letter scan for OCR stories.,Action succeeds cleanly. Correct next status. Full audit history with user + timestamp. Notifications triggered. Color/SLA updated. No validation errors.,Positive
+CEPC-TC-00202,CEPC-US-002,Negative - Unauthorized Role or Permission Denied,"Logged in as role without permission for the action (e.g., Reviewer trying to forward to Regulatory Body, DO trying to reopen).","1. Login as unauthorized role.
+2. Attempt restricted action on eligible complaint.
+3. Observe UI (button hidden/disabled) or validation error.
+4. Check audit log for attempt.",Complaint in state where higher-role action is possible. Lower-role test user in same territory.,Action blocked with clear message ('Insufficient permission' or specific role requirement). No status change. Attempt logged. No data leakage.,Negative
+CEPC-TC-00203,CEPC-US-002,Edge - Missing Mandatory / Invalid Value / Boundary,"Complaint in valid state. One mandatory field blank or invalid data entered (e.g., future date in past, 513 char custom text, empty reason for transfer).","1. Open form.
+2. Leave one mandatory blank or enter invalid value.
+3. Submit and observe inline + final error.
+4. Correct and re-submit to confirm recovery.",513+ chars in custom closure text. Past date for meeting. Empty mandatory reason. Compensation-like field if applicable (though not core to CEPC).,"Red highlighting on invalid fields. Specific actionable error message. Submit blocked until fixed. After correction, succeeds cleanly.",Edge
+CEPC-TC-00204,CEPC-US-002,Edge - Large History / Concurrent Users / Performance,System under 400+ concurrent load. Complaint has very long history or many attachments.,"1. Use large test complaint or simulate load.
+2. Perform action (search, edit, status change, report).
+3. Verify response time and integrity.",Complaint with 40+ attachments and 3-year history. 400 concurrent test users.,"Action completes in <3s (95th). No freeze, data loss, or corruption. Error rate <1%.",Performance
+CEPC-TC-00301,CEPC-US-003,"Happy Path - As any user, I want real-time bell + email/SMS notifica...",User logged in with correct role via Kavach. Relevant master data and test complaint/NO record in correct starting state. Email/SMS/OCR services available.,"1. Navigate to role-appropriate view.
+2. Open complaint or perform primary action (create draft, send to next role, close, assign Contact Person, etc.).
+3. Fill mandatory fields, choose assignment mode if applicable.
+4. Save & Proceed / Submit.
+5. Verify status change, history, notifications, and any auto-actions (letter, assignment, color, SLA timer).",Valid starting complaint/NO record. Active users available. Test complainant with email + mobile. English printed letter scan for OCR stories.,Action succeeds cleanly. Correct next status. Full audit history with user + timestamp. Notifications triggered. Color/SLA updated. No validation errors.,Positive
+CEPC-TC-00302,CEPC-US-003,Negative - Unauthorized Role or Permission Denied,"Logged in as role without permission for the action (e.g., Reviewer trying to forward to Regulatory Body, DO trying to reopen).","1. Login as unauthorized role.
+2. Attempt restricted action on eligible complaint.
+3. Observe UI (button hidden/disabled) or validation error.
+4. Check audit log for attempt.",Complaint in state where higher-role action is possible. Lower-role test user in same territory.,Action blocked with clear message ('Insufficient permission' or specific role requirement). No status change. Attempt logged. No data leakage.,Negative
+CEPC-TC-00303,CEPC-US-003,Edge - Missing Mandatory / Invalid Value / Boundary,"Complaint in valid state. One mandatory field blank or invalid data entered (e.g., future date in past, 513 char custom text, empty reason for transfer).","1. Open form.
+2. Leave one mandatory blank or enter invalid value.
+3. Submit and observe inline + final error.
+4. Correct and re-submit to confirm recovery.",513+ chars in custom closure text. Past date for meeting. Empty mandatory reason. Compensation-like field if applicable (though not core to CEPC).,"Red highlighting on invalid fields. Specific actionable error message. Submit blocked until fixed. After correction, succeeds cleanly.",Edge
+CEPC-TC-00304,CEPC-US-003,Edge - Large History / Concurrent Users / Performance,System under 400+ concurrent load. Complaint has very long history or many attachments.,"1. Use large test complaint or simulate load.
+2. Perform action (search, edit, status change, report).
+3. Verify response time and integrity.",Complaint with 40+ attachments and 3-year history. 400 concurrent test users.,"Action completes in <3s (95th). No freeze, data loss, or corruption. Error rate <1%.",Performance
+CEPC-TC-00401,CEPC-US-004,"Happy Path - As a CEPC Admin, I want to create/edit CEPC users (DO, ...",User logged in with correct role via Kavach. Relevant master data and test complaint/NO record in correct starting state. Email/SMS/OCR services available.,"1. Navigate to role-appropriate view.
+2. Open complaint or perform primary action (create draft, send to next role, close, assign Contact Person, etc.).
+3. Fill mandatory fields, choose assignment mode if applicable.
+4. Save & Proceed / Submit.
+5. Verify status change, history, notifications, and any auto-actions (letter, assignment, color, SLA timer).",Valid starting complaint/NO record. Active users available. Test complainant with email + mobile. English printed letter scan for OCR stories.,Action succeeds cleanly. Correct next status. Full audit history with user + timestamp. Notifications triggered. Color/SLA updated. No validation errors.,Positive
+CEPC-TC-00402,CEPC-US-004,Negative - Unauthorized Role or Permission Denied,"Logged in as role without permission for the action (e.g., Reviewer trying to forward to Regulatory Body, DO trying to reopen).","1. Login as unauthorized role.
+2. Attempt restricted action on eligible complaint.
+3. Observe UI (button hidden/disabled) or validation error.
+4. Check audit log for attempt.",Complaint in state where higher-role action is possible. Lower-role test user in same territory.,Action blocked with clear message ('Insufficient permission' or specific role requirement). No status change. Attempt logged. No data leakage.,Negative
+CEPC-TC-00403,CEPC-US-004,Edge - Missing Mandatory / Invalid Value / Boundary,"Complaint in valid state. One mandatory field blank or invalid data entered (e.g., future date in past, 513 char custom text, empty reason for transfer).","1. Open form.
+2. Leave one mandatory blank or enter invalid value.
+3. Submit and observe inline + final error.
+4. Correct and re-submit to confirm recovery.",513+ chars in custom closure text. Past date for meeting. Empty mandatory reason. Compensation-like field if applicable (though not core to CEPC).,"Red highlighting on invalid fields. Specific actionable error message. Submit blocked until fixed. After correction, succeeds cleanly.",Edge
+CEPC-TC-00404,CEPC-US-004,Edge - On Leave / Threshold Met / Concurrent Intake,Target user On Leave or office at threshold. Multiple complaints arriving simultaneously.,"1. Mark user On Leave or set threshold = current count.
+2. Submit new complaint(s) that would target that user.
+3. Verify fallback and distribution.
+4. Simulate 5 concurrent submissions.","Office with threshold = 40, current = 40. One DO on leave. 5 rapid new complaints from portal/CRPC.",On-leave user skipped. Fallback to supervisor or next in round-robin. All concurrent succeed with unique owners. Audit shows correct fallback reason. No duplicates or lost complaints.,Edge
+CEPC-TC-00501,CEPC-US-005,"Happy Path - As a CEPC Admin, I want to reassign one or many complai...",User logged in with correct role via Kavach. Relevant master data and test complaint/NO record in correct starting state. Email/SMS/OCR services available.,"1. Navigate to role-appropriate view.
+2. Open complaint or perform primary action (create draft, send to next role, close, assign Contact Person, etc.).
+3. Fill mandatory fields, choose assignment mode if applicable.
+4. Save & Proceed / Submit.
+5. Verify status change, history, notifications, and any auto-actions (letter, assignment, color, SLA timer).",Valid starting complaint/NO record. Active users available. Test complainant with email + mobile. English printed letter scan for OCR stories.,Action succeeds cleanly. Correct next status. Full audit history with user + timestamp. Notifications triggered. Color/SLA updated. No validation errors.,Positive
+CEPC-TC-00502,CEPC-US-005,Negative - Unauthorized Role or Permission Denied,"Logged in as role without permission for the action (e.g., Reviewer trying to forward to Regulatory Body, DO trying to reopen).","1. Login as unauthorized role.
+2. Attempt restricted action on eligible complaint.
+3. Observe UI (button hidden/disabled) or validation error.
+4. Check audit log for attempt.",Complaint in state where higher-role action is possible. Lower-role test user in same territory.,Action blocked with clear message ('Insufficient permission' or specific role requirement). No status change. Attempt logged. No data leakage.,Negative
+CEPC-TC-00503,CEPC-US-005,Edge - Missing Mandatory / Invalid Value / Boundary,"Complaint in valid state. One mandatory field blank or invalid data entered (e.g., future date in past, 513 char custom text, empty reason for transfer).","1. Open form.
+2. Leave one mandatory blank or enter invalid value.
+3. Submit and observe inline + final error.
+4. Correct and re-submit to confirm recovery.",513+ chars in custom closure text. Past date for meeting. Empty mandatory reason. Compensation-like field if applicable (though not core to CEPC).,"Red highlighting on invalid fields. Specific actionable error message. Submit blocked until fixed. After correction, succeeds cleanly.",Edge
+CEPC-TC-00504,CEPC-US-005,Edge - On Leave / Threshold Met / Concurrent Intake,Target user On Leave or office at threshold. Multiple complaints arriving simultaneously.,"1. Mark user On Leave or set threshold = current count.
+2. Submit new complaint(s) that would target that user.
+3. Verify fallback and distribution.
+4. Simulate 5 concurrent submissions.","Office with threshold = 40, current = 40. One DO on leave. 5 rapid new complaints from portal/CRPC.",On-leave user skipped. Fallback to supervisor or next in round-robin. All concurrent succeed with unique owners. Audit shows correct fallback reason. No duplicates or lost complaints.,Edge
+CEPC-TC-00601,CEPC-US-006,"Happy Path - As a CEPC Admin, I want to reopen any closed complaint ...",User logged in with correct role via Kavach. Relevant master data and test complaint/NO record in correct starting state. Email/SMS/OCR services available.,"1. Navigate to role-appropriate view.
+2. Open complaint or perform primary action (create draft, send to next role, close, assign Contact Person, etc.).
+3. Fill mandatory fields, choose assignment mode if applicable.
+4. Save & Proceed / Submit.
+5. Verify status change, history, notifications, and any auto-actions (letter, assignment, color, SLA timer).",Valid starting complaint/NO record. Active users available. Test complainant with email + mobile. English printed letter scan for OCR stories.,Action succeeds cleanly. Correct next status. Full audit history with user + timestamp. Notifications triggered. Color/SLA updated. No validation errors.,Positive
+CEPC-TC-00602,CEPC-US-006,Negative - Unauthorized Role or Permission Denied,"Logged in as role without permission for the action (e.g., Reviewer trying to forward to Regulatory Body, DO trying to reopen).","1. Login as unauthorized role.
+2. Attempt restricted action on eligible complaint.
+3. Observe UI (button hidden/disabled) or validation error.
+4. Check audit log for attempt.",Complaint in state where higher-role action is possible. Lower-role test user in same territory.,Action blocked with clear message ('Insufficient permission' or specific role requirement). No status change. Attempt logged. No data leakage.,Negative
+CEPC-TC-00603,CEPC-US-006,Edge - Missing Mandatory / Invalid Value / Boundary,"Complaint in valid state. One mandatory field blank or invalid data entered (e.g., future date in past, 513 char custom text, empty reason for transfer).","1. Open form.
+2. Leave one mandatory blank or enter invalid value.
+3. Submit and observe inline + final error.
+4. Correct and re-submit to confirm recovery.",513+ chars in custom closure text. Past date for meeting. Empty mandatory reason. Compensation-like field if applicable (though not core to CEPC).,"Red highlighting on invalid fields. Specific actionable error message. Submit blocked until fixed. After correction, succeeds cleanly.",Edge
+CEPC-TC-00604,CEPC-US-006,Edge - On Leave / Threshold Met / Concurrent Intake,Target user On Leave or office at threshold. Multiple complaints arriving simultaneously.,"1. Mark user On Leave or set threshold = current count.
+2. Submit new complaint(s) that would target that user.
+3. Verify fallback and distribution.
+4. Simulate 5 concurrent submissions.","Office with threshold = 40, current = 40. One DO on leave. 5 rapid new complaints from portal/CRPC.",On-leave user skipped. Fallback to supervisor or next in round-robin. All concurrent succeed with unique owners. Audit shows correct fallback reason. No duplicates or lost complaints.,Edge
+CEPC-TC-00701,CEPC-US-007,"Happy Path - As a CEPC Admin, I want view access to all complaint ca...",User logged in with correct role via Kavach. Relevant master data and test complaint/NO record in correct starting state. Email/SMS/OCR services available.,"1. Navigate to role-appropriate view.
+2. Open complaint or perform primary action (create draft, send to next role, close, assign Contact Person, etc.).
+3. Fill mandatory fields, choose assignment mode if applicable.
+4. Save & Proceed / Submit.
+5. Verify status change, history, notifications, and any auto-actions (letter, assignment, color, SLA timer).",Valid starting complaint/NO record. Active users available. Test complainant with email + mobile. English printed letter scan for OCR stories.,Action succeeds cleanly. Correct next status. Full audit history with user + timestamp. Notifications triggered. Color/SLA updated. No validation errors.,Positive
+CEPC-TC-00702,CEPC-US-007,Negative - Unauthorized Role or Permission Denied,"Logged in as role without permission for the action (e.g., Reviewer trying to forward to Regulatory Body, DO trying to reopen).","1. Login as unauthorized role.
+2. Attempt restricted action on eligible complaint.
+3. Observe UI (button hidden/disabled) or validation error.
+4. Check audit log for attempt.",Complaint in state where higher-role action is possible. Lower-role test user in same territory.,Action blocked with clear message ('Insufficient permission' or specific role requirement). No status change. Attempt logged. No data leakage.,Negative
+CEPC-TC-00703,CEPC-US-007,Edge - Missing Mandatory / Invalid Value / Boundary,"Complaint in valid state. One mandatory field blank or invalid data entered (e.g., future date in past, 513 char custom text, empty reason for transfer).","1. Open form.
+2. Leave one mandatory blank or enter invalid value.
+3. Submit and observe inline + final error.
+4. Correct and re-submit to confirm recovery.",513+ chars in custom closure text. Past date for meeting. Empty mandatory reason. Compensation-like field if applicable (though not core to CEPC).,"Red highlighting on invalid fields. Specific actionable error message. Submit blocked until fixed. After correction, succeeds cleanly.",Edge
+CEPC-TC-00704,CEPC-US-007,Edge - On Leave / Threshold Met / Concurrent Intake,Target user On Leave or office at threshold. Multiple complaints arriving simultaneously.,"1. Mark user On Leave or set threshold = current count.
+2. Submit new complaint(s) that would target that user.
+3. Verify fallback and distribution.
+4. Simulate 5 concurrent submissions.","Office with threshold = 40, current = 40. One DO on leave. 5 rapid new complaints from portal/CRPC.",On-leave user skipped. Fallback to supervisor or next in round-robin. All concurrent succeed with unique owners. Audit shows correct fallback reason. No duplicates or lost complaints.,Edge
+CEPC-TC-00801,CEPC-US-008,"Happy Path - As a CEPC DO, I want to create Draft Complaints in CRPC...",User logged in with correct role via Kavach. Relevant master data and test complaint/NO record in correct starting state. Email/SMS/OCR services available.,"1. Navigate to role-appropriate view.
+2. Open complaint or perform primary action (create draft, send to next role, close, assign Contact Person, etc.).
+3. Fill mandatory fields, choose assignment mode if applicable.
+4. Save & Proceed / Submit.
+5. Verify status change, history, notifications, and any auto-actions (letter, assignment, color, SLA timer).",Valid starting complaint/NO record. Active users available. Test complainant with email + mobile. English printed letter scan for OCR stories.,Action succeeds cleanly. Correct next status. Full audit history with user + timestamp. Notifications triggered. Color/SLA updated. No validation errors.,Positive
+CEPC-TC-00802,CEPC-US-008,Negative - Unauthorized Role or Permission Denied,"Logged in as role without permission for the action (e.g., Reviewer trying to forward to Regulatory Body, DO trying to reopen).","1. Login as unauthorized role.
+2. Attempt restricted action on eligible complaint.
+3. Observe UI (button hidden/disabled) or validation error.
+4. Check audit log for attempt.",Complaint in state where higher-role action is possible. Lower-role test user in same territory.,Action blocked with clear message ('Insufficient permission' or specific role requirement). No status change. Attempt logged. No data leakage.,Negative
+CEPC-TC-00803,CEPC-US-008,Edge - Missing Mandatory / Invalid Value / Boundary,"Complaint in valid state. One mandatory field blank or invalid data entered (e.g., future date in past, 513 char custom text, empty reason for transfer).","1. Open form.
+2. Leave one mandatory blank or enter invalid value.
+3. Submit and observe inline + final error.
+4. Correct and re-submit to confirm recovery.",513+ chars in custom closure text. Past date for meeting. Empty mandatory reason. Compensation-like field if applicable (though not core to CEPC).,"Red highlighting on invalid fields. Specific actionable error message. Submit blocked until fixed. After correction, succeeds cleanly.",Edge
+CEPC-TC-00804,CEPC-US-008,Edge - Handwritten / Non-English / Poor Quality Scan,"Scanned letter is handwritten, Hindi text, or low-resolution/blurry.","1. Upload problematic scan as draft.
+2. Trigger OCR.
+3. Observe rejection/fallback behavior.
+4. Verify original scan still attached and editable.",Handwritten image. Hindi printed letter. Blurry low-res scan.,OCR rejects with clear message ('Only printed English supported'). Original file attached. DO can enter manually. No data loss.,Edge
+CEPC-TC-00901,CEPC-US-009,"Happy Path - As a CEPC DO, I want new complaints (Portal/CRPC) assig...",User logged in with correct role via Kavach. Relevant master data and test complaint/NO record in correct starting state. Email/SMS/OCR services available.,"1. Navigate to role-appropriate view.
+2. Open complaint or perform primary action (create draft, send to next role, close, assign Contact Person, etc.).
+3. Fill mandatory fields, choose assignment mode if applicable.
+4. Save & Proceed / Submit.
+5. Verify status change, history, notifications, and any auto-actions (letter, assignment, color, SLA timer).",Valid starting complaint/NO record. Active users available. Test complainant with email + mobile. English printed letter scan for OCR stories.,Action succeeds cleanly. Correct next status. Full audit history with user + timestamp. Notifications triggered. Color/SLA updated. No validation errors.,Positive
+CEPC-TC-00902,CEPC-US-009,Negative - Unauthorized Role or Permission Denied,"Logged in as role without permission for the action (e.g., Reviewer trying to forward to Regulatory Body, DO trying to reopen).","1. Login as unauthorized role.
+2. Attempt restricted action on eligible complaint.
+3. Observe UI (button hidden/disabled) or validation error.
+4. Check audit log for attempt.",Complaint in state where higher-role action is possible. Lower-role test user in same territory.,Action blocked with clear message ('Insufficient permission' or specific role requirement). No status change. Attempt logged. No data leakage.,Negative
+CEPC-TC-00903,CEPC-US-009,Edge - Missing Mandatory / Invalid Value / Boundary,"Complaint in valid state. One mandatory field blank or invalid data entered (e.g., future date in past, 513 char custom text, empty reason for transfer).","1. Open form.
+2. Leave one mandatory blank or enter invalid value.
+3. Submit and observe inline + final error.
+4. Correct and re-submit to confirm recovery.",513+ chars in custom closure text. Past date for meeting. Empty mandatory reason. Compensation-like field if applicable (though not core to CEPC).,"Red highlighting on invalid fields. Specific actionable error message. Submit blocked until fixed. After correction, succeeds cleanly.",Edge
+CEPC-TC-00904,CEPC-US-009,Edge - On Leave / Threshold Met / Concurrent Intake,Target user On Leave or office at threshold. Multiple complaints arriving simultaneously.,"1. Mark user On Leave or set threshold = current count.
+2. Submit new complaint(s) that would target that user.
+3. Verify fallback and distribution.
+4. Simulate 5 concurrent submissions.","Office with threshold = 40, current = 40. One DO on leave. 5 rapid new complaints from portal/CRPC.",On-leave user skipped. Fallback to supervisor or next in round-robin. All concurrent succeed with unique owners. Audit shows correct fallback reason. No duplicates or lost complaints.,Edge
+CEPC-TC-01001,CEPC-US-010,"Happy Path - As a CEPC DO, I want to add/assign Contact Person (RE) ...",User logged in with correct role via Kavach. Relevant master data and test complaint/NO record in correct starting state. Email/SMS/OCR services available.,"1. Navigate to role-appropriate view.
+2. Open complaint or perform primary action (create draft, send to next role, close, assign Contact Person, etc.).
+3. Fill mandatory fields, choose assignment mode if applicable.
+4. Save & Proceed / Submit.
+5. Verify status change, history, notifications, and any auto-actions (letter, assignment, color, SLA timer).",Valid starting complaint/NO record. Active users available. Test complainant with email + mobile. English printed letter scan for OCR stories.,Action succeeds cleanly. Correct next status. Full audit history with user + timestamp. Notifications triggered. Color/SLA updated. No validation errors.,Positive
+CEPC-TC-01002,CEPC-US-010,Negative - Unauthorized Role or Permission Denied,"Logged in as role without permission for the action (e.g., Reviewer trying to forward to Regulatory Body, DO trying to reopen).","1. Login as unauthorized role.
+2. Attempt restricted action on eligible complaint.
+3. Observe UI (button hidden/disabled) or validation error.
+4. Check audit log for attempt.",Complaint in state where higher-role action is possible. Lower-role test user in same territory.,Action blocked with clear message ('Insufficient permission' or specific role requirement). No status change. Attempt logged. No data leakage.,Negative
+CEPC-TC-01003,CEPC-US-010,Edge - Missing Mandatory / Invalid Value / Boundary,"Complaint in valid state. One mandatory field blank or invalid data entered (e.g., future date in past, 513 char custom text, empty reason for transfer).","1. Open form.
+2. Leave one mandatory blank or enter invalid value.
+3. Submit and observe inline + final error.
+4. Correct and re-submit to confirm recovery.",513+ chars in custom closure text. Past date for meeting. Empty mandatory reason. Compensation-like field if applicable (though not core to CEPC).,"Red highlighting on invalid fields. Specific actionable error message. Submit blocked until fixed. After correction, succeeds cleanly.",Edge
+CEPC-TC-01004,CEPC-US-010,Edge - Large History / Concurrent Users / Performance,System under 400+ concurrent load. Complaint has very long history or many attachments.,"1. Use large test complaint or simulate load.
+2. Perform action (search, edit, status change, report).
+3. Verify response time and integrity.",Complaint with 40+ attachments and 3-year history. 400 concurrent test users.,"Action completes in <3s (95th). No freeze, data loss, or corruption. Error rate <1%.",Performance
+CEPC-TC-01101,CEPC-US-011,"Happy Path - As a CEPC DO, I want a live SLA countdown timer on edit...",User logged in with correct role via Kavach. Relevant master data and test complaint/NO record in correct starting state. Email/SMS/OCR services available.,"1. Navigate to role-appropriate view.
+2. Open complaint or perform primary action (create draft, send to next role, close, assign Contact Person, etc.).
+3. Fill mandatory fields, choose assignment mode if applicable.
+4. Save & Proceed / Submit.
+5. Verify status change, history, notifications, and any auto-actions (letter, assignment, color, SLA timer).",Valid starting complaint/NO record. Active users available. Test complainant with email + mobile. English printed letter scan for OCR stories.,Action succeeds cleanly. Correct next status. Full audit history with user + timestamp. Notifications triggered. Color/SLA updated. No validation errors.,Positive
+CEPC-TC-01102,CEPC-US-011,Negative - Unauthorized Role or Permission Denied,"Logged in as role without permission for the action (e.g., Reviewer trying to forward to Regulatory Body, DO trying to reopen).","1. Login as unauthorized role.
+2. Attempt restricted action on eligible complaint.
+3. Observe UI (button hidden/disabled) or validation error.
+4. Check audit log for attempt.",Complaint in state where higher-role action is possible. Lower-role test user in same territory.,Action blocked with clear message ('Insufficient permission' or specific role requirement). No status change. Attempt logged. No data leakage.,Negative
+CEPC-TC-01103,CEPC-US-011,Edge - Missing Mandatory / Invalid Value / Boundary,"Complaint in valid state. One mandatory field blank or invalid data entered (e.g., future date in past, 513 char custom text, empty reason for transfer).","1. Open form.
+2. Leave one mandatory blank or enter invalid value.
+3. Submit and observe inline + final error.
+4. Correct and re-submit to confirm recovery.",513+ chars in custom closure text. Past date for meeting. Empty mandatory reason. Compensation-like field if applicable (though not core to CEPC).,"Red highlighting on invalid fields. Specific actionable error message. Submit blocked until fixed. After correction, succeeds cleanly.",Edge
+CEPC-TC-01104,CEPC-US-011,Edge - Large History / Concurrent Users / Performance,System under 400+ concurrent load. Complaint has very long history or many attachments.,"1. Use large test complaint or simulate load.
+2. Perform action (search, edit, status change, report).
+3. Verify response time and integrity.",Complaint with 40+ attachments and 3-year history. 400 concurrent test users.,"Action completes in <3s (95th). No freeze, data loss, or corruption. Error rate <1%.",Performance
+CEPC-TC-01201,CEPC-US-012,"Happy Path - As a CEPC DO, I want to perform Assessment actions: sen...",User logged in with correct role via Kavach. Relevant master data and test complaint/NO record in correct starting state. Email/SMS/OCR services available.,"1. Navigate to role-appropriate view.
+2. Open complaint or perform primary action (create draft, send to next role, close, assign Contact Person, etc.).
+3. Fill mandatory fields, choose assignment mode if applicable.
+4. Save & Proceed / Submit.
+5. Verify status change, history, notifications, and any auto-actions (letter, assignment, color, SLA timer).",Valid starting complaint/NO record. Active users available. Test complainant with email + mobile. English printed letter scan for OCR stories.,Action succeeds cleanly. Correct next status. Full audit history with user + timestamp. Notifications triggered. Color/SLA updated. No validation errors.,Positive
+CEPC-TC-01202,CEPC-US-012,Negative - Unauthorized Role or Permission Denied,"Logged in as role without permission for the action (e.g., Reviewer trying to forward to Regulatory Body, DO trying to reopen).","1. Login as unauthorized role.
+2. Attempt restricted action on eligible complaint.
+3. Observe UI (button hidden/disabled) or validation error.
+4. Check audit log for attempt.",Complaint in state where higher-role action is possible. Lower-role test user in same territory.,Action blocked with clear message ('Insufficient permission' or specific role requirement). No status change. Attempt logged. No data leakage.,Negative
+CEPC-TC-01203,CEPC-US-012,Edge - Missing Mandatory / Invalid Value / Boundary,"Complaint in valid state. One mandatory field blank or invalid data entered (e.g., future date in past, 513 char custom text, empty reason for transfer).","1. Open form.
+2. Leave one mandatory blank or enter invalid value.
+3. Submit and observe inline + final error.
+4. Correct and re-submit to confirm recovery.",513+ chars in custom closure text. Past date for meeting. Empty mandatory reason. Compensation-like field if applicable (though not core to CEPC).,"Red highlighting on invalid fields. Specific actionable error message. Submit blocked until fixed. After correction, succeeds cleanly.",Edge
+CEPC-TC-01204,CEPC-US-012,Edge - Large History / Concurrent Users / Performance,System under 400+ concurrent load. Complaint has very long history or many attachments.,"1. Use large test complaint or simulate load.
+2. Perform action (search, edit, status change, report).
+3. Verify response time and integrity.",Complaint with 40+ attachments and 3-year history. 400 concurrent test users.,"Action completes in <3s (95th). No freeze, data loss, or corruption. Error rate <1%.",Performance
+CEPC-TC-01301,CEPC-US-013,"Happy Path - As a CEPC DO, I want to schedule/reschedule/complete me...",User logged in with correct role via Kavach. Relevant master data and test complaint/NO record in correct starting state. Email/SMS/OCR services available.,"1. Navigate to role-appropriate view.
+2. Open complaint or perform primary action (create draft, send to next role, close, assign Contact Person, etc.).
+3. Fill mandatory fields, choose assignment mode if applicable.
+4. Save & Proceed / Submit.
+5. Verify status change, history, notifications, and any auto-actions (letter, assignment, color, SLA timer).",Valid starting complaint/NO record. Active users available. Test complainant with email + mobile. English printed letter scan for OCR stories.,Action succeeds cleanly. Correct next status. Full audit history with user + timestamp. Notifications triggered. Color/SLA updated. No validation errors.,Positive
+CEPC-TC-01302,CEPC-US-013,Negative - Unauthorized Role or Permission Denied,"Logged in as role without permission for the action (e.g., Reviewer trying to forward to Regulatory Body, DO trying to reopen).","1. Login as unauthorized role.
+2. Attempt restricted action on eligible complaint.
+3. Observe UI (button hidden/disabled) or validation error.
+4. Check audit log for attempt.",Complaint in state where higher-role action is possible. Lower-role test user in same territory.,Action blocked with clear message ('Insufficient permission' or specific role requirement). No status change. Attempt logged. No data leakage.,Negative
+CEPC-TC-01303,CEPC-US-013,Edge - Missing Mandatory / Invalid Value / Boundary,"Complaint in valid state. One mandatory field blank or invalid data entered (e.g., future date in past, 513 char custom text, empty reason for transfer).","1. Open form.
+2. Leave one mandatory blank or enter invalid value.
+3. Submit and observe inline + final error.
+4. Correct and re-submit to confirm recovery.",513+ chars in custom closure text. Past date for meeting. Empty mandatory reason. Compensation-like field if applicable (though not core to CEPC).,"Red highlighting on invalid fields. Specific actionable error message. Submit blocked until fixed. After correction, succeeds cleanly.",Edge
+CEPC-TC-01304,CEPC-US-013,Edge - Large History / Concurrent Users / Performance,System under 400+ concurrent load. Complaint has very long history or many attachments.,"1. Use large test complaint or simulate load.
+2. Perform action (search, edit, status change, report).
+3. Verify response time and integrity.",Complaint with 40+ attachments and 3-year history. 400 concurrent test users.,"Action completes in <3s (95th). No freeze, data loss, or corruption. Error rate <1%.",Performance
+CEPC-TC-01401,CEPC-US-014,"Happy Path - As a CEPC DO, I want to forward a complaint to other of...",User logged in with correct role via Kavach. Relevant master data and test complaint/NO record in correct starting state. Email/SMS/OCR services available.,"1. Navigate to role-appropriate view.
+2. Open complaint or perform primary action (create draft, send to next role, close, assign Contact Person, etc.).
+3. Fill mandatory fields, choose assignment mode if applicable.
+4. Save & Proceed / Submit.
+5. Verify status change, history, notifications, and any auto-actions (letter, assignment, color, SLA timer).",Valid starting complaint/NO record. Active users available. Test complainant with email + mobile. English printed letter scan for OCR stories.,Action succeeds cleanly. Correct next status. Full audit history with user + timestamp. Notifications triggered. Color/SLA updated. No validation errors.,Positive
+CEPC-TC-01402,CEPC-US-014,Negative - Unauthorized Role or Permission Denied,"Logged in as role without permission for the action (e.g., Reviewer trying to forward to Regulatory Body, DO trying to reopen).","1. Login as unauthorized role.
+2. Attempt restricted action on eligible complaint.
+3. Observe UI (button hidden/disabled) or validation error.
+4. Check audit log for attempt.",Complaint in state where higher-role action is possible. Lower-role test user in same territory.,Action blocked with clear message ('Insufficient permission' or specific role requirement). No status change. Attempt logged. No data leakage.,Negative
+CEPC-TC-01403,CEPC-US-014,Edge - Missing Mandatory / Invalid Value / Boundary,"Complaint in valid state. One mandatory field blank or invalid data entered (e.g., future date in past, 513 char custom text, empty reason for transfer).","1. Open form.
+2. Leave one mandatory blank or enter invalid value.
+3. Submit and observe inline + final error.
+4. Correct and re-submit to confirm recovery.",513+ chars in custom closure text. Past date for meeting. Empty mandatory reason. Compensation-like field if applicable (though not core to CEPC).,"Red highlighting on invalid fields. Specific actionable error message. Submit blocked until fixed. After correction, succeeds cleanly.",Edge
+CEPC-TC-01404,CEPC-US-014,Edge - Large History / Concurrent Users / Performance,System under 400+ concurrent load. Complaint has very long history or many attachments.,"1. Use large test complaint or simulate load.
+2. Perform action (search, edit, status change, report).
+3. Verify response time and integrity.",Complaint with 40+ attachments and 3-year history. 400 concurrent test users.,"Action completes in <3s (95th). No freeze, data loss, or corruption. Error rate <1%.",Performance
+CEPC-TC-01501,CEPC-US-015,"Happy Path - As a CEPC DO, I want to process closure after Closing A...",User logged in with correct role via Kavach. Relevant master data and test complaint/NO record in correct starting state. Email/SMS/OCR services available.,"1. Navigate to role-appropriate view.
+2. Open complaint or perform primary action (create draft, send to next role, close, assign Contact Person, etc.).
+3. Fill mandatory fields, choose assignment mode if applicable.
+4. Save & Proceed / Submit.
+5. Verify status change, history, notifications, and any auto-actions (letter, assignment, color, SLA timer).",Valid starting complaint/NO record. Active users available. Test complainant with email + mobile. English printed letter scan for OCR stories.,Action succeeds cleanly. Correct next status. Full audit history with user + timestamp. Notifications triggered. Color/SLA updated. No validation errors.,Positive
+CEPC-TC-01502,CEPC-US-015,Negative - Unauthorized Role or Permission Denied,"Logged in as role without permission for the action (e.g., Reviewer trying to forward to Regulatory Body, DO trying to reopen).","1. Login as unauthorized role.
+2. Attempt restricted action on eligible complaint.
+3. Observe UI (button hidden/disabled) or validation error.
+4. Check audit log for attempt.",Complaint in state where higher-role action is possible. Lower-role test user in same territory.,Action blocked with clear message ('Insufficient permission' or specific role requirement). No status change. Attempt logged. No data leakage.,Negative
+CEPC-TC-01503,CEPC-US-015,Edge - Missing Mandatory / Invalid Value / Boundary,"Complaint in valid state. One mandatory field blank or invalid data entered (e.g., future date in past, 513 char custom text, empty reason for transfer).","1. Open form.
+2. Leave one mandatory blank or enter invalid value.
+3. Submit and observe inline + final error.
+4. Correct and re-submit to confirm recovery.",513+ chars in custom closure text. Past date for meeting. Empty mandatory reason. Compensation-like field if applicable (though not core to CEPC).,"Red highlighting on invalid fields. Specific actionable error message. Submit blocked until fixed. After correction, succeeds cleanly.",Edge
+CEPC-TC-01504,CEPC-US-015,Edge - No Complainant Email / Digital Signature Failure / Link Expiry,Complainant has no email. Or signature cert invalid. Or 7-day link already expired.,"1. Attempt closure on no-email complaint.
+2. Verify forced manual letter + date entry.
+3. Try expired link (should reject with clear message).
+4. Simulate invalid signature on close submit.",Complaint with empty email. Expired link. Invalid/expired digital cert for Closing Authority.,Cannot close without date of sending. Link expiry shows clear message and updates flag. Signature failure blocks close with actionable error. All attempts audited.,Edge
+CEPC-TC-01601,CEPC-US-016,"Happy Path - As a CEPC Reviewer, I want to review complaints sent to...",User logged in with correct role via Kavach. Relevant master data and test complaint/NO record in correct starting state. Email/SMS/OCR services available.,"1. Navigate to role-appropriate view.
+2. Open complaint or perform primary action (create draft, send to next role, close, assign Contact Person, etc.).
+3. Fill mandatory fields, choose assignment mode if applicable.
+4. Save & Proceed / Submit.
+5. Verify status change, history, notifications, and any auto-actions (letter, assignment, color, SLA timer).",Valid starting complaint/NO record. Active users available. Test complainant with email + mobile. English printed letter scan for OCR stories.,Action succeeds cleanly. Correct next status. Full audit history with user + timestamp. Notifications triggered. Color/SLA updated. No validation errors.,Positive
+CEPC-TC-01602,CEPC-US-016,Negative - Unauthorized Role or Permission Denied,"Logged in as role without permission for the action (e.g., Reviewer trying to forward to Regulatory Body, DO trying to reopen).","1. Login as unauthorized role.
+2. Attempt restricted action on eligible complaint.
+3. Observe UI (button hidden/disabled) or validation error.
+4. Check audit log for attempt.",Complaint in state where higher-role action is possible. Lower-role test user in same territory.,Action blocked with clear message ('Insufficient permission' or specific role requirement). No status change. Attempt logged. No data leakage.,Negative
+CEPC-TC-01603,CEPC-US-016,Edge - Missing Mandatory / Invalid Value / Boundary,"Complaint in valid state. One mandatory field blank or invalid data entered (e.g., future date in past, 513 char custom text, empty reason for transfer).","1. Open form.
+2. Leave one mandatory blank or enter invalid value.
+3. Submit and observe inline + final error.
+4. Correct and re-submit to confirm recovery.",513+ chars in custom closure text. Past date for meeting. Empty mandatory reason. Compensation-like field if applicable (though not core to CEPC).,"Red highlighting on invalid fields. Specific actionable error message. Submit blocked until fixed. After correction, succeeds cleanly.",Edge
+CEPC-TC-01604,CEPC-US-016,Edge - Large History / Concurrent Users / Performance,System under 400+ concurrent load. Complaint has very long history or many attachments.,"1. Use large test complaint or simulate load.
+2. Perform action (search, edit, status change, report).
+3. Verify response time and integrity.",Complaint with 40+ attachments and 3-year history. 400 concurrent test users.,"Action completes in <3s (95th). No freeze, data loss, or corruption. Error rate <1%.",Performance
+CEPC-TC-01701,CEPC-US-017,"Happy Path - As a CEPC Reviewer, I want to close certain non-maintai...",User logged in with correct role via Kavach. Relevant master data and test complaint/NO record in correct starting state. Email/SMS/OCR services available.,"1. Navigate to role-appropriate view.
+2. Open complaint or perform primary action (create draft, send to next role, close, assign Contact Person, etc.).
+3. Fill mandatory fields, choose assignment mode if applicable.
+4. Save & Proceed / Submit.
+5. Verify status change, history, notifications, and any auto-actions (letter, assignment, color, SLA timer).",Valid starting complaint/NO record. Active users available. Test complainant with email + mobile. English printed letter scan for OCR stories.,Action succeeds cleanly. Correct next status. Full audit history with user + timestamp. Notifications triggered. Color/SLA updated. No validation errors.,Positive
+CEPC-TC-01702,CEPC-US-017,Negative - Unauthorized Role or Permission Denied,"Logged in as role without permission for the action (e.g., Reviewer trying to forward to Regulatory Body, DO trying to reopen).","1. Login as unauthorized role.
+2. Attempt restricted action on eligible complaint.
+3. Observe UI (button hidden/disabled) or validation error.
+4. Check audit log for attempt.",Complaint in state where higher-role action is possible. Lower-role test user in same territory.,Action blocked with clear message ('Insufficient permission' or specific role requirement). No status change. Attempt logged. No data leakage.,Negative
+CEPC-TC-01703,CEPC-US-017,Edge - Missing Mandatory / Invalid Value / Boundary,"Complaint in valid state. One mandatory field blank or invalid data entered (e.g., future date in past, 513 char custom text, empty reason for transfer).","1. Open form.
+2. Leave one mandatory blank or enter invalid value.
+3. Submit and observe inline + final error.
+4. Correct and re-submit to confirm recovery.",513+ chars in custom closure text. Past date for meeting. Empty mandatory reason. Compensation-like field if applicable (though not core to CEPC).,"Red highlighting on invalid fields. Specific actionable error message. Submit blocked until fixed. After correction, succeeds cleanly.",Edge
+CEPC-TC-01704,CEPC-US-017,Edge - No Complainant Email / Digital Signature Failure / Link Expiry,Complainant has no email. Or signature cert invalid. Or 7-day link already expired.,"1. Attempt closure on no-email complaint.
+2. Verify forced manual letter + date entry.
+3. Try expired link (should reject with clear message).
+4. Simulate invalid signature on close submit.",Complaint with empty email. Expired link. Invalid/expired digital cert for Closing Authority.,Cannot close without date of sending. Link expiry shows clear message and updates flag. Signature failure blocks close with actionable error. All attempts audited.,Edge
+CEPC-TC-01801,CEPC-US-018,"Happy Path - As a CEPC Reviewer, I want to see only status codes rel...",User logged in with correct role via Kavach. Relevant master data and test complaint/NO record in correct starting state. Email/SMS/OCR services available.,"1. Navigate to role-appropriate view.
+2. Open complaint or perform primary action (create draft, send to next role, close, assign Contact Person, etc.).
+3. Fill mandatory fields, choose assignment mode if applicable.
+4. Save & Proceed / Submit.
+5. Verify status change, history, notifications, and any auto-actions (letter, assignment, color, SLA timer).",Valid starting complaint/NO record. Active users available. Test complainant with email + mobile. English printed letter scan for OCR stories.,Action succeeds cleanly. Correct next status. Full audit history with user + timestamp. Notifications triggered. Color/SLA updated. No validation errors.,Positive
+CEPC-TC-01802,CEPC-US-018,Negative - Unauthorized Role or Permission Denied,"Logged in as role without permission for the action (e.g., Reviewer trying to forward to Regulatory Body, DO trying to reopen).","1. Login as unauthorized role.
+2. Attempt restricted action on eligible complaint.
+3. Observe UI (button hidden/disabled) or validation error.
+4. Check audit log for attempt.",Complaint in state where higher-role action is possible. Lower-role test user in same territory.,Action blocked with clear message ('Insufficient permission' or specific role requirement). No status change. Attempt logged. No data leakage.,Negative
+CEPC-TC-01803,CEPC-US-018,Edge - Missing Mandatory / Invalid Value / Boundary,"Complaint in valid state. One mandatory field blank or invalid data entered (e.g., future date in past, 513 char custom text, empty reason for transfer).","1. Open form.
+2. Leave one mandatory blank or enter invalid value.
+3. Submit and observe inline + final error.
+4. Correct and re-submit to confirm recovery.",513+ chars in custom closure text. Past date for meeting. Empty mandatory reason. Compensation-like field if applicable (though not core to CEPC).,"Red highlighting on invalid fields. Specific actionable error message. Submit blocked until fixed. After correction, succeeds cleanly.",Edge
+CEPC-TC-01804,CEPC-US-018,Edge - Large History / Concurrent Users / Performance,System under 400+ concurrent load. Complaint has very long history or many attachments.,"1. Use large test complaint or simulate load.
+2. Perform action (search, edit, status change, report).
+3. Verify response time and integrity.",Complaint with 40+ attachments and 3-year history. 400 concurrent test users.,"Action completes in <3s (95th). No freeze, data loss, or corruption. Error rate <1%.",Performance
+CEPC-TC-01901,CEPC-US-019,"Happy Path - As a CEPC Reviewer, I want the system to prevent me fro...",User logged in with correct role via Kavach. Relevant master data and test complaint/NO record in correct starting state. Email/SMS/OCR services available.,"1. Navigate to role-appropriate view.
+2. Open complaint or perform primary action (create draft, send to next role, close, assign Contact Person, etc.).
+3. Fill mandatory fields, choose assignment mode if applicable.
+4. Save & Proceed / Submit.
+5. Verify status change, history, notifications, and any auto-actions (letter, assignment, color, SLA timer).",Valid starting complaint/NO record. Active users available. Test complainant with email + mobile. English printed letter scan for OCR stories.,Action succeeds cleanly. Correct next status. Full audit history with user + timestamp. Notifications triggered. Color/SLA updated. No validation errors.,Positive
+CEPC-TC-01902,CEPC-US-019,Negative - Unauthorized Role or Permission Denied,"Logged in as role without permission for the action (e.g., Reviewer trying to forward to Regulatory Body, DO trying to reopen).","1. Login as unauthorized role.
+2. Attempt restricted action on eligible complaint.
+3. Observe UI (button hidden/disabled) or validation error.
+4. Check audit log for attempt.",Complaint in state where higher-role action is possible. Lower-role test user in same territory.,Action blocked with clear message ('Insufficient permission' or specific role requirement). No status change. Attempt logged. No data leakage.,Negative
+CEPC-TC-01903,CEPC-US-019,Edge - Missing Mandatory / Invalid Value / Boundary,"Complaint in valid state. One mandatory field blank or invalid data entered (e.g., future date in past, 513 char custom text, empty reason for transfer).","1. Open form.
+2. Leave one mandatory blank or enter invalid value.
+3. Submit and observe inline + final error.
+4. Correct and re-submit to confirm recovery.",513+ chars in custom closure text. Past date for meeting. Empty mandatory reason. Compensation-like field if applicable (though not core to CEPC).,"Red highlighting on invalid fields. Specific actionable error message. Submit blocked until fixed. After correction, succeeds cleanly.",Edge
+CEPC-TC-01904,CEPC-US-019,Edge - Large History / Concurrent Users / Performance,System under 400+ concurrent load. Complaint has very long history or many attachments.,"1. Use large test complaint or simulate load.
+2. Perform action (search, edit, status change, report).
+3. Verify response time and integrity.",Complaint with 40+ attachments and 3-year history. 400 concurrent test users.,"Action completes in <3s (95th). No freeze, data loss, or corruption. Error rate <1%.",Performance
+CEPC-TC-02001,CEPC-US-020,"Happy Path - As a CEPC In-Charge, I want to receive escalated compla...",User logged in with correct role via Kavach. Relevant master data and test complaint/NO record in correct starting state. Email/SMS/OCR services available.,"1. Navigate to role-appropriate view.
+2. Open complaint or perform primary action (create draft, send to next role, close, assign Contact Person, etc.).
+3. Fill mandatory fields, choose assignment mode if applicable.
+4. Save & Proceed / Submit.
+5. Verify status change, history, notifications, and any auto-actions (letter, assignment, color, SLA timer).",Valid starting complaint/NO record. Active users available. Test complainant with email + mobile. English printed letter scan for OCR stories.,Action succeeds cleanly. Correct next status. Full audit history with user + timestamp. Notifications triggered. Color/SLA updated. No validation errors.,Positive
+CEPC-TC-02002,CEPC-US-020,Negative - Unauthorized Role or Permission Denied,"Logged in as role without permission for the action (e.g., Reviewer trying to forward to Regulatory Body, DO trying to reopen).","1. Login as unauthorized role.
+2. Attempt restricted action on eligible complaint.
+3. Observe UI (button hidden/disabled) or validation error.
+4. Check audit log for attempt.",Complaint in state where higher-role action is possible. Lower-role test user in same territory.,Action blocked with clear message ('Insufficient permission' or specific role requirement). No status change. Attempt logged. No data leakage.,Negative
+CEPC-TC-02003,CEPC-US-020,Edge - Missing Mandatory / Invalid Value / Boundary,"Complaint in valid state. One mandatory field blank or invalid data entered (e.g., future date in past, 513 char custom text, empty reason for transfer).","1. Open form.
+2. Leave one mandatory blank or enter invalid value.
+3. Submit and observe inline + final error.
+4. Correct and re-submit to confirm recovery.",513+ chars in custom closure text. Past date for meeting. Empty mandatory reason. Compensation-like field if applicable (though not core to CEPC).,"Red highlighting on invalid fields. Specific actionable error message. Submit blocked until fixed. After correction, succeeds cleanly.",Edge
+CEPC-TC-02004,CEPC-US-020,Edge - Large History / Concurrent Users / Performance,System under 400+ concurrent load. Complaint has very long history or many attachments.,"1. Use large test complaint or simulate load.
+2. Perform action (search, edit, status change, report).
+3. Verify response time and integrity.",Complaint with 40+ attachments and 3-year history. 400 concurrent test users.,"Action completes in <3s (95th). No freeze, data loss, or corruption. Error rate <1%.",Performance
+CEPC-TC-02101,CEPC-US-021,"Happy Path - As a CEPC In-Charge, I want to close complaints under m...",User logged in with correct role via Kavach. Relevant master data and test complaint/NO record in correct starting state. Email/SMS/OCR services available.,"1. Navigate to role-appropriate view.
+2. Open complaint or perform primary action (create draft, send to next role, close, assign Contact Person, etc.).
+3. Fill mandatory fields, choose assignment mode if applicable.
+4. Save & Proceed / Submit.
+5. Verify status change, history, notifications, and any auto-actions (letter, assignment, color, SLA timer).",Valid starting complaint/NO record. Active users available. Test complainant with email + mobile. English printed letter scan for OCR stories.,Action succeeds cleanly. Correct next status. Full audit history with user + timestamp. Notifications triggered. Color/SLA updated. No validation errors.,Positive
+CEPC-TC-02102,CEPC-US-021,Negative - Unauthorized Role or Permission Denied,"Logged in as role without permission for the action (e.g., Reviewer trying to forward to Regulatory Body, DO trying to reopen).","1. Login as unauthorized role.
+2. Attempt restricted action on eligible complaint.
+3. Observe UI (button hidden/disabled) or validation error.
+4. Check audit log for attempt.",Complaint in state where higher-role action is possible. Lower-role test user in same territory.,Action blocked with clear message ('Insufficient permission' or specific role requirement). No status change. Attempt logged. No data leakage.,Negative
+CEPC-TC-02103,CEPC-US-021,Edge - Missing Mandatory / Invalid Value / Boundary,"Complaint in valid state. One mandatory field blank or invalid data entered (e.g., future date in past, 513 char custom text, empty reason for transfer).","1. Open form.
+2. Leave one mandatory blank or enter invalid value.
+3. Submit and observe inline + final error.
+4. Correct and re-submit to confirm recovery.",513+ chars in custom closure text. Past date for meeting. Empty mandatory reason. Compensation-like field if applicable (though not core to CEPC).,"Red highlighting on invalid fields. Specific actionable error message. Submit blocked until fixed. After correction, succeeds cleanly.",Edge
+CEPC-TC-02104,CEPC-US-021,Edge - No Complainant Email / Digital Signature Failure / Link Expiry,Complainant has no email. Or signature cert invalid. Or 7-day link already expired.,"1. Attempt closure on no-email complaint.
+2. Verify forced manual letter + date entry.
+3. Try expired link (should reject with clear message).
+4. Simulate invalid signature on close submit.",Complaint with empty email. Expired link. Invalid/expired digital cert for Closing Authority.,Cannot close without date of sending. Link expiry shows clear message and updates flag. Signature failure blocks close with actionable error. All attempts audited.,Edge
+CEPC-TC-02201,CEPC-US-022,"Happy Path - As a CEPC In-Charge, I want executive KPIs for my offic...",User logged in with correct role via Kavach. Relevant master data and test complaint/NO record in correct starting state. Email/SMS/OCR services available.,"1. Navigate to role-appropriate view.
+2. Open complaint or perform primary action (create draft, send to next role, close, assign Contact Person, etc.).
+3. Fill mandatory fields, choose assignment mode if applicable.
+4. Save & Proceed / Submit.
+5. Verify status change, history, notifications, and any auto-actions (letter, assignment, color, SLA timer).",Valid starting complaint/NO record. Active users available. Test complainant with email + mobile. English printed letter scan for OCR stories.,Action succeeds cleanly. Correct next status. Full audit history with user + timestamp. Notifications triggered. Color/SLA updated. No validation errors.,Positive
+CEPC-TC-02202,CEPC-US-022,Negative - Unauthorized Role or Permission Denied,"Logged in as role without permission for the action (e.g., Reviewer trying to forward to Regulatory Body, DO trying to reopen).","1. Login as unauthorized role.
+2. Attempt restricted action on eligible complaint.
+3. Observe UI (button hidden/disabled) or validation error.
+4. Check audit log for attempt.",Complaint in state where higher-role action is possible. Lower-role test user in same territory.,Action blocked with clear message ('Insufficient permission' or specific role requirement). No status change. Attempt logged. No data leakage.,Negative
+CEPC-TC-02203,CEPC-US-022,Edge - Missing Mandatory / Invalid Value / Boundary,"Complaint in valid state. One mandatory field blank or invalid data entered (e.g., future date in past, 513 char custom text, empty reason for transfer).","1. Open form.
+2. Leave one mandatory blank or enter invalid value.
+3. Submit and observe inline + final error.
+4. Correct and re-submit to confirm recovery.",513+ chars in custom closure text. Past date for meeting. Empty mandatory reason. Compensation-like field if applicable (though not core to CEPC).,"Red highlighting on invalid fields. Specific actionable error message. Submit blocked until fixed. After correction, succeeds cleanly.",Edge
+CEPC-TC-02204,CEPC-US-022,Edge - Large History / Concurrent Users / Performance,System under 400+ concurrent load. Complaint has very long history or many attachments.,"1. Use large test complaint or simulate load.
+2. Perform action (search, edit, status change, report).
+3. Verify response time and integrity.",Complaint with 40+ attachments and 3-year history. 400 concurrent test users.,"Action completes in <3s (95th). No freeze, data loss, or corruption. Error rate <1%.",Performance
+CEPC-TC-02301,CEPC-US-023,"Happy Path - As a CEPC In-Charge, I want to send complaints back to ...",User logged in with correct role via Kavach. Relevant master data and test complaint/NO record in correct starting state. Email/SMS/OCR services available.,"1. Navigate to role-appropriate view.
+2. Open complaint or perform primary action (create draft, send to next role, close, assign Contact Person, etc.).
+3. Fill mandatory fields, choose assignment mode if applicable.
+4. Save & Proceed / Submit.
+5. Verify status change, history, notifications, and any auto-actions (letter, assignment, color, SLA timer).",Valid starting complaint/NO record. Active users available. Test complainant with email + mobile. English printed letter scan for OCR stories.,Action succeeds cleanly. Correct next status. Full audit history with user + timestamp. Notifications triggered. Color/SLA updated. No validation errors.,Positive
+CEPC-TC-02302,CEPC-US-023,Negative - Unauthorized Role or Permission Denied,"Logged in as role without permission for the action (e.g., Reviewer trying to forward to Regulatory Body, DO trying to reopen).","1. Login as unauthorized role.
+2. Attempt restricted action on eligible complaint.
+3. Observe UI (button hidden/disabled) or validation error.
+4. Check audit log for attempt.",Complaint in state where higher-role action is possible. Lower-role test user in same territory.,Action blocked with clear message ('Insufficient permission' or specific role requirement). No status change. Attempt logged. No data leakage.,Negative
+CEPC-TC-02303,CEPC-US-023,Edge - Missing Mandatory / Invalid Value / Boundary,"Complaint in valid state. One mandatory field blank or invalid data entered (e.g., future date in past, 513 char custom text, empty reason for transfer).","1. Open form.
+2. Leave one mandatory blank or enter invalid value.
+3. Submit and observe inline + final error.
+4. Correct and re-submit to confirm recovery.",513+ chars in custom closure text. Past date for meeting. Empty mandatory reason. Compensation-like field if applicable (though not core to CEPC).,"Red highlighting on invalid fields. Specific actionable error message. Submit blocked until fixed. After correction, succeeds cleanly.",Edge
+CEPC-TC-02304,CEPC-US-023,Edge - Large History / Concurrent Users / Performance,System under 400+ concurrent load. Complaint has very long history or many attachments.,"1. Use large test complaint or simulate load.
+2. Perform action (search, edit, status change, report).
+3. Verify response time and integrity.",Complaint with 40+ attachments and 3-year history. 400 concurrent test users.,"Action completes in <3s (95th). No freeze, data loss, or corruption. Error rate <1%.",Performance
+CEPC-TC-02401,CEPC-US-024,"Happy Path - As a CEPC In-Charge, I want to forward complaints to ot...",User logged in with correct role via Kavach. Relevant master data and test complaint/NO record in correct starting state. Email/SMS/OCR services available.,"1. Navigate to role-appropriate view.
+2. Open complaint or perform primary action (create draft, send to next role, close, assign Contact Person, etc.).
+3. Fill mandatory fields, choose assignment mode if applicable.
+4. Save & Proceed / Submit.
+5. Verify status change, history, notifications, and any auto-actions (letter, assignment, color, SLA timer).",Valid starting complaint/NO record. Active users available. Test complainant with email + mobile. English printed letter scan for OCR stories.,Action succeeds cleanly. Correct next status. Full audit history with user + timestamp. Notifications triggered. Color/SLA updated. No validation errors.,Positive
+CEPC-TC-02402,CEPC-US-024,Negative - Unauthorized Role or Permission Denied,"Logged in as role without permission for the action (e.g., Reviewer trying to forward to Regulatory Body, DO trying to reopen).","1. Login as unauthorized role.
+2. Attempt restricted action on eligible complaint.
+3. Observe UI (button hidden/disabled) or validation error.
+4. Check audit log for attempt.",Complaint in state where higher-role action is possible. Lower-role test user in same territory.,Action blocked with clear message ('Insufficient permission' or specific role requirement). No status change. Attempt logged. No data leakage.,Negative
+CEPC-TC-02403,CEPC-US-024,Edge - Missing Mandatory / Invalid Value / Boundary,"Complaint in valid state. One mandatory field blank or invalid data entered (e.g., future date in past, 513 char custom text, empty reason for transfer).","1. Open form.
+2. Leave one mandatory blank or enter invalid value.
+3. Submit and observe inline + final error.
+4. Correct and re-submit to confirm recovery.",513+ chars in custom closure text. Past date for meeting. Empty mandatory reason. Compensation-like field if applicable (though not core to CEPC).,"Red highlighting on invalid fields. Specific actionable error message. Submit blocked until fixed. After correction, succeeds cleanly.",Edge
+CEPC-TC-02404,CEPC-US-024,Edge - Large History / Concurrent Users / Performance,System under 400+ concurrent load. Complaint has very long history or many attachments.,"1. Use large test complaint or simulate load.
+2. Perform action (search, edit, status change, report).
+3. Verify response time and integrity.",Complaint with 40+ attachments and 3-year history. 400 concurrent test users.,"Action completes in <3s (95th). No freeze, data loss, or corruption. Error rate <1%.",Performance
+CEPC-TC-02501,CEPC-US-025,"Happy Path - As a CEPC Closing Authority, I want full authority to m...",User logged in with correct role via Kavach. Relevant master data and test complaint/NO record in correct starting state. Email/SMS/OCR services available.,"1. Navigate to role-appropriate view.
+2. Open complaint or perform primary action (create draft, send to next role, close, assign Contact Person, etc.).
+3. Fill mandatory fields, choose assignment mode if applicable.
+4. Save & Proceed / Submit.
+5. Verify status change, history, notifications, and any auto-actions (letter, assignment, color, SLA timer).",Valid starting complaint/NO record. Active users available. Test complainant with email + mobile. English printed letter scan for OCR stories.,Action succeeds cleanly. Correct next status. Full audit history with user + timestamp. Notifications triggered. Color/SLA updated. No validation errors.,Positive
+CEPC-TC-02502,CEPC-US-025,Negative - Unauthorized Role or Permission Denied,"Logged in as role without permission for the action (e.g., Reviewer trying to forward to Regulatory Body, DO trying to reopen).","1. Login as unauthorized role.
+2. Attempt restricted action on eligible complaint.
+3. Observe UI (button hidden/disabled) or validation error.
+4. Check audit log for attempt.",Complaint in state where higher-role action is possible. Lower-role test user in same territory.,Action blocked with clear message ('Insufficient permission' or specific role requirement). No status change. Attempt logged. No data leakage.,Negative
+CEPC-TC-02503,CEPC-US-025,Edge - Missing Mandatory / Invalid Value / Boundary,"Complaint in valid state. One mandatory field blank or invalid data entered (e.g., future date in past, 513 char custom text, empty reason for transfer).","1. Open form.
+2. Leave one mandatory blank or enter invalid value.
+3. Submit and observe inline + final error.
+4. Correct and re-submit to confirm recovery.",513+ chars in custom closure text. Past date for meeting. Empty mandatory reason. Compensation-like field if applicable (though not core to CEPC).,"Red highlighting on invalid fields. Specific actionable error message. Submit blocked until fixed. After correction, succeeds cleanly.",Edge
+CEPC-TC-02504,CEPC-US-025,Edge - Large History / Concurrent Users / Performance,System under 400+ concurrent load. Complaint has very long history or many attachments.,"1. Use large test complaint or simulate load.
+2. Perform action (search, edit, status change, report).
+3. Verify response time and integrity.",Complaint with 40+ attachments and 3-year history. 400 concurrent test users.,"Action completes in <3s (95th). No freeze, data loss, or corruption. Error rate <1%.",Performance
+CEPC-TC-02601,CEPC-US-026,"Happy Path - As a CEPC Closing Authority, I want to forward complain...",User logged in with correct role via Kavach. Relevant master data and test complaint/NO record in correct starting state. Email/SMS/OCR services available.,"1. Navigate to role-appropriate view.
+2. Open complaint or perform primary action (create draft, send to next role, close, assign Contact Person, etc.).
+3. Fill mandatory fields, choose assignment mode if applicable.
+4. Save & Proceed / Submit.
+5. Verify status change, history, notifications, and any auto-actions (letter, assignment, color, SLA timer).",Valid starting complaint/NO record. Active users available. Test complainant with email + mobile. English printed letter scan for OCR stories.,Action succeeds cleanly. Correct next status. Full audit history with user + timestamp. Notifications triggered. Color/SLA updated. No validation errors.,Positive
+CEPC-TC-02602,CEPC-US-026,Negative - Unauthorized Role or Permission Denied,"Logged in as role without permission for the action (e.g., Reviewer trying to forward to Regulatory Body, DO trying to reopen).","1. Login as unauthorized role.
+2. Attempt restricted action on eligible complaint.
+3. Observe UI (button hidden/disabled) or validation error.
+4. Check audit log for attempt.",Complaint in state where higher-role action is possible. Lower-role test user in same territory.,Action blocked with clear message ('Insufficient permission' or specific role requirement). No status change. Attempt logged. No data leakage.,Negative
+CEPC-TC-02603,CEPC-US-026,Edge - Missing Mandatory / Invalid Value / Boundary,"Complaint in valid state. One mandatory field blank or invalid data entered (e.g., future date in past, 513 char custom text, empty reason for transfer).","1. Open form.
+2. Leave one mandatory blank or enter invalid value.
+3. Submit and observe inline + final error.
+4. Correct and re-submit to confirm recovery.",513+ chars in custom closure text. Past date for meeting. Empty mandatory reason. Compensation-like field if applicable (though not core to CEPC).,"Red highlighting on invalid fields. Specific actionable error message. Submit blocked until fixed. After correction, succeeds cleanly.",Edge
+CEPC-TC-02604,CEPC-US-026,Edge - Large History / Concurrent Users / Performance,System under 400+ concurrent load. Complaint has very long history or many attachments.,"1. Use large test complaint or simulate load.
+2. Perform action (search, edit, status change, report).
+3. Verify response time and integrity.",Complaint with 40+ attachments and 3-year history. 400 concurrent test users.,"Action completes in <3s (95th). No freeze, data loss, or corruption. Error rate <1%.",Performance
+CEPC-TC-02701,CEPC-US-027,"Happy Path - As a CEPC Closing Authority, I want an executive dashbo...",User logged in with correct role via Kavach. Relevant master data and test complaint/NO record in correct starting state. Email/SMS/OCR services available.,"1. Navigate to role-appropriate view.
+2. Open complaint or perform primary action (create draft, send to next role, close, assign Contact Person, etc.).
+3. Fill mandatory fields, choose assignment mode if applicable.
+4. Save & Proceed / Submit.
+5. Verify status change, history, notifications, and any auto-actions (letter, assignment, color, SLA timer).",Valid starting complaint/NO record. Active users available. Test complainant with email + mobile. English printed letter scan for OCR stories.,Action succeeds cleanly. Correct next status. Full audit history with user + timestamp. Notifications triggered. Color/SLA updated. No validation errors.,Positive
+CEPC-TC-02702,CEPC-US-027,Negative - Unauthorized Role or Permission Denied,"Logged in as role without permission for the action (e.g., Reviewer trying to forward to Regulatory Body, DO trying to reopen).","1. Login as unauthorized role.
+2. Attempt restricted action on eligible complaint.
+3. Observe UI (button hidden/disabled) or validation error.
+4. Check audit log for attempt.",Complaint in state where higher-role action is possible. Lower-role test user in same territory.,Action blocked with clear message ('Insufficient permission' or specific role requirement). No status change. Attempt logged. No data leakage.,Negative
+CEPC-TC-02703,CEPC-US-027,Edge - Missing Mandatory / Invalid Value / Boundary,"Complaint in valid state. One mandatory field blank or invalid data entered (e.g., future date in past, 513 char custom text, empty reason for transfer).","1. Open form.
+2. Leave one mandatory blank or enter invalid value.
+3. Submit and observe inline + final error.
+4. Correct and re-submit to confirm recovery.",513+ chars in custom closure text. Past date for meeting. Empty mandatory reason. Compensation-like field if applicable (though not core to CEPC).,"Red highlighting on invalid fields. Specific actionable error message. Submit blocked until fixed. After correction, succeeds cleanly.",Edge
+CEPC-TC-02704,CEPC-US-027,Edge - Large History / Concurrent Users / Performance,System under 400+ concurrent load. Complaint has very long history or many attachments.,"1. Use large test complaint or simulate load.
+2. Perform action (search, edit, status change, report).
+3. Verify response time and integrity.",Complaint with 40+ attachments and 3-year history. 400 concurrent test users.,"Action completes in <3s (95th). No freeze, data loss, or corruption. Error rate <1%.",Performance
+CEPC-TC-02801,CEPC-US-028,"Happy Path - As a CEPC Closing Authority, I want to update Legal Cas...",User logged in with correct role via Kavach. Relevant master data and test complaint/NO record in correct starting state. Email/SMS/OCR services available.,"1. Navigate to role-appropriate view.
+2. Open complaint or perform primary action (create draft, send to next role, close, assign Contact Person, etc.).
+3. Fill mandatory fields, choose assignment mode if applicable.
+4. Save & Proceed / Submit.
+5. Verify status change, history, notifications, and any auto-actions (letter, assignment, color, SLA timer).",Valid starting complaint/NO record. Active users available. Test complainant with email + mobile. English printed letter scan for OCR stories.,Action succeeds cleanly. Correct next status. Full audit history with user + timestamp. Notifications triggered. Color/SLA updated. No validation errors.,Positive
+CEPC-TC-02802,CEPC-US-028,Negative - Unauthorized Role or Permission Denied,"Logged in as role without permission for the action (e.g., Reviewer trying to forward to Regulatory Body, DO trying to reopen).","1. Login as unauthorized role.
+2. Attempt restricted action on eligible complaint.
+3. Observe UI (button hidden/disabled) or validation error.
+4. Check audit log for attempt.",Complaint in state where higher-role action is possible. Lower-role test user in same territory.,Action blocked with clear message ('Insufficient permission' or specific role requirement). No status change. Attempt logged. No data leakage.,Negative
+CEPC-TC-02803,CEPC-US-028,Edge - Missing Mandatory / Invalid Value / Boundary,"Complaint in valid state. One mandatory field blank or invalid data entered (e.g., future date in past, 513 char custom text, empty reason for transfer).","1. Open form.
+2. Leave one mandatory blank or enter invalid value.
+3. Submit and observe inline + final error.
+4. Correct and re-submit to confirm recovery.",513+ chars in custom closure text. Past date for meeting. Empty mandatory reason. Compensation-like field if applicable (though not core to CEPC).,"Red highlighting on invalid fields. Specific actionable error message. Submit blocked until fixed. After correction, succeeds cleanly.",Edge
+CEPC-TC-02804,CEPC-US-028,Edge - Large History / Concurrent Users / Performance,System under 400+ concurrent load. Complaint has very long history or many attachments.,"1. Use large test complaint or simulate load.
+2. Perform action (search, edit, status change, report).
+3. Verify response time and integrity.",Complaint with 40+ attachments and 3-year history. 400 concurrent test users.,"Action completes in <3s (95th). No freeze, data loss, or corruption. Error rate <1%.",Performance
+CEPC-TC-02901,CEPC-US-029,"Happy Path - As a CEPC Closing Authority, I want the system to enfor...",User logged in with correct role via Kavach. Relevant master data and test complaint/NO record in correct starting state. Email/SMS/OCR services available.,"1. Navigate to role-appropriate view.
+2. Open complaint or perform primary action (create draft, send to next role, close, assign Contact Person, etc.).
+3. Fill mandatory fields, choose assignment mode if applicable.
+4. Save & Proceed / Submit.
+5. Verify status change, history, notifications, and any auto-actions (letter, assignment, color, SLA timer).",Valid starting complaint/NO record. Active users available. Test complainant with email + mobile. English printed letter scan for OCR stories.,Action succeeds cleanly. Correct next status. Full audit history with user + timestamp. Notifications triggered. Color/SLA updated. No validation errors.,Positive
+CEPC-TC-02902,CEPC-US-029,Negative - Unauthorized Role or Permission Denied,"Logged in as role without permission for the action (e.g., Reviewer trying to forward to Regulatory Body, DO trying to reopen).","1. Login as unauthorized role.
+2. Attempt restricted action on eligible complaint.
+3. Observe UI (button hidden/disabled) or validation error.
+4. Check audit log for attempt.",Complaint in state where higher-role action is possible. Lower-role test user in same territory.,Action blocked with clear message ('Insufficient permission' or specific role requirement). No status change. Attempt logged. No data leakage.,Negative
+CEPC-TC-02903,CEPC-US-029,Edge - Missing Mandatory / Invalid Value / Boundary,"Complaint in valid state. One mandatory field blank or invalid data entered (e.g., future date in past, 513 char custom text, empty reason for transfer).","1. Open form.
+2. Leave one mandatory blank or enter invalid value.
+3. Submit and observe inline + final error.
+4. Correct and re-submit to confirm recovery.",513+ chars in custom closure text. Past date for meeting. Empty mandatory reason. Compensation-like field if applicable (though not core to CEPC).,"Red highlighting on invalid fields. Specific actionable error message. Submit blocked until fixed. After correction, succeeds cleanly.",Edge
+CEPC-TC-02904,CEPC-US-029,Edge - No Complainant Email / Digital Signature Failure / Link Expiry,Complainant has no email. Or signature cert invalid. Or 7-day link already expired.,"1. Attempt closure on no-email complaint.
+2. Verify forced manual letter + date entry.
+3. Try expired link (should reject with clear message).
+4. Simulate invalid signature on close submit.",Complaint with empty email. Expired link. Invalid/expired digital cert for Closing Authority.,Cannot close without date of sending. Link expiry shows clear message and updates flag. Signature failure blocks close with actionable error. All attempts audited.,Edge
+CEPC-TC-03001,CEPC-US-030,"Happy Path - As a CEPC Closing Authority, I want to receive system a...",User logged in with correct role via Kavach. Relevant master data and test complaint/NO record in correct starting state. Email/SMS/OCR services available.,"1. Navigate to role-appropriate view.
+2. Open complaint or perform primary action (create draft, send to next role, close, assign Contact Person, etc.).
+3. Fill mandatory fields, choose assignment mode if applicable.
+4. Save & Proceed / Submit.
+5. Verify status change, history, notifications, and any auto-actions (letter, assignment, color, SLA timer).",Valid starting complaint/NO record. Active users available. Test complainant with email + mobile. English printed letter scan for OCR stories.,Action succeeds cleanly. Correct next status. Full audit history with user + timestamp. Notifications triggered. Color/SLA updated. No validation errors.,Positive
+CEPC-TC-03002,CEPC-US-030,Negative - Unauthorized Role or Permission Denied,"Logged in as role without permission for the action (e.g., Reviewer trying to forward to Regulatory Body, DO trying to reopen).","1. Login as unauthorized role.
+2. Attempt restricted action on eligible complaint.
+3. Observe UI (button hidden/disabled) or validation error.
+4. Check audit log for attempt.",Complaint in state where higher-role action is possible. Lower-role test user in same territory.,Action blocked with clear message ('Insufficient permission' or specific role requirement). No status change. Attempt logged. No data leakage.,Negative
+CEPC-TC-03003,CEPC-US-030,Edge - Missing Mandatory / Invalid Value / Boundary,"Complaint in valid state. One mandatory field blank or invalid data entered (e.g., future date in past, 513 char custom text, empty reason for transfer).","1. Open form.
+2. Leave one mandatory blank or enter invalid value.
+3. Submit and observe inline + final error.
+4. Correct and re-submit to confirm recovery.",513+ chars in custom closure text. Past date for meeting. Empty mandatory reason. Compensation-like field if applicable (though not core to CEPC).,"Red highlighting on invalid fields. Specific actionable error message. Submit blocked until fixed. After correction, succeeds cleanly.",Edge
+CEPC-TC-03004,CEPC-US-030,Edge - No Complainant Email / Digital Signature Failure / Link Expiry,Complainant has no email. Or signature cert invalid. Or 7-day link already expired.,"1. Attempt closure on no-email complaint.
+2. Verify forced manual letter + date entry.
+3. Try expired link (should reject with clear message).
+4. Simulate invalid signature on close submit.",Complaint with empty email. Expired link. Invalid/expired digital cert for Closing Authority.,Cannot close without date of sending. Link expiry shows clear message and updates flag. Signature failure blocks close with actionable error. All attempts audited.,Edge
+CEPC-TC-03101,CEPC-US-031,"Happy Path - As an RE Contact Person, I want to receive NO records a...",User logged in with correct role via Kavach. Relevant master data and test complaint/NO record in correct starting state. Email/SMS/OCR services available.,"1. Navigate to role-appropriate view.
+2. Open complaint or perform primary action (create draft, send to next role, close, assign Contact Person, etc.).
+3. Fill mandatory fields, choose assignment mode if applicable.
+4. Save & Proceed / Submit.
+5. Verify status change, history, notifications, and any auto-actions (letter, assignment, color, SLA timer).",Valid starting complaint/NO record. Active users available. Test complainant with email + mobile. English printed letter scan for OCR stories.,Action succeeds cleanly. Correct next status. Full audit history with user + timestamp. Notifications triggered. Color/SLA updated. No validation errors.,Positive
+CEPC-TC-03102,CEPC-US-031,Negative - Unauthorized Role or Permission Denied,"Logged in as role without permission for the action (e.g., Reviewer trying to forward to Regulatory Body, DO trying to reopen).","1. Login as unauthorized role.
+2. Attempt restricted action on eligible complaint.
+3. Observe UI (button hidden/disabled) or validation error.
+4. Check audit log for attempt.",Complaint in state where higher-role action is possible. Lower-role test user in same territory.,Action blocked with clear message ('Insufficient permission' or specific role requirement). No status change. Attempt logged. No data leakage.,Negative
+CEPC-TC-03103,CEPC-US-031,Edge - Missing Mandatory / Invalid Value / Boundary,"Complaint in valid state. One mandatory field blank or invalid data entered (e.g., future date in past, 513 char custom text, empty reason for transfer).","1. Open form.
+2. Leave one mandatory blank or enter invalid value.
+3. Submit and observe inline + final error.
+4. Correct and re-submit to confirm recovery.",513+ chars in custom closure text. Past date for meeting. Empty mandatory reason. Compensation-like field if applicable (though not core to CEPC).,"Red highlighting on invalid fields. Specific actionable error message. Submit blocked until fixed. After correction, succeeds cleanly.",Edge
+CEPC-TC-03104,CEPC-US-031,Edge - Large History / Concurrent Users / Performance,System under 400+ concurrent load. Complaint has very long history or many attachments.,"1. Use large test complaint or simulate load.
+2. Perform action (search, edit, status change, report).
+3. Verify response time and integrity.",Complaint with 40+ attachments and 3-year history. 400 concurrent test users.,"Action completes in <3s (95th). No freeze, data loss, or corruption. Error rate <1%.",Performance
+CEPC-TC-03201,CEPC-US-032,"Happy Path - As an RE Contact Person, I want view-only access to rep...",User logged in with correct role via Kavach. Relevant master data and test complaint/NO record in correct starting state. Email/SMS/OCR services available.,"1. Navigate to role-appropriate view.
+2. Open complaint or perform primary action (create draft, send to next role, close, assign Contact Person, etc.).
+3. Fill mandatory fields, choose assignment mode if applicable.
+4. Save & Proceed / Submit.
+5. Verify status change, history, notifications, and any auto-actions (letter, assignment, color, SLA timer).",Valid starting complaint/NO record. Active users available. Test complainant with email + mobile. English printed letter scan for OCR stories.,Action succeeds cleanly. Correct next status. Full audit history with user + timestamp. Notifications triggered. Color/SLA updated. No validation errors.,Positive
+CEPC-TC-03202,CEPC-US-032,Negative - Unauthorized Role or Permission Denied,"Logged in as role without permission for the action (e.g., Reviewer trying to forward to Regulatory Body, DO trying to reopen).","1. Login as unauthorized role.
+2. Attempt restricted action on eligible complaint.
+3. Observe UI (button hidden/disabled) or validation error.
+4. Check audit log for attempt.",Complaint in state where higher-role action is possible. Lower-role test user in same territory.,Action blocked with clear message ('Insufficient permission' or specific role requirement). No status change. Attempt logged. No data leakage.,Negative
+CEPC-TC-03203,CEPC-US-032,Edge - Missing Mandatory / Invalid Value / Boundary,"Complaint in valid state. One mandatory field blank or invalid data entered (e.g., future date in past, 513 char custom text, empty reason for transfer).","1. Open form.
+2. Leave one mandatory blank or enter invalid value.
+3. Submit and observe inline + final error.
+4. Correct and re-submit to confirm recovery.",513+ chars in custom closure text. Past date for meeting. Empty mandatory reason. Compensation-like field if applicable (though not core to CEPC).,"Red highlighting on invalid fields. Specific actionable error message. Submit blocked until fixed. After correction, succeeds cleanly.",Edge
+CEPC-TC-03204,CEPC-US-032,Edge - Large History / Concurrent Users / Performance,System under 400+ concurrent load. Complaint has very long history or many attachments.,"1. Use large test complaint or simulate load.
+2. Perform action (search, edit, status change, report).
+3. Verify response time and integrity.",Complaint with 40+ attachments and 3-year history. 400 concurrent test users.,"Action completes in <3s (95th). No freeze, data loss, or corruption. Error rate <1%.",Performance
+CEPC-TC-03301,CEPC-US-033,"Happy Path - As the system, I want to enforce that closure letters a...",User logged in with correct role via Kavach. Relevant master data and test complaint/NO record in correct starting state. Email/SMS/OCR services available.,"1. Navigate to role-appropriate view.
+2. Open complaint or perform primary action (create draft, send to next role, close, assign Contact Person, etc.).
+3. Fill mandatory fields, choose assignment mode if applicable.
+4. Save & Proceed / Submit.
+5. Verify status change, history, notifications, and any auto-actions (letter, assignment, color, SLA timer).",Valid starting complaint/NO record. Active users available. Test complainant with email + mobile. English printed letter scan for OCR stories.,Action succeeds cleanly. Correct next status. Full audit history with user + timestamp. Notifications triggered. Color/SLA updated. No validation errors.,Positive
+CEPC-TC-03302,CEPC-US-033,Negative - Unauthorized Role or Permission Denied,"Logged in as role without permission for the action (e.g., Reviewer trying to forward to Regulatory Body, DO trying to reopen).","1. Login as unauthorized role.
+2. Attempt restricted action on eligible complaint.
+3. Observe UI (button hidden/disabled) or validation error.
+4. Check audit log for attempt.",Complaint in state where higher-role action is possible. Lower-role test user in same territory.,Action blocked with clear message ('Insufficient permission' or specific role requirement). No status change. Attempt logged. No data leakage.,Negative
+CEPC-TC-03303,CEPC-US-033,Edge - Missing Mandatory / Invalid Value / Boundary,"Complaint in valid state. One mandatory field blank or invalid data entered (e.g., future date in past, 513 char custom text, empty reason for transfer).","1. Open form.
+2. Leave one mandatory blank or enter invalid value.
+3. Submit and observe inline + final error.
+4. Correct and re-submit to confirm recovery.",513+ chars in custom closure text. Past date for meeting. Empty mandatory reason. Compensation-like field if applicable (though not core to CEPC).,"Red highlighting on invalid fields. Specific actionable error message. Submit blocked until fixed. After correction, succeeds cleanly.",Edge
+CEPC-TC-03304,CEPC-US-033,Edge - No Complainant Email / Digital Signature Failure / Link Expiry,Complainant has no email. Or signature cert invalid. Or 7-day link already expired.,"1. Attempt closure on no-email complaint.
+2. Verify forced manual letter + date entry.
+3. Try expired link (should reject with clear message).
+4. Simulate invalid signature on close submit.",Complaint with empty email. Expired link. Invalid/expired digital cert for Closing Authority.,Cannot close without date of sending. Link expiry shows clear message and updates flag. Signature failure blocks close with actionable error. All attempts audited.,Edge
+CEPC-TC-03401,CEPC-US-034,"Happy Path - As the system, I want page load for complaint list and ...",User logged in with correct role via Kavach. Relevant master data and test complaint/NO record in correct starting state. Email/SMS/OCR services available.,"1. Navigate to role-appropriate view.
+2. Open complaint or perform primary action (create draft, send to next role, close, assign Contact Person, etc.).
+3. Fill mandatory fields, choose assignment mode if applicable.
+4. Save & Proceed / Submit.
+5. Verify status change, history, notifications, and any auto-actions (letter, assignment, color, SLA timer).",Valid starting complaint/NO record. Active users available. Test complainant with email + mobile. English printed letter scan for OCR stories.,Action succeeds cleanly. Correct next status. Full audit history with user + timestamp. Notifications triggered. Color/SLA updated. No validation errors.,Positive
+CEPC-TC-03402,CEPC-US-034,Negative - Unauthorized Role or Permission Denied,"Logged in as role without permission for the action (e.g., Reviewer trying to forward to Regulatory Body, DO trying to reopen).","1. Login as unauthorized role.
+2. Attempt restricted action on eligible complaint.
+3. Observe UI (button hidden/disabled) or validation error.
+4. Check audit log for attempt.",Complaint in state where higher-role action is possible. Lower-role test user in same territory.,Action blocked with clear message ('Insufficient permission' or specific role requirement). No status change. Attempt logged. No data leakage.,Negative
+CEPC-TC-03403,CEPC-US-034,Edge - Missing Mandatory / Invalid Value / Boundary,"Complaint in valid state. One mandatory field blank or invalid data entered (e.g., future date in past, 513 char custom text, empty reason for transfer).","1. Open form.
+2. Leave one mandatory blank or enter invalid value.
+3. Submit and observe inline + final error.
+4. Correct and re-submit to confirm recovery.",513+ chars in custom closure text. Past date for meeting. Empty mandatory reason. Compensation-like field if applicable (though not core to CEPC).,"Red highlighting on invalid fields. Specific actionable error message. Submit blocked until fixed. After correction, succeeds cleanly.",Edge
+CEPC-TC-03404,CEPC-US-034,Edge - Large History / Concurrent Users / Performance,System under 400+ concurrent load. Complaint has very long history or many attachments.,"1. Use large test complaint or simulate load.
+2. Perform action (search, edit, status change, report).
+3. Verify response time and integrity.",Complaint with 40+ attachments and 3-year history. 400 concurrent test users.,"Action completes in <3s (95th). No freeze, data loss, or corruption. Error rate <1%.",Performance
+CEPC-TC-03501,CEPC-US-035,"Happy Path - As the system, I want AES-256 encryption at rest, TLS 1...",User logged in with correct role via Kavach. Relevant master data and test complaint/NO record in correct starting state. Email/SMS/OCR services available.,"1. Navigate to role-appropriate view.
+2. Open complaint or perform primary action (create draft, send to next role, close, assign Contact Person, etc.).
+3. Fill mandatory fields, choose assignment mode if applicable.
+4. Save & Proceed / Submit.
+5. Verify status change, history, notifications, and any auto-actions (letter, assignment, color, SLA timer).",Valid starting complaint/NO record. Active users available. Test complainant with email + mobile. English printed letter scan for OCR stories.,Action succeeds cleanly. Correct next status. Full audit history with user + timestamp. Notifications triggered. Color/SLA updated. No validation errors.,Positive
+CEPC-TC-03502,CEPC-US-035,Negative - Unauthorized Role or Permission Denied,"Logged in as role without permission for the action (e.g., Reviewer trying to forward to Regulatory Body, DO trying to reopen).","1. Login as unauthorized role.
+2. Attempt restricted action on eligible complaint.
+3. Observe UI (button hidden/disabled) or validation error.
+4. Check audit log for attempt.",Complaint in state where higher-role action is possible. Lower-role test user in same territory.,Action blocked with clear message ('Insufficient permission' or specific role requirement). No status change. Attempt logged. No data leakage.,Negative
+CEPC-TC-03503,CEPC-US-035,Edge - Missing Mandatory / Invalid Value / Boundary,"Complaint in valid state. One mandatory field blank or invalid data entered (e.g., future date in past, 513 char custom text, empty reason for transfer).","1. Open form.
+2. Leave one mandatory blank or enter invalid value.
+3. Submit and observe inline + final error.
+4. Correct and re-submit to confirm recovery.",513+ chars in custom closure text. Past date for meeting. Empty mandatory reason. Compensation-like field if applicable (though not core to CEPC).,"Red highlighting on invalid fields. Specific actionable error message. Submit blocked until fixed. After correction, succeeds cleanly.",Edge
+CEPC-TC-03504,CEPC-US-035,Edge - Large History / Concurrent Users / Performance,System under 400+ concurrent load. Complaint has very long history or many attachments.,"1. Use large test complaint or simulate load.
+2. Perform action (search, edit, status change, report).
+3. Verify response time and integrity.",Complaint with 40+ attachments and 3-year history. 400 concurrent test users.,"Action completes in <3s (95th). No freeze, data loss, or corruption. Error rate <1%.",Performance
+CEPC-TC-03601,CEPC-US-036,"Happy Path - As the system, I want the 7-day document upload link se...",User logged in with correct role via Kavach. Relevant master data and test complaint/NO record in correct starting state. Email/SMS/OCR services available.,"1. Navigate to role-appropriate view.
+2. Open complaint or perform primary action (create draft, send to next role, close, assign Contact Person, etc.).
+3. Fill mandatory fields, choose assignment mode if applicable.
+4. Save & Proceed / Submit.
+5. Verify status change, history, notifications, and any auto-actions (letter, assignment, color, SLA timer).",Valid starting complaint/NO record. Active users available. Test complainant with email + mobile. English printed letter scan for OCR stories.,Action succeeds cleanly. Correct next status. Full audit history with user + timestamp. Notifications triggered. Color/SLA updated. No validation errors.,Positive
+CEPC-TC-03602,CEPC-US-036,Negative - Unauthorized Role or Permission Denied,"Logged in as role without permission for the action (e.g., Reviewer trying to forward to Regulatory Body, DO trying to reopen).","1. Login as unauthorized role.
+2. Attempt restricted action on eligible complaint.
+3. Observe UI (button hidden/disabled) or validation error.
+4. Check audit log for attempt.",Complaint in state where higher-role action is possible. Lower-role test user in same territory.,Action blocked with clear message ('Insufficient permission' or specific role requirement). No status change. Attempt logged. No data leakage.,Negative
+CEPC-TC-03603,CEPC-US-036,Edge - Missing Mandatory / Invalid Value / Boundary,"Complaint in valid state. One mandatory field blank or invalid data entered (e.g., future date in past, 513 char custom text, empty reason for transfer).","1. Open form.
+2. Leave one mandatory blank or enter invalid value.
+3. Submit and observe inline + final error.
+4. Correct and re-submit to confirm recovery.",513+ chars in custom closure text. Past date for meeting. Empty mandatory reason. Compensation-like field if applicable (though not core to CEPC).,"Red highlighting on invalid fields. Specific actionable error message. Submit blocked until fixed. After correction, succeeds cleanly.",Edge
+CEPC-TC-03604,CEPC-US-036,Edge - Large History / Concurrent Users / Performance,System under 400+ concurrent load. Complaint has very long history or many attachments.,"1. Use large test complaint or simulate load.
+2. Perform action (search, edit, status change, report).
+3. Verify response time and integrity.",Complaint with 40+ attachments and 3-year history. 400 concurrent test users.,"Action completes in <3s (95th). No freeze, data loss, or corruption. Error rate <1%.",Performance
+CEPC-TC-03701,CEPC-US-037,"Happy Path - As the system, I want OCR limited to printed/typed Engl...",User logged in with correct role via Kavach. Relevant master data and test complaint/NO record in correct starting state. Email/SMS/OCR services available.,"1. Navigate to role-appropriate view.
+2. Open complaint or perform primary action (create draft, send to next role, close, assign Contact Person, etc.).
+3. Fill mandatory fields, choose assignment mode if applicable.
+4. Save & Proceed / Submit.
+5. Verify status change, history, notifications, and any auto-actions (letter, assignment, color, SLA timer).",Valid starting complaint/NO record. Active users available. Test complainant with email + mobile. English printed letter scan for OCR stories.,Action succeeds cleanly. Correct next status. Full audit history with user + timestamp. Notifications triggered. Color/SLA updated. No validation errors.,Positive
+CEPC-TC-03702,CEPC-US-037,Negative - Unauthorized Role or Permission Denied,"Logged in as role without permission for the action (e.g., Reviewer trying to forward to Regulatory Body, DO trying to reopen).","1. Login as unauthorized role.
+2. Attempt restricted action on eligible complaint.
+3. Observe UI (button hidden/disabled) or validation error.
+4. Check audit log for attempt.",Complaint in state where higher-role action is possible. Lower-role test user in same territory.,Action blocked with clear message ('Insufficient permission' or specific role requirement). No status change. Attempt logged. No data leakage.,Negative
+CEPC-TC-03703,CEPC-US-037,Edge - Missing Mandatory / Invalid Value / Boundary,"Complaint in valid state. One mandatory field blank or invalid data entered (e.g., future date in past, 513 char custom text, empty reason for transfer).","1. Open form.
+2. Leave one mandatory blank or enter invalid value.
+3. Submit and observe inline + final error.
+4. Correct and re-submit to confirm recovery.",513+ chars in custom closure text. Past date for meeting. Empty mandatory reason. Compensation-like field if applicable (though not core to CEPC).,"Red highlighting on invalid fields. Specific actionable error message. Submit blocked until fixed. After correction, succeeds cleanly.",Edge
+CEPC-TC-03704,CEPC-US-037,Edge - Handwritten / Non-English / Poor Quality Scan,"Scanned letter is handwritten, Hindi text, or low-resolution/blurry.","1. Upload problematic scan as draft.
+2. Trigger OCR.
+3. Observe rejection/fallback behavior.
+4. Verify original scan still attached and editable.",Handwritten image. Hindi printed letter. Blurry low-res scan.,OCR rejects with clear message ('Only printed English supported'). Original file attached. DO can enter manually. No data loss.,Edge
+CEPC-TC-03801,CEPC-US-038,"Happy Path - As the system, I want comprehensive data migration stra...",User logged in with correct role via Kavach. Relevant master data and test complaint/NO record in correct starting state. Email/SMS/OCR services available.,"1. Navigate to role-appropriate view.
+2. Open complaint or perform primary action (create draft, send to next role, close, assign Contact Person, etc.).
+3. Fill mandatory fields, choose assignment mode if applicable.
+4. Save & Proceed / Submit.
+5. Verify status change, history, notifications, and any auto-actions (letter, assignment, color, SLA timer).",Valid starting complaint/NO record. Active users available. Test complainant with email + mobile. English printed letter scan for OCR stories.,Action succeeds cleanly. Correct next status. Full audit history with user + timestamp. Notifications triggered. Color/SLA updated. No validation errors.,Positive
+CEPC-TC-03802,CEPC-US-038,Negative - Unauthorized Role or Permission Denied,"Logged in as role without permission for the action (e.g., Reviewer trying to forward to Regulatory Body, DO trying to reopen).","1. Login as unauthorized role.
+2. Attempt restricted action on eligible complaint.
+3. Observe UI (button hidden/disabled) or validation error.
+4. Check audit log for attempt.",Complaint in state where higher-role action is possible. Lower-role test user in same territory.,Action blocked with clear message ('Insufficient permission' or specific role requirement). No status change. Attempt logged. No data leakage.,Negative
+CEPC-TC-03803,CEPC-US-038,Edge - Missing Mandatory / Invalid Value / Boundary,"Complaint in valid state. One mandatory field blank or invalid data entered (e.g., future date in past, 513 char custom text, empty reason for transfer).","1. Open form.
+2. Leave one mandatory blank or enter invalid value.
+3. Submit and observe inline + final error.
+4. Correct and re-submit to confirm recovery.",513+ chars in custom closure text. Past date for meeting. Empty mandatory reason. Compensation-like field if applicable (though not core to CEPC).,"Red highlighting on invalid fields. Specific actionable error message. Submit blocked until fixed. After correction, succeeds cleanly.",Edge
+CEPC-TC-03804,CEPC-US-038,Edge - Large History / Concurrent Users / Performance,System under 400+ concurrent load. Complaint has very long history or many attachments.,"1. Use large test complaint or simulate load.
+2. Perform action (search, edit, status change, report).
+3. Verify response time and integrity.",Complaint with 40+ attachments and 3-year history. 400 concurrent test users.,"Action completes in <3s (95th). No freeze, data loss, or corruption. Error rate <1%.",Performance
+
+--- Sheet: Traceability Matrix ---
+BRD Section / Req ID,Requirement Summary,Linked User Story IDs,Coverage Status,Notes / Gaps
+Value Proposition for CEPC,24x7 single-window for non-RB-IOS entities; standardized auditable operations; real-time tracking; OCR; SLA; multi-language (EN/HI); digital signature.,"CEPC-US-001, CEPC-US-003, CEPC-US-008, CEPC-US-015, CEPC-US-033, CEPC-US-035",Fully Covered,
+Gap #03 - No SLA enforcement in CEPC,SLA engine with alerts and dashboard.,"CEPC-US-001, CEPC-US-003, CEPC-US-011",Fully Covered,
+Gap #04 - No bulk active/inactive by admin,Bulk marking + On Leave handling + reassignment.,"CEPC-US-004, CEPC-US-005",Fully Covered,
+Gap #06 - Manual stamping closing letter,Digital signature enforcement + no-email fallback.,"CEPC-US-015, CEPC-US-025, CEPC-US-033",Fully Covered,
+Gap #07 - Routing on user unavailability,On Leave prevention + fallback to supervisor + threshold logic.,"CEPC-US-004, CEPC-US-009",Fully Covered,
+Gap #08 - MOM offline,Documented as offline with templated letter generation (digital MOM out of Phase 1).,CEPC-US-013,Fully Covered,
+5.6 Dealing Official - Full lifecycle (Draft/OCR/Switch/Assessment/Conciliation/Forward/Closure),"OCR draft creation, assignment logic, Contact Person assignment, SLA timer, Assessment actions, Meeting management, Forward with CRPC approval, closure processing with digital signature.",CEPC-US-008 to CEPC-US-015,Fully Covered,
+5.6.1 CEPC Reviewer - Review + Limited Closure + Send Back,"Review actions, modify proposed clause, send to In-Charge/Closing Authority/send back, limited non-maintainable closure, RBAC protection.",CEPC-US-016 to CEPC-US-019,Fully Covered,
+5.6.2 CEPC In-Charge - Routing + Escalation + Forward + Closure,"Receive escalations, forward to other office/regulatory/RBI dept, send back, close under authorized clauses or mark for closure, executive KPIs.",CEPC-US-020 to CEPC-US-024,Fully Covered,
+5.6.3 CEPC Closing Authority - Final Decision + Reopen + Forward + Legal,"Full closure authority, reopen with reason + auto-assign to original DO, forward, legal case update, executive dashboard, digital signature enforcement.",CEPC-US-025 to CEPC-US-030,Fully Covered,
+5.6.4 / 5.6.5 CEPC Admin - User Mgmt + Bulk + Reopen + Oversight,"Create/edit users, bulk active/inactive/on leave, bulk reassignment, reopen any closed, view all categories (no edit except reopen).",CEPC-US-004 to CEPC-US-007,Fully Covered,
+5.7 Regulated Entity Record + RE Contact Person,"Auto NO record creation, 'Information Required' status, alerts at 5/10 days, FRC flag, Contact Person view/edit/reassign rights in RE Layout.","CEPC-US-010, CEPC-US-031, CEPC-US-032",Fully Covered,
+FR-CEPC-001 to FR-CEPC-033 (key),"Secure login/RBAC (Kavach), dashboard, search, edit, milestones, Contact Person assignment, closure templates, Switch Process, OCR, digital signature, SLA, notifications, reports, performance, security.","CEPC-US-001, CEPC-US-008, CEPC-US-015, CEPC-US-033, CEPC-US-034, CEPC-US-035",Fully Covered,
+NFRs + Security Requirements,"99.5% uptime, audit logging, RBAC segregation, AES-256/TLS 1.3, 500 concurrent, 3s page load, 7-year retention, VAPT, DPDP PII compliance.","CEPC-US-034, CEPC-US-035",Fully Covered,
+"Business Rules (assignment, reopen, closure letter, document link)","Assignment logic (entity/round robin/category + threshold), reopen only Admin+Closing Authority + reason + auto DO, digital signature before Closed, 7-day link with OTP + block close while active.","CEPC-US-009, CEPC-US-025, CEPC-US-033, CEPC-US-036",Fully Covered,
+
+--- Sheet: Verification & Gap Analysis ---
+ADVERSARIAL SELF-AUDIT & GAP ANALYSIS - CEPC LAYOUT BACKLOG,,,,,
+,,,,,
+BRD Section / Area,How Covered (User Stories),Assumptions Made,Gaps / Ambiguities / Missing Edge Cases Flagged,Recommendations for Clarification,Confidence
+"CEPC Roles & Operations Matrix (5.3, 5.6.x)","US-004 to US-032 cover all six roles (Admin, DO, Reviewer, In-Charge, Closing Authority, Contact Person) with specific actions, views, and RBAC enforcement in test cases.",Kavach RBAC implements the exact matrix from BRD tables. In-Charge has strong forward/routing role. Closing Authority is the sole final decision maker for CEPC (no Ombudsman layer).,Exact list of 'delegated non-maintainable clauses' for Reviewer and In-Charge not enumerated in BRD. 'Sub-Judice Complaint' template content and fields not detailed. Equivalent of '13-1 Notice' for CEPC (if any) not specified.,Obtain official delegated clause matrix and Sub-Judice template from CEPD. Confirm if CEPC has a formal 'Information Required' notice equivalent to 13-1 and whether it requires In-Charge approval.,86%
+"Assignment Logic + Threshold + On Leave (Business Rule, 5.6)","US-004, US-009 fully address logic options, threshold check, fallback to supervisor, On Leave prevention, bulk reassignment by Admin.",RBI provides entity → DO mapping and threshold/overflow configuration. Single threshold value or per-office configurable (assumed configurable).,Behavior when all eligible users at threshold simultaneously (queue vs escalate). Race condition on concurrent complaints during threshold change. Exact fallback when Regional Admin also unavailable.,Define and test 'all at threshold' scenario and concurrent intake safety. Add monitoring when office >80% of threshold.,84%
+"OCR, Physical Letters, Switch Process (In Scope, Gap)","US-008 covers OCR (English printed only, original scan attached, manual fallback), Switch Process for legacy after CRPC Reviewer approval.",OCR engine external; Phase 1 strictly English printed/typed. Handwritten always manual + attach scan. Switch only for complaints already approved in CRPC.,OCR confidence threshold handling (queue for review?). Language detection for vernacular physical letters. What happens to drafts stuck in CRPC DEO queue for long time?,Add OCR confidence score + low-confidence review queue. Define SLA for CRPC DEO processing of drafts. Confirm vernacular physical letter handling (manual + attach scan is current assumption).,82%
+"Closure Communication + Digital Signature + No-Email (5.6.3, Gap #06, Constraint)","US-015, US-025, US-030, US-033 cover template (512 char), pop-up, auto email/SMS, mandatory manual + date when no email, digital signature enforcement before Closed.",Digital signature applied at final 'Save & Proceed' on Closed by Closing Authority. Same signature service as RBIO.,Signature service outage handling (queue + manual intervention flag?). How is signed PDF stored and linked to history? Is there a 'preview before sign' step?,Design graceful degradation for signature outage. Define signed letter retention (same as complaint record). Add preview step before applying signature.,85%
+RE Contact Person / NO Record Flow (5.7),"US-010, US-031, US-032 cover auto-creation, 'Information Required' status, 5/10 day alerts, FRC flag, Contact Person view/edit/reassign in RE Layout, PNO override rights.",RE Contact Person works in separate RE Layout (out of scope for this BRD but referenced). 15-day response window default (configurable).,Exact escalation path if Contact Person never responds (auto-escalate to PNO? or just alert CEPC owner?). Counter for status changes — is it visible to Contact Person or only internal?,Define escalation rules if RE response overdue beyond configurable window. Clarify visibility of status change counter to Contact Person.,83%
+Non-Functional + Security + Data Migration,"US-034 (performance 3s/500 concurrent/auto-scale), US-035 (AES-256/TLS/audit/15min timeout/VAPT/DPDP), US-038 (migration strategy requirement).",Load testing with realistic CEPC distribution. Migration strategy produced separately and signed by DIT/CEPD.,"Exact PII visible to RE Contact Person (complaint details vs internal RBI notes). Audit retention period vs DPDP. Encryption key management (HSM, rotation).",Produce Data Classification & PII Matrix before dev. Confirm audit retention with Legal. Add HSM/key rotation requirements to infra backlog.,80%
+Overall Backlog Quality,"38 granular user stories + 152 test cases cover all explicit FRs, role workflows in 5.6.x, all Gaps, key NFRs/SRs/BRs, and role matrices. Strong negative/edge coverage (permission, validation, on-leave, threshold, no-email, link expiry, OCR failure, concurrent).",Curated focused set on critical paths. Full decomposition would yield ~90 stories (many small validation/UI variants). MOM remains offline/manual in Phase 1 per BRD scope.,Exact delegated closure clause list for Reviewer/In-Charge. Sub-Judice template details. CEPC equivalent of 13-1 Notice (if exists). Performance SLAs for assignment engine and report generation. Mobile/PWA requirements (BRD is web-focused).,"1. Workshop with CEPD to finalize delegated clauses and Sub-Judice template.
+2. Add performance stories for assignment engine and large reports.
+3. Confirm mobile web / PWA scope for Phase 1.
+4. Create separate Data Migration epic with rollback testing.",84%
+,,,,,
+OVERALL: 38 User Stories | 152 Test Cases | 15 Traceability Mappings | 7 Gap Areas | Avg Confidence 84% | Focused on critical paths; expand to ~90 in workshop. Ready for CEPD review.,,,,,
+

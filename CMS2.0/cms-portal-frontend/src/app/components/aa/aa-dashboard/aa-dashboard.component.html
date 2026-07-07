@@ -1,0 +1,140 @@
+<div class="aa-dashboard">
+  <header class="topbar">
+    <div class="topbar-left">
+      <button class="back-btn" (click)="goBack()">&larr;</button>
+      <div class="title-block">
+        <h2>Appellate Authority - Appeals Management</h2>
+        <span class="subtitle">{{ roleLabels[userRole()] }}</span>
+      </div>
+    </div>
+    <div class="topbar-right">
+      @if (auth.currentUser(); as user) {
+        <span class="role-badge">{{ roleLabels[userRole()] }}</span>
+        <span class="user-name">{{ user.firstName }} {{ user.lastName }}</span>
+      }
+      <button class="logout-btn" (click)="logout()">Logout</button>
+    </div>
+  </header>
+
+  <main class="content">
+    <!-- Stats Row -->
+    <div class="stats-row">
+      <div class="stat-card" [class.active]="filterStatus === ''" (click)="filterStatus = ''">
+        <span class="stat-value">{{ stats().total }}</span>
+        <span class="stat-label">Total Appeals</span>
+      </div>
+      <div class="stat-card pending" [class.active]="filterStatus === 'under_review'" (click)="filterStatus = 'under_review'">
+        <span class="stat-value">{{ stats().pendingReview }}</span>
+        <span class="stat-label">Pending Review</span>
+      </div>
+      <div class="stat-card hearing" [class.active]="filterStatus === 'hearing_scheduled'" (click)="filterStatus = 'hearing_scheduled'">
+        <span class="stat-value">{{ stats().hearingsScheduled }}</span>
+        <span class="stat-label">Hearings Scheduled</span>
+      </div>
+      <div class="stat-card order" [class.active]="filterStatus === 'order_passed'" (click)="filterStatus = 'order_passed'">
+        <span class="stat-value">{{ stats().ordersPassed }}</span>
+        <span class="stat-label">Orders Passed</span>
+      </div>
+      <div class="stat-card closed" [class.active]="filterStatus === 'closed'" (click)="filterStatus = 'closed'">
+        <span class="stat-value">{{ stats().closed }}</span>
+        <span class="stat-label">Closed</span>
+      </div>
+    </div>
+
+    <!-- Search & Filter Bar -->
+    <div class="toolbar">
+      <div class="search-box">
+        <input type="text" placeholder="Search by appeal no, complaint no, appellant name..."
+               [(ngModel)]="searchText" />
+      </div>
+      <select class="filter-select" [(ngModel)]="filterStatus">
+        <option value="">All Status</option>
+        <option value="filed">Filed</option>
+        <option value="under_review">Under Review</option>
+        <option value="accepted">Accepted</option>
+        <option value="rejected">Rejected</option>
+        <option value="hearing_scheduled">Hearing Scheduled</option>
+        <option value="hearing_completed">Hearing Completed</option>
+        <option value="order_reserved">Order Reserved</option>
+        <option value="order_passed">Order Passed</option>
+        <option value="remanded">Remanded</option>
+        <option value="dismissed">Dismissed</option>
+        <option value="closed">Closed</option>
+      </select>
+      <select class="filter-select" [(ngModel)]="filterClassification">
+        <option value="">All Classifications</option>
+        <option value="APPEAL">Appeal</option>
+        <option value="REPRESENTATION">Representation</option>
+      </select>
+      <button class="refresh-btn" (click)="loadAppeals()">Refresh</button>
+    </div>
+
+    <!-- Appeals Table -->
+    @if (loading()) {
+      <div class="loading-state">
+        <div class="spinner"></div>
+        <span>Loading appeals...</span>
+      </div>
+    } @else if (filteredAppeals().length === 0) {
+      <div class="empty-state">
+        <div class="empty-icon">&#128203;</div>
+        <h3>No appeals found</h3>
+        <p>No appeals matching your criteria.</p>
+      </div>
+    } @else {
+      <div class="table-container">
+        <table class="appeals-table">
+          <thead>
+            <tr>
+              <th (click)="sortBy('appealNumber')">Appeal No.</th>
+              <th (click)="sortBy('originalComplaintNumber')">Original Complaint</th>
+              <th (click)="sortBy('classification')">Classification</th>
+              <th (click)="sortBy('appellantName')">Appellant</th>
+              <th (click)="sortBy('status')">Status</th>
+              <th (click)="sortBy('hearingDate')">Hearing Date</th>
+              <th (click)="sortBy('assignedTo')">Assigned To</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (a of paginatedAppeals(); track a.appealNumber) {
+              <tr (click)="openAppeal(a)">
+                <td class="appeal-num">{{ a.appealNumber }}</td>
+                <td class="complaint-link">{{ a.originalComplaintNumber }}</td>
+                <td>
+                  <span class="classification-badge" [attr.data-classification]="a.classification">
+                    {{ a.classification }}
+                  </span>
+                  <span class="immutable-label">IMMUTABLE</span>
+                </td>
+                <td>{{ a.appellantName }}</td>
+                <td>
+                  <span class="status-badge" [attr.data-status]="a.status">{{ getStatusLabel(a.status) }}</span>
+                </td>
+                <td>{{ a.hearingDate ? (a.hearingDate | date:'dd MMM yyyy') : '—' }}</td>
+                <td>{{ a.assignedTo || '—' }}</td>
+                <td>
+                  <button class="action-link" (click)="$event.stopPropagation(); openAppeal(a)">View</button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination -->
+      <div class="pagination">
+        <span class="page-info">
+          Showing {{ (currentPage() - 1) * pageSize + 1 }} to {{ Math.min(currentPage() * pageSize, filteredAppeals().length) }} of {{ filteredAppeals().length }}
+        </span>
+        <div class="page-controls">
+          <button class="page-btn" [disabled]="currentPage() === 1" (click)="currentPage.set(currentPage() - 1)">&lsaquo;</button>
+          @for (p of [].constructor(totalPages()); track $index) {
+            <button class="page-btn" [class.active]="$index + 1 === currentPage()" (click)="currentPage.set($index + 1)">{{ $index + 1 }}</button>
+          }
+          <button class="page-btn" [disabled]="currentPage() === totalPages()" (click)="currentPage.set(currentPage() + 1)">&rsaquo;</button>
+        </div>
+      </div>
+    }
+  </main>
+</div>

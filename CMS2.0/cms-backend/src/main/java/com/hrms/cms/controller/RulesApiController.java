@@ -18,7 +18,9 @@ public class RulesApiController {
             Map.of("id", 3, "code", "PRIORITY", "name", "Priority Rules", "description", "Rules for determining complaint priority (High/Medium/Low)"),
             Map.of("id", 4, "code", "CATEGORIZATION", "name", "Categorization Rules", "description", "Rules for auto-categorizing complaints based on keywords"),
             Map.of("id", 5, "code", "SLA", "name", "SLA Rules", "description", "Rules for computing SLA deadlines per category and priority"),
-            Map.of("id", 6, "code", "NOTIFICATION", "name", "Notification Rules", "description", "Rules for triggering notifications and alerts")
+            Map.of("id", 6, "code", "NOTIFICATION", "name", "Notification Rules", "description", "Rules for triggering notifications and alerts"),
+            Map.of("id", 7, "code", "MAINTAINABILITY", "name", "Maintainability Rules", "description", "Rules for RB-IOS 2026 objective maintainability (Q13/Q16/Q17 grounds)"),
+            Map.of("id", 8, "code", "COMPENSATION", "name", "Compensation Rules", "description", "Rules for computing compensation bands (RB-IOS Q22/Q23 caps)")
     );
 
     public RulesApiController() {
@@ -53,6 +55,32 @@ public class RulesApiController {
         rules.add(createRule(9, "NOT-001", "SMS on complaint registration", "NOTIFICATION",
                 "rule \"Registration SMS\"\n  when\n    $c : Complaint(status == \"pending\", isNew == true)\n  then\n    notify(\"SMS\", $c.getComplainantPhone(), \"Your complaint \" + $c.getComplaintNumber() + \" has been registered.\");\nend",
                 5, "INACTIVE", "admin"));
+        // Maintainability Rules (RB-IOS 2026)
+        rules.add(createRule(10, "MRE-001", "Entity coverage check (Q13)", "MAINTAINABILITY",
+                "rule \"Entity coverage check - Q13\"\n  salience 100\n  when\n    $c : Complaint(entityCode != null)\n    $e : EntityRegistry(code == $c.entityCode, coveredUnderScheme == false)\n  then\n    $c.addMreGround(\"ENTITY_NOT_COVERED\", \"FAIL\", \"Q13\", \"Entity not covered under RB-IOS 2026\");\n    $c.setObjectivelyNonMaintainable(true);\nend",
+                100, "ACTIVE", "admin"));
+        rules.add(createRule(11, "MRE-002", "Prior RE complaint requirement (Q16)", "MAINTAINABILITY",
+                "rule \"Prior RE complaint check - Q16\"\n  salience 95\n  when\n    $c : Complaint(priorReComplaint == false || priorReComplaint == null)\n  then\n    $c.addMreGround(\"NO_PRIOR_RE_COMPLAINT\", \"FAIL\", \"Q16\", \"Not first approached RE\");\n    $c.setObjectivelyNonMaintainable(true);\nend",
+                95, "ACTIVE", "admin"));
+        rules.add(createRule(12, "MRE-003", "RE window not elapsed (Q17 - 30 days)", "MAINTAINABILITY",
+                "rule \"RE window not elapsed - Q17\"\n  salience 90\n  when\n    $c : Complaint(priorReComplaint == true, reComplaintDate != null, reRepliedAndDissatisfied == false, daysSinceReComplaint < applicableWindowDays)\n  then\n    $c.addMreGround(\"FILED_BEFORE_WINDOW\", \"FAIL\", \"Q17\", \"Filed before \" + $c.getApplicableWindowDays() + \"-day window elapsed\");\n    $c.setObjectivelyNonMaintainable(true);\nend",
+                90, "ACTIVE", "admin"));
+        rules.add(createRule(13, "MRE-004", "Filing deadline exceeded (365 days)", "MAINTAINABILITY",
+                "rule \"Filing deadline exceeded - Q16\"\n  salience 85\n  when\n    $c : Complaint(priorReComplaint == true, daysSinceWindowExpiry > 365)\n  then\n    $c.addMreGround(\"FILED_BEYOND_DEADLINE\", \"FAIL\", \"Q16/Q17\", \"Filed beyond 365-day deadline\");\n    $c.setObjectivelyNonMaintainable(true);\nend",
+                85, "ACTIVE", "admin"));
+        rules.add(createRule(14, "MRE-005", "Limitation Act period exceeded (3 years)", "MAINTAINABILITY",
+                "rule \"Limitation period exceeded - Q16\"\n  salience 80\n  when\n    $c : Complaint(priorReComplaint == true, yearsSinceReComplaint > 3)\n  then\n    $c.addMreGround(\"RE_COMPLAINT_BEYOND_LIMITATION\", \"FAIL\", \"Q16\", \"RE complaint beyond 3-year Limitation Act period\");\n    $c.setObjectivelyNonMaintainable(true);\nend",
+                80, "ACTIVE", "admin"));
+        rules.add(createRule(15, "MRE-006", "Duplicate grievance check (Q16)", "MAINTAINABILITY",
+                "rule \"Duplicate grievance check - Q16\"\n  salience 75\n  when\n    $c : Complaint(sameGrievancePendingOrDecided == true)\n  then\n    $c.addMreGround(\"SAME_GRIEVANCE_PENDING\", \"FAIL\", \"Q16\", \"Same grievance already pending or decided\");\n    $c.setObjectivelyNonMaintainable(true);\nend",
+                75, "ACTIVE", "admin"));
+        // Compensation Rules (RB-IOS Q22/Q23)
+        rules.add(createRule(16, "CMP-001", "Consequential loss cap Rs 30L (Q22)", "COMPENSATION",
+                "rule \"Consequential loss cap\"\n  salience 10\n  when\n    $c : Complaint(maintainabilityDetermination == \"MAINTAINABLE\")\n    $award : AwardCalculation(consequentialLoss > 3000000)\n  then\n    $award.setConsequentialLoss(3000000);\n    $award.addNote(\"Capped at Rs 30,00,000 per RB-IOS Q22\");\nend",
+                10, "ACTIVE", "admin"));
+        rules.add(createRule(17, "CMP-002", "Time/harassment cap Rs 3L (Q23)", "COMPENSATION",
+                "rule \"Time and harassment cap\"\n  salience 10\n  when\n    $c : Complaint(maintainabilityDetermination == \"MAINTAINABLE\")\n    $award : AwardCalculation(timeHarassmentAmount > 300000)\n  then\n    $award.setTimeHarassmentAmount(300000);\n    $award.addNote(\"Capped at Rs 3,00,000 per RB-IOS Q23\");\nend",
+                10, "ACTIVE", "admin"));
     }
 
     private Map<String, Object> createRule(int id, String code, String name, String categoryCode,

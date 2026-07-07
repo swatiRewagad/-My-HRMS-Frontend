@@ -99,9 +99,32 @@
       <div class="table-section">
         <div class="table-header-row">
           <h3>Complaints</h3>
-          <button class="btn btn-icon" (click)="showColumnConfig.set(true)" title="Column Selection">
-            <i class="pi pi-cog"></i>
-          </button>
+          <div class="table-actions">
+            <label class="toggle-filter">
+              <span class="toggle-switch" [class.active]="filterUnread()">
+                <input type="checkbox" [checked]="filterUnread()" (change)="filterUnread.set(!filterUnread())" />
+                <span class="toggle-slider"></span>
+              </span>
+              Unread
+            </label>
+            <label class="toggle-filter">
+              <span class="toggle-switch" [class.active]="filterWithoutAttachments()">
+                <input type="checkbox" [checked]="filterWithoutAttachments()" (change)="filterWithoutAttachments.set(!filterWithoutAttachments())" />
+                <span class="toggle-slider"></span>
+              </span>
+              Without Attachments
+            </label>
+            <label class="toggle-filter">
+              <span class="toggle-switch" [class.active]="filterSatisfiesRules()">
+                <input type="checkbox" [checked]="filterSatisfiesRules()" (change)="filterSatisfiesRules.set(!filterSatisfiesRules())" />
+                <span class="toggle-slider"></span>
+              </span>
+              Satisfies Rules
+            </label>
+            <button class="btn btn-icon" (click)="showColumnConfig.set(true)" title="Column Selection">
+              <i class="pi pi-cog"></i>
+            </button>
+          </div>
         </div>
 
         @if (loading()) {
@@ -142,7 +165,7 @@
             </thead>
             <tbody>
               @for (task of paginatedTasks(); track task.complaintNumber) {
-                <tr [class.selected]="selectedIds().has(task.complaintId)" (click)="openTask(task)">
+                <tr [class.selected]="selectedIds().has(task.complaintId)" [class.visited]="visitedIds().has(task.complaintId)" (click)="openTask(task)">
                   <td class="checkbox-col" (click)="$event.stopPropagation()">
                     <input type="checkbox"
                       [checked]="selectedIds().has(task.complaintId)"

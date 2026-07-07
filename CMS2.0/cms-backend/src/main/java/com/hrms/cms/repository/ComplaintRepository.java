@@ -56,4 +56,9 @@ public interface ComplaintRepository extends JpaRepository<Complaint, Long> {
     List<Complaint> findByDepartmentOrderByCreatedAtDesc(String department);
 
     List<Complaint> findByDepartmentAndStatusInOrderByCreatedAtDesc(String department, List<String> statuses);
+
+    // RE Portal queries
+    Page<Complaint> findByEntityCodeOrderByCreatedAtDesc(String entityCode, Pageable pageable);
+
+    Page<Complaint> findByEntityCodeAndStatusOrderByCreatedAtDesc(String entityCode, String status, Pageable pageable);
 }

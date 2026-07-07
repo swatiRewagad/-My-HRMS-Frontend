@@ -29,9 +29,88 @@
 
       <div class="form-actions">
         <button class="btn-secondary" (click)="goHome()">Cancel</button>
-        <button class="btn-primary" (click)="searchComplaint()">
-          <i class="pi pi-search"></i> Find Complaint
+        <button class="btn-primary" (click)="searchComplaint()" [disabled]="checking()">
+          @if (checking()) {
+            <i class="pi pi-spinner pi-spin"></i> Checking...
+          } @else {
+            <i class="pi pi-search"></i> Check Eligibility
+          }
         </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Eligibility Result -->
+@if (phase() === 'eligibility') {
+  <div class="page-container">
+    <div class="card">
+      <h2>Eligibility Check Result</h2>
+      <p class="subtitle">Complaint: <strong>{{ complaintId }}</strong></p>
+
+      @if (eligibilityResult(); as result) {
+        <div class="eligibility-result" [class.eligible]="result.eligible" [class.ineligible]="!result.eligible">
+          <div class="eligibility-icon">
+            @if (result.eligible) {
+              <i class="pi pi-check-circle"></i>
+            } @else {
+              <i class="pi pi-times-circle"></i>
+            }
+          </div>
+          <div class="eligibility-info">
+            <h3>{{ result.eligible ? 'Eligible for Appeal' : 'Not Eligible' }}</h3>
+            @if (result.reason) {
+              <p>{{ result.reason }}</p>
+            }
+          </div>
+        </div>
+
+        @if (classification()) {
+          <div class="classification-info">
+            <label>Classification:</label>
+            <span class="classification-badge" [attr.data-classification]="classification()">
+              {{ classification() }}
+            </span>
+            <span class="immutable-note">This classification is determined by the system and cannot be changed.</span>
+          </div>
+        }
+
+        @if (result.complaintSummary) {
+          <div class="complaint-summary">
+            <h4>Complaint Summary</h4>
+            <div class="summary-grid">
+              <div class="summary-field">
+                <label>Status</label>
+                <span>{{ result.complaintSummary.status }}</span>
+              </div>
+              <div class="summary-field">
+                <label>Decision Date</label>
+                <span>{{ result.complaintSummary.decisionDate | date:'dd MMM yyyy' }}</span>
+              </div>
+              <div class="summary-field">
+                <label>Award Amount</label>
+                <span>{{ result.complaintSummary.awardAmount ? '\u20B9' + result.complaintSummary.awardAmount : 'N/A' }}</span>
+              </div>
+              <div class="summary-field">
+                <label>Days Since Decision</label>
+                <span>{{ result.complaintSummary.daysSinceDecision }} days</span>
+              </div>
+            </div>
+          </div>
+        }
+      }
+
+      @if (error) {
+        <div class="error-msg"><i class="pi pi-exclamation-circle"></i> {{ error }}</div>
+      }
+
+      <div class="form-actions">
+        <button class="btn-secondary" (click)="phase.set('search')">Back</button>
+        @if (eligibilityResult()?.eligible) {
+          <button class="btn-primary" (click)="proceedToForm()">
+            <i class="pi pi-arrow-right"></i> Proceed to File Appeal
+          </button>
+        }
       </div>
     </div>
   </div>
@@ -43,6 +122,13 @@
     <div class="card">
       <h2>Appeal Details</h2>
       <p class="subtitle">Filing appeal against complaint <strong>{{ complaintId }}</strong></p>
+
+      @if (classification()) {
+        <div class="classification-banner">
+          <span class="classification-badge" [attr.data-classification]="classification()">{{ classification() }}</span>
+          <span class="classification-note">Classification: {{ classification() === 'APPEAL' ? 'Appeal against Ombudsman decision' : 'Representation on non-disposal' }}</span>
+        </div>
+      }
 
       <div class="form-group">
         <label>Ground for Appeal <span class="required">*</span></label>
@@ -110,7 +196,7 @@
 
       <!-- FR-G-034: Submit -->
       <div class="form-actions">
-        <button class="btn-secondary" (click)="phase.set('search')">Back</button>
+        <button class="btn-secondary" (click)="phase.set('eligibility')">Back</button>
         <button class="btn-primary" (click)="submitAppeal()" [disabled]="submitting()">
           @if (submitting()) { <i class="pi pi-spinner pi-spin"></i> Submitting... }
           @else { <i class="pi pi-send"></i> Submit Appeal }
@@ -128,6 +214,11 @@
       <h2>Appeal Filed Successfully</h2>
       <p class="ref-label">Your Appeal Reference Number:</p>
       <div class="ref-number">{{ appealRefNumber }}</div>
+      @if (classification()) {
+        <p class="classification-result">
+          Classified as: <span class="classification-badge" [attr.data-classification]="classification()">{{ classification() }}</span>
+        </p>
+      }
       <p>Your appeal against complaint <strong>{{ complaintId }}</strong> has been registered. You will receive updates via SMS and email.</p>
       <div class="form-actions center">
         <button class="btn-primary" (click)="trackAppeal()"><i class="pi pi-search"></i> Track Appeal</button>

@@ -6,6 +6,9 @@ import { HttpClient } from '@angular/common/http';
 import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
 import { environment } from '../../../../environments/environment';
 import { SpeechButtonComponent } from '../../../shared/speech-button/speech-button.component';
+import { CepcSlaIndicatorComponent } from '../cepc-sla-indicator/cepc-sla-indicator.component';
+import { CepcTimelineComponent } from '../cepc-timeline/cepc-timeline.component';
+import { CepcConciliationComponent } from '../cepc-conciliation/cepc-conciliation.component';
 
 interface TimelineEntry {
   action: string;
@@ -31,7 +34,7 @@ interface ActionDef {
 @Component({
   selector: 'app-cepc-complaint-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule, SpeechButtonComponent],
+  imports: [CommonModule, FormsModule, SpeechButtonComponent, CepcSlaIndicatorComponent, CepcTimelineComponent, CepcConciliationComponent],
   templateUrl: './cepc-complaint-detail.component.html',
   styleUrl: './cepc-complaint-detail.component.scss'
 })

@@ -30,7 +30,7 @@
             </div>
             <div class="header-meta">
               <span>Filed: {{ complaint().registeredAt | date:'dd MMM yyyy' }}</span>
-              <span>SLA Due: {{ complaint().slaDueDate | date:'dd MMM yyyy' }}</span>
+              <app-cepc-sla-indicator [slaDueDate]="complaint().slaDueDate" [status]="complaint().status"></app-cepc-sla-indicator>
             </div>
           </div>
 
@@ -145,27 +145,11 @@
           </section>
 
           <!-- Audit Trail / Timeline -->
-          @if (complaint().timeline?.length) {
-            <section class="detail-section">
-              <h4>Audit Trail</h4>
-              <div class="timeline">
-                @for (entry of complaint().timeline; track entry.timestamp) {
-                  <div class="timeline-item">
-                    <div class="timeline-dot"></div>
-                    <div class="timeline-content">
-                      <div class="timeline-header">
-                        <span class="timeline-action">{{ entry.action }}</span>
-                        <span class="timeline-time">{{ entry.timestamp | date:'dd MMM yyyy HH:mm' }}</span>
-                      </div>
-                      @if (entry.remarks) {
-                        <p class="timeline-remarks">{{ entry.remarks }}</p>
-                      }
-                      <span class="timeline-flow">{{ entry.fromStatus }} → {{ entry.toStatus }}</span>
-                    </div>
-                  </div>
-                }
-              </div>
-            </section>
+          <app-cepc-timeline [complaintNumber]="complaint().complaintNumber || complaint().complaintId"></app-cepc-timeline>
+
+          <!-- Conciliation Panel (shown when workflow stage involves conciliation) -->
+          @if (complaint().workflowStage?.toLowerCase()?.includes('conciliation') || complaint().status === 'conciliation') {
+            <app-cepc-conciliation [complaint]="complaint()"></app-cepc-conciliation>
           }
         </div>
 

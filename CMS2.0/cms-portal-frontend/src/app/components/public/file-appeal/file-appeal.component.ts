@@ -2,6 +2,8 @@ import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { HttpClient } from '@angular/common/http';
+import { environment } from '../../../../environments/environment';
 import { SpeechButtonComponent } from '../../../shared/speech-button/speech-button.component';
 
 @Component({
@@ -14,15 +16,21 @@ import { SpeechButtonComponent } from '../../../shared/speech-button/speech-butt
 export class FileAppealComponent {
 
   private router = inject(Router);
+  private http = inject(HttpClient);
 
   // FR-G-032: Appeal phases
-  phase = signal<'search' | 'form' | 'success'>('search');
+  phase = signal<'search' | 'eligibility' | 'form' | 'success'>('search');
   submitting = signal(false);
+  checking = signal(false);
   error = '';
 
   // Search
   complaintId = '';
   complaintFound = false;
+
+  // Eligibility check result
+  eligibilityResult = signal<any>(null);
+  classification = signal<'APPEAL' | 'REPRESENTATION' | null>(null);
 
   // FR-G-033: Appeal details
   appealGround = '';
@@ -48,7 +56,37 @@ export class FileAppealComponent {
       return;
     }
     this.error = '';
-    this.complaintFound = true;
+    this.checking.set(true);
+
+    this.http.get<any>(
+      `${environment.apiBaseUrl}/api/v1/appeals/check-eligibility?complaintNumber=${encodeURIComponent(this.complaintId.trim())}`
+    ).subscribe({
+      next: (res) => {
+        this.checking.set(false);
+        const data = res?.data;
+        if (data) {
+          this.eligibilityResult.set(data);
+          this.classification.set(data.classification || null);
+          this.complaintFound = true;
+          this.phase.set('eligibility');
+        } else {
+          this.error = 'Complaint not found. Please check the reference number.';
+        }
+      },
+      error: (err) => {
+        this.checking.set(false);
+        this.error = err.error?.message || 'Unable to verify complaint. Please try again.';
+      }
+    });
+  }
+
+  proceedToForm() {
+    const result = this.eligibilityResult();
+    if (!result?.eligible) {
+      this.error = 'This complaint is not eligible for appeal.';
+      return;
+    }
+    this.error = '';
     this.phase.set('form');
   }
 
@@ -84,11 +122,32 @@ export class FileAppealComponent {
     }
 
     this.submitting.set(true);
-    setTimeout(() => {
-      this.appealRefNumber = 'APL-' + Date.now().toString().slice(-10);
-      this.submitting.set(false);
-      this.phase.set('success');
-    }, 1200);
+
+    const formData = new FormData();
+    formData.append('complaintNumber', this.complaintId);
+    formData.append('ground', this.appealGround);
+    formData.append('details', this.appealDetails);
+    formData.append('reliefSought', this.reliefSought);
+    formData.append('classification', this.classification() || '');
+
+    for (const file of this.appealAttachments) {
+      formData.append('attachments', file);
+    }
+
+    this.http.post<any>(
+      `${environment.apiBaseUrl}/api/v1/appeals/file`,
+      formData
+    ).subscribe({
+      next: (res) => {
+        this.appealRefNumber = res?.data?.appealNumber || 'APL-' + Date.now().toString().slice(-10);
+        this.submitting.set(false);
+        this.phase.set('success');
+      },
+      error: (err) => {
+        this.submitting.set(false);
+        this.error = err.error?.message || 'Failed to submit appeal. Please try again.';
+      }
+    });
   }
 
   goHome() {

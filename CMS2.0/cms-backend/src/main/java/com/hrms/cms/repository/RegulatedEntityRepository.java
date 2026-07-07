@@ -21,4 +21,8 @@ public interface RegulatedEntityRepository extends JpaRepository<RegulatedEntity
     List<RegulatedEntity> findBestMatch(@Param("exact") String exact, @Param("partial") String partial);
 
     long countByDepartment(String department);
+
+    boolean existsByNameNormalizedContainingIgnoreCase(String term);
+
+    boolean existsByNameContainingIgnoreCase(String term);
 }

@@ -41,7 +41,7 @@
             } @else {
               @for (c of filteredComplaints; track c.complaintId) {
                 <tr>
-                  <td>{{ c.complaintId }}</td>
+                  <td><a [routerLink]="['/public/track', c.complaintId]" class="complaint-link">{{ c.complaintId }}</a></td>
                   <td>{{ c.entityName }}</td>
                   <td>{{ formatDate(c.complaintDate) }}</td>
                   <td>
@@ -51,7 +51,7 @@
                   </td>
                   <td class="comments-cell">{{ c.comments }}</td>
                   <td>
-                    <button class="action-btn" [class]="'action-' + getActionLabel(c.status).toLowerCase()">
+                    <button class="action-btn" [class]="'action-' + getActionLabel(c.status).toLowerCase()" (click)="onAction(c)">
                       {{ getActionLabel(c.status) }}
                     </button>
                   </td>
@@ -78,16 +78,16 @@
     <!-- Hero Content -->
     <div class="container hero-layout">
       <div class="hero-content">
-        <h1>Making complaint resolution <span class="highlight">Easier</span></h1>
-        <p class="hero-subtitle">Reserve Bank of India's trusted platform for complaint resolution - effortlessly file and track grievances against Regulated Entities.</p>
-        <a routerLink="/public/file-complaint" class="hero-btn">File a Complaint <i class="pi pi-chevron-right"></i></a>
+        <h1>{{ 'home.hero_title' | translate }} <span class="highlight">{{ 'home.hero_highlight' | translate }}</span></h1>
+        <p class="hero-subtitle">{{ 'home.hero_subtitle' | translate }}</p>
+        <a routerLink="/public/file-complaint" class="hero-btn">{{ 'home.file_complaint' | translate }} <i class="pi pi-chevron-right"></i></a>
 
         <div class="hero-bottom">
-          <span class="already-filed">Already Filed A Complaint?</span>
+          <span class="already-filed">{{ 'home.already_filed' | translate }}</span>
           <div class="hero-action-buttons">
-            <a routerLink="/public/track" class="hero-outlined-btn">Track or Withdraw Complaint</a>
-            <a routerLink="/public/appeal" class="hero-outlined-btn">File an Appeal</a>
-            <a routerLink="/public/feedback" class="hero-outlined-btn">Share Your Feedback</a>
+            <a routerLink="/public/track" class="hero-outlined-btn">{{ 'home.track_withdraw' | translate }}</a>
+            <a routerLink="/public/appeal" class="hero-outlined-btn">{{ 'home.file_appeal' | translate }}</a>
+            <a routerLink="/public/feedback" class="hero-outlined-btn">{{ 'home.share_feedback' | translate }}</a>
           </div>
         </div>
       </div>
@@ -183,6 +183,12 @@
         <h4>CMS Portal <span class="ways-badge">(You are here)</span></h4>
         <p>File your complaint on this portal. It is the fastest way to resolve your complaints efficiently.</p>
         <a routerLink="/public/file-complaint" class="ways-link">File a New Complaint <i class="pi pi-chevron-right"></i></a>
+      </div>
+      <div class="ways-card">
+        <div class="ways-icon"><i class="pi pi-question-circle"></i></div>
+        <h4>Can RBI help? <span class="ways-badge ways-badge-new">New</span></h4>
+        <p>Not sure if you can file? Answer 4 quick questions to check your eligibility before starting.</p>
+        <a routerLink="/public/eligibility-wizard" class="ways-link">Check Eligibility <i class="pi pi-chevron-right"></i></a>
       </div>
       <div class="ways-card">
         <div class="ways-icon"><i class="pi pi-envelope"></i></div>

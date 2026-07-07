@@ -1,0 +1,162 @@
+<div class="wizard-container">
+  <header class="wizard-header">
+    <h1>{{ 'wizard.title' | translate }}</h1>
+    <p class="wizard-subtitle">{{ 'wizard.subtitle' | translate }}</p>
+  </header>
+
+  <!-- QUESTIONS PHASE -->
+  @if (phase() === 'questions') {
+    <div class="wizard-card">
+      <!-- Progress -->
+      <div class="wizard-progress">
+        <div class="progress-bar">
+          <div class="progress-fill" [style.width.%]="progressPercent()"></div>
+        </div>
+        <span class="progress-text">{{ 'wizard.step' | translate }} {{ currentStep() + 1 }} / {{ totalSteps() }}</span>
+      </div>
+
+      <!-- Question -->
+      @if (currentQuestion(); as q) {
+        <div class="question-area">
+          <h2 class="question-text">{{ q.question | translate }}</h2>
+          <p class="question-hint">{{ q.hint | translate }}</p>
+
+          @if (q.type === 'select') {
+            <select class="wizard-select" [ngModel]="answers()[q.key]" (ngModelChange)="setAnswer(q.key, $event)">
+              <option value="">{{ 'wizard.select_placeholder' | translate }}</option>
+              @for (opt of q.options; track opt.value) {
+                <option [value]="opt.value">{{ opt.label | translate }}</option>
+              }
+            </select>
+          }
+
+          @if (q.type === 'radio') {
+            <div class="radio-group">
+              @for (opt of q.options; track opt.value) {
+                <label class="wizard-radio" [class.selected]="answers()[q.key] === opt.value">
+                  <input type="radio" [name]="q.key" [value]="opt.value"
+                         [ngModel]="answers()[q.key]" (ngModelChange)="setAnswer(q.key, $event)">
+                  <span class="radio-indicator"></span>
+                  <span class="radio-label">{{ opt.label | translate }}</span>
+                </label>
+              }
+            </div>
+          }
+
+          @if (q.type === 'date') {
+            <input type="date" class="wizard-date-input"
+                   [ngModel]="answers()[q.key]" (ngModelChange)="setAnswer(q.key, $event)"
+                   [max]="today">
+          }
+        </div>
+      }
+
+      <!-- Navigation -->
+      <div class="wizard-actions">
+        <button class="btn-wizard-back" (click)="back()" [disabled]="currentStep() === 0">
+          <i class="pi pi-chevron-left"></i> {{ 'common.back' | translate }}
+        </button>
+        <button class="btn-wizard-next" (click)="next()" [disabled]="!canProceed()">
+          @if (currentStep() === totalSteps() - 1) {
+            {{ 'wizard.check_eligibility' | translate }} <i class="pi pi-check"></i>
+          } @else {
+            {{ 'common.next' | translate }} <i class="pi pi-chevron-right"></i>
+          }
+        </button>
+      </div>
+    </div>
+  }
+
+  <!-- CHECKING PHASE -->
+  @if (phase() === 'checking') {
+    <div class="wizard-card checking-card">
+      <div class="checking-animation">
+        <div class="spinner-large"></div>
+        <p>{{ 'wizard.checking' | translate }}</p>
+      </div>
+    </div>
+  }
+
+  <!-- RESULT PHASE -->
+  @if (phase() === 'result' && result(); as r) {
+    <div class="wizard-card result-card" [class]="getOutcomeClass()">
+      <!-- Outcome Header -->
+      <div class="outcome-header">
+        <div class="outcome-icon-circle" [class]="getOutcomeClass()">
+          <i [class]="getOutcomeIcon()"></i>
+        </div>
+        <h2 class="outcome-title">{{ getOutcomeTitle() }}</h2>
+        <p class="outcome-message">{{ r.message }}</p>
+      </div>
+
+      <!-- Timeline Visualization -->
+      @if (r.outcome === 'TOO_EARLY' || r.outcome === 'RE_FIRST' || r.outcome === 'READY') {
+        <div class="timeline-section">
+          <h3>{{ 'wizard.timeline_title' | translate }}</h3>
+          <div class="timeline">
+            <div class="timeline-item" [class.completed]="r.outcome !== 'RE_FIRST'">
+              <div class="timeline-dot"></div>
+              <div class="timeline-content">
+                <strong>{{ 'wizard.timeline_step1' | translate }}</strong>
+                <span>{{ 'wizard.timeline_step1_desc' | translate }}</span>
+              </div>
+            </div>
+            <div class="timeline-connector" [class.active]="r.outcome !== 'RE_FIRST'"></div>
+            <div class="timeline-item" [class.completed]="r.outcome === 'READY'" [class.current]="r.outcome === 'TOO_EARLY'">
+              <div class="timeline-dot"></div>
+              <div class="timeline-content">
+                <strong>{{ 'wizard.timeline_step2' | translate }}</strong>
+                <span>{{ 'wizard.timeline_step2_desc' | translate }}</span>
+                @if (r.daysRemaining) {
+                  <span class="days-badge">{{ r.daysRemaining }} {{ 'wizard.days_remaining' | translate }}</span>
+                }
+              </div>
+            </div>
+            <div class="timeline-connector" [class.active]="r.outcome === 'READY'"></div>
+            <div class="timeline-item" [class.completed]="r.outcome === 'READY'">
+              <div class="timeline-dot"></div>
+              <div class="timeline-content">
+                <strong>{{ 'wizard.timeline_step3' | translate }}</strong>
+                <span>{{ 'wizard.timeline_step3_desc' | translate }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- Compensation Band -->
+      @if (r.compensationBand && r.outcome === 'READY') {
+        <div class="compensation-info">
+          <i class="pi pi-indian-rupee"></i>
+          <div>
+            <strong>{{ 'wizard.compensation_title' | translate }}</strong>
+            <p>{{ r.compensationBand }}</p>
+          </div>
+        </div>
+      }
+
+      <!-- Actions -->
+      <div class="result-actions">
+        @if (r.eligible || r.outcome === 'RANT_GATE' || r.outcome === 'TOO_LATE') {
+          <button class="btn-wizard-primary" (click)="proceedToFile()">
+            <i class="pi pi-file-edit"></i> {{ 'wizard.proceed_to_file' | translate }}
+          </button>
+        }
+        <button class="btn-wizard-secondary" (click)="startOver()">
+          <i class="pi pi-refresh"></i> {{ 'wizard.start_over' | translate }}
+        </button>
+        <button class="btn-wizard-link" (click)="goHome()">
+          {{ 'wizard.go_home' | translate }}
+        </button>
+      </div>
+
+      <!-- Never hard-block notice -->
+      @if (!r.eligible) {
+        <div class="soft-block-notice">
+          <i class="pi pi-info-circle"></i>
+          <span>{{ 'wizard.soft_block_notice' | translate }}</span>
+        </div>
+      }
+    </div>
+  }
+</div>

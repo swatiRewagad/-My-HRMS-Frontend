@@ -345,6 +345,20 @@
   gap: 0.5rem;
 }
 
+.dev-otp-notice {
+  background: #e8f5e9;
+  border: 1px solid #a5d6a7;
+  border-radius: 6px;
+  padding: 0.6rem 1rem;
+  color: #2e7d32;
+  font-size: 0.8rem;
+  font-weight: 500;
+  margin-bottom: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 @media (max-width: 480px) {
   .verify-card { padding: 1.5rem; }
   .captcha-row { flex-direction: column; align-items: stretch; }

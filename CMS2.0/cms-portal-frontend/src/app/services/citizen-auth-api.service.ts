@@ -15,6 +15,7 @@ export interface SendOtpResponse {
   message: string;
   sessionId: string;
   expiresInSeconds: number;
+  devOtp?: string;
 }
 
 export interface VerifyOtpResponse {

@@ -51,6 +51,9 @@
         <h1>CRPC Complaints</h1>
         <div class="header-actions">
           <button class="btn btn-link" (click)="showAdvancedSearch.set(true)">Advanced Search</button>
+          @if (advSearchActive()) {
+            <button class="btn btn-link" style="color:#d32f2f" (click)="clearAdvancedSearch()">Clear Filters</button>
+          }
           <select class="queue-select" [value]="filterStatus()" (change)="filterStatus.set($any($event.target).value)">
             <option value="">CRPC Complaints</option>
             <option value="DRAFT">Draft</option>
@@ -144,6 +147,13 @@
                 <span class="toggle-slider"></span>
               </span>
               Without Attachments
+            </label>
+            <label class="toggle-filter">
+              <span class="toggle-switch" [class.active]="filterSatisfiesRules()">
+                <input type="checkbox" [checked]="filterSatisfiesRules()" (change)="filterSatisfiesRules.set(!filterSatisfiesRules())" />
+                <span class="toggle-slider"></span>
+              </span>
+              Satisfies Rules
             </label>
             <button class="btn btn-icon" (click)="showColumnConfig.set(true)" title="Column Selection">
               <i class="pi pi-cog"></i>
@@ -360,6 +370,7 @@
         </div>
       </div>
       <div class="modal-actions">
+        <button class="btn btn-outline" (click)="clearAdvancedSearch(); showAdvancedSearch.set(false)">Clear</button>
         <button class="btn btn-outline" (click)="showAdvancedSearch.set(false)">Cancel</button>
         <button class="btn btn-primary" (click)="applyAdvancedSearch()">Search</button>
       </div>

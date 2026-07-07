@@ -60,6 +60,10 @@ export class LandingComponent {
     this.router.navigate(['/public']);
   }
 
+  navigateToPortal2() {
+    this.router.navigate(['/public/eligibility-wizard']);
+  }
+
   navigateToKeycloakAdmin() {
     window.open('http://localhost:8180/admin', '_blank');
   }

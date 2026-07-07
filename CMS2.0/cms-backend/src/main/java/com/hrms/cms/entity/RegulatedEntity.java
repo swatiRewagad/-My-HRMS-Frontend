@@ -38,6 +38,38 @@ public class RegulatedEntity {
     @Column(length = 20)
     private String status;
 
+    // ═══ Nodal Officer details ═══
+    @Column(length = 200)
+    private String nodalOfficerName;
+
+    @Column(length = 200)
+    private String nodalOfficerEmail;
+
+    @Column(length = 20)
+    private String nodalOfficerPhone;
+
+    @Column(length = 100)
+    private String nodalOfficerDesignation;
+
+    // ═══ Principal Nodal Officer ═══
+    @Column(length = 200)
+    private String pnoName;
+
+    @Column(length = 200)
+    private String pnoEmail;
+
+    @Column(length = 20)
+    private String pnoPhone;
+
+    // ═══ Portal metadata ═══
+    private LocalDateTime registrationDate;
+
+    private LocalDateTime lastLoginAt;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean portalEnabled = true;
+
     private LocalDateTime createdAt;
 
     @PrePersist

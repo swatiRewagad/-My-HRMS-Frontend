@@ -1,0 +1,335 @@
+<div class="report-builder-container">
+  <header class="page-header">
+    <h1>Report Builder</h1>
+    <p class="subtitle">Compose reports using governed tokens — select a subject, add filters, and group results</p>
+  </header>
+
+  <!-- Tab navigation -->
+  <nav class="tab-nav">
+    <button class="tab-btn" [class.active]="activeTab() === 'compose'" (click)="activeTab.set('compose')">
+      Compose
+    </button>
+    <button class="tab-btn" [class.active]="activeTab() === 'results'" (click)="activeTab.set('results')" [disabled]="!results()">
+      Results
+      @if (results()) {
+        <span class="tab-badge">{{ results()!.resultCount }}</span>
+      }
+    </button>
+    <button class="tab-btn" [class.active]="activeTab() === 'widgets'" (click)="activeTab.set('widgets')">
+      My Widgets
+      @if (myWidgets().length > 0) {
+        <span class="tab-badge">{{ myWidgets().length }}</span>
+      }
+    </button>
+  </nav>
+
+  @if (error()) {
+    <div class="error-banner">
+      <span>{{ error() }}</span>
+      <button class="dismiss-btn" (click)="error.set(null)">&times;</button>
+    </div>
+  }
+
+  <!-- COMPOSE TAB -->
+  @if (activeTab() === 'compose') {
+    @if (modelLoading()) {
+      <div class="loading-state">
+        <div class="spinner"></div>
+        <p>Loading report model...</p>
+      </div>
+    } @else {
+      <!-- Live Sentence Preview -->
+      <div class="sentence-preview" [class.empty]="!selectedSubject()">
+        @if (sentence()) {
+          <span class="sentence-text">{{ sentence() }}</span>
+        } @else {
+          <span class="sentence-placeholder">Select a subject to begin composing your report...</span>
+        }
+      </div>
+
+      <!-- Selected Tokens Strip -->
+      @if (selectedSubject()) {
+        <div class="token-strip">
+          <span class="token subject-token">
+            {{ selectedSubject()!.label }}
+            <button class="token-remove" (click)="clearAll()">&times;</button>
+          </span>
+          @for (f of selectedFilters(); track f.id) {
+            <span class="token filter-token">
+              {{ f.label }}
+              <button class="token-remove" (click)="removeFilter(f)">&times;</button>
+            </span>
+          }
+          @if (selectedGroupBy()) {
+            <span class="token groupby-token">
+              grouped by {{ selectedGroupBy()!.label }}
+              <button class="token-remove" (click)="selectGroupBy(null)">&times;</button>
+            </span>
+          }
+        </div>
+      }
+
+      <div class="composer-grid">
+        <!-- Step 1: Subject -->
+        <section class="composer-section">
+          <h3 class="section-title">
+            <span class="step-num">1</span> Subject
+          </h3>
+          <p class="section-hint">What do you want to report on?</p>
+          <div class="token-grid">
+            @for (subject of subjects(); track subject.id) {
+              <button
+                class="token-btn"
+                [class.selected]="selectedSubject()?.id === subject.id"
+                (click)="selectSubject(subject)"
+                [title]="subject.description">
+                {{ subject.label }}
+              </button>
+            }
+          </div>
+        </section>
+
+        <!-- Step 2: Filters -->
+        <section class="composer-section">
+          <h3 class="section-title">
+            <span class="step-num">2</span> Filters
+            <span class="optional-tag">optional</span>
+          </h3>
+          <p class="section-hint">Narrow your results (combine multiple)</p>
+
+          <input
+            type="text"
+            class="filter-search"
+            placeholder="Search filters..."
+            [(ngModel)]="filterSearch" />
+
+          <div class="filter-categories">
+            @for (cat of filterCategories(); track cat) {
+              <div class="filter-category">
+                <h4 class="category-name">{{ cat }}</h4>
+                <div class="token-grid compact">
+                  @for (f of getFiltersByCategory(cat); track f.id) {
+                    <button
+                      class="token-btn small"
+                      [class.selected]="isFilterSelected(f)"
+                      (click)="toggleFilter(f)">
+                      {{ f.label }}
+                    </button>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        </section>
+
+        <!-- Step 3: Group By -->
+        <section class="composer-section">
+          <h3 class="section-title">
+            <span class="step-num">3</span> Group By
+            <span class="optional-tag">optional</span>
+          </h3>
+          <p class="section-hint">Aggregate results by dimension</p>
+          <div class="token-grid">
+            <button
+              class="token-btn small"
+              [class.selected]="!selectedGroupBy()"
+              (click)="selectGroupBy(null)">
+              None (flat list)
+            </button>
+            @for (gb of groupBys(); track gb.id) {
+              <button
+                class="token-btn small"
+                [class.selected]="selectedGroupBy()?.id === gb.id"
+                (click)="selectGroupBy(gb)">
+                {{ gb.label }}
+              </button>
+            }
+          </div>
+        </section>
+      </div>
+
+      <!-- Actions -->
+      <div class="actions-bar">
+        <button
+          class="btn btn-primary"
+          [disabled]="!selectedSubject() || loading()"
+          (click)="executeReport()">
+          @if (loading()) {
+            <span class="btn-spinner"></span> Running...
+          } @else {
+            Run Report
+          }
+        </button>
+        <button class="btn btn-outline" [disabled]="!selectedSubject()" (click)="clearAll()">
+          Clear All
+        </button>
+      </div>
+    }
+  }
+
+  <!-- RESULTS TAB -->
+  @if (activeTab() === 'results') {
+    @if (results()) {
+      <div class="results-header">
+        <div class="results-meta">
+          <span class="results-sentence">{{ results()!.sentence }}</span>
+          <span class="results-count">{{ results()!.resultCount }} rows</span>
+          @if (results()!.resultCount >= results()!.maxRows) {
+            <span class="results-capped">Results capped at {{ results()!.maxRows }}</span>
+          }
+        </div>
+        <div class="results-actions">
+          <button class="btn btn-sm btn-outline" (click)="openWidgetDialog()">
+            Add to Dashboard
+          </button>
+          <button class="btn btn-sm btn-outline" (click)="openScheduleDialog()" [disabled]="!savedWidgetId()">
+            Email Schedule
+          </button>
+        </div>
+      </div>
+
+      @if (results()!.results.length === 0) {
+        <div class="empty-results">
+          <p>No data found for this query.</p>
+        </div>
+      } @else {
+        <div class="results-table-wrapper">
+          <table class="results-table">
+            <thead>
+              <tr>
+                @for (col of resultColumns(); track col) {
+                  <th>{{ col }}</th>
+                }
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of results()!.results; track $index) {
+                <tr>
+                  @for (col of resultColumns(); track col) {
+                    <td>{{ row[col] ?? '—' }}</td>
+                  }
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    } @else {
+      <div class="empty-results">
+        <p>Run a report from the Compose tab to see results here.</p>
+      </div>
+    }
+  }
+
+  <!-- WIDGETS TAB -->
+  @if (activeTab() === 'widgets') {
+    <div class="widgets-toolbar">
+      <span class="widget-count">{{ myWidgets().length }} / {{ maxWidgets }} widgets</span>
+      <button class="btn btn-sm btn-outline" (click)="refreshWidgets()">Refresh All</button>
+    </div>
+    @if (myWidgets().length === 0) {
+      <div class="empty-results">
+        <p>No saved widgets yet. Run a report and click "Add to Dashboard" to save one.</p>
+      </div>
+    } @else {
+      <div class="widgets-grid">
+        @for (widget of myWidgets(); track widget.id) {
+          <div class="widget-card widget-card--chart">
+            <div class="widget-card-header">
+              <h4>{{ widget.title }}</h4>
+              <div class="widget-header-actions">
+                <div class="widget-type-badge">{{ widget.chartType }}</div>
+                <button class="widget-delete-btn" (click)="deleteWidget(widget.id)" title="Remove widget">&times;</button>
+              </div>
+            </div>
+            <p class="widget-sentence">{{ widget.sentence }}</p>
+            <div class="widget-chart-area">
+              @if (isWidgetLoading(widget.id)) {
+                <div class="widget-loading"><div class="spinner"></div></div>
+              } @else if (getWidgetData(widget.id).length === 0) {
+                <div class="widget-empty">No data</div>
+              } @else if (widget.chartType === 'TABLE') {
+                <div class="widget-table-mini">
+                  <table>
+                    <tbody>
+                      @for (row of getWidgetData(widget.id).slice(0, 5); track $index) {
+                        <tr>
+                          @for (key of ['group', 'value']; track key) {
+                            <td>{{ row[key] ?? '—' }}</td>
+                          }
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                  @if (getWidgetData(widget.id).length > 5) {
+                    <span class="widget-more">+{{ getWidgetData(widget.id).length - 5 }} more rows</span>
+                  }
+                </div>
+              } @else {
+                <canvas #widgetCanvas [attr.data-widget-id]="widget.id"></canvas>
+              }
+            </div>
+          </div>
+        }
+      </div>
+    }
+  }
+
+  <!-- Widget Save Dialog -->
+  @if (showWidgetDialog()) {
+    <div class="dialog-overlay" (click)="showWidgetDialog.set(false)">
+      <div class="dialog" (click)="$event.stopPropagation()">
+        <h3>Save as Dashboard Widget</h3>
+        <div class="form-group">
+          <label>Title</label>
+          <input type="text" [(ngModel)]="widgetTitle" class="form-input" />
+        </div>
+        <div class="form-group">
+          <label>Chart Type</label>
+          <select [(ngModel)]="widgetChartType" class="form-input">
+            <option value="TABLE">Table</option>
+            <option value="BAR">Bar Chart</option>
+            <option value="PIE">Pie Chart</option>
+            <option value="LINE">Line Chart</option>
+          </select>
+        </div>
+        <div class="dialog-actions">
+          <button class="btn btn-primary" (click)="saveWidget()">Save Widget</button>
+          <button class="btn btn-outline" (click)="showWidgetDialog.set(false)">Cancel</button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Schedule Dialog -->
+  @if (showScheduleDialog()) {
+    <div class="dialog-overlay" (click)="showScheduleDialog.set(false)">
+      <div class="dialog" (click)="$event.stopPropagation()">
+        <h3>Schedule Email Delivery</h3>
+        <p class="dialog-hint">Reports run during off-hours and are emailed as Excel attachments.</p>
+        <div class="form-group">
+          <label>Frequency</label>
+          <select [(ngModel)]="scheduleFrequency" class="form-input">
+            <option value="DAILY">Daily</option>
+            <option value="WEEKLY">Weekly (Monday)</option>
+            <option value="MONTHLY">Monthly (1st)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Delivery Slot</label>
+          <select [(ngModel)]="scheduleSlot" class="form-input">
+            <option value="22:00">10:00 PM</option>
+            <option value="23:00">11:00 PM</option>
+            <option value="00:00">12:00 AM</option>
+            <option value="01:00">1:00 AM</option>
+            <option value="02:00">2:00 AM</option>
+          </select>
+        </div>
+        <div class="dialog-actions">
+          <button class="btn btn-primary" (click)="saveSchedule()">Schedule</button>
+          <button class="btn btn-outline" (click)="showScheduleDialog.set(false)">Cancel</button>
+        </div>
+      </div>
+    </div>
+  }
+</div>

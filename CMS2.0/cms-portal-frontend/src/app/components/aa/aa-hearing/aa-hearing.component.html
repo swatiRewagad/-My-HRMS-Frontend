@@ -1,0 +1,113 @@
+<div class="hearing-panel">
+  <h5>Schedule Hearing</h5>
+
+  @if (success()) {
+    <div class="success-msg">{{ success() }}</div>
+  } @else if (showPreview()) {
+    <!-- Hearing Notice Preview -->
+    <div class="notice-preview">
+      <div class="notice-header">
+        <strong>HEARING NOTICE PREVIEW</strong>
+      </div>
+      <div class="notice-body">
+        <p><strong>Appeal No:</strong> {{ appeal?.appealNumber }}</p>
+        <p><strong>Date:</strong> {{ hearingDate | date:'dd MMMM yyyy' }}</p>
+        <p><strong>Time:</strong> {{ hearingTime }}</p>
+        <p><strong>Venue:</strong> {{ hearingVenue }}</p>
+        <p><strong>Parties to be Notified:</strong></p>
+        <ul>
+          @for (party of partiesToNotify; track party) {
+            <li>{{ party | titlecase }}</li>
+          }
+        </ul>
+        @if (additionalNotes) {
+          <p><strong>Additional Notes:</strong> {{ additionalNotes }}</p>
+        }
+      </div>
+      <div class="notice-actions">
+        <button class="submit-btn" [disabled]="scheduling()" (click)="scheduleHearing()">
+          @if (scheduling()) { Scheduling... } @else { Confirm & Send Notices }
+        </button>
+        <button class="cancel-btn" (click)="showPreview.set(false)">Edit</button>
+      </div>
+    </div>
+  } @else {
+    <!-- Schedule Form -->
+    <div class="form-field">
+      <label>Hearing Date</label>
+      <input type="date" [(ngModel)]="hearingDate" [min]="'2026-01-01'" />
+    </div>
+
+    <div class="form-field">
+      <label>Hearing Time</label>
+      <input type="time" [(ngModel)]="hearingTime" />
+    </div>
+
+    <div class="form-field">
+      <label>Venue</label>
+      <select [(ngModel)]="hearingVenue">
+        <option value="">Select Venue</option>
+        @for (v of venueOptions; track v) {
+          <option [value]="v">{{ v }}</option>
+        }
+      </select>
+    </div>
+
+    <div class="form-field">
+      <label>Parties to Notify</label>
+      <div class="checkbox-group">
+        <label class="checkbox-item" [class.checked]="isPartySelected('appellant')">
+          <input type="checkbox" [checked]="isPartySelected('appellant')" (change)="toggleParty('appellant')">
+          Appellant
+        </label>
+        <label class="checkbox-item" [class.checked]="isPartySelected('respondent')">
+          <input type="checkbox" [checked]="isPartySelected('respondent')" (change)="toggleParty('respondent')">
+          Respondent (RE)
+        </label>
+        <label class="checkbox-item" [class.checked]="isPartySelected('ombudsman')">
+          <input type="checkbox" [checked]="isPartySelected('ombudsman')" (change)="toggleParty('ombudsman')">
+          Ombudsman Office
+        </label>
+      </div>
+    </div>
+
+    <div class="form-field">
+      <label>Additional Notes</label>
+      <textarea [(ngModel)]="additionalNotes" rows="3" placeholder="Any additional instructions..."></textarea>
+    </div>
+
+    @if (error()) {
+      <div class="error-msg">{{ error() }}</div>
+    }
+
+    <div class="form-actions">
+      <button class="preview-btn" (click)="previewNotice()">Preview Notice</button>
+      <button class="cancel-btn" (click)="cancel()">Cancel</button>
+    </div>
+  }
+
+  <!-- Past Hearings -->
+  @if (hearingHistory.length > 0) {
+    <div class="past-hearings">
+      <h6>Past Hearings</h6>
+      <table class="history-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Venue</th>
+            <th>Outcome</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (h of hearingHistory; track h.date) {
+            <tr>
+              <td>{{ h.date | date:'dd MMM yyyy' }}</td>
+              <td>{{ h.venue }}</td>
+              <td>{{ h.outcome || 'Adjourned' }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>

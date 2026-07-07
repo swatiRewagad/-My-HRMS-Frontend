@@ -1,9 +1,10 @@
 import { Component, OnInit, inject, signal, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { PublicAuthService } from '../../../services/public-auth.service';
+import { TranslatePipe } from '../../../pipes/translate.pipe';
 import { environment } from '../../../../environments/environment';
 
 interface ComplaintRecord {
@@ -17,13 +18,14 @@ interface ComplaintRecord {
 @Component({
   selector: 'app-public-home',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, TranslatePipe],
   templateUrl: './public-home.component.html',
   styleUrl: './public-home.component.scss'
 })
 export class PublicHomeComponent implements OnInit {
 
   private http = inject(HttpClient);
+  private router = inject(Router);
   authService = inject(PublicAuthService);
 
   @ViewChild('eduScroll') eduScroll!: ElementRef;
@@ -104,6 +106,21 @@ export class PublicHomeComponent implements OnInit {
       case 'REQUEST_SENT_BACK': return 'Appeal';
       case 'REJECTED': return 'Act';
       default: return 'View';
+    }
+  }
+
+  onAction(complaint: ComplaintRecord) {
+    const action = this.getActionLabel(complaint.status);
+    switch (action) {
+      case 'Withdraw':
+        this.router.navigate(['/public/withdraw', complaint.complaintId]);
+        break;
+      case 'Appeal':
+        this.router.navigate(['/public/appeal'], { queryParams: { id: complaint.complaintId } });
+        break;
+      default:
+        this.router.navigate(['/public/track', complaint.complaintId]);
+        break;
     }
   }
 

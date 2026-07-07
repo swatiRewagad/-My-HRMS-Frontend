@@ -113,8 +113,8 @@
                 <td>
                   <span class="status-badge" [attr.data-status]="c.status">{{ getStatusLabel(c.status) }}</span>
                 </td>
-                <td class="sla-cell" [class.overdue-text]="isOverdue(c)">
-                  {{ c.slaDueDate | date:'dd MMM yyyy' }}
+                <td class="sla-cell">
+                  <app-cepc-sla-indicator [slaDueDate]="c.slaDueDate" [status]="c.status"></app-cepc-sla-indicator>
                 </td>
                 <td>
                   <button class="action-link" (click)="$event.stopPropagation(); openComplaint(c)">View</button>

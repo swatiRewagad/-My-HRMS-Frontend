@@ -1,0 +1,115 @@
+.cepc-sla-dashboard { min-height: 100vh; background: #f4f6f9; }
+
+.topbar {
+  background: #0d47a1; color: white; padding: 12px 24px;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.topbar-left { display: flex; align-items: center; gap: 12px; }
+.title-block h2 { margin: 0; font-size: 18px; }
+.title-block .subtitle { font-size: 12px; opacity: 0.8; }
+.back-btn { background: none; border: none; color: white; font-size: 20px; cursor: pointer; }
+.topbar-right { display: flex; align-items: center; gap: 12px; font-size: 14px; }
+.user-name { font-weight: 500; }
+.refresh-btn {
+  padding: 6px 14px; border: 1px solid rgba(255,255,255,0.5); border-radius: 4px;
+  background: transparent; color: white; cursor: pointer; font-size: 13px;
+  &:hover { background: rgba(255,255,255,0.1); }
+}
+
+.content { max-width: 1200px; margin: 0 auto; padding: 24px 20px; }
+
+.loading-state {
+  display: flex; align-items: center; justify-content: center; gap: 12px;
+  padding: 60px; color: #666;
+  .spinner {
+    width: 24px; height: 24px; border: 3px solid #e0e0e0;
+    border-top-color: #0d47a1; border-radius: 50%; animation: spin 0.7s linear infinite;
+  }
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+// ── Stats ──
+.stats-row {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px;
+}
+.stat-card {
+  background: white; padding: 18px; border-radius: 8px; text-align: center;
+  border: 1px solid #e0e0e0; transition: transform 0.2s;
+  &:hover { transform: translateY(-2px); }
+  &.total { border-left: 4px solid #0d47a1; }
+  &.on-track { border-left: 4px solid #16a34a; }
+  &.at-risk { border-left: 4px solid #ea580c; }
+  &.breached { border-left: 4px solid #dc2626; }
+}
+.stat-value { display: block; font-size: 28px; font-weight: 700; color: #333; }
+.stat-label { font-size: 11px; color: #666; text-transform: uppercase; letter-spacing: 0.5px; }
+
+// ── Chart ──
+.chart-section {
+  background: white; border-radius: 8px; padding: 20px; border: 1px solid #e0e0e0; margin-bottom: 24px;
+  h3 { margin: 0 0 16px; font-size: 15px; color: #1e293b; }
+}
+
+.bar-chart { display: flex; flex-direction: column; gap: 12px; }
+.bar-row { display: flex; align-items: center; gap: 12px; }
+.bar-label { width: 80px; font-size: 12px; color: #555; font-weight: 500; }
+.bar-track { flex: 1; height: 20px; background: #f1f5f9; border-radius: 4px; overflow: hidden; }
+.bar-fill {
+  height: 100%; border-radius: 4px; transition: width 0.5s ease;
+  &.green { background: #16a34a; }
+  &.orange { background: #ea580c; }
+  &.red { background: #dc2626; }
+}
+.bar-value { width: 30px; font-size: 13px; font-weight: 600; color: #333; text-align: right; }
+
+.compliance-pct {
+  margin-top: 16px; padding-top: 12px; border-top: 1px solid #f0f0f0;
+  display: flex; align-items: baseline; gap: 8px;
+  .pct-value { font-size: 32px; font-weight: 700; color: #0d47a1; }
+  .pct-label { font-size: 13px; color: #666; }
+}
+
+// ── Alert Table ──
+.alert-section {
+  background: white; border-radius: 8px; padding: 20px; border: 1px solid #e0e0e0;
+  h3 { margin: 0 0 16px; font-size: 15px; color: #1e293b; }
+}
+
+.table-container { overflow-x: auto; }
+.sla-table {
+  width: 100%; border-collapse: collapse; font-size: 13px;
+  thead tr {
+    background: #f5f7fa;
+    th {
+      padding: 10px 12px; text-align: left; font-weight: 600; color: #475569;
+      border-bottom: 1px solid #e0e0e0; white-space: nowrap;
+    }
+  }
+  tbody tr {
+    border-bottom: 1px solid #f0f0f0; transition: background 0.15s;
+    &:hover { background: #f8fafc; }
+    &.row-breached { border-left: 3px solid #dc2626; }
+    &.row-at-risk { border-left: 3px solid #ea580c; }
+    td { padding: 10px 12px; color: #333; }
+  }
+}
+.complaint-num { font-weight: 600; color: #0d47a1; }
+.subject-cell { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.days-overdue { color: #dc2626; font-weight: 600; font-size: 12px; }
+.days-remaining { color: #ea580c; font-weight: 600; font-size: 12px; }
+.action-link {
+  background: none; border: none; color: #0d47a1; cursor: pointer; font-size: 12px; font-weight: 600;
+  &:hover { text-decoration: underline; }
+}
+
+// ── All clear state ──
+.all-clear {
+  text-align: center; padding: 40px; background: white; border-radius: 8px; border: 1px solid #e0e0e0;
+  .all-clear-icon { font-size: 48px; color: #16a34a; display: block; margin-bottom: 8px; }
+  h3 { color: #16a34a; margin: 0 0 8px; }
+  p { color: #666; margin: 0; }
+}
+
+@media (max-width: 1024px) {
+  .stats-row { grid-template-columns: repeat(2, 1fr); }
+}

@@ -1,0 +1,250 @@
+<div class="re-complaint-detail">
+  <!-- Back button -->
+  <button class="back-btn" (click)="goBack()">
+    <i class="pi pi-arrow-left"></i> Back to Dashboard
+  </button>
+
+  @if (loading()) {
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <p>Loading complaint details...</p>
+    </div>
+  } @else if (complaint()) {
+    <!-- Header -->
+    <div class="detail-header">
+      <div class="header-left">
+        <h2 class="complaint-number">{{ complaint()!.complaintNumber }}</h2>
+        <span class="status-badge" [class]="'status-' + complaint()!.status">
+          {{ complaint()!.status | titlecase }}
+        </span>
+      </div>
+      <div class="deadline-countdown" [class.expired]="deadlineCountdown().expired">
+        @if (deadlineCountdown().expired) {
+          <i class="pi pi-exclamation-triangle"></i>
+          <span>Response window expired</span>
+        } @else {
+          <i class="pi pi-clock"></i>
+          <span>{{ deadlineCountdown().days }}d {{ deadlineCountdown().hours }}h remaining</span>
+        }
+      </div>
+    </div>
+
+    <!-- Complaint Info -->
+    <div class="info-grid">
+      <div class="info-card">
+        <h3 class="card-title">Complaint Details</h3>
+        <div class="info-rows">
+          <div class="info-row">
+            <span class="info-label">Subject</span>
+            <span class="info-value">{{ complaint()!.subject }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Description</span>
+            <span class="info-value description">{{ complaint()!.description }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Complainant</span>
+            <span class="info-value">{{ maskName(complaint()!.complainantName) }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Category</span>
+            <span class="info-value">{{ complaint()!.category }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Filed Date</span>
+            <span class="info-value">{{ complaint()!.filedDate | date:'dd MMM yyyy' }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Forwarded Date</span>
+            <span class="info-value">{{ complaint()!.forwardedDate | date:'dd MMM yyyy' }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Response Deadline</span>
+            <span class="info-value deadline" [class.expired]="deadlineCountdown().expired">
+              {{ complaint()!.responseDeadline | date:'dd MMM yyyy, HH:mm' }}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Response Form -->
+    <div class="response-section">
+      <h3 class="section-title">Submit Response</h3>
+
+      @if (responseSuccess()) {
+        <div class="success-banner">
+          <i class="pi pi-check-circle"></i>
+          <span>{{ responseSuccess() }}</span>
+        </div>
+      }
+
+      @if (responseError()) {
+        <div class="error-banner">
+          <i class="pi pi-exclamation-triangle"></i>
+          <span>{{ responseError() }}</span>
+        </div>
+      }
+
+      <div class="response-form">
+        <div class="form-group">
+          <label for="responseText">Response Text</label>
+          <textarea
+            id="responseText"
+            [ngModel]="responseText()"
+            (ngModelChange)="responseText.set($event)"
+            placeholder="Enter your detailed response to this complaint..."
+            rows="5"
+            [disabled]="!isResponseWindowOpen()"
+          ></textarea>
+        </div>
+
+        <div class="form-group">
+          <label>Supporting Documents</label>
+          <div class="file-upload-area">
+            <input
+              type="file"
+              id="fileUpload"
+              (change)="onFileSelect($event)"
+              multiple
+              accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.xls,.xlsx"
+              [disabled]="!isResponseWindowOpen()"
+              class="file-input"
+            />
+            <label for="fileUpload" class="file-upload-label">
+              <i class="pi pi-upload"></i>
+              <span>Click to upload or drag files here</span>
+              <span class="file-hint">PDF, DOC, DOCX, JPG, PNG, XLS (Max 5MB each)</span>
+            </label>
+          </div>
+
+          @if (selectedFiles().length > 0) {
+            <div class="file-list">
+              @for (file of selectedFiles(); track file.name; let i = $index) {
+                <div class="file-item">
+                  <i class="pi pi-file"></i>
+                  <span class="file-name">{{ file.name }}</span>
+                  <span class="file-size">{{ (file.size / 1024).toFixed(1) }} KB</span>
+                  <button class="remove-file-btn" (click)="removeFile(i)" aria-label="Remove file">
+                    <i class="pi pi-times"></i>
+                  </button>
+                </div>
+              }
+            </div>
+          }
+        </div>
+
+        <div class="form-actions">
+          <button
+            class="submit-btn"
+            (click)="submitResponse()"
+            [disabled]="!isResponseWindowOpen() || submittingResponse()"
+          >
+            @if (submittingResponse()) {
+              <span class="spinner-sm"></span> Submitting...
+            } @else {
+              <i class="pi pi-send"></i> Submit Response
+            }
+          </button>
+
+          <button class="query-btn" (click)="toggleQueryForm()">
+            <i class="pi pi-question-circle"></i>
+            {{ showQueryForm() ? 'Cancel Query' : 'Raise Query' }}
+          </button>
+        </div>
+
+        @if (!isResponseWindowOpen()) {
+          <div class="window-expired-notice">
+            <i class="pi pi-info-circle"></i>
+            The 15-day response window has expired. You cannot submit a response.
+          </div>
+        }
+      </div>
+    </div>
+
+    <!-- Query Form -->
+    @if (showQueryForm()) {
+      <div class="query-section">
+        <h3 class="section-title">Raise Query</h3>
+
+        @if (querySuccess()) {
+          <div class="success-banner">
+            <i class="pi pi-check-circle"></i>
+            <span>{{ querySuccess() }}</span>
+          </div>
+        }
+
+        @if (queryError()) {
+          <div class="error-banner">
+            <i class="pi pi-exclamation-triangle"></i>
+            <span>{{ queryError() }}</span>
+          </div>
+        }
+
+        <div class="query-form">
+          <div class="form-group">
+            <label for="queryType">Query Type</label>
+            <select id="queryType" [ngModel]="queryType()" (ngModelChange)="queryType.set($event)">
+              <option value="clarification">Clarification Request</option>
+              <option value="extension">Extension Request</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="queryText">Details</label>
+            <textarea
+              id="queryText"
+              [ngModel]="queryText()"
+              (ngModelChange)="queryText.set($event)"
+              placeholder="Provide details for your query..."
+              rows="4"
+            ></textarea>
+          </div>
+
+          <button class="submit-btn secondary" (click)="submitQuery()" [disabled]="submittingQuery()">
+            @if (submittingQuery()) {
+              <span class="spinner-sm"></span> Submitting...
+            } @else {
+              <i class="pi pi-send"></i> Submit Query
+            }
+          </button>
+        </div>
+      </div>
+    }
+
+    <!-- Timeline -->
+    <div class="timeline-section">
+      <h3 class="section-title">Activity Timeline</h3>
+
+      @if (timeline().length === 0) {
+        <p class="no-timeline">No activity recorded yet.</p>
+      } @else {
+        <div class="timeline">
+          @for (entry of timeline(); track entry.timestamp) {
+            <div class="timeline-item">
+              <div class="timeline-dot"></div>
+              <div class="timeline-content">
+                <div class="timeline-header">
+                  <span class="timeline-action">{{ entry.action }}</span>
+                  <span class="timeline-date">{{ entry.timestamp | date:'dd MMM yyyy, HH:mm' }}</span>
+                </div>
+                @if (entry.actor) {
+                  <span class="timeline-actor">by {{ entry.actor }}</span>
+                }
+                @if (entry.remarks) {
+                  <p class="timeline-remarks">{{ entry.remarks }}</p>
+                }
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  } @else {
+    <div class="error-state">
+      <i class="pi pi-exclamation-circle"></i>
+      <p>Complaint not found</p>
+      <button class="back-btn" (click)="goBack()">Go back to dashboard</button>
+    </div>
+  }
+</div>

@@ -19,6 +19,8 @@ interface ComplaintTask {
   department: string;
   assignedRole: string;
   assignedOfficer: string;
+  hasAttachments?: boolean;
+  triageSignal?: string;
 }
 
 @Component({
@@ -36,10 +38,14 @@ export class RbioTasksComponent implements OnInit {
   tasks = signal<ComplaintTask[]>([]);
   loading = signal(false);
   selectedIds = signal<Set<string>>(new Set());
+  visitedIds = signal<Set<string>>(new Set(JSON.parse(localStorage.getItem('rbio_visited_ids') || '[]')));
 
   // Filters
   filterStatus = signal('');
   searchText = signal('');
+  filterUnread = signal(false);
+  filterWithoutAttachments = signal(false);
+  filterSatisfiesRules = signal(false);
   columnFilters: Record<string, string> = {};
   columnSearchText = '';
 
@@ -104,6 +110,15 @@ export class RbioTasksComponent implements OnInit {
         const q = val.toLowerCase();
         result = result.filter(t => String((t as any)[key] || '').toLowerCase().includes(q));
       }
+    }
+    if (this.filterUnread()) {
+      result = result.filter(t => !this.visitedIds().has(String(t.complaintId)));
+    }
+    if (this.filterWithoutAttachments()) {
+      result = result.filter(t => !t.hasAttachments);
+    }
+    if (this.filterSatisfiesRules()) {
+      result = result.filter(t => t.triageSignal === 'OBJECTIVELY_CLEAR');
     }
     if (this.sortColumn) {
       result = [...result].sort((a, b) => {
@@ -184,6 +199,10 @@ export class RbioTasksComponent implements OnInit {
   }
 
   openTask(task: ComplaintTask) {
+    const visited = new Set(this.visitedIds());
+    visited.add(String(task.complaintId));
+    this.visitedIds.set(visited);
+    localStorage.setItem('rbio_visited_ids', JSON.stringify([...visited]));
     this.router.navigate(['/staff/rbio/task', task.complaintNumber]);
   }
 

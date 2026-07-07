@@ -1,0 +1,10 @@
+node_modules
+dist
+.angular
+.git
+*.md
+.vscode
+.idea
+e2e
+coverage
+*.spec.ts
