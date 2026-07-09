@@ -34,6 +34,15 @@
                 { "replace": "src/environments/environment.ts", "with": "src/environments/environment.prod.ts" }
               ]
             },
+            "openshift": {
+              "budgets": [
+                { "type": "initial", "maximumWarning": "500kB", "maximumError": "1MB" }
+              ],
+              "outputHashing": "all",
+              "fileReplacements": [
+                { "replace": "src/environments/environment.ts", "with": "src/environments/environment.openshift.ts" }
+              ]
+            },
             "development": {
               "optimization": false,
               "extractLicenses": false,

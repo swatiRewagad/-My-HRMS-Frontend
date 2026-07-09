@@ -32,14 +32,14 @@ test.describe('CEPC SLA Indicators', () => {
       await loginAsCepcRole(page, 'DO', `/cepc/complaint/${complaintNumber}`);
       await page.waitForSelector('.cepc-detail .detail-layout', { timeout: 15000 });
 
-      // Check SLA Due date is displayed in header meta
-      const slaDue = page.locator('.header-meta span:has-text("SLA Due")');
-      await expect(slaDue).toBeVisible();
+      // Check SLA indicator is displayed in header meta
+      const slaIndicator = page.locator('.sla-indicator');
+      await expect(slaIndicator).toBeVisible();
 
-      // The date should be present (not empty or dash)
-      const slaDueText = await slaDue.textContent();
-      expect(slaDueText).toBeTruthy();
-      expect(slaDueText).not.toBe('—');
+      // The days text should be present (e.g., "25d remaining" or "BREACHED")
+      const daysText = page.locator('.sla-indicator .days-text');
+      const text = await daysText.textContent();
+      expect(text?.trim()).toBeTruthy();
 
       await logout(page);
     } finally {

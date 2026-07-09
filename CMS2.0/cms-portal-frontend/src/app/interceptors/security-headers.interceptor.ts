@@ -10,10 +10,7 @@ export const securityHeadersInterceptor: HttpInterceptorFn = (req, next) => {
   }
   const secureReq = req.clone({
     setHeaders: {
-      'X-Content-Type-Options': 'nosniff',
       'X-Requested-With': 'XMLHttpRequest',
-      'Cache-Control': 'no-store',
-      'Pragma': 'no-cache',
     }
   });
   return next(secureReq);

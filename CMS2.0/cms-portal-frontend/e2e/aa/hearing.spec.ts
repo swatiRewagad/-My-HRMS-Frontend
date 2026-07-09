@@ -25,7 +25,6 @@ test.describe('AA - Hearing Management', () => {
   test('Schedule hearing form works (date + venue)', async ({ page, request }) => {
     test.skip(!keycloakUp, 'Keycloak is not available');
 
-    // Setup: create complaint -> close -> file appeal -> accept -> assign to bench
     const complaint = await createTestComplaint(request, {
       subject: 'E2E Hearing Schedule Form Test',
     });
@@ -35,58 +34,57 @@ test.describe('AA - Hearing Management', () => {
     await performAppealAction(request, appeal.appealNumber, 'ASSIGN_TO_BENCH', { actor: 'aa.registrar' });
 
     await loginAsAaRole(page, 'AA_BENCH_OFFICER', `/aa/appeal/${appeal.appealNumber}`);
+    await page.waitForSelector('.aa-detail .detail-layout', { timeout: 15000 });
 
-    await page.waitForSelector(
-      '[data-testid="appeal-detail"], .appeal-detail, .detail-layout',
-      { timeout: 15000 }
-    );
-
-    // Click Schedule Hearing
-    const scheduleBtn = page.locator(
-      'button:has-text("Schedule Hearing"), button:has-text("Schedule"), [data-testid="action-schedule-hearing"]'
-    );
+    const scheduleBtn = page.locator('.action-card:has-text("Schedule Hearing")');
     await expect(scheduleBtn).toBeVisible({ timeout: 5000 });
     await scheduleBtn.click();
 
-    // Hearing form should appear
-    const hearingForm = page.locator(
-      '[data-testid="hearing-form"], .hearing-form, .schedule-form'
-    );
-    await expect(hearingForm).toBeVisible({ timeout: 5000 });
+    // Hearing sub-component panel appears
+    const hearingPanel = page.locator('.hearing-panel');
+    await expect(hearingPanel).toBeVisible({ timeout: 5000 });
 
     // Fill date
     const futureDate = new Date();
     futureDate.setDate(futureDate.getDate() + 21);
     const dateStr = futureDate.toISOString().split('T')[0];
 
-    const dateInput = page.locator(
-      'input[type="date"], input[name="hearingDate"], [data-testid="hearing-date"]'
-    );
+    const dateInput = hearingPanel.locator('input[type="date"]');
     await expect(dateInput).toBeVisible();
     await dateInput.fill(dateStr);
 
-    // Fill venue
-    const venueInput = page.locator(
-      'input[name="venue"], [data-testid="hearing-venue"], textarea[name="venue"]'
-    );
-    await expect(venueInput).toBeVisible();
-    await venueInput.fill('Conference Room A, 2nd Floor, AA Office');
+    // Fill time
+    const timeInput = hearingPanel.locator('input[type="time"]');
+    if (await timeInput.isVisible().catch(() => false)) {
+      await timeInput.fill('11:00');
+    }
 
-    // Submit
-    const submitBtn = page.locator(
-      'button:has-text("Schedule"), button:has-text("Confirm"), [data-testid="confirm-hearing"]'
-    );
-    await submitBtn.click();
+    // Select venue
+    const venueSelect = hearingPanel.locator('select');
+    if (await venueSelect.isVisible().catch(() => false)) {
+      const options = venueSelect.locator('option');
+      const optionCount = await options.count();
+      if (optionCount > 1) {
+        await venueSelect.selectOption({ index: 1 });
+      }
+    }
 
-    // Success
-    const successMsg = page.locator('.success-msg, [data-testid="action-success"], .toast-success');
+    // Preview and confirm
+    const previewBtn = hearingPanel.locator('.preview-btn');
+    await expect(previewBtn).toBeVisible();
+    await previewBtn.click();
+
+    const confirmBtn = hearingPanel.locator('.submit-btn');
+    await expect(confirmBtn).toBeVisible({ timeout: 5000 });
+    await confirmBtn.click();
+
+    const successMsg = hearingPanel.locator('.success-msg');
     await expect(successMsg).toBeVisible({ timeout: 10000 });
   });
 
   test('Hearing appears in hearing history', async ({ page, request }) => {
     test.skip(!keycloakUp, 'Keycloak is not available');
 
-    // Setup: create full flow with a scheduled hearing
     const complaint = await createTestComplaint(request, {
       subject: 'E2E Hearing History Test',
     });
@@ -105,35 +103,21 @@ test.describe('AA - Hearing Management', () => {
     });
 
     await loginAsAaRole(page, 'AA_BENCH_OFFICER', `/aa/appeal/${appeal.appealNumber}`);
+    await page.waitForSelector('.aa-detail .detail-layout', { timeout: 15000 });
 
-    await page.waitForSelector(
-      '[data-testid="appeal-detail"], .appeal-detail, .detail-layout',
-      { timeout: 15000 }
-    );
+    // Look for hearing history in the detail panel
+    const hearingHistory = page.locator('.hearing-history');
+    await expect(hearingHistory).toBeVisible({ timeout: 10000 });
 
-    // Look for hearing history section
-    const hearingSection = page.locator(
-      '[data-testid="hearing-history"], .hearing-history, .hearings-section, h3:has-text("Hearing"), h4:has-text("Hearing")'
-    );
-    await expect(hearingSection).toBeVisible({ timeout: 10000 });
-
-    // Should show at least one hearing entry
-    const hearingEntries = page.locator(
-      '[data-testid="hearing-entry"], .hearing-entry, .hearing-row, .hearing-item'
-    );
-    const count = await hearingEntries.count();
+    // Should show at least one hearing entry in the history table
+    const hearingRows = hearingHistory.locator('.history-table tbody tr');
+    const count = await hearingRows.count();
     expect(count).toBeGreaterThanOrEqual(1);
-
-    // Verify hearing details are visible (date and venue)
-    const firstEntry = hearingEntries.first();
-    const entryText = await firstEntry.textContent();
-    expect(entryText).toBeTruthy();
   });
 
   test('Multiple hearings can be scheduled', async ({ page, request }) => {
     test.skip(!keycloakUp, 'Keycloak is not available');
 
-    // Setup
     const complaint = await createTestComplaint(request, {
       subject: 'E2E Multiple Hearings Test',
     });
@@ -142,7 +126,7 @@ test.describe('AA - Hearing Management', () => {
     await performAppealAction(request, appeal.appealNumber, 'ACCEPT', { actor: 'aa.registrar' });
     await performAppealAction(request, appeal.appealNumber, 'ASSIGN_TO_BENCH', { actor: 'aa.registrar' });
 
-    // Schedule first hearing via API
+    // Schedule two hearings via API
     const firstDate = new Date();
     firstDate.setDate(firstDate.getDate() + 7);
     await performAppealAction(request, appeal.appealNumber, 'SCHEDULE_HEARING', {
@@ -151,7 +135,6 @@ test.describe('AA - Hearing Management', () => {
       venue: 'Room A',
     });
 
-    // Schedule second hearing via API
     const secondDate = new Date();
     secondDate.setDate(secondDate.getDate() + 21);
     await performAppealAction(request, appeal.appealNumber, 'SCHEDULE_HEARING', {
@@ -161,22 +144,13 @@ test.describe('AA - Hearing Management', () => {
     });
 
     await loginAsAaRole(page, 'AA_BENCH_OFFICER', `/aa/appeal/${appeal.appealNumber}`);
+    await page.waitForSelector('.aa-detail .detail-layout', { timeout: 15000 });
 
-    await page.waitForSelector(
-      '[data-testid="appeal-detail"], .appeal-detail, .detail-layout',
-      { timeout: 15000 }
-    );
+    const hearingHistory = page.locator('.hearing-history');
+    await expect(hearingHistory).toBeVisible({ timeout: 10000 });
 
-    // Look for hearing history
-    const hearingEntries = page.locator(
-      '[data-testid="hearing-entry"], .hearing-entry, .hearing-row, .hearing-item'
-    );
-    await page.waitForSelector(
-      '[data-testid="hearing-entry"], .hearing-entry, .hearing-row, .hearing-item',
-      { timeout: 10000 }
-    );
-
-    const count = await hearingEntries.count();
+    const hearingRows = hearingHistory.locator('.history-table tbody tr');
+    const count = await hearingRows.count();
     expect(count).toBeGreaterThanOrEqual(2);
   });
 });

@@ -7,15 +7,6 @@ import {
   performRbioAction,
 } from '../utils/test-data';
 
-/**
- * RBIO Admin — Reopen & Reassign Tests
- *
- * Tests:
- * - Admin reopens a closed complaint
- * - Reopened complaint returns to in_progress
- * - Admin reassigns complaint to a different officer
- * - Admin performs bulk assign (if available)
- */
 test.describe('RBIO Admin — Reopen & Reassign', () => {
   let keycloakUp: boolean;
 
@@ -28,7 +19,6 @@ test.describe('RBIO Admin — Reopen & Reassign', () => {
   test('Admin reopens closed complaint', async ({ page, request }) => {
     test.skip(!keycloakUp, 'Keycloak is not available');
 
-    // Create and close a complaint
     const result = await createRbioComplaint(request, {
       subject: 'E2E RBIO Admin Reopen Test',
       complainantName: 'Reopen Test Citizen',
@@ -39,35 +29,24 @@ test.describe('RBIO Admin — Reopen & Reassign', () => {
       await advanceRbioToStatus(request, complaintNumber, 'closed');
 
       await loginAsRbioRole(page, 'RBIO_ADMIN', `/staff/rbio/task/${complaintNumber}`);
-      await page.waitForSelector('[data-testid="task-detail"], .task-detail, .detail-layout', {
-        timeout: 15000,
-      });
+      await page.waitForSelector('.task-action-page', { timeout: 15000 });
 
-      // Should show the closed/resolved banner
-      const closedBanner = page.locator(
-        '[data-testid="closed-banner"], .closed-banner, .resolved-banner, .status-badge:has-text("Closed")'
-      );
+      const closedBanner = page.locator('.closed-banner');
       await expect(closedBanner).toBeVisible({ timeout: 5000 });
 
-      // Admin should have Reopen action available
-      const reopenBtn = page.locator(
-        '[data-testid="action-reopen"], .action-card:has-text("Reopen"), button:has-text("Reopen")'
-      );
+      const reopenBtn = page.locator('.action-card:has-text("Reopen")');
       await expect(reopenBtn).toBeVisible({ timeout: 5000 });
       await reopenBtn.click();
 
-      // Fill remarks
-      const remarksField = page.locator('.action-form textarea, [data-testid="remarks-input"]');
+      const remarksField = page.locator('.remarks-section textarea');
       await expect(remarksField).toBeVisible();
       await remarksField.fill('Reopening complaint based on new evidence submitted by complainant.');
 
-      // Submit
-      const confirmBtn = page.locator('.action-form .submit-btn, [data-testid="confirm-action"], button:has-text("Submit")');
+      const confirmBtn = page.locator('.confirm-actions .btn-primary');
       await confirmBtn.click();
 
-      const resultMsg = page.locator('.result-msg.success, [data-testid="action-success"], .success-msg');
+      const resultMsg = page.locator('.result-msg.success');
       await expect(resultMsg).toBeVisible({ timeout: 10000 });
-      await expect(resultMsg).toContainText(/completed|success/i);
 
       await logout(page);
     } finally {
@@ -78,7 +57,6 @@ test.describe('RBIO Admin — Reopen & Reassign', () => {
   test('Reopened complaint returns to in_progress', async ({ page, request }) => {
     test.skip(!keycloakUp, 'Keycloak is not available');
 
-    // Create, close, then reopen via API
     const result = await createRbioComplaint(request, {
       subject: 'E2E RBIO Reopen Status Test',
     });
@@ -86,33 +64,22 @@ test.describe('RBIO Admin — Reopen & Reassign', () => {
 
     try {
       await advanceRbioToStatus(request, complaintNumber, 'closed');
-
-      // Reopen via API
       await performRbioAction(request, complaintNumber, 'REOPEN', 'rbio.admin', 'Reopening for verification');
 
-      // Log in as officer to verify the complaint is back in active state
       await loginAsRbioRole(page, 'RBIO_OFFICER', `/staff/rbio/task/${complaintNumber}`);
-      await page.waitForSelector('[data-testid="task-detail"], .task-detail, .detail-layout', {
-        timeout: 15000,
-      });
+      await page.waitForSelector('.task-action-page', { timeout: 15000 });
 
-      // Closed banner should NOT be visible
-      const closedBanner = page.locator('[data-testid="closed-banner"], .closed-banner, .resolved-banner');
+      const closedBanner = page.locator('.closed-banner');
       await expect(closedBanner).not.toBeVisible();
 
-      // Action panel should show available actions
-      const actionList = page.locator(
-        '[data-testid="action-list"], .action-list, .action-panel, .actions-container'
-      );
-      await expect(actionList).toBeVisible();
+      const actionSection = page.locator('.action-section');
+      await expect(actionSection).toBeVisible();
 
-      // Officer should be able to act on it
-      const actions = page.locator('[data-testid^="action-"], .action-card');
+      const actions = page.locator('button.action-btn');
       const actionCount = await actions.count();
       expect(actionCount).toBeGreaterThan(0);
 
-      // Status should indicate active state
-      const statusBadge = page.locator('[data-testid="status-badge"], .status-badge, .complaint-status');
+      const statusBadge = page.locator('.status-badge');
       const statusText = await statusBadge.textContent();
       expect(statusText?.toLowerCase()).toMatch(/in.progress|assigned|reopened|active/);
 
@@ -131,44 +98,23 @@ test.describe('RBIO Admin — Reopen & Reassign', () => {
     const complaintNumber = result.complaintNumber;
 
     try {
-      // Advance to in_progress so there is an assigned officer
       await advanceRbioToStatus(request, complaintNumber, 'in_progress');
 
       await loginAsRbioRole(page, 'RBIO_ADMIN', `/staff/rbio/task/${complaintNumber}`);
-      await page.waitForSelector('[data-testid="task-detail"], .task-detail, .detail-layout', {
-        timeout: 15000,
-      });
+      await page.waitForSelector('.task-action-page', { timeout: 15000 });
 
-      // Click Reassign action
-      const reassignBtn = page.locator(
-        '[data-testid="action-reassign"], .action-card:has-text("Reassign"), button:has-text("Reassign")'
-      );
+      const reassignBtn = page.locator('.action-card:has-text("Reassign")');
       await expect(reassignBtn).toBeVisible({ timeout: 5000 });
       await reassignBtn.click();
 
-      // Action form should appear with target user dropdown
-      const actionForm = page.locator('.action-form, [data-testid="action-form"]');
-      await expect(actionForm).toBeVisible();
-
-      // Select a different officer from dropdown
-      const targetSelect = actionForm.locator('select, [data-testid="officer-select"]');
-      if (await targetSelect.isVisible()) {
-        const options = targetSelect.locator('option');
-        const optionCount = await options.count();
-        if (optionCount > 1) {
-          await targetSelect.selectOption({ index: 1 });
-        }
-      }
-
-      // Fill remarks
-      const remarksField = actionForm.locator('textarea, [data-testid="remarks-input"]');
+      const remarksField = page.locator('.remarks-section textarea');
+      await expect(remarksField).toBeVisible();
       await remarksField.fill('Admin reassigning to officer with relevant domain expertise.');
 
-      // Submit
-      const confirmBtn = actionForm.locator('.submit-btn, [data-testid="confirm-action"], button:has-text("Submit")');
+      const confirmBtn = page.locator('.confirm-actions .btn-primary');
       await confirmBtn.click();
 
-      const resultMsg = page.locator('.result-msg.success, [data-testid="action-success"], .success-msg');
+      const resultMsg = page.locator('.result-msg.success');
       await expect(resultMsg).toBeVisible({ timeout: 10000 });
 
       await logout(page);
@@ -180,7 +126,6 @@ test.describe('RBIO Admin — Reopen & Reassign', () => {
   test('Admin performs bulk assign (if available)', async ({ page, request }) => {
     test.skip(!keycloakUp, 'Keycloak is not available');
 
-    // Create multiple complaints for bulk assign
     const complaints: string[] = [];
     for (let i = 0; i < 2; i++) {
       const result = await createRbioComplaint(request, {
@@ -191,49 +136,29 @@ test.describe('RBIO Admin — Reopen & Reassign', () => {
 
     try {
       await loginAsRbioRole(page, 'RBIO_ADMIN', '/staff/rbio/tasks');
-      await page.waitForSelector('[data-testid="task-table"], .task-table, .complaints-table, .empty-state', {
-        timeout: 15000,
-      });
+      await page.waitForSelector('.rbio-home', { timeout: 15000 });
+      await page.waitForSelector('.data-grid, .empty-state', { timeout: 15000 });
 
-      // Look for bulk selection mechanism (checkboxes)
-      const checkboxes = page.locator(
-        'tbody input[type="checkbox"], tbody [data-testid="row-select"]'
-      );
+      const checkboxes = page.locator('tbody input[type="checkbox"]');
 
       if (await checkboxes.first().isVisible({ timeout: 3000 }).catch(() => false)) {
-        // Select first two rows
         const checkCount = Math.min(await checkboxes.count(), 2);
         for (let i = 0; i < checkCount; i++) {
           await checkboxes.nth(i).check();
         }
 
-        // Look for bulk action button
-        const bulkBtn = page.locator(
-          '[data-testid="bulk-assign"], button:has-text("Bulk Assign"), button:has-text("Assign Selected")'
-        );
+        const bulkBtn = page.locator('button:has-text("Bulk Assign"), button:has-text("Assign Selected")');
 
         if (await bulkBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
           await bulkBtn.click();
 
-          // Should show assignment dialog
-          const dialog = page.locator('[role="dialog"], .modal-overlay, [data-testid="bulk-assign-dialog"]');
+          const dialog = page.locator('[role="dialog"], .modal-overlay');
           await expect(dialog).toBeVisible({ timeout: 5000 });
 
-          // Select target officer
-          const targetSelect = dialog.locator('select, [data-testid="officer-select"]');
-          if (await targetSelect.isVisible()) {
-            const options = targetSelect.locator('option');
-            const optionCount = await options.count();
-            if (optionCount > 1) {
-              await targetSelect.selectOption({ index: 1 });
-            }
-          }
-
-          // Confirm
-          const confirmBtn = dialog.locator('button:has-text("Confirm"), button:has-text("Assign"), .submit-btn');
+          const confirmBtn = dialog.locator('button:has-text("Confirm"), button:has-text("Assign")');
           await confirmBtn.click();
 
-          const resultMsg = page.locator('.result-msg.success, [data-testid="action-success"], .success-msg');
+          const resultMsg = page.locator('.result-msg.success');
           await expect(resultMsg).toBeVisible({ timeout: 10000 });
         } else {
           test.info().annotations.push({

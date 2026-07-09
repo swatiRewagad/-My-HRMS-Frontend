@@ -76,13 +76,75 @@
         </div>
       </div>
 
+      <!-- FR-G-038: Mandatory questions (UST109) -->
+      <div class="rating-group">
+        <label id="ease-rating-label">Ease of Filing Complaint <span class="required">*</span></label>
+        <div class="stars" role="group" aria-labelledby="ease-rating-label">
+          @for (star of [1,2,3,4,5]; track star) {
+            <button class="star-btn" [class.active]="star <= easeOfFiling" (click)="easeOfFiling = star" type="button"
+                    [attr.aria-label]="star + ' star'" [attr.aria-pressed]="star <= easeOfFiling">
+              <i class="pi" [class.pi-star-fill]="star <= easeOfFiling" [class.pi-star]="star > easeOfFiling" aria-hidden="true"></i>
+            </button>
+          }
+          @if (easeOfFiling > 0) {
+            <span class="rating-text">{{ ratingLabels[easeOfFiling] }}</span>
+          }
+        </div>
+      </div>
+
+      <div class="rating-group">
+        <label id="redress-rating-label">Grievance Redress Time <span class="required">*</span></label>
+        <div class="stars" role="group" aria-labelledby="redress-rating-label">
+          @for (star of [1,2,3,4,5]; track star) {
+            <button class="star-btn" [class.active]="star <= grievanceRedressTime" (click)="grievanceRedressTime = star" type="button"
+                    [attr.aria-label]="star + ' star'" [attr.aria-pressed]="star <= grievanceRedressTime">
+              <i class="pi" [class.pi-star-fill]="star <= grievanceRedressTime" [class.pi-star]="star > grievanceRedressTime" aria-hidden="true"></i>
+            </button>
+          }
+          @if (grievanceRedressTime > 0) {
+            <span class="rating-text">{{ ratingLabels[grievanceRedressTime] }}</span>
+          }
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Source of Information about CMS Portal <span class="required">*</span></label>
+        <select class="form-select" [(ngModel)]="sourceOfInformation" name="sourceOfInformation">
+          <option value="">Select Source</option>
+          @for (src of sourceOptions; track src) {
+            <option [value]="src">{{ src }}</option>
+          }
+        </select>
+      </div>
+
+      @if (sourceOfInformation === 'Others') {
+        <div class="form-group">
+          <label>Please specify <span class="required">*</span></label>
+          <input type="text" class="form-input" [(ngModel)]="sourceOtherText" name="sourceOtherText"
+                 placeholder="Enter source" maxlength="500">
+        </div>
+      }
+
+      <div class="form-group">
+        <label>CMS Portal Awareness <span class="required">*</span></label>
+        <div class="radio-group">
+          @for (opt of awarenessOptions; track opt) {
+            <label class="radio-label" [class.selected]="cmsPortalAwareness === opt">
+              <input type="radio" name="cmsPortalAwareness" [value]="opt" [(ngModel)]="cmsPortalAwareness">
+              {{ opt }}
+            </label>
+          }
+        </div>
+      </div>
+
       <div class="form-group">
         <label>Additional Feedback</label>
         <div class="textarea-with-speech">
           <textarea class="form-textarea" [(ngModel)]="feedbackText" name="feedbackText" rows="4"
-                    placeholder="Share your experience in detail..."></textarea>
+                    placeholder="Share your experience in detail..." maxlength="500"></textarea>
           <app-speech-button (transcription)="feedbackText = feedbackText + ' ' + $event"></app-speech-button>
         </div>
+        <span class="char-count">{{ feedbackText.length }}/500</span>
       </div>
 
       <div class="form-group">

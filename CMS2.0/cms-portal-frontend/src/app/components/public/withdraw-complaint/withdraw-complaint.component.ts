@@ -37,6 +37,10 @@ export class WithdrawComplaintComponent implements OnInit {
     'Other',
   ];
 
+  // FR-G-036: Supporting documents (optional)
+  withdrawalDocs: File[] = [];
+  fileUploadError = '';
+
   ngOnInit() {
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
@@ -85,6 +89,29 @@ export class WithdrawComplaintComponent implements OnInit {
         this.phase.set('success');
       }
     });
+  }
+
+  onWithdrawalFilesSelected(event: Event) {
+    const input = event.target as HTMLInputElement;
+    if (!input.files) return;
+    this.fileUploadError = '';
+    for (let i = 0; i < input.files.length; i++) {
+      const file = input.files[i];
+      if (file.size > 5 * 1024 * 1024) {
+        this.fileUploadError = 'File size exceeds limit (5MB).';
+        continue;
+      }
+      if (!['application/pdf', 'image/jpeg', 'image/png'].includes(file.type)) {
+        this.fileUploadError = 'Invalid file type. Supported: PDF, JPG, PNG.';
+        continue;
+      }
+      this.withdrawalDocs.push(file);
+    }
+    input.value = '';
+  }
+
+  removeWithdrawalDoc(index: number) {
+    this.withdrawalDocs.splice(index, 1);
   }
 
   goHome() {

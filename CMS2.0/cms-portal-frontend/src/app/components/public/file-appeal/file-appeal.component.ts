@@ -32,6 +32,10 @@ export class FileAppealComponent {
   eligibilityResult = signal<any>(null);
   classification = signal<'APPEAL' | 'REPRESENTATION' | null>(null);
 
+  // FR-G-042: Reason for delay (31-60 days window)
+  reasonForDelay = '';
+  isDelayedFiling = signal(false);
+
   // FR-G-033: Appeal details
   appealGround = '';
   appealGrounds = [
@@ -87,6 +91,8 @@ export class FileAppealComponent {
       return;
     }
     this.error = '';
+    const days = result.complaintSummary?.daysSinceDecision || 0;
+    this.isDelayedFiling.set(days > 30 && days <= 60);
     this.phase.set('form');
   }
 
@@ -108,6 +114,14 @@ export class FileAppealComponent {
   // FR-G-034: Submit appeal
   submitAppeal() {
     this.error = '';
+    if (this.isDelayedFiling() && !this.reasonForDelay.trim()) {
+      this.error = 'Reason for delay is required.';
+      return;
+    }
+    if (this.isDelayedFiling() && this.reasonForDelay.length > 500) {
+      this.error = 'Reason must be within 500 characters.';
+      return;
+    }
     if (!this.appealGround) {
       this.error = 'Please select a ground for appeal.';
       return;
@@ -129,6 +143,9 @@ export class FileAppealComponent {
     formData.append('details', this.appealDetails);
     formData.append('reliefSought', this.reliefSought);
     formData.append('classification', this.classification() || '');
+    if (this.isDelayedFiling() && this.reasonForDelay) {
+      formData.append('reasonForDelay', this.reasonForDelay);
+    }
 
     for (const file of this.appealAttachments) {
       formData.append('attachments', file);

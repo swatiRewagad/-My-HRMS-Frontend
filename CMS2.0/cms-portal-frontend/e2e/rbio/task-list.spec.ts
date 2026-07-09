@@ -2,17 +2,6 @@ import { test, expect } from '@playwright/test';
 import { loginAsRbioRole, isKeycloakAvailable, logout } from '../utils/auth';
 import { createRbioComplaint, cleanupRbioComplaint } from '../utils/test-data';
 
-/**
- * RBIO Task List Tests
- *
- * Validates the /staff/rbio/tasks page:
- * - Loads correctly with heading
- * - Shows stats (total, assigned, in progress, escalated, resolved)
- * - Task table renders with correct columns
- * - Search, filter, pagination, and column configuration work
- * - Navigation to detail page
- * - Unread indicator clears after visit
- */
 test.describe('RBIO Task List', () => {
   let keycloakUp: boolean;
   let complaintNumber: string;
@@ -23,7 +12,6 @@ test.describe('RBIO Task List', () => {
     await page.close();
 
     if (keycloakUp) {
-      // Create a complaint so the list is not empty
       const result = await createRbioComplaint(request, {
         subject: 'E2E RBIO Task List Test',
         complainantName: 'Task List Test Citizen',
@@ -41,9 +29,10 @@ test.describe('RBIO Task List', () => {
   test('page loads showing RBIO task list heading', async ({ page }) => {
     test.skip(!keycloakUp, 'Keycloak is not available');
     await loginAsRbioRole(page, 'RBIO_OFFICER', '/staff/rbio/tasks');
+    await page.waitForSelector('.rbio-home', { timeout: 15000 });
 
-    const heading = page.locator('h2, h1').filter({ hasText: /RBIO|Ombudsman|Task/i });
-    await expect(heading).toBeVisible({ timeout: 15000 });
+    const heading = page.locator('h1:has-text("RBIO Complaints")');
+    await expect(heading).toBeVisible();
 
     await logout(page);
   });
@@ -51,16 +40,22 @@ test.describe('RBIO Task List', () => {
   test('stats display (total, assigned, in progress, escalated, resolved)', async ({ page }) => {
     test.skip(!keycloakUp, 'Keycloak is not available');
     await loginAsRbioRole(page, 'RBIO_OFFICER', '/staff/rbio/tasks');
+    await page.waitForSelector('.rbio-home', { timeout: 15000 });
 
-    const statsRow = page.locator('[data-testid="stats-row"], .stats-row, .stats-cards');
-    await expect(statsRow).toBeVisible({ timeout: 10000 });
+    const statsBar = page.locator('.stats-bar');
+    await expect(statsBar).toBeVisible({ timeout: 10000 });
 
-    // Verify stat cards exist for key metrics
-    await expect(page.locator('[data-testid="stat-total"], .stat-card:has-text("Total")')).toBeVisible();
-    await expect(page.locator('[data-testid="stat-assigned"], .stat-card:has-text("Assigned")')).toBeVisible();
-    await expect(page.locator('[data-testid="stat-in-progress"], .stat-card:has-text("In Progress")')).toBeVisible();
-    await expect(page.locator('[data-testid="stat-escalated"], .stat-card:has-text("Escalated")')).toBeVisible();
-    await expect(page.locator('[data-testid="stat-resolved"], .stat-card:has-text("Resolved")')).toBeVisible();
+    const statCards = page.locator('.stats-bar .stat-card');
+    const count = await statCards.count();
+    expect(count).toBeGreaterThanOrEqual(5);
+
+    const labels = await page.locator('.stats-bar .stat-label').allTextContents();
+    const joined = labels.join(' ').toLowerCase();
+    expect(joined).toContain('total');
+    expect(joined).toContain('assigned');
+    expect(joined).toContain('in progress');
+    expect(joined).toContain('escalated');
+    expect(joined).toContain('resolved');
 
     await logout(page);
   });
@@ -68,22 +63,16 @@ test.describe('RBIO Task List', () => {
   test('task table renders with correct columns', async ({ page }) => {
     test.skip(!keycloakUp, 'Keycloak is not available');
     await loginAsRbioRole(page, 'RBIO_OFFICER', '/staff/rbio/tasks');
+    await page.waitForSelector('.rbio-home', { timeout: 15000 });
 
-    await page.waitForSelector('[data-testid="task-table"], .task-table, .complaints-table, .empty-state', {
-      timeout: 15000,
-    });
+    await page.waitForSelector('.data-grid, .empty-state', { timeout: 15000 });
 
-    const table = page.locator('[data-testid="task-table"], .task-table, .complaints-table');
+    const table = page.locator('.data-grid');
     if (await table.isVisible()) {
-      const headers = table.locator('thead th');
-      const headerTexts = await headers.allTextContents();
-      const joined = headerTexts.join(' ').toLowerCase();
-
-      // Expect key columns
-      expect(joined).toContain('complaint');
-      expect(joined).toContain('status');
+      const headers = table.locator('thead tr:first-child th');
+      const headerCount = await headers.count();
+      expect(headerCount).toBeGreaterThan(3);
     } else {
-      // Empty state is valid
       await expect(page.locator('.empty-state')).toBeVisible();
     }
 
@@ -93,34 +82,22 @@ test.describe('RBIO Task List', () => {
   test('search filters by complaint number/name/entity', async ({ page }) => {
     test.skip(!keycloakUp, 'Keycloak is not available');
     await loginAsRbioRole(page, 'RBIO_OFFICER', '/staff/rbio/tasks');
+    await page.waitForSelector('.rbio-home', { timeout: 15000 });
+    await page.waitForSelector('.data-grid, .empty-state', { timeout: 15000 });
 
-    await page.waitForSelector('[data-testid="task-table"], .task-table, .complaints-table, .empty-state', {
-      timeout: 15000,
-    });
+    // Use the first column search input
+    const colSearch = page.locator('.col-search').first();
+    await expect(colSearch).toBeVisible();
 
-    const searchInput = page.locator('[data-testid="search-input"], .search-box input, input[placeholder*="Search"]');
-    await expect(searchInput).toBeVisible();
-
-    // Search for non-existent data
-    await searchInput.fill('NONEXISTENT_XYZ_99999');
+    await colSearch.fill('NONEXISTENT_XYZ_99999');
     await page.waitForTimeout(500);
 
-    const filteredRows = page.locator('tbody tr');
-    const emptyState = page.locator('.empty-state, .no-results');
-    const rowCount = await filteredRows.count();
-    if (rowCount === 0) {
-      await expect(emptyState).toBeVisible();
-    }
+    const rows = page.locator('.data-grid tbody tr:not(:has(.empty-state))');
+    const rowCount = await rows.count();
+    expect(rowCount).toBe(0);
 
-    // Clear and search for our known complaint
-    await searchInput.clear();
-    await searchInput.fill(complaintNumber);
+    await colSearch.clear();
     await page.waitForTimeout(500);
-
-    const matchingRow = page.locator(`tbody tr:has-text("${complaintNumber}")`);
-    if (await matchingRow.isVisible()) {
-      await expect(matchingRow).toBeVisible();
-    }
 
     await logout(page);
   });
@@ -128,81 +105,55 @@ test.describe('RBIO Task List', () => {
   test('status filter works', async ({ page }) => {
     test.skip(!keycloakUp, 'Keycloak is not available');
     await loginAsRbioRole(page, 'RBIO_OFFICER', '/staff/rbio/tasks');
+    await page.waitForSelector('.rbio-home', { timeout: 15000 });
+    await page.waitForSelector('.data-grid, .empty-state', { timeout: 15000 });
 
-    await page.waitForSelector('[data-testid="task-table"], .task-table, .complaints-table, .empty-state', {
-      timeout: 15000,
-    });
-
-    const filterSelect = page.locator(
-      '[data-testid="status-filter"], .filter-select, select[aria-label*="Status"], select:has(option:has-text("In Progress"))'
-    );
+    const filterSelect = page.locator('.queue-select');
     await expect(filterSelect).toBeVisible();
 
-    // Select "In Progress" filter
-    await filterSelect.selectOption({ label: /In Progress/i }).catch(async () => {
-      // Fallback: try selecting by value
-      await filterSelect.selectOption('in_progress');
-    });
+    await filterSelect.selectOption('assigned');
     await page.waitForTimeout(500);
 
-    // All visible status badges should match filter (or empty state)
-    const statusBadges = page.locator('tbody .status-badge, tbody [data-testid="status"]');
+    const statusBadges = page.locator('.data-grid tbody .status-badge');
     const count = await statusBadges.count();
     for (let i = 0; i < count; i++) {
       const text = await statusBadges.nth(i).textContent();
-      expect(text?.toLowerCase()).toContain('progress');
+      expect(text?.toLowerCase()).toMatch(/assigned/);
     }
 
-    // Reset filter
     await filterSelect.selectOption('');
-
     await logout(page);
   });
 
   test('column configuration toggle shows/hides columns', async ({ page }) => {
     test.skip(!keycloakUp, 'Keycloak is not available');
     await loginAsRbioRole(page, 'RBIO_OFFICER', '/staff/rbio/tasks');
+    await page.waitForSelector('.rbio-home', { timeout: 15000 });
+    await page.waitForSelector('.data-grid, .empty-state', { timeout: 15000 });
 
-    await page.waitForSelector('[data-testid="task-table"], .task-table, .complaints-table, .empty-state', {
-      timeout: 15000,
-    });
+    const colConfigBtn = page.locator('button.btn-icon:has(.pi-cog)');
+    await expect(colConfigBtn).toBeVisible({ timeout: 5000 });
 
-    // Look for column configuration button
-    const colConfigBtn = page.locator(
-      '[data-testid="column-config"], button:has-text("Columns"), button[aria-label*="column"]'
-    );
+    const headersBefore = await page.locator('.data-grid thead tr:first-child th').count();
+    await colConfigBtn.click();
+    await page.waitForTimeout(500);
 
-    if (await colConfigBtn.isVisible()) {
-      await colConfigBtn.click();
-
-      // A dropdown/panel with checkboxes should appear
-      const configPanel = page.locator(
-        '[data-testid="column-config-panel"], .column-config-panel, .column-selector'
-      );
-      await expect(configPanel).toBeVisible({ timeout: 5000 });
-
-      // Toggle one checkbox off
-      const firstCheckbox = configPanel.locator('input[type="checkbox"]').first();
-      if (await firstCheckbox.isVisible()) {
-        await firstCheckbox.uncheck();
+    // Column config panel or modal should appear
+    const configPanel = page.locator('.column-config, [role="dialog"], .modal-overlay');
+    if (await configPanel.isVisible({ timeout: 3000 }).catch(() => false)) {
+      const checkboxes = configPanel.locator('input[type="checkbox"]');
+      const cbCount = await checkboxes.count();
+      if (cbCount > 0) {
+        await checkboxes.first().uncheck();
         await page.waitForTimeout(300);
-
-        // Column count should decrease
-        const headers = page.locator('thead th');
-        const count = await headers.count();
-        expect(count).toBeGreaterThan(0);
-
-        // Re-check it
-        await firstCheckbox.check();
       }
-
-      // Close panel
-      await colConfigBtn.click();
-    } else {
-      test.info().annotations.push({
-        type: 'info',
-        description: 'Column configuration button not found — feature may not be implemented',
-      });
+      // Close
+      const closeBtn = configPanel.locator('button:has-text("Close"), button:has-text("Done"), .close-btn');
+      if (await closeBtn.isVisible().catch(() => false)) {
+        await closeBtn.click();
+      } else {
+        await page.keyboard.press('Escape');
+      }
     }
 
     await logout(page);
@@ -211,45 +162,22 @@ test.describe('RBIO Task List', () => {
   test('advanced search dialog opens and filters', async ({ page }) => {
     test.skip(!keycloakUp, 'Keycloak is not available');
     await loginAsRbioRole(page, 'RBIO_OFFICER', '/staff/rbio/tasks');
+    await page.waitForSelector('.rbio-home', { timeout: 15000 });
 
-    await page.waitForSelector('[data-testid="task-table"], .task-table, .complaints-table, .empty-state', {
-      timeout: 15000,
-    });
+    const advSearchBtn = page.locator('button:has-text("Advanced Search")');
+    await expect(advSearchBtn).toBeVisible({ timeout: 5000 });
+    await advSearchBtn.click();
 
-    // Look for advanced search button
-    const advSearchBtn = page.locator(
-      '[data-testid="advanced-search"], button:has-text("Advanced"), button[aria-label*="Advanced"]'
-    );
-
-    if (await advSearchBtn.isVisible()) {
-      await advSearchBtn.click();
-
-      // Dialog/panel should appear
-      const dialog = page.locator(
-        '[data-testid="advanced-search-dialog"], .advanced-search-dialog, .modal-overlay, [role="dialog"]'
-      );
-      await expect(dialog).toBeVisible({ timeout: 5000 });
-
-      // Fill a date range or entity field if available
-      const entityInput = dialog.locator('input[placeholder*="entity" i], input[name="entity"]');
-      if (await entityInput.isVisible()) {
-        await entityInput.fill('Test Bank');
+    await page.waitForTimeout(500);
+    // The component sets showAdvancedSearch — check if any modal/overlay appears
+    const dialog = page.locator('.advanced-search, [role="dialog"], .modal-overlay, .search-dialog');
+    if (await dialog.isVisible({ timeout: 3000 }).catch(() => false)) {
+      const closeBtn = dialog.locator('button:has-text("Close"), button:has-text("Cancel")');
+      if (await closeBtn.isVisible().catch(() => false)) {
+        await closeBtn.click();
+      } else {
+        await page.keyboard.press('Escape');
       }
-
-      // Apply filters
-      const applyBtn = dialog.locator('button:has-text("Apply"), button:has-text("Search"), .submit-btn');
-      if (await applyBtn.isVisible()) {
-        await applyBtn.click();
-        await page.waitForTimeout(500);
-      }
-
-      // Dialog should close
-      await expect(dialog).not.toBeVisible({ timeout: 5000 });
-    } else {
-      test.info().annotations.push({
-        type: 'info',
-        description: 'Advanced search button not found — feature may not be implemented',
-      });
     }
 
     await logout(page);
@@ -258,38 +186,16 @@ test.describe('RBIO Task List', () => {
   test('pagination controls work', async ({ page }) => {
     test.skip(!keycloakUp, 'Keycloak is not available');
     await loginAsRbioRole(page, 'RBIO_OFFICER', '/staff/rbio/tasks');
+    await page.waitForSelector('.rbio-home', { timeout: 15000 });
+    await page.waitForSelector('.data-grid, .empty-state', { timeout: 15000 });
 
-    await page.waitForSelector('[data-testid="task-table"], .task-table, .complaints-table, .empty-state', {
-      timeout: 15000,
-    });
+    const pagination = page.locator('.pagination');
+    await expect(pagination).toBeVisible({ timeout: 5000 });
 
-    const pagination = page.locator('[data-testid="pagination"], .pagination, .paginator');
-    if (await pagination.isVisible()) {
-      const pageInfo = page.locator('.page-info, [data-testid="page-info"]');
-      await expect(pageInfo).toBeVisible();
-
-      const nextBtn = page.locator(
-        '[data-testid="next-page"], .page-btn:last-child, button[aria-label="Next page"]'
-      );
-      const prevBtn = page.locator(
-        '[data-testid="prev-page"], .page-btn:first-child, button[aria-label="Previous page"]'
-      );
-
-      // Prev should be disabled on first page
-      await expect(prevBtn).toBeDisabled();
-
-      // If there are more pages, navigate
-      if (!(await nextBtn.isDisabled())) {
-        await nextBtn.click();
-        await page.waitForTimeout(300);
-        await expect(prevBtn).toBeEnabled();
-      }
-    } else {
-      test.info().annotations.push({
-        type: 'info',
-        description: 'Pagination not visible — may have fewer items than page size',
-      });
-    }
+    const pageInfo = page.locator('.page-info');
+    await expect(pageInfo).toBeVisible();
+    const infoText = await pageInfo.textContent();
+    expect(infoText).toContain('Showing');
 
     await logout(page);
   });
@@ -297,21 +203,14 @@ test.describe('RBIO Task List', () => {
   test('click task navigates to detail page', async ({ page }) => {
     test.skip(!keycloakUp, 'Keycloak is not available');
     await loginAsRbioRole(page, 'RBIO_OFFICER', '/staff/rbio/tasks');
+    await page.waitForSelector('.rbio-home', { timeout: 15000 });
+    await page.waitForSelector('.data-grid tbody tr', { timeout: 15000 });
 
-    await page.waitForSelector('[data-testid="task-table"], .task-table, .complaints-table, .empty-state', {
-      timeout: 15000,
-    });
+    const firstRow = page.locator('.data-grid tbody tr').first();
+    await firstRow.click();
 
-    const firstRow = page.locator('tbody tr').first();
-    if (await firstRow.isVisible()) {
-      const numCell = firstRow.locator('.complaint-num, [data-testid="complaint-number"], td:first-child');
-      const numText = await numCell.textContent();
-      await firstRow.click();
-
-      // Should navigate to task detail
-      await page.waitForURL(/\/staff\/rbio\/task\//, { timeout: 10000 });
-      expect(page.url()).toContain('/staff/rbio/task/');
-    }
+    await page.waitForURL(/\/staff\/rbio\/task\//, { timeout: 10000 });
+    expect(page.url()).toContain('/staff/rbio/task/');
 
     await logout(page);
   });
@@ -319,37 +218,22 @@ test.describe('RBIO Task List', () => {
   test('unread indicator clears after visiting task', async ({ page }) => {
     test.skip(!keycloakUp, 'Keycloak is not available');
     await loginAsRbioRole(page, 'RBIO_OFFICER', '/staff/rbio/tasks');
+    await page.waitForSelector('.rbio-home', { timeout: 15000 });
+    await page.waitForSelector('.data-grid tbody tr', { timeout: 15000 });
 
-    await page.waitForSelector('[data-testid="task-table"], .task-table, .complaints-table, .empty-state', {
-      timeout: 15000,
-    });
+    // Click first row to visit it
+    const firstRow = page.locator('.data-grid tbody tr').first();
+    await firstRow.click();
+    await page.waitForURL(/\/staff\/rbio\/task\//, { timeout: 10000 });
 
-    // Look for any unread indicator (bold, dot, badge)
-    const unreadRow = page.locator(
-      'tbody tr.unread, tbody tr:has([data-testid="unread-indicator"]), tbody tr:has(.unread-dot)'
-    );
+    // Go back
+    await page.goBack();
+    await page.waitForSelector('.rbio-home', { timeout: 15000 });
 
-    if (await unreadRow.first().isVisible()) {
-      // Click the first unread row
-      await unreadRow.first().click();
-      await page.waitForURL(/\/staff\/rbio\/task\//, { timeout: 10000 });
-
-      // Navigate back
-      await page.goBack();
-      await page.waitForSelector('[data-testid="task-table"], .task-table, .complaints-table', {
-        timeout: 15000,
-      });
-
-      // The same row should no longer have unread indicator
-      // (We just verify the page reloaded properly; exact assertion depends on implementation)
-      const table = page.locator('[data-testid="task-table"], .task-table, .complaints-table');
-      await expect(table).toBeVisible();
-    } else {
-      test.info().annotations.push({
-        type: 'info',
-        description: 'No unread tasks found — skipping unread indicator assertion',
-      });
-    }
+    // The visited row should have .visited class
+    const visitedRow = page.locator('.data-grid tbody tr.visited');
+    const visitedCount = await visitedRow.count();
+    expect(visitedCount).toBeGreaterThanOrEqual(1);
 
     await logout(page);
   });

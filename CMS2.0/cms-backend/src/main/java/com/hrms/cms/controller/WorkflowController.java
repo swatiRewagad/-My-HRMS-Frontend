@@ -244,6 +244,47 @@ public class WorkflowController {
         return buildResponse(true, "Complaint created successfully", data);
     }
 
+    @PostMapping("/rbio/create-complaint")
+    @RbioRoleGuard(roles = {"RBIO_OFFICER", "RBIO_SUPERVISOR", "RBIO_ADMIN"})
+    public ResponseEntity<Map<String, Object>> rbioCreateComplaint(
+            @RequestBody Map<String, String> request) {
+        String number = "CMP-" + java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd").format(java.time.LocalDate.now())
+                + "-" + (100000 + new Random().nextInt(900000));
+
+        Complaint c = new Complaint();
+        c.setComplaintNumber(number);
+        c.setComplainantName(request.getOrDefault("complainantName", ""));
+        c.setComplainantEmail(request.getOrDefault("complainantEmail", ""));
+        c.setComplainantPhone(request.getOrDefault("complainantPhone", ""));
+        c.setComplainantAddress(request.getOrDefault("complainantAddress", ""));
+        c.setSubject(request.getOrDefault("subject", ""));
+        c.setDescription(request.getOrDefault("description", ""));
+        c.setEntityCode(request.getOrDefault("entityName", ""));
+        c.setPriority(request.getOrDefault("priority", "MEDIUM"));
+        c.setFilingType(request.getOrDefault("filingType", "ONLINE"));
+        c.setDepartment("RBIO");
+        c.setAssignedRole("RBIO_OFFICER");
+        c.setAssignedOfficer(request.getOrDefault("createdBy", "rbio_officer_001"));
+        c.setStatus("assigned");
+        c.setWorkflowStage("CREATED");
+        c.setReopenCount(0);
+
+        rbioSlaService.applyStageSla(c, "OFFICER");
+
+        complaintRepository.save(c);
+
+        complaintService.addTimeline(c.getId(), "CREATED", request.getOrDefault("createdBy", "system"),
+                "Complaint created for RBIO processing", "new", "assigned");
+
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("complaintNumber", number);
+        data.put("complaintId", c.getId());
+        data.put("status", "assigned");
+        data.put("department", "RBIO");
+
+        return buildResponse(true, "RBIO Complaint created successfully", data);
+    }
+
     @GetMapping("/crpc/transfers")
     public ResponseEntity<Map<String, Object>> getCrpcTransfers() {
         List<Complaint> transfers = complaintRepository.findByDepartmentAndStatusInOrderByCreatedAtDesc(
