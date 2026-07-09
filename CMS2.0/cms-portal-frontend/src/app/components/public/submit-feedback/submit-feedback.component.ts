@@ -28,6 +28,27 @@ export class SubmitFeedbackComponent {
   suggestions = '';
   error = '';
 
+  // FR-G-038: Full questionnaire (UST109)
+  easeOfFiling = 0;
+  grievanceRedressTime = 0;
+  sourceOfInformation = '';
+  sourceOtherText = '';
+  cmsPortalAwareness = '';
+  sourceOptions = [
+    'RBI Website',
+    'Bank/NBFC Branch',
+    'News/Media',
+    'Social Media',
+    'Word of Mouth',
+    'Government Portal',
+    'Others',
+  ];
+  awarenessOptions = [
+    'Very Aware',
+    'Somewhat Aware',
+    'Not Aware (first time user)',
+  ];
+
   // FR-G-031: Rating labels
   ratingLabels = ['', 'Very Poor', 'Poor', 'Average', 'Good', 'Excellent'];
 
@@ -43,6 +64,30 @@ export class SubmitFeedbackComponent {
     }
     if (this.overallRating === 0) {
       this.error = 'Please provide an overall rating.';
+      return;
+    }
+    if (this.easeOfFiling === 0) {
+      this.error = 'Please rate the ease of filing.';
+      return;
+    }
+    if (this.grievanceRedressTime === 0) {
+      this.error = 'Please rate the grievance redress time.';
+      return;
+    }
+    if (!this.sourceOfInformation) {
+      this.error = 'Please select source of information.';
+      return;
+    }
+    if (this.sourceOfInformation === 'Others' && !this.sourceOtherText.trim()) {
+      this.error = 'Please specify the source.';
+      return;
+    }
+    if (!this.cmsPortalAwareness) {
+      this.error = 'Please select CMS Portal awareness level.';
+      return;
+    }
+    if (this.feedbackText.length > 500) {
+      this.error = 'Feedback must be within 500 characters.';
       return;
     }
 

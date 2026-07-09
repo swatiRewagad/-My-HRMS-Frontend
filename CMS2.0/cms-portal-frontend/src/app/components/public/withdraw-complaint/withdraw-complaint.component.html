@@ -61,6 +61,33 @@
         </div>
       }
 
+      <!-- FR-G-036: Supporting documents (optional) -->
+      <div class="form-group">
+        <label>Supporting Documents <span class="optional">(Optional)</span></label>
+        <div class="file-upload-area">
+          <input type="file" id="withdrawDocs" multiple (change)="onWithdrawalFilesSelected($event)"
+                 accept=".pdf,.jpg,.jpeg,.png" class="file-input-hidden">
+          <label for="withdrawDocs" class="file-upload-label">
+            <i class="pi pi-cloud-upload"></i>
+            <span>Upload supporting documents</span>
+            <small>PDF, JPG, PNG (Max 5MB each)</small>
+          </label>
+        </div>
+        @if (fileUploadError) {
+          <div class="error-msg"><i class="pi pi-exclamation-circle"></i> {{ fileUploadError }}</div>
+        }
+        @if (withdrawalDocs.length > 0) {
+          <div class="file-list">
+            @for (f of withdrawalDocs; track $index; let i = $index) {
+              <div class="file-chip">
+                <i class="pi pi-file"></i> {{ f.name }}
+                <button class="remove-file" (click)="removeWithdrawalDoc(i)" type="button"><i class="pi pi-times"></i></button>
+              </div>
+            }
+          </div>
+        }
+      </div>
+
       @if (error) {
         <div class="error-msg"><i class="pi pi-exclamation-circle"></i> {{ error }}</div>
       }

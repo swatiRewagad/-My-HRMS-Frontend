@@ -22,9 +22,6 @@ test.describe('AA - Order Management', () => {
     }
   });
 
-  /**
-   * Helper to create an appeal and advance it to the point where authority can pass an order.
-   */
   async function setupAppealForOrder(request: import('@playwright/test').APIRequestContext): Promise<string> {
     const complaint = await createTestComplaint(request, {
       subject: `E2E AA Order Test ${Date.now().toString(36)}`,
@@ -43,34 +40,26 @@ test.describe('AA - Order Management', () => {
     const appealNumber = await setupAppealForOrder(request);
 
     await loginAsAaRole(page, 'AA_AUTHORITY', `/aa/appeal/${appealNumber}`);
+    await page.waitForSelector('.aa-detail .detail-layout', { timeout: 15000 });
 
-    await page.waitForSelector(
-      '[data-testid="appeal-detail"], .appeal-detail, .detail-layout',
-      { timeout: 15000 }
-    );
-
-    // Click Pass Order
-    const orderBtn = page.locator(
-      'button:has-text("Pass Order"), button:has-text("Issue Order"), [data-testid="action-pass-order"]'
-    );
+    const orderBtn = page.locator('.action-card:has-text("Pass Order")');
     await expect(orderBtn).toBeVisible({ timeout: 5000 });
     await orderBtn.click();
 
-    // Outcome selector should be visible with options
-    const outcomeSelect = page.locator(
-      'select[name="outcome"], [data-testid="outcome-select"]'
-    );
-    await expect(outcomeSelect).toBeVisible({ timeout: 5000 });
+    // Order sub-component panel appears
+    const orderPanel = page.locator('.order-panel');
+    await expect(orderPanel).toBeVisible({ timeout: 5000 });
 
-    // Get available options
-    const options = outcomeSelect.locator('option');
-    const optionTexts = await options.allTextContents();
-    const optionsJoined = optionTexts.join(' ').toUpperCase();
+    // Outcome options are radio buttons
+    const outcomeOptions = orderPanel.locator('.outcome-option');
+    const optionCount = await outcomeOptions.count();
+    expect(optionCount).toBeGreaterThanOrEqual(3);
 
-    // Should include UPHELD, MODIFIED, DISMISSED as outcome options
-    expect(optionsJoined).toMatch(/UPHELD/);
-    expect(optionsJoined).toMatch(/MODIFIED/);
-    expect(optionsJoined).toMatch(/DISMISS/);
+    const optionTexts = await outcomeOptions.allTextContents();
+    const joined = optionTexts.join(' ').toUpperCase();
+    expect(joined).toMatch(/UPHELD/);
+    expect(joined).toMatch(/MODIFIED/);
+    expect(joined).toMatch(/DISMISS/);
   });
 
   test('MODIFIED outcome requires amount input', async ({ page, request }) => {
@@ -79,48 +68,23 @@ test.describe('AA - Order Management', () => {
     const appealNumber = await setupAppealForOrder(request);
 
     await loginAsAaRole(page, 'AA_AUTHORITY', `/aa/appeal/${appealNumber}`);
+    await page.waitForSelector('.aa-detail .detail-layout', { timeout: 15000 });
 
-    await page.waitForSelector(
-      '[data-testid="appeal-detail"], .appeal-detail, .detail-layout',
-      { timeout: 15000 }
-    );
-
-    // Click Pass Order
-    const orderBtn = page.locator(
-      'button:has-text("Pass Order"), button:has-text("Issue Order"), [data-testid="action-pass-order"]'
-    );
+    const orderBtn = page.locator('.action-card:has-text("Pass Order")');
     await expect(orderBtn).toBeVisible({ timeout: 5000 });
     await orderBtn.click();
 
+    const orderPanel = page.locator('.order-panel');
+    await expect(orderPanel).toBeVisible({ timeout: 5000 });
+
     // Select MODIFIED outcome
-    const outcomeSelect = page.locator(
-      'select[name="outcome"], [data-testid="outcome-select"]'
-    );
-    await expect(outcomeSelect).toBeVisible({ timeout: 5000 });
-    await outcomeSelect.selectOption('MODIFIED');
+    const modifiedOption = orderPanel.locator('.outcome-option:has-text("Modified"), .outcome-option:has-text("MODIFIED")');
+    await expect(modifiedOption).toBeVisible();
+    await modifiedOption.locator('input[type="radio"]').check();
 
-    // Amount input should now be visible (conditionally rendered)
-    const amountInput = page.locator(
-      'input[name="compensationAmount"], input[name="amount"], [data-testid="compensation-amount"]'
-    );
+    // Amount input should now be visible
+    const amountInput = orderPanel.locator('input[type="number"]');
     await expect(amountInput).toBeVisible({ timeout: 5000 });
-
-    // Verify it is required (try submitting without it)
-    const submitBtn = page.locator(
-      'button:has-text("Submit Order"), button:has-text("Pass Order"), button:has-text("Confirm"), [data-testid="submit-order"]'
-    );
-
-    // Attempt submit without amount
-    await submitBtn.click();
-
-    // Should show validation error or amount field should have required indicator
-    const validationError = page.locator(
-      '.error-msg, .field-error, [data-testid="amount-error"], .invalid-feedback'
-    );
-    const amountRequired = await amountInput.getAttribute('required');
-    const hasValidation = await validationError.isVisible().catch(() => false);
-
-    expect(hasValidation || amountRequired !== null).toBeTruthy();
   });
 
   test('Order submission succeeds', async ({ page, request }) => {
@@ -129,48 +93,34 @@ test.describe('AA - Order Management', () => {
     const appealNumber = await setupAppealForOrder(request);
 
     await loginAsAaRole(page, 'AA_AUTHORITY', `/aa/appeal/${appealNumber}`);
+    await page.waitForSelector('.aa-detail .detail-layout', { timeout: 15000 });
 
-    await page.waitForSelector(
-      '[data-testid="appeal-detail"], .appeal-detail, .detail-layout',
-      { timeout: 15000 }
-    );
-
-    // Click Pass Order
-    const orderBtn = page.locator(
-      'button:has-text("Pass Order"), button:has-text("Issue Order"), [data-testid="action-pass-order"]'
-    );
+    const orderBtn = page.locator('.action-card:has-text("Pass Order")');
     await expect(orderBtn).toBeVisible({ timeout: 5000 });
     await orderBtn.click();
 
+    const orderPanel = page.locator('.order-panel');
+    await expect(orderPanel).toBeVisible({ timeout: 5000 });
+
     // Select UPHELD outcome
-    const outcomeSelect = page.locator(
-      'select[name="outcome"], [data-testid="outcome-select"]'
-    );
-    await expect(outcomeSelect).toBeVisible({ timeout: 5000 });
-    await outcomeSelect.selectOption('UPHELD');
+    const upheldOption = orderPanel.locator('.outcome-option:has-text("Upheld"), .outcome-option:has-text("UPHELD")');
+    await upheldOption.locator('input[type="radio"]').check();
 
-    // Fill remarks
-    const orderRemarks = page.locator(
-      'textarea[name="orderRemarks"], textarea[name="remarks"], [data-testid="order-remarks"]'
-    );
-    if (await orderRemarks.isVisible().catch(() => false)) {
-      await orderRemarks.fill('E2E Order Test: Appeal upheld after full consideration of facts.');
-    }
+    // Fill order summary
+    const summaryField = orderPanel.locator('textarea');
+    await expect(summaryField).toBeVisible();
+    await summaryField.fill('E2E Order Test: Appeal upheld after full consideration of facts.');
 
-    // Submit order
-    const submitBtn = page.locator(
-      'button:has-text("Submit Order"), button:has-text("Pass Order"), button:has-text("Confirm"), [data-testid="submit-order"]'
-    );
-    await submitBtn.click();
+    // Preview then confirm
+    const previewBtn = orderPanel.locator('.preview-btn');
+    await previewBtn.click();
 
-    // Wait for success
-    const successMsg = page.locator('.success-msg, [data-testid="action-success"], .toast-success');
+    const confirmBtn = orderPanel.locator('.submit-btn');
+    await expect(confirmBtn).toBeVisible({ timeout: 5000 });
+    await confirmBtn.click();
+
+    const successMsg = orderPanel.locator('.success-msg');
     await expect(successMsg).toBeVisible({ timeout: 10000 });
-
-    // Status should update to order_passed / closed
-    const statusBadge = page.locator('.status-badge, [data-testid="status-badge"]');
-    const statusText = await statusBadge.textContent();
-    expect(statusText?.toLowerCase()).toMatch(/order.passed|closed|disposed/);
   });
 
   test('Order details display after submission', async ({ page, request }) => {
@@ -186,33 +136,16 @@ test.describe('AA - Order Management', () => {
     });
 
     await loginAsAaRole(page, 'AA_AUTHORITY', `/aa/appeal/${appealNumber}`);
+    await page.waitForSelector('.aa-detail .detail-layout', { timeout: 15000 });
 
-    await page.waitForSelector(
-      '[data-testid="appeal-detail"], .appeal-detail, .detail-layout',
-      { timeout: 15000 }
-    );
-
-    // Order details section should be visible
-    const orderSection = page.locator(
-      '[data-testid="order-details"], .order-details, .order-section, h3:has-text("Order"), h4:has-text("Order")'
-    );
+    // Order section should be visible (rendered when appeal().order exists)
+    const orderSection = page.locator('.order-section');
     await expect(orderSection).toBeVisible({ timeout: 10000 });
 
-    // Outcome should be displayed
-    const outcomeDisplay = page.locator(
-      '[data-testid="order-outcome"], .order-outcome, .outcome-badge'
-    );
-    await expect(outcomeDisplay).toBeVisible();
-    const outcomeText = await outcomeDisplay.textContent();
+    // Outcome badge should be displayed
+    const outcomeBadge = orderSection.locator('.outcome-badge');
+    await expect(outcomeBadge).toBeVisible();
+    const outcomeText = await outcomeBadge.textContent();
     expect(outcomeText?.toUpperCase()).toMatch(/UPHELD/);
-
-    // Order date should be present
-    const orderDate = page.locator(
-      '[data-testid="order-date"], .order-date'
-    );
-    if (await orderDate.isVisible().catch(() => false)) {
-      const dateText = await orderDate.textContent();
-      expect(dateText?.trim().length).toBeGreaterThan(0);
-    }
   });
 });

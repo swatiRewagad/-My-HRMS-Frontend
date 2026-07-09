@@ -1,0 +1,97 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: cms-java-service-pipeline
+  namespace: rbi-cms
+spec:
+  params:
+    - name: SERVICE_NAME
+      type: string
+      description: Name of the microservice (e.g., cms-backend, cms-rules-service)
+    - name: GIT_URL
+      type: string
+      description: Git repository URL
+    - name: GIT_REVISION
+      type: string
+      default: main
+    - name: IMAGE_TAG
+      type: string
+      default: latest
+  workspaces:
+    - name: shared-workspace
+    - name: maven-settings
+  tasks:
+    - name: fetch-source
+      taskRef:
+        name: git-clone
+        kind: ClusterTask
+      workspaces:
+        - name: output
+          workspace: shared-workspace
+      params:
+        - name: url
+          value: $(params.GIT_URL)
+        - name: revision
+          value: $(params.GIT_REVISION)
+
+    - name: run-tests
+      taskRef:
+        name: maven
+        kind: ClusterTask
+      runAfter:
+        - fetch-source
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+        - name: maven-settings
+          workspace: maven-settings
+      params:
+        - name: GOALS
+          value:
+            - clean
+            - test
+            - -DskipITs=false
+
+    - name: build-jar
+      taskRef:
+        name: maven
+        kind: ClusterTask
+      runAfter:
+        - run-tests
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+        - name: maven-settings
+          workspace: maven-settings
+      params:
+        - name: GOALS
+          value:
+            - package
+            - -DskipTests
+
+    - name: build-push-image
+      taskRef:
+        name: buildah
+        kind: ClusterTask
+      runAfter:
+        - build-jar
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+      params:
+        - name: IMAGE
+          value: image-registry.openshift-image-registry.svc:5000/rbi-cms/$(params.SERVICE_NAME):$(params.IMAGE_TAG)
+        - name: DOCKERFILE
+          value: ./Dockerfile
+
+    - name: deploy
+      taskRef:
+        name: openshift-client
+        kind: ClusterTask
+      runAfter:
+        - build-push-image
+      params:
+        - name: SCRIPT
+          value: |
+            oc rollout restart deployment/$(params.SERVICE_NAME) -n rbi-cms
+            oc rollout status deployment/$(params.SERVICE_NAME) -n rbi-cms --timeout=300s

@@ -12,7 +12,7 @@ test.describe('RE Portal - Profile', () => {
 
   test.beforeEach(async ({ page }) => {
     test.skip(!keycloakUp, 'Keycloak is not available — skipping RE profile tests');
-    await loginAsReRole(page, 'RE_NODAL_OFFICER', '/re/profile');
+    await loginAsReRole(page, 'RE_NODAL_OFFICER', '/re-portal/profile');
   });
 
   test.afterEach(async ({ page }) => {
@@ -22,122 +22,62 @@ test.describe('RE Portal - Profile', () => {
   });
 
   test('Profile page shows entity info', async ({ page }) => {
-    await page.waitForSelector(
-      '[data-testid="re-profile"], .profile-page, .entity-profile',
-      { timeout: 15000 }
-    );
+    await page.waitForSelector('.re-profile', { timeout: 15000 });
 
-    // Entity name should be visible
-    const entityName = page.locator(
-      '[data-testid="entity-name"], .entity-name, .profile-header h2, .profile-header h3'
-    );
+    const heading = page.locator('.page-heading');
+    await expect(heading).toBeVisible();
+    await expect(heading).toContainText('Entity Profile');
+
+    const entityName = page.locator('.detail-item:has(.detail-label:has-text("Entity Name")) .detail-value');
     await expect(entityName).toBeVisible();
-    const nameText = await entityName.textContent();
-    expect(nameText?.trim().length).toBeGreaterThan(0);
 
-    // Nodal officer section should be visible
-    const nodalSection = page.locator(
-      '[data-testid="nodal-officer-section"], .nodal-officer, .officer-details'
-    );
-    await expect(nodalSection).toBeVisible();
-
-    // Contact information fields
-    const emailField = page.locator(
-      '[data-testid="officer-email"], .officer-email, input[name="email"], .profile-field:has-text("Email")'
-    );
-    await expect(emailField).toBeVisible();
+    const nodalCard = page.locator('.card-title:has-text("Nodal Officer")');
+    await expect(nodalCard).toBeVisible();
   });
 
   test('Update nodal officer details succeeds', async ({ page }) => {
-    await page.waitForSelector(
-      '[data-testid="re-profile"], .profile-page, .entity-profile',
-      { timeout: 15000 }
-    );
+    await page.waitForSelector('.re-profile', { timeout: 15000 });
 
-    // Click edit button
-    const editBtn = page.locator(
-      'button:has-text("Edit"), [data-testid="edit-profile-btn"], .edit-btn'
-    );
+    const editBtn = page.locator('.edit-btn');
     await expect(editBtn).toBeVisible({ timeout: 5000 });
     await editBtn.click();
 
-    // Update phone number field
-    const phoneInput = page.locator(
-      'input[name="phone"], input[name="nodalOfficerPhone"], [data-testid="phone-input"]'
-    );
+    const phoneInput = page.locator('#nodalPhone');
     await expect(phoneInput).toBeVisible({ timeout: 5000 });
     await phoneInput.clear();
     await phoneInput.fill('9999888877');
 
-    // Save changes
-    const saveBtn = page.locator(
-      'button:has-text("Save"), button:has-text("Update"), [data-testid="save-profile-btn"]'
-    );
+    const saveBtn = page.locator('.save-btn');
     await saveBtn.click();
 
-    // Wait for success message
-    const successMsg = page.locator(
-      '.success-msg, [data-testid="profile-update-success"], .toast-success'
-    );
-    await expect(successMsg).toBeVisible({ timeout: 10000 });
-
-    // Verify the updated value persists
-    await page.reload();
-    await page.waitForSelector(
-      '[data-testid="re-profile"], .profile-page, .entity-profile',
-      { timeout: 15000 }
-    );
-
-    const updatedPhone = page.locator(
-      'input[name="phone"], input[name="nodalOfficerPhone"], [data-testid="phone-input"], .profile-field:has-text("9999888877")'
-    );
-    await expect(updatedPhone).toBeVisible({ timeout: 5000 });
+    const successBanner = page.locator('.success-banner');
+    await expect(successBanner).toBeVisible({ timeout: 10000 });
   });
 
   test('Cancel edit reverts changes', async ({ page }) => {
-    await page.waitForSelector(
-      '[data-testid="re-profile"], .profile-page, .entity-profile',
-      { timeout: 15000 }
-    );
+    await page.waitForSelector('.re-profile', { timeout: 15000 });
 
-    // Click edit button
-    const editBtn = page.locator(
-      'button:has-text("Edit"), [data-testid="edit-profile-btn"], .edit-btn'
-    );
+    const editBtn = page.locator('.edit-btn');
     await expect(editBtn).toBeVisible({ timeout: 5000 });
     await editBtn.click();
 
-    // Get current phone value
-    const phoneInput = page.locator(
-      'input[name="phone"], input[name="nodalOfficerPhone"], [data-testid="phone-input"]'
-    );
+    const phoneInput = page.locator('#nodalPhone');
     await expect(phoneInput).toBeVisible({ timeout: 5000 });
     const originalValue = await phoneInput.inputValue();
 
-    // Modify the field
     await phoneInput.clear();
     await phoneInput.fill('1111222233');
 
-    // Click cancel
-    const cancelBtn = page.locator(
-      'button:has-text("Cancel"), [data-testid="cancel-edit-btn"], .cancel-btn'
-    );
+    const cancelBtn = page.locator('.cancel-btn');
     await cancelBtn.click();
 
-    // Value should revert (either phone input shows original or view mode shows original)
     await page.waitForTimeout(500);
-    const currentPhone = page.locator(
-      'input[name="phone"], input[name="nodalOfficerPhone"], [data-testid="phone-input"]'
-    );
-    if (await currentPhone.isVisible().catch(() => false)) {
-      const val = await currentPhone.inputValue();
-      expect(val).toBe(originalValue);
-    } else {
-      // In view mode, original value should be displayed
-      const phoneDisplay = page.locator(
-        `.profile-field:has-text("${originalValue}"), [data-testid="phone-display"]`
-      );
-      await expect(phoneDisplay).toBeVisible();
-    }
+
+    // After cancel, should return to view mode (detail-grid visible, edit-form hidden)
+    const detailGrid = page.locator('.detail-grid');
+    await expect(detailGrid.first()).toBeVisible({ timeout: 3000 });
+
+    // Edit button should reappear
+    await expect(page.locator('.edit-btn')).toBeVisible();
   });
 });

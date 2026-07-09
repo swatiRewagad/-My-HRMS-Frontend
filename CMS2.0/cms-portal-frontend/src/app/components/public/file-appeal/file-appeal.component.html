@@ -97,6 +97,37 @@
               </div>
             </div>
           </div>
+
+          <!-- FR-G-041 / UST112: Speaking Order (read-only) -->
+          @if (result.complaintSummary.speakingOrder || result.complaintSummary.closureReason) {
+            <div class="speaking-order-section">
+              <h4><i class="pi pi-file-pdf"></i> Speaking Order</h4>
+              <div class="speaking-order-content readonly-box">
+                <p>{{ result.complaintSummary.speakingOrder || result.complaintSummary.closureReason }}</p>
+              </div>
+            </div>
+          }
+
+          <!-- UST112: Complaint Details (read-only) -->
+          @if (result.complaintSummary.description) {
+            <div class="complaint-details-readonly">
+              <h4>Complaint Details</h4>
+              <div class="readonly-box">
+                <div class="detail-field">
+                  <label>Category</label>
+                  <span>{{ result.complaintSummary.category || 'N/A' }}</span>
+                </div>
+                <div class="detail-field">
+                  <label>Entity</label>
+                  <span>{{ result.complaintSummary.entityName || 'N/A' }}</span>
+                </div>
+                <div class="detail-field full-width">
+                  <label>Description</label>
+                  <span>{{ result.complaintSummary.description }}</span>
+                </div>
+              </div>
+            </div>
+          }
         }
       }
 
@@ -127,6 +158,21 @@
         <div class="classification-banner">
           <span class="classification-badge" [attr.data-classification]="classification()">{{ classification() }}</span>
           <span class="classification-note">Classification: {{ classification() === 'APPEAL' ? 'Appeal against Ombudsman decision' : 'Representation on non-disposal' }}</span>
+        </div>
+      }
+
+      <!-- FR-G-042 / UST114: Reason for delay (31-60 day window) -->
+      @if (isDelayedFiling()) {
+        <div class="delay-notice">
+          <i class="pi pi-exclamation-triangle"></i>
+          <p>Your appeal is being filed between 31 and 60 days after the decision. A reason for the delay is required.</p>
+        </div>
+        <div class="form-group">
+          <label>Reason for Delay <span class="required">*</span></label>
+          <textarea class="form-textarea" [(ngModel)]="reasonForDelay" name="reasonForDelay" rows="3"
+                    placeholder="Please explain the reason for the delay in filing this appeal..."
+                    maxlength="500"></textarea>
+          <span class="char-count">{{ reasonForDelay.length }}/500</span>
         </div>
       }
 

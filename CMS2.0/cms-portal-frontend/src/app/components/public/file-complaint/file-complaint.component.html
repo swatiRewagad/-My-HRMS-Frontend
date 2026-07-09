@@ -6,6 +6,9 @@
       @if (draftSaved()) {
         <span class="draft-badge"><i class="pi pi-check"></i> Draft Saved</span>
       }
+      @if (lastSavedAt()) {
+        <span class="last-saved-text">Last saved at {{ lastSavedAt() }}</span>
+      }
       <button class="btn-link" (click)="saveDraft()"><i class="pi pi-save"></i> Save Draft</button>
     </div>
   </div>
@@ -854,6 +857,22 @@
           <i class="pi pi-download"></i> Download Closure Letter
         </button>
         <button class="btn-secondary" (click)="goHome()">Go to Home</button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ══════ DUPLICATE DETECTION POPUP (FR-G-020) ══════ -->
+@if (showDuplicatePopup()) {
+  <div class="popup-overlay" role="dialog" aria-modal="true" aria-labelledby="dup-title">
+    <div class="popup-card">
+      <div class="popup-icon"><i class="pi pi-exclamation-triangle"></i></div>
+      <h3 id="dup-title">Duplicate Complaint Detected</h3>
+      <p class="popup-message">{{ duplicateMessage }}</p>
+      <p class="popup-note">A similar complaint already exists in our system. You may cancel and review, or proceed with a new submission.</p>
+      <div class="popup-actions">
+        <button class="btn-secondary" (click)="dismissDuplicatePopup()">Cancel Submission</button>
+        <button class="btn-primary" (click)="proceedDespiteDuplicate()">Proceed Anyway</button>
       </div>
     </div>
   </div>

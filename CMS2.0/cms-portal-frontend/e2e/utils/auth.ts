@@ -32,32 +32,32 @@ const ENV_MAP: Record<CepcRoleKey, { userEnv: string; passEnv: string; defaults:
   DO: {
     userEnv: 'CEPC_DO_USER',
     passEnv: 'CEPC_DO_PASS',
-    defaults: { username: 'cepc_do', password: 'cepc_do' },
+    defaults: { username: 'cepc_do_001', password: 'test123' },
   },
   REVIEWER: {
     userEnv: 'CEPC_REVIEWER_USER',
     passEnv: 'CEPC_REVIEWER_PASS',
-    defaults: { username: 'cepc_reviewer', password: 'cepc_reviewer' },
+    defaults: { username: 'cepc_reviewer_001', password: 'test123' },
   },
   INCHARGE: {
     userEnv: 'CEPC_INCHARGE_USER',
     passEnv: 'CEPC_INCHARGE_PASS',
-    defaults: { username: 'cepc_incharge', password: 'cepc_incharge' },
+    defaults: { username: 'cepc_incharge_001', password: 'test123' },
   },
   CA: {
     userEnv: 'CEPC_CA_USER',
     passEnv: 'CEPC_CA_PASS',
-    defaults: { username: 'cepc_ca', password: 'cepc_ca' },
+    defaults: { username: 'cepc_closing_001', password: 'test123' },
   },
   ADMIN: {
     userEnv: 'CEPC_ADMIN_USER',
     passEnv: 'CEPC_ADMIN_PASS',
-    defaults: { username: 'cepc_admin', password: 'cepc_admin' },
+    defaults: { username: 'cepc_admin_001', password: 'test123' },
   },
   CP: {
     userEnv: 'CEPC_CP_USER',
     passEnv: 'CEPC_CP_PASS',
-    defaults: { username: 'cepc_cp', password: 'cepc_cp' },
+    defaults: { username: 'cepc_contact_001', password: 'test123' },
   },
 };
 
@@ -67,6 +67,30 @@ function getCredentials(role: CepcRoleKey): Credentials {
     username: process.env[cfg.userEnv] || cfg.defaults.username,
     password: process.env[cfg.passEnv] || cfg.defaults.password,
   };
+}
+
+async function fillKeycloakForm(page: Page, creds: Credentials): Promise<void> {
+  await page.locator('#username').waitFor({ state: 'visible', timeout: 10000 });
+  await page.locator('#username').fill(creds.username);
+  await page.locator('#password').fill(creds.password);
+  await page.locator('#kc-login').click();
+}
+
+async function waitForAuthAndNavigate(page: Page, targetUrl: string): Promise<void> {
+  // Wait for redirect back to app (no longer on Keycloak)
+  await page.waitForFunction(() => !window.location.href.includes('/realms/'), { timeout: 15000 });
+  await page.waitForLoadState('networkidle');
+
+  // Give keycloak-js time to process the auth callback (code in hash → token exchange)
+  await page.waitForTimeout(3000);
+
+  // Navigate to clean target URL.
+  // With silentCheckSsoRedirectUri configured, check-sso uses a hidden iframe
+  // instead of a full page redirect, so this navigation is safe.
+  await page.goto(targetUrl, { waitUntil: 'networkidle', timeout: 30000 });
+
+  // Wait for the component to finish loading (auth + data)
+  await page.waitForTimeout(2000);
 }
 
 /**
@@ -108,40 +132,22 @@ export async function loginAsCepcRole(
 
   // Check if we were redirected to Keycloak login page
   if (currentUrl.includes('/realms/') || currentUrl.includes('/auth/')) {
-    // Fill Keycloak login form
-    const usernameInput = page.locator('#username');
-    const passwordInput = page.locator('#password');
-    const loginButton = page.locator('#kc-login');
+    await fillKeycloakForm(page, creds);
+  } else if (currentUrl.includes('/staff/login') || currentUrl.includes('/staff')) {
+    // The app's own staff login page — click SSO button to redirect to Keycloak
+    const loginBtn = page.locator('button:has-text("Sign in"), button:has-text("Login"), a:has-text("Sign in"), a:has-text("Login")');
+    await loginBtn.first().waitFor({ state: 'visible', timeout: 10000 });
+    await loginBtn.first().click();
+    await page.waitForTimeout(2000);
 
-    await usernameInput.waitFor({ state: 'visible', timeout: 10000 });
-    await usernameInput.fill(creds.username);
-    await passwordInput.fill(creds.password);
-    await loginButton.click();
-
-    // Wait for redirect back to app
-    await page.waitForURL(`**${targetUrl}*`, { timeout: 15000 });
-  } else if (currentUrl.includes('/staff/login')) {
-    // The app's own staff login page may trigger Keycloak
-    // Click the login button which initiates Keycloak redirect
-    const loginBtn = page.locator('button:has-text("Login"), a:has-text("Login")');
-    if (await loginBtn.isVisible()) {
-      await loginBtn.click();
-      await page.waitForTimeout(1000);
-
-      // Now handle Keycloak form if redirected
-      const afterUrl = page.url();
-      if (afterUrl.includes('/realms/') || afterUrl.includes('/auth/')) {
-        await page.locator('#username').fill(creds.username);
-        await page.locator('#password').fill(creds.password);
-        await page.locator('#kc-login').click();
-        await page.waitForURL(`**${targetUrl}*`, { timeout: 15000 });
-      }
+    // Now handle Keycloak form if redirected
+    const afterUrl = page.url();
+    if (afterUrl.includes('/realms/') || afterUrl.includes('/auth/')) {
+      await fillKeycloakForm(page, creds);
     }
   }
 
-  // At this point we should be on the target page
-  // Wait for the page to stabilize (signal-based rendering)
-  await page.waitForLoadState('networkidle');
+  await waitForAuthAndNavigate(page, targetUrl);
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -152,27 +158,27 @@ const RBIO_ENV_MAP: Record<RbioRoleKey, { userEnv: string; passEnv: string; defa
   RBIO_OFFICER: {
     userEnv: 'RBIO_OFFICER_USER',
     passEnv: 'RBIO_OFFICER_PASS',
-    defaults: { username: 'rbio.officer', password: 'test123' },
+    defaults: { username: 'rbio_officer_001', password: 'test123' },
   },
   RBIO_SUPERVISOR: {
     userEnv: 'RBIO_SUPERVISOR_USER',
     passEnv: 'RBIO_SUPERVISOR_PASS',
-    defaults: { username: 'rbio.supervisor', password: 'test123' },
+    defaults: { username: 'rbio_supervisor_001', password: 'test123' },
   },
   RBIO_CONCILIATOR: {
     userEnv: 'RBIO_CONCILIATOR_USER',
     passEnv: 'RBIO_CONCILIATOR_PASS',
-    defaults: { username: 'rbio.conciliator', password: 'test123' },
+    defaults: { username: 'rbio_conciliator_001', password: 'test123' },
   },
   RBIO_ADJUDICATOR: {
     userEnv: 'RBIO_ADJUDICATOR_USER',
     passEnv: 'RBIO_ADJUDICATOR_PASS',
-    defaults: { username: 'rbio.adjudicator', password: 'test123' },
+    defaults: { username: 'rbio_adjudicator_001', password: 'test123' },
   },
   RBIO_ADMIN: {
     userEnv: 'RBIO_ADMIN_USER',
     passEnv: 'RBIO_ADMIN_PASS',
-    defaults: { username: 'rbio.admin', password: 'test123' },
+    defaults: { username: 'admin_001', password: 'test123' },
   },
 };
 
@@ -206,39 +212,21 @@ export async function loginAsRbioRole(
 
   const currentUrl = page.url();
 
-  // Check if we were redirected to Keycloak login page
   if (currentUrl.includes('/realms/') || currentUrl.includes('/auth/')) {
-    // Fill Keycloak login form
-    const usernameInput = page.locator('#username');
-    const passwordInput = page.locator('#password');
-    const loginButton = page.locator('#kc-login');
+    await fillKeycloakForm(page, creds);
+  } else if (currentUrl.includes('/staff/login') || currentUrl.includes('/staff')) {
+    const loginBtn = page.locator('button:has-text("Sign in"), button:has-text("Login"), a:has-text("Sign in"), a:has-text("Login")');
+    await loginBtn.first().waitFor({ state: 'visible', timeout: 10000 });
+    await loginBtn.first().click();
+    await page.waitForTimeout(2000);
 
-    await usernameInput.waitFor({ state: 'visible', timeout: 10000 });
-    await usernameInput.fill(creds.username);
-    await passwordInput.fill(creds.password);
-    await loginButton.click();
-
-    // Wait for redirect back to app
-    await page.waitForURL(`**${targetUrl}*`, { timeout: 15000 });
-  } else if (currentUrl.includes('/staff/login')) {
-    // The app's own staff login page may trigger Keycloak
-    const loginBtn = page.locator('button:has-text("Login"), a:has-text("Login")');
-    if (await loginBtn.isVisible()) {
-      await loginBtn.click();
-      await page.waitForTimeout(1000);
-
-      const afterUrl = page.url();
-      if (afterUrl.includes('/realms/') || afterUrl.includes('/auth/')) {
-        await page.locator('#username').fill(creds.username);
-        await page.locator('#password').fill(creds.password);
-        await page.locator('#kc-login').click();
-        await page.waitForURL(`**${targetUrl}*`, { timeout: 15000 });
-      }
+    const afterUrl = page.url();
+    if (afterUrl.includes('/realms/') || afterUrl.includes('/auth/')) {
+      await fillKeycloakForm(page, creds);
     }
   }
 
-  // Wait for the page to stabilize
-  await page.waitForLoadState('networkidle');
+  await waitForAuthAndNavigate(page, targetUrl);
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -249,12 +237,12 @@ const RE_ENV_MAP: Record<ReRoleKey, { userEnv: string; passEnv: string; defaults
   RE_NODAL_OFFICER: {
     userEnv: 'RE_NODAL_USER',
     passEnv: 'RE_NODAL_PASS',
-    defaults: { username: 're.nodal', password: 'test123' },
+    defaults: { username: 're_nodal_001', password: 'test123' },
   },
   RE_PNO: {
     userEnv: 'RE_PNO_USER',
     passEnv: 'RE_PNO_PASS',
-    defaults: { username: 're.pno', password: 'test123' },
+    defaults: { username: 're_pno_001', password: 'test123' },
   },
 };
 
@@ -276,7 +264,7 @@ function getReCredentials(role: ReRoleKey): Credentials {
 export async function loginAsReRole(
   page: Page,
   role: ReRoleKey,
-  targetUrl = '/re/dashboard'
+  targetUrl = '/re-portal/dashboard'
 ): Promise<void> {
   const creds = getReCredentials(role);
 
@@ -286,33 +274,20 @@ export async function loginAsReRole(
   const currentUrl = page.url();
 
   if (currentUrl.includes('/realms/') || currentUrl.includes('/auth/')) {
-    const usernameInput = page.locator('#username');
-    const passwordInput = page.locator('#password');
-    const loginButton = page.locator('#kc-login');
+    await fillKeycloakForm(page, creds);
+  } else if (currentUrl.includes('/staff/login') || currentUrl.includes('/re/login') || currentUrl.includes('/staff')) {
+    const loginBtn = page.locator('button:has-text("Sign in"), button:has-text("Login"), a:has-text("Sign in"), a:has-text("Login")');
+    await loginBtn.first().waitFor({ state: 'visible', timeout: 10000 });
+    await loginBtn.first().click();
+    await page.waitForTimeout(2000);
 
-    await usernameInput.waitFor({ state: 'visible', timeout: 10000 });
-    await usernameInput.fill(creds.username);
-    await passwordInput.fill(creds.password);
-    await loginButton.click();
-
-    await page.waitForURL(`**${targetUrl}*`, { timeout: 15000 });
-  } else if (currentUrl.includes('/staff/login') || currentUrl.includes('/re/login')) {
-    const loginBtn = page.locator('button:has-text("Login"), a:has-text("Login")');
-    if (await loginBtn.isVisible()) {
-      await loginBtn.click();
-      await page.waitForTimeout(1000);
-
-      const afterUrl = page.url();
-      if (afterUrl.includes('/realms/') || afterUrl.includes('/auth/')) {
-        await page.locator('#username').fill(creds.username);
-        await page.locator('#password').fill(creds.password);
-        await page.locator('#kc-login').click();
-        await page.waitForURL(`**${targetUrl}*`, { timeout: 15000 });
-      }
+    const afterUrl = page.url();
+    if (afterUrl.includes('/realms/') || afterUrl.includes('/auth/')) {
+      await fillKeycloakForm(page, creds);
     }
   }
 
-  await page.waitForLoadState('networkidle');
+  await waitForAuthAndNavigate(page, targetUrl);
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -323,22 +298,22 @@ const AA_ENV_MAP: Record<AaRoleKey, { userEnv: string; passEnv: string; defaults
   AA_REGISTRAR: {
     userEnv: 'AA_REGISTRAR_USER',
     passEnv: 'AA_REGISTRAR_PASS',
-    defaults: { username: 'aa.registrar', password: 'test123' },
+    defaults: { username: 'aa_registrar_001', password: 'test123' },
   },
   AA_BENCH_OFFICER: {
     userEnv: 'AA_BENCH_USER',
     passEnv: 'AA_BENCH_PASS',
-    defaults: { username: 'aa.bench', password: 'test123' },
+    defaults: { username: 'aa_bench_001', password: 'test123' },
   },
   AA_AUTHORITY: {
     userEnv: 'AA_AUTHORITY_USER',
     passEnv: 'AA_AUTHORITY_PASS',
-    defaults: { username: 'aa.authority', password: 'test123' },
+    defaults: { username: 'aa_authority_001', password: 'test123' },
   },
   AA_ADMIN: {
     userEnv: 'AA_ADMIN_USER',
     passEnv: 'AA_ADMIN_PASS',
-    defaults: { username: 'aa.admin', password: 'test123' },
+    defaults: { username: 'aa_admin_001', password: 'test123' },
   },
 };
 
@@ -370,42 +345,33 @@ export async function loginAsAaRole(
   const currentUrl = page.url();
 
   if (currentUrl.includes('/realms/') || currentUrl.includes('/auth/')) {
-    const usernameInput = page.locator('#username');
-    const passwordInput = page.locator('#password');
-    const loginButton = page.locator('#kc-login');
+    await fillKeycloakForm(page, creds);
+  } else if (currentUrl.includes('/staff/login') || currentUrl.includes('/aa/login') || currentUrl.includes('/staff')) {
+    const loginBtn = page.locator('button:has-text("Sign in"), button:has-text("Login"), a:has-text("Sign in"), a:has-text("Login")');
+    await loginBtn.first().waitFor({ state: 'visible', timeout: 10000 });
+    await loginBtn.first().click();
+    await page.waitForTimeout(2000);
 
-    await usernameInput.waitFor({ state: 'visible', timeout: 10000 });
-    await usernameInput.fill(creds.username);
-    await passwordInput.fill(creds.password);
-    await loginButton.click();
-
-    await page.waitForURL(`**${targetUrl}*`, { timeout: 15000 });
-  } else if (currentUrl.includes('/staff/login') || currentUrl.includes('/aa/login')) {
-    const loginBtn = page.locator('button:has-text("Login"), a:has-text("Login")');
-    if (await loginBtn.isVisible()) {
-      await loginBtn.click();
-      await page.waitForTimeout(1000);
-
-      const afterUrl = page.url();
-      if (afterUrl.includes('/realms/') || afterUrl.includes('/auth/')) {
-        await page.locator('#username').fill(creds.username);
-        await page.locator('#password').fill(creds.password);
-        await page.locator('#kc-login').click();
-        await page.waitForURL(`**${targetUrl}*`, { timeout: 15000 });
-      }
+    const afterUrl = page.url();
+    if (afterUrl.includes('/realms/') || afterUrl.includes('/auth/')) {
+      await fillKeycloakForm(page, creds);
     }
   }
 
-  await page.waitForLoadState('networkidle');
+  await waitForAuthAndNavigate(page, targetUrl);
 }
 
 /**
  * Logs out the current user via the UI logout button.
  */
 export async function logout(page: Page): Promise<void> {
-  const logoutBtn = page.locator('button:has-text("Logout")');
-  if (await logoutBtn.isVisible()) {
-    await logoutBtn.click();
-    await page.waitForLoadState('networkidle');
+  // Close any open modal overlays via keyboard escape
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(500);
+
+  const logoutBtn = page.locator('button:has-text("Logout"), .logout-btn');
+  if (await logoutBtn.first().isVisible({ timeout: 2000 }).catch(() => false)) {
+    await logoutBtn.first().click({ force: true });
+    await page.waitForLoadState('networkidle').catch(() => {});
   }
 }

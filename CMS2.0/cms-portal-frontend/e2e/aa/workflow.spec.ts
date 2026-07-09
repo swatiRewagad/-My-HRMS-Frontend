@@ -7,12 +7,6 @@ import {
   performAppealAction,
 } from '../utils/test-data';
 
-/**
- * AA Workflow Tests (serial — tests depend on shared appeal state)
- *
- * Covers the full appeal lifecycle:
- *   filed → under_review → assigned_to_bench → hearing_scheduled → forwarded_to_authority → order_passed
- */
 test.describe.serial('AA Workflow', () => {
   let keycloakUp: boolean;
   let appealNumber: string;
@@ -24,7 +18,6 @@ test.describe.serial('AA Workflow', () => {
     await page.close();
 
     if (keycloakUp) {
-      // Create a closed complaint and file an appeal as test setup
       const complaint = await createTestComplaint(request, {
         subject: 'E2E AA Workflow Chain Test',
       });
@@ -40,33 +33,21 @@ test.describe.serial('AA Workflow', () => {
     test.skip(!keycloakUp, 'Keycloak is not available');
 
     await loginAsAaRole(page, 'AA_REGISTRAR', `/aa/appeal/${appealNumber}`);
+    await page.waitForSelector('.aa-detail .detail-layout', { timeout: 15000 });
 
-    await page.waitForSelector(
-      '[data-testid="appeal-detail"], .appeal-detail, .detail-layout',
-      { timeout: 15000 }
-    );
-
-    // Click Accept action
-    const acceptBtn = page.locator(
-      'button:has-text("Accept"), [data-testid="action-accept"], .action-card:has-text("Accept")'
-    );
+    const acceptBtn = page.locator('.action-card:has-text("Accept Appeal")');
     await expect(acceptBtn).toBeVisible({ timeout: 5000 });
     await acceptBtn.click();
 
-    // Confirm if needed
-    const confirmBtn = page.locator(
-      'button:has-text("Confirm"), [data-testid="confirm-action"]'
-    );
-    if (await confirmBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await confirmBtn.click();
-    }
+    // Generic action form appears (Accept does not require remarks)
+    const submitBtn = page.locator('.action-form .submit-btn');
+    await expect(submitBtn).toBeVisible({ timeout: 5000 });
+    await submitBtn.click();
 
-    // Wait for success
-    const successMsg = page.locator('.success-msg, [data-testid="action-success"], .toast-success');
-    await expect(successMsg).toBeVisible({ timeout: 10000 });
+    const resultMsg = page.locator('.result-msg.success');
+    await expect(resultMsg).toBeVisible({ timeout: 10000 });
 
-    // Status should update
-    const statusBadge = page.locator('.status-badge, [data-testid="status-badge"]');
+    const statusBadge = page.locator('.status-badge');
     const statusText = await statusBadge.textContent();
     expect(statusText?.toLowerCase()).toMatch(/under.review|accepted|in.review/);
 
@@ -76,7 +57,6 @@ test.describe.serial('AA Workflow', () => {
   test('Registrar rejects appeal (status -> rejected)', async ({ page, request }) => {
     test.skip(!keycloakUp, 'Keycloak is not available');
 
-    // Create separate appeal for rejection test
     const complaint = await createTestComplaint(request, {
       subject: 'E2E AA Rejection Test',
     });
@@ -84,39 +64,23 @@ test.describe.serial('AA Workflow', () => {
     const appeal = await fileAppeal(request, complaint.complaintNumber);
 
     await loginAsAaRole(page, 'AA_REGISTRAR', `/aa/appeal/${appeal.appealNumber}`);
+    await page.waitForSelector('.aa-detail .detail-layout', { timeout: 15000 });
 
-    await page.waitForSelector(
-      '[data-testid="appeal-detail"], .appeal-detail, .detail-layout',
-      { timeout: 15000 }
-    );
-
-    // Click Reject action
-    const rejectBtn = page.locator(
-      'button:has-text("Reject"), [data-testid="action-reject"], .action-card:has-text("Reject")'
-    );
+    const rejectBtn = page.locator('.action-card:has-text("Reject Appeal")');
     await expect(rejectBtn).toBeVisible({ timeout: 5000 });
     await rejectBtn.click();
 
-    // Fill rejection reason
-    const reasonField = page.locator(
-      'textarea[name="reason"], textarea[name="remarks"], [data-testid="rejection-reason"]'
-    );
-    if (await reasonField.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await reasonField.fill('E2E Test: Appeal does not meet eligibility criteria.');
-    }
+    const remarksField = page.locator('.action-form textarea');
+    await expect(remarksField).toBeVisible();
+    await remarksField.fill('E2E Test: Appeal does not meet eligibility criteria.');
 
-    // Confirm
-    const confirmBtn = page.locator(
-      'button:has-text("Confirm"), button:has-text("Submit"), [data-testid="confirm-action"]'
-    );
-    await confirmBtn.click();
+    const submitBtn = page.locator('.action-form .submit-btn');
+    await submitBtn.click();
 
-    // Wait for success
-    const successMsg = page.locator('.success-msg, [data-testid="action-success"], .toast-success');
-    await expect(successMsg).toBeVisible({ timeout: 10000 });
+    const resultMsg = page.locator('.result-msg.success');
+    await expect(resultMsg).toBeVisible({ timeout: 10000 });
 
-    // Status should be rejected
-    const statusBadge = page.locator('.status-badge, [data-testid="status-badge"]');
+    const statusBadge = page.locator('.status-badge');
     const statusText = await statusBadge.textContent();
     expect(statusText?.toLowerCase()).toMatch(/rejected|dismissed/);
 
@@ -127,36 +91,34 @@ test.describe.serial('AA Workflow', () => {
     test.skip(!keycloakUp, 'Keycloak is not available');
 
     await loginAsAaRole(page, 'AA_REGISTRAR', `/aa/appeal/${appealNumber}`);
+    await page.waitForSelector('.aa-detail .detail-layout', { timeout: 15000 });
 
-    await page.waitForSelector(
-      '[data-testid="appeal-detail"], .appeal-detail, .detail-layout',
-      { timeout: 15000 }
-    );
-
-    // Click Assign to Bench action
-    const assignBtn = page.locator(
-      'button:has-text("Assign"), button:has-text("Assign to Bench"), [data-testid="action-assign-bench"]'
-    );
+    const assignBtn = page.locator('.action-card:has-text("Assign to Bench")');
     await expect(assignBtn).toBeVisible({ timeout: 5000 });
     await assignBtn.click();
 
-    // Select bench officer if dropdown appears
-    const benchSelect = page.locator(
-      'select[name="benchOfficer"], [data-testid="bench-officer-select"]'
-    );
-    if (await benchSelect.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await benchSelect.selectOption({ index: 1 });
+    const actionForm = page.locator('.action-form');
+    await expect(actionForm).toBeVisible();
+
+    // Select officer from dropdown (requiresTarget: true)
+    const targetSelect = actionForm.locator('select');
+    if (await targetSelect.isVisible({ timeout: 3000 }).catch(() => false)) {
+      const options = targetSelect.locator('option');
+      const optionCount = await options.count();
+      if (optionCount > 1) {
+        await targetSelect.selectOption({ index: 1 });
+      }
     }
 
-    // Confirm assignment
-    const confirmBtn = page.locator(
-      'button:has-text("Confirm"), button:has-text("Assign"), [data-testid="confirm-action"]'
-    );
-    await confirmBtn.click();
+    const remarksField = actionForm.locator('textarea');
+    await expect(remarksField).toBeVisible();
+    await remarksField.fill('Assigning to bench officer for processing.');
 
-    // Wait for success
-    const successMsg = page.locator('.success-msg, [data-testid="action-success"], .toast-success');
-    await expect(successMsg).toBeVisible({ timeout: 10000 });
+    const submitBtn = actionForm.locator('.submit-btn');
+    await submitBtn.click();
+
+    const resultMsg = page.locator('.result-msg.success');
+    await expect(resultMsg).toBeVisible({ timeout: 10000 });
 
     await logout(page);
   });
@@ -165,46 +127,52 @@ test.describe.serial('AA Workflow', () => {
     test.skip(!keycloakUp, 'Keycloak is not available');
 
     await loginAsAaRole(page, 'AA_BENCH_OFFICER', `/aa/appeal/${appealNumber}`);
+    await page.waitForSelector('.aa-detail .detail-layout', { timeout: 15000 });
 
-    await page.waitForSelector(
-      '[data-testid="appeal-detail"], .appeal-detail, .detail-layout',
-      { timeout: 15000 }
-    );
-
-    // Click Schedule Hearing action
-    const scheduleBtn = page.locator(
-      'button:has-text("Schedule Hearing"), button:has-text("Schedule"), [data-testid="action-schedule-hearing"]'
-    );
+    const scheduleBtn = page.locator('.action-card:has-text("Schedule Hearing")');
     await expect(scheduleBtn).toBeVisible({ timeout: 5000 });
     await scheduleBtn.click();
 
-    // Fill hearing date (14 days from now)
+    // The hearing sub-component panel appears
+    const hearingPanel = page.locator('.hearing-panel');
+    await expect(hearingPanel).toBeVisible({ timeout: 5000 });
+
+    // Fill hearing date
     const hearingDate = new Date();
     hearingDate.setDate(hearingDate.getDate() + 14);
     const dateStr = hearingDate.toISOString().split('T')[0];
 
-    const dateInput = page.locator(
-      'input[type="date"], input[name="hearingDate"], [data-testid="hearing-date"]'
-    );
-    await expect(dateInput).toBeVisible({ timeout: 5000 });
+    const dateInput = hearingPanel.locator('input[type="date"]');
+    await expect(dateInput).toBeVisible();
     await dateInput.fill(dateStr);
 
-    // Fill venue
-    const venueInput = page.locator(
-      'input[name="venue"], [data-testid="hearing-venue"], textarea[name="venue"]'
-    );
-    if (await venueInput.isVisible().catch(() => false)) {
-      await venueInput.fill('E2E Test Hearing Room, Floor 3');
+    // Fill time
+    const timeInput = hearingPanel.locator('input[type="time"]');
+    if (await timeInput.isVisible().catch(() => false)) {
+      await timeInput.fill('10:30');
     }
 
-    // Submit
-    const submitBtn = page.locator(
-      'button:has-text("Schedule"), button:has-text("Confirm"), [data-testid="confirm-hearing"]'
-    );
-    await submitBtn.click();
+    // Select venue from dropdown
+    const venueSelect = hearingPanel.locator('select');
+    if (await venueSelect.isVisible().catch(() => false)) {
+      const options = venueSelect.locator('option');
+      const optionCount = await options.count();
+      if (optionCount > 1) {
+        await venueSelect.selectOption({ index: 1 });
+      }
+    }
 
-    // Wait for success
-    const successMsg = page.locator('.success-msg, [data-testid="action-success"], .toast-success');
+    // Click Preview Notice
+    const previewBtn = hearingPanel.locator('.preview-btn');
+    await expect(previewBtn).toBeVisible();
+    await previewBtn.click();
+
+    // Confirm from preview
+    const confirmBtn = hearingPanel.locator('.submit-btn');
+    await expect(confirmBtn).toBeVisible({ timeout: 5000 });
+    await confirmBtn.click();
+
+    const successMsg = hearingPanel.locator('.success-msg');
     await expect(successMsg).toBeVisible({ timeout: 10000 });
 
     await logout(page);
@@ -214,36 +182,21 @@ test.describe.serial('AA Workflow', () => {
     test.skip(!keycloakUp, 'Keycloak is not available');
 
     await loginAsAaRole(page, 'AA_BENCH_OFFICER', `/aa/appeal/${appealNumber}`);
+    await page.waitForSelector('.aa-detail .detail-layout', { timeout: 15000 });
 
-    await page.waitForSelector(
-      '[data-testid="appeal-detail"], .appeal-detail, .detail-layout',
-      { timeout: 15000 }
-    );
-
-    // Click Forward to Authority action
-    const forwardBtn = page.locator(
-      'button:has-text("Forward to Authority"), button:has-text("Forward"), [data-testid="action-forward-authority"]'
-    );
+    const forwardBtn = page.locator('.action-card:has-text("Forward to Authority")');
     await expect(forwardBtn).toBeVisible({ timeout: 5000 });
     await forwardBtn.click();
 
-    // Add remarks
-    const remarksField = page.locator(
-      'textarea[name="remarks"], [data-testid="forward-remarks"]'
-    );
-    if (await remarksField.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await remarksField.fill('E2E Test: Hearing completed, forwarding for final order.');
-    }
+    const remarksField = page.locator('.action-form textarea');
+    await expect(remarksField).toBeVisible();
+    await remarksField.fill('E2E Test: Hearing completed, forwarding for final order.');
 
-    // Confirm
-    const confirmBtn = page.locator(
-      'button:has-text("Confirm"), button:has-text("Forward"), [data-testid="confirm-action"]'
-    );
-    await confirmBtn.click();
+    const submitBtn = page.locator('.action-form .submit-btn');
+    await submitBtn.click();
 
-    // Wait for success
-    const successMsg = page.locator('.success-msg, [data-testid="action-success"], .toast-success');
-    await expect(successMsg).toBeVisible({ timeout: 10000 });
+    const resultMsg = page.locator('.result-msg.success');
+    await expect(resultMsg).toBeVisible({ timeout: 10000 });
 
     await logout(page);
   });
@@ -251,59 +204,46 @@ test.describe.serial('AA Workflow', () => {
   test('Authority passes order with UPHELD outcome', async ({ page, request }) => {
     test.skip(!keycloakUp, 'Keycloak is not available');
 
-    // Create a separate appeal for UPHELD test (so it does not conflict with MODIFIED test)
     const complaint = await createTestComplaint(request, {
       subject: 'E2E AA UPHELD Order Test',
     });
     await advanceToStatus(request, complaint.complaintNumber, 'closed');
     const appeal = await fileAppeal(request, complaint.complaintNumber);
 
-    // Advance through workflow via API
     await performAppealAction(request, appeal.appealNumber, 'ACCEPT', { actor: 'aa.registrar' });
     await performAppealAction(request, appeal.appealNumber, 'ASSIGN_TO_BENCH', { actor: 'aa.registrar' });
     await performAppealAction(request, appeal.appealNumber, 'FORWARD_TO_AUTHORITY', { actor: 'aa.bench' });
 
     await loginAsAaRole(page, 'AA_AUTHORITY', `/aa/appeal/${appeal.appealNumber}`);
+    await page.waitForSelector('.aa-detail .detail-layout', { timeout: 15000 });
 
-    await page.waitForSelector(
-      '[data-testid="appeal-detail"], .appeal-detail, .detail-layout',
-      { timeout: 15000 }
-    );
-
-    // Click Pass Order action
-    const orderBtn = page.locator(
-      'button:has-text("Pass Order"), button:has-text("Issue Order"), [data-testid="action-pass-order"]'
-    );
+    const orderBtn = page.locator('.action-card:has-text("Pass Order")');
     await expect(orderBtn).toBeVisible({ timeout: 5000 });
     await orderBtn.click();
 
-    // Select UPHELD outcome
-    const outcomeSelect = page.locator(
-      'select[name="outcome"], [data-testid="outcome-select"], input[value="UPHELD"]'
-    );
-    await expect(outcomeSelect).toBeVisible({ timeout: 5000 });
-    if (await outcomeSelect.evaluate((el) => el.tagName === 'SELECT').catch(() => false)) {
-      await outcomeSelect.selectOption('UPHELD');
-    } else {
-      await outcomeSelect.click();
-    }
+    // Order sub-component panel appears
+    const orderPanel = page.locator('.order-panel');
+    await expect(orderPanel).toBeVisible({ timeout: 5000 });
 
-    // Add order remarks
-    const orderRemarks = page.locator(
-      'textarea[name="orderRemarks"], textarea[name="remarks"], [data-testid="order-remarks"]'
-    );
-    if (await orderRemarks.isVisible().catch(() => false)) {
-      await orderRemarks.fill('E2E Test: Appeal upheld. Original complaint resolution stands.');
-    }
+    // Select UPHELD outcome (radio button)
+    const upheldOption = orderPanel.locator('.outcome-option:has-text("Upheld"), .outcome-option:has-text("UPHELD")');
+    await expect(upheldOption).toBeVisible();
+    await upheldOption.locator('input[type="radio"]').check();
 
-    // Submit order
-    const submitBtn = page.locator(
-      'button:has-text("Submit Order"), button:has-text("Pass Order"), button:has-text("Confirm"), [data-testid="submit-order"]'
-    );
-    await submitBtn.click();
+    // Fill order summary
+    const summaryField = orderPanel.locator('textarea');
+    await expect(summaryField).toBeVisible();
+    await summaryField.fill('E2E Test: Appeal upheld. Original complaint resolution stands.');
 
-    // Wait for success
-    const successMsg = page.locator('.success-msg, [data-testid="action-success"], .toast-success');
+    // Preview then confirm
+    const previewBtn = orderPanel.locator('.preview-btn');
+    await previewBtn.click();
+
+    const confirmBtn = orderPanel.locator('.submit-btn');
+    await expect(confirmBtn).toBeVisible({ timeout: 5000 });
+    await confirmBtn.click();
+
+    const successMsg = orderPanel.locator('.success-msg');
     await expect(successMsg).toBeVisible({ timeout: 10000 });
 
     await logout(page);
@@ -312,7 +252,6 @@ test.describe.serial('AA Workflow', () => {
   test('Authority passes order with MODIFIED amount', async ({ page, request }) => {
     test.skip(!keycloakUp, 'Keycloak is not available');
 
-    // Create a separate appeal for MODIFIED test
     const complaint = await createTestComplaint(request, {
       subject: 'E2E AA MODIFIED Order Test',
     });
@@ -321,55 +260,43 @@ test.describe.serial('AA Workflow', () => {
       compensationClaimed: 100000,
     });
 
-    // Advance through workflow via API
     await performAppealAction(request, appeal.appealNumber, 'ACCEPT', { actor: 'aa.registrar' });
     await performAppealAction(request, appeal.appealNumber, 'ASSIGN_TO_BENCH', { actor: 'aa.registrar' });
     await performAppealAction(request, appeal.appealNumber, 'FORWARD_TO_AUTHORITY', { actor: 'aa.bench' });
 
     await loginAsAaRole(page, 'AA_AUTHORITY', `/aa/appeal/${appeal.appealNumber}`);
+    await page.waitForSelector('.aa-detail .detail-layout', { timeout: 15000 });
 
-    await page.waitForSelector(
-      '[data-testid="appeal-detail"], .appeal-detail, .detail-layout',
-      { timeout: 15000 }
-    );
-
-    // Click Pass Order action
-    const orderBtn = page.locator(
-      'button:has-text("Pass Order"), button:has-text("Issue Order"), [data-testid="action-pass-order"]'
-    );
+    const orderBtn = page.locator('.action-card:has-text("Pass Order")');
     await expect(orderBtn).toBeVisible({ timeout: 5000 });
     await orderBtn.click();
 
-    // Select MODIFIED outcome
-    const outcomeSelect = page.locator(
-      'select[name="outcome"], [data-testid="outcome-select"]'
-    );
-    await expect(outcomeSelect).toBeVisible({ timeout: 5000 });
-    await outcomeSelect.selectOption('MODIFIED');
+    const orderPanel = page.locator('.order-panel');
+    await expect(orderPanel).toBeVisible({ timeout: 5000 });
 
-    // Fill compensation amount (required for MODIFIED)
-    const amountInput = page.locator(
-      'input[name="compensationAmount"], input[name="amount"], [data-testid="compensation-amount"]'
-    );
+    // Select MODIFIED outcome (radio button)
+    const modifiedOption = orderPanel.locator('.outcome-option:has-text("Modified"), .outcome-option:has-text("MODIFIED")');
+    await expect(modifiedOption).toBeVisible();
+    await modifiedOption.locator('input[type="radio"]').check();
+
+    // Fill modified amount
+    const amountInput = orderPanel.locator('input[type="number"]');
     await expect(amountInput).toBeVisible({ timeout: 5000 });
     await amountInput.fill('75000');
 
-    // Add order remarks
-    const orderRemarks = page.locator(
-      'textarea[name="orderRemarks"], textarea[name="remarks"], [data-testid="order-remarks"]'
-    );
-    if (await orderRemarks.isVisible().catch(() => false)) {
-      await orderRemarks.fill('E2E Test: Appeal partially allowed. Compensation modified to Rs. 75000.');
-    }
+    // Fill order summary
+    const summaryField = orderPanel.locator('textarea');
+    await summaryField.fill('E2E Test: Appeal partially allowed. Compensation modified to Rs. 75000.');
 
-    // Submit order
-    const submitBtn = page.locator(
-      'button:has-text("Submit Order"), button:has-text("Pass Order"), button:has-text("Confirm"), [data-testid="submit-order"]'
-    );
-    await submitBtn.click();
+    // Preview then confirm
+    const previewBtn = orderPanel.locator('.preview-btn');
+    await previewBtn.click();
 
-    // Wait for success
-    const successMsg = page.locator('.success-msg, [data-testid="action-success"], .toast-success');
+    const confirmBtn = orderPanel.locator('.submit-btn');
+    await expect(confirmBtn).toBeVisible({ timeout: 5000 });
+    await confirmBtn.click();
+
+    const successMsg = orderPanel.locator('.success-msg');
     await expect(successMsg).toBeVisible({ timeout: 10000 });
 
     await logout(page);
@@ -378,52 +305,34 @@ test.describe.serial('AA Workflow', () => {
   test('Authority dismisses appeal', async ({ page, request }) => {
     test.skip(!keycloakUp, 'Keycloak is not available');
 
-    // Create a separate appeal for dismissal test
     const complaint = await createTestComplaint(request, {
       subject: 'E2E AA Dismiss Test',
     });
     await advanceToStatus(request, complaint.complaintNumber, 'closed');
     const appeal = await fileAppeal(request, complaint.complaintNumber);
 
-    // Advance through workflow via API
     await performAppealAction(request, appeal.appealNumber, 'ACCEPT', { actor: 'aa.registrar' });
     await performAppealAction(request, appeal.appealNumber, 'ASSIGN_TO_BENCH', { actor: 'aa.registrar' });
     await performAppealAction(request, appeal.appealNumber, 'FORWARD_TO_AUTHORITY', { actor: 'aa.bench' });
 
     await loginAsAaRole(page, 'AA_AUTHORITY', `/aa/appeal/${appeal.appealNumber}`);
+    await page.waitForSelector('.aa-detail .detail-layout', { timeout: 15000 });
 
-    await page.waitForSelector(
-      '[data-testid="appeal-detail"], .appeal-detail, .detail-layout',
-      { timeout: 15000 }
-    );
-
-    // Click Dismiss action
-    const dismissBtn = page.locator(
-      'button:has-text("Dismiss"), [data-testid="action-dismiss"]'
-    );
+    const dismissBtn = page.locator('.action-card:has-text("Dismiss Appeal")');
     await expect(dismissBtn).toBeVisible({ timeout: 5000 });
     await dismissBtn.click();
 
-    // Fill dismissal reason
-    const reasonField = page.locator(
-      'textarea[name="reason"], textarea[name="remarks"], [data-testid="dismiss-reason"]'
-    );
-    if (await reasonField.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await reasonField.fill('E2E Test: Appeal is without merit and is hereby dismissed.');
-    }
+    const remarksField = page.locator('.action-form textarea');
+    await expect(remarksField).toBeVisible();
+    await remarksField.fill('E2E Test: Appeal is without merit and is hereby dismissed.');
 
-    // Confirm
-    const confirmBtn = page.locator(
-      'button:has-text("Confirm"), button:has-text("Dismiss"), [data-testid="confirm-action"]'
-    );
-    await confirmBtn.click();
+    const submitBtn = page.locator('.action-form .submit-btn');
+    await submitBtn.click();
 
-    // Wait for success
-    const successMsg = page.locator('.success-msg, [data-testid="action-success"], .toast-success');
-    await expect(successMsg).toBeVisible({ timeout: 10000 });
+    const resultMsg = page.locator('.result-msg.success');
+    await expect(resultMsg).toBeVisible({ timeout: 10000 });
 
-    // Status should be dismissed
-    const statusBadge = page.locator('.status-badge, [data-testid="status-badge"]');
+    const statusBadge = page.locator('.status-badge');
     const statusText = await statusBadge.textContent();
     expect(statusText?.toLowerCase()).toMatch(/dismissed|closed/);
 

@@ -57,6 +57,18 @@
               ],
               "outputHashing": "all"
             },
+            "openshift": {
+              "budgets": [
+                { "type": "initial", "maximumWarning": "500kB", "maximumError": "1MB" }
+              ],
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.openshift.ts"
+                }
+              ],
+              "outputHashing": "all"
+            },
             "development": {
               "optimization": false,
               "extractLicenses": false,

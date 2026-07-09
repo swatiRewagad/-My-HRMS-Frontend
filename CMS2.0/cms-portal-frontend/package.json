@@ -35,7 +35,7 @@
     "@angular/build": "21.2.8",
     "@angular/cli": "21.2.8",
     "@angular/compiler-cli": "21.2.8",
-    "@playwright/test": "^1.48.0",
+    "@playwright/test": "^1.61.1",
     "docx": "^9.7.1",
     "typescript": "~5.9.2"
   }

@@ -299,7 +299,7 @@ export class CepcComplaintDetailComponent implements OnInit {
       'forwarded': 'Forwarded to Dept', 'forwarded_to_contact': 'With Contact Person',
       'closed': 'Closed', 'resolved': 'Resolved',
     };
-    return labels[status] || status;
+    return labels[status?.toLowerCase()] || status;
   }
 
   goBack() {

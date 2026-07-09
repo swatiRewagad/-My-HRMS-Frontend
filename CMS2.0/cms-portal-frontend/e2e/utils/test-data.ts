@@ -34,7 +34,7 @@ export function buildComplaint(overrides: Partial<CreateComplaintPayload> = {}):
     entityName: 'Test Bank Ltd',
     priority: 'MEDIUM',
     filingType: 'CEPC_MANUAL',
-    createdBy: 'cepc_do',
+    createdBy: 'cepc_do_001',
     ...overrides,
   };
 }
@@ -148,7 +148,7 @@ export async function cleanupComplaint(
       request,
       complaintNumber,
       'CLOSE_COMPLAINT',
-      'cepc_admin',
+      'cepc_admin_001',
       'E2E cleanup — auto-close',
       {},
       token
@@ -170,29 +170,29 @@ export async function advanceToStatus(
 ): Promise<void> {
   const transitions: Record<string, { action: string; actor: string }[]> = {
     in_progress: [
-      { action: 'ACCEPT', actor: 'cepc_do' },
+      { action: 'ACCEPT', actor: 'cepc_do_001' },
     ],
     reviewer_review: [
-      { action: 'ACCEPT', actor: 'cepc_do' },
-      { action: 'SUBMIT_FOR_REVIEW', actor: 'cepc_do' },
+      { action: 'ACCEPT', actor: 'cepc_do_001' },
+      { action: 'SUBMIT_FOR_REVIEW', actor: 'cepc_do_001' },
     ],
     incharge_review: [
-      { action: 'ACCEPT', actor: 'cepc_do' },
-      { action: 'SUBMIT_FOR_REVIEW', actor: 'cepc_do' },
-      { action: 'APPROVE_REVIEW', actor: 'cepc_reviewer' },
+      { action: 'ACCEPT', actor: 'cepc_do_001' },
+      { action: 'SUBMIT_FOR_REVIEW', actor: 'cepc_do_001' },
+      { action: 'APPROVE_REVIEW', actor: 'cepc_reviewer_001' },
     ],
     awaiting_closure: [
-      { action: 'ACCEPT', actor: 'cepc_do' },
-      { action: 'SUBMIT_FOR_REVIEW', actor: 'cepc_do' },
-      { action: 'APPROVE_REVIEW', actor: 'cepc_reviewer' },
-      { action: 'APPROVE_CLOSURE', actor: 'cepc_incharge' },
+      { action: 'ACCEPT', actor: 'cepc_do_001' },
+      { action: 'SUBMIT_FOR_REVIEW', actor: 'cepc_do_001' },
+      { action: 'APPROVE_REVIEW', actor: 'cepc_reviewer_001' },
+      { action: 'APPROVE_CLOSURE', actor: 'cepc_incharge_001' },
     ],
     closed: [
-      { action: 'ACCEPT', actor: 'cepc_do' },
-      { action: 'SUBMIT_FOR_REVIEW', actor: 'cepc_do' },
-      { action: 'APPROVE_REVIEW', actor: 'cepc_reviewer' },
-      { action: 'APPROVE_CLOSURE', actor: 'cepc_incharge' },
-      { action: 'CLOSE_COMPLAINT', actor: 'cepc_ca' },
+      { action: 'ACCEPT', actor: 'cepc_do_001' },
+      { action: 'SUBMIT_FOR_REVIEW', actor: 'cepc_do_001' },
+      { action: 'APPROVE_REVIEW', actor: 'cepc_reviewer_001' },
+      { action: 'APPROVE_CLOSURE', actor: 'cepc_incharge_001' },
+      { action: 'CLOSE_COMPLAINT', actor: 'cepc_closing_001' },
     ],
   };
 
@@ -231,7 +231,7 @@ export async function createRbioComplaint(
     priority: 'MEDIUM' as const,
     department: 'RBIO',
     filingType: 'CEPC_MANUAL' as const,
-    createdBy: 'rbio.officer',
+    createdBy: 'rbio_officer_001',
     ...overrides,
   };
 
@@ -309,7 +309,7 @@ export async function cleanupRbioComplaint(
       request,
       complaintNumber,
       'CLOSE_COMPLAINT',
-      'rbio.admin',
+      'admin_001',
       'E2E cleanup — auto-close',
       {},
       token
@@ -333,14 +333,14 @@ export async function createForwardedComplaint(
   overrides: Partial<CreateComplaintPayload> = {},
   token?: string
 ): Promise<{ complaintNumber: string; complaintId: string; status: string; [key: string]: unknown }> {
-  // Step 1: Create the complaint
+  // Create a complaint that's already in "forwarded" state for the entity
+  // First accept, then forward via FORWARD_DEPT action
   const result = await createTestComplaint(request, {
     entityName: entityCode,
     subject: `RE Forwarded Complaint ${Date.now().toString(36)}`,
     ...overrides,
   }, token);
 
-  // Step 2: Forward it to the RE
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };
@@ -348,14 +348,24 @@ export async function createForwardedComplaint(
     headers['Authorization'] = `Bearer ${token}`;
   }
 
+  // Accept the complaint first
+  await request.post(
+    `${API_BASE}/api/v1/workflow/cepc/action/${result.complaintNumber}`,
+    {
+      data: { action: 'ACCEPT', remarks: 'E2E setup', actor: 'cepc_do_001' },
+      headers,
+    }
+  );
+
+  // Forward to RE via FORWARD_DEPT (sets status to forwarded)
   const response = await request.post(
     `${API_BASE}/api/v1/workflow/cepc/action/${result.complaintNumber}`,
     {
       data: {
-        action: 'FORWARD_TO_RE',
-        remarks: 'E2E test — forwarding to RE',
-        actor: 'cepc_do',
-        entityCode,
+        action: 'FORWARD_DEPT',
+        remarks: 'E2E test — forwarding to RE for response',
+        actor: 'cepc_do_001',
+        targetDepartment: entityCode,
       },
       headers,
     }
@@ -367,7 +377,7 @@ export async function createForwardedComplaint(
   }
 
   const json = await response.json();
-  return { ...result, status: 'forwarded_to_re', ...(json.data || json) };
+  return { ...result, status: json.data?.newStatus || 'forwarded', ...(json.data || json) };
 }
 
 /**
@@ -387,11 +397,11 @@ export async function respondToComplaint(
   }
 
   const response = await request.post(
-    `${API_BASE}/api/v1/workflow/re/respond/${complaintNumber}`,
+    `${API_BASE}/api/v1/re-portal/complaints/${complaintNumber}/respond`,
     {
       data: {
         response: responseText,
-        actor: 're.nodal',
+        actor: 're_nodal_001',
         remarks: 'RE response submitted via E2E test',
       },
       headers,
@@ -413,8 +423,8 @@ export async function respondToComplaint(
 
 export interface FileAppealPayload {
   originalComplaintNumber: string;
-  appealType: 'APPEAL' | 'REPRESENTATION';
-  grounds: string;
+  classificationType: 'APPEAL' | 'REPRESENTATION';
+  appealGround: string;
   reliefSought: string;
   appellantName: string;
   appellantEmail: string;
@@ -435,8 +445,8 @@ export async function fileAppeal(
   const suffix = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
   const payload: FileAppealPayload = {
     originalComplaintNumber,
-    appealType: 'APPEAL',
-    grounds: `E2E test appeal grounds ${suffix}`,
+    classificationType: 'APPEAL',
+    appealGround: `E2E test appeal grounds ${suffix}`,
     reliefSought: `Compensation and corrective action ${suffix}`,
     appellantName: `Test Appellant ${suffix}`,
     appellantEmail: `appellant_${suffix}@example.com`,
@@ -451,7 +461,7 @@ export async function fileAppeal(
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const response = await request.post(`${API_BASE}/api/v1/aa/appeals/file`, {
+  const response = await request.post(`${API_BASE}/api/v1/appeals/file`, {
     data: payload,
     headers,
   });
@@ -489,7 +499,7 @@ export async function performAppealAction(
   };
 
   const response = await request.post(
-    `${API_BASE}/api/v1/aa/appeals/action/${appealNumber}`,
+    `${API_BASE}/api/v1/appeals/${appealNumber}/action`,
     { data: body, headers }
   );
 
@@ -513,40 +523,40 @@ export async function advanceRbioToStatus(
 ): Promise<void> {
   const transitions: Record<string, { action: string; actor: string; extras?: Record<string, unknown> }[]> = {
     in_progress: [
-      { action: 'ACCEPT', actor: 'rbio.officer' },
+      { action: 'ACCEPT', actor: 'rbio_officer_001' },
     ],
     escalated: [
-      { action: 'ACCEPT', actor: 'rbio.officer' },
-      { action: 'ESCALATE', actor: 'rbio.officer' },
+      { action: 'ACCEPT', actor: 'rbio_officer_001' },
+      { action: 'ESCALATE', actor: 'rbio_officer_001' },
     ],
     conciliation: [
-      { action: 'ACCEPT', actor: 'rbio.officer' },
-      { action: 'FORWARD_TO_CONCILIATION', actor: 'rbio.officer' },
+      { action: 'ACCEPT', actor: 'rbio_officer_001' },
+      { action: 'FORWARD_TO_CONCILIATION', actor: 'rbio_officer_001' },
     ],
     adjudication: [
-      { action: 'ACCEPT', actor: 'rbio.officer' },
-      { action: 'ESCALATE', actor: 'rbio.officer' },
-      { action: 'FORWARD_TO_ADJUDICATION', actor: 'rbio.supervisor' },
+      { action: 'ACCEPT', actor: 'rbio_officer_001' },
+      { action: 'ESCALATE', actor: 'rbio_officer_001' },
+      { action: 'FORWARD_TO_ADJUDICATION', actor: 'rbio_supervisor_001' },
     ],
     resolved: [
-      { action: 'ACCEPT', actor: 'rbio.officer' },
-      { action: 'RESOLVE', actor: 'rbio.officer' },
+      { action: 'ACCEPT', actor: 'rbio_officer_001' },
+      { action: 'RESOLVE', actor: 'rbio_officer_001' },
     ],
     closed: [
-      { action: 'ACCEPT', actor: 'rbio.officer' },
-      { action: 'RESOLVE', actor: 'rbio.officer' },
-      { action: 'CLOSE_COMPLAINT', actor: 'rbio.admin' },
+      { action: 'ACCEPT', actor: 'rbio_officer_001' },
+      { action: 'RESOLVE', actor: 'rbio_officer_001' },
+      { action: 'CLOSE_COMPLAINT', actor: 'admin_001' },
     ],
     conciliated: [
-      { action: 'ACCEPT', actor: 'rbio.officer' },
-      { action: 'FORWARD_TO_CONCILIATION', actor: 'rbio.officer' },
-      { action: 'CONCILIATION_SUCCESS', actor: 'rbio.conciliator', extras: { compensationAmount: 50000 } },
+      { action: 'ACCEPT', actor: 'rbio_officer_001' },
+      { action: 'FORWARD_TO_CONCILIATION', actor: 'rbio_officer_001' },
+      { action: 'CONCILIATION_SUCCESS', actor: 'rbio_conciliator_001', extras: { compensationAmount: 50000 } },
     ],
     adjudicated: [
-      { action: 'ACCEPT', actor: 'rbio.officer' },
-      { action: 'ESCALATE', actor: 'rbio.officer' },
-      { action: 'FORWARD_TO_ADJUDICATION', actor: 'rbio.supervisor' },
-      { action: 'ADJUDICATION_AWARD', actor: 'rbio.adjudicator', extras: { awardAmount: 100000 } },
+      { action: 'ACCEPT', actor: 'rbio_officer_001' },
+      { action: 'ESCALATE', actor: 'rbio_officer_001' },
+      { action: 'FORWARD_TO_ADJUDICATION', actor: 'rbio_supervisor_001' },
+      { action: 'ADJUDICATION_AWARD', actor: 'rbio_adjudicator_001', extras: { awardAmount: 100000 } },
     ],
   };
 

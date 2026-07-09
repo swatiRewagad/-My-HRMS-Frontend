@@ -1,0 +1,46 @@
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: cms-backend-run-
+  namespace: rbi-cms
+spec:
+  pipelineRef:
+    name: cms-java-service-pipeline
+  params:
+    - name: SERVICE_NAME
+      value: cms-backend
+    - name: GIT_URL
+      value: https://git.example.com/rbi-cms/cms-backend.git
+    - name: GIT_REVISION
+      value: main
+    - name: IMAGE_TAG
+      value: latest
+  workspaces:
+    - name: shared-workspace
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 1Gi
+    - name: maven-settings
+      configMap:
+        name: cms-maven-settings
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cms-maven-settings
+  namespace: rbi-cms
+data:
+  settings.xml: |
+    <settings>
+      <mirrors>
+        <mirror>
+          <id>nexus</id>
+          <mirrorOf>*</mirrorOf>
+          <url>http://nexus.rbi-cms.svc.cluster.local:8081/repository/maven-public/</url>
+        </mirror>
+      </mirrors>
+    </settings>

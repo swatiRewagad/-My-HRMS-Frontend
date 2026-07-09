@@ -1,0 +1,71 @@
+apiVersion: triggers.tekton.dev/v1beta1
+kind: TriggerTemplate
+metadata:
+  name: cms-java-service-trigger
+  namespace: rbi-cms
+spec:
+  params:
+    - name: git-revision
+      description: The git revision
+    - name: git-repo-url
+      description: The git repository url
+    - name: service-name
+      description: The microservice name
+  resourcetemplates:
+    - apiVersion: tekton.dev/v1beta1
+      kind: PipelineRun
+      metadata:
+        generateName: $(tt.params.service-name)-run-
+        namespace: rbi-cms
+      spec:
+        pipelineRef:
+          name: cms-java-service-pipeline
+        params:
+          - name: SERVICE_NAME
+            value: $(tt.params.service-name)
+          - name: GIT_URL
+            value: $(tt.params.git-repo-url)
+          - name: GIT_REVISION
+            value: $(tt.params.git-revision)
+          - name: IMAGE_TAG
+            value: $(tt.params.git-revision)
+        workspaces:
+          - name: shared-workspace
+            volumeClaimTemplate:
+              spec:
+                accessModes:
+                  - ReadWriteOnce
+                resources:
+                  requests:
+                    storage: 1Gi
+          - name: maven-settings
+            configMap:
+              name: cms-maven-settings
+---
+apiVersion: triggers.tekton.dev/v1beta1
+kind: EventListener
+metadata:
+  name: cms-webhook-listener
+  namespace: rbi-cms
+spec:
+  serviceAccountName: tekton-triggers-sa
+  triggers:
+    - name: cms-backend-trigger
+      bindings:
+        - ref: cms-git-binding
+      template:
+        ref: cms-java-service-trigger
+---
+apiVersion: triggers.tekton.dev/v1beta1
+kind: TriggerBinding
+metadata:
+  name: cms-git-binding
+  namespace: rbi-cms
+spec:
+  params:
+    - name: git-revision
+      value: $(body.after)
+    - name: git-repo-url
+      value: $(body.repository.clone_url)
+    - name: service-name
+      value: $(body.repository.name)

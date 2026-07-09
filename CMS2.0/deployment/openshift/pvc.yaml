@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: cms-attachments-pvc
+  namespace: rbi-cms
+  labels:
+    app.kubernetes.io/part-of: rbi-cms
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: managed-nfs-storage
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: cms-storage-pvc
+  namespace: rbi-cms
+  labels:
+    app.kubernetes.io/part-of: rbi-cms
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 20Gi
+  storageClassName: managed-nfs-storage

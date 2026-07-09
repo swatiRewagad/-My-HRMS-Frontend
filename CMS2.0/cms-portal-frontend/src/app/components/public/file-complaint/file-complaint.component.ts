@@ -33,6 +33,7 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
   private router = inject(Router);
   private publicAuth = inject(PublicAuthService);
   private autoSaveTimer: any = null;
+  lastSavedAt = signal('');
 
   // FR-G-007: Flow phases — login handled by PublicAuthService + guard
   phase = signal<'eligibility' | 'form' | 'success' | 'non-maintainable'>('eligibility');
@@ -172,6 +173,11 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
   declaration2Checked = false;
   submitting = signal(false);
   referenceNumber = '';
+
+  // FR-G-020: Duplicate detection
+  showDuplicatePopup = signal(false);
+  duplicateMessage = '';
+  duplicateCheckDone = false;
 
   // FR-G-008: Draft
   draftSaved = signal(false);
@@ -396,10 +402,11 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
     this.eligibilityQuestions[0].options = this.banks.map(b => ({ label: b.name, value: String(b.id) }));
     this.speechSupported = !!(window as any).SpeechRecognition || !!(window as any).webkitSpeechRecognition;
     this.formData['phone'] = this.publicAuth.userIdentifier() || '';
+    this.startAutoSave();
   }
 
   ngOnDestroy() {
-    if (this.autoSaveTimer) clearInterval(this.autoSaveTimer);
+    this.stopAutoSave();
     this.stopRecording();
   }
 
@@ -729,6 +736,19 @@ Department of Consumer Education and Protection
       y += 5;
       doc.setFont('helvetica', 'normal');
       doc.text('Department of Consumer Education and Protection', 20, y);
+      y += 12;
+
+      // FR-G-028: Digital signature indicator
+      doc.setDrawColor(0, 100, 0);
+      doc.setFillColor(240, 255, 240);
+      doc.roundedRect(20, y, pageWidth - 40, 18, 2, 2, 'FD');
+      doc.setTextColor(0, 100, 0);
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
+      doc.text('DIGITALLY SIGNED', 25, y + 7);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Signed by: RBI CMS Digital Certificate Authority | Date: ${new Date().toISOString().slice(0, 19)}Z`, 25, y + 13);
+      doc.setTextColor(0);
 
       doc.save(`Acknowledgement_${this.referenceNumber}.pdf`);
     });
@@ -762,7 +782,21 @@ Department of Consumer Education and Protection
     const draft = { version: this.DRAFT_VERSION, formData: this.formData, eligibilityAnswers: this.eligibilityAnswers, currentStep: this.currentStep() };
     localStorage.setItem('cms_complaint_draft', JSON.stringify(draft));
     this.draftSaved.set(true);
+    const now = new Date();
+    this.lastSavedAt.set(now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }));
     setTimeout(() => this.draftSaved.set(false), 2000);
+  }
+
+  private startAutoSave() {
+    this.autoSaveTimer = setInterval(() => {
+      if (this.phase() === 'form' || this.phase() === 'eligibility') {
+        this.saveDraft();
+      }
+    }, 30000);
+  }
+
+  private stopAutoSave() {
+    if (this.autoSaveTimer) { clearInterval(this.autoSaveTimer); this.autoSaveTimer = null; }
   }
 
   loadDraft() {
@@ -876,6 +910,56 @@ Department of Consumer Education and Protection
   // ══════ SUBMIT ══════
   submit() {
     if (!this.declarationChecked) return;
+
+    if (!this.duplicateCheckDone) {
+      this.checkDuplicate();
+      return;
+    }
+
+    this.duplicateCheckDone = false;
+    this.performSubmit();
+  }
+
+  private checkDuplicate() {
+    const phone = this.formData['phone'];
+    const email = this.formData['email'];
+    const entityName = this.getSelectedBankName();
+    const category = this.formData['complaintCategory'];
+    const disputeDate = this.formData['disputeDate'];
+
+    this.http.post<any>('/api/v1/complaints/check-duplicate', {
+      phone, email, entityName, category, disputeDate
+    }).subscribe({
+      next: (res) => {
+        if (res?.duplicate) {
+          this.duplicateMessage = res.matchedOn === 'email'
+            ? 'Duplicate complaint detected based on email.'
+            : 'Duplicate complaint detected based on mobile number.';
+          this.showDuplicatePopup.set(true);
+        } else {
+          this.duplicateCheckDone = true;
+          this.submit();
+        }
+      },
+      error: () => {
+        this.duplicateCheckDone = true;
+        this.submit();
+      }
+    });
+  }
+
+  dismissDuplicatePopup() {
+    this.showDuplicatePopup.set(false);
+    this.duplicateMessage = '';
+  }
+
+  proceedDespiteDuplicate() {
+    this.showDuplicatePopup.set(false);
+    this.duplicateCheckDone = true;
+    this.submit();
+  }
+
+  private performSubmit() {
     this.submitting.set(true);
 
     const payload = {

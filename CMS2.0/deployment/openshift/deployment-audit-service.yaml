@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cms-audit-service
+  namespace: rbi-cms
+  labels:
+    app: cms-audit-service
+    app.kubernetes.io/part-of: rbi-cms
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cms-audit-service
+  template:
+    metadata:
+      labels:
+        app: cms-audit-service
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+    spec:
+      containers:
+        - name: cms-audit-service
+          image: image-registry.openshift-image-registry.svc:5000/rbi-cms/cms-audit-service:latest
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: cms-common-config
+            - secretRef:
+                name: cms-db-secret
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: "openshift"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8080
+            initialDelaySeconds: 60
+            periodSeconds: 15
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cms-audit-service
+  namespace: rbi-cms
+spec:
+  selector:
+    app: cms-audit-service
+  ports:
+    - port: 8080
+      targetPort: 8080
+  type: ClusterIP
