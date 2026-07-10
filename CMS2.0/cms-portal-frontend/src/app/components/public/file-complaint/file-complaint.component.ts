@@ -7,6 +7,7 @@ import { ComplaintService } from '../../../services/complaint.service';
 import { PublicAuthService } from '../../../services/public-auth.service';
 import { validateFile, validateFileSet, MAX_FILE_COUNT } from '../../../utils/file-validator';
 import { announceToScreenReader, setPageTitle } from '../../../utils/accessibility';
+import { environment } from '../../../../environments/environment';
 
 interface EligibilityQuestion {
   key: string;
@@ -363,7 +364,7 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
       this.formData['state'] = '';
       this.formData['district'] = '';
 
-      this.http.get<any[]>(`/api/v1/location/pincode/${value}`).subscribe({
+      this.http.get<any[]>(`${environment.apiBaseUrl}/api/v1/location/pincode/${value}`).subscribe({
         next: (res) => {
           this.pincodeLoading = false;
           if (res && res[0] && res[0].Status === 'Success' && res[0].PostOffice?.length) {
@@ -478,36 +479,76 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
     }
   }
 
-  // FR-G-010: Download closure letter
+  // FR-G-010: Download closure letter as PDF
   downloadClosureLetter() {
-    const content = `
-RESERVE BANK OF INDIA
-Integrated Ombudsman Scheme, 2021
+    import('jspdf').then(({ jsPDF }) => {
+      const doc = new jsPDF();
+      const pw = doc.internal.pageSize.getWidth();
+      let y = 20;
 
-CLOSURE LETTER
+      doc.setFontSize(16);
+      doc.setFont('helvetica', 'bold');
+      doc.text('RESERVE BANK OF INDIA', pw / 2, y, { align: 'center' });
+      y += 8;
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'normal');
+      doc.text('Integrated Ombudsman Scheme, 2021', pw / 2, y, { align: 'center' });
+      y += 12;
 
-Case ID: ${this.nonMaintainableCaseId}
-Date: ${new Date().toLocaleDateString('en-IN')}
+      doc.setDrawColor(0);
+      doc.line(20, y, pw - 20, y);
+      y += 10;
 
-Dear Complainant,
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text('CLOSURE LETTER', pw / 2, y, { align: 'center' });
+      y += 12;
 
-Your complaint has been closed as Non-Maintainable under the provisions of the Reserve Bank - Integrated Ombudsman Scheme, 2021.
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Case ID: ${this.nonMaintainableCaseId}`, 20, y);
+      y += 7;
+      doc.text(`Date: ${new Date().toLocaleDateString('en-IN')}`, 20, y);
+      y += 14;
 
-Reason: ${this.eligibilityBlockMessage()}
+      doc.text('Dear Complainant,', 20, y);
+      y += 10;
 
-This is a system-generated letter.
+      const reason = this.eligibilityBlockMessage();
+      const bodyText = `Your complaint has been closed as Non-Maintainable under the provisions of the Reserve Bank - Integrated Ombudsman Scheme, 2021.`;
+      const lines = doc.splitTextToSize(bodyText, pw - 40);
+      doc.text(lines, 20, y);
+      y += lines.length * 6 + 8;
 
-Reserve Bank of India
-Department of Consumer Education and Protection
-    `.trim();
+      doc.setFont('helvetica', 'bold');
+      doc.text('Reason:', 20, y);
+      y += 7;
+      doc.setFont('helvetica', 'normal');
+      const reasonLines = doc.splitTextToSize(reason, pw - 40);
+      doc.text(reasonLines, 20, y);
+      y += reasonLines.length * 6 + 14;
 
-    const blob = new Blob([content], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `Closure_Letter_${this.nonMaintainableCaseId}.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
+      doc.text('This is a system-generated letter and does not require a signature.', 20, y);
+      y += 14;
+
+      doc.setFont('helvetica', 'bold');
+      doc.text('Reserve Bank of India', 20, y);
+      y += 6;
+      doc.setFont('helvetica', 'normal');
+      doc.text('Department of Consumer Education and Protection', 20, y);
+      y += 14;
+
+      doc.setDrawColor(0, 100, 0);
+      doc.setFillColor(240, 255, 240);
+      doc.roundedRect(20, y, pw - 40, 12, 2, 2, 'FD');
+      doc.setTextColor(0, 100, 0);
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'bold');
+      doc.text('DIGITALLY SIGNED | RBI CMS Digital Certificate Authority', 25, y + 8);
+      doc.setTextColor(0);
+
+      doc.save(`Closure_Letter_${this.nonMaintainableCaseId}.pdf`);
+    });
   }
 
   // FR-G-017: Form Validation
@@ -927,7 +968,7 @@ Department of Consumer Education and Protection
     const category = this.formData['complaintCategory'];
     const disputeDate = this.formData['disputeDate'];
 
-    this.http.post<any>('/api/v1/complaints/check-duplicate', {
+    this.http.post<any>(`${environment.apiBaseUrl}/api/v1/complaints/check-duplicate`, {
       phone, email, entityName, category, disputeDate
     }).subscribe({
       next: (res) => {
@@ -963,7 +1004,7 @@ Department of Consumer Education and Protection
     this.submitting.set(true);
 
     const payload = {
-      channel: 'WEB_PORTAL',
+      filingType: 'ONLINE',
       category: this.formData['complaintCategory'] || 'GENERAL',
       complainantName: [this.formData['firstName'], this.formData['middleName'], this.formData['lastName']].filter(Boolean).join(' '),
       complainantEmail: this.formData['email'],
@@ -983,13 +1024,9 @@ Department of Consumer Education and Protection
         this.phase.set('success');
         this.clearDraft();
       },
-      error: () => {
-        const now = new Date();
-        const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
-        this.referenceNumber = `CMP-${dateStr}-${String(Math.floor(Math.random() * 999999)).padStart(6, '0')}`;
+      error: (err) => {
         this.submitting.set(false);
-        this.phase.set('success');
-        this.clearDraft();
+        this.validationErrors['submit'] = err?.error?.message || 'Failed to submit complaint. Please try again.';
       }
     });
   }

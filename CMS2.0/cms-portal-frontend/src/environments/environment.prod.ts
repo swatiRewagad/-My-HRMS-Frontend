@@ -4,6 +4,10 @@ export const environment = {
   keycloakUrl: 'https://auth.rbi.org.in',
   realm: 'cms',
 
+  // Dev mode: never auto-populate OTP in production
+  devAutoPopulateOtp: false,
+  devDefaultOtp: '',
+
   // NFR-005: Session timeout in minutes
   sessionTimeoutMinutes: 15,
 

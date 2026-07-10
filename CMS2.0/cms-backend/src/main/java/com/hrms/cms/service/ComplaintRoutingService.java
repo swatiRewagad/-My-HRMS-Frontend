@@ -24,8 +24,8 @@ public class ComplaintRoutingService {
     public String assignOfficerByRole(String role) {
         List<Map<String, Object>> officers = keycloakUserService.getUsersByRole(role);
         if (officers.isEmpty()) {
-            log.warn("No officers found in Keycloak for role: {}", role);
-            return null;
+            log.warn("No officers found in Keycloak for role: {}, using default team name", role);
+            return role.replace("_", " ") + " Team";
         }
 
         AtomicInteger counter = roundRobinCounters.computeIfAbsent(role, k -> new AtomicInteger(0));

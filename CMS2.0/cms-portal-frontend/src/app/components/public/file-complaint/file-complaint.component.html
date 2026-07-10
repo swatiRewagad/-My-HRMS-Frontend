@@ -219,17 +219,6 @@
       }
     </div>
 
-    <!-- Scheme Download Links -->
-    <div class="scheme-links">
-      <div class="scheme-link-row">
-        <span>Regulated entities <strong>covered</strong> under Reserve Bank-Integrated Ombudsman Scheme, 2026</span>
-        <a href="javascript:void(0)" class="scheme-download-link"><i class="pi pi-download"></i> Download PDF</a>
-      </div>
-      <div class="scheme-link-row">
-        <span>Regulated entities <strong>not covered</strong> under Reserve Bank-Integrated Ombudsman Scheme, 2026</span>
-        <a href="javascript:void(0)" class="scheme-download-link"><i class="pi pi-download"></i> Download PDF</a>
-      </div>
-    </div>
 
   </div>
 }
@@ -825,6 +814,9 @@
             <button class="btn-submit-complaint" (click)="submit()" [disabled]="submitting() || !declarationChecked || !declaration2Checked">
               @if (submitting()) { Submitting... } @else { Submit Complaint }
             </button>
+            @if (validationErrors['submit']) {
+              <div class="error-msg" style="margin-top: 10px; color: #dc2626;"><i class="pi pi-exclamation-circle"></i> {{ validationErrors['submit'] }}</div>
+            }
           }
         </div>
       </div>

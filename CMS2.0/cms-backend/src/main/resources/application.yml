@@ -69,8 +69,8 @@ keycloak:
     server-url: ${KEYCLOAK_URL:http://localhost:8180}
     realm: ${KEYCLOAK_REALM:cms}
     client-id: ${KEYCLOAK_ADMIN_CLIENT:admin-cli}
-    username: ${KEYCLOAK_ADMIN_USER:}
-    password: ${KEYCLOAK_ADMIN_PASSWORD:}
+    username: ${KEYCLOAK_ADMIN_USER:admin}
+    password: ${KEYCLOAK_ADMIN_PASSWORD:admin}
 
 cms:
   ocr:
@@ -155,7 +155,7 @@ cms:
       expiry-minutes: ${OTP_EXPIRY_MINUTES:5}
       max-resend-per-hour: ${OTP_MAX_RESEND_PER_HOUR:5}
       max-verify-attempts-per-otp: ${OTP_MAX_VERIFY_ATTEMPTS:3}
-      dev-auto-populate: ${OTP_DEV_AUTO_POPULATE:false}
+      dev-auto-populate: ${OTP_DEV_AUTO_POPULATE:true}
     captcha:
       length: ${CAPTCHA_LENGTH:6}
       expiry-minutes: ${CAPTCHA_EXPIRY_MINUTES:5}

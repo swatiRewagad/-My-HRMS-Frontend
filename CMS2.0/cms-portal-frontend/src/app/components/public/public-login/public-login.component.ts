@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
 import { PublicAuthService } from '../../../services/public-auth.service';
 import { CitizenAuthApiService, CaptchaResponse } from '../../../services/citizen-auth-api.service';
+import { environment } from '../../../../environments/environment';
 
 @Component({
   selector: 'app-public-login',
@@ -105,8 +106,9 @@ export class PublicLoginComponent implements OnDestroy {
         this.otpSent.set(true);
         this.otpDigits = ['', '', '', '', '', ''];
         this.devOtpPopulated.set(false);
-        if (res.devOtp) {
-          this.otpDigits = res.devOtp.split('').slice(0, 6);
+        const devOtp = res.devOtp || (environment.devAutoPopulateOtp ? environment.devDefaultOtp : '');
+        if (devOtp) {
+          this.otpDigits = devOtp.split('').slice(0, 6);
           this.devOtpPopulated.set(true);
         }
         this.startResendTimer();
@@ -151,8 +153,10 @@ export class PublicLoginComponent implements OnDestroy {
         this.otpSent.set(true);
         this.showEmailFallback.set(false);
         this.otpDigits = ['', '', '', '', '', ''];
-        if (res.devOtp) {
-          this.otpDigits = res.devOtp.split('').slice(0, 6);
+        const devOtp = res.devOtp || (environment.devAutoPopulateOtp ? environment.devDefaultOtp : '');
+        if (devOtp) {
+          this.otpDigits = devOtp.split('').slice(0, 6);
+          this.devOtpPopulated.set(true);
         }
         this.startResendTimer();
         this.loading.set(false);

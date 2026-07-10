@@ -6,7 +6,7 @@
     <input type="text"
            [ngModel]="searchId()"
            (ngModelChange)="searchId.set($event)"
-           placeholder="Enter Complaint ID (e.g., CMP-20260525-000001)"
+           placeholder="Enter Complaint ID (e.g., CMS-20260710-ABC123)"
            (keydown.enter)="track()">
     <button (click)="track()" [disabled]="!searchId() || loading()">
       @if (loading()) {

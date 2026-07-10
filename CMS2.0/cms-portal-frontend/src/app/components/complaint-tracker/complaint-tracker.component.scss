@@ -177,6 +177,39 @@
   &:hover { color: #0d47a1; }
 }
 
+// FR-G-034: Download PDF
+.download-section {
+  padding: 1.5rem;
+  border-top: 1px solid #e0e0e0;
+  text-align: center;
+}
+
+.btn-download-pdf {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background: #1565c0;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, box-shadow 0.2s;
+
+  i { font-size: 16px; }
+
+  &:hover {
+    background: #0d47a1;
+    box-shadow: 0 4px 12px rgba(21, 101, 192, 0.3);
+  }
+
+  &:active {
+    transform: scale(0.98);
+  }
+}
+
 // FR-G-026: Feedback
 .feedback-section {
   padding: 1.5rem; border-top: 1px solid #e0e0e0; text-align: center;

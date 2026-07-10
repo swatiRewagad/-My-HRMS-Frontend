@@ -1,0 +1,366 @@
+<app-session-timeout></app-session-timeout>
+<div class="rbio-home">
+  <!-- Header Bar -->
+  <header class="cms-header">
+    <div class="header-left">
+      <img src="assets/corporates-rbi-logo.jpg" alt="RBI" class="rbi-logo" />
+      <div class="rbi-text">
+        <span class="rbi-hindi">भारतीय रिज़र्व बैंक</span>
+        <span class="rbi-english">RESERVE BANK OF INDIA</span>
+      </div>
+      <div class="header-divider-v"></div>
+      <img src="assets/cms-logo.png" alt="CMS" class="cms-logo" onerror="this.style.display='none'" />
+      <span class="cms-title">CMS</span>
+      <span class="cms-subtitle">Complaint Management System</span>
+    </div>
+    <div class="header-right">
+      <div class="header-icons">
+        <button class="font-btn" title="Decrease font"><i class="pi pi-minus"></i> A</button>
+        <button class="font-btn active" title="Normal font">A</button>
+        <button class="font-btn" title="Increase font">A<sup>+</sup></button>
+        <button title="Language"><i class="pi pi-globe"></i> English</button>
+        <app-notification-bell></app-notification-bell>
+      </div>
+      <span class="user-avatar">{{ (loggedInUser?.name || 'R').charAt(0) }}</span>
+      <div class="user-details">
+        <span class="user-name">{{ loggedInUser?.name || 'Rahul Jain' }}</span>
+        <span class="user-role">RBIO Dealing Officer</span>
+      </div>
+      <button class="btn-logout" (click)="logout()"><i class="pi pi-sign-out"></i></button>
+    </div>
+  </header>
+
+  <!-- Sidebar + Content -->
+  <div class="main-layout">
+    <!-- Left Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-item active">
+        <i class="pi pi-list"></i>
+        <span>RBIO Complaints</span>
+      </div>
+      <div class="sidebar-item" (click)="router.navigate(['/admin/dashboard'], {queryParams: {department: 'RBIO'}})">
+        <i class="pi pi-chart-bar"></i>
+        <span>Dashboard</span>
+      </div>
+      <div class="sidebar-collapse">
+        <i class="pi pi-angle-double-left"></i>
+        <span>Collapse</span>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="content">
+      <div class="content-header">
+        <h1>RBIO Complaints</h1>
+        <div class="header-actions">
+          <button class="btn btn-link" (click)="showAdvancedSearch.set(true)">Advanced Search</button>
+          @if (advSearchActive()) {
+            <button class="btn btn-link danger" (click)="clearAdvancedSearch()">Clear Filters</button>
+          }
+          <select class="queue-select" [value]="filterStatus()" (change)="filterStatus.set($any($event.target).value)">
+            <option value="">RBIO Complaints</option>
+            <option value="DRAFT">Draft</option>
+            <option value="IN_PROGRESS">In Progress</option>
+            <option value="SENT_BACK">Sent Back to Me</option>
+            <option value="ASSESSMENT_COMPLETE">Assessment Complete</option>
+          </select>
+          <select class="queue-select" [value]="filterQueue()" (change)="filterQueue.set($any($event.target).value)">
+            <option value="ASSIGNED_TO_ME">Complaints Assigned To Me</option>
+            <option value="ALL">All Complaints</option>
+          </select>
+          <button class="btn btn-link" (click)="loadComplaints()"><i class="pi pi-filter"></i> Filters</button>
+          <div class="create-dropdown-wrapper">
+            <button class="btn btn-primary create-btn" (click)="showCreateDropdown.set(!showCreateDropdown())">
+              <i class="pi pi-plus"></i> Create Complaint <i class="pi pi-chevron-down"></i>
+            </button>
+            @if (showCreateDropdown()) {
+              <div class="create-dropdown">
+                <button (click)="showCreateDropdown.set(false)">
+                  <span class="dropdown-icon appellate">A</span> Appellate
+                </button>
+                <button (click)="showCreateDropdown.set(false)">
+                  <span class="dropdown-icon crpc">A</span> CRPC Complaints
+                </button>
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+
+      <!-- Stats Cards -->
+      <div class="stats-bar">
+        <div class="stat-card" (click)="filterStatus.set('')">
+          <div class="stat-icon blue"><i class="pi pi-inbox"></i></div>
+          <div class="stat-content">
+            <span class="stat-label">Total Pending Complaints</span>
+            <span class="stat-value">{{ stats().totalPending }}</span>
+          </div>
+        </div>
+        <div class="stat-card" (click)="filterStatus.set('')">
+          <div class="stat-icon yellow"><i class="pi pi-user"></i></div>
+          <div class="stat-content">
+            <span class="stat-label">Pending with Me</span>
+            <span class="stat-value">{{ stats().pendingWithMe }}</span>
+          </div>
+        </div>
+        <div class="stat-card" (click)="filterStatus.set('AWAITING_RESPONSE')">
+          <div class="stat-icon red"><i class="pi pi-users"></i></div>
+          <div class="stat-content">
+            <span class="stat-label">Pending with Contact Person</span>
+            <span class="stat-value">{{ stats().pendingContactPerson }}</span>
+          </div>
+        </div>
+        <div class="stat-card" (click)="filterStatus.set('MEETING_SCHEDULED')">
+          <div class="stat-icon purple"><i class="pi pi-calendar"></i></div>
+          <div class="stat-content">
+            <span class="stat-label">Pending at Meeting Scheduled</span>
+            <span class="stat-value">{{ stats().pendingMeeting }}</span>
+          </div>
+        </div>
+        <div class="stat-card sla-card">
+          <div class="stat-icon orange"><i class="pi pi-clock"></i></div>
+          <div class="stat-content">
+            <span class="stat-label">SLA Breach</span>
+            <span class="stat-value">{{ stats().slaBreach }}</span>
+          </div>
+          <div class="sla-overdue">
+            <span class="overdue-label">Overdue</span>
+            <span class="overdue-value">{{ stats().slaOverdue }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Status Tabs -->
+      <div class="status-tabs">
+        <button class="tab" [class.active]="filterStatus() === ''" (click)="filterStatus.set('')">
+          All
+        </button>
+        <button class="tab" [class.active]="filterStatus() === 'DRAFT'" (click)="filterStatus.set('DRAFT')">
+          Draft <span class="tab-count">{{ stats().draft }}</span>
+        </button>
+        <button class="tab" [class.active]="filterStatus() === 'MEETING_SCHEDULED'" (click)="filterStatus.set('MEETING_SCHEDULED')">
+          Meeting Scheduled <span class="tab-count">{{ stats().meetingScheduled }}</span>
+        </button>
+        <button class="tab" [class.active]="filterStatus() === 'SENT_BACK'" (click)="filterStatus.set('SENT_BACK')">
+          Sent Back to Me <span class="tab-count">{{ stats().sentBack }}</span>
+        </button>
+        <button class="tab" [class.active]="filterStatus() === 'ASSESSMENT_COMPLETE'" (click)="filterStatus.set('ASSESSMENT_COMPLETE')">
+          Assessment Complete
+        </button>
+      </div>
+
+      <!-- Complaints Table -->
+      <div class="table-section">
+        <div class="table-header-row">
+          <h3>Complaints</h3>
+          <div class="table-actions">
+            <label class="toggle-filter">
+              <span class="toggle-switch" [class.active]="filterUnread()">
+                <input type="checkbox" [checked]="filterUnread()" (change)="filterUnread.set(!filterUnread())" />
+                <span class="toggle-slider"></span>
+              </span>
+              Unread
+            </label>
+            <label class="toggle-filter">
+              <span class="toggle-switch" [class.active]="filterWithoutAttachments()">
+                <input type="checkbox" [checked]="filterWithoutAttachments()" (change)="filterWithoutAttachments.set(!filterWithoutAttachments())" />
+                <span class="toggle-slider"></span>
+              </span>
+              Without Attachments
+            </label>
+            <button class="btn btn-icon" (click)="showColumnConfig.set(true)" title="Column Selection">
+              <i class="pi pi-cog"></i>
+            </button>
+          </div>
+        </div>
+
+        @if (loading()) {
+          <div class="loading-overlay">
+            <div class="spinner"></div>
+            <span>Loading...</span>
+          </div>
+        }
+
+        <div class="table-wrapper">
+          <table class="data-grid">
+            <thead>
+              <tr>
+                <th class="checkbox-col">
+                  <input type="checkbox"
+                    [checked]="selectedIds().size === filteredComplaints().length && filteredComplaints().length > 0"
+                    (change)="toggleSelectAll()" />
+                </th>
+                @for (col of visibleColumns(); track col.key) {
+                  <th (click)="sortBy(col.key)">
+                    {{ col.label }}
+                    @if (sortColumn === col.key) {
+                      <i class="pi" [class.pi-sort-amount-up]="sortDirection === 'asc'" [class.pi-sort-amount-down]="sortDirection === 'desc'"></i>
+                    }
+                  </th>
+                }
+              </tr>
+              <!-- Column Search Row -->
+              <tr class="filter-row">
+                <th></th>
+                @for (col of visibleColumns(); track col.key) {
+                  <th>
+                    <input type="text" class="col-search" placeholder="Search"
+                      [(ngModel)]="columnFilters[col.key]" />
+                  </th>
+                }
+              </tr>
+            </thead>
+            <tbody>
+              @for (item of paginatedComplaints(); track item.complaintId) {
+                <tr [class.selected]="selectedIds().has(item.complaintId)" [class.visited]="visitedIds().has(item.complaintId)" (click)="openComplaint(item.complaintId)">
+                  <td class="checkbox-col" (click)="$event.stopPropagation()">
+                    <input type="checkbox"
+                      [checked]="selectedIds().has(item.complaintId)"
+                      (change)="toggleSelect(item.complaintId)" />
+                  </td>
+                  @for (col of visibleColumns(); track col.key) {
+                    <td [class]="'cell-' + col.key">
+                      @if (col.key === 'status') {
+                        <span class="status-badge" [attr.data-status]="item.status">{{ getStatusLabel(item.status) }}</span>
+                      } @else if (col.key === 'modeOfReceipt') {
+                        <span class="mode-badge">{{ item.modeOfReceipt }}</span>
+                      } @else if (col.key === 'slaBreachDays') {
+                        <span class="sla-badge" [class]="getSlaClass(item.slaBreachDays)">{{ getSlaLabel(item.slaBreachDays) }}</span>
+                      } @else {
+                        {{ getCellValue(item, col.key) }}
+                      }
+                    </td>
+                  }
+                </tr>
+              } @empty {
+                <tr>
+                  <td [attr.colspan]="visibleColumns().length + 1" class="empty-state">
+                    No complaints found.
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Pagination -->
+        <div class="pagination">
+          <span class="page-info">Showing {{ paginationStart() }} to {{ paginationEnd() }} of {{ filteredComplaints().length }} entries</span>
+          <div class="page-controls">
+            <button class="page-btn" (click)="currentPage.set(1)" [disabled]="currentPage() === 1">&laquo;</button>
+            <button class="page-btn" (click)="currentPage.set(currentPage() - 1)" [disabled]="currentPage() === 1">&lsaquo;</button>
+            @for (p of pageNumbers(); track p) {
+              <button class="page-btn" [class.active]="p === currentPage()" (click)="currentPage.set(p)">{{ p }}</button>
+            }
+            <button class="page-btn" (click)="currentPage.set(currentPage() + 1)" [disabled]="currentPage() === totalPages()">&rsaquo;</button>
+            <button class="page-btn" (click)="currentPage.set(totalPages())" [disabled]="currentPage() === totalPages()">&raquo;</button>
+            <select class="page-size-select" [value]="pageSize" (change)="changePageSize(+$any($event.target).value)">
+              <option [value]="10">10</option>
+              <option [value]="25">25</option>
+              <option [value]="50">50</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- Column Selection Dialog -->
+@if (showColumnConfig()) {
+  <div class="modal-overlay" (click)="showColumnConfig.set(false)">
+    <div class="modal-dialog column-dialog" (click)="$event.stopPropagation()">
+      <div class="modal-title">
+        <i class="pi pi-th-large"></i> Choose columns to see in "Complaints" Table
+        <button class="modal-close" (click)="showColumnConfig.set(false)">&times;</button>
+      </div>
+      <p class="modal-subtitle">Select and manage visible columns</p>
+      <input type="text" class="column-search" placeholder="Search Column Name" [(ngModel)]="columnSearchText" />
+      <div class="column-list">
+        @for (col of filteredColumns(); track col.key; let i = $index) {
+          <label class="column-option"
+            draggable="true"
+            (dragstart)="onColumnDragStart(i)"
+            (dragover)="onColumnDragOver($event, i)"
+            (drop)="onColumnDrop(i)"
+            (dragend)="onColumnDragEnd()"
+            [class.dragging]="dragIndex === i"
+            [class.drag-over]="dragOverIndex === i">
+            <i class="pi pi-bars drag-handle"></i>
+            <input type="checkbox" [checked]="col.visible" (change)="toggleColumnVisibility(col.key)" />
+            {{ col.label }}
+          </label>
+        }
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-outline" (click)="showColumnConfig.set(false)">Cancel</button>
+        <button class="btn btn-primary" (click)="showColumnConfig.set(false)">Save</button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Advanced Search Dialog -->
+@if (showAdvancedSearch()) {
+  <div class="modal-overlay" (click)="showAdvancedSearch.set(false)">
+    <div class="modal-dialog search-dialog" (click)="$event.stopPropagation()">
+      <div class="modal-title">
+        Advanced Search
+        <button class="modal-close" (click)="showAdvancedSearch.set(false)">&times;</button>
+      </div>
+      <div class="search-grid">
+        <div class="search-field">
+          <label>Complaint Number</label>
+          <input type="text" [(ngModel)]="advSearch.complaintNumber" placeholder="Enter a value" />
+        </div>
+        <div class="search-field">
+          <label>Complaint Id</label>
+          <input type="text" [(ngModel)]="advSearch.complaintId" placeholder="Enter a value" />
+        </div>
+        <div class="search-field">
+          <label>Status Code</label>
+          <select [(ngModel)]="advSearch.statusCode">
+            <option value="">Select a Value</option>
+            <option value="DRAFT">Draft</option>
+            <option value="IN_PROGRESS">In Progress</option>
+            <option value="MEETING_SCHEDULED">Meeting Scheduled</option>
+            <option value="SENT_BACK">Sent Back</option>
+            <option value="ASSESSMENT_COMPLETE">Assessment Complete</option>
+          </select>
+        </div>
+        <div class="search-field">
+          <label>Complainant Name</label>
+          <input type="text" [(ngModel)]="advSearch.complainantName" placeholder="Enter a value" />
+        </div>
+        <div class="search-field">
+          <label>Complainant Email</label>
+          <input type="text" [(ngModel)]="advSearch.email" placeholder="Enter a value" />
+        </div>
+        <div class="search-field">
+          <label>Entity Name</label>
+          <input type="text" [(ngModel)]="advSearch.entityName" placeholder="Enter a value" />
+        </div>
+        <div class="search-field full-width">
+          <label>Subject</label>
+          <input type="text" [(ngModel)]="advSearch.subject" placeholder="Enter a value" />
+        </div>
+        <div class="search-field">
+          <label>Category</label>
+          <select [(ngModel)]="advSearch.category">
+            <option value="">Select a Value</option>
+            <option value="ATM">ATM</option>
+            <option value="CREDIT_CARD">Credit Card</option>
+            <option value="UPI">UPI</option>
+            <option value="LOAN">Loan</option>
+            <option value="DEPOSIT">Deposit</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-outline" (click)="clearAdvancedSearch(); showAdvancedSearch.set(false)">Clear</button>
+        <button class="btn btn-outline" (click)="showAdvancedSearch.set(false)">Cancel</button>
+        <button class="btn btn-primary" (click)="applyAdvancedSearch()">Search</button>
+      </div>
+    </div>
+  </div>
+}

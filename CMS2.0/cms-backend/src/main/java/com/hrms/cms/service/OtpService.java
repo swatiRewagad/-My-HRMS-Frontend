@@ -26,7 +26,7 @@ public class OtpService {
 
     @Transactional
     public String generateOtp(String mobileNumber, String sessionId, String channel, String email) {
-        String otp = generateSecureOtp();
+        String otp = authProps.getOtp().isDevAutoPopulate() ? "123456" : generateSecureOtp();
         String otpHash = hashValue(otp);
 
         OtpAttempt attempt = OtpAttempt.builder()
