@@ -1,0 +1,798 @@
+pincode,office_name,district,state,region,division,office_type
+400001,Mumbai GPO,Mumbai,Maharashtra,Mumbai,Mumbai,H.O
+400002,Kalbadevi,Mumbai,Maharashtra,Mumbai,Mumbai,H.O
+400003,Masjid Bunder,Mumbai,Maharashtra,Mumbai,Mumbai,H.O
+400004,Girgaon,Mumbai,Maharashtra,Mumbai,Mumbai,H.O
+400005,Colaba,Mumbai,Maharashtra,Mumbai,Mumbai,H.O
+400006,Malabar Hill,Mumbai,Maharashtra,Mumbai,Mumbai,H.O
+400007,Grant Road,Mumbai,Maharashtra,Mumbai,Mumbai,H.O
+400008,Mumbai Central,Mumbai,Maharashtra,Mumbai,Mumbai,H.O
+400009,Mahalaxmi,Mumbai,Maharashtra,Mumbai,Mumbai,H.O
+400010,Mazgaon,Mumbai,Maharashtra,Mumbai,Mumbai,H.O
+400011,Jacob Circle,Mumbai,Maharashtra,Mumbai,Mumbai,H.O
+400012,Parel,Mumbai,Maharashtra,Mumbai,Mumbai,H.O
+400013,Delisle Road,Mumbai,Maharashtra,Mumbai,Mumbai,H.O
+400014,Dadar,Mumbai,Maharashtra,Mumbai,Mumbai,H.O
+400015,Sewri,Mumbai,Maharashtra,Mumbai,Mumbai,H.O
+400016,Mahim,Mumbai,Maharashtra,Mumbai,Mumbai,H.O
+400017,Dharavi,Mumbai,Maharashtra,Mumbai,Mumbai,H.O
+400018,Worli,Mumbai,Maharashtra,Mumbai,Mumbai,H.O
+400019,Sion,Mumbai,Maharashtra,Mumbai,Mumbai,H.O
+400020,Churchgate,Mumbai,Maharashtra,Mumbai,Mumbai,H.O
+400021,Nariman Point,Mumbai,Maharashtra,Mumbai,Mumbai,H.O
+400022,Chembur,Mumbai,Maharashtra,Mumbai,Mumbai,H.O
+400025,Prabhadevi,Mumbai,Maharashtra,Mumbai,Mumbai,H.O
+400028,Kurla,Mumbai,Maharashtra,Mumbai,Mumbai,H.O
+400029,Bandra West,Mumbai Suburban,Maharashtra,Mumbai,Mumbai,H.O
+400030,Bandra East,Mumbai Suburban,Maharashtra,Mumbai,Mumbai,H.O
+400037,Antop Hill,Mumbai,Maharashtra,Mumbai,Mumbai,H.O
+400049,Juhu,Mumbai Suburban,Maharashtra,Mumbai,Mumbai,H.O
+400050,Bandra Terminus,Mumbai Suburban,Maharashtra,Mumbai,Mumbai,H.O
+400051,Khar,Mumbai Suburban,Maharashtra,Mumbai,Mumbai,H.O
+400052,Santacruz West,Mumbai Suburban,Maharashtra,Mumbai,Mumbai,H.O
+400053,Vile Parle East,Mumbai Suburban,Maharashtra,Mumbai,Mumbai,H.O
+400054,Santacruz East,Mumbai Suburban,Maharashtra,Mumbai,Mumbai,H.O
+400055,Vile Parle West,Mumbai Suburban,Maharashtra,Mumbai,Mumbai,H.O
+400056,Andheri West,Mumbai Suburban,Maharashtra,Mumbai,Mumbai,H.O
+400057,Andheri East,Mumbai Suburban,Maharashtra,Mumbai,Mumbai,H.O
+400058,Jogeshwari West,Mumbai Suburban,Maharashtra,Mumbai,Mumbai,H.O
+400059,Goregaon West,Mumbai Suburban,Maharashtra,Mumbai,Mumbai,H.O
+400060,Jogeshwari East,Mumbai Suburban,Maharashtra,Mumbai,Mumbai,H.O
+400061,Malad West,Mumbai Suburban,Maharashtra,Mumbai,Mumbai,H.O
+400062,Goregaon East,Mumbai Suburban,Maharashtra,Mumbai,Mumbai,H.O
+400063,Malad East,Mumbai Suburban,Maharashtra,Mumbai,Mumbai,H.O
+400064,Kandivali West,Mumbai Suburban,Maharashtra,Mumbai,Mumbai,H.O
+400065,Kandivali East,Mumbai Suburban,Maharashtra,Mumbai,Mumbai,H.O
+400066,Borivali West,Mumbai Suburban,Maharashtra,Mumbai,Mumbai,H.O
+400067,Borivali East,Mumbai Suburban,Maharashtra,Mumbai,Mumbai,H.O
+400068,Dahisar,Mumbai Suburban,Maharashtra,Mumbai,Mumbai,H.O
+400069,Vikhroli,Mumbai Suburban,Maharashtra,Mumbai,Mumbai,H.O
+400070,Kurla West,Mumbai Suburban,Maharashtra,Mumbai,Mumbai,H.O
+400071,Ghatkopar,Mumbai Suburban,Maharashtra,Mumbai,Mumbai,H.O
+400072,Bhandup,Mumbai Suburban,Maharashtra,Mumbai,Mumbai,H.O
+400074,Mulund,Mumbai Suburban,Maharashtra,Mumbai,Mumbai,H.O
+400076,Powai,Mumbai Suburban,Maharashtra,Mumbai,Mumbai,H.O
+400078,Bhandup West,Mumbai Suburban,Maharashtra,Mumbai,Mumbai,H.O
+400080,Airoli,Mumbai Suburban,Maharashtra,Mumbai,Mumbai,H.O
+400086,Ghatkopar East,Mumbai Suburban,Maharashtra,Mumbai,Mumbai,H.O
+400088,Tilak Nagar,Mumbai Suburban,Maharashtra,Mumbai,Mumbai,H.O
+400089,Sakinaka,Mumbai Suburban,Maharashtra,Mumbai,Mumbai,H.O
+400091,Nahur,Mumbai Suburban,Maharashtra,Mumbai,Mumbai,H.O
+400093,Powai IIT,Mumbai Suburban,Maharashtra,Mumbai,Mumbai,H.O
+400097,Malad Marve,Mumbai Suburban,Maharashtra,Mumbai,Mumbai,H.O
+400099,Gorai,Mumbai Suburban,Maharashtra,Mumbai,Mumbai,H.O
+400101,Mira Road,Thane,Maharashtra,Mumbai,Mumbai,H.O
+410001,Pune Cantonment,Pune,Maharashtra,Pune,Pune,H.O
+410002,Pune Camp,Pune,Maharashtra,Pune,Pune,H.O
+411001,Pune GPO,Pune,Maharashtra,Pune,Pune,H.O
+411002,Shivaji Nagar,Pune,Maharashtra,Pune,Pune,H.O
+411003,Sadashiv Peth,Pune,Maharashtra,Pune,Pune,H.O
+411004,Deccan Gymkhana,Pune,Maharashtra,Pune,Pune,H.O
+411005,Shaniwar Peth,Pune,Maharashtra,Pune,Pune,H.O
+411006,Ganesh Khind,Pune,Maharashtra,Pune,Pune,H.O
+411007,Aundh,Pune,Maharashtra,Pune,Pune,H.O
+411008,Kothrud,Pune,Maharashtra,Pune,Pune,H.O
+411009,Yerawada,Pune,Maharashtra,Pune,Pune,H.O
+411011,Bibvewadi,Pune,Maharashtra,Pune,Pune,H.O
+411012,Dhankawadi,Pune,Maharashtra,Pune,Pune,H.O
+411013,Kondhwa,Pune,Maharashtra,Pune,Pune,H.O
+411014,Hadapsar,Pune,Maharashtra,Pune,Pune,H.O
+411015,Wanowrie,Pune,Maharashtra,Pune,Pune,H.O
+411016,Sahakarnagar,Pune,Maharashtra,Pune,Pune,H.O
+411017,Karve Nagar,Pune,Maharashtra,Pune,Pune,H.O
+411018,Erandwane,Pune,Maharashtra,Pune,Pune,H.O
+411019,Baner,Pune,Maharashtra,Pune,Pune,H.O
+411020,Senapati Bapat Road,Pune,Maharashtra,Pune,Pune,H.O
+411021,Paud Road,Pune,Maharashtra,Pune,Pune,H.O
+411027,Pashan,Pune,Maharashtra,Pune,Pune,H.O
+411028,Bavdhan,Pune,Maharashtra,Pune,Pune,H.O
+411030,Warje,Pune,Maharashtra,Pune,Pune,H.O
+411032,Pimpri,Pune,Maharashtra,Pune,Pune,H.O
+411033,Chinchwad,Pune,Maharashtra,Pune,Pune,H.O
+411035,Akurdi,Pune,Maharashtra,Pune,Pune,H.O
+411036,Nigdi,Pune,Maharashtra,Pune,Pune,H.O
+411037,Bhosari,Pune,Maharashtra,Pune,Pune,H.O
+411038,Hinjewadi,Pune,Maharashtra,Pune,Pune,H.O
+411039,Wakad,Pune,Maharashtra,Pune,Pune,H.O
+411041,Wagholi,Pune,Maharashtra,Pune,Pune,H.O
+411043,Kharadi,Pune,Maharashtra,Pune,Pune,H.O
+411044,Viman Nagar,Pune,Maharashtra,Pune,Pune,H.O
+411045,Magarpatta,Pune,Maharashtra,Pune,Pune,H.O
+411048,Undri,Pune,Maharashtra,Pune,Pune,H.O
+411057,Wakad,Pune,Maharashtra,Pune,Pune,H.O
+422001,Nashik GPO,Nashik,Maharashtra,Nashik,Nashik,H.O
+422002,Nashik Road,Nashik,Maharashtra,Nashik,Nashik,H.O
+422003,Panchavati,Nashik,Maharashtra,Nashik,Nashik,H.O
+422005,Deolali,Nashik,Maharashtra,Nashik,Nashik,H.O
+422007,Satpur,Nashik,Maharashtra,Nashik,Nashik,H.O
+422009,Cidco Nashik,Nashik,Maharashtra,Nashik,Nashik,H.O
+422010,Ambad,Nashik,Maharashtra,Nashik,Nashik,H.O
+431001,Aurangabad GPO,Aurangabad,Maharashtra,Aurangabad,Aurangabad,H.O
+431002,Aurangabad City,Aurangabad,Maharashtra,Aurangabad,Aurangabad,H.O
+431003,Cidco Aurangabad,Aurangabad,Maharashtra,Aurangabad,Aurangabad,H.O
+431005,Aurangabad Cantonment,Aurangabad,Maharashtra,Aurangabad,Aurangabad,H.O
+440001,Nagpur GPO,Nagpur,Maharashtra,Nagpur,Nagpur,H.O
+440002,Sitabuldi,Nagpur,Maharashtra,Nagpur,Nagpur,H.O
+440003,Sadar,Nagpur,Maharashtra,Nagpur,Nagpur,H.O
+440004,Mahal,Nagpur,Maharashtra,Nagpur,Nagpur,H.O
+440005,Itwari,Nagpur,Maharashtra,Nagpur,Nagpur,H.O
+440006,Dharampeth,Nagpur,Maharashtra,Nagpur,Nagpur,H.O
+440008,Laxmi Nagar,Nagpur,Maharashtra,Nagpur,Nagpur,H.O
+440009,Civil Lines,Nagpur,Maharashtra,Nagpur,Nagpur,H.O
+440010,Nagpur University,Nagpur,Maharashtra,Nagpur,Nagpur,H.O
+440012,Manewada,Nagpur,Maharashtra,Nagpur,Nagpur,H.O
+440013,Wardha Road,Nagpur,Maharashtra,Nagpur,Nagpur,H.O
+440014,Nandanvan,Nagpur,Maharashtra,Nagpur,Nagpur,H.O
+440015,Hingna,Nagpur,Maharashtra,Nagpur,Nagpur,H.O
+440017,Koradi,Nagpur,Maharashtra,Nagpur,Nagpur,H.O
+440018,Kamptee,Nagpur,Maharashtra,Nagpur,Nagpur,H.O
+440022,Wadi,Nagpur,Maharashtra,Nagpur,Nagpur,H.O
+440024,Khamla,Nagpur,Maharashtra,Nagpur,Nagpur,H.O
+440025,Pratap Nagar,Nagpur,Maharashtra,Nagpur,Nagpur,H.O
+440027,Trimurti Nagar,Nagpur,Maharashtra,Nagpur,Nagpur,H.O
+440030,Besa,Nagpur,Maharashtra,Nagpur,Nagpur,H.O
+440034,Hudkeshwar,Nagpur,Maharashtra,Nagpur,Nagpur,H.O
+110001,Parliament House,New Delhi,Delhi,Delhi,New Delhi,H.O
+110002,Darya Ganj,Central Delhi,Delhi,Delhi,New Delhi,H.O
+110003,CGO Complex,New Delhi,Delhi,Delhi,New Delhi,H.O
+110004,Rashtrapati Bhavan,New Delhi,Delhi,Delhi,New Delhi,H.O
+110005,Karol Bagh,Central Delhi,Delhi,Delhi,New Delhi,H.O
+110006,Chandni Chowk,Central Delhi,Delhi,Delhi,New Delhi,H.O
+110007,New Delhi Railway Station,New Delhi,Delhi,Delhi,New Delhi,H.O
+110008,Patel Nagar,West Delhi,Delhi,Delhi,New Delhi,H.O
+110009,Civil Lines,North Delhi,Delhi,Delhi,New Delhi,H.O
+110010,Indraprastha,New Delhi,Delhi,Delhi,New Delhi,H.O
+110011,Connaught Place,New Delhi,Delhi,Delhi,New Delhi,H.O
+110012,Willingdon Crescent,New Delhi,Delhi,Delhi,New Delhi,H.O
+110013,Lady Hardinge,Central Delhi,Delhi,Delhi,New Delhi,H.O
+110014,Jangpura,South Delhi,Delhi,Delhi,New Delhi,H.O
+110015,Krishna Nagar,East Delhi,Delhi,Delhi,New Delhi,H.O
+110016,Hauz Khas,South Delhi,Delhi,Delhi,New Delhi,H.O
+110017,Lodhi Road,South Delhi,Delhi,Delhi,New Delhi,H.O
+110018,Tilak Nagar,West Delhi,Delhi,Delhi,New Delhi,H.O
+110019,Kalkaji,South Delhi,Delhi,Delhi,New Delhi,H.O
+110020,Okhla,South Delhi,Delhi,Delhi,New Delhi,H.O
+110021,Mehrauli,South Delhi,Delhi,Delhi,New Delhi,H.O
+110022,RK Puram,South West Delhi,Delhi,Delhi,New Delhi,H.O
+110023,Lajpat Nagar,South Delhi,Delhi,Delhi,New Delhi,H.O
+110024,Defence Colony,South Delhi,Delhi,Delhi,New Delhi,H.O
+110025,Chanakyapuri,New Delhi,Delhi,Delhi,New Delhi,H.O
+110026,Anand Parbat,Central Delhi,Delhi,Delhi,New Delhi,H.O
+110027,Safdarjung,South Delhi,Delhi,Delhi,New Delhi,H.O
+110028,Shankar Road,Central Delhi,Delhi,Delhi,New Delhi,H.O
+110029,South Extension,South Delhi,Delhi,Delhi,New Delhi,H.O
+110030,Saket,South Delhi,Delhi,Delhi,New Delhi,H.O
+110031,Gandhi Nagar,East Delhi,Delhi,Delhi,New Delhi,H.O
+110032,Shahdara,Shahdara,Delhi,Delhi,New Delhi,H.O
+110033,Seelampur,North East Delhi,Delhi,Delhi,New Delhi,H.O
+110034,Punjabi Bagh,West Delhi,Delhi,Delhi,New Delhi,H.O
+110035,Shakur Basti,North West Delhi,Delhi,Delhi,New Delhi,H.O
+110036,Alipur,North Delhi,Delhi,Delhi,New Delhi,H.O
+110037,Sarojini Nagar,South West Delhi,Delhi,Delhi,New Delhi,H.O
+110038,Inder Puri,South West Delhi,Delhi,Delhi,New Delhi,H.O
+110039,Moti Bagh,South West Delhi,Delhi,Delhi,New Delhi,H.O
+110040,Vasant Vihar,South West Delhi,Delhi,Delhi,New Delhi,H.O
+110041,Shakti Nagar,North Delhi,Delhi,Delhi,New Delhi,H.O
+110042,Model Town,North West Delhi,Delhi,Delhi,New Delhi,H.O
+110043,Kirti Nagar,West Delhi,Delhi,Delhi,New Delhi,H.O
+110044,Laxmi Nagar,East Delhi,Delhi,Delhi,New Delhi,H.O
+110045,Raja Garden,West Delhi,Delhi,Delhi,New Delhi,H.O
+110046,Rajouri Garden,West Delhi,Delhi,Delhi,New Delhi,H.O
+110047,South Moti Bagh,South West Delhi,Delhi,Delhi,New Delhi,H.O
+110048,Greater Kailash,South Delhi,Delhi,Delhi,New Delhi,H.O
+110049,East of Kailash,South Delhi,Delhi,Delhi,New Delhi,H.O
+110051,Preet Vihar,East Delhi,Delhi,Delhi,New Delhi,H.O
+110052,Pitam Pura,North West Delhi,Delhi,Delhi,New Delhi,H.O
+110053,Laxmi Nagar,East Delhi,Delhi,Delhi,New Delhi,H.O
+110054,Mall Road,North Delhi,Delhi,Delhi,New Delhi,H.O
+110055,Paharganj,Central Delhi,Delhi,Delhi,New Delhi,H.O
+110056,Azadpur,North West Delhi,Delhi,Delhi,New Delhi,H.O
+110057,Vasant Kunj,South West Delhi,Delhi,Delhi,New Delhi,H.O
+110058,Janakpuri,West Delhi,Delhi,Delhi,New Delhi,H.O
+110059,Uttam Nagar,West Delhi,Delhi,Delhi,New Delhi,H.O
+110060,Hari Nagar,West Delhi,Delhi,Delhi,New Delhi,H.O
+110061,Palam,South West Delhi,Delhi,Delhi,New Delhi,H.O
+110062,Dwarka,South West Delhi,Delhi,Delhi,New Delhi,H.O
+110063,Sagarpur,South West Delhi,Delhi,Delhi,New Delhi,H.O
+110064,Najafgarh,South West Delhi,Delhi,Delhi,New Delhi,H.O
+110065,Okhla Industrial,South Delhi,Delhi,Delhi,New Delhi,H.O
+110066,Tughlakabad,South Delhi,Delhi,Delhi,New Delhi,H.O
+110067,Munirka,South West Delhi,Delhi,Delhi,New Delhi,H.O
+110068,Naraina,West Delhi,Delhi,Delhi,New Delhi,H.O
+110070,IGI Airport,South West Delhi,Delhi,Delhi,New Delhi,H.O
+110071,Chattarpur,South Delhi,Delhi,Delhi,New Delhi,H.O
+110072,Mundka,West Delhi,Delhi,Delhi,New Delhi,H.O
+110073,Nangloi,West Delhi,Delhi,Delhi,New Delhi,H.O
+110074,Mayur Vihar Phase III,East Delhi,Delhi,Delhi,New Delhi,H.O
+110075,Dwarka Sector 8,South West Delhi,Delhi,Delhi,New Delhi,H.O
+110076,Jasola,South Delhi,Delhi,Delhi,New Delhi,H.O
+110077,Sarita Vihar,South Delhi,Delhi,Delhi,New Delhi,H.O
+110078,Dwarka Sector 23,South West Delhi,Delhi,Delhi,New Delhi,H.O
+110080,Rohini Sector 3,North West Delhi,Delhi,Delhi,New Delhi,H.O
+110081,Rithala,North West Delhi,Delhi,Delhi,New Delhi,H.O
+110082,Dilshad Garden,Shahdara,Delhi,Delhi,New Delhi,H.O
+110083,Shalimar Bagh,North West Delhi,Delhi,Delhi,New Delhi,H.O
+110084,Burari,North Delhi,Delhi,Delhi,New Delhi,H.O
+110085,Rohini Sector 11,North West Delhi,Delhi,Delhi,New Delhi,H.O
+110086,Bawana,North Delhi,Delhi,Delhi,New Delhi,H.O
+110087,Sector 17 Rohini,North West Delhi,Delhi,Delhi,New Delhi,H.O
+110088,Begumpur,North West Delhi,Delhi,Delhi,New Delhi,H.O
+110089,Rohini Sector 24,North West Delhi,Delhi,Delhi,New Delhi,H.O
+110091,Mayur Vihar Phase I,East Delhi,Delhi,Delhi,New Delhi,H.O
+110092,Patparganj,East Delhi,Delhi,Delhi,New Delhi,H.O
+110093,Nand Nagri,North East Delhi,Delhi,Delhi,New Delhi,H.O
+110094,Gharoli,East Delhi,Delhi,Delhi,New Delhi,H.O
+110095,Noida Link Road,East Delhi,Delhi,Delhi,New Delhi,H.O
+110096,Vasundhara Enclave,East Delhi,Delhi,Delhi,New Delhi,H.O
+560001,Bangalore GPO,Bangalore Urban,Karnataka,Bangalore,Bangalore,H.O
+560002,Frazer Town,Bangalore Urban,Karnataka,Bangalore,Bangalore,H.O
+560003,Shivaji Nagar,Bangalore Urban,Karnataka,Bangalore,Bangalore,H.O
+560004,Basavanagudi,Bangalore Urban,Karnataka,Bangalore,Bangalore,H.O
+560005,Seshadripuram,Bangalore Urban,Karnataka,Bangalore,Bangalore,H.O
+560008,Chamrajpet,Bangalore Urban,Karnataka,Bangalore,Bangalore,H.O
+560009,Richmond Town,Bangalore Urban,Karnataka,Bangalore,Bangalore,H.O
+560010,Jayanagar,Bangalore Urban,Karnataka,Bangalore,Bangalore,H.O
+560011,Malleshwaram,Bangalore Urban,Karnataka,Bangalore,Bangalore,H.O
+560012,Indiranagar,Bangalore Urban,Karnataka,Bangalore,Bangalore,H.O
+560016,Rajajinagar,Bangalore Urban,Karnataka,Bangalore,Bangalore,H.O
+560017,Marathahalli,Bangalore Urban,Karnataka,Bangalore,Bangalore,H.O
+560018,Sadashivanagar,Bangalore Urban,Karnataka,Bangalore,Bangalore,H.O
+560019,BTM Layout,Bangalore Urban,Karnataka,Bangalore,Bangalore,H.O
+560020,Yeshwantpur,Bangalore Urban,Karnataka,Bangalore,Bangalore,H.O
+560024,JP Nagar,Bangalore Urban,Karnataka,Bangalore,Bangalore,H.O
+560025,Bannerghatta Road,Bangalore Urban,Karnataka,Bangalore,Bangalore,H.O
+560027,Ulsoor,Bangalore Urban,Karnataka,Bangalore,Bangalore,H.O
+560029,Whitefield,Bangalore Urban,Karnataka,Bangalore,Bangalore,H.O
+560030,Adugodi,Bangalore Urban,Karnataka,Bangalore,Bangalore,H.O
+560032,Vijayanagar,Bangalore Urban,Karnataka,Bangalore,Bangalore,H.O
+560033,Hebbal,Bangalore Urban,Karnataka,Bangalore,Bangalore,H.O
+560034,HSR Layout,Bangalore Urban,Karnataka,Bangalore,Bangalore,H.O
+560035,RT Nagar,Bangalore Urban,Karnataka,Bangalore,Bangalore,H.O
+560036,Yelahanka,Bangalore Urban,Karnataka,Bangalore,Bangalore,H.O
+560037,Koramangala,Bangalore Urban,Karnataka,Bangalore,Bangalore,H.O
+560038,Electronic City,Bangalore Urban,Karnataka,Bangalore,Bangalore,H.O
+560040,Wilson Garden,Bangalore Urban,Karnataka,Bangalore,Bangalore,H.O
+560041,Banashankari,Bangalore Urban,Karnataka,Bangalore,Bangalore,H.O
+560043,Majestic,Bangalore Urban,Karnataka,Bangalore,Bangalore,H.O
+560045,Nagarbhavi,Bangalore Urban,Karnataka,Bangalore,Bangalore,H.O
+560047,HAL Airport,Bangalore Urban,Karnataka,Bangalore,Bangalore,H.O
+560048,Sarjapur Road,Bangalore Urban,Karnataka,Bangalore,Bangalore,H.O
+560050,Bellandur,Bangalore Urban,Karnataka,Bangalore,Bangalore,H.O
+560052,CV Raman Nagar,Bangalore Urban,Karnataka,Bangalore,Bangalore,H.O
+560054,Hennur,Bangalore Urban,Karnataka,Bangalore,Bangalore,H.O
+560055,Thanisandra,Bangalore Urban,Karnataka,Bangalore,Bangalore,H.O
+560058,Tumkur Road,Bangalore Urban,Karnataka,Bangalore,Bangalore,H.O
+560060,Kengeri,Bangalore Urban,Karnataka,Bangalore,Bangalore,H.O
+560062,Jakkur,Bangalore Urban,Karnataka,Bangalore,Bangalore,H.O
+560064,Devanahalli,Bangalore Rural,Karnataka,Bangalore,Bangalore,H.O
+560066,Anekal,Bangalore Urban,Karnataka,Bangalore,Bangalore,H.O
+560068,Uttarahalli,Bangalore Urban,Karnataka,Bangalore,Bangalore,H.O
+560070,Peenya,Bangalore Urban,Karnataka,Bangalore,Bangalore,H.O
+560073,Rajarajeshwari Nagar,Bangalore Urban,Karnataka,Bangalore,Bangalore,H.O
+560076,Kadugodi,Bangalore Urban,Karnataka,Bangalore,Bangalore,H.O
+560078,Hoodi,Bangalore Urban,Karnataka,Bangalore,Bangalore,H.O
+560085,Bommanahalli,Bangalore Urban,Karnataka,Bangalore,Bangalore,H.O
+560094,Sarjapur,Bangalore Urban,Karnataka,Bangalore,Bangalore,H.O
+560097,Chandapura,Bangalore Urban,Karnataka,Bangalore,Bangalore,H.O
+560100,KR Puram,Bangalore Urban,Karnataka,Bangalore,Bangalore,H.O
+570001,Mysore GPO,Mysore,Karnataka,Mysore,Mysore,H.O
+570002,Mysore Fort,Mysore,Karnataka,Mysore,Mysore,H.O
+570004,Saraswathipuram,Mysore,Karnataka,Mysore,Mysore,H.O
+570005,Kuvempunagar,Mysore,Karnataka,Mysore,Mysore,H.O
+570006,Vijayanagar,Mysore,Karnataka,Mysore,Mysore,H.O
+570008,Jayalakshmipuram,Mysore,Karnataka,Mysore,Mysore,H.O
+570010,Hebbal,Mysore,Karnataka,Mysore,Mysore,H.O
+570017,Bogadi,Mysore,Karnataka,Mysore,Mysore,H.O
+580001,Hubli GPO,Dharwad,Karnataka,Dharwad,Dharwad,H.O
+580020,Dharwad,Dharwad,Karnataka,Dharwad,Dharwad,H.O
+580021,Hubli New,Dharwad,Karnataka,Dharwad,Dharwad,H.O
+590001,Belgaum GPO,Belgaum,Karnataka,Belgaum,Belgaum,H.O
+590003,Belgaum Camp,Belgaum,Karnataka,Belgaum,Belgaum,H.O
+575001,Mangalore GPO,Dakshina Kannada,Karnataka,Mangalore,Mangalore,H.O
+575002,Mangalore City,Dakshina Kannada,Karnataka,Mangalore,Mangalore,H.O
+575003,Bunder,Dakshina Kannada,Karnataka,Mangalore,Mangalore,H.O
+600001,Chennai GPO,Chennai,Tamil Nadu,Chennai,Chennai,H.O
+600002,Triplicane,Chennai,Tamil Nadu,Chennai,Chennai,H.O
+600003,Park Town,Chennai,Tamil Nadu,Chennai,Chennai,H.O
+600004,Georgetown,Chennai,Tamil Nadu,Chennai,Chennai,H.O
+600005,Vepery,Chennai,Tamil Nadu,Chennai,Chennai,H.O
+600006,Nungambakkam,Chennai,Tamil Nadu,Chennai,Chennai,H.O
+600007,Chetpet,Chennai,Tamil Nadu,Chennai,Chennai,H.O
+600008,Egmore,Chennai,Tamil Nadu,Chennai,Chennai,H.O
+600009,Saidapet,Chennai,Tamil Nadu,Chennai,Chennai,H.O
+600010,Mylapore,Chennai,Tamil Nadu,Chennai,Chennai,H.O
+600011,Perambur,Chennai,Tamil Nadu,Chennai,Chennai,H.O
+600012,Perambur Barracks,Chennai,Tamil Nadu,Chennai,Chennai,H.O
+600014,T Nagar,Chennai,Tamil Nadu,Chennai,Chennai,H.O
+600015,Adyar,Chennai,Tamil Nadu,Chennai,Chennai,H.O
+600017,Kodambakkam,Chennai,Tamil Nadu,Chennai,Chennai,H.O
+600018,Royapettah,Chennai,Tamil Nadu,Chennai,Chennai,H.O
+600020,Anna Nagar,Chennai,Tamil Nadu,Chennai,Chennai,H.O
+600024,Guindy,Chennai,Tamil Nadu,Chennai,Chennai,H.O
+600025,Mandaveli,Chennai,Tamil Nadu,Chennai,Chennai,H.O
+600028,Besant Nagar,Chennai,Tamil Nadu,Chennai,Chennai,H.O
+600030,Adambakkam,Chennai,Tamil Nadu,Chennai,Chennai,H.O
+600032,Ashok Nagar,Chennai,Tamil Nadu,Chennai,Chennai,H.O
+600034,Kilpauk,Chennai,Tamil Nadu,Chennai,Chennai,H.O
+600035,Teynampet,Chennai,Tamil Nadu,Chennai,Chennai,H.O
+600036,Velachery,Chennai,Tamil Nadu,Chennai,Chennai,H.O
+600040,Anna Nagar West,Chennai,Tamil Nadu,Chennai,Chennai,H.O
+600041,Ambattur,Chennai,Tamil Nadu,Chennai,Chennai,H.O
+600042,Villivakkam,Chennai,Tamil Nadu,Chennai,Chennai,H.O
+600044,Chromepet,Chennai,Tamil Nadu,Chennai,Chennai,H.O
+600045,Pallavaram,Chennai,Tamil Nadu,Chennai,Chennai,H.O
+600047,Tambaram,Chennai,Tamil Nadu,Chennai,Chennai,H.O
+600048,Velachery,Chennai,Tamil Nadu,Chennai,Chennai,H.O
+600050,Alwarpet,Chennai,Tamil Nadu,Chennai,Chennai,H.O
+600053,OMR,Chennai,Tamil Nadu,Chennai,Chennai,H.O
+600056,Porur,Chennai,Tamil Nadu,Chennai,Chennai,H.O
+600058,Mogappair,Chennai,Tamil Nadu,Chennai,Chennai,H.O
+600059,Korattur,Chennai,Tamil Nadu,Chennai,Chennai,H.O
+600061,Poonamallee,Chennai,Tamil Nadu,Chennai,Chennai,H.O
+600062,Avadi,Chennai,Tamil Nadu,Chennai,Chennai,H.O
+600063,Madhavaram,Chennai,Tamil Nadu,Chennai,Chennai,H.O
+600073,Sholinganallur,Chennai,Tamil Nadu,Chennai,Chennai,H.O
+600077,Perungudi,Chennai,Tamil Nadu,Chennai,Chennai,H.O
+600083,Thiruvanmiyur,Chennai,Tamil Nadu,Chennai,Chennai,H.O
+600085,Thoraipakkam,Chennai,Tamil Nadu,Chennai,Chennai,H.O
+600089,Medavakkam,Chennai,Tamil Nadu,Chennai,Chennai,H.O
+600091,Siruseri,Kanchipuram,Tamil Nadu,Chennai,Chennai,H.O
+600096,Kelambakkam,Kanchipuram,Tamil Nadu,Chennai,Chennai,H.O
+600097,OMR Navalur,Kanchipuram,Tamil Nadu,Chennai,Chennai,H.O
+600119,Mahabalipuram,Kanchipuram,Tamil Nadu,Chennai,Chennai,H.O
+625001,Madurai GPO,Madurai,Tamil Nadu,Madurai,Madurai,H.O
+625002,Madurai Fort,Madurai,Tamil Nadu,Madurai,Madurai,H.O
+625003,Simmakkal,Madurai,Tamil Nadu,Madurai,Madurai,H.O
+625009,Anna Nagar,Madurai,Tamil Nadu,Madurai,Madurai,H.O
+625010,KK Nagar,Madurai,Tamil Nadu,Madurai,Madurai,H.O
+641001,Coimbatore GPO,Coimbatore,Tamil Nadu,Coimbatore,Coimbatore,H.O
+641002,RS Puram,Coimbatore,Tamil Nadu,Coimbatore,Coimbatore,H.O
+641003,Town Hall,Coimbatore,Tamil Nadu,Coimbatore,Coimbatore,H.O
+641004,Peelamedu,Coimbatore,Tamil Nadu,Coimbatore,Coimbatore,H.O
+641006,Gandhipuram,Coimbatore,Tamil Nadu,Coimbatore,Coimbatore,H.O
+641011,Race Course,Coimbatore,Tamil Nadu,Coimbatore,Coimbatore,H.O
+641012,Saibaba Colony,Coimbatore,Tamil Nadu,Coimbatore,Coimbatore,H.O
+641014,Singanallur,Coimbatore,Tamil Nadu,Coimbatore,Coimbatore,H.O
+641018,Ganapathy,Coimbatore,Tamil Nadu,Coimbatore,Coimbatore,H.O
+641035,Saravanampatti,Coimbatore,Tamil Nadu,Coimbatore,Coimbatore,H.O
+201001,Ghaziabad GPO,Ghaziabad,Uttar Pradesh,Ghaziabad,Ghaziabad,H.O
+201002,Ghaziabad City,Ghaziabad,Uttar Pradesh,Ghaziabad,Ghaziabad,H.O
+201003,Kavi Nagar,Ghaziabad,Uttar Pradesh,Ghaziabad,Ghaziabad,H.O
+201005,Mohan Nagar,Ghaziabad,Uttar Pradesh,Ghaziabad,Ghaziabad,H.O
+201009,Vaishali,Ghaziabad,Uttar Pradesh,Ghaziabad,Ghaziabad,H.O
+201010,Indirapuram,Ghaziabad,Uttar Pradesh,Ghaziabad,Ghaziabad,H.O
+201012,Raj Nagar Extension,Ghaziabad,Uttar Pradesh,Ghaziabad,Ghaziabad,H.O
+201014,Crossing Republik,Ghaziabad,Uttar Pradesh,Ghaziabad,Ghaziabad,H.O
+201301,Noida Sector 1,Gautam Buddha Nagar,Uttar Pradesh,Noida,Noida,H.O
+201303,Noida Sector 15,Gautam Buddha Nagar,Uttar Pradesh,Noida,Noida,H.O
+201304,Noida Sector 62,Gautam Buddha Nagar,Uttar Pradesh,Noida,Noida,H.O
+201305,Noida Sector 18,Gautam Buddha Nagar,Uttar Pradesh,Noida,Noida,H.O
+201306,Greater Noida,Gautam Buddha Nagar,Uttar Pradesh,Noida,Noida,H.O
+201307,Greater Noida West,Gautam Buddha Nagar,Uttar Pradesh,Noida,Noida,H.O
+201310,Noida Sector 44,Gautam Buddha Nagar,Uttar Pradesh,Noida,Noida,H.O
+208001,Kanpur GPO,Kanpur Nagar,Uttar Pradesh,Kanpur,Kanpur,H.O
+208002,Kanpur Cantonment,Kanpur Nagar,Uttar Pradesh,Kanpur,Kanpur,H.O
+208003,Govind Nagar,Kanpur Nagar,Uttar Pradesh,Kanpur,Kanpur,H.O
+208004,Kidwai Nagar,Kanpur Nagar,Uttar Pradesh,Kanpur,Kanpur,H.O
+208005,Swaroop Nagar,Kanpur Nagar,Uttar Pradesh,Kanpur,Kanpur,H.O
+211001,Allahabad GPO,Allahabad,Uttar Pradesh,Allahabad,Allahabad,H.O
+211002,Civil Lines,Allahabad,Uttar Pradesh,Allahabad,Allahabad,H.O
+211003,Tagore Town,Allahabad,Uttar Pradesh,Allahabad,Allahabad,H.O
+221001,Varanasi GPO,Varanasi,Uttar Pradesh,Varanasi,Varanasi,H.O
+221002,Varanasi Cantonment,Varanasi,Uttar Pradesh,Varanasi,Varanasi,H.O
+221003,Bhelupur,Varanasi,Uttar Pradesh,Varanasi,Varanasi,H.O
+221005,Lanka,Varanasi,Uttar Pradesh,Varanasi,Varanasi,H.O
+221010,BHU,Varanasi,Uttar Pradesh,Varanasi,Varanasi,H.O
+226001,Lucknow GPO,Lucknow,Uttar Pradesh,Lucknow,Lucknow,H.O
+226002,Aminabad,Lucknow,Uttar Pradesh,Lucknow,Lucknow,H.O
+226003,Charbagh,Lucknow,Uttar Pradesh,Lucknow,Lucknow,H.O
+226004,Aliganj,Lucknow,Uttar Pradesh,Lucknow,Lucknow,H.O
+226005,Mahanagar,Lucknow,Uttar Pradesh,Lucknow,Lucknow,H.O
+226006,Indira Nagar,Lucknow,Uttar Pradesh,Lucknow,Lucknow,H.O
+226010,Gomti Nagar,Lucknow,Uttar Pradesh,Lucknow,Lucknow,H.O
+226012,Vikas Nagar,Lucknow,Uttar Pradesh,Lucknow,Lucknow,H.O
+226016,Jankipuram,Lucknow,Uttar Pradesh,Lucknow,Lucknow,H.O
+226020,Chinhat,Lucknow,Uttar Pradesh,Lucknow,Lucknow,H.O
+226021,Gomti Nagar Extension,Lucknow,Uttar Pradesh,Lucknow,Lucknow,H.O
+226022,Shaheed Path,Lucknow,Uttar Pradesh,Lucknow,Lucknow,H.O
+226024,Sushant Golf City,Lucknow,Uttar Pradesh,Lucknow,Lucknow,H.O
+226025,Raebareli Road,Lucknow,Uttar Pradesh,Lucknow,Lucknow,H.O
+226028,Amar Shaheed Path,Lucknow,Uttar Pradesh,Lucknow,Lucknow,H.O
+250001,Meerut GPO,Meerut,Uttar Pradesh,Meerut,Meerut,H.O
+250002,Cantonment,Meerut,Uttar Pradesh,Meerut,Meerut,H.O
+250004,Shastri Nagar,Meerut,Uttar Pradesh,Meerut,Meerut,H.O
+282001,Agra GPO,Agra,Uttar Pradesh,Agra,Agra,H.O
+282002,Agra Cantonment,Agra,Uttar Pradesh,Agra,Agra,H.O
+282003,Tajganj,Agra,Uttar Pradesh,Agra,Agra,H.O
+282004,Kamla Nagar,Agra,Uttar Pradesh,Agra,Agra,H.O
+282005,Dayal Bagh,Agra,Uttar Pradesh,Agra,Agra,H.O
+282007,Sikandra,Agra,Uttar Pradesh,Agra,Agra,H.O
+700001,Kolkata GPO,Kolkata,West Bengal,Kolkata,Kolkata,H.O
+700002,Bow Bazar,Kolkata,West Bengal,Kolkata,Kolkata,H.O
+700003,Moulali,Kolkata,West Bengal,Kolkata,Kolkata,H.O
+700004,Cossipore,Kolkata,West Bengal,Kolkata,Kolkata,H.O
+700005,Bagbazar,Kolkata,West Bengal,Kolkata,Kolkata,H.O
+700006,College Street,Kolkata,West Bengal,Kolkata,Kolkata,H.O
+700007,Entally,Kolkata,West Bengal,Kolkata,Kolkata,H.O
+700008,Kidderpore,Kolkata,West Bengal,Kolkata,Kolkata,H.O
+700009,Hastings,Kolkata,West Bengal,Kolkata,Kolkata,H.O
+700010,Maidan,Kolkata,West Bengal,Kolkata,Kolkata,H.O
+700012,Dharmatala,Kolkata,West Bengal,Kolkata,Kolkata,H.O
+700013,Alipore,Kolkata,West Bengal,Kolkata,Kolkata,H.O
+700014,Behala,Kolkata,West Bengal,Kolkata,Kolkata,H.O
+700016,Elgin Road,Kolkata,West Bengal,Kolkata,Kolkata,H.O
+700017,Ballygunge,Kolkata,West Bengal,Kolkata,Kolkata,H.O
+700019,Park Street,Kolkata,West Bengal,Kolkata,Kolkata,H.O
+700020,Kalighat,Kolkata,West Bengal,Kolkata,Kolkata,H.O
+700025,Gariahat,Kolkata,West Bengal,Kolkata,Kolkata,H.O
+700026,Dhakuria,Kolkata,West Bengal,Kolkata,Kolkata,H.O
+700027,Shakespeare Sarani,Kolkata,West Bengal,Kolkata,Kolkata,H.O
+700029,Tollygunge,Kolkata,West Bengal,Kolkata,Kolkata,H.O
+700030,New Alipore,Kolkata,West Bengal,Kolkata,Kolkata,H.O
+700031,Jadavpur,Kolkata,West Bengal,Kolkata,Kolkata,H.O
+700032,Garia,Kolkata,West Bengal,Kolkata,Kolkata,H.O
+700033,Lake Gardens,Kolkata,West Bengal,Kolkata,Kolkata,H.O
+700034,Sealdah,Kolkata,West Bengal,Kolkata,Kolkata,H.O
+700035,Shyambazar,Kolkata,West Bengal,Kolkata,Kolkata,H.O
+700036,Beliaghata,Kolkata,West Bengal,Kolkata,Kolkata,H.O
+700037,Ultadanga,Kolkata,West Bengal,Kolkata,Kolkata,H.O
+700039,Dumdum,Kolkata,West Bengal,Kolkata,Kolkata,H.O
+700040,Bidhan Nagar,Kolkata,West Bengal,Kolkata,Kolkata,H.O
+700042,Howrah,Howrah,West Bengal,Howrah,Howrah,H.O
+700046,Salt Lake,Kolkata,West Bengal,Kolkata,Kolkata,H.O
+700054,Lake Town,Kolkata,West Bengal,Kolkata,Kolkata,H.O
+700055,Bangur Avenue,Kolkata,West Bengal,Kolkata,Kolkata,H.O
+700058,Dunlop,Kolkata,West Bengal,Kolkata,Kolkata,H.O
+700059,Baranagar,Kolkata,West Bengal,Kolkata,Kolkata,H.O
+700064,Salt Lake Sector V,Kolkata,West Bengal,Kolkata,Kolkata,H.O
+700091,New Town,Kolkata,West Bengal,Kolkata,Kolkata,H.O
+700098,Rajarhat,Kolkata,West Bengal,Kolkata,Kolkata,H.O
+700099,Newtown Action Area,Kolkata,West Bengal,Kolkata,Kolkata,H.O
+700101,Madhyamgram,North 24 Parganas,West Bengal,Kolkata,Kolkata,H.O
+700102,Barasat,North 24 Parganas,West Bengal,Kolkata,Kolkata,H.O
+700104,Naihati,North 24 Parganas,West Bengal,Kolkata,Kolkata,H.O
+700106,Habra,North 24 Parganas,West Bengal,Kolkata,Kolkata,H.O
+711101,Howrah GPO,Howrah,West Bengal,Howrah,Howrah,H.O
+711102,Shibpur,Howrah,West Bengal,Howrah,Howrah,H.O
+711104,Belur,Howrah,West Bengal,Howrah,Howrah,H.O
+380001,Ahmedabad GPO,Ahmedabad,Gujarat,Ahmedabad,Ahmedabad,H.O
+380002,Kalupur,Ahmedabad,Gujarat,Ahmedabad,Ahmedabad,H.O
+380004,Khanpur,Ahmedabad,Gujarat,Ahmedabad,Ahmedabad,H.O
+380005,Paldi,Ahmedabad,Gujarat,Ahmedabad,Ahmedabad,H.O
+380006,Navrangpura,Ahmedabad,Gujarat,Ahmedabad,Ahmedabad,H.O
+380007,Ellis Bridge,Ahmedabad,Gujarat,Ahmedabad,Ahmedabad,H.O
+380008,Ambawadi,Ahmedabad,Gujarat,Ahmedabad,Ahmedabad,H.O
+380009,Ashram Road,Ahmedabad,Gujarat,Ahmedabad,Ahmedabad,H.O
+380013,Satellite,Ahmedabad,Gujarat,Ahmedabad,Ahmedabad,H.O
+380014,Thaltej,Ahmedabad,Gujarat,Ahmedabad,Ahmedabad,H.O
+380015,Bodakdev,Ahmedabad,Gujarat,Ahmedabad,Ahmedabad,H.O
+380016,Prahladnagar,Ahmedabad,Gujarat,Ahmedabad,Ahmedabad,H.O
+380019,Memnagar,Ahmedabad,Gujarat,Ahmedabad,Ahmedabad,H.O
+380021,Shahibag,Ahmedabad,Gujarat,Ahmedabad,Ahmedabad,H.O
+380022,Vatva,Ahmedabad,Gujarat,Ahmedabad,Ahmedabad,H.O
+380024,Maninagar,Ahmedabad,Gujarat,Ahmedabad,Ahmedabad,H.O
+380027,Naranpura,Ahmedabad,Gujarat,Ahmedabad,Ahmedabad,H.O
+380050,Gota,Ahmedabad,Gujarat,Ahmedabad,Ahmedabad,H.O
+380051,Chandkheda,Ahmedabad,Gujarat,Ahmedabad,Ahmedabad,H.O
+380052,Motera,Ahmedabad,Gujarat,Ahmedabad,Ahmedabad,H.O
+380054,Science City,Ahmedabad,Gujarat,Ahmedabad,Ahmedabad,H.O
+380058,SG Highway,Ahmedabad,Gujarat,Ahmedabad,Ahmedabad,H.O
+380059,Bopal,Ahmedabad,Gujarat,Ahmedabad,Ahmedabad,H.O
+380060,South Bopal,Ahmedabad,Gujarat,Ahmedabad,Ahmedabad,H.O
+382007,Gandhinagar,Gandhinagar,Gujarat,Ahmedabad,Gandhinagar,H.O
+382010,Gandhinagar Sector 10,Gandhinagar,Gujarat,Ahmedabad,Gandhinagar,H.O
+382016,Gandhinagar Sector 21,Gandhinagar,Gujarat,Ahmedabad,Gandhinagar,H.O
+382421,GIFT City,Gandhinagar,Gujarat,Ahmedabad,Gandhinagar,H.O
+390001,Vadodara GPO,Vadodara,Gujarat,Vadodara,Vadodara,H.O
+390002,Alkapuri,Vadodara,Gujarat,Vadodara,Vadodara,H.O
+390004,Fatehganj,Vadodara,Gujarat,Vadodara,Vadodara,H.O
+390005,Sayaji Ganj,Vadodara,Gujarat,Vadodara,Vadodara,H.O
+390007,Manjalpur,Vadodara,Gujarat,Vadodara,Vadodara,H.O
+390008,Karelibaug,Vadodara,Gujarat,Vadodara,Vadodara,H.O
+390019,Waghodia Road,Vadodara,Gujarat,Vadodara,Vadodara,H.O
+395001,Surat GPO,Surat,Gujarat,Surat,Surat,H.O
+395002,Nanpura,Surat,Gujarat,Surat,Surat,H.O
+395003,Athwa Lines,Surat,Gujarat,Surat,Surat,H.O
+395004,Ring Road,Surat,Gujarat,Surat,Surat,H.O
+395005,Udhna,Surat,Gujarat,Surat,Surat,H.O
+395006,Adajan,Surat,Gujarat,Surat,Surat,H.O
+395007,Varachha,Surat,Gujarat,Surat,Surat,H.O
+395009,Katargam,Surat,Gujarat,Surat,Surat,H.O
+395010,Pal,Surat,Gujarat,Surat,Surat,H.O
+395017,Vesu,Surat,Gujarat,Surat,Surat,H.O
+360001,Rajkot GPO,Rajkot,Gujarat,Rajkot,Rajkot,H.O
+360002,Rajkot City,Rajkot,Gujarat,Rajkot,Rajkot,H.O
+360005,University Road,Rajkot,Gujarat,Rajkot,Rajkot,H.O
+302001,Jaipur GPO,Jaipur,Rajasthan,Jaipur,Jaipur,H.O
+302002,Johari Bazar,Jaipur,Rajasthan,Jaipur,Jaipur,H.O
+302003,Bapu Nagar,Jaipur,Rajasthan,Jaipur,Jaipur,H.O
+302004,C-Scheme,Jaipur,Rajasthan,Jaipur,Jaipur,H.O
+302005,Ashok Nagar,Jaipur,Rajasthan,Jaipur,Jaipur,H.O
+302006,Bani Park,Jaipur,Rajasthan,Jaipur,Jaipur,H.O
+302012,Mansarovar,Jaipur,Rajasthan,Jaipur,Jaipur,H.O
+302015,Vaishali Nagar,Jaipur,Rajasthan,Jaipur,Jaipur,H.O
+302016,Malviya Nagar,Jaipur,Rajasthan,Jaipur,Jaipur,H.O
+302017,Tonk Road,Jaipur,Rajasthan,Jaipur,Jaipur,H.O
+302018,Sanganer,Jaipur,Rajasthan,Jaipur,Jaipur,H.O
+302019,Pratap Nagar,Jaipur,Rajasthan,Jaipur,Jaipur,H.O
+302020,Jhotwara,Jaipur,Rajasthan,Jaipur,Jaipur,H.O
+302021,Vidhyadhar Nagar,Jaipur,Rajasthan,Jaipur,Jaipur,H.O
+302022,Jagatpura,Jaipur,Rajasthan,Jaipur,Jaipur,H.O
+302026,Sitapura,Jaipur,Rajasthan,Jaipur,Jaipur,H.O
+302027,Ajmer Road,Jaipur,Rajasthan,Jaipur,Jaipur,H.O
+302029,Mahesh Nagar,Jaipur,Rajasthan,Jaipur,Jaipur,H.O
+302033,Jawahar Nagar,Jaipur,Rajasthan,Jaipur,Jaipur,H.O
+302034,Amer,Jaipur,Rajasthan,Jaipur,Jaipur,H.O
+305001,Ajmer GPO,Ajmer,Rajasthan,Ajmer,Ajmer,H.O
+311001,Bhilwara GPO,Bhilwara,Rajasthan,Ajmer,Bhilwara,H.O
+312001,Chittorgarh,Chittorgarh,Rajasthan,Udaipur,Chittorgarh,H.O
+313001,Udaipur GPO,Udaipur,Rajasthan,Udaipur,Udaipur,H.O
+313002,Udaipur City,Udaipur,Rajasthan,Udaipur,Udaipur,H.O
+313004,Hiran Magri,Udaipur,Rajasthan,Udaipur,Udaipur,H.O
+324001,Kota GPO,Kota,Rajasthan,Kota,Kota,H.O
+324002,Kota City,Kota,Rajasthan,Kota,Kota,H.O
+324005,Talwandi,Kota,Rajasthan,Kota,Kota,H.O
+332001,Sikar,Sikar,Rajasthan,Jaipur,Sikar,H.O
+334001,Bikaner GPO,Bikaner,Rajasthan,Bikaner,Bikaner,H.O
+335001,Sri Ganganagar,Sri Ganganagar,Rajasthan,Bikaner,Sri Ganganagar,H.O
+342001,Jodhpur GPO,Jodhpur,Rajasthan,Jodhpur,Jodhpur,H.O
+342002,Jodhpur City,Jodhpur,Rajasthan,Jodhpur,Jodhpur,H.O
+342003,Paota,Jodhpur,Rajasthan,Jodhpur,Jodhpur,H.O
+342005,Sardarpura,Jodhpur,Rajasthan,Jodhpur,Jodhpur,H.O
+342008,Ratanada,Jodhpur,Rajasthan,Jodhpur,Jodhpur,H.O
+500001,Hyderabad GPO,Hyderabad,Telangana,Hyderabad,Hyderabad,H.O
+500002,Nampally,Hyderabad,Telangana,Hyderabad,Hyderabad,H.O
+500003,Koti,Hyderabad,Telangana,Hyderabad,Hyderabad,H.O
+500004,Sultan Bazar,Hyderabad,Telangana,Hyderabad,Hyderabad,H.O
+500005,Afzalgunj,Hyderabad,Telangana,Hyderabad,Hyderabad,H.O
+500006,Padmarao Nagar,Hyderabad,Telangana,Hyderabad,Hyderabad,H.O
+500007,Begumpet,Hyderabad,Telangana,Hyderabad,Hyderabad,H.O
+500008,Ameerpet,Hyderabad,Telangana,Hyderabad,Hyderabad,H.O
+500009,Banjara Hills,Hyderabad,Telangana,Hyderabad,Hyderabad,H.O
+500010,Somajiguda,Hyderabad,Telangana,Hyderabad,Hyderabad,H.O
+500012,Mehdipatnam,Hyderabad,Telangana,Hyderabad,Hyderabad,H.O
+500013,Tolichowki,Hyderabad,Telangana,Hyderabad,Hyderabad,H.O
+500016,Ameerpet,Hyderabad,Telangana,Hyderabad,Hyderabad,H.O
+500018,Himayat Nagar,Hyderabad,Telangana,Hyderabad,Hyderabad,H.O
+500019,Dilsukhnagar,Hyderabad,Telangana,Hyderabad,Hyderabad,H.O
+500020,Santosh Nagar,Hyderabad,Telangana,Hyderabad,Hyderabad,H.O
+500024,Lakdikapul,Hyderabad,Telangana,Hyderabad,Hyderabad,H.O
+500025,Malakpet,Hyderabad,Telangana,Hyderabad,Hyderabad,H.O
+500027,Uppal,Hyderabad,Telangana,Hyderabad,Hyderabad,H.O
+500028,LB Nagar,Rangareddy,Telangana,Hyderabad,Hyderabad,H.O
+500032,Jubilee Hills,Hyderabad,Telangana,Hyderabad,Hyderabad,H.O
+500033,Masab Tank,Hyderabad,Telangana,Hyderabad,Hyderabad,H.O
+500034,Punjagutta,Hyderabad,Telangana,Hyderabad,Hyderabad,H.O
+500038,HITEC City,Hyderabad,Telangana,Hyderabad,Hyderabad,H.O
+500039,Kondapur,Hyderabad,Telangana,Hyderabad,Hyderabad,H.O
+500040,Kukatpally,Hyderabad,Telangana,Hyderabad,Hyderabad,H.O
+500044,Miyapur,Hyderabad,Telangana,Hyderabad,Hyderabad,H.O
+500045,Bachupally,Hyderabad,Telangana,Hyderabad,Hyderabad,H.O
+500046,Chandanagar,Hyderabad,Telangana,Hyderabad,Hyderabad,H.O
+500049,Manikonda,Rangareddy,Telangana,Hyderabad,Hyderabad,H.O
+500050,Gachibowli,Hyderabad,Telangana,Hyderabad,Hyderabad,H.O
+500051,Nanakramguda,Hyderabad,Telangana,Hyderabad,Hyderabad,H.O
+500072,Secunderabad,Hyderabad,Telangana,Hyderabad,Hyderabad,H.O
+500081,Kompally,Medchal-Malkajgiri,Telangana,Hyderabad,Hyderabad,H.O
+500084,Shamshabad,Rangareddy,Telangana,Hyderabad,Hyderabad,H.O
+500089,Financial District,Rangareddy,Telangana,Hyderabad,Hyderabad,H.O
+500090,Madhapur,Hyderabad,Telangana,Hyderabad,Hyderabad,H.O
+520001,Vijayawada GPO,Krishna,Andhra Pradesh,Vijayawada,Vijayawada,H.O
+520002,Vijayawada City,Krishna,Andhra Pradesh,Vijayawada,Vijayawada,H.O
+520003,One Town,Krishna,Andhra Pradesh,Vijayawada,Vijayawada,H.O
+520007,Benz Circle,Krishna,Andhra Pradesh,Vijayawada,Vijayawada,H.O
+520008,Auto Nagar,Krishna,Andhra Pradesh,Vijayawada,Vijayawada,H.O
+520010,Moghalrajpuram,Krishna,Andhra Pradesh,Vijayawada,Vijayawada,H.O
+530001,Visakhapatnam GPO,Visakhapatnam,Andhra Pradesh,Visakhapatnam,Visakhapatnam,H.O
+530002,Waltair,Visakhapatnam,Andhra Pradesh,Visakhapatnam,Visakhapatnam,H.O
+530003,Daba Gardens,Visakhapatnam,Andhra Pradesh,Visakhapatnam,Visakhapatnam,H.O
+530004,Akkayyapalem,Visakhapatnam,Andhra Pradesh,Visakhapatnam,Visakhapatnam,H.O
+530016,MVP Colony,Visakhapatnam,Andhra Pradesh,Visakhapatnam,Visakhapatnam,H.O
+530017,Seethammadhara,Visakhapatnam,Andhra Pradesh,Visakhapatnam,Visakhapatnam,H.O
+530018,Gajuwaka,Visakhapatnam,Andhra Pradesh,Visakhapatnam,Visakhapatnam,H.O
+530024,Madhurawada,Visakhapatnam,Andhra Pradesh,Visakhapatnam,Visakhapatnam,H.O
+530032,Rushikonda,Visakhapatnam,Andhra Pradesh,Visakhapatnam,Visakhapatnam,H.O
+530041,Pendurthi,Visakhapatnam,Andhra Pradesh,Visakhapatnam,Visakhapatnam,H.O
+530045,Gajuwaka Industrial,Visakhapatnam,Andhra Pradesh,Visakhapatnam,Visakhapatnam,H.O
+522001,Guntur GPO,Guntur,Andhra Pradesh,Guntur,Guntur,H.O
+522002,Arundelpet,Guntur,Andhra Pradesh,Guntur,Guntur,H.O
+515001,Anantapur GPO,Anantapur,Andhra Pradesh,Anantapur,Anantapur,H.O
+516001,Kadapa GPO,YSR Kadapa,Andhra Pradesh,Kadapa,Kadapa,H.O
+517001,Tirupati GPO,Chittoor,Andhra Pradesh,Tirupati,Tirupati,H.O
+517501,Tirupati Main,Chittoor,Andhra Pradesh,Tirupati,Tirupati,H.O
+518001,Kurnool GPO,Kurnool,Andhra Pradesh,Kurnool,Kurnool,H.O
+524001,Nellore GPO,Nellore,Andhra Pradesh,Nellore,Nellore,H.O
+695001,Thiruvananthapuram GPO,Thiruvananthapuram,Kerala,Thiruvananthapuram,Thiruvananthapuram,H.O
+695002,Thampanoor,Thiruvananthapuram,Kerala,Thiruvananthapuram,Thiruvananthapuram,H.O
+695003,Vazhuthacaud,Thiruvananthapuram,Kerala,Thiruvananthapuram,Thiruvananthapuram,H.O
+695004,Kowdiar,Thiruvananthapuram,Kerala,Thiruvananthapuram,Thiruvananthapuram,H.O
+695010,Kazhakkoottam,Thiruvananthapuram,Kerala,Thiruvananthapuram,Thiruvananthapuram,H.O
+695014,Technopark,Thiruvananthapuram,Kerala,Thiruvananthapuram,Thiruvananthapuram,H.O
+682001,Kochi GPO,Ernakulam,Kerala,Kochi,Kochi,H.O
+682002,Fort Kochi,Ernakulam,Kerala,Kochi,Kochi,H.O
+682011,Ernakulam North,Ernakulam,Kerala,Kochi,Kochi,H.O
+682015,Ernakulam South,Ernakulam,Kerala,Kochi,Kochi,H.O
+682016,Palarivattom,Ernakulam,Kerala,Kochi,Kochi,H.O
+682017,Edappally,Ernakulam,Kerala,Kochi,Kochi,H.O
+682019,Kakkanad,Ernakulam,Kerala,Kochi,Kochi,H.O
+682020,Infopark,Ernakulam,Kerala,Kochi,Kochi,H.O
+682021,Kaloor,Ernakulam,Kerala,Kochi,Kochi,H.O
+682024,MG Road Kochi,Ernakulam,Kerala,Kochi,Kochi,H.O
+682025,Marine Drive,Ernakulam,Kerala,Kochi,Kochi,H.O
+682030,Aluva,Ernakulam,Kerala,Kochi,Kochi,H.O
+682301,Tripunithura,Ernakulam,Kerala,Kochi,Kochi,H.O
+673001,Kozhikode GPO,Kozhikode,Kerala,Kozhikode,Kozhikode,H.O
+673002,Kozhikode Beach,Kozhikode,Kerala,Kozhikode,Kozhikode,H.O
+673004,Palayam,Kozhikode,Kerala,Kozhikode,Kozhikode,H.O
+673016,Mavoor Road,Kozhikode,Kerala,Kozhikode,Kozhikode,H.O
+680001,Thrissur GPO,Thrissur,Kerala,Thrissur,Thrissur,H.O
+680002,Thrissur Round,Thrissur,Kerala,Thrissur,Thrissur,H.O
+686001,Kottayam GPO,Kottayam,Kerala,Kottayam,Kottayam,H.O
+160001,Chandigarh GPO,Chandigarh,Punjab,Chandigarh,Chandigarh,H.O
+160002,Sector 7,Chandigarh,Punjab,Chandigarh,Chandigarh,H.O
+160003,Sector 9,Chandigarh,Punjab,Chandigarh,Chandigarh,H.O
+160009,Sector 17,Chandigarh,Punjab,Chandigarh,Chandigarh,H.O
+160011,Sector 22,Chandigarh,Punjab,Chandigarh,Chandigarh,H.O
+160014,Sector 14,Chandigarh,Punjab,Chandigarh,Chandigarh,H.O
+160017,Sector 35,Chandigarh,Punjab,Chandigarh,Chandigarh,H.O
+160019,Sector 43,Chandigarh,Punjab,Chandigarh,Chandigarh,H.O
+160036,PU Campus,Chandigarh,Punjab,Chandigarh,Chandigarh,H.O
+140001,Ludhiana GPO,Ludhiana,Punjab,Ludhiana,Ludhiana,H.O
+140301,Ludhiana City,Ludhiana,Punjab,Ludhiana,Ludhiana,H.O
+143001,Amritsar GPO,Amritsar,Punjab,Amritsar,Amritsar,H.O
+143002,Hall Bazar,Amritsar,Punjab,Amritsar,Amritsar,H.O
+143005,Lawrence Road,Amritsar,Punjab,Amritsar,Amritsar,H.O
+144001,Jalandhar GPO,Jalandhar,Punjab,Jalandhar,Jalandhar,H.O
+144002,Jalandhar City,Jalandhar,Punjab,Jalandhar,Jalandhar,H.O
+147001,Patiala GPO,Patiala,Punjab,Patiala,Patiala,H.O
+148001,Sangrur,Sangrur,Punjab,Patiala,Sangrur,H.O
+151001,Bathinda,Bathinda,Punjab,Bathinda,Bathinda,H.O
+152001,Ferozepur,Ferozepur,Punjab,Ferozepur,Ferozepur,H.O
+462001,Bhopal GPO,Bhopal,Madhya Pradesh,Bhopal,Bhopal,H.O
+462002,TT Nagar,Bhopal,Madhya Pradesh,Bhopal,Bhopal,H.O
+462003,New Market,Bhopal,Madhya Pradesh,Bhopal,Bhopal,H.O
+462010,MP Nagar,Bhopal,Madhya Pradesh,Bhopal,Bhopal,H.O
+462011,Kolar Road,Bhopal,Madhya Pradesh,Bhopal,Bhopal,H.O
+462016,Habibganj,Bhopal,Madhya Pradesh,Bhopal,Bhopal,H.O
+462023,Ayodhya Nagar,Bhopal,Madhya Pradesh,Bhopal,Bhopal,H.O
+462026,Hoshangabad Road,Bhopal,Madhya Pradesh,Bhopal,Bhopal,H.O
+452001,Indore GPO,Indore,Madhya Pradesh,Indore,Indore,H.O
+452002,Rajwada,Indore,Madhya Pradesh,Indore,Indore,H.O
+452003,Palasia,Indore,Madhya Pradesh,Indore,Indore,H.O
+452004,Sapna Sangeeta,Indore,Madhya Pradesh,Indore,Indore,H.O
+452005,Bhawarkuan,Indore,Madhya Pradesh,Indore,Indore,H.O
+452006,Scheme 54,Indore,Madhya Pradesh,Indore,Indore,H.O
+452007,AB Road,Indore,Madhya Pradesh,Indore,Indore,H.O
+452009,Vijay Nagar,Indore,Madhya Pradesh,Indore,Indore,H.O
+452010,Super Corridor,Indore,Madhya Pradesh,Indore,Indore,H.O
+452012,Nipania,Indore,Madhya Pradesh,Indore,Indore,H.O
+482001,Jabalpur GPO,Jabalpur,Madhya Pradesh,Jabalpur,Jabalpur,H.O
+482002,Sadar,Jabalpur,Madhya Pradesh,Jabalpur,Jabalpur,H.O
+474001,Gwalior GPO,Gwalior,Madhya Pradesh,Gwalior,Gwalior,H.O
+474002,Lashkar,Gwalior,Madhya Pradesh,Gwalior,Gwalior,H.O
+800001,Patna GPO,Patna,Bihar,Patna,Patna,H.O
+800002,Bankipur,Patna,Bihar,Patna,Patna,H.O
+800003,Gulzarbagh,Patna,Bihar,Patna,Patna,H.O
+800004,Patna City,Patna,Bihar,Patna,Patna,H.O
+800006,Kankarbagh,Patna,Bihar,Patna,Patna,H.O
+800007,Rajendra Nagar,Patna,Bihar,Patna,Patna,H.O
+800008,Ashiana,Patna,Bihar,Patna,Patna,H.O
+800009,Patliputra Colony,Patna,Bihar,Patna,Patna,H.O
+800010,Naubatpur,Patna,Bihar,Patna,Patna,H.O
+800013,Boring Road,Patna,Bihar,Patna,Patna,H.O
+800014,Exhibition Road,Patna,Bihar,Patna,Patna,H.O
+800020,Bailey Road,Patna,Bihar,Patna,Patna,H.O
+800025,Danapur,Patna,Bihar,Patna,Patna,H.O
+812001,Bhagalpur,Bhagalpur,Bihar,Bhagalpur,Bhagalpur,H.O
+842001,Muzaffarpur,Muzaffarpur,Bihar,Muzaffarpur,Muzaffarpur,H.O
+846001,Darbhanga,Darbhanga,Bihar,Darbhanga,Darbhanga,H.O
+854001,Purnia,Purnia,Bihar,Purnia,Purnia,H.O
+751001,Bhubaneswar GPO,Khordha,Odisha,Bhubaneswar,Bhubaneswar,H.O
+751002,Unit 2,Khordha,Odisha,Bhubaneswar,Bhubaneswar,H.O
+751003,Unit 3,Khordha,Odisha,Bhubaneswar,Bhubaneswar,H.O
+751004,Saheed Nagar,Khordha,Odisha,Bhubaneswar,Bhubaneswar,H.O
+751005,Acharya Vihar,Khordha,Odisha,Bhubaneswar,Bhubaneswar,H.O
+751006,Jaydev Vihar,Khordha,Odisha,Bhubaneswar,Bhubaneswar,H.O
+751007,Nayapalli,Khordha,Odisha,Bhubaneswar,Bhubaneswar,H.O
+751009,Chandrasekharpur,Khordha,Odisha,Bhubaneswar,Bhubaneswar,H.O
+751010,Patia,Khordha,Odisha,Bhubaneswar,Bhubaneswar,H.O
+751012,Infocity,Khordha,Odisha,Bhubaneswar,Bhubaneswar,H.O
+751024,Khandagiri,Khordha,Odisha,Bhubaneswar,Bhubaneswar,H.O
+753001,Cuttack GPO,Cuttack,Odisha,Cuttack,Cuttack,H.O
+753002,Cuttack City,Cuttack,Odisha,Cuttack,Cuttack,H.O
+769001,Rourkela GPO,Sundargarh,Odisha,Rourkela,Rourkela,H.O
+760001,Berhampur,Ganjam,Odisha,Berhampur,Berhampur,H.O
+781001,Guwahati GPO,Kamrup Metropolitan,Assam,Guwahati,Guwahati,H.O
+781003,Paltan Bazar,Kamrup Metropolitan,Assam,Guwahati,Guwahati,H.O
+781005,Ulubari,Kamrup Metropolitan,Assam,Guwahati,Guwahati,H.O
+781006,Beltola,Kamrup Metropolitan,Assam,Guwahati,Guwahati,H.O
+781007,Dispur,Kamrup Metropolitan,Assam,Guwahati,Guwahati,H.O
+781009,Khanapara,Kamrup Metropolitan,Assam,Guwahati,Guwahati,H.O
+781014,Zoo Road,Kamrup Metropolitan,Assam,Guwahati,Guwahati,H.O
+781016,Maligaon,Kamrup Metropolitan,Assam,Guwahati,Guwahati,H.O
+781019,Garchuk,Kamrup Metropolitan,Assam,Guwahati,Guwahati,H.O
+781034,GS Road,Kamrup Metropolitan,Assam,Guwahati,Guwahati,H.O
+786001,Dibrugarh,Dibrugarh,Assam,Dibrugarh,Dibrugarh,H.O
+785001,Jorhat,Jorhat,Assam,Jorhat,Jorhat,H.O
+834001,Ranchi GPO,Ranchi,Jharkhand,Ranchi,Ranchi,H.O
+834002,Ranchi City,Ranchi,Jharkhand,Ranchi,Ranchi,H.O
+834003,Morabadi,Ranchi,Jharkhand,Ranchi,Ranchi,H.O
+834004,Ashok Nagar,Ranchi,Jharkhand,Ranchi,Ranchi,H.O
+834005,Bariatu,Ranchi,Jharkhand,Ranchi,Ranchi,H.O
+834008,Doranda,Ranchi,Jharkhand,Ranchi,Ranchi,H.O
+834009,Kanke,Ranchi,Jharkhand,Ranchi,Ranchi,H.O
+826001,Dhanbad GPO,Dhanbad,Jharkhand,Dhanbad,Dhanbad,H.O
+831001,Jamshedpur GPO,East Singhbhum,Jharkhand,Jamshedpur,Jamshedpur,H.O
+831002,Bistupur,East Singhbhum,Jharkhand,Jamshedpur,Jamshedpur,H.O
+831003,Sakchi,East Singhbhum,Jharkhand,Jamshedpur,Jamshedpur,H.O
+814001,Deoghar,Deoghar,Jharkhand,Deoghar,Deoghar,H.O
+827001,Bokaro,Bokaro,Jharkhand,Bokaro,Bokaro,H.O
+122001,Gurugram GPO,Gurugram,Haryana,Gurugram,Gurugram,H.O
+122002,DLF Phase 1,Gurugram,Haryana,Gurugram,Gurugram,H.O
+122003,Sushant Lok,Gurugram,Haryana,Gurugram,Gurugram,H.O
+122004,Udyog Vihar,Gurugram,Haryana,Gurugram,Gurugram,H.O
+122009,Golf Course Road,Gurugram,Haryana,Gurugram,Gurugram,H.O
+122015,Sector 56,Gurugram,Haryana,Gurugram,Gurugram,H.O
+122017,Sohna Road,Gurugram,Haryana,Gurugram,Gurugram,H.O
+122018,Cyber City,Gurugram,Haryana,Gurugram,Gurugram,H.O
+121001,Faridabad GPO,Faridabad,Haryana,Faridabad,Faridabad,H.O
+121002,NIT Faridabad,Faridabad,Haryana,Faridabad,Faridabad,H.O
+121003,Sector 14 Faridabad,Faridabad,Haryana,Faridabad,Faridabad,H.O
+121004,Ballabgarh,Faridabad,Haryana,Faridabad,Faridabad,H.O
+121006,Sector 28 Faridabad,Faridabad,Haryana,Faridabad,Faridabad,H.O
+131001,Sonipat,Sonipat,Haryana,Sonipat,Sonipat,H.O
+132001,Karnal,Karnal,Haryana,Karnal,Karnal,H.O
+134001,Ambala Cantonment,Ambala,Haryana,Ambala,Ambala,H.O
+125001,Hisar,Hisar,Haryana,Hisar,Hisar,H.O
+126001,Jind,Jind,Haryana,Jind,Jind,H.O
+127001,Bhiwani,Bhiwani,Haryana,Bhiwani,Bhiwani,H.O
+124001,Rohtak,Rohtak,Haryana,Rohtak,Rohtak,H.O
+136001,Kaithal,Kaithal,Haryana,Karnal,Kaithal,H.O
+492001,Raipur GPO,Raipur,Chhattisgarh,Raipur,Raipur,H.O
+492007,Shankar Nagar,Raipur,Chhattisgarh,Raipur,Raipur,H.O
+492009,Civil Lines Raipur,Raipur,Chhattisgarh,Raipur,Raipur,H.O
+490001,Durg GPO,Durg,Chhattisgarh,Durg,Durg,H.O
+490006,Bhilai,Durg,Chhattisgarh,Durg,Durg,H.O
+490009,Supela,Durg,Chhattisgarh,Durg,Durg,H.O
+495001,Bilaspur GPO,Bilaspur,Chhattisgarh,Bilaspur,Bilaspur,H.O
+497001,Korba,Korba,Chhattisgarh,Bilaspur,Korba,H.O
+248001,Dehradun GPO,Dehradun,Uttarakhand,Dehradun,Dehradun,H.O
+248002,Rajpur Road,Dehradun,Uttarakhand,Dehradun,Dehradun,H.O
+248003,Dalanwala,Dehradun,Uttarakhand,Dehradun,Dehradun,H.O
+248005,Clock Tower,Dehradun,Uttarakhand,Dehradun,Dehradun,H.O
+248006,Vasant Vihar,Dehradun,Uttarakhand,Dehradun,Dehradun,H.O
+248007,Race Course,Dehradun,Uttarakhand,Dehradun,Dehradun,H.O
+248009,ISBT Dehradun,Dehradun,Uttarakhand,Dehradun,Dehradun,H.O
+249401,Haridwar,Haridwar,Uttarakhand,Haridwar,Haridwar,H.O
+263001,Nainital GPO,Nainital,Uttarakhand,Nainital,Nainital,H.O
+263002,Haldwani,Nainital,Uttarakhand,Nainital,Nainital,H.O
+263139,Rudrapur,Udham Singh Nagar,Uttarakhand,Nainital,Rudrapur,H.O
+171001,Shimla GPO,Shimla,Himachal Pradesh,Shimla,Shimla,H.O
+171002,Chhota Shimla,Shimla,Himachal Pradesh,Shimla,Shimla,H.O
+171003,Sanjauli,Shimla,Himachal Pradesh,Shimla,Shimla,H.O
+171004,Lakkar Bazar,Shimla,Himachal Pradesh,Shimla,Shimla,H.O
+171005,Summer Hill,Shimla,Himachal Pradesh,Shimla,Shimla,H.O
+171006,Mashobra,Shimla,Himachal Pradesh,Shimla,Shimla,H.O
+176001,Dharamsala,Kangra,Himachal Pradesh,Kangra,Dharamsala,H.O
+175001,Mandi,Mandi,Himachal Pradesh,Mandi,Mandi,H.O
+173001,Solan,Solan,Himachal Pradesh,Solan,Solan,H.O
+177001,Hamirpur,Hamirpur,Himachal Pradesh,Hamirpur,Hamirpur,H.O
+403001,Panaji,North Goa,Goa,Panaji,Panaji,H.O
+403002,Patto,North Goa,Goa,Panaji,Panaji,H.O
+403004,Dona Paula,North Goa,Goa,Panaji,Panaji,H.O
+403005,Porvorim,North Goa,Goa,Panaji,Panaji,H.O
+403501,Mapusa,North Goa,Goa,Panaji,Panaji,H.O
+403516,Calangute,North Goa,Goa,Panaji,Panaji,H.O
+403601,Margao,South Goa,Goa,Panaji,Margao,H.O
+403602,Fatorda,South Goa,Goa,Panaji,Margao,H.O
+403726,Vasco da Gama,South Goa,Goa,Panaji,Margao,H.O
+190001,Srinagar GPO,Srinagar,Jammu and Kashmir,Srinagar,Srinagar,H.O
+190002,Lal Chowk,Srinagar,Jammu and Kashmir,Srinagar,Srinagar,H.O
+190003,Rajbagh,Srinagar,Jammu and Kashmir,Srinagar,Srinagar,H.O
+190006,Hyderpora,Srinagar,Jammu and Kashmir,Srinagar,Srinagar,H.O
+190008,Natipora,Srinagar,Jammu and Kashmir,Srinagar,Srinagar,H.O
+190010,Hazratbal,Srinagar,Jammu and Kashmir,Srinagar,Srinagar,H.O
+180001,Jammu GPO,Jammu,Jammu and Kashmir,Jammu,Jammu,H.O
+180002,Gandhi Nagar,Jammu,Jammu and Kashmir,Jammu,Jammu,H.O
+180004,Canal Road,Jammu,Jammu and Kashmir,Jammu,Jammu,H.O
+180005,Rehari,Jammu,Jammu and Kashmir,Jammu,Jammu,H.O

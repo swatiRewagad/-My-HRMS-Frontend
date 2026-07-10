@@ -170,6 +170,15 @@ cms:
       otp-requests-per-ip-per-hour: ${OTP_RATE_IP_HOUR:20}
       login-attempts-per-ip-per-minute: ${LOGIN_RATE_IP_MINUTE:10}
 
+crpc:
+  threshold:
+    max-per-reviewer: ${CRPC_MAX_PER_REVIEWER:30}
+    overflow-target: ${CRPC_OVERFLOW_TARGET:CRPC_HEAD}
+  scheduling:
+    pending-notify-cron: "0 0 9 * * MON-FRI"
+    duplicate-check-cron: "0 30 9 * * MON-FRI"
+    threshold-check-cron: "0 0 10 * * MON-FRI"
+
 management:
   endpoints:
     web:

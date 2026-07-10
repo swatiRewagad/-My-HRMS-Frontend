@@ -1,0 +1,1110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CMS 2.0 — Module Flow Diagrams & Implementation Details</title>
+    <style>
+        :root { --primary: #1e3a5f; --accent: #2563eb; --green: #059669; --amber: #d97706; --red: #dc2626; --gray: #6b7280; --bg: #f8fafc; --card: #ffffff; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: #1f2937; line-height: 1.6; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+        header { background: linear-gradient(135deg, var(--primary), #0f172a); color: white; padding: 40px 0; }
+        header h1 { font-size: 32px; margin-bottom: 8px; }
+        header p { opacity: 0.8; font-size: 16px; }
+        .meta { display: flex; gap: 24px; margin-top: 16px; font-size: 14px; opacity: 0.7; }
+        .toc { background: white; border-radius: 12px; padding: 24px 32px; margin: 24px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .toc h2 { font-size: 18px; margin-bottom: 12px; color: var(--primary); }
+        .toc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 8px; }
+        .toc a { color: var(--accent); text-decoration: none; font-size: 14px; padding: 4px 0; display: block; }
+        .toc a:hover { text-decoration: underline; }
+        .module { background: white; border-radius: 12px; padding: 32px; margin: 24px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .module h2 { font-size: 24px; color: var(--primary); margin-bottom: 8px; padding-bottom: 12px; border-bottom: 2px solid #e5e7eb; }
+        .module h3 { font-size: 18px; color: #374151; margin: 20px 0 12px; }
+        .module h4 { font-size: 15px; color: var(--accent); margin: 16px 0 8px; }
+        .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+        .badge-impl { background: #dcfce7; color: #166534; }
+        .badge-partial { background: #fef3c7; color: #92400e; }
+        .badge-plan { background: #fee2e2; color: #991b1b; }
+        .flow-container { margin: 16px 0; overflow-x: auto; }
+        .flow { display: flex; align-items: center; flex-wrap: wrap; gap: 0; padding: 16px; background: #f1f5f9; border-radius: 8px; }
+        .flow-step { background: white; border: 2px solid #cbd5e1; border-radius: 8px; padding: 10px 16px; font-size: 13px; text-align: center; min-width: 120px; position: relative; }
+        .flow-step.active { border-color: var(--accent); background: #eff6ff; }
+        .flow-step.decision { border-radius: 0; transform: rotate(0deg); border-color: var(--amber); background: #fffbeb; clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%); min-width: 140px; min-height: 80px; display: flex; align-items: center; justify-content: center; }
+        .flow-arrow { font-size: 20px; color: var(--gray); margin: 0 4px; flex-shrink: 0; }
+        .flow-arrow-down { display: block; text-align: center; font-size: 20px; color: var(--gray); margin: 8px 0; }
+        .impl-table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 14px; }
+        .impl-table th { background: #f1f5f9; padding: 10px 12px; text-align: left; font-weight: 600; color: #475569; }
+        .impl-table td { padding: 10px 12px; border-top: 1px solid #e5e7eb; }
+        .impl-table tr:hover { background: #f8fafc; }
+        .file-ref { font-family: monospace; font-size: 12px; color: var(--gray); }
+        .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+        .status-dot.green { background: var(--green); }
+        .status-dot.amber { background: var(--amber); }
+        .status-dot.red { background: var(--red); }
+        .vertical-flow { display: flex; flex-direction: column; align-items: center; gap: 0; padding: 16px; background: #f1f5f9; border-radius: 8px; }
+        .vertical-flow .flow-step { margin: 4px 0; }
+        .split-flow { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 12px 0; }
+        .split-flow .branch { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; }
+        .split-flow .branch h5 { font-size: 13px; color: var(--accent); margin-bottom: 8px; }
+        .api-list { list-style: none; padding: 0; }
+        .api-list li { padding: 6px 0; font-size: 13px; border-bottom: 1px solid #f1f5f9; }
+        .api-list li:last-child { border-bottom: none; }
+        .method { display: inline-block; padding: 1px 6px; border-radius: 4px; font-size: 11px; font-weight: 700; margin-right: 6px; }
+        .method.get { background: #dcfce7; color: #166534; }
+        .method.post { background: #dbeafe; color: #1d4ed8; }
+        .method.put { background: #fef3c7; color: #92400e; }
+        .method.delete { background: #fee2e2; color: #991b1b; }
+        .tech-stack { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+        .tech-tag { background: #e2e8f0; padding: 4px 10px; border-radius: 6px; font-size: 12px; color: #475569; }
+        .summary-box { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 16px; margin: 16px 0; }
+        .summary-box h4 { color: var(--accent); margin-bottom: 8px; }
+        .role-tag { display: inline-block; background: #f3e8ff; color: #7c3aed; padding: 2px 8px; border-radius: 4px; font-size: 11px; margin: 2px; }
+        @media print { body { font-size: 12px; } .module { break-inside: avoid; } }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="container">
+        <h1>CMS 2.0 — Module Flow Diagrams</h1>
+        <p>Complete flow diagrams and implementation status for all modules of the Complaint Management System</p>
+        <div class="meta">
+            <span>Date: 10 July 2026</span>
+            <span>Modules: 19</span>
+            <span>Controllers: 38</span>
+            <span>Services: 50+</span>
+            <span>Components: 70+</span>
+        </div>
+    </div>
+</header>
+
+<div class="container">
+
+<!-- Table of Contents -->
+<div class="toc">
+    <h2>Table of Contents</h2>
+    <div class="toc-grid">
+        <a href="#mod-public">1. Public Portal (Citizen-facing)</a>
+        <a href="#mod-auth">2. Citizen Authentication (OTP)</a>
+        <a href="#mod-eligibility">3. Eligibility Wizard</a>
+        <a href="#mod-complaint">4. Complaint Filing</a>
+        <a href="#mod-track">5. Complaint Tracking</a>
+        <a href="#mod-email">6. Email Syndication (Ingestion)</a>
+        <a href="#mod-crpc">7. CRPC (Data Entry & Review)</a>
+        <a href="#mod-mre">8. MRE (Maintainability Rules Engine)</a>
+        <a href="#mod-triage">9. Triage & Auto-Routing</a>
+        <a href="#mod-rbio">10. RBIO (Ombudsman Officers)</a>
+        <a href="#mod-cepc">11. CEPC (Consumer Education)</a>
+        <a href="#mod-re">12. RE Portal (Regulated Entities)</a>
+        <a href="#mod-aa">13. Appellate Authority (AA)</a>
+        <a href="#mod-admin">14. Admin & Rules Management</a>
+        <a href="#mod-search">15. Full-Text Search (OpenSearch)</a>
+        <a href="#mod-reports">16. Report Builder</a>
+        <a href="#mod-senior">17. Senior Dashboard</a>
+        <a href="#mod-i18n">18. Internationalization (i18n)</a>
+        <a href="#mod-notifications">19. Notifications & Communications</a>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- MODULE 1: PUBLIC PORTAL -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="module" id="mod-public">
+    <h2>1. Public Portal (Citizen-Facing) <span class="badge badge-impl">IMPLEMENTED</span></h2>
+    <p>The public-facing portal under <code>/public</code> route provides citizens with the complete RBI Ombudsman experience.</p>
+
+    <h3>Flow Diagram</h3>
+    <div class="flow-container">
+        <div class="flow">
+            <div class="flow-step active">Citizen visits<br>/public</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Public Home<br>(Hero + Info)</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Choose Action</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">File Complaint<br>Track / Withdraw<br>Appeal / Feedback</div>
+        </div>
+    </div>
+
+    <h4>Public Home Page Flow</h4>
+    <div class="flow-container">
+        <div class="flow">
+            <div class="flow-step">Landing Page</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Hero Section<br>(File Complaint CTA)</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Complaint Types<br>(Bank/NBFC/Card)</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Scheme Details</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Ways of Filing</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Education &<br>Awareness</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">FAQ Section</div>
+        </div>
+    </div>
+
+    <h3>Implemented Components</h3>
+    <table class="impl-table">
+        <tr><th>Component</th><th>Route</th><th>Features</th><th>Status</th></tr>
+        <tr><td>PublicLayoutComponent</td><td>/public/*</td><td>Top strip (contrast, font size, language), Navbar, Footer, Session bar, Hamburger mobile menu</td><td><span class="status-dot green"></span>Done</td></tr>
+        <tr><td>PublicHomeComponent</td><td>/public</td><td>Hero, complaint types, scheme details, ways of filing, education carousel, stats, FAQ accordion</td><td><span class="status-dot green"></span>Done</td></tr>
+        <tr><td>PublicLoginComponent</td><td>/public/login</td><td>OTP-based citizen login (mobile verification), captcha, session timer</td><td><span class="status-dot green"></span>Done</td></tr>
+        <tr><td>EligibilityWizardComponent</td><td>/public/eligibility-wizard</td><td>Multi-step eligibility questionnaire, entity selection, file upload</td><td><span class="status-dot green"></span>Done</td></tr>
+        <tr><td>PublicFileComplaintComponent</td><td>/public/file-complaint</td><td>Multi-phase form (eligibility → personal → complaint → docs → review), draft save, session timer</td><td><span class="status-dot green"></span>Done</td></tr>
+        <tr><td>ComplaintHistoryComponent</td><td>/public/history</td><td>Complaint list table with filters, status badges, action buttons</td><td><span class="status-dot green"></span>Done</td></tr>
+        <tr><td>WithdrawComplaintComponent</td><td>/public/withdraw</td><td>Complaint withdrawal form with reason, confirmation</td><td><span class="status-dot green"></span>Done</td></tr>
+        <tr><td>FileAppealComponent</td><td>/public/appeal</td><td>Appeal filing form against closed complaints</td><td><span class="status-dot green"></span>Done</td></tr>
+        <tr><td>SubmitFeedbackComponent</td><td>/public/feedback</td><td>Post-resolution feedback form</td><td><span class="status-dot green"></span>Done</td></tr>
+    </table>
+
+    <h3>Technology Stack</h3>
+    <div class="tech-stack">
+        <span class="tech-tag">Angular 20</span>
+        <span class="tech-tag">PrimeNG Icons</span>
+        <span class="tech-tag">i18n (12 languages)</span>
+        <span class="tech-tag">Responsive (Mobile-first)</span>
+        <span class="tech-tag">WCAG Accessibility</span>
+        <span class="tech-tag">High Contrast Mode</span>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- MODULE 2: CITIZEN AUTH -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="module" id="mod-auth">
+    <h2>2. Citizen Authentication (OTP Flow) <span class="badge badge-impl">IMPLEMENTED</span></h2>
+    <p>Mobile OTP-based authentication for public citizens with captcha, cooloff, and 15-minute session management.</p>
+
+    <h3>Flow Diagram</h3>
+    <div class="flow-container">
+        <div class="flow">
+            <div class="flow-step">Citizen enters<br>Mobile Number</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Solve Captcha<br>(Visual/Math)</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Check Cooloff<br>(Max 5 attempts)</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Send OTP<br>(SMS Gateway)</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Verify OTP<br>(Max 3 tries)</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Create Session<br>(15-min TTL)</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Redirect to<br>Protected Page</div>
+        </div>
+    </div>
+
+    <h3>Security Features Implemented</h3>
+    <table class="impl-table">
+        <tr><th>Feature</th><th>Implementation</th><th>File</th></tr>
+        <tr><td>Captcha (Visual + Math + Audio)</td><td>Server-generated image/audio, token-based validation</td><td class="file-ref">CaptchaService.java</td></tr>
+        <tr><td>Cooloff Mechanism</td><td>5 attempts per mobile per hour, progressive lockout</td><td class="file-ref">CooloffService.java</td></tr>
+        <tr><td>OTP Delivery</td><td>SMS gateway integration, 6-digit code, 5-min expiry</td><td class="file-ref">OtpService.java</td></tr>
+        <tr><td>Session Management</td><td>15-minute session cookie, server-side invalidation</td><td class="file-ref">CitizenSessionService.java</td></tr>
+        <tr><td>Device Fingerprinting</td><td>SHA-256 fingerprint cookie for session binding</td><td class="file-ref">CitizenAuthController.java</td></tr>
+        <tr><td>PII Encryption</td><td>AES-256 encryption of mobile/email in transit</td><td class="file-ref">EncryptionKeyService.java</td></tr>
+    </table>
+
+    <h3>API Endpoints</h3>
+    <ul class="api-list">
+        <li><span class="method get">GET</span> /api/v1/citizen/auth/captcha — Generate captcha challenge</li>
+        <li><span class="method post">POST</span> /api/v1/citizen/auth/send-otp — Send OTP to mobile</li>
+        <li><span class="method post">POST</span> /api/v1/citizen/auth/verify-otp — Verify OTP & create session</li>
+        <li><span class="method get">GET</span> /api/v1/citizen/auth/session-status — Check session validity</li>
+        <li><span class="method post">POST</span> /api/v1/citizen/auth/logout — Invalidate session</li>
+        <li><span class="method get">GET</span> /api/v1/citizen/auth/encryption-key — Get RSA public key for PII</li>
+    </ul>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- MODULE 3: ELIGIBILITY WIZARD -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="module" id="mod-eligibility">
+    <h2>3. Eligibility Wizard <span class="badge badge-impl">IMPLEMENTED</span></h2>
+    <p>Multi-step questionnaire that determines if a citizen's complaint is eligible under the RBIOS scheme before allowing filing.</p>
+
+    <h3>Flow Diagram</h3>
+    <div class="flow-container">
+        <div class="flow">
+            <div class="flow-step">Select Entity<br>(Bank/NBFC)</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Q1: Filed with<br>Entity First?</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Q2: Date of<br>RE Complaint</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Q3: 30-day window<br>passed?</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Q4: Within 1-year<br>limitation?</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">MRE Evaluation<br>(GREEN/RED/AMBER)</div>
+        </div>
+    </div>
+
+    <div class="split-flow">
+        <div class="branch">
+            <h5>✅ GREEN — Eligible</h5>
+            <p>→ Proceed to File Complaint form with pre-filled entity data</p>
+        </div>
+        <div class="branch">
+            <h5>🔴 RED — Not Eligible</h5>
+            <p>→ Show rejection reason (e.g., "complaint filed too early", "outside limitation period")</p>
+        </div>
+    </div>
+
+    <h3>Eligibility Questions Implemented</h3>
+    <table class="impl-table">
+        <tr><th>#</th><th>Question</th><th>Type</th><th>MRE Ground</th></tr>
+        <tr><td>1</td><td>Select financial institution against which you wish to file</td><td>Select (dropdown)</td><td>ENTITY_COVERAGE</td></tr>
+        <tr><td>2</td><td>Have you filed a complaint with the entity first?</td><td>Radio (Yes/No)</td><td>PRIOR_COMPLAINT</td></tr>
+        <tr><td>3</td><td>Date of complaint to entity + upload copy</td><td>Date + File</td><td>WINDOW_CHECK</td></tr>
+        <tr><td>4</td><td>Is the same grievance pending before another forum?</td><td>Radio (Yes/No)</td><td>FORUM_PENDING</td></tr>
+        <tr><td>5</td><td>Is this within 1 year of receiving entity's final response?</td><td>Auto-calculated</td><td>LIMITATION_PERIOD</td></tr>
+    </table>
+
+    <h3>Backend</h3>
+    <ul class="api-list">
+        <li><span class="method get">GET</span> /api/v1/eligibility/questions — Get questions config</li>
+        <li><span class="method post">POST</span> /api/v1/eligibility/evaluate — Evaluate answers → MRE verdict</li>
+        <li><span class="method get">GET</span> /api/v1/eligibility/entities — List regulated entities for selection</li>
+    </ul>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- MODULE 4: COMPLAINT FILING -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="module" id="mod-complaint">
+    <h2>4. Complaint Filing <span class="badge badge-impl">IMPLEMENTED</span></h2>
+    <p>Multi-phase complaint form with auto-save draft, document upload, and two variants (public portal & simplified direct form).</p>
+
+    <h3>Full Complaint Filing Flow (Public Portal)</h3>
+    <div class="flow-container">
+        <div class="flow">
+            <div class="flow-step active">Phase 1:<br>Eligibility</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Phase 2:<br>Personal Details</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Phase 3:<br>Complaint Details</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Phase 4:<br>Documents Upload</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Phase 5:<br>Review & Submit</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Acknowledgement<br>(Complaint ID)</div>
+        </div>
+    </div>
+
+    <h4>Phase Details</h4>
+    <table class="impl-table">
+        <tr><th>Phase</th><th>Fields</th><th>Validation</th></tr>
+        <tr><td>1. Eligibility</td><td>Entity selection, prior complaint date, entity type, radio questions</td><td>MRE must return GREEN</td></tr>
+        <tr><td>2. Personal</td><td>Name, Mobile, Email, Address, Pincode (→ auto-fill district/state)</td><td>Indian mobile (10-digit), valid email</td></tr>
+        <tr><td>3. Complaint</td><td>Category, Subject, Description (with speech-to-text), Relief sought, Amount, Transaction date</td><td>Subject ≤ 500 chars, Description ≤ 4000</td></tr>
+        <tr><td>4. Documents</td><td>File upload (PDF/JPG/PNG/DOC), max 5MB each, multiple files</td><td>File type & size validation</td></tr>
+        <tr><td>5. Review</td><td>Summary of all fields, edit links back to each phase, T&C checkbox</td><td>All required fields filled</td></tr>
+    </table>
+
+    <h3>Simplified Form Flow (Direct /file-complaint)</h3>
+    <div class="flow-container">
+        <div class="flow">
+            <div class="flow-step">Single Page Form</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Name + Email + Phone</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Category + Entity + Subject + Description</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Submit</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Acknowledgement</div>
+        </div>
+    </div>
+
+    <h3>API Endpoints</h3>
+    <ul class="api-list">
+        <li><span class="method post">POST</span> /api/v1/complaints — Submit new complaint</li>
+        <li><span class="method post">POST</span> /api/v1/complaints/draft — Save draft</li>
+        <li><span class="method post">POST</span> /api/v1/upload — Upload attachments</li>
+        <li><span class="method get">GET</span> /api/v1/geo/pincode/{pincode} — Auto-fill district/state</li>
+        <li><span class="method get">GET</span> /api/v1/categories — Get complaint categories</li>
+        <li><span class="method get">GET</span> /api/v1/banks — Get regulated entities list</li>
+    </ul>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- MODULE 5: COMPLAINT TRACKING -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="module" id="mod-track">
+    <h2>5. Complaint Tracking <span class="badge badge-impl">IMPLEMENTED</span></h2>
+    <p>Public and authenticated complaint tracking with timeline, communication history, and PDF download.</p>
+
+    <h3>Flow Diagram</h3>
+    <div class="flow-container">
+        <div class="flow">
+            <div class="flow-step">Enter Complaint ID</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Search API</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Display Status Card</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Timeline View</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Communication<br>History</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Download PDF</div>
+        </div>
+    </div>
+
+    <h3>Features Implemented</h3>
+    <table class="impl-table">
+        <tr><th>Feature</th><th>Description</th></tr>
+        <tr><td>Status Card</td><td>Complaint ID, category, registered date, SLA due, assigned team, resolution summary</td></tr>
+        <tr><td>Timeline</td><td>Visual timeline of all state transitions (action, from→to status, date)</td></tr>
+        <tr><td>Communication History</td><td>All emails/SMS/letters sent (type, subject, message, from/to, date)</td></tr>
+        <tr><td>Documents Section</td><td>All uploaded documents with download links</td></tr>
+        <tr><td>PDF Download</td><td>Generate complaint details as downloadable PDF</td></tr>
+        <tr><td>Feedback Link</td><td>"Was your complaint resolved satisfactorily?" → feedback form</td></tr>
+    </table>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- MODULE 6: EMAIL SYNDICATION -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="module" id="mod-email">
+    <h2>6. Email Syndication (Ingestion Pipeline) <span class="badge badge-impl">IMPLEMENTED</span></h2>
+    <p>Automated pipeline that ingests complaint emails, runs OCR on attachments, extracts structured data, and creates email drafts assigned to DEOs.</p>
+
+    <h3>Flow Diagram</h3>
+    <div class="flow-container">
+        <div class="flow">
+            <div class="flow-step active">Incoming Email<br>(or Simulation)</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Ignore List<br>Check</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">OCR Chain<br>(Groq→Paddle→<br>Gemini→OpenAI→Azure)</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Rule-Based<br>Extraction</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Language<br>Detection</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Create<br>Email Draft</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Round-Robin<br>DEO Assignment</div>
+        </div>
+    </div>
+
+    <h3>OCR Provider Chain (Failover)</h3>
+    <table class="impl-table">
+        <tr><th>Priority</th><th>Provider</th><th>Model</th><th>File</th></tr>
+        <tr><td>1 (Primary)</td><td>Groq</td><td>llama-3.2-90b-vision-preview</td><td class="file-ref">GroqOcrProvider.java</td></tr>
+        <tr><td>2</td><td>PaddleOCR</td><td>Self-hosted</td><td class="file-ref">PaddleOcrProvider.java</td></tr>
+        <tr><td>3</td><td>Gemini</td><td>gemini-2.0-flash</td><td class="file-ref">GeminiOcrProvider.java</td></tr>
+        <tr><td>4</td><td>OpenAI</td><td>gpt-4o</td><td class="file-ref">OpenAiOcrProvider.java</td></tr>
+        <tr><td>5 (Fallback)</td><td>Azure Doc Intelligence</td><td>prebuilt-read</td><td class="file-ref">AzureDocIntelligenceOcrProvider.java</td></tr>
+    </table>
+
+    <h3>Frontend Components</h3>
+    <table class="impl-table">
+        <tr><th>Component</th><th>Route</th><th>Features</th></tr>
+        <tr><td>EmailQueueComponent</td><td>/email-syndication</td><td>Draft queue table, filters, status badges, assign actions</td></tr>
+        <tr><td>DraftDetailComponent</td><td>/email-syndication/draft/:id</td><td>Full draft view, OCR results, extracted fields, edit, assign</td></tr>
+        <tr><td>EmailSimulatorComponent</td><td>/email-syndication/simulator</td><td>Test email ingestion with attachments</td></tr>
+        <tr><td>IgnoreListComponent</td><td>/email-syndication/ignore-list</td><td>Manage email addresses/domains to skip</td></tr>
+    </table>
+
+    <h3>API Endpoints</h3>
+    <ul class="api-list">
+        <li><span class="method post">POST</span> /api/v1/email-syndication/ingest — Process incoming email</li>
+        <li><span class="method get">GET</span> /api/v1/email-syndication/drafts — List all drafts with filters</li>
+        <li><span class="method get">GET</span> /api/v1/email-syndication/drafts/{id} — Get draft detail</li>
+        <li><span class="method put">PUT</span> /api/v1/email-syndication/drafts/{id} — Update draft fields</li>
+        <li><span class="method post">POST</span> /api/v1/email-syndication/drafts/{id}/assign — Assign to DEO</li>
+        <li><span class="method post">POST</span> /api/v1/email-syndication/simulate — Simulate email ingestion</li>
+        <li><span class="method get">GET</span> /api/v1/email-syndication/ignore-list — Get ignore entries</li>
+        <li><span class="method post">POST</span> /api/v1/email-syndication/ignore-list — Add ignore entry</li>
+    </ul>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- MODULE 7: CRPC -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="module" id="mod-crpc">
+    <h2>7. CRPC Module (Centralized Receipt & Processing Centre) <span class="badge badge-impl">IMPLEMENTED</span></h2>
+    <p>Full workflow for DEOs (Data Entry Operators), Reviewers, Ops Head, In-Charge, and Help Desk to process email drafts into formal complaints.</p>
+
+    <h3>CRPC Workflow State Machine</h3>
+    <div class="flow-container">
+        <div class="flow">
+            <div class="flow-step active">ASSIGNED<br>(to DEO)</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">DEO Assessment<br>(Fill/Edit fields)</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">SENT_FOR_<br>APPROVAL</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Reviewer<br>Review</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">APPROVED</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">CONVERT TO<br>COMPLAINT</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">NEW_COMPLAINT<br>(Routed)</div>
+        </div>
+    </div>
+
+    <h4>Alternative Paths</h4>
+    <div class="split-flow">
+        <div class="branch">
+            <h5>❌ Not a Complaint</h5>
+            <p>DEO/Reviewer marks as "Not a Complaint" with reason → Draft closed</p>
+            <p>Reasons: Spam, Duplicate, Out of Jurisdiction, General Query, Thank You Note</p>
+        </div>
+        <div class="branch">
+            <h5>↩️ Sent Back</h5>
+            <p>Reviewer sends back to DEO with remarks → Status: SENT_BACK → DEO re-works</p>
+        </div>
+    </div>
+
+    <h3>CRPC Roles & Components</h3>
+    <table class="impl-table">
+        <tr><th>Role</th><th>Component</th><th>Route</th><th>Actions</th></tr>
+        <tr><td><span class="role-tag">CRPC_DEO</span></td><td>DeoHomeComponent</td><td>/crpc/home</td><td>View assigned drafts, assess, fill fields, send for approval, mark not-a-complaint</td></tr>
+        <tr><td><span class="role-tag">CRPC_DEO</span></td><td>DraftAssessmentComponent</td><td>/crpc/draft/:id</td><td>Edit extracted data, validate, add remarks, submit for review</td></tr>
+        <tr><td><span class="role-tag">CRPC_DEO</span></td><td>PhysicalLetterComponent</td><td>/crpc/physical-letter</td><td>Manual entry of physical letter complaints with OCR scanning</td></tr>
+        <tr><td><span class="role-tag">CRPC_REVIEWER</span></td><td>ReviewerHomeComponent</td><td>/crpc/reviewer</td><td>View pending approvals, approve/send-back/convert to complaint</td></tr>
+        <tr><td><span class="role-tag">CRPC_REVIEWER</span></td><td>ReviewerAssessmentComponent</td><td>/crpc/reviewer/draft/:id</td><td>Full review with approve, send-back, or not-a-complaint actions</td></tr>
+        <tr><td><span class="role-tag">CRPC_HEAD</span></td><td>OpsHeadComponent</td><td>/crpc/ops-head</td><td>Overview statistics, pending items, approval authority</td></tr>
+        <tr><td><span class="role-tag">CRPC_INCHARGE</span></td><td>InChargeDashboardComponent</td><td>/crpc/in-charge</td><td>Team monitoring, workload distribution, reassignment</td></tr>
+        <tr><td><span class="role-tag">CRPC_HELPDESK</span></td><td>HelpDeskComponent</td><td>/crpc/help-desk</td><td>Citizen queries, complaint status lookup, manual assistance</td></tr>
+    </table>
+
+    <h3>CRPC Workflow API Endpoints</h3>
+    <ul class="api-list">
+        <li><span class="method post">POST</span> /api/v1/crpc/workflow/send-for-approval — DEO submits for review</li>
+        <li><span class="method post">POST</span> /api/v1/crpc/workflow/approve — Reviewer approves draft</li>
+        <li><span class="method post">POST</span> /api/v1/crpc/workflow/send-back — Reviewer returns to DEO</li>
+        <li><span class="method post">POST</span> /api/v1/crpc/workflow/not-a-complaint — Mark as non-complaint</li>
+        <li><span class="method post">POST</span> /api/v1/crpc/workflow/bulk-not-a-complaint — Bulk mark multiple</li>
+        <li><span class="method post">POST</span> /api/v1/crpc/workflow/convert-to-complaint — Create formal complaint</li>
+        <li><span class="method get">GET</span> /api/v1/crpc/workflow/not-a-complaint-reasons — List reasons</li>
+        <li><span class="method get">GET</span> /api/v1/crpc/workflow/closure-letter — Generate closure letter PDF</li>
+    </ul>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- MODULE 8: MRE -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="module" id="mod-mre">
+    <h2>8. MRE (Maintainability Rules Engine) <span class="badge badge-impl">IMPLEMENTED</span></h2>
+    <p>Rule-based engine that evaluates complaint eligibility against RBIOS 2021/2026 scheme requirements and returns GREEN/AMBER/RED verdict.</p>
+
+    <h3>MRE Evaluation Flow</h3>
+    <div class="flow-container">
+        <div class="flow">
+            <div class="flow-step">Complaint Facts<br>Input</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Ground 1:<br>Entity Coverage</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Ground 2:<br>Prior Complaint</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Ground 3:<br>Window Check<br>(30/60 days)</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Ground 4:<br>Limitation Period<br>(1 year)</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Ground 5:<br>Forum Pending</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">VERDICT<br>(GREEN/RED/AMBER)</div>
+        </div>
+    </div>
+
+    <h3>MRE Grounds Evaluated</h3>
+    <table class="impl-table">
+        <tr><th>Ground</th><th>Rule</th><th>RED Condition</th><th>Config</th></tr>
+        <tr><td>ENTITY_COVERAGE</td><td>Entity must be RBI-regulated</td><td>Entity not in regulated list</td><td>Entity master table</td></tr>
+        <tr><td>PRIOR_RE_COMPLAINT</td><td>Must have complained to entity first</td><td>No prior complaint filed</td><td>priorReComplaint = false</td></tr>
+        <tr><td>WINDOW_CHECK</td><td>30-day waiting period after RE complaint</td><td>Filed before 30-day window</td><td>reWindowDays: 30</td></tr>
+        <tr><td>LIMITATION_PERIOD</td><td>Must file within 1 year of RE's last response</td><td>Beyond 365 days</td><td>limitationPeriodYears: 1</td></tr>
+        <tr><td>FORUM_PENDING</td><td>Same grievance not pending elsewhere</td><td>Already pending in another forum</td><td>sameGrievancePendingOrDecided</td></tr>
+        <tr><td>NPCI_WINDOW</td><td>Card network complaints: 30/60 day special window</td><td>Outside NPCI/Visa/Mastercard window</td><td>npciWindowDays: 30</td></tr>
+    </table>
+
+    <h3>Implementation Files</h3>
+    <div class="tech-stack">
+        <span class="tech-tag">MaintainabilityRulesEngine.java</span>
+        <span class="tech-tag">MreGround.java</span>
+        <span class="tech-tag">MreVerdict.java</span>
+        <span class="tech-tag">ComplaintFacts.java</span>
+        <span class="tech-tag">MreProperties.java</span>
+        <span class="tech-tag">MreEntityCoverageService.java</span>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- MODULE 9: TRIAGE -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="module" id="mod-triage">
+    <h2>9. Triage & Auto-Routing <span class="badge badge-impl">IMPLEMENTED</span></h2>
+    <p>Automatic complaint routing to correct department (RBIO/CEPC) based on entity coverage, category, amount, and complaint characteristics.</p>
+
+    <h3>Triage Flow</h3>
+    <div class="flow-container">
+        <div class="flow">
+            <div class="flow-step active">New Complaint<br>Created</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">IntakeTriageService<br>Evaluate</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Determine<br>Department</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Assign Priority<br>(HIGH/MEDIUM/LOW)</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Round-Robin<br>Officer Assignment</div>
+        </div>
+    </div>
+
+    <div class="split-flow">
+        <div class="branch">
+            <h5>→ RBIO (Ombudsman)</h5>
+            <p>Standard complaints against regulated entities that pass MRE</p>
+        </div>
+        <div class="branch">
+            <h5>→ CEPC (Consumer Education)</h5>
+            <p>Complaints needing education/awareness response or general queries</p>
+        </div>
+    </div>
+
+    <h3>Routing Services</h3>
+    <table class="impl-table">
+        <tr><th>Service</th><th>Purpose</th></tr>
+        <tr><td>IntakeTriageService</td><td>Main routing logic: entity type + category → department</td></tr>
+        <tr><td>ComplaintRoutingService</td><td>Round-robin assignment to officers within department</td></tr>
+        <tr><td>ReResponsivenessService</td><td>Track RE response history for routing decisions</td></tr>
+        <tr><td>CompensationPrecedentService</td><td>Look up similar case compensation for priority scoring</td></tr>
+    </table>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- MODULE 10: RBIO -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="module" id="mod-rbio">
+    <h2>10. RBIO Module (Reserve Bank Integrated Ombudsman) <span class="badge badge-impl">IMPLEMENTED</span></h2>
+    <p>Complete workflow for RBIO officers handling complaint resolution through conciliation, advisory, and adjudication.</p>
+
+    <h3>RBIO Workflow State Machine</h3>
+    <div class="flow-container">
+        <div class="flow">
+            <div class="flow-step active">ASSIGNED<br>(to Officer)</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">UNDER_<br>EXAMINATION</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">FORWARD_TO_RE<br>(Get Response)</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">RE_RESPONDED</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">CONCILIATION<br>(Mediation)</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">RESOLVED /<br>ADJUDICATION</div>
+        </div>
+    </div>
+
+    <h3>RBIO Roles & Components</h3>
+    <table class="impl-table">
+        <tr><th>Role</th><th>Component</th><th>Features</th></tr>
+        <tr><td><span class="role-tag">RBIO_OFFICER</span></td><td>RbioTasksComponent</td><td>Task queue, complaint list, filters, SLA indicators</td></tr>
+        <tr><td><span class="role-tag">RBIO_OFFICER</span></td><td>TaskActionComponent</td><td>Examine complaint, forward to RE, record decision, add comments</td></tr>
+        <tr><td><span class="role-tag">RBIO_SUPERVISOR</span></td><td>RbioSupervisorDashboardComponent</td><td>Team overview, escalations, workload, SLA monitoring</td></tr>
+        <tr><td><span class="role-tag">RBIO_CONCILIATOR</span></td><td>RbioConciliationComponent</td><td>Schedule mediation, record outcome, settlement agreement</td></tr>
+        <tr><td><span class="role-tag">RBIO_ADJUDICATOR</span></td><td>RbioAdjudicationComponent</td><td>Pass binding order, award compensation, final decision</td></tr>
+        <tr><td>—</td><td>RbioAdvisoryComponent</td><td>Issue advisory opinions on policy matters</td></tr>
+        <tr><td>—</td><td>RbioSlaProgressComponent</td><td>Visual SLA timer with RAG indicators</td></tr>
+    </table>
+
+    <h3>RBIO Actions Available</h3>
+    <ul class="api-list">
+        <li><span class="method post">POST</span> /api/v1/workflow/rbio/assign/{id} — Assign to officer</li>
+        <li><span class="method post">POST</span> /api/v1/workflow/rbio/action/{id} — Perform workflow action (examine, forward_to_re, conciliate, adjudicate, close)</li>
+        <li><span class="method post">POST</span> /api/v1/workflow/rbio/escalate/{id} — Escalate to supervisor</li>
+        <li><span class="method post">POST</span> /api/v1/workflow/rbio/reassign/{id} — Reassign to another officer</li>
+        <li><span class="method get">GET</span> /api/v1/workflow/rbio/tasks — Get officer's task queue</li>
+        <li><span class="method get">GET</span> /api/v1/workflow/rbio/sla/{id} — Get SLA status for complaint</li>
+    </ul>
+
+    <h3>SLA Configuration</h3>
+    <table class="impl-table">
+        <tr><th>SLA Type</th><th>Duration</th><th>Service</th></tr>
+        <tr><td>Acknowledgement</td><td>1 business day</td><td>RbioSlaService</td></tr>
+        <tr><td>Forward to RE</td><td>3 business days</td><td>RbioSlaService</td></tr>
+        <tr><td>RE Response Window</td><td>15 business days</td><td>RePortalService</td></tr>
+        <tr><td>Total Resolution</td><td>30 calendar days</td><td>TatCalculationService</td></tr>
+        <tr><td>Compensation Award</td><td>Within adjudication</td><td>RbioCompensationService</td></tr>
+    </table>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- MODULE 11: CEPC -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="module" id="mod-cepc">
+    <h2>11. CEPC Module (Consumer Education & Protection Cell) <span class="badge badge-impl">IMPLEMENTED</span></h2>
+    <p>Handles consumer education responses, conciliation cases, and complaints requiring awareness-based resolution.</p>
+
+    <h3>CEPC Workflow</h3>
+    <div class="flow-container">
+        <div class="flow">
+            <div class="flow-step active">ASSIGNED<br>(to CEPC DO)</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">UNDER_<br>EXAMINATION</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">FORWARD_TO_RE</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">CONCILIATION</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">RESOLUTION /<br>CLOSURE</div>
+        </div>
+    </div>
+
+    <h3>CEPC Components</h3>
+    <table class="impl-table">
+        <tr><th>Component</th><th>Route</th><th>Features</th></tr>
+        <tr><td>CepcDashboardComponent</td><td>/cepc/dashboard</td><td>Task queue, statistics, SLA warnings, category breakdown</td></tr>
+        <tr><td>CepcComplaintDetailComponent</td><td>/cepc/complaint/:id</td><td>Full complaint view, actions, timeline, communication</td></tr>
+        <tr><td>CepcConciliationComponent</td><td>Embedded</td><td>Schedule conciliation meeting, record outcomes</td></tr>
+        <tr><td>CepcSlaDashboardComponent</td><td>/cepc/sla-dashboard</td><td>SLA monitoring across all CEPC complaints</td></tr>
+        <tr><td>CepcSlaIndicatorComponent</td><td>Shared</td><td>Visual SLA progress bar with RED/AMBER/GREEN</td></tr>
+        <tr><td>CepcTimelineComponent</td><td>Shared</td><td>Action timeline visualization</td></tr>
+    </table>
+
+    <h3>CEPC Roles</h3>
+    <div class="tech-stack">
+        <span class="role-tag">CEPC_DO</span>
+        <span class="role-tag">CEPC_REVIEWER</span>
+        <span class="role-tag">CEPC_INCHARGE</span>
+        <span class="role-tag">CEPC_CLOSING_AUTHORITY</span>
+        <span class="role-tag">CEPC_CONTACT_PERSON</span>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- MODULE 12: RE PORTAL -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="module" id="mod-re">
+    <h2>12. RE Portal (Regulated Entity Portal) <span class="badge badge-impl">IMPLEMENTED</span></h2>
+    <p>Separate login portal for banks/NBFCs to view complaints filed against them and submit responses within the response window.</p>
+
+    <h3>RE Portal Flow</h3>
+    <div class="flow-container">
+        <div class="flow">
+            <div class="flow-step">RE Login<br>(Keycloak SSO)</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">RE Dashboard<br>(Pending/Overdue)</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Complaint Detail<br>(View forwarded)</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Submit Response<br>(within 15 days)</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">RE Profile<br>Management</div>
+        </div>
+    </div>
+
+    <h3>Components</h3>
+    <table class="impl-table">
+        <tr><th>Component</th><th>Route</th><th>Features</th></tr>
+        <tr><td>ReLoginComponent</td><td>/re-portal/login</td><td>Keycloak SSO login for regulated entities</td></tr>
+        <tr><td>ReLayoutComponent</td><td>/re-portal</td><td>Navigation sidebar, branding, nested routes</td></tr>
+        <tr><td>ReDashboardComponent</td><td>/re-portal/dashboard</td><td>Complaint stats, pending/overdue counters, response rate metrics</td></tr>
+        <tr><td>ReComplaintDetailComponent</td><td>/re-portal/complaints/:id</td><td>Complaint detail view, submit response form, response window timer</td></tr>
+        <tr><td>ReProfileComponent</td><td>/re-portal/profile</td><td>Entity profile, contact details, nodal officer info</td></tr>
+    </table>
+
+    <h3>RE API Endpoints</h3>
+    <ul class="api-list">
+        <li><span class="method get">GET</span> /api/v1/re-portal/complaints — List complaints for entity (paginated)</li>
+        <li><span class="method get">GET</span> /api/v1/re-portal/complaints/{id} — Single complaint detail</li>
+        <li><span class="method post">POST</span> /api/v1/re-portal/complaints/{id}/respond — Submit response</li>
+        <li><span class="method get">GET</span> /api/v1/re-portal/dashboard — Dashboard statistics</li>
+        <li><span class="method get">GET</span> /api/v1/re-portal/notifications — List notifications</li>
+        <li><span class="method put">PUT</span> /api/v1/re-portal/notifications/{id}/read — Mark notification as read</li>
+    </ul>
+
+    <h3>RE Roles</h3>
+    <div class="tech-stack">
+        <span class="role-tag">RE_NODAL_OFFICER</span>
+        <span class="role-tag">RE_PNO</span>
+        <span class="role-tag">RE_ADMIN</span>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- MODULE 13: APPELLATE AUTHORITY -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="module" id="mod-aa">
+    <h2>13. Appellate Authority (AA) Module <span class="badge badge-impl">IMPLEMENTED</span></h2>
+    <p>Handles appeals and representations against Ombudsman decisions, with hearing scheduling and order passing.</p>
+
+    <h3>Appeal Workflow</h3>
+    <div class="flow-container">
+        <div class="flow">
+            <div class="flow-step active">Citizen Files<br>Appeal</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Eligibility<br>Check</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Registrar<br>Review</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Hearing<br>Scheduled</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Bench Officer<br>Examines</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Authority<br>Decision</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Order Passed<br>(Award/Reject)</div>
+        </div>
+    </div>
+
+    <h3>AA Components</h3>
+    <table class="impl-table">
+        <tr><th>Component</th><th>Route</th><th>Features</th></tr>
+        <tr><td>AaDashboardComponent</td><td>/aa/dashboard</td><td>Appeal queue, statistics, hearing calendar, workload</td></tr>
+        <tr><td>AaAppealDetailComponent</td><td>/aa/appeal/:id</td><td>Full appeal detail, timeline, actions, documents</td></tr>
+        <tr><td>AaHearingComponent</td><td>Embedded</td><td>Schedule hearing, set venue, notify parties</td></tr>
+        <tr><td>AaOrderComponent</td><td>Embedded</td><td>Pass order, modify award, close appeal</td></tr>
+    </table>
+
+    <h3>Appeal Classification Types</h3>
+    <div class="tech-stack">
+        <span class="tech-tag">APPEAL (against rejection)</span>
+        <span class="tech-tag">REPRESENTATION (against award)</span>
+        <span class="tech-tag">REVIEW (procedural)</span>
+    </div>
+
+    <h3>AA Roles</h3>
+    <div class="tech-stack">
+        <span class="role-tag">AA_REGISTRAR</span>
+        <span class="role-tag">AA_BENCH_OFFICER</span>
+        <span class="role-tag">AA_AUTHORITY</span>
+        <span class="role-tag">AA_ADMIN</span>
+    </div>
+
+    <h3>API Endpoints</h3>
+    <ul class="api-list">
+        <li><span class="method post">POST</span> /api/v1/appeals/file — File new appeal (citizen)</li>
+        <li><span class="method get">GET</span> /api/v1/appeals/eligibility/{complaintNumber} — Check appeal eligibility</li>
+        <li><span class="method get">GET</span> /api/v1/appeals/{appealNumber}/status — Public status check</li>
+        <li><span class="method get">GET</span> /api/v1/appeals/tasks — Staff task queue</li>
+        <li><span class="method get">GET</span> /api/v1/appeals/{appealNumber} — Full appeal detail (staff)</li>
+        <li><span class="method post">POST</span> /api/v1/appeals/{appealNumber}/action — Perform workflow action</li>
+        <li><span class="method get">GET</span> /api/v1/appeals/{appealNumber}/available-actions — Get allowed actions</li>
+        <li><span class="method get">GET</span> /api/v1/appeals/stats — Dashboard statistics</li>
+    </ul>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- MODULE 14: ADMIN -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="module" id="mod-admin">
+    <h2>14. Admin & Rules Management <span class="badge badge-impl">IMPLEMENTED</span></h2>
+    <p>Administrative interface for managing MRE rules, extraction rules, comment templates, and communication templates.</p>
+
+    <h3>Admin Module Flow</h3>
+    <div class="flow-container">
+        <div class="flow">
+            <div class="flow-step">Admin Dashboard<br>(Stats Overview)</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Rules Management<br>(CRUD)</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Rule Editor<br>(Conditions)</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Rule Tester<br>(Validate)</div>
+        </div>
+    </div>
+
+    <h3>Admin Components</h3>
+    <table class="impl-table">
+        <tr><th>Component</th><th>Route</th><th>Features</th></tr>
+        <tr><td>AdminDashboardComponent</td><td>/admin/dashboard</td><td>System stats, complaint volumes, processing times, health checks</td></tr>
+        <tr><td>RulesManagementComponent</td><td>/admin/rules</td><td>List all MRE rules, filter, activate/deactivate, version history</td></tr>
+        <tr><td>RuleEditorComponent</td><td>/admin/rules/new, /admin/rules/edit/:id</td><td>Create/edit rules with conditions, thresholds, priorities</td></tr>
+        <tr><td>RuleTesterComponent</td><td>/admin/rules/test</td><td>Test rule evaluation with sample data, view verdict breakdown</td></tr>
+        <tr><td>ExtractionRulesComponent</td><td>/admin/extraction-rules</td><td>Manage email data extraction patterns (regex, field mapping)</td></tr>
+        <tr><td>CommentTemplatesComponent</td><td>/admin/comment-templates</td><td>Predefined officer action comments by category/action type</td></tr>
+        <tr><td>CommunicationTemplatesComponent</td><td>/admin/communication-templates</td><td>Email/SMS/Letter templates with variable substitution, preview</td></tr>
+    </table>
+
+    <h3>API Endpoints</h3>
+    <ul class="api-list">
+        <li><span class="method get">GET</span> /api/v1/admin/dashboard — System statistics</li>
+        <li><span class="method get">GET</span> /api/v1/rules — List all rules</li>
+        <li><span class="method post">POST</span> /api/v1/rules — Create new rule</li>
+        <li><span class="method put">PUT</span> /api/v1/rules/{id} — Update rule</li>
+        <li><span class="method post">POST</span> /api/v1/rules/test — Test rule with input</li>
+        <li><span class="method get">GET</span> /api/v1/extraction-rules — List extraction rules</li>
+        <li><span class="method post">POST</span> /api/v1/extraction-rules — Create extraction rule</li>
+        <li><span class="method get">GET</span> /api/v1/comment-templates — List comment templates</li>
+        <li><span class="method get">GET</span> /api/v1/communication-templates — List comm templates</li>
+        <li><span class="method post">POST</span> /api/v1/communication-templates/{id}/render — Preview with variables</li>
+    </ul>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- MODULE 15: SEARCH -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="module" id="mod-search">
+    <h2>15. Full-Text Search (OpenSearch) <span class="badge badge-impl">IMPLEMENTED</span></h2>
+    <p>Elasticsearch-powered full-text search across all complaints with advanced filters.</p>
+
+    <h3>Search Flow</h3>
+    <div class="flow-container">
+        <div class="flow">
+            <div class="flow-step">User enters<br>search query</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">OpenSearch<br>Query Build</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Filters Apply<br>(status, date, entity)</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Results with<br>Highlighting</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Click → Complaint<br>Detail</div>
+        </div>
+    </div>
+
+    <h3>Search Features</h3>
+    <table class="impl-table">
+        <tr><th>Feature</th><th>Implementation</th></tr>
+        <tr><td>Full-text search</td><td>Multi-field search across subject, description, entity name</td></tr>
+        <tr><td>Faceted filters</td><td>Status, category, entity, date range, priority</td></tr>
+        <tr><td>Similar Cases</td><td>OpenSearchSimilarCasesProvider — finds related complaints by description similarity</td></tr>
+        <tr><td>Highlighting</td><td>Search term highlighting in results</td></tr>
+        <tr><td>Pagination</td><td>Offset-based pagination with configurable page size</td></tr>
+    </table>
+
+    <h3>Components & API</h3>
+    <ul class="api-list">
+        <li>Frontend: <strong>SearchComponent</strong> at route <code>/search</code></li>
+        <li><span class="method get">GET</span> /api/v1/complaints/search?q={query}&status={status}&page={n}</li>
+        <li><span class="method get">GET</span> /api/v1/similar-cases/{complaintNumber} — Find similar complaints</li>
+    </ul>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- MODULE 16: REPORT BUILDER -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="module" id="mod-reports">
+    <h2>16. Report Builder <span class="badge badge-impl">IMPLEMENTED</span></h2>
+    <p>Drag-and-drop natural language report builder with semantic model, query compilation, scheduling, and export.</p>
+
+    <h3>Report Builder Flow</h3>
+    <div class="flow-container">
+        <div class="flow">
+            <div class="flow-step">Select Subjects<br>(What to count)</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Add Filters<br>(Where/When)</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Choose GroupBy<br>(Breakdown)</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Compile Query<br>(Natural language)</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Execute &<br>Visualize</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Save / Schedule<br>/ Export</div>
+        </div>
+    </div>
+
+    <h3>Semantic Model</h3>
+    <table class="impl-table">
+        <tr><th>Dimension</th><th>Options</th></tr>
+        <tr><td>Subjects</td><td>Complaints, Resolutions, SLA Breaches, Escalations, Appeals</td></tr>
+        <tr><td>Filters</td><td>Date range, Status, Category, Entity, Department, Priority, Filing type</td></tr>
+        <tr><td>Group By</td><td>Category, Entity, Status, Month, Week, Department, Officer, Priority</td></tr>
+    </table>
+
+    <h3>API Endpoints</h3>
+    <ul class="api-list">
+        <li><span class="method get">GET</span> /api/v1/reports/semantic-model — Get available subjects/filters/groupBys</li>
+        <li><span class="method post">POST</span> /api/v1/reports/compile — Validate and compile query</li>
+        <li><span class="method post">POST</span> /api/v1/reports/execute — Run report and get results</li>
+        <li><span class="method post">POST</span> /api/v1/reports/save — Save report definition</li>
+        <li><span class="method get">GET</span> /api/v1/reports/saved — List saved reports</li>
+        <li><span class="method post">POST</span> /api/v1/reports/schedule — Schedule recurring report</li>
+    </ul>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- MODULE 17: SENIOR DASHBOARD -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="module" id="mod-senior">
+    <h2>17. Senior Dashboard <span class="badge badge-impl">IMPLEMENTED</span></h2>
+    <p>Executive-level dashboard providing pipeline summary, TAT analytics, bottleneck identification, and entity performance.</p>
+
+    <h3>Dashboard Sections</h3>
+    <div class="flow-container">
+        <div class="flow">
+            <div class="flow-step">Pipeline<br>Summary</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">TAT<br>Analytics</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Bottleneck<br>Detection</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Weekly<br>Trend</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Entity<br>Performance</div>
+        </div>
+    </div>
+
+    <h3>Dashboard Widgets</h3>
+    <table class="impl-table">
+        <tr><th>Widget</th><th>Data</th><th>API</th></tr>
+        <tr><td>Pipeline Summary</td><td>Complaint counts by stage (intake → processing → resolution)</td><td>GET /api/v1/senior-dashboard/pipeline</td></tr>
+        <tr><td>TAT Analytics</td><td>Average/P90/P99 turnaround times by department</td><td>GET /api/v1/senior-dashboard/tat</td></tr>
+        <tr><td>Bottlenecks</td><td>Stages with highest queue depth or SLA breach risk</td><td>GET /api/v1/senior-dashboard/bottlenecks</td></tr>
+        <tr><td>Weekly Trend</td><td>Complaint volume, resolution rate, week-over-week changes</td><td>GET /api/v1/senior-dashboard/trend</td></tr>
+        <tr><td>Entity Performance</td><td>Response rates, resolution quality, SLA adherence by entity</td><td>GET /api/v1/senior-dashboard/entity-performance</td></tr>
+    </table>
+
+    <h3>Frontend</h3>
+    <p>Component: <strong>SeniorDashboardComponent</strong> at route <code>/staff/senior-dashboard</code></p>
+    <p>Service: <strong>SeniorDashboardService</strong> (frontend) → <strong>SeniorDashboardService</strong> (backend)</p>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- MODULE 18: i18n -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="module" id="mod-i18n">
+    <h2>18. Internationalization (i18n) <span class="badge badge-impl">IMPLEMENTED</span></h2>
+    <p>Full multi-language support for 12 Indian languages with server-side translation management and runtime switching.</p>
+
+    <h3>Translation Flow</h3>
+    <div class="flow-container">
+        <div class="flow">
+            <div class="flow-step">App Bootstrap<br>Load Translations</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">GET /api/v1/<br>translations/{locale}</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Cache in<br>Frontend Service</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">{{ key | translate }}<br>Pipe renders</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">User switches<br>language</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Reload translations<br>for new locale</div>
+        </div>
+    </div>
+
+    <h3>Supported Languages</h3>
+    <table class="impl-table">
+        <tr><th>Code</th><th>Language</th><th>Code</th><th>Language</th></tr>
+        <tr><td>en</td><td>English</td><td>hi</td><td>हिन्दी (Hindi)</td></tr>
+        <tr><td>bn</td><td>বাংলা (Bengali)</td><td>ta</td><td>தமிழ் (Tamil)</td></tr>
+        <tr><td>te</td><td>తెలుగు (Telugu)</td><td>mr</td><td>मराठी (Marathi)</td></tr>
+        <tr><td>gu</td><td>ગુજરાતી (Gujarati)</td><td>kn</td><td>ಕನ್ನಡ (Kannada)</td></tr>
+        <tr><td>ml</td><td>മലയാളം (Malayalam)</td><td>pa</td><td>ਪੰਜਾਬੀ (Punjabi)</td></tr>
+        <tr><td>or</td><td>ଓଡ଼ିଆ (Odia)</td><td>ur</td><td>اردو (Urdu)</td></tr>
+    </table>
+
+    <h3>Implementation</h3>
+    <table class="impl-table">
+        <tr><th>Layer</th><th>File</th><th>Responsibility</th></tr>
+        <tr><td>Backend Init</td><td>TranslationDataInitializer.java</td><td>Load translations from CSV on startup (or inline fallback)</td></tr>
+        <tr><td>Backend API</td><td>TranslationController.java</td><td>GET /api/v1/translations/{locale}, /locales, CRUD for admin</td></tr>
+        <tr><td>Backend Service</td><td>TranslationService.java</td><td>Translation lookup, caching, language detection</td></tr>
+        <tr><td>Frontend Service</td><td>translation.service.ts</td><td>Fetch translations, locale management, signal-based reactivity</td></tr>
+        <tr><td>Frontend Pipe</td><td>translate pipe (inline)</td><td>{{ key | translate }} in templates</td></tr>
+        <tr><td>Layout</td><td>PublicLayoutComponent</td><td>Language dropdown selector with native names</td></tr>
+    </table>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- MODULE 19: NOTIFICATIONS -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="module" id="mod-notifications">
+    <h2>19. Notifications & Communications <span class="badge badge-impl">IMPLEMENTED</span></h2>
+    <p>Multi-channel notification system with in-app notifications, WebSocket real-time updates, and templated communications.</p>
+
+    <h3>Notification Flow</h3>
+    <div class="flow-container">
+        <div class="flow">
+            <div class="flow-step">Trigger Event<br>(Status Change)</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">NotificationService<br>Evaluate Triggers</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Select Template<br>(by trigger + mode)</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Render Template<br>(Variable substitution)</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Dispatch<br>(Email/SMS/InApp)</div>
+        </div>
+    </div>
+
+    <h3>Communication Channels</h3>
+    <table class="impl-table">
+        <tr><th>Channel</th><th>Entity</th><th>Trigger Examples</th></tr>
+        <tr><td>Email</td><td>CommunicationTemplate (mode=EMAIL)</td><td>Acknowledgement, Closure, Forward to RE, Rejection</td></tr>
+        <tr><td>SMS</td><td>CommunicationTemplate (mode=SMS)</td><td>OTP, Status updates, Hearing reminders</td></tr>
+        <tr><td>Letter</td><td>CommunicationTemplate (mode=LETTER)</td><td>Closure letter, Formal orders</td></tr>
+        <tr><td>In-App</td><td>InAppNotification entity</td><td>Real-time updates via WebSocket</td></tr>
+    </table>
+
+    <h3>Template Variables</h3>
+    <div class="tech-stack">
+        <span class="tech-tag">{{complainantName}}</span>
+        <span class="tech-tag">{{complaintNumber}}</span>
+        <span class="tech-tag">{{bankName}}</span>
+        <span class="tech-tag">{{subject}}</span>
+        <span class="tech-tag">{{currentDate}}</span>
+        <span class="tech-tag">{{closureDate}}</span>
+        <span class="tech-tag">{{status}}</span>
+    </div>
+
+    <h3>WebSocket (Real-time)</h3>
+    <ul class="api-list">
+        <li>Config: <strong>WebSocketConfig.java</strong> — STOMP over WebSocket at /ws</li>
+        <li>Controller: <strong>NotificationController.java</strong> — Push notifications to connected clients</li>
+        <li>Frontend: <strong>notification.service.ts</strong> — Subscribe to /topic/notifications</li>
+    </ul>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- SUMMARY -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="module">
+    <h2>Implementation Summary</h2>
+
+    <div class="summary-box">
+        <h4>Complete System Statistics (as of 10 July 2026)</h4>
+        <table class="impl-table">
+            <tr><th>Category</th><th>Count</th><th>Status</th></tr>
+            <tr><td>Total Modules</td><td>19</td><td><span class="badge badge-impl">All Implemented</span></td></tr>
+            <tr><td>Frontend Components</td><td>70+</td><td><span class="status-dot green"></span>Coded & functional</td></tr>
+            <tr><td>Backend Controllers</td><td>38</td><td><span class="status-dot green"></span>All active</td></tr>
+            <tr><td>Backend Services</td><td>50+</td><td><span class="status-dot green"></span>Business logic complete</td></tr>
+            <tr><td>Database Entities</td><td>30</td><td><span class="status-dot green"></span>JPA mapped</td></tr>
+            <tr><td>API Endpoints</td><td>120+</td><td><span class="status-dot green"></span>REST APIs live</td></tr>
+            <tr><td>Roles Defined</td><td>25+</td><td><span class="status-dot green"></span>Keycloak configured</td></tr>
+            <tr><td>Languages Supported</td><td>12</td><td><span class="status-dot green"></span>Translations loaded</td></tr>
+            <tr><td>OCR Providers</td><td>5</td><td><span class="status-dot green"></span>Failover chain active</td></tr>
+            <tr><td>E2E Test Specs</td><td>6 suites (~130 tests)</td><td><span class="status-dot green"></span>Playwright configured</td></tr>
+        </table>
+    </div>
+
+    <h3>Technology Stack</h3>
+    <table class="impl-table">
+        <tr><th>Layer</th><th>Technology</th></tr>
+        <tr><td>Frontend</td><td>Angular 20, PrimeNG, TypeScript, Signals, Standalone Components</td></tr>
+        <tr><td>Backend</td><td>Spring Boot 3.2.5, Java 21, Hibernate/JPA, Spring Security (OAuth2 + JWT)</td></tr>
+        <tr><td>Database</td><td>Oracle (production) / MySQL (dev), with Hibernate DDL auto-update</td></tr>
+        <tr><td>Search</td><td>OpenSearch 2.18 (full-text search, similar cases)</td></tr>
+        <tr><td>Messaging</td><td>Apache Kafka (KRaft mode, event-driven processing)</td></tr>
+        <tr><td>Cache</td><td>Hazelcast (distributed caching, session store)</td></tr>
+        <tr><td>Auth</td><td>Keycloak 26.0 (SSO, RBAC), OTP for citizens</td></tr>
+        <tr><td>AI/ML</td><td>Multi-provider OCR chain, Rule-based extraction, MRE engine</td></tr>
+        <tr><td>Monitoring</td><td>Prometheus + Grafana, Spring Actuator</td></tr>
+        <tr><td>Testing</td><td>Playwright 1.50+, JUnit 5, Spring Boot Test</td></tr>
+        <tr><td>Deployment</td><td>OpenShift, Tekton CI/CD, Docker/Podman</td></tr>
+    </table>
+</div>
+
+</div><!-- /container -->
+
+<footer style="background: #1e293b; color: #94a3b8; padding: 24px 0; margin-top: 40px; text-align: center; font-size: 13px;">
+    <p>CMS 2.0 — Module Flow Diagrams & Implementation Details | Generated: 10 July 2026</p>
+    <p>Reserve Bank of India — Complaint Management System</p>
+</footer>
+
+</body>
+</html>
