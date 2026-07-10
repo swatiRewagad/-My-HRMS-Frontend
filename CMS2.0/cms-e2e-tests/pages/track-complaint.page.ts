@@ -24,7 +24,7 @@ export class TrackComplaintPage {
   }
 
   async goto() {
-    await this.page.goto('/public/track');
+    await this.page.goto('/public/track', { waitUntil: 'networkidle' });
   }
 
   async trackByNumber(complaintNumber: string) {

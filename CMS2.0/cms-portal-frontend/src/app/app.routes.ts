@@ -109,6 +109,14 @@ export const routes: Routes = [
     loadComponent: () => import('./components/staff/rbio-tasks/rbio-tasks.component').then(m => m.RbioTasksComponent)
   },
   {
+    path: 'rbio',
+    loadComponent: () => import('./components/rbio/rbio-home/rbio-home.component').then(m => m.RbioHomeComponent)
+  },
+  {
+    path: 'rbio/complaint/:id',
+    loadComponent: () => import('./components/rbio/rbio-complaint-detail/rbio-complaint-detail.component').then(m => m.RbioComplaintDetailComponent)
+  },
+  {
     path: 'rbio/supervisor-dashboard',
     canActivate: [staffAuthGuard],
     loadComponent: () => import('./components/rbio/rbio-supervisor-dashboard/rbio-supervisor-dashboard.component').then(m => m.RbioSupervisorDashboardComponent)

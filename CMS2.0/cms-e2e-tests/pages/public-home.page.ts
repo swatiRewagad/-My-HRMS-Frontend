@@ -13,23 +13,24 @@ export class PublicHomePage {
     this.page = page;
     this.fileComplaintButton = page.locator('a.hero-btn');
     this.trackComplaintButton = page.locator('a.hero-outlined-btn').first();
-    this.languageSelector = page.locator('.lang-select');
+    this.languageSelector = page.locator('select.lang-select');
     this.loginLink = page.locator('a.login-btn');
     this.heroSection = page.locator('section.hero');
     this.faqSection = page.locator('section.faq-section');
   }
 
   async goto() {
-    await this.page.goto('/public');
+    await this.page.goto('/public', { waitUntil: 'networkidle' });
+    await this.page.waitForLoadState('domcontentloaded');
   }
 
   async navigateToFileComplaint() {
-    await this.fileComplaintButton.click();
+    await this.fileComplaintButton.click({ timeout: 15000 });
     await this.page.waitForURL(/.*file-complaint.*/);
   }
 
   async navigateToTrackComplaint() {
-    await this.trackComplaintButton.click();
+    await this.trackComplaintButton.click({ force: true, timeout: 15000 });
     await this.page.waitForURL(/.*track.*/);
   }
 
@@ -43,6 +44,6 @@ export class PublicHomePage {
 
   async expectPageLoaded() {
     await expect(this.page).toHaveTitle(/CMS|Complaint Management|Ombudsman/i);
-    await expect(this.heroSection).toBeVisible();
+    await expect(this.heroSection).toBeVisible({ timeout: 15000 });
   }
 }

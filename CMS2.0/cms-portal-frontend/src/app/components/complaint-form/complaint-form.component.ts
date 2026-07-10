@@ -22,7 +22,7 @@ export class ComplaintFormComponent {
   entityTypes = ['BANK', 'NBFC', 'COOPERATIVE_BANK'];
 
   form = signal<ComplaintRegistrationRequest>({
-    channel: 'WEB_PORTAL',
+    filingType: 'ONLINE',
     category: '',
     complainantName: '',
     complainantEmail: '',

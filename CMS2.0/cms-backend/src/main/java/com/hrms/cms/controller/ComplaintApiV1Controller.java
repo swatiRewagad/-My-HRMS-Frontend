@@ -39,7 +39,7 @@ public class ComplaintApiV1Controller {
         req.setSubject((String) request.getOrDefault("subject", ""));
         req.setDescription((String) request.getOrDefault("description", ""));
         req.setPriority((String) request.getOrDefault("priority", "medium"));
-        req.setFilingType((String) request.getOrDefault("channel", request.getOrDefault("filingType", "WEB_PORTAL")));
+        req.setFilingType((String) request.getOrDefault("filingType", "ONLINE"));
 
         if (request.get("priorReComplaint") != null) {
             req.setPriorReComplaint(Boolean.valueOf(request.get("priorReComplaint").toString()));

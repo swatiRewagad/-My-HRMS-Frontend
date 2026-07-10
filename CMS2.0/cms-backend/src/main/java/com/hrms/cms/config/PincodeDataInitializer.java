@@ -27,8 +27,10 @@ public class PincodeDataInitializer implements CommandLineRunner {
     @Override
     @Transactional
     public void run(String... args) {
-        if (pincodeRepository.count() > 0) {
-            log.info("Pincode data already loaded ({} records)", pincodeRepository.count());
+        long existingCount = pincodeRepository.count();
+        if (existingCount > 0) {
+            log.info("Pincode data exists ({} records), checking for new entries in CSV...", existingCount);
+            loadMissingFromCsv();
             return;
         }
 
@@ -76,6 +78,44 @@ public class PincodeDataInitializer implements CommandLineRunner {
             log.error("Failed to load pincode data: {}", e.getMessage());
             log.info("Falling back to inline pincode seed data...");
             seedInlinePincodes();
+        }
+    }
+
+    private void loadMissingFromCsv() {
+        try {
+            ClassPathResource resource = new ClassPathResource("data/pincodes.csv");
+            BufferedReader reader = new BufferedReader(
+                new InputStreamReader(resource.getInputStream(), StandardCharsets.UTF_8));
+
+            reader.readLine(); // skip header
+            List<Pincode> newEntries = new ArrayList<>();
+
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String[] parts = parseCsvLine(line);
+                if (parts.length < 6) continue;
+
+                String pin = parts[0].trim();
+                if (pincodeRepository.findByPincode(pin).isEmpty()) {
+                    newEntries.add(Pincode.builder()
+                        .pincode(pin)
+                        .officeName(parts[1].trim())
+                        .district(parts[2].trim())
+                        .state(parts[3].trim())
+                        .region(parts[4].trim())
+                        .division(parts[5].trim())
+                        .officeType(parts.length > 6 ? parts[6].trim() : "B.O")
+                        .build());
+                }
+            }
+            reader.close();
+
+            if (!newEntries.isEmpty()) {
+                pincodeRepository.saveAll(newEntries);
+                log.info("Loaded {} new pincode records from CSV", newEntries.size());
+            }
+        } catch (Exception e) {
+            log.error("Failed to check for missing pincodes: {}", e.getMessage());
         }
     }
 

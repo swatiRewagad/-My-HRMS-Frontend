@@ -29,34 +29,34 @@ export class FileComplaintPage {
 
   constructor(page: Page) {
     this.page = page;
-    this.nameInput = page.locator('input[name="name"]');
+    this.nameInput = page.locator('input[name="firstName"]');
     this.emailInput = page.locator('input[name="email"]');
     this.phoneInput = page.locator('input[name="phone"]');
-    this.addressInput = page.locator('input[name="address"]');
-    this.entityTypeSelect = page.locator('select[name="entityType"]');
+    this.addressInput = page.locator('textarea[name="address"]');
+    this.entityTypeSelect = page.locator('select.entity-select');
     this.bankSelect = page.locator('input[name="entityName"]');
-    this.branchInput = page.locator('input[name="branch"]');
-    this.accountInput = page.locator('input[name="account"]');
-    this.categorySelect = page.locator('select[name="category"]');
+    this.branchInput = page.locator('input[name="entityBranch"]');
+    this.accountInput = page.locator('input[name="savingsAccountNumber"]');
+    this.categorySelect = page.locator('select[name="complaintCategory"]');
     this.subjectInput = page.locator('input[name="subject"]');
-    this.descriptionInput = page.locator('textarea[name="description"]');
-    this.reliefInput = page.locator('input[name="relief"]');
+    this.descriptionInput = page.locator('textarea[name="complaintText"]');
+    this.reliefInput = page.locator('input[name="reliefSought"]');
     this.priorComplaintYes = page.getByRole('radio', { name: /yes/i });
     this.priorComplaintNo = page.getByRole('radio', { name: /no/i });
     this.reComplaintDateInput = page.locator('input[name="reComplaintDate"]');
     this.reReferenceInput = page.locator('input[name="reReference"]');
     this.reRepliedYes = page.getByRole('radio', { name: /yes/i });
     this.reRepliedNo = page.getByRole('radio', { name: /no/i });
-    this.submitButton = page.locator('button.submit-btn');
+    this.submitButton = page.locator('button.btn-submit-complaint');
     this.captchaInput = page.locator('input[name="captcha"]');
     this.pincodeInput = page.locator('input[name="pincode"]');
-    this.stepIndicator = page.locator('.step-indicator');
-    this.nextButton = page.getByRole('button', { name: /next|continue/i });
-    this.prevButton = page.getByRole('button', { name: /previous|back/i });
+    this.stepIndicator = page.locator('.step-header');
+    this.nextButton = page.locator('button.btn-next');
+    this.prevButton = page.locator('button.btn-go-back');
   }
 
   async goto() {
-    await this.page.goto('/file-complaint');
+    await this.page.goto('/public/file-complaint', { waitUntil: 'networkidle' });
   }
 
   async fillPersonalDetails(data: {

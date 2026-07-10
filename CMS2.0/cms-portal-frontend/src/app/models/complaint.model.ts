@@ -1,5 +1,5 @@
 export interface ComplaintRegistrationRequest {
-  channel: string;
+  filingType: string;
   category: string;
   complainantName: string;
   complainantEmail: string;

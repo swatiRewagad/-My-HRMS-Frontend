@@ -1,0 +1,337 @@
+<div class="rbio-detail">
+  <!-- Header -->
+  <header class="cms-header">
+    <div class="header-left">
+      <img src="assets/corporates-rbi-logo.jpg" alt="RBI" class="rbi-logo" />
+      <div class="rbi-text">
+        <span class="rbi-hindi">भारतीय रिज़र्व बैंक</span>
+        <span class="rbi-english">RESERVE BANK OF INDIA</span>
+      </div>
+      <div class="header-divider-v"></div>
+      <img src="assets/cms-logo.png" alt="CMS" class="cms-logo" onerror="this.style.display='none'" />
+      <span class="cms-title">CMS</span>
+      <span class="cms-subtitle">Complaint Management System</span>
+    </div>
+    <div class="header-right">
+      <div class="header-icons">
+        <button title="Refresh"><i class="pi pi-refresh"></i></button>
+        <button title="Font size">A<sup>-</sup></button>
+        <button>A</button>
+        <button>A<sup>+</sup></button>
+        <button title="Language"><i class="pi pi-globe"></i> English</button>
+        <button title="Notifications"><i class="pi pi-bell"></i></button>
+      </div>
+      <span class="user-avatar">{{ (loggedInUser?.name || 'R').charAt(0) }}</span>
+      <div class="user-details">
+        <span class="user-name">{{ loggedInUser?.name || 'Rahul Jain' }}</span>
+        <span class="user-role">RBIO Dealing Officer</span>
+      </div>
+    </div>
+  </header>
+
+  @if (loading()) {
+    <div class="loading-state">Loading complaint details...</div>
+  }
+
+  @if (complaint(); as c) {
+    <!-- Tab Bar (complaint number) -->
+    <div class="tab-bar">
+      <div class="tab-item active">
+        <span>Complaint {{ c.complaintId }}</span>
+      </div>
+      <button class="tab-add"><i class="pi pi-plus"></i></button>
+    </div>
+
+    <!-- Complaint Summary Strip -->
+    <div class="complaint-strip">
+      <button class="btn-back" (click)="goBack()"><i class="pi pi-arrow-left"></i></button>
+      <div class="strip-item">
+        <span class="strip-label">Complaint Number</span>
+        <span class="strip-value">{{ c.complaintNumber }}</span>
+      </div>
+      <div class="strip-item">
+        <span class="strip-label">Complainant Name</span>
+        <span class="strip-value">{{ c.complainantName }}</span>
+      </div>
+      <div class="strip-item">
+        <span class="strip-label">Entity Name</span>
+        <span class="strip-value">{{ c.entityName }}</span>
+      </div>
+      <div class="strip-item">
+        <span class="strip-label">Status</span>
+        <span class="status-badge" [attr.data-status]="c.status">{{ c.status === 'NEW' ? 'New Complaint' : c.status }}</span>
+      </div>
+      <div class="strip-item">
+        <span class="strip-label">Complaint Category</span>
+        <span class="strip-value">{{ c.category }}</span>
+      </div>
+      <div class="strip-item">
+        <span class="strip-label">SLA Breach In</span>
+        <span class="sla-badge" [class.breach]="c.slaBreachHours < 48">{{ c.slaBreachHours }} hrs</span>
+      </div>
+      <div class="strip-actions">
+        <button class="btn-edit" (click)="editMode.set(!editMode())"><i class="pi pi-pencil"></i> Edit</button>
+        <div class="approval-wrapper">
+          <button class="btn-approval" (click)="showApprovalDropdown.set(!showApprovalDropdown())">
+            Send for Approval <i class="pi pi-chevron-down"></i>
+          </button>
+          @if (showApprovalDropdown()) {
+            <div class="approval-dropdown">
+              @for (opt of approvalOptions; track opt.key) {
+                <button (click)="openApprovalOption(opt)">{{ opt.label }}</button>
+              }
+            </div>
+          }
+        </div>
+        <button class="btn-more"><i class="pi pi-ellipsis-v"></i></button>
+      </div>
+    </div>
+
+    <!-- Section Tabs -->
+    <div class="section-tabs">
+      @for (tab of tabs; track tab.key) {
+        <button class="section-tab" [class.active]="activeTab() === tab.key" (click)="activeTab.set(tab.key)">
+          {{ tab.label }}
+        </button>
+      }
+    </div>
+
+    <!-- Main Content: Two Panels -->
+    <div class="detail-content">
+      <!-- Left Panel: Complaint Info -->
+      <div class="left-panel">
+        <div class="panel-card">
+          <div class="panel-header">
+            <h3><i class="pi pi-file-edit"></i> Complaint</h3>
+            <button class="btn-expand"><i class="pi pi-expand"></i></button>
+          </div>
+
+          <div class="section-block">
+            <h4>Basic Details</h4>
+            <div class="field-group">
+              <div class="field">
+                <label>Complainant Name</label>
+                <span>{{ c.complainantName }}</span>
+              </div>
+              <div class="field">
+                <label>Email ID</label>
+                <span>{{ c.complainantEmail }}</span>
+              </div>
+            </div>
+            <div class="field full-width">
+              <label>Subject</label>
+              <span>{{ c.subject }}</span>
+            </div>
+            <div class="field full-width">
+              <label>Complaint Details</label>
+              <span>{{ c.description }}</span>
+            </div>
+            <div class="field full-width">
+              <label>Comments</label>
+              <span>-</span>
+            </div>
+            <div class="field-group">
+              <div class="field">
+                <label>Mode of Receipt</label>
+                <span>{{ c.modeOfReceipt }}</span>
+              </div>
+              <div class="field">
+                <label>Receipt Date</label>
+                <span>{{ c.receiptDate }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="section-block">
+            <h4>Eligibility</h4>
+            <div class="field-group">
+              <div class="field">
+                <label>Proposed Complaint Type</label>
+                <span>-</span>
+              </div>
+              <div class="field">
+                <label>Reason for not a complaint</label>
+                <span>-</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="section-block">
+            <h4>Entity Details</h4>
+            <div class="field-group">
+              <div class="field">
+                <label>Entity Name</label>
+                <span>{{ c.entityName || '-' }}</span>
+              </div>
+              <div class="field">
+                <label>Module Name</label>
+                <span>-</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="section-block">
+            <h4>Complainant Details</h4>
+            <div class="field-group">
+              <div class="field">
+                <label>Complainant Name</label>
+                <span>{{ c.complainantName }}</span>
+              </div>
+              <div class="field">
+                <label>Email</label>
+                <span>{{ c.complainantEmail }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Panel: Assessment -->
+      <div class="right-panel">
+        <div class="panel-card">
+          <div class="panel-header">
+            <h3><i class="pi pi-chart-line"></i> Assessment</h3>
+            <div class="panel-icons">
+              <button><i class="pi pi-user"></i></button>
+              <button><i class="pi pi-copy"></i></button>
+              <button><i class="pi pi-history"></i></button>
+              <button><i class="pi pi-download"></i></button>
+            </div>
+          </div>
+
+          <div class="assessment-fields">
+            <div class="field-group">
+              <div class="field">
+                <label>Proposed Action</label>
+                <select [(ngModel)]="proposedAction">
+                  <option value="">Select a Value</option>
+                  <option value="ACCEPT">Accept</option>
+                  <option value="REJECT">Reject</option>
+                  <option value="TRANSFER">Transfer</option>
+                  <option value="CONCILIATE">Conciliate</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Proposed Clause</label>
+                <input type="text" placeholder="Search" [(ngModel)]="proposedClause" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Comments Section -->
+          <div class="comments-section">
+            <h4>All Comments</h4>
+            @for (comment of comments(); track comment.id) {
+              <div class="comment-item">
+                <div class="comment-avatar">{{ comment.author.charAt(0) }}</div>
+                <div class="comment-body">
+                  <div class="comment-meta">
+                    <span class="comment-time">{{ comment.timestamp }}</span>
+                    <span class="comment-author">{{ comment.author }}</span>
+                  </div>
+                  <p class="comment-text">{{ comment.text }} <a class="read-more">...read more</a></p>
+                </div>
+              </div>
+            }
+          </div>
+
+          <!-- Add Comment -->
+          <div class="add-comment">
+            <label>Comments</label>
+            <textarea placeholder="Enter text here" [(ngModel)]="newComment" rows="3"></textarea>
+            <button class="btn-template"><i class="pi pi-th-large"></i></button>
+          </div>
+
+          <!-- Speaking Order -->
+          <div class="speaking-order">
+            <label>Contents of the Speaking Order</label>
+            <textarea placeholder="Enter text here" [(ngModel)]="speakingOrder" rows="3"></textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+</div>
+
+<!-- Assignment Modal -->
+@if (showAssignmentModal() && selectedApprovalOption(); as opt) {
+  <div class="modal-overlay" (click)="cancelAssignment()">
+    <div class="modal-dialog assignment-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-icon"><i class="pi pi-info-circle"></i></div>
+        <div>
+          <h3>Confirmation</h3>
+          <p>Are you sure you want to send the request to {{ opt.label.replace('Send to ', '') }} ?</p>
+        </div>
+        <button class="modal-close" (click)="cancelAssignment()">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="field-group">
+          <div class="field">
+            <label>Assignment</label>
+            <select [(ngModel)]="assignmentType">
+              <option value="Automatic">Automatic</option>
+              <option value="Manual">Manual</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>{{ opt.nameLabel }}</label>
+            <div class="search-input">
+              <input type="text" [(ngModel)]="assigneeName" />
+              <i class="pi pi-search"></i>
+            </div>
+          </div>
+        </div>
+
+        @if (opt.key === 'ombudsman') {
+          <div class="field-group">
+            <div class="field">
+              <label>CRPC Proposed Action</label>
+              <select [(ngModel)]="crpcProposedAction">
+                <option value="">Select a Value</option>
+                <option value="ACCEPT">Accept</option>
+                <option value="REJECT">Reject</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>CRPC Proposed Clause</label>
+              <div class="search-input">
+                <input type="text" placeholder="Search" [(ngModel)]="crpcProposedClause" />
+                <i class="pi pi-search"></i>
+              </div>
+            </div>
+          </div>
+        }
+
+        @if (opt.key === 'deputy' || opt.key === 'ombudsman') {
+          <div class="systemic-issue">
+            <label>Systemic Issue?</label>
+            <div class="radio-group">
+              <label><input type="radio" name="systemic" [value]="true" [(ngModel)]="systemicIssue" /> Yes</label>
+              <label><input type="radio" name="systemic" [value]="false" [(ngModel)]="systemicIssue" /> No</label>
+            </div>
+          </div>
+        }
+
+        <div class="expected-status">
+          <label>Expected Status Change</label>
+          <div class="status-flow">
+            <span class="status-from">
+              <i class="pi pi-circle-fill green"></i> {{ complaint()?.status === 'NEW' ? 'New Complaint' : complaint()?.status }}
+            </span>
+            <i class="pi pi-arrow-right"></i>
+            <span class="status-to">
+              <i class="pi pi-pencil blue"></i> Sent to {{ opt.label.replace('Send to ', '') }}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn-cancel" (click)="cancelAssignment()">Cancel</button>
+        <button class="btn-confirm" (click)="confirmAssignment()">Confirm</button>
+      </div>
+    </div>
+  </div>
+}

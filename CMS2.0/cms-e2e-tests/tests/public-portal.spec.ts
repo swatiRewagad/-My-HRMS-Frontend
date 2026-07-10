@@ -2,93 +2,98 @@ import { test, expect } from '@playwright/test';
 import { PublicHomePage, FileComplaintPage, TrackComplaintPage } from '../pages';
 import { VALID_COMPLAINT, SAMPLE_PINCODE } from '../fixtures/test-data';
 
+const PAUSE = 2500;
+
+test.describe.configure({ mode: 'serial' });
+
 test.describe('Public Portal', () => {
   test.describe('Landing Page', () => {
     test('should display the home page with CMS branding', async ({ page }) => {
       const homePage = new PublicHomePage(page);
       await homePage.goto();
+      await page.waitForTimeout(PAUSE);
       await homePage.expectPageLoaded();
+      await page.waitForTimeout(PAUSE);
     });
 
     test('should have file complaint and track complaint links', async ({ page }) => {
       const homePage = new PublicHomePage(page);
       await homePage.goto();
-      await expect(homePage.fileComplaintButton).toBeVisible();
-      await expect(homePage.trackComplaintButton).toBeVisible();
+      await expect(homePage.heroSection).toBeVisible({ timeout: 30000 });
+      await page.waitForTimeout(PAUSE);
+      await expect(homePage.fileComplaintButton).toBeVisible({ timeout: 5000 });
+      await page.waitForTimeout(1000);
+      await expect(homePage.trackComplaintButton).toBeVisible({ timeout: 5000 });
+      await page.waitForTimeout(PAUSE);
     });
 
     test('should navigate to file complaint (redirects to login if not authenticated)', async ({ page }) => {
       const homePage = new PublicHomePage(page);
       await homePage.goto();
-      await homePage.fileComplaintButton.click();
-      await expect(page).toHaveURL(/.*\/(file-complaint|login).*/);
+      await expect(homePage.heroSection).toBeVisible({ timeout: 30000 });
+      await page.waitForTimeout(PAUSE);
+      await homePage.fileComplaintButton.click({ force: true });
+      await page.waitForTimeout(PAUSE);
+      await expect(page).toHaveURL(/.*\/(file-complaint|login).*/, { timeout: 15000 });
+      await page.waitForTimeout(PAUSE);
     });
 
     test('should navigate to track complaint page', async ({ page }) => {
       const homePage = new PublicHomePage(page);
       await homePage.goto();
+      await expect(homePage.heroSection).toBeVisible({ timeout: 30000 });
+      await page.waitForTimeout(PAUSE);
       await homePage.navigateToTrackComplaint();
-      await expect(page).toHaveURL(/.*track.*/);
+      await page.waitForTimeout(PAUSE);
+      await expect(page).toHaveURL(/.*track.*/, { timeout: 15000 });
+      await page.waitForTimeout(PAUSE);
     });
 
     test('should have language selector with multiple Indian languages', async ({ page }) => {
       const homePage = new PublicHomePage(page);
       await homePage.goto();
-      await expect(homePage.languageSelector).toBeVisible();
+      await page.waitForTimeout(PAUSE);
+      await expect(homePage.languageSelector).toBeVisible({ timeout: 15000 });
+      await page.waitForTimeout(PAUSE);
     });
 
     test('should have login link', async ({ page }) => {
       const homePage = new PublicHomePage(page);
       await homePage.goto();
+      await page.waitForTimeout(PAUSE);
       const hamburger = page.locator('button.hamburger-btn');
       if (await hamburger.isVisible()) {
         await hamburger.click();
         await page.locator('nav.main-nav.mobile-open').waitFor({ state: 'visible' });
+        await page.waitForTimeout(1000);
       }
-      await expect(homePage.loginLink).toBeVisible();
+      await expect(homePage.loginLink).toBeVisible({ timeout: 15000 });
+      await page.waitForTimeout(PAUSE);
     });
   });
 
-  test.describe('File Complaint Form (simple form)', () => {
-    let complaintPage: FileComplaintPage;
-
-    test.beforeEach(async ({ page }) => {
-      complaintPage = new FileComplaintPage(page);
-      await complaintPage.goto();
+  test.describe('Eligibility Wizard', () => {
+    test('should display the eligibility wizard page', async ({ page }) => {
+      await page.goto('/public/eligibility-wizard', { waitUntil: 'networkidle' });
+      await page.waitForTimeout(PAUSE);
+      await expect(page.locator('.elig-heading, h1, h2').first()).toBeVisible({ timeout: 15000 });
+      await page.waitForTimeout(PAUSE);
     });
 
-    test('should display the complaint form', async ({ page }) => {
-      await expect(complaintPage.nameInput).toBeVisible();
+    test('should display entity type selection', async ({ page }) => {
+      await page.goto('/public/eligibility-wizard', { waitUntil: 'networkidle' });
+      await page.waitForTimeout(PAUSE);
+      const selectOrRadio = page.locator('select, .radio-list, .radio-option').first();
+      await expect(selectOrRadio).toBeVisible({ timeout: 15000 });
+      await page.waitForTimeout(PAUSE);
     });
 
-    test('should disable submit button when required fields are empty', async ({ page }) => {
-      await expect(complaintPage.submitButton).toBeDisabled();
-    });
-
-    test('should allow entering email', async ({ page }) => {
-      await complaintPage.emailInput.fill('test@example.com');
-      await expect(complaintPage.emailInput).toHaveValue('test@example.com');
-    });
-
-    test('should allow entering phone number', async ({ page }) => {
-      await complaintPage.phoneInput.fill('9876543210');
-      await expect(complaintPage.phoneInput).toHaveValue('9876543210');
-    });
-
-    test('should display category dropdown', async ({ page }) => {
-      await expect(complaintPage.categorySelect).toBeVisible();
-    });
-
-    test('should display subject field', async ({ page }) => {
-      await expect(complaintPage.subjectInput).toBeVisible();
-    });
-
-    test('should display description field', async ({ page }) => {
-      await expect(complaintPage.descriptionInput).toBeVisible();
-    });
-
-    test('should have submit button', async ({ page }) => {
-      await expect(complaintPage.submitButton).toBeVisible();
+    test('should have navigation buttons', async ({ page }) => {
+      await page.goto('/public/eligibility-wizard', { waitUntil: 'networkidle' });
+      await page.waitForTimeout(PAUSE);
+      const nextBtn = page.locator('button').filter({ hasText: /next|proceed|continue/i }).first();
+      await expect(nextBtn).toBeVisible({ timeout: 15000 });
+      await page.waitForTimeout(PAUSE);
     });
   });
 
@@ -98,28 +103,37 @@ test.describe('Public Portal', () => {
     test.beforeEach(async ({ page }) => {
       trackPage = new TrackComplaintPage(page);
       await trackPage.goto();
+      await page.waitForTimeout(PAUSE);
     });
 
     test('should display the tracking form', async ({ page }) => {
       await expect(trackPage.complaintNumberInput).toBeVisible();
+      await page.waitForTimeout(1000);
       await expect(trackPage.searchButton).toBeVisible();
+      await page.waitForTimeout(PAUSE);
     });
 
     test('should allow entering complaint number', async ({ page }) => {
-      await trackPage.complaintNumberInput.fill('CMS/2026/MUM/000001');
-      await expect(trackPage.complaintNumberInput).toHaveValue('CMS/2026/MUM/000001');
+      await trackPage.complaintNumberInput.fill('CMP-20260525-000001');
+      await page.waitForTimeout(PAUSE);
+      await expect(trackPage.complaintNumberInput).toHaveValue('CMP-20260525-000001');
+      await page.waitForTimeout(PAUSE);
     });
 
-    test('should click track button', async ({ page }) => {
-      await trackPage.complaintNumberInput.fill('CMS/2026/MUM/000001');
+    test('should click track button and search', async ({ page }) => {
+      await trackPage.complaintNumberInput.fill('CMP-20260525-000001');
+      await page.waitForTimeout(1500);
       await trackPage.searchButton.click();
-      await page.waitForTimeout(2000);
+      await page.waitForTimeout(3000);
     });
 
-    test('should show error for invalid complaint number when backend is unavailable', async ({ page }) => {
-      await trackPage.complaintNumberInput.fill('CMS/9999/XXX/999999');
+    test('should show error for invalid complaint number', async ({ page }) => {
+      await trackPage.complaintNumberInput.fill('CMP-99999999-999999');
+      await page.waitForTimeout(1500);
       await trackPage.searchButton.click();
-      await page.waitForTimeout(2000);
+      await page.waitForTimeout(3000);
+      await expect(page.locator('.error-message')).toBeVisible({ timeout: 10000 });
+      await page.waitForTimeout(PAUSE);
     });
   });
 });

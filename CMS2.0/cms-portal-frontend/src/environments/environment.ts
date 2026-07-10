@@ -4,6 +4,10 @@ export const environment = {
   keycloakUrl: 'http://localhost:8180',
   realm: 'cms',
 
+  // Dev mode: auto-populate OTP with default value for testing
+  devAutoPopulateOtp: true,
+  devDefaultOtp: '123456',
+
   // NFR-005: Session timeout in minutes
   sessionTimeoutMinutes: 15,
 
