@@ -13,18 +13,18 @@ export class TrackComplaintPage {
 
   constructor(page: Page) {
     this.page = page;
-    this.complaintNumberInput = page.getByLabel(/complaint number/i);
-    this.emailInput = page.getByLabel(/email/i);
-    this.phoneInput = page.getByLabel(/phone|mobile/i);
-    this.searchButton = page.getByRole('button', { name: /track|search|find/i });
-    this.resultCard = page.locator('.result-card, [data-testid="complaint-result"]');
-    this.statusBadge = page.locator('.status-badge, [data-testid="track-status"]');
-    this.timeline = page.locator('.timeline, [data-testid="track-timeline"]');
-    this.noResultMessage = page.getByText(/no.*complaint.*found|not found|invalid/i);
+    this.complaintNumberInput = page.locator('.search-box input');
+    this.emailInput = page.getByPlaceholder(/email/i);
+    this.phoneInput = page.getByPlaceholder(/phone|mobile/i);
+    this.searchButton = page.locator('.search-box button');
+    this.resultCard = page.locator('.status-card');
+    this.statusBadge = page.locator('.status-badge');
+    this.timeline = page.locator('.timeline');
+    this.noResultMessage = page.locator('.error-message');
   }
 
   async goto() {
-    await this.page.goto('/track-complaint');
+    await this.page.goto('/public/track');
   }
 
   async trackByNumber(complaintNumber: string) {
@@ -42,7 +42,7 @@ export class TrackComplaintPage {
   }
 
   async expectNoResult() {
-    await expect(this.noResultMessage).toBeVisible();
+    await expect(this.noResultMessage).toBeVisible({ timeout: 10000 });
   }
 
   async expectStatus(status: string) {

@@ -189,6 +189,29 @@ export const routes: Routes = [
     path: 'crpc/reviewer/draft/:id',
     loadComponent: () => import('./components/crpc/reviewer-assessment/reviewer-assessment.component').then(m => m.ReviewerAssessmentComponent)
   },
+  // ── CRPC Help Desk ──
+  {
+    path: 'crpc/help-desk',
+    canActivate: [staffAuthGuard],
+    loadComponent: () => import('./components/crpc/help-desk/help-desk.component').then(m => m.HelpDeskComponent)
+  },
+  // ── CRPC In-Charge ──
+  {
+    path: 'crpc/in-charge',
+    canActivate: [staffAuthGuard],
+    loadComponent: () => import('./components/crpc/in-charge-dashboard/in-charge-dashboard.component').then(m => m.InChargeDashboardComponent)
+  },
+  // ── Admin — Template Management ──
+  {
+    path: 'admin/comment-templates',
+    canActivate: [staffAuthGuard],
+    loadComponent: () => import('./components/admin/comment-templates/comment-templates.component').then(m => m.CommentTemplatesComponent)
+  },
+  {
+    path: 'admin/communication-templates',
+    canActivate: [staffAuthGuard],
+    loadComponent: () => import('./components/admin/communication-templates/communication-templates.component').then(m => m.CommunicationTemplatesComponent)
+  },
   // ── RE Portal (Regulated Entity) ──
   {
     path: 're-portal/login',

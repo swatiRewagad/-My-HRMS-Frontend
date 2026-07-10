@@ -5,6 +5,10 @@ import { Router } from '@angular/router';
 import { EmailSyndicationService } from '../../../services/email-syndication.service';
 import { EmailDraft } from '../../../models/email-syndication.model';
 import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
+import { CrpcWorkflowService } from '../../../services/crpc-workflow.service';
+import { NotificationService } from '../../../services/notification.service';
+import { NotificationBellComponent } from '../../../shared/notification-bell/notification-bell.component';
+import { SessionTimeoutComponent } from '../../../shared/session-timeout/session-timeout.component';
 
 interface DraftComplaint {
   draftId: string;
@@ -34,7 +38,7 @@ interface DraftComplaint {
 @Component({
   selector: 'app-deo-home',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, NotificationBellComponent, SessionTimeoutComponent],
   templateUrl: './deo-home.component.html',
   styleUrl: './deo-home.component.scss'
 })
@@ -54,8 +58,15 @@ export class DeoHomeComponent implements OnInit {
   filterUnread = signal(false);
   filterWithoutAttachments = signal(false);
   filterSatisfiesRules = signal(false);
+  filterVernacular = signal(false);
   columnFilters: Record<string, string> = {};
   columnSearchText = '';
+
+  // Not-a-Complaint dialog
+  showNotAComplaintDialog = signal(false);
+  notAComplaintReason = '';
+  notAComplaintRemarks = '';
+  notAComplaintReasons: string[] = [];
 
   // Sorting
   sortColumn = '';
@@ -158,6 +169,9 @@ export class DeoHomeComponent implements OnInit {
     if (this.filterSatisfiesRules()) {
       result = result.filter(d => (d as any).triageSignal === 'OBJECTIVELY_CLEAR');
     }
+    if (this.filterVernacular()) {
+      result = result.filter(d => d.vernacular);
+    }
     // Sorting
     if (this.sortColumn) {
       result = [...result].sort((a, b) => {
@@ -205,6 +219,8 @@ export class DeoHomeComponent implements OnInit {
 
   private emailService = inject(EmailSyndicationService);
   private auth = inject(KeycloakAuthService);
+  private workflowService = inject(CrpcWorkflowService);
+  readonly notificationService = inject(NotificationService);
   loggedInUser: { id: string; name: string; role: string } | null = null;
 
   ngOnInit() {
@@ -212,6 +228,13 @@ export class DeoHomeComponent implements OnInit {
       const visited = localStorage.getItem('visitedComplaintIds');
       if (visited) this.visitedIds.set(new Set(JSON.parse(visited)));
     } catch {}
+
+    const savedPageSize = localStorage.getItem('crpc_page_size');
+    if (savedPageSize) this.pageSize = parseInt(savedPageSize, 10) || 10;
+
+    this.workflowService.getNotAComplaintReasons().subscribe(reasons => {
+      this.notAComplaintReasons = reasons;
+    });
 
     const stored = sessionStorage.getItem('crpc_user');
     if (stored) {
@@ -445,5 +468,40 @@ export class DeoHomeComponent implements OnInit {
     a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
+  }
+
+  changePageSize(size: number) {
+    this.pageSize = size;
+    localStorage.setItem('crpc_page_size', String(size));
+    this.currentPage.set(1);
+  }
+
+  openNotAComplaintDialog() {
+    if (this.selectedIds().size === 0) return;
+    this.notAComplaintReason = '';
+    this.notAComplaintRemarks = '';
+    this.showNotAComplaintDialog.set(true);
+  }
+
+  confirmNotAComplaint() {
+    if (!this.notAComplaintReason) return;
+    const ids = [...this.selectedIds()];
+    if (ids.length === 1) {
+      this.workflowService.markNotAComplaint(ids[0], this.notAComplaintReason, this.notAComplaintRemarks).subscribe(() => {
+        this.showNotAComplaintDialog.set(false);
+        this.selectedIds.set(new Set());
+        this.loadDrafts();
+      });
+    } else {
+      this.workflowService.bulkMarkNotAComplaint(ids, this.notAComplaintReason, this.notAComplaintRemarks).subscribe(() => {
+        this.showNotAComplaintDialog.set(false);
+        this.selectedIds.set(new Set());
+        this.loadDrafts();
+      });
+    }
+  }
+
+  sendForApproval(draftId: string) {
+    this.workflowService.sendForApproval(draftId).subscribe(() => this.loadDrafts());
   }
 }

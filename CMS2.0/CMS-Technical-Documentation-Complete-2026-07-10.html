@@ -1,0 +1,1202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CMS 2.0 — Complete Technical Documentation</title>
+<style>
+:root {
+  --primary: #1e3a5f;
+  --accent: #2563eb;
+  --green: #059669;
+  --orange: #d97706;
+  --red: #dc2626;
+  --purple: #7c3aed;
+  --bg: #f8fafc;
+  --card: #ffffff;
+  --border: #e2e8f0;
+  --text: #1e293b;
+  --muted: #64748b;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
+.container { max-width: 1400px; margin: 0 auto; padding: 24px; }
+header { background: linear-gradient(135deg, var(--primary), #0f172a); color: #fff; padding: 40px 24px; margin-bottom: 32px; border-radius: 16px; }
+header h1 { font-size: 28px; margin-bottom: 8px; }
+header p { color: #94a3b8; font-size: 14px; }
+.toc { background: var(--card); border-radius: 12px; padding: 24px; margin-bottom: 32px; border: 1px solid var(--border); }
+.toc h2 { font-size: 18px; margin-bottom: 16px; color: var(--primary); }
+.toc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 8px; }
+.toc-grid a { color: var(--accent); text-decoration: none; font-size: 14px; padding: 6px 12px; border-radius: 6px; display: block; }
+.toc-grid a:hover { background: #eff6ff; }
+.module-section { background: var(--card); border-radius: 12px; padding: 28px; margin-bottom: 24px; border: 1px solid var(--border); }
+.module-section h2 { font-size: 22px; color: var(--primary); margin-bottom: 16px; padding-bottom: 12px; border-bottom: 2px solid var(--border); }
+.module-section h3 { font-size: 16px; color: var(--accent); margin: 20px 0 10px; }
+.module-section h4 { font-size: 14px; color: var(--muted); margin: 12px 0 6px; font-weight: 600; }
+table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 13px; }
+th { background: #f1f5f9; padding: 10px 12px; text-align: left; font-weight: 600; color: var(--primary); border: 1px solid var(--border); }
+td { padding: 8px 12px; border: 1px solid var(--border); vertical-align: top; }
+tr:nth-child(even) { background: #f8fafc; }
+code { background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-size: 12px; font-family: 'JetBrains Mono', 'Fira Code', monospace; }
+pre { background: #1e293b; color: #e2e8f0; padding: 16px; border-radius: 8px; overflow-x: auto; font-size: 12px; margin: 12px 0; line-height: 1.5; }
+pre code { background: transparent; color: inherit; padding: 0; }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+.badge-blue { background: #dbeafe; color: #1d4ed8; }
+.badge-green { background: #dcfce7; color: #166534; }
+.badge-orange { background: #fef3c7; color: #92400e; }
+.badge-red { background: #fee2e2; color: #991b1b; }
+.badge-purple { background: #ede9fe; color: #5b21b6; }
+.note { background: #eff6ff; border-left: 4px solid var(--accent); padding: 12px 16px; border-radius: 0 8px 8px 0; margin: 12px 0; font-size: 13px; }
+.warn { background: #fffbeb; border-left: 4px solid var(--orange); padding: 12px 16px; border-radius: 0 8px 8px 0; margin: 12px 0; font-size: 13px; }
+.danger { background: #fef2f2; border-left: 4px solid var(--red); padding: 12px 16px; border-radius: 0 8px 8px 0; margin: 12px 0; font-size: 13px; }
+.arch-diagram { background: #f8fafc; border: 1px solid var(--border); border-radius: 8px; padding: 20px; margin: 16px 0; font-family: monospace; font-size: 12px; white-space: pre; overflow-x: auto; line-height: 1.4; }
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+@media (max-width: 768px) { .two-col { grid-template-columns: 1fr; } }
+.step { display: flex; align-items: flex-start; gap: 12px; margin: 8px 0; }
+.step-num { background: var(--accent); color: #fff; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0; }
+.step-content { font-size: 13px; }
+ul, ol { margin: 8px 0 8px 24px; font-size: 13px; }
+li { margin: 4px 0; }
+.port-table td:first-child { font-weight: 600; white-space: nowrap; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<header>
+  <h1>CMS 2.0 — Complete Technical Documentation</h1>
+  <p>Reserve Bank of India — Complaint Management System | Date: 10 July 2026 | Version: 2.0.0</p>
+  <p>Covers: All Modules | Desktop Setup | OpenShift Deployment | Architecture | API Reference</p>
+</header>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- TABLE OF CONTENTS -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div class="toc">
+  <h2>Table of Contents</h2>
+  <div class="toc-grid">
+    <a href="#arch">1. System Architecture</a>
+    <a href="#mod-public">2. Public Portal Module</a>
+    <a href="#mod-crpc">3. CRPC Module (Email Intake)</a>
+    <a href="#mod-cepc">4. CEPC Module (Dept Operations)</a>
+    <a href="#mod-rbio">5. RBIO Module (Supervisory)</a>
+    <a href="#mod-aa">6. Appellate Authority Module</a>
+    <a href="#mod-re">7. RE Portal Module</a>
+    <a href="#mod-admin">8. Admin Module</a>
+    <a href="#mod-mre">9. MRE (Maintainability Rules Engine)</a>
+    <a href="#mod-ocr">10. OCR & Extraction Module</a>
+    <a href="#mod-email">11. Email Syndication Module</a>
+    <a href="#mod-search">12. Similar Cases / Search Module</a>
+    <a href="#mod-report">13. Report Builder Module</a>
+    <a href="#mod-notif">14. Notifications Module</a>
+    <a href="#mod-i18n">15. Internationalization (i18n) Module</a>
+    <a href="#mod-tat">16. TAT & SLA Module</a>
+    <a href="#mod-workflow">17. Workflow & Routing Module</a>
+    <a href="#mod-auth">18. Authentication & Security Module</a>
+    <a href="#mod-copilot">19. Copilot / AI Assist Module</a>
+    <a href="#desktop">20. Desktop Setup Guide</a>
+    <a href="#openshift">21. OpenShift Deployment Guide</a>
+    <a href="#api-ref">22. API Endpoints Reference</a>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- SECTION 1: ARCHITECTURE -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div class="module-section" id="arch">
+  <h2>1. System Architecture</h2>
+
+  <h3>1.1 Technology Stack</h3>
+  <div class="two-col">
+    <div>
+      <h4>Backend</h4>
+      <table>
+        <tr><td>Framework</td><td>Spring Boot 3.2.5</td></tr>
+        <tr><td>Java</td><td>17 (LTS)</td></tr>
+        <tr><td>ORM</td><td>Hibernate / Spring Data JPA</td></tr>
+        <tr><td>Database</td><td>Oracle 21c XE (prod) / MySQL 8 (dev)</td></tr>
+        <tr><td>Cache</td><td>Hazelcast 5.3.6</td></tr>
+        <tr><td>Search</td><td>OpenSearch 2.18</td></tr>
+        <tr><td>Messaging</td><td>Apache Kafka 3.7 (KRaft)</td></tr>
+        <tr><td>IAM</td><td>Keycloak 26.0</td></tr>
+        <tr><td>Monitoring</td><td>Prometheus + Grafana 11.3</td></tr>
+        <tr><td>OCR</td><td>Groq/Gemini/OpenAI/PaddleOCR chain</td></tr>
+      </table>
+    </div>
+    <div>
+      <h4>Frontend</h4>
+      <table>
+        <tr><td>Framework</td><td>Angular 21.2.8</td></tr>
+        <tr><td>UI Library</td><td>PrimeNG 21.1.6</td></tr>
+        <tr><td>Charts</td><td>Chart.js 4.5</td></tr>
+        <tr><td>PDF</td><td>jsPDF 4.2</td></tr>
+        <tr><td>Auth</td><td>keycloak-js 26.2</td></tr>
+        <tr><td>State</td><td>Angular Signals</td></tr>
+        <tr><td>Styling</td><td>SCSS + PrimeNG themes</td></tr>
+        <tr><td>Build</td><td>@angular/build (esbuild)</td></tr>
+        <tr><td>E2E</td><td>Playwright</td></tr>
+        <tr><td>Port</td><td>4300 (dev)</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <h3>1.2 High-Level Architecture</h3>
+  <div class="arch-diagram">
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           EXTERNAL USERS                                     │
+│  Citizens │ Bank Officers │ CRPC Staff │ CEPC/RBIO Officers │ Admin │ AA    │
+└──────────────────────────────┬──────────────────────────────────────────────┘
+                               │ HTTPS
+                    ┌──────────▼──────────┐
+                    │   API GATEWAY       │  (routing, rate-limiting, auth)
+                    │   Port: 8080        │
+                    └──────────┬──────────┘
+                               │
+         ┌─────────────────────┼─────────────────────────┐
+         │                     │                          │
+┌────────▼────────┐  ┌────────▼────────┐  ┌─────────────▼──────────────┐
+│  cms-portal     │  │  cms-frontend   │  │     cms-backend             │
+│  (Angular 21)   │  │  (Staff SPA)    │  │     Port: 8082              │
+│  Port: 4300     │  │  Port: 4200     │  │  (Spring Boot Monolith)     │
+└─────────────────┘  └─────────────────┘  └──────────────┬──────────────┘
+                                                          │
+         ┌────────────────────────────────────────────────┤
+         │            SERVICE MESH (Kafka)                 │
+    ┌────▼────┐  ┌───────────┐  ┌──────────┐  ┌─────────▼──────┐
+    │Ingestion│  │Assignment │  │ Workflow  │  │ Notification   │
+    │Service  │  │Service    │  │ Service   │  │ Service        │
+    └─────────┘  └───────────┘  └──────────┘  └────────────────┘
+    ┌─────────┐  ┌───────────┐  ┌──────────┐  ┌────────────────┐
+    │Eligibil.│  │Rules Svc  │  │Search Svc│  │SLA Monitor     │
+    └─────────┘  └───────────┘  └──────────┘  └────────────────┘
+    ┌─────────┐  ┌───────────┐  ┌──────────┐
+    │Storage  │  │Audit Svc  │  │Outbox Pub│
+    └─────────┘  └───────────┘  └──────────┘
+         │
+    ┌────▼────────────────────────────────────────────────────┐
+    │             INFRASTRUCTURE LAYER                          │
+    │  Oracle DB │ Kafka │ OpenSearch │ Keycloak │ Hazelcast   │
+    │  PaddleOCR │ Prometheus │ Grafana │ SMTP Relay           │
+    └──────────────────────────────────────────────────────────┘
+  </div>
+
+  <h3>1.3 Microservices Inventory</h3>
+  <table>
+    <thead><tr><th>Service</th><th>Purpose</th><th>Technology</th><th>Port</th></tr></thead>
+    <tbody>
+      <tr><td>cms-backend</td><td>Primary monolith — all business logic</td><td>Spring Boot 3.2</td><td>8082</td></tr>
+      <tr><td>cms-api-gateway</td><td>API routing, rate limiting, auth validation</td><td>Spring Cloud Gateway</td><td>8080</td></tr>
+      <tr><td>cms-portal-frontend</td><td>Public citizen-facing SPA</td><td>Angular 21</td><td>4300</td></tr>
+      <tr><td>cms-frontend</td><td>Staff internal SPA</td><td>Angular 21</td><td>4200</td></tr>
+      <tr><td>cms-ingestion-service</td><td>Email/letter intake, queuing</td><td>Spring Boot</td><td>8083</td></tr>
+      <tr><td>cms-assignment-service</td><td>Auto-assignment, round-robin, threshold</td><td>Spring Boot</td><td>8084</td></tr>
+      <tr><td>cms-workflow-service</td><td>State machine orchestration</td><td>Spring Boot</td><td>8085</td></tr>
+      <tr><td>cms-notification-service</td><td>Email/SMS/Push dispatch</td><td>Spring Boot</td><td>8086</td></tr>
+      <tr><td>cms-rules-service</td><td>MRE rule execution</td><td>Spring Boot</td><td>8087</td></tr>
+      <tr><td>cms-search-service</td><td>OpenSearch indexing and queries</td><td>Spring Boot</td><td>8088</td></tr>
+      <tr><td>cms-eligibility-service</td><td>Complaint eligibility assessment</td><td>Spring Boot</td><td>8089</td></tr>
+      <tr><td>cms-sla-monitor-service</td><td>SLA deadline tracking, breach alerts</td><td>Spring Boot</td><td>8090</td></tr>
+      <tr><td>cms-storage-service</td><td>File/attachment storage (S3/NFS)</td><td>Spring Boot</td><td>8091</td></tr>
+      <tr><td>cms-audit-service</td><td>Immutable audit trail</td><td>Spring Boot</td><td>8092</td></tr>
+      <tr><td>cms-outbox-publisher</td><td>Transactional outbox → Kafka</td><td>Spring Boot</td><td>8093</td></tr>
+      <tr><td>cms-paddle-ocr</td><td>Self-hosted OCR sidecar</td><td>Python / PaddleOCR</td><td>8100</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- SECTION 2: PUBLIC PORTAL MODULE -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div class="module-section" id="mod-public">
+  <h2>2. Public Portal Module</h2>
+  <p><span class="badge badge-green">Citizen-facing</span> The public-facing module where citizens file complaints, track status, file appeals, and verify eligibility.</p>
+
+  <h3>2.1 Frontend Components</h3>
+  <table>
+    <thead><tr><th>Component</th><th>Path</th><th>Purpose</th></tr></thead>
+    <tbody>
+      <tr><td>public-home</td><td>/public</td><td>Landing page with hero section, file complaint CTA</td></tr>
+      <tr><td>public-login</td><td>/public/login</td><td>OTP-based mobile verification for citizens</td></tr>
+      <tr><td>public-layout</td><td>—</td><td>Shell with nav, language switcher, footer</td></tr>
+      <tr><td>file-complaint</td><td>/public/file-complaint</td><td>Multi-step complaint filing wizard</td></tr>
+      <tr><td>complaint-history</td><td>/public/my-complaints</td><td>Citizen's past complaints with status</td></tr>
+      <tr><td>eligibility-wizard</td><td>/public/eligibility</td><td>Pre-filing eligibility check (interactive)</td></tr>
+      <tr><td>file-appeal</td><td>/public/appeal</td><td>Appeal filing against closed complaints</td></tr>
+      <tr><td>submit-feedback</td><td>/public/feedback</td><td>Post-resolution feedback form</td></tr>
+      <tr><td>withdraw-complaint</td><td>/public/withdraw</td><td>Voluntary complaint withdrawal</td></tr>
+      <tr><td>complaint-tracker</td><td>/track/:number</td><td>Anonymous tracking by complaint number</td></tr>
+    </tbody>
+  </table>
+
+  <h3>2.2 Backend APIs</h3>
+  <table>
+    <thead><tr><th>Controller</th><th>Key Endpoints</th></tr></thead>
+    <tbody>
+      <tr><td>CitizenAuthController</td><td><code>POST /api/citizen/send-otp</code>, <code>POST /api/citizen/verify-otp</code>, <code>POST /api/citizen/captcha</code></td></tr>
+      <tr><td>ComplaintApiV1Controller</td><td><code>POST /api/v1/complaints</code>, <code>GET /api/v1/complaints/{number}</code>, <code>GET /api/v1/complaints/my</code></td></tr>
+      <tr><td>EligibilityWizardController</td><td><code>POST /api/v1/eligibility/assess</code></td></tr>
+      <tr><td>AppealController</td><td><code>POST /api/v1/appeals</code>, <code>GET /api/v1/appeals/{id}</code></td></tr>
+      <tr><td>GeoLocationController</td><td><code>GET /api/geo/locate</code></td></tr>
+      <tr><td>LocationController</td><td><code>GET /api/location/pincode/{pin}</code></td></tr>
+    </tbody>
+  </table>
+
+  <h3>2.3 Key Services</h3>
+  <ul>
+    <li><strong>OtpService</strong> — OTP generation, expiry, rate-limiting (5/hour/mobile)</li>
+    <li><strong>CaptchaService</strong> — Server-generated CAPTCHA images</li>
+    <li><strong>CitizenSessionService</strong> — Stateless JWT session management</li>
+    <li><strong>CooloffService</strong> — Progressive lockout (30s → 60s → 120s → 300s → 600s)</li>
+    <li><strong>ComplaintService</strong> — Core complaint CRUD, filing, status transitions</li>
+    <li><strong>GeoLocationService</strong> — MaxMind GeoIP integration for auto-location</li>
+    <li><strong>AppealEligibilityService</strong> — Validates appeal conditions (30-day window, closed status)</li>
+  </ul>
+
+  <h3>2.4 Security Features</h3>
+  <ul>
+    <li>OTP with progressive cooloff (exponential backoff)</li>
+    <li>Server-side CAPTCHA (6 char, 5-min expiry)</li>
+    <li>Anti-automation filter (min 3s form submission time, velocity detection)</li>
+    <li>Rate limiting: 10 complaints/minute, 5 OTP resends/hour</li>
+    <li>PII encryption at rest (AES-256) via PiiDecryptionFilter</li>
+  </ul>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- SECTION 3: CRPC MODULE -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div class="module-section" id="mod-crpc">
+  <h2>3. CRPC Module (Complaint Resolution & Process Cell)</h2>
+  <p><span class="badge badge-orange">Internal Staff</span> Handles email intake, draft processing by DEOs, reviewer approval workflow, and draft-to-complaint conversion.</p>
+
+  <h3>3.1 Workflow State Machine</h3>
+  <div class="arch-diagram">
+  Email Received → [ASSIGNED] → DEO processes
+                         │
+              ┌──────────┴──────────┐
+              ▼                     ▼
+    [SENT_FOR_APPROVAL]     [NOT_A_COMPLAINT]
+              │                (terminal)
+       ┌──────┴──────┐
+       ▼             ▼
+   [APPROVED]    [SENT_BACK] → [SENT_FOR_APPROVAL] (re-submit)
+       │
+       ▼
+  [NEW_COMPLAINT] (converted)
+  </div>
+
+  <h3>3.2 Frontend Components</h3>
+  <table>
+    <thead><tr><th>Component</th><th>Role</th><th>Purpose</th></tr></thead>
+    <tbody>
+      <tr><td>crpc-login</td><td>All CRPC</td><td>Keycloak SSO login page</td></tr>
+      <tr><td>deo-home</td><td>DEO</td><td>Queue of assigned drafts, stats, actions</td></tr>
+      <tr><td>draft-assessment</td><td>DEO</td><td>Full draft form with entity extraction, category assignment</td></tr>
+      <tr><td>reviewer-home</td><td>Reviewer</td><td>Pending approval queue</td></tr>
+      <tr><td>reviewer-assessment</td><td>Reviewer</td><td>Approve/send-back interface</td></tr>
+      <tr><td>in-charge-dashboard</td><td>In-Charge</td><td>Workload distribution, threshold monitoring</td></tr>
+      <tr><td>ops-head</td><td>Ops Head</td><td>Operational oversight, SLA compliance</td></tr>
+      <tr><td>help-desk</td><td>Help Desk</td><td>Phone-in complaint registration</td></tr>
+      <tr><td>physical-letter</td><td>DEO</td><td>Physical letter scanning + OCR</td></tr>
+    </tbody>
+  </table>
+
+  <h3>3.3 Backend APIs</h3>
+  <table>
+    <thead><tr><th>Controller</th><th>Key Endpoints</th></tr></thead>
+    <tbody>
+      <tr><td>CrpcWorkflowController</td><td><code>POST /api/crpc/drafts/{id}/send-for-approval</code>, <code>POST /api/crpc/drafts/{id}/approve</code>, <code>POST /api/crpc/drafts/{id}/send-back</code>, <code>POST /api/crpc/drafts/{id}/not-a-complaint</code>, <code>POST /api/crpc/drafts/{id}/convert</code></td></tr>
+      <tr><td>CrpcDraftEnhancementController</td><td><code>POST /api/crpc/drafts/{id}/enhance</code>, <code>POST /api/crpc/drafts/{id}/extract-fields</code></td></tr>
+      <tr><td>CrpcInChargeController</td><td><code>GET /api/crpc/in-charge/workload</code>, <code>POST /api/crpc/in-charge/reassign</code>, <code>GET /api/crpc/in-charge/threshold-status</code></td></tr>
+      <tr><td>EmailSyndicationApiController</td><td><code>GET /api/email/queue</code>, <code>POST /api/email/ingest</code></td></tr>
+    </tbody>
+  </table>
+
+  <h3>3.4 Key Services</h3>
+  <ul>
+    <li><strong>CrpcWorkflowService</strong> — State transitions with validation (ASSIGNED → SENT_FOR_APPROVAL → APPROVED → NEW_COMPLAINT)</li>
+    <li><strong>ThresholdOverflowService</strong> — Max 30 drafts/reviewer, overflow to CRPC_HEAD</li>
+    <li><strong>CrpcInChargeDashboardService</strong> — Workload analytics, re-assignment logic</li>
+    <li><strong>CrpcScheduledTasks</strong> — Cron: pending notifications (9 AM), duplicate detection (9:30 AM), threshold check (10 AM)</li>
+    <li><strong>RuleBasedExtractor</strong> — Regex extraction of phone, email, account, IFSC, PAN from email body</li>
+  </ul>
+
+  <h3>3.5 Not-a-Complaint Reasons</h3>
+  <code>SPAM | PROMOTIONAL | INTERNAL_COMMUNICATION | DUPLICATE | INCOMPLETE_DETAILS | OUT_OF_JURISDICTION | NOT_RELATED_TO_BANKING | AUTO_REPLY | FOLLOW_UP_ON_CLOSED</code>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- SECTION 4: CEPC MODULE -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div class="module-section" id="mod-cepc">
+  <h2>4. CEPC Module (Consumer Education & Protection Cell)</h2>
+  <p><span class="badge badge-blue">Department Operations</span> Handles complaint processing for private sector banks, foreign banks, NBFCs, and payment systems.</p>
+
+  <h3>4.1 Frontend Components</h3>
+  <table>
+    <thead><tr><th>Component</th><th>Purpose</th></tr></thead>
+    <tbody>
+      <tr><td>cepc-dashboard</td><td>Officer dashboard with complaint queue, filters, KPIs</td></tr>
+      <tr><td>cepc-complaint-detail</td><td>Full complaint view with timeline, actions, documents</td></tr>
+      <tr><td>cepc-conciliation</td><td>Conciliation hearing scheduling and outcome recording</td></tr>
+      <tr><td>cepc-sla-dashboard</td><td>SLA compliance tracking, breach alerts</td></tr>
+      <tr><td>cepc-sla-indicator</td><td>Visual SLA status indicator (green/amber/red)</td></tr>
+      <tr><td>cepc-timeline</td><td>Complaint lifecycle timeline visualization</td></tr>
+    </tbody>
+  </table>
+
+  <h3>4.2 Key Services</h3>
+  <ul>
+    <li><strong>CepcWorkflowService</strong> — CEPC-specific workflow (Triage → Assessment → Forwarding → Conciliation → Award/Closure)</li>
+    <li><strong>CepcSlaService</strong> — 30-day SLA for CEPC complaints, breach escalation</li>
+    <li><strong>CepcAuditService</strong> — Action-level audit trail for compliance</li>
+  </ul>
+
+  <h3>4.3 Entities Handled</h3>
+  <code>PRIVATE_SECTOR banks | FOREIGN banks | NBFC | PAYMENT_BANK | CARD_NETWORK | PAYMENT_SYSTEM | PAYMENT_AGGREGATOR</code>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- SECTION 5: RBIO MODULE -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div class="module-section" id="mod-rbio">
+  <h2>5. RBIO Module (Regional Banking & Insurance Ombudsman)</h2>
+  <p><span class="badge badge-purple">Supervisory</span> Handles public sector bank complaints, senior citizen cases, conciliation, adjudication, and award issuance.</p>
+
+  <h3>5.1 Frontend Components</h3>
+  <table>
+    <thead><tr><th>Component</th><th>Purpose</th></tr></thead>
+    <tbody>
+      <tr><td>rbio-supervisor-dashboard</td><td>Supervisory overview, workload balancing, escalation view</td></tr>
+      <tr><td>rbio-conciliation</td><td>Conciliation scheduling, notes, outcome</td></tr>
+      <tr><td>rbio-adjudication</td><td>Formal adjudication hearing, order drafting</td></tr>
+      <tr><td>rbio-advisory</td><td>Advisory letter generation and issuance</td></tr>
+      <tr><td>rbio-sla-progress</td><td>SLA progress tracking with business-day calculation</td></tr>
+    </tbody>
+  </table>
+
+  <h3>5.2 Key Services</h3>
+  <ul>
+    <li><strong>RbioWorkflowService</strong> — Full RBIO lifecycle (Assessment → Forward to RE → RE Response → Conciliation → Adjudication → Award → Closure)</li>
+    <li><strong>RbioSlaService</strong> — 30-day RE response window, ex-parte proceedings on breach</li>
+    <li><strong>RbioCompensationService</strong> — Award calculation, precedent-based compensation</li>
+    <li><strong>ClosureLetterService</strong> — PDF closure letter generation using communication templates</li>
+  </ul>
+
+  <h3>5.3 RBIO Workflow Stages</h3>
+  <code>TRIAGE → ASSESSMENT → FORWARDED_TO_RE → RE_RESPONDED → CONCILIATION → ADJUDICATION → AWARD → CLOSED</code>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- SECTION 6: APPELLATE AUTHORITY MODULE -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div class="module-section" id="mod-aa">
+  <h2>6. Appellate Authority (AA) Module</h2>
+  <p><span class="badge badge-red">Appellate</span> Manages appeals against ombudsman decisions within the 30-day appeal window.</p>
+
+  <h3>6.1 Frontend Components</h3>
+  <table>
+    <thead><tr><th>Component</th><th>Purpose</th></tr></thead>
+    <tbody>
+      <tr><td>aa-dashboard</td><td>Appeal queue, filters, statistics</td></tr>
+      <tr><td>aa-appeal-detail</td><td>Full appeal record with linked complaint</td></tr>
+      <tr><td>aa-hearing</td><td>Hearing scheduling, virtual/in-person mode</td></tr>
+      <tr><td>aa-order</td><td>Order drafting, issuance, and dispatch</td></tr>
+    </tbody>
+  </table>
+
+  <h3>6.2 Key Services</h3>
+  <ul>
+    <li><strong>AppealWorkflowService</strong> — Appeal lifecycle (Filed → Admitted → Hearing → Order → Disposed)</li>
+    <li><strong>AppealEligibilityService</strong> — Validates: 30-day window, complaint was closed/rejected, not already appealed</li>
+  </ul>
+
+  <h3>6.3 Entity: Appeal</h3>
+  <code>appeal_number | original_complaint_number | appellant_name | grounds_of_appeal | relief_sought | status | hearing_date | order_text | order_date</code>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- SECTION 7: RE PORTAL MODULE -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div class="module-section" id="mod-re">
+  <h2>7. RE Portal Module (Regulated Entity Portal)</h2>
+  <p><span class="badge badge-green">Bank/NBFC facing</span> Self-service portal for banks and NBFCs to view forwarded complaints, submit responses, and manage nodal officer profiles.</p>
+
+  <h3>7.1 Frontend Components</h3>
+  <table>
+    <thead><tr><th>Component</th><th>Purpose</th></tr></thead>
+    <tbody>
+      <tr><td>re-login</td><td>Keycloak-based RE officer login</td></tr>
+      <tr><td>re-layout</td><td>RE portal shell with sidebar navigation</td></tr>
+      <tr><td>re-dashboard</td><td>Forwarded complaints, response deadlines, SLA indicators</td></tr>
+      <tr><td>re-complaint-detail</td><td>Complaint details view + response submission form</td></tr>
+      <tr><td>re-profile</td><td>Nodal officer profile management (name, email, phone, designation)</td></tr>
+    </tbody>
+  </table>
+
+  <h3>7.2 Backend APIs</h3>
+  <table>
+    <thead><tr><th>Controller</th><th>Key Endpoints</th></tr></thead>
+    <tbody>
+      <tr><td>RePortalController</td><td><code>GET /api/re-portal/complaints</code>, <code>POST /api/re-portal/complaints/{id}/respond</code>, <code>GET /api/re-portal/profile</code>, <code>PUT /api/re-portal/profile</code></td></tr>
+    </tbody>
+  </table>
+
+  <h3>7.3 Key Services</h3>
+  <ul>
+    <li><strong>RePortalService</strong> — Complaint listing (filtered by RE), response submission, profile CRUD</li>
+    <li><strong>ReNotificationService</strong> — Deadline reminders, forwarding notifications to nodal officers</li>
+    <li><strong>ReResponseTracker</strong> (entity) — Tracks forwarding date, response date, window breach, ex-parte eligibility</li>
+  </ul>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- SECTION 8: ADMIN MODULE -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div class="module-section" id="mod-admin">
+  <h2>8. Admin Module</h2>
+  <p><span class="badge badge-red">System Admin</span> System configuration, template management, extraction rules, and MRE rule editing.</p>
+
+  <h3>8.1 Frontend Components</h3>
+  <table>
+    <thead><tr><th>Component</th><th>Purpose</th></tr></thead>
+    <tbody>
+      <tr><td>admin-dashboard</td><td>System health, entity counts, quick actions</td></tr>
+      <tr><td>communication-templates</td><td>CRUD for email/SMS/letter templates with variable interpolation</td></tr>
+      <tr><td>comment-templates</td><td>Pre-defined comment blocks for officers</td></tr>
+      <tr><td>extraction-rules</td><td>Regex rules for OCR field extraction</td></tr>
+      <tr><td>rules-management</td><td>MRE rules listing, version management</td></tr>
+      <tr><td>rule-editor</td><td>Visual rule definition (conditions, actions, priority)</td></tr>
+      <tr><td>rule-tester</td><td>Test rules against sample complaints</td></tr>
+    </tbody>
+  </table>
+
+  <h3>8.2 Backend APIs</h3>
+  <table>
+    <thead><tr><th>Controller</th><th>Key Endpoints</th></tr></thead>
+    <tbody>
+      <tr><td>AdminDashboardController</td><td><code>GET /api/admin/stats</code></td></tr>
+      <tr><td>CommunicationTemplateController</td><td>Full CRUD + <code>POST /api/templates/{id}/render</code>, <code>POST /api/templates/{id}/activate</code></td></tr>
+      <tr><td>CommentTemplateController</td><td>Full CRUD + filter by mode/category</td></tr>
+      <tr><td>ExtractionRuleController</td><td>Full CRUD + <code>POST /api/extraction-rules/test</code></td></tr>
+      <tr><td>RulesApiController</td><td><code>GET /api/rules</code>, <code>POST /api/rules</code>, <code>PUT /api/rules/{id}</code>, <code>POST /api/rules/{id}/test</code></td></tr>
+      <tr><td>FormConfigController</td><td><code>GET /api/form-config/{key}</code>, <code>PUT /api/form-config/{key}</code></td></tr>
+      <tr><td>KeycloakUserController</td><td><code>GET /api/admin/users</code>, <code>POST /api/admin/users</code>, <code>PUT /api/admin/users/{id}/roles</code></td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- SECTION 9: MRE MODULE -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div class="module-section" id="mod-mre">
+  <h2>9. MRE (Maintainability Rules Engine) Module</h2>
+  <p><span class="badge badge-purple">Rules Engine</span> Automated assessment of complaint maintainability based on RB-IOS 2021/2026 scheme conditions.</p>
+
+  <h3>9.1 MRE Grounds (Questions Assessed)</h3>
+  <table>
+    <thead><tr><th>Ground</th><th>Check</th><th>Window</th></tr></thead>
+    <tbody>
+      <tr><td>Q13 - Prior RE Complaint</td><td>Did complainant first approach the RE?</td><td>—</td></tr>
+      <tr><td>Q16 - Response Window</td><td>Did RE fail to respond within window?</td><td>30 days (banks), 60 days (card networks)</td></tr>
+      <tr><td>Q17 - Dissatisfied with Response</td><td>Did RE respond but complainant is dissatisfied?</td><td>—</td></tr>
+      <tr><td>Limitation Period</td><td>Is complaint within 3-year limitation?</td><td>3 years from cause of action</td></tr>
+      <tr><td>Duplicate Check</td><td>Is same grievance pending elsewhere?</td><td>—</td></tr>
+      <tr><td>Jurisdiction</td><td>Does complaint fall under RBI jurisdiction?</td><td>—</td></tr>
+    </tbody>
+  </table>
+
+  <h3>9.2 Service Classes</h3>
+  <ul>
+    <li><strong>MaintainabilityRulesEngine</strong> — Core engine: evaluates all grounds, produces MreVerdict</li>
+    <li><strong>MreEntityCoverageService</strong> — Validates entity type is covered under applicable scheme</li>
+    <li><strong>MreProperties</strong> — Configurable windows: <code>re-window-days=30</code>, <code>limitation-period-years=3</code>, <code>window-basis=BUSINESS</code></li>
+  </ul>
+
+  <h3>9.3 Verdict Output</h3>
+  <pre><code>{
+  "signal": "GREEN" | "RED" | "AMBER",
+  "grounds": [
+    {"ground": "Q13_PRIOR_COMPLAINT", "verdict": "PASS", "reason": "..."},
+    {"ground": "Q16_RESPONSE_WINDOW", "verdict": "FAIL", "reason": "..."}
+  ],
+  "determination": "MAINTAINABLE" | "NON_MAINTAINABLE" | "REQUIRES_MANUAL_REVIEW"
+}</code></pre>
+
+  <h3>9.4 Configuration (application.yml)</h3>
+  <pre><code>cms:
+  mre:
+    version: 1
+    re-window-days: 30
+    npci-window-days: 30
+    card-network-window-days: 60
+    filing-deadline-days: 90
+    limitation-period-years: 3
+    window-basis: BUSINESS</code></pre>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- SECTION 10: OCR MODULE -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div class="module-section" id="mod-ocr">
+  <h2>10. OCR & Field Extraction Module</h2>
+  <p><span class="badge badge-orange">AI/ML</span> Multi-provider OCR chain for scanning physical letters with automatic field extraction.</p>
+
+  <h3>10.1 OCR Provider Chain</h3>
+  <table>
+    <thead><tr><th>Provider</th><th>Model</th><th>Type</th><th>Use Case</th></tr></thead>
+    <tbody>
+      <tr><td>Groq</td><td>Llama-4-Scout-17B</td><td>Cloud LLM</td><td>Primary (fast, structured output)</td></tr>
+      <tr><td>PaddleOCR</td><td>PP-OCR v4</td><td>Self-hosted sidecar</td><td>Fallback (no API key needed)</td></tr>
+      <tr><td>Gemini</td><td>gemini-2.0-flash</td><td>Cloud</td><td>Alternative chain member</td></tr>
+      <tr><td>OpenAI</td><td>gpt-4o-mini</td><td>Cloud</td><td>Alternative chain member</td></tr>
+      <tr><td>HuggingFace</td><td>trocr-large-printed</td><td>Cloud API</td><td>Specialized printed text</td></tr>
+      <tr><td>Azure</td><td>prebuilt-read</td><td>Azure Doc Intelligence</td><td>Enterprise fallback</td></tr>
+    </tbody>
+  </table>
+
+  <h3>10.2 Extraction Rules (10 built-in)</h3>
+  <table>
+    <thead><tr><th>Rule</th><th>Target Field</th><th>Pattern Example</th></tr></thead>
+    <tbody>
+      <tr><td>PHONE_10DIGIT</td><td>complainantPhone</td><td><code>[6-9]\d{9}</code></td></tr>
+      <tr><td>EMAIL_EXTRACT</td><td>complainantEmail</td><td>Standard email regex</td></tr>
+      <tr><td>ACCOUNT_NUM</td><td>accountNumber</td><td><code>a/c|account \d{9,18}</code></td></tr>
+      <tr><td>IFSC_CODE</td><td>ifscCode</td><td><code>[A-Z]{4}0[A-Z0-9]{6}</code></td></tr>
+      <tr><td>PAN_EXTRACT</td><td>panNumber</td><td><code>[A-Z]{5}\d{4}[A-Z]</code></td></tr>
+      <tr><td>PINCODE_EXTRACT</td><td>complainantPincode</td><td><code>[1-9]\d{5}</code></td></tr>
+      <tr><td>CPGRAMS_REF</td><td>cpgramsNumber</td><td>CPGRAMS reference pattern</td></tr>
+      <tr><td>AMOUNT_INR</td><td>amountInvolved</td><td><code>Rs\.\s*\d+</code></td></tr>
+      <tr><td>DATE_DDMMYYYY</td><td>transactionDate</td><td><code>\d{2}/\d{2}/\d{4}</code></td></tr>
+      <tr><td>NAME_SALUTATION</td><td>complainantName</td><td><code>Dear|Shri|Mr\s+Name</code></td></tr>
+    </tbody>
+  </table>
+
+  <h3>10.3 Controllers</h3>
+  <code>OcrController</code> — <code>POST /api/ocr/scan</code> (multipart file) → returns extracted JSON fields<br>
+  <code>ExtractionRuleController</code> — CRUD + test endpoint for regex rules
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- SECTION 11: EMAIL SYNDICATION -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div class="module-section" id="mod-email">
+  <h2>11. Email Syndication Module</h2>
+  <p><span class="badge badge-blue">Intake</span> Ingests complaint emails, detects vernacular language, translates, and queues for CRPC processing.</p>
+
+  <h3>11.1 Frontend Components</h3>
+  <table>
+    <thead><tr><th>Component</th><th>Purpose</th></tr></thead>
+    <tbody>
+      <tr><td>email-queue</td><td>Email intake queue with filters (status, language, date)</td></tr>
+      <tr><td>draft-detail</td><td>Individual email draft view with extracted fields</td></tr>
+      <tr><td>email-simulator</td><td>DEV tool: simulate incoming emails for testing</td></tr>
+      <tr><td>ignore-list</td><td>Manage email ignore patterns (no-reply, spam, newsletters)</td></tr>
+    </tbody>
+  </table>
+
+  <h3>11.2 Backend APIs</h3>
+  <code>EmailSyndicationApiController</code> — <code>GET /api/email/queue</code>, <code>POST /api/email/ingest</code>, <code>GET /api/email/drafts/{id}</code><br>
+  <code>EmailSimulationController</code> — <code>POST /api/dev/simulate-email</code> (dev-only)
+
+  <h3>11.3 Key Services</h3>
+  <ul>
+    <li><strong>EmailSimulationService</strong> — Simulates IMAP inbox for development/testing</li>
+    <li><strong>LanguageTranslationService</strong> — Auto-detect vernacular (12 Indian languages), translate to English</li>
+    <li><strong>OcrExtractionService</strong> — Process email attachments (PDFs, images) through OCR chain</li>
+  </ul>
+
+  <h3>11.4 Email Ignore Patterns (8 built-in)</h3>
+  <code>noreply@* | no-reply@* | mailer-daemon@* | postmaster@* | *@spam.com | notifications@linkedin.com | *@newsletter.* | donotreply@*</code>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- SECTION 12: SEARCH MODULE -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div class="module-section" id="mod-search">
+  <h2>12. Similar Cases / Search Module</h2>
+  <p><span class="badge badge-green">OpenSearch</span> Full-text search across complaints with similar case recommendation for officers.</p>
+
+  <h3>12.1 Components</h3>
+  <ul>
+    <li><strong>Frontend:</strong> <code>search.component</code> — Global search with faceted filters</li>
+    <li><strong>Backend:</strong> <code>SimilarCasesController</code> — <code>GET /api/similar-cases?complaintId={id}</code></li>
+    <li><strong>Service:</strong> <code>SimilarCasesService</code> → <code>SimilarCasesProvider</code> (interface) → <code>OpenSearchSimilarCasesProvider</code> (implementation)</li>
+  </ul>
+
+  <h3>12.2 Configuration</h3>
+  <pre><code>cms:
+  similar-cases:
+    enabled: true
+    opensearch-url: http://localhost:9200
+    index: complaints</code></pre>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- SECTION 13: REPORT BUILDER -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div class="module-section" id="mod-report">
+  <h2>13. Report Builder Module</h2>
+  <p><span class="badge badge-purple">Analytics</span> Dynamic report generation with natural language queries, semantic model, and scheduled reports.</p>
+
+  <h3>13.1 Components</h3>
+  <ul>
+    <li><strong>Frontend:</strong> <code>report-builder.component</code> — Visual report designer with drag-and-drop</li>
+    <li><strong>Backend:</strong> <code>ReportBuilderController</code> — <code>POST /api/reports/query</code>, <code>GET /api/reports/definitions</code>, <code>POST /api/reports/schedule</code></li>
+  </ul>
+
+  <h3>13.2 Service Architecture</h3>
+  <ul>
+    <li><strong>QueryCompiler</strong> — Translates semantic queries to SQL</li>
+    <li><strong>SemanticModelRegistry</strong> — Registered data models (complaints, banks, timelines)</li>
+    <li><strong>ReportSchedulerService</strong> — Cron-based report generation and email dispatch</li>
+    <li><strong>ReportQuery</strong> — DSL for report definitions</li>
+  </ul>
+
+  <h3>13.3 Entities</h3>
+  <code>ReportDefinition</code> — Saved report configs<br>
+  <code>ReportSchedule</code> — Cron schedules for automated report delivery
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- SECTION 14: NOTIFICATIONS -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div class="module-section" id="mod-notif">
+  <h2>14. Notifications Module</h2>
+  <p><span class="badge badge-orange">Multi-channel</span> In-app, email, SMS, and letter notifications with template-based rendering.</p>
+
+  <h3>14.1 Backend APIs</h3>
+  <code>NotificationController</code> — <code>GET /api/notifications</code>, <code>POST /api/notifications/{id}/read</code>, <code>POST /api/notifications/read-all</code>, <code>GET /api/notifications/unread-count</code>
+
+  <h3>14.2 Services</h3>
+  <ul>
+    <li><strong>NotificationService</strong> — Multi-channel dispatch (in-app + email + SMS)</li>
+    <li><strong>CommunicationTemplateService</strong> — Template rendering with variable interpolation ({{complainantName}}, {{complaintNumber}}, etc.)</li>
+    <li><strong>ReNotificationService</strong> — Specialized notifications to Regulated Entity nodal officers</li>
+  </ul>
+
+  <h3>14.3 Notification Types</h3>
+  <code>ASSIGNMENT | SENT_BACK | DEADLINE_WARNING | SLA_BREACH | STATUS_CHANGE | SYSTEM</code>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- SECTION 15: i18n MODULE -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div class="module-section" id="mod-i18n">
+  <h2>15. Internationalization (i18n) Module</h2>
+  <p><span class="badge badge-green">Multi-language</span> 12 supported Indian languages with CSV-based loading at startup.</p>
+
+  <h3>15.1 Supported Locales</h3>
+  <table>
+    <thead><tr><th>Code</th><th>Language</th><th>Script</th></tr></thead>
+    <tbody>
+      <tr><td>en</td><td>English</td><td>Latin</td></tr>
+      <tr><td>hi</td><td>Hindi</td><td>Devanagari</td></tr>
+      <tr><td>mr</td><td>Marathi</td><td>Devanagari</td></tr>
+      <tr><td>ta</td><td>Tamil</td><td>Tamil</td></tr>
+      <tr><td>te</td><td>Telugu</td><td>Telugu</td></tr>
+      <tr><td>kn</td><td>Kannada</td><td>Kannada</td></tr>
+      <tr><td>bn</td><td>Bengali</td><td>Bengali</td></tr>
+      <tr><td>gu</td><td>Gujarati</td><td>Gujarati</td></tr>
+      <tr><td>ml</td><td>Malayalam</td><td>Malayalam</td></tr>
+      <tr><td>pa</td><td>Punjabi</td><td>Gurmukhi</td></tr>
+      <tr><td>or</td><td>Odia</td><td>Odia</td></tr>
+      <tr><td>as</td><td>Assamese</td><td>Assamese</td></tr>
+    </tbody>
+  </table>
+
+  <h3>15.2 Data Loading</h3>
+  <ul>
+    <li><strong>Primary:</strong> CSV file at <code>src/main/resources/data/translations.csv</code> (435 rows, 118 keys × 10 locales)</li>
+    <li><strong>Fallback:</strong> Inline Java seed (40 English + 23 Hindi keys)</li>
+    <li><strong>Initializer:</strong> <code>TranslationDataInitializer</code> (<code>@Order(2)</code>, batch saves of 200)</li>
+  </ul>
+
+  <h3>15.3 APIs</h3>
+  <code>TranslationController</code> — <code>GET /api/translations/{locale}</code>, <code>GET /api/translations/{locale}/{module}</code>, <code>GET /api/translations/locales</code>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- SECTION 16: TAT & SLA MODULE -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div class="module-section" id="mod-tat">
+  <h2>16. TAT & SLA Module</h2>
+  <p><span class="badge badge-red">Compliance</span> Turn-Around-Time calculation with business hours, holiday awareness, and breach alerting.</p>
+
+  <h3>16.1 Configuration</h3>
+  <pre><code>cms:
+  tat:
+    business-hour-start: 9
+    business-hour-end: 18
+    timezone: Asia/Kolkata
+    default-sla-hours: 240</code></pre>
+
+  <h3>16.2 Services</h3>
+  <ul>
+    <li><strong>TatCalculationService</strong> — Calculates business-hour TAT excluding holidays and weekends</li>
+    <li><strong>BusinessHoursService</strong> — Holiday-aware working day computation</li>
+    <li><strong>CepcSlaService / RbioSlaService</strong> — Department-specific SLA policies</li>
+  </ul>
+
+  <h3>16.3 Backend API</h3>
+  <code>TatController</code> — <code>GET /api/tat/calculate?from={timestamp}&hours={hours}</code>, <code>GET /api/tat/business-days?from={date}&to={date}</code>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- SECTION 17: WORKFLOW & ROUTING -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div class="module-section" id="mod-workflow">
+  <h2>17. Workflow & Routing Module</h2>
+  <p><span class="badge badge-blue">Orchestration</span> Complaint routing, department assignment, and workflow stage management.</p>
+
+  <h3>17.1 Backend APIs</h3>
+  <table>
+    <thead><tr><th>Controller</th><th>Purpose</th></tr></thead>
+    <tbody>
+      <tr><td>WorkflowController</td><td>Stage transitions: <code>POST /api/workflow/{id}/transition</code></td></tr>
+      <tr><td>ComplaintRoutingController</td><td>Department routing: <code>POST /api/routing/assign</code></td></tr>
+    </tbody>
+  </table>
+
+  <h3>17.2 Routing Logic</h3>
+  <ul>
+    <li><strong>ComplaintRoutingService</strong> — Rules-based routing to RBIO/CEPC based on entity type</li>
+    <li><code>PUBLIC_SECTOR → RBIO</code></li>
+    <li><code>PRIVATE_SECTOR | FOREIGN | NBFC | PAYMENT_BANK | CARD_NETWORK → CEPC</code></li>
+  </ul>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- SECTION 18: AUTH & SECURITY -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div class="module-section" id="mod-auth">
+  <h2>18. Authentication & Security Module</h2>
+  <p><span class="badge badge-red">Security</span> Dual authentication: OTP for citizens, Keycloak SSO for staff.</p>
+
+  <h3>18.1 Auth Architecture</h3>
+  <table>
+    <thead><tr><th>User Type</th><th>Method</th><th>Provider</th></tr></thead>
+    <tbody>
+      <tr><td>Citizens</td><td>Mobile OTP + CAPTCHA</td><td>Custom (OtpService + CaptchaService)</td></tr>
+      <tr><td>CRPC Staff</td><td>Keycloak SSO</td><td>Realm: <code>cms</code>, Client: <code>admin-cli</code></td></tr>
+      <tr><td>CEPC/RBIO Officers</td><td>Keycloak SSO</td><td>Role-based access</td></tr>
+      <tr><td>RE Portal (Banks)</td><td>Keycloak SSO</td><td>RE-specific realm client</td></tr>
+      <tr><td>Admin</td><td>Keycloak SSO</td><td>Admin role</td></tr>
+    </tbody>
+  </table>
+
+  <h3>18.2 Security Filters (Request Pipeline)</h3>
+  <ol>
+    <li><strong>RateLimitFilter</strong> — Token bucket: 100 req/s global, 10 complaints/min per IP</li>
+    <li><strong>AntiAutomationFilter</strong> — Velocity detection (30 requests/60s), minimum form time (3s)</li>
+    <li><strong>PiiDecryptionFilter</strong> — AES-256 field-level encryption/decryption</li>
+    <li><strong>CorsConfig</strong> — Configurable origins (localhost:4200, 4201, 4202, 4300)</li>
+  </ol>
+
+  <h3>18.3 Keycloak Configuration</h3>
+  <pre><code>keycloak:
+  admin:
+    server-url: http://localhost:8180
+    realm: cms
+    client-id: admin-cli
+    username: ${KEYCLOAK_ADMIN_USER}
+    password: ${KEYCLOAK_ADMIN_PASSWORD}</code></pre>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- SECTION 19: COPILOT MODULE -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div class="module-section" id="mod-copilot">
+  <h2>19. Copilot / AI Assist Module</h2>
+  <p><span class="badge badge-purple">AI</span> AI-assisted maintainability suggestions for officers during complaint assessment.</p>
+
+  <h3>19.1 Components</h3>
+  <ul>
+    <li><strong>Backend Controller:</strong> <code>CopilotController</code> — <code>POST /api/copilot/suggest</code></li>
+    <li><strong>Service:</strong> <code>MaintainabilityCopilotService</code> — Generates AI-assisted maintainability suggestions</li>
+    <li><strong>Integration:</strong> Uses Groq/OpenAI for NLP analysis of complaint text</li>
+  </ul>
+
+  <h3>19.2 Triage Services</h3>
+  <ul>
+    <li><strong>IntakeTriageService</strong> — Auto-triage incoming complaints (GREEN/AMBER/RED signal)</li>
+    <li><strong>CompensationPrecedentService</strong> — Suggests award amounts based on similar past cases</li>
+    <li><strong>ReResponsivenessService</strong> — Scores RE historical response patterns</li>
+  </ul>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- SECTION 20: DESKTOP SETUP GUIDE -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div class="module-section" id="desktop">
+  <h2>20. Desktop Setup Guide</h2>
+
+  <h3>20.1 Prerequisites</h3>
+  <table>
+    <thead><tr><th>Tool</th><th>Version</th><th>Purpose</th></tr></thead>
+    <tbody>
+      <tr><td>Java JDK</td><td>17+</td><td>Backend compilation and runtime</td></tr>
+      <tr><td>Maven</td><td>3.9+</td><td>Build tool</td></tr>
+      <tr><td>Node.js</td><td>20+</td><td>Frontend toolchain</td></tr>
+      <tr><td>npm</td><td>10+</td><td>Package manager</td></tr>
+      <tr><td>Angular CLI</td><td>21.x</td><td><code>npm install -g @angular/cli</code></td></tr>
+      <tr><td>MySQL</td><td>8.0+</td><td>Local development database (or Oracle 21c XE)</td></tr>
+      <tr><td>Keycloak</td><td>26.0</td><td>Identity provider</td></tr>
+      <tr><td>OpenSearch</td><td>2.18</td><td>Full-text search (optional for dev)</td></tr>
+      <tr><td>Git</td><td>2.40+</td><td>Version control</td></tr>
+      <tr><td>Docker (optional)</td><td>24+</td><td>For running infra via docker-compose</td></tr>
+    </tbody>
+  </table>
+
+  <h3>20.2 Step-by-Step Setup</h3>
+
+  <h4>Option A: Manual Setup (without Docker)</h4>
+
+  <div class="step"><span class="step-num">1</span><div class="step-content"><strong>Clone the repository</strong><br>
+  <pre><code>git clone &lt;repo-url&gt; My-HRMS-Frontend
+cd My-HRMS-Frontend/CMS2.0</code></pre></div></div>
+
+  <div class="step"><span class="step-num">2</span><div class="step-content"><strong>Start MySQL</strong><br>
+  <pre><code># Create database and user
+mysql -u root -p
+CREATE DATABASE cms_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER 'cms_user'@'localhost' IDENTIFIED BY 'cms_password';
+GRANT ALL PRIVILEGES ON cms_db.* TO 'cms_user'@'localhost';
+FLUSH PRIVILEGES;</code></pre></div></div>
+
+  <div class="step"><span class="step-num">3</span><div class="step-content"><strong>Start Keycloak</strong><br>
+  <pre><code># Windows (from c:\tools\keycloak-26.0.0)
+bin\kc.bat start-dev --http-port=8180
+
+# Linux/Mac
+bin/kc.sh start-dev --http-port=8180
+
+# Access: http://localhost:8180 (admin/admin)
+# Create realm: "cms"
+# Create client: "cms-app" (public, redirect: http://localhost:4300/*)</code></pre></div></div>
+
+  <div class="step"><span class="step-num">4</span><div class="step-content"><strong>Start OpenSearch (optional)</strong><br>
+  <pre><code># Windows (from c:\tools\opensearch-2.18.0)
+bin\opensearch.bat
+
+# Or disable in application.yml:
+# cms.similar-cases.enabled: false</code></pre></div></div>
+
+  <div class="step"><span class="step-num">5</span><div class="step-content"><strong>Start Backend</strong><br>
+  <pre><code>cd cms-backend
+mvn spring-boot:run -Dspring-boot.run.arguments="--DB_PASSWORD=cms_password"
+
+# Or with environment variables:
+set DB_PASSWORD=cms_password
+mvn spring-boot:run
+
+# Backend starts at http://localhost:8082
+# Hibernate auto-creates tables (ddl-auto=update)
+# PincodeDataInitializer loads 797 pincodes from CSV
+# TranslationDataInitializer loads 435 translations from CSV</code></pre></div></div>
+
+  <div class="step"><span class="step-num">6</span><div class="step-content"><strong>Start Frontend (Portal)</strong><br>
+  <pre><code>cd cms-portal-frontend
+npm install
+ng serve --port 4300
+
+# Portal available at http://localhost:4300</code></pre></div></div>
+
+  <div class="step"><span class="step-num">7</span><div class="step-content"><strong>Verify</strong><br>
+  <pre><code># Backend health:
+curl http://localhost:8082/actuator/health
+
+# Translations loaded:
+curl http://localhost:8082/api/translations/en
+
+# Pincode lookup:
+curl http://localhost:8082/api/location/pincode/400001</code></pre></div></div>
+
+  <h4>Option B: Docker Compose (Full Stack)</h4>
+  <div class="step"><span class="step-num">1</span><div class="step-content"><strong>Start all infrastructure</strong><br>
+  <pre><code>cd cms-infra
+docker-compose up -d
+
+# This starts:
+#   Oracle DB       → localhost:1521
+#   Kafka (KRaft)   → localhost:9092
+#   Keycloak        → localhost:8180
+#   OpenSearch      → localhost:9200
+#   Kafka UI        → localhost:8090
+#   Prometheus      → localhost:9090
+#   Grafana         → localhost:3000</code></pre></div></div>
+
+  <div class="step"><span class="step-num">2</span><div class="step-content"><strong>Run the seed script (for Oracle)</strong><br>
+  <pre><code>sqlplus cms_app/cms_app_password@//localhost:1521/XEPDB1 @CMS-Database-Init-2026-07-09.sql</code></pre></div></div>
+
+  <div class="step"><span class="step-num">3</span><div class="step-content"><strong>Start backend with Oracle profile</strong><br>
+  <pre><code>cd cms-backend
+mvn spring-boot:run -Dspring-boot.run.profiles=oracle \
+  -Dspring-boot.run.arguments="--DB_URL=jdbc:oracle:thin:@localhost:1521/XEPDB1 --DB_USERNAME=cms_app --DB_PASSWORD=cms_app_password"</code></pre></div></div>
+
+  <h3>20.3 Port Reference</h3>
+  <table class="port-table">
+    <thead><tr><th>Service</th><th>Port</th><th>URL</th></tr></thead>
+    <tbody>
+      <tr><td>CMS Backend</td><td>8082</td><td>http://localhost:8082</td></tr>
+      <tr><td>Portal Frontend</td><td>4300</td><td>http://localhost:4300</td></tr>
+      <tr><td>Staff Frontend</td><td>4200</td><td>http://localhost:4200</td></tr>
+      <tr><td>Keycloak</td><td>8180</td><td>http://localhost:8180</td></tr>
+      <tr><td>Oracle DB</td><td>1521</td><td>jdbc:oracle:thin:@localhost:1521/XEPDB1</td></tr>
+      <tr><td>MySQL</td><td>3306</td><td>jdbc:mysql://localhost:3306/cms_db</td></tr>
+      <tr><td>OpenSearch</td><td>9200</td><td>http://localhost:9200</td></tr>
+      <tr><td>OpenSearch Dashboards</td><td>5601</td><td>http://localhost:5601</td></tr>
+      <tr><td>Kafka</td><td>9092</td><td>localhost:9092</td></tr>
+      <tr><td>Kafka UI</td><td>8090</td><td>http://localhost:8090</td></tr>
+      <tr><td>Prometheus</td><td>9090</td><td>http://localhost:9090</td></tr>
+      <tr><td>Grafana</td><td>3000</td><td>http://localhost:3000 (admin/admin)</td></tr>
+      <tr><td>PaddleOCR Sidecar</td><td>8100</td><td>http://localhost:8100</td></tr>
+    </tbody>
+  </table>
+
+  <h3>20.4 Environment Variables</h3>
+  <table>
+    <thead><tr><th>Variable</th><th>Default</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td>DB_URL</td><td>jdbc:mysql://localhost:3306/cms_db...</td><td>Database JDBC URL</td></tr>
+      <tr><td>DB_USERNAME</td><td>cms_user</td><td>Database username</td></tr>
+      <tr><td>DB_PASSWORD</td><td>(empty)</td><td>Database password</td></tr>
+      <tr><td>KEYCLOAK_URL</td><td>http://localhost:8180</td><td>Keycloak server URL</td></tr>
+      <tr><td>KEYCLOAK_REALM</td><td>cms</td><td>Keycloak realm name</td></tr>
+      <tr><td>KAFKA_BOOTSTRAP</td><td>localhost:9092</td><td>Kafka broker address</td></tr>
+      <tr><td>OPENSEARCH_URL</td><td>http://localhost:9200</td><td>OpenSearch URL</td></tr>
+      <tr><td>GROQ_API_KEY</td><td>(empty)</td><td>Groq API key for OCR</td></tr>
+      <tr><td>OCR_CHAIN</td><td>groq, paddle</td><td>OCR provider chain order</td></tr>
+      <tr><td>CMS_CORS_ORIGINS</td><td>http://localhost:4200,...4300</td><td>Allowed CORS origins</td></tr>
+      <tr><td>OTP_DEV_AUTO_POPULATE</td><td>false</td><td>Auto-fill OTP in dev mode</td></tr>
+    </tbody>
+  </table>
+
+  <h3>20.5 Data Initialization at Startup</h3>
+  <table>
+    <thead><tr><th>Initializer</th><th>Order</th><th>Source</th><th>Records</th></tr></thead>
+    <tbody>
+      <tr><td>TranslationDataInitializer</td><td>@Order(2)</td><td>data/translations.csv</td><td>118 keys × 10 locales = 1180</td></tr>
+      <tr><td>PincodeDataInitializer</td><td>@Order(5)</td><td>data/pincodes.csv</td><td>797 pincodes (23 states)</td></tr>
+      <tr><td>DataInitializer</td><td>default</td><td>Inline Java</td><td>Banks, categories, holidays (from SQL)</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- SECTION 21: OPENSHIFT DEPLOYMENT GUIDE -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div class="module-section" id="openshift">
+  <h2>21. OpenShift Deployment Guide</h2>
+
+  <h3>21.1 Namespace & Architecture</h3>
+  <pre><code>Namespace: rbi-cms
+Registry:  image-registry.openshift-image-registry.svc:5000/rbi-cms
+Services:  16 deployments
+Storage:   NFS (managed-nfs-storage class)</code></pre>
+
+  <h3>21.2 Deployment Phases</h3>
+  <table>
+    <thead><tr><th>Phase</th><th>Components</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>1. Foundation</td><td>Namespace (rbi-cms)</td><td>Labels: app.kubernetes.io/part-of=rbi-cms</td></tr>
+      <tr><td>2. Config</td><td>ConfigMap + 5 Secrets</td><td>cms-common-config, cms-db-secret, cms-keycloak-secret, cms-sms-secret, cms-opensearch-secret, cms-kafka-secret</td></tr>
+      <tr><td>3. Storage</td><td>2 PVCs (10Gi + 20Gi)</td><td>ReadWriteMany, managed-nfs-storage</td></tr>
+      <tr><td>4. Core</td><td>audit, storage, paddle-ocr, notification, search</td><td>No inter-service dependencies</td></tr>
+      <tr><td>5. Business</td><td>rules, eligibility, sla-monitor, assignment, workflow, ingestion, outbox-publisher</td><td>Depend on core services</td></tr>
+      <tr><td>6. Backend</td><td>cms-backend (2 replicas)</td><td>Depends on all services</td></tr>
+      <tr><td>7. Gateway</td><td>cms-api-gateway (2 replicas)</td><td>Routes to backend</td></tr>
+      <tr><td>8. Frontends</td><td>portal-frontend, staff-frontend</td><td>Depend on gateway</td></tr>
+    </tbody>
+  </table>
+
+  <h3>21.3 ConfigMap (cms-common-config)</h3>
+  <pre><code>DB_HOST: oracle-db-service.rbi-cms.svc.cluster.local
+DB_PORT: "1521"
+DB_SERVICE: "CMSDB"
+KAFKA_BOOTSTRAP_SERVERS: kafka-service.rbi-cms.svc.cluster.local:9092
+KEYCLOAK_ISSUER_URI: http://keycloak-service.rbi-cms.svc.cluster.local:8180/realms/cms
+OPENSEARCH_HOST: opensearch-service.rbi-cms.svc.cluster.local
+OPENSEARCH_PORT: "9200"
+STORAGE_ROOT: /data/cms/storage
+SMTP_HOST: smtp-relay.rbi-cms.svc.cluster.local
+CMS_PADDLE_OCR_URL: http://cms-paddle-ocr.rbi-cms.svc.cluster.local:8000</code></pre>
+
+  <h3>21.4 Deployment Commands</h3>
+
+  <h4>Full Deployment (all services)</h4>
+  <pre><code># Login to OpenShift
+oc login --server=https://api.ocp-cluster.rbi.internal:6443
+
+# Deploy everything (ordered)
+cd CMS2.0/deployment
+./deploy-all.sh
+
+# Verify
+oc get pods -n rbi-cms
+oc get routes -n rbi-cms</code></pre>
+
+  <h4>Single Service Build & Deploy</h4>
+  <pre><code># Build and push a single service
+./build-and-push.sh cms-backend v1.0.1
+
+# Trigger rollout
+oc rollout restart deployment/cms-backend -n rbi-cms
+
+# Watch rollout
+oc rollout status deployment/cms-backend -n rbi-cms</code></pre>
+
+  <h3>21.5 Resource Allocation</h3>
+  <table>
+    <thead><tr><th>Service</th><th>Replicas</th><th>CPU (req/limit)</th><th>Memory (req/limit)</th></tr></thead>
+    <tbody>
+      <tr><td>cms-backend</td><td>2</td><td>250m / 1000m</td><td>512Mi / 1Gi</td></tr>
+      <tr><td>cms-api-gateway</td><td>2</td><td>100m / 500m</td><td>256Mi / 512Mi</td></tr>
+      <tr><td>cms-portal-frontend</td><td>2</td><td>50m / 200m</td><td>64Mi / 128Mi</td></tr>
+      <tr><td>cms-paddle-ocr</td><td>1</td><td>500m / 2000m</td><td>1Gi / 2Gi</td></tr>
+      <tr><td>Other services</td><td>1-2</td><td>100m / 500m</td><td>256Mi / 512Mi</td></tr>
+    </tbody>
+  </table>
+
+  <h3>21.6 Health Checks</h3>
+  <pre><code># All Java services expose:
+readinessProbe:
+  httpGet:
+    path: /actuator/health/readiness
+    port: 8080
+  initialDelaySeconds: 30
+  periodSeconds: 10
+
+livenessProbe:
+  httpGet:
+    path: /actuator/health/liveness
+    port: 8080
+  initialDelaySeconds: 60
+  periodSeconds: 15</code></pre>
+
+  <h3>21.7 Tekton CI/CD Pipelines</h3>
+  <table>
+    <thead><tr><th>Pipeline</th><th>Trigger</th><th>Stages</th></tr></thead>
+    <tbody>
+      <tr><td>pipeline-java-service.yaml</td><td>Git push to main</td><td>Clone → Maven Build → Unit Test → Image Build → Push → Deploy</td></tr>
+      <tr><td>pipeline-angular-frontend.yaml</td><td>Git push to main</td><td>Clone → npm install → ng build --prod → Image Build → Push → Deploy</td></tr>
+      <tr><td>pipeline-python-ocr.yaml</td><td>Git push to cms-paddle-ocr/</td><td>Clone → pip install → Image Build → Push → Deploy</td></tr>
+    </tbody>
+  </table>
+
+  <h3>21.8 Secrets Management</h3>
+  <div class="danger">
+    <strong>IMPORTANT:</strong> Never commit real credentials. Update these in OpenShift directly:
+  </div>
+  <pre><code># Update database password
+oc create secret generic cms-db-secret \
+  --from-literal=DB_USER=cms_app \
+  --from-literal=DB_PASSWORD='REAL_PASSWORD_HERE' \
+  -n rbi-cms --dry-run=client -o yaml | oc apply -f -
+
+# Update Keycloak credentials
+oc create secret generic cms-keycloak-secret \
+  --from-literal=KEYCLOAK_ADMIN_USER=admin \
+  --from-literal=KEYCLOAK_ADMIN_PASSWORD='REAL_PASSWORD_HERE' \
+  -n rbi-cms --dry-run=client -o yaml | oc apply -f -</code></pre>
+
+  <h3>21.9 Monitoring Setup</h3>
+  <ul>
+    <li><strong>Prometheus:</strong> Scrapes <code>/actuator/prometheus</code> from all Java services (annotation-based discovery)</li>
+    <li><strong>Grafana:</strong> Pre-configured dashboards for JVM metrics, HTTP latency, Kafka consumer lag</li>
+    <li><strong>Alerts:</strong> SLA breach (>95% utilization), Pod restart count, Error rate > 5%</li>
+  </ul>
+
+  <h3>21.10 Frontend OpenShift Environment</h3>
+  <pre><code>// environment.openshift.ts
+export const environment = {
+  production: true,
+  apiBaseUrl: '',               // Same-origin (routed via gateway)
+  keycloakUrl: '/auth',         // Relative path via route
+  realm: 'cms',
+  sessionTimeoutMinutes: 15,
+  maxFileSizeMB: 5,
+  maxFileCount: 10,
+};</code></pre>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- SECTION 22: API ENDPOINTS REFERENCE -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div class="module-section" id="api-ref">
+  <h2>22. API Endpoints Reference</h2>
+
+  <h3>22.1 Complete Controller → Endpoint Map</h3>
+  <table>
+    <thead><tr><th>Controller</th><th>Base Path</th><th>Module</th></tr></thead>
+    <tbody>
+      <tr><td>CitizenAuthController</td><td>/api/citizen</td><td>Public Auth</td></tr>
+      <tr><td>ComplaintApiV1Controller</td><td>/api/v1/complaints</td><td>Public</td></tr>
+      <tr><td>ComplaintController</td><td>/api/complaints</td><td>Staff</td></tr>
+      <tr><td>CrpcWorkflowController</td><td>/api/crpc</td><td>CRPC</td></tr>
+      <tr><td>CrpcDraftEnhancementController</td><td>/api/crpc/drafts</td><td>CRPC</td></tr>
+      <tr><td>CrpcInChargeController</td><td>/api/crpc/in-charge</td><td>CRPC</td></tr>
+      <tr><td>EmailSyndicationApiController</td><td>/api/email</td><td>Email Intake</td></tr>
+      <tr><td>EmailSimulationController</td><td>/api/dev</td><td>Dev Tools</td></tr>
+      <tr><td>WorkflowController</td><td>/api/workflow</td><td>Workflow</td></tr>
+      <tr><td>ComplaintRoutingController</td><td>/api/routing</td><td>Routing</td></tr>
+      <tr><td>MreController</td><td>/api/mre</td><td>MRE</td></tr>
+      <tr><td>TriageController</td><td>/api/triage</td><td>Triage</td></tr>
+      <tr><td>EligibilityWizardController</td><td>/api/v1/eligibility</td><td>Public</td></tr>
+      <tr><td>AppealController</td><td>/api/v1/appeals</td><td>Public/AA</td></tr>
+      <tr><td>RePortalController</td><td>/api/re-portal</td><td>RE Portal</td></tr>
+      <tr><td>AdminDashboardController</td><td>/api/admin</td><td>Admin</td></tr>
+      <tr><td>CommunicationTemplateController</td><td>/api/templates</td><td>Admin</td></tr>
+      <tr><td>CommentTemplateController</td><td>/api/comment-templates</td><td>Admin</td></tr>
+      <tr><td>ExtractionRuleController</td><td>/api/extraction-rules</td><td>Admin</td></tr>
+      <tr><td>RulesApiController</td><td>/api/rules</td><td>Admin</td></tr>
+      <tr><td>FormConfigController</td><td>/api/form-config</td><td>Admin</td></tr>
+      <tr><td>KeycloakUserController</td><td>/api/admin/users</td><td>Admin</td></tr>
+      <tr><td>NotificationController</td><td>/api/notifications</td><td>Notifications</td></tr>
+      <tr><td>TranslationController</td><td>/api/translations</td><td>i18n</td></tr>
+      <tr><td>OcrController</td><td>/api/ocr</td><td>OCR</td></tr>
+      <tr><td>SimilarCasesController</td><td>/api/similar-cases</td><td>Search</td></tr>
+      <tr><td>ReportBuilderController</td><td>/api/reports</td><td>Reports</td></tr>
+      <tr><td>TatController</td><td>/api/tat</td><td>TAT/SLA</td></tr>
+      <tr><td>DashboardController</td><td>/api/dashboard</td><td>Staff Dashboard</td></tr>
+      <tr><td>OfficerDashboardController</td><td>/api/officer</td><td>Officer</td></tr>
+      <tr><td>SeniorDashboardController</td><td>/api/senior</td><td>Senior</td></tr>
+      <tr><td>BankController</td><td>/api/banks</td><td>Master Data</td></tr>
+      <tr><td>CategoryController</td><td>/api/categories</td><td>Master Data</td></tr>
+      <tr><td>LocationController</td><td>/api/location</td><td>Master Data</td></tr>
+      <tr><td>GeoLocationController</td><td>/api/geo</td><td>Master Data</td></tr>
+      <tr><td>FileUploadController</td><td>/api/files</td><td>Storage</td></tr>
+      <tr><td>CopilotController</td><td>/api/copilot</td><td>AI</td></tr>
+      <tr><td>PastComplaintController</td><td>/api/past-complaints</td><td>History</td></tr>
+    </tbody>
+  </table>
+
+  <h3>22.2 Entity Count Summary</h3>
+  <table>
+    <thead><tr><th>Entity</th><th>Table</th><th>Seed Count</th></tr></thead>
+    <tbody>
+      <tr><td>Banks</td><td>BANKS</td><td>40</td></tr>
+      <tr><td>Complaint Categories</td><td>COMPLAINT_CATEGORIES</td><td>30 (15 top + 15 sub)</td></tr>
+      <tr><td>Pincodes</td><td>PINCODES</td><td>797 (CSV)</td></tr>
+      <tr><td>Regulated Entities</td><td>REGULATED_ENTITIES</td><td>25</td></tr>
+      <tr><td>Translation Keys</td><td>TRANSLATION_KEYS</td><td>118 (CSV)</td></tr>
+      <tr><td>Translations</td><td>TRANSLATIONS</td><td>1180 (CSV, 10 locales)</td></tr>
+      <tr><td>Supported Locales</td><td>SUPPORTED_LOCALES</td><td>12</td></tr>
+      <tr><td>Holidays</td><td>HOLIDAYS</td><td>37 (2026+2027)</td></tr>
+      <tr><td>Communication Templates</td><td>COMMUNICATION_TEMPLATES</td><td>7</td></tr>
+      <tr><td>Comment Templates</td><td>COMMENT_TEMPLATES</td><td>12</td></tr>
+      <tr><td>Email Ignore List</td><td>EMAIL_IGNORE_LIST</td><td>8</td></tr>
+      <tr><td>Extraction Rules</td><td>EXTRACTION_RULE</td><td>10</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- FOOTER -->
+<div style="text-align: center; padding: 40px 0; color: var(--muted); font-size: 12px;">
+  <p>CMS 2.0 — Complete Technical Documentation | Generated: 10 July 2026</p>
+  <p>Reserve Bank of India — Complaint Resolution & Process Cell</p>
+</div>
+
+</div>
+</body>
+</html>

@@ -1,3 +1,4 @@
+<app-session-timeout></app-session-timeout>
 <div class="deo-home">
   <!-- Header Bar -->
   <header class="cms-header">
@@ -16,7 +17,7 @@
       <div class="header-icons">
         <button title="Font size"><i class="pi pi-text-size"></i></button>
         <button title="Language"><i class="pi pi-globe"></i></button>
-        <button title="Notifications"><i class="pi pi-bell"></i></button>
+        <app-notification-bell></app-notification-bell>
       </div>
       <span class="user-avatar">{{ (loggedInUser?.name || 'U').charAt(0) }}</span>
       <div class="user-details">
@@ -155,6 +156,24 @@
               </span>
               Satisfies Rules
             </label>
+            <label class="toggle-filter">
+              <span class="toggle-switch" [class.active]="filterVernacular()">
+                <input type="checkbox" [checked]="filterVernacular()" (change)="filterVernacular.set(!filterVernacular())" />
+                <span class="toggle-slider"></span>
+              </span>
+              Vernacular
+            </label>
+            <select class="page-size-select" [value]="pageSize" (change)="changePageSize(+$any($event.target).value)">
+              <option [value]="10">10 / page</option>
+              <option [value]="25">25 / page</option>
+              <option [value]="50">50 / page</option>
+              <option [value]="100">100 / page</option>
+            </select>
+            @if (selectedIds().size > 0) {
+              <button class="btn btn-danger-sm" (click)="openNotAComplaintDialog()">
+                Not-a-Complaint ({{ selectedIds().size }})
+              </button>
+            }
             <button class="btn btn-icon" (click)="showColumnConfig.set(true)" title="Column Selection">
               <i class="pi pi-cog"></i>
             </button>
@@ -373,6 +392,40 @@
         <button class="btn btn-outline" (click)="clearAdvancedSearch(); showAdvancedSearch.set(false)">Clear</button>
         <button class="btn btn-outline" (click)="showAdvancedSearch.set(false)">Cancel</button>
         <button class="btn btn-primary" (click)="applyAdvancedSearch()">Search</button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Not-a-Complaint Dialog -->
+@if (showNotAComplaintDialog()) {
+  <div class="modal-overlay" (click)="showNotAComplaintDialog.set(false)">
+    <div class="modal-dialog" (click)="$event.stopPropagation()">
+      <div class="modal-title">
+        Mark as Not-a-Complaint
+        <button class="modal-close" (click)="showNotAComplaintDialog.set(false)">&times;</button>
+      </div>
+      <p class="modal-subtitle">{{ selectedIds().size }} item(s) selected</p>
+      <div class="form-field">
+        <label>Reason *</label>
+        <select [(ngModel)]="notAComplaintReason" class="full-width-input">
+          <option value="">Select a reason</option>
+          @for (reason of notAComplaintReasons; track reason) {
+            <option [value]="reason">{{ reason.replace('_', ' ') }}</option>
+          }
+        </select>
+      </div>
+      <div class="form-field">
+        <label>Remarks (max 150 characters)</label>
+        <textarea [(ngModel)]="notAComplaintRemarks" maxlength="150" rows="3" class="full-width-input"
+                  placeholder="Optional remarks..."></textarea>
+        <span class="char-count">{{ notAComplaintRemarks.length }} / 150</span>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-outline" (click)="showNotAComplaintDialog.set(false)">Cancel</button>
+        <button class="btn btn-danger" [disabled]="!notAComplaintReason" (click)="confirmNotAComplaint()">
+          Confirm Not-a-Complaint
+        </button>
       </div>
     </div>
   </div>
