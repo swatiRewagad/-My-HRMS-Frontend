@@ -1,0 +1,7 @@
+- [User Role](user_role.md) — Full-stack dev, Angular + Spring Boot + Keycloak + OpenShift, prefers concise answers
+- [CMS 2.0 Overview](project_cms2_overview.md) — RBI Complaint Management, 15 microservices, Angular 21 + Spring Boot 3.4 + Oracle + Kafka
+- [CMS 2.0 Deployment](project_cms2_deployment.md) — OpenShift flow, ConfigMaps, Secrets, Outbox pattern, runtime config injection
+- [CMS 2.0 Run Commands](reference_cms2_run_commands.md) — dev-local profile, ng serve ports, Keycloak on 9090, E2E Playwright
+- [ECM Project](project_ecm.md) — File manager with Keycloak auth, OCR, split-panel preview
+- [Stack overview](project_stack_overview.md) — Angular 20 + Spring Boot + MySQL (legacy HRMS reference)
+- [Run commands](reference_run_commands.md) — Frontend: ng serve, Backend: mvn spring-boot:run
