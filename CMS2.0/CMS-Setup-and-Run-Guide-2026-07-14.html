@@ -1,0 +1,1041 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CMS 2.0 — Setup &amp; Running Guide (2026-07-14)</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', system-ui, sans-serif; line-height: 1.7; color: #1a1a2e; background: #f8f9fa; padding: 2rem; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        h1 { font-size: 2.2rem; color: #0d47a1; margin-bottom: 0.5rem; border-bottom: 3px solid #0d47a1; padding-bottom: 0.5rem; }
+        .subtitle { color: #555; margin-bottom: 2rem; font-size: 1.1rem; }
+        h2 { font-size: 1.6rem; color: #1565c0; margin: 2.5rem 0 1rem; padding: 0.5rem 0; border-bottom: 2px solid #e3f2fd; }
+        h3 { font-size: 1.2rem; color: #2e7d32; margin: 1.5rem 0 0.5rem; }
+        h4 { font-size: 1rem; color: #4527a0; margin: 1rem 0 0.4rem; }
+        p { margin: 0.5rem 0; }
+        code { background: #e8eaf6; padding: 2px 6px; border-radius: 3px; font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 0.9em; }
+        pre { background: #263238; color: #eeffff; padding: 1.2rem; border-radius: 8px; overflow-x: auto; margin: 1rem 0; font-size: 0.85rem; line-height: 1.6; }
+        pre code { background: none; color: inherit; padding: 0; }
+        table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.9rem; }
+        th { background: #1565c0; color: white; padding: 10px 12px; text-align: left; }
+        td { padding: 8px 12px; border-bottom: 1px solid #e0e0e0; }
+        tr:nth-child(even) { background: #f5f5f5; }
+        .card { background: white; border-radius: 10px; padding: 1.5rem; margin: 1rem 0; box-shadow: 0 2px 8px rgba(0,0,0,0.08); border-left: 4px solid #1565c0; }
+        .card.green { border-left-color: #2e7d32; }
+        .card.orange { border-left-color: #e65100; }
+        .card.purple { border-left-color: #4527a0; }
+        .card.red { border-left-color: #c62828; }
+        .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 0.8rem; font-weight: 600; margin-right: 5px; }
+        .badge-blue { background: #e3f2fd; color: #1565c0; }
+        .badge-green { background: #e8f5e9; color: #2e7d32; }
+        .badge-orange { background: #fff3e0; color: #e65100; }
+        .badge-red { background: #ffebee; color: #c62828; }
+        .toc { background: white; padding: 1.5rem; border-radius: 10px; margin: 1rem 0 2rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+        .toc ul { list-style: none; padding-left: 1rem; }
+        .toc li { margin: 0.3rem 0; }
+        .toc a { color: #1565c0; text-decoration: none; }
+        .toc a:hover { text-decoration: underline; }
+        .note { background: #fff8e1; border-left: 4px solid #ffa000; padding: 0.8rem 1rem; margin: 1rem 0; border-radius: 4px; }
+        .warning { background: #ffebee; border-left: 4px solid #c62828; padding: 0.8rem 1rem; margin: 1rem 0; border-radius: 4px; }
+        .success { background: #e8f5e9; border-left: 4px solid #2e7d32; padding: 0.8rem 1rem; margin: 1rem 0; border-radius: 4px; }
+        .diagram { background: #fafafa; border: 1px solid #e0e0e0; padding: 1.5rem; border-radius: 8px; margin: 1rem 0; font-family: monospace; white-space: pre; font-size: 0.8rem; line-height: 1.5; overflow-x: auto; }
+        .step-number { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; background: #1565c0; color: white; border-radius: 50%; font-weight: bold; font-size: 0.85rem; margin-right: 8px; }
+        @media print { body { padding: 0; background: white; } .container { max-width: 100%; } pre { white-space: pre-wrap; } }
+    </style>
+</head>
+<body>
+<div class="container">
+
+<h1>CMS 2.0 — Setup &amp; Running Guide</h1>
+<p class="subtitle">RBI Complaint Management System | Date: 2026-07-14 | Version: 1.0</p>
+
+<div class="toc">
+    <strong>Table of Contents</strong>
+    <ul>
+        <li><a href="#overview">1. Project Overview &amp; Architecture</a></li>
+        <li><a href="#prerequisites">2. Prerequisites</a></li>
+        <li><a href="#ports">3. Service Port Map</a></li>
+        <li><a href="#option-a">4. Option A: Without Docker Desktop (Bare Metal)</a></li>
+        <li><a href="#option-b">5. Option B: With Docker Desktop</a></li>
+        <li><a href="#option-c">6. Option C: OpenShift Deployment</a></li>
+        <li><a href="#verification">7. Verification &amp; Health Checks</a></li>
+        <li><a href="#troubleshooting">8. Troubleshooting</a></li>
+    </ul>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="overview">1. Project Overview &amp; Architecture</h2>
+
+<div class="diagram">
+                                    BROWSER
+                                       |
+                    +------------------+------------------+
+                    |                                     |
+        cms-portal-frontend (4200)            cms-frontend (4201)
+        (Public + Staff SSO)                  (RBIO Officer Portal)
+                    |                                     |
+                    +------------------+------------------+
+                                       | /api/*
+                                       v
+                            cms-api-gateway (8080)
+                                       |
+         +----------+----------+-------+-------+----------+----------+
+         |          |          |               |          |          |
+    eligibility ingestion  workflow      assignment  sla-monitor  rules
+     (8081)      (8082)    (8083)         (8085)      (8086)    (8084)
+         |          |          |               |          |          |
+         +----------+----------+-------+-------+----------+----------+
+                                       |
+              +------------------------+------------------------+
+              |                        |                        |
+        notification (8087)      audit (8088)           search (8091)
+                                       |
+              +------------------------+------------------------+
+              |                        |                        |
+        outbox-publisher (8089)  storage (8090)      cms-backend (8082)
+                                                     (Monolith: RBIO/CEPC/AA)
+
+    INFRASTRUCTURE:
+    +------------------+  +------------------+  +------------------+
+    | Oracle DB (1521) |  | Kafka (9092)     |  | Keycloak (9090)  |
+    +------------------+  +------------------+  +------------------+
+    +------------------+  +------------------+
+    | OpenSearch (9200)|  | Redis (6379) opt |
+    +------------------+  +------------------+
+</div>
+
+<div class="card">
+    <h4>Project Structure</h4>
+    <pre><code>CMS2.0/
+├── cms-api-gateway/          # API Gateway (Spring Cloud Gateway)
+├── cms-backend/              # Monolith (RBIO + CEPC + AA workflows)
+├── cms-eligibility-service/  # MRE eligibility rules
+├── cms-ingestion-service/    # Email/form intake, OCR
+├── cms-workflow-service/     # BPMN process engine
+├── cms-rules-service/        # DRL rule management
+├── cms-assignment-service/   # Round-robin officer assignment
+├── cms-sla-monitor-service/  # SLA breach detection
+├── cms-notification-service/ # Email/SMS dispatch
+├── cms-audit-service/        # Audit trail
+├── cms-outbox-publisher/     # Outbox → Kafka publisher
+├── cms-storage-service/      # File storage
+├── cms-search-service/       # OpenSearch indexing
+├── cms-paddle-ocr/           # Python OCR service
+├── cms-portal-frontend/      # Angular — Public + Staff SSO
+├── cms-frontend/             # Angular — RBIO Officers
+├── cms-common/               # Shared DTOs/utilities
+├── cms-infrastructure/       # ConfigMaps, Secrets
+├── cms-e2e-tests/            # Playwright E2E tests
+├── database/                 # Oracle DDL scripts (V1-V4)
+├── deployment/               # Dockerfiles, OpenShift YAMLs
+└── CLAUDE.md                 # AI context file</code></pre>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="prerequisites">2. Prerequisites</h2>
+
+<table>
+    <tr><th>Tool</th><th>Version</th><th>Required For</th></tr>
+    <tr><td>JDK</td><td>21+</td><td>All backend services</td></tr>
+    <tr><td>Maven</td><td>3.9+</td><td>Building backends</td></tr>
+    <tr><td>Node.js</td><td>20+</td><td>Angular frontends</td></tr>
+    <tr><td>Angular CLI</td><td>21+</td><td>ng serve / ng build</td></tr>
+    <tr><td>Docker Desktop</td><td>4.x</td><td>Option B only</td></tr>
+    <tr><td>oc CLI</td><td>4.14+</td><td>Option C (OpenShift) only</td></tr>
+    <tr><td>Playwright</td><td>Latest</td><td>E2E tests</td></tr>
+</table>
+
+<div class="note">
+    <strong>Note:</strong> For Option A (bare metal), you need access to a Kafka server and Oracle DB server. For Option B (Docker), all infrastructure runs locally in containers.
+</div>
+
+<!-- ============================================================ -->
+<h2 id="ports">3. Service Port Map</h2>
+
+<table>
+    <tr><th>#</th><th>Service</th><th>Port</th><th>Requires DB?</th><th>Requires Kafka?</th></tr>
+    <tr><td>1</td><td>cms-api-gateway</td><td>8080</td><td>No</td><td>No</td></tr>
+    <tr><td>2</td><td>cms-eligibility-service</td><td>8081</td><td>Yes</td><td>Yes</td></tr>
+    <tr><td>3</td><td>cms-ingestion-service</td><td>8082</td><td>Yes</td><td>Yes</td></tr>
+    <tr><td>4</td><td>cms-backend (monolith)</td><td>8082</td><td>Yes</td><td>Yes</td></tr>
+    <tr><td>5</td><td>cms-workflow-service</td><td>8083</td><td>Yes</td><td>Yes</td></tr>
+    <tr><td>6</td><td>cms-rules-service</td><td>8084</td><td>Yes</td><td>Yes</td></tr>
+    <tr><td>7</td><td>cms-assignment-service</td><td>8085</td><td>Yes</td><td>Yes</td></tr>
+    <tr><td>8</td><td>cms-sla-monitor-service</td><td>8086</td><td>Yes</td><td>Yes</td></tr>
+    <tr><td>9</td><td>cms-notification-service</td><td>8087</td><td>No</td><td>Yes</td></tr>
+    <tr><td>10</td><td>cms-audit-service</td><td>8088</td><td>Yes</td><td>Yes</td></tr>
+    <tr><td>11</td><td>cms-outbox-publisher</td><td>8089</td><td>Yes</td><td>Yes</td></tr>
+    <tr><td>12</td><td>cms-storage-service</td><td>8090</td><td>No</td><td>No</td></tr>
+    <tr><td>13</td><td>cms-search-service</td><td>8091</td><td>No</td><td>Yes</td></tr>
+    <tr><td>14</td><td>cms-portal-frontend</td><td>4200</td><td>No</td><td>No</td></tr>
+    <tr><td>15</td><td>cms-frontend (officer)</td><td>4201</td><td>No</td><td>No</td></tr>
+</table>
+
+<table>
+    <tr><th>Infrastructure</th><th>Port</th><th>Notes</th></tr>
+    <tr><td>Oracle DB</td><td>1521</td><td>Service Name: CMSPDB</td></tr>
+    <tr><td>Apache Kafka</td><td>9092</td><td>+ Zookeeper: 2181</td></tr>
+    <tr><td>Keycloak</td><td>9090</td><td>Use 9090 to avoid gateway conflict</td></tr>
+    <tr><td>OpenSearch</td><td>9200</td><td>Single node (dev)</td></tr>
+    <tr><td>Redis</td><td>6379</td><td>Optional (caching)</td></tr>
+</table>
+
+<!-- ============================================================ -->
+<h2 id="option-a">4. Option A: Without Docker Desktop (Bare Metal)</h2>
+
+<div class="card green">
+    <p><strong>Use when:</strong> Kafka and Oracle are on a remote server, and you run services directly on your laptop via Maven/npm.</p>
+</div>
+
+<h3><span class="step-number">1</span> Set Environment Variables</h3>
+
+<p>Create a file <code>cms-env.sh</code> (or set in terminal):</p>
+
+<pre><code># Oracle (remote server)
+export DB_HOST=192.168.x.x
+export DB_PORT=1521
+export DB_SERVICE_NAME=CMSPDB
+export DB_USERNAME=cms_user
+export DB_PASSWORD=yourpassword
+export DB_HIBERNATE_DIALECT=org.hibernate.dialect.OracleDialect
+
+# Kafka (remote server)
+export KAFKA_BOOTSTRAP_SERVERS=192.168.x.x:9092
+
+# Keycloak (local)
+export KEYCLOAK_URL=http://localhost:9090
+export KEYCLOAK_REALM=rbi-cms
+export KEYCLOAK_ISSUER_URI=http://localhost:9090/realms/rbi-cms
+export KEYCLOAK_JWK_SET_URI=http://localhost:9090/realms/rbi-cms/protocol/openid-connect/certs
+
+# OpenSearch (local)
+export OPENSEARCH_HOST=localhost
+export OPENSEARCH_PORT=9200
+
+# CMS Backend specific
+export CMS_ENCRYPTION_SECRET=my-local-dev-secret-key-min-16-chars
+export SPRING_PROFILES_ACTIVE=default</code></pre>
+
+<h3><span class="step-number">2</span> Start Infrastructure (Local)</h3>
+
+<h4>Keycloak (port 9090)</h4>
+<pre><code>cd c:/tools/keycloak-26.0.0
+bin/kc.bat start-dev --http-port=9090</code></pre>
+
+<p>Then create realm <code>rbi-cms</code>, clients <code>cms-portal</code> &amp; <code>cms-officer-portal</code>, and users with appropriate roles.</p>
+
+<h4>OpenSearch</h4>
+<pre><code>cd c:/tools/opensearch-2.18.0
+bin/opensearch.bat</code></pre>
+
+<h3><span class="step-number">3</span> Quick Start (Backend Only — No Kafka/Oracle)</h3>
+
+<div class="success">
+    <strong>Fastest way to get running:</strong> The <code>dev-local</code> profile uses H2 in-memory DB, no Kafka required.
+</div>
+
+<pre><code>cd CMS2.0/cms-backend
+mvn spring-boot:run -Dspring-boot.run.profiles=dev-local</code></pre>
+
+<p>This gives you:</p>
+<ul>
+    <li>Backend API at <code>http://localhost:8082</code></li>
+    <li>H2 Console at <code>http://localhost:8082/h2-console</code></li>
+    <li>Pre-configured encryption secret</li>
+    <li>Auto-created schema with seed data</li>
+</ul>
+
+<h3><span class="step-number">4</span> Full Stack (All Microservices)</h3>
+
+<p>Start in this order (dependencies first):</p>
+
+<pre><code># Terminal 1: API Gateway
+cd CMS2.0/cms-api-gateway
+mvn spring-boot:run
+
+# Terminal 2: Outbox Publisher (polls DB, publishes to Kafka)
+cd CMS2.0/cms-outbox-publisher
+mvn spring-boot:run
+
+# Terminal 3-12: Core Services (can start in parallel)
+cd CMS2.0/cms-eligibility-service && mvn spring-boot:run
+cd CMS2.0/cms-ingestion-service && mvn spring-boot:run
+cd CMS2.0/cms-workflow-service && mvn spring-boot:run
+cd CMS2.0/cms-rules-service && mvn spring-boot:run
+cd CMS2.0/cms-assignment-service && mvn spring-boot:run
+cd CMS2.0/cms-sla-monitor-service && mvn spring-boot:run
+cd CMS2.0/cms-notification-service && mvn spring-boot:run
+cd CMS2.0/cms-audit-service && mvn spring-boot:run
+cd CMS2.0/cms-storage-service && mvn spring-boot:run
+cd CMS2.0/cms-search-service && mvn spring-boot:run
+
+# Terminal 13: Backend Monolith
+cd CMS2.0/cms-backend
+mvn spring-boot:run</code></pre>
+
+<h3><span class="step-number">5</span> Start Frontends</h3>
+
+<pre><code># Terminal 14: Public Portal
+cd CMS2.0/cms-portal-frontend
+ng serve --port 4200
+
+# Terminal 15: Officer Portal
+cd CMS2.0/cms-frontend
+ng serve --port 4201</code></pre>
+
+<h3><span class="step-number">6</span> Access URLs</h3>
+
+<table>
+    <tr><th>Application</th><th>URL</th></tr>
+    <tr><td>Public Portal</td><td><code>http://localhost:4200</code></td></tr>
+    <tr><td>Officer Portal</td><td><code>http://localhost:4201</code></td></tr>
+    <tr><td>Backend Health</td><td><code>http://localhost:8082/actuator/health</code></td></tr>
+    <tr><td>Gateway Health</td><td><code>http://localhost:8080/actuator/health</code></td></tr>
+    <tr><td>Keycloak Admin</td><td><code>http://localhost:9090</code></td></tr>
+    <tr><td>OpenSearch</td><td><code>http://localhost:9200</code></td></tr>
+    <tr><td>H2 Console (dev-local)</td><td><code>http://localhost:8082/h2-console</code></td></tr>
+</table>
+
+<!-- ============================================================ -->
+<h2 id="option-b">5. Option B: With Docker Desktop</h2>
+
+<div class="card purple">
+    <p><strong>Use when:</strong> You want the entire stack (infra + services) running locally in containers. No external server dependency.</p>
+</div>
+
+<h3><span class="step-number">1</span> docker-compose.yml</h3>
+
+<p>Create at <code>CMS2.0/docker-compose.yml</code>:</p>
+
+<pre><code>version: '3.8'
+
+services:
+  # ========== INFRASTRUCTURE ==========
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+    ports:
+      - "2181:2181"
+    healthcheck:
+      test: echo ruok | nc localhost 2181 | grep imok
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    healthcheck:
+      test: kafka-broker-api-versions --bootstrap-server localhost:9092
+      interval: 15s
+      timeout: 10s
+      retries: 5
+
+  oracle-db:
+    image: container-registry.oracle.com/database/express:21.3.0-xe
+    ports:
+      - "1521:1521"
+    environment:
+      ORACLE_PWD: OraclePass123
+      ORACLE_CHARACTERSET: AL32UTF8
+    volumes:
+      - oracle-data:/opt/oracle/oradata
+    healthcheck:
+      test: echo "SELECT 1 FROM DUAL;" | sqlplus -s system/OraclePass123@//localhost/XEPDB1
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 120s
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0
+    command: start-dev
+    ports:
+      - "9090:8080"
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    healthcheck:
+      test: curl -f http://localhost:8080/health/ready || exit 1
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+  opensearch:
+    image: opensearchproject/opensearch:2.18.0
+    ports:
+      - "9200:9200"
+    environment:
+      discovery.type: single-node
+      plugins.security.disabled: "true"
+      OPENSEARCH_JAVA_OPTS: "-Xms512m -Xmx512m"
+    healthcheck:
+      test: curl -f http://localhost:9200/_cluster/health || exit 1
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  mailhog:
+    image: mailhog/mailhog
+    ports:
+      - "8025:8025"
+      - "1025:1025"
+
+  # ========== BACKEND SERVICES ==========
+  cms-api-gateway:
+    build: ./cms-api-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      KEYCLOAK_ISSUER_URI: http://keycloak:8080/realms/rbi-cms
+      KEYCLOAK_JWK_SET_URI: http://keycloak:8080/realms/rbi-cms/protocol/openid-connect/certs
+    depends_on:
+      keycloak:
+        condition: service_healthy
+
+  cms-backend:
+    build: ./cms-backend
+    ports:
+      - "8082:8082"
+    environment:
+      DB_HOST: oracle-db
+      DB_PORT: 1521
+      DB_SERVICE_NAME: XEPDB1
+      DB_USERNAME: cms_user
+      DB_PASSWORD: cms_pass
+      DB_HIBERNATE_DIALECT: org.hibernate.dialect.OracleDialect
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KEYCLOAK_ISSUER_URI: http://keycloak:8080/realms/rbi-cms
+      KEYCLOAK_JWK_SET_URI: http://keycloak:8080/realms/rbi-cms/protocol/openid-connect/certs
+      CMS_ENCRYPTION_SECRET: docker-dev-secret-key-min-16-chars
+      OPENSEARCH_HOST: opensearch
+      OPENSEARCH_PORT: 9200
+    depends_on:
+      oracle-db:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+
+  cms-eligibility-service:
+    build: ./cms-eligibility-service
+    ports:
+      - "8081:8081"
+    environment:
+      DB_HOST: oracle-db
+      DB_PORT: 1521
+      DB_SERVICE_NAME: XEPDB1
+      DB_USERNAME: cms_eligibility
+      DB_PASSWORD: cms_pass
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KEYCLOAK_ISSUER_URI: http://keycloak:8080/realms/rbi-cms
+      KEYCLOAK_JWK_SET_URI: http://keycloak:8080/realms/rbi-cms/protocol/openid-connect/certs
+    depends_on:
+      oracle-db:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+
+  cms-ingestion-service:
+    build: ./cms-ingestion-service
+    ports:
+      - "8083:8082"
+    environment:
+      DB_HOST: oracle-db
+      DB_PORT: 1521
+      DB_SERVICE_NAME: XEPDB1
+      DB_USERNAME: cms_ingestion
+      DB_PASSWORD: cms_pass
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KEYCLOAK_ISSUER_URI: http://keycloak:8080/realms/rbi-cms
+      KEYCLOAK_JWK_SET_URI: http://keycloak:8080/realms/rbi-cms/protocol/openid-connect/certs
+    depends_on:
+      oracle-db:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+
+  cms-workflow-service:
+    build: ./cms-workflow-service
+    ports:
+      - "8084:8083"
+    environment:
+      DB_HOST: oracle-db
+      DB_PORT: 1521
+      DB_SERVICE_NAME: XEPDB1
+      DB_USERNAME: cms_workflow
+      DB_PASSWORD: cms_pass
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KEYCLOAK_ISSUER_URI: http://keycloak:8080/realms/rbi-cms
+      KEYCLOAK_JWK_SET_URI: http://keycloak:8080/realms/rbi-cms/protocol/openid-connect/certs
+    depends_on:
+      oracle-db:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+
+  cms-rules-service:
+    build: ./cms-rules-service
+    ports:
+      - "8085:8084"
+    environment:
+      DB_HOST: oracle-db
+      DB_PORT: 1521
+      DB_SERVICE_NAME: XEPDB1
+      DB_USERNAME: cms_rules
+      DB_PASSWORD: cms_pass
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KEYCLOAK_ISSUER_URI: http://keycloak:8080/realms/rbi-cms
+      KEYCLOAK_JWK_SET_URI: http://keycloak:8080/realms/rbi-cms/protocol/openid-connect/certs
+    depends_on:
+      oracle-db:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+
+  cms-assignment-service:
+    build: ./cms-assignment-service
+    ports:
+      - "8086:8085"
+    environment:
+      DB_HOST: oracle-db
+      DB_PORT: 1521
+      DB_SERVICE_NAME: XEPDB1
+      DB_USERNAME: cms_assignment
+      DB_PASSWORD: cms_pass
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KEYCLOAK_ISSUER_URI: http://keycloak:8080/realms/rbi-cms
+      KEYCLOAK_JWK_SET_URI: http://keycloak:8080/realms/rbi-cms/protocol/openid-connect/certs
+    depends_on:
+      oracle-db:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+
+  cms-sla-monitor-service:
+    build: ./cms-sla-monitor-service
+    ports:
+      - "8087:8086"
+    environment:
+      DB_HOST: oracle-db
+      DB_PORT: 1521
+      DB_SERVICE_NAME: XEPDB1
+      DB_USERNAME: cms_sla
+      DB_PASSWORD: cms_pass
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KEYCLOAK_ISSUER_URI: http://keycloak:8080/realms/rbi-cms
+      KEYCLOAK_JWK_SET_URI: http://keycloak:8080/realms/rbi-cms/protocol/openid-connect/certs
+    depends_on:
+      oracle-db:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+
+  cms-notification-service:
+    build: ./cms-notification-service
+    ports:
+      - "8088:8087"
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      SMTP_HOST: mailhog
+      SMTP_PORT: 1025
+    depends_on:
+      kafka:
+        condition: service_healthy
+
+  cms-audit-service:
+    build: ./cms-audit-service
+    ports:
+      - "8089:8088"
+    environment:
+      DB_HOST: oracle-db
+      DB_PORT: 1521
+      DB_SERVICE_NAME: XEPDB1
+      DB_USERNAME: cms_audit
+      DB_PASSWORD: cms_pass
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KEYCLOAK_ISSUER_URI: http://keycloak:8080/realms/rbi-cms
+      KEYCLOAK_JWK_SET_URI: http://keycloak:8080/realms/rbi-cms/protocol/openid-connect/certs
+    depends_on:
+      oracle-db:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+
+  cms-outbox-publisher:
+    build: ./cms-outbox-publisher
+    ports:
+      - "8090:8089"
+    environment:
+      DB_HOST: oracle-db
+      DB_PORT: 1521
+      DB_SERVICE_NAME: XEPDB1
+      DB_USERNAME: cms_user
+      DB_PASSWORD: cms_pass
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    depends_on:
+      oracle-db:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+
+  cms-storage-service:
+    build: ./cms-storage-service
+    ports:
+      - "8091:8090"
+    environment:
+      KEYCLOAK_ISSUER_URI: http://keycloak:8080/realms/rbi-cms
+      KEYCLOAK_JWK_SET_URI: http://keycloak:8080/realms/rbi-cms/protocol/openid-connect/certs
+    depends_on:
+      keycloak:
+        condition: service_healthy
+
+  cms-search-service:
+    build: ./cms-search-service
+    ports:
+      - "8092:8091"
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      OPENSEARCH_HOST: opensearch
+      OPENSEARCH_PORT: 9200
+      KEYCLOAK_ISSUER_URI: http://keycloak:8080/realms/rbi-cms
+      KEYCLOAK_JWK_SET_URI: http://keycloak:8080/realms/rbi-cms/protocol/openid-connect/certs
+    depends_on:
+      opensearch:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+
+  # ========== FRONTENDS ==========
+  cms-portal-frontend:
+    build: ./cms-portal-frontend
+    ports:
+      - "4200:8080"
+    environment:
+      API_BASE_URL: /api
+      KEYCLOAK_URL: http://localhost:9090
+      KEYCLOAK_REALM: rbi-cms
+      KEYCLOAK_CLIENT_ID: cms-portal
+
+  cms-frontend:
+    build: ./cms-frontend
+    ports:
+      - "4201:8080"
+    environment:
+      API_BASE_URL: /api
+      KEYCLOAK_URL: http://localhost:9090
+      KEYCLOAK_REALM: rbi-cms
+      KEYCLOAK_CLIENT_ID: cms-officer-portal
+
+volumes:
+  oracle-data:</code></pre>
+
+<h3><span class="step-number">2</span> Build &amp; Run</h3>
+
+<pre><code># Start infrastructure first (takes ~2 min for Oracle to initialize)
+docker-compose up -d zookeeper kafka oracle-db keycloak opensearch mailhog
+
+# Wait for Oracle to be ready (~90 seconds)
+docker-compose logs -f oracle-db | grep "DATABASE IS READY"
+
+# Start all application services
+docker-compose up -d
+
+# Watch logs
+docker-compose logs -f cms-backend</code></pre>
+
+<h3><span class="step-number">3</span> Initial Database Setup</h3>
+
+<pre><code># Connect to Oracle and run DDL
+docker exec -it cms2_oracle-db_1 sqlplus system/OraclePass123@XEPDB1
+
+-- Create user
+CREATE USER cms_user IDENTIFIED BY cms_pass;
+GRANT CONNECT, RESOURCE, CREATE VIEW, CREATE SEQUENCE TO cms_user;
+ALTER USER cms_user QUOTA UNLIMITED ON USERS;
+
+-- Run V1-V4 scripts
+@/path/to/V1__complete_schema.sql
+@/path/to/V4__complete_oracle_ddl.sql</code></pre>
+
+<h3><span class="step-number">4</span> Access URLs (Docker)</h3>
+
+<table>
+    <tr><th>Application</th><th>URL</th></tr>
+    <tr><td>Public Portal</td><td><code>http://localhost:4200</code></td></tr>
+    <tr><td>Officer Portal</td><td><code>http://localhost:4201</code></td></tr>
+    <tr><td>Keycloak Admin</td><td><code>http://localhost:9090</code> (admin/admin)</td></tr>
+    <tr><td>MailHog (emails)</td><td><code>http://localhost:8025</code></td></tr>
+    <tr><td>OpenSearch</td><td><code>http://localhost:9200</code></td></tr>
+    <tr><td>Kafka (host access)</td><td><code>localhost:29092</code></td></tr>
+</table>
+
+<h3><span class="step-number">5</span> Useful Docker Commands</h3>
+
+<pre><code># Stop all
+docker-compose down
+
+# Stop and remove volumes (fresh start)
+docker-compose down -v
+
+# Rebuild specific service
+docker-compose build cms-backend
+docker-compose up -d cms-backend
+
+# View logs for a service
+docker-compose logs -f cms-backend
+
+# Scale a service
+docker-compose up -d --scale cms-notification-service=2</code></pre>
+
+<!-- ============================================================ -->
+<h2 id="option-c">6. Option C: OpenShift Deployment</h2>
+
+<div class="card orange">
+    <p><strong>Use for:</strong> SIT / UAT / Production deployment on RBI OpenShift cluster.</p>
+</div>
+
+<h3>6.1 Deployment Architecture on OpenShift</h3>
+
+<div class="diagram">
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  OpenShift Cluster — Namespace: rbi-cms                                     │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌─── Routes (TLS Edge) ────────────────────────────────────────────────┐  │
+│  │  cms-portal.apps.openshift.example.com → Service:8080                │  │
+│  │  cms-staff.apps.openshift.example.com  → Service:8080                │  │
+│  └──────────────────────────────────────────────────────────────────────┘  │
+│                              │                                              │
+│  ┌─── Services (ClusterIP) ─┼──────────────────────────────────────────┐  │
+│  │  cms-portal-frontend:8080 │ cms-frontend:8080                        │  │
+│  │  cms-api-gateway:8080     │ cms-backend:8082                         │  │
+│  │  cms-eligibility:8081     │ cms-ingestion:8082                       │  │
+│  │  cms-workflow:8083        │ cms-assignment:8085                       │  │
+│  │  ...all other services                                               │  │
+│  └──────────────────────────────────────────────────────────────────────┘  │
+│                              │                                              │
+│  ┌─── ConfigMaps ───────────┼──────────────────────────────────────────┐  │
+│  │  cms-common-config        │ (Kafka, Keycloak, OpenSearch URLs)       │  │
+│  │  cms-backend-config       │ (SERVER_PORT, app-specific settings)     │  │
+│  │  cms-portal-frontend-config (API_BASE_URL, KEYCLOAK_URL, etc.)      │  │
+│  │  cms-officer-frontend-config                                         │  │
+│  │  ...per-service configs                                              │  │
+│  └──────────────────────────────────────────────────────────────────────┘  │
+│                              │                                              │
+│  ┌─── Secrets ──────────────┼──────────────────────────────────────────┐  │
+│  │  cms-db-secret            │ (DB_USERNAME, DB_PASSWORD)               │  │
+│  │  cms-kafka-secret         │ (SASL credentials if enabled)           │  │
+│  │  cms-keycloak-secret      │ (client secrets)                        │  │
+│  │  cms-encryption-secret    │ (CMS_ENCRYPTION_SECRET)                 │  │
+│  └──────────────────────────────────────────────────────────────────────┘  │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+</div>
+
+<h3>6.2 Container Lifecycle — Step by Step</h3>
+
+<div class="card">
+<h4>Phase 1: Image Build (CI/CD Pipeline)</h4>
+<pre><code># Backend services — Multi-stage Docker build
+FROM eclipse-temurin:21-jdk-alpine AS build
+WORKDIR /app
+COPY pom.xml .
+COPY src ./src
+RUN apk add --no-cache maven && mvn clean package -DskipTests -q
+
+FROM eclipse-temurin:21-jre-alpine
+COPY --from=build /app/target/*.jar app.jar
+EXPOSE 8082
+ENTRYPOINT ["java", "-XX:+UseG1GC", "-XX:MaxRAMPercentage=75.0", "-jar", "app.jar"]
+
+# Frontend services — RHEL8 nginx
+FROM rebit-quay-quay-image-registry.apps.hocpclz.rebit.local/buildpiper/rhel8_nginx_124:amd64-9.7
+COPY nginx.conf /etc/nginx/nginx.conf
+COPY src/assets/config-template.json /opt/app-root/src/config-template.json
+COPY /dist/cms-portal-frontend/browser/ /opt/app-root/src/
+CMD ["sh", "-c", "envsubst < config-template.json > config.json && nginx -g 'daemon off;'"]</code></pre>
+</div>
+
+<div class="card">
+<h4>Phase 2: Pod Initialization</h4>
+<pre><code># When OpenShift creates a Pod, it:
+# 1. Mounts ConfigMap as environment variables
+#    envFrom:
+#      - configMapRef: cms-common-config
+#      - configMapRef: cms-backend-config
+#
+# 2. Mounts Secrets as environment variables
+#    env:
+#      - name: DB_PASSWORD
+#        valueFrom:
+#          secretKeyRef:
+#            name: cms-db-secret
+#            key: DB_PASSWORD
+#
+# 3. For BACKENDS: Runs java -jar app.jar
+#    Spring Boot reads ${DB_HOST}, ${KAFKA_BOOTSTRAP_SERVERS}, etc.
+#    from application.yml which references env vars.
+#
+# 4. For FRONTENDS: Runs envsubst < config-template.json > config.json
+#    Then starts nginx serving the Angular build + config.json</code></pre>
+</div>
+
+<div class="card">
+<h4>Phase 3: Health Checks &amp; Traffic</h4>
+<pre><code># Backend readiness probe
+readinessProbe:
+  httpGet:
+    path: /actuator/health
+    port: 8082
+  initialDelaySeconds: 60
+  periodSeconds: 10
+
+# Frontend readiness probe
+readinessProbe:
+  httpGet:
+    path: /healthz
+    port: 8080
+  initialDelaySeconds: 10
+  periodSeconds: 5
+
+# Once READY → Pod receives traffic via Service → Route</code></pre>
+</div>
+
+<h3>6.3 Deployment Commands</h3>
+
+<pre><code># Login to OpenShift
+oc login https://api.openshift.example.com:6443 --token=&lt;your-token&gt;
+oc project rbi-cms
+
+# 1. Apply ConfigMaps and Secrets
+oc apply -f cms-infrastructure/openshift/configmaps.yaml
+oc apply -f cms-infrastructure/openshift/secrets.yaml
+
+# 2. Build images (via Tekton or oc directly)
+oc new-build --name=cms-backend --binary --strategy=docker
+oc start-build cms-backend --from-dir=./cms-backend --follow
+
+oc new-build --name=cms-portal-frontend --binary --strategy=docker
+oc start-build cms-portal-frontend --from-dir=./cms-portal-frontend --follow
+
+oc new-build --name=cms-frontend --binary --strategy=docker
+oc start-build cms-frontend --from-dir=./cms-frontend --follow
+
+# Repeat for each microservice...
+
+# 3. Deploy
+oc apply -f deployment/openshift/deployment-backend.yaml
+oc apply -f deployment/openshift/deployment-portal-frontend.yaml
+oc apply -f deployment/openshift/deployment-frontend.yaml
+
+# 4. Verify
+oc get pods -n rbi-cms
+oc get routes -n rbi-cms
+oc logs -f deployment/cms-backend</code></pre>
+
+<h3>6.4 Runtime Config Flow (Frontends)</h3>
+
+<div class="diagram">
+ConfigMap (cms-portal-frontend-config)
+    │
+    ├── API_BASE_URL: "/api"
+    ├── KEYCLOAK_URL: "https://keycloak.rbi.org.in"
+    ├── KEYCLOAK_REALM: "rbi-cms"
+    └── KEYCLOAK_CLIENT_ID: "cms-portal"
+        │
+        ▼ (injected as env vars into container)
+    Container Start:
+        CMD: envsubst < config-template.json > config.json
+        │
+        ▼ (produces)
+    /opt/app-root/src/config.json:
+        {
+          "apiBaseUrl": "/api",
+          "keycloakUrl": "https://keycloak.rbi.org.in",
+          "keycloakRealm": "rbi-cms",
+          "keycloakClientId": "cms-portal"
+        }
+        │
+        ▼ (served by nginx with no-cache headers)
+    Angular App fetches /config.json at startup
+        → Uses values for API calls and Keycloak init
+</div>
+
+<h3>6.5 Runtime Config Flow (Backends)</h3>
+
+<div class="diagram">
+ConfigMap (cms-common-config + cms-backend-config)
+    │
+    ├── DB_HOST: "oracle-db.rbi-cms.svc.cluster.local"
+    ├── DB_PORT: "1521"
+    ├── DB_SERVICE_NAME: "CMSPDB"
+    ├── KAFKA_BOOTSTRAP_SERVERS: "kafka.rbi-cms.svc.cluster.local:9092"
+    ├── KEYCLOAK_ISSUER_URI: "http://keycloak.rbi-cms.svc.cluster.local:8080/realms/rbi-cms"
+    └── CMS_ENCRYPTION_SECRET: (from Secret)
+        │
+        ▼ (injected as env vars via envFrom in Deployment)
+    application.yml reads:
+        spring:
+          datasource:
+            url: jdbc:oracle:thin:@${DB_HOST}:${DB_PORT}/${DB_SERVICE_NAME}
+            username: ${DB_USERNAME}
+            password: ${DB_PASSWORD}
+          kafka:
+            bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+        │
+        ▼ Spring Boot resolves placeholders from env vars
+    Application starts with all config values from OpenShift
+</div>
+
+<h3>6.6 Service Discovery (Internal DNS)</h3>
+
+<table>
+    <tr><th>Service</th><th>Internal DNS (ClusterIP)</th></tr>
+    <tr><td>API Gateway</td><td><code>cms-api-gateway.rbi-cms.svc.cluster.local:8080</code></td></tr>
+    <tr><td>Backend</td><td><code>cms-backend.rbi-cms.svc.cluster.local:8082</code></td></tr>
+    <tr><td>Kafka</td><td><code>kafka.rbi-cms.svc.cluster.local:9092</code></td></tr>
+    <tr><td>Oracle DB</td><td><code>oracle-db.rbi-cms.svc.cluster.local:1521</code></td></tr>
+    <tr><td>Keycloak</td><td><code>keycloak.rbi-cms.svc.cluster.local:8080</code></td></tr>
+    <tr><td>OpenSearch</td><td><code>opensearch.rbi-cms.svc.cluster.local:9200</code></td></tr>
+</table>
+
+<h3>6.7 Key Configuration Files</h3>
+
+<table>
+    <tr><th>File</th><th>Purpose</th></tr>
+    <tr><td><code>cms-infrastructure/openshift/configmaps.yaml</code></td><td>All 17 ConfigMaps (shared + per-service)</td></tr>
+    <tr><td><code>cms-infrastructure/openshift/secrets.yaml</code></td><td>DB, Kafka, Keycloak, encryption secrets</td></tr>
+    <tr><td><code>deployment/openshift/deployment-*.yaml</code></td><td>Deployment + Service + Route per service</td></tr>
+    <tr><td><code>cms-portal-frontend/src/assets/config-template.json</code></td><td>Frontend runtime config template</td></tr>
+    <tr><td><code>cms-backend/src/main/resources/application.yml</code></td><td>Backend config with ${} placeholders</td></tr>
+</table>
+
+<!-- ============================================================ -->
+<h2 id="verification">7. Verification &amp; Health Checks</h2>
+
+<h3>7.1 Backend Health</h3>
+<pre><code># Check all actuator endpoints
+curl http://localhost:8082/actuator/health
+curl http://localhost:8080/actuator/health
+
+# Expected response:
+# {"status":"UP","components":{"db":{"status":"UP"},"diskSpace":{"status":"UP"}}}</code></pre>
+
+<h3>7.2 Frontend Health</h3>
+<pre><code># nginx healthz endpoint
+curl http://localhost:4200/healthz
+# Expected: {"status":"UP"}</code></pre>
+
+<h3>7.3 E2E Tests</h3>
+<pre><code># Run all E2E tests
+cd cms-e2e-tests
+npx playwright test --project=chromium
+
+# Run specific test with browser visible
+npx playwright test tests/launch.spec.ts --headed --project=chromium
+npx playwright test tests/public-portal2.spec.ts --headed --project=chromium
+
+# View HTML report
+npx playwright show-report</code></pre>
+
+<h3>7.4 OpenShift Verification</h3>
+<pre><code># Check pod status
+oc get pods -n rbi-cms
+
+# Check routes
+oc get routes -n rbi-cms
+
+# Check logs
+oc logs -f deployment/cms-backend -n rbi-cms
+
+# Check events (for troubleshooting)
+oc get events -n rbi-cms --sort-by='.lastTimestamp' | tail -20</code></pre>
+
+<!-- ============================================================ -->
+<h2 id="troubleshooting">8. Troubleshooting</h2>
+
+<div class="card red">
+<h4>CMS_ENCRYPTION_SECRET must be set</h4>
+<p><strong>Cause:</strong> Running without <code>dev-local</code> profile and no env var set.</p>
+<p><strong>Fix:</strong> Use dev-local profile: <code>mvn spring-boot:run -Dspring-boot.run.profiles=dev-local</code></p>
+<p>Or set: <code>export CMS_ENCRYPTION_SECRET=my-secret-key-min-16-chars</code></p>
+</div>
+
+<div class="card red">
+<h4>Port 4200 already in use</h4>
+<p><strong>Cause:</strong> Previous Angular dev server still running.</p>
+<p><strong>Fix:</strong> Kill the process: <code>netstat -ano | findstr :4200</code> then <code>taskkill /PID &lt;pid&gt; /F</code></p>
+<p>Or use a different port: <code>ng serve --port 4202</code></p>
+</div>
+
+<div class="card red">
+<h4>Keycloak port conflict with API Gateway (both 8080)</h4>
+<p><strong>Cause:</strong> Both services default to port 8080.</p>
+<p><strong>Fix:</strong> Start Keycloak on 9090: <code>bin/kc.bat start-dev --http-port=9090</code></p>
+</div>
+
+<div class="card red">
+<h4>Frontend config.json 404 error</h4>
+<p><strong>Cause:</strong> <code>config.json</code> is only generated in Docker/OpenShift via <code>envsubst</code>.</p>
+<p><strong>Fix:</strong> Locally, Angular uses <code>environment.ts</code>. Ignore the 404 — it's expected in dev mode.</p>
+</div>
+
+<div class="card red">
+<h4>Oracle connection refused in Docker</h4>
+<p><strong>Cause:</strong> Oracle takes 60-120s to initialize on first run.</p>
+<p><strong>Fix:</strong> Wait for: <code>docker-compose logs -f oracle-db | grep "DATABASE IS READY"</code></p>
+</div>
+
+<div class="card red">
+<h4>Kafka consumer not receiving events</h4>
+<p><strong>Cause:</strong> Topics not auto-created or outbox-publisher not running.</p>
+<p><strong>Fix:</strong> Ensure <code>cms-outbox-publisher</code> is running. Check: <code>oc logs deployment/cms-outbox-publisher</code></p>
+</div>
+
+<div class="card red">
+<h4>OpenShift push rejected (secret scanning)</h4>
+<p><strong>Cause:</strong> API keys or secrets committed in code.</p>
+<p><strong>Fix:</strong> Use environment variables / ConfigMaps for all secrets. Never hardcode.</p>
+</div>
+
+<hr style="margin: 3rem 0; border: none; border-top: 2px solid #e0e0e0;">
+
+<h3>Comparison: Three Approaches</h3>
+
+<table>
+    <tr><th>Aspect</th><th>Bare Metal (Option A)</th><th>Docker Desktop (Option B)</th><th>OpenShift (Option C)</th></tr>
+    <tr><td>Config Source</td><td>Env vars / profile YML</td><td>docker-compose environment</td><td>ConfigMaps + Secrets</td></tr>
+    <tr><td>Service Discovery</td><td><code>localhost:port</code></td><td>Docker DNS (<code>kafka:9092</code>)</td><td>K8s DNS (<code>svc.cluster.local</code>)</td></tr>
+    <tr><td>Kafka / Oracle</td><td>Remote server</td><td>Docker containers</td><td>Managed / StatefulSet</td></tr>
+    <tr><td>Keycloak URL</td><td><code>http://localhost:9090</code></td><td><code>http://localhost:9090</code> (browser)<br><code>http://keycloak:8080</code> (internal)</td><td><code>https://keycloak.rbi.org.in</code></td></tr>
+    <tr><td>Frontend Config</td><td><code>environment.ts</code> (compile-time)</td><td><code>envsubst</code> (runtime)</td><td><code>envsubst</code> (runtime)</td></tr>
+    <tr><td>Scaling</td><td>Manual (terminals)</td><td>docker-compose scale</td><td>Auto (HPA)</td></tr>
+    <tr><td>Startup Time</td><td>~30s per service</td><td>~3-5 min (infra + services)</td><td>~2-3 min (pods ready)</td></tr>
+    <tr><td>Best For</td><td>Fast dev iteration</td><td>Full integration testing</td><td>SIT / UAT / Production</td></tr>
+</table>
+
+<hr style="margin: 2rem 0; border: none; border-top: 1px solid #e0e0e0;">
+<p style="color: #666; font-size: 0.85rem; text-align: center;">
+    CMS 2.0 — RBI Complaint Management System | Generated: 2026-07-14 | Confidential
+</p>
+
+</div>
+</body>
+</html>
