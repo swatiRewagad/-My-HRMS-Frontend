@@ -51,6 +51,10 @@ export class FileManagerComponent implements OnInit {
   activeExtraction: any = null;
   extractingFileId: number | null = null;
 
+  showConfirm = false;
+  confirmMessage = '';
+  confirmAction: (() => void) | null = null;
+
   constructor(private ecm: EcmService, private keycloak: KeycloakService) {}
 
   get availableUsers(): any[] {
@@ -128,7 +132,7 @@ export class FileManagerComponent implements OnInit {
 
   deleteFolder(folder: any, event: Event) {
     event.stopPropagation();
-    if (confirm(`Delete folder "${folder.name}" and all its contents?`)) {
+    this.openConfirm(`Delete folder "${folder.name}" and all its contents?`, () => {
       this.ecm.deleteFolder(folder.id).subscribe(() => {
         if (this.selectedFolder?.id === folder.id) {
           this.selectedFolder = null;
@@ -137,7 +141,7 @@ export class FileManagerComponent implements OnInit {
         }
         this.loadFolders();
       });
-    }
+    });
   }
 
   isOwner(folder: any): boolean {
@@ -209,8 +213,10 @@ export class FileManagerComponent implements OnInit {
   }
 
   deleteFile(file: any) {
-    this.ecm.deleteFile(file.id).subscribe(() => {
-      this.files = this.files.filter(f => f.id !== file.id);
+    this.openConfirm(`Delete file "${file.originalName}"? This cannot be undone.`, () => {
+      this.ecm.deleteFile(file.id).subscribe(() => {
+        this.files = this.files.filter(f => f.id !== file.id);
+      });
     });
   }
 
@@ -337,5 +343,22 @@ export class FileManagerComponent implements OnInit {
     if (bytes < 1024) return bytes + ' B';
     if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
     return (bytes / 1048576).toFixed(1) + ' MB';
+  }
+
+  openConfirm(message: string, action: () => void) {
+    this.confirmMessage = message;
+    this.confirmAction = action;
+    this.showConfirm = true;
+  }
+
+  executeConfirm() {
+    this.showConfirm = false;
+    this.confirmAction?.();
+    this.confirmAction = null;
+  }
+
+  cancelConfirm() {
+    this.showConfirm = false;
+    this.confirmAction = null;
   }
 }

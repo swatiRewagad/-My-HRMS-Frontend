@@ -1,0 +1,161 @@
+# ============================================================
+# CMS Backend — Dev Local Profile
+# Activate: mvn spring-boot:run -Dspring-boot.run.profiles=dev-local
+# ============================================================
+
+server:
+  port: 8082
+
+spring:
+  datasource:
+    url: jdbc:h2:mem:cms_backend;DB_CLOSE_DELAY=-1;MODE=Oracle
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 5000
+      pool-name: CMS-Backend-Dev-Pool
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+        format_sql: true
+        jdbc:
+          batch_size: 10
+        order_inserts: true
+        order_updates: true
+    defer-datasource-initialization: true
+    open-in-view: false
+  sql:
+    init:
+      mode: always
+      data-locations: classpath:data-h2.sql
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+  kafka:
+    bootstrap-servers: localhost:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all
+      retries: 1
+      properties:
+        max.block.ms: 3000
+        delivery.timeout.ms: 5000
+        request.timeout.ms: 3000
+    listener:
+      missing-topics-fatal: false
+
+  cache:
+    type: simple
+
+keycloak:
+  admin:
+    server-url: http://localhost:8180
+    realm: cms
+    client-id: admin-cli
+    username: admin
+    password: admin
+
+cms:
+  ocr:
+    chain: groq
+    groq-api-key: ${GROQ_API_KEY:}
+    groq-model: meta-llama/llama-4-scout-17b-16e-instruct
+    paddle-ocr-url: ""
+    gemini-api-key: ""
+    openai-api-key: ""
+    huggingface-api-key: ""
+    azure-endpoint: ""
+    azure-api-key: ""
+  attachments:
+    root-path: ./cms-attachments
+    max-file-size: 52428800
+    chunk-size: 5242880
+    allowed-types: pdf,png,jpg,jpeg,doc,docx,xls,xlsx,txt,csv,zip
+    max-files-per-complaint: 10
+    temp-dir: temp-chunks
+  rate-limit:
+    complaints-per-minute: 100
+    api-requests-per-second: 1000
+  encryption:
+    server-secret: dev-local-secret-key-do-not-use-in-prod
+  anti-automation:
+    velocity-window-seconds: 60
+    velocity-threshold: 100
+    min-form-submission-ms: 0
+    require-standard-headers: false
+  mre:
+    version: 1
+    re-window-days: 30
+    npci-window-days: 30
+    card-network-window-days: 60
+    filing-deadline-days: 90
+    limitation-period-years: 3
+    window-basis: BUSINESS
+  cors:
+    allowed-origins: http://localhost:4200,http://localhost:4201,http://localhost:4202,http://localhost:4300
+  similar-cases:
+    enabled: false
+    opensearch-url: http://localhost:9200
+    index: complaints
+  geo:
+    enabled: false
+  tat:
+    business-hour-start: 9
+    business-hour-end: 18
+    timezone: Asia/Kolkata
+    default-sla-hours: 240
+  auth:
+    otp:
+      length: 6
+      expiry-minutes: 10
+      max-resend-per-hour: 99
+      max-verify-attempts-per-otp: 99
+      dev-auto-populate: true
+    captcha:
+      length: 6
+      expiry-minutes: 10
+      image-width: 200
+      image-height: 60
+    cooloff:
+      progression-seconds: 5,10,20
+      max-ceiling-seconds: 20
+      reset-after-minutes: 1
+    rate-limit:
+      otp-requests-per-mobile-per-hour: 99
+      otp-requests-per-ip-per-hour: 99
+      login-attempts-per-ip-per-minute: 99
+
+crpc:
+  threshold:
+    max-per-reviewer: 50
+    overflow-target: CRPC_HEAD
+  scheduling:
+    pending-notify-cron: "0 0 9 * * MON-FRI"
+    duplicate-check-cron: "0 30 9 * * MON-FRI"
+    threshold-check-cron: "0 0 10 * * MON-FRI"
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,h2-console
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    com.hrms.cms: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+    org.springframework.security: DEBUG

@@ -413,4 +413,21 @@
   </div>
 }
 
+<!-- Confirmation Modal -->
+@if (showConfirm) {
+  <div class="modal-overlay" (click)="cancelConfirm()">
+    <div class="confirm-modal" (click)="$event.stopPropagation()">
+      <div class="confirm-icon">
+        <i class="pi pi-exclamation-triangle"></i>
+      </div>
+      <h3>Confirm Action</h3>
+      <p>{{ confirmMessage }}</p>
+      <div class="confirm-actions">
+        <button class="btn btn-secondary" (click)="cancelConfirm()">Cancel</button>
+        <button class="btn btn-danger" (click)="executeConfirm()">Delete</button>
+      </div>
+    </div>
+  </div>
+}
+
 <app-file-preview [file]="previewFile" [(visible)]="showPreview"></app-file-preview>
