@@ -726,6 +726,58 @@
 .ext-num { text-align: right; }
 .ext-desc { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
+.confirm-modal {
+  background: #fff;
+  border-radius: 16px;
+  padding: 32px;
+  width: 400px;
+  max-width: 90vw;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+
+  .confirm-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: #fef2f2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 16px;
+
+    i { font-size: 24px; color: #dc2626; }
+  }
+
+  h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: #111827;
+    margin: 0 0 8px;
+  }
+
+  p {
+    font-size: 14px;
+    color: #6b7280;
+    margin: 0 0 24px;
+    line-height: 1.5;
+  }
+
+  .confirm-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+
+    .btn { min-width: 100px; justify-content: center; }
+  }
+}
+
+.btn-danger {
+  background: #dc2626;
+  color: #fff;
+  border: none;
+  &:hover { background: #b91c1c; }
+}
+
 .share-link-result {
   padding: 16px 24px;
   border-top: 1px solid #e5e7eb;
