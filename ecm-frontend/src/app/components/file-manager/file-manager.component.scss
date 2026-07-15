@@ -172,6 +172,23 @@
     white-space: nowrap;
   }
 
+  .tree-delete-btn {
+    opacity: 0;
+    background: none;
+    border: none;
+    color: #dc2626;
+    cursor: pointer;
+    padding: 2px 4px;
+    border-radius: 4px;
+    font-size: 12px;
+    flex-shrink: 0;
+    transition: opacity 0.2s;
+
+    &:hover { background: rgba(220, 38, 38, 0.1); }
+  }
+
+  &:hover .tree-delete-btn { opacity: 1; }
+
   .tree-node-count {
     font-size: 11px;
     color: var(--color-text-muted);
@@ -463,6 +480,43 @@
   }
 
   textarea { resize: vertical; }
+}
+
+.user-checklist {
+  max-height: 200px;
+  overflow-y: auto;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 4px;
+}
+
+.user-check-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.1s;
+
+  &:hover { background: var(--color-bg); }
+
+  input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--color-primary);
+  }
+
+  .user-check-name {
+    font-size: 13px;
+    font-weight: 500;
+    flex: 1;
+  }
+
+  .user-check-email {
+    font-size: 11px;
+    color: var(--color-text-muted);
+  }
 }
 
 .radio-group {

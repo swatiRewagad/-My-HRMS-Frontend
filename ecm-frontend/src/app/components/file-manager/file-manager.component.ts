@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { EcmService } from '../../services/ecm.service';
+import { KeycloakService } from '../../services/keycloak.service';
 import { environment } from '../../../environments/environment';
 import { FilePreviewComponent } from '../file-preview/file-preview.component';
 
@@ -32,6 +33,7 @@ export class FileManagerComponent implements OnInit {
   showAccess = false;
   accessUserId = 0;
   accessPermission = 'read';
+  selectedAccessUserIds: Set<number> = new Set();
 
   showShare = false;
   shareFileId = 0;
@@ -49,7 +51,12 @@ export class FileManagerComponent implements OnInit {
   activeExtraction: any = null;
   extractingFileId: number | null = null;
 
-  constructor(private ecm: EcmService) {}
+  constructor(private ecm: EcmService, private keycloak: KeycloakService) {}
+
+  get availableUsers(): any[] {
+    const currentUsername = this.keycloak.username;
+    return this.users.filter(u => u.username !== currentUsername);
+  }
 
   ngOnInit() {
     this.loadFolders();
@@ -73,6 +80,7 @@ export class FileManagerComponent implements OnInit {
     this.selectedFolder = folder;
     this.expandedFolders.add(folder.id);
     this.buildBreadcrumbs(folder);
+    this.ecm.getFolder(folder.id).subscribe(f => this.selectedFolder = f);
     this.ecm.getFilesByFolder(folder.id).subscribe(f => this.files = f);
   }
 
@@ -116,6 +124,43 @@ export class FileManagerComponent implements OnInit {
       this.showNewFolder = false;
       this.loadFolders();
     });
+  }
+
+  deleteFolder(folder: any, event: Event) {
+    event.stopPropagation();
+    if (confirm(`Delete folder "${folder.name}" and all its contents?`)) {
+      this.ecm.deleteFolder(folder.id).subscribe(() => {
+        if (this.selectedFolder?.id === folder.id) {
+          this.selectedFolder = null;
+          this.files = [];
+          this.breadcrumbs = [];
+        }
+        this.loadFolders();
+      });
+    }
+  }
+
+  isOwner(folder: any): boolean {
+    return folder && String(this.ecm.currentUserId) === String(folder.ownerId);
+  }
+
+  canWrite(folder: any): boolean {
+    if (!folder) return false;
+    if (this.isOwner(folder)) return true;
+    const access = folder.accessList?.find((a: any) => String(a.userId) === this.ecm.currentUserId);
+    return access?.permission === 'read-write';
+  }
+
+  canManageAccess(folder: any): boolean {
+    return this.isOwner(folder) && folder?.visibility === 'public';
+  }
+
+  isReadOnly(folder: any): boolean {
+    if (!folder) return true;
+    if (this.isOwner(folder)) return false;
+    if (folder.visibility === 'public') return true;
+    const access = folder.accessList?.find((a: any) => String(a.userId) === this.ecm.currentUserId);
+    return !access || access.permission === 'read';
   }
 
   onFileSelect(event: Event) {
@@ -173,6 +218,15 @@ export class FileManagerComponent implements OnInit {
     this.showAccess = true;
     this.accessUserId = 0;
     this.accessPermission = 'read';
+    this.selectedAccessUserIds = new Set();
+  }
+
+  toggleAccessUser(userId: number) {
+    if (this.selectedAccessUserIds.has(userId)) {
+      this.selectedAccessUserIds.delete(userId);
+    } else {
+      this.selectedAccessUserIds.add(userId);
+    }
   }
 
   grantAccess() {
@@ -180,6 +234,19 @@ export class FileManagerComponent implements OnInit {
     this.ecm.grantAccess(this.selectedFolder.id, this.accessUserId, this.accessPermission).subscribe(() => {
       this.showAccess = false;
       this.ecm.getFolder(this.selectedFolder.id).subscribe(f => this.selectedFolder = f);
+    });
+  }
+
+  grantBulkAccess() {
+    if (!this.selectedFolder || this.selectedAccessUserIds.size === 0) return;
+    const requests = Array.from(this.selectedAccessUserIds).map(userId => ({
+      userId,
+      permission: this.accessPermission,
+    }));
+    this.ecm.grantBulkAccess(this.selectedFolder.id, requests).subscribe(() => {
+      this.showAccess = false;
+      this.ecm.getFolder(this.selectedFolder.id).subscribe(f => this.selectedFolder = f);
+      this.loadFolders();
     });
   }
 

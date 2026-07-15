@@ -1,6 +1,7 @@
 package com.hrms.ecm.controller;
 
 import com.hrms.ecm.entity.EcmUser;
+import com.hrms.ecm.repository.EcmUserRepository;
 import com.hrms.ecm.service.EcmService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -14,9 +15,20 @@ import java.util.List;
 public class UserController {
 
     private final EcmService ecmService;
+    private final EcmUserRepository userRepo;
 
     @GetMapping
     public ResponseEntity<List<EcmUser>> getAllUsers() {
         return ResponseEntity.ok(ecmService.getAllUsers());
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<EcmUser> getCurrentUser(@RequestHeader(value = "X-Username", required = false) String username) {
+        if (username == null || username.isBlank()) {
+            return ResponseEntity.badRequest().build();
+        }
+        return userRepo.findByUsername(username)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 }

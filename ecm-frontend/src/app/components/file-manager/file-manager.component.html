@@ -18,7 +18,7 @@
       <button class="btn btn-secondary" (click)="openNewFolder()">
         <i class="pi pi-folder-plus"></i> New Folder
       </button>
-      @if (selectedFolder) {
+      @if (selectedFolder && canWrite(selectedFolder)) {
         <button class="btn btn-primary" (click)="showUpload = true">
           <i class="pi pi-upload"></i> Upload
         </button>
@@ -56,9 +56,11 @@
               <span class="folder-desc">{{ selectedFolder.description }}</span>
             }
           </div>
-          <button class="btn btn-outline" (click)="openAccess()">
-            <i class="pi pi-users"></i> Manage Access
-          </button>
+          @if (canManageAccess(selectedFolder)) {
+            <button class="btn btn-outline" (click)="openAccess()">
+              <i class="pi pi-users"></i> Manage Access
+            </button>
+          }
         </div>
 
         @if (selectedFolder.accessList?.length) {
@@ -67,7 +69,9 @@
             @for (a of selectedFolder.accessList; track a.userId) {
               <span class="access-chip">
                 {{ a.userName }} ({{ a.permission }})
-                <i class="pi pi-times" (click)="revokeAccess(a.userId)"></i>
+                @if (canManageAccess(selectedFolder)) {
+                  <i class="pi pi-times" (click)="revokeAccess(a.userId)"></i>
+                }
               </span>
             }
           </div>
@@ -96,15 +100,17 @@
                     <i class="pi" [class.pi-file-check]="extractingFileId !== file.id" [class.pi-spin]="extractingFileId === file.id" [class.pi-spinner]="extractingFileId === file.id"></i>
                   </button>
                 }
-                <button class="icon-btn" title="Share" (click)="openShare(file.id)"><i class="pi pi-share-alt"></i></button>
-                <button class="icon-btn danger" title="Delete" (click)="deleteFile(file)"><i class="pi pi-trash"></i></button>
+                @if (canWrite(selectedFolder)) {
+                  <button class="icon-btn" title="Share" (click)="openShare(file.id)"><i class="pi pi-share-alt"></i></button>
+                  <button class="icon-btn danger" title="Delete" (click)="deleteFile(file)"><i class="pi pi-trash"></i></button>
+                }
               </span>
             </div>
           }
           @if (files.length === 0) {
             <div class="empty-table">
               <i class="pi pi-inbox"></i>
-              <p>No files in this folder. Upload your first file.</p>
+              <p>{{ canWrite(selectedFolder) ? 'No files in this folder. Upload your first file.' : 'No files in this folder.' }}</p>
             </div>
           }
         </div>
@@ -133,6 +139,11 @@
         <i class="pi pi-folder" [class.pi-folder-open]="expandedFolders.has(folder.id)"
            [style.color]="folder.visibility === 'private' ? '#dc2626' : '#f59e0b'"></i>
         <span class="tree-node-name">{{ folder.name }}</span>
+        @if (isOwner(folder)) {
+          <button class="tree-delete-btn" (click)="deleteFolder(folder, $event)" title="Delete folder">
+            <i class="pi pi-trash"></i>
+          </button>
+        }
         <span class="tree-node-count">{{ folder.fileCount || 0 }}</span>
       </div>
       @if (expandedFolders.has(folder.id) && folder.children?.length) {
@@ -228,13 +239,16 @@
       </div>
       <div class="modal-body">
         <div class="form-group">
-          <label>User</label>
-          <select [(ngModel)]="accessUserId">
-            <option [value]="0" disabled>Select a user</option>
-            @for (user of users; track user.id) {
-              <option [value]="user.id">{{ user.displayName }}</option>
+          <label>Select Users</label>
+          <div class="user-checklist">
+            @for (user of availableUsers; track user.id) {
+              <label class="user-check-item">
+                <input type="checkbox" [checked]="selectedAccessUserIds.has(user.id)" (change)="toggleAccessUser(user.id)" />
+                <span class="user-check-name">{{ user.displayName }}</span>
+                <span class="user-check-email">{{ user.email }}</span>
+              </label>
             }
-          </select>
+          </div>
         </div>
         <div class="form-group">
           <label>Permission</label>
@@ -246,7 +260,7 @@
       </div>
       <div class="modal-footer">
         <button class="btn btn-secondary" (click)="showAccess = false">Cancel</button>
-        <button class="btn btn-primary" (click)="grantAccess()">Grant Access</button>
+        <button class="btn btn-primary" (click)="grantBulkAccess()" [disabled]="selectedAccessUserIds.size === 0">Grant Access</button>
       </div>
     </div>
   </div>

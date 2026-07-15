@@ -24,6 +24,8 @@ spring:
       write-dates-as-timestamps: false
 
 ecm:
+  keycloak:
+    url: ${KEYCLOAK_URL:http://localhost:9091}
   storage:
     root-path: ${ECM_STORAGE_PATH:C:/ecm-storage}
   llm:
