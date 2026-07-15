@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders, HttpParams, HttpEventType } from '@angular/common/http';
 import { Observable, Subject, lastValueFrom } from 'rxjs';
 import { environment } from '../../environments/environment';
+import { KeycloakService } from './keycloak.service';
 
 export interface ChunkUploadProgress {
   uploadId: string;
@@ -17,17 +18,50 @@ export interface ChunkUploadProgress {
 @Injectable({ providedIn: 'root' })
 export class EcmService {
   private api = environment.apiUrl;
-  private headers = new HttpHeaders({ 'X-User-Id': '1' });
+  currentUserId = '-1';
   private chunkSize = 1024 * 1024; // 1 MB
+  private userResolved = false;
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient, private keycloak: KeycloakService) {}
+
+  private get headers(): HttpHeaders {
+    return new HttpHeaders({ 'X-User-Id': this.currentUserId });
+  }
+
+  async resolveCurrentUser(): Promise<void> {
+    if (this.userResolved) return;
+    const username = this.keycloak.username;
+    console.log('[ECM] Resolving user for:', username);
+    if (username) {
+      try {
+        const resp = await fetch(`${this.api}/users/me`, {
+          headers: { 'X-Username': username }
+        });
+        if (resp.ok) {
+          const user = await resp.json();
+          this.currentUserId = user.id.toString();
+          console.log('[ECM] Resolved userId:', this.currentUserId);
+        } else {
+          console.error('[ECM] /users/me returned:', resp.status);
+          this.currentUserId = '1';
+        }
+      } catch (e) {
+        console.error('[ECM] Failed to resolve user:', e);
+        this.currentUserId = '1';
+      }
+    } else {
+      console.warn('[ECM] No username available');
+      this.currentUserId = '1';
+    }
+    this.userResolved = true;
+  }
 
   getDashboard(): Observable<any> {
     return this.http.get(`${this.api}/dashboard`);
   }
 
   getRootFolders(): Observable<any[]> {
-    return this.http.get<any[]>(`${this.api}/folders`);
+    return this.http.get<any[]>(`${this.api}/folders`, { headers: this.headers });
   }
 
   getFolder(id: number): Observable<any> {
@@ -38,8 +72,16 @@ export class EcmService {
     return this.http.post(`${this.api}/folders`, data, { headers: this.headers });
   }
 
+  deleteFolder(folderId: number): Observable<any> {
+    return this.http.delete(`${this.api}/folders/${folderId}`, { headers: this.headers });
+  }
+
   grantAccess(folderId: number, userId: number, permission: string): Observable<any> {
     return this.http.post(`${this.api}/folders/${folderId}/access`, { userId, permission });
+  }
+
+  grantBulkAccess(folderId: number, requests: { userId: number; permission: string }[]): Observable<any> {
+    return this.http.post(`${this.api}/folders/${folderId}/access/bulk`, requests);
   }
 
   revokeAccess(folderId: number, userId: number): Observable<any> {

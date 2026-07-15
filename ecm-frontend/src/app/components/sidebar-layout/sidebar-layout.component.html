@@ -25,12 +25,15 @@
 
     <div class="sidebar-footer">
       <div class="user-info">
-        <div class="avatar">JD</div>
+        <div class="avatar">{{ userInitials }}</div>
         @if (!collapsed) {
           <div class="user-details">
-            <span class="user-name">John Doe</span>
-            <span class="user-role">Admin</span>
+            <span class="user-name">{{ keycloak.fullName || keycloak.username }}</span>
+            <span class="user-role">{{ keycloak.roles[0] || 'User' }}</span>
           </div>
+          <button class="logout-btn" (click)="logout()" title="Logout">
+            <i class="pi pi-sign-out"></i>
+          </button>
         }
       </div>
     </div>

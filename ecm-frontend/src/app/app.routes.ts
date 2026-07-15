@@ -2,6 +2,10 @@ import { Routes } from '@angular/router';
 
 export const routes: Routes = [
   {
+    path: 'realm-select',
+    loadComponent: () => import('./components/realm-select/realm-select.component').then(m => m.RealmSelectComponent),
+  },
+  {
     path: '',
     loadComponent: () => import('./components/sidebar-layout/sidebar-layout.component').then(m => m.SidebarLayoutComponent),
     children: [

@@ -17,8 +17,9 @@ public class FolderController {
     private final EcmService ecmService;
 
     @GetMapping
-    public ResponseEntity<List<FolderDto>> getRootFolders() {
-        return ResponseEntity.ok(ecmService.getRootFolders());
+    public ResponseEntity<List<FolderDto>> getRootFolders(
+            @RequestHeader(value = "X-User-Id", required = false) Long userId) {
+        return ResponseEntity.ok(ecmService.getRootFolders(userId));
     }
 
     @GetMapping("/{id}")
@@ -30,7 +31,16 @@ public class FolderController {
     public ResponseEntity<FolderDto> createFolder(
             @Valid @RequestBody CreateFolderRequest request,
             @RequestHeader(value = "X-User-Id", defaultValue = "1") Long userId) {
+        if (userId <= 0) userId = 1L;
         return ResponseEntity.ok(ecmService.createFolder(request, userId));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteFolder(
+            @PathVariable Long id,
+            @RequestHeader(value = "X-User-Id", defaultValue = "1") Long userId) {
+        ecmService.deleteFolder(id, userId);
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/{id}/access")
@@ -38,6 +48,16 @@ public class FolderController {
             @PathVariable Long id,
             @Valid @RequestBody GrantAccessRequest request) {
         ecmService.grantAccess(id, request);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/{id}/access/bulk")
+    public ResponseEntity<Void> grantBulkAccess(
+            @PathVariable Long id,
+            @RequestBody List<GrantAccessRequest> requests) {
+        for (GrantAccessRequest request : requests) {
+            ecmService.grantAccess(id, request);
+        }
         return ResponseEntity.ok().build();
     }
 

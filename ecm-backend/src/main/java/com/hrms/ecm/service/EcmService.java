@@ -90,16 +90,35 @@ public class EcmService {
 
     // ───── Folders ─────
 
-    public List<FolderDto> getRootFolders() {
+    public List<FolderDto> getRootFolders(Long userId) {
         return folderRepo.findByParentIdIsNullOrderByNameAsc().stream()
-                .map(this::toFolderDtoWithChildren)
+                .filter(f -> canUserAccessFolder(f, userId))
+                .map(f -> toFolderDtoWithChildren(f, userId))
                 .toList();
     }
 
-    private FolderDto toFolderDtoWithChildren(Folder f) {
+    public List<FolderDto> getRootFolders() {
+        return folderRepo.findByParentIdIsNullOrderByNameAsc().stream()
+                .map(f -> toFolderDtoWithChildren(f, null))
+                .toList();
+    }
+
+    private boolean canUserAccessFolder(Folder folder, Long userId) {
+        if (userId == null) return true;
+        if (folder.getOwnerId().equals(userId)) return true;
+        if ("public".equalsIgnoreCase(folder.getVisibility())) {
+            List<FolderAccess> accessList = accessRepo.findByFolderId(folder.getId());
+            if (accessList.isEmpty()) return true;
+            return accessList.stream().anyMatch(a -> a.getUserId().equals(userId));
+        }
+        return accessRepo.findByFolderIdAndUserId(folder.getId(), userId).isPresent();
+    }
+
+    private FolderDto toFolderDtoWithChildren(Folder f, Long userId) {
         FolderDto dto = toFolderDto(f);
         List<FolderDto> children = folderRepo.findByParentIdOrderByNameAsc(f.getId()).stream()
-                .map(this::toFolderDtoWithChildren)
+                .filter(child -> canUserAccessFolder(child, userId))
+                .map(child -> toFolderDtoWithChildren(child, userId))
                 .toList();
         dto.setChildren(children);
         return dto;
@@ -128,6 +147,27 @@ public class EcmService {
         folder = folderRepo.save(folder);
         logActivity("Folder created", "FOLDER", folder.getName(), ownerId);
         return toFolderDto(folder);
+    }
+
+    @Transactional
+    public void deleteFolder(Long folderId, Long userId) {
+        Folder folder = folderRepo.findById(folderId)
+                .orElseThrow(() -> new RuntimeException("Folder not found"));
+        if (!folder.getOwnerId().equals(userId)) {
+            throw new RuntimeException("Only the folder owner can delete it");
+        }
+        List<Folder> children = folderRepo.findByParentIdOrderByNameAsc(folderId);
+        for (Folder child : children) {
+            deleteFolder(child.getId(), userId);
+        }
+        List<FileEntity> files = fileRepo.findByFolderIdOrderByUploadedAtDesc(folderId);
+        for (FileEntity file : files) {
+            try { storageService.delete(file.getStoragePath()); } catch (Exception ignored) {}
+            fileRepo.delete(file);
+        }
+        accessRepo.findByFolderId(folderId).forEach(accessRepo::delete);
+        folderRepo.delete(folder);
+        logActivity("Folder deleted", "FOLDER", folder.getName(), userId);
     }
 
     @Transactional
@@ -318,6 +358,7 @@ public class EcmService {
         return FolderDto.builder()
                 .id(f.getId()).name(f.getName()).visibility(f.getVisibility())
                 .description(f.getDescription()).parentId(f.getParentId()).path(f.getPath())
+                .ownerId(f.getOwnerId())
                 .ownerName(owner != null ? owner.getDisplayName() : "Unknown")
                 .fileCount(fileRepo.countByFolderId(f.getId()))
                 .createdAt(f.getCreatedAt()).updatedAt(f.getUpdatedAt())

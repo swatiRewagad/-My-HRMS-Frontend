@@ -12,6 +12,7 @@ public class FolderDto {
     private String description;
     private Long parentId;
     private String path;
+    private Long ownerId;
     private String ownerName;
     private long fileCount;
     private List<FolderDto> children;
