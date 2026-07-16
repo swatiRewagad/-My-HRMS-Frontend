@@ -2,11 +2,11 @@
 @if (phase() === 'search') {
   <div class="page-container">
     <div class="card">
-      <h2>Withdraw Complaint</h2>
-      <p class="subtitle">Enter your complaint reference number to initiate withdrawal.</p>
+      <h2>{{ 'withdraw.title' | translate }}</h2>
+      <p class="subtitle">{{ 'withdraw.subtitle' | translate }}</p>
 
       <div class="form-group">
-        <label>Complaint Reference Number <span class="required">*</span></label>
+        <label>{{ 'withdraw.ref_label' | translate }} <span class="required">*</span></label>
         <input type="text" class="form-input" [(ngModel)]="complaintId" name="complaintId"
                placeholder="e.g., CMP-20260525-000001" (keydown.enter)="searchComplaint()">
       </div>
@@ -16,10 +16,10 @@
       }
 
       <div class="form-actions">
-        <button class="btn-secondary" (click)="goHome()">Cancel</button>
+        <button class="btn-secondary" (click)="goHome()">{{ 'withdraw.cancel' | translate }}</button>
         <button class="btn-primary" (click)="searchComplaint()" [disabled]="loading()">
-          @if (loading()) { <i class="pi pi-spinner pi-spin"></i> Searching... }
-          @else { <i class="pi pi-search"></i> Find Complaint }
+          @if (loading()) { <i class="pi pi-spinner pi-spin"></i> {{ 'withdraw.searching' | translate }} }
+          @else { <i class="pi pi-search"></i> {{ 'withdraw.find' | translate }} }
         </button>
       </div>
     </div>
@@ -30,16 +30,16 @@
 @if (phase() === 'confirm') {
   <div class="page-container">
     <div class="card">
-      <h2>Confirm Withdrawal</h2>
+      <h2>{{ 'withdraw.confirm_title' | translate }}</h2>
       <p class="subtitle">Complaint <strong>{{ complaintId }}</strong> found. Please provide the reason for withdrawal.</p>
 
       <div class="warning-box" role="alert">
         <i class="pi pi-exclamation-triangle" aria-hidden="true"></i>
-        <p>Once withdrawn, this complaint cannot be re-opened. You will need to file a new complaint if you wish to pursue the matter again.</p>
+        <p>{{ 'withdraw.warning' | translate }}</p>
       </div>
 
       <div class="form-group">
-        <label>Reason for Withdrawal <span class="required">*</span></label>
+        <label>{{ 'withdraw.reason_label' | translate }} <span class="required">*</span></label>
         <div class="radio-group">
           @for (r of reasons; track r) {
             <label class="radio-label" [class.selected]="reason === r">
@@ -52,7 +52,7 @@
 
       @if (reason === 'Other') {
         <div class="form-group">
-          <label>Please specify</label>
+          <label>{{ 'withdraw.reason_specify' | translate }}</label>
           <div class="textarea-with-speech">
             <textarea class="form-textarea" [(ngModel)]="additionalRemarks" name="additionalRemarks" rows="3"
                       placeholder="Enter your reason..."></textarea>
@@ -63,7 +63,7 @@
 
       <!-- FR-G-036: Supporting documents (optional) -->
       <div class="form-group">
-        <label>Supporting Documents <span class="optional">(Optional)</span></label>
+        <label>{{ 'withdraw.docs_label' | translate }} <span class="optional">(Optional)</span></label>
         <div class="file-upload-area">
           <input type="file" id="withdrawDocs" multiple (change)="onWithdrawalFilesSelected($event)"
                  accept=".pdf,.jpg,.jpeg,.png" class="file-input-hidden">
@@ -94,10 +94,10 @@
 
       <!-- FR-G-029: Confirmation -->
       <div class="form-actions">
-        <button class="btn-secondary" (click)="phase.set('search')">Back</button>
+        <button class="btn-secondary" (click)="phase.set('search')">{{ 'withdraw.back' | translate }}</button>
         <button class="btn-submit" (click)="confirmWithdraw()" [disabled]="loading()">
-          @if (loading()) { <i class="pi pi-spinner pi-spin"></i> Processing... }
-          @else { <i class="pi pi-times-circle"></i> Confirm Withdrawal }
+          @if (loading()) { <i class="pi pi-spinner pi-spin"></i> {{ 'withdraw.processing' | translate }} }
+          @else { <i class="pi pi-times-circle"></i> {{ 'withdraw.confirm_btn' | translate }} }
         </button>
       </div>
     </div>
@@ -109,10 +109,10 @@
   <div class="page-container">
     <div class="card success-card" role="alert" aria-live="polite">
       <div class="success-icon"><i class="pi pi-check-circle" aria-hidden="true"></i></div>
-      <h2>Complaint Withdrawn Successfully</h2>
+      <h2>{{ 'withdraw.success_title' | translate }}</h2>
       <p>Your complaint <strong>{{ withdrawnRef }}</strong> has been withdrawn. You will receive a confirmation via SMS/Email.</p>
       <div class="form-actions center">
-        <button class="btn-primary" (click)="goHome()"><i class="pi pi-home"></i> Go to Homepage</button>
+        <button class="btn-primary" (click)="goHome()"><i class="pi pi-home"></i> {{ 'withdraw.go_home' | translate }}</button>
       </div>
     </div>
   </div>

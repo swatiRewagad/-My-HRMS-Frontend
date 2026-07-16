@@ -4,12 +4,13 @@ import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
 import { PublicAuthService } from '../../../services/public-auth.service';
 import { CitizenAuthApiService, CaptchaResponse } from '../../../services/citizen-auth-api.service';
+import { TranslatePipe } from '../../../pipes/translate.pipe';
 import { environment } from '../../../../environments/environment';
 
 @Component({
   selector: 'app-public-login',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, TranslatePipe],
   templateUrl: './public-login.component.html',
   styleUrl: './public-login.component.scss'
 })

@@ -46,12 +46,7 @@
       <div class="success-icon"><i class="pi pi-check-circle"></i></div>
       <h2>Assessment Sent for Approval</h2>
       <p>Draft <strong>{{ draftId }}</strong> has been routed to
-        <strong>{{ selectedReviewer }}</strong> as
-        @if (deoDecision === 'MAINTAINABLE') {
-          <span class="badge maintainable">New Complaint (Maintainable)</span>
-        } @else {
-          <span class="badge non-maintainable">Not a Complaint (Non-Maintainable)</span>
-        }
+        <strong>{{ selectedReviewer }}</strong>
       </p>
       <button class="btn btn-primary" (click)="goBack()">Back to Home</button>
     </div>

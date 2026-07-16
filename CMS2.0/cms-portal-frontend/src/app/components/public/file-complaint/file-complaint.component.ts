@@ -5,6 +5,8 @@ import { HttpClient } from '@angular/common/http';
 import { Router, RouterLink } from '@angular/router';
 import { ComplaintService } from '../../../services/complaint.service';
 import { PublicAuthService } from '../../../services/public-auth.service';
+import { TranslationService } from '../../../services/translation.service';
+import { TranslatePipe } from '../../../pipes/translate.pipe';
 import { validateFile, validateFileSet, MAX_FILE_COUNT } from '../../../utils/file-validator';
 import { announceToScreenReader, setPageTitle } from '../../../utils/accessibility';
 import { environment } from '../../../../environments/environment';
@@ -12,18 +14,21 @@ import { environment } from '../../../../environments/environment';
 interface EligibilityQuestion {
   key: string;
   question: string;
+  translationKey?: string;
   type: 'select' | 'radio';
-  options: { label: string; value: string }[];
+  options: { label: string; value: string; translationKey?: string }[];
   blockOn: string | null;
   blockMessage: string;
+  blockMessageKey?: string;
   nonMaintainable?: boolean;
   simplifiedText?: string;
+  simplifiedTextKey?: string;
 }
 
 @Component({
   selector: 'app-public-file-complaint',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, TranslatePipe],
   templateUrl: './file-complaint.component.html',
   styleUrl: './file-complaint.component.scss'
 })
@@ -33,6 +38,7 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
   private http = inject(HttpClient);
   private router = inject(Router);
   private publicAuth = inject(PublicAuthService);
+  translationService = inject(TranslationService);
   private autoSaveTimer: any = null;
   lastSavedAt = signal('');
 
@@ -65,6 +71,7 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
     {
       key: 'regulatedEntity',
       question: 'Select Regulated Entity Name',
+      translationKey: 'eligibility.q_select_re',
       type: 'select',
       options: [],
       blockOn: null,
@@ -73,86 +80,107 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
     {
       key: 'filedWithRE',
       question: 'Have you filed a written / electronic complaint with the <RE Name>?',
+      translationKey: 'eligibility.q_filed_with_re',
       type: 'radio',
-      options: [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }],
+      options: [{ label: 'Yes', value: 'yes', translationKey: 'eligibility.opt_yes' }, { label: 'No', value: 'no', translationKey: 'eligibility.opt_no' }],
       blockOn: 'no',
       blockMessage: 'in terms of clause 10(1)(j) of Reserve Bank – Integrated Ombudsman Scheme, 2026, the complaint cannot be processed under the Scheme.',
+      blockMessageKey: 'eligibility.block_not_filed',
       nonMaintainable: true,
     },
     {
       key: 'receivedReply',
       question: 'Have you received any reply from the Entity?',
+      translationKey: 'eligibility.q_received_reply',
       type: 'radio',
-      options: [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }],
+      options: [{ label: 'Yes', value: 'yes', translationKey: 'eligibility.opt_yes' }, { label: 'No', value: 'no', translationKey: 'eligibility.opt_no' }],
       blockOn: null,
       blockMessage: '',
     },
     {
       key: 'sentReminder',
       question: 'Have you sent any reminder to the <RE Name>?',
+      translationKey: 'eligibility.q_sent_reminder',
       type: 'radio',
-      options: [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }],
+      options: [{ label: 'Yes', value: 'yes', translationKey: 'eligibility.opt_yes' }, { label: 'No', value: 'no', translationKey: 'eligibility.opt_no' }],
       blockOn: null,
       blockMessage: '',
     },
     {
       key: 'isSubJudice',
       question: 'Is the complaint relating to the same grievance which is already pending before any Court, Tribunal, Arbitrator or any other judicial or quasi-judicial forum (excluding criminal proceedings pending or decided before a Court/ Tribunal or any police investigation initiated in a criminal offence)?',
+      translationKey: 'eligibility.q_sub_judice',
       type: 'radio',
-      options: [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }],
+      options: [{ label: 'Yes', value: 'yes', translationKey: 'eligibility.opt_yes' }, { label: 'No', value: 'no', translationKey: 'eligibility.opt_no' }],
       blockOn: 'yes',
       blockMessage: 'As your complaint is sub-judice/under arbitration/already dealt with on merits by a Court/Tribunal/Arbitrator/Authority, it will be closed as Non-Maintainable under clause 10(2)(b)(ii) of the Reserve Bank - Integrated Ombudsman Scheme, 2021.',
+      blockMessageKey: 'eligibility.block_sub_judice',
       nonMaintainable: true,
       simplifiedText: 'Have you already taken this exact problem to a court, arbitrator, or another official legal authority (excluding criminal cases or police investigations)?',
+      simplifiedTextKey: 'eligibility.q_sub_judice_simple',
     },
     {
       key: 'alreadySettled',
       question: 'Is the complaint relating to the same grievance which is already settled or dealt before any Court, Tribunal, Arbitrator or any other judicial or quasi-judicial forum (excluding criminal proceedings pending or decided before a Court/ Tribunal or any police investigation initiated in a criminal offence)?',
+      translationKey: 'eligibility.q_already_settled',
       type: 'radio',
-      options: [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }],
+      options: [{ label: 'Yes', value: 'yes', translationKey: 'eligibility.opt_yes' }, { label: 'No', value: 'no', translationKey: 'eligibility.opt_no' }],
       blockOn: 'yes',
       blockMessage: 'As your complaint has already been settled or dealt with by a Court/Tribunal/Arbitrator/Authority, it will be closed as Non-Maintainable under the Reserve Bank - Integrated Ombudsman Scheme, 2021.',
+      blockMessageKey: 'eligibility.block_already_settled',
       nonMaintainable: true,
       simplifiedText: 'Has this exact problem already been resolved by a court, arbitrator, or another official legal authority (excluding criminal cases or police investigations)?',
+      simplifiedTextKey: 'eligibility.q_already_settled_simple',
     },
     {
       key: 'throughAdvocateEligibility',
       question: 'Is your complaint being made through an advocate?',
+      translationKey: 'eligibility.q_through_advocate',
       type: 'radio',
-      options: [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }],
+      options: [{ label: 'Yes', value: 'yes', translationKey: 'eligibility.opt_yes' }, { label: 'No', value: 'no', translationKey: 'eligibility.opt_no' }],
       blockOn: null,
       blockMessage: '',
       simplifiedText: 'Are you filing this complaint with the help of a lawyer or legal representative?',
+      simplifiedTextKey: 'eligibility.q_through_advocate_simple',
     },
     {
       key: 'pendingBeforeOmbudsman',
       question: 'Is the complaint relating to the same grievance which is already pending before the Ombudsman?',
+      translationKey: 'eligibility.q_pending_ombudsman',
       type: 'radio',
-      options: [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }],
+      options: [{ label: 'Yes', value: 'yes', translationKey: 'eligibility.opt_yes' }, { label: 'No', value: 'no', translationKey: 'eligibility.opt_no' }],
       blockOn: 'yes',
       blockMessage: 'Your complaint is already pending before the Ombudsman on the same grievance. Duplicate complaints cannot be filed.',
+      blockMessageKey: 'eligibility.block_pending_ombudsman',
       nonMaintainable: true,
       simplifiedText: 'Have you already filed a complaint about this same issue with the Ombudsman and it is still under review?',
+      simplifiedTextKey: 'eligibility.q_pending_ombudsman_simple',
     },
     {
       key: 'settledByOmbudsman',
       question: 'Is the complaint relating to the same grievance which is already settled or dealt with on merits by the Ombudsman?',
+      translationKey: 'eligibility.q_settled_ombudsman',
       type: 'radio',
-      options: [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }],
+      options: [{ label: 'Yes', value: 'yes', translationKey: 'eligibility.opt_yes' }, { label: 'No', value: 'no', translationKey: 'eligibility.opt_no' }],
       blockOn: 'yes',
       blockMessage: 'Your complaint has already been settled or dealt with on merits by the Ombudsman. You cannot file a fresh complaint on the same issue.',
+      blockMessageKey: 'eligibility.block_settled_ombudsman',
       nonMaintainable: true,
       simplifiedText: 'Has the Ombudsman already reviewed and resolved this same complaint in the past?',
+      simplifiedTextKey: 'eligibility.q_settled_ombudsman_simple',
     },
     {
       key: 'staffOfRE',
       question: 'Is the Complainant a staff of the RE and complaint involves employer-employee relationship?',
+      translationKey: 'eligibility.q_staff_of_re',
       type: 'radio',
-      options: [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }],
+      options: [{ label: 'Yes', value: 'yes', translationKey: 'eligibility.opt_yes' }, { label: 'No', value: 'no', translationKey: 'eligibility.opt_no' }],
       blockOn: 'yes',
       blockMessage: 'Complaints involving employer-employee relationship between the complainant and the Regulated Entity cannot be filed under the Integrated Ombudsman Scheme.',
+      blockMessageKey: 'eligibility.block_staff_of_re',
       nonMaintainable: true,
       simplifiedText: 'Are you an employee of the bank/NBFC you are complaining against, and is your complaint about your job or employment?',
+      simplifiedTextKey: 'eligibility.q_staff_of_re_simple',
     },
   ];
 
@@ -431,7 +459,12 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
   }
 
   get currentQuestionText(): string {
-    return this.currentQuestion.question.replace(/<RE Name>/g, this.selectedEntityName);
+    const q = this.currentQuestion;
+    const translated = q.translationKey
+      ? this.translationService.translate(q.translationKey)
+      : q.question;
+    const text = (translated !== q.translationKey) ? translated : q.question;
+    return text.replace(/<RE Name>/g, this.selectedEntityName).replace(/\{\{reName\}\}/g, this.selectedEntityName);
   }
 
   selectEligibilityAnswer(value: string) {

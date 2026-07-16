@@ -67,13 +67,13 @@
   <div class="session-bar" role="status" aria-live="polite">
     <div class="container session-bar-inner">
       <span class="session-user">
-        <i class="pi pi-user"></i> Logged in as: <strong>{{ authService.userIdentifier() }}</strong>
+        <i class="pi pi-user"></i> {{ 'layout.logged_in_as' | translate }} <strong>{{ authService.userIdentifier() }}</strong>
       </span>
       <span class="session-timer" [class.warning]="authService.remainingSeconds() < 120">
-        <i class="pi pi-clock"></i> Session expires in: {{ authService.getFormattedTime() }}
+        <i class="pi pi-clock"></i> {{ 'layout.session_expires' | translate }} {{ authService.getFormattedTime() }}
       </span>
       <button class="session-logout-btn" (click)="logout()">
-        <i class="pi pi-sign-out"></i> Logout
+        <i class="pi pi-sign-out"></i> {{ 'layout.logout' | translate }}
       </button>
     </div>
   </div>
@@ -85,7 +85,7 @@
 
 <!-- Need Help FAB -->
 <div class="help-fab">
-  <button class="need-help-btn" aria-label="Need help? Open support chat">Need help ?</button>
+  <button class="need-help-btn" aria-label="Need help? Open support chat">{{ 'layout.need_help' | translate }}</button>
   <button class="accessibility-fab" aria-label="Accessibility options"><i class="pi pi-user" aria-hidden="true"></i></button>
 </div>
 

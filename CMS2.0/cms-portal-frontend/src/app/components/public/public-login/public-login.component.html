@@ -1,8 +1,8 @@
 <div class="verification-page">
-  <h1 class="page-title">Verification</h1>
+  <h1 class="page-title">{{ 'login.page_title' | translate }}</h1>
 
   <div class="verify-card">
-    <h2>Verify Phone Number</h2>
+    <h2>{{ 'login.verify_phone' | translate }}</h2>
 
     <!-- Error/Cooloff Message -->
     @if (loginError) {
@@ -19,7 +19,7 @@
     @if (!otpSent()) {
       <div class="verify-form">
         <div class="form-group">
-          <label for="mobile-input">Mobile Number</label>
+          <label for="mobile-input">{{ 'login.mobile_label' | translate }}</label>
           <div class="phone-input">
             <span class="country-code" aria-hidden="true">+91</span>
             <input id="mobile-input" type="tel" maxlength="10" [(ngModel)]="mobile"
@@ -30,7 +30,7 @@
 
         <div class="captcha-section" role="group" aria-labelledby="captcha-label">
           <label id="captcha-label" class="captcha-label">
-            {{ captchaType() === 'VISUAL' ? 'Enter the text shown below' : 'Answer the question' }}
+            {{ captchaType() === 'VISUAL' ? ('login.captcha_visual' | translate) : ('login.captcha_math' | translate) }}
           </label>
 
           @if (captchaType() === 'VISUAL') {
@@ -73,22 +73,22 @@
         <button class="send-otp-btn" (click)="sendOtp()"
                 [disabled]="!mobile || !captchaInput || cooloffActive() || loading()">
           @if (loading()) {
-            <i class="pi pi-spinner pi-spin" aria-hidden="true"></i> Sending...
+            <i class="pi pi-spinner pi-spin" aria-hidden="true"></i> {{ 'login.sending' | translate }}
           } @else {
-            Send OTP
+            {{ 'login.send_otp' | translate }}
           }
         </button>
 
         <!-- Email Fallback -->
         <div class="email-fallback-section">
           <button class="link-btn" (click)="toggleEmailFallback()" type="button">
-            {{ showEmailFallback() ? 'Hide email option' : 'Send OTP to email instead' }}
+            {{ showEmailFallback() ? ('login.hide_email' | translate) : ('login.email_fallback' | translate) }}
           </button>
 
           @if (showEmailFallback()) {
             <div class="email-fallback-form">
               <div class="form-group">
-                <label for="email-input">Verified Email Address</label>
+                <label for="email-input">{{ 'login.email_label' | translate }}</label>
                 <input id="email-input" type="email" [(ngModel)]="emailForOtp"
                        placeholder="Enter your verified email"
                        aria-label="Email address for OTP delivery"
@@ -105,11 +105,11 @@
               <div class="email-actions">
                 <button class="send-otp-btn secondary" (click)="sendOtpViaEmail()"
                         [disabled]="!emailForOtp || !captchaInput || cooloffActive() || loading()">
-                  Send OTP to Email
+                  {{ 'login.send_otp_email' | translate }}
                 </button>
                 <button class="link-btn small" (click)="initiateEmailVerification()" type="button"
                         [disabled]="!emailForOtp || !mobile">
-                  Verify this email first
+                  {{ 'login.verify_email_first' | translate }}
                 </button>
               </div>
             </div>
@@ -123,17 +123,17 @@
       <div class="otp-section">
         <div class="otp-sent-msg" role="status">
           <i class="pi pi-check-circle" aria-hidden="true"></i>
-          OTP sent to <strong>+91 {{ mobile }}</strong>
+          {{ 'login.otp_sent_to' | translate }} <strong>+91 {{ mobile }}</strong>
         </div>
 
         @if (devOtpPopulated()) {
           <div class="dev-otp-notice" role="status">
             <i class="pi pi-info-circle" aria-hidden="true"></i>
-            OTP auto-populated (dev mode) — click Verify to proceed
+            {{ 'login.dev_otp_notice' | translate }}
           </div>
         }
 
-        <label class="otp-label" id="otp-label">Enter OTP</label>
+        <label class="otp-label" id="otp-label">{{ 'login.enter_otp' | translate }}</label>
         <div class="otp-inputs" role="group" aria-labelledby="otp-label">
           @for (digit of otpDigits; track $index) {
             <input type="text" maxlength="1" [value]="otpDigits[$index]"
@@ -152,17 +152,17 @@
         <button class="send-otp-btn" (click)="verifyOtp()"
                 [disabled]="cooloffActive() || loading()">
           @if (loading()) {
-            <i class="pi pi-spinner pi-spin" aria-hidden="true"></i> Verifying...
+            <i class="pi pi-spinner pi-spin" aria-hidden="true"></i> {{ 'login.verifying' | translate }}
           } @else {
-            Verify OTP
+            {{ 'login.verify_otp' | translate }}
           }
         </button>
 
         <div class="otp-footer">
           <button class="link-btn" (click)="resendOtp()" [disabled]="resendTimer > 0 || cooloffActive()">
-            {{ resendTimer > 0 ? 'Resend OTP in ' + resendTimer + 's' : 'Resend OTP' }}
+            {{ resendTimer > 0 ? ('login.resend_in' | translate) + ' ' + resendTimer + 's' : ('login.resend_otp' | translate) }}
           </button>
-          <button class="link-btn" (click)="cancelVerification()">Change Number</button>
+          <button class="link-btn" (click)="cancelVerification()">{{ 'login.change_number' | translate }}</button>
         </div>
       </div>
     }

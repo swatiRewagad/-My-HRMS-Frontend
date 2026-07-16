@@ -5,6 +5,7 @@ import { RouterLink } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../environments/environment';
 import { PublicAuthService } from '../../../services/public-auth.service';
+import { TranslatePipe } from '../../../pipes/translate.pipe';
 
 interface ComplaintRecord {
   complaintId: string;
@@ -17,7 +18,7 @@ interface ComplaintRecord {
 @Component({
   selector: 'app-complaint-history',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, TranslatePipe],
   templateUrl: './complaint-history.component.html',
   styleUrl: './complaint-history.component.scss'
 })
@@ -68,7 +69,7 @@ export class ComplaintHistoryComponent implements OnInit {
 
   getStatusClass(status: string): string {
     switch (status) {
-      case 'CLOSED': return 'status-closed';
+      case 'CLOSED': case 'NON_MAINTAINABLE': return 'status-closed';
       case 'IN_PROGRESS': return 'status-inprogress';
       case 'INFORMATION_REQUIRED': return 'status-info-required';
       default: return 'status-pending';
@@ -78,7 +79,7 @@ export class ComplaintHistoryComponent implements OnInit {
   getStatusLabel(status: string): string {
     switch (status) {
       case 'IN_PROGRESS': return 'In Progress';
-      case 'CLOSED': return 'Closed';
+      case 'CLOSED': case 'NON_MAINTAINABLE': return 'Closed';
       case 'INFORMATION_REQUIRED': return 'Information Required';
       default: return status.replace(/_/g, ' ');
     }

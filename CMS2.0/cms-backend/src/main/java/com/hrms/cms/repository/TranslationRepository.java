@@ -1,6 +1,7 @@
 package com.hrms.cms.repository;
 
 import com.hrms.cms.entity.Translation;
+import com.hrms.cms.entity.TranslationKey;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -10,6 +11,8 @@ import java.util.List;
 
 @Repository
 public interface TranslationRepository extends JpaRepository<Translation, Long> {
+
+    boolean existsByTranslationKeyAndLocale(TranslationKey translationKey, String locale);
 
     @Query("SELECT t FROM Translation t JOIN FETCH t.translationKey WHERE t.locale = :locale")
     List<Translation> findAllByLocale(@Param("locale") String locale);

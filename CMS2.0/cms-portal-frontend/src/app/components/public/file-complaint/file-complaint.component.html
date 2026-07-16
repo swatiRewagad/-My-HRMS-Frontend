@@ -9,7 +9,7 @@
       @if (lastSavedAt()) {
         <span class="last-saved-text">Last saved at {{ lastSavedAt() }}</span>
       }
-      <button class="btn-link" (click)="saveDraft()"><i class="pi pi-save"></i> Save Draft</button>
+      <button class="btn-link" (click)="saveDraft()"><i class="pi pi-save"></i> {{ 'form.save' | translate }}</button>
     </div>
   </div>
 </div>
@@ -19,8 +19,8 @@
   <div class="page-container eligibility-page">
 
     <div class="eligibility-page-header">
-      <span class="elig-label">FILE A NEW COMPLAINT</span>
-      <h1 class="elig-heading">Check your eligibility to proceed</h1>
+      <span class="elig-label">{{ 'eligibility.title' | translate }}</span>
+      <h1 class="elig-heading">{{ 'eligibility.subtitle' | translate }}</h1>
     </div>
 
     <div class="eligibility-card">
@@ -36,17 +36,17 @@
       </div>
 
       @if (currentQuestion.type !== 'select') {
-        <p class="mandatory-note"><i class="pi pi-info-circle"></i> All fields are mandatory unless marked as Optional.</p>
+        <p class="mandatory-note"><i class="pi pi-info-circle"></i> {{ 'eligibility.mandatory_note' | translate }}</p>
       }
 
       <!-- Question -->
       <div class="question-block">
         @if (currentQuestion.type === 'select') {
           <h3 class="select-heading">{{ currentQuestionText }}</h3>
-          <p class="select-desc">Select the financial institution—such as a bank, Non-Banking Financial Company (NBFC), or payment processor—licensed and supervised by the Reserve Bank of India against which you wish to file a complaint.</p>
+          <p class="select-desc">{{ 'eligibility.select_desc' | translate }}</p>
           <select class="form-select entity-select" [ngModel]="eligibilityAnswers[currentQuestion.key]"
                   (ngModelChange)="selectEligibilityAnswer($event)" [attr.name]="currentQuestion.key">
-            <option value="">Select a Value</option>
+            <option value="">{{ 'eligibility.select_placeholder' | translate }}</option>
             @for (opt of currentQuestion.options; track opt.value) {
               <option [value]="opt.value">{{ opt.label }}</option>
             }
@@ -60,10 +60,10 @@
           </p>
           @if (currentQuestion.simplifiedText) {
             <button class="simplify-btn" (click)="showSimplified.set(!showSimplified())">
-              <span class="simplify-icon">?</span> Simplify For Me
+              <span class="simplify-icon">?</span> {{ 'eligibility.simplify_btn' | translate }}
             </button>
             @if (showSimplified()) {
-              <div class="simplified-box">{{ currentQuestion.simplifiedText }}</div>
+              <div class="simplified-box">{{ currentQuestion.simplifiedTextKey ? (currentQuestion.simplifiedTextKey | translate) : currentQuestion.simplifiedText }}</div>
             }
           }
           <div class="radio-list">
@@ -71,7 +71,7 @@
               <label class="radio-option" [class.selected]="eligibilityAnswers[currentQuestion.key] === opt.value">
                 <input type="radio" [name]="currentQuestion.key" [value]="opt.value"
                        [ngModel]="eligibilityAnswers[currentQuestion.key]" (ngModelChange)="selectEligibilityAnswer($event)">
-                <span>{{ opt.label }}</span>
+                <span>{{ opt.translationKey ? (opt.translationKey | translate) : opt.label }}</span>
               </label>
             }
           </div>
@@ -81,20 +81,20 @@
         @if (currentQuestion.key === 'filedWithRE' && eligibilityAnswers['filedWithRE'] === 'yes') {
           <div class="sub-fields-row">
             <div class="sub-field">
-              <label><span class="sub-badge">a</span> Date on which the complaint was first filed with {{ selectedEntityName }}</label>
+              <label><span class="sub-badge">a</span> {{ 'eligibility.sub_complaint_date' | translate }} {{ selectedEntityName }}</label>
               <div class="date-input-wrapper">
                 <input type="date" class="form-input" [(ngModel)]="formData['bankComplaintDate']" name="bankComplaintDate" placeholder="Select Date">
               </div>
             </div>
             <div class="sub-field">
-              <label><span class="sub-badge">b</span> Upload a copy of the complaint sent to {{ selectedEntityName }}</label>
+              <label><span class="sub-badge">b</span> {{ 'eligibility.sub_upload_complaint' | translate }} {{ selectedEntityName }}</label>
               <div class="upload-box">
                 <input type="file" id="eligibilityFile" class="file-hidden" accept=".pdf,.jpg,.png"
                        (change)="onEligibilityFileSelected($event)">
                 <label for="eligibilityFile" class="upload-label">
-                  <span class="upload-text">Browse File</span>
+                  <span class="upload-text">{{ 'eligibility.browse_file' | translate }}</span>
                 </label>
-                <p class="upload-hint">Support formats: PDF, JPG, PNG <span class="upload-size">Maximum size: 5MB</span></p>
+                <p class="upload-hint">{{ 'eligibility.upload_hint' | translate }}</p>
               </div>
             </div>
           </div>
@@ -105,14 +105,14 @@
           <div class="sub-fields-stacked">
             <div class="sub-field-inline">
               <span class="sub-badge">a</span>
-              <span class="sub-field-label">If Yes, then are you the Complainant?</span>
+              <span class="sub-field-label">{{ 'eligibility.sub_are_you_complainant' | translate }}</span>
               <label class="radio-option-inline" [class.selected]="formData['isComplainantSelf'] === 'yes'">
                 <input type="radio" name="isComplainantSelf" value="yes" [(ngModel)]="formData['isComplainantSelf']">
-                <span>Yes</span>
+                <span>{{ 'eligibility.opt_yes' | translate }}</span>
               </label>
               <label class="radio-option-inline" [class.selected]="formData['isComplainantSelf'] === 'no'">
                 <input type="radio" name="isComplainantSelf" value="no" [(ngModel)]="formData['isComplainantSelf']">
-                <span>No</span>
+                <span>{{ 'eligibility.opt_no' | translate }}</span>
               </label>
             </div>
           </div>
@@ -122,20 +122,20 @@
         @if (currentQuestion.key === 'sentReminder' && eligibilityAnswers['sentReminder'] === 'yes') {
           <div class="sub-fields-row">
             <div class="sub-field">
-              <label><span class="sub-badge">a</span> Date on which reminder was sent</label>
+              <label><span class="sub-badge">a</span> {{ 'eligibility.sub_reminder_date' | translate }}</label>
               <div class="date-input-wrapper">
                 <input type="date" class="form-input" [(ngModel)]="formData['reminderDate']" name="reminderDate" placeholder="Select Date">
               </div>
             </div>
             <div class="sub-field">
-              <label><span class="sub-badge">b</span> Upload Reminder Copy</label>
+              <label><span class="sub-badge">b</span> {{ 'eligibility.sub_upload_reminder' | translate }}</label>
               <div class="upload-box">
                 <input type="file" id="reminderFile" class="file-hidden" accept=".pdf,.jpg,.png"
                        (change)="onEligibilityFileSelected($event)">
                 <label for="reminderFile" class="upload-label">
-                  <span class="upload-text">Browse File</span>
+                  <span class="upload-text">{{ 'eligibility.browse_file' | translate }}</span>
                 </label>
-                <p class="upload-hint">Support formats: PDF, JPG, PNG <span class="upload-size">Maximum size: 5MB</span></p>
+                <p class="upload-hint">{{ 'eligibility.upload_hint' | translate }}</p>
               </div>
             </div>
           </div>
@@ -145,20 +145,20 @@
         @if (currentQuestion.key === 'receivedReply' && eligibilityAnswers['receivedReply'] === 'yes') {
           <div class="sub-fields-row">
             <div class="sub-field">
-              <label><span class="sub-badge">a</span> Date on which reply was received</label>
+              <label><span class="sub-badge">a</span> {{ 'eligibility.sub_reply_date' | translate }}</label>
               <div class="date-input-wrapper">
                 <input type="date" class="form-input" [(ngModel)]="formData['replyDate']" name="replyDate" placeholder="Select Date">
               </div>
             </div>
             <div class="sub-field">
-              <label><span class="sub-badge">b</span> Upload Reply Copy</label>
+              <label><span class="sub-badge">b</span> {{ 'eligibility.sub_upload_reply' | translate }}</label>
               <div class="upload-box">
                 <input type="file" id="replyFile" class="file-hidden" accept=".pdf,.jpg,.png"
                        (change)="onEligibilityFileSelected($event)">
                 <label for="replyFile" class="upload-label">
-                  <span class="upload-text">Browse File</span>
+                  <span class="upload-text">{{ 'eligibility.browse_file' | translate }}</span>
                 </label>
-                <p class="upload-hint">Support formats: PDF, JPG, PNG <span class="upload-size">Maximum size: 5MB</span></p>
+                <p class="upload-hint">{{ 'eligibility.upload_hint' | translate }}</p>
               </div>
             </div>
           </div>
@@ -201,18 +201,18 @@
       <!-- Actions: Cancel | Auto saved | Save | Go Back | Next -->
       @if (!eligibilityBlocked()) {
         <div class="eligibility-actions">
-          <button class="btn-cancel" (click)="goHome()">Cancel</button>
+          <button class="btn-cancel" (click)="goHome()">{{ 'form.cancel' | translate }}</button>
           <div class="actions-right">
             @if (draftSaved()) {
-              <span class="auto-save-text">Auto saved a few seconds ago</span>
+              <span class="auto-save-text">{{ 'form.auto_saved' | translate }}</span>
             }
-            <button class="btn-save-link" (click)="saveDraft()">Save</button>
+            <button class="btn-save-link" (click)="saveDraft()">{{ 'form.save' | translate }}</button>
             <button class="btn-go-back" (click)="prevEligibility()" [disabled]="eligibilityStep() === 1">
-              <i class="pi pi-chevron-left"></i> Back
+              <i class="pi pi-chevron-left"></i> {{ 'form.back' | translate }}
             </button>
             <button class="btn-next" (click)="nextEligibility()"
                     [disabled]="!eligibilityAnswers[currentQuestion.key]">
-              {{ eligibilityStep() === totalEligibilitySteps ? 'Proceed' : 'Next' }} <i class="pi pi-chevron-right"></i>
+              {{ eligibilityStep() === totalEligibilitySteps ? ('form.next' | translate) : ('form.next' | translate) }} <i class="pi pi-chevron-right"></i>
             </button>
           </div>
         </div>
@@ -228,7 +228,7 @@
   <div class="page-container complaint-form-page">
 
     <div class="form-page-header">
-      <span class="elig-label">FILE A NEW COMPLAINT</span>
+      <span class="elig-label">{{ 'eligibility.title' | translate }}</span>
       <h1 class="elig-heading">{{ stepTitles[currentStep() - 1] }}</h1>
     </div>
 
@@ -258,59 +258,59 @@
         </div>
       </div>
 
-      <p class="mandatory-note"><i class="pi pi-info-circle"></i> Fields marked with (*) are mandatory.</p>
+      <p class="mandatory-note"><i class="pi pi-info-circle"></i> {{ 'form.mandatory_note' | translate }}</p>
 
       <!-- Step 1: Complainant Details -->
       @if (currentStep() === 1) {
         <div class="step-content" (keydown)="onStepKeydown($event)">
           <div class="form-row">
             <div class="form-group">
-              <label>Complainant Category <span class="required">*</span></label>
+              <label>{{ 'form.complainant_category' | translate }} <span class="required">*</span></label>
               <select class="form-select" [(ngModel)]="formData['complainantCategory']" name="complainantCategory">
-                <option value="individual">Individual</option>
-                <option value="business">Business Entity</option>
-                <option value="other">Other</option>
+                <option value="individual">{{ 'form.individual' | translate }}</option>
+                <option value="business">{{ 'form.business_entity' | translate }}</option>
+                <option value="other">{{ 'form.other' | translate }}</option>
               </select>
             </div>
           </div>
           <div class="form-row three-col">
             <div class="form-group">
-              <label>First Name <span class="required">*</span></label>
+              <label>{{ 'form.first_name' | translate }} <span class="required">*</span></label>
               <input type="text" class="form-input" [class.invalid]="validationErrors['name']" [(ngModel)]="formData['firstName']" name="firstName" placeholder="Enter Value">
               @if (validationErrors['name']) { <span class="field-error">{{ validationErrors['name'] }}</span> }
             </div>
             <div class="form-group">
-              <label>Middle Name <span class="optional">(Optional)</span></label>
+              <label>{{ 'form.middle_name' | translate }} <span class="optional">(Optional)</span></label>
               <input type="text" class="form-input" [(ngModel)]="formData['middleName']" name="middleName" placeholder="Select Value">
             </div>
             <div class="form-group">
-              <label>Last Name <span class="required">*</span></label>
+              <label>{{ 'form.last_name' | translate }} <span class="required">*</span></label>
               <input type="text" class="form-input" [(ngModel)]="formData['lastName']" name="lastName" placeholder="Enter Value">
             </div>
           </div>
           <div class="form-row three-col">
             <div class="form-group">
-              <label>Age <span class="required">*</span></label>
+              <label>{{ 'form.age' | translate }} <span class="required">*</span></label>
               <input type="text" class="form-input" [(ngModel)]="formData['age']" name="age" placeholder="Enter Value">
             </div>
             <div class="form-group">
-              <label>Gender <span class="required">*</span></label>
+              <label>{{ 'form.gender' | translate }} <span class="required">*</span></label>
               <select class="form-select" [(ngModel)]="formData['gender']" name="gender">
                 <option value="">Select Value</option>
-                <option value="male">Male</option>
-                <option value="female">Female</option>
-                <option value="other">Other</option>
+                <option value="male">{{ 'form.male' | translate }}</option>
+                <option value="female">{{ 'form.female' | translate }}</option>
+                <option value="other">{{ 'form.other' | translate }}</option>
               </select>
             </div>
             <div class="form-group">
-              <label>Email ID <span class="required">*</span></label>
+              <label>{{ 'form.email_id' | translate }} <span class="required">*</span></label>
               <input type="email" class="form-input" [class.invalid]="validationErrors['email']" [(ngModel)]="formData['email']" name="email" placeholder="Enter Value">
               @if (validationErrors['email']) { <span class="field-error">{{ validationErrors['email'] }}</span> }
             </div>
           </div>
           <div class="form-row three-col">
             <div class="form-group">
-              <label>Mobile Number</label>
+              <label>{{ 'form.mobile_number' | translate }}</label>
               <input type="tel" class="form-input" [(ngModel)]="formData['phone']" name="phone" placeholder="Enter 10-digit m..." readonly>
             </div>
             <div class="form-group">
@@ -322,25 +322,25 @@
           </div>
           <div class="form-row three-col">
             <div class="form-group">
-              <label>Pincode <span class="required">*</span></label>
+              <label>{{ 'form.pincode' | translate }} <span class="required">*</span></label>
               <input type="text" class="form-input" [class.invalid]="validationErrors['pincode']" [(ngModel)]="formData['pincode']" name="pincode"
                      placeholder="Enter Value" maxlength="6" (ngModelChange)="onPincodeInput()">
               @if (validationErrors['pincode']) { <span class="field-error">{{ validationErrors['pincode'] }}</span> }
               @if (pincodeLoading) { <span class="hint">Loading...</span> }
             </div>
             <div class="form-group">
-              <label>Complainants State of Residence <span class="required">*</span></label>
+              <label>{{ 'form.state' | translate }} <span class="required">*</span></label>
               <input type="text" class="form-input" [class.invalid]="validationErrors['state']" [(ngModel)]="formData['state']" name="state"
                      placeholder="Select Value">
               @if (validationErrors['state']) { <span class="field-error">{{ validationErrors['state'] }}</span> }
             </div>
             <div class="form-group">
-              <label>Complainants District of Residence</label>
+              <label>{{ 'form.district' | translate }}</label>
               <input type="text" class="form-input" [(ngModel)]="formData['district']" name="district" placeholder="Enter Value">
             </div>
           </div>
           <div class="form-group full-width">
-            <label>Address Details <span class="optional">(Optional)</span></label>
+            <label>{{ 'form.address' | translate }} <span class="optional">(Optional)</span></label>
             <textarea class="form-textarea" [(ngModel)]="formData['address']" name="address" rows="3" placeholder="Enter Value"></textarea>
           </div>
         </div>
@@ -350,25 +350,25 @@
       @if (currentStep() === 2) {
         <div class="step-content">
           <div class="form-group">
-            <label>Regulated Entity Name</label>
+            <label>{{ 'form.re_name' | translate }}</label>
             <div class="entity-name-display">{{ selectedEntityName }}</div>
           </div>
 
           <div class="form-group full-width">
-            <label id="credit-card-label">Is your complaint related to credit card? <span class="required">*</span></label>
+            <label id="credit-card-label">{{ 'form.credit_card_q' | translate }} <span class="required">*</span></label>
             <div class="toggle-btn-group" role="group" aria-labelledby="credit-card-label">
               <button class="toggle-btn" [class.active]="formData['isCreditCardComplaint'] === 'yes'"
                       [attr.aria-pressed]="formData['isCreditCardComplaint'] === 'yes'"
-                      (click)="formData['isCreditCardComplaint'] = 'yes'" type="button">Yes</button>
+                      (click)="formData['isCreditCardComplaint'] = 'yes'" type="button">{{ 'form.yes' | translate }}</button>
               <button class="toggle-btn" [class.active]="formData['isCreditCardComplaint'] === 'no'"
                       [attr.aria-pressed]="formData['isCreditCardComplaint'] === 'no'"
-                      (click)="formData['isCreditCardComplaint'] = 'no'" type="button">No</button>
+                      (click)="formData['isCreditCardComplaint'] = 'no'" type="button">{{ 'form.no' | translate }}</button>
             </div>
           </div>
 
           <div class="form-row three-col">
             <div class="form-group">
-              <label>Entity State <span class="required">*</span></label>
+              <label>{{ 'form.entity_state' | translate }} <span class="required">*</span></label>
               <select class="form-select" [(ngModel)]="formData['entityState']" name="entityState">
                 <option value="">Select Value</option>
                 <option value="andhra-pradesh">Andhra Pradesh</option>
@@ -389,11 +389,11 @@
               </select>
             </div>
             <div class="form-group">
-              <label>Entity District <span class="required">*</span></label>
+              <label>{{ 'form.entity_district' | translate }} <span class="required">*</span></label>
               <input type="text" class="form-input" [(ngModel)]="formData['entityDistrict']" name="entityDistrict" placeholder="Enter District">
             </div>
             <div class="form-group">
-              <label>Entity Branch <span class="required">*</span></label>
+              <label>{{ 'form.entity_branch' | translate }} <span class="required">*</span></label>
               <input type="text" class="form-input" [(ngModel)]="formData['entityBranch']" name="entityBranch" placeholder="Enter Branch">
             </div>
           </div>
@@ -405,7 +405,7 @@
         <div class="step-content" (keydown)="onStepKeydown($event)">
 
           <div class="form-group">
-            <label>Select a complaint Category <span class="required">*</span></label>
+            <label>{{ 'form.complaint_category' | translate }} <span class="required">*</span></label>
             <select class="form-select" [class.invalid]="validationErrors['complaintCategory']"
                     [(ngModel)]="formData['complaintCategory']" name="complaintCategory"
                     (ngModelChange)="onCategoryChange()">
@@ -418,7 +418,7 @@
           </div>
 
           <div class="form-group full-width">
-            <label>Facts of the complaint <span class="required">*</span></label>
+            <label>{{ 'form.facts' | translate }} <span class="required">*</span></label>
             <div class="textarea-wrapper">
               <textarea class="form-textarea" [class.invalid]="validationErrors['complaintText']"
                         [(ngModel)]="formData['complaintText']" name="complaintText" rows="5"
@@ -426,7 +426,7 @@
               <button class="mic-pill-btn" [class.recording]="isRecording()" (click)="toggleRecording()"
                       type="button" [attr.aria-label]="isRecording() ? 'Stop voice recording' : 'Start voice recording'">
                 <i class="pi" [class.pi-microphone]="!isRecording()" [class.pi-stop]="isRecording()" aria-hidden="true"></i>
-                {{ isRecording() ? 'Stop' : 'Use Microphone' }}
+                {{ isRecording() ? ('form.stop' | translate) : ('form.use_mic' | translate) }}
               </button>
             </div>
             @if (validationErrors['complaintText']) { <span class="field-error">{{ validationErrors['complaintText'] }}</span> }
@@ -435,44 +435,44 @@
           <!-- Account section -->
           <div class="form-row three-col" style="align-items: flex-end;">
             <div class="form-group">
-              <label id="has-account-label">Do You Have An Account With {{ selectedEntityName }}? <span class="required">*</span></label>
+              <label id="has-account-label">{{ 'form.has_account' | translate }} {{ selectedEntityName }}? <span class="required">*</span></label>
               <div class="toggle-btn-group" role="group" aria-labelledby="has-account-label">
                 <button class="toggle-btn" [class.active]="formData['hasAccountWithRE'] === 'yes'"
                         [attr.aria-pressed]="formData['hasAccountWithRE'] === 'yes'"
-                        (click)="formData['hasAccountWithRE'] = 'yes'" type="button">Yes</button>
+                        (click)="formData['hasAccountWithRE'] = 'yes'" type="button">{{ 'form.yes' | translate }}</button>
                 <button class="toggle-btn" [class.active]="formData['hasAccountWithRE'] === 'no'"
                         [attr.aria-pressed]="formData['hasAccountWithRE'] === 'no'"
-                        (click)="formData['hasAccountWithRE'] = 'no'" type="button">No</button>
+                        (click)="formData['hasAccountWithRE'] = 'no'" type="button">{{ 'form.no' | translate }}</button>
               </div>
             </div>
             <div class="form-group">
-              <label>Select Type of Accounts With {{ selectedEntityName }} <span class="required">*</span></label>
+              <label>{{ 'form.account_type' | translate }} {{ selectedEntityName }} <span class="required">*</span></label>
               <select class="form-select" [(ngModel)]="formData['accountType']" name="accountType">
                 <option value="">Select Value</option>
-                <option value="savings">Savings Account</option>
-                <option value="current">Current Account</option>
-                <option value="loan">Loan Account</option>
-                <option value="credit-card">Credit Card</option>
-                <option value="debit-card">Debit/ATM Card</option>
+                <option value="savings">{{ 'form.savings' | translate }}</option>
+                <option value="current">{{ 'form.current_account' | translate }}</option>
+                <option value="loan">{{ 'form.loan' | translate }}</option>
+                <option value="credit-card">{{ 'form.credit_card' | translate }}</option>
+                <option value="debit-card">{{ 'form.debit_card' | translate }}</option>
               </select>
             </div>
             <div class="form-group">
-              <label>Credit Card Number <span class="required">*</span></label>
+              <label>{{ 'form.card_number' | translate }} <span class="required">*</span></label>
               <input type="text" class="form-input" [(ngModel)]="formData['cardNumber']" name="cardNumber" placeholder="Enter Value">
             </div>
           </div>
 
           <div class="form-row three-col">
             <div class="form-group">
-              <label>Savings Account Number <span class="required">*</span></label>
+              <label>{{ 'form.savings_number' | translate }} <span class="required">*</span></label>
               <input type="text" class="form-input" [(ngModel)]="formData['savingsAccountNumber']" name="savingsAccountNumber" placeholder="Enter Value">
             </div>
             <div class="form-group">
-              <label>Loan Account Number <span class="required">*</span></label>
+              <label>{{ 'form.loan_number' | translate }} <span class="required">*</span></label>
               <input type="text" class="form-input" [(ngModel)]="formData['loanAccountNumber']" name="loanAccountNumber" placeholder="Enter Value">
             </div>
             <div class="form-group">
-              <label>ATM/Debit Card Number <span class="required">*</span></label>
+              <label>{{ 'form.atm_number' | translate }} <span class="required">*</span></label>
               <input type="text" class="form-input" [(ngModel)]="formData['atmDebitCardNumber']" name="atmDebitCardNumber" placeholder="Enter Value">
             </div>
           </div>
@@ -480,57 +480,57 @@
           <!-- Wallet section -->
           <div class="form-row three-col" style="align-items: flex-end;">
             <div class="form-group">
-              <label id="wallet-label">Is your complaint against the wallet of the Regulated Entity? <span class="required">*</span></label>
+              <label id="wallet-label">{{ 'form.wallet_q' | translate }} <span class="required">*</span></label>
               <div class="toggle-btn-group" role="group" aria-labelledby="wallet-label">
                 <button class="toggle-btn" [class.active]="formData['isWalletComplaint'] === 'yes'"
                         [attr.aria-pressed]="formData['isWalletComplaint'] === 'yes'"
-                        (click)="formData['isWalletComplaint'] = 'yes'" type="button">Yes</button>
+                        (click)="formData['isWalletComplaint'] = 'yes'" type="button">{{ 'form.yes' | translate }}</button>
                 <button class="toggle-btn" [class.active]="formData['isWalletComplaint'] === 'no'"
                         [attr.aria-pressed]="formData['isWalletComplaint'] === 'no'"
-                        (click)="formData['isWalletComplaint'] = 'no'" type="button">No</button>
+                        (click)="formData['isWalletComplaint'] = 'no'" type="button">{{ 'form.no' | translate }}</button>
               </div>
             </div>
             <div class="form-group">
-              <label>Name of Wallet <span class="required">*</span></label>
+              <label>{{ 'form.wallet_name' | translate }} <span class="required">*</span></label>
               <input type="text" class="form-input" [(ngModel)]="formData['walletName']" name="walletName" placeholder="Enter Value">
             </div>
             <div class="form-group">
-              <label>Transaction/Reference Number <span class="required">*</span></label>
+              <label>{{ 'form.txn_ref' | translate }} <span class="required">*</span></label>
               <input type="text" class="form-input" [(ngModel)]="formData['transactionRefNumber']" name="transactionRefNumber" placeholder="Enter Value">
             </div>
           </div>
 
           <!-- Business Correspondent -->
           <div class="form-group">
-            <label id="biz-corr-label">Is your complaint against a Business Correspondent? <span class="required">*</span></label>
+            <label id="biz-corr-label">{{ 'form.biz_corr_q' | translate }} <span class="required">*</span></label>
             <div class="toggle-btn-group" role="group" aria-labelledby="biz-corr-label">
               <button class="toggle-btn" [class.active]="formData['isBusinessCorrespondent'] === 'yes'"
                       [attr.aria-pressed]="formData['isBusinessCorrespondent'] === 'yes'"
-                      (click)="formData['isBusinessCorrespondent'] = 'yes'" type="button">Yes</button>
+                      (click)="formData['isBusinessCorrespondent'] = 'yes'" type="button">{{ 'form.yes' | translate }}</button>
               <button class="toggle-btn" [class.active]="formData['isBusinessCorrespondent'] === 'no'"
                       [attr.aria-pressed]="formData['isBusinessCorrespondent'] === 'no'"
-                      (click)="formData['isBusinessCorrespondent'] = 'no'" type="button">No</button>
+                      (click)="formData['isBusinessCorrespondent'] = 'no'" type="button">{{ 'form.no' | translate }}</button>
             </div>
           </div>
 
           <!-- Amount fields -->
           <div class="form-row three-col">
             <div class="form-group">
-              <label>Amount Involved In The Transaction/Dispute, If Any <span class="required">*</span></label>
+              <label>{{ 'form.amount_involved' | translate }} <span class="required">*</span></label>
               <div class="rupee-input">
                 <span class="rupee-symbol">₹</span>
                 <input type="text" class="form-input" [(ngModel)]="formData['disputeAmount']" name="disputeAmount" placeholder="Enter Value">
               </div>
             </div>
             <div class="form-group">
-              <label>Compensation Sought For Dispute, If Any <span class="required">*</span></label>
+              <label>{{ 'form.compensation_sought' | translate }} <span class="required">*</span></label>
               <div class="rupee-input">
                 <span class="rupee-symbol">₹</span>
                 <input type="text" class="form-input" [(ngModel)]="formData['compensationSought']" name="compensationSought" placeholder="Enter Value">
               </div>
             </div>
             <div class="form-group">
-              <label>Compensation For Harassment, If Any <span class="required">*</span></label>
+              <label>{{ 'form.compensation_harassment' | translate }} <span class="required">*</span></label>
               <div class="rupee-input">
                 <span class="rupee-symbol">₹</span>
                 <input type="text" class="form-input" [(ngModel)]="formData['reliefSought']" name="reliefSought" placeholder="Enter Value">
@@ -540,14 +540,14 @@
 
           <!-- File Upload -->
           <div class="form-group full-width">
-            <label>Upload any additional documents relevant to the complaint <span class="required">*</span></label>
+            <label>{{ 'form.upload_docs' | translate }} <span class="required">*</span></label>
             <div class="file-upload-area">
               <input type="file" id="fileInput" multiple (change)="onFilesSelected($event)"
                      accept=".pdf,.jpg,.jpeg,.png" class="file-input-hidden">
-              <label for="fileInput" class="file-upload-browse-link">Browse File</label>
+              <label for="fileInput" class="file-upload-browse-link">{{ 'form.browse_file' | translate }}</label>
               <div class="file-upload-meta">
-                <span class="upload-hint">Support formats: PDF, JPG, PNG</span>
-                <span class="upload-size">Maximum size: 5MB</span>
+                <span class="upload-hint">{{ 'form.upload_hint' | translate }}</span>
+                <span class="upload-size">{{ 'form.upload_size' | translate }}</span>
               </div>
             </div>
             @if (fileUploadError) {
@@ -575,44 +575,44 @@
         <div class="step-content">
 
           <div class="form-group">
-            <label id="auth-rep-label">Is the complaint being filed through an Authorised Representative on behalf of you / complainant? <span class="required">*</span></label>
+            <label id="auth-rep-label">{{ 'form.auth_rep_q' | translate }} <span class="required">*</span></label>
             <div class="toggle-btn-group" role="group" aria-labelledby="auth-rep-label">
               <button class="toggle-btn" [class.active]="formData['hasAuthRep'] === 'yes'"
                       [attr.aria-pressed]="formData['hasAuthRep'] === 'yes'"
-                      (click)="formData['hasAuthRep'] = 'yes'" type="button">Yes</button>
+                      (click)="formData['hasAuthRep'] = 'yes'" type="button">{{ 'form.yes' | translate }}</button>
               <button class="toggle-btn" [class.active]="formData['hasAuthRep'] === 'no'"
                       [attr.aria-pressed]="formData['hasAuthRep'] === 'no'"
-                      (click)="formData['hasAuthRep'] = 'no'" type="button">No</button>
+                      (click)="formData['hasAuthRep'] = 'no'" type="button">{{ 'form.no' | translate }}</button>
             </div>
           </div>
 
           @if (formData['hasAuthRep'] === 'yes') {
-            <p class="rep-section-title">Fill the following details for the authorised representative</p>
+            <p class="rep-section-title">{{ 'form.auth_rep_details' | translate }}</p>
 
             <div class="form-row three-col">
               <div class="form-group">
-                <label>Name <span class="required">*</span></label>
+                <label>{{ 'form.rep_name' | translate }} <span class="required">*</span></label>
                 <input type="text" class="form-input" [(ngModel)]="formData['repName']" name="repName" placeholder="Enter Value">
               </div>
               <div class="form-group">
-                <label>Email ID <span class="required">*</span></label>
+                <label>{{ 'form.rep_email' | translate }} <span class="required">*</span></label>
                 <input type="email" class="form-input" [(ngModel)]="formData['repEmail']" name="repEmail" placeholder="Enter Value">
               </div>
               <div class="form-group">
-                <label>Mobile Number <span class="required">*</span></label>
+                <label>{{ 'form.rep_mobile' | translate }} <span class="required">*</span></label>
                 <input type="tel" class="form-input" [(ngModel)]="formData['repPhone']" name="repPhone" placeholder="Enter 10-digit mobile number">
               </div>
             </div>
 
             <div class="form-row three-col">
               <div class="form-group">
-                <label>Pincode <span class="required">*</span></label>
+                <label>{{ 'form.rep_pincode' | translate }} <span class="required">*</span></label>
                 <select class="form-select" [(ngModel)]="formData['repPincode']" name="repPincode">
                   <option value="">Select Value</option>
                 </select>
               </div>
               <div class="form-group">
-                <label>State <span class="required">*</span></label>
+                <label>{{ 'form.rep_state' | translate }} <span class="required">*</span></label>
                 <select class="form-select" [(ngModel)]="formData['repState']" name="repState">
                   <option value="">Select Value</option>
                   <option value="delhi">Delhi</option>
@@ -623,7 +623,7 @@
                 </select>
               </div>
               <div class="form-group">
-                <label>District <span class="required">*</span></label>
+                <label>{{ 'form.rep_district' | translate }} <span class="required">*</span></label>
                 <select class="form-select" [(ngModel)]="formData['repDistrict']" name="repDistrict">
                   <option value="">Select Value</option>
                 </select>
@@ -632,7 +632,7 @@
 
             <div class="form-row">
               <div class="form-group" style="max-width: 33%;">
-                <label>City <span class="required">*</span></label>
+                <label>{{ 'form.rep_city' | translate }} <span class="required">*</span></label>
                 <select class="form-select" [(ngModel)]="formData['repCity']" name="repCity">
                   <option value="">Select Value</option>
                 </select>
@@ -640,20 +640,20 @@
             </div>
 
             <div class="form-group full-width">
-              <label>Address Details <span class="required">*</span></label>
+              <label>{{ 'form.rep_address' | translate }} <span class="required">*</span></label>
               <textarea class="form-textarea" [(ngModel)]="formData['repAddress']" name="repAddress" rows="3"
                         placeholder="Enter Value"></textarea>
             </div>
 
             <div class="form-group full-width">
-              <label>Upload supporting documents <span class="required">*</span></label>
+              <label>{{ 'form.rep_upload' | translate }} <span class="required">*</span></label>
               <div class="file-upload-area">
                 <input type="file" id="repDocFile" (change)="onFilesSelected($event)"
                        accept=".pdf,.jpg,.jpeg,.png" class="file-input-hidden">
-                <label for="repDocFile" class="file-upload-browse-link">Browse File</label>
+                <label for="repDocFile" class="file-upload-browse-link">{{ 'form.browse_file' | translate }}</label>
                 <div class="file-upload-meta">
-                  <span class="upload-hint">Support formats: PDF, JPG, PNG</span>
-                  <span class="upload-size">Maximum size: 5MB</span>
+                  <span class="upload-hint">{{ 'form.upload_hint' | translate }}</span>
+                  <span class="upload-size">{{ 'form.upload_size' | translate }}</span>
                 </div>
               </div>
             </div>
@@ -665,7 +665,7 @@
       <!-- Step 5: Declaration -->
       @if (currentStep() === 5) {
         <div class="step-content">
-          <h3 class="decl-heading">Required Declarations</h3>
+          <h3 class="decl-heading">{{ 'form.decl_heading' | translate }}</h3>
 
           <div class="decl-item">
             <label class="decl-checkbox-label">
@@ -700,7 +700,7 @@
 
           <!-- Eligibility Details -->
           <div class="rs-section">
-            <div class="rs-header">Eligibility Details</div>
+            <div class="rs-header">{{ 'review.eligibility_details' | translate }}</div>
             <div class="rs-body">
               <div class="rs-row-full"><span class="rs-label">Is your complaint sub-judice/under arbitration/already dealt with on merits by a Court/Tribunal/Arbitrator/Authority?</span><span class="rs-value">{{ eligibilityAnswers['isSubJudice'] === 'yes' ? 'Yes' : 'No' }}</span></div>
               <div class="rs-row-full"><span class="rs-label">Is your complaint made through an advocate (unless you are yourself an advocate)?</span><span class="rs-value">{{ eligibilityAnswers['throughAdvocateEligibility'] === 'yes' ? 'Yes' : 'No' }}</span></div>
@@ -711,7 +711,7 @@
 
           <!-- Complainant Details -->
           <div class="rs-section">
-            <div class="rs-header">Complainant Details</div>
+            <div class="rs-header">{{ 'review.complainant_details' | translate }}</div>
             <div class="rs-body">
               <div class="rs-grid">
                 <div class="rs-item"><span class="rs-label">Name</span><span class="rs-value">{{ formData['firstName'] }} {{ formData['middleName'] }} {{ formData['lastName'] }}</span></div>
@@ -725,7 +725,7 @@
 
           <!-- Regulated Entity Details -->
           <div class="rs-section">
-            <div class="rs-header">Regulated Entity Details</div>
+            <div class="rs-header">{{ 'review.re_details' | translate }}</div>
             <div class="rs-body">
               <div class="rs-row-full"><span class="rs-label">Regulated Entity Name</span><span class="rs-value">{{ selectedEntityName }}</span></div>
               <div class="rs-row-full" style="margin-top: 10px;"><span class="rs-label">Is your complaint related to credit card?</span><span class="rs-value">{{ formData['isCreditCardComplaint'] === 'yes' ? 'Yes' : 'No' }}</span></div>
@@ -739,7 +739,7 @@
 
           <!-- Complaint Details -->
           <div class="rs-section">
-            <div class="rs-header">Complaint Details</div>
+            <div class="rs-header">{{ 'review.complaint_details' | translate }}</div>
             <div class="rs-body">
               <div class="rs-grid">
                 <div class="rs-item"><span class="rs-label">Complaint Category</span><span class="rs-value">{{ formData['complaintCategory'] || '—' }}</span></div>
@@ -753,7 +753,7 @@
               </div>
               @if (attachmentPreviews.length > 0) {
                 <div style="margin-top: 12px;">
-                  <span class="rs-label">Attachments</span>
+                  <span class="rs-label">{{ 'review.attachments' | translate }}</span>
                   <div class="file-list" style="margin-top: 8px;">
                     @for (f of attachmentPreviews; track $index) {
                       <div class="file-chip"><i class="pi pi-file-pdf"></i><span class="file-name">{{ f.name }}</span></div>
@@ -766,7 +766,7 @@
 
           <!-- Representative Authorisation -->
           <div class="rs-section">
-            <div class="rs-header">Representative Authorisation</div>
+            <div class="rs-header">{{ 'review.rep_auth' | translate }}</div>
             <div class="rs-body">
               <div class="rs-row-full"><span class="rs-label">Is the complaint being filed through an Authorised Representative on behalf of you / complainant?</span><span class="rs-value">{{ formData['hasAuthRep'] === 'yes' ? 'Yes' : 'No' }}</span></div>
             </div>
@@ -774,7 +774,7 @@
 
           <!-- Declaration -->
           <div class="rs-section">
-            <div class="rs-header">Declaration</div>
+            <div class="rs-header">{{ 'review.declaration' | translate }}</div>
             <div class="rs-body">
               <div class="decl-item">
                 <label class="decl-checkbox-label">
@@ -796,23 +796,23 @@
 
       <!-- Form Navigation -->
       <div class="eligibility-actions">
-        <button class="btn-cancel" (click)="goHome()">Cancel</button>
+        <button class="btn-cancel" (click)="goHome()">{{ 'form.cancel' | translate }}</button>
         <div class="actions-right">
           @if (draftSaved()) {
-            <span class="auto-save-text">Auto saved a few seconds ago</span>
+            <span class="auto-save-text">{{ 'form.auto_saved' | translate }}</span>
           }
-          <button class="btn-save-link" (click)="saveDraft()">Save</button>
+          <button class="btn-save-link" (click)="saveDraft()">{{ 'form.save' | translate }}</button>
           <button class="btn-go-back" (click)="prevStep()" [disabled]="currentStep() === 1">
-            <i class="pi pi-chevron-left"></i> Back
+            <i class="pi pi-chevron-left"></i> {{ 'form.back' | translate }}
           </button>
           @if (currentStep() < totalSteps) {
-            <button class="btn-next" (click)="nextStep()">Next <i class="pi pi-chevron-right"></i></button>
+            <button class="btn-next" (click)="nextStep()">{{ 'form.next' | translate }} <i class="pi pi-chevron-right"></i></button>
           } @else {
             <button class="btn-download-pdf" (click)="downloadAcknowledgement()">
-              <i class="pi pi-download"></i> Download PDF
+              <i class="pi pi-download"></i> {{ 'form.download_pdf' | translate }}
             </button>
             <button class="btn-submit-complaint" (click)="submit()" [disabled]="submitting() || !declarationChecked || !declaration2Checked">
-              @if (submitting()) { Submitting... } @else { Submit Complaint }
+              @if (submitting()) { {{ 'form.submitting' | translate }} } @else { {{ 'form.submit_complaint' | translate }} }
             </button>
             @if (validationErrors['submit']) {
               <div class="error-msg" style="margin-top: 10px; color: #dc2626;"><i class="pi pi-exclamation-circle"></i> {{ validationErrors['submit'] }}</div>
@@ -829,26 +829,26 @@
   <div class="page-container">
     <div class="nm-card">
       <div class="nm-icon"><i class="pi pi-exclamation-triangle"></i></div>
-      <h2>Complaint Closed as Non-Maintainable</h2>
+      <h2>{{ 'nm.title' | translate }}</h2>
       <div class="nm-details">
         <div class="nm-row">
-          <span class="nm-label">Case ID</span>
+          <span class="nm-label">{{ 'nm.case_id' | translate }}</span>
           <span class="nm-value">{{ nonMaintainableCaseId }}</span>
         </div>
         <div class="nm-row">
-          <span class="nm-label">Date</span>
+          <span class="nm-label">{{ 'nm.date' | translate }}</span>
           <span class="nm-value">{{ today }}</span>
         </div>
       </div>
       <div class="nm-reason">
-        <h4>Reason for Closure</h4>
+        <h4>{{ 'nm.reason' | translate }}</h4>
         <p>{{ eligibilityBlockMessage() }}</p>
       </div>
       <div class="nm-actions">
         <button class="btn-primary" (click)="downloadClosureLetter()">
-          <i class="pi pi-download"></i> Download Closure Letter
+          <i class="pi pi-download"></i> {{ 'nm.download' | translate }}
         </button>
-        <button class="btn-secondary" (click)="goHome()">Go to Home</button>
+        <button class="btn-secondary" (click)="goHome()">{{ 'nm.go_home' | translate }}</button>
       </div>
     </div>
   </div>
@@ -859,12 +859,12 @@
   <div class="popup-overlay" role="dialog" aria-modal="true" aria-labelledby="dup-title">
     <div class="popup-card">
       <div class="popup-icon"><i class="pi pi-exclamation-triangle"></i></div>
-      <h3 id="dup-title">Duplicate Complaint Detected</h3>
+      <h3 id="dup-title">{{ 'duplicate.title' | translate }}</h3>
       <p class="popup-message">{{ duplicateMessage }}</p>
-      <p class="popup-note">A similar complaint already exists in our system. You may cancel and review, or proceed with a new submission.</p>
+      <p class="popup-note">{{ 'duplicate.note' | translate }}</p>
       <div class="popup-actions">
-        <button class="btn-secondary" (click)="dismissDuplicatePopup()">Cancel Submission</button>
-        <button class="btn-primary" (click)="proceedDespiteDuplicate()">Proceed Anyway</button>
+        <button class="btn-secondary" (click)="dismissDuplicatePopup()">{{ 'duplicate.cancel' | translate }}</button>
+        <button class="btn-primary" (click)="proceedDespiteDuplicate()">{{ 'duplicate.proceed' | translate }}</button>
       </div>
     </div>
   </div>
@@ -874,24 +874,24 @@
 @if (phase() === 'success') {
   <div class="success-page">
     <div class="success-content">
-      <h2 class="success-heading">Your Complaint has been submitted successfully!</h2>
+      <h2 class="success-heading">{{ 'success.title' | translate }}</h2>
       <p class="success-desc">
         Your reference number is <strong>{{ referenceNumber }}</strong>. We have received the details and your
         complaint will be reviewed thoroughly. You can also track the status of your complaint
         using the reference number provided.
       </p>
       <a href="javascript:void(0)" class="success-download-link" (click)="downloadAcknowledgement()">
-        <i class="pi pi-download"></i> Download PDF
+        <i class="pi pi-download"></i> {{ 'success.download' | translate }}
       </a>
       <div class="success-btn-row">
-        <button class="success-action-btn" (click)="trackComplaint()">Track Complaint</button>
-        <button class="success-action-btn" routerLink="/public/history">My Complaints</button>
-        <button class="success-action-btn" (click)="goHome()">Share Your Feedback</button>
+        <button class="success-action-btn" (click)="trackComplaint()">{{ 'success.track' | translate }}</button>
+        <button class="success-action-btn" routerLink="/public/history">{{ 'success.my_complaints' | translate }}</button>
+        <button class="success-action-btn" (click)="goHome()">{{ 'success.share_feedback' | translate }}</button>
       </div>
     </div>
 
     <div class="assistance-banner">
-      <h3>Need Assistance? Call 14448</h3>
+      <h3>{{ 'layout.need_assistance' | translate }}</h3>
       <p>The contact center (#14448) with Interactive Voice Response System (IVRS) is available 24x7, while the facility to connect to Contact Centre personnel is available from Monday to Saturday except for National Holidays, between 8:00 AM to 10:00 PM for English, Hindi, and ten regional languages.</p>
     </div>
   </div>

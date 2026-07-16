@@ -3,26 +3,26 @@
 <section class="home-section">
   <div class="container">
     <div class="home-header">
-      <h1 class="home-title">Home</h1>
-      <a routerLink="/public/file-complaint" class="file-new-btn">File a New Complaint <i class="pi pi-chevron-right"></i></a>
+      <h1 class="home-title">{{ 'home.authenticated_title' | translate }}</h1>
+      <a routerLink="/public/file-complaint" class="file-new-btn">{{ 'home.file_new_btn' | translate }} <i class="pi pi-chevron-right"></i></a>
     </div>
 
     <div class="history-card">
       <div class="history-card-header">
         <i class="pi pi-refresh" aria-hidden="true"></i>
-        <h3>Complaint History</h3>
+        <h3>{{ 'home.complaint_history' | translate }}</h3>
       </div>
 
       <div class="table-wrapper">
         <table class="complaints-table">
           <thead>
             <tr class="header-row">
-              <th>ID <i class="pi pi-sort-alt" aria-hidden="true"></i></th>
-              <th>Complaint Against <i class="pi pi-sort-alt" aria-hidden="true"></i></th>
-              <th>Complaint Date <i class="pi pi-sort-alt" aria-hidden="true"></i></th>
-              <th>Status <i class="pi pi-sort-alt" aria-hidden="true"></i></th>
-              <th>Comments <i class="pi pi-sort-alt" aria-hidden="true"></i></th>
-              <th>Action</th>
+              <th>{{ 'home.table_id' | translate }} <i class="pi pi-sort-alt" aria-hidden="true"></i></th>
+              <th>{{ 'home.table_complaint_against' | translate }} <i class="pi pi-sort-alt" aria-hidden="true"></i></th>
+              <th>{{ 'home.table_complaint_date' | translate }} <i class="pi pi-sort-alt" aria-hidden="true"></i></th>
+              <th>{{ 'home.table_status' | translate }} <i class="pi pi-sort-alt" aria-hidden="true"></i></th>
+              <th>{{ 'home.table_comments' | translate }} <i class="pi pi-sort-alt" aria-hidden="true"></i></th>
+              <th>{{ 'home.table_action' | translate }}</th>
             </tr>
             <tr class="filter-row">
               <th><input type="text" [(ngModel)]="filterById" placeholder="Search" class="filter-input" aria-label="Filter by complaint ID"></th>
@@ -35,9 +35,9 @@
           </thead>
           <tbody>
             @if (loading()) {
-              <tr><td colspan="6" class="loading-cell"><i class="pi pi-spinner pi-spin"></i> Loading...</td></tr>
+              <tr><td colspan="6" class="loading-cell"><i class="pi pi-spinner pi-spin"></i> {{ 'home.loading' | translate }}</td></tr>
             } @else if (filteredComplaints.length === 0) {
-              <tr><td colspan="6" class="empty-cell">No complaints found</td></tr>
+              <tr><td colspan="6" class="empty-cell">{{ 'home.no_complaints' | translate }}</td></tr>
             } @else {
               @for (c of filteredComplaints; track c.complaintId) {
                 <tr>
@@ -104,8 +104,8 @@
 
     <div class="container ct-layout">
       <div class="ct-left">
-        <span class="ct-tag">FIND YOUR FINANCIAL INSTITUTION</span>
-        <h2>You can file complaints about</h2>
+        <span class="ct-tag">{{ 'home.ct_tag' | translate }}</span>
+        <h2>{{ 'home.ct_heading' | translate }}</h2>
         <div class="ct-icons">
           @for (type of complaintTypes; track type.label) {
             <div class="ct-icon-card">
@@ -119,8 +119,8 @@
             <i class="pi pi-indian-rupee"></i>
           </div>
           <div class="ct-regulated-text">
-            <strong>Regulated entities covered under Reserve Bank-Integrated Ombudsman Scheme, 2026</strong>
-            <a href="javascript:void(0)" class="ct-download-link"><i class="pi pi-download"></i> Download PDF</a>
+            <strong>{{ 'home.ct_regulated' | translate }}</strong>
+            <a href="javascript:void(0)" class="ct-download-link"><i class="pi pi-download"></i> {{ 'home.ct_download' | translate }}</a>
           </div>
         </div>
       </div>
@@ -137,7 +137,7 @@
 <!-- Details of the Ombudsmen Scheme -->
 <section class="scheme-section">
   <div class="container">
-    <h2 class="scheme-title">Details of the Ombudsmen Scheme</h2>
+    <h2 class="scheme-title">{{ 'home.scheme_title' | translate }}</h2>
     <div class="scheme-grid">
       @for (scheme of schemeCards; track scheme.title) {
         <div class="scheme-card">
@@ -147,7 +147,7 @@
           <div class="scheme-text">
             <h4>{{ scheme.title }}</h4>
             @if (scheme.hasDownload) {
-              <a href="javascript:void(0)" class="scheme-download"><i class="pi pi-download"></i> Download PDF</a>
+              <a href="javascript:void(0)" class="scheme-download"><i class="pi pi-download"></i> {{ 'home.ct_download' | translate }}</a>
             }
           </div>
         </div>
@@ -166,9 +166,9 @@
       </div>
     </div>
     <div class="wwd-content">
-      <span class="wwd-tag">WHAT WE DO</span>
-      <h2>RBI streamlines the complaint resolution process for Indian Citizens.</h2>
-      <p>RBI simplifies and expedites the complaint resolution process for Indian citizens, ensuring fair and timely resolutions.</p>
+      <span class="wwd-tag">{{ 'home.wwd_tag' | translate }}</span>
+      <h2>{{ 'home.wwd_heading' | translate }}</h2>
+      <p>{{ 'home.wwd_desc' | translate }}</p>
     </div>
   </div>
 </section>
@@ -176,31 +176,31 @@
 <!-- Ways of Filing Complaint -->
 <section class="ways-section">
   <div class="container">
-    <h2 class="ways-title">Ways of Filing Complaint</h2>
+    <h2 class="ways-title">{{ 'home.ways_title' | translate }}</h2>
     <div class="ways-grid">
       <div class="ways-card ways-card-active">
         <div class="ways-icon"><i class="pi pi-desktop"></i></div>
-        <h4>CMS Portal <span class="ways-badge">(You are here)</span></h4>
-        <p>File your complaint on this portal. It is the fastest way to resolve your complaints efficiently.</p>
-        <a routerLink="/public/file-complaint" class="ways-link">File a New Complaint <i class="pi pi-chevron-right"></i></a>
+        <h4>{{ 'home.ways_portal_title' | translate }} <span class="ways-badge">{{ 'home.ways_portal_badge' | translate }}</span></h4>
+        <p>{{ 'home.ways_portal_desc' | translate }}</p>
+        <a routerLink="/public/file-complaint" class="ways-link">{{ 'home.ways_portal_link' | translate }} <i class="pi pi-chevron-right"></i></a>
       </div>
       <div class="ways-card">
         <div class="ways-icon"><i class="pi pi-question-circle"></i></div>
-        <h4>Can RBI help? <span class="ways-badge ways-badge-new">New</span></h4>
-        <p>Not sure if you can file? Answer 4 quick questions to check your eligibility before starting.</p>
-        <a routerLink="/public/eligibility-wizard" class="ways-link">Check Eligibility <i class="pi pi-chevron-right"></i></a>
+        <h4>{{ 'home.ways_wizard_title' | translate }} <span class="ways-badge ways-badge-new">{{ 'home.ways_wizard_badge' | translate }}</span></h4>
+        <p>{{ 'home.ways_wizard_desc' | translate }}</p>
+        <a routerLink="/public/eligibility-wizard" class="ways-link">{{ 'home.ways_wizard_link' | translate }} <i class="pi pi-chevron-right"></i></a>
       </div>
       <div class="ways-card">
         <div class="ways-icon"><i class="pi pi-envelope"></i></div>
-        <h4>Email</h4>
-        <p>Send your complaint to us via email by filling the Complaint Form</p>
-        <a href="javascript:void(0)" class="ways-link">View Details <i class="pi pi-chevron-right"></i></a>
+        <h4>{{ 'home.ways_email_title' | translate }}</h4>
+        <p>{{ 'home.ways_email_desc' | translate }}</p>
+        <a href="javascript:void(0)" class="ways-link">{{ 'home.ways_view_details' | translate }} <i class="pi pi-chevron-right"></i></a>
       </div>
       <div class="ways-card">
         <div class="ways-icon"><i class="pi pi-file-edit"></i></div>
-        <h4>Physical Letter</h4>
-        <p>Send your complaint to us via letter by filling the Complaint Form</p>
-        <a href="javascript:void(0)" class="ways-link">View Details <i class="pi pi-chevron-right"></i></a>
+        <h4>{{ 'home.ways_letter_title' | translate }}</h4>
+        <p>{{ 'home.ways_letter_desc' | translate }}</p>
+        <a href="javascript:void(0)" class="ways-link">{{ 'home.ways_view_details' | translate }} <i class="pi pi-chevron-right"></i></a>
       </div>
     </div>
   </div>
@@ -211,10 +211,10 @@
   <div class="container">
     <div class="section-header">
       <div>
-        <span class="section-tag">PUBLIC AWARENESS</span>
-        <h2>Education and Awareness</h2>
+        <span class="section-tag">{{ 'home.education_tag' | translate }}</span>
+        <h2>{{ 'home.education_title' | translate }}</h2>
       </div>
-      <a href="javascript:void(0)" class="view-all">View All</a>
+      <a href="javascript:void(0)" class="view-all">{{ 'home.view_all' | translate }}</a>
     </div>
     <div class="education-carousel">
       <button class="carousel-arrow carousel-prev" (click)="scrollEducation('left')" aria-label="Scroll education cards left">
@@ -263,10 +263,10 @@
   <div class="container">
     <div class="section-header">
       <div>
-        <span class="section-tag">FAQS</span>
-        <h2>Frequently Asked Questions</h2>
+        <span class="section-tag">{{ 'home.faq_tag' | translate }}</span>
+        <h2>{{ 'home.faq_title' | translate }}</h2>
       </div>
-      <a href="javascript:void(0)" class="view-all">View All</a>
+      <a href="javascript:void(0)" class="view-all">{{ 'home.view_all' | translate }}</a>
     </div>
     <div class="faq-list">
       @for (faq of faqs; track faq.question; let i = $index) {

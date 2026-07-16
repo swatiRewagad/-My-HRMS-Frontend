@@ -2,23 +2,23 @@
 @if (phase() === 'search') {
   <div class="page-container">
     <div class="card">
-      <h2>File an Appeal</h2>
-      <p class="subtitle">If you are dissatisfied with the resolution of your complaint, you may file an appeal within 30 days of the decision.</p>
+      <h2>{{ 'appeal.title' | translate }}</h2>
+      <p class="subtitle">{{ 'appeal.subtitle' | translate }}</p>
 
       <div class="info-box" role="note">
         <i class="pi pi-info-circle" aria-hidden="true"></i>
         <div>
-          <strong>Eligibility for Appeal:</strong>
+          <strong>{{ 'appeal.eligibility_title' | translate }}</strong>
           <ul>
-            <li>The complaint must have been closed/resolved by the Ombudsman</li>
-            <li>The appeal must be filed within 30 days of the decision</li>
-            <li>You must provide grounds for appeal</li>
+            <li>{{ 'appeal.eligibility_1' | translate }}</li>
+            <li>{{ 'appeal.eligibility_2' | translate }}</li>
+            <li>{{ 'appeal.eligibility_3' | translate }}</li>
           </ul>
         </div>
       </div>
 
       <div class="form-group">
-        <label>Original Complaint Reference Number <span class="required">*</span></label>
+        <label>{{ 'appeal.ref_label' | translate }} <span class="required">*</span></label>
         <input type="text" class="form-input" [(ngModel)]="complaintId" name="complaintId"
                placeholder="e.g., CMP-20260525-000001" (keydown.enter)="searchComplaint()">
       </div>
@@ -28,12 +28,12 @@
       }
 
       <div class="form-actions">
-        <button class="btn-secondary" (click)="goHome()">Cancel</button>
+        <button class="btn-secondary" (click)="goHome()">{{ 'appeal.cancel' | translate }}</button>
         <button class="btn-primary" (click)="searchComplaint()" [disabled]="checking()">
           @if (checking()) {
-            <i class="pi pi-spinner pi-spin"></i> Checking...
+            <i class="pi pi-spinner pi-spin"></i> {{ 'appeal.checking' | translate }}
           } @else {
-            <i class="pi pi-search"></i> Check Eligibility
+            <i class="pi pi-search"></i> {{ 'appeal.check_eligibility' | translate }}
           }
         </button>
       </div>
@@ -45,7 +45,7 @@
 @if (phase() === 'eligibility') {
   <div class="page-container">
     <div class="card">
-      <h2>Eligibility Check Result</h2>
+      <h2>{{ 'appeal.result_title' | translate }}</h2>
       <p class="subtitle">Complaint: <strong>{{ complaintId }}</strong></p>
 
       @if (eligibilityResult(); as result) {
@@ -58,7 +58,7 @@
             }
           </div>
           <div class="eligibility-info">
-            <h3>{{ result.eligible ? 'Eligible for Appeal' : 'Not Eligible' }}</h3>
+            <h3>{{ result.eligible ? ('appeal.eligible' | translate) : ('appeal.not_eligible' | translate) }}</h3>
             @if (result.reason) {
               <p>{{ result.reason }}</p>
             }
@@ -67,7 +67,7 @@
 
         @if (classification()) {
           <div class="classification-info">
-            <label>Classification:</label>
+            <label>{{ 'appeal.classification' | translate }}</label>
             <span class="classification-badge" [attr.data-classification]="classification()">
               {{ classification() }}
             </span>
@@ -77,22 +77,22 @@
 
         @if (result.complaintSummary) {
           <div class="complaint-summary">
-            <h4>Complaint Summary</h4>
+            <h4>{{ 'appeal.summary_title' | translate }}</h4>
             <div class="summary-grid">
               <div class="summary-field">
-                <label>Status</label>
+                <label>{{ 'appeal.status' | translate }}</label>
                 <span>{{ result.complaintSummary.status }}</span>
               </div>
               <div class="summary-field">
-                <label>Decision Date</label>
+                <label>{{ 'appeal.decision_date' | translate }}</label>
                 <span>{{ result.complaintSummary.decisionDate | date:'dd MMM yyyy' }}</span>
               </div>
               <div class="summary-field">
-                <label>Award Amount</label>
+                <label>{{ 'appeal.award_amount' | translate }}</label>
                 <span>{{ result.complaintSummary.awardAmount ? '\u20B9' + result.complaintSummary.awardAmount : 'N/A' }}</span>
               </div>
               <div class="summary-field">
-                <label>Days Since Decision</label>
+                <label>{{ 'appeal.days_since' | translate }}</label>
                 <span>{{ result.complaintSummary.daysSinceDecision }} days</span>
               </div>
             </div>
@@ -101,7 +101,7 @@
           <!-- FR-G-041 / UST112: Speaking Order (read-only) -->
           @if (result.complaintSummary.speakingOrder || result.complaintSummary.closureReason) {
             <div class="speaking-order-section">
-              <h4><i class="pi pi-file-pdf"></i> Speaking Order</h4>
+              <h4><i class="pi pi-file-pdf"></i> {{ 'appeal.speaking_order' | translate }}</h4>
               <div class="speaking-order-content readonly-box">
                 <p>{{ result.complaintSummary.speakingOrder || result.complaintSummary.closureReason }}</p>
               </div>
@@ -136,10 +136,10 @@
       }
 
       <div class="form-actions">
-        <button class="btn-secondary" (click)="phase.set('search')">Back</button>
+        <button class="btn-secondary" (click)="phase.set('search')">{{ 'appeal.back' | translate }}</button>
         @if (eligibilityResult()?.eligible) {
           <button class="btn-primary" (click)="proceedToForm()">
-            <i class="pi pi-arrow-right"></i> Proceed to File Appeal
+            <i class="pi pi-arrow-right"></i> {{ 'appeal.proceed' | translate }}
           </button>
         }
       </div>
@@ -151,7 +151,7 @@
 @if (phase() === 'form') {
   <div class="page-container">
     <div class="card">
-      <h2>Appeal Details</h2>
+      <h2>{{ 'appeal.details_title' | translate }}</h2>
       <p class="subtitle">Filing appeal against complaint <strong>{{ complaintId }}</strong></p>
 
       @if (classification()) {
@@ -177,7 +177,7 @@
       }
 
       <div class="form-group">
-        <label>Ground for Appeal <span class="required">*</span></label>
+        <label>{{ 'appeal.ground' | translate }} <span class="required">*</span></label>
         <div class="radio-group">
           @for (g of appealGrounds; track g) {
             <label class="radio-label" [class.selected]="appealGround === g">
@@ -189,7 +189,7 @@
       </div>
 
       <div class="form-group">
-        <label>Details Supporting Your Appeal <span class="required">*</span></label>
+        <label>{{ 'appeal.details_label' | translate }} <span class="required">*</span></label>
         <div class="textarea-with-speech">
           <textarea class="form-textarea" [(ngModel)]="appealDetails" name="appealDetails" rows="5"
                     placeholder="Explain in detail why you believe the decision should be reviewed..."></textarea>
@@ -198,7 +198,7 @@
       </div>
 
       <div class="form-group">
-        <label>Relief Sought</label>
+        <label>{{ 'appeal.relief' | translate }}</label>
         <div class="textarea-with-speech">
           <textarea class="form-textarea" [(ngModel)]="reliefSought" name="reliefSought" rows="3"
                     placeholder="What outcome are you seeking from this appeal?"></textarea>
@@ -207,7 +207,7 @@
       </div>
 
       <div class="form-group">
-        <label>Supporting Documents</label>
+        <label>{{ 'appeal.docs' | translate }}</label>
         <div class="file-upload-area">
           <input type="file" id="appealFiles" multiple (change)="onFilesSelected($event)" accept=".pdf,.jpg,.jpeg,.png"
                  class="file-input-hidden">
@@ -232,7 +232,7 @@
       <div class="declaration-box">
         <label class="checkbox-label">
           <input type="checkbox" [(ngModel)]="declarationChecked" name="declaration">
-          <span>I hereby declare that the information provided above is true and correct. I understand that filing a frivolous or misleading appeal may result in dismissal.</span>
+          <span>{{ 'appeal.declaration' | translate }}</span>
         </label>
       </div>
 
@@ -242,10 +242,10 @@
 
       <!-- FR-G-034: Submit -->
       <div class="form-actions">
-        <button class="btn-secondary" (click)="phase.set('eligibility')">Back</button>
+        <button class="btn-secondary" (click)="phase.set('eligibility')">{{ 'appeal.back' | translate }}</button>
         <button class="btn-primary" (click)="submitAppeal()" [disabled]="submitting()">
-          @if (submitting()) { <i class="pi pi-spinner pi-spin"></i> Submitting... }
-          @else { <i class="pi pi-send"></i> Submit Appeal }
+          @if (submitting()) { <i class="pi pi-spinner pi-spin"></i> {{ 'appeal.submitting' | translate }} }
+          @else { <i class="pi pi-send"></i> {{ 'appeal.submit' | translate }} }
         </button>
       </div>
     </div>
@@ -257,8 +257,8 @@
   <div class="page-container">
     <div class="card success-card" role="alert" aria-live="polite">
       <div class="success-icon"><i class="pi pi-check-circle" aria-hidden="true"></i></div>
-      <h2>Appeal Filed Successfully</h2>
-      <p class="ref-label">Your Appeal Reference Number:</p>
+      <h2>{{ 'appeal.success_title' | translate }}</h2>
+      <p class="ref-label">{{ 'appeal.success_ref' | translate }}</p>
       <div class="ref-number">{{ appealRefNumber }}</div>
       @if (classification()) {
         <p class="classification-result">
@@ -267,8 +267,8 @@
       }
       <p>Your appeal against complaint <strong>{{ complaintId }}</strong> has been registered. You will receive updates via SMS and email.</p>
       <div class="form-actions center">
-        <button class="btn-primary" (click)="trackAppeal()"><i class="pi pi-search"></i> Track Appeal</button>
-        <button class="btn-secondary" (click)="goHome()"><i class="pi pi-home"></i> Go to Homepage</button>
+        <button class="btn-primary" (click)="trackAppeal()"><i class="pi pi-search"></i> {{ 'appeal.track' | translate }}</button>
+        <button class="btn-secondary" (click)="goHome()"><i class="pi pi-home"></i> {{ 'appeal.go_home' | translate }}</button>
       </div>
     </div>
   </div>
