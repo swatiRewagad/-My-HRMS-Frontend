@@ -81,10 +81,10 @@ export class PublicHomeComponent implements OnInit {
 
   getStatusClass(status: string): string {
     switch (status) {
-      case 'RESOLVED': case 'CLOSED': return 'status-resolved';
+      case 'RESOLVED': case 'CLOSED': case 'NON_MAINTAINABLE': return 'status-resolved';
       case 'IN_PROGRESS': case 'UNDER_REVIEW': return 'status-progress';
       case 'REQUEST_SENT_BACK': return 'status-sent-back';
-      case 'REJECTED': case 'NON_MAINTAINABLE': return 'status-rejected';
+      case 'REJECTED': return 'status-rejected';
       default: return 'status-pending';
     }
   }
@@ -96,6 +96,7 @@ export class PublicHomeComponent implements OnInit {
       case 'REJECTED': return 'Rejected';
       case 'RESOLVED': return 'Resolved';
       case 'UNDER_REVIEW': return 'Under Review';
+      case 'NON_MAINTAINABLE': return 'Closed';
       default: return status.replace(/_/g, ' ');
     }
   }

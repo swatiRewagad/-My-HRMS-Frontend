@@ -21,7 +21,7 @@ public class Translation {
     @Column(nullable = false, length = 10)
     private String locale;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
+    @Column(name = "\"value\"", nullable = false, columnDefinition = "TEXT")
     private String value;
 
     @Column(name = "updated_at")

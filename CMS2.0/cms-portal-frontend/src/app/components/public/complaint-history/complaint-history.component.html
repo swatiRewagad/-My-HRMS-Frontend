@@ -1,39 +1,39 @@
 <div class="my-complaints-page">
 
   <div class="page-header">
-    <h1 class="page-title">My Complaints</h1>
-    <a routerLink="/public/file-complaint" class="btn-create-new">Create New Complaint</a>
+    <h1 class="page-title">{{ 'history.title' | translate }}</h1>
+    <a routerLink="/public/file-complaint" class="btn-create-new">{{ 'history.create_new' | translate }}</a>
   </div>
 
   @if (loading()) {
     <div class="loading-state" role="status" aria-live="polite">
-      <i class="pi pi-spinner pi-spin" aria-hidden="true"></i> Loading complaints...
+      <i class="pi pi-spinner pi-spin" aria-hidden="true"></i> {{ 'history.loading' | translate }}
     </div>
   } @else {
     <div class="table-card">
       <table class="complaints-table">
         <thead>
           <tr class="thead-row">
-            <th>Complaint Number <i class="pi pi-sort-alt" aria-hidden="true"></i>
+            <th>{{ 'history.col_number' | translate }} <i class="pi pi-sort-alt" aria-hidden="true"></i>
               <div class="col-search"><input type="text" placeholder="Search" [(ngModel)]="filters.complaintId" class="col-filter-input" aria-label="Filter by complaint number"></div>
             </th>
-            <th>Complaint Against <i class="pi pi-sort-alt" aria-hidden="true"></i>
+            <th>{{ 'history.col_against' | translate }} <i class="pi pi-sort-alt" aria-hidden="true"></i>
               <div class="col-search"><input type="text" placeholder="Search" [(ngModel)]="filters.entityName" class="col-filter-input" aria-label="Filter by entity name"></div>
             </th>
-            <th>Complaint Date <i class="pi pi-sort-alt" aria-hidden="true"></i>
+            <th>{{ 'history.col_date' | translate }} <i class="pi pi-sort-alt" aria-hidden="true"></i>
               <div class="col-search"><input type="text" placeholder="DD-MM-YYYY" [(ngModel)]="filters.date" class="col-filter-input" aria-label="Filter by complaint date"></div>
             </th>
-            <th>Status <i class="pi pi-sort-alt" aria-hidden="true"></i>
+            <th>{{ 'history.col_status' | translate }} <i class="pi pi-sort-alt" aria-hidden="true"></i>
               <div class="col-search"><input type="text" placeholder="Search" [(ngModel)]="filters.status" class="col-filter-input" aria-label="Filter by status"></div>
             </th>
-            <th>Comments <i class="pi pi-sort-alt" aria-hidden="true"></i>
+            <th>{{ 'history.col_comments' | translate }} <i class="pi pi-sort-alt" aria-hidden="true"></i>
               <div class="col-search"><input type="text" placeholder="Search" [(ngModel)]="filters.comments" class="col-filter-input" aria-label="Filter by comments"></div>
             </th>
           </tr>
         </thead>
         <tbody>
           @if (filteredComplaints().length === 0) {
-            <tr><td colspan="5" class="empty-cell">No complaints found.</td></tr>
+            <tr><td colspan="5" class="empty-cell">{{ 'history.no_complaints' | translate }}</td></tr>
           }
           @for (c of filteredComplaints(); track c.complaintId) {
             <tr class="tbody-row">
@@ -54,8 +54,8 @@
   }
 
   <div class="assistance-banner">
-    <h3>Need Assistance? Call 14448</h3>
-    <p>The contact center (#14448) with Interactive Voice Response System (IVRS) is available 24x7, while the facility to connect to Contact Centre personnel is available from Monday to Saturday except for National Holidays, between 8:00 AM to 10:00 PM for English, Hindi, and ten regional languages.</p>
+    <h3>{{ 'history.assistance_title' | translate }}</h3>
+    <p>{{ 'layout.assistance_desc' | translate }}</p>
   </div>
 
 </div>
