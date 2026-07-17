@@ -399,8 +399,8 @@
 .radio-option-inline {
   display: inline-flex; align-items: center; gap: 6px;
   font-size: 14px; cursor: pointer; padding: 6px 14px;
-  border: 1.5px solid #ddd; border-radius: 8px; background: #fff;
-  &.selected { border-color: #2460b9; background: #f0f5ff; }
+  border: none; border-radius: 4px; background: #fff;
+  &.selected { background: #f0f5ff; font-weight: 600; color: #1a237e; }
   input[type="radio"] { accent-color: #2460b9; }
 }
 
@@ -524,13 +524,13 @@
 }
 
 .form-page-header {
-  max-width: 900px; margin: 0 auto 24px; padding: 0 24px;
+  max-width: 1100px; margin: 0 auto 24px; padding: 0 24px;
 }
 
 .form-card {
   background: #fff; border: 1px solid #e8e8e8; border-radius: 12px; padding: 32px 40px;
   box-shadow: 0 2px 12px rgba(0,0,0,0.05);
-  max-width: 900px; margin: 0 auto;
+  max-width: 1100px; margin: 0 auto;
 }
 
 .step-header { margin-bottom: 28px; overflow-x: auto; padding-bottom: 4px; }
@@ -563,8 +563,8 @@
   &.active { background: #4caf50; }
 }
 
-.three-col { display: grid !important; grid-template-columns: 1fr 1fr 1fr; gap: 16px; align-items: start; }
-.three-col .form-group { flex: unset; }
+.three-col { display: grid !important; grid-template-columns: 1fr 1fr 1fr; gap: 20px; align-items: stretch; }
+.three-col .form-group { flex: unset; min-width: 0; display: flex; flex-direction: column; justify-content: space-between; }
 
 // ── Review Step ──
 .review-section {
@@ -638,18 +638,22 @@
   padding: 4px 0;
 }
 
-.toggle-btn-group {
-  display: flex; gap: 0;
+.radio-inline-group {
+  display: flex; align-items: center; gap: 20px; margin-top: 8px;
 }
 
-.toggle-btn {
-  padding: 10px 28px; font-size: 14px; font-weight: 600; cursor: pointer;
-  border: 1.5px solid #2460b9; background: #fff; color: #2460b9;
-  transition: all 0.15s;
-  &:first-child { border-radius: 8px 0 0 8px; border-right: none; }
-  &:last-child { border-radius: 0 8px 8px 0; border-left: 1px solid #2460b9; }
-  &.active { background: #2460b9; color: #fff; }
-  &:hover:not(.active) { background: #f0f5ff; }
+.radio-inline {
+  display: flex; align-items: center; gap: 6px;
+  cursor: pointer; font-size: 14px; color: #333;
+  input[type="radio"] {
+    -webkit-appearance: radio;
+    appearance: radio;
+    accent-color: #2460b9;
+    width: 16px; height: 16px;
+    margin: 0 4px 0 0;
+    cursor: pointer;
+  }
+  &.selected span { font-weight: 600; color: #1a237e; }
 }
 
 // ── Textarea with mic pill button ──
