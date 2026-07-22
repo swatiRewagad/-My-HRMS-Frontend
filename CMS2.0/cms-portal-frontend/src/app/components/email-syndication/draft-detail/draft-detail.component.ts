@@ -1,10 +1,11 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { EmailSyndicationService } from '../../../services/email-syndication.service';
 import { EmailDraft, EmailDraftUpdateRequest, DeoUser } from '../../../models/email-syndication.model';
 import { SpeechButtonComponent } from '../../../shared/speech-button/speech-button.component';
+import { highlightEmailText, escapeHtml } from '../../../utils/highlight-text.util';
 
 @Component({
   selector: 'app-draft-detail',
@@ -29,6 +30,30 @@ export class DraftDetailComponent implements OnInit {
   form = signal<EmailDraftUpdateRequest>({});
   showReassign = signal(false);
   selectedDeo = signal('');
+
+  focusedFieldValue = signal<string>('');
+
+  highlightedEmailBody = computed(() => {
+    const d = this.draft();
+    if (!d?.body) return '';
+    const fieldVal = this.focusedFieldValue();
+    if (!fieldVal) return escapeHtml(d.body);
+    return highlightEmailText(d.body, fieldVal);
+  });
+
+  isEmailDraft = computed(() => {
+    const d = this.draft();
+    return !!(d?.body);
+  });
+
+  onFieldFocus(fieldValue: string | undefined | null) {
+    if (!this.isEmailDraft()) return;
+    this.focusedFieldValue.set(fieldValue?.trim() || '');
+  }
+
+  onFieldBlur() {
+    this.focusedFieldValue.set('');
+  }
 
   ngOnInit() {
     const draftId = this.route.snapshot.params['draftId'];

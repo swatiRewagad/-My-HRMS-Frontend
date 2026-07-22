@@ -3,11 +3,5 @@
   "keycloakUrl": "${KEYCLOAK_URL}",
   "keycloakRealm": "${KEYCLOAK_REALM}",
   "keycloakClientId": "${KEYCLOAK_CLIENT_ID}",
-  "production": true,
-  "sessionTimeoutMinutes": 15,
-  "maxFileSizeMB": 5,
-  "maxTotalUploadSizeMB": 25,
-  "maxFileCount": 10,
-  "allowedFileExtensions": [".pdf", ".doc", ".docx", ".jpg", ".jpeg", ".png", ".xls", ".xlsx"],
-  "retentionPeriodYears": 7
+  "production": true
 }

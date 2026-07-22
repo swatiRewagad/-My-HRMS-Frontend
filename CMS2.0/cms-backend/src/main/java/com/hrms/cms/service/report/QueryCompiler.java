@@ -63,6 +63,10 @@ public class QueryCompiler {
 
         if (subject.isAggregate() && query.getGroupByField() != null) {
             return executeGroupedAggregate(cb, query, subject, userRole, userDepartment);
+        } else if (!subject.isAggregate() && query.getGroupByField() != null) {
+            SemanticModelRegistry.Subject countSubject = registry.findSubject("count")
+                    .orElseThrow(() -> new IllegalArgumentException("count subject not found"));
+            return executeGroupedAggregate(cb, query, countSubject, userRole, userDepartment);
         } else if (subject.isAggregate()) {
             return executeSingleAggregate(cb, query, subject, userRole, userDepartment);
         } else {

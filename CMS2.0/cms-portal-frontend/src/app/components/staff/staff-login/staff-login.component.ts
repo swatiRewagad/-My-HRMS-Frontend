@@ -130,7 +130,7 @@ export class StaffLoginComponent implements OnInit {
     this.loading = true;
     this.error = '';
     try {
-      await this.auth.login();
+      await this.auth.loginWithRedirect(window.location.origin + '/staff/dashboard');
     } catch (err) {
       this.error = 'Failed to connect to authentication server. Please try again.';
       this.loading = false;

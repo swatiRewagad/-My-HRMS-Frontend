@@ -29,14 +29,15 @@
             <th>{{ 'history.col_comments' | translate }} <i class="pi pi-sort-alt" aria-hidden="true"></i>
               <div class="col-search"><input type="text" placeholder="Search" [(ngModel)]="filters.comments" class="col-filter-input" aria-label="Filter by comments"></div>
             </th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
           @if (filteredComplaints().length === 0) {
-            <tr><td colspan="5" class="empty-cell">{{ 'history.no_complaints' | translate }}</td></tr>
+            <tr><td colspan="6" class="empty-cell">{{ 'history.no_complaints' | translate }}</td></tr>
           }
           @for (c of filteredComplaints(); track c.complaintId) {
-            <tr class="tbody-row">
+            <tr class="tbody-row" [class.draft-row]="c.isDraft">
               <td class="id-cell">{{ c.complaintId }}</td>
               <td>{{ c.entityName }}</td>
               <td>{{ formatDate(c.complaintDate) }}</td>
@@ -46,6 +47,12 @@
                 </span>
               </td>
               <td class="comments-cell">{{ c.comments }}</td>
+              <td class="actions-cell">
+                @if (c.isDraft) {
+                  <button class="btn-resume" (click)="resumeDraft(c)"><i class="pi pi-pencil"></i> Resume</button>
+                  <button class="btn-delete-draft" (click)="deleteDraft(c)"><i class="pi pi-trash"></i></button>
+                }
+              </td>
             </tr>
           }
         </tbody>

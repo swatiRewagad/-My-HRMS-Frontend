@@ -31,6 +31,10 @@
         <i class="pi pi-chart-bar"></i>
         <span>Dashboard</span>
       </div>
+      <div class="sidebar-item" [class.active]="sidebarItem() === 'team'" (click)="navigateTo('team')">
+        <i class="pi pi-users"></i>
+        <span>Team Management</span>
+      </div>
     </aside>
 
     <!-- Content -->

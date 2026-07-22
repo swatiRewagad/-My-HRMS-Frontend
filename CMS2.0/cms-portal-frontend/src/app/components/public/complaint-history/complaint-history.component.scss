@@ -79,6 +79,30 @@
 .status-closed { background: #e8f5e9; color: #2e7d32; }
 .status-info-required { background: #fce4ec; color: #c62828; }
 .status-pending { background: #fff3e0; color: #e65100; }
+.status-draft { background: #f3e8ff; color: #6b21a8; }
+
+.draft-row { background: #fdfaff; }
+
+.actions-cell {
+  display: flex; align-items: center; gap: 8px; white-space: nowrap;
+}
+
+.btn-resume {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 6px 14px; background: #472192; color: #fff;
+  border: none; border-radius: 6px; font-size: 12px; font-weight: 600;
+  cursor: pointer;
+  &:hover { background: #3a1b78; }
+  i { font-size: 11px; }
+}
+
+.btn-delete-draft {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 30px; height: 30px; border-radius: 6px;
+  background: #fef2f2; border: 1px solid #fecaca; color: #dc2626;
+  cursor: pointer; font-size: 13px;
+  &:hover { background: #fee2e2; }
+}
 
 .loading-state {
   text-align: center; padding: 60px; color: #666; font-size: 15px;

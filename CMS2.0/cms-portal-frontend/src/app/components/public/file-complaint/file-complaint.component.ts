@@ -2,7 +2,7 @@ import { Component, OnInit, OnDestroy, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
-import { Router, RouterLink } from '@angular/router';
+import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 import { ComplaintService } from '../../../services/complaint.service';
 import { PublicAuthService } from '../../../services/public-auth.service';
 import { TranslationService } from '../../../services/translation.service';
@@ -37,6 +37,7 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
   private complaintService = inject(ComplaintService);
   private http = inject(HttpClient);
   private router = inject(Router);
+  private route = inject(ActivatedRoute);
   private publicAuth = inject(PublicAuthService);
   translationService = inject(TranslationService);
   private autoSaveTimer: any = null;
@@ -113,7 +114,7 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
       type: 'radio',
       options: [{ label: 'Yes', value: 'yes', translationKey: 'eligibility.opt_yes' }, { label: 'No', value: 'no', translationKey: 'eligibility.opt_no' }],
       blockOn: 'yes',
-      blockMessage: 'As your complaint is sub-judice/under arbitration/already dealt with on merits by a Court/Tribunal/Arbitrator/Authority, it will be closed as Non-Maintainable under clause 10(2)(b)(ii) of the Reserve Bank - Integrated Ombudsman Scheme, 2021.',
+      blockMessage: 'As your complaint is sub-judice/under arbitration/already dealt with on merits by a Court/Tribunal/Arbitrator/Authority, it will be closed as Non-Maintainable under clause 10(2)(b)(ii) of the Reserve Bank - Integrated Ombudsman Scheme, 2026.',
       blockMessageKey: 'eligibility.block_sub_judice',
       nonMaintainable: true,
       simplifiedText: 'Have you already taken this exact problem to a court, arbitrator, or another official legal authority (excluding criminal cases or police investigations)?',
@@ -126,7 +127,7 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
       type: 'radio',
       options: [{ label: 'Yes', value: 'yes', translationKey: 'eligibility.opt_yes' }, { label: 'No', value: 'no', translationKey: 'eligibility.opt_no' }],
       blockOn: 'yes',
-      blockMessage: 'As your complaint has already been settled or dealt with by a Court/Tribunal/Arbitrator/Authority, it will be closed as Non-Maintainable under the Reserve Bank - Integrated Ombudsman Scheme, 2021.',
+      blockMessage: 'As your complaint has already been settled or dealt with by a Court/Tribunal/Arbitrator/Authority, it will be closed as Non-Maintainable under the Reserve Bank - Integrated Ombudsman Scheme, 2026.',
       blockMessageKey: 'eligibility.block_already_settled',
       nonMaintainable: true,
       simplifiedText: 'Has this exact problem already been resolved by a court, arbitrator, or another official legal authority (excluding criminal cases or police investigations)?',
@@ -281,6 +282,33 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
     { label: 'Credit Card', value: 'credit_card', checked: false },
   ];
 
+  stateDistrictMap: Record<string, string[]> = {
+    'andhra-pradesh': ['Anantapur', 'Chittoor', 'East Godavari', 'Guntur', 'Krishna', 'Kurnool', 'Nellore', 'Prakasam', 'Srikakulam', 'Visakhapatnam', 'Vizianagaram', 'West Godavari', 'YSR Kadapa'],
+    'assam': ['Baksa', 'Barpeta', 'Dibrugarh', 'Guwahati', 'Jorhat', 'Kamrup', 'Nagaon', 'Sivasagar', 'Sonitpur', 'Tinsukia'],
+    'bihar': ['Araria', 'Bhagalpur', 'Gaya', 'Muzaffarpur', 'Nalanda', 'Patna', 'Purnia', 'Samastipur', 'Saran', 'Vaishali'],
+    'delhi': ['Central Delhi', 'East Delhi', 'New Delhi', 'North Delhi', 'North East Delhi', 'North West Delhi', 'Shahdara', 'South Delhi', 'South East Delhi', 'South West Delhi', 'West Delhi'],
+    'gujarat': ['Ahmedabad', 'Anand', 'Bharuch', 'Bhavnagar', 'Gandhinagar', 'Jamnagar', 'Junagadh', 'Kutch', 'Mehsana', 'Rajkot', 'Surat', 'Vadodara'],
+    'karnataka': ['Bagalkot', 'Ballari', 'Bengaluru Rural', 'Bengaluru Urban', 'Belagavi', 'Dakshina Kannada', 'Dharwad', 'Hassan', 'Hubli', 'Mandya', 'Mysuru', 'Tumkur', 'Udupi'],
+    'kerala': ['Alappuzha', 'Ernakulam', 'Idukki', 'Kannur', 'Kasaragod', 'Kollam', 'Kottayam', 'Kozhikode', 'Malappuram', 'Palakkad', 'Pathanamthitta', 'Thiruvananthapuram', 'Thrissur', 'Wayanad'],
+    'madhya-pradesh': ['Bhopal', 'Gwalior', 'Indore', 'Jabalpur', 'Rewa', 'Sagar', 'Satna', 'Ujjain'],
+    'maharashtra': ['Ahmednagar', 'Aurangabad', 'Kolhapur', 'Mumbai City', 'Mumbai Suburban', 'Nagpur', 'Nashik', 'Pune', 'Ratnagiri', 'Sangli', 'Satara', 'Solapur', 'Thane'],
+    'punjab': ['Amritsar', 'Bathinda', 'Jalandhar', 'Ludhiana', 'Mohali', 'Patiala', 'Sangrur'],
+    'rajasthan': ['Ajmer', 'Alwar', 'Bikaner', 'Jaipur', 'Jodhpur', 'Kota', 'Udaipur'],
+    'tamil-nadu': ['Chennai', 'Coimbatore', 'Erode', 'Kancheepuram', 'Madurai', 'Salem', 'Thanjavur', 'Tiruchirappalli', 'Tirunelveli', 'Vellore'],
+    'telangana': ['Adilabad', 'Hyderabad', 'Karimnagar', 'Khammam', 'Mahabubnagar', 'Medak', 'Nalgonda', 'Nizamabad', 'Rangareddy', 'Warangal'],
+    'uttar-pradesh': ['Agra', 'Allahabad', 'Bareilly', 'Ghaziabad', 'Gorakhpur', 'Kanpur', 'Lucknow', 'Mathura', 'Meerut', 'Moradabad', 'Noida', 'Varanasi'],
+    'west-bengal': ['Bankura', 'Darjeeling', 'Hooghly', 'Howrah', 'Kolkata', 'Malda', 'Medinipur', 'Murshidabad', 'Nadia', 'North 24 Parganas', 'South 24 Parganas'],
+  };
+
+  get entityDistricts(): string[] {
+    const state = this.formData['entityState'];
+    return state ? (this.stateDistrictMap[state] || []) : [];
+  }
+
+  onEntityStateChange() {
+    this.formData['entityDistrict'] = '';
+  }
+
   accountTypeDropdownOpen = false;
 
   toggleAccountTypeDropdown() {
@@ -384,6 +412,8 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
 
   // Pincode lookup
   pincodeLoading = false;
+  complainantStates: string[] = [];
+  complainantDistricts: string[] = [];
 
   onPincodeInput() {
     const value = this.formData['pincode'];
@@ -391,14 +421,20 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
       this.pincodeLoading = true;
       this.formData['state'] = '';
       this.formData['district'] = '';
+      this.complainantStates = [];
+      this.complainantDistricts = [];
 
       this.http.get<any[]>(`${environment.apiBaseUrl}/api/v1/location/pincode/${value}`).subscribe({
         next: (res) => {
           this.pincodeLoading = false;
           if (res && res[0] && res[0].Status === 'Success' && res[0].PostOffice?.length) {
-            const po = res[0].PostOffice[0];
-            this.formData['state'] = po.State || '';
-            this.formData['district'] = po.District || '';
+            const postOffices = res[0].PostOffice;
+            const states = [...new Set(postOffices.map((po: any) => po.State).filter(Boolean))] as string[];
+            const districts = [...new Set(postOffices.map((po: any) => po.District).filter(Boolean))] as string[];
+            this.complainantStates = states;
+            this.complainantDistricts = districts;
+            this.formData['state'] = states[0] || '';
+            this.formData['district'] = districts[0] || '';
           }
         },
         error: () => {
@@ -408,6 +444,55 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
     } else {
       this.formData['state'] = '';
       this.formData['district'] = '';
+      this.complainantStates = [];
+      this.complainantDistricts = [];
+    }
+  }
+
+  // Representative pincode lookup
+  repPincodeLoading = false;
+  repStates: string[] = [];
+  repDistricts: string[] = [];
+  repCities: string[] = [];
+
+  onRepPincodeInput() {
+    const value = this.formData['repPincode'];
+    if (value && value.length === 6 && /^\d{6}$/.test(value)) {
+      this.repPincodeLoading = true;
+      this.formData['repState'] = '';
+      this.formData['repDistrict'] = '';
+      this.formData['repCity'] = '';
+      this.repStates = [];
+      this.repDistricts = [];
+      this.repCities = [];
+
+      this.http.get<any[]>(`${environment.apiBaseUrl}/api/v1/location/pincode/${value}`).subscribe({
+        next: (res) => {
+          this.repPincodeLoading = false;
+          if (res && res[0] && res[0].Status === 'Success' && res[0].PostOffice?.length) {
+            const postOffices = res[0].PostOffice;
+            const states = [...new Set(postOffices.map((po: any) => po.State).filter(Boolean))] as string[];
+            const districts = [...new Set(postOffices.map((po: any) => po.District).filter(Boolean))] as string[];
+            const cities = [...new Set(postOffices.map((po: any) => po.Name).filter(Boolean))] as string[];
+            this.repStates = states;
+            this.repDistricts = districts;
+            this.repCities = cities;
+            this.formData['repState'] = states[0] || '';
+            this.formData['repDistrict'] = districts[0] || '';
+            this.formData['repCity'] = cities[0] || '';
+          }
+        },
+        error: () => {
+          this.repPincodeLoading = false;
+        }
+      });
+    } else {
+      this.formData['repState'] = '';
+      this.formData['repDistrict'] = '';
+      this.formData['repCity'] = '';
+      this.repStates = [];
+      this.repDistricts = [];
+      this.repCities = [];
     }
   }
 
@@ -431,7 +516,46 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
     this.eligibilityQuestions[0].options = this.banks.map(b => ({ label: b.name, value: String(b.id) }));
     this.speechSupported = !!(window as any).SpeechRecognition || !!(window as any).webkitSpeechRecognition;
     this.formData['phone'] = this.publicAuth.userIdentifier() || '';
+
+    const draftId = this.route.snapshot.queryParamMap.get('draftId');
+    if (draftId) {
+      this.loadDraftFromServer(draftId);
+    } else {
+      this.loadDraft();
+    }
+
     this.startAutoSave();
+  }
+
+  private loadDraftFromServer(draftId: string) {
+    this.complaintService.getDraft(draftId).subscribe({
+      next: (draft) => {
+        if (draft.formData) {
+          const validKeys = Object.keys(this.formData);
+          for (const key of validKeys) {
+            if (draft.formData[key] !== undefined) {
+              this.formData[key] = draft.formData[key];
+            }
+          }
+        }
+        if (draft.eligibilityAnswers) {
+          this.eligibilityAnswers = draft.eligibilityAnswers;
+        }
+        if (draft.currentStep) {
+          this.currentStep.set(draft.currentStep);
+        }
+        if (draft.phase === 'form') {
+          this.phase.set('form');
+        }
+        if (draft.eligibilityAnswers?.['selectedEntity']) {
+          this.eligibilityStep.set(Object.keys(draft.eligibilityAnswers).length + 1);
+        }
+        localStorage.setItem('cms_draft_id', draftId);
+      },
+      error: () => {
+        this.loadDraft();
+      }
+    });
   }
 
   ngOnDestroy() {
@@ -479,9 +603,10 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
     }
   }
 
+  eligibilityFieldError = '';
+
   nextEligibility() {
     if (this.eligibilityBlocked()) {
-      // FR-G-010: Non-maintainable → generate case ID, show closure
       const q = this.currentQuestion;
       if (q.nonMaintainable) {
         this.nonMaintainableCaseId = 'NM-' + Date.now().toString().slice(-8);
@@ -491,6 +616,14 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
     }
     const q = this.currentQuestion;
     if (!this.eligibilityAnswers[q.key]) return;
+
+    this.eligibilityFieldError = '';
+    if (q.key === 'filedWithRE' && this.eligibilityAnswers['filedWithRE'] === 'yes') {
+      if (!this.formData['bankComplaintDate']) {
+        this.eligibilityFieldError = 'Complaint date with RE is required';
+        return;
+      }
+    }
 
     if (this.eligibilityStep() < this.totalEligibilitySteps) {
       this.showSimplified.set(false);
@@ -525,7 +658,7 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
       y += 8;
       doc.setFontSize(11);
       doc.setFont('helvetica', 'normal');
-      doc.text('Integrated Ombudsman Scheme, 2021', pw / 2, y, { align: 'center' });
+      doc.text('Integrated Ombudsman Scheme, 2026', pw / 2, y, { align: 'center' });
       y += 12;
 
       doc.setDrawColor(0);
@@ -548,7 +681,7 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
       y += 10;
 
       const reason = this.eligibilityBlockMessage();
-      const bodyText = `Your complaint has been closed as Non-Maintainable under the provisions of the Reserve Bank - Integrated Ombudsman Scheme, 2021.`;
+      const bodyText = `Your complaint has been closed as Non-Maintainable under the provisions of the Reserve Bank - Integrated Ombudsman Scheme, 2026.`;
       const lines = doc.splitTextToSize(bodyText, pw - 40);
       doc.text(lines, 20, y);
       y += lines.length * 6 + 8;
@@ -596,9 +729,15 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
       if (!this.formData['pincode'] || !/^\d{6}$/.test(this.formData['pincode'])) this.validationErrors['pincode'] = 'Valid 6-digit pincode is required';
       if (!this.formData['state']) this.validationErrors['state'] = 'Enter valid pincode to auto-fill state';
       if (this.formData['email'] && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.formData['email'])) this.validationErrors['email'] = 'Invalid email format';
+    } else if (step === 2) {
+      if (!this.formData['isCreditCardComplaint']) this.validationErrors['isCreditCardComplaint'] = 'Please select Yes or No';
+      if (!this.formData['entityState']) this.validationErrors['entityState'] = 'Entity state is required';
+      if (!this.formData['entityDistrict']) this.validationErrors['entityDistrict'] = 'Entity district is required';
+      if (!this.formData['entityBranch']?.trim()) this.validationErrors['entityBranch'] = 'Entity branch is required';
     } else if (step === 3) {
       if (!this.formData['complaintCategory']) this.validationErrors['complaintCategory'] = 'Category is required';
       if (!this.formData['complaintText']?.trim()) this.validationErrors['complaintText'] = 'Complaint description is required';
+      if (!this.formData['disputeAmount']?.trim()) this.validationErrors['disputeAmount'] = 'Amount involved is required';
     } else if (step === 4) {
       if (this.formData['authorizeRepresentative'] === 'yes') {
         if (!this.formData['repName']?.trim()) this.validationErrors['repName'] = 'Representative name is required';
@@ -664,7 +803,7 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
       y += 8;
       doc.setFontSize(11);
       doc.setFont('helvetica', 'normal');
-      doc.text('Integrated Ombudsman Scheme, 2021', pageWidth / 2, y, { align: 'center' });
+      doc.text('Integrated Ombudsman Scheme, 2026', pageWidth / 2, y, { align: 'center' });
       y += 12;
 
       // Title
@@ -853,12 +992,35 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
 
   // FR-G-008: Save Draft
   saveDraft() {
-    const draft = { version: this.DRAFT_VERSION, formData: this.formData, eligibilityAnswers: this.eligibilityAnswers, currentStep: this.currentStep() };
+    const draft = { version: this.DRAFT_VERSION, formData: this.formData, eligibilityAnswers: this.eligibilityAnswers, currentStep: this.currentStep(), phase: this.phase() };
     localStorage.setItem('cms_complaint_draft', JSON.stringify(draft));
+    localStorage.setItem('cms_draft_saved_at', new Date().toISOString());
     this.draftSaved.set(true);
     const now = new Date();
     this.lastSavedAt.set(now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }));
     setTimeout(() => this.draftSaved.set(false), 2000);
+
+    this.saveDraftToServer();
+  }
+
+  private saveDraftToServer() {
+    const phone = this.publicAuth.userIdentifier();
+    if (!phone) return;
+    this.complaintService.saveDraft({
+      phone,
+      entityName: this.getSelectedBankName(),
+      formData: this.formData,
+      eligibilityAnswers: this.eligibilityAnswers,
+      currentStep: this.currentStep(),
+      phase: this.phase()
+    }).subscribe({
+      next: (res) => {
+        if (res?.draftId) {
+          localStorage.setItem('cms_draft_id', res.draftId);
+        }
+      },
+      error: () => {}
+    });
   }
 
   private startAutoSave() {
@@ -897,6 +1059,11 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
 
   clearDraft() {
     localStorage.removeItem('cms_complaint_draft');
+    const draftId = localStorage.getItem('cms_draft_id');
+    if (draftId) {
+      this.complaintService.deleteDraft(draftId).subscribe({ error: () => {} });
+      localStorage.removeItem('cms_draft_id');
+    }
   }
 
   // FR-G-012 + NFR-006: File handling with validation and preview
@@ -1042,12 +1209,17 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
       complainantName: [this.formData['firstName'], this.formData['middleName'], this.formData['lastName']].filter(Boolean).join(' '),
       complainantEmail: this.formData['email'],
       complainantPhone: this.formData['phone'],
+      complainantAddress: this.formData['address'],
       entityName: this.getSelectedBankName(),
       entityType: 'BANK',
       subject: this.formData['subCategory1'] || this.formData['complaintCategory'] || 'General Complaint',
       description: this.formData['complaintText'],
       amountInvolved: this.formData['disputeAmount'] ? parseFloat(this.formData['disputeAmount']) : undefined,
       transactionDate: this.formData['disputeDate'] || undefined,
+      priorReComplaint: this.eligibilityAnswers['filedWithRE'] === 'yes',
+      reComplaintDate: this.formData['bankComplaintDate'] || undefined,
+      reComplaintReference: this.formData['bankComplaintRef'] || undefined,
+      reRepliedAndDissatisfied: this.eligibilityAnswers['receivedReply'] === 'yes',
     };
 
     this.complaintService.registerComplaint(payload).subscribe({

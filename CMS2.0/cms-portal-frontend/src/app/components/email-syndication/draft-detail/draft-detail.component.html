@@ -31,7 +31,11 @@
       <div class="section email-body-section">
         <h3>Original Email</h3>
         <div class="email-subject"><strong>Subject:</strong> {{ d.subject }}</div>
-        <div class="email-body">{{ d.body }}</div>
+        @if (isEmailDraft() && highlightedEmailBody()) {
+          <div class="email-body" [innerHTML]="highlightedEmailBody()"></div>
+        } @else {
+          <div class="email-body">{{ d.body }}</div>
+        }
 
         @if (d.attachments && d.attachments.length > 0) {
           <div class="attachments">
@@ -55,22 +59,26 @@
 
         <div class="form-group">
           <label>Complainant Name</label>
-          <input type="text" [ngModel]="form().complainantName" (ngModelChange)="updateField('complainantName', $event)" name="name">
+          <input type="text" [ngModel]="form().complainantName" (ngModelChange)="updateField('complainantName', $event)" name="name"
+                 (focus)="onFieldFocus(form().complainantName)" (blur)="onFieldBlur()">
         </div>
 
         <div class="form-group">
           <label>Phone</label>
-          <input type="tel" [ngModel]="form().complainantPhone" (ngModelChange)="updateField('complainantPhone', $event)" name="phone">
+          <input type="tel" [ngModel]="form().complainantPhone" (ngModelChange)="updateField('complainantPhone', $event)" name="phone"
+                 (focus)="onFieldFocus(form().complainantPhone)" (blur)="onFieldBlur()">
         </div>
 
         <div class="form-group">
           <label>CPGRAMS Number</label>
-          <input type="text" [ngModel]="form().cpgramsNumber" (ngModelChange)="updateField('cpgramsNumber', $event)" name="cpgrams">
+          <input type="text" [ngModel]="form().cpgramsNumber" (ngModelChange)="updateField('cpgramsNumber', $event)" name="cpgrams"
+                 (focus)="onFieldFocus(form().cpgramsNumber)" (blur)="onFieldBlur()">
         </div>
 
         <div class="form-group">
           <label>Category</label>
-          <select [ngModel]="form().category" (ngModelChange)="updateField('category', $event)" name="category">
+          <select [ngModel]="form().category" (ngModelChange)="updateField('category', $event)" name="category"
+                  (focus)="onFieldFocus(form().category)" (blur)="onFieldBlur()">
             <option value="">Select Category</option>
             @for (cat of categories; track cat) {
               <option [value]="cat">{{ cat }}</option>
@@ -81,7 +89,8 @@
         <div class="form-group">
           <label>Complaint Summary</label>
           <div class="textarea-with-speech">
-            <textarea [ngModel]="form().complaintSummary" (ngModelChange)="updateField('complaintSummary', $event)" name="summary" rows="4"></textarea>
+            <textarea [ngModel]="form().complaintSummary" (ngModelChange)="updateField('complaintSummary', $event)" name="summary" rows="4"
+                      (focus)="onFieldFocus(form().complaintSummary)" (blur)="onFieldBlur()"></textarea>
             <app-speech-button (transcription)="updateField('complaintSummary', (form().complaintSummary || '') + ' ' + $event)"></app-speech-button>
           </div>
         </div>

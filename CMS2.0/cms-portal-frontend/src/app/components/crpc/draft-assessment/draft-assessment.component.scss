@@ -628,9 +628,33 @@
   scrollbar-width: none;
   -ms-overflow-style: none;
   &::-webkit-scrollbar { display: none; }
-  padding: 12px 14px;
-  overflow-y: auto;
-  max-height: calc(100vh - 160px);
+  padding: 0;
+  overflow: hidden;
+  height: calc(100vh - 56px);
+  display: flex;
+  flex-direction: column;
+
+  .sidebar-section:first-child {
+    flex-shrink: 0;
+    padding: 12px 14px 4px;
+  }
+
+  .sidebar-section:nth-child(2) {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
+    padding: 0 14px;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    &::-webkit-scrollbar { display: none; }
+  }
+
+  .sidebar-section:last-child {
+    flex-shrink: 0;
+    background: #fff;
+    padding: 12px 14px;
+    border-top: 1px solid #e2e8f0;
+  }
 }
 
 .col-pdf-viewer {
@@ -1498,7 +1522,7 @@
   background: white;
   border-radius: 12px;
   width: 100%;
-  max-width: 440px;
+  max-width: 500px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
 
   .confirm-header {
@@ -1507,7 +1531,7 @@
     span {
       display: flex; align-items: center; gap: 8px;
       font-size: 15px; font-weight: 600; color: #1e293b;
-      i { color: #3b82f6; font-size: 16px; }
+      .info-icon { color: #3b82f6; font-size: 16px; }
     }
     .modal-close {
       background: none; border: none; font-size: 20px;
@@ -1519,6 +1543,61 @@
   .confirm-body {
     padding: 20px;
     p { margin: 0 0 16px; font-size: 14px; color: #475569; }
+
+    .confirm-fields {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+      margin-bottom: 16px;
+
+      .confirm-field {
+        display: flex; flex-direction: column; gap: 6px;
+
+        label {
+          font-size: 12px; font-weight: 500; color: #374151;
+        }
+
+        select {
+          padding: 10px 12px; border: 1px solid #e2e8f0; border-radius: 8px;
+          font-size: 13px; color: #1e293b; background: #fff; cursor: pointer;
+          &:focus { outline: none; border-color: #3b82f6; }
+        }
+
+        .reviewer-input-wrapper {
+          position: relative;
+          input {
+            width: 100%; padding: 10px 36px 10px 12px;
+            border: 1px solid #e2e8f0; border-radius: 8px;
+            font-size: 13px; background: #3b82f6;
+            color: #fff; font-weight: 500;
+            &::placeholder { color: rgba(255,255,255,0.7); }
+            &[readonly] { cursor: default; }
+            &:focus { outline: none; }
+          }
+          i { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: #fff; font-size: 13px; }
+        }
+
+        .reviewer-select-wrapper {
+          select {
+            width: 100%; padding: 10px 12px;
+            border: 1px solid #e2e8f0; border-radius: 8px;
+            font-size: 13px; color: #1e293b; background: #fff; cursor: pointer;
+            &:focus { outline: none; border-color: #3b82f6; }
+          }
+        }
+      }
+    }
+
+    .reviewer-warning {
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 14px; margin-bottom: 16px;
+      background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px;
+      font-size: 13px; color: #dc2626;
+      i { font-size: 14px; }
+      .warning-close {
+        margin-left: auto; background: none; border: none;
+        font-size: 16px; cursor: pointer; color: #dc2626;
+        &:hover { color: #991b1b; }
+      }
+    }
 
     .status-change-row {
       .expected-label {
@@ -2121,6 +2200,27 @@ select:disabled {
     font-size: 14px;
     &:hover { background: #2563eb; }
   }
+}
+
+// ═══ EMAIL HIGHLIGHT ON FIELD FOCUS ═══
+.focusable-field {
+  cursor: pointer;
+  border-radius: 4px;
+  transition: box-shadow 0.2s ease, background 0.2s ease;
+  outline: none;
+  padding: 2px 4px;
+
+  &:focus, &:focus-within {
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
+    background: #f8fafc;
+  }
+}
+
+::ng-deep .field-highlight {
+  background-color: #fff9c4;
+  border-radius: 2px;
+  padding: 0 2px;
+  transition: background-color 0.3s ease;
 }
 
 // ═══ RESPONSIVE ═══

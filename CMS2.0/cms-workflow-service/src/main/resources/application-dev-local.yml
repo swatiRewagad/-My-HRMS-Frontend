@@ -1,11 +1,27 @@
 spring:
-  autoconfigure:
-    exclude:
-      - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
-      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+  datasource:
+    url: jdbc:h2:mem:workflow;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+
   h2:
     console:
-      enabled: false
+      enabled: true
+      path: /h2-console
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+    show-sql: true
+
+  sql:
+    init:
+      mode: always
+      data-locations: classpath:data-h2.sql
 
   kafka:
     bootstrap-servers: localhost:9092
@@ -13,10 +29,18 @@ spring:
       auto-offset-reset: earliest
       group-id: cms-workflow-dev
       enable-auto-commit: false
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
     listener:
       type: single
       missing-topics-fatal: false
       ack-mode: manual
+
+# jBPM process engine disabled in dev-local (uses DevLocalWorkflowService)
+jbpm:
+  persistence:
+    enabled: false
 
 logging:
   level:

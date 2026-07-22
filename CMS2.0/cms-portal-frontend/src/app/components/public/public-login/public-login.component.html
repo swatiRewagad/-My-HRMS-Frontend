@@ -1,8 +1,13 @@
 <div class="verification-page">
-  <h1 class="page-title">{{ 'login.page_title' | translate }}</h1>
+  <h1 class="page-title">Login</h1>
 
   <div class="verify-card">
-    <h2>{{ 'login.verify_phone' | translate }}</h2>
+    <div class="card-header">
+      <h2>Enter Mobile Number</h2>
+      <button class="close-btn" (click)="cancelVerification()" aria-label="Close">
+        <i class="pi pi-times"></i>
+      </button>
+    </div>
 
     <!-- Error/Cooloff Message -->
     @if (loginError) {
@@ -70,8 +75,15 @@
           </div>
         </div>
 
+        <div class="consent-section">
+          <label class="consent-label">
+            <input type="checkbox" [(ngModel)]="consentChecked" />
+            <span>I consent to RBI using my personal data for registering and resolving my complaint in line with applicable laws and the Digital Personal Data Protection Act, 2023.</span>
+          </label>
+        </div>
+
         <button class="send-otp-btn" (click)="sendOtp()"
-                [disabled]="!mobile || !captchaInput || cooloffActive() || loading()">
+                [disabled]="!mobile || !captchaInput || !consentChecked || cooloffActive() || loading()">
           @if (loading()) {
             <i class="pi pi-spinner pi-spin" aria-hidden="true"></i> {{ 'login.sending' | translate }}
           } @else {
@@ -121,10 +133,14 @@
     <!-- Step 2: OTP Verification -->
     @if (otpSent() && !otpVerified()) {
       <div class="otp-section">
-        <div class="otp-sent-msg" role="status">
-          <i class="pi pi-check-circle" aria-hidden="true"></i>
-          {{ 'login.otp_sent_to' | translate }} <strong>+91 {{ mobile }}</strong>
+        <div class="card-header">
+          <h2>Enter OTP</h2>
+          <button class="close-btn" (click)="cancelVerification()" aria-label="Close">
+            <i class="pi pi-times"></i>
+          </button>
         </div>
+
+        <p class="otp-instruction">Enter 6 digit OTP that has been sent to *****{{ mobile.slice(-4) }}</p>
 
         @if (devOtpPopulated()) {
           <div class="dev-otp-notice" role="status">
@@ -133,8 +149,7 @@
           </div>
         }
 
-        <label class="otp-label" id="otp-label">{{ 'login.enter_otp' | translate }}</label>
-        <div class="otp-inputs" role="group" aria-labelledby="otp-label">
+        <div class="otp-inputs" role="group" aria-label="OTP input">
           @for (digit of otpDigits; track $index) {
             <input type="text" maxlength="1" [value]="otpDigits[$index]"
                    (input)="onOtpInput($index, $event)"
@@ -149,22 +164,31 @@
           <p class="field-error" role="alert" aria-live="assertive">{{ otpError }}</p>
         }
 
-        <button class="send-otp-btn" (click)="verifyOtp()"
-                [disabled]="cooloffActive() || loading()">
-          @if (loading()) {
-            <i class="pi pi-spinner pi-spin" aria-hidden="true"></i> {{ 'login.verifying' | translate }}
-          } @else {
-            {{ 'login.verify_otp' | translate }}
-          }
-        </button>
+        <div class="otp-resend">
+          <span>Didn't Receive OTP?</span>
+          <button class="link-btn" (click)="resendOtp()" [disabled]="resendTimer > 0 || cooloffActive()">
+            {{ resendTimer > 0 ? 'Resend in ' + resendTimer + 's' : 'Resend OTP' }}
+          </button>
+        </div>
 
         <div class="otp-footer">
-          <button class="link-btn" (click)="resendOtp()" [disabled]="resendTimer > 0 || cooloffActive()">
-            {{ resendTimer > 0 ? ('login.resend_in' | translate) + ' ' + resendTimer + 's' : ('login.resend_otp' | translate) }}
+          <button class="link-btn change-number" (click)="cancelVerification()">Change Phone Number</button>
+          <button class="verify-btn" (click)="verifyOtp()"
+                  [disabled]="cooloffActive() || loading()">
+            @if (loading()) {
+              <i class="pi pi-spinner pi-spin" aria-hidden="true"></i> Verifying...
+            } @else {
+              Verify
+            }
           </button>
-          <button class="link-btn" (click)="cancelVerification()">{{ 'login.change_number' | translate }}</button>
         </div>
       </div>
     }
+  </div>
+
+  <div class="notice-banner">
+    <i class="pi pi-exclamation-triangle"></i>
+    <p>Please note that before approaching the Ombudsman, it is mandatory to first file the complaint with the concerned Regulated Entity (RE). Only in the event of non-receipt of reply, within 30 days from the lodgement of the complaint, from the RE or if the complaint is rejected wholly or partially by the RE, the complaint can be registered with the Ombudsman</p>
+    <button class="notice-close" aria-label="Dismiss notice"><i class="pi pi-times"></i></button>
   </div>
 </div>

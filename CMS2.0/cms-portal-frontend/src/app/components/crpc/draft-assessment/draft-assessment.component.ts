@@ -9,6 +9,7 @@ import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
 import { ReviewerUser } from '../../../models/crpc.model';
 import { environment } from '../../../../environments/environment';
 import { SpeechButtonComponent } from '../../../shared/speech-button/speech-button.component';
+import { highlightEmailText, escapeHtml } from '../../../utils/highlight-text.util';
 
 interface MaintainabilityQuestion {
   id: string;
@@ -68,6 +69,7 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
 
   // ─── Confirmation Dialog ───
   showConfirmDialog = signal(false);
+  selectedReviewerName = 'CRPC Reviewer';
 
   // ─── Blob URL cache: maps attachment id → safe blob URL (avoids X-Frame-Options block) ───
   private blobUrlCache = new Map<string, string>();
@@ -97,6 +99,64 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
 
   toggleExpand(panel: 'email' | 'complaint') {
     this.expandedPanel.set(this.expandedPanel() === panel ? '' : panel);
+  }
+
+  // ─── Email Highlight on Field Focus ───
+  focusedFieldValue = signal<string>('');
+  emailBodyHtml = signal<string>('');
+  emailSubjectHtml = signal<string>('');
+  emailSenderHtml = signal<string>('');
+
+  isEmailMode(): boolean {
+    return (this.modeOfReceipt || '').toUpperCase() === 'EMAIL';
+  }
+
+  onFieldFocus(fieldValue: string | undefined | null) {
+    if (!this.isEmailMode()) return;
+    this.focusedFieldValue.set(fieldValue?.trim() || '');
+    this.updateEmailHighlight();
+  }
+
+  onFieldBlur() {
+    this.focusedFieldValue.set('');
+    this.updateEmailHighlight();
+  }
+
+  onFieldClick(fieldValue: string | undefined | null) {
+    if (!this.isEmailMode()) return;
+    this.focusedFieldValue.set(fieldValue?.trim() || '');
+    this.updateEmailHighlight();
+  }
+
+  updateEmailHighlight() {
+    const fieldVal = this.focusedFieldValue();
+
+    // Subject highlight
+    const subj = this.subject || '';
+    if (!fieldVal) {
+      this.emailSubjectHtml.set(escapeHtml(subj));
+    } else {
+      this.emailSubjectHtml.set(highlightEmailText(subj, fieldVal));
+    }
+
+    // Sender info highlight
+    const senderText = `${this.complainantName || 'Unknown'} <${this.complainantEmail || ''}>`;
+    if (!fieldVal) {
+      this.emailSenderHtml.set(escapeHtml(senderText));
+    } else {
+      this.emailSenderHtml.set(highlightEmailText(senderText, fieldVal));
+    }
+
+    // Body highlight
+    if (!this.description) {
+      this.emailBodyHtml.set('');
+      return;
+    }
+    if (!fieldVal) {
+      this.emailBodyHtml.set(escapeHtml(this.description));
+      return;
+    }
+    this.emailBodyHtml.set(highlightEmailText(this.description, fieldVal));
   }
 
   // ─── Collapsible Sections ───
@@ -423,7 +483,18 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
     this.draftId = this.route.snapshot.paramMap.get('id') || '';
     this.loadDraft();
     this.loadStates();
-    this.crpcService.getReviewers().subscribe(data => this.reviewers.set(data));
+    this.crpcService.getReviewers().subscribe(data => {
+      if (data.length > 0) {
+        this.reviewers.set(data);
+      } else {
+        this.reviewers.set([
+          { id: 'REV001', displayName: 'Radhika Rao', email: 'radhika@rbi.org.in', isActive: true, isOnLeave: true, maxLoad: 25, currentLoad: 12, region: 'North', sortOrder: 1 },
+          { id: 'REV002', displayName: 'Bhupinder Singh', email: 'bhupinder@rbi.org.in', isActive: true, isOnLeave: false, maxLoad: 25, currentLoad: 8, region: 'North', sortOrder: 2 },
+          { id: 'REV003', displayName: 'Priya Sharma', email: 'priya@rbi.org.in', isActive: true, isOnLeave: false, maxLoad: 25, currentLoad: 15, region: 'West', sortOrder: 3 },
+          { id: 'REV004', displayName: 'Amit Kumar', email: 'amit@rbi.org.in', isActive: true, isOnLeave: false, maxLoad: 25, currentLoad: 5, region: 'East', sortOrder: 4 },
+        ]);
+      }
+    });
   }
 
   loadStates() {
@@ -790,6 +861,7 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
 
       this.emailCorrespondence.set([]);
       this.loading.set(false);
+      this.updateEmailHighlight();
       if (this.complainantState) this.loadDistrictsForState(this.complainantState);
       this.loadPastComplaints();
       this.loadSimilarCases();
@@ -875,6 +947,7 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
             }
 
             this.loading.set(false);
+            this.updateEmailHighlight();
             if (this.complainantState) this.loadDistrictsForState(this.complainantState);
             this.loadPastComplaints();
             this.loadSimilarCases();

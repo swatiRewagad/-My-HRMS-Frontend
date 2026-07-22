@@ -48,6 +48,7 @@ export class PublicLoginComponent implements OnDestroy {
 
   devOtpPopulated = signal(false);
   loading = signal(false);
+  consentChecked = false;
 
   constructor() {
     this.loadCaptcha();

@@ -178,7 +178,11 @@
                     </div>
                   }
                   <div class="email-body-display">
-                    <p class="email-body-text">{{ complaint()!.description || 'No description provided.' }}</p>
+                    @if (isEmailSource() && highlightedEmailBody()) {
+                      <p class="email-body-text" [innerHTML]="highlightedEmailBody()"></p>
+                    } @else {
+                      <p class="email-body-text">{{ complaint()!.description || 'No description provided.' }}</p>
+                    }
                   </div>
                 } @else {
                   <div class="doc-empty-state">
@@ -209,25 +213,35 @@
                 @if (sectionOpen.basic) {
                   <div class="section-body">
                     <div class="field-grid-2">
-                      <div class="field-item">
+                      <div class="field-item focusable-field" tabindex="0"
+                           (focus)="onFieldFocus(complaint()!.subject)"
+                           (blur)="onFieldBlur()">
                         <label>Subject</label>
                         <span class="field-value">{{ complaint()!.subject || '—' }}</span>
                       </div>
-                      <div class="field-item">
+                      <div class="field-item focusable-field" tabindex="0"
+                           (focus)="onFieldFocus(complaint()!.category)"
+                           (blur)="onFieldBlur()">
                         <label>Category</label>
                         <span class="field-value">{{ complaint()!.category || '—' }}</span>
                       </div>
                     </div>
-                    <div class="field-item full">
+                    <div class="field-item full focusable-field" tabindex="0"
+                         (focus)="onFieldFocus(complaint()!.description)"
+                         (blur)="onFieldBlur()">
                       <label>Description</label>
                       <p class="field-readonly">{{ complaint()!.description || '—' }}</p>
                     </div>
                     <div class="field-grid-2">
-                      <div class="field-item">
+                      <div class="field-item focusable-field" tabindex="0"
+                           (focus)="onFieldFocus(complaint()!.registeredAt)"
+                           (blur)="onFieldBlur()">
                         <label>Registered At</label>
                         <span class="field-value">{{ complaint()!.registeredAt || '—' }}</span>
                       </div>
-                      <div class="field-item">
+                      <div class="field-item focusable-field" tabindex="0"
+                           (focus)="onFieldFocus(complaint()!.slaDueDate)"
+                           (blur)="onFieldBlur()">
                         <label>SLA Due Date</label>
                         <span class="field-value">{{ complaint()!.slaDueDate || '—' }}</span>
                       </div>
@@ -245,21 +259,29 @@
                 @if (sectionOpen.complainant) {
                   <div class="section-body">
                     <div class="field-grid-2">
-                      <div class="field-item">
+                      <div class="field-item focusable-field" tabindex="0"
+                           (focus)="onFieldFocus(complaint()!.complainantName)"
+                           (blur)="onFieldBlur()">
                         <label>Name</label>
                         <span class="field-value">{{ complaint()!.complainantName || '—' }}</span>
                       </div>
-                      <div class="field-item">
+                      <div class="field-item focusable-field" tabindex="0"
+                           (focus)="onFieldFocus(complaint()!.complainantEmail)"
+                           (blur)="onFieldBlur()">
                         <label>Email</label>
                         <span class="field-value">{{ complaint()!.complainantEmail || '—' }}</span>
                       </div>
                     </div>
                     <div class="field-grid-2">
-                      <div class="field-item">
+                      <div class="field-item focusable-field" tabindex="0"
+                           (focus)="onFieldFocus(complaint()!.complainantPhone)"
+                           (blur)="onFieldBlur()">
                         <label>Phone</label>
                         <span class="field-value">{{ complaint()!.complainantPhone || '—' }}</span>
                       </div>
-                      <div class="field-item">
+                      <div class="field-item focusable-field" tabindex="0"
+                           (focus)="onFieldFocus(complaint()!.complainantAddress)"
+                           (blur)="onFieldBlur()">
                         <label>Address</label>
                         <span class="field-value">{{ complaint()!.complainantAddress || '—' }}</span>
                       </div>
@@ -277,21 +299,29 @@
                 @if (sectionOpen.entity) {
                   <div class="section-body">
                     <div class="field-grid-2">
-                      <div class="field-item">
+                      <div class="field-item focusable-field" tabindex="0"
+                           (focus)="onFieldFocus(complaint()!.entityName)"
+                           (blur)="onFieldBlur()">
                         <label>Entity Name</label>
                         <span class="field-value">{{ complaint()!.entityName || '—' }}</span>
                       </div>
-                      <div class="field-item">
+                      <div class="field-item focusable-field" tabindex="0"
+                           (focus)="onFieldFocus(complaint()!.entityType)"
+                           (blur)="onFieldBlur()">
                         <label>Entity Type</label>
                         <span class="field-value">{{ complaint()!.entityType || '—' }}</span>
                       </div>
                     </div>
                     <div class="field-grid-2">
-                      <div class="field-item">
+                      <div class="field-item focusable-field" tabindex="0"
+                           (focus)="onFieldFocus(complaint()!.entityBranch)"
+                           (blur)="onFieldBlur()">
                         <label>Branch</label>
                         <span class="field-value">{{ complaint()!.entityBranch || '—' }}</span>
                       </div>
-                      <div class="field-item">
+                      <div class="field-item focusable-field" tabindex="0"
+                           (focus)="onFieldFocus(complaint()!.entityLocation)"
+                           (blur)="onFieldBlur()">
                         <label>Location</label>
                         <span class="field-value">{{ complaint()!.entityLocation || '—' }}</span>
                       </div>

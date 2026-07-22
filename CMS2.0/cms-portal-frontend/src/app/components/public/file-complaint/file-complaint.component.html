@@ -43,7 +43,7 @@
       <div class="question-block">
         @if (currentQuestion.type === 'select') {
           <h3 class="select-heading">{{ currentQuestionText }}</h3>
-          <p class="select-desc">{{ 'eligibility.select_desc' | translate }}</p>
+          <p class="select-desc">Any financial institution—such as a bank, Non-Banking Financial Company (NBFC), or payment processor—licensed and supervised by the Reserve Bank of India</p>
           <select class="form-select entity-select" [ngModel]="eligibilityAnswers[currentQuestion.key]"
                   (ngModelChange)="selectEligibilityAnswer($event)" [attr.name]="currentQuestion.key">
             <option value="">{{ 'eligibility.select_placeholder' | translate }}</option>
@@ -81,10 +81,11 @@
         @if (currentQuestion.key === 'filedWithRE' && eligibilityAnswers['filedWithRE'] === 'yes') {
           <div class="sub-fields-row">
             <div class="sub-field">
-              <label><span class="sub-badge">a</span> {{ 'eligibility.sub_complaint_date' | translate }} {{ selectedEntityName }}</label>
+              <label><span class="sub-badge">a</span> {{ 'eligibility.sub_complaint_date' | translate }} {{ selectedEntityName }} <span class="required">*</span></label>
               <div class="date-input-wrapper">
-                <input type="date" class="form-input" [(ngModel)]="formData['bankComplaintDate']" name="bankComplaintDate" placeholder="Select Date">
+                <input type="date" class="form-input" [class.invalid]="eligibilityFieldError" [(ngModel)]="formData['bankComplaintDate']" name="bankComplaintDate" placeholder="Select Date">
               </div>
+              @if (eligibilityFieldError) { <span class="field-error">{{ eligibilityFieldError }}</span> }
             </div>
             <div class="sub-field">
               <label><span class="sub-badge">b</span> {{ 'eligibility.sub_upload_complaint' | translate }} {{ selectedEntityName }}</label>
@@ -94,7 +95,10 @@
                 <label for="eligibilityFile" class="upload-label">
                   <span class="upload-text">{{ 'eligibility.browse_file' | translate }}</span>
                 </label>
-                <p class="upload-hint">{{ 'eligibility.upload_hint' | translate }}</p>
+              </div>
+              <div class="upload-hint">
+                <span>Support formats: PDF, JPG, PNG</span>
+                <span class="upload-size">Maximum size: 5MB</span>
               </div>
             </div>
           </div>
@@ -135,7 +139,10 @@
                 <label for="reminderFile" class="upload-label">
                   <span class="upload-text">{{ 'eligibility.browse_file' | translate }}</span>
                 </label>
-                <p class="upload-hint">{{ 'eligibility.upload_hint' | translate }}</p>
+              </div>
+              <div class="upload-hint">
+                <span>Support formats: PDF, JPG, PNG</span>
+                <span class="upload-size">Maximum size: 5MB</span>
               </div>
             </div>
           </div>
@@ -158,7 +165,10 @@
                 <label for="replyFile" class="upload-label">
                   <span class="upload-text">{{ 'eligibility.browse_file' | translate }}</span>
                 </label>
-                <p class="upload-hint">{{ 'eligibility.upload_hint' | translate }}</p>
+              </div>
+              <div class="upload-hint">
+                <span>Support formats: PDF, JPG, PNG</span>
+                <span class="upload-size">Maximum size: 5MB</span>
               </div>
             </div>
           </div>
@@ -219,6 +229,19 @@
       }
     </div>
 
+    <!-- Regulated Entities Download Links -->
+    @if (currentQuestion?.key === 'regulatedEntity') {
+      <div class="scheme-links">
+        <div class="scheme-link-row">
+          <span>Regulated entities <strong>covered</strong> under Reserve Bank-Integrated Ombudsman Scheme, 2026</span>
+          <a href="javascript:void(0)" class="scheme-download-link"><i class="pi pi-download"></i> Download PDF</a>
+        </div>
+        <div class="scheme-link-row">
+          <span>Regulated entities <strong>not covered</strong> under Reserve Bank-Integrated Ombudsman Scheme, 2026</span>
+          <a href="javascript:void(0)" class="scheme-download-link"><i class="pi pi-download"></i> Download PDF</a>
+        </div>
+      </div>
+    }
 
   </div>
 }
@@ -330,13 +353,22 @@
             </div>
             <div class="form-group">
               <label>{{ 'form.state' | translate }} <span class="required">*</span></label>
-              <input type="text" class="form-input" [class.invalid]="validationErrors['state']" [(ngModel)]="formData['state']" name="state"
-                     placeholder="Select Value">
+              <select class="form-select" [class.invalid]="validationErrors['state']" [(ngModel)]="formData['state']" name="state">
+                <option value="">Select Value</option>
+                @for (s of complainantStates; track s) {
+                  <option [value]="s">{{ s }}</option>
+                }
+              </select>
               @if (validationErrors['state']) { <span class="field-error">{{ validationErrors['state'] }}</span> }
             </div>
             <div class="form-group">
-              <label>{{ 'form.district' | translate }}</label>
-              <input type="text" class="form-input" [(ngModel)]="formData['district']" name="district" placeholder="Enter Value">
+              <label>{{ 'form.district' | translate }} <span class="required">*</span></label>
+              <select class="form-select" [(ngModel)]="formData['district']" name="district">
+                <option value="">Enter Value</option>
+                @for (d of complainantDistricts; track d) {
+                  <option [value]="d">{{ d }}</option>
+                }
+              </select>
             </div>
           </div>
           <div class="form-group full-width">
@@ -366,12 +398,13 @@
                 <span>{{ 'form.no' | translate }}</span>
               </label>
             </div>
+            @if (validationErrors['isCreditCardComplaint']) { <span class="field-error">{{ validationErrors['isCreditCardComplaint'] }}</span> }
           </div>
 
           <div class="form-row three-col">
             <div class="form-group">
               <label>{{ 'form.entity_state' | translate }} <span class="required">*</span></label>
-              <select class="form-select" [(ngModel)]="formData['entityState']" name="entityState" (ngModelChange)="onEntityStateChange()">
+              <select class="form-select" [class.invalid]="validationErrors['entityState']" [(ngModel)]="formData['entityState']" name="entityState" (ngModelChange)="onEntityStateChange()">
                 <option value="">Select Value</option>
                 <option value="andhra-pradesh">Andhra Pradesh</option>
                 <option value="assam">Assam</option>
@@ -389,19 +422,22 @@
                 <option value="uttar-pradesh">Uttar Pradesh</option>
                 <option value="west-bengal">West Bengal</option>
               </select>
+              @if (validationErrors['entityState']) { <span class="field-error">{{ validationErrors['entityState'] }}</span> }
             </div>
             <div class="form-group">
               <label>{{ 'form.entity_district' | translate }} <span class="required">*</span></label>
-              <select class="form-select" [(ngModel)]="formData['entityDistrict']" name="entityDistrict">
+              <select class="form-select" [class.invalid]="validationErrors['entityDistrict']" [(ngModel)]="formData['entityDistrict']" name="entityDistrict">
                 <option value="">Select District</option>
                 @for (dist of entityDistricts; track dist) {
                   <option [value]="dist">{{ dist }}</option>
                 }
               </select>
+              @if (validationErrors['entityDistrict']) { <span class="field-error">{{ validationErrors['entityDistrict'] }}</span> }
             </div>
             <div class="form-group">
               <label>{{ 'form.entity_branch' | translate }} <span class="required">*</span></label>
-              <input type="text" class="form-input" [(ngModel)]="formData['entityBranch']" name="entityBranch" placeholder="Enter Branch">
+              <input type="text" class="form-input" [class.invalid]="validationErrors['entityBranch']" [(ngModel)]="formData['entityBranch']" name="entityBranch" placeholder="Enter Branch">
+              @if (validationErrors['entityBranch']) { <span class="field-error">{{ validationErrors['entityBranch'] }}</span> }
             </div>
           </div>
         </div>
@@ -532,8 +568,9 @@
               <label>{{ 'form.amount_involved' | translate }} <span class="required">*</span></label>
               <div class="rupee-input">
                 <span class="rupee-symbol">₹</span>
-                <input type="text" class="form-input" [(ngModel)]="formData['disputeAmount']" name="disputeAmount" placeholder="Enter Value">
+                <input type="text" class="form-input" [class.invalid]="validationErrors['disputeAmount']" [(ngModel)]="formData['disputeAmount']" name="disputeAmount" placeholder="Enter Value">
               </div>
+              @if (validationErrors['disputeAmount']) { <span class="field-error">{{ validationErrors['disputeAmount'] }}</span> }
             </div>
             <div class="form-group">
               <label>{{ 'form.compensation_sought' | translate }} <span class="required">*</span></label>
@@ -622,25 +659,26 @@
             <div class="form-row three-col">
               <div class="form-group">
                 <label>{{ 'form.rep_pincode' | translate }} <span class="required">*</span></label>
-                <select class="form-select" [(ngModel)]="formData['repPincode']" name="repPincode">
-                  <option value="">Select Value</option>
-                </select>
+                <input type="text" class="form-input" [(ngModel)]="formData['repPincode']" name="repPincode"
+                       placeholder="Enter 6-digit pincode" maxlength="6" (ngModelChange)="onRepPincodeInput()">
+                @if (repPincodeLoading) { <span class="hint">Loading...</span> }
               </div>
               <div class="form-group">
                 <label>{{ 'form.rep_state' | translate }} <span class="required">*</span></label>
                 <select class="form-select" [(ngModel)]="formData['repState']" name="repState">
                   <option value="">Select Value</option>
-                  <option value="delhi">Delhi</option>
-                  <option value="maharashtra">Maharashtra</option>
-                  <option value="karnataka">Karnataka</option>
-                  <option value="tamil-nadu">Tamil Nadu</option>
-                  <option value="uttar-pradesh">Uttar Pradesh</option>
+                  @for (s of repStates; track s) {
+                    <option [value]="s">{{ s }}</option>
+                  }
                 </select>
               </div>
               <div class="form-group">
                 <label>{{ 'form.rep_district' | translate }} <span class="required">*</span></label>
                 <select class="form-select" [(ngModel)]="formData['repDistrict']" name="repDistrict">
                   <option value="">Select Value</option>
+                  @for (d of repDistricts; track d) {
+                    <option [value]="d">{{ d }}</option>
+                  }
                 </select>
               </div>
             </div>
@@ -650,6 +688,9 @@
                 <label>{{ 'form.rep_city' | translate }} <span class="required">*</span></label>
                 <select class="form-select" [(ngModel)]="formData['repCity']" name="repCity">
                   <option value="">Select Value</option>
+                  @for (c of repCities; track c) {
+                    <option [value]="c">{{ c }}</option>
+                  }
                 </select>
               </div>
             </div>
@@ -711,7 +752,26 @@
 
       <!-- Step 6: Review and Submit -->
       @if (currentStep() === 6) {
+        <h2 class="review-page-title">Review and Submit</h2>
         <div class="step-content review-step-content">
+          <!-- Watermark overlay -->
+          <div class="review-watermark">
+            @for (row of [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]; track row) {
+              <div class="watermark-row">
+                <img src="assets/llogo.png" class="watermark-seal" alt="">
+                <span class="watermark-text">Complainant ID: {{ referenceNumber }}</span>
+                <img src="assets/RBI_New_Logo.png" class="watermark-seal" alt="">
+                <span class="watermark-text">Complainant ID: {{ referenceNumber }}</span>
+                <img src="assets/llogo.png" class="watermark-seal" alt="">
+                <span class="watermark-text">Complainant ID: {{ referenceNumber }}</span>
+                <img src="assets/RBI_New_Logo.png" class="watermark-seal" alt="">
+                <span class="watermark-text">Complainant ID: {{ referenceNumber }}</span>
+                <img src="assets/llogo.png" class="watermark-seal" alt="">
+                <span class="watermark-text">Complainant ID: {{ referenceNumber }}</span>
+                <img src="assets/RBI_New_Logo.png" class="watermark-seal" alt="">
+              </div>
+            }
+          </div>
 
           <!-- Eligibility Details -->
           <div class="rs-section">
@@ -734,7 +794,7 @@
                 <div class="rs-item"><span class="rs-label">Email (Optional)</span><span class="rs-value">{{ formData['email'] || '—' }}</span></div>
                 <div class="rs-item"><span class="rs-label">Pincode</span><span class="rs-value">{{ formData['pincode'] || '—' }}</span></div>
               </div>
-              <div class="rs-row-full" style="margin-top: 12px;"><span class="rs-label">Address</span><span class="rs-value">{{ formData['address'] || '—' }}</span></div>
+              <div class="rs-row-full"><span class="rs-label">Address</span><span class="rs-value">{{ formData['address'] || '—' }}</span></div>
             </div>
           </div>
 
@@ -743,8 +803,8 @@
             <div class="rs-header">{{ 'review.re_details' | translate }}</div>
             <div class="rs-body">
               <div class="rs-row-full"><span class="rs-label">Regulated Entity Name</span><span class="rs-value">{{ selectedEntityName }}</span></div>
-              <div class="rs-row-full" style="margin-top: 10px;"><span class="rs-label">Is your complaint related to credit card?</span><span class="rs-value">{{ formData['isCreditCardComplaint'] === 'yes' ? 'Yes' : 'No' }}</span></div>
-              <div class="rs-grid" style="margin-top: 12px;">
+              <div class="rs-row-full"><span class="rs-label">Is your complaint related to credit card?</span><span class="rs-value">{{ formData['isCreditCardComplaint'] === 'yes' ? 'Yes' : 'No' }}</span></div>
+              <div class="rs-grid">
                 <div class="rs-item"><span class="rs-label">Entity State</span><span class="rs-value">{{ formData['entityState'] || '—' }}</span></div>
                 <div class="rs-item"><span class="rs-label">Entity District</span><span class="rs-value">{{ formData['entityDistrict'] || '—' }}</span></div>
                 <div class="rs-item"><span class="rs-label">Entity Branch</span><span class="rs-value">{{ formData['entityBranch'] || '—' }}</span></div>
@@ -761,17 +821,22 @@
                 <div class="rs-item"><span class="rs-label">Complaint Sub-Category 1</span><span class="rs-value">{{ formData['subCategory1'] || '—' }}</span></div>
                 <div class="rs-item"><span class="rs-label">Complaint Sub-Category 2</span><span class="rs-value">{{ formData['subCategory2'] || '—' }}</span></div>
               </div>
-              <div class="rs-row-full" style="margin-top: 12px;"><span class="rs-label">Facts of the complaint</span><span class="rs-value">{{ formData['complaintText'] || '—' }}</span></div>
-              <div class="rs-row-full" style="margin-top: 10px;">
+              <div class="rs-row-full"><span class="rs-label">Facts of the complaint</span><span class="rs-value">{{ formData['complaintText'] || '—' }}</span></div>
+              <div class="rs-row-full">
                 <span class="rs-label">If you want to authorize a representative to appear and make submission on your behalf before the Ombudsman, please select 'Yes' and furnish the details of the Authorized Representative</span>
                 <span class="rs-value">{{ formData['hasAuthRep'] === 'yes' ? 'Yes' : 'No' }}</span>
               </div>
               @if (attachmentPreviews.length > 0) {
-                <div style="margin-top: 12px;">
+                <div class="rs-row-full">
                   <span class="rs-label">{{ 'review.attachments' | translate }}</span>
-                  <div class="file-list" style="margin-top: 8px;">
+                  <div class="rs-file-list">
                     @for (f of attachmentPreviews; track $index) {
-                      <div class="file-chip"><i class="pi pi-file-pdf"></i><span class="file-name">{{ f.name }}</span></div>
+                      <div class="rs-file-chip">
+                        <span class="rs-file-icon"><i class="pi pi-file"></i></span>
+                        <div class="rs-file-info">
+                          <span class="rs-file-name">{{ f.name }}</span>
+                        </div>
+                      </div>
                     }
                   </div>
                 </div>

@@ -288,11 +288,11 @@
           <!-- ── Email Syndicate content (no attachment tab active) ── -->
           } @else {
             <div class="email-syndicate-body">
-              <h4 class="email-subject-title">{{ subject || 'No Subject' }}</h4>
+              <h4 class="email-subject-title" [innerHTML]="emailSubjectHtml() || (subject || 'No Subject')"></h4>
               <div class="email-sender-row">
                 <div class="sender-avatar-circle">{{ (complainantName || 'U').charAt(0) }}</div>
                 <div class="sender-info">
-                  <span class="sender-name-text">{{ complainantName || 'Unknown' }} &lt;{{ complainantEmail }}&gt;</span>
+                  <span class="sender-name-text" [innerHTML]="emailSenderHtml() || ((complainantName || 'Unknown') + ' &lt;' + (complainantEmail || '') + '&gt;')"></span>
                   <span class="sender-meta">To: CRPC, Chandigarh</span>
                 </div>
                 <span class="email-date">{{ receivedDate | date:'dd-MM-yyyy' }}</span>
@@ -311,7 +311,11 @@
                 </div>
               }
               <div class="email-body-display">
-                <p class="email-body-text">{{ description || 'No email body content.' }}</p>
+                @if (emailBodyHtml()) {
+                  <p class="email-body-text" [innerHTML]="emailBodyHtml()"></p>
+                } @else {
+                  <p class="email-body-text">{{ description || 'No email body content.' }}</p>
+                }
               </div>
             </div>
           }
@@ -349,44 +353,53 @@
                   <div class="field-item">
                     <label>Complainant Name</label>
                     @if (editMode()) {
-                      <input type="text" [(ngModel)]="complainantName" placeholder="Name" />
+                      <input type="text" [(ngModel)]="complainantName" placeholder="Name"
+                             (focus)="onFieldFocus(complainantName)" (blur)="onFieldBlur()" />
                     } @else {
-                      <span class="field-value">{{ complainantName || '—' }}</span>
+                      <span class="field-value focusable-field" tabindex="0"
+                            (focus)="onFieldFocus(complainantName)" (click)="onFieldClick(complainantName)" (blur)="onFieldBlur()">{{ complainantName || '—' }}</span>
                     }
                   </div>
                   <div class="field-item">
                     <label>Email ID</label>
                     @if (editMode()) {
-                      <input type="email" [(ngModel)]="complainantEmail" placeholder="Email" />
+                      <input type="email" [(ngModel)]="complainantEmail" placeholder="Email"
+                             (focus)="onFieldFocus(complainantEmail)" (blur)="onFieldBlur()" />
                     } @else {
-                      <span class="field-value">{{ complainantEmail || '—' }}</span>
+                      <span class="field-value focusable-field" tabindex="0"
+                            (focus)="onFieldFocus(complainantEmail)" (click)="onFieldClick(complainantEmail)" (blur)="onFieldBlur()">{{ complainantEmail || '—' }}</span>
                     }
                   </div>
                 </div>
                 <div class="field-item full">
                   <label>Subject</label>
                   @if (editMode()) {
-                    <input type="text" [(ngModel)]="subject" placeholder="Subject" />
+                    <input type="text" [(ngModel)]="subject" placeholder="Subject"
+                           (focus)="onFieldFocus(subject)" (blur)="onFieldBlur()" />
                   } @else {
-                    <span class="field-value">{{ subject || '—' }}</span>
+                    <span class="field-value focusable-field" tabindex="0"
+                          (focus)="onFieldFocus(subject)" (click)="onFieldClick(subject)" (blur)="onFieldBlur()">{{ subject || '—' }}</span>
                   }
                 </div>
                 <div class="field-item full">
                   <label>Complaint Details</label>
                   @if (editMode()) {
                     <div class="textarea-with-speech">
-                      <textarea [(ngModel)]="description" rows="3" placeholder="Complaint description"></textarea>
+                      <textarea [(ngModel)]="description" rows="3" placeholder="Complaint description"
+                                (focus)="onFieldFocus(description)" (blur)="onFieldBlur()"></textarea>
                       <app-speech-button (transcription)="description = description + ' ' + $event"></app-speech-button>
                     </div>
                   } @else {
-                    <p class="field-readonly">{{ description ? (description.length > 200 ? description.substring(0,200) + '...' : description) : '—' }}</p>
+                    <p class="field-readonly focusable-field" tabindex="0"
+                       (focus)="onFieldFocus(description)" (click)="onFieldClick(description)" (blur)="onFieldBlur()">{{ description ? (description.length > 200 ? description.substring(0,200) + '...' : description) : '—' }}</p>
                   }
                 </div>
                 <div class="field-item full">
                   <label>Comments</label>
                   @if (editMode()) {
                     <div class="textarea-with-speech">
-                      <textarea [(ngModel)]="deoRemarks" rows="2" placeholder="Enter comments"></textarea>
+                      <textarea [(ngModel)]="deoRemarks" rows="2" placeholder="Enter comments"
+                                (focus)="onFieldFocus(deoRemarks)" (blur)="onFieldBlur()"></textarea>
                       <app-speech-button (transcription)="deoRemarks = deoRemarks + ' ' + $event"></app-speech-button>
                     </div>
                   } @else {
@@ -467,8 +480,8 @@
                           #entityInput
                           [ngModel]="entitySearchText"
                           (ngModelChange)="onEntitySearchInput($event)"
-                          (focus)="onEntityFocus(entityInput)"
-                          (blur)="onEntityBlur()"
+                          (focus)="onEntityFocus(entityInput); onFieldFocus(entityName)"
+                          (blur)="onEntityBlur(); onFieldBlur()"
                           placeholder="Search entity from database..."
                           class="entity-search-input" />
                         @if (entitySearchLoading()) {
@@ -476,7 +489,8 @@
                         }
                       </div>
                     } @else {
-                      <span class="field-value">{{ entityName || '—' }}</span>
+                      <span class="field-value focusable-field" tabindex="0"
+                            (focus)="onFieldFocus(entityName)" (click)="onFieldClick(entityName)" (blur)="onFieldBlur()">{{ entityName || '—' }}</span>
                     }
                   </div>
                   <div class="field-item">
@@ -486,7 +500,7 @@
                   <div class="field-item">
                     <label>Entity Category</label>
                     @if (editMode()) {
-                      <select [(ngModel)]="entityCategory">
+                      <select [(ngModel)]="entityCategory" (focus)="onFieldFocus(entityCategory)" (blur)="onFieldBlur()">
                         <option value="">Select</option>
                         <option value="Nationalised Bank">Nationalised Bank</option>
                         <option value="Private Bank">Private Bank</option>
@@ -497,13 +511,14 @@
                         <option value="Small Finance Bank">Small Finance Bank</option>
                       </select>
                     } @else {
-                      <span class="field-value">{{ entityCategory || '—' }}</span>
+                      <span class="field-value focusable-field" tabindex="0"
+                            (focus)="onFieldFocus(entityCategory)" (click)="onFieldClick(entityCategory)" (blur)="onFieldBlur()">{{ entityCategory || '—' }}</span>
                     }
                   </div>
                   <div class="field-item">
                     <label>Entity Type</label>
                     @if (editMode()) {
-                      <select [(ngModel)]="entityType">
+                      <select [(ngModel)]="entityType" (focus)="onFieldFocus(entityType)" (blur)="onFieldBlur()">
                         <option value="">Select</option>
                         <option value="BANK">Financial Banking services</option>
                         <option value="LOAN_COMPANY">Loan Company</option>
@@ -511,77 +526,90 @@
                         <option value="INSURANCE">Insurance</option>
                       </select>
                     } @else {
-                      <span class="field-value">{{ entityType === 'BANK' ? 'Financial Banking services' : entityType === 'LOAN_COMPANY' ? 'Loan Company' : entityType || '—' }}</span>
+                      <span class="field-value focusable-field" tabindex="0"
+                            (focus)="onFieldFocus(entityType)" (click)="onFieldClick(entityType)" (blur)="onFieldBlur()">{{ entityType === 'BANK' ? 'Financial Banking services' : entityType === 'LOAN_COMPANY' ? 'Loan Company' : entityType || '—' }}</span>
                     }
                   </div>
                   <div class="field-item">
                     <label>BSR Code</label>
                     @if (editMode()) {
-                      <input type="text" [(ngModel)]="entityBsrCode" placeholder="Enter BSR code" />
+                      <input type="text" [(ngModel)]="entityBsrCode" placeholder="Enter BSR code"
+                             (focus)="onFieldFocus(entityBsrCode)" (blur)="onFieldBlur()" />
                     } @else {
-                      <span class="field-value">{{ entityBsrCode || '—' }}</span>
+                      <span class="field-value focusable-field" tabindex="0"
+                            (focus)="onFieldFocus(entityBsrCode)" (click)="onFieldClick(entityBsrCode)" (blur)="onFieldBlur()">{{ entityBsrCode || '—' }}</span>
                     }
                   </div>
                   <div class="field-item">
                     <label>Pincode</label>
                     @if (editMode()) {
-                      <input type="text" [(ngModel)]="entityPincode" placeholder="Enter Country name" maxlength="6" />
+                      <input type="text" [(ngModel)]="entityPincode" placeholder="Enter Country name" maxlength="6"
+                             (focus)="onFieldFocus(entityPincode)" (blur)="onFieldBlur()" />
                     } @else {
-                      <span class="field-value">{{ entityPincode || '—' }}</span>
+                      <span class="field-value focusable-field" tabindex="0"
+                            (focus)="onFieldFocus(entityPincode)" (click)="onFieldClick(entityPincode)" (blur)="onFieldBlur()">{{ entityPincode || '—' }}</span>
                     }
                   </div>
                   <div class="field-item">
                     <label>Country</label>
                     @if (editMode()) {
-                      <input type="text" [(ngModel)]="entityCountry" placeholder="Enter Country name" />
+                      <input type="text" [(ngModel)]="entityCountry" placeholder="Enter Country name"
+                             (focus)="onFieldFocus(entityCountry)" (blur)="onFieldBlur()" />
                     } @else {
-                      <span class="field-value">{{ entityCountry || '—' }}</span>
+                      <span class="field-value focusable-field" tabindex="0"
+                            (focus)="onFieldFocus(entityCountry)" (click)="onFieldClick(entityCountry)" (blur)="onFieldBlur()">{{ entityCountry || '—' }}</span>
                     }
                   </div>
                   <div class="field-item">
                     <label>State</label>
                     @if (editMode()) {
                       <div class="search-input-wrapper">
-                        <select [(ngModel)]="entityState">
+                        <select [(ngModel)]="entityState" (focus)="onFieldFocus(entityState)" (blur)="onFieldBlur()">
                           <option value="">Select state name</option>
                           @for (s of states(); track s) { <option [value]="s">{{ s }}</option> }
                         </select>
                       </div>
                     } @else {
-                      <span class="field-value">{{ entityState || '—' }}</span>
+                      <span class="field-value focusable-field" tabindex="0"
+                            (focus)="onFieldFocus(entityState)" (click)="onFieldClick(entityState)" (blur)="onFieldBlur()">{{ entityState || '—' }}</span>
                     }
                   </div>
                   <div class="field-item">
                     <label>District</label>
                     @if (editMode()) {
                       <div class="search-input-wrapper">
-                        <select [(ngModel)]="entityDistrict">
+                        <select [(ngModel)]="entityDistrict" (focus)="onFieldFocus(entityDistrict)" (blur)="onFieldBlur()">
                           <option value="">Select district name</option>
                           @for (d of districts(); track d) { <option [value]="d">{{ d }}</option> }
                         </select>
                       </div>
                     } @else {
-                      <span class="field-value">{{ entityDistrict || '—' }}</span>
+                      <span class="field-value focusable-field" tabindex="0"
+                            (focus)="onFieldFocus(entityDistrict)" (click)="onFieldClick(entityDistrict)" (blur)="onFieldBlur()">{{ entityDistrict || '—' }}</span>
                     }
                   </div>
                   <div class="field-item">
                     <label>City</label>
                     @if (editMode()) {
                       <div class="search-input-wrapper">
-                        <input type="text" [(ngModel)]="entityCity" placeholder="Select city name" />
+                        <input type="text" [(ngModel)]="entityCity" placeholder="Select city name"
+                               (focus)="onFieldFocus(entityCity)" (blur)="onFieldBlur()" />
                       </div>
                     } @else {
-                      <span class="field-value">{{ entityCity || '—' }}</span>
+                      <span class="field-value focusable-field" tabindex="0"
+                            (focus)="onFieldFocus(entityCity)" (click)="onFieldClick(entityCity)" (blur)="onFieldBlur()">{{ entityCity || '—' }}</span>
                     }
                   </div>
                   <div class="field-item">
                     <label>Entity Branch Name</label>
                     @if (editMode()) {
                       <div class="search-input-wrapper">
-                        <input type="text" [(ngModel)]="entityBranchName" placeholder="Select entity branch name" />
+                        <input type="text" [(ngModel)]="entityBranchName" placeholder="Select entity branch name"
+                               (focus)="onFieldFocus(entityBranchName)" (blur)="onFieldBlur()" />
                       </div>
                     } @else {
-                      <span class="field-value">{{ entityBranchName || '—' }}</span>
+                      <span class="field-value focusable-field" tabindex="0"
+                            (focus)="onFieldFocus(entityBranchName)" (click)="onFieldClick(entityBranchName)" (blur)="onFieldBlur()">{{ entityBranchName || '—' }}</span>
                     }
                   </div>
                   <div class="field-item">
@@ -635,34 +663,22 @@
                   <div class="radio-field-row">
                     <label>Whether Deposit Taking/Non-Deposit Taking Entity</label>
                     <div class="radio-group">
-                      @if (editMode()) {
-                        <label><input type="radio" [ngModel]="depositTakingEntity" [value]="true" (ngModelChange)="depositTakingEntity = $event" /> Yes</label>
-                        <label><input type="radio" [ngModel]="depositTakingEntity" [value]="false" (ngModelChange)="depositTakingEntity = $event" /> No</label>
-                      } @else {
-                        <span class="field-value">{{ depositTakingEntity ? 'Yes' : 'No' }}</span>
-                      }
+                      <label><input type="radio" [ngModel]="depositTakingEntity" [value]="true" (ngModelChange)="depositTakingEntity = $event" name="depositTaking" /> Yes</label>
+                      <label><input type="radio" [ngModel]="depositTakingEntity" [value]="false" (ngModelChange)="depositTakingEntity = $event" name="depositTaking" /> No</label>
                     </div>
                   </div>
                   <div class="radio-field-row">
                     <label>Whether Asset Size is greater than 100 Crores</label>
                     <div class="radio-group">
-                      @if (editMode()) {
-                        <label><input type="radio" [ngModel]="assetSizeGreater100Crores" [value]="true" (ngModelChange)="assetSizeGreater100Crores = $event" /> Yes</label>
-                        <label><input type="radio" [ngModel]="assetSizeGreater100Crores" [value]="false" (ngModelChange)="assetSizeGreater100Crores = $event" /> No</label>
-                      } @else {
-                        <span class="field-value">{{ assetSizeGreater100Crores ? 'Yes' : 'No' }}</span>
-                      }
+                      <label><input type="radio" [ngModel]="assetSizeGreater100Crores" [value]="true" (ngModelChange)="assetSizeGreater100Crores = $event" name="assetSize100" /> Yes</label>
+                      <label><input type="radio" [ngModel]="assetSizeGreater100Crores" [value]="false" (ngModelChange)="assetSizeGreater100Crores = $event" name="assetSize100" /> No</label>
                     </div>
                   </div>
                   <div class="radio-field-row">
                     <label>Whether Liquidated present</label>
                     <div class="radio-group">
-                      @if (editMode()) {
-                        <label><input type="radio" [ngModel]="liquidatedPresent" [value]="true" (ngModelChange)="liquidatedPresent = $event" /> Yes</label>
-                        <label><input type="radio" [ngModel]="liquidatedPresent" [value]="false" (ngModelChange)="liquidatedPresent = $event" /> No</label>
-                      } @else {
-                        <span class="field-value">{{ liquidatedPresent ? 'Yes' : 'No' }}</span>
-                      }
+                      <label><input type="radio" [ngModel]="liquidatedPresent" [value]="true" (ngModelChange)="liquidatedPresent = $event" name="liquidated" /> Yes</label>
+                      <label><input type="radio" [ngModel]="liquidatedPresent" [value]="false" (ngModelChange)="liquidatedPresent = $event" name="liquidated" /> No</label>
                     </div>
                   </div>
                 </div>
@@ -1607,17 +1623,51 @@
   <div class="modal-overlay" (click)="showConfirmDialog.set(false)">
     <div class="confirm-dialog" (click)="$event.stopPropagation()">
       <div class="confirm-header">
-        <span><i class="pi pi-info-circle"></i> Confirmation</span>
+        <span><i class="pi pi-info-circle info-icon"></i> Confirmation</span>
         <button class="modal-close" (click)="showConfirmDialog.set(false)">&times;</button>
       </div>
       <div class="confirm-body">
-        <p>Are you sure you want to <strong>send the request</strong> to the checker?</p>
+        <p>Are you sure you want to <strong>send the request</strong> to the reviewer?</p>
+        <div class="confirm-fields">
+          <div class="confirm-field">
+            <label>Assignment</label>
+            <select [(ngModel)]="assignmentMode">
+              <option value="Automatic">Automatic</option>
+              <option value="Manual">Manual</option>
+            </select>
+          </div>
+          <div class="confirm-field">
+            <label>Name of CRPC Reviewer</label>
+            @if (assignmentMode === 'Manual') {
+              <div class="reviewer-select-wrapper">
+                <select [(ngModel)]="selectedReviewer">
+                  <option value="" disabled>Select Reviewer</option>
+                  @for (rev of reviewers(); track rev.id) {
+                    <option [value]="rev.id">{{ rev.displayName }}</option>
+                  }
+                </select>
+              </div>
+            } @else {
+              <div class="reviewer-input-wrapper">
+                <input type="text" value="CRPC Reviewer" readonly />
+                <i class="pi pi-search"></i>
+              </div>
+            }
+          </div>
+        </div>
+        @if (assignmentMode === 'Manual' && reviewerOnLeave()) {
+          <div class="reviewer-warning">
+            <i class="pi pi-exclamation-circle"></i>
+            <span>Assigned user is on Leave</span>
+            <button class="warning-close">&times;</button>
+          </div>
+        }
         <div class="status-change-row">
           <span class="expected-label">Expected Status Change <i class="pi pi-info-circle"></i></span>
           <div class="status-flow">
             <span class="status-chip draft"><i class="pi pi-file"></i> Draft</span>
             <i class="pi pi-arrow-right flow-arrow"></i>
-            <span class="status-chip sent"><i class="pi pi-circle-fill"></i> Sent to Reviewer</span>
+            <span class="status-chip sent"><i class="pi pi-send"></i> Sent to Reviewer</span>
           </div>
         </div>
       </div>

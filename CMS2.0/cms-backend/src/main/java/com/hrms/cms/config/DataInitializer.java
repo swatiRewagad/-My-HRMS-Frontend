@@ -4,12 +4,14 @@ import com.hrms.cms.entity.Bank;
 import com.hrms.cms.entity.Complaint;
 import com.hrms.cms.entity.ComplaintCategory;
 import com.hrms.cms.entity.EmailDraft;
+import com.hrms.cms.entity.ExtractionRule;
 import com.hrms.cms.entity.FormConfig;
 import com.hrms.cms.entity.RegulatedEntity;
 import com.hrms.cms.repository.BankRepository;
 import com.hrms.cms.repository.ComplaintCategoryRepository;
 import com.hrms.cms.repository.ComplaintRepository;
 import com.hrms.cms.repository.EmailDraftRepository;
+import com.hrms.cms.repository.ExtractionRuleRepository;
 import com.hrms.cms.repository.FormConfigRepository;
 import com.hrms.cms.repository.RegulatedEntityRepository;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +35,7 @@ public class DataInitializer implements CommandLineRunner {
     private final ComplaintRepository complaintRepo;
     private final RegulatedEntityRepository regulatedEntityRepo;
     private final EmailDraftRepository emailDraftRepo;
+    private final ExtractionRuleRepository extractionRuleRepo;
 
     @Override
     public void run(String... args) {
@@ -50,6 +53,9 @@ public class DataInitializer implements CommandLineRunner {
         }
         if (regulatedEntityRepo.count() == 0) {
             seedRegulatedEntities();
+        }
+        if (extractionRuleRepo.count() == 0) {
+            seedExtractionRules();
         }
         migrateUuidDraftIds();
     }
@@ -859,5 +865,56 @@ public class DataInitializer implements CommandLineRunner {
                     .entityType(e[1])
                     .build());
         }
+    }
+
+    private void seedExtractionRules() {
+        List<ExtractionRule> rules = List.of(
+            ExtractionRule.builder().ruleName("Phone Number").ruleCode("PHONE_REGEX").patternType("REGEX")
+                .pattern("(?:mobile|phone|contact|mob|cell)[:\\s]*([6-9]\\d{9})").targetField("complainantPhone")
+                .extractGroup(1).priority(10).isActive(true).sourceScope("BOTH").createdBy("system").build(),
+            ExtractionRule.builder().ruleName("Phone Fallback").ruleCode("PHONE_FALLBACK_REGEX").patternType("REGEX")
+                .pattern("\\b([6-9]\\d{9})\\b").targetField("complainantPhone")
+                .extractGroup(1).priority(11).isActive(true).sourceScope("BOTH").createdBy("system").build(),
+            ExtractionRule.builder().ruleName("Email Address").ruleCode("EMAIL_REGEX").patternType("REGEX")
+                .pattern("(?:email|e-mail|mail)[:\\s]*([a-zA-Z0-9._%+\\-]+@[a-zA-Z0-9.\\-]+\\.[a-zA-Z]{2,})").targetField("complainantEmail")
+                .extractGroup(1).priority(20).isActive(true).sourceScope("BOTH").createdBy("system").build(),
+            ExtractionRule.builder().ruleName("Pincode").ruleCode("PINCODE_REGEX").patternType("REGEX")
+                .pattern("(?:pin\\s*code|pincode|pin)[:\\s]*(\\d{6})").targetField("complainantPincode")
+                .extractGroup(1).priority(30).isActive(true).sourceScope("BOTH").createdBy("system").build(),
+            ExtractionRule.builder().ruleName("Pincode Fallback").ruleCode("PINCODE_FALLBACK_REGEX").patternType("REGEX")
+                .pattern("\\b(\\d{6})\\b").targetField("complainantPincode")
+                .extractGroup(1).priority(31).isActive(true).sourceScope("BOTH").createdBy("system").build(),
+            ExtractionRule.builder().ruleName("Name").ruleCode("NAME_REGEX").patternType("REGEX")
+                .pattern("(?:name|complainant|from)[:\\s]*([A-Z][a-zA-Z]+(?:\\s[A-Z][a-zA-Z]+){1,3})").targetField("complainantName")
+                .extractGroup(1).priority(40).isActive(true).sourceScope("BOTH").createdBy("system").build(),
+            ExtractionRule.builder().ruleName("Amount").ruleCode("AMOUNT_REGEX").patternType("REGEX")
+                .pattern("(?:amount|rs|inr|₹)[.\\s:]*([0-9,]+(?:\\.\\d{1,2})?)").targetField("amountInvolved")
+                .extractGroup(1).priority(50).isActive(true).sourceScope("BOTH").createdBy("system").build(),
+            ExtractionRule.builder().ruleName("CPGRAMS Number").ruleCode("CPGRAMS_REGEX").patternType("REGEX")
+                .pattern("(?:CPGRAMS|cpgrams|CPGRM)[:\\s#]*([A-Z0-9/\\-]+)").targetField("cpgramsNumber")
+                .extractGroup(1).transform("UPPERCASE").priority(55).isActive(true).sourceScope("BOTH").createdBy("system").build(),
+            ExtractionRule.builder().ruleName("Entity Name - Bank").ruleCode("ENTITY_BANK_KW").patternType("KEYWORD_LIST")
+                .pattern("HDFC Bank,ICICI Bank,State Bank of India,SBI,Axis Bank,Kotak Mahindra Bank,Punjab National Bank,PNB,Bank of Baroda,Canara Bank,Union Bank,Indian Bank,Bank of India,IDBI Bank,Yes Bank,IndusInd Bank,Federal Bank,RBL Bank,Bandhan Bank")
+                .targetField("entityName").priority(60).isActive(true).sourceScope("BOTH").createdBy("system").build(),
+            ExtractionRule.builder().ruleName("Category - Credit Card").ruleCode("CAT_CC_KW").patternType("KEYWORD_LIST")
+                .pattern("credit card,credit-card,creditcard,card statement,card charge,annual fee,card limit,EMI conversion")
+                .targetField("category").priority(70).isActive(true).sourceScope("BOTH").createdBy("system").build(),
+            ExtractionRule.builder().ruleName("Category - Loan").ruleCode("CAT_LOAN_KW").patternType("KEYWORD_LIST")
+                .pattern("home loan,personal loan,car loan,education loan,loan account,EMI,loan closure,foreclosure,prepayment")
+                .targetField("category").priority(71).isActive(true).sourceScope("BOTH").createdBy("system").build(),
+            ExtractionRule.builder().ruleName("Category - ATM").ruleCode("CAT_ATM_KW").patternType("KEYWORD_LIST")
+                .pattern("ATM,cash not dispensed,ATM transaction,debit without dispensing,ATM withdrawal")
+                .targetField("category").priority(72).isActive(true).sourceScope("BOTH").createdBy("system").build(),
+            ExtractionRule.builder().ruleName("State").ruleCode("STATE_KW").patternType("KEYWORD_LIST")
+                .pattern("Maharashtra,Karnataka,Tamil Nadu,Delhi,Uttar Pradesh,Gujarat,Rajasthan,West Bengal,Madhya Pradesh,Kerala,Andhra Pradesh,Telangana,Bihar,Punjab,Haryana,Odisha,Assam,Jharkhand,Chhattisgarh,Uttarakhand,Goa")
+                .targetField("complainantState").priority(80).isActive(true).sourceScope("BOTH").createdBy("system").build(),
+            ExtractionRule.builder().ruleName("Address").ruleCode("ADDRESS_REGEX").patternType("REGEX")
+                .pattern("(?:address|residing at|resident of)[:\\s]*(.{10,150}?)(?:\\.|$)").targetField("complainantAddress")
+                .extractGroup(1).transform("TRIM").priority(90).isActive(true).sourceScope("BODY").createdBy("system").build(),
+            ExtractionRule.builder().ruleName("Date").ruleCode("DATE_REGEX").patternType("REGEX")
+                .pattern("(?:dated?|on)[:\\s]*(\\d{1,2}[/\\-]\\d{1,2}[/\\-]\\d{2,4})").targetField("letterDate")
+                .extractGroup(1).priority(100).isActive(true).sourceScope("BOTH").createdBy("system").build()
+        );
+        extractionRuleRepo.saveAll(rules);
     }
 }

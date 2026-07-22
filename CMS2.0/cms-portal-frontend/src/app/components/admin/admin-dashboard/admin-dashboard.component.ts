@@ -281,6 +281,8 @@ export class AdminDashboardComponent implements OnInit, OnDestroy, AfterViewInit
       this.router.navigate(['/admin/rules']);
     } else if (item === 'extraction-rules') {
       this.router.navigate(['/admin/extraction-rules']);
+    } else if (item === 'team') {
+      this.router.navigate(['/admin/team-management']);
     }
   }
 

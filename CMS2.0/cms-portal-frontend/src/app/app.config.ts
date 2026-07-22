@@ -1,4 +1,4 @@
-import { ApplicationConfig, provideZoneChangeDetection } from '@angular/core';
+import { ApplicationConfig, provideZoneChangeDetection, APP_INITIALIZER, inject } from '@angular/core';
 import { provideRouter, withViewTransitions, withRouterConfig } from '@angular/router';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { routes } from './app.routes';
@@ -7,10 +7,21 @@ import { errorHandlerInterceptor } from './interceptors/error-handler.intercepto
 import { securityHeadersInterceptor } from './interceptors/security-headers.interceptor';
 import { keycloakTokenInterceptor } from './interceptors/keycloak-token.interceptor';
 import { antiAutomationInterceptor } from './interceptors/anti-automation.interceptor';
+import { RuntimeConfigService } from './services/runtime-config.service';
+
+function initializeApp(configService: RuntimeConfigService) {
+  return () => configService.load();
+}
 
 export const appConfig: ApplicationConfig = {
   providers: [
     provideZoneChangeDetection({ eventCoalescing: true }),
+    {
+      provide: APP_INITIALIZER,
+      useFactory: initializeApp,
+      deps: [RuntimeConfigService],
+      multi: true
+    },
     provideRouter(
       routes,
       withViewTransitions(),

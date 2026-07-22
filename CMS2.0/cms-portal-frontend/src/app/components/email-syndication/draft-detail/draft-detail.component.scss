@@ -211,3 +211,19 @@
 .loading { text-align: center; padding: 3rem; color: #1565c0; }
 .error-msg { background: #fce4ec; border: 1px solid #e53935; padding: 0.75rem 1rem; border-radius: 6px; color: #c62828; margin-bottom: 1rem; }
 .success-msg { background: #e8f5e9; border: 1px solid #4caf50; padding: 0.75rem 1rem; border-radius: 6px; color: #2e7d32; margin-bottom: 1rem; }
+
+// ═══ EMAIL HIGHLIGHT ON FIELD FOCUS ═══
+::ng-deep .field-highlight {
+  background-color: #fff9c4;
+  border-radius: 2px;
+  padding: 0 2px;
+  transition: background-color 0.3s ease;
+}
+
+.form-group {
+  input, select, textarea {
+    &:focus {
+      box-shadow: 0 0 0 2px rgba(21, 101, 192, 0.2);
+    }
+  }
+}

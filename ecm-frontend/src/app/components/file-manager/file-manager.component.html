@@ -15,9 +15,11 @@
         <i class="pi pi-search"></i>
         <input type="text" placeholder="Search files..." [(ngModel)]="searchQuery" (keyup.enter)="searchFiles()" />
       </div>
-      <button class="btn btn-secondary" (click)="openNewFolder()">
-        <i class="pi pi-folder-plus"></i> New Folder
-      </button>
+      @if (!selectedFolder || canWrite(selectedFolder)) {
+        <button class="btn btn-secondary" (click)="openNewFolder()">
+          <i class="pi pi-folder-plus"></i> New Folder
+        </button>
+      }
       @if (selectedFolder && canWrite(selectedFolder)) {
         <button class="btn btn-primary" (click)="showUpload = true">
           <i class="pi pi-upload"></i> Upload
@@ -260,7 +262,7 @@
       </div>
       <div class="modal-footer">
         <button class="btn btn-secondary" (click)="showAccess = false">Cancel</button>
-        <button class="btn btn-primary" (click)="grantBulkAccess()" [disabled]="selectedAccessUserIds.size === 0">Grant Access</button>
+        <button class="btn btn-primary" (click)="grantBulkAccess()">Save</button>
       </div>
     </div>
   </div>
@@ -290,9 +292,9 @@
           <div class="form-group">
             <label>User</label>
             <select [(ngModel)]="shareUserId">
-              <option [value]="0" disabled>Select a user</option>
-              @for (user of users; track user.id) {
-                <option [value]="user.id">{{ user.displayName }}</option>
+              <option [ngValue]="0" disabled>Select a user</option>
+              @for (user of availableUsers; track user.id) {
+                <option [ngValue]="user.id">{{ user.displayName }}</option>
               }
             </select>
           </div>

@@ -66,6 +66,9 @@
             <option>Complaints Assigned To Me</option>
             <option>All Complaints</option>
           </select>
+          <button class="btn btn-outline filters-btn">
+            <i class="pi pi-filter"></i> Filters
+          </button>
           <button class="btn btn-primary create-btn" (click)="createPhysicalLetter()">
             <i class="pi pi-plus"></i> Create Complaint
           </button>
@@ -75,38 +78,52 @@
       <!-- Stats Cards -->
       <div class="stats-bar">
         <div class="stat-card" (click)="filterStatus.set(''); filterMode.set('ALL')">
-          <div class="stat-icon"><i class="pi pi-inbox"></i></div>
+          <div class="stat-icon blue"><i class="pi pi-inbox"></i></div>
           <div class="stat-content">
+            <span class="stat-label">Total Complaints <i class="pi pi-info-circle"></i></span>
             <span class="stat-value">{{ stats().total }}</span>
-            <span class="stat-label">Total Complaints</span>
           </div>
         </div>
         <div class="stat-card" (click)="filterStatus.set(''); filterMode.set('DIRECT')">
-          <div class="stat-icon"><i class="pi pi-file"></i></div>
+          <div class="stat-icon orange"><i class="pi pi-file"></i></div>
           <div class="stat-content">
+            <span class="stat-label">Direct Complaints <i class="pi pi-info-circle"></i></span>
             <span class="stat-value">{{ stats().direct }}</span>
-            <span class="stat-label">Direct Complaints</span>
           </div>
         </div>
         <div class="stat-card" (click)="filterStatus.set(''); filterMode.set('ABR')">
-          <div class="stat-icon"><i class="pi pi-envelope"></i></div>
+          <div class="stat-icon red"><i class="pi pi-envelope"></i></div>
           <div class="stat-content">
+            <span class="stat-label">Complaints via AGR <i class="pi pi-info-circle"></i></span>
             <span class="stat-value">{{ stats().viaAbr }}</span>
-            <span class="stat-label">Complaints via ABR</span>
           </div>
         </div>
-        <div class="stat-card" (click)="filterStatus.set('IN_PROGRESS'); filterMode.set('ALL')">
-          <div class="stat-icon"><i class="pi pi-spinner"></i></div>
+        <div class="stat-card" (click)="filterStatus.set(''); filterMode.set('ALL')">
+          <div class="stat-icon red"><i class="pi pi-globe"></i></div>
           <div class="stat-content">
-            <span class="stat-value">{{ stats().inProgress }}</span>
-            <span class="stat-label">In Progress</span>
+            <span class="stat-label">Complaints via RBI Domain <i class="pi pi-info-circle"></i></span>
+            <span class="stat-value">{{ stats().viaAbr }}</span>
           </div>
         </div>
-        <div class="stat-card" (click)="filterStatus.set('APPROVED'); filterMode.set('ALL')">
-          <div class="stat-icon"><i class="pi pi-check-circle"></i></div>
+        <div class="stat-card pending-card">
+          <div class="stat-icon purple"><i class="pi pi-clock"></i></div>
           <div class="stat-content">
-            <span class="stat-value">{{ stats().approved }}</span>
-            <span class="stat-label">CC/BCC Complaints</span>
+            <span class="stat-label">Pending <i class="pi pi-info-circle"></i></span>
+            <span class="stat-value">{{ stats().draft + stats().inProgress }}</span>
+          </div>
+          <div class="pending-breakdown">
+            <div class="pending-col">
+              <span class="pending-range">0-3 Days</span>
+              <span class="pending-count">{{ stats().draft }}</span>
+            </div>
+            <div class="pending-col">
+              <span class="pending-range">4-6 Days</span>
+              <span class="pending-count">{{ stats().inProgress }}</span>
+            </div>
+            <div class="pending-col">
+              <span class="pending-range">>6 Days</span>
+              <span class="pending-count">{{ stats().rejected }}</span>
+            </div>
           </div>
         </div>
       </div>
@@ -114,7 +131,7 @@
       <!-- Status Tabs -->
       <div class="status-tabs">
         <button class="tab" [class.active]="filterStatus() === '' && filterMode() === 'ALL'" (click)="filterStatus.set(''); filterMode.set('ALL')">
-          All <span class="tab-count">{{ stats().total }}</span>
+          All
         </button>
         <button class="tab" [class.active]="filterStatus() === 'DRAFT'" (click)="filterStatus.set('DRAFT'); filterMode.set('ALL')">
           Draft <span class="tab-count">{{ stats().draft }}</span>
@@ -123,7 +140,7 @@
           In Progress
         </button>
         <button class="tab" [class.active]="filterStatus() === 'REJECTED_BY_REVIEWER'" (click)="filterStatus.set('REJECTED_BY_REVIEWER'); filterMode.set('ALL')">
-          Sent Back
+          Sent Back @if (stats().rejected > 0) { <span class="tab-count">{{ stats().rejected }}</span> }
         </button>
         <button class="tab" [class.active]="filterStatus() === 'APPROVED'" (click)="filterStatus.set('APPROVED'); filterMode.set('ALL')">
           Assessment Complete
@@ -149,26 +166,6 @@
               </span>
               Without Attachments
             </label>
-            <label class="toggle-filter">
-              <span class="toggle-switch" [class.active]="filterSatisfiesRules()">
-                <input type="checkbox" [checked]="filterSatisfiesRules()" (change)="filterSatisfiesRules.set(!filterSatisfiesRules())" />
-                <span class="toggle-slider"></span>
-              </span>
-              Satisfies Rules
-            </label>
-            <label class="toggle-filter">
-              <span class="toggle-switch" [class.active]="filterVernacular()">
-                <input type="checkbox" [checked]="filterVernacular()" (change)="filterVernacular.set(!filterVernacular())" />
-                <span class="toggle-slider"></span>
-              </span>
-              Vernacular
-            </label>
-            <select class="page-size-select" [value]="pageSize" (change)="changePageSize(+$any($event.target).value)">
-              <option [value]="10">10 / page</option>
-              <option [value]="25">25 / page</option>
-              <option [value]="50">50 / page</option>
-              <option [value]="100">100 / page</option>
-            </select>
             @if (selectedIds().size > 0) {
               <button class="btn btn-danger-sm" (click)="openNotAComplaintDialog()">
                 Not-a-Complaint ({{ selectedIds().size }})

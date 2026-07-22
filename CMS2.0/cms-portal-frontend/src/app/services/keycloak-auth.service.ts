@@ -50,8 +50,7 @@ export class KeycloakAuthService {
         onLoad: 'check-sso',
         pkceMethod: 'S256',
         checkLoginIframe: false,
-        silentCheckSsoRedirectUri: window.location.origin + '/assets/silent-check-sso.html',
-        redirectUri: window.location.href
+        silentCheckSsoRedirectUri: window.location.origin + '/assets/silent-check-sso.html'
       });
 
       this.initialized = true;

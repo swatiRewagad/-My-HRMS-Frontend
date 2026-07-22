@@ -1,7 +1,7 @@
 export const environment = {
   production: false,
   apiBaseUrl: 'http://localhost:8082',
-  keycloakUrl: 'http://localhost:8180',
+  keycloakUrl: 'http://localhost:9090',
   realm: 'cms',
 
   // Dev mode: auto-populate OTP with default value for testing
