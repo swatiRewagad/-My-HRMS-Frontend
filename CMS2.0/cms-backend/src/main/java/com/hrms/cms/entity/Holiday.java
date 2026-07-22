@@ -6,7 +6,7 @@ import java.time.LocalDate;
 @Entity
 @Table(name = "holidays", indexes = {
     @Index(name = "idx_holiday_date", columnList = "holiday_date", unique = true),
-    @Index(name = "idx_holiday_year", columnList = "year")
+    @Index(name = "idx_holiday_year", columnList = "\"year\"")
 })
 public class Holiday {
 
@@ -23,7 +23,7 @@ public class Holiday {
     @Column(length = 50)
     private String type;
 
-    @Column(name = "year", nullable = false)
+    @Column(name = "\"year\"", nullable = false)
     private Integer year;
 
     @Column(name = "is_national")

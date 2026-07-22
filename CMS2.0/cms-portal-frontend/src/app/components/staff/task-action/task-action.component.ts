@@ -11,6 +11,7 @@ import { RbioConciliationComponent } from '../../rbio/rbio-conciliation/rbio-con
 import { RbioAdjudicationComponent } from '../../rbio/rbio-adjudication/rbio-adjudication.component';
 import { RbioAdvisoryComponent } from '../../rbio/rbio-advisory/rbio-advisory.component';
 import { RbioSlaProgressComponent } from '../../rbio/rbio-sla-progress/rbio-sla-progress.component';
+import { highlightEmailText, escapeHtml } from '../../../utils/highlight-text.util';
 
 @Component({
   selector: 'app-task-action',
@@ -71,6 +72,40 @@ export class TaskActionComponent implements OnInit, OnDestroy {
   pastComplaints = signal<any[]>([]);
   loadingPastComplaints = signal(false);
   pastComplaintSearch = '';
+
+  // Email body highlight on field focus
+  focusedFieldValue = signal<string>('');
+
+  highlightedEmailBody = computed(() => {
+    const c = this.complaint();
+    if (!c?.description) return '';
+    const fieldVal = this.focusedFieldValue();
+    if (!fieldVal) return escapeHtml(c.description);
+    return highlightEmailText(c.description, fieldVal);
+  });
+
+  isEmailSource = computed(() => {
+    const c = this.complaint();
+    if (!c) return false;
+    return !!(c.description || c.subject) && !this.hasOnlyPdfAttachments();
+  });
+
+  private hasOnlyPdfAttachments(): boolean {
+    const c = this.complaint();
+    if (!c?.attachments?.length) return false;
+    const hasEmailBody = !!(c.description && c.description.trim().length > 0);
+    if (hasEmailBody) return false;
+    return c.attachments.every((att: any) => att.type?.includes('pdf') || att.name?.endsWith('.pdf'));
+  }
+
+  onFieldFocus(fieldValue: string | undefined | null) {
+    if (!this.isEmailSource()) return;
+    this.focusedFieldValue.set(fieldValue?.trim() || '');
+  }
+
+  onFieldBlur() {
+    this.focusedFieldValue.set('');
+  }
 
   filteredPastComplaints = computed(() => {
     const search = this.pastComplaintSearch.toLowerCase().trim();

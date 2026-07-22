@@ -1,0 +1,2008 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CMS 2.0 - Kafka Event Flow & Complaint Lifecycle Documentation</title>
+    <style>
+        :root {
+            --navy: #1a365d;
+            --navy-light: #2c5282;
+            --navy-dark: #0f2440;
+            --gold: #d4a843;
+            --gold-light: #e6c875;
+            --gold-dark: #b8922e;
+            --white: #ffffff;
+            --gray-50: #f7fafc;
+            --gray-100: #edf2f7;
+            --gray-200: #e2e8f0;
+            --gray-300: #cbd5e0;
+            --gray-400: #a0aec0;
+            --gray-500: #718096;
+            --gray-600: #4a5568;
+            --gray-700: #2d3748;
+            --gray-800: #1a202c;
+            --success: #38a169;
+            --success-light: #c6f6d5;
+            --warning: #d69e2e;
+            --warning-light: #fefcbf;
+            --danger: #e53e3e;
+            --danger-light: #fed7d7;
+            --info: #3182ce;
+            --info-light: #bee3f8;
+            --purple: #6b46c1;
+            --purple-light: #e9d8fd;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: var(--gray-800);
+            background: var(--gray-50);
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, var(--navy-dark) 0%, var(--navy) 50%, var(--navy-light) 100%);
+            color: var(--white);
+            padding: 2rem 3rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -10%;
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, rgba(212,168,67,0.1) 0%, transparent 70%);
+            border-radius: 50%;
+        }
+
+        .header::after {
+            content: '';
+            position: absolute;
+            bottom: -30%;
+            left: -5%;
+            width: 300px;
+            height: 300px;
+            background: radial-gradient(circle, rgba(212,168,67,0.08) 0%, transparent 70%);
+            border-radius: 50%;
+        }
+
+        .header h1 {
+            font-size: 2.2rem;
+            margin-bottom: 0.5rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .header .subtitle {
+            font-size: 1.1rem;
+            opacity: 0.85;
+            position: relative;
+            z-index: 1;
+        }
+
+        .header .badge {
+            display: inline-block;
+            background: var(--gold);
+            color: var(--navy-dark);
+            padding: 0.25rem 0.75rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-top: 0.75rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Navigation */
+        .nav {
+            background: var(--navy);
+            padding: 0.75rem 3rem;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+
+        .nav ul {
+            list-style: none;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.25rem;
+        }
+
+        .nav a {
+            color: var(--gray-300);
+            text-decoration: none;
+            padding: 0.4rem 0.8rem;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+        }
+
+        .nav a:hover {
+            background: var(--navy-light);
+            color: var(--gold-light);
+        }
+
+        /* Main Content */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        /* Section Styles */
+        .section {
+            background: var(--white);
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+            border: 1px solid var(--gray-200);
+            overflow: hidden;
+        }
+
+        .section-header {
+            background: linear-gradient(to right, var(--navy), var(--navy-light));
+            color: var(--white);
+            padding: 1rem 1.5rem;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            user-select: none;
+            transition: background 0.3s;
+        }
+
+        .section-header:hover {
+            background: linear-gradient(to right, var(--navy-light), var(--navy));
+        }
+
+        .section-header h2 {
+            font-size: 1.3rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .section-header .section-number {
+            background: var(--gold);
+            color: var(--navy-dark);
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.85rem;
+            font-weight: 700;
+        }
+
+        .section-header .toggle {
+            font-size: 1.5rem;
+            transition: transform 0.3s;
+            color: var(--gold);
+        }
+
+        .section-header.collapsed .toggle {
+            transform: rotate(-90deg);
+        }
+
+        .section-content {
+            padding: 1.5rem;
+            max-height: 10000px;
+            overflow: hidden;
+            transition: max-height 0.5s ease, padding 0.3s ease;
+        }
+
+        .section-content.collapsed {
+            max-height: 0;
+            padding: 0 1.5rem;
+        }
+
+        /* Tables */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+        }
+
+        th {
+            background: var(--navy);
+            color: var(--white);
+            padding: 0.75rem 1rem;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        td {
+            padding: 0.6rem 1rem;
+            border-bottom: 1px solid var(--gray-200);
+        }
+
+        tr:nth-child(even) {
+            background: var(--gray-50);
+        }
+
+        tr:hover {
+            background: var(--gray-100);
+        }
+
+        /* Code Blocks */
+        .code-block {
+            background: var(--gray-800);
+            color: #e2e8f0;
+            border-radius: 6px;
+            padding: 1.25rem;
+            margin: 1rem 0;
+            overflow-x: auto;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 0.85rem;
+            line-height: 1.5;
+            position: relative;
+        }
+
+        .code-block .code-label {
+            position: absolute;
+            top: 0;
+            right: 0;
+            background: var(--gold);
+            color: var(--navy-dark);
+            padding: 0.2rem 0.6rem;
+            border-radius: 0 6px 0 6px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            font-family: 'Segoe UI', sans-serif;
+        }
+
+        .code-block .json-key { color: #90cdf4; }
+        .code-block .json-string { color: #9ae6b4; }
+        .code-block .json-number { color: #fbd38d; }
+        .code-block .json-bool { color: #feb2b2; }
+        .code-block .json-null { color: #e9d8fd; }
+        .code-block .comment { color: #718096; font-style: italic; }
+        .code-block .http-method { color: #fbd38d; font-weight: bold; }
+        .code-block .http-url { color: #90cdf4; }
+
+        /* Flow Diagram */
+        .flow-diagram {
+            padding: 2rem 1rem;
+            overflow-x: auto;
+        }
+
+        .flow-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin: 1rem 0;
+        }
+
+        .flow-box {
+            padding: 0.75rem 1.25rem;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            text-align: center;
+            min-width: 140px;
+            position: relative;
+        }
+
+        .flow-box.customer {
+            background: var(--info-light);
+            border: 2px solid var(--info);
+            color: var(--navy-dark);
+        }
+
+        .flow-box.service {
+            background: var(--success-light);
+            border: 2px solid var(--success);
+            color: var(--gray-800);
+        }
+
+        .flow-box.kafka {
+            background: var(--warning-light);
+            border: 2px solid var(--warning);
+            color: var(--gray-800);
+        }
+
+        .flow-box.consumer {
+            background: var(--purple-light);
+            border: 2px solid var(--purple);
+            color: var(--gray-800);
+        }
+
+        .flow-box.officer {
+            background: var(--danger-light);
+            border: 2px solid var(--danger);
+            color: var(--gray-800);
+        }
+
+        .flow-arrow {
+            font-size: 1.5rem;
+            color: var(--navy);
+            font-weight: bold;
+        }
+
+        .flow-arrow-down {
+            text-align: center;
+            font-size: 1.5rem;
+            color: var(--navy);
+            font-weight: bold;
+            margin: 0.5rem 0;
+        }
+
+        .flow-label {
+            font-size: 0.7rem;
+            color: var(--gray-500);
+            text-align: center;
+            margin-top: -0.25rem;
+        }
+
+        .consumers-group {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            justify-content: center;
+            border: 2px dashed var(--gray-300);
+            padding: 1rem;
+            border-radius: 8px;
+            background: rgba(107, 70, 193, 0.03);
+        }
+
+        .consumers-group-label {
+            width: 100%;
+            text-align: center;
+            font-size: 0.75rem;
+            color: var(--gray-500);
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        /* Timeline */
+        .timeline {
+            position: relative;
+            padding: 1rem 0;
+        }
+
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 24px;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background: linear-gradient(to bottom, var(--navy), var(--gold), var(--success));
+            border-radius: 3px;
+        }
+
+        .timeline-item {
+            position: relative;
+            padding-left: 60px;
+            margin-bottom: 2rem;
+        }
+
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: 16px;
+            top: 4px;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 3px solid var(--navy);
+            background: var(--white);
+        }
+
+        .timeline-item.active::before {
+            background: var(--gold);
+            border-color: var(--gold-dark);
+        }
+
+        .timeline-item.completed::before {
+            background: var(--success);
+            border-color: var(--success);
+        }
+
+        .timeline-item .stage-title {
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: var(--navy);
+            margin-bottom: 0.5rem;
+        }
+
+        .timeline-item .stage-badge {
+            display: inline-block;
+            padding: 0.15rem 0.5rem;
+            border-radius: 3px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            margin-left: 0.5rem;
+        }
+
+        .badge-new { background: var(--info-light); color: var(--info); }
+        .badge-assigned { background: var(--warning-light); color: var(--warning); }
+        .badge-inprogress { background: var(--purple-light); color: var(--purple); }
+        .badge-review { background: #fef3c7; color: #92400e; }
+        .badge-resolved { background: var(--success-light); color: var(--success); }
+        .badge-escalated { background: var(--danger-light); color: var(--danger); }
+
+        /* Info boxes */
+        .info-box {
+            border-radius: 6px;
+            padding: 1rem 1.25rem;
+            margin: 1rem 0;
+            border-left: 4px solid;
+        }
+
+        .info-box.note {
+            background: var(--info-light);
+            border-color: var(--info);
+        }
+
+        .info-box.warning {
+            background: var(--warning-light);
+            border-color: var(--warning);
+        }
+
+        .info-box.success {
+            background: var(--success-light);
+            border-color: var(--success);
+        }
+
+        .info-box.danger {
+            background: var(--danger-light);
+            border-color: var(--danger);
+        }
+
+        .info-box strong {
+            display: block;
+            margin-bottom: 0.25rem;
+        }
+
+        /* Sub-sections */
+        .sub-section {
+            margin: 1.5rem 0;
+            padding: 1.25rem;
+            background: var(--gray-50);
+            border-radius: 6px;
+            border: 1px solid var(--gray-200);
+        }
+
+        .sub-section h3 {
+            color: var(--navy);
+            margin-bottom: 0.75rem;
+            font-size: 1.05rem;
+            border-bottom: 2px solid var(--gold);
+            padding-bottom: 0.5rem;
+            display: inline-block;
+        }
+
+        .sub-section h4 {
+            color: var(--navy-light);
+            margin: 1rem 0 0.5rem;
+            font-size: 0.95rem;
+        }
+
+        /* Port table */
+        .port-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 0.75rem;
+            margin: 1rem 0;
+        }
+
+        .port-card {
+            background: var(--white);
+            border: 1px solid var(--gray-200);
+            border-radius: 6px;
+            padding: 0.75rem 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.2s;
+        }
+
+        .port-card:hover {
+            border-color: var(--navy);
+            box-shadow: 0 2px 8px rgba(26,54,93,0.1);
+        }
+
+        .port-card .service-name {
+            font-weight: 600;
+            color: var(--navy);
+            font-size: 0.9rem;
+        }
+
+        .port-card .port-number {
+            background: var(--navy);
+            color: var(--gold-light);
+            padding: 0.2rem 0.6rem;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.85rem;
+            font-weight: 700;
+        }
+
+        /* Troubleshooting */
+        .troubleshoot-item {
+            margin: 1rem 0;
+            padding: 1rem 1.25rem;
+            background: var(--white);
+            border: 1px solid var(--gray-200);
+            border-radius: 6px;
+            border-left: 4px solid var(--danger);
+        }
+
+        .troubleshoot-item .problem {
+            font-weight: 700;
+            color: var(--danger);
+            margin-bottom: 0.5rem;
+        }
+
+        .troubleshoot-item .solution {
+            color: var(--gray-700);
+        }
+
+        .troubleshoot-item .solution code {
+            background: var(--gray-100);
+            padding: 0.15rem 0.4rem;
+            border-radius: 3px;
+            font-size: 0.85em;
+            font-family: 'Consolas', monospace;
+        }
+
+        /* Kafdrop section */
+        .screenshot-placeholder {
+            background: var(--gray-100);
+            border: 2px dashed var(--gray-300);
+            border-radius: 8px;
+            padding: 2rem;
+            text-align: center;
+            color: var(--gray-500);
+            margin: 1rem 0;
+        }
+
+        .screenshot-placeholder .icon {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        /* DB state table - scrollable */
+        .table-wrapper {
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+
+        .table-wrapper table {
+            min-width: 800px;
+        }
+
+        .status-pill {
+            display: inline-block;
+            padding: 0.2rem 0.6rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+
+        .status-new { background: var(--info-light); color: var(--info); }
+        .status-assigned { background: var(--warning-light); color: #92400e; }
+        .status-inprogress { background: var(--purple-light); color: var(--purple); }
+        .status-review { background: #fef3c7; color: #92400e; }
+        .status-resolved { background: var(--success-light); color: #276749; }
+        .status-escalated { background: var(--danger-light); color: var(--danger); }
+
+        /* Print styles */
+        @media print {
+            .nav { display: none; }
+            .section-header .toggle { display: none; }
+            .section-content.collapsed { max-height: none; padding: 1.5rem; }
+            .header { background: var(--navy) !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .section { break-inside: avoid; }
+            body { font-size: 0.9rem; }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header { padding: 1.5rem; }
+            .header h1 { font-size: 1.5rem; }
+            .nav { padding: 0.5rem 1rem; }
+            .nav ul { gap: 0.15rem; }
+            .nav a { font-size: 0.75rem; padding: 0.3rem 0.5rem; }
+            .container { padding: 1rem; }
+            .flow-row { flex-direction: column; }
+            .flow-arrow { transform: rotate(90deg); }
+            .port-grid { grid-template-columns: 1fr; }
+        }
+
+        /* Smooth scroll */
+        html { scroll-behavior: smooth; }
+
+        /* Utility */
+        .mt-1 { margin-top: 1rem; }
+        .mb-1 { margin-bottom: 1rem; }
+        .text-gold { color: var(--gold); }
+        .text-navy { color: var(--navy); }
+        .text-muted { color: var(--gray-500); font-size: 0.85rem; }
+        .font-mono { font-family: 'Consolas', monospace; }
+    </style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+    <h1>CMS 2.0 - Kafka Event Flow Documentation</h1>
+    <p class="subtitle">Complaint Management System - Event-Driven Architecture & Complaint Lifecycle</p>
+    <span class="badge">RBI Integrated Ombudsman | Version 2.0</span>
+</div>
+
+<!-- Navigation -->
+<nav class="nav">
+    <ul>
+        <li><a href="#kafka-config">Kafka Config</a></li>
+        <li><a href="#architecture">Architecture</a></li>
+        <li><a href="#sample-flow">Sample Flow</a></li>
+        <li><a href="#db-state">DB State</a></li>
+        <li><a href="#event-payloads">Event Payloads</a></li>
+        <li><a href="#kafdrop">Kafdrop</a></li>
+        <li><a href="#ports">Service Ports</a></li>
+        <li><a href="#troubleshooting">Troubleshooting</a></li>
+    </ul>
+</nav>
+
+<!-- Main Content -->
+<div class="container">
+
+    <!-- Section 1: Kafka Configuration Overview -->
+    <div class="section" id="kafka-config">
+        <div class="section-header" onclick="toggleSection(this)">
+            <h2><span class="section-number">1</span> Kafka Configuration Overview</h2>
+            <span class="toggle">&#9660;</span>
+        </div>
+        <div class="section-content">
+            <div class="sub-section">
+                <h3>Bootstrap Server</h3>
+                <div class="code-block">
+                    <span class="code-label">application.yml</span>
+<span class="json-key">spring:</span>
+  <span class="json-key">kafka:</span>
+    <span class="json-key">bootstrap-servers:</span> <span class="json-string">localhost:9092</span>
+    <span class="json-key">producer:</span>
+      <span class="json-key">key-serializer:</span> <span class="json-string">org.apache.kafka.common.serialization.StringSerializer</span>
+      <span class="json-key">value-serializer:</span> <span class="json-string">org.springframework.kafka.support.serializer.JsonSerializer</span>
+    <span class="json-key">consumer:</span>
+      <span class="json-key">key-deserializer:</span> <span class="json-string">org.apache.kafka.common.serialization.StringDeserializer</span>
+      <span class="json-key">value-deserializer:</span> <span class="json-string">org.springframework.kafka.support.serializer.JsonDeserializer</span>
+      <span class="json-key">auto-offset-reset:</span> <span class="json-string">earliest</span>
+                </div>
+            </div>
+
+            <div class="sub-section">
+                <h3>Topics</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Topic Name</th>
+                            <th>Purpose</th>
+                            <th>Partitions</th>
+                            <th>Retention</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code class="font-mono">complaint.ingested</code></td>
+                            <td>New complaint registered by customer</td>
+                            <td>3</td>
+                            <td>7 days</td>
+                        </tr>
+                        <tr>
+                            <td><code class="font-mono">complaint.assigned</code></td>
+                            <td>Complaint assigned to processing team</td>
+                            <td>3</td>
+                            <td>7 days</td>
+                        </tr>
+                        <tr>
+                            <td><code class="font-mono">complaint.inprogress</code></td>
+                            <td>Officer accepted/started working on complaint</td>
+                            <td>3</td>
+                            <td>7 days</td>
+                        </tr>
+                        <tr>
+                            <td><code class="font-mono">complaint.escalated</code></td>
+                            <td>SLA breach or manual escalation triggered</td>
+                            <td>3</td>
+                            <td>14 days</td>
+                        </tr>
+                        <tr>
+                            <td><code class="font-mono">complaint.resolved</code></td>
+                            <td>Resolution provided by officer</td>
+                            <td>3</td>
+                            <td>7 days</td>
+                        </tr>
+                        <tr>
+                            <td><code class="font-mono">complaint.closed</code></td>
+                            <td>Complaint formally closed</td>
+                            <td>3</td>
+                            <td>30 days</td>
+                        </tr>
+                        <tr>
+                            <td><code class="font-mono">complaint.dlq</code></td>
+                            <td>Dead letter queue for failed event processing</td>
+                            <td>1</td>
+                            <td>30 days</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="sub-section">
+                <h3>Consumer Groups</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Group ID</th>
+                            <th>Service</th>
+                            <th>Subscribed Topics</th>
+                            <th>Responsibility</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code class="font-mono">cms-workflow-group</code></td>
+                            <td>Workflow Service (8083)</td>
+                            <td>complaint.ingested</td>
+                            <td>Orchestrates state transitions, assigns teams, manages task lifecycle</td>
+                        </tr>
+                        <tr>
+                            <td><code class="font-mono">cms-notification-group</code></td>
+                            <td>Notification Service (8087)</td>
+                            <td>All complaint.* topics</td>
+                            <td>Sends email/SMS notifications to customers and officers</td>
+                        </tr>
+                        <tr>
+                            <td><code class="font-mono">cms-assignment-group</code></td>
+                            <td>Assignment Service (8085)</td>
+                            <td>complaint.ingested, complaint.escalated</td>
+                            <td>Auto-assigns officers based on category, workload, and availability</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="info-box note">
+                <strong>Note: Topic Auto-Creation</strong>
+                Topics are auto-created via Spring Kafka <code>NewTopic</code> beans defined in the Kafka configuration class of the Ingestion Service. In production, topics should be pre-created with appropriate partition counts and replication factors.
+            </div>
+        </div>
+    </div>
+
+    <!-- Section 2: Architecture Flow Diagram -->
+    <div class="section" id="architecture">
+        <div class="section-header" onclick="toggleSection(this)">
+            <h2><span class="section-number">2</span> Architecture Flow Diagram</h2>
+            <span class="toggle">&#9660;</span>
+        </div>
+        <div class="section-content">
+            <div class="sub-section">
+                <h3>Complaint Filing Flow (Customer to System)</h3>
+                <div class="flow-diagram">
+                    <div class="flow-row">
+                        <div class="flow-box customer">
+                            Customer<br><span class="text-muted">Files complaint via portal</span>
+                        </div>
+                        <span class="flow-arrow">&#10132;</span>
+                        <div class="flow-box service">
+                            API Gateway<br><span class="text-muted">:8080</span>
+                        </div>
+                        <span class="flow-arrow">&#10132;</span>
+                        <div class="flow-box service">
+                            Ingestion Service<br><span class="text-muted">:8082 - Validates & Persists</span>
+                        </div>
+                        <span class="flow-arrow">&#10132;</span>
+                        <div class="flow-box kafka">
+                            Apache Kafka<br><span class="text-muted">complaint.ingested</span>
+                        </div>
+                    </div>
+                    <div class="flow-arrow-down">&#9661;</div>
+                    <div class="flow-label">Event consumed by multiple consumer groups</div>
+                    <div class="flow-row" style="margin-top: 1rem;">
+                        <div class="consumers-group">
+                            <div class="consumers-group-label">Kafka Consumer Services</div>
+                            <div class="flow-box consumer">
+                                Workflow Service<br><span class="text-muted">cms-workflow-group</span>
+                            </div>
+                            <div class="flow-box consumer">
+                                Notification Service<br><span class="text-muted">cms-notification-group</span>
+                            </div>
+                            <div class="flow-box consumer">
+                                Assignment Service<br><span class="text-muted">cms-assignment-group</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sub-section">
+                <h3>Officer Processing Flow (Officer to System)</h3>
+                <div class="flow-diagram">
+                    <div class="flow-row">
+                        <div class="flow-box officer">
+                            Officer Portal<br><span class="text-muted">Accepts/Resolves complaint</span>
+                        </div>
+                        <span class="flow-arrow">&#10132;</span>
+                        <div class="flow-box consumer">
+                            Workflow Service<br><span class="text-muted">:8083 - State transition</span>
+                        </div>
+                        <span class="flow-arrow">&#10132;</span>
+                        <div class="flow-box service">
+                            Ingestion Service<br><span class="text-muted">:8082 - REST callback</span>
+                        </div>
+                        <span class="flow-arrow">&#10132;</span>
+                        <div class="flow-box kafka">
+                            Apache Kafka<br><span class="text-muted">complaint.{status}</span>
+                        </div>
+                    </div>
+                    <div class="flow-arrow-down">&#9661;</div>
+                    <div class="flow-row">
+                        <div class="flow-box consumer">
+                            Notification Service<br><span class="text-muted">Emails customer with update</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sub-section">
+                <h3>Event Flow Summary</h3>
+                <div class="code-block">
+                    <span class="code-label">Event Flow</span>
+<span class="comment">// Filing a new complaint</span>
+Customer --[POST /api/v1/complaints]--> Ingestion Service
+Ingestion Service --[persist]--> H2/MySQL Database
+Ingestion Service --[publish complaint.ingested]--> Kafka
+Kafka --[consume]--> Workflow Service (creates task, calls back for assignment)
+Kafka --[consume]--> Notification Service (sends acknowledgement email)
+Kafka --[consume]--> Assignment Service (auto-assigns officer)
+
+<span class="comment">// Officer processes complaint</span>
+Officer --[POST /api/v1/workflow/{id}/transition]--> Workflow Service
+Workflow Service --[POST /api/v1/complaints/{id}/status]--> Ingestion Service
+Ingestion Service --[persist]--> Database
+Ingestion Service --[publish complaint.{newStatus}]--> Kafka
+Kafka --[consume]--> Notification Service (sends status update email)
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section 3: Sample Complaint End-to-End Flow -->
+    <div class="section" id="sample-flow">
+        <div class="section-header" onclick="toggleSection(this)">
+            <h2><span class="section-number">3</span> Sample Complaint End-to-End Flow</h2>
+            <span class="toggle">&#9660;</span>
+        </div>
+        <div class="section-content">
+            <div class="info-box note">
+                <strong>Sample Complaint Details</strong>
+                <table style="margin-top: 0.5rem;">
+                    <tr><td><strong>Customer:</strong></td><td>Rahul Sharma (rahul@example.com, 9876543210)</td></tr>
+                    <tr><td><strong>Entity:</strong></td><td>State Bank of India</td></tr>
+                    <tr><td><strong>Category:</strong></td><td>ATM</td></tr>
+                    <tr><td><strong>Subject:</strong></td><td>ATM did not dispense cash but account debited</td></tr>
+                    <tr><td><strong>Amount:</strong></td><td>Rs. 10,000</td></tr>
+                    <tr><td><strong>Complaint ID:</strong></td><td>CMP-20260527-000001</td></tr>
+                </table>
+            </div>
+
+            <!-- Timeline -->
+            <div class="timeline">
+
+                <!-- Stage 1: Filing -->
+                <div class="timeline-item completed">
+                    <div class="stage-title">Stage 1: Filing <span class="stage-badge badge-new">NEW</span></div>
+                    <p class="text-muted mb-1">2026-05-27 15:20:00 IST</p>
+
+                    <h4>API Request</h4>
+                    <div class="code-block">
+                        <span class="code-label">POST Request</span>
+<span class="http-method">POST</span> <span class="http-url">/api/v1/complaints</span>
+<span class="json-key">Content-Type:</span> application/json
+
+{
+  <span class="json-key">"complainantName"</span>: <span class="json-string">"Rahul Sharma"</span>,
+  <span class="json-key">"complainantEmail"</span>: <span class="json-string">"rahul@example.com"</span>,
+  <span class="json-key">"complainantPhone"</span>: <span class="json-string">"9876543210"</span>,
+  <span class="json-key">"entityName"</span>: <span class="json-string">"State Bank of India"</span>,
+  <span class="json-key">"category"</span>: <span class="json-string">"ATM"</span>,
+  <span class="json-key">"subject"</span>: <span class="json-string">"ATM did not dispense cash but account debited"</span>,
+  <span class="json-key">"description"</span>: <span class="json-string">"On 27-May-2026 at 3:00 PM, I tried to withdraw Rs.10,000 from SBI ATM near MG Road, Pune. The machine did not dispense cash but my account was debited. Transaction ref: TXN20260527150012."</span>,
+  <span class="json-key">"amount"</span>: <span class="json-number">10000.00</span>,
+  <span class="json-key">"branchName"</span>: <span class="json-string">"SBI MG Road Branch, Pune"</span>
+}
+                    </div>
+
+                    <h4>What Happens in Ingestion Service</h4>
+                    <ol style="margin-left: 1.5rem; margin-top: 0.5rem;">
+                        <li>Validates the request payload (required fields, email format, phone format)</li>
+                        <li>Generates complaint ID: <code>CMP-20260527-000001</code> (format: CMP-YYYYMMDD-NNNNNN)</li>
+                        <li>Persists to <code>COMPLAINT_MASTER</code> table with status = <code>NEW</code></li>
+                        <li>Records initial history entry in <code>COMPLAINT_HISTORY</code> table</li>
+                        <li>Publishes Kafka event to <code>complaint.ingested</code> topic</li>
+                    </ol>
+
+                    <h4>Database Row (COMPLAINT_MASTER)</h4>
+                    <div class="table-wrapper">
+                        <table>
+                            <tr><th>Field</th><th>Value</th></tr>
+                            <tr><td>id</td><td>1</td></tr>
+                            <tr><td>complaint_id</td><td>CMP-20260527-000001</td></tr>
+                            <tr><td>status</td><td><span class="status-pill status-new">NEW</span></td></tr>
+                            <tr><td>complainant_name</td><td>Rahul Sharma</td></tr>
+                            <tr><td>complainant_email</td><td>rahul@example.com</td></tr>
+                            <tr><td>entity_name</td><td>State Bank of India</td></tr>
+                            <tr><td>category</td><td>ATM</td></tr>
+                            <tr><td>subject</td><td>ATM did not dispense cash but account debited</td></tr>
+                            <tr><td>amount</td><td>10000.00</td></tr>
+                            <tr><td>assigned_team</td><td>NULL</td></tr>
+                            <tr><td>assigned_officer</td><td>NULL</td></tr>
+                            <tr><td>created_at</td><td>2026-05-27T15:20:00Z</td></tr>
+                            <tr><td>resolved_at</td><td>NULL</td></tr>
+                        </table>
+                    </div>
+
+                    <h4>Kafka Event Published</h4>
+                    <div class="code-block">
+                        <span class="code-label">complaint.ingested</span>
+{
+  <span class="json-key">"eventId"</span>: <span class="json-string">"a1b2c3d4-e5f6-7890-abcd-ef1234567890"</span>,
+  <span class="json-key">"complaintId"</span>: <span class="json-string">"CMP-20260527-000001"</span>,
+  <span class="json-key">"previousStatus"</span>: <span class="json-null">null</span>,
+  <span class="json-key">"currentStatus"</span>: <span class="json-string">"NEW"</span>,
+  <span class="json-key">"payload"</span>: <span class="json-string">"{\"complainantName\":\"Rahul Sharma\",\"complainantEmail\":\"rahul@example.com\",\"complainantPhone\":\"9876543210\",\"entityName\":\"State Bank of India\",\"category\":\"ATM\",\"subject\":\"ATM did not dispense cash but account debited\",\"amount\":10000.00}"</span>,
+  <span class="json-key">"correlationId"</span>: <span class="json-string">"f0e1d2c3-b4a5-6789-0fed-cba987654321"</span>,
+  <span class="json-key">"occurredAt"</span>: <span class="json-string">"2026-05-27T15:20:01.123Z"</span>
+}
+                    </div>
+
+                    <h4>Response to Customer</h4>
+                    <div class="code-block">
+                        <span class="code-label">201 Created</span>
+{
+  <span class="json-key">"complaintId"</span>: <span class="json-string">"CMP-20260527-000001"</span>,
+  <span class="json-key">"status"</span>: <span class="json-string">"NEW"</span>,
+  <span class="json-key">"message"</span>: <span class="json-string">"Your complaint has been registered successfully. You can track it using the complaint ID."</span>,
+  <span class="json-key">"trackingUrl"</span>: <span class="json-string">"/track/CMP-20260527-000001"</span>,
+  <span class="json-key">"createdAt"</span>: <span class="json-string">"2026-05-27T15:20:00Z"</span>
+}
+                    </div>
+                </div>
+
+                <!-- Stage 2: Assignment -->
+                <div class="timeline-item completed">
+                    <div class="stage-title">Stage 2: Assignment <span class="stage-badge badge-assigned">ASSIGNED</span></div>
+                    <p class="text-muted mb-1">2026-05-27 15:20:05 IST (auto, ~5 seconds after filing)</p>
+
+                    <h4>Event Consumption</h4>
+                    <div class="info-box success">
+                        <strong>Workflow Service (cms-workflow-group) consumes complaint.ingested</strong>
+                        The workflow service picks up the event and determines the appropriate team based on the complaint category.
+                    </div>
+
+                    <h4>Processing Steps</h4>
+                    <ol style="margin-left: 1.5rem; margin-top: 0.5rem;">
+                        <li>Workflow service consumes <code>complaint.ingested</code> event</li>
+                        <li>Determines team using category mapping: <code>ATM</code> &rarr; <code>ATM_TEAM</code></li>
+                        <li>Registers task in in-memory workflow store (task state: ASSIGNED)</li>
+                        <li>Calls back ingestion service via REST:
+                            <div class="code-block" style="margin-top: 0.5rem;">
+                                <span class="code-label">REST Callback</span>
+<span class="http-method">POST</span> <span class="http-url">/api/v1/complaints/CMP-20260527-000001/assignment?team=ATM_TEAM</span>
+                            </div>
+                        </li>
+                        <li>Ingestion service updates DB: <code>status=ASSIGNED</code>, <code>assigned_team=ATM_TEAM</code></li>
+                        <li>History record added: "Complaint assigned to ATM_TEAM"</li>
+                        <li>Kafka event published to <code>complaint.assigned</code></li>
+                    </ol>
+
+                    <h4>Kafka Event Published</h4>
+                    <div class="code-block">
+                        <span class="code-label">complaint.assigned</span>
+{
+  <span class="json-key">"eventId"</span>: <span class="json-string">"b2c3d4e5-f6a7-8901-bcde-f12345678901"</span>,
+  <span class="json-key">"complaintId"</span>: <span class="json-string">"CMP-20260527-000001"</span>,
+  <span class="json-key">"previousStatus"</span>: <span class="json-string">"NEW"</span>,
+  <span class="json-key">"currentStatus"</span>: <span class="json-string">"ASSIGNED"</span>,
+  <span class="json-key">"payload"</span>: <span class="json-string">"{\"complainantEmail\":\"rahul@example.com\",\"complainantPhone\":\"9876543210\",\"category\":\"ATM\",\"assignedTeam\":\"ATM_TEAM\",\"remarks\":\"Auto-assigned based on category\"}"</span>,
+  <span class="json-key">"correlationId"</span>: <span class="json-string">"f0e1d2c3-b4a5-6789-0fed-cba987654321"</span>,
+  <span class="json-key">"occurredAt"</span>: <span class="json-string">"2026-05-27T15:20:05.456Z"</span>
+}
+                    </div>
+
+                    <h4>Notification Sent</h4>
+                    <div class="info-box note">
+                        <strong>Email to: rahul@example.com</strong>
+                        Subject: Your complaint CMP-20260527-000001 has been assigned<br>
+                        Body: Dear Rahul Sharma, your complaint regarding "ATM did not dispense cash but account debited" has been assigned to our ATM processing team. You will receive updates as we progress.
+                    </div>
+                </div>
+
+                <!-- Stage 3: Officer Accepts -->
+                <div class="timeline-item completed">
+                    <div class="stage-title">Stage 3: Officer Accepts <span class="stage-badge badge-inprogress">IN_PROGRESS</span></div>
+                    <p class="text-muted mb-1">2026-05-27 15:26:32 IST (officer accepts ~6 minutes later)</p>
+
+                    <h4>Officer Views Tasks</h4>
+                    <div class="code-block">
+                        <span class="code-label">GET Request</span>
+<span class="http-method">GET</span> <span class="http-url">/api/v1/workflow/tasks?team=ATM_TEAM</span>
+
+<span class="comment">// Response: list of tasks assigned to ATM_TEAM</span>
+{
+  <span class="json-key">"tasks"</span>: [
+    {
+      <span class="json-key">"complaintId"</span>: <span class="json-string">"CMP-20260527-000001"</span>,
+      <span class="json-key">"status"</span>: <span class="json-string">"ASSIGNED"</span>,
+      <span class="json-key">"category"</span>: <span class="json-string">"ATM"</span>,
+      <span class="json-key">"subject"</span>: <span class="json-string">"ATM did not dispense cash but account debited"</span>,
+      <span class="json-key">"assignedTeam"</span>: <span class="json-string">"ATM_TEAM"</span>,
+      <span class="json-key">"createdAt"</span>: <span class="json-string">"2026-05-27T15:20:00Z"</span>
+    }
+  ]
+}
+                    </div>
+
+                    <h4>Officer Clicks "Accept"</h4>
+                    <div class="code-block">
+                        <span class="code-label">POST Request</span>
+<span class="http-method">POST</span> <span class="http-url">/api/v1/workflow/CMP-20260527-000001/transition?targetStatus=IN_PROGRESS&remarks=Accepted%20for%20investigation</span>
+                    </div>
+
+                    <h4>Processing Steps</h4>
+                    <ol style="margin-left: 1.5rem; margin-top: 0.5rem;">
+                        <li>Workflow service validates state transition: ASSIGNED &rarr; IN_PROGRESS (valid)</li>
+                        <li>Updates in-memory workflow store: task status = IN_PROGRESS</li>
+                        <li>Calls ingestion service via REST:
+                            <div class="code-block" style="margin-top: 0.5rem;">
+                                <span class="code-label">REST Callback</span>
+<span class="http-method">POST</span> <span class="http-url">/api/v1/complaints/CMP-20260527-000001/status?status=IN_PROGRESS</span>
+                            </div>
+                        </li>
+                        <li>DB update: <code>status = IN_PROGRESS</code></li>
+                        <li>History record: "Status changed to IN_PROGRESS. Remarks: Accepted for investigation"</li>
+                        <li>Kafka event published to <code>complaint.inprogress</code></li>
+                    </ol>
+
+                    <h4>Kafka Event Published</h4>
+                    <div class="code-block">
+                        <span class="code-label">complaint.inprogress</span>
+{
+  <span class="json-key">"eventId"</span>: <span class="json-string">"c3d4e5f6-a7b8-9012-cdef-123456789012"</span>,
+  <span class="json-key">"complaintId"</span>: <span class="json-string">"CMP-20260527-000001"</span>,
+  <span class="json-key">"previousStatus"</span>: <span class="json-string">"ASSIGNED"</span>,
+  <span class="json-key">"currentStatus"</span>: <span class="json-string">"IN_PROGRESS"</span>,
+  <span class="json-key">"payload"</span>: <span class="json-string">"{\"complainantEmail\":\"rahul@example.com\",\"complainantPhone\":\"9876543210\",\"category\":\"ATM\",\"remarks\":\"Accepted for investigation\"}"</span>,
+  <span class="json-key">"correlationId"</span>: <span class="json-string">"f0e1d2c3-b4a5-6789-0fed-cba987654321"</span>,
+  <span class="json-key">"occurredAt"</span>: <span class="json-string">"2026-05-27T15:26:32.028Z"</span>
+}
+                    </div>
+
+                    <h4>Notification Sent</h4>
+                    <div class="info-box note">
+                        <strong>Email to: rahul@example.com</strong>
+                        Subject: Your complaint CMP-20260527-000001 is being investigated<br>
+                        Body: Dear Rahul Sharma, your complaint is now being actively investigated by our team. We will keep you updated on the progress.
+                    </div>
+                </div>
+
+                <!-- Stage 4: Under Review -->
+                <div class="timeline-item completed">
+                    <div class="stage-title">Stage 4: Under Review <span class="stage-badge badge-review">UNDER_REVIEW</span></div>
+                    <p class="text-muted mb-1">2026-05-27 16:45:00 IST (officer marks under review after internal checks)</p>
+
+                    <h4>Officer Marks Under Review</h4>
+                    <div class="code-block">
+                        <span class="code-label">POST Request</span>
+<span class="http-method">POST</span> <span class="http-url">/api/v1/workflow/CMP-20260527-000001/transition?targetStatus=UNDER_REVIEW&remarks=Verified%20with%20switch%20team%2C%20reversal%20initiated</span>
+                    </div>
+
+                    <h4>Processing Steps</h4>
+                    <ol style="margin-left: 1.5rem; margin-top: 0.5rem;">
+                        <li>Workflow service validates: IN_PROGRESS &rarr; UNDER_REVIEW (valid)</li>
+                        <li>Updates in-memory store: task status = UNDER_REVIEW</li>
+                        <li>Calls ingestion service: <code>POST /api/v1/complaints/CMP-20260527-000001/status?status=UNDER_REVIEW</code></li>
+                        <li>DB update: <code>status = UNDER_REVIEW</code></li>
+                        <li>History record: "Status changed to UNDER_REVIEW. Remarks: Verified with switch team, reversal initiated"</li>
+                        <li>Kafka event published (notification service notifies customer)</li>
+                    </ol>
+
+                    <h4>Notification Sent</h4>
+                    <div class="info-box note">
+                        <strong>Email to: rahul@example.com</strong>
+                        Subject: Update on complaint CMP-20260527-000001<br>
+                        Body: Dear Rahul Sharma, your complaint is currently under review by our team. We are coordinating with the relevant departments for resolution.
+                    </div>
+                </div>
+
+                <!-- Stage 5: Resolution -->
+                <div class="timeline-item completed">
+                    <div class="stage-title">Stage 5: Resolution <span class="stage-badge badge-resolved">RESOLVED</span></div>
+                    <p class="text-muted mb-1">2026-05-27 17:30:00 IST (resolved ~2 hours after filing)</p>
+
+                    <h4>Officer Provides Resolution</h4>
+                    <div class="code-block">
+                        <span class="code-label">POST Request</span>
+<span class="http-method">POST</span> <span class="http-url">/api/v1/workflow/CMP-20260527-000001/transition?targetStatus=RESOLVED&remarks=Amount+of+Rs.10,000+has+been+credited+back+to+account+ending+4521</span>
+                    </div>
+
+                    <h4>Processing Steps</h4>
+                    <ol style="margin-left: 1.5rem; margin-top: 0.5rem;">
+                        <li>Workflow service validates: UNDER_REVIEW &rarr; RESOLVED (valid)</li>
+                        <li>Updates in-memory store: task status = RESOLVED, marks task as complete</li>
+                        <li>Calls ingestion service: <code>POST /api/v1/complaints/CMP-20260527-000001/status?status=RESOLVED</code></li>
+                        <li>DB update:
+                            <ul style="margin-left: 1rem;">
+                                <li><code>status = RESOLVED</code></li>
+                                <li><code>resolution_summary = "Amount of Rs.10,000 has been credited back to account ending 4521"</code></li>
+                                <li><code>resolved_at = 2026-05-27T17:30:00Z</code></li>
+                            </ul>
+                        </li>
+                        <li>History record: "Status changed to RESOLVED. Resolution provided."</li>
+                        <li>Kafka event published to <code>complaint.resolved</code></li>
+                    </ol>
+
+                    <h4>Kafka Event Published</h4>
+                    <div class="code-block">
+                        <span class="code-label">complaint.resolved</span>
+{
+  <span class="json-key">"eventId"</span>: <span class="json-string">"e5f6a7b8-c9d0-1234-efab-567890123456"</span>,
+  <span class="json-key">"complaintId"</span>: <span class="json-string">"CMP-20260527-000001"</span>,
+  <span class="json-key">"previousStatus"</span>: <span class="json-string">"UNDER_REVIEW"</span>,
+  <span class="json-key">"currentStatus"</span>: <span class="json-string">"RESOLVED"</span>,
+  <span class="json-key">"payload"</span>: <span class="json-string">"{\"complainantEmail\":\"rahul@example.com\",\"complainantPhone\":\"9876543210\",\"category\":\"ATM\",\"remarks\":\"Amount of Rs.10,000 has been credited back to account ending 4521\",\"resolutionSummary\":\"Amount of Rs.10,000 has been credited back to account ending 4521\"}"</span>,
+  <span class="json-key">"correlationId"</span>: <span class="json-string">"f0e1d2c3-b4a5-6789-0fed-cba987654321"</span>,
+  <span class="json-key">"occurredAt"</span>: <span class="json-string">"2026-05-27T17:30:00.789Z"</span>
+}
+                    </div>
+
+                    <h4>Notification Sent</h4>
+                    <div class="info-box success">
+                        <strong>Email to: rahul@example.com</strong>
+                        Subject: Your complaint CMP-20260527-000001 has been resolved<br>
+                        Body: Dear Rahul Sharma, your complaint regarding "ATM did not dispense cash but account debited" has been resolved. Resolution: Amount of Rs.10,000 has been credited back to account ending 4521. You can view the full timeline at /track/CMP-20260527-000001.
+                    </div>
+
+                    <h4>Customer Tracking</h4>
+                    <div class="code-block">
+                        <span class="code-label">Tracking URL</span>
+<span class="http-method">GET</span> <span class="http-url">/track/CMP-20260527-000001</span>
+
+<span class="comment">// Returns full complaint timeline with all status transitions</span>
+                    </div>
+                </div>
+
+                <!-- Stage 5b: Escalation (Alternative) -->
+                <div class="timeline-item active">
+                    <div class="stage-title">Alternative Stage 5b: Escalation <span class="stage-badge badge-escalated">ESCALATED</span></div>
+                    <p class="text-muted mb-1">Alternative path: If SLA is about to breach or officer manually escalates</p>
+
+                    <div class="info-box warning">
+                        <strong>Escalation Triggers</strong>
+                        <ul style="margin-left: 1rem; margin-top: 0.5rem;">
+                            <li><strong>Automatic:</strong> SLA Monitor Service detects complaint approaching SLA deadline</li>
+                            <li><strong>Manual:</strong> Officer determines complaint needs senior attention</li>
+                        </ul>
+                    </div>
+
+                    <h4>Escalation API Call</h4>
+                    <div class="code-block">
+                        <span class="code-label">POST Request</span>
+<span class="http-method">POST</span> <span class="http-url">/api/v1/workflow/CMP-20260527-000001/escalate?reason=SLA+breach+imminent+-+approaching+30+day+limit</span>
+                    </div>
+
+                    <h4>Processing Steps</h4>
+                    <ol style="margin-left: 1.5rem; margin-top: 0.5rem;">
+                        <li>Workflow service validates escalation is allowed from current state</li>
+                        <li>Updates in-memory store: task status = ESCALATED, priority elevated</li>
+                        <li>Calls ingestion service: <code>POST /api/v1/complaints/CMP-20260527-000001/status?status=ESCALATED</code></li>
+                        <li>DB update: <code>status = ESCALATED</code></li>
+                        <li>History record: "Complaint escalated. Reason: SLA breach imminent"</li>
+                        <li>Kafka event published to <code>complaint.escalated</code></li>
+                    </ol>
+
+                    <h4>Kafka Event Published</h4>
+                    <div class="code-block">
+                        <span class="code-label">complaint.escalated</span>
+{
+  <span class="json-key">"eventId"</span>: <span class="json-string">"f6a7b8c9-d0e1-2345-fabc-678901234567"</span>,
+  <span class="json-key">"complaintId"</span>: <span class="json-string">"CMP-20260527-000001"</span>,
+  <span class="json-key">"previousStatus"</span>: <span class="json-string">"IN_PROGRESS"</span>,
+  <span class="json-key">"currentStatus"</span>: <span class="json-string">"ESCALATED"</span>,
+  <span class="json-key">"payload"</span>: <span class="json-string">"{\"complainantEmail\":\"rahul@example.com\",\"complainantPhone\":\"9876543210\",\"category\":\"ATM\",\"reason\":\"SLA breach imminent - approaching 30 day limit\",\"escalatedTo\":\"SENIOR_ATM_TEAM\"}"</span>,
+  <span class="json-key">"correlationId"</span>: <span class="json-string">"f0e1d2c3-b4a5-6789-0fed-cba987654321"</span>,
+  <span class="json-key">"occurredAt"</span>: <span class="json-string">"2026-06-25T10:00:00.000Z"</span>
+}
+                    </div>
+
+                    <h4>Notifications Sent</h4>
+                    <div class="info-box danger">
+                        <strong>Email to: senior.officer@rbi-cms.in</strong>
+                        Subject: [ESCALATED] Complaint CMP-20260527-000001 requires immediate attention<br>
+                        Body: Complaint has been escalated due to SLA breach risk. Category: ATM, Entity: State Bank of India, Days open: 29.
+                    </div>
+                    <div class="info-box note" style="margin-top: 0.5rem;">
+                        <strong>Email to: rahul@example.com</strong>
+                        Subject: Your complaint CMP-20260527-000001 has been escalated<br>
+                        Body: Dear Rahul Sharma, your complaint has been escalated to a senior officer for faster resolution. We apologize for the delay.
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Section 4: Database Tables State at Each Stage -->
+    <div class="section" id="db-state">
+        <div class="section-header" onclick="toggleSection(this)">
+            <h2><span class="section-number">4</span> Database Tables State at Each Stage</h2>
+            <span class="toggle">&#9660;</span>
+        </div>
+        <div class="section-content">
+            <div class="sub-section">
+                <h3>COMPLAINT_MASTER Table Evolution</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Field</th>
+                                <th>Stage 1 (NEW)</th>
+                                <th>Stage 2 (ASSIGNED)</th>
+                                <th>Stage 3 (IN_PROGRESS)</th>
+                                <th>Stage 4 (UNDER_REVIEW)</th>
+                                <th>Stage 5 (RESOLVED)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>complaint_id</strong></td>
+                                <td colspan="5">CMP-20260527-000001</td>
+                            </tr>
+                            <tr>
+                                <td><strong>status</strong></td>
+                                <td><span class="status-pill status-new">NEW</span></td>
+                                <td><span class="status-pill status-assigned">ASSIGNED</span></td>
+                                <td><span class="status-pill status-inprogress">IN_PROGRESS</span></td>
+                                <td><span class="status-pill status-review">UNDER_REVIEW</span></td>
+                                <td><span class="status-pill status-resolved">RESOLVED</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>complainant_name</strong></td>
+                                <td colspan="5">Rahul Sharma</td>
+                            </tr>
+                            <tr>
+                                <td><strong>complainant_email</strong></td>
+                                <td colspan="5">rahul@example.com</td>
+                            </tr>
+                            <tr>
+                                <td><strong>entity_name</strong></td>
+                                <td colspan="5">State Bank of India</td>
+                            </tr>
+                            <tr>
+                                <td><strong>category</strong></td>
+                                <td colspan="5">ATM</td>
+                            </tr>
+                            <tr>
+                                <td><strong>subject</strong></td>
+                                <td colspan="5">ATM did not dispense cash but account debited</td>
+                            </tr>
+                            <tr>
+                                <td><strong>amount</strong></td>
+                                <td colspan="5">10000.00</td>
+                            </tr>
+                            <tr>
+                                <td><strong>assigned_team</strong></td>
+                                <td>NULL</td>
+                                <td>ATM_TEAM</td>
+                                <td>ATM_TEAM</td>
+                                <td>ATM_TEAM</td>
+                                <td>ATM_TEAM</td>
+                            </tr>
+                            <tr>
+                                <td><strong>assigned_officer</strong></td>
+                                <td>NULL</td>
+                                <td>NULL</td>
+                                <td>officer.atm01</td>
+                                <td>officer.atm01</td>
+                                <td>officer.atm01</td>
+                            </tr>
+                            <tr>
+                                <td><strong>resolution_summary</strong></td>
+                                <td>NULL</td>
+                                <td>NULL</td>
+                                <td>NULL</td>
+                                <td>NULL</td>
+                                <td>Amount of Rs.10,000 credited back to account ending 4521</td>
+                            </tr>
+                            <tr>
+                                <td><strong>created_at</strong></td>
+                                <td colspan="5">2026-05-27T15:20:00Z</td>
+                            </tr>
+                            <tr>
+                                <td><strong>updated_at</strong></td>
+                                <td>15:20:00Z</td>
+                                <td>15:20:05Z</td>
+                                <td>15:26:32Z</td>
+                                <td>16:45:00Z</td>
+                                <td>17:30:00Z</td>
+                            </tr>
+                            <tr>
+                                <td><strong>resolved_at</strong></td>
+                                <td>NULL</td>
+                                <td>NULL</td>
+                                <td>NULL</td>
+                                <td>NULL</td>
+                                <td>2026-05-27T17:30:00Z</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="sub-section">
+                <h3>COMPLAINT_HISTORY Table (Audit Trail)</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>complaint_id</th>
+                                <th>from_status</th>
+                                <th>to_status</th>
+                                <th>remarks</th>
+                                <th>performed_by</th>
+                                <th>created_at</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>1</td>
+                                <td>CMP-20260527-000001</td>
+                                <td>-</td>
+                                <td><span class="status-pill status-new">NEW</span></td>
+                                <td>Complaint registered by customer</td>
+                                <td>SYSTEM</td>
+                                <td>2026-05-27T15:20:00Z</td>
+                            </tr>
+                            <tr>
+                                <td>2</td>
+                                <td>CMP-20260527-000001</td>
+                                <td><span class="status-pill status-new">NEW</span></td>
+                                <td><span class="status-pill status-assigned">ASSIGNED</span></td>
+                                <td>Auto-assigned to ATM_TEAM based on category</td>
+                                <td>WORKFLOW_SERVICE</td>
+                                <td>2026-05-27T15:20:05Z</td>
+                            </tr>
+                            <tr>
+                                <td>3</td>
+                                <td>CMP-20260527-000001</td>
+                                <td><span class="status-pill status-assigned">ASSIGNED</span></td>
+                                <td><span class="status-pill status-inprogress">IN_PROGRESS</span></td>
+                                <td>Accepted for investigation</td>
+                                <td>officer.atm01</td>
+                                <td>2026-05-27T15:26:32Z</td>
+                            </tr>
+                            <tr>
+                                <td>4</td>
+                                <td>CMP-20260527-000001</td>
+                                <td><span class="status-pill status-inprogress">IN_PROGRESS</span></td>
+                                <td><span class="status-pill status-review">UNDER_REVIEW</span></td>
+                                <td>Verified with switch team, reversal initiated</td>
+                                <td>officer.atm01</td>
+                                <td>2026-05-27T16:45:00Z</td>
+                            </tr>
+                            <tr>
+                                <td>5</td>
+                                <td>CMP-20260527-000001</td>
+                                <td><span class="status-pill status-review">UNDER_REVIEW</span></td>
+                                <td><span class="status-pill status-resolved">RESOLVED</span></td>
+                                <td>Amount of Rs.10,000 has been credited back to account ending 4521</td>
+                                <td>officer.atm01</td>
+                                <td>2026-05-27T17:30:00Z</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="info-box note">
+                <strong>Database Note</strong>
+                In development, the system uses H2 in-memory database. All data is lost on service restart. In production, MySQL/PostgreSQL is used with persistent storage.
+            </div>
+        </div>
+    </div>
+
+    <!-- Section 5: Kafka Event Payloads -->
+    <div class="section" id="event-payloads">
+        <div class="section-header" onclick="toggleSection(this)">
+            <h2><span class="section-number">5</span> Kafka Event Payloads</h2>
+            <span class="toggle">&#9660;</span>
+        </div>
+        <div class="section-content">
+            <div class="sub-section">
+                <h3>ComplaintEvent Structure</h3>
+                <p>All Kafka events follow a consistent <code>ComplaintEvent</code> schema. The <code>payload</code> field contains a JSON-serialized string with context-specific data.</p>
+
+                <div class="code-block">
+                    <span class="code-label">ComplaintEvent.java</span>
+<span class="comment">// Java class definition</span>
+public class ComplaintEvent {
+    private String <span class="json-key">eventId</span>;          <span class="comment">// UUID - unique event identifier</span>
+    private String <span class="json-key">complaintId</span>;      <span class="comment">// CMP-YYYYMMDD-NNNNNN format</span>
+    private String <span class="json-key">previousStatus</span>;   <span class="comment">// Status before transition (null for NEW)</span>
+    private String <span class="json-key">currentStatus</span>;    <span class="comment">// Current status after transition</span>
+    private String <span class="json-key">payload</span>;          <span class="comment">// JSON string with event-specific data</span>
+    private String <span class="json-key">correlationId</span>;    <span class="comment">// UUID - tracks complaint across services</span>
+    private Instant <span class="json-key">occurredAt</span>;      <span class="comment">// ISO-8601 timestamp of event</span>
+}
+                </div>
+            </div>
+
+            <div class="sub-section">
+                <h3>Event Payload by Topic</h3>
+
+                <h4>complaint.ingested</h4>
+                <div class="code-block">
+                    <span class="code-label">JSON</span>
+{
+  <span class="json-key">"eventId"</span>: <span class="json-string">"a1b2c3d4-e5f6-7890-abcd-ef1234567890"</span>,
+  <span class="json-key">"complaintId"</span>: <span class="json-string">"CMP-20260527-000001"</span>,
+  <span class="json-key">"previousStatus"</span>: <span class="json-null">null</span>,
+  <span class="json-key">"currentStatus"</span>: <span class="json-string">"NEW"</span>,
+  <span class="json-key">"payload"</span>: <span class="json-string">"{\"complainantName\":\"Rahul Sharma\",\"complainantEmail\":\"rahul@example.com\",\"complainantPhone\":\"9876543210\",\"entityName\":\"State Bank of India\",\"category\":\"ATM\",\"subject\":\"ATM did not dispense cash but account debited\",\"amount\":10000.00}"</span>,
+  <span class="json-key">"correlationId"</span>: <span class="json-string">"f0e1d2c3-b4a5-6789-0fed-cba987654321"</span>,
+  <span class="json-key">"occurredAt"</span>: <span class="json-string">"2026-05-27T15:20:01.123Z"</span>
+}
+                </div>
+
+                <h4>complaint.assigned</h4>
+                <div class="code-block">
+                    <span class="code-label">JSON</span>
+{
+  <span class="json-key">"eventId"</span>: <span class="json-string">"b2c3d4e5-f6a7-8901-bcde-f12345678901"</span>,
+  <span class="json-key">"complaintId"</span>: <span class="json-string">"CMP-20260527-000001"</span>,
+  <span class="json-key">"previousStatus"</span>: <span class="json-string">"NEW"</span>,
+  <span class="json-key">"currentStatus"</span>: <span class="json-string">"ASSIGNED"</span>,
+  <span class="json-key">"payload"</span>: <span class="json-string">"{\"complainantEmail\":\"rahul@example.com\",\"complainantPhone\":\"9876543210\",\"category\":\"ATM\",\"assignedTeam\":\"ATM_TEAM\",\"remarks\":\"Auto-assigned based on category\"}"</span>,
+  <span class="json-key">"correlationId"</span>: <span class="json-string">"f0e1d2c3-b4a5-6789-0fed-cba987654321"</span>,
+  <span class="json-key">"occurredAt"</span>: <span class="json-string">"2026-05-27T15:20:05.456Z"</span>
+}
+                </div>
+
+                <h4>complaint.inprogress</h4>
+                <div class="code-block">
+                    <span class="code-label">JSON</span>
+{
+  <span class="json-key">"eventId"</span>: <span class="json-string">"c3d4e5f6-a7b8-9012-cdef-123456789012"</span>,
+  <span class="json-key">"complaintId"</span>: <span class="json-string">"CMP-20260527-000001"</span>,
+  <span class="json-key">"previousStatus"</span>: <span class="json-string">"ASSIGNED"</span>,
+  <span class="json-key">"currentStatus"</span>: <span class="json-string">"IN_PROGRESS"</span>,
+  <span class="json-key">"payload"</span>: <span class="json-string">"{\"complainantEmail\":\"rahul@example.com\",\"complainantPhone\":\"9876543210\",\"category\":\"ATM\",\"remarks\":\"Accepted for investigation\"}"</span>,
+  <span class="json-key">"correlationId"</span>: <span class="json-string">"f0e1d2c3-b4a5-6789-0fed-cba987654321"</span>,
+  <span class="json-key">"occurredAt"</span>: <span class="json-string">"2026-05-27T15:26:32.028Z"</span>
+}
+                </div>
+
+                <h4>complaint.escalated</h4>
+                <div class="code-block">
+                    <span class="code-label">JSON</span>
+{
+  <span class="json-key">"eventId"</span>: <span class="json-string">"d4e5f6a7-b8c9-0123-defa-234567890123"</span>,
+  <span class="json-key">"complaintId"</span>: <span class="json-string">"CMP-20260527-000001"</span>,
+  <span class="json-key">"previousStatus"</span>: <span class="json-string">"IN_PROGRESS"</span>,
+  <span class="json-key">"currentStatus"</span>: <span class="json-string">"ESCALATED"</span>,
+  <span class="json-key">"payload"</span>: <span class="json-string">"{\"complainantEmail\":\"rahul@example.com\",\"complainantPhone\":\"9876543210\",\"category\":\"ATM\",\"reason\":\"SLA breach imminent - approaching 30 day limit\",\"escalatedTo\":\"SENIOR_ATM_TEAM\"}"</span>,
+  <span class="json-key">"correlationId"</span>: <span class="json-string">"f0e1d2c3-b4a5-6789-0fed-cba987654321"</span>,
+  <span class="json-key">"occurredAt"</span>: <span class="json-string">"2026-06-25T10:00:00.000Z"</span>
+}
+                </div>
+
+                <h4>complaint.resolved</h4>
+                <div class="code-block">
+                    <span class="code-label">JSON</span>
+{
+  <span class="json-key">"eventId"</span>: <span class="json-string">"e5f6a7b8-c9d0-1234-efab-567890123456"</span>,
+  <span class="json-key">"complaintId"</span>: <span class="json-string">"CMP-20260527-000001"</span>,
+  <span class="json-key">"previousStatus"</span>: <span class="json-string">"UNDER_REVIEW"</span>,
+  <span class="json-key">"currentStatus"</span>: <span class="json-string">"RESOLVED"</span>,
+  <span class="json-key">"payload"</span>: <span class="json-string">"{\"complainantEmail\":\"rahul@example.com\",\"complainantPhone\":\"9876543210\",\"category\":\"ATM\",\"remarks\":\"Amount of Rs.10,000 has been credited back to account ending 4521\",\"resolutionSummary\":\"Amount of Rs.10,000 has been credited back to account ending 4521\"}"</span>,
+  <span class="json-key">"correlationId"</span>: <span class="json-string">"f0e1d2c3-b4a5-6789-0fed-cba987654321"</span>,
+  <span class="json-key">"occurredAt"</span>: <span class="json-string">"2026-05-27T17:30:00.789Z"</span>
+}
+                </div>
+
+                <h4>complaint.closed</h4>
+                <div class="code-block">
+                    <span class="code-label">JSON</span>
+{
+  <span class="json-key">"eventId"</span>: <span class="json-string">"f6a7b8c9-d0e1-2345-fabc-678901234567"</span>,
+  <span class="json-key">"complaintId"</span>: <span class="json-string">"CMP-20260527-000001"</span>,
+  <span class="json-key">"previousStatus"</span>: <span class="json-string">"RESOLVED"</span>,
+  <span class="json-key">"currentStatus"</span>: <span class="json-string">"CLOSED"</span>,
+  <span class="json-key">"payload"</span>: <span class="json-string">"{\"complainantEmail\":\"rahul@example.com\",\"complainantPhone\":\"9876543210\",\"category\":\"ATM\",\"remarks\":\"Closed after 7-day feedback window. No customer objection.\"}"</span>,
+  <span class="json-key">"correlationId"</span>: <span class="json-string">"f0e1d2c3-b4a5-6789-0fed-cba987654321"</span>,
+  <span class="json-key">"occurredAt"</span>: <span class="json-string">"2026-06-03T00:00:00.000Z"</span>
+}
+                </div>
+            </div>
+
+            <div class="sub-section">
+                <h3>Payload Field Reference</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Field (in payload JSON)</th>
+                            <th>Type</th>
+                            <th>Present In</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>complainantName</code></td>
+                            <td>String</td>
+                            <td>ingested</td>
+                            <td>Full name of complainant</td>
+                        </tr>
+                        <tr>
+                            <td><code>complainantEmail</code></td>
+                            <td>String</td>
+                            <td>All events</td>
+                            <td>Email for notifications</td>
+                        </tr>
+                        <tr>
+                            <td><code>complainantPhone</code></td>
+                            <td>String</td>
+                            <td>All events</td>
+                            <td>Phone for SMS notifications</td>
+                        </tr>
+                        <tr>
+                            <td><code>category</code></td>
+                            <td>String</td>
+                            <td>All events</td>
+                            <td>ATM, CREDIT_CARD, LOAN, DEPOSIT, etc.</td>
+                        </tr>
+                        <tr>
+                            <td><code>entityName</code></td>
+                            <td>String</td>
+                            <td>ingested</td>
+                            <td>Name of the financial entity</td>
+                        </tr>
+                        <tr>
+                            <td><code>assignedTeam</code></td>
+                            <td>String</td>
+                            <td>assigned</td>
+                            <td>Team assigned to handle complaint</td>
+                        </tr>
+                        <tr>
+                            <td><code>remarks</code></td>
+                            <td>String</td>
+                            <td>All transitions</td>
+                            <td>Officer/system remarks for transition</td>
+                        </tr>
+                        <tr>
+                            <td><code>reason</code></td>
+                            <td>String</td>
+                            <td>escalated</td>
+                            <td>Reason for escalation</td>
+                        </tr>
+                        <tr>
+                            <td><code>resolutionSummary</code></td>
+                            <td>String</td>
+                            <td>resolved</td>
+                            <td>Resolution details for customer</td>
+                        </tr>
+                        <tr>
+                            <td><code>escalatedTo</code></td>
+                            <td>String</td>
+                            <td>escalated</td>
+                            <td>Senior team/officer for escalation</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section 6: Kafdrop UI Guide -->
+    <div class="section" id="kafdrop">
+        <div class="section-header" onclick="toggleSection(this)">
+            <h2><span class="section-number">6</span> Kafdrop UI Guide</h2>
+            <span class="toggle">&#9660;</span>
+        </div>
+        <div class="section-content">
+            <div class="sub-section">
+                <h3>Accessing Kafdrop</h3>
+                <div class="code-block">
+                    <span class="code-label">URL</span>
+<span class="http-url">http://localhost:9000</span>
+
+<span class="comment">// Kafdrop provides a web UI to inspect Kafka topics, messages, and consumer groups.</span>
+<span class="comment">// It runs as a Docker container alongside Kafka (see docker-compose.yml in cms-infra).</span>
+                </div>
+            </div>
+
+            <div class="sub-section">
+                <h3>Browsing Topics</h3>
+                <ol style="margin-left: 1.5rem; margin-top: 0.5rem;">
+                    <li>Navigate to <code>http://localhost:9000</code></li>
+                    <li>The home page shows all topics in the cluster</li>
+                    <li>Click on any topic name (e.g., <code>complaint.ingested</code>) to view details</li>
+                    <li>You will see partition count, replication factor, and message count</li>
+                </ol>
+
+                <div class="screenshot-placeholder">
+                    <div class="icon">[Topic List View]</div>
+                    <p>Kafdrop Home - Shows all complaint.* topics with partition info and message counts</p>
+                    <p class="text-muted">Topics: complaint.ingested (3), complaint.assigned (3), complaint.inprogress (3), complaint.escalated (3), complaint.resolved (3), complaint.closed (3), complaint.dlq (1)</p>
+                </div>
+            </div>
+
+            <div class="sub-section">
+                <h3>Viewing Messages</h3>
+                <ol style="margin-left: 1.5rem; margin-top: 0.5rem;">
+                    <li>Click on a topic name</li>
+                    <li>Click "View Messages" button</li>
+                    <li>Select partition (0, 1, or 2) or "All Partitions"</li>
+                    <li>Set offset: "Beginning" to see all, or specific offset number</li>
+                    <li>Set count: Number of messages to retrieve (default: 100)</li>
+                    <li>Click "View Messages" - messages appear with key, value, timestamp, and headers</li>
+                </ol>
+
+                <div class="screenshot-placeholder">
+                    <div class="icon">[Message View]</div>
+                    <p>Kafdrop Message View - Shows individual ComplaintEvent JSON payloads</p>
+                    <p class="text-muted">Key: CMP-20260527-000001 | Partition: 1 | Offset: 0 | Timestamp: 2026-05-27T15:20:01Z</p>
+                </div>
+
+                <div class="info-box note">
+                    <strong>Tip: Message Key</strong>
+                    Messages are keyed by <code>complaintId</code> (e.g., CMP-20260527-000001). This ensures all events for the same complaint go to the same partition, maintaining ordering per complaint.
+                </div>
+            </div>
+
+            <div class="sub-section">
+                <h3>Checking Consumer Lag</h3>
+                <ol style="margin-left: 1.5rem; margin-top: 0.5rem;">
+                    <li>Click "Consumers" in the top navigation</li>
+                    <li>Find your consumer group (e.g., <code>cms-workflow-group</code>)</li>
+                    <li>Click to see per-partition details:
+                        <ul style="margin-left: 1rem; margin-top: 0.25rem;">
+                            <li><strong>Current Offset:</strong> Last message processed by consumer</li>
+                            <li><strong>End Offset:</strong> Latest message in partition</li>
+                            <li><strong>Lag:</strong> Difference (messages waiting to be processed)</li>
+                        </ul>
+                    </li>
+                    <li>If lag > 0 consistently, consumer may be stuck or slow</li>
+                </ol>
+
+                <div class="screenshot-placeholder">
+                    <div class="icon">[Consumer Lag View]</div>
+                    <p>Kafdrop Consumer Groups - Shows lag per partition for each consumer group</p>
+                    <table style="margin: 0.5rem auto; font-size: 0.85rem;">
+                        <tr><th>Group</th><th>Topic</th><th>Partition</th><th>Current Offset</th><th>End Offset</th><th>Lag</th></tr>
+                        <tr><td>cms-workflow-group</td><td>complaint.ingested</td><td>0</td><td>5</td><td>5</td><td style="color: green; font-weight: bold;">0</td></tr>
+                        <tr><td>cms-workflow-group</td><td>complaint.ingested</td><td>1</td><td>3</td><td>3</td><td style="color: green; font-weight: bold;">0</td></tr>
+                        <tr><td>cms-notification-group</td><td>complaint.ingested</td><td>0</td><td>4</td><td>5</td><td style="color: orange; font-weight: bold;">1</td></tr>
+                    </table>
+                </div>
+            </div>
+
+            <div class="sub-section">
+                <h3>Inspecting Dead Letter Queue</h3>
+                <ol style="margin-left: 1.5rem; margin-top: 0.5rem;">
+                    <li>Navigate to topic <code>complaint.dlq</code></li>
+                    <li>View Messages from beginning</li>
+                    <li>DLQ messages include headers with:
+                        <ul style="margin-left: 1rem;">
+                            <li><code>x-original-topic</code>: Original topic that failed</li>
+                            <li><code>x-exception-message</code>: Error that caused failure</li>
+                            <li><code>x-retry-count</code>: Number of retries attempted</li>
+                        </ul>
+                    </li>
+                    <li>Fix the root cause, then replay from DLQ</li>
+                </ol>
+
+                <div class="info-box warning">
+                    <strong>DLQ Alert</strong>
+                    If messages consistently appear in the DLQ, check service logs for the consuming service. Common causes: deserialization errors, database connectivity issues, or validation failures in downstream processing.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section 7: Service Ports Reference -->
+    <div class="section" id="ports">
+        <div class="section-header" onclick="toggleSection(this)">
+            <h2><span class="section-number">7</span> Service Ports Reference</h2>
+            <span class="toggle">&#9660;</span>
+        </div>
+        <div class="section-content">
+            <div class="port-grid">
+                <div class="port-card">
+                    <span class="service-name">API Gateway</span>
+                    <span class="port-number">8080</span>
+                </div>
+                <div class="port-card">
+                    <span class="service-name">Eligibility Service</span>
+                    <span class="port-number">8081</span>
+                </div>
+                <div class="port-card">
+                    <span class="service-name">Ingestion Service</span>
+                    <span class="port-number">8082</span>
+                </div>
+                <div class="port-card">
+                    <span class="service-name">Workflow Service</span>
+                    <span class="port-number">8083</span>
+                </div>
+                <div class="port-card">
+                    <span class="service-name">Rules Service</span>
+                    <span class="port-number">8084</span>
+                </div>
+                <div class="port-card">
+                    <span class="service-name">Assignment Service</span>
+                    <span class="port-number">8085</span>
+                </div>
+                <div class="port-card">
+                    <span class="service-name">SLA Monitor Service</span>
+                    <span class="port-number">8086</span>
+                </div>
+                <div class="port-card">
+                    <span class="service-name">Notification Service</span>
+                    <span class="port-number">8087</span>
+                </div>
+                <div class="port-card">
+                    <span class="service-name">Audit Service</span>
+                    <span class="port-number">8088</span>
+                </div>
+                <div class="port-card">
+                    <span class="service-name">Storage Service</span>
+                    <span class="port-number">8090</span>
+                </div>
+                <div class="port-card">
+                    <span class="service-name">Search Service</span>
+                    <span class="port-number">8091</span>
+                </div>
+                <div class="port-card">
+                    <span class="service-name">Kafdrop (Kafka UI)</span>
+                    <span class="port-number">9000</span>
+                </div>
+                <div class="port-card">
+                    <span class="service-name">Apache Kafka</span>
+                    <span class="port-number">9092</span>
+                </div>
+            </div>
+
+            <div class="info-box note">
+                <strong>Quick Start</strong>
+                To start all infrastructure services (Kafka, Zookeeper, Kafdrop), run:
+                <div class="code-block" style="margin-top: 0.5rem;">
+                    <span class="code-label">Terminal</span>
+cd cms-infra
+docker-compose up -d
+                </div>
+                Then start individual Spring Boot services:
+                <div class="code-block" style="margin-top: 0.5rem;">
+                    <span class="code-label">Terminal</span>
+cd cms-ingestion-service && mvn spring-boot:run
+cd cms-workflow-service && mvn spring-boot:run
+cd cms-notification-service && mvn spring-boot:run
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section 8: Troubleshooting -->
+    <div class="section" id="troubleshooting">
+        <div class="section-header" onclick="toggleSection(this)">
+            <h2><span class="section-number">8</span> Troubleshooting</h2>
+            <span class="toggle">&#9660;</span>
+        </div>
+        <div class="section-content">
+
+            <div class="troubleshoot-item">
+                <div class="problem">PATCH Method Not Working on Windows</div>
+                <div class="solution">
+                    <strong>Symptom:</strong> HTTP 405 Method Not Allowed or connection reset when using PATCH endpoints.<br><br>
+                    <strong>Cause:</strong> Some Windows HTTP client libraries and proxies do not support the PATCH method properly.<br><br>
+                    <strong>Solution:</strong> The CMS system uses <code>POST</code> endpoints instead of PATCH for all status updates:
+                    <ul style="margin-left: 1rem; margin-top: 0.5rem;">
+                        <li>Use <code>POST /api/v1/complaints/{id}/status?status=IN_PROGRESS</code> instead of PATCH</li>
+                        <li>Use <code>POST /api/v1/complaints/{id}/assignment?team=ATM_TEAM</code> instead of PATCH</li>
+                        <li>Use <code>POST /api/v1/workflow/{id}/transition?targetStatus=RESOLVED</code> for workflow transitions</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="troubleshoot-item">
+                <div class="problem">Consumer Not Receiving Messages</div>
+                <div class="solution">
+                    <strong>Symptom:</strong> Kafka events are published but consumer service does not process them.<br><br>
+                    <strong>Checklist:</strong>
+                    <ol style="margin-left: 1rem; margin-top: 0.5rem;">
+                        <li><strong>Topic name mismatch:</strong> Verify the topic name in producer matches consumer subscription. Common mistake: <code>complaint.in-progress</code> vs <code>complaint.inprogress</code></li>
+                        <li><strong>Group ID mismatch:</strong> Check <code>spring.kafka.consumer.group-id</code> in application.yml matches expected group:
+                            <ul style="margin-left: 1rem;">
+                                <li>Workflow: <code>cms-workflow-group</code></li>
+                                <li>Notification: <code>cms-notification-group</code></li>
+                                <li>Assignment: <code>cms-assignment-group</code></li>
+                            </ul>
+                        </li>
+                        <li><strong>Kafka not running:</strong> Verify Kafka is up: <code>docker ps | grep kafka</code></li>
+                        <li><strong>Consumer started after producer:</strong> Set <code>auto-offset-reset: earliest</code> to read from beginning</li>
+                        <li><strong>Deserialization error:</strong> Check logs for <code>SerializationException</code>. Ensure <code>JsonDeserializer</code> trusted packages include your event class package</li>
+                    </ol>
+                    <br>
+                    <strong>Debug with Kafdrop:</strong> Check consumer lag at <code>http://localhost:9000</code> > Consumers. If lag is growing, the consumer is not keeping up or is stuck.
+                </div>
+            </div>
+
+            <div class="troubleshoot-item">
+                <div class="problem">H2 Data Lost on Restart</div>
+                <div class="solution">
+                    <strong>Symptom:</strong> After restarting the Ingestion Service, all complaints are gone.<br><br>
+                    <strong>Cause:</strong> H2 is configured in-memory mode (<code>jdbc:h2:mem:cmsdb</code>). Data exists only while the JVM is running.<br><br>
+                    <strong>Solutions:</strong>
+                    <ul style="margin-left: 1rem; margin-top: 0.5rem;">
+                        <li><strong>For development:</strong> Simply re-file the complaint. Use the provided curl/Postman collection to quickly recreate test data.</li>
+                        <li><strong>For persistence (dev):</strong> Switch to file-based H2:
+                            <div class="code-block" style="margin-top: 0.25rem;">
+                                <span class="code-label">application.yml</span>
+<span class="json-key">spring.datasource.url:</span> <span class="json-string">jdbc:h2:file:./data/cmsdb</span>
+                            </div>
+                        </li>
+                        <li><strong>For production:</strong> Use MySQL/PostgreSQL with proper persistence</li>
+                    </ul>
+                    <br>
+                    <strong>Note:</strong> Kafka messages are persisted independently. Even if DB data is lost, Kafka retains events for the configured retention period (7 days default). You can replay events to rebuild state.
+                </div>
+            </div>
+
+            <div class="troubleshoot-item">
+                <div class="problem">Messages in Dead Letter Queue (DLQ)</div>
+                <div class="solution">
+                    <strong>Symptom:</strong> Messages appear in <code>complaint.dlq</code> topic instead of being processed.<br><br>
+                    <strong>Diagnosis Steps:</strong>
+                    <ol style="margin-left: 1rem; margin-top: 0.5rem;">
+                        <li>Open Kafdrop: <code>http://localhost:9000</code> > topic <code>complaint.dlq</code></li>
+                        <li>View messages - check the message headers for error details:
+                            <ul style="margin-left: 1rem;">
+                                <li><code>x-original-topic</code>: Which topic the message came from</li>
+                                <li><code>x-exception-message</code>: The actual error</li>
+                                <li><code>x-exception-stacktrace</code>: Full stack trace</li>
+                            </ul>
+                        </li>
+                        <li>Check consuming service logs for detailed error information</li>
+                    </ol>
+                    <br>
+                    <strong>Common Causes:</strong>
+                    <ul style="margin-left: 1rem; margin-top: 0.5rem;">
+                        <li><strong>Invalid complaint ID:</strong> Complaint referenced in event does not exist in DB</li>
+                        <li><strong>Invalid state transition:</strong> e.g., trying to move from NEW directly to RESOLVED</li>
+                        <li><strong>Service dependency down:</strong> Workflow service cannot reach Ingestion Service</li>
+                        <li><strong>Payload format change:</strong> Producer changed event format but consumer has old schema</li>
+                    </ul>
+                    <br>
+                    <strong>Recovery:</strong> Fix the root cause, then use a DLQ replayer utility or manually re-publish the corrected event to the original topic.
+                </div>
+            </div>
+
+            <div class="troubleshoot-item">
+                <div class="problem">Workflow Service Returns 404 for Task</div>
+                <div class="solution">
+                    <strong>Symptom:</strong> <code>GET /api/v1/workflow/tasks?team=ATM_TEAM</code> returns empty list even though complaint was filed.<br><br>
+                    <strong>Cause:</strong> Workflow service stores tasks in-memory. If the service was restarted after the complaint was filed, the task is lost.<br><br>
+                    <strong>Solution:</strong>
+                    <ol style="margin-left: 1rem; margin-top: 0.5rem;">
+                        <li>Re-file the complaint (POST /api/v1/complaints)</li>
+                        <li>The ingestion service will publish to <code>complaint.ingested</code></li>
+                        <li>Workflow service will consume the event and register the task</li>
+                    </ol>
+                </div>
+            </div>
+
+            <div class="troubleshoot-item">
+                <div class="problem">Kafka Connection Refused</div>
+                <div class="solution">
+                    <strong>Symptom:</strong> <code>org.apache.kafka.common.errors.TimeoutException: Failed to update metadata</code><br><br>
+                    <strong>Checklist:</strong>
+                    <ol style="margin-left: 1rem; margin-top: 0.5rem;">
+                        <li>Ensure Docker is running: <code>docker ps</code></li>
+                        <li>Check Kafka container: <code>docker ps | grep kafka</code></li>
+                        <li>Verify port 9092 is accessible: <code>curl localhost:9092</code> (should get binary response, not connection refused)</li>
+                        <li>Restart infrastructure: <code>cd cms-infra && docker-compose down && docker-compose up -d</code></li>
+                        <li>Wait 10-15 seconds for Kafka to fully initialize before starting services</li>
+                    </ol>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+</div>
+
+<!-- Footer -->
+<div style="background: var(--navy-dark); color: var(--gray-400); text-align: center; padding: 1.5rem; font-size: 0.85rem;">
+    <p>CMS 2.0 - Complaint Management System | Kafka Event Flow Documentation</p>
+    <p style="margin-top: 0.25rem; color: var(--gold);">RBI Integrated Ombudsman Framework</p>
+    <p style="margin-top: 0.5rem; font-size: 0.75rem;">Generated: 2026-05-27 | Version: 2.0.0</p>
+</div>
+
+<!-- JavaScript for collapsible sections -->
+<script>
+    function toggleSection(header) {
+        const content = header.nextElementSibling;
+        const toggle = header.querySelector('.toggle');
+
+        if (content.classList.contains('collapsed')) {
+            content.classList.remove('collapsed');
+            header.classList.remove('collapsed');
+        } else {
+            content.classList.add('collapsed');
+            header.classList.add('collapsed');
+        }
+    }
+
+    // Smooth scroll for navigation links
+    document.querySelectorAll('.nav a').forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            const targetId = this.getAttribute('href').substring(1);
+            const targetElement = document.getElementById(targetId);
+            if (targetElement) {
+                const content = targetElement.querySelector('.section-content');
+                const header = targetElement.querySelector('.section-header');
+                // Expand section if collapsed
+                if (content && content.classList.contains('collapsed')) {
+                    content.classList.remove('collapsed');
+                    header.classList.remove('collapsed');
+                }
+                targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        });
+    });
+
+    // Expand all sections on page load (they start expanded by default)
+    // Add keyboard shortcut: Ctrl+Shift+E to expand all, Ctrl+Shift+C to collapse all
+    document.addEventListener('keydown', function(e) {
+        if (e.ctrlKey && e.shiftKey && e.key === 'E') {
+            document.querySelectorAll('.section-content.collapsed').forEach(content => {
+                content.classList.remove('collapsed');
+                content.previousElementSibling.classList.remove('collapsed');
+            });
+        }
+        if (e.ctrlKey && e.shiftKey && e.key === 'C') {
+            document.querySelectorAll('.section-content:not(.collapsed)').forEach(content => {
+                content.classList.add('collapsed');
+                content.previousElementSibling.classList.add('collapsed');
+            });
+        }
+    });
+</script>
+
+</body>
+</html>

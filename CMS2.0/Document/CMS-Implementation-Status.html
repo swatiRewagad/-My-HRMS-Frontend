@@ -1,0 +1,1251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CMS 2.0 - Implementation Status Report</title>
+    <style>
+        :root {
+            --rbi-navy: #1a237e;
+            --rbi-navy-light: #283593;
+            --rbi-navy-dark: #0d1642;
+            --rbi-gold: #c9a227;
+            --rbi-gold-light: #f5e6a3;
+            --status-done: #2e7d32;
+            --status-done-bg: #e8f5e9;
+            --status-partial: #f57f17;
+            --status-partial-bg: #fff8e1;
+            --status-not-started: #c62828;
+            --status-not-started-bg: #ffebee;
+            --bg-primary: #f8f9fa;
+            --bg-card: #ffffff;
+            --text-primary: #212121;
+            --text-secondary: #616161;
+            --border-color: #e0e0e0;
+            --shadow: 0 2px 8px rgba(0,0,0,0.08);
+            --shadow-hover: 0 4px 16px rgba(0,0,0,0.12);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, var(--rbi-navy-dark) 0%, var(--rbi-navy) 50%, var(--rbi-navy-light) 100%);
+            color: white;
+            padding: 2rem 3rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 300px;
+            height: 100%;
+            background: linear-gradient(135deg, transparent 50%, rgba(201, 162, 39, 0.1) 100%);
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+            letter-spacing: -0.5px;
+        }
+
+        .header .subtitle {
+            font-size: 1rem;
+            opacity: 0.85;
+            font-weight: 300;
+        }
+
+        .header .date-stamp {
+            position: absolute;
+            top: 2rem;
+            right: 3rem;
+            text-align: right;
+            font-size: 0.85rem;
+            opacity: 0.7;
+        }
+
+        /* Container */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        /* Summary Bar */
+        .summary-bar {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .summary-card {
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: var(--shadow);
+            text-align: center;
+            border-top: 4px solid var(--rbi-navy);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .summary-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-hover);
+        }
+
+        .summary-card.done { border-top-color: var(--status-done); }
+        .summary-card.partial { border-top-color: var(--status-partial); }
+        .summary-card.not-started { border-top-color: var(--status-not-started); }
+
+        .summary-card .number {
+            font-size: 2.5rem;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        .summary-card.done .number { color: var(--status-done); }
+        .summary-card.partial .number { color: var(--status-partial); }
+        .summary-card.not-started .number { color: var(--status-not-started); }
+
+        .summary-card .label {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-top: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Progress Bar */
+        .progress-section {
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 1.5rem 2rem;
+            box-shadow: var(--shadow);
+            margin-bottom: 2rem;
+        }
+
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .progress-header h3 {
+            color: var(--rbi-navy);
+            font-size: 1.1rem;
+        }
+
+        .progress-header .percentage {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--rbi-navy);
+        }
+
+        .progress-bar-container {
+            height: 24px;
+            background: #eceff1;
+            border-radius: 12px;
+            overflow: hidden;
+            display: flex;
+        }
+
+        .progress-bar-segment {
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: white;
+            transition: width 0.5s ease;
+        }
+
+        .progress-bar-segment.done { background: var(--status-done); }
+        .progress-bar-segment.partial { background: var(--status-partial); }
+        .progress-bar-segment.not-started { background: var(--status-not-started); }
+
+        .progress-legend {
+            display: flex;
+            gap: 2rem;
+            margin-top: 0.75rem;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .progress-legend span::before {
+            content: '';
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 3px;
+            margin-right: 6px;
+            vertical-align: middle;
+        }
+
+        .progress-legend .leg-done::before { background: var(--status-done); }
+        .progress-legend .leg-partial::before { background: var(--status-partial); }
+        .progress-legend .leg-not-started::before { background: var(--status-not-started); }
+
+        /* Collapsible Sections */
+        .section {
+            background: var(--bg-card);
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            margin-bottom: 1.5rem;
+            overflow: hidden;
+        }
+
+        .section-header {
+            padding: 1.25rem 2rem;
+            background: var(--bg-card);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid transparent;
+            transition: background 0.2s;
+            user-select: none;
+        }
+
+        .section-header:hover {
+            background: #f5f5f5;
+        }
+
+        .section-header h2 {
+            font-size: 1.2rem;
+            color: var(--rbi-navy);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .section-header .icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            background: var(--rbi-navy);
+            color: white;
+        }
+
+        .section-header .toggle-icon {
+            font-size: 1.2rem;
+            color: var(--text-secondary);
+            transition: transform 0.3s;
+        }
+
+        .section.collapsed .section-header .toggle-icon {
+            transform: rotate(-90deg);
+        }
+
+        .section.collapsed .section-content {
+            display: none;
+        }
+
+        .section-content {
+            padding: 1.5rem 2rem;
+            border-top: 1px solid var(--border-color);
+        }
+
+        /* Status Badges */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .badge-done {
+            background: var(--status-done-bg);
+            color: var(--status-done);
+            border: 1px solid #a5d6a7;
+        }
+
+        .badge-partial {
+            background: var(--status-partial-bg);
+            color: var(--status-partial);
+            border: 1px solid #ffe082;
+        }
+
+        .badge-not-started {
+            background: var(--status-not-started-bg);
+            color: var(--status-not-started);
+            border: 1px solid #ef9a9a;
+        }
+
+        /* Tables */
+        .status-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+
+        .status-table thead th {
+            background: var(--rbi-navy);
+            color: white;
+            padding: 0.75rem 1rem;
+            text-align: left;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .status-table thead th:first-child {
+            border-radius: 8px 0 0 0;
+        }
+
+        .status-table thead th:last-child {
+            border-radius: 0 8px 0 0;
+        }
+
+        .status-table tbody tr {
+            border-bottom: 1px solid var(--border-color);
+            transition: background 0.15s;
+        }
+
+        .status-table tbody tr:hover {
+            background: #f8f9fa;
+        }
+
+        .status-table tbody td {
+            padding: 0.75rem 1rem;
+            font-size: 0.9rem;
+        }
+
+        .status-table tbody tr:last-child {
+            border-bottom: none;
+        }
+
+        /* Sub-section headers */
+        .sub-section-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--rbi-navy);
+            margin: 1.5rem 0 0.75rem 0;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--rbi-gold-light);
+        }
+
+        .sub-section-title:first-child {
+            margin-top: 0;
+        }
+
+        /* Architecture Diagram */
+        .architecture-diagram {
+            background: #1e1e2e;
+            color: #cdd6f4;
+            border-radius: 8px;
+            padding: 1.5rem;
+            font-family: 'Cascadia Code', 'Fira Code', 'JetBrains Mono', monospace;
+            font-size: 0.78rem;
+            line-height: 1.5;
+            overflow-x: auto;
+            white-space: pre;
+        }
+
+        .architecture-diagram .highlight-service { color: #89b4fa; }
+        .architecture-diagram .highlight-port { color: #a6e3a1; }
+        .architecture-diagram .highlight-infra { color: #f9e2af; }
+        .architecture-diagram .highlight-arrow { color: #6c7086; }
+        .architecture-diagram .highlight-header { color: #cba6f7; font-weight: bold; }
+
+        /* Tech Stack Grid */
+        .tech-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .tech-card {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 1rem 1.25rem;
+            border-left: 4px solid var(--rbi-navy);
+        }
+
+        .tech-card h4 {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            margin-bottom: 0.5rem;
+        }
+
+        .tech-card p {
+            font-size: 0.95rem;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        /* Roadmap */
+        .roadmap-list {
+            list-style: none;
+            padding: 0;
+            margin-top: 1rem;
+        }
+
+        .roadmap-list li {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            padding: 1rem;
+            border-left: 3px solid var(--border-color);
+            margin-bottom: 0.5rem;
+            transition: border-color 0.2s;
+        }
+
+        .roadmap-list li:hover {
+            border-left-color: var(--rbi-navy);
+        }
+
+        .roadmap-list .priority {
+            min-width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: var(--rbi-navy);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .roadmap-list .priority.high { background: var(--status-not-started); }
+        .roadmap-list .priority.medium { background: var(--status-partial); }
+        .roadmap-list .priority.low { background: var(--rbi-navy); }
+
+        .roadmap-list .item-content h4 {
+            font-size: 0.95rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .roadmap-list .item-content p {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            border-top: 1px solid var(--border-color);
+            margin-top: 2rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container { padding: 1rem; }
+            .header { padding: 1.5rem; }
+            .header .date-stamp { position: static; margin-top: 0.5rem; }
+            .section-content { padding: 1rem; }
+            .summary-bar { grid-template-columns: repeat(2, 1fr); }
+            .architecture-diagram { font-size: 0.65rem; }
+        }
+
+        @media print {
+            .section.collapsed .section-content { display: block !important; }
+            .section-header .toggle-icon { display: none; }
+            .header { background: var(--rbi-navy) !important; -webkit-print-color-adjust: exact; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>CMS 2.0 - Complaint Management System</h1>
+    <div class="subtitle">Microservices Architecture - Implementation Status Report</div>
+    <div class="date-stamp">
+        Generated: 27 May 2026<br>
+        Version: 2.0.0-SNAPSHOT
+    </div>
+</div>
+
+<div class="container">
+
+    <!-- Summary Cards -->
+    <div class="summary-bar">
+        <div class="summary-card done">
+            <div class="number">14</div>
+            <div class="label">Completed</div>
+        </div>
+        <div class="summary-card partial">
+            <div class="number">9</div>
+            <div class="label">Partial</div>
+        </div>
+        <div class="summary-card not-started">
+            <div class="number">13</div>
+            <div class="label">Not Started</div>
+        </div>
+        <div class="summary-card">
+            <div class="number" style="color: var(--rbi-navy);">36</div>
+            <div class="label">Total Items</div>
+        </div>
+    </div>
+
+    <!-- Progress Bar -->
+    <div class="progress-section">
+        <div class="progress-header">
+            <h3>Overall Project Completion</h3>
+            <div class="percentage">51%</div>
+        </div>
+        <div class="progress-bar-container">
+            <div class="progress-bar-segment done" style="width: 39%;">14</div>
+            <div class="progress-bar-segment partial" style="width: 25%;">9</div>
+            <div class="progress-bar-segment not-started" style="width: 36%;">13</div>
+        </div>
+        <div class="progress-legend">
+            <span class="leg-done">Done (39%)</span>
+            <span class="leg-partial">Partial (25%)</span>
+            <span class="leg-not-started">Not Started (36%)</span>
+        </div>
+    </div>
+
+    <!-- Section 1: Project Overview -->
+    <div class="section">
+        <div class="section-header" onclick="toggleSection(this)">
+            <h2><span class="icon">1</span> Project Overview</h2>
+            <span class="toggle-icon">&#9660;</span>
+        </div>
+        <div class="section-content">
+            <p style="margin-bottom: 1rem;">
+                <strong>CMS 2.0</strong> is a comprehensive Complaint Management System built using a microservices architecture
+                designed to handle end-to-end complaint lifecycle management. The system enables customers to register complaints,
+                tracks them through configurable workflows, applies business rules for assignment and SLA monitoring, and provides
+                officer dashboards for resolution.
+            </p>
+            <div class="tech-grid">
+                <div class="tech-card">
+                    <h4>Architecture</h4>
+                    <p>Event-driven Microservices</p>
+                </div>
+                <div class="tech-card">
+                    <h4>Services Count</h4>
+                    <p>12 Backend + 1 Frontend</p>
+                </div>
+                <div class="tech-card">
+                    <h4>Communication</h4>
+                    <p>REST + Kafka (Async)</p>
+                </div>
+                <div class="tech-card">
+                    <h4>Deployment Target</h4>
+                    <p>Docker / OpenShift</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section 2: Implementation Status -->
+    <div class="section">
+        <div class="section-header" onclick="toggleSection(this)">
+            <h2><span class="icon">2</span> Implementation Status</h2>
+            <span class="toggle-icon">&#9660;</span>
+        </div>
+        <div class="section-content">
+
+            <!-- DONE -->
+            <h3 class="sub-section-title">Completed <span class="badge badge-done">DONE</span></h3>
+            <table class="status-table">
+                <thead>
+                    <tr>
+                        <th>Component</th>
+                        <th>Type</th>
+                        <th>Status</th>
+                        <th>Notes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>cms-api-gateway</strong></td>
+                        <td>Backend Service</td>
+                        <td><span class="badge badge-done">Done</span></td>
+                        <td>Spring Cloud Gateway - routing, CORS, rate limiting</td>
+                    </tr>
+                    <tr>
+                        <td><strong>cms-eligibility-service</strong></td>
+                        <td>Backend Service</td>
+                        <td><span class="badge badge-done">Done</span></td>
+                        <td>Eligibility checks via Drools rules engine</td>
+                    </tr>
+                    <tr>
+                        <td><strong>cms-ingestion-service</strong></td>
+                        <td>Backend Service</td>
+                        <td><span class="badge badge-done">Done</span></td>
+                        <td>Complaint intake, validation, Kafka publishing</td>
+                    </tr>
+                    <tr>
+                        <td><strong>cms-workflow-service</strong></td>
+                        <td>Backend Service</td>
+                        <td><span class="badge badge-done">Done</span></td>
+                        <td>State machine, transitions, status management</td>
+                    </tr>
+                    <tr>
+                        <td><strong>cms-rules-service</strong></td>
+                        <td>Backend Service</td>
+                        <td><span class="badge badge-done">Done</span></td>
+                        <td>Drools-based business rules, CRUD for rules</td>
+                    </tr>
+                    <tr>
+                        <td><strong>cms-common</strong></td>
+                        <td>Shared Library</td>
+                        <td><span class="badge badge-done">Done</span></td>
+                        <td>DTOs, enums, exceptions, Kafka config</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Frontend - Landing Page</strong></td>
+                        <td>UI Component</td>
+                        <td><span class="badge badge-done">Done</span></td>
+                        <td>Angular 20, responsive design</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Frontend - Eligibility Check</strong></td>
+                        <td>UI Component</td>
+                        <td><span class="badge badge-done">Done</span></td>
+                        <td>Form with real-time validation</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Frontend - Complaint Form</strong></td>
+                        <td>UI Component</td>
+                        <td><span class="badge badge-done">Done</span></td>
+                        <td>Multi-step form with category selection</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Frontend - Complaint Tracker</strong></td>
+                        <td>UI Component</td>
+                        <td><span class="badge badge-done">Done</span></td>
+                        <td>Status timeline, complaint details view</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Frontend - Officer Dashboard</strong></td>
+                        <td>UI Component</td>
+                        <td><span class="badge badge-done">Done</span></td>
+                        <td>Queue management, filters, assignment view</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Frontend - Complaint Action</strong></td>
+                        <td>UI Component</td>
+                        <td><span class="badge badge-done">Done</span></td>
+                        <td>Officer actions: resolve, escalate, request info</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Frontend - Rules Management</strong></td>
+                        <td>UI Component</td>
+                        <td><span class="badge badge-done">Done</span></td>
+                        <td>CRUD interface for Drools business rules</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Kafka Pipeline</strong></td>
+                        <td>Infrastructure</td>
+                        <td><span class="badge badge-done">Done</span></td>
+                        <td>Topic config, producer/consumer setup</td>
+                    </tr>
+                    <tr>
+                        <td><strong>CRPC DEO Home</strong></td>
+                        <td>UI Component</td>
+                        <td><span class="badge badge-done">Done</span></td>
+                        <td>Complaint queue, filters, CSV/Excel export, sequential IDs (C001)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>CRPC Draft Assessment</strong></td>
+                        <td>UI Component</td>
+                        <td><span class="badge badge-done">Done</span></td>
+                        <td>DEO complaint entry form, OCR, vernacular detection</td>
+                    </tr>
+                    <tr>
+                        <td><strong>CRPC Reviewer Home</strong></td>
+                        <td>UI Component</td>
+                        <td><span class="badge badge-done">Done</span></td>
+                        <td>Review queue, approve/reject/send-back workflow</td>
+                    </tr>
+                    <tr>
+                        <td><strong>CRPC Ops Head</strong></td>
+                        <td>UI Component</td>
+                        <td><span class="badge badge-done">Done</span></td>
+                        <td>Transfer list, detail view, forward panel (language/territory)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Email Syndication / OCR</strong></td>
+                        <td>Backend API</td>
+                        <td><span class="badge badge-done">Done</span></td>
+                        <td>Email ingest, OCR processing, round-robin DEO assignment</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Session Management</strong></td>
+                        <td>Feature</td>
+                        <td><span class="badge badge-done">Done</span></td>
+                        <td>Configurable timeout, activity detection, extend-session popup</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Hazelcast Cache</strong></td>
+                        <td>Infrastructure</td>
+                        <td><span class="badge badge-done">Done</span></td>
+                        <td>Embedded Hazelcast replaces Redis (no external dependency)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>CEPC Dashboard</strong></td>
+                        <td>UI Component</td>
+                        <td><span class="badge badge-done">Done</span></td>
+                        <td>CEPC complaint list and detail view</td>
+                    </tr>
+                    <tr>
+                        <td><strong>RBIO Tasks</strong></td>
+                        <td>UI Component</td>
+                        <td><span class="badge badge-done">Done</span></td>
+                        <td>RBIO officer task queue and actions</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <!-- PARTIAL -->
+            <h3 class="sub-section-title">In Progress <span class="badge badge-partial">PARTIAL</span></h3>
+            <table class="status-table">
+                <thead>
+                    <tr>
+                        <th>Component</th>
+                        <th>Type</th>
+                        <th>Status</th>
+                        <th>Gap / Blocker</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>cms-assignment-service</strong></td>
+                        <td>Backend Service</td>
+                        <td><span class="badge badge-partial">Partial</span></td>
+                        <td>No REST controller; logic exists but not exposed</td>
+                    </tr>
+                    <tr>
+                        <td><strong>cms-notification-service</strong></td>
+                        <td>Backend Service</td>
+                        <td><span class="badge badge-partial">Partial</span></td>
+                        <td>No Kafka listener; notification templates defined</td>
+                    </tr>
+                    <tr>
+                        <td><strong>cms-sla-monitor-service</strong></td>
+                        <td>Backend Service</td>
+                        <td><span class="badge badge-partial">Partial</span></td>
+                        <td>No scheduler; SLA definitions exist but not enforced</td>
+                    </tr>
+                    <tr>
+                        <td><strong>cms-audit-service</strong></td>
+                        <td>Backend Service</td>
+                        <td><span class="badge badge-partial">Partial</span></td>
+                        <td>Minimal logic; needs event sourcing integration</td>
+                    </tr>
+                    <tr>
+                        <td><strong>cms-search-service</strong></td>
+                        <td>Backend Service</td>
+                        <td><span class="badge badge-partial">Partial</span></td>
+                        <td>Needs OpenSearch integration; basic structure only</td>
+                    </tr>
+                    <tr>
+                        <td><strong>cms-storage-service</strong></td>
+                        <td>Backend Service</td>
+                        <td><span class="badge badge-partial">Partial</span></td>
+                        <td>Not integrated with other services; standalone</td>
+                    </tr>
+                    <tr>
+                        <td><strong>cms-outbox-publisher</strong></td>
+                        <td>Backend Service</td>
+                        <td><span class="badge badge-partial">Partial</span></td>
+                        <td>Transactional outbox pattern defined but not used</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Keycloak / Auth</strong></td>
+                        <td>Infrastructure</td>
+                        <td><span class="badge badge-done">Done</span></td>
+                        <td>SSO integrated, session timeout with extend popup, role-based redirect</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Customer Notification on Status Change</strong></td>
+                        <td>Feature</td>
+                        <td><span class="badge badge-partial">Partial</span></td>
+                        <td>Event published but notification not delivered</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <!-- NOT STARTED -->
+            <h3 class="sub-section-title">Pending <span class="badge badge-not-started">NOT STARTED</span></h3>
+            <table class="status-table">
+                <thead>
+                    <tr>
+                        <th>Component</th>
+                        <th>Type</th>
+                        <th>Status</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Admin Dashboard</strong></td>
+                        <td>UI Feature</td>
+                        <td><span class="badge badge-done">Done</span></td>
+                        <td>Real DB stats, Chart.js visualizations, department/date/mode/status filters</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Senior Officer / Escalation View</strong></td>
+                        <td>UI Feature</td>
+                        <td><span class="badge badge-not-started">Not Started</span></td>
+                        <td>Escalated complaints queue, override actions</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Customer Login / Auth</strong></td>
+                        <td>UI Feature</td>
+                        <td><span class="badge badge-not-started">Not Started</span></td>
+                        <td>Customer portal with Keycloak SSO</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Report Generation</strong></td>
+                        <td>Feature</td>
+                        <td><span class="badge badge-not-started">Not Started</span></td>
+                        <td>PDF/Excel reports, MIS dashboards</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Bulk Operations</strong></td>
+                        <td>Feature</td>
+                        <td><span class="badge badge-not-started">Not Started</span></td>
+                        <td>Bulk assignment, bulk status update</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Email / SMS Notifications Wiring</strong></td>
+                        <td>Feature</td>
+                        <td><span class="badge badge-not-started">Not Started</span></td>
+                        <td>Connect notification service to SMTP/SMS gateway</td>
+                    </tr>
+                    <tr>
+                        <td><strong>SLA Monitoring Cron</strong></td>
+                        <td>Feature</td>
+                        <td><span class="badge badge-not-started">Not Started</span></td>
+                        <td>Scheduled jobs for SLA breach detection</td>
+                    </tr>
+                    <tr>
+                        <td><strong>OpenSearch Full-Text Search</strong></td>
+                        <td>Feature</td>
+                        <td><span class="badge badge-not-started">Not Started</span></td>
+                        <td>Index complaints, enable fuzzy/advanced search</td>
+                    </tr>
+                    <tr>
+                        <td><strong>File Upload UI</strong></td>
+                        <td>UI Feature</td>
+                        <td><span class="badge badge-not-started">Not Started</span></td>
+                        <td>Document attachment in complaint form</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Dockerfiles for Microservices</strong></td>
+                        <td>DevOps</td>
+                        <td><span class="badge badge-not-started">Not Started</span></td>
+                        <td>Individual Dockerfiles for each service</td>
+                    </tr>
+                    <tr>
+                        <td><strong>OpenShift Deployment Configs</strong></td>
+                        <td>DevOps</td>
+                        <td><span class="badge badge-not-started">Not Started</span></td>
+                        <td>DeploymentConfig, Routes, ConfigMaps</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Unit / Integration Tests</strong></td>
+                        <td>Quality</td>
+                        <td><span class="badge badge-not-started">Not Started</span></td>
+                        <td>JUnit, Mockito, Testcontainers, Cypress</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Camunda BPMN Integration</strong></td>
+                        <td>Feature</td>
+                        <td><span class="badge badge-not-started">Not Started</span></td>
+                        <td>BPMN process orchestration for complex workflows</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Section 3: Architecture Diagram -->
+    <div class="section">
+        <div class="section-header" onclick="toggleSection(this)">
+            <h2><span class="icon">3</span> Architecture Diagram</h2>
+            <span class="toggle-icon">&#9660;</span>
+        </div>
+        <div class="section-content">
+            <div class="architecture-diagram"><span class="highlight-header">                         CMS 2.0 - MICROSERVICES ARCHITECTURE</span>
+<span class="highlight-header">  ======================================================================</span>
+
+  <span class="highlight-infra">[Browser / Angular 20 Frontend]</span>  :4200
+         <span class="highlight-arrow">|</span>
+         <span class="highlight-arrow">v</span>
+  <span class="highlight-service">+-----------------------------+</span>
+  <span class="highlight-service">|    cms-api-gateway          |</span>  <span class="highlight-port">:8080</span>
+  <span class="highlight-service">|  (Spring Cloud Gateway)     |</span>
+  <span class="highlight-service">+-----------------------------+</span>
+         <span class="highlight-arrow">|         |         |         |         |         |</span>
+         <span class="highlight-arrow">v         v         v         v         v         v</span>
+  <span class="highlight-service">+-----------+  +-----------+  +-----------+  +-----------+  +-----------+  +-----------+</span>
+  <span class="highlight-service">| eligiblty |  | ingestion |  | workflow  |  |   rules   |  | assignmnt |  |  search   |</span>
+  <span class="highlight-service">|  service  |  |  service  |  |  service  |  |  service  |  |  service  |  |  service  |</span>
+  <span class="highlight-port">|   :8081   |</span>  <span class="highlight-port">|   :8082   |</span>  <span class="highlight-port">|   :8083   |</span>  <span class="highlight-port">|   :8084   |</span>  <span class="highlight-port">|   :8085   |</span>  <span class="highlight-port">|   :8086   |</span>
+  <span class="highlight-service">+-----------+  +-----------+  +-----------+  +-----------+  +-----------+  +-----------+</span>
+                      <span class="highlight-arrow">|               |                             |</span>
+                      <span class="highlight-arrow">v               v                             v</span>
+         <span class="highlight-infra">+================================================+</span>
+         <span class="highlight-infra">|              Apache Kafka Cluster               |</span>  <span class="highlight-port">:9092</span>
+         <span class="highlight-infra">|  Topics: complaint-created, status-changed,     |</span>
+         <span class="highlight-infra">|          assignment-updated, sla-breach          |</span>
+         <span class="highlight-infra">+================================================+</span>
+                      <span class="highlight-arrow">|         |         |         |</span>
+                      <span class="highlight-arrow">v         v         v         v</span>
+  <span class="highlight-service">+-----------+  +-----------+  +-----------+  +-----------+</span>
+  <span class="highlight-service">| notifictn |  |    SLA    |  |   audit   |  |  outbox   |</span>
+  <span class="highlight-service">|  service  |  |  monitor  |  |  service  |  | publisher |</span>
+  <span class="highlight-port">|   :8087   |</span>  <span class="highlight-port">|   :8088   |</span>  <span class="highlight-port">|   :8089   |</span>  <span class="highlight-port">|   :8090   |</span>
+  <span class="highlight-service">+-----------+  +-----------+  +-----------+  +-----------+</span>
+
+  <span class="highlight-service">+-----------+</span>
+  <span class="highlight-service">|  storage  |</span>
+  <span class="highlight-service">|  service  |</span>  <span class="highlight-port">:8091</span>
+  <span class="highlight-service">+-----------+</span>
+
+  <span class="highlight-header">--- Infrastructure Layer ---</span>
+
+  <span class="highlight-infra">+----------+  +----------+  +----------+  +----------+  +----------+</span>
+  <span class="highlight-infra">|  MySQL   |  |    H2    |  |Hazelcast |  |OpenSearch|  | Keycloak |</span>
+  <span class="highlight-infra">| (prod)   |  |  (dev)   |  | (cache)  |  | (search) |  |  (auth)  |</span>
+  <span class="highlight-port">|  :3306   |</span>  <span class="highlight-port">| embedded |</span>  <span class="highlight-port">| embedded |</span>  <span class="highlight-port">|  :9200   |</span>  <span class="highlight-port">|  :8180   |</span>
+  <span class="highlight-infra">+----------+  +----------+  +----------+  +----------+  +----------+</span></div>
+        </div>
+    </div>
+
+    <!-- Section 4: Technology Stack -->
+    <div class="section">
+        <div class="section-header" onclick="toggleSection(this)">
+            <h2><span class="icon">4</span> Technology Stack</h2>
+            <span class="toggle-icon">&#9660;</span>
+        </div>
+        <div class="section-content">
+            <div class="tech-grid">
+                <div class="tech-card">
+                    <h4>Frontend Framework</h4>
+                    <p>Angular 20 (Standalone Components)</p>
+                </div>
+                <div class="tech-card">
+                    <h4>Backend Framework</h4>
+                    <p>Spring Boot 3.x (Java 17+)</p>
+                </div>
+                <div class="tech-card">
+                    <h4>API Gateway</h4>
+                    <p>Spring Cloud Gateway</p>
+                </div>
+                <div class="tech-card">
+                    <h4>Database (Production)</h4>
+                    <p>MySQL 8.x</p>
+                </div>
+                <div class="tech-card">
+                    <h4>Database (Development)</h4>
+                    <p>H2 In-Memory</p>
+                </div>
+                <div class="tech-card">
+                    <h4>Message Broker</h4>
+                    <p>Apache Kafka</p>
+                </div>
+                <div class="tech-card">
+                    <h4>Caching</h4>
+                    <p>Hazelcast (Embedded)</p>
+                </div>
+                <div class="tech-card">
+                    <h4>Search Engine</h4>
+                    <p>OpenSearch</p>
+                </div>
+                <div class="tech-card">
+                    <h4>Authentication</h4>
+                    <p>Keycloak (OAuth2 / OIDC)</p>
+                </div>
+                <div class="tech-card">
+                    <h4>Rules Engine</h4>
+                    <p>Drools (KIE)</p>
+                </div>
+                <div class="tech-card">
+                    <h4>Workflow Engine</h4>
+                    <p>Camunda BPMN (Planned)</p>
+                </div>
+                <div class="tech-card">
+                    <h4>Containerization</h4>
+                    <p>Docker / Docker Compose</p>
+                </div>
+                <div class="tech-card">
+                    <h4>Orchestration</h4>
+                    <p>OpenShift (Planned)</p>
+                </div>
+                <div class="tech-card">
+                    <h4>Build Tool</h4>
+                    <p>Maven (Multi-module)</p>
+                </div>
+                <div class="tech-card">
+                    <h4>Testing</h4>
+                    <p>JUnit 5, Mockito, Testcontainers</p>
+                </div>
+                <div class="tech-card">
+                    <h4>UI Testing</h4>
+                    <p>Cypress / Karma (Planned)</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section 5: Service Dependency Map -->
+    <div class="section">
+        <div class="section-header" onclick="toggleSection(this)">
+            <h2><span class="icon">5</span> Service Dependencies</h2>
+            <span class="toggle-icon">&#9660;</span>
+        </div>
+        <div class="section-content">
+            <table class="status-table">
+                <thead>
+                    <tr>
+                        <th>Service</th>
+                        <th>Port</th>
+                        <th>Depends On</th>
+                        <th>Publishes To</th>
+                        <th>Consumes From</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>cms-api-gateway</strong></td>
+                        <td>8080</td>
+                        <td>All downstream services</td>
+                        <td>-</td>
+                        <td>-</td>
+                    </tr>
+                    <tr>
+                        <td><strong>cms-eligibility-service</strong></td>
+                        <td>8081</td>
+                        <td>MySQL/H2, Drools</td>
+                        <td>-</td>
+                        <td>-</td>
+                    </tr>
+                    <tr>
+                        <td><strong>cms-ingestion-service</strong></td>
+                        <td>8082</td>
+                        <td>MySQL/H2, Kafka</td>
+                        <td>complaint-created</td>
+                        <td>-</td>
+                    </tr>
+                    <tr>
+                        <td><strong>cms-workflow-service</strong></td>
+                        <td>8083</td>
+                        <td>MySQL/H2, Kafka</td>
+                        <td>status-changed</td>
+                        <td>complaint-created</td>
+                    </tr>
+                    <tr>
+                        <td><strong>cms-rules-service</strong></td>
+                        <td>8084</td>
+                        <td>MySQL/H2, Drools</td>
+                        <td>-</td>
+                        <td>-</td>
+                    </tr>
+                    <tr>
+                        <td><strong>cms-assignment-service</strong></td>
+                        <td>8085</td>
+                        <td>MySQL/H2, Kafka</td>
+                        <td>assignment-updated</td>
+                        <td>complaint-created</td>
+                    </tr>
+                    <tr>
+                        <td><strong>cms-search-service</strong></td>
+                        <td>8086</td>
+                        <td>OpenSearch</td>
+                        <td>-</td>
+                        <td>complaint-created, status-changed</td>
+                    </tr>
+                    <tr>
+                        <td><strong>cms-notification-service</strong></td>
+                        <td>8087</td>
+                        <td>SMTP/SMS Gateway</td>
+                        <td>-</td>
+                        <td>status-changed, sla-breach</td>
+                    </tr>
+                    <tr>
+                        <td><strong>cms-sla-monitor-service</strong></td>
+                        <td>8088</td>
+                        <td>MySQL/H2, Kafka</td>
+                        <td>sla-breach</td>
+                        <td>complaint-created, status-changed</td>
+                    </tr>
+                    <tr>
+                        <td><strong>cms-audit-service</strong></td>
+                        <td>8089</td>
+                        <td>MySQL/H2</td>
+                        <td>-</td>
+                        <td>All topics (event sourcing)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>cms-outbox-publisher</strong></td>
+                        <td>8090</td>
+                        <td>MySQL/H2, Kafka</td>
+                        <td>Various (relay)</td>
+                        <td>Outbox table polling</td>
+                    </tr>
+                    <tr>
+                        <td><strong>cms-storage-service</strong></td>
+                        <td>8091</td>
+                        <td>File system / Object store</td>
+                        <td>-</td>
+                        <td>-</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Section 6: Next Steps / Roadmap -->
+    <div class="section">
+        <div class="section-header" onclick="toggleSection(this)">
+            <h2><span class="icon">6</span> Next Steps / Roadmap</h2>
+            <span class="toggle-icon">&#9660;</span>
+        </div>
+        <div class="section-content">
+            <ol class="roadmap-list">
+                <li>
+                    <span class="priority high">P1</span>
+                    <div class="item-content">
+                        <h4>Complete Assignment Service REST API</h4>
+                        <p>Expose assignment logic via REST endpoints; integrate with officer dashboard for real-time queue assignment.</p>
+                    </div>
+                </li>
+                <li>
+                    <span class="priority high">P1</span>
+                    <div class="item-content">
+                        <h4>Wire Notification Service Kafka Listener</h4>
+                        <p>Connect status-changed events to notification delivery; implement email/SMS templates.</p>
+                    </div>
+                </li>
+                <li>
+                    <span class="priority high">P1</span>
+                    <div class="item-content">
+                        <h4>Enable Keycloak Authentication</h4>
+                        <p>Activate Spring Security OAuth2 resource server; configure role-based access for officer vs customer.</p>
+                    </div>
+                </li>
+                <li>
+                    <span class="priority high">P1</span>
+                    <div class="item-content">
+                        <h4>Implement SLA Monitoring Scheduler</h4>
+                        <p>Add @Scheduled cron job to detect SLA breaches and publish sla-breach events to Kafka.</p>
+                    </div>
+                </li>
+                <li>
+                    <span class="priority medium">P2</span>
+                    <div class="item-content">
+                        <h4>OpenSearch Integration</h4>
+                        <p>Index complaints on creation/update; implement full-text search with fuzzy matching and filters.</p>
+                    </div>
+                </li>
+                <li>
+                    <span class="priority medium">P2</span>
+                    <div class="item-content">
+                        <h4>File Upload - Frontend + Storage Integration</h4>
+                        <p>Add document upload component in complaint form; wire to cms-storage-service.</p>
+                    </div>
+                </li>
+                <li>
+                    <span class="priority medium">P2</span>
+                    <div class="item-content">
+                        <h4>Admin Dashboard UI</h4>
+                        <p>Build admin panel for user management, system config, and complaint category management.</p>
+                    </div>
+                </li>
+                <li>
+                    <span class="priority medium">P2</span>
+                    <div class="item-content">
+                        <h4>Senior Officer / Escalation View</h4>
+                        <p>Create escalation queue UI with override actions and complaint reassignment capabilities.</p>
+                    </div>
+                </li>
+                <li>
+                    <span class="priority medium">P2</span>
+                    <div class="item-content">
+                        <h4>Dockerfiles for All Microservices</h4>
+                        <p>Create optimized multi-stage Dockerfiles; update Docker Compose for full local stack.</p>
+                    </div>
+                </li>
+                <li>
+                    <span class="priority low">P3</span>
+                    <div class="item-content">
+                        <h4>Unit and Integration Tests</h4>
+                        <p>Achieve 70%+ code coverage; add Testcontainers for integration tests with Kafka and MySQL.</p>
+                    </div>
+                </li>
+                <li>
+                    <span class="priority low">P3</span>
+                    <div class="item-content">
+                        <h4>Report Generation Module</h4>
+                        <p>Implement PDF/Excel export for MIS reports; add scheduled report generation.</p>
+                    </div>
+                </li>
+                <li>
+                    <span class="priority low">P3</span>
+                    <div class="item-content">
+                        <h4>Camunda BPMN Workflow Integration</h4>
+                        <p>Replace custom state machine with Camunda for complex workflow orchestration and visual process modeling.</p>
+                    </div>
+                </li>
+                <li>
+                    <span class="priority low">P3</span>
+                    <div class="item-content">
+                        <h4>OpenShift Deployment Configuration</h4>
+                        <p>Create DeploymentConfigs, Routes, ConfigMaps, Secrets for production deployment on OpenShift.</p>
+                    </div>
+                </li>
+            </ol>
+        </div>
+    </div>
+
+</div>
+
+<div class="footer">
+    CMS 2.0 - Complaint Management System | Implementation Status Report | Generated: 27 May 2026
+</div>
+
+<script>
+    function toggleSection(header) {
+        const section = header.parentElement;
+        section.classList.toggle('collapsed');
+    }
+
+    // Auto-expand all sections on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        // All sections start expanded by default
+    });
+</script>
+
+</body>
+</html>

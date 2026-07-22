@@ -145,14 +145,14 @@ export class FileManagerComponent implements OnInit {
   }
 
   isOwner(folder: any): boolean {
-    return folder && String(this.ecm.currentUserId) === String(folder.ownerId);
+    return folder && String(this.ecm.currentUserId) !== '-1' && String(this.ecm.currentUserId) === String(folder.ownerId);
   }
 
   canWrite(folder: any): boolean {
     if (!folder) return false;
     if (this.isOwner(folder)) return true;
-    const access = folder.accessList?.find((a: any) => String(a.userId) === this.ecm.currentUserId);
-    return access?.permission === 'read-write';
+    const access = folder.accessList?.find((a: any) => String(a.userId) === String(this.ecm.currentUserId));
+    return access?.permission === 'read-write' || access?.permission === 'write';
   }
 
   canManageAccess(folder: any): boolean {
@@ -162,9 +162,9 @@ export class FileManagerComponent implements OnInit {
   isReadOnly(folder: any): boolean {
     if (!folder) return true;
     if (this.isOwner(folder)) return false;
-    if (folder.visibility === 'public') return true;
-    const access = folder.accessList?.find((a: any) => String(a.userId) === this.ecm.currentUserId);
-    return !access || access.permission === 'read';
+    const access = folder.accessList?.find((a: any) => String(a.userId) === String(this.ecm.currentUserId));
+    if (access?.permission === 'read-write' || access?.permission === 'write') return false;
+    return true;
   }
 
   onFileSelect(event: Event) {
@@ -225,6 +225,11 @@ export class FileManagerComponent implements OnInit {
     this.accessUserId = 0;
     this.accessPermission = 'read';
     this.selectedAccessUserIds = new Set();
+    if (this.selectedFolder?.accessList?.length) {
+      for (const a of this.selectedFolder.accessList) {
+        this.selectedAccessUserIds.add(a.userId);
+      }
+    }
   }
 
   toggleAccessUser(userId: number) {
@@ -244,16 +249,35 @@ export class FileManagerComponent implements OnInit {
   }
 
   grantBulkAccess() {
-    if (!this.selectedFolder || this.selectedAccessUserIds.size === 0) return;
+    if (!this.selectedFolder) return;
+    const existingUserIds: number[] = (this.selectedFolder.accessList || []).map((a: any) => a.userId as number);
+    const revokeIds = existingUserIds.filter(id => !this.selectedAccessUserIds.has(id));
+
     const requests = Array.from(this.selectedAccessUserIds).map(userId => ({
       userId,
       permission: this.accessPermission,
     }));
-    this.ecm.grantBulkAccess(this.selectedFolder.id, requests).subscribe(() => {
+
+    const revokes = revokeIds.map(uid => this.ecm.revokeAccess(this.selectedFolder.id, uid));
+
+    if (requests.length > 0) {
+      this.ecm.grantBulkAccess(this.selectedFolder.id, requests).subscribe(() => {
+        revokes.forEach(r$ => r$.subscribe());
+        this.showAccess = false;
+        this.ecm.getFolder(this.selectedFolder.id).subscribe(f => this.selectedFolder = f);
+        this.loadFolders();
+      });
+    } else if (revokes.length > 0) {
+      revokes.forEach((r$, i) => r$.subscribe(() => {
+        if (i === revokes.length - 1) {
+          this.showAccess = false;
+          this.ecm.getFolder(this.selectedFolder.id).subscribe(f => this.selectedFolder = f);
+          this.loadFolders();
+        }
+      }));
+    } else {
       this.showAccess = false;
-      this.ecm.getFolder(this.selectedFolder.id).subscribe(f => this.selectedFolder = f);
-      this.loadFolders();
-    });
+    }
   }
 
   revokeAccess(userId: number) {
@@ -276,7 +300,7 @@ export class FileManagerComponent implements OnInit {
 
   shareFile() {
     const data: any = { fileId: this.shareFileId, shareType: this.shareType, permission: this.sharePermission };
-    if (this.shareType === 'user') data.sharedWith = this.shareUserId;
+    if (this.shareType === 'user') data.sharedWith = Number(this.shareUserId);
     if (this.shareType === 'link') data.expiresInHours = this.shareExpiry;
     this.ecm.shareFile(data).subscribe((resp: any) => {
       if (this.shareType === 'link' && resp?.shareToken) {

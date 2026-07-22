@@ -209,6 +209,11 @@ export const routes: Routes = [
     canActivate: [staffAuthGuard],
     loadComponent: () => import('./components/crpc/in-charge-dashboard/in-charge-dashboard.component').then(m => m.InChargeDashboardComponent)
   },
+  // ── Admin — Team Management ──
+  {
+    path: 'admin/team-management',
+    loadComponent: () => import('./components/admin/team-management/team-management.component').then(m => m.TeamManagementComponent)
+  },
   // ── Admin — Template Management ──
   {
     path: 'admin/comment-templates',

@@ -50,7 +50,7 @@ spring:
 
 keycloak:
   admin:
-    server-url: http://localhost:8180
+    server-url: http://localhost:9090
     realm: cms
     client-id: admin-cli
     username: admin
