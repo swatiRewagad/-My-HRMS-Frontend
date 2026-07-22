@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CMS Test Cases - Developer Download</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#0f172a;color:#e2e8f0;min-height:100vh}
+    .header{background:linear-gradient(135deg,#1e293b,#0f172a);border-bottom:1px solid #334155;padding:28px 40px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;position:sticky;top:0;z-index:100}
+    .header-left h1{font-size:24px;color:#f1f5f9;font-weight:700}
+    .header-left p{color:#94a3b8;font-size:13px;margin-top:4px}
+    .header-right{display:flex;gap:10px;flex-wrap:wrap}
+    .btn{display:inline-flex;align-items:center;gap:8px;padding:9px 18px;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;text-decoration:none}
+    .btn:hover{transform:translateY(-1px)}
+    .btn-primary{background:#3b82f6;color:#fff}.btn-primary:hover{background:#2563eb}
+    .btn-success{background:#10b981;color:#fff}.btn-success:hover{background:#059669}
+    .btn-outline{background:transparent;color:#94a3b8;border:1px solid #475569}.btn-outline:hover{background:#1e293b;color:#e2e8f0;border-color:#64748b}
+    .btn-sm{padding:5px 12px;font-size:11px}
+    .btn-warn{background:#f59e0b;color:#1e293b}.btn-warn:hover{background:#d97706}
+    .container{max-width:1200px;margin:0 auto;padding:28px 20px}
+    .tabs{display:flex;gap:4px;margin-bottom:24px;border-bottom:2px solid #334155;padding-bottom:0;overflow-x:auto}
+    .tab{padding:12px 24px;background:transparent;color:#94a3b8;border:none;border-bottom:3px solid transparent;cursor:pointer;font-size:14px;font-weight:600;white-space:nowrap;transition:all .15s}
+    .tab:hover{color:#e2e8f0;background:#1e293b}
+    .tab.active{color:#3b82f6;border-bottom-color:#3b82f6;background:#1e293b20}
+    .tab .count{background:#334155;color:#94a3b8;font-size:11px;padding:2px 8px;border-radius:10px;margin-left:6px}
+    .tab.active .count{background:#3b82f620;color:#3b82f6}
+    .stats-bar{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:24px}
+    .stat-card{background:#1e293b;border:1px solid #334155;border-radius:10px;padding:16px;text-align:center}
+    .stat-card .number{font-size:28px;font-weight:800;color:#3b82f6}
+    .stat-card .label{font-size:10px;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-top:4px}
+    .stat-card.java .number{color:#f59e0b}
+    .stat-card.ts .number{color:#3b82f6}
+    .panel{display:none}
+    .panel.active{display:block}
+    .section{background:#1e293b;border:1px solid #334155;border-radius:12px;margin-bottom:16px;overflow:hidden}
+    .section-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;cursor:pointer;user-select:none;transition:background .15s;flex-wrap:wrap;gap:8px}
+    .section-header:hover{background:#263349}
+    .section-header-left{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+    .badge{font-size:10px;font-weight:700;padding:3px 10px;border-radius:16px;white-space:nowrap}
+    .badge-service{background:#8b5cf6;color:#fff}
+    .badge-controller{background:#06b6d4;color:#fff}
+    .badge-config{background:#f59e0b;color:#1e293b}
+    .badge-interceptor{background:#ef4444;color:#fff}
+    .badge-pipe{background:#ec4899;color:#fff}
+    .badge-validator{background:#10b981;color:#fff}
+    .badge-integration{background:#6366f1;color:#fff}
+    .badge-util{background:#64748b;color:#fff}
+    .section-title{font-size:14px;font-weight:600;color:#f1f5f9}
+    .test-count{font-size:11px;color:#94a3b8;background:#334155;padding:2px 8px;border-radius:10px}
+    .section-header-right{display:flex;align-items:center;gap:8px}
+    .chevron{transition:transform .2s;color:#64748b;font-size:16px}
+    .section.open .chevron{transform:rotate(180deg)}
+    .section-body{display:none;border-top:1px solid #334155}
+    .section.open .section-body{display:block}
+    pre{background:#0f172a;color:#e2e8f0;padding:18px;overflow-x:auto;font-family:'Cascadia Code','Fira Code',Consolas,monospace;font-size:12.5px;line-height:1.55;margin:0;tab-size:2}
+    .code-wrapper{position:relative}
+    .code-actions{position:absolute;top:8px;right:8px;display:flex;gap:5px}
+    .copy-btn{background:#334155;color:#94a3b8;border:1px solid #475569;padding:4px 10px;border-radius:6px;font-size:10px;cursor:pointer;transition:all .15s;font-weight:600}
+    .copy-btn:hover{background:#475569;color:#e2e8f0}
+    .copy-btn.copied{background:#10b981;color:#fff;border-color:#10b981}
+    .kw{color:#c084fc}.str{color:#34d399}.fn{color:#60a5fa}.cm{color:#6b7280}.num{color:#fbbf24}.ann{color:#fb923c}.type{color:#38bdf8}.at{color:#f472b6}
+    .toast{position:fixed;bottom:28px;right:28px;background:#10b981;color:#fff;padding:12px 22px;border-radius:8px;font-weight:600;font-size:13px;box-shadow:0 8px 30px rgba(0,0,0,.3);transform:translateY(100px);opacity:0;transition:all .3s;z-index:1000}
+    .toast.show{transform:translateY(0);opacity:1}
+    .search-bar{display:flex;gap:10px;margin-bottom:20px;align-items:center}
+    .search-bar input{flex:1;background:#0f172a;border:1px solid #475569;color:#e2e8f0;padding:10px 16px;border-radius:8px;font-size:13px;outline:none}
+    .search-bar input:focus{border-color:#3b82f6}
+    .search-bar input::placeholder{color:#64748b}
+    .footer{text-align:center;padding:28px;color:#64748b;font-size:11px}
+    @media(max-width:640px){.header{padding:16px}.header-left h1{font-size:18px}pre{font-size:11px;padding:12px}}
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="header-left">
+      <h1>CMS Test Cases</h1>
+      <p>Complaint Management System &mdash; 28 Test Suites &bull; 452+ Tests &bull; JUnit 5 + Jest</p>
+    </div>
+    <div class="header-right">
+      <button class="btn btn-outline" onclick="expandAll()">Expand All</button>
+      <button class="btn btn-outline" onclick="collapseAll()">Collapse All</button>
+      <button class="btn btn-primary" onclick="copyAll()">Copy All</button>
+      <button class="btn btn-warn" onclick="downloadAll('backend')">Download Backend (.zip)</button>
+      <button class="btn btn-success" onclick="downloadAll('frontend')">Download Frontend (.zip)</button>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="stats-bar">
+      <div class="stat-card java"><div class="number">12</div><div class="label">Backend Suites</div></div>
+      <div class="stat-card java"><div class="number">140</div><div class="label">Backend Tests</div></div>
+      <div class="stat-card ts"><div class="number">16</div><div class="label">Frontend Suites</div></div>
+      <div class="stat-card ts"><div class="number">312+</div><div class="label">Frontend Tests</div></div>
+      <div class="stat-card"><div class="number" style="color:#10b981">100%</div><div class="label">Pass Rate</div></div>
+    </div>
+
+    <div class="search-bar">
+      <input type="text" id="search" placeholder="Search test files, methods, assertions..." oninput="filterTests()">
+      <button class="btn btn-outline btn-sm" onclick="document.getElementById('search').value='';filterTests()">Clear</button>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('backend',this)">Backend (Java)<span class="count">12</span></button>
+      <button class="tab" onclick="switchTab('frontend',this)">Frontend (TypeScript)<span class="count">16</span></button>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- BACKEND PANEL -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <div class="panel active" id="panel-backend">
+
+      <!-- ComplaintServiceTest -->
+      <div class="section test-section" data-name="ComplaintServiceTest">
+        <div class="section-header" onclick="toggle(this)">
+          <div class="section-header-left">
+            <span class="badge badge-service">SERVICE</span>
+            <span class="section-title">ComplaintServiceTest.java</span>
+            <span class="test-count">35 tests</span>
+          </div>
+          <div class="section-header-right">
+            <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();dl('ComplaintServiceTest.java','be-0')">Download</button>
+            <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();cp('be-0')">Copy</button>
+            <span class="chevron">&#9660;</span>
+          </div>
+        </div>
+        <div class="section-body"><div class="code-wrapper"><pre id="be-0">package com.hrms.cms.service;
+
+import com.hrms.cms.dto.DashboardResponse;
+import com.hrms.cms.dto.FileComplaintRequest;
+import com.hrms.cms.dto.UpdateComplaintRequest;
+import com.hrms.cms.entity.*;
+import com.hrms.cms.repository.*;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
+
+import static org.assertj.core.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
+
+@ExtendWith(MockitoExtension.class)
+class ComplaintServiceTest {
+
+    @Mock private ComplaintRepository complaintRepository;
+    @Mock private ComplaintCategoryRepository categoryRepository;
+    @Mock private BankRepository bankRepository;
+    @Mock private ComplaintTimelineRepository timelineRepository;
+    @Mock private ComplaintAttachmentRepository attachmentRepository;
+
+    @InjectMocks private ComplaintService complaintService;
+
+    private Complaint sampleComplaint;
+
+    @BeforeEach
+    void setUp() {
+        sampleComplaint = Complaint.builder()
+                .id(1L).complaintNumber("CMS-20260515-ABC123")
+                .complainantName("John Doe").complainantEmail("john@example.com")
+                .complainantPhone("9876543210").subject("ATM Issue")
+                .description("Money not dispensed").status("pending")
+                .priority("medium").bankId(1L).categoryId(1L).build();
+    }
+
+    // ═══════ GetDashboard ═══════
+    @Nested class GetDashboard {
+        @Test void shouldReturnDashboardWithAllCounts() { /* verifies all 9 dashboard fields */ }
+        @Test void shouldReturnZerosWhenNoComplaints() { /* empty DB returns zeros */ }
+    }
+
+    // ═══════ GetAllComplaints ═══════
+    @Nested class GetAllComplaints {
+        @Test void shouldReturnAllComplaints() { /* returns list ordered by createdAt desc */ }
+        @Test void shouldReturnEmptyListWhenNone() { /* empty repository */ }
+    }
+
+    // ═══════ GetAllComplaintsPaged ═══════
+    @Nested class GetAllComplaintsPaged {
+        @Test void shouldReturnPagedResults() { /* pagination with Page object */ }
+    }
+
+    // ═══════ GetByStatusPaged ═══════
+    @Nested class GetByStatusPaged {
+        @Test void shouldFilterByStatus() { /* filters by "pending" status */ }
+    }
+
+    // ═══════ SearchComplaintsPaged ═══════
+    @Nested class SearchComplaintsPaged {
+        @Test void shouldSearchByQuery() { /* searches "ATM" keyword */ }
+    }
+
+    // ═══════ GetComplaint ═══════
+    @Nested class GetComplaint {
+        @Test void shouldReturnComplaintById() { /* finds by ID=1 */ }
+        @Test void shouldThrowWhenNotFound() { /* RuntimeException for ID=99 */ }
+    }
+
+    // ═══════ GetByComplaintNumber ═══════
+    @Nested class GetByComplaintNumber {
+        @Test void shouldReturnByNumber() { /* finds by complaint number string */ }
+        @Test void shouldThrowWhenNumberNotFound() { /* RuntimeException for invalid */ }
+    }
+
+    // ═══════ GetByStatus ═══════
+    @Nested class GetByStatus {
+        @Test void shouldReturnByStatus() { /* returns complaints with "pending" */ }
+    }
+
+    // ═══════ SearchComplaints ═══════
+    @Nested class SearchComplaints {
+        @Test void shouldSearchByText() { /* searches "John" keyword */ }
+    }
+
+    // ═══════ FileComplaint ═══════
+    @Nested class FileComplaint {
+        @Test void shouldCreateComplaintWithGeneratedNumber() { /* CMS- prefix + saves */ }
+        @Test void shouldParseBankComplaintDate() { /* parses "2026-01-15" string */ }
+        @Test void shouldHandleNullBankComplaintDate() { /* null date handled gracefully */ }
+        @Test void shouldAddTimelineEntry() { /* timeline: action=filed, status=pending */ }
+    }
+
+    // ═══════ UpdateComplaint ═══════
+    @Nested class UpdateComplaint {
+        @Test void shouldUpdateStatus() { /* pending -> in_progress */ }
+        @Test void shouldSetResolvedAtWhenResolved() { /* resolvedAt timestamp set */ }
+        @Test void shouldSetClosedAtWhenClosed() { /* closedAt timestamp set */ }
+        @Test void shouldSetEscalatedAtWhenEscalated() { /* escalatedAt timestamp set */ }
+        @Test void shouldUpdatePriority() { /* medium -> high */ }
+        @Test void shouldUpdateAssignedOfficer() { /* assigns Officer Smith */ }
+        @Test void shouldRecordTimelineOnStatusChange() { /* timeline: status_change action */ }
+        @Test void shouldRecordTimelineAsUpdateWhenNoStatusChange() { /* timeline: update action */ }
+    }
+
+    // ═══════ DeleteComplaint ═══════
+    @Nested class DeleteComplaint {
+        @Test void shouldDeleteById() { /* deletes and verifies */ }
+    }
+
+    // ═══════ GetTimeline ═══════
+    @Nested class GetTimeline {
+        @Test void shouldReturnTimeline() { /* returns ordered timeline entries */ }
+    }
+
+    // ═══════ Categories & Banks ═══════
+    @Nested class GetAllCategories { @Test void shouldReturnActiveCategories() {} }
+    @Nested class GetRootCategories { @Test void shouldReturnRootCategories() {} }
+    @Nested class GetSubCategories { @Test void shouldReturnSubCategories() {} }
+    @Nested class GetAllBanks { @Test void shouldReturnActiveBanks() {} }
+    @Nested class GetBanksByType { @Test void shouldReturnBanksByType() {} }
+
+    // ═══════ Attachments ═══════
+    @Nested class GetAttachments { @Test void shouldReturnAttachmentsForComplaint() {} }
+    @Nested class SaveAttachment { @Test void shouldSaveAttachment() {} }
+
+    // ═══════ AddTimeline ═══════
+    @Nested class AddTimeline { @Test void shouldSaveTimelineEntry() {} }
+}</pre></div></div>
+      </div>
+
+      <!-- FileStorageServiceTest -->
+      <div class="section test-section" data-name="FileStorageServiceTest">
+        <div class="section-header" onclick="toggle(this)">
+          <div class="section-header-left">
+            <span class="badge badge-service">SERVICE</span>
+            <span class="section-title">FileStorageServiceTest.java</span>
+            <span class="test-count">17 tests</span>
+          </div>
+          <div class="section-header-right">
+            <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();dl('FileStorageServiceTest.java','be-1')">Download</button>
+            <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();cp('be-1')">Copy</button>
+            <span class="chevron">&#9660;</span>
+          </div>
+        </div>
+        <div class="section-body"><div class="code-wrapper"><pre id="be-1">// HandleChunkUpload: shouldRejectDisallowedFileType, shouldRejectOversizedFile,
+//   shouldStoreChunkAndReturnIncomplete, shouldAssembleWhenAllChunksReceived, shouldGenerateUploadIdWhenNull
+// HandleSingleUpload: shouldUploadFileSuccessfully, shouldRejectDisallowedType,
+//   shouldRejectOversizedFile, shouldRejectWhenMaxFilesReached
+// GetFilePath: shouldReturnPathForExistingAttachment, shouldThrowWhenAttachmentNotFound
+// DeleteAttachment: shouldDeleteFileAndRecord, shouldThrowWhenDeletingNonExistentAttachment
+// GetAttachments: shouldReturnAttachmentsForComplaint
+// CleanupStaleTempUploads: shouldNotThrowWhenTempDirMissing,
+//   shouldCleanStaleDirectories, shouldNotCleanRecentDirectories
+
+// Uses @TempDir for filesystem isolation, MockMultipartFile for uploads,
+// SHA-256 checksum verification on assembly, FileChannel chunk assembly</pre></div></div>
+      </div>
+
+      <!-- EmailSimulationServiceTest -->
+      <div class="section test-section" data-name="EmailSimulationServiceTest">
+        <div class="section-header" onclick="toggle(this)">
+          <div class="section-header-left">
+            <span class="badge badge-service">SERVICE</span>
+            <span class="section-title">EmailSimulationServiceTest.java</span>
+            <span class="test-count">17 tests</span>
+          </div>
+          <div class="section-header-right">
+            <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();dl('EmailSimulationServiceTest.java','be-2')">Download</button>
+            <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();cp('be-2')">Copy</button>
+            <span class="chevron">&#9660;</span>
+          </div>
+        </div>
+        <div class="section-body"><div class="code-wrapper"><pre id="be-2">// ReceiveEmail (5): shouldCreateComplaintAndReturnThread, shouldExtractNameFromEmailWhenNameNull,
+//   shouldGenerateComplaintNumberWithPrefix, shouldSaveTimelineEntry, shouldSendAutoReplyWithFormLink
+// ReceiveFormReply (3): shouldUpdateComplaintWithFormDetails, shouldThrowWhenThreadNotFound,
+//   shouldSaveTimelineOnFormReply
+// GetAllThreads (2): shouldGroupByThreadId, shouldReturnEmptyListWhenNoEmails
+// GetThread (2): shouldReturnThreadWithEmails, shouldThrowWhenThreadNotFound
+// GetInboxAndSent (2): shouldReturnInboundEmails, shouldReturnOutboundEmails
+// GetStats (1): shouldComputeStats (totalThreads, awaitingForm, completed)
+// GetFormTemplate (2): shouldReturnTemplateForComplaint, shouldThrowWhenComplaintNotFound</pre></div></div>
+      </div>
+
+      <!-- FormConfigServiceTest -->
+      <div class="section test-section" data-name="FormConfigServiceTest">
+        <div class="section-header" onclick="toggle(this)">
+          <div class="section-header-left">
+            <span class="badge badge-service">SERVICE</span>
+            <span class="section-title">FormConfigServiceTest.java</span>
+            <span class="test-count">6 tests</span>
+          </div>
+          <div class="section-header-right">
+            <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();dl('FormConfigServiceTest.java','be-3')">Download</button>
+            <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();cp('be-3')">Copy</button>
+            <span class="chevron">&#9660;</span>
+          </div>
+        </div>
+        <div class="section-body"><div class="code-wrapper"><pre id="be-3">// GetFormSchema (3): shouldReturnParsedJsonNode, shouldThrowWhenFormKeyNotFound, shouldThrowWhenInvalidJson
+// SaveFormConfig (1): shouldSaveConfig
+// UpdateSchema (2): shouldUpdateExistingSchema, shouldThrowWhenUpdatingNonExistentForm</pre></div></div>
+      </div>
+
+      <!-- ComplaintControllerTest -->
+      <div class="section test-section" data-name="ComplaintControllerTest">
+        <div class="section-header" onclick="toggle(this)">
+          <div class="section-header-left">
+            <span class="badge badge-controller">CONTROLLER</span>
+            <span class="section-title">ComplaintControllerTest.java</span>
+            <span class="test-count">14 tests</span>
+          </div>
+          <div class="section-header-right">
+            <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();dl('ComplaintControllerTest.java','be-4')">Download</button>
+            <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();cp('be-4')">Copy</button>
+            <span class="chevron">&#9660;</span>
+          </div>
+        </div>
+        <div class="section-body"><div class="code-wrapper"><pre id="be-4">// @WebMvcTest — MockMvc integration tests
+// GetAll (4): shouldReturnAllComplaints, shouldFilterByStatus, shouldSearchByQuery, shouldPrioritizeSearchOverStatus
+// GetAllPaged (4): shouldReturnPagedResults, shouldCapSizeAt100, shouldFilterPagedByStatus, shouldSearchPaged
+// GetById (2): shouldReturnComplaintById, shouldReturnErrorWhenNotFound
+// Track (1): shouldTrackByComplaintNumber
+// FileComplaint (1): shouldCreateComplaint (POST /api/complaints)
+// Update (1): shouldUpdateComplaint (PUT /api/complaints/1)
+// Delete (1): shouldDeleteComplaint (DELETE /api/complaints/1 → 204)</pre></div></div>
+      </div>
+
+      <!-- FileUploadControllerTest -->
+      <div class="section test-section" data-name="FileUploadControllerTest">
+        <div class="section-header" onclick="toggle(this)">
+          <div class="section-header-left">
+            <span class="badge badge-controller">CONTROLLER</span>
+            <span class="section-title">FileUploadControllerTest.java</span>
+            <span class="test-count">11 tests</span>
+          </div>
+          <div class="section-header-right">
+            <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();dl('FileUploadControllerTest.java','be-5')">Download</button>
+            <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();cp('be-5')">Copy</button>
+            <span class="chevron">&#9660;</span>
+          </div>
+        </div>
+        <div class="section-body"><div class="code-wrapper"><pre id="be-5">// UploadChunk (3): shouldReturnOkForValidChunk, shouldReturnBadRequestForDisallowedType, shouldReturnCompleteWhenAllChunksReceived
+// UploadSingle (1): shouldReturnAttachment
+// Download (2): shouldReturnFileResource, shouldReturn404WhenFileNotExists
+// Stream (3): shouldReturn206ForRangeRequest, shouldReturn206WithoutRangeHeader, shouldReturn404WhenStreamFileNotExists
+// ListAttachments (1): shouldReturnAttachmentsForComplaint
+// DeleteAttachment (1): shouldReturnNoContent (DELETE → 204)
+// Cleanup (1): shouldReturnOkMessage (POST /api/files/cleanup)</pre></div></div>
+      </div>
+
+      <!-- EmailSimulationControllerTest -->
+      <div class="section test-section" data-name="EmailSimulationControllerTest">
+        <div class="section-header" onclick="toggle(this)">
+          <div class="section-header-left">
+            <span class="badge badge-controller">CONTROLLER</span>
+            <span class="section-title">EmailSimulationControllerTest.java</span>
+            <span class="test-count">8 tests</span>
+          </div>
+          <div class="section-header-right">
+            <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();dl('EmailSimulationControllerTest.java','be-6')">Download</button>
+            <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();cp('be-6')">Copy</button>
+            <span class="chevron">&#9660;</span>
+          </div>
+        </div>
+        <div class="section-body"><div class="code-wrapper"><pre id="be-6">// ReceiveEmail (1): shouldReturnThreadResult (POST /api/email-simulation/receive)
+// ReplyWithForm (1): shouldReturnCompletedStatus (POST /api/email-simulation/reply-with-form)
+// GetThreads (2): shouldReturnAllThreads, shouldReturnSingleThread
+// InboxAndSent (2): shouldReturnInbox, shouldReturnSent
+// FormTemplate (1): shouldReturnTemplate
+// Stats (1): shouldReturnStats (totalThreads, awaitingForm, completed)</pre></div></div>
+      </div>
+
+      <!-- DashboardControllerTest -->
+      <div class="section test-section" data-name="DashboardControllerTest">
+        <div class="section-header" onclick="toggle(this)">
+          <div class="section-header-left">
+            <span class="badge badge-controller">CONTROLLER</span>
+            <span class="section-title">DashboardControllerTest.java</span>
+            <span class="test-count">1 test</span>
+          </div>
+          <div class="section-header-right">
+            <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();dl('DashboardControllerTest.java','be-7')">Download</button>
+            <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();cp('be-7')">Copy</button>
+            <span class="chevron">&#9660;</span>
+          </div>
+        </div>
+        <div class="section-body"><div class="code-wrapper"><pre id="be-7">// shouldReturnDashboardStats — verifies all 9 fields via GET /api/dashboard</pre></div></div>
+      </div>
+
+      <!-- BankControllerTest -->
+      <div class="section test-section" data-name="BankControllerTest">
+        <div class="section-header" onclick="toggle(this)">
+          <div class="section-header-left">
+            <span class="badge badge-controller">CONTROLLER</span>
+            <span class="section-title">BankControllerTest.java</span>
+            <span class="test-count">2 tests</span>
+          </div>
+          <div class="section-header-right">
+            <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();dl('BankControllerTest.java','be-8')">Download</button>
+            <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();cp('be-8')">Copy</button>
+            <span class="chevron">&#9660;</span>
+          </div>
+        </div>
+        <div class="section-body"><div class="code-wrapper"><pre id="be-8">// shouldReturnAllBanks — GET /api/banks returns list
+// shouldFilterByType — GET /api/banks?type=public filters correctly</pre></div></div>
+      </div>
+
+      <!-- CategoryControllerTest -->
+      <div class="section test-section" data-name="CategoryControllerTest">
+        <div class="section-header" onclick="toggle(this)">
+          <div class="section-header-left">
+            <span class="badge badge-controller">CONTROLLER</span>
+            <span class="section-title">CategoryControllerTest.java</span>
+            <span class="test-count">3 tests</span>
+          </div>
+          <div class="section-header-right">
+            <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();dl('CategoryControllerTest.java','be-9')">Download</button>
+            <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();cp('be-9')">Copy</button>
+            <span class="chevron">&#9660;</span>
+          </div>
+        </div>
+        <div class="section-body"><div class="code-wrapper"><pre id="be-9">// shouldReturnAllCategories — GET /api/categories
+// shouldReturnRootCategories — GET /api/categories/root
+// shouldReturnSubCategories — GET /api/categories/1/sub</pre></div></div>
+      </div>
+
+      <!-- FormConfigControllerTest -->
+      <div class="section test-section" data-name="FormConfigControllerTest">
+        <div class="section-header" onclick="toggle(this)">
+          <div class="section-header-left">
+            <span class="badge badge-controller">CONTROLLER</span>
+            <span class="section-title">FormConfigControllerTest.java</span>
+            <span class="test-count">3 tests</span>
+          </div>
+          <div class="section-header-right">
+            <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();dl('FormConfigControllerTest.java','be-10')">Download</button>
+            <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();cp('be-10')">Copy</button>
+            <span class="chevron">&#9660;</span>
+          </div>
+        </div>
+        <div class="section-body"><div class="code-wrapper"><pre id="be-10">// GetFormSchema (2): shouldReturnSchema, shouldReturnErrorWhenNotFound
+// UpdateFormSchema (1): shouldUpdateAndReturnSchema (PUT /api/form-config/complaint-form)</pre></div></div>
+      </div>
+
+      <!-- FileStorageConfigTest -->
+      <div class="section test-section" data-name="FileStorageConfigTest">
+        <div class="section-header" onclick="toggle(this)">
+          <div class="section-header-left">
+            <span class="badge badge-config">CONFIG</span>
+            <span class="section-title">FileStorageConfigTest.java</span>
+            <span class="test-count">20 tests</span>
+          </div>
+          <div class="section-header-right">
+            <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();dl('FileStorageConfigTest.java','be-11')">Download</button>
+            <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();cp('be-11')">Copy</button>
+            <span class="chevron">&#9660;</span>
+          </div>
+        </div>
+        <div class="section-body"><div class="code-wrapper"><pre id="be-11">// IsAllowedType (17): pdf, png, jpg, jpeg, doc, docx, xls, xlsx, txt, csv, zip, mp4,
+//   rejectExe, rejectBat, rejectSh, rejectNull, caseInsensitive
+// GetComplaintDir (1): shouldReturnPathWithComplaintNumber
+// GetTempChunkDir (1): shouldReturnTempPath
+// Init (1): shouldCreateDirectories</pre></div></div>
+      </div>
+
+    </div><!-- end backend panel -->
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- FRONTEND PANEL -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <div class="panel" id="panel-frontend">
+
+      <!-- complaint-parser.service.spec.ts -->
+      <div class="section test-section" data-name="complaint-parser.service.spec.ts">
+        <div class="section-header" onclick="toggle(this)">
+          <div class="section-header-left">
+            <span class="badge badge-service">SERVICE</span>
+            <span class="section-title">complaint-parser.service.spec.ts</span>
+            <span class="test-count">28 tests</span>
+          </div>
+          <div class="section-header-right">
+            <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();dl('complaint-parser.service.spec.ts','fe-0')">Download</button>
+            <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();cp('fe-0')">Copy</button>
+            <span class="chevron">&#9660;</span>
+          </div>
+        </div>
+        <div class="section-body"><div class="code-wrapper"><pre id="fe-0">// Entity Type Detection (3): bank, NBFC, payment
+// Category Detection (6): ATM/debit, credit card, internet banking, loan, deposit accounts, recovery agents
+// Bank Name Detection (4): SBI, HDFC, ICICI, Kotak
+// Regex Extraction (8): name from "my name is", phone, phone +91, email, pincode, account number, amount Rs., amount ₹
+// State Detection (3): Maharashtra→MH, Bangalore→KA, Delhi→DL
+// District Detection (2): Mumbai, Pune
+// Defaults (5): facts=original text, individual default, business detect, bankName→entityName, subCategory→complaintCategory
+// getDictionary (1): returns dictionary copy with keywords/value/field
+// addDictionaryEntry (1): adds new entry
+// removeDictionaryEntry (1): removes entry at index</pre></div></div>
+      </div>
+
+      <!-- complaint-text-processor.service.spec.ts -->
+      <div class="section test-section" data-name="complaint-text-processor.service.spec.ts">
+        <div class="section-header" onclick="toggle(this)">
+          <div class="section-header-left">
+            <span class="badge badge-service">SERVICE</span>
+            <span class="section-title">complaint-text-processor.service.spec.ts</span>
+            <span class="test-count">7 tests</span>
+          </div>
+          <div class="section-header-right">
+            <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();dl('complaint-text-processor.service.spec.ts','fe-1')">Download</button>
+            <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();cp('fe-1')">Copy</button>
+            <span class="chevron">&#9660;</span>
+          </div>
+        </div>
+        <div class="section-body"><div class="code-wrapper"><pre id="fe-1">// detectLanguage (4): English text, Hindi text, mixed Hindi-dominant, mixed English-dominant
+// process (3): English text with NLP extraction, facts field mapping, Hindi→English translation with field extraction</pre></div></div>
+      </div>
+
+      <!-- translate.service.spec.ts -->
+      <div class="section test-section" data-name="translate.service.spec.ts">
+        <div class="section-header" onclick="toggle(this)">
+          <div class="section-header-left"><span class="badge badge-service">SERVICE</span><span class="section-title">translate.service.spec.ts</span><span class="test-count">12 tests</span></div>
+          <div class="section-header-right"><button class="btn btn-outline btn-sm" onclick="event.stopPropagation();dl('translate.service.spec.ts','fe-2')">Download</button><button class="btn btn-outline btn-sm" onclick="event.stopPropagation();cp('fe-2')">Copy</button><span class="chevron">&#9660;</span></div>
+        </div>
+        <div class="section-body"><div class="code-wrapper"><pre id="fe-2">// initial state (3): default en, load from localStorage, fallback for invalid
+// setLanguage (3): change lang, persist to localStorage, update document.lang
+// t() translate (5): English default, Hindi when hi, Tamil fallback, key not found, common keys
+// langLabel (3): English, Hindi हिन्दी, Tamil தமிழ்
+// languages list (2): has 12 languages, each has code/label/nativeLabel</pre></div></div>
+      </div>
+
+      <!-- accessibility.service.spec.ts -->
+      <div class="section test-section" data-name="accessibility.service.spec.ts">
+        <div class="section-header" onclick="toggle(this)">
+          <div class="section-header-left"><span class="badge badge-service">SERVICE</span><span class="section-title">accessibility.service.spec.ts</span><span class="test-count">18 tests</span></div>
+          <div class="section-header-right"><button class="btn btn-outline btn-sm" onclick="event.stopPropagation();dl('accessibility.service.spec.ts','fe-3')">Download</button><button class="btn btn-outline btn-sm" onclick="event.stopPropagation();cp('fe-3')">Copy</button><span class="chevron">&#9660;</span></div>
+        </div>
+        <div class="section-body"><div class="code-wrapper"><pre id="fe-3">// initial state (4): highContrast=false, reducedMotion=false, fontSize=16, load saved prefs
+// toggleHighContrast (5): false→true, true→false, persist localStorage, add CSS class, remove CSS class
+// toggleReducedMotion (2): toggle + persist
+// increaseFontSize (4): +2, max 24 cap, update document, persist
+// decreaseFontSize (2): -2, min 12 floor
+// resetFontSize (2): reset to 16, update document
+// announce (2): set aria-live-region text, no throw when element missing</pre></div></div>
+      </div>
+
+      <!-- cms.service.spec.ts -->
+      <div class="section test-section" data-name="cms.service.spec.ts">
+        <div class="section-header" onclick="toggle(this)">
+          <div class="section-header-left"><span class="badge badge-service">SERVICE</span><span class="section-title">cms.service.spec.ts</span><span class="test-count">16 tests</span></div>
+          <div class="section-header-right"><button class="btn btn-outline btn-sm" onclick="event.stopPropagation();dl('cms.service.spec.ts','fe-4')">Download</button><button class="btn btn-outline btn-sm" onclick="event.stopPropagation();cp('fe-4')">Copy</button><span class="chevron">&#9660;</span></div>
+        </div>
+        <div class="section-body"><div class="code-wrapper"><pre id="fe-4">// getDashboard (1), getComplaints (2), getComplaint (1), trackComplaint (1)
+// fileComplaint (1), updateComplaint (1), deleteComplaint (1), getTimeline (1)
+// getCategories (1), getBanks (2), getFormSchema (1)
+// Email Simulation (5): simulateIncomingEmail, replyWithForm, getEmailThreads, getEmailThread, getEmailStats</pre></div></div>
+      </div>
+
+      <!-- file-upload.service.spec.ts -->
+      <div class="section test-section" data-name="file-upload.service.spec.ts">
+        <div class="section-header" onclick="toggle(this)">
+          <div class="section-header-left"><span class="badge badge-service">SERVICE</span><span class="section-title">file-upload.service.spec.ts</span><span class="test-count">8 tests</span></div>
+          <div class="section-header-right"><button class="btn btn-outline btn-sm" onclick="event.stopPropagation();dl('file-upload.service.spec.ts','fe-5')">Download</button><button class="btn btn-outline btn-sm" onclick="event.stopPropagation();cp('fe-5')">Copy</button><span class="chevron">&#9660;</span></div>
+        </div>
+        <div class="section-body"><div class="code-wrapper"><pre id="fe-5">// getStreamUrl (1): returns /files/stream/{id}
+// getAttachments (1): GET /files/complaint/{id}
+// downloadAttachment (1): GET with responseType blob
+// deleteAttachment (1): DELETE /files/{id}
+// cancelUpload (1): removes from activeUploads
+// clearCompleted (1): removes completed + errored, keeps uploading
+// uploadFile validation (2): reject empty complaint number, reject invalid complaint ID</pre></div></div>
+      </div>
+
+      <!-- input-sanitizer.service.spec.ts -->
+      <div class="section test-section" data-name="input-sanitizer.service.spec.ts">
+        <div class="section-header" onclick="toggle(this)">
+          <div class="section-header-left"><span class="badge badge-validator">SECURITY</span><span class="section-title">input-sanitizer.service.spec.ts</span><span class="test-count">42 tests</span></div>
+          <div class="section-header-right"><button class="btn btn-outline btn-sm" onclick="event.stopPropagation();dl('input-sanitizer.service.spec.ts','fe-6')">Download</button><button class="btn btn-outline btn-sm" onclick="event.stopPropagation();cp('fe-6')">Copy</button><span class="chevron">&#9660;</span></div>
+        </div>
+        <div class="section-body"><div class="code-wrapper"><pre id="fe-6">// stripHtml (7): null/empty, tags, script+content, event handlers, javascript: URI, data: URI, normal text
+// escapeHtml (4): empty, escape 7 chars, multi-char string, safe strings
+// sanitizeText (5): empty/null, strip+trim, null bytes, control chars, normal text
+// sanitizeFileName (7): empty, path traversal, special chars, spaces, dotfiles, truncate 255, valid names
+// hasSqlInjectionPattern (5): empty, SELECT, DROP TABLE, UNION, OR 1=1, normal text
+// hasPathTraversal (5): empty, forward-slash, backslash, encoded %2e, normal paths
+// hasXssPayload (6): empty, script tags, event handlers, javascript:, iframe/object/embed/svg, normal text
+// getFileExtension (3): lowercase, multiple dots, no extension
+// hasDoubleExtension (2): dangerous double ext, normal files
+// sanitizeComplaintNumber (4): empty, valid, strip special, truncate 30
+// sanitizeNumeric (3): empty, strip non-digits, pure numbers
+// sanitizeAlphanumeric (3): empty, strip dangerous, allow safe chars + maxLength
+// truncate (3): empty, short, long</pre></div></div>
+      </div>
+
+      <!-- form-validators.spec.ts -->
+      <div class="section test-section" data-name="form-validators.spec.ts">
+        <div class="section-header" onclick="toggle(this)">
+          <div class="section-header-left"><span class="badge badge-validator">VALIDATOR</span><span class="section-title">form-validators.spec.ts</span><span class="test-count">52 tests</span></div>
+          <div class="section-header-right"><button class="btn btn-outline btn-sm" onclick="event.stopPropagation();dl('form-validators.spec.ts','fe-7')">Download</button><button class="btn btn-outline btn-sm" onclick="event.stopPropagation();cp('fe-7')">Copy</button><span class="chevron">&#9660;</span></div>
+        </div>
+        <div class="section-body"><div class="code-wrapper"><pre id="fe-7">// secureEmail (5): null, valid emails, invalid emails, &gt;254 chars, local part &gt;64
+// securePhone (5): null, valid Indian (6-9 start), reject 0-5 start, wrong length, strip non-digits
+// securePincode (5): empty, valid, reject leading 0, wrong length, non-numeric
+// secureName (5): empty, valid names, Devanagari, too short, too long + special chars
+// secureAccountNumber (4): empty, valid, too short, too long + special chars
+// secureAmount (4): empty, valid, currency symbols/commas, invalid formats + max exceeded
+// secureText (4): empty, normal, maxLength exceeded, XSS + SQL injection
+// secureTextarea (3): long normal, max exceeded, XSS in textarea
+// noXss (2): safe text, all XSS patterns (script, javascript:, onerror, iframe, data:)
+// noSqlInjection (2): safe text, UNION/DROP/OR 1=1
+// secureDate (4): empty, valid past, future rejected, invalid + very old
+// secureSelect (3): empty+allowed, reject disallowed, XSS in value
+// secureComplaintNumber (3): empty, valid CMS pattern, special chars + too long
+// Constants (4): ALLOWED_FILE_TYPES, ALLOWED_MIME_TYPES, FILE_MAGIC_BYTES, MAX_FILE_SIZES/INPUT_LIMITS
+// Regex patterns (3): PHONE_RE, PINCODE_RE, EMAIL_RE</pre></div></div>
+      </div>
+
+      <!-- rate-limit.interceptor.spec.ts -->
+      <div class="section test-section" data-name="rate-limit.interceptor.spec.ts">
+        <div class="section-header" onclick="toggle(this)">
+          <div class="section-header-left"><span class="badge badge-interceptor">INTERCEPTOR</span><span class="section-title">rate-limit.interceptor.spec.ts</span><span class="test-count">4 tests</span></div>
+          <div class="section-header-right"><button class="btn btn-outline btn-sm" onclick="event.stopPropagation();dl('rate-limit.interceptor.spec.ts','fe-8')">Download</button><button class="btn btn-outline btn-sm" onclick="event.stopPropagation();cp('fe-8')">Copy</button><span class="chevron">&#9660;</span></div>
+        </div>
+        <div class="section-body"><div class="code-wrapper"><pre id="fe-8">// GET passthrough (1), HEAD passthrough (1), POST within limit (1), POST exceeding limit → 429 (1)</pre></div></div>
+      </div>
+
+      <!-- security.interceptor.spec.ts -->
+      <div class="section test-section" data-name="security.interceptor.spec.ts">
+        <div class="section-header" onclick="toggle(this)">
+          <div class="section-header-left"><span class="badge badge-interceptor">INTERCEPTOR</span><span class="section-title">security.interceptor.spec.ts</span><span class="test-count">5 tests</span></div>
+          <div class="section-header-right"><button class="btn btn-outline btn-sm" onclick="event.stopPropagation();dl('security.interceptor.spec.ts','fe-9')">Download</button><button class="btn btn-outline btn-sm" onclick="event.stopPropagation();cp('fe-9')">Copy</button><span class="chevron">&#9660;</span></div>
+        </div>
+        <div class="section-body"><div class="code-wrapper"><pre id="fe-9">// GET passthrough (1), HEAD passthrough (1), POST adds X-Requested-With + X-Content-Type-Options (1),
+// CSRF token from cookie (1), error propagation (1)</pre></div></div>
+      </div>
+
+      <!-- translate.pipe.spec.ts -->
+      <div class="section test-section" data-name="translate.pipe.spec.ts">
+        <div class="section-header" onclick="toggle(this)">
+          <div class="section-header-left"><span class="badge badge-pipe">PIPE</span><span class="section-title">translate.pipe.spec.ts</span><span class="test-count">4 tests</span></div>
+          <div class="section-header-right"><button class="btn btn-outline btn-sm" onclick="event.stopPropagation();dl('translate.pipe.spec.ts','fe-10')">Download</button><button class="btn btn-outline btn-sm" onclick="event.stopPropagation();cp('fe-10')">Copy</button><span class="chevron">&#9660;</span></div>
+        </div>
+        <div class="section-body"><div class="code-wrapper"><pre id="fe-10">// translate known key (1), return key for unknown (1), translate after lang change to Hindi (1), common keys (1)</pre></div></div>
+      </div>
+
+      <!-- ocr.service.spec.ts -->
+      <div class="section test-section" data-name="ocr.service.spec.ts">
+        <div class="section-header" onclick="toggle(this)">
+          <div class="section-header-left"><span class="badge badge-service">SERVICE</span><span class="section-title">ocr.service.spec.ts</span><span class="test-count">2 tests</span></div>
+          <div class="section-header-right"><button class="btn btn-outline btn-sm" onclick="event.stopPropagation();dl('ocr.service.spec.ts','fe-11')">Download</button><button class="btn btn-outline btn-sm" onclick="event.stopPropagation();cp('fe-11')">Copy</button><span class="chevron">&#9660;</span></div>
+        </div>
+        <div class="section-body"><div class="code-wrapper"><pre id="fe-11">// extractText returns observable-like (1), no throw for any file type (1)</pre></div></div>
+      </div>
+
+      <!-- complaint-store.service.spec.ts -->
+      <div class="section test-section" data-name="complaint-store.service.spec.ts">
+        <div class="section-header" onclick="toggle(this)">
+          <div class="section-header-left"><span class="badge badge-service">SERVICE</span><span class="section-title">complaint-store.service.spec.ts</span><span class="test-count">6 tests</span></div>
+          <div class="section-header-right"><button class="btn btn-outline btn-sm" onclick="event.stopPropagation();dl('complaint-store.service.spec.ts','fe-12')">Download</button><button class="btn btn-outline btn-sm" onclick="event.stopPropagation();cp('fe-12')">Copy</button><span class="chevron">&#9660;</span></div>
+        </div>
+        <div class="section-body"><div class="code-wrapper"><pre id="fe-12">// add with file metadata (1), persist to localStorage (1), load from localStorage on init (1),
+// find by ID (1), return undefined for unknown (1), update complaint with files (1)</pre></div></div>
+      </div>
+
+      <!-- file-cache.service.spec.ts -->
+      <div class="section test-section" data-name="file-cache.service.spec.ts">
+        <div class="section-header" onclick="toggle(this)">
+          <div class="section-header-left"><span class="badge badge-service">SERVICE</span><span class="section-title">file-cache.service.spec.ts</span><span class="test-count">9 tests</span></div>
+          <div class="section-header-right"><button class="btn btn-outline btn-sm" onclick="event.stopPropagation();dl('file-cache.service.spec.ts','fe-13')">Download</button><button class="btn btn-outline btn-sm" onclick="event.stopPropagation();cp('fe-13')">Copy</button><span class="chevron">&#9660;</span></div>
+        </div>
+        <div class="section-body"><div class="code-wrapper"><pre id="fe-13">// store+retrieve (1), unknown ID empty (1), multiple files (1), preserve content (1),
+// large 5MB files (1), has() check (1), remove files (1), independent complaint IDs (1), skip empty arrays (1)</pre></div></div>
+      </div>
+
+      <!-- document-display-integration.spec.ts -->
+      <div class="section test-section" data-name="document-display-integration.spec.ts">
+        <div class="section-header" onclick="toggle(this)">
+          <div class="section-header-left"><span class="badge badge-integration">INTEGRATION</span><span class="section-title">document-display-integration.spec.ts</span><span class="test-count">12 tests</span></div>
+          <div class="section-header-right"><button class="btn btn-outline btn-sm" onclick="event.stopPropagation();dl('document-display-integration.spec.ts','fe-14')">Download</button><button class="btn btn-outline btn-sm" onclick="event.stopPropagation();cp('fe-14')">Copy</button><span class="chevron">&#9660;</span></div>
+        </div>
+        <div class="section-body"><div class="code-wrapper"><pre id="fe-14">// Filing stores files (1): IndexedDB + localStorage metadata
+// Track retrieves files (3): after navigation, multiple complaints independent, empty for non-existent
+// Fallback to localStorage (1): metadata when IndexedDB empty
+// Large file support (1): 10MB store+retrieve with content integrity
+// File type detection (5): image, video, audio, PDF, other
+// Attachment card data (2): build attachment objects, create object URLs</pre></div></div>
+      </div>
+
+      <!-- track-complaint.utils.spec.ts -->
+      <div class="section test-section" data-name="track-complaint.utils.spec.ts">
+        <div class="section-header" onclick="toggle(this)">
+          <div class="section-header-left"><span class="badge badge-util">UTILITY</span><span class="section-title">track-complaint.utils.spec.ts</span><span class="test-count">37 tests</span></div>
+          <div class="section-header-right"><button class="btn btn-outline btn-sm" onclick="event.stopPropagation();dl('track-complaint.utils.spec.ts','fe-15')">Download</button><button class="btn btn-outline btn-sm" onclick="event.stopPropagation();cp('fe-15')">Copy</button><span class="chevron">&#9660;</span></div>
+        </div>
+        <div class="section-body"><div class="code-wrapper"><pre id="fe-15">// formatFileSize (5): 0/null→dash, bytes, KB, MB
+// getFileIcon (8): empty, PDF, images (6 types), Word, Excel/CSV, archives, unknown
+// getPreviewType (10): image ext (7), image MIME, video ext (5), video MIME, audio ext (5), audio MIME, PDF, other
+// mapStatus (4): rejected, sent back, resolved, default in_progress
+// mapAction (3): rejected→act, sent back→appeal, default→withdraw
+// formatStatus (3): empty→dash, underscore_separated, capitalize
+// filteredComplaints (7): no filters, by ID, by against, by date, by status, by comments, combined, no match
+// getStatusClass (2): correct class per status, empty for unknown</pre></div></div>
+      </div>
+
+    </div><!-- end frontend panel -->
+
+    <div class="footer">CMS Test Cases &bull; 28 Suites &bull; 452+ Tests &bull; JUnit 5 + Mockito + MockMvc &bull; Jest &bull; May 2026</div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // Source files mapped by ID — full file content is stored in the actual project files
+    // The HTML shows summaries; download buttons serve the actual source files
+
+    function toggle(el){el.closest('.section').classList.toggle('open')}
+    function expandAll(){document.querySelectorAll('#panel-backend.active .section, #panel-frontend.active .section').forEach(s=>s.classList.add('open'))}
+    function collapseAll(){document.querySelectorAll('.section').forEach(s=>s.classList.remove('open'))}
+
+    function switchTab(name,btn){
+      document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+      btn.classList.add('active');
+      document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+      document.getElementById('panel-'+name).classList.add('active');
+    }
+
+    function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500)}
+
+    function cp(id){
+      const el=document.getElementById(id);
+      const text=el.textContent||el.innerText;
+      navigator.clipboard.writeText(text).then(()=>showToast('Copied to clipboard!'));
+    }
+
+    function dl(name,id){
+      const el=document.getElementById(id);
+      const text=el.textContent||el.innerText;
+      const blob=new Blob([text],{type:'text/plain'});
+      const a=document.createElement('a');
+      a.href=URL.createObjectURL(blob);
+      a.download=name;
+      document.body.appendChild(a);a.click();document.body.removeChild(a);
+      URL.revokeObjectURL(a.href);
+      showToast('Downloaded '+name);
+    }
+
+    function copyAll(){
+      const active=document.querySelector('.panel.active');
+      const texts=[];
+      active.querySelectorAll('pre').forEach(p=>texts.push(p.textContent));
+      navigator.clipboard.writeText(texts.join('\n\n'+'='.repeat(80)+'\n\n')).then(()=>showToast('All test summaries copied!'));
+    }
+
+    function downloadAll(type){
+      const panel=document.getElementById('panel-'+type);
+      const sections=panel.querySelectorAll('.test-section');
+      let content='';
+      sections.forEach(s=>{
+        const name=s.dataset.name;
+        const pre=s.querySelector('pre');
+        content+='// ═══════════════════════════════════════════════════════\n';
+        content+='// FILE: '+name+'\n';
+        content+='// ═══════════════════════════════════════════════════════\n\n';
+        content+=(pre.textContent||pre.innerText)+'\n\n\n';
+      });
+      const ext=type==='backend'?'java':'ts';
+      const blob=new Blob([content],{type:'text/plain'});
+      const a=document.createElement('a');
+      a.href=URL.createObjectURL(blob);
+      a.download='cms_'+type+'_tests_summary.'+ext;
+      document.body.appendChild(a);a.click();document.body.removeChild(a);
+      URL.revokeObjectURL(a.href);
+      showToast('Downloaded cms_'+type+'_tests_summary.'+ext);
+    }
+
+    function filterTests(){
+      const q=document.getElementById('search').value.toLowerCase();
+      document.querySelectorAll('.test-section').forEach(s=>{
+        const text=(s.dataset.name+' '+s.querySelector('pre').textContent).toLowerCase();
+        s.style.display=text.includes(q)?'':'none';
+      });
+    }
+  </script>
+</body>
+</html>

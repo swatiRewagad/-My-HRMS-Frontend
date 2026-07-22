@@ -24,11 +24,28 @@
   width: 100%;
   max-width: 480px;
 
-  h2 {
-    font-size: 1.15rem;
-    font-weight: 700;
-    color: #1a1a2e;
-    margin: 0 0 1.5rem;
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+
+    h2 {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #1a1a2e;
+      margin: 0;
+    }
+  }
+
+  .close-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1.1rem;
+    color: #666;
+    padding: 4px;
+    &:hover { color: #333; }
   }
 }
 
@@ -211,36 +228,29 @@
 
 // OTP Section
 .otp-section {
-  text-align: center;
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+
+    h2 {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #1a1a2e;
+      margin: 0;
+    }
+  }
 }
 
-.otp-sent-msg {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  padding: 0.75rem;
-  background: #ecfdf5;
-  border: 1px solid #a7f3d0;
-  border-radius: 8px;
-  color: #065f46;
+.otp-instruction {
   font-size: 0.85rem;
-  margin-bottom: 1.5rem;
-
-  i { color: #10b981; }
-}
-
-.otp-label {
-  display: block;
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: #333;
-  margin-bottom: 0.75rem;
+  color: #555;
+  margin: 0 0 1.5rem;
 }
 
 .otp-inputs {
   display: flex;
-  justify-content: center;
   gap: 0.5rem;
   margin-bottom: 1.25rem;
 
@@ -269,11 +279,42 @@
   margin: 0 0 0.75rem;
 }
 
+.otp-resend {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  font-size: 0.82rem;
+  color: #666;
+}
+
 .otp-footer {
   display: flex;
-  justify-content: center;
-  gap: 1.5rem;
-  margin-top: 1rem;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 1rem;
+  border-top: 1px solid #eee;
+
+  .change-number {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #1a1a2e;
+    text-decoration: none;
+    &:hover { text-decoration: underline; }
+  }
+
+  .verify-btn {
+    padding: 0.6rem 1.5rem;
+    background: linear-gradient(90deg, #2460b9 0%, #472192 100%);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    &:hover:not(:disabled) { opacity: 0.9; }
+    &:disabled { opacity: 0.5; cursor: not-allowed; }
+  }
 }
 
 .link-btn {
@@ -359,8 +400,65 @@
   gap: 0.5rem;
 }
 
+.consent-section {
+  .consent-label {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    font-size: 0.8rem;
+    color: #555;
+    cursor: pointer;
+
+    input[type="checkbox"] {
+      margin-top: 2px;
+      flex-shrink: 0;
+    }
+
+    span { line-height: 1.4; }
+  }
+}
+
+.notice-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+  padding: 1rem 1.25rem;
+  background: #fff8e1;
+  border: 1px solid #ffe082;
+  border-radius: 8px;
+  width: 100%;
+  max-width: 680px;
+
+  > i {
+    color: #f9a825;
+    font-size: 1.1rem;
+    margin-top: 2px;
+    flex-shrink: 0;
+  }
+
+  p {
+    font-size: 0.8rem;
+    color: #5d4037;
+    line-height: 1.5;
+    margin: 0;
+  }
+
+  .notice-close {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #999;
+    font-size: 0.9rem;
+    margin-left: auto;
+    flex-shrink: 0;
+    &:hover { color: #333; }
+  }
+}
+
 @media (max-width: 480px) {
   .verify-card { padding: 1.5rem; }
   .captcha-row { flex-direction: column; align-items: stretch; }
   .otp-inputs .otp-box { width: 2.25rem; height: 2.5rem; font-size: 1.1rem; }
+  .notice-banner { max-width: 100%; }
 }

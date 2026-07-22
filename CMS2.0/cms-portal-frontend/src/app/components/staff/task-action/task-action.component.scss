@@ -703,3 +703,23 @@
 .sub-header, .page-body-layout {
   margin-left: 48px;
 }
+
+// ═══ EMAIL HIGHLIGHT ON FIELD FOCUS ═══
+.focusable-field {
+  cursor: pointer;
+  border-radius: 6px;
+  transition: box-shadow 0.2s ease, background 0.2s ease;
+  outline: none;
+
+  &:focus, &:focus-within {
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
+    background: #f8fafc;
+  }
+}
+
+::ng-deep .field-highlight {
+  background-color: #fff9c4;
+  border-radius: 2px;
+  padding: 0 2px;
+  transition: background-color 0.3s ease;
+}

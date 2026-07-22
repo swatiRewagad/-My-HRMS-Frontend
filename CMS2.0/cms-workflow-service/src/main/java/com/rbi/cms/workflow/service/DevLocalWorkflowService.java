@@ -44,6 +44,7 @@ public class DevLocalWorkflowService implements ComplaintWorkflowProcessor {
     private final ConcurrentHashMap<String, ComplaintStatus> complaintStatuses = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, WorkflowState> workflowStates = new ConcurrentHashMap<>();
     private final DevLocalTaskQueryService taskQueryService;
+    private final RoundRobinAssignmentService assignmentService;
     private final ObjectMapper objectMapper;
     private final RestTemplate restTemplate = new RestTemplate();
 
@@ -79,12 +80,14 @@ public class DevLocalWorkflowService implements ComplaintWorkflowProcessor {
             // PATH B: CRPC Pipeline (Email/Physical Letter)
             // BPMN: DraftCreation → DEO Assignment → DEO Assessment → Reviewer → forward to RBIO/CEPC
             department = "CRPC";
-            role = "DEO";
             stage = "DATA_ENTRY";
             complaintStatuses.put(event.getComplaintId(), ComplaintStatus.ASSIGNED);
 
+            String assignedDeo = assignmentService.assignNext("CRPC_DEO");
+            role = assignedDeo != null ? assignedDeo : "DEO";
+
             String targetDept = resolveDepartment(entityCode);
-            log.info("[jBPM WORKFLOW] Channel={} → CRPC Pipeline (DEO → Reviewer → {})", channel, targetDept);
+            log.info("[jBPM WORKFLOW] Channel={} → CRPC Pipeline (DEO={} → Reviewer → {})", channel, role, targetDept);
 
             workflowStates.put(event.getComplaintId(), WorkflowState.builder()
                     .processId(processId)
@@ -97,13 +100,15 @@ public class DevLocalWorkflowService implements ComplaintWorkflowProcessor {
                     .build());
 
         } else {
-            // PATH A: Public Portal (WEB_PORTAL) → always goes to RBIO
-            department = "RBIO";
-            role = "RBIO_OFFICER";
+            // PATH A: Public Portal (WEB_PORTAL) → route to RBIO or CEPC based on entity
+            department = resolveDepartment(entityCode);
+            String roleGroup = department + "_OFFICER";
+            String assignedOfficer = assignmentService.assignNext(roleGroup);
+            role = assignedOfficer != null ? assignedOfficer : roleGroup;
             stage = "INITIAL_REVIEW";
             complaintStatuses.put(event.getComplaintId(), ComplaintStatus.ASSIGNED);
 
-            log.info("[jBPM WORKFLOW] Channel=WEB_PORTAL → Direct route to RBIO");
+            log.info("[jBPM WORKFLOW] Channel=WEB_PORTAL → {} (officer={})", department, role);
 
             workflowStates.put(event.getComplaintId(), WorkflowState.builder()
                     .processId(processId)
@@ -216,17 +221,22 @@ public class DevLocalWorkflowService implements ComplaintWorkflowProcessor {
         switch (targetStatus) {
             case RESOLVED -> {
                 state.setStage("RESOLVED");
+                assignmentService.releaseAssignment(state.getAssignedRole());
                 log.info("[jBPM WORKFLOW] Resolution path: {} → NotifyCustomer → ClosureTimer", complaintId);
             }
             case IN_PROGRESS -> {
                 if ("DATA_ENTRY".equals(state.getStage())) {
-                    // DEO completed assessment, move to Reviewer
+                    String assignedReviewer = assignmentService.assignNext("CRPC_REVIEWER");
+                    String reviewer = assignedReviewer != null ? assignedReviewer : "REVIEWER";
                     state.setStage("REVIEWER_ASSESSMENT");
-                    state.setAssignedRole("REVIEWER");
-                    routeToBackend(complaintId, state.getDepartment(), "REVIEWER", "REVIEWER_ASSESSMENT");
+                    state.setAssignedRole(reviewer);
+                    routeToBackend(complaintId, state.getDepartment(), reviewer, "REVIEWER_ASSESSMENT");
                 }
             }
-            case CLOSED -> state.setStage("CLOSED");
+            case CLOSED -> {
+                state.setStage("CLOSED");
+                assignmentService.releaseAssignment(state.getAssignedRole());
+            }
             default -> {}
         }
     }

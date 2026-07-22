@@ -1,0 +1,1182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CMS 2.0 CRPC Module — Technical Documentation (2026-07-09)</title>
+    <style>
+        :root {
+            --primary: #1e40af;
+            --primary-light: #3b82f6;
+            --accent: #0891b2;
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --text: #1e293b;
+            --muted: #64748b;
+            --border: #e2e8f0;
+            --success: #16a34a;
+            --warning: #d97706;
+            --danger: #dc2626;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.7; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 40px 24px; }
+        h1 { font-size: 32px; font-weight: 800; color: var(--primary); margin-bottom: 8px; }
+        h2 { font-size: 24px; font-weight: 700; color: var(--primary); margin: 48px 0 16px; padding-bottom: 8px; border-bottom: 3px solid var(--primary-light); }
+        h3 { font-size: 18px; font-weight: 600; color: var(--text); margin: 24px 0 12px; }
+        h4 { font-size: 15px; font-weight: 600; margin: 16px 0 8px; color: var(--accent); }
+        p, li { font-size: 14px; margin-bottom: 8px; }
+        ul, ol { padding-left: 24px; margin-bottom: 16px; }
+        .subtitle { font-size: 16px; color: var(--muted); margin-bottom: 32px; }
+        .card { background: var(--card); border-radius: 12px; padding: 24px; margin-bottom: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid var(--border); }
+        .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+        .badge-blue { background: #dbeafe; color: #1d4ed8; }
+        .badge-green { background: #dcfce7; color: #166534; }
+        .badge-orange { background: #fef3c7; color: #92400e; }
+        .badge-red { background: #fee2e2; color: #991b1b; }
+        .badge-purple { background: #f3e8ff; color: #7c3aed; }
+        table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px; }
+        th { background: #f1f5f9; padding: 10px 14px; text-align: left; font-weight: 600; color: #475569; border: 1px solid var(--border); }
+        td { padding: 10px 14px; border: 1px solid var(--border); vertical-align: top; }
+        code { background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-size: 12px; font-family: 'Cascadia Code', 'JetBrains Mono', monospace; }
+        pre { background: #1e293b; color: #e2e8f0; padding: 16px 20px; border-radius: 8px; overflow-x: auto; margin: 12px 0; font-size: 12px; line-height: 1.5; }
+        pre code { background: none; padding: 0; color: inherit; }
+        .flow-diagram { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin: 16px 0; text-align: center; overflow-x: auto; }
+        .flow-diagram pre { background: #fff; color: var(--text); text-align: left; font-size: 13px; display: inline-block; }
+        .arch-diagram { background: linear-gradient(135deg, #f0f9ff, #eff6ff); border: 2px solid #bfdbfe; border-radius: 12px; padding: 24px; margin: 16px 0; }
+        .arch-diagram pre { background: #1e3a5f; color: #93c5fd; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+        .toc { background: var(--card); border-radius: 12px; padding: 24px; border: 1px solid var(--border); margin-bottom: 32px; }
+        .toc h3 { margin-top: 0; }
+        .toc ol { counter-reset: toc; list-style: none; padding-left: 0; }
+        .toc li { counter-increment: toc; margin-bottom: 6px; }
+        .toc li::before { content: counter(toc) ". "; font-weight: 600; color: var(--primary-light); }
+        .toc a { color: var(--primary); text-decoration: none; }
+        .toc a:hover { text-decoration: underline; }
+        .note { background: #eff6ff; border-left: 4px solid var(--primary-light); padding: 12px 16px; border-radius: 0 8px 8px 0; margin: 12px 0; font-size: 13px; }
+        .warning { background: #fffbeb; border-left: 4px solid var(--warning); padding: 12px 16px; border-radius: 0 8px 8px 0; margin: 12px 0; font-size: 13px; }
+        .feature-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+        .feature-num { width: 32px; height: 32px; background: var(--primary); color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; flex-shrink: 0; }
+        @media print { .container { max-width: 100%; } pre { white-space: pre-wrap; } }
+        @media (max-width: 768px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+<div class="container">
+
+<h1>CMS 2.0 — CRPC Module Technical Documentation</h1>
+<p class="subtitle">Complaint Resolution & Process Cell | Email & Physical Letter Workflow<br>
+Document Date: <strong>09 July 2026</strong> | Version: 2.0.0</p>
+
+<!-- TABLE OF CONTENTS -->
+<div class="toc">
+    <h3>Table of Contents</h3>
+    <ol>
+        <li><a href="#architecture">System Architecture</a></li>
+        <li><a href="#tech-stack">Technology Stack</a></li>
+        <li><a href="#features">Implemented Features & Flow Diagrams</a></li>
+        <li><a href="#database">Database Schema & Initialization Scripts</a></li>
+        <li><a href="#prerequisites">Prerequisites for Local Development</a></li>
+        <li><a href="#local-setup">Local Setup & Running</a></li>
+        <li><a href="#deployment">OpenShift Deployment</a></li>
+        <li><a href="#developer-guide">Developer Guidelines</a></li>
+        <li><a href="#api-reference">API Endpoints Reference</a></li>
+    </ol>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<h2 id="architecture">1. System Architecture</h2>
+
+<div class="arch-diagram">
+<pre><code>
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                              CMS 2.0 CRPC Architecture                          │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                 │
+│  ┌──────────────┐   ┌──────────────┐   ┌──────────────┐   ┌──────────────┐    │
+│  │  DEO Portal  │   │  Reviewer    │   │  In-Charge   │   │  Help Desk   │    │
+│  │  (Angular)   │   │  Portal      │   │  Dashboard   │   │  (Phone)     │    │
+│  └──────┬───────┘   └──────┬───────┘   └──────┬───────┘   └──────┬───────┘    │
+│         │                   │                   │                   │            │
+│  ═══════╪═══════════════════╪═══════════════════╪═══════════════════╪════════    │
+│         │         Angular 20 Frontend (Standalone Components)       │            │
+│  ═══════╪═══════════════════╪═══════════════════╪═══════════════════╪════════    │
+│         │                   │                   │                   │            │
+│         └───────────────────┼───────────────────┼───────────────────┘            │
+│                             ▼                   ▼                                │
+│                 ┌───────────────────────────────────────┐                        │
+│                 │         API Gateway / CORS             │                        │
+│                 │    (Spring Boot 3.2 + WebSocket)       │                        │
+│                 └───────────────────┬───────────────────┘                        │
+│                                     │                                            │
+│         ┌───────────┬───────────────┼───────────────┬────────────┐              │
+│         ▼           ▼               ▼               ▼            ▼              │
+│  ┌────────────┐ ┌────────┐ ┌─────────────┐ ┌───────────┐ ┌──────────┐         │
+│  │  Workflow   │ │ Notif  │ │  Template   │ │ Threshold │ │ Closure  │         │
+│  │  Engine    │ │Service │ │  Service    │ │ Overflow  │ │ Letter   │         │
+│  └─────┬──────┘ └───┬────┘ └──────┬──────┘ └─────┬─────┘ └────┬─────┘         │
+│        │             │              │              │             │               │
+│  ══════╪═════════════╪══════════════╪══════════════╪═════════════╪═══════════    │
+│        │          JPA Repositories + Hibernate ORM              │               │
+│  ══════╪═════════════╪══════════════╪══════════════╪═════════════╪═══════════    │
+│        ▼             ▼              ▼              ▼             ▼               │
+│  ┌─────────────────────────────────────────────────────────────────────┐        │
+│  │                         MySQL 8.0 Database                          │        │
+│  │  [EMAIL_DRAFTS] [COMPLAINTS] [IN_APP_NOTIFICATIONS]                 │        │
+│  │  [COMMUNICATION_TEMPLATES] [COMMENT_TEMPLATES]                      │        │
+│  └─────────────────────────────────────────────────────────────────────┘        │
+│                                                                                 │
+│  ┌───────────────────┐  ┌───────────────────┐  ┌───────────────────┐           │
+│  │   Keycloak SSO    │  │   OpenSearch 2.x  │  │   Kafka (Events)  │           │
+│  │  (Authentication) │  │  (Similar Cases)  │  │  (Async Publish)  │           │
+│  └───────────────────┘  └───────────────────┘  └───────────────────┘           │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
+</code></pre>
+</div>
+
+<h3>Component Interaction Diagram</h3>
+<div class="flow-diagram">
+<pre><code>
+┌─────────────┐     HTTP/WS      ┌──────────────────┐      JPA       ┌──────────┐
+│   Browser   │ ◄──────────────► │  Spring Boot API │ ◄────────────► │  MySQL   │
+│  (Angular)  │                  │   Port: 8082     │                │ Port:3306│
+└──────┬──────┘                  └────────┬─────────┘                └──────────┘
+       │                                  │
+       │  SSO Token                       │  Token Validation
+       ▼                                  ▼
+┌─────────────┐                  ┌──────────────────┐
+│  Keycloak   │ ◄────────────── │ OAuth2 Resource  │
+│  Port: 8080 │   JWKS / OIDC   │ Server Config    │
+└─────────────┘                  └──────────────────┘
+</code></pre>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<h2 id="tech-stack">2. Technology Stack</h2>
+
+<div class="grid-2">
+<div class="card">
+    <h3>Frontend</h3>
+    <table>
+        <tr><th>Technology</th><th>Version</th><th>Purpose</th></tr>
+        <tr><td>Angular</td><td>20.x</td><td>SPA Framework</td></tr>
+        <tr><td>TypeScript</td><td>5.x</td><td>Type-safe development</td></tr>
+        <tr><td>Angular Signals</td><td>Built-in</td><td>Reactive state management</td></tr>
+        <tr><td>RxJS</td><td>7.x</td><td>Async HTTP streams</td></tr>
+        <tr><td>Angular Router</td><td>Built-in</td><td>Lazy-loaded routes</td></tr>
+        <tr><td>SCSS</td><td>—</td><td>Component styling</td></tr>
+        <tr><td>WebSocket (native)</td><td>—</td><td>Real-time notifications</td></tr>
+    </table>
+</div>
+<div class="card">
+    <h3>Backend</h3>
+    <table>
+        <tr><th>Technology</th><th>Version</th><th>Purpose</th></tr>
+        <tr><td>Java</td><td>17+</td><td>Runtime</td></tr>
+        <tr><td>Spring Boot</td><td>3.2.5</td><td>Application framework</td></tr>
+        <tr><td>Spring Security</td><td>6.x</td><td>OAuth2 + RBAC</td></tr>
+        <tr><td>Spring WebSocket</td><td>6.x</td><td>STOMP real-time</td></tr>
+        <tr><td>Spring Data JPA</td><td>3.x</td><td>ORM / Repositories</td></tr>
+        <tr><td>Hibernate</td><td>6.x</td><td>Entity mapping</td></tr>
+        <tr><td>Lombok</td><td>1.18.x</td><td>Boilerplate reduction</td></tr>
+        <tr><td>Hazelcast</td><td>5.3.6</td><td>Distributed caching</td></tr>
+        <tr><td>Bucket4j</td><td>8.10</td><td>Rate limiting</td></tr>
+    </table>
+</div>
+</div>
+
+<div class="grid-2">
+<div class="card">
+    <h3>Infrastructure</h3>
+    <table>
+        <tr><th>Technology</th><th>Version</th><th>Purpose</th></tr>
+        <tr><td>MySQL</td><td>8.0</td><td>Primary database</td></tr>
+        <tr><td>Keycloak</td><td>26.0</td><td>SSO / Identity</td></tr>
+        <tr><td>OpenSearch</td><td>2.18</td><td>Full-text search</td></tr>
+        <tr><td>Kafka</td><td>3.x</td><td>Event streaming</td></tr>
+        <tr><td>Prometheus</td><td>2.54</td><td>Metrics collection</td></tr>
+        <tr><td>OpenShift</td><td>4.x</td><td>Container orchestration</td></tr>
+    </table>
+</div>
+<div class="card">
+    <h3>Dev Tools</h3>
+    <table>
+        <tr><th>Tool</th><th>Purpose</th></tr>
+        <tr><td>Maven 3.9+</td><td>Backend build</td></tr>
+        <tr><td>Node.js 20+</td><td>Frontend build</td></tr>
+        <tr><td>Angular CLI 20</td><td>ng commands</td></tr>
+        <tr><td>Playwright</td><td>E2E testing</td></tr>
+        <tr><td>Git</td><td>Version control</td></tr>
+        <tr><td>VS Code / IntelliJ</td><td>IDE</td></tr>
+    </table>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<h2 id="features">3. Implemented Features & Flow Diagrams</h2>
+
+<!-- Feature 1 -->
+<div class="card">
+<div class="feature-header"><span class="feature-num">1</span><h3>Status Transition Engine (CRPC Workflow)</h3></div>
+<p><span class="badge badge-blue">Backend</span> <span class="badge badge-green">Frontend</span></p>
+<p><strong>Description:</strong> Manages the lifecycle of email/physical-letter drafts through defined states with role-based permissions.</p>
+
+<h4>Technology Used</h4>
+<ul>
+    <li><code>CrpcWorkflowService.java</code> — State machine with validated transitions</li>
+    <li><code>CrpcWorkflowController.java</code> — REST API with @PreAuthorize role checks</li>
+    <li><code>crpc-workflow.service.ts</code> — Angular HTTP service</li>
+    <li>Spring Security OAuth2 Resource Server for JWT validation</li>
+</ul>
+
+<h4>Flow Diagram</h4>
+<div class="flow-diagram">
+<pre><code>
+                          ┌─────────────┐
+                          │   ASSIGNED  │ (Email ingested & assigned to DEO)
+                          └──────┬──────┘
+                                 │
+                    ┌────────────┼────────────┐
+                    ▼                          ▼
+         ┌──────────────────┐      ┌───────────────────┐
+         │ SENT_FOR_APPROVAL │      │  NOT_A_COMPLAINT  │
+         │   (DEO forwards)  │      │ (DEO marks + reason)│
+         └────────┬─────────┘      └───────────────────┘
+                  │
+         ┌────────┼────────┐
+         ▼                  ▼
+  ┌──────────┐      ┌───────────┐
+  │ APPROVED │      │ SENT_BACK │ ──► Back to SENT_FOR_APPROVAL
+  │(Reviewer)│      │(Reviewer) │
+  └────┬─────┘      └───────────┘
+       │
+       ▼
+┌──────────────┐
+│NEW_COMPLAINT │ (Converted to Complaint entity)
+└──────────────┘
+</code></pre>
+</div>
+
+<h4>Valid Transitions Table</h4>
+<table>
+    <tr><th>Current State</th><th>Allowed Next States</th><th>Actor</th></tr>
+    <tr><td>ASSIGNED</td><td>SENT_FOR_APPROVAL, NOT_A_COMPLAINT</td><td>DEO</td></tr>
+    <tr><td>SENT_FOR_APPROVAL</td><td>APPROVED, SENT_BACK</td><td>Reviewer</td></tr>
+    <tr><td>SENT_BACK</td><td>SENT_FOR_APPROVAL, NOT_A_COMPLAINT</td><td>DEO</td></tr>
+    <tr><td>APPROVED</td><td>NEW_COMPLAINT</td><td>Reviewer/Head</td></tr>
+    <tr><td>NOT_A_COMPLAINT</td><td>(Terminal)</td><td>—</td></tr>
+</table>
+</div>
+
+<!-- Feature 2 -->
+<div class="card">
+<div class="feature-header"><span class="feature-num">2</span><h3>Communication Templates Master & Closure Letter PDF</h3></div>
+<p><span class="badge badge-blue">Backend</span> <span class="badge badge-green">Frontend</span> <span class="badge badge-purple">Admin CRUD</span></p>
+
+<h4>Technology Used</h4>
+<ul>
+    <li><code>CommunicationTemplate.java</code> — JPA Entity with trigger conditions & scheme versioning</li>
+    <li><code>CommunicationTemplateService.java</code> — CRUD + variable substitution using regex <code>\{\{(\w+)\}\}</code></li>
+    <li><code>ClosureLetterService.java</code> — HTML-based letter generation</li>
+    <li><code>communication-templates.component.ts</code> — Admin UI with create/edit/preview/activate</li>
+</ul>
+
+<h4>Flow Diagram</h4>
+<div class="flow-diagram">
+<pre><code>
+┌───────────────┐      ┌──────────────────┐      ┌─────────────────┐
+│ Admin creates │ ───► │ Template stored   │ ───► │ On CLOSURE event│
+│ template with │      │ in DB with        │      │ system fetches  │
+│ {{variables}} │      │ triggerCondition  │      │ matching template│
+└───────────────┘      └──────────────────┘      └────────┬────────┘
+                                                           │
+                                                           ▼
+                                              ┌────────────────────────┐
+                                              │ Replace {{variables}}  │
+                                              │ with complaint data    │
+                                              │ (name, number, bank)   │
+                                              └───────────┬────────────┘
+                                                          │
+                                              ┌───────────┼───────────┐
+                                              ▼           ▼           ▼
+                                         ┌────────┐ ┌────────┐ ┌────────┐
+                                         │ EMAIL  │ │  SMS   │ │ LETTER │
+                                         │ (send) │ │ (send) │ │ (HTML) │
+                                         └────────┘ └────────┘ └────────┘
+</code></pre>
+</div>
+
+<h4>Template Variables</h4>
+<table>
+    <tr><th>Variable</th><th>Description</th><th>Example Value</th></tr>
+    <tr><td><code>{{complainantName}}</code></td><td>Full name of complainant</td><td>Rajesh Kumar</td></tr>
+    <tr><td><code>{{complaintNumber}}</code></td><td>System-generated ref</td><td>CMS-2026-001234</td></tr>
+    <tr><td><code>{{bankName}}</code></td><td>Regulated entity name</td><td>State Bank of India</td></tr>
+    <tr><td><code>{{currentDate}}</code></td><td>Today's date</td><td>09-07-2026</td></tr>
+    <tr><td><code>{{closureDate}}</code></td><td>Closure effective date</td><td>09-07-2026</td></tr>
+    <tr><td><code>{{subject}}</code></td><td>Complaint subject</td><td>Unauthorized ATM withdrawal</td></tr>
+    <tr><td><code>{{status}}</code></td><td>Current status</td><td>Closed</td></tr>
+</table>
+</div>
+
+<!-- Feature 3 -->
+<div class="card">
+<div class="feature-header"><span class="feature-num">3</span><h3>Not-a-Complaint Workflow</h3></div>
+<p><span class="badge badge-blue">Backend</span> <span class="badge badge-green">Frontend</span></p>
+
+<h4>Technology Used</h4>
+<ul>
+    <li>Backend: <code>CrpcWorkflowService.markNotAComplaint()</code> with reason validation</li>
+    <li>Frontend: Modal dialog with reason dropdown + 150-char remarks textarea</li>
+    <li>Bulk operation: <code>bulkMarkNotAComplaint()</code> for multi-select</li>
+</ul>
+
+<h4>Flow Diagram</h4>
+<div class="flow-diagram">
+<pre><code>
+┌─────────────────┐     ┌───────────────────────┐     ┌─────────────────────┐
+│  DEO selects    │ ──► │ Opens Not-a-Complaint │ ──► │ Selects reason from │
+│  1 or more      │     │ dialog modal          │     │ predefined dropdown │
+│  draft items    │     └───────────────────────┘     └──────────┬──────────┘
+└─────────────────┘                                              │
+                                                                 ▼
+                                                    ┌────────────────────────┐
+                                                    │ Enters optional remarks│
+                                                    │ (max 150 characters)   │
+                                                    └───────────┬────────────┘
+                                                                │
+                                                                ▼
+                                                    ┌────────────────────────┐
+                                                    │ API validates:         │
+                                                    │ - Valid reason enum    │
+                                                    │ - Remarks ≤ 150 chars │
+                                                    │ - Valid state transition│
+                                                    └───────────┬────────────┘
+                                                                │
+                                                                ▼
+                                                    ┌────────────────────────┐
+                                                    │ Status → NOT_A_COMPLAINT│
+                                                    │ Reason stored in DB    │
+                                                    └────────────────────────┘
+</code></pre>
+</div>
+
+<h4>Valid Reasons</h4>
+<div class="grid-3">
+    <div><code>SPAM</code></div>
+    <div><code>PROMOTIONAL</code></div>
+    <div><code>INTERNAL_COMMUNICATION</code></div>
+    <div><code>DUPLICATE</code></div>
+    <div><code>INCOMPLETE_DETAILS</code></div>
+    <div><code>OUT_OF_JURISDICTION</code></div>
+    <div><code>NOT_RELATED_TO_BANKING</code></div>
+    <div><code>AUTO_REPLY</code></div>
+    <div><code>FOLLOW_UP_ON_CLOSED</code></div>
+</div>
+</div>
+
+<!-- Feature 4 -->
+<div class="card">
+<div class="feature-header"><span class="feature-num">4</span><h3>Bell-Icon In-App Notifications</h3></div>
+<p><span class="badge badge-blue">Backend</span> <span class="badge badge-green">Frontend</span> <span class="badge badge-orange">WebSocket</span></p>
+
+<h4>Technology Used</h4>
+<ul>
+    <li><code>InAppNotification.java</code> — JPA Entity with indexed userId + read status</li>
+    <li><code>NotificationService.java</code> — @Async send + SimpMessagingTemplate for WebSocket push</li>
+    <li><code>WebSocketConfig.java</code> — STOMP over SockJS on <code>/ws/notifications</code></li>
+    <li><code>notification-bell.component.ts</code> — Angular component with signal-based state</li>
+    <li><code>notification.service.ts</code> — REST + WebSocket client with unread count signal</li>
+</ul>
+
+<h4>Flow Diagram</h4>
+<div class="flow-diagram">
+<pre><code>
+┌──────────────┐          ┌──────────────────┐          ┌──────────────┐
+│  Event       │  @Async  │ NotificationSvc  │  STOMP   │  Browser     │
+│  (Workflow   │ ───────► │ save to DB       │ ───────► │  WebSocket   │
+│   action)    │          │ + push via WS    │          │  listener    │
+└──────────────┘          └──────────────────┘          └──────┬───────┘
+                                                               │
+                                                               ▼
+                                                      ┌────────────────┐
+                                                      │ Bell badge +1  │
+                                                      │ Dropdown shows │
+                                                      │ new notification│
+                                                      └────────────────┘
+</code></pre>
+</div>
+
+<h4>Notification Types</h4>
+<table>
+    <tr><th>Type</th><th>Trigger</th><th>Target</th></tr>
+    <tr><td>ASSIGNMENT</td><td>Draft assigned / approved</td><td>DEO / Reviewer</td></tr>
+    <tr><td>SENT_BACK</td><td>Reviewer sends back draft</td><td>DEO</td></tr>
+    <tr><td>PENDING_3DAY</td><td>Scheduled: draft pending &gt; 3 days</td><td>Assigned DEO</td></tr>
+    <tr><td>DUPLICATE_ACTIVITY</td><td>Scheduled: duplicate flag detected</td><td>Assigned DEO</td></tr>
+    <tr><td>TRANSFER_PENDING</td><td>Transfer request awaiting action</td><td>Target office</td></tr>
+    <tr><td>BULK_CLOSE</td><td>Bulk closure completed</td><td>Initiator</td></tr>
+</table>
+</div>
+
+<!-- Feature 5 -->
+<div class="card">
+<div class="feature-header"><span class="feature-num">5</span><h3>DEO Home Enhancements</h3></div>
+<p><span class="badge badge-green">Frontend</span></p>
+
+<h4>Technology Used</h4>
+<ul>
+    <li>Angular Signals for reactive state (<code>filterVernacular</code>, <code>pageSize</code>)</li>
+    <li>LocalStorage for page-size persistence</li>
+    <li>Computed signals for filtered/sorted/paginated data</li>
+</ul>
+
+<h4>Enhancements Implemented</h4>
+<table>
+    <tr><th>Feature</th><th>Description</th></tr>
+    <tr><td>Page-size Persistence</td><td>User's preferred page size (10/25/50/100) saved to localStorage</td></tr>
+    <tr><td>Vernacular Filter Toggle</td><td>Filter button to show only vernacular (non-English) drafts</td></tr>
+    <tr><td>Not-a-Complaint Bulk Action</td><td>Multi-select + reason dialog for batch marking</td></tr>
+    <tr><td>Notification Bell</td><td>Bell icon in header with real-time unread count</td></tr>
+    <tr><td>Session Timeout Warning</td><td>5-minute countdown before 15-min idle logout</td></tr>
+</table>
+</div>
+
+<!-- Feature 6 -->
+<div class="card">
+<div class="feature-header"><span class="feature-num">6</span><h3>Post-Approval Threshold & Overflow Routing</h3></div>
+<p><span class="badge badge-blue">Backend</span> <span class="badge badge-orange">Scheduled</span></p>
+
+<h4>Technology Used</h4>
+<ul>
+    <li><code>ThresholdOverflowService.java</code> — Configurable max-per-reviewer threshold</li>
+    <li><code>CrpcScheduledTasks.java</code> — @Scheduled cron (10:00 AM weekdays)</li>
+    <li><code>application.yml</code> — <code>crpc.threshold.max-per-reviewer: 30</code></li>
+</ul>
+
+<h4>Flow Diagram</h4>
+<div class="flow-diagram">
+<pre><code>
+┌────────────────┐     ┌─────────────────────┐     ┌──────────────────┐
+│ Scheduled Job  │ ──► │ For each reviewer:  │ ──► │ If load &gt; max:   │
+│ (10:00 AM M-F) │     │ count pending items │     │ notify CRPC_HEAD │
+└────────────────┘     └─────────────────────┘     └────────┬─────────┘
+                                                             │
+                                                             ▼
+                                                  ┌─────────────────────┐
+                                                  │ CRPC Head can       │
+                                                  │ reassign overflow   │
+                                                  │ to another reviewer │
+                                                  └─────────────────────┘
+</code></pre>
+</div>
+</div>
+
+<!-- Feature 7 -->
+<div class="card">
+<div class="feature-header"><span class="feature-num">7</span><h3>Vernacular Column/Filter + Reviewer Override</h3></div>
+<p><span class="badge badge-blue">Backend</span> <span class="badge badge-green">Frontend</span></p>
+
+<h4>Technology Used</h4>
+<ul>
+    <li><code>CrpcDraftEnhancementController.java</code> — POST <code>/api/v1/crpc/drafts/{id}/vernacular-override</code></li>
+    <li><code>EmailDraftRepository</code> — <code>findByIsVernacularTrueOrderByCreatedAtDesc()</code></li>
+    <li>DEO Home: Vernacular toggle in table-actions toolbar</li>
+    <li>Column configuration includes "Vernacular" as a toggleable column</li>
+</ul>
+
+<h4>Flow Diagram</h4>
+<div class="flow-diagram">
+<pre><code>
+┌───────────────────┐     ┌────────────────────┐     ┌────────────────────┐
+│ Email ingested    │ ──► │ Language detection  │ ──► │ isVernacular = true│
+│ (non-English body)│     │ (OCR / Translation)│     │ detectedLanguage   │
+└───────────────────┘     └────────────────────┘     └─────────┬──────────┘
+                                                                │
+                                    ┌───────────────────────────┼───────┐
+                                    ▼                                   ▼
+                          ┌──────────────────┐              ┌────────────────┐
+                          │ DEO sees in list │              │ Reviewer can   │
+                          │ with toggle      │              │ override flag  │
+                          └──────────────────┘              └────────────────┘
+</code></pre>
+</div>
+</div>
+
+<!-- Feature 8 -->
+<div class="card">
+<div class="feature-header"><span class="feature-num">8</span><h3>CRPC In-Charge Dashboard</h3></div>
+<p><span class="badge badge-blue">Backend</span> <span class="badge badge-green">Frontend</span></p>
+
+<h4>Technology Used</h4>
+<ul>
+    <li><code>CrpcInChargeDashboardService.java</code> — Aggregate queries across all offices</li>
+    <li><code>CrpcInChargeController.java</code> — @PreAuthorize(CRPC_INCHARGE, CRPC_HEAD, ADMIN)</li>
+    <li><code>in-charge-dashboard.component.ts</code> — Signal-based stats grid + DEO workload table</li>
+    <li>Route: <code>/crpc/in-charge</code></li>
+</ul>
+
+<h4>Flow Diagram</h4>
+<div class="flow-diagram">
+<pre><code>
+┌─────────────────┐      ┌─────────────────────────┐      ┌─────────────────┐
+│ In-Charge logs  │ ───► │ Dashboard loads:         │ ───► │ Read-only view  │
+│ in via Keycloak │      │ - Pan-India summary      │      │ of all offices  │
+└─────────────────┘      │ - Office-wise breakdown  │      │ + DEO workload  │
+                         │ - DEO workload stats     │      └─────────────────┘
+                         └─────────────────────────┘
+</code></pre>
+</div>
+</div>
+
+<!-- Feature 9 -->
+<div class="card">
+<div class="feature-header"><span class="feature-num">9</span><h3>Comment Templates Admin CRUD</h3></div>
+<p><span class="badge badge-blue">Backend</span> <span class="badge badge-green">Frontend</span> <span class="badge badge-purple">Admin</span></p>
+
+<h4>Technology Used</h4>
+<ul>
+    <li><code>CommentTemplate.java</code> — Entity with category + modeOfReceipt filtering</li>
+    <li><code>CommentTemplateService.java</code> — Full CRUD + activate/deactivate</li>
+    <li><code>comment-templates.component.ts</code> — Admin table with create/edit modal</li>
+    <li>Route: <code>/admin/comment-templates</code></li>
+</ul>
+
+<h4>Categories: GENERAL, CLOSURE, REJECTION, FOLLOWUP</h4>
+<h4>Modes: EMAIL, PHYSICAL_LETTER, PORTAL, ALL</h4>
+</div>
+
+<!-- Feature 10 -->
+<div class="card">
+<div class="feature-header"><span class="feature-num">10</span><h3>Toll-Free Help Desk</h3></div>
+<p><span class="badge badge-green">Frontend</span> <span class="badge badge-blue">Backend</span></p>
+
+<h4>Technology Used</h4>
+<ul>
+    <li><code>help-desk.component.ts</code> — Phone complaint registration form</li>
+    <li>Existing <code>ComplaintService</code> — Creates complaint with modeOfReceipt = 'PHONE'</li>
+    <li>Route: <code>/crpc/help-desk</code> (protected by staffAuthGuard)</li>
+</ul>
+
+<h4>Flow Diagram</h4>
+<div class="flow-diagram">
+<pre><code>
+┌──────────────┐      ┌───────────────────┐      ┌─────────────────┐
+│ Caller dials │ ───► │ Help Desk agent   │ ───► │ POST /complaints│
+│ toll-free    │      │ fills form:       │      │ modeOfReceipt=  │
+│ number       │      │ name, phone, bank,│      │ PHONE           │
+└──────────────┘      │ category, details │      └────────┬────────┘
+                      └───────────────────┘               │
+                                                          ▼
+                                              ┌─────────────────────┐
+                                              │ Complaint created   │
+                                              │ & appears in queue  │
+                                              └─────────────────────┘
+</code></pre>
+</div>
+</div>
+
+<!-- Feature 11 -->
+<div class="card">
+<div class="feature-header"><span class="feature-num">11</span><h3>Session Timeout Warning</h3></div>
+<p><span class="badge badge-green">Frontend</span></p>
+
+<h4>Technology Used</h4>
+<ul>
+    <li><code>session-timeout.component.ts</code> — Standalone Angular component with idle detection</li>
+    <li>Events tracked: mousedown, keydown, scroll, touchstart</li>
+    <li>Session duration: 15 minutes | Warning: 5 minutes before expiry</li>
+    <li>Actions: "Continue Session" (resets timer) or "Logout"</li>
+</ul>
+
+<h4>Flow Diagram</h4>
+<div class="flow-diagram">
+<pre><code>
+┌──────────────┐ idle 10min  ┌───────────────────┐  countdown  ┌──────────┐
+│ User active  │ ──────────► │ Warning modal     │ ──────────► │ Auto     │
+│ (timer reset │             │ "5 min remaining" │  expires    │ logout   │
+│  on activity)│             │ [Continue][Logout] │             │ redirect │
+└──────────────┘             └───────────────────┘             └──────────┘
+        ▲                              │
+        │         User clicks          │
+        └───────── "Continue" ─────────┘
+</code></pre>
+</div>
+</div>
+
+<!-- Feature 12 -->
+<div class="card">
+<div class="feature-header"><span class="feature-num">12</span><h3>Scheduled Notifications (3-Day Pending & Duplicate)</h3></div>
+<p><span class="badge badge-blue">Backend</span> <span class="badge badge-orange">Scheduled</span></p>
+
+<h4>Technology Used</h4>
+<ul>
+    <li><code>CrpcScheduledTasks.java</code> — Spring @Scheduled with cron expressions</li>
+    <li>Pending 3-Day: <code>0 0 9 * * MON-FRI</code> — alerts DEOs about stale drafts</li>
+    <li>Duplicate Check: <code>0 30 9 * * MON-FRI</code> — flags drafts with isDuplicate=true</li>
+    <li>Threshold Check: <code>0 0 10 * * MON-FRI</code> — reviewer overload detection</li>
+</ul>
+</div>
+
+<!-- Feature 13 -->
+<div class="card">
+<div class="feature-header"><span class="feature-num">13</span><h3>CPGRAMS, Sent-Back Highlight, Admin Reopen</h3></div>
+<p><span class="badge badge-blue">Backend</span></p>
+
+<h4>Technology Used</h4>
+<ul>
+    <li><code>CrpcDraftEnhancementController.java</code> — Multiple enhancement endpoints</li>
+</ul>
+
+<h4>Endpoints</h4>
+<table>
+    <tr><th>Endpoint</th><th>Method</th><th>Purpose</th></tr>
+    <tr><td><code>/api/v1/crpc/drafts/{id}/cpgrams-number</code></td><td>POST</td><td>Set CPGRAMS reference number conditionally</td></tr>
+    <tr><td><code>/api/v1/crpc/drafts/{id}/mark-sent-back-highlight</code></td><td>POST</td><td>Assign colour highlight for sent-back items</td></tr>
+    <tr><td><code>/api/v1/crpc/drafts/{id}/reopen</code></td><td>POST</td><td>Admin reopens a closed/rejected draft</td></tr>
+    <tr><td><code>/api/v1/crpc/drafts/{id}/vernacular-override</code></td><td>POST</td><td>Reviewer overrides language detection</td></tr>
+    <tr><td><code>/api/v1/crpc/drafts/vernacular</code></td><td>GET</td><td>List all vernacular drafts</td></tr>
+</table>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<h2 id="database">4. Database Schema & Initialization Scripts</h2>
+
+<div class="card">
+<h3>Entity-Relationship Overview</h3>
+<div class="flow-diagram">
+<pre><code>
+┌─────────────────┐       ┌─────────────────┐       ┌─────────────────────┐
+│  EMAIL_DRAFTS   │       │   COMPLAINTS    │       │ IN_APP_NOTIFICATIONS│
+│─────────────────│       │─────────────────│       │─────────────────────│
+│ id (PK)         │       │ id (PK)         │       │ id (PK)             │
+│ draftId (UQ)    │ ────► │ complaintNumber │       │ targetUserId (IDX)  │
+│ status          │       │ status          │       │ type                │
+│ assignedTo      │       │ complainantName │       │ isRead (IDX)        │
+│ reviewerAssigned│       │ subject         │       │ relatedEntityId     │
+│ isVernacular    │       │ bankId          │       │ createdAt (IDX)     │
+│ cpgramsNumber   │       │ categoryId      │       └─────────────────────┘
+└─────────────────┘       └─────────────────┘
+                                                    ┌─────────────────────────┐
+┌──────────────────────┐   ┌───────────────────┐   │ COMMUNICATION_TEMPLATES │
+│   COMMENT_TEMPLATES  │   │                   │   │─────────────────────────│
+│──────────────────────│   │                   │   │ id (PK)                 │
+│ id (PK)              │   │                   │   │ templateName            │
+│ title                │   │                   │   │ mode (IDX)              │
+│ content              │   │                   │   │ triggerCondition (IDX)  │
+│ category             │   │                   │   │ schemeVersion (IDX)     │
+│ modeOfReceipt        │   │                   │   │ subjectTemplate         │
+│ active               │   │                   │   │ bodyTemplate            │
+└──────────────────────┘   │                   │   │ active                  │
+                           │                   │   └─────────────────────────┘
+                           └───────────────────┘
+</code></pre>
+</div>
+
+<h3>Database Initialization Script (MySQL 8.0)</h3>
+<pre><code>-- ═══════════════════════════════════════════════════════════════
+-- CMS 2.0 CRPC Module — Database Initialization Script
+-- Run this BEFORE starting the application for the first time
+-- Hibernate ddl-auto=update will create tables, but this script
+-- seeds required reference data.
+-- ═══════════════════════════════════════════════════════════════
+
+-- 1. Create database and user
+CREATE DATABASE IF NOT EXISTS cms_db
+    CHARACTER SET utf8mb4
+    COLLATE utf8mb4_unicode_ci;
+
+CREATE USER IF NOT EXISTS 'cms_user'@'%' IDENTIFIED BY 'cms_password_change_me';
+GRANT ALL PRIVILEGES ON cms_db.* TO 'cms_user'@'%';
+FLUSH PRIVILEGES;
+
+USE cms_db;
+
+-- 2. Seed Communication Templates
+INSERT INTO COMMUNICATION_TEMPLATES (template_name, mode, trigger_condition, scheme_version, subject_template, body_template, description, category, active, created_by, created_at, updated_at) VALUES
+('New Complaint Acknowledgement - Email', 'EMAIL', 'NEW_COMPLAINT_ACK', 'BOTH',
+ 'Acknowledgement: Your complaint {{complaintNumber}} has been registered',
+ 'Dear {{complainantName}},\n\nThis is to acknowledge receipt of your complaint bearing reference number {{complaintNumber}}.\n\nSubject: {{subject}}\nDate of Registration: {{currentDate}}\n\nYour complaint is being examined and you will be informed of the outcome in due course.\n\nRegards,\nCRPC Cell\nReserve Bank of India',
+ 'Sent automatically when a new complaint is registered', 'ACKNOWLEDGEMENT', true, 'SYSTEM', NOW(), NOW()),
+
+('Closure Communication - RBIOS 2026', 'LETTER', 'CLOSURE', 'RBIOS_2026',
+ 'Closure of Complaint {{complaintNumber}}',
+ 'Dear {{complainantName}},\n\nRef: Complaint No. {{complaintNumber}} dated {{currentDate}}\nSubject: {{subject}}\n\nWith reference to the above complaint, we wish to inform you that the same has been examined and is being closed on {{closureDate}}.\n\nThe Regulated Entity ({{bankName}}) has provided a satisfactory resolution.\n\nIf you are not satisfied with the resolution, you may file an appeal with the Appellate Authority within 30 days.\n\nYours faithfully,\nCRPC Cell',
+ 'Closure letter for RBIOS 2026 scheme complaints', 'CLOSURE', true, 'SYSTEM', NOW(), NOW()),
+
+('CRPC Rejection - Insufficient Details', 'EMAIL', 'INSUFFICIENT_DETAILS', 'BOTH',
+ 'Additional information required for complaint {{complaintNumber}}',
+ 'Dear {{complainantName}},\n\nWith reference to your complaint {{complaintNumber}}, we require additional details to process your complaint.\n\nPlease provide the following:\n1. Complete account details\n2. Transaction reference numbers\n3. Supporting documents\n\nPlease reply to this email with the required information within 15 days.\n\nRegards,\nCRPC Cell',
+ 'Sent when complaint lacks sufficient details', 'NOTIFICATION', true, 'SYSTEM', NOW(), NOW()),
+
+('Sent to Other Regulator', 'EMAIL', 'SENT_TO_OTHER_REG', 'BOTH',
+ 'Your complaint {{complaintNumber}} has been forwarded',
+ 'Dear {{complainantName}},\n\nYour complaint {{complaintNumber}} pertaining to {{subject}} does not fall under the jurisdiction of RBI.\n\nThe same has been forwarded to the appropriate regulatory authority for necessary action.\n\nRegards,\nCRPC Cell',
+ 'Sent when complaint is forwarded to another regulator', 'NOTIFICATION', true, 'SYSTEM', NOW(), NOW());
+
+-- 3. Seed Comment Templates
+INSERT INTO COMMENT_TEMPLATES (title, description, content, mode_of_receipt, category, active, created_by, created_at, updated_at) VALUES
+('Standard Closure - Resolved by Bank', 'Used when bank has satisfactorily resolved the issue', 'The complaint has been examined. The Regulated Entity has provided a satisfactory resolution and the complainant has been informed. Closing the complaint.', 'ALL', 'CLOSURE', true, 'SYSTEM', NOW(), NOW()),
+('Not-a-Complaint - Spam', 'For spam/irrelevant emails', 'This email is identified as spam/promotional content and does not constitute a valid complaint. Marking as Not-a-Complaint.', 'EMAIL', 'REJECTION', true, 'SYSTEM', NOW(), NOW()),
+('Follow-up Pending from Complainant', 'When awaiting response from complainant', 'Additional details have been requested from the complainant. Awaiting response. Will follow up if no response within 15 days.', 'ALL', 'FOLLOWUP', true, 'SYSTEM', NOW(), NOW()),
+('Standard Forward to Reviewer', 'DEO forwards to reviewer with assessment', 'Complaint has been assessed. All mandatory fields are populated. Entity identification confirmed. Forwarding to reviewer for approval.', 'ALL', 'GENERAL', true, 'SYSTEM', NOW(), NOW()),
+('Insufficient Details - Physical Letter', 'For physical letters with incomplete info', 'The physical letter received does not contain sufficient details (missing account number / bank branch / contact details). Requesting additional information from complainant.', 'PHYSICAL_LETTER', 'REJECTION', true, 'SYSTEM', NOW(), NOW());
+
+-- 4. Create indexes (if not auto-created by Hibernate)
+-- These are declared in @Table annotations but listed here for reference
+CREATE INDEX IF NOT EXISTS idx_draft_vernacular ON EMAIL_DRAFTS(is_vernacular);
+CREATE INDEX IF NOT EXISTS idx_draft_cpgrams ON EMAIL_DRAFTS(cpgrams_number);
+CREATE INDEX IF NOT EXISTS idx_complaint_mode ON COMPLAINTS(mode_of_receipt);
+</code></pre>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<h2 id="prerequisites">5. Prerequisites for Local Development</h2>
+
+<div class="card">
+<h3>Required Software</h3>
+<table>
+    <tr><th>Software</th><th>Version</th><th>Download</th><th>Notes</th></tr>
+    <tr><td>JDK</td><td>17 or 21</td><td>Adoptium / Oracle</td><td>JAVA_HOME must be set</td></tr>
+    <tr><td>Maven</td><td>3.9+</td><td>apache.org</td><td>mvn on PATH</td></tr>
+    <tr><td>Node.js</td><td>20.x LTS</td><td>nodejs.org</td><td>Includes npm</td></tr>
+    <tr><td>Angular CLI</td><td>20.x</td><td><code>npm i -g @angular/cli</code></td><td></td></tr>
+    <tr><td>MySQL</td><td>8.0+</td><td>mysql.com</td><td>Or use Docker</td></tr>
+    <tr><td>Keycloak</td><td>26.0</td><td>keycloak.org</td><td>Port 8080</td></tr>
+    <tr><td>Git</td><td>2.40+</td><td>git-scm.com</td><td></td></tr>
+</table>
+
+<h3>Optional (for full feature set)</h3>
+<table>
+    <tr><th>Software</th><th>Purpose</th></tr>
+    <tr><td>OpenSearch 2.18</td><td>Similar-cases search</td></tr>
+    <tr><td>Kafka 3.x</td><td>Async event publishing</td></tr>
+    <tr><td>Prometheus 2.54</td><td>Metrics dashboard</td></tr>
+    <tr><td>Docker Desktop</td><td>Container-based local infra</td></tr>
+</table>
+
+<h3>Environment Variables</h3>
+<pre><code># Required
+DB_URL=jdbc:mysql://localhost:3306/cms_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+DB_USERNAME=cms_user
+DB_PASSWORD=your_password
+
+# Optional (defaults exist)
+CMS_ATTACHMENTS_PATH=C:/cms-attachments
+CRPC_MAX_PER_REVIEWER=30
+CRPC_OVERFLOW_TARGET=CRPC_HEAD
+
+# Keycloak (for OAuth2)
+SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI=http://localhost:8080/realms/cms
+SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI=http://localhost:8080/realms/cms/protocol/openid-connect/certs
+</code></pre>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<h2 id="local-setup">6. Local Setup & Running</h2>
+
+<div class="card">
+<h3>Step 1: Clone Repository</h3>
+<pre><code>git clone &lt;repo-url&gt;
+cd My-HRMS-Frontend/CMS2.0</code></pre>
+
+<h3>Step 2: Start MySQL</h3>
+<pre><code># Using Docker (recommended)
+docker run -d --name cms-mysql \
+  -e MYSQL_ROOT_PASSWORD=root \
+  -e MYSQL_DATABASE=cms_db \
+  -e MYSQL_USER=cms_user \
+  -e MYSQL_PASSWORD=cms_password_change_me \
+  -p 3306:3306 \
+  mysql:8.0
+
+# Run the initialization script
+mysql -u cms_user -p cms_db &lt; database-init.sql</code></pre>
+
+<h3>Step 3: Start Keycloak</h3>
+<pre><code># From C:\tools\keycloak-26.0.0
+bin\kc.bat start-dev --http-port=8080
+
+# Import realm: Admin Console → Import → cms-realm.json</code></pre>
+
+<h3>Step 4: Start Backend</h3>
+<pre><code>cd cms-backend
+mvn spring-boot:run
+
+# Server starts on http://localhost:8082
+# WebSocket endpoint: ws://localhost:8082/ws/notifications</code></pre>
+
+<h3>Step 5: Start Frontend</h3>
+<pre><code>cd cms-portal-frontend
+npm install
+ng serve --port 4200
+
+# Application available at http://localhost:4200</code></pre>
+
+<h3>Step 6: Verify</h3>
+<ul>
+    <li>Backend health: <code>http://localhost:8082/actuator/health</code></li>
+    <li>Frontend: <code>http://localhost:4200/crpc/login</code></li>
+    <li>API test: <code>http://localhost:8082/api/v1/crpc/workflow/not-a-complaint-reasons</code></li>
+</ul>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<h2 id="deployment">7. OpenShift Deployment</h2>
+
+<div class="card">
+<h3>Deployment Architecture</h3>
+<div class="flow-diagram">
+<pre><code>
+┌─────────────────────────────────────────────────────────────────────┐
+│                    OpenShift Project: cms-prod                        │
+├──────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐              │
+│  │ cms-frontend │  │ cms-backend  │  │ cms-mysql    │              │
+│  │ (Nginx Pod)  │  │ (Java Pod)   │  │ (StatefulSet)│              │
+│  │ Replicas: 2  │  │ Replicas: 3  │  │ Replicas: 1  │              │
+│  └──────┬───────┘  └──────┬───────┘  └──────────────┘              │
+│         │                  │                                         │
+│  ┌──────┴──────────────────┴──────┐                                  │
+│  │         Route / Ingress         │                                  │
+│  │    cms.example.rbi.org.in       │                                  │
+│  └─────────────────────────────────┘                                  │
+│                                                                      │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐              │
+│  │  Keycloak    │  │  OpenSearch  │  │  Kafka       │              │
+│  │  (Pod)       │  │  (Pod)       │  │  (StatefulSet)│             │
+│  └──────────────┘  └──────────────┘  └──────────────┘              │
+└──────────────────────────────────────────────────────────────────────┘
+</code></pre>
+</div>
+
+<h3>Backend Deployment (BuildConfig + DeploymentConfig)</h3>
+<pre><code># 1. Create ImageStream
+oc new-app --name=cms-backend \
+  --image-stream=java:17 \
+  --context-dir=CMS2.0/cms-backend \
+  --strategy=source
+
+# 2. Set environment variables
+oc set env dc/cms-backend \
+  DB_URL=jdbc:mysql://cms-mysql:3306/cms_db?useSSL=true \
+  DB_USERNAME=cms_user \
+  DB_PASSWORD=&lt;secret-ref&gt; \
+  SPRING_PROFILES_ACTIVE=prod \
+  CRPC_MAX_PER_REVIEWER=30
+
+# 3. Create service and route
+oc expose svc/cms-backend --port=8082
+oc create route edge cms-backend-api --service=cms-backend --port=8082
+
+# 4. Configure health probes
+oc set probe dc/cms-backend --readiness \
+  --get-url=http://:8082/actuator/health --initial-delay-seconds=30
+oc set probe dc/cms-backend --liveness \
+  --get-url=http://:8082/actuator/health --initial-delay-seconds=60
+
+# 5. Scale
+oc scale dc/cms-backend --replicas=3</code></pre>
+
+<h3>Frontend Deployment (Nginx)</h3>
+<pre><code># 1. Build production bundle
+cd cms-portal-frontend
+ng build --configuration=production
+
+# 2. Create Dockerfile
+cat &lt;&lt;EOF &gt; Dockerfile
+FROM nginx:alpine
+COPY dist/cms-portal-frontend/browser /usr/share/nginx/html
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+EXPOSE 8080
+EOF
+
+# 3. Deploy on OpenShift
+oc new-build --name=cms-frontend --binary --strategy=docker
+oc start-build cms-frontend --from-dir=. --follow
+oc new-app cms-frontend
+oc expose svc/cms-frontend --port=8080</code></pre>
+
+<h3>Secrets Management</h3>
+<pre><code># Create secret for database credentials
+oc create secret generic cms-db-credentials \
+  --from-literal=DB_USERNAME=cms_user \
+  --from-literal=DB_PASSWORD=&lt;production-password&gt;
+
+# Create secret for Keycloak
+oc create secret generic cms-keycloak \
+  --from-literal=KEYCLOAK_CLIENT_SECRET=&lt;client-secret&gt;
+
+# Mount secrets as env vars
+oc set env dc/cms-backend --from=secret/cms-db-credentials
+oc set env dc/cms-backend --from=secret/cms-keycloak</code></pre>
+
+<h3>Resource Limits</h3>
+<pre><code>oc set resources dc/cms-backend \
+  --limits=cpu=2,memory=2Gi \
+  --requests=cpu=500m,memory=512Mi
+
+oc set resources dc/cms-frontend \
+  --limits=cpu=500m,memory=256Mi \
+  --requests=cpu=100m,memory=128Mi</code></pre>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<h2 id="developer-guide">8. Developer Guidelines</h2>
+
+<div class="card">
+<h3>Project Structure</h3>
+<pre><code>CMS2.0/
+├── cms-backend/
+│   └── src/main/java/com/hrms/cms/
+│       ├── config/          # Spring configuration classes
+│       ├── controller/      # REST controllers (@RestController)
+│       ├── dto/             # Request/Response DTOs
+│       ├── entity/          # JPA entities (@Entity)
+│       ├── event/           # Application event publishers
+│       ├── repository/      # Spring Data JPA interfaces
+│       └── service/         # Business logic (@Service)
+│
+├── cms-portal-frontend/
+│   └── src/app/
+│       ├── components/      # Feature components (lazy-loaded)
+│       │   ├── crpc/        # CRPC module components
+│       │   ├── admin/       # Admin CRUD components
+│       │   ├── email-syndication/
+│       │   └── ...
+│       ├── services/        # Angular injectable services
+│       ├── models/          # TypeScript interfaces
+│       ├── guards/          # Route guards
+│       └── shared/          # Reusable UI components
+│
+└── deployment/              # OpenShift configs & docs</code></pre>
+</div>
+
+<div class="card">
+<h3>Adding a New Feature — Step-by-Step</h3>
+
+<h4>Backend Changes</h4>
+<ol>
+    <li><strong>Entity:</strong> Create JPA entity in <code>entity/</code> with Lombok annotations
+        <pre><code>@Entity @Table(name = "MY_TABLE")
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+public class MyEntity { ... }</code></pre>
+    </li>
+    <li><strong>Repository:</strong> Create interface in <code>repository/</code> extending JpaRepository
+        <pre><code>public interface MyEntityRepository extends JpaRepository&lt;MyEntity, Long&gt; {
+    List&lt;MyEntity&gt; findByStatusAndActiveTrue(String status);
+}</code></pre>
+    </li>
+    <li><strong>Service:</strong> Create service in <code>service/</code> with @Transactional
+        <pre><code>@Service @RequiredArgsConstructor
+public class MyService {
+    private final MyEntityRepository repository;
+
+    @Transactional
+    public MyEntity create(MyEntity entity) { return repository.save(entity); }
+}</code></pre>
+    </li>
+    <li><strong>Controller:</strong> Create controller in <code>controller/</code>
+        <pre><code>@RestController @RequestMapping("/api/v1/my-feature")
+@RequiredArgsConstructor
+public class MyController {
+    private final MyService service;
+
+    @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'CRPC_HEAD')")
+    public ResponseEntity&lt;List&lt;MyEntity&gt;&gt; getAll() { ... }
+}</code></pre>
+    </li>
+    <li><strong>Compile & Test:</strong> <code>mvn compile</code> (tables auto-created by Hibernate)</li>
+</ol>
+
+<h4>Frontend Changes</h4>
+<ol>
+    <li><strong>Service:</strong> Create Angular service in <code>services/</code>
+        <pre><code>@Injectable({ providedIn: 'root' })
+export class MyService {
+  private http = inject(HttpClient);
+  private baseUrl = `${environment.apiBaseUrl}/api/v1/my-feature`;
+
+  getAll(): Observable&lt;MyEntity[]&gt; {
+    return this.http.get&lt;MyEntity[]&gt;(this.baseUrl);
+  }
+}</code></pre>
+    </li>
+    <li><strong>Component:</strong> Create standalone component
+        <pre><code>@Component({
+  selector: 'app-my-feature',
+  standalone: true,
+  imports: [CommonModule, FormsModule],
+  template: `...`,
+  styles: [`...`]
+})
+export class MyFeatureComponent implements OnInit { ... }</code></pre>
+    </li>
+    <li><strong>Route:</strong> Add lazy-loaded route in <code>app.routes.ts</code>
+        <pre><code>{
+  path: 'my-feature',
+  canActivate: [staffAuthGuard],
+  loadComponent: () => import('./components/my-feature/my-feature.component')
+    .then(m => m.MyFeatureComponent)
+}</code></pre>
+    </li>
+    <li><strong>Build & Verify:</strong> <code>ng build --configuration=development</code></li>
+</ol>
+</div>
+
+<div class="card">
+<h3>Coding Standards</h3>
+
+<h4>Backend (Java/Spring)</h4>
+<ul>
+    <li>All entities use <code>@Builder</code> + <code>@NoArgsConstructor</code> + <code>@AllArgsConstructor</code></li>
+    <li>Services are <code>@RequiredArgsConstructor</code> (constructor injection via Lombok)</li>
+    <li>Use <code>@Transactional(readOnly = true)</code> for read operations</li>
+    <li>Controllers return <code>ResponseEntity&lt;T&gt;</code></li>
+    <li>Role-based access via <code>@PreAuthorize("hasAnyRole('ROLE1', 'ROLE2')")</code></li>
+    <li>Async operations annotated with <code>@Async</code></li>
+    <li>Scheduled tasks use <code>@Scheduled(cron = "...")</code></li>
+</ul>
+
+<h4>Frontend (Angular/TypeScript)</h4>
+<ul>
+    <li>All new components must be <code>standalone: true</code></li>
+    <li>Use Angular Signals (<code>signal()</code>, <code>computed()</code>) for state management</li>
+    <li>Use <code>inject()</code> function instead of constructor injection</li>
+    <li>Lazy-load all route components</li>
+    <li>Services use <code>providedIn: 'root'</code></li>
+    <li>Use <code>@if</code> / <code>@for</code> control flow (Angular 17+ syntax)</li>
+    <li>Style with component-scoped SCSS, no global styles</li>
+</ul>
+
+<h4>Git Conventions</h4>
+<ul>
+    <li>Branch naming: <code>feature/crpc-&lt;feature-name&gt;</code>, <code>fix/crpc-&lt;bug-name&gt;</code></li>
+    <li>Commit messages: <code>feat(crpc): add notification bell component</code></li>
+    <li>PR title: Short (&lt;70 chars), description explains WHY</li>
+</ul>
+</div>
+
+<div class="card">
+<h3>Common Modifications</h3>
+
+<h4>Adding a new Not-a-Complaint Reason</h4>
+<pre><code>// File: CrpcWorkflowService.java (line ~40)
+private static final List&lt;String&gt; NOT_A_COMPLAINT_REASONS = List.of(
+    "SPAM",
+    "PROMOTIONAL",
+    // ... existing reasons ...
+    "YOUR_NEW_REASON"  // &lt;-- Add here
+);</code></pre>
+
+<h4>Adding a new Notification Type</h4>
+<pre><code>// 1. Use existing NotificationService.send() with new type string:
+notificationService.send(userId, "MY_NEW_TYPE", "Title", "Message", entityId, "COMPLAINT", "/url");
+
+// 2. Update notification-bell.component.ts icon mapping:
+const icons: Record&lt;string, string&gt; = {
+    // ... existing ...
+    MY_NEW_TYPE: '🆕',  // Add icon
+};</code></pre>
+
+<h4>Adding a new Communication Template Trigger</h4>
+<pre><code>-- Insert into database:
+INSERT INTO COMMUNICATION_TEMPLATES (template_name, mode, trigger_condition, ...)
+VALUES ('My Template', 'EMAIL', 'MY_NEW_TRIGGER', 'BOTH', ...);
+
+-- Then call from service:
+List&lt;CommunicationTemplate&gt; templates = templateService.getByTrigger("MY_NEW_TRIGGER");</code></pre>
+
+<h4>Adding a new Scheduled Task</h4>
+<pre><code>// File: CrpcScheduledTasks.java — Add new method:
+@Scheduled(cron = "0 0 11 * * MON-FRI")  // 11:00 AM weekdays
+public void myNewScheduledTask() {
+    // Your logic here
+    log.info("Executed myNewScheduledTask");
+}</code></pre>
+
+<h4>Adding a new Admin Route</h4>
+<pre><code>// File: app.routes.ts — Add in admin section:
+{
+  path: 'admin/my-new-page',
+  canActivate: [staffAuthGuard],
+  loadComponent: () => import('./components/admin/my-page/my-page.component')
+    .then(m => m.MyPageComponent)
+}</code></pre>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<h2 id="api-reference">9. API Endpoints Reference</h2>
+
+<div class="card">
+<h3>CRPC Workflow APIs</h3>
+<table>
+    <tr><th>Method</th><th>Endpoint</th><th>Roles</th><th>Description</th></tr>
+    <tr><td><span class="badge badge-green">POST</span></td><td><code>/api/v1/crpc/workflow/send-for-approval</code></td><td>DEO</td><td>DEO sends draft to reviewer</td></tr>
+    <tr><td><span class="badge badge-green">POST</span></td><td><code>/api/v1/crpc/workflow/not-a-complaint</code></td><td>DEO, REVIEWER</td><td>Mark single draft as not-a-complaint</td></tr>
+    <tr><td><span class="badge badge-green">POST</span></td><td><code>/api/v1/crpc/workflow/bulk-not-a-complaint</code></td><td>DEO, REVIEWER</td><td>Bulk mark multiple drafts</td></tr>
+    <tr><td><span class="badge badge-green">POST</span></td><td><code>/api/v1/crpc/workflow/approve</code></td><td>REVIEWER, HEAD</td><td>Approve draft</td></tr>
+    <tr><td><span class="badge badge-green">POST</span></td><td><code>/api/v1/crpc/workflow/send-back</code></td><td>REVIEWER, HEAD</td><td>Send back draft to DEO</td></tr>
+    <tr><td><span class="badge badge-green">POST</span></td><td><code>/api/v1/crpc/workflow/convert-to-complaint</code></td><td>REVIEWER, HEAD</td><td>Convert approved draft to complaint</td></tr>
+    <tr><td><span class="badge badge-blue">GET</span></td><td><code>/api/v1/crpc/workflow/not-a-complaint-reasons</code></td><td>Any</td><td>Get list of valid reasons</td></tr>
+    <tr><td><span class="badge badge-blue">GET</span></td><td><code>/api/v1/crpc/workflow/closure-letter</code></td><td>REVIEWER, HEAD</td><td>Generate closure letter HTML</td></tr>
+    <tr><td><span class="badge badge-blue">GET</span></td><td><code>/api/v1/crpc/workflow/closure-letter/preview</code></td><td>REVIEWER, HEAD</td><td>Preview with specific template</td></tr>
+</table>
+
+<h3>Notification APIs</h3>
+<table>
+    <tr><th>Method</th><th>Endpoint</th><th>Description</th></tr>
+    <tr><td><span class="badge badge-blue">GET</span></td><td><code>/api/v1/notifications?page=0&size=20</code></td><td>Paginated notifications for current user</td></tr>
+    <tr><td><span class="badge badge-blue">GET</span></td><td><code>/api/v1/notifications/unread</code></td><td>All unread notifications</td></tr>
+    <tr><td><span class="badge badge-blue">GET</span></td><td><code>/api/v1/notifications/unread-count</code></td><td>Count of unread</td></tr>
+    <tr><td><span class="badge badge-green">POST</span></td><td><code>/api/v1/notifications/mark-all-read</code></td><td>Mark all as read</td></tr>
+    <tr><td><span class="badge badge-green">POST</span></td><td><code>/api/v1/notifications/mark-read</code></td><td>Mark specific IDs as read</td></tr>
+</table>
+
+<h3>Template Management APIs</h3>
+<table>
+    <tr><th>Method</th><th>Endpoint</th><th>Roles</th><th>Description</th></tr>
+    <tr><td><span class="badge badge-blue">GET</span></td><td><code>/api/v1/communication-templates</code></td><td>ADMIN, HEAD</td><td>List all templates</td></tr>
+    <tr><td><span class="badge badge-blue">GET</span></td><td><code>/api/v1/communication-templates/active</code></td><td>Any</td><td>Active templates only</td></tr>
+    <tr><td><span class="badge badge-blue">GET</span></td><td><code>/api/v1/communication-templates/by-trigger?triggerCondition=X</code></td><td>Any</td><td>Filter by trigger</td></tr>
+    <tr><td><span class="badge badge-green">POST</span></td><td><code>/api/v1/communication-templates</code></td><td>ADMIN</td><td>Create template</td></tr>
+    <tr><td><span class="badge badge-orange">PUT</span></td><td><code>/api/v1/communication-templates/{id}</code></td><td>ADMIN</td><td>Update template</td></tr>
+    <tr><td><span class="badge badge-green">POST</span></td><td><code>/api/v1/communication-templates/render</code></td><td>Any</td><td>Render with variables</td></tr>
+    <tr><td><span class="badge badge-blue">GET</span></td><td><code>/api/v1/comment-templates/active</code></td><td>Any</td><td>Active comment templates</td></tr>
+    <tr><td><span class="badge badge-blue">GET</span></td><td><code>/api/v1/comment-templates/filtered?category=X&modeOfReceipt=Y</code></td><td>Any</td><td>Filtered templates</td></tr>
+    <tr><td><span class="badge badge-green">POST</span></td><td><code>/api/v1/comment-templates</code></td><td>ADMIN</td><td>Create comment template</td></tr>
+</table>
+
+<h3>In-Charge Dashboard APIs</h3>
+<table>
+    <tr><th>Method</th><th>Endpoint</th><th>Roles</th><th>Description</th></tr>
+    <tr><td><span class="badge badge-blue">GET</span></td><td><code>/api/v1/crpc/in-charge/summary</code></td><td>INCHARGE, HEAD, ADMIN</td><td>Pan-India stats</td></tr>
+    <tr><td><span class="badge badge-blue">GET</span></td><td><code>/api/v1/crpc/in-charge/office/{officeId}</code></td><td>INCHARGE, HEAD, ADMIN</td><td>Office-wise stats</td></tr>
+    <tr><td><span class="badge badge-blue">GET</span></td><td><code>/api/v1/crpc/in-charge/deo-workload</code></td><td>INCHARGE, HEAD, ADMIN</td><td>DEO workload breakdown</td></tr>
+</table>
+
+<h3>Draft Enhancement APIs</h3>
+<table>
+    <tr><th>Method</th><th>Endpoint</th><th>Description</th></tr>
+    <tr><td><span class="badge badge-green">POST</span></td><td><code>/api/v1/crpc/drafts/{id}/vernacular-override</code></td><td>Override language detection</td></tr>
+    <tr><td><span class="badge badge-green">POST</span></td><td><code>/api/v1/crpc/drafts/{id}/cpgrams-number</code></td><td>Set CPGRAMS reference</td></tr>
+    <tr><td><span class="badge badge-green">POST</span></td><td><code>/api/v1/crpc/drafts/{id}/mark-sent-back-highlight</code></td><td>Set sent-back colour</td></tr>
+    <tr><td><span class="badge badge-green">POST</span></td><td><code>/api/v1/crpc/drafts/{id}/reopen</code></td><td>Admin reopen closed draft</td></tr>
+    <tr><td><span class="badge badge-blue">GET</span></td><td><code>/api/v1/crpc/drafts/vernacular</code></td><td>List all vernacular drafts</td></tr>
+</table>
+</div>
+
+<!-- Footer -->
+<div style="margin-top: 60px; padding-top: 24px; border-top: 2px solid var(--border); text-align: center; color: var(--muted); font-size: 13px;">
+    <p><strong>CMS 2.0 CRPC Module — Technical Documentation</strong></p>
+    <p>Generated: 09 July 2026 | Reserve Bank of India — Complaint Management System</p>
+    <p>This document is auto-generated and may be updated as features evolve.</p>
+</div>
+
+</div>
+</body>
+</html>

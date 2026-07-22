@@ -3,9 +3,10 @@ package com.rbi.cms.workflow.controller;
 import com.rbi.cms.common.dto.ApiResponse;
 import com.rbi.cms.common.enums.ComplaintStatus;
 import com.rbi.cms.workflow.dto.OfficerTaskResponse;
+import com.rbi.cms.workflow.dto.TaskCompletionRequest;
 import com.rbi.cms.workflow.service.ComplaintWorkflowProcessor;
-import com.rbi.cms.workflow.service.DevLocalWorkflowService;
 import com.rbi.cms.workflow.service.TaskQueryService;
+import com.rbi.cms.workflow.service.WorkflowService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -13,11 +14,12 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/workflow")
 @RequiredArgsConstructor
-@Tag(name = "Workflow", description = "Complaint lifecycle workflow management")
+@Tag(name = "Workflow", description = "jBPM complaint lifecycle workflow management")
 public class WorkflowController {
 
     private final ComplaintWorkflowProcessor workflowService;
@@ -34,7 +36,7 @@ public class WorkflowController {
     }
 
     @PostMapping("/{complaintId}/transition")
-    @Operation(summary = "Transition complaint state", description = "Move complaint to next workflow state")
+    @Operation(summary = "Transition complaint state", description = "Move complaint to next workflow state via jBPM")
     public ResponseEntity<ApiResponse<Void>> transitionState(
             @PathVariable String complaintId,
             @RequestParam ComplaintStatus targetStatus,
@@ -45,7 +47,7 @@ public class WorkflowController {
     }
 
     @PostMapping("/{complaintId}/escalate")
-    @Operation(summary = "Escalate complaint", description = "Escalate a complaint due to SLA breach or priority")
+    @Operation(summary = "Escalate complaint", description = "Escalate complaint via jBPM signal event")
     public ResponseEntity<ApiResponse<Void>> escalate(
             @PathVariable String complaintId,
             @RequestParam String reason) {
@@ -54,27 +56,28 @@ public class WorkflowController {
         return ResponseEntity.ok(ApiResponse.success(null, "Complaint escalated successfully"));
     }
 
+    @PostMapping("/{complaintId}/complete-task")
+    @Operation(summary = "Complete human task", description = "Complete a jBPM human task with results")
+    public ResponseEntity<ApiResponse<Void>> completeTask(
+            @PathVariable String complaintId,
+            @RequestBody TaskCompletionRequest request) {
+
+        if (workflowService instanceof WorkflowService jbpmService) {
+            jbpmService.completeHumanTask(complaintId, request.getUserId(), request.getTaskData());
+        }
+        return ResponseEntity.ok(ApiResponse.success(null, "Task completed successfully"));
+    }
+
     @PostMapping("/{complaintId}/transfer")
-    @Operation(summary = "Transfer between departments", description = "Transfer complaint between RBIO and CEPC")
+    @Operation(summary = "Transfer between departments", description = "Signal inter-department transfer via jBPM")
     public ResponseEntity<ApiResponse<Void>> transferDepartment(
             @PathVariable String complaintId,
             @RequestParam String fromDepartment,
             @RequestParam String toDepartment,
             @RequestParam(required = false) String reason) {
 
-        if (workflowService instanceof DevLocalWorkflowService devLocal) {
-            devLocal.transferDepartment(complaintId, fromDepartment, toDepartment, reason);
-        }
+        workflowService.transitionState(complaintId, ComplaintStatus.IN_PROGRESS,
+                String.format("Transferred from %s to %s: %s", fromDepartment, toDepartment, reason));
         return ResponseEntity.ok(ApiResponse.success(null, "Transferred from " + fromDepartment + " to " + toDepartment));
-    }
-
-    @PostMapping("/{complaintId}/forward-from-crpc")
-    @Operation(summary = "Forward from CRPC", description = "Forward complaint from CRPC pipeline to target department (RBIO/CEPC) after DEO+Reviewer approval")
-    public ResponseEntity<ApiResponse<Void>> forwardFromCrpc(@PathVariable String complaintId) {
-
-        if (workflowService instanceof DevLocalWorkflowService devLocal) {
-            devLocal.forwardFromCrpc(complaintId);
-        }
-        return ResponseEntity.ok(ApiResponse.success(null, "Forwarded from CRPC to target department"));
     }
 }

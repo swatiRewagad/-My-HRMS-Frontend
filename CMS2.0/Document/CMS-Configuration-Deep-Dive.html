@@ -1,0 +1,1104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CMS 2.0 — Configuration Deep Dive</title>
+    <style>
+        :root {
+            --primary: #1a1a2e;
+            --secondary: #16213e;
+            --accent: #0f3460;
+            --highlight: #e94560;
+            --success: #059669;
+            --warning: #d97706;
+            --info: #2563eb;
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --border: #e2e8f0;
+            --text: #1e293b;
+            --muted: #64748b;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        /* Header */
+        .hero {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+            color: white;
+            padding: 3rem 2rem;
+            border-radius: 16px;
+            margin-bottom: 2rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -20%;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(233, 69, 96, 0.15) 0%, transparent 70%);
+            border-radius: 50%;
+        }
+
+        .hero h1 {
+            font-size: 2.2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            position: relative;
+        }
+
+        .hero p {
+            font-size: 1.1rem;
+            opacity: 0.85;
+            position: relative;
+        }
+
+        .hero .badge {
+            display: inline-block;
+            background: rgba(255,255,255,0.15);
+            border: 1px solid rgba(255,255,255,0.3);
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            margin-top: 1rem;
+            position: relative;
+        }
+
+        /* TOC */
+        .toc {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .toc h2 {
+            font-size: 1.1rem;
+            color: var(--accent);
+            margin-bottom: 1rem;
+        }
+
+        .toc-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 0.5rem;
+        }
+
+        .toc a {
+            color: var(--info);
+            text-decoration: none;
+            padding: 0.4rem 0.8rem;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            display: block;
+            transition: all 0.2s;
+        }
+
+        .toc a:hover {
+            background: #eff6ff;
+            color: #1d4ed8;
+        }
+
+        /* Timeline */
+        .timeline {
+            position: relative;
+            padding-left: 3rem;
+        }
+
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 14px;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background: linear-gradient(to bottom, var(--info), var(--success), var(--warning), var(--highlight));
+            border-radius: 2px;
+        }
+
+        .timeline-step {
+            position: relative;
+            margin-bottom: 2.5rem;
+        }
+
+        .timeline-step::before {
+            content: '';
+            position: absolute;
+            left: -2.4rem;
+            top: 1.2rem;
+            width: 14px;
+            height: 14px;
+            background: var(--info);
+            border-radius: 50%;
+            border: 3px solid var(--bg);
+            box-shadow: 0 0 0 3px var(--info);
+        }
+
+        .timeline-step:nth-child(3)::before { background: #7c3aed; box-shadow: 0 0 0 3px #7c3aed; }
+        .timeline-step:nth-child(4)::before { background: var(--success); box-shadow: 0 0 0 3px var(--success); }
+        .timeline-step:nth-child(5)::before { background: #059669; box-shadow: 0 0 0 3px #059669; }
+        .timeline-step:nth-child(6)::before { background: var(--warning); box-shadow: 0 0 0 3px var(--warning); }
+        .timeline-step:nth-child(7)::before { background: #dc2626; box-shadow: 0 0 0 3px #dc2626; }
+        .timeline-step:nth-child(8)::before { background: var(--highlight); box-shadow: 0 0 0 3px var(--highlight); }
+
+        /* Cards */
+        .step-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            transition: box-shadow 0.2s;
+        }
+
+        .step-card:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+
+        .step-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+        }
+
+        .step-time {
+            background: var(--primary);
+            color: white;
+            padding: 0.3rem 0.7rem;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            font-family: 'Courier New', monospace;
+            white-space: nowrap;
+        }
+
+        .step-title {
+            font-size: 1.15rem;
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .step-subtitle {
+            color: var(--muted);
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+        }
+
+        /* Config Table */
+        .config-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+            font-size: 0.85rem;
+        }
+
+        .config-table th {
+            background: #f1f5f9;
+            padding: 0.6rem 0.8rem;
+            text-align: left;
+            font-weight: 600;
+            color: var(--accent);
+            border-bottom: 2px solid var(--border);
+        }
+
+        .config-table td {
+            padding: 0.5rem 0.8rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .config-table tr:hover td {
+            background: #f8fafc;
+        }
+
+        .config-table code {
+            background: #f1f5f9;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            color: var(--accent);
+        }
+
+        /* Code Blocks */
+        .code-block {
+            background: #1e293b;
+            color: #e2e8f0;
+            border-radius: 8px;
+            padding: 1.25rem;
+            margin: 1rem 0;
+            overflow-x: auto;
+            font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+            font-size: 0.8rem;
+            line-height: 1.7;
+            position: relative;
+        }
+
+        .code-block .lang-label {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.75rem;
+            font-size: 0.65rem;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .code-block .comment { color: #94a3b8; }
+        .code-block .keyword { color: #c084fc; }
+        .code-block .string { color: #86efac; }
+        .code-block .annotation { color: #fbbf24; }
+        .code-block .method { color: #67e8f9; }
+        .code-block .type { color: #f9a8d4; }
+        .code-block .xml-tag { color: #fca5a5; }
+        .code-block .xml-attr { color: #93c5fd; }
+        .code-block .xml-val { color: #86efac; }
+
+        /* Info boxes */
+        .info-box {
+            border-radius: 8px;
+            padding: 1rem 1.25rem;
+            margin: 1rem 0;
+            font-size: 0.88rem;
+        }
+
+        .info-box.future {
+            background: #fef3c7;
+            border-left: 4px solid var(--warning);
+        }
+
+        .info-box.note {
+            background: #eff6ff;
+            border-left: 4px solid var(--info);
+        }
+
+        .info-box.important {
+            background: #fef2f2;
+            border-left: 4px solid var(--highlight);
+        }
+
+        .info-box h4 {
+            font-size: 0.85rem;
+            font-weight: 700;
+            margin-bottom: 0.4rem;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        .info-box.future h4 { color: #92400e; }
+        .info-box.note h4 { color: #1e40af; }
+        .info-box.important h4 { color: #991b1b; }
+
+        .info-box ul {
+            margin: 0.4rem 0 0 1.2rem;
+            line-height: 1.8;
+        }
+
+        /* Summary Section */
+        .summary-section {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 2rem;
+            margin: 2.5rem 0;
+        }
+
+        .summary-section h2 {
+            font-size: 1.3rem;
+            color: var(--primary);
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 2px solid var(--border);
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .summary-card {
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1.25rem;
+            background: #fafbfc;
+        }
+
+        .summary-card h3 {
+            font-size: 0.95rem;
+            font-weight: 700;
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .summary-card.rules h3 { color: var(--success); }
+        .summary-card.bpmn h3 { color: var(--info); }
+        .summary-card.code h3 { color: var(--highlight); }
+
+        .summary-card table {
+            width: 100%;
+            font-size: 0.82rem;
+            border-collapse: collapse;
+        }
+
+        .summary-card table td {
+            padding: 0.4rem 0.5rem;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .summary-card table td:first-child {
+            color: var(--muted);
+        }
+
+        /* Master Index */
+        .master-index {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            color: #e2e8f0;
+            border-radius: 12px;
+            padding: 2rem;
+            margin: 2.5rem 0;
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
+            font-size: 0.82rem;
+            line-height: 1.9;
+        }
+
+        .master-index h2 {
+            font-family: 'Segoe UI', sans-serif;
+            font-size: 1.3rem;
+            color: white;
+            margin-bottom: 1.5rem;
+        }
+
+        .master-index .section-title {
+            color: #fbbf24;
+            font-weight: 700;
+            margin-top: 1rem;
+        }
+
+        .master-index .tree-item {
+            padding-left: 1.5rem;
+            color: #cbd5e1;
+        }
+
+        .master-index .tree-item .file {
+            color: #67e8f9;
+        }
+
+        .master-index .tree-item .desc {
+            color: #94a3b8;
+        }
+
+        /* New Workflow Section */
+        .new-workflow {
+            background: var(--card);
+            border: 2px dashed var(--info);
+            border-radius: 12px;
+            padding: 2rem;
+            margin: 2.5rem 0;
+        }
+
+        .new-workflow h2 {
+            color: var(--info);
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+        }
+
+        .workflow-steps {
+            counter-reset: step;
+        }
+
+        .workflow-steps .wf-step {
+            position: relative;
+            padding: 1rem 1rem 1rem 3.5rem;
+            margin-bottom: 1rem;
+            background: #f8fafc;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+
+        .workflow-steps .wf-step::before {
+            counter-increment: step;
+            content: "Step " counter(step);
+            position: absolute;
+            left: 0.75rem;
+            top: 1rem;
+            font-size: 0.7rem;
+            font-weight: 700;
+            color: var(--info);
+            text-transform: uppercase;
+        }
+
+        .workflow-steps .wf-step h4 {
+            font-size: 0.9rem;
+            margin-bottom: 0.3rem;
+        }
+
+        .workflow-steps .wf-step p {
+            font-size: 0.85rem;
+            color: var(--muted);
+        }
+
+        .workflow-steps .wf-step code {
+            background: #e0f2fe;
+            color: #0369a1;
+            padding: 0.1rem 0.4rem;
+            border-radius: 3px;
+            font-size: 0.8rem;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 2rem;
+            color: var(--muted);
+            font-size: 0.85rem;
+            border-top: 1px solid var(--border);
+            margin-top: 3rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container { padding: 1rem; }
+            .hero { padding: 2rem 1.5rem; }
+            .hero h1 { font-size: 1.6rem; }
+            .timeline { padding-left: 2rem; }
+            .summary-grid { grid-template-columns: 1fr; }
+            .toc-grid { grid-template-columns: 1fr; }
+        }
+
+        /* Flow Diagram */
+        .flow-diagram {
+            background: #fafbfc;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            text-align: center;
+        }
+
+        .flow-diagram .flow-nodes {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .flow-node {
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .flow-node.frontend { background: #dbeafe; color: #1e40af; }
+        .flow-node.kafka { background: #fef3c7; color: #92400e; }
+        .flow-node.service { background: #d1fae5; color: #065f46; }
+        .flow-node.db { background: #ede9fe; color: #5b21b6; }
+        .flow-node.rules { background: #fce7f3; color: #9d174d; }
+
+        .flow-arrow {
+            color: var(--muted);
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+
+        /* Section Divider */
+        .section-divider {
+            height: 4px;
+            background: linear-gradient(90deg, var(--info), var(--success), var(--warning), var(--highlight));
+            border-radius: 2px;
+            margin: 3rem 0;
+            opacity: 0.5;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+
+    <!-- Hero Header -->
+    <div class="hero">
+        <h1>CMS 2.0 — Configuration Deep Dive</h1>
+        <p>How Everything Connects: From Complaint Submission to Auto-Close</p>
+        <span class="badge">RBI Complaint Management System</span>
+    </div>
+
+    <!-- Table of Contents -->
+    <div class="toc">
+        <h2>What This Document Covers</h2>
+        <p style="color: var(--muted); font-size: 0.9rem; margin-bottom: 1rem;">For each step in the complaint lifecycle: which file configures it, which code executes it, what triggers the next step, and how to change it.</p>
+        <div class="toc-grid">
+            <a href="#step-submit">t=0ms — Customer Submits Complaint</a>
+            <a href="#step-db">t=50ms — Saved to Database + Kafka</a>
+            <a href="#step-kafka">t=200ms — Kafka Event Published</a>
+            <a href="#step-workflow">t=500ms — Workflow Instance Started</a>
+            <a href="#step-rules">t=500ms — Drools Rules Fire</a>
+            <a href="#step-assigned">t=600ms — "complaint.assigned" Event</a>
+            <a href="#step-officer">t=1 day — Officer Accepts Task</a>
+            <a href="#step-resolve">t=5 days — Resolution Submitted</a>
+            <a href="#step-close">t=12 days — Auto-Close Timer</a>
+            <a href="#summary">Summary: What to Change Where</a>
+            <a href="#master-index">Configuration Master Index</a>
+            <a href="#new-workflow">Adding a New Workflow</a>
+        </div>
+    </div>
+
+    <!-- High Level Flow -->
+    <div class="flow-diagram">
+        <div class="flow-nodes">
+            <span class="flow-node frontend">Angular UI</span>
+            <span class="flow-arrow">→</span>
+            <span class="flow-node service">API Gateway</span>
+            <span class="flow-arrow">→</span>
+            <span class="flow-node service">Ingestion Service</span>
+            <span class="flow-arrow">→</span>
+            <span class="flow-node db">MySQL DB</span>
+            <span class="flow-arrow">→</span>
+            <span class="flow-node kafka">Kafka Event</span>
+            <span class="flow-arrow">→</span>
+            <span class="flow-node service">Workflow (jBPM)</span>
+            <span class="flow-arrow">+</span>
+            <span class="flow-node rules">Rules (Drools)</span>
+        </div>
+    </div>
+
+    <!-- Timeline -->
+    <div class="timeline">
+
+        <!-- Step 1: Submit -->
+        <div class="timeline-step" id="step-submit">
+            <div class="step-card">
+                <div class="step-header">
+                    <span class="step-time">t = 0ms</span>
+                    <span class="step-title">Customer Clicks "Submit Complaint"</span>
+                </div>
+                <p class="step-subtitle">Angular frontend calls the API Gateway</p>
+
+                <table class="config-table">
+                    <thead><tr><th>File</th><th>What It Configures</th></tr></thead>
+                    <tbody>
+                        <tr><td><code>cms-portal-frontend/src/app/services/complaint.service.ts</code></td><td>Frontend API call URL</td></tr>
+                        <tr><td><code>cms-api-gateway/src/main/resources/application.yml</code></td><td>Gateway routes <code>/api/v1/complaints/**</code> → Ingestion Service</td></tr>
+                    </tbody>
+                </table>
+
+                <div class="code-block">
+                    <span class="lang-label">HTTP Flow</span>
+<span class="comment">// Request path</span>
+Frontend → <span class="string">POST http://localhost:8080/api/v1/complaints</span>
+Gateway  → routes to <span class="string">http://localhost:8082/cms-ingestion/api/v1/complaints</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 2: DB Save -->
+        <div class="timeline-step" id="step-db">
+            <div class="step-card">
+                <div class="step-header">
+                    <span class="step-time">t = 50ms</span>
+                    <span class="step-title">Complaint Saved to Database + Kafka Event Published</span>
+                </div>
+                <p class="step-subtitle">Ingestion Service saves complaint and publishes Kafka event with category + priority in payload</p>
+
+                <table class="config-table">
+                    <thead><tr><th>File</th><th>What It Configures</th></tr></thead>
+                    <tbody>
+                        <tr><td><code>cms-ingestion-service/.../service/IngestionService.java</code></td><td><code>registerComplaint()</code> — saves to DB + publishes event</td></tr>
+                        <tr><td><code>cms-ingestion-service/.../service/DirectKafkaEventPublisher.java</code></td><td>HOW the Kafka event is published (dev-local: directly)</td></tr>
+                        <tr><td><code>cms-ingestion-service/src/main/resources/application-dev-local.yml</code></td><td>Kafka broker address, producer config</td></tr>
+                        <tr><td><code>cms-common/.../config/KafkaTopics.java</code></td><td>Topic name: <code>complaint.ingested</code></td></tr>
+                    </tbody>
+                </table>
+
+                <div class="code-block">
+                    <span class="lang-label">Java</span>
+<span class="comment">// IngestionService.java</span>
+ComplaintMaster saved = complaintRepository.<span class="method">save</span>(complaint);     <span class="comment">// → DATABASE</span>
+<span class="method">recordHistory</span>(saved.getComplaintId(), ...);                      <span class="comment">// → History table</span>
+<span class="method">insertOutboxEvent</span>(saved);                                        <span class="comment">// → KAFKA EVENT</span>
+
+<span class="comment">// insertOutboxEvent() builds the event</span>
+<span class="type">ComplaintEvent</span> event = ComplaintEvent.<span class="method">builder</span>()
+    .complaintId(complaint.getComplaintId())
+    .currentStatus(<span class="type">ComplaintStatus</span>.NEW)
+    .payload(<span class="string">"{\"category\":\"ATM\",\"priority\":\"HIGH\"}"</span>)  <span class="comment">// ← Rules need this</span>
+    .build();
+
+eventPublisher.<span class="method">publishComplaintEvent</span>(
+    KafkaTopics.COMPLAINT_INGESTED,    <span class="comment">// topic = "complaint.ingested"</span>
+    complaint.getComplaintId(),         <span class="comment">// key (for partitioning)</span>
+    event                               <span class="comment">// payload</span>
+);
+                </div>
+
+                <div class="info-box future">
+                    <h4>To Change in Future</h4>
+                    <ul>
+                        <li>Add more data to event → edit <code>insertOutboxEvent()</code></li>
+                        <li>Change topic name → edit <code>KafkaTopics.java</code> (all consumers must update)</li>
+                        <li>Add a new event → add new topic + new publisher call</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 3: Kafka -->
+        <div class="timeline-step" id="step-kafka">
+            <div class="step-card">
+                <div class="step-header">
+                    <span class="step-time">t = 200ms</span>
+                    <span class="step-title">Kafka Event Sitting in Topic</span>
+                </div>
+                <p class="step-subtitle">Message in <code>complaint.ingested</code> topic, consumed by two independent services</p>
+
+                <div class="code-block">
+                    <span class="lang-label">JSON (Kafka Message)</span>
+{
+  <span class="string">"eventId"</span>: <span class="string">"fb6e992e-..."</span>,
+  <span class="string">"complaintId"</span>: <span class="string">"CMP-20260527-000001"</span>,
+  <span class="string">"currentStatus"</span>: <span class="string">"NEW"</span>,
+  <span class="string">"payload"</span>: <span class="string">"{\"category\":\"ATM\",\"priority\":\"HIGH\"}"</span>,
+  <span class="string">"occurredAt"</span>: <span class="string">"2026-05-27T06:47:09Z"</span>,
+  <span class="string">"correlationId"</span>: <span class="string">"ddaf94a7-..."</span>
+}
+                </div>
+
+                <div class="info-box note">
+                    <h4>Who Is Listening</h4>
+                    <ul>
+                        <li><strong>Workflow Service</strong> (consumer group: <code>cms-workflow-group</code>)</li>
+                        <li><strong>Assignment Service</strong> (consumer group: <code>cms-assignment-group</code>)</li>
+                    </ul>
+                    <p style="margin-top: 0.5rem; font-size: 0.85rem;">Both consume the SAME message independently (different consumer groups).</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 4: Workflow -->
+        <div class="timeline-step" id="step-workflow">
+            <div class="step-card">
+                <div class="step-header">
+                    <span class="step-time">t = 500ms</span>
+                    <span class="step-title">Workflow Service: Process Instance Started</span>
+                </div>
+                <p class="step-subtitle">Kafka event consumed → jBPM process instance created (lives for days/weeks)</p>
+
+                <table class="config-table">
+                    <thead><tr><th>File</th><th>What It Configures</th></tr></thead>
+                    <tbody>
+                        <tr><td><code>cms-workflow-service/.../listener/ComplaintIngestedListener.java</code></td><td>Kafka listener — WHAT triggers the workflow</td></tr>
+                        <tr><td><code>cms-workflow-service/.../service/WorkflowService.java</code></td><td>HOW the jBPM process is started</td></tr>
+                        <tr><td><code>cms-workflow-service/.../processes/complaint-lifecycle.bpmn2</code></td><td>The PROCESS DEFINITION — all steps/timers/gateways</td></tr>
+                        <tr><td><code>cms-workflow-service/src/main/resources/application-dev-local.yml</code></td><td>Kafka consumer config (group-id, ack-mode)</td></tr>
+                    </tbody>
+                </table>
+
+                <div class="code-block">
+                    <span class="lang-label">Java</span>
+<span class="comment">// ComplaintIngestedListener.java — THE TRIGGER</span>
+<span class="annotation">@KafkaListener</span>(topics = KafkaTopics.COMPLAINT_INGESTED, groupId = <span class="string">"cms-workflow-group"</span>)
+<span class="keyword">public void</span> <span class="method">onComplaintIngested</span>(String message, Acknowledgment ack) {
+    <span class="type">ComplaintEvent</span> event = objectMapper.readValue(message, ComplaintEvent.<span class="keyword">class</span>);
+    workflowService.<span class="method">startComplaintWorkflow</span>(event);    <span class="comment">// ← Starts the process</span>
+    ack.<span class="method">acknowledge</span>();                                 <span class="comment">// ← Tells Kafka "processed"</span>
+}
+
+<span class="comment">// WorkflowService.java — STARTS THE BPMN PROCESS</span>
+<span class="keyword">public</span> String <span class="method">startComplaintWorkflow</span>(<span class="type">ComplaintEvent</span> event) {
+    Map&lt;String, Object&gt; params = <span class="keyword">new</span> HashMap&lt;&gt;();
+    params.put(<span class="string">"complaintId"</span>, event.getComplaintId());
+    params.put(<span class="string">"category"</span>, event.getPayload());
+    params.put(<span class="string">"correlationId"</span>, event.getCorrelationId());
+
+    <span class="comment">// Process ID must match: "com.rbi.cms.complaint-lifecycle"</span>
+    ProcessInstance pi = kieSession.<span class="method">startProcess</span>(PROCESS_ID, params);
+    <span class="keyword">return</span> pi.getId();
+}
+                </div>
+
+                <div class="code-block">
+                    <span class="lang-label">BPMN XML</span>
+<span class="comment">&lt;!-- complaint-lifecycle.bpmn2 — What jBPM executes --&gt;</span>
+
+<span class="comment">&lt;!-- 1. START EVENT --&gt;</span>
+<span class="xml-tag">&lt;startEvent</span> <span class="xml-attr">id=</span><span class="xml-val">"StartEvent"</span> <span class="xml-attr">name=</span><span class="xml-val">"Complaint Ingested"</span><span class="xml-tag">&gt;</span>
+
+<span class="comment">&lt;!-- 2. BUSINESS RULE TASK — calls Drools --&gt;</span>
+<span class="xml-tag">&lt;businessRuleTask</span> <span class="xml-attr">id=</span><span class="xml-val">"AssignmentTask"</span>
+                  <span class="xml-attr">tns:ruleFlowGroup=</span><span class="xml-val">"assignment"</span><span class="xml-tag">&gt;</span>
+    <span class="comment">&lt;!-- jBPM fires all rules in ruleFlowGroup="assignment" --&gt;</span>
+
+<span class="comment">&lt;!-- 3. HUMAN TASK — WAITS for officer --&gt;</span>
+<span class="xml-tag">&lt;userTask</span> <span class="xml-attr">id=</span><span class="xml-val">"OfficerReviewTask"</span><span class="xml-tag">&gt;</span>
+    <span class="xml-tag">&lt;potentialOwner&gt;</span>
+        #{assignedTeam}  <span class="comment">&lt;!-- Only this team sees the task --&gt;</span>
+    <span class="xml-tag">&lt;/potentialOwner&gt;</span>
+
+<span class="comment">&lt;!-- 4. SLA TIMER (30 days) --&gt;</span>
+<span class="xml-tag">&lt;boundaryEvent</span> <span class="xml-attr">attachedToRef=</span><span class="xml-val">"OfficerReviewTask"</span><span class="xml-tag">&gt;</span>
+    <span class="xml-tag">&lt;timerEventDefinition&gt;</span>
+        <span class="xml-tag">&lt;timeDuration&gt;</span><span class="string">P30D</span><span class="xml-tag">&lt;/timeDuration&gt;</span>  <span class="comment">&lt;!-- ISO 8601: 30 days --&gt;</span>
+    <span class="xml-tag">&lt;/timerEventDefinition&gt;</span>
+                </div>
+
+                <div class="info-box future">
+                    <h4>To Change in Future</h4>
+                    <ul>
+                        <li>New workflow step → edit <code>.bpmn2</code> (add task + sequence flow)</li>
+                        <li>Change SLA → edit <code>&lt;timeDuration&gt;P30D</code> to <code>P15D</code></li>
+                        <li>Change which rules fire → edit <code>tns:ruleFlowGroup</code> attribute</li>
+                        <li>New process type → create new <code>.bpmn2</code> + new listener</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 5: Rules -->
+        <div class="timeline-step" id="step-rules">
+            <div class="step-card">
+                <div class="step-header">
+                    <span class="step-time">t = 500ms</span>
+                    <span class="step-title">Assignment Service: Drools Rules Fire</span>
+                </div>
+                <p class="step-subtitle">Same Kafka event consumed independently → Drools determines team assignment</p>
+
+                <table class="config-table">
+                    <thead><tr><th>File</th><th>What It Configures</th></tr></thead>
+                    <tbody>
+                        <tr><td><code>cms-assignment-service/.../listener/ComplaintIngestedAssignmentListener.java</code></td><td>Kafka listener — triggers assignment</td></tr>
+                        <tr><td><code>cms-assignment-service/.../service/AssignmentService.java</code></td><td>HOW Drools is called</td></tr>
+                        <tr><td><code>cms-assignment-service/.../config/DroolsConfig.java</code></td><td>Loads .drl files into KieContainer</td></tr>
+                        <tr><td><code>cms-assignment-service/src/main/resources/rules/assignment-rules.drl</code></td><td>THE RULES themselves</td></tr>
+                        <tr><td><code>cms-rules-service</code> (Admin UI)</td><td>Database-managed rules (replaces .drl in production)</td></tr>
+                    </tbody>
+                </table>
+
+                <div class="code-block">
+                    <span class="lang-label">Java</span>
+<span class="comment">// AssignmentService.java — HOW DROOLS EXECUTES</span>
+<span class="keyword">public</span> <span class="type">AssignmentFact</span> <span class="method">assignComplaint</span>(String complaintId, String category, String priority, Double amount) {
+    <span class="type">AssignmentFact</span> fact = AssignmentFact.<span class="method">builder</span>()
+        .complaintId(complaintId)
+        .category(category)          <span class="comment">// "ATM"</span>
+        .priority(priority)          <span class="comment">// "HIGH"</span>
+        .amountInvolved(amount)
+        .build();
+
+    <span class="type">KieSession</span> kieSession = kieContainer.<span class="method">newKieSession</span>();
+    <span class="keyword">try</span> {
+        kieSession.<span class="method">insert</span>(fact);     <span class="comment">// Put fact into rule engine</span>
+        kieSession.<span class="method">fireAllRules</span>();   <span class="comment">// Execute all matching rules</span>
+    } <span class="keyword">finally</span> {
+        kieSession.<span class="method">dispose</span>();
+    }
+
+    <span class="comment">// fact.assignedTeam = "ATM_TEAM", fact.escalated = true</span>
+    <span class="keyword">return</span> fact;
+}
+                </div>
+
+                <div class="code-block">
+                    <span class="lang-label">Drools (.drl)</span>
+<span class="keyword">rule</span> <span class="string">"ATM Complaints - Assign to ATM Team"</span>
+    <span class="annotation">salience 100</span>                                    <span class="comment">// fires FIRST (highest priority)</span>
+    <span class="keyword">when</span>
+        $fact : <span class="type">AssignmentFact</span>(category == <span class="string">"ATM"</span>)   <span class="comment">// CONDITION: category matches</span>
+    <span class="keyword">then</span>
+        $fact.<span class="method">setAssignedTeam</span>(<span class="string">"ATM_TEAM"</span>);          <span class="comment">// ACTION: set team</span>
+        <span class="method">update</span>($fact);
+<span class="keyword">end</span>
+
+<span class="keyword">rule</span> <span class="string">"High Priority - Auto Escalate to Senior Officer"</span>
+    <span class="annotation">salience 50</span>                                     <span class="comment">// fires SECOND</span>
+    <span class="keyword">when</span>
+        $fact : <span class="type">AssignmentFact</span>(priority == <span class="string">"HIGH"</span> || priority == <span class="string">"CRITICAL"</span>)
+    <span class="keyword">then</span>
+        $fact.<span class="method">setEscalated</span>(<span class="keyword">true</span>);                   <span class="comment">// ACTION: mark escalated</span>
+        $fact.<span class="method">setEscalationLevel</span>(1);
+        <span class="method">update</span>($fact);
+<span class="keyword">end</span>
+                </div>
+
+                <div class="info-box future">
+                    <h4>To Change in Future (No Code Change, No Restart)</h4>
+                    <ul>
+                        <li>New team → Admin UI → Create Rule → Deploy</li>
+                        <li>Change category→team mapping → Admin UI → Edit Rule → Deploy</li>
+                        <li>New escalation threshold → Admin UI → Create Escalation Rule → Deploy</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 6: Assigned Event -->
+        <div class="timeline-step" id="step-assigned">
+            <div class="step-card">
+                <div class="step-header">
+                    <span class="step-time">t = 600ms</span>
+                    <span class="step-title">Kafka Event: "complaint.assigned" Published</span>
+                </div>
+                <p class="step-subtitle">Assignment Service publishes the result to <code>complaint.assigned</code> topic</p>
+
+                <table class="config-table">
+                    <thead><tr><th>File</th><th>What It Configures</th></tr></thead>
+                    <tbody>
+                        <tr><td><code>ComplaintIngestedAssignmentListener.java</code></td><td>Publishes to <code>KafkaTopics.COMPLAINT_ASSIGNED</code></td></tr>
+                        <tr><td><code>KafkaTopics.java</code></td><td>Topic name = <code>"complaint.assigned"</code></td></tr>
+                    </tbody>
+                </table>
+
+                <div class="info-box note">
+                    <h4>Who Listens to complaint.assigned</h4>
+                    <ul>
+                        <li>Workflow Service (updates process instance with assignment info)</li>
+                        <li>Notification Service (informs the officer) — future</li>
+                        <li>Audit Service (logs assignment) — future</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 7: Officer Action -->
+        <div class="timeline-step" id="step-officer">
+            <div class="step-card">
+                <div class="step-header">
+                    <span class="step-time">t = 1 day</span>
+                    <span class="step-title">Officer Logs In, Sees Task, Clicks "Accept"</span>
+                </div>
+                <p class="step-subtitle">Human Task in jBPM claimed and completed — status moves to IN_PROGRESS</p>
+
+                <table class="config-table">
+                    <thead><tr><th>File</th><th>What It Configures</th></tr></thead>
+                    <tbody>
+                        <tr><td><code>complaint-lifecycle.bpmn2</code> (userTask)</td><td><code>&lt;userTask&gt;</code> definition — who can claim it</td></tr>
+                        <tr><td><code>WorkflowController.java</code></td><td>REST API that officer calls to transition state</td></tr>
+                    </tbody>
+                </table>
+
+                <div class="code-block">
+                    <span class="lang-label">BPMN XML</span>
+<span class="comment">&lt;!-- BPMN defines WHO can work on this task --&gt;</span>
+<span class="xml-tag">&lt;userTask</span> <span class="xml-attr">id=</span><span class="xml-val">"OfficerReviewTask"</span><span class="xml-tag">&gt;</span>
+    <span class="xml-tag">&lt;potentialOwner&gt;</span>
+        #{assignedTeam}  <span class="comment">&lt;!-- "ATM_TEAM" (set by rules earlier) --&gt;</span>
+    <span class="xml-tag">&lt;/potentialOwner&gt;</span>
+<span class="xml-tag">&lt;/userTask&gt;</span>
+                </div>
+
+                <div class="code-block">
+                    <span class="lang-label">Java</span>
+<span class="comment">// Officer calls: POST /api/v1/workflow/{complaintId}/transition?targetStatus=IN_PROGRESS</span>
+
+<span class="annotation">@PostMapping</span>(<span class="string">"/{complaintId}/transition"</span>)
+<span class="keyword">public</span> ResponseEntity&lt;ApiResponse&lt;Void&gt;&gt; <span class="method">transitionState</span>(
+    <span class="annotation">@PathVariable</span> String complaintId,
+    <span class="annotation">@RequestParam</span> <span class="type">ComplaintStatus</span> targetStatus) {    <span class="comment">// IN_PROGRESS</span>
+
+    workflowService.<span class="method">transitionState</span>(complaintId, targetStatus, remarks);
+}
+
+<span class="comment">// WorkflowService.java — signals the jBPM process</span>
+kieSession.<span class="method">signalEvent</span>(<span class="string">"transition"</span>, params);  <span class="comment">// ← Wakes up the process</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 8: Resolution -->
+        <div class="timeline-step" id="step-resolve">
+            <div class="step-card">
+                <div class="step-header">
+                    <span class="step-time">t = 5 days</span>
+                    <span class="step-title">Officer Submits Resolution</span>
+                </div>
+                <p class="step-subtitle">BPMN gateway decides: normal resolution OR escalation path</p>
+
+                <div class="code-block">
+                    <span class="lang-label">BPMN XML (Gateway Logic)</span>
+<span class="comment">&lt;!-- After officer submits, gateway decides the path --&gt;</span>
+<span class="xml-tag">&lt;exclusiveGateway</span> <span class="xml-attr">id=</span><span class="xml-val">"InvestigationGateway"</span><span class="xml-tag">/&gt;</span>
+
+<span class="comment">&lt;!-- Path 1: Normal resolution --&gt;</span>
+<span class="xml-tag">&lt;sequenceFlow&gt;</span>
+    <span class="xml-tag">&lt;conditionExpression&gt;</span>#{escalationReason == null}<span class="xml-tag">&lt;/conditionExpression&gt;</span>
+    <span class="comment">&lt;!-- No escalation → go to Resolution --&gt;</span>
+<span class="xml-tag">&lt;/sequenceFlow&gt;</span>
+
+<span class="comment">&lt;!-- Path 2: Needs escalation --&gt;</span>
+<span class="xml-tag">&lt;sequenceFlow&gt;</span>
+    <span class="xml-tag">&lt;conditionExpression&gt;</span>#{escalationReason != null}<span class="xml-tag">&lt;/conditionExpression&gt;</span>
+    <span class="comment">&lt;!-- Escalation reason exists → Escalated Review --&gt;</span>
+<span class="xml-tag">&lt;/sequenceFlow&gt;</span>
+                </div>
+
+                <div class="info-box important">
+                    <h4>BPMN Conditions vs Rules — Key Difference</h4>
+                    <ul>
+                        <li><strong>BPMN gateway conditions</strong> = simple routing ("which path to take") — rarely changes</li>
+                        <li><strong>Rules</strong> = complex business decisions ("which team, what level") — changes frequently</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 9: Auto-Close -->
+        <div class="timeline-step" id="step-close">
+            <div class="step-card">
+                <div class="step-header">
+                    <span class="step-time">t = 12 days</span>
+                    <span class="step-title">Auto-Close Timer Fires → Complaint CLOSED</span>
+                </div>
+                <p class="step-subtitle">7-day timer expires after resolution → workflow auto-closes → process instance ends</p>
+
+                <div class="code-block">
+                    <span class="lang-label">BPMN XML</span>
+<span class="comment">&lt;!-- Timer waits 7 days after notification --&gt;</span>
+<span class="xml-tag">&lt;intermediateCatchEvent</span> <span class="xml-attr">id=</span><span class="xml-val">"ClosureTimer"</span><span class="xml-tag">&gt;</span>
+    <span class="xml-tag">&lt;timerEventDefinition&gt;</span>
+        <span class="xml-tag">&lt;timeDuration&gt;</span><span class="string">P7D</span><span class="xml-tag">&lt;/timeDuration&gt;</span>    <span class="comment">&lt;!-- ISO 8601: 7 days --&gt;</span>
+    <span class="xml-tag">&lt;/timerEventDefinition&gt;</span>
+<span class="xml-tag">&lt;/intermediateCatchEvent&gt;</span>
+
+<span class="comment">&lt;!-- After timer fires → END --&gt;</span>
+<span class="xml-tag">&lt;endEvent</span> <span class="xml-attr">id=</span><span class="xml-val">"EndEvent"</span> <span class="xml-attr">name=</span><span class="xml-val">"Complaint Closed"</span><span class="xml-tag">/&gt;</span>
+<span class="comment">&lt;!-- Process instance ends. Lifecycle complete. --&gt;</span>
+                </div>
+
+                <div class="info-box future">
+                    <h4>To Change in Future</h4>
+                    <ul>
+                        <li>Auto-close 7→14 days → edit <code>P7D</code> to <code>P14D</code> in BPMN</li>
+                        <li>SLA 30→15 days → edit <code>P30D</code> to <code>P15D</code> in BPMN</li>
+                        <li>Remove auto-close → remove timer event from BPMN</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+    </div><!-- end timeline -->
+
+    <div class="section-divider"></div>
+
+    <!-- Summary Section -->
+    <div class="summary-section" id="summary">
+        <h2>Summary: What to Change Where</h2>
+        <div class="summary-grid">
+            <div class="summary-card rules">
+                <h3><span style="font-size: 1.2rem;">&#9679;</span> Rules Only (Admin UI — No Restart)</h3>
+                <table>
+                    <tr><td>Add new team (FOREX_TEAM)</td><td>Create Rule → Deploy</td></tr>
+                    <tr><td>Change category→team</td><td>Edit Rule → Deploy</td></tr>
+                    <tr><td>Change escalation thresholds</td><td>Edit Escalation Rule</td></tr>
+                    <tr><td>Add high-value amount threshold</td><td>Create Escalation Rule</td></tr>
+                    <tr><td>New complaint category</td><td>Create Assignment Rule</td></tr>
+                </table>
+            </div>
+            <div class="summary-card bpmn">
+                <h3><span style="font-size: 1.2rem;">&#9679;</span> BPMN Edit (Rare — Requires Redeploy)</h3>
+                <table>
+                    <tr><td>New workflow state</td><td>Add userTask + sequenceFlow</td></tr>
+                    <tr><td>Change SLA timer</td><td>Edit &lt;timeDuration&gt;</td></tr>
+                    <tr><td>Add parallel approval</td><td>Add parallelGateway</td></tr>
+                    <tr><td>Change task sequence</td><td>Rewire sequenceFlows</td></tr>
+                    <tr><td>Add auto notification</td><td>Add serviceTask</td></tr>
+                </table>
+            </div>
+            <div class="summary-card code">
+                <h3><span style="font-size: 1.2rem;">&#9679;</span> Code Changes (Very Rare)</h3>
+                <table>
+                    <tr><td>New Kafka topic</td><td>KafkaTopics.java + listener</td></tr>
+                    <tr><td>Change event payload</td><td>IngestionService + consumers</td></tr>
+                    <tr><td>New service in chain</td><td>New @KafkaListener class</td></tr>
+                    <tr><td>Change process variables</td><td>WorkflowService method</td></tr>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Master Index -->
+    <div class="master-index" id="master-index">
+        <h2>Configuration Files Master Index</h2>
+
+        <div class="section-title">KAFKA EVENT FLOW:</div>
+        <div class="tree-item">├── Topic names          → <span class="file">cms-common/.../KafkaTopics.java</span></div>
+        <div class="tree-item">├── Who publishes        → <span class="file">IngestionService.insertOutboxEvent()</span></div>
+        <div class="tree-item">├── Who consumes         → <span class="file">*Listener.java classes (@KafkaListener)</span></div>
+        <div class="tree-item">├── Consumer groups      → <span class="file">application-dev-local.yml (each service)</span></div>
+        <div class="tree-item">└── Broker address       → <span class="file">application-dev-local.yml (bootstrap-servers)</span></div>
+
+        <div class="section-title">WORKFLOW (BPMN):</div>
+        <div class="tree-item">├── Process definition   → <span class="file">processes/complaint-lifecycle.bpmn2</span></div>
+        <div class="tree-item">├── Process ID           → <span class="file">"com.rbi.cms.complaint-lifecycle"</span></div>
+        <div class="tree-item">├── Timers (SLA/close)   → <span class="file">&lt;timeDuration&gt; in .bpmn2</span></div>
+        <div class="tree-item">├── Gateway conditions   → <span class="file">&lt;conditionExpression&gt; in .bpmn2</span></div>
+        <div class="tree-item">├── Task ownership       → <span class="file">&lt;potentialOwner&gt; in .bpmn2</span></div>
+        <div class="tree-item">└── Which rules to call  → <span class="file">tns:ruleFlowGroup attribute in .bpmn2</span></div>
+
+        <div class="section-title">RULES (DROOLS):</div>
+        <div class="tree-item">├── Rule definitions     → <span class="file">Database (managed via Admin UI)</span></div>
+        <div class="tree-item">├── Static rules (dev)   → <span class="file">src/main/resources/rules/*.drl</span></div>
+        <div class="tree-item">├── Drools config        → <span class="file">DroolsConfig.java (loads rules)</span></div>
+        <div class="tree-item">├── Fact classes         → <span class="file">cms-common/.../dto/AssignmentFact.java</span></div>
+        <div class="tree-item">└── Engine reload        → <span class="file">Rules Service /api/v1/rules/deploy</span></div>
+
+        <div class="section-title">ROUTING & INFRASTRUCTURE:</div>
+        <div class="tree-item">├── API Gateway routes   → <span class="file">cms-api-gateway/application.yml</span></div>
+        <div class="tree-item">├── Service ports        → <span class="file">each service's application.yml</span></div>
+        <div class="tree-item">├── CORS config          → <span class="file">DevLocalSecurityConfig.java</span></div>
+        <div class="tree-item">└── Database config      → <span class="file">application-dev-local.yml per service</span></div>
+    </div>
+
+    <!-- New Workflow Section -->
+    <div class="new-workflow" id="new-workflow">
+        <h2>Adding a Completely NEW Workflow (e.g., "Loan Complaint Workflow")</h2>
+        <div class="workflow-steps">
+            <div class="wf-step">
+                <h4>Create new BPMN file</h4>
+                <p><code>cms-workflow-service/src/main/resources/processes/loan-complaint-lifecycle.bpmn2</code><br>
+                Process ID: <code>"com.rbi.cms.loan-complaint-lifecycle"</code></p>
+            </div>
+            <div class="wf-step">
+                <h4>Modify Kafka listener to route to correct workflow</h4>
+                <p>In <code>ComplaintIngestedListener.java</code>: check category → start appropriate process</p>
+            </div>
+            <div class="wf-step">
+                <h4>Create rules specific to the new workflow</h4>
+                <p>Admin UI → Create new rules with category <code>"LOAN_ASSIGNMENT"</code></p>
+            </div>
+            <div class="wf-step">
+                <h4>Deploy</h4>
+                <p>Restart workflow service (picks up new .bpmn2) + Deploy rules via Admin UI (no restart)</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+        <p><strong>CMS 2.0</strong> — RBI Complaint Management System | Configuration Deep Dive</p>
+        <p>Generated on 2026-05-27 | Angular 20 + Spring Boot + Kafka + jBPM + Drools</p>
+    </div>
+
+</div>
+
+</body>
+</html>

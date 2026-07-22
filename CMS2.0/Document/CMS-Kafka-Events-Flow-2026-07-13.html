@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CMS 2.0 — Kafka Events & Flow (2026-07-13)</title>
+    <style>
+        :root { --blue: #1e40af; --green: #059669; --red: #dc2626; --orange: #ea580c; --purple: #7c3aed; --teal: #0d9488; --gray: #475569; --bg: #f8fafc; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', -apple-system, sans-serif; background: var(--bg); color: #1e293b; line-height: 1.7; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 30px 40px; }
+        h1 { color: var(--blue); font-size: 26px; margin-bottom: 8px; border-bottom: 3px solid var(--blue); padding-bottom: 12px; }
+        .subtitle { color: var(--gray); font-size: 14px; margin-bottom: 30px; }
+        h2 { color: #0f172a; font-size: 20px; margin: 36px 0 16px; padding: 10px 16px; background: #e2e8f0; border-left: 4px solid var(--blue); border-radius: 4px; }
+        h3 { color: var(--blue); font-size: 16px; margin: 24px 0 10px; }
+        h4 { color: #334155; font-size: 14px; margin: 16px 0 8px; font-weight: 700; }
+        p, li { font-size: 14px; margin-bottom: 6px; }
+        ul, ol { padding-left: 24px; margin-bottom: 14px; }
+        pre { background: #1e293b; color: #e2e8f0; padding: 20px 24px; border-radius: 10px; overflow-x: auto; font-size: 12.5px; line-height: 1.7; margin: 12px 0 16px; }
+        code { background: #e2e8f0; color: #be185d; padding: 2px 6px; border-radius: 3px; font-size: 13px; }
+        pre code { background: none; color: inherit; padding: 0; }
+        .card { background: white; border: 1px solid #e2e8f0; border-radius: 10px; padding: 20px 24px; margin: 16px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+        .card-blue { border-left: 4px solid var(--blue); }
+        .card-green { border-left: 4px solid var(--green); }
+        .card-purple { border-left: 4px solid var(--purple); }
+        .card-orange { border-left: 4px solid var(--orange); }
+        .card-teal { border-left: 4px solid var(--teal); }
+        .card-red { border-left: 4px solid var(--red); }
+        table { width: 100%; border-collapse: collapse; margin: 12px 0 16px; font-size: 13px; }
+        th { background: #1e40af; color: white; padding: 10px 12px; text-align: left; }
+        td { border: 1px solid #e2e8f0; padding: 8px 12px; vertical-align: top; }
+        tr:nth-child(even) { background: #f8fafc; }
+        .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+        .badge-blue { background: #dbeafe; color: #1e40af; }
+        .badge-green { background: #d1fae5; color: #065f46; }
+        .badge-orange { background: #fef3c7; color: #92400e; }
+        .badge-red { background: #fee2e2; color: #991b1b; }
+        .badge-purple { background: #ede9fe; color: #5b21b6; }
+        .badge-teal { background: #ccfbf1; color: #115e59; }
+        .info { background: #dbeafe; border: 1px solid #60a5fa; border-radius: 8px; padding: 12px 16px; margin: 12px 0; font-size: 13px; }
+        .info::before { content: "ℹ️ "; }
+        .diagram { background: #1e293b; color: #e2e8f0; padding: 24px; border-radius: 10px; font-family: 'Cascadia Code', 'Fira Code', 'Courier New', monospace; font-size: 12px; line-height: 1.7; overflow-x: auto; white-space: pre; margin: 16px 0; }
+        @media print { body { font-size: 12px; } pre { font-size: 10px; } .container { padding: 10px; } }
+    </style>
+</head>
+<body>
+<div class="container">
+
+<h1>CMS 2.0 — All Kafka Events & Detailed Flow</h1>
+<p class="subtitle">Date: 13 July 2026 | Source: <code>cms-common/config/KafkaTopics.java</code> + All Listener Classes</p>
+
+<!-- ════════════════════════════════════════════════════════════════ -->
+<h2>1. All Kafka Topics (Defined in Code)</h2>
+
+<div class="card card-blue">
+<h4>Source: <code>cms-common/src/main/java/com/rbi/cms/common/config/KafkaTopics.java</code></h4>
+<table>
+<tr><th>#</th><th>Topic Name</th><th>Partitions</th><th>Replicas</th><th>Purpose</th></tr>
+<tr><td>1</td><td><code>complaint.ingested</code></td><td>6</td><td>3</td><td>New complaint registered — triggers entire downstream flow</td></tr>
+<tr><td>2</td><td><code>complaint.assigned</code></td><td>6</td><td>3</td><td>Complaint assigned to an officer/team</td></tr>
+<tr><td>3</td><td><code>complaint.inprogress</code></td><td>6</td><td>3</td><td>Officer has started working on complaint</td></tr>
+<tr><td>4</td><td><code>complaint.escalated</code></td><td>6</td><td>3</td><td>SLA breach or manual escalation</td></tr>
+<tr><td>5</td><td><code>complaint.resolved</code></td><td>6</td><td>3</td><td>Complaint resolved by officer</td></tr>
+<tr><td>6</td><td><code>complaint.closed</code></td><td>6</td><td>3</td><td>Final closure (after resolution or rejection)</td></tr>
+<tr><td>7</td><td><code>complaint.dlq</code></td><td>3</td><td>3</td><td>Dead Letter Queue — failed events for manual investigation</td></tr>
+</table>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════ -->
+<h2>2. Event Producers (Who Publishes What)</h2>
+
+<table>
+<tr><th>Producer Service</th><th>Topic Published</th><th>Trigger</th></tr>
+<tr><td><strong>cms-backend</strong><br><code>ComplaintEventPublisher.java</code></td><td><code>complaint.ingested</code></td><td>Complainant submits via public portal (online filing)</td></tr>
+<tr><td><strong>cms-ingestion-service</strong><br><code>IngestionService.java</code></td><td><code>complaint.ingested</code></td><td>Complaint registered via email syndication / CRPC physical letter</td></tr>
+<tr><td><strong>cms-ingestion-service</strong><br><code>IngestionService.java</code></td><td><code>complaint.assigned</code><br><code>complaint.inprogress</code><br><code>complaint.resolved</code><br><code>complaint.escalated</code><br><code>complaint.closed</code></td><td>Status transitions triggered by officer actions</td></tr>
+<tr><td><strong>cms-assignment-service</strong><br><code>ComplaintIngestedAssignmentListener.java</code></td><td><code>complaint.assigned</code></td><td>After auto-assignment completes (round-robin)</td></tr>
+<tr><td><strong>cms-sla-monitor-service</strong><br><code>SlaMonitorService.java</code></td><td><code>complaint.escalated</code></td><td>Scheduled job detects SLA breach (due date passed)</td></tr>
+<tr><td><strong>cms-outbox-publisher</strong><br><code>OutboxPublisherService.java</code></td><td><em>Any topic</em> (from outbox table)</td><td>Polls outbox table every 5s, relays pending events to Kafka</td></tr>
+</table>
+
+<!-- ════════════════════════════════════════════════════════════════ -->
+<h2>3. Event Consumers (Who Listens to What)</h2>
+
+<table>
+<tr><th>Consumer Service</th><th>Consumer Group</th><th>Topics Listened</th><th>Action Taken</th></tr>
+<tr>
+    <td><strong>cms-workflow-service</strong><br><code>ComplaintIngestedListener.java</code></td>
+    <td><code>cms-workflow-group</code></td>
+    <td><code>complaint.ingested</code></td>
+    <td>Starts BPMN workflow, initializes state machine, sets initial status</td>
+</tr>
+<tr>
+    <td><strong>cms-assignment-service</strong><br><code>ComplaintIngestedAssignmentListener.java</code></td>
+    <td><code>cms-assignment-group</code></td>
+    <td><code>complaint.ingested</code></td>
+    <td>Runs Drools rules, selects officer (round-robin from Keycloak), publishes <code>complaint.assigned</code></td>
+</tr>
+<tr>
+    <td><strong>cms-notification-service</strong><br><code>ComplaintEventNotificationListener.java</code></td>
+    <td><code>cms-notification-group</code></td>
+    <td><code>complaint.ingested</code><br><code>complaint.assigned</code><br><code>complaint.resolved</code><br><code>complaint.escalated</code></td>
+    <td>Sends Email/SMS to complainant at every status change</td>
+</tr>
+<tr>
+    <td><strong>cms-search-service</strong><br><code>ComplaintIndexingListener.java</code></td>
+    <td><code>cms-search-group</code></td>
+    <td><code>complaint.ingested</code><br><code>complaint.assigned</code><br><code>complaint.inprogress</code><br><code>complaint.escalated</code><br><code>complaint.resolved</code><br><code>complaint.closed</code></td>
+    <td>Indexes/updates complaint document in OpenSearch for full-text search</td>
+</tr>
+</table>
+
+<!-- ════════════════════════════════════════════════════════════════ -->
+<h2>4. Detailed Flow for Each Kafka Event</h2>
+
+<!-- ─── EVENT 1: complaint.ingested ─── -->
+<h3>4.1 — <code>complaint.ingested</code></h3>
+<p><span class="badge badge-green">MOST IMPORTANT EVENT</span> — This is the starting point of the entire system.</p>
+
+<div class="diagram">
+┌─────────────────────────────────────────────────────────────────────────────────────────┐
+│  EVENT: complaint.ingested                                                              │
+│  Published by: cms-backend OR cms-ingestion-service                                     │
+│  Trigger: New complaint created (Online / Email / Physical Letter)                      │
+└─────────────────────────────────────────────────────────────────────────────────────────┘
+
+  PUBLISHER(S):
+  ─────────────
+  ┌──────────────────────────┐          ┌──────────────────────────┐
+  │  cms-backend             │          │  cms-ingestion-service   │
+  │  ComplaintEventPublisher │          │  IngestionService        │
+  │                          │          │                          │
+  │  Trigger: POST /api/v1/  │          │  Trigger: Email ingest   │
+  │  complaints/register     │          │  or CRPC physical letter │
+  └────────────┬─────────────┘          └────────────┬─────────────┘
+               │                                     │
+               └──────────────┬──────────────────────┘
+                              │
+                              ▼
+  ┌───────────────────────────────────────────────────────────────────────────────────────┐
+  │                    KAFKA TOPIC: complaint.ingested                                     │
+  │                    Partitions: 6 | Key: complaintId                                   │
+  └───────────────────────────────────┬───────────────────────────────────────────────────┘
+                                      │
+         ┌────────────────────────────┼────────────────────────────┐
+         │                            │                            │
+         ▼                            ▼                            ▼
+  ┌──────────────────┐     ┌──────────────────────┐     ┌──────────────────────┐
+  │ cms-workflow     │     │ cms-assignment       │     │ cms-notification     │
+  │ -service         │     │ -service             │     │ -service             │
+  │                  │     │                      │     │                      │
+  │ Group:           │     │ Group:               │     │ Group:               │
+  │ cms-workflow-    │     │ cms-assignment-      │     │ cms-notification-    │
+  │ group            │     │ group                │     │ group                │
+  │                  │     │                      │     │                      │
+  │ ACTION:          │     │ ACTION:              │     │ ACTION:              │
+  │ • Start BPMN    │     │ • Extract category   │     │ • Send acknowledg-   │
+  │   workflow       │     │   & priority from    │     │   ment Email/SMS     │
+  │ • Initialize    │     │   event payload      │     │   to complainant     │
+  │   state machine │     │ • Query Keycloak     │     │   "Your complaint    │
+  │ • Set status:   │     │   for available      │     │    CMS-XXXXXXX has   │
+  │   NEW            │     │   officers           │     │    been received"    │
+  │ • Start SLA     │     │ • Apply Drools rules │     │                      │
+  │   timer          │     │ • Round-robin assign │     │                      │
+  │                  │     │ • Publish:           │     │                      │
+  │                  │     │   complaint.assigned │     │                      │
+  └──────────────────┘     └──────────────────────┘     └──────────────────────┘
+                                                                   │
+         ┌─────────────────────────────────────────────────────────┘
+         │
+         ▼
+  ┌──────────────────────┐
+  │ cms-search-service   │
+  │                      │
+  │ Group:               │
+  │ cms-search-group     │
+  │                      │
+  │ ACTION:              │
+  │ • Create new         │
+  │   document in        │
+  │   OpenSearch index   │
+  │ • Fields: complaintId│
+  │   status, category,  │
+  │   priority, createdAt│
+  └──────────────────────┘
+</div>
+
+<div class="card card-green">
+<h4>Event Payload (JSON)</h4>
+<pre><code>{
+  "eventId": "uuid-random",
+  "complaintId": "CMS-20260713-A1B2C3",
+  "previousStatus": null,
+  "currentStatus": "NEW",
+  "occurredAt": "2026-07-13T10:30:00Z",
+  "correlationId": "uuid-correlation",
+  "payload": "{\"category\":\"ATM\",\"priority\":\"HIGH\",\"complainantEmail\":\"user@example.com\",\"complainantPhone\":\"9876543210\"}"
+}</code></pre>
+</div>
+
+<!-- ─── EVENT 2: complaint.assigned ─── -->
+<h3>4.2 — <code>complaint.assigned</code></h3>
+
+<div class="diagram">
+┌─────────────────────────────────────────────────────────────────────────────────────────┐
+│  EVENT: complaint.assigned                                                              │
+│  Published by: cms-assignment-service                                                   │
+│  Trigger: Officer auto-assigned via round-robin / Drools rules                          │
+└─────────────────────────────────────────────────────────────────────────────────────────┘
+
+  PUBLISHER:
+  ──────────
+  ┌────────────────────────────────────────────────┐
+  │  cms-assignment-service                        │
+  │  ComplaintIngestedAssignmentListener.java      │
+  │                                                │
+  │  Logic:                                        │
+  │  1. Receives complaint.ingested event          │
+  │  2. Extracts category + priority               │
+  │  3. Calls AssignmentService.assignComplaint()  │
+  │     → Queries Keycloak for RBIO_OFFICER role   │
+  │     → Applies round-robin selection            │
+  │     → Returns: assigned team + officer name    │
+  │  4. Publishes complaint.assigned               │
+  └───────────────────────┬────────────────────────┘
+                          │
+                          ▼
+  ┌───────────────────────────────────────────────────────────────────────────────────────┐
+  │                    KAFKA TOPIC: complaint.assigned                                     │
+  │                    Key: complaintId                                                    │
+  └──────────────────────────────────┬────────────────────────────────────────────────────┘
+                                     │
+              ┌──────────────────────┼──────────────────────┐
+              │                      │                      │
+              ▼                      ▼                      ▼
+  ┌──────────────────────┐  ┌──────────────────┐  ┌──────────────────────┐
+  │ cms-notification     │  │ cms-search       │  │ (cms-audit-service)  │
+  │ -service             │  │ -service         │  │                      │
+  │                      │  │                  │  │ ACTION:              │
+  │ ACTION:              │  │ ACTION:          │  │ • Log assignment     │
+  │ • Send SMS/Email:    │  │ • Update         │  │   event in audit     │
+  │   "Your complaint    │  │   OpenSearch     │  │   trail              │
+  │    has been assigned │  │   document:      │  │                      │
+  │    to an officer.    │  │   status →       │  │                      │
+  │    Expected          │  │   ASSIGNED,      │  │                      │
+  │    resolution within │  │   assignedTo →   │  │                      │
+  │    30 days."         │  │   officer name   │  │                      │
+  └──────────────────────┘  └──────────────────┘  └──────────────────────┘
+</div>
+
+<div class="card card-green">
+<h4>Event Payload (JSON)</h4>
+<pre><code>{
+  "eventId": "uuid-random",
+  "complaintId": "CMS-20260713-A1B2C3",
+  "previousStatus": "NEW",
+  "currentStatus": "ASSIGNED",
+  "assignedTo": "RBIO Officer Team",
+  "occurredAt": "2026-07-13T10:30:05Z",
+  "correlationId": "uuid-same-as-ingested"
+}</code></pre>
+</div>
+
+<!-- ─── EVENT 3: complaint.inprogress ─── -->
+<h3>4.3 — <code>complaint.inprogress</code></h3>
+
+<div class="diagram">
+┌─────────────────────────────────────────────────────────────────────────────────────────┐
+│  EVENT: complaint.inprogress                                                            │
+│  Published by: cms-ingestion-service (via status change API)                            │
+│  Trigger: RBIO officer begins assessment (clicks "Start Working")                       │
+└─────────────────────────────────────────────────────────────────────────────────────────┘
+
+  PUBLISHER:
+  ──────────
+  ┌────────────────────────────────────────────────┐
+  │  cms-ingestion-service                         │
+  │  IngestionService.updateComplaintStatus()      │
+  │                                                │
+  │  Called when: RBIO officer opens complaint     │
+  │  detail and starts assessment                  │
+  │                                                │
+  │  Status change: ASSIGNED → IN_PROGRESS         │
+  └───────────────────────┬────────────────────────┘
+                          │
+                          ▼
+  ┌───────────────────────────────────────────────────────────────────────────────────────┐
+  │                    KAFKA TOPIC: complaint.inprogress                                   │
+  └──────────────────────────────────┬────────────────────────────────────────────────────┘
+                                     │
+              ┌──────────────────────┤
+              │                      │
+              ▼                      ▼
+  ┌──────────────────────┐  ┌──────────────────┐
+  │ cms-search-service   │  │ (cms-audit)      │
+  │                      │  │                  │
+  │ ACTION:              │  │ ACTION:          │
+  │ • Update OpenSearch: │  │ • Log: "Officer  │
+  │   status →           │  │   started        │
+  │   IN_PROGRESS        │  │   assessment"    │
+  └──────────────────────┘  └──────────────────┘
+
+  NOTE: Notification service does NOT listen to this event
+  (no need to notify complainant about internal processing start)
+</div>
+
+<!-- ─── EVENT 4: complaint.escalated ─── -->
+<h3>4.4 — <code>complaint.escalated</code></h3>
+
+<div class="diagram">
+┌─────────────────────────────────────────────────────────────────────────────────────────┐
+│  EVENT: complaint.escalated                                                             │
+│  Published by: cms-sla-monitor-service (auto) OR cms-ingestion-service (manual)         │
+│  Trigger: SLA breach detected OR manual escalation by supervisor                        │
+└─────────────────────────────────────────────────────────────────────────────────────────┘
+
+  PUBLISHER(S):
+  ─────────────
+
+  ┌──────────────────────────────────┐     ┌──────────────────────────────────┐
+  │  cms-sla-monitor-service         │     │  cms-ingestion-service           │
+  │  SlaMonitorService               │     │  (manual escalation)             │
+  │                                  │     │                                  │
+  │  HOW: Scheduled CRON job runs    │     │  HOW: Supervisor clicks          │
+  │  every day, checks:              │     │  "Escalate" on a complaint       │
+  │                                  │     │                                  │
+  │  SELECT COMPLAINT_ID             │     │  Status: IN_PROGRESS → ESCALATED │
+  │  FROM COMPLAINT_MASTER           │     │                                  │
+  │  WHERE STATUS NOT IN             │     │                                  │
+  │    ('RESOLVED','CLOSED')         │     │                                  │
+  │  AND SLA_DUE_DATE < NOW()        │     │                                  │
+  │                                  │     │                                  │
+  │  For each breached complaint:    │     │                                  │
+  │  → publish to complaint.escalated│     │                                  │
+  └────────────────┬─────────────────┘     └────────────────┬─────────────────┘
+                   │                                        │
+                   └───────────────┬────────────────────────┘
+                                   │
+                                   ▼
+  ┌───────────────────────────────────────────────────────────────────────────────────────┐
+  │                    KAFKA TOPIC: complaint.escalated                                    │
+  └──────────────────────────────────┬────────────────────────────────────────────────────┘
+                                     │
+              ┌──────────────────────┼──────────────────────┐
+              │                      │                      │
+              ▼                      ▼                      ▼
+  ┌──────────────────────┐  ┌──────────────────┐  ┌──────────────────────┐
+  │ cms-notification     │  │ cms-search       │  │ (cms-assignment)     │
+  │ -service             │  │ -service         │  │                      │
+  │                      │  │                  │  │ ACTION:              │
+  │ ACTION:              │  │ ACTION:          │  │ • Reassign to        │
+  │ • Send to            │  │ • Update index:  │  │   senior officer /   │
+  │   complainant:       │  │   status →       │  │   supervisor         │
+  │   "Your complaint    │  │   ESCALATED      │  │ • Mark as priority   │
+  │    has been          │  │                  │  │                      │
+  │    escalated for     │  │                  │  │                      │
+  │    priority          │  │                  │  │                      │
+  │    resolution"       │  │                  │  │                      │
+  │                      │  │                  │  │                      │
+  │ • Also notify the    │  │                  │  │                      │
+  │   supervisor via     │  │                  │  │                      │
+  │   internal alert     │  │                  │  │                      │
+  └──────────────────────┘  └──────────────────┘  └──────────────────────┘
+</div>
+
+<div class="card card-orange">
+<h4>SLA Breach Detection (Automatic)</h4>
+<p>The <code>cms-sla-monitor-service</code> runs a scheduled job that scans the database for overdue complaints:</p>
+<pre><code>// Runs on CRON schedule (configurable, e.g., every hour)
+SELECT COMPLAINT_ID FROM COMPLAINT_MASTER
+WHERE STATUS NOT IN ('RESOLVED', 'CLOSED')
+AND SLA_DUE_DATE < CURRENT_TIMESTAMP
+
+// Also detects warnings (approaching breach in 3 days):
+AND SLA_DUE_DATE BETWEEN NOW() AND NOW() + 3 DAYS</code></pre>
+</div>
+
+<!-- ─── EVENT 5: complaint.resolved ─── -->
+<h3>4.5 — <code>complaint.resolved</code></h3>
+
+<div class="diagram">
+┌─────────────────────────────────────────────────────────────────────────────────────────┐
+│  EVENT: complaint.resolved                                                              │
+│  Published by: cms-ingestion-service                                                    │
+│  Trigger: RBIO officer / supervisor marks complaint as resolved                         │
+└─────────────────────────────────────────────────────────────────────────────────────────┘
+
+  PUBLISHER:
+  ──────────
+  ┌────────────────────────────────────────────────┐
+  │  cms-ingestion-service                         │
+  │  IngestionService.updateComplaintStatus()      │
+  │                                                │
+  │  Called when:                                   │
+  │  • RBIO officer completes assessment            │
+  │  • Supervisor approves resolution               │
+  │  • Conciliation officer records settlement      │
+  │                                                │
+  │  Status: IN_PROGRESS/SENT_TO_X → RESOLVED      │
+  │  Also sets: resolvedAt = NOW()                  │
+  │             resolutionSummary = "..."           │
+  └───────────────────────┬────────────────────────┘
+                          │
+                          ▼
+  ┌───────────────────────────────────────────────────────────────────────────────────────┐
+  │                    KAFKA TOPIC: complaint.resolved                                     │
+  └──────────────────────────────────┬────────────────────────────────────────────────────┘
+                                     │
+              ┌──────────────────────┼──────────────────────┐
+              │                      │                      │
+              ▼                      ▼                      ▼
+  ┌──────────────────────┐  ┌──────────────────┐  ┌──────────────────────┐
+  │ cms-notification     │  │ cms-search       │  │ (cms-audit-service)  │
+  │ -service             │  │ -service         │  │                      │
+  │                      │  │                  │  │ ACTION:              │
+  │ ACTION:              │  │ ACTION:          │  │ • Log: "Complaint    │
+  │ • Send to            │  │ • Update index:  │  │   resolved by        │
+  │   complainant:       │  │   status →       │  │   [officer name]"    │
+  │   "Your complaint    │  │   RESOLVED       │  │ • Record resolution  │
+  │    CMS-XXXXXXX has   │  │                  │  │   time (TAT)         │
+  │    been resolved.    │  │                  │  │                      │
+  │    If unsatisfied,   │  │                  │  │                      │
+  │    you may file an   │  │                  │  │                      │
+  │    appeal within     │  │                  │  │                      │
+  │    30 days."         │  │                  │  │                      │
+  └──────────────────────┘  └──────────────────┘  └──────────────────────┘
+</div>
+
+<!-- ─── EVENT 6: complaint.closed ─── -->
+<h3>4.6 — <code>complaint.closed</code></h3>
+
+<div class="diagram">
+┌─────────────────────────────────────────────────────────────────────────────────────────┐
+│  EVENT: complaint.closed                                                                │
+│  Published by: cms-ingestion-service                                                    │
+│  Trigger: Final closure (after resolution period / rejection / appeal decided)          │
+└─────────────────────────────────────────────────────────────────────────────────────────┘
+
+  PUBLISHER:
+  ──────────
+  ┌────────────────────────────────────────────────┐
+  │  cms-ingestion-service                         │
+  │                                                │
+  │  Closed when:                                  │
+  │  • 30-day appeal window expires (no appeal)    │
+  │  • Complaint rejected as ineligible            │
+  │  • Complainant withdraws                       │
+  │  • Appellate Authority issues final order      │
+  │  • Duplicate complaint identified              │
+  │                                                │
+  │  Status: RESOLVED/INELIGIBLE/WITHDRAWN → CLOSED│
+  │  Also sets: closedAt = NOW()                   │
+  └───────────────────────┬────────────────────────┘
+                          │
+                          ▼
+  ┌───────────────────────────────────────────────────────────────────────────────────────┐
+  │                    KAFKA TOPIC: complaint.closed                                       │
+  └──────────────────────────────────┬────────────────────────────────────────────────────┘
+                                     │
+              ┌──────────────────────┤
+              │                      │
+              ▼                      ▼
+  ┌──────────────────────┐  ┌──────────────────┐
+  │ cms-search-service   │  │ (cms-audit)      │
+  │                      │  │                  │
+  │ ACTION:              │  │ ACTION:          │
+  │ • Final update to    │  │ • Log: "Complaint│
+  │   OpenSearch index:  │  │   permanently    │
+  │   status → CLOSED    │  │   closed"        │
+  │ • Mark as archivable │  │ • Begin 7-year   │
+  │                      │  │   retention timer│
+  └──────────────────────┘  └──────────────────┘
+
+  NOTE: No SMS/Email sent on CLOSED (was already sent on RESOLVED).
+  Complainant only gets notified again if they filed an appeal.
+</div>
+
+<!-- ─── EVENT 7: complaint.dlq ─── -->
+<h3>4.7 — <code>complaint.dlq</code> (Dead Letter Queue)</h3>
+
+<div class="diagram">
+┌─────────────────────────────────────────────────────────────────────────────────────────┐
+│  EVENT: complaint.dlq                                                                   │
+│  Published by: Kafka consumer error handler (automatic)                                 │
+│  Trigger: Any consumer fails to process an event after max retries                      │
+└─────────────────────────────────────────────────────────────────────────────────────────┘
+
+  WHEN DOES THIS HAPPEN:
+  ──────────────────────
+  • A listener throws an unhandled exception
+  • Database is temporarily down during processing
+  • Deserialization fails (malformed JSON)
+  • External service timeout (Keycloak unreachable during assignment)
+
+  ┌────────────────────────────────────────────────┐
+  │  Any Consumer (after retry exhaustion)         │
+  │                                                │
+  │  Example: cms-assignment-service tries to      │
+  │  assign but Keycloak is down →                 │
+  │  retry 1... retry 2... retry 3...              │
+  │  → sends to DLQ for manual investigation      │
+  └───────────────────────┬────────────────────────┘
+                          │
+                          ▼
+  ┌───────────────────────────────────────────────────────────────────────────────────────┐
+  │                    KAFKA TOPIC: complaint.dlq                                          │
+  │                    Partitions: 3                                                       │
+  └──────────────────────────────────┬────────────────────────────────────────────────────┘
+                                     │
+                                     ▼
+  ┌──────────────────────────────────────────────────────────────────────────────────────┐
+  │  MANUAL HANDLING:                                                                    │
+  │                                                                                      │
+  │  • Admin checks DLQ via Kafka UI (port 8090)                                         │
+  │  • Identifies root cause (DB down? malformed data? code bug?)                        │
+  │  • Fixes the issue                                                                   │
+  │  • Replays the event by publishing it back to the original topic                     │
+  │                                                                                      │
+  │  Command to replay:                                                                  │
+  │  kafka-console-producer --topic complaint.ingested --bootstrap-server localhost:9092  │
+  │  < paste the failed event JSON >                                                     │
+  └──────────────────────────────────────────────────────────────────────────────────────┘
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════ -->
+<h2>5. Transactional Outbox Pattern</h2>
+
+<div class="diagram">
+┌─────────────────────────────────────────────────────────────────────────────────────────┐
+│  TRANSACTIONAL OUTBOX PATTERN (cms-outbox-publisher)                                    │
+│                                                                                         │
+│  Problem: If you save to DB and publish to Kafka separately, one might succeed while    │
+│           the other fails → data inconsistency.                                         │
+│                                                                                         │
+│  Solution: Write event to OUTBOX TABLE in the same DB transaction as the business data. │
+│            A separate publisher service polls the outbox and relays to Kafka.            │
+└─────────────────────────────────────────────────────────────────────────────────────────┘
+
+  ┌─────────────────────────────────────────────────────────┐
+  │  cms-ingestion-service (within a single DB transaction) │
+  │                                                         │
+  │  BEGIN TRANSACTION;                                     │
+  │    INSERT INTO complaint_master (...) VALUES (...);     │
+  │    INSERT INTO outbox_events (                          │
+  │      event_id, topic, aggregate_id, payload, status     │
+  │    ) VALUES (                                           │
+  │      'uuid', 'complaint.ingested', 'CMS-XXX',          │
+  │      '{...json...}', 'PENDING'                          │
+  │    );                                                   │
+  │  COMMIT;  ← Both succeed or both fail (atomic)         │
+  └────────────────────────────────┬────────────────────────┘
+                                   │
+                                   │  (outbox table now has a PENDING row)
+                                   │
+                                   ▼
+  ┌─────────────────────────────────────────────────────────┐
+  │  cms-outbox-publisher (polls every 5 seconds)           │
+  │                                                         │
+  │  SELECT * FROM outbox_events                            │
+  │  WHERE status = 'PENDING'                               │
+  │  AND retry_count < 5                                    │
+  │  ORDER BY created_at ASC                                │
+  │  LIMIT 100;                                             │
+  │                                                         │
+  │  For each event:                                        │
+  │    → kafkaTemplate.send(topic, key, payload)            │
+  │    → If success: UPDATE status = 'PUBLISHED'            │
+  │    → If failure: UPDATE retry_count = retry_count + 1   │
+  │    → If max retries: UPDATE status = 'FAILED'           │
+  └─────────────────────────────────────────────────────────┘
+
+  OUTBOX TABLE SCHEMA:
+  ┌──────────────┬────────────────┬──────────────────────────────────────┐
+  │ Column       │ Type           │ Example                              │
+  ├──────────────┼────────────────┼──────────────────────────────────────┤
+  │ event_id     │ VARCHAR(36)    │ "550e8400-e29b-41d4-a716-446655440000"│
+  │ topic        │ VARCHAR(100)   │ "complaint.ingested"                  │
+  │ aggregate_id │ VARCHAR(50)    │ "CMS-20260713-A1B2C3"                │
+  │ payload      │ CLOB/TEXT      │ { full JSON event }                  │
+  │ status       │ VARCHAR(20)    │ PENDING / PUBLISHED / FAILED          │
+  │ retry_count  │ INT            │ 0                                    │
+  │ error_message│ VARCHAR(500)   │ null                                 │
+  │ created_at   │ TIMESTAMP      │ 2026-07-13T10:30:00Z                 │
+  │ published_at │ TIMESTAMP      │ 2026-07-13T10:30:05Z                 │
+  └──────────────┴────────────────┴──────────────────────────────────────┘
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════ -->
+<h2>6. Complete Event Flow — End to End</h2>
+
+<div class="diagram">
+┌─────────────────────────────────────────────────────────────────────────────────────────┐
+│  COMPLETE KAFKA EVENT CHAIN — FROM FILING TO CLOSURE                                    │
+└─────────────────────────────────────────────────────────────────────────────────────────┘
+
+  TIME ──────────────────────────────────────────────────────────────────────────────────►
+
+  T+0s    Complainant clicks "Submit"
+     │
+     ▼
+  ┌───────────────────┐    complaint.ingested
+  │  Save to DB +     │ ─────────────────────────────────────────────────────────┐
+  │  Outbox Table     │                                                          │
+  └───────────────────┘                                                          │
+                                                                                 │
+  T+5s    Outbox publisher picks up event                                        │
+     │                                                                           │
+     ▼                                                                           ▼
+  ┌───────────────────┐                          ┌─── 4 CONSUMERS IN PARALLEL ───────────┐
+  │  Kafka: complaint │                          │                                       │
+  │  .ingested        │ ────────────────────────►│  ┌─ workflow: start BPMN             │
+  └───────────────────┘                          │  ├─ assignment: pick officer          │
+                                                 │  ├─ notification: send ack SMS/Email  │
+                                                 │  └─ search: index in OpenSearch       │
+                                                 └───────────────────────────────────────┘
+                                                          │
+  T+6s    Assignment complete                             │
+     │                                                    ▼
+     ▼                                         complaint.assigned
+  ┌───────────────────┐                          ┌─── 2 CONSUMERS ──────────────────────┐
+  │  Kafka: complaint │                          │                                       │
+  │  .assigned        │ ────────────────────────►│  ├─ notification: "Your complaint     │
+  └───────────────────┘                          │  │    assigned to officer"             │
+                                                 │  └─ search: update index               │
+                                                 └───────────────────────────────────────┘
+
+  T+1hr   Officer opens complaint
+     │
+     ▼                                         complaint.inprogress
+  ┌───────────────────┐                          ┌─── 1 CONSUMER ───────────────────────┐
+  │  Kafka: complaint │                          │                                       │
+  │  .inprogress      │ ────────────────────────►│  └─ search: update index              │
+  └───────────────────┘                          └───────────────────────────────────────┘
+
+  T+5days Officer resolves complaint
+     │
+     ▼                                         complaint.resolved
+  ┌───────────────────┐                          ┌─── 2 CONSUMERS ──────────────────────┐
+  │  Kafka: complaint │                          │                                       │
+  │  .resolved        │ ────────────────────────►│  ├─ notification: "Complaint resolved,│
+  └───────────────────┘                          │  │    appeal within 30 days"           │
+                                                 │  └─ search: update index               │
+                                                 └───────────────────────────────────────┘
+
+  T+35days Appeal window expires (no appeal filed)
+     │
+     ▼                                         complaint.closed
+  ┌───────────────────┐                          ┌─── 1 CONSUMER ───────────────────────┐
+  │  Kafka: complaint │                          │                                       │
+  │  .closed          │ ────────────────────────►│  └─ search: final index update        │
+  └───────────────────┘                          └───────────────────────────────────────┘
+
+
+  ── ALTERNATE PATH: SLA BREACH ──────────────────────────────────────────────────────────
+
+  T+30days  SLA deadline passes (complaint still IN_PROGRESS)
+     │
+     ▼                                         complaint.escalated
+  ┌───────────────────┐                          ┌─── 2 CONSUMERS ──────────────────────┐
+  │  SLA Monitor CRON │                          │                                       │
+  │  detects breach   │ ────────────────────────►│  ├─ notification: "Escalated for      │
+  │                   │                          │  │    priority resolution"             │
+  └───────────────────┘                          │  └─ search: update index               │
+                                                 └───────────────────────────────────────┘
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════ -->
+<h2>7. Consumer Group Architecture</h2>
+
+<div class="info">
+Each service uses its own <strong>consumer group ID</strong>. This means every event is processed by ALL services independently — if notification service is slow, it doesn't block assignment service. Kafka guarantees each group gets every message.
+</div>
+
+<div class="card card-purple">
+<h4>Consumer Groups & Their Independence</h4>
+<table>
+<tr><th>Consumer Group ID</th><th>Service</th><th>Topics Consumed</th><th>If This Service Goes Down</th></tr>
+<tr>
+    <td><code>cms-workflow-group</code></td>
+    <td>cms-workflow-service</td>
+    <td>complaint.ingested</td>
+    <td>Events queue up in Kafka; processed when service recovers (no data loss)</td>
+</tr>
+<tr>
+    <td><code>cms-assignment-group</code></td>
+    <td>cms-assignment-service</td>
+    <td>complaint.ingested</td>
+    <td>Assignment delayed; complaints wait in "NEW" status until service recovers</td>
+</tr>
+<tr>
+    <td><code>cms-notification-group</code></td>
+    <td>cms-notification-service</td>
+    <td>complaint.ingested, complaint.assigned, complaint.resolved, complaint.escalated</td>
+    <td>SMS/Email delayed but NOT lost; sent when service recovers</td>
+</tr>
+<tr>
+    <td><code>cms-search-group</code></td>
+    <td>cms-search-service</td>
+    <td>ALL 6 status topics</td>
+    <td>Search index becomes stale; auto-catches up when service recovers</td>
+</tr>
+</table>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════ -->
+<h2>8. Summary: Topic × Consumer Matrix</h2>
+
+<div class="card card-blue">
+<table>
+<tr>
+    <th>Topic ↓ &nbsp; /&nbsp;  Consumer →</th>
+    <th>Workflow</th>
+    <th>Assignment</th>
+    <th>Notification</th>
+    <th>Search</th>
+</tr>
+<tr>
+    <td><strong>complaint.ingested</strong></td>
+    <td>✅ Start workflow</td>
+    <td>✅ Assign officer</td>
+    <td>✅ Send ack</td>
+    <td>✅ Index new</td>
+</tr>
+<tr>
+    <td><strong>complaint.assigned</strong></td>
+    <td>—</td>
+    <td>—</td>
+    <td>✅ Notify status</td>
+    <td>✅ Update index</td>
+</tr>
+<tr>
+    <td><strong>complaint.inprogress</strong></td>
+    <td>—</td>
+    <td>—</td>
+    <td>—</td>
+    <td>✅ Update index</td>
+</tr>
+<tr>
+    <td><strong>complaint.escalated</strong></td>
+    <td>—</td>
+    <td>—</td>
+    <td>✅ Alert escalation</td>
+    <td>✅ Update index</td>
+</tr>
+<tr>
+    <td><strong>complaint.resolved</strong></td>
+    <td>—</td>
+    <td>—</td>
+    <td>✅ Notify resolved</td>
+    <td>✅ Update index</td>
+</tr>
+<tr>
+    <td><strong>complaint.closed</strong></td>
+    <td>—</td>
+    <td>—</td>
+    <td>—</td>
+    <td>✅ Update index</td>
+</tr>
+<tr>
+    <td><strong>complaint.dlq</strong></td>
+    <td colspan="4" style="text-align:center;">Manual admin investigation (Kafka UI)</td>
+</tr>
+</table>
+</div>
+
+<hr style="margin: 40px 0;">
+<p style="text-align: center; color: #94a3b8; font-size: 12px;">
+    CMS 2.0 Kafka Events Flow | Generated: 13 July 2026 | Source: KafkaTopics.java + all *Listener.java classes
+</p>
+
+</div>
+</body>
+</html>

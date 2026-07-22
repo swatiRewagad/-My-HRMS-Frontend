@@ -1,0 +1,209 @@
+<div class="team-mgmt">
+  <!-- Header -->
+  <header class="dash-header">
+    <div class="header-left">
+      <img src="assets/rbi-logo.png" alt="RBI" class="rbi-logo" onerror="this.style.display='none'" />
+      <div class="brand">
+        <span class="brand-title">CMS</span>
+        <span class="brand-sub">Complaint Management System</span>
+      </div>
+    </div>
+    <div class="header-right">
+      @if (auth.currentUser(); as user) {
+        <span class="user-avatar">{{ (user.firstName || 'A').charAt(0) }}{{ (user.lastName || '').charAt(0) }}</span>
+        <div class="user-info">
+          <span class="user-name">{{ user.firstName }} {{ user.lastName }}</span>
+          <span class="user-role">Administrator</span>
+        </div>
+      }
+      <button class="btn-logout" (click)="logout()">Logout</button>
+    </div>
+  </header>
+
+  <div class="main-layout">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-item" [class.active]="sidebarItem() === 'complaints'" (click)="navigateTo('complaints')">
+        <i class="pi pi-list"></i><span>CRPC Complaints</span>
+      </div>
+      <div class="sidebar-item" [class.active]="sidebarItem() === 'dashboard'" (click)="navigateTo('dashboard')">
+        <i class="pi pi-chart-bar"></i><span>Dashboard</span>
+      </div>
+      <div class="sidebar-item active">
+        <i class="pi pi-users"></i><span>Team Management</span>
+      </div>
+      <div class="sidebar-item" [class.active]="sidebarItem() === 'rules'" (click)="navigateTo('rules')">
+        <i class="pi pi-cog"></i><span>Rules</span>
+      </div>
+    </aside>
+
+    <!-- Content -->
+    <main class="content">
+      <div class="content-header">
+        <h1>Team Management</h1>
+        <div class="header-actions">
+          <select class="role-select" [ngModel]="selectedRoleGroup()" (ngModelChange)="onRoleGroupChange($event)">
+            @for (rg of roleGroups; track rg.value) {
+              <option [value]="rg.value">{{ rg.label }}</option>
+            }
+          </select>
+          <button class="btn-sync" (click)="syncFromKeycloak()" [disabled]="syncing()">
+            <i class="pi pi-refresh" [class.spinning]="syncing()"></i>
+            {{ syncing() ? 'Syncing...' : 'Sync from Keycloak' }}
+          </button>
+          <button class="btn-add" (click)="openAddModal()">
+            <i class="pi pi-plus"></i> Add Officer
+          </button>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="team-stats">
+        <div class="stat-pill green">
+          <i class="pi pi-check-circle"></i>
+          <span>{{ activeCount() }} Active</span>
+        </div>
+        <div class="stat-pill orange">
+          <i class="pi pi-calendar-times"></i>
+          <span>{{ onLeaveCount() }} On Leave</span>
+        </div>
+        <div class="stat-pill blue">
+          <i class="pi pi-briefcase"></i>
+          <span>{{ totalWorkload() }} Total Assignments</span>
+        </div>
+      </div>
+
+      <!-- Search -->
+      <div class="search-bar">
+        <i class="pi pi-search"></i>
+        <input type="text" placeholder="Search by name, user ID, or office..." [ngModel]="searchTerm()" (ngModelChange)="searchTerm.set($event)" />
+      </div>
+
+      <!-- Officers Table -->
+      @if (loading()) {
+        <div class="loading-state">
+          <div class="spinner"></div>
+          <p>Loading team...</p>
+        </div>
+      } @else {
+        <div class="table-container">
+          <table class="team-table">
+            <thead>
+              <tr>
+                <th>Officer</th>
+                <th>User ID</th>
+                <th>Regional Office</th>
+                <th>Workload</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (officer of filteredOfficers(); track officer.id) {
+                <tr [class.on-leave]="officer.onLeave" [class.inactive]="!officer.active">
+                  <td>
+                    <div class="officer-cell">
+                      <span class="officer-avatar" [class.leave]="officer.onLeave">
+                        {{ officer.displayName.charAt(0) }}
+                      </span>
+                      <span class="officer-name">{{ officer.displayName }}</span>
+                    </div>
+                  </td>
+                  <td class="user-id-cell">{{ officer.userId }}</td>
+                  <td>
+                    <span class="office-badge">{{ officer.regionalOffice }}</span>
+                  </td>
+                  <td>
+                    <div class="workload-cell">
+                      <div class="workload-bar">
+                        <div class="workload-fill" [style.width.%]="getWorkloadPercent(officer)" [style.background]="getWorkloadColor(officer)"></div>
+                      </div>
+                      <span class="workload-text">{{ officer.currentWorkload }}/{{ officer.maxWorkload }}</span>
+                    </div>
+                  </td>
+                  <td>
+                    @if (!officer.active) {
+                      <span class="status-badge inactive">Inactive</span>
+                    } @else if (officer.onLeave) {
+                      <span class="status-badge leave">On Leave</span>
+                    } @else {
+                      <span class="status-badge active">Active</span>
+                    }
+                  </td>
+                  <td>
+                    <div class="action-btns">
+                      @if (officer.active) {
+                        <button class="btn-action" [class.leave-btn]="!officer.onLeave" [class.return-btn]="officer.onLeave" (click)="toggleLeave(officer)" [title]="officer.onLeave ? 'Mark Returned' : 'Mark On Leave'">
+                          <i [class]="officer.onLeave ? 'pi pi-replay' : 'pi pi-calendar-times'"></i>
+                          {{ officer.onLeave ? 'Return' : 'On Leave' }}
+                        </button>
+                        <button class="btn-action deactivate-btn" (click)="deactivateOfficer(officer)" title="Deactivate">
+                          <i class="pi pi-ban"></i>
+                        </button>
+                      }
+                    </div>
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="6" class="empty-state">No officers found for this role group.</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </main>
+  </div>
+
+  <!-- Add Officer Modal -->
+  @if (showAddModal()) {
+    <div class="modal-overlay" (click)="showAddModal.set(false)">
+      <div class="modal-dialog" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h3>Add Officer to Pool</h3>
+          <button class="modal-close" (click)="showAddModal.set(false)"><i class="pi pi-times"></i></button>
+        </div>
+        <div class="modal-body">
+          <div class="form-field">
+            <label>User ID (Keycloak username)</label>
+            <input type="text" [(ngModel)]="newOfficer.userId" placeholder="e.g., deo.john" />
+          </div>
+          <div class="form-field">
+            <label>Display Name</label>
+            <input type="text" [(ngModel)]="newOfficer.displayName" placeholder="e.g., John Smith" />
+          </div>
+          <div class="form-field">
+            <label>Role Group</label>
+            <select [(ngModel)]="newOfficer.roleGroup">
+              @for (rg of roleGroups; track rg.value) {
+                <option [value]="rg.value">{{ rg.label }}</option>
+              }
+            </select>
+          </div>
+          <div class="form-field">
+            <label>Regional Office</label>
+            <select [(ngModel)]="newOfficer.regionalOffice">
+              <option value="MUMBAI">Mumbai</option>
+              <option value="DELHI">Delhi</option>
+              <option value="CHENNAI">Chennai</option>
+              <option value="KOLKATA">Kolkata</option>
+              <option value="HYDERABAD">Hyderabad</option>
+              <option value="AHMEDABAD">Ahmedabad</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label>Max Workload</label>
+            <input type="number" [(ngModel)]="newOfficer.maxWorkload" min="1" max="100" />
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-cancel" (click)="showAddModal.set(false)">Cancel</button>
+          <button class="btn-save" (click)="addOfficer()" [disabled]="!newOfficer.userId || !newOfficer.displayName">
+            <i class="pi pi-check"></i> Add Officer
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+</div>
