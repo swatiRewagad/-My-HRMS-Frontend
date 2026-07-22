@@ -819,9 +819,9 @@ data:
         add_header Cache-Control "no-cache, no-store, must-revalidate";
       }
 
-      # API proxy to gateway (same-origin, no CORS needed)
+      # API proxy to backend (same-origin, no CORS needed)
       location /api/ {
-        proxy_pass http://cms-api-gateway.rbi-cms.svc.cluster.local:8080/api/;
+        proxy_pass http://${API_BACKEND_HOST}:${API_BACKEND_PORT}/api/;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
