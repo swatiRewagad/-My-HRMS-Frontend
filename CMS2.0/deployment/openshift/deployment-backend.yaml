@@ -28,6 +28,8 @@ spec:
           envFrom:
             - configMapRef:
                 name: cms-common-config
+            - configMapRef:
+                name: cms-backend-config
             - secretRef:
                 name: cms-db-secret
             - secretRef:
