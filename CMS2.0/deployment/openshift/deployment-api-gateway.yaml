@@ -29,8 +29,6 @@ spec:
           envFrom:
             - configMapRef:
                 name: cms-common-config
-            - secretRef:
-                name: cms-db-credentials
           resources:
             requests:
               cpu: 250m
