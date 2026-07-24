@@ -813,19 +813,29 @@ data:
         try_files $uri $uri/ /index.html;
       }
 
-      # API proxy to gateway
+      # Runtime config (no cache — regenerated on each deploy)
+      location /assets/config.json {
+        alias /usr/share/nginx/html/assets/config.json;
+        add_header Cache-Control "no-cache, no-store, must-revalidate";
+      }
+
+      # API proxy to backend (same-origin, no CORS needed)
       location /api/ {
-        proxy_pass http://cms-api-gateway.rbi-cms.svc.cluster.local:8080/api/;
+        proxy_pass http://${API_BACKEND_HOST}:${API_BACKEND_PORT}/api/;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Authorization $http_authorization;
+        proxy_connect_timeout 30s;
+        proxy_read_timeout 60s;
+        client_max_body_size 50M;
       }
 
       # Health check
       location /health {
-        return 200 'OK';
-        add_header Content-Type text/plain;
+        return 200 '{"status":"UP"}';
+        add_header Content-Type application/json;
       }
 
       # Cache static assets
@@ -841,11 +851,11 @@ data:
       add_header Referrer-Policy "strict-origin-when-cross-origin" always;
     }
 
-  # Runtime env vars for config-template.json (injected via envsubst at container start)
-  API_BASE_URL: "/api"
-  KEYCLOAK_URL: "https://keycloak.rbi.org.in"
-  KEYCLOAK_REALM: "rbi-cms"
-  KEYCLOAK_CLIENT_ID: "cms-portal"
+  # Runtime env vars — injected via envsubst into config.json at container start
+  API_BASE_URL: ""
+  KEYCLOAK_URL: "https://keycloak-rbi-cms.apps.ocpvcl.rebit.org.in"
+  KEYCLOAK_REALM: "cms"
+  KEYCLOAK_CLIENT_ID: "cms-frontend"
 
 ---
 # ============================================================
@@ -966,7 +976,11 @@ data:
   MRE_WINDOW_BASIS: "BUSINESS"
 
   # CORS
-  CMS_CORS_ORIGINS: "https://cms-portal.rbi.org.in,https://cms-officer.rbi.org.in"
+  CMS_CORS_ORIGINS: "https://cms-portal-frontend-rbi-cms.apps.ocpvcl.rebit.org.in,https://cms-officer-frontend-rbi-cms.apps.ocpvcl.rebit.org.in"
+  CMS_CORS_METHODS: "GET,POST,PUT,DELETE,PATCH,OPTIONS"
+  CMS_CORS_HEADERS: "Authorization,Content-Type,X-Requested-With,X-Session-Id,X-Form-Start,X-HP-Field,Accept,Origin,Cache-Control,Pragma,X-Content-Type-Options,X-User-Roles,X-User-Role"
+  CMS_CORS_ALLOW_CREDENTIALS: "true"
+  CMS_CORS_MAX_AGE: "3600"
 
   # Similar Cases
   SIMILAR_CASES_ENABLED: "true"

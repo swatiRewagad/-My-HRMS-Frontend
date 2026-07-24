@@ -8,10 +8,10 @@ server:
 
 spring:
   datasource:
-    url: jdbc:h2:mem:cms_backend;DB_CLOSE_DELAY=-1;MODE=Oracle
-    username: sa
+    url: jdbc:oracle:thin:@//localhost:1521/XEPDB1
+    username: cms_user
     password:
-    driver-class-name: org.h2.Driver
+    driver-class-name: oracle.jdbc.OracleDriver
     hikari:
       maximum-pool-size: 10
       minimum-idle: 2
@@ -19,26 +19,17 @@ spring:
       pool-name: CMS-Backend-Dev-Pool
   jpa:
     hibernate:
-      ddl-auto: create-drop
+      ddl-auto: update
     show-sql: true
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.H2Dialect
+        dialect: org.hibernate.dialect.OracleDialect
         format_sql: true
         jdbc:
           batch_size: 10
         order_inserts: true
         order_updates: true
-    defer-datasource-initialization: true
     open-in-view: false
-  sql:
-    init:
-      mode: always
-      data-locations: classpath:data-h2.sql
-  h2:
-    console:
-      enabled: true
-      path: /h2-console
 
   kafka:
     bootstrap-servers: localhost:9092
@@ -68,7 +59,7 @@ keycloak:
 cms:
   ocr:
     chain: groq
-    groq-api-key: ${GROQ_API_KEY:}
+    groq-api-key: ${GROQ_API_KEY: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}
     groq-model: meta-llama/llama-4-scout-17b-16e-instruct
     paddle-ocr-url: ""
     gemini-api-key: ""
@@ -103,6 +94,10 @@ cms:
     window-basis: BUSINESS
   cors:
     allowed-origins: http://localhost:4200,http://localhost:4201,http://localhost:4202,http://localhost:4300
+    allowed-methods: GET,POST,PUT,DELETE,PATCH,OPTIONS
+    allowed-headers: Authorization,Content-Type,X-Requested-With,X-Session-Id,X-Form-Start,X-HP-Field,Accept,Origin,Cache-Control,Pragma,X-Content-Type-Options,X-User-Roles,X-User-Role
+    allow-credentials: true
+    max-age: 3600
   similar-cases:
     enabled: false
     opensearch-url: http://localhost:9200
@@ -148,7 +143,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics,h2-console
+        include: health,info,metrics
   endpoint:
     health:
       show-details: always
