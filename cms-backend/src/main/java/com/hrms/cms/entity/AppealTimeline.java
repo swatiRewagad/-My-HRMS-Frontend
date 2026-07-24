@@ -5,25 +5,28 @@ import lombok.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "COMPLAINT_TIMELINE", indexes = {
-    @Index(name = "idx_timeline_complaint", columnList = "COMPLAINT_ID"),
-    @Index(name = "idx_timeline_performed_at", columnList = "performedAt")
+@Table(name = "APPEAL_TIMELINE", indexes = {
+    @Index(name = "idx_appeal_timeline_number", columnList = "appealNumber"),
+    @Index(name = "idx_appeal_timeline_performed_at", columnList = "performedAt")
 })
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
-public class ComplaintTimeline {
+public class AppealTimeline {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "COMPLAINT_ID", nullable = false)
-    private Long complaintId;
+    @Column(nullable = false, length = 50)
+    private String appealNumber;
 
     @Column(nullable = false, length = 50)
     private String action;
 
     @Column(length = 200)
     private String performedBy;
+
+    @Column(length = 50)
+    private String performedByRole;
 
     @Column(columnDefinition = "TEXT")
     private String remarks;

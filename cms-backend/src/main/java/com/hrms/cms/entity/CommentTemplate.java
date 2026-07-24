@@ -5,28 +5,33 @@ import lombok.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "FORM_CONFIGS")
+@Table(name = "COMMENT_TEMPLATES")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
-public class FormConfig {
+public class CommentTemplate {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true, length = 100)
-    private String formKey;
+    @Column(nullable = false, length = 200)
+    private String title;
 
-    @Column(length = 200)
-    private String formName;
+    @Column(length = 500)
+    private String description;
 
-    @Column(columnDefinition = "JSON")
-    private String schemaJson;
+    @Column(columnDefinition = "TEXT", nullable = false)
+    private String content;
 
-    @Column(nullable = false)
-    private Boolean active;
+    @Column(length = 30)
+    private String modeOfReceipt; // EMAIL, PHYSICAL_LETTER, PORTAL, ALL
 
     @Column(length = 50)
-    private String version;
+    private String category; // GENERAL, CLOSURE, REJECTION, FOLLOWUP
+
+    private boolean active;
+
+    @Column(length = 100)
+    private String createdBy;
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -35,7 +40,7 @@ public class FormConfig {
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
-        if (this.active == null) this.active = true;
+        this.active = true;
     }
 
     @PreUpdate
