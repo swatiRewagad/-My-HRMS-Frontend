@@ -27,6 +27,7 @@ public class RePortalService {
     private final ComplaintTimelineRepository timelineRepository;
     private final ReResponseTrackerRepository trackerRepository;
     private final RegulatedEntityRepository regulatedEntityRepository;
+    private final NotificationService notificationService;
 
     private static final int DEFAULT_RESPONSE_WINDOW_DAYS = 15;
 
@@ -102,6 +103,16 @@ public class RePortalService {
                 .toStatus("re_responded")
                 .build();
         timelineRepository.save(timeline);
+
+        // UST668: RE_RESPONSE — notify complaint owner (bell only)
+        String complaintOwner = complaint.getAssignedOfficer();
+        if (complaintOwner != null && !complaintOwner.isBlank()) {
+            notificationService.send(complaintOwner, "RE_RESPONSE",
+                    "RE has submitted response",
+                    "Regulated entity has responded to complaint " + complaintNumber + ". Review the response.",
+                    complaintNumber, "COMPLAINT",
+                    "/complaint/" + complaintNumber);
+        }
 
         log.info("RE response submitted for complaint {} by {}", complaintNumber, respondedBy);
         return tracker;

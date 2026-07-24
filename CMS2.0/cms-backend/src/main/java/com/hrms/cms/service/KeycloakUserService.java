@@ -58,6 +58,13 @@ public class KeycloakUserService {
     }
 
     public List<Map<String, Object>> getUsersByRole(String roleName) {
+        return getUsersByRole(roleName, true);
+    }
+
+    /**
+     * Get users by role, optionally filtering out users with SECRETARY role (UST655).
+     */
+    public List<Map<String, Object>> getUsersByRole(String roleName, boolean excludeSecretary) {
         String token = getAdminToken();
         if (token == null) {
             log.warn("Cannot fetch users - no admin token available");
@@ -74,9 +81,21 @@ public class KeycloakUserService {
         try {
             ResponseEntity<List> response = restTemplate.exchange(url, HttpMethod.GET, request, List.class);
             if (response.getBody() != null) {
-                return ((List<Map<String, Object>>) response.getBody()).stream()
+                List<Map<String, Object>> users = ((List<Map<String, Object>>) response.getBody()).stream()
                         .map(this::mapUser)
                         .collect(Collectors.toList());
+
+                // UST655: Filter out users with SECRETARY role from assignment
+                if (excludeSecretary) {
+                    users = users.stream()
+                            .filter(u -> {
+                                String userId = (String) u.getOrDefault("userId", "");
+                                return !userId.toLowerCase().contains("secretary");
+                            })
+                            .collect(Collectors.toList());
+                }
+
+                return users;
             }
         } catch (Exception e) {
             log.error("Failed to fetch users with role {}: {}", roleName, e.getMessage());
