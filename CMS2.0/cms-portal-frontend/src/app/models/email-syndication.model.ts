@@ -48,6 +48,9 @@ export interface EmailIngestRequest {
   subject: string;
   body: string;
   messageId?: string;
+  toRecipients?: string;
+  ccRecipients?: string;
+  bccRecipients?: string;
   attachmentPaths?: string[];
 }
 

@@ -41,7 +41,9 @@ export class EmailSimulatorComponent {
     senderEmail: '',
     subject: '',
     body: '',
-    messageId: ''
+    messageId: '',
+    toRecipients: 'crpc@rbi.org.in',
+    ccRecipients: '',
   });
 
   // Attachments (multiple)
@@ -264,18 +266,30 @@ export class EmailSimulatorComponent {
 
         const langLabel = langInfo ? ` [🌐 ${langInfo.languageName} → English]` : '';
 
+        const isAutoClosed = (response as any)?.autoClosed === true;
+        let resultMessage: string;
+        let resultStatus: 'success' | 'ignored' | 'error';
+        if (isAutoClosed) {
+          resultMessage = `Auto-closed as Non-Complaint — CRPC in CC/BCC only (no draft generated)`;
+          resultStatus = 'ignored';
+        } else if (response) {
+          resultMessage = `Draft created: ${(response as any).displayId || response.draftId} → Assigned to ${response.assignedTo}${attachmentInfo}${langLabel}`;
+          resultStatus = 'success';
+        } else {
+          resultMessage = 'Email ignored (on ignore list)';
+          resultStatus = 'ignored';
+        }
+
         this.results.update(prev => [{
           email,
-          response,
-          message: response
-            ? `Draft created: ${(response as any).displayId || response.draftId} → Assigned to ${response.assignedTo}${attachmentInfo}${langLabel}`
-            : 'Email ignored (on ignore list)',
-          status: response ? 'success' : 'ignored',
+          response: isAutoClosed ? null : response,
+          message: resultMessage,
+          status: resultStatus,
           timestamp: new Date(),
           languageInfo: langInfo
         }, ...prev]);
         this.sending.set(false);
-        this.manualEmail.set({ senderEmail: '', subject: '', body: '', messageId: '' });
+        this.manualEmail.set({ senderEmail: '', subject: '', body: '', messageId: '', toRecipients: 'crpc@rbi.org.in', ccRecipients: '' });
         this.attachedFiles.set([]);
       },
       error: (err) => {

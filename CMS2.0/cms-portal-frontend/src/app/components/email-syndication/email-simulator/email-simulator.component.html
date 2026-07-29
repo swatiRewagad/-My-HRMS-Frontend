@@ -70,6 +70,19 @@
                    name="sender" placeholder="customer@gmail.com">
           </div>
 
+          <div class="form-row-2col">
+            <div class="form-group">
+              <label>To</label>
+              <input type="text" [ngModel]="manualEmail().toRecipients" (ngModelChange)="updateManualField('toRecipients', $event)"
+                     name="toRecipients" placeholder="crpc@rbi.org.in">
+            </div>
+            <div class="form-group">
+              <label>CC/BCC</label>
+              <input type="text" [ngModel]="manualEmail().ccRecipients" (ngModelChange)="updateManualField('ccRecipients', $event)"
+                     name="ccRecipients" placeholder="e.g. crpc@rbi.org.in (if CC, auto-closes as Non-Complaint)">
+            </div>
+          </div>
+
           <div class="form-group">
             <label>Subject <span class="required">*</span></label>
             <input type="text" [ngModel]="manualEmail().subject" (ngModelChange)="updateManualField('subject', $event)"
@@ -139,7 +152,7 @@
               @if (attachedFiles().length > 0) {
                 Send with {{ attachedFiles().length }} Attachment{{ attachedFiles().length > 1 ? 's' : '' }}
               } @else {
-                Send to crpc&#64;rbi.org.in
+                Send
               }
             }
           </button>

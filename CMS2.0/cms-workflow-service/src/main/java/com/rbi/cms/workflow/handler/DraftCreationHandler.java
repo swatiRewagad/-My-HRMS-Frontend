@@ -1,25 +1,32 @@
 package com.rbi.cms.workflow.handler;
 
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.kie.api.runtime.process.WorkItem;
-import org.kie.api.runtime.process.WorkItemHandler;
-import org.kie.api.runtime.process.WorkItemManager;
+import org.kie.kogito.internal.process.workitem.KogitoWorkItem;
+import org.kie.kogito.internal.process.workitem.KogitoWorkItemHandler;
+import org.kie.kogito.internal.process.workitem.KogitoWorkItemManager;
+import org.kie.kogito.internal.process.workitem.WorkItemTransition;
+import org.kie.kogito.process.workitems.impl.DefaultKogitoWorkItemHandler;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 
-import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 @Slf4j
-@Component
-@RequiredArgsConstructor
-public class DraftCreationHandler implements WorkItemHandler {
+@Component("com.rbi.cms.workflow.handler.DraftCreationHandler")
+public class DraftCreationHandler extends DefaultKogitoWorkItemHandler {
 
     private final KafkaTemplate<String, String> kafkaTemplate;
 
+    public DraftCreationHandler(KafkaTemplate<String, String> kafkaTemplate) {
+        super();
+        this.kafkaTemplate = kafkaTemplate;
+    }
+
     @Override
-    public void executeWorkItem(WorkItem workItem, WorkItemManager manager) {
+    public Optional<WorkItemTransition> activateWorkItemHandler(KogitoWorkItemManager manager,
+            KogitoWorkItemHandler handler, KogitoWorkItem workItem, WorkItemTransition transition) {
+
         String complaintId = (String) workItem.getParameter("complaintId");
         String channel = (String) workItem.getParameter("channel");
 
@@ -35,14 +42,12 @@ public class DraftCreationHandler implements WorkItemHandler {
             log.error("[DRAFT] Failed to publish draft event for {}: {}", complaintId, e.getMessage());
         }
 
-        Map<String, Object> results = new HashMap<>();
-        results.put("draftCreated", true);
-        manager.completeWorkItem(workItem.getId(), results);
+        manager.completeWorkItem(workItem.getStringId(), Map.of("draftCreated", true));
+        return Optional.empty();
     }
 
     @Override
-    public void abortWorkItem(WorkItem workItem, WorkItemManager manager) {
-        log.warn("[DRAFT] Draft creation aborted for: {}", workItem.getParameter("complaintId"));
-        manager.abortWorkItem(workItem.getId());
+    public String getName() {
+        return "com.rbi.cms.workflow.handler.DraftCreationHandler";
     }
 }

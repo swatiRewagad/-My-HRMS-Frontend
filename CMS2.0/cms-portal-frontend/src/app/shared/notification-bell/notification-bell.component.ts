@@ -36,6 +36,7 @@ import { NotificationService, InAppNotification } from '../../services/notificat
               </div>
               <div class="notif-content">
                 <p class="notif-title">{{ n.title }}</p>
+                <span class="notif-type-badge">{{ formatType(n.type) }}</span>
                 <p class="notif-message">{{ n.message }}</p>
                 <span class="notif-time">{{ formatTime(n.createdAt) }}</span>
               </div>
@@ -68,7 +69,10 @@ import { NotificationService, InAppNotification } from '../../services/notificat
                   align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
     .notif-content { flex: 1; min-width: 0; }
     .notif-title { margin: 0; font-size: 13px; font-weight: 600; color: #1e293b; }
-    .notif-message { margin: 2px 0 0; font-size: 12px; color: #64748b; overflow: hidden;
+    .notif-type-badge { display: inline-block; margin-top: 3px; padding: 1px 6px; font-size: 10px;
+                        font-weight: 500; color: #475569; background: #e2e8f0; border-radius: 4px;
+                        letter-spacing: 0.2px; text-transform: capitalize; }
+    .notif-message { margin: 4px 0 0; font-size: 12px; color: #64748b; overflow: hidden;
                      text-overflow: ellipsis; white-space: nowrap; }
     .notif-time { font-size: 11px; color: #94a3b8; }
     .empty-state { padding: 40px 16px; text-align: center; color: #94a3b8; }
@@ -112,14 +116,36 @@ export class NotificationBellComponent implements OnInit, OnDestroy {
 
   getIcon(type: string): string {
     const icons: Record<string, string> = {
-      ASSIGNMENT: '\u{1F4CB}',
+      ASSIGNMENT: '\u{1F464}',
+      REASSIGNMENT: '\u{1F464}',
+      TRANSFER_IN: '\u{1F504}',
       TRANSFER_PENDING: '\u{1F504}',
       PENDING_3DAY: '\u{23F0}',
-      DUPLICATE_ACTIVITY: '\u{1F4CB}',
+      PENDING_5DAY: '\u{23F0}',
+      DUPLICATE_DETECTED: '\u{26A0}\uFE0F',
       SENT_BACK: '\u{21A9}\uFE0F',
-      BULK_CLOSE: '\u{2705}',
+      BULK_CLOSE: '\u{1F5C2}\uFE0F',
+      ON_LEAVE_PENDING: '\u{1F3D6}\uFE0F',
+      NO_RECORD_ASSIGNED: '\u{1F4CB}',
+      NO_REASSIGNED_TO_RBI: '\u{1F4CB}',
+      NO_STATUS_STALE: '\u{1F534}',
+      RE_RESPONSE: '\u{1F3E6}',
+      RE_UPDATE: '\u{1F3E6}',
+      COMPLAINT_CLOSED: '\u{2705}',
+      MEETING_SCHEDULED: '\u{1F4C5}',
+      AWARD_PASSED: '\u{2696}\uFE0F',
+      DECISION: '\u{2696}\uFE0F',
+      ADVISORY_COMPLIED: '\u{2696}\uFE0F',
+      DOCUMENT_UPLOADED: '\u{1F4C4}',
+      UPLOAD_LINK_SENT: '\u{1F517}',
+      CRPC_TOLL_FREE_REMINDER: '\u{1F4DE}',
+      RIA_LEGAL_UPDATE: '\u{1F4DD}',
     };
     return icons[type] || '\u{1F514}';
+  }
+
+  formatType(type: string): string {
+    return type.replace(/_/g, ' ').toLowerCase();
   }
 
   formatTime(dateStr: string): string {

@@ -26,6 +26,9 @@ public class CepcWorkflowService {
     private final KeycloakUserService keycloakUserService;
     private final CepcSlaService cepcSlaService;
     private final CepcAuditService cepcAuditService;
+    private final ClosureLetterService closureLetterService;
+    private final CommunicationTemplateService communicationTemplateService;
+    private final NotificationService notificationService;
 
     private final Map<String, Integer> roundRobinCounters = new java.util.concurrent.ConcurrentHashMap<>();
 
@@ -107,6 +110,9 @@ public class CepcWorkflowService {
         cepcAuditService.logActionAsync(complaintNumber, action, actor, userRole,
                 remarks, auditMetadata, previousStatus, complaint.getStatus());
 
+        // ═══ Notification triggers ═══
+        triggerCepcNotifications(complaint, action.toUpperCase(), actor, params);
+
         // Build response
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("complaintNumber", complaint.getComplaintNumber());
@@ -116,6 +122,84 @@ public class CepcWorkflowService {
         result.put("assignedOfficer", complaint.getAssignedOfficer());
 
         return result;
+    }
+
+    /**
+     * Triggers in-app notifications based on CEPC workflow actions.
+     * UST605: NEW_ASSIGNMENT, UST659: MEETING_SCHEDULED, UST663: COMPLAINT_CLOSED,
+     * UST664: RE_UPDATE, UST610: NO_REASSIGNED_TO_RBI
+     */
+    private void triggerCepcNotifications(Complaint c, String action, String actor, Map<String, String> params) {
+        String complaintUrl = "/workflow/cepc/complaint/" + c.getComplaintNumber();
+
+        switch (action) {
+            case "SCHEDULE_MEETING":
+                // UST659: MEETING_SCHEDULED — notify owner + RE
+                String owner = c.getAssignedOfficer();
+                if (owner != null && !owner.isBlank() && !owner.equals(actor)) {
+                    notificationService.send(owner, "MEETING_SCHEDULED",
+                            "Meeting scheduled for complaint",
+                            "A meeting has been scheduled for complaint " + c.getComplaintNumber()
+                                    + (c.getConciliationDate() != null ? " on " + c.getConciliationDate().toLocalDate() : ""),
+                            c.getComplaintNumber(), "COMPLAINT", complaintUrl);
+                }
+                if (c.getEntityCode() != null && !c.getEntityCode().isBlank()) {
+                    notificationService.send(c.getEntityCode(), "MEETING_SCHEDULED",
+                            "Meeting scheduled — your attendance required",
+                            "A meeting has been scheduled for complaint " + c.getComplaintNumber() + ". Please prepare accordingly.",
+                            c.getComplaintNumber(), "COMPLAINT", complaintUrl);
+                }
+                break;
+
+            case "ASSIGN_TO_DO":
+            case "ASSIGN_TO_REVIEWER":
+            case "ASSIGN_TO_INCHARGE":
+            case "REASSIGN":
+            case "FORWARD_TO_RE":
+                // UST605: NEW_ASSIGNMENT — notify new officer
+                if (c.getAssignedOfficer() != null && !c.getAssignedOfficer().isBlank() && !c.getAssignedOfficer().equals(actor)) {
+                    notificationService.send(c.getAssignedOfficer(), "NEW_ASSIGNMENT",
+                            "Complaint assigned to you",
+                            "Complaint " + c.getComplaintNumber() + " has been assigned to you (" + c.getAssignedRole() + ") via " + action,
+                            c.getComplaintNumber(), "COMPLAINT", complaintUrl);
+                }
+                // UST664: RE_UPDATE — notify owner when forwarded to RE
+                if ("FORWARD_TO_RE".equals(action)) {
+                    String complaintOwner = c.getAssignedOfficer();
+                    if (complaintOwner != null && !complaintOwner.isBlank()) {
+                        notificationService.send(complaintOwner, "RE_UPDATE",
+                                "Complaint forwarded to Regulated Entity",
+                                "Complaint " + c.getComplaintNumber() + " has been forwarded to the RE for response.",
+                                c.getComplaintNumber(), "COMPLAINT", complaintUrl);
+                    }
+                }
+                break;
+
+            case "CLOSE_COMPLAINT":
+            case "RESOLVE":
+            case "REJECT":
+                // UST663: COMPLAINT_CLOSED — notify owner
+                if (c.getAssignedOfficer() != null && !c.getAssignedOfficer().isBlank() && !c.getAssignedOfficer().equals(actor)) {
+                    notificationService.send(c.getAssignedOfficer(), "COMPLAINT_CLOSED",
+                            "Complaint closed",
+                            "Complaint " + c.getComplaintNumber() + " has been closed via " + action,
+                            c.getComplaintNumber(), "COMPLAINT", complaintUrl);
+                }
+                break;
+
+            case "RETURN_TO_DO":
+                // UST610: NO_REASSIGNED_TO_RBI variant — notify DO
+                if (c.getAssignedOfficer() != null && !c.getAssignedOfficer().isBlank()) {
+                    notificationService.send(c.getAssignedOfficer(), "NO_REASSIGNED_TO_RBI",
+                            "Complaint returned to you",
+                            "Complaint " + c.getComplaintNumber() + " has been returned to CEPC_DO for further action.",
+                            c.getComplaintNumber(), "COMPLAINT", complaintUrl);
+                }
+                break;
+
+            default:
+                break;
+        }
     }
 
     /**
@@ -280,6 +364,27 @@ public class CepcWorkflowService {
                 complaint.setWorkflowStage("CLOSED");
                 String closureCause = params.getOrDefault("closureCause", "RESOLVED");
                 complaint.setClosureCause(closureCause);
+                // UST576: Custom closure text
+                String customClosureText = params.getOrDefault("customClosureText", "");
+                if (!customClosureText.isEmpty()) {
+                    complaint.setCustomClosureText(customClosureText);
+                }
+                // UST581-584: Closure clause
+                String closureClause = params.getOrDefault("closureClause", "");
+                if (!closureClause.isEmpty()) {
+                    complaint.setClosureClause(closureClause);
+                }
+                // UST580: Closure authority info
+                String closureAuthorityName = params.getOrDefault("closureAuthorityName", "");
+                String closureAuthorityDesignation = params.getOrDefault("closureAuthorityDesignation", "");
+                if (!closureAuthorityName.isEmpty()) {
+                    complaint.setClosureAuthorityName(closureAuthorityName);
+                }
+                if (!closureAuthorityDesignation.isEmpty()) {
+                    complaint.setClosureAuthorityDesignation(closureAuthorityDesignation);
+                }
+                // UST504-505, UST757, UST763: Auto-dispatch closure letter if email exists
+                autoDispatchClosureLetter(complaint);
                 break;
 
             case "REASSIGN":
@@ -438,6 +543,17 @@ public class CepcWorkflowService {
         try {
             List<Map<String, Object>> users = keycloakUserService.getUsersByRole(role);
             if (users.isEmpty()) return null;
+            // UST655: Filter out SECRETARY role from assignment
+            users = users.stream()
+                    .filter(u -> {
+                        Object roles = u.get("roles");
+                        if (roles instanceof List) {
+                            return !((List<?>) roles).contains("SECRETARY");
+                        }
+                        return true;
+                    })
+                    .collect(Collectors.toList());
+            if (users.isEmpty()) return null;
             int index = roundRobinCounters.getOrDefault(role, 0);
             if (index >= users.size()) index = 0;
             String userId = (String) users.get(index).get("userId");
@@ -446,6 +562,28 @@ public class CepcWorkflowService {
         } catch (Exception e) {
             log.warn("Failed to assign user by role {}: {}", role, e.getMessage());
             return null;
+        }
+    }
+
+    /**
+     * UST504-505, UST757, UST763: Auto-dispatch closure letter if complainant has email.
+     * Auto-captures send date (non-editable).
+     * If no email: does not auto-dispatch (manual flow required).
+     */
+    private void autoDispatchClosureLetter(Complaint complaint) {
+        String email = complaint.getComplainantEmail();
+        if (email != null && !email.isBlank()) {
+            try {
+                String schemeVersion = complaint.getSchemeVersion() != null ? complaint.getSchemeVersion() : "RBIOS_2026";
+                closureLetterService.generateClosureLetter(complaint.getComplaintNumber(), schemeVersion);
+                complaint.setClosureLetterSentAt(LocalDateTime.now());
+                log.info("Closure letter auto-dispatched for complaint {} to {}", complaint.getComplaintNumber(), email);
+            } catch (Exception e) {
+                log.error("Failed to auto-dispatch closure letter for complaint {}: {}",
+                        complaint.getComplaintNumber(), e.getMessage());
+            }
+        } else {
+            log.info("Complaint {} has no email - closure letter requires manual dispatch", complaint.getComplaintNumber());
         }
     }
 }

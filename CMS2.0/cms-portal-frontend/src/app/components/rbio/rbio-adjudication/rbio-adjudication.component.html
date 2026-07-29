@@ -51,9 +51,17 @@
   <div class="adjudication-actions">
     <button class="action-btn notice" (click)="openForm('NOTICE')">Issue 13-1 Notice</button>
     <button class="action-btn implead" (click)="openForm('IMPLEAD')">Implead Party</button>
-    <button class="action-btn award" (click)="openForm('AWARD')">Pass Award</button>
+    <button class="action-btn award" (click)="validateImpleadedBeforeAward(); openForm('AWARD')">Pass Award</button>
     <button class="action-btn reject" (click)="openForm('REJECT')">Reject</button>
   </div>
+
+  <!-- UST767: Closure validation error for impleaded entities -->
+  @if (closureValidationError()) {
+    <div class="validation-warning">
+      <i class="pi pi-exclamation-triangle"></i>
+      <span>{{ closureValidationError() }}</span>
+    </div>
+  }
 
   <!-- 13-1 Notice Form -->
   @if (activeForm() === 'NOTICE') {
@@ -99,6 +107,10 @@
           </select>
         </div>
       </div>
+      <p class="form-note">Impleading will create a NO/PNO record for the entity and log the action in complaint history.</p>
+      @if (impleadNodalRecordCreating()) {
+        <p class="creating-record-note">Creating NO/PNO record...</p>
+      }
       <div class="form-actions">
         <button class="submit-btn" [disabled]="processing() || !impleadPartyName.trim() || !impleadPartyType" (click)="submitImplead()">
           @if (processing()) { Adding... } @else { Add Party }

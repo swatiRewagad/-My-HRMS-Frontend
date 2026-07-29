@@ -43,15 +43,15 @@ public class GroqOcrProvider implements OcrProvider {
 
         try {
             if ("application/pdf".equals(mimeType)) {
-                // First try text-based extraction
                 Map<String, String> textResult = extractFromPdfAsText(fileBytes);
                 if (!textResult.isEmpty()) {
                     return textResult;
                 }
-                // PDF is image-based — render first page as image and use vision API
+                // PDF is image-based — no vision model available, try rendering + basic OCR description
                 log.info("PDF text extraction empty, falling back to vision API (render page 1 as image)");
                 byte[] pageImage = renderFirstPageAsImage(fileBytes);
                 if (pageImage != null) {
+                    // Check if model supports vision by attempting the request
                     String base64Data = Base64.getEncoder().encodeToString(pageImage);
                     String dataUrl = "data:image/jpeg;base64," + base64Data;
                     Map<String, Object> requestBody = buildRequest(dataUrl);
@@ -66,15 +66,20 @@ public class GroqOcrProvider implements OcrProvider {
                         }
                     } catch (org.springframework.web.client.HttpClientErrorException e) {
                         String errorBody = e.getResponseBodyAsString();
-                        log.warn("Groq vision 400 on PDF image — salvaging. Snippet: {}",
-                                errorBody.length() > 200 ? errorBody.substring(0, 200) : errorBody);
-                        Map<String, String> salvaged = salvageFailedGeneration(errorBody);
-                        if (!salvaged.isEmpty()) return salvaged;
+                        if (errorBody.contains("must be a string")) {
+                            log.warn("Model {} does not support vision/multimodal — cannot process image-based PDF", model);
+                        } else {
+                            log.warn("Groq vision error on PDF image. Snippet: {}",
+                                    errorBody.length() > 200 ? errorBody.substring(0, 200) : errorBody);
+                            Map<String, String> salvaged = salvageFailedGeneration(errorBody);
+                            if (!salvaged.isEmpty()) return salvaged;
+                        }
                     }
                 }
                 return Collections.emptyMap();
             }
 
+            // For image files (JPEG, PNG, TIFF) — try vision, fall back gracefully
             String base64Data = Base64.getEncoder().encodeToString(fileBytes);
             String dataUrl = "data:" + mimeType + ";base64," + base64Data;
 
@@ -93,9 +98,11 @@ public class GroqOcrProvider implements OcrProvider {
                 }
                 log.error("Groq returned: {}", response.getStatusCode());
             } catch (org.springframework.web.client.HttpClientErrorException e) {
-                // Groq returns 400 json_validate_failed when the model produces imperfect JSON.
-                // The error body contains a "failed_generation" field with the partial output — try to salvage it.
                 String errorBody = e.getResponseBodyAsString();
+                if (errorBody.contains("must be a string")) {
+                    log.warn("Model {} does not support vision — cannot process image file", model);
+                    return Collections.emptyMap();
+                }
                 log.warn("Groq 400 error — attempting to salvage failed_generation. Body snippet: {}",
                         errorBody.length() > 300 ? errorBody.substring(0, 300) : errorBody);
                 Map<String, String> salvaged = salvageFailedGeneration(errorBody);
@@ -128,14 +135,10 @@ public class GroqOcrProvider implements OcrProvider {
                 "content", "You are a JSON-only extraction assistant. You MUST respond with ONLY a valid JSON object. No markdown, no code fences, no explanation text. Start your response with '{' and end with '}'."
         );
 
-        Map<String, Object> textContent = Map.of("type", "text",
-                "text", OcrPrompts.EXTRACTION_PROMPT + "\n\nHere is the text from the complaint letter:\n\n" + pdfText);
+        String userContent = OcrPrompts.EXTRACTION_PROMPT + "\n\nHere is the text from the complaint letter:\n\n" + pdfText;
 
-        Map<String, Object> userMsg = Map.of("role", "user", "content", List.of(textContent));
+        Map<String, Object> userMsg = Map.of("role", "user", "content", userContent);
 
-        // Do NOT use response_format:json_object here — Groq's strict JSON validator
-        // rejects the output with 400 json_validate_failed for multilingual/complex docs.
-        // We handle imperfect JSON ourselves in OcrResponseParser + salvageFailedGeneration.
         Map<String, Object> requestBody = Map.of(
                 "model", model,
                 "messages", List.of(systemMsg, userMsg),
@@ -239,17 +242,33 @@ public class GroqOcrProvider implements OcrProvider {
                 "content", "You are a JSON-only extraction assistant. You MUST respond with ONLY a valid JSON object. No markdown, no code fences, no explanation text. Start your response with '{' and end with '}'."
         );
 
-        Map<String, Object> textContent = Map.of("type", "text", "text", OcrPrompts.EXTRACTION_PROMPT);
-        Map<String, Object> imageUrl = Map.of("url", dataUrl);
-        Map<String, Object> imageContent = Map.of("type", "image_url", "image_url", imageUrl);
+        Map<String, Object> userMsg = Map.of(
+                "role", "user",
+                "content", List.of(
+                    Map.of("type", "text", "text", OcrPrompts.EXTRACTION_PROMPT),
+                    Map.of("type", "image_url", "image_url", Map.of("url", dataUrl))
+                )
+        );
+
+        return Map.of(
+                "model", model,
+                "messages", List.of(systemMsg, userMsg),
+                "temperature", 0.1,
+                "max_tokens", 2048
+        );
+    }
+
+    private Map<String, Object> buildTextOnlyRequest(String text) {
+        Map<String, Object> systemMsg = Map.of(
+                "role", "system",
+                "content", "You are a JSON-only extraction assistant. You MUST respond with ONLY a valid JSON object. No markdown, no code fences, no explanation text. Start your response with '{' and end with '}'."
+        );
 
         Map<String, Object> userMsg = Map.of(
                 "role", "user",
-                "content", List.of(textContent, imageContent)
+                "content", OcrPrompts.EXTRACTION_PROMPT + "\n\nHere is the text from the complaint letter:\n\n" + text
         );
 
-        // Note: no response_format here — vision models sometimes produce imperfect JSON
-        // which triggers Groq's 400 json_validate_failed; we handle that with salvageFailedGeneration()
         return Map.of(
                 "model", model,
                 "messages", List.of(systemMsg, userMsg),

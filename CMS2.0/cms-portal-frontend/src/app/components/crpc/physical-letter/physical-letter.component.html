@@ -42,6 +42,7 @@
   </div>
 
   <!-- Main Content Area -->
+  @if (activeTab() === 'creation') {
   <div class="workspace-body">
     <!-- Left Panel: Physical Letter Copy / PDF Viewer -->
     <div class="left-panel" [class.expanded]="pdfExpanded()">
@@ -221,9 +222,35 @@
         <section class="form-section">
           <h5 class="section-title"><i class="pi pi-building"></i> Entity Details</h5>
           <div class="form-grid">
-            <div class="form-group">
+            <div class="form-group entity-search-group">
               <label>Entity Name</label>
-              <input type="text" [(ngModel)]="entityName" placeholder="Bank/NBFC name" />
+              <div class="entity-search-wrapper">
+                <input type="text"
+                  [ngModel]="entitySearchText || entityName"
+                  (ngModelChange)="onEntitySearchInput($event)"
+                  (focus)="onEntitySearchInput(entitySearchText || entityName)"
+                  (blur)="onEntityBlur()"
+                  placeholder="Search bank/NBFC from master..."
+                  autocomplete="off" />
+                @if (entitySearchLoading()) {
+                  <span class="entity-spinner"><i class="pi pi-spin pi-spinner"></i></span>
+                }
+              </div>
+              @if (showEntityDropdown() && entitySearchResults().length > 0) {
+                <ul class="entity-dropdown">
+                  @for (entity of entitySearchResults(); track entity.id) {
+                    <li (mousedown)="selectEntity(entity)">
+                      <span class="entity-name">{{ entity.name }}</span>
+                      <span class="entity-dept" [class.cepc]="entity.department === 'CEPC'">{{ entity.department }}</span>
+                    </li>
+                  }
+                </ul>
+              }
+              @if (showEntityDropdown() && !entitySearchLoading() && entitySearchResults().length === 0 && entitySearchText.length >= 2) {
+                <ul class="entity-dropdown">
+                  <li class="no-results">No matching entities found</li>
+                </ul>
+              }
             </div>
             <div class="form-group">
               <label>Entity Type</label>
@@ -263,9 +290,9 @@
             </div>
             <div class="form-group">
               <label>State *</label>
-              <select [(ngModel)]="complainantState">
+              <select [ngModel]="complainantState" (ngModelChange)="onStateChange($event)">
                 <option value="">Select State</option>
-                @for (s of states; track s) {
+                @for (s of states(); track s) {
                   <option [value]="s">{{ s }}</option>
                 }
               </select>
@@ -276,11 +303,21 @@
             </div>
             <div class="form-group">
               <label>District</label>
-              <input type="text" [(ngModel)]="complainantDistrict" placeholder="District" />
+              <select [(ngModel)]="complainantDistrict">
+                <option value="">Select District</option>
+                @for (d of districts(); track d) {
+                  <option [value]="d">{{ d }}</option>
+                }
+              </select>
             </div>
             <div class="form-group">
               <label>Pincode</label>
-              <input type="text" [(ngModel)]="complainantPincode" maxlength="6" placeholder="Pincode" />
+              <div class="pincode-field">
+                <input type="text" [ngModel]="complainantPincode" (ngModelChange)="onPincodeInput($event)" maxlength="6" placeholder="Enter 6-digit pincode" />
+                @if (pincodeLoading()) {
+                  <span class="pincode-spinner">...</span>
+                }
+              </div>
             </div>
           </div>
         </section>
@@ -383,6 +420,67 @@
       </div>
     </div>
   </div>
+  }
+
+  @if (activeTab() === 'assignment') {
+  <div class="assignment-panel">
+    <div class="assignment-card">
+      <h3>Assignment</h3>
+
+      <!-- Confirmation Dialog -->
+      <div class="confirmation-box">
+        <div class="confirmation-header">
+          <i class="pi pi-info-circle"></i> <strong>Confirmation</strong>
+          <span class="confirmation-subtitle">Are you sure you want to send the request to the reviewer?</span>
+        </div>
+
+        <div class="confirmation-body">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Assignment</label>
+              <select [(ngModel)]="assignmentMode" (change)="onAssignmentModeChange()">
+                <option value="AUTOMATIC">Automatic</option>
+                <option value="MANUAL">Manual</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Name of CRPC Reviewer</label>
+              <select [ngModel]="selectedReviewerId" (ngModelChange)="onReviewerSelect($event)" [disabled]="assignmentMode === 'AUTOMATIC'">
+                <option value="" disabled>Select reviewer</option>
+                @for (rev of reviewers(); track rev.id) {
+                  <option [value]="rev.id">{{ rev.displayName }}</option>
+                }
+              </select>
+            </div>
+          </div>
+
+          @if (reviewerOnLeave()) {
+            <div class="leave-warning">
+              <span class="leave-dot"></span> Assigned user is on Leave
+              <button class="clear-btn" (click)="selectedReviewerId = ''; selectedReviewerName = ''">&times;</button>
+            </div>
+          }
+
+          <div class="status-change">
+            <span class="status-label">Expected Status Change <i class="pi pi-info-circle"></i></span>
+            <div class="status-flow">
+              <span class="status-badge draft"><i class="pi pi-file"></i> Draft</span>
+              <i class="pi pi-arrow-right"></i>
+              <span class="status-badge sent"><i class="pi pi-send"></i> Sent to Reviewer</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="confirmation-actions">
+          <button class="btn btn-outline" (click)="activeTab.set('creation')">Cancel</button>
+          <button class="btn btn-primary" (click)="confirmAssignment()" [disabled]="!selectedReviewerId.trim() || submitting()">
+            @if (submitting()) { <span class="spinner-sm"></span> Sending... } @else { Confirm }
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  }
 </div>
 
 <!-- Success Overlay -->

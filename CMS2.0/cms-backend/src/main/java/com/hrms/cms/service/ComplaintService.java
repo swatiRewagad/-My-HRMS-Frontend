@@ -122,7 +122,9 @@ public class ComplaintService {
 
         // Apply routing based on filing type and entity (mirrors jBPM DepartmentRoutingTask)
         String entityCode = "";
-        if (complaint.getBankId() != null) {
+        if (req.getEntityName() != null && !req.getEntityName().isBlank()) {
+            entityCode = req.getEntityName();
+        } else if (complaint.getBankId() != null) {
             entityCode = bankRepository.findById(complaint.getBankId())
                     .map(Bank::getCode).orElse("");
         }

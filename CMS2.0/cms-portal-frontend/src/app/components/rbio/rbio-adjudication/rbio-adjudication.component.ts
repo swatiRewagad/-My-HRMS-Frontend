@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
+import { RbioWorkflowService } from '../../../services/rbio-workflow.service';
 import { environment } from '../../../../environments/environment';
 
 @Component({
@@ -17,9 +18,15 @@ export class RbioAdjudicationComponent {
 
   private http = inject(HttpClient);
   private auth = inject(KeycloakAuthService);
+  private rbioWorkflow = inject(RbioWorkflowService);
 
   // State
   activeForm = signal<'NOTICE' | 'IMPLEAD' | 'AWARD' | 'REJECT' | null>(null);
+
+  // UST544-546, UST767: Impleading enhancement
+  impleadNodalRecordCreating = signal(false);
+  closureValidationError = signal('');
+  incompleteImpleadedEntities = signal<string[]>([]);
   processing = signal(false);
   resultMessage = signal('');
   resultSuccess = signal(false);
@@ -142,10 +149,11 @@ export class RbioAdjudicationComponent {
     this.processing.set(true);
 
     const complaintNumber = this.complaint?.complaintNumber || this.complaint?.complaintId;
+    const actor = this.auth.currentUser()?.username || '';
     const body = {
       action: 'IMPLEAD_PARTY',
       remarks: `Impleading party: ${this.impleadPartyName} (${this.impleadPartyType})`,
-      actor: this.auth.currentUser()?.username || '',
+      actor,
       impleadPartyName: this.impleadPartyName,
       impleadPartyType: this.impleadPartyType
     };
@@ -155,12 +163,32 @@ export class RbioAdjudicationComponent {
       body
     ).subscribe({
       next: () => {
-        this.resultSuccess.set(true);
-        this.resultMessage.set(`Party "${this.impleadPartyName}" impleaded successfully.`);
-        this.processing.set(false);
-        this.activeForm.set(null);
-        this.impleadPartyName = '';
-        this.impleadPartyType = '';
+        // UST544-546: Create NO/PNO record for impleaded entity
+        this.impleadNodalRecordCreating.set(true);
+        this.rbioWorkflow.createImpleadNodalRecord(complaintNumber, {
+          impleadPartyName: this.impleadPartyName,
+          impleadPartyType: this.impleadPartyType,
+          actor
+        }).subscribe({
+          next: () => {
+            this.impleadNodalRecordCreating.set(false);
+            this.resultSuccess.set(true);
+            this.resultMessage.set(`Party "${this.impleadPartyName}" impleaded successfully. NO/PNO record created.`);
+            this.processing.set(false);
+            this.activeForm.set(null);
+            this.impleadPartyName = '';
+            this.impleadPartyType = '';
+          },
+          error: () => {
+            this.impleadNodalRecordCreating.set(false);
+            this.resultSuccess.set(true);
+            this.resultMessage.set(`Party "${this.impleadPartyName}" impleaded. NO/PNO record creation pending.`);
+            this.processing.set(false);
+            this.activeForm.set(null);
+            this.impleadPartyName = '';
+            this.impleadPartyType = '';
+          }
+        });
       },
       error: (err) => {
         this.resultSuccess.set(false);
@@ -231,6 +259,28 @@ export class RbioAdjudicationComponent {
         this.processing.set(false);
       }
     });
+  }
+
+  // UST767: Validate all impleaded entities have complete data before closure/award
+  validateImpleadedBeforeAward(): boolean {
+    const complaintNumber = this.complaint?.complaintNumber || this.complaint?.complaintId;
+    if (!complaintNumber) return true;
+
+    this.rbioWorkflow.validateImpleadedEntities(complaintNumber).subscribe({
+      next: (result) => {
+        if (!result.valid) {
+          this.closureValidationError.set(
+            `Incomplete data for impleaded entities: ${result.incomplete.join(', ')}. Please ensure all impleaded entities have complete records before passing award.`
+          );
+          this.incompleteImpleadedEntities.set(result.incomplete);
+        } else {
+          this.closureValidationError.set('');
+          this.incompleteImpleadedEntities.set([]);
+        }
+      },
+      error: () => {}
+    });
+    return this.closureValidationError() === '';
   }
 
   formatCurrency(amount: number): string {

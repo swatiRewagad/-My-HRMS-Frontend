@@ -116,3 +116,18 @@
   &.success { background: #e8f5e9; color: #2e7d32; }
   &.error { background: #fbe9e7; color: #d32f2f; }
 }
+
+// UST497: Meeting status exclusion notice
+.meeting-status-excluded {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: #fff8e1;
+  border: 1px solid #ffe082;
+  border-radius: 6px;
+  margin-bottom: 12px;
+  font-size: 12px;
+  color: #f57c00;
+  i { font-size: 14px; }
+}

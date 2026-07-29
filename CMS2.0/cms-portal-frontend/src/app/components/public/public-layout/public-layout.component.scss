@@ -88,6 +88,23 @@
 }
 
 // Session Bar
+.session-warning-banner {
+  background: #fff3e0;
+  border-bottom: 2px solid #ff9800;
+  padding: 10px 0;
+  font-size: 14px;
+  color: #e65100;
+  font-weight: 600;
+  animation: pulse 1s ease-in-out infinite;
+}
+
+.session-warning-inner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  i { font-size: 18px; }
+}
+
 .session-bar {
   background: #e8f5e9;
   border-bottom: 1px solid #c8e6c9;

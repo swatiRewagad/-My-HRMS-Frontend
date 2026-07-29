@@ -53,6 +53,8 @@ public class EmailSyndicationApiController {
     private String attachmentsRootPath;
 
     private final AtomicInteger roundRobinPointer = new AtomicInteger(0);
+    private final List<Map<String, Object>> ignoreListStore = Collections.synchronizedList(new ArrayList<>());
+    private final AtomicInteger ignoreIdSeq = new AtomicInteger(1);
 
     private List<Map<String, Object>> getDeoPool() {
         List<Map<String, Object>> keycloakDeos = keycloakUserService.getDeos();
@@ -91,6 +93,22 @@ public class EmailSyndicationApiController {
         String subject = (String) request.getOrDefault("subject", "");
         String body = (String) request.getOrDefault("body", "");
         String messageId = (String) request.getOrDefault("messageId", UUID.randomUUID().toString());
+        String toRecipients = (String) request.getOrDefault("toRecipients", "");
+        String ccRecipients = (String) request.getOrDefault("ccRecipients", "");
+        String bccRecipients = (String) request.getOrDefault("bccRecipients", "");
+
+        // BRD Rule: If CRPC is only in CC/BCC (not primary TO), categorize as Non-Complaint and auto-close
+        if (isCrpcOnlyInCcBcc(toRecipients, ccRecipients, bccRecipients)) {
+            log.info("Email from {} has CRPC in CC/BCC only — auto-closing as Non-Complaint", senderEmail);
+            Map<String, Object> autoClosedResult = new LinkedHashMap<>();
+            autoClosedResult.put("status", "NON_COMPLAINT");
+            autoClosedResult.put("reason", "CRPC in CC/BCC — not a direct complaint");
+            autoClosedResult.put("senderEmail", senderEmail);
+            autoClosedResult.put("subject", subject);
+            autoClosedResult.put("autoClosed", true);
+            autoClosedResult.put("closedAt", LocalDateTime.now().toString());
+            return wrapResponse(autoClosedResult);
+        }
 
         return processIngest(senderEmail, subject, body, messageId, null);
     }
@@ -108,6 +126,19 @@ public class EmailSyndicationApiController {
 
     private Map<String, Object> processIngest(String senderEmail, String subject, String body,
                                                String messageId, MultipartFile attachment) {
+        // Check ignore list — auto-close if sender matches
+        if (isOnIgnoreList(senderEmail)) {
+            log.info("Email from {} is on ignore list — auto-closing as Non-Complaint", senderEmail);
+            Map<String, Object> ignoredResult = new LinkedHashMap<>();
+            ignoredResult.put("status", "NON_COMPLAINT");
+            ignoredResult.put("reason", "Sender is on ignore list");
+            ignoredResult.put("senderEmail", senderEmail);
+            ignoredResult.put("subject", subject);
+            ignoredResult.put("autoClosed", true);
+            ignoredResult.put("closedAt", LocalDateTime.now().toString());
+            return wrapResponse(ignoredResult);
+        }
+
         IncomingEmailRequest emailReq = new IncomingEmailRequest();
         emailReq.setFromEmail(senderEmail);
         emailReq.setFromName(extractName(senderEmail));
@@ -230,6 +261,9 @@ public class EmailSyndicationApiController {
                 .translatedBody(isVernacular ? body : null)
                 .receivedAt(LocalDateTime.now())
                 .build();
+
+        // Stamp scheme version at creation time (UST190)
+        draft.setSchemeVersion("RBIOS_2026");
 
         EmailDraft saved = draftRepository.save(draft);
         log.info("Draft saved to DB: id={}, draftId={}, assignedTo={}", saved.getId(), saved.getDraftId(), saved.getAssignedTo());
@@ -528,6 +562,14 @@ public class EmailSyndicationApiController {
         if (request.containsKey("reviewerDecision")) draft.setReviewerDecision((String) request.get("reviewerDecision"));
         if (request.containsKey("reviewerRemarks")) draft.setReviewerRemarks((String) request.get("reviewerRemarks"));
         if (request.containsKey("targetOffice")) draft.setTargetOffice((String) request.get("targetOffice"));
+        if (request.containsKey("schemeVersion")) draft.setSchemeVersion((String) request.get("schemeVersion"));
+        if (request.containsKey("closureClause")) draft.setClosureClause((String) request.get("closureClause"));
+        if (request.containsKey("autoClosureResponsesJson")) draft.setAutoClosureResponsesJson((String) request.get("autoClosureResponsesJson"));
+        if (request.containsKey("subJudice")) draft.setSubJudice(Boolean.TRUE.equals(request.get("subJudice")));
+        if (request.containsKey("notAComplaintReason")) draft.setNotAComplaintReason((String) request.get("notAComplaintReason"));
+        if (request.containsKey("notAComplaintOthersReason")) draft.setNotAComplaintOthersReason((String) request.get("notAComplaintOthersReason"));
+        if (request.containsKey("suggestionDepartment")) draft.setSuggestionDepartment((String) request.get("suggestionDepartment"));
+        if (request.containsKey("suggestionNature")) draft.setSuggestionNature((String) request.get("suggestionNature"));
 
         draftRepository.save(draft);
 
@@ -632,6 +674,34 @@ public class EmailSyndicationApiController {
         }
     }
 
+    private boolean isOnIgnoreList(String senderEmail) {
+        if (senderEmail == null || senderEmail.isBlank()) return false;
+        String emailLower = senderEmail.toLowerCase().trim();
+        for (Map<String, Object> entry : ignoreListStore) {
+            Object activeFlag = entry.getOrDefault("isActive", true);
+            if (Boolean.FALSE.equals(activeFlag)) continue;
+            String status = (String) entry.getOrDefault("status", "active");
+            if (!"active".equalsIgnoreCase(status)) continue;
+            String pattern = ((String) entry.getOrDefault("pattern",
+                    (String) entry.getOrDefault("emailPattern", ""))).toLowerCase().trim();
+            if (pattern.isEmpty()) continue;
+            String type = ((String) entry.getOrDefault("type",
+                    (String) entry.getOrDefault("patternType", "EXACT"))).toUpperCase();
+            switch (type) {
+                case "EXACT":
+                    if (emailLower.equals(pattern)) return true;
+                    break;
+                case "DOMAIN":
+                    if (emailLower.endsWith("@" + pattern) || emailLower.endsWith("." + pattern)) return true;
+                    break;
+                case "CONTAINS":
+                    if (emailLower.contains(pattern)) return true;
+                    break;
+            }
+        }
+        return false;
+    }
+
     @PostMapping("/drafts/{draftId}/convert")
     public Map<String, Object> convertDraft(@PathVariable String draftId) {
         EmailDraft draft = draftRepository.findByDraftId(draftId).orElse(null);
@@ -681,19 +751,27 @@ public class EmailSyndicationApiController {
 
     @GetMapping("/ignore-list")
     public Map<String, Object> getIgnoreList() {
-        return wrapResponse(List.of());
+        return wrapResponse(new ArrayList<>(ignoreListStore));
     }
 
     @PostMapping("/ignore-list")
     public Map<String, Object> addToIgnoreList(@RequestBody Map<String, Object> request) {
+        String pattern = (String) request.getOrDefault("pattern",
+                request.getOrDefault("emailPattern", ""));
+        String type = (String) request.getOrDefault("type",
+                request.getOrDefault("patternType", "EXACT"));
         Map<String, Object> entry = new LinkedHashMap<>();
-        entry.put("id", 1);
-        entry.put("emailPattern", request.getOrDefault("emailPattern", ""));
-        entry.put("patternType", request.getOrDefault("patternType", "EXACT"));
+        entry.put("id", ignoreIdSeq.getAndIncrement());
+        entry.put("pattern", pattern);
+        entry.put("emailPattern", pattern);
+        entry.put("type", type);
+        entry.put("patternType", type);
         entry.put("reason", request.getOrDefault("reason", ""));
         entry.put("addedBy", "admin");
+        entry.put("status", "active");
         entry.put("isActive", true);
         entry.put("createdAt", LocalDateTime.now().toString());
+        ignoreListStore.add(entry);
         return wrapResponse(entry);
     }
 
@@ -792,6 +870,7 @@ public class EmailSyndicationApiController {
 
     @DeleteMapping("/ignore-list/{id}")
     public Map<String, Object> removeIgnoreEntry(@PathVariable int id) {
+        ignoreListStore.removeIf(e -> Integer.valueOf(id).equals(e.get("id")));
         return wrapResponse(null);
     }
 
@@ -868,6 +947,16 @@ public class EmailSyndicationApiController {
         response.put("reviewerRemarks", draft.getReviewerRemarks());
         response.put("targetOffice", draft.getTargetOffice());
 
+        // Scheme & Auto-closure
+        response.put("schemeVersion", draft.getSchemeVersion());
+        response.put("closureClause", draft.getClosureClause());
+        response.put("autoClosureResponsesJson", draft.getAutoClosureResponsesJson());
+        response.put("subJudice", draft.isSubJudice());
+        response.put("notAComplaintReason", draft.getNotAComplaintReason());
+        response.put("notAComplaintOthersReason", draft.getNotAComplaintOthersReason());
+        response.put("suggestionDepartment", draft.getSuggestionDepartment());
+        response.put("suggestionNature", draft.getSuggestionNature());
+
         // Language info
         response.put("detectedLanguage", draft.getDetectedLanguage());
         response.put("languageName", draft.getLanguageName());
@@ -886,6 +975,14 @@ public class EmailSyndicationApiController {
         }
 
         return response;
+    }
+
+    private boolean isCrpcOnlyInCcBcc(String to, String cc, String bcc) {
+        String crpcPattern = "crpc";
+        boolean inTo = to != null && to.toLowerCase().contains(crpcPattern);
+        boolean inCc = cc != null && cc.toLowerCase().contains(crpcPattern);
+        boolean inBcc = bcc != null && bcc.toLowerCase().contains(crpcPattern);
+        return !inTo && (inCc || inBcc);
     }
 
     private Map<String, Object> wrapResponse(Object data) {

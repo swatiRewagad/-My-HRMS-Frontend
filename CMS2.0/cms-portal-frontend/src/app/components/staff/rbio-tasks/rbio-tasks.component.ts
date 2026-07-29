@@ -251,6 +251,10 @@ export class RbioTasksComponent implements OnInit {
     return String(val);
   }
 
+  navigateToCreateComplaint() {
+    this.router.navigate(['/rbio/create-complaint']);
+  }
+
   async logout() {
     await this.auth.logout();
   }

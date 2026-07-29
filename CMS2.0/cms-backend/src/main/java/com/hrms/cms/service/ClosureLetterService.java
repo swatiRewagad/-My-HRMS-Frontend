@@ -60,6 +60,10 @@ public class ClosureLetterService {
         vars.put("currentDate", LocalDate.now().format(DateTimeFormatter.ofPattern("dd-MM-yyyy")));
         vars.put("closureDate", LocalDate.now().format(DateTimeFormatter.ofPattern("dd-MM-yyyy")));
         vars.put("status", nullSafe(complaint.getStatus()));
+        vars.put("customClosureText", nullSafe(complaint.getCustomClosureText()));
+        vars.put("closureClause", nullSafe(complaint.getClosureClause()));
+        vars.put("closureAuthorityName", nullSafe(complaint.getClosureAuthorityName()));
+        vars.put("closureAuthorityDesignation", nullSafe(complaint.getClosureAuthorityDesignation()));
         return vars;
     }
 
@@ -84,7 +88,21 @@ public class ClosureLetterService {
         writer.println("<div class='ref-line'><strong>To:</strong> " + nullSafe(complaint.getComplainantName()) + "</div>");
         writer.println("<div class='ref-line'><strong>Subject:</strong> " + subject + "</div>");
         writer.println("<div class='body-content'>" + body + "</div>");
-        writer.println("<div class='footer'><p>Yours faithfully,</p><p>CRPC Cell</p></div>");
+        // Digital Signature Placeholder (UST580)
+        writer.println("<div class='footer'>");
+        writer.println("<p>Yours faithfully,</p>");
+        String authorityName = nullSafe(complaint.getClosureAuthorityName());
+        String authorityDesignation = nullSafe(complaint.getClosureAuthorityDesignation());
+        if (!authorityName.isEmpty()) {
+            writer.println("<p><strong>" + authorityName + "</strong></p>");
+        }
+        if (!authorityDesignation.isEmpty()) {
+            writer.println("<p>" + authorityDesignation + "</p>");
+        }
+        writer.println("<p style='margin-top:10px;font-style:italic;color:#666;'>[Digitally Signed]</p>");
+        writer.println("<p style='font-size:10px;color:#888;'>Signed at: " +
+                java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm:ss")) + "</p>");
+        writer.println("</div>");
         writer.println("</body></html>");
         writer.flush();
         return baos.toByteArray();

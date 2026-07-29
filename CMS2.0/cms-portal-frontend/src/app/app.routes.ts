@@ -1,6 +1,6 @@
 import { Routes } from '@angular/router';
 import { publicAuthGuard } from './guards/public-auth.guard';
-import { staffAuthGuard } from './guards/staff-auth.guard';
+import { staffAuthGuard, staffRoleGuard } from './guards/staff-auth.guard';
 
 export const routes: Routes = [
   {
@@ -41,26 +41,32 @@ export const routes: Routes = [
   },
   {
     path: 'admin/dashboard',
+    canActivate: [staffRoleGuard(['ADMIN', 'CRPC_ADMIN', 'CRPC_HEAD'])],
     loadComponent: () => import('./components/admin/admin-dashboard/admin-dashboard.component').then(m => m.AdminDashboardComponent)
   },
   {
     path: 'admin/rules',
+    canActivate: [staffRoleGuard(['ADMIN', 'CRPC_ADMIN', 'CRPC_HEAD'])],
     loadComponent: () => import('./components/admin/rules-management/rules-management.component').then(m => m.RulesManagementComponent)
   },
   {
     path: 'admin/extraction-rules',
+    canActivate: [staffRoleGuard(['ADMIN', 'CRPC_ADMIN', 'CRPC_HEAD'])],
     loadComponent: () => import('./components/admin/extraction-rules/extraction-rules.component').then(m => m.ExtractionRulesComponent)
   },
   {
     path: 'admin/rules/new',
+    canActivate: [staffRoleGuard(['ADMIN', 'CRPC_ADMIN', 'CRPC_HEAD'])],
     loadComponent: () => import('./components/admin/rule-editor/rule-editor.component').then(m => m.RuleEditorComponent)
   },
   {
     path: 'admin/rules/edit/:id',
+    canActivate: [staffRoleGuard(['ADMIN', 'CRPC_ADMIN', 'CRPC_HEAD'])],
     loadComponent: () => import('./components/admin/rule-editor/rule-editor.component').then(m => m.RuleEditorComponent)
   },
   {
     path: 'admin/rules/test',
+    canActivate: [staffRoleGuard(['ADMIN', 'CRPC_ADMIN', 'CRPC_HEAD'])],
     loadComponent: () => import('./components/admin/rule-tester/rule-tester.component').then(m => m.RuleTesterComponent)
   },
   {
@@ -111,6 +117,10 @@ export const routes: Routes = [
   {
     path: 'rbio',
     loadComponent: () => import('./components/rbio/rbio-home/rbio-home.component').then(m => m.RbioHomeComponent)
+  },
+  {
+    path: 'rbio/create-complaint',
+    loadComponent: () => import('./components/rbio/rbio-create-complaint/rbio-create-complaint.component').then(m => m.RbioCreateComplaintComponent)
   },
   {
     path: 'rbio/complaint/:id',
@@ -164,6 +174,11 @@ export const routes: Routes = [
     loadComponent: () => import('./components/report-builder/report-builder.component').then(m => m.ReportBuilderComponent)
   },
   {
+    path: 'admin/report-access',
+    canActivate: [staffRoleGuard(['ADMIN', 'RBIO_ADMIN'])],
+    loadComponent: () => import('./components/report-builder/report-builder.component').then(m => m.ReportBuilderComponent)
+  },
+  {
     path: 'staff/senior-dashboard',
     canActivate: [staffAuthGuard],
     loadComponent: () => import('./components/senior-dashboard/senior-dashboard.component').then(m => m.SeniorDashboardComponent)
@@ -209,9 +224,15 @@ export const routes: Routes = [
     canActivate: [staffAuthGuard],
     loadComponent: () => import('./components/crpc/in-charge-dashboard/in-charge-dashboard.component').then(m => m.InChargeDashboardComponent)
   },
+  // ── CRPC Reports ──
+  {
+    path: 'crpc/reports',
+    loadComponent: () => import('./components/crpc/crpc-reports/crpc-reports.component').then(m => m.CrpcReportsComponent)
+  },
   // ── Admin — Team Management ──
   {
     path: 'admin/team-management',
+    canActivate: [staffRoleGuard(['ADMIN', 'CRPC_ADMIN', 'CRPC_HEAD'])],
     loadComponent: () => import('./components/admin/team-management/team-management.component').then(m => m.TeamManagementComponent)
   },
   // ── Admin — Template Management ──
@@ -224,6 +245,11 @@ export const routes: Routes = [
     path: 'admin/communication-templates',
     canActivate: [staffAuthGuard],
     loadComponent: () => import('./components/admin/communication-templates/communication-templates.component').then(m => m.CommunicationTemplatesComponent)
+  },
+  {
+    path: 'admin/master-data',
+    canActivate: [staffAuthGuard],
+    loadComponent: () => import('./components/admin/master-data/master-data.component').then(m => m.MasterDataComponent)
   },
   // ── RE Portal (Regulated Entity) ──
   {
@@ -251,6 +277,11 @@ export const routes: Routes = [
     path: 'aa/appeal/:appealNumber',
     canActivate: [staffAuthGuard],
     loadComponent: () => import('./components/aa/aa-appeal-detail/aa-appeal-detail.component').then(m => m.AaAppealDetailComponent)
+  },
+  // ── Public Upload Link (no auth guard — OTP-verified) ──
+  {
+    path: 'public/upload/:token',
+    loadComponent: () => import('./components/public/complainant-upload/complainant-upload.component').then(m => m.ComplainantUploadComponent)
   },
   // ── Public-facing Complaint Portal ──
   {

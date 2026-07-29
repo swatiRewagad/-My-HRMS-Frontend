@@ -2,8 +2,11 @@ import { Component, inject, signal, OnInit } from '@angular/core';
 import { CommonModule, UpperCasePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterModule } from '@angular/router';
+import { HttpClient } from '@angular/common/http';
 import { ComplaintService } from '../../services/complaint.service';
+import { PublicAuthService } from '../../services/public-auth.service';
 import { ComplaintStatus } from '../../models/complaint.model';
+import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-complaint-tracker',
@@ -16,18 +19,41 @@ export class ComplaintTrackerComponent implements OnInit {
 
   private complaintService = inject(ComplaintService);
   private route = inject(ActivatedRoute);
+  private http = inject(HttpClient);
+  private authService = inject(PublicAuthService);
 
   searchId = signal('');
   status = signal<ComplaintStatus | null>(null);
   loading = signal(false);
   error = signal('');
 
+  // UST98: Track via Mobile+OTP
+  trackMode = signal<'id' | 'mobile'>('id');
+  mobileNumber = '';
+  otpSent = signal(false);
+  otpCode = '';
+  mobileComplaints = signal<any[]>([]);
+  mobileVerified = signal(false);
+
   ngOnInit() {
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
       this.searchId.set(id);
       this.track();
+    } else if (this.authService.isSessionValid()) {
+      this.mobileNumber = this.authService.userIdentifier();
+      if (this.mobileNumber) {
+        this.trackMode.set('mobile');
+        this.mobileVerified.set(true);
+        this.loadComplaintsByMobile();
+      }
     }
+  }
+
+  switchMode(mode: 'id' | 'mobile') {
+    this.trackMode.set(mode);
+    this.error.set('');
+    this.status.set(null);
   }
 
   track() {
@@ -52,6 +78,75 @@ export class ComplaintTrackerComponent implements OnInit {
         this.loading.set(false);
       }
     });
+  }
+
+  // UST98: Send OTP for mobile-based tracking
+  sendTrackingOtp() {
+    if (!/^[6-9]\d{9}$/.test(this.mobileNumber)) {
+      this.error.set('Enter a valid 10-digit mobile number.');
+      return;
+    }
+    this.loading.set(true);
+    this.error.set('');
+    this.http.post<any>(`${environment.apiBaseUrl}/api/v1/citizen-auth/send-otp`, {
+      mobile: this.mobileNumber, captchaToken: 'track-bypass', captchaAnswer: 'track'
+    }).subscribe({
+      next: () => {
+        this.otpSent.set(true);
+        this.loading.set(false);
+      },
+      error: () => {
+        this.loading.set(false);
+        this.error.set('Failed to send OTP. Please try again.');
+      }
+    });
+  }
+
+  verifyTrackingOtp() {
+    if (this.otpCode.length < 6) {
+      this.error.set('Enter the 6-digit OTP.');
+      return;
+    }
+    this.loading.set(true);
+    this.error.set('');
+    this.http.post<any>(`${environment.apiBaseUrl}/api/v1/citizen-auth/verify-otp`, {
+      mobile: this.mobileNumber, otp: this.otpCode
+    }).subscribe({
+      next: () => {
+        this.mobileVerified.set(true);
+        this.loading.set(false);
+        this.loadComplaintsByMobile();
+      },
+      error: () => {
+        this.loading.set(false);
+        this.error.set('Invalid OTP. Please try again.');
+      }
+    });
+  }
+
+  private loadComplaintsByMobile() {
+    this.loading.set(true);
+    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/complaints?phone=${this.mobileNumber}`).subscribe({
+      next: (res) => {
+        const data = res?.data || res || [];
+        this.mobileComplaints.set(Array.isArray(data) ? data : []);
+        this.loading.set(false);
+        if (Array.isArray(data) && data.length === 0) {
+          this.error.set('No complaints found for this mobile number.');
+        }
+      },
+      error: () => {
+        this.loading.set(false);
+        this.error.set('Unable to fetch complaints. Please try again.');
+      }
+    });
+  }
+
+  selectMobileComplaint(complaint: any) {
+    const id = complaint.complaintId || complaint.id;
+    this.searchId.set(id);
+    this.trackMode.set('id');
+    this.track();
   }
 
   downloadPdf() {

@@ -72,7 +72,12 @@
       <div class="strip-actions">
         <button class="btn-edit" (click)="editMode.set(!editMode())"><i class="pi pi-pencil"></i> Edit</button>
         <div class="approval-wrapper">
-          <button class="btn-approval" (click)="showApprovalDropdown.set(!showApprovalDropdown())">
+          <button
+            class="btn-approval"
+            [disabled]="isClosureBlocked()"
+            [title]="isClosureBlocked() ? 'Closure blocked: upload link is active' : ''"
+            (click)="!isClosureBlocked() && showApprovalDropdown.set(!showApprovalDropdown())"
+          >
             Send for Approval <i class="pi pi-chevron-down"></i>
           </button>
           @if (showApprovalDropdown()) {
@@ -87,11 +92,26 @@
       </div>
     </div>
 
+    <!-- Upload Link Status Banner -->
+    <app-upload-link-status
+      [complaintNumber]="c.complaintNumber"
+      (linkStatusChange)="onLinkStatusChange($event)"
+    ></app-upload-link-status>
+
     <!-- Section Tabs -->
     <div class="section-tabs">
       @for (tab of tabs; track tab.key) {
-        <button class="section-tab" [class.active]="activeTab() === tab.key" (click)="activeTab.set(tab.key)">
+        <button
+          class="section-tab"
+          [class.active]="activeTab() === tab.key"
+          [class.tab-restricted]="tab.key === 'forward' && isForwardingRestricted()"
+          [title]="tab.key === 'forward' && isForwardingRestricted() ? 'Forwarding restricted: upload link active' : ''"
+          (click)="activeTab.set(tab.key)"
+        >
           {{ tab.label }}
+          @if (tab.key === 'forward' && isForwardingRestricted()) {
+            <i class="pi pi-lock" style="font-size: 11px; margin-left: 4px; color: #e65100;"></i>
+          }
         </button>
       }
     </div>
@@ -201,22 +221,60 @@
 
           <div class="assessment-fields">
             <div class="field-group">
-              <div class="field">
+              <div class="field" [attr.title]="isFieldReadOnlyDueToDecision() ? getReadOnlyTooltip() : null">
                 <label>Proposed Action</label>
-                <select [(ngModel)]="proposedAction">
+                <select [(ngModel)]="proposedAction" [disabled]="isFieldReadOnlyDueToDecision()" (ngModelChange)="onProposedActionChange($event)">
                   <option value="">Select a Value</option>
                   <option value="ACCEPT">Accept</option>
                   <option value="REJECT">Reject</option>
                   <option value="TRANSFER">Transfer</option>
                   <option value="CONCILIATE">Conciliate</option>
                 </select>
+                @if (isFieldReadOnlyDueToDecision()) {
+                  <span class="readonly-badge">Set by {{ finalDecisionByRole() }}, cannot be modified</span>
+                }
               </div>
-              <div class="field">
+              <div class="field" [attr.title]="isFieldReadOnlyDueToDecision() ? getReadOnlyTooltip() : null">
                 <label>Proposed Clause</label>
-                <input type="text" placeholder="Search" [(ngModel)]="proposedClause" />
+                <input type="text" placeholder="Search" [(ngModel)]="proposedClause" [readonly]="isFieldReadOnlyDueToDecision()" (ngModelChange)="onProposedClauseChange($event)" />
+                @if (isFieldReadOnlyDueToDecision()) {
+                  <span class="readonly-badge">Set by {{ finalDecisionByRole() }}, cannot be modified</span>
+                }
               </div>
             </div>
           </div>
+
+          <!-- ═══ Final Decision Section (UST576, UST581-584) ═══ -->
+          @if (activeTab() === 'final') {
+            <div class="final-decision-section" style="margin:12px 0; padding:12px; background:#f8f9fa; border-radius:6px; border:1px solid #e0e0e0;">
+              <h4 style="margin:0 0 10px; font-size:13px; color:#333;"><i class="pi pi-file-check"></i> Final Decision</h4>
+
+              <!-- Closure Clause Picker (UST581-584) -->
+              <div style="margin-bottom:10px;">
+                <label style="font-size:12px; font-weight:600; display:block; margin-bottom:4px;">Closure Clause</label>
+                <select [ngModel]="closureClause()" (ngModelChange)="onClosureClauseChange($event)" (focus)="loadClosureClauses()" style="width:100%; padding:6px 10px; border:1px solid #ccc; border-radius:4px; font-size:13px;">
+                  <option value="">Select Closure Clause</option>
+                  @for (clause of allowedClosureClauses(); track clause.code) {
+                    <option [value]="clause.code">{{ clause.code }} - {{ clause.label }}</option>
+                  }
+                </select>
+              </div>
+
+              <!-- Custom Closure Text (UST576) -->
+              <div style="margin-bottom:10px;">
+                <label style="font-size:12px; font-weight:600; display:block; margin-bottom:4px;">Custom Closure Text (optional)</label>
+                <textarea [ngModel]="customClosureText()" (ngModelChange)="customClosureText.set($event)" rows="3" maxlength="2000" placeholder="Enter custom text to include in the closure letter..." style="width:100%; padding:6px 10px; border:1px solid #ccc; border-radius:4px; font-size:13px; resize:vertical;"></textarea>
+                <span style="font-size:11px; color:#666; float:right;">{{ customClosureTextLength }} / 2000</span>
+              </div>
+
+              <!-- Email validation error (UST656) -->
+              @if (emailValidationError()) {
+                <div style="margin-top:8px; padding:8px 12px; background:#fff3f3; border:1px solid #ffcdd2; border-radius:4px; color:#c62828; font-size:12px;">
+                  <i class="pi pi-exclamation-triangle"></i> {{ emailValidationError() }}
+                </div>
+              }
+            </div>
+          }
 
           <!-- Comments Section -->
           <div class="comments-section">
@@ -243,13 +301,45 @@
           </div>
 
           <!-- Speaking Order -->
-          <div class="speaking-order">
+          <div class="speaking-order" [attr.title]="isFieldReadOnlyDueToDecision() ? getReadOnlyTooltip() : null">
             <label>Contents of the Speaking Order</label>
-            <textarea placeholder="Enter text here" [(ngModel)]="speakingOrder" rows="3"></textarea>
+            <textarea placeholder="Enter text here" [(ngModel)]="speakingOrder" rows="3" [readonly]="isFieldReadOnlyDueToDecision()"></textarea>
+            @if (isFieldReadOnlyDueToDecision()) {
+              <span class="readonly-badge">Set by {{ finalDecisionByRole() }}, cannot be modified</span>
+            }
           </div>
+
+          <!-- ═══ Deputy Ombudsman Decision (UST758) ═══ -->
+          @if (showDeputyDecision()) {
+            <app-rbio-deputy-decision [complaint]="complaint()" (decisionSubmitted)="onDeputyDecisionSubmitted()"></app-rbio-deputy-decision>
+          }
+
+          <!-- ═══ Add Entity (UST487-495) ═══ -->
+          @if (showAddEntity()) {
+            <app-rbio-add-entity [complaint]="complaint()"></app-rbio-add-entity>
+          }
+
+          <!-- ═══ Forward to Regulatory Body (UST766) ═══ -->
+          @if (showForwardRegulatory()) {
+            <app-rbio-forward-regulatory [complaint]="complaint()"></app-rbio-forward-regulatory>
+          }
         </div>
       </div>
     </div>
+
+    <!-- ═══ Legal Case Tab Content (UST553-555) ═══ -->
+    @if (activeTab() === 'legal') {
+      <div class="tab-content-section">
+        <app-rbio-legal-case [complaint]="complaint()"></app-rbio-legal-case>
+      </div>
+    }
+
+    <!-- ═══ Complaint History Tab (includes Action Override History UST639-642) ═══ -->
+    @if (activeTab() === 'history') {
+      <div class="tab-content-section">
+        <app-rbio-action-override-history [complaint]="complaint()"></app-rbio-action-override-history>
+      </div>
+    }
   }
 </div>
 
@@ -331,6 +421,35 @@
       <div class="modal-footer">
         <button class="btn-cancel" (click)="cancelAssignment()">Cancel</button>
         <button class="btn-confirm" (click)="confirmAssignment()">Confirm</button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ═══ SAMPLE CLOSURE LETTER MODAL (UST521) ═══ -->
+@if (showSampleLetterModal()) {
+  <div class="modal-overlay">
+    <div class="modal-dialog" (click)="$event.stopPropagation()" style="max-width:600px;">
+      <div class="modal-header">
+        <div class="modal-icon" style="background:#e3f2fd;"><i class="pi pi-info-circle" style="color:#1565c0;"></i></div>
+        <div>
+          <h3>Sample Closure Letter - New RBIOS 2026 Clause</h3>
+          <p>Please review the sample letter for clause: {{ sampleLetterClause() }}</p>
+        </div>
+        <button class="modal-close" (click)="acknowledgeSampleLetter()">&times;</button>
+      </div>
+      <div class="modal-body" style="padding:16px 20px; max-height:400px; overflow-y:auto;">
+        <div style="background:#fafafa; padding:16px; border:1px solid #e0e0e0; border-radius:6px; font-family:'Times New Roman',serif; font-size:13px; line-height:1.6;">
+          <p style="text-align:center; font-weight:bold;">RESERVE BANK OF INDIA<br/>Integrated Ombudsman Scheme</p>
+          <p><strong>Ref:</strong> [Complaint Number]<br/><strong>Date:</strong> [Date]</p>
+          <p>Dear [Complainant Name],</p>
+          <p>With reference to your complaint filed under the Reserve Bank - Integrated Ombudsman Scheme, 2021 (as amended 2026), we wish to inform you that after careful examination, the complaint is being closed under <strong>Clause {{ sampleLetterClause() }}</strong> of the Scheme.</p>
+          <p><em>[Clause-specific reasoning would be inserted here]</em></p>
+          <p>Yours faithfully,<br/>[Authority Name]<br/>[Designation]<br/>[Digitally Signed]</p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-confirm" (click)="acknowledgeSampleLetter()"><i class="pi pi-check"></i> I have reviewed</button>
       </div>
     </div>
   </div>

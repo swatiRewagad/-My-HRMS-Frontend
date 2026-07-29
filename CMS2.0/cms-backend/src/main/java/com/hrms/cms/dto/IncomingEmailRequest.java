@@ -8,4 +8,7 @@ public class IncomingEmailRequest {
     private String fromName;
     private String subject;
     private String body;
+    private String toRecipients;
+    private String ccRecipients;
+    private String bccRecipients;
 }

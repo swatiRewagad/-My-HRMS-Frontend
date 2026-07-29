@@ -24,6 +24,14 @@ public class FileComplaintRequest {
 
     private Long bankId;
 
+    private Long regulatedEntityId;
+
+    @Size(max = 300)
+    private String entityName;
+
+    @Size(max = 100)
+    private String entityType;
+
     @Size(max = 200)
     private String bankBranch;
 

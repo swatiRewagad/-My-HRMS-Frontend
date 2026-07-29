@@ -44,6 +44,8 @@ export class TeamManagementComponent implements OnInit {
     { value: 'CRPC_REVIEWER', label: 'CRPC - Reviewer', keycloakRole: 'REVIEWER' },
     { value: 'RBIO_OFFICER', label: 'RBIO - Officer', keycloakRole: 'RBIO_OFFICER' },
     { value: 'RBIO_SUPERVISOR', label: 'RBIO - Supervisor', keycloakRole: 'RBIO_SUPERVISOR' },
+    { value: 'RBIO_CONCILIATOR', label: 'RBIO - Conciliator', keycloakRole: 'RBIO_CONCILIATOR' },
+    { value: 'RBIO_ADJUDICATOR', label: 'RBIO - Adjudicator', keycloakRole: 'RBIO_ADJUDICATOR' },
     { value: 'CEPC_OFFICER', label: 'CEPC - Officer', keycloakRole: 'CEPC_OFFICER' },
     { value: 'CEPC_SUPERVISOR', label: 'CEPC - Supervisor', keycloakRole: 'CEPC_SUPERVISOR' },
   ];
@@ -264,28 +266,49 @@ export class TeamManagementComponent implements OnInit {
     const group = this.selectedRoleGroup();
     if (group === 'CRPC_DEO') {
       return [
-        { id: 1, userId: 'deo.raghav', displayName: 'Raghav Sharma', roleGroup: 'CRPC_DEO', regionalOffice: 'MUMBAI', active: true, onLeave: false, currentWorkload: 12, maxWorkload: 50 },
-        { id: 2, userId: 'deo.priya', displayName: 'Priya Nair', roleGroup: 'CRPC_DEO', regionalOffice: 'MUMBAI', active: true, onLeave: false, currentWorkload: 8, maxWorkload: 50 },
-        { id: 3, userId: 'deo.amit', displayName: 'Amit Kulkarni', roleGroup: 'CRPC_DEO', regionalOffice: 'DELHI', active: true, onLeave: true, currentWorkload: 15, maxWorkload: 50 },
-        { id: 4, userId: 'deo.sunita', displayName: 'Sunita Desai', roleGroup: 'CRPC_DEO', regionalOffice: 'CHENNAI', active: true, onLeave: false, currentWorkload: 22, maxWorkload: 50 },
+        { id: 1, userId: 'deo.user', displayName: 'Siddharth Joshi', roleGroup: 'CRPC_DEO', regionalOffice: 'MUMBAI', active: true, onLeave: false, currentWorkload: 12, maxWorkload: 50 },
+        { id: 2, userId: 'deo_001', displayName: 'Amit Verma', roleGroup: 'CRPC_DEO', regionalOffice: 'MUMBAI', active: true, onLeave: false, currentWorkload: 8, maxWorkload: 50 },
+        { id: 3, userId: 'deo_002', displayName: 'Sneha Patil', roleGroup: 'CRPC_DEO', regionalOffice: 'DELHI', active: true, onLeave: false, currentWorkload: 15, maxWorkload: 50 },
+        { id: 4, userId: 'deo_003', displayName: 'Ramesh Iyer', roleGroup: 'CRPC_DEO', regionalOffice: 'CHENNAI', active: true, onLeave: false, currentWorkload: 22, maxWorkload: 50 },
       ];
     } else if (group === 'CRPC_REVIEWER') {
       return [
-        { id: 5, userId: 'rev.radhika', displayName: 'Radhika Rao', roleGroup: 'CRPC_REVIEWER', regionalOffice: 'MUMBAI', active: true, onLeave: true, currentWorkload: 10, maxWorkload: 30 },
-        { id: 6, userId: 'rev.bhupinder', displayName: 'Bhupinder Singh', roleGroup: 'CRPC_REVIEWER', regionalOffice: 'DELHI', active: true, onLeave: false, currentWorkload: 5, maxWorkload: 30 },
-        { id: 7, userId: 'rev.meena', displayName: 'Meena Iyer', roleGroup: 'CRPC_REVIEWER', regionalOffice: 'CHENNAI', active: true, onLeave: false, currentWorkload: 18, maxWorkload: 30 },
+        { id: 5, userId: 'reviewer.user', displayName: 'A.K. Singh', roleGroup: 'CRPC_REVIEWER', regionalOffice: 'MUMBAI', active: true, onLeave: false, currentWorkload: 10, maxWorkload: 30 },
+        { id: 6, userId: 'reviewer1', displayName: 'Meera Krishnan', roleGroup: 'CRPC_REVIEWER', regionalOffice: 'DELHI', active: true, onLeave: false, currentWorkload: 5, maxWorkload: 30 },
+        { id: 7, userId: 'cepc_reviewer1', displayName: 'Anuradha Patel', roleGroup: 'CRPC_REVIEWER', regionalOffice: 'CHENNAI', active: true, onLeave: false, currentWorkload: 18, maxWorkload: 30 },
       ];
     } else if (group === 'RBIO_OFFICER') {
       return [
-        { id: 8, userId: 'rbio.officer1', displayName: 'Vikram Mehta', roleGroup: 'RBIO_OFFICER', regionalOffice: 'MUMBAI', active: true, onLeave: false, currentWorkload: 20, maxWorkload: 40 },
-        { id: 9, userId: 'rbio.officer2', displayName: 'Anjali Gupta', roleGroup: 'RBIO_OFFICER', regionalOffice: 'MUMBAI', active: true, onLeave: false, currentWorkload: 35, maxWorkload: 40 },
-        { id: 10, userId: 'rbio.officer3', displayName: 'Suresh Kumar', roleGroup: 'RBIO_OFFICER', regionalOffice: 'DELHI', active: true, onLeave: false, currentWorkload: 15, maxWorkload: 40 },
-        { id: 11, userId: 'rbio.officer4', displayName: 'Kavita Reddy', roleGroup: 'RBIO_OFFICER', regionalOffice: 'CHENNAI', active: true, onLeave: false, currentWorkload: 28, maxWorkload: 40 },
+        { id: 8, userId: 'rbio.officer', displayName: 'Rajesh Kumar', roleGroup: 'RBIO_OFFICER', regionalOffice: 'MUMBAI', active: true, onLeave: false, currentWorkload: 20, maxWorkload: 40 },
+        { id: 9, userId: 'rbio_officer_002', displayName: 'Anita Sharma', roleGroup: 'RBIO_OFFICER', regionalOffice: 'MUMBAI', active: true, onLeave: false, currentWorkload: 35, maxWorkload: 40 },
+        { id: 10, userId: 'rbio_officer_003', displayName: 'Rahul Verma', roleGroup: 'RBIO_OFFICER', regionalOffice: 'DELHI', active: true, onLeave: false, currentWorkload: 15, maxWorkload: 40 },
+      ];
+    } else if (group === 'RBIO_SUPERVISOR') {
+      return [
+        { id: 11, userId: 'rbio.supervisor', displayName: 'Suresh Pillai', roleGroup: 'RBIO_SUPERVISOR', regionalOffice: 'MUMBAI', active: true, onLeave: false, currentWorkload: 18, maxWorkload: 30 },
+      ];
+    } else if (group === 'RBIO_CONCILIATOR') {
+      return [
+        { id: 18, userId: 'rbio.conciliator', displayName: 'Kavita Reddy', roleGroup: 'RBIO_CONCILIATOR', regionalOffice: 'MUMBAI', active: true, onLeave: false, currentWorkload: 6, maxWorkload: 20 },
+      ];
+    } else if (group === 'RBIO_ADJUDICATOR') {
+      return [
+        { id: 19, userId: 'rbio.adjudicator', displayName: 'Deepak Mishra', roleGroup: 'RBIO_ADJUDICATOR', regionalOffice: 'MUMBAI', active: true, onLeave: false, currentWorkload: 4, maxWorkload: 15 },
+      ];
+    } else if (group === 'CEPC_OFFICER') {
+      return [
+        { id: 12, userId: 'cepc.officer', displayName: 'Neha Saxena', roleGroup: 'CEPC_OFFICER', regionalOffice: 'MUMBAI', active: true, onLeave: false, currentWorkload: 14, maxWorkload: 40 },
+        { id: 13, userId: 'cepc_do1', displayName: 'Sunita Mehta', roleGroup: 'CEPC_OFFICER', regionalOffice: 'DELHI', active: true, onLeave: false, currentWorkload: 20, maxWorkload: 40 },
+        { id: 14, userId: 'cepc_do2', displayName: 'Vikram Sharma', roleGroup: 'CEPC_OFFICER', regionalOffice: 'CHENNAI', active: true, onLeave: false, currentWorkload: 10, maxWorkload: 40 },
+      ];
+    } else if (group === 'CEPC_SUPERVISOR') {
+      return [
+        { id: 15, userId: 'cepc.supervisor', displayName: 'Manoj Tiwari', roleGroup: 'CEPC_SUPERVISOR', regionalOffice: 'MUMBAI', active: true, onLeave: false, currentWorkload: 12, maxWorkload: 30 },
+        { id: 16, userId: 'cepc_incharge1', displayName: 'Rajesh Nair', roleGroup: 'CEPC_SUPERVISOR', regionalOffice: 'DELHI', active: true, onLeave: false, currentWorkload: 8, maxWorkload: 30 },
       ];
     }
     return [
-      { id: 12, userId: 'cepc.officer1', displayName: 'Rohan Patil', roleGroup: group, regionalOffice: 'MUMBAI', active: true, onLeave: false, currentWorkload: 10, maxWorkload: 40 },
-      { id: 13, userId: 'cepc.officer2', displayName: 'Deepa Krishnan', roleGroup: group, regionalOffice: 'MUMBAI', active: true, onLeave: false, currentWorkload: 25, maxWorkload: 40 },
+      { id: 17, userId: 'cepc.officer', displayName: 'Neha Saxena', roleGroup: group, regionalOffice: 'MUMBAI', active: true, onLeave: false, currentWorkload: 14, maxWorkload: 40 },
     ];
   }
 }

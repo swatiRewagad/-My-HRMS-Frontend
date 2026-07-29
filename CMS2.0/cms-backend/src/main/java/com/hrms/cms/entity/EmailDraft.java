@@ -119,6 +119,29 @@ public class EmailDraft {
     @Column(length = 50)
     private String convertedComplaintId;
 
+    @Column(length = 20)
+    private String schemeVersion; // RBIOS_2021, RBIOS_2026
+
+    @Column(length = 50)
+    private String closureClause;
+
+    @Column(columnDefinition = "TEXT")
+    private String autoClosureResponsesJson;
+
+    private boolean subJudice;
+
+    @Column(length = 100)
+    private String notAComplaintReason; // Appeal, Broadcast Message, Password Change, Suggestion, Others
+
+    @Column(columnDefinition = "TEXT")
+    private String notAComplaintOthersReason;
+
+    @Column(length = 100)
+    private String suggestionDepartment;
+
+    @Column(length = 200)
+    private String suggestionNature;
+
     @Column(length = 50)
     private String detectedLanguage;
 

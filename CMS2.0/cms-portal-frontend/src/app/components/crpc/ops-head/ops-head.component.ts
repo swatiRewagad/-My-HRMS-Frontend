@@ -28,6 +28,16 @@ interface TransferComplaint {
   timeline: { action: string; fromStatus: string; toStatus: string; timestamp: string; remarks: string }[];
 }
 
+interface OfficeThreshold {
+  officeId: string;
+  officeName: string;
+  department: string;
+  maxThreshold: number;
+  currentCount: number;
+  overflowSequenceOrder: number;
+  active: boolean;
+}
+
 @Component({
   selector: 'app-ops-head',
   standalone: true,
@@ -64,6 +74,23 @@ export class OpsHeadComponent implements OnInit {
   processing = signal(false);
   actionResult = signal('');
   actionSuccess = signal(false);
+
+  // Office Thresholds
+  officeThresholds = signal<OfficeThreshold[]>([]);
+  loadingThresholds = signal(false);
+  editingThresholdId = signal<string | null>(null);
+  editThresholdValue = 0;
+
+  // Bulk Reassignment
+  selectedForBulk = signal<Set<string>>(new Set());
+  bulkAssignTo = '';
+  bulkReason = '';
+  showBulkDialog = signal(false);
+  bulkProcessing = signal(false);
+
+  // Transfer History
+  transferHistory = signal<any[]>([]);
+  loadingHistory = signal(false);
 
   languages = ['English', 'Hindi', 'Marathi', 'Tamil', 'Telugu', 'Kannada', 'Bengali', 'Gujarati', 'Malayalam', 'Punjabi', 'Odia', 'Urdu'];
   territories = ['Mumbai', 'Delhi', 'Chennai', 'Kolkata', 'Bangalore', 'Hyderabad', 'Ahmedabad', 'Pune', 'Jaipur', 'Lucknow', 'Chandigarh', 'Bhopal', 'Thiruvananthapuram', 'Bhubaneswar', 'Guwahati', 'Patna'];
@@ -133,9 +160,10 @@ export class OpsHeadComponent implements OnInit {
 
   private loadTransferComplaints() {
     this.loading.set(true);
-    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/workflow/crpc/transfers`).subscribe({
+    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/crpc/head/transfers/pending`).subscribe({
       next: (res) => {
-        this.complaints.set(res?.data || []);
+        const data = Array.isArray(res) ? res : (res?.data || []);
+        this.complaints.set(data);
         this.loading.set(false);
       },
       error: () => {
@@ -217,19 +245,18 @@ export class OpsHeadComponent implements OnInit {
 
     this.processing.set(true);
     const action = this.confirmAction();
+    const username = this.auth.currentUser()?.username || '';
 
-    this.http.post<any>(
-      `${environment.apiBaseUrl}/api/v1/workflow/crpc/transfer-action/${complaint.complaintId}`,
-      {
-        action: action === 'approve' ? 'APPROVE_TRANSFER' : 'REJECT_TRANSFER',
-        remarks: this.confirmComments,
-        actor: this.auth.currentUser()?.username || '',
-        language: this.forwardLanguage,
-        territory: this.forwardTerritory,
-        reassignTerritory: this.reassignTerritory
-      }
-    ).subscribe({
-      next: (res) => {
+    const endpoint = action === 'approve'
+      ? `${environment.apiBaseUrl}/api/v1/crpc/head/transfers/${complaint.complaintId}/approve`
+      : `${environment.apiBaseUrl}/api/v1/crpc/head/transfers/${complaint.complaintId}/reject`;
+
+    const body = action === 'approve'
+      ? { approvedBy: username, comment: this.confirmComments }
+      : { approvedBy: username, rejectionComment: this.confirmComments };
+
+    this.http.post<any>(endpoint, body).subscribe({
+      next: () => {
         this.actionSuccess.set(true);
         this.actionResult.set(`Transfer ${action === 'approve' ? 'approved' : 'rejected'} successfully.`);
         this.processing.set(false);
@@ -258,6 +285,115 @@ export class OpsHeadComponent implements OnInit {
     this.sidebarItem.set(item);
     if (item === 'home') this.router.navigate(['/crpc/home']);
     if (item === 'reviewer') this.router.navigate(['/crpc/reviewer']);
+    if (item === 'thresholds') this.loadOfficeThresholds();
+    if (item === 'history') this.loadTransferHistory();
+  }
+
+  // Office Thresholds methods
+  loadOfficeThresholds() {
+    this.loadingThresholds.set(true);
+    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/crpc/head/office-thresholds`).subscribe({
+      next: (res) => {
+        const data = Array.isArray(res) ? res : (res?.data || []);
+        this.officeThresholds.set(data);
+        this.loadingThresholds.set(false);
+      },
+      error: () => {
+        this.officeThresholds.set([
+          { officeId: 'CRPC-CHD', officeName: 'CRPC Chandigarh', department: 'CEPC', maxThreshold: 100, currentCount: 78, overflowSequenceOrder: 1, active: true },
+          { officeId: 'CRPC-MUM', officeName: 'CRPC Mumbai', department: 'CEPC', maxThreshold: 120, currentCount: 115, overflowSequenceOrder: 2, active: true },
+          { officeId: 'CRPC-DEL', officeName: 'CRPC Delhi', department: 'CEPC', maxThreshold: 100, currentCount: 45, overflowSequenceOrder: 3, active: true },
+        ]);
+        this.loadingThresholds.set(false);
+      }
+    });
+  }
+
+  startEditThreshold(officeId: string, currentMax: number) {
+    this.editingThresholdId.set(officeId);
+    this.editThresholdValue = currentMax;
+  }
+
+  saveThreshold(officeId: string) {
+    this.http.put(`${environment.apiBaseUrl}/api/v1/crpc/head/office-thresholds/${officeId}`, null, {
+      params: { threshold: this.editThresholdValue.toString() }
+    }).subscribe({
+      next: () => {
+        this.editingThresholdId.set(null);
+        this.loadOfficeThresholds();
+      },
+      error: () => this.editingThresholdId.set(null)
+    });
+  }
+
+  cancelEditThreshold() {
+    this.editingThresholdId.set(null);
+  }
+
+  resetCounters(department: string) {
+    this.http.post(`${environment.apiBaseUrl}/api/v1/crpc/head/office-thresholds/reset`, null, {
+      params: { department }
+    }).subscribe({ next: () => this.loadOfficeThresholds() });
+  }
+
+  // Bulk Reassignment methods
+  toggleBulkSelect(id: string) {
+    const current = this.selectedForBulk();
+    const next = new Set(current);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    this.selectedForBulk.set(next);
+  }
+
+  selectAllForBulk() {
+    const ids = this.paginatedComplaints().map(c => c.complaintId);
+    this.selectedForBulk.set(new Set(ids));
+  }
+
+  clearBulkSelection() {
+    this.selectedForBulk.set(new Set());
+  }
+
+  openBulkReassign() {
+    this.bulkAssignTo = '';
+    this.bulkReason = '';
+    this.showBulkDialog.set(true);
+  }
+
+  submitBulkReassign() {
+    const ids = Array.from(this.selectedForBulk());
+    if (ids.length === 0 || !this.bulkAssignTo) return;
+    this.bulkProcessing.set(true);
+
+    this.http.post(`${environment.apiBaseUrl}/api/v1/crpc/head/bulk-reassign`, {
+      complaintIds: ids,
+      assignTo: this.bulkAssignTo,
+      reason: this.bulkReason
+    }).subscribe({
+      next: () => {
+        this.bulkProcessing.set(false);
+        this.showBulkDialog.set(false);
+        this.selectedForBulk.set(new Set());
+        this.loadTransferComplaints();
+      },
+      error: () => this.bulkProcessing.set(false)
+    });
+  }
+
+  cancelBulkReassign() {
+    this.showBulkDialog.set(false);
+  }
+
+  // Transfer History
+  loadTransferHistory() {
+    this.loadingHistory.set(true);
+    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/crpc/head/transfers/history`).subscribe({
+      next: (res) => {
+        const data = Array.isArray(res) ? res : (res?.data || []);
+        this.transferHistory.set(data);
+        this.loadingHistory.set(false);
+      },
+      error: () => this.loadingHistory.set(false)
+    });
   }
 
   logout() {

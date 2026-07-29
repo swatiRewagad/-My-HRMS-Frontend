@@ -24,13 +24,6 @@ spring:
         dialect: org.hibernate.dialect.OracleDialect
     show-sql: false
 
-# jBPM Configuration
-jbpm:
-  process:
-    definition: processes/complaint-lifecycle.bpmn2
-  persistence:
-    enabled: true
-
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     consumer:
@@ -41,6 +34,11 @@ jbpm:
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
     listener:
       ack-mode: manual
+
+# Kogito Configuration
+kogito:
+  persistence:
+    type: jdbc
 
 management:
   endpoints:

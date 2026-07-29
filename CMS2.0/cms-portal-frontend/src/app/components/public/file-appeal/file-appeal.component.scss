@@ -152,3 +152,47 @@
   label { display: block; font-size: 11px; text-transform: uppercase; color: #888; font-weight: 600; margin-bottom: 2px; }
   span { font-size: 14px; color: #333; }
 }
+
+// UST112: Speaking Order section
+.speaking-order-section {
+  margin-bottom: 20px;
+  h4 {
+    font-size: 14px; color: #1e293b; margin: 0 0 10px; display: flex; align-items: center; gap: 8px;
+    i { color: #d32f2f; font-size: 16px; }
+  }
+}
+
+.readonly-box {
+  background: #f8f9fa; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px;
+  pointer-events: none; user-select: text;
+  p { margin: 0; font-size: 14px; color: #475569; line-height: 1.6; }
+}
+
+// UST112: Complaint details in appeal (read-only)
+.complaint-details-readonly {
+  margin-bottom: 20px;
+  h4 { font-size: 14px; color: #1e293b; margin: 0 0 10px; }
+  .readonly-box {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+  }
+  .detail-field {
+    label { display: block; font-size: 11px; text-transform: uppercase; color: #888; font-weight: 600; margin-bottom: 2px; }
+    span { font-size: 14px; color: #333; }
+    &.full-width { grid-column: 1 / -1; }
+  }
+}
+
+// Delay notice
+.delay-notice {
+  display: flex; align-items: flex-start; gap: 10px; padding: 14px 16px;
+  background: #fff3e0; border: 1px solid #ffcc80; border-radius: 8px; margin-bottom: 16px;
+  i { color: #e65100; font-size: 18px; margin-top: 2px; }
+  p { margin: 0; font-size: 13px; color: #bf360c; line-height: 1.5; }
+}
+
+.char-count { font-size: 11px; color: #999; float: right; margin-top: 4px; }
+
+.textarea-with-speech {
+  position: relative;
+  app-speech-button { position: absolute; right: 10px; bottom: 10px; }
+}

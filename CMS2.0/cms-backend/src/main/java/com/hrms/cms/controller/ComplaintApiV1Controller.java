@@ -4,6 +4,7 @@ import com.hrms.cms.dto.FileComplaintRequest;
 import com.hrms.cms.entity.Complaint;
 import com.hrms.cms.entity.ComplaintTimeline;
 import com.hrms.cms.repository.BankRepository;
+import com.hrms.cms.repository.ComplaintCategoryRepository;
 import com.hrms.cms.service.ComplaintService;
 import com.hrms.cms.service.triage.IntakeTriageService;
 import jakarta.validation.ConstraintViolation;
@@ -27,6 +28,7 @@ public class ComplaintApiV1Controller {
 
     private final ComplaintService complaintService;
     private final BankRepository bankRepository;
+    private final ComplaintCategoryRepository categoryRepository;
     private final IntakeTriageService triageService;
     private final Validator validator;
 
@@ -41,6 +43,15 @@ public class ComplaintApiV1Controller {
         req.setPriority((String) request.getOrDefault("priority", "medium"));
         req.setFilingType((String) request.getOrDefault("filingType", "ONLINE"));
 
+        if (request.get("regulatedEntityId") != null) {
+            req.setRegulatedEntityId(Long.valueOf(request.get("regulatedEntityId").toString()));
+        }
+        if (request.get("entityName") != null) {
+            req.setEntityName(request.get("entityName").toString());
+        }
+        if (request.get("entityType") != null) {
+            req.setEntityType(request.get("entityType").toString());
+        }
         if (request.get("priorReComplaint") != null) {
             req.setPriorReComplaint(Boolean.valueOf(request.get("priorReComplaint").toString()));
         }
@@ -52,6 +63,16 @@ public class ComplaintApiV1Controller {
         }
         if (request.get("reRepliedAndDissatisfied") != null) {
             req.setReRepliedAndDissatisfied(Boolean.valueOf(request.get("reRepliedAndDissatisfied").toString()));
+        }
+
+        // Resolve category name to ID
+        if (request.get("category") != null) {
+            String categoryName = request.get("category").toString();
+            categoryRepository.findFirstByNameIgnoreCase(categoryName)
+                    .ifPresent(cat -> req.setCategoryId(cat.getId()));
+        }
+        if (req.getCategoryId() == null && request.get("categoryId") != null) {
+            req.setCategoryId(Long.valueOf(request.get("categoryId").toString()));
         }
 
         Set<ConstraintViolation<FileComplaintRequest>> violations = validator.validate(req);
@@ -142,6 +163,12 @@ public class ComplaintApiV1Controller {
                     .orElse("");
         }
 
+        String categoryName = "General";
+        if (c.getCategoryId() != null) {
+            categoryName = categoryRepository.findById(c.getCategoryId())
+                    .map(cat -> cat.getName()).orElse("General");
+        }
+
         String registeredAt = c.getCreatedAt() != null ? c.getCreatedAt().toString() : "";
         String slaDueDate = c.getCreatedAt() != null ? c.getCreatedAt().plusDays(30).toString() : "";
 
@@ -149,7 +176,7 @@ public class ComplaintApiV1Controller {
         detail.put("id", c.getId());
         detail.put("complaintId", c.getComplaintNumber());
         detail.put("complaintNumber", c.getComplaintNumber());
-        detail.put("category", "General");
+        detail.put("category", categoryName);
         detail.put("priority", c.getPriority() != null ? c.getPriority().toUpperCase() : "MEDIUM");
         detail.put("status", c.getStatus() != null ? c.getStatus().toUpperCase() : "NEW");
         detail.put("subject", c.getSubject());

@@ -55,24 +55,32 @@
 
   <!-- Actions -->
   @if (conciliationStatus !== 'SETTLED' && conciliationStatus !== 'FAILED') {
-    <div class="conciliation-actions">
-      <button class="action-btn schedule" (click)="openScheduleForm()">
-        Schedule Hearing
-      </button>
-      <button class="action-btn outcome" (click)="openOutcomeForm()">
-        Record Outcome
-      </button>
-      <label class="action-btn upload">
-        <input type="file" (change)="onMinutesUpload($event)" accept=".pdf,.doc,.docx" hidden />
-        Upload MOM
-      </label>
-    </div>
+    <!-- UST497: Hide meeting status for excluded complaint statuses -->
+    @if (isMeetingStatusExcluded) {
+      <div class="meeting-status-excluded">
+        <i class="pi pi-info-circle"></i>
+        <span>Meeting scheduling is not available for complaints in current status ({{ complaint?.status }}).</span>
+      </div>
+    } @else {
+      <div class="conciliation-actions">
+        <button class="action-btn schedule" (click)="openScheduleForm()">
+          Schedule Hearing
+        </button>
+        <button class="action-btn outcome" (click)="openOutcomeForm()">
+          Record Outcome
+        </button>
+        <label class="action-btn upload">
+          <input type="file" (change)="onMinutesUpload($event)" accept=".pdf,.doc,.docx" hidden />
+          Upload MOM
+        </label>
+      </div>
 
-    @if (uploadingMinutes()) {
-      <p class="upload-status">Uploading meeting minutes...</p>
-    }
-    @if (minutesUploaded()) {
-      <p class="upload-status success">Meeting minutes uploaded successfully.</p>
+      @if (uploadingMinutes()) {
+        <p class="upload-status">Uploading meeting minutes...</p>
+      }
+      @if (minutesUploaded()) {
+        <p class="upload-status success">Meeting minutes uploaded successfully.</p>
+      }
     }
   }
 
