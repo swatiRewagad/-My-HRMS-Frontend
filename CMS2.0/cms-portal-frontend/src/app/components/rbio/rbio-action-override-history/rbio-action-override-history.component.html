@@ -1,0 +1,31 @@
+<div class="rbio-action-override-history">
+  <h4><i class="pi pi-history"></i> Action Override History</h4>
+
+  @if (loading()) {
+    <p class="loading-text">Loading override history...</p>
+  } @else if (overrides().length === 0) {
+    <p class="empty-text">No action overrides recorded for this complaint.</p>
+  } @else {
+    <div class="override-list">
+      @for (override of overrides(); track override.id) {
+        <div class="override-entry">
+          <div class="override-header">
+            <span class="override-field">{{ override.fieldName }}</span>
+            <span class="override-time">{{ override.timestamp }}</span>
+          </div>
+          <div class="override-values">
+            <div class="value-change">
+              <span class="old-value"><strong>From:</strong> {{ override.oldValue || '(empty)' }}</span>
+              <span class="arrow">-></span>
+              <span class="new-value"><strong>To:</strong> {{ override.newValue }}</span>
+            </div>
+          </div>
+          <div class="override-meta">
+            <span class="override-user">By: {{ override.overriddenBy }}</span>
+            <span class="override-role">({{ override.overriddenByRole }})</span>
+          </div>
+        </div>
+      }
+    </div>
+  }
+</div>

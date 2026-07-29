@@ -1,0 +1,93 @@
+@if (showComponent) {
+  <div class="rbio-add-entity">
+    <div class="section-header-row">
+      <h4>Additional Entities</h4>
+      <span class="entity-count">{{ additionalEntities().length }} / {{ MAX_ADDITIONAL_ENTITIES }}</span>
+    </div>
+
+    <!-- Existing entities list -->
+    @if (loading()) {
+      <p class="loading-text">Loading entities...</p>
+    } @else if (additionalEntities().length > 0) {
+      <div class="entity-list">
+        @for (entity of additionalEntities(); track entity.id || $index) {
+          <div class="entity-card">
+            <div class="entity-card-header">
+              <span class="entity-name">{{ entity.entityName }}</span>
+              <span class="entity-type-badge">{{ entity.entityType }}</span>
+            </div>
+            <div class="entity-card-details">
+              <span class="entity-detail"><strong>Branch:</strong> {{ entity.entityBranch || 'N/A' }}</span>
+              <span class="entity-detail"><strong>Category:</strong> {{ entity.entityCategory || 'N/A' }}</span>
+              <span class="entity-detail"><strong>Added by:</strong> {{ entity.createdBy }}</span>
+            </div>
+          </div>
+        }
+      </div>
+    }
+
+    <!-- Add Entity Button -->
+    @if (!showForm()) {
+      <button class="action-btn add-entity-btn" [disabled]="hasReachedMax" (click)="openForm()">
+        <i class="pi pi-plus"></i> Add Entity
+      </button>
+      @if (hasReachedMax) {
+        <span class="max-reached-hint">Maximum of {{ MAX_ADDITIONAL_ENTITIES }} additional entities reached.</span>
+      }
+    }
+
+    <!-- Add Entity Form -->
+    @if (showForm()) {
+      <div class="form-section">
+        <h5>Add New Entity</h5>
+        <div class="form-grid">
+          <div class="form-field">
+            <label>Entity Name *</label>
+            <input type="text" [(ngModel)]="entityName" placeholder="Full entity name" />
+          </div>
+          <div class="form-field">
+            <label>Branch</label>
+            <input type="text" [(ngModel)]="entityBranch" placeholder="Branch name" />
+          </div>
+          <div class="form-field">
+            <label>Entity Type *</label>
+            <select [(ngModel)]="entityType">
+              <option value="">Select type...</option>
+              <option value="BANK">Bank</option>
+              <option value="NBFC">NBFC</option>
+              <option value="PAYMENT_SYSTEM">Payment System Operator</option>
+              <option value="CREDIT_INFO_COMPANY">Credit Information Company</option>
+              <option value="OTHER">Other</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label>Category</label>
+            <select [(ngModel)]="entityCategory">
+              <option value="">Select category...</option>
+              <option value="DEPOSIT">Deposit</option>
+              <option value="LOAN">Loans and Advances</option>
+              <option value="CREDIT_CARD">Credit Card / Debit Card</option>
+              <option value="REMITTANCE">Remittance</option>
+              <option value="PARA_BANKING">Para Banking</option>
+              <option value="OTHER">Other</option>
+            </select>
+          </div>
+        </div>
+        <p class="form-note">Adding an entity will automatically create a Nodal Officer (NO) record for the new entity.</p>
+        <div class="form-actions">
+          <button class="submit-btn" [disabled]="processing() || !entityName.trim() || !entityType" (click)="submitEntity()">
+            @if (processing()) { Adding... } @else { Add Entity }
+          </button>
+          <button class="cancel-btn" (click)="cancelForm()">Cancel</button>
+        </div>
+      </div>
+    }
+
+    <!-- Result -->
+    @if (resultMessage()) {
+      <div class="result-msg" [class.success]="resultSuccess()" [class.error]="!resultSuccess()">
+        {{ resultMessage() }}
+      </div>
+    }
+  </div>
+}

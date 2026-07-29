@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CMS 2.0 - Local Development Setup (Server Kafka & Oracle)</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; line-height: 1.6; color: #333; background: #f5f7fa; }
+        .container { max-width: 1100px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #2e7d32, #388e3c); color: white; padding: 40px; border-radius: 12px; margin-bottom: 30px; }
+        .header h1 { font-size: 2em; margin-bottom: 10px; }
+        .header p { opacity: 0.9; font-size: 1.1em; }
+        .meta { display: flex; gap: 20px; margin-top: 15px; font-size: 0.9em; opacity: 0.8; }
+        .section { background: white; border-radius: 10px; padding: 30px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+        .section h2 { color: #2e7d32; border-bottom: 2px solid #e8f5e9; padding-bottom: 10px; margin-bottom: 20px; }
+        .section h3 { color: #388e3c; margin: 20px 0 10px; }
+        .section h4 { color: #43a047; margin: 15px 0 8px; }
+        pre { background: #1e1e1e; color: #d4d4d4; padding: 20px; border-radius: 8px; overflow-x: auto; margin: 15px 0; font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 0.9em; line-height: 1.5; }
+        pre .comment { color: #6a9955; }
+        pre .keyword { color: #569cd6; }
+        pre .string { color: #ce9178; }
+        pre .var { color: #9cdcfe; }
+        code { background: #f0f0f0; padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+        table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+        th, td { padding: 10px 14px; text-align: left; border: 1px solid #e0e0e0; }
+        th { background: #e8f5e9; color: #2e7d32; font-weight: 600; }
+        tr:nth-child(even) { background: #fafbfc; }
+        .warning { background: #fff3e0; border-left: 4px solid #ff9800; padding: 12px 16px; margin: 15px 0; border-radius: 4px; }
+        .info { background: #e3f2fd; border-left: 4px solid #2196f3; padding: 12px 16px; margin: 15px 0; border-radius: 4px; }
+        .success { background: #e8f5e9; border-left: 4px solid #4caf50; padding: 12px 16px; margin: 15px 0; border-radius: 4px; }
+        .error { background: #fce4ec; border-left: 4px solid #f44336; padding: 12px 16px; margin: 15px 0; border-radius: 4px; }
+        .step-number { display: inline-flex; width: 30px; height: 30px; background: #2e7d32; color: white; border-radius: 50%; align-items: center; justify-content: center; font-weight: 700; margin-right: 10px; }
+        ul, ol { padding-left: 20px; margin: 10px 0; }
+        li { margin: 5px 0; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>CMS 2.0 - Local Development Setup</h1>
+        <p>Connect Local Code to Server's Kafka and Oracle Database</p>
+        <div class="meta">
+            <span>Document Date: 22 July 2026</span>
+            <span>Version: 2.0</span>
+            <span>Classification: Internal</span>
+        </div>
+    </div>
+
+    <!-- PREREQUISITES -->
+    <div class="section">
+        <h2>1. Prerequisites</h2>
+        <h3>1.1 Software Requirements</h3>
+        <table>
+            <tr><th>Software</th><th>Version</th><th>Purpose</th><th>Download</th></tr>
+            <tr><td>Java JDK</td><td>21+</td><td>Backend compilation & runtime</td><td>Eclipse Temurin 21</td></tr>
+            <tr><td>Maven</td><td>3.9+</td><td>Build tool</td><td>apache.org/maven</td></tr>
+            <tr><td>Node.js</td><td>22.x</td><td>Frontend build</td><td>nodejs.org</td></tr>
+            <tr><td>npm</td><td>10.x</td><td>Package manager (comes with Node)</td><td>-</td></tr>
+            <tr><td>Angular CLI</td><td>21.x</td><td>Frontend dev server</td><td><code>npm i -g @angular/cli</code></td></tr>
+            <tr><td>Git</td><td>2.x</td><td>Version control</td><td>git-scm.com</td></tr>
+            <tr><td>Keycloak</td><td>26.0</td><td>Identity server (local)</td><td>keycloak.org/downloads</td></tr>
+            <tr><td>Oracle Instant Client</td><td>19c+</td><td>DB connectivity (optional for tools)</td><td>oracle.com</td></tr>
+        </table>
+
+        <h3>1.2 Network Requirements</h3>
+        <div class="warning">
+            <strong>Important:</strong> Your machine must have network access to the server hosting Kafka and Oracle. Verify connectivity before proceeding.
+        </div>
+        <table>
+            <tr><th>Service</th><th>Server Host</th><th>Port</th><th>Protocol</th></tr>
+            <tr><td>Oracle Database</td><td><code>&lt;ORACLE_SERVER_IP&gt;</code></td><td>1521</td><td>TCP (TNS)</td></tr>
+            <tr><td>Apache Kafka</td><td><code>&lt;KAFKA_SERVER_IP&gt;</code></td><td>9092</td><td>TCP</td></tr>
+        </table>
+        <pre><span class="comment"># Verify connectivity</span>
+telnet &lt;ORACLE_SERVER_IP&gt; 1521
+telnet &lt;KAFKA_SERVER_IP&gt; 9092</pre>
+    </div>
+
+    <!-- STEP 1: CLONE -->
+    <div class="section">
+        <h2>2. Clone & Project Structure</h2>
+        <pre><span class="comment"># Clone the repository</span>
+git clone https://github.com/swatiRewagad/-My-HRMS-Frontend.git
+cd My-HRMS-Frontend/CMS2.0
+
+<span class="comment"># Project structure</span>
+CMS2.0/
+├── cms-backend/              <span class="comment"># Spring Boot monolith</span>
+├── cms-portal-frontend/      <span class="comment"># Angular 21 (public + staff portal)</span>
+├── cms-frontend/             <span class="comment"># Angular 21 (officer portal)</span>
+├── cms-api-gateway/          <span class="comment"># API Gateway service</span>
+├── cms-eligibility-service/  <span class="comment"># MRE rules service</span>
+├── cms-workflow-service/     <span class="comment"># BPMN engine</span>
+├── cms-rules-service/        <span class="comment"># DRL rules</span>
+├── cms-assignment-service/   <span class="comment"># Officer assignment</span>
+├── cms-sla-monitor-service/  <span class="comment"># SLA tracking</span>
+├── cms-notification-service/ <span class="comment"># Email/SMS dispatch</span>
+├── cms-audit-service/        <span class="comment"># Audit logging</span>
+├── cms-outbox-publisher/     <span class="comment"># Outbox pattern publisher</span>
+├── cms-storage-service/      <span class="comment"># File storage</span>
+├── cms-search-service/       <span class="comment"># OpenSearch integration</span>
+├── cms-paddle-ocr/           <span class="comment"># Python OCR service</span>
+├── cms-common/               <span class="comment"># Shared DTOs</span>
+├── cms-infra/                <span class="comment"># Docker & OpenShift configs</span>
+├── cms-e2e-tests/            <span class="comment"># Playwright tests</span>
+└── database/                 <span class="comment"># Oracle DDL scripts</span></pre>
+    </div>
+
+    <!-- STEP 2: KEYCLOAK -->
+    <div class="section">
+        <h2>3. Setup Keycloak (Local)</h2>
+        <div class="info">
+            Keycloak runs locally since it needs to be accessible from your browser for OIDC redirects.
+        </div>
+
+        <h3><span class="step-number">1</span> Start Keycloak</h3>
+        <pre><span class="comment"># Navigate to Keycloak installation</span>
+cd c:/tools/keycloak-26.0.0
+
+<span class="comment"># Start in dev mode on port 9090 (avoids conflict with API Gateway on 8080)</span>
+bin/kc.bat start-dev --http-port=9090
+
+<span class="comment"># Admin console: http://localhost:9090</span>
+<span class="comment"># Default admin: admin / admin</span></pre>
+
+        <h3><span class="step-number">2</span> Create Realm & Client</h3>
+        <pre><span class="comment"># Set kcadm credentials</span>
+bin/kcadm.bat config credentials --server http://localhost:9090 --realm master --user admin --password admin
+
+<span class="comment"># Create 'cms' realm</span>
+bin/kcadm.bat create realms -s realm=cms -s enabled=true
+
+<span class="comment"># Create 'cms-frontend' client (public OIDC client)</span>
+bin/kcadm.bat create clients -r cms -s clientId=cms-frontend -s enabled=true \
+  -s publicClient=true -s directAccessGrantsEnabled=true \
+  -s "redirectUris=[\"http://localhost:4200/*\",\"http://localhost:4201/*\"]" \
+  -s "webOrigins=[\"http://localhost:4200\",\"http://localhost:4201\"]"
+
+<span class="comment"># Create 'admin-cli' client for backend (confidential)</span>
+bin/kcadm.bat create clients -r cms -s clientId=admin-cli -s enabled=true</pre>
+
+        <h3><span class="step-number">3</span> Create Roles</h3>
+        <pre><span class="comment"># RBIO Roles</span>
+bin/kcadm.bat create roles -r cms -s name=RBIO_OFFICER
+bin/kcadm.bat create roles -r cms -s name=RBIO_SUPERVISOR
+bin/kcadm.bat create roles -r cms -s name=RBIO_CONCILIATOR
+bin/kcadm.bat create roles -r cms -s name=RBIO_ADJUDICATOR
+bin/kcadm.bat create roles -r cms -s name=RBIO_ADMIN
+
+<span class="comment"># CEPC Roles</span>
+bin/kcadm.bat create roles -r cms -s name=DO
+bin/kcadm.bat create roles -r cms -s name=REVIEWER
+bin/kcadm.bat create roles -r cms -s name=INCHARGE
+bin/kcadm.bat create roles -r cms -s name=CA
+bin/kcadm.bat create roles -r cms -s name=CP
+bin/kcadm.bat create roles -r cms -s name=ADMIN
+
+<span class="comment"># RE Roles</span>
+bin/kcadm.bat create roles -r cms -s name=RE_NODAL_OFFICER
+bin/kcadm.bat create roles -r cms -s name=RE_PNO
+
+<span class="comment"># AA Roles</span>
+bin/kcadm.bat create roles -r cms -s name=AA_REGISTRAR
+bin/kcadm.bat create roles -r cms -s name=AA_BENCH_OFFICER
+bin/kcadm.bat create roles -r cms -s name=AA_AUTHORITY
+bin/kcadm.bat create roles -r cms -s name=AA_ADMIN
+
+<span class="comment"># Senior/Admin</span>
+bin/kcadm.bat create roles -r cms -s name=SENIOR</pre>
+
+        <h3><span class="step-number">4</span> Create Users</h3>
+        <pre><span class="comment"># RBIO Officer</span>
+bin/kcadm.bat create users -r cms -s username=officer.rbio1 -s enabled=true \
+  -s firstName=RBIO -s lastName=Officer1
+bin/kcadm.bat set-password -r cms --username officer.rbio1 --new-password Test@1234
+bin/kcadm.bat add-roles -r cms --uusername officer.rbio1 --rolename RBIO_OFFICER
+
+<span class="comment"># RBIO Supervisor</span>
+bin/kcadm.bat create users -r cms -s username=supervisor.rbio1 -s enabled=true \
+  -s firstName=RBIO -s lastName=Supervisor
+bin/kcadm.bat set-password -r cms --username supervisor.rbio1 --new-password Test@1234
+bin/kcadm.bat add-roles -r cms --uusername supervisor.rbio1 --rolename RBIO_SUPERVISOR
+
+<span class="comment"># CEPC DO</span>
+bin/kcadm.bat create users -r cms -s username=deo.user1 -s enabled=true \
+  -s firstName=DEO -s lastName=User1
+bin/kcadm.bat set-password -r cms --username deo.user1 --new-password Test@1234
+bin/kcadm.bat add-roles -r cms --uusername deo.user1 --rolename DO
+
+<span class="comment"># Reviewer</span>
+bin/kcadm.bat create users -r cms -s username=reviewer.user1 -s enabled=true \
+  -s firstName=Reviewer -s lastName=User1
+bin/kcadm.bat set-password -r cms --username reviewer.user1 --new-password Test@1234
+bin/kcadm.bat add-roles -r cms --uusername reviewer.user1 --rolename REVIEWER
+
+<span class="comment"># Admin / Senior</span>
+bin/kcadm.bat create users -r cms -s username=admin.cms -s enabled=true \
+  -s firstName=CMS -s lastName=Admin
+bin/kcadm.bat set-password -r cms --username admin.cms --new-password Test@1234
+bin/kcadm.bat add-roles -r cms --uusername admin.cms --rolename ADMIN --rolename SENIOR
+
+<span class="comment"># RE Nodal Officer</span>
+bin/kcadm.bat create users -r cms -s username=re.sbi.nodal -s enabled=true \
+  -s firstName=SBI -s lastName=NodalOfficer
+bin/kcadm.bat set-password -r cms --username re.sbi.nodal --new-password Test@1234
+bin/kcadm.bat add-roles -r cms --uusername re.sbi.nodal --rolename RE_NODAL_OFFICER</pre>
+    </div>
+
+    <!-- STEP 3: BACKEND CONFIG -->
+    <div class="section">
+        <h2>4. Configure Backend for Server Kafka & Oracle</h2>
+
+        <h3><span class="step-number">1</span> Create/Edit Application Profile</h3>
+        <div class="info">
+            Create a new profile <code>application-dev-server.yml</code> that connects to server infrastructure while running locally.
+        </div>
+
+        <p>File: <code>cms-backend/src/main/resources/application-dev-server.yml</code></p>
+        <pre><span class="comment"># ============================================================</span>
+<span class="comment"># CMS Backend — Dev Server Profile</span>
+<span class="comment"># Connects to server Kafka & Oracle while running locally</span>
+<span class="comment"># Activate: mvn spring-boot:run -Dspring-boot.run.profiles=dev-server</span>
+<span class="comment"># ============================================================</span>
+
+server:
+  port: 8082
+
+spring:
+  datasource:
+    <span class="comment"># Oracle connection to server</span>
+    url: jdbc:oracle:thin:@<span class="var">&lt;ORACLE_SERVER_IP&gt;</span>:1521/<span class="var">&lt;SERVICE_NAME&gt;</span>
+    username: <span class="var">&lt;DB_USERNAME&gt;</span>
+    password: <span class="var">&lt;DB_PASSWORD&gt;</span>
+    driver-class-name: oracle.jdbc.OracleDriver
+    hikari:
+      maximum-pool-size: 5
+      minimum-idle: 2
+      connection-timeout: 10000
+      pool-name: CMS-Backend-DevServer-Pool
+  jpa:
+    hibernate:
+      ddl-auto: validate  <span class="comment"># NEVER use 'update' against shared server DB</span>
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.OracleDialect
+        format_sql: true
+        jdbc:
+          batch_size: 10
+    open-in-view: false
+
+  kafka:
+    bootstrap-servers: <span class="var">&lt;KAFKA_SERVER_IP&gt;</span>:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all
+      retries: 3
+      properties:
+        max.block.ms: 5000
+        delivery.timeout.ms: 10000
+        request.timeout.ms: 5000
+    consumer:
+      group-id: cms-backend-dev
+      auto-offset-reset: latest
+    listener:
+      missing-topics-fatal: false
+
+  cache:
+    type: simple
+
+keycloak:
+  admin:
+    server-url: http://localhost:9090
+    realm: cms
+    client-id: admin-cli
+    username: admin
+    password: admin
+
+cms:
+  ocr:
+    chain: groq
+    groq-api-key: ${GROQ_API_KEY}
+    groq-model: meta-llama/llama-4-scout-17b-16e-instruct
+  attachments:
+    root-path: ./cms-attachments
+    max-file-size: 52428800
+    chunk-size: 5242880
+    allowed-types: pdf,png,jpg,jpeg,doc,docx,xls,xlsx,txt,csv,zip
+    max-files-per-complaint: 10
+    temp-dir: temp-chunks
+  encryption:
+    server-secret: dev-server-secret-key-min16chars
+  anti-automation:
+    velocity-window-seconds: 60
+    velocity-threshold: 100
+    min-form-submission-ms: 0
+    require-standard-headers: false
+  mre:
+    version: 1
+    re-window-days: 30
+    npci-window-days: 30
+    card-network-window-days: 60
+    filing-deadline-days: 90
+    limitation-period-years: 3
+    window-basis: BUSINESS
+  cors:
+    allowed-origins: http://localhost:4200,http://localhost:4201
+    allowed-methods: GET,POST,PUT,DELETE,PATCH,OPTIONS
+    allowed-headers: Authorization,Content-Type,X-Requested-With,X-Session-Id,X-Form-Start,X-HP-Field,Accept,Origin
+    allow-credentials: true
+    max-age: 3600
+  similar-cases:
+    enabled: false
+  auth:
+    otp:
+      length: 6
+      expiry-minutes: 10
+      max-resend-per-hour: 99
+      max-verify-attempts-per-otp: 99
+      dev-auto-populate: true
+    captcha:
+      length: 6
+      expiry-minutes: 10
+    cooloff:
+      progression-seconds: 5,10,20
+      max-ceiling-seconds: 20
+      reset-after-minutes: 1
+    rate-limit:
+      otp-requests-per-mobile-per-hour: 99
+      otp-requests-per-ip-per-hour: 99
+      login-attempts-per-ip-per-minute: 99
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    com.hrms.cms: DEBUG
+    org.hibernate.SQL: DEBUG</pre>
+
+        <h3><span class="step-number">2</span> Add Oracle JDBC Driver (if not in pom.xml)</h3>
+        <pre><span class="comment">&lt;!-- Add to cms-backend/pom.xml if not present --&gt;</span>
+&lt;dependency&gt;
+    &lt;groupId&gt;com.oracle.database.jdbc&lt;/groupId&gt;
+    &lt;artifactId&gt;ojdbc11&lt;/artifactId&gt;
+    &lt;scope&gt;runtime&lt;/scope&gt;
+&lt;/dependency&gt;</pre>
+
+        <h3><span class="step-number">3</span> Environment Variables (Alternative)</h3>
+        <pre><span class="comment"># Set environment variables instead of hardcoding in yml</span>
+<span class="comment"># Windows (PowerShell)</span>
+$env:DB_HOST = "&lt;ORACLE_SERVER_IP&gt;"
+$env:DB_PORT = "1521"
+$env:DB_SERVICE_NAME = "CMSPDB"
+$env:DB_USERNAME = "cms_user"
+$env:DB_PASSWORD = "&lt;password&gt;"
+$env:KAFKA_BOOTSTRAP_SERVERS = "&lt;KAFKA_SERVER_IP&gt;:9092"
+$env:CMS_ENCRYPTION_SECRET = "dev-server-secret-key-min16chars"
+$env:GROQ_API_KEY = "&lt;your-groq-api-key&gt;"
+
+<span class="comment"># Linux/Mac (bash)</span>
+export DB_HOST="&lt;ORACLE_SERVER_IP&gt;"
+export DB_PORT="1521"
+export DB_SERVICE_NAME="CMSPDB"
+export DB_USERNAME="cms_user"
+export DB_PASSWORD="&lt;password&gt;"
+export KAFKA_BOOTSTRAP_SERVERS="&lt;KAFKA_SERVER_IP&gt;:9092"
+export CMS_ENCRYPTION_SECRET="dev-server-secret-key-min16chars"
+export GROQ_API_KEY="&lt;your-groq-api-key&gt;"</pre>
+    </div>
+
+    <!-- STEP 4: RUN BACKEND -->
+    <div class="section">
+        <h2>5. Start Backend Services</h2>
+
+        <h3><span class="step-number">1</span> Build Common Module First</h3>
+        <pre><span class="comment"># Build shared module (required by all services)</span>
+cd CMS2.0/cms-common
+mvn clean install -DskipTests</pre>
+
+        <h3><span class="step-number">2</span> Start CMS Backend (Monolith)</h3>
+        <pre><span class="comment"># Using dev-server profile (Oracle + Kafka on server)</span>
+cd CMS2.0/cms-backend
+mvn spring-boot:run -Dspring-boot.run.profiles=dev-server
+
+<span class="comment"># OR using dev-local profile (MySQL local, no Kafka)</span>
+mvn spring-boot:run -Dspring-boot.run.profiles=dev-local
+
+<span class="comment"># Verify: http://localhost:8082/actuator/health</span></pre>
+
+        <h3><span class="step-number">3</span> Start Additional Services (Optional)</h3>
+        <pre><span class="comment"># Each in a separate terminal</span>
+
+<span class="comment"># API Gateway (if needed)</span>
+cd CMS2.0/cms-api-gateway
+mvn spring-boot:run -Dspring.profiles.active=dev-server
+
+<span class="comment"># Outbox Publisher (for Kafka event publishing)</span>
+cd CMS2.0/cms-outbox-publisher
+mvn spring-boot:run -Dspring.profiles.active=dev-server
+
+<span class="comment"># SLA Monitor</span>
+cd CMS2.0/cms-sla-monitor-service
+mvn spring-boot:run -Dspring.profiles.active=dev-server
+
+<span class="comment"># Notification Service</span>
+cd CMS2.0/cms-notification-service
+mvn spring-boot:run -Dspring.profiles.active=dev-server</pre>
+
+        <div class="info">
+            <strong>Minimum required for basic dev:</strong> Only <code>cms-backend</code> is needed. All other microservices are optional and handle background processing.
+        </div>
+    </div>
+
+    <!-- STEP 5: FRONTEND -->
+    <div class="section">
+        <h2>6. Start Frontend Applications</h2>
+
+        <h3><span class="step-number">1</span> Install Dependencies</h3>
+        <pre><span class="comment"># Portal Frontend</span>
+cd CMS2.0/cms-portal-frontend
+npm install
+
+<span class="comment"># Officer Frontend (if needed)</span>
+cd CMS2.0/cms-frontend
+npm install</pre>
+
+        <h3><span class="step-number">2</span> Configure Proxy</h3>
+        <p>File: <code>cms-portal-frontend/proxy.conf.json</code></p>
+        <pre>{
+  "/api": {
+    "target": "http://localhost:8082",
+    "secure": false,
+    "changeOrigin": true,
+    "logLevel": "debug"
+  }
+}</pre>
+
+        <h3><span class="step-number">3</span> Start Dev Server</h3>
+        <pre><span class="comment"># Portal Frontend (public + staff)</span>
+cd CMS2.0/cms-portal-frontend
+ng serve --port 4200 --proxy-config proxy.conf.json
+
+<span class="comment"># Officer Frontend</span>
+cd CMS2.0/cms-frontend
+ng serve --port 4201
+
+<span class="comment"># Access URLs:</span>
+<span class="comment"># Public Portal: http://localhost:4200/public</span>
+<span class="comment"># Staff Login:   http://localhost:4200/staff/login</span>
+<span class="comment"># CRPC Login:    http://localhost:4200/crpc/login</span>
+<span class="comment"># Admin:         http://localhost:4200/admin/dashboard</span></pre>
+    </div>
+
+    <!-- STEP 6: VERIFICATION -->
+    <div class="section">
+        <h2>7. Verification Checklist</h2>
+
+        <h3>7.1 Backend Health Checks</h3>
+        <pre><span class="comment"># Check backend is running</span>
+curl http://localhost:8082/actuator/health
+
+<span class="comment"># Expected response:</span>
+{
+  "status": "UP",
+  "components": {
+    "db": { "status": "UP" },
+    "diskSpace": { "status": "UP" }
+  }
+}</pre>
+
+        <h3>7.2 Kafka Connectivity Test</h3>
+        <pre><span class="comment"># Check Kafka broker is reachable (from backend logs)</span>
+<span class="comment"># Look for: "Kafka producer successfully connected to &lt;KAFKA_SERVER_IP&gt;:9092"</span>
+
+<span class="comment"># Or use kafka CLI tool:</span>
+kafka-topics.sh --bootstrap-server &lt;KAFKA_SERVER_IP&gt;:9092 --list</pre>
+
+        <h3>7.3 Oracle Connectivity Test</h3>
+        <pre><span class="comment"># From backend startup logs, verify:</span>
+<span class="comment"># "HikariPool-1 - Starting..." → "HikariPool-1 - Start completed"</span>
+<span class="comment"># No "Connection refused" or "TNS:no listener" errors</span>
+
+<span class="comment"># Or test with sqlplus:</span>
+sqlplus &lt;DB_USERNAME&gt;/&lt;DB_PASSWORD&gt;@&lt;ORACLE_SERVER_IP&gt;:1521/&lt;SERVICE_NAME&gt;</pre>
+
+        <h3>7.4 Keycloak Test</h3>
+        <pre><span class="comment"># Access Keycloak admin console</span>
+<span class="comment"># http://localhost:9090/admin/master/console/</span>
+<span class="comment"># Login: admin / admin</span>
+<span class="comment"># Verify 'cms' realm exists with all roles and users</span></pre>
+
+        <h3>7.5 End-to-End Test</h3>
+        <ol>
+            <li>Open <code>http://localhost:4200/public</code></li>
+            <li>Click "File a Complaint"</li>
+            <li>Enter mobile number, complete CAPTCHA, verify OTP</li>
+            <li>Complete eligibility wizard</li>
+            <li>Fill complaint form and submit</li>
+            <li>Verify complaint appears in backend: <code>http://localhost:8082/api/complaints</code></li>
+        </ol>
+    </div>
+
+    <!-- COMMON ISSUES -->
+    <div class="section">
+        <h2>8. Troubleshooting</h2>
+
+        <div class="error">
+            <h4>Error: CMS_ENCRYPTION_SECRET must be set</h4>
+            <p><strong>Fix:</strong> Use <code>dev-local</code> or <code>dev-server</code> profile, or set the env var: <code>export CMS_ENCRYPTION_SECRET=my-secret-key-16ch</code></p>
+        </div>
+
+        <div class="error">
+            <h4>Error: Keycloak Connection Refused (port 8180)</h4>
+            <p><strong>Fix:</strong> Ensure Keycloak is running on port 9090 and <code>application-dev-server.yml</code> has <code>server-url: http://localhost:9090</code></p>
+        </div>
+
+        <div class="error">
+            <h4>Error: ORA-12541: TNS:no listener</h4>
+            <p><strong>Fix:</strong> Verify Oracle server IP and port. Check network/firewall rules. Ensure Oracle listener is running on server.</p>
+        </div>
+
+        <div class="error">
+            <h4>Error: Kafka - Connection to node -1 could not be established</h4>
+            <p><strong>Fix:</strong> Verify Kafka server IP. Check if Kafka's <code>advertised.listeners</code> on server includes your IP range. Check firewall.</p>
+        </div>
+
+        <div class="error">
+            <h4>Error: Port 4200 already in use</h4>
+            <p><strong>Fix:</strong> Kill existing process: <code>npx kill-port 4200</code> or use <code>ng serve --port 4202</code></p>
+        </div>
+
+        <div class="error">
+            <h4>Error: CORS blocked</h4>
+            <p><strong>Fix:</strong> Add your frontend URL to <code>cms.cors.allowed-origins</code> in the application yml file.</p>
+        </div>
+
+        <div class="error">
+            <h4>Error: "RBIO OFFICER Team" instead of actual user name</h4>
+            <p><strong>Fix:</strong> Keycloak is unreachable or no users have <code>RBIO_OFFICER</code> role. Verify Keycloak port in config and that users exist.</p>
+        </div>
+    </div>
+
+    <!-- QUICK REFERENCE -->
+    <div class="section">
+        <h2>9. Quick Reference - All URLs & Ports</h2>
+        <table>
+            <tr><th>Service</th><th>URL</th><th>Credentials</th></tr>
+            <tr><td>Public Portal</td><td>http://localhost:4200/public</td><td>OTP-based (any mobile)</td></tr>
+            <tr><td>Staff Portal</td><td>http://localhost:4200/staff/login</td><td>Keycloak SSO</td></tr>
+            <tr><td>CRPC Portal</td><td>http://localhost:4200/crpc/login</td><td>Keycloak SSO</td></tr>
+            <tr><td>Admin Dashboard</td><td>http://localhost:4200/admin/dashboard</td><td>admin.cms / Test@1234</td></tr>
+            <tr><td>Senior Dashboard</td><td>http://localhost:4200/staff/senior-dashboard</td><td>admin.cms / Test@1234 (SENIOR role)</td></tr>
+            <tr><td>Report Builder</td><td>http://localhost:4200/staff/reports</td><td>Any staff user</td></tr>
+            <tr><td>Backend API</td><td>http://localhost:8082</td><td>-</td></tr>
+            <tr><td>Backend Health</td><td>http://localhost:8082/actuator/health</td><td>-</td></tr>
+            <tr><td>Keycloak Admin</td><td>http://localhost:9090</td><td>admin / admin</td></tr>
+            <tr><td>Oracle DB (Server)</td><td>&lt;ORACLE_IP&gt;:1521/&lt;SID&gt;</td><td>cms_user / &lt;pass&gt;</td></tr>
+            <tr><td>Kafka (Server)</td><td>&lt;KAFKA_IP&gt;:9092</td><td>-</td></tr>
+        </table>
+    </div>
+
+    <!-- STAFF USERS -->
+    <div class="section">
+        <h2>10. Staff User Login Reference</h2>
+        <table>
+            <tr><th>Username</th><th>Password</th><th>Role</th><th>Access Path</th></tr>
+            <tr><td>officer.rbio1</td><td>Test@1234</td><td>RBIO_OFFICER</td><td>/staff/rbio/tasks</td></tr>
+            <tr><td>supervisor.rbio1</td><td>Test@1234</td><td>RBIO_SUPERVISOR</td><td>/rbio/supervisor-dashboard</td></tr>
+            <tr><td>deo.user1</td><td>Test@1234</td><td>DO</td><td>/crpc/home</td></tr>
+            <tr><td>reviewer.user1</td><td>Test@1234</td><td>REVIEWER</td><td>/crpc/reviewer</td></tr>
+            <tr><td>admin.cms</td><td>Test@1234</td><td>ADMIN + SENIOR</td><td>/admin/dashboard, /staff/senior-dashboard</td></tr>
+            <tr><td>re.sbi.nodal</td><td>Test@1234</td><td>RE_NODAL_OFFICER</td><td>/re-portal/dashboard</td></tr>
+        </table>
+    </div>
+
+    <div class="section" style="text-align: center; padding: 20px;">
+        <p style="color: #666;">Document generated on 22 July 2026 | CMS 2.0 - Local Setup Guide</p>
+    </div>
+</div>
+</body>
+</html>

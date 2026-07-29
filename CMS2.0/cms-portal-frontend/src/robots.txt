@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /staff/
+Disallow: /crpc/
+Disallow: /officer/
+Disallow: /re-portal/
+
+Sitemap: https://cms.rbi.org.in/sitemap.xml

@@ -1,0 +1,68 @@
+@if (canShowAction) {
+  <div class="rbio-deputy-decision">
+    <h4>Deputy Ombudsman Decision</h4>
+
+    @if (!showForm()) {
+      <button class="action-btn decision-btn" (click)="openForm()">
+        Record Decision
+      </button>
+    }
+
+    @if (showForm()) {
+      <div class="form-section">
+        <h5>Record DRBIO Decision</h5>
+        <div class="form-grid">
+          <div class="form-field full">
+            <label>Maintainability *</label>
+            <select [(ngModel)]="maintainability" (ngModelChange)="onMaintainabilityChange()">
+              <option value="MAINTAINABLE">Maintainable</option>
+              <option value="NON_MAINTAINABLE">Non-Maintainable</option>
+            </select>
+          </div>
+
+          <div class="form-field full">
+            <label>DRBIO Decision *</label>
+            <select [(ngModel)]="drbioDecision" [disabled]="maintainability === 'NON_MAINTAINABLE'">
+              <option value="FACILITATION">Facilitation</option>
+              <option value="REJECTION">Rejection</option>
+            </select>
+            @if (maintainability === 'MAINTAINABLE' && drbioDecision === 'FACILITATION') {
+              <span class="decision-hint">On confirmation, complaint will auto-proceed to facilitation stage.</span>
+            }
+          </div>
+
+          <div class="form-field full">
+            <label>Remarks / Rationale *</label>
+            <textarea [(ngModel)]="remarks" rows="4" placeholder="Provide decision rationale citing relevant grounds..."></textarea>
+          </div>
+        </div>
+
+        <div class="decision-summary">
+          <div class="summary-item">
+            <span class="summary-label">Maintainability:</span>
+            <span class="summary-value" [class.maintainable]="maintainability === 'MAINTAINABLE'" [class.non-maintainable]="maintainability === 'NON_MAINTAINABLE'">
+              {{ maintainability === 'MAINTAINABLE' ? 'Maintainable' : 'Non-Maintainable' }}
+            </span>
+          </div>
+          <div class="summary-item">
+            <span class="summary-label">Decision:</span>
+            <span class="summary-value">{{ drbioDecision === 'FACILITATION' ? 'Proceed to Facilitation' : 'Rejection' }}</span>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button class="submit-btn" [disabled]="processing() || !remarks.trim()" (click)="submitDecision()">
+            @if (processing()) { Recording... } @else { Confirm Decision }
+          </button>
+          <button class="cancel-btn" (click)="cancelForm()">Cancel</button>
+        </div>
+      </div>
+    }
+
+    @if (resultMessage()) {
+      <div class="result-msg" [class.success]="resultSuccess()" [class.error]="!resultSuccess()">
+        {{ resultMessage() }}
+      </div>
+    }
+  </div>
+}
