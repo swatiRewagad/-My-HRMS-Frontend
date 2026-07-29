@@ -78,6 +78,20 @@ public class EligibilityTranslationSeeder implements CommandLineRunner {
         seedIfAbsent("eligibility.block_settled_ombudsman", "eligibility", "Block: settled ombudsman", "Your complaint has already been settled or dealt with on merits by the Ombudsman. You cannot file a fresh complaint on the same issue.");
         seedIfAbsent("eligibility.block_staff_of_re", "eligibility", "Block: staff of RE", "Complaints involving employer-employee relationship between the complainant and the Regulated Entity cannot be filed under the Integrated Ombudsman Scheme.");
 
+        // Block-note surrounding text
+        seedIfAbsent("eligibility.block_indicated", "eligibility", "Block: as you have indicated", "As you have indicated");
+        seedIfAbsent("eligibility.block_in_response", "eligibility", "Block: in response to query", "in response to this query,");
+        seedIfAbsent("eligibility.block_written_required", "eligibility", "Block: written complaint required", "A written/electronic complaint is required to be filed with the Regulated Entity first.");
+        seedIfAbsent("eligibility.block_regret", "eligibility", "Block: regret message", "Accordingly, we regret to inform you that your present grievance against");
+        seedIfAbsent("eligibility.block_cannot_register", "eligibility", "Block: cannot register", "cannot be registered under the Scheme. In case the response was furnished erroneously, you may change the response.");
+        seedIfAbsent("eligibility.block_regards", "eligibility", "Block: regards", "Regards, RBI CMS Team.");
+        seedIfAbsent("eligibility.show_closure_letter", "eligibility", "Show closure letter button", "Show Closure Letter");
+        seedIfAbsent("eligibility.passed_title", "eligibility", "Eligibility passed title", "Eligibility Passed");
+        seedIfAbsent("eligibility.passed_message", "eligibility", "Eligibility passed message", "You are eligible to file a complaint under RBI Integrated Ombudsman Scheme, 2026.");
+
+        // Assistance description
+        seedIfAbsent("layout.assistance_desc", "layout", "Assistance banner description", "The contact center (#14448) with Interactive Voice Response System (IVRS) is available 24x7, while the facility to connect to Contact Centre personnel is available from Monday to Saturday except for National Holidays, between 8:00 AM to 10:00 PM for English, Hindi, and ten regional languages.");
+
         keyRepo.flush();
 
         seedHindiTranslations();
@@ -147,6 +161,17 @@ public class EligibilityTranslationSeeder implements CommandLineRunner {
         hi.put("eligibility.block_settled_ombudsman", "आपकी शिकायत लोकपाल द्वारा पहले ही गुण-दोष के आधार पर निपटाई जा चुकी है। इसी मुद्दे पर नई शिकायत दर्ज नहीं की जा सकती।");
         hi.put("eligibility.block_staff_of_re", "विनियमित संस्था के कर्मचारी और नियोक्ता-कर्मचारी संबंध से जुड़ी शिकायतें एकीकृत लोकपाल योजना के तहत दर्ज नहीं की जा सकतीं।");
 
+        hi.put("eligibility.block_indicated", "जैसा कि आपने");
+        hi.put("eligibility.block_in_response", "इस प्रश्न के उत्तर में बताया है,");
+        hi.put("eligibility.block_written_required", "विनियमित संस्था के पास पहले लिखित/इलेक्ट्रॉनिक शिकायत दर्ज करना आवश्यक है।");
+        hi.put("eligibility.block_regret", "तदनुसार, हम आपको सूचित करते हैं कि आपकी वर्तमान शिकायत");
+        hi.put("eligibility.block_cannot_register", "के विरुद्ध योजना के तहत पंजीकृत नहीं की जा सकती। यदि उत्तर गलती से दिया गया था, तो आप उत्तर बदल सकते हैं।");
+        hi.put("eligibility.block_regards", "सादर, RBI CMS टीम।");
+        hi.put("eligibility.show_closure_letter", "बंद करने का पत्र दिखाएं");
+        hi.put("eligibility.passed_title", "पात्रता पारित");
+        hi.put("eligibility.passed_message", "आप RBI एकीकृत लोकपाल योजना, 2026 के तहत शिकायत दर्ज करने के पात्र हैं।");
+        hi.put("layout.assistance_desc", "संपर्क केंद्र (#14448) इंटरैक्टिव वॉइस रिस्पांस सिस्टम (IVRS) के साथ 24x7 उपलब्ध है, जबकि संपर्क केंद्र कर्मियों से जुड़ने की सुविधा सोमवार से शनिवार (राष्ट्रीय अवकाश को छोड़कर) सुबह 8:00 बजे से रात 10:00 बजे तक अंग्रेजी, हिंदी और दस क्षेत्रीय भाषाओं में उपलब्ध है।");
+
         for (Map.Entry<String, String> entry : hi.entrySet()) {
             keyRepo.findByCode(entry.getKey()).ifPresent(key -> {
                 if (!translationRepo.existsByTranslationKeyAndLocale(key, "hi")) {
@@ -206,6 +231,17 @@ public class EligibilityTranslationSeeder implements CommandLineRunner {
         mr.put("eligibility.block_settled_ombudsman", "तुमची तक्रार लोकपालाने आधीच गुणवत्तेवर निकाली काढली आहे. याच मुद्द्यावर नवीन तक्रार दाखल करता येत नाही.");
         mr.put("eligibility.block_staff_of_re", "नियमित संस्थेचे कर्मचारी आणि नियोक्ता-कर्मचारी संबंधांशी संबंधित तक्रारी एकीकृत लोकपाल योजनेअंतर्गत दाखल करता येत नाहीत.");
 
+        mr.put("eligibility.block_indicated", "तुम्ही");
+        mr.put("eligibility.block_in_response", "या प्रश्नाच्या उत्तरात सूचित केल्याप्रमाणे,");
+        mr.put("eligibility.block_written_required", "नियमित संस्थेकडे प्रथम लिखित/इलेक्ट्रॉनिक तक्रार दाखल करणे आवश्यक आहे.");
+        mr.put("eligibility.block_regret", "त्यानुसार, आम्ही तुम्हाला कळवतो की तुमची सध्याची तक्रार");
+        mr.put("eligibility.block_cannot_register", "विरुद्ध योजनेअंतर्गत नोंदणी करता येत नाही. उत्तर चुकून दिले असल्यास, तुम्ही उत्तर बदलू शकता.");
+        mr.put("eligibility.block_regards", "सादर, RBI CMS टीम.");
+        mr.put("eligibility.show_closure_letter", "बंद करण्याचे पत्र दाखवा");
+        mr.put("eligibility.passed_title", "पात्रता उत्तीर्ण");
+        mr.put("eligibility.passed_message", "तुम्ही RBI एकीकृत लोकपाल योजना, 2026 अंतर्गत तक्रार दाखल करण्यास पात्र आहात.");
+        mr.put("layout.assistance_desc", "संपर्क केंद्र (#14448) इंटरॅक्टिव्ह व्हॉइस रिस्पॉन्स सिस्टम (IVRS) सह 24x7 उपलब्ध आहे, तर संपर्क केंद्र कर्मचाऱ्यांशी जोडण्याची सुविधा सोमवार ते शनिवार (राष्ट्रीय सुट्ट्या वगळता) सकाळी 8:00 ते रात्री 10:00 दरम्यान इंग्रजी, हिंदी आणि दहा प्रादेशिक भाषांमध्ये उपलब्ध आहे.");
+
         for (Map.Entry<String, String> entry : mr.entrySet()) {
             keyRepo.findByCode(entry.getKey()).ifPresent(key -> {
                 if (!translationRepo.existsByTranslationKeyAndLocale(key, "mr")) {
@@ -252,6 +288,16 @@ public class EligibilityTranslationSeeder implements CommandLineRunner {
         m.put("eligibility.block_pending_ombudsman", "আপনার অভিযোগ ইতিমধ্যে একই বিষয়ে ওম্বডসম্যানের কাছে বিচারাধীন। ডুপ্লিকেট অভিযোগ দায়ের করা যাবে না।");
         m.put("eligibility.block_settled_ombudsman", "আপনার অভিযোগ ইতিমধ্যে ওম্বডসম্যান দ্বারা গুণবিচারে নিষ্পত্তি হয়েছে। একই বিষয়ে নতুন অভিযোগ দায়ের করা যাবে না।");
         m.put("eligibility.block_staff_of_re", "নিয়ন্ত্রিত সংস্থার কর্মচারী এবং নিয়োগকর্তা-কর্মচারী সম্পর্কের অভিযোগ সমন্বিত ওম্বডসম্যান স্কিমের অধীনে দায়ের করা যাবে না।");
+        m.put("eligibility.block_indicated", "আপনি যেমন");
+        m.put("eligibility.block_in_response", "এই প্রশ্নের উত্তরে জানিয়েছেন,");
+        m.put("eligibility.block_written_required", "নিয়ন্ত্রিত সংস্থার কাছে প্রথমে লিখিত/ইলেকট্রনিক অভিযোগ দায়ের করা আবশ্যক।");
+        m.put("eligibility.block_regret", "তদনুসারে, আমরা আপনাকে জানাচ্ছি যে আপনার বর্তমান অভিযোগ");
+        m.put("eligibility.block_cannot_register", "এর বিরুদ্ধে স্কিমের অধীনে নিবন্ধিত করা যাবে না। যদি উত্তরটি ভুলবশত দেওয়া হয়ে থাকে, আপনি উত্তর পরিবর্তন করতে পারেন।");
+        m.put("eligibility.block_regards", "শুভেচ্ছান্তে, RBI CMS টিম।");
+        m.put("eligibility.show_closure_letter", "বন্ধের পত্র দেখুন");
+        m.put("eligibility.passed_title", "যোগ্যতা উত্তীর্ণ");
+        m.put("eligibility.passed_message", "আপনি RBI সমন্বিত ওম্বডসম্যান স্কিম, ২০২৬-এর অধীনে অভিযোগ দায়ের করতে যোগ্য।");
+        m.put("layout.assistance_desc", "যোগাযোগ কেন্দ্র (#14448) ইন্টারেক্টিভ ভয়েস রেসপন্স সিস্টেম (IVRS) সহ 24x7 উপলব্ধ, যখন যোগাযোগ কেন্দ্রের কর্মীদের সাথে সংযোগের সুবিধা সোমবার থেকে শনিবার (জাতীয় ছুটি ব্যতীত) সকাল 8:00 থেকে রাত 10:00 পর্যন্ত ইংরেজি, হিন্দি এবং দশটি আঞ্চলিক ভাষায় উপলব্ধ।");
         saveLocaleTranslations(m, "bn");
     }
 
@@ -288,6 +334,16 @@ public class EligibilityTranslationSeeder implements CommandLineRunner {
         m.put("eligibility.block_pending_ombudsman", "మీ ఫిర్యాదు ఇప్పటికే అదే విషయంపై ఓంబుడ్స్‌మన్ ముందు పెండింగ్‌లో ఉంది. డూప్లికేట్ ఫిర్యాదు దాఖలు చేయలేరు.");
         m.put("eligibility.block_settled_ombudsman", "మీ ఫిర్యాదు ఇప్పటికే ఓంబుడ్స్‌మన్ చేత పరిష్కరించబడింది. అదే విషయంపై కొత్త ఫిర్యాదు దాఖలు చేయలేరు.");
         m.put("eligibility.block_staff_of_re", "నియంత్రిత సంస్థ ఉద్యోగి మరియు యజమాని-ఉద్యోగి సంబంధ ఫిర్యాదులు సమగ్ర ఓంబుడ్స్‌మన్ పథకం కింద దాఖలు చేయలేరు.");
+        m.put("eligibility.block_indicated", "మీరు");
+        m.put("eligibility.block_in_response", "ఈ ప్రశ్నకు సమాధానంగా తెలిపినట్లు,");
+        m.put("eligibility.block_written_required", "నియంత్రిత సంస్థ వద్ద ముందుగా వ్రాతపూర్వక/ఎలక్ట్రానిక్ ఫిర్యాదు దాఖలు చేయడం అవసరం.");
+        m.put("eligibility.block_regret", "తదనుగుణంగా, మీ ప్రస్తుత ఫిర్యాదు");
+        m.put("eligibility.block_cannot_register", "పై పథకం కింద నమోదు చేయడం సాధ్యం కాదని మేము తెలియజేస్తున్నాము. సమాధానం పొరపాటున ఇచ్చినట్లయితే, మీరు సమాధానాన్ని మార్చవచ్చు.");
+        m.put("eligibility.block_regards", "వందనాలు, RBI CMS బృందం.");
+        m.put("eligibility.show_closure_letter", "మూసివేత పత్రం చూపించు");
+        m.put("eligibility.passed_title", "అర్హత ఉత్తీర్ణం");
+        m.put("eligibility.passed_message", "మీరు RBI సమగ్ర ఓంబుడ్స్‌మన్ పథకం, 2026 కింద ఫిర్యాదు దాఖలు చేయడానికి అర్హులు.");
+        m.put("layout.assistance_desc", "సంప్రదింపు కేంద్రం (#14448) ఇంటరాక్టివ్ వాయిస్ రెస్పాన్స్ సిస్టమ్ (IVRS)తో 24x7 అందుబాటులో ఉంటుంది, అదే సమయంలో సంప్రదింపు కేంద్ర సిబ్బందితో అనుసంధానం చేసే సౌకర్యం సోమవారం నుండి శనివారం (జాతీయ సెలవులు మినహా) ఉదయం 8:00 నుండి రాత్రి 10:00 వరకు ఆంగ్లం, హిందీ మరియు పది ప్రాంతీయ భాషల్లో అందుబాటులో ఉంటుంది.");
         saveLocaleTranslations(m, "te");
     }
 
@@ -324,6 +380,16 @@ public class EligibilityTranslationSeeder implements CommandLineRunner {
         m.put("eligibility.block_pending_ombudsman", "உங்கள் புகார் ஏற்கனவே அதே விஷயத்தில் குறைதீர்ப்பாளரிடம் நிலுவையில் உள்ளது. நகல் புகார் தாக்கல் செய்ய முடியாது.");
         m.put("eligibility.block_settled_ombudsman", "உங்கள் புகார் ஏற்கனவே குறைதீர்ப்பாளரால் தீர்வு செய்யப்பட்டுள்ளது. அதே விஷயத்தில் புதிய புகார் தாக்கல் செய்ய முடியாது.");
         m.put("eligibility.block_staff_of_re", "ஒழுங்குமுறை நிறுவன ஊழியர் மற்றும் முதலாளி-ஊழியர் உறவு தொடர்பான புகார்கள் ஒருங்கிணைந்த குறைதீர்ப்பாளர் திட்டத்தின் கீழ் தாக்கல் செய்ய முடியாது.");
+        m.put("eligibility.block_indicated", "நீங்கள்");
+        m.put("eligibility.block_in_response", "இந்த கேள்விக்கான பதிலாக தெரிவித்தபடி,");
+        m.put("eligibility.block_written_required", "ஒழுங்குமுறை நிறுவனத்திடம் முதலில் எழுத்து/மின்னணு புகார் அளிக்க வேண்டும்.");
+        m.put("eligibility.block_regret", "அதன்படி, உங்கள் தற்போதைய புகார்");
+        m.put("eligibility.block_cannot_register", "மீது திட்டத்தின் கீழ் பதிவு செய்ய இயலாது என்பதை தெரிவிக்கிறோம். பதில் தவறுதலாக அளிக்கப்பட்டிருந்தால், நீங்கள் பதிலை மாற்றலாம்.");
+        m.put("eligibility.block_regards", "வணக்கம், RBI CMS குழு.");
+        m.put("eligibility.show_closure_letter", "முடிவுக் கடிதத்தைக் காட்டு");
+        m.put("eligibility.passed_title", "தகுதி தேர்ச்சி");
+        m.put("eligibility.passed_message", "நீங்கள் RBI ஒருங்கிணைந்த குறைதீர்ப்பாளர் திட்டம், 2026 இன் கீழ் புகார் அளிக்க தகுதியானவர்.");
+        m.put("layout.assistance_desc", "தொடர்பு மையம் (#14448) ஊடாடும் குரல் பதில் அமைப்பு (IVRS) மூலம் 24x7 கிடைக்கிறது, அதே நேரத்தில் தொடர்பு மைய பணியாளர்களுடன் இணைக்கும் வசதி திங்கள் முதல் சனி வரை (தேசிய விடுமுறைகள் தவிர) காலை 8:00 முதல் இரவு 10:00 வரை ஆங்கிலம், இந்தி மற்றும் பத்து பிராந்திய மொழிகளில் கிடைக்கிறது.");
         saveLocaleTranslations(m, "ta");
     }
 
@@ -360,6 +426,16 @@ public class EligibilityTranslationSeeder implements CommandLineRunner {
         m.put("eligibility.block_pending_ombudsman", "તમારી ફરિયાદ પહેલેથી એ જ વિષય પર ઓમ્બડ્સમેન સમક્ષ પેન્ડિંગ છે. ડુપ્લિકેટ ફરિયાદ દાખલ કરી શકાતી નથી.");
         m.put("eligibility.block_settled_ombudsman", "તમારી ફરિયાદ પહેલેથી ઓમ્બડ્સમેન દ્વારા નિકાલ કરવામાં આવી છે. એ જ વિષય પર નવી ફરિયાદ દાખલ કરી શકાતી નથી.");
         m.put("eligibility.block_staff_of_re", "નિયંત્રિત સંસ્થાના કર્મચારી અને નોકરીદાતા-કર્મચારી સંબંધની ફરિયાદો સંકલિત ઓમ્બડ્સમેન યોજના હેઠળ દાખલ કરી શકાતી નથી.");
+        m.put("eligibility.block_indicated", "તમે");
+        m.put("eligibility.block_in_response", "આ પ્રશ્નના જવાબમાં જણાવ્યા મુજબ,");
+        m.put("eligibility.block_written_required", "નિયમિત સંસ્થા પાસે પ્રથમ લેખિત/ઇલેક્ટ્રોનિક ફરિયાદ દાખલ કરવી જરૂરી છે.");
+        m.put("eligibility.block_regret", "તદનુસાર, અમે તમને જાણ કરીએ છીએ કે તમારી વર્તમાન ફરિયાદ");
+        m.put("eligibility.block_cannot_register", "સામે યોજના હેઠળ નોંધણી કરી શકાતી નથી. જો જવાબ ભૂલથી આપવામાં આવ્યો હોય, તો તમે જવાબ બદલી શકો છો.");
+        m.put("eligibility.block_regards", "સાદર, RBI CMS ટીમ.");
+        m.put("eligibility.show_closure_letter", "બંધ કરવાનો પત્ર બતાવો");
+        m.put("eligibility.passed_title", "પાત્રતા પાસ");
+        m.put("eligibility.passed_message", "તમે RBI સંકલિત લોકપાલ યોજના, 2026 હેઠળ ફરિયાદ દાખલ કરવા માટે પાત્ર છો.");
+        m.put("layout.assistance_desc", "સંપર્ક કેન્દ્ર (#14448) ઇન્ટરેક્ટિવ વોઇસ રિસ્પોન્સ સિસ્ટમ (IVRS) સાથે 24x7 ઉપલબ્ધ છે, જ્યારે સંપર્ક કેન્દ્ર કર્મચારીઓ સાથે જોડાવાની સુવિધા સોમવારથી શનિવાર (રાષ્ટ્રીય રજાઓ સિવાય) સવારે 8:00 થી રાત્રે 10:00 સુધી અંગ્રેજી, હિન્દી અને દસ પ્રાદેશિક ભાષાઓમાં ઉપલબ્ધ છે.");
         saveLocaleTranslations(m, "gu");
     }
 
@@ -396,6 +472,16 @@ public class EligibilityTranslationSeeder implements CommandLineRunner {
         m.put("eligibility.block_pending_ombudsman", "آپ کی شکایت پہلے سے اسی معاملے پر اومبڈزمین کے سامنے زیر التوا ہے۔ ڈپلیکیٹ شکایت درج نہیں کی جا سکتی۔");
         m.put("eligibility.block_settled_ombudsman", "آپ کی شکایت پہلے ہی اومبڈزمین نے طے کر دی ہے۔ اسی معاملے پر نئی شکایت درج نہیں کی جا سکتی۔");
         m.put("eligibility.block_staff_of_re", "ریگولیٹڈ ادارے کے ملازم اور آجر-ملازم تعلق کی شکایات مربوط اومبڈزمین اسکیم کے تحت درج نہیں کی جا سکتیں۔");
+        m.put("eligibility.block_indicated", "جیسا کہ آپ نے");
+        m.put("eligibility.block_in_response", "اس سوال کے جواب میں بتایا ہے،");
+        m.put("eligibility.block_written_required", "ریگولیٹڈ ادارے میں پہلے تحریری/الیکٹرانک شکایت درج کرانا ضروری ہے۔");
+        m.put("eligibility.block_regret", "اس کے مطابق، ہم آپ کو مطلع کرتے ہیں کہ آپ کی موجودہ شکایت");
+        m.put("eligibility.block_cannot_register", "کے خلاف اسکیم کے تحت رجسٹر نہیں کی جا سکتی۔ اگر جواب غلطی سے دیا گیا ہو تو آپ جواب تبدیل کر سکتے ہیں۔");
+        m.put("eligibility.block_regards", "نیک خواہشات، RBI CMS ٹیم۔");
+        m.put("eligibility.show_closure_letter", "بندش خط دکھائیں");
+        m.put("eligibility.passed_title", "اہلیت پاس");
+        m.put("eligibility.passed_message", "آپ RBI مربوط محتسب اسکیم، 2026 کے تحت شکایت درج کرانے کے اہل ہیں۔");
+        m.put("layout.assistance_desc", "رابطہ مرکز (#14448) انٹرایکٹو وائس رسپانس سسٹم (IVRS) کے ساتھ 24x7 دستیاب ہے، جبکہ رابطہ مرکز کے عملے سے رابطے کی سہولت سوموار سے ہفتہ (قومی تعطیلات کے علاوہ) صبح 8:00 سے رات 10:00 تک انگریزی، ہندی اور دس علاقائی زبانوں میں دستیاب ہے۔");
         saveLocaleTranslations(m, "ur");
     }
 
@@ -432,6 +518,16 @@ public class EligibilityTranslationSeeder implements CommandLineRunner {
         m.put("eligibility.block_pending_ombudsman", "ನಿಮ್ಮ ದೂರು ಈಗಾಗಲೇ ಅದೇ ವಿಷಯದ ಮೇಲೆ ಲೋಕಪಾಲರ ಮುಂದೆ ಬಾಕಿ ಇದೆ. ನಕಲಿ ದೂರು ಸಲ್ಲಿಸಲಾಗುವುದಿಲ್ಲ.");
         m.put("eligibility.block_settled_ombudsman", "ನಿಮ್ಮ ದೂರು ಈಗಾಗಲೇ ಲೋಕಪಾಲರಿಂದ ಇತ್ಯರ್ಥಗೊಂಡಿದೆ. ಅದೇ ವಿಷಯದ ಮೇಲೆ ಹೊಸ ದೂರು ಸಲ್ಲಿಸಲಾಗುವುದಿಲ್ಲ.");
         m.put("eligibility.block_staff_of_re", "ನಿಯಂತ್ರಿತ ಸಂಸ್ಥೆಯ ಸಿಬ್ಬಂದಿ ಮತ್ತು ನಿಯೋಜಕ-ಉದ್ಯೋಗಿ ಸಂಬಂಧದ ದೂರುಗಳನ್ನು ಸಮಗ್ರ ಲೋಕಪಾಲ ಯೋಜನೆಯಡಿ ಸಲ್ಲಿಸಲಾಗುವುದಿಲ್ಲ.");
+        m.put("eligibility.block_indicated", "ನೀವು");
+        m.put("eligibility.block_in_response", "ಈ ಪ್ರಶ್ನೆಗೆ ಉತ್ತರವಾಗಿ ತಿಳಿಸಿದಂತೆ,");
+        m.put("eligibility.block_written_required", "ನಿಯಂತ್ರಿತ ಸಂಸ್ಥೆಯಲ್ಲಿ ಮೊದಲು ಲಿಖಿತ/ಎಲೆಕ್ಟ್ರಾನಿಕ್ ದೂರು ದಾಖಲಿಸುವುದು ಅಗತ್ಯ.");
+        m.put("eligibility.block_regret", "ಅದರಂತೆ, ನಿಮ್ಮ ಪ್ರಸ್ತುತ ದೂರು");
+        m.put("eligibility.block_cannot_register", "ವಿರುದ್ಧ ಯೋಜನೆಯಡಿ ನೋಂದಾಯಿಸಲಾಗುವುದಿಲ್ಲ ಎಂದು ನಾವು ತಿಳಿಸುತ್ತೇವೆ. ಉತ್ತರವನ್ನು ತಪ್ಪಾಗಿ ನೀಡಿದ್ದರೆ, ನೀವು ಉತ್ತರವನ್ನು ಬದಲಾಯಿಸಬಹುದು.");
+        m.put("eligibility.block_regards", "ಶುಭಾಶಯಗಳೊಂದಿಗೆ, RBI CMS ತಂಡ.");
+        m.put("eligibility.show_closure_letter", "ಮುಕ್ತಾಯ ಪತ್ರ ತೋರಿಸಿ");
+        m.put("eligibility.passed_title", "ಅರ್ಹತೆ ಉತ್ತೀರ್ಣ");
+        m.put("eligibility.passed_message", "ನೀವು RBI ಸಮಗ್ರ ಓಂಬುಡ್ಸ್‌ಮನ್ ಯೋಜನೆ, 2026 ಅಡಿಯಲ್ಲಿ ದೂರು ದಾಖಲಿಸಲು ಅರ್ಹರು.");
+        m.put("layout.assistance_desc", "ಸಂಪರ್ಕ ಕೇಂದ್ರ (#14448) ಇಂಟರಾಕ್ಟಿವ್ ವಾಯ್ಸ್ ರೆಸ್ಪಾನ್ಸ್ ಸಿಸ್ಟಮ್ (IVRS) ಜೊತೆ 24x7 ಲಭ್ಯವಿದೆ, ಆದರೆ ಸಂಪರ್ಕ ಕೇಂದ್ರ ಸಿಬ್ಬಂದಿಯೊಂದಿಗೆ ಸಂಪರ್ಕಿಸುವ ಸೌಲಭ್ಯ ಸೋಮವಾರದಿಂದ ಶನಿವಾರ (ರಾಷ್ಟ್ರೀಯ ರಜಾದಿನಗಳನ್ನು ಹೊರತುಪಡಿಸಿ) ಬೆಳಿಗ್ಗೆ 8:00 ರಿಂದ ರಾತ್ರಿ 10:00 ರವರೆಗೆ ಆಂಗ್ಲ, ಹಿಂದಿ ಮತ್ತು ಹತ್ತು ಪ್ರಾದೇಶಿಕ ಭಾಷೆಗಳಲ್ಲಿ ಲಭ್ಯವಿದೆ.");
         saveLocaleTranslations(m, "kn");
     }
 
@@ -468,6 +564,16 @@ public class EligibilityTranslationSeeder implements CommandLineRunner {
         m.put("eligibility.block_pending_ombudsman", "നിങ്ങളുടെ പരാതി ഇതിനകം അതേ വിഷയത്തിൽ ഓംബുഡ്സ്മാന് മുമ്പാകെ നിലനിൽക്കുന്നു. ഡ്യൂപ്ലിക്കേറ്റ് പരാതി ഫയൽ ചെയ്യാൻ കഴിയില്ല.");
         m.put("eligibility.block_settled_ombudsman", "നിങ്ങളുടെ പരാതി ഇതിനകം ഓംബുഡ്സ്മാൻ പരിഹരിച്ചിട്ടുണ്ട്. അതേ വിഷയത്തിൽ പുതിയ പരാതി ഫയൽ ചെയ്യാൻ കഴിയില്ല.");
         m.put("eligibility.block_staff_of_re", "നിയന്ത്രിത സ്ഥാപന ജീവനക്കാരനും തൊഴിലുടമ-ജീവനക്കാരൻ ബന്ധ പരാതികളും സംയോജിത ഓംബുഡ്സ്മാൻ സ്കീമിന് കീഴിൽ ഫയൽ ചെയ്യാൻ കഴിയില്ല.");
+        m.put("eligibility.block_indicated", "നിങ്ങൾ");
+        m.put("eligibility.block_in_response", "ഈ ചോദ്യത്തിന് ഉത്തരമായി സൂചിപ്പിച്ചതുപോലെ,");
+        m.put("eligibility.block_written_required", "നിയന്ത്രിത സ്ഥാപനത്തിൽ ആദ്യം രേഖാമൂലം/ഇലക്ട്രോണിക് പരാതി നൽകേണ്ടതുണ്ട്.");
+        m.put("eligibility.block_regret", "അതനുസരിച്ച്, നിങ്ങളുടെ നിലവിലെ പരാതി");
+        m.put("eligibility.block_cannot_register", "ക്കെതിരെ പദ്ധതിയുടെ കീഴിൽ രജിസ്റ്റർ ചെയ്യാൻ കഴിയില്ലെന്ന് ഞങ്ങൾ അറിയിക്കുന്നു. ഉത്തരം തെറ്റായി നൽകിയതാണെങ്കിൽ, നിങ്ങൾക്ക് ഉത്തരം മാറ്റാവുന്നതാണ്.");
+        m.put("eligibility.block_regards", "ആശംസകൾ, RBI CMS ടീം.");
+        m.put("eligibility.show_closure_letter", "ക്ലോഷർ കത്ത് കാണിക്കുക");
+        m.put("eligibility.passed_title", "യോഗ്യത വിജയം");
+        m.put("eligibility.passed_message", "RBI സമഗ്ര ഓംബുഡ്സ്മാൻ പദ്ധതി, 2026 പ്രകാരം പരാതി നൽകാൻ നിങ്ങൾ യോഗ്യനാണ്.");
+        m.put("layout.assistance_desc", "കോൺടാക്ട് സെന്റർ (#14448) ഇന്ററാക്ടീവ് വോയ്‌സ് റെസ്‌പോൺസ് സിസ്റ്റം (IVRS) ഉപയോഗിച്ച് 24x7 ലഭ്യമാണ്, അതേസമയം കോൺടാക്ട് സെന്റർ ജീവനക്കാരുമായി ബന്ധപ്പെടാനുള്ള സൗകര്യം ദേശീയ അവധി ദിവസങ്ങൾ ഒഴികെ തിങ്കൾ മുതൽ ശനി വരെ രാവിലെ 8:00 മുതൽ രാത്രി 10:00 വരെ ഇംഗ്ലീഷ്, ഹിന്ദി, പത്ത് പ്രാദേശിക ഭാഷകളിൽ ലഭ്യമാണ്.");
         saveLocaleTranslations(m, "ml");
     }
 

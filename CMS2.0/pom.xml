@@ -47,7 +47,7 @@
         <spring-cloud.version>2024.0.0</spring-cloud.version>
         <keycloak.version>26.0.0</keycloak.version>
         <drools.version>9.44.0.Final</drools.version>
-        <jbpm.version>7.74.1.Final</jbpm.version>
+        <jbpm.version>10.2.0</jbpm.version>
         <oracle.driver.version>23.4.0.24.05</oracle.driver.version>
         <mapstruct.version>1.6.3</mapstruct.version>
         <lombok.version>1.18.36</lombok.version>
@@ -115,30 +115,15 @@
                 <version>${drools.version}</version>
             </dependency>
 
-            <!-- jBPM -->
+            <!-- jBPM 10 (Spring Boot 3.x compatible) -->
             <dependency>
                 <groupId>org.jbpm</groupId>
-                <artifactId>jbpm-flow</artifactId>
+                <artifactId>jbpm-with-drools-spring-boot-starter</artifactId>
                 <version>${jbpm.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.jbpm</groupId>
-                <artifactId>jbpm-flow-builder</artifactId>
-                <version>${jbpm.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.jbpm</groupId>
-                <artifactId>jbpm-bpmn2</artifactId>
-                <version>${jbpm.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.jbpm</groupId>
-                <artifactId>jbpm-persistence-jpa</artifactId>
-                <version>${jbpm.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.jbpm</groupId>
-                <artifactId>jbpm-human-task-core</artifactId>
+                <artifactId>jbpm-spring-boot-starter</artifactId>
                 <version>${jbpm.version}</version>
             </dependency>
 

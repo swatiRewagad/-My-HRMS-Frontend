@@ -421,6 +421,49 @@
                 </div>
               }
 
+              <!-- ═══ RBIO DEPUTY OMBUDSMAN DECISION (UST758) ═══ -->
+              @if (showDeputyDecision()) {
+                <div class="form-section" [class.open]="true">
+                  <app-rbio-deputy-decision [complaint]="complaint()!" (decisionSubmitted)="onDeputyDecisionSubmitted($event)"></app-rbio-deputy-decision>
+                </div>
+              }
+
+              <!-- ═══ RBIO ADD ENTITY (UST487-495) ═══ -->
+              @if (showAddEntity()) {
+                <div class="form-section" [class.open]="true">
+                  <app-rbio-add-entity [complaint]="complaint()!"></app-rbio-add-entity>
+                </div>
+              }
+
+              <!-- ═══ RBIO FORWARD TO REGULATORY BODY (UST766) ═══ -->
+              @if (showForwardRegulatory()) {
+                <div class="form-section" [class.open]="true">
+                  <app-rbio-forward-regulatory [complaint]="complaint()!"></app-rbio-forward-regulatory>
+                </div>
+              }
+
+              <!-- ═══ RBIO LEGAL CASE TAB (UST553-555) ═══ -->
+              @if (showLegalCase()) {
+                <div class="form-section" [class.open]="true">
+                  <app-rbio-legal-case [complaint]="complaint()!"></app-rbio-legal-case>
+                </div>
+              }
+
+              <!-- ═══ RBIO ACTION OVERRIDE HISTORY (UST639-642) ═══ -->
+              @if (isRbioComplaint()) {
+                <div class="form-section" [class.open]="showOverrideHistory()">
+                  <div class="section-header" (click)="toggleOverrideHistory()">
+                    <span><i class="pi pi-history"></i> Action Override History</span>
+                    <i class="pi" [class.pi-chevron-down]="showOverrideHistory()" [class.pi-chevron-up]="!showOverrideHistory()"></i>
+                  </div>
+                  @if (showOverrideHistory()) {
+                    <div class="section-body">
+                      <app-rbio-action-override-history [complaint]="complaint()!"></app-rbio-action-override-history>
+                    </div>
+                  }
+                </div>
+              }
+
               <!-- Action Panel Section -->
               <div class="form-section action-section" [class.open]="sectionOpen.actions" #actionSection>
                 <div class="section-header" (click)="sectionOpen.actions = !sectionOpen.actions">
@@ -434,6 +477,12 @@
                         <span class="closed-icon"><i class="pi pi-check-circle"></i></span>
                         <h4>Complaint {{ complaint()!.status }}</h4>
                         <p>No further actions available. This complaint has been processed.</p>
+                      </div>
+                    } @else if (availableActions().length === 0) {
+                      <div class="closed-banner">
+                        <span class="closed-icon"><i class="pi pi-info-circle"></i></span>
+                        <h4>Status: {{ complaint()!.status | uppercase }}</h4>
+                        <p>No actions available for your role. This complaint is awaiting action from the next role in the workflow.</p>
                       </div>
                     } @else {
                       <div class="action-buttons">
@@ -451,8 +500,41 @@
                             <textarea [(ngModel)]="remarks" rows="3" placeholder="Enter remarks (required)..."></textarea>
                             <app-speech-button (transcription)="remarks = remarks + ' ' + $event"></app-speech-button>
                           </div>
+
+                          <!-- UST576, UST581-584: Final Decision fields for CLOSE_COMPLAINT -->
+                          @if (selectedAction() === 'CLOSE_COMPLAINT') {
+                            <div class="closure-fields" style="margin-top:12px; padding:12px; background:#f8f9fa; border-radius:6px; border:1px solid #e0e0e0;">
+                              <h5 style="margin:0 0 10px; font-size:13px; color:#333;"><i class="pi pi-file-check"></i> Final Decision</h5>
+
+                              <!-- Closure Clause Picker (UST581-584) -->
+                              <div class="field-item" style="margin-bottom:10px;">
+                                <label style="font-size:12px; font-weight:600; display:block; margin-bottom:4px;">Closure Clause</label>
+                                <select [ngModel]="closureClause()" (ngModelChange)="onClosureClauseChange($event)" style="width:100%; padding:6px 10px; border:1px solid #ccc; border-radius:4px; font-size:13px;" (focus)="loadClosureClauses()">
+                                  <option value="">Select Closure Clause</option>
+                                  @for (clause of allowedClosureClauses(); track clause.code) {
+                                    <option [value]="clause.code">{{ clause.code }} - {{ clause.label }}</option>
+                                  }
+                                </select>
+                              </div>
+
+                              <!-- Custom Closure Text (UST576) -->
+                              <div class="field-item" style="margin-bottom:10px;">
+                                <label style="font-size:12px; font-weight:600; display:block; margin-bottom:4px;">Custom Closure Text (optional)</label>
+                                <textarea [ngModel]="customClosureText()" (ngModelChange)="customClosureText.set($event)" rows="3" maxlength="2000" placeholder="Enter custom text to be included in the closure letter..." style="width:100%; padding:6px 10px; border:1px solid #ccc; border-radius:4px; font-size:13px; resize:vertical;"></textarea>
+                                <span style="font-size:11px; color:#666; float:right;">{{ customClosureTextLength }} / 2000</span>
+                              </div>
+                            </div>
+                          }
+
+                          <!-- UST656: Email validation error -->
+                          @if (emailValidationError()) {
+                            <div style="margin-top:8px; padding:8px 12px; background:#fff3f3; border:1px solid #ffcdd2; border-radius:4px; color:#c62828; font-size:12px;">
+                              <i class="pi pi-exclamation-triangle"></i> {{ emailValidationError() }}
+                            </div>
+                          }
+
                           <div class="confirm-actions">
-                            <button class="btn btn-primary" [disabled]="!remarks.trim() || processing()" (click)="submitAction()">
+                            <button class="btn btn-primary" [disabled]="!remarks.trim() || processing()" (click)="originalSubmitAction()">
                               @if (processing()) { <i class="pi pi-spin pi-spinner"></i> Processing... } @else { Confirm {{ selectedAction() }} }
                             </button>
                             <button class="btn btn-outline" (click)="cancelAction()">Cancel</button>
@@ -663,6 +745,173 @@
       <button class="icon-sidebar-btn" [class.active]="showHistoryPanel()" title="History" (click)="toggleHistoryPanel()"><i class="pi pi-history"></i></button>
       <div class="sidebar-spacer"></div>
     </div>
+
+    <!-- ═══ NO EMAIL CLOSURE POPUP (UST549, UST764) ═══ -->
+    @if (showNoEmailClosurePopup()) {
+      <div class="modal-overlay" (click)="dismissNoEmailPopup()">
+        <div class="modal-dialog no-email-modal" (click)="$event.stopPropagation()">
+          <div class="modal-header">
+            <div class="modal-icon warning"><i class="pi pi-exclamation-triangle"></i></div>
+            <div>
+              <h3>Cannot Close Complaint</h3>
+              <p>Complainant email is not populated. Direct closure is blocked.</p>
+            </div>
+            <button class="modal-close" (click)="dismissNoEmailPopup()">&times;</button>
+          </div>
+          <div class="modal-body">
+            <p class="modal-explanation">Select an alternative action or route back to DO to collect email:</p>
+            <div class="alternative-actions">
+              @for (alt of noEmailAlternativeActions; track alt.value) {
+                <button class="alt-action-btn" (click)="selectAlternativeAction(alt.value)">{{ alt.label }}</button>
+              }
+            </div>
+            <div class="modal-divider"></div>
+            <button class="btn btn-outline route-back-btn" (click)="routeBackToDo()">
+              <i class="pi pi-arrow-left"></i> Route Back to DO
+            </button>
+          </div>
+          <div class="modal-footer">
+            <button class="btn-cancel" (click)="dismissNoEmailPopup()">Cancel</button>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- ═══ MANUAL REASSIGN MODAL (UST759) ═══ -->
+    @if (showReassignModal()) {
+      <div class="modal-overlay" (click)="cancelReassignModal()">
+        <div class="modal-dialog reassign-modal" (click)="$event.stopPropagation()">
+          <div class="modal-header">
+            <div class="modal-icon warning"><i class="pi pi-exclamation-circle"></i></div>
+            <div>
+              <h3>Manual Reassignment Required</h3>
+              <p>{{ reassignError() }}</p>
+            </div>
+            <button class="modal-close" (click)="cancelReassignModal()">&times;</button>
+          </div>
+          <div class="modal-body">
+            @if (reassignCandidate()) {
+              <div class="candidate-info">
+                <p><strong>Last Officer:</strong> {{ reassignCandidate()!.name }} ({{ reassignCandidate()!.role }})</p>
+                <p><strong>Status:</strong>
+                  @if (!reassignCandidate()!.isActive) { Inactive }
+                  @else if (reassignCandidate()!.isOnLeave) { On Leave }
+                </p>
+              </div>
+            }
+            <div class="form-field">
+              <label>Select Officer (User ID) *</label>
+              <input type="text" [(ngModel)]="manualAssigneeId" placeholder="Enter officer user ID" />
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn-cancel" (click)="cancelReassignModal()">Cancel</button>
+            <button class="btn btn-primary" [disabled]="!manualAssigneeId.trim()" (click)="confirmManualReassign()">Reassign</button>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- ═══ CLOSURE CONFIRMATION POPUP (UST577) ═══ -->
+    @if (showClosureConfirmPopup()) {
+      <div class="modal-overlay" (click)="editClosureForm()">
+        <div class="modal-dialog" (click)="$event.stopPropagation()" style="max-width:480px;">
+          <div class="modal-header">
+            <div class="modal-icon" style="background:#e8f5e9;"><i class="pi pi-check-circle" style="color:#2e7d32;"></i></div>
+            <div>
+              <h3>Closure Confirmation</h3>
+              <p>Closure letter will be dispatched to the complainant via email.</p>
+            </div>
+            <button class="modal-close" (click)="editClosureForm()">&times;</button>
+          </div>
+          <div class="modal-body" style="padding:16px 20px;">
+            <p style="font-size:13px; color:#555; margin:0 0 12px;">The closure letter will be automatically sent to: <strong>{{ complaint()?.complainantEmail }}</strong></p>
+            <p style="font-size:12px; color:#777;">Send date will be auto-captured and cannot be edited.</p>
+          </div>
+          <div class="modal-footer">
+            <button class="btn-cancel" (click)="editClosureForm()"><i class="pi pi-pencil"></i> Edit</button>
+            <button class="btn btn-primary" (click)="confirmClosureDispatch()"><i class="pi pi-check"></i> OK - Dispatch Letter</button>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- ═══ NO EMAIL - GENERATE LETTER POPUP (UST507-509, UST520) ═══ -->
+    @if (showNoEmailPopup()) {
+      <div class="modal-overlay">
+        <div class="modal-dialog" (click)="$event.stopPropagation()" style="max-width:520px;">
+          <div class="modal-header">
+            <div class="modal-icon warning"><i class="pi pi-exclamation-triangle"></i></div>
+            <div>
+              <h3>Manual Closure Letter Required</h3>
+              <p>Complainant has no email. Please generate and dispatch the closure letter manually.</p>
+            </div>
+            <button class="modal-close" (click)="showNoEmailPopup.set(false)">&times;</button>
+          </div>
+          <div class="modal-body" style="padding:16px 20px;">
+            <!-- Generate Letter Button -->
+            <div style="margin-bottom:16px;">
+              <button class="btn btn-primary" (click)="generateClosureLetterPdf()" style="width:100%;">
+                <i class="pi pi-file-pdf"></i> Generate Closure Letter PDF
+              </button>
+            </div>
+
+            <!-- Upload signed letter -->
+            <div style="margin-bottom:12px;">
+              <label style="font-size:12px; font-weight:600; display:block; margin-bottom:4px;">Upload Signed Letter *</label>
+              <input type="file" accept=".pdf,.jpg,.jpeg,.png" (change)="onClosureLetterFileUpload($event)" style="font-size:12px;" />
+              @if (closureLetterFile()) {
+                <span style="font-size:11px; color:#2e7d32; margin-top:4px; display:block;">Uploaded: {{ closureLetterFile()!.name }}</span>
+              }
+            </div>
+
+            <!-- Date of Sending -->
+            <div style="margin-bottom:12px;">
+              <label style="font-size:12px; font-weight:600; display:block; margin-bottom:4px;">Date of Sending *</label>
+              <input type="date" [ngModel]="dateOfSending()" (ngModelChange)="dateOfSending.set($event)" style="width:100%; padding:6px 10px; border:1px solid #ccc; border-radius:4px; font-size:13px;" />
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn-cancel" (click)="showNoEmailPopup.set(false)">Cancel</button>
+            <button class="btn btn-primary" [disabled]="!dateOfSending() || !closureLetterFile()" (click)="completeManualClosure()">
+              <i class="pi pi-check"></i> Complete Closure
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- ═══ SAMPLE CLOSURE LETTER MODAL (UST521) ═══ -->
+    @if (showSampleLetterModal()) {
+      <div class="modal-overlay">
+        <div class="modal-dialog" (click)="$event.stopPropagation()" style="max-width:600px;">
+          <div class="modal-header">
+            <div class="modal-icon" style="background:#e3f2fd;"><i class="pi pi-info-circle" style="color:#1565c0;"></i></div>
+            <div>
+              <h3>Sample Closure Letter - New RBIOS 2026 Clause</h3>
+              <p>Please review the sample letter for clause: {{ sampleLetterClause() }}</p>
+            </div>
+            <button class="modal-close" (click)="acknowledgeSampleLetter()">&times;</button>
+          </div>
+          <div class="modal-body" style="padding:16px 20px; max-height:400px; overflow-y:auto;">
+            <div style="background:#fafafa; padding:16px; border:1px solid #e0e0e0; border-radius:6px; font-family:'Times New Roman',serif; font-size:13px; line-height:1.6;">
+              <p style="text-align:center; font-weight:bold;">RESERVE BANK OF INDIA<br/>Integrated Ombudsman Scheme</p>
+              <p><strong>Ref:</strong> [Complaint Number]<br/><strong>Date:</strong> [Date]</p>
+              <p>Dear [Complainant Name],</p>
+              <p>With reference to your complaint filed under the Reserve Bank - Integrated Ombudsman Scheme, 2021 (as amended 2026), we wish to inform you that after careful examination of the facts and circumstances of your case, the complaint is being closed under <strong>Clause {{ sampleLetterClause() }}</strong> of the Scheme.</p>
+              <p><em>[Clause-specific reasoning would be inserted here based on the selected closure clause]</em></p>
+              <p>You may note that this decision has been taken after due consideration of the submissions made by you and the regulated entity.</p>
+              <p>Yours faithfully,<br/>[Authority Name]<br/>[Designation]<br/>[Digitally Signed]</p>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-primary" (click)="acknowledgeSampleLetter()">
+              <i class="pi pi-check"></i> I have reviewed
+            </button>
+          </div>
+        </div>
+      </div>
+    }
 
   }
 </div>

@@ -12,6 +12,7 @@ export class PublicAuthService {
 
   isAuthenticated = signal(false);
   remainingSeconds = signal(0);
+  sessionWarning = signal(false);
   userIdentifier = signal('');
 
   constructor() {
@@ -93,7 +94,14 @@ export class PublicAuthService {
     this.updateRemainingSeconds();
     this.countdownTimer = setInterval(() => {
       this.updateRemainingSeconds();
-      if (this.remainingSeconds() <= 0) {
+      const remaining = this.remainingSeconds();
+      if (remaining <= 60 && remaining > 0) {
+        this.sessionWarning.set(true);
+      } else {
+        this.sessionWarning.set(false);
+      }
+      if (remaining <= 0) {
+        this.sessionWarning.set(false);
         this.logout();
       }
     }, 1000);

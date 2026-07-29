@@ -8,6 +8,10 @@
 
 .page-header {
   margin-bottom: 20px;
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 12px;
 
   h1 {
     margin: 0 0 4px;
@@ -20,7 +24,12 @@
     margin: 0;
     color: #666;
     font-size: 13px;
+    flex: 1 1 100%;
   }
+}
+
+.admin-access-btn {
+  margin-left: auto;
 }
 
 // Tab Navigation
@@ -323,6 +332,72 @@
   }
 }
 
+// Advanced Filters (UST617-619)
+.advanced-filters-section {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid #e8e8e8;
+}
+
+.advanced-filters-title {
+  margin: 0 0 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #555;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.advanced-filter-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  background: #fafafa;
+  border-radius: 6px;
+  border: 1px solid #eee;
+}
+
+.advanced-filter-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #333;
+}
+
+.advanced-filter-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.operator-select {
+  min-width: 140px;
+  max-width: 160px;
+}
+
+.between-separator {
+  font-size: 12px;
+  color: #888;
+  font-weight: 500;
+}
+
+.value-input {
+  min-width: 180px;
+}
+
+.value-input-wide {
+  min-width: 280px;
+  flex: 1;
+}
+
+.filter-hint {
+  font-size: 11px;
+  color: #999;
+  font-style: italic;
+}
+
 // Actions bar
 .actions-bar {
   display: flex;
@@ -368,6 +443,15 @@
   &:hover:not(:disabled) {
     border-color: #1a237e;
     color: #1a237e;
+  }
+}
+
+.btn-danger {
+  background: #c62828;
+  color: white;
+
+  &:hover:not(:disabled) {
+    background: #8e0000;
   }
 }
 
@@ -456,6 +540,49 @@
   tr:hover td {
     background: #fafafa;
   }
+}
+
+// Drill-down links (UST620, UST621)
+.drill-down-link {
+  color: #1565c0;
+  text-decoration: underline;
+  cursor: pointer;
+  font-weight: 500;
+
+  &:hover {
+    color: #0d47a1;
+    text-decoration: underline;
+  }
+}
+
+.drill-down-count {
+  font-weight: 700;
+  color: #1a237e;
+}
+
+.drill-down-loading {
+  text-align: center;
+  padding: 40px 20px;
+  color: #666;
+
+  p {
+    margin-top: 10px;
+    font-size: 13px;
+  }
+}
+
+.drill-down-empty {
+  text-align: center;
+  padding: 30px 20px;
+  color: #999;
+  font-size: 13px;
+}
+
+.drill-down-table-wrapper {
+  overflow-x: auto;
+  margin: 12px 0;
+  max-height: 400px;
+  overflow-y: auto;
 }
 
 .empty-results {
@@ -616,6 +743,12 @@
   }
 }
 
+.dialog-wide {
+  max-width: 740px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
 .dialog-hint {
   margin: -8px 0 16px;
   font-size: 12px;
@@ -648,9 +781,46 @@
   }
 }
 
+.form-input-sm {
+  padding: 6px 10px;
+  font-size: 12px;
+  width: auto;
+}
+
 .dialog-actions {
   display: flex;
   gap: 10px;
   margin-top: 20px;
   justify-content: flex-end;
+}
+
+// Access Role Admin (UST615, UST622, UST670)
+.access-role-form {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid #e8e8e8;
+
+  h4 {
+    margin: 0 0 12px;
+    font-size: 14px;
+    color: #333;
+  }
+}
+
+.access-role-form-row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+
+  .form-group {
+    flex: 1;
+    min-width: 140px;
+    margin-bottom: 0;
+  }
+}
+
+.access-role-add-btn {
+  align-self: flex-end;
+  margin-bottom: 0;
 }

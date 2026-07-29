@@ -9,6 +9,7 @@ import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
 import { ReviewerUser } from '../../../models/crpc.model';
 import { environment } from '../../../../environments/environment';
 import { SpeechButtonComponent } from '../../../shared/speech-button/speech-button.component';
+import { AutoClosureComponent } from '../auto-closure/auto-closure.component';
 import { highlightEmailText, escapeHtml } from '../../../utils/highlight-text.util';
 
 interface MaintainabilityQuestion {
@@ -40,7 +41,7 @@ interface EmailCorrespondence {
 @Component({
   selector: 'app-draft-assessment',
   standalone: true,
-  imports: [CommonModule, FormsModule, SpeechButtonComponent],
+  imports: [CommonModule, FormsModule, SpeechButtonComponent, AutoClosureComponent],
   templateUrl: './draft-assessment.component.html',
   styleUrl: './draft-assessment.component.scss'
 })
@@ -58,6 +59,15 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
   activeStep = signal<'creation' | 'assignment'>('creation');
   showAiWarning = true;
 
+  // Auto-Closure (new question engine)
+  showAutoClosureEngine = signal(false);
+  autoClosureCompleted = signal(false);
+  autoClosureOutcome = signal('');
+  autoClosureSubJudice = signal(false);
+  autoClosureClauseRef = signal('');
+  autoClosureResponses = signal<any[]>([]);
+  schemeVersion = 'RBIOS_2026';
+
   // ─── PDF Preview (Physical Letter) ───
   pdfPreviewUrl = signal<SafeResourceUrl | null>(null);
   pdfExpanded = signal(false);
@@ -69,6 +79,7 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
 
   // ─── Confirmation Dialog ───
   showConfirmDialog = signal(false);
+  confirmAssignmentMode = 'Automatic';
   selectedReviewerName = 'CRPC Reviewer';
 
   // ─── Blob URL cache: maps attachment id → safe blob URL (avoids X-Frame-Options block) ───
@@ -221,6 +232,7 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
   receivedDate = '';
   vernacular = false;
   vernacularLanguage = '';
+  vernacularLanguages = ['Hindi', 'Marathi', 'Tamil', 'Telugu', 'Kannada', 'Bengali', 'Gujarati', 'Malayalam', 'Punjabi', 'Odia', 'Urdu', 'Assamese', 'Konkani', 'Sanskrit'];
   emailType: 'TO' | 'CC_BCC' | '' = '';
   systemSuggestion: 'MAINTAINABLE' | 'NON_MAINTAINABLE' | 'PENDING' = 'PENDING';
 
@@ -337,6 +349,9 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
   // ─── Decision & Routing ───
   deoDecision: 'MAINTAINABLE' | 'NON_MAINTAINABLE' | '' = '';
   nonMaintainableReason = '';
+  notAComplaintOthersReason = '';
+  suggestionDepartment = '';
+  suggestionNature = '';
   closureTag = '';
   selectedReviewer = '';
   assignmentType = 'MANUAL';
@@ -344,6 +359,11 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
   savedTemplateId = '';
 
   nonMaintainableReasons = [
+    { value: 'APPEAL', label: 'Appeal' },
+    { value: 'BROADCAST_MESSAGE', label: 'Broadcast Message' },
+    { value: 'PASSWORD_CHANGE', label: 'Password Change Request' },
+    { value: 'SUGGESTION', label: 'Suggestion' },
+    { value: 'OTHERS', label: 'Others' },
     { value: 'TIME_BARRED', label: 'Time Barred (beyond 1 year)' },
     { value: 'SUB_JUDICE', label: 'Matter is Sub-Judice' },
     { value: 'ALREADY_SETTLED', label: 'Already Settled by Agreement' },
@@ -353,7 +373,6 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
     { value: 'OUT_OF_JURISDICTION', label: 'Outside Jurisdiction' },
     { value: 'FRIVOLOUS', label: 'Frivolous/Vexatious' },
     { value: 'DUPLICATE', label: 'Duplicate Complaint' },
-    { value: 'OTHER', label: 'Other (specify in remarks)' },
   ];
 
   closureTags = [
@@ -488,10 +507,10 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
         this.reviewers.set(data);
       } else {
         this.reviewers.set([
-          { id: 'REV001', displayName: 'Radhika Rao', email: 'radhika@rbi.org.in', isActive: true, isOnLeave: true, maxLoad: 25, currentLoad: 12, region: 'North', sortOrder: 1 },
-          { id: 'REV002', displayName: 'Bhupinder Singh', email: 'bhupinder@rbi.org.in', isActive: true, isOnLeave: false, maxLoad: 25, currentLoad: 8, region: 'North', sortOrder: 2 },
-          { id: 'REV003', displayName: 'Priya Sharma', email: 'priya@rbi.org.in', isActive: true, isOnLeave: false, maxLoad: 25, currentLoad: 15, region: 'West', sortOrder: 3 },
-          { id: 'REV004', displayName: 'Amit Kumar', email: 'amit@rbi.org.in', isActive: true, isOnLeave: false, maxLoad: 25, currentLoad: 5, region: 'East', sortOrder: 4 },
+          { id: 'reviewer1', displayName: 'Meera Krishnan', email: 'meera@rbi.org.in', isActive: true, isOnLeave: false, maxLoad: 25, currentLoad: 6, region: 'South', sortOrder: 1 },
+          { id: 'reviewer.user', displayName: 'Shikha P', email: 'shikha@rbi.org.in', isActive: true, isOnLeave: false, maxLoad: 25, currentLoad: 10, region: 'North', sortOrder: 2 },
+          { id: 'REV003', displayName: 'Radhika Rao', email: 'radhika@rbi.org.in', isActive: true, isOnLeave: true, maxLoad: 25, currentLoad: 12, region: 'North', sortOrder: 3 },
+          { id: 'REV004', displayName: 'Priya Sharma', email: 'priya@rbi.org.in', isActive: true, isOnLeave: false, maxLoad: 25, currentLoad: 15, region: 'West', sortOrder: 4 },
         ]);
       }
     });
@@ -792,14 +811,7 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
           this.loadingHistory.set(false);
         },
         error: () => {
-          // Fallback mock data for demo
-          this.historyEntries.set([
-            { status: 'Sent to RBI', statusType: 'sent', modifiedOn: new Date().toISOString(), modifiedBy: 'RBI NO Chandigarh', assignedTo: 'Sharmila Thakur', assignedInitials: 'ST', assignedColor: '#7c3aed' },
-            { status: 'Advisory Issued', statusType: 'advisory', modifiedOn: new Date(Date.now() - 86400000).toISOString(), modifiedBy: 'Lakshya Kumar Chd', assignedTo: 'Bhag Singh NO-Chd', assignedInitials: 'BS', assignedColor: '#f59e0b', description: 'Core banking systems are the central nervous system of any bank. They process a range of transactions, deposits and withdrawals to loan payments and...' },
-            { status: 'Sent to RBI', statusType: 'sent', modifiedOn: new Date(Date.now() - 172800000).toISOString(), modifiedBy: 'RBI NO Chandigarh', assignedTo: 'Sharmila Thakur', assignedInitials: 'ST', assignedColor: '#7c3aed' },
-            { status: 'Information Required', statusType: 'info', modifiedOn: new Date(Date.now() - 259200000).toISOString(), modifiedBy: 'Lakshya Kumar Chd', assignedTo: 'Bhag Singh NO-Chd', assignedInitials: 'BS', assignedColor: '#f59e0b' },
-            { status: 'Sent to RBI', statusType: 'sent', modifiedOn: new Date(Date.now() - 345600000).toISOString(), modifiedBy: 'Sharmila Thakur', assignedTo: 'Bhag Singh NO-Chd', assignedInitials: 'BS', assignedColor: '#f59e0b' },
-          ]);
+          this.historyEntries.set([]);
           this.loadingHistory.set(false);
         }
       });
@@ -1193,8 +1205,28 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
     this.showEmailComposer.set(true);
   }
 
+  // ═══ UST656: Email Restriction - RBI Domain Only ═══
+  emailDomainError = '';
+
   sendEmail() {
     if (!this.emailTo || !this.emailBody) return;
+
+    // UST656: Validate recipient against RBI domain
+    const recipients = this.emailTo.split(/[,;]/).map(e => e.trim()).filter(e => e);
+    const invalidEmails = recipients.filter(email =>
+      !email.toLowerCase().endsWith('@rbi.org.in') && !email.toLowerCase().endsWith('@rbi.gov.in')
+    );
+    if (invalidEmails.length > 0) {
+      this.emailDomainError = 'Only official RBI email addresses can be used for outbound complaint emails';
+      // Log the rejected attempt
+      this.http.post(`${environment.apiBaseUrl}/api/v1/workflow/validate-email-recipients`, {
+        recipients: invalidEmails,
+        actor: this.loggedInUser?.id || 'unknown'
+      }).subscribe();
+      return;
+    }
+    this.emailDomainError = '';
+
     this.sendingEmail.set(true);
 
     if (this.attachFormPdf) {
@@ -1403,20 +1435,47 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
     });
   }
 
+  // ─── Confirmation Dialog Methods ───
+  openConfirmDialog() {
+    this.confirmAssignmentMode = 'Automatic';
+    const autoReviewer = this.reviewers().find(r => r.isActive && !r.isOnLeave);
+    this.selectedReviewerName = autoReviewer?.displayName || 'CRPC Reviewer';
+    this.showConfirmDialog.set(true);
+  }
+
+  onConfirmAssignmentModeChange(mode: string) {
+    if (mode === 'Automatic') {
+      this.selectedReviewerName = 'CRPC Reviewer';
+    } else {
+      this.selectedReviewerName = '';
+    }
+  }
+
+  confirmReviewerOnLeave(): boolean {
+    if (!this.selectedReviewerName.trim()) return false;
+    const onLeaveNames = this.reviewers().filter(r => r.isOnLeave).map(r => r.displayName.toLowerCase());
+    return onLeaveNames.includes(this.selectedReviewerName.toLowerCase());
+  }
+
   // ─── Validation for Send for Approval ───
   canSendForApproval(): boolean {
-    if (!this.selectedReviewer) return false;
-    return true;
+    return this.selectedReviewerName.trim().length > 0;
   }
 
   sendForApproval() {
     if (!this.canSendForApproval()) return;
     this.submitting.set(true);
 
+    let assignedTo = this.selectedReviewerName;
+    const matchedReviewer = this.reviewers().find(r => r.displayName === this.selectedReviewerName);
+    if (matchedReviewer) {
+      assignedTo = matchedReviewer.id;
+    }
+
     const payload = {
       draftId: this.draftId,
       status: 'SENT_TO_REVIEWER',
-      assignedTo: this.selectedReviewer,
+      assignedTo,
       processedBy: this.loggedInUser?.id || 'DEO',
       complainantName: this.complainantName,
       complainantPhone: this.complainantPhone,
@@ -1440,7 +1499,6 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
     const isPhysicalLetter = this.draftId.startsWith('DRF-');
 
     if (isPhysicalLetter) {
-      // Physical letter drafts don't exist in DB yet — create them
       this.http.post<any>(`${environment.apiBaseUrl}/api/v1/email-syndication/drafts`, payload)
         .subscribe({
           next: () => {
@@ -1453,7 +1511,6 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
           }
         });
     } else {
-      // Email drafts already exist — update them
       this.http.put<any>(`${environment.apiBaseUrl}/api/v1/email-syndication/drafts/${this.draftId}`, payload)
         .subscribe({
           next: () => {
@@ -1501,6 +1558,31 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
   logout() {
     sessionStorage.removeItem('crpc_user');
     this.auth.logout();
+  }
+
+  startAutoClosureScreening() {
+    this.showAutoClosureEngine.set(true);
+  }
+
+  onAutoClosureCompleted(result: { responses: any[]; outcome: string; clauseReference: string; subJudice: boolean; generateComplaintNumber: boolean }) {
+    this.autoClosureCompleted.set(true);
+    this.autoClosureOutcome.set(result.outcome);
+    this.autoClosureSubJudice.set(result.subJudice);
+    this.autoClosureClauseRef.set(result.clauseReference);
+    this.autoClosureResponses.set(result.responses);
+    this.showAutoClosureEngine.set(false);
+
+    // Update decision based on outcome
+    if (result.outcome === 'CRPC_REJECTION' || result.outcome === 'NOT_A_COMPLAINT') {
+      this.deoDecision = 'NON_MAINTAINABLE';
+      this.nonMaintainableReason = result.clauseReference;
+    } else {
+      this.deoDecision = 'MAINTAINABLE';
+    }
+  }
+
+  onAutoClosureCancelled() {
+    this.showAutoClosureEngine.set(false);
   }
 
   amountInWords(num: number | null): string {

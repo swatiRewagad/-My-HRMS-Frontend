@@ -17,6 +17,7 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.H2Dialect
     show-sql: true
+    defer-datasource-initialization: true
 
   sql:
     init:
@@ -27,7 +28,7 @@ spring:
     bootstrap-servers: localhost:9092
     consumer:
       auto-offset-reset: earliest
-      group-id: cms-workflow-dev
+      group-id: cms-workflow-group
       enable-auto-commit: false
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
@@ -37,10 +38,12 @@ spring:
       missing-topics-fatal: false
       ack-mode: manual
 
-# jBPM process engine disabled in dev-local (uses DevLocalWorkflowService)
-jbpm:
+# Kogito uses in-memory persistence in dev-local
+kogito:
   persistence:
-    enabled: false
+    type: infinispan
+    infinispan:
+      use-auth: false
 
 logging:
   level:

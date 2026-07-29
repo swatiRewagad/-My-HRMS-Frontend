@@ -1,6 +1,7 @@
 package com.hrms.cms.controller;
 
 import com.hrms.cms.entity.Complaint;
+import com.hrms.cms.event.ComplaintEventPublisher;
 import com.hrms.cms.repository.BankRepository;
 import com.hrms.cms.repository.ComplaintAttachmentRepository;
 import com.hrms.cms.repository.ComplaintRepository;
@@ -9,12 +10,16 @@ import com.hrms.cms.security.CepcRoleGuard;
 import com.hrms.cms.security.RbioRoleGuard;
 import com.hrms.cms.service.CepcSlaService;
 import com.hrms.cms.service.CepcWorkflowService;
+import com.hrms.cms.service.ClosureLetterService;
+import com.hrms.cms.service.CommunicationTemplateService;
 import com.hrms.cms.service.ComplaintService;
 import com.hrms.cms.service.KeycloakUserService;
+import com.hrms.cms.service.NotificationService;
 import com.hrms.cms.service.RbioCompensationService;
 import com.hrms.cms.service.RbioSlaService;
 import com.hrms.cms.service.RbioWorkflowService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -25,6 +30,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/v1/workflow")
 @RequiredArgsConstructor
@@ -41,6 +47,10 @@ public class WorkflowController {
     private final RbioWorkflowService rbioWorkflowService;
     private final RbioSlaService rbioSlaService;
     private final RbioCompensationService rbioCompensationService;
+    private final NotificationService notificationService;
+    private final ComplaintEventPublisher complaintEventPublisher;
+    private final ClosureLetterService closureLetterService;
+    private final CommunicationTemplateService communicationTemplateService;
 
     private final Map<String, Integer> roundRobinCounters = new ConcurrentHashMap<>();
 
@@ -347,6 +357,15 @@ public class WorkflowController {
         complaintRepository.save(c);
         complaintService.addTimeline(c.getId(), action, actor, remarks, prevStatus, c.getStatus());
 
+        // UST606: TRANSFER_IN — notify destination user when transfer is approved
+        if ("APPROVE_TRANSFER".equals(action) && c.getAssignedOfficer() != null && !c.getAssignedOfficer().isBlank()) {
+            notificationService.send(c.getAssignedOfficer(), "TRANSFER_IN",
+                    "Complaint transferred to you",
+                    "Complaint " + c.getComplaintNumber() + " has arrived via inter-office transfer.",
+                    c.getComplaintNumber(), "COMPLAINT",
+                    "/workflow/crpc/complaint/" + c.getComplaintNumber());
+        }
+
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("complaintNumber", c.getComplaintNumber());
         data.put("action", action);
@@ -410,6 +429,18 @@ public class WorkflowController {
         complaintService.addTimeline(c.getId(), "ROUTED", "system",
                 "Routed to " + department + " - " + role, "pending", "assigned");
 
+        // UST605: NEW_ASSIGNMENT — notify routed officer
+        if (officer != null && !officer.isBlank()) {
+            notificationService.send(officer, "NEW_ASSIGNMENT",
+                    "New complaint routed to you",
+                    "Complaint " + c.getComplaintNumber() + " has been routed to " + department + " / " + role,
+                    c.getComplaintNumber(), "COMPLAINT",
+                    "/workflow/" + department.toLowerCase() + "/complaint/" + c.getComplaintNumber());
+        }
+
+        // Kafka: complaint.assigned
+        complaintEventPublisher.publishComplaintAssigned(c, "system");
+
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("complaintNumber", c.getComplaintNumber());
         data.put("department", department);
@@ -420,14 +451,142 @@ public class WorkflowController {
         return buildResponse(true, "Complaint routed successfully", data);
     }
 
+    // ═══ UST581-584: Closure Clauses filtered by role ═══
+    @GetMapping("/closure-clauses")
+    public ResponseEntity<Map<String, Object>> getClosureClauses(@RequestParam String role) {
+        List<Map<String, Object>> clauses = new ArrayList<>();
+
+        // Base clauses available to all
+        clauses.add(Map.of("code", "16(1)", "label", "Resolved to satisfaction", "category", "RESOLUTION"));
+        clauses.add(Map.of("code", "16(2)(a)", "label", "Not maintainable - time barred", "category", "NON_MAINTAINABLE"));
+        clauses.add(Map.of("code", "16(2)(b)", "label", "Not maintainable - frivolous/vexatious", "category", "NON_MAINTAINABLE"));
+        clauses.add(Map.of("code", "16(2)(g)", "label", "Not maintainable - anonymous", "category", "NON_MAINTAINABLE"));
+        clauses.add(Map.of("code", "16(2)(h)", "label", "Not maintainable - insufficient information", "category", "NON_MAINTAINABLE"));
+        clauses.add(Map.of("code", "16(3)", "label", "Closed - complainant not responding", "category", "CLOSURE"));
+        clauses.add(Map.of("code", "16(4)", "label", "Closed - matter settled", "category", "CLOSURE"));
+
+        // Appellable clauses - only Ombudsman can use
+        if ("OMBUDSMAN".equalsIgnoreCase(role) || "RBIO_ADMIN".equalsIgnoreCase(role)) {
+            clauses.add(Map.of("code", "16(2)(c)", "label", "Not maintainable - sub-judice", "category", "NON_MAINTAINABLE", "appellable", true));
+            clauses.add(Map.of("code", "16(2)(d)", "label", "Not maintainable - outside jurisdiction", "category", "NON_MAINTAINABLE", "appellable", true));
+            clauses.add(Map.of("code", "16(2)(e)", "label", "Not maintainable - already settled by RBI", "category", "NON_MAINTAINABLE", "appellable", true));
+            clauses.add(Map.of("code", "16(2)(f)", "label", "Not maintainable - covered by other dispute mechanism", "category", "NON_MAINTAINABLE", "appellable", true));
+            clauses.add(Map.of("code", "15(1)(a)", "label", "Award - full relief", "category", "AWARD", "appellable", true));
+            clauses.add(Map.of("code", "15(1)(b)", "label", "Award - partial relief with compensation", "category", "AWARD", "appellable", true));
+        }
+
+        // Deputy Ombudsman: non-appealable subset
+        if ("DEPUTY_OMBUDSMAN".equalsIgnoreCase(role)) {
+            // Excludes 16(2)(c)-(f) and 15(1)(a)/(b) - already not added for this role
+        }
+
+        // Reviewer: only delegated non-maintainable clauses (excludes 16(2)(c)-(f), 15(1)(a)/(b))
+        // Already handled by not adding them for roles other than OMBUDSMAN
+
+        // RBIOS 2026 new clauses
+        clauses.add(Map.of("code", "16(5)", "label", "Closed - entity licence cancelled/surrendered", "category", "CLOSURE", "newIn2026", true));
+        clauses.add(Map.of("code", "16(6)", "label", "Closed - complaint withdrawn by complainant", "category", "CLOSURE", "newIn2026", true));
+
+        return buildResponse(true, "Closure clauses for role: " + role, clauses);
+    }
+
+    // ═══ UST656: Email Validation - RBI Domain Only ═══
+    @PostMapping("/validate-email-recipients")
+    public ResponseEntity<Map<String, Object>> validateEmailRecipients(
+            @RequestBody Map<String, Object> request) {
+        @SuppressWarnings("unchecked")
+        List<String> recipients = (List<String>) request.getOrDefault("recipients", List.of());
+        String actor = (String) request.getOrDefault("actor", "unknown");
+
+        List<String> invalidEmails = new ArrayList<>();
+        List<String> validEmails = new ArrayList<>();
+
+        for (String email : recipients) {
+            if (email != null && (email.toLowerCase().endsWith("@rbi.org.in") || email.toLowerCase().endsWith("@rbi.gov.in"))) {
+                validEmails.add(email);
+            } else {
+                invalidEmails.add(email);
+                log.warn("UST656: Rejected non-RBI email attempt by actor={}, email={}", actor, email);
+            }
+        }
+
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("valid", invalidEmails.isEmpty());
+        data.put("validEmails", validEmails);
+        data.put("invalidEmails", invalidEmails);
+        if (!invalidEmails.isEmpty()) {
+            data.put("error", "Only official RBI email addresses can be used for outbound complaint emails");
+        }
+        return buildResponse(invalidEmails.isEmpty(), invalidEmails.isEmpty() ? "All recipients valid" : "Invalid recipients detected", data);
+    }
+
+    // ═══ UST655: Get assignable users (exclude SECRETARY) ═══
+    @GetMapping("/assignable-users")
+    public ResponseEntity<Map<String, Object>> getAssignableUsers(@RequestParam String role) {
+        List<Map<String, Object>> users = keycloakUserService.getUsersByRole(role);
+        // Filter out users with SECRETARY role
+        users = users.stream()
+                .filter(u -> {
+                    String userId = (String) u.getOrDefault("userId", "");
+                    // Additional filter: exclude any user whose userId or role contains secretary
+                    return !userId.toLowerCase().contains("secretary");
+                })
+                .collect(Collectors.toList());
+        return buildResponse(true, "Assignable users for role: " + role, users);
+    }
+
+    // ═══ UST504-505: Check closure letter dispatch status ═══
+    @GetMapping("/closure-status/{complaintNumber}")
+    public ResponseEntity<Map<String, Object>> getClosureStatus(@PathVariable String complaintNumber) {
+        Optional<Complaint> opt = complaintRepository.findByComplaintNumber(complaintNumber);
+        if (opt.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        Complaint c = opt.get();
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("complaintNumber", c.getComplaintNumber());
+        data.put("hasEmail", c.getComplainantEmail() != null && !c.getComplainantEmail().isBlank());
+        data.put("closureLetterSentAt", c.getClosureLetterSentAt() != null ? c.getClosureLetterSentAt().toString() : null);
+        data.put("status", c.getStatus());
+        data.put("closureCause", c.getClosureCause());
+        data.put("closureClause", c.getClosureClause());
+        data.put("customClosureText", c.getCustomClosureText());
+        return buildResponse(true, "Closure status", data);
+    }
+
     private ResponseEntity<Map<String, Object>> getAllTasksByDepartment(String dept, String officer) {
         List<Complaint> tasks;
         if (officer != null && !officer.isBlank()) {
             tasks = complaintRepository.findByDepartmentAndAssignedOfficerOrderByCreatedAtDesc(dept, officer);
+            // Also include complaints assigned by role (e.g., escalated to RBIO_SUPERVISOR)
+            List<String> roles = resolveRolesForOfficer(officer);
+            for (String role : roles) {
+                List<Complaint> roleTasks = complaintRepository.findByDepartmentAndAssignedRoleOrderByCreatedAtDesc(dept, role);
+                for (Complaint rt : roleTasks) {
+                    if (tasks.stream().noneMatch(t -> t.getId().equals(rt.getId()))) {
+                        tasks.add(rt);
+                    }
+                }
+            }
         } else {
             tasks = complaintRepository.findByDepartmentOrderByCreatedAtDesc(dept);
         }
         return buildResponse(true, "All tasks retrieved", buildTaskList(tasks));
+    }
+
+    private List<String> resolveRolesForOfficer(String officer) {
+        List<String> roles = new java.util.ArrayList<>();
+        try {
+            List<Map<String, Object>> supervisors = keycloakUserService.getUsersByRole("RBIO_SUPERVISOR", false);
+            if (supervisors.stream().anyMatch(u -> officer.equals(u.get("userId")))) roles.add("RBIO_SUPERVISOR");
+            List<Map<String, Object>> conciliators = keycloakUserService.getUsersByRole("RBIO_CONCILIATOR", false);
+            if (conciliators.stream().anyMatch(u -> officer.equals(u.get("userId")))) roles.add("RBIO_CONCILIATOR");
+            List<Map<String, Object>> adjudicators = keycloakUserService.getUsersByRole("RBIO_ADJUDICATOR", false);
+            if (adjudicators.stream().anyMatch(u -> officer.equals(u.get("userId")))) roles.add("RBIO_ADJUDICATOR");
+        } catch (Exception e) {
+            log.warn("Failed to resolve roles for officer {}: {}", officer, e.getMessage());
+        }
+        return roles;
     }
 
     private ResponseEntity<Map<String, Object>> getCompletedByDepartment(String dept, String officer) {
@@ -479,6 +638,18 @@ public class WorkflowController {
 
         complaintService.addTimeline(c.getId(), "ASSIGNED", request.getOrDefault("actor", "system"),
                 "Assigned to " + officer + " (" + role + ")", prevStatus, "assigned");
+
+        // UST605: NEW_ASSIGNMENT — notify new owner
+        if (officer != null && !officer.isBlank()) {
+            notificationService.send(officer, "NEW_ASSIGNMENT",
+                    "New complaint assigned to you",
+                    "Complaint " + c.getComplaintNumber() + " has been assigned to you (" + role + ")",
+                    c.getComplaintNumber(), "COMPLAINT",
+                    "/workflow/" + dept.toLowerCase() + "/complaint/" + c.getComplaintNumber());
+        }
+
+        // Kafka: complaint.assigned
+        complaintEventPublisher.publishComplaintAssigned(c, request.getOrDefault("actor", "system"));
 
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("complaintNumber", c.getComplaintNumber());
@@ -569,6 +740,12 @@ public class WorkflowController {
         complaintRepository.save(c);
         complaintService.addTimeline(c.getId(), action, actor, remarks, prevStatus, c.getStatus());
 
+        // ═══ Notification triggers based on action ═══
+        triggerActionNotifications(c, action, actor, prevStatus);
+
+        // ═══ Kafka event publishing ═══
+        publishActionEvent(c, action, actor, prevStatus);
+
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("complaintNumber", c.getComplaintNumber());
         data.put("action", action);
@@ -577,6 +754,122 @@ public class WorkflowController {
         data.put("assignedOfficer", c.getAssignedOfficer());
 
         return buildResponse(true, "Action performed: " + action, data);
+    }
+
+    /**
+     * Triggers in-app notifications based on workflow action performed.
+     */
+    private void triggerActionNotifications(Complaint c, String action, String actor, String prevStatus) {
+        String complaintUrl = "/workflow/complaint/" + c.getComplaintNumber();
+
+        switch (action) {
+            case "ACCEPT":
+            case "TAKE_ACTION":
+                // UST605: NEW_ASSIGNMENT — if officer changes, notify new owner
+                if (c.getAssignedOfficer() != null && !c.getAssignedOfficer().isBlank() && !c.getAssignedOfficer().equals(actor)) {
+                    notificationService.send(c.getAssignedOfficer(), "NEW_ASSIGNMENT",
+                            "Complaint accepted and in progress",
+                            "Complaint " + c.getComplaintNumber() + " is now in progress with you.",
+                            c.getComplaintNumber(), "COMPLAINT", complaintUrl);
+                }
+                break;
+
+            case "ESCALATE":
+                // UST605: Notify the new role owner after escalation
+                if (c.getAssignedOfficer() != null && !c.getAssignedOfficer().isBlank()) {
+                    notificationService.send(c.getAssignedOfficer(), "NEW_ASSIGNMENT",
+                            "Escalated complaint assigned",
+                            "Complaint " + c.getComplaintNumber() + " has been escalated to your role (" + c.getAssignedRole() + ")",
+                            c.getComplaintNumber(), "COMPLAINT", complaintUrl);
+                }
+                // Kafka: complaint.escalated
+                break;
+
+            case "RESOLVE":
+            case "CONCILIATION_SUCCESS":
+            case "ADJUDICATION_AWARD":
+                // UST663: COMPLAINT_CLOSED — notify owner, NO, PNO
+                String owner = c.getAssignedOfficer();
+                if (owner != null && !owner.isBlank() && !owner.equals(actor)) {
+                    notificationService.send(owner, "COMPLAINT_CLOSED",
+                            "Complaint resolved",
+                            "Complaint " + c.getComplaintNumber() + " has been resolved/closed via " + action,
+                            c.getComplaintNumber(), "COMPLAINT", complaintUrl);
+                }
+                // Notify the original actor (if different from assigned officer)
+                if (actor != null && !actor.isBlank() && !actor.equals(owner)) {
+                    notificationService.send(actor, "COMPLAINT_CLOSED",
+                            "Complaint you worked on is closed",
+                            "Complaint " + c.getComplaintNumber() + " has been resolved via " + action,
+                            c.getComplaintNumber(), "COMPLAINT", complaintUrl);
+                }
+                break;
+
+            case "REJECT":
+                // UST663: COMPLAINT_CLOSED variant — notify owner
+                if (c.getAssignedOfficer() != null && !c.getAssignedOfficer().isBlank() && !c.getAssignedOfficer().equals(actor)) {
+                    notificationService.send(c.getAssignedOfficer(), "COMPLAINT_CLOSED",
+                            "Complaint rejected",
+                            "Complaint " + c.getComplaintNumber() + " has been rejected.",
+                            c.getComplaintNumber(), "COMPLAINT", complaintUrl);
+                }
+                break;
+
+            case "RETURN_TO_OFFICER":
+                // UST610: NO_REASSIGNED_TO_RBI — notify complaint owner (officer)
+                String officerRole = c.getDepartment() + "_OFFICER";
+                // The officer will be determined by the role; notify any assigned officer
+                if (c.getAssignedOfficer() != null && !c.getAssignedOfficer().isBlank()) {
+                    notificationService.send(c.getAssignedOfficer(), "NO_REASSIGNED_TO_RBI",
+                            "Complaint returned to officer",
+                            "Complaint " + c.getComplaintNumber() + " has been returned to " + officerRole + " for further action.",
+                            c.getComplaintNumber(), "COMPLAINT", complaintUrl);
+                }
+                break;
+
+            case "APPROVE":
+                // UST605: Notify next role owner
+                if (c.getAssignedOfficer() != null && !c.getAssignedOfficer().isBlank()) {
+                    notificationService.send(c.getAssignedOfficer(), "NEW_ASSIGNMENT",
+                            "Complaint approved and forwarded",
+                            "Complaint " + c.getComplaintNumber() + " has been approved and forwarded to " + c.getAssignedRole(),
+                            c.getComplaintNumber(), "COMPLAINT", complaintUrl);
+                }
+                break;
+
+            case "CONCILIATION_FAILED":
+                // Escalation to adjudicator — notify
+                if (c.getAssignedOfficer() != null && !c.getAssignedOfficer().isBlank()) {
+                    notificationService.send(c.getAssignedOfficer(), "NEW_ASSIGNMENT",
+                            "Conciliation failed — escalated to adjudication",
+                            "Complaint " + c.getComplaintNumber() + " conciliation has failed. Escalated to " + c.getAssignedRole(),
+                            c.getComplaintNumber(), "COMPLAINT", complaintUrl);
+                }
+                break;
+
+            default:
+                break;
+        }
+    }
+
+    /**
+     * Publishes Kafka events for workflow actions.
+     */
+    private void publishActionEvent(Complaint c, String action, String actor, String prevStatus) {
+        switch (action) {
+            case "ESCALATE":
+            case "CONCILIATION_FAILED":
+                complaintEventPublisher.publishComplaintEscalated(c, actor, prevStatus);
+                break;
+            case "RESOLVE":
+            case "CONCILIATION_SUCCESS":
+            case "ADJUDICATION_AWARD":
+            case "REJECT":
+                complaintEventPublisher.publishComplaintClosed(c, actor, prevStatus);
+                break;
+            default:
+                break;
+        }
     }
 
     private String getNextRole(String dept, String currentRole) {

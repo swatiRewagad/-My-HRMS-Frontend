@@ -47,12 +47,31 @@ export class RbioConciliationComponent {
   readonly CONSEQUENTIAL_LOSS_CAP = 3000000; // 30 Lakh
   readonly TIME_HARASSMENT_CAP = 300000; // 3 Lakh
 
+  // UST497: Statuses that exclude meeting status actions
+  private readonly MEETING_STATUS_EXCLUDED_STATUSES = [
+    'advisory_complied',
+    'settled',
+    'withdrawn',
+    'rejected',
+    'award_passed',
+    'ombudsman_decision'
+  ];
+
   get conciliationStatus(): string {
     const stage = (this.complaint?.workflowStage || this.complaint?.status || '').toLowerCase();
     if (stage.includes('conciliation_settled') || stage.includes('conciliated')) return 'SETTLED';
     if (stage.includes('conciliation_failed')) return 'FAILED';
     if (stage.includes('conciliation')) return 'IN_PROGRESS';
     return 'NOT_STARTED';
+  }
+
+  // UST497: Check if meeting status should be hidden/disabled
+  get isMeetingStatusExcluded(): boolean {
+    const status = (this.complaint?.status || '').toLowerCase();
+    const workflowStage = (this.complaint?.workflowStage || '').toLowerCase();
+    return this.MEETING_STATUS_EXCLUDED_STATUSES.some(
+      excluded => status.includes(excluded) || workflowStage.includes(excluded)
+    );
   }
 
   get partiesInvolved(): { role: string; name: string }[] {

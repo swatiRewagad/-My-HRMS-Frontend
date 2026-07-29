@@ -51,21 +51,11 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
   eligibilityAnswers: Record<string, string> = {};
   eligibilityBlocked = signal(false);
   eligibilityBlockMessage = signal('');
+  eligibilityBlockMessageKey = signal('');
   nonMaintainableCaseId = '';
   showSimplified = signal(false);
 
-  banks = [
-    { id: 1, name: 'State Bank of India' },
-    { id: 2, name: 'HDFC Bank' },
-    { id: 3, name: 'ICICI Bank' },
-    { id: 4, name: 'Punjab National Bank' },
-    { id: 5, name: 'Bank of Baroda' },
-    { id: 6, name: 'Axis Bank' },
-    { id: 7, name: 'Kotak Mahindra Bank' },
-    { id: 8, name: 'ABC Bank' },
-    { id: 9, name: 'Yes Bank' },
-    { id: 10, name: 'IndusInd Bank' },
-  ];
+  banks: { id: number; name: string; department?: string; entityType?: string }[] = [];
 
   // FR-G-007 step 1: RE selection done in eligibility (9-step as per RBI CMS production)
   eligibilityQuestions: EligibilityQuestion[] = [
@@ -141,8 +131,8 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
       options: [{ label: 'Yes', value: 'yes', translationKey: 'eligibility.opt_yes' }, { label: 'No', value: 'no', translationKey: 'eligibility.opt_no' }],
       blockOn: null,
       blockMessage: '',
-      simplifiedText: 'Are you filing this complaint with the help of a lawyer or legal representative?',
-      simplifiedTextKey: 'eligibility.q_through_advocate_simple',
+      simplifiedText: '',
+      simplifiedTextKey: '',
     },
     {
       key: 'pendingBeforeOmbudsman',
@@ -154,8 +144,8 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
       blockMessage: 'Your complaint is already pending before the Ombudsman on the same grievance. Duplicate complaints cannot be filed.',
       blockMessageKey: 'eligibility.block_pending_ombudsman',
       nonMaintainable: true,
-      simplifiedText: 'Have you already filed a complaint about this same issue with the Ombudsman and it is still under review?',
-      simplifiedTextKey: 'eligibility.q_pending_ombudsman_simple',
+      simplifiedText: '',
+      simplifiedTextKey: '',
     },
     {
       key: 'settledByOmbudsman',
@@ -167,21 +157,32 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
       blockMessage: 'Your complaint has already been settled or dealt with on merits by the Ombudsman. You cannot file a fresh complaint on the same issue.',
       blockMessageKey: 'eligibility.block_settled_ombudsman',
       nonMaintainable: true,
-      simplifiedText: 'Has the Ombudsman already reviewed and resolved this same complaint in the past?',
-      simplifiedTextKey: 'eligibility.q_settled_ombudsman_simple',
+      simplifiedText: '',
+      simplifiedTextKey: '',
     },
     {
-      key: 'staffOfRE',
-      question: 'Is the Complainant a staff of the RE and complaint involves employer-employee relationship?',
-      translationKey: 'eligibility.q_staff_of_re',
+      key: 'previouslyFiledWithCEPC',
+      question: 'Have you previously filed a complaint on the same subject matter with CEPC/RBI Ombudsman?',
+      translationKey: 'eligibility.q_previously_filed_cepc',
       type: 'radio',
       options: [{ label: 'Yes', value: 'yes', translationKey: 'eligibility.opt_yes' }, { label: 'No', value: 'no', translationKey: 'eligibility.opt_no' }],
       blockOn: 'yes',
-      blockMessage: 'Complaints involving employer-employee relationship between the complainant and the Regulated Entity cannot be filed under the Integrated Ombudsman Scheme.',
-      blockMessageKey: 'eligibility.block_staff_of_re',
+      blockMessage: 'As your complaint on the same subject matter has already been filed with CEPC/RBI, it will be closed as Non-Maintainable under the Reserve Bank - Integrated Ombudsman Scheme, 2026.',
+      blockMessageKey: 'eligibility.block_previously_filed_cepc',
       nonMaintainable: true,
-      simplifiedText: 'Are you an employee of the bank/NBFC you are complaining against, and is your complaint about your job or employment?',
-      simplifiedTextKey: 'eligibility.q_staff_of_re_simple',
+      simplifiedText: '',
+      simplifiedTextKey: '',
+    },
+    {
+      key: 'employeeOfRE',
+      question: 'Are / were you an employee of the Regulated Entity against whom this complaint is being filed?',
+      translationKey: 'eligibility.q_employee_of_re',
+      type: 'radio',
+      options: [{ label: 'Yes', value: 'yes', translationKey: 'eligibility.opt_yes' }, { label: 'No', value: 'no', translationKey: 'eligibility.opt_no' }],
+      blockOn: null,
+      blockMessage: '',
+      simplifiedText: '',
+      simplifiedTextKey: '',
     },
   ];
 
@@ -203,6 +204,11 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
   declaration2Checked = false;
   submitting = signal(false);
   referenceNumber = '';
+
+  // Entity search
+  entitySearchText = '';
+  entityDropdownOpen = false;
+  filteredEntityOptions: { label: string; value: string; entityType?: string }[] = [];
 
   // FR-G-020: Duplicate detection
   showDuplicatePopup = signal(false);
@@ -265,11 +271,12 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
 
   categories = [
     { label: 'ATM/CDM/Debit card', value: 'ATM' },
+    { label: 'Credit Card', value: 'CREDIT_CARD' },
     { label: 'Loans and Advances', value: 'LOAN' },
     { label: 'Mobile / Electronic Banking', value: 'MOBILE_BANKING' },
     { label: 'Notes and Coins', value: 'NOTES_COINS' },
-    { label: 'Credit Card', value: 'CREDIT_CARD' },
     { label: 'Opening/Operation of Deposit accounts', value: 'DEPOSIT' },
+    { label: 'Para-Banking', value: 'PARA_BANKING' },
     { label: 'Remittance and collection of instruments', value: 'REMITTANCE' },
     { label: 'Pension related', value: 'PENSION' },
     { label: 'Other products and services', value: 'OTHER' },
@@ -392,6 +399,10 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
     this.formData['subCategory2'] = '';
   }
 
+  isAccountTypeSelected(type: string): boolean {
+    return this.accountTypes.find(at => at.value === type)?.checked ?? false;
+  }
+
   states = [
     { label: 'Andhra Pradesh', value: 'AP' }, { label: 'Arunachal Pradesh', value: 'AR' },
     { label: 'Assam', value: 'AS' }, { label: 'Bihar', value: 'BR' },
@@ -498,12 +509,26 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
 
   // Eligibility file upload
   eligibilityFileName = '';
+  private eligibilityFile: File | null = null;
 
   onEligibilityFileSelected(event: Event) {
     const input = event.target as HTMLInputElement;
     if (input.files && input.files[0]) {
+      this.eligibilityFile = input.files[0];
       this.eligibilityFileName = input.files[0].name;
     }
+  }
+
+  previewEligibilityFile() {
+    if (this.eligibilityFile) {
+      const url = URL.createObjectURL(this.eligibilityFile);
+      window.open(url, '_blank');
+    }
+  }
+
+  removeEligibilityFile() {
+    this.eligibilityFile = null;
+    this.eligibilityFileName = '';
   }
 
   // FR-G-013: Speech to text
@@ -513,7 +538,7 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     setPageTitle('File a Complaint');
-    this.eligibilityQuestions[0].options = this.banks.map(b => ({ label: b.name, value: String(b.id) }));
+    this.loadRegulatedEntities();
     this.speechSupported = !!(window as any).SpeechRecognition || !!(window as any).webkitSpeechRecognition;
     this.formData['phone'] = this.publicAuth.userIdentifier() || '';
 
@@ -558,6 +583,19 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
     });
   }
 
+  private loadRegulatedEntities() {
+    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/routing/entities/list`).subscribe({
+      next: (res) => {
+        const entities = res?.data ?? res ?? [];
+        this.banks = entities.map((e: any) => ({ id: e.id, name: e.name, department: e.department, entityType: e.entityType }));
+        this.eligibilityQuestions[0].options = this.banks.map(b => ({ label: b.name, value: String(b.id) }));
+      },
+      error: () => {
+        this.eligibilityQuestions[0].options = [];
+      }
+    });
+  }
+
   ngOnDestroy() {
     this.stopAutoSave();
     this.stopRecording();
@@ -597,13 +635,61 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
     if (q.blockOn && value === q.blockOn) {
       this.eligibilityBlocked.set(true);
       this.eligibilityBlockMessage.set(q.blockMessage);
+      this.eligibilityBlockMessageKey.set(q.blockMessageKey || '');
     } else {
       this.eligibilityBlocked.set(false);
       this.eligibilityBlockMessage.set('');
+      this.eligibilityBlockMessageKey.set('');
     }
   }
 
+  filterEntities() {
+    const term = this.entitySearchText.toLowerCase().trim();
+    if (!term) {
+      this.filteredEntityOptions = this.eligibilityQuestions[0].options.slice(0, 50).map(o => ({
+        ...o,
+        entityType: this.banks.find(b => String(b.id) === o.value)?.entityType
+      }));
+      return;
+    }
+    this.filteredEntityOptions = this.eligibilityQuestions[0].options
+      .filter(o => {
+        const bank = this.banks.find(b => String(b.id) === o.value);
+        return o.label.toLowerCase().includes(term) ||
+               (bank?.entityType?.toLowerCase().includes(term));
+      })
+      .slice(0, 50)
+      .map(o => ({
+        ...o,
+        entityType: this.banks.find(b => String(b.id) === o.value)?.entityType
+      }));
+  }
+
+  selectEntityFromSearch(opt: { label: string; value: string }) {
+    this.selectEligibilityAnswer(opt.value);
+    this.entitySearchText = '';
+    this.entityDropdownOpen = false;
+    this.filteredEntityOptions = [];
+  }
+
+  getSelectedEntityLabel(): string {
+    const val = this.eligibilityAnswers['regulatedEntity'];
+    const opt = this.eligibilityQuestions[0].options.find(o => o.value === val);
+    return opt?.label ?? '';
+  }
+
+  clearEntitySelection() {
+    this.eligibilityAnswers['regulatedEntity'] = '';
+    this.entitySearchText = '';
+    this.eligibilityBlocked.set(false);
+  }
+
+  closeEntityDropdown() {
+    setTimeout(() => this.entityDropdownOpen = false, 200);
+  }
+
   eligibilityFieldError = '';
+  eligibilityRefError = '';
 
   nextEligibility() {
     if (this.eligibilityBlocked()) {
@@ -618,9 +704,68 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
     if (!this.eligibilityAnswers[q.key]) return;
 
     this.eligibilityFieldError = '';
+    this.eligibilityRefError = '';
     if (q.key === 'filedWithRE' && this.eligibilityAnswers['filedWithRE'] === 'yes') {
       if (!this.formData['bankComplaintDate']) {
         this.eligibilityFieldError = 'Complaint date with RE is required';
+        return;
+      }
+      if (!this.formData['bankComplaintRef']?.trim()) {
+        this.eligibilityRefError = 'RE complaint reference number is required';
+        return;
+      }
+    }
+
+    // UST11: Block if "No" reply and <30 days since filing with RE
+    if (q.key === 'receivedReply' && this.eligibilityAnswers['receivedReply'] === 'no') {
+      const filedDate = this.formData['bankComplaintDate'];
+      if (filedDate) {
+        const daysSinceFiling = Math.floor((Date.now() - new Date(filedDate).getTime()) / (1000 * 60 * 60 * 24));
+        if (daysSinceFiling < 30) {
+          this.eligibilityBlocked.set(true);
+          this.eligibilityBlockMessage.set(
+            'As the Regulated Entity has not yet been given 30 days to respond to your complaint, your complaint cannot be registered at this time. Please wait until 30 days have elapsed from the date of filing your complaint with the Regulated Entity.'
+          );
+          this.eligibilityBlockMessageKey.set('eligibility.block_less_than_30_days');
+          this.nonMaintainableCaseId = 'NM-' + Date.now().toString().slice(-8);
+          this.phase.set('non-maintainable');
+          return;
+        }
+      }
+    }
+
+    // Block if employee of RE and complaint involves employer-employee relationship
+    if (q.key === 'employeeOfRE' && this.eligibilityAnswers['employeeOfRE'] === 'yes') {
+      if (this.formData['employerRelationshipComplaint'] === 'yes') {
+        this.eligibilityBlocked.set(true);
+        this.eligibilityBlockMessage.set(
+          'Complaints involving employer-employee relationship between the complainant and the Regulated Entity cannot be filed under the Integrated Ombudsman Scheme.'
+        );
+        this.eligibilityBlockMessageKey.set('eligibility.block_staff_of_re');
+        this.nonMaintainableCaseId = 'NM-' + Date.now().toString().slice(-8);
+        this.phase.set('non-maintainable');
+        return;
+      }
+      if (!this.formData['employerRelationshipComplaint']) {
+        this.eligibilityFieldError = 'Please confirm whether your complaint involves employer-employee relationship';
+        return;
+      }
+    }
+
+    // UST27: Block if complaint is through advocate but filer is NOT the complainant
+    if (q.key === 'throughAdvocateEligibility' && this.eligibilityAnswers['throughAdvocateEligibility'] === 'yes') {
+      if (this.formData['isComplainantSelf'] === 'no') {
+        this.eligibilityBlocked.set(true);
+        this.eligibilityBlockMessage.set(
+          'As per the Integrated Ombudsman Scheme, a complaint filed through an advocate must be filed by the complainant themselves. Since you are not the complainant, this complaint cannot be processed.'
+        );
+        this.eligibilityBlockMessageKey.set('eligibility.block_advocate_not_complainant');
+        this.nonMaintainableCaseId = 'NM-' + Date.now().toString().slice(-8);
+        this.phase.set('non-maintainable');
+        return;
+      }
+      if (!this.formData['isComplainantSelf']) {
+        this.eligibilityFieldError = 'Please confirm whether you are the complainant';
         return;
       }
     }
@@ -728,16 +873,34 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
       if (!this.formData['firstName']?.trim()) this.validationErrors['name'] = 'First name is required';
       if (!this.formData['pincode'] || !/^\d{6}$/.test(this.formData['pincode'])) this.validationErrors['pincode'] = 'Valid 6-digit pincode is required';
       if (!this.formData['state']) this.validationErrors['state'] = 'Enter valid pincode to auto-fill state';
+      if (!this.formData['address']?.trim()) this.validationErrors['address'] = 'Address is required';
       if (this.formData['email'] && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.formData['email'])) this.validationErrors['email'] = 'Invalid email format';
     } else if (step === 2) {
       if (!this.formData['isCreditCardComplaint']) this.validationErrors['isCreditCardComplaint'] = 'Please select Yes or No';
-      if (!this.formData['entityState']) this.validationErrors['entityState'] = 'Entity state is required';
-      if (!this.formData['entityDistrict']) this.validationErrors['entityDistrict'] = 'Entity district is required';
-      if (!this.formData['entityBranch']?.trim()) this.validationErrors['entityBranch'] = 'Entity branch is required';
+      if (this.formData['isCreditCardComplaint'] === 'no') {
+        if (!this.formData['entityState']) this.validationErrors['entityState'] = 'Entity state is required';
+        if (!this.formData['entityDistrict']) this.validationErrors['entityDistrict'] = 'Entity district is required';
+        if (!this.formData['entityBranch']?.trim()) this.validationErrors['entityBranch'] = 'Entity branch is required';
+      }
     } else if (step === 3) {
       if (!this.formData['complaintCategory']) this.validationErrors['complaintCategory'] = 'Category is required';
       if (!this.formData['complaintText']?.trim()) this.validationErrors['complaintText'] = 'Complaint description is required';
-      if (!this.formData['disputeAmount']?.trim()) this.validationErrors['disputeAmount'] = 'Amount involved is required';
+      if (!this.formData['disputeDate']) {
+        this.validationErrors['disputeDate'] = 'Date of disputed transaction is required';
+      } else if (this.formData['bankComplaintDate'] && this.formData['disputeDate'] > this.formData['bankComplaintDate']) {
+        this.validationErrors['disputeDate'] = 'Date should not be greater than the date on which complaint is filed with RE';
+      }
+      // disputeAmount is optional per BRD
+      // UST66: Consequential loss cap ₹30 lakh
+      const compAmount = parseFloat(this.formData['compensationSought'] || '0');
+      if (compAmount > 3000000) {
+        this.validationErrors['compensationSought'] = 'Compensation for consequential loss can be awarded only up to ₹30 lakh. Please enter an amount up to ₹30 lakh.';
+      }
+      // UST67: Expenses/Harassment/Mental Anguish cap ₹3 lakh
+      const reliefAmount = parseFloat(this.formData['reliefSought'] || '0');
+      if (reliefAmount > 300000) {
+        this.validationErrors['reliefSought'] = 'Compensation for expenses, harassment, and mental anguish can be awarded only up to ₹3 lakh. Please enter an amount up to ₹3 lakh.';
+      }
     } else if (step === 4) {
       if (this.formData['authorizeRepresentative'] === 'yes') {
         if (!this.formData['repName']?.trim()) this.validationErrors['repName'] = 'Representative name is required';
@@ -784,7 +947,21 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
     import('jspdf').then(({ jsPDF }) => {
       const doc = new jsPDF();
       const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
       let y = 20;
+
+      // Watermark: "Draft" before submission, complaint number after
+      const watermarkText = this.referenceNumber ? this.referenceNumber : 'Draft';
+      doc.saveGraphicsState();
+      doc.setGState(new (doc as any).GState({ opacity: 0.08 }));
+      doc.setFontSize(52);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(150, 150, 150);
+      for (let wy = 60; wy < pageHeight; wy += 80) {
+        doc.text(watermarkText, pageWidth / 2, wy, { align: 'center', angle: 35 });
+      }
+      doc.restoreGraphicsState();
+      doc.setTextColor(0, 0, 0);
 
       const addRow = (label: string, value: string) => {
         if (y > 270) { doc.addPage(); y = 20; }
@@ -1203,6 +1380,9 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
   private performSubmit() {
     this.submitting.set(true);
 
+    const selectedEntityId = this.eligibilityAnswers['regulatedEntity'];
+    const selectedBank = this.banks.find(b => String(b.id) === selectedEntityId);
+
     const payload = {
       filingType: 'ONLINE',
       category: this.formData['complaintCategory'] || 'GENERAL',
@@ -1211,7 +1391,8 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
       complainantPhone: this.formData['phone'],
       complainantAddress: this.formData['address'],
       entityName: this.getSelectedBankName(),
-      entityType: 'BANK',
+      entityType: selectedBank?.entityType || 'BANK',
+      regulatedEntityId: selectedEntityId ? parseInt(selectedEntityId, 10) : undefined,
       subject: this.formData['subCategory1'] || this.formData['complaintCategory'] || 'General Complaint',
       description: this.formData['complaintText'],
       amountInvolved: this.formData['disputeAmount'] ? parseFloat(this.formData['disputeAmount']) : undefined,

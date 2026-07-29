@@ -148,6 +148,21 @@ public class Complaint {
     @Column(name = "closure_cause", length = 50)
     private String closureCause;
 
+    @Column(name = "custom_closure_text", length = 2000)
+    private String customClosureText;
+
+    @Column(name = "closure_letter_sent_at")
+    private LocalDateTime closureLetterSentAt;
+
+    @Column(name = "closure_clause", length = 100)
+    private String closureClause;
+
+    @Column(name = "closure_authority_name", length = 200)
+    private String closureAuthorityName;
+
+    @Column(name = "closure_authority_designation", length = 200)
+    private String closureAuthorityDesignation;
+
     // ═══ Reopen tracking ═══
     @Column(name = "reopen_count")
     @Builder.Default
@@ -181,6 +196,13 @@ public class Complaint {
     @Column(name = "stage_assigned_at")
     private LocalDateTime stageAssignedAt;
 
+    // ═══ RE Response & Status Tracking ═══
+    @Column(name = "re_response_deadline")
+    private LocalDate reResponseDeadline;
+
+    @Column(name = "last_status_change_date")
+    private LocalDateTime lastStatusChangeDate;
+
     // ═══ Timestamps ═══
     private LocalDateTime filedAt;
     private LocalDateTime resolvedAt;
@@ -194,6 +216,7 @@ public class Complaint {
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
         this.filedAt = LocalDateTime.now();
+        this.lastStatusChangeDate = LocalDateTime.now();
         if (this.status == null) this.status = "pending";
         if (this.priority == null) this.priority = "medium";
     }

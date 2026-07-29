@@ -68,8 +68,8 @@ keycloak:
 cms:
   ocr:
     chain: groq
-    groq-api-key: ${GROQ_API_KEY:}
-    groq-model: meta-llama/llama-4-scout-17b-16e-instruct
+    groq-api-key: ${GROQ_API_KEY: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}
+    groq-model: llama-3.3-70b-versatile
     paddle-ocr-url: ""
     gemini-api-key: ""
     openai-api-key: ""

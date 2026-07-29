@@ -70,4 +70,44 @@ public class CrpcScheduledTasks {
             thresholdService.checkAndRouteOverflow(reviewer);
         });
     }
+
+    @Scheduled(cron = "0 0 11 * * MON-FRI")
+    @Transactional(readOnly = true)
+    public void notifyReviewerPending3Days() {
+        LocalDateTime threeDaysAgo = LocalDateTime.now().minusDays(3);
+        List<EmailDraft> reviewerPending = draftRepository.findByStatusOrderByCreatedAtDesc("SENT_TO_REVIEWER");
+
+        reviewerPending.stream()
+                .filter(d -> d.getCreatedAt() != null && d.getCreatedAt().isBefore(threeDaysAgo))
+                .forEach(draft -> {
+                    String reviewer = draft.getReviewerAssignedTo() != null ? draft.getReviewerAssignedTo() : draft.getAssignedTo();
+                    notificationService.send(reviewer, "PENDING_3DAY",
+                            "Complaint pending > 3 days in review",
+                            "Draft " + draft.getDraftId() + " has been pending review since " + draft.getCreatedAt().toLocalDate(),
+                            draft.getDraftId(), "DRAFT", "/crpc/reviewer/draft/" + draft.getDraftId());
+                    notificationService.send("CRPC_HEAD", "PENDING_3DAY",
+                            "Complaint pending > 3 days at reviewer",
+                            "Draft " + draft.getDraftId() + " assigned to " + reviewer + " is overdue.",
+                            draft.getDraftId(), "DRAFT", "/crpc/ops-head");
+                });
+
+        log.info("Sent reviewer 3-day pending notifications for {} items",
+                reviewerPending.stream().filter(d -> d.getCreatedAt() != null && d.getCreatedAt().isBefore(threeDaysAgo)).count());
+    }
+
+    @Scheduled(cron = "0 0 8 * * MON-FRI")
+    @Transactional(readOnly = true)
+    public void escalateUnprocessedDrafts() {
+        LocalDateTime fiveDaysAgo = LocalDateTime.now().minusDays(5);
+        List<EmailDraft> stale = draftRepository.findByStatusOrderByCreatedAtDesc("ASSIGNED");
+
+        stale.stream()
+                .filter(d -> d.getCreatedAt() != null && d.getCreatedAt().isBefore(fiveDaysAgo))
+                .forEach(draft -> {
+                    notificationService.send("CRPC_ADMIN", "ESCALATION",
+                            "Unprocessed draft escalation",
+                            "Draft " + draft.getDraftId() + " assigned to " + draft.getAssignedTo() + " has not been processed for 5+ days.",
+                            draft.getDraftId(), "DRAFT", "/crpc/draft/" + draft.getDraftId());
+                });
+    }
 }

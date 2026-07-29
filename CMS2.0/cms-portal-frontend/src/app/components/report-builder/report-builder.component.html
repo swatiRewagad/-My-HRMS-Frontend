@@ -2,6 +2,11 @@
   <header class="page-header">
     <h1>Report Builder</h1>
     <p class="subtitle">Compose reports using governed tokens — select a subject, add filters, and group results</p>
+    @if (isAdmin()) {
+      <button class="btn btn-sm btn-outline admin-access-btn" (click)="openAccessRoleAdmin()">
+        Manage Report Access
+      </button>
+    }
   </header>
 
   <!-- Tab navigation -->
@@ -120,6 +125,69 @@
               </div>
             }
           </div>
+
+          <!-- Advanced Filter Operator Configuration (UST617-619) -->
+          @if (selectedFilters().length > 0) {
+            <div class="advanced-filters-section">
+              <h4 class="advanced-filters-title">Filter Configuration</h4>
+              @for (f of selectedFilters(); track f.id) {
+                <div class="advanced-filter-row">
+                  <span class="advanced-filter-label">{{ f.label }}</span>
+                  <div class="advanced-filter-controls">
+                    <!-- Operator selector -->
+                    <select
+                      class="form-input form-input-sm operator-select"
+                      [ngModel]="getAdvancedFilterState(f.id)?.operator"
+                      (ngModelChange)="updateFilterOperator(f.id, $event)">
+                      @for (op of getOperatorsForFilter(f); track op) {
+                        <option [value]="op">{{ operatorLabels[op] }}</option>
+                      }
+                    </select>
+
+                    <!-- Value input(s) based on operator and field type -->
+                    @if (getAdvancedFilterState(f.id); as state) {
+                      @if (state.fieldType === 'DATE') {
+                        <input
+                          type="date"
+                          class="form-input form-input-sm"
+                          [ngModel]="state.value"
+                          (ngModelChange)="updateFilterValue(f.id, $event)" />
+                        @if (state.operator === 'BETWEEN') {
+                          <span class="between-separator">to</span>
+                          <input
+                            type="date"
+                            class="form-input form-input-sm"
+                            [ngModel]="state.valueTo"
+                            (ngModelChange)="updateFilterValueTo(f.id, $event)"
+                            (blur)="validateDateRange(f.id)" />
+                        }
+                      } @else if (state.operator === 'IN') {
+                        <input
+                          type="text"
+                          class="form-input form-input-sm value-input-wide"
+                          placeholder="Comma-separated values (max 100)"
+                          [ngModel]="state.value"
+                          (ngModelChange)="updateFilterValue(f.id, $event)" />
+                      } @else {
+                        <input
+                          type="text"
+                          class="form-input form-input-sm value-input"
+                          [placeholder]="state.fieldType === 'COMPLAINT_NUMBER' ? 'Enter complaint number' : 'Enter value'"
+                          [ngModel]="state.value"
+                          (ngModelChange)="updateFilterValue(f.id, $event)" />
+                      }
+                    }
+                  </div>
+                  @if (f.fieldType === 'DATE' && getAdvancedFilterState(f.id)?.operator === 'BETWEEN') {
+                    <span class="filter-hint">Range: min 1 day, max 1 year</span>
+                  }
+                  @if (f.fieldType === 'PICKER') {
+                    <span class="filter-hint">Partial-entry matching supported</span>
+                  }
+                </div>
+              }
+            </div>
+          }
         </section>
 
         <!-- Step 3: Group By -->
@@ -182,9 +250,11 @@
           <button class="btn btn-sm btn-outline" (click)="openWidgetDialog()">
             Add to Dashboard
           </button>
-          <button class="btn btn-sm btn-outline" (click)="openScheduleDialog()" [disabled]="!savedWidgetId()">
-            Email Schedule
-          </button>
+          @if (canExport()) {
+            <button class="btn btn-sm btn-outline" (click)="openScheduleDialog()" [disabled]="!savedWidgetId()">
+              Email Schedule
+            </button>
+          }
         </div>
       </div>
 
@@ -206,7 +276,21 @@
               @for (row of results()!.results; track $index) {
                 <tr>
                   @for (col of resultColumns(); track col) {
-                    <td>{{ row[col] ?? '—' }}</td>
+                    @if (isComplaintNumberColumn(col)) {
+                      <td>
+                        <a class="drill-down-link" (click)="onComplaintNumberClick(row)">
+                          {{ row[col] ?? '—' }}
+                        </a>
+                      </td>
+                    } @else if (isNoRecordCountColumn(col)) {
+                      <td>
+                        <a class="drill-down-link drill-down-count" (click)="onNoRecordCountClick(row)">
+                          {{ row[col] ?? '—' }}
+                        </a>
+                      </td>
+                    } @else {
+                      <td>{{ row[col] ?? '—' }}</td>
+                    }
                   }
                 </tr>
               }
@@ -328,6 +412,149 @@
         <div class="dialog-actions">
           <button class="btn btn-primary" (click)="saveSchedule()">Schedule</button>
           <button class="btn btn-outline" (click)="showScheduleDialog.set(false)">Cancel</button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- NO Record Drill-Down Modal (UST621) -->
+  @if (showNoRecordDrillDown()) {
+    <div class="dialog-overlay" (click)="closeNoRecordDrillDown()">
+      <div class="dialog dialog-wide" (click)="$event.stopPropagation()">
+        <h3>NO Record Details</h3>
+        <p class="dialog-hint">Complaint ID: {{ noRecordDrillDownComplaintId() }}</p>
+
+        @if (noRecordDrillDownLoading()) {
+          <div class="drill-down-loading">
+            <div class="spinner"></div>
+            <p>Loading NO Record details...</p>
+          </div>
+        } @else if (noRecordDrillDownData().length === 0) {
+          <div class="drill-down-empty">
+            <p>No NO Record data found for this complaint.</p>
+          </div>
+        } @else {
+          <div class="drill-down-table-wrapper">
+            <table class="results-table">
+              <thead>
+                <tr>
+                  <th>Entity Name</th>
+                  <th>NO Record ID</th>
+                  <th>NO Record Created On</th>
+                  <th>Nodal Office Name</th>
+                  <th>NO Record Status</th>
+                  <th>NO Record Last Modified On</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (row of noRecordDrillDownData(); track row.noRecordId) {
+                  <tr>
+                    <td>{{ row.entityName }}</td>
+                    <td>{{ row.noRecordId }}</td>
+                    <td>{{ row.noRecordCreatedOn }}</td>
+                    <td>{{ row.nodalOfficeName }}</td>
+                    <td>{{ row.noRecordStatus }}</td>
+                    <td>{{ row.noRecordLastModifiedOn }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+
+        <div class="dialog-actions">
+          <button class="btn btn-outline" (click)="closeNoRecordDrillDown()">Close</button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Report Access Role Admin Dialog (UST615, UST622, UST670) -->
+  @if (showAccessRoleAdmin()) {
+    <div class="dialog-overlay" (click)="closeAccessRoleAdmin()">
+      <div class="dialog dialog-wide" (click)="$event.stopPropagation()">
+        <h3>Report Access Role Configuration</h3>
+        <p class="dialog-hint">Configure which roles can access reports and whether they can export.</p>
+
+        @if (accessRoleAdminLoading()) {
+          <div class="drill-down-loading">
+            <div class="spinner"></div>
+          </div>
+        }
+
+        <!-- Existing roles -->
+        @if (reportAccessRoles().length > 0) {
+          <div class="drill-down-table-wrapper">
+            <table class="results-table">
+              <thead>
+                <tr>
+                  <th>Report Type</th>
+                  <th>Role Name</th>
+                  <th>Can Export</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (role of reportAccessRoles(); track role.id) {
+                  <tr>
+                    <td>{{ role.reportType }}</td>
+                    <td>{{ role.roleName }}</td>
+                    <td>{{ role.canExport ? 'Yes' : 'No' }}</td>
+                    <td>
+                      <button class="btn btn-sm btn-danger" (click)="deleteAccessRole(role.id)">Remove</button>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        } @else {
+          <p class="drill-down-empty">No access roles configured. All authenticated users have access by default.</p>
+        }
+
+        <!-- Add new role -->
+        <div class="access-role-form">
+          <h4>Add New Access Role</h4>
+          <div class="access-role-form-row">
+            <div class="form-group">
+              <label>Report Type</label>
+              <select [(ngModel)]="newAccessRole.reportType" class="form-input">
+                <option value="">-- Select --</option>
+                <option value="RBIO">RBIO Reports</option>
+                <option value="CEPC">CEPC Reports</option>
+                <option value="CRPC">CRPC Reports</option>
+                <option value="AA">AA Reports</option>
+                <option value="ALL">All Reports</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Role Name</label>
+              <select [(ngModel)]="newAccessRole.roleName" class="form-input">
+                <option value="">-- Select --</option>
+                <option value="RBIO_OFFICER">RBIO Officer</option>
+                <option value="RBIO_SUPERVISOR">RBIO Supervisor</option>
+                <option value="RBIO_ADMIN">RBIO Admin</option>
+                <option value="CEPC_DO">CEPC DO</option>
+                <option value="CEPC_ADMIN">CEPC Admin</option>
+                <option value="CEPD_ADMIN">CEPD Admin</option>
+                <option value="AA_ADMIN">AA Admin</option>
+                <option value="AA_REGISTRAR">AA Registrar</option>
+                <option value="ADMIN">System Admin</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Can Export</label>
+              <select [(ngModel)]="newAccessRole.canExport" class="form-input">
+                <option [ngValue]="true">Yes</option>
+                <option [ngValue]="false">No (View only)</option>
+              </select>
+            </div>
+            <button class="btn btn-primary btn-sm access-role-add-btn" (click)="addAccessRole()">Add</button>
+          </div>
+        </div>
+
+        <div class="dialog-actions">
+          <button class="btn btn-outline" (click)="closeAccessRoleAdmin()">Close</button>
         </div>
       </div>
     </div>

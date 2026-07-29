@@ -43,14 +43,39 @@
       <div class="question-block">
         @if (currentQuestion.type === 'select') {
           <h3 class="select-heading">{{ currentQuestionText }}</h3>
-          <p class="select-desc">Any financial institution—such as a bank, Non-Banking Financial Company (NBFC), or payment processor—licensed and supervised by the Reserve Bank of India</p>
-          <select class="form-select entity-select" [ngModel]="eligibilityAnswers[currentQuestion.key]"
-                  (ngModelChange)="selectEligibilityAnswer($event)" [attr.name]="currentQuestion.key">
-            <option value="">{{ 'eligibility.select_placeholder' | translate }}</option>
-            @for (opt of currentQuestion.options; track opt.value) {
-              <option [value]="opt.value">{{ opt.label }}</option>
+          <p class="select-desc">{{ 'eligibility.select_desc' | translate }}</p>
+          <div class="entity-search-wrapper">
+            <input type="text" class="form-input entity-search-input"
+                   [(ngModel)]="entitySearchText" name="entitySearch"
+                   (input)="filterEntities()"
+                   (focus)="entityDropdownOpen = true; filterEntities()"
+                   (blur)="closeEntityDropdown()"
+                   placeholder="Search by name or entity type..."
+                   autocomplete="off">
+            @if (entityDropdownOpen && filteredEntityOptions.length > 0) {
+              <ul class="entity-dropdown-list">
+                @for (opt of filteredEntityOptions; track opt.value) {
+                  <li class="entity-dropdown-item" (mousedown)="selectEntityFromSearch(opt)">
+                    <span class="entity-name">{{ opt.label }}</span>
+                    @if (opt.entityType) {
+                      <span class="entity-type-badge">{{ opt.entityType }}</span>
+                    }
+                  </li>
+                }
+              </ul>
             }
-          </select>
+            @if (entityDropdownOpen && entitySearchText && filteredEntityOptions.length === 0) {
+              <ul class="entity-dropdown-list">
+                <li class="entity-dropdown-item no-results">No matching entities found</li>
+              </ul>
+            }
+          </div>
+          @if (eligibilityAnswers[currentQuestion.key]) {
+            <div class="selected-entity-chip">
+              <span>{{ getSelectedEntityLabel() }}</span>
+              <button class="chip-clear" (click)="clearEntitySelection()">×</button>
+            </div>
+          }
         }
 
         @if (currentQuestion.type === 'radio') {
@@ -88,7 +113,13 @@
               @if (eligibilityFieldError) { <span class="field-error">{{ eligibilityFieldError }}</span> }
             </div>
             <div class="sub-field">
-              <label><span class="sub-badge">b</span> {{ 'eligibility.sub_upload_complaint' | translate }} {{ selectedEntityName }}</label>
+              <label><span class="sub-badge">b</span> Complaint Reference/Acknowledgement Number <span class="required">*</span></label>
+              <input type="text" class="form-input" [(ngModel)]="formData['bankComplaintRef']" name="bankComplaintRef"
+                     placeholder="Enter reference number provided by {{ selectedEntityName }}">
+              @if (eligibilityRefError) { <span class="field-error">{{ eligibilityRefError }}</span> }
+            </div>
+            <div class="sub-field">
+              <label><span class="sub-badge">c</span> {{ 'eligibility.sub_upload_complaint' | translate }} {{ selectedEntityName }}</label>
               <div class="upload-box">
                 <input type="file" id="eligibilityFile" class="file-hidden" accept=".pdf,.jpg,.png"
                        (change)="onEligibilityFileSelected($event)">
@@ -96,6 +127,13 @@
                   <span class="upload-text">{{ 'eligibility.browse_file' | translate }}</span>
                 </label>
               </div>
+              @if (eligibilityFileName) {
+                <div class="uploaded-file-info">
+                  <i class="pi pi-file"></i>
+                  <span class="uploaded-file-name" (click)="previewEligibilityFile()">{{ eligibilityFileName }}</span>
+                  <button type="button" class="remove-file-btn" (click)="removeEligibilityFile()"><i class="pi pi-times"></i></button>
+                </div>
+              }
               <div class="upload-hint">
                 <span>Support formats: PDF, JPG, PNG</span>
                 <span class="upload-size">Maximum size: 5MB</span>
@@ -106,15 +144,17 @@
 
         <!-- Sub-fields when "Yes" to advocate question -->
         @if (currentQuestion.key === 'throughAdvocateEligibility' && eligibilityAnswers['throughAdvocateEligibility'] === 'yes') {
-          <div class="sub-fields-stacked">
-            <div class="sub-field-inline">
+          <div class="sub-question-block">
+            <div class="sub-question-label">
               <span class="sub-badge">a</span>
-              <span class="sub-field-label">{{ 'eligibility.sub_are_you_complainant' | translate }}</span>
-              <label class="radio-option-inline" [class.selected]="formData['isComplainantSelf'] === 'yes'">
+              <span>If Yes, then are you the Complainant?</span>
+            </div>
+            <div class="sub-question-options">
+              <label class="radio-option" [class.selected]="formData['isComplainantSelf'] === 'yes'">
                 <input type="radio" name="isComplainantSelf" value="yes" [(ngModel)]="formData['isComplainantSelf']">
                 <span>{{ 'eligibility.opt_yes' | translate }}</span>
               </label>
-              <label class="radio-option-inline" [class.selected]="formData['isComplainantSelf'] === 'no'">
+              <label class="radio-option" [class.selected]="formData['isComplainantSelf'] === 'no'">
                 <input type="radio" name="isComplainantSelf" value="no" [(ngModel)]="formData['isComplainantSelf']">
                 <span>{{ 'eligibility.opt_no' | translate }}</span>
               </label>
@@ -140,6 +180,13 @@
                   <span class="upload-text">{{ 'eligibility.browse_file' | translate }}</span>
                 </label>
               </div>
+              @if (eligibilityFileName) {
+                <div class="uploaded-file-info">
+                  <i class="pi pi-file"></i>
+                  <span class="uploaded-file-name" (click)="previewEligibilityFile()">{{ eligibilityFileName }}</span>
+                  <button type="button" class="remove-file-btn" (click)="removeEligibilityFile()"><i class="pi pi-times"></i></button>
+                </div>
+              }
               <div class="upload-hint">
                 <span>Support formats: PDF, JPG, PNG</span>
                 <span class="upload-size">Maximum size: 5MB</span>
@@ -166,10 +213,37 @@
                   <span class="upload-text">{{ 'eligibility.browse_file' | translate }}</span>
                 </label>
               </div>
+              @if (eligibilityFileName) {
+                <div class="uploaded-file-info">
+                  <i class="pi pi-file"></i>
+                  <span class="uploaded-file-name" (click)="previewEligibilityFile()">{{ eligibilityFileName }}</span>
+                  <button type="button" class="remove-file-btn" (click)="removeEligibilityFile()"><i class="pi pi-times"></i></button>
+                </div>
+              }
               <div class="upload-hint">
                 <span>Support formats: PDF, JPG, PNG</span>
                 <span class="upload-size">Maximum size: 5MB</span>
               </div>
+            </div>
+          </div>
+        }
+
+        <!-- Sub-question when "Yes" to employee of RE -->
+        @if (currentQuestion.key === 'employeeOfRE' && eligibilityAnswers['employeeOfRE'] === 'yes') {
+          <div class="sub-question-block">
+            <div class="sub-question-label">
+              <span class="sub-badge">a</span>
+              <span>If Yes, Is your complaint involves the employee-employer relationship of the Regulated Entity?</span>
+            </div>
+            <div class="sub-question-options">
+              <label class="radio-option" [class.selected]="formData['employerRelationshipComplaint'] === 'yes'">
+                <input type="radio" name="employerRelationshipComplaint" value="yes" [(ngModel)]="formData['employerRelationshipComplaint']">
+                <span>{{ 'eligibility.opt_yes' | translate }}</span>
+              </label>
+              <label class="radio-option" [class.selected]="formData['employerRelationshipComplaint'] === 'no'">
+                <input type="radio" name="employerRelationshipComplaint" value="no" [(ngModel)]="formData['employerRelationshipComplaint']">
+                <span>{{ 'eligibility.opt_no' | translate }}</span>
+              </label>
             </div>
           </div>
         }
@@ -179,19 +253,21 @@
       @if (eligibilityBlocked()) {
         <div class="block-note">
           <p>
-            As you have indicated <strong>"{{ eligibilityAnswers[currentQuestion.key] === 'no' ? 'No' : 'Yes' }}"</strong>
-            in response to this query, {{ eligibilityBlockMessage() }}
-            <strong>A written/electronic complaint is required to be filed with the Regulated Entity first.</strong>
+            {{ 'eligibility.block_indicated' | translate }}
+            <strong>"{{ eligibilityAnswers[currentQuestion.key] === 'no' ? ('eligibility.opt_no' | translate) : ('eligibility.opt_yes' | translate) }}"</strong>
+            {{ 'eligibility.block_in_response' | translate }}
+            {{ eligibilityBlockMessageKey() ? (eligibilityBlockMessageKey() | translate) : eligibilityBlockMessage() }}
+            <strong>{{ 'eligibility.block_written_required' | translate }}</strong>
           </p>
           <p>
-            Accordingly, we regret to inform you that your present grievance against
-            <strong>{{ selectedEntityName }}</strong> cannot be registered under the Scheme.
-            In case the response was furnished erroneously, you may change the response.
+            {{ 'eligibility.block_regret' | translate }}
+            <strong>{{ selectedEntityName }}</strong>
+            {{ 'eligibility.block_cannot_register' | translate }}
           </p>
-          <p>Regards, RBI CMS Team.</p>
+          <p>{{ 'eligibility.block_regards' | translate }}</p>
           @if (currentQuestion.nonMaintainable) {
             <button class="btn-show-closure" (click)="nextEligibility()">
-              <i class="pi pi-download"></i> Show Closure Letter
+              <i class="pi pi-download"></i> {{ 'eligibility.show_closure_letter' | translate }}
             </button>
           }
         </div>
@@ -202,8 +278,8 @@
         <div class="eligibility-passed">
           <i class="pi pi-check-circle"></i>
           <div>
-            <strong>Eligibility Passed</strong>
-            <p>You are eligible to file a complaint under RBI Integrated Ombudsman Scheme, 2026.</p>
+            <strong>{{ 'eligibility.passed_title' | translate }}</strong>
+            <p>{{ 'eligibility.passed_message' | translate }}</p>
           </div>
         </div>
       }
@@ -313,11 +389,11 @@
           </div>
           <div class="form-row three-col">
             <div class="form-group">
-              <label>{{ 'form.age' | translate }} <span class="required">*</span></label>
+              <label>{{ 'form.age' | translate }}</label>
               <input type="text" class="form-input" [(ngModel)]="formData['age']" name="age" placeholder="Enter Value">
             </div>
             <div class="form-group">
-              <label>{{ 'form.gender' | translate }} <span class="required">*</span></label>
+              <label>{{ 'form.gender' | translate }}</label>
               <select class="form-select" [(ngModel)]="formData['gender']" name="gender">
                 <option value="">Select Value</option>
                 <option value="male">{{ 'form.male' | translate }}</option>
@@ -372,8 +448,9 @@
             </div>
           </div>
           <div class="form-group full-width">
-            <label>{{ 'form.address' | translate }} <span class="optional">(Optional)</span></label>
-            <textarea class="form-textarea" [(ngModel)]="formData['address']" name="address" rows="3" placeholder="Enter Value"></textarea>
+            <label>{{ 'form.address' | translate }} <span class="required">*</span></label>
+            <textarea class="form-textarea" [class.invalid]="validationErrors['address']" [(ngModel)]="formData['address']" name="address" rows="3" placeholder="Enter Value" maxlength="100"></textarea>
+            @if (validationErrors['address']) { <span class="field-error">{{ validationErrors['address'] }}</span> }
           </div>
         </div>
       }
@@ -401,45 +478,47 @@
             @if (validationErrors['isCreditCardComplaint']) { <span class="field-error">{{ validationErrors['isCreditCardComplaint'] }}</span> }
           </div>
 
-          <div class="form-row three-col">
-            <div class="form-group">
-              <label>{{ 'form.entity_state' | translate }} <span class="required">*</span></label>
-              <select class="form-select" [class.invalid]="validationErrors['entityState']" [(ngModel)]="formData['entityState']" name="entityState" (ngModelChange)="onEntityStateChange()">
-                <option value="">Select Value</option>
-                <option value="andhra-pradesh">Andhra Pradesh</option>
-                <option value="assam">Assam</option>
-                <option value="bihar">Bihar</option>
-                <option value="delhi">Delhi</option>
-                <option value="gujarat">Gujarat</option>
-                <option value="karnataka">Karnataka</option>
-                <option value="kerala">Kerala</option>
-                <option value="madhya-pradesh">Madhya Pradesh</option>
-                <option value="maharashtra">Maharashtra</option>
-                <option value="punjab">Punjab</option>
-                <option value="rajasthan">Rajasthan</option>
-                <option value="tamil-nadu">Tamil Nadu</option>
-                <option value="telangana">Telangana</option>
-                <option value="uttar-pradesh">Uttar Pradesh</option>
-                <option value="west-bengal">West Bengal</option>
-              </select>
-              @if (validationErrors['entityState']) { <span class="field-error">{{ validationErrors['entityState'] }}</span> }
+          @if (formData['isCreditCardComplaint'] === 'no') {
+            <div class="form-row three-col">
+              <div class="form-group">
+                <label>{{ 'form.entity_state' | translate }} <span class="required">*</span></label>
+                <select class="form-select" [class.invalid]="validationErrors['entityState']" [(ngModel)]="formData['entityState']" name="entityState" (ngModelChange)="onEntityStateChange()">
+                  <option value="">Select Value</option>
+                  <option value="andhra-pradesh">Andhra Pradesh</option>
+                  <option value="assam">Assam</option>
+                  <option value="bihar">Bihar</option>
+                  <option value="delhi">Delhi</option>
+                  <option value="gujarat">Gujarat</option>
+                  <option value="karnataka">Karnataka</option>
+                  <option value="kerala">Kerala</option>
+                  <option value="madhya-pradesh">Madhya Pradesh</option>
+                  <option value="maharashtra">Maharashtra</option>
+                  <option value="punjab">Punjab</option>
+                  <option value="rajasthan">Rajasthan</option>
+                  <option value="tamil-nadu">Tamil Nadu</option>
+                  <option value="telangana">Telangana</option>
+                  <option value="uttar-pradesh">Uttar Pradesh</option>
+                  <option value="west-bengal">West Bengal</option>
+                </select>
+                @if (validationErrors['entityState']) { <span class="field-error">{{ validationErrors['entityState'] }}</span> }
+              </div>
+              <div class="form-group">
+                <label>{{ 'form.entity_district' | translate }} <span class="required">*</span></label>
+                <select class="form-select" [class.invalid]="validationErrors['entityDistrict']" [(ngModel)]="formData['entityDistrict']" name="entityDistrict">
+                  <option value="">Select District</option>
+                  @for (dist of entityDistricts; track dist) {
+                    <option [value]="dist">{{ dist }}</option>
+                  }
+                </select>
+                @if (validationErrors['entityDistrict']) { <span class="field-error">{{ validationErrors['entityDistrict'] }}</span> }
+              </div>
+              <div class="form-group">
+                <label>{{ 'form.entity_branch' | translate }} <span class="required">*</span></label>
+                <input type="text" class="form-input" [class.invalid]="validationErrors['entityBranch']" [(ngModel)]="formData['entityBranch']" name="entityBranch" placeholder="Enter Branch">
+                @if (validationErrors['entityBranch']) { <span class="field-error">{{ validationErrors['entityBranch'] }}</span> }
+              </div>
             </div>
-            <div class="form-group">
-              <label>{{ 'form.entity_district' | translate }} <span class="required">*</span></label>
-              <select class="form-select" [class.invalid]="validationErrors['entityDistrict']" [(ngModel)]="formData['entityDistrict']" name="entityDistrict">
-                <option value="">Select District</option>
-                @for (dist of entityDistricts; track dist) {
-                  <option [value]="dist">{{ dist }}</option>
-                }
-              </select>
-              @if (validationErrors['entityDistrict']) { <span class="field-error">{{ validationErrors['entityDistrict'] }}</span> }
-            </div>
-            <div class="form-group">
-              <label>{{ 'form.entity_branch' | translate }} <span class="required">*</span></label>
-              <input type="text" class="form-input" [class.invalid]="validationErrors['entityBranch']" [(ngModel)]="formData['entityBranch']" name="entityBranch" placeholder="Enter Branch">
-              @if (validationErrors['entityBranch']) { <span class="field-error">{{ validationErrors['entityBranch'] }}</span> }
-            </div>
-          </div>
+          }
         </div>
       }
 
@@ -465,7 +544,7 @@
             <div class="textarea-wrapper">
               <textarea class="form-textarea" [class.invalid]="validationErrors['complaintText']"
                         [(ngModel)]="formData['complaintText']" name="complaintText" rows="5"
-                        placeholder="Write in detail"></textarea>
+                        placeholder="Write in detail" maxlength="5000"></textarea>
               <button class="mic-pill-btn" [class.recording]="isRecording()" (click)="toggleRecording()"
                       type="button" [attr.aria-label]="isRecording() ? 'Stop voice recording' : 'Start voice recording'">
                 <i class="pi" [class.pi-microphone]="!isRecording()" [class.pi-stop]="isRecording()" aria-hidden="true"></i>
@@ -475,77 +554,104 @@
             @if (validationErrors['complaintText']) { <span class="field-error">{{ validationErrors['complaintText'] }}</span> }
           </div>
 
-          <!-- Account section -->
-          <div class="form-row three-col">
-            <div class="form-group">
-              <label id="has-account-label">{{ 'form.has_account' | translate }} {{ selectedEntityName }}? <span class="required">*</span></label>
-              <div class="radio-inline-group">
-                <label class="radio-inline" [class.selected]="formData['hasAccountWithRE'] === 'yes'">
-                  <input type="radio" name="hasAccountWithRE" value="yes" [(ngModel)]="formData['hasAccountWithRE']">
-                  <span>{{ 'form.yes' | translate }}</span>
-                </label>
-                <label class="radio-inline" [class.selected]="formData['hasAccountWithRE'] === 'no'">
-                  <input type="radio" name="hasAccountWithRE" value="no" [(ngModel)]="formData['hasAccountWithRE']">
-                  <span>{{ 'form.no' | translate }}</span>
-                </label>
-              </div>
+          <!-- ATM/Credit/Debit Card Number / Loan / Deposit Account Number -->
+          <div class="form-group">
+            <label>ATM/Credit/Debit Card Number/ Loan/Deposit Account Number</label>
+            <input type="text" class="form-input" [(ngModel)]="formData['cardNumber']" name="cardNumber" placeholder="Enter Value">
+          </div>
+
+          <!-- Date of Disputed Transaction -->
+          <div class="form-group">
+            <label>Date of Disputed Transaction <span class="required">*</span></label>
+            <div class="date-input-wrapper">
+              <input type="date" class="form-input" [class.invalid]="validationErrors['disputeDate']"
+                     [(ngModel)]="formData['disputeDate']" name="disputeDate"
+                     [max]="formData['bankComplaintDate'] || ''">
             </div>
+            @if (validationErrors['disputeDate']) { <span class="field-error">{{ validationErrors['disputeDate'] }}</span> }
+          </div>
+
+          <!-- Account section -->
+          <div class="form-group">
+            <label id="has-account-label">{{ 'form.has_account' | translate }} {{ selectedEntityName }}? <span class="required">*</span></label>
+            <div class="radio-inline-group">
+              <label class="radio-inline" [class.selected]="formData['hasAccountWithRE'] === 'yes'">
+                <input type="radio" name="hasAccountWithRE" value="yes" [(ngModel)]="formData['hasAccountWithRE']">
+                <span>{{ 'form.yes' | translate }}</span>
+              </label>
+              <label class="radio-inline" [class.selected]="formData['hasAccountWithRE'] === 'no'">
+                <input type="radio" name="hasAccountWithRE" value="no" [(ngModel)]="formData['hasAccountWithRE']">
+                <span>{{ 'form.no' | translate }}</span>
+              </label>
+            </div>
+          </div>
+
+          @if (formData['hasAccountWithRE'] === 'yes') {
             <div class="form-group">
               <label>{{ 'form.account_type' | translate }} {{ selectedEntityName }} <span class="required">*</span></label>
-              <select class="form-select" [(ngModel)]="formData['accountType']" name="accountType">
-                <option value="">Select Value</option>
-                <option value="savings">{{ 'form.savings' | translate }}</option>
-                <option value="current">{{ 'form.current_account' | translate }}</option>
-                <option value="loan">{{ 'form.loan' | translate }}</option>
-                <option value="credit-card">{{ 'form.credit_card' | translate }}</option>
-                <option value="debit-card">{{ 'form.debit_card' | translate }}</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>{{ 'form.card_number' | translate }} <span class="required">*</span></label>
-              <input type="text" class="form-input" [(ngModel)]="formData['cardNumber']" name="cardNumber" placeholder="Enter Value">
-            </div>
-          </div>
-
-          <div class="form-row three-col">
-            <div class="form-group">
-              <label>{{ 'form.savings_number' | translate }} <span class="required">*</span></label>
-              <input type="text" class="form-input" [(ngModel)]="formData['savingsAccountNumber']" name="savingsAccountNumber" placeholder="Enter Value">
-            </div>
-            <div class="form-group">
-              <label>{{ 'form.loan_number' | translate }} <span class="required">*</span></label>
-              <input type="text" class="form-input" [(ngModel)]="formData['loanAccountNumber']" name="loanAccountNumber" placeholder="Enter Value">
-            </div>
-            <div class="form-group">
-              <label>{{ 'form.atm_number' | translate }} <span class="required">*</span></label>
-              <input type="text" class="form-input" [(ngModel)]="formData['atmDebitCardNumber']" name="atmDebitCardNumber" placeholder="Enter Value">
-            </div>
-          </div>
-
-          <!-- Wallet section -->
-          <div class="form-row three-col">
-            <div class="form-group">
-              <label id="wallet-label">{{ 'form.wallet_q' | translate }} <span class="required">*</span></label>
-              <div class="radio-inline-group">
-                <label class="radio-inline" [class.selected]="formData['isWalletComplaint'] === 'yes'">
-                  <input type="radio" name="isWalletComplaint" value="yes" [(ngModel)]="formData['isWalletComplaint']">
-                  <span>{{ 'form.yes' | translate }}</span>
-                </label>
-                <label class="radio-inline" [class.selected]="formData['isWalletComplaint'] === 'no'">
-                  <input type="radio" name="isWalletComplaint" value="no" [(ngModel)]="formData['isWalletComplaint']">
-                  <span>{{ 'form.no' | translate }}</span>
-                </label>
+              <div class="checkbox-group">
+                @for (at of accountTypes; track at.value) {
+                  <label class="checkbox-option" [class.selected]="at.checked">
+                    <input type="checkbox" [(ngModel)]="at.checked" [name]="'accountType_' + at.value">
+                    <span>{{ at.label }}</span>
+                  </label>
+                }
               </div>
             </div>
-            <div class="form-group">
-              <label>{{ 'form.wallet_name' | translate }} <span class="required">*</span></label>
-              <input type="text" class="form-input" [(ngModel)]="formData['walletName']" name="walletName" placeholder="Enter Value">
-            </div>
-            <div class="form-group">
-              <label>{{ 'form.txn_ref' | translate }} <span class="required">*</span></label>
-              <input type="text" class="form-input" [(ngModel)]="formData['transactionRefNumber']" name="transactionRefNumber" placeholder="Enter Value">
+
+            @if (isAccountTypeSelected('savings')) {
+              <div class="form-group">
+                <label>Savings Account Number <span class="required">*</span></label>
+                <input type="text" class="form-input" [(ngModel)]="formData['savingsAccountNumber']" name="savingsAccountNumber" placeholder="Enter Value" maxlength="100">
+              </div>
+            }
+            @if (isAccountTypeSelected('loan')) {
+              <div class="form-group">
+                <label>Loan Account Number <span class="required">*</span></label>
+                <input type="text" class="form-input" [(ngModel)]="formData['loanAccountNumber']" name="loanAccountNumber" placeholder="Enter Value" maxlength="100">
+              </div>
+            }
+            @if (isAccountTypeSelected('atm_debit')) {
+              <div class="form-group">
+                <label>ATM/Debit Card Number <span class="required">*</span></label>
+                <input type="text" class="form-input" [(ngModel)]="formData['atmDebitCardNumber']" name="atmDebitCardNumber" placeholder="Enter Value" maxlength="100">
+              </div>
+            }
+            @if (isAccountTypeSelected('credit_card')) {
+              <div class="form-group">
+                <label>Credit Card Number <span class="required">*</span></label>
+                <input type="text" class="form-input" [(ngModel)]="formData['creditCardNumber']" name="creditCardNumber" placeholder="Enter Value" maxlength="100">
+              </div>
+            }
+          }
+
+          <!-- Wallet section -->
+          <div class="form-group">
+            <label id="wallet-label">{{ 'form.wallet_q' | translate }} <span class="required">*</span></label>
+            <div class="radio-inline-group">
+              <label class="radio-inline" [class.selected]="formData['isWalletComplaint'] === 'yes'">
+                <input type="radio" name="isWalletComplaint" value="yes" [(ngModel)]="formData['isWalletComplaint']">
+                <span>{{ 'form.yes' | translate }}</span>
+              </label>
+              <label class="radio-inline" [class.selected]="formData['isWalletComplaint'] === 'no'">
+                <input type="radio" name="isWalletComplaint" value="no" [(ngModel)]="formData['isWalletComplaint']">
+                <span>{{ 'form.no' | translate }}</span>
+              </label>
             </div>
           </div>
+
+          @if (formData['isWalletComplaint'] === 'yes') {
+            <div class="form-row">
+              <div class="form-group">
+                <label>{{ 'form.wallet_name' | translate }} <span class="required">*</span></label>
+                <input type="text" class="form-input" [(ngModel)]="formData['walletName']" name="walletName" placeholder="Enter Value">
+              </div>
+              <div class="form-group">
+                <label>{{ 'form.txn_ref' | translate }} <span class="optional">(Optional)</span></label>
+                <input type="text" class="form-input" [(ngModel)]="formData['transactionRefNumber']" name="transactionRefNumber" placeholder="Enter Value" maxlength="150">
+              </div>
+            </div>
+          }
 
           <!-- Business Correspondent -->
           <div class="form-group">
@@ -565,7 +671,7 @@
           <!-- Amount fields -->
           <div class="form-row three-col">
             <div class="form-group">
-              <label>{{ 'form.amount_involved' | translate }} <span class="required">*</span></label>
+              <label>{{ 'form.amount_involved' | translate }} <span class="optional-hint">(Optional)</span></label>
               <div class="rupee-input">
                 <span class="rupee-symbol">₹</span>
                 <input type="text" class="form-input" [class.invalid]="validationErrors['disputeAmount']" [(ngModel)]="formData['disputeAmount']" name="disputeAmount" placeholder="Enter Value">
@@ -573,24 +679,26 @@
               @if (validationErrors['disputeAmount']) { <span class="field-error">{{ validationErrors['disputeAmount'] }}</span> }
             </div>
             <div class="form-group">
-              <label>{{ 'form.compensation_sought' | translate }} <span class="required">*</span></label>
+              <label>{{ 'form.compensation_sought' | translate }} <span class="optional">(Optional)</span></label>
               <div class="rupee-input">
                 <span class="rupee-symbol">₹</span>
-                <input type="text" class="form-input" [(ngModel)]="formData['compensationSought']" name="compensationSought" placeholder="Enter Value">
+                <input type="text" class="form-input" [class.invalid]="validationErrors['compensationSought']" [(ngModel)]="formData['compensationSought']" name="compensationSought" placeholder="Enter Value">
               </div>
+              @if (validationErrors['compensationSought']) { <span class="field-error">{{ validationErrors['compensationSought'] }}</span> }
             </div>
             <div class="form-group">
-              <label>{{ 'form.compensation_harassment' | translate }} <span class="required">*</span></label>
+              <label>{{ 'form.compensation_harassment' | translate }} <span class="optional">(Optional)</span></label>
               <div class="rupee-input">
                 <span class="rupee-symbol">₹</span>
-                <input type="text" class="form-input" [(ngModel)]="formData['reliefSought']" name="reliefSought" placeholder="Enter Value">
+                <input type="text" class="form-input" [class.invalid]="validationErrors['reliefSought']" [(ngModel)]="formData['reliefSought']" name="reliefSought" placeholder="Enter Value">
               </div>
+              @if (validationErrors['reliefSought']) { <span class="field-error">{{ validationErrors['reliefSought'] }}</span> }
             </div>
           </div>
 
           <!-- File Upload -->
           <div class="form-group full-width">
-            <label>{{ 'form.upload_docs' | translate }} <span class="required">*</span></label>
+            <label>{{ 'form.upload_docs' | translate }} <span class="optional">(Optional)</span></label>
             <div class="file-upload-area">
               <input type="file" id="fileInput" multiple (change)="onFilesSelected($event)"
                      accept=".pdf,.jpg,.jpeg,.png" class="file-input-hidden">
@@ -644,11 +752,11 @@
             <div class="form-row three-col">
               <div class="form-group">
                 <label>{{ 'form.rep_name' | translate }} <span class="required">*</span></label>
-                <input type="text" class="form-input" [(ngModel)]="formData['repName']" name="repName" placeholder="Enter Value">
+                <input type="text" class="form-input" [(ngModel)]="formData['repName']" name="repName" placeholder="Enter Value" maxlength="150">
               </div>
               <div class="form-group">
-                <label>{{ 'form.rep_email' | translate }} <span class="required">*</span></label>
-                <input type="email" class="form-input" [(ngModel)]="formData['repEmail']" name="repEmail" placeholder="Enter Value">
+                <label>{{ 'form.rep_email' | translate }} <span class="optional">(Optional)</span></label>
+                <input type="email" class="form-input" [(ngModel)]="formData['repEmail']" name="repEmail" placeholder="Enter Value" maxlength="64">
               </div>
               <div class="form-group">
                 <label>{{ 'form.rep_mobile' | translate }} <span class="required">*</span></label>
@@ -698,7 +806,7 @@
             <div class="form-group full-width">
               <label>{{ 'form.rep_address' | translate }} <span class="required">*</span></label>
               <textarea class="form-textarea" [(ngModel)]="formData['repAddress']" name="repAddress" rows="3"
-                        placeholder="Enter Value"></textarea>
+                        placeholder="Enter Value" maxlength="100"></textarea>
             </div>
 
             <div class="form-group full-width">
@@ -759,15 +867,15 @@
             @for (row of [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]; track row) {
               <div class="watermark-row">
                 <img src="assets/llogo.png" class="watermark-seal" alt="">
-                <span class="watermark-text">Complainant ID: {{ referenceNumber }}</span>
+                <span class="watermark-text">{{ referenceNumber ? 'Complainant ID: ' + referenceNumber : 'Draft' }}</span>
                 <img src="assets/RBI_New_Logo.png" class="watermark-seal" alt="">
-                <span class="watermark-text">Complainant ID: {{ referenceNumber }}</span>
+                <span class="watermark-text">{{ referenceNumber ? 'Complainant ID: ' + referenceNumber : 'Draft' }}</span>
                 <img src="assets/llogo.png" class="watermark-seal" alt="">
-                <span class="watermark-text">Complainant ID: {{ referenceNumber }}</span>
+                <span class="watermark-text">{{ referenceNumber ? 'Complainant ID: ' + referenceNumber : 'Draft' }}</span>
                 <img src="assets/RBI_New_Logo.png" class="watermark-seal" alt="">
-                <span class="watermark-text">Complainant ID: {{ referenceNumber }}</span>
+                <span class="watermark-text">{{ referenceNumber ? 'Complainant ID: ' + referenceNumber : 'Draft' }}</span>
                 <img src="assets/llogo.png" class="watermark-seal" alt="">
-                <span class="watermark-text">Complainant ID: {{ referenceNumber }}</span>
+                <span class="watermark-text">{{ referenceNumber ? 'Complainant ID: ' + referenceNumber : 'Draft' }}</span>
                 <img src="assets/RBI_New_Logo.png" class="watermark-seal" alt="">
               </div>
             }
@@ -780,7 +888,10 @@
               <div class="rs-row-full"><span class="rs-label">Is your complaint sub-judice/under arbitration/already dealt with on merits by a Court/Tribunal/Arbitrator/Authority?</span><span class="rs-value">{{ eligibilityAnswers['isSubJudice'] === 'yes' ? 'Yes' : 'No' }}</span></div>
               <div class="rs-row-full"><span class="rs-label">Is your complaint made through an advocate (unless you are yourself an advocate)?</span><span class="rs-value">{{ eligibilityAnswers['throughAdvocateEligibility'] === 'yes' ? 'Yes' : 'No' }}</span></div>
               <div class="rs-row-full"><span class="rs-label">Has your complaint already been dealt with or is under process on the same ground with the Ombudsman?</span><span class="rs-value">{{ eligibilityAnswers['pendingBeforeOmbudsman'] === 'yes' ? 'Yes' : (eligibilityAnswers['settledByOmbudsman'] === 'yes' ? 'Yes' : 'No') }}</span></div>
-              <div class="rs-row-full"><span class="rs-label">Is complaint from the staff of a regulated entity and involves employer employee relationship?</span><span class="rs-value">{{ eligibilityAnswers['staffOfRE'] === 'yes' ? 'Yes' : 'No' }}</span></div>
+              <div class="rs-row-full"><span class="rs-label">Are / were you an employee of the Regulated Entity against whom this complaint is being filed?</span><span class="rs-value">{{ eligibilityAnswers['employeeOfRE'] === 'yes' ? 'Yes' : 'No' }}</span></div>
+              @if (eligibilityAnswers['employeeOfRE'] === 'yes') {
+                <div class="rs-row-full"><span class="rs-label">If Yes, Is your complaint involves the employee-employer relationship of the Regulated Entity?</span><span class="rs-value">{{ formData['employerRelationshipComplaint'] === 'yes' ? 'Yes' : 'No' }}</span></div>
+              }
             </div>
           </div>
 
@@ -972,7 +1083,7 @@
 
     <div class="assistance-banner">
       <h3>{{ 'layout.need_assistance' | translate }}</h3>
-      <p>The contact center (#14448) with Interactive Voice Response System (IVRS) is available 24x7, while the facility to connect to Contact Centre personnel is available from Monday to Saturday except for National Holidays, between 8:00 AM to 10:00 PM for English, Hindi, and ten regional languages.</p>
+      <p>{{ 'layout.assistance_desc' | translate }}</p>
     </div>
   </div>
 }

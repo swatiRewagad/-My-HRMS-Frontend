@@ -1,22 +1,45 @@
-import { Component, inject, signal, OnInit, computed, ElementRef, ViewChildren, QueryList, AfterViewChecked } from '@angular/core';
+import { Component, inject, signal, OnInit, computed, ElementRef, ViewChildren, QueryList, AfterViewChecked, DestroyRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Subject } from 'rxjs';
+import { finalize, takeUntil } from 'rxjs/operators';
 import { Chart, registerables } from 'chart.js';
 import {
   ReportBuilderService,
   SemanticModel,
   SubjectToken,
   FilterToken,
+  FilterFieldType,
+  FilterOperator,
   GroupByToken,
   ReportQuery,
   ReportExecutionResult,
-  ReportDefinition
+  ReportDefinition,
+  ReportAccessRole,
+  NoRecordDrillDownRow,
+  OPERATORS_BY_FIELD_TYPE,
+  OPERATOR_LABELS
 } from '../../services/report-builder.service';
+import { KeycloakAuthService } from '../../services/keycloak-auth.service';
 
 Chart.register(...registerables);
 
 const MAX_WIDGETS = 3;
 const WIDGET_REFRESH_COOLDOWN_MS = 30000;
+const MAX_DATE_RANGE_DAYS = 365;
+const MIN_DATE_RANGE_DAYS = 1;
+const MAX_IN_VALUES = 100;
+
+/** Advanced filter state for each selected filter */
+export interface AdvancedFilterState {
+  filterId: string;
+  operator: FilterOperator;
+  value: string;
+  valueTo: string; // for BETWEEN operator
+  fieldType: FilterFieldType;
+}
 
 @Component({
   selector: 'app-report-builder',
@@ -27,6 +50,12 @@ const WIDGET_REFRESH_COOLDOWN_MS = 30000;
 })
 export class ReportBuilderComponent implements OnInit, AfterViewChecked {
   private reportService = inject(ReportBuilderService);
+  private keycloakAuth = inject(KeycloakAuthService);
+  private router = inject(Router);
+  private destroyRef = inject(DestroyRef);
+
+  // Cancel tokens for drill-down requests
+  private drillDownCancel$ = new Subject<void>();
 
   // Semantic model tokens
   subjects = signal<SubjectToken[]>([]);
@@ -37,6 +66,9 @@ export class ReportBuilderComponent implements OnInit, AfterViewChecked {
   selectedSubject = signal<SubjectToken | null>(null);
   selectedFilters = signal<FilterToken[]>([]);
   selectedGroupBy = signal<GroupByToken | null>(null);
+
+  // Advanced filter states (UST617-619)
+  advancedFilterStates = signal<AdvancedFilterState[]>([]);
 
   // UI state
   loading = signal(false);
@@ -70,6 +102,43 @@ export class ReportBuilderComponent implements OnInit, AfterViewChecked {
 
   maxWidgets = MAX_WIDGETS;
 
+  // NO Record drill-down (UST621)
+  showNoRecordDrillDown = signal(false);
+  noRecordDrillDownLoading = signal(false);
+  noRecordDrillDownData = signal<NoRecordDrillDownRow[]>([]);
+  noRecordDrillDownComplaintId = signal<string>('');
+
+  // Report access roles (UST615, UST622, UST670)
+  reportAccessRoles = signal<ReportAccessRole[]>([]);
+  showAccessRoleAdmin = signal(false);
+  accessRoleAdminLoading = signal(false);
+  newAccessRole: Partial<ReportAccessRole> = { reportType: '', roleName: '', canExport: true };
+
+  // Role-based visibility
+  canExport = computed(() => {
+    const roles = this.keycloakAuth.getRoles();
+    const accessRoles = this.reportAccessRoles();
+    // AA Admin and CEPD Admin are view-only (no export)
+    if (roles.includes('AA_ADMIN') || roles.includes('CEPD_ADMIN')) {
+      return false;
+    }
+    // Check explicit access role config
+    const matchingRoles = accessRoles.filter(ar => roles.includes(ar.roleName));
+    if (matchingRoles.length > 0) {
+      return matchingRoles.some(ar => ar.canExport);
+    }
+    return true;
+  });
+
+  isAdmin = computed(() => {
+    const roles = this.keycloakAuth.getRoles();
+    return roles.includes('ADMIN') || roles.includes('RBIO_ADMIN');
+  });
+
+  // Expose constants to template
+  operatorLabels = OPERATOR_LABELS;
+  operatorsByFieldType = OPERATORS_BY_FIELD_TYPE;
+
   // Computed sentence
   sentence = computed(() => {
     const subject = this.selectedSubject();
@@ -78,7 +147,13 @@ export class ReportBuilderComponent implements OnInit, AfterViewChecked {
     let s = `Show ${subject.label}`;
     const filters = this.selectedFilters();
     if (filters.length > 0) {
-      s += ' where ' + filters.map(f => f.label).join(' and ');
+      s += ' where ' + filters.map(f => {
+        const state = this.getAdvancedFilterState(f.id);
+        if (state) {
+          return `${f.label} ${OPERATOR_LABELS[state.operator]} ${state.value}${state.operator === 'BETWEEN' ? ' to ' + state.valueTo : ''}`;
+        }
+        return f.label;
+      }).join(' and ');
     }
     const groupBy = this.selectedGroupBy();
     if (groupBy) {
@@ -108,6 +183,7 @@ export class ReportBuilderComponent implements OnInit, AfterViewChecked {
   ngOnInit() {
     this.loadSemanticModel();
     this.loadMyWidgets();
+    this.loadReportAccessRoles();
   }
 
   ngAfterViewChecked() {
@@ -118,10 +194,27 @@ export class ReportBuilderComponent implements OnInit, AfterViewChecked {
 
   private loadSemanticModel() {
     this.modelLoading.set(true);
-    this.reportService.getSemanticModel().subscribe({
+    this.reportService.getSemanticModel().pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
       next: (model) => {
         this.subjects.set(model.subjects);
-        this.filters.set(model.filters);
+        // Inject the "Complaint Closed On" filter (UST671-672)
+        const closedOnFilter: FilterToken = {
+          id: 'RBIO-complaint_closed_on-closedOn-synthetic',
+          label: 'Complaint Closed On',
+          field: 'complaint_closed_on',
+          operator: 'BETWEEN',
+          value: '',
+          category: 'RBIO',
+          fieldType: 'DATE'
+        };
+        const existingFilters = model.filters;
+        const hasClosedOn = existingFilters.some(f => f.field === 'complaint_closed_on');
+        if (!hasClosedOn) {
+          existingFilters.push(closedOnFilter);
+        }
+        this.filters.set(existingFilters);
         this.groupBys.set(model.groupBys);
         this.modelLoading.set(false);
       },
@@ -133,7 +226,9 @@ export class ReportBuilderComponent implements OnInit, AfterViewChecked {
   }
 
   private loadMyWidgets() {
-    this.reportService.getMyWidgets().subscribe({
+    this.reportService.getMyWidgets().pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
       next: (widgets) => {
         this.myWidgets.set(widgets);
         if (widgets.length > 0) {
@@ -141,6 +236,15 @@ export class ReportBuilderComponent implements OnInit, AfterViewChecked {
         }
       },
       error: () => {}
+    });
+  }
+
+  private loadReportAccessRoles() {
+    this.reportService.getReportAccessRoles().pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: (roles) => this.reportAccessRoles.set(roles),
+      error: () => {} // Non-critical
     });
   }
 
@@ -177,7 +281,9 @@ export class ReportBuilderComponent implements OnInit, AfterViewChecked {
         sentence: widget.sentence
       };
 
-      this.reportService.execute(query).subscribe({
+      this.reportService.execute(query).pipe(
+        takeUntilDestroyed(this.destroyRef)
+      ).subscribe({
         next: (result) => {
           const dataMap = new Map(this.widgetData());
           dataMap.set(widget.id, result.results);
@@ -270,7 +376,9 @@ export class ReportBuilderComponent implements OnInit, AfterViewChecked {
   }
 
   deleteWidget(widgetId: number) {
-    this.reportService.deleteWidget(widgetId).subscribe({
+    this.reportService.deleteWidget(widgetId).pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
       next: () => {
         const existing = this.widgetCharts.get(widgetId);
         if (existing) existing.destroy();
@@ -292,8 +400,24 @@ export class ReportBuilderComponent implements OnInit, AfterViewChecked {
     const idx = current.findIndex(f => f.id === filter.id);
     if (idx >= 0) {
       this.selectedFilters.set(current.filter(f => f.id !== filter.id));
+      // Remove advanced filter state
+      this.advancedFilterStates.set(
+        this.advancedFilterStates().filter(s => s.filterId !== filter.id)
+      );
     } else {
       this.selectedFilters.set([...current, filter]);
+      // Add default advanced filter state
+      const defaultOp = this.getDefaultOperator(filter.fieldType);
+      this.advancedFilterStates.set([
+        ...this.advancedFilterStates(),
+        {
+          filterId: filter.id,
+          operator: defaultOp,
+          value: filter.value || '',
+          valueTo: '',
+          fieldType: filter.fieldType
+        }
+      ]);
     }
     this.results.set(null);
   }
@@ -311,26 +435,131 @@ export class ReportBuilderComponent implements OnInit, AfterViewChecked {
     this.selectedSubject.set(null);
     this.selectedFilters.set([]);
     this.selectedGroupBy.set(null);
+    this.advancedFilterStates.set([]);
     this.results.set(null);
     this.error.set(null);
   }
 
   removeFilter(filter: FilterToken) {
     this.selectedFilters.set(this.selectedFilters().filter(f => f.id !== filter.id));
+    this.advancedFilterStates.set(
+      this.advancedFilterStates().filter(s => s.filterId !== filter.id)
+    );
     this.results.set(null);
   }
+
+  // ─── Advanced Filter Methods (UST617-619) ───
+
+  getAdvancedFilterState(filterId: string): AdvancedFilterState | undefined {
+    return this.advancedFilterStates().find(s => s.filterId === filterId);
+  }
+
+  getOperatorsForFilter(filter: FilterToken): FilterOperator[] {
+    return OPERATORS_BY_FIELD_TYPE[filter.fieldType] || OPERATORS_BY_FIELD_TYPE['TEXT'];
+  }
+
+  getDefaultOperator(fieldType: FilterFieldType): FilterOperator {
+    switch (fieldType) {
+      case 'DATE': return 'BETWEEN';
+      case 'COMPLAINT_NUMBER': return 'LIKE';
+      case 'PICKER': return 'EQUAL';
+      default: return 'EQUAL';
+    }
+  }
+
+  updateFilterOperator(filterId: string, operator: FilterOperator) {
+    const states = [...this.advancedFilterStates()];
+    const idx = states.findIndex(s => s.filterId === filterId);
+    if (idx >= 0) {
+      states[idx] = { ...states[idx], operator, value: states[idx].value, valueTo: '' };
+      this.advancedFilterStates.set(states);
+    }
+  }
+
+  updateFilterValue(filterId: string, value: string) {
+    const states = [...this.advancedFilterStates()];
+    const idx = states.findIndex(s => s.filterId === filterId);
+    if (idx >= 0) {
+      // Validate IN operator max 100 values
+      if (states[idx].operator === 'IN') {
+        const parts = value.split(',').map(v => v.trim()).filter(v => v.length > 0);
+        if (parts.length > MAX_IN_VALUES) {
+          this.error.set(`IN operator supports a maximum of ${MAX_IN_VALUES} comma-separated values.`);
+          value = parts.slice(0, MAX_IN_VALUES).join(', ');
+        }
+      }
+      states[idx] = { ...states[idx], value };
+      this.advancedFilterStates.set(states);
+    }
+  }
+
+  updateFilterValueTo(filterId: string, valueTo: string) {
+    const states = [...this.advancedFilterStates()];
+    const idx = states.findIndex(s => s.filterId === filterId);
+    if (idx >= 0) {
+      states[idx] = { ...states[idx], valueTo };
+      this.advancedFilterStates.set(states);
+    }
+  }
+
+  /** Validate date range for BETWEEN operator: min 1 day, max 1 year. Auto-caps if exceeds. */
+  validateDateRange(filterId: string): string | null {
+    const state = this.getAdvancedFilterState(filterId);
+    if (!state || state.operator !== 'BETWEEN' || state.fieldType !== 'DATE') return null;
+    if (!state.value || !state.valueTo) return null;
+
+    const from = new Date(state.value);
+    const to = new Date(state.valueTo);
+
+    if (isNaN(from.getTime()) || isNaN(to.getTime())) return 'Invalid date';
+
+    const diffDays = Math.abs((to.getTime() - from.getTime()) / (1000 * 60 * 60 * 24));
+
+    if (diffDays < MIN_DATE_RANGE_DAYS) {
+      return 'Minimum range is 1 day';
+    }
+
+    if (diffDays > MAX_DATE_RANGE_DAYS) {
+      // Auto-cap to 1 year
+      const cappedTo = new Date(from);
+      cappedTo.setFullYear(cappedTo.getFullYear() + 1);
+      this.updateFilterValueTo(filterId, cappedTo.toISOString().split('T')[0]);
+      return 'Range auto-capped to 1 year';
+    }
+
+    return null;
+  }
+
+  // ─── Execute Report ───
 
   executeReport() {
     const subject = this.selectedSubject();
     if (!subject) return;
 
-    const query: ReportQuery = {
-      subjectId: subject.id,
-      filters: this.selectedFilters().map(f => ({
+    // Build filters from advanced states
+    const queryFilters = this.selectedFilters().map(f => {
+      const state = this.getAdvancedFilterState(f.id);
+      if (state) {
+        let value = state.value;
+        if (state.operator === 'BETWEEN') {
+          value = `${state.value}|${state.valueTo}`;
+        }
+        return {
+          field: f.field,
+          operator: state.operator,
+          value
+        };
+      }
+      return {
         field: f.field,
         operator: f.operator,
         value: f.value
-      })),
+      };
+    });
+
+    const query: ReportQuery = {
+      subjectId: subject.id,
+      filters: queryFilters,
       groupByField: this.selectedGroupBy()?.field,
       sentence: this.sentence()
     };
@@ -338,7 +567,17 @@ export class ReportBuilderComponent implements OnInit, AfterViewChecked {
     this.loading.set(true);
     this.error.set(null);
 
-    this.reportService.execute(query).subscribe({
+    // Store filter context for back navigation (UST620)
+    sessionStorage.setItem('reportBuilder_filterContext', JSON.stringify({
+      subject: this.selectedSubject(),
+      filters: this.selectedFilters(),
+      advancedStates: this.advancedFilterStates(),
+      groupBy: this.selectedGroupBy()
+    }));
+
+    this.reportService.execute(query).pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
       next: (result) => {
         this.results.set(result);
         if (result.results.length > 0) {
@@ -356,6 +595,120 @@ export class ReportBuilderComponent implements OnInit, AfterViewChecked {
     });
   }
 
+  // ─── Drill-down: Complaint Number (UST620) ───
+
+  isComplaintNumberColumn(col: string): boolean {
+    const lower = col.toLowerCase().replace(/[\s_-]/g, '');
+    return lower === 'complaintnumber' || lower === 'complaintno' || lower === 'complaintid';
+  }
+
+  isNoRecordCountColumn(col: string): boolean {
+    const lower = col.toLowerCase().replace(/[\s_-]/g, '');
+    return lower.includes('norecord') && lower.includes('count');
+  }
+
+  onComplaintNumberClick(row: Record<string, any>) {
+    // Find the complaint number value
+    const complaintCol = this.resultColumns().find(c => this.isComplaintNumberColumn(c));
+    if (!complaintCol) return;
+
+    const complaintId = row[complaintCol];
+    if (!complaintId) return;
+
+    // Store context for back navigation
+    sessionStorage.setItem('reportBuilder_drillDownOrigin', 'true');
+
+    // Navigate to complaint detail based on user role
+    const roles = this.keycloakAuth.getRoles();
+    if (roles.some(r => r.startsWith('RBIO_'))) {
+      this.router.navigate(['/rbio/complaint', complaintId]);
+    } else {
+      this.router.navigate(['/staff/rbio/task', complaintId]);
+    }
+  }
+
+  // ─── Drill-down: NO Record Count (UST621) ───
+
+  onNoRecordCountClick(row: Record<string, any>) {
+    // Cancel any previous in-flight request
+    this.drillDownCancel$.next();
+
+    const complaintCol = this.resultColumns().find(c => this.isComplaintNumberColumn(c));
+    const complaintId = complaintCol ? row[complaintCol] : row['id'] || row['complaintId'];
+    if (!complaintId) return;
+
+    this.noRecordDrillDownComplaintId.set(String(complaintId));
+    this.showNoRecordDrillDown.set(true);
+    this.noRecordDrillDownLoading.set(true);
+    this.noRecordDrillDownData.set([]);
+
+    this.reportService.getNoRecordDrillDown(String(complaintId)).pipe(
+      takeUntil(this.drillDownCancel$),
+      takeUntilDestroyed(this.destroyRef),
+      finalize(() => this.noRecordDrillDownLoading.set(false))
+    ).subscribe({
+      next: (data) => this.noRecordDrillDownData.set(data),
+      error: () => this.error.set('Failed to load NO Record drill-down data.')
+    });
+  }
+
+  closeNoRecordDrillDown() {
+    this.drillDownCancel$.next();
+    this.showNoRecordDrillDown.set(false);
+    this.noRecordDrillDownData.set([]);
+  }
+
+  // ─── Report Access Roles Admin (UST615, UST622, UST670) ───
+
+  openAccessRoleAdmin() {
+    this.showAccessRoleAdmin.set(true);
+  }
+
+  closeAccessRoleAdmin() {
+    this.showAccessRoleAdmin.set(false);
+  }
+
+  addAccessRole() {
+    if (!this.newAccessRole.reportType || !this.newAccessRole.roleName) {
+      this.error.set('Report type and role name are required.');
+      return;
+    }
+    const currentRoles = this.reportAccessRoles();
+    const newRole: ReportAccessRole = {
+      id: 0,
+      reportType: this.newAccessRole.reportType!,
+      roleName: this.newAccessRole.roleName!,
+      canExport: this.newAccessRole.canExport ?? true
+    };
+
+    this.accessRoleAdminLoading.set(true);
+    this.reportService.saveReportAccessRoles([...currentRoles, newRole]).pipe(
+      takeUntilDestroyed(this.destroyRef),
+      finalize(() => this.accessRoleAdminLoading.set(false))
+    ).subscribe({
+      next: (roles) => {
+        this.reportAccessRoles.set(roles);
+        this.newAccessRole = { reportType: '', roleName: '', canExport: true };
+      },
+      error: () => this.error.set('Failed to save access role.')
+    });
+  }
+
+  deleteAccessRole(roleId: number) {
+    this.accessRoleAdminLoading.set(true);
+    this.reportService.deleteReportAccessRole(roleId).pipe(
+      takeUntilDestroyed(this.destroyRef),
+      finalize(() => this.accessRoleAdminLoading.set(false))
+    ).subscribe({
+      next: () => {
+        this.reportAccessRoles.set(this.reportAccessRoles().filter(r => r.id !== roleId));
+      },
+      error: () => this.error.set('Failed to delete access role.')
+    });
+  }
+
+  // ─── Widget & Schedule Dialog ───
+
   openWidgetDialog() {
     if (!this.canAddMoreWidgets()) {
       this.error.set(`Maximum ${MAX_WIDGETS} widgets allowed. Remove an existing widget before adding a new one.`);
@@ -370,18 +723,28 @@ export class ReportBuilderComponent implements OnInit, AfterViewChecked {
     const subject = this.selectedSubject();
     if (!subject) return;
 
+    const queryFilters = this.selectedFilters().map(f => {
+      const state = this.getAdvancedFilterState(f.id);
+      if (state) {
+        let value = state.value;
+        if (state.operator === 'BETWEEN') {
+          value = `${state.value}|${state.valueTo}`;
+        }
+        return { field: f.field, operator: state.operator, value };
+      }
+      return { field: f.field, operator: f.operator, value: f.value };
+    });
+
     const query: ReportQuery = {
       subjectId: subject.id,
-      filters: this.selectedFilters().map(f => ({
-        field: f.field,
-        operator: f.operator,
-        value: f.value
-      })),
+      filters: queryFilters,
       groupByField: this.selectedGroupBy()?.field,
       sentence: this.sentence()
     };
 
-    this.reportService.saveWidget(this.sentence(), query, this.widgetChartType, this.widgetTitle).subscribe({
+    this.reportService.saveWidget(this.sentence(), query, this.widgetChartType, this.widgetTitle).pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
       next: (widget) => {
         this.savedWidgetId.set(widget.id);
         this.showWidgetDialog.set(false);
@@ -405,7 +768,9 @@ export class ReportBuilderComponent implements OnInit, AfterViewChecked {
       return;
     }
 
-    this.reportService.schedule(widgetId, this.scheduleFrequency, this.scheduleSlot).subscribe({
+    this.reportService.schedule(widgetId, this.scheduleFrequency, this.scheduleSlot).pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
       next: () => {
         this.showScheduleDialog.set(false);
       },

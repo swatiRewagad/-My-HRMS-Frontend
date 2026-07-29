@@ -72,9 +72,16 @@
       <span class="session-timer" [class.warning]="authService.remainingSeconds() < 120">
         <i class="pi pi-clock"></i> {{ 'layout.session_expires' | translate }} {{ authService.getFormattedTime() }}
       </span>
-      <button class="session-logout-btn" (click)="logout()">
-        <i class="pi pi-sign-out"></i> {{ 'layout.logout' | translate }}
-      </button>
+    </div>
+  </div>
+}
+
+<!-- UST10: Session expiry warning (1 minute before timeout) -->
+@if (authService.sessionWarning()) {
+  <div class="session-warning-banner" role="alert" aria-live="assertive">
+    <div class="container session-warning-inner">
+      <i class="pi pi-exclamation-triangle"></i>
+      <span>Inactive session - Your session will expire in {{ authService.remainingSeconds() }} seconds. Please interact with the page to keep your session active.</span>
     </div>
   </div>
 }
@@ -94,8 +101,8 @@
   <!-- Top Bar - Need Assistance -->
   <div class="footer-top-bar">
     <div class="footer-top-bar-content">
-      <h2>Need Assistance? Call 14448</h2>
-      <p>The contact center (#14448) with Interactive Voice Response System (IVRS) is available 24x7, while the facility to connect to Contact Centre personnel is available from Monday to Saturday except for National Holidays, between 8:00 AM to 10:00 PM for English, Hindi, and ten regional languages.</p>
+      <h2>{{ 'layout.need_assistance' | translate }}</h2>
+      <p>{{ 'layout.assistance_desc' | translate }}</p>
     </div>
     <div class="footer-ellipse footer-ellipse-1"></div>
     <div class="footer-ellipse footer-ellipse-2"></div>

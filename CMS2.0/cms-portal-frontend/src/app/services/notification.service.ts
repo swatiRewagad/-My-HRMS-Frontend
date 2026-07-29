@@ -4,10 +4,39 @@ import { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
 
+/**
+ * All supported notification types in the CMS system.
+ */
+export type NotificationType =
+  | 'ASSIGNMENT'
+  | 'REASSIGNMENT'
+  | 'TRANSFER_IN'
+  | 'TRANSFER_PENDING'
+  | 'PENDING_3DAY'
+  | 'PENDING_5DAY'
+  | 'DUPLICATE_DETECTED'
+  | 'SENT_BACK'
+  | 'BULK_CLOSE'
+  | 'ON_LEAVE_PENDING'
+  | 'NO_RECORD_ASSIGNED'
+  | 'NO_REASSIGNED_TO_RBI'
+  | 'NO_STATUS_STALE'
+  | 'RE_RESPONSE'
+  | 'COMPLAINT_CLOSED'
+  | 'RE_UPDATE'
+  | 'MEETING_SCHEDULED'
+  | 'AWARD_PASSED'
+  | 'DECISION'
+  | 'ADVISORY_COMPLIED'
+  | 'DOCUMENT_UPLOADED'
+  | 'UPLOAD_LINK_SENT'
+  | 'CRPC_TOLL_FREE_REMINDER'
+  | 'RIA_LEGAL_UPDATE';
+
 export interface InAppNotification {
   id: number;
   targetUserId: string;
-  type: string;
+  type: NotificationType | string;
   title: string;
   message: string;
   relatedEntityId: string;

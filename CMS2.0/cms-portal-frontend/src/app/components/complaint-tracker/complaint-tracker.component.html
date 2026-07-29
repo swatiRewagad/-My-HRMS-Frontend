@@ -1,21 +1,101 @@
 <div class="tracker-container">
   <h2>Track Your Complaint</h2>
-  <p class="subtitle">Enter your complaint reference number to check the current status.</p>
+  <p class="subtitle">Enter your complaint reference number or verify via mobile number to check the current status.</p>
 
-  <div class="search-box">
-    <input type="text"
-           [ngModel]="searchId()"
-           (ngModelChange)="searchId.set($event)"
-           placeholder="Enter Complaint ID (e.g., CMS-20260710-ABC123)"
-           (keydown.enter)="track()">
-    <button (click)="track()" [disabled]="!searchId() || loading()">
-      @if (loading()) {
-        <i class="pi pi-spin pi-spinner"></i>
-      } @else {
-        <i class="pi pi-search"></i> Track
-      }
+  <!-- UST98: Mode switcher -->
+  <div class="track-mode-tabs">
+    <button class="mode-tab" [class.active]="trackMode() === 'id'" (click)="switchMode('id')">
+      <i class="pi pi-search"></i> Track by Complaint ID
+    </button>
+    <button class="mode-tab" [class.active]="trackMode() === 'mobile'" (click)="switchMode('mobile')">
+      <i class="pi pi-mobile"></i> Track by Mobile Number
     </button>
   </div>
+
+  <!-- Mode: Track by ID -->
+  @if (trackMode() === 'id') {
+    <div class="search-box">
+      <input type="text"
+             [ngModel]="searchId()"
+             (ngModelChange)="searchId.set($event)"
+             placeholder="Enter Complaint ID (e.g., CMS-20260710-ABC123)"
+             (keydown.enter)="track()">
+      <button (click)="track()" [disabled]="!searchId() || loading()">
+        @if (loading()) {
+          <i class="pi pi-spin pi-spinner"></i>
+        } @else {
+          <i class="pi pi-search"></i> Track
+        }
+      </button>
+    </div>
+  }
+
+  <!-- UST98: Mode: Track by Mobile+OTP -->
+  @if (trackMode() === 'mobile') {
+    @if (!mobileVerified()) {
+      <div class="mobile-track-form">
+        @if (!otpSent()) {
+          <div class="search-box">
+            <input type="tel" [(ngModel)]="mobileNumber" maxlength="10"
+                   placeholder="Enter 10-digit mobile number"
+                   (keydown.enter)="sendTrackingOtp()">
+            <button (click)="sendTrackingOtp()" [disabled]="loading()">
+              @if (loading()) {
+                <i class="pi pi-spin pi-spinner"></i>
+              } @else {
+                <i class="pi pi-send"></i> Send OTP
+              }
+            </button>
+          </div>
+        } @else {
+          <div class="otp-track-section">
+            <p class="otp-instruction">Enter OTP sent to *****{{ mobileNumber.slice(-4) }}</p>
+            <div class="search-box">
+              <input type="text" [(ngModel)]="otpCode" maxlength="6"
+                     placeholder="Enter 6-digit OTP" inputmode="numeric"
+                     (keydown.enter)="verifyTrackingOtp()">
+              <button (click)="verifyTrackingOtp()" [disabled]="loading()">
+                @if (loading()) {
+                  <i class="pi pi-spin pi-spinner"></i>
+                } @else {
+                  <i class="pi pi-check"></i> Verify
+                }
+              </button>
+            </div>
+          </div>
+        }
+      </div>
+    } @else {
+      <!-- Complaints list for the verified mobile -->
+      @if (mobileComplaints().length > 0) {
+        <div class="mobile-complaints-list">
+          <h4>Complaints linked to {{ mobileNumber }}</h4>
+          <table class="complaints-table">
+            <thead>
+              <tr>
+                <th>Complaint ID</th>
+                <th>Entity</th>
+                <th>Date</th>
+                <th>Status</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (c of mobileComplaints(); track c.complaintId || c.id) {
+                <tr>
+                  <td>{{ c.complaintId || c.id }}</td>
+                  <td>{{ c.entityName || '—' }}</td>
+                  <td>{{ c.createdAt || c.complaintDate || '—' }}</td>
+                  <td><span class="status-badge" [attr.data-status]="c.status">{{ c.status }}</span></td>
+                  <td><button class="view-btn" (click)="selectMobileComplaint(c)"><i class="pi pi-eye"></i> View</button></td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    }
+  }
 
   @if (error()) {
     <div class="error-message">

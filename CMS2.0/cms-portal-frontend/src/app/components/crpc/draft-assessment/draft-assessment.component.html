@@ -46,7 +46,7 @@
       <div class="success-icon"><i class="pi pi-check-circle"></i></div>
       <h2>Assessment Sent for Approval</h2>
       <p>Draft <strong>{{ draftId }}</strong> has been routed to
-        <strong>{{ selectedReviewer }}</strong>
+        <strong>{{ selectedReviewerName || 'CRPC Reviewer' }}</strong>
       </p>
       <button class="btn btn-primary" (click)="goBack()">Back to Home</button>
     </div>
@@ -129,7 +129,7 @@
           <div class="meta-actions">
             @if (!editMode() && !isReadOnly) {
               <button class="btn btn-outline btn-edit" type="button" (click)="enterEditMode()"><i class="pi pi-pencil"></i> Edit</button>
-              <button class="btn btn-primary" (click)="showConfirmDialog.set(true)" [disabled]="!canSendForApproval() || submitting()">Send for Approval</button>
+              <button class="btn btn-primary" (click)="openConfirmDialog()" [disabled]="submitting()">Send for Approval</button>
             }
             @if (editMode() && activeStep() === 'creation') {
               <button class="btn btn-outline btn-sm" (click)="goBack()"><i class="pi pi-chevron-left"></i> Back</button>
@@ -145,7 +145,7 @@
                 @if (savingDraft()) { <i class="pi pi-spin pi-spinner"></i> } @else { <i class="pi pi-save"></i> }
                 Save
               </button>
-              <button class="btn btn-primary" (click)="showConfirmDialog.set(true)" [disabled]="!canSendForApproval() || submitting()">
+              <button class="btn btn-primary" (click)="openConfirmDialog()" [disabled]="submitting()">
                 Send for Approval
               </button>
             }
@@ -459,6 +459,77 @@
                     }
                   </div>
                 </div>
+                @if (nonMaintainableReason === 'SUGGESTION' && editMode()) {
+                  <div class="field-grid-2" style="margin-top: 12px;">
+                    <div class="field-item">
+                      <label>Suggestion Department</label>
+                      <input type="text" [(ngModel)]="suggestionDepartment" placeholder="Enter department" />
+                    </div>
+                    <div class="field-item">
+                      <label>Nature of Suggestion</label>
+                      <input type="text" [(ngModel)]="suggestionNature" placeholder="Enter nature" />
+                    </div>
+                  </div>
+                }
+                @if (nonMaintainableReason === 'OTHERS' && editMode()) {
+                  <div class="field-item full" style="margin-top: 12px;">
+                    <label>Specify Reason</label>
+                    <input type="text" [(ngModel)]="notAComplaintOthersReason" placeholder="Enter reason for marking as not a complaint" />
+                  </div>
+                }
+              </div>
+            }
+          </div>
+
+          <!-- Auto-Closure Screening Engine -->
+          <div class="form-section" [class.open]="sectionOpen.classification">
+            <div class="section-header" (click)="sectionOpen.classification = !sectionOpen.classification">
+              <span><i class="pi pi-list-check"></i> Auto-Closure Screening</span>
+              <i class="pi" [class.pi-chevron-down]="sectionOpen.classification" [class.pi-chevron-up]="!sectionOpen.classification"></i>
+            </div>
+            @if (sectionOpen.classification) {
+              <div class="section-body">
+                @if (!showAutoClosureEngine() && !autoClosureCompleted()) {
+                  <div style="text-align: center; padding: 16px;">
+                    <p style="color: #64748b; margin-bottom: 12px; font-size: 13px;">Run the auto-closure question engine to determine complaint eligibility</p>
+                    <button class="btn btn-primary" (click)="startAutoClosureScreening()" [disabled]="!editMode()">
+                      <i class="pi pi-play"></i> Start Screening
+                    </button>
+                  </div>
+                } @else if (showAutoClosureEngine()) {
+                  <app-auto-closure
+                    [schemeVersion]="schemeVersion"
+                    [entityType]="entityType"
+                    [existingResponses]="autoClosureResponses()"
+                    [readOnly]="!editMode()"
+                    (completed)="onAutoClosureCompleted($event)"
+                    (cancelled)="onAutoClosureCancelled()">
+                  </app-auto-closure>
+                } @else if (autoClosureCompleted()) {
+                  <div style="padding: 12px; background: #f8fafc; border-radius: 8px;">
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                      @if (autoClosureOutcome() === 'NEW_COMPLAINT') {
+                        <i class="pi pi-check-circle" style="color: #10b981; font-size: 18px;"></i>
+                        <strong style="color: #065f46;">Proceed as New Complaint</strong>
+                      } @else if (autoClosureOutcome() === 'SUB_JUDICE') {
+                        <i class="pi pi-exclamation-triangle" style="color: #f59e0b; font-size: 18px;"></i>
+                        <strong style="color: #92400e;">Sub-Judice — Proceed to Ombudsman</strong>
+                      } @else {
+                        <i class="pi pi-times-circle" style="color: #ef4444; font-size: 18px;"></i>
+                        <strong style="color: #991b1b;">CRPC Rejection</strong>
+                      }
+                    </div>
+                    @if (autoClosureClauseRef()) {
+                      <p style="font-size: 12px; color: #64748b;">Clause: {{ autoClosureClauseRef() }}</p>
+                    }
+                    @if (autoClosureSubJudice()) {
+                      <span style="display: inline-block; margin-top: 4px; padding: 2px 8px; background: #fef3c7; color: #92400e; border-radius: 8px; font-size: 11px; font-weight: 600;">Sub-Judice Flag</span>
+                    }
+                    <button class="btn btn-outline btn-sm" style="margin-top: 12px;" (click)="showAutoClosureEngine.set(true)">
+                      <i class="pi pi-refresh"></i> Re-run Screening
+                    </button>
+                  </div>
+                }
               </div>
             }
           </div>
@@ -922,9 +993,25 @@
                     }
                   </div>
                   <div class="field-item">
-                    <label>Vernacular Language</label>
+                    <label>Vernacular</label>
                     @if (editMode()) {
-                      <input type="text" [(ngModel)]="vernacularLanguage" placeholder="e.g. Hindi" />
+                      <div class="radio-group">
+                        <label><input type="radio" [ngModel]="vernacular" [value]="true" (ngModelChange)="vernacular = $event" name="vernacularToggle" /> Yes</label>
+                        <label><input type="radio" [ngModel]="vernacular" [value]="false" (ngModelChange)="vernacular = $event" name="vernacularToggle" /> No</label>
+                      </div>
+                    } @else {
+                      <span class="field-value">{{ vernacular ? 'Yes' : 'No' }}</span>
+                    }
+                  </div>
+                  <div class="field-item">
+                    <label>Language</label>
+                    @if (editMode()) {
+                      <select [(ngModel)]="vernacularLanguage" [disabled]="!vernacular">
+                        <option value="">Select language</option>
+                        @for (lang of vernacularLanguages; track lang) {
+                          <option [value]="lang">{{ lang }}</option>
+                        }
+                      </select>
                     } @else {
                       <span class="field-value">{{ vernacularLanguage || '—' }}</span>
                     }
@@ -1127,42 +1214,65 @@
           </div>
 
           <div class="assessment-body">
-            <div class="field-grid-2">
-              <div class="field-item">
-                <label>Assignment</label>
-                <select [(ngModel)]="assignmentMode" (ngModelChange)="onAssignmentModeChange($event)">
-                  <option value="Manual">Manual</option>
-                  <option value="RoundRobin">Round Robin</option>
-                </select>
+            <div class="inline-confirm-box">
+              <div class="inline-confirm-header">
+                <i class="pi pi-info-circle"></i> <strong>Confirmation</strong>
+                <span class="inline-confirm-subtitle">Are you sure you want to send the request to the reviewer?</span>
               </div>
-              <div class="field-item">
-                <label>Name of CRPC Reviewer</label>
-                @if (assignmentMode === 'RoundRobin') {
-                  <div class="round-robin-display">
-                    <span class="rr-assigned-name">{{ getReviewerName(selectedReviewer) || 'Auto-assigned' }}</span>
-                    <button class="rr-refresh-btn" (click)="useRoundRobin()" title="Re-assign"><i class="pi pi-refresh"></i></button>
-                  </div>
-                } @else {
-                  <div class="reviewer-search-box">
-                    <select [(ngModel)]="selectedReviewer">
-                      <option value="">Select a Value</option>
-                      @for (rev of activeReviewers(); track rev.id) {
-                        <option [value]="rev.id">{{ rev.displayName }}</option>
-                      }
+              <div class="inline-confirm-body">
+                <div class="field-grid-2">
+                  <div class="field-item">
+                    <label>Assignment</label>
+                    <select [(ngModel)]="assignmentMode" (ngModelChange)="onAssignmentModeChange($event)">
+                      <option value="Manual">Manual</option>
+                      <option value="RoundRobin">Round Robin</option>
                     </select>
-                    <button class="search-icon-btn"><i class="pi pi-search"></i></button>
+                  </div>
+                  <div class="field-item">
+                    <label>Name of CRPC Reviewer</label>
+                    @if (assignmentMode === 'RoundRobin') {
+                      <div class="round-robin-display">
+                        <span class="rr-assigned-name">{{ getReviewerName(selectedReviewer) || 'Auto-assigned' }}</span>
+                        <button class="rr-refresh-btn" (click)="useRoundRobin()" title="Re-assign"><i class="pi pi-refresh"></i></button>
+                      </div>
+                    } @else {
+                      <div class="reviewer-search-box">
+                        <select [(ngModel)]="selectedReviewer">
+                          <option value="">Select a Value</option>
+                          @for (rev of activeReviewers(); track rev.id) {
+                            <option [value]="rev.id">{{ rev.displayName }}</option>
+                          }
+                        </select>
+                        <button class="search-icon-btn"><i class="pi pi-search"></i></button>
+                      </div>
+                    }
+                  </div>
+                </div>
+
+                @if (selectedReviewer && reviewerOnLeave()) {
+                  <div class="leave-warning">
+                    <span class="leave-dot"></span>
+                    Assigned user is on Leave
+                    <button class="dismiss-btn" (click)="selectedReviewer = ''"><i class="pi pi-times"></i></button>
                   </div>
                 }
+
+                <div class="inline-status-change">
+                  <span class="status-label">Expected Status Change</span>
+                  <div class="status-flow-inline">
+                    <span class="status-chip draft"><i class="pi pi-file"></i> Draft</span>
+                    <i class="pi pi-arrow-right flow-arrow"></i>
+                    <span class="status-chip sent"><i class="pi pi-send"></i> Sent to Reviewer</span>
+                  </div>
+                </div>
+              </div>
+              <div class="inline-confirm-actions">
+                <button class="btn btn-outline" (click)="goToCreation()">Cancel</button>
+                <button class="btn btn-primary" (click)="confirmAndSend()" [disabled]="!selectedReviewer || submitting()">
+                  @if (submitting()) { <i class="pi pi-spin pi-spinner"></i> Sending... } @else { Confirm }
+                </button>
               </div>
             </div>
-
-            @if (selectedReviewer && reviewerOnLeave()) {
-              <div class="leave-warning">
-                <span class="leave-dot"></span>
-                Assigned user is on Leave
-                <button class="dismiss-btn" (click)="selectedReviewer = ''"><i class="pi pi-times"></i></button>
-              </div>
-            }
 
             @if (deoAssessmentDecision || deoAssessmentRemarks) {
               <div class="deo-assessment-card">
@@ -1337,6 +1447,11 @@
                   <button class="modal-close" (click)="cancelEmail()">&times;</button>
                 </div>
                 <div class="field-item"><label>To</label><input type="email" [(ngModel)]="emailTo" /></div>
+                @if (emailDomainError) {
+                  <div class="email-domain-error" style="margin: 4px 0 8px; padding: 8px 12px; background: #fff3f3; border: 1px solid #ffcdd2; border-radius: 4px; color: #c62828; font-size: 12px;">
+                    <i class="pi pi-exclamation-triangle" style="margin-right: 6px;"></i>{{ emailDomainError }}
+                  </div>
+                }
                 <div class="field-item"><label>Subject</label><input type="text" [(ngModel)]="emailSubject" /></div>
                 <div class="field-item"><label>Body</label><div class="textarea-with-speech"><textarea [(ngModel)]="emailBody" rows="6"></textarea><app-speech-button (transcription)="emailBody = emailBody + ' ' + $event"></app-speech-button></div></div>
                 <div class="composer-actions">
@@ -1626,40 +1741,41 @@
         <span><i class="pi pi-info-circle info-icon"></i> Confirmation</span>
         <button class="modal-close" (click)="showConfirmDialog.set(false)">&times;</button>
       </div>
+      <div class="confirm-subtitle">Are you sure you want to <strong>send the request</strong> to the reviewer?</div>
       <div class="confirm-body">
-        <p>Are you sure you want to <strong>send the request</strong> to the reviewer?</p>
         <div class="confirm-fields">
           <div class="confirm-field">
             <label>Assignment</label>
-            <select [(ngModel)]="assignmentMode">
+            <select [(ngModel)]="confirmAssignmentMode" (ngModelChange)="onConfirmAssignmentModeChange($event)">
               <option value="Automatic">Automatic</option>
               <option value="Manual">Manual</option>
             </select>
           </div>
           <div class="confirm-field">
             <label>Name of CRPC Reviewer</label>
-            @if (assignmentMode === 'Manual') {
-              <div class="reviewer-select-wrapper">
-                <select [(ngModel)]="selectedReviewer">
-                  <option value="" disabled>Select Reviewer</option>
-                  @for (rev of reviewers(); track rev.id) {
-                    <option [value]="rev.id">{{ rev.displayName }}</option>
-                  }
-                </select>
+            @if (confirmAssignmentMode === 'Automatic') {
+              <div class="reviewer-input-wrapper automatic">
+                <input type="text" [value]="selectedReviewerName" readonly />
+                <i class="pi pi-search"></i>
               </div>
             } @else {
-              <div class="reviewer-input-wrapper">
-                <input type="text" value="CRPC Reviewer" readonly />
+              <div class="reviewer-select-wrapper">
+                <select [(ngModel)]="selectedReviewerName">
+                  <option value="" disabled>Select a Value</option>
+                  @for (rev of reviewers(); track rev.id) {
+                    <option [value]="rev.displayName">{{ rev.displayName }}</option>
+                  }
+                </select>
                 <i class="pi pi-search"></i>
               </div>
             }
           </div>
         </div>
-        @if (assignmentMode === 'Manual' && reviewerOnLeave()) {
+        @if (confirmReviewerOnLeave()) {
           <div class="reviewer-warning">
-            <i class="pi pi-exclamation-circle"></i>
+            <span class="leave-dot-red"></span>
             <span>Assigned user is on Leave</span>
-            <button class="warning-close">&times;</button>
+            <button class="warning-close" (click)="selectedReviewerName = ''">&times;</button>
           </div>
         }
         <div class="status-change-row">
@@ -1673,7 +1789,7 @@
       </div>
       <div class="confirm-actions">
         <button class="btn btn-outline" (click)="showConfirmDialog.set(false)">Cancel</button>
-        <button class="btn btn-primary" (click)="confirmAndSend()">
+        <button class="btn btn-primary" (click)="confirmAndSend()" [disabled]="!selectedReviewerName.trim() || submitting()">
           @if (submitting()) { <i class="pi pi-spin pi-spinner"></i> Sending... } @else { Confirm }
         </button>
       </div>

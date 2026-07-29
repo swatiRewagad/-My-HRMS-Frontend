@@ -283,6 +283,10 @@ export class RbioHomeComponent implements OnInit {
     this.router.navigate(['/rbio/complaint', complaintId]);
   }
 
+  navigateToCreateComplaint() {
+    this.router.navigate(['/rbio/create-complaint']);
+  }
+
   toggleSelect(id: string) {
     const ids = new Set(this.selectedIds());
     if (ids.has(id)) ids.delete(id);

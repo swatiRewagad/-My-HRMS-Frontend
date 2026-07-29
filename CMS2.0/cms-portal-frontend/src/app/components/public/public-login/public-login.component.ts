@@ -291,7 +291,7 @@ export class PublicLoginComponent implements OnDestroy {
 
   private startResendTimer() {
     this.clearResendTimer();
-    this.resendTimer = 30;
+    this.resendTimer = 120;
     this.resendInterval = setInterval(() => {
       this.resendTimer--;
       if (this.resendTimer <= 0) this.clearResendTimer();

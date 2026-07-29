@@ -4,6 +4,13 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
+import { RbioWorkflowService } from '../../../services/rbio-workflow.service';
+import { UploadLinkStatusComponent } from '../../../shared/upload-link-status/upload-link-status.component';
+import { RbioDeputyDecisionComponent } from '../rbio-deputy-decision/rbio-deputy-decision.component';
+import { RbioAddEntityComponent } from '../rbio-add-entity/rbio-add-entity.component';
+import { RbioLegalCaseComponent } from '../rbio-legal-case/rbio-legal-case.component';
+import { RbioForwardRegulatoryComponent } from '../rbio-forward-regulatory/rbio-forward-regulatory.component';
+import { RbioActionOverrideHistoryComponent } from '../rbio-action-override-history/rbio-action-override-history.component';
 import { environment } from '../../../../environments/environment';
 
 interface ComplaintDetail {
@@ -38,7 +45,7 @@ interface Comment {
 @Component({
   selector: 'app-rbio-complaint-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, UploadLinkStatusComponent, RbioDeputyDecisionComponent, RbioAddEntityComponent, RbioLegalCaseComponent, RbioForwardRegulatoryComponent, RbioActionOverrideHistoryComponent],
   templateUrl: './rbio-complaint-detail.component.html',
   styleUrl: './rbio-complaint-detail.component.scss'
 })
@@ -48,6 +55,7 @@ export class RbioComplaintDetailComponent implements OnInit {
   private router = inject(Router);
   private http = inject(HttpClient);
   private auth = inject(KeycloakAuthService);
+  private rbioWorkflow = inject(RbioWorkflowService);
 
   complaint = signal<ComplaintDetail | null>(null);
   loading = signal(true);
@@ -71,6 +79,26 @@ export class RbioComplaintDetailComponent implements OnInit {
   crpcProposedAction = signal('');
   crpcProposedClause = signal('');
 
+  // Upload link status
+  uploadLinkActive = signal(false);
+  documentsSubmitted = signal(false);
+
+  // ═══ Closure Features (UST504-509, UST576, UST577, UST580, UST581-584) ═══
+  showClosureConfirmPopup = signal(false);
+  showNoEmailPopup = signal(false);
+  showSampleLetterModal = signal(false);
+  customClosureText = signal('');
+  closureClause = signal('');
+  allowedClosureClauses = signal<any[]>([]);
+  dateOfSending = signal('');
+  closureLetterFile = signal<File | null>(null);
+  sampleLetterClause = signal('');
+  emailValidationError = signal('');
+
+  get customClosureTextLength(): number {
+    return this.customClosureText().length;
+  }
+
   loggedInUser: { id: string; name: string; role: string } | null = null;
 
   tabs = [
@@ -80,6 +108,8 @@ export class RbioComplaintDetailComponent implements OnInit {
     { key: 'forward', label: 'Forward' },
     { key: 'email', label: 'Email Communication' },
     { key: 'final', label: 'Final Decision' },
+    { key: 'legal', label: 'Legal Case' },
+    { key: 'history', label: 'Complaint History' },
   ];
 
   approvalOptions = [
@@ -129,6 +159,7 @@ export class RbioComplaintDetailComponent implements OnInit {
           { id: '2', author: 'Full Name', text: 'Core banking systems are the central nervous system of any bank. They process a range of transactions, from deposits and withdrawals to loan payments and fund transfers.', timestamp: '1 hrs ago' },
         ]);
         this.loading.set(false);
+        this.checkFinalDecisionStatus();
       },
       error: () => {
         this.complaint.set({
@@ -200,5 +231,142 @@ export class RbioComplaintDetailComponent implements OnInit {
       timestamp: 'Just now'
     }]);
     this.newComment.set('');
+  }
+
+  onLinkStatusChange(event: { linkActive: boolean; documentsSubmitted: boolean }) {
+    this.uploadLinkActive.set(event.linkActive);
+    this.documentsSubmitted.set(event.documentsSubmitted);
+  }
+
+  /** Check if closure actions are blocked (upload link active, user not Deputy/Ombudsman) */
+  isClosureBlocked(): boolean {
+    if (!this.uploadLinkActive()) return false;
+    const role = this.loggedInUser?.role?.toUpperCase() || '';
+    const exemptRoles = ['RBIO_DEPUTY_OMBUDSMAN', 'RBIO_OMBUDSMAN', 'DEPUTY_OMBUDSMAN', 'OMBUDSMAN'];
+    return !exemptRoles.includes(role);
+  }
+
+  /** Check if forwarding is restricted (upload link active, user not Deputy/Ombudsman) */
+  isForwardingRestricted(): boolean {
+    return this.isClosureBlocked();
+  }
+
+  // ═══ Closure Methods ═══
+  loadClosureClauses() {
+    const role = this.loggedInUser?.role || 'REVIEWER';
+    let mappedRole = 'REVIEWER';
+    if (role.includes('OMBUDSMAN')) mappedRole = 'OMBUDSMAN';
+    else if (role.includes('DEPUTY')) mappedRole = 'DEPUTY_OMBUDSMAN';
+    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/workflow/closure-clauses`, { params: { role: mappedRole } }).subscribe({
+      next: (res) => this.allowedClosureClauses.set(res?.data || []),
+      error: () => this.allowedClosureClauses.set([])
+    });
+  }
+  onClosureClauseChange(clauseCode: string) {
+    this.closureClause.set(clauseCode);
+    const clause = this.allowedClosureClauses().find((cl: any) => cl.code === clauseCode);
+    if (clause?.newIn2026) { this.sampleLetterClause.set(clauseCode); this.showSampleLetterModal.set(true); }
+  }
+  acknowledgeSampleLetter() { this.showSampleLetterModal.set(false); }
+  validateEmailRecipients(recipients: string[]): boolean {
+    const invalid = recipients.filter(e => !e.toLowerCase().endsWith('@rbi.org.in') && !e.toLowerCase().endsWith('@rbi.gov.in'));
+    if (invalid.length > 0) { this.emailValidationError.set('Only official RBI email addresses can be used for outbound complaint emails'); return false; }
+    this.emailValidationError.set(''); return true;
+  }
+  onClosureLetterFileUpload(event: Event) {
+    const input = event.target as HTMLInputElement;
+    if (input.files?.length) { this.closureLetterFile.set(input.files[0]); }
+  }
+
+  // ═══ Feature: Block DO Editing After Decision (UST756) ═══
+  hasFinalDecisionUpstream = signal(false);
+  finalDecisionBy = signal('');
+  finalDecisionByRole = signal('');
+
+  checkFinalDecisionStatus() {
+    const c = this.complaint();
+    if (!c) return;
+    const complaintId = c.complaintNumber || c.complaintId;
+    this.rbioWorkflow.checkFinalDecision(complaintId).subscribe({
+      next: (result) => {
+        this.hasFinalDecisionUpstream.set(result.hasFinalDecision);
+        this.finalDecisionBy.set(result.decidedBy || '');
+        this.finalDecisionByRole.set(result.decidedByRole || '');
+      },
+      error: () => {}
+    });
+  }
+
+  isFieldReadOnlyDueToDecision(): boolean {
+    return this.hasFinalDecisionUpstream() && (this.loggedInUser?.role || '').toUpperCase() === 'RBIO_OFFICER';
+  }
+
+  getReadOnlyTooltip(): string {
+    if (!this.hasFinalDecisionUpstream()) return '';
+    return `Set by ${this.finalDecisionByRole() || 'Deputy/Ombudsman'}, cannot be modified`;
+  }
+
+  // ═══ Feature: Proposed Action Override (UST639-642) ═══
+  private previousProposedAction = '';
+  private previousProposedClause = '';
+
+  onProposedActionChange(newValue: string) {
+    const roles = this.auth.getRoles();
+    const overrideRoles = ['RBIO_SUPERVISOR', 'RBIO_DEPUTY_OMBUDSMAN', 'RBIO_ADJUDICATOR'];
+    if (roles.some(r => overrideRoles.includes(r)) && this.previousProposedAction && this.previousProposedAction !== newValue) {
+      const c = this.complaint();
+      const complaintId = c?.complaintNumber || c?.complaintId;
+      if (complaintId) {
+        this.rbioWorkflow.recordActionOverride(complaintId, {
+          fieldName: 'Proposed Action',
+          oldValue: this.previousProposedAction,
+          newValue,
+          overriddenBy: this.auth.currentUser()?.username || this.loggedInUser?.name || '',
+          overriddenByRole: roles.find(r => overrideRoles.includes(r)) || ''
+        }).subscribe();
+      }
+    }
+    this.previousProposedAction = newValue;
+  }
+
+  onProposedClauseChange(newValue: string) {
+    const roles = this.auth.getRoles();
+    const overrideRoles = ['RBIO_SUPERVISOR', 'RBIO_DEPUTY_OMBUDSMAN', 'RBIO_ADJUDICATOR'];
+    if (roles.some(r => overrideRoles.includes(r)) && this.previousProposedClause && this.previousProposedClause !== newValue) {
+      const c = this.complaint();
+      const complaintId = c?.complaintNumber || c?.complaintId;
+      if (complaintId) {
+        this.rbioWorkflow.recordActionOverride(complaintId, {
+          fieldName: 'Proposed Clause',
+          oldValue: this.previousProposedClause,
+          newValue,
+          overriddenBy: this.auth.currentUser()?.username || this.loggedInUser?.name || '',
+          overriddenByRole: roles.find(r => overrideRoles.includes(r)) || ''
+        }).subscribe();
+      }
+    }
+    this.previousProposedClause = newValue;
+  }
+
+  // ═══ Feature: Deputy Ombudsman Decision visibility ═══
+  showDeputyDecision(): boolean {
+    return this.auth.hasRole('RBIO_DEPUTY_OMBUDSMAN');
+  }
+
+  onDeputyDecisionSubmitted() {
+    const c = this.complaint();
+    if (c) this.loadComplaint(c.complaintId);
+  }
+
+  // ═══ Feature: Add Entity visibility ═══
+  showAddEntity(): boolean {
+    const roles = this.auth.getRoles();
+    return roles.some(r => ['RBIO_OFFICER', 'RBIO_SUPERVISOR', 'RBIO_DEPUTY_OMBUDSMAN'].includes(r));
+  }
+
+  // ═══ Feature: Forward Regulatory visibility ═══
+  showForwardRegulatory(): boolean {
+    const roles = this.auth.getRoles();
+    return roles.some(r => ['RBIO_OFFICER', 'RBIO_SUPERVISOR', 'RBIO_DEPUTY_OMBUDSMAN', 'RBIO_ADJUDICATOR'].includes(r));
   }
 }

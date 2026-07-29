@@ -47,6 +47,14 @@ export class ReviewerAssessmentComponent implements OnInit {
 
   currentTab = signal<'summary' | 'email' | 'attachments' | 'history' | 'action'>('summary');
 
+  sectionOpen = {
+    complaint: true,
+    basic: true,
+    eligibility: false,
+    entity: false,
+    complainant: false,
+  };
+
   // ─── Draft Fields (Read-only by default; editable after click "Edit") ───
   complainantName = '';
   complainantPhone = '';
@@ -123,6 +131,7 @@ export class ReviewerAssessmentComponent implements OnInit {
     { id: 'RT6', label: 'Suggestion - Sent to Other Dept', text: 'Closed as Suggestion. Communications sent. Status: Sent to Other Department.' },
   ];
 
+  showConfirmDialog = signal(false);
   submitting = signal(false);
   submitted = signal(false);
   generatedComplaintNumber = signal('');
@@ -275,11 +284,16 @@ export class ReviewerAssessmentComponent implements OnInit {
   }
 
   private resolveRbioOffice(state: string): string {
-    const s = (state || '').toUpperCase();
-    const westStates = ['MH', 'GJ', 'GA', 'MP', 'CT'];
-    const northStates = ['DL', 'HR', 'PB', 'UP', 'UK', 'HP', 'JK', 'LA', 'RJ', 'CH'];
-    const southStates = ['TN', 'KA', 'KL', 'AP', 'TS', 'PY'];
-    const eastStates = ['WB', 'BR', 'JH', 'OD', 'AS', 'NL', 'MN', 'MZ', 'TR', 'ML', 'AR', 'SK', 'AN'];
+    const s = (state || '').toUpperCase().trim();
+    const westStates = ['MH', 'GJ', 'GA', 'MP', 'CT', 'MAHARASHTRA', 'GUJARAT', 'GOA', 'MADHYA PRADESH', 'CHHATTISGARH'];
+    const northStates = ['DL', 'HR', 'PB', 'UP', 'UK', 'HP', 'JK', 'LA', 'RJ', 'CH',
+      'DELHI', 'NEW DELHI', 'HARYANA', 'PUNJAB', 'UTTAR PRADESH', 'UTTARAKHAND', 'HIMACHAL PRADESH',
+      'JAMMU AND KASHMIR', 'JAMMU & KASHMIR', 'LADAKH', 'RAJASTHAN', 'CHANDIGARH'];
+    const southStates = ['TN', 'KA', 'KL', 'AP', 'TS', 'PY',
+      'TAMIL NADU', 'KARNATAKA', 'KERALA', 'ANDHRA PRADESH', 'TELANGANA', 'PUDUCHERRY', 'PONDICHERRY'];
+    const eastStates = ['WB', 'BR', 'JH', 'OD', 'AS', 'NL', 'MN', 'MZ', 'TR', 'ML', 'AR', 'SK', 'AN',
+      'WEST BENGAL', 'BIHAR', 'JHARKHAND', 'ODISHA', 'ORISSA', 'ASSAM', 'NAGALAND', 'MANIPUR',
+      'MIZORAM', 'TRIPURA', 'MEGHALAYA', 'ARUNACHAL PRADESH', 'SIKKIM', 'ANDAMAN AND NICOBAR'];
 
     if (westStates.includes(s)) return 'RBIO-MUM';
     if (northStates.includes(s)) return 'RBIO-DEL';
@@ -299,8 +313,38 @@ export class ReviewerAssessmentComponent implements OnInit {
     return (bytes / 1024 / 1024).toFixed(1) + ' MB';
   }
 
+  openConfirmDialog(decision: 'APPROVE' | 'SENT_BACK_TO_DEO') {
+    this.reviewerDecision = decision;
+    this.showConfirmDialog.set(true);
+  }
+
   toggleEditMode() {
     this.editMode.set(!this.editMode());
+  }
+
+  saveDraft() {
+    const payload: any = {
+      complainantName: this.complainantName,
+      complainantPhone: this.complainantPhone,
+      senderEmail: this.complainantEmail,
+      complainantAddress: this.complainantAddress,
+      complainantState: this.complainantState,
+      complainantDistrict: this.complainantDistrict,
+      complainantPincode: this.complainantPincode,
+      category: this.category,
+      entityName: this.entityName,
+      subject: this.subject,
+      body: this.description,
+      deoDecision: this.deoDecision,
+      nonMaintainableReason: this.deoNonMaintainableReason,
+    };
+
+    this.http.put(`${environment.apiBaseUrl}/api/v1/email-syndication/drafts/${this.draftId}`, payload)
+      .subscribe({
+        next: () => {
+          this.editMode.set(false);
+        }
+      });
   }
 
   applyTemplate(templateId: string) {
@@ -320,7 +364,7 @@ export class ReviewerAssessmentComponent implements OnInit {
   }
 
   submitDecision() {
-    if (!this.canSubmit()) return;
+    if (!this.reviewerDecision) return;
     this.submitting.set(true);
 
     let newStatus = '';
@@ -349,6 +393,7 @@ export class ReviewerAssessmentComponent implements OnInit {
           this.assignedToUser.set(assignedTo || this.targetRegionalOffice);
         }
         this.submitting.set(false);
+        this.showConfirmDialog.set(false);
         this.submitted.set(true);
       },
       error: () => {

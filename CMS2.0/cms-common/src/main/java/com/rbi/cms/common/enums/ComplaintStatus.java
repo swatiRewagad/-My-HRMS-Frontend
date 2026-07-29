@@ -7,5 +7,8 @@ public enum ComplaintStatus {
     UNDER_REVIEW,
     ESCALATED,
     RESOLVED,
-    CLOSED
+    CLOSED,
+    APPROVED,
+    REJECTED,
+    SENT_BACK
 }

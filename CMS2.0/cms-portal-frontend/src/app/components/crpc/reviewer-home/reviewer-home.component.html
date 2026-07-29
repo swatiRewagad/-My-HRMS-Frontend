@@ -1,96 +1,210 @@
 <div class="reviewer-home">
-  <!-- User Bar -->
-  <div class="user-bar">
-    <div class="user-info">
-      <i class="pi pi-user"></i>
-      <span class="user-name">{{ loggedInUser?.name || 'Reviewer' }}</span>
-      <span class="user-role">{{ loggedInUser?.role || 'REVIEWER' }}</span>
+  <!-- Header Bar -->
+  <header class="cms-header">
+    <div class="header-left">
+      <img src="assets/corporates-rbi-logo.jpg" alt="RBI" class="rbi-logo" />
+      <div class="rbi-text">
+        <span class="rbi-hindi">भारतीय रिज़र्व बैंक</span>
+        <span class="rbi-english">RESERVE BANK OF INDIA</span>
+      </div>
+      <div class="header-divider-v"></div>
+      <img src="assets/rbi-logo.png" alt="CMS" class="cms-logo" onerror="this.style.display='none'" />
+      <span class="cms-title">CMS</span>
+      <span class="cms-subtitle">Complaint Management System</span>
     </div>
-    <button class="btn-logout" (click)="logout()">
-      <i class="pi pi-sign-out"></i> Logout
-    </button>
-  </div>
+    <div class="header-right">
+      <div class="header-icons">
+        <button title="Phone"><i class="pi pi-phone"></i></button>
+        <span class="acc-divider">|</span>
+        <button title="Decrease font">A-</button>
+        <button title="Normal font">A</button>
+        <button title="Increase font">A+</button>
+        <span class="acc-divider">|</span>
+        <button title="Language">English <i class="pi pi-chevron-down"></i></button>
+        <span class="acc-divider">|</span>
+        <button title="Notifications"><i class="pi pi-bell"></i></button>
+      </div>
+      <div class="header-divider"></div>
+      <span class="user-avatar">{{ (loggedInUser?.name || 'R').charAt(0) }}</span>
+      <div class="user-details">
+        <span class="user-name">{{ loggedInUser?.name || 'Reviewer' }}</span>
+        <span class="user-role">CRPC Reviewer</span>
+      </div>
+      <button class="btn-logout" (click)="logout()"><i class="pi pi-sign-out"></i></button>
+    </div>
+  </header>
 
-  <!-- Stats -->
-  <div class="stats-bar">
-    <div class="stat-card" (click)="filterStatus.set('')">
-      <span class="stat-value">{{ stats().total }}</span>
-      <span class="stat-label">Total</span>
-    </div>
-    <div class="stat-card pending" (click)="filterStatus.set('PENDING_REVIEW')">
-      <span class="stat-value">{{ stats().pending }}</span>
-      <span class="stat-label">Pending Review</span>
-    </div>
-    <div class="stat-card approved" (click)="filterStatus.set('APPROVED')">
-      <span class="stat-value">{{ stats().approved }}</span>
-      <span class="stat-label">Approved</span>
-    </div>
-    <div class="stat-card sent-back" (click)="filterStatus.set('SENT_BACK')">
-      <span class="stat-value">{{ stats().sentBack }}</span>
-      <span class="stat-label">Sent Back</span>
-    </div>
-    <div class="stat-card closed" (click)="filterStatus.set('CLOSED_NM')">
-      <span class="stat-value">{{ stats().closedNm }}</span>
-      <span class="stat-label">Closed (NM)</span>
-    </div>
-  </div>
+  <!-- Sidebar + Content -->
+  <div class="main-layout">
+    <!-- Left Sidebar -->
+    <aside class="sidebar" [class.collapsed]="sidebarCollapsed()">
+      <div class="sidebar-item active">
+        <i class="pi pi-list"></i>
+        <span>CRPC Complaints</span>
+      </div>
+      <div class="sidebar-collapse" (click)="sidebarCollapsed.set(!sidebarCollapsed())">
+        <i class="pi pi-angle-double-left"></i>
+        <span>Collapse</span>
+      </div>
+    </aside>
 
-  <!-- Toolbar -->
-  <div class="toolbar">
-    <h2>Reviewer Queue</h2>
-    <div class="toolbar-right">
-      <input type="text" class="search-input" placeholder="Search..." [value]="searchText()" (input)="searchText.set($any($event.target).value)" aria-label="Search" />
-      <select [value]="filterDeoDecision()" (change)="filterDeoDecision.set($any($event.target).value)" aria-label="Filter by DEO decision">
-        <option value="">All Decisions</option>
-        <option value="MAINTAINABLE">Maintainable</option>
-        <option value="NON_MAINTAINABLE">Non-Maintainable</option>
-      </select>
-    </div>
-  </div>
+    <!-- Main Content -->
+    <main class="content">
+      <div class="content-header">
+        <h1>CRPC Complaints</h1>
+        <div class="header-actions">
+          <button class="btn btn-link">Advanced Search</button>
+          <select class="queue-select">
+            <option>CRPC Complaints</option>
+          </select>
+          <select class="queue-select">
+            <option>Complaints Assigned To Me</option>
+            <option>All Complaints</option>
+          </select>
+        </div>
+      </div>
 
-  <!-- Grid -->
-  <div class="grid-container">
-    @if (loading()) {
-      <div class="loading-overlay"><div class="spinner"></div></div>
-    }
+      <!-- Stats Cards -->
+      <div class="stats-bar">
+        <div class="stat-card" (click)="filterStatus.set('')">
+          <div class="stat-icon blue"><i class="pi pi-inbox"></i></div>
+          <div class="stat-content">
+            <span class="stat-label">Total Complaints <i class="pi pi-info-circle"></i></span>
+            <span class="stat-value">{{ stats().total }}</span>
+          </div>
+        </div>
+        <div class="stat-card" (click)="filterStatus.set('')">
+          <div class="stat-icon orange"><i class="pi pi-file"></i></div>
+          <div class="stat-content">
+            <span class="stat-label">Direct Complaints <i class="pi pi-info-circle"></i></span>
+            <span class="stat-value">{{ stats().pending }}</span>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon red"><i class="pi pi-envelope"></i></div>
+          <div class="stat-content">
+            <span class="stat-label">Complaints via AGR <i class="pi pi-info-circle"></i></span>
+            <span class="stat-value">{{ stats().approved }}</span>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon red"><i class="pi pi-globe"></i></div>
+          <div class="stat-content">
+            <span class="stat-label">Complaints via RBI Domain <i class="pi pi-info-circle"></i></span>
+            <span class="stat-value">{{ stats().sentBack }}</span>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon purple"><i class="pi pi-tag"></i></div>
+          <div class="stat-content">
+            <span class="stat-label">Label <i class="pi pi-info-circle"></i></span>
+            <span class="stat-value">₹110,000,000</span>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon gray"><i class="pi pi-copy"></i></div>
+          <div class="stat-content">
+            <span class="stat-label">CC/BCC Complaints <i class="pi pi-info-circle"></i></span>
+            <span class="stat-value">{{ stats().closedNm }}</span>
+          </div>
+        </div>
+      </div>
 
-    <table class="data-grid" aria-label="Reviewer queue">
-      <thead>
-        <tr>
-          <th>Draft ID</th>
-          <th>Subject</th>
-          <th>Category</th>
-          <th>DEO Decision</th>
-          <th>DEO</th>
-          <th>Mode</th>
-          <th>Ageing</th>
-          <th>Priority</th>
-          <th>Status</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        @for (draft of filteredDrafts(); track draft.draftId) {
-          <tr [class.vernacular-row]="draft.vernacular">
-            <td><a class="draft-link" (click)="openDraft(draft.draftId)">{{ draft.draftId }}</a></td>
-            <td class="subject-cell">{{ draft.subject }}</td>
-            <td>{{ draft.category }}</td>
-            <td>
-              <span class="deo-badge" [attr.data-decision]="draft.deoDecision">{{ draft.deoDecision }}</span>
-            </td>
-            <td>{{ draft.deoName }}</td>
-            <td>{{ draft.modeOfReceipt }}</td>
-            <td>{{ draft.ageing }}d</td>
-            <td><span class="priority-badge" [attr.data-priority]="draft.priority">{{ draft.priority }}</span></td>
-            <td><span class="status-badge" [attr.data-status]="draft.status">{{ draft.status }}</span></td>
-            <td>
-              <button class="btn btn-sm btn-primary" (click)="openDraft(draft.draftId)">Review</button>
-            </td>
-          </tr>
-        } @empty {
-          <tr><td colspan="10" class="empty-state"><p>No drafts pending review.</p></td></tr>
+      <!-- Status Tabs -->
+      <div class="status-tabs">
+        <button class="tab" [class.active]="filterStatus() === ''" (click)="filterStatus.set('')">All</button>
+        <button class="tab" [class.active]="filterStatus() === 'SENT_TO_REVIEWER'" (click)="filterStatus.set('SENT_TO_REVIEWER')">
+          Draft <span class="tab-count">{{ stats().pending }}</span>
+        </button>
+        <button class="tab" [class.active]="filterStatus() === 'IN_PROGRESS'" (click)="filterStatus.set('IN_PROGRESS')">In Progress</button>
+        <button class="tab" [class.active]="filterStatus() === 'SENT_BACK'" (click)="filterStatus.set('SENT_BACK')">
+          Sent Back @if (stats().sentBack > 0) { <span class="tab-count">{{ stats().sentBack }}</span> }
+        </button>
+        <button class="tab" [class.active]="filterStatus() === 'APPROVED'" (click)="filterStatus.set('APPROVED')">Assessment Complete</button>
+      </div>
+
+      <!-- Complaints Table -->
+      <div class="table-section">
+        <div class="table-header-row">
+          <h3>Complaints</h3>
+          <button class="btn btn-icon" title="Settings"><i class="pi pi-cog"></i></button>
+        </div>
+
+        @if (loading()) {
+          <div class="loading-overlay">
+            <div class="spinner"></div>
+          </div>
         }
-      </tbody>
-    </table>
+
+        <div class="table-wrapper">
+          <table class="data-grid">
+            <thead>
+              <tr>
+                <th class="checkbox-col"><input type="checkbox" /></th>
+                @for (col of visibleColumns(); track col.key) {
+                  <th (click)="sortBy(col.key)">
+                    {{ col.label }}
+                    @if (sortColumn === col.key) {
+                      <i class="pi" [class.pi-sort-amount-up]="sortDirection === 'asc'" [class.pi-sort-amount-down]="sortDirection === 'desc'"></i>
+                    }
+                  </th>
+                }
+              </tr>
+              <tr class="filter-row">
+                <th></th>
+                @for (col of visibleColumns(); track col.key) {
+                  <th>
+                    <input type="text" class="col-search" placeholder="Search" [(ngModel)]="columnFilters[col.key]" />
+                  </th>
+                }
+              </tr>
+            </thead>
+            <tbody>
+              @for (draft of paginatedDrafts(); track draft.draftId) {
+                <tr (click)="openDraft(draft.draftId)">
+                  <td class="checkbox-col" (click)="$event.stopPropagation()"><input type="checkbox" /></td>
+                  @for (col of visibleColumns(); track col.key) {
+                    <td>
+                      @if (col.key === 'status') {
+                        <span class="status-badge" [attr.data-status]="draft.status">{{ getStatusLabel(draft.status) }}</span>
+                      } @else if (col.key === 'modeOfReceipt') {
+                        {{ draft.modeOfReceipt === 'PHYSICAL_LETTER' ? 'Letter' : 'Email' }}
+                      } @else if (col.key === 'ageing') {
+                        <span class="ageing-badge" [class.green]="draft.ageing <= 1" [class.orange]="draft.ageing > 1 && draft.ageing <= 3" [class.red]="draft.ageing > 3">{{ draft.ageing }} {{ draft.ageing === 1 ? 'day' : 'days' }}</span>
+                      } @else {
+                        {{ getCellValue(draft, col.key) }}
+                      }
+                    </td>
+                  }
+                </tr>
+              } @empty {
+                <tr>
+                  <td [attr.colspan]="visibleColumns().length + 1" class="empty-state">No complaints found.</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Pagination -->
+        <div class="pagination">
+          <span class="page-info">Showing {{ paginationStart() }} to {{ paginationEnd() }} of {{ filteredDrafts().length }} entries</span>
+          <div class="page-controls">
+            <button class="page-btn" (click)="currentPage.set(1)" [disabled]="currentPage() === 1">&laquo;</button>
+            <button class="page-btn" (click)="currentPage.set(currentPage() - 1)" [disabled]="currentPage() === 1">&lsaquo;</button>
+            @for (p of pageNumbers(); track p) {
+              <button class="page-btn" [class.active]="p === currentPage()" (click)="currentPage.set(p)">{{ p }}</button>
+            }
+            <button class="page-btn" (click)="currentPage.set(currentPage() + 1)" [disabled]="currentPage() === totalPages()">&rsaquo;</button>
+            <button class="page-btn" (click)="currentPage.set(totalPages())" [disabled]="currentPage() === totalPages()">&raquo;</button>
+            <select class="page-size-select" [(ngModel)]="pageSize">
+              <option [value]="10">10</option>
+              <option [value]="25">25</option>
+              <option [value]="50">50</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </main>
   </div>
 </div>
