@@ -1,38 +1,27 @@
 version: '3.8'
 
 services:
-  # ── MySQL ──
-  cms-mysql:
-    image: mysql:8.0
-    container_name: cms-mysql
+  # ── Oracle Database (XE) ──
+  cms-oracle:
+    image: gvenzl/oracle-xe:21-slim
+    container_name: cms-oracle
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-cms_root_pass}
-      MYSQL_DATABASE: cms_db
-      MYSQL_USER: ${MYSQL_USER:-cms_user}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-cms_pass}
+      ORACLE_PASSWORD: ${ORACLE_PASSWORD:-cms_root_pass}
+      ORACLE_DATABASE: ${ORACLE_DATABASE:-CMSDB}
+      APP_USER: ${ORACLE_USER:-cms_user}
+      APP_USER_PASSWORD: ${ORACLE_PASSWORD_APP:-cms_pass}
     ports:
-      - "3307:3306"
+      - "1521:1521"
     volumes:
-      - cms-mysql-data:/var/lib/mysql
-      - ./mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
-    command: >
-      --max-connections=500
-      --innodb-buffer-pool-size=1G
-      --innodb-log-file-size=256M
-      --innodb-flush-log-at-trx-commit=2
-      --innodb-flush-method=O_DIRECT
-      --slow-query-log=1
-      --long-query-time=2
-      --thread-cache-size=64
-      --table-open-cache=4000
-      --character-set-server=utf8mb4
-      --collation-server=utf8mb4_unicode_ci
+      - cms-oracle-data:/opt/oracle/oradata
+      - ./oracle-schema-and-seed.sql:/container-entrypoint-initdb.d/oracle-schema-and-seed.sql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-cms_root_pass}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      test: ["CMD", "healthcheck.sh"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
     networks:
       - cms-network
 
@@ -99,20 +88,20 @@ services:
     restart: unless-stopped
     environment:
       SPRING_PROFILES_ACTIVE: prod
-      DB_URL: jdbc:mysql://cms-mysql:3306/cms_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&rewriteBatchedStatements=true&cachePrepStmts=true&prepStmtCacheSize=250&prepStmtCacheSqlLimit=2048&useServerPrepStmts=true
-      DB_USERNAME: ${MYSQL_USER:-cms_user}
-      DB_PASSWORD: ${MYSQL_PASSWORD:-cms_pass}
+      DB_URL: jdbc:oracle:thin:@//cms-oracle:1521/${ORACLE_DATABASE:-CMSDB}
+      DB_USER: ${ORACLE_USER:-cms_user}
+      DB_PASSWORD: ${ORACLE_PASSWORD_APP:-cms_pass}
       REDIS_HOST: cms-redis
       REDIS_PORT: 6379
       CMS_ATTACHMENTS_PATH: /cms-attachments
       JAVA_OPTS: "-Xms512m -Xmx1g"
-      CMS_CORS_ALLOWED_ORIGINS: "http://localhost:4200,http://localhost:4201,http://localhost:4202,http://localhost:4300,http://localhost"
+      CMS_CORS_ORIGINS: "http://localhost:4200,http://localhost:4201,http://localhost:4202,http://localhost:4300,http://localhost"
       KAFKA_BOOTSTRAP: cms-kafka:9092
       GROQ_API_KEY: "${GROQ_API_KEY}"
     volumes:
       - cms-attachments:/cms-attachments
     depends_on:
-      cms-mysql:
+      cms-oracle:
         condition: service_healthy
       cms-redis:
         condition: service_healthy
@@ -138,20 +127,20 @@ services:
     restart: unless-stopped
     environment:
       SPRING_PROFILES_ACTIVE: prod
-      DB_URL: jdbc:mysql://cms-mysql:3306/cms_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&rewriteBatchedStatements=true&cachePrepStmts=true&prepStmtCacheSize=250&prepStmtCacheSqlLimit=2048&useServerPrepStmts=true
-      DB_USERNAME: ${MYSQL_USER:-cms_user}
-      DB_PASSWORD: ${MYSQL_PASSWORD:-cms_pass}
+      DB_URL: jdbc:oracle:thin:@//cms-oracle:1521/${ORACLE_DATABASE:-CMSDB}
+      DB_USER: ${ORACLE_USER:-cms_user}
+      DB_PASSWORD: ${ORACLE_PASSWORD_APP:-cms_pass}
       REDIS_HOST: cms-redis
       REDIS_PORT: 6379
       CMS_ATTACHMENTS_PATH: /cms-attachments
       JAVA_OPTS: "-Xms512m -Xmx1g"
-      CMS_CORS_ALLOWED_ORIGINS: "http://localhost:4200,http://localhost:4201,http://localhost:4202,http://localhost:4300,http://localhost"
+      CMS_CORS_ORIGINS: "http://localhost:4200,http://localhost:4201,http://localhost:4202,http://localhost:4300,http://localhost"
       KAFKA_BOOTSTRAP: cms-kafka:9092
       GROQ_API_KEY: "${GROQ_API_KEY}"
     volumes:
       - cms-attachments:/cms-attachments
     depends_on:
-      cms-mysql:
+      cms-oracle:
         condition: service_healthy
       cms-redis:
         condition: service_healthy
@@ -234,13 +223,13 @@ services:
     restart: unless-stopped
     environment:
       SPRING_PROFILES_ACTIVE: docker
-      DB_URL: jdbc:mysql://cms-mysql:3306/cms_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
-      DB_USERNAME: ${MYSQL_USER:-cms_user}
-      DB_PASSWORD: ${MYSQL_PASSWORD:-cms_pass}
+      DB_URL: jdbc:oracle:thin:@//cms-oracle:1521/${ORACLE_DATABASE:-CMSDB}
+      DB_USER: ${ORACLE_USER:-cms_user}
+      DB_PASSWORD: ${ORACLE_PASSWORD_APP:-cms_pass}
       KAFKA_BOOTSTRAP: cms-kafka:9092
       SERVER_PORT: 8082
     depends_on:
-      cms-mysql:
+      cms-oracle:
         condition: service_healthy
       cms-kafka:
         condition: service_healthy
@@ -263,13 +252,13 @@ services:
     restart: unless-stopped
     environment:
       SPRING_PROFILES_ACTIVE: docker
-      DB_URL: jdbc:mysql://cms-mysql:3306/cms_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
-      DB_USERNAME: ${MYSQL_USER:-cms_user}
-      DB_PASSWORD: ${MYSQL_PASSWORD:-cms_pass}
+      DB_URL: jdbc:oracle:thin:@//cms-oracle:1521/${ORACLE_DATABASE:-CMSDB}
+      DB_USER: ${ORACLE_USER:-cms_user}
+      DB_PASSWORD: ${ORACLE_PASSWORD_APP:-cms_pass}
       KAFKA_BOOTSTRAP: cms-kafka:9092
       SERVER_PORT: 8083
     depends_on:
-      cms-mysql:
+      cms-oracle:
         condition: service_healthy
       cms-kafka:
         condition: service_healthy
@@ -292,13 +281,13 @@ services:
     restart: unless-stopped
     environment:
       SPRING_PROFILES_ACTIVE: docker
-      DB_URL: jdbc:mysql://cms-mysql:3306/cms_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
-      DB_USERNAME: ${MYSQL_USER:-cms_user}
-      DB_PASSWORD: ${MYSQL_PASSWORD:-cms_pass}
+      DB_URL: jdbc:oracle:thin:@//cms-oracle:1521/${ORACLE_DATABASE:-CMSDB}
+      DB_USER: ${ORACLE_USER:-cms_user}
+      DB_PASSWORD: ${ORACLE_PASSWORD_APP:-cms_pass}
       KAFKA_BOOTSTRAP: cms-kafka:9092
       SERVER_PORT: 8084
     depends_on:
-      cms-mysql:
+      cms-oracle:
         condition: service_healthy
       cms-kafka:
         condition: service_healthy
@@ -321,13 +310,13 @@ services:
     restart: unless-stopped
     environment:
       SPRING_PROFILES_ACTIVE: docker
-      DB_URL: jdbc:mysql://cms-mysql:3306/cms_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
-      DB_USERNAME: ${MYSQL_USER:-cms_user}
-      DB_PASSWORD: ${MYSQL_PASSWORD:-cms_pass}
+      DB_URL: jdbc:oracle:thin:@//cms-oracle:1521/${ORACLE_DATABASE:-CMSDB}
+      DB_USER: ${ORACLE_USER:-cms_user}
+      DB_PASSWORD: ${ORACLE_PASSWORD_APP:-cms_pass}
       KAFKA_BOOTSTRAP: cms-kafka:9092
       SERVER_PORT: 8085
     depends_on:
-      cms-mysql:
+      cms-oracle:
         condition: service_healthy
       cms-kafka:
         condition: service_healthy
@@ -350,13 +339,13 @@ services:
     restart: unless-stopped
     environment:
       SPRING_PROFILES_ACTIVE: docker
-      DB_URL: jdbc:mysql://cms-mysql:3306/cms_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
-      DB_USERNAME: ${MYSQL_USER:-cms_user}
-      DB_PASSWORD: ${MYSQL_PASSWORD:-cms_pass}
+      DB_URL: jdbc:oracle:thin:@//cms-oracle:1521/${ORACLE_DATABASE:-CMSDB}
+      DB_USER: ${ORACLE_USER:-cms_user}
+      DB_PASSWORD: ${ORACLE_PASSWORD_APP:-cms_pass}
       KAFKA_BOOTSTRAP: cms-kafka:9092
       SERVER_PORT: 8086
     depends_on:
-      cms-mysql:
+      cms-oracle:
         condition: service_healthy
       cms-kafka:
         condition: service_healthy
@@ -403,13 +392,13 @@ services:
     restart: unless-stopped
     environment:
       SPRING_PROFILES_ACTIVE: docker
-      DB_URL: jdbc:mysql://cms-mysql:3306/cms_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
-      DB_USERNAME: ${MYSQL_USER:-cms_user}
-      DB_PASSWORD: ${MYSQL_PASSWORD:-cms_pass}
+      DB_URL: jdbc:oracle:thin:@//cms-oracle:1521/${ORACLE_DATABASE:-CMSDB}
+      DB_USER: ${ORACLE_USER:-cms_user}
+      DB_PASSWORD: ${ORACLE_PASSWORD_APP:-cms_pass}
       KAFKA_BOOTSTRAP: cms-kafka:9092
       SERVER_PORT: 8088
     depends_on:
-      cms-mysql:
+      cms-oracle:
         condition: service_healthy
       cms-kafka:
         condition: service_healthy
@@ -432,13 +421,13 @@ services:
     restart: unless-stopped
     environment:
       SPRING_PROFILES_ACTIVE: docker
-      DB_URL: jdbc:mysql://cms-mysql:3306/cms_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
-      DB_USERNAME: ${MYSQL_USER:-cms_user}
-      DB_PASSWORD: ${MYSQL_PASSWORD:-cms_pass}
+      DB_URL: jdbc:oracle:thin:@//cms-oracle:1521/${ORACLE_DATABASE:-CMSDB}
+      DB_USER: ${ORACLE_USER:-cms_user}
+      DB_PASSWORD: ${ORACLE_PASSWORD_APP:-cms_pass}
       KAFKA_BOOTSTRAP: cms-kafka:9092
       SERVER_PORT: 8089
     depends_on:
-      cms-mysql:
+      cms-oracle:
         condition: service_healthy
       cms-kafka:
         condition: service_healthy
@@ -675,7 +664,7 @@ services:
       - cms-network
 
 volumes:
-  cms-mysql-data:
+  cms-oracle-data:
   cms-redis-data:
   cms-kafka-data:
   cms-opensearch-data:

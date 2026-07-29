@@ -20,13 +20,39 @@ spec:
         - name: cms-portal-frontend
           image: image-registry.openshift-image-registry.svc:5000/rbi-cms/cms-portal-frontend:latest
           ports:
-            - containerPort: 80
+            - containerPort: 8080
           env:
+            # Nginx proxy target (used in nginx.conf.template envsubst)
+            - name: API_BACKEND_HOST
+              value: "cms-backend"
+            - name: API_BACKEND_PORT
+              value: "8080"
+            # Runtime config.json values (from ConfigMap)
             - name: API_BASE_URL
               valueFrom:
                 configMapKeyRef:
-                  name: cms-common-config
-                  key: CMS_BACKEND_URL
+                  name: cms-portal-frontend-config
+                  key: API_BASE_URL
+            - name: KEYCLOAK_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: cms-portal-frontend-config
+                  key: KEYCLOAK_URL
+            - name: KEYCLOAK_REALM
+              valueFrom:
+                configMapKeyRef:
+                  name: cms-portal-frontend-config
+                  key: KEYCLOAK_REALM
+            - name: KEYCLOAK_CLIENT_ID
+              valueFrom:
+                configMapKeyRef:
+                  name: cms-portal-frontend-config
+                  key: KEYCLOAK_CLIENT_ID
+          volumeMounts:
+            - name: nginx-config
+              mountPath: /etc/nginx/conf.d/default.conf.template
+              subPath: nginx.conf
+              readOnly: true
           resources:
             requests:
               cpu: 100m
@@ -36,16 +62,23 @@ spec:
               memory: 256Mi
           readinessProbe:
             httpGet:
-              path: /
-              port: 80
+              path: /health
+              port: 8080
             initialDelaySeconds: 10
             periodSeconds: 5
           livenessProbe:
             httpGet:
-              path: /
-              port: 80
+              path: /health
+              port: 8080
             initialDelaySeconds: 15
             periodSeconds: 10
+      volumes:
+        - name: nginx-config
+          configMap:
+            name: cms-portal-frontend-config
+            items:
+              - key: nginx.conf
+                path: nginx.conf
 ---
 apiVersion: v1
 kind: Service
@@ -57,7 +90,7 @@ spec:
     app: cms-portal-frontend
   ports:
     - port: 80
-      targetPort: 80
+      targetPort: 8080
   type: ClusterIP
 ---
 apiVersion: route.openshift.io/v1
@@ -66,12 +99,12 @@ metadata:
   name: cms-portal-frontend
   namespace: rbi-cms
 spec:
-  host: cms-portal.apps.openshift.example.com
+  host: cms-portal-frontend-rbi-cms.apps.ocpvcl.rebit.org.in
   to:
     kind: Service
     name: cms-portal-frontend
   port:
-    targetPort: 80
+    targetPort: 8080
   tls:
     termination: edge
     insecureEdgeTerminationPolicy: Redirect

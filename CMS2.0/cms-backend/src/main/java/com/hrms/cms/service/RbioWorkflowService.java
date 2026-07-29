@@ -29,6 +29,7 @@ public class RbioWorkflowService {
     private final RbioSlaService rbioSlaService;
     private final RbioCompensationService rbioCompensationService;
     private final CepcAuditService auditService;
+    private final NotificationService notificationService;
 
     private final Map<String, Integer> roundRobinCounters = new ConcurrentHashMap<>();
 
@@ -116,6 +117,9 @@ public class RbioWorkflowService {
         auditService.logActionAsync(complaintNumber, action, actor, userRole,
                 remarks, auditMetadata, previousStatus, complaint.getStatus());
 
+        // ═══ Notification triggers ═══
+        triggerRbioNotifications(complaint, action.toUpperCase(), actor, params);
+
         // Build response
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("complaintNumber", complaint.getComplaintNumber());
@@ -125,6 +129,77 @@ public class RbioWorkflowService {
         result.put("assignedOfficer", complaint.getAssignedOfficer());
 
         return result;
+    }
+
+    /**
+     * Triggers in-app notifications based on RBIO workflow actions.
+     * UST605: NEW_ASSIGNMENT, UST659: MEETING_SCHEDULED, UST663: COMPLAINT_CLOSED,
+     * UST610: NO_REASSIGNED_TO_RBI
+     */
+    private void triggerRbioNotifications(Complaint c, String action, String actor, Map<String, String> params) {
+        String complaintUrl = "/workflow/rbio/complaint/" + c.getComplaintNumber();
+
+        switch (action) {
+            case "SCHEDULE_MEETING":
+                // UST659: MEETING_SCHEDULED — notify complainant + owner + RE
+                String owner = c.getAssignedOfficer();
+                if (owner != null && !owner.isBlank() && !owner.equals(actor)) {
+                    notificationService.send(owner, "MEETING_SCHEDULED",
+                            "Meeting scheduled for complaint",
+                            "A meeting has been scheduled for complaint " + c.getComplaintNumber()
+                                    + (c.getConciliationDate() != null ? " on " + c.getConciliationDate().toLocalDate() : ""),
+                            c.getComplaintNumber(), "COMPLAINT", complaintUrl);
+                }
+                // Notify RE (entity code as userId placeholder)
+                if (c.getEntityCode() != null && !c.getEntityCode().isBlank()) {
+                    notificationService.send(c.getEntityCode(), "MEETING_SCHEDULED",
+                            "Meeting scheduled — your attendance required",
+                            "A conciliation meeting has been scheduled for complaint " + c.getComplaintNumber()
+                                    + ". Please prepare accordingly.",
+                            c.getComplaintNumber(), "COMPLAINT", complaintUrl);
+                }
+                break;
+
+            case "FORWARD_TO_CONCILIATION":
+            case "FORWARD_TO_ADJUDICATION":
+            case "ESCALATE_TO_ADJUDICATION":
+            case "REASSIGN":
+                // UST605: NEW_ASSIGNMENT — notify new officer
+                if (c.getAssignedOfficer() != null && !c.getAssignedOfficer().isBlank() && !c.getAssignedOfficer().equals(actor)) {
+                    notificationService.send(c.getAssignedOfficer(), "NEW_ASSIGNMENT",
+                            "Complaint assigned to you",
+                            "Complaint " + c.getComplaintNumber() + " has been assigned to you (" + c.getAssignedRole() + ") via " + action,
+                            c.getComplaintNumber(), "COMPLAINT", complaintUrl);
+                }
+                break;
+
+            case "RESOLVE":
+            case "CONCILIATION_SUCCESS":
+            case "ADJUDICATION_AWARD":
+            case "ADJUDICATION_REJECT":
+            case "CLOSE_COMPLAINT":
+                // UST663: COMPLAINT_CLOSED — notify owner
+                if (c.getAssignedOfficer() != null && !c.getAssignedOfficer().isBlank() && !c.getAssignedOfficer().equals(actor)) {
+                    notificationService.send(c.getAssignedOfficer(), "COMPLAINT_CLOSED",
+                            "Complaint closed",
+                            "Complaint " + c.getComplaintNumber() + " has been closed via " + action,
+                            c.getComplaintNumber(), "COMPLAINT", complaintUrl);
+                }
+                break;
+
+            case "RETURN_TO_OFFICER":
+                // UST610: NO_REASSIGNED_TO_RBI — notify officer
+                if (c.getAssignedOfficer() != null && !c.getAssignedOfficer().isBlank()) {
+                    notificationService.send(c.getAssignedOfficer(), "NO_REASSIGNED_TO_RBI",
+                            "Complaint returned to you",
+                            "Complaint " + c.getComplaintNumber() + " has been returned to RBIO_OFFICER for further action.",
+                            c.getComplaintNumber(), "COMPLAINT", complaintUrl);
+                }
+                break;
+
+            default:
+                break;
+        }
     }
 
     /**
@@ -179,8 +254,32 @@ public class RbioWorkflowService {
                 break;
 
             case "APPROVE":
-                complaint.setStatus("approved");
-                complaint.setAssignedRole(getNextRole(complaint.getAssignedRole()));
+                String approveNextRole = getNextRole(complaint.getAssignedRole());
+                complaint.setAssignedRole(approveNextRole);
+                if ("RBIO_CONCILIATOR".equals(approveNextRole)) {
+                    complaint.setStatus("conciliation");
+                    complaint.setWorkflowStage("CONCILIATION");
+                    String approvedConciliator = assignByRole("RBIO_CONCILIATOR");
+                    if (approvedConciliator != null) {
+                        complaint.setAssignedOfficer(approvedConciliator);
+                    }
+                    rbioSlaService.applyStageSla(complaint, "CONCILIATION");
+                } else if ("RBIO_ADJUDICATOR".equals(approveNextRole)) {
+                    complaint.setStatus("adjudication");
+                    complaint.setWorkflowStage("ADJUDICATION");
+                    String approvedAdjudicator = assignByRole("RBIO_ADJUDICATOR");
+                    if (approvedAdjudicator != null) {
+                        complaint.setAssignedOfficer(approvedAdjudicator);
+                    }
+                    rbioSlaService.applyStageSla(complaint, "ADJUDICATION");
+                } else {
+                    complaint.setStatus("escalated");
+                    complaint.setWorkflowStage("ESCALATED");
+                    String approvedNext = assignByRole(approveNextRole);
+                    if (approvedNext != null) {
+                        complaint.setAssignedOfficer(approvedNext);
+                    }
+                }
                 break;
 
             case "REJECT":
@@ -193,8 +292,13 @@ public class RbioWorkflowService {
             case "ESCALATE":
                 complaint.setStatus("escalated");
                 complaint.setEscalatedAt(LocalDateTime.now());
-                complaint.setAssignedRole(getNextRole(complaint.getAssignedRole()));
+                String nextRole = getNextRole(complaint.getAssignedRole());
+                complaint.setAssignedRole(nextRole);
                 complaint.setWorkflowStage("ESCALATED");
+                String escalateTo = assignByRole(nextRole);
+                if (escalateTo != null) {
+                    complaint.setAssignedOfficer(escalateTo);
+                }
                 break;
 
             case "RETURN_TO_OFFICER":

@@ -28,6 +28,8 @@ spec:
           envFrom:
             - configMapRef:
                 name: cms-common-config
+            - configMapRef:
+                name: cms-backend-config
             - secretRef:
                 name: cms-db-secret
             - secretRef:
@@ -77,3 +79,19 @@ spec:
       targetPort: 8080
       protocol: TCP
   type: ClusterIP
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: cms-backend
+  namespace: rbi-cms
+spec:
+  host: cms-backend-rbi-cms.apps.ocpvcl.rebit.org.in
+  to:
+    kind: Service
+    name: cms-backend
+  port:
+    targetPort: 8080
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect

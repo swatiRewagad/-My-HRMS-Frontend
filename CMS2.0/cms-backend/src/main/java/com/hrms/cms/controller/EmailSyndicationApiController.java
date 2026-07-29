@@ -231,6 +231,9 @@ public class EmailSyndicationApiController {
                 .receivedAt(LocalDateTime.now())
                 .build();
 
+        // Stamp scheme version at creation time (UST190)
+        draft.setSchemeVersion("RBIOS_2026");
+
         EmailDraft saved = draftRepository.save(draft);
         log.info("Draft saved to DB: id={}, draftId={}, assignedTo={}", saved.getId(), saved.getDraftId(), saved.getAssignedTo());
 
@@ -528,6 +531,14 @@ public class EmailSyndicationApiController {
         if (request.containsKey("reviewerDecision")) draft.setReviewerDecision((String) request.get("reviewerDecision"));
         if (request.containsKey("reviewerRemarks")) draft.setReviewerRemarks((String) request.get("reviewerRemarks"));
         if (request.containsKey("targetOffice")) draft.setTargetOffice((String) request.get("targetOffice"));
+        if (request.containsKey("schemeVersion")) draft.setSchemeVersion((String) request.get("schemeVersion"));
+        if (request.containsKey("closureClause")) draft.setClosureClause((String) request.get("closureClause"));
+        if (request.containsKey("autoClosureResponsesJson")) draft.setAutoClosureResponsesJson((String) request.get("autoClosureResponsesJson"));
+        if (request.containsKey("subJudice")) draft.setSubJudice(Boolean.TRUE.equals(request.get("subJudice")));
+        if (request.containsKey("notAComplaintReason")) draft.setNotAComplaintReason((String) request.get("notAComplaintReason"));
+        if (request.containsKey("notAComplaintOthersReason")) draft.setNotAComplaintOthersReason((String) request.get("notAComplaintOthersReason"));
+        if (request.containsKey("suggestionDepartment")) draft.setSuggestionDepartment((String) request.get("suggestionDepartment"));
+        if (request.containsKey("suggestionNature")) draft.setSuggestionNature((String) request.get("suggestionNature"));
 
         draftRepository.save(draft);
 
@@ -867,6 +878,16 @@ public class EmailSyndicationApiController {
         response.put("reviewerDecision", draft.getReviewerDecision());
         response.put("reviewerRemarks", draft.getReviewerRemarks());
         response.put("targetOffice", draft.getTargetOffice());
+
+        // Scheme & Auto-closure
+        response.put("schemeVersion", draft.getSchemeVersion());
+        response.put("closureClause", draft.getClosureClause());
+        response.put("autoClosureResponsesJson", draft.getAutoClosureResponsesJson());
+        response.put("subJudice", draft.isSubJudice());
+        response.put("notAComplaintReason", draft.getNotAComplaintReason());
+        response.put("notAComplaintOthersReason", draft.getNotAComplaintOthersReason());
+        response.put("suggestionDepartment", draft.getSuggestionDepartment());
+        response.put("suggestionNature", draft.getSuggestionNature());
 
         // Language info
         response.put("detectedLanguage", draft.getDetectedLanguage());
