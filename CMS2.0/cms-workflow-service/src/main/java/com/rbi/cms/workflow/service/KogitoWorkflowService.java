@@ -3,6 +3,8 @@ package com.rbi.cms.workflow.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rbi.cms.common.enums.ComplaintStatus;
 import com.rbi.cms.common.event.ComplaintEvent;
+import com.rbi.cms.workflow.entity.WorkflowInstance;
+import com.rbi.cms.workflow.repository.WorkflowInstanceRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.kie.kogito.Model;
@@ -10,18 +12,13 @@ import org.kie.kogito.process.Process;
 import org.kie.kogito.process.ProcessInstance;
 import org.kie.kogito.process.WorkItem;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * Kogito-based workflow service.
- * Uses the auto-generated process from complaint-lifecycle.bpmn2.
- * Kogito compiles BPMN into a Process<T> bean at build time.
- */
 @Slf4j
 @Service
 @Profile("!dev-local")
@@ -32,11 +29,12 @@ public class KogitoWorkflowService implements ComplaintWorkflowProcessor {
     private final Process<? extends Model> complaintProcess;
 
     private final RoundRobinAssignmentService assignmentService;
+    private final WorkflowEventPublisher eventPublisher;
+    private final WorkflowInstanceRepository workflowInstanceRepository;
     private final ObjectMapper objectMapper;
 
-    private final ConcurrentHashMap<String, String> complaintProcessMap = new ConcurrentHashMap<>();
-
     @Override
+    @Transactional
     public String startComplaintWorkflow(ComplaintEvent event) {
         log.info("[KOGITO] Starting workflow for complaint: {}", event.getComplaintId());
 
@@ -73,14 +71,12 @@ public class KogitoWorkflowService implements ComplaintWorkflowProcessor {
         params.put("entityType", entityType);
         params.put("entitySize", entitySize);
 
-        // Pre-route department (inline routing until Drools businessRuleTask integration is complete)
         String department = "RBIO";
         if ("LARGE".equals(entitySize) || "PRIVATE_SECTOR".equals(entityType)) {
             department = "CEPC";
         }
         params.put("department", department);
 
-        // Pre-assign officers (inline assignment until Drools ruleflow-groups are wired)
         String assignedOfficer = safeAssign(department + "_OFFICER", "OFFICER_001");
         params.put("assignedOfficer", assignedOfficer);
         params.put("assignedDeo", safeAssign("CRPC_DEO", "DEO_001"));
@@ -98,27 +94,52 @@ public class KogitoWorkflowService implements ComplaintWorkflowProcessor {
         instance.start();
 
         String processInstanceId = instance.id();
-        complaintProcessMap.put(event.getComplaintId(), processInstanceId);
 
-        log.info("[KOGITO] Workflow started: complaint={}, processId={}, status={}",
-                event.getComplaintId(), processInstanceId, instance.status());
+        String currentTask = instance.workItems().stream()
+                .findFirst()
+                .map(WorkItem::getName)
+                .orElse(null);
+
+        WorkflowInstance wfInstance = WorkflowInstance.builder()
+                .complaintId(event.getComplaintId())
+                .correlationId(event.getCorrelationId())
+                .processInstanceId(processInstanceId)
+                .department(department)
+                .assignedOfficer(assignedOfficer)
+                .channel(channel)
+                .category(category)
+                .priority(priority)
+                .currentTask(currentTask)
+                .status(ComplaintStatus.ASSIGNED)
+                .startedAt(Instant.now())
+                .updatedAt(Instant.now())
+                .build();
+
+        workflowInstanceRepository.save(wfInstance);
+
+        eventPublisher.publishAssigned(event.getComplaintId(), department, assignedOfficer);
+
+        log.info("[KOGITO] Workflow started: complaint={}, processId={}, dept={}, officer={}, task={}",
+                event.getComplaintId(), processInstanceId, department, assignedOfficer, currentTask);
 
         return processInstanceId;
     }
 
     @Override
+    @Transactional
     public void transitionState(String complaintId, ComplaintStatus targetStatus, String remarks) {
         log.info("[KOGITO] Transition: complaint={} → {}", complaintId, targetStatus);
 
-        String processInstanceId = complaintProcessMap.get(complaintId);
-        if (processInstanceId == null) {
-            log.warn("[KOGITO] No active process for complaint: {}", complaintId);
+        WorkflowInstance wfInstance = workflowInstanceRepository.findByComplaintId(complaintId).orElse(null);
+        if (wfInstance == null) {
+            log.warn("[KOGITO] No workflow instance for complaint: {}", complaintId);
             return;
         }
 
-        Optional<? extends ProcessInstance<?>> instanceOpt = complaintProcess.instances().findById(processInstanceId);
+        Optional<? extends ProcessInstance<?>> instanceOpt =
+                complaintProcess.instances().findById(wfInstance.getProcessInstanceId());
         if (instanceOpt.isEmpty()) {
-            log.warn("[KOGITO] Process instance not found: {}", processInstanceId);
+            log.warn("[KOGITO] Process instance not found: {}", wfInstance.getProcessInstanceId());
             return;
         }
 
@@ -137,19 +158,34 @@ public class KogitoWorkflowService implements ComplaintWorkflowProcessor {
             log.info("[KOGITO] Completed task '{}' for complaint: {}", workItem.getName(), complaintId);
             break;
         }
+
+        String newTask = instance.workItems().stream()
+                .findFirst()
+                .map(WorkItem::getName)
+                .orElse(null);
+
+        wfInstance.setStatus(targetStatus);
+        wfInstance.setCurrentTask(newTask);
+        wfInstance.setUpdatedAt(Instant.now());
+        if (targetStatus == ComplaintStatus.CLOSED || targetStatus == ComplaintStatus.RESOLVED) {
+            wfInstance.setCompletedAt(Instant.now());
+        }
+        workflowInstanceRepository.save(wfInstance);
     }
 
     @Override
+    @Transactional
     public void escalateComplaint(String complaintId, String reason) {
         log.info("[KOGITO] Escalating complaint: {} - reason: {}", complaintId, reason);
 
-        String processInstanceId = complaintProcessMap.get(complaintId);
-        if (processInstanceId == null) {
-            log.warn("[KOGITO] No active process for complaint: {}", complaintId);
+        WorkflowInstance wfInstance = workflowInstanceRepository.findByComplaintId(complaintId).orElse(null);
+        if (wfInstance == null) {
+            log.warn("[KOGITO] No workflow instance for complaint: {}", complaintId);
             return;
         }
 
-        Optional<? extends ProcessInstance<?>> instanceOpt = complaintProcess.instances().findById(processInstanceId);
+        Optional<? extends ProcessInstance<?>> instanceOpt =
+                complaintProcess.instances().findById(wfInstance.getProcessInstanceId());
         if (instanceOpt.isEmpty()) return;
 
         ProcessInstance<?> instance = instanceOpt.get();
@@ -158,17 +194,31 @@ public class KogitoWorkflowService implements ComplaintWorkflowProcessor {
                 "escalationReason", reason
         )));
 
+        wfInstance.setStatus(ComplaintStatus.ESCALATED);
+        wfInstance.setEscalationReason(reason);
+        wfInstance.setUpdatedAt(Instant.now());
+
+        String newTask = instance.workItems().stream()
+                .findFirst()
+                .map(WorkItem::getName)
+                .orElse(null);
+        wfInstance.setCurrentTask(newTask);
+        workflowInstanceRepository.save(wfInstance);
+
+        eventPublisher.publishEscalated(complaintId, reason, "SUPERVISOR");
         log.info("[KOGITO] Escalation signal sent for complaint: {}", complaintId);
     }
 
+    @Transactional
     public void completeHumanTask(String complaintId, String userId, Map<String, Object> taskData) {
-        String processInstanceId = complaintProcessMap.get(complaintId);
-        if (processInstanceId == null) {
-            log.warn("[KOGITO] No active process for complaint: {}", complaintId);
+        WorkflowInstance wfInstance = workflowInstanceRepository.findByComplaintId(complaintId).orElse(null);
+        if (wfInstance == null) {
+            log.warn("[KOGITO] No workflow instance for complaint: {}", complaintId);
             return;
         }
 
-        Optional<? extends ProcessInstance<?>> instanceOpt = complaintProcess.instances().findById(processInstanceId);
+        Optional<? extends ProcessInstance<?>> instanceOpt =
+                complaintProcess.instances().findById(wfInstance.getProcessInstanceId());
         if (instanceOpt.isEmpty()) return;
 
         ProcessInstance<?> instance = instanceOpt.get();
@@ -180,28 +230,54 @@ public class KogitoWorkflowService implements ComplaintWorkflowProcessor {
                     workItem.getName(), userId, complaintId);
             break;
         }
+
+        String newTask = instance.workItems().stream()
+                .findFirst()
+                .map(WorkItem::getName)
+                .orElse(null);
+
+        wfInstance.setCurrentTask(newTask);
+        wfInstance.setStatus(ComplaintStatus.IN_PROGRESS);
+        wfInstance.setUpdatedAt(Instant.now());
+        workflowInstanceRepository.save(wfInstance);
     }
 
     public List<WorkItem> getActiveWorkItems(String complaintId) {
-        String processInstanceId = complaintProcessMap.get(complaintId);
-        if (processInstanceId == null) return Collections.emptyList();
+        WorkflowInstance wfInstance = workflowInstanceRepository.findByComplaintId(complaintId).orElse(null);
+        if (wfInstance == null) return Collections.emptyList();
 
-        Optional<? extends ProcessInstance<?>> instanceOpt = complaintProcess.instances().findById(processInstanceId);
+        Optional<? extends ProcessInstance<?>> instanceOpt =
+                complaintProcess.instances().findById(wfInstance.getProcessInstanceId());
         return instanceOpt.map(ProcessInstance::workItems).orElse(Collections.emptyList());
     }
 
     public Map<String, Object> getProcessInstanceInfo(String complaintId) {
         Map<String, Object> info = new HashMap<>();
-        String processInstanceId = complaintProcessMap.get(complaintId);
-        info.put("processInstanceId", processInstanceId);
-        info.put("tracked", processInstanceId != null);
 
-        if (processInstanceId == null) return info;
+        WorkflowInstance wfInstance = workflowInstanceRepository.findByComplaintId(complaintId).orElse(null);
+        if (wfInstance == null) {
+            info.put("processInstanceId", null);
+            info.put("tracked", false);
+            return info;
+        }
 
-        Optional<? extends ProcessInstance<?>> instanceOpt = complaintProcess.instances().findById(processInstanceId);
+        info.put("processInstanceId", wfInstance.getProcessInstanceId());
+        info.put("tracked", true);
+        info.put("department", wfInstance.getDepartment());
+        info.put("assignedOfficer", wfInstance.getAssignedOfficer());
+        info.put("channel", wfInstance.getChannel());
+        info.put("category", wfInstance.getCategory());
+        info.put("priority", wfInstance.getPriority());
+        info.put("currentTask", wfInstance.getCurrentTask());
+        info.put("dbStatus", wfInstance.getStatus().name());
+        info.put("startedAt", wfInstance.getStartedAt().toString());
+        info.put("updatedAt", wfInstance.getUpdatedAt().toString());
+
+        Optional<? extends ProcessInstance<?>> instanceOpt =
+                complaintProcess.instances().findById(wfInstance.getProcessInstanceId());
         if (instanceOpt.isEmpty()) {
             info.put("found", false);
-            info.put("note", "Instance not found - may have completed or errored");
+            info.put("note", "Process instance not found in engine - may have completed or service restarted");
         } else {
             ProcessInstance<?> instance = instanceOpt.get();
             info.put("found", true);

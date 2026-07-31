@@ -1210,6 +1210,30 @@
     font-size: 15px; color: #111827; padding: 2px 0; margin: 0; line-height: 1.5; font-weight: 600;
   }
 
+  .complaint-details-scroll {
+    max-height: 150px;
+    overflow-y: auto;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    padding: 8px 12px;
+  }
+
+  .comment-tools {
+    margin-bottom: 6px;
+    .template-select {
+      padding: 4px 8px;
+      font-size: 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 4px;
+      background: #fff;
+    }
+  }
+
+  .readonly-input {
+    background: #f3f4f6 !important;
+    cursor: not-allowed;
+  }
+
   .field-static { font-size: 15px; color: #111827; font-weight: 600; }
   .field-value { font-size: 15px; color: #111827; font-weight: 600; padding: 2px 0; }
 }

@@ -8,21 +8,25 @@ spring:
     name: cms-workflow-service
 
   datasource:
-    url: jdbc:oracle:thin:@${DB_HOST:localhost}:${DB_PORT:1521}/${DB_SERVICE:CMSDB}
-    username: ${DB_USER:cms_workflow}
-    password: ${DB_PASSWORD:cms_workflow}
-    driver-class-name: oracle.jdbc.OracleDriver
+    url: ${DB_URL:jdbc:mysql://localhost:3306/cms_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&rewriteBatchedStatements=true}
+    username: ${DB_USERNAME:cms_user}
+    password: ${DB_PASSWORD:}
+    driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
       maximum-pool-size: 20
       minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
 
   jpa:
     hibernate:
       ddl-auto: update
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.OracleDialect
+        dialect: org.hibernate.dialect.MySQLDialect
     show-sql: false
+    open-in-view: false
 
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
@@ -32,22 +36,50 @@ spring:
       enable-auto-commit: false
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all
+      retries: 3
     listener:
       ack-mode: manual
+      missing-topics-fatal: false
 
 # Kogito Configuration
 kogito:
   persistence:
     type: jdbc
+    jdbc:
+      dialect: mysql
+
+# CMS Workflow Configuration
+cms:
+  kafka:
+    retry:
+      max-attempts: ${CMS_KAFKA_MAX_RETRIES:3}
+      backoff-ms: ${CMS_KAFKA_RETRY_BACKOFF_MS:2000}
+    consumer:
+      concurrency: ${CMS_KAFKA_CONSUMER_CONCURRENCY:3}
+    idempotency:
+      retention-days: ${CMS_KAFKA_IDEMPOTENCY_RETENTION_DAYS:7}
+      cleanup-cron: "0 0 2 * * ?"
 
 management:
   endpoints:
     web:
       exposure:
         include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when-authorized
+  health:
+    kafka:
+      enabled: true
 
 logging:
   level:
     com.rbi.cms: INFO
+    org.apache.kafka: WARN
+    org.springframework.kafka: INFO
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [%X{correlationId}] %-5level %logger{36} - %msg%n"

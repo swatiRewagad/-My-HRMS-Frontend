@@ -262,6 +262,7 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
   pensionComplaint = false;
   businessCorrespondent = false;
   atmCreditDebitCard = false;
+  atmCardNumber = '';
   schemeFlag = '';
   rboCgpcOld = '';
   groundsFlag = '';
@@ -1200,7 +1201,7 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
   // ─── Email: Request Additional Information ───
   openEmailComposer() {
     this.emailTo = this.complainantEmail;
-    this.emailSubject = `Re: ${this.subject} — Additional Information Required [${this.draftId}]`;
+    this.emailSubject = `RE: ${this.subject}`;
     this.emailBody = '';
     this.showEmailComposer.set(true);
   }
@@ -1533,6 +1534,18 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
     this.editMode.set(true);
     this.activeStep.set('creation');
     this.sectionOpen.complaint = true;
+  }
+
+  onDeoDecisionChange(decision: string) {
+    this.deoDecision = decision as any;
+    if (decision === 'MAINTAINABLE') {
+      this.maintainabilityQuestions.forEach(q => q.answer = 'YES');
+    }
+  }
+
+  onEligibilityAnswer(id: string, answer: string) {
+    const q = this.maintainabilityQuestions.find(mq => mq.id === id);
+    if (q) q.answer = answer as any;
   }
 
   goToAssignment() {

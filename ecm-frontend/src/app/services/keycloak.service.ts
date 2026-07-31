@@ -7,7 +7,7 @@ export class KeycloakService {
   private _refreshToken: string = '';
   private _tokenParsed: any = null;
   private _tokenExpiry = 0;
-  private keycloakUrl = 'http://localhost:9091';
+  private keycloakUrl = 'http://localhost:9090';
   private clientId = 'ecm-frontend';
 
   constructor() {

@@ -53,7 +53,8 @@ export class DeoHomeComponent implements OnInit {
 
   // Filters
   filterStatus = signal('');
-  filterMode = signal<'ALL' | 'DIRECT' | 'ABR'>('ALL');
+  filterMode = signal<'ALL' | 'DIRECT' | 'ABR' | 'RBI_DOMAIN'>('ALL');
+  assignmentFilter = signal<'ASSIGNED_TO_ME' | 'ALL'>('ASSIGNED_TO_ME');
   searchText = signal('');
   filterUnread = signal(false);
   filterWithoutAttachments = signal(false);
@@ -61,6 +62,10 @@ export class DeoHomeComponent implements OnInit {
   filterVernacular = signal(false);
   columnFilters: Record<string, string> = {};
   columnSearchText = '';
+
+  // Role-based module selector
+  selectedRoleModule = signal('CRPC_COMPLAINT');
+  userRoles = signal<{ value: string; label: string }[]>([]);
 
   // Not-a-Complaint dialog
   showNotAComplaintDialog = signal(false);
@@ -126,8 +131,9 @@ export class DeoHomeComponent implements OnInit {
     const mode = this.filterMode();
     const search = this.searchText();
     if (status) result = result.filter(d => d.status === status);
-    if (mode === 'DIRECT') result = result.filter(d => d.modeOfReceipt === 'PHYSICAL_LETTER' || d.modeOfReceipt === 'PORTAL');
-    if (mode === 'ABR') result = result.filter(d => d.modeOfReceipt === 'EMAIL' || d.modeOfReceipt === 'CPGRAMS');
+    if (mode === 'DIRECT') result = result.filter(d => d.modeOfReceipt === 'EMAIL' && !d.fromEmailId.toLowerCase().includes('rbi.org.in') && !d.fromEmailId.toLowerCase().includes('rbi.gov.in'));
+    if (mode === 'ABR') result = result.filter(d => d.modeOfReceipt === 'CPGRAMS');
+    if (mode === 'RBI_DOMAIN') result = result.filter(d => d.fromEmailId.toLowerCase().includes('rbi.org.in') || d.fromEmailId.toLowerCase().includes('rbi.gov.in'));
     if (this.advSearchActive()) {
       const q = this.advSearch;
       if (q.complaintNumber) result = result.filter(d => d.complaintNumber.toLowerCase().includes(q.complaintNumber.toLowerCase()));
@@ -206,14 +212,19 @@ export class DeoHomeComponent implements OnInit {
 
   stats = computed(() => {
     const all = this.drafts();
+    const pending = all.filter(d => d.status === 'DRAFT' || d.status === 'IN_PROGRESS');
     return {
       total: all.length,
       draft: all.filter(d => d.status === 'DRAFT').length,
       inProgress: all.filter(d => d.status === 'IN_PROGRESS').length,
       rejected: all.filter(d => d.status === 'REJECTED_BY_REVIEWER').length,
       approved: all.filter(d => d.status === 'APPROVED').length,
-      direct: all.filter(d => d.modeOfReceipt === 'PHYSICAL_LETTER' || d.modeOfReceipt === 'PORTAL').length,
-      viaAbr: all.filter(d => d.modeOfReceipt === 'EMAIL' || d.modeOfReceipt === 'CPGRAMS').length,
+      direct: all.filter(d => d.modeOfReceipt === 'EMAIL' && !d.fromEmailId.toLowerCase().includes('rbi.org.in') && !d.fromEmailId.toLowerCase().includes('rbi.gov.in')).length,
+      viaAbr: all.filter(d => d.modeOfReceipt === 'CPGRAMS').length,
+      viaRbiDomain: all.filter(d => d.fromEmailId.toLowerCase().includes('rbi.org.in') || d.fromEmailId.toLowerCase().includes('rbi.gov.in')).length,
+      pending0to3: pending.filter(d => d.ageing <= 3).length,
+      pending4to6: pending.filter(d => d.ageing >= 4 && d.ageing <= 6).length,
+      pendingOver6: pending.filter(d => d.ageing > 6).length,
     };
   });
 
@@ -257,6 +268,23 @@ export class DeoHomeComponent implements OnInit {
       this.router.navigate(['/crpc/ops-head']);
       return;
     }
+
+    // Build role-based module options from user's Keycloak roles
+    const allRoles = this.auth.getRoles();
+    const roleModules: { value: string; label: string }[] = [];
+    if (allRoles.some(r => ['DEO', 'REVIEWER', 'CRPC_HEAD', 'INCHARGE'].includes(r))) {
+      roleModules.push({ value: 'CRPC_COMPLAINT', label: 'CRPC Complaints' });
+    }
+    if (allRoles.some(r => ['RBIO_OFFICER', 'RBIO_SUPERVISOR'].includes(r))) {
+      roleModules.push({ value: 'RBIO', label: 'RBIO' });
+    }
+    if (allRoles.some(r => ['CEPC_OFFICER', 'CEPC_SUPERVISOR'].includes(r))) {
+      roleModules.push({ value: 'CEPC', label: 'CEPC' });
+    }
+    if (roleModules.length === 0) {
+      roleModules.push({ value: 'CRPC_COMPLAINT', label: 'CRPC Complaints' });
+    }
+    this.userRoles.set(roleModules);
 
     this.loadDrafts();
   }
@@ -422,7 +450,10 @@ export class DeoHomeComponent implements OnInit {
     const val = (draft as any)[key];
     if (val === null || val === undefined) return '—';
     if (key === 'vernacular') return val ? 'Yes' : 'No';
-    if (key === 'assignedAt' || key === 'createdAt') return new Date(val).toLocaleDateString('en-IN');
+    if (key === 'assignedAt' || key === 'createdAt') {
+      const d = new Date(val);
+      return `${String(d.getDate()).padStart(2, '0')}-${String(d.getMonth() + 1).padStart(2, '0')}-${d.getFullYear()}`;
+    }
     if (key === 'ageing') return val + ' day' + (val !== 1 ? 's' : '');
     return String(val);
   }
@@ -484,7 +515,6 @@ export class DeoHomeComponent implements OnInit {
   }
 
   confirmNotAComplaint() {
-    if (!this.notAComplaintReason) return;
     const ids = [...this.selectedIds()];
     if (ids.length === 1) {
       this.workflowService.markNotAComplaint(ids[0], this.notAComplaintReason, this.notAComplaintRemarks).subscribe(() => {
@@ -503,5 +533,19 @@ export class DeoHomeComponent implements OnInit {
 
   sendForApproval(draftId: string) {
     this.workflowService.sendForApproval(draftId).subscribe(() => this.loadDrafts());
+  }
+
+  onRoleModuleChange(module: string) {
+    this.selectedRoleModule.set(module);
+    switch (module) {
+      case 'RBIO':
+        this.router.navigate(['/rbio/home']);
+        break;
+      case 'CEPC':
+        this.router.navigate(['/cepc/dashboard']);
+        break;
+      default:
+        break;
+    }
   }
 }

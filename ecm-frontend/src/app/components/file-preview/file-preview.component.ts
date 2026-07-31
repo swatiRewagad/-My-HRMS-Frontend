@@ -13,6 +13,7 @@ import { EcmService } from '../../services/ecm.service';
 export class FilePreviewComponent implements OnChanges {
   @Input() file: any = null;
   @Input() visible = false;
+  @Input() inline = false;
   @Output() visibleChange = new EventEmitter<boolean>();
 
   previewUrl: SafeResourceUrl | null = null;
