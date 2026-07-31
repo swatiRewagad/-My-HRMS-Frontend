@@ -4,17 +4,6 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  background: linear-gradient(180deg, #e8edf7 0%, #f5f0fa 100%);
-  border-radius: 0 0 40px 40px;
-}
-
-.page-title {
-  font-size: 1.75rem;
-  font-weight: 700;
-  color: #2b1a6e;
-  margin: 0 0 2rem;
-  font-style: italic;
-  text-align: center;
 }
 
 .verify-card {
@@ -122,33 +111,42 @@
   gap: 0.4rem;
 }
 
+.captcha-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  flex: 1;
+}
+
 .captcha-label {
   font-size: 0.8rem;
   font-weight: 600;
   color: #333;
 }
 
-// Captcha row — image left, input right (same line, same height)
+// Captcha row — image left, input right
 .captcha-row {
   display: flex;
-  align-items: stretch;
+  align-items: flex-end;
   gap: 0.75rem;
 }
 
 .captcha-image-box {
-  background: #fff;
-  border: 2px solid #43a047;
-  border-radius: 6px;
-  padding: 0.25rem;
-  min-width: 160px;
-  min-height: 44px;
+  background: transparent;
+  border: 1px solid #d1d7e0;
+  border-radius: 4px;
+  padding: 0;
+  min-width: 180px;
+  height: 48px;
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
 
   .captcha-img {
-    max-width: 100%;
-    max-height: 54px;
+    width: 100%;
+    height: 100%;
+    object-fit: fill;
     display: block;
   }
 
@@ -196,13 +194,14 @@
 }
 
 .captcha-input {
-  flex: 1;
+  width: 100%;
   padding: 0.65rem 0.75rem;
   border: 1.5px solid #d1d7e0;
   border-radius: 6px;
   font-size: 0.9rem;
   font-family: inherit;
-  min-width: 120px;
+  box-sizing: border-box;
+  height: 44px;
 
   &:focus {
     outline: none;

@@ -1,5 +1,4 @@
 <div class="verification-page">
-  <h1 class="page-title">Login</h1>
 
   <div class="verify-card">
     <div class="card-header">
@@ -34,10 +33,6 @@
         </div>
 
         <div class="captcha-section" role="group" aria-labelledby="captcha-label">
-          <label id="captcha-label" class="captcha-label">
-            {{ captchaType() === 'VISUAL' ? ('login.captcha_visual' | translate) : ('login.captcha_math' | translate) }}
-          </label>
-
           @if (captchaType() === 'VISUAL') {
             <div class="captcha-row">
               <div class="captcha-image-box" aria-hidden="true">
@@ -47,18 +42,24 @@
                   <span class="captcha-loading">Loading...</span>
                 }
               </div>
-              <input type="text" [(ngModel)]="captchaInput" placeholder="Enter text"
-                     class="captcha-input" autocomplete="off"
-                     aria-label="Enter the CAPTCHA text shown in the image"
-                     [disabled]="cooloffActive() || loading()" />
+              <div class="captcha-input-group">
+                <label id="captcha-label" class="captcha-label">Captcha</label>
+                <input type="text" [(ngModel)]="captchaInput" placeholder=""
+                       class="captcha-input" autocomplete="off"
+                       aria-label="Enter the CAPTCHA text shown in the image"
+                       [disabled]="cooloffActive() || loading()" />
+              </div>
             </div>
           } @else {
             <div class="captcha-math">
               <p class="math-question" aria-live="polite">{{ captchaData()?.audioQuestion }}</p>
-              <input type="text" [(ngModel)]="captchaInput" placeholder="Your answer"
-                     class="captcha-input" autocomplete="off" inputmode="numeric"
-                     aria-label="Enter the answer to the math question"
-                     [disabled]="cooloffActive() || loading()" />
+              <div class="captcha-input-group">
+                <label id="captcha-label" class="captcha-label">Captcha</label>
+                <input type="text" [(ngModel)]="captchaInput" placeholder="Your answer"
+                       class="captcha-input" autocomplete="off" inputmode="numeric"
+                       aria-label="Enter the answer to the math question"
+                       [disabled]="cooloffActive() || loading()" />
+              </div>
             </div>
           }
 
