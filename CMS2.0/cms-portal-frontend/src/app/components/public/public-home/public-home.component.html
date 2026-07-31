@@ -131,30 +131,30 @@
       </div>
     </div>
   </section>
+
+  <!-- Details of the Ombudsmen Scheme -->
+  <section class="scheme-section">
+    <div class="container">
+      <h2 class="scheme-title">{{ 'home.scheme_title' | translate }}</h2>
+      <div class="scheme-grid">
+        @for (scheme of schemeCards; track scheme.title) {
+          <div class="scheme-card">
+            <div class="scheme-icon">
+              <i [class]="scheme.icon"></i>
+            </div>
+            <div class="scheme-text">
+              <h4>{{ scheme.title }}</h4>
+              @if (scheme.hasDownload) {
+                <a href="javascript:void(0)" class="scheme-download"><i class="pi pi-download"></i> {{ 'home.ct_download' | translate }}</a>
+              }
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  </section>
 </div>
 }
-
-<!-- Details of the Ombudsmen Scheme -->
-<section class="scheme-section">
-  <div class="container">
-    <h2 class="scheme-title">{{ 'home.scheme_title' | translate }}</h2>
-    <div class="scheme-grid">
-      @for (scheme of schemeCards; track scheme.title) {
-        <div class="scheme-card">
-          <div class="scheme-icon">
-            <i [class]="scheme.icon"></i>
-          </div>
-          <div class="scheme-text">
-            <h4>{{ scheme.title }}</h4>
-            @if (scheme.hasDownload) {
-              <a href="javascript:void(0)" class="scheme-download"><i class="pi pi-download"></i> {{ 'home.ct_download' | translate }}</a>
-            }
-          </div>
-        </div>
-      }
-    </div>
-  </div>
-</section>
 
 <!-- What We Do Section -->
 <section class="whatwedo">
