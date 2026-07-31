@@ -508,28 +508,73 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
     }
   }
 
-  // Eligibility file upload
-  eligibilityFileName = '';
-  private eligibilityFile: File | null = null;
+  // Eligibility file uploads (separate per section)
+  complaintFileWithRE: File | null = null;
+  complaintFileWithREName = '';
+  reminderFile: File | null = null;
+  reminderFileName = '';
+  replyFile: File | null = null;
+  replyFileName = '';
 
-  onEligibilityFileSelected(event: Event) {
+  onComplaintFileSelected(event: Event) {
     const input = event.target as HTMLInputElement;
     if (input.files && input.files[0]) {
-      this.eligibilityFile = input.files[0];
-      this.eligibilityFileName = input.files[0].name;
+      if (input.files[0].size > 2 * 1024 * 1024) {
+        this.eligibilityFieldError = 'File size exceeds 2MB limit';
+        input.value = '';
+        return;
+      }
+      this.complaintFileWithRE = input.files[0];
+      this.complaintFileWithREName = input.files[0].name;
     }
   }
 
-  previewEligibilityFile() {
-    if (this.eligibilityFile) {
-      const url = URL.createObjectURL(this.eligibilityFile);
+  onReminderFileSelected(event: Event) {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files[0]) {
+      if (input.files[0].size > 2 * 1024 * 1024) {
+        this.eligibilityFieldError = 'File size exceeds 2MB limit';
+        input.value = '';
+        return;
+      }
+      this.reminderFile = input.files[0];
+      this.reminderFileName = input.files[0].name;
+    }
+  }
+
+  onReplyFileSelected(event: Event) {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files[0]) {
+      if (input.files[0].size > 2 * 1024 * 1024) {
+        this.eligibilityFieldError = 'File size exceeds 2MB limit';
+        input.value = '';
+        return;
+      }
+      this.replyFile = input.files[0];
+      this.replyFileName = input.files[0].name;
+    }
+  }
+
+  previewFile(file: File | null) {
+    if (file) {
+      const url = URL.createObjectURL(file);
       window.open(url, '_blank');
     }
   }
 
-  removeEligibilityFile() {
-    this.eligibilityFile = null;
-    this.eligibilityFileName = '';
+  removeComplaintFile() {
+    this.complaintFileWithRE = null;
+    this.complaintFileWithREName = '';
+  }
+
+  removeReminderFile() {
+    this.reminderFile = null;
+    this.reminderFileName = '';
+  }
+
+  removeReplyFile() {
+    this.replyFile = null;
+    this.replyFileName = '';
   }
 
   // FR-G-013: Speech to text
@@ -609,11 +654,13 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
 
   // ══════ ELIGIBILITY (FR-G-007 step 2) ══════
   get currentQuestion(): EligibilityQuestion {
-    return this.eligibilityQuestions[this.eligibilityStep() - 1];
+    const visible = this.visibleEligibilityQuestions;
+    const idx = Math.min(this.eligibilityStep() - 1, visible.length - 1);
+    return visible[idx];
   }
 
   get totalEligibilitySteps(): number {
-    return this.eligibilityQuestions.length;
+    return this.visibleEligibilityQuestions.length;
   }
 
   get selectedEntityName(): string {
@@ -718,10 +765,6 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
         this.eligibilityFieldError = 'Complaint date with RE is required';
         return;
       }
-      if (!this.formData['bankComplaintRef']?.trim()) {
-        this.eligibilityRefError = 'RE complaint reference number is required';
-        return;
-      }
     }
 
     // UST11: Block if "No" reply and <30 days since filing with RE
@@ -742,41 +785,7 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
       }
     }
 
-    // Block if employee of RE and complaint involves employer-employee relationship
-    if (q.key === 'employeeOfRE' && this.eligibilityAnswers['employeeOfRE'] === 'yes') {
-      if (this.formData['employerRelationshipComplaint'] === 'yes') {
-        this.eligibilityBlocked.set(true);
-        this.eligibilityBlockMessage.set(
-          'Complaints involving employer-employee relationship between the complainant and the Regulated Entity cannot be filed under the Integrated Ombudsman Scheme.'
-        );
-        this.eligibilityBlockMessageKey.set('eligibility.block_staff_of_re');
-        this.nonMaintainableCaseId = 'NM-' + Date.now().toString().slice(-8);
-        this.phase.set('non-maintainable');
-        return;
-      }
-      if (!this.formData['employerRelationshipComplaint']) {
-        this.eligibilityFieldError = 'Please confirm whether your complaint involves employer-employee relationship';
-        return;
-      }
-    }
 
-    // UST27: Block if complaint is through advocate but filer is NOT the complainant
-    if (q.key === 'throughAdvocateEligibility' && this.eligibilityAnswers['throughAdvocateEligibility'] === 'yes') {
-      if (this.formData['isComplainantSelf'] === 'no') {
-        this.eligibilityBlocked.set(true);
-        this.eligibilityBlockMessage.set(
-          'As per the Integrated Ombudsman Scheme, a complaint filed through an advocate must be filed by the complainant themselves. Since you are not the complainant, this complaint cannot be processed.'
-        );
-        this.eligibilityBlockMessageKey.set('eligibility.block_advocate_not_complainant');
-        this.nonMaintainableCaseId = 'NM-' + Date.now().toString().slice(-8);
-        this.phase.set('non-maintainable');
-        return;
-      }
-      if (!this.formData['isComplainantSelf']) {
-        this.eligibilityFieldError = 'Please confirm whether you are the complainant';
-        return;
-      }
-    }
 
     if (this.eligibilityStep() < this.totalEligibilitySteps) {
       this.showSimplified.set(false);
@@ -1427,6 +1436,85 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
 
   get today(): string {
     return new Date().toLocaleDateString('en-IN');
+  }
+
+  get todayISO(): string {
+    return new Date().toISOString().split('T')[0];
+  }
+
+  // CEPC vs RBIO entity type detection
+  get selectedEntityType(): string {
+    const val = this.eligibilityAnswers['regulatedEntity'];
+    const bank = this.banks.find(b => String(b.id) === val);
+    return bank?.entityType?.toUpperCase() || 'RBIO';
+  }
+
+  get isCEPCEntity(): boolean {
+    return this.selectedEntityType === 'CEPC';
+  }
+
+  // Auto-closure for reply date within 30 days
+  showReplyDateAutoClosure = signal(false);
+  replyDateAutoCloseMessage = '';
+
+  onReplyDateChange() {
+    const replyDate = this.formData['replyDate'];
+    if (replyDate) {
+      const daysSinceReply = Math.floor((Date.now() - new Date(replyDate).getTime()) / (1000 * 60 * 60 * 24));
+      if (daysSinceReply <= 30) {
+        this.showReplyDateAutoClosure.set(true);
+        this.replyDateAutoCloseMessage = 'As the reply from the Regulated Entity was received within 30 days, your complaint cannot be registered under the Scheme at this time. Please approach the Regulated Entity for resolution first.';
+      } else {
+        this.showReplyDateAutoClosure.set(false);
+        this.replyDateAutoCloseMessage = '';
+      }
+    }
+  }
+
+  onAdvocateSubAnswer(value: string) {
+    this.formData['isComplainantSelf'] = value;
+    if (value === 'no') {
+      this.eligibilityBlocked.set(true);
+      this.eligibilityBlockMessage.set(
+        'As per the Integrated Ombudsman Scheme, a complaint filed through an advocate must be filed by the complainant themselves. Since you are not the complainant, this complaint cannot be processed.'
+      );
+      this.eligibilityBlockMessageKey.set('eligibility.block_advocate_not_complainant');
+      this.nonMaintainableCaseId = 'NM-' + Date.now().toString().slice(-8);
+    } else {
+      this.eligibilityBlocked.set(false);
+      this.eligibilityBlockMessage.set('');
+    }
+  }
+
+  // Get visible eligibility questions based on entity type
+  get visibleEligibilityQuestions(): EligibilityQuestion[] {
+    return this.eligibilityQuestions.filter((q, i) => this.isQuestionVisible(q, i));
+  }
+
+  isQuestionVisible(q: EligibilityQuestion, _index: number): boolean {
+    if (q.key === 'regulatedEntity') return true;
+    if (q.key === 'filedWithRE') return true;
+    if (q.key === 'receivedReply') return true;
+
+    // Questions 4-8 (sentReminder, isSubJudice, alreadySettled, throughAdvocateEligibility, pendingBeforeOmbudsman, settledByOmbudsman) hidden for CEPC
+    if (this.isCEPCEntity) {
+      if (['sentReminder', 'isSubJudice', 'alreadySettled', 'pendingBeforeOmbudsman', 'settledByOmbudsman'].includes(q.key)) {
+        return false;
+      }
+    }
+
+    // previouslyFiledWithCEPC shown only for CEPC
+    if (q.key === 'previouslyFiledWithCEPC') {
+      return this.isCEPCEntity;
+    }
+
+    // employeeOfRE shown for both
+    if (q.key === 'employeeOfRE') return true;
+
+    // throughAdvocateEligibility shown for both
+    if (q.key === 'throughAdvocateEligibility') return true;
+
+    return true;
   }
 
   getSelectedBankName(): string {
