@@ -212,17 +212,19 @@
 }
 
 .send-otp-btn {
-  width: 100%;
-  padding: 0.8rem 1.5rem;
+  display: block;
+  margin-left: auto;
+  margin-top: 0.75rem;
+  width: auto;
+  padding: 0.7rem 2rem;
   background: linear-gradient(90deg, #2460b9 0%, #472192 100%);
   color: #fff;
   border: none;
-  border-radius: 6px;
-  font-size: 0.95rem;
+  border-radius: 24px;
+  font-size: 0.9rem;
   font-weight: 600;
   cursor: pointer;
   transition: opacity 0.2s;
-  margin-top: 0.5rem;
 
   &:hover:not(:disabled) { opacity: 0.9; }
   &:disabled { opacity: 0.5; cursor: not-allowed; }
