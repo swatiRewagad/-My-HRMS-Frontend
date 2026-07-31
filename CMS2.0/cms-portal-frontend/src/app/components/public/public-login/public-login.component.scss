@@ -1,15 +1,17 @@
 .verification-page {
   padding: 3rem 1.5rem;
-  min-height: 50vh;
+  min-height: 60vh;
   display: flex;
   flex-direction: column;
   align-items: center;
+  background: linear-gradient(180deg, #e8edf7 0%, #f5f0fa 100%);
+  border-radius: 0 0 40px 40px;
 }
 
 .page-title {
   font-size: 1.75rem;
-  font-weight: 400;
-  color: #333;
+  font-weight: 700;
+  color: #2b1a6e;
   margin: 0 0 2rem;
   font-style: italic;
   text-align: center;

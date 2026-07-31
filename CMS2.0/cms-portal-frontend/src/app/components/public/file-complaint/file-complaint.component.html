@@ -26,18 +26,15 @@
     <div class="eligibility-card">
       <!-- Progress Bar -->
       <div class="eligibility-progress" role="progressbar"
-           [attr.aria-valuenow]="eligibilityStep()" aria-valuemin="1" [attr.aria-valuemax]="eligibilityQuestions.length"
-           [attr.aria-label]="'Step ' + eligibilityStep() + ' of ' + eligibilityQuestions.length">
-        @for (q of eligibilityQuestions; track q.key; let i = $index) {
+           [attr.aria-valuenow]="eligibilityStep()" aria-valuemin="1" [attr.aria-valuemax]="visibleEligibilityQuestions.length"
+           [attr.aria-label]="'Step ' + eligibilityStep() + ' of ' + visibleEligibilityQuestions.length">
+        @for (q of visibleEligibilityQuestions; track q.key; let i = $index) {
           <div class="ep-step"
                [class.completed]="i + 1 < eligibilityStep()"
                [class.active]="i + 1 === eligibilityStep()"></div>
         }
       </div>
 
-      @if (currentQuestion.type !== 'select') {
-        <p class="mandatory-note"><i class="pi pi-info-circle"></i> {{ 'eligibility.mandatory_note' | translate }}</p>
-      }
 
       <!-- Question -->
       <div class="question-block">
@@ -64,7 +61,7 @@
           </p>
           @if (currentQuestion.simplifiedText) {
             <button class="simplify-btn" (click)="showSimplified.set(!showSimplified())">
-              <span class="simplify-icon">?</span> {{ 'eligibility.simplify_btn' | translate }}
+              <i class="pi pi-info-circle simplify-icon"></i>
             </button>
             @if (showSimplified()) {
               <div class="simplified-box">{{ currentQuestion.simplifiedTextKey ? (currentQuestion.simplifiedTextKey | translate) : currentQuestion.simplifiedText }}</div>
@@ -87,12 +84,12 @@
             <div class="sub-field">
               <label><span class="sub-badge">a</span> {{ 'eligibility.sub_complaint_date' | translate }} {{ selectedEntityName }} <span class="required">*</span></label>
               <div class="date-input-wrapper">
-                <input type="date" class="form-input" [class.invalid]="eligibilityFieldError" [(ngModel)]="formData['bankComplaintDate']" name="bankComplaintDate" placeholder="Select Date">
+                <input type="date" class="form-input" [class.invalid]="eligibilityFieldError" [(ngModel)]="formData['bankComplaintDate']" name="bankComplaintDate" placeholder="Select Date" [max]="todayISO">
               </div>
               @if (eligibilityFieldError) { <span class="field-error">{{ eligibilityFieldError }}</span> }
             </div>
             <div class="sub-field">
-              <label><span class="sub-badge">b</span> Complaint Reference/Acknowledgement Number <span class="required">*</span></label>
+              <label><span class="sub-badge">b</span> Complaint Reference/Acknowledgement Number <span class="optional">(Optional)</span></label>
               <input type="text" class="form-input" [(ngModel)]="formData['bankComplaintRef']" name="bankComplaintRef"
                      placeholder="Enter reference number provided by {{ selectedEntityName }}">
               @if (eligibilityRefError) { <span class="field-error">{{ eligibilityRefError }}</span> }
@@ -100,22 +97,22 @@
             <div class="sub-field">
               <label><span class="sub-badge">c</span> {{ 'eligibility.sub_upload_complaint' | translate }} {{ selectedEntityName }}</label>
               <div class="upload-box">
-                <input type="file" id="eligibilityFile" class="file-hidden" accept=".pdf,.jpg,.png"
-                       (change)="onEligibilityFileSelected($event)">
-                <label for="eligibilityFile" class="upload-label">
+                <input type="file" id="complaintFileWithRE" class="file-hidden" accept=".pdf,.jpg,.png"
+                       (change)="onComplaintFileSelected($event)">
+                <label for="complaintFileWithRE" class="upload-label">
                   <span class="upload-text">{{ 'eligibility.browse_file' | translate }}</span>
                 </label>
               </div>
-              @if (eligibilityFileName) {
+              @if (complaintFileWithREName) {
                 <div class="uploaded-file-info">
                   <i class="pi pi-file"></i>
-                  <span class="uploaded-file-name" (click)="previewEligibilityFile()">{{ eligibilityFileName }}</span>
-                  <button type="button" class="remove-file-btn" (click)="removeEligibilityFile()"><i class="pi pi-times"></i></button>
+                  <span class="uploaded-file-name" (click)="previewFile(complaintFileWithRE)">{{ complaintFileWithREName }}</span>
+                  <button type="button" class="remove-file-btn" (click)="removeComplaintFile()"><i class="pi pi-times"></i></button>
                 </div>
               }
               <div class="upload-hint">
                 <span>Support formats: PDF, JPG, PNG</span>
-                <span class="upload-size">Maximum size: 5MB</span>
+                <span class="upload-size">Maximum size: 2MB</span>
               </div>
             </div>
           </div>
@@ -130,11 +127,11 @@
             </div>
             <div class="sub-question-options">
               <label class="radio-option" [class.selected]="formData['isComplainantSelf'] === 'yes'">
-                <input type="radio" name="isComplainantSelf" value="yes" [(ngModel)]="formData['isComplainantSelf']">
+                <input type="radio" name="isComplainantSelf" value="yes" (change)="onAdvocateSubAnswer('yes')">
                 <span>{{ 'eligibility.opt_yes' | translate }}</span>
               </label>
               <label class="radio-option" [class.selected]="formData['isComplainantSelf'] === 'no'">
-                <input type="radio" name="isComplainantSelf" value="no" [(ngModel)]="formData['isComplainantSelf']">
+                <input type="radio" name="isComplainantSelf" value="no" (change)="onAdvocateSubAnswer('no')">
                 <span>{{ 'eligibility.opt_no' | translate }}</span>
               </label>
             </div>
@@ -147,28 +144,28 @@
             <div class="sub-field">
               <label><span class="sub-badge">a</span> {{ 'eligibility.sub_reminder_date' | translate }}</label>
               <div class="date-input-wrapper">
-                <input type="date" class="form-input" [(ngModel)]="formData['reminderDate']" name="reminderDate" placeholder="Select Date">
+                <input type="date" class="form-input" [(ngModel)]="formData['reminderDate']" name="reminderDate" placeholder="dd/mm/yyyy" [max]="todayISO">
               </div>
             </div>
             <div class="sub-field">
               <label><span class="sub-badge">b</span> {{ 'eligibility.sub_upload_reminder' | translate }}</label>
               <div class="upload-box">
-                <input type="file" id="reminderFile" class="file-hidden" accept=".pdf,.jpg,.png"
-                       (change)="onEligibilityFileSelected($event)">
-                <label for="reminderFile" class="upload-label">
+                <input type="file" id="reminderFileInput" class="file-hidden" accept=".pdf,.jpg,.png"
+                       (change)="onReminderFileSelected($event)">
+                <label for="reminderFileInput" class="upload-label">
                   <span class="upload-text">{{ 'eligibility.browse_file' | translate }}</span>
                 </label>
               </div>
-              @if (eligibilityFileName) {
+              @if (reminderFileName) {
                 <div class="uploaded-file-info">
                   <i class="pi pi-file"></i>
-                  <span class="uploaded-file-name" (click)="previewEligibilityFile()">{{ eligibilityFileName }}</span>
-                  <button type="button" class="remove-file-btn" (click)="removeEligibilityFile()"><i class="pi pi-times"></i></button>
+                  <span class="uploaded-file-name" (click)="previewFile(reminderFile)">{{ reminderFileName }}</span>
+                  <button type="button" class="remove-file-btn" (click)="removeReminderFile()"><i class="pi pi-times"></i></button>
                 </div>
               }
               <div class="upload-hint">
                 <span>Support formats: PDF, JPG, PNG</span>
-                <span class="upload-size">Maximum size: 5MB</span>
+                <span class="upload-size">Maximum size: 2MB</span>
               </div>
             </div>
           </div>
@@ -178,54 +175,41 @@
         @if (currentQuestion.key === 'receivedReply' && eligibilityAnswers['receivedReply'] === 'yes') {
           <div class="sub-fields-row">
             <div class="sub-field">
-              <label><span class="sub-badge">a</span> {{ 'eligibility.sub_reply_date' | translate }}</label>
+              <label><span class="sub-badge">a</span> Date on which reply was received (dd/mm/yyyy)</label>
               <div class="date-input-wrapper">
-                <input type="date" class="form-input" [(ngModel)]="formData['replyDate']" name="replyDate" placeholder="Select Date">
+                <input type="date" class="form-input" [(ngModel)]="formData['replyDate']" name="replyDate" placeholder="dd/mm/yyyy" [max]="todayISO" (ngModelChange)="onReplyDateChange()">
               </div>
+              @if (showReplyDateAutoClosure()) {
+                <div class="auto-closure-msg">
+                  <i class="pi pi-exclamation-triangle"></i>
+                  <span>{{ replyDateAutoCloseMessage }}</span>
+                </div>
+              }
             </div>
             <div class="sub-field">
               <label><span class="sub-badge">b</span> {{ 'eligibility.sub_upload_reply' | translate }}</label>
               <div class="upload-box">
-                <input type="file" id="replyFile" class="file-hidden" accept=".pdf,.jpg,.png"
-                       (change)="onEligibilityFileSelected($event)">
-                <label for="replyFile" class="upload-label">
+                <input type="file" id="replyFileInput" class="file-hidden" accept=".pdf,.jpg,.png"
+                       (change)="onReplyFileSelected($event)">
+                <label for="replyFileInput" class="upload-label">
                   <span class="upload-text">{{ 'eligibility.browse_file' | translate }}</span>
                 </label>
               </div>
-              @if (eligibilityFileName) {
+              @if (replyFileName) {
                 <div class="uploaded-file-info">
                   <i class="pi pi-file"></i>
-                  <span class="uploaded-file-name" (click)="previewEligibilityFile()">{{ eligibilityFileName }}</span>
-                  <button type="button" class="remove-file-btn" (click)="removeEligibilityFile()"><i class="pi pi-times"></i></button>
+                  <span class="uploaded-file-name" (click)="previewFile(replyFile)">{{ replyFileName }}</span>
+                  <button type="button" class="remove-file-btn" (click)="removeReplyFile()"><i class="pi pi-times"></i></button>
                 </div>
               }
               <div class="upload-hint">
                 <span>Support formats: PDF, JPG, PNG</span>
-                <span class="upload-size">Maximum size: 5MB</span>
+                <span class="upload-size">Maximum size: 2MB</span>
               </div>
             </div>
           </div>
         }
 
-        <!-- Sub-question when "Yes" to employee of RE -->
-        @if (currentQuestion.key === 'employeeOfRE' && eligibilityAnswers['employeeOfRE'] === 'yes') {
-          <div class="sub-question-block">
-            <div class="sub-question-label">
-              <span class="sub-badge">a</span>
-              <span>If Yes, Is your complaint involves the employee-employer relationship of the Regulated Entity?</span>
-            </div>
-            <div class="sub-question-options">
-              <label class="radio-option" [class.selected]="formData['employerRelationshipComplaint'] === 'yes'">
-                <input type="radio" name="employerRelationshipComplaint" value="yes" [(ngModel)]="formData['employerRelationshipComplaint']">
-                <span>{{ 'eligibility.opt_yes' | translate }}</span>
-              </label>
-              <label class="radio-option" [class.selected]="formData['employerRelationshipComplaint'] === 'no'">
-                <input type="radio" name="employerRelationshipComplaint" value="no" [(ngModel)]="formData['employerRelationshipComplaint']">
-                <span>{{ 'eligibility.opt_no' | translate }}</span>
-              </label>
-            </div>
-          </div>
-        }
       </div>
 
       <!-- Blocked / Non-Maintainable -->
@@ -336,7 +320,6 @@
         </div>
       </div>
 
-      <p class="mandatory-note"><i class="pi pi-info-circle"></i> {{ 'form.mandatory_note' | translate }}</p>
 
       <!-- Step 1: Complainant Details -->
       @if (currentStep() === 1) {
@@ -868,9 +851,6 @@
               <div class="rs-row-full"><span class="rs-label">Is your complaint made through an advocate (unless you are yourself an advocate)?</span><span class="rs-value">{{ eligibilityAnswers['throughAdvocateEligibility'] === 'yes' ? 'Yes' : 'No' }}</span></div>
               <div class="rs-row-full"><span class="rs-label">Has your complaint already been dealt with or is under process on the same ground with the Ombudsman?</span><span class="rs-value">{{ eligibilityAnswers['pendingBeforeOmbudsman'] === 'yes' ? 'Yes' : (eligibilityAnswers['settledByOmbudsman'] === 'yes' ? 'Yes' : 'No') }}</span></div>
               <div class="rs-row-full"><span class="rs-label">Are / were you an employee of the Regulated Entity against whom this complaint is being filed?</span><span class="rs-value">{{ eligibilityAnswers['employeeOfRE'] === 'yes' ? 'Yes' : 'No' }}</span></div>
-              @if (eligibilityAnswers['employeeOfRE'] === 'yes') {
-                <div class="rs-row-full"><span class="rs-label">If Yes, Is your complaint involves the employee-employer relationship of the Regulated Entity?</span><span class="rs-value">{{ formData['employerRelationshipComplaint'] === 'yes' ? 'Yes' : 'No' }}</span></div>
-              }
             </div>
           </div>
 
