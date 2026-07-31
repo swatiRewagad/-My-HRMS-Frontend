@@ -12,6 +12,12 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.MySQLDialect
     show-sql: true
+    defer-datasource-initialization: true
+
+  sql:
+    init:
+      mode: always
+      data-locations: classpath:data-mysql.sql
 
   kafka:
     bootstrap-servers: localhost:9092
@@ -23,7 +29,6 @@ spring:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
     listener:
-      type: single
       missing-topics-fatal: false
       ack-mode: manual
 
@@ -36,14 +41,15 @@ kogito:
 cms:
   kafka:
     retry:
-      max-attempts: 1
-      backoff-ms: 500
+      max-attempts: 3
+      backoff-ms: 1000
     consumer:
       concurrency: 1
     idempotency:
-      retention-days: 1
-      cleanup-cron: "0 0 * * * ?"
+      retention-days: 7
+      cleanup-cron: "0 0 2 * * ?"
 
 logging:
   level:
     com.rbi.cms: DEBUG
+    org.springframework.kafka: INFO

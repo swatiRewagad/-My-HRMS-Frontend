@@ -43,39 +43,18 @@
       <div class="question-block">
         @if (currentQuestion.type === 'select') {
           <h3 class="select-heading">{{ currentQuestionText }}</h3>
-          <p class="select-desc">{{ 'eligibility.select_desc' | translate }}</p>
-          <div class="entity-search-wrapper">
-            <input type="text" class="form-input entity-search-input"
-                   [(ngModel)]="entitySearchText" name="entitySearch"
-                   (input)="filterEntities()"
-                   (focus)="entityDropdownOpen = true; filterEntities()"
-                   (blur)="closeEntityDropdown()"
-                   placeholder="Search by name or entity type..."
-                   autocomplete="off">
-            @if (entityDropdownOpen && filteredEntityOptions.length > 0) {
-              <ul class="entity-dropdown-list">
-                @for (opt of filteredEntityOptions; track opt.value) {
-                  <li class="entity-dropdown-item" (mousedown)="selectEntityFromSearch(opt)">
-                    <span class="entity-name">{{ opt.label }}</span>
-                    @if (opt.entityType) {
-                      <span class="entity-type-badge">{{ opt.entityType }}</span>
-                    }
-                  </li>
-                }
-              </ul>
-            }
-            @if (entityDropdownOpen && entitySearchText && filteredEntityOptions.length === 0) {
-              <ul class="entity-dropdown-list">
-                <li class="entity-dropdown-item no-results">No matching entities found</li>
-              </ul>
-            }
+          <p class="select-desc">Any financial institution—such as a bank, Non-Banking Financial Company (NBFC), or payment processor—licensed and supervised by the Reserve Bank of India</p>
+          <div class="entity-select-wrapper">
+            <select class="form-input entity-select-dropdown"
+                    [ngModel]="eligibilityAnswers[currentQuestion.key]"
+                    (ngModelChange)="selectEntityFromDropdown($event)"
+                    name="entitySelect">
+              <option value="" disabled selected>Select a Value</option>
+              @for (opt of entitySelectOptions; track opt.value) {
+                <option [value]="opt.value">{{ opt.label }}</option>
+              }
+            </select>
           </div>
-          @if (eligibilityAnswers[currentQuestion.key]) {
-            <div class="selected-entity-chip">
-              <span>{{ getSelectedEntityLabel() }}</span>
-              <button class="chip-clear" (click)="clearEntitySelection()">×</button>
-            </div>
-          }
         }
 
         @if (currentQuestion.type === 'radio') {

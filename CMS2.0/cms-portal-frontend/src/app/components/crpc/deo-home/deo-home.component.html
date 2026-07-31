@@ -55,6 +55,13 @@
           @if (advSearchActive()) {
             <button class="btn btn-link" style="color:#d32f2f" (click)="clearAdvancedSearch()">Clear Filters</button>
           }
+          @if (userRoles().length > 1) {
+            <select class="queue-select role-select" [value]="selectedRoleModule()" (change)="onRoleModuleChange($any($event.target).value)">
+              @for (role of userRoles(); track role.value) {
+                <option [value]="role.value">{{ role.label }}</option>
+              }
+            </select>
+          }
           <select class="queue-select" [value]="filterStatus()" (change)="filterStatus.set($any($event.target).value)">
             <option value="">CRPC Complaints</option>
             <option value="DRAFT">Draft</option>
@@ -62,13 +69,10 @@
             <option value="REJECTED_BY_REVIEWER">Sent Back</option>
             <option value="APPROVED">Assessment Complete</option>
           </select>
-          <select class="queue-select">
-            <option>Complaints Assigned To Me</option>
-            <option>All Complaints</option>
+          <select class="queue-select" [value]="assignmentFilter()" (change)="assignmentFilter.set($any($event.target).value)">
+            <option value="ASSIGNED_TO_ME">Assigned To Me</option>
+            <option value="ALL">All Complaints</option>
           </select>
-          <button class="btn btn-outline filters-btn">
-            <i class="pi pi-filter"></i> Filters
-          </button>
           <button class="btn btn-primary create-btn" (click)="createPhysicalLetter()">
             <i class="pi pi-plus"></i> Create Complaint
           </button>
@@ -80,49 +84,49 @@
         <div class="stat-card" (click)="filterStatus.set(''); filterMode.set('ALL')">
           <div class="stat-icon blue"><i class="pi pi-inbox"></i></div>
           <div class="stat-content">
-            <span class="stat-label">Total Complaints <i class="pi pi-info-circle"></i></span>
+            <span class="stat-label">Total Complaints</span>
             <span class="stat-value">{{ stats().total }}</span>
           </div>
         </div>
         <div class="stat-card" (click)="filterStatus.set(''); filterMode.set('DIRECT')">
           <div class="stat-icon orange"><i class="pi pi-file"></i></div>
           <div class="stat-content">
-            <span class="stat-label">Direct Complaints <i class="pi pi-info-circle"></i></span>
+            <span class="stat-label">Direct Complaints</span>
             <span class="stat-value">{{ stats().direct }}</span>
           </div>
         </div>
         <div class="stat-card" (click)="filterStatus.set(''); filterMode.set('ABR')">
           <div class="stat-icon red"><i class="pi pi-envelope"></i></div>
           <div class="stat-content">
-            <span class="stat-label">Complaints via AGR <i class="pi pi-info-circle"></i></span>
+            <span class="stat-label">Complaints via AGR</span>
             <span class="stat-value">{{ stats().viaAbr }}</span>
           </div>
         </div>
-        <div class="stat-card" (click)="filterStatus.set(''); filterMode.set('ALL')">
+        <div class="stat-card" (click)="filterStatus.set(''); filterMode.set('RBI_DOMAIN')">
           <div class="stat-icon red"><i class="pi pi-globe"></i></div>
           <div class="stat-content">
-            <span class="stat-label">Complaints via RBI Domain <i class="pi pi-info-circle"></i></span>
-            <span class="stat-value">{{ stats().viaAbr }}</span>
+            <span class="stat-label">Complaints via RBI Domain</span>
+            <span class="stat-value">{{ stats().viaRbiDomain }}</span>
           </div>
         </div>
         <div class="stat-card pending-card">
           <div class="stat-icon purple"><i class="pi pi-clock"></i></div>
           <div class="stat-content">
-            <span class="stat-label">Pending <i class="pi pi-info-circle"></i></span>
+            <span class="stat-label">Pending</span>
             <span class="stat-value">{{ stats().draft + stats().inProgress }}</span>
           </div>
           <div class="pending-breakdown">
             <div class="pending-col">
               <span class="pending-range">0-3 Days</span>
-              <span class="pending-count">{{ stats().draft }}</span>
+              <span class="pending-count">{{ stats().pending0to3 }}</span>
             </div>
             <div class="pending-col">
               <span class="pending-range">4-6 Days</span>
-              <span class="pending-count">{{ stats().inProgress }}</span>
+              <span class="pending-count">{{ stats().pending4to6 }}</span>
             </div>
             <div class="pending-col">
               <span class="pending-range">>6 Days</span>
-              <span class="pending-count">{{ stats().rejected }}</span>
+              <span class="pending-count">{{ stats().pendingOver6 }}</span>
             </div>
           </div>
         </div>
@@ -404,9 +408,9 @@
       </div>
       <p class="modal-subtitle">{{ selectedIds().size }} item(s) selected</p>
       <div class="form-field">
-        <label>Reason *</label>
+        <label>Reason</label>
         <select [(ngModel)]="notAComplaintReason" class="full-width-input">
-          <option value="">Select a reason</option>
+          <option value="">Select a reason (optional)</option>
           @for (reason of notAComplaintReasons; track reason) {
             <option [value]="reason">{{ reason.replace('_', ' ') }}</option>
           }
@@ -420,7 +424,7 @@
       </div>
       <div class="modal-actions">
         <button class="btn btn-outline" (click)="showNotAComplaintDialog.set(false)">Cancel</button>
-        <button class="btn btn-danger" [disabled]="!notAComplaintReason" (click)="confirmNotAComplaint()">
+        <button class="btn btn-danger" (click)="confirmNotAComplaint()">
           Confirm Not-a-Complaint
         </button>
       </div>

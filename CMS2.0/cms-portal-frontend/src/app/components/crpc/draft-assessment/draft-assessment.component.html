@@ -92,28 +92,28 @@
           <div class="meta-item">
             <span class="meta-icon"><i class="pi pi-id-card"></i></span>
             <div class="meta-text">
-              <span class="meta-label">Complaint ID <i class="pi pi-info-circle"></i></span>
+              <span class="meta-label">Complaint ID</span>
               <span class="meta-value">{{ draftId }}</span>
             </div>
           </div>
           <div class="meta-item">
             <span class="meta-icon"><i class="pi pi-file"></i></span>
             <div class="meta-text">
-              <span class="meta-label">Complaint Number <i class="pi pi-info-circle"></i></span>
+              <span class="meta-label">Complaint Number</span>
               <span class="meta-value">{{ cpgramsReference || 'Not Generated' }}</span>
             </div>
           </div>
           <div class="meta-item">
             <span class="meta-icon"><i class="pi pi-envelope"></i></span>
             <div class="meta-text">
-              <span class="meta-label">Mode of Receipt <i class="pi pi-info-circle"></i></span>
+              <span class="meta-label">Mode of Receipt</span>
               <span class="meta-value">{{ modeOfReceipt === 'PHYSICAL_LETTER' ? 'Physical Letter' : 'Email' }}</span>
             </div>
           </div>
           <div class="meta-item">
             <span class="meta-icon"><i class="pi pi-chart-bar"></i></span>
             <div class="meta-text">
-              <span class="meta-label">Status <i class="pi pi-info-circle"></i></span>
+              <span class="meta-label">Status</span>
               <span class="meta-value status-badge" [class.sent]="draftStatus === 'SENT_TO_REVIEWER'" [class.approved]="draftStatus === 'APPROVED_ROUTED'">
                 <i class="pi pi-flag"></i> {{ draftStatus === 'SENT_TO_REVIEWER' ? 'Sent to Reviewer' : 'Draft' }}
               </span>
@@ -122,7 +122,7 @@
           <div class="meta-item">
             <span class="meta-icon owner"><i class="pi pi-user"></i></span>
             <div class="meta-text">
-              <span class="meta-label">Complaint Owner <i class="pi pi-info-circle"></i></span>
+              <span class="meta-label">Complaint Owner</span>
               <span class="meta-value">{{ loggedInUser?.name || 'DEO' }}</span>
             </div>
           </div>
@@ -295,7 +295,7 @@
                   <span class="sender-name-text" [innerHTML]="emailSenderHtml() || ((complainantName || 'Unknown') + ' &lt;' + (complainantEmail || '') + '&gt;')"></span>
                   <span class="sender-meta">To: CRPC, Chandigarh</span>
                 </div>
-                <span class="email-date">{{ receivedDate | date:'dd-MM-yyyy' }}</span>
+                <span class="email-date">{{ receivedDate | date:'dd-MM-yyyy HH:mm' }}</span>
               </div>
               @if (attachments().length > 0) {
                 <div class="email-attachments-bar">
@@ -390,13 +390,21 @@
                       <app-speech-button (transcription)="description = description + ' ' + $event"></app-speech-button>
                     </div>
                   } @else {
-                    <p class="field-readonly focusable-field" tabindex="0"
-                       (focus)="onFieldFocus(description)" (click)="onFieldClick(description)" (blur)="onFieldBlur()">{{ description ? (description.length > 200 ? description.substring(0,200) + '...' : description) : '—' }}</p>
+                    <p class="field-readonly focusable-field complaint-details-scroll" tabindex="0"
+                       (focus)="onFieldFocus(description)" (click)="onFieldClick(description)" (blur)="onFieldBlur()">{{ description || '—' }}</p>
                   }
                 </div>
                 <div class="field-item full">
                   <label>Comments</label>
                   @if (editMode()) {
+                    <div class="comment-tools">
+                      <select class="template-select" (change)="applyTemplate($any($event.target).value); $any($event.target).value = ''">
+                        <option value="">Select Template</option>
+                        @for (tmpl of commentTemplates; track tmpl.id) {
+                          <option [value]="tmpl.id">{{ tmpl.label }}</option>
+                        }
+                      </select>
+                    </div>
                     <div class="textarea-with-speech">
                       <textarea [(ngModel)]="deoRemarks" rows="2" placeholder="Enter comments"
                                 (focus)="onFieldFocus(deoRemarks)" (blur)="onFieldBlur()"></textarea>
@@ -436,13 +444,13 @@
                   <div class="field-item">
                     <label>Proposed Complaint Type</label>
                     @if (editMode()) {
-                      <select [(ngModel)]="deoDecision">
+                      <select [(ngModel)]="deoDecision" (ngModelChange)="onDeoDecisionChange($event)">
                         <option value="">Select</option>
-                        <option value="MAINTAINABLE">Maintainable</option>
+                        <option value="MAINTAINABLE">New Complaint</option>
                         <option value="NON_MAINTAINABLE">Not a Complaint</option>
                       </select>
                     } @else {
-                      <span class="field-value">{{ deoDecision === 'MAINTAINABLE' ? 'Maintainable' : deoDecision === 'NON_MAINTAINABLE' ? 'Not a Complaint' : '—' }}</span>
+                      <span class="field-value">{{ deoDecision === 'MAINTAINABLE' ? 'New Complaint' : deoDecision === 'NON_MAINTAINABLE' ? 'Not a Complaint' : '—' }}</span>
                     }
                   </div>
                   <div class="field-item">
@@ -477,63 +485,27 @@
                     <input type="text" [(ngModel)]="notAComplaintOthersReason" placeholder="Enter reason for marking as not a complaint" />
                   </div>
                 }
-              </div>
-            }
-          </div>
 
-          <!-- Auto-Closure Screening Engine -->
-          <div class="form-section" [class.open]="sectionOpen.classification">
-            <div class="section-header" (click)="sectionOpen.classification = !sectionOpen.classification">
-              <span><i class="pi pi-list-check"></i> Auto-Closure Screening</span>
-              <i class="pi" [class.pi-chevron-down]="sectionOpen.classification" [class.pi-chevron-up]="!sectionOpen.classification"></i>
-            </div>
-            @if (sectionOpen.classification) {
-              <div class="section-body">
-                @if (!showAutoClosureEngine() && !autoClosureCompleted()) {
-                  <div style="text-align: center; padding: 16px;">
-                    <p style="color: #64748b; margin-bottom: 12px; font-size: 13px;">Run the auto-closure question engine to determine complaint eligibility</p>
-                    <button class="btn btn-primary" (click)="startAutoClosureScreening()" [disabled]="!editMode()">
-                      <i class="pi pi-play"></i> Start Screening
-                    </button>
-                  </div>
-                } @else if (showAutoClosureEngine()) {
-                  <app-auto-closure
-                    [schemeVersion]="schemeVersion"
-                    [entityType]="entityType"
-                    [existingResponses]="autoClosureResponses()"
-                    [readOnly]="!editMode()"
-                    (completed)="onAutoClosureCompleted($event)"
-                    (cancelled)="onAutoClosureCancelled()">
-                  </app-auto-closure>
-                } @else if (autoClosureCompleted()) {
-                  <div style="padding: 12px; background: #f8fafc; border-radius: 8px;">
-                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
-                      @if (autoClosureOutcome() === 'NEW_COMPLAINT') {
-                        <i class="pi pi-check-circle" style="color: #10b981; font-size: 18px;"></i>
-                        <strong style="color: #065f46;">Proceed as New Complaint</strong>
-                      } @else if (autoClosureOutcome() === 'SUB_JUDICE') {
-                        <i class="pi pi-exclamation-triangle" style="color: #f59e0b; font-size: 18px;"></i>
-                        <strong style="color: #92400e;">Sub-Judice — Proceed to Ombudsman</strong>
-                      } @else {
-                        <i class="pi pi-times-circle" style="color: #ef4444; font-size: 18px;"></i>
-                        <strong style="color: #991b1b;">CRPC Rejection</strong>
-                      }
-                    </div>
-                    @if (autoClosureClauseRef()) {
-                      <p style="font-size: 12px; color: #64748b;">Clause: {{ autoClosureClauseRef() }}</p>
+                <!-- Eligibility Questions (shown when New Complaint selected) -->
+                @if (deoDecision === 'MAINTAINABLE' && editMode()) {
+                  <div class="eligibility-questions" style="margin-top: 16px; padding: 12px; background: #f8fafc; border-radius: 8px;">
+                    <h4 class="sub-section-title" style="margin-bottom: 12px;">Eligibility Assessment</h4>
+                    <p style="font-size: 12px; color: #64748b; margin-bottom: 12px;">Mark all eligible — all fields default to Yes</p>
+                    @for (q of maintainabilityQuestions; track q.id) {
+                      <div class="radio-field-row" style="padding: 8px 0; border-bottom: 1px solid #e2e8f0;">
+                        <label style="flex: 1; font-size: 13px;">{{ q.question }}</label>
+                        <div class="radio-group">
+                          <label><input type="radio" [name]="q.id" [ngModel]="q.answer" [value]="'YES'" (ngModelChange)="onEligibilityAnswer(q.id, $event)" /> Yes</label>
+                          <label><input type="radio" [name]="q.id" [ngModel]="q.answer" [value]="'NO'" (ngModelChange)="onEligibilityAnswer(q.id, $event)" /> No</label>
+                          <label><input type="radio" [name]="q.id" [ngModel]="q.answer" [value]="'NA'" (ngModelChange)="onEligibilityAnswer(q.id, $event)" /> NA</label>
+                        </div>
+                      </div>
                     }
-                    @if (autoClosureSubJudice()) {
-                      <span style="display: inline-block; margin-top: 4px; padding: 2px 8px; background: #fef3c7; color: #92400e; border-radius: 8px; font-size: 11px; font-weight: 600;">Sub-Judice Flag</span>
-                    }
-                    <button class="btn btn-outline btn-sm" style="margin-top: 12px;" (click)="showAutoClosureEngine.set(true)">
-                      <i class="pi pi-refresh"></i> Re-run Screening
-                    </button>
                   </div>
                 }
               </div>
             }
           </div>
-
           <!-- Entity Details -->
           <div class="form-section" [class.open]="sectionOpen.entity">
             <div class="section-header" (click)="sectionOpen.entity = !sectionOpen.entity">
@@ -734,22 +706,22 @@
                   <div class="radio-field-row">
                     <label>Whether Deposit Taking/Non-Deposit Taking Entity</label>
                     <div class="radio-group">
-                      <label><input type="radio" [ngModel]="depositTakingEntity" [value]="true" (ngModelChange)="depositTakingEntity = $event" name="depositTaking" /> Yes</label>
-                      <label><input type="radio" [ngModel]="depositTakingEntity" [value]="false" (ngModelChange)="depositTakingEntity = $event" name="depositTaking" /> No</label>
+                      <label><input type="radio" [ngModel]="depositTakingEntity" [value]="true" (ngModelChange)="depositTakingEntity = $event" name="depositTaking" [disabled]="!editMode()" /> Yes</label>
+                      <label><input type="radio" [ngModel]="depositTakingEntity" [value]="false" (ngModelChange)="depositTakingEntity = $event" name="depositTaking" [disabled]="!editMode()" /> No</label>
                     </div>
                   </div>
                   <div class="radio-field-row">
                     <label>Whether Asset Size is greater than 100 Crores</label>
                     <div class="radio-group">
-                      <label><input type="radio" [ngModel]="assetSizeGreater100Crores" [value]="true" (ngModelChange)="assetSizeGreater100Crores = $event" name="assetSize100" /> Yes</label>
-                      <label><input type="radio" [ngModel]="assetSizeGreater100Crores" [value]="false" (ngModelChange)="assetSizeGreater100Crores = $event" name="assetSize100" /> No</label>
+                      <label><input type="radio" [ngModel]="assetSizeGreater100Crores" [value]="true" (ngModelChange)="assetSizeGreater100Crores = $event" name="assetSize100" [disabled]="!editMode()" /> Yes</label>
+                      <label><input type="radio" [ngModel]="assetSizeGreater100Crores" [value]="false" (ngModelChange)="assetSizeGreater100Crores = $event" name="assetSize100" [disabled]="!editMode()" /> No</label>
                     </div>
                   </div>
                   <div class="radio-field-row">
                     <label>Whether Liquidated present</label>
                     <div class="radio-group">
-                      <label><input type="radio" [ngModel]="liquidatedPresent" [value]="true" (ngModelChange)="liquidatedPresent = $event" name="liquidated" /> Yes</label>
-                      <label><input type="radio" [ngModel]="liquidatedPresent" [value]="false" (ngModelChange)="liquidatedPresent = $event" name="liquidated" /> No</label>
+                      <label><input type="radio" [ngModel]="liquidatedPresent" [value]="true" (ngModelChange)="liquidatedPresent = $event" name="liquidated" [disabled]="!editMode()" /> Yes</label>
+                      <label><input type="radio" [ngModel]="liquidatedPresent" [value]="false" (ngModelChange)="liquidatedPresent = $event" name="liquidated" [disabled]="!editMode()" /> No</label>
                     </div>
                   </div>
                 </div>
@@ -836,8 +808,8 @@
                     <label>Complaint Registration Date Valid</label>
                     @if (editMode()) {
                       <div class="radio-group">
-                        <label><input type="radio" [ngModel]="registrationDateValid" [value]="true" (ngModelChange)="registrationDateValid = $event" /> Yes</label>
-                        <label><input type="radio" [ngModel]="registrationDateValid" [value]="false" (ngModelChange)="registrationDateValid = $event" /> No</label>
+                        <label><input type="radio" [ngModel]="registrationDateValid" [value]="true" (ngModelChange)="registrationDateValid = $event" name="registrationDateValid" /> Yes</label>
+                        <label><input type="radio" [ngModel]="registrationDateValid" [value]="false" (ngModelChange)="registrationDateValid = $event" name="registrationDateValid" /> No</label>
                       </div>
                     } @else {
                       <div class="radio-group">
@@ -855,8 +827,8 @@
                     <label>Whether any Reminder was sent by the Complainant</label>
                     @if (editMode()) {
                       <div class="radio-group">
-                        <label><input type="radio" [ngModel]="reminderSent" [value]="true" (ngModelChange)="reminderSent = $event" /> Yes</label>
-                        <label><input type="radio" [ngModel]="reminderSent" [value]="false" (ngModelChange)="reminderSent = $event" /> No</label>
+                        <label><input type="radio" [ngModel]="reminderSent" [value]="true" (ngModelChange)="reminderSent = $event" name="reminderSent" /> Yes</label>
+                        <label><input type="radio" [ngModel]="reminderSent" [value]="false" (ngModelChange)="reminderSent = $event" name="reminderSent" /> No</label>
                       </div>
                     } @else {
                       <div class="radio-group">
@@ -882,15 +854,11 @@
                     }
                   </div>
                   <div class="field-item">
-                    <label>Date of Filing the Complaint</label>
-                    <span class="field-value">{{ filingDate || '—' }}</span>
-                  </div>
-                  <div class="field-item">
                     <label>Compensation Sought for Expenses Incurred, Harassment and Mental Anguish (if any)</label>
                     @if (editMode()) {
                       <div class="radio-group">
-                        <label><input type="radio" [ngModel]="compensationSoughtYesNo" [value]="true" (ngModelChange)="compensationSoughtYesNo = $event" /> Yes</label>
-                        <label><input type="radio" [ngModel]="compensationSoughtYesNo" [value]="false" (ngModelChange)="compensationSoughtYesNo = $event" /> No</label>
+                        <label><input type="radio" [ngModel]="compensationSoughtYesNo" [value]="true" (ngModelChange)="compensationSoughtYesNo = $event" name="compensationSought" /> Yes</label>
+                        <label><input type="radio" [ngModel]="compensationSoughtYesNo" [value]="false" (ngModelChange)="compensationSoughtYesNo = $event" name="compensationSought" /> No</label>
                       </div>
                     } @else {
                       <div class="radio-group">
@@ -908,8 +876,8 @@
                     <label>Whether Legal Case is Filed</label>
                     @if (editMode()) {
                       <div class="radio-group">
-                        <label><input type="radio" [ngModel]="legalCaseFiled" [value]="true" (ngModelChange)="legalCaseFiled = $event" /> Yes</label>
-                        <label><input type="radio" [ngModel]="legalCaseFiled" [value]="false" (ngModelChange)="legalCaseFiled = $event" /> No</label>
+                        <label><input type="radio" [ngModel]="legalCaseFiled" [value]="true" (ngModelChange)="legalCaseFiled = $event" name="legalCaseFiled" /> Yes</label>
+                        <label><input type="radio" [ngModel]="legalCaseFiled" [value]="false" (ngModelChange)="legalCaseFiled = $event" name="legalCaseFiled" /> No</label>
                       </div>
                     } @else {
                       <div class="radio-group">
@@ -919,15 +887,11 @@
                     }
                   </div>
                   <div class="field-item">
-                    <label>Date of Filing the Complaint</label>
-                    <span class="field-value">{{ filingDate || '—' }}</span>
-                  </div>
-                  <div class="field-item">
                     <label>Pre Enquiry Received</label>
                     @if (editMode()) {
                       <div class="radio-group">
-                        <label><input type="radio" [ngModel]="preEnquiryReceived" [value]="true" (ngModelChange)="preEnquiryReceived = $event" /> Yes</label>
-                        <label><input type="radio" [ngModel]="preEnquiryReceived" [value]="false" (ngModelChange)="preEnquiryReceived = $event" /> No</label>
+                        <label><input type="radio" [ngModel]="preEnquiryReceived" [value]="true" (ngModelChange)="preEnquiryReceived = $event" name="preEnquiryReceived" /> Yes</label>
+                        <label><input type="radio" [ngModel]="preEnquiryReceived" [value]="false" (ngModelChange)="preEnquiryReceived = $event" name="preEnquiryReceived" /> No</label>
                       </div>
                     } @else {
                       <div class="radio-group">
@@ -940,8 +904,8 @@
                     <label>High Priority Complaint</label>
                     @if (editMode()) {
                       <div class="radio-group">
-                        <label><input type="radio" [ngModel]="highPriority" [value]="true" (ngModelChange)="highPriority = $event" /> Yes</label>
-                        <label><input type="radio" [ngModel]="highPriority" [value]="false" (ngModelChange)="highPriority = $event" /> No</label>
+                        <label><input type="radio" [ngModel]="highPriority" [value]="true" (ngModelChange)="highPriority = $event" name="highPriority" /> Yes</label>
+                        <label><input type="radio" [ngModel]="highPriority" [value]="false" (ngModelChange)="highPriority = $event" name="highPriority" /> No</label>
                       </div>
                     } @else {
                       <div class="radio-group">
@@ -984,12 +948,12 @@
                     @if (editMode()) {
                       <select [(ngModel)]="crpcProposedAction">
                         <option value="">Select</option>
-                        <option value="Maintainable">Maintainable</option>
-                        <option value="Non-Maintainable">Non-Maintainable</option>
-                        <option value="Duplicate">Duplicate</option>
+                        <option value="NEW_COMPLAINT">New Complaint</option>
+                        <option value="NOT_A_COMPLAINT">Not a Complaint</option>
+                        <option value="DUPLICATE">Duplicate</option>
                       </select>
                     } @else {
-                      <span class="field-value">{{ crpcProposedAction || '—' }}</span>
+                      <span class="field-value">{{ crpcProposedAction === 'NEW_COMPLAINT' ? 'New Complaint' : crpcProposedAction === 'NOT_A_COMPLAINT' ? 'Not a Complaint' : crpcProposedAction || '—' }}</span>
                     }
                   </div>
                   <div class="field-item">
@@ -1016,10 +980,6 @@
                       <span class="field-value">{{ vernacularLanguage || '—' }}</span>
                     }
                   </div>
-                  <div class="field-item">
-                    <label>Date of Filing the Complaint</label>
-                    <span class="field-value">{{ filingDate || '—' }}</span>
-                  </div>
                 </div>
 
                 <hr class="sub-section-divider" />
@@ -1029,8 +989,8 @@
                     <label>Is Complaint Regarding Pension</label>
                     @if (editMode()) {
                       <div class="radio-group">
-                        <label><input type="radio" [ngModel]="pensionComplaint" [value]="true" (ngModelChange)="pensionComplaint = $event" /> Yes</label>
-                        <label><input type="radio" [ngModel]="pensionComplaint" [value]="false" (ngModelChange)="pensionComplaint = $event" /> No</label>
+                        <label><input type="radio" [ngModel]="pensionComplaint" [value]="true" (ngModelChange)="pensionComplaint = $event" name="pensionComplaint" /> Yes</label>
+                        <label><input type="radio" [ngModel]="pensionComplaint" [value]="false" (ngModelChange)="pensionComplaint = $event" name="pensionComplaint" /> No</label>
                       </div>
                     } @else {
                       <div class="radio-group">
@@ -1043,8 +1003,8 @@
                     <label>Is Complaint Against a Business Correspondent</label>
                     @if (editMode()) {
                       <div class="radio-group">
-                        <label><input type="radio" [ngModel]="businessCorrespondent" [value]="true" (ngModelChange)="businessCorrespondent = $event" /> Yes</label>
-                        <label><input type="radio" [ngModel]="businessCorrespondent" [value]="false" (ngModelChange)="businessCorrespondent = $event" /> No</label>
+                        <label><input type="radio" [ngModel]="businessCorrespondent" [value]="true" (ngModelChange)="businessCorrespondent = $event" name="businessCorrespondent" /> Yes</label>
+                        <label><input type="radio" [ngModel]="businessCorrespondent" [value]="false" (ngModelChange)="businessCorrespondent = $event" name="businessCorrespondent" /> No</label>
                       </div>
                     } @else {
                       <div class="radio-group">
@@ -1057,8 +1017,8 @@
                     <label>ATM / Credit / Debit Card</label>
                     @if (editMode()) {
                       <div class="radio-group">
-                        <label><input type="radio" [ngModel]="atmCreditDebitCard" [value]="true" (ngModelChange)="atmCreditDebitCard = $event" /> Yes</label>
-                        <label><input type="radio" [ngModel]="atmCreditDebitCard" [value]="false" (ngModelChange)="atmCreditDebitCard = $event" /> No</label>
+                        <label><input type="radio" [ngModel]="atmCreditDebitCard" [value]="true" (ngModelChange)="atmCreditDebitCard = $event" name="atmCreditDebitCard" /> Yes</label>
+                        <label><input type="radio" [ngModel]="atmCreditDebitCard" [value]="false" (ngModelChange)="atmCreditDebitCard = $event" name="atmCreditDebitCard" /> No</label>
                       </div>
                     } @else {
                       <div class="radio-group">
@@ -1067,75 +1027,18 @@
                       </div>
                     }
                   </div>
-                  <div class="field-item">
-                    <label>Scheme Flag</label>
-                    @if (editMode()) {
-                      <input type="text" [(ngModel)]="schemeFlag" placeholder="e.g. Scheme JDY" />
-                    } @else {
-                      <span class="field-value">{{ schemeFlag || '—' }}</span>
-                    }
-                  </div>
-                  <div class="field-item">
-                    <label>RBO CGPC (Old)</label>
-                    @if (editMode()) {
-                      <input type="text" [(ngModel)]="rboCgpcOld" placeholder="Reference number" />
-                    } @else {
-                      <span class="field-value">{{ rboCgpcOld || '—' }}</span>
-                    }
-                  </div>
-                  <div class="field-item">
-                    <label>Grounds Flag</label>
-                    @if (editMode()) {
-                      <input type="text" [(ngModel)]="groundsFlag" placeholder="Reference number" />
-                    } @else {
-                      <span class="field-value">{{ groundsFlag || '—' }}</span>
-                    }
-                  </div>
+                  @if (atmCreditDebitCard) {
+                    <div class="field-item">
+                      <label>Card / ATM Number</label>
+                      @if (editMode()) {
+                        <input type="text" [(ngModel)]="atmCardNumber" placeholder="Enter Card/ATM Number" maxlength="19" />
+                      } @else {
+                        <span class="field-value">{{ atmCardNumber || '—' }}</span>
+                      }
+                    </div>
+                  }
                 </div>
 
-                <hr class="sub-section-divider" />
-                <h4 class="sub-section-title">Complaint Linkage</h4>
-                <div class="field-grid-2">
-                  <div class="field-item">
-                    <label>Is Complaint Pertaining to a Free Marked Complaint</label>
-                    @if (editMode()) {
-                      <div class="radio-group">
-                        <label><input type="radio" [ngModel]="freeMarkedComplaint" [value]="true" (ngModelChange)="freeMarkedComplaint = $event" /> Yes</label>
-                        <label><input type="radio" [ngModel]="freeMarkedComplaint" [value]="false" (ngModelChange)="freeMarkedComplaint = $event" /> No</label>
-                      </div>
-                    } @else {
-                      <div class="radio-group">
-                        <label><input type="radio" [checked]="freeMarkedComplaint" disabled /> Yes</label>
-                        <label><input type="radio" [checked]="!freeMarkedComplaint" disabled /> No</label>
-                      </div>
-                    }
-                  </div>
-                  <div class="field-item">
-                    <label>Current Complaint Number</label>
-                    @if (editMode()) {
-                      <input type="text" [(ngModel)]="currentComplaintNumber" placeholder="Complaint number" />
-                    } @else {
-                      <span class="field-value">{{ currentComplaintNumber || '—' }}</span>
-                    }
-                  </div>
-                  <div class="field-item full">
-                    <label>Received any Reply within 30 Days (or within time stipulated by RBI / NPCI / Card Network)</label>
-                    @if (editMode()) {
-                      <div class="radio-group">
-                        <label><input type="radio" [ngModel]="replyWithin30Days" value="YES" (ngModelChange)="replyWithin30Days = $event" /> Yes</label>
-                        <label><input type="radio" [ngModel]="replyWithin30Days" value="NO" (ngModelChange)="replyWithin30Days = $event" /> No</label>
-                        <label><input type="radio" [ngModel]="replyWithin30Days" value="NA" (ngModelChange)="replyWithin30Days = $event" /> Not Applicable</label>
-                      </div>
-                    } @else {
-                      <div class="radio-group">
-                        <label><input type="radio" [checked]="replyWithin30Days === 'YES'" disabled /> Yes</label>
-                        <label><input type="radio" [checked]="replyWithin30Days === 'NO'" disabled /> No</label>
-                        <label><input type="radio" [checked]="replyWithin30Days === 'NA'" disabled /> Not Applicable</label>
-                      </div>
-                    }
-                    <p class="field-hint">After the Regulated Entity received the complaint, or if the Complainant is not satisfied with the reply / resolution provided by the Regulated Entity.</p>
-                  </div>
-                </div>
 
               </div>
             }
@@ -1446,7 +1349,7 @@
                   <h4>New Email</h4>
                   <button class="modal-close" (click)="cancelEmail()">&times;</button>
                 </div>
-                <div class="field-item"><label>To</label><input type="email" [(ngModel)]="emailTo" /></div>
+                <div class="field-item"><label>To</label><input type="email" [(ngModel)]="emailTo" readonly class="readonly-input" /></div>
                 @if (emailDomainError) {
                   <div class="email-domain-error" style="margin: 4px 0 8px; padding: 8px 12px; background: #fff3f3; border: 1px solid #ffcdd2; border-radius: 4px; color: #c62828; font-size: 12px;">
                     <i class="pi pi-exclamation-triangle" style="margin-right: 6px;"></i>{{ emailDomainError }}

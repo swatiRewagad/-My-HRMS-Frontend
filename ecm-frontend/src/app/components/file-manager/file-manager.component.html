@@ -45,86 +45,123 @@
       </div>
     </div>
 
-    <!-- File Content Area -->
-    <div class="fm-content">
-      @if (selectedFolder) {
-        <div class="folder-info-bar">
-          <div class="folder-info-left">
-            <span class="visibility-tag" [class.public]="selectedFolder.visibility === 'public'" [class.private]="selectedFolder.visibility === 'private'">
-              <i class="pi" [class.pi-lock-open]="selectedFolder.visibility === 'public'" [class.pi-lock]="selectedFolder.visibility === 'private'"></i>
-              {{ selectedFolder.visibility }}
-            </span>
-            @if (selectedFolder.description) {
-              <span class="folder-desc">{{ selectedFolder.description }}</span>
+    <!-- File Content Area + Split Panel -->
+    <div class="fm-content-wrapper" [class.has-preview]="panelPreviewFile">
+      <div class="fm-content">
+        @if (selectedFolder) {
+          <div class="folder-info-bar">
+            <div class="folder-info-left">
+              <span class="visibility-tag" [class.public]="selectedFolder.visibility === 'public'" [class.private]="selectedFolder.visibility === 'private'">
+                <i class="pi" [class.pi-lock-open]="selectedFolder.visibility === 'public'" [class.pi-lock]="selectedFolder.visibility === 'private'"></i>
+                {{ selectedFolder.visibility }}
+              </span>
+              @if (selectedFolder.description) {
+                <span class="folder-desc">{{ selectedFolder.description }}</span>
+              }
+            </div>
+            @if (canManageAccess(selectedFolder)) {
+              <button class="btn btn-outline" (click)="openAccess()">
+                <i class="pi pi-users"></i> Manage Access
+              </button>
             }
           </div>
-          @if (canManageAccess(selectedFolder)) {
-            <button class="btn btn-outline" (click)="openAccess()">
-              <i class="pi pi-users"></i> Manage Access
-            </button>
-          }
-        </div>
 
-        @if (selectedFolder.accessList?.length) {
-          <div class="access-bar">
-            <span class="access-label">Access:</span>
-            @for (a of selectedFolder.accessList; track a.userId) {
-              <span class="access-chip">
-                {{ a.userName }} ({{ a.permission }})
-                @if (canManageAccess(selectedFolder)) {
-                  <i class="pi pi-times" (click)="revokeAccess(a.userId)"></i>
-                }
-              </span>
+          @if (selectedFolder.accessList?.length) {
+            <div class="access-bar">
+              <span class="access-label">Access:</span>
+              @for (a of selectedFolder.accessList; track a.userId) {
+                <span class="access-chip">
+                  {{ a.userName }} ({{ a.permission }})
+                  @if (canManageAccess(selectedFolder)) {
+                    <i class="pi pi-times" (click)="revokeAccess(a.userId)"></i>
+                  }
+                </span>
+              }
+            </div>
+          }
+
+          <div class="files-table">
+            <div class="table-header">
+              <span class="col-name">Name</span>
+              <span class="col-size">Size</span>
+              <span class="col-type">Type</span>
+              <span class="col-actions">Actions</span>
+            </div>
+            @for (file of files; track file.id) {
+              <div class="table-row" [class.active-row]="panelPreviewFile?.id === file.id"
+                   (click)="openPreview(file)" (contextmenu)="onFileRightClick($event, file)">
+                <span class="col-name">
+                  <i [class]="getFileIcon(file.contentType)" [style.color]="getFileIconColor(file.contentType)"></i>
+                  {{ file.originalName }}
+                </span>
+                <span class="col-size">{{ formatSize(file.size) }}</span>
+                <span class="col-type">{{ file.contentType | slice:0:20 }}</span>
+                <span class="col-actions" (click)="$event.stopPropagation()">
+                  <button class="icon-btn" title="Download" (click)="downloadFile(file)"><i class="pi pi-download"></i></button>
+                  @if (isPdf(file)) {
+                    <button class="icon-btn extract" title="Extract Invoice" (click)="extractInvoice(file)" [disabled]="extractingFileId === file.id">
+                      <i class="pi" [class.pi-file-check]="extractingFileId !== file.id" [class.pi-spin]="extractingFileId === file.id" [class.pi-spinner]="extractingFileId === file.id"></i>
+                    </button>
+                  }
+                  @if (canWrite(selectedFolder)) {
+                    <button class="icon-btn" title="Share" (click)="openShare(file.id)"><i class="pi pi-share-alt"></i></button>
+                    <button class="icon-btn danger" title="Delete" (click)="deleteFile(file)"><i class="pi pi-trash"></i></button>
+                  }
+                </span>
+              </div>
             }
+            @if (files.length === 0) {
+              <div class="empty-table">
+                <i class="pi pi-inbox"></i>
+                <p>{{ canWrite(selectedFolder) ? 'No files in this folder. Upload your first file.' : 'No files in this folder.' }}</p>
+              </div>
+            }
+          </div>
+        } @else {
+          <div class="empty-state">
+            <i class="pi pi-arrow-left"></i>
+            <p>Select a folder from the tree to view its files.</p>
           </div>
         }
+      </div>
 
-        <div class="files-table">
-          <div class="table-header">
-            <span class="col-name">Name</span>
-            <span class="col-size">Size</span>
-            <span class="col-type">Type</span>
-            <span class="col-actions">Actions</span>
+      <!-- Split Panel Preview -->
+      @if (panelPreviewFile) {
+        <div class="fm-preview-panel" (contextmenu)="onFileRightClick($event, panelPreviewFile)">
+          <div class="preview-panel-header">
+            <div class="preview-panel-info">
+              <i [class]="getFileIcon(panelPreviewFile.contentType)" [style.color]="getFileIconColor(panelPreviewFile.contentType)"></i>
+              <span class="preview-panel-name">{{ panelPreviewFile.originalName }}</span>
+            </div>
+            <button class="close-btn" (click)="closePanelPreview()"><i class="pi pi-times"></i></button>
           </div>
-          @for (file of files; track file.id) {
-            <div class="table-row">
-              <span class="col-name">
-                <i [class]="getFileIcon(file.contentType)" [style.color]="getFileIconColor(file.contentType)"></i>
-                {{ file.originalName }}
-              </span>
-              <span class="col-size">{{ formatSize(file.size) }}</span>
-              <span class="col-type">{{ file.contentType | slice:0:20 }}</span>
-              <span class="col-actions">
-                <button class="icon-btn" title="Preview" (click)="openPreview(file)"><i class="pi pi-eye"></i></button>
-                <button class="icon-btn" title="Download" (click)="downloadFile(file)"><i class="pi pi-download"></i></button>
-                @if (isPdf(file)) {
-                  <button class="icon-btn extract" title="Extract Invoice" (click)="extractInvoice(file)" [disabled]="extractingFileId === file.id">
-                    <i class="pi" [class.pi-file-check]="extractingFileId !== file.id" [class.pi-spin]="extractingFileId === file.id" [class.pi-spinner]="extractingFileId === file.id"></i>
-                  </button>
-                }
-                @if (canWrite(selectedFolder)) {
-                  <button class="icon-btn" title="Share" (click)="openShare(file.id)"><i class="pi pi-share-alt"></i></button>
-                  <button class="icon-btn danger" title="Delete" (click)="deleteFile(file)"><i class="pi pi-trash"></i></button>
-                }
-              </span>
-            </div>
-          }
-          @if (files.length === 0) {
-            <div class="empty-table">
-              <i class="pi pi-inbox"></i>
-              <p>{{ canWrite(selectedFolder) ? 'No files in this folder. Upload your first file.' : 'No files in this folder.' }}</p>
-            </div>
-          }
-        </div>
-      } @else {
-        <div class="empty-state">
-          <i class="pi pi-arrow-left"></i>
-          <p>Select a folder from the tree to view its files.</p>
+          <div class="preview-panel-body">
+            <app-file-preview [file]="panelPreviewFile" [visible]="true" [inline]="true"></app-file-preview>
+          </div>
         </div>
       }
     </div>
   </div>
 </div>
+
+<!-- Right-Click Context Menu -->
+@if (contextMenu.visible) {
+  <div class="context-menu" [style.left.px]="contextMenu.x" [style.top.px]="contextMenu.y">
+    <button class="context-item" (click)="contextRunOcr()">
+      <i class="pi pi-file-check"></i> Run OCR
+    </button>
+    <button class="context-item" (click)="contextDownload()">
+      <i class="pi pi-download"></i> Download
+    </button>
+    <button class="context-item" (click)="contextShare()">
+      <i class="pi pi-share-alt"></i> Share
+    </button>
+    <div class="context-divider"></div>
+    <button class="context-item danger" (click)="contextDelete()">
+      <i class="pi pi-trash"></i> Delete
+    </button>
+  </div>
+}
 
 <!-- Folder Tree Template -->
 <ng-template #folderTree let-folders="folders" let-level="level">
@@ -432,4 +469,3 @@
   </div>
 }
 
-<app-file-preview [file]="previewFile" [(visible)]="showPreview"></app-file-preview>

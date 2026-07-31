@@ -10,6 +10,7 @@ import com.rbi.cms.workflow.service.TaskQueryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -26,6 +27,9 @@ public class WorkflowController {
 
     private final ComplaintWorkflowProcessor workflowService;
     private final TaskQueryService taskQueryService;
+
+    @Autowired(required = false)
+    private KogitoWorkflowService kogitoWorkflowService;
 
     @GetMapping("/tasks")
     @Operation(summary = "Get assigned tasks", description = "Retrieve complaints assigned to a team/officer")
@@ -64,8 +68,8 @@ public class WorkflowController {
             @PathVariable String complaintId,
             @RequestBody TaskCompletionRequest request) {
 
-        if (workflowService instanceof KogitoWorkflowService kogitoService) {
-            kogitoService.completeHumanTask(complaintId, request.getUserId(), request.getTaskData());
+        if (kogitoWorkflowService != null) {
+            kogitoWorkflowService.completeHumanTask(complaintId, request.getUserId(), request.getTaskData());
         }
         return ResponseEntity.ok(ApiResponse.success(null, "Task completed successfully"));
     }
@@ -89,9 +93,9 @@ public class WorkflowController {
             @PathVariable String complaintId) {
 
         Map<String, Object> status = new java.util.HashMap<>();
-        if (workflowService instanceof KogitoWorkflowService kogitoService) {
-            var workItems = kogitoService.getActiveWorkItems(complaintId);
-            var instanceInfo = kogitoService.getProcessInstanceInfo(complaintId);
+        if (kogitoWorkflowService != null) {
+            var workItems = kogitoWorkflowService.getActiveWorkItems(complaintId);
+            var instanceInfo = kogitoWorkflowService.getProcessInstanceInfo(complaintId);
             status.put("complaintId", complaintId);
             status.put("activeWorkItems", workItems.size());
             status.put("workItemNames", workItems.stream().map(WorkItem::getName).toList());

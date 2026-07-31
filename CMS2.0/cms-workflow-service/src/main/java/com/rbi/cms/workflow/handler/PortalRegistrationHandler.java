@@ -1,12 +1,12 @@
 package com.rbi.cms.workflow.handler;
 
+import com.rbi.cms.workflow.service.WorkflowEventPublisher;
 import lombok.extern.slf4j.Slf4j;
 import org.kie.kogito.internal.process.workitem.KogitoWorkItem;
 import org.kie.kogito.internal.process.workitem.KogitoWorkItemHandler;
 import org.kie.kogito.internal.process.workitem.KogitoWorkItemManager;
 import org.kie.kogito.internal.process.workitem.WorkItemTransition;
 import org.kie.kogito.process.workitems.impl.DefaultKogitoWorkItemHandler;
-import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
@@ -16,11 +16,11 @@ import java.util.Optional;
 @Component("com.rbi.cms.workflow.handler.PortalRegistrationHandler")
 public class PortalRegistrationHandler extends DefaultKogitoWorkItemHandler {
 
-    private final KafkaTemplate<String, String> kafkaTemplate;
+    private final WorkflowEventPublisher eventPublisher;
 
-    public PortalRegistrationHandler(KafkaTemplate<String, String> kafkaTemplate) {
+    public PortalRegistrationHandler(WorkflowEventPublisher eventPublisher) {
         super();
-        this.kafkaTemplate = kafkaTemplate;
+        this.eventPublisher = eventPublisher;
     }
 
     @Override
@@ -29,15 +29,17 @@ public class PortalRegistrationHandler extends DefaultKogitoWorkItemHandler {
 
         String complaintId = (String) workItem.getParameter("complaintId");
         String channel = (String) workItem.getParameter("channel");
+        String department = (String) workItem.getParameter("department");
+        String assignedOfficer = (String) workItem.getParameter("assignedOfficer");
 
-        log.info("[PORTAL-REG] Registering complaint {} from channel: {}", complaintId, channel);
+        log.info("[PORTAL-REG] Registering complaint {} from channel={}, dept={}", complaintId, channel, department);
 
         try {
-            String payload = String.format(
-                    "{\"complaintId\":\"%s\",\"channel\":\"PORTAL\",\"status\":\"REGISTERED\"}",
-                    complaintId
+            eventPublisher.publishAssigned(
+                    complaintId,
+                    department != null ? department : "RBIO",
+                    assignedOfficer != null ? assignedOfficer : "UNASSIGNED"
             );
-            kafkaTemplate.send("complaint.assigned", complaintId, payload);
         } catch (Exception e) {
             log.error("[PORTAL-REG] Failed to publish registration event for {}: {}", complaintId, e.getMessage());
         }

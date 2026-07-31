@@ -1,12 +1,12 @@
 package com.rbi.cms.workflow.handler;
 
+import com.rbi.cms.workflow.service.WorkflowEventPublisher;
 import lombok.extern.slf4j.Slf4j;
 import org.kie.kogito.internal.process.workitem.KogitoWorkItem;
 import org.kie.kogito.internal.process.workitem.KogitoWorkItemHandler;
 import org.kie.kogito.internal.process.workitem.KogitoWorkItemManager;
 import org.kie.kogito.internal.process.workitem.WorkItemTransition;
 import org.kie.kogito.process.workitems.impl.DefaultKogitoWorkItemHandler;
-import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
@@ -16,11 +16,11 @@ import java.util.Optional;
 @Component("com.rbi.cms.workflow.handler.NotificationHandler")
 public class NotificationHandler extends DefaultKogitoWorkItemHandler {
 
-    private final KafkaTemplate<String, String> kafkaTemplate;
+    private final WorkflowEventPublisher eventPublisher;
 
-    public NotificationHandler(KafkaTemplate<String, String> kafkaTemplate) {
+    public NotificationHandler(WorkflowEventPublisher eventPublisher) {
         super();
-        this.kafkaTemplate = kafkaTemplate;
+        this.eventPublisher = eventPublisher;
     }
 
     @Override
@@ -33,11 +33,7 @@ public class NotificationHandler extends DefaultKogitoWorkItemHandler {
         log.info("[NOTIFY] Sending resolution notification for complaint: {}", complaintId);
 
         try {
-            String notificationPayload = String.format(
-                    "{\"complaintId\":\"%s\",\"type\":\"RESOLUTION\",\"summary\":\"%s\"}",
-                    complaintId, resolutionSummary != null ? resolutionSummary : "Your complaint has been resolved."
-            );
-            kafkaTemplate.send("complaint.notification", complaintId, notificationPayload);
+            eventPublisher.publishResolved(complaintId, resolutionSummary);
         } catch (Exception e) {
             log.error("[NOTIFY] Failed to send notification for {}: {}", complaintId, e.getMessage());
         }

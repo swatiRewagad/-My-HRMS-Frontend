@@ -25,7 +25,9 @@ spring:
 
 ecm:
   keycloak:
-    url: ${KEYCLOAK_URL:http://localhost:9091}
+    url: ${KEYCLOAK_URL:http://localhost:9090}
+    admin-username: ${KEYCLOAK_ADMIN_USER:admin}
+    admin-password: ${KEYCLOAK_ADMIN_PASSWORD:admin}
   storage:
     root-path: ${ECM_STORAGE_PATH:C:/ecm-storage}
   llm:

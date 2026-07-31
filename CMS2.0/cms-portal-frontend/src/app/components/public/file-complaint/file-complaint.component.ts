@@ -209,6 +209,7 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
   entitySearchText = '';
   entityDropdownOpen = false;
   filteredEntityOptions: { label: string; value: string; entityType?: string }[] = [];
+  entitySelectOptions: { label: string; value: string }[] = [];
 
   // FR-G-020: Duplicate detection
   showDuplicatePopup = signal(false);
@@ -589,6 +590,7 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
         const entities = res?.data ?? res ?? [];
         this.banks = entities.map((e: any) => ({ id: e.id, name: e.name, department: e.department, entityType: e.entityType }));
         this.eligibilityQuestions[0].options = this.banks.map(b => ({ label: b.name, value: String(b.id) }));
+        this.entitySelectOptions = this.banks.map(b => ({ label: b.name, value: String(b.id) }));
       },
       error: () => {
         this.eligibilityQuestions[0].options = [];
@@ -686,6 +688,12 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
 
   closeEntityDropdown() {
     setTimeout(() => this.entityDropdownOpen = false, 200);
+  }
+
+  selectEntityFromDropdown(value: string) {
+    if (value) {
+      this.selectEligibilityAnswer(value);
+    }
   }
 
   eligibilityFieldError = '';

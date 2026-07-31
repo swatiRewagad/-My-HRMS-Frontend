@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { EcmService } from '../../services/ecm.service';
@@ -46,6 +46,9 @@ export class FileManagerComponent implements OnInit {
 
   showPreview = false;
   previewFile: any = null;
+  panelPreviewFile: any = null;
+
+  contextMenu = { visible: false, x: 0, y: 0, file: null as any };
 
   showExtraction = false;
   activeExtraction: any = null;
@@ -197,8 +200,49 @@ export class FileManagerComponent implements OnInit {
   }
 
   openPreview(file: any) {
-    this.previewFile = file;
-    this.showPreview = true;
+    this.panelPreviewFile = file;
+  }
+
+  closePanelPreview() {
+    this.panelPreviewFile = null;
+  }
+
+  onFileRightClick(event: MouseEvent, file: any) {
+    event.preventDefault();
+    this.contextMenu = { visible: true, x: event.clientX, y: event.clientY, file };
+  }
+
+  @HostListener('document:click')
+  closeContextMenu() {
+    this.contextMenu.visible = false;
+  }
+
+  contextRunOcr() {
+    if (this.contextMenu.file) {
+      this.extractInvoice(this.contextMenu.file);
+    }
+    this.contextMenu.visible = false;
+  }
+
+  contextDownload() {
+    if (this.contextMenu.file) {
+      this.downloadFile(this.contextMenu.file);
+    }
+    this.contextMenu.visible = false;
+  }
+
+  contextShare() {
+    if (this.contextMenu.file) {
+      this.openShare(this.contextMenu.file.id);
+    }
+    this.contextMenu.visible = false;
+  }
+
+  contextDelete() {
+    if (this.contextMenu.file) {
+      this.deleteFile(this.contextMenu.file);
+    }
+    this.contextMenu.visible = false;
   }
 
   downloadFile(file: any) {

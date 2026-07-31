@@ -132,7 +132,9 @@ export class EcmService {
   }
 
   getUsers(): Observable<any[]> {
-    return this.http.get<any[]>(`${this.api}/users`);
+    const realm = this.keycloak.selectedRealm;
+    const headers = realm ? this.headers.set('X-Realm', realm) : this.headers;
+    return this.http.get<any[]>(`${this.api}/users`, { headers });
   }
 
   extractInvoice(fileId: number, docTypeConfigId?: number): Observable<any> {
