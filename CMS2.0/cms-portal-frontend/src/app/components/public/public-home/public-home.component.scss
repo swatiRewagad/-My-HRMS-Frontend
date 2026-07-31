@@ -3,7 +3,7 @@
   flex-direction: column;
   align-items: stretch;
   isolation: isolate;
-  background: url('/assets/bg1.png') top center / cover no-repeat;
+  background: #fff;
 }
 
 .container { max-width: 1366px; margin: 0 auto; padding: 0 40px; }
@@ -493,7 +493,7 @@
 .wwd-content p { font-size: 14px; color: #666; line-height: 1.6; margin-bottom: 0; }
 
 // ══════ Ways of Filing Complaint ══════
-.ways-section { padding: 56px 0; background: linear-gradient(180deg, #f4f7ff 0%, #fff 100%); }
+.ways-section { padding: 56px 0; background: #fff; }
 .ways-title { font-size: 24px; font-weight: 600; color: #1a1a2e; margin-bottom: 28px; }
 
 .ways-grid {
@@ -556,7 +556,7 @@
 .view-all { font-size: 13px; color: #4a3fc7; text-decoration: none; font-weight: 600; &:hover { text-decoration: underline; } }
 .section-tag { font-size: 11px; font-weight: 700; color: #4a3fc7; letter-spacing: 1px; display: block; margin-bottom: 4px; }
 
-.education-section { padding: 48px 0; background: linear-gradient(180deg, #fff 0%, #f0f4ff 100%); }
+.education-section { padding: 48px 0; background: #f8f9fb; }
 
 .education-carousel {
   position: relative;
@@ -671,7 +671,7 @@
 }
 
 // ══════ FAQ ══════
-.faq-section { padding: 56px 0; background: linear-gradient(180deg, #f0f4ff 0%, #fff 100%); }
+.faq-section { padding: 56px 0; background: #f8f9fb; }
 .faq-list { max-width: 100%; }
 .faq-item {
   background: #fff; border: 1px solid #e8e8e8; border-radius: 12px; margin-bottom: 12px; overflow: hidden;
