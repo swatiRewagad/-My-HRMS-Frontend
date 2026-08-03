@@ -538,13 +538,13 @@
 
 .ways-icon {
   width: 48px; height: 48px; border-radius: 12px;
-  background: #f0eaff;
+  background: #fff5ee;
   display: flex; align-items: center; justify-content: center;
-  i { font-size: 20px; color: #4a3fc7; }
+  i { font-size: 20px; color: #ff6b35; }
 }
 
 .ways-link {
-  font-size: 13px; color: #4a3fc7; text-decoration: none; font-weight: 600;
+  font-size: 13px; color: #ff6b35; text-decoration: none; font-weight: 600;
   display: inline-flex; align-items: center; gap: 4px; margin-top: auto;
   i { font-size: 11px; }
   &:hover { text-decoration: underline; }

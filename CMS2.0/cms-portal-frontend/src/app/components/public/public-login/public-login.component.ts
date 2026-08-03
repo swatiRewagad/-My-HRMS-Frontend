@@ -82,6 +82,18 @@ export class PublicLoginComponent implements OnDestroy {
     this.loadCaptcha();
   }
 
+  playCaptchaAudio() {
+    const captcha = this.captchaData();
+    if (!captcha) return;
+    const text = captcha.audioQuestion || '';
+    if (!text) return;
+    const utterance = new SpeechSynthesisUtterance(text.split('').join(' '));
+    utterance.rate = 0.7;
+    utterance.lang = 'en-IN';
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utterance);
+  }
+
   sendOtp() {
     this.loginError = '';
 
