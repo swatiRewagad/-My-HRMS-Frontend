@@ -18,6 +18,8 @@ export class PublicLayoutComponent {
   translationService = inject(TranslationService);
 
   mobileMenuOpen = false;
+  userMenuOpen = false;
+  activeTheme = 'blue';
   fontSize = 16;
   highContrast = false;
 
@@ -29,6 +31,10 @@ export class PublicLayoutComponent {
   toggleContrast() {
     this.highContrast = !this.highContrast;
     document.body.classList.toggle('high-contrast', this.highContrast);
+  }
+
+  toggleAccessibilityPanel() {
+    document.body.classList.toggle('accessibility-enhanced');
   }
 
   changeLanguage(event: Event) {
@@ -49,5 +55,48 @@ export class PublicLayoutComponent {
   resetFontSize() {
     this.fontSize = 16;
     document.body.style.zoom = '100%';
+  }
+
+  getMaskedPhone(): string {
+    const phone = this.authService.userIdentifier() || '';
+    if (phone.length >= 4) {
+      return '*'.repeat(phone.length - 4) + phone.slice(-4);
+    }
+    return phone;
+  }
+
+  getUserInitials(): string {
+    const name = this.getUserName();
+    if (name && name.length >= 2) {
+      const parts = name.split(' ');
+      return parts.length > 1
+        ? (parts[0][0] + parts[1][0]).toUpperCase()
+        : name.slice(0, 2).toUpperCase();
+    }
+    const phone = this.authService.userIdentifier() || '';
+    return phone.slice(-2).toUpperCase();
+  }
+
+  getUserName(): string {
+    return (this.authService as any).userName?.() || 'User';
+  }
+
+  getUserEmail(): string {
+    return (this.authService as any).userEmail?.() || '';
+  }
+
+  getLastSignedIn(): string {
+    const now = new Date();
+    const dd = String(now.getDate()).padStart(2, '0');
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const yy = String(now.getFullYear()).slice(-2);
+    const hh = String(now.getHours()).padStart(2, '0');
+    const min = String(now.getMinutes()).padStart(2, '0');
+    const ss = String(now.getSeconds()).padStart(2, '0');
+    return `${dd}/${mm}/${yy} ${hh}:${min}:${ss}`;
+  }
+
+  setTheme(theme: string) {
+    this.activeTheme = theme;
   }
 }

@@ -42,7 +42,7 @@ public class CaptchaService {
 
         saveCaptchaSession(token, answer, "VISUAL");
 
-        return new CaptchaChallenge(token, "data:image/png;base64," + imageBase64, null, "VISUAL");
+        return new CaptchaChallenge(token, "data:image/png;base64," + imageBase64, answer, "VISUAL");
     }
 
     @Transactional
@@ -118,41 +118,35 @@ public class CaptchaService {
         Graphics2D g = image.createGraphics();
 
         g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-        g.setColor(new Color(245, 245, 245));
+        g.setColor(Color.WHITE);
         g.fillRect(0, 0, width, height);
 
-        for (int i = 0; i < 6; i++) {
-            g.setColor(new Color(
-                    secureRandom.nextInt(200),
-                    secureRandom.nextInt(200),
-                    secureRandom.nextInt(200), 80));
+        for (int i = 0; i < 4; i++) {
+            g.setColor(new Color(200, 200, 200, 120));
             g.drawLine(
                     secureRandom.nextInt(width), secureRandom.nextInt(height),
                     secureRandom.nextInt(width), secureRandom.nextInt(height));
         }
 
-        for (int i = 0; i < 50; i++) {
-            g.setColor(new Color(
-                    secureRandom.nextInt(255),
-                    secureRandom.nextInt(255),
-                    secureRandom.nextInt(255), 100));
+        for (int i = 0; i < 30; i++) {
+            g.setColor(new Color(180, 180, 180, 80));
             g.fillOval(secureRandom.nextInt(width), secureRandom.nextInt(height), 2, 2);
         }
 
-        Font font = new Font("Arial", Font.BOLD, 28);
+        Font font = new Font("Arial", Font.BOLD, 30);
         g.setFont(font);
 
         int charWidth = width / (text.length() + 2);
         for (int i = 0; i < text.length(); i++) {
             g.setColor(new Color(
-                    secureRandom.nextInt(100),
-                    secureRandom.nextInt(100),
-                    secureRandom.nextInt(100)));
+                    30 + secureRandom.nextInt(50),
+                    30 + secureRandom.nextInt(50),
+                    80 + secureRandom.nextInt(80)));
 
             AffineTransform orig = g.getTransform();
-            double angle = (secureRandom.nextDouble() - 0.5) * 0.4;
+            double angle = (secureRandom.nextDouble() - 0.5) * 0.3;
             int x = charWidth + i * charWidth;
-            int y = height / 2 + secureRandom.nextInt(10) - 5 + 10;
+            int y = height / 2 + secureRandom.nextInt(6) - 3 + 7;
             g.rotate(angle, x, y);
             g.drawString(String.valueOf(text.charAt(i)), x, y);
             g.setTransform(orig);

@@ -12,12 +12,6 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.MySQLDialect
     show-sql: true
-    defer-datasource-initialization: true
-
-  sql:
-    init:
-      mode: always
-      data-locations: classpath:data-mysql.sql
 
   kafka:
     bootstrap-servers: localhost:9092

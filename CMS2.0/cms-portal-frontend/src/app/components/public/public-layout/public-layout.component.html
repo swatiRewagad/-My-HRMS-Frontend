@@ -6,8 +6,11 @@
       <button class="contrast-btn" aria-label="Toggle high contrast" (click)="toggleContrast()">
         <i class="pi" [class.pi-moon]="!highContrast" [class.pi-sun]="highContrast"></i>
       </button>
-      <button class="contrast-btn" aria-label="Accessibility">
-        <i class="pi pi-user"></i>
+      <button class="contrast-btn" aria-label="Accessibility" (click)="toggleAccessibilityPanel()">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+          <circle cx="8" cy="2.5" r="1.5"/>
+          <path d="M4 5.5C4 5.22 4.22 5 4.5 5h7a.5.5 0 0 1 0 1H9.5v2.5l1.8 4.5a.5.5 0 0 1-.9.4L8.5 9h-1l-1.9 4.4a.5.5 0 0 1-.9-.4L6.5 8.5V6H4.5a.5.5 0 0 1-.5-.5z"/>
+        </svg>
       </button>
       <div class="divider"></div>
       <div class="accessibility">
@@ -42,39 +45,58 @@
     </button>
 
     <nav id="main-nav" class="main-nav" [class.mobile-open]="mobileMenuOpen" (click)="mobileMenuOpen = false" aria-label="Main navigation">
-      <a href="javascript:void(0)">{{ 'nav.about_us' | translate }}</a>
-      <a href="javascript:void(0)">{{ 'nav.public_awareness' | translate }}</a>
       @if (authService.isAuthenticated()) {
         <a routerLink="/public/history">{{ 'nav.my_complaints' | translate }}</a>
       }
-      <button class="nav-search-btn" [attr.aria-label]="'common.search' | translate"><i class="pi pi-search"></i></button>
+      <a routerLink="/public/help">Help</a>
       <div class="nav-call-box">
         <i class="pi pi-phone"></i>
         <span>14448</span>
       </div>
       @if (authService.isAuthenticated()) {
-        <button class="login-btn logged-in" (click)="logout()">{{ 'common.logout' | translate }}</button>
-      } @else {
-        <a class="login-btn" routerLink="/public/login">{{ 'nav.login' | translate }}</a>
+        <div class="nav-user-box" (click)="userMenuOpen = !userMenuOpen">
+          <i class="pi pi-user nav-user-icon"></i>
+          <span class="nav-user-phone">{{ getMaskedPhone() }}</span>
+          <i class="pi pi-chevron-down nav-user-chevron"></i>
+        </div>
+        @if (userMenuOpen) {
+          <div class="user-dropdown-menu">
+            <div class="user-dropdown-info">
+              <i class="pi pi-user"></i>
+              <div>
+                <span class="user-dropdown-name">{{ getUserName() }}</span>
+                <span class="user-dropdown-last-login">Last Signed In on {{ getLastSignedIn() }}</span>
+                <span class="user-dropdown-email">{{ getUserEmail() }}</span>
+              </div>
+            </div>
+            <div class="user-dropdown-divider"></div>
+            <div class="user-dropdown-theme">
+              <i class="pi pi-palette"></i>
+              <span>Theme</span>
+            </div>
+            <div class="theme-circles">
+              <button class="theme-circle blue" [class.active]="activeTheme === 'blue'" (click)="setTheme('blue')"></button>
+              <button class="theme-circle maroon" [class.active]="activeTheme === 'maroon'" (click)="setTheme('maroon')"></button>
+              <button class="theme-circle teal" [class.active]="activeTheme === 'teal'" (click)="setTheme('teal')"></button>
+              <button class="theme-circle navy" [class.active]="activeTheme === 'navy'" (click)="setTheme('navy')"></button>
+              <button class="theme-circle olive" [class.active]="activeTheme === 'olive'" (click)="setTheme('olive')"></button>
+            </div>
+            <div class="user-dropdown-divider"></div>
+            <button class="user-dropdown-item" (click)="userMenuOpen = false">
+              <i class="pi pi-cog"></i> Settings
+            </button>
+            <div class="user-dropdown-divider"></div>
+            <button class="user-dropdown-item logout" (click)="logout()">
+              <i class="pi pi-sign-out"></i> Logout
+            </button>
+          </div>
+        }
       }
     </nav>
   </div>
 </header>
 </div>
 
-<!-- Session Bar: shows remaining time when logged in -->
-@if (authService.isAuthenticated()) {
-  <div class="session-bar" role="status" aria-live="polite">
-    <div class="container session-bar-inner">
-      <span class="session-user">
-        <i class="pi pi-user"></i> {{ 'layout.logged_in_as' | translate }} <strong>{{ authService.userIdentifier() }}</strong>
-      </span>
-      <span class="session-timer" [class.warning]="authService.remainingSeconds() < 120">
-        <i class="pi pi-clock"></i> {{ 'layout.session_expires' | translate }} {{ authService.getFormattedTime() }}
-      </span>
-    </div>
-  </div>
-}
 
 <!-- UST10: Session expiry warning (1 minute before timeout) -->
 @if (authService.sessionWarning()) {

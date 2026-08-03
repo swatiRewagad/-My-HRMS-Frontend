@@ -6,6 +6,13 @@
   align-items: center;
 }
 
+.page-title {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #1a1a2e;
+  margin: 0 0 1.5rem;
+}
+
 .verify-card {
   background: #fff;
   border-radius: 12px;
@@ -132,12 +139,12 @@
 }
 
 .captcha-image-box {
-  background: transparent;
-  border: 1px solid #d1d7e0;
-  border-radius: 4px;
+  background: #fff;
+  border: 1.5px solid #d1d7e0;
+  border-radius: 6px;
   padding: 0;
-  min-width: 180px;
-  height: 48px;
+  flex: 1;
+  height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -430,8 +437,8 @@
   background: #fff8e1;
   border: 1px solid #ffe082;
   border-radius: 8px;
-  width: 100%;
-  max-width: 680px;
+  width: 90vw;
+  max-width: 1126px;
 
   > i {
     color: #f9a825;
