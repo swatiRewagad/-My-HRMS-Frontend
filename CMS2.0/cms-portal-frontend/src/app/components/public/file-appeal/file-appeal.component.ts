@@ -50,6 +50,7 @@ export class FileAppealComponent {
   appealDetails = '';
   reliefSought = '';
   appealAttachments: File[] = [];
+  isDragOver = false;
   declarationChecked = false;
 
   // Success
@@ -102,10 +103,20 @@ export class FileAppealComponent {
     if (!input.files) return;
     for (let i = 0; i < input.files.length; i++) {
       const file = input.files[i];
-      if (file.size > 5 * 1024 * 1024) continue;
+      if (file.size > 2 * 1024 * 1024) continue;
       this.appealAttachments.push(file);
     }
     input.value = '';
+  }
+
+  onFileDrop(event: DragEvent) {
+    event.preventDefault();
+    if (!event.dataTransfer?.files?.length) return;
+    for (let i = 0; i < event.dataTransfer.files.length; i++) {
+      const file = event.dataTransfer.files[i];
+      if (file.size > 2 * 1024 * 1024) continue;
+      this.appealAttachments.push(file);
+    }
   }
 
   removeFile(index: number) {

@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, inject, signal, HostListener } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, signal, HostListener, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
@@ -9,6 +9,7 @@ import { TranslationService } from '../../../services/translation.service';
 import { TranslatePipe } from '../../../pipes/translate.pipe';
 import { validateFile, validateFileSet, MAX_FILE_COUNT } from '../../../utils/file-validator';
 import { announceToScreenReader, setPageTitle } from '../../../utils/accessibility';
+import { lookupPincode } from '../../../utils/pincode-data';
 import { environment } from '../../../../environments/environment';
 
 interface EligibilityQuestion {
@@ -33,6 +34,8 @@ interface EligibilityQuestion {
   styleUrl: './file-complaint.component.scss'
 })
 export class PublicFileComplaintComponent implements OnInit, OnDestroy {
+
+  @ViewChild('formCard') formCard!: ElementRef<HTMLElement>;
 
   private complaintService = inject(ComplaintService);
   private http = inject(HttpClient);
@@ -219,6 +222,7 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
   // Step 1: Complainant Details, Step 2: Regulated Entity Details, Step 3: Complaint Details,
   // Step 4: Authorised Representative, Step 5: Declaration & Review, Step 6: Preview/Submit
   currentStep = signal(1);
+  highestStepReached = signal(1);
   totalSteps = 6;
   stepTitles = [
     'Complainant Details',
@@ -233,6 +237,7 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
   declaration2Checked = false;
   submitting = signal(false);
   referenceNumber = '';
+  watermarkRows = Array.from({ length: 80 }, (_, i) => i + 1);
 
   // Entity search
   entitySearchText = '';
@@ -290,12 +295,25 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
     disputeAmount: '',
     compensationSought: '',
     reliefSought: '',
+    // RE entity location
+    isCreditCardComplaint: '',
+    entityState: '',
+    entityDistrict: '',
+    entityBranch: '',
+    creditCardNumber: '',
+    reminderDate: '',
+    isComplainantSelf: '',
     // Auth Rep
+    hasAuthRep: '',
     throughAdvocate: '',
     authorizeRepresentative: '',
     repName: '',
     repPhone: '',
     repEmail: '',
+    repPincode: '',
+    repState: '',
+    repDistrict: '',
+    repCity: '',
     repAddress: '',
   };
 
@@ -303,25 +321,9 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
   attachmentPreviews: { name: string; url: string; type: string; size: number }[] = [];
 
 
-  categories = [
-    { label: 'ATM/CDM/Debit card', value: 'ATM' },
-    { label: 'Credit Card', value: 'CREDIT_CARD' },
-    { label: 'Loans and Advances', value: 'LOAN' },
-    { label: 'Mobile / Electronic Banking', value: 'MOBILE_BANKING' },
-    { label: 'Notes and Coins', value: 'NOTES_COINS' },
-    { label: 'Opening/Operation of Deposit accounts', value: 'DEPOSIT' },
-    { label: 'Para-Banking', value: 'PARA_BANKING' },
-    { label: 'Remittance and collection of instruments', value: 'REMITTANCE' },
-    { label: 'Pension related', value: 'PENSION' },
-    { label: 'Other products and services', value: 'OTHER' },
-  ];
+  categories: { label: string; value: string }[] = [];
 
-  accountTypes = [
-    { label: 'Savings Account', value: 'savings', checked: false },
-    { label: 'Loan Account', value: 'loan', checked: false },
-    { label: 'ATM/Debit Card', value: 'atm_debit', checked: false },
-    { label: 'Credit Card', value: 'credit_card', checked: false },
-  ];
+  accountTypes: { label: string; value: string; checked: boolean }[] = [];
   accountTypeDropdownOpen = false;
 
   @HostListener('document:click', ['$event'])
@@ -343,130 +345,125 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
     return (bytes / 1024).toFixed(1) + 'kb';
   }
 
-  stateDistrictMap: Record<string, string[]> = {
-    'andhra-pradesh': ['Anantapur', 'Chittoor', 'East Godavari', 'Guntur', 'Krishna', 'Kurnool', 'Nellore', 'Prakasam', 'Srikakulam', 'Visakhapatnam', 'Vizianagaram', 'West Godavari', 'YSR Kadapa'],
-    'assam': ['Baksa', 'Barpeta', 'Dibrugarh', 'Guwahati', 'Jorhat', 'Kamrup', 'Nagaon', 'Sivasagar', 'Sonitpur', 'Tinsukia'],
-    'bihar': ['Araria', 'Bhagalpur', 'Gaya', 'Muzaffarpur', 'Nalanda', 'Patna', 'Purnia', 'Samastipur', 'Saran', 'Vaishali'],
-    'delhi': ['Central Delhi', 'East Delhi', 'New Delhi', 'North Delhi', 'North East Delhi', 'North West Delhi', 'Shahdara', 'South Delhi', 'South East Delhi', 'South West Delhi', 'West Delhi'],
-    'gujarat': ['Ahmedabad', 'Anand', 'Bharuch', 'Bhavnagar', 'Gandhinagar', 'Jamnagar', 'Junagadh', 'Kutch', 'Mehsana', 'Rajkot', 'Surat', 'Vadodara'],
-    'karnataka': ['Bagalkot', 'Ballari', 'Bengaluru Rural', 'Bengaluru Urban', 'Belagavi', 'Dakshina Kannada', 'Dharwad', 'Hassan', 'Hubli', 'Mandya', 'Mysuru', 'Tumkur', 'Udupi'],
-    'kerala': ['Alappuzha', 'Ernakulam', 'Idukki', 'Kannur', 'Kasaragod', 'Kollam', 'Kottayam', 'Kozhikode', 'Malappuram', 'Palakkad', 'Pathanamthitta', 'Thiruvananthapuram', 'Thrissur', 'Wayanad'],
-    'madhya-pradesh': ['Bhopal', 'Gwalior', 'Indore', 'Jabalpur', 'Rewa', 'Sagar', 'Satna', 'Ujjain'],
-    'maharashtra': ['Ahmednagar', 'Aurangabad', 'Kolhapur', 'Mumbai City', 'Mumbai Suburban', 'Nagpur', 'Nashik', 'Pune', 'Ratnagiri', 'Sangli', 'Satara', 'Solapur', 'Thane'],
-    'punjab': ['Amritsar', 'Bathinda', 'Jalandhar', 'Ludhiana', 'Mohali', 'Patiala', 'Sangrur'],
-    'rajasthan': ['Ajmer', 'Alwar', 'Bikaner', 'Jaipur', 'Jodhpur', 'Kota', 'Udaipur'],
-    'tamil-nadu': ['Chennai', 'Coimbatore', 'Erode', 'Kancheepuram', 'Madurai', 'Salem', 'Thanjavur', 'Tiruchirappalli', 'Tirunelveli', 'Vellore'],
-    'telangana': ['Adilabad', 'Hyderabad', 'Karimnagar', 'Khammam', 'Mahabubnagar', 'Medak', 'Nalgonda', 'Nizamabad', 'Rangareddy', 'Warangal'],
-    'uttar-pradesh': ['Agra', 'Allahabad', 'Bareilly', 'Ghaziabad', 'Gorakhpur', 'Kanpur', 'Lucknow', 'Mathura', 'Meerut', 'Moradabad', 'Noida', 'Varanasi'],
-    'west-bengal': ['Bankura', 'Darjeeling', 'Hooghly', 'Howrah', 'Kolkata', 'Malda', 'Medinipur', 'Murshidabad', 'Nadia', 'North 24 Parganas', 'South 24 Parganas'],
-  };
+  formatDate(isoDate: string): string {
+    if (!isoDate) return '—';
+    const parts = isoDate.split('-');
+    if (parts.length !== 3) return isoDate;
+    return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  }
+
+  dateDisplay: Record<string, string> = { bankComplaintDate: '', reminderDate: '', replyDate: '' };
+
+  isoToDisplay(iso: string): string {
+    if (!iso) return '';
+    const [y, m, d] = iso.split('-');
+    return `${d}/${m}/${y}`;
+  }
+
+  onDateInput(field: string, event: Event) {
+    const input = event.target as HTMLInputElement;
+    let val = input.value.replace(/[^0-9]/g, '');
+    if (val.length > 8) val = val.substring(0, 8);
+    let formatted = '';
+    if (val.length > 4) formatted = val.substring(0, 2) + '/' + val.substring(2, 4) + '/' + val.substring(4);
+    else if (val.length > 2) formatted = val.substring(0, 2) + '/' + val.substring(2);
+    else formatted = val;
+    this.dateDisplay[field] = formatted;
+    input.value = formatted;
+
+    if (val.length === 8) {
+      const day = parseInt(val.substring(0, 2), 10);
+      const month = parseInt(val.substring(2, 4), 10);
+      const year = parseInt(val.substring(4, 8), 10);
+      if (day >= 1 && day <= 31 && month >= 1 && month <= 12 && year >= 1900 && year <= 2100) {
+        const iso = `${year}-${val.substring(2, 4)}-${val.substring(0, 2)}`;
+        this.formData[field] = iso;
+        if (field === 'bankComplaintDate') this.onBankComplaintDateChange();
+        else if (field === 'reminderDate') this.onReminderDateChange();
+        else if (field === 'replyDate') this.onReplyDateChange();
+      } else {
+        this.formData[field] = '';
+      }
+    } else {
+      this.formData[field] = '';
+    }
+  }
+
+  initDateDisplays() {
+    for (const field of ['bankComplaintDate', 'reminderDate', 'replyDate']) {
+      if (this.formData[field]) {
+        this.dateDisplay[field] = this.isoToDisplay(this.formData[field]);
+      }
+    }
+  }
+
+  openDatePicker(event: Event) {
+    const btn = event.currentTarget as HTMLElement;
+    const hiddenInput = btn.parentElement?.querySelector('.date-hidden-picker') as HTMLInputElement;
+    if (hiddenInput) hiddenInput.showPicker();
+  }
+
+  onDatePickerChange(field: string, event: Event) {
+    const input = event.target as HTMLInputElement;
+    const iso = input.value;
+    if (iso) {
+      this.formData[field] = iso;
+      this.dateDisplay[field] = this.isoToDisplay(iso);
+      if (field === 'bankComplaintDate') this.onBankComplaintDateChange();
+      else if (field === 'reminderDate') this.onReminderDateChange();
+      else if (field === 'replyDate') this.onReplyDateChange();
+    }
+  }
+
+  states: { label: string; value: string }[] = [];
+  districts: string[] = [];
+  branches: string[] = [];
 
   get entityStateKeys(): string[] {
-    return Object.keys(this.stateDistrictMap);
+    return this.states.map(s => s.value);
   }
 
   entityStateLabel(key: string): string {
-    return key.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+    const state = this.states.find(s => s.value === key);
+    return state?.label || key.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
   }
 
   get entityDistricts(): string[] {
-    const state = this.formData['entityState'];
-    return state ? (this.stateDistrictMap[state] || []) : [];
+    return this.districts;
   }
 
-  districtBranchMap: Record<string, string[]> = {
-    'Anantapur': ['Main Branch', 'City Branch', 'Station Road Branch'],
-    'Chittoor': ['Main Branch', 'Town Branch'],
-    'Mumbai City': ['Fort Branch', 'Nariman Point Branch', 'Worli Branch', 'Dadar Branch', 'Andheri Branch'],
-    'Mumbai Suburban': ['Bandra Branch', 'Goregaon Branch', 'Malad Branch', 'Borivali Branch'],
-    'Pune': ['Camp Branch', 'Kothrud Branch', 'Shivaji Nagar Branch', 'Hinjewadi Branch', 'Hadapsar Branch'],
-    'Chennai': ['T. Nagar Branch', 'Anna Nagar Branch', 'Adyar Branch', 'Mylapore Branch'],
-    'Bengaluru Urban': ['MG Road Branch', 'Jayanagar Branch', 'Koramangala Branch', 'Whitefield Branch', 'Electronic City Branch'],
-    'Hyderabad': ['Begumpet Branch', 'Ameerpet Branch', 'HITEC City Branch', 'Secunderabad Branch'],
-    'Kolkata': ['Park Street Branch', 'Salt Lake Branch', 'Howrah Branch', 'Esplanade Branch'],
-    'New Delhi': ['Connaught Place Branch', 'Nehru Place Branch', 'Karol Bagh Branch', 'Janpath Branch'],
-    'Lucknow': ['Hazratganj Branch', 'Gomti Nagar Branch', 'Aliganj Branch'],
-    'Jaipur': ['MI Road Branch', 'Malviya Nagar Branch', 'Vaishali Nagar Branch'],
-    'Ahmedabad': ['CG Road Branch', 'Navrangpura Branch', 'SG Highway Branch', 'Maninagar Branch'],
-  };
-
   get entityBranches(): string[] {
-    const district = this.formData['entityDistrict'];
-    return district ? (this.districtBranchMap[district] || ['Main Branch', 'City Branch', 'Local Branch']) : [];
+    return this.branches;
   }
 
   onEntityStateChange() {
     this.formData['entityDistrict'] = '';
     this.formData['entityBranch'] = '';
+    this.districts = [];
+    this.branches = [];
+    const state = this.formData['entityState'];
+    if (state) {
+      this.http.get<any>(`${environment.apiBaseUrl}/api/v1/location/districts`, { params: { state } }).subscribe({
+        next: (res) => { this.districts = res?.data ?? res ?? []; },
+        error: () => {}
+      });
+    }
   }
 
   onEntityDistrictChange() {
     this.formData['entityBranch'] = '';
+    this.branches = [];
+    const district = this.formData['entityDistrict'];
+    if (district) {
+      this.http.get<any>(`${environment.apiBaseUrl}/api/v1/location/branches`, { params: { district } }).subscribe({
+        next: (res) => { this.branches = res?.data ?? res ?? []; },
+        error: () => {}
+      });
+    }
   }
 
 
-  subCategories: Record<string, { label: string; value: string }[]> = {
-    ATM: [
-      { label: 'Card not dispensing cash but account debited', value: 'ATM_NO_CASH' },
-      { label: 'Card cloning / skimming', value: 'ATM_CLONING' },
-      { label: 'Unauthorised transaction', value: 'ATM_UNAUTHORIZED' },
-      { label: 'ATM swallowed card', value: 'ATM_SWALLOWED' },
-      { label: 'Wrong amount dispensed', value: 'ATM_WRONG_AMOUNT' },
-      { label: 'Other ATM/Debit Card issue', value: 'ATM_OTHER' },
-    ],
-    UPI: [
-      { label: 'Transaction failed but amount debited', value: 'UPI_FAILED_DEBITED' },
-      { label: 'Unauthorised UPI transaction', value: 'UPI_UNAUTHORIZED' },
-      { label: 'Refund not received', value: 'UPI_REFUND' },
-      { label: 'UPI ID / VPA related issue', value: 'UPI_VPA' },
-      { label: 'Mobile banking app not working', value: 'UPI_APP_ISSUE' },
-      { label: 'Other UPI/Mobile Banking issue', value: 'UPI_OTHER' },
-    ],
-    NEFT_RTGS: [
-      { label: 'Amount debited but not credited to beneficiary', value: 'NEFT_NOT_CREDITED' },
-      { label: 'Delay in transfer', value: 'NEFT_DELAY' },
-      { label: 'Wrong account credited', value: 'NEFT_WRONG_ACCOUNT' },
-      { label: 'Refund not received for failed transfer', value: 'NEFT_REFUND' },
-      { label: 'Other NEFT/RTGS issue', value: 'NEFT_OTHER' },
-    ],
-    LOAN: [
-      { label: 'Excessive interest / hidden charges', value: 'LOAN_INTEREST' },
-      { label: 'Harassment by recovery agents', value: 'LOAN_HARASSMENT' },
-      { label: 'Non-release of original documents after repayment', value: 'LOAN_DOCUMENTS' },
-      { label: 'Loan sanctioned without consent', value: 'LOAN_NO_CONSENT' },
-      { label: 'Foreclosure / prepayment issues', value: 'LOAN_FORECLOSURE' },
-      { label: 'Other Loan issue', value: 'LOAN_OTHER' },
-    ],
-    CREDIT_CARD: [
-      { label: 'Unauthorised transaction', value: 'CC_UNAUTHORIZED' },
-      { label: 'Excess charges / hidden fees', value: 'CC_CHARGES' },
-      { label: 'Card issued without consent', value: 'CC_NO_CONSENT' },
-      { label: 'Non-settlement of insurance claim', value: 'CC_INSURANCE' },
-      { label: 'Billing dispute', value: 'CC_BILLING' },
-      { label: 'Other Credit Card issue', value: 'CC_OTHER' },
-    ],
-    DEPOSIT: [
-      { label: 'Non-payment of deposit / maturity amount', value: 'DEP_NON_PAYMENT' },
-      { label: 'Premature closure issue', value: 'DEP_PREMATURE' },
-      { label: 'Interest rate discrepancy', value: 'DEP_INTEREST' },
-      { label: 'TDS related issue', value: 'DEP_TDS' },
-      { label: 'Other Deposit issue', value: 'DEP_OTHER' },
-    ],
-    INSURANCE: [
-      { label: 'Claim rejected / delayed', value: 'INS_CLAIM_REJECTED' },
-      { label: 'Policy misselling', value: 'INS_MISSELLING' },
-      { label: 'Premium refund not received', value: 'INS_REFUND' },
-      { label: 'Other Insurance issue', value: 'INS_OTHER' },
-    ],
-    GENERAL: [
-      { label: 'Account opening / closing issue', value: 'GEN_ACCOUNT' },
-      { label: 'KYC related issue', value: 'GEN_KYC' },
-      { label: 'Pension related issue', value: 'GEN_PENSION' },
-      { label: 'Non-adherence to fair practices code', value: 'GEN_FAIR_PRACTICE' },
-      { label: 'Remittance issue', value: 'GEN_REMITTANCE' },
-      { label: 'Other', value: 'GEN_OTHER' },
-    ],
-  };
+  subCategories: Record<string, { label: string; value: string }[]> = {};
 
   get filteredSubCategories(): { label: string; value: string }[] {
     return this.subCategories[this.formData['complaintCategory']] || [];
@@ -475,6 +472,22 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
   onCategoryChange() {
     this.formData['subCategory1'] = '';
     this.formData['subCategory2'] = '';
+  }
+
+  private defaultCategories(): { label: string; value: string }[] {
+    return [
+      { label: 'ATM / Debit Card', value: 'ATM_DEBIT_CARD' },
+      { label: 'Credit Card', value: 'CREDIT_CARD' },
+      { label: 'Internet / Mobile Banking', value: 'INTERNET_MOBILE_BANKING' },
+      { label: 'UPI', value: 'UPI' },
+      { label: 'Loans and Advances', value: 'LOANS_ADVANCES' },
+      { label: 'Deposit Accounts', value: 'DEPOSIT_ACCOUNTS' },
+      { label: 'Remittances (NEFT/RTGS/IMPS)', value: 'REMITTANCES' },
+      { label: 'Insurance', value: 'INSURANCE' },
+      { label: 'Pension', value: 'PENSION' },
+      { label: 'Para Banking', value: 'PARA_BANKING' },
+      { label: 'Others', value: 'OTHERS' }
+    ];
   }
 
   onAccountTypeToggle(accountType: { label: string; value: string; checked: boolean }) {
@@ -498,23 +511,7 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
     return this.accountTypes.find(at => at.value === type)?.checked ?? false;
   }
 
-  states = [
-    { label: 'Andhra Pradesh', value: 'AP' }, { label: 'Arunachal Pradesh', value: 'AR' },
-    { label: 'Assam', value: 'AS' }, { label: 'Bihar', value: 'BR' },
-    { label: 'Chhattisgarh', value: 'CG' }, { label: 'Delhi', value: 'DL' },
-    { label: 'Goa', value: 'GA' }, { label: 'Gujarat', value: 'GJ' },
-    { label: 'Haryana', value: 'HR' }, { label: 'Himachal Pradesh', value: 'HP' },
-    { label: 'Jharkhand', value: 'JH' }, { label: 'Karnataka', value: 'KA' },
-    { label: 'Kerala', value: 'KL' }, { label: 'Madhya Pradesh', value: 'MP' },
-    { label: 'Maharashtra', value: 'MH' }, { label: 'Manipur', value: 'MN' },
-    { label: 'Meghalaya', value: 'ML' }, { label: 'Mizoram', value: 'MZ' },
-    { label: 'Nagaland', value: 'NL' }, { label: 'Odisha', value: 'OD' },
-    { label: 'Punjab', value: 'PB' }, { label: 'Rajasthan', value: 'RJ' },
-    { label: 'Sikkim', value: 'SK' }, { label: 'Tamil Nadu', value: 'TN' },
-    { label: 'Telangana', value: 'TG' }, { label: 'Tripura', value: 'TR' },
-    { label: 'Uttar Pradesh', value: 'UP' }, { label: 'Uttarakhand', value: 'UK' },
-    { label: 'West Bengal', value: 'WB' }, { label: 'Jammu & Kashmir', value: 'JK' },
-  ];
+  complainantStatesList: { label: string; value: string }[] = [];
 
   // Pincode lookup
   pincodeLoading = false;
@@ -523,7 +520,32 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
 
   onPincodeInput() {
     const value = this.formData['pincode'];
-    if (value && value.length === 6 && /^\d{6}$/.test(value)) {
+    if (!value) {
+      delete this.validationErrors['pincode'];
+      this.formData['state'] = '';
+      this.formData['district'] = '';
+      this.complainantStates = [];
+      this.complainantDistricts = [];
+    } else if (!/^\d*$/.test(value)) {
+      this.validationErrors['pincode'] = 'Pincode must contain only digits.';
+      this.formData['state'] = '';
+      this.formData['district'] = '';
+      this.complainantStates = [];
+      this.complainantDistricts = [];
+    } else if (value.length < 6) {
+      delete this.validationErrors['pincode'];
+      this.formData['state'] = '';
+      this.formData['district'] = '';
+      this.complainantStates = [];
+      this.complainantDistricts = [];
+    } else if (value.length > 6) {
+      this.validationErrors['pincode'] = 'Pincode must be exactly 6 digits.';
+      this.formData['state'] = '';
+      this.formData['district'] = '';
+      this.complainantStates = [];
+      this.complainantDistricts = [];
+    } else {
+      delete this.validationErrors['pincode'];
       this.pincodeLoading = true;
       this.formData['state'] = '';
       this.formData['district'] = '';
@@ -541,17 +563,28 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
             this.complainantDistricts = districts;
             this.formData['state'] = states[0] || '';
             this.formData['district'] = districts[0] || '';
+          } else {
+            this.applyLocalPincode(value);
           }
         },
         error: () => {
           this.pincodeLoading = false;
+          this.applyLocalPincode(value);
         }
       });
+    }
+  }
+
+  private applyLocalPincode(value: string) {
+    const entry = lookupPincode(value);
+    if (entry) {
+      this.complainantStates = [entry.state];
+      this.complainantDistricts = [entry.district];
+      this.formData['state'] = entry.state;
+      this.formData['district'] = entry.district;
+      delete this.validationErrors['pincode'];
     } else {
-      this.formData['state'] = '';
-      this.formData['district'] = '';
-      this.complainantStates = [];
-      this.complainantDistricts = [];
+      this.validationErrors['pincode'] = 'Invalid pincode. No location found.';
     }
   }
 
@@ -688,6 +721,15 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
     }
   }
 
+  onRepFileDrop(event: DragEvent) {
+    event.preventDefault();
+    if (!event.dataTransfer?.files?.length) return;
+    const file = event.dataTransfer.files[0];
+    if (file.size > 2 * 1024 * 1024) return;
+    this.repFile = file;
+    this.repFileName = file.name;
+  }
+
   removeRepFile() {
     this.repFile = null;
     this.repFileName = '';
@@ -701,6 +743,7 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
   ngOnInit() {
     setPageTitle('File a Complaint');
     this.loadRegulatedEntities();
+    this.loadMasterData();
     this.speechSupported = !!(window as any).SpeechRecognition || !!(window as any).webkitSpeechRecognition;
     this.formData['phone'] = this.publicAuth.userIdentifier() || '';
 
@@ -712,6 +755,52 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
     }
 
     this.startAutoSave();
+  }
+
+  private loadMasterData() {
+    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/masters/categories`).subscribe({
+      next: (res) => {
+        const data = res?.data ?? res ?? [];
+        const categoryMap: Record<string, { label: string; value: string }[]> = {};
+        const categorySet = new Map<string, string>();
+        data.forEach((item: any) => {
+          const catValue = item.categoryName || item.value;
+          const catLabel = item.categoryLabel || item.label || catValue;
+          if (!categorySet.has(catValue)) {
+            categorySet.set(catValue, catLabel);
+          }
+          if (item.subCategory) {
+            if (!categoryMap[catValue]) categoryMap[catValue] = [];
+            categoryMap[catValue].push({ label: item.subCategory, value: item.subCategoryValue || item.subCategory });
+          }
+        });
+        this.categories = Array.from(categorySet.entries()).map(([value, label]) => ({ label, value }));
+        if (this.categories.length === 0) {
+          this.categories = this.defaultCategories();
+        }
+        this.subCategories = categoryMap;
+      },
+      error: () => {
+        this.categories = this.defaultCategories();
+      }
+    });
+
+    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/location/states`).subscribe({
+      next: (res) => {
+        const data = res?.data ?? res ?? [];
+        this.states = data.map((s: any) => typeof s === 'string' ? { label: s, value: s } : { label: s.name || s.label, value: s.value || s.code || s.name });
+        this.complainantStatesList = this.states;
+      },
+      error: () => {}
+    });
+
+    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/masters/account-types`).subscribe({
+      next: (res) => {
+        const data = res?.data ?? res ?? [];
+        this.accountTypes = data.map((a: any) => ({ label: a.label || a.name, value: a.value || a.code, checked: false }));
+      },
+      error: () => {}
+    });
   }
 
   private loadDraftFromServer(draftId: string) {
@@ -730,6 +819,7 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
         }
         if (draft.currentStep) {
           this.currentStep.set(draft.currentStep);
+          this.highestStepReached.set(draft.currentStep);
         }
         if (draft.phase === 'form') {
           this.phase.set('form');
@@ -745,18 +835,6 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
     });
   }
 
-  private readonly CEPC_ENTITY_NAMES = new Set([
-    'A V Commercial Co Pvt Ltd',
-    'A V L Leasing & Finance Limited',
-    'A V P Investments Pvt. Ltd.',
-    'A V S Finlease Limited',
-    'A. C. Choksi Financial Services Pvt. Ltd. (Name as per MCA - DEUS Financial Capital Private Limited)',
-    'A. P. Janata Co-operative Urban Bank Limited, Secunderabad',
-    'A. P. Mahajans Co-operative Urban Bank Limited, Secunderabad',
-    'A. P. Raja Rajeswari Mahila Co-operative Urban Bank Limited',
-    'A.D.And Associates Finance Private Limited',
-  ]);
-
   private loadRegulatedEntities() {
     this.http.get<any>(`${environment.apiBaseUrl}/api/v1/routing/entities/list`).subscribe({
       next: (res) => {
@@ -764,16 +842,9 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
         this.banks = entities.map((e: any) => ({
           id: e.id,
           name: e.name,
-          department: this.CEPC_ENTITY_NAMES.has(e.name) ? 'CEPC' : (e.department || 'RBIO'),
+          department: e.department || 'RBIO',
           entityType: e.entityType
         }));
-        // Add CEPC entities that may not exist in backend
-        let nextId = this.banks.length > 0 ? Math.max(...this.banks.map(b => b.id)) + 1 : 9001;
-        this.CEPC_ENTITY_NAMES.forEach(name => {
-          if (!this.banks.some(b => b.name === name)) {
-            this.banks.push({ id: nextId++, name, department: 'CEPC', entityType: 'NBFC' });
-          }
-        });
         this.banks.sort((a, b) => a.name.localeCompare(b.name));
         this.eligibilityQuestions[0].options = this.banks.map(b => ({ label: b.name, value: String(b.id) }));
         const covered = this.banks.filter(b => b.department !== 'CEPC');
@@ -1080,8 +1151,57 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
   // FR-G-017: Form Validation
   validationErrors: Record<string, string> = {};
 
+  onAmountInput(field: string, value: string) {
+    const raw = value.replace(/,/g, '');
+    if (raw && !/^\d*$/.test(raw)) {
+      this.formData[field] = this.formData[field];
+      return;
+    }
+    this.formData[field] = raw ? this.formatIndianNumber(raw) : '';
+    if (field === 'compensationSought') this.validateCompensationSought();
+    if (field === 'reliefSought') this.validateReliefSought();
+  }
+
+  private formatIndianNumber(value: string): string {
+    const num = value.replace(/^0+(?=\d)/, '');
+    if (num.length <= 3) return num;
+    let result = num.slice(-3);
+    let remaining = num.slice(0, -3);
+    while (remaining.length > 0) {
+      result = remaining.slice(-2) + ',' + result;
+      remaining = remaining.slice(0, -2);
+    }
+    return result;
+  }
+
+  amountInWords(value: string): string {
+    const num = parseInt((value || '').replace(/,/g, ''), 10);
+    if (!num || isNaN(num)) return '';
+    return this.convertToWords(num) + ' rupees';
+  }
+
+  private convertToWords(n: number): string {
+    if (n === 0) return 'zero';
+    const ones = ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine',
+      'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen'];
+    const tens = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety'];
+
+    const convert = (num: number): string => {
+      if (num === 0) return '';
+      if (num < 20) return ones[num];
+      if (num < 100) return tens[Math.floor(num / 10)] + (num % 10 ? '-' + ones[num % 10] : '');
+      if (num < 1000) return ones[Math.floor(num / 100)] + ' hundred' + (num % 100 ? ' ' + convert(num % 100) : '');
+      if (num < 100000) return convert(Math.floor(num / 1000)) + ' thousand' + (num % 1000 ? ' ' + convert(num % 1000) : '');
+      if (num < 10000000) return convert(Math.floor(num / 100000)) + ' lakh' + (num % 100000 ? ' ' + convert(num % 100000) : '');
+      return convert(Math.floor(num / 10000000)) + ' crore' + (num % 10000000 ? ' ' + convert(num % 10000000) : '');
+    };
+
+    const words = convert(n);
+    return words.charAt(0).toUpperCase() + words.slice(1);
+  }
+
   validateCompensationSought() {
-    const amount = parseFloat(this.formData['compensationSought'] || '0');
+    const amount = parseFloat((this.formData['compensationSought'] || '0').replace(/,/g, ''));
     if (amount > 3000000) {
       this.validationErrors['compensationSought'] = 'Compensation for consequential loss can be awarded only up to ₹30 lakh. Please enter an amount up to ₹30 lakh.';
     } else {
@@ -1090,7 +1210,7 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
   }
 
   validateReliefSought() {
-    const amount = parseFloat(this.formData['reliefSought'] || '0');
+    const amount = parseFloat((this.formData['reliefSought'] || '0').replace(/,/g, ''));
     if (amount > 300000) {
       this.validationErrors['reliefSought'] = 'Compensation for expenses, harassment, and mental anguish can be awarded only up to ₹3 lakh. Please enter an amount up to ₹3 lakh.';
     } else {
@@ -1132,14 +1252,13 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
         if (!this.formData['transactionRefNumber']?.trim()) this.validationErrors['transactionRefNumber'] = 'Transaction/Reference number is required';
       }
       if (!this.formData['isBusinessCorrespondent']) this.validationErrors['isBusinessCorrespondent'] = 'Please select Yes or No';
-      if (this.attachmentPreviews.length === 0) this.validationErrors['attachments'] = 'Please upload at least one document';
       // UST66: Consequential loss cap ₹30 lakh
-      const compAmount = parseFloat(this.formData['compensationSought'] || '0');
+      const compAmount = parseFloat((this.formData['compensationSought'] || '0').replace(/,/g, ''));
       if (compAmount > 3000000) {
         this.validationErrors['compensationSought'] = 'Compensation for consequential loss can be awarded only up to ₹30 lakh. Please enter an amount up to ₹30 lakh.';
       }
       // UST67: Expenses/Harassment/Mental Anguish cap ₹3 lakh
-      const reliefAmount = parseFloat(this.formData['reliefSought'] || '0');
+      const reliefAmount = parseFloat((this.formData['reliefSought'] || '0').replace(/,/g, ''));
       if (reliefAmount > 300000) {
         this.validationErrors['reliefSought'] = 'Compensation for expenses, harassment, and mental anguish can be awarded only up to ₹3 lakh. Please enter an amount up to ₹3 lakh.';
       }
@@ -1184,206 +1303,72 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
     }
   }
 
-  // FR-G-019: Download acknowledgement letter
-  downloadAcknowledgement() {
-    import('jspdf').then(({ jsPDF }) => {
-      const doc = new jsPDF();
-      const pageWidth = doc.internal.pageSize.getWidth();
-      const pageHeight = doc.internal.pageSize.getHeight();
-      let y = 20;
+  // FR-G-019: Download review form as PDF (captures the rendered Review & Submit section)
+  async downloadAcknowledgement() {
+    const element = this.formCard?.nativeElement;
+    if (!element) return;
 
-      // Watermark: "Draft" before submission, complaint number after
-      const watermarkText = this.referenceNumber ? this.referenceNumber : 'Draft';
-      doc.saveGraphicsState();
-      doc.setGState(new (doc as any).GState({ opacity: 0.08 }));
-      doc.setFontSize(52);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(150, 150, 150);
-      for (let wy = 60; wy < pageHeight; wy += 80) {
-        doc.text(watermarkText, pageWidth / 2, wy, { align: 'center', angle: 35 });
-      }
-      doc.restoreGraphicsState();
-      doc.setTextColor(0, 0, 0);
+    const html2canvas = (await import('html2canvas')).default;
+    const { jsPDF } = await import('jspdf');
 
-      const addRow = (label: string, value: string) => {
-        if (y > 270) { doc.addPage(); y = 20; }
-        doc.setFont('helvetica', 'bold');
-        doc.text(`${label}:`, 25, y);
-        doc.setFont('helvetica', 'normal');
-        const lines = doc.splitTextToSize(value || 'N/A', pageWidth - 90);
-        doc.text(lines, 80, y);
-        y += lines.length * 5 + 3;
-      };
+    const stepHeader = element.querySelector('.step-header') as HTMLElement;
+    const navActions = element.closest('.page-container')?.querySelector('.eligibility-actions') as HTMLElement;
+    if (stepHeader) stepHeader.style.display = 'none';
+    if (navActions) navActions.style.display = 'none';
 
-      // Header
-      doc.setFontSize(16);
-      doc.setFont('helvetica', 'bold');
-      doc.text('RESERVE BANK OF INDIA', pageWidth / 2, y, { align: 'center' });
-      y += 8;
-      doc.setFontSize(11);
-      doc.setFont('helvetica', 'normal');
-      doc.text('Integrated Ombudsman Scheme, 2026', pageWidth / 2, y, { align: 'center' });
-      y += 12;
-
-      // Title
-      doc.setFontSize(14);
-      doc.setFont('helvetica', 'bold');
-      doc.text('ACKNOWLEDGEMENT OF COMPLAINT', pageWidth / 2, y, { align: 'center' });
-      y += 4;
-      doc.setLineWidth(0.5);
-      doc.line(40, y, pageWidth - 40, y);
-      y += 12;
-
-      // Reference
-      doc.setFontSize(10);
-      addRow('Reference Number', this.referenceNumber);
-      addRow('Date of Filing', new Date().toLocaleDateString('en-IN'));
-      y += 5;
-
-      // Complainant Details
-      doc.setFontSize(11);
-      doc.setFont('helvetica', 'bold');
-      doc.text('1. Complainant Details', 20, y);
-      y += 8;
-      doc.setFontSize(10);
-
-      const fullName = [this.formData['firstName'], this.formData['middleName'], this.formData['lastName']].filter(Boolean).join(' ');
-      addRow('Name', fullName);
-      addRow('Category', this.formData['complainantCategory']);
-      addRow('Age', this.formData['age']);
-      addRow('Gender', this.formData['gender']);
-      addRow('Email', this.formData['email']);
-      addRow('Mobile', this.formData['phone']);
-      addRow('Pincode', this.formData['pincode']);
-      addRow('State', this.formData['state']);
-      addRow('District', this.formData['district']);
-      addRow('Address', this.formData['address']);
-      y += 5;
-
-      // Regulated Entity Details
-      doc.setFontSize(11);
-      doc.setFont('helvetica', 'bold');
-      doc.text('2. Regulated Entity Details', 20, y);
-      y += 8;
-      doc.setFontSize(10);
-
-      addRow('Entity Name', this.getSelectedBankName());
-      addRow('Complaint Date with RE', this.formData['bankComplaintDate']);
-      addRow('Complaint Ref (RE)', this.formData['bankComplaintRef']);
-      addRow('Dispute Date', this.formData['disputeDate']);
-      addRow('Reply from Entity', this.formData['receivedReplyFromEntity']);
-      if (this.formData['receivedReplyFromEntity'] === 'yes') {
-        addRow('Reply Date', this.formData['replyDate']);
-      }
-      addRow('Wallet Complaint', this.formData['isWalletComplaint']);
-      if (this.formData['isWalletComplaint'] === 'yes') {
-        addRow('Wallet Name', this.formData['walletName']);
-        addRow('Transaction Ref', this.formData['transactionRefNumber']);
-      }
-      addRow('Business Correspondent', this.formData['isBusinessCorrespondent']);
-      y += 5;
-
-      // Complaint Details
-      if (y > 250) { doc.addPage(); y = 20; }
-      doc.setFontSize(11);
-      doc.setFont('helvetica', 'bold');
-      doc.text('3. Complaint Details', 20, y);
-      y += 8;
-      doc.setFontSize(10);
-
-      addRow('Category', this.formData['complaintCategory']);
-      addRow('Account with RE', this.formData['hasAccountWithRE']);
-      addRow('Account Type', this.formData['accountType']);
-      addRow('Savings A/C No.', this.formData['savingsAccountNumber']);
-      addRow('Loan A/C No.', this.formData['loanAccountNumber']);
-      addRow('ATM/Debit Card No.', this.formData['atmDebitCardNumber']);
-      addRow('Credit Card No.', this.formData['cardNumber']);
-      addRow('Dispute Amount', this.formData['disputeAmount'] ? `Rs. ${this.formData['disputeAmount']}` : '');
-      addRow('Compensation Sought', this.formData['compensationSought'] ? `Rs. ${this.formData['compensationSought']}` : '');
-      addRow('Relief Sought', this.formData['reliefSought']);
-
-      if (y > 250) { doc.addPage(); y = 20; }
-      doc.setFont('helvetica', 'bold');
-      doc.text('Facts of Complaint:', 25, y);
-      y += 6;
-      doc.setFont('helvetica', 'normal');
-      const factLines = doc.splitTextToSize(this.formData['complaintText'] || 'N/A', pageWidth - 40);
-      doc.text(factLines, 25, y);
-      y += factLines.length * 5 + 8;
-
-      // Representative
-      if (y > 250) { doc.addPage(); y = 20; }
-      doc.setFontSize(11);
-      doc.setFont('helvetica', 'bold');
-      doc.text('4. Representative Authorisation', 20, y);
-      y += 8;
-      doc.setFontSize(10);
-
-      addRow('Through Advocate', this.formData['throughAdvocate']);
-      addRow('Authorize Rep', this.formData['authorizeRepresentative']);
-      if (this.formData['authorizeRepresentative'] === 'yes') {
-        addRow('Rep Name', this.formData['repName']);
-        addRow('Rep Phone', this.formData['repPhone']);
-        addRow('Rep Email', this.formData['repEmail']);
-        addRow('Rep Address', this.formData['repAddress']);
-      }
-      y += 5;
-
-      // Attachments
-      if (this.attachmentPreviews.length > 0) {
-        addRow('Attachments', this.attachmentPreviews.map(f => f.name).join(', '));
-      }
-      y += 10;
-
-      // Footer
-      if (y > 250) { doc.addPage(); y = 20; }
-      const trackText = `Your complaint has been registered and will be processed as per the provisions of the Scheme. You may track the status using your reference number: ${this.referenceNumber}`;
-      const trackLines = doc.splitTextToSize(trackText, pageWidth - 40);
-      doc.text(trackLines, 20, y);
-      y += trackLines.length * 5 + 8;
-
-      doc.setFont('helvetica', 'bold');
-      doc.text('Expected Resolution Timeline:', 20, y);
-      doc.setFont('helvetica', 'normal');
-      doc.text(' Within 30 days from the date of receipt.', 72, y);
-      y += 14;
-
-      doc.setFont('helvetica', 'bold');
-      doc.text('For any queries, please contact:', 20, y);
-      y += 7;
-      doc.setFont('helvetica', 'normal');
-      doc.text('Toll-free: 14448', 25, y);
-      y += 6;
-      doc.text('Website: https://cms.rbi.org.in', 25, y);
-      y += 14;
-
-      doc.setFontSize(9);
-      doc.setTextColor(100);
-      doc.text('This is a system-generated acknowledgement.', 20, y);
-      y += 10;
-      doc.setTextColor(0);
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'bold');
-      doc.text('Reserve Bank of India', 20, y);
-      y += 5;
-      doc.setFont('helvetica', 'normal');
-      doc.text('Department of Consumer Education and Protection', 20, y);
-      y += 12;
-
-      // FR-G-028: Digital signature indicator
-      doc.setDrawColor(0, 100, 0);
-      doc.setFillColor(240, 255, 240);
-      doc.roundedRect(20, y, pageWidth - 40, 18, 2, 2, 'FD');
-      doc.setTextColor(0, 100, 0);
-      doc.setFontSize(9);
-      doc.setFont('helvetica', 'bold');
-      doc.text('DIGITALLY SIGNED', 25, y + 7);
-      doc.setFont('helvetica', 'normal');
-      doc.text(`Signed by: RBI CMS Digital Certificate Authority | Date: ${new Date().toISOString().slice(0, 19)}Z`, 25, y + 13);
-      doc.setTextColor(0);
-
-      doc.save(`Acknowledgement_${this.referenceNumber}.pdf`);
+    const canvas = await html2canvas(element, {
+      scale: 2,
+      useCORS: true,
+      logging: false,
+      backgroundColor: '#ffffff'
     });
+
+    if (stepHeader) stepHeader.style.display = '';
+    if (navActions) navActions.style.display = '';
+
+    const imgData = canvas.toDataURL('image/png');
+    const imgWidth = canvas.width;
+    const imgHeight = canvas.height;
+
+    const pdfWidth = 210;
+    const pdfHeight = 297;
+    const margin = 10;
+    const contentWidth = pdfWidth - margin * 2;
+
+    const doc = new jsPDF('p', 'mm', 'a4');
+    const pageContentHeight = pdfHeight - margin * 2;
+    const scaledHeight = (imgHeight * contentWidth) / imgWidth;
+
+    if (scaledHeight <= pageContentHeight) {
+      doc.addImage(imgData, 'PNG', margin, margin, contentWidth, scaledHeight);
+    } else {
+      let remainingHeight = imgHeight;
+      let sourceY = 0;
+      let page = 0;
+
+      while (remainingHeight > 0) {
+        if (page > 0) doc.addPage();
+
+        const sliceHeight = Math.min(remainingHeight, (pageContentHeight / contentWidth) * imgWidth);
+
+        const sliceCanvas = document.createElement('canvas');
+        sliceCanvas.width = imgWidth;
+        sliceCanvas.height = sliceHeight;
+        const ctx = sliceCanvas.getContext('2d')!;
+        ctx.drawImage(canvas, 0, sourceY, imgWidth, sliceHeight, 0, 0, imgWidth, sliceHeight);
+
+        const sliceData = sliceCanvas.toDataURL('image/png');
+        const sliceScaledHeight = (sliceHeight * contentWidth) / imgWidth;
+        doc.addImage(sliceData, 'PNG', margin, margin, contentWidth, sliceScaledHeight);
+
+        sourceY += sliceHeight;
+        remainingHeight -= sliceHeight;
+        page++;
+      }
+    }
+
+    const fileName = this.referenceNumber ? `Complaint_${this.referenceNumber}.pdf` : 'Draft.pdf';
+    doc.save(fileName);
   }
 
   // ══════ MULTI-STEP FORM ══════
@@ -1391,6 +1376,9 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
     if (!this.validateCurrentStep()) return;
     if (this.currentStep() < this.totalSteps) {
       this.currentStep.update(s => s + 1);
+      if (this.currentStep() > this.highestStepReached()) {
+        this.highestStepReached.set(this.currentStep());
+      }
       this.saveDraft();
     }
   }
@@ -1402,16 +1390,17 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
   }
 
   goToStep(step: number) {
-    if (step <= this.currentStep()) {
+    if (step <= this.highestStepReached()) {
       this.currentStep.set(step);
     }
   }
 
-  private readonly DRAFT_VERSION = 3;
+  private readonly DRAFT_VERSION = 4;
 
   // FR-G-008: Save Draft
   saveDraft() {
-    const draft = { version: this.DRAFT_VERSION, formData: this.formData, eligibilityAnswers: this.eligibilityAnswers, eligibilityStep: this.eligibilityStep(), currentStep: this.currentStep(), phase: this.phase() };
+    const attachmentMeta = this.attachmentPreviews.map(f => ({ name: f.name, type: f.type, size: f.size }));
+    const draft = { version: this.DRAFT_VERSION, formData: this.formData, eligibilityAnswers: this.eligibilityAnswers, eligibilityStep: this.eligibilityStep(), currentStep: this.currentStep(), phase: this.phase(), entityName: this.getSelectedBankName(), declarationChecked: this.declarationChecked, declaration2Checked: this.declaration2Checked, attachmentMeta };
     localStorage.setItem('cms_complaint_draft', JSON.stringify(draft));
     localStorage.setItem('cms_draft_saved_at', new Date().toISOString());
     this.draftSaved.set(true);
@@ -1475,8 +1464,21 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
           if (draft.eligibilityAnswers) {
             this.eligibilityAnswers = draft.eligibilityAnswers;
           }
+          if (draft.declarationChecked !== undefined) {
+            this.declarationChecked = draft.declarationChecked;
+          }
+          if (draft.declaration2Checked !== undefined) {
+            this.declaration2Checked = draft.declaration2Checked;
+          }
+          if (draft.attachmentMeta?.length) {
+            this.attachmentPreviews = draft.attachmentMeta.map((m: any) => ({ name: m.name, type: m.type, size: m.size, url: '' }));
+          }
           this.phase.set('form');
-          if (draft.currentStep) this.currentStep.set(draft.currentStep);
+          if (draft.currentStep) {
+            this.currentStep.set(draft.currentStep);
+            this.highestStepReached.set(draft.currentStep);
+          }
+          this.initDateDisplays();
         }
       } catch (e) {}
     }
@@ -1492,6 +1494,8 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
   }
 
   // FR-G-012 + NFR-006: File handling with validation and preview
+  isDragOver = false;
+  isRepDragOver = false;
   fileUploadError = '';
 
   onFilesSelected(event: Event) {
@@ -1523,9 +1527,38 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
     input.value = '';
   }
 
+  onFileDrop(event: DragEvent) {
+    event.preventDefault();
+    if (!event.dataTransfer?.files?.length) return;
+    this.fileUploadError = '';
+    const newFiles = Array.from(event.dataTransfer.files);
+    const setResult = validateFileSet(newFiles, this.attachments.length);
+    if (!setResult.valid) {
+      this.fileUploadError = setResult.error!;
+      announceToScreenReader(setResult.error!, 'assertive');
+      return;
+    }
+    for (const file of newFiles) {
+      const result = validateFile(file);
+      if (!result.valid) {
+        this.fileUploadError = result.error!;
+        announceToScreenReader(result.error!, 'assertive');
+        continue;
+      }
+      this.attachments.push(file);
+      const url = URL.createObjectURL(file);
+      this.attachmentPreviews.push({ name: file.name, url, type: file.type, size: file.size });
+      this.validationErrors['attachments'] = '';
+    }
+  }
+
   removeAttachment(index: number) {
-    URL.revokeObjectURL(this.attachmentPreviews[index].url);
-    this.attachments.splice(index, 1);
+    if (this.attachmentPreviews[index].url) {
+      URL.revokeObjectURL(this.attachmentPreviews[index].url);
+    }
+    if (this.attachments[index]) {
+      this.attachments.splice(index, 1);
+    }
     this.attachmentPreviews.splice(index, 1);
   }
 
@@ -1644,7 +1677,7 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
       regulatedEntityId: selectedEntityId ? parseInt(selectedEntityId, 10) : undefined,
       subject: this.formData['subCategory1'] || this.formData['complaintCategory'] || 'General Complaint',
       description: this.formData['complaintText'],
-      amountInvolved: this.formData['disputeAmount'] ? parseFloat(this.formData['disputeAmount']) : undefined,
+      amountInvolved: this.formData['disputeAmount'] ? parseFloat(this.formData['disputeAmount'].replace(/,/g, '')) : undefined,
       transactionDate: this.formData['disputeDate'] || undefined,
       priorReComplaint: this.eligibilityAnswers['filedWithRE'] === 'yes',
       reComplaintDate: this.formData['bankComplaintDate'] || undefined,
@@ -1690,10 +1723,38 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
     return cat === 'individual' || cat === 'senior_citizen';
   }
 
+  getCategoryLabel(): string {
+    const map: Record<string, string> = {
+      individual: 'Individual', pwd: 'Person with Disabilities', senior_citizen: 'Senior Citizen',
+      individual_business: 'Individual – Business', proprietorship: 'Proprietorship',
+      partnership: 'Partnership', msme: 'MSME', association: 'Association', trust: 'Trust',
+      limited_company: 'Limited Company', government_department: 'Government Department', psu: 'PSU'
+    };
+    return map[this.formData['complainantCategory']] || this.formData['complainantCategory'] || '—';
+  }
+
+  getGenderLabel(): string {
+    const map: Record<string, string> = {
+      male: 'Male', female: 'Female', transgender: 'Transgender',
+      not_disclosed: 'Do not wish to disclose', other: 'Other'
+    };
+    return map[this.formData['gender']] || this.formData['gender'] || '—';
+  }
+
+  getComplaintCategoryLabel(): string {
+    const cat = this.categories.find(c => c.value === this.formData['complaintCategory']);
+    return cat?.label || this.formData['complaintCategory'] || '—';
+  }
+
   validateAge() {
-    const age = Number(this.formData['age']);
-    if (this.formData['age'] && isNaN(age)) {
+    const ageStr = String(this.formData['age'] || '');
+    const age = Number(ageStr);
+    if (ageStr && isNaN(age)) {
       this.validationErrors['age'] = 'Age must be a number';
+    } else if (ageStr.length > 3) {
+      this.validationErrors['age'] = 'Age must not exceed 3 digits';
+    } else if (age < 1 || age > 150) {
+      this.validationErrors['age'] = 'Age must be between 1 and 150';
     } else if (this.formData['complainantCategory'] === 'senior_citizen' && age < 60) {
       this.validationErrors['age'] = 'Age must be 60 or above for Senior Citizen';
     } else {

@@ -64,14 +64,18 @@
       <!-- FR-G-036: Supporting documents (optional) -->
       <div class="form-group">
         <label>{{ 'withdraw.docs_label' | translate }} <span class="optional">(Optional)</span></label>
-        <div class="file-upload-area">
+        <div class="file-upload-area" [class.dragover]="isDragOver"
+             (dragover)="$event.preventDefault(); isDragOver = true"
+             (dragenter)="$event.preventDefault(); isDragOver = true"
+             (dragleave)="isDragOver = false"
+             (drop)="isDragOver = false; onFileDrop($event)">
           <input type="file" id="withdrawDocs" multiple (change)="onWithdrawalFilesSelected($event)"
-                 accept=".pdf,.jpg,.jpeg,.png" class="file-input-hidden">
-          <label for="withdrawDocs" class="file-upload-label">
-            <i class="pi pi-cloud-upload"></i>
-            <span>Upload supporting documents</span>
-            <small>PDF, JPG, PNG (Max 5MB each)</small>
-          </label>
+                 accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" class="file-input-hidden">
+          <span class="file-upload-text">Drag and Drop or <label for="withdrawDocs" class="file-upload-browse-link">Browse</label> File</span>
+        </div>
+        <div class="file-upload-meta">
+          <span>Support formats: PDF, DOC, JPG, PNG</span>
+          <span>Maximum Size of All Files: 2MB</span>
         </div>
         @if (fileUploadError) {
           <div class="error-msg"><i class="pi pi-exclamation-circle"></i> {{ fileUploadError }}</div>

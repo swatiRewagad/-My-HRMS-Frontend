@@ -989,8 +989,8 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
       this.uploadError = 'Only PDF, JPEG, PNG, TIFF, or EML files are accepted.';
       return;
     }
-    if (file.size > 10 * 1024 * 1024) {
-      this.uploadError = 'File size must not exceed 10 MB.';
+    if (file.size > 2 * 1024 * 1024) {
+      this.uploadError = 'File size must not exceed 2 MB.';
       return;
     }
 

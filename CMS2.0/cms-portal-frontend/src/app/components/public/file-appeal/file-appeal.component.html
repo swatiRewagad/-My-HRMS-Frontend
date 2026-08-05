@@ -208,14 +208,18 @@
 
       <div class="form-group">
         <label>{{ 'appeal.docs' | translate }}</label>
-        <div class="file-upload-area">
-          <input type="file" id="appealFiles" multiple (change)="onFilesSelected($event)" accept=".pdf,.jpg,.jpeg,.png"
+        <div class="file-upload-area" [class.dragover]="isDragOver"
+             (dragover)="$event.preventDefault(); isDragOver = true"
+             (dragenter)="$event.preventDefault(); isDragOver = true"
+             (dragleave)="isDragOver = false"
+             (drop)="isDragOver = false; onFileDrop($event)">
+          <input type="file" id="appealFiles" multiple (change)="onFilesSelected($event)" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
                  class="file-input-hidden">
-          <label for="appealFiles" class="file-upload-label">
-            <i class="pi pi-cloud-upload"></i>
-            <span>Click to upload documents</span>
-            <small>PDF, JPG, PNG (Max 5MB each)</small>
-          </label>
+          <span class="file-upload-text">Drag and Drop or <label for="appealFiles" class="file-upload-browse-link">Browse</label> File</span>
+        </div>
+        <div class="file-upload-meta">
+          <span>Support formats: PDF, DOC, JPG, PNG</span>
+          <span>Maximum Size of All Files: 2MB</span>
         </div>
         @if (appealAttachments.length > 0) {
           <div class="file-list">

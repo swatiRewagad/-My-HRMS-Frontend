@@ -8,14 +8,13 @@ export interface FileValidationResult {
 }
 
 export const ALLOWED_FILE_TYPES: Record<string, string[]> = {
-  document: ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
-  image: ['image/jpeg', 'image/png', 'image/gif', 'image/bmp'],
-  spreadsheet: ['application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
+  document: ['application/pdf', 'application/msword'],
+  image: ['image/jpeg', 'image/png'],
 };
 
-export const ALLOWED_EXTENSIONS = ['.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.xls', '.xlsx'];
+export const ALLOWED_EXTENSIONS = ['.pdf', '.doc', '.jpg', '.jpeg', '.png'];
 
-export const MAX_FILE_SIZE_MB = 5;
+export const MAX_FILE_SIZE_MB = 2;
 export const MAX_TOTAL_SIZE_MB = 25;
 export const MAX_FILE_COUNT = 10;
 
@@ -23,7 +22,7 @@ export function validateFile(file: File): FileValidationResult {
   const extension = '.' + file.name.split('.').pop()?.toLowerCase();
 
   if (!ALLOWED_EXTENSIONS.includes(extension)) {
-    return { valid: false, error: `File type "${extension}" is not allowed. Allowed: ${ALLOWED_EXTENSIONS.join(', ')}` };
+    return { valid: false, error: `File type "${extension}" is not allowed. Allowed: PDF, DOC, JPG, PNG` };
   }
 
   const allMimeTypes = Object.values(ALLOWED_FILE_TYPES).flat();

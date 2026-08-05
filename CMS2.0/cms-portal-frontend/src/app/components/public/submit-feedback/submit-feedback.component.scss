@@ -51,13 +51,13 @@
 
 .btn-primary {
   display: inline-flex; align-items: center; gap: 6px;
-  padding: 12px 28px; background: #2460b9; color: #fff; border: none; border-radius: 8px;
+  padding: 12px 28px; background: #472293; color: #fff; border: none; border-radius: 8px;
   font-size: 15px; font-weight: 600; cursor: pointer;
-  &:hover { background: #1a4fa0; }
+  &:hover { background: #3a1b78; }
   &:disabled { opacity: 0.5; cursor: not-allowed; }
 }
 .btn-secondary {
-  padding: 12px 28px; background: #fff; color: #2460b9; border: 1px solid #2460b9; border-radius: 8px;
+  padding: 12px 28px; background: #fff; color: #472293; border: 1px solid #472293; border-radius: 8px;
   font-size: 15px; font-weight: 600; cursor: pointer;
   &:hover { background: #f0f4ff; }
 }

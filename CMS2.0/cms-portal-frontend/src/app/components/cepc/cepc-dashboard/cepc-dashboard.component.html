@@ -1,216 +1,423 @@
+<app-session-timeout></app-session-timeout>
 <div class="cepc-dashboard">
-  <header class="topbar">
-    <div class="topbar-left">
-      <button class="back-btn" (click)="goBack()">&larr;</button>
-      <div class="title-block">
-        <h2>CEPC - Complaint Management</h2>
-        <span class="subtitle">{{ roleLabels[userRole()] }}</span>
+  <!-- Header Bar -->
+  <header class="cms-header">
+    <div class="header-left">
+      <img src="assets/corporates-rbi-logo.jpg" alt="RBI" class="rbi-logo" />
+      <div class="rbi-text">
+        <span class="rbi-hindi">भारतीय रिज़र्व बैंक</span>
+        <span class="rbi-english">RESERVE BANK OF INDIA</span>
       </div>
+      <div class="header-divider-v"></div>
+      <img src="assets/cms-logo.png" alt="CMS" class="cms-logo" onerror="this.style.display='none'" />
+      <span class="cms-title">CMS</span>
+      <span class="cms-subtitle">Complaint Management System</span>
     </div>
-    <div class="topbar-right">
-      @if (auth.currentUser(); as user) {
-        <span class="role-badge">{{ roleLabels[userRole()] }}</span>
-        <span class="user-name">{{ user.firstName }} {{ user.lastName }}</span>
-      }
-      <button class="logout-btn" (click)="logout()">Logout</button>
+    <div class="header-right">
+      <div class="header-icons">
+        <button title="Font size"><i class="pi pi-text-size"></i></button>
+        <button title="Language"><i class="pi pi-globe"></i></button>
+        <app-notification-bell></app-notification-bell>
+      </div>
+      <span class="user-avatar">{{ (loggedInUser?.name || 'C').charAt(0) }}</span>
+      <div class="user-details">
+        <span class="user-name">{{ loggedInUser?.name || 'Staff' }}</span>
+        <span class="user-role">CEPC {{ roleLabels[userRole()] }}</span>
+      </div>
+      <button class="btn-logout" (click)="logout()"><i class="pi pi-sign-out"></i></button>
     </div>
   </header>
 
-  <main class="content">
-    <!-- Stats Row -->
-    <div class="stats-row">
-      <div class="stat-card" [class.active]="filterStatus === ''" (click)="filterStatus = ''">
-        <span class="stat-value">{{ stats().total }}</span>
-        <span class="stat-label">Total</span>
+  <!-- Sidebar + Content -->
+  <div class="main-layout">
+    <!-- Left Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-item active">
+        <i class="pi pi-list"></i>
+        <span>CEPC Complaints</span>
       </div>
-      <div class="stat-card pending" [class.active]="filterStatus === 'pending'" (click)="filterStatus = 'pending'">
-        <span class="stat-value">{{ stats().pending }}</span>
-        <span class="stat-label">Pending</span>
+      <div class="sidebar-item" (click)="router.navigate(['/admin/dashboard'], {queryParams: {department: 'CEPC'}})">
+        <i class="pi pi-chart-bar"></i>
+        <span>Dashboard</span>
       </div>
-      <div class="stat-card progress" [class.active]="filterStatus === 'in_progress'" (click)="filterStatus = 'in_progress'">
-        <span class="stat-value">{{ stats().inProgress }}</span>
-        <span class="stat-label">Under Examination</span>
+      <div class="sidebar-collapse">
+        <i class="pi pi-angle-double-left"></i>
+        <span>Collapse</span>
       </div>
-      <div class="stat-card review" [class.active]="filterStatus === 'under_review'" (click)="filterStatus = 'under_review'">
-        <span class="stat-value">{{ stats().underReview }}</span>
-        <span class="stat-label">Under Review</span>
-      </div>
-      <div class="stat-card closure" [class.active]="filterStatus === 'awaiting_closure'" (click)="filterStatus = 'awaiting_closure'">
-        <span class="stat-value">{{ stats().awaitingClosure }}</span>
-        <span class="stat-label">Awaiting Closure</span>
-      </div>
-      <div class="stat-card escalated" [class.active]="filterStatus === 'escalated'" (click)="filterStatus = 'escalated'">
-        <span class="stat-value">{{ stats().escalated }}</span>
-        <span class="stat-label">Escalated</span>
-      </div>
-    </div>
+    </aside>
 
-    <!-- Search & Filter Bar -->
-    <div class="toolbar">
-      <div class="search-box">
-        <i class="pi pi-search"></i>
-        <input type="text" placeholder="Search by complaint no, name, entity, subject..."
-               [(ngModel)]="searchText" />
+    <!-- Main Content -->
+    <main class="content">
+      <div class="content-header">
+        <h1>CEPC Complaints</h1>
+        <div class="header-actions">
+          <button class="btn btn-link" (click)="showAdvancedSearch.set(true)">Advanced Search</button>
+          @if (advSearchActive()) {
+            <button class="btn btn-link danger" (click)="clearAdvancedSearch()">Clear Filters</button>
+          }
+          <select class="queue-select" [value]="filterStatus()" (change)="filterStatus.set($any($event.target).value)">
+            <option value="">CEPC Complaints</option>
+            <option value="pending">Pending</option>
+            <option value="in_progress">Under Examination</option>
+            <option value="under_review">Under Review</option>
+            <option value="awaiting_closure">Awaiting Closure</option>
+            <option value="escalated">Escalated</option>
+          </select>
+          <select class="queue-select" [value]="filterQueue()" (change)="filterQueue.set($any($event.target).value)">
+            <option value="ASSIGNED_TO_ME">Assigned To Me</option>
+            <option value="ALL">All Complaints</option>
+          </select>
+          @if (userRole() === 'CEPC_DO' || userRole() === 'CEPC_ADMIN') {
+            <button class="btn btn-primary create-btn" (click)="openCreateDialog()">
+              <i class="pi pi-plus"></i> Create Complaint
+            </button>
+          }
+        </div>
       </div>
-      <select class="filter-select" [(ngModel)]="filterStatus">
-        <option value="">All Status</option>
-        <option value="pending">Pending / Assigned</option>
-        <option value="in_progress">Under Examination</option>
-        <option value="under_review">Under Review</option>
-        <option value="awaiting_closure">Awaiting Closure</option>
-        <option value="escalated">Escalated</option>
-        <option value="sent_back">Sent Back</option>
-        <option value="info_requested">Info Requested</option>
-        <option value="forwarded">Forwarded</option>
-      </select>
-      @if (userRole() === 'CEPC_DO' || userRole() === 'CEPC_ADMIN') {
-        <button class="create-btn" (click)="openCreateDialog()">+ Create Complaint</button>
-      }
-      <button class="refresh-btn" (click)="loadComplaints()">
-        <i class="pi pi-refresh"></i> Refresh
-      </button>
-    </div>
 
-    <!-- Complaints Table -->
-    @if (loading()) {
-      <div class="loading-state">
-        <div class="spinner"></div>
-        <span>Loading complaints...</span>
+      <!-- Stats Cards -->
+      <div class="stats-bar">
+        <div class="stat-card" (click)="filterStatus.set('')">
+          <div class="stat-icon blue"><i class="pi pi-inbox"></i></div>
+          <div class="stat-content">
+            <span class="stat-label">Total Complaints</span>
+            <span class="stat-value">{{ stats().total }}</span>
+          </div>
+        </div>
+        <div class="stat-card" (click)="filterStatus.set('pending')">
+          <div class="stat-icon yellow"><i class="pi pi-clock"></i></div>
+          <div class="stat-content">
+            <span class="stat-label">Pending</span>
+            <span class="stat-value">{{ stats().pending }}</span>
+          </div>
+        </div>
+        <div class="stat-card" (click)="filterStatus.set('in_progress')">
+          <div class="stat-icon purple"><i class="pi pi-file-edit"></i></div>
+          <div class="stat-content">
+            <span class="stat-label">Under Examination</span>
+            <span class="stat-value">{{ stats().inProgress }}</span>
+          </div>
+        </div>
+        <div class="stat-card" (click)="filterStatus.set('under_review')">
+          <div class="stat-icon orange"><i class="pi pi-eye"></i></div>
+          <div class="stat-content">
+            <span class="stat-label">Under Review</span>
+            <span class="stat-value">{{ stats().underReview }}</span>
+          </div>
+        </div>
+        <div class="stat-card" (click)="filterStatus.set('escalated')">
+          <div class="stat-icon red"><i class="pi pi-exclamation-triangle"></i></div>
+          <div class="stat-content">
+            <span class="stat-label">Escalated</span>
+            <span class="stat-value">{{ stats().escalated }}</span>
+          </div>
+        </div>
       </div>
-    } @else if (filteredComplaints().length === 0) {
-      <div class="empty-state">
-        <div class="empty-icon">&#128203;</div>
-        <h3>No complaints found</h3>
-        <p>No complaints matching your criteria.</p>
+
+      <!-- Status Tabs -->
+      <div class="status-tabs">
+        <button class="tab" [class.active]="filterStatus() === ''" (click)="filterStatus.set('')">
+          All
+        </button>
+        <button class="tab" [class.active]="filterStatus() === 'pending'" (click)="filterStatus.set('pending')">
+          Pending <span class="tab-count">{{ stats().pending }}</span>
+        </button>
+        <button class="tab" [class.active]="filterStatus() === 'in_progress'" (click)="filterStatus.set('in_progress')">
+          Under Examination
+        </button>
+        <button class="tab" [class.active]="filterStatus() === 'under_review'" (click)="filterStatus.set('under_review')">
+          Under Review
+        </button>
+        <button class="tab" [class.active]="filterStatus() === 'awaiting_closure'" (click)="filterStatus.set('awaiting_closure')">
+          Awaiting Closure
+        </button>
+        <button class="tab" [class.active]="filterStatus() === 'escalated'" (click)="filterStatus.set('escalated')">
+          Escalated @if (stats().escalated > 0) { <span class="tab-count">{{ stats().escalated }}</span> }
+        </button>
       </div>
-    } @else {
-      <div class="table-container">
-        <table class="complaints-table">
-          <thead>
-            <tr>
-              <th (click)="sortBy('complaintNumber')">Complaint No.</th>
-              <th (click)="sortBy('complainantName')">Complainant</th>
-              <th (click)="sortBy('entityName')">Entity</th>
-              <th (click)="sortBy('subject')">Subject</th>
-              <th (click)="sortBy('priority')">Priority</th>
-              <th (click)="sortBy('status')">Status</th>
-              <th (click)="sortBy('slaDueDate')">SLA Due</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (c of paginatedComplaints(); track c.complaintNumber) {
-              <tr [class.overdue]="isOverdue(c)" (click)="openComplaint(c)">
-                <td class="complaint-num">{{ c.complaintNumber }}</td>
-                <td>{{ c.complainantName }}</td>
-                <td>
-                  <span class="entity-name">{{ c.entityName || '—' }}</span>
-                </td>
-                <td class="subject-cell">{{ c.subject }}</td>
-                <td>
-                  <span class="priority-badge" [attr.data-priority]="c.priority">{{ c.priority }}</span>
-                </td>
-                <td>
-                  <span class="status-badge" [attr.data-status]="c.status">{{ getStatusLabel(c.status) }}</span>
-                </td>
-                <td class="sla-cell">
-                  <app-cepc-sla-indicator [slaDueDate]="c.slaDueDate" [status]="c.status"></app-cepc-sla-indicator>
-                </td>
-                <td>
-                  <button class="action-link" (click)="$event.stopPropagation(); openComplaint(c)">View</button>
-                </td>
+
+      <!-- Complaints Table -->
+      <div class="table-section">
+        <div class="table-header-row">
+          <h3>Complaints</h3>
+          <div class="table-actions">
+            <label class="toggle-filter">
+              <span class="toggle-switch" [class.active]="filterUnread()">
+                <input type="checkbox" [checked]="filterUnread()" (change)="filterUnread.set(!filterUnread())" />
+                <span class="toggle-slider"></span>
+              </span>
+              Unread
+            </label>
+            <label class="toggle-filter">
+              <span class="toggle-switch" [class.active]="filterWithoutAttachments()">
+                <input type="checkbox" [checked]="filterWithoutAttachments()" (change)="filterWithoutAttachments.set(!filterWithoutAttachments())" />
+                <span class="toggle-slider"></span>
+              </span>
+              Without Attachments
+            </label>
+            <button class="btn btn-icon" (click)="showColumnConfig.set(true)" title="Column Selection">
+              <i class="pi pi-cog"></i>
+            </button>
+          </div>
+        </div>
+
+        @if (loading()) {
+          <div class="loading-overlay">
+            <div class="spinner"></div>
+            <span>Loading...</span>
+          </div>
+        }
+
+        <div class="table-wrapper">
+          <table class="data-grid">
+            <thead>
+              <tr>
+                <th class="checkbox-col">
+                  <input type="checkbox"
+                    [checked]="selectedIds().size === filteredComplaints().length && filteredComplaints().length > 0"
+                    (change)="toggleSelectAll()" />
+                </th>
+                @for (col of visibleColumns(); track col.key) {
+                  <th (click)="sortBy(col.key)">
+                    {{ col.label }}
+                    @if (sortColumn === col.key) {
+                      <i class="pi" [class.pi-sort-amount-up]="sortDirection === 'asc'" [class.pi-sort-amount-down]="sortDirection === 'desc'"></i>
+                    }
+                  </th>
+                }
               </tr>
-            }
-          </tbody>
-        </table>
-      </div>
+              <!-- Column Search Row -->
+              <tr class="filter-row">
+                <th></th>
+                @for (col of visibleColumns(); track col.key) {
+                  <th>
+                    <input type="text" class="col-search" placeholder="Search"
+                      [(ngModel)]="columnFilters[col.key]" />
+                  </th>
+                }
+              </tr>
+            </thead>
+            <tbody>
+              @for (item of paginatedComplaints(); track item.complaintId) {
+                <tr [class.selected]="selectedIds().has(item.complaintId)" [class.visited]="visitedIds().has(item.complaintId)" (click)="openComplaint(item)">
+                  <td class="checkbox-col" (click)="$event.stopPropagation()">
+                    <input type="checkbox"
+                      [checked]="selectedIds().has(item.complaintId)"
+                      (change)="toggleSelect(item.complaintId)" />
+                  </td>
+                  @for (col of visibleColumns(); track col.key) {
+                    <td [class]="'cell-' + col.key">
+                      @if (col.key === 'status') {
+                        <span class="status-badge" [attr.data-status]="item.status">{{ getStatusLabel(item.status) }}</span>
+                      } @else if (col.key === 'priority') {
+                        <span class="priority-badge" [attr.data-priority]="item.priority">{{ item.priority }}</span>
+                      } @else if (col.key === 'slaDueDate') {
+                        <app-cepc-sla-indicator [slaDueDate]="item.slaDueDate" [status]="item.status"></app-cepc-sla-indicator>
+                      } @else {
+                        {{ getCellValue(item, col.key) }}
+                      }
+                    </td>
+                  }
+                </tr>
+              } @empty {
+                <tr>
+                  <td [attr.colspan]="visibleColumns().length + 1" class="empty-state">
+                    No complaints found.
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
 
-      <!-- Pagination -->
-      <div class="pagination">
-        <span class="page-info">
-          Showing {{ (currentPage() - 1) * pageSize + 1 }} to {{ Math.min(currentPage() * pageSize, filteredComplaints().length) }} of {{ filteredComplaints().length }}
-        </span>
-        <div class="page-controls">
-          <button class="page-btn" [disabled]="currentPage() === 1" (click)="currentPage.set(currentPage() - 1)">&lsaquo;</button>
-          @for (p of [].constructor(totalPages()); track $index) {
-            <button class="page-btn" [class.active]="$index + 1 === currentPage()" (click)="currentPage.set($index + 1)">{{ $index + 1 }}</button>
-          }
-          <button class="page-btn" [disabled]="currentPage() === totalPages()" (click)="currentPage.set(currentPage() + 1)">&rsaquo;</button>
+        <!-- Pagination -->
+        <div class="pagination">
+          <span class="page-info">Showing {{ paginationStart() }} to {{ paginationEnd() }} of {{ filteredComplaints().length }} entries</span>
+          <div class="page-controls">
+            <button class="page-btn" (click)="currentPage.set(1)" [disabled]="currentPage() === 1">&laquo;</button>
+            <button class="page-btn" (click)="currentPage.set(currentPage() - 1)" [disabled]="currentPage() === 1">&lsaquo;</button>
+            @for (p of pageNumbers(); track p) {
+              <button class="page-btn" [class.active]="p === currentPage()" (click)="currentPage.set(p)">{{ p }}</button>
+            }
+            <button class="page-btn" (click)="currentPage.set(currentPage() + 1)" [disabled]="currentPage() === totalPages()">&rsaquo;</button>
+            <button class="page-btn" (click)="currentPage.set(totalPages())" [disabled]="currentPage() === totalPages()">&raquo;</button>
+            <select class="page-size-select" [value]="pageSize" (change)="changePageSize(+$any($event.target).value)">
+              <option [value]="10">10</option>
+              <option [value]="25">25</option>
+              <option [value]="50">50</option>
+            </select>
+          </div>
         </div>
       </div>
-    }
-  </main>
+    </main>
+  </div>
+</div>
 
-  <!-- Create Complaint Dialog -->
-  @if (showCreateDialog()) {
-    <div class="modal-overlay" (click)="closeCreateDialog()">
-      <div class="modal-content" (click)="$event.stopPropagation()">
-        <div class="modal-header">
-          <h3>Create New CEPC Complaint</h3>
-          <button class="close-btn" (click)="closeCreateDialog()">&times;</button>
-        </div>
-        <div class="modal-body">
-          @if (createSuccess()) {
-            <div class="success-msg">{{ createSuccess() }}</div>
-          } @else {
-            <div class="form-grid">
-              <div class="form-field">
-                <label>Complainant Name *</label>
-                <input type="text" [(ngModel)]="newComplaint.complainantName" placeholder="Full name" />
-              </div>
-              <div class="form-field">
-                <label>Email</label>
-                <input type="email" [(ngModel)]="newComplaint.complainantEmail" placeholder="Email address" />
-              </div>
-              <div class="form-field">
-                <label>Phone</label>
-                <input type="tel" [(ngModel)]="newComplaint.complainantPhone" placeholder="Mobile number" />
-              </div>
-              <div class="form-field">
-                <label>Entity Name</label>
-                <input type="text" [(ngModel)]="newComplaint.entityName" placeholder="Regulated entity name" />
-              </div>
-              <div class="form-field full">
-                <label>Subject *</label>
-                <input type="text" [(ngModel)]="newComplaint.subject" placeholder="Brief subject of complaint" />
-              </div>
-              <div class="form-field full">
-                <label>Description</label>
-                <div class="textarea-with-speech">
-                  <textarea [(ngModel)]="newComplaint.description" rows="4" placeholder="Detailed description..."></textarea>
-                  <app-speech-button (transcription)="newComplaint.description = newComplaint.description + ' ' + $event"></app-speech-button>
-                </div>
-              </div>
-              <div class="form-field">
-                <label>Priority</label>
-                <select [(ngModel)]="newComplaint.priority">
-                  <option value="LOW">Low</option>
-                  <option value="MEDIUM">Medium</option>
-                  <option value="HIGH">High</option>
-                  <option value="CRITICAL">Critical</option>
-                </select>
-              </div>
-              <div class="form-field">
-                <label>Filing Type</label>
-                <select [(ngModel)]="newComplaint.filingType">
-                  <option value="CEPC_MANUAL">Manual Entry</option>
-                  <option value="PHYSICAL_LETTER">Physical Letter</option>
-                  <option value="EMAIL">Email</option>
-                </select>
-              </div>
-            </div>
-            @if (createError()) {
-              <div class="error-msg">{{ createError() }}</div>
-            }
-            <div class="modal-actions">
-              <button class="submit-btn" [disabled]="creating()" (click)="submitNewComplaint()">
-                @if (creating()) { Creating... } @else { Create Complaint }
-              </button>
-              <button class="cancel-btn" (click)="closeCreateDialog()">Cancel</button>
-            </div>
-          }
-        </div>
+<!-- Column Selection Dialog -->
+@if (showColumnConfig()) {
+  <div class="modal-overlay" (click)="showColumnConfig.set(false)">
+    <div class="modal-dialog column-dialog" (click)="$event.stopPropagation()">
+      <div class="modal-title">
+        <i class="pi pi-th-large"></i> Choose columns to see in "Complaints" Table
+        <button class="modal-close" (click)="showColumnConfig.set(false)">&times;</button>
+      </div>
+      <p class="modal-subtitle">Select and manage visible columns</p>
+      <input type="text" class="column-search" placeholder="Search Column Name" [(ngModel)]="columnSearchText" />
+      <div class="column-list">
+        @for (col of filteredColumns(); track col.key; let i = $index) {
+          <label class="column-option"
+            draggable="true"
+            (dragstart)="onColumnDragStart(i)"
+            (dragover)="onColumnDragOver($event, i)"
+            (drop)="onColumnDrop(i)"
+            (dragend)="onColumnDragEnd()"
+            [class.dragging]="dragIndex === i"
+            [class.drag-over]="dragOverIndex === i">
+            <i class="pi pi-bars drag-handle"></i>
+            <input type="checkbox" [checked]="col.visible" (change)="toggleColumnVisibility(col.key)" />
+            {{ col.label }}
+          </label>
+        }
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-outline" (click)="showColumnConfig.set(false)">Cancel</button>
+        <button class="btn btn-primary" (click)="showColumnConfig.set(false)">Save</button>
       </div>
     </div>
-  }
-</div>
+  </div>
+}
+
+<!-- Advanced Search Dialog -->
+@if (showAdvancedSearch()) {
+  <div class="modal-overlay" (click)="showAdvancedSearch.set(false)">
+    <div class="modal-dialog search-dialog" (click)="$event.stopPropagation()">
+      <div class="modal-title">
+        Advanced Search
+        <button class="modal-close" (click)="showAdvancedSearch.set(false)">&times;</button>
+      </div>
+      <div class="search-grid">
+        <div class="search-field">
+          <label>Complaint Number</label>
+          <input type="text" [(ngModel)]="advSearch.complaintNumber" placeholder="Enter a value" />
+        </div>
+        <div class="search-field">
+          <label>Complaint Id</label>
+          <input type="text" [(ngModel)]="advSearch.complaintId" placeholder="Enter a value" />
+        </div>
+        <div class="search-field">
+          <label>Status Code</label>
+          <select [(ngModel)]="advSearch.statusCode">
+            <option value="">Select a Value</option>
+            <option value="pending">Pending</option>
+            <option value="in_progress">Under Examination</option>
+            <option value="under_review">Under Review</option>
+            <option value="awaiting_closure">Awaiting Closure</option>
+            <option value="escalated">Escalated</option>
+          </select>
+        </div>
+        <div class="search-field">
+          <label>Complainant Name</label>
+          <input type="text" [(ngModel)]="advSearch.complainantName" placeholder="Enter a value" />
+        </div>
+        <div class="search-field">
+          <label>Complainant Email</label>
+          <input type="text" [(ngModel)]="advSearch.email" placeholder="Enter a value" />
+        </div>
+        <div class="search-field">
+          <label>Entity Name</label>
+          <input type="text" [(ngModel)]="advSearch.entityName" placeholder="Enter a value" />
+        </div>
+        <div class="search-field full-width">
+          <label>Subject</label>
+          <input type="text" [(ngModel)]="advSearch.subject" placeholder="Enter a value" />
+        </div>
+        <div class="search-field">
+          <label>Priority</label>
+          <select [(ngModel)]="advSearch.priority">
+            <option value="">Select a Value</option>
+            <option value="LOW">Low</option>
+            <option value="MEDIUM">Medium</option>
+            <option value="HIGH">High</option>
+            <option value="CRITICAL">Critical</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-outline" (click)="clearAdvancedSearch(); showAdvancedSearch.set(false)">Clear</button>
+        <button class="btn btn-outline" (click)="showAdvancedSearch.set(false)">Cancel</button>
+        <button class="btn btn-primary" (click)="applyAdvancedSearch()">Search</button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Create Complaint Dialog -->
+@if (showCreateDialog()) {
+  <div class="modal-overlay" (click)="closeCreateDialog()">
+    <div class="modal-dialog create-dialog" (click)="$event.stopPropagation()">
+      <div class="modal-title">
+        Create New CEPC Complaint
+        <button class="modal-close" (click)="closeCreateDialog()">&times;</button>
+      </div>
+      @if (createSuccess()) {
+        <div class="success-msg">{{ createSuccess() }}</div>
+      } @else {
+        <div class="search-grid">
+          <div class="search-field">
+            <label>Complainant Name *</label>
+            <input type="text" [(ngModel)]="newComplaint.complainantName" placeholder="Full name" />
+          </div>
+          <div class="search-field">
+            <label>Email</label>
+            <input type="email" [(ngModel)]="newComplaint.complainantEmail" placeholder="Email address" />
+          </div>
+          <div class="search-field">
+            <label>Phone</label>
+            <input type="tel" [(ngModel)]="newComplaint.complainantPhone" placeholder="Mobile number" />
+          </div>
+          <div class="search-field">
+            <label>Entity Name</label>
+            <input type="text" [(ngModel)]="newComplaint.entityName" placeholder="Regulated entity name" />
+          </div>
+          <div class="search-field full-width">
+            <label>Subject *</label>
+            <input type="text" [(ngModel)]="newComplaint.subject" placeholder="Brief subject of complaint" />
+          </div>
+          <div class="search-field full-width">
+            <label>Description</label>
+            <div class="textarea-with-speech">
+              <textarea [(ngModel)]="newComplaint.description" rows="4" placeholder="Detailed description..."></textarea>
+              <app-speech-button (transcription)="newComplaint.description = newComplaint.description + ' ' + $event"></app-speech-button>
+            </div>
+          </div>
+          <div class="search-field">
+            <label>Priority</label>
+            <select [(ngModel)]="newComplaint.priority">
+              <option value="LOW">Low</option>
+              <option value="MEDIUM">Medium</option>
+              <option value="HIGH">High</option>
+              <option value="CRITICAL">Critical</option>
+            </select>
+          </div>
+          <div class="search-field">
+            <label>Filing Type</label>
+            <select [(ngModel)]="newComplaint.filingType">
+              <option value="CEPC_MANUAL">Manual Entry</option>
+              <option value="PHYSICAL_LETTER">Physical Letter</option>
+              <option value="EMAIL">Email</option>
+            </select>
+          </div>
+        </div>
+        @if (createError()) {
+          <div class="error-msg">{{ createError() }}</div>
+        }
+        <div class="modal-actions">
+          <button class="btn btn-outline" (click)="closeCreateDialog()">Cancel</button>
+          <button class="btn btn-primary" [disabled]="creating()" (click)="submitNewComplaint()">
+            @if (creating()) { Creating... } @else { Create Complaint }
+          </button>
+        </div>
+      }
+    </div>
+  </div>
+}

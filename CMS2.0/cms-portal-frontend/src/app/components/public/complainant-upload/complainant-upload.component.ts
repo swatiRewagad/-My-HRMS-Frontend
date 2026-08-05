@@ -281,7 +281,7 @@ interface SelectedFile {
     }
     .btn-verify {
       padding: 12px;
-      background: #1565c0;
+      background: #472293;
       color: #fff;
       border: none;
       border-radius: 4px;
@@ -290,11 +290,11 @@ interface SelectedFile {
       cursor: pointer;
     }
     .btn-verify:disabled {
-      background: #90caf9;
+      background: #a78bdb;
       cursor: not-allowed;
     }
     .btn-verify:hover:not(:disabled) {
-      background: #0d47a1;
+      background: #3a1b78;
     }
 
     /* Drop Zone */
@@ -317,13 +317,13 @@ interface SelectedFile {
     .btn-browse {
       display: inline-block;
       padding: 8px 16px;
-      background: #1565c0;
+      background: #472293;
       color: #fff;
       border-radius: 4px;
       font-size: 13px;
       cursor: pointer;
     }
-    .btn-browse:hover { background: #0d47a1; }
+    .btn-browse:hover { background: #3a1b78; }
 
     /* File List */
     .file-list {

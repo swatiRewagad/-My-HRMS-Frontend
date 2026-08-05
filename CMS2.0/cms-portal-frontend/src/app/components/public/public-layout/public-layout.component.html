@@ -62,24 +62,10 @@
         @if (userMenuOpen) {
           <div class="user-dropdown-menu">
             <div class="user-dropdown-info">
-              <i class="pi pi-user"></i>
               <div>
-                <span class="user-dropdown-name">{{ getUserName() }}</span>
                 <span class="user-dropdown-last-login">Last Signed In on {{ getLastSignedIn() }}</span>
                 <span class="user-dropdown-email">{{ getUserEmail() }}</span>
               </div>
-            </div>
-            <div class="user-dropdown-divider"></div>
-            <div class="user-dropdown-theme">
-              <i class="pi pi-palette"></i>
-              <span>Theme</span>
-            </div>
-            <div class="theme-circles">
-              <button class="theme-circle blue" [class.active]="activeTheme === 'blue'" (click)="setTheme('blue')"></button>
-              <button class="theme-circle maroon" [class.active]="activeTheme === 'maroon'" (click)="setTheme('maroon')"></button>
-              <button class="theme-circle teal" [class.active]="activeTheme === 'teal'" (click)="setTheme('teal')"></button>
-              <button class="theme-circle navy" [class.active]="activeTheme === 'navy'" (click)="setTheme('navy')"></button>
-              <button class="theme-circle olive" [class.active]="activeTheme === 'olive'" (click)="setTheme('olive')"></button>
             </div>
             <div class="user-dropdown-divider"></div>
             <button class="user-dropdown-item" (click)="userMenuOpen = false">
@@ -112,11 +98,6 @@
   <router-outlet />
 </main>
 
-<!-- Need Help FAB -->
-<div class="help-fab">
-  <button class="need-help-btn" aria-label="Need help? Open support chat">{{ 'layout.need_help' | translate }}</button>
-  <button class="accessibility-fab" aria-label="Accessibility options"><i class="pi pi-user" aria-hidden="true"></i></button>
-</div>
 
 <!-- Footer -->
 <footer class="main-footer">

@@ -47,17 +47,13 @@
                     [ngModel]="eligibilityAnswers[currentQuestion.key]"
                     (ngModelChange)="selectEntityFromDropdown($event)"
                     name="entitySelect">
-              <option value="" disabled selected>Select a Value</option>
-              <optgroup label="Covered under RB-IOS 2026">
-                @for (opt of entitySelectOptions; track opt.value) {
-                  <option [value]="opt.value">{{ opt.label }}</option>
-                }
-              </optgroup>
-              <optgroup label="Not covered under RB-IOS 2026">
-                @for (opt of nonCoveredEntityOptions; track opt.value) {
-                  <option [value]="opt.value">{{ opt.label }}</option>
-                }
-              </optgroup>
+              <option value="" disabled selected>Select Regulated Entity Name</option>
+              @for (opt of entitySelectOptions; track opt.value) {
+                <option [value]="opt.value">{{ opt.label }}</option>
+              }
+              @for (opt of nonCoveredEntityOptions; track opt.value) {
+                <option [value]="opt.value">{{ opt.label }}</option>
+              }
             </select>
           </div>
         }
@@ -87,7 +83,11 @@
             <div class="sub-field">
               <label><span class="sub-badge">a</span> <span>{{ 'eligibility.sub_complaint_date' | translate }} {{ selectedEntityName }} <span class="required">*</span></span></label>
               <div class="date-input-wrapper">
-                <input type="date" class="form-input" [class.invalid]="eligibilityFieldError" [(ngModel)]="formData['bankComplaintDate']" name="bankComplaintDate" placeholder="dd/mm/yyyy" [max]="todayISO" (ngModelChange)="onBankComplaintDateChange()">
+                <div class="date-picker-wrapper">
+                  <input type="text" class="form-input" [class.invalid]="eligibilityFieldError" [value]="dateDisplay['bankComplaintDate']" name="bankComplaintDate" placeholder="dd/mm/yyyy" maxlength="10" (input)="onDateInput('bankComplaintDate', $event)">
+                  <input type="date" class="date-hidden-picker" [max]="todayISO" (change)="onDatePickerChange('bankComplaintDate', $event)">
+                  <button type="button" class="date-picker-btn" (click)="openDatePicker($event)"><i class="pi pi-calendar"></i></button>
+                </div>
               </div>
               @if (eligibilityFieldError) { <span class="field-error">{{ eligibilityFieldError }}</span> }
             </div>
@@ -174,7 +174,11 @@
             <div class="sub-field">
               <label><span class="sub-badge">a</span> <span>{{ 'eligibility.sub_reminder_date' | translate }} <span class="required">*</span></span></label>
               <div class="date-input-wrapper">
-                <input type="date" class="form-input" [class.invalid]="reminderDateError" [(ngModel)]="formData['reminderDate']" name="reminderDate" placeholder="dd/mm/yyyy" [max]="todayISO" [min]="formData['bankComplaintDate']" (ngModelChange)="onReminderDateChange()">
+                <div class="date-picker-wrapper">
+                  <input type="text" class="form-input" [class.invalid]="reminderDateError" [value]="dateDisplay['reminderDate']" name="reminderDate" placeholder="dd/mm/yyyy" maxlength="10" (input)="onDateInput('reminderDate', $event)">
+                  <input type="date" class="date-hidden-picker" [max]="todayISO" [min]="formData['bankComplaintDate']" (change)="onDatePickerChange('reminderDate', $event)">
+                  <button type="button" class="date-picker-btn" (click)="openDatePicker($event)"><i class="pi pi-calendar"></i></button>
+                </div>
               </div>
               @if (reminderDateError) { <span class="field-error">{{ reminderDateError }}</span> }
             </div>
@@ -211,7 +215,11 @@
             <div class="sub-field">
               <label><span class="sub-badge">a</span> <span>Date on which reply was received (dd/mm/yyyy) <span class="required">*</span></span></label>
               <div class="date-input-wrapper">
-                <input type="date" class="form-input" [class.invalid]="replyDateError" [(ngModel)]="formData['replyDate']" name="replyDate" placeholder="dd/mm/yyyy" [max]="todayISO" [min]="formData['bankComplaintDate']" (ngModelChange)="onReplyDateChange()">
+                <div class="date-picker-wrapper">
+                  <input type="text" class="form-input" [class.invalid]="replyDateError" [value]="dateDisplay['replyDate']" name="replyDate" placeholder="dd/mm/yyyy" maxlength="10" (input)="onDateInput('replyDate', $event)">
+                  <input type="date" class="date-hidden-picker" [max]="todayISO" [min]="formData['bankComplaintDate']" (change)="onDatePickerChange('replyDate', $event)">
+                  <button type="button" class="date-picker-btn" (click)="openDatePicker($event)"><i class="pi pi-calendar"></i></button>
+                </div>
               </div>
               @if (replyDateError) { <span class="field-error">{{ replyDateError }}</span> }
             </div>
@@ -322,29 +330,40 @@
   <div class="page-container complaint-form-page">
 
     <div class="form-page-header">
-      <span class="elig-label">{{ 'eligibility.title' | translate }}</span>
-      <h1 class="elig-heading">{{ stepTitles[currentStep() - 1] }}</h1>
+      @if (currentStep() === 6) {
+        <h1 class="elig-heading review-page-title">Review and Submit</h1>
+      } @else {
+        <span class="elig-label">{{ 'eligibility.title' | translate }}</span>
+        <h1 class="elig-heading">{{ stepTitles[currentStep() - 1] }}</h1>
+      }
     </div>
 
-    <div class="form-card">
+    <div class="form-card" [class.has-watermark]="currentStep() === 6" #formCard>
+      <!-- Watermark overlay (covers entire form-card on step 6) -->
+      @if (currentStep() === 6) {
+        <div class="review-watermark form-card-watermark">
+          <img src="assets/draft-watermark.jpg" class="watermark-img" alt="">
+        </div>
+      }
       <!-- Step Progress Bar -->
       <div class="step-header" role="navigation" aria-label="Form progress">
         <div class="step-bar">
           @for (title of stepTitles; track title; let i = $index) {
-            <div class="step-item" [class.active]="i < currentStep()" [class.current]="i === currentStep() - 1"
+            <div class="step-item" [class.active]="i < highestStepReached()" [class.current]="i === currentStep() - 1"
+                 [class.clickable]="i < highestStepReached()"
                  (click)="goToStep(i + 1)">
               <div class="step-top-row">
                 <div class="step-circle-num">
-                  @if (i < currentStep() - 1) {
-                    <i class="pi pi-check"></i>
-                  } @else if (i === currentStep() - 1) {
+                  @if (i === currentStep() - 1) {
                     <span class="step-dots">•••</span>
+                  } @else if (i < highestStepReached()) {
+                    <i class="pi pi-check"></i>
                   } @else {
                     <span class="step-empty"></span>
                   }
                 </div>
                 @if (i < stepTitles.length - 1) {
-                  <div class="step-connector" [class.active]="i < currentStep() - 1"></div>
+                  <div class="step-connector" [class.active]="i < highestStepReached() - 1"></div>
                 }
               </div>
               <span class="step-label-num">Step {{ i + 1 }}</span>
@@ -359,7 +378,7 @@
       @if (currentStep() === 1) {
         <div class="step-content" (keydown)="onStepKeydown($event)">
           <div class="form-row">
-            <div class="form-group">
+            <div class="form-group" style="max-width: 320px;">
               <label>{{ 'form.complainant_category' | translate }} <span class="required">*</span></label>
               <select class="form-select" [(ngModel)]="formData['complainantCategory']" name="complainantCategory">
                 <option value="" disabled>Select Value</option>
@@ -398,7 +417,7 @@
             <div class="form-row three-col">
               <div class="form-group">
                 <label>{{ 'form.age' | translate }}</label>
-                <input type="number" class="form-input" [class.invalid]="validationErrors['age']" [(ngModel)]="formData['age']" name="age" placeholder="Enter Value" min="1" max="150" (ngModelChange)="validateAge()">
+                <input type="text" class="form-input" [class.invalid]="validationErrors['age']" [(ngModel)]="formData['age']" name="age" placeholder="Enter Value" maxlength="3" pattern="[0-9]*" inputmode="numeric" (ngModelChange)="validateAge()">
                 @if (validationErrors['age']) { <span class="field-error">{{ validationErrors['age'] }}</span> }
               </div>
               <div class="form-group">
@@ -712,39 +731,46 @@
               <label>{{ 'form.amount_involved' | translate }}</label>
               <div class="rupee-input">
                 <span class="rupee-symbol">₹</span>
-                <input type="text" class="form-input" [class.invalid]="validationErrors['disputeAmount']" [(ngModel)]="formData['disputeAmount']" name="disputeAmount" placeholder="Enter Value">
+                <input type="text" class="form-input" [class.invalid]="validationErrors['disputeAmount']" [ngModel]="formData['disputeAmount']" name="disputeAmount" placeholder="Enter Value" (ngModelChange)="onAmountInput('disputeAmount', $event)" inputmode="numeric">
               </div>
+              @if (formData['disputeAmount']) { <span class="amount-words">{{ amountInWords(formData['disputeAmount']) }}</span> }
               @if (validationErrors['disputeAmount']) { <span class="field-error">{{ validationErrors['disputeAmount'] }}</span> }
             </div>
             <div class="form-group">
               <label>{{ 'form.compensation_sought' | translate }}</label>
               <div class="rupee-input">
                 <span class="rupee-symbol">₹</span>
-                <input type="text" class="form-input" [class.invalid]="validationErrors['compensationSought']" [(ngModel)]="formData['compensationSought']" name="compensationSought" placeholder="Enter Value" (ngModelChange)="validateCompensationSought()">
+                <input type="text" class="form-input" [class.invalid]="validationErrors['compensationSought']" [ngModel]="formData['compensationSought']" name="compensationSought" placeholder="Enter Value" (ngModelChange)="onAmountInput('compensationSought', $event)" inputmode="numeric">
               </div>
+              @if (formData['compensationSought']) { <span class="amount-words">{{ amountInWords(formData['compensationSought']) }}</span> }
               @if (validationErrors['compensationSought']) { <span class="field-error">{{ validationErrors['compensationSought'] }}</span> }
             </div>
             <div class="form-group">
               <label>{{ 'form.compensation_harassment' | translate }}</label>
               <div class="rupee-input">
                 <span class="rupee-symbol">₹</span>
-                <input type="text" class="form-input" [class.invalid]="validationErrors['reliefSought']" [(ngModel)]="formData['reliefSought']" name="reliefSought" placeholder="Enter Value" (ngModelChange)="validateReliefSought()">
+                <input type="text" class="form-input" [class.invalid]="validationErrors['reliefSought']" [ngModel]="formData['reliefSought']" name="reliefSought" placeholder="Enter Value" (ngModelChange)="onAmountInput('reliefSought', $event)" inputmode="numeric">
               </div>
+              @if (formData['reliefSought']) { <span class="amount-words">{{ amountInWords(formData['reliefSought']) }}</span> }
               @if (validationErrors['reliefSought']) { <span class="field-error">{{ validationErrors['reliefSought'] }}</span> }
             </div>
           </div>
 
           <!-- File Upload -->
           <div class="form-group full-width">
-            <label>{{ 'form.upload_docs' | translate }} <span class="required">*</span></label>
-            <div class="file-upload-area">
+            <label>Upload any additional documents relevant to the complaint</label>
+            <div class="file-upload-area" [class.dragover]="isDragOver"
+                 (dragover)="$event.preventDefault(); isDragOver = true"
+                 (dragenter)="$event.preventDefault(); isDragOver = true"
+                 (dragleave)="isDragOver = false"
+                 (drop)="isDragOver = false; onFileDrop($event)">
               <input type="file" id="fileInput" multiple (change)="onFilesSelected($event)"
-                     accept=".pdf,.jpg,.jpeg,.png" class="file-input-hidden">
-              <label for="fileInput" class="file-upload-browse-link">{{ 'form.browse_file' | translate }}</label>
-              <div class="file-upload-meta">
-                <span class="upload-hint">{{ 'form.upload_hint' | translate }}</span>
-                <span class="upload-size">{{ 'form.upload_size' | translate }}</span>
-              </div>
+                     accept=".pdf,.doc,.jpg,.jpeg,.png" class="file-input-hidden">
+              <span class="file-upload-text">Drag and Drop or <label for="fileInput" class="file-upload-browse-link">Browse</label> File</span>
+            </div>
+            <div class="file-upload-meta">
+              <span class="upload-hint">Support formats: PDF, DOC, JPG, PNG</span>
+              <span class="upload-size">Maximum Size of All Files: 2MB</span>
             </div>
             @if (fileUploadError) {
               <div class="error-msg"><i class="pi pi-exclamation-circle"></i> {{ fileUploadError }}</div>
@@ -755,10 +781,15 @@
             @if (attachmentPreviews.length > 0) {
               <div class="file-list">
                 @for (f of attachmentPreviews; track $index; let i = $index) {
-                  <div class="file-chip">
+                  <div class="file-chip" [class.needs-reupload]="!f.url">
                     <i class="pi pi-file"></i>
                     <span class="file-name">{{ f.name }}</span>
-                    <button class="preview-file" (click)="previewAttachment(i)" type="button" [attr.aria-label]="'Preview ' + f.name"><i class="pi pi-eye" aria-hidden="true"></i></button>
+                    @if (!f.url) {
+                      <span class="reupload-hint">(re-upload needed)</span>
+                    }
+                    @if (f.url) {
+                      <button class="preview-file" (click)="previewAttachment(i)" type="button" [attr.aria-label]="'Preview ' + f.name"><i class="pi pi-eye" aria-hidden="true"></i></button>
+                    }
                     <button class="remove-file" (click)="removeAttachment(i)" type="button" [attr.aria-label]="'Remove ' + f.name"><i class="pi pi-times" aria-hidden="true"></i></button>
                   </div>
                 }
@@ -852,14 +883,18 @@
 
             <div class="form-group full-width">
               <label>{{ 'form.rep_upload' | translate }} <span class="required">*</span></label>
-              <div class="file-upload-area">
+              <div class="file-upload-area" [class.dragover]="isRepDragOver"
+                   (dragover)="$event.preventDefault(); isRepDragOver = true"
+                   (dragenter)="$event.preventDefault(); isRepDragOver = true"
+                   (dragleave)="isRepDragOver = false"
+                   (drop)="isRepDragOver = false; onRepFileDrop($event)">
                 <input type="file" id="repDocFile" (change)="onRepFileSelected($event)"
-                       accept=".pdf,.jpg,.jpeg,.png" class="file-input-hidden">
-                <label for="repDocFile" class="file-upload-browse-link">{{ 'form.browse_file' | translate }}</label>
-                <div class="file-upload-meta">
-                  <span class="upload-hint">Support formats: PDF, JPG, PNG</span>
-                  <span class="upload-size">Maximum size: 2MB</span>
-                </div>
+                       accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" class="file-input-hidden">
+                <span class="file-upload-text">Drag and Drop or <label for="repDocFile" class="file-upload-browse-link">Browse</label> File</span>
+              </div>
+              <div class="file-upload-meta">
+                <span class="upload-hint">Support formats: PDF, DOC, JPG, PNG</span>
+                <span class="upload-size">Maximum Size of All Files: 2MB</span>
               </div>
               @if (repFileName) {
                 <div class="uploaded-file-info">
@@ -908,92 +943,57 @@
 
       <!-- Step 6: Review and Submit -->
       @if (currentStep() === 6) {
-        <h2 class="review-page-title">Review and Submit</h2>
         <div class="step-content review-step-content">
-          <!-- Watermark overlay -->
-          <div class="review-watermark">
-            <div class="review-watermark-inner">
-              @for (row of [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35]; track row) {
-                <div class="watermark-row">
-                  <img src="assets/llogo.png" class="watermark-seal" alt="">
-                  <span class="watermark-text">{{ referenceNumber ? 'Complainant ID: ' + referenceNumber : 'Draft' }}</span>
-                  <img src="assets/RBI_New_Logo.png" class="watermark-seal" alt="">
-                  <span class="watermark-text">{{ referenceNumber ? 'Complainant ID: ' + referenceNumber : 'Draft' }}</span>
-                  <img src="assets/llogo.png" class="watermark-seal" alt="">
-                  <span class="watermark-text">{{ referenceNumber ? 'Complainant ID: ' + referenceNumber : 'Draft' }}</span>
-                  <img src="assets/RBI_New_Logo.png" class="watermark-seal" alt="">
-                  <span class="watermark-text">{{ referenceNumber ? 'Complainant ID: ' + referenceNumber : 'Draft' }}</span>
-                  <img src="assets/llogo.png" class="watermark-seal" alt="">
-                  <span class="watermark-text">{{ referenceNumber ? 'Complainant ID: ' + referenceNumber : 'Draft' }}</span>
-                  <img src="assets/RBI_New_Logo.png" class="watermark-seal" alt="">
-                  <span class="watermark-text">{{ referenceNumber ? 'Complainant ID: ' + referenceNumber : 'Draft' }}</span>
-                  <img src="assets/llogo.png" class="watermark-seal" alt="">
-                  <span class="watermark-text">{{ referenceNumber ? 'Complainant ID: ' + referenceNumber : 'Draft' }}</span>
-                  <img src="assets/RBI_New_Logo.png" class="watermark-seal" alt="">
-                  <span class="watermark-text">{{ referenceNumber ? 'Complainant ID: ' + referenceNumber : 'Draft' }}</span>
-                  <img src="assets/llogo.png" class="watermark-seal" alt="">
-                  <span class="watermark-text">{{ referenceNumber ? 'Complainant ID: ' + referenceNumber : 'Draft' }}</span>
-                  <img src="assets/RBI_New_Logo.png" class="watermark-seal" alt="">
-                </div>
-              }
-            </div>
-          </div>
-
           <!-- Eligibility Details -->
           <div class="rs-section">
             <div class="rs-header">{{ 'review.eligibility_details' | translate }}</div>
             <div class="rs-body">
-              <div class="rs-row-full"><span class="rs-label">Is your complaint sub-judice/under arbitration/already dealt with on merits by a Court/Tribunal/Arbitrator/Authority?</span><span class="rs-value">{{ eligibilityAnswers['isSubJudice'] === 'yes' ? 'Yes' : 'No' }}</span></div>
-              <div class="rs-row-full"><span class="rs-label">Is your complaint made through an advocate (unless you are yourself an advocate)?</span><span class="rs-value">{{ eligibilityAnswers['throughAdvocateEligibility'] === 'yes' ? 'Yes' : 'No' }}</span></div>
-              <div class="rs-row-full"><span class="rs-label">Has your complaint already been dealt with or is under process on the same ground with the Ombudsman?</span><span class="rs-value">{{ eligibilityAnswers['pendingBeforeOmbudsman'] === 'yes' ? 'Yes' : (eligibilityAnswers['settledByOmbudsman'] === 'yes' ? 'Yes' : 'No') }}</span></div>
-              <div class="rs-row-full"><span class="rs-label">Are / were you an employee of the Regulated Entity against whom this complaint is being filed?</span><span class="rs-value">{{ eligibilityAnswers['employeeOfRE'] === 'yes' ? 'Yes' : 'No' }}</span></div>
-              @if (formData['bankComplaintDate']) {
-                <div class="rs-row-full"><span class="rs-label">Date of complaint filed with the Regulated Entity</span><span class="rs-value">{{ formData['bankComplaintDate'] }}</span></div>
-              }
-              @if (complaintFileWithREName) {
-                <div class="rs-row-full">
-                  <span class="rs-label">Complaint sent to Regulated Entity</span>
-                  <div class="rs-attachments-grid">
-                    <div class="rs-attachment-card">
-                      <div class="rs-attachment-icon"><i class="pi pi-file-pdf"></i></div>
-                      <div class="rs-attachment-details">
-                        <span class="rs-attachment-name">{{ complaintFileWithREName }}</span>
-                      </div>
-                    </div>
-                  </div>
+              <!-- Common questions for both RBIO and CEPC -->
+              <div class="rs-row-full"><span class="rs-number">1.</span><span class="rs-label">Have you filed a written / electronic complaint with the Regulated Entity?</span><span class="rs-value">{{ eligibilityAnswers['filedWithRE'] === 'yes' ? 'Yes' : 'No' }}</span></div>
+              @if (eligibilityAnswers['filedWithRE'] === 'yes') {
+                <div class="rs-sub-rows">
+                  <div class="rs-row-full"><span class="rs-number">a.</span><span class="rs-label">Date of complaint filed with {{ selectedEntityName }}</span><span class="rs-value">{{ formatDate(formData['bankComplaintDate']) }}</span></div>
+                  <div class="rs-row-full"><span class="rs-number">b.</span><span class="rs-label">Complaint Reference/Acknowledgement Number</span><span class="rs-value">{{ formData['bankComplaintRef'] || '—' }}</span></div>
+                  <div class="rs-row-full"><span class="rs-number">c.</span><span class="rs-label">Complaint copy uploaded</span><span class="rs-value">@if (complaintFileWithREName) { <i class="pi pi-file"></i> {{ complaintFileWithREName }} } @else { — }</span></div>
                 </div>
               }
-              @if (eligibilityAnswers['receivedReply'] === 'yes' && formData['replyDate']) {
-                <div class="rs-row-full"><span class="rs-label">Date on which reply was received</span><span class="rs-value">{{ formData['replyDate'] }}</span></div>
-              }
-              @if (replyFileName) {
-                <div class="rs-row-full">
-                  <span class="rs-label">Reply received from Regulated Entity</span>
-                  <div class="rs-attachments-grid">
-                    <div class="rs-attachment-card">
-                      <div class="rs-attachment-icon"><i class="pi pi-file-pdf"></i></div>
-                      <div class="rs-attachment-details">
-                        <span class="rs-attachment-name">{{ replyFileName }}</span>
-                      </div>
-                    </div>
-                  </div>
+              <div class="rs-row-full"><span class="rs-number">2.</span><span class="rs-label">Have you received any reply from the Entity?</span><span class="rs-value">{{ eligibilityAnswers['receivedReply'] === 'yes' ? 'Yes' : 'No' }}</span></div>
+              @if (eligibilityAnswers['receivedReply'] === 'yes') {
+                <div class="rs-sub-rows">
+                  <div class="rs-row-full"><span class="rs-number">a.</span><span class="rs-label">Date on which reply was received</span><span class="rs-value">{{ formatDate(formData['replyDate']) }}</span></div>
+                  <div class="rs-row-full"><span class="rs-number">b.</span><span class="rs-label">Reply copy uploaded</span><span class="rs-value">@if (replyFileName) { <i class="pi pi-file"></i> {{ replyFileName }} } @else { — }</span></div>
                 </div>
               }
-              @if (eligibilityAnswers['sentReminder'] === 'yes' && formData['reminderDate']) {
-                <div class="rs-row-full"><span class="rs-label">Date on which reminder was sent</span><span class="rs-value">{{ formData['reminderDate'] }}</span></div>
-              }
-              @if (reminderFileName) {
-                <div class="rs-row-full">
-                  <span class="rs-label">Reminder sent to Regulated Entity</span>
-                  <div class="rs-attachments-grid">
-                    <div class="rs-attachment-card">
-                      <div class="rs-attachment-icon"><i class="pi pi-file-pdf"></i></div>
-                      <div class="rs-attachment-details">
-                        <span class="rs-attachment-name">{{ reminderFileName }}</span>
-                      </div>
-                    </div>
-                  </div>
+              <div class="rs-row-full"><span class="rs-number">3.</span><span class="rs-label">Have you sent any reminder to the Regulated Entity?</span><span class="rs-value">{{ eligibilityAnswers['sentReminder'] === 'yes' ? 'Yes' : 'No' }}</span></div>
+              @if (eligibilityAnswers['sentReminder'] === 'yes') {
+                <div class="rs-sub-rows">
+                  <div class="rs-row-full"><span class="rs-number">a.</span><span class="rs-label">Date on which reminder was sent</span><span class="rs-value">{{ formatDate(formData['reminderDate']) }}</span></div>
+                  <div class="rs-row-full"><span class="rs-number">b.</span><span class="rs-label">Reminder copy uploaded</span><span class="rs-value">@if (reminderFileName) { <i class="pi pi-file"></i> {{ reminderFileName }} } @else { — }</span></div>
                 </div>
+              }
+
+              <!-- RBIO-specific questions -->
+              @if (!isCEPCEntity) {
+                <div class="rs-row-full"><span class="rs-number">4.</span><span class="rs-label">Is your complaint sub-judice/under arbitration/already dealt with on merits by a Court/Tribunal/Arbitrator/Authority?</span><span class="rs-value">{{ eligibilityAnswers['isSubJudice'] === 'yes' ? 'Yes' : 'No' }}</span></div>
+                <div class="rs-row-full"><span class="rs-number">5.</span><span class="rs-label">Is the complaint relating to the same grievance which is already settled or dealt before any Court, Tribunal, Arbitrator or any other judicial or quasi-judicial forum?</span><span class="rs-value">{{ eligibilityAnswers['alreadySettled'] === 'yes' ? 'Yes' : 'No' }}</span></div>
+                <div class="rs-row-full"><span class="rs-number">6.</span><span class="rs-label">Is your complaint made through an advocate (unless you are yourself an advocate)?</span><span class="rs-value">{{ eligibilityAnswers['throughAdvocateEligibility'] === 'yes' ? 'Yes' : 'No' }}</span></div>
+                @if (eligibilityAnswers['throughAdvocateEligibility'] === 'yes') {
+                  <div class="rs-sub-rows">
+                    <div class="rs-row-full"><span class="rs-number">a.</span><span class="rs-label">If Yes, then are you the Complainant?</span><span class="rs-value">{{ formData['isComplainantSelf'] === 'yes' ? 'Yes' : (formData['isComplainantSelf'] === 'no' ? 'No' : '—') }}</span></div>
+                  </div>
+                }
+                <div class="rs-row-full"><span class="rs-number">7.</span><span class="rs-label">Is the complaint relating to the same grievance which is already pending before the Ombudsman?</span><span class="rs-value">{{ eligibilityAnswers['pendingBeforeOmbudsman'] === 'yes' ? 'Yes' : 'No' }}</span></div>
+                <div class="rs-row-full"><span class="rs-number">8.</span><span class="rs-label">Is the complaint relating to the same grievance which is already settled or dealt with on merits by the Ombudsman?</span><span class="rs-value">{{ eligibilityAnswers['settledByOmbudsman'] === 'yes' ? 'Yes' : 'No' }}</span></div>
+                <div class="rs-row-full"><span class="rs-number">9.</span><span class="rs-label">Is the Complainant a staff of the RE and complaint involves employer-employee relationship?</span><span class="rs-value">{{ eligibilityAnswers['staffOfRE'] === 'yes' ? 'Yes' : 'No' }}</span></div>
+              }
+
+              <!-- CEPC-specific questions -->
+              @if (isCEPCEntity) {
+                <div class="rs-row-full"><span class="rs-number">4.</span><span class="rs-label">Have you previously filed a complaint on the same subject matter with CEPC/RBI Ombudsman?</span><span class="rs-value">{{ eligibilityAnswers['previouslyFiledWithCEPC'] === 'yes' ? 'Yes' : 'No' }}</span></div>
+                <div class="rs-row-full"><span class="rs-number">5.</span><span class="rs-label">Are / were you an employee of the Regulated Entity against whom this complaint is being filed?</span><span class="rs-value">{{ eligibilityAnswers['employeeOfRE'] === 'yes' ? 'Yes' : 'No' }}</span></div>
+                @if (eligibilityAnswers['employeeOfRE'] === 'yes') {
+                  <div class="rs-row-full rs-sub-row"><span class="rs-number">a.</span><span class="rs-label">If Yes, Is your complaint involves the employee-employer relationship of the Regulated Entity?</span><span class="rs-value">{{ eligibilityAnswers['employerRelationship'] === 'yes' ? 'Yes' : (eligibilityAnswers['employerRelationship'] === 'no' ? 'No' : '—') }}</span></div>
+                }
               }
             </div>
           </div>
@@ -1002,13 +1002,37 @@
           <div class="rs-section">
             <div class="rs-header">{{ 'review.complainant_details' | translate }}</div>
             <div class="rs-body">
+              <div class="rs-row-full"><span class="rs-number">1.</span><span class="rs-label">Complainant Category</span><span class="rs-value">{{ getCategoryLabel() }}</span></div>
+              @if (isIndividualCategory()) {
+                <div class="rs-grid">
+                  <div class="rs-item"><span class="rs-number">2.</span><span class="rs-label">First Name</span><span class="rs-value">{{ formData['firstName'] || '—' }}</span></div>
+                  <div class="rs-item"><span class="rs-number">3.</span><span class="rs-label">Middle Name</span><span class="rs-value">{{ formData['middleName'] || '—' }}</span></div>
+                  <div class="rs-item"><span class="rs-number">4.</span><span class="rs-label">Surname</span><span class="rs-value">{{ formData['lastName'] || '—' }}</span></div>
+                </div>
+                <div class="rs-grid">
+                  <div class="rs-item"><span class="rs-number">5.</span><span class="rs-label">Age</span><span class="rs-value">{{ formData['age'] || '—' }}</span></div>
+                  <div class="rs-item"><span class="rs-number">6.</span><span class="rs-label">Gender</span><span class="rs-value">{{ getGenderLabel() }}</span></div>
+                  <div class="rs-item"><span class="rs-number">7.</span><span class="rs-label">Email ID</span><span class="rs-value">{{ formData['email'] || '—' }}</span></div>
+                </div>
+                <div class="rs-grid">
+                  <div class="rs-item"><span class="rs-number">8.</span><span class="rs-label">Mobile Number</span><span class="rs-value">{{ formData['phone'] ? '+91 ' + formData['phone'] : '—' }}</span></div>
+                </div>
+              } @else {
+                <div class="rs-row-full"><span class="rs-number">2.</span><span class="rs-label">Name of Complainant (Organisation Name)</span><span class="rs-value">{{ formData['organizationName'] || '—' }}</span></div>
+                <div class="rs-grid">
+                  <div class="rs-item"><span class="rs-number">3.</span><span class="rs-label">Email ID</span><span class="rs-value">{{ formData['email'] || '—' }}</span></div>
+                  <div class="rs-item"><span class="rs-number">4.</span><span class="rs-label">Organisation Landline Number</span><span class="rs-value">{{ formData['orgLandline'] || '—' }}</span></div>
+                </div>
+                <div class="rs-grid">
+                  <div class="rs-item"><span class="rs-number">5.</span><span class="rs-label">Mobile Number</span><span class="rs-value">{{ formData['phone'] ? '+91 ' + formData['phone'] : '—' }}</span></div>
+                </div>
+              }
               <div class="rs-grid">
-                <div class="rs-item"><span class="rs-label">Name</span><span class="rs-value">{{ formData['firstName'] }} {{ formData['middleName'] }} {{ formData['lastName'] }}</span></div>
-                <div class="rs-item"><span class="rs-label">Mobile Number</span><span class="rs-value">+91 {{ formData['phone'] || '—' }}</span></div>
-                <div class="rs-item"><span class="rs-label">Email (Optional)</span><span class="rs-value">{{ formData['email'] || '—' }}</span></div>
-                <div class="rs-item"><span class="rs-label">Pincode</span><span class="rs-value">{{ formData['pincode'] || '—' }}</span></div>
+                <div class="rs-item"><span class="rs-number">{{ isIndividualCategory() ? '9' : '6' }}.</span><span class="rs-label">Pincode</span><span class="rs-value">{{ formData['pincode'] || '—' }}</span></div>
+                <div class="rs-item"><span class="rs-number">{{ isIndividualCategory() ? '10' : '7' }}.</span><span class="rs-label">State</span><span class="rs-value">{{ formData['state'] || '—' }}</span></div>
+                <div class="rs-item"><span class="rs-number">{{ isIndividualCategory() ? '11' : '8' }}.</span><span class="rs-label">District</span><span class="rs-value">{{ formData['district'] || '—' }}</span></div>
               </div>
-              <div class="rs-row-full"><span class="rs-label">Address</span><span class="rs-value">{{ formData['address'] || '—' }}</span></div>
+              <div class="rs-row-full"><span class="rs-number">{{ isIndividualCategory() ? '12' : '9' }}.</span><span class="rs-label">Address</span><span class="rs-value">{{ formData['address'] || '—' }}</span></div>
             </div>
           </div>
 
@@ -1016,13 +1040,15 @@
           <div class="rs-section">
             <div class="rs-header">{{ 'review.re_details' | translate }}</div>
             <div class="rs-body">
-              <div class="rs-row-full"><span class="rs-label">Regulated Entity Name</span><span class="rs-value">{{ selectedEntityName }}</span></div>
-              <div class="rs-row-full"><span class="rs-label">Is your complaint related to credit card?</span><span class="rs-value">{{ formData['isCreditCardComplaint'] === 'yes' ? 'Yes' : 'No' }}</span></div>
-              <div class="rs-grid">
-                <div class="rs-item"><span class="rs-label">Entity State</span><span class="rs-value">{{ formData['entityState'] || '—' }}</span></div>
-                <div class="rs-item"><span class="rs-label">Entity District</span><span class="rs-value">{{ formData['entityDistrict'] || '—' }}</span></div>
-                <div class="rs-item"><span class="rs-label">Entity Branch</span><span class="rs-value">{{ formData['entityBranch'] || '—' }}</span></div>
-              </div>
+              <div class="rs-row-full"><span class="rs-number">1.</span><span class="rs-label">Regulated Entity Name</span><span class="rs-value">{{ selectedEntityName }}</span></div>
+              <div class="rs-row-full"><span class="rs-number">2.</span><span class="rs-label">Is your complaint related to credit card?</span><span class="rs-value">{{ formData['isCreditCardComplaint'] === 'yes' ? 'Yes' : (formData['isCreditCardComplaint'] === 'no' ? 'No' : '—') }}</span></div>
+              @if (formData['isCreditCardComplaint'] === 'no') {
+                <div class="rs-grid">
+                  <div class="rs-item"><span class="rs-number">3.</span><span class="rs-label">Entity State</span><span class="rs-value">{{ formData['entityState'] || '—' }}</span></div>
+                  <div class="rs-item"><span class="rs-number">4.</span><span class="rs-label">Entity District</span><span class="rs-value">{{ formData['entityDistrict'] || '—' }}</span></div>
+                  <div class="rs-item"><span class="rs-number">5.</span><span class="rs-label">Entity Branch</span><span class="rs-value">{{ formData['entityBranch'] || '—' }}</span></div>
+                </div>
+              }
             </div>
           </div>
 
@@ -1030,120 +1056,65 @@
           <div class="rs-section">
             <div class="rs-header">{{ 'review.complaint_details' | translate }}</div>
             <div class="rs-body">
-              <div class="rs-row-full"><span class="rs-label">Do you have an account with {{ selectedEntityName }}?</span><span class="rs-value">{{ formData['hasAccountWithRE'] === 'yes' ? 'Yes' : 'No' }}</span></div>
+              <div class="rs-row-full"><span class="rs-number">1.</span><span class="rs-label">Complaint Category</span><span class="rs-value">{{ getComplaintCategoryLabel() }}</span></div>
+              <div class="rs-row-full"><span class="rs-number">2.</span><span class="rs-label">Facts of the complaint</span><span class="rs-value">{{ formData['complaintText'] || '—' }}</span></div>
+              <div class="rs-row-full"><span class="rs-number">3.</span><span class="rs-label">Do you have an account with {{ selectedEntityName }}?</span><span class="rs-value">{{ formData['hasAccountWithRE'] === 'yes' ? 'Yes' : (formData['hasAccountWithRE'] === 'no' ? 'No' : '—') }}</span></div>
               @if (formData['hasAccountWithRE'] === 'yes') {
-                <div class="rs-row-full"><span class="rs-label">Type of Accounts</span><span class="rs-value">{{ getSelectedAccountTypesLabel() || '—' }}</span></div>
+                <div class="rs-row-full rs-sub-row"><span class="rs-number">a.</span><span class="rs-label">Type of Accounts with {{ selectedEntityName }}</span><span class="rs-value">{{ getSelectedAccountTypesLabel() || '—' }}</span></div>
                 @if (isAccountTypeSelected('savings')) {
-                  <div class="rs-row-full"><span class="rs-label">Savings Account Number</span><span class="rs-value">{{ formData['savingsAccountNumber'] || '—' }}</span></div>
+                  <div class="rs-row-full rs-sub-row"><span class="rs-number">b.</span><span class="rs-label">Savings Account Number</span><span class="rs-value">{{ formData['savingsAccountNumber'] || '—' }}</span></div>
                 }
                 @if (isAccountTypeSelected('loan')) {
-                  <div class="rs-row-full"><span class="rs-label">Loan Account Number</span><span class="rs-value">{{ formData['loanAccountNumber'] || '—' }}</span></div>
+                  <div class="rs-row-full rs-sub-row"><span class="rs-number">c.</span><span class="rs-label">Loan Account Number</span><span class="rs-value">{{ formData['loanAccountNumber'] || '—' }}</span></div>
                 }
                 @if (isAccountTypeSelected('atm_debit')) {
-                  <div class="rs-row-full"><span class="rs-label">ATM/Debit Card Number</span><span class="rs-value">{{ formData['atmDebitCardNumber'] || '—' }}</span></div>
+                  <div class="rs-row-full rs-sub-row"><span class="rs-number">d.</span><span class="rs-label">ATM/Debit Card Number</span><span class="rs-value">{{ formData['atmDebitCardNumber'] || '—' }}</span></div>
                 }
                 @if (isAccountTypeSelected('credit_card')) {
-                  <div class="rs-row-full"><span class="rs-label">Credit Card Number</span><span class="rs-value">{{ formData['creditCardNumber'] || '—' }}</span></div>
+                  <div class="rs-row-full rs-sub-row"><span class="rs-number">e.</span><span class="rs-label">Credit Card Number</span><span class="rs-value">{{ formData['creditCardNumber'] || '—' }}</span></div>
                 }
               }
-              <div class="rs-row-full"><span class="rs-label">Is your complaint against a Wallet transaction?</span><span class="rs-value">{{ formData['isWalletComplaint'] === 'yes' ? 'Yes' : 'No' }}</span></div>
+              <div class="rs-row-full"><span class="rs-number">4.</span><span class="rs-label">Is your complaint against a Wallet transaction?</span><span class="rs-value">{{ formData['isWalletComplaint'] === 'yes' ? 'Yes' : (formData['isWalletComplaint'] === 'no' ? 'No' : '—') }}</span></div>
               @if (formData['isWalletComplaint'] === 'yes') {
-                <div class="rs-grid">
-                  <div class="rs-item"><span class="rs-label">Wallet Name</span><span class="rs-value">{{ formData['walletName'] || '—' }}</span></div>
-                  <div class="rs-item"><span class="rs-label">Transaction Reference Number</span><span class="rs-value">{{ formData['transactionRefNumber'] || '—' }}</span></div>
-                </div>
+                <div class="rs-row-full rs-sub-row"><span class="rs-number">a.</span><span class="rs-label">Wallet Name</span><span class="rs-value">{{ formData['walletName'] || '—' }}</span></div>
+                <div class="rs-row-full rs-sub-row"><span class="rs-number">b.</span><span class="rs-label">Transaction Reference Number</span><span class="rs-value">{{ formData['transactionRefNumber'] || '—' }}</span></div>
               }
-              <div class="rs-row-full"><span class="rs-label">Is your complaint against a Business Correspondent?</span><span class="rs-value">{{ formData['isBusinessCorrespondent'] === 'yes' ? 'Yes' : 'No' }}</span></div>
+              <div class="rs-row-full"><span class="rs-number">5.</span><span class="rs-label">Is your complaint against a Business Correspondent?</span><span class="rs-value">{{ formData['isBusinessCorrespondent'] === 'yes' ? 'Yes' : (formData['isBusinessCorrespondent'] === 'no' ? 'No' : '—') }}</span></div>
               <div class="rs-grid">
-                <div class="rs-item"><span class="rs-label">Complaint Category</span><span class="rs-value">{{ formData['complaintCategory'] || '—' }}</span></div>
-                <div class="rs-item"><span class="rs-label">Complaint Sub-Category 1</span><span class="rs-value">{{ formData['subCategory1'] || '—' }}</span></div>
-                <div class="rs-item"><span class="rs-label">Complaint Sub-Category 2</span><span class="rs-value">{{ formData['subCategory2'] || '—' }}</span></div>
+                <div class="rs-item"><span class="rs-number">6.</span><span class="rs-label">Amount Involved in the Dispute, If Any</span><span class="rs-value">{{ formData['disputeAmount'] ? '₹' + formData['disputeAmount'] : '—' }}</span></div>
+                <div class="rs-item"><span class="rs-number">7.</span><span class="rs-label">Compensation Sought For Dispute, If Any</span><span class="rs-value">{{ formData['compensationSought'] ? '₹' + formData['compensationSought'] : '—' }}</span></div>
+                <div class="rs-item"><span class="rs-number">8.</span><span class="rs-label">Compensation For Harassment, If Any</span><span class="rs-value">{{ formData['reliefSought'] ? '₹' + formData['reliefSought'] : '—' }}</span></div>
               </div>
-              <div class="rs-row-full"><span class="rs-label">Facts of the complaint</span><span class="rs-value">{{ formData['complaintText'] || '—' }}</span></div>
-              <div class="rs-grid">
-                <div class="rs-item"><span class="rs-label">Amount Involved in the Dispute, If Any</span><span class="rs-value">{{ formData['disputeAmount'] ? '₹' + formData['disputeAmount'] : '—' }}</span></div>
-                <div class="rs-item"><span class="rs-label">Compensation Sought For Dispute, If Any</span><span class="rs-value">{{ formData['compensationSought'] ? '₹' + formData['compensationSought'] : '—' }}</span></div>
-                <div class="rs-item"><span class="rs-label">Compensation For Harassment, If Any</span><span class="rs-value">{{ formData['reliefSought'] ? '₹' + formData['reliefSought'] : '—' }}</span></div>
-              </div>
+              @if (attachmentPreviews.length > 0) {
+                <div class="rs-row-full"><span class="rs-number">9.</span><span class="rs-label">Uploaded Documents</span><span class="rs-value"></span></div>
+                @for (f of attachmentPreviews; track $index) {
+                  <div class="rs-row-full rs-sub-row"><span class="rs-number"><i class="pi pi-file"></i></span><span class="rs-label">{{ f.name }}</span></div>
+                }
+              }
             </div>
           </div>
-
-          <!-- Attachments -->
-          @if (complaintFileWithREName || replyFileName || reminderFileName || attachmentPreviews.length > 0) {
-            <div class="rs-section">
-              <div class="rs-header">Attachments</div>
-              <div class="rs-body">
-                <div class="rs-attachments-grid">
-                  @if (complaintFileWithREName) {
-                    <div class="rs-attachment-card">
-                      <div class="rs-attachment-icon"><i class="pi pi-file-pdf"></i></div>
-                      <div class="rs-attachment-details">
-                        <span class="rs-attachment-name">{{ complaintFileWithREName }}</span>
-                        <span class="rs-attachment-size">Complaint to RE</span>
-                      </div>
-                    </div>
-                  }
-                  @if (replyFileName) {
-                    <div class="rs-attachment-card">
-                      <div class="rs-attachment-icon"><i class="pi pi-file-pdf"></i></div>
-                      <div class="rs-attachment-details">
-                        <span class="rs-attachment-name">{{ replyFileName }}</span>
-                        <span class="rs-attachment-size">Reply from RE</span>
-                      </div>
-                    </div>
-                  }
-                  @if (reminderFileName) {
-                    <div class="rs-attachment-card">
-                      <div class="rs-attachment-icon"><i class="pi pi-file-pdf"></i></div>
-                      <div class="rs-attachment-details">
-                        <span class="rs-attachment-name">{{ reminderFileName }}</span>
-                        <span class="rs-attachment-size">Reminder to RE</span>
-                      </div>
-                    </div>
-                  }
-                  @for (f of attachmentPreviews; track $index) {
-                    <div class="rs-attachment-card">
-                      <div class="rs-attachment-icon"><i class="pi pi-file-pdf"></i></div>
-                      <div class="rs-attachment-details">
-                        <span class="rs-attachment-name">{{ f.name }}</span>
-                        <span class="rs-attachment-size">{{ formatFileSize(f.size) }}</span>
-                      </div>
-                    </div>
-                  }
-                </div>
-              </div>
-            </div>
-          }
 
           <!-- Representative Authorisation -->
           <div class="rs-section">
             <div class="rs-header">{{ 'review.rep_auth' | translate }}</div>
             <div class="rs-body">
-              <div class="rs-row-full"><span class="rs-label">Is the complaint being filed through an Authorised Representative on behalf of you / complainant?</span><span class="rs-value">{{ formData['hasAuthRep'] === 'yes' ? 'Yes' : 'No' }}</span></div>
+              <div class="rs-row-full"><span class="rs-number">1.</span><span class="rs-label">Is the complaint being filed through an Authorised Representative on behalf of you / complainant?</span><span class="rs-value">{{ formData['hasAuthRep'] === 'yes' ? 'Yes' : 'No' }}</span></div>
               @if (formData['hasAuthRep'] === 'yes') {
-                <div class="rs-grid">
-                  <div class="rs-item"><span class="rs-label">Representative Name</span><span class="rs-value">{{ formData['repName'] || '—' }}</span></div>
-                  <div class="rs-item"><span class="rs-label">Email</span><span class="rs-value">{{ formData['repEmail'] || '—' }}</span></div>
-                  <div class="rs-item"><span class="rs-label">Mobile Number</span><span class="rs-value">{{ formData['repPhone'] || '—' }}</span></div>
-                  <div class="rs-item"><span class="rs-label">Pincode</span><span class="rs-value">{{ formData['repPincode'] || '—' }}</span></div>
-                  <div class="rs-item"><span class="rs-label">State</span><span class="rs-value">{{ formData['repState'] || '—' }}</span></div>
-                  <div class="rs-item"><span class="rs-label">District</span><span class="rs-value">{{ formData['repDistrict'] || '—' }}</span></div>
-                  <div class="rs-item"><span class="rs-label">City</span><span class="rs-value">{{ formData['repCity'] || '—' }}</span></div>
+                <div class="rs-grid rs-grid-3">
+                  <div class="rs-item"><span class="rs-number">2.</span><span class="rs-label">Representative Name</span><span class="rs-value">{{ formData['repName'] || '—' }}</span></div>
+                  <div class="rs-item"><span class="rs-number">3.</span><span class="rs-label">Email</span><span class="rs-value">{{ formData['repEmail'] || '—' }}</span></div>
+                  <div class="rs-item"><span class="rs-number">4.</span><span class="rs-label">Mobile Number</span><span class="rs-value">{{ formData['repPhone'] || '—' }}</span></div>
                 </div>
-                <div class="rs-row-full"><span class="rs-label">Address</span><span class="rs-value">{{ formData['repAddress'] || '—' }}</span></div>
-                @if (repFileName) {
-                  <div class="rs-row-full">
-                    <span class="rs-label">Authorisation Document</span>
-                    <div class="rs-attachments-grid">
-                      <div class="rs-attachment-card">
-                        <div class="rs-attachment-icon"><i class="pi pi-file-pdf"></i></div>
-                        <div class="rs-attachment-details">
-                          <span class="rs-attachment-name">{{ repFileName }}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                }
+                <div class="rs-grid rs-grid-3">
+                  <div class="rs-item"><span class="rs-number">5.</span><span class="rs-label">Pincode</span><span class="rs-value">{{ formData['repPincode'] || '—' }}</span></div>
+                  <div class="rs-item"><span class="rs-number">6.</span><span class="rs-label">State</span><span class="rs-value">{{ formData['repState'] || '—' }}</span></div>
+                  <div class="rs-item"><span class="rs-number">7.</span><span class="rs-label">District</span><span class="rs-value">{{ formData['repDistrict'] || '—' }}</span></div>
+                </div>
+                <div class="rs-grid rs-grid-3">
+                  <div class="rs-item"><span class="rs-number">8.</span><span class="rs-label">City</span><span class="rs-value">{{ formData['repCity'] || '—' }}</span></div>
+                </div>
+                <div class="rs-row-full"><span class="rs-number">9.</span><span class="rs-label">Address</span><span class="rs-value">{{ formData['repAddress'] || '—' }}</span></div>
+                <div class="rs-row-full"><span class="rs-number">10.</span><span class="rs-label">Authorisation Document</span><span class="rs-value">@if (repFileName) { <i class="pi pi-file"></i> {{ repFileName }} } @else { — }</span></div>
               }
             </div>
           </div>
@@ -1264,11 +1235,6 @@
         <button class="success-action-btn" routerLink="/public/history">{{ 'success.my_complaints' | translate }}</button>
         <button class="success-action-btn" (click)="goHome()">{{ 'success.share_feedback' | translate }}</button>
       </div>
-    </div>
-
-    <div class="assistance-banner">
-      <h3>{{ 'layout.need_assistance' | translate }}</h3>
-      <p>{{ 'layout.assistance_desc' | translate }}</p>
     </div>
   </div>
 }

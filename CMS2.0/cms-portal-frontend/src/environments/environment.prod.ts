@@ -12,7 +12,7 @@ export const environment = {
   sessionTimeoutMinutes: 15,
 
   // NFR-006: File upload constraints (EAAP guidelines)
-  maxFileSizeMB: 5,
+  maxFileSizeMB: 2,
   maxTotalUploadSizeMB: 25,
   maxFileCount: 10,
   allowedFileExtensions: ['.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png', '.xls', '.xlsx'],
