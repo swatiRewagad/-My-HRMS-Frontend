@@ -49,9 +49,10 @@
 
 // Header
 .main-header {
-  background: transparent;
+  background: url('/assets/header-bg.png') 0 0 / 100% 100% no-repeat;
   padding: 14px 0;
   border-bottom: none;
+  .container { padding: 0; margin: 0; max-width: 100%; padding-left: 100px; padding-right: 60px; }
 }
 
 .header-inner { display: flex; align-items: center; justify-content: space-between; position: relative; }

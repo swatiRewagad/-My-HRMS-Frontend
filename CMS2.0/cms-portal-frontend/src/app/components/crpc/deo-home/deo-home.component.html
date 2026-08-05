@@ -15,16 +15,23 @@
     </div>
     <div class="header-right">
       <div class="header-icons">
-        <button title="Font size"><i class="pi pi-text-size"></i></button>
-        <button title="Language"><i class="pi pi-globe"></i></button>
+        <button title="Phone"><i class="pi pi-phone"></i></button>
+        <span class="font-size-group">
+          <button title="Decrease font" class="font-btn">A-</button>
+          <button title="Default font" class="font-btn active">A</button>
+          <button title="Increase font" class="font-btn">A+</button>
+        </span>
+        <button class="lang-btn"><i class="pi pi-globe"></i> English <i class="pi pi-angle-down"></i></button>
         <app-notification-bell></app-notification-bell>
       </div>
-      <span class="user-avatar">{{ (loggedInUser?.name || 'U').charAt(0) }}</span>
-      <div class="user-details">
-        <span class="user-name">{{ loggedInUser?.name || 'Staff' }}</span>
-        <span class="user-role">CRPC Data Entry Operator</span>
+      <div class="user-info-block">
+        <span class="user-avatar">{{ (loggedInUser?.name || 'U').charAt(0) }}</span>
+        <div class="user-details">
+          <span class="user-name">{{ loggedInUser?.name || 'Staff' }}</span>
+          <span class="user-role">CRPC Data Entry Operator</span>
+        </div>
+        <button class="user-dropdown-btn" (click)="logout()"><i class="pi pi-angle-down"></i></button>
       </div>
-      <button class="btn-logout" (click)="logout()"><i class="pi pi-sign-out"></i></button>
     </div>
   </header>
 
@@ -70,9 +77,12 @@
             <option value="APPROVED">Assessment Complete</option>
           </select>
           <select class="queue-select" [value]="assignmentFilter()" (change)="assignmentFilter.set($any($event.target).value)">
-            <option value="ASSIGNED_TO_ME">Assigned To Me</option>
+            <option value="ASSIGNED_TO_ME">Complaints Assigned To Me</option>
             <option value="ALL">All Complaints</option>
           </select>
+          <button class="filters-btn" (click)="showAdvancedSearch.set(true)">
+            <i class="pi pi-filter"></i> Filters
+          </button>
           <button class="btn btn-primary create-btn" (click)="createPhysicalLetter()">
             <i class="pi pi-plus"></i> Create Complaint
           </button>
@@ -84,35 +94,35 @@
         <div class="stat-card" (click)="filterStatus.set(''); filterMode.set('ALL')">
           <div class="stat-icon blue"><i class="pi pi-inbox"></i></div>
           <div class="stat-content">
-            <span class="stat-label">Total Complaints</span>
+            <span class="stat-label">Total Complaints <i class="pi pi-info-circle"></i></span>
             <span class="stat-value">{{ stats().total }}</span>
           </div>
         </div>
         <div class="stat-card" (click)="filterStatus.set(''); filterMode.set('DIRECT')">
           <div class="stat-icon orange"><i class="pi pi-file"></i></div>
           <div class="stat-content">
-            <span class="stat-label">Direct Complaints</span>
+            <span class="stat-label">Direct Complaints <i class="pi pi-info-circle"></i></span>
             <span class="stat-value">{{ stats().direct }}</span>
           </div>
         </div>
         <div class="stat-card" (click)="filterStatus.set(''); filterMode.set('ABR')">
-          <div class="stat-icon red"><i class="pi pi-envelope"></i></div>
+          <div class="stat-icon agr"><span class="icon-letter">A</span></div>
           <div class="stat-content">
-            <span class="stat-label">Complaints via AGR</span>
+            <span class="stat-label">Complaints via AGR <i class="pi pi-info-circle"></i></span>
             <span class="stat-value">{{ stats().viaAbr }}</span>
           </div>
         </div>
         <div class="stat-card" (click)="filterStatus.set(''); filterMode.set('RBI_DOMAIN')">
-          <div class="stat-icon red"><i class="pi pi-globe"></i></div>
+          <div class="stat-icon rbi-domain"><span class="icon-letter">R</span></div>
           <div class="stat-content">
-            <span class="stat-label">Complaints via RBI Domain</span>
+            <span class="stat-label">Complaints via RBI Domain <i class="pi pi-info-circle"></i></span>
             <span class="stat-value">{{ stats().viaRbiDomain }}</span>
           </div>
         </div>
         <div class="stat-card pending-card">
           <div class="stat-icon purple"><i class="pi pi-clock"></i></div>
           <div class="stat-content">
-            <span class="stat-label">Pending</span>
+            <span class="stat-label">Pending <i class="pi pi-info-circle"></i></span>
             <span class="stat-value">{{ stats().draft + stats().inProgress }}</span>
           </div>
           <div class="pending-breakdown">

@@ -131,7 +131,7 @@ export class DeoHomeComponent implements OnInit {
     const mode = this.filterMode();
     const search = this.searchText();
     if (status) result = result.filter(d => d.status === status);
-    if (mode === 'DIRECT') result = result.filter(d => d.modeOfReceipt === 'EMAIL' && !d.fromEmailId.toLowerCase().includes('rbi.org.in') && !d.fromEmailId.toLowerCase().includes('rbi.gov.in'));
+    if (mode === 'DIRECT') result = result.filter(d => d.modeOfReceipt === 'PHYSICAL_LETTER' || (d.modeOfReceipt === 'EMAIL' && !d.fromEmailId.toLowerCase().includes('rbi.org.in') && !d.fromEmailId.toLowerCase().includes('rbi.gov.in')));
     if (mode === 'ABR') result = result.filter(d => d.modeOfReceipt === 'CPGRAMS');
     if (mode === 'RBI_DOMAIN') result = result.filter(d => d.fromEmailId.toLowerCase().includes('rbi.org.in') || d.fromEmailId.toLowerCase().includes('rbi.gov.in'));
     if (this.advSearchActive()) {
@@ -219,7 +219,7 @@ export class DeoHomeComponent implements OnInit {
       inProgress: all.filter(d => d.status === 'IN_PROGRESS').length,
       rejected: all.filter(d => d.status === 'REJECTED_BY_REVIEWER').length,
       approved: all.filter(d => d.status === 'APPROVED').length,
-      direct: all.filter(d => d.modeOfReceipt === 'EMAIL' && !d.fromEmailId.toLowerCase().includes('rbi.org.in') && !d.fromEmailId.toLowerCase().includes('rbi.gov.in')).length,
+      direct: all.filter(d => d.modeOfReceipt === 'PHYSICAL_LETTER' || (d.modeOfReceipt === 'EMAIL' && !d.fromEmailId.toLowerCase().includes('rbi.org.in') && !d.fromEmailId.toLowerCase().includes('rbi.gov.in'))).length,
       viaAbr: all.filter(d => d.modeOfReceipt === 'CPGRAMS').length,
       viaRbiDomain: all.filter(d => d.fromEmailId.toLowerCase().includes('rbi.org.in') || d.fromEmailId.toLowerCase().includes('rbi.gov.in')).length,
       pending0to3: pending.filter(d => d.ageing <= 3).length,

@@ -7,6 +7,7 @@ import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
 import { CrpcService } from '../../../services/crpc.service';
 import { ReviewerUser } from '../../../models/crpc.model';
+import { lookupPincode } from '../../../utils/pincode-data';
 import { environment } from '../../../../environments/environment';
 import { SpeechButtonComponent } from '../../../shared/speech-button/speech-button.component';
 
@@ -46,6 +47,7 @@ export class PhysicalLetterComponent implements OnInit {
   // Left panel
   scannedFile: File | null = null;
   scanError = '';
+  isDragOver = false;
   ocrInProgress = signal(false);
   ocrComplete = signal(false);
   pdfExpanded = signal(false);
@@ -175,7 +177,14 @@ export class PhysicalLetterComponent implements OnInit {
 
   onPincodeInput(value: string) {
     this.complainantPincode = value;
-    if (value && value.length === 6 && /^\d{6}$/.test(value)) {
+    if (!value) {
+      delete this.fieldErrors['complainantPincode'];
+    } else if (!/^\d*$/.test(value)) {
+      this.fieldErrors['complainantPincode'] = 'Pincode must contain only digits.';
+    } else if (value.length !== 6) {
+      this.fieldErrors['complainantPincode'] = 'Pincode must be exactly 6 digits.';
+    } else {
+      delete this.fieldErrors['complainantPincode'];
       this.pincodeLoading.set(true);
       this.http.get<any[]>(`${environment.apiBaseUrl}/api/v1/location/pincode/${value}`).subscribe({
         next: (res) => {
@@ -201,22 +210,16 @@ export class PhysicalLetterComponent implements OnInit {
   }
 
   private fallbackPincodeLookup(pincode: string) {
-    this.http.get<any[]>(`/api/pincode/${pincode}`).subscribe({
-      next: (res) => {
-        this.pincodeLoading.set(false);
-        if (res && res[0] && res[0].Status === 'Success' && res[0].PostOffice?.length) {
-          const po = res[0].PostOffice[0];
-          if (po.State) {
-            this.complainantState = po.State;
-            this.onStateChange(po.State);
-          }
-          if (po.District) {
-            this.complainantDistrict = po.District;
-          }
-        }
-      },
-      error: () => this.pincodeLoading.set(false)
-    });
+    this.pincodeLoading.set(false);
+    const entry = lookupPincode(pincode);
+    if (entry) {
+      this.complainantState = entry.state;
+      this.onStateChange(entry.state);
+      this.complainantDistrict = entry.district;
+      delete this.fieldErrors['complainantPincode'];
+    } else {
+      this.fieldErrors['complainantPincode'] = 'Invalid pincode. No location found.';
+    }
   }
 
   onEntitySearchInput(value: string) {
@@ -269,14 +272,35 @@ export class PhysicalLetterComponent implements OnInit {
       return;
     }
 
-    if (file.size > 10 * 1024 * 1024) {
-      this.scanError = 'File size must not exceed 10 MB.';
+    if (file.size > 2 * 1024 * 1024) {
+      this.scanError = 'File size must not exceed 2 MB.';
       return;
     }
 
     this.scannedFile = file;
     this.scanError = '';
 
+    if (file.type === 'application/pdf') {
+      const url = URL.createObjectURL(file);
+      this.pdfPreviewUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(url));
+    }
+  }
+
+  onFileDrop(event: DragEvent) {
+    event.preventDefault();
+    if (!event.dataTransfer?.files?.length) return;
+    const file = event.dataTransfer.files[0];
+    const allowed = ['application/pdf', 'image/jpeg', 'image/png', 'image/tiff'];
+    if (!allowed.includes(file.type)) {
+      this.scanError = 'Only PDF, JPEG, PNG, or TIFF files are accepted.';
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      this.scanError = 'File size must not exceed 2 MB.';
+      return;
+    }
+    this.scannedFile = file;
+    this.scanError = '';
     if (file.type === 'application/pdf') {
       const url = URL.createObjectURL(file);
       this.pdfPreviewUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(url));
@@ -357,6 +381,33 @@ export class PhysicalLetterComponent implements OnInit {
     }
   }
 
+  formSubmitAttempted = false;
+  fieldErrors: Record<string, string> = {};
+
+  validateForm(): boolean {
+    this.fieldErrors = {};
+
+    if (!this.subject.trim()) this.fieldErrors['subject'] = 'Subject is required.';
+    if (!this.description.trim()) this.fieldErrors['description'] = 'Complaint Details is required.';
+    if (!this.modeOfReceipt) this.fieldErrors['modeOfReceipt'] = 'Mode of Receipt is required.';
+    if (!this.category.trim()) this.fieldErrors['category'] = 'Category is required.';
+    if (!this.complainantName.trim()) this.fieldErrors['complainantName'] = 'Complainant Name is required.';
+    if (this.complainantEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.complainantEmail)) {
+      this.fieldErrors['complainantEmail'] = 'Enter a valid email address.';
+    }
+    if (this.complainantPhone && !/^\d{10}$/.test(this.complainantPhone)) {
+      this.fieldErrors['complainantPhone'] = 'Enter a valid 10-digit mobile number.';
+    }
+    if (this.complainantPincode && !/^\d{6}$/.test(this.complainantPincode)) {
+      this.fieldErrors['complainantPincode'] = 'Enter a valid 6-digit pincode.';
+    }
+    if (this.branchPincode && !/^\d{6}$/.test(this.branchPincode)) {
+      this.fieldErrors['branchPincode'] = 'Enter a valid 6-digit pincode.';
+    }
+
+    return Object.keys(this.fieldErrors).length === 0;
+  }
+
   canSubmit(): boolean {
     return this.complainantName.trim().length > 0 &&
            this.subject.trim().length > 0 &&
@@ -371,6 +422,8 @@ export class PhysicalLetterComponent implements OnInit {
   }
 
   submitDraft() {
+    this.formSubmitAttempted = true;
+    if (!this.validateForm()) return;
     this.submitting.set(true);
 
     const loggedInUser = JSON.parse(sessionStorage.getItem('crpc_user') || '{}');

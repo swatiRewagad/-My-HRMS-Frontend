@@ -300,6 +300,7 @@ export const routes: Routes = [
       { path: 'feedback', canActivate: [publicAuthGuard], loadComponent: () => import('./components/public/submit-feedback/submit-feedback.component').then(m => m.SubmitFeedbackComponent) },
       { path: 'appeal', canActivate: [publicAuthGuard], loadComponent: () => import('./components/public/file-appeal/file-appeal.component').then(m => m.FileAppealComponent) },
       { path: 'history', canActivate: [publicAuthGuard], loadComponent: () => import('./components/public/complaint-history/complaint-history.component').then(m => m.ComplaintHistoryComponent) },
+      { path: 'complaint/:id', canActivate: [publicAuthGuard], loadComponent: () => import('./components/public/complaint-detail/complaint-detail.component').then(m => m.ComplaintDetailComponent) },
     ]
   },
   {

@@ -59,11 +59,17 @@
 
       <div class="letter-content">
         @if (!scannedFile) {
-          <div class="upload-area">
-            <i class="pi pi-cloud-upload"></i>
-            <p>Scan and Upload Physical Letter Copy or Email PDF</p>
-            <span class="upload-hint">Supported: PDF, JPEG, PNG, TIFF (max 10 MB)</span>
-            <input type="file" (change)="onFileSelected($event)" accept=".pdf,.jpg,.jpeg,.png,.tiff,.tif" aria-label="Upload scanned letter" />
+          <div class="upload-area" [class.dragover]="isDragOver"
+               (dragover)="$event.preventDefault(); isDragOver = true"
+               (dragenter)="$event.preventDefault(); isDragOver = true"
+               (dragleave)="isDragOver = false"
+               (drop)="isDragOver = false; onFileDrop($event)">
+            <input type="file" id="physicalLetterFile" (change)="onFileSelected($event)" accept=".pdf,.jpg,.jpeg,.png,.tiff,.tif" aria-label="Upload scanned letter" class="file-input-hidden" />
+            <span class="file-upload-text">Drag and Drop or <label for="physicalLetterFile" class="file-upload-browse-link">Browse</label> File</span>
+          </div>
+          <div class="file-upload-meta">
+            <span class="upload-hint">Support formats: PDF, JPEG, PNG, TIFF</span>
+            <span class="upload-size">Maximum Size of All Files: 2MB</span>
           </div>
           @if (scanError) {
             <p class="error-text">{{ scanError }}</p>
@@ -138,16 +144,22 @@
         <section class="form-section">
           <h5 class="section-title"><i class="pi pi-file-edit"></i> Complaint Details</h5>
           <div class="form-grid">
-            <div class="form-group full-width">
-              <label>Subject</label>
+            <div class="form-group full-width" [class.has-error]="formSubmitAttempted && fieldErrors['subject']">
+              <label>Subject <span class="required">*</span></label>
               <input type="text" [(ngModel)]="subject" placeholder="Brief subject of complaint" />
+              @if (formSubmitAttempted && fieldErrors['subject']) {
+                <span class="field-error">{{ fieldErrors['subject'] }}</span>
+              }
             </div>
-            <div class="form-group full-width">
-              <label>Complaint Details</label>
+            <div class="form-group full-width" [class.has-error]="formSubmitAttempted && fieldErrors['description']">
+              <label>Complaint Details <span class="required">*</span></label>
               <div class="textarea-with-speech">
                 <textarea [(ngModel)]="description" rows="3" placeholder="Detailed description of the complaint"></textarea>
                 <app-speech-button (transcription)="description = description + ' ' + $event"></app-speech-button>
               </div>
+              @if (formSubmitAttempted && fieldErrors['description']) {
+                <span class="field-error">{{ fieldErrors['description'] }}</span>
+              }
             </div>
             <div class="form-group full-width">
               <label>Comments</label>
@@ -163,14 +175,17 @@
         <section class="form-section">
           <h5 class="section-title"><i class="pi pi-inbox"></i> Mode of Receipt</h5>
           <div class="form-grid">
-            <div class="form-group">
-              <label>Mode of Receipt</label>
+            <div class="form-group" [class.has-error]="formSubmitAttempted && fieldErrors['modeOfReceipt']">
+              <label>Mode of Receipt <span class="required">*</span></label>
               <select [(ngModel)]="modeOfReceipt">
                 <option value="PHYSICAL_LETTER">Physical Letter</option>
                 <option value="EMAIL">Email</option>
                 <option value="PORTAL">Portal</option>
                 <option value="CPGRAMS">CPGRAMS</option>
               </select>
+              @if (formSubmitAttempted && fieldErrors['modeOfReceipt']) {
+                <span class="field-error">{{ fieldErrors['modeOfReceipt'] }}</span>
+              }
             </div>
             <div class="form-group">
               <label>Physical Letter Receipt Date</label>
@@ -187,14 +202,17 @@
         <section class="form-section">
           <h5 class="section-title"><i class="pi pi-verified"></i> Eligibility</h5>
           <div class="form-grid">
-            <div class="form-group">
-              <label>Category</label>
+            <div class="form-group" [class.has-error]="formSubmitAttempted && fieldErrors['category']">
+              <label>Category <span class="required">*</span></label>
               <select [(ngModel)]="category">
                 <option value="">Select Category</option>
                 @for (cat of categories; track cat) {
                   <option [value]="cat">{{ cat }}</option>
                 }
               </select>
+              @if (formSubmitAttempted && fieldErrors['category']) {
+                <span class="field-error">{{ fieldErrors['category'] }}</span>
+              }
             </div>
             <div class="form-group">
               <label>Complaint/Suggestion Type</label>
@@ -265,9 +283,12 @@
               <label>Branch Name</label>
               <input type="text" [(ngModel)]="branchName" placeholder="Branch name" />
             </div>
-            <div class="form-group">
+            <div class="form-group" [class.has-error]="formSubmitAttempted && fieldErrors['branchPincode']">
               <label>Branch Pincode</label>
               <input type="text" [(ngModel)]="branchPincode" maxlength="6" placeholder="6-digit pincode" />
+              @if (formSubmitAttempted && fieldErrors['branchPincode']) {
+                <span class="field-error">{{ fieldErrors['branchPincode'] }}</span>
+              }
             </div>
           </div>
         </section>
@@ -276,17 +297,26 @@
         <section class="form-section">
           <h5 class="section-title"><i class="pi pi-user"></i> Complainant Details</h5>
           <div class="form-grid">
-            <div class="form-group">
-              <label>Name *</label>
+            <div class="form-group" [class.has-error]="formSubmitAttempted && fieldErrors['complainantName']">
+              <label>Name <span class="required">*</span></label>
               <input type="text" [(ngModel)]="complainantName" placeholder="Full name" />
+              @if (formSubmitAttempted && fieldErrors['complainantName']) {
+                <span class="field-error">{{ fieldErrors['complainantName'] }}</span>
+              }
             </div>
-            <div class="form-group">
+            <div class="form-group" [class.has-error]="formSubmitAttempted && fieldErrors['complainantPhone']">
               <label>Phone</label>
               <input type="tel" [(ngModel)]="complainantPhone" maxlength="10" placeholder="10-digit mobile" />
+              @if (formSubmitAttempted && fieldErrors['complainantPhone']) {
+                <span class="field-error">{{ fieldErrors['complainantPhone'] }}</span>
+              }
             </div>
-            <div class="form-group">
+            <div class="form-group" [class.has-error]="formSubmitAttempted && fieldErrors['complainantEmail']">
               <label>Email</label>
               <input type="email" [(ngModel)]="complainantEmail" placeholder="Email address" />
+              @if (formSubmitAttempted && fieldErrors['complainantEmail']) {
+                <span class="field-error">{{ fieldErrors['complainantEmail'] }}</span>
+              }
             </div>
             <div class="form-group">
               <label>State *</label>
@@ -310,7 +340,7 @@
                 }
               </select>
             </div>
-            <div class="form-group">
+            <div class="form-group" [class.has-error]="fieldErrors['complainantPincode']">
               <label>Pincode</label>
               <div class="pincode-field">
                 <input type="text" [ngModel]="complainantPincode" (ngModelChange)="onPincodeInput($event)" maxlength="6" placeholder="Enter 6-digit pincode" />
@@ -318,6 +348,9 @@
                   <span class="pincode-spinner">...</span>
                 }
               </div>
+              @if (fieldErrors['complainantPincode']) {
+                <span class="field-error">{{ fieldErrors['complainantPincode'] }}</span>
+              }
             </div>
           </div>
         </section>

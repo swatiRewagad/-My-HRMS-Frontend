@@ -1,8 +1,8 @@
 <div class="my-complaints-page">
 
   <div class="page-header">
-    <h1 class="page-title">{{ 'history.title' | translate }}</h1>
-    <a routerLink="/public/file-complaint" class="btn-create-new">{{ 'history.create_new' | translate }}</a>
+    <h1 class="page-title">My Complaints</h1>
+    <a routerLink="/public/file-complaint" class="btn-file-new">File New Complaint</a>
   </div>
 
   @if (loading()) {
@@ -21,7 +21,7 @@
               <div class="col-search"><input type="text" placeholder="Search" [(ngModel)]="filters.entityName" class="col-filter-input" aria-label="Filter by entity name"></div>
             </th>
             <th>{{ 'history.col_date' | translate }} <i class="pi pi-sort-alt" aria-hidden="true"></i>
-              <div class="col-search"><input type="text" placeholder="DD-MM-YYYY" [(ngModel)]="filters.date" class="col-filter-input" aria-label="Filter by complaint date"></div>
+              <div class="col-search"><input type="text" placeholder="DD-MM-YYYY" [(ngModel)]="filters.date" class="col-filter-input col-filter-date" aria-label="Filter by complaint date"></div>
             </th>
             <th>{{ 'history.col_status' | translate }} <i class="pi pi-sort-alt" aria-hidden="true"></i>
               <div class="col-search"><input type="text" placeholder="Search" [(ngModel)]="filters.status" class="col-filter-input" aria-label="Filter by status"></div>
@@ -29,15 +29,14 @@
             <th>{{ 'history.col_comments' | translate }} <i class="pi pi-sort-alt" aria-hidden="true"></i>
               <div class="col-search"><input type="text" placeholder="Search" [(ngModel)]="filters.comments" class="col-filter-input" aria-label="Filter by comments"></div>
             </th>
-            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
           @if (filteredComplaints().length === 0) {
-            <tr><td colspan="6" class="empty-cell">{{ 'history.no_complaints' | translate }}</td></tr>
+            <tr><td colspan="5" class="empty-cell">{{ 'history.no_complaints' | translate }}</td></tr>
           }
           @for (c of filteredComplaints(); track c.complaintId) {
-            <tr class="tbody-row" [class.draft-row]="c.isDraft">
+            <tr class="tbody-row" [class.draft-row]="c.isDraft" (click)="viewComplaint(c)" style="cursor: pointer;">
               <td class="id-cell">{{ c.complaintId }}</td>
               <td>{{ c.entityName }}</td>
               <td>{{ formatDate(c.complaintDate) }}</td>
@@ -47,12 +46,6 @@
                 </span>
               </td>
               <td class="comments-cell">{{ c.comments }}</td>
-              <td class="actions-cell">
-                @if (c.isDraft) {
-                  <button class="btn-resume" (click)="resumeDraft(c)"><i class="pi pi-pencil"></i> Resume</button>
-                  <button class="btn-delete-draft" (click)="deleteDraft(c)"><i class="pi pi-trash"></i></button>
-                }
-              </td>
             </tr>
           }
         </tbody>

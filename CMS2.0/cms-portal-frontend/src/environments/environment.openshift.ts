@@ -5,7 +5,7 @@ export const environment = {
   realm: 'cms',
 
   sessionTimeoutMinutes: 15,
-  maxFileSizeMB: 5,
+  maxFileSizeMB: 2,
   maxTotalUploadSizeMB: 25,
   maxFileCount: 10,
   allowedFileExtensions: ['.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png', '.xls', '.xlsx'],

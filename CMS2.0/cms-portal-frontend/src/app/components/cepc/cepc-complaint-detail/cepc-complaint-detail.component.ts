@@ -219,7 +219,10 @@ export class CepcComplaintDetailComponent implements OnInit {
     const input = event.target as HTMLInputElement;
     if (!input.files?.length) return;
     const file = input.files[0];
-    if (file.size > 10 * 1024 * 1024) return;
+    if (file.size > 2 * 1024 * 1024) {
+      alert('File size must not exceed 2 MB.');
+      return;
+    }
 
     this.uploadingDoc.set(true);
     const doc = {

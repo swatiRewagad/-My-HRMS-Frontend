@@ -34,6 +34,7 @@ export class ComplaintHistoryComponent implements OnInit {
 
   complaints = signal<ComplaintRecord[]>([]);
   loading = signal(true);
+  private entityMap: Record<string, string> = {};
 
   filters = { complaintId: '', entityName: '', date: '', status: '', comments: '' };
 
@@ -48,7 +49,18 @@ export class ComplaintHistoryComponent implements OnInit {
   });
 
   ngOnInit() {
+    this.loadEntities();
     this.loadComplaints();
+  }
+
+  private loadEntities() {
+    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/routing/entities/list`).subscribe({
+      next: (res) => {
+        const entities = res?.data ?? res ?? [];
+        entities.forEach((e: any) => { this.entityMap[String(e.id)] = e.name; });
+      },
+      error: () => {}
+    });
   }
 
   private loadComplaints() {
@@ -116,11 +128,9 @@ export class ComplaintHistoryComponent implements OnInit {
     if (!saved) return null;
     try {
       const draft = JSON.parse(saved);
-      const entityName = draft.formData?.['selectedEntity']
-        ? this.getEntityNameFromId(draft.formData['selectedEntity'])
-        : (draft.eligibilityAnswers?.['selectedEntity']
-          ? this.getEntityNameFromId(draft.eligibilityAnswers['selectedEntity'])
-          : '—');
+      const entityName = draft.entityName
+        || (draft.eligibilityAnswers?.['regulatedEntity'] ? this.getEntityNameFromId(draft.eligibilityAnswers['regulatedEntity']) : null)
+        || '—';
       const savedAt = localStorage.getItem('cms_draft_saved_at') || new Date().toISOString();
       return {
         complaintId: 'DRAFT-LOCAL',
@@ -137,12 +147,7 @@ export class ComplaintHistoryComponent implements OnInit {
   }
 
   private getEntityNameFromId(id: string): string {
-    const banks: Record<string, string> = {
-      '1': 'State Bank of India', '2': 'HDFC Bank', '3': 'ICICI Bank',
-      '4': 'Punjab National Bank', '5': 'Bank of Baroda', '6': 'Axis Bank',
-      '7': 'Kotak Mahindra Bank', '8': 'ABC Bank'
-    };
-    return banks[id] || '—';
+    return this.entityMap[id] || '—';
   }
 
   private finalizeLoad(records: ComplaintRecord[]) {
@@ -153,6 +158,14 @@ export class ComplaintHistoryComponent implements OnInit {
     });
     this.complaints.set(records);
     this.loading.set(false);
+  }
+
+  viewComplaint(record: ComplaintRecord) {
+    if (record.isDraft) {
+      this.resumeDraft(record);
+    } else {
+      this.router.navigate(['/public/complaint', record.complaintId]);
+    }
   }
 
   resumeDraft(record: ComplaintRecord) {

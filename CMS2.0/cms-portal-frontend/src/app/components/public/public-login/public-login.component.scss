@@ -1,5 +1,5 @@
 .verification-page {
-  padding: 3rem 1.5rem;
+  padding: 1.5rem;
   min-height: 60vh;
   display: flex;
   flex-direction: column;
@@ -223,7 +223,7 @@
   margin-top: 0.75rem;
   width: auto;
   padding: 0.7rem 2rem;
-  background: linear-gradient(90deg, #2460b9 0%, #472192 100%);
+  background: #472293;
   color: #fff;
   border: none;
   border-radius: 24px;
@@ -308,14 +308,14 @@
   .change-number {
     font-size: 0.85rem;
     font-weight: 600;
-    color: #1a1a2e;
+    color: #472293;
     text-decoration: none;
     &:hover { text-decoration: underline; }
   }
 
   .verify-btn {
     padding: 0.6rem 1.5rem;
-    background: linear-gradient(90deg, #2460b9 0%, #472192 100%);
+    background: #472293;
     color: #fff;
     border: none;
     border-radius: 6px;
@@ -330,7 +330,7 @@
 .link-btn {
   background: none;
   border: none;
-  color: #2460b9;
+  color: #472293;
   font-size: 0.82rem;
   cursor: pointer;
   text-decoration: underline;
@@ -376,7 +376,7 @@
 }
 
 .send-otp-btn.secondary {
-  background: linear-gradient(90deg, #1e88e5 0%, #1565c0 100%);
+  background: #472293;
 }
 
 .link-btn.small {

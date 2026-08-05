@@ -40,6 +40,7 @@ export class WithdrawComplaintComponent implements OnInit {
 
   // FR-G-036: Supporting documents (optional)
   withdrawalDocs: File[] = [];
+  isDragOver = false;
   fileUploadError = '';
 
   ngOnInit() {
@@ -98,8 +99,8 @@ export class WithdrawComplaintComponent implements OnInit {
     this.fileUploadError = '';
     for (let i = 0; i < input.files.length; i++) {
       const file = input.files[i];
-      if (file.size > 5 * 1024 * 1024) {
-        this.fileUploadError = 'File size exceeds limit (5MB).';
+      if (file.size > 2 * 1024 * 1024) {
+        this.fileUploadError = 'File size exceeds limit (2MB).';
         continue;
       }
       if (!['application/pdf', 'image/jpeg', 'image/png'].includes(file.type)) {
@@ -109,6 +110,24 @@ export class WithdrawComplaintComponent implements OnInit {
       this.withdrawalDocs.push(file);
     }
     input.value = '';
+  }
+
+  onFileDrop(event: DragEvent) {
+    event.preventDefault();
+    if (!event.dataTransfer?.files?.length) return;
+    this.fileUploadError = '';
+    for (let i = 0; i < event.dataTransfer.files.length; i++) {
+      const file = event.dataTransfer.files[i];
+      if (file.size > 2 * 1024 * 1024) {
+        this.fileUploadError = 'File size exceeds limit (2MB).';
+        continue;
+      }
+      if (!['application/pdf', 'image/jpeg', 'image/png'].includes(file.type)) {
+        this.fileUploadError = 'Invalid file type. Supported: PDF, JPG, PNG.';
+        continue;
+      }
+      this.withdrawalDocs.push(file);
+    }
   }
 
   removeWithdrawalDoc(index: number) {

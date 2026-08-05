@@ -5,6 +5,7 @@ import { Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
+import { lookupPincode } from '../../../utils/pincode-data';
 import { environment } from '../../../../environments/environment';
 import { SpeechButtonComponent } from '../../../shared/speech-button/speech-button.component';
 
@@ -59,6 +60,25 @@ export class RbioCreateComplaintComponent implements OnInit {
   // Eligibility
   proposedComplaintType = 'NEW_COMPLAINT';
   category = '';
+  eligibilityEntityName = '';
+  eligibilityEntitySearch = '';
+  eligibilityEntityResults = signal<{ id: number; name: string; department: string; entityType: string }[]>([]);
+  showEligibilityEntityDropdown = signal(false);
+  private eligibilityEntityTimeout: any = null;
+  markAllEligible = false;
+  eligibilityQuestions: { key: string; label: string; answer: boolean | null }[] = [
+    { key: 'entityRegulatedByRbi', label: 'Is Entity regulated by RBI?', answer: null },
+    { key: 'notDirectlyAddressed', label: 'The Complaint not directly addressed to Ombudsman', answer: null },
+    { key: 'notRegisteredWithEntity', label: 'Is the Complaint not registered with Entity (FRC)?', answer: null },
+    { key: 'frivolousVexatious', label: 'Is the complainant frivolous, vexatious, and threatening?', answer: null },
+    { key: 'subJudice', label: 'Is the Complaint Sub-Judice or under arbitration?', answer: null },
+    { key: 'isAdvocate', label: 'Is the complainant an advocate?', answer: null },
+    { key: 'alreadyDealt', label: 'Has already been dealt with or is under process on the same ground with the ombudsman?', answer: null },
+    { key: 'generalAgainstManagement', label: 'Does the complaint involve general complaints against management or executives of a RE?', answer: null },
+    { key: 'disputesBetweenREs', label: 'Does it involve disputes between REs?', answer: null },
+    { key: 'staffEmployerRelationship', label: 'Is from staff of an RE and involves employer-employee relationship?', answer: null },
+    { key: 'incompleteInformation', label: 'Complete information not available for registering the complaint', answer: null },
+  ];
 
   // Entity Details
   entityName = '';
@@ -69,6 +89,25 @@ export class RbioCreateComplaintComponent implements OnInit {
   showEntityDropdown = signal(false);
   private entitySearchTimeout: any = null;
   moduleName = '';
+  entityCategory = '';
+  entityTypeDisplay = '';
+  bsrCode = '';
+  entityPincode = '';
+  entityCountry = 'India';
+  entityState = '';
+  entityDistrict = '';
+  entityCity = '';
+  entityBranchName = '';
+  entityBranchCategory = '';
+  entityAddress = '';
+  branchCenterName = '';
+  cosmosCode = '';
+  assetSizeInCrores: number | null = null;
+  entityQuestions: { key: string; label: string; answer: boolean | null }[] = [
+    { key: 'depositTaking', label: 'Whether Deposit Taking/Non-Deposit Taking Entity', answer: null },
+    { key: 'assetGreater100Cr', label: 'Whether Asset Size is greater than 100 Crores', answer: null },
+    { key: 'liquidatedPresent', label: 'Whether Liquidated present', answer: null },
+  ];
 
   // Complainant Details
   complainantName = '';
@@ -97,7 +136,31 @@ export class RbioCreateComplaintComponent implements OnInit {
   saving = signal(false);
   submitting = signal(false);
   submitted = signal(false);
+  draftSaved = signal(false);
+  summaryActiveTab = signal<'summary' | 'email'>('summary');
+  assessmentTab = signal<string>('summary');
+  summarySections = { basic: true, eligibility: false, entity: false, complainant: false };
   createdComplaintId = signal('');
+
+  // Validation
+  formSubmitAttempted = false;
+  fieldErrors: Record<string, string> = {};
+
+  // Assessment panel
+  sendToDeputy = false;
+  assessmentComment = '';
+  proposedAction = '';
+  proposedClause = '';
+  showApprovalMenu = signal(false);
+  showApprovalDialog = signal(false);
+  approvalTarget = signal<'REVIEWER' | 'DEPUTY_OMBUDSMAN' | 'OMBUDSMAN'>('REVIEWER');
+  approvalAssignmentMode = 'AUTOMATIC';
+  approvalCrpcAction = '';
+  approvalCrpcClause = '';
+  assessmentComments: { id: number; initials: string; author: string; time: string; text: string; color: string }[] = [
+    { id: 1, initials: 'ST', author: 'Full Name BO DO', time: '8 hrs ago', text: 'Core banking systems are the central nervous system of any bank. They process a range of transactions, from deposits and withdrawals to loan payments and fund transfers. These systems provide a centralized platform', color: '#6366f1' },
+    { id: 2, initials: 'ST', author: 'Full Name', time: '1 hrs ago', text: 'Core banking systems are the central nervous system of any bank. They process a range of transactions, from deposits and withdrawals to loan payments and fund transfers.', color: '#f59e0b' },
+  ];
 
   // Reference data
   categories = [
@@ -193,7 +256,14 @@ export class RbioCreateComplaintComponent implements OnInit {
 
   onPincodeInput(value: string) {
     this.complainantPincode = value;
-    if (value && value.length === 6 && /^\d{6}$/.test(value)) {
+    if (!value) {
+      delete this.fieldErrors['complainantPincode'];
+    } else if (!/^\d*$/.test(value)) {
+      this.fieldErrors['complainantPincode'] = 'Pincode must contain only digits.';
+    } else if (value.length !== 6) {
+      this.fieldErrors['complainantPincode'] = 'Pincode must be exactly 6 digits.';
+    } else {
+      delete this.fieldErrors['complainantPincode'];
       this.pincodeLoading.set(true);
       this.http.get<any[]>(`${environment.apiBaseUrl}/api/v1/location/pincode/${value}`).subscribe({
         next: (res) => {
@@ -205,10 +275,86 @@ export class RbioCreateComplaintComponent implements OnInit {
               this.onStateChange(po.State);
             }
             if (po.District) this.complainantDistrict = po.District;
+          } else {
+            this.applyLocalPincode(value);
           }
         },
-        error: () => this.pincodeLoading.set(false)
+        error: () => {
+          this.pincodeLoading.set(false);
+          this.applyLocalPincode(value);
+        }
       });
+    }
+  }
+
+  private applyLocalPincode(value: string) {
+    const entry = lookupPincode(value);
+    if (entry) {
+      this.complainantState = entry.state;
+      this.onStateChange(entry.state);
+      this.complainantDistrict = entry.district;
+      delete this.fieldErrors['complainantPincode'];
+    } else {
+      this.fieldErrors['complainantPincode'] = 'Invalid pincode. No location found.';
+    }
+  }
+
+  onEntityPincodeInput(value: string) {
+    this.entityPincode = value;
+    if (!value) {
+      delete this.fieldErrors['entityPincode'];
+    } else if (!/^\d*$/.test(value)) {
+      this.fieldErrors['entityPincode'] = 'Pincode must contain only digits.';
+    } else if (value.length !== 6) {
+      this.fieldErrors['entityPincode'] = 'Pincode must be exactly 6 digits.';
+    } else {
+      delete this.fieldErrors['entityPincode'];
+    }
+  }
+
+  onEligibilityEntitySearch(value: string) {
+    this.eligibilityEntitySearch = value;
+    if (this.eligibilityEntityTimeout) clearTimeout(this.eligibilityEntityTimeout);
+    if (!value || value.length < 2) {
+      this.showEligibilityEntityDropdown.set(false);
+      return;
+    }
+    this.eligibilityEntityTimeout = setTimeout(() => {
+      this.http.get<any>(`${environment.apiBaseUrl}/api/v1/routing/entities/list`, {
+        params: { search: value }
+      }).subscribe({
+        next: (res) => {
+          this.eligibilityEntityResults.set(res?.data || []);
+          this.showEligibilityEntityDropdown.set(true);
+        },
+        error: () => this.eligibilityEntityResults.set([])
+      });
+    }, 300);
+  }
+
+  selectEligibilityEntity(entity: { id: number; name: string; department: string; entityType: string }) {
+    this.eligibilityEntityName = entity.name;
+    this.eligibilityEntitySearch = entity.name;
+    this.showEligibilityEntityDropdown.set(false);
+  }
+
+  onEligibilityEntityBlur() {
+    setTimeout(() => this.showEligibilityEntityDropdown.set(false), 200);
+  }
+
+  onMarkAllEligible() {
+    if (this.markAllEligible) {
+      for (const q of this.eligibilityQuestions) {
+        if (q.key === 'entityRegulatedByRbi') {
+          q.answer = true;
+        } else {
+          q.answer = false;
+        }
+      }
+    } else {
+      for (const q of this.eligibilityQuestions) {
+        q.answer = null;
+      }
     }
   }
 
@@ -263,8 +409,8 @@ export class RbioCreateComplaintComponent implements OnInit {
       return;
     }
 
-    if (file.size > 10 * 1024 * 1024) {
-      this.scanError = 'File size must not exceed 10 MB.';
+    if (file.size > 2 * 1024 * 1024) {
+      this.scanError = 'File size must not exceed 2 MB.';
       return;
     }
 
@@ -283,6 +429,8 @@ export class RbioCreateComplaintComponent implements OnInit {
     const fakeEvent = { target: { files: event.dataTransfer.files } } as unknown as Event;
     this.onFileSelected(fakeEvent);
   }
+
+  isDragOver = false;
 
   onDragOver(event: DragEvent) {
     event.preventDefault();
@@ -343,21 +491,100 @@ export class RbioCreateComplaintComponent implements OnInit {
     this.ocrComplete.set(true);
   }
 
+  validateForm(): boolean {
+    this.fieldErrors = {};
+
+    if (!this.subject.trim()) this.fieldErrors['subject'] = 'Subject is required.';
+    if (!this.description.trim()) this.fieldErrors['description'] = 'Complaint Details is required.';
+    if (!this.modeOfReceipt) this.fieldErrors['modeOfReceipt'] = 'Mode of Receipt is required.';
+    if (this.modeOfReceipt === 'PHYSICAL_LETTER' && !this.receivedDate) this.fieldErrors['receivedDate'] = 'Receipt Date is required for Physical Letters.';
+
+    if (!this.complainantName.trim()) this.fieldErrors['complainantName'] = 'Complainant Name is required.';
+    if (this.complainantEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.complainantEmail)) {
+      this.fieldErrors['complainantEmail'] = 'Enter a valid email address.';
+    }
+    if (this.complainantPhone && !/^\d{10}$/.test(this.complainantPhone)) {
+      this.fieldErrors['complainantPhone'] = 'Enter a valid 10-digit mobile number.';
+    }
+    if (this.complainantPincode && !/^\d{6}$/.test(this.complainantPincode)) {
+      this.fieldErrors['complainantPincode'] = 'Enter a valid 6-digit pincode.';
+    }
+
+    if (this.entityPincode && !/^\d{6}$/.test(this.entityPincode)) {
+      this.fieldErrors['entityPincode'] = 'Enter a valid 6-digit pincode.';
+    }
+
+    return Object.keys(this.fieldErrors).length === 0;
+  }
+
   canSubmit(): boolean {
-    return this.subject.trim().length > 0 && this.description.trim().length > 0;
+    return this.subject.trim().length > 0 && this.description.trim().length > 0 && this.complainantName.trim().length > 0;
   }
 
   saveDraft() {
     this.saving.set(true);
     const payload = this.buildPayload('DRAFT');
     this.http.post<any>(`${environment.apiBaseUrl}/api/v1/workflow/rbio/create-complaint`, payload).subscribe({
-      next: () => this.saving.set(false),
-      error: () => this.saving.set(false)
+      next: () => {
+        this.saving.set(false);
+        this.draftSaved.set(true);
+      },
+      error: () => {
+        this.saving.set(false);
+        this.draftSaved.set(true);
+      }
     });
   }
 
+  editDraft() {
+    this.draftSaved.set(false);
+    this.submitted.set(false);
+  }
+
+  sendForApproval(target: 'REVIEWER' | 'DEPUTY_OMBUDSMAN' | 'OMBUDSMAN') {
+    this.showApprovalMenu.set(false);
+    this.approvalTarget.set(target);
+    this.approvalAssignmentMode = 'AUTOMATIC';
+    this.approvalCrpcAction = '';
+    this.approvalCrpcClause = '';
+    this.showApprovalDialog.set(true);
+  }
+
+  get approvalTargetLabel(): string {
+    switch (this.approvalTarget()) {
+      case 'REVIEWER': return 'RBIO Reviewer';
+      case 'DEPUTY_OMBUDSMAN': return 'RBIO Deputy Ombudsman';
+      case 'OMBUDSMAN': return 'RBIO Ombudsman';
+    }
+  }
+
+  get approvalStatusLabel(): string {
+    switch (this.approvalTarget()) {
+      case 'REVIEWER': return 'Sent to RBIO Reviewer';
+      case 'DEPUTY_OMBUDSMAN': return 'Sent to RBIO Deputy Ombudsman';
+      case 'OMBUDSMAN': return 'Sent to RBIO Ombudsman';
+    }
+  }
+
+  confirmApproval() {
+    this.showApprovalDialog.set(false);
+  }
+
+  cancelApproval() {
+    this.showApprovalDialog.set(false);
+  }
+
   openAssignmentDialog() {
-    if (!this.canSubmit()) return;
+    this.formSubmitAttempted = true;
+    if (!this.validateForm()) {
+      if (this.fieldErrors['subject'] || this.fieldErrors['description'] || this.fieldErrors['modeOfReceipt'] || this.fieldErrors['receivedDate']) {
+        this.sectionExpanded.basic = true;
+      }
+      if (this.fieldErrors['complainantName'] || this.fieldErrors['complainantEmail'] || this.fieldErrors['complainantPhone'] || this.fieldErrors['complainantPincode']) {
+        this.sectionExpanded.complainant = true;
+      }
+      return;
+    }
     this.showConfirmDialog.set(true);
   }
 
