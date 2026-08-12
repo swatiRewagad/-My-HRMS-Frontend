@@ -13,11 +13,8 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
-import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -30,6 +27,7 @@ public class ComplaintService {
     private final ComplaintAttachmentRepository attachmentRepository;
     private final ComplaintEventPublisher eventPublisher;
     private final ComplaintRoutingService routingService;
+    private final ComplaintNumberGeneratorService complaintNumberGenerator;
 
     @Cacheable(value = "dashboard", unless = "#result == null")
     @Transactional(readOnly = true)
@@ -97,12 +95,28 @@ public class ComplaintService {
     public Complaint fileComplaint(FileComplaintRequest req) {
         validatePriorReComplaintFields(req);
 
+        // Determine department (RBIO/CEPC) based on RE scheme coverage
+        String entityCode = "";
+        if (req.getEntityName() != null && !req.getEntityName().isBlank()) {
+            entityCode = req.getEntityName();
+        } else if (req.getBankId() != null) {
+            entityCode = bankRepository.findById(req.getBankId())
+                    .map(Bank::getCode).orElse("");
+        }
+        String department = routingService.resolveDepartment(entityCode);
+
+        // Generate complaint number: N + FY + OfficeCode + Sequence
+        String complaintNumber = complaintNumberGenerator.generateComplaintNumber(
+                department, req.getComplainantState(), req.getComplainantDistrict());
+
         Complaint complaint = Complaint.builder()
-                .complaintNumber(generateComplaintNumber())
+                .complaintNumber(complaintNumber)
                 .complainantName(req.getComplainantName())
                 .complainantEmail(req.getComplainantEmail())
                 .complainantPhone(req.getComplainantPhone())
                 .complainantAddress(req.getComplainantAddress())
+                .complainantState(req.getComplainantState())
+                .complainantDistrict(req.getComplainantDistrict())
                 .bankId(req.getBankId())
                 .bankBranch(req.getBankBranch())
                 .accountNumber(req.getAccountNumber())
@@ -120,14 +134,6 @@ public class ComplaintService {
                 .reRepliedAndDissatisfied(req.getReRepliedAndDissatisfied())
                 .build();
 
-        // Apply routing based on filing type and entity (mirrors jBPM DepartmentRoutingTask)
-        String entityCode = "";
-        if (req.getEntityName() != null && !req.getEntityName().isBlank()) {
-            entityCode = req.getEntityName();
-        } else if (complaint.getBankId() != null) {
-            entityCode = bankRepository.findById(complaint.getBankId())
-                    .map(Bank::getCode).orElse("");
-        }
         complaint.setEntityCode(entityCode);
         ComplaintRoutingService.RoutingDecision routing = routingService.routeComplaint(complaint, entityCode);
         complaint.setDepartment(routing.getDepartment());
@@ -270,9 +276,4 @@ public class ComplaintService {
         }
     }
 
-    private String generateComplaintNumber() {
-        String date = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
-        String uuid = UUID.randomUUID().toString().substring(0, 6).toUpperCase();
-        return "CMS-" + date + "-" + uuid;
-    }
 }

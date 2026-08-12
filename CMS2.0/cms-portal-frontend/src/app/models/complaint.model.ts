@@ -4,13 +4,21 @@ export interface ComplaintRegistrationRequest {
   complainantName: string;
   complainantEmail: string;
   complainantPhone: string;
+  complainantAddress?: string;
+  complainantState?: string;
+  complainantDistrict?: string;
   entityName: string;
   entityType: string;
+  regulatedEntityId?: number;
   subject: string;
   description: string;
   amountInvolved?: number;
   transactionDate?: string;
   jurisdictionCode?: string;
+  priorReComplaint?: boolean;
+  reComplaintDate?: string;
+  reComplaintReference?: string;
+  reRepliedAndDissatisfied?: boolean;
 }
 
 export interface ComplaintAcknowledgement {

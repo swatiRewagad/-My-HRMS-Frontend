@@ -38,6 +38,9 @@ public class ComplaintApiV1Controller {
         req.setComplainantName((String) request.getOrDefault("complainantName", ""));
         req.setComplainantEmail((String) request.getOrDefault("complainantEmail", ""));
         req.setComplainantPhone((String) request.getOrDefault("complainantPhone", ""));
+        req.setComplainantAddress((String) request.get("complainantAddress"));
+        req.setComplainantState((String) request.get("complainantState"));
+        req.setComplainantDistrict((String) request.get("complainantDistrict"));
         req.setSubject((String) request.getOrDefault("subject", ""));
         req.setDescription((String) request.getOrDefault("description", ""));
         req.setPriority((String) request.getOrDefault("priority", "medium"));
