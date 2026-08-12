@@ -559,12 +559,7 @@
               </div>
               <div class="form-group">
                 <label>{{ 'form.entity_branch' | translate }} <span class="required">*</span></label>
-                <select class="form-select" [class.invalid]="validationErrors['entityBranch']" [(ngModel)]="formData['entityBranch']" name="entityBranch">
-                  <option value="">Select Value</option>
-                  @for (branch of entityBranches; track branch) {
-                    <option [value]="branch">{{ branch }}</option>
-                  }
-                </select>
+                <input type="text" class="form-input" [class.invalid]="validationErrors['entityBranch']" [(ngModel)]="formData['entityBranch']" name="entityBranch" placeholder="Enter Branch Name">
                 @if (validationErrors['entityBranch']) { <span class="field-error">{{ validationErrors['entityBranch'] }}</span> }
               </div>
             </div>

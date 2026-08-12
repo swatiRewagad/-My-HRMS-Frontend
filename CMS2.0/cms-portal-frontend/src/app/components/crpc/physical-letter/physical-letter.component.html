@@ -1,519 +1,489 @@
-<div class="complaint-workspace">
-  <!-- Top Header Bar -->
-  <header class="complaint-header">
+<div class="draft-assessment">
+  <!-- ═══ HEADER BAR ═══ -->
+  <header class="cms-header">
     <div class="header-left">
-      <button class="back-btn" (click)="goBack()" title="Back to Home">
-        <i class="pi pi-arrow-left"></i>
-      </button>
-      <div class="complaint-id-section">
-        <span class="complaint-badge">Complaint {{ complaintNumber || 'NEW' }}</span>
+      <img src="assets/corporates-rbi-logo.jpg" alt="RBI" class="rbi-logo" />
+      <div class="rbi-text">
+        <span class="rbi-hindi">भारतीय रिज़र्व बैंक</span>
+        <span class="rbi-english">RESERVE BANK OF INDIA</span>
       </div>
-      <div class="header-meta">
-        <span class="meta-pill">
-          <i class="pi pi-circle-fill status-dot new"></i>
-          {{ complaintNumber ? 'Not Assigned' : 'Draft' }}
-        </span>
-        <span class="meta-pill mode-pill">
-          <i class="pi pi-envelope"></i> Physical Letter
-        </span>
+      <div class="header-divider-v"></div>
+      <img src="assets/rbi-logo.png" alt="CMS" class="cms-logo" onerror="this.style.display='none'" />
+      <div class="header-brand">
+        <span class="cms-title">CMS</span>
+        <span class="cms-subtitle">Complaint Management System</span>
       </div>
     </div>
     <div class="header-right">
-      <div class="assigned-section">
-        <span class="assigned-label">Assigned to:</span>
-        <span class="assigned-avatar">A</span>
-        <span class="assigned-name">{{ assignedOfficer || 'Unassigned' }}</span>
+      <div class="accessibility-controls">
+        <button class="acc-btn" title="Phone"><i class="pi pi-phone"></i></button>
+        <span class="acc-divider">|</span>
+        <button class="acc-btn" title="Decrease font">A-</button>
+        <button class="acc-btn acc-btn-mid" title="Normal font">A</button>
+        <button class="acc-btn" title="Increase font">A+</button>
+        <span class="acc-divider">|</span>
+        <button class="acc-btn lang-btn" title="Language">English <i class="pi pi-chevron-down"></i></button>
+        <span class="acc-divider">|</span>
+        <button class="acc-btn" title="Notifications"><i class="pi pi-bell"></i></button>
       </div>
-      <button class="btn btn-save" (click)="saveDraft()" [disabled]="saving()">
-        @if (saving()) { Saving... } @else { Save }
-      </button>
-      <button class="btn btn-close-draft" (click)="goBack()">Close</button>
+      <div class="header-divider"></div>
+      <span class="user-avatar">{{ (loggedInUser?.name || 'D').charAt(0) }}</span>
+      <div class="user-details">
+        <span class="user-name">{{ loggedInUser?.name || 'Staff' }}</span>
+        <span class="user-role">CRPC Data Entry Operator</span>
+      </div>
+      <button class="btn-logout" (click)="goBack()"><i class="pi pi-sign-out"></i></button>
     </div>
   </header>
 
-  <!-- Tabs -->
-  <div class="tab-bar">
-    <button class="tab" [class.active]="activeTab() === 'creation'" (click)="activeTab.set('creation')">
-      <i class="pi pi-pencil"></i> Creation
-    </button>
-    <button class="tab" [class.active]="activeTab() === 'assignment'" (click)="activeTab.set('assignment')">
-      <i class="pi pi-users"></i> Assignment
-    </button>
+  <!-- ═══ SUB-HEADER TAB ═══ -->
+  <div class="sub-header">
+    <div class="complaint-tab active">
+      <i class="pi pi-file"></i>
+      Complaint {{ draftId() || 'NEW' }} <i class="pi pi-pencil tab-edit-icon"></i>
+    </div>
+    <div class="complaint-tab add-tab" (click)="goBack()" title="Open CRPC Complaints">
+      <i class="pi pi-plus"></i>
+    </div>
   </div>
 
-  <!-- Main Content Area -->
-  @if (activeTab() === 'creation') {
-  <div class="workspace-body">
-    <!-- Left Panel: Physical Letter Copy / PDF Viewer -->
-    <div class="left-panel" [class.expanded]="pdfExpanded()">
-      <div class="panel-header">
-        <h4>Physical Letter Copy</h4>
-        @if (scannedFile) {
-          <div class="panel-actions">
-            <button class="icon-btn" title="Expand" (click)="pdfExpanded.set(!pdfExpanded())">
-              <i class="pi" [class.pi-expand]="!pdfExpanded()" [class.pi-compress]="pdfExpanded()"></i>
-            </button>
+  <!-- ═══ PAGE BODY ═══ -->
+  <div class="page-body-layout has-sidebar">
+    <!-- LEFT MAIN AREA -->
+    <div class="left-main-area">
+      <!-- ═══ META ROW (KPI) ═══ -->
+      <div class="meta-row">
+        <button class="back-arrow" (click)="goBack()">
+          <i class="pi pi-arrow-left"></i>
+        </button>
+        <div class="meta-item">
+          <span class="meta-icon"><i class="pi pi-id-card"></i></span>
+          <div class="meta-text">
+            <span class="meta-label">Complaint ID</span>
+            <span class="meta-value">{{ draftId() || '—' }}</span>
           </div>
-        }
+        </div>
+        <div class="meta-item">
+          <span class="meta-icon"><i class="pi pi-file"></i></span>
+          <div class="meta-text">
+            <span class="meta-label">Complaint Number</span>
+            <span class="meta-value">{{ complaintNumber || 'Not Assigned' }}</span>
+          </div>
+        </div>
+        <div class="meta-item">
+          <span class="meta-icon"><i class="pi pi-envelope"></i></span>
+          <div class="meta-text">
+            <span class="meta-label">Mode of Receipt</span>
+            <span class="meta-value">Physical Letter</span>
+          </div>
+        </div>
+        <div class="meta-item">
+          <span class="meta-icon"><i class="pi pi-chart-bar"></i></span>
+          <div class="meta-text">
+            <span class="meta-label">Status</span>
+            <span class="meta-value status-badge">
+              <i class="pi pi-flag"></i> Draft
+            </span>
+          </div>
+        </div>
+        <div class="meta-item">
+          <span class="meta-icon owner"><i class="pi pi-user"></i></span>
+          <div class="meta-text">
+            <span class="meta-label">Complaint Owner</span>
+            <span class="meta-value">{{ complainantName || loggedInUser?.name || '—' }}</span>
+          </div>
+        </div>
+        <div class="meta-actions">
+          <button class="btn btn-save" (click)="saveDraft()" [disabled]="saving()">
+            @if (saving()) { <i class="pi pi-spin pi-spinner"></i> } @else { <i class="pi pi-save"></i> }
+            Save
+          </button>
+        </div>
       </div>
 
-      <div class="letter-content">
-        @if (!scannedFile) {
-          <div class="upload-area" [class.dragover]="isDragOver"
-               (dragover)="$event.preventDefault(); isDragOver = true"
-               (dragenter)="$event.preventDefault(); isDragOver = true"
-               (dragleave)="isDragOver = false"
-               (drop)="isDragOver = false; onFileDrop($event)">
-            <input type="file" id="physicalLetterFile" (change)="onFileSelected($event)" accept=".pdf,.jpg,.jpeg,.png,.tiff,.tif" aria-label="Upload scanned letter" class="file-input-hidden" />
-            <span class="file-upload-text">Drag and Drop or <label for="physicalLetterFile" class="file-upload-browse-link">Browse</label> File</span>
-          </div>
-          <div class="file-upload-meta">
-            <span class="upload-hint">Support formats: PDF, JPEG, PNG, TIFF</span>
-            <span class="upload-size">Maximum Size of All Files: 2MB</span>
-          </div>
-          @if (scanError) {
-            <p class="error-text">{{ scanError }}</p>
-          }
-        } @else {
-          <!-- AI Extract Button (always visible at top after upload) -->
-          <div class="ocr-bar">
-            @if (!ocrComplete()) {
-              <button class="btn btn-ai" (click)="runOcr()" [disabled]="ocrInProgress()">
-                @if (ocrInProgress()) {
-                  <span class="spinner-sm"></span> Extracting...
-                } @else {
-                  <i class="pi pi-bolt"></i> AI Extract
-                }
+      <!-- ═══ STEPPER BAR ═══ -->
+      <div class="stepper-bar">
+        <div class="stepper-step" [class.completed]="activeStep() === 'assignment'" [class.active]="activeStep() === 'creation'">
+          <div class="step-circle">@if (activeStep() === 'assignment') { <i class="pi pi-check"></i> } @else { 1 }</div>
+          <span class="step-label">Creation</span>
+        </div>
+        <div class="stepper-connector" [class.active]="activeStep() === 'assignment'"></div>
+        <div class="stepper-step" [class.active]="activeStep() === 'assignment'">
+          <div class="step-circle">2</div>
+          <span class="step-label">Assignment</span>
+        </div>
+      </div>
+
+      <!-- ═══ CONTENT BOX ═══ -->
+      <div class="content-box">
+        @if (activeStep() === 'creation') {
+        <div class="main-content-layout two-col">
+          <!-- LEFT: Reference Complaint Copy / Upload -->
+          <div class="col-email-syndicate">
+            <div class="panel-header">
+              <h3><i class="pi pi-file-pdf"></i> Reference Complaint Copy</h3>
+              <button class="expand-btn" (click)="pdfExpanded.set(!pdfExpanded())">
+                <i class="pi" [class.pi-window-maximize]="!pdfExpanded()" [class.pi-window-minimize]="pdfExpanded()"></i>
               </button>
-              <button class="btn btn-outline btn-sm" (click)="skipOcr()">Skip</button>
-            } @else {
-              <span class="ocr-done"><i class="pi pi-check-circle"></i> AI extraction complete</span>
-            }
-            <button class="btn btn-outline btn-sm remove-btn" (click)="removeFile()">
-              <i class="pi pi-times"></i> Remove File
-            </button>
-          </div>
+            </div>
 
-          @if (scanError) {
-            <p class="error-text">{{ scanError }}</p>
-          }
-
-          <!-- File Preview -->
-          <div class="file-preview">
-            @if (pdfPreviewUrl()) {
-              <div class="pdf-toolbar">
-                <button class="icon-btn" (click)="pdfPage.set(Math.max(1, pdfPage() - 1))">
-                  <i class="pi pi-chevron-left"></i>
-                </button>
-                <span class="page-info">{{ pdfPage() }}</span>
-                <button class="icon-btn" (click)="pdfPage.set(pdfPage() + 1)">
-                  <i class="pi pi-chevron-right"></i>
-                </button>
-                <button class="icon-btn" title="Zoom In">
-                  <i class="pi pi-search-plus"></i>
-                </button>
-                <button class="icon-btn" title="Zoom Out">
-                  <i class="pi pi-search-minus"></i>
-                </button>
-              </div>
-              <div class="pdf-viewer">
-                <iframe [src]="pdfPreviewUrl()" class="pdf-frame"></iframe>
+            @if (!scannedFile) {
+              <div class="upload-section">
+                <p class="upload-instruction">Scan and Upload  Physical Letter Copy or Email PDF <i class="pi pi-info-circle"></i></p>
+                <div class="upload-area" [class.dragover]="isDragOver"
+                     (dragover)="$event.preventDefault(); isDragOver = true"
+                     (dragenter)="$event.preventDefault(); isDragOver = true"
+                     (dragleave)="isDragOver = false"
+                     (drop)="isDragOver = false; onFileDrop($event)">
+                  <input type="file" id="physicalLetterFile" (change)="onFileSelected($event)" accept=".pdf,.jpg,.jpeg,.png,.tiff,.tif" class="file-input-hidden" />
+                  <div class="upload-icon"><i class="pi pi-cloud-upload"></i></div>
+                  <span class="upload-text">Drag and Drop file here or <label for="physicalLetterFile" class="browse-link">Choose file</label></span>
+                </div>
+                <div class="upload-meta">
+                  <span>Support formats: PDF, WORD, JPEG</span>
+                  <span>Maximum size: 5MB</span>
+                </div>
+                @if (scanError) { <p class="error-text">{{ scanError }}</p> }
               </div>
             } @else {
-              <div class="file-info-card">
-                <i class="pi pi-file-pdf"></i>
-                <div class="file-details">
-                  <span class="file-name">{{ scannedFile.name }}</span>
-                  <span class="file-size">{{ (scannedFile.size / 1024 / 1024).toFixed(2) }} MB</span>
+              <div class="document-viewer-body">
+                <div class="doc-actions-bar">
+                  @if (!ocrComplete()) {
+                    <button class="btn-ai-extract" (click)="runOcr()" [disabled]="ocrInProgress()">
+                      @if (ocrInProgress()) { <i class="pi pi-spin pi-spinner"></i> Extracting... } @else { <i class="pi pi-bolt"></i> AI Extract }
+                    </button>
+                    <button class="btn btn-outline" (click)="skipOcr()">Skip</button>
+                  } @else {
+                    <span class="ocr-done"><i class="pi pi-check-circle"></i> AI extraction complete</span>
+                  }
+                  <button class="btn btn-outline btn-danger" (click)="removeFile()"><i class="pi pi-times"></i> Remove File</button>
+                </div>
+                @if (scanError) { <p class="error-text" style="padding: 0 16px;">{{ scanError }}</p> }
+                <div class="doc-preview-area">
+                  @if (pdfPreviewUrl()) {
+                    <iframe [src]="pdfPreviewUrl()" class="doc-preview-pdf" frameborder="0"></iframe>
+                  } @else {
+                    <div class="doc-file-placeholder">
+                      <i class="pi pi-file"></i>
+                      <span>{{ scannedFile.name }}</span>
+                      <p>{{ (scannedFile.size / 1024 / 1024).toFixed(2) }} MB</p>
+                    </div>
+                  }
                 </div>
               </div>
             }
           </div>
+
+          <!-- RIGHT: Complaint Form -->
+          <div class="col-complaint">
+            <div class="panel-header">
+              <h3><i class="pi pi-th-large"></i> Complaint</h3>
+              <button class="expand-btn"><i class="pi pi-arrows-alt"></i></button>
+            </div>
+
+            <!-- Basic Details -->
+            <div class="form-section" [class.open]="!collapsedSections['basic']">
+              <div class="section-header" (click)="toggleSection('basic')">
+                <span><i class="pi pi-chart-bar"></i> Basic Details</span>
+                <i class="pi" [class.pi-chevron-down]="!collapsedSections['basic']" [class.pi-chevron-up]="collapsedSections['basic']"></i>
+              </div>
+              @if (!collapsedSections['basic']) {
+                <div class="section-body">
+                  <div class="field-item full">
+                    <label>Subject</label>
+                    <textarea [(ngModel)]="subject" rows="3" placeholder="Enter text here"></textarea>
+                  </div>
+                  <div class="field-item full">
+                    <label>Complaint Details</label>
+                    <textarea [(ngModel)]="description" rows="3" placeholder="Enter text here"></textarea>
+                  </div>
+                  <div class="field-item full">
+                    <label>Comments</label>
+                    <div class="textarea-with-speech">
+                      <textarea [(ngModel)]="comments" rows="3" placeholder="Enter text here"></textarea>
+                      <button class="speech-btn" title="Speech to text"><i class="pi pi-microphone"></i></button>
+                    </div>
+                  </div>
+                  <div class="field-grid-2">
+                    <div class="field-item">
+                      <label>Mode of Receipt</label>
+                      <select [(ngModel)]="modeOfReceipt">
+                        <option value="">Enter a value</option>
+                        <option value="PHYSICAL_LETTER">Physical Letter</option>
+                        <option value="EMAIL">Email</option>
+                        <option value="PORTAL">Portal</option>
+                        <option value="CPGRAMS">CPGRAMS</option>
+                      </select>
+                    </div>
+                    <div class="field-item">
+                      <label>Physical Letter Receipt Date</label>
+                      <input type="date" [(ngModel)]="receivedDate" placeholder="dd-mm-yyyy" />
+                    </div>
+                  </div>
+                </div>
+              }
+            </div>
+
+            <!-- Eligibility -->
+            <div class="form-section" [class.open]="!collapsedSections['eligibility']">
+              <div class="section-header" (click)="toggleSection('eligibility')">
+                <span><i class="pi pi-chart-bar"></i> Eligibility</span>
+                <i class="pi" [class.pi-chevron-down]="!collapsedSections['eligibility']" [class.pi-chevron-up]="collapsedSections['eligibility']"></i>
+              </div>
+              @if (!collapsedSections['eligibility']) {
+                <div class="section-body">
+                  <div class="field-grid-2">
+                    <div class="field-item">
+                      <label>Category</label>
+                      <select [(ngModel)]="category">
+                        <option value="">Select Category</option>
+                        @for (cat of categories; track cat) {
+                          <option [value]="cat">{{ cat }}</option>
+                        }
+                      </select>
+                    </div>
+                    <div class="field-item">
+                      <label>Complaint/Suggestion Type</label>
+                      <select [(ngModel)]="complaintType">
+                        <option value="COMPLAINT">Complaint</option>
+                        <option value="SUGGESTION">Suggestion</option>
+                        <option value="QUERY">Query</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              }
+            </div>
+
+            <!-- Entity Details -->
+            <div class="form-section" [class.open]="!collapsedSections['entity']">
+              <div class="section-header" (click)="toggleSection('entity')">
+                <span><i class="pi pi-chart-bar"></i> Entity Details</span>
+                <i class="pi" [class.pi-chevron-down]="!collapsedSections['entity']" [class.pi-chevron-up]="collapsedSections['entity']"></i>
+              </div>
+              @if (!collapsedSections['entity']) {
+                <div class="section-body">
+                  <div class="field-grid-2">
+                    <div class="field-item entity-search-group">
+                      <label>Entity Name</label>
+                      <div class="entity-search-wrapper">
+                        <input type="text"
+                          [ngModel]="entitySearchText || entityName"
+                          (ngModelChange)="onEntitySearchInput($event)"
+                          (focus)="onEntitySearchInput(entitySearchText || entityName)"
+                          (blur)="onEntityBlur()"
+                          placeholder="Search bank/NBFC..."
+                          autocomplete="off" />
+                        @if (entitySearchLoading()) {
+                          <span class="entity-spinner"><i class="pi pi-spin pi-spinner"></i></span>
+                        }
+                      </div>
+                      @if (showEntityDropdown() && entitySearchResults().length > 0) {
+                        <ul class="entity-dropdown">
+                          @for (entity of entitySearchResults(); track entity.id) {
+                            <li (mousedown)="selectEntity(entity)">
+                              <span class="entity-name">{{ entity.name }}</span>
+                              <span class="entity-dept" [class.cepc]="entity.department === 'CEPC'">{{ entity.department }}</span>
+                            </li>
+                          }
+                        </ul>
+                      }
+                    </div>
+                    <div class="field-item">
+                      <label>Module Name</label>
+                      <select [(ngModel)]="entityType">
+                        <option value="BANK">Bank</option>
+                        <option value="NBFC">NBFC</option>
+                        <option value="PAYMENT_SYSTEM">Payment System</option>
+                        <option value="CREDIT_BUREAU">Credit Bureau</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              }
+            </div>
+
+            <!-- Complainant Details -->
+            <div class="form-section" [class.open]="!collapsedSections['complainant']">
+              <div class="section-header" (click)="toggleSection('complainant')">
+                <span><i class="pi pi-user"></i> Complainant Details</span>
+                <i class="pi" [class.pi-chevron-down]="!collapsedSections['complainant']" [class.pi-chevron-up]="collapsedSections['complainant']"></i>
+              </div>
+              @if (!collapsedSections['complainant']) {
+                <div class="section-body">
+                  <div class="field-grid-2">
+                    <div class="field-item">
+                      <label>Name</label>
+                      <input type="text" [(ngModel)]="complainantName" placeholder="Full name" />
+                    </div>
+                    <div class="field-item">
+                      <label>Phone</label>
+                      <input type="tel" [(ngModel)]="complainantPhone" maxlength="10" placeholder="10-digit mobile" />
+                    </div>
+                  </div>
+                  <div class="field-grid-2">
+                    <div class="field-item">
+                      <label>Email</label>
+                      <input type="email" [(ngModel)]="complainantEmail" placeholder="Email address" />
+                    </div>
+                    <div class="field-item">
+                      <label>State</label>
+                      <select [ngModel]="complainantState" (ngModelChange)="onStateChange($event)">
+                        <option value="">Select State</option>
+                        @for (s of states(); track s) {
+                          <option [value]="s">{{ s }}</option>
+                        }
+                      </select>
+                    </div>
+                  </div>
+                  <div class="field-item full">
+                    <label>Address</label>
+                    <textarea [(ngModel)]="complainantAddress" rows="2" placeholder="Complete address"></textarea>
+                  </div>
+                  <div class="field-grid-2">
+                    <div class="field-item">
+                      <label>District</label>
+                      <select [(ngModel)]="complainantDistrict">
+                        <option value="">Select District</option>
+                        @for (d of districts(); track d) {
+                          <option [value]="d">{{ d }}</option>
+                        }
+                      </select>
+                    </div>
+                    <div class="field-item">
+                      <label>Pincode</label>
+                      <input type="text" [ngModel]="complainantPincode" (ngModelChange)="onPincodeInput($event)" maxlength="6" placeholder="6-digit pincode" />
+                    </div>
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+        </div>
+        }
+
+        <!-- ═══ ASSIGNMENT STEP ═══ -->
+        @if (activeStep() === 'assignment') {
+          <div class="assignment-panel">
+            <div class="assignment-card">
+              <h3>Assignment</h3>
+              <div class="confirmation-box">
+                <div class="confirmation-header">
+                  <i class="pi pi-info-circle"></i> <strong>Confirmation</strong>
+                  <span class="confirmation-subtitle">Are you sure you want to send the request to the reviewer?</span>
+                </div>
+                <div class="confirmation-body">
+                  <div class="field-grid-2">
+                    <div class="field-item">
+                      <label>Assignment</label>
+                      <select [(ngModel)]="assignmentMode" (change)="onAssignmentModeChange()">
+                        <option value="AUTOMATIC">Automatic</option>
+                        <option value="MANUAL">Manual</option>
+                      </select>
+                    </div>
+                    <div class="field-item">
+                      <label>Name of CRPC Reviewer</label>
+                      <select [ngModel]="selectedReviewerId" (ngModelChange)="onReviewerSelect($event)" [disabled]="assignmentMode === 'AUTOMATIC'">
+                        <option value="" disabled>Select reviewer</option>
+                        @for (rev of reviewers(); track rev.id) {
+                          <option [value]="rev.id">{{ rev.displayName }}</option>
+                        }
+                      </select>
+                    </div>
+                  </div>
+                  <div class="status-change">
+                    <span class="status-label">Expected Status Change</span>
+                    <div class="status-flow">
+                      <span class="status-badge-pill draft"><i class="pi pi-file"></i> Draft</span>
+                      <i class="pi pi-arrow-right"></i>
+                      <span class="status-badge-pill sent"><i class="pi pi-send"></i> Sent to Reviewer</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="confirmation-actions">
+                  <button class="btn btn-outline" (click)="activeStep.set('creation')">Cancel</button>
+                  <button class="btn btn-primary" (click)="confirmAssignment()" [disabled]="!selectedReviewerId.trim() || submitting()">
+                    @if (submitting()) { <span class="spinner-sm"></span> Sending... } @else { Confirm }
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         }
       </div>
     </div>
 
-    <!-- Center Panel: Draft Complaint Form -->
-    <div class="center-panel">
-      <div class="panel-header">
-        <h4>Draft Complaint</h4>
-      </div>
-
-      <div class="form-scroll">
-        <!-- Complaint Details Section -->
-        <section class="form-section">
-          <h5 class="section-title"><i class="pi pi-file-edit"></i> Complaint Details</h5>
-          <div class="form-grid">
-            <div class="form-group full-width" [class.has-error]="formSubmitAttempted && fieldErrors['subject']">
-              <label>Subject <span class="required">*</span></label>
-              <input type="text" [(ngModel)]="subject" placeholder="Brief subject of complaint" />
-              @if (formSubmitAttempted && fieldErrors['subject']) {
-                <span class="field-error">{{ fieldErrors['subject'] }}</span>
-              }
-            </div>
-            <div class="form-group full-width" [class.has-error]="formSubmitAttempted && fieldErrors['description']">
-              <label>Complaint Details <span class="required">*</span></label>
-              <div class="textarea-with-speech">
-                <textarea [(ngModel)]="description" rows="3" placeholder="Detailed description of the complaint"></textarea>
-                <app-speech-button (transcription)="description = description + ' ' + $event"></app-speech-button>
-              </div>
-              @if (formSubmitAttempted && fieldErrors['description']) {
-                <span class="field-error">{{ fieldErrors['description'] }}</span>
-              }
-            </div>
-            <div class="form-group full-width">
-              <label>Comments</label>
-              <div class="textarea-with-speech">
-                <textarea [(ngModel)]="comments" rows="2" placeholder="Internal DEO comments (max 3 KB)" maxlength="3072"></textarea>
-                <app-speech-button (transcription)="comments = comments + ' ' + $event"></app-speech-button>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <!-- Mode of Receipt -->
-        <section class="form-section">
-          <h5 class="section-title"><i class="pi pi-inbox"></i> Mode of Receipt</h5>
-          <div class="form-grid">
-            <div class="form-group" [class.has-error]="formSubmitAttempted && fieldErrors['modeOfReceipt']">
-              <label>Mode of Receipt <span class="required">*</span></label>
-              <select [(ngModel)]="modeOfReceipt">
-                <option value="PHYSICAL_LETTER">Physical Letter</option>
-                <option value="EMAIL">Email</option>
-                <option value="PORTAL">Portal</option>
-                <option value="CPGRAMS">CPGRAMS</option>
-              </select>
-              @if (formSubmitAttempted && fieldErrors['modeOfReceipt']) {
-                <span class="field-error">{{ fieldErrors['modeOfReceipt'] }}</span>
-              }
-            </div>
-            <div class="form-group">
-              <label>Physical Letter Receipt Date</label>
-              <input type="date" [(ngModel)]="receivedDate" />
-            </div>
-            <div class="form-group">
-              <label>Letter Date</label>
-              <input type="date" [(ngModel)]="letterDate" />
-            </div>
-          </div>
-        </section>
-
-        <!-- Eligibility Section -->
-        <section class="form-section">
-          <h5 class="section-title"><i class="pi pi-verified"></i> Eligibility</h5>
-          <div class="form-grid">
-            <div class="form-group" [class.has-error]="formSubmitAttempted && fieldErrors['category']">
-              <label>Category <span class="required">*</span></label>
-              <select [(ngModel)]="category">
-                <option value="">Select Category</option>
-                @for (cat of categories; track cat) {
-                  <option [value]="cat">{{ cat }}</option>
-                }
-              </select>
-              @if (formSubmitAttempted && fieldErrors['category']) {
-                <span class="field-error">{{ fieldErrors['category'] }}</span>
-              }
-            </div>
-            <div class="form-group">
-              <label>Complaint/Suggestion Type</label>
-              <select [(ngModel)]="complaintType">
-                <option value="COMPLAINT">Complaint</option>
-                <option value="SUGGESTION">Suggestion</option>
-                <option value="QUERY">Query</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>RBI e-Complaint</label>
-              <select [(ngModel)]="isRbiEComplaint">
-                <option value="NO">No</option>
-                <option value="YES">Yes</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Reason for non-e complaint</label>
-              <input type="text" [(ngModel)]="nonEComplaintReason" placeholder="Reason if not e-complaint" />
-            </div>
-          </div>
-        </section>
-
-        <!-- Entity Details -->
-        <section class="form-section">
-          <h5 class="section-title"><i class="pi pi-building"></i> Entity Details</h5>
-          <div class="form-grid">
-            <div class="form-group entity-search-group">
-              <label>Entity Name</label>
-              <div class="entity-search-wrapper">
-                <input type="text"
-                  [ngModel]="entitySearchText || entityName"
-                  (ngModelChange)="onEntitySearchInput($event)"
-                  (focus)="onEntitySearchInput(entitySearchText || entityName)"
-                  (blur)="onEntityBlur()"
-                  placeholder="Search bank/NBFC from master..."
-                  autocomplete="off" />
-                @if (entitySearchLoading()) {
-                  <span class="entity-spinner"><i class="pi pi-spin pi-spinner"></i></span>
-                }
-              </div>
-              @if (showEntityDropdown() && entitySearchResults().length > 0) {
-                <ul class="entity-dropdown">
-                  @for (entity of entitySearchResults(); track entity.id) {
-                    <li (mousedown)="selectEntity(entity)">
-                      <span class="entity-name">{{ entity.name }}</span>
-                      <span class="entity-dept" [class.cepc]="entity.department === 'CEPC'">{{ entity.department }}</span>
-                    </li>
-                  }
-                </ul>
-              }
-              @if (showEntityDropdown() && !entitySearchLoading() && entitySearchResults().length === 0 && entitySearchText.length >= 2) {
-                <ul class="entity-dropdown">
-                  <li class="no-results">No matching entities found</li>
-                </ul>
-              }
-            </div>
-            <div class="form-group">
-              <label>Entity Type</label>
-              <select [(ngModel)]="entityType">
-                <option value="BANK">Bank</option>
-                <option value="NBFC">NBFC</option>
-                <option value="PAYMENT_SYSTEM">Payment System</option>
-                <option value="CREDIT_BUREAU">Credit Bureau</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Branch Name</label>
-              <input type="text" [(ngModel)]="branchName" placeholder="Branch name" />
-            </div>
-            <div class="form-group" [class.has-error]="formSubmitAttempted && fieldErrors['branchPincode']">
-              <label>Branch Pincode</label>
-              <input type="text" [(ngModel)]="branchPincode" maxlength="6" placeholder="6-digit pincode" />
-              @if (formSubmitAttempted && fieldErrors['branchPincode']) {
-                <span class="field-error">{{ fieldErrors['branchPincode'] }}</span>
-              }
-            </div>
-          </div>
-        </section>
-
-        <!-- Complainant Details -->
-        <section class="form-section">
-          <h5 class="section-title"><i class="pi pi-user"></i> Complainant Details</h5>
-          <div class="form-grid">
-            <div class="form-group" [class.has-error]="formSubmitAttempted && fieldErrors['complainantName']">
-              <label>Name <span class="required">*</span></label>
-              <input type="text" [(ngModel)]="complainantName" placeholder="Full name" />
-              @if (formSubmitAttempted && fieldErrors['complainantName']) {
-                <span class="field-error">{{ fieldErrors['complainantName'] }}</span>
-              }
-            </div>
-            <div class="form-group" [class.has-error]="formSubmitAttempted && fieldErrors['complainantPhone']">
-              <label>Phone</label>
-              <input type="tel" [(ngModel)]="complainantPhone" maxlength="10" placeholder="10-digit mobile" />
-              @if (formSubmitAttempted && fieldErrors['complainantPhone']) {
-                <span class="field-error">{{ fieldErrors['complainantPhone'] }}</span>
-              }
-            </div>
-            <div class="form-group" [class.has-error]="formSubmitAttempted && fieldErrors['complainantEmail']">
-              <label>Email</label>
-              <input type="email" [(ngModel)]="complainantEmail" placeholder="Email address" />
-              @if (formSubmitAttempted && fieldErrors['complainantEmail']) {
-                <span class="field-error">{{ fieldErrors['complainantEmail'] }}</span>
-              }
-            </div>
-            <div class="form-group">
-              <label>State *</label>
-              <select [ngModel]="complainantState" (ngModelChange)="onStateChange($event)">
-                <option value="">Select State</option>
-                @for (s of states(); track s) {
-                  <option [value]="s">{{ s }}</option>
-                }
-              </select>
-            </div>
-            <div class="form-group full-width">
-              <label>Address</label>
-              <textarea [(ngModel)]="complainantAddress" rows="2" placeholder="Complete address"></textarea>
-            </div>
-            <div class="form-group">
-              <label>District</label>
-              <select [(ngModel)]="complainantDistrict">
-                <option value="">Select District</option>
-                @for (d of districts(); track d) {
-                  <option [value]="d">{{ d }}</option>
-                }
-              </select>
-            </div>
-            <div class="form-group" [class.has-error]="fieldErrors['complainantPincode']">
-              <label>Pincode</label>
-              <div class="pincode-field">
-                <input type="text" [ngModel]="complainantPincode" (ngModelChange)="onPincodeInput($event)" maxlength="6" placeholder="Enter 6-digit pincode" />
-                @if (pincodeLoading()) {
-                  <span class="pincode-spinner">...</span>
-                }
-              </div>
-              @if (fieldErrors['complainantPincode']) {
-                <span class="field-error">{{ fieldErrors['complainantPincode'] }}</span>
-              }
-            </div>
-          </div>
-        </section>
-
-        <!-- Amount & Date -->
-        <section class="form-section">
-          <h5 class="section-title"><i class="pi pi-money-bill"></i> Financial Details</h5>
-          <div class="form-grid">
-            <div class="form-group">
-              <label>Amount Involved (Rs.)</label>
-              <input type="number" [(ngModel)]="amountInvolved" placeholder="0.00" />
-            </div>
-            <div class="form-group">
-              <label>Transaction Date</label>
-              <input type="date" [(ngModel)]="transactionDate" />
-            </div>
-          </div>
-        </section>
-
-        <!-- Submit Actions -->
-        <div class="form-actions">
-          <button class="btn btn-primary" (click)="submitDraft()" [disabled]="!canSubmit() || submitting()">
-            @if (submitting()) {
-              <span class="spinner-sm"></span> Creating...
-            } @else {
-              <i class="pi pi-check"></i> Create Draft
-            }
-          </button>
-          <button class="btn btn-outline" (click)="saveDraft()" [disabled]="saving()">
-            <i class="pi pi-save"></i> Save Progress
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Right Sidebar: Suggestions & Past Complaints -->
-    <div class="right-panel">
+    <!-- ═══ RIGHT SIDEBAR ═══ -->
+    <div class="col-right-sidebar">
       <!-- Suggestions -->
-      <div class="sidebar-card">
-        <div class="sidebar-card-header">
-          <h5><i class="pi pi-lightbulb"></i> Suggestions</h5>
-        </div>
-        <div class="sidebar-card-body">
-          @if (suggestions().length === 0) {
-            <p class="empty-hint">AI suggestions will appear here after extraction.</p>
-          } @else {
-            @for (s of suggestions(); track s.id) {
-              <div class="suggestion-item" (click)="applySuggestion(s)">
-                <span class="suggestion-label">{{ s.field }}</span>
-                <span class="suggestion-value">{{ s.value }}</span>
-              </div>
-            }
-          }
+      <div class="sidebar-section">
+        <div class="sidebar-section-header">
+          <h4><i class="pi pi-lightbulb"></i> Suggestions</h4>
+          <button class="sidebar-expand-btn"><i class="pi pi-chevron-right"></i></button>
         </div>
       </div>
 
       <!-- Past Complaints -->
-      <div class="sidebar-card">
-        <div class="sidebar-card-header">
-          <h5><i class="pi pi-history"></i> Past Complaints</h5>
-          <input type="text" class="search-input" placeholder="Search..." [(ngModel)]="pastSearch" />
+      <div class="sidebar-section">
+        <div class="sidebar-section-header">
+          <h4><i class="pi pi-history"></i> Past Complaints</h4>
+          <span class="doc-count">{{ pastComplaints().length }}</span>
         </div>
-        <div class="sidebar-card-body">
-          @if (pastComplaints().length === 0) {
-            <p class="empty-hint">No matching past complaints found.</p>
-          } @else {
-            @for (pc of pastComplaints(); track pc.complaintNumber) {
-              <div class="past-complaint-item clickable" (click)="openPastComplaintDetail(pc.complaintNumber)">
-                <div class="pc-header">
-                  <span class="pc-number">{{ pc.complaintNumber }}</span>
-                  <span class="pc-date">{{ pc.date }}</span>
-                </div>
-                <p class="pc-subject">{{ pc.subject }}</p>
-                <span class="pc-entity">Entity: {{ pc.entityName }}</span>
+        <div class="sidebar-section-body">
+          <div class="sidebar-search-input">
+            <i class="pi pi-search"></i>
+            <input type="text" placeholder="Search" [(ngModel)]="pastSearch" />
+          </div>
+          @for (pc of pastComplaints(); track pc.complaintNumber; let i = $index) {
+            <div class="past-complaint-card" [class.pc-active-card]="i === 0" [class.pc-completed-card]="i !== 0"
+                 (click)="openPastComplaintDetail(pc.complaintNumber)">
+              <div class="pc-status-row">
+                <span class="pc-status" [class.active]="i === 0" [class.completed]="i !== 0">
+                  @if (i === 0) { <i class="pi pi-circle-fill"></i> Active } @else { <i class="pi pi-check-circle"></i> Completed }
+                </span>
               </div>
-            }
+              <div class="pc-details">
+                <span class="pc-field">Complaint Id: <strong>{{ pc.complaintNumber }}</strong></span>
+                <span class="pc-field">Modified Date: {{ pc.date }}</span>
+                <span class="pc-field">Processing Office: <strong>Chandigarh CEPC</strong></span>
+              </div>
+              <p class="pc-entity">Entity: <strong>{{ pc.entityName }}</strong></p>
+              <p class="pc-subject">{{ pc.subject }}</p>
+            </div>
+          }
+          @if (pastComplaints().length === 0) {
+            <p class="empty-hint">No past complaints found.</p>
           }
         </div>
       </div>
 
       <!-- Reference Documents -->
-      <div class="sidebar-card">
-        <div class="sidebar-card-header">
-          <h5><i class="pi pi-paperclip"></i> Reference Documents</h5>
+      <div class="sidebar-section">
+        <div class="sidebar-section-header">
+          <h4><i class="pi pi-paperclip"></i> Reference Documents</h4>
         </div>
-        <div class="sidebar-card-body">
+        <div class="sidebar-section-body">
+          <div class="sidebar-search-input">
+            <i class="pi pi-search"></i>
+            <input type="text" placeholder="Search" />
+          </div>
           @if (scannedFile) {
-            <div class="ref-doc-item">
-              <i class="pi pi-file-pdf"></i>
-              <div>
-                <span class="ref-doc-name">{{ scannedFile.name }}</span>
-                <span class="ref-doc-size">{{ (scannedFile.size / 1024 / 1024).toFixed(2) }} MB</span>
+            <div class="doc-item">
+              <div class="doc-item-icon"><i class="pi pi-file"></i></div>
+              <div class="doc-item-info">
+                <span class="doc-item-name">{{ scannedFile.name }}</span>
+                <span class="doc-item-meta">{{ (scannedFile.size / 1024 / 1024).toFixed(2) }} MB  uploaded by you</span>
+              </div>
+              <div class="doc-item-actions">
+                <button class="doc-action-btn"><i class="pi pi-eye"></i></button>
+                <button class="doc-action-btn"><i class="pi pi-download"></i></button>
               </div>
             </div>
           }
-          <button class="btn btn-sm btn-outline add-doc-btn">
-            <i class="pi pi-plus"></i> Add Document
-          </button>
         </div>
       </div>
     </div>
   </div>
-  }
-
-  @if (activeTab() === 'assignment') {
-  <div class="assignment-panel">
-    <div class="assignment-card">
-      <h3>Assignment</h3>
-
-      <!-- Confirmation Dialog -->
-      <div class="confirmation-box">
-        <div class="confirmation-header">
-          <i class="pi pi-info-circle"></i> <strong>Confirmation</strong>
-          <span class="confirmation-subtitle">Are you sure you want to send the request to the reviewer?</span>
-        </div>
-
-        <div class="confirmation-body">
-          <div class="form-row">
-            <div class="form-group">
-              <label>Assignment</label>
-              <select [(ngModel)]="assignmentMode" (change)="onAssignmentModeChange()">
-                <option value="AUTOMATIC">Automatic</option>
-                <option value="MANUAL">Manual</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Name of CRPC Reviewer</label>
-              <select [ngModel]="selectedReviewerId" (ngModelChange)="onReviewerSelect($event)" [disabled]="assignmentMode === 'AUTOMATIC'">
-                <option value="" disabled>Select reviewer</option>
-                @for (rev of reviewers(); track rev.id) {
-                  <option [value]="rev.id">{{ rev.displayName }}</option>
-                }
-              </select>
-            </div>
-          </div>
-
-          @if (reviewerOnLeave()) {
-            <div class="leave-warning">
-              <span class="leave-dot"></span> Assigned user is on Leave
-              <button class="clear-btn" (click)="selectedReviewerId = ''; selectedReviewerName = ''">&times;</button>
-            </div>
-          }
-
-          <div class="status-change">
-            <span class="status-label">Expected Status Change <i class="pi pi-info-circle"></i></span>
-            <div class="status-flow">
-              <span class="status-badge draft"><i class="pi pi-file"></i> Draft</span>
-              <i class="pi pi-arrow-right"></i>
-              <span class="status-badge sent"><i class="pi pi-send"></i> Sent to Reviewer</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="confirmation-actions">
-          <button class="btn btn-outline" (click)="activeTab.set('creation')">Cancel</button>
-          <button class="btn btn-primary" (click)="confirmAssignment()" [disabled]="!selectedReviewerId.trim() || submitting()">
-            @if (submitting()) { <span class="spinner-sm"></span> Sending... } @else { Confirm }
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-  }
 </div>
 
 <!-- Success Overlay -->
@@ -522,7 +492,7 @@
     <div class="success-modal">
       <div class="success-icon"><i class="pi pi-check-circle"></i></div>
       <h2>Draft Created Successfully</h2>
-      <p class="draft-id">Draft ID: <strong>{{ draftId() }}</strong></p>
+      <p class="draft-id-text">Draft ID: <strong>{{ draftId() }}</strong></p>
       <p class="redirect-note">Click below to proceed to DEO Assessment</p>
       <div class="success-actions">
         <button class="btn btn-primary" (click)="openDraft()">Proceed to Assessment</button>
@@ -540,73 +510,21 @@
         <h3>Complaint Detail — {{ pastComplaintDetail()?.complaintId }}</h3>
         <button class="modal-close" (click)="closePastComplaintDetail()">&times;</button>
       </div>
-
       @if (loadingPastDetail()) {
         <div class="modal-body"><p>Loading...</p></div>
       } @else if (pastComplaintDetail(); as d) {
         <div class="modal-body">
           <div class="detail-grid">
-            <div class="detail-item"><label>Status</label><span class="status-badge">{{ d.status }}</span></div>
+            <div class="detail-item"><label>Status</label><span>{{ d.status }}</span></div>
             <div class="detail-item"><label>Priority</label><span>{{ d.priority }}</span></div>
             <div class="detail-item"><label>Department</label><span>{{ d.department }}</span></div>
-            <div class="detail-item"><label>Filed</label><span>{{ d.filedDate }}</span></div>
-            <div class="detail-item"><label>Filing Type</label><span>{{ d.filingType }}</span></div>
-            <div class="detail-item"><label>Assigned Officer</label><span>{{ d.assignedOfficer || 'Unassigned' }}</span></div>
           </div>
-
           <div class="detail-section">
-            <h4>Complainant</h4>
-            <p><strong>{{ d.complainantName }}</strong></p>
-            <p>{{ d.complainantEmail }} | {{ d.complainantPhone }}</p>
+            <h4>Subject</h4><p>{{ d.subject }}</p>
           </div>
-
           <div class="detail-section">
-            <h4>Subject</h4>
-            <p>{{ d.subject }}</p>
+            <h4>Description</h4><p>{{ d.description }}</p>
           </div>
-
-          <div class="detail-section">
-            <h4>Description</h4>
-            <p class="description-text">{{ d.description }}</p>
-          </div>
-
-          @if (d.reliefSought) {
-            <div class="detail-section">
-              <h4>Relief Sought</h4>
-              <p>{{ d.reliefSought }}</p>
-            </div>
-          }
-
-          @if (d.resolvedAt) {
-            <div class="detail-section resolution-section">
-              <h4>Resolution</h4>
-              <p>Resolved on: <strong>{{ d.resolvedAt }}</strong></p>
-            </div>
-          }
-
-          @if (d.timeline && d.timeline.length > 0) {
-            <div class="detail-section">
-              <h4>Timeline</h4>
-              <div class="timeline-list">
-                @for (t of d.timeline; track t.timestamp) {
-                  <div class="timeline-entry">
-                    <div class="timeline-dot"></div>
-                    <div class="timeline-content">
-                      <div class="timeline-header">
-                        <span class="timeline-action">{{ t.action }}</span>
-                        <span class="timeline-time">{{ t.timestamp }}</span>
-                      </div>
-                      <p class="timeline-by">By: {{ t.performedBy }}</p>
-                      @if (t.remarks) { <p class="timeline-remarks">{{ t.remarks }}</p> }
-                      @if (t.fromStatus && t.toStatus) {
-                        <p class="timeline-transition">{{ t.fromStatus }} → {{ t.toStatus }}</p>
-                      }
-                    </div>
-                  </div>
-                }
-              </div>
-            </div>
-          }
         </div>
       }
     </div>

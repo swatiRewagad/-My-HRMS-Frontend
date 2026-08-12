@@ -34,3 +34,4 @@ package-lock.json
 **/public/assets/onnx/
 cdn-assets/**/*.onnx
 cdn-assets/**/*.wasm
+recordings/

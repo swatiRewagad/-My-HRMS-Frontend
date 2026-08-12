@@ -32,9 +32,6 @@ export class PublicAuthService {
   logout() {
     sessionStorage.removeItem(this.SESSION_KEY);
     sessionStorage.removeItem(this.ACTIVITY_KEY);
-    localStorage.removeItem('cms_complaint_draft');
-    localStorage.removeItem('cms_draft_id');
-    localStorage.removeItem('cms_draft_saved_at');
     this.isAuthenticated.set(false);
     this.userIdentifier.set('');
     this.remainingSeconds.set(0);

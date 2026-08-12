@@ -65,7 +65,7 @@ export class LandingComponent {
   }
 
   navigateToKeycloakAdmin() {
-    window.open('http://localhost:8180/admin', '_blank');
+    window.open('http://localhost:9090/admin', '_blank');
   }
 
   navigateToRulesConfig() {
@@ -74,5 +74,9 @@ export class LandingComponent {
 
   navigateToExtractionRules() {
     this.router.navigate(['/admin/extraction-rules']);
+  }
+
+  navigateToReportBuilder() {
+    this.router.navigate(['/staff/reports']);
   }
 }

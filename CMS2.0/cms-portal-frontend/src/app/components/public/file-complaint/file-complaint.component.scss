@@ -568,9 +568,8 @@
   > label {
     display: flex; align-items: flex-start; gap: 8px;
     font-family: 'Poppins', sans-serif;
-    font-size: 14px; font-weight: 500; color: #272C30; margin-bottom: 16px;
+    font-size: 14px; font-weight: 500; color: #272C30; margin-bottom: 8px;
     line-height: 20px;
-    min-height: 60px;
   }
 }
 
@@ -1293,19 +1292,17 @@ label.file-upload-browse-link {
 .review-watermark {
   position: absolute;
   inset: 0;
-  overflow: hidden;
   pointer-events: none;
   z-index: 0;
+  background: url('/assets/draft-watermark.jpg') center center / cover no-repeat;
+  opacity: 0.35;
 }
 .form-card-watermark {
   border-radius: 12px;
 }
 
 .watermark-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  opacity: 0.12;
+  display: none;
 }
 .review-section {
   margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid #f0f0f0;

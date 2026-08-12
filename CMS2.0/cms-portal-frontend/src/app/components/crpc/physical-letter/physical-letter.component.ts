@@ -9,8 +9,6 @@ import { CrpcService } from '../../../services/crpc.service';
 import { ReviewerUser } from '../../../models/crpc.model';
 import { lookupPincode } from '../../../utils/pincode-data';
 import { environment } from '../../../../environments/environment';
-import { SpeechButtonComponent } from '../../../shared/speech-button/speech-button.component';
-
 interface Suggestion {
   id: string;
   field: string;
@@ -27,7 +25,7 @@ interface PastComplaint {
 @Component({
   selector: 'app-physical-letter',
   standalone: true,
-  imports: [CommonModule, FormsModule, SpeechButtonComponent],
+  imports: [CommonModule, FormsModule],
   templateUrl: './physical-letter.component.html',
   styleUrl: './physical-letter.component.scss'
 })
@@ -42,7 +40,8 @@ export class PhysicalLetterComponent implements OnInit {
   // Header
   complaintNumber = '';
   assignedOfficer = '';
-  activeTab = signal<'creation' | 'assignment'>('creation');
+  activeStep = signal<'creation' | 'assignment'>('creation');
+  loggedInUser: { id: string; name: string; role: string } | null = null;
 
   // Left panel
   scannedFile: File | null = null;
@@ -100,6 +99,9 @@ export class PhysicalLetterComponent implements OnInit {
   selectedReviewerName = 'CRPC Reviewer';
   reviewers = signal<ReviewerUser[]>([]);
 
+  // Section collapse state
+  collapsedSections: Record<string, boolean> = {};
+
   // Pincode lookup
   pincodeLoading = signal(false);
 
@@ -131,9 +133,27 @@ export class PhysicalLetterComponent implements OnInit {
 
   ngOnInit() {
     this.receivedDate = new Date().toISOString().split('T')[0];
+    const stored = sessionStorage.getItem('crpc_user');
+    if (stored) {
+      this.loggedInUser = JSON.parse(stored);
+    } else {
+      const user = this.auth.currentUser();
+      if (user) {
+        const role = this.auth.getRoles().find(r => ['REVIEWER', 'CRPC_HEAD', 'DEO'].includes(r)) || 'DEO';
+        this.loggedInUser = { id: user.username, name: `${user.firstName} ${user.lastName}`.trim() || user.username, role };
+      }
+    }
     this.loadPastComplaints();
     this.loadStates();
     this.loadReviewers();
+  }
+
+  goToAssignment() {
+    this.activeStep.set('assignment');
+  }
+
+  goToCreation() {
+    this.activeStep.set('creation');
   }
 
   private loadReviewers() {
@@ -220,6 +240,10 @@ export class PhysicalLetterComponent implements OnInit {
     } else {
       this.fieldErrors['complainantPincode'] = 'Invalid pincode. No location found.';
     }
+  }
+
+  toggleSection(section: string) {
+    this.collapsedSections[section] = !this.collapsedSections[section];
   }
 
   onEntitySearchInput(value: string) {

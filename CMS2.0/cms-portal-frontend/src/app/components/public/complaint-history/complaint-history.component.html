@@ -29,11 +29,12 @@
             <th>{{ 'history.col_comments' | translate }} <i class="pi pi-sort-alt" aria-hidden="true"></i>
               <div class="col-search"><input type="text" placeholder="Search" [(ngModel)]="filters.comments" class="col-filter-input" aria-label="Filter by comments"></div>
             </th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
           @if (filteredComplaints().length === 0) {
-            <tr><td colspan="5" class="empty-cell">{{ 'history.no_complaints' | translate }}</td></tr>
+            <tr><td colspan="6" class="empty-cell">{{ 'history.no_complaints' | translate }}</td></tr>
           }
           @for (c of filteredComplaints(); track c.complaintId) {
             <tr class="tbody-row" [class.draft-row]="c.isDraft" (click)="viewComplaint(c)" style="cursor: pointer;">
@@ -42,10 +43,26 @@
               <td>{{ formatDate(c.complaintDate) }}</td>
               <td>
                 <span class="status-badge" [class]="getStatusClass(c.status)">
-                  <span class="status-dot"></span> {{ getStatusLabel(c.status) }}
+                  <span class="status-icon">
+                    @if (c.status === 'IN_PROGRESS') { <i class="pi pi-comments"></i> }
+                    @else if (c.status === 'CLOSED' || c.status === 'NON_MAINTAINABLE') { <i class="pi pi-check-circle"></i> }
+                    @else if (c.status === 'INFORMATION_REQUIRED') { <i class="pi pi-exclamation-circle"></i> }
+                    @else if (c.status === 'PENDING') { <i class="pi pi-clock"></i> }
+                    @else if (c.status === 'DRAFT') { <i class="pi pi-file-edit"></i> }
+                    @else { <i class="pi pi-clock"></i> }
+                  </span>
+                  {{ getStatusLabel(c.status) }}
                 </span>
               </td>
               <td class="comments-cell">{{ c.comments }}</td>
+              <td>
+                @if (c.isDraft) {
+                  <div class="actions-cell" (click)="$event.stopPropagation()">
+                    <button class="btn-resume" (click)="resumeDraft(c)"><i class="pi pi-pencil"></i> Resume</button>
+                    <button class="btn-delete-draft" (click)="deleteDraft(c)" title="Delete draft"><i class="pi pi-trash"></i></button>
+                  </div>
+                }
+              </td>
             </tr>
           }
         </tbody>
