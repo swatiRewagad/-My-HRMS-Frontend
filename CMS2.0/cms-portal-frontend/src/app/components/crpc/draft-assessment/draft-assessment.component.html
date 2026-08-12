@@ -428,6 +428,16 @@
                     }
                   </div>
                 </div>
+                <div class="field-grid-2">
+                  <div class="field-item">
+                    <label>Complaint Reference / Acknowledgement Number</label>
+                    @if (editMode()) {
+                      <input type="text" [(ngModel)]="complaintReferenceNumber" placeholder="Enter Reference Number" />
+                    } @else {
+                      <span class="field-value">{{ complaintReferenceNumber || '—' }}</span>
+                    }
+                  </div>
+                </div>
               </div>
             }
           </div>
@@ -1136,7 +1146,7 @@
                     @if (assignmentMode === 'RoundRobin') {
                       <div class="round-robin-display">
                         <span class="rr-assigned-name">{{ getReviewerName(selectedReviewer) || 'Auto-assigned' }}</span>
-                        <button class="rr-refresh-btn" (click)="useRoundRobin()" title="Re-assign"><i class="pi pi-refresh"></i></button>
+                        
                       </div>
                     } @else {
                       <div class="reviewer-search-box">

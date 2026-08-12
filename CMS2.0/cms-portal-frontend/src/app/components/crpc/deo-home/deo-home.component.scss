@@ -12,7 +12,8 @@
   justify-content: space-between;
   align-items: center;
   padding: 10px 24px;
-  background: #1a1f36;
+  background: #fff;
+  border-bottom: 1px solid #e2e8f0;
   height: 56px;
 
   .header-left {
@@ -22,13 +23,13 @@
     .rbi-logo { height: 38px; border-radius: 50%; }
     .rbi-text {
       display: flex; flex-direction: column;
-      .rbi-hindi { font-size: 12px; font-weight: 600; color: #ffffff; }
-      .rbi-english { font-size: 9px; color: #cbd5e1; letter-spacing: 0.3px; }
+      .rbi-hindi { font-size: 12px; font-weight: 600; color: #1a237e; }
+      .rbi-english { font-size: 9px; color: #475569; letter-spacing: 0.3px; }
     }
-    .header-divider-v { width: 1px; height: 30px; background: rgba(255,255,255,0.2); margin: 0 4px; }
+    .header-divider-v { width: 1px; height: 30px; background: #cbd5e1; margin: 0 4px; }
     .cms-logo { height: 32px; }
-    .cms-title { font-size: 18px; font-weight: 700; color: #ffffff; }
-    .cms-subtitle { font-size: 11px; color: #94a3b8; }
+    .cms-title { font-size: 18px; font-weight: 700; color: #1a237e; }
+    .cms-subtitle { font-size: 11px; color: #64748b; }
   }
 
   .header-right {
@@ -40,37 +41,37 @@
       display: flex;
       align-items: center;
       gap: 14px;
-      color: #cbd5e1;
+      color: #64748b;
       font-size: 14px;
       button {
-        background: none; border: none; color: #cbd5e1;
+        background: none; border: none; color: #64748b;
         cursor: pointer; font-size: 14px;
-        &:hover { color: #ffffff; }
+        &:hover { color: #1e293b; }
       }
 
       .font-size-group {
         display: flex; align-items: center; gap: 2px;
-        border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; padding: 2px 4px;
+        border: 1px solid #e2e8f0; border-radius: 6px; padding: 2px 4px;
         .font-btn {
-          padding: 2px 6px; font-size: 12px; font-weight: 500; color: #94a3b8;
+          padding: 2px 6px; font-size: 12px; font-weight: 500; color: #64748b;
           background: none; border: none; cursor: pointer; border-radius: 4px;
-          &.active { color: #fff; background: rgba(255,255,255,0.15); }
-          &:hover { color: #fff; }
+          &.active { color: #1e293b; background: #f1f5f9; }
+          &:hover { color: #1e293b; }
         }
       }
 
       .lang-btn {
         display: flex; align-items: center; gap: 4px;
-        background: none; border: 1px solid rgba(255,255,255,0.2); border-radius: 6px;
-        color: #cbd5e1; font-size: 12px; padding: 4px 10px; cursor: pointer;
+        background: none; border: 1px solid #e2e8f0; border-radius: 6px;
+        color: #64748b; font-size: 12px; padding: 4px 10px; cursor: pointer;
         i { font-size: 12px; }
-        &:hover { color: #fff; border-color: rgba(255,255,255,0.4); }
+        &:hover { color: #1e293b; border-color: #cbd5e1; }
       }
     }
 
     .user-info-block {
       display: flex; align-items: center; gap: 10px;
-      border-left: 1px solid rgba(255,255,255,0.15); padding-left: 16px;
+      border-left: 1px solid #e2e8f0; padding-left: 16px;
     }
 
     .user-avatar {
@@ -80,12 +81,12 @@
       font-weight: 600; font-size: 14px;
     }
     .user-details { display: flex; flex-direction: column;
-      .user-name { font-size: 13px; font-weight: 600; color: #ffffff; }
-      .user-role { font-size: 11px; color: #94a3b8; }
+      .user-name { font-size: 13px; font-weight: 600; color: #1e293b; }
+      .user-role { font-size: 11px; color: #64748b; }
     }
     .user-dropdown-btn {
-      background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 12px;
-      &:hover { color: #fff; }
+      background: none; border: none; color: #64748b; cursor: pointer; font-size: 12px;
+      &:hover { color: #1e293b; }
     }
     .btn-logout { background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 16px;
       &:hover { color: #ffffff; }

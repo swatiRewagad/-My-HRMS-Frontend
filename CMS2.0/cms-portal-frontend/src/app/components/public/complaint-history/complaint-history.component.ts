@@ -67,7 +67,7 @@ export class ComplaintHistoryComponent implements OnInit {
     const phone = this.authService.userIdentifier();
     const allRecords: ComplaintRecord[] = [];
 
-    // Load local draft from localStorage
+    // Load local draft from sessionStorage
     const localDraft = this.getLocalDraft();
     if (localDraft) {
       allRecords.push(localDraft);
@@ -124,14 +124,14 @@ export class ComplaintHistoryComponent implements OnInit {
   }
 
   private getLocalDraft(): ComplaintRecord | null {
-    const saved = localStorage.getItem('cms_complaint_draft');
+    const saved = sessionStorage.getItem('cms_complaint_draft');
     if (!saved) return null;
     try {
       const draft = JSON.parse(saved);
       const entityName = draft.entityName
         || (draft.eligibilityAnswers?.['regulatedEntity'] ? this.getEntityNameFromId(draft.eligibilityAnswers['regulatedEntity']) : null)
         || '—';
-      const savedAt = localStorage.getItem('cms_draft_saved_at') || new Date().toISOString();
+      const savedAt = sessionStorage.getItem('cms_draft_saved_at') || new Date().toISOString();
       return {
         complaintId: 'DRAFT-LOCAL',
         entityName,
@@ -170,7 +170,7 @@ export class ComplaintHistoryComponent implements OnInit {
 
   resumeDraft(record: ComplaintRecord) {
     if (record.draftId === 'local') {
-      this.router.navigate(['/public/file-complaint']);
+      this.router.navigate(['/public/file-complaint'], { queryParams: { resume: 'true' } });
     } else if (record.draftId) {
       this.router.navigate(['/public/file-complaint'], { queryParams: { draftId: record.draftId } });
     }
@@ -179,9 +179,9 @@ export class ComplaintHistoryComponent implements OnInit {
   deleteDraft(record: ComplaintRecord) {
     if (!record.draftId) return;
     if (record.draftId === 'local') {
-      localStorage.removeItem('cms_complaint_draft');
-      localStorage.removeItem('cms_draft_saved_at');
-      localStorage.removeItem('cms_draft_id');
+      sessionStorage.removeItem('cms_complaint_draft');
+      sessionStorage.removeItem('cms_draft_saved_at');
+      sessionStorage.removeItem('cms_draft_id');
       this.complaints.update(list => list.filter(c => c.draftId !== 'local'));
     } else {
       this.complaintService.deleteDraft(record.draftId).subscribe({
@@ -198,6 +198,7 @@ export class ComplaintHistoryComponent implements OnInit {
       case 'CLOSED': case 'NON_MAINTAINABLE': return 'status-closed';
       case 'IN_PROGRESS': return 'status-inprogress';
       case 'INFORMATION_REQUIRED': return 'status-info-required';
+      case 'PENDING': return 'status-pending';
       case 'DRAFT': return 'status-draft';
       default: return 'status-pending';
     }
@@ -205,9 +206,10 @@ export class ComplaintHistoryComponent implements OnInit {
 
   getStatusLabel(status: string): string {
     switch (status) {
-      case 'IN_PROGRESS': return 'In Progress';
+      case 'IN_PROGRESS': return 'In-Progress';
       case 'CLOSED': case 'NON_MAINTAINABLE': return 'Closed';
       case 'INFORMATION_REQUIRED': return 'Information Required';
+      case 'PENDING': return 'Pending';
       case 'DRAFT': return 'Draft';
       default: return status.replace(/_/g, ' ');
     }

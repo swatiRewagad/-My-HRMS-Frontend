@@ -90,9 +90,6 @@ export class KeycloakAuthService {
     this.initialized = false;
     this.initPromise = null;
     sessionStorage.removeItem('crpc_user');
-    localStorage.removeItem('cms_complaint_draft');
-    localStorage.removeItem('cms_draft_id');
-    localStorage.removeItem('cms_draft_saved_at');
     if (this.warningTimer) clearInterval(this.warningTimer);
     if (this.sessionTimer) clearTimeout(this.sessionTimer);
 

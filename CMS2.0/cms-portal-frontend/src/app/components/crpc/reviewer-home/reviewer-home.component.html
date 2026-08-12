@@ -57,9 +57,9 @@
           <select class="queue-select">
             <option>CRPC Complaints</option>
           </select>
-          <select class="queue-select">
-            <option>Complaints Assigned To Me</option>
-            <option>All Complaints</option>
+          <select class="queue-select" (change)="onAssignmentFilterChange($any($event.target).value)">
+            <option value="ASSIGNED_TO_ME">Complaints Assigned To Me</option>
+            <option value="ALL">All Complaints</option>
           </select>
         </div>
       </div>
@@ -94,13 +94,7 @@
             <span class="stat-value">{{ stats().sentBack }}</span>
           </div>
         </div>
-        <div class="stat-card">
-          <div class="stat-icon purple"><i class="pi pi-tag"></i></div>
-          <div class="stat-content">
-            <span class="stat-label">Label <i class="pi pi-info-circle"></i></span>
-            <span class="stat-value">₹110,000,000</span>
-          </div>
-        </div>
+        
         <div class="stat-card">
           <div class="stat-icon gray"><i class="pi pi-copy"></i></div>
           <div class="stat-content">

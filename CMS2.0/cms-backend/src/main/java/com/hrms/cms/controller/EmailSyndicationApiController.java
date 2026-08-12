@@ -161,7 +161,7 @@ public class EmailSyndicationApiController {
         boolean ocrProcessed = false;
         int ocrConfidence = 0;
         Map<String, String> ocrExtracted = Collections.emptyMap();
-        String complainantName = ruleExtracted.getOrDefault("complainantName", extractName(senderEmail));
+        String complainantName = sanitizeName(ruleExtracted.getOrDefault("complainantName", extractName(senderEmail)));
         String complainantPhone = ruleExtracted.getOrDefault("complainantPhone", "");
         String category = ruleExtracted.getOrDefault("category", "General");
         String complaintSummary = ruleExtracted.getOrDefault("subject", subject);
@@ -995,13 +995,36 @@ public class EmailSyndicationApiController {
         return response;
     }
 
+    private static final Set<String> EMAIL_NOISE_WORDS = Set.of(
+            "card", "mail", "email", "official", "work", "personal", "info",
+            "contact", "help", "support", "noreply", "no-reply", "admin",
+            "test", "user", "account", "service", "complaint", "grievance"
+    );
+
     private String extractName(String email) {
         if (email == null || email.isEmpty()) return "Unknown";
         String local = email.split("@")[0];
-        String[] parts = local.split("[._]");
-        return Arrays.stream(parts)
-                .map(p -> p.substring(0, 1).toUpperCase() + p.substring(1))
+        String[] parts = local.split("[._\\-]");
+        String name = Arrays.stream(parts)
+                .filter(p -> !p.isEmpty() && !p.matches("\\d+") && !EMAIL_NOISE_WORDS.contains(p.toLowerCase()))
+                .map(p -> p.substring(0, 1).toUpperCase() + p.substring(1).toLowerCase())
                 .collect(Collectors.joining(" "));
+        return name.isEmpty() ? "Unknown" : name;
+    }
+
+    private String sanitizeName(String name) {
+        if (name == null || name.isBlank()) return "Unknown";
+        // Take only the first line (signatures often have name on first line, then designation/noise below)
+        String firstLine = name.split("[\\r\\n]")[0].trim();
+        // Remove trailing noise words
+        String[] words = firstLine.split("\\s+");
+        List<String> cleaned = new ArrayList<>();
+        for (String w : words) {
+            if (EMAIL_NOISE_WORDS.contains(w.toLowerCase())) continue;
+            cleaned.add(w);
+        }
+        String result = String.join(" ", cleaned).trim();
+        return result.isEmpty() ? name.split("[\\r\\n]")[0].trim() : result;
     }
 
     private Double parseAmount(String amountStr) {

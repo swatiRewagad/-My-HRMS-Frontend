@@ -490,6 +490,16 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
     ];
   }
 
+  private loadAccountTypesFromLocal() {
+    this.http.get<any[]>('/assets/masters/account-types.json').subscribe({
+      next: (data) => {
+        this.accountTypes = (data ?? []).map(a => ({ label: a.label || a.name, value: a.value || a.code, checked: false }));
+      },
+      error: () => {}
+    });
+  }
+
+
   onAccountTypeToggle(accountType: { label: string; value: string; checked: boolean }) {
     this.validationErrors['accountType'] = '';
     if (!accountType.checked) {
@@ -748,10 +758,15 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
     this.formData['phone'] = this.publicAuth.userIdentifier() || '';
 
     const draftId = this.route.snapshot.queryParamMap.get('draftId');
+    const resume = this.route.snapshot.queryParamMap.get('resume');
     if (draftId) {
       this.loadDraftFromServer(draftId);
-    } else {
+    } else if (resume === 'true') {
       this.loadDraft();
+    } else {
+      sessionStorage.removeItem('cms_complaint_draft');
+      sessionStorage.removeItem('cms_draft_id');
+      sessionStorage.removeItem('cms_draft_saved_at');
     }
 
     this.startAutoSave();
@@ -798,8 +813,9 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
       next: (res) => {
         const data = res?.data ?? res ?? [];
         this.accountTypes = data.map((a: any) => ({ label: a.label || a.name, value: a.value || a.code, checked: false }));
+        if (this.accountTypes.length === 0) this.loadAccountTypesFromLocal();
       },
-      error: () => {}
+      error: () => this.loadAccountTypesFromLocal()
     });
   }
 
@@ -827,7 +843,7 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
         if (draft.eligibilityAnswers?.['selectedEntity']) {
           this.eligibilityStep.set(Object.keys(draft.eligibilityAnswers).length + 1);
         }
-        localStorage.setItem('cms_draft_id', draftId);
+        sessionStorage.setItem('cms_draft_id', draftId);
       },
       error: () => {
         this.loadDraft();
@@ -859,6 +875,9 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy() {
+    if (this.phase() === 'form' || this.phase() === 'eligibility') {
+      this.saveDraft();
+    }
     this.stopAutoSave();
     this.stopRecording();
   }
@@ -1313,8 +1332,10 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
 
     const stepHeader = element.querySelector('.step-header') as HTMLElement;
     const navActions = element.closest('.page-container')?.querySelector('.eligibility-actions') as HTMLElement;
+    const watermarkEl = element.querySelector('.review-watermark') as HTMLElement;
     if (stepHeader) stepHeader.style.display = 'none';
     if (navActions) navActions.style.display = 'none';
+    if (watermarkEl) watermarkEl.style.display = 'none';
 
     const canvas = await html2canvas(element, {
       scale: 2,
@@ -1325,6 +1346,7 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
 
     if (stepHeader) stepHeader.style.display = '';
     if (navActions) navActions.style.display = '';
+    if (watermarkEl) watermarkEl.style.display = '';
 
     const imgData = canvas.toDataURL('image/png');
     const imgWidth = canvas.width;
@@ -1339,8 +1361,29 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
     const pageContentHeight = pdfHeight - margin * 2;
     const scaledHeight = (imgHeight * contentWidth) / imgWidth;
 
+    const watermarkImg = new Image();
+    watermarkImg.src = 'assets/draft-watermark.jpg';
+    await new Promise<void>((resolve) => {
+      watermarkImg.onload = () => resolve();
+      watermarkImg.onerror = () => resolve();
+    });
+
+    const addWatermark = (pdf: any) => {
+      if (watermarkImg.complete && watermarkImg.naturalWidth > 0) {
+        const wmCanvas = document.createElement('canvas');
+        wmCanvas.width = watermarkImg.naturalWidth;
+        wmCanvas.height = watermarkImg.naturalHeight;
+        const wmCtx = wmCanvas.getContext('2d')!;
+        wmCtx.globalAlpha = 0.35;
+        wmCtx.drawImage(watermarkImg, 0, 0);
+        const wmData = wmCanvas.toDataURL('image/png');
+        pdf.addImage(wmData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      }
+    };
+
     if (scaledHeight <= pageContentHeight) {
       doc.addImage(imgData, 'PNG', margin, margin, contentWidth, scaledHeight);
+      addWatermark(doc);
     } else {
       let remainingHeight = imgHeight;
       let sourceY = 0;
@@ -1360,6 +1403,7 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
         const sliceData = sliceCanvas.toDataURL('image/png');
         const sliceScaledHeight = (sliceHeight * contentWidth) / imgWidth;
         doc.addImage(sliceData, 'PNG', margin, margin, contentWidth, sliceScaledHeight);
+        addWatermark(doc);
 
         sourceY += sliceHeight;
         remainingHeight -= sliceHeight;
@@ -1401,8 +1445,8 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
   saveDraft() {
     const attachmentMeta = this.attachmentPreviews.map(f => ({ name: f.name, type: f.type, size: f.size }));
     const draft = { version: this.DRAFT_VERSION, formData: this.formData, eligibilityAnswers: this.eligibilityAnswers, eligibilityStep: this.eligibilityStep(), currentStep: this.currentStep(), phase: this.phase(), entityName: this.getSelectedBankName(), declarationChecked: this.declarationChecked, declaration2Checked: this.declaration2Checked, attachmentMeta };
-    localStorage.setItem('cms_complaint_draft', JSON.stringify(draft));
-    localStorage.setItem('cms_draft_saved_at', new Date().toISOString());
+    sessionStorage.setItem('cms_complaint_draft', JSON.stringify(draft));
+    sessionStorage.setItem('cms_draft_saved_at', new Date().toISOString());
     this.draftSaved.set(true);
     const now = new Date();
     this.lastSavedAt.set(now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }));
@@ -1424,7 +1468,7 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
     }).subscribe({
       next: (res) => {
         if (res?.draftId) {
-          localStorage.setItem('cms_draft_id', res.draftId);
+          sessionStorage.setItem('cms_draft_id', res.draftId);
         }
       },
       error: () => {}
@@ -1444,12 +1488,12 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
   }
 
   loadDraft() {
-    const saved = localStorage.getItem('cms_complaint_draft');
+    const saved = sessionStorage.getItem('cms_complaint_draft');
     if (saved) {
       try {
         const draft = JSON.parse(saved);
         if (draft.version !== this.DRAFT_VERSION) {
-          localStorage.removeItem('cms_complaint_draft');
+          sessionStorage.removeItem('cms_complaint_draft');
           return;
         }
         if (draft.phase === 'form') {
@@ -1485,11 +1529,11 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
   }
 
   clearDraft() {
-    localStorage.removeItem('cms_complaint_draft');
-    const draftId = localStorage.getItem('cms_draft_id');
+    sessionStorage.removeItem('cms_complaint_draft');
+    const draftId = sessionStorage.getItem('cms_draft_id');
     if (draftId) {
       this.complaintService.deleteDraft(draftId).subscribe({ error: () => {} });
-      localStorage.removeItem('cms_draft_id');
+      sessionStorage.removeItem('cms_draft_id');
     }
   }
 

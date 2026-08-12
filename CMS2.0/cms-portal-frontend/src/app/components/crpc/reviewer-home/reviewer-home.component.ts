@@ -52,6 +52,7 @@ export class ReviewerHomeComponent implements OnInit {
   filterDeoDecision = signal('');
   searchText = signal('');
   sidebarCollapsed = signal(false);
+  assignmentFilter = signal<'ASSIGNED_TO_ME' | 'ALL'>('ASSIGNED_TO_ME');
 
   // Pagination
   currentPage = signal(1);
@@ -176,10 +177,12 @@ export class ReviewerHomeComponent implements OnInit {
   loadDrafts() {
     this.loading.set(true);
     const username = this.loggedInUser?.id || '';
+    const params: any = {};
+    if (this.assignmentFilter() === 'ASSIGNED_TO_ME') {
+      params.assignedTo = username;
+    }
 
-    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/email-syndication/queue`, {
-      params: { assignedTo: username }
-    }).subscribe({
+    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/email-syndication/queue`, { params }).subscribe({
       next: (res) => {
         const queueDrafts = (res?.data || []).map((d: any) => this.mapToDraft(d));
         this.drafts.set(queueDrafts);
@@ -190,6 +193,11 @@ export class ReviewerHomeComponent implements OnInit {
         this.loading.set(false);
       }
     });
+  }
+
+  onAssignmentFilterChange(value: string) {
+    this.assignmentFilter.set(value as 'ASSIGNED_TO_ME' | 'ALL');
+    this.loadDrafts();
   }
 
   private mapToDraft(d: any): ReviewDraft {

@@ -269,6 +269,7 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
 
   // ─── Complaint Linkage ───
   freeMarkedComplaint = false;
+  complaintReferenceNumber = '';
   currentComplaintNumber = '';
   replyWithin30Days: 'YES' | 'NO' | 'NA' = 'NA';
 
@@ -897,6 +898,7 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
 
             this.modeOfReceipt = (draft.modeOfReceipt as any) || 'EMAIL';
             this.cpgramsReference = draft.cpgramsNumber || '';
+            this.complaintReferenceNumber = draft.complaintReferenceNumber || draft.acknowledgementNumber || '';
             this.category = draft.category || '';
             this.entityName = draft.entityName || '';
             this.entitySearchText = this.entityName;
@@ -1424,6 +1426,7 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
       entityName: this.entityName,
       entityType: this.entityType,
       cpgramsNumber: this.cpgramsReference,
+      complaintReferenceNumber: this.complaintReferenceNumber,
     }).subscribe({
       next: () => {
         this.savingDraft.set(false);
@@ -1439,14 +1442,17 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
   // ─── Confirmation Dialog Methods ───
   openConfirmDialog() {
     this.confirmAssignmentMode = 'Automatic';
-    const autoReviewer = this.reviewers().find(r => r.isActive && !r.isOnLeave);
-    this.selectedReviewerName = autoReviewer?.displayName || 'CRPC Reviewer';
+    const active = this.reviewers().filter(r => r.isActive && !r.isOnLeave);
+    const lowestLoad = [...active].sort((a, b) => a.currentLoad - b.currentLoad)[0];
+    this.selectedReviewerName = lowestLoad?.displayName || active[0]?.displayName || '';
     this.showConfirmDialog.set(true);
   }
 
   onConfirmAssignmentModeChange(mode: string) {
     if (mode === 'Automatic') {
-      this.selectedReviewerName = 'CRPC Reviewer';
+      const active = this.reviewers().filter(r => r.isActive && !r.isOnLeave);
+      const lowestLoad = [...active].sort((a, b) => a.currentLoad - b.currentLoad)[0];
+      this.selectedReviewerName = lowestLoad?.displayName || active[0]?.displayName || '';
     } else {
       this.selectedReviewerName = '';
     }
@@ -1494,6 +1500,7 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
       deoDecision: this.deoDecision,
       deoRemarks: this.deoRemarks,
       nonMaintainableReason: this.nonMaintainableReason,
+      complaintReferenceNumber: this.complaintReferenceNumber,
       receivedAt: this.receivedDate ? this.receivedDate + 'T00:00:00' : new Date().toISOString(),
     };
 

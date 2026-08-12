@@ -1,0 +1,12 @@
+[
+  { "label": "Savings Account", "value": "savings" },
+  { "label": "Current Account", "value": "current" },
+  { "label": "Loan Account", "value": "loan" },
+  { "label": "Fixed Deposit", "value": "fixed_deposit" },
+  { "label": "Recurring Deposit", "value": "recurring_deposit" },
+  { "label": "ATM / Debit Card", "value": "atm_debit" },
+  { "label": "Credit Card", "value": "credit_card" },
+  { "label": "Wallet", "value": "wallet" },
+  { "label": "PPF Account", "value": "ppf" },
+  { "label": "Others", "value": "others" }
+]
