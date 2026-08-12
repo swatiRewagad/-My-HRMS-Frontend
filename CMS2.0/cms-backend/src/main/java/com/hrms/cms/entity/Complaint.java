@@ -43,6 +43,12 @@ public class Complaint {
     @Column(length = 500)
     private String complainantAddress;
 
+    @Column(length = 100)
+    private String complainantState;
+
+    @Column(length = 100)
+    private String complainantDistrict;
+
     @Column(name = "BANK_ID")
     private Long bankId;
 

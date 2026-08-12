@@ -1716,6 +1716,8 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
       complainantEmail: this.formData['email'],
       complainantPhone: this.formData['phone'],
       complainantAddress: this.formData['address'],
+      complainantState: this.formData['state'] || undefined,
+      complainantDistrict: this.formData['district'] || undefined,
       entityName: this.getSelectedBankName(),
       entityType: selectedBank?.entityType || 'BANK',
       regulatedEntityId: selectedEntityId ? parseInt(selectedEntityId, 10) : undefined,

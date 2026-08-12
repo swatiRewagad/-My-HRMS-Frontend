@@ -22,6 +22,12 @@ public class FileComplaintRequest {
     @Size(max = 500, message = "Address must not exceed 500 characters")
     private String complainantAddress;
 
+    @Size(max = 100)
+    private String complainantState;
+
+    @Size(max = 100)
+    private String complainantDistrict;
+
     private Long bankId;
 
     private Long regulatedEntityId;
