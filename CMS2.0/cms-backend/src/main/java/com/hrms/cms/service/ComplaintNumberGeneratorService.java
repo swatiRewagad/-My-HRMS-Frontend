@@ -2,9 +2,13 @@ package com.hrms.cms.service;
 
 import com.hrms.cms.entity.ComplaintNumberSequence;
 import com.hrms.cms.entity.OfficeCodeMaster;
+import com.hrms.cms.entity.OfficeGlobalThresholdConfig;
+import com.hrms.cms.entity.OfficeOverflowMapping;
 import com.hrms.cms.entity.OmbudsmanOfficeMaster;
 import com.hrms.cms.repository.ComplaintNumberSequenceRepository;
 import com.hrms.cms.repository.OfficeCodeMasterRepository;
+import com.hrms.cms.repository.OfficeGlobalThresholdConfigRepository;
+import com.hrms.cms.repository.OfficeOverflowMappingRepository;
 import com.hrms.cms.repository.OmbudsmanOfficeMasterRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,17 +28,105 @@ public class ComplaintNumberGeneratorService {
     private final OmbudsmanOfficeMasterRepository ombudsmanOfficeRepo;
     private final OfficeCodeMasterRepository officeCodeRepo;
     private final ComplaintNumberSequenceRepository sequenceRepo;
+    private final OfficeOverflowMappingRepository overflowMappingRepo;
+    private final OfficeGlobalThresholdConfigRepository thresholdConfigRepo;
 
     @Transactional
     public String generateComplaintNumber(String department, String complainantState, String complainantDistrict) {
-        String officeName = resolveOfficeName(department, complainantState, complainantDistrict);
-        String officeCode = resolveOfficeCode(officeName);
-        String financialYear = computeFinancialYear(LocalDate.now());
-        int nextSequence = getNextSequence(officeCode, financialYear);
+        return generateComplaintNumber(department, complainantState, complainantDistrict, false);
+    }
 
-        String complaintNumber = String.format("N%s%s%06d", financialYear, officeCode, nextSequence);
-        log.info("Generated complaint number: {} (office={}, FY={}, seq={})", complaintNumber, officeName, financialYear, nextSequence);
+    @Transactional
+    public String generateComplaintNumber(String department, String complainantState, String complainantDistrict, boolean isVernacularOrCrpc) {
+        String targetOfficeName = resolveOfficeName(department, complainantState, complainantDistrict);
+        String targetOfficeCode = resolveOfficeCode(targetOfficeName);
+
+        // Apply threshold overflow logic (only for non-vernacular, non-CRPC complaints)
+        String assignedOfficeCode;
+        if (isVernacularOrCrpc) {
+            // Vernacular/CRPC: assign directly without incrementing counter
+            assignedOfficeCode = targetOfficeCode;
+            log.info("Vernacular/CRPC complaint — assigned to target office {} without threshold impact", targetOfficeName);
+        } else {
+            assignedOfficeCode = applyThresholdOverflow(targetOfficeCode);
+        }
+
+        String financialYear = computeFinancialYear(LocalDate.now());
+        int nextSequence = getNextSequence(assignedOfficeCode, financialYear);
+
+        String complaintNumber = String.format("N%s%s%06d", financialYear, assignedOfficeCode, nextSequence);
+        log.info("Generated complaint number: {} (target={}, assigned={}, FY={}, seq={})",
+                complaintNumber, targetOfficeName, assignedOfficeCode, financialYear, nextSequence);
         return complaintNumber;
+    }
+
+    private String applyThresholdOverflow(String targetOfficeCode) {
+        int globalThreshold = getGlobalThreshold();
+
+        OfficeCodeMaster targetOffice = officeCodeRepo.findByOfficeCodeForUpdate(targetOfficeCode)
+                .orElseThrow(() -> new RuntimeException("Office code not found: " + targetOfficeCode));
+
+        // If target office threshold NOT met: assign to target, increment counter
+        if (targetOffice.getCounter() < globalThreshold) {
+            targetOffice.setCounter(targetOffice.getCounter() + 1);
+            officeCodeRepo.save(targetOffice);
+            log.info("Office {} counter incremented to {}/{}", targetOffice.getOfficeName(),
+                    targetOffice.getCounter(), globalThreshold);
+            return targetOfficeCode;
+        }
+
+        // Target threshold IS MET — try overflow offices
+        Optional<OfficeOverflowMapping> mappingOpt = overflowMappingRepo.findByOfficeCodeAndIsActiveTrue(targetOfficeCode);
+        if (mappingOpt.isEmpty()) {
+            // No overflow mapping: reset and assign to target
+            targetOffice.setCounter(1);
+            officeCodeRepo.save(targetOffice);
+            log.warn("No overflow mapping for office {}, resetting counter", targetOffice.getOfficeName());
+            return targetOfficeCode;
+        }
+
+        OfficeOverflowMapping mapping = mappingOpt.get();
+
+        // Try Priority 1 office
+        String p1Code = resolveOfficeCode(mapping.getPriority1OfficeName());
+        OfficeCodeMaster p1Office = officeCodeRepo.findByOfficeCodeForUpdate(p1Code).orElse(null);
+        if (p1Office != null && p1Office.getCounter() < globalThreshold) {
+            p1Office.setCounter(p1Office.getCounter() + 1);
+            officeCodeRepo.save(p1Office);
+            log.info("Overflow: {} threshold met, assigned to Priority1 {} (counter {}/{})",
+                    targetOffice.getOfficeName(), p1Office.getOfficeName(), p1Office.getCounter(), globalThreshold);
+            return p1Code;
+        }
+
+        // Try Priority 2 office
+        String p2Code = resolveOfficeCode(mapping.getPriority2OfficeName());
+        OfficeCodeMaster p2Office = officeCodeRepo.findByOfficeCodeForUpdate(p2Code).orElse(null);
+        if (p2Office != null && p2Office.getCounter() < globalThreshold) {
+            p2Office.setCounter(p2Office.getCounter() + 1);
+            officeCodeRepo.save(p2Office);
+            log.info("Overflow: {} and {} thresholds met, assigned to Priority2 {} (counter {}/{})",
+                    targetOffice.getOfficeName(), mapping.getPriority1OfficeName(),
+                    p2Office.getOfficeName(), p2Office.getCounter(), globalThreshold);
+            return p2Code;
+        }
+
+        // ALL 3 offices met threshold — reset all 3 counters and restart from target
+        log.info("All 3 offices ({}, {}, {}) met threshold — resetting counters",
+                targetOffice.getOfficeName(), mapping.getPriority1OfficeName(), mapping.getPriority2OfficeName());
+
+        officeCodeRepo.resetCounters(List.of(targetOfficeCode, p1Code, p2Code));
+
+        // Re-fetch target after reset and assign
+        targetOffice = officeCodeRepo.findByOfficeCodeForUpdate(targetOfficeCode).orElse(targetOffice);
+        targetOffice.setCounter(1);
+        officeCodeRepo.save(targetOffice);
+        return targetOfficeCode;
+    }
+
+    private int getGlobalThreshold() {
+        return thresholdConfigRepo.findById(1)
+                .map(OfficeGlobalThresholdConfig::getThresholdValue)
+                .orElse(2);
     }
 
     private String resolveOfficeName(String department, String state, String district) {
@@ -49,7 +141,6 @@ public class ComplaintNumberGeneratorService {
                 return districtMatches.get(0).getOfficeName();
             }
             if (districtMatches.size() > 1) {
-                // Multiple offices mention this district — pick the one that includes it (not excludes it)
                 for (OmbudsmanOfficeMaster office : districtMatches) {
                     if (isDistrictIncluded(office.getJurisdiction(), district)) {
                         return office.getOfficeName();
@@ -72,24 +163,19 @@ public class ComplaintNumberGeneratorService {
         }
 
         // Multiple offices match for same state (e.g., UP → Dehradun, Kanpur, New Delhi-II)
-        // Use district to narrow down
         if (district != null && !district.isBlank()) {
-            // Check if district is explicitly listed in any office's jurisdiction
             for (OmbudsmanOfficeMaster office : offices) {
                 if (isDistrictIncluded(office.getJurisdiction(), district)) {
                     return office.getOfficeName();
                 }
             }
 
-            // District not explicitly mentioned — it belongs to the "catch-all" office for that state.
-            // The catch-all is the one that says "<State> (excluding ...)" where the district is NOT in the exclusion list.
+            // District not explicitly mentioned — belongs to the catch-all office
             for (OmbudsmanOfficeMaster office : offices) {
                 String jurisdiction = office.getJurisdiction().toLowerCase();
                 String stateLower = state.toLowerCase();
                 if (jurisdiction.contains(stateLower)) {
-                    // Check if this is the broad/catch-all office (has "excluding" clause for specific districts)
                     if (jurisdiction.contains("excluding")) {
-                        // Verify our district is NOT in the exclusion list
                         if (!isDistrictExcluded(jurisdiction, district)) {
                             return office.getOfficeName();
                         }
@@ -97,7 +183,6 @@ public class ComplaintNumberGeneratorService {
                 }
             }
 
-            // If no catch-all found, look for office that lists specific districts ("viz.") and includes ours
             for (OmbudsmanOfficeMaster office : offices) {
                 String jurisdiction = office.getJurisdiction().toLowerCase();
                 if (jurisdiction.contains("viz.") && jurisdiction.contains(district.toLowerCase())) {
@@ -106,7 +191,6 @@ public class ComplaintNumberGeneratorService {
             }
         }
 
-        // Default to first match
         return offices.get(0).getOfficeName();
     }
 
@@ -116,14 +200,12 @@ public class ComplaintNumberGeneratorService {
         if (!jLower.contains(dLower)) return false;
 
         int districtPos = jLower.indexOf(dLower);
-        // Check it's not within an "excluding" or "except" clause
         int excludingPos = jLower.lastIndexOf("excluding", districtPos);
         int exceptPos = jLower.lastIndexOf("except", districtPos);
         int negationPos = Math.max(excludingPos, exceptPos);
 
         if (negationPos == -1) return true;
 
-        // Check if the closing bracket of the exclusion clause is before the district mention
         int closingBracket = jLower.indexOf(")", negationPos);
         return closingBracket != -1 && closingBracket < districtPos;
     }
@@ -141,14 +223,11 @@ public class ComplaintNumberGeneratorService {
     }
 
     private String resolveOfficeCode(String officeName) {
-        // Normalize office name for matching (e.g., "Chennai-I" -> "Chennai")
-        // OFFICE_CODE_MASTER may have simplified names
         Optional<OfficeCodeMaster> exact = officeCodeRepo.findByOfficeNameAndIsActiveTrue(officeName);
         if (exact.isPresent()) {
             return exact.get().getOfficeCode();
         }
 
-        // Try base name (e.g., "Mumbai-I" -> "Mumbai I")
         String normalized = officeName.replace("-", " ");
         exact = officeCodeRepo.findByOfficeNameAndIsActiveTrue(normalized);
         if (exact.isPresent()) {
@@ -171,10 +250,8 @@ public class ComplaintNumberGeneratorService {
         int month = date.getMonthValue();
 
         if (month >= 4) {
-            // April onwards: current year to next year
             return String.valueOf(year) + String.valueOf((year + 1) % 100);
         } else {
-            // Jan-March: previous year to current year
             return String.valueOf(year - 1) + String.format("%02d", year % 100);
         }
     }

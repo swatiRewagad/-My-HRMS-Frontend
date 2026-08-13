@@ -106,8 +106,10 @@ public class ComplaintService {
         String department = routingService.resolveDepartment(entityCode);
 
         // Generate complaint number: N + FY + OfficeCode + Sequence
+        // Vernacular/CRPC complaints don't impact threshold counter
+        boolean isVernacularOrCrpc = "EMAIL".equals(req.getFilingType()) || "PHYSICAL_LETTER".equals(req.getFilingType());
         String complaintNumber = complaintNumberGenerator.generateComplaintNumber(
-                department, req.getComplainantState(), req.getComplainantDistrict());
+                department, req.getComplainantState(), req.getComplainantDistrict(), isVernacularOrCrpc);
 
         Complaint complaint = Complaint.builder()
                 .complaintNumber(complaintNumber)
