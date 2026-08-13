@@ -1,0 +1,1003 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RBI CMS 2.0 — ER Diagram & Data Flow Diagrams</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f7fa;
+            color: #2d3748;
+            line-height: 1.6;
+            padding: 40px;
+        }
+        .container { max-width: 1400px; margin: 0 auto; }
+        h1 {
+            text-align: center;
+            font-size: 2.2rem;
+            color: #1a365d;
+            margin-bottom: 10px;
+            border-bottom: 3px solid #3182ce;
+            padding-bottom: 15px;
+        }
+        .subtitle {
+            text-align: center;
+            color: #718096;
+            margin-bottom: 40px;
+            font-size: 0.95rem;
+        }
+        h2 {
+            font-size: 1.6rem;
+            color: #2b6cb0;
+            margin-top: 50px;
+            margin-bottom: 20px;
+            padding: 10px 15px;
+            background: #ebf8ff;
+            border-left: 4px solid #3182ce;
+            border-radius: 4px;
+        }
+        h3 {
+            font-size: 1.2rem;
+            color: #2c5282;
+            margin-top: 30px;
+            margin-bottom: 15px;
+        }
+        pre {
+            background: #1a202c;
+            color: #e2e8f0;
+            padding: 25px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-size: 12px;
+            line-height: 1.5;
+            font-family: 'Consolas', 'Courier New', monospace;
+            margin: 15px 0 25px 0;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0 25px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        th {
+            background: #2b6cb0;
+            color: white;
+            padding: 12px 15px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        td {
+            padding: 10px 15px;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 0.9rem;
+        }
+        tr:nth-child(even) { background: #f7fafc; }
+        tr:hover { background: #edf2f7; }
+        .section-card {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin: 25px 0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        .feature-badge {
+            display: inline-block;
+            background: #3182ce;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+        .toc {
+            background: white;
+            border-radius: 12px;
+            padding: 25px 35px;
+            margin: 30px 0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        .toc h3 { margin-top: 0; margin-bottom: 15px; }
+        .toc ol { padding-left: 20px; }
+        .toc li { margin: 8px 0; }
+        .toc a { color: #3182ce; text-decoration: none; font-weight: 500; }
+        .toc a:hover { text-decoration: underline; }
+        .er-group {
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 15px 0;
+            background: #fafbfc;
+        }
+        .er-group-title {
+            font-weight: 700;
+            color: #2b6cb0;
+            font-size: 1rem;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .entity-box {
+            display: inline-block;
+            background: white;
+            border: 2px solid #3182ce;
+            border-radius: 6px;
+            padding: 10px 15px;
+            margin: 5px;
+            font-size: 0.8rem;
+            vertical-align: top;
+            min-width: 200px;
+        }
+        .entity-box .entity-name {
+            font-weight: 700;
+            color: #1a365d;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 5px;
+            margin-bottom: 5px;
+        }
+        .entity-box .pk { color: #d69e2e; font-weight: 600; }
+        .entity-box .fk { color: #e53e3e; font-style: italic; }
+        .entity-box .col { color: #4a5568; }
+        .note {
+            background: #fffbeb;
+            border: 1px solid #f6e05e;
+            border-radius: 6px;
+            padding: 12px 18px;
+            margin: 15px 0;
+            font-size: 0.9rem;
+            color: #744210;
+        }
+        .flow-arrow { color: #3182ce; font-weight: bold; }
+        @media print {
+            body { padding: 20px; background: white; }
+            pre { font-size: 10px; }
+            .section-card { box-shadow: none; border: 1px solid #e2e8f0; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+
+<h1>RBI CMS 2.0 — ER Diagram & Data Flow Diagrams</h1>
+<p class="subtitle">Complete Entity Relationships and Feature-Wise Data Flow | August 2026 | RB-IOS 2026 Scheme</p>
+
+<div class="toc">
+    <h3>Table of Contents</h3>
+    <ol>
+        <li><a href="#er-diagram">Entity Relationship (ER) Diagram</a></li>
+        <li><a href="#dfd-context">DFD Level 0 — System Context</a></li>
+        <li><a href="#dfd-eligibility">DFD: Feature 1 — Eligibility Check</a></li>
+        <li><a href="#dfd-filing">DFD: Feature 2 — Complaint Filing & Routing</a></li>
+        <li><a href="#dfd-number">DFD: Feature 3 — Complaint Number Generation</a></li>
+        <li><a href="#dfd-threshold">DFD: Feature 4 — Threshold Overflow Routing</a></li>
+        <li><a href="#dfd-crpc">DFD: Feature 5 — CRPC Email/Letter Processing</a></li>
+        <li><a href="#dfd-lifecycle">DFD: Feature 6 — Complaint Processing & SLA</a></li>
+        <li><a href="#dfd-appeals">DFD: Feature 7 — Appeals (Appellate Authority)</a></li>
+        <li><a href="#dfd-notifications">DFD: Feature 8 — Notifications & Audit</a></li>
+        <li><a href="#dfd-re-portal">DFD: Feature 9 — RE Portal</a></li>
+        <li><a href="#dfd-pincode">DFD: Feature 10 — Pincode-Based Resolution</a></li>
+        <li><a href="#summary">Table Count Summary</a></li>
+    </ol>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<h2 id="er-diagram">1. Entity Relationship (ER) Diagram</h2>
+<!-- ═══════════════════════════════════════════════════════ -->
+
+<div class="section-card">
+<h3>1.1 Core Complaint Module</h3>
+<pre>
+┌───────────────────────┐        1:N         ┌────────────────────────────────────────────────────────────────┐
+│       BANKS           │───────────────────▶│                        COMPLAINTS                             │
+├───────────────────────┤                    ├────────────────────────────────────────────────────────────────┤
+│ PK id                 │                    │ PK id                                                         │
+│    name               │                    │ UK complaintNumber                                            │
+│    code               │                    │ FK bankId ──────────────────────────────────────────────────── │
+│    type               │                    │ FK categoryId                                                 │
+│    status             │                    │    complainantName, Email, Phone, Address, State, District    │
+└───────────────────────┘                    │    subject, description, reliefSought                         │
+                                             │    status, priority, filingType, department                   │
+┌───────────────────────┐        1:N         │    assignedOfficer, assignedRole, entityCode, workflowStage  │
+│ COMPLAINT_CATEGORIES  │───────────────────▶│    priorReComplaint, reComplaintDate, reComplaintReference   │
+├───────────────────────┤                    │    triageSignal, maintainabilityDetermination, awardAmount   │
+│ PK id                 │                    │    slaDeadline, conciliationDate, adjudicationDate           │
+│    name               │                    │    closureClause, closureAuthorityName, closureLetterSentAt  │
+│    description        │                    │    reopenCount, advisoryText, notice131IssuedAt              │
+│ FK parentId (self)    │                    │    createdAt, updatedAt, resolvedAt, closedAt, escalatedAt   │
+│    status, sortOrder  │                    └──────────────────────────┬─────────────────────────────────────┘
+└───────────────────────┘                                               │
+                                                                        │
+           ┌────────────────────────────────────────────────────────────┼──────────────────────────────┐
+           │                        │                        │          │                     │        │
+           ▼ 1:N                    ▼ 1:N                    ▼ 1:N      ▼ 1:N                 ▼ 1:N    ▼ 1:N
+┌─────────────────────┐ ┌─────────────────────┐ ┌────────────────┐ ┌─────────────────────┐ ┌──────────────────────┐
+│ COMPLAINT_TIMELINE  │ │COMPLAINT_ATTACHMENTS│ │   AUDIT_LOG    │ │ RE_RESPONSE_TRACKER │ │INTER_OFFICE_TRANSFERS│
+├─────────────────────┤ ├─────────────────────┤ ├────────────────┤ ├─────────────────────┤ ├──────────────────────┤
+│ PK id               │ │ PK id               │ │ PK id          │ │ PK id               │ │ PK id                │
+│ FK complaintId      │ │ FK complaintId      │ │    complaintNo │ │ FK complaintId      │ │    complaintNumber   │
+│    action           │ │    fileName         │ │    action      │ │ FK regulatedEntityId│ │    fromOffice        │
+│    performedBy      │ │    originalName     │ │    actor       │ │    forwardedAt      │ │    toOffice          │
+│    remarks          │ │    contentType      │ │    actorRole   │ │    respondedAt      │ │    transferType      │
+│    fromStatus       │ │    fileSize         │ │    timestamp   │ │    windowDays       │ │    status            │
+│    toStatus         │ │    storagePath      │ │    ipAddress   │ │    breached         │ │    reason            │
+│    performedAt      │ │    uploadedAt       │ │    metadata    │ │    exParteEligible  │ │    requestedBy       │
+└─────────────────────┘ └─────────────────────┘ └────────────────┘ │    responseText     │ │    approvedBy        │
+                                                                   │    queryText        │ └──────────────────────┘
+                                                                   │    extensionGranted │
+                                                                   └─────────────────────┘
+</pre>
+
+<h3>1.2 Appeals Subsystem</h3>
+<pre>
+┌────────────────────────────────────────────────────┐        1:N         ┌──────────────────────────────┐
+│                    APPEALS                          │───────────────────▶│       APPEAL_TIMELINE        │
+├────────────────────────────────────────────────────┤                    ├──────────────────────────────┤
+│ PK id                                              │                    │ PK id                        │
+│ UK appealNumber                                    │                    │    appealNumber              │
+│ FK originalComplaintNumber → COMPLAINTS            │                    │    action                    │
+│    classificationType (APPEAL / REPRESENTATION)    │                    │    performedBy               │
+│    appealGround, reliefSought                      │                    │    performedByRole           │
+│    appellantName, appellantEmail, appellantPhone    │                    │    remarks                   │
+│    status, assignedOfficer, assignedRole, priority │                    │    fromStatus, toStatus      │
+│    hearingDate, hearingVenue                       │                    │    performedAt               │
+│    orderDate, orderSummary, orderOutcome           │                    └──────────────────────────────┘
+│    awardModifiedAmount, closureCause, closedAt     │
+└────────────────────────────────────────────────────┘
+</pre>
+
+<h3>1.3 CRPC / Email Intake Subsystem</h3>
+<pre>
+┌────────────────────────────────────────────────────┐        1:N         ┌──────────────────────────────┐
+│                  EMAIL_DRAFTS                       │───────────────────▶│   EMAIL_DRAFT_ATTACHMENTS    │
+├────────────────────────────────────────────────────┤                    ├──────────────────────────────┤
+│ PK id                                              │                    │ PK id                        │
+│ UK draftId                                         │                    │ FK draftId                   │
+│    threadId, messageId, senderEmail                │                    │    fileName, fileType        │
+│    subject, body                                   │                    │    fileSize, storagePath     │
+│    complainantName, Phone, Address, State, District│                    │    ocrText, ocrConfidence    │
+│    cpgramsNumber, category, modeOfReceipt          │                    │    uploadedBy, createdAt     │
+│    status, assignedTo                              │                    └──────────────────────────────┘
+│    entityName, entityType, amountInvolved          │
+│    deoDecision, deoRemarks                         │
+│    reviewerAssignedTo, reviewerDecision            │
+│    convertedComplaintId → COMPLAINTS               │
+│    schemeVersion, closureClause                    │
+│    detectedLanguage, isVernacular, translatedBody  │
+│    notAComplaintReason, subJudice                  │
+└────────────────────────────────────────────────────┘
+</pre>
+
+<h3>1.4 Complaint Number Generation Subsystem</h3>
+<pre>
+┌─────────────────────────────┐           ┌─────────────────────────────┐         ┌──────────────────────────────────┐
+│   OMBUDSMAN_OFFICE_MASTER   │           │     OFFICE_CODE_MASTER      │         │   COMPLAINT_NUMBER_SEQUENCE      │
+├─────────────────────────────┤           ├─────────────────────────────┤         ├──────────────────────────────────┤
+│ PK id                       │  maps     │ PK id                       │ tracks  │ PK id                            │
+│    officeName ──────────────┼──name──▶  │ UK officeCode ──────────────┼──seq──▶ │    officeCode                    │
+│    jurisdiction (1000 char) │  to code  │    officeName               │ per FY  │    financialYear                 │
+│    isActive                 │           │    officeType               │         │    lastSequence                  │
+└─────────────────────────────┘           │    counter                  │         │ UK (officeCode + financialYear)  │
+                                          │    threshold                │         └──────────────────────────────────┘
+                                          │    isActive                 │
+                                          └──────────────┬──────────────┘
+                                                         │
+                                    ┌────────────────────┴───────────────────────┐
+                                    ▼                                            ▼
+                     ┌──────────────────────────────┐         ┌──────────────────────────────────────┐
+                     │   OFFICE_OVERFLOW_MAPPING    │         │  OFFICE_GLOBAL_THRESHOLD_CONFIG      │
+                     ├──────────────────────────────┤         ├──────────────────────────────────────┤
+                     │ PK id                        │         │ PK id = 1 (single row)               │
+                     │ UK officeCode                │         │    thresholdValue (default: 2)       │
+                     │    officeName                │         │    updatedBy                         │
+                     │    priority1OfficeName       │         │    updatedAt                         │
+                     │    priority2OfficeName       │         └──────────────────────────────────────┘
+                     │    isActive                  │
+                     └──────────────────────────────┘
+</pre>
+
+<h3>1.5 Supporting & Infrastructure Tables</h3>
+<pre>
+┌────────────────────┐  ┌──────────────────────────┐  ┌────────────────────┐  ┌────────────────────────┐
+│      PINCODES      │  │  REGULATED_ENTITIES      │  │     HOLIDAYS       │  │  ROUND_ROBIN_POINTERS  │
+├────────────────────┤  ├──────────────────────────┤  ├────────────────────┤  ├────────────────────────┤
+│ PK id              │  │ PK id                    │  │ PK id              │  │ PK id                  │
+│    pincode         │  │    name                  │  │ UK holidayDate     │  │ UK poolKey             │
+│    officeName      │  │    nameNormalized        │  │    name            │  │    currentIndex        │
+│    district        │  │    department (RBIO/CEPC)│  │    type            │  │    updatedAt           │
+│    state           │  │    entityType            │  │    year            │  └────────────────────────┘
+│    region          │  │    nodalOfficerName      │  │    isNational      │
+│    officeType      │  │    nodalOfficerEmail     │  └────────────────────┘  ┌────────────────────────┐
+└────────────────────┘  │    pnoName, pnoEmail     │                          │  IN_APP_NOTIFICATIONS  │
+                        │    portalEnabled         │  ┌────────────────────┐  ├────────────────────────┤
+                        └──────────────────────────┘  │NODAL_OFFICER_RECORDS│ │ PK id                  │
+                                                      ├────────────────────┤  │    targetUserId        │
+                                                      │ PK id              │  │    type                │
+                                                      │    complaintNumber │  │    title, message      │
+                                                      │    entityName      │  │    relatedEntityId     │
+                                                      │    nodalOfficerName│  │    isRead, readAt      │
+                                                      │    status          │  └────────────────────────┘
+                                                      └────────────────────┘
+</pre>
+</div>
+
+<div class="section-card">
+<h3>1.6 Relationship Summary</h3>
+<table>
+    <thead>
+        <tr><th>Parent Table</th><th>Child Table</th><th>Relationship</th><th>Join Column</th></tr>
+    </thead>
+    <tbody>
+        <tr><td>COMPLAINTS</td><td>COMPLAINT_TIMELINE</td><td>1:N</td><td>complaintId</td></tr>
+        <tr><td>COMPLAINTS</td><td>COMPLAINT_ATTACHMENTS</td><td>1:N</td><td>complaintId</td></tr>
+        <tr><td>COMPLAINTS</td><td>RE_RESPONSE_TRACKER</td><td>1:N</td><td>complaintId</td></tr>
+        <tr><td>COMPLAINTS</td><td>AUDIT_LOG</td><td>1:N</td><td>complaintNumber</td></tr>
+        <tr><td>COMPLAINTS</td><td>INTER_OFFICE_TRANSFERS</td><td>1:N</td><td>complaintNumber</td></tr>
+        <tr><td>COMPLAINTS</td><td>NODAL_OFFICER_RECORDS</td><td>1:N</td><td>complaintNumber</td></tr>
+        <tr><td>COMPLAINTS</td><td>APPEALS</td><td>1:N</td><td>originalComplaintNumber</td></tr>
+        <tr><td>APPEALS</td><td>APPEAL_TIMELINE</td><td>1:N</td><td>appealNumber</td></tr>
+        <tr><td>EMAIL_DRAFTS</td><td>EMAIL_DRAFT_ATTACHMENTS</td><td>1:N</td><td>draftId</td></tr>
+        <tr><td>BANKS</td><td>COMPLAINTS</td><td>1:N</td><td>bankId</td></tr>
+        <tr><td>COMPLAINT_CATEGORIES</td><td>COMPLAINTS</td><td>1:N</td><td>categoryId</td></tr>
+        <tr><td>COMPLAINT_CATEGORIES</td><td>COMPLAINT_CATEGORIES</td><td>Self-ref</td><td>parentId</td></tr>
+        <tr><td>REGULATED_ENTITIES</td><td>RE_RESPONSE_TRACKER</td><td>1:N</td><td>regulatedEntityId</td></tr>
+        <tr><td>OMBUDSMAN_OFFICE_MASTER</td><td>OFFICE_CODE_MASTER</td><td>1:1 (name)</td><td>officeName (logical)</td></tr>
+        <tr><td>OFFICE_CODE_MASTER</td><td>COMPLAINT_NUMBER_SEQUENCE</td><td>1:N</td><td>officeCode</td></tr>
+        <tr><td>OFFICE_CODE_MASTER</td><td>OFFICE_OVERFLOW_MAPPING</td><td>1:1</td><td>officeCode</td></tr>
+    </tbody>
+</table>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<h2 id="dfd-context">2. DFD Level 0 — System Context</h2>
+<!-- ═══════════════════════════════════════════════════════ -->
+
+<div class="section-card">
+<pre>
+┌─────────────────┐                                                              ┌───────────────────────┐
+│   COMPLAINANT   │─── File Complaint / Track Status / Eligibility Check ───────▶│                       │
+│   (Citizen)     │◀── Complaint Number / Status Updates / SMS & Email ──────────│                       │
+└─────────────────┘                                                              │                       │
+                                                                                 │                       │
+┌─────────────────┐                                                              │                       │
+│  RBIO / CEPC    │─── Assign / Process / Close / Transfer / MRE ───────────────▶│    RBI CMS 2.0        │
+│  Officers       │◀── Dashboard / Case List / Notifications / SLA Alerts ──────│    COMPLAINT          │
+└─────────────────┘                                                              │    MANAGEMENT         │
+                                                                                 │    SYSTEM             │
+┌─────────────────┐                                                              │                       │
+│  RE (Bank)      │─── Submit Response / View Forwarded Cases ──────────────────▶│                       │
+│  Nodal Officer  │◀── Case Details / RE Response Deadline Alerts ──────────────│                       │
+└─────────────────┘                                                              │                       │
+                                                                                 │                       │
+┌─────────────────┐                                                              │                       │
+│  AA (Appellate  │─── Hear Appeal / Issue Order / Modify Award ────────────────▶│                       │
+│  Authority)     │◀── Appeal List / Case History / Original Complaint ─────────│                       │
+└─────────────────┘                                                              │                       │
+                                                                                 │                       │
+┌─────────────────┐                                                              │                       │
+│  CRPC (Data     │─── Process Emails / Physical Letters / OCR ─────────────────▶│                       │
+│  Entry Team)    │◀── Email Drafts / Attachments / Converted Complaints ───────│                       │
+└─────────────────┘                                                              └───────────────────────┘
+</pre>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<h2 id="dfd-eligibility">3. DFD: Feature 1 — Eligibility Check</h2>
+<!-- ═══════════════════════════════════════════════════════ -->
+
+<div class="section-card">
+<span class="feature-badge">FEATURE 1</span> <strong>Eligibility Wizard — RB-IOS 2026 compliance check before filing</strong>
+<pre>
+┌─────────────────┐
+│   Complainant   │
+└────────┬────────┘
+         │ 1. Start eligibility wizard
+         ▼
+┌────────────────────────────────┐        ┌──────────────────────────────┐
+│  1.1 Load Active Questions     │───────▶│  D1: QUESTION_MASTER         │
+│       (ordered by displayOrder)│◀───────│      (6 configurable Qs)     │
+└────────────────┬───────────────┘        └──────────────────────────────┘
+                 │ 2. User submits answers
+                 ▼
+┌────────────────────────────────┐
+│  1.2 Evaluate Eligibility      │
+│                                │
+│  Rules:                        │
+│  • Court matter pending? → NO  │
+│  • Approached bank? → YES      │
+│  • 30 days elapsed? → YES      │
+│  • Duplicate filed? → NO       │
+└────────────────┬───────────────┘
+                 │ 3. Log result (immutable)
+                 ▼
+┌────────────────────────────────┐        ┌──────────────────────────────┐
+│  1.3 Store Audit Record        │───────▶│  D2: ELIGIBILITY_AUDIT       │
+│       outcome + reason         │        │      (session, answers, IP)  │
+└────────────────┬───────────────┘        └──────────────────────────────┘
+                 │
+        ┌────────┴────────┐
+        ▼                 ▼
+   ELIGIBLE          NOT ELIGIBLE
+   → Filing Form     → Show reason
+   (Feature 2)       + standard response
+</pre>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<h2 id="dfd-filing">4. DFD: Feature 2 — Complaint Filing & Routing</h2>
+<!-- ═══════════════════════════════════════════════════════ -->
+
+<div class="section-card">
+<span class="feature-badge">FEATURE 2</span> <strong>Complaint Filing — intake, validation, routing, and persistence</strong>
+<pre>
+┌─────────────────┐
+│   Complainant   │  submits: state, district, pincode, entity, details
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│  2.1 VALIDATE & PREPARE                                                             │
+│                                                                                     │
+│  ┌───────────────────────────────┐                                                  │
+│  │ Validate Prior-RE Fields      │  priorReComplaint=true → date required, not future│
+│  └─────────────┬─────────────────┘                                                  │
+│                │                                                                    │
+│  ┌─────────────▼─────────────────┐       ┌─────────────────────────────────────┐    │
+│  │ Resolve Department            │──────▶│  D3: REGULATED_ENTITIES             │    │
+│  │ entityName → RBIO / CEPC      │◀──────│      (exact → fuzzy → default RBIO) │    │
+│  └─────────────┬─────────────────┘       └─────────────────────────────────────┘    │
+│                │                                                                    │
+│  ┌─────────────▼─────────────────────────────────────────────────────────────────┐  │
+│  │ Generate Complaint Number (→ Feature 3 DFD)                                    │  │
+│  │ Input: department, state, district, isVernacularOrCrpc                         │  │
+│  │ Output: N202627013000001                                                       │  │
+│  └─────────────┬─────────────────────────────────────────────────────────────────┘  │
+│                │                                                                    │
+│  ┌─────────────▼─────────────────┐       ┌─────────────────────────────────────┐    │
+│  │ Assign Officer (Round-Robin)  │──────▶│  D4: ROUND_ROBIN_POINTERS           │    │
+│  │ role → next officer from pool │◀──────│      (poolKey, currentIndex)         │    │
+│  └─────────────┬─────────────────┘       └─────────────────────────────────────┘    │
+└────────────────┼────────────────────────────────────────────────────────────────────┘
+                 │
+                 ▼
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│  2.2 PERSIST                                                                        │
+│                                                                                     │
+│  ┌──────────────────────────┐     ┌──────────────────────────┐                      │
+│  │ Save to COMPLAINTS table │────▶│  D5: COMPLAINTS          │                      │
+│  └──────────────────────────┘     └──────────────────────────┘                      │
+│                                                                                     │
+│  ┌──────────────────────────┐     ┌──────────────────────────┐                      │
+│  │ Add timeline entry       │────▶│  D6: COMPLAINT_TIMELINE  │                      │
+│  └──────────────────────────┘     └──────────────────────────┘                      │
+│                                                                                     │
+│  ┌──────────────────────────┐     ┌──────────────────────────┐                      │
+│  │ Publish Kafka event      │────▶│  D7: OUTBOX_EVENT → Kafka│                      │
+│  │ (complaint.ingested)     │     │  (Transactional Outbox)  │                      │
+│  └──────────────────────────┘     └──────────────────────────┘                      │
+└─────────────────────────────────────────────────────────────────────────────────────┘
+</pre>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<h2 id="dfd-number">5. DFD: Feature 3 — Complaint Number Generation</h2>
+<!-- ═══════════════════════════════════════════════════════ -->
+
+<div class="section-card">
+<span class="feature-badge">FEATURE 3</span> <strong>Number Format: N + FY(6) + OfficeCode(3) + Sequence(6) → e.g. N202627013000001</strong>
+<pre>
+INPUT: department, complainantState, complainantDistrict, isVernacularOrCrpc
+
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│  STEP 1: resolveOfficeName(department, state, district)                             │
+│                                                                                     │
+│  ┌────────────────────────────────────────────────────────────────────────────────┐ │
+│  │  D8: OMBUDSMAN_OFFICE_MASTER (24 offices with jurisdiction text)               │ │
+│  │                                                                                │ │
+│  │  Algorithm:                                                                    │ │
+│  │  1. Search DISTRICT in jurisdiction text (handles Mumbai-I/II split)           │ │
+│  │  2. If no unique match → search STATE name                                    │ │
+│  │  3. Multiple matches → parse "excluding"/"except" clauses                     │ │
+│  │     Example: UP → Dehradun (7 districts) / Kanpur (rest) / New Delhi-II (2)   │ │
+│  │  4. Fallback → "New Delhi I"                                                  │ │
+│  └────────────────────────────────────────────────────────────────────────────────┘ │
+│                                                                                     │
+│  STEP 2: resolveOfficeCode(officeName)                                              │
+│                                                                                     │
+│  ┌────────────────────────────────────────────────────────────────────────────────┐ │
+│  │  D9: OFFICE_CODE_MASTER                                                        │ │
+│  │  • Exact match: officeName where isActive=true                                 │ │
+│  │  • Fallback: replace hyphen→space ("Mumbai-I" → "Mumbai I")                   │ │
+│  │  • Default: code "014" (New Delhi I)                                           │ │
+│  └────────────────────────────────────────────────────────────────────────────────┘ │
+│                                                                                     │
+│  STEP 3: applyThresholdOverflow(officeCode)  [SKIP if vernacular/CRPC]             │
+│           → See Feature 4 DFD below                                                 │
+│                                                                                     │
+│  STEP 4: getNextSequence(assignedOfficeCode, financialYear)                         │
+│                                                                                     │
+│  ┌────────────────────────────────────────────────────────────────────────────────┐ │
+│  │  D12: COMPLAINT_NUMBER_SEQUENCE                                                │ │
+│  │  • PESSIMISTIC_WRITE lock (thread-safe, no duplicates)                         │ │
+│  │  • Atomic increment of LAST_SEQUENCE                                           │ │
+│  │  • New row auto-created for new office+FY combination                          │ │
+│  └────────────────────────────────────────────────────────────────────────────────┘ │
+│                                                                                     │
+│  STEP 5: Format output                                                              │
+│  ┌────────────────────────────────────────────────────────────────────────────────┐ │
+│  │  String.format("N%s%s%06d", financialYear, officeCode, sequence)               │ │
+│  │  Example: "N" + "202627" + "013" + "000001" = N202627013000001                 │ │
+│  └────────────────────────────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────────────────────────┘
+
+FINANCIAL YEAR LOGIC:
+┌────────────────────────────────────────────────────┐
+│  Month >= 4 (Apr-Mar):  year + (year+1)%100        │
+│    Aug 2026 → "202627"                             │
+│                                                    │
+│  Month < 4 (Jan-Mar):  (year-1) + year%100         │
+│    Jan 2027 → "202627"                             │
+└────────────────────────────────────────────────────┘
+</pre>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<h2 id="dfd-threshold">6. DFD: Feature 4 — Threshold Overflow Routing</h2>
+<!-- ═══════════════════════════════════════════════════════ -->
+
+<div class="section-card">
+<span class="feature-badge">FEATURE 4</span> <strong>Load balancing across offices — priority-based overflow when threshold met</strong>
+<pre>
+INPUT: targetOfficeCode (from Step 2)
+
+┌─────────────────────────────────────────────────────────────────────────────────────────────┐
+│                                                                                             │
+│  ┌───────────────────────────────────────┐       ┌───────────────────────────────────────┐  │
+│  │ Read Global Threshold                  │──────▶│ D11: OFFICE_GLOBAL_THRESHOLD_CONFIG   │  │
+│  │ (Super Admin configurable, default=2)  │◀──────│      id=1, thresholdValue=2           │  │
+│  └──────────────────┬────────────────────┘       └───────────────────────────────────────┘  │
+│                     │                                                                       │
+│  ┌──────────────────▼────────────────────┐       ┌───────────────────────────────────────┐  │
+│  │ Lock target office FOR UPDATE          │──────▶│ D9: OFFICE_CODE_MASTER                │  │
+│  │ Read: target.counter                   │◀──────│     (officeCode, counter, threshold)  │  │
+│  └──────────────────┬────────────────────┘       └───────────────────────────────────────┘  │
+│                     │                                                                       │
+│          ┌──────────┴──────────┐                                                           │
+│          │ counter &lt; threshold?│                                                           │
+│          └──────────┬──────────┘                                                           │
+│            YES │         │ NO                                                              │
+│                │         │                                                                  │
+│                ▼         ▼                                                                  │
+│  ┌──────────────────┐  ┌─────────────────────────────┐  ┌────────────────────────────────┐ │
+│  │ target.counter++ │  │ Lookup overflow mapping      │─▶│ D10: OFFICE_OVERFLOW_MAPPING   │ │
+│  │ RETURN target    │  │ for this officeCode          │◀─│     priority1, priority2       │ │
+│  └──────────────────┘  └──────────────┬──────────────┘  └────────────────────────────────┘ │
+│                                       │                                                    │
+│                            ┌──────────┴──────────┐                                         │
+│                            │ P1.counter&lt;threshold?│                                         │
+│                            └──────────┬──────────┘                                         │
+│                              YES │         │ NO                                            │
+│                                  ▼         ▼                                               │
+│                    ┌──────────────────┐  ┌──────────────────┐                              │
+│                    │ p1.counter++     │  │ P2.counter&lt;threshold?│                           │
+│                    │ RETURN priority1 │  └──────────┬──────────┘                           │
+│                    └──────────────────┘    YES │         │ NO                              │
+│                                               ▼         ▼                                 │
+│                                 ┌──────────────────┐  ┌─────────────────────────────────┐  │
+│                                 │ p2.counter++     │  │ ALL 3 OFFICES MET THRESHOLD     │  │
+│                                 │ RETURN priority2 │  │                                 │  │
+│                                 └──────────────────┘  │ RESET all 3 counters → 0        │  │
+│                                                       │ target.counter = 1              │  │
+│                                                       │ RETURN target                   │  │
+│                                                       └─────────────────────────────────┘  │
+│                                                                                             │
+│  ╔═══════════════════════════════════════════════════════════════════════════════════════╗   │
+│  ║  EXCEPTION: Vernacular (EMAIL) and CRPC (PHYSICAL_LETTER) complaints               ║   │
+│  ║  → Bypass this entire logic. Direct assignment. No counter impact.                  ║   │
+│  ╚═══════════════════════════════════════════════════════════════════════════════════════╝   │
+└─────────────────────────────────────────────────────────────────────────────────────────────┘
+
+OVERFLOW GROUPS (4 Regional Clusters):
+</pre>
+
+<table>
+    <thead><tr><th>Region</th><th>Office</th><th>Code</th><th>Priority 1</th><th>Priority 2</th></tr></thead>
+    <tbody>
+        <tr><td rowspan="6"><strong>Eastern</strong></td><td>Bhubaneswar</td><td>003</td><td>Kolkata-II</td><td>Patna</td></tr>
+        <tr><td>Guwahati</td><td>008</td><td>Bhubaneswar</td><td>Kolkata-I</td></tr>
+        <tr><td>Kolkata-I</td><td>005</td><td>Ranchi</td><td>Kolkata-II</td></tr>
+        <tr><td>Kolkata-II</td><td>022</td><td>Kolkata-I</td><td>Guwahati</td></tr>
+        <tr><td>Patna</td><td>012</td><td>Guwahati</td><td>Ranchi</td></tr>
+        <tr><td>Ranchi</td><td>018</td><td>Patna</td><td>Bhubaneswar</td></tr>
+        <tr><td rowspan="8"><strong>Northern</strong></td><td>Chandigarh</td><td>007</td><td>Dehradun</td><td>New Delhi-I</td></tr>
+        <tr><td>Dehradun</td><td>017</td><td>Chandigarh</td><td>Kanpur</td></tr>
+        <tr><td>Jaipur</td><td>010</td><td>Kanpur</td><td>Chandigarh</td></tr>
+        <tr><td>Jammu</td><td>020</td><td>New Delhi-II</td><td>Jaipur</td></tr>
+        <tr><td>Kanpur</td><td>011</td><td>Jaipur</td><td>Dehradun</td></tr>
+        <tr><td>New Delhi-I</td><td>014</td><td>Shimla</td><td>New Delhi-II</td></tr>
+        <tr><td>New Delhi-II</td><td>016</td><td>Jammu</td><td>Shimla</td></tr>
+        <tr><td>Shimla</td><td>023</td><td>New Delhi-I</td><td>Jammu</td></tr>
+        <tr><td rowspan="5"><strong>Southern</strong></td><td>Bengaluru</td><td>002</td><td>Thiruvananthapuram</td><td>Hyderabad</td></tr>
+        <tr><td>Chennai-I</td><td>006</td><td>Chennai-II</td><td>Bengaluru</td></tr>
+        <tr><td>Chennai-II</td><td>024</td><td>Hyderabad</td><td>Chennai-I</td></tr>
+        <tr><td>Hyderabad</td><td>009</td><td>Chennai-I</td><td>Thiruvananthapuram</td></tr>
+        <tr><td>Thiruvananthapuram</td><td>015</td><td>Bengaluru</td><td>Chennai-II</td></tr>
+        <tr><td rowspan="5"><strong>Western</strong></td><td>Ahmedabad</td><td>001</td><td>Raipur</td><td>Mumbai-I</td></tr>
+        <tr><td>Bhopal</td><td>004</td><td>Ahmedabad</td><td>Mumbai-II</td></tr>
+        <tr><td>Mumbai-I</td><td>013</td><td>Mumbai-II</td><td>Bhopal</td></tr>
+        <tr><td>Mumbai-II</td><td>021</td><td>Mumbai-I</td><td>Raipur</td></tr>
+        <tr><td>Raipur</td><td>019</td><td>Bhopal</td><td>Ahmedabad</td></tr>
+    </tbody>
+</table>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<h2 id="dfd-crpc">7. DFD: Feature 5 — CRPC Email/Letter Processing</h2>
+<!-- ═══════════════════════════════════════════════════════ -->
+
+<div class="section-card">
+<span class="feature-badge">FEATURE 5</span> <strong>CRPC (Central Receipt & Processing Centre) — Email and physical letter intake with OCR</strong>
+<pre>
+┌──────────────────┐       ┌──────────────────┐
+│  Email Server    │       │ Physical Letter  │
+│  (IMAP inbox)   │       │ (Scanned PDF)    │
+└────────┬─────────┘       └────────┬─────────┘
+         │                          │
+         └────────────┬─────────────┘
+                      │ Ingest
+                      ▼
+┌────────────────────────────────────────────────────────────────────────────────────┐
+│  5.1 INGESTION & OCR                                                               │
+│                                                                                    │
+│  • Parse email (sender, subject, body, attachments)                                │
+│  • Scan physical letters via PaddleOCR (Python service, port 5000)                 │
+│  • Detect language → translate if vernacular                                       │
+│  • Extract: name, phone, address, entity, complaint text                           │
+│                                                                                    │
+│  Store → D13: EMAIL_DRAFTS (status = "ASSIGNED")                                  │
+│  Store → D14: EMAIL_DRAFT_ATTACHMENTS (ocrText, ocrConfidence)                    │
+└────────────────────────────────┬───────────────────────────────────────────────────┘
+                                 │
+                                 ▼
+┌────────────────────────────────────────────────────────────────────────────────────┐
+│  5.2 DEO (Data Entry Operator) PROCESSING                                          │
+│                                                                                    │
+│  DEO reviews extracted data on CRPC portal:                                        │
+│  • Confirm/correct complainant details                                             │
+│  • Categorize: Complaint / Not-a-Complaint / Sub-Judice                           │
+│  • If Not-a-Complaint: reason (Appeal, Broadcast, Suggestion, Others)              │
+│  • Identify regulated entity                                                       │
+│  • Decision: FORWARD_TO_REVIEWER / NON_MAINTAINABLE / AUTO_CLOSE                  │
+│                                                                                    │
+│  Update D13: EMAIL_DRAFTS (deoDecision, deoRemarks, entityName, category)         │
+└────────────────────────────────┬───────────────────────────────────────────────────┘
+                                 │
+                                 ▼
+┌────────────────────────────────────────────────────────────────────────────────────┐
+│  5.3 REVIEWER APPROVAL                                                             │
+│                                                                                    │
+│  Reviewer validates DEO work:                                                      │
+│  • APPROVE → Convert to formal complaint                                           │
+│  • REJECT → Close draft with reason                                                │
+│  • SEND_BACK → Return to DEO for corrections                                      │
+│  • REASSIGN → Move to different office                                             │
+│                                                                                    │
+│  Update D13: EMAIL_DRAFTS (reviewerDecision, reviewerRemarks)                     │
+└────────────────────────────────┬───────────────────────────────────────────────────┘
+                                 │ If APPROVED
+                                 ▼
+┌────────────────────────────────────────────────────────────────────────────────────┐
+│  5.4 CONVERT TO COMPLAINT                                                          │
+│                                                                                    │
+│  • Generate complaint number (Feature 3, isVernacularOrCrpc = TRUE)                │
+│  • Create COMPLAINTS record                                                        │
+│  • Route to target department (RBIO/CEPC based on entity)                          │
+│  • Link: EMAIL_DRAFTS.convertedComplaintId = complaintNumber                       │
+│  • Notify assigned RBIO/CEPC officer                                               │
+└────────────────────────────────────────────────────────────────────────────────────┘
+</pre>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<h2 id="dfd-lifecycle">8. DFD: Feature 6 — Complaint Processing & SLA</h2>
+<!-- ═══════════════════════════════════════════════════════ -->
+
+<div class="section-card">
+<span class="feature-badge">FEATURE 6</span> <strong>Full complaint lifecycle — MRE check, RE forwarding, resolution, closure</strong>
+<pre>
+┌─────────────────┐
+│  RBIO / CEPC    │
+│  Officer        │
+└────────┬────────┘
+         │
+         ▼
+┌────────────────────────────────────────────────────────────────────────────────────┐
+│  6.1 INITIAL REVIEW                                                                │
+│                                                                                    │
+│  • MRE Evaluation (Maintainability — Q13/Q16/Q17 grounds)                         │
+│  • Priority assessment (senior citizen, fraud, high-value > 5L)                    │
+│  • SLA computation (ATM=7d, UPI=5d, default=30d)                                  │
+│  • Categorization (auto + manual)                                                  │
+│                                                                                    │
+│  Outcomes:                                                                         │
+│  ├── NON-MAINTAINABLE → Close with grounds (triageSignal = RED)                   │
+│  ├── TRANSFER → Create INTER_OFFICE_TRANSFERS record                              │
+│  └── MAINTAINABLE → Forward to RE                                                 │
+└────────────────────────────────┬───────────────────────────────────────────────────┘
+                                 │ If MAINTAINABLE
+                                 ▼
+┌────────────────────────────────────────────────────────────────────────────────────┐
+│  6.2 FORWARD TO RE (Regulated Entity)                                              │
+│                                                                                    │
+│  • Create RE_RESPONSE_TRACKER record                                               │
+│  • Set windowDays (30), windowExpiresAt                                            │
+│  • Notify RE Nodal Officer                                                         │
+│  • RE has 30 days to respond                                                       │
+│                                                                                    │
+│  RE Actions:                                                                       │
+│  ├── Submits response → respondedAt set                                            │
+│  ├── Requests extension → extensionDays added                                      │
+│  ├── Raises query → queryText, queryRaisedAt                                       │
+│  └── No response → breached=true, exParteEligible=true                            │
+└────────────────────────────────┬───────────────────────────────────────────────────┘
+                                 │
+           ┌─────────────────────┼─────────────────────────┐
+           ▼                     ▼                         ▼
+┌──────────────────┐  ┌──────────────────────┐  ┌─────────────────────────┐
+│  Conciliation    │  │  Direct Resolution   │  │  Adjudication / Award   │
+│  (mediated       │  │  (RE complies,       │  │  (officer decides,      │
+│   settlement)    │  │   issue resolved)    │  │   issues award order)   │
+│                  │  │                      │  │  awardAmount set        │
+│  conciliationDate│  │                      │  │  adjudicationDate set   │
+│  conciliationOut │  │                      │  │  adjudicationOutcome    │
+└────────┬─────────┘  └──────────┬───────────┘  └────────────┬────────────┘
+         │                       │                           │
+         └───────────────────────┼───────────────────────────┘
+                                 ▼
+┌────────────────────────────────────────────────────────────────────────────────────┐
+│  6.3 CLOSURE                                                                       │
+│                                                                                    │
+│  • Select closureClause (RB-IOS reference)                                         │
+│  • Enter customClosureText                                                         │
+│  • Set closureAuthorityName + Designation                                          │
+│  • Generate closure letter                                                         │
+│  • Send SMS/Email notification                                                     │
+│  • Set closureLetterSentAt, closedAt                                               │
+│  • Status → CLOSED                                                                 │
+│  • Log to COMPLAINT_TIMELINE + AUDIT_LOG                                           │
+└────────────────────────────────────────────────────────────────────────────────────┘
+</pre>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<h2 id="dfd-appeals">9. DFD: Feature 7 — Appeals (Appellate Authority)</h2>
+<!-- ═══════════════════════════════════════════════════════ -->
+
+<div class="section-card">
+<span class="feature-badge">FEATURE 7</span> <strong>Appeals — filed against RBIO/CEPC decisions, heard by Appellate Authority</strong>
+<pre>
+┌─────────────────┐
+│  Complainant    │  (dissatisfied with RBIO/CEPC outcome)
+└────────┬────────┘
+         │ File Appeal / Representation
+         ▼
+┌────────────────────────────────────────────────────────────────────────────────────┐
+│  7.1 APPEAL FILING                                                                 │
+│                                                                                    │
+│  • Link originalComplaintNumber → COMPLAINTS                                       │
+│  • Classify: APPEAL or REPRESENTATION (immutable after creation)                   │
+│  • Generate appealNumber                                                           │
+│  • Capture: appealGround, reliefSought                                             │
+│  • Assign to AA_REGISTRAR (round-robin)                                            │
+│                                                                                    │
+│  Store → D16: APPEALS                                                             │
+│  Log   → D17: APPEAL_TIMELINE (action = "filed")                                 │
+└────────────────────────────────┬───────────────────────────────────────────────────┘
+                                 │
+                                 ▼
+┌────────────────────────────────────────────────────────────────────────────────────┐
+│  7.2 REGISTRAR REVIEW                                                              │
+│                                                                                    │
+│  AA_REGISTRAR:                                                                     │
+│  • Verify appeal is within filing deadline                                         │
+│  • Assign to AA_BENCH_OFFICER                                                      │
+│  • Schedule hearing (hearingDate, hearingVenue)                                    │
+└────────────────────────────────┬───────────────────────────────────────────────────┘
+                                 │
+                                 ▼
+┌────────────────────────────────────────────────────────────────────────────────────┐
+│  7.3 HEARING & ORDER                                                               │
+│                                                                                    │
+│  AA_AUTHORITY:                                                                     │
+│  • Conduct hearing                                                                 │
+│  • Issue order: orderDate, orderSummary                                            │
+│  • orderOutcome: UPHELD / MODIFIED / SET_ASIDE / REMANDED                          │
+│  • If MODIFIED: set awardModifiedAmount                                            │
+│  • Update original complaint if award changed                                      │
+│                                                                                    │
+│  Log → D17: APPEAL_TIMELINE (action = "order_issued")                             │
+└────────────────────────────────┬───────────────────────────────────────────────────┘
+                                 │
+                                 ▼
+┌────────────────────────────────────────────────────────────────────────────────────┐
+│  7.4 APPEAL CLOSURE                                                                │
+│                                                                                    │
+│  • Set closureCause, closedAt                                                      │
+│  • Notify complainant + RE of outcome                                              │
+│  • Status → CLOSED                                                                 │
+└────────────────────────────────────────────────────────────────────────────────────┘
+</pre>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<h2 id="dfd-notifications">10. DFD: Feature 8 — Notifications & Audit</h2>
+<!-- ═══════════════════════════════════════════════════════ -->
+
+<div class="section-card">
+<span class="feature-badge">FEATURE 8</span> <strong>Notification dispatch and immutable audit trail</strong>
+<pre>
+┌────────────────────────────────────────────────────────────────────────────────────┐
+│  EVENT TRIGGERS                                                                    │
+│                                                                                    │
+│  • Complaint filed            • Status changed           • SLA 75% consumed       │
+│  • Officer assigned           • Transfer requested       • RE response due         │
+│  • Closure completed          • Appeal filed             • 3-day no-action         │
+│  • Duplicate detected                                                              │
+└───────────────────────────────────┬────────────────────────────────────────────────┘
+                                    │
+           ┌────────────────────────┼────────────────────────────┐
+           ▼                        ▼                            ▼
+┌────────────────────────┐ ┌─────────────────────────┐ ┌────────────────────────────┐
+│  IN_APP_NOTIFICATIONS  │ │  SIMULATED_EMAILS       │ │       AUDIT_LOG            │
+│                        │ │  (SMS / Email)          │ │                            │
+│  Target: Officers      │ │  Target: Complainants   │ │  Target: System            │
+│                        │ │         + RE + Officers  │ │                            │
+│  Types:                │ │                         │ │  Every action logged:      │
+│  • ASSIGNMENT          │ │  Templates:             │ │  • complaintNumber         │
+│  • TRANSFER_PENDING    │ │  • Registration SMS     │ │  • action                  │
+│  • PENDING_3DAY        │ │  • Status update email  │ │  • actor + role            │
+│  • DUPLICATE_ACTIVITY  │ │  • Closure letter       │ │  • previousState           │
+│  • SENT_BACK           │ │  • RE forwarding notice │ │  • newState                │
+│  • BULK_CLOSE          │ │  • Appeal notification  │ │  • timestamp + IP          │
+│                        │ │  • SLA breach alert     │ │  • metadata (JSON)         │
+│  Bell icon in UI       │ │                         │ │                            │
+│  isRead / readAt       │ │  via Kafka outbox →     │ │  Immutable. Never deleted. │
+│                        │ │  notification-service   │ │                            │
+└────────────────────────┘ └─────────────────────────┘ └────────────────────────────┘
+</pre>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<h2 id="dfd-re-portal">11. DFD: Feature 9 — RE (Regulated Entity) Portal</h2>
+<!-- ═══════════════════════════════════════════════════════ -->
+
+<div class="section-card">
+<span class="feature-badge">FEATURE 9</span> <strong>Regulated Entity portal — view forwarded cases, submit responses, request extensions</strong>
+<pre>
+┌─────────────────────┐
+│  RE Nodal Officer   │  Login via Keycloak (role: RE_NODAL_OFFICER)
+└──────────┬──────────┘
+           │
+           ▼
+┌────────────────────────────────────────────────────────────────────────────────────┐
+│  9.1 VIEW FORWARDED CASES                                                          │
+│                                                                                    │
+│  ┌──────────────────────────────────────────────────────────────────────────────┐  │
+│  │  D: RE_RESPONSE_TRACKER (where regulatedEntityId = current RE's id)          │  │
+│  │                                                                              │  │
+│  │  Display: complaintNumber, subject, forwardedAt, deadline, status            │  │
+│  │  Filter: PENDING / RESPONDED / BREACHED                                      │  │
+│  └──────────────────────────────────────────────────────────────────────────────┘  │
+└────────────────────────────────┬───────────────────────────────────────────────────┘
+                                 │
+                                 ▼
+┌────────────────────────────────────────────────────────────────────────────────────┐
+│  9.2 SUBMIT RESPONSE                                                               │
+│                                                                                    │
+│  RE can:                                                                           │
+│  • Enter responseText (explanation/resolution offered)                              │
+│  • Upload supporting documents                                                     │
+│  • Raise query (queryText) → officer notified                                      │
+│  • Request time extension (extensionDays)                                          │
+│                                                                                    │
+│  Update: RE_RESPONSE_TRACKER.respondedAt = now()                                  │
+│  Update: RE_RESPONSE_TRACKER.responseText = submitted text                        │
+│  Notify: Assigned RBIO/CEPC officer receives notification                         │
+└────────────────────────────────────────────────────────────────────────────────────┘
+                                 │
+                                 ▼
+┌────────────────────────────────────────────────────────────────────────────────────┐
+│  9.3 BREACH DETECTION (Automated — SLA Monitor Service)                            │
+│                                                                                    │
+│  If windowExpiresAt &lt; now() AND respondedAt IS NULL:                              │
+│  • Set breached = true                                                             │
+│  • Set exParteEligible = true                                                      │
+│  • Notify officer: "RE has not responded, ex-parte proceedings eligible"           │
+│  • Officer can proceed with adjudication without RE input                          │
+└────────────────────────────────────────────────────────────────────────────────────┘
+</pre>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<h2 id="dfd-pincode">12. DFD: Feature 10 — Pincode-Based Office Resolution</h2>
+<!-- ═══════════════════════════════════════════════════════ -->
+
+<div class="section-card">
+<span class="feature-badge">FEATURE 10</span> <strong>Pincode lookup — auto-fills state/district, feeds into office resolution</strong>
+<pre>
+┌─────────────────┐
+│  Complainant    │  enters pincode in filing form
+└────────┬────────┘
+         │
+         ▼
+┌────────────────────────────────────────────────────────────────────────────────────┐
+│  10.1 PINCODE LOOKUP                                                               │
+│                                                                                    │
+│  ┌──────────────────────────────────────────────────────────────────────────────┐  │
+│  │  D: PINCODES table (~30,000 records)                                         │  │
+│  │                                                                              │  │
+│  │  Input: pincode (e.g., "400064")                                             │  │
+│  │  Output: state="Maharashtra", district="Mumbai Suburban",                    │  │
+│  │          officeName="Andheri", region="Western", officeType="SO"             │  │
+│  └──────────────────────────────────────────────────────────────────────────────┘  │
+│                                                                                    │
+│  Auto-fill frontend form:                                                          │
+│  • complainantState = "Maharashtra"                                                │
+│  • complainantDistrict = "Mumbai Suburban"                                         │
+└────────────────────────────────┬───────────────────────────────────────────────────┘
+                                 │
+                                 ▼
+┌────────────────────────────────────────────────────────────────────────────────────┐
+│  10.2 FEEDS INTO COMPLAINT NUMBER GENERATION (Feature 3)                           │
+│                                                                                    │
+│  state="Maharashtra" + district="Mumbai Suburban"                                  │
+│     ↓                                                                              │
+│  OMBUDSMAN_OFFICE_MASTER → "Mumbai-I" (jurisdiction includes Mumbai Suburban)      │
+│     ↓                                                                              │
+│  OFFICE_CODE_MASTER → code "013"                                                   │
+│     ↓                                                                              │
+│  Complaint number: N202627013000001                                                │
+└────────────────────────────────────────────────────────────────────────────────────┘
+</pre>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<h2 id="summary">13. Table Count Summary</h2>
+<!-- ═══════════════════════════════════════════════════════ -->
+
+<div class="section-card">
+<table>
+    <thead>
+        <tr><th>Category</th><th>Tables</th><th>Count</th><th>Purpose</th></tr>
+    </thead>
+    <tbody>
+        <tr><td><strong>Core Complaint</strong></td><td>COMPLAINTS, COMPLAINT_TIMELINE, COMPLAINT_ATTACHMENTS, COMPLAINT_DRAFT, AUDIT_LOG</td><td>5</td><td>Primary complaint lifecycle</td></tr>
+        <tr><td><strong>Appeals</strong></td><td>APPEALS, APPEAL_TIMELINE</td><td>2</td><td>Appellate authority workflow</td></tr>
+        <tr><td><strong>CRPC (Email/Letter)</strong></td><td>EMAIL_DRAFTS, EMAIL_DRAFT_ATTACHMENTS</td><td>2</td><td>Email/physical letter intake</td></tr>
+        <tr><td><strong>Master Data</strong></td><td>BANKS, COMPLAINT_CATEGORIES, REGULATED_ENTITIES, PINCODES</td><td>4</td><td>Reference/lookup tables</td></tr>
+        <tr><td><strong>Number Generation</strong></td><td>OMBUDSMAN_OFFICE_MASTER, OFFICE_CODE_MASTER, COMPLAINT_NUMBER_SEQUENCE, OFFICE_OVERFLOW_MAPPING, OFFICE_GLOBAL_THRESHOLD_CONFIG</td><td>5</td><td>Complaint number + overflow</td></tr>
+        <tr><td><strong>RE Tracking</strong></td><td>RE_RESPONSE_TRACKER, NODAL_OFFICER_RECORDS</td><td>2</td><td>Regulated Entity interactions</td></tr>
+        <tr><td><strong>Inter-Office</strong></td><td>INTER_OFFICE_TRANSFERS</td><td>1</td><td>Department transfers</td></tr>
+        <tr><td><strong>Notifications</strong></td><td>IN_APP_NOTIFICATIONS, SIMULATED_EMAILS</td><td>2</td><td>User alerts & dispatch</td></tr>
+        <tr><td><strong>Infrastructure</strong></td><td>HOLIDAYS, ROUND_ROBIN_POINTERS, CAPTCHA_SESSION, LOGIN_COOLOFF, OTP_ATTEMPT</td><td>5</td><td>System support</td></tr>
+        <tr><td><strong>Config/i18n</strong></td><td>FORM_CONFIG, SUPPORTED_LOCALES, TRANSLATIONS, TRANSLATION_KEYS, COMMENT_TEMPLATE, COMMUNICATION_TEMPLATE</td><td>6</td><td>Configurable content</td></tr>
+        <tr><td colspan="2"><strong>TOTAL</strong></td><td><strong>~34</strong></td><td></td></tr>
+    </tbody>
+</table>
+</div>
+
+<div style="text-align:center; margin-top:50px; padding:20px; color:#718096; font-size:0.85rem; border-top:1px solid #e2e8f0;">
+    RBI CMS 2.0 | Entity Relationship & Data Flow Diagrams | August 2026 | RB-IOS 2026 Scheme Compliant
+</div>
+
+</div>
+</body>
+</html>
