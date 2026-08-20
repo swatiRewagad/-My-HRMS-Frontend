@@ -416,8 +416,91 @@
   font-size: 13.5px; color: #555; margin: 0 0 20px; line-height: 1.5;
 }
 
+.entity-select-label {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 14px; font-weight: 500; color: #272C30; margin-bottom: 8px;
+  font-family: 'Poppins', sans-serif;
+  i { font-size: 11px; color: #6B7280; }
+}
+
 .entity-select-wrapper {
   max-width: 500px;
+
+  :host ::ng-deep p-select,
+  ::ng-deep p-select {
+    width: 100%;
+
+    .p-select {
+      width: 100%;
+      min-height: 44px;
+      border: 1px solid #d1d7e0;
+      border-radius: 8px;
+      font-size: 14px;
+      font-family: 'Poppins', sans-serif;
+      background: #fff;
+      box-shadow: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+
+      &:hover { border-color: #b0b8c4; }
+      &.p-focus, &:focus-within {
+        border-color: #146EF5;
+        box-shadow: 0 0 0 3px rgba(20, 110, 245, 0.1);
+      }
+      &.p-invalid {
+        border-color: #d32f2f;
+        &.p-focus, &:focus-within { box-shadow: 0 0 0 3px rgba(211, 47, 47, 0.1); }
+      }
+    }
+
+    .p-select-label {
+      padding: 10px 16px;
+      font-size: 14px;
+      color: #272C30;
+      font-family: 'Poppins', sans-serif;
+
+      &.p-placeholder { color: #6B7280; }
+    }
+
+    .p-select-clear-icon { color: #6B7280; margin-right: 4px; }
+    .p-select-dropdown { color: #6B7280; padding-right: 12px; }
+  }
+
+  ::ng-deep .p-select-overlay {
+    border: 1px solid #d1d7e0;
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+    margin-top: 4px;
+
+    .p-select-header {
+      padding: 10px 12px;
+      border-bottom: 1px solid #eee;
+      .p-select-filter {
+        width: 100%;
+        padding: 8px 12px;
+        border: 1px solid #d1d7e0;
+        border-radius: 6px;
+        font-size: 13px;
+        font-family: 'Poppins', sans-serif;
+        &:focus { border-color: #146EF5; outline: none; }
+      }
+    }
+
+    .p-select-list-container { max-height: 260px; }
+
+    .p-select-option {
+      padding: 10px 16px;
+      font-size: 14px;
+      font-family: 'Poppins', sans-serif;
+      &.p-highlight { background: #f0f4ff; color: #1a1a2e; }
+      &:hover:not(.p-highlight) { background: #f5f7fa; }
+    }
+
+    .p-select-empty-message {
+      padding: 12px 16px;
+      font-size: 13px;
+      color: #999;
+    }
+  }
 }
 
 .entity-select-dropdown {

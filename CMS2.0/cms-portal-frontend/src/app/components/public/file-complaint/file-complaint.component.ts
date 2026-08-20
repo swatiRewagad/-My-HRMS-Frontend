@@ -1,6 +1,6 @@
 import { Component, OnInit, OnDestroy, inject, signal, HostListener, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, FormControl, Validators } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 import { ComplaintService } from '../../../services/complaint.service';
@@ -11,6 +11,7 @@ import { validateFile, validateFileSet, MAX_FILE_COUNT } from '../../../utils/fi
 import { announceToScreenReader, setPageTitle } from '../../../utils/accessibility';
 import { lookupPincode } from '../../../utils/pincode-data';
 import { environment } from '../../../../environments/environment';
+import { Select } from 'primeng/select';
 
 interface EligibilityQuestion {
   key: string;
@@ -29,7 +30,7 @@ interface EligibilityQuestion {
 @Component({
   selector: 'app-public-file-complaint',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, TranslatePipe],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterLink, TranslatePipe, Select],
   templateUrl: './file-complaint.component.html',
   styleUrl: './file-complaint.component.scss'
 })
@@ -42,9 +43,198 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   private publicAuth = inject(PublicAuthService);
+  private fb = inject(FormBuilder);
   translationService = inject(TranslationService);
   private autoSaveTimer: any = null;
   lastSavedAt = signal('');
+
+  // ══════ ELIGIBILITY REACTIVE FORM ══════
+  eligibilityStageForm = this.fb.group({
+    regulatedEntity: new FormControl<string>('', { nonNullable: true, validators: [Validators.required] }),
+    filedWithRE: new FormControl<string>('', { nonNullable: true, validators: [Validators.required] }),
+    bankComplaintDate: new FormControl<string>('', { nonNullable: true }),
+    bankComplaintRef: new FormControl<string>('', { nonNullable: true }),
+    complaintFileWithRE: new FormControl<File | null>(null),
+    receivedReply: new FormControl<string>('', { nonNullable: true, validators: [Validators.required] }),
+    replyDate: new FormControl<string>('', { nonNullable: true }),
+    replyFileUploaded: new FormControl<boolean>(false, { nonNullable: true }),
+    sentReminder: new FormControl<string>('', { nonNullable: true, validators: [Validators.required] }),
+    reminderDate: new FormControl<string>('', { nonNullable: true }),
+    reminderFileUploaded: new FormControl<boolean>(false, { nonNullable: true }),
+    isSubJudice: new FormControl<string>('', { nonNullable: true }),
+    alreadySettled: new FormControl<string>('', { nonNullable: true }),
+    throughAdvocateEligibility: new FormControl<string>('', { nonNullable: true }),
+    isComplainantSelf: new FormControl<string>('', { nonNullable: true }),
+    pendingBeforeOmbudsman: new FormControl<string>('', { nonNullable: true }),
+    settledByOmbudsman: new FormControl<string>('', { nonNullable: true }),
+    staffOfRE: new FormControl<string>('', { nonNullable: true }),
+    previouslyFiledWithCEPC: new FormControl<string>('', { nonNullable: true }),
+    employeeOfRE: new FormControl<string>('', { nonNullable: true }),
+    employerRelationship: new FormControl<string>('', { nonNullable: true }),
+  });
+
+  private setupEligibilityFormWatchers(): void {
+    const form = this.eligibilityStageForm;
+
+    form.get('filedWithRE')!.valueChanges.subscribe(val => {
+      const dateCtrl = form.get('bankComplaintDate')!;
+      const fileCtrl = form.get('complaintFileWithRE')!;
+      if (val === 'yes') {
+        dateCtrl.setValidators([Validators.required]);
+        fileCtrl.setValidators([Validators.required]);
+        dateCtrl.markAsTouched();
+        fileCtrl.markAsTouched();
+      } else {
+        dateCtrl.clearValidators();
+        fileCtrl.clearValidators();
+      }
+      dateCtrl.updateValueAndValidity();
+      fileCtrl.updateValueAndValidity();
+    });
+
+    form.get('receivedReply')!.valueChanges.subscribe(val => {
+      const dateCtrl = form.get('replyDate')!;
+      const fileCtrl = form.get('replyFileUploaded')!;
+      if (val === 'yes') {
+        dateCtrl.setValidators([Validators.required]);
+        fileCtrl.setValidators([Validators.requiredTrue]);
+        dateCtrl.markAsTouched();
+        fileCtrl.markAsTouched();
+      } else {
+        dateCtrl.clearValidators();
+        fileCtrl.clearValidators();
+      }
+      dateCtrl.updateValueAndValidity();
+      fileCtrl.updateValueAndValidity();
+    });
+
+    form.get('sentReminder')!.valueChanges.subscribe(val => {
+      const dateCtrl = form.get('reminderDate')!;
+      const fileCtrl = form.get('reminderFileUploaded')!;
+      if (val === 'yes') {
+        dateCtrl.setValidators([Validators.required]);
+        fileCtrl.setValidators([Validators.requiredTrue]);
+        dateCtrl.markAsTouched();
+        fileCtrl.markAsTouched();
+      } else {
+        dateCtrl.clearValidators();
+        fileCtrl.clearValidators();
+      }
+      dateCtrl.updateValueAndValidity();
+      fileCtrl.updateValueAndValidity();
+    });
+
+    form.get('throughAdvocateEligibility')!.valueChanges.subscribe(val => {
+      const selfCtrl = form.get('isComplainantSelf')!;
+      if (val === 'yes') {
+        selfCtrl.setValidators([Validators.required]);
+        selfCtrl.markAsTouched();
+      } else {
+        selfCtrl.clearValidators();
+        selfCtrl.reset('');
+      }
+      selfCtrl.updateValueAndValidity();
+    });
+
+    form.get('employeeOfRE')!.valueChanges.subscribe(val => {
+      const relCtrl = form.get('employerRelationship')!;
+      if (val === 'yes') {
+        relCtrl.setValidators([Validators.required]);
+        relCtrl.markAsTouched();
+      } else {
+        relCtrl.clearValidators();
+        relCtrl.reset('');
+      }
+      relCtrl.updateValueAndValidity();
+    });
+  }
+
+  get isCurrentEligibilityStepValid(): boolean {
+    if (this.eligibilityBlocked()) return false;
+    const q = this.currentQuestion;
+    if (!q) return false;
+
+    if (q.type === 'select') {
+      return !!this.eligibilityStageForm.get('regulatedEntity')!.value;
+    }
+
+    if (!this.eligibilityAnswers[q.key]) return false;
+
+    if (q.key === 'filedWithRE' && this.eligibilityAnswers['filedWithRE'] === 'yes') {
+      if (!this.formData['bankComplaintDate']) return false;
+      if (!this.complaintFileWithRE) return false;
+    }
+    if (q.key === 'receivedReply' && this.eligibilityAnswers['receivedReply'] === 'yes') {
+      if (!this.formData['replyDate']) return false;
+      if (!this.replyFile) return false;
+    }
+    if (q.key === 'sentReminder' && this.eligibilityAnswers['sentReminder'] === 'yes') {
+      if (!this.formData['reminderDate']) return false;
+      if (!this.reminderFile) return false;
+    }
+    if (q.key === 'throughAdvocateEligibility' && this.eligibilityAnswers['throughAdvocateEligibility'] === 'yes') {
+      if (!this.formData['isComplainantSelf'] && !this.eligibilityAnswers['isComplainantSelf']) return false;
+    }
+    if (q.key === 'employeeOfRE' && this.eligibilityAnswers['employeeOfRE'] === 'yes') {
+      if (!this.eligibilityAnswers['employerRelationship']) return false;
+    }
+
+    return true;
+  }
+
+  get isEligibilityStageValid(): boolean {
+    if (this.eligibilityBlocked()) return false;
+    const form = this.eligibilityStageForm;
+    if (!form.get('regulatedEntity')!.value) return false;
+
+    const visibleKeys = this.visibleEligibilityQuestions.map(q => q.key);
+    for (const key of visibleKeys) {
+      const ctrl = form.get(key);
+      if (ctrl && ctrl.invalid) return false;
+      if (ctrl && !ctrl.value && key !== 'bankComplaintRef') {
+        const q = this.eligibilityQuestions.find(eq => eq.key === key);
+        if (q && q.type === 'radio') return false;
+      }
+    }
+
+    if (form.get('filedWithRE')!.value === 'yes') {
+      if (!form.get('bankComplaintDate')!.value) return false;
+      if (!form.get('complaintFileWithRE')!.value) return false;
+    }
+    if (form.get('receivedReply')!.value === 'yes') {
+      if (!form.get('replyDate')!.value) return false;
+      if (!form.get('replyFileUploaded')!.value) return false;
+    }
+    if (form.get('sentReminder')!.value === 'yes') {
+      if (!form.get('reminderDate')!.value) return false;
+      if (!form.get('reminderFileUploaded')!.value) return false;
+    }
+    if (form.get('throughAdvocateEligibility')!.value === 'yes') {
+      if (!form.get('isComplainantSelf')!.value) return false;
+    }
+    if (form.get('employeeOfRE')!.value === 'yes') {
+      if (!form.get('employerRelationship')!.value) return false;
+    }
+
+    return true;
+  }
+
+  private syncFormToAnswers(): void {
+    const form = this.eligibilityStageForm;
+    const keys = Object.keys(form.controls) as (keyof typeof form.controls)[];
+    for (const key of keys) {
+      const val = form.get(key)?.value;
+      if (typeof val === 'string' && val) {
+        this.eligibilityAnswers[key] = val;
+      }
+    }
+    if (form.get('bankComplaintDate')!.value) {
+      this.formData['bankComplaintDate'] = form.get('bankComplaintDate')!.value;
+    }
+    if (form.get('bankComplaintRef')!.value) {
+      this.formData['bankComplaintRef'] = form.get('bankComplaintRef')!.value;
+    }
+  }
 
   // FR-G-007: Flow phases — login handled by PublicAuthService + guard
   phase = signal<'eligibility' | 'form' | 'success' | 'non-maintainable'>('eligibility');
@@ -378,14 +568,20 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
       if (day >= 1 && day <= 31 && month >= 1 && month <= 12 && year >= 1900 && year <= 2100) {
         const iso = `${year}-${val.substring(2, 4)}-${val.substring(0, 2)}`;
         this.formData[field] = iso;
+        const formField = this.eligibilityStageForm.get(field);
+        if (formField) formField.setValue(iso);
         if (field === 'bankComplaintDate') this.onBankComplaintDateChange();
         else if (field === 'reminderDate') this.onReminderDateChange();
         else if (field === 'replyDate') this.onReplyDateChange();
       } else {
         this.formData[field] = '';
+        const formField = this.eligibilityStageForm.get(field);
+        if (formField) formField.setValue('');
       }
     } else {
       this.formData[field] = '';
+      const formField = this.eligibilityStageForm.get(field);
+      if (formField) formField.setValue('');
     }
   }
 
@@ -409,6 +605,8 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
     if (iso) {
       this.formData[field] = iso;
       this.dateDisplay[field] = this.isoToDisplay(iso);
+      const formField = this.eligibilityStageForm.get(field);
+      if (formField) formField.setValue(iso);
       if (field === 'bankComplaintDate') this.onBankComplaintDateChange();
       else if (field === 'reminderDate') this.onReminderDateChange();
       else if (field === 'replyDate') this.onReplyDateChange();
@@ -666,6 +864,7 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
       this.complaintFileWithRE = input.files[0];
       this.complaintFileWithREName = input.files[0].name;
       this.eligibilityFileError = '';
+      this.eligibilityStageForm.get('complaintFileWithRE')!.setValue(input.files[0]);
     }
   }
 
@@ -680,6 +879,7 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
       this.reminderFile = input.files[0];
       this.reminderFileName = input.files[0].name;
       this.reminderFileError = '';
+      this.eligibilityStageForm.get('reminderFileUploaded')!.setValue(true);
     }
   }
 
@@ -694,6 +894,7 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
       this.replyFile = input.files[0];
       this.replyFileName = input.files[0].name;
       this.replyFileError = '';
+      this.eligibilityStageForm.get('replyFileUploaded')!.setValue(true);
     }
   }
 
@@ -707,16 +908,19 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
   removeComplaintFile() {
     this.complaintFileWithRE = null;
     this.complaintFileWithREName = '';
+    this.eligibilityStageForm.get('complaintFileWithRE')!.setValue(null);
   }
 
   removeReminderFile() {
     this.reminderFile = null;
     this.reminderFileName = '';
+    this.eligibilityStageForm.get('reminderFileUploaded')!.setValue(false);
   }
 
   removeReplyFile() {
     this.replyFile = null;
     this.replyFileName = '';
+    this.eligibilityStageForm.get('replyFileUploaded')!.setValue(false);
   }
 
   onRepFileSelected(event: Event) {
@@ -752,6 +956,7 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     setPageTitle('File a Complaint');
+    this.setupEligibilityFormWatchers();
     this.loadRegulatedEntities();
     this.loadMasterData();
     this.speechSupported = !!(window as any).SpeechRecognition || !!(window as any).webkitSpeechRecognition;
@@ -915,6 +1120,11 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
   selectEligibilityAnswer(value: string) {
     const q = this.currentQuestion;
     this.eligibilityAnswers[q.key] = value;
+    const ctrl = this.eligibilityStageForm.get(q.key);
+    if (ctrl) {
+      ctrl.setValue(value as any);
+      ctrl.markAsTouched();
+    }
     if (q.blockOn && value === q.blockOn) {
       this.eligibilityBlocked.set(true);
       this.eligibilityBlockMessage.set(q.blockMessage);
@@ -981,6 +1191,7 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
     this.eligibilityAnswers['regulatedEntity'] = '';
     this.entitySearchText = '';
     this.eligibilityBlocked.set(false);
+    this.eligibilityStageForm.get('regulatedEntity')!.setValue('');
   }
 
   closeEntityDropdown() {
@@ -1081,6 +1292,7 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
       this.eligibilityBlocked.set(false);
       this.eligibilityBlockMessage.set('');
     } else {
+      this.syncFormToAnswers();
       this.phase.set('form');
       this.currentStep.set(1);
     }
@@ -1850,6 +2062,7 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
 
   onEmployerRelationshipAnswer(value: string) {
     this.eligibilityAnswers['employerRelationship'] = value;
+    this.eligibilityStageForm.get('employerRelationship')!.setValue(value);
     if (value === 'yes') {
       this.eligibilityBlocked.set(true);
       this.eligibilityBlockMessage.set(
@@ -1864,6 +2077,7 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
 
   onAdvocateSubAnswer(value: string) {
     this.formData['isComplainantSelf'] = value;
+    this.eligibilityStageForm.get('isComplainantSelf')!.setValue(value);
     if (value === 'no') {
       this.eligibilityBlocked.set(true);
       this.eligibilityBlockMessage.set(

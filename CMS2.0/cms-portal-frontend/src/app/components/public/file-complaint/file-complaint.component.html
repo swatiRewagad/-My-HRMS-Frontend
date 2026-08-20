@@ -43,18 +43,23 @@
           <h3 class="select-heading">{{ currentQuestionText }}</h3>
           <p class="select-desc">Any financial institution—such as a bank, Non-Banking Financial Company (NBFC), or payment processor—licensed and supervised by the Reserve Bank of India</p>
           <div class="entity-select-wrapper">
-            <select class="form-input entity-select-dropdown"
-                    [ngModel]="eligibilityAnswers[currentQuestion.key]"
-                    (ngModelChange)="selectEntityFromDropdown($event)"
-                    name="entitySelect">
-              <option value="" disabled selected>Select Regulated Entity Name</option>
-              @for (opt of entitySelectOptions; track opt.value) {
-                <option [value]="opt.value">{{ opt.label }}</option>
-              }
-              @for (opt of nonCoveredEntityOptions; track opt.value) {
-                <option [value]="opt.value">{{ opt.label }}</option>
-              }
-            </select>
+            <label class="entity-select-label">Select Regulated Entity Name<i class="pi pi-chevron-down"></i></label>
+            <p-select
+              [options]="entitySelectOptions.concat(nonCoveredEntityOptions)"
+              [formControl]="eligibilityStageForm.controls.regulatedEntity"
+              optionLabel="label"
+              optionValue="value"
+              [filter]="true"
+              filterPlaceholder="Search entity..."
+              placeholder="Please select a Regulated Entity"
+              [showClear]="!!eligibilityStageForm.controls.regulatedEntity.value"
+              appendTo="body"
+              (onChange)="selectEntityFromDropdown($event.value)"
+              [invalid]="eligibilityStageForm.controls.regulatedEntity.touched && eligibilityStageForm.controls.regulatedEntity.invalid">
+            </p-select>
+            @if (eligibilityStageForm.controls.regulatedEntity.touched && eligibilityStageForm.controls.regulatedEntity.invalid) {
+              <span class="field-error">Please select a Regulated Entity</span>
+            }
           </div>
         }
 
@@ -84,16 +89,22 @@
               <label><span class="sub-badge">a</span> <span>{{ 'eligibility.sub_complaint_date' | translate }} {{ selectedEntityName }} <span class="required">*</span></span></label>
               <div class="date-input-wrapper">
                 <div class="date-picker-wrapper">
-                  <input type="text" class="form-input" [class.invalid]="eligibilityFieldError" [value]="dateDisplay['bankComplaintDate']" name="bankComplaintDate" placeholder="dd/mm/yyyy" maxlength="10" (input)="onDateInput('bankComplaintDate', $event)">
+                  <input type="text" class="form-input"
+                         [class.invalid]="eligibilityFieldError || (eligibilityStageForm.controls.bankComplaintDate.touched && eligibilityStageForm.controls.bankComplaintDate.invalid)"
+                         [value]="dateDisplay['bankComplaintDate']" name="bankComplaintDate" placeholder="dd/mm/yyyy" maxlength="10" (input)="onDateInput('bankComplaintDate', $event)">
                   <input type="date" class="date-hidden-picker" [max]="todayISO" (change)="onDatePickerChange('bankComplaintDate', $event)">
                   <button type="button" class="date-picker-btn" (click)="openDatePicker($event)"><i class="pi pi-calendar"></i></button>
                 </div>
               </div>
               @if (eligibilityFieldError) { <span class="field-error">{{ eligibilityFieldError }}</span> }
+              @if (!eligibilityFieldError && eligibilityStageForm.controls.bankComplaintDate.touched && eligibilityStageForm.controls.bankComplaintDate.invalid) {
+                <span class="field-error">Date of complaint filed with RE is required</span>
+              }
             </div>
             <div class="sub-field">
               <label><span class="sub-badge">b</span> Complaint Reference/Acknowledgement Number</label>
-              <input type="text" class="form-input" [(ngModel)]="formData['bankComplaintRef']" name="bankComplaintRef"
+              <input type="text" class="form-input"
+                     [formControl]="eligibilityStageForm.controls.bankComplaintRef"
                      placeholder="Enter reference number provided by {{ selectedEntityName }}">
               @if (eligibilityRefError) { <span class="field-error">{{ eligibilityRefError }}</span> }
             </div>
@@ -119,6 +130,9 @@
               </div>
               @if (eligibilityFileError) {
                 <span class="field-error">{{ eligibilityFileError }}</span>
+              }
+              @if (!eligibilityFileError && eligibilityStageForm.controls.complaintFileWithRE.touched && eligibilityStageForm.controls.complaintFileWithRE.invalid) {
+                <span class="field-error">Please upload a copy of the complaint sent to the Regulated Entity</span>
               }
             </div>
           </div>
@@ -175,12 +189,17 @@
               <label><span class="sub-badge">a</span> <span>{{ 'eligibility.sub_reminder_date' | translate }} <span class="required">*</span></span></label>
               <div class="date-input-wrapper">
                 <div class="date-picker-wrapper">
-                  <input type="text" class="form-input" [class.invalid]="reminderDateError" [value]="dateDisplay['reminderDate']" name="reminderDate" placeholder="dd/mm/yyyy" maxlength="10" (input)="onDateInput('reminderDate', $event)">
+                  <input type="text" class="form-input"
+                         [class.invalid]="reminderDateError || (eligibilityStageForm.controls.reminderDate.touched && eligibilityStageForm.controls.reminderDate.invalid)"
+                         [value]="dateDisplay['reminderDate']" name="reminderDate" placeholder="dd/mm/yyyy" maxlength="10" (input)="onDateInput('reminderDate', $event)">
                   <input type="date" class="date-hidden-picker" [max]="todayISO" [min]="formData['bankComplaintDate']" (change)="onDatePickerChange('reminderDate', $event)">
                   <button type="button" class="date-picker-btn" (click)="openDatePicker($event)"><i class="pi pi-calendar"></i></button>
                 </div>
               </div>
               @if (reminderDateError) { <span class="field-error">{{ reminderDateError }}</span> }
+              @if (!reminderDateError && eligibilityStageForm.controls.reminderDate.touched && eligibilityStageForm.controls.reminderDate.invalid) {
+                <span class="field-error">Date of reminder sent is required</span>
+              }
             </div>
             <div class="sub-field">
               <label><span class="sub-badge">b</span> <span>{{ 'eligibility.sub_upload_reminder' | translate }} <span class="required">*</span></span></label>
@@ -205,6 +224,9 @@
               @if (reminderFileError) {
                 <span class="field-error">{{ reminderFileError }}</span>
               }
+              @if (!reminderFileError && eligibilityStageForm.controls.reminderFileUploaded.touched && eligibilityStageForm.controls.reminderFileUploaded.invalid) {
+                <span class="field-error">Please upload a copy of the reminder sent to the Regulated Entity</span>
+              }
             </div>
           </div>
         }
@@ -216,12 +238,17 @@
               <label><span class="sub-badge">a</span> <span>Date on which reply was received (dd/mm/yyyy) <span class="required">*</span></span></label>
               <div class="date-input-wrapper">
                 <div class="date-picker-wrapper">
-                  <input type="text" class="form-input" [class.invalid]="replyDateError" [value]="dateDisplay['replyDate']" name="replyDate" placeholder="dd/mm/yyyy" maxlength="10" (input)="onDateInput('replyDate', $event)">
+                  <input type="text" class="form-input"
+                         [class.invalid]="replyDateError || (eligibilityStageForm.controls.replyDate.touched && eligibilityStageForm.controls.replyDate.invalid)"
+                         [value]="dateDisplay['replyDate']" name="replyDate" placeholder="dd/mm/yyyy" maxlength="10" (input)="onDateInput('replyDate', $event)">
                   <input type="date" class="date-hidden-picker" [max]="todayISO" [min]="formData['bankComplaintDate']" (change)="onDatePickerChange('replyDate', $event)">
                   <button type="button" class="date-picker-btn" (click)="openDatePicker($event)"><i class="pi pi-calendar"></i></button>
                 </div>
               </div>
               @if (replyDateError) { <span class="field-error">{{ replyDateError }}</span> }
+              @if (!replyDateError && eligibilityStageForm.controls.replyDate.touched && eligibilityStageForm.controls.replyDate.invalid) {
+                <span class="field-error">Date of reply received is required</span>
+              }
             </div>
             <div class="sub-field">
               <label><span class="sub-badge">b</span> <span>{{ 'eligibility.sub_upload_reply' | translate }} <span class="required">*</span></span></label>
@@ -245,6 +272,9 @@
               </div>
               @if (replyFileError) {
                 <span class="field-error">{{ replyFileError }}</span>
+              }
+              @if (!replyFileError && eligibilityStageForm.controls.replyFileUploaded.touched && eligibilityStageForm.controls.replyFileUploaded.invalid) {
+                <span class="field-error">Please upload a copy of the reply received from the Regulated Entity</span>
               }
             </div>
           </div>
@@ -300,8 +330,8 @@
               <i class="pi pi-chevron-left"></i> {{ 'form.back' | translate }}
             </button>
             <button class="btn-next" (click)="nextEligibility()"
-                    [disabled]="!eligibilityAnswers[currentQuestion.key] || (currentQuestion.key === 'employeeOfRE' && eligibilityAnswers['employeeOfRE'] === 'yes' && !eligibilityAnswers['employerRelationship'])">
-              {{ eligibilityStep() === totalEligibilitySteps ? ('form.next' | translate) : ('form.next' | translate) }} <i class="pi pi-chevron-right"></i>
+                    [disabled]="!isCurrentEligibilityStepValid">
+              {{ 'form.next' | translate }} <i class="pi pi-chevron-right"></i>
             </button>
           </div>
         </div>
