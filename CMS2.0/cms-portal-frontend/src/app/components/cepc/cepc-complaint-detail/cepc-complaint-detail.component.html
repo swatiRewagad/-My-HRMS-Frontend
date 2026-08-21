@@ -1,244 +1,944 @@
-<div class="cepc-detail">
-  <header class="topbar">
-    <div class="topbar-left">
-      <button class="back-btn" (click)="goBack()">&larr;</button>
-      <h2>CEPC Complaint Examination</h2>
+<div class="cepc-detail" (keydown.escape)="showConfirmDialog.set(false)">
+  <!-- ═══ HEADER BAR ═══ -->
+  <header class="cms-header">
+    <div class="header-left">
+      <img src="assets/corporates-rbi-logo.jpg" alt="RBI" class="rbi-logo" />
+      <div class="rbi-text">
+        <span class="rbi-hindi">भारतीय रिज़र्व बैंक</span>
+        <span class="rbi-english">RESERVE BANK OF INDIA</span>
+      </div>
+      <div class="header-divider-v"></div>
+      <img src="assets/rbi-logo.png" alt="CMS" class="cms-logo" onerror="this.style.display='none'" />
+      <div class="header-brand">
+        <span class="cms-title">CMS</span>
+        <span class="cms-subtitle">Complaint Management System</span>
+      </div>
     </div>
-    <div class="topbar-right">
-      @if (auth.currentUser(); as user) {
-        <span class="role-badge">{{ userRole() }}</span>
-        <span>{{ user.firstName }} {{ user.lastName }}</span>
-      }
+    <div class="header-right">
+      <div class="accessibility-controls">
+        <button class="acc-btn" title="Phone"><i class="pi pi-phone"></i></button>
+        <span class="acc-divider">|</span>
+        <button class="acc-btn" title="Decrease font">A-</button>
+        <button class="acc-btn acc-btn-mid" title="Normal font">A</button>
+        <button class="acc-btn" title="Increase font">A+</button>
+        <span class="acc-divider">|</span>
+        <button class="acc-btn lang-btn" title="Language">English <i class="pi pi-chevron-down"></i></button>
+        <span class="acc-divider">|</span>
+        <button class="acc-btn" title="Notifications"><i class="pi pi-bell"></i></button>
+      </div>
+      <div class="header-divider"></div>
+      <span class="user-avatar">{{ (auth.currentUser()?.username || 'U').charAt(0) }}</span>
+      <div class="user-details">
+        <span class="user-name">{{ auth.currentUser()?.username || 'Staff' }}</span>
+        <span class="user-role">CEPC {{ userRole() }}</span>
+      </div>
+      <button class="btn-logout" (click)="goBack()"><i class="pi pi-sign-out"></i></button>
     </div>
   </header>
 
-  <main class="content">
-    @if (loading()) {
-      <div class="loading">Loading complaint details...</div>
-    } @else if (!complaint()) {
-      <div class="error-state">Complaint not found.</div>
-    } @else {
-      <div class="detail-layout">
-        <!-- Left: Complaint Details -->
-        <div class="detail-panel">
-          <!-- Header -->
-          <div class="complaint-header">
-            <div class="header-left">
-              <h3>{{ complaint().complaintNumber || complaint().complaintId }}</h3>
-              <span class="status-badge" [attr.data-status]="complaint().status">{{ getStatusLabel(complaint().status) }}</span>
-              <span class="priority-badge" [attr.data-priority]="complaint().priority">{{ complaint().priority }}</span>
+  <!-- ═══ LEFT BLUE SIDEBAR ═══ -->
+  <aside class="left-sidebar">
+    <button class="sidebar-icon" title="Dashboard" (click)="goBack()"><i class="pi pi-th-large"></i></button>
+    <button class="sidebar-icon" title="Analytics"><i class="pi pi-chart-bar"></i></button>
+    <div class="sidebar-spacer"></div>
+    <button class="sidebar-icon bottom" title="Help"><i class="pi pi-circle"></i></button>
+  </aside>
+
+  <div class="main-area">
+  @if (loading()) {
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <p>Loading complaint details...</p>
+    </div>
+  } @else if (!complaint()) {
+    <div class="error-state">
+      <i class="pi pi-exclamation-circle"></i>
+      <p>Complaint not found.</p>
+      <button class="btn btn-primary" (click)="goBack()">Back to Dashboard</button>
+    </div>
+  } @else {
+
+    <!-- ═══ SUB-HEADER TAB BAR ═══ -->
+    <div class="sub-header">
+      <div class="complaint-tab active">
+        <i class="pi pi-file"></i>
+        Complaint {{ complaint()?.complaintNumber }}
+      </div>
+      <div class="complaint-tab add-tab" (click)="goBack()" title="Open Dashboard">
+        <i class="pi pi-plus"></i>
+      </div>
+    </div>
+
+    <!-- ═══ META ROW (KPI STRIP) ═══ -->
+    <div class="meta-row">
+      <button class="back-arrow" (click)="goBack()">
+        <i class="pi pi-arrow-left"></i>
+      </button>
+      <div class="meta-item">
+        <span class="meta-icon blue"><i class="pi pi-chart-bar"></i></span>
+        <div class="meta-text">
+          <span class="meta-label">Complaint Number <i class="pi pi-info-circle info-tip"></i></span>
+          <span class="meta-value">{{ complaint()?.complaintNumber }}</span>
+        </div>
+      </div>
+      <div class="meta-item">
+        <span class="meta-icon blue"><i class="pi pi-user"></i></span>
+        <div class="meta-text">
+          <span class="meta-label">Complainant Name <i class="pi pi-info-circle info-tip"></i></span>
+          <span class="meta-value">{{ complaint()?.complainantName || '—' }}</span>
+        </div>
+      </div>
+      <div class="meta-item">
+        <span class="meta-icon blue"><i class="pi pi-building"></i></span>
+        <div class="meta-text">
+          <span class="meta-label">Entity Name <i class="pi pi-info-circle info-tip"></i></span>
+          <span class="meta-value">{{ complaint()?.entityName || '—' }}</span>
+        </div>
+      </div>
+      <div class="meta-item">
+        <span class="meta-icon blue"><i class="pi pi-chart-bar"></i></span>
+        <div class="meta-text">
+          <span class="meta-label">Status <i class="pi pi-info-circle info-tip"></i></span>
+          <span class="meta-value">
+            <span class="status-pill green">{{ getStatusLabel(complaint()?.status) }}</span>
+          </span>
+        </div>
+      </div>
+      <div class="meta-item">
+        <span class="meta-icon blue"><i class="pi pi-tag"></i></span>
+        <div class="meta-text">
+          <span class="meta-label">Complaint Category <i class="pi pi-info-circle info-tip"></i></span>
+          <span class="meta-value">{{ complaint()?.category || '—' }}</span>
+        </div>
+      </div>
+      <div class="meta-item">
+        <span class="meta-icon red"><i class="pi pi-clock"></i></span>
+        <div class="meta-text">
+          <span class="meta-label">SLA Breach In <i class="pi pi-info-circle info-tip"></i></span>
+          <span class="meta-value">
+            <span class="sla-badge-pill">
+              <app-cepc-sla-indicator [slaDueDate]="complaint()?.slaDueDate" [status]="complaint()?.status"></app-cepc-sla-indicator>
+            </span>
+          </span>
+        </div>
+      </div>
+      <div class="meta-actions">
+        @if (activeTab() === 'final-decision') {
+          <div class="primary-action-group">
+            <button class="btn btn-primary" (click)="openPreviewConfirm()" [disabled]="finalDecisionConfirmed()">Preview &amp; Confirm</button>
+          </div>
+        } @else if (activeTab() === 'forward' && canAccessForward()) {
+          <div class="primary-action-group">
+            <button class="btn btn-primary" (click)="submitForward()">Forward</button>
+          </div>
+        } @else if (primaryAction(); as action) {
+          <div class="primary-action-group">
+            @if (action.id === 'INCHARGE_SEND' || action.id === 'CA_SEND') {
+              <button class="btn btn-primary" (click)="showActionDropdown.set(!showActionDropdown())" [disabled]="actionConfirmed()">{{ action.label }} <i class="pi pi-chevron-down" style="margin-left:6px;font-size:11px;"></i></button>
+            } @else {
+              <button class="btn btn-primary" (click)="openConfirmDialog(action)" [disabled]="actionConfirmed()">{{ action.label }}</button>
+              <button class="btn btn-primary dropdown-toggle" (click)="showActionDropdown.set(!showActionDropdown())" [disabled]="actionConfirmed()">
+                <i class="pi pi-chevron-down"></i>
+              </button>
+            }
+            @if (showActionDropdown()) {
+              <div class="action-dropdown">
+                @for (sa of secondaryActions(); track sa.id) {
+                  <button (click)="openConfirmDialog(sa); showActionDropdown.set(false)">{{ sa.label }}</button>
+                }
+              </div>
+            }
+          </div>
+        } @else if (!isTerminalState()) {
+          <span class="readonly-badge"><i class="pi pi-lock"></i> View Only</span>
+        }
+        <button class="btn-icon-action" title="Copy to clipboard"><i class="pi pi-copy"></i></button>
+        <button class="btn-more" (click)="showMoreMenu.set(!showMoreMenu())" title="More options"><i class="pi pi-ellipsis-v"></i></button>
+        @if (showMoreMenu()) {
+          <div class="more-menu">
+            @if (userRole() === 'CEPC_DO' && !isTerminalState()) {
+              <button (click)="showSendBackAction(); showMoreMenu.set(false)">Send Back to DO</button>
+              <button (click)="createCrpc(); showMoreMenu.set(false)">Create CRPC</button>
+            }
+            @if (canChangeOwner()) {
+              <button (click)="openChangeOwner(); showMoreMenu.set(false)">Change Owner</button>
+            }
+            @for (tpl of templates; track tpl.id) {
+              <button (click)="applyTemplate(tpl); showMoreMenu.set(false)">{{ tpl.label }}</button>
+            }
+          </div>
+        }
+      </div>
+    </div>
+
+    <!-- ═══ PAGE TABS ═══ -->
+    <div class="page-tabs">
+      <button class="page-tab" [class.active]="activeTab() === 'summary'" (click)="activeTab.set('summary')">
+        <i class="pi pi-file"></i> Summary
+      </button>
+      <button class="page-tab" [class.active]="activeTab() === 'conciliation'" (click)="activeTab.set('conciliation')"
+        [class.disabled]="!canAccessConciliation()" [disabled]="!canAccessConciliation()">
+        <i class="pi pi-users"></i> Conciliation
+      </button>
+      <button class="page-tab" [class.active]="activeTab() === 'forward'" (click)="activeTab.set('forward')"
+        [class.disabled]="!canAccessForward()" [disabled]="!canAccessForward()">
+        <i class="pi pi-send"></i> Forward
+      </button>
+      <button class="page-tab" [class.active]="activeTab() === 'final-decision'" (click)="activeTab.set('final-decision')"
+        [class.disabled]="!canTakeFinalDecision()" [disabled]="!canTakeFinalDecision()">
+        <i class="pi pi-check-circle"></i> Final Decision
+      </button>
+      <button class="page-tab" [class.active]="activeTab() === 'contact-entity'" (click)="activeTab.set('contact-entity')">
+        <i class="pi pi-building"></i> Contact Entity
+      </button>
+      <button class="page-tab" [class.active]="activeTab() === 'email'" (click)="activeTab.set('email')">
+        <i class="pi pi-envelope"></i> Email Communication
+      </button>
+    </div>
+
+    <!-- ═══ CONTENT BOX ═══ -->
+    <div class="content-box-wrapper">
+      <div class="content-box">
+        <div class="main-content-layout two-col">
+
+          <!-- ════════════════════════════════════════════════════ -->
+          <!-- LEFT PANEL: Complaint Info with Collapsible Sections -->
+          <!-- ════════════════════════════════════════════════════ -->
+          <div class="col-complaint">
+            <div class="panel-header">
+              <h3><i class="pi pi-th-large"></i> Complaint</h3>
+              <div class="panel-header-actions">
+                @if (!isTerminalState()) {
+                  <a class="edit-link" (click)="editMode.set(!editMode())">Edit</a>
+                }
+                <button class="expand-btn" title="Expand">
+                  <i class="pi pi-window-maximize"></i>
+                </button>
+              </div>
             </div>
-            <div class="header-meta">
-              <span>Filed: {{ complaint().registeredAt | date:'dd MMM yyyy' }}</span>
-              <app-cepc-sla-indicator [slaDueDate]="complaint().slaDueDate" [status]="complaint().status"></app-cepc-sla-indicator>
+
+          <!-- Basic Details Section -->
+          <div class="form-section" [class.open]="openSections().has('basic')">
+            <div class="section-header" (click)="toggleSection('basic')">
+              <span><i class="pi pi-chart-bar"></i> Basic Details</span>
+              <i class="pi" [class.pi-chevron-down]="openSections().has('basic')" [class.pi-chevron-up]="!openSections().has('basic')"></i>
             </div>
+            @if (openSections().has('basic')) {
+              <div class="section-body">
+                <div class="field-grid-2">
+                  <div class="field-item">
+                    <label>Complainant Name</label>
+                    <span class="field-value">{{ complaint().complainantName }}</span>
+                  </div>
+                  <div class="field-item">
+                    <label>Email ID</label>
+                    <span class="field-value">{{ complaint().complainantEmail || '—' }}</span>
+                  </div>
+                </div>
+                <div class="field-item full">
+                  <label>Subject</label>
+                  <span class="field-value">{{ complaint().subject }}</span>
+                </div>
+                <div class="field-item full">
+                  <label>Complaint Details</label>
+                  <p class="field-readonly">{{ complaint().description || '—' }}</p>
+                </div>
+                <div class="field-item full">
+                  <label>Comments</label>
+                  <span class="field-value">{{ complaint().comments || '—' }}</span>
+                </div>
+                <div class="field-grid-2">
+                  <div class="field-item">
+                    <label>Mode of Receipt</label>
+                    <span class="field-value">{{ complaint().modeOfReceipt || complaint().filingType || '—' }}</span>
+                  </div>
+                  <div class="field-item">
+                    <label>Receipt Date</label>
+                    <span class="field-value">{{ complaint().receiptDate || complaint().registeredAt | date:'dd-MM-yyyy' }}</span>
+                  </div>
+                </div>
+              </div>
+            }
           </div>
 
-          <!-- Complainant Details -->
-          <section class="detail-section">
-            <h4>Complainant Details</h4>
-            <div class="field-grid">
-              <div class="field">
-                <label>Name</label>
-                <span>{{ complaint().complainantName }}</span>
-              </div>
-              <div class="field">
-                <label>Email</label>
-                <span>{{ complaint().complainantEmail || '—' }}</span>
-              </div>
-              <div class="field">
-                <label>Phone</label>
-                <span>{{ complaint().complainantPhone || '—' }}</span>
-              </div>
-              <div class="field">
-                <label>Address</label>
-                <span>{{ complaint().complainantAddress || '—' }}</span>
-              </div>
+          <!-- Eligibility Section -->
+          <div class="form-section" [class.open]="openSections().has('eligibility')">
+            <div class="section-header" (click)="toggleSection('eligibility')">
+              <span><i class="pi pi-chart-bar"></i> Eligibility</span>
+              <i class="pi" [class.pi-chevron-down]="openSections().has('eligibility')" [class.pi-chevron-up]="!openSections().has('eligibility')"></i>
             </div>
-          </section>
+            @if (openSections().has('eligibility')) {
+              <div class="section-body">
+                <div class="field-grid-2">
+                  <div class="field-item">
+                    <label>Proposed Complaint Type</label>
+                    <span class="field-value">{{ complaint().proposedComplaintType || '—' }}</span>
+                  </div>
+                  <div class="field-item">
+                    <label>Reason for not a complaint</label>
+                    <span class="field-value">{{ complaint().reasonNotComplaint || '—' }}</span>
+                  </div>
+                </div>
+                <div class="field-grid-2">
+                  <div class="field-item">
+                    <label>Complaint Category</label>
+                    <span class="field-value">{{ complaint().category || '—' }}</span>
+                  </div>
+                  <div class="field-item">
+                    <label>Entity Name</label>
+                    <span class="field-value">{{ complaint().entityName || '—' }}</span>
+                  </div>
+                </div>
+              </div>
+            }
+          </div>
 
-          <!-- Entity Details -->
-          <section class="detail-section">
-            <h4>Entity Details</h4>
-            <div class="field-grid">
-              <div class="field">
-                <label>Entity Name</label>
-                <span>{{ complaint().entityName || '—' }}</span>
-              </div>
-              <div class="field">
-                <label>Entity Type</label>
-                <span>{{ complaint().entityType || '—' }}</span>
-              </div>
-              <div class="field">
-                <label>Department</label>
-                <span class="dept-badge">CEPC</span>
-              </div>
-              <div class="field">
-                <label>Assigned To</label>
-                <span>{{ complaint().assignedTo || complaint().assignedTeam || '—' }}</span>
-              </div>
+          <!-- Entity Details Section -->
+          <div class="form-section" [class.open]="openSections().has('entity')">
+            <div class="section-header" (click)="toggleSection('entity')">
+              <span><i class="pi pi-chart-bar"></i> Entity Details</span>
+              <i class="pi" [class.pi-chevron-down]="openSections().has('entity')" [class.pi-chevron-up]="!openSections().has('entity')"></i>
             </div>
-          </section>
+            @if (openSections().has('entity')) {
+              <div class="section-body">
+                <div class="field-grid-2">
+                  <div class="field-item">
+                    <label>Entity Name</label>
+                    <span class="field-value">{{ complaint().entityName || '—' }}</span>
+                  </div>
+                  <div class="field-item">
+                    <label>Module Name</label>
+                    <span class="field-value">{{ complaint().moduleName || '—' }}</span>
+                  </div>
+                  <div class="field-item">
+                    <label>Bank Category</label>
+                    <span class="field-value">{{ complaint().bankCategory || '—' }}</span>
+                  </div>
+                  <div class="field-item">
+                    <label>Bank Name</label>
+                    <span class="field-value">{{ complaint().bankName || '—' }}</span>
+                  </div>
+                  <div class="field-item">
+                    <label>Bank Branch Category</label>
+                    <span class="field-value">{{ complaint().bankBranchCategory || '—' }}</span>
+                  </div>
+                  <div class="field-item">
+                    <label>Bank Branch Name</label>
+                    <span class="field-value">{{ complaint().bankBranchName || '—' }}</span>
+                  </div>
+                  <div class="field-item">
+                    <label>Pincode</label>
+                    <span class="field-value">{{ complaint().pincode || '—' }}</span>
+                  </div>
+                  <div class="field-item">
+                    <label>City</label>
+                    <span class="field-value">{{ complaint().city || '—' }}</span>
+                  </div>
+                  <div class="field-item">
+                    <label>District</label>
+                    <span class="field-value">{{ complaint().district || '—' }}</span>
+                  </div>
+                  <div class="field-item">
+                    <label>State</label>
+                    <span class="field-value">{{ complaint().state || '—' }}</span>
+                  </div>
+                </div>
+              </div>
+            }
+          </div>
 
-          <!-- Complaint Details -->
-          <section class="detail-section">
-            <h4>Complaint Information</h4>
-            <div class="field full-width">
-              <label>Subject</label>
-              <span>{{ complaint().subject }}</span>
+          <!-- Complainant Details Section -->
+          <div class="form-section" [class.open]="openSections().has('complainant')">
+            <div class="section-header" (click)="toggleSection('complainant')">
+              <span><i class="pi pi-chart-bar"></i> Complainant Details</span>
+              <i class="pi" [class.pi-chevron-down]="openSections().has('complainant')" [class.pi-chevron-up]="!openSections().has('complainant')"></i>
             </div>
-            <div class="field full-width">
-              <label>Description</label>
-              <p class="description-text">{{ complaint().description || '—' }}</p>
-            </div>
-            <div class="field-grid">
-              <div class="field">
-                <label>Category</label>
-                <span>{{ complaint().category || '—' }}</span>
+            @if (openSections().has('complainant')) {
+              <div class="section-body">
+                <div class="field-grid-2">
+                  <div class="field-item">
+                    <label>NO Name</label>
+                    <span class="field-value">{{ complaint().noName || '—' }}</span>
+                  </div>
+                  <div class="field-item">
+                    <label>NO Mobile</label>
+                    <span class="field-value">{{ complaint().noMobile || '—' }}</span>
+                  </div>
+                  <div class="field-item">
+                    <label>NO Email</label>
+                    <span class="field-value">{{ complaint().noEmail || '—' }}</span>
+                  </div>
+                  <div class="field-item">
+                    <label>PNO Name</label>
+                    <span class="field-value">{{ complaint().pnoName || '—' }}</span>
+                  </div>
+                  <div class="field-item">
+                    <label>PNO Mobile</label>
+                    <span class="field-value">{{ complaint().pnoMobile || '—' }}</span>
+                  </div>
+                  <div class="field-item">
+                    <label>PNO Email</label>
+                    <span class="field-value">{{ complaint().pnoEmail || '—' }}</span>
+                  </div>
+                </div>
               </div>
-              <div class="field">
-                <label>Amount Involved</label>
-                <span>{{ complaint().amountInvolved ? '₹' + complaint().amountInvolved : '—' }}</span>
-              </div>
-              <div class="field">
-                <label>Transaction Date</label>
-                <span>{{ complaint().transactionDate | date:'dd MMM yyyy' }}</span>
-              </div>
-              <div class="field">
-                <label>Filing Type</label>
-                <span>{{ complaint().filingType || '—' }}</span>
-              </div>
-            </div>
-          </section>
+            }
+          </div>
 
-          <!-- Documents -->
-          <section class="detail-section">
-            <h4>Documents</h4>
-            <div class="documents-area">
-              @if (documents().length > 0) {
-                <div class="doc-list">
-                  @for (doc of documents(); track doc.id) {
-                    <div class="doc-item">
-                      <span class="doc-icon">&#128196;</span>
-                      <div class="doc-info">
-                        <span class="doc-name">{{ doc.name }}</span>
-                        <span class="doc-meta">{{ doc.size }} &middot; {{ doc.uploadedBy }} &middot; {{ doc.uploadedAt | date:'dd MMM yyyy' }}</span>
-                      </div>
+          <!-- Contact Entity Table (shown in contact-entity tab) -->
+          @if (activeTab() === 'contact-entity') {
+            <div class="form-section open">
+              <div class="section-header">
+                <span><i class="pi pi-building"></i> Contact Persons</span>
+              </div>
+              <div class="section-body">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Contact Person</th><th>Subject</th><th>Bank Name</th><th>SLA Breach In</th><th>Assigned To</th><th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (cp of contactPersonList(); track cp.id) {
+                      <tr>
+                        <td>{{ cp.id }}</td>
+                        <td>{{ cp.subject }}</td>
+                        <td>{{ cp.bankName }}</td>
+                        <td><span class="sla-badge">{{ cp.slaDays }} Days</span></td>
+                        <td>{{ cp.assignedTo }}</td>
+                        <td><span class="status-mini" [attr.data-status]="cp.status">{{ cp.statusLabel }}</span></td>
+                      </tr>
+                    } @empty {
+                      <tr><td colspan="6" class="empty">No contact persons assigned.</td></tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          }
+
+          <!-- Email History (shown in email tab) -->
+          @if (activeTab() === 'email') {
+            <div class="form-section open">
+              <div class="section-header">
+                <span><i class="pi pi-envelope"></i> Email Communications</span>
+              </div>
+              <div class="section-body">
+                @for (email of emailHistory(); track email.id) {
+                  <div class="email-card">
+                    <div class="email-header">
+                      <span class="email-direction" [class.inbound]="email.direction === 'IN'" [class.outbound]="email.direction === 'OUT'">
+                        {{ email.direction === 'IN' ? 'Received' : 'Sent' }}
+                      </span>
+                      <span class="email-date">{{ email.timestamp | date:'dd MMM yyyy HH:mm' }}</span>
                     </div>
-                  }
-                </div>
-              } @else {
-                <p class="no-docs">No documents uploaded yet.</p>
-              }
-              @if (!isTerminalState()) {
-                <div class="upload-area">
-                  <label class="upload-btn">
-                    <input type="file" (change)="onDocumentUpload($event)" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" hidden />
-                    &#128206; Upload Document
-                  </label>
-                  @if (uploadingDoc()) {
-                    <span class="uploading">Uploading...</span>
-                  }
-                </div>
-              }
+                    <div class="email-subject">{{ email.subject }}</div>
+                    <div class="email-body">{{ email.body | slice:0:200 }}{{ email.body.length > 200 ? '...' : '' }}</div>
+                  </div>
+                } @empty {
+                  <p class="empty-text">No email communications yet.</p>
+                }
+              </div>
             </div>
-          </section>
-
-          <!-- Audit Trail / Timeline -->
-          <app-cepc-timeline [complaintNumber]="complaint().complaintNumber || complaint().complaintId"></app-cepc-timeline>
-
-          <!-- Conciliation Panel (shown when workflow stage involves conciliation) -->
-          @if (complaint().workflowStage?.toLowerCase()?.includes('conciliation') || complaint().status === 'conciliation') {
-            <app-cepc-conciliation [complaint]="complaint()"></app-cepc-conciliation>
           }
         </div>
 
-        <!-- Right: Action Panel -->
-        <div class="action-panel">
-          @if (isTerminalState()) {
-            <div class="closed-banner">
-              <span class="closed-icon">&#10003;</span>
-              <h4>Complaint {{ complaint().status | uppercase }}</h4>
-              <p>This complaint has been closed. No further actions available.</p>
+        <!-- ════════════════════════════════════════════════════ -->
+        <!-- RIGHT PANEL: Assessment / Action Panel              -->
+        <!-- ════════════════════════════════════════════════════ -->
+        <div class="col-assessment">
+          <!-- Assessment Section (Summary tab) -->
+          @if (activeTab() === 'summary') {
+            <div class="panel-header">
+              <h3><i class="pi pi-shield"></i> Assessment</h3>
+              <button class="expand-btn" title="Expand">
+                <i class="pi pi-window-maximize"></i>
+              </button>
             </div>
-          } @else {
-            <h4>Available Actions</h4>
-            <p class="action-hint">Select an action to perform on this complaint.</p>
+            <div class="assessment-body">
+              <div class="field-item">
+                <label>Proposed Reason for Closure</label>
+                <select [(ngModel)]="closureReason" [disabled]="isTerminalState()">
+                  <option value="">Select a Value</option>
+                  <option value="resolved">Resolved</option>
+                  <option value="non_maintainable">Non Maintainable</option>
+                  <option value="withdrawn">Withdrawn by Complainant</option>
+                  <option value="duplicate">Duplicate</option>
+                  <option value="not_rbi_jurisdiction">Not RBI Jurisdiction</option>
+                </select>
+              </div>
 
-            <div class="action-list">
-              @for (action of availableActions(); track action.id) {
-                <button class="action-card" [class]="action.style"
-                        [class.selected]="selectedAction()?.id === action.id"
-                        (click)="selectAction(action)">
-                  <span class="action-label">{{ action.label }}</span>
-                  <span class="action-desc">{{ action.description }}</span>
-                </button>
+              @if (userRole() === 'CEPC_DO') {
+                <div class="field-item">
+                  <label>Want to Add Other Entities?</label>
+                  <div class="radio-group">
+                    <label><input type="radio" name="addEntities" [value]="true" [(ngModel)]="wantAddEntities" /> Yes</label>
+                    <label><input type="radio" name="addEntities" [value]="false" [(ngModel)]="wantAddEntities" /> No</label>
+                  </div>
+                </div>
+              }
+
+              <div class="field-item">
+                <label>Comments</label>
+                <div class="textarea-row">
+                  <textarea [(ngModel)]="newComment" placeholder="Enter text here" rows="3"></textarea>
+                  <button class="btn-icon-sm" title="Save comment" (click)="postComment()"><i class="pi pi-bookmark"></i></button>
+                </div>
+              </div>
+
+              <div class="add-comment-section">
+                <input type="text" class="add-comment-input" [(ngModel)]="newComment" placeholder="Add a comment" />
+                <button class="btn-send-comment" (click)="postComment()" title="Send"><i class="pi pi-send"></i></button>
+              </div>
+
+              <div class="panel-bottom-toolbar">
+                <button class="panel-tool-btn" title="Attachments"><i class="pi pi-paperclip"></i></button>
+                <button class="panel-tool-btn" title="Templates"><i class="pi pi-stop"></i></button>
+                <button class="panel-tool-btn" title="Code"><i class="pi pi-code"></i></button>
+              </div>
+            </div>
+          }
+
+          <!-- Conciliation Panel (right) -->
+          @if (activeTab() === 'conciliation') {
+            <div class="panel-header">
+              <h3><i class="pi pi-users"></i> Conciliation</h3>
+              <button class="expand-btn" title="Expand"><i class="pi pi-window-maximize"></i></button>
+            </div>
+            <div class="assessment-body">
+              <div class="field-item">
+                <label>Meeting Status</label>
+                <select [(ngModel)]="meetingStatus" [disabled]="!canScheduleMeeting()">
+                  <option value="">Select a Value</option>
+                  <option value="scheduled">Scheduled</option>
+                  <option value="completed">Completed</option>
+                  <option value="cancelled">Cancelled</option>
+                </select>
+              </div>
+              <div class="field-grid-2">
+                <div class="field-item">
+                  <label>Date</label>
+                  <input type="date" [(ngModel)]="meetingDate" [disabled]="!canScheduleMeeting()" />
+                </div>
+                <div class="field-item">
+                  <label>Time</label>
+                  <input type="time" [(ngModel)]="meetingTime" [disabled]="!canScheduleMeeting()" />
+                </div>
+              </div>
+              <div class="field-grid-2">
+                <div class="field-item">
+                  <label>Meeting Accepted by Complainant?</label>
+                  <div class="radio-group">
+                    <label><input type="radio" name="complainantAccepted" value="yes" [(ngModel)]="complainantAccepted" [disabled]="!canScheduleMeeting()" /> Yes</label>
+                    <label><input type="radio" name="complainantAccepted" value="no" [(ngModel)]="complainantAccepted" [disabled]="!canScheduleMeeting()" /> No</label>
+                  </div>
+                </div>
+                <div class="field-item">
+                  <label>Meeting Accepted by Entity?</label>
+                  <div class="radio-group">
+                    <label><input type="radio" name="entityAccepted" value="yes" [(ngModel)]="entityAccepted" [disabled]="!canScheduleMeeting()" /> Yes</label>
+                    <label><input type="radio" name="entityAccepted" value="no" [(ngModel)]="entityAccepted" [disabled]="!canScheduleMeeting()" /> No</label>
+                  </div>
+                </div>
+              </div>
+              <div class="field-item">
+                <label>Meeting via VC?</label>
+                <div class="radio-group">
+                  <label><input type="radio" name="meetingVc" value="yes" [(ngModel)]="meetingVc" [disabled]="!canScheduleMeeting()" /> Yes</label>
+                  <label><input type="radio" name="meetingVc" value="no" [(ngModel)]="meetingVc" [disabled]="!canScheduleMeeting()" /> No</label>
+                </div>
+              </div>
+              <div class="field-item">
+                <label>Meeting Comments</label>
+                <textarea [(ngModel)]="meetingComments" rows="3" placeholder="Enter text here" [disabled]="!canScheduleMeeting()"></textarea>
+              </div>
+              <div class="field-item">
+                <label>Comments</label>
+                <textarea [(ngModel)]="conciliationRemarks" rows="3" placeholder="Enter text here" [disabled]="!canScheduleMeeting()"></textarea>
+              </div>
+              @if (canScheduleMeeting()) {
+                <button class="btn btn-primary" (click)="scheduleMeeting()" [disabled]="!meetingDate || !meetingStatus">Confirm Meeting</button>
               }
             </div>
+          }
 
-            @if (selectedAction(); as action) {
-              <div class="action-form">
-                <h5>{{ action.label }}</h5>
+          <!-- Forward Panel (right) -->
+          @if (activeTab() === 'forward') {
+            <div class="panel-header">
+              <h3><i class="pi pi-send"></i> Forward</h3>
+              <button class="expand-btn" title="Expand"><i class="pi pi-window-maximize"></i></button>
+            </div>
+            <div class="assessment-body">
+              <div class="field-item">
+                <label>Forward To</label>
+                <div class="forward-options">
+                  @for (opt of forwardOptions(); track opt.value) {
+                    <button class="forward-option" [class.active]="forwardTo() === opt.value" (click)="forwardTo.set(opt.value)">
+                      {{ opt.label }}
+                    </button>
+                  }
+                </div>
+              </div>
+              @if (forwardTo() === 'OTHER_REGULATORY') {
+                <div class="field-item">
+                  <label>Name of Other Regulatory Body</label>
+                  <input type="text" [(ngModel)]="forwardTargetName" placeholder="Search" />
+                </div>
+              }
+              @if (forwardTo() === 'OTHER_RBI_DEPT') {
+                <div class="field-item">
+                  <label>Name of Other RBI Department</label>
+                  <select [(ngModel)]="forwardTargetName">
+                    <option value="">Select</option>
+                    @for (dept of rbiDepartments; track dept) {
+                      <option [value]="dept">{{ dept }}</option>
+                    }
+                  </select>
+                </div>
+              }
+              @if (forwardTo() === 'OTHER_OFFICE') {
+                <div class="field-item">
+                  <label>Name of Other Office</label>
+                  <input type="text" [(ngModel)]="forwardTargetName" placeholder="Search" />
+                </div>
+              }
+              <div class="field-item">
+                <label>Complaint Status on Portal</label>
+                <input type="text" [value]="getForwardStatusLabel()" disabled />
+              </div>
+              <div class="field-item">
+                <label>Reason to Forward</label>
+                <select [(ngModel)]="forwardReason">
+                  <option value="">Select a Value</option>
+                  <option value="not_jurisdiction">Not in RBI Jurisdiction</option>
+                  <option value="other_dept_matter">Other Department Matter</option>
+                  <option value="regional_office">Regional Office Matter</option>
+                </select>
+              </div>
+              <div class="field-item">
+                <label>Comments</label>
+                <textarea [(ngModel)]="forwardComments" rows="3" placeholder="Enter text here"></textarea>
+              </div>
+            </div>
+          }
 
-                @if (action.requiresTarget && action.targetType === 'department') {
-                  <div class="form-field">
-                    <label>Target Department</label>
-                    <select [(ngModel)]="targetDepartment">
-                      <option value="">Select Department</option>
-                      @for (dept of rbiDepartments; track dept) {
-                        <option [value]="dept">{{ dept }}</option>
-                      }
-                    </select>
-                  </div>
+          <!-- Final Decision Panel (right) -->
+          @if (activeTab() === 'final-decision') {
+            <div class="panel-header">
+              <h3><i class="pi pi-check-circle"></i> Final Decision</h3>
+              <button class="expand-btn" title="Expand"><i class="pi pi-window-maximize"></i></button>
+            </div>
+            <div class="assessment-body">
+              <div class="final-decision-toggle">
+                @if (isTerminalState() && userRole() === 'CEPC_CLOSING_AUTHORITY') {
+                  <button class="toggle-btn active" (click)="finalDecisionMode = 'reopen'">
+                    <i class="pi pi-refresh"></i> Reopen Complaint
+                  </button>
+                } @else {
+                  <button class="toggle-btn" [class.active]="finalDecisionMode === 'close'" (click)="finalDecisionMode = 'close'">
+                    <i class="pi pi-circle-fill"></i> Close Complaint
+                  </button>
+                  <button class="toggle-btn" [class.active]="finalDecisionMode === 'mark_closure'" (click)="finalDecisionMode = 'mark_closure'">
+                    <i class="pi pi-circle"></i> Mark For Closure
+                  </button>
+                  @if (userRole() === 'CEPC_CLOSING_AUTHORITY') {
+                    <button class="toggle-btn" [class.active]="finalDecisionMode === 'reopen'" (click)="finalDecisionMode = 'reopen'">
+                      <i class="pi pi-refresh"></i> Reopen
+                    </button>
+                  }
                 }
+              </div>
 
-                @if (action.requiresTarget && action.targetType === 'user') {
-                  <div class="form-field">
-                    <label>Assign To</label>
-                    <select [(ngModel)]="targetUser">
-                      <option value="">Select {{ action.id === 'FORWARD_TO_CONTACT' || action.id === 'CONTACT_REASSIGN' ? 'Contact Person' : 'Officer' }}</option>
-                      @if (action.id === 'FORWARD_TO_CONTACT' || action.id === 'CONTACT_REASSIGN') {
-                        @for (cp of contactPersons(); track cp.id) {
-                          <option [value]="cp.id">{{ cp.name }}</option>
-                        }
-                      } @else {
-                        @for (officer of cepcOfficers(); track officer.id) {
-                          <option [value]="officer.id">{{ officer.name }}</option>
-                        }
-                      }
-                    </select>
+              @if (finalDecisionMode === 'reopen') {
+                <div class="field-item">
+                  <label>Reason for Reopening</label>
+                  <textarea [(ngModel)]="reopenReason" rows="3" placeholder="Specify reasons for reopening the complaint"></textarea>
+                </div>
+              }
+
+              <div class="field-item">
+                <label>Reason to Closure</label>
+                <select [(ngModel)]="finalDecisionReason" [disabled]="!canTakeFinalDecision()">
+                  <option value="">Select a Value</option>
+                  <option value="resolved">Complaint Resolved</option>
+                  <option value="non_maintainable">Non Maintainable</option>
+                  <option value="withdrawn">Withdrawn</option>
+                  <option value="no_deficiency">No Deficiency Found</option>
+                  <option value="settled">Settled via Conciliation</option>
+                </select>
+              </div>
+
+              <div class="field-grid-2">
+                <div class="field-item">
+                  <label>Gist of the Case</label>
+                  <div class="input-with-icon">
+                    <input type="text" [(ngModel)]="gistOfCase" placeholder="Search" [disabled]="!canTakeFinalDecision()" />
+                    <i class="pi pi-search"></i>
                   </div>
-                }
+                </div>
+                <div class="field-item">
+                  <label>Gist of the Case in regional language</label>
+                  <div class="input-with-icon">
+                    <input type="text" [(ngModel)]="gistRegional" placeholder="Search" [disabled]="!canTakeFinalDecision()" />
+                    <i class="pi pi-search"></i>
+                  </div>
+                </div>
+              </div>
 
-                @if (action.requiresRemarks) {
-                  <div class="form-field">
-                    <label>Remarks</label>
-                    <div class="textarea-with-speech">
-                      <textarea [(ngModel)]="remarks" rows="4"
-                                placeholder="Enter remarks (required)..."></textarea>
-                      <app-speech-button (transcription)="remarks = remarks + ' ' + $event"></app-speech-button>
+              <div class="comments-section">
+                <h4 class="sub-section-title">All Comments</h4>
+                @for (comment of comments(); track comment.id) {
+                  <div class="comment-item">
+                    <div class="comment-avatar">{{ comment.author.charAt(0) }}</div>
+                    <div class="comment-body">
+                      <div class="comment-meta">
+                        <span class="comment-time">{{ comment.timestamp | date:'short' }}</span>
+                        <span class="comment-author">{{ comment.author }}</span>
+                      </div>
+                      <p>{{ comment.text }}</p>
                     </div>
                   </div>
+                } @empty {
+                  <p class="empty-text">No comments yet.</p>
                 }
+              </div>
 
-                <div class="form-actions">
-                  <button class="submit-btn" [disabled]="processing() || (action.requiresRemarks && !remarks.trim())"
-                          (click)="submitAction()">
-                    @if (processing()) { Processing... } @else { Confirm {{ action.label }} }
-                  </button>
-                  <button class="cancel-btn" (click)="cancelAction()">Cancel</button>
+              <div class="field-item">
+                <label>Comments</label>
+                <div class="textarea-row">
+                  <textarea [(ngModel)]="newComment" placeholder="Enter text here" rows="3"></textarea>
+                  <button class="btn-icon-sm" title="Save comment" (click)="postComment()"><i class="pi pi-bookmark"></i></button>
+                </div>
+              </div>
+
+              <div class="field-item">
+                <label>Closure Letter Content</label>
+                <div class="textarea-row">
+                  <textarea [(ngModel)]="closureLetterContent" rows="3" placeholder="Enter text here" [disabled]="!canTakeFinalDecision()"></textarea>
+                  <button class="btn-icon-sm" title="Voice input"><i class="pi pi-microphone"></i></button>
+                </div>
+              </div>
+            </div>
+          }
+
+          <!-- Contact Entity Panel (right) -->
+          @if (activeTab() === 'contact-entity') {
+            <div class="panel-header">
+              <h3><i class="pi pi-building"></i> Contact Entity Actions</h3>
+              <button class="expand-btn" title="Expand"><i class="pi pi-window-maximize"></i></button>
+            </div>
+            <div class="assessment-body">
+              <p class="empty-text">Select a contact person from the left panel to view details.</p>
+            </div>
+          }
+
+          <!-- Email Compose Panel (right) -->
+          @if (activeTab() === 'email') {
+            <div class="panel-header">
+              <h3><i class="pi pi-envelope"></i> Compose Email</h3>
+              <button class="expand-btn" title="Expand"><i class="pi pi-window-maximize"></i></button>
+            </div>
+            <div class="assessment-body">
+              <app-cepc-email-compose
+                [complaintNumber]="complaint()?.complaintNumber"
+                [complainantEmail]="complaint()?.complainantEmail"
+                [entityEmail]="complaint()?.entityEmail"
+                (sent)="loadEmailHistory(complaint()?.complaintNumber)">
+              </app-cepc-email-compose>
+            </div>
+          }
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ═══ FLOATING TOOLBAR (Right edge) ═══ -->
+      <div class="inline-icon-bar">
+        <div class="iib-btn-group">
+          <button class="iib-btn" title="Search / Similar cases"><i class="pi pi-search"></i></button>
+          <button class="iib-btn iib-attach-btn" title="Attachments">
+            <i class="pi pi-paperclip"></i>
+            <span class="iib-badge">5</span>
+          </button>
+          <button class="iib-btn" title="History"><i class="pi pi-history"></i></button>
+          <button class="iib-btn" title="Signature"><i class="pi pi-wave-pulse"></i></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ CONFIRMATION DIALOG ═══ -->
+    @if (showConfirmDialog()) {
+      <div class="dialog-overlay" (click)="showConfirmDialog.set(false)">
+        <div class="confirm-dialog" (click)="$event.stopPropagation()">
+          <div class="dialog-header">
+            <span><i class="pi pi-info-circle info-icon"></i> Confirmation</span>
+            <button class="close-btn" (click)="showConfirmDialog.set(false)">&times;</button>
+          </div>
+          <div class="dialog-body">
+            <p>Are you sure you want to <strong>{{ getConfirmationText(pendingAction()) }}</strong> ?</p>
+
+            @if (pendingAction()?.id === 'SEND_TO_REVIEWER' || pendingAction()?.id === 'SEND_TO_CEPC_REVIEWER' || pendingAction()?.id === 'SEND_TO_CEPC_INCHARGE' || pendingAction()?.id === 'SEND_TO_INCHARGE' || pendingAction()?.id === 'SEND_TO_CLOSING_AUTHORITY') {
+              <div class="dialog-row-2col">
+                <div class="dialog-field">
+                  <label>Assignment</label>
+                  <select [(ngModel)]="assignmentMode" (ngModelChange)="onAssignmentModeChange($event)">
+                    <option value="automatic">Automatic</option>
+                    <option value="manual">Manual</option>
+                  </select>
+                </div>
+                <div class="dialog-field">
+                  <label>{{ getAssignmentLabel(pendingAction()?.id) }}</label>
+                  @if (assignmentMode === 'automatic') {
+                    <div class="input-with-icon">
+                      <input type="text" [value]="assignmentTarget" readonly [placeholder]="getAssignmentLabel(pendingAction()?.id)" />
+                      <i class="pi pi-search"></i>
+                    </div>
+                  } @else {
+                    <div class="input-with-icon">
+                      <select [(ngModel)]="assignmentTarget">
+                        <option value="">Select</option>
+                        @for (officer of (pendingAction()?.id === 'SEND_TO_CEPC_INCHARGE' || pendingAction()?.id === 'SEND_TO_INCHARGE' ? cepcIncharges() : pendingAction()?.id === 'SEND_TO_CLOSING_AUTHORITY' ? cepcClosingAuthorities() : cepcReviewers()); track officer.name) {
+                          <option [value]="officer.name">{{ officer.name }}</option>
+                        }
+                      </select>
+                      <i class="pi pi-search"></i>
+                    </div>
+                  }
                 </div>
               </div>
             }
 
-            @if (actionResult()) {
-              <div class="result-msg" [class.success]="actionSuccess()" [class.error]="!actionSuccess()">
-                {{ actionResult() }}
+            @if (pendingAction()?.requiresRemarks && pendingAction()?.id !== 'SEND_TO_REVIEWER' && pendingAction()?.id !== 'SEND_TO_CEPC_REVIEWER' && pendingAction()?.id !== 'SEND_TO_CEPC_INCHARGE') {
+              <div class="dialog-field">
+                <label>Remarks</label>
+                <textarea [(ngModel)]="confirmRemarks" rows="3" placeholder="Enter remarks"></textarea>
               </div>
             }
-          }
+
+            <div class="status-change-row">
+              <span class="expected-label">Expected Status Change <i class="pi pi-info-circle" style="font-size:12px;color:#94a3b8;"></i></span>
+              <div class="status-flow">
+                <span class="status-chip from"><i class="pi pi-shield"></i> New Complaint</span>
+                <i class="pi pi-arrow-right flow-arrow"></i>
+                <span class="status-chip to"><i class="pi pi-shield"></i> {{ getExpectedStatus(pendingAction()?.id) }}</span>
+              </div>
+            </div>
+          </div>
+          <div class="dialog-footer">
+            <button class="btn btn-outline" (click)="showConfirmDialog.set(false)">Cancel</button>
+            <button class="btn btn-primary" (click)="confirmAction()" [disabled]="processing()">
+              {{ processing() ? 'Processing...' : 'Confirm' }}
+            </button>
+          </div>
         </div>
       </div>
     }
-  </main>
+
+    <!-- ═══ PREVIEW & CONFIRM DIALOG (Final Decision) ═══ -->
+    @if (showPreviewDialog()) {
+      <div class="dialog-overlay" (click)="showPreviewDialog.set(false)">
+        <div class="confirm-dialog preview-dialog" (click)="$event.stopPropagation()">
+          <div class="dialog-header">
+            <span><i class="pi pi-info-circle info-icon"></i> Preview and Confirm</span>
+            <button class="close-btn" (click)="showPreviewDialog.set(false)">&times;</button>
+          </div>
+          <div class="dialog-body">
+            <p>Are you sure you want to <strong>{{ finalDecisionMode === 'reopen' ? 'reopen the complaint' : finalDecisionMode === 'mark_closure' ? 'mark the complaint for closure' : 'close the complaint' }}</strong> ?</p>
+
+            <div class="status-change-row">
+              <span class="expected-label">Expected Status Change <i class="pi pi-info-circle" style="font-size:12px;color:#94a3b8;"></i></span>
+              <div class="status-flow">
+                <span class="status-chip from"><i class="pi pi-shield"></i> {{ finalDecisionMode === 'reopen' ? 'Closed' : 'New Complaint' }}</span>
+                <i class="pi pi-arrow-right flow-arrow"></i>
+                <span class="status-chip to"><i class="pi pi-shield"></i> {{ finalDecisionMode === 'reopen' ? 'Reopened' : finalDecisionMode === 'mark_closure' ? 'Marked for Closure' : 'Complaint Closed' }}</span>
+              </div>
+            </div>
+
+            <div class="preview-section">
+              <div class="preview-section-header">
+                <h4><i class="pi pi-check-circle"></i> Final Decision</h4>
+                <i class="pi pi-chevron-up"></i>
+              </div>
+              <div class="preview-section-body">
+                <div class="field-grid-2">
+                  <div class="field-item">
+                    <label>Action</label>
+                    <span class="field-value">{{ finalDecisionMode === 'mark_closure' ? 'Mark For Closure' : 'Close Complaint' }}</span>
+                  </div>
+                  <div class="field-item">
+                    <label>Closure Clause</label>
+                    <span class="field-value">{{ finalDecisionReason || '—' }}</span>
+                  </div>
+                </div>
+                <div class="field-item full">
+                  <label>Closure Clause Description</label>
+                  <p class="field-readonly">{{ complaint()?.description || '—' }}</p>
+                </div>
+                <div class="field-grid-2">
+                  <div class="field-item">
+                    <label>Complaint Status on Portal</label>
+                    <span class="field-value">Close</span>
+                  </div>
+                  <div class="field-item">
+                    <label>Speaking order generated?</label>
+                    <span class="field-value">{{ speakingOrderContent ? 'Yes' : 'No' }}</span>
+                  </div>
+                </div>
+                <div class="field-grid-2">
+                  <div class="field-item">
+                    <label>Gist of the Case</label>
+                    <span class="field-value">{{ gistOfCase || '—' }}</span>
+                  </div>
+                  <div class="field-item">
+                    <label>Gist of the Case in regional language</label>
+                    <span class="field-value">{{ gistRegional || '—' }}</span>
+                  </div>
+                </div>
+                <div class="field-item full">
+                  <label>Speaking Order</label>
+                  <p class="field-readonly">{{ speakingOrderContent || complaint()?.description || '—' }}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="dialog-footer">
+            <button class="btn btn-outline" (click)="showPreviewDialog.set(false)">Cancel</button>
+            <button class="btn btn-primary" (click)="confirmFinalDecision()" [disabled]="processing()">
+              {{ processing() ? 'Processing...' : 'Confirm' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- ═══ CHANGE OWNER DIALOG ═══ -->
+    @if (showChangeOwnerDialog()) {
+      <div class="dialog-overlay" (click)="showChangeOwnerDialog.set(false)">
+        <div class="confirm-dialog small" (click)="$event.stopPropagation()">
+          <div class="dialog-header">
+            <span>Change Owner</span>
+            <button class="close-btn" (click)="showChangeOwnerDialog.set(false)">&times;</button>
+          </div>
+          <div class="dialog-body">
+            <div class="dialog-field">
+              <label>Complaint Owner</label>
+              <input type="text" [(ngModel)]="newOwner" placeholder="Search officer" />
+            </div>
+          </div>
+          <div class="dialog-footer">
+            <button class="btn btn-outline" (click)="showChangeOwnerDialog.set(false)">Cancel</button>
+            <button class="btn btn-primary" (click)="changeOwner()">Confirm</button>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- ═══ ACTION RESULT TOAST ═══ -->
+    @if (actionResult()) {
+      <div class="toast" [class.success]="actionSuccess()" [class.error]="!actionSuccess()">
+        {{ actionResult() }}
+      </div>
+    }
+  }
+  </div>
 </div>

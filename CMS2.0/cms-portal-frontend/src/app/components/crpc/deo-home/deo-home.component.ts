@@ -212,13 +212,13 @@ export class DeoHomeComponent implements OnInit {
 
   stats = computed(() => {
     const all = this.drafts();
-    const pending = all.filter(d => d.status === 'DRAFT' || d.status === 'IN_PROGRESS');
+    const pending = all.filter(d => d.status === 'ASSIGNED' || d.status === 'SENT_BACK');
     return {
       total: all.length,
-      draft: all.filter(d => d.status === 'DRAFT').length,
-      inProgress: all.filter(d => d.status === 'IN_PROGRESS').length,
-      rejected: all.filter(d => d.status === 'REJECTED_BY_REVIEWER').length,
-      approved: all.filter(d => d.status === 'APPROVED').length,
+      draft: all.filter(d => d.status === 'ASSIGNED').length,
+      inProgress: all.filter(d => d.status === 'SENT_TO_REVIEWER').length,
+      rejected: all.filter(d => d.status === 'SENT_BACK').length,
+      approved: all.filter(d => d.status === 'APPROVED' || d.status === 'CLOSED').length,
       direct: all.filter(d => d.modeOfReceipt === 'PHYSICAL_LETTER' || (d.modeOfReceipt === 'EMAIL' && !d.fromEmailId.toLowerCase().includes('rbi.org.in') && !d.fromEmailId.toLowerCase().includes('rbi.gov.in'))).length,
       viaAbr: all.filter(d => d.modeOfReceipt === 'CPGRAMS').length,
       viaRbiDomain: all.filter(d => d.fromEmailId.toLowerCase().includes('rbi.org.in') || d.fromEmailId.toLowerCase().includes('rbi.gov.in')).length,
@@ -340,14 +340,19 @@ export class DeoHomeComponent implements OnInit {
 
   private mapStatus(status: string): string {
     switch (status) {
+      case 'ASSIGNED': return 'ASSIGNED';
       case 'SENT_TO_REVIEWER':
-      case 'ASSIGNED': return 'IN_PROGRESS';
+      case 'SENT_TO_OTHER_DEPT_FOR_APPROVAL':
+      case 'VERNACULAR_FOR_APPROVAL': return 'SENT_TO_REVIEWER';
       case 'APPROVED_ROUTED':
+      case 'APPROVED_SENT_TO_OTHER_DEPT':
+      case 'APPROVED_VERNACULAR':
       case 'CONVERTED': return 'APPROVED';
       case 'SENT_BACK_TO_DEO':
-      case 'CLOSED_NOT_A_COMPLAINT': return 'REJECTED_BY_REVIEWER';
+      case 'SENT_BACK': return 'SENT_BACK';
+      case 'CLOSED_NOT_A_COMPLAINT': return 'CLOSED';
       case 'DRAFT': return 'DRAFT';
-      default: return 'DRAFT';
+      default: return status;
     }
   }
 
@@ -438,10 +443,11 @@ export class DeoHomeComponent implements OnInit {
 
   getStatusLabel(status: string): string {
     switch (status) {
-      case 'DRAFT': return 'Draft';
-      case 'IN_PROGRESS': return 'In Progress';
+      case 'ASSIGNED': return 'Draft';
+      case 'SENT_TO_REVIEWER': return 'Sent to Reviewer';
       case 'APPROVED': return 'Approved';
-      case 'REJECTED_BY_REVIEWER': return 'Sent Back';
+      case 'CLOSED': return 'Closed';
+      case 'SENT_BACK': return 'Sent Back';
       default: return status;
     }
   }

@@ -6,5 +6,15 @@
     "pathRewrite": {
       "^/api/pincode": "/pincode"
     }
+  },
+  "/cms-assignment": {
+    "target": "http://localhost:8085",
+    "secure": false,
+    "changeOrigin": true
+  },
+  "/cms-workflow": {
+    "target": "http://localhost:8083",
+    "secure": false,
+    "changeOrigin": true
   }
 }

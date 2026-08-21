@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -12,6 +12,14 @@ import { RbioLegalCaseComponent } from '../rbio-legal-case/rbio-legal-case.compo
 import { RbioForwardRegulatoryComponent } from '../rbio-forward-regulatory/rbio-forward-regulatory.component';
 import { RbioActionOverrideHistoryComponent } from '../rbio-action-override-history/rbio-action-override-history.component';
 import { environment } from '../../../../environments/environment';
+
+interface WorkflowAction {
+  id: string;
+  label: string;
+  assignTo: string;
+  style: 'primary' | 'escalate' | 'close' | 'info';
+  requiresRemarks: boolean;
+}
 
 interface ComplaintDetail {
   complaintId: string;
@@ -60,10 +68,12 @@ export class RbioComplaintDetailComponent implements OnInit {
   complaint = signal<ComplaintDetail | null>(null);
   loading = signal(true);
   activeTab = signal('summary');
-  showApprovalDropdown = signal(false);
-  showAssignmentModal = signal(false);
-  assignmentTarget = signal('');
+  showWorkflowDropdown = signal(false);
+  showWorkflowModal = signal(false);
   editMode = signal(false);
+  processing = signal(false);
+  actionResult = signal('');
+  actionSuccess = signal(false);
 
   // Assessment fields
   proposedAction = signal('');
@@ -72,9 +82,11 @@ export class RbioComplaintDetailComponent implements OnInit {
   speakingOrder = signal('');
   comments = signal<Comment[]>([]);
 
-  // Assignment modal fields
-  assignmentType = signal('Automatic');
+  // Workflow modal fields
+  pendingWorkflowAction = signal<WorkflowAction | null>(null);
+  assignmentMode = signal('Automatic');
   assigneeName = signal('');
+  workflowRemarks = signal('');
   systemicIssue = signal(false);
   crpcProposedAction = signal('');
   crpcProposedClause = signal('');
@@ -112,13 +124,88 @@ export class RbioComplaintDetailComponent implements OnInit {
     { key: 'history', label: 'Complaint History' },
   ];
 
-  approvalOptions = [
-    { key: 'reviewer', label: 'Send to RBIO Reviewer', nameLabel: 'Name of RBIO Reviewer' },
-    { key: 'deputy', label: 'Send to RBIO Deputy Ombudsman', nameLabel: 'Name of RBIO Deputy Ombudsman' },
-    { key: 'ombudsman', label: 'Send to RBIO Ombudsman', nameLabel: 'Name of RBIO Ombudsman' },
+  // ═══ RBIOS Workflow Actions by Role ═══
+
+  private dealingOfficialActions: WorkflowAction[] = [
+    { id: 'SEND_TO_REVIEWER', label: 'Send to Reviewer', assignTo: 'Reviewer', style: 'primary', requiresRemarks: true },
+    { id: 'SEND_TO_DEPUTY_OMBUDSMAN', label: 'Send to Deputy Ombudsman', assignTo: 'Deputy Ombudsman', style: 'escalate', requiresRemarks: true },
+    { id: 'SEND_TO_OMBUDSMAN', label: 'Send to Ombudsman', assignTo: 'Ombudsman', style: 'escalate', requiresRemarks: true },
+    { id: 'SCHEDULE_MEETING', label: 'Schedule Meeting', assignTo: 'Nodal Officer', style: 'info', requiresRemarks: true },
+    { id: 'RESCHEDULE_MEETING', label: 'Re-Schedule Meeting', assignTo: 'Nodal Officer', style: 'info', requiresRemarks: true },
+    { id: 'MEETING_COMPLETED', label: 'Meeting Completed', assignTo: 'Nodal Officer', style: 'info', requiresRemarks: true },
+    { id: 'COMPLAINT_CLOSED', label: 'Complaint Closed', assignTo: '', style: 'close', requiresRemarks: true },
+    { id: 'DRAFT_COMPLAINT', label: 'Draft Complaint', assignTo: 'CRPC DEO', style: 'primary', requiresRemarks: true },
+    { id: 'INFORMATION_REQUIRED', label: 'Information Required', assignTo: 'Nodal Officer', style: 'info', requiresRemarks: true },
+    { id: '13_1_NOTICE', label: '13-1 Notice', assignTo: 'Nodal Officer', style: 'info', requiresRemarks: true },
+    { id: 'AWARD_PASSED', label: 'Award Passed', assignTo: 'Nodal Officer', style: 'primary', requiresRemarks: true },
+    { id: 'MEETING_SCHEDULED', label: 'Meeting Scheduled', assignTo: 'Nodal Officer', style: 'info', requiresRemarks: true },
   ];
 
-  selectedApprovalOption = signal<any>(null);
+  private reviewerActions: WorkflowAction[] = [
+    { id: 'SEND_TO_DEPUTY_OMBUDSMAN', label: 'Send to Deputy Ombudsman', assignTo: 'Deputy Ombudsman', style: 'escalate', requiresRemarks: true },
+    { id: 'SEND_TO_OMBUDSMAN', label: 'Send to Ombudsman', assignTo: 'Ombudsman', style: 'escalate', requiresRemarks: true },
+    { id: 'SEND_BACK_TO_DO', label: 'Send back to Dealing Official', assignTo: 'Dealing Official', style: 'primary', requiresRemarks: true },
+    { id: 'COMPLAINT_CLOSED', label: 'Complaint Closed', assignTo: '', style: 'close', requiresRemarks: true },
+  ];
+
+  private deputyOmbudsmanActions: WorkflowAction[] = [
+    { id: 'SEND_TO_OMBUDSMAN', label: 'Send to Ombudsman', assignTo: 'Ombudsman', style: 'escalate', requiresRemarks: true },
+    { id: 'SEND_BACK_TO_DO', label: 'Send back to Dealing Official', assignTo: 'Dealing Official', style: 'primary', requiresRemarks: true },
+    { id: 'SEND_BACK_TO_REVIEWER', label: 'Send back to Reviewer', assignTo: 'Reviewer', style: 'primary', requiresRemarks: true },
+    { id: 'DEPUTY_OMBUDSMAN_DECISION', label: 'Deputy Ombudsman Decision', assignTo: 'Dealing Official', style: 'escalate', requiresRemarks: true },
+    { id: 'SEND_TO_OTHER_OFFICE', label: 'Send to Other Office', assignTo: 'CRPC Head', style: 'info', requiresRemarks: true },
+    { id: 'SEND_TO_OTHER_REGULATORY_BODY', label: 'Send to Other Regulatory Body', assignTo: '', style: 'info', requiresRemarks: true },
+    { id: 'SEND_TO_OTHER_DEPARTMENT', label: 'Send to Other Department', assignTo: 'Other Department', style: 'info', requiresRemarks: true },
+    { id: 'FACILITATION_REJECTION', label: 'Facilitation/Rejection', assignTo: 'Dealing Official', style: 'escalate', requiresRemarks: true },
+    { id: 'COMPLAINT_CLOSED', label: 'Complaint Closed', assignTo: '', style: 'close', requiresRemarks: true },
+  ];
+
+  private ombudsmanActions: WorkflowAction[] = [
+    { id: 'SEND_BACK_TO_DO', label: 'Send back to Dealing Official', assignTo: 'Dealing Official', style: 'primary', requiresRemarks: true },
+    { id: 'SEND_BACK_TO_REVIEWER', label: 'Send back to Reviewer', assignTo: 'Reviewer', style: 'primary', requiresRemarks: true },
+    { id: 'SEND_BACK_TO_DEPUTY_OMBUDSMAN', label: 'Send back to Deputy Ombudsman', assignTo: 'Deputy Ombudsman', style: 'primary', requiresRemarks: true },
+    { id: 'OMBUDSMAN_DECISION', label: 'Ombudsman Decision', assignTo: 'Dealing Official', style: 'escalate', requiresRemarks: true },
+    { id: 'SEND_TO_OTHER_OFFICE', label: 'Send to Other Office', assignTo: 'CRPC Head', style: 'info', requiresRemarks: true },
+    { id: 'SEND_TO_OTHER_REGULATORY_BODY', label: 'Send to Other Regulatory Body', assignTo: '', style: 'info', requiresRemarks: true },
+    { id: 'SEND_TO_OTHER_DEPARTMENT', label: 'Send to Other Department', assignTo: 'Other Department', style: 'info', requiresRemarks: true },
+    { id: 'ADVISORY_COMPLIED', label: 'Advisory Complied', assignTo: 'Dealing Official', style: 'primary', requiresRemarks: true },
+    { id: 'AWARD_PASSED', label: 'Award Passed', assignTo: 'Dealing Official', style: 'primary', requiresRemarks: true },
+    { id: 'COMPLAINT_SETTLED_WITHDRAWN_REJECTED', label: 'Complaint Settled/Withdrawn/Rejected', assignTo: 'Dealing Official', style: 'close', requiresRemarks: true },
+    { id: 'COMPLAINT_CLOSED', label: 'Complaint Closed', assignTo: '', style: 'close', requiresRemarks: true },
+    { id: 'COMPLAINT_REOPENED', label: 'Complaint Re-opened', assignTo: 'Dealing Official', style: 'info', requiresRemarks: true },
+  ];
+
+  isViewOnly = computed<boolean>(() => {
+    const status = (this.complaint()?.status || '').toUpperCase();
+    const role = (this.loggedInUser?.role || '').toUpperCase();
+    const keycloakRoles = this.auth.getRoles().map(r => r.toUpperCase());
+    const isDO = role === 'DEALING_OFFICIAL' || role === 'RBIO_OFFICER' || role === 'DO' || keycloakRoles.includes('RBIO_OFFICER');
+    if (!isDO) return false;
+    const doViewOnlyStatuses = ['SENT_TO_REVIEWER', 'SENT_TO_DEPUTY_OMBUDSMAN', 'SENT_TO_OMBUDSMAN',
+      'REVIEWER_REVIEW', 'DEPUTY_REVIEW', 'OMBUDSMAN_REVIEW', 'CLOSED', 'RESOLVED', 'REJECTED', 'WITHDRAWN'];
+    return doViewOnlyStatuses.includes(status);
+  });
+
+  availableActions = computed<WorkflowAction[]>(() => {
+    if (this.isViewOnly()) return [];
+
+    const role = (this.loggedInUser?.role || '').toUpperCase();
+    const keycloakRoles = this.auth.getRoles().map(r => r.toUpperCase());
+
+    if (role === 'DEALING_OFFICIAL' || role === 'RBIO_OFFICER' || role === 'DO' || keycloakRoles.includes('RBIO_OFFICER')) {
+      return this.dealingOfficialActions;
+    }
+    if (role === 'REVIEWER' || role === 'RBIO_REVIEWER' || keycloakRoles.includes('RBIO_REVIEWER')) {
+      return this.reviewerActions;
+    }
+    if (role === 'DEPUTY_OMBUDSMAN' || role === 'RBIO_DEPUTY_OMBUDSMAN' || keycloakRoles.includes('RBIO_DEPUTY_OMBUDSMAN')) {
+      return this.deputyOmbudsmanActions;
+    }
+    if (role === 'OMBUDSMAN' || role === 'RBIO_OMBUDSMAN' || keycloakRoles.includes('RBIO_OMBUDSMAN')) {
+      return this.ombudsmanActions;
+    }
+    return this.dealingOfficialActions;
+  });
 
   ngOnInit() {
     const stored = sessionStorage.getItem('rbio_user');
@@ -130,9 +217,11 @@ export class RbioComplaintDetailComponent implements OnInit {
 
   loadComplaint(id: string) {
     this.loading.set(true);
+    const cachedStatus = sessionStorage.getItem(`rbio_status_${id}`);
     this.http.get<any>(`${environment.apiBaseUrl}/api/v1/complaints/${id}`).subscribe({
       next: (res) => {
         const d = res.data || res;
+        const apiStatus = d.status || 'DRAFT';
         this.complaint.set({
           complaintId: d.complaintId || d.complaintNumber || id,
           complaintNumber: d.complaintNumber || 'Not Assigned',
@@ -140,7 +229,7 @@ export class RbioComplaintDetailComponent implements OnInit {
           complainantEmail: d.complainantEmail || '',
           subject: d.subject || '',
           description: d.description || '',
-          status: d.status || 'DRAFT',
+          status: cachedStatus || apiStatus,
           category: d.category || 'General',
           entityName: d.entityName || '',
           priority: d.priority || 'MEDIUM',
@@ -169,7 +258,7 @@ export class RbioComplaintDetailComponent implements OnInit {
           complainantEmail: 'saurabh.pradhan@gmail.com',
           subject: 'Re: URGENT: Closed Loan Account Falsely Reported as Delinquent Under Same CIF – Kankarbagh Branch',
           description: 'Hold placed on my Canara Bank account due to a cyber crime investigation since 16 February. My account has been blocked, and I am unable to operate it or withdraw/credit funds. ...',
-          status: 'NEW',
+          status: cachedStatus || 'NEW',
           category: 'Loans and Advances',
           entityName: 'ASNU FINVEST...',
           priority: 'MEDIUM',
@@ -203,23 +292,138 @@ export class RbioComplaintDetailComponent implements OnInit {
     this.router.navigate(['/rbio']);
   }
 
-  openApprovalOption(option: any) {
-    this.selectedApprovalOption.set(option);
-    this.assigneeName.set(option.nameLabel.replace('Name of ', ''));
-    this.showApprovalDropdown.set(false);
-    this.showAssignmentModal.set(true);
+  openWorkflowAction(action: WorkflowAction) {
+    this.pendingWorkflowAction.set(action);
+    this.assigneeName.set('');
+    this.workflowRemarks.set('');
+    this.assignmentMode.set('Automatic');
+    this.showWorkflowDropdown.set(false);
+    this.showWorkflowModal.set(true);
   }
 
-  confirmAssignment() {
+  confirmWorkflowAction() {
     const c = this.complaint();
-    if (!c) return;
-    this.showAssignmentModal.set(false);
-    this.router.navigate(['/rbio']);
+    const action = this.pendingWorkflowAction();
+    if (!c || !action) return;
+
+    const complaintId = c.complaintNumber || c.complaintId;
+    this.processing.set(true);
+
+    const body = {
+      action: action.id,
+      assignTo: action.assignTo,
+      assigneeName: this.assigneeName(),
+      assignmentMode: this.assignmentMode(),
+      remarks: this.workflowRemarks(),
+      actor: this.auth.currentUser()?.username || this.loggedInUser?.name || '',
+      systemicIssue: this.systemicIssue()
+    };
+
+    this.http.post<any>(
+      `${environment.apiBaseUrl}/api/v1/workflow/rbio/action/${complaintId}`,
+      body
+    ).subscribe({
+      next: () => {
+        this.actionSuccess.set(true);
+        this.actionResult.set(`Action "${action.label}" completed successfully.`);
+        this.processing.set(false);
+        this.showWorkflowModal.set(false);
+        this.pendingWorkflowAction.set(null);
+        this.updateLocalStatus(action.id);
+        setTimeout(() => this.actionResult.set(''), 5000);
+      },
+      error: (err) => {
+        this.actionSuccess.set(false);
+        this.actionResult.set(`Failed: ${err.error?.message || err.message || 'Unknown error'}`);
+        this.processing.set(false);
+        setTimeout(() => this.actionResult.set(''), 5000);
+      }
+    });
   }
 
-  cancelAssignment() {
-    this.showAssignmentModal.set(false);
-    this.selectedApprovalOption.set(null);
+  private updateLocalStatus(actionId: string) {
+    const statusMap: Record<string, string> = {
+      'SEND_TO_REVIEWER': 'SENT_TO_REVIEWER',
+      'SEND_TO_DEPUTY_OMBUDSMAN': 'SENT_TO_DEPUTY_OMBUDSMAN',
+      'SEND_TO_OMBUDSMAN': 'SENT_TO_OMBUDSMAN',
+      'SEND_BACK_TO_DO': 'SENT_BACK',
+      'SEND_BACK_TO_REVIEWER': 'REVIEWER_REVIEW',
+      'SEND_BACK_TO_DEPUTY_OMBUDSMAN': 'DEPUTY_REVIEW',
+      'COMPLAINT_CLOSED': 'CLOSED',
+      'SCHEDULE_MEETING': 'MEETING_SCHEDULED',
+      'RESCHEDULE_MEETING': 'MEETING_SCHEDULED',
+      'MEETING_COMPLETED': 'MEETING_COMPLETED',
+      'MEETING_SCHEDULED': 'MEETING_SCHEDULED',
+      'INFORMATION_REQUIRED': 'INFORMATION_REQUIRED',
+      'AWARD_PASSED': 'AWARD_PASSED',
+    };
+    const newStatus = statusMap[actionId];
+    if (newStatus) {
+      const current = this.complaint();
+      if (current) {
+        this.complaint.set({ ...current, status: newStatus });
+        const complaintId = current.complaintNumber || current.complaintId;
+        sessionStorage.setItem(`rbio_status_${complaintId}`, newStatus);
+      }
+    }
+  }
+
+  getStatusLabel(status: string): string {
+    const labels: Record<string, string> = {
+      'NEW': 'New Complaint',
+      'DRAFT': 'Draft',
+      'ASSIGNED': 'Assigned',
+      'SENT_TO_REVIEWER': 'Sent to Reviewer',
+      'SENT_TO_DEPUTY_OMBUDSMAN': 'Sent to Deputy Ombudsman',
+      'SENT_TO_OMBUDSMAN': 'Sent to Ombudsman',
+      'REVIEWER_REVIEW': 'Reviewer Review',
+      'DEPUTY_REVIEW': 'Deputy Ombudsman Review',
+      'OMBUDSMAN_REVIEW': 'Ombudsman Review',
+      'SENT_BACK': 'Sent Back',
+      'CLOSED': 'Closed',
+      'RESOLVED': 'Resolved',
+      'MEETING_SCHEDULED': 'Meeting Scheduled',
+      'MEETING_COMPLETED': 'Meeting Completed',
+      'INFORMATION_REQUIRED': 'Information Required',
+      'AWARD_PASSED': 'Award Passed',
+      'IN_PROGRESS': 'In Progress',
+    };
+    return labels[status?.toUpperCase()] || status || '—';
+  }
+
+  cancelWorkflowAction() {
+    this.showWorkflowModal.set(false);
+    this.pendingWorkflowAction.set(null);
+  }
+
+  getExpectedStatus(action: WorkflowAction): string {
+    switch (action.id) {
+      case 'SEND_TO_REVIEWER': return 'Sent to Reviewer';
+      case 'SEND_TO_DEPUTY_OMBUDSMAN': return 'Sent to Deputy Ombudsman';
+      case 'SEND_TO_OMBUDSMAN': return 'Sent to Ombudsman';
+      case 'SEND_BACK_TO_DO': return 'Sent back to Dealing Official';
+      case 'SEND_BACK_TO_REVIEWER': return 'Sent back to Reviewer';
+      case 'SEND_BACK_TO_DEPUTY_OMBUDSMAN': return 'Sent back to Deputy Ombudsman';
+      case 'SCHEDULE_MEETING': return 'Meeting Scheduled';
+      case 'RESCHEDULE_MEETING': return 'Meeting Re-Scheduled';
+      case 'MEETING_COMPLETED': return 'Meeting Completed';
+      case 'MEETING_SCHEDULED': return 'Meeting Scheduled';
+      case 'COMPLAINT_CLOSED': return 'Closed';
+      case 'DRAFT_COMPLAINT': return 'Draft Sent to CRPC DEO';
+      case 'INFORMATION_REQUIRED': return 'Information Required';
+      case '13_1_NOTICE': return '13-1 Notice Issued';
+      case 'AWARD_PASSED': return 'Award Passed';
+      case 'DEPUTY_OMBUDSMAN_DECISION': return 'Deputy Ombudsman Decision Taken';
+      case 'OMBUDSMAN_DECISION': return 'Ombudsman Decision Taken';
+      case 'SEND_TO_OTHER_OFFICE': return 'Sent to Other Office';
+      case 'SEND_TO_OTHER_REGULATORY_BODY': return 'Sent to Other Regulatory Body';
+      case 'SEND_TO_OTHER_DEPARTMENT': return 'Sent to Other Department';
+      case 'FACILITATION_REJECTION': return 'Facilitation/Rejection Decision';
+      case 'ADVISORY_COMPLIED': return 'Advisory Complied';
+      case 'COMPLAINT_SETTLED_WITHDRAWN_REJECTED': return 'Complaint Settled/Withdrawn/Rejected';
+      case 'COMPLAINT_REOPENED': return 'Complaint Re-opened';
+      default: return 'In Progress';
+    }
   }
 
   addComment() {

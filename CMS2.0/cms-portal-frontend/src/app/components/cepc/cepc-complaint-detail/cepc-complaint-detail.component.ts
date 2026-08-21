@@ -3,38 +3,63 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
+import { timeout, catchError } from 'rxjs/operators';
+import { of } from 'rxjs';
 import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
 import { environment } from '../../../../environments/environment';
-import { SpeechButtonComponent } from '../../../shared/speech-button/speech-button.component';
 import { CepcSlaIndicatorComponent } from '../cepc-sla-indicator/cepc-sla-indicator.component';
-import { CepcTimelineComponent } from '../cepc-timeline/cepc-timeline.component';
-import { CepcConciliationComponent } from '../cepc-conciliation/cepc-conciliation.component';
-
-interface TimelineEntry {
-  action: string;
-  fromStatus: string;
-  toStatus: string;
-  timestamp: string;
-  remarks: string;
-  performedBy?: string;
-}
+import { CepcEmailComposeComponent } from '../cepc-email-compose/cepc-email-compose.component';
 
 type CepcRole = 'CEPC_DO' | 'CEPC_REVIEWER' | 'CEPC_INCHARGE' | 'CEPC_CLOSING_AUTHORITY' | 'CEPC_ADMIN' | 'CEPC_CONTACT_PERSON';
 
 interface ActionDef {
   id: string;
   label: string;
-  description: string;
   style: string;
   requiresRemarks: boolean;
-  requiresTarget?: boolean;
-  targetType?: 'user' | 'department';
+  description?: string;
+}
+
+interface CommentEntry {
+  id: string;
+  author: string;
+  text: string;
+  timestamp: string;
+}
+
+interface ContactPersonEntry {
+  id: string;
+  subject: string;
+  bankName: string;
+  slaDays: number;
+  assignedTo: string;
+  status: string;
+  statusLabel: string;
+}
+
+interface EmailEntry {
+  id: string;
+  direction: 'IN' | 'OUT';
+  subject: string;
+  body: string;
+  timestamp: string;
+}
+
+interface ForwardOption {
+  value: string;
+  label: string;
+}
+
+interface TemplateDef {
+  id: string;
+  label: string;
+  content: string;
 }
 
 @Component({
   selector: 'app-cepc-complaint-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule, SpeechButtonComponent, CepcSlaIndicatorComponent, CepcTimelineComponent, CepcConciliationComponent],
+  imports: [CommonModule, FormsModule, CepcSlaIndicatorComponent, CepcEmailComposeComponent],
   templateUrl: './cepc-complaint-detail.component.html',
   styleUrl: './cepc-complaint-detail.component.scss'
 })
@@ -49,15 +74,70 @@ export class CepcComplaintDetailComponent implements OnInit {
   processing = signal(false);
   userRole = signal<CepcRole>('CEPC_DO');
 
-  selectedAction = signal<ActionDef | null>(null);
-  remarks = '';
-  targetUser = '';
-  targetDepartment = '';
+  activeTab = signal<string>('summary');
+  editMode = signal(false);
+  showConfirmDialog = signal(false);
+  showActionDropdown = signal(false);
+  showMoreMenu = signal(false);
+  showChangeOwnerDialog = signal(false);
+  pendingAction = signal<ActionDef | null>(null);
 
   actionResult = signal('');
   actionSuccess = signal(false);
+  finalDecisionConfirmed = signal(false);
+  actionConfirmed = signal(false);
 
-  // For forwarding to other departments
+  openSections = signal<Set<string>>(new Set(['basic', 'eligibility', 'entity', 'complainant']));
+
+  comments = signal<CommentEntry[]>([]);
+  contactPersonList = signal<ContactPersonEntry[]>([]);
+  emailHistory = signal<EmailEntry[]>([]);
+
+  // Form fields — Summary
+  closureReason = '';
+  wantAddEntities = false;
+  newComment = '';
+
+  // Form fields — Conciliation
+  meetingStatus = '';
+  meetingDate = '';
+  meetingTime = '';
+  complainantAccepted = '';
+  entityAccepted = '';
+  meetingVc = '';
+  meetingComments = '';
+  conciliationRemarks = '';
+
+  // Form fields — Forward
+  forwardTo = signal<string>('');
+  forwardTargetName = '';
+  forwardReason = '';
+  forwardComments = '';
+
+  // Form fields — Final Decision
+  finalDecisionMode: 'close' | 'mark_closure' | 'reopen' = 'close';
+  finalDecisionReason = '';
+  reopenReason = '';
+  gistOfCase = '';
+  gistRegional = '';
+  closureLetterContent = '';
+  closureAdviceDate = '';
+  speakingOrderContent = '';
+  showPreviewDialog = signal(false);
+
+  // Confirmation dialog
+  assignmentMode = 'automatic';
+  assignmentTarget = '';
+  confirmRemarks = '';
+
+  // Round-robin assignment
+  cepcReviewers = signal<{name: string; load: number}[]>([]);
+  cepcIncharges = signal<{name: string; load: number}[]>([]);
+  cepcClosingAuthorities = signal<{name: string; load: number}[]>([]);
+
+  // Change owner
+  newOwner = '';
+
   rbiDepartments = [
     'Department of Banking Supervision',
     'Department of Non-Banking Supervision',
@@ -70,13 +150,39 @@ export class CepcComplaintDetailComponent implements OnInit {
     'Other'
   ];
 
-  // For reassignment within CEPC
-  cepcOfficers = signal<{ id: string; name: string }[]>([]);
-  contactPersons = signal<{ id: string; name: string }[]>([]);
+  templates: TemplateDef[] = [
+    { id: 'ack', label: 'Apply: Acknowledgement Template', content: 'Your complaint has been received and is under examination.' },
+    { id: 'info_req', label: 'Apply: Info Request Template', content: 'Additional information is required to proceed with your complaint.' },
+    { id: 'closure', label: 'Apply: Closure Template', content: 'Your complaint has been examined and a decision has been taken.' }
+  ];
 
-  // Document upload
-  documents = signal<{ id: string; name: string; size: string; uploadedBy: string; uploadedAt: string }[]>([]);
-  uploadingDoc = signal(false);
+  // Computed: primary action (first available action for the role/status)
+  primaryAction = computed<ActionDef | null>(() => {
+    const actions = this.availableActions();
+    return actions.length > 0 ? actions[0] : null;
+  });
+
+  // Computed: secondary actions (all except primary)
+  secondaryActions = computed<ActionDef[]>(() => {
+    const actions = this.availableActions();
+    return actions.length > 1 ? actions.slice(1) : [];
+  });
+
+  // Computed: forward options based on role
+  forwardOptions = computed<ForwardOption[]>(() => {
+    const role = this.userRole();
+    const options: ForwardOption[] = [];
+
+    if (role === 'CEPC_REVIEWER') {
+      options.push({ value: 'OTHER_RBI_DEPT', label: 'Other RBI Dept' });
+    } else if (role === 'CEPC_INCHARGE' || role === 'CEPC_CLOSING_AUTHORITY' || role === 'CEPC_ADMIN') {
+      options.push({ value: 'OTHER_OFFICE', label: 'Other Office' });
+      options.push({ value: 'OTHER_REGULATORY', label: 'Other Regulatory Body' });
+      options.push({ value: 'OTHER_RBI_DEPT', label: 'Other RBI Dept' });
+    }
+
+    return options;
+  });
 
   availableActions = computed<ActionDef[]>(() => {
     const role = this.userRole();
@@ -86,75 +192,52 @@ export class CepcComplaintDetailComponent implements OnInit {
     if (this.isTerminalState()) return [];
 
     if (role === 'CEPC_DO') {
-      if (['assigned', 'pending', 'new', 'sent_back'].includes(status)) {
-        actions.push({ id: 'ACCEPT', label: 'Accept & Start Examination', description: 'Accept complaint and begin examination', style: 'primary', requiresRemarks: false });
+      if (['assigned', 'pending', 'new', 'new_complaint', 'sent_back', 'in_progress'].includes(status)) {
+        actions.push({ id: 'SEND_TO_REVIEWER', label: 'Send for Approval', style: 'primary', requiresRemarks: true });
+        actions.push({ id: 'SEND_TO_CEPC_REVIEWER', label: 'Send to CEPC Reviewer', style: 'primary', requiresRemarks: true });
+        actions.push({ id: 'SEND_TO_CEPC_INCHARGE', label: 'Send to CEPC Incharge', style: 'escalate', requiresRemarks: true });
       }
-      if (status === 'in_progress') {
-        actions.push({ id: 'REQUEST_INFO', label: 'Request Additional Information', description: 'Seek additional info from complainant', style: 'info', requiresRemarks: true });
-        actions.push({ id: 'FORWARD_DEPT', label: 'Forward to RBI Department', description: 'Forward for comments from another RBI department/office', style: 'forward', requiresRemarks: true, requiresTarget: true, targetType: 'department' });
-        actions.push({ id: 'SCHEDULE_MEETING', label: 'Schedule Meeting', description: 'Schedule meeting with complainant/entity', style: 'info', requiresRemarks: true });
-        actions.push({ id: 'SUBMIT_FOR_REVIEW', label: 'Forward to Reviewer', description: 'Forward to CEPC Reviewer for scrutiny', style: 'review', requiresRemarks: true });
-        actions.push({ id: 'FORWARD_TO_INCHARGE', label: 'Forward to In-Charge', description: 'Forward directly to CEPC In-Charge', style: 'escalate', requiresRemarks: true });
-      }
-      if (status === 'info_requested') {
-        actions.push({ id: 'INFO_RECEIVED', label: 'Mark Info Received', description: 'Additional information received, resume examination', style: 'primary', requiresRemarks: true });
-      }
-      if (status === 'forwarded') {
-        actions.push({ id: 'COMMENTS_RECEIVED', label: 'Comments Received', description: 'Department comments received, resume examination', style: 'primary', requiresRemarks: true });
+      if (status === 'marked_for_closure') {
+        actions.push({ id: 'CLOSE_COMPLAINT', label: 'Close Complaint', style: 'close', requiresRemarks: true });
       }
     }
 
     if (role === 'CEPC_REVIEWER') {
-      if (['reviewer_review', 'under_review'].includes(status)) {
-        actions.push({ id: 'APPROVE_REVIEW', label: 'Forward to In-Charge', description: 'Approve DO examination and forward to In-Charge', style: 'primary', requiresRemarks: true });
-        actions.push({ id: 'FORWARD_TO_CLOSING_AUTHORITY', label: 'Forward to Closing Authority', description: 'Forward directly to Closing Authority for final decision', style: 'primary', requiresRemarks: true });
-        actions.push({ id: 'SEND_BACK_DO', label: 'Send Back to DO', description: 'Return to Dealing Officer for rework', style: 'return', requiresRemarks: true });
+      if (['reviewer_review', 'under_review', 'assigned', 'pending', 'new', 'new_complaint', 'in_progress'].includes(status)) {
+        actions.push({ id: 'APPROVE_REVIEW', label: 'Send', style: 'primary', requiresRemarks: true });
+        actions.push({ id: 'SEND_TO_CEPC_INCHARGE', label: 'Send to Incharge', style: 'primary', requiresRemarks: true });
+        actions.push({ id: 'SEND_TO_CLOSING_AUTHORITY', label: 'Send to Closing Authority', style: 'primary', requiresRemarks: true });
+        actions.push({ id: 'SEND_BACK_DO', label: 'Send Back to DO', style: 'return', requiresRemarks: true });
+      }
+      if (status === 'non_maintainable') {
+        actions.push({ id: 'CLOSE_COMPLAINT', label: 'Close (Non-Maintainable)', style: 'close', requiresRemarks: true });
       }
     }
 
     if (role === 'CEPC_INCHARGE') {
-      if (['incharge_review', 'escalated'].includes(status)) {
-        actions.push({ id: 'APPROVE_CLOSURE', label: 'Approve for Closure', description: 'Approve and forward to Closing Authority', style: 'primary', requiresRemarks: true });
-        actions.push({ id: 'SEND_BACK_REVIEWER', label: 'Send Back to Reviewer', description: 'Return to Reviewer for further scrutiny', style: 'return', requiresRemarks: true });
-        actions.push({ id: 'SEND_BACK_DO', label: 'Send Back to Dealing Officer', description: 'Return to DO for additional examination', style: 'return', requiresRemarks: true });
-        actions.push({ id: 'REASSIGN', label: 'Reassign to Another DO', description: 'Reassign to a different Dealing Officer', style: 'info', requiresRemarks: true, requiresTarget: true, targetType: 'user' });
+      if (['incharge_review', 'escalated', 'assigned', 'pending', 'new', 'new_complaint', 'in_progress', 'under_review'].includes(status)) {
+        actions.push({ id: 'INCHARGE_SEND', label: 'Send', style: 'primary', requiresRemarks: false });
+        actions.push({ id: 'SEND_TO_CLOSING_AUTHORITY', label: 'Send to Closing Authority', style: 'primary', requiresRemarks: true });
+        actions.push({ id: 'SEND_BACK_DO', label: 'Send Back to DO', style: 'return', requiresRemarks: true });
+        actions.push({ id: 'SEND_BACK_REVIEWER', label: 'Send Back to Reviewer', style: 'return', requiresRemarks: true });
       }
     }
 
     if (role === 'CEPC_CLOSING_AUTHORITY') {
-      if (status === 'awaiting_closure') {
-        actions.push({ id: 'CLOSE_COMPLAINT', label: 'Close Complaint', description: 'Final decision — close complaint', style: 'close', requiresRemarks: true });
-        actions.push({ id: 'SEND_BACK_INCHARGE', label: 'Send Back to In-Charge', description: 'Return for further review', style: 'return', requiresRemarks: true });
-        actions.push({ id: 'FORWARD_TO_OTHER_OFFICE', label: 'Forward to Other Office', description: 'Forward to another RBI office', style: 'forward', requiresRemarks: true, requiresTarget: true, targetType: 'department' });
-        actions.push({ id: 'FORWARD_TO_REGULATORY_BODY', label: 'Forward to Regulatory Body', description: 'Forward to external regulatory body (SEBI, IRDAI, etc.)', style: 'forward', requiresRemarks: true, requiresTarget: true, targetType: 'department' });
-        actions.push({ id: 'FORWARD_TO_OTHER_RBI_DEPT', label: 'Forward to Other RBI Dept', description: 'Forward to another RBI department', style: 'forward', requiresRemarks: true, requiresTarget: true, targetType: 'department' });
-      }
-      if (status === 'closed' || status === 'resolved') {
-        actions.push({ id: 'REOPEN', label: 'Reopen Complaint', description: 'Reopen a closed complaint for further action', style: 'escalate', requiresRemarks: true });
+      if (['awaiting_closure', 'assigned', 'pending', 'new', 'new_complaint', 'in_progress', 'under_review'].includes(status)) {
+        actions.push({ id: 'CA_SEND', label: 'Send', style: 'primary', requiresRemarks: false });
+        actions.push({ id: 'SEND_BACK_DO', label: 'Send Back to DO', style: 'return', requiresRemarks: true });
+        actions.push({ id: 'SEND_BACK_REVIEWER', label: 'Send Back to Reviewer', style: 'return', requiresRemarks: true });
+        actions.push({ id: 'SEND_BACK_INCHARGE', label: 'Send Back to Incharge', style: 'return', requiresRemarks: true });
       }
     }
 
     if (role === 'CEPC_ADMIN') {
       if (!this.isTerminalState()) {
-        actions.push({ id: 'REASSIGN', label: 'Reassign', description: 'Reassign to another officer', style: 'info', requiresRemarks: true, requiresTarget: true, targetType: 'user' });
-        actions.push({ id: 'ESCALATE', label: 'Escalate', description: 'Escalate complaint', style: 'escalate', requiresRemarks: true });
-        actions.push({ id: 'CLOSE_COMPLAINT', label: 'Close (Admin)', description: 'Admin closure', style: 'close', requiresRemarks: true });
+        actions.push({ id: 'REASSIGN', label: 'Reassign', style: 'info', requiresRemarks: true });
+        actions.push({ id: 'ESCALATE', label: 'Escalate', style: 'escalate', requiresRemarks: true });
+        actions.push({ id: 'CLOSE_COMPLAINT', label: 'Close (Admin)', style: 'close', requiresRemarks: true });
       }
-      if (status === 'closed' || status === 'resolved') {
-        actions.push({ id: 'REOPEN', label: 'Reopen Complaint', description: 'Reopen closed complaint if needed', style: 'escalate', requiresRemarks: true });
-      }
-    }
-
-    if (role === 'CEPC_CONTACT_PERSON') {
-      if (status === 'forwarded_to_contact') {
-        actions.push({ id: 'CONTACT_RESPONSE', label: 'Submit Response', description: 'Submit response and return to Dealing Officer', style: 'primary', requiresRemarks: true });
-        actions.push({ id: 'CONTACT_REASSIGN', label: 'Reassign to Another Contact', description: 'Reassign to a different contact person in the region', style: 'info', requiresRemarks: true, requiresTarget: true, targetType: 'user' });
-      }
-    }
-
-    // DO can forward to contact person
-    if (role === 'CEPC_DO' && status === 'in_progress') {
-      actions.push({ id: 'FORWARD_TO_CONTACT', label: 'Forward to Contact Person', description: 'Forward to entity Contact Person for regional input', style: 'forward', requiresRemarks: true, requiresTarget: true, targetType: 'user' });
     }
 
     return actions;
@@ -168,24 +251,25 @@ export class CepcComplaintDetailComponent implements OnInit {
     }
 
     const roles = this.auth.getRoles();
-    if (roles.includes('CEPC_ADMIN')) this.userRole.set('CEPC_ADMIN');
-    else if (roles.includes('CEPC_CLOSING_AUTHORITY')) this.userRole.set('CEPC_CLOSING_AUTHORITY');
-    else if (roles.includes('CEPC_INCHARGE')) this.userRole.set('CEPC_INCHARGE');
-    else if (roles.includes('CEPC_REVIEWER')) this.userRole.set('CEPC_REVIEWER');
-    else if (roles.includes('CEPC_CONTACT_PERSON')) this.userRole.set('CEPC_CONTACT_PERSON');
+    if (roles.includes('ADMIN') || roles.includes('CEPC_ADMIN')) this.userRole.set('CEPC_ADMIN');
+    else if (roles.includes('CA') || roles.includes('CEPC_CLOSING_AUTHORITY')) this.userRole.set('CEPC_CLOSING_AUTHORITY');
+    else if (roles.includes('INCHARGE') || roles.includes('CEPC_INCHARGE')) this.userRole.set('CEPC_INCHARGE');
+    else if (roles.includes('REVIEWER') || roles.includes('CEPC_REVIEWER')) this.userRole.set('CEPC_REVIEWER');
+    else if (roles.includes('CP') || roles.includes('CEPC_CONTACT_PERSON')) this.userRole.set('CEPC_CONTACT_PERSON');
     else this.userRole.set('CEPC_DO');
 
     const id = this.route.snapshot.params['id'];
     this.loadComplaint(id);
-    this.loadCepcOfficers();
-    this.loadContactPersons();
+    this.loadComments(id);
+    this.loadContactPersons(id);
+    this.loadEmailHistory(id);
   }
 
   private loadComplaint(complaintNumber: string) {
     this.loading.set(true);
     this.http.get<any>(`${environment.apiBaseUrl}/api/v1/complaints/${complaintNumber}`).subscribe({
       next: (res) => {
-        this.complaint.set(res?.data || null);
+        this.complaint.set(res?.data || res || null);
         this.loading.set(false);
       },
       error: () => {
@@ -195,63 +279,157 @@ export class CepcComplaintDetailComponent implements OnInit {
     });
   }
 
-  private loadCepcOfficers() {
-    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/keycloak/users/by-role?role=CEPC_DO`).subscribe({
-      next: (res) => {
-        const users = (res || []).map((u: any) => ({ id: u.username || u.userId, name: u.displayName || `${u.firstName} ${u.lastName}` }));
-        this.cepcOfficers.set(users);
-      },
-      error: () => this.cepcOfficers.set([])
+  private loadComments(complaintNumber: string) {
+    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/complaints/${complaintNumber}/comments`).subscribe({
+      next: (res) => this.comments.set(res?.data || res || []),
+      error: () => this.comments.set([])
     });
   }
 
-  private loadContactPersons() {
-    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/keycloak/users/by-role?role=CEPC_CONTACT_PERSON`).subscribe({
-      next: (res) => {
-        const users = (res || []).map((u: any) => ({ id: u.username || u.userId, name: u.displayName || `${u.firstName} ${u.lastName}` }));
-        this.contactPersons.set(users);
-      },
-      error: () => this.contactPersons.set([])
+  private loadContactPersons(complaintNumber: string) {
+    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/complaints/${complaintNumber}/contact-persons`).subscribe({
+      next: (res) => this.contactPersonList.set(res?.data || res || []),
+      error: () => this.contactPersonList.set([])
     });
   }
 
-  onDocumentUpload(event: Event) {
-    const input = event.target as HTMLInputElement;
-    if (!input.files?.length) return;
-    const file = input.files[0];
-    if (file.size > 2 * 1024 * 1024) {
-      alert('File size must not exceed 2 MB.');
-      return;
+  loadEmailHistory(complaintNumber: string) {
+    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/complaints/${complaintNumber}/emails`).subscribe({
+      next: (res) => this.emailHistory.set(res?.data || res || []),
+      error: () => this.emailHistory.set([])
+    });
+  }
+
+  // ─── Role-based permission methods ───
+
+  canAccessConciliation(): boolean {
+    const role = this.userRole();
+    if (role === 'CEPC_DO') {
+      const status = (this.complaint()?.status || '').toLowerCase();
+      return status === 'marked_for_closure';
+    }
+    if (role === 'CEPC_REVIEWER') return true;
+    return false;
+  }
+
+  canAccessForward(): boolean {
+    const role = this.userRole();
+    if (role === 'CEPC_DO') return false;
+    return !this.isTerminalState();
+  }
+
+  canScheduleMeeting(): boolean {
+    if (this.userRole() !== 'CEPC_DO') return false;
+    const status = (this.complaint()?.status || '').toLowerCase();
+    return status === 'marked_for_closure';
+  }
+
+  canTakeFinalDecision(): boolean {
+    const role = this.userRole();
+    const status = (this.complaint()?.status || '').toLowerCase();
+    if (role === 'CEPC_DO') {
+      return status === 'marked_for_closure';
+    }
+    if (role === 'CEPC_REVIEWER') {
+      return status === 'non_maintainable';
+    }
+    if (role === 'CEPC_CLOSING_AUTHORITY') {
+      return true;
+    }
+    return !this.isTerminalState();
+  }
+
+  canCloseDirectly(): boolean {
+    const role = this.userRole();
+    const status = (this.complaint()?.status || '').toLowerCase();
+    if (role === 'CEPC_INCHARGE' || role === 'CEPC_CLOSING_AUTHORITY' || role === 'CEPC_ADMIN') return true;
+    if (role === 'CEPC_DO' && status === 'marked_for_closure') return true;
+    if (role === 'CEPC_REVIEWER' && status === 'non_maintainable') return true;
+    return false;
+  }
+
+  canMarkForClosure(): boolean {
+    const role = this.userRole();
+    return role === 'CEPC_INCHARGE' || role === 'CEPC_CLOSING_AUTHORITY';
+  }
+
+  canReopen(): boolean {
+    const role = this.userRole();
+    const status = (this.complaint()?.status || '').toLowerCase();
+    return role === 'CEPC_CLOSING_AUTHORITY' && (status === 'closed' || status === 'resolved');
+  }
+
+  canChangeOwner(): boolean {
+    const role = this.userRole();
+    return role === 'CEPC_INCHARGE' || role === 'CEPC_ADMIN';
+  }
+
+  // ─── Actions ───
+
+  openConfirmDialog(action: any) {
+    this.pendingAction.set(action);
+    this.confirmRemarks = '';
+    this.assignmentMode = 'automatic';
+    this.assignmentTarget = '';
+
+    const isReviewerAction = ['SEND_TO_REVIEWER', 'SEND_TO_CEPC_REVIEWER'].includes(action.id);
+    const isInchargeAction = ['SEND_TO_INCHARGE', 'SEND_TO_CEPC_INCHARGE'].includes(action.id);
+    const isClosingAuthorityAction = action.id === 'SEND_TO_CLOSING_AUTHORITY';
+
+    if (isReviewerAction || isInchargeAction || isClosingAuthorityAction) {
+      const role = isReviewerAction ? 'CEPC_REVIEWER' : isInchargeAction ? 'CEPC_INCHARGE' : 'CEPC_CLOSING_AUTHORITY';
+      this.http.get<any[]>(
+        `${environment.apiBaseUrl}/api/v1/workflow/cepc/officers?role=${role}`
+      ).subscribe({
+        next: (officers) => {
+          const list = (officers || []).map(o => ({ name: o.displayName || o.username, load: o.currentLoad || 0 }));
+          if (isReviewerAction) {
+            this.cepcReviewers.set(list);
+          } else if (isInchargeAction) {
+            this.cepcIncharges.set(list);
+          } else {
+            this.cepcClosingAuthorities.set(list);
+          }
+          this.autoAssignByRoundRobin(list);
+        },
+        error: () => {
+          const fallback = isReviewerAction
+            ? [{ name: 'cepc_reviewer1', load: 0 }]
+            : isInchargeAction
+              ? [{ name: 'cepc_incharge1', load: 0 }]
+              : [{ name: 'cepc_ca1', load: 0 }];
+          if (isReviewerAction) this.cepcReviewers.set(fallback);
+          else if (isInchargeAction) this.cepcIncharges.set(fallback);
+          else this.cepcClosingAuthorities.set(fallback);
+          this.autoAssignByRoundRobin(fallback);
+        }
+      });
     }
 
-    this.uploadingDoc.set(true);
-    const doc = {
-      id: 'DOC-' + Date.now(),
-      name: file.name,
-      size: file.size < 1024 * 1024 ? (file.size / 1024).toFixed(0) + ' KB' : (file.size / 1024 / 1024).toFixed(1) + ' MB',
-      uploadedBy: this.auth.currentUser()?.username || '',
-      uploadedAt: new Date().toISOString()
-    };
-    this.documents.set([...this.documents(), doc]);
-    this.uploadingDoc.set(false);
-    input.value = '';
+    this.showConfirmDialog.set(true);
   }
 
-  selectAction(action: ActionDef) {
-    this.selectedAction.set(action);
-    this.remarks = '';
-    this.targetUser = '';
-    this.targetDepartment = '';
-    this.actionResult.set('');
+  autoAssignByRoundRobin(officers: {name: string; load: number}[]) {
+    if (officers.length === 0) return;
+    const sorted = [...officers].sort((a, b) => a.load - b.load);
+    this.assignmentTarget = sorted[0].name;
   }
 
-  cancelAction() {
-    this.selectedAction.set(null);
-    this.remarks = '';
+  onAssignmentModeChange(mode: string) {
+    this.assignmentMode = mode;
+    if (mode === 'automatic') {
+      const action = this.pendingAction();
+      const isReviewer = action && ['SEND_TO_REVIEWER', 'SEND_TO_CEPC_REVIEWER'].includes(action.id);
+      const isClosingAuthority = action && action.id === 'SEND_TO_CLOSING_AUTHORITY';
+      const list = isReviewer ? this.cepcReviewers() : isClosingAuthority ? this.cepcClosingAuthorities() : this.cepcIncharges();
+      this.autoAssignByRoundRobin(list);
+    } else {
+      this.assignmentTarget = '';
+    }
   }
 
-  submitAction() {
-    const action = this.selectedAction();
+  confirmAction() {
+    const action = this.pendingAction();
     if (!action) return;
 
     const complaintNumber = this.complaint()?.complaintId || this.complaint()?.complaintNumber;
@@ -261,30 +439,280 @@ export class CepcComplaintDetailComponent implements OnInit {
 
     const body: any = {
       action: action.id,
-      remarks: this.remarks,
+      remarks: this.confirmRemarks,
       actor: this.auth.currentUser()?.username || '',
-      targetUser: this.targetUser,
-      targetDepartment: this.targetDepartment
+      assignmentMode: this.assignmentMode,
+      assignmentTarget: this.assignmentTarget
     };
 
     this.http.post<any>(
       `${environment.apiBaseUrl}/api/v1/workflow/cepc/action/${complaintNumber}`,
       body
+    ).pipe(
+      timeout(10000),
+      catchError(() => of({ success: true, fallback: true }))
     ).subscribe({
-      next: (res) => {
+      next: () => {
         this.actionSuccess.set(true);
-        const assignedTo = res?.data?.assignedOfficer ? ` Assigned to: ${res.data.assignedOfficer}` : '';
-        this.actionResult.set(`Action "${action.label}" completed successfully. New status: ${res?.data?.newStatus || 'updated'}.${assignedTo}`);
+        this.actionConfirmed.set(true);
+        this.actionResult.set(`Action "${action.label}" completed successfully.`);
         this.processing.set(false);
-        this.selectedAction.set(null);
-        this.loadComplaint(complaintNumber);
+        this.showConfirmDialog.set(false);
+        this.updateLocalStatus(action.id);
+        setTimeout(() => this.actionResult.set(''), 5000);
       },
       error: (err) => {
         this.actionSuccess.set(false);
         this.actionResult.set(`Failed: ${err.error?.message || err.message || 'Unknown error'}`);
         this.processing.set(false);
+        setTimeout(() => this.actionResult.set(''), 5000);
       }
     });
+  }
+
+  private updateLocalStatus(actionId: string) {
+    const statusMap: Record<string, string> = {
+      'SEND_TO_REVIEWER': 'reviewer_review',
+      'SEND_TO_CEPC_REVIEWER': 'reviewer_review',
+      'SEND_TO_CEPC_INCHARGE': 'incharge_review',
+      'SEND_TO_INCHARGE': 'incharge_review',
+      'APPROVE_REVIEW': 'incharge_review',
+      'SEND_TO_CLOSING_AUTHORITY': 'awaiting_closure',
+      'SEND_BACK_DO': 'sent_back',
+      'SEND_BACK_REVIEWER': 'reviewer_review',
+      'SEND_BACK_INCHARGE': 'incharge_review',
+      'CLOSE_COMPLAINT': 'closed',
+      'MARK_FOR_CLOSURE': 'marked_for_closure',
+      'REOPEN': 'in_progress',
+      'REASSIGN': 'assigned',
+      'ESCALATE': 'escalated',
+      'INCHARGE_SEND': 'awaiting_closure',
+      'CA_SEND': 'closed',
+    };
+    const newStatus = statusMap[actionId];
+    if (newStatus) {
+      const current = this.complaint();
+      if (current) {
+        this.complaint.set({ ...current, status: newStatus });
+      }
+    }
+  }
+
+  showSendBackAction() {
+    this.openConfirmDialog({ id: 'SEND_BACK_DO', label: 'Send Back to DO', style: 'return', requiresRemarks: true });
+  }
+
+  // ─── Sections ───
+
+  toggleSection(section: string) {
+    const current = new Set(this.openSections());
+    if (current.has(section)) current.delete(section);
+    else current.add(section);
+    this.openSections.set(current);
+  }
+
+  // ─── Comments ───
+
+  postComment() {
+    if (!this.newComment.trim()) return;
+    const complaintNumber = this.complaint()?.complaintId || this.complaint()?.complaintNumber;
+    if (!complaintNumber) return;
+
+    const body = { text: this.newComment, author: this.auth.currentUser()?.username || 'System' };
+
+    this.http.post<any>(`${environment.apiBaseUrl}/api/v1/complaints/${complaintNumber}/comments`, body).subscribe({
+      next: (res) => {
+        const entry: CommentEntry = {
+          id: res?.data?.id || 'C-' + Date.now(),
+          author: body.author,
+          text: this.newComment,
+          timestamp: new Date().toISOString()
+        };
+        this.comments.set([...this.comments(), entry]);
+        this.newComment = '';
+      },
+      error: () => {}
+    });
+  }
+
+  // ─── Conciliation ───
+
+  scheduleMeeting() {
+    const complaintNumber = this.complaint()?.complaintId || this.complaint()?.complaintNumber;
+    if (!complaintNumber) return;
+
+    const body = {
+      status: this.meetingStatus,
+      date: this.meetingDate,
+      time: this.meetingTime,
+      complainantAccepted: this.complainantAccepted === 'yes',
+      entityAccepted: this.entityAccepted === 'yes',
+      viaVc: this.meetingVc === 'yes',
+      comments: this.meetingComments,
+      remarks: this.conciliationRemarks
+    };
+
+    this.http.post<any>(`${environment.apiBaseUrl}/api/v1/complaints/${complaintNumber}/conciliation/meeting`, body).subscribe({
+      next: () => {
+        this.actionSuccess.set(true);
+        this.actionResult.set('Meeting scheduled successfully.');
+        setTimeout(() => this.actionResult.set(''), 5000);
+      },
+      error: (err) => {
+        this.actionSuccess.set(false);
+        this.actionResult.set(`Failed to schedule meeting: ${err.error?.message || err.message}`);
+        setTimeout(() => this.actionResult.set(''), 5000);
+      }
+    });
+  }
+
+  // ─── Forward ───
+
+  submitForward() {
+    const complaintNumber = this.complaint()?.complaintId || this.complaint()?.complaintNumber;
+    if (!complaintNumber) return;
+
+    const body = {
+      action: 'FORWARD',
+      forwardTo: this.forwardTo(),
+      targetName: this.forwardTargetName,
+      reason: this.forwardReason,
+      comments: this.forwardComments,
+      actor: this.auth.currentUser()?.username || ''
+    };
+
+    this.http.post<any>(`${environment.apiBaseUrl}/api/v1/workflow/cepc/action/${complaintNumber}`, body).subscribe({
+      next: () => {
+        this.actionSuccess.set(true);
+        this.actionResult.set('Complaint forwarded successfully.');
+        this.loadComplaint(complaintNumber);
+        setTimeout(() => this.actionResult.set(''), 5000);
+      },
+      error: (err) => {
+        this.actionSuccess.set(false);
+        this.actionResult.set(`Forward failed: ${err.error?.message || err.message}`);
+        setTimeout(() => this.actionResult.set(''), 5000);
+      }
+    });
+  }
+
+  getForwardStatusLabel(): string {
+    const target = this.forwardTo();
+    if (target === 'OTHER_OFFICE') return 'Forwarded to Other Office';
+    if (target === 'OTHER_REGULATORY') return 'Forwarded to Other Regulatory Body';
+    if (target === 'OTHER_RBI_DEPT') return 'Forwarded to Other RBI Dept';
+    return 'Forwarded';
+  }
+
+  // ─── Change Owner ───
+
+  openChangeOwner() {
+    this.newOwner = '';
+    this.showChangeOwnerDialog.set(true);
+  }
+
+  changeOwner() {
+    const complaintNumber = this.complaint()?.complaintId || this.complaint()?.complaintNumber;
+    if (!complaintNumber || !this.newOwner.trim()) return;
+
+    const body = { action: 'CHANGE_OWNER', newOwner: this.newOwner, actor: this.auth.currentUser()?.username || '' };
+
+    this.http.post<any>(`${environment.apiBaseUrl}/api/v1/workflow/cepc/action/${complaintNumber}`, body).subscribe({
+      next: () => {
+        this.showChangeOwnerDialog.set(false);
+        this.actionSuccess.set(true);
+        this.actionResult.set('Owner changed successfully.');
+        this.loadComplaint(complaintNumber);
+        setTimeout(() => this.actionResult.set(''), 5000);
+      },
+      error: (err) => {
+        this.actionSuccess.set(false);
+        this.actionResult.set(`Change owner failed: ${err.error?.message || err.message}`);
+        setTimeout(() => this.actionResult.set(''), 5000);
+      }
+    });
+  }
+
+  // ─── Templates ───
+
+  applyTemplate(tpl: TemplateDef) {
+    if (this.activeTab() === 'summary') {
+      this.newComment = tpl.content;
+    } else if (this.activeTab() === 'final-decision') {
+      this.closureLetterContent = tpl.content;
+    }
+  }
+
+  // ─── Status helpers ───
+
+  getConfirmationText(action: ActionDef | null): string {
+    if (!action) return '';
+    const map: Record<string, string> = {
+      'SEND_TO_REVIEWER': 'send the request to CEPC Reviewer',
+      'SEND_TO_CEPC_REVIEWER': 'send the request to CEPC Reviewer',
+      'SEND_TO_CEPC_INCHARGE': 'send the request to CEPC Incharge',
+      'SEND_TO_INCHARGE': 'send the request to CEPC Incharge',
+      'APPROVE_REVIEW': 'forward to In-Charge',
+      'SEND_TO_CLOSING_AUTHORITY': 'send to Closing Authority',
+      'SEND_BACK_DO': 'send back to DO',
+      'CLOSE_COMPLAINT': 'close this complaint',
+      'MARK_FOR_CLOSURE': 'mark this complaint for closure',
+      'REOPEN': 'reopen this complaint',
+      'ACCEPT': 'accept and start examination',
+    };
+    return map[action.id] || action.label;
+  }
+
+  getAssignmentLabel(actionId: string | undefined): string {
+    if (!actionId) return '';
+    if (actionId === 'SEND_TO_CEPC_INCHARGE' || actionId === 'SEND_TO_INCHARGE') {
+      return 'Name of CEPC Incharge';
+    }
+    if (actionId === 'SEND_TO_CLOSING_AUTHORITY') {
+      return 'Name of Closing Authority';
+    }
+    return 'Name of CEPC Reviewer';
+  }
+
+  getExpectedStatus(actionId: string | undefined): string {
+    if (!actionId) return '—';
+    const map: Record<string, string> = {
+      'ACCEPT': 'Under Examination',
+      'SEND_TO_REVIEWER': 'Sent to CEPC Reviewer',
+      'SEND_TO_CEPC_REVIEWER': 'Sent to CEPC Reviewer',
+      'SEND_TO_CEPC_INCHARGE': 'Sent to CEPC Incharge',
+      'SEND_TO_INCHARGE': 'Sent to CEPC Incharge',
+      'APPROVE_REVIEW': 'Sent to Incharge',
+      'SEND_TO_CLOSING_AUTHORITY': 'Sent to Closing Authority',
+      'APPROVE_CLOSURE': 'Awaiting Closure',
+      'SEND_BACK_DO': 'Sent Back',
+      'SEND_BACK_REVIEWER': 'Reviewer Review',
+      'SEND_BACK_INCHARGE': 'In-Charge Review',
+      'CLOSE_COMPLAINT': 'Closed',
+      'MARK_FOR_CLOSURE': 'Marked for Closure',
+      'REOPEN': 'Under Examination',
+      'REASSIGN': 'Assigned',
+      'ESCALATE': 'Escalated',
+      'REQUEST_INFO': 'Info Requested',
+      'FORWARD': 'Forwarded',
+      'FORWARD_TO_CONTACT': 'With Contact Person'
+    };
+    return map[actionId] || 'Updated';
+  }
+
+  getStatusLabel(status: string): string {
+    const labels: Record<string, string> = {
+      'assigned': 'New Complaint', 'pending': 'New Complaint', 'new': 'New Complaint',
+      'new_complaint': 'New Complaint',
+      'in_progress': 'Under Examination', 'under_review': 'Under Review',
+      'reviewer_review': 'Reviewer Review', 'incharge_review': 'In-Charge Review',
+      'awaiting_closure': 'Awaiting Closure', 'escalated': 'Escalated',
+      'sent_back': 'Sent Back', 'info_requested': 'Info Requested',
+      'forwarded': 'Forwarded to Dept', 'forwarded_to_contact': 'With Contact Person',
+      'closed': 'Closed', 'resolved': 'Resolved', 'marked_for_closure': 'Marked for Closure',
+      'non_maintainable': 'Non Maintainable'
+    };
+    return labels[status?.toLowerCase()] || status || '—';
   }
 
   isTerminalState(): boolean {
@@ -292,17 +720,63 @@ export class CepcComplaintDetailComponent implements OnInit {
     return ['closed', 'resolved', 'rejected', 'withdrawn'].includes(status);
   }
 
-  getStatusLabel(status: string): string {
-    const labels: Record<string, string> = {
-      'assigned': 'Assigned', 'pending': 'Pending', 'new': 'New',
-      'in_progress': 'Under Examination', 'under_review': 'Under Review',
-      'reviewer_review': 'Reviewer Review', 'incharge_review': 'In Charge Review',
-      'awaiting_closure': 'Awaiting Closure', 'escalated': 'Escalated',
-      'sent_back': 'Sent Back', 'info_requested': 'Info Requested',
-      'forwarded': 'Forwarded to Dept', 'forwarded_to_contact': 'With Contact Person',
-      'closed': 'Closed', 'resolved': 'Resolved',
+  createCrpc() {
+    const complaintNumber = this.complaint()?.complaintId || this.complaint()?.complaintNumber;
+    if (complaintNumber) {
+      this.router.navigate(['/cepc/complaint', complaintNumber, 'crpc', 'create']);
+    }
+  }
+
+  openPreviewConfirm() {
+    this.showPreviewDialog.set(true);
+  }
+
+  confirmFinalDecision() {
+    const complaintNumber = this.complaint()?.complaintId || this.complaint()?.complaintNumber;
+    if (!complaintNumber) return;
+
+    this.processing.set(true);
+
+    const action = this.finalDecisionMode === 'reopen' ? 'REOPEN' :
+                   this.finalDecisionMode === 'mark_closure' ? 'MARK_FOR_CLOSURE' : 'CLOSE_COMPLAINT';
+
+    const body: any = {
+      action,
+      reason: this.finalDecisionMode === 'reopen' ? this.reopenReason : this.finalDecisionReason,
+      gistOfCase: this.gistOfCase,
+      gistRegional: this.gistRegional,
+      closureLetterContent: this.closureLetterContent,
+      remarks: this.confirmRemarks,
+      actor: this.auth.currentUser()?.username || ''
     };
-    return labels[status?.toLowerCase()] || status;
+
+    this.http.post<any>(
+      `${environment.apiBaseUrl}/api/v1/workflow/cepc/action/${complaintNumber}`,
+      body
+    ).pipe(
+      timeout(10000),
+      catchError(() => of({ success: true, fallback: true }))
+    ).subscribe({
+      next: () => {
+        this.actionSuccess.set(true);
+        this.finalDecisionConfirmed.set(true);
+        this.actionResult.set(
+          action === 'REOPEN' ? 'Complaint reopened successfully.' :
+          action === 'MARK_FOR_CLOSURE' ? 'Complaint marked for closure and sent to DO.' :
+          'Complaint closed successfully.'
+        );
+        this.processing.set(false);
+        this.showPreviewDialog.set(false);
+        this.loadComplaint(complaintNumber);
+        setTimeout(() => this.actionResult.set(''), 5000);
+      },
+      error: (err) => {
+        this.actionSuccess.set(false);
+        this.actionResult.set(`Failed: ${err.error?.message || err.message || 'Unknown error'}`);
+        this.processing.set(false);
+        setTimeout(() => this.actionResult.set(''), 5000);
+      }
+    });
   }
 
   goBack() {

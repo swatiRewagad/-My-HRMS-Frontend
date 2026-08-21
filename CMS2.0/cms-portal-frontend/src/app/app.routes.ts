@@ -69,6 +69,12 @@ export const routes: Routes = [
     canActivate: [staffRoleGuard(['ADMIN', 'CRPC_ADMIN', 'CRPC_HEAD'])],
     loadComponent: () => import('./components/admin/rule-tester/rule-tester.component').then(m => m.RuleTesterComponent)
   },
+  // ── Assignment Studio (Decision Table Engine) ──
+  {
+    path: 'admin/assignment-studio',
+    canActivate: [staffRoleGuard(['ADMIN', 'RBIO_ADMIN', 'RBIO_SUPERVISOR'])],
+    loadChildren: () => import('./components/admin/assignment-studio/assignment-studio.routes').then(m => m.ASSIGNMENT_STUDIO_ROUTES)
+  },
   {
     path: 'officer',
     loadComponent: () => import('./components/officer/officer-dashboard/officer-dashboard.component').then(m => m.OfficerDashboardComponent)
@@ -101,7 +107,7 @@ export const routes: Routes = [
   {
     path: 'staff/rbio/task/:id',
     canActivate: [staffAuthGuard],
-    loadComponent: () => import('./components/staff/task-action/task-action.component').then(m => m.TaskActionComponent)
+    loadComponent: () => import('./components/rbio/rbio-create-complaint/rbio-create-complaint.component').then(m => m.RbioCreateComplaintComponent)
   },
   {
     path: 'staff/rbio/history',
@@ -161,6 +167,11 @@ export const routes: Routes = [
     path: 'cepc/complaint/:id',
     canActivate: [staffAuthGuard],
     loadComponent: () => import('./components/cepc/cepc-complaint-detail/cepc-complaint-detail.component').then(m => m.CepcComplaintDetailComponent)
+  },
+  {
+    path: 'cepc/complaint/:id/crpc/create',
+    canActivate: [staffAuthGuard],
+    loadComponent: () => import('./components/cepc/cepc-crpc-create/cepc-crpc-create.component').then(m => m.CepcCrpcCreateComponent)
   },
   {
     path: 'cepc/sla-dashboard',

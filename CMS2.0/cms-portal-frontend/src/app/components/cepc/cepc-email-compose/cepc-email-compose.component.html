@@ -1,0 +1,94 @@
+<div class="email-compose">
+  <!-- Quick recipient buttons -->
+  <div class="recipient-shortcuts">
+    @if (complainantEmail) {
+      <button class="shortcut-btn" (click)="prefillComplainant()" title="Use complainant email">
+        <i class="pi pi-user"></i> Complainant
+      </button>
+    }
+    @if (entityEmail) {
+      <button class="shortcut-btn" (click)="prefillEntity()" title="Use entity email">
+        <i class="pi pi-building"></i> Entity
+      </button>
+    }
+  </div>
+
+  <!-- To -->
+  <div class="form-field">
+    <label>To <span class="required">*</span></label>
+    <input type="email" [(ngModel)]="toEmail" placeholder="recipient@example.com" required />
+  </div>
+
+  <!-- CC -->
+  <div class="form-field">
+    <label>CC</label>
+    <input type="text" [(ngModel)]="ccEmails" placeholder="cc1@example.com, cc2@example.com" />
+  </div>
+
+  <!-- Template Selector -->
+  <div class="form-field">
+    <label>Template</label>
+    <select [(ngModel)]="selectedTemplate" (ngModelChange)="onTemplateSelect()">
+      <option value="">-- Select Template --</option>
+      @for (tpl of templates; track tpl.id) {
+        <option [value]="tpl.id">{{ tpl.label }}</option>
+      }
+    </select>
+  </div>
+
+  <!-- Subject -->
+  <div class="form-field">
+    <label>Subject <span class="required">*</span></label>
+    <input type="text" [(ngModel)]="subject" placeholder="Email subject" required />
+  </div>
+
+  <!-- Body -->
+  <div class="form-field">
+    <label>Body <span class="required">*</span></label>
+    <textarea [(ngModel)]="body" placeholder="Compose your email..." rows="6" required></textarea>
+  </div>
+
+  <!-- Attachments -->
+  <div class="form-field">
+    <label>Attachments</label>
+    <div class="attachment-area">
+      <label class="file-upload-btn">
+        <i class="pi pi-paperclip"></i> Attach File
+        <input type="file" (change)="onFileSelect($event)" multiple hidden />
+      </label>
+      <span class="file-hint">Max 2MB per file</span>
+    </div>
+    @if (attachmentError) {
+      <span class="field-error">{{ attachmentError }}</span>
+    }
+    @if (attachments.length > 0) {
+      <ul class="attachment-list">
+        @for (file of attachments; track file.name; let i = $index) {
+          <li>
+            <span class="file-name">{{ file.name }}</span>
+            <span class="file-size">({{ formatFileSize(file.size) }})</span>
+            <button class="remove-btn" (click)="removeAttachment(i)" title="Remove">&times;</button>
+          </li>
+        }
+      </ul>
+    }
+  </div>
+
+  <!-- Send button -->
+  <div class="compose-actions">
+    <button class="btn btn-primary" (click)="send()" [disabled]="sending() || !toEmail || !subject || !body">
+      @if (sending()) {
+        <i class="pi pi-spin pi-spinner"></i> Sending...
+      } @else {
+        <i class="pi pi-send"></i> Send Email
+      }
+    </button>
+  </div>
+
+  <!-- Result message -->
+  @if (resultMessage()) {
+    <div class="result-msg" [class.success]="resultSuccess()" [class.error]="!resultSuccess()">
+      {{ resultMessage() }}
+    </div>
+  }
+</div>

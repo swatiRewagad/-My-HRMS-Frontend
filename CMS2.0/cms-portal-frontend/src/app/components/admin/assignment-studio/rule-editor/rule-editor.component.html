@@ -1,0 +1,130 @@
+<div class="assignment-rule-editor" (keydown)="onKeyDown($event)" tabindex="0">
+
+  <!-- Toolbar -->
+  <div class="editor-toolbar">
+    <div class="toolbar-left">
+      <h3>Rule Editor</h3>
+      <span class="version-label">Ruleset #{{ rulesetId() }} / Version #{{ versionId() }}</span>
+      @if (versionStatus()) {
+        <span class="status-badge" [class]="'status-' + versionStatus().toLowerCase()">{{ versionStatus() }}</span>
+      }
+      @if (dirty()) {
+        <span class="dirty-indicator">Unsaved changes</span>
+      }
+    </div>
+    <div class="toolbar-actions">
+      <button class="btn btn-sm" (click)="addRow()" [disabled]="isReadOnly()">+ Add</button>
+      <button class="btn btn-sm" (click)="duplicateSelected()" [disabled]="isReadOnly()">Duplicate</button>
+      <button class="btn btn-sm btn-danger" (click)="deleteSelected()" [disabled]="isReadOnly()">Delete</button>
+      <span class="separator"></span>
+      <button class="btn btn-primary btn-sm" (click)="save()" [disabled]="isReadOnly() || saving() || !dirty()">
+        {{ saving() ? 'Saving...' : 'Save' }}
+      </button>
+      <button class="btn btn-sm" (click)="validateRules()">Validate</button>
+      @if (versionStatus() === 'DRAFT') {
+        <button class="btn btn-sm btn-submit" (click)="submitForApproval()" [disabled]="dirty()">Submit for Approval</button>
+      }
+      @if (versionStatus() === 'APPROVED') {
+        <button class="btn btn-sm btn-publish" (click)="publishVersion()">Publish</button>
+      }
+    </div>
+  </div>
+
+  <!-- Messages -->
+  @if (errorMessage()) {
+    <div class="message message-error">{{ errorMessage() }}</div>
+  }
+  @if (successMessage()) {
+    <div class="message message-success">{{ successMessage() }}</div>
+  }
+
+  <!-- Default outcome config -->
+  <div class="default-outcome-bar">
+    <label>Default Outcome:</label>
+    <select [(ngModel)]="defaultOutcomeType" [disabled]="isReadOnly()" (ngModelChange)="markDirty()">
+      <option value="QUEUE">Queue</option>
+      <option value="GROUP">Group</option>
+      <option value="USER">User</option>
+    </select>
+    <input type="text" [(ngModel)]="defaultOutcomeTarget" placeholder="Target ID" [disabled]="isReadOnly()" (ngModelChange)="markDirty()" />
+    <span class="hit-policy-label">Hit Policy: <strong>{{ hitPolicy() }}</strong></span>
+  </div>
+
+  <!-- Loading -->
+  @if (loading()) {
+    <div class="loading-overlay">Loading rules...</div>
+  }
+
+  <!-- Rules Table -->
+  @if (!loading()) {
+    <div class="table-wrapper">
+      <table class="rules-table">
+        <thead>
+          <tr>
+            <th class="col-select"><input type="checkbox" (change)="toggleSelectAll($event)" /></th>
+            <th class="col-code">Code</th>
+            <th class="col-name">Name</th>
+            @for (attr of attributes(); track attr.code) {
+              <th class="col-condition">{{ attr.label }}</th>
+            }
+            <th class="col-outcome">Outcome</th>
+            <th class="col-target">Target</th>
+            <th class="col-mode">Mode</th>
+            <th class="col-priority">Priority</th>
+            <th class="col-enabled">Enabled</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of rows(); track row.ruleCode; let i = $index) {
+            <tr [class.selected]="row.selected">
+              <td class="col-select"><input type="checkbox" [(ngModel)]="row.selected" /></td>
+              <td class="col-code">
+                <input type="text" [(ngModel)]="row.ruleCode" [disabled]="isReadOnly()" (ngModelChange)="markDirty()" />
+              </td>
+              <td class="col-name">
+                <input type="text" [(ngModel)]="row.name" [disabled]="isReadOnly()" (ngModelChange)="markDirty()" />
+              </td>
+              @for (attr of attributes(); track attr.code) {
+                <td class="col-condition">
+                  <input type="text" [ngModel]="row.conditions[attr.code] || ''"
+                    (ngModelChange)="row.conditions[attr.code] = $event; markDirty()"
+                    [disabled]="isReadOnly()" [placeholder]="'Any'" />
+                </td>
+              }
+              <td class="col-outcome">
+                <select [(ngModel)]="row._outcomeType" [disabled]="isReadOnly()" (ngModelChange)="markDirty()">
+                  <option value="GROUP">Group</option>
+                  <option value="QUEUE">Queue</option>
+                  <option value="USER">User</option>
+                  <option value="CHAIN">Chain</option>
+                </select>
+              </td>
+              <td class="col-target">
+                <input type="text" [(ngModel)]="row._outcomeTarget" [disabled]="isReadOnly()" (ngModelChange)="markDirty()" />
+              </td>
+              <td class="col-mode">
+                <select [(ngModel)]="row._assignMode" [disabled]="isReadOnly()" (ngModelChange)="markDirty()">
+                  <option value="AS_GROUP">As Group</option>
+                  <option value="PICK_MEMBER">Pick Member</option>
+                </select>
+              </td>
+              <td class="col-priority">
+                <input type="number" [(ngModel)]="row.priority" [disabled]="isReadOnly()" (ngModelChange)="markDirty()" />
+              </td>
+              <td class="col-enabled">
+                <input type="checkbox" [(ngModel)]="row.enabled" [disabled]="isReadOnly()" (ngModelChange)="markDirty()" />
+              </td>
+            </tr>
+          } @empty {
+            <tr><td [attr.colspan]="5 + attributes().length" class="empty-row">No rules yet. Click "+ Add" to create one.</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+
+  <!-- Keyboard hint -->
+  <div class="shortcut-bar">
+    <span>Ctrl+S Save</span>
+  </div>
+</div>

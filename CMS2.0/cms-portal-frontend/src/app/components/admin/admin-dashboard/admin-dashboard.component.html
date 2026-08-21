@@ -35,6 +35,10 @@
         <i class="pi pi-users"></i>
         <span>Team Management</span>
       </div>
+      <div class="sidebar-item" [class.active]="sidebarItem() === 'assignment-studio'" (click)="navigateTo('assignment-studio')">
+        <i class="pi pi-sitemap"></i>
+        <span>Assignment Studio</span>
+      </div>
     </aside>
 
     <!-- Content -->
