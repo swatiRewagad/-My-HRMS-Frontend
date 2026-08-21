@@ -1,6 +1,6 @@
 import { Component, OnInit, OnDestroy, inject, signal, HostListener, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, FormControl, Validators } from '@angular/forms';
+import { FormsModule, ReactiveFormsModule, FormBuilder, NonNullableFormBuilder, FormGroup, FormControl, Validators } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 import { ComplaintService } from '../../../services/complaint.service';
@@ -12,6 +12,8 @@ import { announceToScreenReader, setPageTitle } from '../../../utils/accessibili
 import { lookupPincode } from '../../../utils/pincode-data';
 import { environment } from '../../../../environments/environment';
 import { Select } from 'primeng/select';
+import { CustomValidators } from '../../../utils/custom-validators';
+import { FormErrorComponent } from '../../../shared/form-error/form-error.component';
 
 interface EligibilityQuestion {
   key: string;
@@ -30,7 +32,7 @@ interface EligibilityQuestion {
 @Component({
   selector: 'app-public-file-complaint',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterLink, TranslatePipe, Select],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterLink, TranslatePipe, Select, FormErrorComponent],
   templateUrl: './file-complaint.component.html',
   styleUrl: './file-complaint.component.scss'
 })
@@ -44,9 +46,88 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
   private route = inject(ActivatedRoute);
   private publicAuth = inject(PublicAuthService);
   private fb = inject(FormBuilder);
+  private nnfb = inject(NonNullableFormBuilder);
   translationService = inject(TranslationService);
   private autoSaveTimer: any = null;
   lastSavedAt = signal('');
+
+  // ══════ COMPLAINT STEPPER FORM (Reactive) ══════
+  complaintStepperForm = this.nnfb.group({
+    complainantDetails: this.nnfb.group({
+      complaintCategory: ['', [Validators.required]],
+      firstName: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(50), CustomValidators.alphaNumeric()]],
+      middleName: ['', [Validators.maxLength(50), CustomValidators.alphaNumeric()]],
+      lastName: ['', [Validators.required, Validators.maxLength(50), CustomValidators.alphaNumeric()]],
+      age: ['', [Validators.required, Validators.min(18), Validators.max(120), CustomValidators.numericOnly()]],
+      gender: ['', [Validators.required]],
+      email: ['', [Validators.required, Validators.email, Validators.maxLength(100)]],
+      phone: [''],
+      pincode: ['', [Validators.required]],
+      state: ['', [Validators.required]],
+      city: ['', [Validators.required]],
+      addressDetails: ['', [Validators.required, Validators.maxLength(500)]],
+    }),
+    regulatedEntity: this.nnfb.group({
+      isCreditCardComplaint: ['', [Validators.required]],
+      entityState: [''],
+      entityDistrict: [''],
+      entityBranch: [''],
+    }),
+    complaintDetails: this.nnfb.group({
+      complaintCategory: ['', [Validators.required]],
+      complaintText: ['', [Validators.required, Validators.maxLength(5000)]],
+      hasAccountWithRE: ['', [Validators.required]],
+      accountTypeSelection: [''],
+      savingsAccountNumber: [''],
+      loanAccountNumber: [''],
+      atmDebitCardNumber: [''],
+      creditCardNumber: [''],
+      isWalletComplaint: ['', [Validators.required]],
+      walletName: [''],
+      transactionRefNumber: [''],
+      isBusinessCorrespondent: ['', [Validators.required]],
+      disputeAmount: ['', [CustomValidators.numericOnly()]],
+      compensationSought: ['', [CustomValidators.numericOnly(), CustomValidators.maxCeiling(3000000, 'Compensation for consequential loss can be awarded only up to ₹30 lakh.')]],
+      reliefSought: ['', [CustomValidators.numericOnly(), CustomValidators.maxCeiling(300000, 'Compensation for expenses, harassment, and mental anguish can be awarded only up to ₹3 lakh.')]],
+      fileUpload: ['', [Validators.required]],
+    }),
+    repAuthorization: this.nnfb.group({
+      hasAuthRep: ['', [Validators.required]],
+      repName: [''],
+      repEmail: [''],
+      repPhone: [''],
+      repPincode: [''],
+      repState: [''],
+      repDistrict: [''],
+      repCity: [''],
+      repAddress: [''],
+      repFileUpload: [''],
+    }),
+    declaration: this.nnfb.group({
+      declaration1: [false, [Validators.requiredTrue]],
+      declaration2: [false, [Validators.requiredTrue]],
+    }),
+  });
+
+  get complainantDetailsForm() {
+    return this.complaintStepperForm.controls.complainantDetails;
+  }
+
+  get regulatedEntityForm() {
+    return this.complaintStepperForm.controls.regulatedEntity;
+  }
+
+  get complaintDetailsForm() {
+    return this.complaintStepperForm.controls.complaintDetails;
+  }
+
+  get repAuthorizationForm() {
+    return this.complaintStepperForm.controls.repAuthorization;
+  }
+
+  get declarationForm() {
+    return this.complaintStepperForm.controls.declaration;
+  }
 
   // ══════ ELIGIBILITY REACTIVE FORM ══════
   eligibilityStageForm = this.fb.group({
@@ -127,11 +208,16 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
     form.get('throughAdvocateEligibility')!.valueChanges.subscribe(val => {
       const selfCtrl = form.get('isComplainantSelf')!;
       if (val === 'yes') {
+        selfCtrl.reset('');
+        this.formData['isComplainantSelf'] = '';
+        this.eligibilityAnswers['isComplainantSelf'] = '';
         selfCtrl.setValidators([Validators.required]);
         selfCtrl.markAsTouched();
       } else {
         selfCtrl.clearValidators();
         selfCtrl.reset('');
+        this.formData['isComplainantSelf'] = '';
+        delete this.eligibilityAnswers['isComplainantSelf'];
       }
       selfCtrl.updateValueAndValidity();
     });
@@ -147,6 +233,271 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
       }
       relCtrl.updateValueAndValidity();
     });
+  }
+
+  private setupRegulatedEntityFormWatchers(): void {
+    const re = this.regulatedEntityForm;
+
+    re.controls.isCreditCardComplaint.valueChanges.subscribe(value => {
+      this.formData['isCreditCardComplaint'] = value;
+      if (value === 'no') {
+        re.controls.entityState.setValidators([Validators.required]);
+        re.controls.entityDistrict.setValidators([Validators.required]);
+        re.controls.entityBranch.setValidators([Validators.required]);
+      } else {
+        re.controls.entityState.clearValidators();
+        re.controls.entityDistrict.clearValidators();
+        re.controls.entityBranch.clearValidators();
+        re.controls.entityState.setValue('');
+        re.controls.entityDistrict.setValue('');
+        re.controls.entityBranch.setValue('');
+      }
+      re.controls.entityState.updateValueAndValidity();
+      re.controls.entityDistrict.updateValueAndValidity();
+      re.controls.entityBranch.updateValueAndValidity();
+    });
+
+    re.controls.entityState.valueChanges.subscribe(value => {
+      this.formData['entityState'] = value;
+    });
+
+    re.controls.entityDistrict.valueChanges.subscribe(value => {
+      this.formData['entityDistrict'] = value;
+    });
+
+    re.controls.entityBranch.valueChanges.subscribe(value => {
+      this.formData['entityBranch'] = value;
+    });
+  }
+
+  private setupComplaintDetailsFormWatchers(): void {
+    const cd = this.complaintDetailsForm;
+
+    cd.controls.complaintCategory.valueChanges.subscribe(v => { this.formData['complaintCategory'] = v; });
+    cd.controls.complaintText.valueChanges.subscribe(v => { this.formData['complaintText'] = v; });
+    cd.controls.isBusinessCorrespondent.valueChanges.subscribe(v => { this.formData['isBusinessCorrespondent'] = v; });
+    cd.controls.disputeAmount.valueChanges.subscribe(v => { this.formData['disputeAmount'] = v; });
+    cd.controls.compensationSought.valueChanges.subscribe(v => { this.formData['compensationSought'] = v; });
+    cd.controls.reliefSought.valueChanges.subscribe(v => { this.formData['reliefSought'] = v; });
+
+    cd.controls.hasAccountWithRE.valueChanges.subscribe(value => {
+      this.formData['hasAccountWithRE'] = value;
+      if (value === 'yes') {
+        cd.controls.accountTypeSelection.setValidators([Validators.required]);
+        this.syncAccountTypeSelectionControl();
+      } else {
+        cd.controls.accountTypeSelection.clearValidators();
+        cd.controls.accountTypeSelection.setValue('');
+        this.clearAccountNumberFields();
+      }
+      cd.controls.accountTypeSelection.updateValueAndValidity();
+    });
+
+    cd.controls.isWalletComplaint.valueChanges.subscribe(value => {
+      this.formData['isWalletComplaint'] = value;
+      if (value === 'yes') {
+        cd.controls.walletName.setValidators([Validators.required, Validators.maxLength(100)]);
+        cd.controls.transactionRefNumber.setValidators([Validators.required, Validators.maxLength(150), CustomValidators.numericOnly()]);
+      } else {
+        cd.controls.walletName.clearValidators();
+        cd.controls.walletName.setValue('');
+        cd.controls.transactionRefNumber.clearValidators();
+        cd.controls.transactionRefNumber.setValue('');
+      }
+      cd.controls.walletName.updateValueAndValidity();
+      cd.controls.transactionRefNumber.updateValueAndValidity();
+    });
+
+    cd.controls.walletName.valueChanges.subscribe(v => { this.formData['walletName'] = v; });
+    cd.controls.transactionRefNumber.valueChanges.subscribe(v => { this.formData['transactionRefNumber'] = v; });
+    cd.controls.savingsAccountNumber.valueChanges.subscribe(v => { this.formData['savingsAccountNumber'] = v; });
+    cd.controls.loanAccountNumber.valueChanges.subscribe(v => { this.formData['loanAccountNumber'] = v; });
+    cd.controls.atmDebitCardNumber.valueChanges.subscribe(v => { this.formData['atmDebitCardNumber'] = v; });
+    cd.controls.creditCardNumber.valueChanges.subscribe(v => { this.formData['creditCardNumber'] = v; });
+  }
+
+  private syncAccountTypeSelectionControl(): void {
+    const hasSelection = this.accountTypes.some(a => a.checked);
+    this.complaintDetailsForm.controls.accountTypeSelection.setValue(hasSelection ? 'selected' : '');
+  }
+
+  private clearAccountNumberFields(): void {
+    const cd = this.complaintDetailsForm;
+    const fields = ['savingsAccountNumber', 'loanAccountNumber', 'atmDebitCardNumber', 'creditCardNumber'] as const;
+    for (const f of fields) {
+      const ctrl = cd.controls[f];
+      ctrl.clearValidators();
+      ctrl.setValue('');
+      ctrl.updateValueAndValidity();
+    }
+    this.accountTypes.forEach(a => a.checked = false);
+  }
+
+  private setupRepAuthorizationFormWatchers(): void {
+    const ra = this.repAuthorizationForm;
+
+    ra.controls.hasAuthRep.valueChanges.subscribe(value => {
+      this.formData['hasAuthRep'] = value;
+      if (value === 'yes') {
+        ra.controls.repName.setValidators([Validators.required, Validators.maxLength(150), CustomValidators.alphaNumeric()]);
+        ra.controls.repPhone.setValidators([Validators.required, CustomValidators.numericOnly(), Validators.minLength(10), Validators.maxLength(10)]);
+        ra.controls.repEmail.setValidators([Validators.email, Validators.maxLength(100)]);
+        ra.controls.repPincode.setValidators([Validators.required, Validators.minLength(6), Validators.maxLength(6), CustomValidators.numericOnly()]);
+        ra.controls.repState.setValidators([Validators.required]);
+        ra.controls.repDistrict.setValidators([Validators.required]);
+        ra.controls.repCity.setValidators([Validators.required]);
+        ra.controls.repAddress.setValidators([Validators.required, Validators.maxLength(100)]);
+        ra.controls.repFileUpload.setValidators([Validators.required]);
+      } else {
+        this.clearRepFields();
+      }
+      const fields = ['repName', 'repPhone', 'repEmail', 'repPincode', 'repState', 'repDistrict', 'repCity', 'repAddress', 'repFileUpload'] as const;
+      for (const f of fields) { ra.controls[f].updateValueAndValidity(); }
+    });
+
+    ra.controls.repName.valueChanges.subscribe(v => { this.formData['repName'] = v; });
+    ra.controls.repEmail.valueChanges.subscribe(v => { this.formData['repEmail'] = v; });
+    ra.controls.repPhone.valueChanges.subscribe(v => { this.formData['repPhone'] = v; });
+    ra.controls.repPincode.valueChanges.subscribe(v => { this.formData['repPincode'] = v; });
+    ra.controls.repState.valueChanges.subscribe(v => { this.formData['repState'] = v; });
+    ra.controls.repDistrict.valueChanges.subscribe(v => { this.formData['repDistrict'] = v; });
+    ra.controls.repCity.valueChanges.subscribe(v => { this.formData['repCity'] = v; });
+    ra.controls.repAddress.valueChanges.subscribe(v => { this.formData['repAddress'] = v; });
+  }
+
+  private clearRepFields(): void {
+    const ra = this.repAuthorizationForm;
+    const fields = ['repName', 'repPhone', 'repEmail', 'repPincode', 'repState', 'repDistrict', 'repCity', 'repAddress', 'repFileUpload'] as const;
+    for (const f of fields) {
+      ra.controls[f].clearValidators();
+      ra.controls[f].setValue('');
+      ra.controls[f].updateValueAndValidity();
+    }
+    this.repStates = [];
+    this.repDistricts = [];
+    this.repCities = [];
+    this.repFile = null;
+    this.repFileName = '';
+  }
+
+  syncRepFileUploadControl(): void {
+    this.repAuthorizationForm.controls.repFileUpload.setValue(this.repFile ? 'has_file' : '');
+    this.repAuthorizationForm.controls.repFileUpload.markAsTouched();
+    this.repAuthorizationForm.controls.repFileUpload.markAsDirty();
+  }
+
+  private setupDeclarationFormWatchers(): void {
+    this.declarationForm.controls.declaration1.valueChanges.subscribe(v => { this.declarationChecked = v; });
+    this.declarationForm.controls.declaration2.valueChanges.subscribe(v => { this.declaration2Checked = v; });
+  }
+
+  private setupComplainantFormWatchers(): void {
+    const cd = this.complainantDetailsForm;
+
+    cd.controls.complaintCategory.valueChanges.subscribe(value => {
+      this.applyComplainantCategoryValidators(value);
+    });
+
+    cd.controls.pincode.valueChanges.subscribe(value => {
+      if (!value || value.length < 6) {
+        cd.controls.state.setValue('');
+        cd.controls.city.setValue('');
+        this.complainantStates = [];
+        this.complainantDistricts = [];
+        return;
+      }
+      if (!/^\d{6}$/.test(value)) return;
+
+      this.pincodeLoading = true;
+      cd.controls.state.setValue('');
+      cd.controls.city.setValue('');
+      this.complainantStates = [];
+      this.complainantDistricts = [];
+
+      this.http.get<any[]>(`${environment.apiBaseUrl}/api/v1/location/pincode/${value}`).subscribe({
+        next: (res) => {
+          this.pincodeLoading = false;
+          if (res && res[0] && res[0].Status === 'Success' && res[0].PostOffice?.length) {
+            const postOffices = res[0].PostOffice;
+            const states = [...new Set(postOffices.map((po: any) => po.State).filter(Boolean))] as string[];
+            const districts = [...new Set(postOffices.map((po: any) => po.District).filter(Boolean))] as string[];
+            this.complainantStates = states;
+            this.complainantDistricts = districts;
+            cd.controls.state.setValue(states[0] || '');
+            cd.controls.city.setValue(districts[0] || '');
+          } else {
+            this.applyLocalPincodeReactive(value);
+          }
+        },
+        error: () => {
+          this.pincodeLoading = false;
+          this.applyLocalPincodeReactive(value);
+        }
+      });
+    });
+  }
+
+  private applyLocalPincodeReactive(value: string): void {
+    const entry = lookupPincode(value);
+    const cd = this.complainantDetailsForm;
+    if (entry) {
+      this.complainantStates = [entry.state];
+      this.complainantDistricts = [entry.district];
+      cd.controls.state.setValue(entry.state);
+      cd.controls.city.setValue(entry.district);
+    } else {
+      cd.controls.state.setValue('');
+      cd.controls.city.setValue('');
+      cd.controls.pincode.setErrors({ invalidPincode: true });
+    }
+  }
+
+  private applyComplainantCategoryValidators(category: string): void {
+    const cd = this.complainantDetailsForm;
+    const personalFields = ['firstName', 'middleName', 'lastName', 'age', 'gender', 'email'] as const;
+    const isIndividual = category === 'individual' || category === 'senior_citizen';
+
+    if (isIndividual) {
+      cd.controls.firstName.setValidators([Validators.required, Validators.minLength(2), Validators.maxLength(50), CustomValidators.alphaNumeric()]);
+      cd.controls.middleName.setValidators([Validators.maxLength(50), CustomValidators.alphaNumeric()]);
+      cd.controls.lastName.setValidators([Validators.required, Validators.maxLength(50), CustomValidators.alphaNumeric()]);
+      cd.controls.age.setValidators([Validators.required, Validators.min(18), Validators.max(120), CustomValidators.numericOnly()]);
+      cd.controls.gender.setValidators([Validators.required]);
+      cd.controls.email.setValidators([Validators.required, Validators.email, Validators.maxLength(100)]);
+    } else {
+      for (const field of personalFields) {
+        cd.controls[field].clearValidators();
+        cd.controls[field].setValue('');
+      }
+    }
+
+    for (const field of personalFields) {
+      cd.controls[field].updateValueAndValidity();
+    }
+  }
+
+  get isComplainantStepValid(): boolean {
+    return this.complainantDetailsForm.valid;
+  }
+
+  isNextDisabled(): boolean {
+    const step = this.currentStep();
+    if (step === 1) {
+      return this.complainantDetailsForm.invalid;
+    }
+    if (step === 2) {
+      return this.regulatedEntityForm.invalid;
+    }
+    if (step === 3) {
+      return this.complaintDetailsForm.invalid;
+    }
+    if (step === 4) {
+      return this.repAuthorizationForm.invalid;
+    }
+    if (step === 5) {
+      return this.declarationForm.invalid;
+    }
+    return false;
   }
 
   get isCurrentEligibilityStepValid(): boolean {
@@ -173,7 +524,8 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
       if (!this.reminderFile) return false;
     }
     if (q.key === 'throughAdvocateEligibility' && this.eligibilityAnswers['throughAdvocateEligibility'] === 'yes') {
-      if (!this.formData['isComplainantSelf'] && !this.eligibilityAnswers['isComplainantSelf']) return false;
+      const selfCtrl = this.eligibilityStageForm.get('isComplainantSelf')!;
+      if (!selfCtrl.value) return false;
     }
     if (q.key === 'employeeOfRE' && this.eligibilityAnswers['employeeOfRE'] === 'yes') {
       if (!this.eligibilityAnswers['employerRelationship']) return false;
@@ -635,11 +987,11 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
   }
 
   onEntityStateChange() {
-    this.formData['entityDistrict'] = '';
-    this.formData['entityBranch'] = '';
+    this.regulatedEntityForm.controls.entityDistrict.setValue('');
+    this.regulatedEntityForm.controls.entityBranch.setValue('');
     this.districts = [];
     this.branches = [];
-    const state = this.formData['entityState'];
+    const state = this.regulatedEntityForm.controls.entityState.value;
     if (state) {
       this.http.get<any>(`${environment.apiBaseUrl}/api/v1/location/districts`, { params: { state } }).subscribe({
         next: (res) => { this.districts = res?.data ?? res ?? []; },
@@ -649,9 +1001,9 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
   }
 
   onEntityDistrictChange() {
-    this.formData['entityBranch'] = '';
+    this.regulatedEntityForm.controls.entityBranch.setValue('');
     this.branches = [];
-    const district = this.formData['entityDistrict'];
+    const district = this.regulatedEntityForm.controls.entityDistrict.value;
     if (district) {
       this.http.get<any>(`${environment.apiBaseUrl}/api/v1/location/branches`, { params: { district } }).subscribe({
         next: (res) => { this.branches = res?.data ?? res ?? []; },
@@ -699,20 +1051,26 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
 
 
   onAccountTypeToggle(accountType: { label: string; value: string; checked: boolean }) {
-    this.validationErrors['accountType'] = '';
-    if (!accountType.checked) {
-      const fieldMap: Record<string, string> = {
-        savings: 'savingsAccountNumber',
-        loan: 'loanAccountNumber',
-        atm_debit: 'atmDebitCardNumber',
-        credit_card: 'creditCardNumber'
-      };
-      const field = fieldMap[accountType.value];
-      if (field) {
-        this.formData[field] = '';
-        this.validationErrors[field] = '';
-      }
+    this.syncAccountTypeSelectionControl();
+
+    const fieldMap: Record<string, string> = {
+      savings: 'savingsAccountNumber',
+      loan: 'loanAccountNumber',
+      atm_debit: 'atmDebitCardNumber',
+      credit_card: 'creditCardNumber'
+    };
+    const ctrlName = fieldMap[accountType.value];
+    if (!ctrlName) return;
+    const ctrl = this.complaintDetailsForm.get(ctrlName);
+    if (!ctrl) return;
+
+    if (accountType.checked) {
+      ctrl.setValidators([Validators.required, Validators.maxLength(100), CustomValidators.numericOnly()]);
+    } else {
+      ctrl.clearValidators();
+      ctrl.setValue('');
     }
+    ctrl.updateValueAndValidity();
   }
 
   isAccountTypeSelected(type: string): boolean {
@@ -803,12 +1161,13 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
   repCities: string[] = [];
 
   onRepPincodeInput() {
-    const value = this.formData['repPincode'];
+    const ra = this.repAuthorizationForm;
+    const value = ra.controls.repPincode.value;
     if (value && value.length === 6 && /^\d{6}$/.test(value)) {
       this.repPincodeLoading = true;
-      this.formData['repState'] = '';
-      this.formData['repDistrict'] = '';
-      this.formData['repCity'] = '';
+      ra.controls.repState.setValue('');
+      ra.controls.repDistrict.setValue('');
+      ra.controls.repCity.setValue('');
       this.repStates = [];
       this.repDistricts = [];
       this.repCities = [];
@@ -824,9 +1183,9 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
             this.repStates = states;
             this.repDistricts = districts;
             this.repCities = cities;
-            this.formData['repState'] = states[0] || '';
-            this.formData['repDistrict'] = districts[0] || '';
-            this.formData['repCity'] = cities[0] || '';
+            ra.controls.repState.setValue(states[0] || '');
+            ra.controls.repDistrict.setValue(districts[0] || '');
+            ra.controls.repCity.setValue(cities[0] || '');
           }
         },
         error: () => {
@@ -834,9 +1193,9 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
         }
       });
     } else {
-      this.formData['repState'] = '';
-      this.formData['repDistrict'] = '';
-      this.formData['repCity'] = '';
+      ra.controls.repState.setValue('');
+      ra.controls.repDistrict.setValue('');
+      ra.controls.repCity.setValue('');
       this.repStates = [];
       this.repDistricts = [];
       this.repCities = [];
@@ -932,6 +1291,7 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
       }
       this.repFile = input.files[0];
       this.repFileName = input.files[0].name;
+      this.syncRepFileUploadControl();
     }
   }
 
@@ -942,11 +1302,13 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
     if (file.size > 2 * 1024 * 1024) return;
     this.repFile = file;
     this.repFileName = file.name;
+    this.syncRepFileUploadControl();
   }
 
   removeRepFile() {
     this.repFile = null;
     this.repFileName = '';
+    this.syncRepFileUploadControl();
   }
 
   // FR-G-013: Speech to text
@@ -957,10 +1319,17 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
   ngOnInit() {
     setPageTitle('File a Complaint');
     this.setupEligibilityFormWatchers();
+    this.setupComplainantFormWatchers();
+    this.setupRegulatedEntityFormWatchers();
+    this.setupComplaintDetailsFormWatchers();
+    this.setupRepAuthorizationFormWatchers();
+    this.setupDeclarationFormWatchers();
     this.loadRegulatedEntities();
     this.loadMasterData();
     this.speechSupported = !!(window as any).SpeechRecognition || !!(window as any).webkitSpeechRecognition;
     this.formData['phone'] = this.publicAuth.userIdentifier() || '';
+    this.complainantDetailsForm.controls.phone.setValue(this.formData['phone']);
+    this.complainantDetailsForm.controls.phone.disable();
 
     const draftId = this.route.snapshot.queryParamMap.get('draftId');
     const resume = this.route.snapshot.queryParamMap.get('resume');
@@ -1049,6 +1418,8 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
           this.eligibilityStep.set(Object.keys(draft.eligibilityAnswers).length + 1);
         }
         sessionStorage.setItem('cms_draft_id', draftId);
+        this.patchComplaintDetailsFromFormData();
+        this.patchRepAuthorizationFromFormData();
       },
       error: () => {
         this.loadDraft();
@@ -1382,15 +1753,21 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
   // FR-G-017: Form Validation
   validationErrors: Record<string, string> = {};
 
-  onAmountInput(field: string, value: string) {
-    const raw = value.replace(/,/g, '');
-    if (raw && !/^\d*$/.test(raw)) {
-      this.formData[field] = this.formData[field];
-      return;
+  onAmountInput(field: string, event: Event) {
+    const input = event.target as HTMLInputElement;
+    const raw = input.value.replace(/[^0-9]/g, '');
+    const ctrl = this.complaintDetailsForm.get(field);
+    if (ctrl) {
+      ctrl.setValue(raw, { emitEvent: true });
+      ctrl.markAsTouched();
     }
+    input.value = raw ? this.formatIndianNumber(raw) : '';
     this.formData[field] = raw ? this.formatIndianNumber(raw) : '';
-    if (field === 'compensationSought') this.validateCompensationSought();
-    if (field === 'reliefSought') this.validateReliefSought();
+  }
+
+  displayAmount(field: string): string {
+    const raw = this.complaintDetailsForm.get(field)?.value || '';
+    return raw ? this.formatIndianNumber(raw) : '';
   }
 
   private formatIndianNumber(value: string): string {
@@ -1431,74 +1808,42 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
     return words.charAt(0).toUpperCase() + words.slice(1);
   }
 
-  validateCompensationSought() {
-    const amount = parseFloat((this.formData['compensationSought'] || '0').replace(/,/g, ''));
-    if (amount > 3000000) {
-      this.validationErrors['compensationSought'] = 'Compensation for consequential loss can be awarded only up to ₹30 lakh. Please enter an amount up to ₹30 lakh.';
-    } else {
-      this.validationErrors['compensationSought'] = '';
-    }
-  }
-
-  validateReliefSought() {
-    const amount = parseFloat((this.formData['reliefSought'] || '0').replace(/,/g, ''));
-    if (amount > 300000) {
-      this.validationErrors['reliefSought'] = 'Compensation for expenses, harassment, and mental anguish can be awarded only up to ₹3 lakh. Please enter an amount up to ₹3 lakh.';
-    } else {
-      this.validationErrors['reliefSought'] = '';
-    }
-  }
 
   validateCurrentStep(): boolean {
     this.validationErrors = {};
     const step = this.currentStep();
 
     if (step === 1) {
-      if (!this.formData['firstName']?.trim()) this.validationErrors['name'] = 'First name is required';
-      if (!this.formData['pincode'] || !/^\d{6}$/.test(this.formData['pincode'])) this.validationErrors['pincode'] = 'Valid 6-digit pincode is required';
-      if (!this.formData['state']) this.validationErrors['state'] = 'Enter valid pincode to auto-fill state';
-      if (!this.formData['address']?.trim()) this.validationErrors['address'] = 'Address is required';
-      if (this.formData['email'] && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.formData['email'])) this.validationErrors['email'] = 'Invalid email format';
+      this.complainantDetailsForm.markAllAsTouched();
+      this.complainantDetailsForm.markAsDirty();
+      Object.values(this.complainantDetailsForm.controls).forEach(c => c.markAsDirty());
+      if (this.complainantDetailsForm.invalid) {
+        return false;
+      }
     } else if (step === 2) {
-      if (!this.formData['isCreditCardComplaint']) this.validationErrors['isCreditCardComplaint'] = 'Please select Yes or No';
-      if (this.formData['isCreditCardComplaint'] === 'no') {
-        if (!this.formData['entityState']) this.validationErrors['entityState'] = 'Entity state is required';
-        if (!this.formData['entityDistrict']) this.validationErrors['entityDistrict'] = 'Entity district is required';
-        if (!this.formData['entityBranch']?.trim()) this.validationErrors['entityBranch'] = 'Entity branch is required';
+      this.regulatedEntityForm.markAllAsTouched();
+      Object.values(this.regulatedEntityForm.controls).forEach(c => c.markAsDirty());
+      if (this.regulatedEntityForm.invalid) {
+        return false;
       }
     } else if (step === 3) {
-      if (!this.formData['complaintCategory']) this.validationErrors['complaintCategory'] = 'Complaint category is required';
-      if (!this.formData['complaintText']?.trim()) this.validationErrors['complaintText'] = 'Facts of the complaint is required';
-      if (!this.formData['hasAccountWithRE']) this.validationErrors['hasAccountWithRE'] = 'Please select Yes or No';
-      if (this.formData['hasAccountWithRE'] === 'yes') {
-        if (!this.accountTypes.some(a => a.checked)) this.validationErrors['accountType'] = 'Please select at least one account type';
-        if (this.isAccountTypeSelected('savings') && !this.formData['savingsAccountNumber']?.trim()) this.validationErrors['savingsAccountNumber'] = 'Savings account number is required';
-        if (this.isAccountTypeSelected('loan') && !this.formData['loanAccountNumber']?.trim()) this.validationErrors['loanAccountNumber'] = 'Loan account number is required';
-        if (this.isAccountTypeSelected('atm_debit') && !this.formData['atmDebitCardNumber']?.trim()) this.validationErrors['atmDebitCardNumber'] = 'ATM/Debit card number is required';
-        if (this.isAccountTypeSelected('credit_card') && !this.formData['creditCardNumber']?.trim()) this.validationErrors['creditCardNumber'] = 'Credit card number is required';
-      }
-      if (!this.formData['isWalletComplaint']) this.validationErrors['isWalletComplaint'] = 'Please select Yes or No';
-      if (this.formData['isWalletComplaint'] === 'yes') {
-        if (!this.formData['walletName']?.trim()) this.validationErrors['walletName'] = 'Name of wallet is required';
-        if (!this.formData['transactionRefNumber']?.trim()) this.validationErrors['transactionRefNumber'] = 'Transaction/Reference number is required';
-      }
-      if (!this.formData['isBusinessCorrespondent']) this.validationErrors['isBusinessCorrespondent'] = 'Please select Yes or No';
-      // UST66: Consequential loss cap ₹30 lakh
-      const compAmount = parseFloat((this.formData['compensationSought'] || '0').replace(/,/g, ''));
-      if (compAmount > 3000000) {
-        this.validationErrors['compensationSought'] = 'Compensation for consequential loss can be awarded only up to ₹30 lakh. Please enter an amount up to ₹30 lakh.';
-      }
-      // UST67: Expenses/Harassment/Mental Anguish cap ₹3 lakh
-      const reliefAmount = parseFloat((this.formData['reliefSought'] || '0').replace(/,/g, ''));
-      if (reliefAmount > 300000) {
-        this.validationErrors['reliefSought'] = 'Compensation for expenses, harassment, and mental anguish can be awarded only up to ₹3 lakh. Please enter an amount up to ₹3 lakh.';
+      this.complaintDetailsForm.markAllAsTouched();
+      Object.values(this.complaintDetailsForm.controls).forEach(c => c.markAsDirty());
+      if (this.complaintDetailsForm.invalid) {
+        return false;
       }
     } else if (step === 4) {
-      if (this.formData['authorizeRepresentative'] === 'yes') {
-        if (!this.formData['repName']?.trim()) this.validationErrors['repName'] = 'Representative name is required';
+      this.repAuthorizationForm.markAllAsTouched();
+      Object.values(this.repAuthorizationForm.controls).forEach(c => c.markAsDirty());
+      if (this.repAuthorizationForm.invalid) {
+        return false;
       }
     } else if (step === 5) {
-      if (!this.declarationChecked || !this.declaration2Checked) this.validationErrors['declaration'] = 'You must accept all declarations to proceed';
+      this.declarationForm.markAllAsTouched();
+      Object.values(this.declarationForm.controls).forEach(c => c.markAsDirty());
+      if (this.declarationForm.invalid) {
+        return false;
+      }
     }
 
     return Object.keys(this.validationErrors).length === 0;
@@ -1735,8 +2080,45 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
             this.highestStepReached.set(draft.currentStep);
           }
           this.initDateDisplays();
+          this.patchComplaintDetailsFromFormData();
+          this.patchRepAuthorizationFromFormData();
+          this.declarationForm.controls.declaration1.setValue(this.declarationChecked, { emitEvent: false });
+          this.declarationForm.controls.declaration2.setValue(this.declaration2Checked, { emitEvent: false });
         }
       } catch (e) {}
+    }
+  }
+
+  private patchComplaintDetailsFromFormData(): void {
+    const cd = this.complaintDetailsForm;
+    cd.controls.complaintCategory.setValue(this.formData['complaintCategory'] || '', { emitEvent: true });
+    cd.controls.complaintText.setValue(this.formData['complaintText'] || '', { emitEvent: false });
+    cd.controls.hasAccountWithRE.setValue(this.formData['hasAccountWithRE'] || '', { emitEvent: true });
+    cd.controls.isWalletComplaint.setValue(this.formData['isWalletComplaint'] || '', { emitEvent: true });
+    cd.controls.isBusinessCorrespondent.setValue(this.formData['isBusinessCorrespondent'] || '', { emitEvent: true });
+    cd.controls.disputeAmount.setValue((this.formData['disputeAmount'] || '').replace(/,/g, ''), { emitEvent: false });
+    cd.controls.compensationSought.setValue((this.formData['compensationSought'] || '').replace(/,/g, ''), { emitEvent: false });
+    cd.controls.reliefSought.setValue((this.formData['reliefSought'] || '').replace(/,/g, ''), { emitEvent: false });
+    if (this.formData['walletName']) cd.controls.walletName.setValue(this.formData['walletName'], { emitEvent: false });
+    if (this.formData['transactionRefNumber']) cd.controls.transactionRefNumber.setValue(this.formData['transactionRefNumber'], { emitEvent: false });
+    if (this.formData['savingsAccountNumber']) cd.controls.savingsAccountNumber.setValue(this.formData['savingsAccountNumber'], { emitEvent: false });
+    if (this.formData['loanAccountNumber']) cd.controls.loanAccountNumber.setValue(this.formData['loanAccountNumber'], { emitEvent: false });
+    if (this.formData['atmDebitCardNumber']) cd.controls.atmDebitCardNumber.setValue(this.formData['atmDebitCardNumber'], { emitEvent: false });
+    if (this.formData['creditCardNumber']) cd.controls.creditCardNumber.setValue(this.formData['creditCardNumber'], { emitEvent: false });
+  }
+
+  private patchRepAuthorizationFromFormData(): void {
+    const ra = this.repAuthorizationForm;
+    ra.controls.hasAuthRep.setValue(this.formData['hasAuthRep'] || '', { emitEvent: true });
+    if (this.formData['hasAuthRep'] === 'yes') {
+      if (this.formData['repName']) ra.controls.repName.setValue(this.formData['repName'], { emitEvent: false });
+      if (this.formData['repEmail']) ra.controls.repEmail.setValue(this.formData['repEmail'], { emitEvent: false });
+      if (this.formData['repPhone']) ra.controls.repPhone.setValue(this.formData['repPhone'], { emitEvent: false });
+      if (this.formData['repPincode']) ra.controls.repPincode.setValue(this.formData['repPincode'], { emitEvent: false });
+      if (this.formData['repState']) ra.controls.repState.setValue(this.formData['repState'], { emitEvent: false });
+      if (this.formData['repDistrict']) ra.controls.repDistrict.setValue(this.formData['repDistrict'], { emitEvent: false });
+      if (this.formData['repCity']) ra.controls.repCity.setValue(this.formData['repCity'], { emitEvent: false });
+      if (this.formData['repAddress']) ra.controls.repAddress.setValue(this.formData['repAddress'], { emitEvent: false });
     }
   }
 
@@ -1781,6 +2163,7 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
       this.validationErrors['attachments'] = '';
     }
     input.value = '';
+    this.syncFileUploadControl();
   }
 
   onFileDrop(event: DragEvent) {
@@ -1806,6 +2189,7 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
       this.attachmentPreviews.push({ name: file.name, url, type: file.type, size: file.size });
       this.validationErrors['attachments'] = '';
     }
+    this.syncFileUploadControl();
   }
 
   removeAttachment(index: number) {
@@ -1816,6 +2200,13 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
       this.attachments.splice(index, 1);
     }
     this.attachmentPreviews.splice(index, 1);
+    this.syncFileUploadControl();
+  }
+
+  private syncFileUploadControl(): void {
+    const ctrl = this.complaintDetailsForm.controls.fileUpload;
+    ctrl.setValue(this.attachments.length > 0 ? 'has_files' : '');
+    ctrl.markAsTouched();
   }
 
   previewAttachment(index: number) {
@@ -1845,7 +2236,8 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
       for (let i = event.resultIndex; i < event.results.length; i++) {
         transcript += event.results[i][0].transcript;
       }
-      this.formData['complaintText'] = (this.formData['complaintText'] || '') + ' ' + transcript;
+      const newText = ((this.complaintDetailsForm.controls.complaintText.value || '') + ' ' + transcript).trim();
+      this.complaintDetailsForm.controls.complaintText.setValue(newText);
     };
 
     this.recognition.onerror = () => this.isRecording.set(false);
@@ -1865,7 +2257,7 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
 
   // ══════ SUBMIT ══════
   submit() {
-    if (!this.declarationChecked) return;
+    if (this.declarationForm.invalid) return;
 
     if (!this.duplicateCheckDone) {
       this.checkDuplicate();
@@ -1977,7 +2369,7 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
   }
 
   isIndividualCategory(): boolean {
-    const cat = this.formData['complainantCategory'];
+    const cat = this.complainantDetailsForm.controls.complaintCategory.value;
     return cat === 'individual' || cat === 'senior_citizen';
   }
 
@@ -2077,7 +2469,10 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
 
   onAdvocateSubAnswer(value: string) {
     this.formData['isComplainantSelf'] = value;
-    this.eligibilityStageForm.get('isComplainantSelf')!.setValue(value);
+    this.eligibilityAnswers['isComplainantSelf'] = value;
+    const ctrl = this.eligibilityStageForm.get('isComplainantSelf')!;
+    ctrl.setValue(value);
+    ctrl.markAsTouched();
     if (value === 'no') {
       this.eligibilityBlocked.set(true);
       this.eligibilityBlockMessage.set(

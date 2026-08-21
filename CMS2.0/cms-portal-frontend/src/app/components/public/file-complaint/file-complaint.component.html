@@ -170,12 +170,16 @@
               <span>If Yes, then are you the Complainant?</span>
             </div>
             <div class="sub-question-options">
-              <label class="radio-option" [class.selected]="formData['isComplainantSelf'] === 'yes'">
-                <input type="radio" name="isComplainantSelf" value="yes" (change)="onAdvocateSubAnswer('yes')">
+              <label class="radio-option" [class.selected]="eligibilityStageForm.get('isComplainantSelf')!.value === 'yes'">
+                <input type="radio" name="isComplainantSelf" value="yes"
+                       [checked]="eligibilityStageForm.get('isComplainantSelf')!.value === 'yes'"
+                       (change)="onAdvocateSubAnswer('yes')">
                 <span>{{ 'eligibility.opt_yes' | translate }}</span>
               </label>
-              <label class="radio-option" [class.selected]="formData['isComplainantSelf'] === 'no'">
-                <input type="radio" name="isComplainantSelf" value="no" (change)="onAdvocateSubAnswer('no')">
+              <label class="radio-option" [class.selected]="eligibilityStageForm.get('isComplainantSelf')!.value === 'no'">
+                <input type="radio" name="isComplainantSelf" value="no"
+                       [checked]="eligibilityStageForm.get('isComplainantSelf')!.value === 'no'"
+                       (change)="onAdvocateSubAnswer('no')">
                 <span>{{ 'eligibility.opt_no' | translate }}</span>
               </label>
             </div>
@@ -404,13 +408,14 @@
       </div>
 
 
-      <!-- Step 1: Complainant Details -->
+      <!-- Step 1: Complainant Details (Reactive Form) -->
       @if (currentStep() === 1) {
-        <div class="step-content" (keydown)="onStepKeydown($event)">
+        <div class="step-content" [formGroup]="complainantDetailsForm" (keydown)="onStepKeydown($event)">
           <div class="form-row">
             <div class="form-group" style="max-width: 320px;">
               <label>{{ 'form.complainant_category' | translate }} <span class="required">*</span></label>
-              <select class="form-select" [(ngModel)]="formData['complainantCategory']" name="complainantCategory">
+              <select class="form-select" formControlName="complaintCategory"
+                      [class.invalid]="(complainantDetailsForm.controls.complaintCategory.touched || complainantDetailsForm.controls.complaintCategory.dirty) && complainantDetailsForm.controls.complaintCategory.invalid">
                 <option value="" disabled>Select Value</option>
                 <option value="individual">Individual</option>
                 <option value="pwd">Person with Disabilities</option>
@@ -425,34 +430,43 @@
                 <option value="government_department">Government Department</option>
                 <option value="psu">PSU</option>
               </select>
+              <app-form-error [control]="complainantDetailsForm.controls.complaintCategory" label="Complainant category"></app-form-error>
             </div>
           </div>
+
           <!-- Individual / Senior Citizen fields -->
           @if (isIndividualCategory()) {
             <div class="form-row three-col">
               <div class="form-group">
                 <label>{{ 'form.first_name' | translate }} <span class="required">*</span></label>
-                <input type="text" class="form-input" [class.invalid]="validationErrors['name']" [(ngModel)]="formData['firstName']" name="firstName" placeholder="Enter Value">
-                @if (validationErrors['name']) { <span class="field-error">{{ validationErrors['name'] }}</span> }
+                <input type="text" class="form-input" formControlName="firstName" placeholder="Enter Value"
+                       [class.invalid]="(complainantDetailsForm.controls.firstName.touched || complainantDetailsForm.controls.firstName.dirty) && complainantDetailsForm.controls.firstName.invalid">
+                <app-form-error [control]="complainantDetailsForm.controls.firstName" label="First name"></app-form-error>
               </div>
               <div class="form-group">
                 <label>{{ 'form.middle_name' | translate }} <span class="optional">(Optional)</span></label>
-                <input type="text" class="form-input" [(ngModel)]="formData['middleName']" name="middleName" placeholder="Enter Value">
+                <input type="text" class="form-input" formControlName="middleName" placeholder="Enter Value"
+                       [class.invalid]="(complainantDetailsForm.controls.middleName.touched || complainantDetailsForm.controls.middleName.dirty) && complainantDetailsForm.controls.middleName.invalid">
+                <app-form-error [control]="complainantDetailsForm.controls.middleName" label="Middle name"></app-form-error>
               </div>
               <div class="form-group">
                 <label>Surname <span class="required">*</span></label>
-                <input type="text" class="form-input" [(ngModel)]="formData['lastName']" name="lastName" placeholder="Enter Value">
+                <input type="text" class="form-input" formControlName="lastName" placeholder="Enter Value"
+                       [class.invalid]="(complainantDetailsForm.controls.lastName.touched || complainantDetailsForm.controls.lastName.dirty) && complainantDetailsForm.controls.lastName.invalid">
+                <app-form-error [control]="complainantDetailsForm.controls.lastName" label="Surname"></app-form-error>
               </div>
             </div>
             <div class="form-row three-col">
               <div class="form-group">
-                <label>{{ 'form.age' | translate }}</label>
-                <input type="text" class="form-input" [class.invalid]="validationErrors['age']" [(ngModel)]="formData['age']" name="age" placeholder="Enter Value" maxlength="3" pattern="[0-9]*" inputmode="numeric" (ngModelChange)="validateAge()">
-                @if (validationErrors['age']) { <span class="field-error">{{ validationErrors['age'] }}</span> }
+                <label>{{ 'form.age' | translate }} <span class="required">*</span></label>
+                <input type="text" class="form-input" formControlName="age" placeholder="Enter Value" maxlength="3" inputmode="numeric"
+                       [class.invalid]="(complainantDetailsForm.controls.age.touched || complainantDetailsForm.controls.age.dirty) && complainantDetailsForm.controls.age.invalid">
+                <app-form-error [control]="complainantDetailsForm.controls.age" label="Age"></app-form-error>
               </div>
               <div class="form-group">
-                <label>{{ 'form.gender' | translate }}</label>
-                <select class="form-select" [(ngModel)]="formData['gender']" name="gender">
+                <label>{{ 'form.gender' | translate }} <span class="required">*</span></label>
+                <select class="form-select" formControlName="gender"
+                        [class.invalid]="(complainantDetailsForm.controls.gender.touched || complainantDetailsForm.controls.gender.dirty) && complainantDetailsForm.controls.gender.invalid">
                   <option value="">Select Value</option>
                   <option value="male">Male</option>
                   <option value="female">Female</option>
@@ -460,36 +474,13 @@
                   <option value="not_disclosed">Do not wish to disclose</option>
                   <option value="other">Other</option>
                 </select>
+                <app-form-error [control]="complainantDetailsForm.controls.gender" label="Gender"></app-form-error>
               </div>
               <div class="form-group">
                 <label>{{ 'form.email_id' | translate }} <span class="required">*</span></label>
-                <input type="email" class="form-input" [class.invalid]="validationErrors['email']" [(ngModel)]="formData['email']" name="email" placeholder="Enter Value">
-                @if (validationErrors['email']) { <span class="field-error">{{ validationErrors['email'] }}</span> }
-              </div>
-            </div>
-          }
-
-          <!-- Organisation fields -->
-          @if (!isIndividualCategory() && formData['complainantCategory']) {
-            <div class="form-row">
-              <div class="form-group">
-                <label>Name of Complainant (Organisation Name) <span class="required">*</span></label>
-                <input type="text" class="form-input" [class.invalid]="validationErrors['name']" [(ngModel)]="formData['organizationName']" name="organizationName" placeholder="Enter Value">
-                @if (validationErrors['name']) { <span class="field-error">{{ validationErrors['name'] }}</span> }
-              </div>
-            </div>
-            <div class="form-row three-col">
-              <div class="form-group">
-                <label>{{ 'form.email_id' | translate }} <span class="required">*</span></label>
-                <input type="email" class="form-input" [class.invalid]="validationErrors['email']" [(ngModel)]="formData['email']" name="email" placeholder="Enter Value">
-                @if (validationErrors['email']) { <span class="field-error">{{ validationErrors['email'] }}</span> }
-              </div>
-              <div class="form-group">
-                <label>Organisation Landline Number</label>
-                <input type="tel" class="form-input" [(ngModel)]="formData['orgLandline']" name="orgLandline" placeholder="Enter Value">
-              </div>
-              <div class="form-group">
-                <!-- empty spacer -->
+                <input type="email" class="form-input" formControlName="email" placeholder="Enter Value"
+                       [class.invalid]="(complainantDetailsForm.controls.email.touched || complainantDetailsForm.controls.email.dirty) && complainantDetailsForm.controls.email.invalid">
+                <app-form-error [control]="complainantDetailsForm.controls.email" label="Email"></app-form-error>
               </div>
             </div>
           }
@@ -497,7 +488,7 @@
           <div class="form-row three-col">
             <div class="form-group">
               <label>{{ 'form.mobile_number' | translate }}</label>
-              <input type="tel" class="form-input" [(ngModel)]="formData['phone']" name="phone" placeholder="Enter 10-digit m..." readonly>
+              <input type="tel" class="form-input" formControlName="phone" placeholder="Enter 10-digit m..." readonly>
             </div>
             <div class="form-group">
               <!-- empty spacer -->
@@ -509,42 +500,46 @@
           <div class="form-row three-col">
             <div class="form-group">
               <label>{{ 'form.pincode' | translate }} <span class="required">*</span></label>
-              <input type="text" class="form-input" [class.invalid]="validationErrors['pincode']" [(ngModel)]="formData['pincode']" name="pincode"
-                     placeholder="Enter Value" maxlength="6" (ngModelChange)="onPincodeInput()">
-              @if (validationErrors['pincode']) { <span class="field-error">{{ validationErrors['pincode'] }}</span> }
+              <input type="text" class="form-input" formControlName="pincode" placeholder="Enter Value" maxlength="6"
+                     [class.invalid]="(complainantDetailsForm.controls.pincode.touched || complainantDetailsForm.controls.pincode.dirty) && complainantDetailsForm.controls.pincode.invalid">
+              <app-form-error [control]="complainantDetailsForm.controls.pincode" label="Pincode"></app-form-error>
               @if (pincodeLoading) { <span class="hint">Loading...</span> }
             </div>
             <div class="form-group">
               <label>{{ 'form.state' | translate }} <span class="required">*</span></label>
-              <select class="form-select" [class.invalid]="validationErrors['state']" [(ngModel)]="formData['state']" name="state">
+              <select class="form-select" formControlName="state"
+                      [class.invalid]="(complainantDetailsForm.controls.state.touched || complainantDetailsForm.controls.state.dirty) && complainantDetailsForm.controls.state.invalid">
                 <option value="">Select Value</option>
                 @for (s of complainantStates; track s) {
                   <option [value]="s">{{ s }}</option>
                 }
               </select>
-              @if (validationErrors['state']) { <span class="field-error">{{ validationErrors['state'] }}</span> }
+              <app-form-error [control]="complainantDetailsForm.controls.state" label="State"></app-form-error>
             </div>
             <div class="form-group">
               <label>{{ 'form.district' | translate }} <span class="required">*</span></label>
-              <select class="form-select" [(ngModel)]="formData['district']" name="district">
-                <option value="">Enter Value</option>
+              <select class="form-select" formControlName="city"
+                      [class.invalid]="(complainantDetailsForm.controls.city.touched || complainantDetailsForm.controls.city.dirty) && complainantDetailsForm.controls.city.invalid">
+                <option value="">Select Value</option>
                 @for (d of complainantDistricts; track d) {
                   <option [value]="d">{{ d }}</option>
                 }
               </select>
+              <app-form-error [control]="complainantDetailsForm.controls.city" label="District"></app-form-error>
             </div>
           </div>
           <div class="form-group full-width">
             <label>{{ 'form.address' | translate }} <span class="required">*</span></label>
-            <textarea class="form-textarea" [class.invalid]="validationErrors['address']" [(ngModel)]="formData['address']" name="address" rows="3" placeholder="Enter Value" maxlength="100"></textarea>
-            @if (validationErrors['address']) { <span class="field-error">{{ validationErrors['address'] }}</span> }
+            <textarea class="form-textarea" formControlName="addressDetails" rows="3" placeholder="Enter Value" maxlength="500"
+                      [class.invalid]="(complainantDetailsForm.controls.addressDetails.touched || complainantDetailsForm.controls.addressDetails.dirty) && complainantDetailsForm.controls.addressDetails.invalid"></textarea>
+            <app-form-error [control]="complainantDetailsForm.controls.addressDetails" label="Address"></app-form-error>
           </div>
         </div>
       }
 
       <!-- Step 2: Regulated Entity Details -->
       @if (currentStep() === 2) {
-        <div class="step-content">
+        <div class="step-content" [formGroup]="regulatedEntityForm">
           <div class="form-group">
             <span class="re-label">Regulated Entity Name</span>
             <span class="re-value">{{ selectedEntityName }}</span>
@@ -553,44 +548,49 @@
           <div class="form-group full-width">
             <label id="credit-card-label">{{ 'form.credit_card_q' | translate }} <span class="required">*</span></label>
             <div class="radio-inline-group">
-              <label class="radio-inline" [class.selected]="formData['isCreditCardComplaint'] === 'yes'">
-                <input type="radio" name="isCreditCardComplaint" value="yes" [(ngModel)]="formData['isCreditCardComplaint']">
+              <label class="radio-inline" [class.selected]="regulatedEntityForm.controls.isCreditCardComplaint.value === 'yes'">
+                <input type="radio" formControlName="isCreditCardComplaint" value="yes">
                 <span>{{ 'form.yes' | translate }}</span>
               </label>
-              <label class="radio-inline" [class.selected]="formData['isCreditCardComplaint'] === 'no'">
-                <input type="radio" name="isCreditCardComplaint" value="no" [(ngModel)]="formData['isCreditCardComplaint']">
+              <label class="radio-inline" [class.selected]="regulatedEntityForm.controls.isCreditCardComplaint.value === 'no'">
+                <input type="radio" formControlName="isCreditCardComplaint" value="no">
                 <span>{{ 'form.no' | translate }}</span>
               </label>
             </div>
-            @if (validationErrors['isCreditCardComplaint']) { <span class="field-error">{{ validationErrors['isCreditCardComplaint'] }}</span> }
+            <app-form-error [control]="regulatedEntityForm.controls.isCreditCardComplaint" label="This field"></app-form-error>
           </div>
 
-          @if (formData['isCreditCardComplaint'] === 'no') {
+          @if (regulatedEntityForm.controls.isCreditCardComplaint.value === 'no') {
             <div class="form-row three-col">
               <div class="form-group">
                 <label>{{ 'form.entity_state' | translate }} <span class="required">*</span></label>
-                <select class="form-select" [class.invalid]="validationErrors['entityState']" [(ngModel)]="formData['entityState']" name="entityState" (ngModelChange)="onEntityStateChange()">
+                <select class="form-select" formControlName="entityState"
+                        [class.invalid]="(regulatedEntityForm.controls.entityState.touched || regulatedEntityForm.controls.entityState.dirty) && regulatedEntityForm.controls.entityState.invalid"
+                        (change)="onEntityStateChange()">
                   <option value="">Select Value</option>
                   @for (state of entityStateKeys; track state) {
                     <option [value]="state">{{ entityStateLabel(state) }}</option>
                   }
                 </select>
-                @if (validationErrors['entityState']) { <span class="field-error">{{ validationErrors['entityState'] }}</span> }
+                <app-form-error [control]="regulatedEntityForm.controls.entityState" label="Entity state"></app-form-error>
               </div>
               <div class="form-group">
                 <label>{{ 'form.entity_district' | translate }} <span class="required">*</span></label>
-                <select class="form-select" [class.invalid]="validationErrors['entityDistrict']" [(ngModel)]="formData['entityDistrict']" name="entityDistrict" (ngModelChange)="onEntityDistrictChange()">
+                <select class="form-select" formControlName="entityDistrict"
+                        [class.invalid]="(regulatedEntityForm.controls.entityDistrict.touched || regulatedEntityForm.controls.entityDistrict.dirty) && regulatedEntityForm.controls.entityDistrict.invalid"
+                        (change)="onEntityDistrictChange()">
                   <option value="">Select Value</option>
                   @for (dist of entityDistricts; track dist) {
                     <option [value]="dist">{{ dist }}</option>
                   }
                 </select>
-                @if (validationErrors['entityDistrict']) { <span class="field-error">{{ validationErrors['entityDistrict'] }}</span> }
+                <app-form-error [control]="regulatedEntityForm.controls.entityDistrict" label="Entity district"></app-form-error>
               </div>
               <div class="form-group">
                 <label>{{ 'form.entity_branch' | translate }} <span class="required">*</span></label>
-                <input type="text" class="form-input" [class.invalid]="validationErrors['entityBranch']" [(ngModel)]="formData['entityBranch']" name="entityBranch" placeholder="Enter Branch Name">
-                @if (validationErrors['entityBranch']) { <span class="field-error">{{ validationErrors['entityBranch'] }}</span> }
+                <input type="text" class="form-input" formControlName="entityBranch" placeholder="Enter Branch Name"
+                       [class.invalid]="(regulatedEntityForm.controls.entityBranch.touched || regulatedEntityForm.controls.entityBranch.dirty) && regulatedEntityForm.controls.entityBranch.invalid">
+                <app-form-error [control]="regulatedEntityForm.controls.entityBranch" label="Entity branch"></app-form-error>
               </div>
             </div>
           }
@@ -599,34 +599,34 @@
 
       <!-- Step 3: Complaint Details -->
       @if (currentStep() === 3) {
-        <div class="step-content" (keydown)="onStepKeydown($event)">
+        <div class="step-content" [formGroup]="complaintDetailsForm" (keydown)="onStepKeydown($event)">
 
           <div class="form-group" style="max-width: 360px;">
             <label>Select a complaint Category <span class="required">*</span></label>
-            <select class="form-select" [class.invalid]="validationErrors['complaintCategory']"
-                    [(ngModel)]="formData['complaintCategory']" name="complaintCategory"
-                    (ngModelChange)="onCategoryChange()">
+            <select class="form-select" formControlName="complaintCategory"
+                    [class.invalid]="(complaintDetailsForm.controls.complaintCategory.touched || complaintDetailsForm.controls.complaintCategory.dirty) && complaintDetailsForm.controls.complaintCategory.invalid"
+                    (change)="onCategoryChange()">
               <option value="">Select Value</option>
               @for (c of categories; track c.value) {
                 <option [value]="c.value">{{ c.label }}</option>
               }
             </select>
-            @if (validationErrors['complaintCategory']) { <span class="field-error">{{ validationErrors['complaintCategory'] }}</span> }
+            <app-form-error [control]="complaintDetailsForm.controls.complaintCategory" label="Complaint category"></app-form-error>
           </div>
 
           <div class="form-group full-width">
             <label>{{ 'form.facts' | translate }} <span class="required">*</span></label>
             <div class="textarea-wrapper">
-              <textarea class="form-textarea" [class.invalid]="validationErrors['complaintText']"
-                        [(ngModel)]="formData['complaintText']" name="complaintText" rows="5"
-                        placeholder="Write in detail" maxlength="5000"></textarea>
+              <textarea class="form-textarea" formControlName="complaintText"
+                        [class.invalid]="(complaintDetailsForm.controls.complaintText.touched || complaintDetailsForm.controls.complaintText.dirty) && complaintDetailsForm.controls.complaintText.invalid"
+                        rows="5" placeholder="Write in detail" maxlength="5000"></textarea>
               <button class="mic-pill-btn" [class.recording]="isRecording()" (click)="toggleRecording()"
                       type="button" [attr.aria-label]="isRecording() ? 'Stop voice recording' : 'Start voice recording'">
                 <i class="pi" [class.pi-microphone]="!isRecording()" [class.pi-stop]="isRecording()" aria-hidden="true"></i>
                 {{ isRecording() ? ('form.stop' | translate) : ('form.use_mic' | translate) }}
               </button>
             </div>
-            @if (validationErrors['complaintText']) { <span class="field-error">{{ validationErrors['complaintText'] }}</span> }
+            <app-form-error [control]="complaintDetailsForm.controls.complaintText" label="Complaint details"></app-form-error>
           </div>
 
 
@@ -635,18 +635,18 @@
             <div class="form-group">
               <label id="has-account-label">{{ 'form.has_account' | translate }} {{ selectedEntityName }}? <span class="required">*</span></label>
               <div class="radio-inline-group">
-                <label class="radio-inline" [class.selected]="formData['hasAccountWithRE'] === 'yes'">
-                  <input type="radio" name="hasAccountWithRE" value="yes" [(ngModel)]="formData['hasAccountWithRE']" (ngModelChange)="validationErrors['hasAccountWithRE'] = ''">
+                <label class="radio-inline" [class.selected]="complaintDetailsForm.controls.hasAccountWithRE.value === 'yes'">
+                  <input type="radio" formControlName="hasAccountWithRE" value="yes">
                   <span>{{ 'form.yes' | translate }}</span>
                 </label>
-                <label class="radio-inline" [class.selected]="formData['hasAccountWithRE'] === 'no'">
-                  <input type="radio" name="hasAccountWithRE" value="no" [(ngModel)]="formData['hasAccountWithRE']" (ngModelChange)="validationErrors['hasAccountWithRE'] = ''">
+                <label class="radio-inline" [class.selected]="complaintDetailsForm.controls.hasAccountWithRE.value === 'no'">
+                  <input type="radio" formControlName="hasAccountWithRE" value="no">
                   <span>{{ 'form.no' | translate }}</span>
                 </label>
               </div>
-              @if (validationErrors['hasAccountWithRE']) { <span class="field-error">{{ validationErrors['hasAccountWithRE'] }}</span> }
+              <app-form-error [control]="complaintDetailsForm.controls.hasAccountWithRE" label="This field"></app-form-error>
             </div>
-            @if (formData['hasAccountWithRE'] === 'yes') {
+            @if (complaintDetailsForm.controls.hasAccountWithRE.value === 'yes') {
               <div class="form-group">
                 <label>{{ 'form.account_type' | translate }} {{ selectedEntityName }} <span class="required">*</span></label>
                 <div class="multiselect-dropdown" [class.open]="accountTypeDropdownOpen">
@@ -658,47 +658,55 @@
                     <div class="multiselect-panel" (click)="$event.stopPropagation()">
                       @for (at of accountTypes; track at.value) {
                         <label class="multiselect-item">
-                          <input type="checkbox" [(ngModel)]="at.checked" [name]="'accountType_' + at.value" (ngModelChange)="onAccountTypeToggle(at)">
+                          <input type="checkbox" [(ngModel)]="at.checked" [ngModelOptions]="{standalone: true}" (ngModelChange)="onAccountTypeToggle(at)">
                           <span>{{ at.label }}</span>
                         </label>
                       }
                     </div>
                   }
                 </div>
-                @if (validationErrors['accountType']) { <span class="field-error">{{ validationErrors['accountType'] }}</span> }
+                <app-form-error [control]="complaintDetailsForm.controls.accountTypeSelection" label="Account type"></app-form-error>
               </div>
               @if (isAccountTypeSelected('credit_card')) {
                 <div class="form-group">
                   <label>Credit Card Number <span class="required">*</span></label>
-                  <input type="text" class="form-input" [class.invalid]="validationErrors['creditCardNumber']" [(ngModel)]="formData['creditCardNumber']" name="creditCardNumber" placeholder="Enter Value" maxlength="100">
-                  @if (validationErrors['creditCardNumber']) { <span class="field-error">{{ validationErrors['creditCardNumber'] }}</span> }
+                  <input type="text" class="form-input" formControlName="creditCardNumber"
+                         [class.invalid]="(complaintDetailsForm.controls.creditCardNumber.touched || complaintDetailsForm.controls.creditCardNumber.dirty) && complaintDetailsForm.controls.creditCardNumber.invalid"
+                         placeholder="Enter Value" maxlength="100">
+                  <app-form-error [control]="complaintDetailsForm.controls.creditCardNumber" label="Credit card number"></app-form-error>
                 </div>
               }
             }
           </div>
 
           <!-- Account section - Row 2 (conditional account numbers) -->
-          @if (formData['hasAccountWithRE'] === 'yes') {
+          @if (complaintDetailsForm.controls.hasAccountWithRE.value === 'yes') {
             <div class="form-row three-col">
               @if (isAccountTypeSelected('savings')) {
                 <div class="form-group">
                   <label>Savings Account Number <span class="required">*</span></label>
-                  <input type="text" class="form-input" [class.invalid]="validationErrors['savingsAccountNumber']" [(ngModel)]="formData['savingsAccountNumber']" name="savingsAccountNumber" placeholder="Enter Value" maxlength="100">
-                  @if (validationErrors['savingsAccountNumber']) { <span class="field-error">{{ validationErrors['savingsAccountNumber'] }}</span> }
+                  <input type="text" class="form-input" formControlName="savingsAccountNumber"
+                         [class.invalid]="(complaintDetailsForm.controls.savingsAccountNumber.touched || complaintDetailsForm.controls.savingsAccountNumber.dirty) && complaintDetailsForm.controls.savingsAccountNumber.invalid"
+                         placeholder="Enter Value" maxlength="100">
+                  <app-form-error [control]="complaintDetailsForm.controls.savingsAccountNumber" label="Savings account number"></app-form-error>
                 </div>
               }
               @if (isAccountTypeSelected('loan')) {
                 <div class="form-group">
                   <label>Loan Account Number <span class="required">*</span></label>
-                  <input type="text" class="form-input" [class.invalid]="validationErrors['loanAccountNumber']" [(ngModel)]="formData['loanAccountNumber']" name="loanAccountNumber" placeholder="Enter Value" maxlength="100">
-                  @if (validationErrors['loanAccountNumber']) { <span class="field-error">{{ validationErrors['loanAccountNumber'] }}</span> }
+                  <input type="text" class="form-input" formControlName="loanAccountNumber"
+                         [class.invalid]="(complaintDetailsForm.controls.loanAccountNumber.touched || complaintDetailsForm.controls.loanAccountNumber.dirty) && complaintDetailsForm.controls.loanAccountNumber.invalid"
+                         placeholder="Enter Value" maxlength="100">
+                  <app-form-error [control]="complaintDetailsForm.controls.loanAccountNumber" label="Loan account number"></app-form-error>
                 </div>
               }
               @if (isAccountTypeSelected('atm_debit')) {
                 <div class="form-group">
                   <label>ATM/Debit Card Number <span class="required">*</span></label>
-                  <input type="text" class="form-input" [class.invalid]="validationErrors['atmDebitCardNumber']" [(ngModel)]="formData['atmDebitCardNumber']" name="atmDebitCardNumber" placeholder="Enter Value" maxlength="100">
-                  @if (validationErrors['atmDebitCardNumber']) { <span class="field-error">{{ validationErrors['atmDebitCardNumber'] }}</span> }
+                  <input type="text" class="form-input" formControlName="atmDebitCardNumber"
+                         [class.invalid]="(complaintDetailsForm.controls.atmDebitCardNumber.touched || complaintDetailsForm.controls.atmDebitCardNumber.dirty) && complaintDetailsForm.controls.atmDebitCardNumber.invalid"
+                         placeholder="Enter Value" maxlength="100">
+                  <app-form-error [control]="complaintDetailsForm.controls.atmDebitCardNumber" label="ATM/Debit card number"></app-form-error>
                 </div>
               }
             </div>
@@ -709,27 +717,31 @@
             <div class="form-group">
               <label id="wallet-label">{{ 'form.wallet_q' | translate }} <span class="required">*</span></label>
               <div class="radio-inline-group">
-                <label class="radio-inline" [class.selected]="formData['isWalletComplaint'] === 'yes'">
-                  <input type="radio" name="isWalletComplaint" value="yes" [(ngModel)]="formData['isWalletComplaint']" (ngModelChange)="validationErrors['isWalletComplaint'] = ''">
+                <label class="radio-inline" [class.selected]="complaintDetailsForm.controls.isWalletComplaint.value === 'yes'">
+                  <input type="radio" formControlName="isWalletComplaint" value="yes">
                   <span>{{ 'form.yes' | translate }}</span>
                 </label>
-                <label class="radio-inline" [class.selected]="formData['isWalletComplaint'] === 'no'">
-                  <input type="radio" name="isWalletComplaint" value="no" [(ngModel)]="formData['isWalletComplaint']" (ngModelChange)="validationErrors['isWalletComplaint'] = ''">
+                <label class="radio-inline" [class.selected]="complaintDetailsForm.controls.isWalletComplaint.value === 'no'">
+                  <input type="radio" formControlName="isWalletComplaint" value="no">
                   <span>{{ 'form.no' | translate }}</span>
                 </label>
               </div>
-              @if (validationErrors['isWalletComplaint']) { <span class="field-error">{{ validationErrors['isWalletComplaint'] }}</span> }
+              <app-form-error [control]="complaintDetailsForm.controls.isWalletComplaint" label="This field"></app-form-error>
             </div>
-            @if (formData['isWalletComplaint'] === 'yes') {
+            @if (complaintDetailsForm.controls.isWalletComplaint.value === 'yes') {
               <div class="form-group">
                 <label>{{ 'form.wallet_name' | translate }} <span class="required">*</span></label>
-                <input type="text" class="form-input" [class.invalid]="validationErrors['walletName']" [(ngModel)]="formData['walletName']" name="walletName" placeholder="Enter Value">
-                @if (validationErrors['walletName']) { <span class="field-error">{{ validationErrors['walletName'] }}</span> }
+                <input type="text" class="form-input" formControlName="walletName"
+                       [class.invalid]="(complaintDetailsForm.controls.walletName.touched || complaintDetailsForm.controls.walletName.dirty) && complaintDetailsForm.controls.walletName.invalid"
+                       placeholder="Enter Value">
+                <app-form-error [control]="complaintDetailsForm.controls.walletName" label="Wallet name"></app-form-error>
               </div>
               <div class="form-group">
                 <label>{{ 'form.txn_ref' | translate }} <span class="required">*</span></label>
-                <input type="text" class="form-input" [class.invalid]="validationErrors['transactionRefNumber']" [(ngModel)]="formData['transactionRefNumber']" name="transactionRefNumber" placeholder="Enter Value" maxlength="150">
-                @if (validationErrors['transactionRefNumber']) { <span class="field-error">{{ validationErrors['transactionRefNumber'] }}</span> }
+                <input type="text" class="form-input" formControlName="transactionRefNumber"
+                       [class.invalid]="(complaintDetailsForm.controls.transactionRefNumber.touched || complaintDetailsForm.controls.transactionRefNumber.dirty) && complaintDetailsForm.controls.transactionRefNumber.invalid"
+                       placeholder="Enter Value" maxlength="150">
+                <app-form-error [control]="complaintDetailsForm.controls.transactionRefNumber" label="Transaction/Reference number"></app-form-error>
               </div>
             }
           </div>
@@ -738,16 +750,16 @@
           <div class="form-group">
             <label id="biz-corr-label">{{ 'form.biz_corr_q' | translate }} <span class="required">*</span></label>
             <div class="radio-inline-group">
-              <label class="radio-inline" [class.selected]="formData['isBusinessCorrespondent'] === 'yes'">
-                <input type="radio" name="isBusinessCorrespondent" value="yes" [(ngModel)]="formData['isBusinessCorrespondent']" (ngModelChange)="validationErrors['isBusinessCorrespondent'] = ''">
+              <label class="radio-inline" [class.selected]="complaintDetailsForm.controls.isBusinessCorrespondent.value === 'yes'">
+                <input type="radio" formControlName="isBusinessCorrespondent" value="yes">
                 <span>{{ 'form.yes' | translate }}</span>
               </label>
-              <label class="radio-inline" [class.selected]="formData['isBusinessCorrespondent'] === 'no'">
-                <input type="radio" name="isBusinessCorrespondent" value="no" [(ngModel)]="formData['isBusinessCorrespondent']" (ngModelChange)="validationErrors['isBusinessCorrespondent'] = ''">
+              <label class="radio-inline" [class.selected]="complaintDetailsForm.controls.isBusinessCorrespondent.value === 'no'">
+                <input type="radio" formControlName="isBusinessCorrespondent" value="no">
                 <span>{{ 'form.no' | translate }}</span>
               </label>
             </div>
-            @if (validationErrors['isBusinessCorrespondent']) { <span class="field-error">{{ validationErrors['isBusinessCorrespondent'] }}</span> }
+            <app-form-error [control]="complaintDetailsForm.controls.isBusinessCorrespondent" label="This field"></app-form-error>
           </div>
 
           <!-- Amount fields -->
@@ -756,28 +768,40 @@
               <label>{{ 'form.amount_involved' | translate }}</label>
               <div class="rupee-input">
                 <span class="rupee-symbol">₹</span>
-                <input type="text" class="form-input" [class.invalid]="validationErrors['disputeAmount']" [ngModel]="formData['disputeAmount']" name="disputeAmount" placeholder="Enter Value" (ngModelChange)="onAmountInput('disputeAmount', $event)" inputmode="numeric">
+                <input type="text" class="form-input"
+                       [class.invalid]="(complaintDetailsForm.controls.disputeAmount.touched || complaintDetailsForm.controls.disputeAmount.dirty) && complaintDetailsForm.controls.disputeAmount.invalid"
+                       [value]="displayAmount('disputeAmount')"
+                       (input)="onAmountInput('disputeAmount', $event)"
+                       placeholder="Enter Value" inputmode="numeric">
               </div>
-              @if (formData['disputeAmount']) { <span class="amount-words">{{ amountInWords(formData['disputeAmount']) }}</span> }
-              @if (validationErrors['disputeAmount']) { <span class="field-error">{{ validationErrors['disputeAmount'] }}</span> }
+              @if (complaintDetailsForm.controls.disputeAmount.value) { <span class="amount-words">{{ amountInWords(displayAmount('disputeAmount')) }}</span> }
+              <app-form-error [control]="complaintDetailsForm.controls.disputeAmount" label="Dispute amount"></app-form-error>
             </div>
             <div class="form-group">
               <label>{{ 'form.compensation_sought' | translate }}</label>
               <div class="rupee-input">
                 <span class="rupee-symbol">₹</span>
-                <input type="text" class="form-input" [class.invalid]="validationErrors['compensationSought']" [ngModel]="formData['compensationSought']" name="compensationSought" placeholder="Enter Value" (ngModelChange)="onAmountInput('compensationSought', $event)" inputmode="numeric">
+                <input type="text" class="form-input"
+                       [class.invalid]="(complaintDetailsForm.controls.compensationSought.touched || complaintDetailsForm.controls.compensationSought.dirty) && complaintDetailsForm.controls.compensationSought.invalid"
+                       [value]="displayAmount('compensationSought')"
+                       (input)="onAmountInput('compensationSought', $event)"
+                       placeholder="Enter Value" inputmode="numeric">
               </div>
-              @if (formData['compensationSought']) { <span class="amount-words">{{ amountInWords(formData['compensationSought']) }}</span> }
-              @if (validationErrors['compensationSought']) { <span class="field-error">{{ validationErrors['compensationSought'] }}</span> }
+              @if (complaintDetailsForm.controls.compensationSought.value) { <span class="amount-words">{{ amountInWords(displayAmount('compensationSought')) }}</span> }
+              <app-form-error [control]="complaintDetailsForm.controls.compensationSought" label="Compensation sought"></app-form-error>
             </div>
             <div class="form-group">
               <label>{{ 'form.compensation_harassment' | translate }}</label>
               <div class="rupee-input">
                 <span class="rupee-symbol">₹</span>
-                <input type="text" class="form-input" [class.invalid]="validationErrors['reliefSought']" [ngModel]="formData['reliefSought']" name="reliefSought" placeholder="Enter Value" (ngModelChange)="onAmountInput('reliefSought', $event)" inputmode="numeric">
+                <input type="text" class="form-input"
+                       [class.invalid]="(complaintDetailsForm.controls.reliefSought.touched || complaintDetailsForm.controls.reliefSought.dirty) && complaintDetailsForm.controls.reliefSought.invalid"
+                       [value]="displayAmount('reliefSought')"
+                       (input)="onAmountInput('reliefSought', $event)"
+                       placeholder="Enter Value" inputmode="numeric">
               </div>
-              @if (formData['reliefSought']) { <span class="amount-words">{{ amountInWords(formData['reliefSought']) }}</span> }
-              @if (validationErrors['reliefSought']) { <span class="field-error">{{ validationErrors['reliefSought'] }}</span> }
+              @if (complaintDetailsForm.controls.reliefSought.value) { <span class="amount-words">{{ amountInWords(displayAmount('reliefSought')) }}</span> }
+              <app-form-error [control]="complaintDetailsForm.controls.reliefSought" label="Relief sought"></app-form-error>
             </div>
           </div>
 
@@ -800,9 +824,7 @@
             @if (fileUploadError) {
               <div class="error-msg"><i class="pi pi-exclamation-circle"></i> {{ fileUploadError }}</div>
             }
-            @if (validationErrors['attachments']) {
-              <span class="field-error">{{ validationErrors['attachments'] }}</span>
-            }
+            <app-form-error [control]="complaintDetailsForm.controls.fileUpload" label="Supporting documents"></app-form-error>
             @if (attachmentPreviews.length > 0) {
               <div class="file-list">
                 @for (f of attachmentPreviews; track $index; let i = $index) {
@@ -827,83 +849,100 @@
 
       <!-- Step 4: Representative Authorisation -->
       @if (currentStep() === 4) {
-        <div class="step-content">
+        <div class="step-content" [formGroup]="repAuthorizationForm">
 
           <div class="form-group">
             <label id="auth-rep-label">{{ 'form.auth_rep_q' | translate }} <span class="required">*</span></label>
             <div class="radio-inline-group">
-              <label class="radio-inline" [class.selected]="formData['hasAuthRep'] === 'yes'">
-                <input type="radio" name="hasAuthRep" value="yes" [(ngModel)]="formData['hasAuthRep']">
+              <label class="radio-inline" [class.selected]="repAuthorizationForm.controls.hasAuthRep.value === 'yes'">
+                <input type="radio" formControlName="hasAuthRep" value="yes">
                 <span>{{ 'form.yes' | translate }}</span>
               </label>
-              <label class="radio-inline" [class.selected]="formData['hasAuthRep'] === 'no'">
-                <input type="radio" name="hasAuthRep" value="no" [(ngModel)]="formData['hasAuthRep']">
+              <label class="radio-inline" [class.selected]="repAuthorizationForm.controls.hasAuthRep.value === 'no'">
+                <input type="radio" formControlName="hasAuthRep" value="no">
                 <span>{{ 'form.no' | translate }}</span>
               </label>
             </div>
+            <app-form-error [control]="repAuthorizationForm.controls.hasAuthRep" label="This field"></app-form-error>
           </div>
 
-          @if (formData['hasAuthRep'] === 'yes') {
+          @if (repAuthorizationForm.controls.hasAuthRep.value === 'yes') {
             <p class="rep-section-title">{{ 'form.auth_rep_details' | translate }}</p>
 
             <div class="form-row three-col">
               <div class="form-group">
                 <label>{{ 'form.rep_name' | translate }} <span class="required">*</span></label>
-                <input type="text" class="form-input" [(ngModel)]="formData['repName']" name="repName" placeholder="Enter Value" maxlength="150">
+                <input type="text" class="form-input" formControlName="repName" placeholder="Enter Value" maxlength="150"
+                       [class.invalid]="(repAuthorizationForm.controls.repName.touched || repAuthorizationForm.controls.repName.dirty) && repAuthorizationForm.controls.repName.invalid">
+                <app-form-error [control]="repAuthorizationForm.controls.repName" label="Representative name"></app-form-error>
               </div>
               <div class="form-group">
                 <label>{{ 'form.rep_email' | translate }} <span class="optional">(Optional)</span></label>
-                <input type="email" class="form-input" [(ngModel)]="formData['repEmail']" name="repEmail" placeholder="Enter Value" maxlength="64">
+                <input type="email" class="form-input" formControlName="repEmail" placeholder="Enter Value" maxlength="100"
+                       [class.invalid]="(repAuthorizationForm.controls.repEmail.touched || repAuthorizationForm.controls.repEmail.dirty) && repAuthorizationForm.controls.repEmail.invalid">
+                <app-form-error [control]="repAuthorizationForm.controls.repEmail" label="Email"></app-form-error>
               </div>
               <div class="form-group">
                 <label>{{ 'form.rep_mobile' | translate }} <span class="required">*</span></label>
-                <input type="tel" class="form-input" [(ngModel)]="formData['repPhone']" name="repPhone" placeholder="Enter 10-digit mobile number">
+                <input type="tel" class="form-input" formControlName="repPhone" placeholder="Enter 10-digit mobile number" maxlength="10"
+                       [class.invalid]="(repAuthorizationForm.controls.repPhone.touched || repAuthorizationForm.controls.repPhone.dirty) && repAuthorizationForm.controls.repPhone.invalid">
+                <app-form-error [control]="repAuthorizationForm.controls.repPhone" label="Mobile number"></app-form-error>
               </div>
             </div>
 
             <div class="form-row three-col">
               <div class="form-group">
                 <label>{{ 'form.rep_pincode' | translate }} <span class="required">*</span></label>
-                <input type="text" class="form-input" [(ngModel)]="formData['repPincode']" name="repPincode"
-                       placeholder="Enter 6-digit pincode" maxlength="6" (ngModelChange)="onRepPincodeInput()">
+                <input type="text" class="form-input" formControlName="repPincode"
+                       placeholder="Enter 6-digit pincode" maxlength="6" (input)="onRepPincodeInput()"
+                       [class.invalid]="(repAuthorizationForm.controls.repPincode.touched || repAuthorizationForm.controls.repPincode.dirty) && repAuthorizationForm.controls.repPincode.invalid">
                 @if (repPincodeLoading) { <span class="hint">Loading...</span> }
+                <app-form-error [control]="repAuthorizationForm.controls.repPincode" label="Pincode"></app-form-error>
               </div>
               <div class="form-group">
                 <label>{{ 'form.rep_state' | translate }} <span class="required">*</span></label>
-                <select class="form-select" [(ngModel)]="formData['repState']" name="repState">
+                <select class="form-select" formControlName="repState"
+                        [class.invalid]="(repAuthorizationForm.controls.repState.touched || repAuthorizationForm.controls.repState.dirty) && repAuthorizationForm.controls.repState.invalid">
                   <option value="">Select Value</option>
                   @for (s of repStates; track s) {
                     <option [value]="s">{{ s }}</option>
                   }
                 </select>
+                <app-form-error [control]="repAuthorizationForm.controls.repState" label="State"></app-form-error>
               </div>
               <div class="form-group">
                 <label>{{ 'form.rep_district' | translate }} <span class="required">*</span></label>
-                <select class="form-select" [(ngModel)]="formData['repDistrict']" name="repDistrict">
+                <select class="form-select" formControlName="repDistrict"
+                        [class.invalid]="(repAuthorizationForm.controls.repDistrict.touched || repAuthorizationForm.controls.repDistrict.dirty) && repAuthorizationForm.controls.repDistrict.invalid">
                   <option value="">Select Value</option>
                   @for (d of repDistricts; track d) {
                     <option [value]="d">{{ d }}</option>
                   }
                 </select>
+                <app-form-error [control]="repAuthorizationForm.controls.repDistrict" label="District"></app-form-error>
               </div>
             </div>
 
             <div class="form-row">
               <div class="form-group" style="max-width: 33%;">
                 <label>{{ 'form.rep_city' | translate }} <span class="required">*</span></label>
-                <select class="form-select" [(ngModel)]="formData['repCity']" name="repCity">
+                <select class="form-select" formControlName="repCity"
+                        [class.invalid]="(repAuthorizationForm.controls.repCity.touched || repAuthorizationForm.controls.repCity.dirty) && repAuthorizationForm.controls.repCity.invalid">
                   <option value="">Select Value</option>
                   @for (c of repCities; track c) {
                     <option [value]="c">{{ c }}</option>
                   }
                 </select>
+                <app-form-error [control]="repAuthorizationForm.controls.repCity" label="City"></app-form-error>
               </div>
             </div>
 
             <div class="form-group full-width">
               <label>{{ 'form.rep_address' | translate }} <span class="required">*</span></label>
-              <textarea class="form-textarea" [(ngModel)]="formData['repAddress']" name="repAddress" rows="3"
-                        placeholder="Enter Value" maxlength="100"></textarea>
+              <textarea class="form-textarea" formControlName="repAddress" rows="3"
+                        placeholder="Enter Value" maxlength="100"
+                        [class.invalid]="(repAuthorizationForm.controls.repAddress.touched || repAuthorizationForm.controls.repAddress.dirty) && repAuthorizationForm.controls.repAddress.invalid"></textarea>
+              <app-form-error [control]="repAuthorizationForm.controls.repAddress" label="Address"></app-form-error>
             </div>
 
             <div class="form-group full-width">
@@ -928,6 +967,7 @@
                   <button type="button" class="remove-file-btn" (click)="removeRepFile()"><i class="pi pi-times"></i></button>
                 </div>
               }
+              <app-form-error [control]="repAuthorizationForm.controls.repFileUpload" label="Authorization document"></app-form-error>
             </div>
           }
 
@@ -936,32 +976,30 @@
 
       <!-- Step 5: Declaration -->
       @if (currentStep() === 5) {
-        <div class="step-content">
+        <div class="step-content" [formGroup]="declarationForm">
           <h3 class="decl-heading">{{ 'form.decl_heading' | translate }}</h3>
 
           <div class="decl-item">
             <label class="decl-checkbox-label">
-              <input type="checkbox" [(ngModel)]="declarationChecked" name="declaration" class="decl-checkbox">
+              <input type="checkbox" formControlName="declaration1" class="decl-checkbox">
               <span class="decl-text">
                 (i) I/ We, the complainant/s herein declare that:<br>
                 &nbsp;&nbsp;&nbsp;&nbsp;a) the information furnished above is true and correct; and<br>
                 &nbsp;&nbsp;&nbsp;&nbsp;b) I/We have not concealed or misrepresented any fact stated above and in the documents submitted herewith.
               </span>
             </label>
+            <app-form-error [control]="declarationForm.controls.declaration1" label="Declaration"></app-form-error>
           </div>
 
           <div class="decl-item">
             <label class="decl-checkbox-label">
-              <input type="checkbox" [(ngModel)]="declaration2Checked" name="declaration2" class="decl-checkbox">
+              <input type="checkbox" formControlName="declaration2" class="decl-checkbox">
               <span class="decl-text">
                 (ii) The complaint is filed before the expiry of a period of one year reckoned in accordance with the provisions of clause 10 (2) of the Scheme.
               </span>
             </label>
+            <app-form-error [control]="declarationForm.controls.declaration2" label="Declaration"></app-form-error>
           </div>
-
-          @if (validationErrors['declaration']) {
-            <p class="field-error" style="margin-top: 12px;">{{ validationErrors['declaration'] }}</p>
-          }
         </div>
       }
 
@@ -1178,7 +1216,7 @@
             <i class="pi pi-chevron-left"></i> {{ 'form.back' | translate }}
           </button>
           @if (currentStep() < totalSteps) {
-            <button class="btn-next" (click)="nextStep()">{{ 'form.next' | translate }} <i class="pi pi-chevron-right"></i></button>
+            <button class="btn-next" (click)="nextStep()" [disabled]="isNextDisabled()">{{ 'form.next' | translate }} <i class="pi pi-chevron-right"></i></button>
           } @else {
             <button class="btn-download-pdf" (click)="downloadAcknowledgement()">
               <i class="pi pi-download"></i> {{ 'form.download_pdf' | translate }}
