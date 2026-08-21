@@ -52,6 +52,7 @@ export class PhysicalLetterComponent implements OnInit {
   pdfExpanded = signal(false);
   pdfPage = signal(1);
   pdfPreviewUrl = signal<SafeResourceUrl | null>(null);
+  imagePreviewUrl = signal<string | null>(null);
 
   // Form fields
   subject = '';
@@ -303,11 +304,7 @@ export class PhysicalLetterComponent implements OnInit {
 
     this.scannedFile = file;
     this.scanError = '';
-
-    if (file.type === 'application/pdf') {
-      const url = URL.createObjectURL(file);
-      this.pdfPreviewUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(url));
-    }
+    this.setFilePreview(file);
   }
 
   onFileDrop(event: DragEvent) {
@@ -325,15 +322,25 @@ export class PhysicalLetterComponent implements OnInit {
     }
     this.scannedFile = file;
     this.scanError = '';
+    this.setFilePreview(file);
+  }
+
+  private setFilePreview(file: File) {
     if (file.type === 'application/pdf') {
       const url = URL.createObjectURL(file);
       this.pdfPreviewUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(url));
+      this.imagePreviewUrl.set(null);
+    } else if (file.type.startsWith('image/')) {
+      const url = URL.createObjectURL(file);
+      this.imagePreviewUrl.set(url);
+      this.pdfPreviewUrl.set(null);
     }
   }
 
   removeFile() {
     this.scannedFile = null;
     this.pdfPreviewUrl.set(null);
+    this.imagePreviewUrl.set(null);
     this.ocrComplete.set(false);
   }
 
@@ -345,41 +352,43 @@ export class PhysicalLetterComponent implements OnInit {
     const formData = new FormData();
     formData.append('file', this.scannedFile);
 
-    this.http.post<any>(`${environment.apiBaseUrl}/api/v1/ocr/extract`, formData)
+    this.http.post<any>(`${environment.ocrServiceUrl}/v1/documents`, formData)
       .subscribe({
         next: (res) => {
-          const data = res?.data || {};
-          const fieldCount = Object.keys(data).length;
-
-          if (fieldCount === 0) {
+          const envelope = res?.result;
+          if (!envelope) {
             this.ocrInProgress.set(false);
-            this.scanError = 'AI extraction returned no data. API quota may be exhausted. Please fill manually or try again later.';
+            this.scanError = 'AI extraction returned no data. Please fill manually or try again later.';
             return;
           }
 
-          if (data.complainantName) this.complainantName = data.complainantName;
-          if (data.complainantAddress) this.complainantAddress = data.complainantAddress;
-          if (data.complainantState) this.complainantState = data.complainantState;
-          if (data.complainantDistrict) this.complainantDistrict = data.complainantDistrict;
-          if (data.complainantPincode) this.complainantPincode = data.complainantPincode;
-          if (data.complainantPhone) this.complainantPhone = data.complainantPhone;
-          if (data.complainantEmail) this.complainantEmail = data.complainantEmail;
-          if (data.subject) this.subject = data.subject;
-          if (data.description) this.description = data.description;
-          if (data.entityName) this.entityName = data.entityName;
-          if (data.entityType) this.entityType = data.entityType;
-          if (data.category) this.category = data.category;
-          if (data.branchName) this.branchName = data.branchName;
-          if (data.amountInvolved) this.amountInvolved = Number(data.amountInvolved) || null;
-          if (data.letterDate) this.letterDate = data.letterDate;
-          if (data.transactionDate) this.transactionDate = data.transactionDate;
+          if (envelope.bounce_decision?.decision === 'bounce') {
+            this.ocrInProgress.set(false);
+            this.scanError = `Document rejected: ${envelope.bounce_decision.detail || envelope.bounce_decision.reason || 'Quality too low'}`;
+            return;
+          }
 
-          // Build suggestions from extracted data
+          const fields = envelope.document?.fields || {};
+          const summary = envelope.document?.complaint_summary;
+
+          if (fields.complainant_name?.value) this.complainantName = fields.complainant_name.value_en || fields.complainant_name.value;
+          if (fields.bank_name?.value) this.entityName = fields.bank_name.value;
+          if (fields.amount?.normalized) this.amountInvolved = Number(fields.amount.normalized) || null;
+          if (fields.transaction_date?.normalized) this.transactionDate = fields.transaction_date.normalized;
+          if (fields.complainant_address?.value) this.complainantAddress = fields.complainant_address.value_en || fields.complainant_address.value;
+          if (fields.complainant_phone?.value) this.complainantPhone = fields.complainant_phone.value;
+          if (fields.complainant_email?.value) this.complainantEmail = fields.complainant_email.value;
+          if (fields.complainant_state?.value) this.complainantState = fields.complainant_state.value;
+          if (fields.complainant_district?.value) this.complainantDistrict = fields.complainant_district.value;
+          if (fields.complainant_pincode?.value) this.complainantPincode = fields.complainant_pincode.value;
+          if (fields.prior_complaint_reference?.value) this.subject = `Ref: ${fields.prior_complaint_reference.value}`;
+          if (summary?.text) this.description = summary.text;
+
           const suggs: Suggestion[] = [];
-          if (data.entityName) suggs.push({ id: '1', field: 'Entity', value: data.entityName });
-          if (data.category) suggs.push({ id: '2', field: 'Category', value: data.category });
-          if (data.amountInvolved) suggs.push({ id: '3', field: 'Amount', value: `₹${data.amountInvolved}` });
-          if (data.subject) suggs.push({ id: '4', field: 'Subject', value: data.subject });
+          if (fields.bank_name?.value) suggs.push({ id: '1', field: 'Entity', value: fields.bank_name.value });
+          if (fields.amount?.normalized) suggs.push({ id: '2', field: 'Amount', value: `₹${fields.amount.normalized}` });
+          if (fields.ifsc_code?.value) suggs.push({ id: '3', field: 'IFSC', value: fields.ifsc_code.value });
+          if (fields.account_number?.value) suggs.push({ id: '4', field: 'Account', value: fields.account_number.value });
           this.suggestions.set(suggs);
 
           this.ocrInProgress.set(false);
@@ -388,7 +397,7 @@ export class PhysicalLetterComponent implements OnInit {
         error: (err) => {
           console.error('OCR extraction failed:', err);
           this.ocrInProgress.set(false);
-          this.scanError = 'AI extraction failed: ' + (err.error?.message || 'Service unavailable. Please fill manually.');
+          this.scanError = 'AI extraction failed: ' + (err.error?.detail || err.error?.message || 'Service unavailable. Please fill manually.');
         }
       });
   }

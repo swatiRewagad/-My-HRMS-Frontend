@@ -1,0 +1,314 @@
+<div class="ocr-test-container">
+  <header class="test-header">
+    <h1>Document Intelligence API — Test Console</h1>
+    <div class="base-url-input">
+      <label>Base URL:</label>
+      <input type="text" [ngModel]="baseUrl()" (ngModelChange)="baseUrl.set($event)" placeholder="http://localhost:8000" />
+    </div>
+  </header>
+
+  <!-- Tabs -->
+  <nav class="tab-nav">
+    <button [class.active]="activeTab() === 'submit'" (click)="activeTab.set('submit')">
+      <i class="pi pi-upload"></i> Submit Document
+    </button>
+    <button [class.active]="activeTab() === 'job'" (click)="activeTab.set('job')">
+      <i class="pi pi-search"></i> Fetch Job
+    </button>
+    <button [class.active]="activeTab() === 'health'" (click)="activeTab.set('health'); fetchHealth()">
+      <i class="pi pi-heart"></i> Health
+    </button>
+    <button [class.active]="activeTab() === 'stats'" (click)="activeTab.set('stats'); fetchStats()">
+      <i class="pi pi-chart-bar"></i> Stats
+    </button>
+  </nav>
+
+  <!-- Error banner -->
+  @if (errorMessage()) {
+    <div class="error-banner">
+      <i class="pi pi-exclamation-triangle"></i>
+      {{ errorMessage() }}
+      <button class="dismiss" (click)="errorMessage.set(null)">&times;</button>
+    </div>
+  }
+
+  <!-- Submit Document Tab -->
+  @if (activeTab() === 'submit') {
+    <section class="tab-content">
+      <div class="form-section">
+        <h3>POST /v1/documents</h3>
+        <div class="form-group">
+          <label>File (PDF, JPEG, PNG) *</label>
+          <input type="file" accept=".pdf,.jpg,.jpeg,.png" (change)="onFileSelected($event)" />
+          @if (selectedFile) {
+            <span class="file-info">{{ selectedFile.name }} ({{ (selectedFile.size / 1024).toFixed(1) }} KB)</span>
+          }
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Sender (optional)</label>
+            <input type="text" [(ngModel)]="sender" placeholder="complainant@example.in" />
+          </div>
+          <div class="form-group">
+            <label>Subject (optional)</label>
+            <input type="text" [(ngModel)]="subject" placeholder="Unauthorised debit - CMS/2026/401687" />
+          </div>
+        </div>
+        <div class="form-group checkbox-group">
+          <label>
+            <input type="checkbox" [(ngModel)]="synthetic" />
+            Synthetic (test data declaration)
+          </label>
+        </div>
+        <button class="btn-primary" (click)="submitDocument()" [disabled]="loading() || !selectedFile">
+          @if (loading()) {
+            <i class="pi pi-spin pi-spinner"></i> Processing...
+          } @else {
+            <i class="pi pi-send"></i> Submit Document
+          }
+        </button>
+      </div>
+
+      <!-- Submission Result -->
+      @if (submissionResult()) {
+        <div class="result-section">
+          <div class="result-header">
+            <h3>Response</h3>
+            <div class="result-meta">
+              <span class="badge" [class]="getStatusClass(submissionResult().status)">{{ submissionResult().status }}</span>
+              @if (submissionResult().is_new) {
+                <span class="badge badge-info">NEW</span>
+              }
+            </div>
+          </div>
+
+          <!-- Summary Cards -->
+          <div class="summary-cards">
+            <div class="card">
+              <label>Job ID</label>
+              <span class="mono">{{ submissionResult().job_id }}</span>
+              <button class="copy-btn" (click)="copyToClipboard(submissionResult().job_id)" title="Copy">📋</button>
+            </div>
+            <div class="card">
+              <label>Document ID</label>
+              <span class="mono truncate">{{ submissionResult().document_id }}</span>
+            </div>
+            @if (submissionResult().result?.bounce_decision) {
+              <div class="card">
+                <label>Bounce Decision</label>
+                <span class="badge" [class]="getBounceClass(submissionResult().result.bounce_decision.decision)">
+                  {{ submissionResult().result.bounce_decision.decision }}
+                </span>
+                @if (submissionResult().result.bounce_decision.reason) {
+                  <span class="reason">{{ submissionResult().result.bounce_decision.reason }}</span>
+                }
+              </div>
+            }
+          </div>
+
+          <!-- Extracted Fields -->
+          @if (submissionResult().result?.document?.fields) {
+            <div class="fields-section">
+              <h4>Extracted Fields</h4>
+              <table class="fields-table">
+                <thead>
+                  <tr>
+                    <th>Field</th>
+                    <th>Value</th>
+                    <th>Normalized</th>
+                    <th>Confidence</th>
+                    <th>Source</th>
+                    <th>Validated</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (entry of submissionResult().result.document.fields | keyvalue; track entry.key) {
+                    <tr>
+                      <td class="field-name">{{ entry.key }}</td>
+                      <td class="field-value">{{ entry.value.value }}</td>
+                      <td class="field-normalized">{{ entry.value.normalized || '—' }}</td>
+                      <td>
+                        <span class="confidence-bar">
+                          <span class="bar" [style.width.%]="entry.value.confidence * 100"></span>
+                          <span class="value">{{ (entry.value.confidence * 100).toFixed(1) }}%</span>
+                        </span>
+                      </td>
+                      <td><span class="source-badge">{{ entry.value.source }}</span></td>
+                      <td>
+                        @if (entry.value.validator_passed === true) {
+                          <i class="pi pi-check-circle text-success"></i>
+                        } @else if (entry.value.validator_passed === false) {
+                          <i class="pi pi-times-circle text-danger"></i>
+                        } @else {
+                          <span class="text-muted">N/A</span>
+                        }
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+
+          <!-- Processing Info -->
+          @if (submissionResult().result?.processing) {
+            <div class="processing-section">
+              <h4>Processing</h4>
+              <div class="processing-stats">
+                <span><strong>Duration:</strong> {{ submissionResult().result.processing.duration_ms.toFixed(0) }} ms</span>
+                <span><strong>Pages:</strong> {{ submissionResult().result.processing.pages_processed }}</span>
+                <span><strong>Bounced:</strong> {{ submissionResult().result.processing.pages_bounced }}</span>
+                <span><strong>Escalated:</strong> {{ submissionResult().result.processing.pages_escalated }}</span>
+              </div>
+              @if (submissionResult().result.processing.stage_timings_ms) {
+                <div class="stage-timings">
+                  <h5>Stage Timings</h5>
+                  @for (stage of submissionResult().result.processing.stage_timings_ms | keyvalue; track stage.key) {
+                    <div class="timing-row">
+                      <span class="stage-name">{{ stage.key }}</span>
+                      <span class="timing-bar">
+                        <span class="bar" [style.width.%]="(stage.value / submissionResult().result.processing.duration_ms) * 100"></span>
+                      </span>
+                      <span class="timing-value">{{ stage.value.toFixed(1) }} ms</span>
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+          }
+
+          <!-- Raw JSON -->
+          <details class="raw-json">
+            <summary>Raw JSON Response</summary>
+            <pre>{{ formatJson(submissionResult()) }}</pre>
+          </details>
+        </div>
+      }
+    </section>
+  }
+
+  <!-- Fetch Job Tab -->
+  @if (activeTab() === 'job') {
+    <section class="tab-content">
+      <div class="form-section">
+        <h3>GET /v1/jobs/&#123;job_id&#125;</h3>
+        <div class="form-row">
+          <div class="form-group flex-grow">
+            <label>Job ID</label>
+            <input type="text" [(ngModel)]="jobIdInput" placeholder="Enter job ID or use last submission" />
+          </div>
+          <button class="btn-primary" (click)="fetchJob()" [disabled]="loading()">
+            @if (loading()) {
+              <i class="pi pi-spin pi-spinner"></i>
+            } @else {
+              <i class="pi pi-search"></i> Fetch
+            }
+          </button>
+        </div>
+        @if (lastJobId()) {
+          <p class="hint">Last job: <code (click)="jobIdInput = lastJobId()!; fetchJob()" class="clickable">{{ lastJobId() }}</code></p>
+        }
+      </div>
+
+      @if (jobResult()) {
+        <div class="result-section">
+          <div class="result-header">
+            <h3>Job Details</h3>
+            <span class="badge" [class]="getStatusClass(jobResult().status)">{{ jobResult().status }}</span>
+          </div>
+          <div class="summary-cards">
+            <div class="card"><label>Version</label><span>{{ jobResult().result_version }}</span></div>
+            <div class="card"><label>Final</label><span>{{ jobResult().is_final }}</span></div>
+            <div class="card"><label>Created</label><span>{{ jobResult().created_at }}</span></div>
+            <div class="card"><label>Updated</label><span>{{ jobResult().updated_at }}</span></div>
+          </div>
+          <details class="raw-json">
+            <summary>Raw JSON</summary>
+            <pre>{{ formatJson(jobResult()) }}</pre>
+          </details>
+        </div>
+      }
+    </section>
+  }
+
+  <!-- Health Tab -->
+  @if (activeTab() === 'health') {
+    <section class="tab-content">
+      <div class="form-section">
+        <h3>GET /healthz</h3>
+        <button class="btn-primary" (click)="fetchHealth()" [disabled]="loading()">
+          <i class="pi pi-refresh"></i> Refresh
+        </button>
+      </div>
+      @if (healthResult()) {
+        <div class="result-section">
+          <div class="summary-cards">
+            <div class="card"><label>Status</label><span class="badge badge-success">{{ healthResult().status }}</span></div>
+            <div class="card"><label>Profile</label><span>{{ healthResult().profile }}</span></div>
+            <div class="card"><label>Schema</label><span>{{ healthResult().schema_version }}</span></div>
+            <div class="card"><label>Database</label><span>{{ healthResult().database }}</span></div>
+          </div>
+          @if (healthResult().models) {
+            <h4>Models</h4>
+            <table class="fields-table">
+              <thead>
+                <tr><th>Model</th><th>Path</th><th>Present</th></tr>
+              </thead>
+              <tbody>
+                @for (model of healthResult().models; track model.name) {
+                  <tr>
+                    <td>{{ model.name }}</td>
+                    <td class="mono truncate">{{ model.path }}</td>
+                    <td>
+                      @if (model.present) { <i class="pi pi-check-circle text-success"></i> }
+                      @else { <i class="pi pi-times-circle text-danger"></i> }
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          }
+          <details class="raw-json">
+            <summary>Raw JSON</summary>
+            <pre>{{ formatJson(healthResult()) }}</pre>
+          </details>
+        </div>
+      }
+    </section>
+  }
+
+  <!-- Stats Tab -->
+  @if (activeTab() === 'stats') {
+    <section class="tab-content">
+      <div class="form-section">
+        <h3>GET /v1/stats</h3>
+        <button class="btn-primary" (click)="fetchStats()" [disabled]="loading()">
+          <i class="pi pi-refresh"></i> Refresh
+        </button>
+      </div>
+      @if (statsResult()) {
+        <div class="result-section">
+          <div class="summary-cards">
+            <div class="card"><label>Uptime</label><span>{{ statsResult().uptime_seconds.toFixed(0) }}s</span></div>
+            <div class="card"><label>Requests</label><span>{{ statsResult().requests }}</span></div>
+            <div class="card"><label>Error Rate</label><span>{{ (statsResult().error_rate * 100).toFixed(2) }}%</span></div>
+            <div class="card"><label>Accepted</label><span class="text-success">{{ statsResult().documents.accepted }}</span></div>
+            <div class="card"><label>Rejected</label><span class="text-danger">{{ statsResult().documents.rejected }}</span></div>
+          </div>
+          @if (statsResult().bounces) {
+            <h4>Bounce Reasons</h4>
+            <div class="bounce-list">
+              @for (b of statsResult().bounces | keyvalue; track b.key) {
+                <span class="bounce-chip">{{ b.key }}: {{ b.value }}</span>
+              }
+            </div>
+          }
+          <details class="raw-json">
+            <summary>Raw JSON</summary>
+            <pre>{{ formatJson(statsResult()) }}</pre>
+          </details>
+        </div>
+      }
+    </section>
+  }
+</div>
