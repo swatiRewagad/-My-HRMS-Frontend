@@ -314,6 +314,11 @@ export const routes: Routes = [
       { path: 'complaint/:id', canActivate: [publicAuthGuard], loadComponent: () => import('./components/public/complaint-detail/complaint-detail.component').then(m => m.ComplaintDetailComponent) },
     ]
   },
+  // ── Test / Dev Tools ──
+  {
+    path: 'test/ocr-api',
+    loadComponent: () => import('./components/test/ocr-api-test/ocr-api-test.component').then(m => m.OcrApiTestComponent)
+  },
   {
     path: '**',
     redirectTo: ''

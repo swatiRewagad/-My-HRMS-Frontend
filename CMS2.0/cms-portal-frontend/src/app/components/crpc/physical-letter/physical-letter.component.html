@@ -162,6 +162,8 @@
                 <div class="doc-preview-area">
                   @if (pdfPreviewUrl()) {
                     <iframe [src]="pdfPreviewUrl()" class="doc-preview-pdf" frameborder="0"></iframe>
+                  } @else if (imagePreviewUrl()) {
+                    <img [src]="imagePreviewUrl()" class="doc-preview-image" alt="Scanned document" />
                   } @else {
                     <div class="doc-file-placeholder">
                       <i class="pi pi-file"></i>
