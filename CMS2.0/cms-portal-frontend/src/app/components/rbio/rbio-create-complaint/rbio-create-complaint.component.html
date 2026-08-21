@@ -30,109 +30,410 @@
       <span class="user-avatar">{{ (loggedInUserName || 'R').charAt(0) }}</span>
       <div class="user-details">
         <span class="user-name">{{ loggedInUserName || 'Rahul Jain' }}</span>
-        <span class="user-role">RBIO Dealing Officer</span>
+        <span class="user-role">RBIO {{ userRole() === 'DO' ? 'Dealing Officer' : userRole() === 'REVIEWER' ? 'Reviewer' : userRole() === 'DEPUTY_OMBUDSMAN' ? 'Deputy Ombudsman' : 'Ombudsman' }}</span>
       </div>
       <button class="btn-logout" (click)="goBack()"><i class="pi pi-sign-out"></i></button>
     </div>
   </header>
 
-  @if (submitted()) {
-    <!-- ═══ ASSESSMENT VIEW (after Send) ═══ -->
-    <div class="sub-header">
-      <div class="complaint-tab active">
-        <i class="pi pi-file"></i>
-        Complaint {{ complaintId }}
-      </div>
-      <div class="complaint-tab add-tab" (click)="goBack()" title="Back to RBIO">
-        <i class="pi pi-plus"></i>
-      </div>
+  @if (submitted() && complaintStatus() === 'SENT') {
+    <!-- ═══ SUCCESS PAGE ═══ -->
+    <div class="success-page">
+      <div class="success-icon"><i class="pi pi-check-circle"></i></div>
+      <h2>Assessment Sent for Approval</h2>
+      <p>Complaint <strong>{{ complaintId }}</strong> has been routed to
+        <strong>{{ approvalSentTo() }}</strong>
+      </p>
+      <button class="btn btn-primary" (click)="goBack()">Back to Home</button>
     </div>
+  } @else if (submitted() && complaintStatus() === 'VIEW_ONLY') {
+    <!-- ═══ VIEW ONLY (already sent/processed) ═══ -->
+    <div class="success-page">
+      <div class="success-icon"><i class="pi pi-lock" style="color: #64748b;"></i></div>
+      <h2>Complaint Already Processed</h2>
+      <p>Complaint <strong>{{ complaintId }}</strong> has already been sent for approval and is in <strong>View Only</strong> mode.</p>
+      <button class="btn btn-primary" (click)="goBack()">Back to Home</button>
+    </div>
+  } @else if (submitted()) {
+    <!-- ═══ ASSESSMENT VIEW ═══ -->
+    <div class="assessment-container">
+      <!-- Dark Blue Vertical Sidebar Nav -->
+      <nav class="side-nav">
+        <button class="side-nav-btn active" title="Complaint view"><i class="pi pi-file"></i></button>
+        <button class="side-nav-btn" title="Dashboard" (click)="goBack()"><i class="pi pi-chart-bar"></i></button>
+        <button class="side-nav-btn" title="Expand"><i class="pi pi-arrows-alt"></i></button>
+      </nav>
 
-    <!-- META ROW - Assessment mode -->
-    <div class="meta-row">
-      <button class="close-btn" (click)="goBack()"><i class="pi pi-arrow-left"></i></button>
-      <div class="meta-item">
-        <span class="meta-icon blue"><i class="pi pi-file"></i></span>
-        <div class="meta-text">
-          <span class="meta-label">Complaint Number <i class="pi pi-info-circle"></i></span>
-          <span class="meta-value">N{{ complaintId }}</span>
+      <!-- Main Frame (tab bar + content) -->
+      <div class="main-frame">
+        <!-- Tab Bar -->
+        <div class="sub-header">
+          <div class="complaint-tab active">
+            <i class="pi pi-file"></i>
+            Complaint {{ complaintId }}
+          </div>
+          <div class="complaint-tab add-tab" (click)="goBack()" title="Back to RBIO">
+            <i class="pi pi-plus"></i>
+          </div>
         </div>
-      </div>
-      <div class="meta-item">
-        <span class="meta-icon blue"><i class="pi pi-user"></i></span>
-        <div class="meta-text">
-          <span class="meta-label">Complainant Name <i class="pi pi-info-circle"></i></span>
-          <span class="meta-value">{{ complainantName || 'Not Assigned' }}</span>
-        </div>
-      </div>
-      <div class="meta-item">
-        <span class="meta-icon blue"><i class="pi pi-building"></i></span>
-        <div class="meta-text">
-          <span class="meta-label">Entity Name <i class="pi pi-info-circle"></i></span>
-          <span class="meta-value">{{ entityName || 'Not Assigned' }}</span>
-        </div>
-      </div>
-      <div class="meta-item">
-        <span class="meta-icon blue"><i class="pi pi-chart-bar"></i></span>
-        <div class="meta-text">
-          <span class="meta-label">Status <i class="pi pi-info-circle"></i></span>
-          <span class="meta-value"><span class="status-pill green">New Complaint</span></span>
-        </div>
-      </div>
-      <div class="meta-item">
-        <span class="meta-icon blue"><i class="pi pi-tag"></i></span>
-        <div class="meta-text">
-          <span class="meta-label">Complaint Category <i class="pi pi-info-circle"></i></span>
-          <span class="meta-value">{{ category || 'General Banking' }}</span>
-        </div>
-      </div>
-      <div class="meta-item">
-        <span class="meta-icon blue"><i class="pi pi-clock"></i></span>
-        <div class="meta-text">
-          <span class="meta-label">SLA Breach In <i class="pi pi-info-circle"></i></span>
-          <span class="meta-value"><span class="sla-badge">8 days</span></span>
-        </div>
-      </div>
-      <div class="meta-actions">
-        <button class="btn btn-outline" (click)="editDraft()"><i class="pi pi-pencil"></i> Edit</button>
-        <button class="btn btn-send-back"><i class="pi pi-arrow-left"></i> Send Back</button>
-        <div class="send-approval-wrapper">
-          <button class="btn btn-send-approval" (click)="showApprovalMenu.set(!showApprovalMenu())">
-            <i class="pi pi-check"></i> Send for Approval <i class="pi pi-chevron-down"></i>
-          </button>
-          @if (showApprovalMenu()) {
-            <div class="approval-dropdown">
-              <button (click)="sendForApproval('REVIEWER')">Send to RBIO <strong>Reviewer</strong></button>
-              <button (click)="sendForApproval('DEPUTY_OMBUDSMAN')">Send to RBIO <strong>Deputy Ombudsman</strong></button>
-              <button (click)="sendForApproval('OMBUDSMAN')">Send to RBIO <strong>Ombudsman</strong></button>
+
+        <!-- ═══ PAGE BODY ═══ -->
+        <div class="page-body-layout">
+
+      <!-- LEFT MAIN AREA -->
+      <div class="left-main-area">
+
+        <!-- ═══ META ROW ═══ -->
+        <div class="meta-row">
+          <button class="back-arrow" (click)="goBack()"><i class="pi pi-arrow-left"></i></button>
+          <div class="meta-item">
+            <span class="meta-icon"><i class="pi pi-id-card"></i></span>
+            <div class="meta-text">
+              <span class="meta-label">Complaint Number <i class="pi pi-info-circle"></i></span>
+              <span class="meta-value">N{{ complaintId }}</span>
             </div>
-          }
+          </div>
+          <div class="meta-item">
+            <span class="meta-icon"><i class="pi pi-user"></i></span>
+            <div class="meta-text">
+              <span class="meta-label">Complainant Name <i class="pi pi-info-circle"></i></span>
+              <span class="meta-value">{{ complainantName || 'Not Assigned' }}</span>
+            </div>
+          </div>
+          <div class="meta-item">
+            <span class="meta-icon"><i class="pi pi-building"></i></span>
+            <div class="meta-text">
+              <span class="meta-label">Entity Name <i class="pi pi-info-circle"></i></span>
+              <span class="meta-value">{{ entityName || 'Not Assigned' }}</span>
+            </div>
+          </div>
+          <div class="meta-item">
+            <span class="meta-icon"><i class="pi pi-chart-bar"></i></span>
+            <div class="meta-text">
+              <span class="meta-label">Status <i class="pi pi-info-circle"></i></span>
+              <span class="meta-value"><span class="status-pill green">New Complaint</span></span>
+            </div>
+          </div>
+          <div class="meta-item">
+            <span class="meta-icon"><i class="pi pi-tag"></i></span>
+            <div class="meta-text">
+              <span class="meta-label">Complaint Category <i class="pi pi-info-circle"></i></span>
+              <span class="meta-value">{{ category || 'General Banking' }}</span>
+            </div>
+          </div>
+          <div class="meta-item">
+            <span class="meta-icon"><i class="pi pi-clock"></i></span>
+            <div class="meta-text">
+              <span class="meta-label">SLA Breach In <i class="pi pi-info-circle"></i></span>
+              <span class="meta-value"><span class="sla-badge">8 days</span></span>
+            </div>
+          </div>
+          <div class="meta-actions">
+            @if (complaintStatus() === 'NEW_COMPLAINT') {
+              <div class="send-approval-wrapper">
+                <button class="btn btn-send-approval" (click)="showApprovalMenu.set(!showApprovalMenu())">
+                  Send for Approval <i class="pi pi-chevron-down"></i>
+                </button>
+                @if (showApprovalMenu()) {
+                  <div class="approval-dropdown">
+                    @if (userRole() === 'DO') {
+                      <button (click)="sendForApproval('REVIEWER')">Send to RBIO <strong>Reviewer</strong></button>
+                      <button (click)="sendForApproval('DEPUTY_OMBUDSMAN')">Send to RBIO <strong>Deputy Ombudsman</strong></button>
+                      <button (click)="sendForApproval('OMBUDSMAN')">Send to RBIO <strong>Ombudsman</strong></button>
+                    } @else {
+                      <button (click)="sendForApproval('DEALING_OFFICER')">to RBIO <strong>Dealing Officer</strong></button>
+                      <button (click)="sendForApproval('REVIEWER')">to RBIO <strong>Reviewer</strong></button>
+                      <button (click)="sendForApproval('DEPUTY_OMBUDSMAN')">to RBIO <strong>Deputy Ombudsman</strong></button>
+                      <button (click)="sendForApproval('OMBUDSMAN')">to RBIO <strong>Ombudsman</strong></button>
+                    }
+                  </div>
+                }
+              </div>
+            } @else {
+              <span class="readonly-badge"><i class="pi pi-lock"></i> View Only</span>
+            }
+            <button class="btn btn-icon" title="Save"><i class="pi pi-save"></i></button>
+            <button class="btn-more" title="More options"><i class="pi pi-ellipsis-v"></i></button>
+          </div>
         </div>
-        <button class="btn btn-icon"><i class="pi pi-save"></i></button>
-        <button class="btn btn-icon"><i class="pi pi-ellipsis-v"></i></button>
-      </div>
-    </div>
 
-    <!-- Assessment Tabs -->
-    <div class="summary-tabs">
-      <button class="summary-tab" [class.active]="assessmentTab() === 'summary'" (click)="assessmentTab.set('summary')">Summary</button>
-      <button class="summary-tab" [class.active]="assessmentTab() === 'conciliation'" (click)="assessmentTab.set('conciliation')">Conciliation</button>
-      <button class="summary-tab" [class.active]="assessmentTab() === 'forward'" (click)="assessmentTab.set('forward')">Forward</button>
-      <button class="summary-tab" [class.active]="assessmentTab() === 'final-decision'" (click)="assessmentTab.set('final-decision')">Final Decision</button>
-      <button class="summary-tab" [class.active]="assessmentTab() === 'nodal-officer'" (click)="assessmentTab.set('nodal-officer')">Nodal Officer Record</button>
-      <button class="summary-tab" [class.active]="assessmentTab() === 'email'" (click)="assessmentTab.set('email')">Email Communication</button>
-    </div>
+        <!-- Assessment Tabs -->
+        <div class="page-tabs">
+          <button class="page-tab" [class.active]="assessmentTab() === 'summary'" (click)="assessmentTab.set('summary')">Summary</button>
+          <button class="page-tab" [class.active]="assessmentTab() === 'conciliation'" (click)="assessmentTab.set('conciliation')">Conciliation</button>
+          <button class="page-tab" [class.active]="assessmentTab() === 'forward'" (click)="assessmentTab.set('forward')">Forward</button>
+          <button class="page-tab" [class.active]="assessmentTab() === 'final-decision'" (click)="assessmentTab.set('final-decision')">Final Decision</button>
+          <button class="page-tab" [class.active]="assessmentTab() === 'nodal-officer'" (click)="assessmentTab.set('nodal-officer')">Nodal Officer Record</button>
+          <button class="page-tab" [class.active]="assessmentTab() === 'email'" (click)="assessmentTab.set('email')">Email Communication</button>
+        </div>
 
-    <!-- CONTENT: Two panels (Assessment) -->
+    <!-- CONTENT -->
+    @if (assessmentTab() === 'nodal-officer') {
+      <!-- ═══ NODAL OFFICER RECORD TAB ═══ -->
+      @if (nodalDetailView()) {
+        <!-- NODAL OFFICER RECORD DETAIL VIEW -->
+        <div class="nodal-detail-view">
+          <div class="nodal-detail-header">
+            <div class="nodal-detail-meta">
+              <button class="close-btn" (click)="closeNodalDetail()"><i class="pi pi-arrow-left"></i></button>
+              <div class="meta-item">
+                <span class="meta-icon blue"><i class="pi pi-file"></i></span>
+                <div class="meta-text">
+                  <span class="meta-label">NO Record Number</span>
+                  <span class="meta-value">{{ selectedNodalRecord()?.recordNumber }}</span>
+                </div>
+              </div>
+              <div class="meta-item">
+                <span class="meta-icon blue"><i class="pi pi-file"></i></span>
+                <div class="meta-text">
+                  <span class="meta-label">Complaint Number</span>
+                  <span class="meta-value link">{{ selectedNodalRecord()?.complaintNumber }}</span>
+                </div>
+              </div>
+              <div class="meta-item">
+                <span class="meta-icon blue"><i class="pi pi-calendar"></i></span>
+                <div class="meta-text">
+                  <span class="meta-label">Bank Complaint Receipt Date</span>
+                  <span class="meta-value">{{ selectedNodalRecord()?.receiptDate }}</span>
+                </div>
+              </div>
+              <div class="meta-item">
+                <span class="meta-icon blue"><i class="pi pi-user"></i></span>
+                <div class="meta-text">
+                  <span class="meta-label">Complainant Name</span>
+                  <span class="meta-value">{{ selectedNodalRecord()?.complainant }}</span>
+                </div>
+              </div>
+              <div class="meta-item">
+                <span class="meta-icon blue"><i class="pi pi-chart-bar"></i></span>
+                <div class="meta-text">
+                  <span class="meta-label">Status</span>
+                  <span class="meta-value"><span class="status-pill info-required">{{ selectedNodalRecord()?.statusLabel }}</span></span>
+                </div>
+              </div>
+              <div class="meta-item">
+                <span class="meta-icon blue"><i class="pi pi-clock"></i></span>
+                <div class="meta-text">
+                  <span class="meta-label">SLA Breach In</span>
+                  <span class="meta-value"><span class="sla-badge" [class.breach]="selectedNodalRecord()?.slaDays > 30">{{ selectedNodalRecord()?.slaDays }} days</span></span>
+                </div>
+              </div>
+            </div>
+            <div class="nodal-detail-actions">
+              <button class="btn btn-primary" (click)="sendToRE()"><i class="pi pi-send"></i> Send to RE</button>
+            </div>
+          </div>
+
+          <!-- Detail Tabs -->
+          <div class="summary-tabs">
+            <button class="summary-tab active">Summary</button>
+            <button class="summary-tab">Conciliation</button>
+            <button class="summary-tab">Email Communication</button>
+          </div>
+
+          <!-- Detail Content: Two Panels -->
+          <div class="content-box">
+            <div class="main-content-layout two-col">
+              <!-- LEFT: Key Information -->
+              <div class="col-email-syndicate">
+                <div class="panel-header">
+                  <h3><i class="pi pi-th-large"></i> Key Information</h3>
+                  <button class="expand-btn"><i class="pi pi-window-maximize"></i></button>
+                </div>
+                <div class="form-scroll">
+                  <section class="form-section">
+                    <h5 class="section-title expanded">
+                      <i class="pi pi-list"></i> Summary
+                    </h5>
+                    <div class="summary-fields">
+                      <div class="summary-row">
+                        <div class="summary-field"><span class="summary-label">Complainant Name</span><span class="summary-value">{{ selectedNodalRecord()?.complainant }}</span></div>
+                        <div class="summary-field"><span class="summary-label">Mobile</span><span class="summary-value">{{ selectedNodalRecord()?.mobile }}</span></div>
+                      </div>
+                      <div class="summary-row">
+                        <div class="summary-field"><span class="summary-label">Email</span><span class="summary-value">{{ selectedNodalRecord()?.email }}</span></div>
+                        <div class="summary-field"><span class="summary-label">Subject</span><span class="summary-value">{{ selectedNodalRecord()?.subject }}</span></div>
+                      </div>
+                      <div class="summary-row">
+                        <div class="summary-field"><span class="summary-label">Date of Receipt</span><span class="summary-value">{{ selectedNodalRecord()?.receiptDate }}</span></div>
+                        <div class="summary-field"><span class="summary-label">Module Name</span><span class="summary-value">{{ selectedNodalRecord()?.moduleName }}</span></div>
+                      </div>
+                      <div class="summary-row">
+                        <div class="summary-field"><span class="summary-label">Assigned To</span><span class="summary-value">{{ selectedNodalRecord()?.assignedTo }}</span></div>
+                        <div class="summary-field"><span class="summary-label">Bank Category</span><span class="summary-value">{{ selectedNodalRecord()?.bankCategory }}</span></div>
+                      </div>
+                      <div class="summary-row">
+                        <div class="summary-field"><span class="summary-label">Bank Name</span><span class="summary-value">{{ selectedNodalRecord()?.bankName }}</span></div>
+                        <div class="summary-field"><span class="summary-label">Bank Branch Category</span><span class="summary-value">{{ selectedNodalRecord()?.branchCategory }}</span></div>
+                      </div>
+                      <div class="summary-row">
+                        <div class="summary-field"><span class="summary-label">Bank Branch Name</span><span class="summary-value">{{ selectedNodalRecord()?.branchName }}</span></div>
+                        <div class="summary-field"><span class="summary-label">Pincode</span><span class="summary-value">{{ selectedNodalRecord()?.pincode }}</span></div>
+                      </div>
+                      <div class="summary-row">
+                        <div class="summary-field"><span class="summary-label">City</span><span class="summary-value">{{ selectedNodalRecord()?.city }}</span></div>
+                        <div class="summary-field"><span class="summary-label">District</span><span class="summary-value">{{ selectedNodalRecord()?.district }}</span></div>
+                      </div>
+                      <div class="summary-row">
+                        <div class="summary-field"><span class="summary-label">State</span><span class="summary-value">{{ selectedNodalRecord()?.state }}</span></div>
+                        <div class="summary-field"><span class="summary-label">Country</span><span class="summary-value">{{ selectedNodalRecord()?.country }}</span></div>
+                      </div>
+                      <div class="summary-row">
+                        <div class="summary-field"><span class="summary-label">NO Name</span><span class="summary-value">{{ selectedNodalRecord()?.noName }}</span></div>
+                        <div class="summary-field"><span class="summary-label">NO Mobile</span><span class="summary-value">{{ selectedNodalRecord()?.noMobile }}</span></div>
+                      </div>
+                      <div class="summary-row">
+                        <div class="summary-field"><span class="summary-label">NO Email</span><span class="summary-value">{{ selectedNodalRecord()?.noEmail }}</span></div>
+                        <div class="summary-field"><span class="summary-label">PNO Name</span><span class="summary-value">{{ selectedNodalRecord()?.pnoName }}</span></div>
+                      </div>
+                      <div class="summary-row">
+                        <div class="summary-field"><span class="summary-label">PNO Mobile</span><span class="summary-value">{{ selectedNodalRecord()?.pnoMobile }}</span></div>
+                        <div class="summary-field"><span class="summary-label">PNO Email</span><span class="summary-value">{{ selectedNodalRecord()?.pnoEmail }}</span></div>
+                      </div>
+                      <div class="summary-row">
+                        <div class="summary-field"><span class="summary-label">ATM Complaint</span><span class="summary-value">{{ selectedNodalRecord()?.atmComplaint }}</span></div>
+                        <div class="summary-field"><span class="summary-label">Designated Office</span><span class="summary-value">{{ selectedNodalRecord()?.designatedOffice }}</span></div>
+                      </div>
+                      <div class="summary-row">
+                        <div class="summary-field"><span class="summary-label">Processing Office</span><span class="summary-value">{{ selectedNodalRecord()?.processingOffice }}</span></div>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+              </div>
+
+              <!-- RIGHT: Assessment Panel -->
+              <div class="col-complaint-form assessment-panel">
+                <div class="panel-header">
+                  <h3><i class="pi pi-clipboard"></i> Assessment</h3>
+                  <button class="expand-btn"><i class="pi pi-window-maximize"></i></button>
+                </div>
+                <div class="form-scroll assessment-scroll">
+                  <!-- Status Code -->
+                  <div class="nodal-status-codes">
+                    <h4 class="comments-title">Status Code</h4>
+                    <div class="status-radio-group">
+                      <label class="radio-option">
+                        <input type="radio" name="nodalStatus" value="INFORMATION_REQUIRED" [(ngModel)]="nodalStatusCode" />
+                        <span>Information Required</span>
+                      </label>
+                      <label class="radio-option">
+                        <input type="radio" name="nodalStatus" value="ADVISORY_ISSUED" [(ngModel)]="nodalStatusCode" />
+                        <span>Advisory Issued</span>
+                      </label>
+                      <label class="radio-option">
+                        <input type="radio" name="nodalStatus" value="AWARD_PASS" [(ngModel)]="nodalStatusCode" />
+                        <span>Award Pass</span>
+                      </label>
+                      <label class="radio-option">
+                        <input type="radio" name="nodalStatus" value="13_1_NOTICE" [(ngModel)]="nodalStatusCode" />
+                        <span>13:1 Notice Issued</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  <!-- Comments -->
+                  <div class="assessment-comments">
+                    <h4 class="comments-title">Comments</h4>
+                    @for (comment of nodalComments; track comment.id) {
+                      <div class="comment-card">
+                        <div class="comment-header">
+                          <span class="comment-avatar" [style.background]="comment.color">{{ comment.initials }}</span>
+                          <div class="comment-meta">
+                            <span class="comment-time">{{ comment.time }}</span>
+                            <span class="comment-author">{{ comment.author }}</span>
+                          </div>
+                          <span class="comment-target-badge" [class.no-badge]="comment.target === 'NO'" [class.pno-badge]="comment.target === 'PNO'">Comment to {{ comment.target }}</span>
+                        </div>
+                        <p class="comment-body">{{ comment.text }}</p>
+                      </div>
+                    }
+                  </div>
+
+                  <!-- Add Comment to NO -->
+                  <div class="add-comment-section">
+                    <label class="comment-label">Comment to NO</label>
+                    <div class="textarea-with-speech">
+                      <textarea [(ngModel)]="nodalCommentToNO" rows="3" placeholder="Enter comment to Nodal Officer"></textarea>
+                      <app-speech-button (transcription)="nodalCommentToNO = nodalCommentToNO + ' ' + $event"></app-speech-button>
+                    </div>
+                  </div>
+
+                  <!-- Add Comment to PNO -->
+                  <div class="add-comment-section">
+                    <label class="comment-label">Comment to PNO</label>
+                    <div class="textarea-with-speech">
+                      <textarea [(ngModel)]="nodalCommentToPNO" rows="3" placeholder="Enter comment to Principal Nodal Officer"></textarea>
+                      <app-speech-button (transcription)="nodalCommentToPNO = nodalCommentToPNO + ' ' + $event"></app-speech-button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      } @else {
+        <!-- NODAL OFFICER RECORD TABLE VIEW -->
+        <div class="content-box nodal-officer-content">
+          <div class="nodal-officer-header">
+            <button class="btn btn-primary" (click)="addNodalRecord()"><i class="pi pi-plus"></i> Add NO Record</button>
+          </div>
+          <div class="data-table-wrapper">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th class="col-checkbox"><input type="checkbox" /></th>
+                  <th class="col-sortable">Record Number <i class="pi pi-sort-alt"></i></th>
+                  <th class="col-sortable">Subject <i class="pi pi-sort-alt"></i></th>
+                  <th class="col-sortable">Bank Name <i class="pi pi-sort-alt"></i></th>
+                  <th class="col-sortable">SLA Breach In <i class="pi pi-sort-alt"></i></th>
+                  <th class="col-sortable">Assigned To <i class="pi pi-sort-alt"></i></th>
+                  <th class="col-sortable">Status <i class="pi pi-sort-alt"></i></th>
+                </tr>
+                <tr class="filter-row">
+                  <td></td>
+                  <td><input type="text" placeholder="Search" [(ngModel)]="nodalFilterRecordNumber" /></td>
+                  <td><input type="text" placeholder="Search" [(ngModel)]="nodalFilterSubject" /></td>
+                  <td><input type="text" placeholder="Search" [(ngModel)]="nodalFilterBank" /></td>
+                  <td><input type="text" placeholder="Search" [(ngModel)]="nodalFilterSla" /></td>
+                  <td><input type="text" placeholder="Search" [(ngModel)]="nodalFilterAssigned" /></td>
+                  <td><input type="text" placeholder="Search" [(ngModel)]="nodalFilterStatus" /></td>
+                </tr>
+              </thead>
+              <tbody>
+                @for (record of nodalRecords(); track record.id) {
+                  <tr class="clickable-row" (click)="openNodalDetail(record)">
+                    <td><input type="checkbox" (click)="$event.stopPropagation()" /></td>
+                    <td>{{ record.recordNumber }}</td>
+                    <td class="cell-subject">{{ record.subject }}</td>
+                    <td>{{ record.bankName }}</td>
+                    <td><span class="sla-badge" [class.breach]="record.slaDays > 30">{{ record.slaDays }} Days</span></td>
+                    <td>{{ record.assignedTo }}</td>
+                    <td><span class="status-pill" [class.info-required]="record.status === 'INFORMATION_REQUIRED'" [class.pending]="record.status === 'PENDING'">{{ record.statusLabel }}</span></td>
+                  </tr>
+                } @empty {
+                  <tr><td colspan="7" class="empty-row">No Nodal Officer records found</td></tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      }
+    } @else {
+
+    <!-- ═══ SUMMARY / OTHER TABS: Two panels (Assessment) ═══ -->
     <div class="content-box">
       <div class="main-content-layout two-col">
         <!-- LEFT: Complaint Summary -->
         <div class="col-email-syndicate">
           <div class="panel-header">
             <h3><i class="pi pi-th-large"></i> Complaint</h3>
-            <button class="expand-btn" (click)="pdfExpanded.set(!pdfExpanded())">
-              <i class="pi pi-window-maximize"></i>
-            </button>
+            <div class="panel-header-actions">
+              <button class="btn btn-outline btn-sm" (click)="editDraft()"><i class="pi pi-pencil"></i> Edit</button>
+              <button class="expand-btn" (click)="pdfExpanded.set(!pdfExpanded())">
+                <i class="pi pi-window-maximize"></i>
+              </button>
+            </div>
           </div>
 
           <div class="form-scroll">
@@ -227,33 +528,72 @@
             <button class="expand-btn"><i class="pi pi-window-maximize"></i></button>
           </div>
 
-          <!-- Right sidebar icons -->
           <div class="form-sidebar-icons">
-            <button class="sidebar-icon-btn active"><i class="pi pi-th-large"></i></button>
+            <button class="sidebar-icon-btn active"><i class="pi pi-search"></i></button>
             <button class="sidebar-icon-btn"><i class="pi pi-paperclip"></i></button>
             <button class="sidebar-icon-btn"><i class="pi pi-history"></i></button>
+            <button class="sidebar-icon-btn"><i class="pi pi-sliders-h"></i></button>
           </div>
 
           <div class="form-scroll assessment-scroll">
-            <!-- Assessment checkbox -->
-            <div class="assessment-decision">
-              <label class="assessment-checkbox">
-                <input type="checkbox" [(ngModel)]="sendToDeputy" />
-                <span>Do you want to add and send <strong>Deputy Ombudsman Decision</strong> to Dealing Officer?</span>
-              </label>
-            </div>
+            <!-- Deputy Ombudsman Decision checkbox: only for Reviewer/Deputy/Ombudsman -->
+            @if (userRole() !== 'DO') {
+              <div class="assessment-decision">
+                <label class="assessment-checkbox">
+                  <input type="checkbox" [(ngModel)]="sendToDeputy" />
+                  <span>Do you want to add and send <strong>Deputy Ombudsman Decision</strong> to Dealing Officer?</span>
+                </label>
+              </div>
+            }
+
+            <!-- Deputy Ombudsman fields (shown when checkbox is checked) -->
+            @if (sendToDeputy && userRole() !== 'DO') {
+              <div class="deputy-decision-section">
+                <div class="form-group">
+                  <label>Deputy Ombudsman Decision</label>
+                  <div class="select-with-avatar">
+                    <select [(ngModel)]="deputyOmbudsmanDecision">
+                      <option value="NON_MAINTAINABLE">Non Maintainable</option>
+                      <option value="MAINTAINABLE">Maintainable</option>
+                      <option value="PARTIALLY_MAINTAINABLE">Partially Maintainable</option>
+                    </select>
+                    <span class="field-avatar orange">A</span>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label>Deputy Ombudsman Decision Comments <i class="pi pi-expand"></i></label>
+                  <div class="textarea-with-speech">
+                    <textarea [(ngModel)]="deputyOmbudsmanComments" rows="3" placeholder="Enter text here"></textarea>
+                    <app-speech-button (transcription)="deputyOmbudsmanComments = deputyOmbudsmanComments + ' ' + $event"></app-speech-button>
+                  </div>
+                </div>
+              </div>
+            }
 
             <!-- Proposed Action / Proposed Clause -->
             <div class="form-row-2col assessment-fields">
               <div class="form-group">
-                <label>Proposed Action</label>
-                <select [(ngModel)]="proposedAction">
-                  <option value="">Select a Value</option>
-                  <option value="ACCEPT">Accept</option>
-                  <option value="REJECT">Reject</option>
-                  <option value="PARTIAL_ACCEPT">Partial Accept</option>
-                  <option value="REFER_BACK">Refer Back</option>
-                </select>
+                @if (userRole() !== 'DO') {
+                  <label>Proposed Action <span class="field-avatars"><span class="avatar-sm orange">A</span><span class="avatar-sm orange">A</span></span></label>
+                  <select [(ngModel)]="proposedAction" class="select-highlighted">
+                    <option value="NON_MAINTAINABLE">Non Maintainable</option>
+                    <option value="ACCEPT">Accept</option>
+                    <option value="REJECT">Reject</option>
+                    <option value="PARTIAL_ACCEPT">Partial Accept</option>
+                    <option value="REFER_BACK">Refer Back</option>
+                  </select>
+                } @else {
+                  <label>Proposed Action</label>
+                  <select [(ngModel)]="proposedAction">
+                    <option value="">Select a Value</option>
+                    <option value="NON_MAINTAINABLE">Non Maintainable</option>
+                    <option value="ACCEPT">Accept</option>
+                    <option value="REJECT">Reject</option>
+                    <option value="PARTIAL_ACCEPT">Partial Accept</option>
+                    <option value="REFER_BACK">Refer Back</option>
+                  </select>
+                }
               </div>
               <div class="form-group entity-search-group">
                 <label>Proposed Clause</label>
@@ -264,6 +604,16 @@
               </div>
             </div>
 
+            <!-- Closure Clause Description (shown when Proposed Clause is filled, non-DO only) -->
+            @if (proposedClause && userRole() !== 'DO') {
+              <div class="add-comment-section">
+                <label class="comment-label">Closure Clause Description</label>
+                <div class="textarea-with-speech">
+                  <textarea [(ngModel)]="closureClauseDescription" rows="3" placeholder="Closure clause description comes here in detail"></textarea>
+                </div>
+              </div>
+            }
+
             <!-- All Comments -->
             <div class="assessment-comments">
               <h4 class="comments-title">All Comments</h4>
@@ -272,8 +622,8 @@
                   <div class="comment-header">
                     <span class="comment-avatar" [style.background]="comment.color">{{ comment.initials }}</span>
                     <div class="comment-meta">
-                      <span class="comment-time">{{ comment.time }}</span>
                       <span class="comment-author">{{ comment.author }}</span>
+                      <span class="comment-time">{{ comment.time }}</span>
                     </div>
                   </div>
                   <p class="comment-body">{{ comment.text }} @if (comment.text.length > 120) { <a class="read-more">...read more</a> }</p>
@@ -283,16 +633,33 @@
 
             <!-- Add Comment -->
             <div class="add-comment-section">
-              <label class="comment-label">Comments</label>
+              <label class="comment-label">Comments <i class="pi pi-expand"></i></label>
               <div class="textarea-with-speech">
                 <textarea [(ngModel)]="assessmentComment" rows="3" placeholder="Enter text here"></textarea>
                 <app-speech-button (transcription)="assessmentComment = assessmentComment + ' ' + $event"></app-speech-button>
+              </div>
+            </div>
+
+            <!-- Contents of the Speaking Order -->
+            <div class="add-comment-section">
+              <label class="comment-label">Contents of the Speaking Order</label>
+              <div class="textarea-with-speech">
+                <textarea [(ngModel)]="speakingOrderContent" rows="3" placeholder="Enter text here"></textarea>
+                <app-speech-button (transcription)="speakingOrderContent = speakingOrderContent + ' ' + $event"></app-speech-button>
               </div>
             </div>
           </div>
         </div>
       </div>
     </div>
+
+    }
+
+      </div><!-- /left-main-area -->
+
+        </div><!-- /page-body-layout -->
+      </div><!-- /main-frame -->
+    </div><!-- /assessment-container -->
 
   } @else if (draftSaved()) {
     <!-- ═══ SAVED SUMMARY VIEW ═══ -->
@@ -394,13 +761,6 @@
         <div class="col-complaint-form" [class.panel-hidden]="pdfExpanded()">
           <div class="panel-header">
             <h3><i class="pi pi-th-large"></i> Complaint</h3>
-          </div>
-
-          <!-- Right sidebar icons -->
-          <div class="form-sidebar-icons">
-            <button class="sidebar-icon-btn active"><i class="pi pi-th-large"></i></button>
-            <button class="sidebar-icon-btn"><i class="pi pi-paperclip"></i></button>
-            <button class="sidebar-icon-btn"><i class="pi pi-history"></i></button>
           </div>
 
           <div class="form-scroll">
@@ -1053,12 +1413,19 @@
 @if (showApprovalDialog()) {
   <div class="modal-overlay" (click)="cancelApproval()">
     <div class="modal-content assignment-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header-bar">
+        <span>Assignment - {{ approvalTargetLabel }}</span>
+      </div>
       <div class="modal-body">
         <div class="confirmation-header">
           <i class="pi pi-info-circle confirmation-icon"></i>
           <div class="confirmation-text">
             <strong>Confirmation</strong>
-            <p>Are you sure you want to <strong>send the request to {{ approvalTargetLabel }}</strong> ?</p>
+            @if (isOmbudsmanDecisionDialog) {
+              <p>Are you sure you want to <strong>send the request to {{ approvalTargetLabel }} with Ombudsman Decision</strong> ?</p>
+            } @else {
+              <p>Are you sure you want to <strong>send the request to {{ approvalTargetLabel }}</strong> ?</p>
+            }
           </div>
           <button class="modal-close" (click)="cancelApproval()">&times;</button>
         </div>
@@ -1067,17 +1434,24 @@
           <div class="form-row-2col">
             <div class="form-group">
               <label>Assignment</label>
-              <select [(ngModel)]="approvalAssignmentMode">
+              <select [(ngModel)]="approvalAssignmentMode" (ngModelChange)="onApprovalAssignmentChange()">
                 <option value="AUTOMATIC">Automatic</option>
                 <option value="MANUAL">Manual</option>
               </select>
             </div>
-            <div class="form-group">
+            <div class="form-group entity-search-group">
               <label>Name of {{ approvalTargetLabel }}</label>
               <div class="deo-select-wrapper">
-                <input type="text" [value]="approvalTargetLabel + ' Name'" [disabled]="approvalAssignmentMode === 'AUTOMATIC'" readonly />
+                <input type="text" [(ngModel)]="approvalSelectedName" [placeholder]="approvalTargetLabel + ' Name'" [disabled]="approvalAssignmentMode === 'AUTOMATIC'" (input)="filterApprovalUsers()" (focus)="filterApprovalUsers()" autocomplete="off" />
                 <i class="pi pi-search"></i>
               </div>
+              @if (approvalAssignmentMode === 'MANUAL' && approvalFilteredUsers.length > 0) {
+                <ul class="entity-dropdown">
+                  @for (user of approvalFilteredUsers; track user.id) {
+                    <li (click)="selectApprovalUser(user)">{{ user.name }}</li>
+                  }
+                </ul>
+              }
             </div>
           </div>
 
@@ -1101,21 +1475,71 @@
                 </div>
               </div>
             </div>
+            <div class="systemic-issue-row">
+              <label>Systemic Issue?</label>
+              <div class="radio-inline">
+                <label class="radio-option"><input type="radio" name="systemicIssue" value="YES" [(ngModel)]="systemicIssue" /><span>Yes</span></label>
+                <label class="radio-option"><input type="radio" name="systemicIssue" value="NO" [(ngModel)]="systemicIssue" /><span>No</span></label>
+              </div>
+            </div>
           }
 
           <div class="status-change">
             <span class="status-label">Expected Status Change <i class="pi pi-info-circle"></i></span>
             <div class="status-flow">
-              <span class="status-badge create"><i class="pi pi-plus-circle"></i> New Complaint</span>
+              <span class="status-badge create"><i class="pi pi-circle-fill"></i> New Complaint</span>
               <i class="pi pi-arrow-right flow-arrow"></i>
-              <span class="status-badge sent-approval"><i class="pi pi-send"></i> {{ approvalStatusLabel }}</span>
+              <span class="status-badge sent-approval"><i class="pi pi-pencil"></i> Sent to {{ approvalTargetLabel }}</span>
             </div>
           </div>
         </div>
       </div>
       <div class="modal-footer">
         <button class="btn btn-outline" (click)="cancelApproval()">Cancel</button>
-        <button class="btn btn-primary" (click)="confirmApproval()">Confirm</button>
+        <button class="btn btn-primary" (click)="confirmApproval()" [disabled]="approvalSubmitting()">
+          @if (approvalSubmitting()) { <span class="spinner-sm"></span> Sending... } @else { Confirm }
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Send Back Dialog -->
+@if (showSendBackDialog()) {
+  <div class="modal-overlay" (click)="cancelSendBack()">
+    <div class="modal-content assignment-modal" (click)="$event.stopPropagation()">
+      <div class="modal-body">
+        <div class="confirmation-header">
+          <i class="pi pi-info-circle confirmation-icon"></i>
+          <div class="confirmation-text">
+            <strong>Confirmation</strong>
+            <p>Are you sure you want to <strong>send back the request to {{ sendBackTargetLabel }}</strong>?</p>
+          </div>
+          <button class="modal-close" (click)="cancelSendBack()">&times;</button>
+        </div>
+
+        <div class="assignment-form">
+          <div class="form-group">
+            <label>{{ sendBackTargetLabel }}</label>
+            <div class="deo-select-wrapper">
+              <input type="text" [value]="sendBackTargetLabel + ' Name'" readonly />
+              <i class="pi pi-search"></i>
+            </div>
+          </div>
+
+          <div class="status-change">
+            <span class="status-label">Expected Status Change <i class="pi pi-info-circle"></i></span>
+            <div class="status-flow">
+              <span class="status-badge sent-deputy"><i class="pi pi-pencil"></i> Sent to Deputy Ombudsman</span>
+              <i class="pi pi-arrow-right flow-arrow"></i>
+              <span class="status-badge sent-back"><i class="pi pi-arrow-left"></i> {{ sendBackStatusLabel }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" (click)="cancelSendBack()">Cancel</button>
+        <button class="btn btn-primary" (click)="confirmSendBack()">Confirm</button>
       </div>
     </div>
   </div>

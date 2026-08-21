@@ -1,0 +1,130 @@
+<div class="fallback-config">
+  <h2>Exclusion Rules & Distribution Config</h2>
+  <p class="subtitle">Manage conflict-of-interest exclusions that prevent specific officers from being assigned to cases.</p>
+
+  @if (errorMessage()) {
+    <div class="message message-error">
+      <i class="pi pi-exclamation-triangle"></i> {{ errorMessage() }}
+    </div>
+  }
+  @if (successMessage()) {
+    <div class="message message-success">
+      <i class="pi pi-check-circle"></i> {{ successMessage() }}
+    </div>
+  }
+
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <button class="btn btn-primary" (click)="showAddForm.set(!showAddForm())">
+      <i class="pi pi-plus"></i> {{ showAddForm() ? 'Cancel' : 'Add Exclusion Rule' }}
+    </button>
+    <button class="btn" (click)="loadRules()">
+      <i class="pi pi-refresh"></i> Refresh
+    </button>
+  </div>
+
+  <!-- Add form -->
+  @if (showAddForm()) {
+    <div class="add-form">
+      <div class="form-row">
+        <div class="field">
+          <label>Exclusion Type</label>
+          <select [(ngModel)]="newRule.exclusionType">
+            <option value="USER_LIST">User Blocklist</option>
+            <option value="SAME_ENTITY">Same Entity Conflict</option>
+            <option value="REGION_MISMATCH">Region Mismatch</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Description</label>
+          <input type="text" [(ngModel)]="newRule.description" placeholder="Brief description of this exclusion" />
+        </div>
+      </div>
+      <div class="field full-width">
+        <label>Condition JSON</label>
+        <textarea rows="4" [(ngModel)]="newRule.conditionJson"
+          placeholder='{"type":"USER_LIST","blockedUsers":["user1","user2"]}'></textarea>
+      </div>
+      <button class="btn btn-primary" (click)="createRule()">
+        <i class="pi pi-check"></i> Create Rule
+      </button>
+    </div>
+  }
+
+  <!-- Loading -->
+  @if (loading()) {
+    <div class="loading"><i class="pi pi-spin pi-spinner"></i> Loading...</div>
+  }
+
+  <!-- Rules list -->
+  @if (!loading() && exclusionRules().length === 0) {
+    <div class="empty-state">
+      <i class="pi pi-shield"></i>
+      <p>No exclusion rules configured</p>
+    </div>
+  }
+
+  @if (exclusionRules().length > 0) {
+    <table class="rules-table">
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Active</th>
+          <th>Created</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (rule of exclusionRules(); track rule.id) {
+          <tr [class.inactive]="!rule.active">
+            <td><span class="type-badge">{{ rule.exclusionType }}</span></td>
+            <td>{{ rule.description }}</td>
+            <td>
+              <button class="toggle-btn" [class.active]="rule.active" (click)="toggleActive(rule)">
+                {{ rule.active ? 'Active' : 'Inactive' }}
+              </button>
+            </td>
+            <td>{{ rule.createdAt | date:'shortDate' }}</td>
+            <td>
+              <button class="btn btn-sm btn-danger" (click)="deleteRule(rule)">
+                <i class="pi pi-trash"></i>
+              </button>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+
+  <!-- Distribution strategy info -->
+  <div class="strategy-info">
+    <h3>Distribution Strategies</h3>
+    <div class="strategy-grid">
+      <div class="strategy-card">
+        <strong>ROUND_ROBIN</strong>
+        <p>Cycles through eligible members in order. Maintains atomic counter per group.</p>
+      </div>
+      <div class="strategy-card">
+        <strong>LEAST_ACTIVE_CASES</strong>
+        <p>Assigns to member with fewest open cases. Requires workload integration.</p>
+      </div>
+      <div class="strategy-card">
+        <strong>RANDOM</strong>
+        <p>Random selection from eligible members. Good for load testing.</p>
+      </div>
+      <div class="strategy-card">
+        <strong>CAPACITY_WEIGHTED</strong>
+        <p>Weighted by member capacity profile. Requires capacity data.</p>
+      </div>
+      <div class="strategy-card">
+        <strong>SKILL_MATCH</strong>
+        <p>Matches member skills to case attributes. Requires skill profiles.</p>
+      </div>
+      <div class="strategy-card">
+        <strong>LANGUAGE_MATCH</strong>
+        <p>Matches member language to complainant preference.</p>
+      </div>
+    </div>
+  </div>
+</div>

@@ -116,6 +116,9 @@ public class EmailDraft {
     @Column(length = 100)
     private String targetOffice;
 
+    @Column(length = 200)
+    private String targetEntity;
+
     @Column(length = 50)
     private String convertedComplaintId;
 

@@ -80,7 +80,7 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
   // ─── Confirmation Dialog ───
   showConfirmDialog = signal(false);
   confirmAssignmentMode = 'Automatic';
-  selectedReviewerName = 'CRPC Reviewer';
+  selectedReviewerName = '';
 
   // ─── Blob URL cache: maps attachment id → safe blob URL (avoids X-Frame-Options block) ───
   private blobUrlCache = new Map<string, string>();
@@ -349,7 +349,7 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
   });
 
   // ─── Decision & Routing ───
-  deoDecision: 'MAINTAINABLE' | 'NON_MAINTAINABLE' | '' = '';
+  deoDecision: 'MAINTAINABLE' | 'NON_MAINTAINABLE' | 'SENT_TO_OTHER_DEPT' | 'VERNACULAR' | '' = '';
   nonMaintainableReason = '';
   notAComplaintOthersReason = '';
   suggestionDepartment = '';
@@ -359,6 +359,12 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
   assignmentType = 'MANUAL';
   deoRemarks = '';
   savedTemplateId = '';
+
+  // Sent to Other Department/Entity
+  targetOtherEntity = '';
+
+  // Vernacular
+  selectedVernacularLanguage = '';
 
   nonMaintainableReasons = [
     { value: 'APPEAL', label: 'Appeal' },
@@ -429,7 +435,11 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
 
   // ─── Read-Only Mode (view-only for statuses beyond DRAFT/ASSIGNED) ───
   get isReadOnly(): boolean {
-    return this.draftStatus === 'SENT_TO_REVIEWER' || this.draftStatus === 'APPROVED' || this.draftStatus === 'APPROVED_ROUTED';
+    return this.draftStatus === 'SENT_TO_REVIEWER'
+      || this.draftStatus === 'APPROVED'
+      || this.draftStatus === 'APPROVED_ROUTED'
+      || this.draftStatus === 'SENT_TO_OTHER_DEPT_FOR_APPROVAL'
+      || this.draftStatus === 'VERNACULAR_FOR_APPROVAL';
   }
 
   // ─── Mandatory Field Validation ───
@@ -509,10 +519,9 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
         this.reviewers.set(data);
       } else {
         this.reviewers.set([
-          { id: 'reviewer1', displayName: 'Meera Krishnan', email: 'meera@rbi.org.in', isActive: true, isOnLeave: false, maxLoad: 25, currentLoad: 6, region: 'South', sortOrder: 1 },
-          { id: 'reviewer.user', displayName: 'Shikha P', email: 'shikha@rbi.org.in', isActive: true, isOnLeave: false, maxLoad: 25, currentLoad: 10, region: 'North', sortOrder: 2 },
-          { id: 'REV003', displayName: 'Radhika Rao', email: 'radhika@rbi.org.in', isActive: true, isOnLeave: true, maxLoad: 25, currentLoad: 12, region: 'North', sortOrder: 3 },
-          { id: 'REV004', displayName: 'Priya Sharma', email: 'priya@rbi.org.in', isActive: true, isOnLeave: false, maxLoad: 25, currentLoad: 15, region: 'West', sortOrder: 4 },
+          { id: 'priya.gupta', displayName: 'Priya Gupta', email: 'priya.gupta@rbi.org.in', isActive: true, isOnLeave: false, maxLoad: 25, currentLoad: 0, region: 'West', sortOrder: 1 },
+          { id: 'reviewer.user', displayName: 'A.K. Singh', email: 'reviewer.user@rbi.org.in', isActive: true, isOnLeave: false, maxLoad: 25, currentLoad: 0, region: 'North', sortOrder: 2 },
+          { id: 'reviewer1', displayName: 'Meera Krishnan', email: 'meera.krishnan@rbi.org.in', isActive: true, isOnLeave: false, maxLoad: 25, currentLoad: 0, region: 'South', sortOrder: 3 },
         ]);
       }
     });
@@ -1444,7 +1453,7 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
     this.confirmAssignmentMode = 'Automatic';
     const active = this.reviewers().filter(r => r.isActive && !r.isOnLeave);
     const lowestLoad = [...active].sort((a, b) => a.currentLoad - b.currentLoad)[0];
-    this.selectedReviewerName = lowestLoad?.displayName || active[0]?.displayName || '';
+    this.selectedReviewerName = lowestLoad?.id || active[0]?.id || '';
     this.showConfirmDialog.set(true);
   }
 
@@ -1452,7 +1461,7 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
     if (mode === 'Automatic') {
       const active = this.reviewers().filter(r => r.isActive && !r.isOnLeave);
       const lowestLoad = [...active].sort((a, b) => a.currentLoad - b.currentLoad)[0];
-      this.selectedReviewerName = lowestLoad?.displayName || active[0]?.displayName || '';
+      this.selectedReviewerName = lowestLoad?.id || active[0]?.id || '';
     } else {
       this.selectedReviewerName = '';
     }
@@ -1460,8 +1469,13 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
 
   confirmReviewerOnLeave(): boolean {
     if (!this.selectedReviewerName.trim()) return false;
-    const onLeaveNames = this.reviewers().filter(r => r.isOnLeave).map(r => r.displayName.toLowerCase());
-    return onLeaveNames.includes(this.selectedReviewerName.toLowerCase());
+    const rev = this.reviewers().find(r => r.id === this.selectedReviewerName);
+    return rev?.isOnLeave || false;
+  }
+
+  getSelectedReviewerDisplayName(): string {
+    const rev = this.reviewers().find(r => r.id === this.selectedReviewerName);
+    return rev?.displayName || this.selectedReviewerName || 'CRPC Reviewer';
   }
 
   // ─── Validation for Send for Approval ───
@@ -1473,15 +1487,18 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
     if (!this.canSendForApproval()) return;
     this.submitting.set(true);
 
-    let assignedTo = this.selectedReviewerName;
-    const matchedReviewer = this.reviewers().find(r => r.displayName === this.selectedReviewerName);
-    if (matchedReviewer) {
-      assignedTo = matchedReviewer.id;
+    const assignedTo = this.selectedReviewerName;
+
+    let status = 'SENT_TO_REVIEWER';
+    if (this.deoDecision === 'SENT_TO_OTHER_DEPT') {
+      status = 'SENT_TO_OTHER_DEPT_FOR_APPROVAL';
+    } else if (this.deoDecision === 'VERNACULAR') {
+      status = 'VERNACULAR_FOR_APPROVAL';
     }
 
-    const payload = {
+    const payload: any = {
       draftId: this.draftId,
-      status: 'SENT_TO_REVIEWER',
+      status,
       assignedTo,
       processedBy: this.loggedInUser?.id || 'DEO',
       complainantName: this.complainantName,
@@ -1504,14 +1521,23 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
       receivedAt: this.receivedDate ? this.receivedDate + 'T00:00:00' : new Date().toISOString(),
     };
 
-    const isPhysicalLetter = this.draftId.startsWith('DRF-');
+    if (this.deoDecision === 'SENT_TO_OTHER_DEPT') {
+      payload.targetEntity = this.targetOtherEntity;
+    }
+    if (this.deoDecision === 'VERNACULAR') {
+      payload.detectedLanguage = this.selectedVernacularLanguage;
+      payload.isVernacular = true;
+    }
 
-    if (isPhysicalLetter) {
+    const isNewPhysicalLetter = this.draftId.startsWith('DRF-2026');
+
+    if (isNewPhysicalLetter) {
       this.http.post<any>(`${environment.apiBaseUrl}/api/v1/email-syndication/drafts`, payload)
         .subscribe({
           next: () => {
             this.submitting.set(false);
             this.submitted.set(true);
+            this.draftStatus = status;
             this.showConfirmDialog.set(false);
           },
           error: () => {
@@ -1524,6 +1550,7 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
           next: () => {
             this.submitting.set(false);
             this.submitted.set(true);
+            this.draftStatus = status;
             this.showConfirmDialog.set(false);
           },
           error: () => {
@@ -1547,6 +1574,15 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
     this.deoDecision = decision as any;
     if (decision === 'MAINTAINABLE') {
       this.maintainabilityQuestions.forEach(q => q.answer = 'YES');
+    }
+    if (decision !== 'NON_MAINTAINABLE') {
+      this.nonMaintainableReason = '';
+    }
+    if (decision !== 'SENT_TO_OTHER_DEPT') {
+      this.targetOtherEntity = '';
+    }
+    if (decision !== 'VERNACULAR') {
+      this.selectedVernacularLanguage = '';
     }
   }
 

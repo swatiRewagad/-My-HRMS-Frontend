@@ -219,14 +219,16 @@ export class RbioHomeComponent implements OnInit {
     const slaDue = c.slaDueDate ? new Date(c.slaDueDate) : new Date();
     const now = new Date();
     const diffDays = Math.ceil((now.getTime() - slaDue.getTime()) / (1000 * 60 * 60 * 24));
+    const id = c.complaintId || c.complaintNumber || '';
+    const cachedStatus = sessionStorage.getItem(`rbio_status_${id}`);
     return {
-      complaintId: c.complaintId || c.complaintNumber || '',
+      complaintId: id,
       complaintNumber: c.complaintNumber || '',
       complainantName: c.complainantName || '',
       fromEmail: c.complainantEmail || c.fromEmail || '',
       subject: c.subject || '',
       modeOfReceipt: c.modeOfReceipt || c.filingType || 'Email',
-      status: c.status || 'DRAFT',
+      status: cachedStatus || c.status || 'DRAFT',
       category: c.category || 'General',
       entityName: c.entityName || '',
       priority: c.priority || 'MEDIUM',
@@ -333,7 +335,16 @@ export class RbioHomeComponent implements OnInit {
     const map: Record<string, string> = {
       'DRAFT': 'Draft', 'NEW': 'Draft', 'IN_PROGRESS': 'In Progress',
       'SENT_BACK': 'Sent Back', 'MEETING_SCHEDULED': 'Meeting Scheduled',
-      'ASSESSMENT_COMPLETE': 'Assessment Complete', 'AWAITING_RESPONSE': 'Pending'
+      'ASSESSMENT_COMPLETE': 'Assessment Complete', 'AWAITING_RESPONSE': 'Pending',
+      'SENT_TO_REVIEWER': 'Sent to Reviewer',
+      'SENT_TO_DEPUTY_OMBUDSMAN': 'Sent to Deputy Ombudsman',
+      'SENT_TO_OMBUDSMAN': 'Sent to Ombudsman',
+      'REVIEWER_REVIEW': 'Reviewer Review',
+      'DEPUTY_REVIEW': 'Deputy Ombudsman Review',
+      'CLOSED': 'Closed', 'RESOLVED': 'Resolved',
+      'INFORMATION_REQUIRED': 'Information Required',
+      'MEETING_COMPLETED': 'Meeting Completed',
+      'AWARD_PASSED': 'Award Passed',
     };
     return map[status] || status;
   }

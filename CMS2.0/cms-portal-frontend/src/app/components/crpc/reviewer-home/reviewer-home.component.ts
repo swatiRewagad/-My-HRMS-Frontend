@@ -85,8 +85,8 @@ export class ReviewerHomeComponent implements OnInit {
     const all = this.drafts();
     return {
       total: all.length,
-      pending: all.filter(d => d.status === 'SENT_TO_REVIEWER').length,
-      approved: all.filter(d => d.status === 'APPROVED' || d.status === 'APPROVED_ROUTED').length,
+      pending: all.filter(d => ['SENT_TO_REVIEWER', 'SENT_TO_OTHER_DEPT_FOR_APPROVAL', 'VERNACULAR_FOR_APPROVAL'].includes(d.status)).length,
+      approved: all.filter(d => ['APPROVED', 'APPROVED_ROUTED', 'APPROVED_SENT_TO_OTHER_DEPT', 'APPROVED_VERNACULAR'].includes(d.status)).length,
       sentBack: all.filter(d => d.status === 'SENT_BACK_TO_DEO' || d.status === 'SENT_BACK').length,
       closedNm: all.filter(d => d.status === 'CLOSED_NM' || d.status === 'CLOSED_NOT_A_COMPLAINT').length,
     };
@@ -235,7 +235,11 @@ export class ReviewerHomeComponent implements OnInit {
   getStatusLabel(status: string): string {
     switch (status) {
       case 'SENT_TO_REVIEWER': return 'Sent to Reviewer';
+      case 'SENT_TO_OTHER_DEPT_FOR_APPROVAL': return 'Other Dept - Pending Approval';
+      case 'VERNACULAR_FOR_APPROVAL': return 'Vernacular - Pending Approval';
       case 'APPROVED': case 'APPROVED_ROUTED': return 'Approved';
+      case 'APPROVED_SENT_TO_OTHER_DEPT': return 'Sent to Other Entity';
+      case 'APPROVED_VERNACULAR': return 'Sent to Language Office';
       case 'SENT_BACK_TO_DEO': case 'SENT_BACK': return 'Sent Back';
       case 'CLOSED_NM': case 'CLOSED_NOT_A_COMPLAINT': return 'Closed (NM)';
       default: return status;

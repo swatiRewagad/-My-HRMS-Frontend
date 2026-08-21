@@ -1,7 +1,7 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
@@ -28,6 +28,7 @@ interface DeoUser {
 export class RbioCreateComplaintComponent implements OnInit {
 
   private router = inject(Router);
+  private route = inject(ActivatedRoute);
   private http = inject(HttpClient);
   private sanitizer = inject(DomSanitizer);
   private auth = inject(KeycloakAuthService);
@@ -35,6 +36,7 @@ export class RbioCreateComplaintComponent implements OnInit {
   // Header
   complaintId = '';
   loggedInUserName = '';
+  userRole = signal<'DO' | 'REVIEWER' | 'DEPUTY_OMBUDSMAN' | 'OMBUDSMAN'>('DO');
   activeTab = signal<'creation' | 'assignment'>('creation');
 
   // Section expand state
@@ -149,17 +151,52 @@ export class RbioCreateComplaintComponent implements OnInit {
   // Assessment panel
   sendToDeputy = false;
   assessmentComment = '';
+  speakingOrderContent = '';
   proposedAction = '';
   proposedClause = '';
+  closureClauseDescription = '';
+  deputyOmbudsmanDecision = 'NON_MAINTAINABLE';
+  deputyOmbudsmanComments = '';
+  complaintStatus = signal('NEW_COMPLAINT');
+  approvalSentTo = signal('');
   showApprovalMenu = signal(false);
+  showSendBackMenu = signal(false);
   showApprovalDialog = signal(false);
-  approvalTarget = signal<'REVIEWER' | 'DEPUTY_OMBUDSMAN' | 'OMBUDSMAN'>('REVIEWER');
+  showSendBackDialog = signal(false);
+  sendBackTarget = signal<'DEALING_OFFICER' | 'REVIEWER'>('DEALING_OFFICER');
+  approvalTarget = signal<'DEALING_OFFICER' | 'REVIEWER' | 'DEPUTY_OMBUDSMAN' | 'OMBUDSMAN'>('REVIEWER');
   approvalAssignmentMode = 'AUTOMATIC';
+  approvalSelectedName = '';
+  approvalTargetUsers = signal<{ id: string; name: string }[]>([]);
+  approvalFilteredUsers: { id: string; name: string }[] = [];
   approvalCrpcAction = '';
   approvalCrpcClause = '';
+  systemicIssue = '';
   assessmentComments: { id: number; initials: string; author: string; time: string; text: string; color: string }[] = [
     { id: 1, initials: 'ST', author: 'Full Name BO DO', time: '8 hrs ago', text: 'Core banking systems are the central nervous system of any bank. They process a range of transactions, from deposits and withdrawals to loan payments and fund transfers. These systems provide a centralized platform', color: '#6366f1' },
     { id: 2, initials: 'ST', author: 'Full Name', time: '1 hrs ago', text: 'Core banking systems are the central nervous system of any bank. They process a range of transactions, from deposits and withdrawals to loan payments and fund transfers.', color: '#f59e0b' },
+  ];
+
+  // Nodal Officer Record
+  nodalRecords = signal<{ id: number; recordNumber: string; subject: string; bankName: string; slaDays: number; assignedTo: string; status: string; statusLabel: string; complaintNumber: string; receiptDate: string; complainant: string; mobile: string; email: string; moduleName: string; bankCategory: string; branchCategory: string; branchName: string; pincode: string; city: string; district: string; state: string; country: string; noName: string; noMobile: string; noEmail: string; pnoName: string; pnoMobile: string; pnoEmail: string; atmComplaint: string; designatedOffice: string; processingOffice: string }[]>([
+    { id: 1, recordNumber: '1146110', subject: 'Account debited but no credit', bankName: 'State Bank of India', slaDays: 2, assignedTo: 'Priya Gupta', status: 'INFORMATION_REQUIRED', statusLabel: 'Information Required', complaintNumber: 'N20223317000005', receiptDate: '19-05-2026', complainant: 'Raj Shah', mobile: '9876543210', email: 'raj.shah@email.com', moduleName: 'Deposit', bankCategory: 'Scheduled Commercial Bank', branchCategory: 'Metro', branchName: 'Andheri West', pincode: '400058', city: 'Mumbai', district: 'Mumbai Suburban', state: 'Maharashtra', country: 'India', noName: 'Deepak Verma', noMobile: '9112233445', noEmail: 'deepak.verma@sbi.co.in', pnoName: 'Suresh Kumar', pnoMobile: '9998877665', pnoEmail: 'suresh.kumar@sbi.co.in', atmComplaint: 'No', designatedOffice: 'Mumbai', processingOffice: 'RBIO Mumbai' },
+    { id: 2, recordNumber: '1146111', subject: 'Excess interest charged on loan', bankName: 'HDFC Bank', slaDays: 5, assignedTo: 'A.K. Singh', status: 'PENDING', statusLabel: 'Pending', complaintNumber: 'N20223317000012', receiptDate: '22-05-2026', complainant: 'Meena Kumari', mobile: '9123456780', email: 'meena.k@email.com', moduleName: 'Loan', bankCategory: 'Private Sector Bank', branchCategory: 'Urban', branchName: 'Connaught Place', pincode: '110001', city: 'New Delhi', district: 'Central Delhi', state: 'Delhi', country: 'India', noName: 'Rahul Sharma', noMobile: '9887766554', noEmail: 'rahul.sharma@hdfc.com', pnoName: 'Anita Desai', pnoMobile: '9776655443', pnoEmail: 'anita.desai@hdfc.com', atmComplaint: 'No', designatedOffice: 'Delhi', processingOffice: 'RBIO Delhi' },
+    { id: 3, recordNumber: '1146112', subject: 'ATM withdrawal failed but debited', bankName: 'ICICI Bank', slaDays: 35, assignedTo: 'Meera Krishnan', status: 'INFORMATION_REQUIRED', statusLabel: 'Information Required', complaintNumber: 'N20223317000018', receiptDate: '10-05-2026', complainant: 'Sunil Patil', mobile: '9234567890', email: 'sunil.p@email.com', moduleName: 'ATM/Debit Card', bankCategory: 'Private Sector Bank', branchCategory: 'Semi-Urban', branchName: 'Baner Road', pincode: '411045', city: 'Pune', district: 'Pune', state: 'Maharashtra', country: 'India', noName: 'Vikram Joshi', noMobile: '9665544332', noEmail: 'vikram.joshi@icici.com', pnoName: 'Kavita Nair', pnoMobile: '9554433221', pnoEmail: 'kavita.nair@icici.com', atmComplaint: 'Yes', designatedOffice: 'Pune', processingOffice: 'RBIO Mumbai' },
+  ]);
+  nodalFilterRecordNumber = '';
+  nodalFilterSubject = '';
+  nodalFilterBank = '';
+  nodalFilterSla = '';
+  nodalFilterAssigned = '';
+  nodalFilterStatus = '';
+  selectedNodalRecord = signal<any>(null);
+  nodalDetailView = signal(false);
+  nodalStatusCode = '';
+  nodalCommentToNO = '';
+  nodalCommentToPNO = '';
+  nodalComments: { id: number; initials: string; author: string; time: string; text: string; target: 'NO' | 'PNO'; color: string }[] = [
+    { id: 1, initials: 'RJ', author: 'Rahul Jain', time: '2 hrs ago', text: 'Please provide the transaction reference number and date of failed ATM withdrawal.', target: 'NO', color: '#6366f1' },
+    { id: 2, initials: 'DV', author: 'Deepak Verma', time: '1 hr ago', text: 'Transaction ref: TXN20260519001234. The amount was debited on 19-May but ATM did not dispense cash.', target: 'PNO', color: '#f59e0b' },
   ];
 
   // Reference data
@@ -190,8 +227,62 @@ export class RbioCreateComplaintComponent implements OnInit {
     this.receivedDate = new Date().toISOString().split('T')[0];
     const user = this.auth.currentUser();
     this.loggedInUserName = user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username : '';
+    this.detectUserRole();
     this.loadStates();
     this.loadDeos();
+
+    const taskId = this.route.snapshot.paramMap.get('id');
+    if (taskId) {
+      this.loadExistingComplaint(taskId);
+    }
+  }
+
+  private loadExistingComplaint(id: string) {
+    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/complaints/${id}`).subscribe({
+      next: (res) => {
+        const data = res?.data || res || {};
+        this.complaintId = data.complaintNumber || data.id || id;
+        this.subject = data.subject || '';
+        this.description = data.description || data.body || '';
+        this.comments = data.comments || '';
+        this.complainantName = data.complainantName || '';
+        this.complainantEmail = data.complainantEmail || data.senderEmail || '';
+        this.complainantPhone = data.complainantPhone || '';
+        this.entityName = data.entityName || '';
+        this.category = data.category || '';
+        this.modeOfReceipt = data.modeOfReceipt || data.filingType || 'Email';
+        this.receivedDate = data.receivedAt ? data.receivedAt.split('T')[0] : '';
+        const status = (data.status || '').toUpperCase();
+        const viewOnlyStatuses = ['SENT_TO_REVIEWER', 'SENT_TO_DEPUTY_OMBUDSMAN', 'SENT_TO_OMBUDSMAN', 'RESOLVED', 'CLOSED', 'REJECTED'];
+        if (viewOnlyStatuses.includes(status)) {
+          this.complaintStatus.set('VIEW_ONLY');
+        } else {
+          this.complaintStatus.set('NEW_COMPLAINT');
+        }
+        this.submitted.set(true);
+      },
+      error: () => {
+        this.complaintId = id;
+        this.subject = 'ATM_DEBIT_CARD';
+        this.description = 'Complaint loaded from task';
+        this.complainantName = 'Complainant';
+        this.complaintStatus.set('NEW_COMPLAINT');
+        this.submitted.set(true);
+      }
+    });
+  }
+
+  private detectUserRole() {
+    const roles = this.auth.getRoles ? this.auth.getRoles() : [];
+    if (roles.includes('RBIO_OMBUDSMAN')) {
+      this.userRole.set('OMBUDSMAN');
+    } else if (roles.includes('RBIO_DEPUTY_OMBUDSMAN')) {
+      this.userRole.set('DEPUTY_OMBUDSMAN');
+    } else if (roles.includes('RBIO_SUPERVISOR') || roles.includes('RBIO_REVIEWER')) {
+      this.userRole.set('REVIEWER');
+    } else {
+      this.userRole.set('DO');
+    }
   }
 
   private generateComplaintId(): string {
@@ -541,17 +632,93 @@ export class RbioCreateComplaintComponent implements OnInit {
     this.submitted.set(false);
   }
 
-  sendForApproval(target: 'REVIEWER' | 'DEPUTY_OMBUDSMAN' | 'OMBUDSMAN') {
+  sendForApproval(target: 'DEALING_OFFICER' | 'REVIEWER' | 'DEPUTY_OMBUDSMAN' | 'OMBUDSMAN') {
     this.showApprovalMenu.set(false);
     this.approvalTarget.set(target);
     this.approvalAssignmentMode = 'AUTOMATIC';
+    this.approvalSelectedName = '';
+    this.approvalFilteredUsers = [];
     this.approvalCrpcAction = '';
     this.approvalCrpcClause = '';
+    this.systemicIssue = '';
+    this.loadApprovalTargetUsers(target);
     this.showApprovalDialog.set(true);
+  }
+
+  private loadApprovalTargetUsers(target: string) {
+    const roleMap: Record<string, string> = {
+      'DEALING_OFFICER': 'RBIO_OFFICER',
+      'REVIEWER': 'RBIO_SUPERVISOR',
+      'DEPUTY_OMBUDSMAN': 'RBIO_DEPUTY_OMBUDSMAN',
+      'OMBUDSMAN': 'RBIO_ADJUDICATOR'
+    };
+    const role = roleMap[target];
+    if (!role) return;
+
+    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/keycloak/users/by-role?role=${role}`).subscribe({
+      next: (res) => {
+        const data = res?.data || res || [];
+        const users = (Array.isArray(data) ? data : []).map((u: any) => ({
+          id: u.username || u.userId,
+          name: u.displayName || `${u.firstName || ''} ${u.lastName || ''}`.trim()
+        }));
+        this.approvalTargetUsers.set(users);
+        this.approvalFilteredUsers = users;
+        if (this.approvalAssignmentMode === 'AUTOMATIC' && users.length > 0) {
+          this.approvalSelectedName = users[0].name;
+        }
+      },
+      error: () => this.approvalTargetUsers.set([])
+    });
+  }
+
+  onApprovalAssignmentChange() {
+    if (this.approvalAssignmentMode === 'MANUAL') {
+      this.approvalSelectedName = '';
+      this.approvalFilteredUsers = this.approvalTargetUsers();
+    } else {
+      const users = this.approvalTargetUsers();
+      this.approvalSelectedName = users.length > 0 ? users[0].name : '';
+      this.approvalFilteredUsers = [];
+    }
+  }
+
+  filterApprovalUsers() {
+    const term = this.approvalSelectedName.toLowerCase();
+    this.approvalFilteredUsers = this.approvalTargetUsers().filter(u =>
+      u.name.toLowerCase().includes(term)
+    );
+  }
+
+  selectApprovalUser(user: { id: string; name: string }) {
+    this.approvalSelectedName = user.name;
+    this.approvalFilteredUsers = [];
+  }
+
+  openSendBack(target: 'DEALING_OFFICER' | 'REVIEWER') {
+    this.sendBackTarget.set(target);
+    this.showSendBackDialog.set(true);
+  }
+
+  get sendBackTargetLabel(): string {
+    return this.sendBackTarget() === 'DEALING_OFFICER' ? 'RBIO Dealing Officer' : 'RBIO Reviewer';
+  }
+
+  get sendBackStatusLabel(): string {
+    return this.sendBackTarget() === 'DEALING_OFFICER' ? 'Sent Back to Dealing Officer' : 'Sent Back to Reviewer';
+  }
+
+  confirmSendBack() {
+    this.showSendBackDialog.set(false);
+  }
+
+  cancelSendBack() {
+    this.showSendBackDialog.set(false);
   }
 
   get approvalTargetLabel(): string {
     switch (this.approvalTarget()) {
+      case 'DEALING_OFFICER': return 'RBIO Dealing Officer';
       case 'REVIEWER': return 'RBIO Reviewer';
       case 'DEPUTY_OMBUDSMAN': return 'RBIO Deputy Ombudsman';
       case 'OMBUDSMAN': return 'RBIO Ombudsman';
@@ -560,14 +727,53 @@ export class RbioCreateComplaintComponent implements OnInit {
 
   get approvalStatusLabel(): string {
     switch (this.approvalTarget()) {
+      case 'DEALING_OFFICER': return 'Deputy Ombudsman Decision';
       case 'REVIEWER': return 'Sent to RBIO Reviewer';
-      case 'DEPUTY_OMBUDSMAN': return 'Sent to RBIO Deputy Ombudsman';
-      case 'OMBUDSMAN': return 'Sent to RBIO Ombudsman';
+      case 'DEPUTY_OMBUDSMAN': return 'Sent to Deputy Ombudsman';
+      case 'OMBUDSMAN': return 'Sent to Ombudsman';
     }
   }
 
+  get approvalFromStatus(): string {
+    return 'Sent to Deputy Ombudsman';
+  }
+
+  get isOmbudsmanDecisionDialog(): boolean {
+    return this.approvalTarget() === 'DEALING_OFFICER';
+  }
+
+  approvalSubmitting = signal(false);
+
   confirmApproval() {
-    this.showApprovalDialog.set(false);
+    if (this.approvalSubmitting()) return;
+    this.approvalSubmitting.set(true);
+
+    const selectedUser = this.approvalTargetUsers().find(u => u.name === this.approvalSelectedName);
+    const payload = {
+      complaintId: this.complaintId,
+      target: this.approvalTarget(),
+      assignmentMode: this.approvalAssignmentMode,
+      assignedTo: selectedUser?.id || '',
+      assignedToName: this.approvalSelectedName,
+      crpcAction: this.approvalCrpcAction || null,
+      crpcClause: this.approvalCrpcClause || null,
+      systemicIssue: this.systemicIssue || null,
+    };
+
+    this.http.post(`${environment.apiBaseUrl}/api/v1/complaints/${this.complaintId}/send-for-approval`, payload).subscribe({
+      next: () => {
+        this.approvalSubmitting.set(false);
+        this.showApprovalDialog.set(false);
+        this.approvalSentTo.set(this.approvalSelectedName);
+        this.complaintStatus.set('SENT');
+      },
+      error: () => {
+        this.approvalSubmitting.set(false);
+        this.showApprovalDialog.set(false);
+        this.approvalSentTo.set(this.approvalSelectedName);
+        this.complaintStatus.set('SENT');
+      }
+    });
   }
 
   cancelApproval() {
@@ -677,6 +883,29 @@ export class RbioCreateComplaintComponent implements OnInit {
       createdBy: this.auth.currentUser()?.username || '',
       status
     };
+  }
+
+  addNodalRecord() {
+    const newId = this.nodalRecords().length + 1;
+    const newRecord = {
+      id: newId, recordNumber: `114611${newId + 2}`, subject: 'New Record', bankName: '', slaDays: 30, assignedTo: this.loggedInUserName || 'Unassigned', status: 'PENDING', statusLabel: 'Pending', complaintNumber: `N${this.complaintId}`, receiptDate: new Date().toLocaleDateString('en-GB').replace(/\//g, '-'), complainant: this.complainantName || '', mobile: this.complainantPhone || '', email: this.complainantEmail || '', moduleName: '', bankCategory: '', branchCategory: '', branchName: '', pincode: '', city: '', district: '', state: '', country: 'India', noName: '', noMobile: '', noEmail: '', pnoName: '', pnoMobile: '', pnoEmail: '', atmComplaint: 'No', designatedOffice: '', processingOffice: ''
+    };
+    this.nodalRecords.set([...this.nodalRecords(), newRecord]);
+  }
+
+  openNodalDetail(record: any) {
+    this.selectedNodalRecord.set(record);
+    this.nodalStatusCode = record.status === 'INFORMATION_REQUIRED' ? 'INFORMATION_REQUIRED' : '';
+    this.nodalDetailView.set(true);
+  }
+
+  closeNodalDetail() {
+    this.nodalDetailView.set(false);
+    this.selectedNodalRecord.set(null);
+  }
+
+  sendToRE() {
+    this.closeNodalDetail();
   }
 
   goBack() {

@@ -74,6 +74,12 @@
   }
   .strip-actions {
     margin-left: auto; display: flex; align-items: center; gap: 8px;
+    > .readonly-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 14px; border-radius: 6px; border: 1px solid #e2e8f0;
+      background: #f8fafc; color: #64748b; font-size: 13px; font-weight: 500;
+      i { font-size: 12px; }
+    }
     .btn-edit { padding: 8px 16px; border: 1px solid #e2e8f0; border-radius: 6px; background: white;
       font-size: 13px; cursor: pointer; color: #475569; display: flex; align-items: center; gap: 6px;
       &:hover { border-color: #3b82f6; color: #3b82f6; }
@@ -221,9 +227,10 @@
     .field {
       display: flex; flex-direction: column; gap: 6px;
       label { font-size: 12px; font-weight: 600; color: #475569; }
-      select, input { padding: 10px 12px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px;
+      select, input, textarea { padding: 10px 12px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px;
         &:focus { outline: none; border-color: #3b82f6; }
       }
+      textarea { resize: vertical; width: 100%; }
     }
     .search-input { position: relative;
       input { width: 100%; padding-right: 32px; }
@@ -266,6 +273,39 @@
   border-radius: 3px;
   margin-top: 3px;
   border: 1px solid #ffe082;
+}
+
+// ═══ Workflow dropdown assign hint ═══
+.assign-hint {
+  font-size: 11px;
+  color: #94a3b8;
+  margin-left: 8px;
+  font-style: italic;
+}
+
+// ═══ Action Result Toast ═══
+.action-toast {
+  position: fixed;
+  top: 70px;
+  right: 24px;
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  animation: slideIn 0.3s ease;
+
+  &.success { background: #d1fae5; color: #065f46; border: 1px solid #6ee7b7; }
+  &.error { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+}
+
+@keyframes slideIn {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
 }
 
 // ═══ Tab content section for Legal Case / History tabs ═══

@@ -46,7 +46,7 @@
       <div class="success-icon"><i class="pi pi-check-circle"></i></div>
       <h2>Assessment Sent for Approval</h2>
       <p>Draft <strong>{{ draftId }}</strong> has been routed to
-        <strong>{{ selectedReviewerName || 'CRPC Reviewer' }}</strong>
+        <strong>{{ getSelectedReviewerDisplayName() }}</strong>
       </p>
       <button class="btn btn-primary" (click)="goBack()">Back to Home</button>
     </div>
@@ -127,27 +127,17 @@
             </div>
           </div>
           <div class="meta-actions">
-            @if (!editMode() && !isReadOnly) {
-              <button class="btn btn-outline btn-edit" type="button" (click)="enterEditMode()"><i class="pi pi-pencil"></i> Edit</button>
+            @if (!isReadOnly) {
+              @if (!editMode()) {
+                <button class="btn btn-outline btn-edit" type="button" (click)="enterEditMode()"><i class="pi pi-pencil"></i> Edit</button>
+              } @else {
+                <button class="btn btn-outline btn-sm" (click)="goBack()"><i class="pi pi-chevron-left"></i> Back</button>
+                <button class="btn btn-save" (click)="saveDraft()" [disabled]="savingDraft()">
+                  @if (savingDraft()) { <i class="pi pi-spin pi-spinner"></i> } @else { <i class="pi pi-save"></i> }
+                  Save
+                </button>
+              }
               <button class="btn btn-primary" (click)="openConfirmDialog()" [disabled]="submitting()">Send for Approval</button>
-            }
-            @if (editMode() && activeStep() === 'creation') {
-              <button class="btn btn-outline btn-sm" (click)="goBack()"><i class="pi pi-chevron-left"></i> Back</button>
-              <button class="btn btn-save" (click)="saveDraft()" [disabled]="savingDraft()">
-                @if (savingDraft()) { <i class="pi pi-spin pi-spinner"></i> } @else { <i class="pi pi-save"></i> }
-                Save
-              </button>
-              <button class="btn btn-primary" (click)="goToAssignment()">Next <i class="pi pi-chevron-right"></i></button>
-            }
-            @if (editMode() && activeStep() === 'assignment') {
-              <button class="btn btn-outline btn-sm" (click)="goToCreation()"><i class="pi pi-chevron-left"></i> Back</button>
-              <button class="btn btn-save" (click)="saveDraft()" [disabled]="savingDraft()">
-                @if (savingDraft()) { <i class="pi pi-spin pi-spinner"></i> } @else { <i class="pi pi-save"></i> }
-                Save
-              </button>
-              <button class="btn btn-primary" (click)="openConfirmDialog()" [disabled]="submitting()">
-                Send for Approval
-              </button>
             }
             @if (isReadOnly) {
               <span class="readonly-badge"><i class="pi pi-lock"></i> View Only</span>
@@ -458,9 +448,11 @@
                         <option value="">Select</option>
                         <option value="MAINTAINABLE">New Complaint</option>
                         <option value="NON_MAINTAINABLE">Not a Complaint</option>
+                        <option value="SENT_TO_OTHER_DEPT">Sent to Other Department/Entity</option>
+                        <option value="VERNACULAR">Vernacular Complaint</option>
                       </select>
                     } @else {
-                      <span class="field-value">{{ deoDecision === 'MAINTAINABLE' ? 'New Complaint' : deoDecision === 'NON_MAINTAINABLE' ? 'Not a Complaint' : '—' }}</span>
+                      <span class="field-value">{{ deoDecision === 'MAINTAINABLE' ? 'New Complaint' : deoDecision === 'NON_MAINTAINABLE' ? 'Not a Complaint' : deoDecision === 'SENT_TO_OTHER_DEPT' ? 'Sent to Other Department/Entity' : deoDecision === 'VERNACULAR' ? 'Vernacular Complaint' : '—' }}</span>
                     }
                   </div>
                   <div class="field-item">
@@ -477,6 +469,27 @@
                     }
                   </div>
                 </div>
+                @if (deoDecision === 'SENT_TO_OTHER_DEPT' && editMode()) {
+                  <div class="field-grid-2" style="margin-top: 12px;">
+                    <div class="field-item">
+                      <label>Target Department/Entity <span style="color:#ef4444">*</span></label>
+                      <input type="text" [(ngModel)]="targetOtherEntity" placeholder="Enter target department or entity name" />
+                    </div>
+                  </div>
+                }
+                @if (deoDecision === 'VERNACULAR' && editMode()) {
+                  <div class="field-grid-2" style="margin-top: 12px;">
+                    <div class="field-item">
+                      <label>Vernacular Language <span style="color:#ef4444">*</span></label>
+                      <select [(ngModel)]="selectedVernacularLanguage">
+                        <option value="">Select Language</option>
+                        @for (lang of vernacularLanguages; track lang) {
+                          <option [value]="lang">{{ lang }}</option>
+                        }
+                      </select>
+                    </div>
+                  </div>
+                }
                 @if (nonMaintainableReason === 'SUGGESTION' && editMode()) {
                   <div class="field-grid-2" style="margin-top: 12px;">
                     <div class="field-item">
@@ -1668,7 +1681,7 @@
             <label>Name of CRPC Reviewer</label>
             @if (confirmAssignmentMode === 'Automatic') {
               <div class="reviewer-input-wrapper automatic">
-                <input type="text" [value]="selectedReviewerName" readonly />
+                <input type="text" [value]="getSelectedReviewerDisplayName()" readonly />
                 <i class="pi pi-search"></i>
               </div>
             } @else {
@@ -1676,7 +1689,7 @@
                 <select [(ngModel)]="selectedReviewerName">
                   <option value="" disabled>Select a Value</option>
                   @for (rev of reviewers(); track rev.id) {
-                    <option [value]="rev.displayName">{{ rev.displayName }}</option>
+                    <option [value]="rev.id">{{ rev.displayName }}</option>
                   }
                 </select>
                 <i class="pi pi-search"></i>

@@ -1,0 +1,105 @@
+<div class="log-explorer">
+  <h2>Decision Log Explorer</h2>
+
+  @if (errorMessage()) {
+    <div class="message message-error">
+      <i class="pi pi-exclamation-triangle"></i> {{ errorMessage() }}
+    </div>
+  }
+
+  <!-- Filters -->
+  <div class="filter-bar">
+    <div class="field">
+      <label>Decision Point</label>
+      <input type="text" [(ngModel)]="filters.decisionPoint" placeholder="e.g. COMPLAINT_ASSIGNMENT" />
+    </div>
+    <div class="field">
+      <label>Case Ref</label>
+      <input type="text" [(ngModel)]="filters.caseRef" placeholder="CMS-2024-..." />
+    </div>
+    <div class="field">
+      <label>Rule Code</label>
+      <input type="text" [(ngModel)]="filters.ruleCode" placeholder="R-001" />
+    </div>
+    <div class="field checkbox">
+      <label>
+        <input type="checkbox" [(ngModel)]="filters.dryRunOnly" /> Dry-run only
+      </label>
+    </div>
+    <button class="btn btn-primary" (click)="search()" [disabled]="loading()">
+      <i class="pi pi-search"></i> Search
+    </button>
+  </div>
+
+  <!-- Loading -->
+  @if (loading()) {
+    <div class="loading"><i class="pi pi-spin pi-spinner"></i> Loading...</div>
+  }
+
+  <!-- Results -->
+  @if (!loading() && logs().length === 0) {
+    <div class="empty-state">
+      <i class="pi pi-list"></i>
+      <p>No decision logs found</p>
+    </div>
+  }
+
+  @if (logs().length > 0) {
+    <table class="log-table">
+      <thead>
+        <tr>
+          <th>Time</th>
+          <th>Decision Point</th>
+          <th>Case Ref</th>
+          <th>Matched Rule</th>
+          <th>Outcome</th>
+          <th>Assigned</th>
+          <th>Latency</th>
+          <th>Dry?</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (log of logs(); track log.id) {
+          <tr (click)="viewDetail(log)" class="clickable" [class.selected]="selectedLog()?.id === log.id">
+            <td>{{ log.createdAt | date:'short' }}</td>
+            <td>{{ log.decisionPoint }}</td>
+            <td>{{ log.caseRef || '—' }}</td>
+            <td>{{ log.matchedRuleCode || '(default)' }}</td>
+            <td>
+              <span class="outcome-type">{{ log.outcomeType }}</span>
+              {{ log.outcomeTarget }}
+            </td>
+            <td>{{ log.assignedUserId || '—' }}</td>
+            <td>{{ log.latencyMs }}ms</td>
+            <td>{{ log.dryRun ? 'Y' : '' }}</td>
+          </tr>
+          @if (selectedLog()?.id === log.id) {
+            <tr class="detail-row">
+              <td colspan="8">
+                <div class="detail-panel">
+                  <div class="detail-section">
+                    <strong>Distribution:</strong>
+                    Strategy: {{ log.distributionStrategy || 'N/A' }} |
+                    Candidates: {{ log.candidatesConsidered ?? '—' }} |
+                    Excluded: {{ log.candidatesExcluded ?? '—' }}
+                  </div>
+                  @if (log.fallbackApplied) {
+                    <div class="detail-section fallback">
+                      <strong>Fallback:</strong> {{ log.fallbackReason }}
+                    </div>
+                  }
+                  @if (log.contextJson) {
+                    <details class="context-detail">
+                      <summary>Context JSON</summary>
+                      <pre>{{ log.contextJson | json }}</pre>
+                    </details>
+                  }
+                </div>
+              </td>
+            </tr>
+          }
+        }
+      </tbody>
+    </table>
+  }
+</div>

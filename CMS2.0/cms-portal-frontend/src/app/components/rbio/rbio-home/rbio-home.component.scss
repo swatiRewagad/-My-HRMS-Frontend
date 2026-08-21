@@ -379,6 +379,10 @@
     &[data-status="MEETING_SCHEDULED"] { background: #f3e8ff; color: #6b21a8; }
     &[data-status="ASSESSMENT_COMPLETE"] { background: #d1fae5; color: #065f46; }
     &[data-status="AWAITING_RESPONSE"] { background: #e0e7ff; color: #3730a3; }
+    &[data-status="SENT_TO_REVIEWER"] { background: #dbeafe; color: #1e40af; }
+    &[data-status="SENT_TO_DEPUTY_OMBUDSMAN"] { background: #fef3c7; color: #92400e; }
+    &[data-status="SENT_TO_OMBUDSMAN"] { background: #fef3c7; color: #92400e; }
+    &[data-status="CLOSED"], &[data-status="RESOLVED"] { background: #d1fae5; color: #065f46; }
   }
 
   .mode-badge {

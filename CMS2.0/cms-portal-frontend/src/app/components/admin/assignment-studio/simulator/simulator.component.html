@@ -1,0 +1,113 @@
+<div class="simulator">
+  <div class="sim-header">
+    <h2>Rule Simulator</h2>
+    <span class="target-info">Ruleset #{{ rulesetId() }} / Version #{{ versionId() }}</span>
+  </div>
+
+  @if (errorMessage()) {
+    <div class="message message-error">
+      <i class="pi pi-exclamation-triangle"></i> {{ errorMessage() }}
+    </div>
+  }
+
+  <!-- Input mode toggle -->
+  <div class="input-toolbar">
+    <button class="btn" (click)="toggleInputMode()">
+      <i class="pi" [class.pi-code]="inputMode() === 'form'" [class.pi-table]="inputMode() === 'json'"></i>
+      {{ inputMode() === 'form' ? 'Switch to JSON' : 'Switch to Form' }}
+    </button>
+    <button class="btn" (click)="loadSampleData()">
+      <i class="pi pi-database"></i> Load Sample Data
+    </button>
+    <button class="btn" (click)="addTestCase()" [disabled]="inputMode() === 'json'">
+      <i class="pi pi-plus"></i> Add Case
+    </button>
+    <button class="btn btn-primary" (click)="runSimulation()" [disabled]="running()">
+      <i class="pi pi-play"></i> {{ running() ? 'Running...' : 'Run Simulation' }}
+    </button>
+  </div>
+
+  <!-- Form input mode -->
+  @if (inputMode() === 'form') {
+    <div class="test-cases-form">
+      @for (tc of testCases(); track $index; let i = $index) {
+        <div class="test-case-card">
+          <div class="case-header">
+            <span class="case-label">Case #{{ i + 1 }}</span>
+            <button class="btn btn-sm btn-danger" (click)="removeTestCase(i)" title="Remove">
+              <i class="pi pi-times"></i>
+            </button>
+          </div>
+          <div class="case-fields">
+            @for (attr of attributes(); track attr.code) {
+              <div class="field">
+                <label>{{ attr.label }}</label>
+                <input
+                  type="text"
+                  [placeholder]="attr.dataType === 'NUMERIC' ? '0' : attr.code"
+                  [value]="tc[attr.code] || ''"
+                  (input)="updateTestCase(i, attr.code, $any($event.target).value)"
+                />
+              </div>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- JSON input mode -->
+  @if (inputMode() === 'json') {
+    <div class="json-input">
+      <textarea
+        rows="12"
+        [ngModel]="jsonInput()"
+        (ngModelChange)="jsonInput.set($event)"
+        placeholder='[{"claimAmount": 500000, "state": "MH", ...}]'
+      ></textarea>
+    </div>
+  }
+
+  <!-- Results -->
+  @if (results()) {
+    <div class="results-section">
+      <h3>Results</h3>
+
+      <!-- Summary -->
+      <div class="summary-bar">
+        <span class="stat"><strong>{{ results().summary.totalCases }}</strong> cases</span>
+        <span class="stat stat-match"><strong>{{ results().summary.matched }}</strong> matched</span>
+        <span class="stat stat-fallback"><strong>{{ results().summary.fallback }}</strong> fallback</span>
+        @if (results().summary.errors > 0) {
+          <span class="stat stat-error"><strong>{{ results().summary.errors }}</strong> errors</span>
+        }
+      </div>
+
+      <!-- Results table -->
+      <table class="results-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Matched Rule</th>
+            <th>Outcome Type</th>
+            <th>Target</th>
+            <th>Fallback</th>
+            <th>Error</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of results().results; track row.index) {
+            <tr [class.fallback-row]="row.fallbackApplied" [class.error-row]="row.error">
+              <td>{{ row.index + 1 }}</td>
+              <td>{{ row.matchedRuleCode || '—' }}</td>
+              <td>{{ row.outcomeType || '—' }}</td>
+              <td>{{ row.outcomeTarget || '—' }}</td>
+              <td>{{ row.fallbackApplied ? 'Yes' : '—' }}</td>
+              <td>{{ row.error || '—' }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>

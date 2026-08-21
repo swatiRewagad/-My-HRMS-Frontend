@@ -1,0 +1,35 @@
+<div class="assignment-studio-list">
+  <div class="header">
+    <h2>Assignment Rulesets</h2>
+    <p>Configure case assignment decision tables for each workflow decision point.</p>
+  </div>
+
+  @if (loading()) {
+    <div class="loading-state">Loading rulesets...</div>
+  } @else if (rulesets().length === 0) {
+    <div class="empty-state">
+      <p>No rulesets configured yet. Create one to get started.</p>
+    </div>
+  } @else {
+    <div class="ruleset-grid">
+      @for (rs of rulesets(); track rs.id) {
+        <div class="ruleset-card" (click)="openEditor(rs.id, rs.activeVersionId)">
+          <div class="card-header">
+            <span class="decision-point">{{ rs.decisionPoint }}</span>
+            <span class="status-badge" [class]="rs.status?.toLowerCase()">{{ rs.status }}</span>
+          </div>
+          <div class="card-body">
+            <div class="card-title">{{ rs.name }}</div>
+            <div class="card-meta">
+              <span>Version {{ rs.activeVersionNo || '-' }}</span>
+              <span>{{ rs.hitPolicy }}</span>
+            </div>
+            @if (!rs.activeVersionId) {
+              <div class="card-action-hint">Click to create a draft version</div>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  }
+</div>

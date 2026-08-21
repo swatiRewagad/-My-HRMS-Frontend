@@ -64,6 +64,22 @@ export class RbioWorkflowService {
   private http = inject(HttpClient);
   private baseUrl = `${environment.apiBaseUrl}/api/v1`;
 
+  // --- Dealing Official Workflow Action ---
+  submitWorkflowAction(complaintId: string, body: {
+    action: string;
+    assignTo: string;
+    assigneeName: string;
+    assignmentMode: string;
+    remarks: string;
+    actor: string;
+    systemicIssue?: boolean;
+  }): Observable<any> {
+    return this.http.post<any>(
+      `${this.baseUrl}/workflow/rbio/action/${complaintId}`,
+      body
+    );
+  }
+
   // --- Deputy Ombudsman Decision ---
   submitDeputyDecision(complaintId: string, body: {
     maintainability: 'MAINTAINABLE' | 'NON_MAINTAINABLE';

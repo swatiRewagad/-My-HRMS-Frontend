@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { CrpcService } from '../../../services/crpc.service';
+import { CrpcWorkflowService } from '../../../services/crpc-workflow.service';
 import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
 import { environment } from '../../../../environments/environment';
 import { SpeechButtonComponent } from '../../../shared/speech-button/speech-button.component';
@@ -39,6 +40,7 @@ export class ReviewerAssessmentComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private http = inject(HttpClient);
   private crpcService = inject(CrpcService);
+  private crpcWorkflowService = inject(CrpcWorkflowService);
   private auth = inject(KeycloakAuthService);
 
   draftId = '';
@@ -97,7 +99,7 @@ export class ReviewerAssessmentComponent implements OnInit {
   history = signal<HistoryEntry[]>([]);
 
   // ─── Reviewer Actions ───
-  reviewerDecision: 'APPROVE' | 'SENT_BACK_TO_DEO' | 'NOT_A_COMPLAINT' | '' = '';
+  reviewerDecision: 'APPROVE' | 'SENT_BACK_TO_DEO' | 'NOT_A_COMPLAINT' | 'APPROVE_SENT_TO_OTHER_DEPT' | 'APPROVE_VERNACULAR' | '' = '';
   reviewerRemarks = '';
   savedTemplateId = '';
 
@@ -109,6 +111,16 @@ export class ReviewerAssessmentComponent implements OnInit {
   notComplaintDisposition: 'CLOSED' | 'SENT_TO_OTHER_DEPARTMENT' | 'SUGGESTION' | '' = '';
   targetDepartment = '';
   targetOffice = '';
+
+  // Sent to Other Department/Entity (Reviewer approval)
+  targetOtherEntity = '';
+
+  // Vernacular routing
+  vernacularTargetOffice = '';
+  vernacularLanguageOfficeMap: Record<string, string> = {};
+
+  // Draft type (from DEO decision)
+  draftType: 'NEW_COMPLAINT' | 'NOT_A_COMPLAINT' | 'SENT_TO_OTHER_DEPT' | 'VERNACULAR' | '' = '';
 
   // Routing for approved complaints (auto-determined by entity rules, reviewer can override)
   targetRegionalOffice = '';
@@ -148,6 +160,9 @@ export class ReviewerAssessmentComponent implements OnInit {
     this.draftId = this.route.snapshot.paramMap.get('id') || '';
     this.loadDraft();
     this.loadDeos();
+    this.crpcWorkflowService.getVernacularOfficeMap().subscribe(map => {
+      this.vernacularLanguageOfficeMap = map;
+    });
   }
 
   private loadDeos() {
@@ -220,6 +235,19 @@ export class ReviewerAssessmentComponent implements OnInit {
             { id: 'H3', timestamp: draft.createdAt || '', action: 'SENT_TO_REVIEWER', performedBy: draft.assignedTo || 'DEO', role: 'DEO', remarks: `Routed to reviewer via Round Robin.` },
           ]);
 
+          // Determine draft type from DEO decision / status
+          if (draft.deoDecision === 'SENT_TO_OTHER_DEPT' || draft.status === 'SENT_TO_OTHER_DEPT_FOR_APPROVAL') {
+            this.draftType = 'SENT_TO_OTHER_DEPT';
+            this.targetOtherEntity = draft.targetEntity || '';
+          } else if (draft.deoDecision === 'VERNACULAR' || draft.status === 'VERNACULAR_FOR_APPROVAL') {
+            this.draftType = 'VERNACULAR';
+            this.vernacularTargetOffice = this.vernacularLanguageOfficeMap[(draft.detectedLanguage || '').toUpperCase()] || '';
+          } else if (draft.deoDecision === 'NON_MAINTAINABLE' || draft.deoDecision === 'NOT_A_COMPLAINT') {
+            this.draftType = 'NOT_A_COMPLAINT';
+          } else {
+            this.draftType = 'NEW_COMPLAINT';
+          }
+
           if (draft.convertedComplaintId) {
             this.generatedComplaintNumber.set(draft.convertedComplaintId);
             this.reviewerDecision = 'APPROVE';
@@ -232,6 +260,12 @@ export class ReviewerAssessmentComponent implements OnInit {
             this.submitted.set(true);
           } else if (draft.status === 'CLOSED_NOT_A_COMPLAINT') {
             this.reviewerDecision = 'NOT_A_COMPLAINT';
+            this.submitted.set(true);
+          } else if (draft.status === 'APPROVED_SENT_TO_OTHER_DEPT') {
+            this.reviewerDecision = 'APPROVE_SENT_TO_OTHER_DEPT';
+            this.submitted.set(true);
+          } else if (draft.status === 'APPROVED_VERNACULAR') {
+            this.reviewerDecision = 'APPROVE_VERNACULAR';
             this.submitted.set(true);
           }
 
@@ -313,8 +347,12 @@ export class ReviewerAssessmentComponent implements OnInit {
     return (bytes / 1024 / 1024).toFixed(1) + ' MB';
   }
 
-  openConfirmDialog(decision: 'APPROVE' | 'SENT_BACK_TO_DEO') {
+  openConfirmDialog(decision: 'APPROVE' | 'SENT_BACK_TO_DEO' | 'NOT_A_COMPLAINT' | 'APPROVE_SENT_TO_OTHER_DEPT' | 'APPROVE_VERNACULAR') {
     this.reviewerDecision = decision;
+    if (decision === 'APPROVE_VERNACULAR' && !this.vernacularTargetOffice) {
+      const lang = (this.vernacularLanguage || '').toUpperCase();
+      this.vernacularTargetOffice = this.vernacularLanguageOfficeMap[lang] || 'CRPC-DEL';
+    }
     this.showConfirmDialog.set(true);
   }
 
@@ -360,6 +398,8 @@ export class ReviewerAssessmentComponent implements OnInit {
     if (!this.reviewerRemarks.trim()) return false;
     if (this.reviewerDecision === 'SENT_BACK_TO_DEO' && !this.sentBackToDeoId) return false;
     if (this.reviewerDecision === 'NOT_A_COMPLAINT' && !this.notComplaintDisposition) return false;
+    if (this.reviewerDecision === 'APPROVE_SENT_TO_OTHER_DEPT' && !this.targetOtherEntity.trim()) return false;
+    if (this.reviewerDecision === 'APPROVE_VERNACULAR' && !this.vernacularTargetOffice.trim()) return false;
     return true;
   }
 
@@ -371,14 +411,27 @@ export class ReviewerAssessmentComponent implements OnInit {
     if (this.reviewerDecision === 'APPROVE') newStatus = 'APPROVED_ROUTED';
     else if (this.reviewerDecision === 'SENT_BACK_TO_DEO') newStatus = 'SENT_BACK_TO_DEO';
     else if (this.reviewerDecision === 'NOT_A_COMPLAINT') newStatus = 'CLOSED_NOT_A_COMPLAINT';
+    else if (this.reviewerDecision === 'APPROVE_SENT_TO_OTHER_DEPT') newStatus = 'APPROVED_SENT_TO_OTHER_DEPT';
+    else if (this.reviewerDecision === 'APPROVE_VERNACULAR') newStatus = 'APPROVED_VERNACULAR';
 
-    this.http.put<any>(`${environment.apiBaseUrl}/api/v1/email-syndication/drafts/${this.draftId}`, {
+    const payload: any = {
       status: newStatus,
       reviewerDecision: this.reviewerDecision,
       reviewerRemarks: this.reviewerRemarks,
       targetOffice: this.targetRegionalOffice,
       assignedTo: this.reviewerDecision === 'SENT_BACK_TO_DEO' ? this.sentBackToDeoId : this.targetRegionalOffice,
-    }).subscribe({
+    };
+
+    if (this.reviewerDecision === 'APPROVE_SENT_TO_OTHER_DEPT') {
+      payload.targetEntity = this.targetOtherEntity;
+      payload.assignedTo = this.targetOtherEntity;
+    }
+    if (this.reviewerDecision === 'APPROVE_VERNACULAR') {
+      payload.targetOffice = this.vernacularTargetOffice;
+      payload.assignedTo = this.vernacularTargetOffice;
+    }
+
+    this.http.put<any>(`${environment.apiBaseUrl}/api/v1/email-syndication/drafts/${this.draftId}`, payload).subscribe({
       next: (res) => {
         if (this.reviewerDecision === 'APPROVE') {
           const complaintId = res?.data?.convertedComplaintId;

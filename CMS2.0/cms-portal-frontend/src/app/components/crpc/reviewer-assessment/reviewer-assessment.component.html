@@ -39,6 +39,15 @@
       } @else if (reviewerDecision === 'SENT_BACK_TO_DEO') {
         <h2>Sent Back to DEO</h2>
         <p>Draft returned to <strong>{{ sentBackToDeoId }}</strong> with comments.</p>
+      } @else if (reviewerDecision === 'NOT_A_COMPLAINT') {
+        <h2>Closed — Not a Complaint</h2>
+        <p>Workflow ended. No further action required.</p>
+      } @else if (reviewerDecision === 'APPROVE_SENT_TO_OTHER_DEPT') {
+        <h2>Approved — Sent to Other Department/Entity</h2>
+        <p>Complaint forwarded to: <strong>{{ targetOtherEntity }}</strong></p>
+      } @else if (reviewerDecision === 'APPROVE_VERNACULAR') {
+        <h2>Approved — Vernacular Complaint</h2>
+        <p>Routed to mapped language office: <strong>{{ vernacularTargetOffice }}</strong></p>
       } @else {
         <h2>Closed — Not a Complaint</h2>
         <p>Disposition: <strong>{{ notComplaintDisposition }}</strong></p>
@@ -96,8 +105,16 @@
       <div class="meta-actions">
         <button class="btn btn-save" (click)="saveDraft()"><i class="pi pi-save"></i> Save</button>
         <button class="btn btn-outline" (click)="toggleEditMode()"><i class="pi pi-pencil"></i> Edit</button>
-        <button class="btn btn-orange" (click)="openConfirmDialog('SENT_BACK_TO_DEO')"><i class="pi pi-replay"></i> Send Back to DEO</button>
-        <button class="btn btn-green" (click)="openConfirmDialog('APPROVE')">Approve</button>
+        <button class="btn btn-orange" (click)="openConfirmDialog('SENT_BACK_TO_DEO')"><i class="pi pi-replay"></i> Reject (Send Back to DEO)</button>
+        @if (draftType === 'NOT_A_COMPLAINT') {
+          <button class="btn btn-green" (click)="openConfirmDialog('NOT_A_COMPLAINT')"><i class="pi pi-check"></i> Approve (Close - Not a Complaint)</button>
+        } @else if (draftType === 'SENT_TO_OTHER_DEPT') {
+          <button class="btn btn-green" (click)="openConfirmDialog('APPROVE_SENT_TO_OTHER_DEPT')"><i class="pi pi-send"></i> Approve (Send to Other Entity)</button>
+        } @else if (draftType === 'VERNACULAR') {
+          <button class="btn btn-green" (click)="openConfirmDialog('APPROVE_VERNACULAR')"><i class="pi pi-globe"></i> Approve (Send to Language Office)</button>
+        } @else {
+          <button class="btn btn-green" (click)="openConfirmDialog('APPROVE')"><i class="pi pi-check"></i> Approve (New Complaint)</button>
+        }
         <button class="btn-more"><i class="pi pi-ellipsis-v"></i></button>
       </div>
     </div>
@@ -326,13 +343,31 @@
               </button>
             </div>
 
+            @if (reviewerDecision === 'APPROVE_SENT_TO_OTHER_DEPT') {
+              <div class="field-item" style="margin-bottom: 12px;">
+                <label class="confirm-label">Target Department/Entity</label>
+                <input type="text" [(ngModel)]="targetOtherEntity" placeholder="Enter target entity" style="width: 100%; padding: 8px; border: 1px solid #e2e8f0; border-radius: 4px;" />
+              </div>
+            }
+            @if (reviewerDecision === 'APPROVE_VERNACULAR') {
+              <div class="field-item" style="margin-bottom: 12px;">
+                <label class="confirm-label">Mapped Language Office</label>
+                <span style="display:block; padding: 8px; background: #f1f5f9; border-radius: 4px; font-weight: 600;">{{ vernacularTargetOffice || 'Default: CRPC-DEL' }}</span>
+              </div>
+            }
             <div class="confirm-status-change">
               <label class="confirm-label">Expected Status Change <i class="pi pi-info-circle"></i></label>
               <div class="status-flow">
                 <span class="status-pill current"><i class="pi pi-pencil"></i> Sent to Reviewer</span>
                 <span class="status-arrow"><i class="pi pi-arrow-right"></i></span>
                 @if (reviewerDecision === 'APPROVE') {
-                  <span class="status-pill next"><i class="pi pi-pencil"></i> Routed to {{ targetRegionalOffice || 'RBIO' }}</span>
+                  <span class="status-pill next"><i class="pi pi-pencil"></i> Routed to {{ targetRegionalOffice || 'CEPC/RBIOS Office' }}</span>
+                } @else if (reviewerDecision === 'NOT_A_COMPLAINT') {
+                  <span class="status-pill next"><i class="pi pi-pencil"></i> Closed (Workflow Ends)</span>
+                } @else if (reviewerDecision === 'APPROVE_SENT_TO_OTHER_DEPT') {
+                  <span class="status-pill next"><i class="pi pi-pencil"></i> Sent to {{ targetOtherEntity || 'Other Entity' }}</span>
+                } @else if (reviewerDecision === 'APPROVE_VERNACULAR') {
+                  <span class="status-pill next"><i class="pi pi-pencil"></i> Sent to {{ vernacularTargetOffice || 'Language Office' }}</span>
                 } @else {
                   <span class="status-pill next"><i class="pi pi-pencil"></i> Sent Back to DEO</span>
                 }

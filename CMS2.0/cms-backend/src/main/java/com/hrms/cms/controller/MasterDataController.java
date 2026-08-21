@@ -1,7 +1,9 @@
 package com.hrms.cms.controller;
 
+import com.hrms.cms.entity.AccountTypeMaster;
 import com.hrms.cms.entity.CategoryMaster;
 import com.hrms.cms.entity.DepartmentRoutingMaster;
+import com.hrms.cms.repository.AccountTypeMasterRepository;
 import com.hrms.cms.repository.CategoryMasterRepository;
 import com.hrms.cms.repository.DepartmentRoutingMasterRepository;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +21,7 @@ public class MasterDataController {
 
     private final CategoryMasterRepository categoryRepo;
     private final DepartmentRoutingMasterRepository routingRepo;
+    private final AccountTypeMasterRepository accountTypeRepo;
 
     // ─── Category Master ───
     @GetMapping("/categories")
@@ -99,6 +102,12 @@ public class MasterDataController {
         existing.setActive(false);
         routingRepo.save(existing);
         return ResponseEntity.noContent().build();
+    }
+
+    // ─── Account Types ───
+    @GetMapping("/account-types")
+    public ResponseEntity<List<AccountTypeMaster>> getAccountTypes() {
+        return ResponseEntity.ok(accountTypeRepo.findByActiveTrueOrderBySortOrderAsc());
     }
 
     // ─── Cancelled RE Auto-Flag lookup ───

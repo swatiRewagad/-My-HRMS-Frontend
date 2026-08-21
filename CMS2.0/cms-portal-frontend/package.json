@@ -22,6 +22,7 @@
     "@angular/platform-browser": "21.2.8",
     "@angular/router": "21.2.8",
     "@primeng/themes": "^21.0.4",
+    "ag-grid-community": "^32.3.9",
     "chart.js": "^4.5.1",
     "html2canvas": "^1.4.1",
     "jspdf": "^4.2.1",
@@ -30,6 +31,7 @@
     "primeng": "^21.1.6",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",
+    "xlsx": "^0.18.5",
     "zone.js": "^0.16.1"
   },
   "devDependencies": {

@@ -73,6 +73,59 @@ public class CrpcWorkflowController {
         return ResponseEntity.ok(workflowService.sendBack(draftId, jwt.getSubject(), remarks));
     }
 
+    @PostMapping("/approve-not-a-complaint")
+    @PreAuthorize("hasAnyRole('REVIEWER', 'CRPC_REVIEWER', 'CRPC_HEAD')")
+    public ResponseEntity<EmailDraft> approveNotAComplaint(
+            @RequestParam String draftId,
+            @RequestParam(required = false) String remarks,
+            @AuthenticationPrincipal Jwt jwt) {
+        return ResponseEntity.ok(workflowService.approveNotAComplaint(draftId, jwt.getSubject(), remarks));
+    }
+
+    @PostMapping("/send-to-other-dept-for-approval")
+    @PreAuthorize("hasAnyRole('DEO', 'CRPC_DEO')")
+    public ResponseEntity<EmailDraft> sendToOtherDeptForApproval(
+            @RequestParam String draftId,
+            @RequestParam String targetEntity,
+            @RequestParam(required = false) String remarks,
+            @AuthenticationPrincipal Jwt jwt) {
+        return ResponseEntity.ok(workflowService.sendToOtherDeptForApproval(draftId, jwt.getSubject(), targetEntity, remarks));
+    }
+
+    @PostMapping("/vernacular-for-approval")
+    @PreAuthorize("hasAnyRole('DEO', 'CRPC_DEO')")
+    public ResponseEntity<EmailDraft> sendVernacularForApproval(
+            @RequestParam String draftId,
+            @RequestParam String language,
+            @RequestParam(required = false) String remarks,
+            @AuthenticationPrincipal Jwt jwt) {
+        return ResponseEntity.ok(workflowService.sendVernacularForApproval(draftId, jwt.getSubject(), language, remarks));
+    }
+
+    @PostMapping("/approve-sent-to-other-dept")
+    @PreAuthorize("hasAnyRole('REVIEWER', 'CRPC_REVIEWER', 'CRPC_HEAD')")
+    public ResponseEntity<EmailDraft> approveSentToOtherDept(
+            @RequestParam String draftId,
+            @RequestParam String targetEntity,
+            @RequestParam(required = false) String remarks,
+            @AuthenticationPrincipal Jwt jwt) {
+        return ResponseEntity.ok(workflowService.approveSentToOtherDept(draftId, jwt.getSubject(), targetEntity, remarks));
+    }
+
+    @PostMapping("/approve-vernacular")
+    @PreAuthorize("hasAnyRole('REVIEWER', 'CRPC_REVIEWER', 'CRPC_HEAD')")
+    public ResponseEntity<EmailDraft> approveVernacular(
+            @RequestParam String draftId,
+            @RequestParam(required = false) String remarks,
+            @AuthenticationPrincipal Jwt jwt) {
+        return ResponseEntity.ok(workflowService.approveVernacular(draftId, jwt.getSubject(), remarks));
+    }
+
+    @GetMapping("/vernacular-office-map")
+    public ResponseEntity<Map<String, String>> getVernacularOfficeMap() {
+        return ResponseEntity.ok(workflowService.getVernacularLanguageOfficeMap());
+    }
+
     @PostMapping("/convert-to-complaint")
     @PreAuthorize("hasAnyRole('REVIEWER', 'CRPC_REVIEWER', 'CRPC_HEAD')")
     public ResponseEntity<Complaint> convertToComplaint(

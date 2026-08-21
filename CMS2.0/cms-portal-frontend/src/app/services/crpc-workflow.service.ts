@@ -22,6 +22,8 @@ export interface EmailDraft {
   convertedComplaintId: string;
   detectedLanguage: string;
   isVernacular: boolean;
+  targetEntity: string;
+  targetOffice: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -35,6 +37,18 @@ export class CrpcWorkflowService {
   sendForApproval(draftId: string, remarks?: string): Observable<EmailDraft> {
     return this.http.post<EmailDraft>(`${this.baseUrl}/send-for-approval`, null, {
       params: { draftId, ...(remarks ? { remarks } : {}) }
+    });
+  }
+
+  sendToOtherDeptForApproval(draftId: string, targetEntity: string, remarks?: string): Observable<EmailDraft> {
+    return this.http.post<EmailDraft>(`${this.baseUrl}/send-to-other-dept-for-approval`, null, {
+      params: { draftId, targetEntity, ...(remarks ? { remarks } : {}) }
+    });
+  }
+
+  sendVernacularForApproval(draftId: string, language: string, remarks?: string): Observable<EmailDraft> {
+    return this.http.post<EmailDraft>(`${this.baseUrl}/vernacular-for-approval`, null, {
+      params: { draftId, language, ...(remarks ? { remarks } : {}) }
     });
   }
 
@@ -54,6 +68,28 @@ export class CrpcWorkflowService {
     return this.http.post<EmailDraft>(`${this.baseUrl}/approve`, null, {
       params: { draftId, ...(remarks ? { remarks } : {}) }
     });
+  }
+
+  approveNotAComplaint(draftId: string, remarks?: string): Observable<EmailDraft> {
+    return this.http.post<EmailDraft>(`${this.baseUrl}/approve-not-a-complaint`, null, {
+      params: { draftId, ...(remarks ? { remarks } : {}) }
+    });
+  }
+
+  approveSentToOtherDept(draftId: string, targetEntity: string, remarks?: string): Observable<EmailDraft> {
+    return this.http.post<EmailDraft>(`${this.baseUrl}/approve-sent-to-other-dept`, null, {
+      params: { draftId, targetEntity, ...(remarks ? { remarks } : {}) }
+    });
+  }
+
+  approveVernacular(draftId: string, remarks?: string): Observable<EmailDraft> {
+    return this.http.post<EmailDraft>(`${this.baseUrl}/approve-vernacular`, null, {
+      params: { draftId, ...(remarks ? { remarks } : {}) }
+    });
+  }
+
+  getVernacularOfficeMap(): Observable<Record<string, string>> {
+    return this.http.get<Record<string, string>>(`${this.baseUrl}/vernacular-office-map`);
   }
 
   sendBack(draftId: string, remarks: string): Observable<EmailDraft> {

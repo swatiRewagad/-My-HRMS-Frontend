@@ -1,9 +1,17 @@
 <div class="sla-indicator" [class]="colorClass()">
   @if (isOverdue()) {
-    <span class="breached-badge">BREACHED</span>
+    <div class="breach-row">
+      <span class="breached-badge">BREACHED</span>
+      @if (showEscalationLevel && escalationLevel() > 0) {
+        <span class="escalation-badge" [attr.data-level]="escalationLevel()">{{ escalationLabel() }}</span>
+      }
+    </div>
   }
   <div class="progress-bar">
     <div class="progress-fill" [style.width.%]="progressPercent()"></div>
   </div>
   <span class="days-text">{{ daysText() }}</span>
+  @if (showEscalationLevel && isOverdue() && escalationText()) {
+    <span class="escalation-text" [attr.data-level]="escalationLevel()">{{ escalationText() }}</span>
+  }
 </div>

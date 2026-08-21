@@ -23,13 +23,36 @@ public class CrpcWorkflowService {
     private final ComplaintRepository complaintRepository;
     private final NotificationService notificationService;
     private final CommunicationTemplateService communicationTemplateService;
+    private final ComplaintRoutingService complaintRoutingService;
 
-    private static final Map<String, Set<String>> VALID_TRANSITIONS = Map.of(
-            "ASSIGNED", Set.of("SENT_FOR_APPROVAL", "NOT_A_COMPLAINT"),
-            "SENT_FOR_APPROVAL", Set.of("APPROVED", "SENT_BACK"),
-            "SENT_BACK", Set.of("SENT_FOR_APPROVAL", "NOT_A_COMPLAINT"),
-            "APPROVED", Set.of("NEW_COMPLAINT"),
-            "NOT_A_COMPLAINT", Set.of()
+    private static final Map<String, Set<String>> VALID_TRANSITIONS = Map.ofEntries(
+            Map.entry("ASSIGNED", Set.of("SENT_FOR_APPROVAL", "NOT_A_COMPLAINT", "SENT_TO_OTHER_DEPT_FOR_APPROVAL", "VERNACULAR_FOR_APPROVAL")),
+            Map.entry("SENT_FOR_APPROVAL", Set.of("APPROVED", "SENT_BACK", "CLOSED_NOT_A_COMPLAINT")),
+            Map.entry("SENT_TO_OTHER_DEPT_FOR_APPROVAL", Set.of("APPROVED_SENT_TO_OTHER_DEPT", "SENT_BACK")),
+            Map.entry("VERNACULAR_FOR_APPROVAL", Set.of("APPROVED_VERNACULAR", "SENT_BACK")),
+            Map.entry("SENT_BACK", Set.of("SENT_FOR_APPROVAL", "NOT_A_COMPLAINT", "SENT_TO_OTHER_DEPT_FOR_APPROVAL", "VERNACULAR_FOR_APPROVAL")),
+            Map.entry("APPROVED", Set.of("NEW_COMPLAINT")),
+            Map.entry("APPROVED_SENT_TO_OTHER_DEPT", Set.of()),
+            Map.entry("APPROVED_VERNACULAR", Set.of()),
+            Map.entry("CLOSED_NOT_A_COMPLAINT", Set.of()),
+            Map.entry("NOT_A_COMPLAINT", Set.of())
+    );
+
+    private static final Map<String, String> VERNACULAR_LANGUAGE_OFFICE_MAP = Map.ofEntries(
+            Map.entry("HINDI", "CRPC-DEL"),
+            Map.entry("MARATHI", "CRPC-MUM"),
+            Map.entry("TAMIL", "CRPC-CHE"),
+            Map.entry("TELUGU", "CRPC-HYD"),
+            Map.entry("KANNADA", "CRPC-BLR"),
+            Map.entry("BENGALI", "CRPC-KOL"),
+            Map.entry("GUJARATI", "CRPC-AHM"),
+            Map.entry("MALAYALAM", "CRPC-CHE"),
+            Map.entry("PUNJABI", "CRPC-CHD"),
+            Map.entry("ODIA", "CRPC-BHU"),
+            Map.entry("URDU", "CRPC-DEL"),
+            Map.entry("ASSAMESE", "CRPC-GUW"),
+            Map.entry("KONKANI", "CRPC-MUM"),
+            Map.entry("SANSKRIT", "CRPC-DEL")
     );
 
     private static final List<String> NOT_A_COMPLAINT_REASONS = List.of(
@@ -60,6 +83,56 @@ public class CrpcWorkflowService {
                     "ASSIGNMENT",
                     "New draft pending review",
                     "Draft " + draft.getDraftId() + " has been sent for your approval.",
+                    draft.getDraftId(),
+                    "DRAFT",
+                    "/crpc/reviewer/draft/" + draft.getDraftId()
+            );
+        }
+        return draft;
+    }
+
+    @Transactional
+    public EmailDraft sendToOtherDeptForApproval(String draftId, String deoUserId, String targetEntity, String deoRemarks) {
+        EmailDraft draft = getDraft(draftId);
+        validateTransition(draft.getStatus(), "SENT_TO_OTHER_DEPT_FOR_APPROVAL");
+        draft.setStatus("SENT_TO_OTHER_DEPT_FOR_APPROVAL");
+        draft.setProcessedBy(deoUserId);
+        draft.setDeoDecision("SENT_TO_OTHER_DEPT");
+        draft.setDeoRemarks(deoRemarks);
+        draft.setTargetEntity(targetEntity);
+        draft = draftRepository.save(draft);
+
+        if (draft.getReviewerAssignedTo() != null) {
+            notificationService.send(
+                    draft.getReviewerAssignedTo(),
+                    "ASSIGNMENT",
+                    "Draft pending review - Sent to Other Department",
+                    "Draft " + draft.getDraftId() + " marked for transfer to " + targetEntity + ". Awaiting approval.",
+                    draft.getDraftId(),
+                    "DRAFT",
+                    "/crpc/reviewer/draft/" + draft.getDraftId()
+            );
+        }
+        return draft;
+    }
+
+    @Transactional
+    public EmailDraft sendVernacularForApproval(String draftId, String deoUserId, String language, String deoRemarks) {
+        EmailDraft draft = getDraft(draftId);
+        validateTransition(draft.getStatus(), "VERNACULAR_FOR_APPROVAL");
+        draft.setStatus("VERNACULAR_FOR_APPROVAL");
+        draft.setProcessedBy(deoUserId);
+        draft.setDeoDecision("VERNACULAR");
+        draft.setDeoRemarks(deoRemarks);
+        draft.setDetectedLanguage(language);
+        draft = draftRepository.save(draft);
+
+        if (draft.getReviewerAssignedTo() != null) {
+            notificationService.send(
+                    draft.getReviewerAssignedTo(),
+                    "ASSIGNMENT",
+                    "Vernacular complaint pending review",
+                    "Draft " + draft.getDraftId() + " is a vernacular complaint (" + language + "). Awaiting approval.",
                     draft.getDraftId(),
                     "DRAFT",
                     "/crpc/reviewer/draft/" + draft.getDraftId()
@@ -128,6 +201,72 @@ public class CrpcWorkflowService {
                 "/crpc/deo/draft/" + draft.getDraftId()
         );
         return draft;
+    }
+
+    @Transactional
+    public EmailDraft approveNotAComplaint(String draftId, String reviewerUserId, String remarks) {
+        EmailDraft draft = getDraft(draftId);
+        validateTransition(draft.getStatus(), "CLOSED_NOT_A_COMPLAINT");
+        draft.setStatus("CLOSED_NOT_A_COMPLAINT");
+        draft.setReviewerDecision("CLOSED_NOT_A_COMPLAINT");
+        draft.setReviewerRemarks(remarks);
+        draft = draftRepository.save(draft);
+
+        log.info("Draft {} closed as Not a Complaint by reviewer {}", draftId, reviewerUserId);
+        return draft;
+    }
+
+    @Transactional
+    public EmailDraft approveSentToOtherDept(String draftId, String reviewerUserId, String targetEntity, String remarks) {
+        EmailDraft draft = getDraft(draftId);
+        validateTransition(draft.getStatus(), "APPROVED_SENT_TO_OTHER_DEPT");
+        draft.setStatus("APPROVED_SENT_TO_OTHER_DEPT");
+        draft.setReviewerDecision("APPROVED_SENT_TO_OTHER_DEPT");
+        draft.setReviewerRemarks(remarks);
+        draft.setTargetEntity(targetEntity);
+        draft = draftRepository.save(draft);
+
+        log.info("Draft {} approved and sent to other department/entity: {} by reviewer {}",
+                draftId, targetEntity, reviewerUserId);
+        return draft;
+    }
+
+    @Transactional
+    public EmailDraft approveVernacular(String draftId, String reviewerUserId, String remarks) {
+        EmailDraft draft = getDraft(draftId);
+        validateTransition(draft.getStatus(), "APPROVED_VERNACULAR");
+
+        String language = draft.getDetectedLanguage();
+        String targetOffice = resolveVernacularOffice(language);
+
+        draft.setStatus("APPROVED_VERNACULAR");
+        draft.setReviewerDecision("APPROVED_VERNACULAR");
+        draft.setReviewerRemarks(remarks);
+        draft.setTargetOffice(targetOffice);
+        draft = draftRepository.save(draft);
+
+        notificationService.send(
+                targetOffice,
+                "ASSIGNMENT",
+                "Vernacular complaint routed",
+                "Draft " + draft.getDraftId() + " (" + language + ") has been routed to " + targetOffice + " for processing.",
+                draft.getDraftId(),
+                "DRAFT",
+                "/crpc/deo/draft/" + draft.getDraftId()
+        );
+
+        log.info("Draft {} approved as vernacular ({}), routed to office {} by reviewer {}",
+                draftId, language, targetOffice, reviewerUserId);
+        return draft;
+    }
+
+    public String resolveVernacularOffice(String language) {
+        if (language == null || language.isBlank()) return "CRPC-DEL";
+        return VERNACULAR_LANGUAGE_OFFICE_MAP.getOrDefault(language.toUpperCase(), "CRPC-DEL");
+    }
+
+    public Map<String, String> getVernacularLanguageOfficeMap() {
+        return VERNACULAR_LANGUAGE_OFFICE_MAP;
     }
 
     @Transactional
