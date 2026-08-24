@@ -158,6 +158,150 @@ public class EmailDraft {
     @Column(columnDefinition = "TEXT")
     private String translatedBody;
 
+    // ─── Eligibility & Proposed Action ───
+    @Column(length = 50)
+    private String proposedComplaintType;
+
+    @Column(length = 200)
+    private String notComplaintReason;
+
+    @Column(columnDefinition = "TEXT")
+    private String eligibilityQuestionsJson;
+
+    // ─── Entity Details (expanded) ───
+    @Column(length = 100)
+    private String entityCategory;
+
+    @Column(length = 100)
+    private String entityTypeDetail;
+
+    @Column(length = 50)
+    private String entityBsrCode;
+
+    @Column(length = 10)
+    private String entityPincode;
+
+    @Column(length = 100)
+    private String entityCountry;
+
+    @Column(length = 100)
+    private String entityState;
+
+    @Column(length = 100)
+    private String entityDistrict;
+
+    @Column(length = 100)
+    private String entityCity;
+
+    @Column(length = 200)
+    private String entityBranchName;
+
+    @Column(length = 100)
+    private String entityBranchCategory;
+
+    @Column(length = 500)
+    private String entityAddress;
+
+    @Column(length = 200)
+    private String entityBranchCenterName;
+
+    @Column(length = 50)
+    private String cosmosCode;
+
+    @Column(length = 50)
+    private String assetSize;
+
+    private Boolean isDepositTaking;
+
+    private Boolean isAssetAbove100Cr;
+
+    private Boolean isLiquidated;
+
+    // ─── Complainant Extended Details ───
+    @Column(length = 200)
+    private String otherEntityName;
+
+    @Column(length = 30)
+    private String dateOfRegistrationWithRBI;
+
+    @Column(length = 100)
+    private String complaintCategory;
+
+    @Column(length = 100)
+    private String complaintSubCategory1;
+
+    @Column(length = 100)
+    private String complaintSubCategory2;
+
+    @Column(length = 30)
+    private String dateOfFilingComplaint;
+
+    @Column(length = 10)
+    private String complaintRegDateValid;
+
+    @Column(length = 10)
+    private String reminderSentByComplainant;
+
+    @Column(length = 50)
+    private String disputedAmountInvolved;
+
+    @Column(length = 30)
+    private String dateOfFilingForFinancial;
+
+    @Column(length = 50)
+    private String compensationSought;
+
+    @Column(length = 50)
+    private String loanDisposalAmount;
+
+    @Column(columnDefinition = "TEXT")
+    private String additionalComments;
+
+    @Column(length = 100)
+    private String crpcProposedAction;
+
+    @Column(length = 200)
+    private String vernacularLanguageDetail;
+
+    // ─── Legal & Case Details ───
+    @Column(length = 10)
+    private String legalCaseFiled;
+
+    @Column(length = 30)
+    private String legalDateOfFiling;
+
+    @Column(length = 10)
+    private String preEnquiryReceived;
+
+    // ─── Flags & Indicators ───
+    @Column(length = 10)
+    private String highPriorityComplaint;
+
+    @Column(length = 10)
+    private String isRegardingPension;
+
+    @Column(length = 10)
+    private String isAgainstBusinessCorrespondent;
+
+    @Column(length = 10)
+    private String isAtmCreditDebitCard;
+
+    @Column(length = 10)
+    private String schemeFlag;
+
+    @Column(length = 10)
+    private String isFreeMarkedComplaint;
+
+    // ─── Complaint Linkage ───
+    @Column(length = 100)
+    private String currentComplaintNumber;
+
+    @Column(length = 20)
+    private String receivedReplyWithin30Days;
+
+    // ─── Declaration ───
+    private Boolean declarationAccepted;
+
     private LocalDateTime receivedAt;
 
     private LocalDateTime createdAt;

@@ -204,7 +204,7 @@ export class ReviewerHomeComponent implements OnInit {
     const hours = (Date.now() - new Date(d.receivedAt || d.createdAt).getTime()) / 3600000;
     return {
       draftId: d.draftId || '',
-      complaintNumber: d.complaintNumber || d.draftId || '',
+      complaintNumber: d.convertedComplaintId || d.complaintNumber || d.draftId || '',
       complainantName: d.complainantName || '',
       fromEmailId: d.senderEmail || '',
       subject: d.subject || '',

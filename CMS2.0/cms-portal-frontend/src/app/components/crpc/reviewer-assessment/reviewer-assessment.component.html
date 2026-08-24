@@ -103,9 +103,12 @@
         </div>
       </div>
       <div class="meta-actions">
-        <button class="btn btn-save" (click)="saveDraft()"><i class="pi pi-save"></i> Save</button>
-        <button class="btn btn-outline" (click)="toggleEditMode()"><i class="pi pi-pencil"></i> Edit</button>
-        <button class="btn btn-orange" (click)="openConfirmDialog('SENT_BACK_TO_DEO')"><i class="pi pi-replay"></i> Reject (Send Back to DEO)</button>
+        @if (editMode()) {
+          <button class="btn btn-save" (click)="saveDraft()"><i class="pi pi-save"></i> Save</button>
+        } @else {
+          <button class="btn btn-save" (click)="toggleEditMode()"><i class="pi pi-pencil"></i> Edit</button>
+        }
+        <button class="btn btn-orange" (click)="openConfirmDialog('SENT_BACK_TO_DEO')"><i class="pi pi-replay"></i> Send Back to DEO</button>
         @if (draftType === 'NOT_A_COMPLAINT') {
           <button class="btn btn-green" (click)="openConfirmDialog('NOT_A_COMPLAINT')"><i class="pi pi-check"></i> Approve (Close - Not a Complaint)</button>
         } @else if (draftType === 'SENT_TO_OTHER_DEPT') {
@@ -113,7 +116,7 @@
         } @else if (draftType === 'VERNACULAR') {
           <button class="btn btn-green" (click)="openConfirmDialog('APPROVE_VERNACULAR')"><i class="pi pi-globe"></i> Approve (Send to Language Office)</button>
         } @else {
-          <button class="btn btn-green" (click)="openConfirmDialog('APPROVE')"><i class="pi pi-check"></i> Approve (New Complaint)</button>
+          <button class="btn btn-green" (click)="openConfirmDialog('APPROVE')"><i class="pi pi-check"></i> Approve</button>
         }
         <button class="btn-more"><i class="pi pi-ellipsis-v"></i></button>
       </div>
@@ -143,7 +146,12 @@
             <div class="section-card">
               <div class="section-header" (click)="sectionOpen.complaint = !sectionOpen.complaint">
                 <h3><i class="pi pi-file-edit"></i> Complaint</h3>
-                <button class="expand-btn"><i class="pi pi-expand"></i></button>
+                <div class="section-header-actions">
+                  @if (!editMode()) {
+                    <button class="btn-edit-inline" (click)="toggleEditMode(); $event.stopPropagation()" title="Edit"><i class="pi pi-pencil"></i> Edit</button>
+                  }
+                  <button class="expand-btn"><i class="pi pi-expand"></i></button>
+                </div>
               </div>
 
               <!-- Basic Details -->
@@ -204,29 +212,57 @@
                       <div class="field-item">
                         <label>Proposed Complaint Type</label>
                         @if (editMode()) {
-                          <select [(ngModel)]="deoDecision">
-                            <option value="">Select a Value</option>
-                            <option value="MAINTAINABLE">Maintainable</option>
-                            <option value="NON_MAINTAINABLE">Not a Complaint</option>
+                          <select [(ngModel)]="proposedComplaintType">
+                            <option value="NEW_COMPLAINT">New Complaint</option>
+                            <option value="NOT_A_COMPLAINT">Not a Complaint</option>
                           </select>
                         } @else {
-                          <span class="field-value">{{ deoDecision === 'MAINTAINABLE' ? 'Maintainable' : deoDecision === 'NON_MAINTAINABLE' ? 'Not a Complaint' : '—' }}</span>
+                          <span class="field-value">{{ proposedComplaintType === 'NEW_COMPLAINT' ? 'New Complaint' : proposedComplaintType === 'NOT_A_COMPLAINT' ? 'Not a Complaint' : '—' }}</span>
                         }
                       </div>
-                      <div class="field-item">
-                        <label>Reason for not a complaint</label>
-                        @if (editMode()) {
-                          <select [(ngModel)]="deoNonMaintainableReason">
-                            <option value="">Select a Value</option>
-                            <option value="TIME_BARRED">Time Barred</option>
-                            <option value="SUB_JUDICE">Sub-Judice</option>
-                            <option value="OUT_OF_JURISDICTION">Outside Jurisdiction</option>
-                          </select>
-                        } @else {
-                          <span class="field-value">{{ deoNonMaintainableReason || '—' }}</span>
-                        }
-                      </div>
+                      @if (proposedComplaintType === 'NOT_A_COMPLAINT') {
+                        <div class="field-item">
+                          <label>Reason for not a complaint</label>
+                          @if (editMode()) {
+                            <select [(ngModel)]="notComplaintReason">
+                              <option value="">Select Reason</option>
+                              <option value="Appeal">Appeal</option>
+                              <option value="Broadcast Message">Broadcast Message</option>
+                              <option value="Password Change">Password Change</option>
+                              <option value="Suggestion">Suggestion</option>
+                              <option value="Others">Others</option>
+                            </select>
+                          } @else {
+                            <span class="field-value">{{ notComplaintReason || '—' }}</span>
+                          }
+                        </div>
+                      } @else {
+                        <div class="field-item">
+                          <label>Entity Name</label>
+                          @if (editMode()) { <input type="text" [(ngModel)]="entityName" /> }
+                          @else { <span class="field-value">{{ entityName || '—' }}</span> }
+                        </div>
+                      }
                     </div>
+
+                    @if (proposedComplaintType === 'NEW_COMPLAINT') {
+                      <div class="eligibility-questions-list">
+                        @for (q of eligibilityQuestions; track q.key) {
+                          <div class="eligibility-q-row">
+                            <span class="eq-label">{{ q.label }}</span>
+                            @if (editMode()) {
+                              <select [(ngModel)]="q.answer" class="eq-select">
+                                <option value="">—</option>
+                                <option value="YES">Yes</option>
+                                <option value="NO">No</option>
+                              </select>
+                            } @else {
+                              <span class="eq-value" [class.yes]="q.answer === 'YES'" [class.no]="q.answer === 'NO'">{{ q.answer === 'YES' ? 'Yes' : q.answer === 'NO' ? 'No' : '—' }}</span>
+                            }
+                          </div>
+                        }
+                      </div>
+                    }
                   </div>
                 }
               </div>
@@ -247,7 +283,97 @@
                       </div>
                       <div class="field-item">
                         <label>Entity Type</label>
-                        <span class="field-value">{{ entityType || '—' }}</span>
+                        @if (editMode()) {
+                          <select [(ngModel)]="entityType">
+                            <option value="BANK">Bank</option>
+                            <option value="NBFC">NBFC</option>
+                            <option value="PAYMENT_SYSTEM">Payment System</option>
+                            <option value="CO-OPERATIVE">Co-operative</option>
+                          </select>
+                        } @else { <span class="field-value">{{ entityType || '—' }}</span> }
+                      </div>
+                      <div class="field-item">
+                        <label>Entity Category</label>
+                        @if (editMode()) {
+                          <select [(ngModel)]="entityCategory">
+                            <option value="">Select</option>
+                            <option value="Scheduled Commercial Bank">Scheduled Commercial Bank</option>
+                            <option value="Co-operative Bank">Co-operative Bank</option>
+                            <option value="NBFC">NBFC</option>
+                            <option value="Payment System Participant">Payment System Participant</option>
+                          </select>
+                        } @else { <span class="field-value">{{ entityCategory || '—' }}</span> }
+                      </div>
+                      <div class="field-item">
+                        <label>BSR Code</label>
+                        @if (editMode()) { <input type="text" [(ngModel)]="entityBsrCode" /> }
+                        @else { <span class="field-value">{{ entityBsrCode || '—' }}</span> }
+                      </div>
+                      <div class="field-item">
+                        <label>Pincode</label>
+                        @if (editMode()) { <input type="text" [ngModel]="entityPincode" (ngModelChange)="onEntityPincodeInput($event)" maxlength="6" /> }
+                        @else { <span class="field-value">{{ entityPincode || '—' }}</span> }
+                      </div>
+                      <div class="field-item">
+                        <label>Country</label>
+                        @if (editMode()) { <input type="text" [(ngModel)]="entityCountry" /> }
+                        @else { <span class="field-value">{{ entityCountry || '—' }}</span> }
+                      </div>
+                      <div class="field-item">
+                        <label>State</label>
+                        @if (editMode()) { <input type="text" [(ngModel)]="entityState" /> }
+                        @else { <span class="field-value">{{ entityState || '—' }}</span> }
+                      </div>
+                      <div class="field-item">
+                        <label>District</label>
+                        @if (editMode()) { <input type="text" [(ngModel)]="entityDistrict" /> }
+                        @else { <span class="field-value">{{ entityDistrict || '—' }}</span> }
+                      </div>
+                      <div class="field-item">
+                        <label>City</label>
+                        @if (editMode()) { <input type="text" [(ngModel)]="entityCity" /> }
+                        @else { <span class="field-value">{{ entityCity || '—' }}</span> }
+                      </div>
+                      <div class="field-item">
+                        <label>Branch Name</label>
+                        @if (editMode()) {
+                          @if (showBranchDropdown && pincodePostOffices.length > 1) {
+                            <select (change)="selectBranch(pincodePostOffices[$any($event.target).selectedIndex - 1])" class="eq-select">
+                              <option value="">-- Select Branch --</option>
+                              @for (branch of pincodePostOffices; track branch.Name) {
+                                <option [value]="branch.Name">{{ branch.Name }} ({{ branch.BranchType }})</option>
+                              }
+                            </select>
+                          } @else {
+                            <input type="text" [(ngModel)]="entityBranchName" />
+                          }
+                        }
+                        @else { <span class="field-value">{{ entityBranchName || '—' }}</span> }
+                      </div>
+                      <div class="field-item">
+                        <label>Branch Category</label>
+                        @if (editMode()) { <input type="text" [(ngModel)]="entityBranchCategory" /> }
+                        @else { <span class="field-value">{{ entityBranchCategory || '—' }}</span> }
+                      </div>
+                      <div class="field-item full-width">
+                        <label>Address</label>
+                        @if (editMode()) { <textarea [(ngModel)]="entityAddress" rows="2"></textarea> }
+                        @else { <span class="field-value">{{ entityAddress || '—' }}</span> }
+                      </div>
+                      <div class="field-item">
+                        <label>Branch Center Name</label>
+                        @if (editMode()) { <input type="text" [(ngModel)]="entityBranchCenterName" /> }
+                        @else { <span class="field-value">{{ entityBranchCenterName || '—' }}</span> }
+                      </div>
+                      <div class="field-item">
+                        <label>COSMOS Code</label>
+                        @if (editMode()) { <input type="text" [(ngModel)]="cosmosCode" /> }
+                        @else { <span class="field-value">{{ cosmosCode || '—' }}</span> }
+                      </div>
+                      <div class="field-item">
+                        <label>Asset Size</label>
+                        @if (editMode()) { <input type="text" [(ngModel)]="assetSize" /> }
+                        @else { <span class="field-value">{{ assetSize || '—' }}</span> }
                       </div>
                       <div class="field-item">
                         <label>Category</label>
@@ -259,7 +385,38 @@
                       </div>
                       <div class="field-item">
                         <label>Amount Involved</label>
-                        <span class="field-value">{{ amountInvolved ? '₹' + amountInvolved : '—' }}</span>
+                        @if (editMode()) { <input type="number" [(ngModel)]="amountInvolved" /> }
+                        @else { <span class="field-value">{{ amountInvolved ? '₹' + amountInvolved : '—' }}</span> }
+                      </div>
+                      <div class="field-item">
+                        <label>Whether Entity is Deposit Taking</label>
+                        @if (editMode()) {
+                          <select [(ngModel)]="isDepositTaking">
+                            <option value="">Select</option>
+                            <option value="YES">Yes</option>
+                            <option value="NO">No</option>
+                          </select>
+                        } @else { <span class="field-value">{{ isDepositTaking === 'YES' ? 'Yes' : isDepositTaking === 'NO' ? 'No' : '—' }}</span> }
+                      </div>
+                      <div class="field-item">
+                        <label>Whether Asset Size is Above 100 Cr</label>
+                        @if (editMode()) {
+                          <select [(ngModel)]="isAssetAbove100Cr">
+                            <option value="">Select</option>
+                            <option value="YES">Yes</option>
+                            <option value="NO">No</option>
+                          </select>
+                        } @else { <span class="field-value">{{ isAssetAbove100Cr === 'YES' ? 'Yes' : isAssetAbove100Cr === 'NO' ? 'No' : '—' }}</span> }
+                      </div>
+                      <div class="field-item">
+                        <label>Whether Entity is Liquidated</label>
+                        @if (editMode()) {
+                          <select [(ngModel)]="isLiquidated">
+                            <option value="">Select</option>
+                            <option value="YES">Yes</option>
+                            <option value="NO">No</option>
+                          </select>
+                        } @else { <span class="field-value">{{ isLiquidated === 'YES' ? 'Yes' : isLiquidated === 'NO' ? 'No' : '—' }}</span> }
                       </div>
                     </div>
                   </div>
@@ -274,13 +431,298 @@
                 </div>
                 @if (sectionOpen.complainant) {
                   <div class="sub-section-body">
+
+                    <!-- Basic Identification -->
+                    <h5 class="reviewer-sub-title">Basic Identification</h5>
                     <div class="field-grid">
-                      <div class="field-item"><label>Name</label><span class="field-value">{{ complainantName || '—' }}</span></div>
-                      <div class="field-item"><label>Phone</label><span class="field-value">{{ complainantPhone || '—' }}</span></div>
-                      <div class="field-item"><label>State</label><span class="field-value">{{ complainantState || '—' }}</span></div>
-                      <div class="field-item"><label>District</label><span class="field-value">{{ complainantDistrict || '—' }}</span></div>
-                      <div class="field-item full-width"><label>Address</label><span class="field-value">{{ complainantAddress || '—' }}</span></div>
+                      <div class="field-item">
+                        <label>Email ID</label>
+                        @if (editMode()) { <input type="email" [(ngModel)]="complainantEmail" /> }
+                        @else { <span class="field-value">{{ complainantEmail || '—' }}</span> }
+                      </div>
+                      <div class="field-item">
+                        <label>Entity Name</label>
+                        @if (editMode()) { <input type="text" [(ngModel)]="entityName" /> }
+                        @else { <span class="field-value">{{ entityName || '—' }}</span> }
+                      </div>
+                      <div class="field-item">
+                        <label>Other Entity Name</label>
+                        @if (editMode()) { <input type="text" [(ngModel)]="otherEntityName" /> }
+                        @else { <span class="field-value">{{ otherEntityName || '—' }}</span> }
+                      </div>
+                      <div class="field-item">
+                        <label>Date of Registration with RBI</label>
+                        @if (editMode()) { <input type="date" [(ngModel)]="dateOfRegistrationWithRBI" /> }
+                        @else { <span class="field-value">{{ dateOfRegistrationWithRBI || '—' }}</span> }
+                      </div>
                     </div>
+
+                    <hr class="reviewer-divider" />
+
+                    <!-- Complaint Classification -->
+                    <h5 class="reviewer-sub-title">Complaint Classification</h5>
+                    <div class="field-grid">
+                      <div class="field-item">
+                        <label>Complaint Category</label>
+                        @if (editMode()) { <input type="text" [(ngModel)]="complaintCategory" /> }
+                        @else { <span class="field-value">{{ complaintCategory || '—' }}</span> }
+                      </div>
+                      <div class="field-item">
+                        <label>Complaint Sub-Category 1</label>
+                        @if (editMode()) { <input type="text" [(ngModel)]="complaintSubCategory1" /> }
+                        @else { <span class="field-value">{{ complaintSubCategory1 || '—' }}</span> }
+                      </div>
+                      <div class="field-item">
+                        <label>Complaint Sub-Category 2</label>
+                        @if (editMode()) { <input type="text" [(ngModel)]="complaintSubCategory2" /> }
+                        @else { <span class="field-value">{{ complaintSubCategory2 || '—' }}</span> }
+                      </div>
+                      <div class="field-item">
+                        <label>Date of Filing the Complaint</label>
+                        @if (editMode()) { <input type="date" [(ngModel)]="dateOfFilingComplaint" /> }
+                        @else { <span class="field-value">{{ dateOfFilingComplaint || '—' }}</span> }
+                      </div>
+                      <div class="field-item full-width">
+                        <label>Complaint Registration Date Valid</label>
+                        @if (editMode()) {
+                          <select [(ngModel)]="complaintRegDateValid">
+                            <option value="">Select</option>
+                            <option value="YES">Yes</option>
+                            <option value="NO">No</option>
+                          </select>
+                        } @else { <span class="field-value">{{ complaintRegDateValid === 'YES' ? 'Yes' : complaintRegDateValid === 'NO' ? 'No' : '—' }}</span> }
+                      </div>
+                    </div>
+
+                    <hr class="reviewer-divider" />
+
+                    <!-- Reminder & Financial Details -->
+                    <h5 class="reviewer-sub-title">Reminder & Financial Details</h5>
+                    <div class="field-grid">
+                      <div class="field-item">
+                        <label>Whether any Reminder was sent by the Complainant</label>
+                        @if (editMode()) {
+                          <select [(ngModel)]="reminderSentByComplainant">
+                            <option value="">Select</option>
+                            <option value="YES">Yes</option>
+                            <option value="NO">No</option>
+                          </select>
+                        } @else { <span class="field-value">{{ reminderSentByComplainant === 'YES' ? 'Yes' : reminderSentByComplainant === 'NO' ? 'No' : '—' }}</span> }
+                      </div>
+                      <div class="field-item">
+                        <label>Disputed Amount Involved</label>
+                        @if (editMode()) { <input type="number" [(ngModel)]="disputedAmountInvolved" /> }
+                        @else { <span class="field-value">{{ disputedAmountInvolved ? '₹ ' + disputedAmountInvolved : '—' }}</span> }
+                      </div>
+                      <div class="field-item">
+                        <label>Date of Filing for Financial</label>
+                        @if (editMode()) { <input type="date" [(ngModel)]="dateOfFilingForFinancial" /> }
+                        @else { <span class="field-value">{{ dateOfFilingForFinancial || '—' }}</span> }
+                      </div>
+                      <div class="field-item">
+                        <label>Compensation Sought for Expenses Incurred</label>
+                        @if (editMode()) {
+                          <select [(ngModel)]="compensationSought">
+                            <option value="">Select</option>
+                            <option value="YES">Yes</option>
+                            <option value="NO">No</option>
+                          </select>
+                        } @else { <span class="field-value">{{ compensationSought === 'YES' ? 'Yes' : compensationSought === 'NO' ? 'No' : '—' }}</span> }
+                      </div>
+                      <div class="field-item full-width">
+                        <label>Loan / Disposal Account</label>
+                        @if (editMode()) { <input type="number" [(ngModel)]="loanDisposalAmount" /> }
+                        @else { <span class="field-value">{{ loanDisposalAmount ? '₹ ' + loanDisposalAmount : '—' }}</span> }
+                      </div>
+                    </div>
+
+                    <hr class="reviewer-divider" />
+
+                    <!-- Additional Information -->
+                    <h5 class="reviewer-sub-title">Additional Information</h5>
+                    <div class="field-grid">
+                      <div class="field-item full-width">
+                        <label>Additional Comments</label>
+                        @if (editMode()) { <textarea [(ngModel)]="additionalComments" rows="2"></textarea> }
+                        @else { <span class="field-value">{{ additionalComments || '—' }}</span> }
+                      </div>
+                      <div class="field-item">
+                        <label>CRPC Proposed Action</label>
+                        @if (editMode()) {
+                          <select [(ngModel)]="crpcProposedAction">
+                            <option value="">Select</option>
+                            <option value="Maintainable">Maintainable</option>
+                            <option value="Non-Maintainable">Non-Maintainable</option>
+                            <option value="Refer to Other Dept">Refer to Other Dept</option>
+                          </select>
+                        } @else { <span class="field-value">{{ crpcProposedAction || '—' }}</span> }
+                      </div>
+                      <div class="field-item">
+                        <label>Vernacular Language</label>
+                        @if (editMode()) { <input type="text" [(ngModel)]="vernacularLanguage" /> }
+                        @else { <span class="field-value">{{ vernacularLanguage || '—' }}</span> }
+                      </div>
+                    </div>
+
+                    <hr class="reviewer-divider" />
+
+                    <!-- Legal & Case Details -->
+                    <h5 class="reviewer-sub-title">Legal & Case Details</h5>
+                    <div class="field-grid">
+                      <div class="field-item">
+                        <label>Whether Legal Case is Filed</label>
+                        @if (editMode()) {
+                          <select [(ngModel)]="legalCaseFiled">
+                            <option value="">Select</option>
+                            <option value="YES">Yes</option>
+                            <option value="NO">No</option>
+                          </select>
+                        } @else { <span class="field-value">{{ legalCaseFiled === 'YES' ? 'Yes' : legalCaseFiled === 'NO' ? 'No' : '—' }}</span> }
+                      </div>
+                      <div class="field-item">
+                        <label>Date of Filing</label>
+                        @if (editMode()) { <input type="date" [(ngModel)]="legalDateOfFiling" /> }
+                        @else { <span class="field-value">{{ legalDateOfFiling || '—' }}</span> }
+                      </div>
+                      <div class="field-item">
+                        <label>Pre Enquiry Received</label>
+                        @if (editMode()) {
+                          <select [(ngModel)]="preEnquiryReceived">
+                            <option value="">Select</option>
+                            <option value="YES">Yes</option>
+                            <option value="NO">No</option>
+                          </select>
+                        } @else { <span class="field-value">{{ preEnquiryReceived === 'YES' ? 'Yes' : preEnquiryReceived === 'NO' ? 'No' : '—' }}</span> }
+                      </div>
+                      <div class="field-item">
+                        <label>High Priority Complaint</label>
+                        @if (editMode()) {
+                          <select [(ngModel)]="highPriorityComplaint">
+                            <option value="">Select</option>
+                            <option value="YES">Yes</option>
+                            <option value="NO">No</option>
+                          </select>
+                        } @else { <span class="field-value">{{ highPriorityComplaint === 'YES' ? 'Yes' : highPriorityComplaint === 'NO' ? 'No' : '—' }}</span> }
+                      </div>
+                    </div>
+
+                    <hr class="reviewer-divider" />
+
+                    <!-- Flags & Indicators -->
+                    <h5 class="reviewer-sub-title">Flags & Indicators</h5>
+                    <div class="field-grid">
+                      <div class="field-item">
+                        <label>Is Complaint Regarding Pension</label>
+                        @if (editMode()) {
+                          <select [(ngModel)]="isRegardingPension">
+                            <option value="">Select</option>
+                            <option value="YES">Yes</option>
+                            <option value="NO">No</option>
+                          </select>
+                        } @else { <span class="field-value">{{ isRegardingPension === 'YES' ? 'Yes' : isRegardingPension === 'NO' ? 'No' : '—' }}</span> }
+                      </div>
+                      <div class="field-item">
+                        <label>Is Complaint Against a Business Correspondent</label>
+                        @if (editMode()) {
+                          <select [(ngModel)]="isAgainstBusinessCorrespondent">
+                            <option value="">Select</option>
+                            <option value="YES">Yes</option>
+                            <option value="NO">No</option>
+                          </select>
+                        } @else { <span class="field-value">{{ isAgainstBusinessCorrespondent === 'YES' ? 'Yes' : isAgainstBusinessCorrespondent === 'NO' ? 'No' : '—' }}</span> }
+                      </div>
+                      <div class="field-item">
+                        <label>ATM / Credit / Debit Card</label>
+                        @if (editMode()) {
+                          <select [(ngModel)]="isAtmCreditDebitCard">
+                            <option value="">Select</option>
+                            <option value="YES">Yes</option>
+                            <option value="NO">No</option>
+                          </select>
+                        } @else { <span class="field-value">{{ isAtmCreditDebitCard === 'YES' ? 'Yes' : isAtmCreditDebitCard === 'NO' ? 'No' : '—' }}</span> }
+                      </div>
+                      <div class="field-item">
+                        <label>Scheme Flag</label>
+                        @if (editMode()) { <input type="text" [(ngModel)]="schemeFlag" /> }
+                        @else { <span class="field-value">{{ schemeFlag || '—' }}</span> }
+                      </div>
+                    </div>
+
+                    <hr class="reviewer-divider" />
+
+                    <!-- Complaint Linkage -->
+                    <h5 class="reviewer-sub-title">Complaint Linkage</h5>
+                    <div class="field-grid">
+                      <div class="field-item">
+                        <label>Is Complaint Pertaining to a Free Marked Complaint</label>
+                        @if (editMode()) {
+                          <select [(ngModel)]="isFreeMarkedComplaint">
+                            <option value="">Select</option>
+                            <option value="YES">Yes</option>
+                            <option value="NO">No</option>
+                          </select>
+                        } @else { <span class="field-value">{{ isFreeMarkedComplaint === 'YES' ? 'Yes' : isFreeMarkedComplaint === 'NO' ? 'No' : '—' }}</span> }
+                      </div>
+                      <div class="field-item">
+                        <label>Current Complaint Number</label>
+                        @if (editMode()) { <input type="text" [(ngModel)]="currentComplaintNumber" /> }
+                        @else { <span class="field-value">{{ currentComplaintNumber || '—' }}</span> }
+                      </div>
+                      <div class="field-item full-width">
+                        <label>Received any Reply within 30 Days</label>
+                        @if (editMode()) {
+                          <select [(ngModel)]="receivedReplyWithin30Days">
+                            <option value="">Select</option>
+                            <option value="YES">Yes</option>
+                            <option value="NO">No</option>
+                            <option value="NOT_APPLICABLE">Not Applicable</option>
+                          </select>
+                        } @else { <span class="field-value">{{ receivedReplyWithin30Days === 'YES' ? 'Yes' : receivedReplyWithin30Days === 'NO' ? 'No' : receivedReplyWithin30Days === 'NOT_APPLICABLE' ? 'Not Applicable' : '—' }}</span> }
+                      </div>
+                    </div>
+
+                    <hr class="reviewer-divider" />
+
+                    <!-- Address (editable) -->
+                    <h5 class="reviewer-sub-title">Contact & Address</h5>
+                    <div class="field-grid">
+                      <div class="field-item"><label>Phone</label><span class="field-value">{{ complainantPhone || '—' }}</span></div>
+                      <div class="field-item">
+                        <label>State</label>
+                        @if (editMode()) {
+                          <select [ngModel]="complainantState" (ngModelChange)="onStateChange($event)">
+                            <option value="">Select State</option>
+                            @for (s of statesList(); track s) {
+                              <option [value]="s">{{ s }}</option>
+                            }
+                          </select>
+                        } @else {
+                          <span class="field-value">{{ complainantState || '—' }}</span>
+                        }
+                      </div>
+                      <div class="field-item">
+                        <label>District</label>
+                        @if (editMode()) {
+                          <select [(ngModel)]="complainantDistrict">
+                            <option value="">Select District</option>
+                            @for (d of districts(); track d) {
+                              <option [value]="d">{{ d }}</option>
+                            }
+                          </select>
+                        } @else {
+                          <span class="field-value">{{ complainantDistrict || '—' }}</span>
+                        }
+                      </div>
+                      <div class="field-item full-width">
+                        <label>Address</label>
+                        @if (editMode()) {
+                          <textarea [(ngModel)]="complainantAddress" rows="2" placeholder="Complete address"></textarea>
+                        } @else {
+                          <span class="field-value">{{ complainantAddress || '—' }}</span>
+                        }
+                      </div>
+                    </div>
+
                   </div>
                 }
               </div>
@@ -343,6 +785,37 @@
               </button>
             </div>
 
+            @if (reviewerDecision === 'SENT_BACK_TO_DEO') {
+              <div style="margin: 16px 0;">
+                <label class="confirm-label">Assignment Mode</label>
+                <div style="display: flex; gap: 16px; margin-top: 8px;">
+                  <label class="radio-option" style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                    <input type="radio" name="sentBackMode" value="AUTOMATIC" [(ngModel)]="sentBackAssignmentMode" (ngModelChange)="sentBackToDeoId = originalDeoId" />
+                    <span style="font-size: 13px; font-weight: 500;">Automatic</span>
+                  </label>
+                  <label class="radio-option" style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                    <input type="radio" name="sentBackMode" value="MANUAL" [(ngModel)]="sentBackAssignmentMode" />
+                    <span style="font-size: 13px; font-weight: 500;">Manual</span>
+                  </label>
+                </div>
+                @if (sentBackAssignmentMode === 'AUTOMATIC') {
+                  <div style="margin-top: 10px; padding: 10px; background: #f1f5f9; border-radius: 8px; font-size: 13px;">
+                    <span style="color: #64748b;">Assigned to original DEO:</span>
+                    <strong style="margin-left: 6px;">{{ originalDeoId || 'Unknown' }}</strong>
+                  </div>
+                } @else {
+                  <div style="margin-top: 10px;">
+                    <label class="confirm-label">Select DEO</label>
+                    <select [(ngModel)]="sentBackToDeoId" style="width: 100%; padding: 8px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px;">
+                      <option value="">Select DEO</option>
+                      @for (deo of activeDeos(); track deo.id) {
+                        <option [value]="deo.id">{{ deo.name }}</option>
+                      }
+                    </select>
+                  </div>
+                }
+              </div>
+            }
             @if (reviewerDecision === 'APPROVE_SENT_TO_OTHER_DEPT') {
               <div class="field-item" style="margin-bottom: 12px;">
                 <label class="confirm-label">Target Department/Entity</label>

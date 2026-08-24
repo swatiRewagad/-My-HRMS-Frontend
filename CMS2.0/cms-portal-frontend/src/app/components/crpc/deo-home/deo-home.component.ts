@@ -315,7 +315,7 @@ export class DeoHomeComponent implements OnInit {
     return {
       draftId: d.draftId,
       displayId: d.displayId || ('C' + String(index).padStart(3, '0')),
-      complaintNumber: d.parentComplaintId || '',
+      complaintNumber: d.convertedComplaintId || d.parentComplaintId || '',
       complainantName: d.complainantName || '',
       fromEmailId: d.senderEmail || '',
       subject: d.subject || '',

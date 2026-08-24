@@ -52,7 +52,7 @@
     <!-- LEFT MAIN AREA -->
     <div class="left-main-area">
       <!-- ═══ META ROW (KPI) ═══ -->
-      <div class="meta-row">
+      <div class="meta-row no-gold-border">
         <button class="back-arrow" (click)="goBack()">
           <i class="pi pi-arrow-left"></i>
         </button>
@@ -94,10 +94,15 @@
           </div>
         </div>
         <div class="meta-actions">
-          <button class="btn btn-save" (click)="saveDraft()" [disabled]="saving()">
-            @if (saving()) { <i class="pi pi-spin pi-spinner"></i> } @else { <i class="pi pi-save"></i> }
-            Save
-          </button>
+          @if (draftSaved() && !editMode()) {
+            <button class="btn btn-outline" (click)="enterEditMode()"><i class="pi pi-pencil"></i> Edit</button>
+            <button class="btn btn-green" (click)="showAssignmentDialog.set(true)"><i class="pi pi-send"></i> Send for Approval</button>
+          } @else {
+            <button class="btn btn-save" (click)="saveDraft()" [disabled]="saving()">
+              @if (saving()) { <i class="pi pi-spin pi-spinner"></i> } @else { <i class="pi pi-save"></i> }
+              Save
+            </button>
+          }
         </div>
       </div>
 
@@ -236,23 +241,87 @@
                 <div class="section-body">
                   <div class="field-grid-2">
                     <div class="field-item">
-                      <label>Category</label>
-                      <select [(ngModel)]="category">
-                        <option value="">Select Category</option>
-                        @for (cat of categories; track cat) {
-                          <option [value]="cat">{{ cat }}</option>
+                      <label>Proposed Complaint Type</label>
+                      <select [(ngModel)]="proposedComplaintType">
+                        <option value="NEW_COMPLAINT">New Complaint</option>
+                        <option value="NOT_A_COMPLAINT">Not a Complaint</option>
+                      </select>
+                    </div>
+                    @if (proposedComplaintType === 'NOT_A_COMPLAINT') {
+                      <div class="field-item">
+                        <label>Reason for not a complaint</label>
+                        <select [(ngModel)]="notComplaintReason">
+                          <option value="">Select a Value</option>
+                          <option value="DUPLICATE">Duplicate</option>
+                          <option value="SPAM">Spam / Junk</option>
+                          <option value="NOT_AGAINST_RE">Not against a Regulated Entity</option>
+                          <option value="OUT_OF_JURISDICTION">Out of Jurisdiction</option>
+                          <option value="INCOMPLETE_INFO">Incomplete Information</option>
+                          <option value="OTHER">Other</option>
+                        </select>
+                      </div>
+                    } @else {
+                      <div class="field-item entity-search-group">
+                        <label>Entity Name</label>
+                        <div class="entity-search-wrapper has-icon">
+                          <input type="text"
+                            [ngModel]="entitySearchText || entityName"
+                            (ngModelChange)="onEntitySearchInput($event)"
+                            (focus)="onEntitySearchInput(entitySearchText || entityName)"
+                            (blur)="onEntityBlur()"
+                            placeholder="Select a Value"
+                            autocomplete="off" />
+                          @if (entitySearchLoading()) {
+                            <span class="entity-spinner"><i class="pi pi-spin pi-spinner"></i></span>
+                          } @else {
+                            <i class="pi pi-search entity-search-icon"></i>
+                          }
+                        </div>
+                        @if (showEntityDropdown() && entitySearchResults().length > 0) {
+                          <ul class="entity-dropdown">
+                            @for (entity of entitySearchResults(); track entity.id) {
+                              <li (mousedown)="selectEntity(entity)">
+                                <span class="entity-name">{{ entity.name }}</span>
+                                <span class="entity-dept" [class.cepc]="entity.department === 'CEPC'">{{ entity.department }}</span>
+                              </li>
+                            }
+                          </ul>
                         }
-                      </select>
-                    </div>
-                    <div class="field-item">
-                      <label>Complaint/Suggestion Type</label>
-                      <select [(ngModel)]="complaintType">
-                        <option value="COMPLAINT">Complaint</option>
-                        <option value="SUGGESTION">Suggestion</option>
-                        <option value="QUERY">Query</option>
-                      </select>
-                    </div>
+                      </div>
+                    }
                   </div>
+
+                  @if (proposedComplaintType === 'NEW_COMPLAINT') {
+                    <div class="eligibility-questions">
+                      <div class="mark-all-toggle">
+                        <label class="toggle-switch">
+                          <input type="checkbox" [checked]="markAllEligible" (change)="toggleMarkAllEligible()" />
+                          <span class="toggle-slider"></span>
+                        </label>
+                        <span class="mark-all-label">Mark all as eligible</span>
+                      </div>
+                      @for (q of eligibilityQuestions; track q.key; let i = $index) {
+                        <div class="eligibility-row">
+                          <span class="eligibility-question">
+                            {{ q.label }}
+                            @if (i >= 2 && areRemainingQuestionsOptional()) {
+                              <span class="optional-tag">(Optional)</span>
+                            }
+                          </span>
+                          <div class="eligibility-options">
+                            <label class="radio-option">
+                              <input type="radio" [name]="q.key" value="YES" [(ngModel)]="q.answer" />
+                              <span>Yes</span>
+                            </label>
+                            <label class="radio-option">
+                              <input type="radio" [name]="q.key" value="NO" [(ngModel)]="q.answer" />
+                              <span>No</span>
+                            </label>
+                          </div>
+                        </div>
+                      }
+                    </div>
+                  }
                 </div>
               }
             </div>
@@ -265,40 +334,162 @@
               </div>
               @if (!collapsedSections['entity']) {
                 <div class="section-body">
+                  <!-- Row 1: Entity Name (read-only after selection) + Module Name -->
                   <div class="field-grid-2">
-                    <div class="field-item entity-search-group">
+                    <div class="field-item">
                       <label>Entity Name</label>
-                      <div class="entity-search-wrapper">
-                        <input type="text"
-                          [ngModel]="entitySearchText || entityName"
-                          (ngModelChange)="onEntitySearchInput($event)"
-                          (focus)="onEntitySearchInput(entitySearchText || entityName)"
-                          (blur)="onEntityBlur()"
-                          placeholder="Search bank/NBFC..."
-                          autocomplete="off" />
-                        @if (entitySearchLoading()) {
-                          <span class="entity-spinner"><i class="pi pi-spin pi-spinner"></i></span>
-                        }
-                      </div>
-                      @if (showEntityDropdown() && entitySearchResults().length > 0) {
-                        <ul class="entity-dropdown">
-                          @for (entity of entitySearchResults(); track entity.id) {
-                            <li (mousedown)="selectEntity(entity)">
-                              <span class="entity-name">{{ entity.name }}</span>
-                              <span class="entity-dept" [class.cepc]="entity.department === 'CEPC'">{{ entity.department }}</span>
-                            </li>
-                          }
-                        </ul>
-                      }
+                      <span class="field-value-bold">{{ entityName || '—' }}</span>
                     </div>
                     <div class="field-item">
                       <label>Module Name</label>
-                      <select [(ngModel)]="entityType">
-                        <option value="BANK">Bank</option>
+                      <span class="field-value-bold">{{ entityType || '—' }}</span>
+                    </div>
+                  </div>
+                  <!-- Row 2: Entity Category + Entity Type -->
+                  <div class="field-grid-2">
+                    <div class="field-item">
+                      <label>Entity Category</label>
+                      <select [(ngModel)]="entityCategory">
+                        <option value="">Select Category</option>
+                        <option value="NATIONALISED_BANK">Nationalised Bank</option>
+                        <option value="PRIVATE_BANK">Private Bank</option>
+                        <option value="FOREIGN_BANK">Foreign Bank</option>
+                        <option value="COOPERATIVE_BANK">Cooperative Bank</option>
+                        <option value="REGIONAL_RURAL_BANK">Regional Rural Bank</option>
+                        <option value="SMALL_FINANCE_BANK">Small Finance Bank</option>
+                        <option value="PAYMENT_BANK">Payment Bank</option>
                         <option value="NBFC">NBFC</option>
-                        <option value="PAYMENT_SYSTEM">Payment System</option>
-                        <option value="CREDIT_BUREAU">Credit Bureau</option>
                       </select>
+                    </div>
+                    <div class="field-item">
+                      <label>Entity Type</label>
+                      <select [(ngModel)]="entityTypeDetail">
+                        <option value="">Select Type</option>
+                        <option value="LOAN_COMPANY">Loan Company</option>
+                        <option value="ASSET_FINANCE">Asset Finance Company</option>
+                        <option value="INVESTMENT_COMPANY">Investment Company</option>
+                        <option value="INFRASTRUCTURE_FINANCE">Infrastructure Finance Company</option>
+                        <option value="MICROFINANCE">Micro Finance Institution</option>
+                        <option value="HOUSING_FINANCE">Housing Finance Company</option>
+                        <option value="CORE_INVESTMENT">Core Investment Company</option>
+                      </select>
+                    </div>
+                  </div>
+                  <!-- Row 3: BSR Code + Pincode -->
+                  <div class="field-grid-2">
+                    <div class="field-item">
+                      <label>BSR Code</label>
+                      <input type="text" [(ngModel)]="entityBsrCode" placeholder="Enter BSR code" />
+                    </div>
+                    <div class="field-item">
+                      <label>Pincode</label>
+                      <input type="text" [ngModel]="entityPincode" (ngModelChange)="onEntityPincodeInput($event)" placeholder="Enter pincode" maxlength="6" />
+                    </div>
+                  </div>
+                  <!-- Row 4: Country + State -->
+                  <div class="field-grid-2">
+                    <div class="field-item">
+                      <label>Country</label>
+                      <input type="text" [(ngModel)]="entityCountry" placeholder="Enter Country name" />
+                    </div>
+                    <div class="field-item entity-search-group">
+                      <label>State</label>
+                      <div class="entity-search-wrapper has-icon">
+                        <input type="text" [(ngModel)]="entityState" placeholder="Select state name" />
+                        <i class="pi pi-search entity-search-icon"></i>
+                      </div>
+                    </div>
+                  </div>
+                  <!-- Row 5: District + City -->
+                  <div class="field-grid-2">
+                    <div class="field-item entity-search-group">
+                      <label>District</label>
+                      <div class="entity-search-wrapper has-icon">
+                        <input type="text" [(ngModel)]="entityDistrict" placeholder="Select district name" />
+                        <i class="pi pi-search entity-search-icon"></i>
+                      </div>
+                    </div>
+                    <div class="field-item entity-search-group">
+                      <label>City</label>
+                      <div class="entity-search-wrapper has-icon">
+                        <input type="text" [(ngModel)]="entityCity" placeholder="Select city name" />
+                        <i class="pi pi-search entity-search-icon"></i>
+                      </div>
+                    </div>
+                  </div>
+                  <!-- Row 6: Entity Branch Name + Entity Branch Category -->
+                  <div class="field-grid-2">
+                    <div class="field-item entity-search-group">
+                      <label>Entity Branch Name</label>
+                      <div class="entity-search-wrapper has-icon">
+                        @if (showBranchDropdown && pincodePostOffices.length > 1) {
+                          <select (change)="selectBranch(pincodePostOffices[$any($event.target).selectedIndex - 1])" class="branch-select">
+                            <option value="">-- Select Branch --</option>
+                            @for (branch of pincodePostOffices; track branch.Name) {
+                              <option [value]="branch.Name">{{ branch.Name }} ({{ branch.BranchType }})</option>
+                            }
+                          </select>
+                        } @else {
+                          <input type="text" [(ngModel)]="entityBranchName" placeholder="Select entity branch name" />
+                          <i class="pi pi-search entity-search-icon"></i>
+                        }
+                      </div>
+                    </div>
+                    <div class="field-item entity-search-group">
+                      <label>Entity Branch Category</label>
+                      <div class="entity-search-wrapper has-icon">
+                        <input type="text" [(ngModel)]="entityBranchCategory" placeholder="Select entity branch category" />
+                        <i class="pi pi-search entity-search-icon"></i>
+                      </div>
+                    </div>
+                  </div>
+                  <!-- Row 7: Entity Address + Branch Center Name -->
+                  <div class="field-grid-2">
+                    <div class="field-item">
+                      <label>Entity Address</label>
+                      <input type="text" [(ngModel)]="entityAddress" placeholder="Enter entity address" />
+                    </div>
+                    <div class="field-item">
+                      <label>Branch Center Name</label>
+                      <input type="text" [(ngModel)]="entityBranchCenterName" placeholder="Enter branch center name" />
+                    </div>
+                  </div>
+                  <!-- Row 8: COSMOS Code + Asset Size in Crores -->
+                  <div class="field-grid-2">
+                    <div class="field-item">
+                      <label>COSMOS Code</label>
+                      <input type="text" [(ngModel)]="cosmosCode" placeholder="Enter Country name" />
+                    </div>
+                    <div class="field-item">
+                      <label>Asset Size in Crores</label>
+                      <div class="input-with-prefix">
+                        <span class="input-prefix">&#8377;</span>
+                        <input type="number" [(ngModel)]="assetSize" placeholder="Enter Amount" />
+                      </div>
+                    </div>
+                  </div>
+                  <!-- Entity yes/no questions -->
+                  <div class="eligibility-questions">
+                    <div class="eligibility-row">
+                      <span class="eligibility-question">Whether Deposit Taking/Non-Deposit Taking Entity</span>
+                      <div class="eligibility-options">
+                        <label class="radio-option"><input type="radio" name="isDepositTaking" value="YES" [(ngModel)]="isDepositTaking" /><span>Yes</span></label>
+                        <label class="radio-option"><input type="radio" name="isDepositTaking" value="NO" [(ngModel)]="isDepositTaking" /><span>No</span></label>
+                      </div>
+                    </div>
+                    <div class="eligibility-row">
+                      <span class="eligibility-question">Whether Asset Size is greater than 100 Crores</span>
+                      <div class="eligibility-options">
+                        <label class="radio-option"><input type="radio" name="isAssetAbove100Cr" value="YES" [(ngModel)]="isAssetAbove100Cr" /><span>Yes</span></label>
+                        <label class="radio-option"><input type="radio" name="isAssetAbove100Cr" value="NO" [(ngModel)]="isAssetAbove100Cr" /><span>No</span></label>
+                      </div>
+                    </div>
+                    <div class="eligibility-row">
+                      <span class="eligibility-question">Whether Liquidated present</span>
+                      <div class="eligibility-options">
+                        <label class="radio-option"><input type="radio" name="isLiquidated" value="YES" [(ngModel)]="isLiquidated" /><span>Yes</span></label>
+                        <label class="radio-option"><input type="radio" name="isLiquidated" value="NO" [(ngModel)]="isLiquidated" /><span>No</span></label>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -313,53 +504,276 @@
               </div>
               @if (!collapsedSections['complainant']) {
                 <div class="section-body">
+
+                  <!-- ── Basic Identification ── -->
+                  <div class="sub-section-title">Basic Identification</div>
                   <div class="field-grid-2">
                     <div class="field-item">
-                      <label>Name</label>
-                      <input type="text" [(ngModel)]="complainantName" placeholder="Full name" />
+                      <label>Email ID</label>
+                      <span class="field-value-bold">{{ complainantEmail || '—' }}</span>
                     </div>
                     <div class="field-item">
-                      <label>Phone</label>
-                      <input type="tel" [(ngModel)]="complainantPhone" maxlength="10" placeholder="10-digit mobile" />
+                      <label>Entity Name</label>
+                      <span class="field-value-bold">{{ entityName || '—' }}</span>
                     </div>
                   </div>
                   <div class="field-grid-2">
                     <div class="field-item">
-                      <label>Email</label>
-                      <input type="email" [(ngModel)]="complainantEmail" placeholder="Email address" />
+                      <label>Other Entity Name <span class="optional-tag">(Optional)</span></label>
+                      <input type="text" [(ngModel)]="otherEntityName" placeholder="--" />
                     </div>
                     <div class="field-item">
-                      <label>State</label>
-                      <select [ngModel]="complainantState" (ngModelChange)="onStateChange($event)">
-                        <option value="">Select State</option>
-                        @for (s of states(); track s) {
-                          <option [value]="s">{{ s }}</option>
-                        }
+                      <label>Date of Registration with RBI</label>
+                      <input type="date" [(ngModel)]="dateOfRegistrationWithRBI" />
+                    </div>
+                  </div>
+
+                  <div class="section-divider"></div>
+
+                  <!-- ── Complaint Classification ── -->
+                  <div class="sub-section-title">Complaint Classification</div>
+                  <div class="field-grid-2">
+                    <div class="field-item">
+                      <label>Complaint Category</label>
+                      <select [(ngModel)]="complaintCategory">
+                        <option value="">Select Category</option>
+                        <option value="LOAN">Loan</option>
+                        <option value="DEPOSIT">Deposit</option>
+                        <option value="ATM_DEBIT_CARD">ATM/Debit Card</option>
+                        <option value="CREDIT_CARD">Credit Card</option>
+                        <option value="INTERNET_BANKING">Internet Banking</option>
+                        <option value="MOBILE_BANKING">Mobile Banking</option>
+                        <option value="UPI">UPI</option>
+                        <option value="REMITTANCE">Remittance</option>
+                        <option value="PENSION">Pension</option>
+                        <option value="PARA_BANKING">Para Banking</option>
+                        <option value="OTHER">Other</option>
+                      </select>
+                    </div>
+                    <div class="field-item">
+                      <label>Complaint Sub-Category 1</label>
+                      <select [(ngModel)]="complaintSubCategory1">
+                        <option value="">Select Sub-Category</option>
+                        <option value="REJECTION_OF_LOAN">Rejection of loan</option>
+                        <option value="DELAY_IN_DISBURSEMENT">Delay in disbursement</option>
+                        <option value="HIGH_INTEREST_RATE">High interest rate</option>
+                        <option value="HIDDEN_CHARGES">Hidden charges</option>
+                        <option value="HARASSMENT">Harassment by recovery agents</option>
+                        <option value="OTHER">Other</option>
                       </select>
                     </div>
                   </div>
+                  <div class="field-grid-2">
+                    <div class="field-item">
+                      <label>Complaint Sub-Category 2</label>
+                      <select [(ngModel)]="complaintSubCategory2">
+                        <option value="">Select Sub-Category</option>
+                        <option value="REJECTION_OF_LOAN">Rejection of loan</option>
+                        <option value="DELAY_IN_DISBURSEMENT">Delay in disbursement</option>
+                        <option value="HIGH_INTEREST_RATE">High interest rate</option>
+                        <option value="OTHER">Other</option>
+                      </select>
+                    </div>
+                    <div class="field-item">
+                      <label>Date of Filing the Complaint</label>
+                      <input type="date" [(ngModel)]="dateOfFilingComplaint" />
+                    </div>
+                  </div>
+                  <div class="eligibility-row">
+                    <span class="eligibility-question">Complaint Registration Date Valid</span>
+                    <div class="eligibility-options">
+                      <label class="radio-option"><input type="radio" name="complaintRegDateValid" value="YES" [(ngModel)]="complaintRegDateValid" /><span>Yes</span></label>
+                      <label class="radio-option"><input type="radio" name="complaintRegDateValid" value="NO" [(ngModel)]="complaintRegDateValid" /><span>No</span></label>
+                    </div>
+                  </div>
+
+                  <div class="section-divider"></div>
+
+                  <!-- ── Reminder & Financial Details ── -->
+                  <div class="sub-section-title">Reminder & Financial Details</div>
+                  <div class="field-grid-2">
+                    <div class="field-item">
+                      <label>Whether any Reminder was sent by the Complainant</label>
+                      <div class="eligibility-options inline-options">
+                        <label class="radio-option"><input type="radio" name="reminderSent" value="YES" [(ngModel)]="reminderSentByComplainant" /><span>Yes</span></label>
+                        <label class="radio-option"><input type="radio" name="reminderSent" value="NO" [(ngModel)]="reminderSentByComplainant" /><span>No</span></label>
+                      </div>
+                    </div>
+                    <div class="field-item">
+                      <label>Disputed Amount Involved</label>
+                      <div class="input-with-prefix">
+                        <span class="input-prefix">&#8377;</span>
+                        <input type="number" [(ngModel)]="disputedAmountInvolved" placeholder="Enter amount" />
+                      </div>
+                    </div>
+                  </div>
+                  <div class="field-grid-2">
+                    <div class="field-item">
+                      <label>Date of Filing the Complaint</label>
+                      <input type="date" [(ngModel)]="dateOfFilingForFinancial" />
+                    </div>
+                    <div class="field-item">
+                      <label>Compensation Sought for Expenses Incurred, Harassment and Mental Anguish (if any)</label>
+                      <div class="eligibility-options inline-options">
+                        <label class="radio-option"><input type="radio" name="compensationSought" value="YES" [(ngModel)]="compensationSought" /><span>Yes</span></label>
+                        <label class="radio-option"><input type="radio" name="compensationSought" value="NO" [(ngModel)]="compensationSought" /><span>No</span></label>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Loan / Disposal Account -->
+                  <div class="field-item" style="margin-top: 12px;">
+                    <label>Loan / Disposal Account</label>
+                    <div class="input-with-prefix">
+                      <span class="input-prefix">&#8377;</span>
+                      <input type="number" [(ngModel)]="loanDisposalAmount" placeholder="Enter amount" />
+                    </div>
+                  </div>
+
+                  <div class="section-divider"></div>
+
+                  <!-- ── Additional Information ── -->
+                  <div class="sub-section-title">Additional Information</div>
                   <div class="field-item full">
-                    <label>Address</label>
-                    <textarea [(ngModel)]="complainantAddress" rows="2" placeholder="Complete address"></textarea>
+                    <label>Additional Comments</label>
+                    <input type="text" [(ngModel)]="additionalComments" placeholder="Enter comments" />
                   </div>
                   <div class="field-grid-2">
                     <div class="field-item">
-                      <label>District</label>
-                      <select [(ngModel)]="complainantDistrict">
-                        <option value="">Select District</option>
-                        @for (d of districts(); track d) {
-                          <option [value]="d">{{ d }}</option>
-                        }
-                      </select>
+                      <label>CRPC Proposed Action</label>
+                      <span class="field-value-bold">{{ crpcProposedAction || '—' }}</span>
                     </div>
                     <div class="field-item">
-                      <label>Pincode</label>
-                      <input type="text" [ngModel]="complainantPincode" (ngModelChange)="onPincodeInput($event)" maxlength="6" placeholder="6-digit pincode" />
+                      <label>Vernacular Language</label>
+                      <span class="field-value-bold">{{ vernacularLanguageDetail || '—' }}</span>
                     </div>
                   </div>
+                  <div class="field-item">
+                    <label>Date of Filing the Complaint</label>
+                    <input type="date" [(ngModel)]="additionalDateOfFiling" />
+                  </div>
+
+                  <div class="section-divider"></div>
+
+                  <!-- ── Legal & Case Details ── -->
+                  <div class="sub-section-title">Legal & Case Details</div>
+                  <div class="field-grid-2">
+                    <div class="eligibility-row">
+                      <span class="eligibility-question">Whether Legal Case is Filed</span>
+                      <div class="eligibility-options">
+                        <label class="radio-option"><input type="radio" name="legalCaseFiled" value="YES" [(ngModel)]="legalCaseFiled" /><span>Yes</span></label>
+                        <label class="radio-option"><input type="radio" name="legalCaseFiled" value="NO" [(ngModel)]="legalCaseFiled" /><span>No</span></label>
+                      </div>
+                    </div>
+                    <div class="field-item">
+                      <label>Date of Filing the Complaint</label>
+                      <input type="date" [(ngModel)]="legalDateOfFiling" />
+                    </div>
+                  </div>
+                  <div class="field-grid-2">
+                    <div class="eligibility-row">
+                      <span class="eligibility-question">Pre Enquiry Received</span>
+                      <div class="eligibility-options">
+                        <label class="radio-option"><input type="radio" name="preEnquiryReceived" value="YES" [(ngModel)]="preEnquiryReceived" /><span>Yes</span></label>
+                        <label class="radio-option"><input type="radio" name="preEnquiryReceived" value="NO" [(ngModel)]="preEnquiryReceived" /><span>No</span></label>
+                      </div>
+                    </div>
+                    <div class="eligibility-row">
+                      <span class="eligibility-question">High Priority Complaint</span>
+                      <div class="eligibility-options">
+                        <label class="radio-option"><input type="radio" name="highPriority" value="YES" [(ngModel)]="highPriorityComplaint" /><span>Yes</span></label>
+                        <label class="radio-option"><input type="radio" name="highPriority" value="NO" [(ngModel)]="highPriorityComplaint" /><span>No</span></label>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="section-divider"></div>
+
+                  <!-- ── Flags & Indicators ── -->
+                  <div class="sub-section-title">Flags & Indicators</div>
+                  <div class="field-grid-2">
+                    <div class="eligibility-row">
+                      <span class="eligibility-question">Is Complaint Regarding Pension</span>
+                      <div class="eligibility-options">
+                        <label class="radio-option"><input type="radio" name="isRegardingPension" value="YES" [(ngModel)]="isRegardingPension" /><span>Yes</span></label>
+                        <label class="radio-option"><input type="radio" name="isRegardingPension" value="NO" [(ngModel)]="isRegardingPension" /><span>No</span></label>
+                      </div>
+                    </div>
+                    <div class="eligibility-row">
+                      <span class="eligibility-question">Is Complaint Against a Business Correspondent</span>
+                      <div class="eligibility-options">
+                        <label class="radio-option"><input type="radio" name="isAgainstBC" value="YES" [(ngModel)]="isAgainstBusinessCorrespondent" /><span>Yes</span></label>
+                        <label class="radio-option"><input type="radio" name="isAgainstBC" value="NO" [(ngModel)]="isAgainstBusinessCorrespondent" /><span>No</span></label>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="field-grid-2">
+                    <div class="eligibility-row">
+                      <span class="eligibility-question">ATM / Credit / Debit Card</span>
+                      <div class="eligibility-options">
+                        <label class="radio-option"><input type="radio" name="isAtmCard" value="YES" [(ngModel)]="isAtmCreditDebitCard" /><span>Yes</span></label>
+                        <label class="radio-option"><input type="radio" name="isAtmCard" value="NO" [(ngModel)]="isAtmCreditDebitCard" /><span>No</span></label>
+                      </div>
+                    </div>
+                    <div class="field-item">
+                      <label>Scheme Flag</label>
+                      <select [(ngModel)]="schemeFlag">
+                        <option value="">Select Scheme</option>
+                        <option value="SCHEME_JDY">Scheme JDY</option>
+                        <option value="SCHEME_MUDRA">Scheme MUDRA</option>
+                        <option value="SCHEME_PM_SVANidhi">Scheme PM SVANidhi</option>
+                        <option value="NONE">None</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div class="section-divider"></div>
+
+                  <!-- ── Complaint Linkage ── -->
+                  <div class="sub-section-title">Complaint Linkage</div>
+                  <div class="field-grid-2">
+                    <div class="eligibility-row">
+                      <span class="eligibility-question">Is Complaint Pertaining to a Free Marked Complaint</span>
+                      <div class="eligibility-options">
+                        <label class="radio-option"><input type="radio" name="isFreeMarked" value="YES" [(ngModel)]="isFreeMarkedComplaint" /><span>Yes</span></label>
+                        <label class="radio-option"><input type="radio" name="isFreeMarked" value="NO" [(ngModel)]="isFreeMarkedComplaint" /><span>No</span></label>
+                      </div>
+                    </div>
+                    <div class="field-item">
+                      <label>Current Complaint Number</label>
+                      <input type="text" [(ngModel)]="currentComplaintNumber" placeholder="Enter complaint number" />
+                    </div>
+                  </div>
+                  <div class="eligibility-row full-width-row">
+                    <span class="eligibility-question">Received any Reply within 30 Days (or within time stipulated by RBI / NPCI / Card Network)</span>
+                    <div class="eligibility-options">
+                      <label class="radio-option"><input type="radio" name="replyWithin30" value="YES" [(ngModel)]="receivedReplyWithin30Days" /><span>Yes</span></label>
+                      <label class="radio-option"><input type="radio" name="replyWithin30" value="NO" [(ngModel)]="receivedReplyWithin30Days" /><span>No</span></label>
+                      <label class="radio-option"><input type="radio" name="replyWithin30" value="NOT_APPLICABLE" [(ngModel)]="receivedReplyWithin30Days" /><span>Not Applicable</span></label>
+                    </div>
+                  </div>
+                  <p class="helper-text">After the Regulated Entity received the complaint, or if the Complainant is not satisfied with the reply / resolution provided by the Regulated Entity.</p>
+
                 </div>
               }
             </div>
+
+            <!-- Declaration -->
+            <div class="form-section" [class.open]="!collapsedSections['declaration']">
+              <div class="section-header" (click)="toggleSection('declaration')">
+                <span><i class="pi pi-chart-bar"></i> Declaration</span>
+                <i class="pi" [class.pi-chevron-down]="!collapsedSections['declaration']" [class.pi-chevron-up]="collapsedSections['declaration']"></i>
+              </div>
+              @if (!collapsedSections['declaration']) {
+                <div class="section-body">
+                  <label class="declaration-checkbox">
+                    <input type="checkbox" [(ngModel)]="declarationAccepted" />
+                    <span>All data/information entered by me in the system is correct as per my understanding</span>
+                  </label>
+                </div>
+              }
+            </div>
+
           </div>
         </div>
         }
@@ -412,6 +826,7 @@
             </div>
           </div>
         }
+
       </div>
     </div>
 
@@ -495,6 +910,9 @@
       <div class="success-icon"><i class="pi pi-check-circle"></i></div>
       <h2>Draft Created Successfully</h2>
       <p class="draft-id-text">Draft ID: <strong>{{ draftId() }}</strong></p>
+      @if (selectedReviewerName) {
+        <p class="draft-id-text">Assigned to: <strong>{{ selectedReviewerName }}</strong></p>
+      }
       <p class="redirect-note">Click below to proceed to DEO Assessment</p>
       <div class="success-actions">
         <button class="btn btn-primary" (click)="openDraft()">Proceed to Assessment</button>
@@ -529,6 +947,73 @@
           </div>
         </div>
       }
+    </div>
+  </div>
+}
+
+<!-- Assignment Confirmation Dialog -->
+@if (showAssignmentDialog()) {
+  <div class="modal-overlay" (click)="showAssignmentDialog.set(false)">
+    <div class="assignment-dialog" (click)="$event.stopPropagation()">
+      <div class="assignment-dialog-header">
+        <div class="assignment-dialog-title">
+          <span class="assignment-heading">Assignment</span>
+        </div>
+        <button class="modal-close" (click)="showAssignmentDialog.set(false)">&times;</button>
+      </div>
+      <div class="assignment-dialog-body">
+        <div class="confirmation-header">
+          <i class="pi pi-info-circle"></i> <strong>Confirmation</strong>
+          <span class="confirmation-subtitle">Are you sure you want to <strong>send the request</strong> to the <strong>reviewer</strong>?</span>
+        </div>
+        <div class="confirmation-body">
+          <div class="field-grid-2">
+            <div class="field-item">
+              <label>Assignment</label>
+              <select [(ngModel)]="assignmentMode" (change)="onAssignmentModeChange()">
+                <option value="AUTOMATIC">Automatic</option>
+                <option value="MANUAL">Manual</option>
+              </select>
+            </div>
+            <div class="field-item">
+              <label>Name of CRPC Reviewer</label>
+              <div class="reviewer-input-wrapper">
+                <input type="text" [value]="selectedReviewerName" readonly [class.disabled-input]="assignmentMode === 'AUTOMATIC'" />
+                <i class="pi pi-search reviewer-search-icon"></i>
+              </div>
+              @if (assignmentMode === 'MANUAL') {
+                <select [ngModel]="selectedReviewerId" (ngModelChange)="onReviewerSelect($event)">
+                  <option value="" disabled>Select reviewer</option>
+                  @for (rev of reviewers(); track rev.id) {
+                    <option [value]="rev.id">{{ rev.displayName }}</option>
+                  }
+                </select>
+              }
+            </div>
+          </div>
+          @if (reviewerOnLeave()) {
+            <div class="leave-warning">
+              <i class="pi pi-exclamation-circle"></i>
+              <span>Assigned user is on Leave</span>
+              <button class="leave-dismiss" (click)="selectedReviewerId = ''; selectedReviewerName = ''"><i class="pi pi-times"></i></button>
+            </div>
+          }
+          <div class="status-change">
+            <span class="status-label">Expected Status Change <i class="pi pi-info-circle"></i></span>
+            <div class="status-flow">
+              <span class="status-badge-pill draft"><i class="pi pi-file"></i> Draft</span>
+              <i class="pi pi-arrow-right"></i>
+              <span class="status-badge-pill sent"><i class="pi pi-send"></i> Sent to Reviewer</span>
+            </div>
+          </div>
+        </div>
+        <div class="confirmation-actions">
+          <button class="btn btn-outline" (click)="showAssignmentDialog.set(false)">Cancel</button>
+          <button class="btn btn-primary" (click)="confirmAssignment()" [disabled]="!selectedReviewerId.trim() || submitting()">
+            @if (submitting()) { <span class="spinner-sm"></span> Sending... } @else { Confirm }
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 }
