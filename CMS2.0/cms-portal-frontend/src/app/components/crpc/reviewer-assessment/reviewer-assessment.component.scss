@@ -163,6 +163,13 @@
     h3 { margin: 0; font-size: 15px; font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 8px;
       i { font-size: 15px; color: #64748b; }
     }
+    .section-header-actions { display: flex; align-items: center; gap: 8px; }
+    .btn-edit-inline {
+      background: none; border: none; color: #3b82f6; cursor: pointer; font-size: 13px; font-weight: 500;
+      display: flex; align-items: center; gap: 4px;
+      &:hover { color: #1d4ed8; }
+      i { font-size: 12px; }
+    }
     .expand-btn { background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 14px; &:hover { color: #3b82f6; } }
   }
 }
@@ -184,6 +191,38 @@
 
   .sub-section-body {
     padding: 0 20px 16px;
+  }
+}
+
+// ═══ REVIEWER SUB-SECTIONS ═══
+.reviewer-sub-title {
+  font-size: 14px; font-weight: 700; color: #1e40af; margin: 16px 0 10px;
+  &:first-child { margin-top: 0; }
+}
+
+.reviewer-divider {
+  border: none; border-top: 1px solid #e5e7eb; margin: 16px 0;
+}
+
+// ═══ ELIGIBILITY QUESTIONS LIST ═══
+.eligibility-questions-list {
+  margin-top: 16px;
+}
+
+.eligibility-q-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 0; border-bottom: 1px solid #f8fafc;
+  &:last-child { border-bottom: none; }
+  .eq-label { font-size: 13px; color: #374151; flex: 1; font-weight: 500; }
+  .eq-value {
+    font-size: 13px; font-weight: 600; min-width: 40px; text-align: center;
+    &.yes { color: #059669; }
+    &.no { color: #dc2626; }
+  }
+  .eq-select {
+    padding: 4px 8px; border: 1px solid #d1d5db; border-radius: 6px;
+    font-size: 13px; min-width: 80px;
+    &:focus { outline: none; border-color: #3b82f6; }
   }
 }
 

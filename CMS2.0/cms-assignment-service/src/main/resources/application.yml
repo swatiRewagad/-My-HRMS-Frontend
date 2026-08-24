@@ -27,6 +27,25 @@ spring:
       auto-offset-reset: earliest
       enable-auto-commit: false
 
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_URL:http://localhost:9090}/realms/rbi-cms
+
+cms:
+  assignment:
+    default-tenant: RBI-CMS
+    cache:
+      refresh-interval-seconds: 30
+    resolve:
+      max-batch-size: 500
+    rules:
+      max-rules-per-version: 5000
+      max-conditions-per-rule: 50
+      max-in-list-size: 500
+      max-import-file-size-mb: 5
+
 management:
   endpoints:
     web:

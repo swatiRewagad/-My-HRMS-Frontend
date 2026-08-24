@@ -1,6 +1,16 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700&display=swap');
 @import '../draft-assessment/draft-assessment.component.scss';
 
+.draft-assessment {
+  font-family: 'Noto Sans', sans-serif;
+  line-height: 2;
+  letter-spacing: 0.005em;
+}
+
 // ─── Physical Letter specific overrides ───
+.meta-row.no-gold-border {
+  border-top: 1px solid #e2e8f0;
+}
 .upload-section {
   padding: 16px;
 }
@@ -155,11 +165,39 @@
   padding: 12px 16px; border-top: 1px solid #e5e7eb; background: #fafbfc;
 }
 
+// ─── Labels bold ───
+.field-item label,
+.eligibility-question {
+  font-weight: 600 !important;
+  color: #1e293b !important;
+}
+
+// ─── Field Value Bold (read-only display) ───
+.field-value-bold {
+  font-size: 14px; font-weight: 600; color: #1e293b; display: block; padding: 4px 0;
+}
+
+// ─── Input with prefix (₹) ───
+.input-with-prefix {
+  display: flex; align-items: center; border: 1px solid #d1d5db; border-radius: 8px; overflow: hidden;
+  .input-prefix {
+    padding: 9px 12px; background: #f8fafc; border-right: 1px solid #d1d5db;
+    font-size: 14px; color: #64748b; font-weight: 500;
+  }
+  input {
+    flex: 1; border: none !important; border-radius: 0 !important; padding: 9px 12px;
+    &:focus { outline: none; box-shadow: none; }
+  }
+}
+
 // ─── Entity Search Dropdown ───
 .entity-search-group { position: relative; }
 .entity-search-wrapper {
   position: relative;
+  &.has-icon input { padding-right: 32px; }
   .entity-spinner { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 12px; color: #94a3b8; }
+  .entity-search-icon { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 13px; color: #94a3b8; pointer-events: none; }
+  .branch-select { width: 100%; padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px; background: #fff; cursor: pointer; }
 }
 .entity-dropdown {
   position: absolute; top: 100%; left: 0; right: 0; z-index: 100;
@@ -263,4 +301,163 @@
   margin-bottom: 16px;
   h4 { margin: 0 0 6px; font-size: 13px; color: #1e293b; text-transform: uppercase; }
   p { margin: 2px 0; font-size: 13px; color: #444; }
+}
+
+// ─── Sub-section titles & dividers ───
+.sub-section-title {
+  font-size: 14px; font-weight: 700; color: #1e40af; margin: 20px 0 12px;
+  padding-bottom: 4px;
+  &:first-child { margin-top: 0; }
+}
+
+.section-divider {
+  border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;
+}
+
+.section-body .field-grid-2 + .field-grid-2 {
+  margin-top: 16px;
+}
+
+.full-width-row {
+  grid-column: 1 / -1;
+}
+
+.helper-text {
+  font-size: 12px; color: #6b7280; margin: 4px 0 0; font-style: italic; line-height: 1.4;
+}
+
+.optional-tag {
+  font-weight: 400; font-size: 11px; color: #94a3b8;
+}
+
+.declaration-checkbox {
+  display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 13px; color: #374151;
+  input[type="checkbox"] { width: 18px; height: 18px; accent-color: #1e293b; cursor: pointer; }
+  span { font-weight: 500; }
+}
+
+// ─── Eligibility Questions ───
+.eligibility-questions {
+  margin-top: 16px;
+}
+
+.mark-all-toggle {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 0; border-bottom: 1px solid #f1f5f9; margin-bottom: 4px;
+  .mark-all-label { font-size: 13px; font-weight: 600; color: #1e293b; }
+}
+
+.toggle-switch {
+  position: relative; display: inline-block; width: 40px; height: 22px;
+  input { opacity: 0; width: 0; height: 0; }
+  .toggle-slider {
+    position: absolute; cursor: pointer; inset: 0;
+    background: #cbd5e1; border-radius: 22px; transition: 0.3s;
+    &::before {
+      content: ''; position: absolute; height: 16px; width: 16px;
+      left: 3px; bottom: 3px; background: #fff; border-radius: 50%; transition: 0.3s;
+    }
+  }
+  input:checked + .toggle-slider { background: #1e293b; }
+  input:checked + .toggle-slider::before { transform: translateX(18px); }
+}
+
+.eligibility-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 12px 0; border-bottom: 1px solid #f8fafc;
+  &:last-child { border-bottom: none; }
+  .eligibility-question { font-size: 13px; color: #374151; flex: 1; padding-right: 16px; }
+  .eligibility-options {
+    display: flex; gap: 16px; flex-shrink: 0;
+    .radio-option {
+      display: flex; align-items: center; gap: 5px; cursor: pointer; font-size: 13px; color: #374151;
+      input[type="radio"] { accent-color: #1e293b; width: 16px; height: 16px; }
+      span { font-weight: 500; }
+    }
+  }
+
+  .field-grid-2 & {
+    flex-direction: column; align-items: flex-start; gap: 8px;
+    padding-top: 0;
+    .eligibility-question { padding-right: 0; }
+  }
+}
+
+.inline-options {
+  display: flex; gap: 16px; margin-top: 4px;
+  .radio-option {
+    display: flex; align-items: center; gap: 5px; cursor: pointer; font-size: 13px; color: #374151;
+    input[type="radio"] { accent-color: #1e293b; width: 16px; height: 16px; }
+    span { font-weight: 500; }
+  }
+}
+
+// ─── Assignment Dialog ───
+.assignment-dialog {
+  background: #fff; border-radius: 12px; width: 100%; max-width: 580px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+}
+
+.assignment-dialog-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 14px 20px; border-bottom: 1px solid #e5e7eb;
+  .assignment-heading { font-size: 13px; font-weight: 600; color: #3b82f6; }
+}
+
+.assignment-dialog-body {
+  .confirmation-header {
+    padding: 16px 20px; border-bottom: 1px solid #f1f5f9;
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+    i { color: #2563eb; font-size: 16px; }
+    .confirmation-subtitle { width: 100%; font-size: 13px; color: #6b7280; margin-top: 4px; }
+  }
+  .confirmation-body {
+    padding: 20px;
+    .field-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .field-item {
+      label { display: block; font-size: 11px; font-weight: 600; color: #6b7280; text-transform: uppercase; margin-bottom: 6px; }
+      select, input { width: 100%; padding: 9px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 13px; background: #fff;
+        &:focus { outline: none; border-color: #3b82f6; }
+        &.disabled-input { background: #1e293b; color: #fff; border-color: #1e293b; }
+      }
+    }
+  }
+  .status-change {
+    margin-top: 20px; padding: 14px; background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 8px;
+    .status-label { font-size: 11px; font-weight: 600; color: #6b7280; text-transform: uppercase; display: flex; align-items: center; gap: 4px; margin-bottom: 10px;
+      i { font-size: 11px; color: #94a3b8; }
+    }
+    .status-flow {
+      display: flex; align-items: center; gap: 12px;
+      .pi-arrow-right { color: #9ca3af; font-size: 14px; }
+    }
+    .status-badge-pill {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 5px 12px; border-radius: 16px; font-size: 12px; font-weight: 500;
+      &.draft { background: #fef3c7; color: #92400e; }
+      &.sent { background: #dbeafe; color: #1e40af; }
+    }
+  }
+  .confirmation-actions {
+    display: flex; justify-content: flex-end; gap: 10px;
+    padding: 14px 20px; border-top: 1px solid #e5e7eb;
+  }
+}
+
+.reviewer-input-wrapper {
+  position: relative;
+  input { padding-right: 32px !important; }
+  .reviewer-search-icon { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 13px; }
+}
+
+.leave-warning {
+  display: flex; align-items: center; gap: 8px;
+  margin-top: 12px; padding: 10px 14px;
+  background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px;
+  font-size: 13px; color: #dc2626;
+  i { font-size: 14px; }
+  .leave-dismiss {
+    margin-left: auto; background: none; border: none; color: #dc2626; cursor: pointer; font-size: 13px;
+    &:hover { color: #991b1b; }
+  }
 }

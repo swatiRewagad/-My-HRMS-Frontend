@@ -62,11 +62,30 @@ export class PhysicalLetterComponent implements OnInit {
   receivedDate = '';
   letterDate = '';
   category = '';
+  proposedComplaintType: 'NEW_COMPLAINT' | 'NOT_A_COMPLAINT' = 'NEW_COMPLAINT';
+  notComplaintReason = '';
   complaintType = 'COMPLAINT';
   isRbiEComplaint = 'NO';
   nonEComplaintReason = '';
+
+  // Eligibility questions
+  eligibilityQuestions = [
+    { key: 'isEntityRegulated', label: 'Is Entity regulated by RBI?', answer: '' },
+    { key: 'notAddressedToOmbudsman', label: 'The Complaint not directly addressed to Ombudsman', answer: '' },
+    { key: 'notRegisteredWithEntity', label: 'Is the Complaint not registered with Entity (FRC)?', answer: '' },
+    { key: 'isFrivolous', label: 'Is the complainant frivolous, vexatious, and threatening?', answer: '' },
+    { key: 'isSubJudice', label: 'Is the Complaint Sub-Judice or under arbitration?', answer: '' },
+    { key: 'isAdvocate', label: 'Is the complainant an advocate?', answer: '' },
+    { key: 'alreadyDealt', label: 'Has already been dealt with or is under process on the same ground with the ombudsman?', answer: '' },
+    { key: 'againstManagement', label: 'Does the complaint involve general complaints against management or executives of a RE?', answer: '' },
+    { key: 'disputeBetweenREs', label: 'Does it involve disputes between REs?', answer: '' },
+    { key: 'staffEmployer', label: 'Is from staff of an RE and involves employer-employee relationship?', answer: '' },
+  ];
+  markAllEligible = false;
   entityName = '';
   entityType = 'BANK';
+  entityCategory = '';
+  entityTypeDetail = '';
   entitySearchText = '';
   entitySearchResults = signal<{ id: number; name: string; department: string; entityType: string }[]>([]);
   entitySearchLoading = signal(false);
@@ -74,6 +93,23 @@ export class PhysicalLetterComponent implements OnInit {
   private entitySearchTimeout: any = null;
   branchName = '';
   branchPincode = '';
+  entityBsrCode = '';
+  entityPincode = '';
+  entityCountry = '';
+  entityState = '';
+  entityDistrict = '';
+  entityCity = '';
+  entityBranchName = '';
+  entityBranchCategory = '';
+  pincodePostOffices: { Name: string; BranchType: string }[] = [];
+  showBranchDropdown = false;
+  entityAddress = '';
+  entityBranchCenterName = '';
+  cosmosCode = '';
+  assetSize: number | null = null;
+  isDepositTaking = '';
+  isAssetAbove100Cr = '';
+  isLiquidated = '';
   complainantName = '';
   complainantPhone = '';
   complainantEmail = '';
@@ -83,6 +119,52 @@ export class PhysicalLetterComponent implements OnInit {
   complainantPincode = '';
   amountInvolved: number | null = null;
   transactionDate = '';
+
+  // Basic Identification
+  otherEntityName = '';
+  dateOfRegistrationWithRBI = '';
+
+  // Complaint Classification
+  complaintCategory = '';
+  complaintSubCategory1 = '';
+  complaintSubCategory2 = '';
+  dateOfFilingComplaint = '';
+  complaintRegDateValid = 'YES';
+
+  // Reminder & Financial Details
+  reminderSentByComplainant = 'YES';
+  disputedAmountInvolved: number | null = null;
+  dateOfFilingForFinancial = '';
+  compensationSought = 'YES';
+
+  // Legal & Case Details
+  legalCaseFiled = 'YES';
+  legalDateOfFiling = '';
+  preEnquiryReceived = 'YES';
+  highPriorityComplaint = 'NO';
+
+  // Additional Information
+  additionalComments = '';
+  crpcProposedAction = 'Maintainable';
+  vernacularLanguageDetail = '';
+  additionalDateOfFiling = '';
+
+  // Loan / Disposal Account
+  loanDisposalAmount: number | null = null;
+
+  // Flags & Indicators
+  isRegardingPension = 'YES';
+  isAgainstBusinessCorrespondent = 'YES';
+  isAtmCreditDebitCard = 'NO';
+  schemeFlag = '';
+
+  // Complaint Linkage
+  isFreeMarkedComplaint = 'YES';
+  currentComplaintNumber = '';
+  receivedReplyWithin30Days = 'NOT_APPLICABLE';
+
+  // Declaration
+  declarationAccepted = false;
 
   // Right panel
   suggestions = signal<Suggestion[]>([]);
@@ -99,6 +181,7 @@ export class PhysicalLetterComponent implements OnInit {
   selectedReviewerId = '';
   selectedReviewerName = 'CRPC Reviewer';
   reviewers = signal<ReviewerUser[]>([]);
+  showAssignmentDialog = signal(false);
 
   // Section collapse state
   collapsedSections: Record<string, boolean> = {};
@@ -110,6 +193,8 @@ export class PhysicalLetterComponent implements OnInit {
   saving = signal(false);
   submitting = signal(false);
   submitted = signal(false);
+  draftSaved = signal(false);
+  editMode = signal(true);
   draftId = signal('');
 
   // Reference data
@@ -243,8 +328,56 @@ export class PhysicalLetterComponent implements OnInit {
     }
   }
 
+  onEntityPincodeInput(value: string) {
+    this.entityPincode = value;
+    this.pincodePostOffices = [];
+    this.showBranchDropdown = false;
+    if (!value || value.length !== 6 || !/^\d{6}$/.test(value)) return;
+
+    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/location/pincode/${value}`).subscribe({
+      next: (res: any) => {
+        if (res?.[0]?.Status === 'Success' && res[0].PostOffice?.length) {
+          const offices = res[0].PostOffice;
+          const po = offices[0];
+          if (po.State) this.entityState = po.State;
+          if (po.District) this.entityDistrict = po.District;
+          this.entityCity = po.Region || po.Division || '';
+          this.entityCountry = 'India';
+          if (offices.length === 1) {
+            this.entityBranchName = po.Name;
+            this.entityBranchCategory = po.BranchType || '';
+          } else {
+            this.pincodePostOffices = offices.map((o: any) => ({ Name: o.Name, BranchType: o.BranchType || '' }));
+            this.showBranchDropdown = true;
+            this.entityBranchName = '';
+          }
+        }
+      },
+      error: () => {}
+    });
+  }
+
+  selectBranch(branch: { Name: string; BranchType: string }) {
+    this.entityBranchName = branch.Name;
+    this.entityBranchCategory = branch.BranchType;
+    this.showBranchDropdown = false;
+  }
+
   toggleSection(section: string) {
     this.collapsedSections[section] = !this.collapsedSections[section];
+  }
+
+  toggleMarkAllEligible() {
+    this.markAllEligible = !this.markAllEligible;
+    if (this.markAllEligible) {
+      this.eligibilityQuestions.forEach((q, i) => q.answer = i === 0 ? 'YES' : 'NO');
+    } else {
+      this.eligibilityQuestions.forEach(q => q.answer = '');
+    }
+  }
+
+  areRemainingQuestionsOptional(): boolean {
+    return this.eligibilityQuestions[0]?.answer === 'YES' && this.eligibilityQuestions[1]?.answer === 'YES';
   }
 
   onEntitySearchInput(value: string) {
@@ -438,6 +571,21 @@ export class PhysicalLetterComponent implements OnInit {
       this.fieldErrors['branchPincode'] = 'Enter a valid 6-digit pincode.';
     }
 
+    // Eligibility questions validation
+    if (this.proposedComplaintType === 'NEW_COMPLAINT') {
+      const first = this.eligibilityQuestions[0]?.answer;
+      const second = this.eligibilityQuestions[1]?.answer;
+      if (!first) this.fieldErrors['eq_0'] = 'First eligibility question is required.';
+      if (!second) this.fieldErrors['eq_1'] = 'Second eligibility question is required.';
+      if (!this.areRemainingQuestionsOptional()) {
+        this.eligibilityQuestions.forEach((q, i) => {
+          if (i >= 2 && !q.answer) {
+            this.fieldErrors[`eq_${i}`] = `"${q.label}" is required.`;
+          }
+        });
+      }
+    }
+
     return Object.keys(this.fieldErrors).length === 0;
   }
 
@@ -451,7 +599,13 @@ export class PhysicalLetterComponent implements OnInit {
     this.saving.set(true);
     setTimeout(() => {
       this.saving.set(false);
+      this.draftSaved.set(true);
+      this.editMode.set(false);
     }, 800);
+  }
+
+  enterEditMode() {
+    this.editMode.set(true);
   }
 
   submitDraft() {
@@ -463,30 +617,7 @@ export class PhysicalLetterComponent implements OnInit {
     const username = loggedInUser?.id || this.auth.currentUser()?.username || '';
 
     const formData = new FormData();
-    formData.append('complainantName', this.complainantName);
-    formData.append('complainantPhone', this.complainantPhone);
-    formData.append('senderEmail', this.complainantEmail);
-    formData.append('complainantAddress', this.complainantAddress);
-    formData.append('complainantState', this.complainantState);
-    formData.append('complainantDistrict', this.complainantDistrict);
-    formData.append('complainantPincode', this.complainantPincode);
-    formData.append('category', this.category);
-    formData.append('entityName', this.entityName);
-    formData.append('entityType', this.entityType);
-    formData.append('subject', this.subject);
-    formData.append('body', this.description);
-    if (this.amountInvolved) formData.append('amountInvolved', String(this.amountInvolved));
-    if (this.transactionDate) formData.append('transactionDate', this.transactionDate);
-    if (this.letterDate) formData.append('letterDate', this.letterDate);
-    formData.append('modeOfReceipt', this.modeOfReceipt || 'PHYSICAL_LETTER');
-    formData.append('status', 'DRAFT');
-    formData.append('assignedTo', username);
-    formData.append('processedBy', username);
-    formData.append('receivedAt', (this.receivedDate || new Date().toISOString().split('T')[0]) + 'T00:00:00');
-
-    if (this.scannedFile) {
-      formData.append('attachment', this.scannedFile);
-    }
+    this.appendAllFieldsToFormData(formData, 'DRAFT', username);
 
     this.http.post<any>(`${environment.apiBaseUrl}/api/v1/email-syndication/drafts/physical-letter`, formData)
       .subscribe({
@@ -581,6 +712,16 @@ export class PhysicalLetterComponent implements OnInit {
     this.pastComplaintDetail.set(null);
   }
 
+  private storeEligibilityData(draftId: string) {
+    const eqMap: Record<string, string> = {};
+    this.eligibilityQuestions.forEach(q => { if (q.answer) eqMap[q.key] = q.answer; });
+    sessionStorage.setItem(`draft_eligibility_${draftId}`, JSON.stringify({
+      proposedComplaintType: this.proposedComplaintType,
+      notComplaintReason: this.notComplaintReason,
+      eligibilityQuestions: eqMap,
+    }));
+  }
+
   onAssignmentModeChange() {
     if (this.assignmentMode === 'AUTOMATIC') {
       const auto = this.reviewers().find(r => r.isActive && !r.isOnLeave);
@@ -604,14 +745,11 @@ export class PhysicalLetterComponent implements OnInit {
     return rev?.isOnLeave || false;
   }
 
-  confirmAssignment() {
-    if (!this.selectedReviewerId.trim()) return;
-    this.submitting.set(true);
-
+  private appendAllFieldsToFormData(formData: FormData, status: string, assignedTo: string) {
     const loggedInUser = JSON.parse(sessionStorage.getItem('crpc_user') || '{}');
     const username = loggedInUser?.id || this.auth.currentUser()?.username || '';
 
-    const formData = new FormData();
+    // Basic complainant
     formData.append('complainantName', this.complainantName);
     formData.append('complainantPhone', this.complainantPhone);
     formData.append('senderEmail', this.complainantEmail);
@@ -628,28 +766,110 @@ export class PhysicalLetterComponent implements OnInit {
     if (this.transactionDate) formData.append('transactionDate', this.transactionDate);
     if (this.letterDate) formData.append('letterDate', this.letterDate);
     formData.append('modeOfReceipt', this.modeOfReceipt || 'PHYSICAL_LETTER');
-    formData.append('status', 'SENT_TO_REVIEWER');
-    formData.append('assignedTo', this.selectedReviewerId);
+    formData.append('status', status);
+    formData.append('assignedTo', assignedTo);
     formData.append('processedBy', username);
     formData.append('receivedAt', (this.receivedDate || new Date().toISOString().split('T')[0]) + 'T00:00:00');
 
+    // Eligibility
+    formData.append('proposedComplaintType', this.proposedComplaintType);
+    formData.append('notComplaintReason', this.proposedComplaintType === 'NOT_A_COMPLAINT' ? this.notComplaintReason : '');
+    const eqMap: Record<string, string> = {};
+    this.eligibilityQuestions.forEach(q => { if (q.answer) eqMap[q.key] = q.answer; });
+    formData.append('eligibilityQuestions', JSON.stringify(eqMap));
+
+    // Entity details
+    formData.append('entityCategory', this.entityCategory);
+    formData.append('entityTypeDetail', this.entityTypeDetail);
+    formData.append('entityBsrCode', this.entityBsrCode);
+    formData.append('entityPincode', this.entityPincode);
+    formData.append('entityCountry', this.entityCountry);
+    formData.append('entityState', this.entityState);
+    formData.append('entityDistrict', this.entityDistrict);
+    formData.append('entityCity', this.entityCity);
+    formData.append('entityBranchName', this.entityBranchName);
+    formData.append('entityBranchCategory', this.entityBranchCategory);
+    formData.append('entityAddress', this.entityAddress);
+    formData.append('entityBranchCenterName', this.entityBranchCenterName);
+    formData.append('cosmosCode', this.cosmosCode);
+    formData.append('assetSize', this.assetSize != null ? String(this.assetSize) : '');
+    formData.append('isDepositTaking', this.isDepositTaking === 'YES' ? 'true' : this.isDepositTaking === 'NO' ? 'false' : '');
+    formData.append('isAssetAbove100Cr', this.isAssetAbove100Cr === 'YES' ? 'true' : this.isAssetAbove100Cr === 'NO' ? 'false' : '');
+    formData.append('isLiquidated', this.isLiquidated === 'YES' ? 'true' : this.isLiquidated === 'NO' ? 'false' : '');
+
+    // Complainant extended - Basic Identification
+    formData.append('otherEntityName', this.otherEntityName);
+    formData.append('dateOfRegistrationWithRBI', this.dateOfRegistrationWithRBI);
+
+    // Complaint Classification
+    formData.append('complaintCategory', this.complaintCategory);
+    formData.append('complaintSubCategory1', this.complaintSubCategory1);
+    formData.append('complaintSubCategory2', this.complaintSubCategory2);
+    formData.append('dateOfFilingComplaint', this.dateOfFilingComplaint);
+    formData.append('complaintRegDateValid', this.complaintRegDateValid);
+
+    // Reminder & Financial
+    formData.append('reminderSentByComplainant', this.reminderSentByComplainant);
+    formData.append('disputedAmountInvolved', this.disputedAmountInvolved != null ? String(this.disputedAmountInvolved) : '');
+    formData.append('dateOfFilingForFinancial', this.dateOfFilingForFinancial);
+    formData.append('compensationSought', this.compensationSought);
+    formData.append('loanDisposalAmount', this.loanDisposalAmount != null ? String(this.loanDisposalAmount) : '');
+
+    // Additional Information
+    formData.append('additionalComments', this.additionalComments);
+    formData.append('crpcProposedAction', this.crpcProposedAction);
+    formData.append('vernacularLanguageDetail', this.vernacularLanguageDetail);
+
+    // Legal & Case
+    formData.append('legalCaseFiled', this.legalCaseFiled);
+    formData.append('legalDateOfFiling', this.legalDateOfFiling);
+    formData.append('preEnquiryReceived', this.preEnquiryReceived);
+
+    // Flags
+    formData.append('highPriorityComplaint', this.highPriorityComplaint);
+    formData.append('isRegardingPension', this.isRegardingPension);
+    formData.append('isAgainstBusinessCorrespondent', this.isAgainstBusinessCorrespondent);
+    formData.append('isAtmCreditDebitCard', this.isAtmCreditDebitCard);
+    formData.append('schemeFlag', this.schemeFlag);
+    formData.append('isFreeMarkedComplaint', this.isFreeMarkedComplaint);
+
+    // Linkage
+    formData.append('currentComplaintNumber', this.currentComplaintNumber);
+    formData.append('receivedReplyWithin30Days', this.receivedReplyWithin30Days);
+
+    // Declaration
+    formData.append('declarationAccepted', this.declarationAccepted ? 'true' : 'false');
+
+    // Attachment
     if (this.scannedFile) {
       formData.append('attachment', this.scannedFile);
     }
+  }
+
+  confirmAssignment() {
+    if (!this.selectedReviewerId.trim()) return;
+    this.submitting.set(true);
+
+    const formData = new FormData();
+    this.appendAllFieldsToFormData(formData, 'SENT_TO_REVIEWER', this.selectedReviewerId);
 
     this.http.post<any>(`${environment.apiBaseUrl}/api/v1/email-syndication/drafts/physical-letter`, formData)
       .subscribe({
         next: (res) => {
           const newDraftId = res?.data?.draftId || res?.data?.id || '';
           this.draftId.set(newDraftId);
+          this.storeEligibilityData(newDraftId);
           this.submitting.set(false);
+          this.showAssignmentDialog.set(false);
           this.submitted.set(true);
         },
         error: () => {
           const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
           const rand = Math.floor(100000 + Math.random() * 900000);
           this.draftId.set(`DRF-${dateStr}-${rand}`);
+          this.storeEligibilityData(`DRF-${dateStr}-${rand}`);
           this.submitting.set(false);
+          this.showAssignmentDialog.set(false);
           this.submitted.set(true);
         }
       });
