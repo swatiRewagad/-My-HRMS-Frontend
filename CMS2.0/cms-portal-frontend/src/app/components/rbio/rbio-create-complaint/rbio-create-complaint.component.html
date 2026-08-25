@@ -46,6 +46,24 @@
       </p>
       <button class="btn btn-primary" (click)="goBack()">Back to Home</button>
     </div>
+  } @else if (submitted() && complaintStatus() === 'SENT_BACK') {
+    <!-- ═══ SENT BACK SUCCESS PAGE ═══ -->
+    <div class="success-page">
+      <div class="success-icon"><i class="pi pi-check-circle" style="color: #f59e0b;"></i></div>
+      <h2>Complaint Sent Back</h2>
+      <p>Complaint <strong>{{ complaintId }}</strong> has been routed to
+        <strong>{{ approvalSentTo() }}</strong>
+      </p>
+      <button class="btn btn-primary" (click)="goBack()">Back to Home</button>
+    </div>
+  } @else if (submitted() && complaintStatus() === 'CLOSED') {
+    <!-- ═══ CLOSED SUCCESS PAGE ═══ -->
+    <div class="success-page">
+      <div class="success-icon"><i class="pi pi-check-circle" style="color: #16a34a;"></i></div>
+      <h2>Complaint Closed</h2>
+      <p>Complaint <strong>{{ complaintId }}</strong> has been closed successfully.</p>
+      <button class="btn btn-primary" (click)="goBack()">Back to Home</button>
+    </div>
   } @else if (submitted() && complaintStatus() === 'VIEW_ONLY') {
     <!-- ═══ VIEW ONLY (already sent/processed) ═══ -->
     <div class="success-page">
@@ -111,7 +129,7 @@
             <span class="meta-icon"><i class="pi pi-chart-bar"></i></span>
             <div class="meta-text">
               <span class="meta-label">Status <i class="pi pi-info-circle"></i></span>
-              <span class="meta-value"><span class="status-pill green">New Complaint</span></span>
+              <span class="meta-value"><span class="status-pill" [ngClass]="getStatusClass()">{{ getStatusLabel() }}</span></span>
             </div>
           </div>
           <div class="meta-item">
@@ -125,11 +143,26 @@
             <span class="meta-icon"><i class="pi pi-clock"></i></span>
             <div class="meta-text">
               <span class="meta-label">SLA Breach In <i class="pi pi-info-circle"></i></span>
-              <span class="meta-value"><span class="sla-badge">8 days</span></span>
+              <span class="meta-value"><span class="sla-badge" [class.breach]="slaDaysRemaining() <= 5">{{ slaDaysRemaining() }} days</span></span>
             </div>
           </div>
           <div class="meta-actions">
-            @if (complaintStatus() === 'NEW_COMPLAINT') {
+            @if (complaintStatus() !== 'VIEW_ONLY' && complaintStatus() !== 'SENT_BACK' && complaintStatus() !== 'SENT' && complaintStatus() !== 'CLOSED' && assessmentTab() !== 'final-decision') {
+              @if (userRole() !== 'DO') {
+                <div class="send-back-wrapper">
+                  <button class="btn btn-send-back" (click)="showSendBackMenu.set(!showSendBackMenu())">
+                    Send Back <i class="pi pi-chevron-down"></i>
+                  </button>
+                  @if (showSendBackMenu()) {
+                    <div class="approval-dropdown">
+                      <button (click)="openSendBack('DEALING_OFFICER')">to RBIO <strong>Dealing Officer</strong></button>
+                      @if (userRole() === 'DEPUTY_OMBUDSMAN' || userRole() === 'OMBUDSMAN') {
+                        <button (click)="openSendBack('REVIEWER')">to RBIO <strong>Reviewer</strong></button>
+                      }
+                    </div>
+                  }
+                </div>
+              }
               <div class="send-approval-wrapper">
                 <button class="btn btn-send-approval" (click)="showApprovalMenu.set(!showApprovalMenu())">
                   Send for Approval <i class="pi pi-chevron-down"></i>
@@ -140,19 +173,36 @@
                       <button (click)="sendForApproval('REVIEWER')">Send to RBIO <strong>Reviewer</strong></button>
                       <button (click)="sendForApproval('DEPUTY_OMBUDSMAN')">Send to RBIO <strong>Deputy Ombudsman</strong></button>
                       <button (click)="sendForApproval('OMBUDSMAN')">Send to RBIO <strong>Ombudsman</strong></button>
-                    } @else {
-                      <button (click)="sendForApproval('DEALING_OFFICER')">to RBIO <strong>Dealing Officer</strong></button>
-                      <button (click)="sendForApproval('REVIEWER')">to RBIO <strong>Reviewer</strong></button>
+                    } @else if (userRole() === 'REVIEWER') {
                       <button (click)="sendForApproval('DEPUTY_OMBUDSMAN')">to RBIO <strong>Deputy Ombudsman</strong></button>
+                      <button (click)="sendForApproval('OMBUDSMAN')">to RBIO <strong>Ombudsman</strong></button>
+                    } @else if (userRole() === 'DEPUTY_OMBUDSMAN') {
                       <button (click)="sendForApproval('OMBUDSMAN')">to RBIO <strong>Ombudsman</strong></button>
                     }
                   </div>
                 }
               </div>
-            } @else {
+            } @else if (complaintStatus() === 'SENT_BACK') {
+              <span class="readonly-badge sent-back-badge"><i class="pi pi-arrow-left"></i> Sent Back</span>
+            } @else if (complaintStatus() === 'SENT') {
+              <span class="readonly-badge sent-badge"><i class="pi pi-check"></i> Sent for Approval</span>
+            } @else if (assessmentTab() !== 'final-decision') {
               <span class="readonly-badge"><i class="pi pi-lock"></i> View Only</span>
             }
-            <button class="btn btn-icon" title="Save"><i class="pi pi-save"></i></button>
+            @if (assessmentTab() === 'final-decision') {
+              <button class="btn btn-confirm" [disabled]="!finalDecisionAction" (click)="showFinalDecisionPreview.set(true)">
+                Confirm
+              </button>
+            } @else if (assessmentTab() === 'email') {
+              @if (emailComposeMode()) {
+                <button class="btn btn-outline btn-sm" (click)="saveEmailDraft()"><i class="pi pi-save"></i> Save Draft</button>
+                <button class="btn btn-primary btn-sm" (click)="sendEmail()"><i class="pi pi-send"></i> Send Email</button>
+              } @else {
+                <button class="btn btn-primary btn-sm" (click)="createNewEmail()"><i class="pi pi-plus"></i> Create New Email</button>
+              }
+            } @else {
+              <button class="btn btn-icon" title="Save"><i class="pi pi-save"></i></button>
+            }
             <button class="btn-more" title="More options"><i class="pi pi-ellipsis-v"></i></button>
           </div>
         </div>
@@ -160,9 +210,9 @@
         <!-- Assessment Tabs -->
         <div class="page-tabs">
           <button class="page-tab" [class.active]="assessmentTab() === 'summary'" (click)="assessmentTab.set('summary')">Summary</button>
-          <button class="page-tab" [class.active]="assessmentTab() === 'conciliation'" (click)="assessmentTab.set('conciliation')">Conciliation</button>
-          <button class="page-tab" [class.active]="assessmentTab() === 'forward'" (click)="assessmentTab.set('forward')">Forward</button>
-          <button class="page-tab" [class.active]="assessmentTab() === 'final-decision'" (click)="assessmentTab.set('final-decision')">Final Decision</button>
+          <button class="page-tab" [class.active]="assessmentTab() === 'conciliation'" [class.disabled]="!conciliationEnabled()" [disabled]="!conciliationEnabled()" (click)="assessmentTab.set('conciliation')">Conciliation</button>
+          <button class="page-tab" [class.active]="assessmentTab() === 'forward'" [class.disabled]="userRole() === 'DO'" [disabled]="userRole() === 'DO'" (click)="assessmentTab.set('forward')">Forward</button>
+          <button class="page-tab" [class.active]="assessmentTab() === 'final-decision'" [class.disabled]="userRole() === 'DO'" [disabled]="userRole() === 'DO'" (click)="assessmentTab.set('final-decision')">Final Decision</button>
           <button class="page-tab" [class.active]="assessmentTab() === 'nodal-officer'" (click)="assessmentTab.set('nodal-officer')">Nodal Officer Record</button>
           <button class="page-tab" [class.active]="assessmentTab() === 'email'" (click)="assessmentTab.set('email')">Email Communication</button>
         </div>
@@ -419,6 +469,187 @@
           </div>
         </div>
       }
+    } @else if (assessmentTab() === 'email') {
+
+    <!-- ═══ EMAIL COMMUNICATION TAB ═══ -->
+    <div class="email-comm-layout">
+      <!-- Left Sidebar: Activity List -->
+      <div class="email-sidebar">
+        <div class="email-sidebar-section">
+          <div class="email-sidebar-header" (click)="emailOpenActivitiesExpanded = !emailOpenActivitiesExpanded">
+            <i class="pi" [class.pi-chevron-down]="emailOpenActivitiesExpanded" [class.pi-chevron-right]="!emailOpenActivitiesExpanded"></i>
+            <span>Open Activities</span>
+          </div>
+          @if (emailOpenActivitiesExpanded) {
+            <div class="email-activity-list">
+              @for (activity of emailActivities(); track activity.id) {
+                <div class="email-activity-item" [class.active]="selectedEmailActivity()?.id === activity.id" (click)="selectEmailActivity(activity)">
+                  <span class="email-activity-title">{{ activity.subject || 'Untitled' }}</span>
+                  <span class="email-activity-date">{{ activity.date }}</span>
+                </div>
+              }
+              @if (emailActivities().length === 0) {
+                <div class="email-activity-item empty">No open activities</div>
+              }
+            </div>
+          }
+        </div>
+        <div class="email-sidebar-section">
+          <div class="email-sidebar-header" (click)="emailDraftExpanded = !emailDraftExpanded">
+            <i class="pi" [class.pi-chevron-down]="emailDraftExpanded" [class.pi-chevron-right]="!emailDraftExpanded"></i>
+            <span>Draft Emails</span>
+          </div>
+          @if (emailDraftExpanded) {
+            <div class="email-activity-list">
+              @for (draft of emailDrafts(); track draft.id) {
+                <div class="email-activity-item" [class.active]="selectedEmailActivity()?.id === draft.id" (click)="selectEmailActivity(draft)">
+                  <span class="email-activity-title">{{ draft.subject || 'Untitled Draft' }}</span>
+                  <span class="email-activity-date">{{ draft.date }}</span>
+                </div>
+              }
+              @if (emailDrafts().length === 0) {
+                <div class="email-activity-item empty">No drafts</div>
+              }
+            </div>
+          }
+        </div>
+        <div class="email-sidebar-section">
+          <div class="email-sidebar-header" (click)="emailClosedExpanded = !emailClosedExpanded">
+            <i class="pi" [class.pi-chevron-down]="emailClosedExpanded" [class.pi-chevron-right]="!emailClosedExpanded"></i>
+            <span>Closed Activities</span>
+          </div>
+          @if (emailClosedExpanded) {
+            <div class="email-activity-list">
+              @for (activity of emailClosedActivities(); track activity.id) {
+                <div class="email-activity-item" (click)="selectEmailActivity(activity)">
+                  <span class="email-activity-title">{{ activity.subject }}</span>
+                  <span class="email-activity-date">{{ activity.date }}</span>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Right: Email Content / Compose -->
+      <div class="email-main-content">
+        @if (emailComposeMode()) {
+          <!-- COMPOSE MODE -->
+          <div class="email-compose">
+            <div class="email-compose-actions">
+              <button class="btn btn-outline btn-sm" (click)="emailComposeMode.set(false)"><i class="pi pi-list"></i> Select Template</button>
+              <button class="btn btn-outline btn-sm"><i class="pi pi-paperclip"></i> Add Attachment</button>
+              <button class="btn btn-outline btn-sm btn-close-compose" (click)="emailComposeMode.set(false)" title="Close"><i class="pi pi-times"></i></button>
+            </div>
+            <div class="email-compose-form">
+              <div class="email-field">
+                <label>From</label>
+                <input type="text" [(ngModel)]="emailFrom" placeholder="cmssupportngp@rbi.org.in" />
+              </div>
+              <div class="email-field">
+                <label>To</label>
+                <input type="text" [(ngModel)]="emailTo" placeholder="Enter recipient email" />
+              </div>
+              <div class="email-field">
+                <label>CC</label>
+                <input type="text" [(ngModel)]="emailCc" placeholder="Add CC recipients" />
+              </div>
+              <div class="email-field">
+                <label>BCC</label>
+                <input type="text" [(ngModel)]="emailBcc" placeholder="Add BCC recipients" />
+              </div>
+              <div class="email-field">
+                <label>Subject</label>
+                <input type="text" [(ngModel)]="emailSubject" placeholder="Enter subject" />
+              </div>
+              <div class="email-toolbar">
+                <button class="toolbar-btn"><b>B</b></button>
+                <button class="toolbar-btn"><i>I</i></button>
+                <button class="toolbar-btn"><u>U</u></button>
+                <button class="toolbar-btn">12</button>
+                <button class="toolbar-btn"><span class="color-swatch"></span></button>
+                <button class="toolbar-btn"><i class="pi pi-link"></i></button>
+                <button class="toolbar-btn"><i class="pi pi-paperclip"></i></button>
+                <button class="toolbar-btn"><i class="pi pi-face-smile"></i></button>
+              </div>
+              <textarea class="email-body-input" [(ngModel)]="emailBody" rows="10" placeholder="Enter your email here"></textarea>
+            </div>
+          </div>
+        } @else {
+          <!-- VIEW MODE: Show selected email -->
+          @if (selectedEmailActivity()) {
+            <div class="email-view">
+              <div class="email-view-subject">
+                <h3>{{ selectedEmailActivity()?.subject }}</h3>
+              </div>
+              <div class="email-view-header">
+                <div class="email-sender-info">
+                  <span class="email-avatar">RB</span>
+                  <div class="email-sender-details">
+                    <span class="email-sender-name">{{ selectedEmailActivity()?.from || 'rbiteamcms@rbi.org.in' }}</span>
+                    <span class="email-sender-to">To: {{ selectedEmailActivity()?.to || 'cmssupportngp@rbi.org.in' }}</span>
+                  </div>
+                </div>
+                <div class="email-view-meta">
+                  <div class="email-meta-item">
+                    <span class="email-meta-label">Assigned To</span>
+                    <span class="email-meta-value">{{ selectedEmailActivity()?.assignedTo || '—' }}</span>
+                  </div>
+                  <div class="email-meta-item">
+                    <span class="email-meta-label">Created On</span>
+                    <span class="email-meta-value">{{ selectedEmailActivity()?.date }}</span>
+                  </div>
+                  <div class="email-meta-item">
+                    <span class="email-meta-label">Due Date</span>
+                    <span class="email-meta-value">{{ selectedEmailActivity()?.dueDate || '—' }}</span>
+                  </div>
+                  <span class="email-status-badge open">Open</span>
+                  <button class="btn btn-outline btn-sm"><i class="pi pi-reply"></i> Reply</button>
+                </div>
+              </div>
+              @if (selectedEmailActivity()?.attachments?.length) {
+                <div class="email-attachments">
+                  @for (att of selectedEmailActivity()?.attachments || []; track att.name) {
+                    <div class="email-attachment-chip">
+                      <i class="pi pi-file-excel"></i>
+                      <span>{{ att.name }}</span>
+                      <span class="att-size">{{ att.size }}</span>
+                      <button class="att-btn"><i class="pi pi-eye"></i></button>
+                      <button class="att-btn"><i class="pi pi-download"></i></button>
+                    </div>
+                  }
+                </div>
+              }
+              <div class="email-view-body">
+                <div class="email-rbi-header">
+                  <img src="assets/corporates-rbi-logo.jpg" alt="RBI" class="email-rbi-logo" onerror="this.style.display='none'" />
+                  <div class="email-rbi-text">
+                    <span>केंद्रीय प्राप्ति और प्रसंस्करण केंद्र (सीआरपीसी)</span>
+                    <span>Centralised Receipt and Processing Centre(CRPC)</span>
+                    <span>भारतीय रिज़र्व बैंक / Reserve Bank of India</span>
+                  </div>
+                </div>
+                <div class="email-body-content" [innerHTML]="selectedEmailActivity()?.body || ''"></div>
+              </div>
+            </div>
+          } @else {
+            <div class="email-empty-state">
+              <i class="pi pi-envelope" style="font-size: 48px; color: #cbd5e1;"></i>
+              <p>Select an activity to view email or click "Create New Email"</p>
+            </div>
+          }
+        }
+      </div>
+
+      <!-- Right Sidebar Icons -->
+      <div class="email-right-icons">
+        <button class="sidebar-icon-btn"><i class="pi pi-user"></i></button>
+        <button class="sidebar-icon-btn active"><i class="pi pi-comment"></i></button>
+        <button class="sidebar-icon-btn"><i class="pi pi-history"></i></button>
+        <button class="sidebar-icon-btn"><i class="pi pi-sliders-h"></i></button>
+      </div>
+    </div>
+
     } @else {
 
     <!-- ═══ SUMMARY / OTHER TABS: Two panels (Assessment) ═══ -->
@@ -429,7 +660,7 @@
           <div class="panel-header">
             <h3><i class="pi pi-th-large"></i> Complaint</h3>
             <div class="panel-header-actions">
-              <button class="btn btn-outline btn-sm" (click)="editDraft()"><i class="pi pi-pencil"></i> Edit</button>
+              <button class="btn btn-outline btn-sm" (click)="toggleEditMode()"><i class="pi pi-pencil"></i> {{ editMode() ? 'Done' : 'Edit' }}</button>
               <button class="expand-btn" (click)="pdfExpanded.set(!pdfExpanded())">
                 <i class="pi pi-window-maximize"></i>
               </button>
@@ -448,33 +679,66 @@
                   <div class="summary-row">
                     <div class="summary-field">
                       <span class="summary-label">Complainant Name</span>
-                      <span class="summary-value">{{ complainantName || '—' }}</span>
+                      @if (editMode()) {
+                        <input type="text" [(ngModel)]="complainantName" class="summary-edit-input" />
+                      } @else {
+                        <span class="summary-value">{{ complainantName || '—' }}</span>
+                      }
                     </div>
                     <div class="summary-field">
                       <span class="summary-label">Email ID</span>
-                      <span class="summary-value">{{ complainantEmail || '—' }}</span>
+                      @if (editMode()) {
+                        <input type="text" [(ngModel)]="complainantEmail" class="summary-edit-input" />
+                      } @else {
+                        <span class="summary-value">{{ complainantEmail || '—' }}</span>
+                      }
                     </div>
                   </div>
                   <div class="summary-field full">
                     <span class="summary-label">Subject</span>
-                    <span class="summary-value">{{ subject || '—' }}</span>
+                    @if (editMode()) {
+                      <input type="text" [(ngModel)]="subject" class="summary-edit-input" />
+                    } @else {
+                      <span class="summary-value">{{ subject || '—' }}</span>
+                    }
                   </div>
                   <div class="summary-field full">
                     <span class="summary-label">Complaint Details</span>
-                    <span class="summary-value">{{ description || '—' }}</span>
+                    @if (editMode()) {
+                      <textarea [(ngModel)]="description" rows="3" class="summary-edit-input"></textarea>
+                    } @else {
+                      <span class="summary-value">{{ description || '—' }}</span>
+                    }
                   </div>
                   <div class="summary-field full">
                     <span class="summary-label">Comments</span>
-                    <span class="summary-value">{{ comments || '—' }}</span>
+                    @if (editMode()) {
+                      <textarea [(ngModel)]="comments" rows="2" class="summary-edit-input"></textarea>
+                    } @else {
+                      <span class="summary-value">{{ comments || '—' }}</span>
+                    }
                   </div>
                   <div class="summary-row">
                     <div class="summary-field">
                       <span class="summary-label">Mode of Receipt</span>
-                      <span class="summary-value">{{ modeOfReceipt || '—' }}</span>
+                      @if (editMode()) {
+                        <select [(ngModel)]="modeOfReceipt" class="summary-edit-input">
+                          <option value="PHYSICAL_LETTER">Physical Letter</option>
+                          <option value="EMAIL">Email</option>
+                          <option value="PORTAL">Portal</option>
+                          <option value="CPGRAMS">CPGRAMS</option>
+                        </select>
+                      } @else {
+                        <span class="summary-value">{{ modeOfReceipt || '—' }}</span>
+                      }
                     </div>
                     <div class="summary-field">
                       <span class="summary-label">Receipt Date</span>
-                      <span class="summary-value">{{ receivedDate || '—' }}</span>
+                      @if (editMode()) {
+                        <input type="date" [(ngModel)]="receivedDate" class="summary-edit-input" />
+                      } @else {
+                        <span class="summary-value">{{ receivedDate || '—' }}</span>
+                      }
                     </div>
                   </div>
                 </div>
@@ -509,6 +773,118 @@
                 <i class="pi pi-building"></i> Entity Details
                 <i class="pi section-chevron" [class.pi-chevron-up]="summarySections.entity" [class.pi-chevron-down]="!summarySections.entity"></i>
               </h5>
+              @if (summarySections.entity) {
+                <div class="summary-fields">
+                  <div class="summary-row">
+                    <div class="summary-field">
+                      <span class="summary-label">Entity Name</span>
+                      @if (editMode()) {
+                        <input type="text" [(ngModel)]="entityName" class="summary-edit-input" />
+                      } @else {
+                        <span class="summary-value">{{ entityName || '—' }}</span>
+                      }
+                    </div>
+                    <div class="summary-field">
+                      <span class="summary-label">Entity Type</span>
+                      @if (editMode()) {
+                        <input type="text" [(ngModel)]="entityType" class="summary-edit-input" />
+                      } @else {
+                        <span class="summary-value">{{ entityType || '—' }}</span>
+                      }
+                    </div>
+                  </div>
+                  <div class="summary-row">
+                    <div class="summary-field">
+                      <span class="summary-label">Entity Category</span>
+                      @if (editMode()) {
+                        <input type="text" [(ngModel)]="entityCategory" class="summary-edit-input" />
+                      } @else {
+                        <span class="summary-value">{{ entityCategory || '—' }}</span>
+                      }
+                    </div>
+                    <div class="summary-field">
+                      <span class="summary-label">BSR Code</span>
+                      @if (editMode()) {
+                        <input type="text" [(ngModel)]="bsrCode" class="summary-edit-input" />
+                      } @else {
+                        <span class="summary-value">{{ bsrCode || '—' }}</span>
+                      }
+                    </div>
+                  </div>
+                  <div class="summary-row">
+                    <div class="summary-field">
+                      <span class="summary-label">Pincode</span>
+                      @if (editMode()) {
+                        <input type="text" [(ngModel)]="entityPincode" class="summary-edit-input" maxlength="6" />
+                      } @else {
+                        <span class="summary-value">{{ entityPincode || '—' }}</span>
+                      }
+                    </div>
+                    <div class="summary-field">
+                      <span class="summary-label">State</span>
+                      @if (editMode()) {
+                        <input type="text" [(ngModel)]="entityState" class="summary-edit-input" />
+                      } @else {
+                        <span class="summary-value">{{ entityState || '—' }}</span>
+                      }
+                    </div>
+                  </div>
+                  <div class="summary-row">
+                    <div class="summary-field">
+                      <span class="summary-label">District</span>
+                      @if (editMode()) {
+                        <input type="text" [(ngModel)]="entityDistrict" class="summary-edit-input" />
+                      } @else {
+                        <span class="summary-value">{{ entityDistrict || '—' }}</span>
+                      }
+                    </div>
+                    <div class="summary-field">
+                      <span class="summary-label">City</span>
+                      @if (editMode()) {
+                        <input type="text" [(ngModel)]="entityCity" class="summary-edit-input" />
+                      } @else {
+                        <span class="summary-value">{{ entityCity || '—' }}</span>
+                      }
+                    </div>
+                  </div>
+                  <div class="summary-row">
+                    <div class="summary-field">
+                      <span class="summary-label">Branch Name</span>
+                      @if (editMode()) {
+                        <input type="text" [(ngModel)]="entityBranchName" class="summary-edit-input" />
+                      } @else {
+                        <span class="summary-value">{{ entityBranchName || '—' }}</span>
+                      }
+                    </div>
+                    <div class="summary-field">
+                      <span class="summary-label">Branch Category</span>
+                      @if (editMode()) {
+                        <input type="text" [(ngModel)]="entityBranchCategory" class="summary-edit-input" />
+                      } @else {
+                        <span class="summary-value">{{ entityBranchCategory || '—' }}</span>
+                      }
+                    </div>
+                  </div>
+                  <div class="summary-field full">
+                    <span class="summary-label">Entity Address</span>
+                    @if (editMode()) {
+                      <input type="text" [(ngModel)]="entityAddress" class="summary-edit-input" />
+                    } @else {
+                      <span class="summary-value">{{ entityAddress || '—' }}</span>
+                    }
+                  </div>
+                  <div class="summary-row">
+                    <div class="summary-field">
+                      <span class="summary-label">COSMOS Code</span>
+                      @if (editMode()) {
+                        <input type="text" [(ngModel)]="cosmosCode" class="summary-edit-input" />
+                      } @else {
+                        <span class="summary-value">{{ cosmosCode || '—' }}</span>
+                      }
+                    </div>
+                  </div>
+                </div>
+              }
             </section>
 
             <!-- Complainant Details -->
@@ -517,27 +893,191 @@
                 <i class="pi pi-user"></i> Complainant Details
                 <i class="pi section-chevron" [class.pi-chevron-up]="summarySections.complainant" [class.pi-chevron-down]="!summarySections.complainant"></i>
               </h5>
+              @if (summarySections.complainant) {
+                <div class="summary-fields">
+                  <div class="summary-row">
+                    <div class="summary-field">
+                      <span class="summary-label">Complainant Name</span>
+                      @if (editMode()) {
+                        <input type="text" [(ngModel)]="complainantName" class="summary-edit-input" />
+                      } @else {
+                        <span class="summary-value">{{ complainantName || '—' }}</span>
+                      }
+                    </div>
+                    <div class="summary-field">
+                      <span class="summary-label">Phone</span>
+                      @if (editMode()) {
+                        <input type="text" [(ngModel)]="complainantPhone" class="summary-edit-input" maxlength="10" />
+                      } @else {
+                        <span class="summary-value">{{ complainantPhone || '—' }}</span>
+                      }
+                    </div>
+                  </div>
+                  <div class="summary-row">
+                    <div class="summary-field">
+                      <span class="summary-label">Email</span>
+                      @if (editMode()) {
+                        <input type="text" [(ngModel)]="complainantEmail" class="summary-edit-input" />
+                      } @else {
+                        <span class="summary-value">{{ complainantEmail || '—' }}</span>
+                      }
+                    </div>
+                    <div class="summary-field">
+                      <span class="summary-label">State</span>
+                      @if (editMode()) {
+                        <input type="text" [(ngModel)]="complainantState" class="summary-edit-input" />
+                      } @else {
+                        <span class="summary-value">{{ complainantState || '—' }}</span>
+                      }
+                    </div>
+                  </div>
+                  <div class="summary-row">
+                    <div class="summary-field">
+                      <span class="summary-label">District</span>
+                      @if (editMode()) {
+                        <input type="text" [(ngModel)]="complainantDistrict" class="summary-edit-input" />
+                      } @else {
+                        <span class="summary-value">{{ complainantDistrict || '—' }}</span>
+                      }
+                    </div>
+                    <div class="summary-field">
+                      <span class="summary-label">Pincode</span>
+                      @if (editMode()) {
+                        <input type="text" [(ngModel)]="complainantPincode" class="summary-edit-input" maxlength="6" />
+                      } @else {
+                        <span class="summary-value">{{ complainantPincode || '—' }}</span>
+                      }
+                    </div>
+                  </div>
+                  <div class="summary-field full">
+                    <span class="summary-label">Address</span>
+                    @if (editMode()) {
+                      <input type="text" [(ngModel)]="complainantAddress" class="summary-edit-input" />
+                    } @else {
+                      <span class="summary-value">{{ complainantAddress || '—' }}</span>
+                    }
+                  </div>
+                </div>
+              }
             </section>
           </div>
         </div>
 
-        <!-- RIGHT: Assessment Panel -->
+        <!-- RIGHT: Assessment / Final Decision Panel -->
         <div class="col-complaint-form assessment-panel">
+          @if (assessmentTab() === 'final-decision') {
+          <div class="panel-header">
+            <h3><i class="pi pi-check-circle"></i> Final Decision</h3>
+            <button class="expand-btn"><i class="pi pi-window-maximize"></i></button>
+          </div>
+          <div class="form-scroll assessment-scroll">
+            <div class="final-decision-panel">
+              <p class="final-decision-label">Select Action</p>
+              <div class="final-decision-actions">
+                <button class="final-action-btn" [class.selected]="finalDecisionAction === 'CLOSE'" (click)="finalDecisionAction = 'CLOSE'">
+                  <span class="action-radio"></span> Close Complaint
+                </button>
+              </div>
+
+              @if (finalDecisionAction === 'CLOSE') {
+                <div class="final-decision-form">
+                  <div class="form-group">
+                    <label>Closure Clause</label>
+                    <div class="searchable-select">
+                      <div class="search-input-wrapper">
+                        <input type="text" [(ngModel)]="closureClauseSearch" (focus)="closureClauseDropdownOpen = true" (input)="closureClauseDropdownOpen = true" (blur)="closureClauseDropdownOpen = false" [placeholder]="closureClause || 'Search'" autocomplete="off" />
+                        <i class="pi pi-search"></i>
+                      </div>
+                      @if (closureClauseDropdownOpen && getFilteredClosureClauses().length > 0) {
+                        <div class="search-dropdown">
+                          @for (clause of getFilteredClosureClauses(); track clause) {
+                            <div class="search-dropdown-item" [class.selected]="closureClause === clause" (mousedown)="closureClause = clause; closureClauseSearch = clause; closureClauseDropdownOpen = false">{{ clause }}</div>
+                          }
+                        </div>
+                      }
+                    </div>
+                  </div>
+
+                  <div class="form-group">
+                    <label>Closure Clause Description</label>
+                    <div class="textarea-with-speech">
+                      <textarea [(ngModel)]="closureClauseDescription" rows="3" placeholder="Enter text here"></textarea>
+                      <app-speech-button (transcription)="closureClauseDescription = closureClauseDescription + ' ' + $event"></app-speech-button>
+                    </div>
+                  </div>
+
+                  <div class="form-row-2col">
+                    <div class="form-group">
+                      <label>Complaint Status on Portal</label>
+                      <div class="searchable-select">
+                        <input type="text" [(ngModel)]="complaintStatusOnPortal" placeholder="Search" />
+                        <i class="pi pi-search"></i>
+                      </div>
+                    </div>
+                    <div class="form-group">
+                      <label>Speaking order generated?</label>
+                      <div class="radio-group">
+                        <label class="radio-label"><input type="radio" name="speakingOrder" value="Yes" [(ngModel)]="speakingOrderGenerated" /> Yes</label>
+                        <label class="radio-label"><input type="radio" name="speakingOrder" value="No" [(ngModel)]="speakingOrderGenerated" /> No</label>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="form-row-2col">
+                    <div class="form-group">
+                      <label>Gist of the Case</label>
+                      <div class="searchable-select">
+                        <input type="text" [(ngModel)]="gistOfCase" placeholder="Search" />
+                        <i class="pi pi-search"></i>
+                      </div>
+                    </div>
+                    <div class="form-group">
+                      <label>Gist of the Case in regional language</label>
+                      <div class="searchable-select">
+                        <input type="text" [(ngModel)]="gistOfCaseRegional" placeholder="Search" />
+                        <i class="pi pi-search"></i>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              }
+
+              <!-- All Comments -->
+              <div class="assessment-comments">
+                <h4 class="comments-title">All Comments</h4>
+                @for (comment of assessmentComments(); track comment.id) {
+                  <div class="comment-card">
+                    <div class="comment-header">
+                      <span class="comment-avatar" [style.background]="comment.color">{{ comment.initials }}</span>
+                      <span class="comment-author">{{ comment.author }}</span>
+                      <span class="comment-timestamp">{{ formatCommentDate(comment.createdAt || '') }}</span>
+                    </div>
+                    <p class="comment-body">{{ comment.text }}</p>
+                  </div>
+                }
+              </div>
+
+              <!-- Add Comment -->
+              <div class="add-comment-section">
+                <label class="comment-label">Comments <i class="pi pi-expand"></i></label>
+                <div class="textarea-with-speech">
+                  <textarea [(ngModel)]="assessmentComment" rows="3" placeholder="Enter text here"></textarea>
+                  <app-speech-button (transcription)="assessmentComment = assessmentComment + ' ' + $event"></app-speech-button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          } @else {
           <div class="panel-header">
             <h3><i class="pi pi-clipboard"></i> Assessment</h3>
             <button class="expand-btn"><i class="pi pi-window-maximize"></i></button>
           </div>
 
-          <div class="form-sidebar-icons">
-            <button class="sidebar-icon-btn active"><i class="pi pi-search"></i></button>
-            <button class="sidebar-icon-btn"><i class="pi pi-paperclip"></i></button>
-            <button class="sidebar-icon-btn"><i class="pi pi-history"></i></button>
-            <button class="sidebar-icon-btn"><i class="pi pi-sliders-h"></i></button>
-          </div>
-
+          @if (rightPanelTab() === 'assessment') {
           <div class="form-scroll assessment-scroll">
-            <!-- Deputy Ombudsman Decision checkbox: only for Reviewer/Deputy/Ombudsman -->
-            @if (userRole() !== 'DO') {
+            <!-- Deputy Ombudsman Decision checkbox: only for Deputy Ombudsman/Ombudsman -->
+            @if (userRole() === 'DEPUTY_OMBUDSMAN' || userRole() === 'OMBUDSMAN') {
               <div class="assessment-decision">
                 <label class="assessment-checkbox">
                   <input type="checkbox" [(ngModel)]="sendToDeputy" />
@@ -571,45 +1111,32 @@
               </div>
             }
 
-            <!-- Proposed Action / Proposed Clause -->
-            <div class="form-row-2col assessment-fields">
-              <div class="form-group">
-                @if (userRole() !== 'DO') {
-                  <label>Proposed Action <span class="field-avatars"><span class="avatar-sm orange">A</span><span class="avatar-sm orange">A</span></span></label>
-                  <select [(ngModel)]="proposedAction" class="select-highlighted">
-                    <option value="NON_MAINTAINABLE">Non Maintainable</option>
-                    <option value="ACCEPT">Accept</option>
-                    <option value="REJECT">Reject</option>
-                    <option value="PARTIAL_ACCEPT">Partial Accept</option>
-                    <option value="REFER_BACK">Refer Back</option>
-                  </select>
-                } @else {
-                  <label>Proposed Action</label>
+            <!-- Proposed Action / Proposed Clause (DO only) -->
+            @if (userRole() === 'DO') {
+              <div class="form-row-2col assessment-fields">
+                <div class="form-group">
+                  <label>Proposed Action <span class="mandatory">*</span></label>
                   <select [(ngModel)]="proposedAction">
-                    <option value="">Select a Value</option>
+                    <option value="">Select Action</option>
+                    <option value="MAINTAINABLE">Maintainable</option>
                     <option value="NON_MAINTAINABLE">Non Maintainable</option>
-                    <option value="ACCEPT">Accept</option>
-                    <option value="REJECT">Reject</option>
-                    <option value="PARTIAL_ACCEPT">Partial Accept</option>
-                    <option value="REFER_BACK">Refer Back</option>
                   </select>
-                }
-              </div>
-              <div class="form-group entity-search-group">
-                <label>Proposed Clause</label>
-                <div class="entity-search-wrapper">
-                  <input type="text" [(ngModel)]="proposedClause" placeholder="Search" autocomplete="off" />
-                  <i class="pi pi-search entity-search-icon"></i>
                 </div>
-              </div>
-            </div>
-
-            <!-- Closure Clause Description (shown when Proposed Clause is filled, non-DO only) -->
-            @if (proposedClause && userRole() !== 'DO') {
-              <div class="add-comment-section">
-                <label class="comment-label">Closure Clause Description</label>
-                <div class="textarea-with-speech">
-                  <textarea [(ngModel)]="closureClauseDescription" rows="3" placeholder="Closure clause description comes here in detail"></textarea>
+                <div class="form-group">
+                  <label>Proposed Clause <span class="mandatory">*</span></label>
+                  <div class="searchable-select">
+                    <div class="search-input-wrapper">
+                      <input type="text" [(ngModel)]="clauseSearch" (focus)="clauseDropdownOpen = true" (input)="clauseDropdownOpen = true" (blur)="clauseDropdownOpen = false" [placeholder]="proposedClause || 'Search'" autocomplete="off" />
+                      <i class="pi pi-search"></i>
+                    </div>
+                    @if (clauseDropdownOpen && getFilteredClauses().length > 0) {
+                      <div class="search-dropdown">
+                        @for (clause of getFilteredClauses(); track clause) {
+                          <div class="search-dropdown-item" [class.selected]="proposedClause === clause" (mousedown)="proposedClause = clause; clauseSearch = clause; clauseDropdownOpen = false">{{ clause }}</div>
+                        }
+                      </div>
+                    }
+                  </div>
                 </div>
               </div>
             }
@@ -617,16 +1144,14 @@
             <!-- All Comments -->
             <div class="assessment-comments">
               <h4 class="comments-title">All Comments</h4>
-              @for (comment of assessmentComments; track comment.id) {
+              @for (comment of assessmentComments(); track comment.id) {
                 <div class="comment-card">
                   <div class="comment-header">
                     <span class="comment-avatar" [style.background]="comment.color">{{ comment.initials }}</span>
-                    <div class="comment-meta">
-                      <span class="comment-author">{{ comment.author }}</span>
-                      <span class="comment-time">{{ comment.time }}</span>
-                    </div>
+                    <span class="comment-author">{{ comment.author }}</span>
+                    <span class="comment-timestamp">{{ formatCommentDate(comment.createdAt || '') }}</span>
                   </div>
-                  <p class="comment-body">{{ comment.text }} @if (comment.text.length > 120) { <a class="read-more">...read more</a> }</p>
+                  <p class="comment-body">{{ comment.text }}</p>
                 </div>
               }
             </div>
@@ -639,17 +1164,56 @@
                 <app-speech-button (transcription)="assessmentComment = assessmentComment + ' ' + $event"></app-speech-button>
               </div>
             </div>
-
-            <!-- Contents of the Speaking Order -->
-            <div class="add-comment-section">
-              <label class="comment-label">Contents of the Speaking Order</label>
-              <div class="textarea-with-speech">
-                <textarea [(ngModel)]="speakingOrderContent" rows="3" placeholder="Enter text here"></textarea>
-                <app-speech-button (transcription)="speakingOrderContent = speakingOrderContent + ' ' + $event"></app-speech-button>
+          </div>
+          } @else if (rightPanelTab() === 'attachments') {
+          <div class="form-scroll assessment-scroll">
+            <div class="attachment-panel">
+              <h4 class="comments-title">Attachments</h4>
+              <div class="attachment-empty">
+                <i class="pi pi-paperclip" style="font-size: 32px; color: #94a3b8; margin-bottom: 8px;"></i>
+                <p style="color: #94a3b8; font-size: 13px;">No attachments available for this complaint.</p>
               </div>
             </div>
           </div>
+          } @else if (rightPanelTab() === 'history') {
+          <div class="form-scroll assessment-scroll">
+            <div class="history-panel">
+              <h4 class="comments-title">History / Timeline</h4>
+              <div class="timeline-list">
+                <div class="timeline-item">
+                  <span class="timeline-dot"></span>
+                  <div class="timeline-content">
+                    <span class="timeline-title">Complaint Created</span>
+                    <span class="timeline-time">{{ receivedDate || 'N/A' }}</span>
+                  </div>
+                </div>
+                <div class="timeline-item">
+                  <span class="timeline-dot"></span>
+                  <div class="timeline-content">
+                    <span class="timeline-title">Assigned to Dealing Officer</span>
+                    <span class="timeline-time">{{ receivedDate || 'N/A' }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          } @else if (rightPanelTab() === 'settings') {
+          <div class="form-scroll assessment-scroll">
+            <div class="settings-panel">
+              <h4 class="comments-title">Settings</h4>
+              <p style="color: #94a3b8; font-size: 13px;">No additional settings available.</p>
+            </div>
+          </div>
+          }
+          }
         </div>
+      </div>
+      <!-- Right sidebar icons (extreme right) -->
+      <div class="form-sidebar-icons">
+        <button class="sidebar-icon-btn" [class.active]="rightPanelTab() === 'assessment'" (click)="rightPanelTab.set('assessment')"><i class="pi pi-user"></i></button>
+        <button class="sidebar-icon-btn" [class.active]="rightPanelTab() === 'attachments'" (click)="rightPanelTab.set('attachments')"><i class="pi pi-paperclip"></i></button>
+        <button class="sidebar-icon-btn" [class.active]="rightPanelTab() === 'history'" (click)="rightPanelTab.set('history')"><i class="pi pi-history"></i></button>
+        <button class="sidebar-icon-btn" [class.active]="rightPanelTab() === 'settings'" (click)="rightPanelTab.set('settings')"><i class="pi pi-sliders-h"></i></button>
       </div>
     </div>
 
@@ -1508,29 +2072,48 @@
 @if (showSendBackDialog()) {
   <div class="modal-overlay" (click)="cancelSendBack()">
     <div class="modal-content assignment-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header-bar">
+        <span>Assignment - {{ sendBackTargetLabel }}</span>
+      </div>
       <div class="modal-body">
         <div class="confirmation-header">
           <i class="pi pi-info-circle confirmation-icon"></i>
           <div class="confirmation-text">
             <strong>Confirmation</strong>
-            <p>Are you sure you want to <strong>send back the request to {{ sendBackTargetLabel }}</strong>?</p>
+            <p>Are you sure you want to <strong>send back the request to {{ sendBackTargetLabel }}</strong> ?</p>
           </div>
           <button class="modal-close" (click)="cancelSendBack()">&times;</button>
         </div>
 
         <div class="assignment-form">
-          <div class="form-group">
-            <label>{{ sendBackTargetLabel }}</label>
-            <div class="deo-select-wrapper">
-              <input type="text" [value]="sendBackTargetLabel + ' Name'" readonly />
-              <i class="pi pi-search"></i>
+          <div class="form-row-2col">
+            <div class="form-group">
+              <label>Assignment</label>
+              <select [(ngModel)]="sendBackAssignmentMode" (ngModelChange)="onSendBackAssignmentChange()">
+                <option value="AUTOMATIC">Automatic</option>
+                <option value="MANUAL">Manual</option>
+              </select>
+            </div>
+            <div class="form-group entity-search-group">
+              <label>Name of {{ sendBackTargetLabel }}</label>
+              <div class="deo-select-wrapper">
+                <input type="text" [(ngModel)]="sendBackSelectedName" [placeholder]="sendBackTargetLabel + ' Name'" [disabled]="sendBackAssignmentMode === 'AUTOMATIC'" (input)="filterSendBackUsers()" (focus)="filterSendBackUsers()" autocomplete="off" />
+                <i class="pi pi-search"></i>
+              </div>
+              @if (sendBackAssignmentMode === 'MANUAL' && sendBackFilteredUsers.length > 0) {
+                <ul class="entity-dropdown">
+                  @for (user of sendBackFilteredUsers; track user.id) {
+                    <li (click)="selectSendBackUser(user)">{{ user.name }}</li>
+                  }
+                </ul>
+              }
             </div>
           </div>
 
           <div class="status-change">
             <span class="status-label">Expected Status Change <i class="pi pi-info-circle"></i></span>
             <div class="status-flow">
-              <span class="status-badge sent-deputy"><i class="pi pi-pencil"></i> Sent to Deputy Ombudsman</span>
+              <span class="status-badge create"><i class="pi pi-circle-fill"></i> {{ complaintStatus() || 'New Complaint' }}</span>
               <i class="pi pi-arrow-right flow-arrow"></i>
               <span class="status-badge sent-back"><i class="pi pi-arrow-left"></i> {{ sendBackStatusLabel }}</span>
             </div>
@@ -1539,7 +2122,80 @@
       </div>
       <div class="modal-footer">
         <button class="btn btn-outline" (click)="cancelSendBack()">Cancel</button>
-        <button class="btn btn-primary" (click)="confirmSendBack()">Confirm</button>
+        <button class="btn btn-primary" (click)="confirmSendBack()" [disabled]="sendBackSubmitting()">
+          @if (sendBackSubmitting()) { <span class="spinner-sm"></span> Sending... } @else { Confirm }
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ═══ FINAL DECISION: Preview and Confirm Modal ═══ -->
+@if (showFinalDecisionPreview()) {
+  <div class="modal-overlay" (click)="showFinalDecisionPreview.set(false)">
+    <div class="modal-dialog final-decision-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-header-content">
+          <h3><i class="pi pi-info-circle"></i> Preview and Confirm</h3>
+          <span class="modal-subtitle">Are you sure you want to <strong>close the complaint</strong> ?</span>
+        </div>
+        <button class="modal-close" (click)="showFinalDecisionPreview.set(false)"><i class="pi pi-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="status-change-row">
+          <span class="status-change-label">Expected Status Change <i class="pi pi-info-circle"></i></span>
+          <div class="status-flow">
+            <span class="status-pill green"><i class="pi pi-check-circle"></i> {{ getStatusLabel() }}</span>
+            <i class="pi pi-arrow-right"></i>
+            <span class="status-pill grey"><i class="pi pi-replay"></i> Complaint Closed</span>
+          </div>
+        </div>
+
+        <div class="preview-section">
+          <h4 class="preview-section-title"><i class="pi pi-chart-bar"></i> Final Decision</h4>
+          <div class="preview-fields">
+            <div class="preview-row">
+              <div class="preview-field">
+                <span class="preview-label">Action</span>
+                <span class="preview-value">Close Complaint</span>
+              </div>
+              <div class="preview-field">
+                <span class="preview-label">Closure Clause</span>
+                <span class="preview-value">{{ closureClause || '—' }}</span>
+              </div>
+            </div>
+            <div class="preview-field full">
+              <span class="preview-label">Closure Clause Description</span>
+              <span class="preview-value description-text">{{ closureClauseDescription || '—' }}</span>
+            </div>
+            <div class="preview-row">
+              <div class="preview-field">
+                <span class="preview-label">Complaint Status on Portal</span>
+                <span class="preview-value">{{ complaintStatusOnPortal || '—' }}</span>
+              </div>
+              <div class="preview-field">
+                <span class="preview-label">Speaking order generated?</span>
+                <span class="preview-value">{{ speakingOrderGenerated || '—' }}</span>
+              </div>
+            </div>
+            <div class="preview-row">
+              <div class="preview-field">
+                <span class="preview-label">Gist of the Case</span>
+                <span class="preview-value">{{ gistOfCase || '—' }}</span>
+              </div>
+              <div class="preview-field">
+                <span class="preview-label">Gist of the Case in regional language</span>
+                <span class="preview-value">{{ gistOfCaseRegional || '—' }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" (click)="showFinalDecisionPreview.set(false)">Cancel</button>
+        <button class="btn btn-confirm" [disabled]="finalDecisionSubmitting()" (click)="confirmCloseComplaint()">
+          @if (finalDecisionSubmitting()) { Closing... } @else { Confirm }
+        </button>
       </div>
     </div>
   </div>
