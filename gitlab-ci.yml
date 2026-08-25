@@ -5,7 +5,7 @@ stages:
   - cleanup
 
 variables:
-  TARGET_REPO: "https://oauth2:$TARGET_GITLAB_TOKEN@172.17.47.136/cepd/cms-2.0/cms-api-gateway.git"
+  TARGET_REPO: "https://oauth2:$TARGET_GITLAB_TOKEN@172.17.47.136/cepd/cms-2.0/CMS2.0_Dev.git"
   SRC_ARCHIVE: "src.zip"
   SCAN_RESULT: "scan_result.json"
   CI_DEBUG_TRACE: "true"
