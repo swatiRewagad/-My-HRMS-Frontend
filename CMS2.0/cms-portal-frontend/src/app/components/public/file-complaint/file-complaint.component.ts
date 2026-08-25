@@ -1,4 +1,5 @@
 import { Component, OnInit, OnDestroy, inject, HostListener, ViewChild, ElementRef } from '@angular/core';
+import { take } from 'rxjs/operators';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { Router, RouterLink, ActivatedRoute } from '@angular/router';
@@ -8,18 +9,18 @@ import { TranslatePipe } from '../../../pipes/translate.pipe';
 import { validateFile, validateFileSet } from '../../../utils/file-validator';
 import { announceToScreenReader, setPageTitle } from '../../../utils/accessibility';
 import { Select } from 'primeng/select';
+import { Toast } from 'primeng/toast';
+import { MessageService } from 'primeng/api';
 import { FormErrorComponent } from '../../../shared/form-error/form-error.component';
-import { ComplaintFacadeService } from './complaint-facade.service';
-import {
-  TOOLTIPS, STEP_TITLES, CATEGORY_LABEL_MAP, GENDER_LABEL_MAP,
-  AccountType,
-} from './complaint-form.models';
+import { ComplaintFacadeService } from '../services';
+import { AccountType } from '../models';
+import { TOOLTIPS, STEP_TITLES, CATEGORY_LABEL_MAP, GENDER_LABEL_MAP } from '../configs';
 
 @Component({
   selector: 'app-public-file-complaint',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterLink, TranslatePipe, Select, FormErrorComponent],
-  providers: [ComplaintFacadeService],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterLink, TranslatePipe, Select, FormErrorComponent, Toast],
+  providers: [ComplaintFacadeService, MessageService],
   templateUrl: './file-complaint.component.html',
   styleUrl: './file-complaint.component.scss'
 })
@@ -30,6 +31,7 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   private publicAuth = inject(PublicAuthService);
+  private messageService = inject(MessageService);
   facade = inject(ComplaintFacadeService);
   translationService = inject(TranslationService);
 
@@ -109,10 +111,14 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
   get currentQuestion() { return this.facade.currentQuestion; }
 
   // ── Delegated methods for template ──
-  saveDraft() { this.facade.saveDraft(); }
+  saveDraft() {
+    this.facade.saveDraft();
+    this.messageService.add({ severity: 'success', summary: 'Saved', detail: 'Draft saved successfully.', life: 2000 });
+  }
   nextStep() { this.facade.nextStep(); }
   prevStep() { this.facade.prevStep(); }
   goToStep(step: number) { this.facade.goToStep(step); }
+  goToEligibility() { this.facade.goToEligibility(); }
   isNextDisabled() { return this.facade.isNextDisabled(); }
   nextEligibility() { this.facade.nextEligibility(); }
   prevEligibility() { this.facade.prevEligibility(); }
@@ -124,7 +130,17 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
   onDatePickerChange(field: string, event: Event) { this.facade.onDatePickerChange(field, event); }
   onEmployerRelationshipAnswer(value: string) { this.facade.onEmployerRelationshipAnswer(value); }
   onAdvocateSubAnswer(value: string) { this.facade.onAdvocateSubAnswer(value); }
-  submit() { this.facade.submit(); }
+  submit() {
+    this.facade.validationErrors['submit'] = '';
+    this.facade.submitResult$.pipe(take(1)).subscribe((result) => {
+      if (result.success) {
+        this.messageService.add({ severity: 'success', summary: 'Success', detail: 'Complaint submitted successfully.', life: 2000 });
+      } else {
+        this.messageService.add({ severity: 'error', summary: 'Error', detail: result.message || 'Failed to submit complaint. Please try again.', life: 2000 });
+      }
+    });
+    this.facade.submit();
+  }
   dismissDuplicatePopup() { this.facade.dismissDuplicatePopup(); }
   proceedDespiteDuplicate() { this.facade.proceedDespiteDuplicate(); }
   toggleRecording() { this.facade.toggleRecording(); }

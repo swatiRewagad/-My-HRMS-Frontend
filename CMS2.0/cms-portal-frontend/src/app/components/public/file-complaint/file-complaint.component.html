@@ -1,3 +1,5 @@
+<p-toast position="top-right"></p-toast>
+
 <!-- Draft Save Actions -->
 <div class="session-bar">
   <div class="container session-bar-inner">
@@ -1007,199 +1009,194 @@
       <!-- Step 6: Review and Submit -->
       @if (currentStep() === 6) {
         <div class="step-content review-step-content">
+
           <!-- Eligibility Details -->
-          <div class="rs-section">
-            <div class="rs-header">{{ 'review.eligibility_details' | translate }}</div>
-            <div class="rs-body">
-              <!-- Common questions for both RBIO and CEPC -->
-              <div class="rs-row-full"><span class="rs-number">1.</span><span class="rs-label">Have you filed a written / electronic complaint with the Regulated Entity?</span><span class="rs-value">{{ eligibilityAnswers['filedWithRE'] === 'yes' ? 'Yes' : 'No' }}</span></div>
-              @if (eligibilityAnswers['filedWithRE'] === 'yes') {
-                <div class="rs-sub-rows">
-                  <div class="rs-row-full"><span class="rs-number">a.</span><span class="rs-label">Date of complaint filed with {{ selectedEntityName }}</span><span class="rs-value">{{ formatDate(formData['bankComplaintDate']) }}</span></div>
-                  <div class="rs-row-full"><span class="rs-number">b.</span><span class="rs-label">Complaint Reference/Acknowledgement Number</span><span class="rs-value">{{ formData['bankComplaintRef'] || '—' }}</span></div>
-                  <div class="rs-row-full"><span class="rs-number">c.</span><span class="rs-label">Complaint copy uploaded</span><span class="rs-value">@if (complaintFileWithREName) { <i class="pi pi-file"></i> {{ complaintFileWithREName }} } @else { — }</span></div>
-                </div>
-              }
-              <div class="rs-row-full"><span class="rs-number">2.</span><span class="rs-label">Have you received any reply from the Entity?</span><span class="rs-value">{{ eligibilityAnswers['receivedReply'] === 'yes' ? 'Yes' : 'No' }}</span></div>
-              @if (eligibilityAnswers['receivedReply'] === 'yes') {
-                <div class="rs-sub-rows">
-                  <div class="rs-row-full"><span class="rs-number">a.</span><span class="rs-label">Date on which reply was received</span><span class="rs-value">{{ formatDate(formData['replyDate']) }}</span></div>
-                  <div class="rs-row-full"><span class="rs-number">b.</span><span class="rs-label">Reply copy uploaded</span><span class="rs-value">@if (replyFileName) { <i class="pi pi-file"></i> {{ replyFileName }} } @else { — }</span></div>
-                </div>
-              }
-              <div class="rs-row-full"><span class="rs-number">3.</span><span class="rs-label">Have you sent any reminder to the Regulated Entity?</span><span class="rs-value">{{ eligibilityAnswers['sentReminder'] === 'yes' ? 'Yes' : 'No' }}</span></div>
-              @if (eligibilityAnswers['sentReminder'] === 'yes') {
-                <div class="rs-sub-rows">
-                  <div class="rs-row-full"><span class="rs-number">a.</span><span class="rs-label">Date on which reminder was sent</span><span class="rs-value">{{ formatDate(formData['reminderDate']) }}</span></div>
-                  <div class="rs-row-full"><span class="rs-number">b.</span><span class="rs-label">Reminder copy uploaded</span><span class="rs-value">@if (reminderFileName) { <i class="pi pi-file"></i> {{ reminderFileName }} } @else { — }</span></div>
-                </div>
-              }
-
-              <!-- RBIO-specific questions -->
-              @if (!isCEPCEntity) {
-                <div class="rs-row-full"><span class="rs-number">4.</span><span class="rs-label">Is your complaint sub-judice/under arbitration/already dealt with on merits by a Court/Tribunal/Arbitrator/Authority?</span><span class="rs-value">{{ eligibilityAnswers['isSubJudice'] === 'yes' ? 'Yes' : 'No' }}</span></div>
-                <div class="rs-row-full"><span class="rs-number">5.</span><span class="rs-label">Is the complaint relating to the same grievance which is already settled or dealt before any Court, Tribunal, Arbitrator or any other judicial or quasi-judicial forum?</span><span class="rs-value">{{ eligibilityAnswers['alreadySettled'] === 'yes' ? 'Yes' : 'No' }}</span></div>
-                <div class="rs-row-full"><span class="rs-number">6.</span><span class="rs-label">Is your complaint made through an advocate (unless you are yourself an advocate)?</span><span class="rs-value">{{ eligibilityAnswers['throughAdvocateEligibility'] === 'yes' ? 'Yes' : 'No' }}</span></div>
-                @if (eligibilityAnswers['throughAdvocateEligibility'] === 'yes') {
-                  <div class="rs-sub-rows">
-                    <div class="rs-row-full"><span class="rs-number">a.</span><span class="rs-label">If Yes, then are you the Complainant?</span><span class="rs-value">{{ formData['isComplainantSelf'] === 'yes' ? 'Yes' : (formData['isComplainantSelf'] === 'no' ? 'No' : '—') }}</span></div>
-                  </div>
-                }
-                <div class="rs-row-full"><span class="rs-number">7.</span><span class="rs-label">Is the complaint relating to the same grievance which is already pending before the Ombudsman?</span><span class="rs-value">{{ eligibilityAnswers['pendingBeforeOmbudsman'] === 'yes' ? 'Yes' : 'No' }}</span></div>
-                <div class="rs-row-full"><span class="rs-number">8.</span><span class="rs-label">Is the complaint relating to the same grievance which is already settled or dealt with on merits by the Ombudsman?</span><span class="rs-value">{{ eligibilityAnswers['settledByOmbudsman'] === 'yes' ? 'Yes' : 'No' }}</span></div>
-                <div class="rs-row-full"><span class="rs-number">9.</span><span class="rs-label">Is the Complainant a staff of the RE and complaint involves employer-employee relationship?</span><span class="rs-value">{{ eligibilityAnswers['staffOfRE'] === 'yes' ? 'Yes' : 'No' }}</span></div>
-              }
-
-              <!-- CEPC-specific questions -->
-              @if (isCEPCEntity) {
-                <div class="rs-row-full"><span class="rs-number">4.</span><span class="rs-label">Have you previously filed a complaint on the same subject matter with CEPC/RBI Ombudsman?</span><span class="rs-value">{{ eligibilityAnswers['previouslyFiledWithCEPC'] === 'yes' ? 'Yes' : 'No' }}</span></div>
-                <div class="rs-row-full"><span class="rs-number">5.</span><span class="rs-label">Are / were you an employee of the Regulated Entity against whom this complaint is being filed?</span><span class="rs-value">{{ eligibilityAnswers['employeeOfRE'] === 'yes' ? 'Yes' : 'No' }}</span></div>
-                @if (eligibilityAnswers['employeeOfRE'] === 'yes') {
-                  <div class="rs-row-full rs-sub-row"><span class="rs-number">a.</span><span class="rs-label">If Yes, Is your complaint involves the employee-employer relationship of the Regulated Entity?</span><span class="rs-value">{{ eligibilityAnswers['employerRelationship'] === 'yes' ? 'Yes' : (eligibilityAnswers['employerRelationship'] === 'no' ? 'No' : '—') }}</span></div>
-                }
-              }
+          <section class="rs-section rs-card">
+            <div class="rs-header-bar">
+              <h3 class="rs-header-title">Eligibility Details</h3>
+              <button type="button" class="rs-edit-btn" (click)="goToEligibility()"><i class="pi pi-pencil"></i> Edit</button>
             </div>
-          </div>
+            <div class="rs-card-body">
+              <div class="rs-qa-item">
+                <span class="rs-qa-label">Is your complaint sub-judice/under arbitration/already dealt with on merits by a Court/Tribunal/Arbitrator/Authority?</span>
+                <span class="rs-qa-value">{{ eligibilityAnswers['isSubJudice'] === 'yes' ? 'Yes' : 'No' }}</span>
+              </div>
+              <div class="rs-qa-item">
+                <span class="rs-qa-label">Is your complaint made through an advocate (unless you are yourself an advocate)?</span>
+                <span class="rs-qa-value">{{ eligibilityAnswers['throughAdvocateEligibility'] === 'yes' ? 'Yes' : 'No' }}</span>
+              </div>
+              <div class="rs-qa-item">
+                <span class="rs-qa-label">Has your complaint already been dealt with or is under process on the same ground with the Ombudsman?</span>
+                <span class="rs-qa-value">{{ eligibilityAnswers['pendingBeforeOmbudsman'] === 'yes' ? 'Yes' : 'No' }}</span>
+              </div>
+              <div class="rs-qa-item">
+                <span class="rs-qa-label">Is complaint from the staff of a regulated entity and involves employer-employee relationship?</span>
+                <span class="rs-qa-value">{{ eligibilityAnswers['staffOfRE'] === 'yes' ? 'Yes' : 'No' }}</span>
+              </div>
+            </div>
+          </section>
 
           <!-- Complainant Details -->
-          <div class="rs-section">
-            <div class="rs-header">{{ 'review.complainant_details' | translate }}</div>
-            <div class="rs-body">
-              <div class="rs-row-full"><span class="rs-number">1.</span><span class="rs-label">Complainant Category</span><span class="rs-value">{{ getCategoryLabel() }}</span></div>
-              @if (isIndividualCategory()) {
-                <div class="rs-grid">
-                  <div class="rs-item"><span class="rs-number">2.</span><span class="rs-label">First Name</span><span class="rs-value">{{ formData['firstName'] || '—' }}</span></div>
-                  <div class="rs-item"><span class="rs-number">3.</span><span class="rs-label">Middle Name</span><span class="rs-value">{{ formData['middleName'] || '—' }}</span></div>
-                  <div class="rs-item"><span class="rs-number">4.</span><span class="rs-label">Surname</span><span class="rs-value">{{ formData['lastName'] || '—' }}</span></div>
-                </div>
-                <div class="rs-grid">
-                  <div class="rs-item"><span class="rs-number">5.</span><span class="rs-label">Age</span><span class="rs-value">{{ formData['age'] || '—' }}</span></div>
-                  <div class="rs-item"><span class="rs-number">6.</span><span class="rs-label">Gender</span><span class="rs-value">{{ getGenderLabel() }}</span></div>
-                  <div class="rs-item"><span class="rs-number">7.</span><span class="rs-label">Email ID</span><span class="rs-value">{{ formData['email'] || '—' }}</span></div>
-                </div>
-                <div class="rs-grid">
-                  <div class="rs-item"><span class="rs-number">8.</span><span class="rs-label">Mobile Number</span><span class="rs-value">{{ formData['phone'] ? '+91 ' + formData['phone'] : '—' }}</span></div>
-                </div>
-              } @else {
-                <div class="rs-row-full"><span class="rs-number">2.</span><span class="rs-label">Name of Complainant (Organisation Name)</span><span class="rs-value">{{ formData['organizationName'] || '—' }}</span></div>
-                <div class="rs-grid">
-                  <div class="rs-item"><span class="rs-number">3.</span><span class="rs-label">Email ID</span><span class="rs-value">{{ formData['email'] || '—' }}</span></div>
-                  <div class="rs-item"><span class="rs-number">4.</span><span class="rs-label">Organisation Landline Number</span><span class="rs-value">{{ formData['orgLandline'] || '—' }}</span></div>
-                </div>
-                <div class="rs-grid">
-                  <div class="rs-item"><span class="rs-number">5.</span><span class="rs-label">Mobile Number</span><span class="rs-value">{{ formData['phone'] ? '+91 ' + formData['phone'] : '—' }}</span></div>
-                </div>
-              }
-              <div class="rs-grid">
-                <div class="rs-item"><span class="rs-number">{{ isIndividualCategory() ? '9' : '6' }}.</span><span class="rs-label">Pincode</span><span class="rs-value">{{ formData['pincode'] || '—' }}</span></div>
-                <div class="rs-item"><span class="rs-number">{{ isIndividualCategory() ? '10' : '7' }}.</span><span class="rs-label">State</span><span class="rs-value">{{ formData['state'] || '—' }}</span></div>
-                <div class="rs-item"><span class="rs-number">{{ isIndividualCategory() ? '11' : '8' }}.</span><span class="rs-label">District</span><span class="rs-value">{{ formData['district'] || '—' }}</span></div>
-              </div>
-              <div class="rs-row-full"><span class="rs-number">{{ isIndividualCategory() ? '12' : '9' }}.</span><span class="rs-label">Address</span><span class="rs-value">{{ formData['address'] || '—' }}</span></div>
+          <section class="rs-section rs-card">
+            <div class="rs-header-bar">
+              <h3 class="rs-header-title">Complainant Details</h3>
+              <button type="button" class="rs-edit-btn" (click)="goToStep(1)"><i class="pi pi-pencil"></i> Edit</button>
             </div>
-          </div>
+            <div class="rs-card-body">
+              <div class="rs-detail-grid rs-detail-grid--4">
+                <div class="rs-detail-item">
+                  <span class="rs-detail-label">Name</span>
+                  <span class="rs-detail-value">{{ complainantDetailsForm.get('firstName')?.value }} {{ complainantDetailsForm.get('middleName')?.value }} {{ complainantDetailsForm.get('lastName')?.value }}</span>
+                </div>
+                <div class="rs-detail-item">
+                  <span class="rs-detail-label">Mobile Number</span>
+                  <span class="rs-detail-value">{{ complainantDetailsForm.get('phone')?.value ? '+91 ' + complainantDetailsForm.get('phone')?.value : '—' }}</span>
+                </div>
+                <div class="rs-detail-item">
+                  <span class="rs-detail-label">Email (Optional)</span>
+                  <span class="rs-detail-value">{{ complainantDetailsForm.get('email')?.value || '—' }}</span>
+                </div>
+                <div class="rs-detail-item">
+                  <span class="rs-detail-label">Pincode</span>
+                  <span class="rs-detail-value">{{ complainantDetailsForm.get('pincode')?.value || '—' }}</span>
+                </div>
+              </div>
+              <div class="rs-detail-grid rs-detail-grid--1">
+                <div class="rs-detail-item">
+                  <span class="rs-detail-label">Address</span>
+                  <span class="rs-detail-value">{{ complainantDetailsForm.get('addressDetails')?.value || '—' }}</span>
+                </div>
+              </div>
+            </div>
+          </section>
 
           <!-- Regulated Entity Details -->
-          <div class="rs-section">
-            <div class="rs-header">{{ 'review.re_details' | translate }}</div>
-            <div class="rs-body">
-              <div class="rs-row-full"><span class="rs-number">1.</span><span class="rs-label">Regulated Entity Name</span><span class="rs-value">{{ selectedEntityName }}</span></div>
-              <div class="rs-row-full"><span class="rs-number">2.</span><span class="rs-label">Is your complaint related to credit card?</span><span class="rs-value">{{ formData['isCreditCardComplaint'] === 'yes' ? 'Yes' : (formData['isCreditCardComplaint'] === 'no' ? 'No' : '—') }}</span></div>
-              @if (formData['isCreditCardComplaint'] === 'no') {
-                <div class="rs-grid">
-                  <div class="rs-item"><span class="rs-number">3.</span><span class="rs-label">Entity State</span><span class="rs-value">{{ formData['entityState'] || '—' }}</span></div>
-                  <div class="rs-item"><span class="rs-number">4.</span><span class="rs-label">Entity District</span><span class="rs-value">{{ formData['entityDistrict'] || '—' }}</span></div>
-                  <div class="rs-item"><span class="rs-number">5.</span><span class="rs-label">Entity Branch</span><span class="rs-value">{{ formData['entityBranch'] || '—' }}</span></div>
+          <section class="rs-section rs-card">
+            <div class="rs-header-bar">
+              <h3 class="rs-header-title">Regulated Entity Details</h3>
+              <button type="button" class="rs-edit-btn" (click)="goToStep(2)"><i class="pi pi-pencil"></i> Edit</button>
+            </div>
+            <div class="rs-card-body">
+              <div class="rs-detail-grid rs-detail-grid--1">
+                <div class="rs-detail-item">
+                  <span class="rs-detail-label">Regulated Entity Name</span>
+                  <span class="rs-detail-value">{{ selectedEntityName }}</span>
+                </div>
+              </div>
+              <div class="rs-qa-item">
+                <span class="rs-qa-label">Is your complaint related to credit card?</span>
+                <span class="rs-qa-value">{{ regulatedEntityForm.get('isCreditCardComplaint')?.value === 'yes' ? 'Yes' : 'No' }}</span>
+              </div>
+              @if (regulatedEntityForm.get('isCreditCardComplaint')?.value === 'no') {
+                <div class="rs-detail-grid rs-detail-grid--3">
+                  <div class="rs-detail-item">
+                    <span class="rs-detail-label">Entity State</span>
+                    <span class="rs-detail-value">{{ regulatedEntityForm.get('entityState')?.value || '—' }}</span>
+                  </div>
+                  <div class="rs-detail-item">
+                    <span class="rs-detail-label">Entity District</span>
+                    <span class="rs-detail-value">{{ regulatedEntityForm.get('entityDistrict')?.value || '—' }}</span>
+                  </div>
+                  <div class="rs-detail-item">
+                    <span class="rs-detail-label">Entity Branch</span>
+                    <span class="rs-detail-value">{{ regulatedEntityForm.get('entityBranch')?.value || '—' }}</span>
+                  </div>
                 </div>
               }
             </div>
-          </div>
+          </section>
 
           <!-- Complaint Details -->
-          <div class="rs-section">
-            <div class="rs-header">{{ 'review.complaint_details' | translate }}</div>
-            <div class="rs-body">
-              <div class="rs-row-full"><span class="rs-number">1.</span><span class="rs-label">Complaint Category</span><span class="rs-value">{{ getComplaintCategoryLabel() }}</span></div>
-              <div class="rs-row-full"><span class="rs-number">2.</span><span class="rs-label">Facts of the complaint</span><span class="rs-value">{{ formData['complaintText'] || '—' }}</span></div>
-              <div class="rs-row-full"><span class="rs-number">3.</span><span class="rs-label">Do you have an account with {{ selectedEntityName }}?</span><span class="rs-value">{{ formData['hasAccountWithRE'] === 'yes' ? 'Yes' : (formData['hasAccountWithRE'] === 'no' ? 'No' : '—') }}</span></div>
-              @if (formData['hasAccountWithRE'] === 'yes') {
-                <div class="rs-row-full rs-sub-row"><span class="rs-number">a.</span><span class="rs-label">Type of Accounts with {{ selectedEntityName }}</span><span class="rs-value">{{ getSelectedAccountTypesLabel() || '—' }}</span></div>
-                @if (isAccountTypeSelected('savings')) {
-                  <div class="rs-row-full rs-sub-row"><span class="rs-number">b.</span><span class="rs-label">Savings Account Number</span><span class="rs-value">{{ formData['savingsAccountNumber'] || '—' }}</span></div>
-                }
-                @if (isAccountTypeSelected('loan')) {
-                  <div class="rs-row-full rs-sub-row"><span class="rs-number">c.</span><span class="rs-label">Loan Account Number</span><span class="rs-value">{{ formData['loanAccountNumber'] || '—' }}</span></div>
-                }
-                @if (isAccountTypeSelected('atm_debit')) {
-                  <div class="rs-row-full rs-sub-row"><span class="rs-number">d.</span><span class="rs-label">ATM/Debit Card Number</span><span class="rs-value">{{ formData['atmDebitCardNumber'] || '—' }}</span></div>
-                }
-                @if (isAccountTypeSelected('credit_card')) {
-                  <div class="rs-row-full rs-sub-row"><span class="rs-number">e.</span><span class="rs-label">Credit Card Number</span><span class="rs-value">{{ formData['creditCardNumber'] || '—' }}</span></div>
-                }
-              }
-              <div class="rs-row-full"><span class="rs-number">4.</span><span class="rs-label">Is your complaint against a Wallet transaction?</span><span class="rs-value">{{ formData['isWalletComplaint'] === 'yes' ? 'Yes' : (formData['isWalletComplaint'] === 'no' ? 'No' : '—') }}</span></div>
-              @if (formData['isWalletComplaint'] === 'yes') {
-                <div class="rs-row-full rs-sub-row"><span class="rs-number">a.</span><span class="rs-label">Wallet Name</span><span class="rs-value">{{ formData['walletName'] || '—' }}</span></div>
-                <div class="rs-row-full rs-sub-row"><span class="rs-number">b.</span><span class="rs-label">Transaction Reference Number</span><span class="rs-value">{{ formData['transactionRefNumber'] || '—' }}</span></div>
-              }
-              <div class="rs-row-full"><span class="rs-number">5.</span><span class="rs-label">Is your complaint against a Business Correspondent?</span><span class="rs-value">{{ formData['isBusinessCorrespondent'] === 'yes' ? 'Yes' : (formData['isBusinessCorrespondent'] === 'no' ? 'No' : '—') }}</span></div>
-              <div class="rs-grid">
-                <div class="rs-item"><span class="rs-number">6.</span><span class="rs-label">Amount Involved in the Dispute, If Any</span><span class="rs-value">{{ formData['disputeAmount'] ? '₹' + formData['disputeAmount'] : '—' }}</span></div>
-                <div class="rs-item"><span class="rs-number">7.</span><span class="rs-label">Compensation Sought For Dispute, If Any</span><span class="rs-value">{{ formData['compensationSought'] ? '₹' + formData['compensationSought'] : '—' }}</span></div>
-                <div class="rs-item"><span class="rs-number">8.</span><span class="rs-label">Compensation For Harassment, If Any</span><span class="rs-value">{{ formData['reliefSought'] ? '₹' + formData['reliefSought'] : '—' }}</span></div>
+          <section class="rs-section rs-card">
+            <div class="rs-header-bar">
+              <h3 class="rs-header-title">Complaint Details</h3>
+              <button type="button" class="rs-edit-btn" (click)="goToStep(3)"><i class="pi pi-pencil"></i> Edit</button>
+            </div>
+            <div class="rs-card-body">
+              <div class="rs-detail-grid rs-detail-grid--3">
+                <div class="rs-detail-item">
+                  <span class="rs-detail-label">Complaint Category</span>
+                  <span class="rs-detail-value">{{ getComplaintCategoryLabel() }}</span>
+                </div>
+                <div class="rs-detail-item">
+                  <span class="rs-detail-label">Complaint Sub-Category 1</span>
+                  <span class="rs-detail-value">{{ formData['subCategory1'] || '—' }}</span>
+                </div>
+                <div class="rs-detail-item">
+                  <span class="rs-detail-label">Complaint Sub-Category 2</span>
+                  <span class="rs-detail-value">{{ formData['subCategory2'] || '—' }}</span>
+                </div>
+              </div>
+              <div class="rs-detail-grid rs-detail-grid--1">
+                <div class="rs-detail-item">
+                  <span class="rs-detail-label">Facts of the complaint</span>
+                  <span class="rs-detail-value rs-detail-value--text">{{ complaintDetailsForm.get('complaintText')?.value || '—' }}</span>
+                </div>
+              </div>
+              <div class="rs-qa-item">
+                <span class="rs-qa-label">If you want to authorize a representative to appear and make submission on your behalf before the Ombudsman, please select 'Yes' and furnish the details of the Authorised Representative</span>
+                <span class="rs-qa-value">{{ repAuthorizationForm.get('hasAuthRep')?.value === 'yes' ? 'Yes' : 'No' }}</span>
               </div>
               @if (attachmentPreviews.length > 0) {
-                <div class="rs-row-full"><span class="rs-number">9.</span><span class="rs-label">Uploaded Documents</span><span class="rs-value"></span></div>
-                @for (f of attachmentPreviews; track $index) {
-                  <div class="rs-row-full rs-sub-row"><span class="rs-number"><i class="pi pi-file"></i></span><span class="rs-label">{{ f.name }}</span></div>
-                }
+                <div class="rs-detail-grid rs-detail-grid--1">
+                  <div class="rs-detail-item">
+                    <span class="rs-detail-label">Attachments</span>
+                    <div class="rs-attachments-row">
+                      @for (f of attachmentPreviews; track $index) {
+                        <div class="rs-attachment-chip">
+                          <i class="pi pi-file-pdf"></i>
+                          <div class="rs-attachment-info">
+                            <span class="rs-attachment-name">{{ f.name }}</span>
+                            @if (f.size) {
+                              <span class="rs-attachment-size">{{ (f.size / 1024).toFixed(0) }} KB</span>
+                            }
+                          </div>
+                        </div>
+                      }
+                    </div>
+                  </div>
+                </div>
               }
             </div>
-          </div>
+          </section>
 
           <!-- Representative Authorisation -->
-          <div class="rs-section">
-            <div class="rs-header">{{ 'review.rep_auth' | translate }}</div>
-            <div class="rs-body">
-              <div class="rs-row-full"><span class="rs-number">1.</span><span class="rs-label">Is the complaint being filed through an Authorised Representative on behalf of you / complainant?</span><span class="rs-value">{{ formData['hasAuthRep'] === 'yes' ? 'Yes' : 'No' }}</span></div>
-              @if (formData['hasAuthRep'] === 'yes') {
-                <div class="rs-grid rs-grid-3">
-                  <div class="rs-item"><span class="rs-number">2.</span><span class="rs-label">Representative Name</span><span class="rs-value">{{ formData['repName'] || '—' }}</span></div>
-                  <div class="rs-item"><span class="rs-number">3.</span><span class="rs-label">Email</span><span class="rs-value">{{ formData['repEmail'] || '—' }}</span></div>
-                  <div class="rs-item"><span class="rs-number">4.</span><span class="rs-label">Mobile Number</span><span class="rs-value">{{ formData['repPhone'] || '—' }}</span></div>
-                </div>
-                <div class="rs-grid rs-grid-3">
-                  <div class="rs-item"><span class="rs-number">5.</span><span class="rs-label">Pincode</span><span class="rs-value">{{ formData['repPincode'] || '—' }}</span></div>
-                  <div class="rs-item"><span class="rs-number">6.</span><span class="rs-label">State</span><span class="rs-value">{{ formData['repState'] || '—' }}</span></div>
-                  <div class="rs-item"><span class="rs-number">7.</span><span class="rs-label">District</span><span class="rs-value">{{ formData['repDistrict'] || '—' }}</span></div>
-                </div>
-                <div class="rs-grid rs-grid-3">
-                  <div class="rs-item"><span class="rs-number">8.</span><span class="rs-label">City</span><span class="rs-value">{{ formData['repCity'] || '—' }}</span></div>
-                </div>
-                <div class="rs-row-full"><span class="rs-number">9.</span><span class="rs-label">Address</span><span class="rs-value">{{ formData['repAddress'] || '—' }}</span></div>
-                <div class="rs-row-full"><span class="rs-number">10.</span><span class="rs-label">Authorisation Document</span><span class="rs-value">@if (repFileName) { <i class="pi pi-file"></i> {{ repFileName }} } @else { — }</span></div>
-              }
+          <section class="rs-section rs-card">
+            <div class="rs-header-bar">
+              <h3 class="rs-header-title">Representative Authorisation</h3>
+              <button type="button" class="rs-edit-btn" (click)="goToStep(4)"><i class="pi pi-pencil"></i> Edit</button>
             </div>
-          </div>
+            <div class="rs-card-body">
+              <div class="rs-qa-item">
+                <span class="rs-qa-label">Is the complaint being filed through an Authorised Representative on behalf of you / complainant?</span>
+                <span class="rs-qa-value">{{ repAuthorizationForm.get('hasAuthRep')?.value === 'yes' ? 'Yes' : 'No' }}</span>
+              </div>
+            </div>
+          </section>
 
           <!-- Declaration -->
-          <div class="rs-section">
-            <div class="rs-header">{{ 'review.declaration' | translate }}</div>
-            <div class="rs-body">
-              <div class="decl-item">
-                <label class="decl-checkbox-label">
-                  <input type="checkbox" [checked]="declarationChecked" disabled class="decl-checkbox">
-                  <span class="decl-text">(i) I/ We, the complainant/s herein declare that:<br>&nbsp;&nbsp;&nbsp;&nbsp;a) the information furnished above is true and correct; and<br>&nbsp;&nbsp;&nbsp;&nbsp;b) I/We have not concealed or misrepresented any fact stated above and in the documents submitted herewith.</span>
-                </label>
+          <section class="rs-section rs-card">
+            <div class="rs-header-bar">
+              <h3 class="rs-header-title">Declaration</h3>
+              <button type="button" class="rs-edit-btn" (click)="goToStep(5)"><i class="pi pi-pencil"></i> Edit</button>
+            </div>
+            <div class="rs-card-body">
+              <div class="rs-decl-item">
+                <i class="pi pi-check-circle rs-decl-check"></i>
+                <span class="rs-decl-text">
+                  (i) I/ We, the complainant/s herein declare that:<br>
+                  &nbsp;&nbsp;&nbsp;&nbsp;a) the information furnished above is true and correct; and<br>
+                  &nbsp;&nbsp;&nbsp;&nbsp;b) I/We have not concealed or misrepresented any fact stated above and in the documents submitted herewith.
+                </span>
               </div>
-              <div class="decl-item">
-                <label class="decl-checkbox-label">
-                  <input type="checkbox" [checked]="declaration2Checked" disabled class="decl-checkbox">
-                  <span class="decl-text">(ii) The complaint is filed before the expiry of a period of one year reckoned in accordance with the provisions of clause 10 (2) of the Scheme.</span>
-                </label>
+              <div class="rs-decl-item">
+                <i class="pi pi-check-circle rs-decl-check"></i>
+                <span class="rs-decl-text">
+                  (ii) The complaint is filed before the expiry of a period of one year reckoned in accordance with the provisions of clause 10 (2) of the Scheme.
+                </span>
               </div>
             </div>
-          </div>
+          </section>
 
         </div>
       }
@@ -1224,9 +1221,6 @@
             <button class="btn-submit-complaint" (click)="submit()" [disabled]="submitting() || !declarationChecked || !declaration2Checked">
               @if (submitting()) { {{ 'form.submitting' | translate }} } @else { {{ 'form.submit_complaint' | translate }} }
             </button>
-            @if (validationErrors['submit']) {
-              <div class="error-msg" style="margin-top: 10px; color: #dc2626;"><i class="pi pi-exclamation-circle"></i> {{ validationErrors['submit'] }}</div>
-            }
           }
         </div>
       </div>

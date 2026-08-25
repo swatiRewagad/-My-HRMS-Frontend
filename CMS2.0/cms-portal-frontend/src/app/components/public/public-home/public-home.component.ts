@@ -6,39 +6,42 @@ import { HttpClient } from '@angular/common/http';
 import { PublicAuthService } from '../../../services/public-auth.service';
 import { TranslatePipe } from '../../../pipes/translate.pipe';
 import { environment } from '../../../../environments/environment';
-
-interface ComplaintRecord {
-  complaintId: string;
-  entityName: string;
-  complaintDate: string;
-  status: string;
-  comments: string;
-}
+import { Table, TableModule } from 'primeng/table';
+import { Select } from 'primeng/select';
+import { ComplaintRecord } from '../models';
 
 @Component({
   selector: 'app-public-home',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, TranslatePipe],
+  imports: [CommonModule, FormsModule, RouterLink, TranslatePipe, TableModule, Select],
   templateUrl: './public-home.component.html',
   styleUrl: './public-home.component.scss'
 })
 export class PublicHomeComponent implements OnInit {
 
+  @ViewChild('dt') dt!: Table;
+  @ViewChild('eduScroll') eduScroll!: ElementRef;
+
   private http = inject(HttpClient);
   private router = inject(Router);
   authService = inject(PublicAuthService);
 
-  @ViewChild('eduScroll') eduScroll!: ElementRef;
-
   complaints = signal<ComplaintRecord[]>([]);
   loading = signal(true);
 
-  // Filters
-  filterById = '';
-  filterByEntity = '';
-  filterByDate = '';
-  filterByStatus = '';
-  filterByComments = '';
+  statusOptions = [
+    { label: 'All', value: '' },
+    { label: 'In-Progress', value: 'IN_PROGRESS' },
+    { label: 'Under Review', value: 'UNDER_REVIEW' },
+    { label: 'Resolved', value: 'RESOLVED' },
+    { label: 'Closed', value: 'CLOSED' },
+    { label: 'Request Sent Back', value: 'REQUEST_SENT_BACK' },
+    { label: 'Rejected', value: 'REJECTED' },
+    { label: 'Pending', value: 'PENDING' }
+  ];
+
+  selectedStatus = '';
+  dateFrom = '';
 
   ngOnInit() {
     if (this.authService.isAuthenticated()) {
@@ -69,14 +72,18 @@ export class PublicHomeComponent implements OnInit {
     });
   }
 
-  get filteredComplaints(): ComplaintRecord[] {
-    return this.complaints().filter(c =>
-      (!this.filterById || c.complaintId.toLowerCase().includes(this.filterById.toLowerCase())) &&
-      (!this.filterByEntity || c.entityName.toLowerCase().includes(this.filterByEntity.toLowerCase())) &&
-      (!this.filterByDate || c.complaintDate.includes(this.filterByDate)) &&
-      (!this.filterByStatus || c.status.toLowerCase().includes(this.filterByStatus.toLowerCase())) &&
-      (!this.filterByComments || c.comments.toLowerCase().includes(this.filterByComments.toLowerCase()))
-    );
+  onStatusFilter(value: string) {
+    this.selectedStatus = value;
+    this.dt.filter(value, 'status', 'equals');
+  }
+
+  onDateFromChange(event: Event) {
+    this.dateFrom = (event.target as HTMLInputElement).value;
+    if (this.dateFrom) {
+      this.dt.filter(this.dateFrom, 'complaintDate', 'dateAfter');
+    } else {
+      this.dt.filter('', 'complaintDate', 'contains');
+    }
   }
 
   getStatusClass(status: string): string {
@@ -92,11 +99,13 @@ export class PublicHomeComponent implements OnInit {
   getStatusLabel(status: string): string {
     switch (status) {
       case 'IN_PROGRESS': return 'In-Progress';
-      case 'REQUEST_SENT_BACK': return 'Request Sent Back.';
+      case 'REQUEST_SENT_BACK': return 'Request Sent Back';
       case 'REJECTED': return 'Rejected';
       case 'RESOLVED': return 'Resolved';
       case 'UNDER_REVIEW': return 'Under Review';
       case 'NON_MAINTAINABLE': return 'Closed';
+      case 'CLOSED': return 'Closed';
+      case 'PENDING': return 'Pending';
       default: return status.replace(/_/g, ' ');
     }
   }
@@ -128,7 +137,7 @@ export class PublicHomeComponent implements OnInit {
   formatDate(dateStr: string): string {
     if (!dateStr || dateStr === '—') return '—';
     try {
-      return new Date(dateStr).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      return new Date(dateStr).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-');
     } catch {
       return dateStr;
     }

@@ -5,70 +5,126 @@
     <a routerLink="/public/file-complaint" class="btn-file-new">File New Complaint</a>
   </div>
 
-  @if (loading()) {
-    <div class="loading-state" role="status" aria-live="polite">
-      <i class="pi pi-spinner pi-spin" aria-hidden="true"></i> {{ 'history.loading' | translate }}
-    </div>
-  } @else {
-    <div class="table-card">
-      <table class="complaints-table">
-        <thead>
-          <tr class="thead-row">
-            <th>{{ 'history.col_number' | translate }} <i class="pi pi-sort-alt" aria-hidden="true"></i>
-              <div class="col-search"><input type="text" placeholder="Search" [(ngModel)]="filters.complaintId" class="col-filter-input" aria-label="Filter by complaint number"></div>
-            </th>
-            <th>{{ 'history.col_against' | translate }} <i class="pi pi-sort-alt" aria-hidden="true"></i>
-              <div class="col-search"><input type="text" placeholder="Search" [(ngModel)]="filters.entityName" class="col-filter-input" aria-label="Filter by entity name"></div>
-            </th>
-            <th>{{ 'history.col_date' | translate }} <i class="pi pi-sort-alt" aria-hidden="true"></i>
-              <div class="col-search"><input type="text" placeholder="DD-MM-YYYY" [(ngModel)]="filters.date" class="col-filter-input col-filter-date" aria-label="Filter by complaint date"></div>
-            </th>
-            <th>{{ 'history.col_status' | translate }} <i class="pi pi-sort-alt" aria-hidden="true"></i>
-              <div class="col-search"><input type="text" placeholder="Search" [(ngModel)]="filters.status" class="col-filter-input" aria-label="Filter by status"></div>
-            </th>
-            <th>{{ 'history.col_comments' | translate }} <i class="pi pi-sort-alt" aria-hidden="true"></i>
-              <div class="col-search"><input type="text" placeholder="Search" [(ngModel)]="filters.comments" class="col-filter-input" aria-label="Filter by comments"></div>
-            </th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          @if (filteredComplaints().length === 0) {
-            <tr><td colspan="6" class="empty-cell">{{ 'history.no_complaints' | translate }}</td></tr>
-          }
-          @for (c of filteredComplaints(); track c.complaintId) {
-            <tr class="tbody-row" [class.draft-row]="c.isDraft" (click)="viewComplaint(c)" style="cursor: pointer;">
-              <td class="id-cell">{{ c.complaintId }}</td>
-              <td>{{ c.entityName }}</td>
-              <td>{{ formatDate(c.complaintDate) }}</td>
-              <td>
-                <span class="status-badge" [class]="getStatusClass(c.status)">
-                  <span class="status-icon">
-                    @if (c.status === 'IN_PROGRESS') { <i class="pi pi-comments"></i> }
-                    @else if (c.status === 'CLOSED' || c.status === 'NON_MAINTAINABLE') { <i class="pi pi-check-circle"></i> }
-                    @else if (c.status === 'INFORMATION_REQUIRED') { <i class="pi pi-exclamation-circle"></i> }
-                    @else if (c.status === 'PENDING') { <i class="pi pi-clock"></i> }
-                    @else if (c.status === 'DRAFT') { <i class="pi pi-file-edit"></i> }
-                    @else { <i class="pi pi-clock"></i> }
-                  </span>
-                  {{ getStatusLabel(c.status) }}
-                </span>
-              </td>
-              <td class="comments-cell">{{ c.comments }}</td>
-              <td>
-                @if (c.isDraft) {
-                  <div class="actions-cell" (click)="$event.stopPropagation()">
-                    <button class="btn-resume" (click)="resumeDraft(c)"><i class="pi pi-pencil"></i> Resume</button>
-                    <button class="btn-delete-draft" (click)="deleteDraft(c)" title="Delete draft"><i class="pi pi-trash"></i></button>
-                  </div>
-                }
-              </td>
-            </tr>
-          }
-        </tbody>
-      </table>
-    </div>
-  }
+  <div class="table-card">
+    <p-table
+      #dt
+      [value]="complaints()"
+      [loading]="loading()"
+      [paginator]="true"
+      [rows]="10"
+      [rowsPerPageOptions]="[5, 10, 25]"
+      [showCurrentPageReport]="true"
+      currentPageReportTemplate="Showing {first} to {last} of {totalRecords}"
+      paginatorPosition="bottom"
+      paginatorDropdownAppendTo="body"
+      [globalFilterFields]="['complaintId', 'entityName', 'status', 'comments']"
+      dataKey="complaintId"
+      [rowHover]="true"
+      [tableStyle]="{ 'min-width': '60rem' }"
+      styleClass="complaints-datatable">
+
+      <!-- Column widths -->
+      <ng-template pTemplate="colgroup">
+        <colgroup>
+          <col style="width: 18%;">
+          <col style="width: 18%;">
+          <col style="width: 18%;">
+          <col style="width: 14%;">
+          <col style="width: 18%;">
+          <col style="width: 14%;">
+        </colgroup>
+      </ng-template>
+
+      <!-- Header -->
+      <ng-template pTemplate="header">
+        <tr class="header-row">
+          <th pSortableColumn="complaintId">
+            Complaint Number <p-sortIcon field="complaintId"></p-sortIcon>
+          </th>
+          <th pSortableColumn="entityName">
+            Complaint Against <p-sortIcon field="entityName"></p-sortIcon>
+          </th>
+          <th pSortableColumn="complaintDate">
+            Complaint Date <p-sortIcon field="complaintDate"></p-sortIcon>
+          </th>
+          <th pSortableColumn="status">
+            Status <p-sortIcon field="status"></p-sortIcon>
+          </th>
+          <th pSortableColumn="comments">
+            Comments <p-sortIcon field="comments"></p-sortIcon>
+          </th>
+          <th class="actions-th">Actions</th>
+        </tr>
+        <tr class="filter-row">
+          <th>
+            <input type="text" placeholder="Search" (input)="dt.filter($any($event.target).value, 'complaintId', 'contains')" class="col-filter" />
+          </th>
+          <th>
+            <input type="text" placeholder="Search" (input)="dt.filter($any($event.target).value, 'entityName', 'contains')" class="col-filter" />
+          </th>
+          <th>
+            <input type="date" class="col-filter col-filter--date-single" [value]="dateFrom" (change)="onDateFromChange($event)" title="From date" />
+          </th>
+          <th>
+            <p-select
+              [options]="statusOptions"
+              [(ngModel)]="selectedStatus"
+              optionLabel="label"
+              optionValue="value"
+              placeholder="All"
+              appendTo="body"
+              [showClear]="!!selectedStatus"
+              (onChange)="onStatusFilter($event.value)"
+              styleClass="status-filter-dropdown">
+            </p-select>
+          </th>
+          <th>
+            <input type="text" placeholder="Search" (input)="dt.filter($any($event.target).value, 'comments', 'contains')" class="col-filter" />
+          </th>
+          <th></th>
+        </tr>
+      </ng-template>
+
+      <!-- Body -->
+      <ng-template pTemplate="body" let-complaint>
+        <tr [class.draft-row]="complaint.isDraft" (click)="viewComplaint(complaint)" class="clickable-row">
+          <td class="id-cell">{{ complaint.complaintId }}</td>
+          <td>{{ complaint.entityName }}</td>
+          <td>{{ formatDate(complaint.complaintDate) }}</td>
+          <td>
+            <span class="status-pill" [ngClass]="getStatusClass(complaint.status)">
+              <span class="status-dot"></span>
+              {{ getStatusLabel(complaint.status) }}
+            </span>
+          </td>
+          <td class="comments-cell">{{ complaint.comments }}</td>
+          <td>
+            @if (complaint.isDraft) {
+              <div class="actions-cell" (click)="$event.stopPropagation()">
+                <button class="btn-resume" (click)="resumeDraft(complaint)"><i class="pi pi-pencil"></i> Resume</button>
+                <button class="btn-delete-draft" (click)="deleteDraft(complaint)" title="Delete draft"><i class="pi pi-trash"></i></button>
+              </div>
+            } @else {
+              <button class="btn-view" (click)="$event.stopPropagation(); viewComplaint(complaint)"><i class="pi pi-eye"></i> View</button>
+            }
+          </td>
+        </tr>
+      </ng-template>
+
+      <!-- Empty message -->
+      <ng-template pTemplate="emptymessage">
+        <tr>
+          <td colspan="6" class="empty-cell">
+            <div class="empty-state">
+              <i class="pi pi-inbox"></i>
+              <p>No complaints found</p>
+            </div>
+          </td>
+        </tr>
+      </ng-template>
+
+    </p-table>
+  </div>
 
   <div class="assistance-banner">
     <h3>{{ 'history.assistance_title' | translate }}</h3>
