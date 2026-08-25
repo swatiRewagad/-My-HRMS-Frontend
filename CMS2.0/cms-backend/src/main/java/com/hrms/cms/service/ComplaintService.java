@@ -137,6 +137,14 @@ public class ComplaintService {
                 .build();
 
         complaint.setEntityCode(entityCode);
+        complaint.setEntityName(req.getEntityName());
+        if (req.getCategoryId() != null) {
+            categoryRepository.findById(req.getCategoryId())
+                    .ifPresent(cat -> complaint.setCategoryName(cat.getName()));
+        }
+        if (complaint.getCategoryName() == null && req.getCategoryName() != null) {
+            complaint.setCategoryName(req.getCategoryName());
+        }
         ComplaintRoutingService.RoutingDecision routing = routingService.routeComplaint(complaint, entityCode);
         complaint.setDepartment(routing.getDepartment());
         complaint.setAssignedRole(routing.getAssignedRole());
@@ -176,6 +184,11 @@ public class ComplaintService {
                 req.getRemarks(), oldStatus, complaint.getStatus());
 
         return saved;
+    }
+
+    @Transactional
+    public Complaint updateComplaintDirectly(Complaint complaint) {
+        return complaintRepository.save(complaint);
     }
 
     @Transactional

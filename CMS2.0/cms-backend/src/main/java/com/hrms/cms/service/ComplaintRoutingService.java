@@ -1,7 +1,9 @@
 package com.hrms.cms.service;
 
 import com.hrms.cms.entity.Complaint;
+import com.hrms.cms.entity.OfficerAvailability;
 import com.hrms.cms.entity.RegulatedEntity;
+import com.hrms.cms.repository.OfficerAvailabilityRepository;
 import com.hrms.cms.repository.RegulatedEntityRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,6 +20,7 @@ public class ComplaintRoutingService {
 
     private final RegulatedEntityRepository regulatedEntityRepo;
     private final KeycloakUserService keycloakUserService;
+    private final OfficerAvailabilityRepository availabilityRepository;
 
     private final ConcurrentHashMap<String, AtomicInteger> roundRobinCounters = new ConcurrentHashMap<>();
 
@@ -28,12 +31,72 @@ public class ComplaintRoutingService {
             return role.replace("_", " ") + " Team";
         }
 
-        AtomicInteger counter = roundRobinCounters.computeIfAbsent(role, k -> new AtomicInteger(0));
-        int index = Math.abs(counter.getAndIncrement()) % officers.size();
-        String assignedOfficer = (String) officers.get(index).get("userId");
+        // Filter out inactive/on-leave officers
+        List<Map<String, Object>> availableOfficers = filterAvailableOfficers(officers, role);
+        if (availableOfficers.isEmpty()) {
+            log.warn("No available officers for role: {} (all inactive/on-leave), falling back to full pool", role);
+            availableOfficers = officers;
+        }
 
-        log.info("Round-robin assigned role={} to officer={} (index {} of {})", role, assignedOfficer, index, officers.size());
+        // Sort by workload (least loaded first) then round-robin among those with equal load
+        availableOfficers.sort((a, b) -> {
+            int loadA = getWorkload((String) a.get("userId"), role);
+            int loadB = getWorkload((String) b.get("userId"), role);
+            return Integer.compare(loadA, loadB);
+        });
+
+        AtomicInteger counter = roundRobinCounters.computeIfAbsent(role, k -> new AtomicInteger(0));
+        int index = Math.abs(counter.getAndIncrement()) % availableOfficers.size();
+        String assignedOfficer = (String) availableOfficers.get(index).get("userId");
+
+        // Increment workload
+        incrementWorkload(assignedOfficer, role);
+
+        log.info("Round-robin assigned role={} to officer={} (index {} of {} available)", role, assignedOfficer, index, availableOfficers.size());
         return assignedOfficer;
+    }
+
+    private List<Map<String, Object>> filterAvailableOfficers(List<Map<String, Object>> officers, String role) {
+        List<Map<String, Object>> available = new ArrayList<>();
+        for (Map<String, Object> officer : officers) {
+            String userId = (String) officer.get("userId");
+            // Check Keycloak enabled status
+            Boolean enabled = (Boolean) officer.getOrDefault("enabled", true);
+            if (!Boolean.TRUE.equals(enabled)) continue;
+
+            // Check our availability table
+            Optional<OfficerAvailability> avail = availabilityRepository.findByUserIdAndRole(userId, role);
+            if (avail.isPresent()) {
+                OfficerAvailability oa = avail.get();
+                if (!oa.isAvailable()) {
+                    log.debug("Skipping officer {} - not available (active={}, onLeave={}, workload={}/{})",
+                            userId, oa.isActive(), oa.isOnLeave(), oa.getCurrentWorkload(), oa.getMaxWorkload());
+                    continue;
+                }
+            }
+            available.add(officer);
+        }
+        return available;
+    }
+
+    private int getWorkload(String userId, String role) {
+        return availabilityRepository.findByUserIdAndRole(userId, role)
+                .map(OfficerAvailability::getCurrentWorkload)
+                .orElse(0);
+    }
+
+    private void incrementWorkload(String userId, String role) {
+        OfficerAvailability avail = availabilityRepository.findByUserIdAndRole(userId, role)
+                .orElseGet(() -> OfficerAvailability.builder()
+                        .userId(userId)
+                        .role(role)
+                        .active(true)
+                        .onLeave(false)
+                        .currentWorkload(0)
+                        .maxWorkload(20)
+                        .build());
+        avail.setCurrentWorkload(avail.getCurrentWorkload() + 1);
+        availabilityRepository.save(avail);
     }
 
     public RoutingDecision routeComplaint(Complaint complaint, String entityCode) {

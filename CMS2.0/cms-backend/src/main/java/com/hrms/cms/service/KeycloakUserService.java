@@ -131,6 +131,17 @@ public class KeycloakUserService {
         user.put("firstName", keycloakUser.getOrDefault("firstName", ""));
         user.put("lastName", keycloakUser.getOrDefault("lastName", ""));
         user.put("enabled", keycloakUser.getOrDefault("enabled", true));
+
+        // Extract officeCode from Keycloak attributes
+        Map<String, Object> attributes = (Map<String, Object>) keycloakUser.getOrDefault("attributes", Collections.emptyMap());
+        if (attributes != null && attributes.containsKey("officeCode")) {
+            Object officeVal = attributes.get("officeCode");
+            if (officeVal instanceof List && !((List<?>) officeVal).isEmpty()) {
+                user.put("officeCode", ((List<?>) officeVal).get(0).toString());
+            } else if (officeVal instanceof String) {
+                user.put("officeCode", officeVal);
+            }
+        }
         return user;
     }
 

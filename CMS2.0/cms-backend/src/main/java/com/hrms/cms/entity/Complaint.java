@@ -53,6 +53,9 @@ public class Complaint {
     private Long bankId;
 
     @Column(length = 300)
+    private String entityName;
+
+    @Column(length = 300)
     private String bankBranch;
 
     @Column(length = 100)
@@ -60,6 +63,9 @@ public class Complaint {
 
     @Column(name = "CATEGORY_ID")
     private Long categoryId;
+
+    @Column(length = 200)
+    private String categoryName;
 
     @Column(nullable = false, length = 500)
     private String subject;
@@ -162,6 +168,21 @@ public class Complaint {
 
     @Column(name = "closure_clause", length = 100)
     private String closureClause;
+
+    @Column(name = "closure_clause_description", columnDefinition = "TEXT")
+    private String closureClauseDescription;
+
+    @Column(name = "complaint_status_on_portal", length = 100)
+    private String complaintStatusOnPortal;
+
+    @Column(name = "speaking_order_generated", length = 10)
+    private String speakingOrderGenerated;
+
+    @Column(name = "gist_of_case", columnDefinition = "TEXT")
+    private String gistOfCase;
+
+    @Column(name = "gist_of_case_regional", columnDefinition = "TEXT")
+    private String gistOfCaseRegional;
 
     @Column(name = "closure_authority_name", length = 200)
     private String closureAuthorityName;

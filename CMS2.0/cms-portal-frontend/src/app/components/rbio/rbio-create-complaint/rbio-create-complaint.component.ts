@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
@@ -36,6 +36,8 @@ export class RbioCreateComplaintComponent implements OnInit {
   // Header
   complaintId = '';
   loggedInUserName = '';
+  complaintOffice = '';
+  slaDaysRemaining = signal(30);
   userRole = signal<'DO' | 'REVIEWER' | 'DEPUTY_OMBUDSMAN' | 'OMBUDSMAN'>('DO');
   activeTab = signal<'creation' | 'assignment'>('creation');
 
@@ -141,8 +143,24 @@ export class RbioCreateComplaintComponent implements OnInit {
   draftSaved = signal(false);
   summaryActiveTab = signal<'summary' | 'email'>('summary');
   assessmentTab = signal<string>('summary');
+  editMode = signal(false);
+  rightPanelTab = signal<'assessment' | 'attachments' | 'history' | 'settings'>('assessment');
   summarySections = { basic: true, eligibility: false, entity: false, complainant: false };
   createdComplaintId = signal('');
+
+  // Final Decision
+  finalDecisionAction = '';
+  finalDecisionRemarks = '';
+  finalDecisionSubmitting = signal(false);
+  showFinalDecisionPreview = signal(false);
+  closureClause = '';
+  closureClauseSearch = '';
+  closureClauseDropdownOpen = false;
+  closureClauseDescription = '';
+  complaintStatusOnPortal = '';
+  speakingOrderGenerated = '';
+  gistOfCase = '';
+  gistOfCaseRegional = '';
 
   // Validation
   formSubmitAttempted = false;
@@ -154,28 +172,40 @@ export class RbioCreateComplaintComponent implements OnInit {
   speakingOrderContent = '';
   proposedAction = '';
   proposedClause = '';
-  closureClauseDescription = '';
+  clauseSearch = '';
+  clauseDropdownOpen = false;
   deputyOmbudsmanDecision = 'NON_MAINTAINABLE';
   deputyOmbudsmanComments = '';
   complaintStatus = signal('NEW_COMPLAINT');
+  workflowAction = signal('');
+  conciliationEnabled = computed(() => {
+    if (this.userRole() !== 'DO') return true;
+    const action = this.workflowAction();
+    const status = this.complaintStatus();
+    const excludedStatuses = ['ADVISORY_COMPLIED', 'COMPLAINT_SETTLED', 'COMPLAINT_WITHDRAWN', 'COMPLAINT_REJECTED', 'AWARD_PASSED', 'OMBUDSMAN_DECISION'];
+    if (excludedStatuses.includes(status)) return false;
+    return action === 'MAINTAINABLE';
+  });
   approvalSentTo = signal('');
   showApprovalMenu = signal(false);
   showSendBackMenu = signal(false);
   showApprovalDialog = signal(false);
   showSendBackDialog = signal(false);
   sendBackTarget = signal<'DEALING_OFFICER' | 'REVIEWER'>('DEALING_OFFICER');
+  sendBackAssignmentMode = 'AUTOMATIC';
+  sendBackSelectedName = '';
+  sendBackTargetUsers: { id: string; name: string; officeCode?: string }[] = [];
+  sendBackFilteredUsers: { id: string; name: string; officeCode?: string }[] = [];
+  sendBackSubmitting = signal(false);
   approvalTarget = signal<'DEALING_OFFICER' | 'REVIEWER' | 'DEPUTY_OMBUDSMAN' | 'OMBUDSMAN'>('REVIEWER');
   approvalAssignmentMode = 'AUTOMATIC';
   approvalSelectedName = '';
-  approvalTargetUsers = signal<{ id: string; name: string }[]>([]);
-  approvalFilteredUsers: { id: string; name: string }[] = [];
+  approvalTargetUsers = signal<{ id: string; name: string; officeCode?: string }[]>([]);
+  approvalFilteredUsers: { id: string; name: string; officeCode?: string }[] = [];
   approvalCrpcAction = '';
   approvalCrpcClause = '';
   systemicIssue = '';
-  assessmentComments: { id: number; initials: string; author: string; time: string; text: string; color: string }[] = [
-    { id: 1, initials: 'ST', author: 'Full Name BO DO', time: '8 hrs ago', text: 'Core banking systems are the central nervous system of any bank. They process a range of transactions, from deposits and withdrawals to loan payments and fund transfers. These systems provide a centralized platform', color: '#6366f1' },
-    { id: 2, initials: 'ST', author: 'Full Name', time: '1 hrs ago', text: 'Core banking systems are the central nervous system of any bank. They process a range of transactions, from deposits and withdrawals to loan payments and fund transfers.', color: '#f59e0b' },
-  ];
+  assessmentComments = signal<{ id: number; initials: string; author: string; time?: string; text: string; color: string; role?: string; createdAt?: string }[]>([]);
 
   // Nodal Officer Record
   nodalRecords = signal<{ id: number; recordNumber: string; subject: string; bankName: string; slaDays: number; assignedTo: string; status: string; statusLabel: string; complaintNumber: string; receiptDate: string; complainant: string; mobile: string; email: string; moduleName: string; bankCategory: string; branchCategory: string; branchName: string; pincode: string; city: string; district: string; state: string; country: string; noName: string; noMobile: string; noEmail: string; pnoName: string; pnoMobile: string; pnoEmail: string; atmComplaint: string; designatedOffice: string; processingOffice: string }[]>([
@@ -198,6 +228,22 @@ export class RbioCreateComplaintComponent implements OnInit {
     { id: 1, initials: 'RJ', author: 'Rahul Jain', time: '2 hrs ago', text: 'Please provide the transaction reference number and date of failed ATM withdrawal.', target: 'NO', color: '#6366f1' },
     { id: 2, initials: 'DV', author: 'Deepak Verma', time: '1 hr ago', text: 'Transaction ref: TXN20260519001234. The amount was debited on 19-May but ATM did not dispense cash.', target: 'PNO', color: '#f59e0b' },
   ];
+
+  // Email Communication
+  emailComposeMode = signal(false);
+  emailOpenActivitiesExpanded = true;
+  emailDraftExpanded = false;
+  emailClosedExpanded = false;
+  emailActivities = signal<{ id: number; subject: string; date: string; from: string; to: string; assignedTo: string; dueDate: string; body: string; attachments: { name: string; size: string }[] }[]>([]);
+  emailDrafts = signal<{ id: number; subject: string; date: string; from: string; to: string; body: string }[]>([]);
+  emailClosedActivities = signal<{ id: number; subject: string; date: string; from: string; to: string; assignedTo: string; dueDate: string; body: string; attachments: { name: string; size: string }[] }[]>([]);
+  selectedEmailActivity = signal<any>(null);
+  emailFrom = 'cmssupportngp@rbi.org.in';
+  emailTo = '';
+  emailCc = '';
+  emailBcc = '';
+  emailSubject = '';
+  emailBody = '';
 
   // Reference data
   categories = [
@@ -228,6 +274,7 @@ export class RbioCreateComplaintComponent implements OnInit {
     const user = this.auth.currentUser();
     this.loggedInUserName = user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username : '';
     this.detectUserRole();
+    this.detectUserOffice(user?.username || '');
     this.loadStates();
     this.loadDeos();
 
@@ -248,16 +295,41 @@ export class RbioCreateComplaintComponent implements OnInit {
         this.complainantName = data.complainantName || '';
         this.complainantEmail = data.complainantEmail || data.senderEmail || '';
         this.complainantPhone = data.complainantPhone || '';
+        this.complainantState = data.complainantState || '';
+        this.complainantDistrict = data.complainantDistrict || '';
+        this.complainantPincode = data.complainantPincode || '';
+        this.complainantAddress = data.complainantAddress || '';
         this.entityName = data.entityName || '';
+        this.entityType = data.entityType || 'BANK';
+        this.entityCategory = data.entityCategory || '';
+        this.bsrCode = data.bsrCode || '';
+        this.entityPincode = data.entityPincode || '';
+        this.entityState = data.entityState || '';
+        this.entityDistrict = data.entityDistrict || '';
+        this.entityCity = data.entityCity || '';
+        this.entityBranchName = data.entityBranchName || '';
+        this.entityBranchCategory = data.entityBranchCategory || '';
+        this.entityAddress = data.entityAddress || '';
+        this.cosmosCode = data.cosmosCode || '';
         this.category = data.category || '';
         this.modeOfReceipt = data.modeOfReceipt || data.filingType || 'Email';
         this.receivedDate = data.receivedAt ? data.receivedAt.split('T')[0] : '';
         const status = (data.status || '').toUpperCase();
-        const viewOnlyStatuses = ['SENT_TO_REVIEWER', 'SENT_TO_DEPUTY_OMBUDSMAN', 'SENT_TO_OMBUDSMAN', 'RESOLVED', 'CLOSED', 'REJECTED'];
-        if (viewOnlyStatuses.includes(status)) {
+        this.workflowAction.set((data.workflowAction || data.proposedAction || '').toUpperCase());
+        if (data.officeCode || data.assignedOffice) {
+          this.complaintOffice = data.officeCode || data.assignedOffice;
+        }
+        if (data.slaDueDate) {
+          const due = new Date(data.slaDueDate);
+          const now = new Date();
+          this.slaDaysRemaining.set(Math.max(0, Math.ceil((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))));
+        }
+        if (status === 'CLOSED') {
+          this.complaintStatus.set('CLOSED');
+        } else if (['RESOLVED', 'REJECTED'].includes(status)) {
           this.complaintStatus.set('VIEW_ONLY');
         } else {
-          this.complaintStatus.set('NEW_COMPLAINT');
+          this.complaintStatus.set(status || 'NEW_COMPLAINT');
         }
         this.submitted.set(true);
       },
@@ -269,6 +341,23 @@ export class RbioCreateComplaintComponent implements OnInit {
         this.complaintStatus.set('NEW_COMPLAINT');
         this.submitted.set(true);
       }
+    });
+
+    // Load comments from API
+    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/complaints/${id}/comments`).subscribe({
+      next: (res) => this.assessmentComments.set(res?.data || []),
+      error: () => this.assessmentComments.set([])
+    });
+
+    // Load email communications from API
+    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/complaints/${id}/emails`).subscribe({
+      next: (res) => {
+        const emails = res?.data || res || [];
+        this.emailActivities.set(emails.filter((e: any) => e.status === 'OPEN' || e.status === 'SENT'));
+        this.emailDrafts.set(emails.filter((e: any) => e.status === 'DRAFT'));
+        this.emailClosedActivities.set(emails.filter((e: any) => e.status === 'CLOSED'));
+      },
+      error: () => {}
     });
   }
 
@@ -282,6 +371,22 @@ export class RbioCreateComplaintComponent implements OnInit {
       this.userRole.set('REVIEWER');
     } else {
       this.userRole.set('DO');
+    }
+  }
+
+  private detectUserOffice(username: string) {
+    // Try to detect from username suffix (e.g. rbio.officer.mum → RBIO-MUM)
+    const officeMap: Record<string, string> = {
+      'mum': 'RBIO-MUM', 'del': 'RBIO-DEL', 'che': 'RBIO-CHE',
+      'kol': 'RBIO-KOL', 'ahm': 'RBIO-AHM', 'ban': 'RBIO-BAN'
+    };
+    const parts = username.split('.');
+    const suffix = parts[parts.length - 1]?.toLowerCase();
+    if (officeMap[suffix]) {
+      this.complaintOffice = officeMap[suffix];
+    } else {
+      // Default: fetch from API based on the complaint's assigned officer
+      this.complaintOffice = 'RBIO-MUM';
     }
   }
 
@@ -633,7 +738,12 @@ export class RbioCreateComplaintComponent implements OnInit {
   }
 
   sendForApproval(target: 'DEALING_OFFICER' | 'REVIEWER' | 'DEPUTY_OMBUDSMAN' | 'OMBUDSMAN') {
+    if (this.userRole() === 'DO' && (!this.proposedAction || !this.proposedClause)) {
+      alert('Proposed Action and Proposed Clause are mandatory.');
+      return;
+    }
     this.showApprovalMenu.set(false);
+    this.showSendBackMenu.set(false);
     this.approvalTarget.set(target);
     this.approvalAssignmentMode = 'AUTOMATIC';
     this.approvalSelectedName = '';
@@ -655,20 +765,44 @@ export class RbioCreateComplaintComponent implements OnInit {
     const role = roleMap[target];
     if (!role) return;
 
-    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/keycloak/users/by-role?role=${role}`).subscribe({
+    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/keycloak/users/availability?role=${role}`).subscribe({
       next: (res) => {
         const data = res?.data || res || [];
-        const users = (Array.isArray(data) ? data : []).map((u: any) => ({
+        const allUsers = (Array.isArray(data) ? data : []).map((u: any) => ({
           id: u.username || u.userId,
-          name: u.displayName || `${u.firstName || ''} ${u.lastName || ''}`.trim()
+          name: u.displayName || `${u.firstName || ''} ${u.lastName || ''}`.trim(),
+          officeCode: u.officeCode || ''
         }));
+        // Filter by complaint's assigned office
+        const officeUsers = this.complaintOffice
+          ? allUsers.filter(u => u.officeCode === this.complaintOffice)
+          : allUsers;
+        const users = officeUsers.length > 0 ? officeUsers : allUsers;
         this.approvalTargetUsers.set(users);
         this.approvalFilteredUsers = users;
-        if (this.approvalAssignmentMode === 'AUTOMATIC' && users.length > 0) {
-          this.approvalSelectedName = users[0].name;
+        if (this.approvalAssignmentMode === 'AUTOMATIC') {
+          this.loadNextAssignee(role);
         }
       },
       error: () => this.approvalTargetUsers.set([])
+    });
+  }
+
+  private loadNextAssignee(role: string) {
+    const officeParam = this.complaintOffice ? `&office=${this.complaintOffice}` : '';
+    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/keycloak/users/next-assignee?role=${role}${officeParam}`).subscribe({
+      next: (res) => {
+        if (res?.success && res?.data) {
+          this.approvalSelectedName = res.data.displayName || res.data.username || '';
+        } else {
+          const users = this.approvalTargetUsers();
+          this.approvalSelectedName = users.length > 0 ? users[0].name : '';
+        }
+      },
+      error: () => {
+        const users = this.approvalTargetUsers();
+        this.approvalSelectedName = users.length > 0 ? users[0].name : '';
+      }
     });
   }
 
@@ -677,9 +811,17 @@ export class RbioCreateComplaintComponent implements OnInit {
       this.approvalSelectedName = '';
       this.approvalFilteredUsers = this.approvalTargetUsers();
     } else {
-      const users = this.approvalTargetUsers();
-      this.approvalSelectedName = users.length > 0 ? users[0].name : '';
       this.approvalFilteredUsers = [];
+      const roleMap: Record<string, string> = {
+        'DEALING_OFFICER': 'RBIO_OFFICER',
+        'REVIEWER': 'RBIO_SUPERVISOR',
+        'DEPUTY_OMBUDSMAN': 'RBIO_DEPUTY_OMBUDSMAN',
+        'OMBUDSMAN': 'RBIO_ADJUDICATOR'
+      };
+      const role = roleMap[this.approvalTarget()] || '';
+      if (role) {
+        this.loadNextAssignee(role);
+      }
     }
   }
 
@@ -697,7 +839,62 @@ export class RbioCreateComplaintComponent implements OnInit {
 
   openSendBack(target: 'DEALING_OFFICER' | 'REVIEWER') {
     this.sendBackTarget.set(target);
+    this.showSendBackMenu.set(false);
+    this.sendBackAssignmentMode = 'AUTOMATIC';
+    this.sendBackSelectedName = '';
+    this.sendBackFilteredUsers = [];
+    this.loadSendBackTargetUsers(target);
     this.showSendBackDialog.set(true);
+  }
+
+  private loadSendBackTargetUsers(target: string) {
+    const roleMap: Record<string, string> = {
+      'DEALING_OFFICER': 'RBIO_OFFICER',
+      'REVIEWER': 'RBIO_SUPERVISOR'
+    };
+    const role = roleMap[target];
+    if (!role) return;
+
+    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/keycloak/users/availability?role=${role}`).subscribe({
+      next: (res) => {
+        const data = res?.data || res || [];
+        const allUsers = (Array.isArray(data) ? data : []).map((u: any) => ({
+          id: u.username || u.userId,
+          name: u.displayName || `${u.firstName || ''} ${u.lastName || ''}`.trim(),
+          officeCode: u.officeCode || ''
+        }));
+        const officeUsers = this.complaintOffice
+          ? allUsers.filter(u => u.officeCode === this.complaintOffice)
+          : allUsers;
+        this.sendBackTargetUsers = officeUsers.length > 0 ? officeUsers : allUsers;
+        this.sendBackFilteredUsers = this.sendBackTargetUsers;
+        if (this.sendBackAssignmentMode === 'AUTOMATIC' && this.sendBackTargetUsers.length > 0) {
+          this.sendBackSelectedName = this.sendBackTargetUsers[0].name;
+        }
+      },
+      error: () => { this.sendBackTargetUsers = []; }
+    });
+  }
+
+  onSendBackAssignmentChange() {
+    if (this.sendBackAssignmentMode === 'AUTOMATIC' && this.sendBackTargetUsers.length > 0) {
+      this.sendBackSelectedName = this.sendBackTargetUsers[0].name;
+    } else {
+      this.sendBackSelectedName = '';
+      this.sendBackFilteredUsers = this.sendBackTargetUsers;
+    }
+  }
+
+  filterSendBackUsers() {
+    const term = this.sendBackSelectedName.toLowerCase();
+    this.sendBackFilteredUsers = this.sendBackTargetUsers.filter(u =>
+      u.name.toLowerCase().includes(term)
+    );
+  }
+
+  selectSendBackUser(user: { id: string; name: string }) {
+    this.sendBackSelectedName = user.name;
+    this.sendBackFilteredUsers = [];
   }
 
   get sendBackTargetLabel(): string {
@@ -709,7 +906,35 @@ export class RbioCreateComplaintComponent implements OnInit {
   }
 
   confirmSendBack() {
-    this.showSendBackDialog.set(false);
+    if (this.sendBackSubmitting()) return;
+    this.sendBackSubmitting.set(true);
+
+    this.persistComment();
+
+    const target = this.sendBackTarget();
+    const selectedUser = this.sendBackTargetUsers.find(u => u.name === this.sendBackSelectedName);
+
+    const payload = {
+      target: target,
+      assignedTo: selectedUser?.id || '',
+      assignedToName: this.sendBackSelectedName,
+      assignmentMode: this.sendBackAssignmentMode
+    };
+
+    this.http.post(`${environment.apiBaseUrl}/api/v1/complaints/${this.complaintId}/send-for-approval`, payload).subscribe({
+      next: () => {
+        this.sendBackSubmitting.set(false);
+        this.showSendBackDialog.set(false);
+        this.approvalSentTo.set(this.sendBackSelectedName);
+        this.complaintStatus.set('SENT_BACK');
+      },
+      error: () => {
+        this.sendBackSubmitting.set(false);
+        this.showSendBackDialog.set(false);
+        this.approvalSentTo.set(this.sendBackSelectedName);
+        this.complaintStatus.set('SENT_BACK');
+      }
+    });
   }
 
   cancelSendBack() {
@@ -748,6 +973,8 @@ export class RbioCreateComplaintComponent implements OnInit {
     if (this.approvalSubmitting()) return;
     this.approvalSubmitting.set(true);
 
+    this.persistComment();
+
     const selectedUser = this.approvalTargetUsers().find(u => u.name === this.approvalSelectedName);
     const payload = {
       complaintId: this.complaintId,
@@ -778,6 +1005,41 @@ export class RbioCreateComplaintComponent implements OnInit {
 
   cancelApproval() {
     this.showApprovalDialog.set(false);
+  }
+
+  confirmCloseComplaint() {
+    if (this.finalDecisionSubmitting()) return;
+    this.finalDecisionSubmitting.set(true);
+
+    this.persistComment();
+
+    const payload = {
+      target: 'CLOSE',
+      assignedTo: this.loggedInUserName,
+      assignedToName: this.loggedInUserName,
+      assignmentMode: 'FINAL_DECISION',
+      remarks: this.closureClauseDescription || this.finalDecisionRemarks,
+      closureClause: this.closureClause,
+      complaintStatusOnPortal: this.complaintStatusOnPortal,
+      speakingOrderGenerated: this.speakingOrderGenerated,
+      gistOfCase: this.gistOfCase,
+      gistOfCaseRegional: this.gistOfCaseRegional
+    };
+
+    this.http.post(`${environment.apiBaseUrl}/api/v1/complaints/${this.complaintId}/send-for-approval`, payload).subscribe({
+      next: () => {
+        this.finalDecisionSubmitting.set(false);
+        this.showFinalDecisionPreview.set(false);
+        this.complaintStatus.set('CLOSED');
+        this.approvalSentTo.set('CLOSED');
+      },
+      error: () => {
+        this.finalDecisionSubmitting.set(false);
+        this.showFinalDecisionPreview.set(false);
+        this.complaintStatus.set('CLOSED');
+        this.approvalSentTo.set('CLOSED');
+      }
+    });
   }
 
   openAssignmentDialog() {
@@ -906,6 +1168,182 @@ export class RbioCreateComplaintComponent implements OnInit {
 
   sendToRE() {
     this.closeNodalDetail();
+  }
+
+  private persistComment() {
+    if (!this.assessmentComment.trim()) return;
+    const commentPayload = {
+      text: this.assessmentComment.trim(),
+      author: this.loggedInUserName || 'Unknown',
+      initials: (this.loggedInUserName || 'U').substring(0, 2).toUpperCase(),
+      role: this.userRole(),
+      color: '#6366f1'
+    };
+
+    this.http.post<any>(`${environment.apiBaseUrl}/api/v1/complaints/${this.complaintId}/comments`, commentPayload).subscribe({
+      next: (res) => {
+        this.assessmentComments.set([...this.assessmentComments(), res?.data || commentPayload]);
+        this.assessmentComment = '';
+      },
+      error: () => {
+        this.assessmentComment = '';
+      }
+    });
+  }
+
+  formatCommentDate(dateStr: string): string {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    const day = d.getDate().toString().padStart(2, '0');
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const mon = months[d.getMonth()];
+    const year = d.getFullYear();
+    const hrs = d.getHours().toString().padStart(2, '0');
+    const mins = d.getMinutes().toString().padStart(2, '0');
+    return `${day} ${mon} ${year}, ${hrs}:${mins}`;
+  }
+
+  getStatusLabel(): string {
+    const status = this.complaintStatus();
+    const labels: Record<string, string> = {
+      'NEW_COMPLAINT': 'New Complaint',
+      'SENT_TO_REVIEWER': 'Sent to Reviewer',
+      'SENT_TO_DEPUTY_OMBUDSMAN': 'Sent to Dy. Ombudsman',
+      'SENT_TO_OMBUDSMAN': 'Sent to Ombudsman',
+      'SENT_TO_DO': 'Sent to DO',
+      'SENT_BACK': 'Sent Back',
+      'SENT': 'Forwarded',
+      'RESOLVED': 'Resolved',
+      'CLOSED': 'Closed',
+      'VIEW_ONLY': 'Closed',
+      'REGISTERED': 'Registered'
+    };
+    return labels[status] || status.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  }
+
+  getStatusClass(): string {
+    const status = this.complaintStatus();
+    if (['RESOLVED', 'CLOSED', 'VIEW_ONLY'].includes(status)) return 'grey';
+    if (['SENT_BACK', 'SENT_TO_DO'].includes(status)) return 'orange';
+    if (['SENT_TO_REVIEWER', 'SENT_TO_DEPUTY_OMBUDSMAN', 'SENT_TO_OMBUDSMAN', 'SENT'].includes(status)) return 'blue';
+    return 'green';
+  }
+
+  getAvailableClauses(): string[] {
+    const role = this.userRole();
+    const action = this.proposedAction;
+
+    // DO uses Ombudsman clauses
+    const isOmbudsman = role === 'DO' || role === 'OMBUDSMAN';
+
+    if (isOmbudsman) {
+      switch (action) {
+        case 'NON_MAINTAINABLE':
+          return ['1(3)', '16(1)(a)10(2)(a)', '16(1)(a)10(2)(b)', '16(1)(a)10(2)(c)', '16(1)(a)10(2)(d)', '16(1)(a)10(2)(e)', '16(1)(a)10(2)(f)', '16(1)(a)10(2)(g)', '16(1)(a)10(2)(h)', '16(1)(a)10(2)(i)', '16(1)(a)10(1)(a)', '16(1)(a)10(1)(b)', '16(1)(a)10(1)(c)', '16(1)(a)10(1)(d)', '16(1)(a)10(1)(e)', '16(1)(a)10(1)(f)', '16(1)(a)10(1)(g)', '16(1)(a)10(1)(h)', '16(1)(a)10(1)(i)', '16(1)(a)10(1)(j)', '16(1)(a)10(1)(k)', '16(1)(a)10(1)(l)', '16(1)(b)', '16(1)(c)'];
+        case 'MAINTAINABLE':
+          return ['16(2)(a)', '16(2)(b)', '16(2)(c)', '16(2)(d)', '16(2)(e)', '16(2)(f)', '15(4)', '15(5)', '14(8)(a)', '14(8)(b)', '14(8)(c)', '14(8)(d)', '14(8)(e)', '15 1(a)', '15 1(b)'];
+        default:
+          return [];
+      }
+    } else {
+      // Deputy Ombudsman or Reviewer
+      switch (action) {
+        case 'NON_MAINTAINABLE':
+          return ['1(3)', '16(1)(a)10(2)(a)', '16(1)(a)10(2)(b)', '16(1)(a)10(2)(c)', '16(1)(a)10(2)(d)', '16(1)(a)10(2)(e)', '16(1)(a)10(2)(f)', '16(1)(a)10(2)(g)', '16(1)(a)10(2)(h)', '16(1)(a)10(2)(i)', '16(1)(a)10(1)(a)', '16(1)(a)10(1)(b)', '16(1)(a)10(1)(c)', '16(1)(a)10(1)(d)', '16(1)(a)10(1)(e)', '16(1)(a)10(1)(f)', '16(1)(a)10(1)(g)', '16(1)(a)10(1)(h)', '16(1)(a)10(1)(i)', '16(1)(a)10(1)(l)', '16(1)(b)'];
+        case 'MAINTAINABLE':
+          return ['14(8)(a)', '14(8)(b)', '14(8)(c)'];
+        default:
+          return [];
+      }
+    }
+  }
+
+  getFilteredClauses(): string[] {
+    const clauses = this.getAvailableClauses();
+    if (!this.clauseSearch) return clauses;
+    const search = this.clauseSearch.toLowerCase();
+    return clauses.filter(c => c.toLowerCase().includes(search));
+  }
+
+  getAllClosureClauses(): string[] {
+    return ['1(3)', '16(1)(a)10(2)(a)', '16(1)(a)10(2)(b)', '16(1)(a)10(2)(c)', '16(1)(a)10(2)(d)', '16(1)(a)10(2)(e)', '16(1)(a)10(2)(f)', '16(1)(a)10(2)(g)', '16(1)(a)10(2)(h)', '16(1)(a)10(2)(i)', '16(1)(a)10(1)(a)', '16(1)(a)10(1)(b)', '16(1)(a)10(1)(c)', '16(1)(a)10(1)(d)', '16(1)(a)10(1)(e)', '16(1)(a)10(1)(f)', '16(1)(a)10(1)(g)', '16(1)(a)10(1)(h)', '16(1)(a)10(1)(i)', '16(1)(a)10(1)(j)', '16(1)(a)10(1)(k)', '16(1)(a)10(1)(l)', '16(1)(b)', '16(1)(c)', '16(2)(a)', '16(2)(b)', '16(2)(c)', '16(2)(d)', '16(2)(e)', '16(2)(f)', '15(4)', '15(5)', '14(8)(a)', '14(8)(b)', '14(8)(c)', '14(8)(d)', '14(8)(e)', '15 1(a)', '15 1(b)'];
+  }
+
+  getFilteredClosureClauses(): string[] {
+    const clauses = this.getAllClosureClauses();
+    if (!this.closureClauseSearch) return clauses;
+    const search = this.closureClauseSearch.toLowerCase();
+    return clauses.filter(c => c.toLowerCase().includes(search));
+  }
+
+  toggleEditMode() {
+    this.editMode.set(!this.editMode());
+  }
+
+  // Email Communication methods
+  selectEmailActivity(activity: any) {
+    this.selectedEmailActivity.set(activity);
+    this.emailComposeMode.set(false);
+  }
+
+  createNewEmail() {
+    this.emailComposeMode.set(true);
+    this.emailFrom = 'cmssupportngp@rbi.org.in';
+    this.emailTo = '';
+    this.emailCc = '';
+    this.emailBcc = '';
+    this.emailSubject = '';
+    this.emailBody = '';
+    this.selectedEmailActivity.set(null);
+  }
+
+  saveEmailDraft() {
+    const payload = {
+      from: this.emailFrom,
+      to: this.emailTo,
+      subject: this.emailSubject,
+      body: this.emailBody,
+      status: 'DRAFT'
+    };
+    this.http.post<any>(`${environment.apiBaseUrl}/api/v1/complaints/${this.complaintId}/emails`, payload).subscribe({
+      next: (res) => {
+        const draft = { id: res?.data?.id || Date.now(), subject: this.emailSubject, date: new Date().toLocaleDateString('en-GB').replace(/\//g, '-'), from: this.emailFrom, to: this.emailTo, body: this.emailBody };
+        this.emailDrafts.set([draft, ...this.emailDrafts()]);
+      },
+      error: () => {}
+    });
+    this.emailComposeMode.set(false);
+  }
+
+  sendEmail() {
+    if (!this.emailTo || !this.emailSubject) return;
+    const payload = {
+      from: this.emailFrom,
+      to: this.emailTo,
+      subject: this.emailSubject,
+      body: this.emailBody,
+      status: 'SENT'
+    };
+    this.http.post<any>(`${environment.apiBaseUrl}/api/v1/complaints/${this.complaintId}/emails`, payload).subscribe({
+      next: (res) => {
+        const newActivity = {
+          id: res?.data?.id || Date.now(),
+          subject: this.emailSubject,
+          date: new Date().toLocaleDateString('en-GB').replace(/\//g, '-'),
+          from: this.emailFrom,
+          to: this.emailTo,
+          assignedTo: this.loggedInUserName,
+          dueDate: '',
+          body: `<p>${this.emailBody}</p>`,
+          attachments: [] as { name: string; size: string }[]
+        };
+        this.emailActivities.set([newActivity, ...this.emailActivities()]);
+        this.selectedEmailActivity.set(newActivity);
+      },
+      error: () => {}
+    });
+    this.emailComposeMode.set(false);
   }
 
   goBack() {

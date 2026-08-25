@@ -235,6 +235,10 @@
         color: #ef4444;
         &:hover { background: #fee2e2; border-color: #ef4444; }
       }
+      &.edit-btn {
+        color: #3b82f6;
+        &:hover { background: #eff6ff; border-color: #3b82f6; }
+      }
     }
   }
 
