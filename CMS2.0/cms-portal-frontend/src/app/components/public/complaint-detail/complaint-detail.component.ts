@@ -71,6 +71,7 @@ export class ComplaintDetailComponent implements OnInit {
       case 'IN_PROGRESS': case 'INPROGRESS': return 'status-inprogress';
       case 'INFORMATION_REQUIRED': return 'status-info-required';
       case 'DRAFT': return 'status-draft';
+      case 'SENT_BACK': return 'status-sent-back';
       default: return 'status-pending';
     }
   }
@@ -82,6 +83,7 @@ export class ComplaintDetailComponent implements OnInit {
       case 'NON_MAINTAINABLE': return 'Non Maintainable';
       case 'INFORMATION_REQUIRED': return 'Information Required';
       case 'DRAFT': return 'Draft';
+      case 'SENT_BACK': return 'Sent Back';
       default: return status?.replace(/_/g, ' ') || '—';
     }
   }
