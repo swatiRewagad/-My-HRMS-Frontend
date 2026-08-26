@@ -8,7 +8,7 @@
       <div class="form-group">
         <label>{{ 'feedback.ref_label' | translate }} <span class="required">*</span></label>
         <input type="text" class="form-input" [(ngModel)]="complaintId" name="complaintId"
-               placeholder="e.g., CMP-20260525-000001">
+               placeholder="e.g., CMP-20260525-000001" (ngModelChange)="clearErrorIfValid()">
       </div>
 
       <!-- FR-G-031: Rating -->
@@ -81,7 +81,7 @@
         <label id="ease-rating-label">{{ 'feedback.ease' | translate }} <span class="required">*</span></label>
         <div class="stars" role="group" aria-labelledby="ease-rating-label">
           @for (star of [1,2,3,4,5]; track star) {
-            <button class="star-btn" [class.active]="star <= easeOfFiling" (click)="easeOfFiling = star" type="button"
+            <button class="star-btn" [class.active]="star <= easeOfFiling" (click)="easeOfFiling = star; clearErrorIfValid()" type="button"
                     [attr.aria-label]="star + ' star'" [attr.aria-pressed]="star <= easeOfFiling">
               <i class="pi" [class.pi-star-fill]="star <= easeOfFiling" [class.pi-star]="star > easeOfFiling" aria-hidden="true"></i>
             </button>
@@ -96,7 +96,7 @@
         <label id="redress-rating-label">{{ 'feedback.redress' | translate }} <span class="required">*</span></label>
         <div class="stars" role="group" aria-labelledby="redress-rating-label">
           @for (star of [1,2,3,4,5]; track star) {
-            <button class="star-btn" [class.active]="star <= grievanceRedressTime" (click)="grievanceRedressTime = star" type="button"
+            <button class="star-btn" [class.active]="star <= grievanceRedressTime" (click)="grievanceRedressTime = star; clearErrorIfValid()" type="button"
                     [attr.aria-label]="star + ' star'" [attr.aria-pressed]="star <= grievanceRedressTime">
               <i class="pi" [class.pi-star-fill]="star <= grievanceRedressTime" [class.pi-star]="star > grievanceRedressTime" aria-hidden="true"></i>
             </button>
@@ -109,7 +109,7 @@
 
       <div class="form-group">
         <label>{{ 'feedback.source_label' | translate }} <span class="required">*</span></label>
-        <select class="form-select" [(ngModel)]="sourceOfInformation" name="sourceOfInformation">
+        <select class="form-select" [(ngModel)]="sourceOfInformation" name="sourceOfInformation" (ngModelChange)="clearErrorIfValid()">
           <option value="">{{ 'feedback.source_placeholder' | translate }}</option>
           @for (src of sourceOptions; track src) {
             <option [value]="src">{{ src }}</option>
@@ -121,7 +121,7 @@
         <div class="form-group">
           <label>{{ 'feedback.source_specify' | translate }} <span class="required">*</span></label>
           <input type="text" class="form-input" [(ngModel)]="sourceOtherText" name="sourceOtherText"
-                 placeholder="Enter source" maxlength="500">
+                 placeholder="Enter source" maxlength="500" (ngModelChange)="clearErrorIfValid()">
         </div>
       }
 
@@ -130,7 +130,7 @@
         <div class="radio-group">
           @for (opt of awarenessOptions; track opt) {
             <label class="radio-label" [class.selected]="cmsPortalAwareness === opt">
-              <input type="radio" name="cmsPortalAwareness" [value]="opt" [(ngModel)]="cmsPortalAwareness">
+              <input type="radio" name="cmsPortalAwareness" [value]="opt" [(ngModel)]="cmsPortalAwareness" (ngModelChange)="clearErrorIfValid()">
               {{ opt }}
             </label>
           }
@@ -141,7 +141,7 @@
         <label>{{ 'feedback.additional' | translate }}</label>
         <div class="textarea-with-speech">
           <textarea class="form-textarea" [(ngModel)]="feedbackText" name="feedbackText" rows="4"
-                    placeholder="Share your experience in detail..." maxlength="500"></textarea>
+                    placeholder="Share your experience in detail..." maxlength="500" (ngModelChange)="clearErrorIfValid()"></textarea>
           <app-speech-button (transcription)="feedbackText = feedbackText + ' ' + $event"></app-speech-button>
         </div>
         <span class="char-count">{{ feedbackText.length }}/500</span>

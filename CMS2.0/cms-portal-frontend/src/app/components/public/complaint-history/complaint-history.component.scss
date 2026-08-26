@@ -271,6 +271,19 @@
   &:hover { background: #fee2e2; }
 }
 
+.btn-track {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 6px 14px; background: #f0fdf4; color: #16a34a;
+  border: 1px solid #bbf7d0; border-radius: 6px;
+  font-size: 12px; font-weight: 600;
+  font-family: 'Poppins', sans-serif; cursor: pointer;
+  transition: all 0.2s;
+  &:hover { background: #dcfce7; border-color: #16a34a; }
+  i { font-size: 11px; }
+}
+
+.track-na { color: #94a3b8; }
+
 // ── Empty state ──
 .empty-cell { text-align: center; padding: 48px !important; }
 

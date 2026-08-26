@@ -375,12 +375,6 @@
     </div>
 
     <div class="form-card" [class.has-watermark]="currentStep() === 6" #formCard>
-      <!-- Watermark overlay (covers entire form-card on step 6) -->
-      @if (currentStep() === 6) {
-        <div class="review-watermark form-card-watermark">
-          <img src="assets/draft-watermark.jpg" class="watermark-img" alt="">
-        </div>
-      }
       <!-- Step Progress Bar -->
       <div class="step-header" role="navigation" aria-label="Form progress">
         <div class="step-bar">
@@ -408,6 +402,12 @@
           }
         </div>
       </div>
+      <!-- Watermark overlay (covers entire form-card on step 6) -->
+      @if (currentStep() === 6) {
+        <div class="review-watermark form-card-watermark">
+          <img src="assets/draft-watermark.jpg" class="watermark-img" alt="">
+        </div>
+      }
 
 
       <!-- Step 1: Complainant Details (Reactive Form) -->
@@ -460,13 +460,13 @@
             </div>
             <div class="form-row three-col">
               <div class="form-group">
-                <label>{{ 'form.age' | translate }} <span class="required">*</span></label>
+                <label>{{ 'form.age' | translate }} <span class="optional">(Optional)</span></label>
                 <input type="text" class="form-input" formControlName="age" placeholder="Enter Value" maxlength="3" inputmode="numeric"
                        [class.invalid]="(complainantDetailsForm.controls.age.touched || complainantDetailsForm.controls.age.dirty) && complainantDetailsForm.controls.age.invalid">
                 <app-form-error [control]="complainantDetailsForm.controls.age" label="Age"></app-form-error>
               </div>
               <div class="form-group">
-                <label>{{ 'form.gender' | translate }} <span class="required">*</span></label>
+                <label>{{ 'form.gender' | translate }} <span class="optional">(Optional)</span></label>
                 <select class="form-select" formControlName="gender"
                         [class.invalid]="(complainantDetailsForm.controls.gender.touched || complainantDetailsForm.controls.gender.dirty) && complainantDetailsForm.controls.gender.invalid">
                   <option value="">Select Value</option>
@@ -490,7 +490,7 @@
           <div class="form-row three-col">
             <div class="form-group">
               <label>{{ 'form.mobile_number' | translate }}</label>
-              <input type="tel" class="form-input" formControlName="phone" placeholder="Enter 10-digit m..." readonly>
+              <input type="tel" class="form-input disabled-field" formControlName="phone" placeholder="Auto-populated">
             </div>
             <div class="form-group">
               <!-- empty spacer -->
@@ -509,9 +509,9 @@
             </div>
             <div class="form-group">
               <label>{{ 'form.state' | translate }} <span class="required">*</span></label>
-              <select class="form-select" formControlName="state"
+              <select class="form-select disabled-field" formControlName="state"
                       [class.invalid]="(complainantDetailsForm.controls.state.touched || complainantDetailsForm.controls.state.dirty) && complainantDetailsForm.controls.state.invalid">
-                <option value="">Select Value</option>
+                <option value="">Auto-populated via Pincode</option>
                 @for (s of complainantStates; track s) {
                   <option [value]="s">{{ s }}</option>
                 }
@@ -520,9 +520,9 @@
             </div>
             <div class="form-group">
               <label>{{ 'form.district' | translate }} <span class="required">*</span></label>
-              <select class="form-select" formControlName="city"
+              <select class="form-select disabled-field" formControlName="city"
                       [class.invalid]="(complainantDetailsForm.controls.city.touched || complainantDetailsForm.controls.city.dirty) && complainantDetailsForm.controls.city.invalid">
-                <option value="">Select Value</option>
+                <option value="">Auto-populated via Pincode</option>
                 @for (d of complainantDistricts; track d) {
                   <option [value]="d">{{ d }}</option>
                 }
@@ -622,11 +622,11 @@
               <textarea class="form-textarea" formControlName="complaintText"
                         [class.invalid]="(complaintDetailsForm.controls.complaintText.touched || complaintDetailsForm.controls.complaintText.dirty) && complaintDetailsForm.controls.complaintText.invalid"
                         rows="5" placeholder="Write in detail" maxlength="5000"></textarea>
-              <button class="mic-pill-btn" [class.recording]="isRecording()" (click)="toggleRecording()"
+              <!-- <button class="mic-pill-btn" [class.recording]="isRecording()" (click)="toggleRecording()"
                       type="button" [attr.aria-label]="isRecording() ? 'Stop voice recording' : 'Start voice recording'">
                 <i class="pi" [class.pi-microphone]="!isRecording()" [class.pi-stop]="isRecording()" aria-hidden="true"></i>
                 {{ isRecording() ? ('form.stop' | translate) : ('form.use_mic' | translate) }}
-              </button>
+              </button> -->
             </div>
             <app-form-error [control]="complaintDetailsForm.controls.complaintText" label="Complaint details"></app-form-error>
           </div>
@@ -658,6 +658,11 @@
                   </div>
                   @if (accountTypeDropdownOpen) {
                     <div class="multiselect-panel" (click)="$event.stopPropagation()">
+                      <label class="multiselect-item select-all-item">
+                        <input type="checkbox" [checked]="selectAllAccounts" (change)="onSelectAllAccountTypes($event)">
+                        <span class="select-all-label">Select All</span>
+                      </label>
+                      <div class="multiselect-divider"></div>
                       @for (at of accountTypes; track at.value) {
                         <label class="multiselect-item">
                           <input type="checkbox" [(ngModel)]="at.checked" [ngModelOptions]="{standalone: true}" (ngModelChange)="onAccountTypeToggle(at)">
@@ -903,9 +908,9 @@
               </div>
               <div class="form-group">
                 <label>{{ 'form.rep_state' | translate }} <span class="required">*</span></label>
-                <select class="form-select" formControlName="repState"
+                <select class="form-select disabled-field" formControlName="repState"
                         [class.invalid]="(repAuthorizationForm.controls.repState.touched || repAuthorizationForm.controls.repState.dirty) && repAuthorizationForm.controls.repState.invalid">
-                  <option value="">Select Value</option>
+                  <option value="">Auto-populated via Pincode</option>
                   @for (s of repStates; track s) {
                     <option [value]="s">{{ s }}</option>
                   }
@@ -914,9 +919,9 @@
               </div>
               <div class="form-group">
                 <label>{{ 'form.rep_district' | translate }} <span class="required">*</span></label>
-                <select class="form-select" formControlName="repDistrict"
+                <select class="form-select disabled-field" formControlName="repDistrict"
                         [class.invalid]="(repAuthorizationForm.controls.repDistrict.touched || repAuthorizationForm.controls.repDistrict.dirty) && repAuthorizationForm.controls.repDistrict.invalid">
-                  <option value="">Select Value</option>
+                  <option value="">Auto-populated via Pincode</option>
                   @for (d of repDistricts; track d) {
                     <option [value]="d">{{ d }}</option>
                   }
@@ -928,9 +933,9 @@
             <div class="form-row">
               <div class="form-group" style="max-width: 33%;">
                 <label>{{ 'form.rep_city' | translate }} <span class="required">*</span></label>
-                <select class="form-select" formControlName="repCity"
+                <select class="form-select disabled-field" formControlName="repCity"
                         [class.invalid]="(repAuthorizationForm.controls.repCity.touched || repAuthorizationForm.controls.repCity.dirty) && repAuthorizationForm.controls.repCity.invalid">
-                  <option value="">Select Value</option>
+                  <option value="">Auto-populated via Pincode</option>
                   @for (c of repCities; track c) {
                     <option [value]="c">{{ c }}</option>
                   }
@@ -1017,22 +1022,22 @@
               <button type="button" class="rs-edit-btn" (click)="goToEligibility()"><i class="pi pi-pencil"></i> Edit</button>
             </div>
             <div class="rs-card-body">
-              <div class="rs-qa-item">
-                <span class="rs-qa-label">Is your complaint sub-judice/under arbitration/already dealt with on merits by a Court/Tribunal/Arbitrator/Authority?</span>
-                <span class="rs-qa-value">{{ eligibilityAnswers['isSubJudice'] === 'yes' ? 'Yes' : 'No' }}</span>
-              </div>
-              <div class="rs-qa-item">
-                <span class="rs-qa-label">Is your complaint made through an advocate (unless you are yourself an advocate)?</span>
-                <span class="rs-qa-value">{{ eligibilityAnswers['throughAdvocateEligibility'] === 'yes' ? 'Yes' : 'No' }}</span>
-              </div>
-              <div class="rs-qa-item">
-                <span class="rs-qa-label">Has your complaint already been dealt with or is under process on the same ground with the Ombudsman?</span>
-                <span class="rs-qa-value">{{ eligibilityAnswers['pendingBeforeOmbudsman'] === 'yes' ? 'Yes' : 'No' }}</span>
-              </div>
-              <div class="rs-qa-item">
-                <span class="rs-qa-label">Is complaint from the staff of a regulated entity and involves employer-employee relationship?</span>
-                <span class="rs-qa-value">{{ eligibilityAnswers['staffOfRE'] === 'yes' ? 'Yes' : 'No' }}</span>
-              </div>
+              @for (item of reviewEligibilityItems; track item.key) {
+                <div class="rs-numbered-item">
+                  <span class="rs-numbered-label"><span class="rs-num-prefix">{{ item.num }}.</span> {{ item.question }}</span>
+                  <span class="rs-numbered-value">{{ item.answer }}</span>
+                  @if (item.subItems) {
+                    <div class="rs-sub-items">
+                      @for (sub of item.subItems; track sub.prefix) {
+                        <div class="rs-sub-item">
+                          <span class="rs-sub-label"><span class="rs-sub-prefix">{{ sub.prefix }}.</span> {{ sub.label }}</span>
+                          <span class="rs-sub-value">{{ sub.value }}</span>
+                        </div>
+                      }
+                    </div>
+                  }
+                </div>
+              }
             </div>
           </section>
 
@@ -1043,29 +1048,21 @@
               <button type="button" class="rs-edit-btn" (click)="goToStep(1)"><i class="pi pi-pencil"></i> Edit</button>
             </div>
             <div class="rs-card-body">
-              <div class="rs-detail-grid rs-detail-grid--4">
-                <div class="rs-detail-item">
-                  <span class="rs-detail-label">Name</span>
-                  <span class="rs-detail-value">{{ complainantDetailsForm.get('firstName')?.value }} {{ complainantDetailsForm.get('middleName')?.value }} {{ complainantDetailsForm.get('lastName')?.value }}</span>
+              <!-- Row 1: Complainant Category (full width) -->
+              @if (getCategoryLabel() && getCategoryLabel() !== '—') {
+                <div class="rs-numbered-item">
+                  <span class="rs-numbered-label"><span class="rs-num-prefix">1.</span> Complainant Category</span>
+                  <span class="rs-numbered-value">{{ getCategoryLabel() }}</span>
                 </div>
-                <div class="rs-detail-item">
-                  <span class="rs-detail-label">Mobile Number</span>
-                  <span class="rs-detail-value">{{ complainantDetailsForm.get('phone')?.value ? '+91 ' + complainantDetailsForm.get('phone')?.value : '—' }}</span>
-                </div>
-                <div class="rs-detail-item">
-                  <span class="rs-detail-label">Email (Optional)</span>
-                  <span class="rs-detail-value">{{ complainantDetailsForm.get('email')?.value || '—' }}</span>
-                </div>
-                <div class="rs-detail-item">
-                  <span class="rs-detail-label">Pincode</span>
-                  <span class="rs-detail-value">{{ complainantDetailsForm.get('pincode')?.value || '—' }}</span>
-                </div>
-              </div>
-              <div class="rs-detail-grid rs-detail-grid--1">
-                <div class="rs-detail-item">
-                  <span class="rs-detail-label">Address</span>
-                  <span class="rs-detail-value">{{ complainantDetailsForm.get('addressDetails')?.value || '—' }}</span>
-                </div>
+              }
+              <!-- Remaining fields: 3 per row -->
+              <div class="rs-autofit-grid rs-autofit-grid--3">
+                @for (item of reviewComplainantFieldItems; track item.label) {
+                  <div class="rs-numbered-detail">
+                    <span class="rs-numbered-detail-label"><span class="rs-num-prefix">{{ item.num }}.</span> {{ item.label }}</span>
+                    <span class="rs-numbered-detail-value">{{ item.value }}</span>
+                  </div>
+                }
               </div>
             </div>
           </section>
@@ -1077,30 +1074,38 @@
               <button type="button" class="rs-edit-btn" (click)="goToStep(2)"><i class="pi pi-pencil"></i> Edit</button>
             </div>
             <div class="rs-card-body">
-              <div class="rs-detail-grid rs-detail-grid--1">
-                <div class="rs-detail-item">
-                  <span class="rs-detail-label">Regulated Entity Name</span>
-                  <span class="rs-detail-value">{{ selectedEntityName }}</span>
+              @if (selectedEntityName) {
+                <div class="rs-numbered-item">
+                  <span class="rs-numbered-label"><span class="rs-num-prefix">1.</span> Regulated Entity Name</span>
+                  <span class="rs-numbered-value">{{ selectedEntityName }}</span>
                 </div>
-              </div>
-              <div class="rs-qa-item">
-                <span class="rs-qa-label">Is your complaint related to credit card?</span>
-                <span class="rs-qa-value">{{ regulatedEntityForm.get('isCreditCardComplaint')?.value === 'yes' ? 'Yes' : 'No' }}</span>
-              </div>
+              }
+              @if (regulatedEntityForm.get('isCreditCardComplaint')?.value) {
+                <div class="rs-numbered-item">
+                  <span class="rs-numbered-label"><span class="rs-num-prefix">2.</span> Is your complaint related to credit card?</span>
+                  <span class="rs-numbered-value">{{ regulatedEntityForm.get('isCreditCardComplaint')?.value === 'yes' ? 'Yes' : 'No' }}</span>
+                </div>
+              }
               @if (regulatedEntityForm.get('isCreditCardComplaint')?.value === 'no') {
-                <div class="rs-detail-grid rs-detail-grid--3">
-                  <div class="rs-detail-item">
-                    <span class="rs-detail-label">Entity State</span>
-                    <span class="rs-detail-value">{{ regulatedEntityForm.get('entityState')?.value || '—' }}</span>
-                  </div>
-                  <div class="rs-detail-item">
-                    <span class="rs-detail-label">Entity District</span>
-                    <span class="rs-detail-value">{{ regulatedEntityForm.get('entityDistrict')?.value || '—' }}</span>
-                  </div>
-                  <div class="rs-detail-item">
-                    <span class="rs-detail-label">Entity Branch</span>
-                    <span class="rs-detail-value">{{ regulatedEntityForm.get('entityBranch')?.value || '—' }}</span>
-                  </div>
+                <div class="rs-autofit-grid rs-autofit-grid--3">
+                  @if (regulatedEntityForm.get('entityState')?.value) {
+                    <div class="rs-numbered-detail">
+                      <span class="rs-numbered-detail-label"><span class="rs-num-prefix">3.</span> Entity State</span>
+                      <span class="rs-numbered-detail-value">{{ regulatedEntityForm.get('entityState')?.value }}</span>
+                    </div>
+                  }
+                  @if (regulatedEntityForm.get('entityDistrict')?.value) {
+                    <div class="rs-numbered-detail">
+                      <span class="rs-numbered-detail-label"><span class="rs-num-prefix">4.</span> Entity District</span>
+                      <span class="rs-numbered-detail-value">{{ regulatedEntityForm.get('entityDistrict')?.value }}</span>
+                    </div>
+                  }
+                  @if (regulatedEntityForm.get('entityBranch')?.value) {
+                    <div class="rs-numbered-detail">
+                      <span class="rs-numbered-detail-label"><span class="rs-num-prefix">5.</span> Entity Branch</span>
+                      <span class="rs-numbered-detail-value">{{ regulatedEntityForm.get('entityBranch')?.value }}</span>
+                    </div>
+                  }
                 </div>
               }
             </div>
@@ -1113,63 +1118,95 @@
               <button type="button" class="rs-edit-btn" (click)="goToStep(3)"><i class="pi pi-pencil"></i> Edit</button>
             </div>
             <div class="rs-card-body">
-              <div class="rs-detail-grid rs-detail-grid--3">
-                <div class="rs-detail-item">
-                  <span class="rs-detail-label">Complaint Category</span>
-                  <span class="rs-detail-value">{{ getComplaintCategoryLabel() }}</span>
+              <!-- Row 1: Complaint Category (full width) -->
+              @if (getComplaintCategoryLabel() && getComplaintCategoryLabel() !== '—') {
+                <div class="rs-numbered-item">
+                  <span class="rs-numbered-label"><span class="rs-num-prefix">1.</span> Complaint Category</span>
+                  <span class="rs-numbered-value">{{ getComplaintCategoryLabel() }}</span>
                 </div>
-                <div class="rs-detail-item">
-                  <span class="rs-detail-label">Complaint Sub-Category 1</span>
-                  <span class="rs-detail-value">{{ formData['subCategory1'] || '—' }}</span>
+              }
+              <!-- Row 2: Facts of the complaint (full width) -->
+              @if (complaintDetailsForm.get('complaintText')?.value) {
+                <div class="rs-numbered-item">
+                  <span class="rs-numbered-label"><span class="rs-num-prefix">{{ reviewComplaintStartNum }}.</span> Facts of the complaint</span>
+                  <span class="rs-numbered-value">{{ complaintDetailsForm.get('complaintText')?.value }}</span>
                 </div>
-                <div class="rs-detail-item">
-                  <span class="rs-detail-label">Complaint Sub-Category 2</span>
-                  <span class="rs-detail-value">{{ formData['subCategory2'] || '—' }}</span>
-                </div>
+              }
+              <!-- From row 3: 2 fields per row -->
+              <div class="rs-autofit-grid rs-autofit-grid--2">
+                @if (complaintDetailsForm.get('hasAccountWithRE')?.value) {
+                  <div class="rs-numbered-detail">
+                    <span class="rs-numbered-detail-label"><span class="rs-num-prefix">{{ reviewComplaintStartNum + 1 }}.</span> Do you have an account with {{ selectedEntityName }}?</span>
+                    <span class="rs-numbered-detail-value">{{ complaintDetailsForm.get('hasAccountWithRE')?.value === 'yes' ? 'Yes' : 'No' }}</span>
+                  </div>
+                }
+                @if (complaintDetailsForm.get('isWalletComplaint')?.value) {
+                  <div class="rs-numbered-detail">
+                    <span class="rs-numbered-detail-label"><span class="rs-num-prefix">{{ reviewComplaintStartNum + 2 }}.</span> Is your complaint against a Wallet transaction?</span>
+                    <span class="rs-numbered-detail-value">{{ complaintDetailsForm.get('isWalletComplaint')?.value === 'yes' ? 'Yes' : 'No' }}</span>
+                  </div>
+                }
+                @if (complaintDetailsForm.get('isBusinessCorrespondent')?.value) {
+                  <div class="rs-numbered-detail">
+                    <span class="rs-numbered-detail-label"><span class="rs-num-prefix">{{ reviewComplaintStartNum + 3 }}.</span> Is your complaint against a Business Correspondent?</span>
+                    <span class="rs-numbered-detail-value">{{ complaintDetailsForm.get('isBusinessCorrespondent')?.value === 'yes' ? 'Yes' : 'No' }}</span>
+                  </div>
+                }
+                @if (displayAmount('disputeAmount')) {
+                  <div class="rs-numbered-detail">
+                    <span class="rs-numbered-detail-label"><span class="rs-num-prefix">{{ reviewComplaintAmountStart }}.</span> Amount Involved in the Dispute, If Any</span>
+                    <span class="rs-numbered-detail-value">₹{{ displayAmount('disputeAmount') }}</span>
+                  </div>
+                }
+                @if (displayAmount('compensationSought')) {
+                  <div class="rs-numbered-detail">
+                    <span class="rs-numbered-detail-label"><span class="rs-num-prefix">{{ reviewComplaintAmountStart + 1 }}.</span> Compensation Sought For Dispute, If Any</span>
+                    <span class="rs-numbered-detail-value">₹{{ displayAmount('compensationSought') }}</span>
+                  </div>
+                }
+                @if (displayAmount('reliefSought')) {
+                  <div class="rs-numbered-detail">
+                    <span class="rs-numbered-detail-label"><span class="rs-num-prefix">{{ reviewComplaintAmountStart + 2 }}.</span> Compensation For Harassment, If Any</span>
+                    <span class="rs-numbered-detail-value">₹{{ displayAmount('reliefSought') }}</span>
+                  </div>
+                }
               </div>
-              <div class="rs-detail-grid rs-detail-grid--1">
-                <div class="rs-detail-item">
-                  <span class="rs-detail-label">Facts of the complaint</span>
-                  <span class="rs-detail-value rs-detail-value--text">{{ complaintDetailsForm.get('complaintText')?.value || '—' }}</span>
-                </div>
-              </div>
-              <div class="rs-qa-item">
-                <span class="rs-qa-label">If you want to authorize a representative to appear and make submission on your behalf before the Ombudsman, please select 'Yes' and furnish the details of the Authorised Representative</span>
-                <span class="rs-qa-value">{{ repAuthorizationForm.get('hasAuthRep')?.value === 'yes' ? 'Yes' : 'No' }}</span>
-              </div>
+              <!-- Uploaded Documents -->
               @if (attachmentPreviews.length > 0) {
-                <div class="rs-detail-grid rs-detail-grid--1">
-                  <div class="rs-detail-item">
-                    <span class="rs-detail-label">Attachments</span>
-                    <div class="rs-attachments-row">
-                      @for (f of attachmentPreviews; track $index) {
-                        <div class="rs-attachment-chip">
-                          <i class="pi pi-file-pdf"></i>
-                          <div class="rs-attachment-info">
-                            <span class="rs-attachment-name">{{ f.name }}</span>
-                            @if (f.size) {
-                              <span class="rs-attachment-size">{{ (f.size / 1024).toFixed(0) }} KB</span>
-                            }
-                          </div>
+                <div class="rs-numbered-item">
+                  <span class="rs-numbered-label"><span class="rs-num-prefix">{{ reviewComplaintDocNum }}.</span> Uploaded Documents</span>
+                  <div class="rs-attachments-row" style="padding-left: 20px;">
+                    @for (f of attachmentPreviews; track $index) {
+                      <div class="rs-attachment-chip">
+                        <i class="pi pi-file-pdf"></i>
+                        <div class="rs-attachment-info">
+                          <span class="rs-attachment-name">{{ f.name }}</span>
+                          @if (f.size) {
+                            <span class="rs-attachment-size">{{ (f.size / 1024).toFixed(0) }} KB</span>
+                          }
                         </div>
-                      }
-                    </div>
+                      </div>
+                    }
                   </div>
                 </div>
               }
             </div>
           </section>
 
-          <!-- Representative Authorisation -->
+          <!-- Representative Authorisation (question full-width, then fields 4 per row) -->
           <section class="rs-section rs-card">
             <div class="rs-header-bar">
               <h3 class="rs-header-title">Representative Authorisation</h3>
               <button type="button" class="rs-edit-btn" (click)="goToStep(4)"><i class="pi pi-pencil"></i> Edit</button>
             </div>
             <div class="rs-card-body">
-              <div class="rs-qa-item">
-                <span class="rs-qa-label">Is the complaint being filed through an Authorised Representative on behalf of you / complainant?</span>
-                <span class="rs-qa-value">{{ repAuthorizationForm.get('hasAuthRep')?.value === 'yes' ? 'Yes' : 'No' }}</span>
+              <div class="rs-autofit-grid rs-autofit-grid--4">
+                @for (item of reviewRepItems; track item.label) {
+                  <div class="rs-numbered-detail" [class.rs-numbered-detail--full]="item.num === 1">
+                    <span class="rs-numbered-detail-label"><span class="rs-num-prefix">{{ item.num }}.</span> {{ item.label }}</span>
+                    <span class="rs-numbered-detail-value">{{ item.value }}</span>
+                  </div>
+                }
               </div>
             </div>
           </section>

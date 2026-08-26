@@ -119,13 +119,13 @@ export class ComplaintFacadeService {
       firstName: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(50), CustomValidators.alphaNumeric()]],
       middleName: ['', [Validators.maxLength(50), CustomValidators.alphaNumeric()]],
       lastName: ['', [Validators.required, Validators.maxLength(50), CustomValidators.alphaNumeric()]],
-      age: ['', [Validators.required, Validators.min(18), Validators.max(120), CustomValidators.numericOnly()]],
-      gender: ['', [Validators.required]],
+      age: ['', [Validators.min(18), Validators.max(120), CustomValidators.numericOnly()]],
+      gender: [''],
       email: ['', [Validators.required, Validators.email, Validators.maxLength(100)]],
-      phone: [''],
+      phone: [{value: '', disabled: true}],
       pincode: ['', [Validators.required]],
-      state: ['', [Validators.required]],
-      city: ['', [Validators.required]],
+      state: [{value: '', disabled: true}, [Validators.required]],
+      city: [{value: '', disabled: true}, [Validators.required]],
       addressDetails: ['', [Validators.required, Validators.maxLength(500)]],
     }),
     regulatedEntity: this.nnfb.group({
@@ -158,9 +158,9 @@ export class ComplaintFacadeService {
       repEmail: [''],
       repPhone: [''],
       repPincode: [''],
-      repState: [''],
-      repDistrict: [''],
-      repCity: [''],
+      repState: [{value: '', disabled: true}],
+      repDistrict: [{value: '', disabled: true}],
+      repCity: [{value: '', disabled: true}],
       repAddress: [''],
       repFileUpload: [''],
     }),
@@ -213,7 +213,6 @@ export class ComplaintFacadeService {
     this.loadMasterData();
     this.formData['phone'] = this.publicAuth.userIdentifier() || '';
     this.complainantDetailsForm.controls.phone.setValue(this.formData['phone']);
-    this.complainantDetailsForm.controls.phone.disable();
     this.startAutoSave();
   }
 
@@ -495,14 +494,15 @@ export class ComplaintFacadeService {
   private applyComplainantCategoryValidators(category: string): void {
     const cd = this.complainantDetailsForm;
     const personalFields = ['firstName', 'middleName', 'lastName', 'age', 'gender', 'email'] as const;
-    const isIndividual = category === 'individual' || category === 'senior_citizen';
+    const isIndividual = category === 'individual' || category === 'senior_citizen' || category === 'pwd';
 
     if (isIndividual) {
       cd.controls.firstName.setValidators([Validators.required, Validators.minLength(2), Validators.maxLength(50), CustomValidators.alphaNumeric()]);
       cd.controls.middleName.setValidators([Validators.maxLength(50), CustomValidators.alphaNumeric()]);
       cd.controls.lastName.setValidators([Validators.required, Validators.maxLength(50), CustomValidators.alphaNumeric()]);
-      cd.controls.age.setValidators([Validators.required, Validators.min(18), Validators.max(120), CustomValidators.numericOnly()]);
-      cd.controls.gender.setValidators([Validators.required]);
+      cd.controls.age.clearValidators();
+      cd.controls.age.setValidators([Validators.min(18), Validators.max(120), CustomValidators.numericOnly()]);
+      cd.controls.gender.clearValidators();
       cd.controls.email.setValidators([Validators.required, Validators.email, Validators.maxLength(100)]);
     } else {
       for (const field of personalFields) {
@@ -788,8 +788,35 @@ export class ComplaintFacadeService {
   }
 
   // ── Account types ──
-  onAccountTypeToggle(accountType: AccountType): void {
+  private readonly FIXED_ACCOUNT_TYPES: AccountType[] = [
+    { label: 'Savings Account', value: 'savings', checked: false },
+    { label: 'Loan Account', value: 'loan', checked: false },
+    { label: 'ATM/Debit Card', value: 'atm_debit', checked: false },
+    { label: 'Credit Card', value: 'credit_card', checked: false },
+  ];
+
+  selectAllAccounts = false;
+
+  initFixedAccountTypes(): void {
+    this.accountTypes = this.FIXED_ACCOUNT_TYPES.map(a => ({ ...a }));
+  }
+
+  toggleSelectAllAccountTypes(checked: boolean): void {
+    this.selectAllAccounts = checked;
+    for (const at of this.accountTypes) {
+      at.checked = checked;
+      this.applyAccountTypeValidators(at);
+    }
     this.syncAccountTypeSelectionControl();
+  }
+
+  onAccountTypeToggle(accountType: AccountType): void {
+    this.applyAccountTypeValidators(accountType);
+    this.selectAllAccounts = this.accountTypes.every(a => a.checked);
+    this.syncAccountTypeSelectionControl();
+  }
+
+  private applyAccountTypeValidators(accountType: AccountType): void {
     const ctrlName = ACCOUNT_TYPE_FIELD_MAP[accountType.value];
     if (!ctrlName) return;
     const ctrl = this.complaintDetailsForm.get(ctrlName);
@@ -1368,21 +1395,7 @@ export class ComplaintFacadeService {
       error: () => {}
     });
 
-    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/masters/account-types`).subscribe({
-      next: (res) => {
-        const data = res?.data ?? res ?? [];
-        this.accountTypes = data.map((a: any) => ({ label: a.label || a.name, value: a.value || a.code, checked: false }));
-        if (this.accountTypes.length === 0) this.loadAccountTypesFromLocal();
-      },
-      error: () => this.loadAccountTypesFromLocal()
-    });
-  }
-
-  private loadAccountTypesFromLocal(): void {
-    this.http.get<any[]>('/assets/masters/account-types.json').subscribe({
-      next: (data) => { this.accountTypes = (data ?? []).map(a => ({ label: a.label || a.name, value: a.value || a.code, checked: false })); },
-      error: () => {}
-    });
+    this.initFixedAccountTypes();
   }
 
   private loadRegulatedEntities(): void {

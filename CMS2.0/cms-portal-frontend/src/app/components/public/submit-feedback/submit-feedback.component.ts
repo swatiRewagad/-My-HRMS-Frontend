@@ -55,6 +55,20 @@ export class SubmitFeedbackComponent {
 
   setRating(field: 'overallRating' | 'timelinessRating' | 'communicationRating' | 'satisfactionRating', value: number) {
     this[field] = value;
+    this.clearErrorIfValid();
+  }
+
+  clearErrorIfValid() {
+    if (!this.error) return;
+    if (!this.complaintId.trim()) return;
+    if (this.overallRating === 0) return;
+    if (this.easeOfFiling === 0) return;
+    if (this.grievanceRedressTime === 0) return;
+    if (!this.sourceOfInformation) return;
+    if (this.sourceOfInformation === 'Others' && !this.sourceOtherText.trim()) return;
+    if (!this.cmsPortalAwareness) return;
+    if (this.feedbackText.length > 500) return;
+    this.error = '';
   }
 
   submit() {

@@ -88,7 +88,6 @@ export class ComplaintHistoryComponent implements OnInit {
             entityName: c.entityName || c.complainantName || '—',
             complaintDate: c.createdAt || c.complaintDate || c.registeredDate || '—',
             status: c.status || 'PENDING',
-            comments: c.comments || c.description?.substring(0, 50) || '—'
           })));
         }
         this.finalizeLoad(allRecords);
@@ -105,7 +104,6 @@ export class ComplaintHistoryComponent implements OnInit {
           entityName: d.entityName || '—',
           complaintDate: d.updatedAt || '—',
           status: 'DRAFT',
-          comments: `Step ${d.currentStep} — ${d.phase === 'eligibility' ? 'Eligibility Check' : 'Form in progress'}`,
           isDraft: true,
           draftId: d.draftId
         }));
@@ -140,7 +138,6 @@ export class ComplaintHistoryComponent implements OnInit {
         entityName,
         complaintDate: savedAt,
         status: 'DRAFT',
-        comments: draft.formData?.['complaintText']?.substring(0, 50) || 'Complaint in progress',
         isDraft: true,
         draftId: 'local'
       };
@@ -161,6 +158,10 @@ export class ComplaintHistoryComponent implements OnInit {
     });
     this.complaints.set(records);
     this.loading.set(false);
+  }
+
+  trackComplaint(record: ComplaintRecord) {
+    this.router.navigate(['/public/complaint', record.complaintId]);
   }
 
   viewComplaint(record: ComplaintRecord) {

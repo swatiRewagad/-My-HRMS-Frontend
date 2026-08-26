@@ -94,6 +94,19 @@
   cursor: pointer;
 }
 
+.disabled-field, .form-input:disabled, .form-select:disabled {
+  background-color: #F3F4F6; color: #6B7280; cursor: not-allowed;
+  opacity: 0.8;
+}
+
+.select-all-item {
+  font-weight: 600;
+  .select-all-label { font-weight: 600; }
+}
+.multiselect-divider {
+  height: 1px; background: #E5E7EB; margin: 4px 0;
+}
+
 .form-group {
   margin-bottom: 16px;
   label { display: block; font-family: 'Poppins', sans-serif; font-size: 14px; font-weight: 500; color: #272C30; margin-bottom: 6px; }
@@ -935,17 +948,22 @@
 }
 
 .form-card {
-  background: #fff; border: 1px solid #e8e8e8; border-radius: 12px; padding: 32px 40px;
+  background: #fff; border: 1px solid #e8e8e8;
+  border-radius: 12px; padding: 32px 40px;
   box-shadow: 0 2px 12px rgba(0,0,0,0.05);
   max-width: 1126px; margin: 0 auto;
   &.has-watermark {
-    position: relative; overflow: hidden;
+    position: relative; overflow: visible;
     > *:not(.form-card-watermark) { position: relative; z-index: 1; }
   }
   font-family: 'Poppins', sans-serif;
 }
 
-.step-header { margin-bottom: 28px; overflow: visible; padding-bottom: 4px; }
+.step-header {
+  margin-bottom: 20px;
+  overflow: hidden;
+  padding: 16px 40px 12px;
+}
 .step-bar {
   display: flex; align-items: flex-start; width: 100%;
   overflow: visible; padding: 6px 0;
@@ -1093,7 +1111,7 @@
 .radio-inline {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
   cursor: pointer;
   font-family: 'Poppins', sans-serif;
   font-size: 15px;
@@ -1106,8 +1124,8 @@
   input[type="radio"] {
     -webkit-appearance: none;
     appearance: none;
-    width: 18px;
-    height: 18px;
+    width: 16px;
+    height: 16px;
     border: 2px solid #94a3b8;
     border-radius: 50%;
     margin: 0;
@@ -1431,8 +1449,8 @@ label.file-upload-browse-link {
 .rs-card {
   border: 1px solid #e2e8f0;
   border-radius: 12px;
-  background: #fff;
-  margin-bottom: 24px;
+  background: transparent;
+  margin-bottom: 16px;
   overflow: hidden;
   &:last-of-type { margin-bottom: 0; }
 }
@@ -1441,8 +1459,8 @@ label.file-upload-browse-link {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 20px;
-  background: #EDF9EC;
+  padding: 10px 20px;
+  background: rgba(237, 249, 236, 0.85);
   border-bottom: 1px solid #d4edda;
 }
 
@@ -1471,7 +1489,7 @@ label.file-upload-browse-link {
 }
 
 .rs-card-body {
-  padding: 20px 24px;
+  padding: 18px 24px;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -1608,6 +1626,125 @@ label.file-upload-browse-link {
   line-height: 1.7;
 }
 
+// ── Numbered Review Layout ──
+.rs-numbered-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #f1f5f9;
+  &:last-child { border-bottom: none; padding-bottom: 0; }
+}
+
+.rs-numbered-label {
+  font-family: 'Poppins', sans-serif;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: #475569;
+  line-height: 1.5;
+}
+
+.rs-num-prefix {
+  font-weight: 600;
+  margin-right: 4px;
+}
+
+.rs-numbered-value {
+  font-family: 'Poppins', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: #1e293b;
+  padding-left: 20px;
+}
+
+.rs-sub-items {
+  padding-left: 24px;
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.rs-sub-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.rs-sub-label {
+  font-family: 'Poppins', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: #64748b;
+}
+
+.rs-sub-prefix {
+  font-weight: 600;
+  margin-right: 4px;
+}
+
+.rs-sub-value {
+  font-family: 'Poppins', sans-serif;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #1e293b;
+  padding-left: 16px;
+}
+
+.rs-numbered-grid {
+  display: grid;
+  gap: 16px 24px;
+
+  &--2 { grid-template-columns: repeat(2, 1fr); }
+  &--3 { grid-template-columns: repeat(3, 1fr); }
+}
+
+.rs-autofit-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px 20px;
+
+  &--2 { grid-template-columns: repeat(2, 1fr); }
+  &--3 { grid-template-columns: repeat(3, 1fr); }
+  &--4 { grid-template-columns: repeat(4, 1fr); }
+}
+
+.rs-numbered-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  &--full {
+    grid-column: 1 / -1;
+  }
+}
+
+.rs-numbered-detail-label {
+  font-family: 'Poppins', sans-serif;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: #64748b;
+}
+
+.rs-numbered-detail-value {
+  font-family: 'Poppins', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: #1e293b;
+  word-break: break-word;
+  padding-left: 20px;
+}
+
+@media (max-width: 768px) {
+  .rs-numbered-grid {
+    &--2, &--3 { grid-template-columns: 1fr; }
+  }
+  .rs-autofit-grid {
+    grid-template-columns: 1fr 1fr;
+    &--4 { grid-template-columns: 1fr 1fr; }
+  }
+}
+
 // ── Toast Overrides ──
 :host ::ng-deep .p-toast {
   .p-toast-message-success {
@@ -1686,7 +1823,7 @@ label.file-upload-browse-link {
   pointer-events: none;
   z-index: 0;
   background: url('/assets/draft-watermark.jpg') center center / cover no-repeat;
-  opacity: 0.35;
+  opacity: 0.55;
 }
 .form-card-watermark {
   border-radius: 12px;

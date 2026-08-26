@@ -17,7 +17,7 @@
       currentPageReportTemplate="Showing {first} to {last} of {totalRecords}"
       paginatorPosition="bottom"
       paginatorDropdownAppendTo="body"
-      [globalFilterFields]="['complaintId', 'entityName', 'status', 'comments']"
+      [globalFilterFields]="['complaintId', 'entityName', 'status']"
       dataKey="complaintId"
       [rowHover]="true"
       [tableStyle]="{ 'min-width': '60rem' }"
@@ -50,8 +50,8 @@
           <th pSortableColumn="status">
             Status <p-sortIcon field="status"></p-sortIcon>
           </th>
-          <th pSortableColumn="comments">
-            Comments <p-sortIcon field="comments"></p-sortIcon>
+          <th class="track-th">
+            Track Complaint
           </th>
           <th class="actions-th">Actions</th>
         </tr>
@@ -78,9 +78,7 @@
               styleClass="status-filter-dropdown">
             </p-select>
           </th>
-          <th>
-            <input type="text" placeholder="Search" (input)="dt.filter($any($event.target).value, 'comments', 'contains')" class="col-filter" />
-          </th>
+          <th></th>
           <th></th>
         </tr>
       </ng-template>
@@ -97,7 +95,13 @@
               {{ getStatusLabel(complaint.status) }}
             </span>
           </td>
-          <td class="comments-cell">{{ complaint.comments }}</td>
+          <td class="track-cell">
+            @if (!complaint.isDraft) {
+              <button class="btn-track" (click)="$event.stopPropagation(); trackComplaint(complaint)"><i class="pi pi-search"></i> Track</button>
+            } @else {
+              <span class="track-na">—</span>
+            }
+          </td>
           <td>
             @if (complaint.isDraft) {
               <div class="actions-cell" (click)="$event.stopPropagation()">

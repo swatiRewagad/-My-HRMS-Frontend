@@ -238,9 +238,275 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
   get today(): string { return new Date().toLocaleDateString('en-IN'); }
   get todayISO(): string { return new Date().toISOString().split('T')[0]; }
 
+  get reviewEligibilityItems(): { num: number; key: string; question: string; answer: string; subItems?: { prefix: string; label: string; value: string }[] }[] {
+    const items: { num: number; key: string; question: string; answer: string; subItems?: { prefix: string; label: string; value: string }[] }[] = [];
+    let num = 1;
+    const ea = this.eligibilityAnswers;
+    const ef = this.facade.eligibilityStageForm;
+    const reName = this.facade.selectedEntityName;
+
+    if (ea['filedWithRE']) {
+      items.push({
+        num: num++, key: 'filedWithRE',
+        question: `Have you filed a written / electronic complaint with the ${reName}?`,
+        answer: ea['filedWithRE'] === 'yes' ? 'Yes' : 'No',
+        subItems: ea['filedWithRE'] === 'yes' ? [
+          { prefix: 'a', label: `Date of complaint filed with ${reName}`, value: this.formatDate(ef.get('bankComplaintDate')?.value || '') || '—' },
+          { prefix: 'b', label: 'Complaint Reference/Acknowledgement Number', value: ef.get('bankComplaintRef')?.value || '—' },
+          { prefix: 'c', label: 'Complaint copy uploaded', value: this.complaintFileWithREName || '—' },
+        ] : undefined,
+      });
+    }
+
+    if (ea['receivedReply']) {
+      items.push({
+        num: num++, key: 'receivedReply',
+        question: 'Have you received any reply from the Entity?',
+        answer: ea['receivedReply'] === 'yes' ? 'Yes' : 'No',
+        subItems: ea['receivedReply'] === 'yes' ? [
+          { prefix: 'a', label: 'Date of reply received', value: this.formatDate(ef.get('replyDate')?.value || '') || '—' },
+          { prefix: 'b', label: 'Reply copy uploaded', value: this.replyFileName || '—' },
+        ] : undefined,
+      });
+    }
+
+    if (ea['sentReminder']) {
+      items.push({
+        num: num++, key: 'sentReminder',
+        question: `Have you sent any reminder to the ${reName}?`,
+        answer: ea['sentReminder'] === 'yes' ? 'Yes' : 'No',
+        subItems: ea['sentReminder'] === 'yes' ? [
+          { prefix: 'a', label: 'Date of reminder sent', value: this.formatDate(ef.get('reminderDate')?.value || '') || '—' },
+          { prefix: 'b', label: 'Reminder copy uploaded', value: this.reminderFileName || '—' },
+        ] : undefined,
+      });
+    }
+
+    const remainingKeys = ['isSubJudice', 'alreadySettled', 'throughAdvocateEligibility', 'pendingBeforeOmbudsman', 'settledByOmbudsman', 'staffOfRE', 'previouslyFiledWithCEPC', 'employeeOfRE'];
+    for (const key of remainingKeys) {
+      const q = this.facade.eligibilityQuestions.find(eq => eq.key === key);
+      if (q && this.facade.isQuestionVisible(q) && ea[key]) {
+        const questionText = q.question.replace(/<RE Name>/g, reName);
+        let subItems: { prefix: string; label: string; value: string }[] | undefined;
+        if (key === 'employeeOfRE' && ea['employeeOfRE'] === 'yes' && ea['employerRelationship']) {
+          subItems = [{ prefix: 'a', label: 'Does your complaint involve employer-employee relationship?', value: ea['employerRelationship'] === 'yes' ? 'Yes' : 'No' }];
+        }
+        if (key === 'throughAdvocateEligibility' && ea['throughAdvocateEligibility'] === 'yes' && ea['isComplainantSelf']) {
+          subItems = [{ prefix: 'a', label: 'Is the complainant filing the complaint himself/herself?', value: ea['isComplainantSelf'] === 'yes' ? 'Yes' : 'No' }];
+        }
+        items.push({ num: num++, key, question: questionText, answer: ea[key] === 'yes' ? 'Yes' : 'No', subItems });
+      }
+    }
+
+    return items;
+  }
+
+  get reviewComplainantFieldItems(): { num: number; label: string; value: string }[] {
+    const items: { num: number; label: string; value: string }[] = [];
+    let num = 2;
+    const f = this.complainantDetailsForm;
+
+    const firstName = f.get('firstName')?.value;
+    if (firstName) items.push({ num: num++, label: 'First Name', value: firstName });
+
+    const middleName = f.get('middleName')?.value;
+    if (middleName) items.push({ num: num++, label: 'Middle Name', value: middleName });
+
+    const lastName = f.get('lastName')?.value;
+    if (lastName) items.push({ num: num++, label: 'Surname', value: lastName });
+
+    const age = f.get('age')?.value;
+    if (age) items.push({ num: num++, label: 'Age', value: String(age) });
+
+    const gender = this.getGenderLabel();
+    if (gender && gender !== '—') items.push({ num: num++, label: 'Gender', value: gender });
+
+    const email = f.get('email')?.value;
+    if (email) items.push({ num: num++, label: 'Email ID', value: email });
+
+    const phone = f.get('phone')?.value;
+    if (phone) items.push({ num: num++, label: 'Mobile Number', value: '+91 ' + phone });
+
+    const pincode = f.get('pincode')?.value;
+    if (pincode) items.push({ num: num++, label: 'Pincode', value: pincode });
+
+    const state = f.get('state')?.value;
+    if (state) items.push({ num: num++, label: 'State', value: state });
+
+    const district = f.get('city')?.value;
+    if (district) items.push({ num: num++, label: 'District', value: district });
+
+    const address = f.get('addressDetails')?.value;
+    if (address) items.push({ num: num++, label: 'Address', value: address });
+
+    return items;
+  }
+
+  get reviewComplainantItems(): { num: number; label: string; value: string }[] {
+    const items: { num: number; label: string; value: string }[] = [];
+    let num = 1;
+    const f = this.complainantDetailsForm;
+
+    const category = this.getCategoryLabel();
+    if (category && category !== '—') items.push({ num: num++, label: 'Complainant Category', value: category });
+
+    const firstName = f.get('firstName')?.value;
+    if (firstName) items.push({ num: num++, label: 'First Name', value: firstName });
+
+    const middleName = f.get('middleName')?.value;
+    if (middleName) items.push({ num: num++, label: 'Middle Name', value: middleName });
+
+    const lastName = f.get('lastName')?.value;
+    if (lastName) items.push({ num: num++, label: 'Surname', value: lastName });
+
+    const age = f.get('age')?.value;
+    if (age) items.push({ num: num++, label: 'Age', value: String(age) });
+
+    const gender = this.getGenderLabel();
+    if (gender && gender !== '—') items.push({ num: num++, label: 'Gender', value: gender });
+
+    const email = f.get('email')?.value;
+    if (email) items.push({ num: num++, label: 'Email ID', value: email });
+
+    const phone = f.get('phone')?.value;
+    if (phone) items.push({ num: num++, label: 'Mobile Number', value: '+91 ' + phone });
+
+    const pincode = f.get('pincode')?.value;
+    if (pincode) items.push({ num: num++, label: 'Pincode', value: pincode });
+
+    const state = f.get('state')?.value;
+    if (state) items.push({ num: num++, label: 'State', value: state });
+
+    const district = f.get('city')?.value;
+    if (district) items.push({ num: num++, label: 'District', value: district });
+
+    const address = f.get('addressDetails')?.value;
+    if (address) items.push({ num: num++, label: 'Address', value: address });
+
+    return items;
+  }
+
+  get reviewRegulatedEntityItems(): { num: number; label: string; value: string }[] {
+    const items: { num: number; label: string; value: string }[] = [];
+    let num = 1;
+    const rf = this.regulatedEntityForm;
+
+    if (this.facade.selectedEntityName) items.push({ num: num++, label: 'Regulated Entity Name', value: this.facade.selectedEntityName });
+
+    const isCreditCard = rf.get('isCreditCardComplaint')?.value;
+    if (isCreditCard) items.push({ num: num++, label: 'Is your complaint related to credit card?', value: isCreditCard === 'yes' ? 'Yes' : 'No' });
+
+    if (isCreditCard === 'no') {
+      const entityState = rf.get('entityState')?.value;
+      if (entityState) items.push({ num: num++, label: 'Entity State', value: entityState });
+
+      const entityDistrict = rf.get('entityDistrict')?.value;
+      if (entityDistrict) items.push({ num: num++, label: 'Entity District', value: entityDistrict });
+
+      const entityBranch = rf.get('entityBranch')?.value;
+      if (entityBranch) items.push({ num: num++, label: 'Entity Branch', value: entityBranch });
+    }
+
+    return items;
+  }
+
+  get reviewComplaintStartNum(): number {
+    let num = 1;
+    if (this.getComplaintCategoryLabel() && this.getComplaintCategoryLabel() !== '—') num++;
+    if (this.facade.formData['subCategory1']) num++;
+    if (this.facade.formData['subCategory2']) num++;
+    return num;
+  }
+
+  get reviewComplaintAmountStart(): number {
+    let num = this.reviewComplaintStartNum;
+    if (this.complaintDetailsForm.get('complaintText')?.value) num++;
+    if (this.complaintDetailsForm.get('hasAccountWithRE')?.value) num++;
+    if (this.complaintDetailsForm.get('isWalletComplaint')?.value) num++;
+    if (this.complaintDetailsForm.get('isBusinessCorrespondent')?.value) num++;
+    return num;
+  }
+
+  get reviewComplaintDocNum(): number {
+    let num = this.reviewComplaintAmountStart;
+    if (this.displayAmount('disputeAmount')) num++;
+    if (this.displayAmount('compensationSought')) num++;
+    if (this.displayAmount('reliefSought')) num++;
+    return num;
+  }
+
+  get reviewComplaintItems(): { num: number; label: string; value: string; fullRow?: boolean }[] {
+    const items: { num: number; label: string; value: string; fullRow?: boolean }[] = [];
+    let num = 1;
+    const cd = this.complaintDetailsForm;
+
+    const category = this.getComplaintCategoryLabel();
+    if (category && category !== '—') items.push({ num: num++, label: 'Complaint Category', value: category });
+
+    const facts = cd.get('complaintText')?.value;
+    if (facts) items.push({ num: num++, label: 'Facts of the complaint', value: facts, fullRow: true });
+
+    const hasAccount = cd.get('hasAccountWithRE')?.value;
+    if (hasAccount) items.push({ num: num++, label: `Do you have an account with ${this.facade.selectedEntityName}?`, value: hasAccount === 'yes' ? 'Yes' : 'No' });
+
+    const isWallet = cd.get('isWalletComplaint')?.value;
+    if (isWallet) items.push({ num: num++, label: 'Is your complaint against a Wallet transaction?', value: isWallet === 'yes' ? 'Yes' : 'No' });
+
+    const isBusiness = cd.get('isBusinessCorrespondent')?.value;
+    if (isBusiness) items.push({ num: num++, label: 'Is your complaint against a Business Correspondent?', value: isBusiness === 'yes' ? 'Yes' : 'No' });
+
+    const dispute = this.displayAmount('disputeAmount');
+    if (dispute) items.push({ num: num++, label: 'Amount Involved in the Dispute, If Any', value: '₹' + dispute });
+
+    const compensation = this.displayAmount('compensationSought');
+    if (compensation) items.push({ num: num++, label: 'Compensation Sought For Dispute, If Any', value: '₹' + compensation });
+
+    const relief = this.displayAmount('reliefSought');
+    if (relief) items.push({ num: num++, label: 'Compensation For Harassment, If Any', value: '₹' + relief });
+
+    return items;
+  }
+
+  get reviewRepItems(): { num: number; label: string; value: string }[] {
+    const items: { num: number; label: string; value: string }[] = [];
+    let num = 1;
+    const ra = this.repAuthorizationForm;
+
+    const hasRep = ra.get('hasAuthRep')?.value;
+    if (hasRep) items.push({ num: num++, label: 'Is the complaint being filed through an Authorised Representative on behalf of you / complainant?', value: hasRep === 'yes' ? 'Yes' : 'No' });
+
+    if (hasRep === 'yes') {
+      const repName = ra.get('repName')?.value;
+      if (repName) items.push({ num: num++, label: 'Representative Name', value: repName });
+
+      const repPhone = ra.get('repPhone')?.value;
+      if (repPhone) items.push({ num: num++, label: 'Phone', value: '+91 ' + repPhone });
+
+      const repEmail = ra.get('repEmail')?.value;
+      if (repEmail) items.push({ num: num++, label: 'Email', value: repEmail });
+
+      const repPincode = ra.get('repPincode')?.value;
+      if (repPincode) items.push({ num: num++, label: 'Pincode', value: repPincode });
+
+      const repState = ra.get('repState')?.value;
+      if (repState) items.push({ num: num++, label: 'State', value: repState });
+
+      const repDistrict = ra.get('repDistrict')?.value;
+      if (repDistrict) items.push({ num: num++, label: 'District', value: repDistrict });
+
+      const repCity = ra.get('repCity')?.value;
+      if (repCity) items.push({ num: num++, label: 'City', value: repCity });
+
+      const repAddress = ra.get('repAddress')?.value;
+      if (repAddress) items.push({ num: num++, label: 'Address', value: repAddress });
+    }
+
+    return items;
+  }
+
   isIndividualCategory(): boolean {
     const cat = this.facade.complainantDetailsForm.controls.complaintCategory.value;
-    return cat === 'individual' || cat === 'senior_citizen';
+    return cat === 'individual' || cat === 'senior_citizen' || cat === 'pwd';
   }
 
   getCategoryLabel(): string {
@@ -285,8 +551,15 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
     this.facade.formData['subCategory2'] = '';
   }
 
+  get selectAllAccounts() { return this.facade.selectAllAccounts; }
+
   onAccountTypeToggle(accountType: AccountType) {
     this.facade.onAccountTypeToggle(accountType);
+  }
+
+  onSelectAllAccountTypes(event: Event) {
+    const checked = (event.target as HTMLInputElement).checked;
+    this.facade.toggleSelectAllAccountTypes(checked);
   }
 
   onAmountInput(field: string, event: Event) {
