@@ -38,7 +38,7 @@ export class RbioCreateComplaintComponent implements OnInit {
   loggedInUserName = '';
   complaintOffice = '';
   slaDaysRemaining = signal(30);
-  userRole = signal<'DO' | 'REVIEWER' | 'DEPUTY_OMBUDSMAN' | 'OMBUDSMAN'>('DO');
+  userRole = signal<'DO' | 'REVIEWER' | 'DEPUTY_OMBUDSMAN' | 'OMBUDSMAN' | 'HEAD'>('DO');
   activeTab = signal<'creation' | 'assignment'>('creation');
 
   // Section expand state
@@ -177,6 +177,13 @@ export class RbioCreateComplaintComponent implements OnInit {
   deputyOmbudsmanDecision = 'NON_MAINTAINABLE';
   deputyOmbudsmanComments = '';
   complaintStatus = signal('NEW_COMPLAINT');
+  // True when the complaint has moved on to a different officer than the one viewing it —
+  // full details still render, but action buttons are disabled/hidden.
+  isReadOnlyViewer = signal(false);
+  // True only right after this session performed an action (forward/close/send back/etc.) —
+  // gates the one-time success banner so simply loading/revisiting an already-closed or
+  // already-forwarded complaint shows the full read-only detail view instead.
+  justActioned = signal(false);
   workflowAction = signal('');
   conciliationEnabled = computed(() => {
     if (this.userRole() !== 'DO') return true;
@@ -189,6 +196,26 @@ export class RbioCreateComplaintComponent implements OnInit {
   approvalSentTo = signal('');
   showApprovalMenu = signal(false);
   showSendBackMenu = signal(false);
+  // Menus render fixed-position (computed from the trigger button) so nested scroll/overflow
+  // containers in the layout can never clip an option out of view.
+  approvalMenuPos = signal({ top: 0, left: 0 });
+  sendBackMenuPos = signal({ top: 0, left: 0 });
+
+  toggleApprovalMenu(event: MouseEvent) {
+    if (!this.showApprovalMenu()) {
+      const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+      this.approvalMenuPos.set({ top: rect.bottom + 6, left: rect.left });
+    }
+    this.showApprovalMenu.set(!this.showApprovalMenu());
+  }
+
+  toggleSendBackMenu(event: MouseEvent) {
+    if (!this.showSendBackMenu()) {
+      const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+      this.sendBackMenuPos.set({ top: rect.bottom + 6, left: rect.left });
+    }
+    this.showSendBackMenu.set(!this.showSendBackMenu());
+  }
   showApprovalDialog = signal(false);
   showSendBackDialog = signal(false);
   sendBackTarget = signal<'DEALING_OFFICER' | 'REVIEWER'>('DEALING_OFFICER');
@@ -207,6 +234,213 @@ export class RbioCreateComplaintComponent implements OnInit {
   systemicIssue = '';
   assessmentComments = signal<{ id: number; initials: string; author: string; time?: string; text: string; color: string; role?: string; createdAt?: string }[]>([]);
 
+  // Forward Tab
+  forwardTarget = signal<'REGULATORY_BODIES' | 'RBI_DEPARTMENT' | 'OFFICE' | ''>('');
+  forwardRegulatorName = '';
+  forwardRegulatorEmail = '';
+  forwardDepartmentName = '';
+  forwardDepartmentEmail = '';
+  forwardOfficeCode = '';
+  forwardOfficeName = '';
+  officeList = signal<{ officeCode: string; officeName: string; officeType: string }[]>([]);
+  showForwardConfirm = signal(false);
+  forwardSubmitting = signal(false);
+
+  loadOfficeList() {
+    if (this.officeList().length > 0) return;
+    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/keycloak/offices`).subscribe({
+      next: (res) => this.officeList.set(res?.data || []),
+      error: () => this.officeList.set([])
+    });
+  }
+
+  onForwardOfficeSelected(officeCode: string) {
+    this.forwardOfficeCode = officeCode;
+    const office = this.officeList().find(o => o.officeCode === officeCode);
+    this.forwardOfficeName = office?.officeName || '';
+  }
+
+  get forwardTargetLabel(): string {
+    switch (this.forwardTarget()) {
+      case 'REGULATORY_BODIES': return 'Other Regulatory Bodies';
+      case 'RBI_DEPARTMENT': return 'Other RBI Department';
+      case 'OFFICE': return 'Other Office';
+      default: return '';
+    }
+  }
+
+  selectForwardTarget(target: 'REGULATORY_BODIES' | 'RBI_DEPARTMENT' | 'OFFICE') {
+    this.forwardTarget.set(target);
+    if (target === 'OFFICE') {
+      this.loadOfficeList();
+    }
+  }
+
+  openForwardConfirm() {
+    const target = this.forwardTarget();
+    if (!target) {
+      alert('Please select where to forward the complaint.');
+      return;
+    }
+    if (target === 'OFFICE' && !this.forwardOfficeCode) {
+      alert('Please select an office.');
+      return;
+    }
+    this.showForwardConfirm.set(true);
+  }
+
+  cancelForwardConfirm() {
+    this.showForwardConfirm.set(false);
+  }
+
+  confirmForward() {
+    if (this.forwardSubmitting()) return;
+    this.forwardSubmitting.set(true);
+
+    this.persistComment();
+
+    const target = this.forwardTarget();
+
+    if (target === 'OFFICE') {
+      // Goes through the real inter-office transfer queue (/crpc/ops-head), which the
+      // CRPC Head actually works from — not the generic send-for-approval endpoint.
+      const fromOffice = this.complaintOffice || '';
+      const toOffice = this.forwardOfficeCode;
+      const deptOf = (code: string) => (code || '').split('-')[0] || 'RBIO';
+      const payload = {
+        complaintNumber: this.complaintId,
+        fromOffice,
+        toOffice,
+        transferType: `${deptOf(fromOffice)}_${deptOf(toOffice)}`,
+        reason: this.assessmentComment || '',
+        requestedBy: this.auth.currentUser()?.username || ''
+      };
+      this.http.post(`${environment.apiBaseUrl}/api/v1/crpc/head/transfers/request`, payload).subscribe({
+        next: () => {
+          this.forwardSubmitting.set(false);
+          this.showForwardConfirm.set(false);
+          this.approvalSentTo.set(this.forwardOfficeName);
+          this.justActioned.set(true);
+          this.complaintStatus.set('SENT_TO_OFFICE');
+        },
+        error: (err) => {
+          this.forwardSubmitting.set(false);
+          alert(err?.error?.message || 'Failed to submit transfer request.');
+        }
+      });
+      return;
+    }
+
+    // Other Regulatory Bodies / Other RBI Department: closes the complaint immediately.
+    let assignedToName = '';
+    let assignedToEmail = '';
+    if (target === 'REGULATORY_BODIES') {
+      assignedToName = this.forwardRegulatorName;
+      assignedToEmail = this.forwardRegulatorEmail;
+    } else if (target === 'RBI_DEPARTMENT') {
+      assignedToName = this.forwardDepartmentName;
+      assignedToEmail = this.forwardDepartmentEmail;
+    }
+
+    const payload = {
+      target: 'OTHER_' + target,
+      assignedTo: assignedToEmail || assignedToName,
+      assignedToName: assignedToName || this.forwardTargetLabel,
+      assignmentMode: 'MANUAL',
+      remarks: this.assessmentComment || null,
+      performedBy: this.auth.currentUser()?.username || '',
+      performedByRole: this.userRole()
+    };
+
+    this.http.post(`${environment.apiBaseUrl}/api/v1/complaints/${this.complaintId}/send-for-approval`, payload).subscribe({
+      next: () => {
+        this.forwardSubmitting.set(false);
+        this.showForwardConfirm.set(false);
+        this.approvalSentTo.set(this.forwardTargetLabel);
+        this.justActioned.set(true);
+        this.complaintStatus.set('CLOSED');
+      },
+      error: () => {
+        this.forwardSubmitting.set(false);
+        this.showForwardConfirm.set(false);
+        this.approvalSentTo.set(this.forwardTargetLabel);
+        this.justActioned.set(true);
+        this.complaintStatus.set('CLOSED');
+      }
+    });
+  }
+
+  // Office Head Approval (CRPC_HEAD deciding on an "Other Office" forward)
+  transferOfficeCode = '';
+  transferOfficeName = '';
+  transferPreOfficer = '';
+  transferPreRole = '';
+  showOfficeHeadDialog = signal(false);
+  officeHeadDecisionType = signal<'APPROVE' | 'REJECT'>('APPROVE');
+  officeHeadComment = '';
+  officeHeadSubmitting = signal(false);
+  changeTerritory = false;
+  reassignOfficeCode = '';
+
+  get preForwardRoleLabel(): string {
+    switch (this.transferPreRole) {
+      case 'DO': return 'Dealing Officer';
+      case 'REVIEWER': return 'Reviewer';
+      case 'DEPUTY_OMBUDSMAN': return 'Deputy Ombudsman';
+      case 'OMBUDSMAN': return 'Ombudsman';
+      default: return this.transferPreRole || 'Previous Owner';
+    }
+  }
+
+  openOfficeHeadDialog(decision: 'APPROVE' | 'REJECT') {
+    this.officeHeadDecisionType.set(decision);
+    this.officeHeadComment = '';
+    this.showOfficeHeadDialog.set(true);
+  }
+
+  cancelOfficeHeadDialog() {
+    this.showOfficeHeadDialog.set(false);
+  }
+
+  onChangeTerritoryToggle() {
+    if (this.changeTerritory) {
+      this.loadOfficeList();
+    }
+  }
+
+  confirmOfficeHeadDecision() {
+    if (this.officeHeadSubmitting()) return;
+    const decision = this.officeHeadDecisionType();
+    if (decision === 'REJECT' && !this.officeHeadComment.trim()) {
+      alert('A rejection comment is mandatory.');
+      return;
+    }
+    this.officeHeadSubmitting.set(true);
+
+    const payload: any = {
+      decision,
+      comment: this.officeHeadComment || null,
+      performedBy: this.auth.currentUser()?.username || ''
+    };
+    if (decision === 'APPROVE' && this.changeTerritory && this.reassignOfficeCode) {
+      payload.overrideOfficeCode = this.reassignOfficeCode;
+    }
+
+    this.http.post(`${environment.apiBaseUrl}/api/v1/complaints/${this.complaintId}/office-head-decision`, payload).subscribe({
+      next: () => {
+        this.officeHeadSubmitting.set(false);
+        this.showOfficeHeadDialog.set(false);
+        this.approvalSentTo.set(decision === 'APPROVE' ? 'the selected office' : this.preForwardRoleLabel);
+        this.justActioned.set(true);
+        this.complaintStatus.set(decision === 'APPROVE' ? 'SENT' : 'SENT_BACK');
+      },
+      error: (err) => {
+        this.officeHeadSubmitting.set(false);
+        alert(err?.error?.message || 'Failed to submit decision.');
+      }
+    });
+  }
+
   // Nodal Officer Record
   nodalRecords = signal<{ id: number; recordNumber: string; subject: string; bankName: string; slaDays: number; assignedTo: string; status: string; statusLabel: string; complaintNumber: string; receiptDate: string; complainant: string; mobile: string; email: string; moduleName: string; bankCategory: string; branchCategory: string; branchName: string; pincode: string; city: string; district: string; state: string; country: string; noName: string; noMobile: string; noEmail: string; pnoName: string; pnoMobile: string; pnoEmail: string; atmComplaint: string; designatedOffice: string; processingOffice: string }[]>([
     { id: 1, recordNumber: '1146110', subject: 'Account debited but no credit', bankName: 'State Bank of India', slaDays: 2, assignedTo: 'Priya Gupta', status: 'INFORMATION_REQUIRED', statusLabel: 'Information Required', complaintNumber: 'N20223317000005', receiptDate: '19-05-2026', complainant: 'Raj Shah', mobile: '9876543210', email: 'raj.shah@email.com', moduleName: 'Deposit', bankCategory: 'Scheduled Commercial Bank', branchCategory: 'Metro', branchName: 'Andheri West', pincode: '400058', city: 'Mumbai', district: 'Mumbai Suburban', state: 'Maharashtra', country: 'India', noName: 'Deepak Verma', noMobile: '9112233445', noEmail: 'deepak.verma@sbi.co.in', pnoName: 'Suresh Kumar', pnoMobile: '9998877665', pnoEmail: 'suresh.kumar@sbi.co.in', atmComplaint: 'No', designatedOffice: 'Mumbai', processingOffice: 'RBIO Mumbai' },
@@ -222,12 +456,17 @@ export class RbioCreateComplaintComponent implements OnInit {
   selectedNodalRecord = signal<any>(null);
   nodalDetailView = signal(false);
   nodalStatusCode = '';
+  nodalAdvisoryDate = '';
+  nodalDisputeAmount: number | null = null;
+  nodalCompensationLoss: number | null = null;
+  nodalCompensationMental: number | null = null;
+  nodalAwardImplementationDate = '';
+  nodalAwardAcceptanceDate = '';
+  nodal131ComplyDate = '';
   nodalCommentToNO = '';
   nodalCommentToPNO = '';
-  nodalComments: { id: number; initials: string; author: string; time: string; text: string; target: 'NO' | 'PNO'; color: string }[] = [
-    { id: 1, initials: 'RJ', author: 'Rahul Jain', time: '2 hrs ago', text: 'Please provide the transaction reference number and date of failed ATM withdrawal.', target: 'NO', color: '#6366f1' },
-    { id: 2, initials: 'DV', author: 'Deepak Verma', time: '1 hr ago', text: 'Transaction ref: TXN20260519001234. The amount was debited on 19-May but ATM did not dispense cash.', target: 'PNO', color: '#f59e0b' },
-  ];
+  nodalCommentsSubmitting = false;
+  nodalComments = signal<{ id: number; initials: string; author: string; createdAt: string; text: string; target: 'NO' | 'PNO'; color: string }[]>([]);
 
   // Email Communication
   emailComposeMode = signal(false);
@@ -316,6 +555,13 @@ export class RbioCreateComplaintComponent implements OnInit {
         this.receivedDate = data.receivedAt ? data.receivedAt.split('T')[0] : '';
         const status = (data.status || '').toUpperCase();
         this.workflowAction.set((data.workflowAction || data.proposedAction || '').toUpperCase());
+        this.proposedAction = data.proposedAction || '';
+        this.proposedClause = data.proposedClause || '';
+        this.clauseSearch = data.proposedClause || '';
+        this.transferOfficeCode = data.forwardedOfficeCode || '';
+        this.transferOfficeName = data.forwardedOfficeName || '';
+        this.transferPreOfficer = data.preForwardOfficer || '';
+        this.transferPreRole = data.preForwardRole || '';
         if (data.officeCode || data.assignedOffice) {
           this.complaintOffice = data.officeCode || data.assignedOffice;
         }
@@ -324,6 +570,15 @@ export class RbioCreateComplaintComponent implements OnInit {
           const now = new Date();
           this.slaDaysRemaining.set(Math.max(0, Math.ceil((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))));
         }
+        const currentUsername = this.auth.currentUser()?.username || '';
+        const assignedTo = data.assignedTo || '';
+        const stillOwner = !assignedTo || !currentUsername || assignedTo === currentUsername;
+        // Complaint has moved on to someone else (e.g. forwarded to Reviewer) — the officer
+        // who handled it earlier still sees the full complaint, just without action buttons.
+        // A CLOSED complaint is read-only for everyone, regardless of who it's assigned to.
+        this.isReadOnlyViewer.set(!stillOwner || status === 'CLOSED');
+        // Loading (not actioning) a complaint never shows the one-time success banner.
+        this.justActioned.set(false);
         if (status === 'CLOSED') {
           this.complaintStatus.set('CLOSED');
         } else if (['RESOLVED', 'REJECTED'].includes(status)) {
@@ -363,7 +618,9 @@ export class RbioCreateComplaintComponent implements OnInit {
 
   private detectUserRole() {
     const roles = this.auth.getRoles ? this.auth.getRoles() : [];
-    if (roles.includes('RBIO_OMBUDSMAN')) {
+    if (roles.includes('CRPC_HEAD')) {
+      this.userRole.set('HEAD');
+    } else if (roles.includes('RBIO_OMBUDSMAN')) {
       this.userRole.set('OMBUDSMAN');
     } else if (roles.includes('RBIO_DEPUTY_OMBUDSMAN')) {
       this.userRole.set('DEPUTY_OMBUDSMAN');
@@ -375,19 +632,18 @@ export class RbioCreateComplaintComponent implements OnInit {
   }
 
   private detectUserOffice(username: string) {
-    // Try to detect from username suffix (e.g. rbio.officer.mum → RBIO-MUM)
-    const officeMap: Record<string, string> = {
-      'mum': 'RBIO-MUM', 'del': 'RBIO-DEL', 'che': 'RBIO-CHE',
-      'kol': 'RBIO-KOL', 'ahm': 'RBIO-AHM', 'ban': 'RBIO-BAN'
-    };
-    const parts = username.split('.');
-    const suffix = parts[parts.length - 1]?.toLowerCase();
-    if (officeMap[suffix]) {
-      this.complaintOffice = officeMap[suffix];
-    } else {
-      // Default: fetch from API based on the complaint's assigned officer
-      this.complaintOffice = 'RBIO-MUM';
-    }
+    // Office is assigned per-officer via Team Management (OfficerAvailability), not inferred from the username.
+    if (!username) return;
+    const roles = this.auth.getRoles ? this.auth.getRoles() : [];
+    const rbioRole = roles.find((r: string) => r.startsWith('RBIO_')) || 'RBIO_OFFICER';
+    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/keycloak/users/availability?role=${rbioRole}`).subscribe({
+      next: (res) => {
+        const data = res?.data || res || [];
+        const me = (Array.isArray(data) ? data : []).find((u: any) => u.userId === username);
+        this.complaintOffice = me?.officeCode || '';
+      },
+      error: () => { this.complaintOffice = ''; }
+    });
   }
 
   private generateComplaintId(): string {
@@ -918,7 +1174,8 @@ export class RbioCreateComplaintComponent implements OnInit {
       target: target,
       assignedTo: selectedUser?.id || '',
       assignedToName: this.sendBackSelectedName,
-      assignmentMode: this.sendBackAssignmentMode
+      assignmentMode: this.sendBackAssignmentMode,
+      performedBy: this.auth.currentUser()?.username || ''
     };
 
     this.http.post(`${environment.apiBaseUrl}/api/v1/complaints/${this.complaintId}/send-for-approval`, payload).subscribe({
@@ -926,12 +1183,14 @@ export class RbioCreateComplaintComponent implements OnInit {
         this.sendBackSubmitting.set(false);
         this.showSendBackDialog.set(false);
         this.approvalSentTo.set(this.sendBackSelectedName);
+        this.justActioned.set(true);
         this.complaintStatus.set('SENT_BACK');
       },
       error: () => {
         this.sendBackSubmitting.set(false);
         this.showSendBackDialog.set(false);
         this.approvalSentTo.set(this.sendBackSelectedName);
+        this.justActioned.set(true);
         this.complaintStatus.set('SENT_BACK');
       }
     });
@@ -985,6 +1244,9 @@ export class RbioCreateComplaintComponent implements OnInit {
       crpcAction: this.approvalCrpcAction || null,
       crpcClause: this.approvalCrpcClause || null,
       systemicIssue: this.systemicIssue || null,
+      performedBy: this.auth.currentUser()?.username || '',
+      proposedAction: this.proposedAction || null,
+      proposedClause: this.proposedClause || null
     };
 
     this.http.post(`${environment.apiBaseUrl}/api/v1/complaints/${this.complaintId}/send-for-approval`, payload).subscribe({
@@ -992,12 +1254,14 @@ export class RbioCreateComplaintComponent implements OnInit {
         this.approvalSubmitting.set(false);
         this.showApprovalDialog.set(false);
         this.approvalSentTo.set(this.approvalSelectedName);
+        this.justActioned.set(true);
         this.complaintStatus.set('SENT');
       },
       error: () => {
         this.approvalSubmitting.set(false);
         this.showApprovalDialog.set(false);
         this.approvalSentTo.set(this.approvalSelectedName);
+        this.justActioned.set(true);
         this.complaintStatus.set('SENT');
       }
     });
@@ -1023,19 +1287,22 @@ export class RbioCreateComplaintComponent implements OnInit {
       complaintStatusOnPortal: this.complaintStatusOnPortal,
       speakingOrderGenerated: this.speakingOrderGenerated,
       gistOfCase: this.gistOfCase,
-      gistOfCaseRegional: this.gistOfCaseRegional
+      gistOfCaseRegional: this.gistOfCaseRegional,
+      performedBy: this.auth.currentUser()?.username || ''
     };
 
     this.http.post(`${environment.apiBaseUrl}/api/v1/complaints/${this.complaintId}/send-for-approval`, payload).subscribe({
       next: () => {
         this.finalDecisionSubmitting.set(false);
         this.showFinalDecisionPreview.set(false);
+        this.justActioned.set(true);
         this.complaintStatus.set('CLOSED');
         this.approvalSentTo.set('CLOSED');
       },
       error: () => {
         this.finalDecisionSubmitting.set(false);
         this.showFinalDecisionPreview.set(false);
+        this.justActioned.set(true);
         this.complaintStatus.set('CLOSED');
         this.approvalSentTo.set('CLOSED');
       }
@@ -1158,7 +1425,58 @@ export class RbioCreateComplaintComponent implements OnInit {
   openNodalDetail(record: any) {
     this.selectedNodalRecord.set(record);
     this.nodalStatusCode = record.status === 'INFORMATION_REQUIRED' ? 'INFORMATION_REQUIRED' : '';
+    const complyBy = new Date();
+    complyBy.setDate(complyBy.getDate() + 15);
+    this.nodal131ComplyDate = `${String(complyBy.getDate()).padStart(2, '0')}-${String(complyBy.getMonth() + 1).padStart(2, '0')}-${complyBy.getFullYear()}`;
     this.nodalDetailView.set(true);
+    this.loadNodalComments(record.recordNumber);
+  }
+
+  private loadNodalComments(recordNumber: string) {
+    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/complaints/nodal-records/${recordNumber}/comments`).subscribe({
+      next: (res) => this.nodalComments.set(res?.data || []),
+      error: () => this.nodalComments.set([])
+    });
+  }
+
+  postNodalComment(target: 'NO' | 'PNO') {
+    const text = target === 'NO' ? this.nodalCommentToNO.trim() : this.nodalCommentToPNO.trim();
+    if (!text || this.nodalCommentsSubmitting) return;
+    const record = this.selectedNodalRecord();
+    if (!record) return;
+
+    this.nodalCommentsSubmitting = true;
+    const payload = {
+      complaintNumber: record.complaintNumber || '',
+      text,
+      author: this.loggedInUserName || 'Unknown',
+      initials: (this.loggedInUserName || 'U').substring(0, 2).toUpperCase(),
+      target,
+      color: target === 'NO' ? '#7c3aed' : '#2563eb'
+    };
+
+    this.http.post<any>(`${environment.apiBaseUrl}/api/v1/complaints/nodal-records/${record.recordNumber}/comments`, payload).subscribe({
+      next: (res) => {
+        this.nodalComments.set([res?.data, ...this.nodalComments()]);
+        if (target === 'NO') this.nodalCommentToNO = ''; else this.nodalCommentToPNO = '';
+        this.nodalCommentsSubmitting = false;
+      },
+      error: () => { this.nodalCommentsSubmitting = false; }
+    });
+  }
+
+  nodalCommentTimeAgo(createdAt: string): string {
+    if (!createdAt) return '';
+    const then = new Date(createdAt).getTime();
+    if (isNaN(then)) return createdAt;
+    const diffMs = Date.now() - then;
+    const mins = Math.floor(diffMs / 60000);
+    if (mins < 1) return 'just now';
+    if (mins < 60) return `${mins} min${mins > 1 ? 's' : ''} ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs} hr${hrs > 1 ? 's' : ''} ago`;
+    const days = Math.floor(hrs / 24);
+    return `${days} day${days > 1 ? 's' : ''} ago`;
   }
 
   closeNodalDetail() {
@@ -1168,6 +1486,39 @@ export class RbioCreateComplaintComponent implements OnInit {
 
   sendToRE() {
     this.closeNodalDetail();
+  }
+
+  amountToWords(amount: number | null): string {
+    if (!amount || amount <= 0) return '';
+    const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine',
+      'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+    const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+
+    const twoDigits = (n: number): string => {
+      if (n < 20) return ones[n];
+      return tens[Math.floor(n / 10)] + (n % 10 ? ' ' + ones[n % 10] : '');
+    };
+    const threeDigits = (n: number): string => {
+      if (n < 100) return twoDigits(n);
+      return ones[Math.floor(n / 100)] + ' Hundred' + (n % 100 ? ' ' + twoDigits(n % 100) : '');
+    };
+
+    let n = Math.floor(amount);
+    if (n === 0) return 'Zero rupees';
+
+    const crore = Math.floor(n / 10000000); n %= 10000000;
+    const lakh = Math.floor(n / 100000); n %= 100000;
+    const thousand = Math.floor(n / 1000); n %= 1000;
+    const hundred = n;
+
+    const parts: string[] = [];
+    if (crore) parts.push(threeDigits(crore) + ' Crore');
+    if (lakh) parts.push(threeDigits(lakh) + ' Lakh');
+    if (thousand) parts.push(threeDigits(thousand) + ' Thousand');
+    if (hundred) parts.push(threeDigits(hundred));
+
+    const phrase = (parts.join(' ') + ' rupees').toLowerCase();
+    return phrase.charAt(0).toUpperCase() + phrase.slice(1);
   }
 
   private persistComment() {

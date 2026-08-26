@@ -24,6 +24,29 @@ public class ComplaintRoutingService {
 
     private final ConcurrentHashMap<String, AtomicInteger> roundRobinCounters = new ConcurrentHashMap<>();
 
+    /**
+     * Round-robin assignment scoped to a specific office. Falls back to the unscoped
+     * role-wide round robin if no officer's OfficerAvailability record matches the office.
+     */
+    public String assignOfficerByRoleAndOffice(String role, String officeCode) {
+        List<Map<String, Object>> officers = keycloakUserService.getUsersByRole(role);
+        List<Map<String, Object>> officeMatched = new ArrayList<>();
+        for (Map<String, Object> officer : officers) {
+            String userId = (String) officer.get("userId");
+            availabilityRepository.findByUserIdAndRole(userId, role).ifPresent(oa -> {
+                if (officeCode != null && officeCode.equals(oa.getOfficeCode())) {
+                    officeMatched.add(officer);
+                }
+            });
+        }
+        if (officeMatched.isEmpty()) {
+            return assignOfficerByRole(role);
+        }
+        String picked = assignOfficerByRole(role);
+        boolean pickedInOffice = officeMatched.stream().anyMatch(o -> picked.equals(o.get("userId")));
+        return pickedInOffice ? picked : (String) officeMatched.get(0).get("userId");
+    }
+
     public String assignOfficerByRole(String role) {
         List<Map<String, Object>> officers = keycloakUserService.getUsersByRole(role);
         if (officers.isEmpty()) {

@@ -7,4 +7,5 @@ import java.util.List;
 
 public interface ComplaintCommentRepository extends JpaRepository<ComplaintComment, Long> {
     List<ComplaintComment> findByComplaintNumberOrderByCreatedAtDesc(String complaintNumber);
+    List<ComplaintComment> findByNoRecordNumberOrderByCreatedAtDesc(String noRecordNumber);
 }
