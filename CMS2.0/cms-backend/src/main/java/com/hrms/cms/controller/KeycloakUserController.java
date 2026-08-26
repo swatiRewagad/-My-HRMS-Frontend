@@ -1,6 +1,8 @@
 package com.hrms.cms.controller;
 
+import com.hrms.cms.entity.OfficeCodeMaster;
 import com.hrms.cms.entity.OfficerAvailability;
+import com.hrms.cms.repository.OfficeCodeMasterRepository;
 import com.hrms.cms.repository.OfficerAvailabilityRepository;
 import com.hrms.cms.service.ComplaintRoutingService;
 import com.hrms.cms.service.KeycloakUserService;
@@ -10,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/v1/keycloak")
@@ -19,6 +22,22 @@ public class KeycloakUserController {
     private final KeycloakUserService keycloakUserService;
     private final ComplaintRoutingService complaintRoutingService;
     private final OfficerAvailabilityRepository availabilityRepository;
+    private final OfficeCodeMasterRepository officeCodeMasterRepository;
+
+    @GetMapping("/offices")
+    public Map<String, Object> getOffices() {
+        List<Map<String, Object>> offices = officeCodeMasterRepository.findAll().stream()
+                .filter(OfficeCodeMaster::getIsActive)
+                .map(o -> {
+                    Map<String, Object> m = new LinkedHashMap<>();
+                    m.put("officeCode", o.getOfficeCode());
+                    m.put("officeName", o.getOfficeName());
+                    m.put("officeType", o.getOfficeType());
+                    return m;
+                })
+                .collect(Collectors.toList());
+        return wrapResponse(offices);
+    }
 
     @GetMapping("/users/deos")
     public Map<String, Object> getDeos() {
@@ -70,6 +89,18 @@ public class KeycloakUserController {
             @RequestParam String role,
             @RequestParam(required = false) String office) {
         List<Map<String, Object>> users = keycloakUserService.getUsersByRole(role);
+
+        // Enrich with OfficerAvailability (officeCode, active/on-leave) — the Keycloak
+        // roles/{role}/users API returns bare user objects with no attributes, so officeCode
+        // must come from the same Team-Management-managed table getOfficerAvailability() uses.
+        for (Map<String, Object> u : users) {
+            String userId = (String) u.get("userId");
+            availabilityRepository.findByUserIdAndRole(userId, role).ifPresent(oa -> {
+                u.put("officeCode", oa.getOfficeCode());
+                u.put("active", oa.isActive());
+                u.put("onLeave", oa.isOnLeave());
+            });
+        }
 
         // Filter by office if provided
         if (office != null && !office.isBlank()) {

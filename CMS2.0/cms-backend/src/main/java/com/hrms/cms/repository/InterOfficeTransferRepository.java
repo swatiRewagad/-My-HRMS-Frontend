@@ -8,4 +8,5 @@ public interface InterOfficeTransferRepository extends JpaRepository<InterOffice
     List<InterOfficeTransfer> findByStatusOrderByRequestedAtDesc(String status);
     List<InterOfficeTransfer> findByComplaintNumberOrderByRequestedAtDesc(String complaintNumber);
     long countByStatus(String status);
+    List<InterOfficeTransfer> findAllByOrderByRequestedAtDesc();
 }

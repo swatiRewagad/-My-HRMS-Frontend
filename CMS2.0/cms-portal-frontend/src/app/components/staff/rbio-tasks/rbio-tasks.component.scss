@@ -308,6 +308,17 @@
     &[data-status="closed"] { background: #e2e8f0; color: #475569; }
   }
 
+  .view-only-badge {
+    margin-left: 6px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 600;
+    background: #f1f5f9;
+    color: #64748b;
+    border: 1px solid #cbd5e1;
+  }
+
   .priority-dot {
     display: inline-block; width: 8px; height: 8px; border-radius: 50%;
     &[data-priority="HIGH"] { background: #ef4444; }

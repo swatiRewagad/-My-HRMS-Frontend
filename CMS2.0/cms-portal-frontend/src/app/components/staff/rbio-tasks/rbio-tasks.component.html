@@ -178,6 +178,9 @@
                     <td [class]="'cell-' + col.key">
                       @if (col.key === 'status') {
                         <span class="status-badge" [attr.data-status]="task.status?.toLowerCase()">{{ task.status }}</span>
+                        @if (task.viewOnly) {
+                          <span class="view-only-badge" title="Forwarded on — you can view but not edit">View Only</span>
+                        }
                       } @else if (col.key === 'priority') {
                         <span class="priority-dot" [attr.data-priority]="task.priority?.toUpperCase()"></span> {{ task.priority }}
                       } @else {

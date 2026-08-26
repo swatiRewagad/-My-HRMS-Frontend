@@ -22,6 +22,7 @@ public class InterOfficeTransferService {
     private final ComplaintRepository complaintRepository;
     private final OfficeRoutingService officeRoutingService;
     private final NotificationService notificationService;
+    private final ComplaintRoutingService complaintRoutingService;
 
     @Transactional
     public InterOfficeTransfer requestTransfer(String complaintNumber, String fromOffice, String toOffice,
@@ -33,6 +34,9 @@ public class InterOfficeTransferService {
                 .transferType(transferType)
                 .reason(reason)
                 .requestedBy(requestedBy)
+                // Captured now (not only on approve) so a straight PENDING -> REJECTED
+                // transfer can still return the complaint to whoever requested it.
+                .previousOwner(requestedBy)
                 .status("PENDING")
                 .build();
         transfer = transferRepo.save(transfer);
@@ -63,12 +67,16 @@ public class InterOfficeTransferService {
         transfer.setResolvedAt(LocalDateTime.now());
         transferRepo.save(transfer);
 
-        // Update complaint assignment
+        // Update complaint assignment: round-robin to a real Dealing Officer at the
+        // target office, not the raw office code.
         Complaint complaint = complaintRepository.findByComplaintNumber(transfer.getComplaintNumber()).orElse(null);
         if (complaint != null) {
-            transfer.setPreviousOwner(complaint.getAssignedOfficer());
-            complaint.setDepartment(resolveDepartment(targetOffice));
-            complaint.setAssignedOfficer(targetOffice);
+            String targetDept = resolveDepartment(targetOffice);
+            String role = "CEPC".equals(targetDept) ? "CEPC_OFFICER" : "RBIO_OFFICER";
+            String assignedOfficer = complaintRoutingService.assignOfficerByRoleAndOffice(role, targetOffice);
+            complaint.setDepartment(targetDept);
+            complaint.setAssignedRole(role);
+            complaint.setAssignedOfficer(assignedOfficer);
             complaintRepository.save(complaint);
         }
 
@@ -108,6 +116,10 @@ public class InterOfficeTransferService {
 
     public List<InterOfficeTransfer> getPendingTransfers() {
         return transferRepo.findByStatusOrderByRequestedAtDesc("PENDING");
+    }
+
+    public List<InterOfficeTransfer> getAllTransfers() {
+        return transferRepo.findAllByOrderByRequestedAtDesc();
     }
 
     public List<InterOfficeTransfer> getTransferHistory(String complaintNumber) {

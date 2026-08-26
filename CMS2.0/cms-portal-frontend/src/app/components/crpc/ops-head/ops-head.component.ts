@@ -21,10 +21,13 @@ interface TransferComplaint {
   language: string;
   territory: string;
   subject: string;
+  comment: string;
   complainantName: string;
   complainantEmail: string;
   complainantPhone: string;
   description: string;
+  complaintStatus: string;
+  assignedOfficer: string;
   timeline: { action: string; fromStatus: string; toStatus: string; timestamp: string; remarks: string }[];
 }
 
@@ -53,6 +56,7 @@ export class OpsHeadComponent implements OnInit {
   loading = signal(true);
   complaints = signal<TransferComplaint[]>([]);
   selectedComplaint = signal<TransferComplaint | null>(null);
+  detailSections = { basic: true, eligibility: false, entity: true };
   sidebarItem = signal('transfers');
 
   // Filters & sorting
@@ -66,6 +70,10 @@ export class OpsHeadComponent implements OnInit {
   forwardLanguage = '';
   forwardTerritory = '';
   reassignTerritory = '';
+  changeTerritory = false;
+
+  // Status filter tabs
+  statusFilter = signal('ALL');
 
   // Confirmation dialog
   showConfirmDialog = signal(false);
@@ -74,6 +82,13 @@ export class OpsHeadComponent implements OnInit {
   processing = signal(false);
   actionResult = signal('');
   actionSuccess = signal(false);
+
+  // Full-screen confirmation (matches the RBIO/CRPC success-page pattern; stays until
+  // the user dismisses it, instead of a brief inline banner that auto-redirects).
+  showSuccessPage = signal(false);
+  successAction = signal<'approve' | 'reject'>('approve');
+  successComplaintNumber = '';
+  successAssignedOfficer = '';
 
   // Office Thresholds
   officeThresholds = signal<OfficeThreshold[]>([]);
@@ -108,8 +123,24 @@ export class OpsHeadComponent implements OnInit {
     };
   });
 
+  statusCounts = computed(() => {
+    const all = this.complaints();
+    return {
+      all: all.length,
+      draft: all.filter(c => c.status === 'DRAFT').length,
+      inProgress: all.filter(c => c.status === 'PENDING').length,
+      sentBack: all.filter(c => c.status === 'REJECTED').length,
+      assessmentComplete: all.filter(c => c.status === 'APPROVED').length,
+    };
+  });
+
   filteredComplaints = computed(() => {
     let result = this.complaints();
+    const filter = this.statusFilter();
+    if (filter === 'DRAFT') result = result.filter(c => c.status === 'DRAFT');
+    else if (filter === 'IN_PROGRESS') result = result.filter(c => c.status === 'PENDING');
+    else if (filter === 'SENT_BACK') result = result.filter(c => c.status === 'REJECTED');
+    else if (filter === 'ASSESSMENT_COMPLETE') result = result.filter(c => c.status === 'APPROVED');
     const search = this.searchText().toLowerCase();
     if (search) {
       result = result.filter(c =>
@@ -158,53 +189,27 @@ export class OpsHeadComponent implements OnInit {
     this.loadTransferComplaints();
   }
 
+  loadError = signal(false);
+
   private loadTransferComplaints() {
     this.loading.set(true);
-    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/crpc/head/transfers/pending`).subscribe({
+    this.loadError.set(false);
+    // /transfers/all (not /pending) — the dashboard needs to keep showing a complaint
+    // after it's been approved/rejected, with its updated status, not drop it entirely.
+    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/crpc/head/transfers/all`).subscribe({
       next: (res) => {
         const data = Array.isArray(res) ? res : (res?.data || []);
         this.complaints.set(data);
         this.loading.set(false);
       },
       error: () => {
-        this.complaints.set(this.getMockData());
+        // No mock fallback here on purpose — a failed request should be visible as an
+        // error, not silently replaced with fabricated rows that look like real data.
+        this.complaints.set([]);
         this.loading.set(false);
+        this.loadError.set(true);
       }
     });
-  }
-
-  private getMockData(): TransferComplaint[] {
-    const statuses = ['Sent to Other', 'Sent to DO', 'Pending Approval', 'Sent Back'];
-    const offices = ['CRPC Mumbai', 'CRPC Delhi', 'RBIO Chennai', 'RBIO Kolkata', 'CRPC Bangalore', 'RBI Dept - Banking Supervision'];
-    const entities = ['HDFC Bank', 'ICICI Bank', 'SBI', 'Axis Bank', 'PNB', 'Bank of Baroda', 'Kotak Mahindra', 'IndusInd Bank'];
-    const data: TransferComplaint[] = [];
-    for (let i = 1; i <= 25; i++) {
-      data.push({
-        complaintId: `CMP-${6500 + i}`,
-        complaintNumber: `CRPC/2024-25/${String(i).padStart(5, '0')}`,
-        from: `user${i}@email.com`,
-        pending: Math.floor(Math.random() * 15) + 1,
-        fromOffice: offices[Math.floor(Math.random() * 3)],
-        targetOffice: offices[Math.floor(Math.random() * offices.length)],
-        status: statuses[Math.floor(Math.random() * statuses.length)],
-        entityName: entities[Math.floor(Math.random() * entities.length)],
-        proposedCategory: ['Banking', 'Credit Card', 'Insurance', 'ATM', 'Digital Payment'][Math.floor(Math.random() * 5)],
-        creationDate: new Date(Date.now() - Math.random() * 30 * 86400000).toISOString().split('T')[0],
-        language: ['English', 'Hindi', 'Marathi', 'Tamil'][Math.floor(Math.random() * 4)],
-        territory: ['Mumbai', 'Delhi', 'Chennai', 'Kolkata', 'Bangalore'][Math.floor(Math.random() * 5)],
-        subject: `Complaint regarding ${entities[Math.floor(Math.random() * entities.length)]} services`,
-        complainantName: `Complainant ${i}`,
-        complainantEmail: `user${i}@email.com`,
-        complainantPhone: `98765${String(43210 + i).padStart(5, '0')}`,
-        description: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Customer is facing issues with banking services.',
-        timeline: [
-          { action: 'Created', fromStatus: '', toStatus: 'New', timestamp: new Date(Date.now() - 20 * 86400000).toISOString(), remarks: 'Complaint registered' },
-          { action: 'Assigned', fromStatus: 'New', toStatus: 'Assigned', timestamp: new Date(Date.now() - 18 * 86400000).toISOString(), remarks: 'Auto-assigned via round robin' },
-          { action: 'Transfer Requested', fromStatus: 'Assigned', toStatus: 'Sent to Other', timestamp: new Date(Date.now() - 5 * 86400000).toISOString(), remarks: 'Transferred to target office' },
-        ]
-      });
-    }
-    return data;
   }
 
   sortBy(column: string) {
@@ -221,6 +226,7 @@ export class OpsHeadComponent implements OnInit {
     this.forwardLanguage = complaint.language || '';
     this.forwardTerritory = complaint.territory || '';
     this.reassignTerritory = '';
+    this.changeTerritory = false;
     this.actionResult.set('');
   }
 
@@ -239,6 +245,20 @@ export class OpsHeadComponent implements OnInit {
     this.confirmComments = '';
   }
 
+  dismissSuccessPage() {
+    this.showSuccessPage.set(false);
+    this.selectedComplaint.set(null);
+  }
+
+  // Reflects the complaint's real current state once resolved, not just the transfer's
+  // own PENDING/APPROVED/REJECTED status — e.g. "With DO" once assigned to an officer.
+  getStatusLabel(t: TransferComplaint): string {
+    if (t.status === 'PENDING') return 'Sent to Other Office';
+    if (t.status === 'APPROVED') return t.assignedOfficer ? `With DO (${t.assignedOfficer})` : 'With DO';
+    if (t.status === 'REJECTED') return 'Sent Back';
+    return t.status;
+  }
+
   submitConfirm() {
     const complaint = this.selectedComplaint();
     if (!complaint) return;
@@ -251,18 +271,22 @@ export class OpsHeadComponent implements OnInit {
       ? `${environment.apiBaseUrl}/api/v1/crpc/head/transfers/${complaint.complaintId}/approve`
       : `${environment.apiBaseUrl}/api/v1/crpc/head/transfers/${complaint.complaintId}/reject`;
 
-    const body = action === 'approve'
+    const body: any = action === 'approve'
       ? { approvedBy: username, comment: this.confirmComments }
       : { approvedBy: username, rejectionComment: this.confirmComments };
+    if (action === 'approve' && this.changeTerritory && this.reassignTerritory) {
+      body.overrideToOffice = this.reassignTerritory;
+    }
 
     this.http.post<any>(endpoint, body).subscribe({
-      next: () => {
-        this.actionSuccess.set(true);
-        this.actionResult.set(`Transfer ${action === 'approve' ? 'approved' : 'rejected'} successfully.`);
+      next: (res) => {
         this.processing.set(false);
         this.showConfirmDialog.set(false);
         this.loadTransferComplaints();
-        setTimeout(() => this.selectedComplaint.set(null), 1500);
+        this.successAction.set(action);
+        this.successComplaintNumber = complaint.complaintNumber;
+        this.successAssignedOfficer = res?.assignedOfficer || '';
+        this.showSuccessPage.set(true);
       },
       error: (err) => {
         this.actionSuccess.set(false);
@@ -273,12 +297,20 @@ export class OpsHeadComponent implements OnInit {
     });
   }
 
-  getExpectedStatusChange(): string {
-    const current = this.selectedComplaint()?.status || '';
-    if (this.confirmAction() === 'approve') {
-      return `${current} → Sent to DO`;
+  officeList = signal<{ officeCode: string; officeName: string; officeType: string }[]>([]);
+
+  loadOfficeList() {
+    if (this.officeList().length > 0) return;
+    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/keycloak/offices`).subscribe({
+      next: (res) => this.officeList.set(res?.data || []),
+      error: () => this.officeList.set([])
+    });
+  }
+
+  onChangeTerritoryToggle() {
+    if (this.changeTerritory) {
+      this.loadOfficeList();
     }
-    return `${current} → Sent Back to Deputy Ombudsman`;
   }
 
   navigateTo(item: string) {

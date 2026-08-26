@@ -169,6 +169,21 @@ public class Complaint {
     @Column(name = "closure_clause", length = 100)
     private String closureClause;
 
+    @Column(name = "proposed_action", length = 100)
+    private String proposedAction;
+
+    @Column(name = "proposed_clause", length = 100)
+    private String proposedClause;
+
+    @Column(name = "forwarded_office_code", length = 10)
+    private String forwardedOfficeCode;
+
+    @Column(name = "pre_forward_officer", length = 200)
+    private String preForwardOfficer;
+
+    @Column(name = "pre_forward_role", length = 50)
+    private String preForwardRole;
+
     @Column(name = "closure_clause_description", columnDefinition = "TEXT")
     private String closureClauseDescription;
 

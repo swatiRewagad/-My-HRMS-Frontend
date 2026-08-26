@@ -202,6 +202,23 @@
   padding: 12px 16px;
   scrollbar-width: none;
   &::-webkit-scrollbar { display: none; }
+
+  // Officer viewing a complaint they no longer own (forwarded elsewhere): full details
+  // stay visible, but every field/control becomes non-interactive read-only.
+  &.view-only-locked {
+    input, textarea, select, button, .search-dropdown-item, app-speech-button {
+      pointer-events: none !important;
+    }
+    input, textarea, select {
+      background: #f1f5f9 !important;
+      color: #64748b !important;
+    }
+    // Meta row (header buttons) and tab navigation stay usable so the officer can still
+    // browse between tabs and see the "View Only" badge already handled in the template.
+    .meta-row, .meta-row *, .page-tabs, .page-tabs * {
+      pointer-events: auto !important;
+    }
+  }
 }
 
 .page-tabs {
@@ -376,33 +393,35 @@
   .meta-item {
     display: flex;
     align-items: center;
-    gap: 12px;
-    flex: 1;
-    padding: 0 24px;
+    gap: 8px;
+    flex: 0 1 auto;
+    padding: 0 12px;
     border-left: 1px solid #e2e8f0;
+    min-width: 0;
 
-    &:first-of-type { border-left: none; padding-left: 16px; }
+    &:first-of-type { border-left: none; padding-left: 10px; }
 
     .meta-icon {
-      width: 38px; height: 38px; border-radius: 50%;
+      width: 28px; height: 28px; border-radius: 50%;
       background: linear-gradient(135deg, #6366f1, #3b82f6);
       display: flex; align-items: center; justify-content: center;
       flex-shrink: 0;
-      i { font-size: 15px; color: #fff; }
+      i { font-size: 11px; color: #fff; }
       &.blue { background: linear-gradient(135deg, #6366f1, #3b82f6); }
       &.red { background: linear-gradient(135deg, #ef4444, #f97316); }
       &.dark { background: linear-gradient(135deg, #1e293b, #334155); }
     }
 
     .meta-text {
-      display: flex; flex-direction: column; gap: 2px;
-      .meta-label { font-size: 12px; color: #64748b; font-weight: 500; white-space: nowrap;
-        display: flex; align-items: center; gap: 4px;
-        .pi-info-circle { font-size: 10px; color: #94a3b8; }
+      display: flex; flex-direction: column; gap: 1px;
+      min-width: 0;
+      .meta-label { font-size: 10px; color: #64748b; font-weight: 500; white-space: nowrap;
+        display: flex; align-items: center; gap: 3px;
+        .pi-info-circle { font-size: 9px; color: #94a3b8; }
       }
-      .meta-value { font-size: 14px; font-weight: 600; color: #1e293b;
-        display: flex; align-items: center; gap: 5px;
-        .status-flag { color: #3b82f6; margin-right: 3px; font-size: 12px; }
+      .meta-value { font-size: 12px; font-weight: 600; color: #1e293b; white-space: nowrap;
+        display: flex; align-items: center; gap: 4px;
+        .status-flag { color: #3b82f6; margin-right: 2px; font-size: 11px; }
       }
     }
   }
@@ -411,9 +430,9 @@
     margin-left: auto;
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 6px;
     flex-shrink: 0;
-    padding-left: 20px;
+    padding-left: 12px;
   }
 }
 
@@ -1096,37 +1115,24 @@ label.file-upload-browse-link {
 }
 
 .btn-send-back {
-  background: #fff;
-  border: 1px solid #f97316;
-  color: #f97316;
-  border-radius: 20px;
-  padding: 8px 16px;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-
-  &:hover { background: #fff7ed; }
-}
-
-.send-approval-wrapper {
-  position: relative;
-}
-
-.btn-send-back {
   background: #f59e0b;
   color: #fff;
   border: none;
-  border-radius: 20px;
-  padding: 8px 16px;
-  font-size: 13px;
+  border-radius: 16px;
+  padding: 6px 12px;
+  font-size: 12px;
   font-weight: 500;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   white-space: nowrap;
 
   &:hover { background: #d97706; }
+}
+
+.send-approval-wrapper {
+  position: relative;
 }
 
 .send-back-wrapper {
@@ -1137,30 +1143,32 @@ label.file-upload-browse-link {
   background: #16a34a;
   color: #fff;
   border: none;
-  border-radius: 20px;
-  padding: 8px 16px;
-  font-size: 13px;
+  border-radius: 16px;
+  padding: 6px 12px;
+  font-size: 12px;
   font-weight: 500;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   white-space: nowrap;
 
   &:hover { background: #15803d; }
 }
 
 .approval-dropdown {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
+  // Fixed + JS-computed top/left (see toggleApprovalMenu/toggleSendBackMenu) so the menu is
+  // positioned against the viewport, not the scrolling/overflow-clipped layout containers —
+  // otherwise options past the clip boundary silently disappear with no scrollbar.
+  position: fixed;
   background: #fff;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
   min-width: 240px;
-  z-index: 200;
-  overflow: hidden;
+  max-height: min(60vh, 320px);
+  z-index: 2000;
+  overflow-y: auto;
 
   button {
     display: block;
@@ -1306,6 +1314,51 @@ label.file-upload-browse-link {
       margin-top: 2px;
       accent-color: #3b82f6;
     }
+
+    &.disabled {
+      color: #94a3b8;
+      cursor: not-allowed;
+      input[type="checkbox"] { cursor: not-allowed; }
+    }
+  }
+}
+
+.advisory-fields {
+  margin-bottom: 20px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #f1f5f9;
+
+  .form-row-2col:not(:last-child) { margin-bottom: 16px; }
+
+  .amount-words {
+    display: block;
+    margin-top: 6px;
+    font-size: 12px;
+    color: #3b82f6;
+    font-style: italic;
+  }
+
+  .static-value {
+    font-size: 14px;
+    font-weight: 600;
+    color: #1e293b;
+  }
+}
+
+.notice-131 {
+  .notice-131-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1e293b;
+    margin: 0 0 10px;
+  }
+
+  .notice-131-text {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1e293b;
+    line-height: 1.6;
+    margin: 0 0 16px;
   }
 }
 
@@ -1317,6 +1370,12 @@ label.file-upload-browse-link {
     font-weight: 600;
     color: #1e293b;
     margin: 0 0 12px;
+  }
+
+  .no-comments-text {
+    font-size: 12px;
+    color: #94a3b8;
+    margin: 0;
   }
 }
 
@@ -1371,6 +1430,13 @@ label.file-upload-browse-link {
 }
 
 .add-comment-section {
+  .comment-label-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+
   .comment-label {
     display: flex;
     align-items: center;
@@ -1378,7 +1444,22 @@ label.file-upload-browse-link {
     font-size: 13px;
     font-weight: 600;
     color: #1e293b;
-    margin-bottom: 8px;
+    margin-bottom: 0;
+  }
+
+  .bookmark-btn {
+    width: 24px;
+    height: 24px;
+    border: none;
+    background: none;
+    color: #94a3b8;
+    cursor: pointer;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    &:hover { background: #f1f5f9; color: #475569; }
   }
 
   .btn-add-comment {
@@ -1493,6 +1574,145 @@ label.file-upload-browse-link {
   cursor: pointer;
   &:hover { background: #15803d; }
   &:disabled { background: #cbd5e1; cursor: not-allowed; }
+}
+
+.btn-forward {
+  padding: 8px 20px;
+  background: #475569;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  &:hover { background: #334155; }
+  &:disabled { background: #cbd5e1; cursor: not-allowed; }
+}
+
+.transfer-summary-card {
+  background: #eef2ff;
+  border: 1px solid #c7d2fe;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 20px;
+
+  .transfer-summary-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #334155;
+    margin: 0 0 14px;
+  }
+
+  .summary-row {
+    display: flex;
+    gap: 24px;
+    margin-bottom: 12px;
+  }
+
+  .summary-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+
+    &.full { margin-bottom: 0; }
+
+    .summary-label { font-size: 11px; color: #64748b; }
+    .summary-value { font-size: 13px; font-weight: 600; color: #1e293b; }
+  }
+}
+
+.territory-reassign-section {
+  .checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: #334155;
+    cursor: pointer;
+    margin-bottom: 12px;
+
+    input[type="checkbox"] { width: 16px; height: 16px; }
+  }
+}
+
+.forward-panel {
+  .field-hint {
+    font-size: 11px;
+    color: #94a3b8;
+    margin-top: 4px;
+    display: block;
+  }
+
+  .forward-office-note {
+    font-size: 12px;
+    color: #64748b;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 8px 12px;
+    margin: 4px 0 16px;
+  }
+
+  .forward-to-label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: #334155;
+    margin: 4px 0 10px;
+  }
+
+  .forward-target-cards {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+
+  .forward-target-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    background: #f8fafc;
+    font-size: 13px;
+    font-weight: 500;
+    color: #334155;
+    cursor: pointer;
+    flex: 1 1 180px;
+    transition: all 0.15s;
+
+    &:hover { background: #f1f5f9; }
+
+    &.selected {
+      border-color: #2563eb;
+      background: #eff6ff;
+      color: #1e40af;
+    }
+
+    .radio-dot {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      border: 2px solid #94a3b8;
+      flex-shrink: 0;
+      position: relative;
+
+      &.checked {
+        border-color: #2563eb;
+        &::after {
+          content: '';
+          position: absolute;
+          top: 3px; left: 3px;
+          width: 8px; height: 8px;
+          border-radius: 50%;
+          background: #2563eb;
+        }
+      }
+    }
+  }
 }
 
 .final-decision-form {
@@ -1958,12 +2178,9 @@ label.file-upload-browse-link {
 // ═══ NODAL OFFICER RECORD ═══
 .nodal-officer-content {
   padding: 16px;
-
-  .nodal-officer-header {
-    display: flex;
-    justify-content: flex-end;
-    margin-bottom: 12px;
-  }
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .data-table-wrapper {
@@ -1971,6 +2188,12 @@ label.file-upload-browse-link {
   border: 1px solid #e2e8f0;
   border-radius: 8px;
   background: #fff;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+
+  .data-table { flex-shrink: 0; }
 }
 
 .data-table {
@@ -2037,27 +2260,6 @@ label.file-upload-browse-link {
   overflow: hidden;
 }
 
-.nodal-detail-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 20px;
-  background: #fff;
-  border-bottom: 1px solid #e2e8f0;
-
-  .nodal-detail-meta {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    flex-wrap: wrap;
-  }
-
-  .nodal-detail-actions {
-    display: flex;
-    gap: 8px;
-  }
-}
-
 .meta-value.link {
   color: #6366f1;
   cursor: pointer;
@@ -2070,7 +2272,7 @@ label.file-upload-browse-link {
 
   .status-radio-group {
     display: flex;
-    flex-direction: column;
+    flex-wrap: wrap;
     gap: 10px;
     margin-top: 8px;
   }
@@ -2081,12 +2283,24 @@ label.file-upload-browse-link {
     gap: 8px;
     cursor: pointer;
     font-size: 13px;
+    font-weight: 500;
     color: #334155;
+    padding: 10px 16px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    background: #fff;
+    transition: border-color 0.15s, background 0.15s, color 0.15s;
 
     input[type="radio"] {
       width: 16px;
       height: 16px;
-      accent-color: #6366f1;
+      accent-color: #3b82f6;
+    }
+
+    &.active {
+      border-color: #3b82f6;
+      background: #eff6ff;
+      color: #1e3a8a;
     }
   }
 }
@@ -2097,7 +2311,7 @@ label.file-upload-browse-link {
   padding: 2px 8px;
   border-radius: 12px;
   font-weight: 500;
-  margin-left: auto;
+  margin-left: 6px;
 
   &.no-badge { background: #e0e7ff; color: #3730a3; }
   &.pno-badge { background: #fef3c7; color: #92400e; }

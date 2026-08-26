@@ -31,6 +31,15 @@ public class ComplaintComment {
     @Column(length = 10)
     private String color;
 
+    // Set only for Nodal Officer Record comments (scopes them to a specific NO record,
+    // separate from the complaint's own general assessment comment thread).
+    @Column(length = 50)
+    private String noRecordNumber;
+
+    // "NO" or "PNO" — which recipient this Nodal Officer Record comment targets.
+    @Column(length = 10)
+    private String target;
+
     private LocalDateTime createdAt;
 
     @PrePersist

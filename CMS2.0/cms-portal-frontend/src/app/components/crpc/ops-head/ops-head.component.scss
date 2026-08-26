@@ -6,8 +6,8 @@
   font-family: 'Inter', 'Segoe UI', sans-serif;
 }
 
-// ═══ HEADER ═══
-.dash-header {
+// ═══ HEADER — exact copy of /crpc/home (deo-home), the true CRPC dashboard header ═══
+.cms-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -15,39 +15,145 @@
   background: #fff;
   border-bottom: 1px solid #e2e8f0;
   height: 56px;
+  flex-shrink: 0;
 
   .header-left {
     display: flex;
     align-items: center;
-    gap: 12px;
-    .rbi-logo { height: 32px; }
-    .brand {
-      display: flex;
-      flex-direction: column;
-      .brand-title { font-size: 18px; font-weight: 700; color: #1a237e; }
-      .brand-sub { font-size: 11px; color: #64748b; }
+    gap: 10px;
+    .rbi-logo { height: 38px; border-radius: 50%; }
+    .rbi-text {
+      display: flex; flex-direction: column;
+      .rbi-hindi { font-size: 12px; font-weight: 600; color: #1a237e; }
+      .rbi-english { font-size: 9px; color: #475569; letter-spacing: 0.3px; }
     }
+    .header-divider-v { width: 1px; height: 30px; background: #cbd5e1; margin: 0 4px; }
+    .cms-logo { height: 32px; }
+    .cms-title { font-size: 18px; font-weight: 700; color: #1a237e; }
+    .cms-subtitle { font-size: 11px; color: #64748b; }
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+
+    .header-icons {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      color: #64748b;
+      font-size: 14px;
+      button {
+        background: none; border: none; color: #64748b;
+        cursor: pointer; font-size: 14px;
+        &:hover { color: #1e293b; }
+      }
+
+      .font-size-group {
+        display: flex; align-items: center; gap: 2px;
+        border: 1px solid #e2e8f0; border-radius: 6px; padding: 2px 4px;
+        .font-btn {
+          padding: 2px 6px; font-size: 12px; font-weight: 500; color: #64748b;
+          background: none; border: none; cursor: pointer; border-radius: 4px;
+          &.active { color: #1e293b; background: #f1f5f9; }
+          &:hover { color: #1e293b; }
+        }
+      }
+
+      .lang-btn {
+        display: flex; align-items: center; gap: 4px;
+        background: none; border: 1px solid #e2e8f0; border-radius: 6px;
+        color: #64748b; font-size: 12px; padding: 4px 10px; cursor: pointer;
+        i { font-size: 12px; }
+        &:hover { color: #1e293b; border-color: #cbd5e1; }
+      }
+    }
+
+    .user-info-block {
+      display: flex; align-items: center; gap: 10px;
+      border-left: 1px solid #e2e8f0; padding-left: 16px;
+    }
+
+    .user-avatar {
+      width: 36px; height: 36px; border-radius: 50%;
+      background: #4caf50; color: white;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 600; font-size: 14px;
+    }
+    .user-details { display: flex; flex-direction: column;
+      .user-name { font-size: 13px; font-weight: 600; color: #1e293b; }
+      .user-role { font-size: 11px; color: #64748b; }
+    }
+    .user-dropdown-btn {
+      background: none; border: none; color: #64748b; cursor: pointer; font-size: 12px;
+      &:hover { color: #1e293b; }
+    }
+  }
+}
+
+// ═══ BILINGUAL HEADER — matches the RBIO/CRPC complaint detail screens exactly ═══
+.cms-header-bilingual {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 20px;
+  background: #fff;
+  border-bottom: 1px solid #e2e8f0;
+  height: 54px;
+  flex-shrink: 0;
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    .rbi-logo { height: 36px; border-radius: 50%; }
+    .rbi-text {
+      display: flex; flex-direction: column;
+      .rbi-hindi { font-size: 11px; font-weight: 600; color: #1a237e; }
+      .rbi-english { font-size: 9px; color: #475569; letter-spacing: 0.3px; }
+    }
+    .header-divider-v { width: 1px; height: 28px; background: #cbd5e1; margin: 0 4px; }
+    .cms-logo { height: 28px; }
+    .header-brand { display: flex; flex-direction: column; }
+    .cms-title { font-size: 16px; font-weight: 700; color: #1a237e; line-height: 1.2; }
+    .cms-subtitle { font-size: 10px; color: #64748b; }
   }
 
   .header-right {
     display: flex;
     align-items: center;
     gap: 12px;
+
+    .accessibility-controls {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      .acc-btn {
+        background: none; border: none; color: #64748b; font-size: 12px;
+        cursor: pointer; padding: 4px 6px; border-radius: 4px;
+        &:hover { background: #f1f5f9; color: #1e293b; }
+        &.acc-btn-mid { font-weight: 700; }
+      }
+      .acc-divider { color: #e2e8f0; font-size: 14px; }
+    }
+
+    .header-divider { width: 1px; height: 28px; background: #e2e8f0; }
+
     .user-avatar {
-      width: 36px; height: 36px; border-radius: 50%;
+      width: 34px; height: 34px; border-radius: 50%;
       background: #1565c0; color: white;
       display: flex; align-items: center; justify-content: center;
-      font-weight: 600; font-size: 13px;
+      font-weight: 600; font-size: 14px;
     }
-    .user-info {
+    .user-details {
       display: flex; flex-direction: column;
-      .user-name { font-size: 13px; font-weight: 600; color: #1e293b; }
-      .user-role { font-size: 11px; color: #64748b; }
+      .user-name { font-size: 12px; font-weight: 600; color: #1e293b; }
+      .user-role { font-size: 10px; color: #64748b; }
     }
     .btn-logout {
-      padding: 6px 14px; border: 1px solid #e2e8f0; border-radius: 6px;
-      background: white; font-size: 12px; color: #475569; cursor: pointer;
-      &:hover { background: #fee2e2; color: #dc2626; border-color: #fca5a5; }
+      background: none; border: none; color: #64748b; cursor: pointer; font-size: 14px;
+      &:hover { color: #1e293b; }
     }
   }
 }
@@ -59,12 +165,14 @@
   overflow: hidden;
 }
 
-// ═══ SIDEBAR ═══
+// ═══ SIDEBAR (list view) — exact copy of /crpc/home (deo-home) ═══
 .sidebar {
-  width: 220px;
+  width: 200px;
   background: #1e293b;
-  padding: 16px 0;
+  padding: 12px 0;
   flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
 
   .sidebar-item {
     display: flex;
@@ -75,9 +183,54 @@
     font-size: 13px;
     cursor: pointer;
     transition: all 0.2s;
+    border-left: 3px solid transparent;
+
     i { font-size: 15px; }
+
     &:hover { background: rgba(255,255,255,0.05); color: #e2e8f0; }
-    &.active { background: #3b82f6; color: white; }
+    &.active { background: rgba(59,130,246,0.15); color: #fff; border-left-color: #3b82f6; }
+  }
+
+  .sidebar-collapse {
+    margin-top: auto;
+    padding: 12px 20px;
+    color: #64748b;
+    font-size: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    &:hover { color: #94a3b8; }
+  }
+}
+
+// ═══ SIDE NAV (detail view, narrow icon-only rail) — exact copy of RBIO/CRPC assessment screens ═══
+.side-nav {
+  width: 66px;
+  flex-shrink: 0;
+  background: #041631;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 16px;
+  gap: 8px;
+
+  .side-nav-btn {
+    width: 38px;
+    height: 38px;
+    border-radius: 8px;
+    border: none;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.6);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    transition: background 0.15s, color 0.15s;
+
+    &.active { background: #0C4293; color: #fff; }
+    &:hover:not(.active) { background: rgba(255, 255, 255, 0.1); color: #fff; }
   }
 }
 
@@ -100,6 +253,16 @@
     display: flex; gap: 12px; align-items: center;
   }
 
+  .advanced-search-link {
+    font-size: 13px; color: #2563eb; cursor: pointer; font-weight: 500;
+    &:hover { text-decoration: underline; }
+  }
+
+  .scope-select {
+    padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 6px;
+    font-size: 13px; color: #334155; background: white; outline: none;
+  }
+
   .search-box {
     position: relative;
     i { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 13px; }
@@ -111,41 +274,103 @@
   }
 }
 
+.error-banner {
+  display: flex; align-items: center; gap: 10px;
+  background: #fef2f2; border: 1px solid #fecaca; color: #991b1b;
+  padding: 10px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 16px;
+}
+
 // ═══ STATS ROW ═══
-.stats-row {
+// ═══ STATS BAR — icon-badge style, exact copy of /crpc/home (deo-home) ═══
+.stats-bar {
   display: flex;
   gap: 12px;
   margin-bottom: 20px;
-  flex-wrap: wrap;
+
+  .stat-card {
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 14px 18px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+
+    &:hover { border-color: #3b82f6; box-shadow: 0 2px 8px rgba(59,130,246,0.1); }
+
+    .stat-icon {
+      width: 40px; height: 40px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; flex-shrink: 0;
+      &.blue { background: #eff6ff; color: #3b82f6; }
+      &.orange { background: #fef3c7; color: #f59e0b; }
+      &.red { background: #fee2e2; color: #ef4444; }
+      &.green { background: #d1fae5; color: #10b981; }
+      &.purple { background: #e0e7ff; color: #6366f1; }
+      &.agr { background: #fee2e2; color: #ef4444; }
+      &.rbi-domain { background: #fce7f3; color: #db2777; }
+      .icon-letter { font-size: 13px; font-weight: 700; }
+    }
+
+    .stat-content { display: flex; flex-direction: column; }
+
+    .stat-value { font-size: 20px; font-weight: 700; color: #1e293b; line-height: 1.2; }
+    .stat-label {
+      font-size: 11px; color: #64748b; font-weight: 500; letter-spacing: 0.2px;
+      display: flex; align-items: center; gap: 4px;
+      i { font-size: 10px; color: #94a3b8; }
+    }
+  }
 }
 
-.stat-card {
-  flex: 1;
-  min-width: 120px;
+// ═══ STATUS TABS — exact copy of /crpc/home (deo-home) ═══
+.status-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 16px;
+  border-bottom: 2px solid #e2e8f0;
+
+  .status-tab {
+    padding: 10px 18px;
+    border: none;
+    background: none;
+    font-size: 13px;
+    color: #64748b;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    transition: all 0.2s;
+    font-weight: 500;
+    display: flex; align-items: center; gap: 6px;
+
+    &.active { color: #3b82f6; border-bottom-color: #3b82f6; font-weight: 600; }
+    &:hover:not(.active) { color: #3b82f6; }
+
+    .tab-count {
+      background: #3b82f6; color: #fff; padding: 2px 8px; border-radius: 10px;
+      font-size: 11px; margin-left: 6px; font-weight: 600;
+    }
+    &:not(.active) .tab-count { background: #e2e8f0; color: #64748b; }
+  }
+}
+
+.grid-panel {
   background: white;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
-  padding: 14px 16px;
-  text-align: center;
-  border-top: 3px solid transparent;
+  padding: 16px;
 
-  .stat-value { font-size: 22px; font-weight: 700; color: #1e293b; }
-  .stat-label { font-size: 11px; color: #64748b; margin-top: 4px; }
-
-  &.total { border-top-color: #3b82f6; }
-  &.transfers { border-top-color: #8b5cf6; }
-  &.intra { border-top-color: #f59e0b; }
-  &.within { border-top-color: #22c55e; }
-  &.r2c { border-top-color: #06b6d4; }
-  &.c2r { border-top-color: #ef4444; }
-  &.dept { border-top-color: #ec4899; }
+  .grid-panel-header {
+    display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;
+    h3 { font-size: 14px; font-weight: 700; color: #1e293b; margin: 0; }
+  }
 }
 
 // ═══ DATA GRID ═══
 .data-grid-wrapper {
-  background: white;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
   overflow-x: auto;
 }
 
@@ -188,11 +413,12 @@
 }
 
 .status-chip {
+  display: inline-flex; align-items: center; gap: 5px;
   padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;
-  &[data-status="Sent to Other"] { background: #dbeafe; color: #1d4ed8; }
-  &[data-status="Sent to DO"] { background: #dcfce7; color: #166534; }
-  &[data-status="Pending Approval"] { background: #fef3c7; color: #92400e; }
-  &[data-status="Sent Back"] { background: #fce7f3; color: #9d174d; }
+  i { font-size: 10px; }
+  &[data-status="PENDING"] { background: #ede9fe; color: #6d28d9; }
+  &[data-status="APPROVED"] { background: #dcfce7; color: #166534; }
+  &[data-status="REJECTED"] { background: #fef3c7; color: #92400e; }
 }
 
 // ═══ PAGINATION ═══
@@ -236,47 +462,242 @@
 @keyframes spin { to { transform: rotate(360deg); } }
 
 // ═══ DETAIL VIEW ═══
-.detail-view {
-  .detail-topbar {
+// ═══ META ROW (matches RBIO/CRPC assessment screen header row exactly) ═══
+.meta-row {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 16px 24px;
+  background: #fff;
+  flex-wrap: nowrap;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+  flex-shrink: 0;
+
+  .back-arrow {
+    width: 36px; height: 36px; border-radius: 50%;
+    border: 1px solid #e2e8f0; background: #fff;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; color: #475569; margin-right: 12px; flex-shrink: 0;
+    &:hover { background: #f1f5f9; }
+  }
+
+  .meta-item {
     display: flex;
     align-items: center;
-    gap: 16px;
-    margin-bottom: 20px;
+    gap: 8px;
+    flex: 0 1 auto;
+    padding: 0 12px;
+    border-left: 1px solid #e2e8f0;
+    min-width: 0;
 
-    .back-btn {
-      display: flex; align-items: center; gap: 6px;
-      padding: 8px 14px; border: 1px solid #e2e8f0; border-radius: 6px;
-      background: white; font-size: 13px; color: #475569; cursor: pointer;
-      &:hover { background: #f1f5f9; }
+    &:first-of-type { border-left: none; padding-left: 10px; }
+
+    .meta-icon {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: linear-gradient(135deg, #6366f1, #3b82f6);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      i { font-size: 11px; color: #fff; }
+      &.dark { background: #64748b; }
+      &.pink { background: #ec4899; }
     }
-    h2 { margin: 0; font-size: 18px; font-weight: 600; color: #1e293b; }
+
+    .meta-text {
+      display: flex; flex-direction: column; gap: 1px;
+      min-width: 0;
+      .meta-label { font-size: 10px; color: #64748b; font-weight: 500; white-space: nowrap;
+        display: flex; align-items: center; gap: 3px;
+        .pi-info-circle { font-size: 9px; color: #94a3b8; }
+      }
+      .meta-value { font-size: 12px; font-weight: 600; color: #1e293b; white-space: nowrap;
+        display: flex; align-items: center; gap: 4px;
+      }
+    }
+  }
+
+  .meta-actions {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+    padding-left: 12px;
   }
 }
 
-.detail-body {
-  display: flex;
-  gap: 20px;
+.btn-more {
+  width: 32px; height: 32px; border-radius: 6px; border: none;
+  background: transparent; color: #64748b; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  &:hover { background: #f1f5f9; }
 }
 
-.detail-left {
-  flex: 1;
-  min-width: 0;
+.panel-title-row {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 16px;
+  h4 { margin: 0; font-size: 14px; font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 8px; }
+  .edit-link {
+    font-size: 13px; color: #2563eb; cursor: pointer; font-weight: 500;
+    display: flex; align-items: center; gap: 6px;
+    &:hover { text-decoration: underline; }
+  }
 }
 
-.detail-right {
-  width: 320px;
-  flex-shrink: 0;
+.info-section {
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #f1f5f9;
+  &:last-of-type { border-bottom: none; }
+
+  h5 { font-size: 12px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.4px; margin: 0 0 12px; }
 }
+
 
 // Tabs
-.tabs {
+// ═══ ASSESSMENT CONTAINER (side-nav + main-frame) — matches RBIO/CRPC assessment screens ═══
+.assessment-container {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.main-frame {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.sub-header {
+  display: flex;
+  align-items: flex-end;
+  background: #D1D7E0;
+  padding: 8px 12px 0 12px;
+  border-bottom: none;
+  flex-shrink: 0;
+  gap: 0;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+
+  .complaint-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 18px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #334155;
+    background: #f0f2f5;
+    border: 1px solid #e2e8f0;
+    border-bottom: none;
+    border-radius: 6px 6px 0 0;
+    margin-left: 4px;
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+    position: relative;
+    transition: background 0.15s, color 0.15s;
+    i { font-size: 14px; color: #64748b; }
+    &.active {
+      background: #fff;
+      color: #1e293b;
+      border-top: 3px solid #f59e0b;
+      padding-top: 8px;
+    }
+    &:hover:not(.active) { background: #e8ebef; }
+    &.add-tab {
+      padding: 10px 14px;
+      background: transparent;
+      border: none;
+      color: #64748b;
+      font-size: 16px;
+      margin-left: 4px;
+      &:hover { background: #e2e8f0; color: #1e293b; border-radius: 6px 6px 0 0; }
+    }
+  }
+}
+
+.page-body-layout {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  background: #EEF2F8;
+}
+
+.left-main-area {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  background: #EEF2F8;
+  padding: 12px 16px;
+  scrollbar-width: none;
+  &::-webkit-scrollbar { display: none; }
+
+  // Resolved (approved/rejected) transfer: full details stay visible, but Edit link,
+  // checkboxes, selects and any other controls become non-interactive.
+  &.view-only-locked {
+    input, textarea, select, button, a, .edit-link {
+      pointer-events: none !important;
+    }
+    input, textarea, select {
+      background: #f1f5f9 !important;
+      color: #64748b !important;
+    }
+    .edit-link { opacity: 0.4; }
+    // Meta row (header) and tab navigation stay usable so the head can still browse
+    // between tabs and use the already-shown "View Only" badge / more-options menu.
+    .meta-row, .meta-row *, .page-tabs, .page-tabs * {
+      pointer-events: auto !important;
+    }
+  }
+}
+
+// ═══ SUCCESS PAGE — matches the RBIO/CRPC "stays until dismissed" pattern ═══
+.success-page {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 40px;
+  background: #fff;
+  border-radius: 8px;
+
+  .success-icon i { font-size: 48px; }
+  h2 { margin: 16px 0 8px; font-size: 18px; color: #1e293b; }
+  p { color: #64748b; font-size: 13px; margin: 4px 0 20px; max-width: 420px; }
+
+  .btn-primary {
+    padding: 10px 24px;
+    background: #3b82f6;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    &:hover { background: #2563eb; }
+  }
+}
+
+.page-tabs {
   display: flex;
   gap: 0;
-  margin-bottom: 16px;
   border-bottom: 2px solid #e2e8f0;
+  margin-bottom: 12px;
+  flex-shrink: 0;
 
-  .tab {
-    padding: 10px 20px;
+  .page-tab {
+    padding: 10px 18px;
     font-size: 13px;
     font-weight: 500;
     color: #64748b;
@@ -285,28 +706,117 @@
     cursor: pointer;
     border-bottom: 2px solid transparent;
     margin-bottom: -2px;
-    &.active { color: #3b82f6; border-bottom-color: #3b82f6; }
+    transition: all 0.15s;
+
+    &.active { color: #1e40af; border-bottom-color: #1e40af; font-weight: 600; }
     &:hover:not(.active) { color: #334155; }
   }
 }
 
-// Complaint Info Card
-.complaint-info-card {
-  background: white;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  padding: 20px;
+// ═══ CONTENT BOX (two-column panel layout) ═══
+.content-box {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  background: #eef2f6;
 }
 
-.info-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
+.main-content-layout {
+  display: flex;
+  height: 100%;
+  flex: 1;
+  overflow: hidden;
 
-  .info-item {
-    label { font-size: 11px; text-transform: uppercase; color: #94a3b8; font-weight: 600; letter-spacing: 0.5px; }
-    p { margin: 4px 0 0; font-size: 14px; color: #1e293b; }
-    &.full-width { grid-column: 1 / -1; }
+  &.two-col {
+    .col-email-syndicate { flex: 1; }
+    .col-complaint-form { flex: 1; }
+  }
+}
+
+// ═══ PANEL / SECTION PATTERN (matches RBIO & CRPC assessment screens) ═══
+// Border/background/radius now live on .detail-body (the two panels share one
+// seamless box with a single divider, not two separate cards with a gap).
+.col-email-syndicate {
+  border-right: 1px solid #e2e8f0;
+}
+
+.col-email-syndicate, .col-complaint-form {
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+
+  .panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 1px solid #f1f5f9;
+
+    h3 { font-size: 14px; font-weight: 600; margin: 0; display: flex; align-items: center; gap: 6px; color: #1e293b; }
+
+    .panel-header-actions { display: flex; align-items: center; gap: 12px; }
+
+    .edit-link {
+      font-size: 13px; color: #2563eb; cursor: pointer; font-weight: 500;
+      display: flex; align-items: center; gap: 6px;
+      &:hover { text-decoration: underline; }
+    }
+
+    .expand-btn {
+      background: none; border: 1px solid #e2e8f0; border-radius: 4px;
+      padding: 4px 8px; cursor: pointer; color: #64748b;
+      &:hover { background: #f1f5f9; }
+    }
+  }
+
+  .form-scroll {
+    padding: 16px 20px;
+    overflow-y: auto;
+    scrollbar-width: none;
+    &::-webkit-scrollbar { display: none; }
+  }
+}
+
+.form-section {
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #f1f5f9;
+  &:last-of-type { border-bottom: none; }
+
+  .section-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #334155;
+    margin: 0 0 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    user-select: none;
+
+    .section-chevron { margin-left: auto; font-size: 11px; color: #94a3b8; }
+  }
+}
+
+.summary-fields {
+  padding: 8px 0;
+
+  .summary-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+
+  .summary-field {
+    margin-bottom: 16px;
+    &.full { grid-column: 1 / -1; }
+
+    .summary-label { display: block; font-size: 12px; color: #64748b; margin-bottom: 4px; }
+    .summary-value { display: block; font-size: 14px; font-weight: 500; color: #1e293b; line-height: 1.4; }
   }
 }
 
@@ -342,15 +852,119 @@
   }
 }
 
+// ═══ META-ROW APPROVE/REJECT ═══
+.meta-actions {
+  .btn-approve {
+    padding: 8px 20px; background: #16a34a; color: white; border: none;
+    border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;
+    &:hover:not(:disabled) { background: #15803d; }
+    &:disabled { opacity: 0.5; cursor: not-allowed; }
+  }
+  .btn-reject {
+    padding: 8px 20px; background: #ef4444; color: white; border: none;
+    border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;
+    &:hover:not(:disabled) { background: #dc2626; }
+    &:disabled { opacity: 0.5; cursor: not-allowed; }
+  }
+
+  .readonly-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 20px;
+    background: #f1f5f9;
+    color: #64748b;
+    font-size: 13px;
+    font-weight: 500;
+    border: 1px solid #e2e8f0;
+    i { font-size: 12px; }
+  }
+}
+
 // ═══ FORWARD PANEL ═══
 .forward-panel {
   background: white;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
   padding: 20px;
-  border-top: 3px solid #3b82f6;
 
-  h3 { margin: 0 0 16px; font-size: 16px; font-weight: 600; color: #1e293b; }
+  h3 { margin: 0 0 16px; font-size: 16px; font-weight: 600; color: #1e293b; display: flex; align-items: center; gap: 8px; }
+}
+
+.transfer-summary-card {
+  background: #eef2ff;
+  border: 1px solid #c7d2fe;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 20px;
+
+  .transfer-summary-title { font-size: 15px; font-weight: 700; color: #1e293b; margin: 0 0 16px; }
+
+  .summary-row {
+    display: flex;
+    gap: 24px;
+    margin-bottom: 16px;
+    &.cols-3 { flex-wrap: wrap; }
+  }
+
+  .summary-field {
+    display: flex; flex-direction: column; gap: 6px; flex: 1;
+    min-width: 140px;
+    &.full { margin-bottom: 0; }
+    .summary-label { font-size: 12px; color: #64748b; }
+    .summary-value { font-size: 14px; font-weight: 600; color: #1e293b; }
+  }
+
+  .radio-inline {
+    display: flex; gap: 16px;
+    .radio-label {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 14px; color: #1e293b; font-weight: 500;
+      input[type="radio"] { width: 16px; height: 16px; accent-color: #2563eb; }
+    }
+  }
+}
+
+.territory-reassign-section {
+  display: flex;
+  align-items: flex-start;
+  gap: 32px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+
+  .checkbox-label {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 13px; color: #334155; cursor: pointer;
+    padding-top: 26px;
+    input[type="checkbox"] { width: 18px; height: 18px; }
+
+    &.disabled {
+      color: #94a3b8;
+      cursor: not-allowed;
+      input[type="checkbox"] { cursor: not-allowed; }
+    }
+  }
+
+  .form-group {
+    margin: 0;
+    min-width: 260px;
+
+    .deo-select-wrapper {
+      position: relative;
+      select {
+        width: 100%;
+        appearance: none;
+        padding-right: 32px;
+        background: #f1f5f9;
+        &:disabled { color: #94a3b8; cursor: not-allowed; }
+      }
+      .pi-search {
+        position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+        color: #64748b; font-size: 13px; pointer-events: none;
+      }
+    }
+  }
 }
 
 .form-group {
@@ -441,14 +1055,22 @@
 
 .dialog-header {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
+  gap: 12px;
   padding: 20px 24px 12px;
-  h3 { margin: 0; font-size: 16px; font-weight: 600; color: #1e293b; }
+
+  .confirmation-icon { font-size: 20px; color: #64748b; margin-top: 2px; }
+
+  .confirmation-text {
+    flex: 1;
+    strong { display: block; font-size: 16px; font-weight: 700; color: #1e293b; margin-bottom: 4px; }
+    p { margin: 0; font-size: 13px; color: #475569; }
+  }
+
   .dialog-close {
-    width: 32px; height: 32px; border: none; background: #f1f5f9;
-    border-radius: 50%; font-size: 18px; cursor: pointer; color: #475569;
-    &:hover { background: #e2e8f0; }
+    width: 28px; height: 28px; border: none; background: none;
+    font-size: 18px; cursor: pointer; color: #94a3b8; flex-shrink: 0;
+    &:hover { color: #475569; }
   }
 }
 
@@ -457,27 +1079,24 @@
 
   .expected-status {
     margin-top: 16px;
-    label { display: block; font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 8px; }
+    label { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 8px; }
   }
 
   .status-change-box {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 12px 16px;
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    border-radius: 8px;
+    gap: 10px;
+    flex-wrap: wrap;
 
-    .from-status {
-      padding: 4px 10px; background: #dbeafe; color: #1d4ed8;
-      border-radius: 6px; font-size: 12px; font-weight: 600;
+    .status-badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 600;
+      i { font-size: 10px; }
+      &.sent-to-office { background: #ede9fe; color: #6d28d9; }
+      &.sent-to-do { background: #ede9fe; color: #4338ca; }
+      &.sent-back { background: #fef3c7; color: #92400e; }
     }
-    .arrow { color: #94a3b8; font-size: 16px; }
-    .to-status {
-      padding: 4px 10px; background: #dcfce7; color: #166534;
-      border-radius: 6px; font-size: 12px; font-weight: 600;
-    }
+    .arrow { color: #94a3b8; font-size: 14px; }
   }
 }
 

@@ -21,6 +21,7 @@ interface ComplaintTask {
   assignedOfficer: string;
   hasAttachments?: boolean;
   triageSignal?: string;
+  viewOnly?: boolean;
 }
 
 @Component({

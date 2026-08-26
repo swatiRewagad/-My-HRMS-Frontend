@@ -1,210 +1,455 @@
 <div class="ops-head-container">
-  <!-- Header -->
-  <header class="dash-header">
+  @if (!selectedComplaint()) {
+  <!-- ═══ HEADER — exact copy of /crpc/home (deo-home), the true CRPC dashboard header ═══ -->
+  <header class="cms-header">
     <div class="header-left">
-      <img src="assets/rbi-logo.png" alt="RBI" class="rbi-logo" onerror="this.style.display='none'" />
-      <div class="brand">
-        <span class="brand-title">CMS</span>
-        <span class="brand-sub">CRPC Operational Head</span>
+      <img src="assets/corporates-rbi-logo.jpg" alt="RBI" class="rbi-logo" />
+      <div class="rbi-text">
+        <span class="rbi-hindi">भारतीय रिज़र्व बैंक</span>
+        <span class="rbi-english">RESERVE BANK OF INDIA</span>
+      </div>
+      <div class="header-divider-v"></div>
+      <img src="assets/cms-logo.png" alt="CMS" class="cms-logo" onerror="this.style.display='none'" />
+      <span class="cms-title">CMS</span>
+      <span class="cms-subtitle">Complaint Management System</span>
+    </div>
+    <div class="header-right">
+      <div class="header-icons">
+        <button title="Phone"><i class="pi pi-phone"></i></button>
+        <span class="font-size-group">
+          <button title="Decrease font" class="font-btn">A-</button>
+          <button title="Default font" class="font-btn active">A</button>
+          <button title="Increase font" class="font-btn">A+</button>
+        </span>
+        <button class="lang-btn"><i class="pi pi-globe"></i> English <i class="pi pi-angle-down"></i></button>
+        <button title="Notifications"><i class="pi pi-bell"></i></button>
+      </div>
+      <div class="user-info-block">
+        @if (auth.currentUser(); as user) {
+          <span class="user-avatar">{{ (user.firstName || 'O').charAt(0) }}</span>
+          <div class="user-details">
+            <span class="user-name">{{ user.firstName }} {{ user.lastName }}</span>
+            <span class="user-role">CRPC Operational Head</span>
+          </div>
+        }
+        <button class="user-dropdown-btn" (click)="logout()"><i class="pi pi-angle-down"></i></button>
+      </div>
+    </div>
+  </header>
+  } @else {
+  <!-- ═══ BILINGUAL HEADER — matches the RBIO/CRPC complaint detail screens exactly ═══ -->
+  <header class="cms-header-bilingual">
+    <div class="header-left">
+      <img src="assets/corporates-rbi-logo.jpg" alt="RBI" class="rbi-logo" />
+      <div class="rbi-text">
+        <span class="rbi-hindi">भारतीय रिज़र्व बैंक</span>
+        <span class="rbi-english">RESERVE BANK OF INDIA</span>
+      </div>
+      <div class="header-divider-v"></div>
+      <img src="assets/rbi-logo.png" alt="CMS" class="cms-logo" onerror="this.style.display='none'" />
+      <div class="header-brand">
+        <span class="cms-title">CMS</span>
+        <span class="cms-subtitle">Complaint Management System</span>
       </div>
     </div>
     <div class="header-right">
+      <div class="accessibility-controls">
+        <button class="acc-btn" title="Phone"><i class="pi pi-phone"></i></button>
+        <span class="acc-divider">|</span>
+        <button class="acc-btn" title="Decrease font">A-</button>
+        <button class="acc-btn acc-btn-mid" title="Normal font">A</button>
+        <button class="acc-btn" title="Increase font">A+</button>
+        <span class="acc-divider">|</span>
+        <button class="acc-btn lang-btn" title="Language">English <i class="pi pi-chevron-down"></i></button>
+        <span class="acc-divider">|</span>
+        <button class="acc-btn" title="Notifications"><i class="pi pi-bell"></i></button>
+      </div>
+      <div class="header-divider"></div>
       @if (auth.currentUser(); as user) {
         <span class="user-avatar">{{ (user.firstName || 'O').charAt(0) }}{{ (user.lastName || 'H').charAt(0) }}</span>
-        <div class="user-info">
+        <div class="user-details">
           <span class="user-name">{{ user.firstName }} {{ user.lastName }}</span>
           <span class="user-role">CRPC Operational Head</span>
         </div>
       }
-      <button class="btn-logout" (click)="logout()">Logout</button>
+      <button class="btn-logout" (click)="logout()" title="Logout"><i class="pi pi-sign-out"></i></button>
     </div>
   </header>
+  }
 
+  @if (!selectedComplaint()) {
   <div class="main-layout">
-    <!-- Sidebar -->
+    <!-- Sidebar — exact copy of /crpc/home (deo-home) -->
     <aside class="sidebar">
-      <div class="sidebar-item" [class.active]="sidebarItem() === 'transfers'" (click)="sidebarItem.set('transfers')">
-        <i class="pi pi-exchange"></i>
-        <span>Transfers</span>
-      </div>
-      <div class="sidebar-item" [class.active]="sidebarItem() === 'home'" (click)="navigateTo('home')">
+      <div class="sidebar-item active">
         <i class="pi pi-list"></i>
         <span>CRPC Complaints</span>
       </div>
-      <div class="sidebar-item" [class.active]="sidebarItem() === 'reviewer'" (click)="navigateTo('reviewer')">
-        <i class="pi pi-check-circle"></i>
-        <span>Reviewer Queue</span>
+      <div class="sidebar-item" (click)="navigateTo('home')">
+        <i class="pi pi-chart-bar"></i>
+        <span>Dashboard</span>
+      </div>
+      <div class="sidebar-collapse">
+        <i class="pi pi-angle-double-left"></i>
+        <span>Collapse</span>
       </div>
     </aside>
 
     <!-- Content Area -->
     <main class="content">
-      @if (!selectedComplaint()) {
         <!-- List View -->
         <div class="content-header">
-          <h1>Transfer Complaints</h1>
+          <h1>CRPC Complaints</h1>
           <div class="header-actions">
-            <div class="search-box">
-              <i class="pi pi-search"></i>
-              <input type="text" placeholder="Search complaints..." [ngModel]="searchText()" (ngModelChange)="searchText.set($event)" />
+            <a class="advanced-search-link">Advanced Search</a>
+            <select class="scope-select">
+              <option>CRPC Complaints</option>
+            </select>
+            <select class="scope-select">
+              <option>Transfers Assigned To Me</option>
+            </select>
+          </div>
+        </div>
+
+        @if (loadError()) {
+          <div class="error-banner">
+            <i class="pi pi-exclamation-triangle"></i>
+            Could not load transfer requests from the server. Showing no data rather than placeholder rows.
+          </div>
+        }
+
+        <!-- Stats Cards — icon-badge style, exact copy of /crpc/home (deo-home) -->
+        <div class="stats-bar">
+          <div class="stat-card" (click)="statusFilter.set('ALL')">
+            <div class="stat-icon blue"><i class="pi pi-inbox"></i></div>
+            <div class="stat-content">
+              <span class="stat-label">Total Complaints <i class="pi pi-info-circle"></i></span>
+              <span class="stat-value">{{ stats().total }}</span>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon orange"><i class="pi pi-arrow-right-arrow-left"></i></div>
+            <div class="stat-content">
+              <span class="stat-label">Total Transfers <i class="pi pi-info-circle"></i></span>
+              <span class="stat-value">{{ stats().totalTransfers }}</span>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon green"><span class="icon-letter">R</span></div>
+            <div class="stat-content">
+              <span class="stat-label">Within RBIO Office <i class="pi pi-info-circle"></i></span>
+              <span class="stat-value">{{ stats().intraRbio }}</span>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon blue"><span class="icon-letter">C</span></div>
+            <div class="stat-content">
+              <span class="stat-label">Within CEPC Office <i class="pi pi-info-circle"></i></span>
+              <span class="stat-value">{{ stats().withinCrpc }}</span>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon agr"><span class="icon-letter">R→C</span></div>
+            <div class="stat-content">
+              <span class="stat-label">RBIO to CEPC <i class="pi pi-info-circle"></i></span>
+              <span class="stat-value">{{ stats().rbioToCrpc }}</span>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon agr"><span class="icon-letter">C→R</span></div>
+            <div class="stat-content">
+              <span class="stat-label">CEPC to RBIO <i class="pi pi-info-circle"></i></span>
+              <span class="stat-value">{{ stats().crpcToRbio }}</span>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon rbi-domain"><span class="icon-letter">CD→R</span></div>
+            <div class="stat-content">
+              <span class="stat-label">CEPD to RBIO <i class="pi pi-info-circle"></i></span>
+              <span class="stat-value">{{ stats().crpcToRbioDept }}</span>
             </div>
           </div>
         </div>
 
-        <!-- Stats Cards -->
-        <div class="stats-row">
-          <div class="stat-card total">
-            <div class="stat-value">{{ stats().total }}</div>
-            <div class="stat-label">Total Complaints</div>
-          </div>
-          <div class="stat-card transfers">
-            <div class="stat-value">{{ stats().totalTransfers }}</div>
-            <div class="stat-label">Total Transfers</div>
-          </div>
-          <div class="stat-card intra">
-            <div class="stat-value">{{ stats().intraRbio }}</div>
-            <div class="stat-label">Intra RBIO Office</div>
-          </div>
-          <div class="stat-card within">
-            <div class="stat-value">{{ stats().withinCrpc }}</div>
-            <div class="stat-label">Within CRPC Office</div>
-          </div>
-          <div class="stat-card r2c">
-            <div class="stat-value">{{ stats().rbioToCrpc }}</div>
-            <div class="stat-label">RBIO to CRPC</div>
-          </div>
-          <div class="stat-card c2r">
-            <div class="stat-value">{{ stats().crpcToRbio }}</div>
-            <div class="stat-label">CRPC to RBIO</div>
-          </div>
-          <div class="stat-card dept">
-            <div class="stat-value">{{ stats().crpcToRbioDept }}</div>
-            <div class="stat-label">CRPC to RBI Dept</div>
-          </div>
+        <!-- Status Tabs -->
+        <div class="status-tabs">
+          <button class="status-tab" [class.active]="statusFilter() === 'ALL'" (click)="statusFilter.set('ALL')">All</button>
+          <button class="status-tab" [class.active]="statusFilter() === 'DRAFT'" (click)="statusFilter.set('DRAFT')">
+            Draft @if (statusCounts().draft > 0) { <span class="tab-count">{{ statusCounts().draft }}</span> }
+          </button>
+          <button class="status-tab" [class.active]="statusFilter() === 'IN_PROGRESS'" (click)="statusFilter.set('IN_PROGRESS')">
+            In Progress @if (statusCounts().inProgress > 0) { <span class="tab-count">{{ statusCounts().inProgress }}</span> }
+          </button>
+          <button class="status-tab" [class.active]="statusFilter() === 'SENT_BACK'" (click)="statusFilter.set('SENT_BACK')">
+            Sent Back @if (statusCounts().sentBack > 0) { <span class="tab-count">{{ statusCounts().sentBack }}</span> }
+          </button>
+          <button class="status-tab" [class.active]="statusFilter() === 'ASSESSMENT_COMPLETE'" (click)="statusFilter.set('ASSESSMENT_COMPLETE')">
+            Assessment Complete @if (statusCounts().assessmentComplete > 0) { <span class="tab-count">{{ statusCounts().assessmentComplete }}</span> }
+          </button>
         </div>
 
         <!-- Data Grid -->
-        @if (loading()) {
-          <div class="loading-state">
-            <div class="spinner"></div>
-            <p>Loading transfers...</p>
-          </div>
-        } @else {
-          <div class="data-grid-wrapper">
-            <table class="data-grid">
-              <thead>
-                <tr>
-                  <th (click)="sortBy('complaintId')">Complaint Id <span class="sort-icon">{{ sortColumn === 'complaintId' ? (sortDirection === 'asc' ? '▲' : '▼') : '⇅' }}</span></th>
-                  <th (click)="sortBy('complaintNumber')">Complaint Number <span class="sort-icon">{{ sortColumn === 'complaintNumber' ? (sortDirection === 'asc' ? '▲' : '▼') : '⇅' }}</span></th>
-                  <th (click)="sortBy('from')">From <span class="sort-icon">{{ sortColumn === 'from' ? (sortDirection === 'asc' ? '▲' : '▼') : '⇅' }}</span></th>
-                  <th (click)="sortBy('pending')">Pending <span class="sort-icon">{{ sortColumn === 'pending' ? (sortDirection === 'asc' ? '▲' : '▼') : '⇅' }}</span></th>
-                  <th (click)="sortBy('fromOffice')">From Office <span class="sort-icon">{{ sortColumn === 'fromOffice' ? (sortDirection === 'asc' ? '▲' : '▼') : '⇅' }}</span></th>
-                  <th (click)="sortBy('targetOffice')">Target Office <span class="sort-icon">{{ sortColumn === 'targetOffice' ? (sortDirection === 'asc' ? '▲' : '▼') : '⇅' }}</span></th>
-                  <th (click)="sortBy('status')">Status <span class="sort-icon">{{ sortColumn === 'status' ? (sortDirection === 'asc' ? '▲' : '▼') : '⇅' }}</span></th>
-                  <th (click)="sortBy('entityName')">Entity Name <span class="sort-icon">{{ sortColumn === 'entityName' ? (sortDirection === 'asc' ? '▲' : '▼') : '⇅' }}</span></th>
-                  <th (click)="sortBy('proposedCategory')">Proposed Com... <span class="sort-icon">{{ sortColumn === 'proposedCategory' ? (sortDirection === 'asc' ? '▲' : '▼') : '⇅' }}</span></th>
-                  <th (click)="sortBy('creationDate')">Creation Date <span class="sort-icon">{{ sortColumn === 'creationDate' ? (sortDirection === 'asc' ? '▲' : '▼') : '⇅' }}</span></th>
-                </tr>
-              </thead>
-              <tbody>
-                @for (c of paginatedComplaints(); track c.complaintId) {
-                  <tr (click)="openComplaint(c)" class="clickable-row">
-                    <td>{{ c.complaintId }}</td>
-                    <td>{{ c.complaintNumber }}</td>
-                    <td>{{ c.from }}</td>
-                    <td><span class="pending-badge">{{ c.pending }} days</span></td>
-                    <td>{{ c.fromOffice }}</td>
-                    <td>{{ c.targetOffice }}</td>
-                    <td><span class="status-chip" [attr.data-status]="c.status">{{ c.status }}</span></td>
-                    <td>{{ c.entityName }}</td>
-                    <td>{{ c.proposedCategory }}</td>
-                    <td>{{ c.creationDate }}</td>
-                  </tr>
-                } @empty {
-                  <tr><td colspan="10" class="empty-row">No transfer complaints found</td></tr>
-                }
-              </tbody>
-            </table>
-          </div>
-
-          <!-- Pagination -->
-          <div class="pagination">
-            <span class="page-info">Showing {{ paginationStart() }}–{{ paginationEnd() }} of {{ filteredComplaints().length }}</span>
-            <div class="page-controls">
-              <button [disabled]="currentPage() === 1" (click)="currentPage.set(currentPage() - 1)">‹</button>
-              @for (p of pageNumbers(); track p) {
-                <button [class.active]="p === currentPage()" (click)="currentPage.set(p)">{{ p }}</button>
-              }
-              <button [disabled]="currentPage() === totalPages()" (click)="currentPage.set(currentPage() + 1)">›</button>
+        <div class="grid-panel">
+          <div class="grid-panel-header">
+            <h3>Complaints</h3>
+            <div class="search-box">
+              <input type="text" placeholder="Search complaints..." [ngModel]="searchText()" (ngModelChange)="searchText.set($event)" />
+              <i class="pi pi-search"></i>
             </div>
           </div>
-        }
-      } @else {
-        <!-- Detail View -->
-        <div class="detail-view">
-          <div class="detail-topbar">
-            <button class="back-btn" (click)="closeDetail()"><i class="pi pi-arrow-left"></i> Back to List</button>
-            <h2>{{ selectedComplaint()!.complaintNumber }}</h2>
-            <span class="status-chip" [attr.data-status]="selectedComplaint()!.status">{{ selectedComplaint()!.status }}</span>
+
+          @if (loading()) {
+            <div class="loading-state">
+              <div class="spinner"></div>
+              <p>Loading transfers...</p>
+            </div>
+          } @else {
+            <div class="data-grid-wrapper">
+              <table class="data-grid">
+                <thead>
+                  <tr>
+                    <th (click)="sortBy('complaintId')">Complaint Id <span class="sort-icon">{{ sortColumn === 'complaintId' ? (sortDirection === 'asc' ? '▲' : '▼') : '⇅' }}</span></th>
+                    <th (click)="sortBy('complaintNumber')">Complaint Number <span class="sort-icon">{{ sortColumn === 'complaintNumber' ? (sortDirection === 'asc' ? '▲' : '▼') : '⇅' }}</span></th>
+                    <th (click)="sortBy('from')">From <span class="sort-icon">{{ sortColumn === 'from' ? (sortDirection === 'asc' ? '▲' : '▼') : '⇅' }}</span></th>
+                    <th (click)="sortBy('pending')">Pending <span class="sort-icon">{{ sortColumn === 'pending' ? (sortDirection === 'asc' ? '▲' : '▼') : '⇅' }}</span></th>
+                    <th (click)="sortBy('fromOffice')">From Office <span class="sort-icon">{{ sortColumn === 'fromOffice' ? (sortDirection === 'asc' ? '▲' : '▼') : '⇅' }}</span></th>
+                    <th (click)="sortBy('targetOffice')">Target Office <span class="sort-icon">{{ sortColumn === 'targetOffice' ? (sortDirection === 'asc' ? '▲' : '▼') : '⇅' }}</span></th>
+                    <th (click)="sortBy('status')">Status <span class="sort-icon">{{ sortColumn === 'status' ? (sortDirection === 'asc' ? '▲' : '▼') : '⇅' }}</span></th>
+                    <th (click)="sortBy('entityName')">Entity Name <span class="sort-icon">{{ sortColumn === 'entityName' ? (sortDirection === 'asc' ? '▲' : '▼') : '⇅' }}</span></th>
+                    <th (click)="sortBy('proposedCategory')">Proposed Com... <span class="sort-icon">{{ sortColumn === 'proposedCategory' ? (sortDirection === 'asc' ? '▲' : '▼') : '⇅' }}</span></th>
+                    <th (click)="sortBy('creationDate')">Creation Date <span class="sort-icon">{{ sortColumn === 'creationDate' ? (sortDirection === 'asc' ? '▲' : '▼') : '⇅' }}</span></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (c of paginatedComplaints(); track c.complaintId) {
+                    <tr (click)="openComplaint(c)" class="clickable-row">
+                      <td>{{ c.complaintId }}</td>
+                      <td>{{ c.complaintNumber }}</td>
+                      <td>{{ c.from }}</td>
+                      <td><span class="pending-badge">{{ c.pending }} day{{ c.pending === 1 ? '' : 's' }}</span></td>
+                      <td>{{ c.fromOffice }}</td>
+                      <td>{{ c.targetOffice }}</td>
+                      <td>
+                        <span class="status-chip" [attr.data-status]="c.status">
+                          <i class="pi" [class.pi-arrow-up-right]="c.status === 'PENDING'" [class.pi-check]="c.status === 'APPROVED'" [class.pi-times]="c.status === 'REJECTED'"></i>
+                          {{ getStatusLabel(c) }}
+                        </span>
+                      </td>
+                      <td>{{ c.entityName || '—' }}</td>
+                      <td>{{ c.proposedCategory }}</td>
+                      <td>{{ c.creationDate | date:'dd-MM-yyyy' }}</td>
+                    </tr>
+                  } @empty {
+                    <tr><td colspan="10" class="empty-row">No transfer complaints found</td></tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Pagination -->
+            <div class="pagination">
+              <span class="page-info">Showing {{ paginationStart() }}–{{ paginationEnd() }} of {{ filteredComplaints().length }} entries</span>
+              <div class="page-controls">
+                <button [disabled]="currentPage() === 1" (click)="currentPage.set(currentPage() - 1)">‹</button>
+                @for (p of pageNumbers(); track p) {
+                  <button [class.active]="p === currentPage()" (click)="currentPage.set(p)">{{ p }}</button>
+                }
+                <button [disabled]="currentPage() === totalPages()" (click)="currentPage.set(currentPage() + 1)">›</button>
+              </div>
+            </div>
+          }
+        </div>
+    </main>
+  </div>
+  } @else {
+  <!-- ═══ DETAIL VIEW — exact structure copy of the RBIO/CRPC assessment screen ═══ -->
+  <div class="assessment-container">
+    <nav class="side-nav">
+      <button class="side-nav-btn active" title="Complaint view"><i class="pi pi-file"></i></button>
+      <button class="side-nav-btn" title="Dashboard" (click)="closeDetail()"><i class="pi pi-chart-bar"></i></button>
+    </nav>
+
+    <div class="main-frame">
+      <div class="sub-header">
+        <div class="complaint-tab active">
+          <i class="pi pi-file"></i>
+          Complaint {{ selectedComplaint()!.complaintId }}
+        </div>
+        <div class="complaint-tab add-tab" (click)="closeDetail()" title="Back to List">
+          <i class="pi pi-plus"></i>
+        </div>
+      </div>
+
+      <div class="page-body-layout">
+        <div class="left-main-area" [class.view-only-locked]="selectedComplaint()!.status !== 'PENDING'">
+          @if (showSuccessPage()) {
+            <!-- ═══ SUCCESS PAGE — stays until dismissed, matches RBIO/CRPC pattern ═══ -->
+            <div class="success-page">
+              <div class="success-icon">
+                <i class="pi" [class.pi-check-circle]="successAction() === 'approve'" [class.pi-arrow-left]="successAction() === 'reject'"
+                   [style.color]="successAction() === 'approve' ? '#16a34a' : '#f59e0b'"></i>
+              </div>
+              @if (successAction() === 'approve') {
+                <h2>Transfer Approved</h2>
+                <p>Complaint <strong>{{ successComplaintNumber }}</strong> has been approved and
+                  @if (successAssignedOfficer) {
+                    assigned to <strong>{{ successAssignedOfficer }}</strong>.
+                  } @else {
+                    assigned to a Dealing Officer at the target office.
+                  }
+                </p>
+              } @else {
+                <h2>Transfer Rejected</h2>
+                <p>Complaint <strong>{{ successComplaintNumber }}</strong> has been rejected and returned to
+                  @if (successAssignedOfficer) {
+                    <strong>{{ successAssignedOfficer }}</strong>.
+                  } @else {
+                    the requesting officer.
+                  }
+                </p>
+              }
+              <button class="btn btn-primary" (click)="dismissSuccessPage()">Back to List</button>
+            </div>
+          } @else {
+          <div class="meta-row">
+            <button class="back-arrow" (click)="closeDetail()"><i class="pi pi-arrow-left"></i></button>
+            <div class="meta-item">
+              <span class="meta-icon"><i class="pi pi-id-card"></i></span>
+              <div class="meta-text">
+                <span class="meta-label">Complaint ID <i class="pi pi-info-circle"></i></span>
+                <span class="meta-value">{{ selectedComplaint()!.complaintId }}</span>
+              </div>
+            </div>
+            <div class="meta-item">
+              <span class="meta-icon"><i class="pi pi-file"></i></span>
+              <div class="meta-text">
+                <span class="meta-label">Complaint Number <i class="pi pi-info-circle"></i></span>
+                <span class="meta-value">{{ selectedComplaint()!.complaintNumber ? 'N' + selectedComplaint()!.complaintNumber : 'Not Generated' }}</span>
+              </div>
+            </div>
+            <div class="meta-item">
+              <span class="meta-icon pink"><i class="pi pi-envelope"></i></span>
+              <div class="meta-text">
+                <span class="meta-label">Mode of Receipt <i class="pi pi-info-circle"></i></span>
+                <span class="meta-value">Email</span>
+              </div>
+            </div>
+            <div class="meta-item">
+              <span class="meta-icon"><i class="pi pi-chart-bar"></i></span>
+              <div class="meta-text">
+                <span class="meta-label">Status <i class="pi pi-info-circle"></i></span>
+                <span class="meta-value"><span class="status-chip" [attr.data-status]="selectedComplaint()!.status">{{ getStatusLabel(selectedComplaint()!) }}</span></span>
+              </div>
+            </div>
+            <div class="meta-item">
+              <span class="meta-icon dark"><i class="pi pi-user"></i></span>
+              <div class="meta-text">
+                <span class="meta-label">Complaint Owner <i class="pi pi-info-circle"></i></span>
+                <span class="meta-value">{{ selectedComplaint()!.complainantName || selectedComplaint()!.from }}</span>
+              </div>
+            </div>
+            <div class="meta-actions">
+              @if (selectedComplaint()!.status === 'PENDING') {
+                <button class="btn-approve" (click)="openConfirmDialog('approve')" [disabled]="processing()">Approve</button>
+                <button class="btn-reject" (click)="openConfirmDialog('reject')" [disabled]="processing()">Reject</button>
+              } @else {
+                <span class="readonly-badge"><i class="pi pi-lock"></i> View Only</span>
+              }
+              <button class="btn-more"><i class="pi pi-ellipsis-v"></i></button>
+            </div>
           </div>
 
-          <div class="detail-body">
+          <div class="page-tabs">
+            <button class="page-tab active">Summary</button>
+            <button class="page-tab">Email Communication</button>
+          </div>
+
+          <div class="content-box">
+           <div class="main-content-layout two-col">
             <!-- Left: Complaint Info -->
-            <div class="detail-left">
-              <!-- Summary Tab -->
-              <div class="tabs">
-                <button class="tab active">Summary</button>
-                <button class="tab">Email Communication</button>
+            <div class="col-email-syndicate">
+              <div class="panel-header">
+                <h3><i class="pi pi-th-large"></i> Complaint</h3>
+                <div class="panel-header-actions">
+                  <a class="edit-link"><i class="pi pi-pencil"></i> Edit</a>
+                  <button class="expand-btn"><i class="pi pi-window-maximize"></i></button>
+                </div>
               </div>
 
-              <div class="complaint-info-card">
-                <div class="info-grid">
-                  <div class="info-item">
-                    <label>Complaint ID</label>
-                    <p>{{ selectedComplaint()!.complaintId }}</p>
-                  </div>
-                  <div class="info-item">
-                    <label>Complainant</label>
-                    <p>{{ selectedComplaint()!.complainantName }}</p>
-                  </div>
-                  <div class="info-item">
-                    <label>Email</label>
-                    <p>{{ selectedComplaint()!.complainantEmail }}</p>
-                  </div>
-                  <div class="info-item">
-                    <label>Phone</label>
-                    <p>{{ selectedComplaint()!.complainantPhone || 'N/A' }}</p>
-                  </div>
-                  <div class="info-item">
-                    <label>Entity</label>
-                    <p>{{ selectedComplaint()!.entityName }}</p>
-                  </div>
-                  <div class="info-item">
-                    <label>Category</label>
-                    <p>{{ selectedComplaint()!.proposedCategory }}</p>
-                  </div>
-                  <div class="info-item">
-                    <label>From Office</label>
-                    <p>{{ selectedComplaint()!.fromOffice }}</p>
-                  </div>
-                  <div class="info-item">
-                    <label>Target Office</label>
-                    <p>{{ selectedComplaint()!.targetOffice }}</p>
-                  </div>
-                  <div class="info-item full-width">
-                    <label>Subject</label>
-                    <p>{{ selectedComplaint()!.subject }}</p>
-                  </div>
-                  <div class="info-item full-width">
-                    <label>Description</label>
-                    <p>{{ selectedComplaint()!.description }}</p>
-                  </div>
-                </div>
+              <div class="form-scroll">
+                <section class="form-section">
+                  <h5 class="section-title" [class.expanded]="detailSections.basic" (click)="detailSections.basic = !detailSections.basic">
+                    <i class="pi pi-list"></i> Basic Details
+                    <i class="pi section-chevron" [class.pi-chevron-up]="detailSections.basic" [class.pi-chevron-down]="!detailSections.basic"></i>
+                  </h5>
+                  @if (detailSections.basic) {
+                    <div class="summary-fields">
+                      <div class="summary-row">
+                        <div class="summary-field">
+                          <span class="summary-label">Complainant Name</span>
+                          <span class="summary-value">{{ selectedComplaint()!.complainantName || '—' }}</span>
+                        </div>
+                        <div class="summary-field">
+                          <span class="summary-label">Email ID</span>
+                          <span class="summary-value">{{ selectedComplaint()!.complainantEmail || '—' }}</span>
+                        </div>
+                      </div>
+                      <div class="summary-field full">
+                        <span class="summary-label">Subject</span>
+                        <span class="summary-value">{{ selectedComplaint()!.subject || '—' }}</span>
+                      </div>
+                      <div class="summary-field full">
+                        <span class="summary-label">Complaint Details</span>
+                        <span class="summary-value">{{ selectedComplaint()!.description || '—' }}</span>
+                      </div>
+                      <div class="summary-row">
+                        <div class="summary-field">
+                          <span class="summary-label">Mode of Receipt</span>
+                          <span class="summary-value">Email</span>
+                        </div>
+                        <div class="summary-field">
+                          <span class="summary-label">Phone</span>
+                          <span class="summary-value">{{ selectedComplaint()!.complainantPhone || '—' }}</span>
+                        </div>
+                      </div>
+                    </div>
+                  }
+                </section>
+
+                <section class="form-section">
+                  <h5 class="section-title" [class.expanded]="detailSections.eligibility" (click)="detailSections.eligibility = !detailSections.eligibility">
+                    <i class="pi pi-verified"></i> Eligibility
+                    <i class="pi section-chevron" [class.pi-chevron-up]="detailSections.eligibility" [class.pi-chevron-down]="!detailSections.eligibility"></i>
+                  </h5>
+                  @if (detailSections.eligibility) {
+                    <div class="summary-fields">
+                      <div class="summary-field">
+                        <span class="summary-label">Proposed Category</span>
+                        <span class="summary-value">{{ selectedComplaint()!.proposedCategory || '—' }}</span>
+                      </div>
+                    </div>
+                  }
+                </section>
+
+                <section class="form-section">
+                  <h5 class="section-title" [class.expanded]="detailSections.entity" (click)="detailSections.entity = !detailSections.entity">
+                    <i class="pi pi-building"></i> Entity Details
+                    <i class="pi section-chevron" [class.pi-chevron-up]="detailSections.entity" [class.pi-chevron-down]="!detailSections.entity"></i>
+                  </h5>
+                  @if (detailSections.entity) {
+                    <div class="summary-fields">
+                      <div class="summary-field">
+                        <span class="summary-label">Entity Name</span>
+                        <span class="summary-value">{{ selectedComplaint()!.entityName || '—' }}</span>
+                      </div>
+                    </div>
+                  }
+                </section>
 
                 <!-- Timeline -->
                 @if (selectedComplaint()!.timeline?.length) {
                   <div class="timeline-section">
-                    <h4>Timeline</h4>
+                    <h5>Timeline</h5>
                     @for (entry of selectedComplaint()!.timeline; track entry.timestamp) {
                       <div class="timeline-entry">
                         <div class="timeline-dot"></div>
@@ -224,47 +469,79 @@
             </div>
 
             <!-- Right: Forward Panel -->
-            <div class="detail-right">
-              <div class="forward-panel">
-                <h3>Forward</h3>
+            <div class="col-complaint-form">
+              <div class="panel-header">
+                <h3><i class="pi pi-arrow-up-right"></i> Forward</h3>
+                <button class="expand-btn"><i class="pi pi-window-maximize"></i></button>
+              </div>
 
-                <div class="form-group">
-                  <label>Language</label>
-                  <select [(ngModel)]="forwardLanguage">
-                    <option value="">Select Language</option>
-                    @for (lang of languages; track lang) {
-                      <option [value]="lang">{{ lang }}</option>
-                    }
-                  </select>
+              <div class="form-scroll">
+                <div class="transfer-summary-card">
+                  <h4 class="transfer-summary-title">Transfer Request Summary</h4>
+                  <div class="summary-row cols-3">
+                    <div class="summary-field">
+                      <span class="summary-label">Is complaint regarding Credit Card?</span>
+                      <div class="radio-inline">
+                        <label class="radio-label"><input type="radio" name="creditCard" [checked]="false" disabled /> Yes</label>
+                        <label class="radio-label"><input type="radio" name="creditCard" [checked]="true" disabled /> No</label>
+                      </div>
+                    </div>
+                    <div class="summary-field">
+                      <span class="summary-label">Language</span>
+                      <span class="summary-value">{{ selectedComplaint()!.language || '—' }}</span>
+                    </div>
+                    <div class="summary-field">
+                      <span class="summary-label">Complainant Address</span>
+                      <span class="summary-value">—</span>
+                    </div>
+                  </div>
+                  <div class="summary-row cols-3">
+                    <div class="summary-field">
+                      <span class="summary-label">Entity Name</span>
+                      <span class="summary-value">{{ selectedComplaint()!.entityName || '—' }}</span>
+                    </div>
+                    <div class="summary-field">
+                      <span class="summary-label">Entity Branch</span>
+                      <span class="summary-value">—</span>
+                    </div>
+                    <div class="summary-field">
+                      <span class="summary-label">Entity Address</span>
+                      <span class="summary-value">—</span>
+                    </div>
+                  </div>
+                  <div class="summary-row cols-3">
+                    <div class="summary-field">
+                      <span class="summary-label">Transfer From Office</span>
+                      <span class="summary-value">{{ selectedComplaint()!.fromOffice }}</span>
+                    </div>
+                    <div class="summary-field">
+                      <span class="summary-label">Transfer Target Office</span>
+                      <span class="summary-value">{{ selectedComplaint()!.targetOffice }}</span>
+                    </div>
+                  </div>
+                  <div class="summary-field full">
+                    <span class="summary-label">Comment</span>
+                    <span class="summary-value">{{ selectedComplaint()!.comment || '—' }}</span>
+                  </div>
                 </div>
 
-                <div class="form-group">
-                  <label>Territory</label>
-                  <select [(ngModel)]="forwardTerritory">
-                    <option value="">Select Territory</option>
-                    @for (t of territories; track t) {
-                      <option [value]="t">{{ t }}</option>
-                    }
-                  </select>
-                </div>
-
-                <div class="form-group">
-                  <label>Reassign Territory</label>
-                  <select [(ngModel)]="reassignTerritory">
-                    <option value="">Select Territory (Optional)</option>
-                    @for (t of territories; track t) {
-                      <option [value]="t">{{ t }}</option>
-                    }
-                  </select>
-                </div>
-
-                <div class="forward-actions">
-                  <button class="btn-approve" (click)="openConfirmDialog('approve')" [disabled]="processing()">
-                    <i class="pi pi-check"></i> Approve
-                  </button>
-                  <button class="btn-reject" (click)="openConfirmDialog('reject')" [disabled]="processing()">
-                    <i class="pi pi-times"></i> Reject
-                  </button>
+                <div class="territory-reassign-section">
+                  <label class="checkbox-label" [class.disabled]="selectedComplaint()!.status !== 'PENDING'">
+                    <input type="checkbox" [(ngModel)]="changeTerritory" (ngModelChange)="onChangeTerritoryToggle()" [disabled]="selectedComplaint()!.status !== 'PENDING'" />
+                    Do you want to change the Territory?
+                  </label>
+                  <div class="form-group">
+                    <label>Reassign Territory</label>
+                    <div class="deo-select-wrapper">
+                      <select [(ngModel)]="reassignTerritory" [disabled]="!changeTerritory || selectedComplaint()!.status !== 'PENDING'">
+                        <option value="">Search</option>
+                        @for (office of officeList(); track office.officeCode) {
+                          <option [value]="office.officeCode">{{ office.officeName }} ({{ office.officeType }})</option>
+                        }
+                      </select>
+                      <i class="pi pi-search"></i>
+                    </div>
+                  </div>
                 </div>
 
                 @if (actionResult()) {
@@ -274,34 +551,45 @@
                 }
               </div>
             </div>
+           </div>
           </div>
+          }
         </div>
-      }
-    </main>
+      </div>
+    </div>
   </div>
+  }
 
   <!-- Confirmation Dialog -->
   @if (showConfirmDialog()) {
     <div class="dialog-overlay" (click)="cancelConfirm()">
       <div class="confirm-dialog" (click)="$event.stopPropagation()">
         <div class="dialog-header">
-          <h3>Are you sure you want to {{ confirmAction() }} the request?</h3>
+          <i class="pi pi-info-circle confirmation-icon"></i>
+          <div class="confirmation-text">
+            <strong>Confirmation</strong>
+            <p>Are you sure you want to <strong>{{ confirmAction() }}</strong> the request ?</p>
+          </div>
           <button class="dialog-close" (click)="cancelConfirm()">×</button>
         </div>
         <div class="dialog-body">
           <div class="form-group">
             <label>Comments</label>
             <div class="textarea-with-speech">
-              <textarea [(ngModel)]="confirmComments" rows="4" placeholder="Enter your comments..."></textarea>
+              <textarea [(ngModel)]="confirmComments" rows="4" placeholder="Enter text here"></textarea>
               <app-speech-button (transcription)="confirmComments = confirmComments + ' ' + $event"></app-speech-button>
             </div>
           </div>
           <div class="expected-status">
-            <label>Expected Status Change</label>
+            <label>Expected Status Change <i class="pi pi-info-circle"></i></label>
             <div class="status-change-box">
-              <span class="from-status">{{ selectedComplaint()!.status }}</span>
+              <span class="status-badge sent-to-office"><i class="pi pi-arrow-up-right"></i> Sent to Other Office</span>
               <span class="arrow">→</span>
-              <span class="to-status">{{ confirmAction() === 'approve' ? 'Sent to DO' : 'Sent Back to Deputy Ombudsman' }}</span>
+              @if (confirmAction() === 'approve') {
+                <span class="status-badge sent-to-do"><i class="pi pi-arrow-up-right"></i> Sent to Dealing Officer</span>
+              } @else {
+                <span class="status-badge sent-back"><i class="pi pi-arrow-left"></i> Sent Back to Requester</span>
+              }
             </div>
           </div>
         </div>
@@ -316,7 +604,7 @@
             @if (processing()) {
               Processing...
             } @else {
-              Confirm {{ confirmAction() === 'approve' ? 'Approve' : 'Reject' }}
+              Confirm
             }
           </button>
         </div>
