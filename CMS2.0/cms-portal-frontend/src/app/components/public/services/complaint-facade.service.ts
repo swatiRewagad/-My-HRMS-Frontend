@@ -16,8 +16,9 @@ import {
   INITIAL_FORM_DATA, DEFAULT_CATEGORIES, ACCOUNT_TYPE_FIELD_MAP,
   ELIGIBILITY_QUESTIONS,
 } from '../configs';
+import { validateFile, validateStepQuota } from '../../../utils/file-validator';
 
-const DRAFT_VERSION = 4;
+const DRAFT_VERSION = 5;
 const MAX_FILE_SIZE = 2 * 1024 * 1024;
 
 @Injectable()
@@ -80,8 +81,19 @@ export class ComplaintFacadeService {
   reminderFileName = '';
   replyFile: File | null = null;
   replyFileName = '';
-  repFile: File | null = null;
-  repFileName = '';
+  repFiles: File[] = [];
+
+  get eligibilityBytesUsed(): number {
+    return (this.complaintFileWithRE?.size ?? 0) + (this.reminderFile?.size ?? 0) + (this.replyFile?.size ?? 0);
+  }
+
+  get complaintDetailsBytesUsed(): number {
+    return this.attachments.reduce((sum, f) => sum + f.size, 0);
+  }
+
+  get repAuthBytesUsed(): number {
+    return this.repFiles.reduce((sum, f) => sum + f.size, 0);
+  }
 
   // Error state
   validationErrors: Record<string, string> = {};
@@ -411,12 +423,11 @@ export class ComplaintFacadeService {
     this.repStates = [];
     this.repDistricts = [];
     this.repCities = [];
-    this.repFile = null;
-    this.repFileName = '';
+    this.repFiles = [];
   }
 
   syncRepFileUploadControl(): void {
-    this.repAuthorizationForm.controls.repFileUpload.setValue(this.repFile ? 'has_file' : '');
+    this.repAuthorizationForm.controls.repFileUpload.setValue(this.repFiles.length > 0 ? 'has_file' : '');
     this.repAuthorizationForm.controls.repFileUpload.markAsTouched();
     this.repAuthorizationForm.controls.repFileUpload.markAsDirty();
   }
@@ -834,14 +845,29 @@ export class ComplaintFacadeService {
   handleEligibilityFile(type: 'complaint' | 'reminder' | 'reply', event: Event): boolean {
     const input = event.target as HTMLInputElement;
     if (!input.files?.[0]) return false;
-    if (input.files[0].size > MAX_FILE_SIZE) {
-      if (type === 'complaint') this.eligibilityFileError = 'File size exceeds 2MB limit';
-      else if (type === 'reminder') this.reminderFileError = 'File size exceeds 2MB limit';
-      else this.replyFileError = 'File size exceeds 2MB limit';
+    const file = input.files[0];
+
+    const fileResult = validateFile(file);
+    if (!fileResult.valid) {
+      if (type === 'complaint') this.eligibilityFileError = fileResult.error!;
+      else if (type === 'reminder') this.reminderFileError = fileResult.error!;
+      else this.replyFileError = fileResult.error!;
       input.value = '';
       return false;
     }
-    const file = input.files[0];
+
+    const currentFileSize = type === 'complaint' ? (this.complaintFileWithRE?.size ?? 0)
+      : type === 'reminder' ? (this.reminderFile?.size ?? 0) : (this.replyFile?.size ?? 0);
+    const otherFilesSize = this.eligibilityBytesUsed - currentFileSize;
+    const quotaResult = validateStepQuota([file], otherFilesSize, 'eligibility');
+    if (!quotaResult.valid) {
+      if (type === 'complaint') this.eligibilityFileError = quotaResult.error!;
+      else if (type === 'reminder') this.reminderFileError = quotaResult.error!;
+      else this.replyFileError = quotaResult.error!;
+      input.value = '';
+      return false;
+    }
+
     switch (type) {
       case 'complaint':
         this.complaintFileWithRE = file;
@@ -1188,17 +1214,21 @@ export class ComplaintFacadeService {
   // ── Draft management ──
   saveDraft(): void {
     const attachmentMeta = this.attachmentPreviews.map(f => ({ name: f.name, type: f.type, size: f.size }));
+    const checkedAccountTypes = this.accountTypes.filter(a => a.checked).map(a => a.value);
     const draft = {
       version: DRAFT_VERSION,
       formData: this.formData,
       eligibilityAnswers: this.eligibilityAnswers,
       eligibilityStep: this.eligibilityStep(),
       currentStep: this.currentStep(),
+      highestStepReached: this.highestStepReached(),
       phase: this.phase(),
       entityName: this.getSelectedBankName(),
       declarationChecked: this.declarationChecked,
       declaration2Checked: this.declaration2Checked,
       attachmentMeta,
+      checkedAccountTypes,
+      dateDisplay: { ...this.dateDisplay },
     };
     sessionStorage.setItem('cms_complaint_draft', JSON.stringify(draft));
     sessionStorage.setItem('cms_draft_saved_at', new Date().toISOString());
@@ -1217,7 +1247,11 @@ export class ComplaintFacadeService {
       formData: this.formData,
       eligibilityAnswers: this.eligibilityAnswers,
       currentStep: this.currentStep(),
-      phase: this.phase()
+      highestStepReached: this.highestStepReached(),
+      eligibilityStep: this.eligibilityStep(),
+      phase: this.phase(),
+      checkedAccountTypes: this.accountTypes.filter(a => a.checked).map(a => a.value),
+      dateDisplay: { ...this.dateDisplay },
     }).subscribe({
       next: (res) => { if (res?.draftId) sessionStorage.setItem('cms_draft_id', res.draftId); },
       error: () => {}
@@ -1240,28 +1274,42 @@ export class ComplaintFacadeService {
     try {
       const draft = JSON.parse(saved);
       if (draft.version !== DRAFT_VERSION) { sessionStorage.removeItem('cms_complaint_draft'); return; }
-      if (draft.phase === 'form') {
+      if (draft.phase === 'form' || draft.phase === 'eligibility') {
         if (draft.formData) {
           const validKeys = Object.keys(this.formData);
           for (const key of validKeys) {
             if (draft.formData[key] !== undefined) this.formData[key] = draft.formData[key];
           }
         }
-        if (draft.eligibilityAnswers) this.eligibilityAnswers = draft.eligibilityAnswers;
+        if (draft.eligibilityAnswers) this.eligibilityAnswers = { ...draft.eligibilityAnswers };
         if (draft.declarationChecked !== undefined) this.declarationChecked = draft.declarationChecked;
         if (draft.declaration2Checked !== undefined) this.declaration2Checked = draft.declaration2Checked;
         if (draft.attachmentMeta?.length) {
           this.attachmentPreviews = draft.attachmentMeta.map((m: any) => ({ name: m.name, type: m.type, size: m.size, url: '' }));
         }
-        this.phase.set('form');
-        if (draft.currentStep) { this.currentStep.set(draft.currentStep); this.highestStepReached.set(draft.currentStep); }
-        this.initDateDisplays();
-        this.patchComplaintDetailsFromFormData();
-        this.patchRepAuthorizationFromFormData();
-        this.declarationForm.controls.declaration1.setValue(this.declarationChecked, { emitEvent: false });
-        this.declarationForm.controls.declaration2.setValue(this.declaration2Checked, { emitEvent: false });
+        if (draft.dateDisplay) this.dateDisplay = { ...this.dateDisplay, ...draft.dateDisplay };
+
+        this.phase.set(draft.phase);
+        if (draft.eligibilityStep) this.eligibilityStep.set(draft.eligibilityStep);
+        if (draft.currentStep) this.currentStep.set(draft.currentStep);
+        const highest = draft.highestStepReached ?? draft.currentStep ?? 1;
+        this.highestStepReached.set(highest);
+
+        this.restoreAllForms(draft);
       }
     } catch (e) {}
+  }
+
+  private restoreAllForms(draft: any): void {
+    this.initDateDisplays();
+    this.patchComplainantDetailsFromFormData();
+    this.patchRegulatedEntityFromFormData();
+    this.patchComplaintDetailsFromFormData();
+    this.restoreAccountTypes(draft.checkedAccountTypes);
+    this.patchRepAuthorizationFromFormData();
+    this.patchEligibilityFromFormData();
+    this.declarationForm.controls.declaration1.setValue(this.declarationChecked, { emitEvent: false });
+    this.declarationForm.controls.declaration2.setValue(this.declaration2Checked, { emitEvent: false });
   }
 
   loadDraftFromServer(draftId: string): void {
@@ -1273,15 +1321,19 @@ export class ComplaintFacadeService {
             if (draft.formData[key] !== undefined) this.formData[key] = draft.formData[key];
           }
         }
-        if (draft.eligibilityAnswers) this.eligibilityAnswers = draft.eligibilityAnswers;
-        if (draft.currentStep) { this.currentStep.set(draft.currentStep); this.highestStepReached.set(draft.currentStep); }
-        if (draft.phase === 'form') this.phase.set('form');
-        if (draft.eligibilityAnswers?.['selectedEntity']) {
+        if (draft.eligibilityAnswers) this.eligibilityAnswers = { ...draft.eligibilityAnswers };
+        if (draft.currentStep) this.currentStep.set(draft.currentStep);
+        const highest = draft.highestStepReached ?? draft.currentStep ?? 1;
+        this.highestStepReached.set(highest);
+        if (draft.phase === 'form' || draft.phase === 'eligibility') this.phase.set(draft.phase);
+        if (draft.eligibilityStep) {
+          this.eligibilityStep.set(draft.eligibilityStep);
+        } else if (draft.eligibilityAnswers?.['regulatedEntity']) {
           this.eligibilityStep.set(Object.keys(draft.eligibilityAnswers).length + 1);
         }
+        if (draft.dateDisplay) this.dateDisplay = { ...this.dateDisplay, ...draft.dateDisplay };
         sessionStorage.setItem('cms_draft_id', draftId);
-        this.patchComplaintDetailsFromFormData();
-        this.patchRepAuthorizationFromFormData();
+        this.restoreAllForms(draft);
       },
       error: () => { this.loadDraft(); }
     });
@@ -1313,11 +1365,91 @@ export class ComplaintFacadeService {
       if (this.formData['repEmail']) ra.controls.repEmail.setValue(this.formData['repEmail'], { emitEvent: false });
       if (this.formData['repPhone']) ra.controls.repPhone.setValue(this.formData['repPhone'], { emitEvent: false });
       if (this.formData['repPincode']) ra.controls.repPincode.setValue(this.formData['repPincode'], { emitEvent: false });
-      if (this.formData['repState']) ra.controls.repState.setValue(this.formData['repState'], { emitEvent: false });
-      if (this.formData['repDistrict']) ra.controls.repDistrict.setValue(this.formData['repDistrict'], { emitEvent: false });
-      if (this.formData['repCity']) ra.controls.repCity.setValue(this.formData['repCity'], { emitEvent: false });
+      if (this.formData['repState']) {
+        this.repStates = [this.formData['repState']];
+        ra.controls.repState.setValue(this.formData['repState'], { emitEvent: false });
+      }
+      if (this.formData['repDistrict']) {
+        this.repDistricts = [this.formData['repDistrict']];
+        ra.controls.repDistrict.setValue(this.formData['repDistrict'], { emitEvent: false });
+      }
+      if (this.formData['repCity']) {
+        this.repCities = [this.formData['repCity']];
+        ra.controls.repCity.setValue(this.formData['repCity'], { emitEvent: false });
+      }
       if (this.formData['repAddress']) ra.controls.repAddress.setValue(this.formData['repAddress'], { emitEvent: false });
     }
+  }
+
+  patchComplainantDetailsFromFormData(): void {
+    const cd = this.complainantDetailsForm;
+    if (this.formData['complainantCategory']) {
+      cd.controls.complaintCategory.setValue(this.formData['complainantCategory'], { emitEvent: false });
+      this.applyComplainantCategoryValidators(this.formData['complainantCategory']);
+    }
+    if (this.formData['firstName']) cd.controls.firstName.setValue(this.formData['firstName'], { emitEvent: false });
+    if (this.formData['middleName']) cd.controls.middleName.setValue(this.formData['middleName'], { emitEvent: false });
+    if (this.formData['lastName']) cd.controls.lastName.setValue(this.formData['lastName'], { emitEvent: false });
+    if (this.formData['age']) cd.controls.age.setValue(this.formData['age'], { emitEvent: false });
+    if (this.formData['gender']) cd.controls.gender.setValue(this.formData['gender'], { emitEvent: false });
+    if (this.formData['email']) cd.controls.email.setValue(this.formData['email'], { emitEvent: false });
+    if (this.formData['phone']) cd.controls.phone.setValue(this.formData['phone'], { emitEvent: false });
+    if (this.formData['addressDetails']) cd.controls.addressDetails.setValue(this.formData['addressDetails'], { emitEvent: false });
+    if (this.formData['pincode']) {
+      cd.controls.pincode.setValue(this.formData['pincode'], { emitEvent: false });
+    }
+    if (this.formData['state']) {
+      this.complainantStates = [this.formData['state']];
+      cd.controls.state.setValue(this.formData['state'], { emitEvent: false });
+    }
+    if (this.formData['city']) {
+      this.complainantDistricts = [this.formData['city']];
+      cd.controls.city.setValue(this.formData['city'], { emitEvent: false });
+    }
+  }
+
+  patchRegulatedEntityFromFormData(): void {
+    const re = this.regulatedEntityForm;
+    if (this.formData['isCreditCardComplaint']) {
+      re.controls.isCreditCardComplaint.setValue(this.formData['isCreditCardComplaint'], { emitEvent: true });
+    }
+    if (this.formData['entityState']) {
+      this.states = [{ label: this.formData['entityState'], value: this.formData['entityState'] }];
+      re.controls.entityState.setValue(this.formData['entityState'], { emitEvent: false });
+    }
+    if (this.formData['entityDistrict']) {
+      this.districts = [this.formData['entityDistrict']];
+      re.controls.entityDistrict.setValue(this.formData['entityDistrict'], { emitEvent: false });
+    }
+    if (this.formData['entityBranch']) {
+      this.branches = [this.formData['entityBranch']];
+      re.controls.entityBranch.setValue(this.formData['entityBranch'], { emitEvent: false });
+    }
+  }
+
+  patchEligibilityFromFormData(): void {
+    const ef = this.eligibilityStageForm;
+    for (const key of Object.keys(this.eligibilityAnswers)) {
+      const ctrl = ef.get(key);
+      if (ctrl && this.eligibilityAnswers[key]) {
+        ctrl.setValue(this.eligibilityAnswers[key] as any, { emitEvent: false });
+        ctrl.markAsTouched();
+      }
+    }
+    if (this.formData['bankComplaintDate']) ef.get('bankComplaintDate')!.setValue(this.formData['bankComplaintDate'], { emitEvent: false });
+    if (this.formData['bankComplaintRef']) ef.get('bankComplaintRef')!.setValue(this.formData['bankComplaintRef'], { emitEvent: false });
+    if (this.formData['reminderDate']) ef.get('reminderDate')!.setValue(this.formData['reminderDate'], { emitEvent: false });
+    if (this.formData['replyDate']) ef.get('replyDate')!.setValue(this.formData['replyDate'], { emitEvent: false });
+  }
+
+  private restoreAccountTypes(checkedValues?: string[]): void {
+    if (!checkedValues?.length) return;
+    for (const at of this.accountTypes) {
+      at.checked = checkedValues.includes(at.value);
+      if (at.checked) this.applyAccountTypeValidators(at);
+    }
+    this.selectAllAccounts = this.accountTypes.every(a => a.checked);
+    this.syncAccountTypeSelectionControl();
   }
 
   clearDraft(): void {

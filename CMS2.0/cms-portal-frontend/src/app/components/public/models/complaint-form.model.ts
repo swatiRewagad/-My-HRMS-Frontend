@@ -50,7 +50,11 @@ export interface DraftPayload {
   formData: Record<string, any>;
   eligibilityAnswers: Record<string, string>;
   currentStep: number;
+  highestStepReached?: number;
+  eligibilityStep?: number;
   phase: string;
+  checkedAccountTypes?: string[];
+  dateDisplay?: Record<string, string>;
 }
 
 export interface ComplaintPayload {

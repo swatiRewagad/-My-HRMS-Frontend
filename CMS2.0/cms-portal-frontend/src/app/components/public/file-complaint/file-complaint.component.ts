@@ -6,12 +6,12 @@ import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 import { TranslationService } from '../../../services/translation.service';
 import { PublicAuthService } from '../../../services/public-auth.service';
 import { TranslatePipe } from '../../../pipes/translate.pipe';
-import { validateFile, validateFileSet } from '../../../utils/file-validator';
 import { announceToScreenReader, setPageTitle } from '../../../utils/accessibility';
 import { Select } from 'primeng/select';
 import { Toast } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
 import { FormErrorComponent } from '../../../shared/form-error/form-error.component';
+import { FileUploadComponent } from '../../../shared/file-upload/file-upload.component';
 import { ComplaintFacadeService } from '../services';
 import { AccountType } from '../models';
 import { TOOLTIPS, STEP_TITLES, CATEGORY_LABEL_MAP, GENDER_LABEL_MAP } from '../configs';
@@ -19,7 +19,7 @@ import { TOOLTIPS, STEP_TITLES, CATEGORY_LABEL_MAP, GENDER_LABEL_MAP } from '../
 @Component({
   selector: 'app-public-file-complaint',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterLink, TranslatePipe, Select, FormErrorComponent, Toast],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterLink, TranslatePipe, Select, FormErrorComponent, FileUploadComponent, Toast],
   providers: [ComplaintFacadeService, MessageService],
   templateUrl: './file-complaint.component.html',
   styleUrl: './file-complaint.component.scss'
@@ -104,7 +104,6 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
   get reminderFileName() { return this.facade.reminderFileName; }
   get replyFile() { return this.facade.replyFile; }
   get replyFileName() { return this.facade.replyFileName; }
-  get repFileName() { return this.facade.repFileName; }
   get selectedEntityName() { return this.facade.selectedEntityName; }
   get isCEPCEntity() { return this.facade.isCEPCEntity; }
   get totalEligibilitySteps() { return this.facade.totalEligibilitySteps; }
@@ -611,108 +610,60 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
     }
   }
 
-  // ── Complaint file handling ──
-  onComplaintFileSelected(event: Event) { this.facade.handleEligibilityFile('complaint', event); }
-  onReminderFileSelected(event: Event) { this.facade.handleEligibilityFile('reminder', event); }
-  onReplyFileSelected(event: Event) { this.facade.handleEligibilityFile('reply', event); }
+  // ── Eligibility file handling (shared component) ──
+  onEligibilityFileChanged(type: 'complaint' | 'reminder' | 'reply', files: File[]) {
+    const file = files.length > 0 ? files[0] : null;
+    switch (type) {
+      case 'complaint':
+        this.facade.complaintFileWithRE = file;
+        this.facade.complaintFileWithREName = file?.name ?? '';
+        this.facade.eligibilityFileError = '';
+        this.facade.eligibilityStageForm.get('complaintFileWithRE')!.setValue(file);
+        break;
+      case 'reminder':
+        this.facade.reminderFile = file;
+        this.facade.reminderFileName = file?.name ?? '';
+        this.facade.reminderFileError = '';
+        this.facade.eligibilityStageForm.get('reminderFileUploaded')!.setValue(!!file);
+        break;
+      case 'reply':
+        this.facade.replyFile = file;
+        this.facade.replyFileName = file?.name ?? '';
+        this.facade.replyFileError = '';
+        this.facade.eligibilityStageForm.get('replyFileUploaded')!.setValue(!!file);
+        break;
+    }
+  }
   removeComplaintFile() { this.facade.removeEligibilityFile('complaint'); }
   removeReminderFile() { this.facade.removeEligibilityFile('reminder'); }
   removeReplyFile() { this.facade.removeEligibilityFile('reply'); }
 
-  onRepFileSelected(event: Event) {
-    const input = event.target as HTMLInputElement;
-    if (input.files?.[0]) {
-      if (input.files[0].size > 2 * 1024 * 1024) { input.value = ''; return; }
-      this.facade.repFile = input.files[0];
-      this.facade.repFileName = input.files[0].name;
-      this.facade.syncRepFileUploadControl();
-    }
-  }
-
-  onRepFileDrop(event: DragEvent) {
-    event.preventDefault();
-    if (!event.dataTransfer?.files?.length) return;
-    const file = event.dataTransfer.files[0];
-    if (file.size > 2 * 1024 * 1024) return;
-    this.facade.repFile = file;
-    this.facade.repFileName = file.name;
-    this.facade.syncRepFileUploadControl();
-  }
-
-  removeRepFile() {
-    this.facade.repFile = null;
-    this.facade.repFileName = '';
-    this.facade.syncRepFileUploadControl();
-  }
-
-  // ── Complaint attachment handling ──
-  onFilesSelected(event: Event) {
-    const input = event.target as HTMLInputElement;
-    if (!input.files) return;
-    this.facade.fileUploadError = '';
-    const newFiles = Array.from(input.files);
-    const setResult = validateFileSet(newFiles, this.facade.attachments.length);
-    if (!setResult.valid) {
-      this.facade.fileUploadError = setResult.error!;
-      announceToScreenReader(setResult.error!, 'assertive');
-      input.value = '';
-      return;
-    }
-    for (const file of newFiles) {
-      const result = validateFile(file);
-      if (!result.valid) {
-        this.facade.fileUploadError = result.error!;
-        announceToScreenReader(result.error!, 'assertive');
-        continue;
-      }
-      this.facade.attachments.push(file);
-      const url = URL.createObjectURL(file);
-      this.facade.attachmentPreviews.push({ name: file.name, url, type: file.type, size: file.size });
-      this.facade.validationErrors['attachments'] = '';
-    }
-    input.value = '';
+  // ── File upload delegates (shared component) ──
+  onAttachmentsChanged(files: File[]) {
+    this.facade.attachments = files;
+    this.facade.attachmentPreviews = files.map(f => ({
+      name: f.name, url: URL.createObjectURL(f), type: f.type, size: f.size
+    }));
     this.facade.syncFileUploadControl();
   }
 
-  onFileDrop(event: DragEvent) {
-    event.preventDefault();
-    if (!event.dataTransfer?.files?.length) return;
-    this.facade.fileUploadError = '';
-    const newFiles = Array.from(event.dataTransfer.files);
-    const setResult = validateFileSet(newFiles, this.facade.attachments.length);
-    if (!setResult.valid) {
-      this.facade.fileUploadError = setResult.error!;
-      announceToScreenReader(setResult.error!, 'assertive');
-      return;
-    }
-    for (const file of newFiles) {
-      const result = validateFile(file);
-      if (!result.valid) {
-        this.facade.fileUploadError = result.error!;
-        announceToScreenReader(result.error!, 'assertive');
-        continue;
-      }
-      this.facade.attachments.push(file);
-      const url = URL.createObjectURL(file);
-      this.facade.attachmentPreviews.push({ name: file.name, url, type: file.type, size: file.size });
-      this.facade.validationErrors['attachments'] = '';
-    }
-    this.facade.syncFileUploadControl();
-  }
-
-  removeAttachment(index: number) {
-    if (this.facade.attachmentPreviews[index].url) {
+  onAttachmentRemoved(index: number) {
+    if (this.facade.attachmentPreviews[index]?.url) {
       URL.revokeObjectURL(this.facade.attachmentPreviews[index].url);
     }
-    if (this.facade.attachments[index]) {
-      this.facade.attachments.splice(index, 1);
-    }
+    this.facade.attachments.splice(index, 1);
     this.facade.attachmentPreviews.splice(index, 1);
     this.facade.syncFileUploadControl();
   }
 
-  previewAttachment(index: number) {
-    window.open(this.facade.attachmentPreviews[index].url, '_blank');
+  onRepFileChanged(files: File[]) {
+    this.facade.repFiles = files;
+    this.facade.syncRepFileUploadControl();
+  }
+
+  removeRepFile() {
+    this.facade.repFiles = [];
+    this.facade.syncRepFileUploadControl();
   }
 
   // ── Keyboard navigation ──
@@ -805,17 +756,20 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
     const stepHeader = element.querySelector('.step-header') as HTMLElement;
     const navActions = element.closest('.page-container')?.querySelector('.eligibility-actions') as HTMLElement;
     const watermarkEl = element.querySelector('.review-watermark') as HTMLElement;
+    const editButtons = element.querySelectorAll('.rs-edit-btn') as NodeListOf<HTMLElement>;
     if (stepHeader) stepHeader.style.display = 'none';
     if (navActions) navActions.style.display = 'none';
     if (watermarkEl) watermarkEl.style.display = 'none';
+    editButtons.forEach(btn => btn.style.display = 'none');
 
-    const canvas = await html2canvas(element, { scale: 2, useCORS: true, logging: false, backgroundColor: '#ffffff' });
+    const canvas = await html2canvas(element, { scale: 1.5, useCORS: true, logging: false, backgroundColor: '#ffffff' });
 
     if (stepHeader) stepHeader.style.display = '';
     if (navActions) navActions.style.display = '';
     if (watermarkEl) watermarkEl.style.display = '';
+    editButtons.forEach(btn => btn.style.display = '');
 
-    const imgData = canvas.toDataURL('image/png');
+    const imgData = canvas.toDataURL('image/jpeg', 0.75);
     const imgWidth = canvas.width;
     const imgHeight = canvas.height;
     const pdfWidth = 210;
@@ -842,13 +796,13 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
         const wmCtx = wmCanvas.getContext('2d')!;
         wmCtx.globalAlpha = 0.35;
         wmCtx.drawImage(watermarkImg, 0, 0);
-        const wmData = wmCanvas.toDataURL('image/png');
-        pdf.addImage(wmData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+        const wmData = wmCanvas.toDataURL('image/jpeg', 0.6);
+        pdf.addImage(wmData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
       }
     };
 
     if (scaledHeight <= pageContentHeight) {
-      doc.addImage(imgData, 'PNG', margin, margin, contentWidth, scaledHeight);
+      doc.addImage(imgData, 'JPEG', margin, margin, contentWidth, scaledHeight);
       addWatermark(doc);
     } else {
       let remainingHeight = imgHeight;
@@ -862,9 +816,9 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
         sliceCanvas.height = sliceHeight;
         const ctx = sliceCanvas.getContext('2d')!;
         ctx.drawImage(canvas, 0, sourceY, imgWidth, sliceHeight, 0, 0, imgWidth, sliceHeight);
-        const sliceData = sliceCanvas.toDataURL('image/png');
+        const sliceData = sliceCanvas.toDataURL('image/jpeg', 0.75);
         const sliceScaledHeight = (sliceHeight * contentWidth) / imgWidth;
-        doc.addImage(sliceData, 'PNG', margin, margin, contentWidth, sliceScaledHeight);
+        doc.addImage(sliceData, 'JPEG', margin, margin, contentWidth, sliceScaledHeight);
         addWatermark(doc);
         sourceY += sliceHeight;
         remainingHeight -= sliceHeight;

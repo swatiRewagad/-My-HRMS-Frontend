@@ -52,9 +52,7 @@
             <th pSortableColumn="status">
               {{ 'home.table_status' | translate }} <p-sortIcon field="status"></p-sortIcon>
             </th>
-            <th pSortableColumn="comments">
-              {{ 'home.table_comments' | translate }} <p-sortIcon field="comments"></p-sortIcon>
-            </th>
+            <th class="track-th">Track Complaint</th>
             <th class="actions-th">{{ 'home.table_action' | translate }}</th>
           </tr>
           <tr class="filter-row">
@@ -80,9 +78,7 @@
                 styleClass="status-filter-dropdown">
               </p-select>
             </th>
-            <th>
-              <input type="text" placeholder="Search" (input)="dt.filter($any($event.target).value, 'comments', 'contains')" class="col-filter" />
-            </th>
+            <th></th>
             <th></th>
           </tr>
         </ng-template>
@@ -101,7 +97,11 @@
                 {{ getStatusLabel(complaint.status) }}
               </span>
             </td>
-            <td class="comments-cell">{{ complaint.comments }}</td>
+            <td class="track-cell">
+              <button class="btn-track" (click)="$event.stopPropagation(); trackComplaint(complaint)">
+                <i class="pi pi-search"></i> Track
+              </button>
+            </td>
             <td class="actions-cell" (click)="$event.stopPropagation()">
               <button class="action-btn" [ngClass]="'action-' + getActionLabel(complaint.status).toLowerCase()" (click)="onAction(complaint)">
                 {{ getActionLabel(complaint.status) }}

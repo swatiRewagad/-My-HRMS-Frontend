@@ -112,24 +112,18 @@
             </div>
             <div class="sub-field">
               <label><span class="sub-badge">c</span> <span>{{ 'eligibility.sub_upload_complaint' | translate }} {{ selectedEntityName }} <span class="required">*</span></span></label>
-              <div class="upload-box">
-                <input type="file" id="complaintFileWithRE" class="file-hidden" accept=".pdf,.jpg,.png"
-                       (change)="onComplaintFileSelected($event)">
-                <label for="complaintFileWithRE" class="upload-label">
-                  <span class="upload-text">{{ 'eligibility.browse_file' | translate }}</span>
-                </label>
-              </div>
-              @if (complaintFileWithREName) {
-                <div class="uploaded-file-info">
-                  <i class="pi pi-file"></i>
-                  <span class="uploaded-file-name" (click)="previewFile(complaintFileWithRE)">{{ complaintFileWithREName }}</span>
-                  <button type="button" class="remove-file-btn" (click)="removeComplaintFile()"><i class="pi pi-times"></i></button>
-                </div>
-              }
-              <div class="upload-hint">
-                <span>Support formats: PDF, JPG, PNG</span>
-                <span class="upload-size">Maximum size: 2MB</span>
-              </div>
+              <app-file-upload
+                [multiple]="false"
+                accept=".pdf,.doc,.jpg"
+                [maxFiles]="1"
+                label=""
+                hint="Supported formats: PDF, DOC, JPG"
+                sizeHint="Max 2MB per file, 6MB total for eligibility"
+                stepQuota="eligibility"
+                [externalBytesUsed]="facade.eligibilityBytesUsed - (facade.complaintFileWithRE?.size ?? 0)"
+                (filesChanged)="onEligibilityFileChanged('complaint', $event)"
+                (fileRemoved)="removeComplaintFile()">
+              </app-file-upload>
               @if (eligibilityFileError) {
                 <span class="field-error">{{ eligibilityFileError }}</span>
               }
@@ -209,24 +203,18 @@
             </div>
             <div class="sub-field">
               <label><span class="sub-badge">b</span> <span>{{ 'eligibility.sub_upload_reminder' | translate }} <span class="required">*</span></span></label>
-              <div class="upload-box">
-                <input type="file" id="reminderFileInput" class="file-hidden" accept=".pdf,.jpg,.png"
-                       (change)="onReminderFileSelected($event)">
-                <label for="reminderFileInput" class="upload-label">
-                  <span class="upload-text">{{ 'eligibility.browse_file' | translate }}</span>
-                </label>
-              </div>
-              @if (reminderFileName) {
-                <div class="uploaded-file-info">
-                  <i class="pi pi-file"></i>
-                  <span class="uploaded-file-name" (click)="previewFile(reminderFile)">{{ reminderFileName }}</span>
-                  <button type="button" class="remove-file-btn" (click)="removeReminderFile()"><i class="pi pi-times"></i></button>
-                </div>
-              }
-              <div class="upload-hint">
-                <span>Support formats: PDF, JPG, PNG</span>
-                <span class="upload-size">Maximum size: 2MB</span>
-              </div>
+              <app-file-upload
+                [multiple]="false"
+                accept=".pdf,.doc,.jpg"
+                [maxFiles]="1"
+                label=""
+                hint="Supported formats: PDF, DOC, JPG"
+                sizeHint="Max 2MB per file, 6MB total for eligibility"
+                stepQuota="eligibility"
+                [externalBytesUsed]="facade.eligibilityBytesUsed - (facade.reminderFile?.size ?? 0)"
+                (filesChanged)="onEligibilityFileChanged('reminder', $event)"
+                (fileRemoved)="removeReminderFile()">
+              </app-file-upload>
               @if (reminderFileError) {
                 <span class="field-error">{{ reminderFileError }}</span>
               }
@@ -258,24 +246,18 @@
             </div>
             <div class="sub-field">
               <label><span class="sub-badge">b</span> <span>{{ 'eligibility.sub_upload_reply' | translate }} <span class="required">*</span></span></label>
-              <div class="upload-box">
-                <input type="file" id="replyFileInput" class="file-hidden" accept=".pdf,.jpg,.png"
-                       (change)="onReplyFileSelected($event)">
-                <label for="replyFileInput" class="upload-label">
-                  <span class="upload-text">{{ 'eligibility.browse_file' | translate }}</span>
-                </label>
-              </div>
-              @if (replyFileName) {
-                <div class="uploaded-file-info">
-                  <i class="pi pi-file"></i>
-                  <span class="uploaded-file-name" (click)="previewFile(replyFile)">{{ replyFileName }}</span>
-                  <button type="button" class="remove-file-btn" (click)="removeReplyFile()"><i class="pi pi-times"></i></button>
-                </div>
-              }
-              <div class="upload-hint">
-                <span>Support formats: PDF, JPG, PNG</span>
-                <span class="upload-size">Maximum size: 2MB</span>
-              </div>
+              <app-file-upload
+                [multiple]="false"
+                accept=".pdf,.doc,.jpg"
+                [maxFiles]="1"
+                label=""
+                hint="Supported formats: PDF, DOC, JPG"
+                sizeHint="Max 2MB per file, 6MB total for eligibility"
+                stepQuota="eligibility"
+                [externalBytesUsed]="facade.eligibilityBytesUsed - (facade.replyFile?.size ?? 0)"
+                (filesChanged)="onEligibilityFileChanged('reply', $event)"
+                (fileRemoved)="removeReplyFile()">
+              </app-file-upload>
               @if (replyFileError) {
                 <span class="field-error">{{ replyFileError }}</span>
               }
@@ -814,41 +796,19 @@
 
           <!-- File Upload -->
           <div class="form-group full-width">
-            <label>Upload any additional documents relevant to the complaint</label>
-            <div class="file-upload-area" [class.dragover]="isDragOver"
-                 (dragover)="$event.preventDefault(); isDragOver = true"
-                 (dragenter)="$event.preventDefault(); isDragOver = true"
-                 (dragleave)="isDragOver = false"
-                 (drop)="isDragOver = false; onFileDrop($event)">
-              <input type="file" id="fileInput" multiple (change)="onFilesSelected($event)"
-                     accept=".pdf,.doc,.jpg,.jpeg,.png" class="file-input-hidden">
-              <span class="file-upload-text">Drag and Drop or <label for="fileInput" class="file-upload-browse-link">Browse</label> File</span>
-            </div>
-            <div class="file-upload-meta">
-              <span class="upload-hint">Support formats: PDF, DOC, JPG, PNG</span>
-              <span class="upload-size">Maximum Size of All Files: 2MB</span>
-            </div>
-            @if (fileUploadError) {
-              <div class="error-msg"><i class="pi pi-exclamation-circle"></i> {{ fileUploadError }}</div>
-            }
+            <app-file-upload
+              [multiple]="true"
+              accept=".pdf,.doc,.jpg"
+              [maxFiles]="10"
+              label="Upload any additional documents relevant to the complaint"
+              hint="Supported formats: PDF, DOC, JPG"
+              sizeHint="Max 2MB per file, 10MB total for this section"
+              stepQuota="complaintDetails"
+              [externalBytesUsed]="0"
+              (filesChanged)="onAttachmentsChanged($event)"
+              (fileRemoved)="onAttachmentRemoved($event)">
+            </app-file-upload>
             <app-form-error [control]="complaintDetailsForm.controls.fileUpload" label="Supporting documents"></app-form-error>
-            @if (attachmentPreviews.length > 0) {
-              <div class="file-list">
-                @for (f of attachmentPreviews; track $index; let i = $index) {
-                  <div class="file-chip" [class.needs-reupload]="!f.url">
-                    <i class="pi pi-file"></i>
-                    <span class="file-name">{{ f.name }}</span>
-                    @if (!f.url) {
-                      <span class="reupload-hint">(re-upload needed)</span>
-                    }
-                    @if (f.url) {
-                      <button class="preview-file" (click)="previewAttachment(i)" type="button" [attr.aria-label]="'Preview ' + f.name"><i class="pi pi-eye" aria-hidden="true"></i></button>
-                    }
-                    <button class="remove-file" (click)="removeAttachment(i)" type="button" [attr.aria-label]="'Remove ' + f.name"><i class="pi pi-times" aria-hidden="true"></i></button>
-                  </div>
-                }
-              </div>
-            }
           </div>
 
         </div>
@@ -953,27 +913,18 @@
             </div>
 
             <div class="form-group full-width">
-              <label>{{ 'form.rep_upload' | translate }} <span class="required">*</span></label>
-              <div class="file-upload-area" [class.dragover]="isRepDragOver"
-                   (dragover)="$event.preventDefault(); isRepDragOver = true"
-                   (dragenter)="$event.preventDefault(); isRepDragOver = true"
-                   (dragleave)="isRepDragOver = false"
-                   (drop)="isRepDragOver = false; onRepFileDrop($event)">
-                <input type="file" id="repDocFile" (change)="onRepFileSelected($event)"
-                       accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" class="file-input-hidden">
-                <span class="file-upload-text">Drag and Drop or <label for="repDocFile" class="file-upload-browse-link">Browse</label> File</span>
-              </div>
-              <div class="file-upload-meta">
-                <span class="upload-hint">Support formats: PDF, DOC, JPG, PNG</span>
-                <span class="upload-size">Maximum Size of All Files: 2MB</span>
-              </div>
-              @if (repFileName) {
-                <div class="uploaded-file-info">
-                  <i class="pi pi-file"></i>
-                  <span class="uploaded-file-name">{{ repFileName }}</span>
-                  <button type="button" class="remove-file-btn" (click)="removeRepFile()"><i class="pi pi-times"></i></button>
-                </div>
-              }
+              <app-file-upload
+                [multiple]="true"
+                accept=".pdf,.doc,.jpg"
+                [maxFiles]="10"
+                label="{{ 'form.rep_upload' | translate }}"
+                hint="Supported formats: PDF, DOC, JPG"
+                sizeHint="Max 2MB per file, 2MB total for this section"
+                stepQuota="repAuth"
+                [externalBytesUsed]="0"
+                (filesChanged)="onRepFileChanged($event)"
+                (fileRemoved)="removeRepFile()">
+              </app-file-upload>
               <app-form-error [control]="repAuthorizationForm.controls.repFileUpload" label="Authorization document"></app-form-error>
             </div>
           }

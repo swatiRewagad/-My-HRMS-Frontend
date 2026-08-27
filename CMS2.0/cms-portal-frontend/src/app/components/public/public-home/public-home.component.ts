@@ -60,8 +60,7 @@ export class PublicHomeComponent implements OnInit {
           complaintId: c.complaintId || c.id,
           entityName: c.entityName || '—',
           complaintDate: c.createdAt || c.complaintDate || c.registeredDate || '—',
-          status: c.status || 'PENDING',
-          comments: c.comments || c.description?.substring(0, 50) || '—'
+          status: c.status || 'PENDING'
         })) : []);
         this.loading.set(false);
       },
@@ -117,6 +116,10 @@ export class PublicHomeComponent implements OnInit {
       case 'REJECTED': return 'Act';
       default: return 'View';
     }
+  }
+
+  trackComplaint(complaint: ComplaintRecord) {
+    this.router.navigate(['/public/track', complaint.complaintId]);
   }
 
   onAction(complaint: ComplaintRecord) {
