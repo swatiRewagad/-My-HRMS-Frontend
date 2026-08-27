@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Structured JSON logs everywhere except dev-local (brief: "Structured JSON logs with an ingest
+    correlation ID"). dev-local keeps the human-readable pattern that was already in
+    application.yml's logging.pattern.console — same %X{correlationId} placeholder either way, see
+    CorrelationIdFilter / SmtpCommandHandler / ParserPipeline for who sets it. Deployed as an
+    OpenShift container, so this deliberately only ever logs to STDOUT — no file appender — and
+    lets cluster-level log collection own rotation/retention, matching how every other service in
+    this repo is deployed (see CLAUDE.md's OpenShift section).
+-->
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+    <springProfile name="dev-local">
+        <!-- ${CONSOLE_LOG_PATTERN} is populated from application.yml's logging.pattern.console by
+             Boot's LoggingSystem before this file is parsed — kept as the single source of truth
+             for the human-readable pattern rather than duplicating it here. -->
+        <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder>
+                <pattern>${CONSOLE_LOG_PATTERN}</pattern>
+            </encoder>
+        </appender>
+    </springProfile>
+
+    <springProfile name="!dev-local">
+        <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+                <customFields>{"application":"cms-mail-intake"}</customFields>
+                <!-- MDC entries (correlationId chief among them) are included automatically as
+                     top-level JSON fields by LogstashEncoder — nothing further to configure. -->
+            </encoder>
+        </appender>
+    </springProfile>
+
+    <!-- Per-logger levels come entirely from logging.level.* in application*.yml (Boot applies
+         those programmatically regardless of this file) — not duplicated here. -->
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+    </root>
+</configuration>

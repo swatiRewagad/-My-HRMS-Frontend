@@ -1,0 +1,43 @@
+Message-ID: <fwdfwd004@cms20.rbi.org.in>
+From: crpc@rbi.org.in
+To: cms20bot@cms20.rbi.org.in
+Subject: FW: FW: Delay in cheque clearance
+Date: Thu, 15 May 2026 09:00:00 +0530
+Content-Type: multipart/mixed; boundary="outerBoundary004"
+
+--outerBoundary004
+Content-Type: text/plain; charset=UTF-8
+
+Second-level forward for action.
+
+--outerBoundary004
+Content-Type: message/rfc822
+
+From: Nodal Officer <nodal.officer@somebank.example.com>
+To: crpc@rbi.org.in
+Subject: FW: Delay in cheque clearance
+Date: Wed, 14 May 2026 14:20:00 +0530
+Content-Type: multipart/mixed; boundary="innerBoundary004"
+
+--innerBoundary004
+Content-Type: text/plain; charset=UTF-8
+
+Forwarding the original complainant's email below.
+
+--innerBoundary004
+Content-Type: message/rfc822
+
+From: Sunita Rao <sunita.rao@example.com>
+To: nodal.officer@somebank.example.com
+Subject: Delay in cheque clearance
+Date: Mon, 12 May 2026 08:00:00 +0530
+Content-Type: text/plain; charset=UTF-8
+
+A cheque I deposited on 5 May 2026 has still not been cleared after
+a week. Please advise on the status.
+
+Sunita Rao
+
+--innerBoundary004--
+
+--outerBoundary004--
