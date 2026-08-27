@@ -1,0 +1,12 @@
+Resent-From: crpc@rbi.org.in
+From: Anjali Gupta <anjali.gupta@example.com>
+To: crpc@rbi.org.in
+Subject: Complaint with no Message-ID header
+Date: Wed, 21 May 2026 15:00:00 +0530
+Content-Type: text/plain; charset=UTF-8
+
+This message deliberately omits the Message-ID header — the pipeline
+must not crash on its absence; inbound_email.smtp_message_id should
+simply remain null.
+
+Anjali Gupta

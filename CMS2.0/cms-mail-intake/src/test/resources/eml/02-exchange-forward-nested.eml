@@ -1,0 +1,27 @@
+Message-ID: <forward002@cms20.rbi.org.in>
+From: crpc@rbi.org.in
+To: cms20bot@cms20.rbi.org.in
+Subject: FW: Complaint about credit card overcharge
+Date: Tue, 13 May 2026 11:00:00 +0530
+Content-Type: multipart/mixed; boundary="outerBoundary002"
+
+--outerBoundary002
+Content-Type: text/plain; charset=UTF-8
+
+Forwarding for action.
+
+--outerBoundary002
+Content-Type: message/rfc822
+
+From: Priya Sharma <priya.sharma@example.com>
+To: crpc@rbi.org.in
+Subject: Complaint about credit card overcharge
+Date: Mon, 12 May 2026 16:30:00 +0530
+Content-Type: text/plain; charset=UTF-8
+
+I was charged an annual fee on my credit card despite being told it
+would be waived. Please investigate and refund the amount.
+
+Priya Sharma
+
+--outerBoundary002--

@@ -1,0 +1,20 @@
+Message-ID: <malformed010@cms20.rbi.org.in>
+Resent-From: crpc@rbi.org.in
+From: Vikas Malhotra <vikas.malhotra@example.com>
+To: crpc@rbi.org.in
+Subject: Complaint with broken multipart structure
+Date: Tue, 20 May 2026 13:00:00 +0530
+Content-Type: multipart/mixed; boundary="brokenBoundary010"
+
+--brokenBoundary010
+Content-Type: text/plain; charset=UTF-8
+
+This message's closing boundary below is missing its trailing "--",
+and there is no final boundary line at all — deliberately malformed
+to exercise mime4j's lenient parsing (rule 4: never fail-closed on a
+parse error).
+
+--brokenBoundary010
+Content-Type: text/plain; charset=UTF-8
+
+Second part with no proper termination follows immediately.

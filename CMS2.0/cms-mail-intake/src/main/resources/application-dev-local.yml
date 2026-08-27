@@ -1,0 +1,40 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:cms_mail_intake;DB_CLOSE_DELAY=-1;MODE=Oracle
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+        default_schema: PUBLIC
+    show-sql: true
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+cms:
+  mail:
+    intake:
+      listener:
+        port: 2525
+      allowlist:
+        # Loopback only — dev-local accepts test connections from the same machine
+        # (e.g. `swaks` or the GreenMail-based integration tests), nothing external.
+        cidrs:
+          - 127.0.0.1/32
+          - ::1/128
+      storage:
+        raw-message-base-path: ./mail-intake-uploads
+      # Fixed, clearly-fake 32-byte key so dev-local doesn't require exporting a real secret.
+      # NEVER set this key in application.yml (the prod/SIT profile) — see MailIntakeCryptoConfig.
+      dev-local-encryption-key: XCvQj17oaPNOJIKiJvoD0JIpvfQCNCs2Py0qDB2NtG0=
+
+logging:
+  level:
+    com.rbi.cms: DEBUG
+    org.hibernate.SQL: DEBUG

@@ -24,6 +24,7 @@
         <module>cms-api-gateway</module>
         <module>cms-eligibility-service</module>
         <module>cms-ingestion-service</module>
+        <module>cms-mail-intake</module>
         <module>cms-workflow-service</module>
         <module>cms-rules-service</module>
         <module>cms-assignment-service</module>
