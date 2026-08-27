@@ -16,10 +16,17 @@ spring:
     console:
       enabled: true
       path: /h2-console
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:9090/realms/rbi-cms
 
 cms:
   mail:
     intake:
+      backend:
+        syndication-url: http://localhost:8082/api/v1/email-syndication/ingest
       listener:
         port: 2525
       allowlist:

@@ -51,6 +51,9 @@ cms:
   mail:
     intake:
 
+      backend:
+        syndication-url: ${CMS_BACKEND_URL:http://localhost:8082}/api/v1/email-syndication/ingest
+
       listener:
         bind-address: 0.0.0.0
         # The JVM cannot bind :25 as non-root — see RUNBOOK.md for setcap / authbind / iptables
