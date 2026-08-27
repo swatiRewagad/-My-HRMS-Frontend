@@ -192,7 +192,7 @@ export class StaffDashboardComponent implements OnInit, OnDestroy {
       this.router.navigate(['/admin/dashboard']);
       return;
     }
-    if (dept === 'CRPC' || roles.includes('DEO') || roles.includes('REVIEWER') || roles.includes('CRPC_HEAD')) {
+    if (dept === 'CRPC' || roles.includes('DEO') || roles.includes('CRPC_HEAD')) {
       this.router.navigate(['/crpc/home']);
       return;
     }
@@ -200,7 +200,7 @@ export class StaffDashboardComponent implements OnInit, OnDestroy {
       this.router.navigate(['/staff/rbio/tasks']);
       return;
     }
-    if (dept === 'CEPC' || roles.some(r => r.startsWith('CEPC_'))) {
+    if (dept === 'CEPC' || roles.some(r => ['DO', 'REVIEWER', 'INCHARGE', 'CA', 'CP'].includes(r))) {
       this.router.navigate(['/cepc/dashboard']);
       return;
     }
