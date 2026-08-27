@@ -216,7 +216,8 @@ export class KeycloakAuthService {
   private detectDepartment(roles: string[]): StaffUser['department'] {
     if (roles.some(r => r.startsWith('RBIO_'))) return 'RBIO';
     if (roles.some(r => r.startsWith('CEPC_'))) return 'CEPC';
-    if (roles.some(r => r.startsWith('CRPC_') || r === 'DEO' || r === 'REVIEWER')) return 'CRPC';
+    if (roles.some(r => r.startsWith('CRPC_') || r === 'DEO')) return 'CRPC';
+    if (roles.some(r => ['DO', 'REVIEWER', 'INCHARGE', 'CA', 'CP'].includes(r))) return 'CEPC';
     if (roles.includes('ADMIN')) return 'ADMIN';
     return 'UNKNOWN';
   }

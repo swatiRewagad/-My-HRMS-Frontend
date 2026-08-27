@@ -11,6 +11,7 @@ import { CommonModule } from '@angular/common';
 export class CepcSlaIndicatorComponent {
   @Input() set slaDueDate(value: string) { this._slaDueDate.set(value); }
   @Input() set status(value: string) { this._status.set(value); }
+  @Input() showEscalationLevel = true;
 
   private _slaDueDate = signal<string>('');
   private _status = signal<string>('');
@@ -33,6 +34,36 @@ export class CepcSlaIndicatorComponent {
   isOverdue = computed(() => {
     const days = this.daysRemaining();
     return days !== null && days < 0;
+  });
+
+  daysOverdue = computed(() => {
+    const days = this.daysRemaining();
+    if (days === null || days >= 0) return 0;
+    return Math.abs(days);
+  });
+
+  escalationLevel = computed<number>(() => {
+    const overdue = this.daysOverdue();
+    if (overdue <= 0) return 0;
+    if (overdue <= 2) return 1;
+    if (overdue <= 5) return 2;
+    return 3;
+  });
+
+  escalationLabel = computed<string>(() => {
+    const level = this.escalationLevel();
+    if (level === 0) return '';
+    if (level === 1) return 'L1';
+    if (level === 2) return 'L2';
+    return 'L3';
+  });
+
+  escalationText = computed<string>(() => {
+    const level = this.escalationLevel();
+    if (level === 0) return '';
+    if (level === 1) return 'Escalated to DO (L1)';
+    if (level === 2) return 'Escalated to Incharge (L2)';
+    return 'Escalated to Closing Authority (L3)';
   });
 
   colorClass = computed(() => {

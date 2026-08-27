@@ -1,0 +1,150 @@
+.assignment-rule-editor {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 1rem;
+  outline: none;
+
+  .editor-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid #dee2e6;
+
+    .toolbar-left {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      h3 { margin: 0; font-size: 1.1rem; }
+      .version-label { font-size: 0.8rem; color: #6c757d; }
+      .status-badge {
+        font-size: 0.7rem; padding: 2px 8px; border-radius: 4px;
+        text-transform: uppercase; font-weight: 600;
+        &.status-draft { background: #fff3cd; color: #856404; }
+        &.status-submitted { background: #cce5ff; color: #004085; }
+        &.status-approved { background: #d4edda; color: #155724; }
+        &.status-published { background: #d1ecf1; color: #0c5460; }
+      }
+      .dirty-indicator { font-size: 0.75rem; color: #e67e22; font-style: italic; }
+    }
+
+    .toolbar-actions {
+      display: flex; align-items: center; gap: 0.4rem;
+      .separator { width: 1px; height: 20px; background: #dee2e6; margin: 0 0.3rem; }
+    }
+  }
+
+  .btn {
+    display: inline-flex; align-items: center; gap: 0.3rem;
+    padding: 0.35rem 0.6rem; border: 1px solid #dee2e6; border-radius: 4px;
+    background: #fff; cursor: pointer; font-size: 0.8rem;
+    &:hover:not(:disabled) { background: #f8f9fa; }
+    &:disabled { opacity: 0.5; cursor: not-allowed; }
+    &.btn-primary { background: #3b82f6; color: #fff; border-color: #3b82f6; &:hover:not(:disabled) { background: #2563eb; } }
+    &.btn-danger { color: #dc3545; &:hover:not(:disabled) { background: #fff5f5; } }
+    &.btn-submit { background: #fff3cd; color: #856404; border-color: #ffc107; }
+    &.btn-publish { background: #d1ecf1; color: #0c5460; border-color: #bee5eb; }
+  }
+
+  .message {
+    padding: 0.5rem 0.75rem; border-radius: 4px; font-size: 0.85rem; margin-bottom: 0.5rem;
+    &.message-error { background: #f8d7da; color: #721c24; }
+    &.message-success { background: #d4edda; color: #155724; }
+  }
+
+  .default-outcome-bar {
+    display: flex; align-items: center; gap: 0.75rem;
+    padding: 0.5rem 0.75rem; background: #f8f9fa; border-radius: 4px;
+    margin-bottom: 0.75rem; font-size: 0.85rem;
+    label { font-weight: 600; white-space: nowrap; }
+    select, input { padding: 0.3rem 0.5rem; border: 1px solid #dee2e6; border-radius: 4px; font-size: 0.8rem; }
+    input { width: 180px; }
+    .hit-policy-label { margin-left: auto; color: #6c757d; }
+  }
+
+  .loading-overlay {
+    display: flex; align-items: center; justify-content: center;
+    padding: 3rem; color: #6c757d;
+  }
+
+  .table-wrapper {
+    flex: 1;
+    overflow: auto;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+  }
+
+  .rules-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8rem;
+
+    th, td {
+      border: 1px solid #e9ecef;
+      padding: 0.3rem 0.4rem;
+      white-space: nowrap;
+    }
+
+    thead th {
+      background: #f1f3f5;
+      font-weight: 600;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      color: #495057;
+    }
+
+    tbody tr {
+      &:hover { background: #f8f9fa; }
+      &.selected { background: #e7f1ff; }
+    }
+
+    .col-select { width: 30px; text-align: center; }
+    .col-code input { width: 70px; }
+    .col-name input { width: 130px; }
+    .col-condition input { width: 110px; }
+    .col-outcome select { width: 90px; }
+    .col-target input { width: 130px; }
+    .col-mode select { width: 100px; }
+    .col-priority input { width: 55px; }
+    .col-enabled { text-align: center; }
+
+    input, select {
+      border: 1px solid transparent;
+      background: transparent;
+      padding: 0.2rem 0.3rem;
+      border-radius: 3px;
+      font-size: 0.8rem;
+      width: 100%;
+      &:focus {
+        border-color: #3b82f6;
+        outline: none;
+        background: #fff;
+      }
+      &:hover:not(:disabled):not(:focus) {
+        border-color: #dee2e6;
+      }
+    }
+
+    input[type="checkbox"] { width: auto; }
+    input[type="number"] { width: 55px; }
+
+    .empty-row {
+      text-align: center;
+      padding: 2rem;
+      color: #6c757d;
+      font-style: italic;
+    }
+  }
+
+  .shortcut-bar {
+    display: flex; gap: 1.5rem; padding: 0.4rem 0.75rem;
+    margin-top: 0.5rem; font-size: 0.7rem; color: #6c757d;
+    span { font-family: monospace; }
+  }
+}

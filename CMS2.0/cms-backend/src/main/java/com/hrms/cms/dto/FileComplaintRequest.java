@@ -45,6 +45,7 @@ public class FileComplaintRequest {
     private String accountNumber;
 
     private Long categoryId;
+    private String categoryName;
 
     @NotBlank(message = "Subject is required")
     @Size(max = 500, message = "Subject must not exceed 500 characters")

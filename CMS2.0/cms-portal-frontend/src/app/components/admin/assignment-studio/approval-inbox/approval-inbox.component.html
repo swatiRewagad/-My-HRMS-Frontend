@@ -1,0 +1,72 @@
+<div class="approval-inbox">
+  <h2>Pending Approvals</h2>
+
+  @if (errorMessage()) {
+    <div class="message message-error">
+      <i class="pi pi-exclamation-triangle"></i> {{ errorMessage() }}
+      <button class="close-btn" (click)="clearMessages()">×</button>
+    </div>
+  }
+  @if (successMessage()) {
+    <div class="message message-success">
+      <i class="pi pi-check-circle"></i> {{ successMessage() }}
+      <button class="close-btn" (click)="clearMessages()">×</button>
+    </div>
+  }
+
+  @if (loading()) {
+    <div class="loading"><i class="pi pi-spin pi-spinner"></i> Loading...</div>
+  } @else if (pendingVersions().length === 0) {
+    <div class="empty-state">
+      <i class="pi pi-inbox"></i>
+      <p>No versions pending approval</p>
+    </div>
+  } @else {
+    <div class="approval-list">
+      @for (version of pendingVersions(); track version.id) {
+        <div class="approval-card">
+          <div class="card-header">
+            <span class="version-badge">V{{ version.versionNo }}</span>
+            <span class="ruleset-name">Ruleset #{{ version.ruleSetId }}</span>
+            <span class="submitted-by">Submitted by: <strong>{{ version.makerId }}</strong></span>
+            <span class="submitted-at">{{ version.makerAt | date:'medium' }}</span>
+          </div>
+
+          @if (version.makerRemarks) {
+            <div class="maker-remarks">
+              <label>Maker remarks:</label> {{ version.makerRemarks }}
+            </div>
+          }
+
+          <div class="card-actions">
+            <input
+              type="text"
+              class="remarks-input"
+              placeholder="Checker remarks (required for rejection)"
+              [ngModel]="remarksMap[version.id] || ''"
+              (ngModelChange)="remarksMap[version.id] = $event"
+            />
+            <button
+              class="btn btn-view"
+              (click)="openEditor(version)"
+              title="Review rules in editor">
+              <i class="pi pi-eye"></i> View
+            </button>
+            <button
+              class="btn btn-approve"
+              (click)="approve(version)"
+              [disabled]="actionInProgress() === version.id">
+              <i class="pi pi-check"></i> Approve
+            </button>
+            <button
+              class="btn btn-reject"
+              (click)="reject(version)"
+              [disabled]="actionInProgress() === version.id">
+              <i class="pi pi-times"></i> Reject
+            </button>
+          </div>
+        </div>
+      }
+    </div>
+  }
+</div>

@@ -111,7 +111,7 @@
             </div>
           </div>
           <div class="meta-actions">
-            @if (!isTerminalState()) {
+            @if (!isTerminalState() && !isRbioComplaint()) {
               <button class="btn btn-primary" (click)="scrollToActions()">Take Action</button>
             }
           </div>
@@ -464,7 +464,8 @@
                 </div>
               }
 
-              <!-- Action Panel Section -->
+              <!-- Action Panel Section (hidden for RBIO) -->
+              @if (!isRbioComplaint()) {
               <div class="form-section action-section" [class.open]="sectionOpen.actions" #actionSection>
                 <div class="section-header" (click)="sectionOpen.actions = !sectionOpen.actions">
                   <span><i class="pi pi-send"></i> Take Action</span>
@@ -551,6 +552,7 @@
                   </div>
                 }
               </div>
+              }
 
               <!-- Timeline Section -->
               @if (complaint()!.timeline?.length) {

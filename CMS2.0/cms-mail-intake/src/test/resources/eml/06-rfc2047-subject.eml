@@ -1,0 +1,14 @@
+Message-ID: <rfc2047006@cms20.rbi.org.in>
+Resent-From: crpc@rbi.org.in
+From: Deepa Nair <deepa.nair@example.com>
+To: crpc@rbi.org.in
+Subject: =?UTF-8?B?4KSW4KS+4KSk4KWHIOCkruClh+CkgiDgpIXgpKjgpKfgpL/gpJXgpYPgpKQg4KSh4KWH4KSs4KS/4KSf?=
+Date: Sat, 17 May 2026 07:30:00 +0530
+Content-Type: text/plain; charset=UTF-8
+
+The Subject header above is RFC 2047 B-encoded UTF-8 for the Devanagari
+text "khaate mein anadhikrit debit" (unauthorised debit from account)
+and must be decoded before being stored as original_subject.
+
+Regards,
+Deepa Nair

@@ -10,6 +10,20 @@ import { SpeechButtonComponent } from '../../../shared/speech-button/speech-butt
 import { CepcSlaIndicatorComponent } from '../cepc-sla-indicator/cepc-sla-indicator.component';
 import { environment } from '../../../../environments/environment';
 
+interface KpiCard {
+  label: string;
+  value: number;
+  filterValue: string;
+  icon: string;
+  color: string;
+}
+
+interface StatusTab {
+  label: string;
+  filterValue: string;
+  count: number;
+}
+
 interface CepcComplaint {
   complaintId: string;
   complaintNumber: string;
@@ -128,12 +142,150 @@ export class CepcDashboardComponent implements OnInit {
     const all = this.complaints();
     return {
       total: all.length,
-      pending: all.filter(c => ['assigned', 'pending', 'new'].includes(c.status)).length,
+      pending: all.filter(c => ['assigned', 'pending', 'new', 'sent_back'].includes(c.status)).length,
       inProgress: all.filter(c => c.status === 'in_progress').length,
       underReview: all.filter(c => ['under_review', 'reviewer_review', 'incharge_review'].includes(c.status)).length,
       awaitingClosure: all.filter(c => c.status === 'awaiting_closure').length,
       escalated: all.filter(c => c.status === 'escalated').length,
+      infoRequested: all.filter(c => c.status === 'info_requested').length,
+      forwarded: all.filter(c => ['forwarded', 'forwarded_to_contact'].includes(c.status)).length,
+      markedForClosure: all.filter(c => c.status === 'marked_for_closure').length,
+      sentBack: all.filter(c => c.status === 'sent_back').length,
+      nonMaintainable: all.filter(c => c.status === 'non_maintainable').length,
+      closed: all.filter(c => c.status === 'closed').length,
+      reopened: all.filter(c => c.status === 'reopened').length,
+      inchargeReview: all.filter(c => c.status === 'incharge_review').length,
+      draft: all.filter(c => c.status === 'draft').length,
+      meetingScheduled: all.filter(c => c.status === 'meeting_scheduled').length,
+      sentToIncharge: all.filter(c => c.status === 'sent_to_incharge').length,
+      sentToReviewer: all.filter(c => c.status === 'sent_to_reviewer').length,
+      sentToClosingAuthority: all.filter(c => c.status === 'sent_to_closing_authority').length,
+      sentBackToMe: all.filter(c => c.status === 'sent_back').length,
+      sentBackToDo: all.filter(c => c.status === 'sent_back_do').length,
+      sentBackToReviewer: all.filter(c => c.status === 'sent_back_reviewer').length,
+      sentToOtherRegulatory: all.filter(c => c.status === 'sent_to_other_regulatory').length,
+      sentToOtherRbiDept: all.filter(c => c.status === 'sent_to_other_rbi_dept').length,
+      sentToOtherOffice: all.filter(c => c.status === 'sent_to_other_office').length,
+      sentBackToIncharge: all.filter(c => c.status === 'sent_back_incharge').length,
     };
+  });
+
+  roleStats = computed<KpiCard[]>(() => {
+    const s = this.stats();
+    const role = this.userRole();
+
+    switch (role) {
+      case 'CEPC_DO':
+        return [
+          { label: 'Draft Complaints', value: s.draft, filterValue: 'draft', icon: 'pi-file', color: 'blue' },
+          { label: 'Meeting Scheduled', value: s.meetingScheduled, filterValue: 'meeting_scheduled', icon: 'pi-calendar', color: 'purple' },
+          { label: 'Sent to CEPC In Charge', value: s.sentToIncharge, filterValue: 'sent_to_incharge', icon: 'pi-send', color: 'orange' },
+          { label: 'Sent to CEPC Reviewer', value: s.sentToReviewer, filterValue: 'sent_to_reviewer', icon: 'pi-eye', color: 'yellow' },
+          { label: 'Sent Back to me', value: s.sentBack, filterValue: 'sent_back', icon: 'pi-replay', color: 'red' },
+          { label: 'Closed Complaints', value: s.closed, filterValue: 'closed', icon: 'pi-check-circle', color: 'green' },
+        ];
+      case 'CEPC_REVIEWER':
+        return [
+          { label: 'Sent to CEPC In Charge', value: s.sentToIncharge, filterValue: 'sent_to_incharge', icon: 'pi-send', color: 'orange' },
+          { label: 'Sent to Closing Authority', value: s.sentToClosingAuthority, filterValue: 'sent_to_closing_authority', icon: 'pi-send', color: 'blue' },
+          { label: 'Sent Back to me', value: s.sentBackToMe, filterValue: 'sent_back', icon: 'pi-replay', color: 'yellow' },
+          { label: 'Sent Back to DO', value: s.sentBackToDo, filterValue: 'sent_back_do', icon: 'pi-replay', color: 'purple' },
+          { label: 'Sent to other RBI Department', value: s.sentToOtherRbiDept, filterValue: 'sent_to_other_rbi_dept', icon: 'pi-building', color: 'green' },
+        ];
+      case 'CEPC_INCHARGE':
+        return [
+          { label: 'Sent to Closing Authority', value: s.sentToClosingAuthority, filterValue: 'sent_to_closing_authority', icon: 'pi-send', color: 'blue' },
+          { label: 'Sent Back to me', value: s.sentBackToMe, filterValue: 'sent_back', icon: 'pi-replay', color: 'orange' },
+          { label: 'Sent Back to DO', value: s.sentBackToDo, filterValue: 'sent_back_do', icon: 'pi-replay', color: 'yellow' },
+          { label: 'Sent Back to CEPC Reviewer', value: s.sentBackToReviewer, filterValue: 'sent_back_reviewer', icon: 'pi-replay', color: 'purple' },
+          { label: 'Complaint Closed', value: s.closed, filterValue: 'closed', icon: 'pi-check-circle', color: 'green' },
+          { label: 'Mark for Closure', value: s.markedForClosure, filterValue: 'marked_for_closure', icon: 'pi-bookmark', color: 'red' },
+          { label: 'Sent to other Regulatory Bodies', value: s.sentToOtherRegulatory, filterValue: 'sent_to_other_regulatory', icon: 'pi-globe', color: 'blue' },
+          { label: 'Sent to other RBI Department', value: s.sentToOtherRbiDept, filterValue: 'sent_to_other_rbi_dept', icon: 'pi-building', color: 'purple' },
+          { label: 'Sent to other Office', value: s.sentToOtherOffice, filterValue: 'sent_to_other_office', icon: 'pi-briefcase', color: 'orange' },
+        ];
+      case 'CEPC_CLOSING_AUTHORITY':
+        return [
+          { label: 'Sent Back to Incharge', value: s.sentBackToIncharge, filterValue: 'sent_back_incharge', icon: 'pi-replay', color: 'orange' },
+          { label: 'Sent Back to DO', value: s.sentBackToDo, filterValue: 'sent_back_do', icon: 'pi-replay', color: 'yellow' },
+          { label: 'Sent Back to CEPC Reviewer', value: s.sentBackToReviewer, filterValue: 'sent_back_reviewer', icon: 'pi-replay', color: 'purple' },
+          { label: 'Sent to me', value: s.sentToClosingAuthority, filterValue: 'sent_to_closing_authority', icon: 'pi-send', color: 'blue' },
+          { label: 'Complaint Closed', value: s.closed, filterValue: 'closed', icon: 'pi-check-circle', color: 'green' },
+          { label: 'Mark for Closure', value: s.markedForClosure, filterValue: 'marked_for_closure', icon: 'pi-bookmark', color: 'red' },
+          { label: 'Sent to other Regulatory Bodies', value: s.sentToOtherRegulatory, filterValue: 'sent_to_other_regulatory', icon: 'pi-globe', color: 'blue' },
+          { label: 'Sent to other RBI Department', value: s.sentToOtherRbiDept, filterValue: 'sent_to_other_rbi_dept', icon: 'pi-building', color: 'purple' },
+          { label: 'Sent to other Office', value: s.sentToOtherOffice, filterValue: 'sent_to_other_office', icon: 'pi-briefcase', color: 'orange' },
+          { label: 'Reopen Complaint', value: s.reopened, filterValue: 'reopened', icon: 'pi-refresh', color: 'yellow' },
+        ];
+      case 'CEPC_ADMIN':
+      default:
+        return [
+          { label: 'Total Complaints', value: s.total, filterValue: '', icon: 'pi-inbox', color: 'blue' },
+          { label: 'Pending', value: s.pending, filterValue: 'pending', icon: 'pi-clock', color: 'yellow' },
+          { label: 'Under Examination', value: s.inProgress, filterValue: 'in_progress', icon: 'pi-file-edit', color: 'purple' },
+          { label: 'Under Review', value: s.underReview, filterValue: 'under_review', icon: 'pi-eye', color: 'orange' },
+          { label: 'Escalated', value: s.escalated, filterValue: 'escalated', icon: 'pi-exclamation-triangle', color: 'red' },
+        ];
+    }
+  });
+
+  roleStatusTabs = computed<StatusTab[]>(() => {
+    const s = this.stats();
+    const role = this.userRole();
+
+    switch (role) {
+      case 'CEPC_DO':
+        return [
+          { label: 'Draft Complaints', filterValue: 'draft', count: s.draft },
+          { label: 'Meeting Scheduled', filterValue: 'meeting_scheduled', count: s.meetingScheduled },
+          { label: 'Sent to CEPC In Charge', filterValue: 'sent_to_incharge', count: s.sentToIncharge },
+          { label: 'Sent to CEPC Reviewer', filterValue: 'sent_to_reviewer', count: s.sentToReviewer },
+          { label: 'Sent Back to me', filterValue: 'sent_back', count: s.sentBack },
+          { label: 'Closed Complaints', filterValue: 'closed', count: s.closed },
+        ];
+      case 'CEPC_REVIEWER':
+        return [
+          { label: 'Sent to CEPC In Charge', filterValue: 'sent_to_incharge', count: s.sentToIncharge },
+          { label: 'Sent to Closing Authority', filterValue: 'sent_to_closing_authority', count: s.sentToClosingAuthority },
+          { label: 'Sent Back to me', filterValue: 'sent_back', count: s.sentBackToMe },
+          { label: 'Sent Back to DO', filterValue: 'sent_back_do', count: s.sentBackToDo },
+          { label: 'Sent to other RBI Department', filterValue: 'sent_to_other_rbi_dept', count: s.sentToOtherRbiDept },
+        ];
+      case 'CEPC_INCHARGE':
+        return [
+          { label: 'Sent to Closing Authority', filterValue: 'sent_to_closing_authority', count: s.sentToClosingAuthority },
+          { label: 'Sent Back to me', filterValue: 'sent_back', count: s.sentBackToMe },
+          { label: 'Sent Back to DO', filterValue: 'sent_back_do', count: s.sentBackToDo },
+          { label: 'Sent Back to CEPC Reviewer', filterValue: 'sent_back_reviewer', count: s.sentBackToReviewer },
+          { label: 'Complaint Closed', filterValue: 'closed', count: s.closed },
+          { label: 'Mark for Closure', filterValue: 'marked_for_closure', count: s.markedForClosure },
+          { label: 'Sent to other Regulatory Bodies', filterValue: 'sent_to_other_regulatory', count: s.sentToOtherRegulatory },
+          { label: 'Sent to other RBI Department', filterValue: 'sent_to_other_rbi_dept', count: s.sentToOtherRbiDept },
+          { label: 'Sent to other Office', filterValue: 'sent_to_other_office', count: s.sentToOtherOffice },
+        ];
+      case 'CEPC_CLOSING_AUTHORITY':
+        return [
+          { label: 'Sent Back to Incharge', filterValue: 'sent_back_incharge', count: s.sentBackToIncharge },
+          { label: 'Sent Back to DO', filterValue: 'sent_back_do', count: s.sentBackToDo },
+          { label: 'Sent Back to CEPC Reviewer', filterValue: 'sent_back_reviewer', count: s.sentBackToReviewer },
+          { label: 'Sent to me', filterValue: 'sent_to_closing_authority', count: s.sentToClosingAuthority },
+          { label: 'Complaint Closed', filterValue: 'closed', count: s.closed },
+          { label: 'Mark for Closure', filterValue: 'marked_for_closure', count: s.markedForClosure },
+          { label: 'Sent to other Regulatory Bodies', filterValue: 'sent_to_other_regulatory', count: s.sentToOtherRegulatory },
+          { label: 'Sent to other RBI Department', filterValue: 'sent_to_other_rbi_dept', count: s.sentToOtherRbiDept },
+          { label: 'Sent to other Office', filterValue: 'sent_to_other_office', count: s.sentToOtherOffice },
+          { label: 'Reopen Complaint', filterValue: 'reopened', count: s.reopened },
+        ];
+      case 'CEPC_ADMIN':
+      default:
+        return [
+          { label: 'Pending', filterValue: 'pending', count: s.pending },
+          { label: 'Under Examination', filterValue: 'in_progress', count: s.inProgress },
+          { label: 'Under Review', filterValue: 'under_review', count: s.underReview },
+          { label: 'Awaiting Closure', filterValue: 'awaiting_closure', count: s.awaitingClosure },
+          { label: 'Escalated', filterValue: 'escalated', count: s.escalated },
+        ];
+    }
   });
 
   filteredComplaints = computed(() => {
@@ -144,6 +296,8 @@ export class CepcDashboardComponent implements OnInit {
         result = result.filter(c => ['assigned', 'pending', 'new'].includes(c.status));
       } else if (status === 'under_review') {
         result = result.filter(c => ['under_review', 'reviewer_review', 'incharge_review'].includes(c.status));
+      } else if (status === 'forwarded') {
+        result = result.filter(c => ['forwarded', 'forwarded_to_contact'].includes(c.status));
       } else {
         result = result.filter(c => c.status === status);
       }
@@ -216,11 +370,11 @@ export class CepcDashboardComponent implements OnInit {
     }
 
     const roles = this.auth.getRoles();
-    if (roles.includes('CEPC_ADMIN')) this.userRole.set('CEPC_ADMIN');
-    else if (roles.includes('CEPC_CLOSING_AUTHORITY')) this.userRole.set('CEPC_CLOSING_AUTHORITY');
-    else if (roles.includes('CEPC_INCHARGE')) this.userRole.set('CEPC_INCHARGE');
-    else if (roles.includes('CEPC_REVIEWER')) this.userRole.set('CEPC_REVIEWER');
-    else if (roles.includes('CEPC_CONTACT_PERSON')) this.userRole.set('CEPC_CONTACT_PERSON');
+    if (roles.includes('ADMIN') || roles.includes('CEPC_ADMIN')) this.userRole.set('CEPC_ADMIN');
+    else if (roles.includes('CA') || roles.includes('CEPC_CLOSING_AUTHORITY')) this.userRole.set('CEPC_CLOSING_AUTHORITY');
+    else if (roles.includes('INCHARGE') || roles.includes('CEPC_INCHARGE')) this.userRole.set('CEPC_INCHARGE');
+    else if (roles.includes('REVIEWER') || roles.includes('CEPC_REVIEWER')) this.userRole.set('CEPC_REVIEWER');
+    else if (roles.includes('CP') || roles.includes('CEPC_CONTACT_PERSON')) this.userRole.set('CEPC_CONTACT_PERSON');
     else this.userRole.set('CEPC_DO');
 
     const user = this.auth.currentUser();
@@ -280,7 +434,7 @@ export class CepcDashboardComponent implements OnInit {
       entityName: c.entityName || '',
       entityType: c.entityType || '',
       priority: c.priority || 'MEDIUM',
-      status: c.status || 'pending',
+      status: (c.status || 'pending').toLowerCase(),
       assignedAt: c.assignedAt || '',
       slaDueDate: c.slaDueDate || '',
       department: c.department || 'CEPC',
@@ -422,12 +576,21 @@ export class CepcDashboardComponent implements OnInit {
   getStatusLabel(status: string): string {
     const labels: Record<string, string> = {
       'assigned': 'Assigned', 'pending': 'Pending', 'new': 'New',
+      'draft': 'Draft', 'meeting_scheduled': 'Meeting Scheduled',
+      'sent_to_incharge': 'Sent to CEPC In Charge', 'sent_to_reviewer': 'Sent to CEPC Reviewer',
+      'sent_to_closing_authority': 'Sent to Closing Authority',
+      'sent_back': 'Sent Back to me', 'sent_back_do': 'Sent Back to DO',
+      'sent_back_reviewer': 'Sent Back to CEPC Reviewer',
       'in_progress': 'Under Examination', 'under_review': 'Under Review',
       'reviewer_review': 'Reviewer Review', 'incharge_review': 'In Charge Review',
       'awaiting_closure': 'Awaiting Closure', 'escalated': 'Escalated',
-      'sent_back': 'Sent Back', 'info_requested': 'Info Requested',
+      'marked_for_closure': 'Mark for Closure',
+      'info_requested': 'Info Requested',
       'forwarded': 'Forwarded to Dept', 'forwarded_to_contact': 'With Contact Person',
-      'closed': 'Closed', 'resolved': 'Resolved',
+      'sent_to_other_regulatory': 'Sent to other Regulatory Bodies',
+      'sent_to_other_rbi_dept': 'Sent to other RBI Department',
+      'sent_to_other_office': 'Sent to other Office',
+      'closed': 'Complaint Closed', 'resolved': 'Resolved',
     };
     return labels[status] || status;
   }

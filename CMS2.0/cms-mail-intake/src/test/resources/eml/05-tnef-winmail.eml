@@ -1,0 +1,21 @@
+Message-ID: <tnef005@cms20.rbi.org.in>
+From: crpc@rbi.org.in
+To: cms20bot@cms20.rbi.org.in
+Subject: FW: Rich text forward via Outlook
+Date: Fri, 16 May 2026 12:00:00 +0530
+Content-Type: multipart/mixed; boundary="tnefBoundary005"
+
+--tnefBoundary005
+Content-Type: text/plain; charset=UTF-8
+
+See attached winmail.dat (Outlook rich-text encoded forward).
+
+--tnefBoundary005
+Content-Type: application/ms-tnef; name="winmail.dat"
+Content-Disposition: attachment; filename="winmail.dat"
+Content-Transfer-Encoding: base64
+
+VGhpcyBpcyBub3QgYSByZWFsIFRORUYgcGF5bG9hZCAtIGl0IGRlbGliZXJhdGVseSBmYWlscyB0
+byBkZWNvZGUgc28gdGhlIHRlc3QgY2FuIHZlcmlmeSBncmFjZWZ1bCBkZWdyYWRhdGlvbi4=
+
+--tnefBoundary005--

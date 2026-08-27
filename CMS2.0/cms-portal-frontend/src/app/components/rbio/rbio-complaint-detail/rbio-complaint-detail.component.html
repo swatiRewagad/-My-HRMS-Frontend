@@ -59,7 +59,7 @@
       </div>
       <div class="strip-item">
         <span class="strip-label">Status</span>
-        <span class="status-badge" [attr.data-status]="c.status">{{ c.status === 'NEW' ? 'New Complaint' : c.status }}</span>
+        <span class="status-badge" [attr.data-status]="c.status">{{ getStatusLabel(c.status) }}</span>
       </div>
       <div class="strip-item">
         <span class="strip-label">Complaint Category</span>
@@ -70,26 +70,43 @@
         <span class="sla-badge" [class.breach]="c.slaBreachHours < 48">{{ c.slaBreachHours }} hrs</span>
       </div>
       <div class="strip-actions">
-        <button class="btn-edit" (click)="editMode.set(!editMode())"><i class="pi pi-pencil"></i> Edit</button>
-        <div class="approval-wrapper">
-          <button
-            class="btn-approval"
-            [disabled]="isClosureBlocked()"
-            [title]="isClosureBlocked() ? 'Closure blocked: upload link is active' : ''"
-            (click)="!isClosureBlocked() && showApprovalDropdown.set(!showApprovalDropdown())"
-          >
-            Send for Approval <i class="pi pi-chevron-down"></i>
-          </button>
-          @if (showApprovalDropdown()) {
-            <div class="approval-dropdown">
-              @for (opt of approvalOptions; track opt.key) {
-                <button (click)="openApprovalOption(opt)">{{ opt.label }}</button>
-              }
-            </div>
-          }
-        </div>
+        @if (isViewOnly()) {
+          <span class="readonly-badge"><i class="pi pi-lock"></i> View Only</span>
+        } @else {
+          <button class="btn-edit" (click)="editMode.set(!editMode())"><i class="pi pi-pencil"></i> Edit</button>
+          <div class="approval-wrapper">
+            <button
+              class="btn-approval"
+              [disabled]="isClosureBlocked()"
+              [title]="isClosureBlocked() ? 'Closure blocked: upload link is active' : ''"
+              (click)="!isClosureBlocked() && showWorkflowDropdown.set(!showWorkflowDropdown())"
+            >
+              Workflow Action <i class="pi pi-chevron-down"></i>
+            </button>
+            @if (showWorkflowDropdown()) {
+              <div class="approval-dropdown">
+                @for (action of availableActions(); track action.id) {
+                  <button (click)="openWorkflowAction(action)">
+                    {{ action.label }}
+                    @if (action.assignTo) {
+                      <span class="assign-hint">→ {{ action.assignTo }}</span>
+                    }
+                  </button>
+                }
+              </div>
+            }
+          </div>
+        }
         <button class="btn-more"><i class="pi pi-ellipsis-v"></i></button>
       </div>
+
+      <!-- Action Result Toast -->
+      @if (actionResult()) {
+        <div class="action-toast" [class.success]="actionSuccess()" [class.error]="!actionSuccess()">
+          <i class="pi" [class.pi-check-circle]="actionSuccess()" [class.pi-times-circle]="!actionSuccess()"></i>
+          {{ actionResult() }}
+        </div>
+      }
     </div>
 
     <!-- Upload Link Status Banner -->
@@ -343,42 +360,44 @@
   }
 </div>
 
-<!-- Assignment Modal -->
-@if (showAssignmentModal() && selectedApprovalOption(); as opt) {
-  <div class="modal-overlay" (click)="cancelAssignment()">
+<!-- Workflow Confirmation Modal -->
+@if (showWorkflowModal() && pendingWorkflowAction(); as action) {
+  <div class="modal-overlay" (click)="cancelWorkflowAction()">
     <div class="modal-dialog assignment-modal" (click)="$event.stopPropagation()">
       <div class="modal-header">
         <div class="modal-icon"><i class="pi pi-info-circle"></i></div>
         <div>
           <h3>Confirmation</h3>
-          <p>Are you sure you want to send the request to {{ opt.label.replace('Send to ', '') }} ?</p>
+          <p>Are you sure you want to proceed with "{{ action.label }}"?</p>
         </div>
-        <button class="modal-close" (click)="cancelAssignment()">&times;</button>
+        <button class="modal-close" (click)="cancelWorkflowAction()">&times;</button>
       </div>
 
       <div class="modal-body">
-        <div class="field-group">
-          <div class="field">
-            <label>Assignment</label>
-            <select [(ngModel)]="assignmentType">
-              <option value="Automatic">Automatic</option>
-              <option value="Manual">Manual</option>
-            </select>
-          </div>
-          <div class="field">
-            <label>{{ opt.nameLabel }}</label>
-            <div class="search-input">
-              <input type="text" [(ngModel)]="assigneeName" />
-              <i class="pi pi-search"></i>
+        @if (action.assignTo) {
+          <div class="field-group">
+            <div class="field">
+              <label>Assignment Mode</label>
+              <select [ngModel]="assignmentMode()" (ngModelChange)="assignmentMode.set($event)">
+                <option value="Automatic">Automatic</option>
+                <option value="Manual">Manual</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Assign To ({{ action.assignTo }})</label>
+              <div class="search-input">
+                <input type="text" [placeholder]="'Search ' + action.assignTo" [ngModel]="assigneeName()" (ngModelChange)="assigneeName.set($event)" />
+                <i class="pi pi-search"></i>
+              </div>
             </div>
           </div>
-        </div>
+        }
 
-        @if (opt.key === 'ombudsman') {
+        @if (action.id === 'SEND_TO_OMBUDSMAN') {
           <div class="field-group">
             <div class="field">
               <label>CRPC Proposed Action</label>
-              <select [(ngModel)]="crpcProposedAction">
+              <select [ngModel]="crpcProposedAction()" (ngModelChange)="crpcProposedAction.set($event)">
                 <option value="">Select a Value</option>
                 <option value="ACCEPT">Accept</option>
                 <option value="REJECT">Reject</option>
@@ -387,22 +406,27 @@
             <div class="field">
               <label>CRPC Proposed Clause</label>
               <div class="search-input">
-                <input type="text" placeholder="Search" [(ngModel)]="crpcProposedClause" />
+                <input type="text" placeholder="Search" [ngModel]="crpcProposedClause()" (ngModelChange)="crpcProposedClause.set($event)" />
                 <i class="pi pi-search"></i>
               </div>
             </div>
           </div>
         }
 
-        @if (opt.key === 'deputy' || opt.key === 'ombudsman') {
+        @if (action.id === 'SEND_TO_DEPUTY_OMBUDSMAN' || action.id === 'SEND_TO_OMBUDSMAN') {
           <div class="systemic-issue">
             <label>Systemic Issue?</label>
             <div class="radio-group">
-              <label><input type="radio" name="systemic" [value]="true" [(ngModel)]="systemicIssue" /> Yes</label>
-              <label><input type="radio" name="systemic" [value]="false" [(ngModel)]="systemicIssue" /> No</label>
+              <label><input type="radio" name="systemic" [value]="true" [ngModel]="systemicIssue()" (ngModelChange)="systemicIssue.set($event)" /> Yes</label>
+              <label><input type="radio" name="systemic" [value]="false" [ngModel]="systemicIssue()" (ngModelChange)="systemicIssue.set($event)" /> No</label>
             </div>
           </div>
         }
+
+        <div class="field" style="margin-bottom: 16px;">
+          <label>Remarks</label>
+          <textarea rows="3" [ngModel]="workflowRemarks()" (ngModelChange)="workflowRemarks.set($event)" placeholder="Enter remarks..."></textarea>
+        </div>
 
         <div class="expected-status">
           <label>Expected Status Change</label>
@@ -412,15 +436,21 @@
             </span>
             <i class="pi pi-arrow-right"></i>
             <span class="status-to">
-              <i class="pi pi-pencil blue"></i> Sent to {{ opt.label.replace('Send to ', '') }}
+              <i class="pi pi-pencil blue"></i> {{ getExpectedStatus(action) }}
             </span>
           </div>
         </div>
       </div>
 
       <div class="modal-footer">
-        <button class="btn-cancel" (click)="cancelAssignment()">Cancel</button>
-        <button class="btn-confirm" (click)="confirmAssignment()">Confirm</button>
+        <button class="btn-cancel" (click)="cancelWorkflowAction()">Cancel</button>
+        <button class="btn-confirm" [disabled]="processing()" (click)="confirmWorkflowAction()">
+          @if (processing()) {
+            <i class="pi pi-spin pi-spinner"></i> Processing...
+          } @else {
+            Confirm
+          }
+        </button>
       </div>
     </div>
   </div>
