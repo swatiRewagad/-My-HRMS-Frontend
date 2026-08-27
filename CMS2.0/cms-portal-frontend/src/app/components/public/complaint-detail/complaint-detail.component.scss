@@ -2,7 +2,7 @@
   font-family: 'Poppins', sans-serif;
   background: #f5f7ff;
   min-height: 100vh;
-  padding-bottom: 40px;
+  padding: 0 24px 40px;
 }
 
 .loading-state, .empty-state {
@@ -28,42 +28,81 @@
   align-items: center;
   gap: 16px;
   max-width: 1100px;
-  margin: 0 auto;
-  padding: 24px 24px 16px;
+  margin: 24px auto 20px;
+  padding: 20px 28px;
+  background: #fff;
+  border-radius: 20px;
+  border: 1px solid #e8eaf0;
+  box-shadow: 0 4px 20px rgba(71, 34, 147, 0.06);
+  position: relative;
+  overflow: hidden;
+
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #6a11cb 0%, #4a3fc7 50%, #2575fc 100%);
+  }
+}
+
+// ══════ Body Card Wrapper ══════
+.detail-body-card {
+  max-width: 1100px;
+  margin: 0 auto 32px;
+  padding: 0;
+  background: #fff;
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 24px rgba(71, 34, 147, 0.04);
+  overflow: hidden;
 }
 
 .btn-back-arrow {
-  width: 40px;
-  height: 40px;
+  width: 38px;
+  height: 38px;
   border-radius: 50%;
-  background: #fff;
+  background: #f4f5f7;
   border: 1px solid #e2e8f0;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  font-size: 16px;
-  color: #334155;
+  font-size: 15px;
+  color: #1e293b;
   flex-shrink: 0;
 
-  &:hover { background: #f8fafc; }
+  &:hover { background: #ebedf0; }
 }
 
 .header-info-cards {
   display: flex;
-  gap: 16px;
+  align-items: center;
+  gap: 0;
   flex: 1;
+  background: transparent;
+  border: none;
+  padding: 0;
 }
 
 .info-card {
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  padding: 12px 20px;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 8px 28px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  min-width: 180px;
+  gap: 3px;
+  min-width: 160px;
+}
+
+.info-card-divider {
+  width: 1px;
+  height: 32px;
+  background: #d4d9e2;
+  flex-shrink: 0;
 }
 
 .info-label {
@@ -84,11 +123,11 @@
 }
 
 .btn-withdraw {
-  padding: 10px 24px;
-  background: #472293;
+  padding: 12px 28px;
+  background: #1e1b4b;
   color: #fff;
   border: none;
-  border-radius: 8px;
+  border-radius: 10px;
   font-size: 14px;
   font-weight: 600;
   font-family: 'Poppins', sans-serif;
@@ -96,7 +135,7 @@
   white-space: nowrap;
   flex-shrink: 0;
 
-  &:hover { background: #3a1b78; }
+  &:hover { background: #312e81; }
 }
 
 // ══════ Status Badges ══════
@@ -126,12 +165,11 @@
 
 // ══════ Tabs ══════
 .detail-tabs {
-  max-width: 1100px;
-  margin: 0 auto;
   padding: 0 24px;
   display: flex;
   gap: 0;
   border-bottom: 2px solid #e2e8f0;
+  background: #fff;
 }
 
 .tab-btn {
@@ -157,14 +195,12 @@
 
 // ══════ Detail Content ══════
 .detail-content {
-  max-width: 1100px;
-  margin: 0 auto;
   padding: 24px;
 }
 
 // ══════ Comments Section ══════
 .comments-section {
-  background: #fff;
+  background: #f9fafb;
   border: 1px solid #e2e8f0;
   border-radius: 12px;
   padding: 24px;
@@ -794,8 +830,9 @@
 // ══════ Responsive ══════
 @media (max-width: 768px) {
   .detail-header { flex-wrap: wrap; }
-  .header-info-cards { flex-wrap: wrap; }
-  .info-card { min-width: 140px; }
+  .header-info-cards { flex-wrap: wrap; border-radius: 16px; gap: 0; }
+  .info-card { min-width: 120px; padding: 8px 16px; }
+  .info-card-divider { display: none; }
   .rs-detail-grid {
     &--4 { grid-template-columns: 1fr 1fr; }
     &--3 { grid-template-columns: 1fr; }

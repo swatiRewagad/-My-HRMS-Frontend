@@ -3,6 +3,10 @@ export interface ComplaintRecord {
   entityName: string;
   complaintDate: string;
   status: string;
+  closureClause?: string;
+  closureDate?: string;
+  acknowledgementLetterUrl?: string;
+  closureLetterUrl?: string;
   isDraft?: boolean;
   draftId?: string;
 }

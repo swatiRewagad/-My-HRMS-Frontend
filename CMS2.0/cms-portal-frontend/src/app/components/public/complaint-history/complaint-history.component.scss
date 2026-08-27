@@ -7,7 +7,7 @@
 
 .page-header {
   display: flex; justify-content: space-between; align-items: center;
-  max-width: 1300px; margin: 0 auto; padding: 40px 24px 24px;
+  max-width: 100%; margin: 0 auto; padding: 40px 32px 24px;
 }
 
 .page-title {
@@ -25,19 +25,33 @@
 }
 
 .table-card {
-  max-width: 1300px; margin: 0 auto 40px; padding: 0 24px;
-  overflow: visible;
+  margin: 0 32px 40px; padding: 0;
+  overflow: hidden;
+  border-radius: 16px;
+  box-shadow: 0 4px 24px rgba(100, 80, 180, 0.08);
+  border: 1.5px solid #e8e0f4;
+  background: #fff;
 }
 
-// ── Column filter inputs (uniform height/style) ──
+// ── Column classes for consistent sizing ──
+.col-complaint-no { min-width: 160px; max-width: 180px; }
+.col-date { min-width: 130px; max-width: 160px; }
+.col-status { min-width: 130px; max-width: 150px; }
+.col-entity { min-width: 170px; max-width: 220px; }
+.col-clause { min-width: 110px; max-width: 140px; }
+.col-closure-date { min-width: 130px; max-width: 160px; }
+.col-letter { min-width: 140px; max-width: 160px; text-align: center; }
+.col-actions { min-width: 220px; max-width: 280px; text-align: center; }
+
+// ── Column filter inputs ──
 .col-filter {
   width: 100%;
-  height: 38px;
-  padding: 0 14px;
+  height: 36px;
+  padding: 0 12px;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
   font-family: 'Poppins', sans-serif;
-  font-size: 13px;
+  font-size: 12px;
   color: #334155;
   background: #fff;
   box-sizing: border-box;
@@ -45,30 +59,16 @@
   &::placeholder { color: #94a3b8; }
 }
 
-.col-filter--date-single {
-  width: 100%;
-  height: 38px;
-  padding: 0 10px;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  font-family: 'Poppins', sans-serif;
-  font-size: 13px;
-  color: #334155;
-  background: #fff;
-  box-sizing: border-box;
-  &:focus { outline: none; border-color: #7c3aed; box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.08); }
-}
-
 // ── Status pills ──
 .status-pill {
   display: inline-flex; align-items: center; gap: 6px;
-  padding: 5px 14px; border-radius: 20px;
-  font-size: 12px; font-weight: 500;
+  padding: 4px 12px; border-radius: 20px;
+  font-size: 11px; font-weight: 500;
   font-family: 'Poppins', sans-serif; white-space: nowrap;
 }
 
 .status-dot {
-  width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+  width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
 }
 
 .status-inprogress {
@@ -96,18 +96,16 @@
 :host ::ng-deep {
   .complaints-datatable {
     border-radius: 16px;
-    overflow: visible;
-    box-shadow: 0 4px 24px rgba(100, 80, 180, 0.08);
-    border: 1.5px solid #e8e0f4;
+    overflow: hidden;
     background: #fff;
 
     .p-datatable-table {
-      table-layout: fixed;
+      table-layout: auto;
       width: 100%;
     }
 
     .p-datatable-wrapper {
-      overflow: visible;
+      overflow-x: auto;
     }
 
     .p-datatable-header {
@@ -117,16 +115,18 @@
     .p-datatable-thead > tr.header-row > th {
       background: #fff;
       font-family: 'Poppins', sans-serif;
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 600;
       color: #1e293b;
-      padding: 18px 14px 10px;
+      padding: 16px 12px 10px;
       border: none;
-      white-space: nowrap;
+      white-space: normal;
+      line-height: 1.4;
+      vertical-align: bottom;
     }
 
     .p-datatable-thead > tr.filter-row > th {
-      padding: 0 14px 16px;
+      padding: 4px 12px 14px;
       background: #fff;
       border-bottom: 1px solid #f0ecf5;
       vertical-align: middle;
@@ -137,14 +137,11 @@
       transition: background 0.15s;
 
       > td {
-        padding: 14px 14px;
+        padding: 16px 12px;
         font-size: 13px;
         color: #334155;
         border-bottom: 1px solid #f5f3f8;
         vertical-align: middle;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
       }
 
       &:hover { background: #faf8ff; }
@@ -160,8 +157,6 @@
       font-size: 13px;
       background: #fff;
       border-radius: 0 0 16px 16px;
-      overflow: visible;
-      position: relative;
     }
 
     .p-paginator-current {
@@ -185,13 +180,12 @@
       font-family: 'Poppins', sans-serif;
       font-size: 13px;
       margin-left: 12px;
-      overflow: visible;
     }
 
     .p-sortable-column-icon {
-      font-size: 11px;
+      font-size: 10px;
       color: #94a3b8;
-      margin-left: 4px;
+      margin-left: 3px;
     }
 
     .p-datatable-loading-overlay {
@@ -200,89 +194,114 @@
     }
   }
 
-  // Status filter dropdown — match same height as text inputs
+  // Status filter dropdown
   .status-filter-dropdown {
     width: 100%;
 
     .p-select {
       width: 100%;
-      height: 38px;
+      height: 36px;
       border: 1px solid #e2e8f0;
       border-radius: 8px;
       font-family: 'Poppins', sans-serif;
-      font-size: 13px;
+      font-size: 12px;
       background: #fff;
     }
 
     .p-select-label {
-      padding: 0 14px;
-      font-size: 13px;
+      padding: 0 12px;
+      font-size: 12px;
       font-family: 'Poppins', sans-serif;
-      line-height: 38px;
+      line-height: 36px;
     }
   }
 }
 
-// ── Row styles ──
-.clickable-row { cursor: pointer; }
+// ── Row & cell styles ──
 .draft-row { background: #fdfaff !important; }
-.id-cell { font-weight: 500; color: #1e293b; }
 
-.comments-cell {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: #64748b;
+.complaint-link {
+  color: #0d6efd;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  &:hover { text-decoration: underline; color: #0a58ca; }
 }
 
-.actions-th { text-align: center; }
+.center-cell { text-align: center; }
+
+.btn-download {
+  display: inline-flex; align-items: center; gap: 4px;
+  color: #0d6efd; text-decoration: none;
+  font-size: 11px; font-weight: 500;
+  font-family: 'Poppins', sans-serif; cursor: pointer;
+  white-space: nowrap;
+  &:hover { text-decoration: underline; color: #0a58ca; }
+  i { font-size: 11px; }
+}
+
+.no-document { color: #cbd5e1; font-size: 14px; }
 
 // ── Action buttons ──
 .actions-cell {
-  display: flex; align-items: center; justify-content: center; gap: 8px; white-space: nowrap;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; white-space: nowrap;
 }
 
 .btn-resume {
   display: inline-flex; align-items: center; gap: 4px;
   padding: 6px 14px; background: #472192; color: #fff;
-  border: none; border-radius: 6px; font-size: 12px; font-weight: 600;
+  border: none; border-radius: 6px; font-size: 11px; font-weight: 600;
   font-family: 'Poppins', sans-serif; cursor: pointer;
+  white-space: nowrap;
   transition: background 0.2s;
   &:hover { background: #3a1b78; }
-  i { font-size: 11px; }
+  i { font-size: 10px; }
 }
 
 .btn-view {
   display: inline-flex; align-items: center; gap: 4px;
   padding: 6px 14px; background: #f0f5ff; color: #146EF5;
   border: 1px solid #c7d8f8; border-radius: 6px;
-  font-size: 12px; font-weight: 600;
+  font-size: 11px; font-weight: 600;
   font-family: 'Poppins', sans-serif; cursor: pointer;
+  white-space: nowrap;
   transition: all 0.2s;
   &:hover { background: #e0ebff; border-color: #146EF5; }
-  i { font-size: 11px; }
+  i { font-size: 10px; }
 }
 
 .btn-delete-draft {
   display: inline-flex; align-items: center; justify-content: center;
-  width: 30px; height: 30px; border-radius: 6px;
+  width: 28px; height: 28px; border-radius: 6px;
   background: #fef2f2; border: 1px solid #fecaca; color: #dc2626;
-  cursor: pointer; font-size: 13px; transition: background 0.2s;
+  cursor: pointer; font-size: 12px; transition: background 0.2s;
   &:hover { background: #fee2e2; }
 }
 
-.btn-track {
+.btn-appeal {
   display: inline-flex; align-items: center; gap: 4px;
-  padding: 6px 14px; background: #f0fdf4; color: #16a34a;
-  border: 1px solid #bbf7d0; border-radius: 6px;
-  font-size: 12px; font-weight: 600;
+  padding: 6px 12px; background: #fff7ed; color: #c2410c;
+  border: 1px solid #fed7aa; border-radius: 6px;
+  font-size: 11px; font-weight: 600;
   font-family: 'Poppins', sans-serif; cursor: pointer;
+  white-space: nowrap;
   transition: all 0.2s;
-  &:hover { background: #dcfce7; border-color: #16a34a; }
-  i { font-size: 11px; }
+  &:hover { background: #ffedd5; border-color: #c2410c; }
+  i { font-size: 10px; }
 }
 
-.track-na { color: #94a3b8; }
+.btn-feedback {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 6px 12px; background: #f0fdf4; color: #16a34a;
+  border: 1px solid #bbf7d0; border-radius: 6px;
+  font-size: 11px; font-weight: 600;
+  font-family: 'Poppins', sans-serif; cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s;
+  &:hover { background: #dcfce7; border-color: #16a34a; }
+  i { font-size: 10px; }
+}
 
 // ── Empty state ──
 .empty-cell { text-align: center; padding: 48px !important; }

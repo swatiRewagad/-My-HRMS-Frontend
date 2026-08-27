@@ -17,55 +17,46 @@
       currentPageReportTemplate="Showing {first} to {last} of {totalRecords}"
       paginatorPosition="bottom"
       paginatorDropdownAppendTo="body"
-      [globalFilterFields]="['complaintId', 'entityName', 'status']"
+      [globalFilterFields]="['complaintId', 'entityName', 'status', 'closureClause']"
       dataKey="complaintId"
       [rowHover]="true"
-      [tableStyle]="{ 'min-width': '60rem' }"
+      [scrollable]="true"
+      scrollDirection="horizontal"
       styleClass="complaints-datatable">
-
-      <!-- Column widths -->
-      <ng-template pTemplate="colgroup">
-        <colgroup>
-          <col style="width: 18%;">
-          <col style="width: 18%;">
-          <col style="width: 18%;">
-          <col style="width: 14%;">
-          <col style="width: 18%;">
-          <col style="width: 14%;">
-        </colgroup>
-      </ng-template>
 
       <!-- Header -->
       <ng-template pTemplate="header">
         <tr class="header-row">
-          <th pSortableColumn="complaintId">
+          <th pSortableColumn="complaintId" class="col-complaint-no">
             Complaint Number <p-sortIcon field="complaintId"></p-sortIcon>
           </th>
-          <th pSortableColumn="entityName">
-            Complaint Against <p-sortIcon field="entityName"></p-sortIcon>
+          <th pSortableColumn="complaintDate" class="col-date">
+            Date of Complaint Registration <p-sortIcon field="complaintDate"></p-sortIcon>
           </th>
-          <th pSortableColumn="complaintDate">
-            Complaint Date <p-sortIcon field="complaintDate"></p-sortIcon>
+          <th pSortableColumn="status" class="col-status">
+            Complaint Status <p-sortIcon field="status"></p-sortIcon>
           </th>
-          <th pSortableColumn="status">
-            Status <p-sortIcon field="status"></p-sortIcon>
+          <th pSortableColumn="entityName" class="col-entity">
+            Regulated Entity Name <p-sortIcon field="entityName"></p-sortIcon>
           </th>
-          <th class="track-th">
-            Track Complaint
+          <th pSortableColumn="closureClause" class="col-clause">
+            Closure Clause <p-sortIcon field="closureClause"></p-sortIcon>
           </th>
-          <th class="actions-th">Actions</th>
+          <th pSortableColumn="closureDate" class="col-closure-date">
+            Complaint Closure Date <p-sortIcon field="closureDate"></p-sortIcon>
+          </th>
+          <th class="col-letter">Acknowledgement Letter</th>
+          <th class="col-letter">Closure Letter</th>
+          <th class="col-actions">Actions</th>
         </tr>
         <tr class="filter-row">
-          <th>
+          <th class="col-complaint-no">
             <input type="text" placeholder="Search" (input)="dt.filter($any($event.target).value, 'complaintId', 'contains')" class="col-filter" />
           </th>
-          <th>
-            <input type="text" placeholder="Search" (input)="dt.filter($any($event.target).value, 'entityName', 'contains')" class="col-filter" />
+          <th class="col-date">
+            <input type="date" class="col-filter" [value]="dateFrom" (change)="onDateFromChange($event)" title="From date" />
           </th>
-          <th>
-            <input type="date" class="col-filter col-filter--date-single" [value]="dateFrom" (change)="onDateFromChange($event)" title="From date" />
-          </th>
-          <th>
+          <th class="col-status">
             <p-select
               [options]="statusOptions"
               [(ngModel)]="selectedStatus"
@@ -78,38 +69,68 @@
               styleClass="status-filter-dropdown">
             </p-select>
           </th>
-          <th></th>
-          <th></th>
+          <th class="col-entity">
+            <input type="text" placeholder="Search" (input)="dt.filter($any($event.target).value, 'entityName', 'contains')" class="col-filter" />
+          </th>
+          <th class="col-clause"></th>
+          <th class="col-closure-date"></th>
+          <th class="col-letter"></th>
+          <th class="col-letter"></th>
+          <th class="col-actions"></th>
         </tr>
       </ng-template>
 
       <!-- Body -->
       <ng-template pTemplate="body" let-complaint>
-        <tr [class.draft-row]="complaint.isDraft" (click)="viewComplaint(complaint)" class="clickable-row">
-          <td class="id-cell">{{ complaint.complaintId }}</td>
-          <td>{{ complaint.entityName }}</td>
-          <td>{{ formatDate(complaint.complaintDate) }}</td>
-          <td>
+        <tr [class.draft-row]="complaint.isDraft">
+          <td class="col-complaint-no">
+            @if (complaint.isDraft) {
+              <a class="complaint-link" (click)="resumeDraft(complaint)">{{ complaint.complaintId }}</a>
+            } @else {
+              <a class="complaint-link" [routerLink]="['/public/complaint', complaint.complaintId]">{{ complaint.complaintId }}</a>
+            }
+          </td>
+          <td class="col-date">{{ formatDate(complaint.complaintDate) }}</td>
+          <td class="col-status">
             <span class="status-pill" [ngClass]="getStatusClass(complaint.status)">
               <span class="status-dot"></span>
               {{ getStatusLabel(complaint.status) }}
             </span>
           </td>
-          <td class="track-cell">
-            @if (!complaint.isDraft) {
-              <button class="btn-track" (click)="$event.stopPropagation(); trackComplaint(complaint)"><i class="pi pi-search"></i> Track</button>
+          <td class="col-entity">{{ complaint.entityName }}</td>
+          <td class="col-clause">{{ complaint.closureClause || '—' }}</td>
+          <td class="col-closure-date">{{ formatDate(complaint.closureDate) }}</td>
+          <td class="col-letter center-cell">
+            @if (complaint.acknowledgementLetterUrl) {
+              <a class="btn-download" [href]="complaint.acknowledgementLetterUrl" target="_blank">
+                <i class="pi pi-download"></i> Download PDF
+              </a>
             } @else {
-              <span class="track-na">—</span>
+              <span class="no-document">—</span>
             }
           </td>
-          <td>
+          <td class="col-letter center-cell">
+            @if (complaint.closureLetterUrl) {
+              <a class="btn-download" [href]="complaint.closureLetterUrl" target="_blank">
+                <i class="pi pi-download"></i> Download PDF
+              </a>
+            } @else {
+              <span class="no-document">—</span>
+            }
+          </td>
+          <td class="col-actions center-cell">
             @if (complaint.isDraft) {
-              <div class="actions-cell" (click)="$event.stopPropagation()">
+              <div class="actions-cell">
                 <button class="btn-resume" (click)="resumeDraft(complaint)"><i class="pi pi-pencil"></i> Resume</button>
                 <button class="btn-delete-draft" (click)="deleteDraft(complaint)" title="Delete draft"><i class="pi pi-trash"></i></button>
               </div>
+            } @else if (complaint.status === 'CLOSED' || complaint.status === 'NON_MAINTAINABLE') {
+              <div class="actions-cell">
+                <button class="btn-appeal" (click)="fileAppeal(complaint)"><i class="pi pi-file-edit"></i> File an Appeal</button>
+                <button class="btn-feedback" (click)="shareFeedback(complaint)"><i class="pi pi-comment"></i> Share Feedback</button>
+              </div>
             } @else {
-              <button class="btn-view" (click)="$event.stopPropagation(); viewComplaint(complaint)"><i class="pi pi-eye"></i> View</button>
+              <button class="btn-view" (click)="viewComplaint(complaint)"><i class="pi pi-eye"></i> View</button>
             }
           </td>
         </tr>
@@ -118,7 +139,7 @@
       <!-- Empty message -->
       <ng-template pTemplate="emptymessage">
         <tr>
-          <td colspan="6" class="empty-cell">
+          <td colspan="9" class="empty-cell">
             <div class="empty-state">
               <i class="pi pi-inbox"></i>
               <p>No complaints found</p>

@@ -34,8 +34,10 @@ export class ComplaintHistoryComponent implements OnInit {
   statusOptions = [
     { label: 'All', value: '' },
     { label: 'Draft', value: 'DRAFT' },
-    { label: 'Rejected', value: 'REJECTED' },
-    { label: 'Approved', value: 'APPROVED' }
+    { label: 'Pending', value: 'PENDING' },
+    { label: 'In-Progress', value: 'IN_PROGRESS' },
+    { label: 'Complaint Closed', value: 'CLOSED' },
+    { label: 'Rejected', value: 'REJECTED' }
   ];
 
   selectedStatus = '';
@@ -85,9 +87,13 @@ export class ComplaintHistoryComponent implements OnInit {
         if (Array.isArray(data)) {
           allRecords.push(...data.map((c: any) => ({
             complaintId: c.complaintId || c.id,
-            entityName: c.entityName || c.complainantName || '—',
+            entityName: c.entityName || c.regulatedEntityName || c.complainantName || '—',
             complaintDate: c.createdAt || c.complaintDate || c.registeredDate || '—',
             status: c.status || 'PENDING',
+            closureClause: c.closureClause || '',
+            closureDate: c.closureDate || c.complaintClosureDate || '',
+            acknowledgementLetterUrl: c.acknowledgementLetterUrl || c.acknowledgementLetter || '',
+            closureLetterUrl: c.closureLetterUrl || c.closureLetter || '',
           })));
         }
         this.finalizeLoad(allRecords);
@@ -172,6 +178,14 @@ export class ComplaintHistoryComponent implements OnInit {
     }
   }
 
+  fileAppeal(record: ComplaintRecord) {
+    this.router.navigate(['/public/file-appeal', record.complaintId]);
+  }
+
+  shareFeedback(record: ComplaintRecord) {
+    this.router.navigate(['/public/feedback', record.complaintId]);
+  }
+
   resumeDraft(record: ComplaintRecord) {
     if (record.draftId === 'local') {
       this.router.navigate(['/public/file-complaint'], { queryParams: { resume: 'true' } });
@@ -211,7 +225,7 @@ export class ComplaintHistoryComponent implements OnInit {
   getStatusLabel(status: string): string {
     switch (status) {
       case 'IN_PROGRESS': return 'In-Progress';
-      case 'CLOSED': case 'NON_MAINTAINABLE': return 'Closed';
+      case 'CLOSED': case 'NON_MAINTAINABLE': return 'Complaint Closed';
       case 'INFORMATION_REQUIRED': return 'Information Required';
       case 'PENDING': return 'Pending';
       case 'DRAFT': return 'Draft';
@@ -221,10 +235,12 @@ export class ComplaintHistoryComponent implements OnInit {
     }
   }
 
-  formatDate(dateStr: string): string {
+  formatDate(dateStr: string | undefined): string {
     if (!dateStr || dateStr === '—') return '—';
     try {
-      return new Date(dateStr).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-');
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return '—';
+      return d.toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-');
     } catch { return dateStr; }
   }
 }

@@ -33,33 +33,39 @@
 
       <div class="header-info-cards">
         <div class="info-card">
-          <span class="info-label">Complaint Number<i class="pi pi-info-circle"></i></span>
+          <span class="info-label">Complaint Number <i class="pi pi-info-circle"></i></span>
           <span class="info-value">{{ complaint().complaintId }}</span>
         </div>
+        <div class="info-card-divider"></div>
         <div class="info-card">
           <span class="info-label">Status <i class="pi pi-info-circle"></i></span>
           <span class="status-badge" [ngClass]="getStatusClass(complaint().status)">
             <span class="status-dot"></span> {{ getStatusLabel(complaint().status) }}
           </span>
         </div>
+        <div class="info-card-divider"></div>
         <div class="info-card">
           <span class="info-label">Complaint Filed On <i class="pi pi-info-circle"></i></span>
           <span class="info-value">{{ formatDate(complaint().createdAt || complaint().complaintDate) }}</span>
         </div>
       </div>
 
-      <button class="btn-withdraw" (click)="openWithdrawModal()">Withdraw</button>
+      @if (complaint().status?.toUpperCase() === 'PENDING') {
+        <button class="btn-withdraw" (click)="openWithdrawModal()">Withdraw</button>
+      }
     </header>
 
-    <!-- Tabs -->
-    <nav class="detail-tabs">
-      <button class="tab-btn" [class.active]="activeTab() === 'details'" (click)="switchTab('details')">Complaint Details</button>
-      <button class="tab-btn" [class.active]="activeTab() === 'history'" (click)="switchTab('history')">Status History</button>
-    </nav>
+    <!-- Body Card Wrapper -->
+    <div class="detail-body-card">
+      <!-- Tabs -->
+      <nav class="detail-tabs">
+        <button class="tab-btn" [class.active]="activeTab() === 'details'" (click)="switchTab('details')">Complaint Details</button>
+        <button class="tab-btn" [class.active]="activeTab() === 'history'" (click)="switchTab('history')">Status History</button>
+      </nav>
 
-    <!-- Tab Content -->
-    @if (activeTab() === 'details') {
-      <main class="detail-content">
+      <!-- Tab Content -->
+      @if (activeTab() === 'details') {
+        <main class="detail-content">
         <!-- Comments Section -->
         <section class="comments-section">
           <div class="comments-header">
@@ -323,6 +329,7 @@
         </div>
       </main>
     }
+    </div><!-- /.detail-body-card -->
   }
 </div>
 }
