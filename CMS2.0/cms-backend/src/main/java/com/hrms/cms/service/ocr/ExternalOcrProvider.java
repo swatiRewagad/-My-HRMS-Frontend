@@ -102,23 +102,45 @@ public class ExternalOcrProvider implements OcrProvider {
         JsonNode root = objectMapper.readTree(json);
         Map<String, String> result = new LinkedHashMap<>();
 
-        // Try common response structures:
-        // 1. { "fields": { "complainantName": "...", ... } }
-        // 2. { "data": { "complainantName": "...", ... } }
-        // 3. Flat: { "complainantName": "...", ... }
-        JsonNode fields = root.path("fields");
-        if (fields.isMissingNode()) fields = root.path("data");
-        if (fields.isMissingNode()) fields = root;
+        String status = root.path("status").asText("");
+        if ("failed".equals(status) || "bounced".equals(status)) {
+            log.warn("External OCR returned status='{}', job_id={}", status, root.path("job_id").asText());
+            return Collections.emptyMap();
+        }
 
-        fields.fields().forEachRemaining(e -> {
-            String key = e.getKey();
-            if (key.equals("success") || key.equals("message") || key.equals("timestamp")
-                    || key.equals("provider") || key.equals("raw_text")) return;
-            String val = e.getValue().isNull() ? "" : e.getValue().asText().trim();
-            if (!val.isEmpty()) result.put(key, val);
+        String jobId = root.path("job_id").asText("");
+        boolean isNew = root.path("is_new").asBoolean(true);
+        String softDuplicate = root.path("soft_duplicate_of").asText(null);
+
+        if (!isNew) {
+            log.info("External OCR: duplicate document (job_id={}), reusing previous result", jobId);
+        }
+        if (softDuplicate != null) {
+            log.info("External OCR: soft duplicate of job_id={}, reason={}",
+                    softDuplicate, root.path("soft_duplicate_reason").asText("unknown"));
+        }
+
+        // The extracted envelope is in the "result" field
+        JsonNode envelope = root.path("result");
+        if (envelope.isMissingNode() || envelope.isNull()) {
+            log.warn("External OCR response has no 'result' envelope (status={})", status);
+            return Collections.emptyMap();
+        }
+
+        // Extract all string fields from the envelope
+        envelope.fields().forEachRemaining(e -> {
+            JsonNode val = e.getValue();
+            if (val.isNull()) return;
+            if (val.isTextual()) {
+                String text = val.asText().trim();
+                if (!text.isEmpty()) result.put(e.getKey(), text);
+            } else if (val.isNumber()) {
+                result.put(e.getKey(), val.asText());
+            }
         });
 
-        log.info("External OCR extracted {} fields", result.size());
+        log.info("External OCR extracted {} fields from envelope (job_id={}, status={})",
+                result.size(), jobId, status);
         return result;
     }
 
