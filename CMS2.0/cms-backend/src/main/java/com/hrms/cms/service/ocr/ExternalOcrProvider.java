@@ -17,10 +17,13 @@ import java.util.*;
  * OCR provider backed by an external OCR service deployed on a VM.
  *
  * Endpoint: POST {cms.ocr.external-url}/v1/documents
- * Accepts multipart/form-data with 'file' field.
- * Returns JSON with extracted fields.
+ * Form fields: file (required), sender (optional), subject (optional), synthetic (conditional).
  *
- * Activated when cms.ocr.external-url is set (e.g. http://192.168.x.x:5000).
+ * The 'synthetic' field is required under the 'laptop' deployment profile of the OCR service
+ * (declares that payload is test data). On production 'cpu_node' profile it is ignored.
+ * Set cms.ocr.external-synthetic=true for dev/QA environments talking to a laptop-profile instance.
+ *
+ * Activated when cms.ocr.external-url is set (e.g. http://192.168.x.x:8000).
  * Add "external" to cms.ocr.chain to use it.
  */
 @Component
@@ -29,6 +32,9 @@ public class ExternalOcrProvider implements OcrProvider {
 
     @Value("${cms.ocr.external-url:}")
     private String externalUrl;
+
+    @Value("${cms.ocr.external-synthetic:false}")
+    private boolean synthetic;
 
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -48,6 +54,10 @@ public class ExternalOcrProvider implements OcrProvider {
 
     @Override
     public Map<String, String> extractFields(byte[] fileBytes, String mimeType) {
+        return extractFields(fileBytes, mimeType, null, null);
+    }
+
+    public Map<String, String> extractFields(byte[] fileBytes, String mimeType, String sender, String subject) {
         try {
             String endpoint = externalUrl.replaceAll("/+$", "") + "/v1/documents";
             log.info("Sending {} bytes ({}) to external OCR at {}", fileBytes.length, mimeType, endpoint);
@@ -61,6 +71,16 @@ public class ExternalOcrProvider implements OcrProvider {
             fileHeaders.setContentType(MediaType.parseMediaType(mimeType));
             fileHeaders.setContentDispositionFormData("file", "document" + getExtension(mimeType));
             body.add("file", new HttpEntity<>(fileBytes, fileHeaders));
+
+            if (sender != null && !sender.isBlank()) {
+                body.add("sender", sender);
+            }
+            if (subject != null && !subject.isBlank()) {
+                body.add("subject", subject);
+            }
+            if (synthetic) {
+                body.add("synthetic", "true");
+            }
 
             HttpEntity<MultiValueMap<String, Object>> request = new HttpEntity<>(body, headers);
             ResponseEntity<String> response = restTemplate.postForEntity(endpoint, request, String.class);
