@@ -42,31 +42,35 @@ public class DataInitializer implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        if (categoryRepo.count() == 0) {
-            seedCategories();
+        try {
+            if (categoryRepo.count() == 0) {
+                seedCategories();
+            }
+            if (bankRepo.count() == 0) {
+                seedBanks();
+            }
+            if (formConfigRepo.count() == 0) {
+                seedComplaintForm();
+            }
+            if (complaintRepo.count() == 0) {
+                seedComplaints();
+            }
+            if (regulatedEntityRepo.count() == 0) {
+                seedRegulatedEntities();
+            }
+            if (extractionRuleRepo.count() == 0) {
+                seedExtractionRules();
+            }
+            if (accountTypeRepo.count() == 0) {
+                seedAccountTypes();
+            }
+            if (emailDraftRepo.count() == 0) {
+                seedCrpcEmailDrafts();
+            }
+            migrateUuidDraftIds();
+        } catch (Exception e) {
+            System.out.println("DataInitializer warning: " + e.getMessage());
         }
-        if (bankRepo.count() == 0) {
-            seedBanks();
-        }
-        if (formConfigRepo.count() == 0) {
-            seedComplaintForm();
-        }
-        if (complaintRepo.count() == 0) {
-            seedComplaints();
-        }
-        if (regulatedEntityRepo.count() == 0) {
-            seedRegulatedEntities();
-        }
-        if (extractionRuleRepo.count() == 0) {
-            seedExtractionRules();
-        }
-        if (accountTypeRepo.count() == 0) {
-            seedAccountTypes();
-        }
-        if (emailDraftRepo.count() == 0) {
-            seedCrpcEmailDrafts();
-        }
-        migrateUuidDraftIds();
     }
 
     private void seedCrpcEmailDrafts() {

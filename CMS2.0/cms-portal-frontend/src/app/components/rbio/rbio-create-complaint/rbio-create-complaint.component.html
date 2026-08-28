@@ -118,42 +118,42 @@
         <div class="meta-row">
           <button class="back-arrow" (click)="goBack()"><i class="pi pi-arrow-left"></i></button>
           <div class="meta-item">
-            <span class="meta-icon"><i class="pi pi-id-card"></i></span>
+            <span class="meta-icon complaint-number"><i class="pi pi-id-card"></i></span>
             <div class="meta-text">
               <span class="meta-label">Complaint Number <i class="pi pi-info-circle"></i></span>
               <span class="meta-value">N{{ complaintId }}</span>
             </div>
           </div>
           <div class="meta-item">
-            <span class="meta-icon"><i class="pi pi-user"></i></span>
+            <span class="meta-icon complainant-name"><i class="pi pi-user"></i></span>
             <div class="meta-text">
               <span class="meta-label">Complainant Name <i class="pi pi-info-circle"></i></span>
               <span class="meta-value">{{ complainantName || 'Not Assigned' }}</span>
             </div>
           </div>
           <div class="meta-item">
-            <span class="meta-icon"><i class="pi pi-building"></i></span>
+            <span class="meta-icon entity-name"><i class="pi pi-building"></i></span>
             <div class="meta-text">
               <span class="meta-label">Entity Name <i class="pi pi-info-circle"></i></span>
               <span class="meta-value">{{ entityName || 'Not Assigned' }}</span>
             </div>
           </div>
           <div class="meta-item">
-            <span class="meta-icon"><i class="pi pi-chart-bar"></i></span>
+            <span class="meta-icon status-icon"><i class="pi pi-chart-bar"></i></span>
             <div class="meta-text">
               <span class="meta-label">Status <i class="pi pi-info-circle"></i></span>
               <span class="meta-value"><span class="status-pill" [ngClass]="getStatusClass()">{{ getStatusLabel() }}</span></span>
             </div>
           </div>
           <div class="meta-item">
-            <span class="meta-icon"><i class="pi pi-tag"></i></span>
+            <span class="meta-icon category-icon"><i class="pi pi-tag"></i></span>
             <div class="meta-text">
               <span class="meta-label">Complaint Category <i class="pi pi-info-circle"></i></span>
               <span class="meta-value">{{ category || 'General Banking' }}</span>
             </div>
           </div>
           <div class="meta-item">
-            <span class="meta-icon"><i class="pi pi-clock"></i></span>
+            <span class="meta-icon sla-icon"><i class="pi pi-clock"></i></span>
             <div class="meta-text">
               <span class="meta-label">SLA Breach In <i class="pi pi-info-circle"></i></span>
               <span class="meta-value"><span class="sla-badge" [class.breach]="slaDaysRemaining() <= 5">{{ slaDaysRemaining() }} days</span></span>
@@ -976,8 +976,10 @@
           <div class="panel-header">
             <h3><i class="pi pi-th-large"></i> Complaint</h3>
             <div class="panel-header-actions">
-              <button class="btn btn-outline btn-sm" (click)="toggleEditMode()"><i class="pi pi-pencil"></i> {{ editMode() ? 'Done' : 'Edit' }}</button>
-              <button class="expand-btn" (click)="pdfExpanded.set(!pdfExpanded())">
+              <p-button [outlined]="true" severity="secondary" size="small" (onClick)="toggleEditMode()">
+                <i class="pi pi-pencil"></i> {{ editMode() ? 'Done' : 'Edit' }}
+              </p-button>
+              <button class="expand-btn" (click)="pdfExpanded.set(!pdfExpanded())" title="Full Screen">
                 <i class="pi pi-window-maximize"></i>
               </button>
             </div>
