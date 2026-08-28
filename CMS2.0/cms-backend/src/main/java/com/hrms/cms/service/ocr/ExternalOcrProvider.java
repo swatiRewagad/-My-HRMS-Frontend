@@ -120,28 +120,81 @@ public class ExternalOcrProvider implements OcrProvider {
                     softDuplicate, root.path("soft_duplicate_reason").asText("unknown"));
         }
 
-        // The extracted envelope is in the "result" field
         JsonNode envelope = root.path("result");
         if (envelope.isMissingNode() || envelope.isNull()) {
             log.warn("External OCR response has no 'result' envelope (status={})", status);
             return Collections.emptyMap();
         }
 
-        // Extract all string fields from the envelope
-        envelope.fields().forEachRemaining(e -> {
-            JsonNode val = e.getValue();
-            if (val.isNull()) return;
-            if (val.isTextual()) {
-                String text = val.asText().trim();
-                if (!text.isEmpty()) result.put(e.getKey(), text);
-            } else if (val.isNumber()) {
-                result.put(e.getKey(), val.asText());
+        // The envelope structure: result.document.fields.{field_name}.value/normalized
+        JsonNode document = envelope.path("document");
+        if (document.isMissingNode() || document.isNull()) {
+            log.warn("External OCR: envelope has no 'document' object");
+            return Collections.emptyMap();
+        }
+
+        JsonNode fields = document.path("fields");
+        if (!fields.isMissingNode() && !fields.isNull()) {
+            fields.fields().forEachRemaining(e -> {
+                String fieldName = e.getKey();
+                JsonNode fieldObj = e.getValue();
+                // Prefer normalized value (e.g. "45000.00"), fall back to value_en, then value
+                String val = getNonBlank(fieldObj, "normalized");
+                if (val == null) val = getNonBlank(fieldObj, "value_en");
+                if (val == null) val = getNonBlank(fieldObj, "value");
+                if (val != null) {
+                    // Map OCR field names (snake_case) to frontend expected names (camelCase)
+                    String mappedName = mapFieldName(fieldName);
+                    result.put(mappedName, val);
+                }
+            });
+        }
+
+        // Extract complaint summary as description
+        JsonNode summary = document.path("complaint_summary").path("text");
+        if (!summary.isMissingNode() && !summary.isNull()) {
+            String text = summary.asText("").trim();
+            if (!text.isEmpty()) {
+                result.put("description", text);
             }
-        });
+        }
 
         log.info("External OCR extracted {} fields from envelope (job_id={}, status={})",
                 result.size(), jobId, status);
         return result;
+    }
+
+    private String getNonBlank(JsonNode obj, String field) {
+        JsonNode node = obj.path(field);
+        if (node.isMissingNode() || node.isNull()) return null;
+        String val = node.asText("").trim();
+        return val.isEmpty() ? null : val;
+    }
+
+    private static final Map<String, String> FIELD_NAME_MAP = Map.ofEntries(
+            Map.entry("complainant_name", "complainantName"),
+            Map.entry("complainant_address", "complainantAddress"),
+            Map.entry("complainant_state", "complainantState"),
+            Map.entry("complainant_district", "complainantDistrict"),
+            Map.entry("complainant_pincode", "complainantPincode"),
+            Map.entry("complainant_phone", "complainantPhone"),
+            Map.entry("complainant_email", "complainantEmail"),
+            Map.entry("bank_name", "entityName"),
+            Map.entry("entity_name", "entityName"),
+            Map.entry("entity_type", "entityType"),
+            Map.entry("branch_name", "branchName"),
+            Map.entry("ifsc_code", "ifscCode"),
+            Map.entry("account_number", "accountNumber"),
+            Map.entry("amount", "amountInvolved"),
+            Map.entry("transaction_date", "transactionDate"),
+            Map.entry("letter_date", "letterDate"),
+            Map.entry("subject", "subject"),
+            Map.entry("category", "category"),
+            Map.entry("prior_complaint_reference", "complaintRef")
+    );
+
+    private String mapFieldName(String ocrFieldName) {
+        return FIELD_NAME_MAP.getOrDefault(ocrFieldName, ocrFieldName);
     }
 
     private String getExtension(String mimeType) {
