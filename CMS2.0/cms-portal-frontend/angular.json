@@ -15,40 +15,81 @@
             "outputPath": "dist/cms-portal-frontend",
             "index": "src/index.html",
             "browser": "src/main.ts",
-            "polyfills": ["zone.js"],
+            "polyfills": [
+              "zone.js"
+            ],
             "tsConfig": "tsconfig.json",
             "inlineStyleLanguage": "scss",
             "assets": [
-              { "glob": "**/*", "input": "src/assets", "output": "/assets" },
-              { "glob": "robots.txt", "input": "src", "output": "/" },
-              { "glob": "sitemap.xml", "input": "src", "output": "/" }
+              {
+                "glob": "**/*",
+                "input": "src/assets",
+                "output": "/assets"
+              },
+              {
+                "glob": "robots.txt",
+                "input": "src",
+                "output": "/"
+              },
+              {
+                "glob": "sitemap.xml",
+                "input": "src",
+                "output": "/"
+              }
             ],
-            "styles": ["src/styles.scss"],
+            "styles": [
+              "src/styles.scss"
+            ],
             "scripts": []
           },
           "configurations": {
             "production": {
               "budgets": [
-                { "type": "initial", "maximumWarning": "500kB", "maximumError": "1MB" }
+                {
+                  "type": "initial",
+                  "maximumWarning": "500kB",
+                  "maximumError": "1MB"
+                }
               ],
               "outputHashing": "all",
               "fileReplacements": [
-                { "replace": "src/environments/environment.ts", "with": "src/environments/environment.prod.ts" }
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.prod.ts"
+                }
               ]
             },
             "openshift": {
               "budgets": [
-                { "type": "initial", "maximumWarning": "500kB", "maximumError": "1MB" }
+                {
+                  "type": "initial",
+                  "maximumWarning": "500kB",
+                  "maximumError": "1MB"
+                }
               ],
               "outputHashing": "all",
               "fileReplacements": [
-                { "replace": "src/environments/environment.ts", "with": "src/environments/environment.openshift.ts" }
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.openshift.ts"
+                }
               ]
             },
             "development": {
               "optimization": false,
               "extractLicenses": false,
               "sourceMap": true
+            },
+            "docker-local": {
+              "optimization": false,
+              "extractLicenses": false,
+              "sourceMap": true,
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.docker-local.ts"
+                }
+              ]
             }
           },
           "defaultConfiguration": "production"
@@ -59,8 +100,12 @@
             "proxyConfig": "proxy.conf.json"
           },
           "configurations": {
-            "production": { "buildTarget": "cms-portal-frontend:build:production" },
-            "development": { "buildTarget": "cms-portal-frontend:build:development" }
+            "production": {
+              "buildTarget": "cms-portal-frontend:build:production"
+            },
+            "development": {
+              "buildTarget": "cms-portal-frontend:build:development"
+            }
           },
           "defaultConfiguration": "development"
         }
