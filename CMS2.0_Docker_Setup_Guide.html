@@ -1,871 +1,831 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CMS 2.0 - Complete Docker Desktop Setup Guide</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f0f2f5; color: #1a1a2e; line-height: 1.7; }
-        .header { background: linear-gradient(135deg, #1a237e 0%, #0d47a1 100%); color: white; padding: 40px 0; text-align: center; }
-        .header h1 { font-size: 2.2rem; margin-bottom: 8px; }
-        .header p { opacity: 0.85; font-size: 1.1rem; }
-        .container { max-width: 1100px; margin: 0 auto; padding: 30px 20px; }
-        .nav { position: sticky; top: 0; background: white; border-bottom: 1px solid #e0e0e0; padding: 12px 20px; z-index: 100; display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
-        .nav a { text-decoration: none; color: #1a237e; font-size: 13px; padding: 4px 12px; border-radius: 4px; background: #e8eaf6; font-weight: 500; }
-        .nav a:hover { background: #c5cae9; }
-        .step { background: white; border-radius: 12px; padding: 30px; margin-bottom: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
-        .step h2 { color: #1a237e; font-size: 1.4rem; margin-bottom: 15px; display: flex; align-items: center; gap: 10px; }
-        .step-num { background: #1a237e; color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; flex-shrink: 0; }
-        h3 { color: #283593; margin: 20px 0 10px; font-size: 1.1rem; }
-        h4 { color: #37474f; margin: 15px 0 8px; }
-        pre { background: #1e1e2e; color: #cdd6f4; padding: 16px 20px; border-radius: 8px; overflow-x: auto; font-size: 13px; line-height: 1.6; margin: 10px 0 15px; }
-        code { background: #e8eaf6; padding: 2px 6px; border-radius: 3px; font-size: 0.9em; color: #283593; }
-        .comment { color: #6c7086; }
-        .highlight { color: #89b4fa; }
-        .string { color: #a6e3a1; }
-        .keyword { color: #f38ba8; }
-        table { width: 100%; border-collapse: collapse; margin: 10px 0 15px; font-size: 14px; }
-        th { background: #e8eaf6; padding: 10px 12px; text-align: left; font-weight: 600; color: #1a237e; }
-        td { padding: 8px 12px; border-bottom: 1px solid #eee; }
-        tr:hover td { background: #f5f5f5; }
-        .warning { background: #fff3e0; border-left: 4px solid #ff9800; padding: 12px 16px; border-radius: 4px; margin: 10px 0; font-size: 14px; }
-        .info { background: #e3f2fd; border-left: 4px solid #2196f3; padding: 12px 16px; border-radius: 4px; margin: 10px 0; font-size: 14px; }
-        .success { background: #e8f5e9; border-left: 4px solid #4caf50; padding: 12px 16px; border-radius: 4px; margin: 10px 0; font-size: 14px; }
-        .error { background: #fce4ec; border-left: 4px solid #e53935; padding: 12px 16px; border-radius: 4px; margin: 10px 0; font-size: 14px; }
-        .arch-diagram { background: #fafafa; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; margin: 15px 0; font-family: monospace; font-size: 12px; white-space: pre; overflow-x: auto; }
-        .file-tree { background: #f5f5f5; border-radius: 8px; padding: 15px 20px; font-family: monospace; font-size: 13px; line-height: 1.8; }
-        ul, ol { margin-left: 20px; margin-bottom: 10px; }
-        li { margin-bottom: 5px; }
-        .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
-        .badge-green { background: #e8f5e9; color: #2e7d32; }
-        .badge-blue { background: #e3f2fd; color: #1565c0; }
-        .badge-orange { background: #fff3e0; color: #e65100; }
-        .badge-purple { background: #f3e5f5; color: #6a1b9a; }
-        .badge-red { background: #fce4ec; color: #c62828; }
-        .quick-start { background: #e8f5e9; border: 2px solid #4caf50; border-radius: 12px; padding: 24px; margin-bottom: 24px; }
-        .quick-start h3 { color: #2e7d32; margin-top: 0; }
-        img.screenshot { max-width: 100%; border: 1px solid #e0e0e0; border-radius: 8px; margin: 10px 0; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CMS 2.0 Local Setup</title>
 </head>
 <body>
+<title>CMS 2.0 Local Setup</title>
+<style>
+  @media (prefers-reduced-motion: reduce) {
+    * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+  }
 
-<div class="header">
-    <h1>CMS 2.0 — Complete Docker Desktop Setup Guide</h1>
-    <p>Pull the repo and run the entire CMS platform on Docker Desktop — full microservices stack, zero local installations</p>
-</div>
+  :root {
+    --bg: #eef1f2;
+    --surface: #ffffff;
+    --surface-sunken: #e4e9eb;
+    --ink: #16212b;
+    --ink-muted: #566270;
+    --ink-faint: #8894a1;
+    --rule: #d3dade;
+    --accent: #1f4d8c;
+    --accent-ink: #0f3568;
+    --accent-soft: #e3ebf7;
+    --red: #a8402f;
+    --red-soft: #f6e6e2;
+    --green: #2f6b4f;
+    --green-soft: #e3efe8;
+    --term-bg: #101820;
+    --term-ink: #d7e0e6;
+    --term-muted: #6f8291;
+    --term-prompt: #6fb0e0;
+    --shadow: 0 1px 2px rgba(16, 24, 32, 0.06), 0 8px 24px -12px rgba(16, 24, 32, 0.14);
+    --mono: ui-monospace, "SF Mono", "Cascadia Code", "JetBrains Mono", Consolas, Menlo, monospace;
+    --sans: -apple-system, "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  }
 
-<nav class="nav">
-    <a href="#quickstart">Quick Start</a>
-    <a href="#prerequisites">Prerequisites</a>
-    <a href="#architecture">Architecture</a>
-    <a href="#step1">1. Clone & Configure</a>
-    <a href="#step2">2. Docker Compose Up</a>
-    <a href="#step3">3. Keycloak Setup</a>
-    <a href="#step4">4. Verify</a>
-    <a href="#step5">5. Dev Mode (Frontend)</a>
-    <a href="#step6">6. Test Users</a>
-    <a href="#troubleshooting">Troubleshooting</a>
-    <a href="#commands">Useful Commands</a>
-</nav>
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0d1318;
+      --surface: #131b22;
+      --surface-sunken: #0a0f13;
+      --ink: #dfe6ea;
+      --ink-muted: #94a3ad;
+      --ink-faint: #5c6b76;
+      --rule: #263139;
+      --accent: #6fa8dc;
+      --accent-ink: #a7cdf0;
+      --accent-soft: #182636;
+      --red: #d98a7a;
+      --red-soft: #2c1c19;
+      --green: #7ec49d;
+      --green-soft: #16241d;
+      --term-bg: #05090c;
+      --term-ink: #d7e0e6;
+      --term-muted: #5c6f7c;
+      --term-prompt: #7cbde8;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 12px 28px -14px rgba(0, 0, 0, 0.6);
+    }
+  }
 
-<div class="container">
+  :root[data-theme="dark"] {
+    --bg: #0d1318;
+    --surface: #131b22;
+    --surface-sunken: #0a0f13;
+    --ink: #dfe6ea;
+    --ink-muted: #94a3ad;
+    --ink-faint: #5c6b76;
+    --rule: #263139;
+    --accent: #6fa8dc;
+    --accent-ink: #a7cdf0;
+    --accent-soft: #182636;
+    --red: #d98a7a;
+    --red-soft: #2c1c19;
+    --green: #7ec49d;
+    --green-soft: #16241d;
+    --term-bg: #05090c;
+    --term-ink: #d7e0e6;
+    --term-muted: #5c6f7c;
+    --term-prompt: #7cbde8;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 12px 28px -14px rgba(0, 0, 0, 0.6);
+  }
 
-<!-- QUICK START -->
-<div class="quick-start" id="quickstart">
-    <h3>&#9889; Quick Start (TL;DR)</h3>
-    <p>If you have Docker Desktop running with 8 GB RAM allocated:</p>
-    <pre><span class="comment"># 1. Clone</span>
-git clone https://github.com/swatiRewagad/-My-HRMS-Frontend.git
-cd My-HRMS-Frontend/CMS2.0/cms-infra
+  * { box-sizing: border-box; }
 
-<span class="comment"># 2. Create .env (optional - only needed for AI features)</span>
-echo "GROQ_API_KEY=gsk_your_key_here" > .env
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
 
-<span class="comment"># 3. Start everything (MySQL, Redis, Kafka, OpenSearch, Keycloak, Prometheus, Grafana, 2x Backend, PaddleOCR, Frontend, Nginx)</span>
-docker compose up -d --build
+  .airmail-band {
+    height: 7px;
+    background: repeating-linear-gradient(
+      -45deg,
+      var(--accent), var(--accent) 14px,
+      var(--surface) 14px, var(--surface) 22px,
+      var(--red) 22px, var(--red) 36px,
+      var(--surface) 36px, var(--surface) 44px
+    );
+  }
 
-<span class="comment"># 4. Wait ~3-4 minutes for all containers to be healthy</span>
-docker compose ps
+  .wrap {
+    max-width: 820px;
+    margin: 0 auto;
+    padding: 0 24px 96px;
+  }
 
-<span class="comment"># 5. Open browser</span>
-<span class="comment"># App: http://localhost</span>
-<span class="comment"># Keycloak Admin: http://localhost:8180 (admin/admin)</span></pre>
-    <p><strong>That's it!</strong> No MySQL, Kafka, Redis, or Java installation needed on your machine.</p>
-</div>
+  header.masthead {
+    padding: 56px 0 40px;
+    border-bottom: 1px solid var(--rule);
+    margin-bottom: 40px;
+  }
 
-<!-- PREREQUISITES -->
-<div class="step" id="prerequisites">
-    <h2><span class="step-num">0</span> Prerequisites</h2>
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--accent);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 0 18px;
+  }
 
-    <h3>Required Software (Only 2 things!)</h3>
-    <table>
-        <tr><th>Software</th><th>Version</th><th>Purpose</th><th>Download</th></tr>
-        <tr><td><strong>Docker Desktop</strong></td><td>4.25+</td><td>Runs all containers</td><td><a href="https://www.docker.com/products/docker-desktop/">docker.com/products/docker-desktop</a></td></tr>
-        <tr><td><strong>Git</strong></td><td>2.40+</td><td>Clone repository</td><td><a href="https://git-scm.com/download/win">git-scm.com</a></td></tr>
-    </table>
+  .eyebrow::before {
+    content: "";
+    width: 8px;
+    height: 8px;
+    background: var(--accent);
+    display: inline-block;
+    border-radius: 1px;
+    transform: rotate(45deg);
+  }
 
-    <div class="info">
-        <strong>You do NOT need to install:</strong> Java, Maven, Node.js, MySQL, Redis, Kafka, OpenSearch, Keycloak, Prometheus, Grafana, or any other tool.
-        Everything runs inside Docker containers. The Dockerfiles handle all builds internally.
+  h1 {
+    font-family: var(--mono);
+    font-weight: 600;
+    font-size: clamp(26px, 4.2vw, 36px);
+    letter-spacing: -0.01em;
+    line-height: 1.15;
+    margin: 0 0 14px;
+    text-wrap: balance;
+    color: var(--ink);
+  }
+
+  .dek {
+    font-size: 17px;
+    color: var(--ink-muted);
+    max-width: 66ch;
+    margin: 0;
+  }
+
+  .service-strip {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+    gap: 1px;
+    background: var(--rule);
+    border: 1px solid var(--rule);
+    margin-top: 28px;
+    border-radius: 6px;
+    overflow: hidden;
+  }
+
+  .service-strip div {
+    background: var(--surface);
+    padding: 11px 13px;
+  }
+
+  .service-strip .name {
+    display: block;
+    font-size: 11.5px;
+    color: var(--ink-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 3px;
+  }
+
+  .service-strip .val {
+    display: block;
+    font-family: var(--mono);
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink);
+  }
+
+  nav.toc {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    padding: 18px 22px;
+    margin-bottom: 40px;
+    box-shadow: var(--shadow);
+  }
+
+  nav.toc .toc-label {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin: 0 0 10px;
+  }
+
+  nav.toc ol {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 6px 20px;
+  }
+
+  nav.toc a {
+    font-size: 14px;
+    color: var(--ink);
+    text-decoration: none;
+    display: flex;
+    gap: 8px;
+    padding: 3px 0;
+    border-radius: 3px;
+  }
+
+  nav.toc a .n {
+    font-family: var(--mono);
+    color: var(--accent);
+    font-size: 12.5px;
+    flex-shrink: 0;
+  }
+
+  nav.toc a:hover,
+  nav.toc a:focus-visible { color: var(--accent); }
+
+  .corrections {
+    border: 1px solid var(--red);
+    background: var(--red-soft);
+    border-radius: 8px;
+    padding: 18px 22px;
+    margin-bottom: 40px;
+  }
+
+  .corrections .clabel {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--red);
+    margin: 0 0 10px;
+  }
+
+  .corrections ul { margin: 0; padding: 0 0 0 18px; }
+  .corrections li { font-size: 14px; margin-bottom: 6px; }
+  .corrections li:last-child { margin-bottom: 0; }
+  .corrections code.inline { background: rgba(0,0,0,0.06); }
+
+  section {
+    margin-bottom: 52px;
+    scroll-margin-top: 24px;
+  }
+
+  .section-head {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    margin-bottom: 6px;
+  }
+
+  .section-head .tag {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--accent);
+    background: var(--accent-soft);
+    padding: 2px 8px;
+    border-radius: 4px;
+    flex-shrink: 0;
+  }
+
+  h2 {
+    font-family: var(--mono);
+    font-size: 20px;
+    font-weight: 600;
+    margin: 0;
+    letter-spacing: -0.005em;
+    text-wrap: balance;
+  }
+
+  .section-sub {
+    color: var(--ink-muted);
+    font-size: 15px;
+    margin: 10px 0 20px;
+    max-width: 68ch;
+  }
+
+  h3 {
+    font-family: var(--sans);
+    font-size: 15.5px;
+    font-weight: 700;
+    margin: 26px 0 8px;
+    color: var(--ink);
+  }
+
+  p { max-width: 68ch; }
+
+  a { color: var(--accent); }
+
+  code.inline {
+    font-family: var(--mono);
+    font-size: 0.9em;
+    background: var(--surface-sunken);
+    border: 1px solid var(--rule);
+    padding: 0.1em 0.4em;
+    border-radius: 4px;
+  }
+
+  .term {
+    background: var(--term-bg);
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    margin: 14px 0 6px;
+  }
+
+  .term-bar {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 9px 12px;
+    background: rgba(255, 255, 255, 0.04);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  .term-bar .dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.18);
+  }
+
+  .term-bar .label {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--term-muted);
+    margin-left: 6px;
+    letter-spacing: 0.02em;
+  }
+
+  .term pre {
+    margin: 0;
+    padding: 14px 16px 16px;
+    overflow-x: auto;
+    font-family: var(--mono);
+    font-size: 13.5px;
+    line-height: 1.65;
+    color: var(--term-ink);
+  }
+
+  .term .c { color: var(--term-muted); }
+  .term .p::before {
+    content: "$ ";
+    color: var(--term-prompt);
+  }
+
+  .term.big pre { font-size: 14.5px; padding: 20px 22px 22px; }
+
+  .file {
+    background: var(--surface-sunken);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    margin: 14px 0 6px;
+    overflow: hidden;
+  }
+
+  .file .file-bar {
+    padding: 8px 14px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ink-faint);
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .file pre {
+    margin: 0;
+    padding: 12px 16px 14px;
+    overflow-x: auto;
+    font-family: var(--mono);
+    font-size: 13px;
+    line-height: 1.6;
+  }
+
+  .callout {
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--accent);
+    background: var(--accent-soft);
+    border-radius: 6px;
+    padding: 14px 18px;
+    margin: 18px 0;
+    font-size: 14.5px;
+  }
+
+  .callout p { margin: 0; max-width: 62ch; }
+  .callout p + p { margin-top: 8px; }
+
+  .callout.warn { border-left-color: var(--red); background: var(--red-soft); }
+  .callout.ok { border-left-color: var(--green); background: var(--green-soft); }
+
+  .callout .head {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    display: block;
+    margin-bottom: 6px;
+    color: var(--ink-muted);
+  }
+
+  .callout.warn .head { color: var(--red); }
+  .callout.ok .head { color: var(--green); }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13.5px;
+    margin: 14px 0;
+  }
+
+  .table-wrap { overflow-x: auto; }
+
+  th, td {
+    text-align: left;
+    padding: 8px 11px;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: top;
+  }
+
+  th {
+    font-family: var(--mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--ink-faint);
+    font-weight: 600;
+  }
+
+  td code { font-family: var(--mono); font-size: 12.5px; }
+  td.num { font-variant-numeric: tabular-nums; }
+
+  .pill {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.03em;
+    padding: 2px 8px;
+    border-radius: 20px;
+    background: var(--accent-soft);
+    color: var(--accent-ink);
+  }
+  .pill.new { background: var(--green-soft); color: var(--green); }
+  .pill.gap { background: var(--red-soft); color: var(--red); }
+
+  details.stack {
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    background: var(--surface);
+    margin: 22px 0;
+    overflow: hidden;
+  }
+
+  details.stack summary {
+    padding: 15px 20px;
+    cursor: pointer;
+    font-family: var(--mono);
+    font-size: 14px;
+    font-weight: 600;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  details.stack summary::-webkit-details-marker { display: none; }
+
+  details.stack summary .arrow {
+    font-size: 12px;
+    color: var(--ink-faint);
+    transition: transform 0.15s ease;
+    flex-shrink: 0;
+  }
+
+  details.stack[open] summary .arrow { transform: rotate(90deg); }
+  details.stack summary:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+  details.stack .stack-body {
+    padding: 4px 20px 22px;
+    border-top: 1px solid var(--rule);
+  }
+
+  details.stack .stack-body > *:first-child { margin-top: 20px; }
+
+  .divider {
+    border: none;
+    border-top: 1px solid var(--rule);
+    margin: 48px 0;
+  }
+
+  .checklist {
+    list-style: none;
+    padding: 0;
+    margin: 16px 0;
+    display: grid;
+    gap: 8px;
+  }
+
+  .checklist li {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    font-size: 15px;
+  }
+
+  .checklist li::before {
+    content: "";
+    width: 15px;
+    height: 15px;
+    margin-top: 3px;
+    border: 1.5px solid var(--ink-faint);
+    border-radius: 3px;
+    flex-shrink: 0;
+  }
+
+  footer {
+    margin-top: 64px;
+    padding-top: 24px;
+    border-top: 1px solid var(--rule);
+    font-size: 13px;
+    color: var(--ink-faint);
+    font-family: var(--mono);
+  }
+
+  @media (max-width: 560px) {
+    header.masthead { padding: 40px 0 30px; }
+    nav.toc ol { grid-template-columns: 1fr; }
+  }
+</style>
+
+<div class="airmail-band"></div>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <p class="eyebrow">CMS 2.0 · Local Environment · v2</p>
+    <h1>The real full-stack setup, corrected and completed</h1>
+    <p class="dek">Your existing <code class="inline">cms-infra</code> Docker Compose stack — MySQL, Redis, Kafka, OpenSearch, Keycloak, thirteen backend microservices — with two things added: <strong>cms-mail-intake</strong> (embedded SMTP) and <strong>cms-portal-frontend</strong> (the CRPC/OCR-test UI, since the stack's own frontend doesn't have those screens). Keycloak now provisions itself — no manual clicking through the admin console.</p>
+
+    <div class="service-strip">
+      <div><span class="name">Portal UI</span><span class="val">:4200</span></div>
+      <div><span class="name">Public app</span><span class="val">:80</span></div>
+      <div><span class="name">Backend</span><span class="val">:8082</span></div>
+      <div><span class="name">Mail intake</span><span class="val">:8092 / :2525</span></div>
+      <div><span class="name">Keycloak</span><span class="val">:8180</span></div>
+      <div><span class="name">MySQL</span><span class="val">:3306</span></div>
     </div>
+  </header>
 
-    <h3>System Requirements</h3>
-    <table>
-        <tr><th>Resource</th><th>Minimum</th><th>Recommended</th></tr>
-        <tr><td>RAM (total system)</td><td>16 GB</td><td>32 GB</td></tr>
-        <tr><td>RAM (Docker allocation)</td><td>10 GB</td><td>12 GB</td></tr>
-        <tr><td>Disk</td><td>40 GB free</td><td>60 GB free</td></tr>
-        <tr><td>CPU</td><td>4 cores</td><td>8 cores</td></tr>
-        <tr><td>Windows</td><td>Windows 10 21H2+</td><td>Windows 11</td></tr>
-    </table>
+  <div class="corrections">
+    <p class="clabel">Corrected from the previous version of this document</p>
+    <ul>
+      <li>Database is <strong>MySQL</strong> on port <code class="inline">3306</code> (the original <code class="inline">cms-infra/docker-compose.yml</code> uses Oracle on <code class="inline">1521</code> instead — this stack replaces it entirely). <code class="inline">cms-infra/mysql/init.sql</code> exists in the repo but isn't referenced by this compose file; Hibernate's <code class="inline">dev-local</code> profile creates the schema automatically.</li>
+      <li><strong>Oracle is replaced with MySQL entirely</strong> — <code class="inline">docker-compose.mysql.yml</code> is a full standalone stack, not an add-on to the Oracle-based file. cms-backend runs its <code class="inline">dev-local</code> Spring profile (the one actually verified against MySQL — the default <code class="inline">prod</code> profile hardcodes an Oracle Hibernate dialect and would connect to MySQL fine, then fail on every query).</li>
+      <li><code class="inline">CMS_CORS_ALLOWED_ORIGINS</code> in <code class="inline">.env</code> is silently ignored — cms-backend actually reads <code class="inline">CMS_CORS_ORIGINS</code> (no "ALLOWED"). Harmless here since the built-in default already covers <code class="inline">localhost:4200</code>, but worth knowing if you change origins later.</li>
+      <li>The routes the old doc told you to test (<code class="inline">/crpc</code>, <code class="inline">/crpc/reviewer</code>, <code class="inline">/admin/dashboard</code>) belong to <strong>cms-portal-frontend</strong>, not the <strong>cms-frontend</strong> this stack actually builds at <code class="inline">http://localhost</code> — that one only has five routes (public complaint filing, tracking, physical-complaint). Section 02 adds cms-portal-frontend as its own container specifically to fix this.</li>
+      <li>The Keycloak client is <code class="inline">cms-frontend</code>, not <code class="inline">cms-portal</code> or <code class="inline">cms-portal-frontend</code> — <code class="inline">keycloak-auth.service.ts</code> hardcodes that client ID regardless of which Angular app is actually running. One client, both apps.</li>
+    </ul>
+  </div>
 
-    <h3>Docker Desktop Configuration</h3>
-    <p>Open Docker Desktop → <strong>Settings</strong> (gear icon) → <strong>Resources</strong>:</p>
-    <table>
-        <tr><th>Setting</th><th>Value</th><th>Why</th></tr>
-        <tr><td>Memory</td><td><strong>10 GB</strong> (minimum), 12 GB recommended</td><td>14 containers: PaddleOCR (~2 GB), OpenSearch (~512 MB), Backends (~3 GB), Kafka, Keycloak, etc.</td></tr>
-        <tr><td>CPUs</td><td><strong>4</strong> (minimum), 6 recommended</td><td>Backend builds use multi-threaded Maven, Kafka + OpenSearch are CPU-hungry</td></tr>
-        <tr><td>Disk image size</td><td><strong>50 GB</strong></td><td>Docker images + volumes (MySQL, OpenSearch indices, Kafka logs, Grafana)</td></tr>
-        <tr><td>WSL 2 backend</td><td><strong>Enabled</strong></td><td>Better performance on Windows</td></tr>
-    </table>
+  <div class="corrections" style="border-color: var(--accent); background: var(--accent-soft);">
+    <p class="clabel" style="color: var(--accent-ink);">Known bugs in the application itself — not fixable from a setup doc</p>
+    <ul>
+      <li><strong>Two incompatible Keycloak realms are wired into running code.</strong> <code class="inline">cms-mail-intake</code> and <code class="inline">cms-assignment-service</code> (plus the frontend's default, non-Docker <code class="inline">environment.ts</code>) expect realm <code class="inline">rbi-cms</code>; <code class="inline">cms-backend</code>, <code class="inline">cms-api-gateway</code>, and <code class="inline">cms-frontend</code> expect realm <code class="inline">cms</code>. This stack standardises on <code class="inline">cms</code> and overrides <code class="inline">cms-mail-intake</code>'s issuer-uri to match — <code class="inline">cms-assignment-service</code> is left as-is since nothing in this stack's gateway routes to it anyway.</li>
+      <li><strong>CEPC role names don't match between frontend and backend.</strong> The backend's <code class="inline">@CepcRoleGuard</code> requires prefixed roles (<code class="inline">CEPC_DO</code>, <code class="inline">CEPC_REVIEWER</code>...); the frontend's own role-check code checks bare names (<code class="inline">DO</code>, <code class="inline">REVIEWER</code>, <code class="inline">INCHARGE</code>, <code class="inline">CA</code>, <code class="inline">CP</code>). The realm import gives CEPC test users both forms so testing isn't blocked, but expect inconsistent behaviour on CEPC screens until this is fixed in code.</li>
+    </ul>
+  </div>
 
-    <div class="warning">
-        <strong>Important:</strong> After changing Docker Desktop settings, click <strong>Apply & Restart</strong>.
-        Wait for Docker to fully restart (tray icon stops animating) before proceeding.
-    </div>
-
-    <h3>Verify Docker is Ready</h3>
-    <pre><span class="comment"># Open PowerShell, CMD, or Git Bash</span>
-docker --version          <span class="comment"># Docker version 27.x.x</span>
-docker compose version    <span class="comment"># Docker Compose version v2.x.x</span>
-docker info               <span class="comment"># Should show "Server: Docker Desktop"</span></pre>
-
-    <h3>Free Required Ports</h3>
-    <p>Make sure these ports are not in use by other applications:</p>
-    <table>
-        <tr><th>Port</th><th>Service</th><th>Check Command (PowerShell)</th></tr>
-        <tr><td>80</td><td>Nginx (App URL)</td><td><code>netstat -ano | findstr :80</code></td></tr>
-        <tr><td>3307</td><td>MySQL</td><td><code>netstat -ano | findstr :3307</code></td></tr>
-        <tr><td>6380</td><td>Redis</td><td><code>netstat -ano | findstr :6380</code></td></tr>
-        <tr><td>29092</td><td>Kafka</td><td><code>netstat -ano | findstr :29092</code></td></tr>
-        <tr><td>9200</td><td>OpenSearch</td><td><code>netstat -ano | findstr :9200</code></td></tr>
-        <tr><td>8180</td><td>Keycloak</td><td><code>netstat -ano | findstr :8180</code></td></tr>
-        <tr><td>8090</td><td>Kafka UI</td><td><code>netstat -ano | findstr :8090</code></td></tr>
-        <tr><td>9090</td><td>Prometheus</td><td><code>netstat -ano | findstr :9090</code></td></tr>
-        <tr><td>3000</td><td>Grafana</td><td><code>netstat -ano | findstr :3000</code></td></tr>
-        <tr><td>8100</td><td>PaddleOCR</td><td><code>netstat -ano | findstr :8100</code></td></tr>
-    </table>
-    <div class="info">If port 80 is taken by IIS or Skype, you can stop them: <code>net stop w3svc</code> (IIS) or disable "Use port 80" in Skype settings.</div>
-</div>
-
-<!-- ARCHITECTURE -->
-<div class="step" id="architecture">
-    <h2><span class="step-num">A</span> Architecture Overview</h2>
-    <div class="arch-diagram">
-┌──────────────────────────────────────────────────────────────────────────────────┐
-│                        DOCKER DESKTOP (All Containers)                            │
-│                                                                                  │
-│  ┌────────────────────────────────────────────────────────────────────────────┐ │
-│  │                       NGINX GATEWAY (Port 80/443)                           │ │
-│  │            Load Balancer • Caching • Rate Limiting • Security               │ │
-│  └──────────┬────────────────────────────────────┬────────────────────────────┘ │
-│             │ /api/*                              │ /*                            │
-│             ▼                                     ▼                              │
-│  ┌────────────────────────┐          ┌──────────────────────┐                   │
-│  │   CMS Backend × 2      │          │   Angular Frontend   │                   │
-│  │   (Spring Boot :8082)   │          │   (Nginx static)     │                   │
-│  │   • REST APIs           │          │   • CRPC Portal      │                   │
-│  │   • Email Syndication   │          │   • Admin Dashboard  │                   │
-│  │   • AI Suggestions      │          │   • Public Portal    │                   │
-│  └──┬──────┬──────┬──────┬┘          └──────────────────────┘                   │
-│     │      │      │      │                                                       │
-│     ▼      ▼      ▼      ▼                                                       │
-│  ┌──────┐┌──────┐┌──────┐┌────────────┐  ┌──────────────┐  ┌──────────────┐    │
-│  │MySQL ││Redis ││Kafka ││ OpenSearch  │  │  Keycloak    │  │  PaddleOCR   │    │
-│  │ 8.0  ││ 7.x  ││ 3.7  ││   2.18.0   │  │    26.0      │  │  (Python)    │    │
-│  │:3307 ││:6380 ││:29092││   :9200    │  │   :8180      │  │   :8100      │    │
-│  │  DB  ││Cache ││Events││Full-Text   │  │  SSO/Auth    │  │  OCR Engine  │    │
-│  └──────┘└──────┘└──────┘└────────────┘  └──────────────┘  └──────────────┘    │
-│                                                                                  │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐                          │
-│  │  Prometheus  │  │   Grafana    │  │  Kafka UI    │                          │
-│  │    :9090     │  │    :3000     │  │    :8090     │                          │
-│  │   Metrics    │  │  Dashboards  │  │  Topic Mgmt  │                          │
-│  └──────────────┘  └──────────────┘  └──────────────┘                          │
-│                                                                                  │
-└──────────────────────────────────────────────────────────────────────────────────┘
-
-Access from your browser:
-  • http://localhost        → Application (via Nginx)
-  • http://localhost:8180   → Keycloak Admin Console (admin/admin)
-  • http://localhost:9200   → OpenSearch API
-  • http://localhost:8090   → Kafka UI (topic management)
-  • http://localhost:9090   → Prometheus (metrics)
-  • http://localhost:3000   → Grafana (dashboards, admin/admin)
-  • http://localhost:8100   → OCR Service (direct)
-  • localhost:3307          → MySQL (via client tools)
-  • localhost:6380          → Redis (via redis-cli)
-  • localhost:29092         → Kafka (EXTERNAL listener)
-</div>
-
-    <h3>What Each Container Does</h3>
-    <table>
-        <tr><th>Container</th><th>Image</th><th>Port</th><th>RAM</th><th>Purpose</th></tr>
-        <tr><td><code>cms-mysql</code></td><td>mysql:8.0</td><td>3307→3306</td><td>~500 MB</td><td>Primary database (complaints, users, drafts)</td></tr>
-        <tr><td><code>cms-redis</code></td><td>redis:7-alpine</td><td>6380→6379</td><td>512 MB max</td><td>Cache layer (sessions, frequently accessed data)</td></tr>
-        <tr><td><code>cms-kafka</code></td><td>apache/kafka:3.7.0</td><td>29092</td><td>~512 MB</td><td>Event streaming (KRaft mode, no Zookeeper)</td></tr>
-        <tr><td><code>cms-opensearch</code></td><td>opensearchproject/opensearch:2.18.0</td><td>9200</td><td>512 MB</td><td>Full-text search indexing & querying</td></tr>
-        <tr><td><code>cms-keycloak</code></td><td>quay.io/keycloak/keycloak:26.0</td><td>8180</td><td>~512 MB</td><td>SSO, Identity & Access Management (OAuth2/OIDC)</td></tr>
-        <tr><td><code>cms-keycloak-db</code></td><td>postgres:16-alpine</td><td>internal</td><td>~128 MB</td><td>PostgreSQL for Keycloak metadata</td></tr>
-        <tr><td><code>cms-backend-1</code></td><td>Built from Dockerfile</td><td>internal</td><td>1.5 GB</td><td>Spring Boot API instance 1</td></tr>
-        <tr><td><code>cms-backend-2</code></td><td>Built from Dockerfile</td><td>internal</td><td>1.5 GB</td><td>Spring Boot API instance 2 (load balanced)</td></tr>
-        <tr><td><code>cms-paddle-ocr</code></td><td>Built from Dockerfile</td><td>8100</td><td>2 GB</td><td>OCR extraction for scanned documents/PDFs</td></tr>
-        <tr><td><code>cms-frontend</code></td><td>Built from Dockerfile</td><td>internal</td><td>256 MB</td><td>Angular SPA (compiled, served by Nginx)</td></tr>
-        <tr><td><code>cms-gateway</code></td><td>nginx:1.27-alpine</td><td>80, 443</td><td>256 MB</td><td>Reverse proxy, load balancer, caching</td></tr>
-        <tr><td><code>cms-kafka-ui</code></td><td>provectuslabs/kafka-ui</td><td>8090</td><td>~256 MB</td><td>Visual Kafka topic management console</td></tr>
-        <tr><td><code>cms-prometheus</code></td><td>prom/prometheus:v2.54.0</td><td>9090</td><td>~256 MB</td><td>Metrics collection from all services</td></tr>
-        <tr><td><code>cms-grafana</code></td><td>grafana/grafana:11.3.0</td><td>3000</td><td>~256 MB</td><td>Monitoring dashboards & alerting</td></tr>
-    </table>
-
-    <div class="info">
-        <strong>Total Docker RAM needed:</strong> ~9-10 GB. Set Docker Desktop memory to at least <strong>10 GB</strong> (recommended: 12 GB).
-    </div>
-</div>
-
-<!-- STEP 1: CLONE & CONFIGURE -->
-<div class="step" id="step1">
-    <h2><span class="step-num">1</span> Clone Repository & Configure</h2>
-
-    <h3>1.1 Clone the Repository</h3>
-    <pre><span class="comment"># Open PowerShell or Git Bash</span>
-git clone https://github.com/swatiRewagad/-My-HRMS-Frontend.git
-cd My-HRMS-Frontend</pre>
-
-    <h3>1.2 Project Structure (Key Folders)</h3>
-    <div class="file-tree">
-My-HRMS-Frontend/
-└── CMS2.0/
-    ├── cms-infra/                    ← <strong>Docker Compose lives here</strong>
-    │   ├── docker-compose.yml        ← Main compose file
-    │   ├── mysql/
-    │   │   └── init.sql              ← DB initialization script
-    │   └── nginx/
-    │       └── nginx.conf            ← Gateway configuration
-    │
-    ├── cms-backend/                  ← Spring Boot API
-    │   ├── Dockerfile                ← Multi-stage build (Maven + JRE)
-    │   ├── pom.xml
-    │   └── src/
-    │
-    ├── cms-frontend/                 ← Angular app (production build)
-    │   ├── Dockerfile                ← Multi-stage build (Node + Nginx)
-    │   └── src/
-    │
-    ├── cms-paddle-ocr/               ← Python OCR service
-    │   ├── Dockerfile
-    │   ├── main.py
-    │   └── requirements.txt
-    │
-    └── cms-portal-frontend/          ← Angular app (dev server version)
-        └── src/
-    </div>
-
-    <h3>1.3 Create Environment File (Optional)</h3>
-    <p>Create <code>CMS2.0/cms-infra/.env</code> for configuration overrides:</p>
-    <pre><span class="comment"># File: CMS2.0/cms-infra/.env</span>
-<span class="comment"># All values below have defaults - only set what you want to override</span>
-
-<span class="comment"># MySQL credentials (default: cms_user / cms_pass)</span>
-MYSQL_ROOT_PASSWORD=cms_root_pass
-MYSQL_USER=cms_user
-MYSQL_PASSWORD=cms_pass
-
-<span class="comment"># AI Suggestions (Groq API - required for AI features)</span>
-GROQ_API_KEY=gsk_your_groq_api_key_here
-
-<span class="comment"># CORS (default allows localhost:4200, 4201, 4202, 4300)</span>
-<span class="comment"># CMS_CORS_ALLOWED_ORIGINS=http://localhost:4200,http://localhost:4300</span></pre>
-
-    <div class="info">
-        <strong>Without .env file:</strong> Everything still works! Default credentials are:
-        <code>cms_user</code> / <code>cms_pass</code> for MySQL,
-        and AI suggestions will be disabled (no GROQ_API_KEY).
-    </div>
-
-    <h3>1.4 Understand the Docker Compose Configuration</h3>
-    <p>The <code>cms-infra/docker-compose.yml</code> defines <strong>26 containers</strong> — the entire platform runs with one command:</p>
-
-    <h4>Infrastructure Services</h4>
-    <table>
-        <tr><th>Service</th><th>What It Does</th><th>Port</th></tr>
-        <tr><td>cms-mysql</td><td>Primary database (MySQL 8.0, utf8mb4)</td><td>3307</td></tr>
-        <tr><td>cms-redis</td><td>Caching (Redis 7, 512 MB LRU)</td><td>6380</td></tr>
-        <tr><td>cms-kafka</td><td>Event streaming (Kafka 3.7, KRaft mode)</td><td>29092</td></tr>
-        <tr><td>cms-opensearch</td><td>Full-text search indexing (OpenSearch 2.18)</td><td>9200</td></tr>
-        <tr><td>cms-keycloak</td><td>SSO/OAuth2/OIDC (Keycloak 26.0)</td><td>8180</td></tr>
-        <tr><td>cms-keycloak-db</td><td>PostgreSQL for Keycloak</td><td>—</td></tr>
-    </table>
-
-    <h4>Backend Microservices (all built from shared Dockerfile)</h4>
-    <table>
-        <tr><th>Service</th><th>Port</th><th>Purpose</th></tr>
-        <tr><td>cms-backend-1 / cms-backend-2</td><td>8082 (internal)</td><td>Core module — complaints, email syndication, OCR, AI</td></tr>
-        <tr><td>cms-api-gateway</td><td>8080</td><td>Auth gateway, RBAC, routing, rate limiting</td></tr>
-        <tr><td>cms-eligibility-service</td><td>8081</td><td>Complaint eligibility validation</td></tr>
-        <tr><td>cms-ingestion-service</td><td>8082</td><td>Complaint registration, outbox events</td></tr>
-        <tr><td>cms-workflow-service</td><td>8083</td><td>BPMN/jBPM workflow execution</td></tr>
-        <tr><td>cms-rules-service</td><td>8084</td><td>Drools dynamic business rules</td></tr>
-        <tr><td>cms-assignment-service</td><td>8085</td><td>Officer assignment (rules-based)</td></tr>
-        <tr><td>cms-sla-monitor-service</td><td>8086</td><td>SLA breach detection & escalation</td></tr>
-        <tr><td>cms-notification-service</td><td>8087</td><td>Email/SMS notifications</td></tr>
-        <tr><td>cms-audit-service</td><td>8088</td><td>Audit trail logging</td></tr>
-        <tr><td>cms-outbox-publisher</td><td>8089</td><td>Reliable Kafka event publishing</td></tr>
-        <tr><td>cms-storage-service</td><td>8090</td><td>File/attachment storage</td></tr>
-        <tr><td>cms-search-service</td><td>8091</td><td>OpenSearch indexing & search</td></tr>
-    </table>
-
-    <h4>Frontend & Supporting</h4>
-    <table>
-        <tr><th>Service</th><th>Port</th><th>Purpose</th></tr>
-        <tr><td>cms-frontend</td><td>— (via gateway)</td><td>Angular SPA (production build)</td></tr>
-        <tr><td>cms-gateway</td><td>80, 443</td><td>Nginx reverse proxy & load balancer</td></tr>
-        <tr><td>cms-paddle-ocr</td><td>8100</td><td>PaddleOCR document extraction</td></tr>
-        <tr><td>cms-kafka-ui</td><td>8090</td><td>Kafka topic management UI</td></tr>
-        <tr><td>cms-prometheus</td><td>9090</td><td>Metrics collection from all services</td></tr>
-        <tr><td>cms-grafana</td><td>3000</td><td>Monitoring dashboards</td></tr>
-    </table>
-</div>
-
-<!-- STEP 2: DOCKER COMPOSE UP -->
-<div class="step" id="step2">
-    <h2><span class="step-num">2</span> Start Everything with Docker Compose</h2>
-
-    <h3>2.1 Build & Start All Containers</h3>
-    <pre><span class="comment"># Navigate to the infrastructure folder</span>
-cd CMS2.0/cms-infra
-
-<span class="comment"># Build all images and start containers in detached mode</span>
-docker compose up -d --build
-
-<span class="comment"># First run takes 5-10 minutes (downloads base images, builds from source)</span>
-<span class="comment"># Subsequent runs take ~30 seconds (uses cached layers)</span></pre>
-
-    <div class="warning">
-        <strong>First-time build is slow!</strong> Docker needs to:
-        <ul>
-            <li>Download base images (~2 GB total: Java, Node, Python, MySQL, Redis, Nginx)</li>
-            <li>Build backend (Maven downloads dependencies: ~500 MB)</li>
-            <li>Build frontend (npm install + ng build: ~400 MB)</li>
-            <li>Download PaddleOCR models (~1.5 GB)</li>
-        </ul>
-        <strong>Total first-run download: ~4-5 GB.</strong> After first build, everything is cached.
-    </div>
-
-    <h3>2.2 Watch Build Progress</h3>
-    <pre><span class="comment"># See real-time build output (useful for first run)</span>
-docker compose up --build
-
-<span class="comment"># Or follow logs of specific service</span>
-docker compose logs -f cms-backend-1
-
-<span class="comment"># Once you see "Started CmsApplication" in backend logs, it's ready</span></pre>
-
-    <h3>2.3 Check Container Status</h3>
-    <pre><span class="comment"># All containers should show "running (healthy)" or "running"</span>
-docker compose ps
-
-<span class="comment"># Expected output:</span>
-<span class="comment"># NAME              IMAGE                      STATUS                  PORTS</span>
-<span class="comment"># cms-mysql         mysql:8.0                  Up (healthy)            0.0.0.0:3307->3306</span>
-<span class="comment"># cms-redis         redis:7-alpine             Up (healthy)            0.0.0.0:6380->6379</span>
-<span class="comment"># cms-kafka         apache/kafka:3.7.0         Up (healthy)            0.0.0.0:29092->29092</span>
-<span class="comment"># cms-opensearch    opensearchproject/...      Up (healthy)            0.0.0.0:9200->9200</span>
-<span class="comment"># cms-keycloak      quay.io/keycloak/...       Up                      0.0.0.0:8180->8180</span>
-<span class="comment"># cms-keycloak-db   postgres:16-alpine         Up (healthy)</span>
-<span class="comment"># cms-backend-1     cms-infra-...              Up (healthy)</span>
-<span class="comment"># cms-backend-2     cms-infra-...              Up (healthy)</span>
-<span class="comment"># cms-paddle-ocr    cms-infra-...              Up (healthy)            0.0.0.0:8100->8100</span>
-<span class="comment"># cms-frontend      cms-infra-...              Up (healthy)</span>
-<span class="comment"># cms-gateway       nginx:1.27-alpine          Up                      0.0.0.0:80->80</span>
-<span class="comment"># cms-kafka-ui      provectuslabs/kafka-ui     Up                      0.0.0.0:8090->8080</span>
-<span class="comment"># cms-prometheus    prom/prometheus:v2.54.0    Up                      0.0.0.0:9090->9090</span>
-<span class="comment"># cms-grafana       grafana/grafana:11.3.0     Up                      0.0.0.0:3000->3000</span></pre>
-
-    <h3>2.4 Startup Order (Automatic)</h3>
-    <p>Docker Compose handles the startup order automatically via <code>depends_on</code> + health checks:</p>
+  <nav class="toc" aria-label="On this page">
+    <p class="toc-label">On this page</p>
     <ol>
-        <li><strong>MySQL</strong> starts → waits until healthy (accepts connections)</li>
-        <li><strong>Redis</strong> starts → waits until healthy (responds to PING)</li>
-        <li><strong>Kafka</strong> starts → waits until healthy (broker ready, KRaft mode)</li>
-        <li><strong>OpenSearch</strong> starts → waits until cluster health OK</li>
-        <li><strong>Keycloak DB (Postgres)</strong> starts → waits until healthy</li>
-        <li><strong>Keycloak</strong> waits for its Postgres DB</li>
-        <li><strong>Backend 1 & 2</strong> wait for MySQL + Redis + Kafka to be healthy, then start</li>
-        <li><strong>PaddleOCR</strong> starts independently (no dependencies)</li>
-        <li><strong>Frontend</strong> starts independently</li>
-        <li><strong>Gateway (Nginx)</strong> waits for both backends + frontend</li>
-        <li><strong>Kafka UI</strong> waits for Kafka to be healthy</li>
-        <li><strong>Prometheus</strong> starts independently, scrapes backend metrics</li>
-        <li><strong>Grafana</strong> waits for Prometheus</li>
+      <li><a href="#prereqs"><span class="n">00</span> Prerequisites</a></li>
+      <li><a href="#configure"><span class="n">01</span> One-time configuration</a></li>
+      <li><a href="#run"><span class="n">02</span> Build and run</a></li>
+      <li><a href="#whats-new"><span class="n">03</span> What got added, and why</a></li>
+      <li><a href="#verify"><span class="n">04</span> Verify everything</a></li>
+      <li><a href="#users"><span class="n">05</span> Test users</a></li>
+      <li><a href="#trouble"><span class="n">06</span> Troubleshooting</a></li>
+      <li><a href="#commands"><span class="n">07</span> Useful commands</a></li>
     </ol>
+  </nav>
 
-    <div class="success">
-        <strong>When all containers are healthy, the application is accessible at:</strong><br>
-        <code>http://localhost</code> — Main application (through Nginx gateway)
-    </div>
-</div>
+  <section id="prereqs">
+    <div class="section-head"><span class="tag">00</span><h2>Prerequisites</h2></div>
+    <p class="section-sub">Docker Desktop only — every service builds its own image from source; nothing else needs installing on your laptop.</p>
+    <ul class="checklist">
+      <li>Docker Desktop, running, with at least 10 GB RAM allocated (Settings → Resources — this stack is genuinely heavy: MySQL, Kafka, OpenSearch, two backend replicas, and now two frontends)</li>
+      <li>Ports free: <code class="inline">80, 3306, 4200, 6380, 8080, 8082, 8090, 8092, 8100, 8180, 9090, 9200, 2525, 3000, 29092</code></li>
+    </ul>
+  </section>
 
-<!-- STEP 3: KEYCLOAK -->
-<div class="step" id="step3">
-    <h2><span class="step-num">3</span> Keycloak Setup (Authentication)</h2>
+  <section id="configure">
+    <div class="section-head"><span class="tag">01</span><h2>One-time configuration</h2></div>
+    <p class="section-sub">Two edits before your first build — both are about telling the stack where your real external OCR service lives.</p>
 
-    <div class="success">
-        <strong>Keycloak is included in Docker Compose!</strong> It starts automatically at <code>http://localhost:8180</code>
-        with admin credentials: <code>admin</code> / <code>admin</code>. You just need to configure the realm, roles, and users below.
-    </div>
+    <h3>1. cms-infra/.env</h3>
+    <div class="file">
+      <div class="file-bar">cms-infra/.env</div>
+      <pre><span class="c"># Your real OCR service — cms-backend calls this server-to-server</span>
+OCR_EXTERNAL_URL=http://your-ocr-host:8000
 
-    <h3>3.1 Access Keycloak Admin Console</h3>
-    <pre><span class="comment"># Open in browser (wait ~30s after docker compose up):</span>
-http://localhost:8180
-
-<span class="comment"># Login:</span>
-Username: admin
-Password: admin</pre>
-
-    <h3>3.2 Configure Realm, Client, Roles, Users</h3>
-    <ol>
-        <li>Open <code>http://localhost:8180</code> → Login: <code>admin</code> / <code>admin</code></li>
-        <li>Create Realm: <code>cms</code></li>
-        <li>Create Client: <code>cms-frontend</code> (Public, SPA)</li>
-        <li>Set Redirect URIs: <code>http://localhost/*</code>, <code>http://localhost:4200/*</code>, <code>http://localhost:4300/*</code></li>
-        <li>Set Web Origins: <code>http://localhost</code>, <code>http://localhost:4200</code></li>
-        <li>Create Realm Roles and Users (see table below)</li>
-    </ol>
-
-    <h4>Roles to Create</h4>
-    <table>
-        <tr><th>Role</th><th>Department</th><th>Description</th></tr>
-        <tr><td><code>ADMIN</code></td><td>System</td><td>System administrator</td></tr>
-        <tr><td><code>DEO</code></td><td>CRPC</td><td>Data Entry Operator</td></tr>
-        <tr><td><code>REVIEWER</code></td><td>CRPC</td><td>Draft reviewer/approver</td></tr>
-        <tr><td><code>CRPC_HEAD</code></td><td>CRPC</td><td>Operations Head</td></tr>
-        <tr><td><code>RBIO_OFFICER</code></td><td>RBIO</td><td>Regional office officer</td></tr>
-        <tr><td><code>CEPC_ADMIN</code></td><td>CEPC</td><td>CEPC Administrator</td></tr>
-        <tr><td><code>CEPC_DO</code></td><td>CEPC</td><td>CEPC Dealing Officer</td></tr>
-        <tr><td><code>CEPC_REVIEWER</code></td><td>CEPC</td><td>CEPC Reviewer</td></tr>
-        <tr><td><code>CEPC_INCHARGE</code></td><td>CEPC</td><td>CEPC In-Charge</td></tr>
-        <tr><td><code>CEPC_CLOSING_AUTHORITY</code></td><td>CEPC</td><td>Closing Authority</td></tr>
-    </table>
-
-    <h4>Users to Create (Password: <code>Test@123</code> for all)</h4>
-    <table>
-        <tr><th>Username</th><th>Name</th><th>Role</th></tr>
-        <tr><td><code>cms-admin</code></td><td>CMS Admin</td><td>ADMIN</td></tr>
-        <tr><td><code>deo_001</code></td><td>Amit Verma</td><td>DEO</td></tr>
-        <tr><td><code>deo_002</code></td><td>Priya Sharma</td><td>DEO</td></tr>
-        <tr><td><code>reviewer1</code></td><td>Meera Krishnan</td><td>REVIEWER</td></tr>
-        <tr><td><code>crpc_head</code></td><td>Rajesh Kumar</td><td>CRPC_HEAD</td></tr>
-        <tr><td><code>rbio_mum1</code></td><td>Ashok Patil</td><td>RBIO_OFFICER</td></tr>
-        <tr><td><code>cepc_do1</code></td><td>Sunita Desai</td><td>CEPC_DO</td></tr>
-    </table>
-
-    <div class="warning">
-        <strong>For each user:</strong>
-        <ol>
-            <li>Go to <strong>Credentials</strong> tab → Set password → Turn OFF "Temporary"</li>
-            <li>Go to <strong>Role mapping</strong> → Assign the appropriate realm role</li>
-        </ol>
-    </div>
-</div>
-
-<!-- STEP 4: VERIFY -->
-<div class="step" id="step4">
-    <h2><span class="step-num">4</span> Verify Everything Works</h2>
-
-    <h3>4.1 Quick Health Checks</h3>
-    <pre><span class="comment"># Nginx gateway health</span>
-curl http://localhost/health
-<span class="comment"># → {"status":"UP"}</span>
-
-<span class="comment"># MySQL connection</span>
-docker exec cms-mysql mysqladmin ping -u cms_user -pcms_pass
-<span class="comment"># → mysqld is alive</span>
-
-<span class="comment"># Redis connection</span>
-docker exec cms-redis redis-cli ping
-<span class="comment"># → PONG</span>
-
-<span class="comment"># Kafka broker</span>
-docker exec cms-kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list
-<span class="comment"># → (empty or topic list — no error means OK)</span>
-
-<span class="comment"># OpenSearch cluster</span>
-curl http://localhost:9200/_cluster/health
-<span class="comment"># → {"status":"green" or "yellow", "cluster_name":"docker-cluster"}</span>
-
-<span class="comment"># Keycloak</span>
-curl http://localhost:8180/realms/master
-<span class="comment"># → JSON with realm info</span>
-
-<span class="comment"># Backend health (through gateway)</span>
-curl http://localhost/api/actuator/health
-<span class="comment"># → {"status":"UP"}</span>
-
-<span class="comment"># PaddleOCR health</span>
-curl http://localhost:8100/health
-<span class="comment"># → {"status":"ok"}</span>
-
-<span class="comment"># Prometheus targets</span>
-curl http://localhost:9090/api/v1/targets
-<span class="comment"># → JSON with scrape targets</span></pre>
-
-    <h3>4.2 Open in Browser</h3>
-    <table>
-        <tr><th>URL</th><th>What You'll See</th></tr>
-        <tr><td><a href="http://localhost">http://localhost</a></td><td>CMS Landing Page / Public Portal</td></tr>
-        <tr><td><a href="http://localhost/crpc">http://localhost/crpc</a></td><td>CRPC Staff Portal (DEO Home)</td></tr>
-        <tr><td><a href="http://localhost/admin/dashboard">http://localhost/admin/dashboard</a></td><td>Admin Dashboard</td></tr>
-        <tr><td><a href="http://localhost:8180">http://localhost:8180</a></td><td>Keycloak Admin Console (admin/admin)</td></tr>
-        <tr><td><a href="http://localhost:8090">http://localhost:8090</a></td><td>Kafka UI — Topics, Messages, Consumers</td></tr>
-        <tr><td><a href="http://localhost:9090">http://localhost:9090</a></td><td>Prometheus — Metrics & Targets</td></tr>
-        <tr><td><a href="http://localhost:3000">http://localhost:3000</a></td><td>Grafana — Dashboards (admin/admin)</td></tr>
-        <tr><td><a href="http://localhost:9200">http://localhost:9200</a></td><td>OpenSearch — REST API (cluster info)</td></tr>
-    </table>
-
-    <h3>4.3 Docker Desktop Visual Check</h3>
-    <p>Open Docker Desktop → <strong>Containers</strong> tab. You should see all 14 containers:</p>
-    <table>
-        <tr><th>Container</th><th>Status</th><th>Port</th></tr>
-        <tr><td>cms-mysql</td><td><span class="badge badge-green">Running (healthy)</span></td><td>3307:3306</td></tr>
-        <tr><td>cms-redis</td><td><span class="badge badge-green">Running (healthy)</span></td><td>6380:6379</td></tr>
-        <tr><td>cms-kafka</td><td><span class="badge badge-green">Running (healthy)</span></td><td>29092:29092</td></tr>
-        <tr><td>cms-opensearch</td><td><span class="badge badge-green">Running (healthy)</span></td><td>9200:9200</td></tr>
-        <tr><td>cms-keycloak</td><td><span class="badge badge-blue">Running</span></td><td>8180:8180</td></tr>
-        <tr><td>cms-keycloak-db</td><td><span class="badge badge-green">Running (healthy)</span></td><td>—</td></tr>
-        <tr><td>cms-backend-1</td><td><span class="badge badge-green">Running (healthy)</span></td><td>—</td></tr>
-        <tr><td>cms-backend-2</td><td><span class="badge badge-green">Running (healthy)</span></td><td>—</td></tr>
-        <tr><td>cms-paddle-ocr</td><td><span class="badge badge-green">Running (healthy)</span></td><td>8100:8100</td></tr>
-        <tr><td>cms-frontend</td><td><span class="badge badge-green">Running (healthy)</span></td><td>—</td></tr>
-        <tr><td>cms-gateway</td><td><span class="badge badge-blue">Running</span></td><td>80:80, 443:443</td></tr>
-        <tr><td>cms-kafka-ui</td><td><span class="badge badge-blue">Running</span></td><td>8090:8080</td></tr>
-        <tr><td>cms-prometheus</td><td><span class="badge badge-blue">Running</span></td><td>9090:9090</td></tr>
-        <tr><td>cms-grafana</td><td><span class="badge badge-blue">Running</span></td><td>3000:3000</td></tr>
-    </table>
-
-    <h3>4.4 Test the API</h3>
-    <pre><span class="comment"># Get complaint queue (API test)</span>
-curl http://localhost/api/email-syndication/queue
-
-<span class="comment"># Get categories</span>
-curl http://localhost/api/categories
-
-<span class="comment"># Check Swagger docs (if enabled)</span>
-curl http://localhost/api/swagger-ui.html</pre>
-</div>
-
-<!-- STEP 5: DEV MODE -->
-<div class="step" id="step5">
-    <h2><span class="step-num">5</span> Development Mode (Hot-Reload Frontend)</h2>
-
-    <div class="info">
-        <strong>When to use this:</strong> If you're actively developing the frontend and want instant hot-reload
-        instead of rebuilding the Docker image every time you change a file.
+<span class="c"># Optional — only needed if you also want the Groq fallback provider active</span>
+<span class="c"># GROQ_API_KEY=gsk_...</span></pre>
     </div>
 
-    <h3>5.1 Prerequisites for Dev Mode</h3>
-    <table>
-        <tr><th>Software</th><th>Version</th><th>Install</th></tr>
-        <tr><td>Node.js</td><td>22.x LTS</td><td><a href="https://nodejs.org">nodejs.org</a></td></tr>
-        <tr><td>Angular CLI</td><td>Latest</td><td><code>npm install -g @angular/cli</code></td></tr>
-    </table>
+    <h3>2. cms-portal-frontend's OCR URL (browser-side, so it's baked in at build time)</h3>
+    <p>The "AI Extract" button on the physical-letter screen calls your OCR service <em>directly from the browser</em>, separately from cms-backend's own server-side call — Angular can't read a <code class="inline">.env</code> file at runtime, so this one line needs editing before you build the image:</p>
+    <div class="file">
+      <div class="file-bar">cms-portal-frontend/src/environments/environment.docker-local.ts</div>
+      <pre>  ocrServiceUrl: <span class="c">'http://your-ocr-host:8000'</span>,  <span class="c">// same address as OCR_EXTERNAL_URL above</span></pre>
+    </div>
+  </section>
 
-    <h3>5.2 Start Backend in Docker, Frontend Locally</h3>
-    <pre><span class="comment"># Keep Docker containers running (backend + infra)</span>
-<span class="comment"># The Angular dev server will call the backend APIs directly</span>
+  <section id="run">
+    <div class="section-head"><span class="tag">02</span><h2>Build and run</h2></div>
+    <p class="section-sub">One file, one command, from <code class="inline">cms-infra/</code> — this builds and starts <strong>all 29 containers</strong>, nginx gateway and every microservice included, not a subset:</p>
 
-<span class="comment"># Terminal: Start frontend with hot-reload</span>
-cd CMS2.0/cms-portal-frontend
-npm install
-ng serve --port 4300
-
-<span class="comment"># Access at: http://localhost:4300</span>
-<span class="comment"># API calls go to: http://localhost:8082 (direct to backend)</span>
-<span class="comment"># OR through: http://localhost/api (via Nginx gateway)</span></pre>
-
-    <h3>5.3 Frontend Environment Configuration</h3>
-    <p>File: <code>cms-portal-frontend/src/environments/environment.ts</code></p>
-    <pre>export const environment = {
-  production: false,
-  apiBaseUrl: '<span class="string">http://localhost:8082</span>',     <span class="comment">// Backend (direct)</span>
-  keycloakUrl: '<span class="string">http://localhost:8180</span>',    <span class="comment">// Keycloak (if running)</span>
-  realm: '<span class="string">cms</span>',
-  sessionTimeoutMinutes: 15,
-  maxFileSizeMB: 5,
-  maxTotalUploadSizeMB: 25,
-  maxFileCount: 10,
-  allowedFileExtensions: ['.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png', '.xls', '.xlsx'],
-};</pre>
-
-    <div class="warning">
-        <strong>Note:</strong> When running frontend locally (port 4300), it connects directly to the backend
-        on port 8082. The Docker backend exposes no host port by default — it's only reachable through Nginx (port 80).
-        To access backend directly for dev, you can add a port mapping or use the Nginx proxy.
+    <div class="term big">
+      <div class="term-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="label">terminal</span></div>
+      <pre><span class="p">cd CMS2.0/cms-infra</span>
+<span class="p">docker compose -f docker-compose.mysql.yml up -d --build</span></pre>
     </div>
 
-    <h3>5.4 Backend Development (Without Docker)</h3>
-    <p>If you also want to run the backend locally (outside Docker) for debugging:</p>
-    <pre><span class="comment"># Prerequisites: Java 21, Maven 3.9+</span>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Group</th><th>What's in it</th></tr></thead>
+        <tbody>
+          <tr><td>Infra</td><td>cms-mysql, cms-redis, cms-kafka, cms-kafka-ui, cms-opensearch, cms-keycloak + its Postgres DB, cms-prometheus, cms-grafana, cms-paddle-ocr, cms-mock-ocr-api</td></tr>
+          <tr><td>cms-backend</td><td>cms-backend-1, cms-backend-2 (both, load-balanced by nginx)</td></tr>
+          <tr><td>The 12 microservices</td><td>cms-api-gateway, cms-eligibility-service, cms-ingestion-service, cms-workflow-service, cms-rules-service, cms-assignment-service, cms-sla-monitor-service, cms-notification-service, cms-audit-service, cms-outbox-publisher, cms-storage-service, cms-search-service</td></tr>
+          <tr><td>Frontends + gateway</td><td>cms-frontend, cms-portal-frontend, <strong>cms-gateway (nginx)</strong></td></tr>
+          <tr><td>Added this round</td><td>cms-mail-intake</td></tr>
+        </tbody>
+      </table>
+    </div>
 
-<span class="comment"># Keep only MySQL + Redis in Docker</span>
-docker compose up -d cms-mysql cms-redis
+    <p>First run: 5–10 minutes — pulling MySQL/Kafka/OpenSearch/Keycloak/Postgres base images, plus compiling <strong>15 Java services</strong> (cms-backend ×2, the 12 microservices, cms-mail-intake) and building <strong>3 web apps</strong> (cms-frontend, cms-portal-frontend, and the Node-based cms-mock-ocr-api). Every run after that reuses Docker's layer cache and is fast.</p>
 
-<span class="comment"># Run backend locally with dev profile</span>
-cd CMS2.0/cms-backend
-mvn spring-boot:run -Dspring-boot.run.profiles=dev
+    <div class="term">
+      <div class="term-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="label">terminal</span></div>
+      <pre><span class="p">docker compose -f docker-compose.mysql.yml ps</span>
+<span class="c"># all 29 rows should show Up (or Up (healthy) where a healthcheck is defined)</span></pre>
+    </div>
 
-<span class="comment"># Backend uses H2 in-memory DB (no MySQL needed for basic testing)</span>
-<span class="comment"># OR connect to Docker MySQL: localhost:3307</span></pre>
-</div>
+    <div class="callout ok">
+      <span class="head">Ready when</span>
+      <p><code class="inline">cms-backend-1</code> logs <code class="inline">Started CmsApplication</code>, <code class="inline">cms-mail-intake</code> logs <code class="inline">SMTP listener bound on 0.0.0.0:2525</code>, <code class="inline">cms-keycloak</code> finishes importing the realm (look for a line mentioning <code class="inline">cms-realm.json</code>), and <code class="inline">cms-gateway</code> shows <code class="inline">Up</code> — that last one is nginx, and it won't come up until both cms-backend-1/2 and cms-frontend are already running (it depends on them), so if it's the last thing to go green, that's expected, not stuck.</p>
+    </div>
 
-<!-- STEP 6: TEST USERS -->
-<div class="step" id="step6">
-    <h2><span class="step-num">6</span> Test Users & Workflows</h2>
+    <p>To stop: <code class="inline">Ctrl+C</code>, then <code class="inline">docker compose -f docker-compose.mysql.yml down</code> (add <code class="inline">-v</code> to also wipe MySQL/Keycloak data and start completely clean next time — see the Keycloak note in Troubleshooting first if you've already run this once before adding the realm import).</p>
+  </section>
 
-    <h3>6.1 CRPC Module (Session-Based)</h3>
-    <p>The CRPC module uses session storage for quick testing. No Keycloak needed:</p>
-    <table>
-        <tr><th>URL</th><th>Auto-Assigned Role</th><th>What You'll See</th></tr>
-        <tr><td><code>/crpc</code></td><td>DEO</td><td>Complaint list, draft assessment</td></tr>
-        <tr><td><code>/crpc/reviewer</code></td><td>REVIEWER</td><td>Review queue, approve/reject</td></tr>
-        <tr><td><code>/crpc/ops-head</code></td><td>CRPC_HEAD</td><td>Operations dashboard</td></tr>
-    </table>
+  <section id="whats-new">
+    <div class="section-head"><span class="tag">03</span><h2>What got added, and why</h2></div>
+    <p class="section-sub">Four new files, all additive — nothing in the original <code class="inline">cms-infra/docker-compose.yml</code> was changed.</p>
 
-    <h3>6.2 Test End-to-End Workflow</h3>
-    <ol>
-        <li><strong>Public:</strong> Go to <code>http://localhost</code> → File a complaint (no login)</li>
-        <li><strong>DEO:</strong> Go to <code>http://localhost/crpc</code> → See new complaints → Click to assess</li>
-        <li><strong>DEO Assessment:</strong> Fill complaint form → Click "Send for Review"</li>
-        <li><strong>Reviewer:</strong> Go to <code>http://localhost/crpc/reviewer</code> → Approve or Send Back</li>
-        <li><strong>Physical Letter:</strong> Go to <code>http://localhost/crpc/physical-letter</code> → Create from scan</li>
-    </ol>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>File</th><th>What it does</th></tr></thead>
+        <tbody>
+          <tr><td><code>docker-compose.mysql.yml</code></td><td>Full standalone stack (29 services, including nginx and every microservice from the original file) — MySQL instead of Oracle, plus <code>cms-mail-intake</code>, <code>cms-portal-frontend</code>, and <code>cms-mock-ocr-api</code> added, cms-backend's OCR chain forced onto that mock (or your real provider once configured), and Keycloak's realm auto-import turned on. Run this file alone — nothing else needed.</td></tr>
+          <tr><td><code>keycloak/cms-realm.json</code></td><td>Everything the old doc's "click through the admin console" section asked for — realm <code>cms</code>, all 10 original roles plus <code>MAIL_INTAKE_ADMIN</code>, and the same test users — as data Keycloak imports on first boot.</td></tr>
+          <tr><td><code>cms-mail-intake/Dockerfile</code></td><td>Didn't exist before. This module depends on a sibling Maven module (<code>cms-common</code>) that isn't published anywhere, so its build context is the whole repo, not just its own folder.</td></tr>
+          <tr><td><code>environment.docker-local.ts</code> + an <code>angular.json</code> build config</td><td>cms-portal-frontend's existing environment files all pointed somewhere else (dev server ports, or relative OpenShift-proxied paths) — this one points at what this specific stack actually publishes.</td></tr>
+        </tbody>
+      </table>
+    </div>
 
-    <h3>6.3 Admin Dashboard</h3>
-    <pre><span class="comment"># Admin dashboard with analytics</span>
-http://localhost/admin/dashboard
+    <details class="stack">
+      <summary>Two property overrides worth understanding <span class="arrow">▸</span></summary>
+      <div class="stack-body">
+        <p><strong>cms-backend's OCR chain</strong> is forced via command-line arguments (<code class="inline">--cms.ocr.chain=external --cms.ocr.external-url=...</code>), not environment variables — because <code class="inline">cms.ocr.external-url</code> has no placeholder in either <code class="inline">application.yml</code> to bind an env var to. Command-line args always win regardless, so this works no matter what profile is active.</p>
+        <p><strong>cms-mail-intake's SMTP allowlist</strong> defaults to <code class="inline">127.0.0.1</code> only. Docker NATs a host-side SMTP client through the bridge network, so it arrives as a <code class="inline">172.x</code> address — <code class="inline">CMS_MAIL_INTAKE_ALLOWLIST_CIDRS</code> widens that to cover it.</p>
+      </div>
+    </details>
+  </section>
 
-<span class="comment"># Extraction rules configuration</span>
-http://localhost/admin/extraction-rules</pre>
+  <hr class="divider" />
 
-    <h3>6.4 Keycloak Users (If Using SSO)</h3>
-    <table>
-        <tr><th>Username</th><th>Password</th><th>Role</th><th>Portal</th></tr>
-        <tr><td><code>deo_001</code></td><td>Test@123</td><td>DEO</td><td>CRPC Staff</td></tr>
-        <tr><td><code>deo_002</code></td><td>Test@123</td><td>DEO</td><td>CRPC Staff</td></tr>
-        <tr><td><code>reviewer1</code></td><td>Test@123</td><td>REVIEWER</td><td>CRPC Staff</td></tr>
-        <tr><td><code>crpc_head</code></td><td>Test@123</td><td>CRPC_HEAD</td><td>CRPC Staff</td></tr>
-        <tr><td><code>cms-admin</code></td><td>Test@123</td><td>ADMIN</td><td>Admin Portal</td></tr>
-        <tr><td><code>rbio_mum1</code></td><td>Test@123</td><td>RBIO_OFFICER</td><td>RBIO Portal</td></tr>
-        <tr><td><code>cepc_do1</code></td><td>Test@123</td><td>CEPC_DO</td><td>CEPC Portal</td></tr>
-    </table>
-</div>
+  <section id="verify">
+    <div class="section-head"><span class="tag">04</span><h2>Verify everything</h2></div>
 
-<!-- TROUBLESHOOTING -->
-<div class="step" id="troubleshooting">
-    <h2><span class="step-num">!</span> Troubleshooting</h2>
+    <h3>OCR</h3>
+    <div class="term">
+      <div class="term-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="label">terminal</span></div>
+      <pre><span class="p">curl http://localhost:8082/api/v1/ocr/extract \
+  -F "file=@/path/to/some.pdf;type=application/pdf"</span></pre>
+    </div>
+    <div class="callout ok">
+      <span class="head">Expect</span>
+      <p><code class="inline">"provider": "external"</code>. Or click through it live: <a href="http://localhost:4200/crpc/physical-letter">localhost:4200/crpc/physical-letter</a> → upload a scan → "AI Extract".</p>
+    </div>
 
-    <h3>Build Fails: "Cannot connect to Docker daemon"</h3>
-    <div class="error">Make sure Docker Desktop is running. Check the system tray for the Docker whale icon.</div>
-    <pre><span class="comment"># Restart Docker Desktop from system tray → Right-click → Restart</span>
-<span class="comment"># Or restart WSL:</span>
-wsl --shutdown
-<span class="comment"># Then reopen Docker Desktop</span></pre>
+    <h3>Embedded SMTP</h3>
+    <div class="term">
+      <div class="term-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="label">terminal</span></div>
+      <pre><span class="p">swaks --to cms20bot@cms20.rbi.org.in \
+      --from crpc@rbi.org.in \
+      --server localhost:2525 \
+      --body "test message"</span></pre>
+    </div>
+    <div class="callout ok">
+      <span class="head">Expect</span>
+      <p>A <code class="inline">250 OK</code>. Then <a href="http://localhost:8092/h2-console">localhost:8092/h2-console</a> (JDBC URL <code class="inline">jdbc:h2:mem:cms_mail_intake</code>) → <code class="inline">INBOUND_EMAIL</code> table for the new row.</p>
+    </div>
 
-    <h3>Build Fails: "Out of memory" or "Killed"</h3>
-    <div class="error">Docker doesn't have enough RAM allocated.</div>
-    <pre><span class="comment"># Fix: Docker Desktop → Settings → Resources → Memory: 8 GB minimum</span>
-<span class="comment"># Apply & Restart, then try again:</span>
-docker compose down
-docker compose up -d --build</pre>
+    <h3>Keycloak, and cms-mail-intake's admin API</h3>
+    <p>Get a real access token for one of the imported <code class="inline">MAIL_INTAKE_ADMIN</code> users, then use it against the admin endpoints:</p>
+    <div class="term">
+      <div class="term-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="label">terminal</span></div>
+      <pre><span class="p">TOKEN=$(curl -s -d "grant_type=password&client_id=admin-cli&username=mail-intake-admin&password=Test@123" \
+  http://localhost:8180/realms/cms/protocol/openid-connect/token | python3 -c "import sys,json;print(json.load(sys.stdin)['access_token'])")
 
-    <h3>Backend Won't Start: "Connection refused to MySQL"</h3>
-    <pre><span class="comment"># Backend starts before MySQL is ready (shouldn't happen with health checks)</span>
-<span class="comment"># Manually restart backend after MySQL is healthy:</span>
-docker compose restart cms-backend-1 cms-backend-2
+curl -H "Authorization: Bearer $TOKEN" \
+  http://localhost:8092/cms-mail-intake/admin/mail-intake/quarantined</span></pre>
+    </div>
+    <p>To test the maker-checker replay flow properly, request a replay as <code class="inline">mail-intake-admin</code> and approve it as <code class="inline">mail-intake-checker</code> (get a second token for that user) — the service rejects a self-approval on purpose.</p>
+  </section>
 
-<span class="comment"># Check MySQL status:</span>
-docker compose ps cms-mysql
-docker compose logs cms-mysql | tail -20</pre>
+  <hr class="divider" />
 
-    <h3>Port Already in Use</h3>
-    <pre><span class="comment"># Find what's using port 80:</span>
-netstat -ano | findstr :80
-<span class="comment"># Kill the process (replace PID):</span>
-taskkill /PID 12345 /F
+  <section id="users">
+    <div class="section-head"><span class="tag">05</span><h2>Test users</h2></div>
+    <p class="section-sub">All pre-provisioned by the realm import — no admin-console setup needed. Password <code class="inline">Test@123</code> for everyone.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Username</th><th>Role</th><th>What it's for</th></tr></thead>
+        <tbody>
+          <tr><td><code>cms-admin</code></td><td>ADMIN, MAIL_INTAKE_ADMIN</td><td>System administrator</td></tr>
+          <tr><td><code>deo_001</code> / <code>deo_002</code></td><td>DEO</td><td>CRPC data entry</td></tr>
+          <tr><td><code>reviewer1</code></td><td>REVIEWER</td><td>CRPC draft review/approval</td></tr>
+          <tr><td><code>crpc_head</code></td><td>CRPC_HEAD</td><td>CRPC operations dashboard</td></tr>
+          <tr><td><code>rbio_mum1</code></td><td>RBIO_OFFICER</td><td>RBIO portal</td></tr>
+          <tr><td><code>cepc_do1</code></td><td>CEPC_DO, DO</td><td>CEPC portal (both role forms — see the known-bugs note above)</td></tr>
+          <tr><td><code>mail-intake-admin</code></td><td>MAIL_INTAKE_ADMIN</td><td>Requests replay/force-link (the "maker")</td></tr>
+          <tr><td><code>mail-intake-checker</code></td><td>MAIL_INTAKE_ADMIN</td><td>Approves/rejects requests (the "checker") — a different account is required, the service blocks self-approval</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Keycloak admin console itself: <a href="http://localhost:8180">localhost:8180</a>, <code class="inline">admin</code> / <code class="inline">admin</code> — useful for inspecting or adding more users, not required for any of the above.</p>
+  </section>
 
-<span class="comment"># Common culprits:</span>
-<span class="comment"># Port 80: IIS, Apache, Skype</span>
-<span class="comment"># Port 3307: Another MySQL instance</span>
-<span class="comment"># Port 8180: Local Keycloak</span>
+  <hr class="divider" />
 
-<span class="comment"># Stop IIS if it's using port 80:</span>
-net stop w3svc</pre>
+  <section id="trouble">
+    <div class="section-head"><span class="tag">06</span><h2>Troubleshooting</h2></div>
 
-    <h3>Frontend Shows Blank Page</h3>
-    <pre><span class="comment"># Check if frontend container built successfully:</span>
-docker compose logs cms-frontend
+    <h3>Keycloak didn't import the realm</h3>
+    <p><code class="inline">--import-realm</code> only imports on a genuinely fresh database — if <code class="inline">cms-keycloak-db</code>'s volume already has data from a previous run (before this realm file existed), it skips the import silently. Reset just that piece:</p>
+    <div class="term">
+      <div class="term-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="label">terminal</span></div>
+      <pre><span class="p">docker compose -f docker-compose.mysql.yml down
+docker volume ls | grep keycloak-db   <span class="c"># confirm the exact name first — project-name prefixed</span>
+docker volume rm cms-infra_cms-keycloak-db-data
+docker compose -f docker-compose.mysql.yml up -d --build</span></pre>
+    </div>
 
-<span class="comment"># Common issue: node_modules cache. Rebuild without cache:</span>
-docker compose build --no-cache cms-frontend
-docker compose up -d cms-frontend</pre>
+    <h3>cms-mail-intake build fails resolving cms-common</h3>
+    <p>Confirm you're running <code class="inline">docker compose</code> from <code class="inline">cms-infra/</code>, not from inside <code class="inline">cms-mail-intake/</code> — the extras file sets this service's build context to the repo root specifically so Maven can see the sibling <code class="inline">cms-common</code> module.</p>
 
-    <h3>PaddleOCR Container Keeps Restarting</h3>
-    <pre><span class="comment"># PaddleOCR needs 2 GB RAM. Check Docker allocation:</span>
-docker stats cms-paddle-ocr
+    <h3>cms-backend keeps restarting, can't reach MySQL</h3>
+    <p>Check <code class="inline">docker compose logs cms-mysql</code> for <code class="inline">ready for connections</code> — MySQL usually starts faster than the old Oracle setup did, but a slow first boot can still race the backend's connection attempt. Once MySQL is healthy: <code class="inline">docker compose restart cms-backend-1 cms-backend-2</code>.</p>
 
-<span class="comment"># If OOM killed, increase Docker memory to 10 GB</span>
-<span class="comment"># Or skip OCR by commenting it out in docker-compose.yml:</span>
-<span class="comment"># cms-paddle-ocr:</span>
-<span class="comment">#   ... (comment entire service)</span></pre>
+    <h3>401/403 calling the mail-intake admin API</h3>
+    <p>Token expired (30 minutes) — get a fresh one with the same curl command. Wrong role — only <code class="inline">mail-intake-admin</code> and <code class="inline">mail-intake-checker</code> carry <code class="inline">MAIL_INTAKE_ADMIN</code>.</p>
 
-    <h3>Changes Not Reflecting After Code Edit</h3>
-    <pre><span class="comment"># Docker caches build layers. Rebuild the changed service:</span>
-docker compose up -d --build cms-backend-1 cms-backend-2   <span class="comment"># For backend changes</span>
-docker compose up -d --build cms-frontend                  <span class="comment"># For frontend changes</span>
+    <h3>SMTP connection refused or rejected</h3>
+    <p>Refused: <code class="inline">docker compose ps</code> should show <code class="inline">cms-mail-intake</code> healthy; check nothing else on your laptop holds port 2525. Rejected: the CIDR override didn't take — check the container's actual startup log for the allowlist it loaded.</p>
 
-<span class="comment"># Or rebuild everything:</span>
-docker compose up -d --build</pre>
+    <h3>OCR response looks right but form fields stay blank</h3>
+    <p>The frontend only reads a fixed set of field names out of the response envelope. A field your real OCR service doesn't return just leaves that form field untouched — not an error.</p>
 
-    <h3>"CORS Error" in Browser Console</h3>
-    <pre><span class="comment"># The backend allows these origins by default:</span>
-<span class="comment"># http://localhost:4200, http://localhost:4201, http://localhost:4202,</span>
-<span class="comment"># http://localhost:4300, http://localhost</span>
+    <h3>Port already in use</h3>
+    <p>Something on your laptop already holds one of the ports listed in Prerequisites — most commonly a native Oracle/MySQL install, or a previous native run of one of these services outside Docker.</p>
+  </section>
 
-<span class="comment"># If using a different port, set in .env:</span>
-CMS_CORS_ALLOWED_ORIGINS=http://localhost:4200,http://localhost:4300,http://localhost:5000
+  <hr class="divider" />
 
-<span class="comment"># Then restart backends:</span>
-docker compose restart cms-backend-1 cms-backend-2</pre>
+  <section id="commands">
+    <div class="section-head"><span class="tag">07</span><h2>Useful commands</h2></div>
+    <p class="section-sub">All run from <code class="inline">cms-infra/</code>. Wrapping both <code class="inline">-f</code> flags in a shell alias saves typing:</p>
+    <div class="term">
+      <div class="term-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="label">optional, once per shell session</span></div>
+      <pre><span class="p">alias cmsdc='docker compose -f docker-compose.mysql.yml'</span></pre>
+    </div>
 
-    <h3>Nuclear Option: Fresh Start</h3>
-    <pre><span class="comment"># Stop everything and DELETE all data (DB, Redis cache, volumes)</span>
-docker compose down -v
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Action</th><th>Command</th></tr></thead>
+        <tbody>
+          <tr><td>Status of everything</td><td><code>cmsdc ps</code></td></tr>
+          <tr><td>Logs, one service</td><td><code>cmsdc logs -f cms-mail-intake</code></td></tr>
+          <tr><td>Rebuild one service after a code change</td><td><code>cmsdc up -d --build cms-backend-1 cms-backend-2</code></td></tr>
+          <tr><td>Restart one service</td><td><code>cmsdc restart cms-mail-intake</code></td></tr>
+          <tr><td>Shell into a container</td><td><code>docker exec -it cms-backend-1 sh</code></td></tr>
+          <tr><td>MySQL client access</td><td><code>docker exec -it cms-mysql mysql -u cms_user -pcms_pass cms_db</code></td></tr>
+          <tr><td>Stop everything</td><td><code>cmsdc down</code></td></tr>
+          <tr><td>Stop and wipe all data (MySQL, Keycloak, everything)</td><td><code>cmsdc down -v</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
 
-<span class="comment"># Remove built images (forces full rebuild)</span>
-docker compose down -v --rmi all
-
-<span class="comment"># Clean Docker system (removes unused images/containers)</span>
-docker system prune -a --volumes
-
-<span class="comment"># Start fresh</span>
-docker compose up -d --build</pre>
-</div>
-
-<!-- USEFUL COMMANDS -->
-<div class="step" id="commands">
-    <h2><span class="step-num">&#9881;</span> Useful Commands Reference</h2>
-
-    <h3>Daily Operations</h3>
-    <table>
-        <tr><th>Action</th><th>Command</th></tr>
-        <tr><td>Start all services</td><td><code>docker compose up -d</code></td></tr>
-        <tr><td>Stop all services</td><td><code>docker compose down</code></td></tr>
-        <tr><td>View all container status</td><td><code>docker compose ps</code></td></tr>
-        <tr><td>View logs (all)</td><td><code>docker compose logs -f</code></td></tr>
-        <tr><td>View logs (specific)</td><td><code>docker compose logs -f cms-backend-1</code></td></tr>
-        <tr><td>Restart a service</td><td><code>docker compose restart cms-backend-1</code></td></tr>
-        <tr><td>Rebuild after code change</td><td><code>docker compose up -d --build</code></td></tr>
-    </table>
-
-    <h3>Database Access</h3>
-    <pre><span class="comment"># Connect to MySQL from your host machine</span>
-<span class="comment"># Using any MySQL client (MySQL Workbench, DBeaver, CLI):</span>
-Host: localhost
-Port: 3307
-Database: cms_db
-Username: cms_user
-Password: cms_pass
-
-<span class="comment"># Or use Docker exec:</span>
-docker exec -it cms-mysql mysql -u cms_user -pcms_pass cms_db
-
-<span class="comment"># Show tables:</span>
-docker exec cms-mysql mysql -u cms_user -pcms_pass cms_db -e "SHOW TABLES;"
-
-<span class="comment"># Show complaints:</span>
-docker exec cms-mysql mysql -u cms_user -pcms_pass cms_db -e "SELECT * FROM email_drafts LIMIT 5;"</pre>
-
-    <h3>Redis Access</h3>
-    <pre><span class="comment"># Connect to Redis</span>
-docker exec -it cms-redis redis-cli
-
-<span class="comment"># Check cache keys</span>
-docker exec cms-redis redis-cli KEYS "*"
-
-<span class="comment"># Monitor in real-time</span>
-docker exec cms-redis redis-cli MONITOR</pre>
-
-    <h3>Backend Debugging</h3>
-    <pre><span class="comment"># View backend application logs</span>
-docker compose logs -f cms-backend-1 --since 5m
-
-<span class="comment"># Shell into backend container</span>
-docker exec -it cms-backend-1 sh
-
-<span class="comment"># Check memory usage</span>
-docker stats
-
-<span class="comment"># Check backend environment variables</span>
-docker exec cms-backend-1 env | grep -i spring</pre>
-
-    <h3>Git Pull & Rebuild</h3>
-    <pre><span class="comment"># After pulling latest code changes:</span>
-git pull origin master
-
-<span class="comment"># Rebuild only changed services:</span>
-cd CMS2.0/cms-infra
-docker compose up -d --build
-
-<span class="comment"># If dependencies changed, rebuild without cache:</span>
-docker compose build --no-cache cms-backend-1 cms-backend-2
-docker compose up -d</pre>
-
-    <h3>Resource Monitoring</h3>
-    <pre><span class="comment"># Live container resource usage</span>
-docker stats
-
-<span class="comment"># Disk usage by Docker</span>
-docker system df
-
-<span class="comment"># Clean unused images (free disk space)</span>
-docker image prune -a</pre>
-</div>
-
-<!-- PORT SUMMARY -->
-<div class="step">
-    <h2>Port Summary</h2>
-    <table>
-        <tr><th>Port</th><th>Service</th><th>Access From</th><th>Notes</th></tr>
-        <tr><td><strong>80</strong></td><td>Nginx Gateway</td><td>Browser</td><td>Main application URL</td></tr>
-        <tr><td><strong>443</strong></td><td>Nginx Gateway (HTTPS)</td><td>Browser</td><td>SSL (if configured)</td></tr>
-        <tr><td><strong>3307</strong></td><td>MySQL 8.0</td><td>DB client</td><td>Maps to internal 3306</td></tr>
-        <tr><td><strong>6380</strong></td><td>Redis 7</td><td>redis-cli</td><td>Maps to internal 6379</td></tr>
-        <tr><td><strong>29092</strong></td><td>Apache Kafka 3.7</td><td>Kafka clients</td><td>EXTERNAL listener (KRaft mode)</td></tr>
-        <tr><td><strong>9200</strong></td><td>OpenSearch 2.18</td><td>cURL/API</td><td>Full-text search REST API</td></tr>
-        <tr><td><strong>8180</strong></td><td>Keycloak 26.0</td><td>Browser</td><td>Admin console (admin/admin)</td></tr>
-        <tr><td><strong>8090</strong></td><td>Kafka UI</td><td>Browser</td><td>Topic & consumer management</td></tr>
-        <tr><td><strong>9090</strong></td><td>Prometheus</td><td>Browser</td><td>Metrics & targets dashboard</td></tr>
-        <tr><td><strong>3000</strong></td><td>Grafana</td><td>Browser</td><td>Monitoring dashboards (admin/admin)</td></tr>
-        <tr><td><strong>8100</strong></td><td>PaddleOCR</td><td>cURL/API</td><td>OCR API endpoint</td></tr>
-        <tr><td>4300</td><td>Angular dev server</td><td>Browser</td><td>Only in dev mode (Step 5)</td></tr>
-    </table>
-</div>
+  <footer>
+    CMS 2.0 — RBI Complaint Management System · local environment reference · Docker Desktop only
+  </footer>
 
 </div>
-
-<div style="text-align: center; padding: 30px; color: #666; font-size: 13px;">
-    CMS 2.0 — Docker Desktop Setup Guide | Updated June 2026 | RBI Complaint Management System
-</div>
-
 </body>
 </html>
