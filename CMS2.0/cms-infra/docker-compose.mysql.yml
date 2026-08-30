@@ -104,7 +104,7 @@ services:
     # provider (cms.ocr.external-url has no env-var placeholder in either yml to bind to).
     command:
       - "--cms.ocr.chain=external"
-      - "--cms.ocr.external-url=${OCR_EXTERNAL_URL:-}"
+      - "--cms.ocr.external-url=${OCR_EXTERNAL_URL:-http://cms-mock-ocr-api:8000}"
     volumes:
       - cms-attachments:/cms-attachments
     depends_on:
@@ -148,7 +148,7 @@ services:
       GROQ_API_KEY: "${GROQ_API_KEY:-}"
     command:
       - "--cms.ocr.chain=external"
-      - "--cms.ocr.external-url=${OCR_EXTERNAL_URL:-}"
+      - "--cms.ocr.external-url=${OCR_EXTERNAL_URL:-http://cms-mock-ocr-api:8000}"
     volumes:
       - cms-attachments:/cms-attachments
     depends_on:
@@ -630,6 +630,21 @@ services:
         reservations:
           memory: 512M
           cpus: '0.5'
+    networks:
+      - cms-network
+
+  # ── cms-mock-ocr-api: implements the same /v1/documents contract a real external OCR
+  # service would, so both cms-backend's server-side OCR call and cms-portal-frontend's
+  # browser-side "AI Extract" button have something to talk to out of the box. Swap
+  # OCR_EXTERNAL_URL (above) and ocrServiceUrl (environment.docker-local.ts) to your real OCR
+  # service's address once you have one. ──
+  cms-mock-ocr-api:
+    build:
+      context: ../cms-mock-ocr-api
+    container_name: cms-mock-ocr-api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
     networks:
       - cms-network
 

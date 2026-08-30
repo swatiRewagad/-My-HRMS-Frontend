@@ -1,6 +1,6 @@
-// Used only by the cms-infra/docker-compose.extras.yml local Docker Desktop stack — see
-// cms-infra/README or the setup guide for how this fits together. NOT for OpenShift or any
-// other deployment target; environment.openshift.ts is the relative-path-proxied one for that.
+// Used only by the cms-infra/docker-compose.mysql.yml local Docker Desktop stack — see the
+// setup guide for how this fits together. NOT for OpenShift or any other deployment target;
+// environment.openshift.ts is the relative-path-proxied one for that.
 //
 // apiBaseUrl and keycloakUrl point at ports cms-infra publishes to your host machine directly
 // (this file's calls run in the browser, not inside a container, so they need to be
@@ -9,11 +9,11 @@ export const environment = {
   production: false,
   apiBaseUrl: 'http://localhost:8082',
 
-  // ↓↓↓ Set this to your real external OCR service's address before building the frontend
-  // image — same value as OCR_EXTERNAL_URL in cms-infra/.env, since this is the browser talking
-  // to it directly (the "AI Extract" button on the physical-letter screen), separate from
-  // cms-backend's own server-side call to the same service via cms.ocr.external-url.
-  ocrServiceUrl: 'http://REPLACE-WITH-YOUR-OCR-HOST:8000',
+  // localhost:8000 == the cms-mock-ocr-api container's published port (browser-side call, so
+  // it needs the host-visible address, not the Docker service hostname). Point this at your
+  // real OCR service's address instead once you have one — same value as OCR_EXTERNAL_URL in
+  // cms-infra/.env would be for cms-backend's own server-side call to the same service.
+  ocrServiceUrl: 'http://localhost:8000',
 
   keycloakUrl: 'http://localhost:8180',
   realm: 'cms',
