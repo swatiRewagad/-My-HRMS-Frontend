@@ -1,0 +1,727 @@
+services:
+  # ── MySQL (replaces Oracle everywhere in this file) ──
+  cms-mysql:
+    image: mysql:8.0
+    container_name: cms-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-change_me_root_password}
+      MYSQL_DATABASE: cms_db
+      MYSQL_USER: ${MYSQL_USER:-cms_user}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-cms_pass}
+    ports:
+      - "3306:3306"
+    volumes:
+      - cms-mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-change_me_root_password}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - cms-network
+
+  # ── Kafka (KRaft mode - No Zookeeper) ──
+  cms-kafka:
+    image: apache/kafka:3.7.0
+    container_name: cms-kafka
+    restart: unless-stopped
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093,EXTERNAL://0.0.0.0:29092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://cms-kafka:9092,EXTERNAL://localhost:29092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@cms-kafka:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+      CLUSTER_ID: 'cms-kafka-local-001'
+    ports:
+      - "29092:29092"
+    volumes:
+      - cms-kafka-data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+    networks:
+      - cms-network
+
+  # ── Redis ──
+  cms-redis:
+    image: redis:7-alpine
+    container_name: cms-redis
+    restart: unless-stopped
+    ports:
+      - "6380:6379"
+    command: >
+      redis-server
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+      --save 60 1000
+      --tcp-backlog 511
+    volumes:
+      - cms-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - cms-network
+
+  # ── Backend Instance 1 ──
+  # SPRING_PROFILES_ACTIVE is dev-local, not prod, on purpose: cms-backend's prod profile
+  # (application.yml) hardcodes hibernate.dialect to OracleDialect — pointing its DB_URL at
+  # MySQL while that profile is active would connect fine and then fail on every query with a
+  # dialect mismatch. dev-local (application-dev-local.yml) already has MySQLDialect configured
+  # correctly and is the one profile in this codebase actually verified against MySQL.
+  cms-backend-1:
+    build:
+      context: ../cms-backend
+      dockerfile: Dockerfile
+    container_name: cms-backend-1
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: dev-local
+      SPRING_DATASOURCE_URL: "jdbc:mysql://cms-mysql:3306/cms_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&rewriteBatchedStatements=true&characterEncoding=UTF-8&useUnicode=true"
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:-cms_user}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD:-cms_pass}
+      REDIS_HOST: cms-redis
+      REDIS_PORT: 6379
+      CMS_ATTACHMENTS_PATH: /cms-attachments
+      JAVA_OPTS: "-Xms512m -Xmx1g"
+      CMS_CORS_ORIGINS: "http://localhost:4200,http://localhost:4201,http://localhost:4202,http://localhost:4300,http://localhost"
+      KAFKA_BOOTSTRAP: cms-kafka:9092
+      GROQ_API_KEY: "${GROQ_API_KEY:-}"
+    # Command-line args always win regardless of profile — forces OCR onto your external
+    # provider (cms.ocr.external-url has no env-var placeholder in either yml to bind to).
+    command:
+      - "--cms.ocr.chain=external"
+      - "--cms.ocr.external-url=${OCR_EXTERNAL_URL:-}"
+    volumes:
+      - cms-attachments:/cms-attachments
+    depends_on:
+      cms-mysql:
+        condition: service_healthy
+      cms-redis:
+        condition: service_healthy
+      cms-kafka:
+        condition: service_healthy
+    ports:
+      - "8082:8082"
+    deploy:
+      resources:
+        limits:
+          memory: 1536M
+          cpus: '2.0'
+        reservations:
+          memory: 768M
+          cpus: '0.5'
+    networks:
+      - cms-network
+
+  # ── Backend Instance 2 ──
+  cms-backend-2:
+    build:
+      context: ../cms-backend
+      dockerfile: Dockerfile
+    container_name: cms-backend-2
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: dev-local
+      SPRING_DATASOURCE_URL: "jdbc:mysql://cms-mysql:3306/cms_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&rewriteBatchedStatements=true&characterEncoding=UTF-8&useUnicode=true"
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:-cms_user}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD:-cms_pass}
+      REDIS_HOST: cms-redis
+      REDIS_PORT: 6379
+      CMS_ATTACHMENTS_PATH: /cms-attachments
+      JAVA_OPTS: "-Xms512m -Xmx1g"
+      CMS_CORS_ORIGINS: "http://localhost:4200,http://localhost:4201,http://localhost:4202,http://localhost:4300,http://localhost"
+      KAFKA_BOOTSTRAP: cms-kafka:9092
+      GROQ_API_KEY: "${GROQ_API_KEY:-}"
+    command:
+      - "--cms.ocr.chain=external"
+      - "--cms.ocr.external-url=${OCR_EXTERNAL_URL:-}"
+    volumes:
+      - cms-attachments:/cms-attachments
+    depends_on:
+      cms-mysql:
+        condition: service_healthy
+      cms-redis:
+        condition: service_healthy
+      cms-kafka:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 1536M
+          cpus: '2.0'
+        reservations:
+          memory: 768M
+          cpus: '0.5'
+    networks:
+      - cms-network
+
+  # ══════════════════════════════════════════════════════════════
+  # MICROSERVICES (built from parent POM using shared Dockerfile)
+  #
+  # These 8 still point at cms-mysql below (swapped 1:1 from cms-oracle) using their existing
+  # "docker" Spring profile, unchanged otherwise. UNVERIFIED: I have not checked whether each
+  # one's own "docker" profile config hardcodes an Oracle Hibernate dialect the way cms-backend's
+  # "prod" profile does — if any of them do, that service specifically will connect to MySQL
+  # fine and then fail on its first query, not on startup. None of these 8 are reachable through
+  # the nginx gateway (confirmed earlier — nginx only routes to cms-backend-1/2 and
+  # cms-frontend), so a failure here doesn't block anything this stack's UI actually uses.
+  # ══════════════════════════════════════════════════════════════
+
+  cms-api-gateway:
+    build:
+      context: ..
+      dockerfile: cms-infra/Dockerfile.microservice
+      args:
+        SERVICE_NAME: cms-api-gateway
+    container_name: cms-api-gateway
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      KEYCLOAK_ISSUER_URI: http://cms-keycloak:8180/realms/cms
+      KAFKA_BOOTSTRAP: cms-kafka:9092
+      SERVER_PORT: 8080
+    ports:
+      - "8080:8080"
+    depends_on:
+      cms-kafka:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+          cpus: '1.0'
+    networks:
+      - cms-network
+
+  cms-eligibility-service:
+    build:
+      context: ..
+      dockerfile: cms-infra/Dockerfile.microservice
+      args:
+        SERVICE_NAME: cms-eligibility-service
+    container_name: cms-eligibility-service
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      KAFKA_BOOTSTRAP: cms-kafka:9092
+      SERVER_PORT: 8081
+    depends_on:
+      cms-kafka:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+          cpus: '1.0'
+    networks:
+      - cms-network
+
+  cms-ingestion-service:
+    build:
+      context: ..
+      dockerfile: cms-infra/Dockerfile.microservice
+      args:
+        SERVICE_NAME: cms-ingestion-service
+    container_name: cms-ingestion-service
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_URL: "jdbc:mysql://cms-mysql:3306/cms_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC"
+      DB_USERNAME: ${MYSQL_USER:-cms_user}
+      DB_PASSWORD: ${MYSQL_PASSWORD:-cms_pass}
+      KAFKA_BOOTSTRAP: cms-kafka:9092
+      SERVER_PORT: 8082
+    depends_on:
+      cms-mysql:
+        condition: service_healthy
+      cms-kafka:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+          cpus: '1.0'
+    networks:
+      - cms-network
+
+  cms-workflow-service:
+    build:
+      context: ..
+      dockerfile: cms-infra/Dockerfile.microservice
+      args:
+        SERVICE_NAME: cms-workflow-service
+    container_name: cms-workflow-service
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_URL: "jdbc:mysql://cms-mysql:3306/cms_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC"
+      DB_USERNAME: ${MYSQL_USER:-cms_user}
+      DB_PASSWORD: ${MYSQL_PASSWORD:-cms_pass}
+      KAFKA_BOOTSTRAP: cms-kafka:9092
+      SERVER_PORT: 8083
+    depends_on:
+      cms-mysql:
+        condition: service_healthy
+      cms-kafka:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 1024M
+          cpus: '1.0'
+    networks:
+      - cms-network
+
+  cms-rules-service:
+    build:
+      context: ..
+      dockerfile: cms-infra/Dockerfile.microservice
+      args:
+        SERVICE_NAME: cms-rules-service
+    container_name: cms-rules-service
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_URL: "jdbc:mysql://cms-mysql:3306/cms_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC"
+      DB_USERNAME: ${MYSQL_USER:-cms_user}
+      DB_PASSWORD: ${MYSQL_PASSWORD:-cms_pass}
+      KAFKA_BOOTSTRAP: cms-kafka:9092
+      SERVER_PORT: 8084
+    depends_on:
+      cms-mysql:
+        condition: service_healthy
+      cms-kafka:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+          cpus: '1.0'
+    networks:
+      - cms-network
+
+  cms-assignment-service:
+    build:
+      context: ..
+      dockerfile: cms-infra/Dockerfile.microservice
+      args:
+        SERVICE_NAME: cms-assignment-service
+    container_name: cms-assignment-service
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_URL: "jdbc:mysql://cms-mysql:3306/cms_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC"
+      DB_USERNAME: ${MYSQL_USER:-cms_user}
+      DB_PASSWORD: ${MYSQL_PASSWORD:-cms_pass}
+      KAFKA_BOOTSTRAP: cms-kafka:9092
+      SERVER_PORT: 8085
+    depends_on:
+      cms-mysql:
+        condition: service_healthy
+      cms-kafka:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+          cpus: '1.0'
+    networks:
+      - cms-network
+
+  cms-sla-monitor-service:
+    build:
+      context: ..
+      dockerfile: cms-infra/Dockerfile.microservice
+      args:
+        SERVICE_NAME: cms-sla-monitor-service
+    container_name: cms-sla-monitor-service
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_URL: "jdbc:mysql://cms-mysql:3306/cms_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC"
+      DB_USERNAME: ${MYSQL_USER:-cms_user}
+      DB_PASSWORD: ${MYSQL_PASSWORD:-cms_pass}
+      KAFKA_BOOTSTRAP: cms-kafka:9092
+      SERVER_PORT: 8086
+    depends_on:
+      cms-mysql:
+        condition: service_healthy
+      cms-kafka:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+          cpus: '1.0'
+    networks:
+      - cms-network
+
+  cms-notification-service:
+    build:
+      context: ..
+      dockerfile: cms-infra/Dockerfile.microservice
+      args:
+        SERVICE_NAME: cms-notification-service
+    container_name: cms-notification-service
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      KAFKA_BOOTSTRAP: cms-kafka:9092
+      SERVER_PORT: 8087
+    depends_on:
+      cms-kafka:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+    networks:
+      - cms-network
+
+  cms-audit-service:
+    build:
+      context: ..
+      dockerfile: cms-infra/Dockerfile.microservice
+      args:
+        SERVICE_NAME: cms-audit-service
+    container_name: cms-audit-service
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_URL: "jdbc:mysql://cms-mysql:3306/cms_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC"
+      DB_USERNAME: ${MYSQL_USER:-cms_user}
+      DB_PASSWORD: ${MYSQL_PASSWORD:-cms_pass}
+      KAFKA_BOOTSTRAP: cms-kafka:9092
+      SERVER_PORT: 8088
+    depends_on:
+      cms-mysql:
+        condition: service_healthy
+      cms-kafka:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+    networks:
+      - cms-network
+
+  cms-outbox-publisher:
+    build:
+      context: ..
+      dockerfile: cms-infra/Dockerfile.microservice
+      args:
+        SERVICE_NAME: cms-outbox-publisher
+    container_name: cms-outbox-publisher
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_URL: "jdbc:mysql://cms-mysql:3306/cms_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC"
+      DB_USERNAME: ${MYSQL_USER:-cms_user}
+      DB_PASSWORD: ${MYSQL_PASSWORD:-cms_pass}
+      KAFKA_BOOTSTRAP: cms-kafka:9092
+      SERVER_PORT: 8089
+    depends_on:
+      cms-mysql:
+        condition: service_healthy
+      cms-kafka:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+    networks:
+      - cms-network
+
+  cms-storage-service:
+    build:
+      context: ..
+      dockerfile: cms-infra/Dockerfile.microservice
+      args:
+        SERVICE_NAME: cms-storage-service
+    container_name: cms-storage-service
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      CMS_ATTACHMENTS_PATH: /cms-attachments
+      SERVER_PORT: 8090
+    volumes:
+      - cms-attachments:/cms-attachments
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+    networks:
+      - cms-network
+
+  cms-search-service:
+    build:
+      context: ..
+      dockerfile: cms-infra/Dockerfile.microservice
+      args:
+        SERVICE_NAME: cms-search-service
+    container_name: cms-search-service
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      OPENSEARCH_HOST: cms-opensearch
+      OPENSEARCH_PORT: 9200
+      OPENSEARCH_SCHEME: http
+      KAFKA_BOOTSTRAP: cms-kafka:9092
+      SERVER_PORT: 8091
+    depends_on:
+      cms-opensearch:
+        condition: service_healthy
+      cms-kafka:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+          cpus: '1.0'
+    networks:
+      - cms-network
+
+  # ══════════════════════════════════════════════════════════════
+  # INFRASTRUCTURE SERVICES
+  # ══════════════════════════════════════════════════════════════
+
+  cms-opensearch:
+    image: opensearchproject/opensearch:2.18.0
+    container_name: cms-opensearch
+    restart: unless-stopped
+    environment:
+      discovery.type: single-node
+      DISABLE_SECURITY_PLUGIN: "true"
+      OPENSEARCH_JAVA_OPTS: "-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+    volumes:
+      - cms-opensearch-data:/usr/share/opensearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9200/_cluster/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+    networks:
+      - cms-network
+
+  # Realm/roles/users auto-provisioned from ./keycloak/cms-realm.json on first boot — no manual
+  # admin-console clicking needed. See that file for the full role/user list (includes
+  # MAIL_INTAKE_ADMIN for cms-mail-intake below, and both prefixed/bare CEPC role variants to
+  # work around a real frontend/backend role-name mismatch — see the setup guide).
+  cms-keycloak:
+    image: quay.io/keycloak/keycloak:26.0
+    container_name: cms-keycloak
+    restart: unless-stopped
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://cms-keycloak-db:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: keycloak
+      KC_HTTP_PORT: 8180
+      KC_HOSTNAME_STRICT: "false"
+      KC_PROXY_HEADERS: xforwarded
+    command: start-dev --import-realm
+    volumes:
+      - ./keycloak/cms-realm.json:/opt/keycloak/data/import/cms-realm.json:ro
+    ports:
+      - "8180:8180"
+    depends_on:
+      cms-keycloak-db:
+        condition: service_healthy
+    networks:
+      - cms-network
+
+  cms-keycloak-db:
+    image: postgres:16-alpine
+    container_name: cms-keycloak-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: keycloak
+    volumes:
+      - cms-keycloak-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U keycloak"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - cms-network
+
+  cms-kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: cms-kafka-ui
+    restart: unless-stopped
+    environment:
+      KAFKA_CLUSTERS_0_NAME: cms-local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: cms-kafka:9092
+    ports:
+      - "8090:8080"
+    depends_on:
+      cms-kafka:
+        condition: service_healthy
+    networks:
+      - cms-network
+
+  cms-prometheus:
+    image: prom/prometheus:v2.54.0
+    container_name: cms-prometheus
+    restart: unless-stopped
+    volumes:
+      - ../deployment/docker/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - cms-network
+
+  cms-grafana:
+    image: grafana/grafana:11.3.0
+    container_name: cms-grafana
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    ports:
+      - "3000:3000"
+    volumes:
+      - cms-grafana-data:/var/lib/grafana
+    depends_on:
+      - cms-prometheus
+    networks:
+      - cms-network
+
+  cms-paddle-ocr:
+    build:
+      context: ../cms-paddle-ocr
+      dockerfile: Dockerfile
+    container_name: cms-paddle-ocr
+    restart: unless-stopped
+    ports:
+      - "8100:8100"
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '2.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+    networks:
+      - cms-network
+
+  # ── cms-mail-intake: embedded SMTP receiver — not in the original file ──
+  cms-mail-intake:
+    build:
+      context: ..
+      dockerfile: cms-mail-intake/Dockerfile
+    container_name: cms-mail-intake
+    restart: unless-stopped
+    environment:
+      # H2 in-memory on purpose — this module's own dev-local profile is fully self-contained,
+      # no schema migration to run against cms-mysql, no extra credentials to manage.
+      SPRING_PROFILES_ACTIVE: dev-local
+      # dev-local's allowlist is 127.0.0.1/32 + ::1/128 only — Docker NATs a host-side SMTP
+      # client through the bridge network, so it arrives as a 172.x address instead.
+      CMS_MAIL_INTAKE_ALLOWLIST_CIDRS: "172.16.0.0/12,127.0.0.1/32,::1/128"
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: "http://cms-keycloak:8180/realms/cms"
+    depends_on:
+      cms-keycloak:
+        condition: service_started
+    ports:
+      - "8092:8092"
+      - "2525:2525"
+    networks:
+      - cms-network
+
+  # ── cms-portal-frontend: the CRPC/staff/OCR-test UI — cms-frontend above only has 5 public
+  # routes and no Keycloak wiring at all; this is the app the CRPC/RBIO/CEPC/admin screens and
+  # the physical-letter OCR flow actually live in. ──
+  cms-portal-frontend:
+    build:
+      context: ../cms-portal-frontend
+      args:
+        # angular.json build config added for this exact stack — points at :8082/:8180, realm
+        # "cms". Edit ocrServiceUrl in environment.docker-local.ts to your real OCR URL first
+        # (browser-side call, separate from cms-backend's own server-side one above).
+        NG_CONFIG: docker-local
+    container_name: cms-portal-frontend
+    depends_on:
+      - cms-backend-1
+    ports:
+      - "4200:80"
+    networks:
+      - cms-network
+
+  cms-frontend:
+    build:
+      context: ../cms-frontend
+      dockerfile: Dockerfile
+    container_name: cms-frontend
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
+    networks:
+      - cms-network
+
+  cms-gateway:
+    image: nginx:1.27-alpine
+    container_name: cms-gateway
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - cms-nginx-cache:/var/cache/nginx/cms
+    depends_on:
+      - cms-backend-1
+      - cms-backend-2
+      - cms-frontend
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '1.0'
+    networks:
+      - cms-network
+
+volumes:
+  cms-mysql-data:
+  cms-redis-data:
+  cms-kafka-data:
+  cms-opensearch-data:
+  cms-keycloak-db-data:
+  cms-grafana-data:
+  cms-attachments:
+  cms-nginx-cache:
+
+networks:
+  cms-network:
+    driver: bridge

@@ -1,0 +1,115 @@
+# ============================================================
+# cms-infra — additive services, local Docker Desktop only (no OpenShift involved anywhere here)
+#
+# Nothing in this file redefines a service from docker-compose.yml — it only adds
+# cms-mail-intake (embedded SMTP receiver) and cms-portal-frontend (the CRPC/staff/OCR-test UI —
+# the base compose file only builds cms-frontend, the simpler 5-route public-complaint app), plus
+# one extra port publish on cms-backend-1 so a locally-built cms-portal-frontend can reach it
+# directly from your browser.
+#
+# Run both files together, from the cms-infra/ directory:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.extras.yml up -d --build
+#
+# Your real external OCR service: set OCR_EXTERNAL_URL in cms-infra/.env before starting, e.g.
+#   OCR_EXTERNAL_URL=http://192.168.1.50:8000
+# (same .env file docker-compose.yml already reads GROQ_API_KEY / MYSQL_USER from).
+# ============================================================
+
+services:
+
+  # Fixes a real credential mismatch in the base file: cms-oracle's APP_USER_PASSWORD reads
+  # ${DB_PASSWORD:-cms_password}, but cms-backend-1/2 authenticate with ${MYSQL_PASSWORD:-cms_pass}
+  # — two different env vars with two different defaults, and .env.example only ever mentions
+  # MYSQL_PASSWORD. Follow the original setup doc's own .env instructions verbatim (set only
+  # MYSQL_USER/MYSQL_PASSWORD) and the database user Oracle actually creates won't match what
+  # the backend tries to log in with. This aligns Oracle onto the same two variables so there's
+  # one password to set, not two that silently have to agree.
+  cms-oracle:
+    environment:
+      APP_USER: ${MYSQL_USER:-cms_user}
+      APP_USER_PASSWORD: ${MYSQL_PASSWORD:-cms_pass}
+
+  # No realm-import JSON existed anywhere in this repo before — the base compose file's own
+  # setup docs said to click through the Keycloak admin console by hand to create the realm,
+  # roles, and users. --import-realm auto-provisions all of that from cms-infra/keycloak/
+  # cms-realm.json on first boot instead: realm "cms" (matching what cms-backend and
+  # cms-api-gateway already expect — see application.yml's keycloak.admin.realm), every role
+  # from the original setup doc, plus MAIL_INTAKE_ADMIN for cms-mail-intake's admin endpoints,
+  # and test users (password Test@123 for all) including two separate MAIL_INTAKE_ADMIN accounts
+  # so the maker-checker replay/force-link flow has two distinct people to test with.
+  cms-keycloak:
+    command: start-dev --import-realm
+    volumes:
+      - ./keycloak/cms-realm.json:/opt/keycloak/data/import/cms-realm.json:ro
+
+  cms-backend-1:
+    # Command-line args always win over any application.yml value, regardless of profile — the
+    # most reliable way to force the OCR chain onto your external provider without touching a
+    # file that's otherwise shared with every other deployment of this service.
+    command:
+      - "--cms.ocr.chain=external"
+      - "--cms.ocr.external-url=${OCR_EXTERNAL_URL:-}"
+    ports:
+      - "8082:8082"
+
+  cms-backend-2:
+    command:
+      - "--cms.ocr.chain=external"
+      - "--cms.ocr.external-url=${OCR_EXTERNAL_URL:-}"
+
+  cms-mail-intake:
+    build:
+      context: ../
+      dockerfile: cms-mail-intake/Dockerfile
+    container_name: cms-mail-intake
+    restart: unless-stopped
+    environment:
+      # H2 in-memory, deliberately not wired to cms-oracle — cms-mail-intake's own dev-local
+      # profile is self-contained (no schema migration to run, no credentials to manage) and this
+      # module's data (inbound emails awaiting operator review) isn't the same durability tier as
+      # complaint records. Point it at Oracle instead once V11/V12 migrations have been run there
+      # (database/oracle/) and you want it to persist across container recreates.
+      SPRING_PROFILES_ACTIVE: dev-local
+      # dev-local's own allowlist is 127.0.0.1/32 + ::1/128 only — correct for same-machine
+      # connections, but Docker NATs a host-side SMTP client through the bridge network, so it
+      # arrives as a 172.x address instead. This widens the allowlist to cover that.
+      CMS_MAIL_INTAKE_ALLOWLIST_CIDRS: "172.16.0.0/12,127.0.0.1/32,::1/128"
+      # dev-local otherwise has no issuer-uri set at all (see MailIntakeSecurityConfig's
+      # Javadoc) — the admin endpoints need this to validate JWTs against the same Keycloak
+      # realm ("cms") the rest of the stack now has, via the imported realm above.
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: "http://cms-keycloak:8180/realms/cms"
+    depends_on:
+      cms-keycloak:
+        condition: service_started
+    ports:
+      - "8092:8092"
+      - "2525:2525"
+    networks:
+      - cms-network
+
+  cms-portal-frontend:
+    build:
+      context: ../cms-portal-frontend
+      args:
+        # "docker-local" is a new build configuration (angular.json) added specifically for this
+        # stack — see src/environments/environment.docker-local.ts. It points apiBaseUrl and
+        # keycloakUrl at the host ports this compose file publishes (8082, 8180) and realm "cms"
+        # to match the imported Keycloak realm above. Edit ocrServiceUrl in that file to your
+        # real OCR service's address before building — same value as OCR_EXTERNAL_URL below.
+        # Note: keycloak-auth.service.ts hardcodes the OAuth2 client ID as "cms-frontend"
+        # regardless of which Angular app is actually running — the realm import registers only
+        # that one client (with redirect URIs covering both :80 and :4200/:4300), not a
+        # separate "cms-portal-frontend" client.
+        NG_CONFIG: docker-local
+    container_name: cms-portal-frontend
+    depends_on:
+      - cms-backend-1
+    ports:
+      - "4200:80"
+    networks:
+      - cms-network
+
+# No top-level `networks:` block here on purpose — cms-network is already defined (driver:
+# bridge) in docker-compose.yml; each service above just joins it by name. Redeclaring it here
+# risks a conflicting merge rather than adding anything.
