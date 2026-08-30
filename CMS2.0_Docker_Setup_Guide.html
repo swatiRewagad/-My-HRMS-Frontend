@@ -657,6 +657,31 @@ OCR_EXTERNAL_URL=http://your-ocr-host:8000
 
     <p>First run: 5–10 minutes — pulling MySQL/Kafka/OpenSearch/Keycloak/Postgres base images, plus compiling <strong>15 Java services</strong> (cms-backend ×2, the 12 microservices, cms-mail-intake) and building <strong>3 web apps</strong> (cms-frontend, cms-portal-frontend, and the Node-based cms-mock-ocr-api). Every run after that reuses Docker's layer cache and is fast.</p>
 
+    <h3>How the 12 microservices actually get built</h3>
+    <p>Each one has its own <code class="inline">build:</code> block in <code class="inline">docker-compose.mysql.yml</code>, pointing at the <strong>same shared Dockerfile</strong> — <code class="inline">cms-infra/Dockerfile.microservice</code> — with a different <code class="inline">SERVICE_NAME</code> build argument per service, e.g.:</p>
+    <div class="file">
+      <div class="file-bar">docker-compose.mysql.yml — one of the 12, as an example</div>
+      <pre><span class="c">cms-workflow-service:</span>
+<span class="c">  build:</span>
+<span class="c">    context: ..                              </span><span class="c"># repo root — so Maven can see cms-workflow-service's own pom.xml</span>
+<span class="c">    dockerfile: cms-infra/Dockerfile.microservice</span>
+<span class="c">    args:</span>
+<span class="c">      SERVICE_NAME: cms-workflow-service       </span><span class="c"># tells the shared Dockerfile which module to mvn package</span></pre>
+    </div>
+    <p>So <code class="inline">docker compose ... --build</code> runs that shared Dockerfile <strong>12 separate times</strong>, once per <code class="inline">SERVICE_NAME</code> — each one is a real, independent <code class="inline">mvn package</code> against that microservice's own source under <code class="inline">CMS2.0/&lt;service-name&gt;/</code>, not a shortcut or a shared skip. You'll see all 12 names scroll by in the build output as separate build stages.</p>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Built from source (compiled/bundled every run)</th><th>Pulled pre-built (official images, never compiled)</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>cms-backend-1, cms-backend-2, all 12 microservices, cms-mail-intake, cms-frontend, cms-portal-frontend, cms-mock-ocr-api, cms-paddle-ocr</td>
+            <td>cms-mysql, cms-redis, cms-kafka, cms-kafka-ui, cms-opensearch, cms-keycloak, cms-keycloak-db, cms-prometheus, cms-grafana, cms-gateway (nginx)</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
     <div class="term">
       <div class="term-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="label">terminal</span></div>
       <pre><span class="p">docker compose -f docker-compose.mysql.yml ps</span>
