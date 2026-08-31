@@ -121,6 +121,8 @@
                 sizeHint="Max 2MB per file, 6MB total for eligibility"
                 stepQuota="eligibility"
                 [externalBytesUsed]="facade.eligibilityBytesUsed - (facade.complaintFileWithRE?.size ?? 0)"
+                [existingFiles]="facade.complaintFileWithRE ? [facade.complaintFileWithRE] : []"
+                [required]="true"
                 (filesChanged)="onEligibilityFileChanged('complaint', $event)"
                 (fileRemoved)="removeComplaintFile()">
               </app-file-upload>
@@ -212,6 +214,8 @@
                 sizeHint="Max 2MB per file, 6MB total for eligibility"
                 stepQuota="eligibility"
                 [externalBytesUsed]="facade.eligibilityBytesUsed - (facade.reminderFile?.size ?? 0)"
+                [existingFiles]="facade.reminderFile ? [facade.reminderFile] : []"
+                [required]="true"
                 (filesChanged)="onEligibilityFileChanged('reminder', $event)"
                 (fileRemoved)="removeReminderFile()">
               </app-file-upload>
@@ -255,6 +259,8 @@
                 sizeHint="Max 2MB per file, 6MB total for eligibility"
                 stepQuota="eligibility"
                 [externalBytesUsed]="facade.eligibilityBytesUsed - (facade.replyFile?.size ?? 0)"
+                [existingFiles]="facade.replyFile ? [facade.replyFile] : []"
+                [required]="true"
                 (filesChanged)="onEligibilityFileChanged('reply', $event)"
                 (fileRemoved)="removeReplyFile()">
               </app-file-upload>
@@ -795,6 +801,8 @@
               sizeHint="Max 2MB per file, 10MB total for this section"
               stepQuota="complaintDetails"
               [externalBytesUsed]="0"
+              [existingFiles]="facade.attachments"
+              [required]="true"
               (filesChanged)="onAttachmentsChanged($event)"
               (fileRemoved)="onAttachmentRemoved($event)">
             </app-file-upload>
@@ -912,6 +920,8 @@
                 sizeHint="Max 2MB per file, 2MB total for this section"
                 stepQuota="repAuth"
                 [externalBytesUsed]="0"
+                [existingFiles]="facade.repFiles"
+                [required]="repAuthorizationForm.controls.hasAuthRep.value === 'yes'"
                 (filesChanged)="onRepFileChanged($event)"
                 (fileRemoved)="removeRepFile()">
               </app-file-upload>

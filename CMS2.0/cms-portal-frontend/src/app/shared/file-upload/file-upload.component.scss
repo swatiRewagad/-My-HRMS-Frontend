@@ -9,6 +9,11 @@
   font-size: 13px;
   font-weight: 500;
   color: #334155;
+
+  .required {
+    color: #dc2626;
+    margin-left: 2px;
+  }
 }
 
 .file-upload-area {

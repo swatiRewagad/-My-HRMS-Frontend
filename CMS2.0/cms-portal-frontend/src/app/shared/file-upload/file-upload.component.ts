@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, signal } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnInit, OnChanges, OnDestroy, SimpleChanges, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
   validateFile,
@@ -26,7 +26,7 @@ let nextId = 0;
   templateUrl: './file-upload.component.html',
   styleUrl: './file-upload.component.scss',
 })
-export class FileUploadComponent {
+export class FileUploadComponent implements OnInit, OnChanges, OnDestroy {
   @Input() multiple = true;
   @Input() accept = '.pdf,.doc,.jpg';
   @Input() maxFiles = MAX_FILE_COUNT;
@@ -35,6 +35,8 @@ export class FileUploadComponent {
   @Input() sizeHint = `Max ${MAX_FILE_SIZE_MB}MB per file`;
   @Input() stepQuota: StepQuotaKey | null = null;
   @Input() externalBytesUsed = 0;
+  @Input() existingFiles: File[] = [];
+  @Input() required = false;
 
   @Output() filesChanged = new EventEmitter<File[]>();
   @Output() fileRemoved = new EventEmitter<number>();
@@ -46,6 +48,32 @@ export class FileUploadComponent {
 
   get quotaLimitMB(): number | null {
     return this.stepQuota ? STEP_QUOTA_MB[this.stepQuota] : null;
+  }
+
+  ngOnInit(): void {
+    this.hydrateFromExisting();
+  }
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['existingFiles'] && !changes['existingFiles'].firstChange) {
+      this.hydrateFromExisting();
+    }
+  }
+
+  ngOnDestroy(): void {
+    this.files.forEach(f => URL.revokeObjectURL(f.url));
+  }
+
+  private hydrateFromExisting(): void {
+    if (!this.existingFiles?.length) return;
+    if (this.files.length > 0) return;
+
+    this.files = this.existingFiles.map(file => ({
+      file,
+      name: file.name,
+      url: URL.createObjectURL(file),
+      size: file.size,
+    }));
   }
 
   onFilesSelected(event: Event): void {

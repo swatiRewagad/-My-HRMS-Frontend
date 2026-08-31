@@ -1,5 +1,5 @@
 <div class="file-upload-wrapper">
-  <label class="upload-label">{{ label }}</label>
+  <label class="upload-label">{{ label }}@if (required) { <span class="required">*</span>}</label>
 
   <div class="file-upload-area" [class.dragover]="isDragOver"
        (dragover)="onDragOver($event)"
