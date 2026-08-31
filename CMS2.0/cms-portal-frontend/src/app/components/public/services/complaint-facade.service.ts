@@ -39,6 +39,7 @@ export class ComplaintFacadeService {
   eligibilityBlocked = signal(false);
   eligibilityBlockMessage = signal('');
   eligibilityBlockMessageKey = signal('');
+  closureLetterPara2 = signal('');
   showSimplified = signal(false);
   currentStep = signal(1);
   highestStepReached = signal(1);
@@ -576,14 +577,23 @@ export class ComplaintFacadeService {
       ctrl.setValue(value as any);
       ctrl.markAsTouched();
     }
-    if (q.blockOn && value === q.blockOn) {
+    const shouldBlock = q.blockOn && value === q.blockOn;
+    const cepcBlock = this.isCEPCEntity && q.cepcBlockMessage && value === (q.blockOn || 'yes');
+    if (shouldBlock || cepcBlock) {
       this.eligibilityBlocked.set(true);
-      this.eligibilityBlockMessage.set(q.blockMessage);
-      this.eligibilityBlockMessageKey.set(q.blockMessageKey || '');
+      if (this.isCEPCEntity && q.cepcBlockMessage) {
+        this.eligibilityBlockMessage.set(q.cepcBlockMessage.replace(/<RE Name>/g, this.selectedEntityName));
+        this.closureLetterPara2.set((q.cepcClosureLetter || '').replace(/<RE Name>/g, this.selectedEntityName));
+      } else {
+        this.eligibilityBlockMessage.set(q.blockMessage.replace(/<RE Name>/g, this.selectedEntityName));
+        this.closureLetterPara2.set((q.closureLetterPara2 || '').replace(/<RE Name>/g, this.selectedEntityName));
+      }
+      this.eligibilityBlockMessageKey.set('');
     } else {
       this.eligibilityBlocked.set(false);
       this.eligibilityBlockMessage.set('');
       this.eligibilityBlockMessageKey.set('');
+      this.closureLetterPara2.set('');
     }
 
     if (q.key === 'receivedReply' && value === 'no') {
@@ -1010,15 +1020,16 @@ export class ComplaintFacadeService {
   onEmployerRelationshipAnswer(value: string): void {
     this.eligibilityAnswers['employerRelationship'] = value;
     this.eligibilityStageForm.get('employerRelationship')!.setValue(value);
-    if (value === 'yes') {
+    const q = this.eligibilityQuestions.find(eq => eq.key === 'employerRelationship');
+    if (value === 'yes' && q) {
       this.eligibilityBlocked.set(true);
-      this.eligibilityBlockMessage.set(
-        'As your complaint involves the employee-employer relationship with the Regulated Entity, it cannot be processed under the Integrated Ombudsman Scheme, 2026.'
-      );
-      this.eligibilityBlockMessageKey.set('eligibility.block_employer_relationship');
+      this.eligibilityBlockMessage.set(q.blockMessage.replace(/<RE Name>/g, this.selectedEntityName));
+      this.eligibilityBlockMessageKey.set(q.blockMessageKey || '');
+      this.closureLetterPara2.set((q.closureLetterPara2 || '').replace(/<RE Name>/g, this.selectedEntityName));
     } else {
       this.eligibilityBlocked.set(false);
       this.eligibilityBlockMessage.set('');
+      this.closureLetterPara2.set('');
     }
   }
 

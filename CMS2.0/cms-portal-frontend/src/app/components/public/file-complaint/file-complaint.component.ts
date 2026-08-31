@@ -702,35 +702,58 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
       y += 12;
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
-      doc.text(`Case ID: ${this.facade.nonMaintainableCaseId}`, 20, y);
-      y += 7;
       doc.text(`Date: ${new Date().toLocaleDateString('en-IN')}`, 20, y);
       y += 14;
-      doc.text('Dear Complainant,', 20, y);
-      y += 10;
+      const entityName = this.facade.selectedEntityName || 'the Regulated Entity';
 
-      const bodyText = `Your complaint has been closed as Non-Maintainable under the provisions of the Reserve Bank - Integrated Ombudsman Scheme, 2026.`;
-      const lines = doc.splitTextToSize(bodyText, pw - 40);
-      doc.text(lines, 20, y);
-      y += lines.length * 6 + 8;
+      if (this.facade.isCEPCEntity) {
+        const cepcContent = this.facade.closureLetterPara2();
+        const cepcParas = cepcContent.split('\n');
+        for (const para of cepcParas) {
+          const pLines = doc.splitTextToSize(para, pw - 40);
+          doc.text(pLines, 20, y);
+          y += pLines.length * 6 + 6;
+        }
+        y += 8;
+        doc.text('Regards,', 20, y);
+        y += 7;
+        doc.setFont('helvetica', 'bold');
+        doc.text('RBI CMS Team.', 20, y);
+        y += 14;
+        doc.setFont('helvetica', 'normal');
+        doc.text('This is a system-generated letter and does not require a signature.', 20, y);
+        y += 14;
+      } else {
+        const complainantName = this.facade.complainantDetailsForm.get('firstName')?.value
+          ? `${this.facade.complainantDetailsForm.get('firstName')?.value || ''} ${this.facade.complainantDetailsForm.get('lastName')?.value || ''}`.trim()
+          : 'Complainant';
+        doc.text(`Dear ${complainantName},`, 20, y);
+        y += 10;
 
-      doc.setFont('helvetica', 'bold');
-      doc.text('Reason:', 20, y);
-      y += 7;
-      doc.setFont('helvetica', 'normal');
-      const reason = this.facade.eligibilityBlockMessage();
-      const reasonLines = doc.splitTextToSize(reason, pw - 40);
-      doc.text(reasonLines, 20, y);
-      y += reasonLines.length * 6 + 14;
+        const bodyPara1 = `Please refer to your representation alleging deficiency in service on the part of ${entityName}.`;
+        const lines1 = doc.splitTextToSize(bodyPara1, pw - 40);
+        doc.text(lines1, 20, y);
+        y += lines1.length * 6 + 6;
 
-      doc.text('This is a system-generated letter and does not require a signature.', 20, y);
-      y += 14;
-      doc.setFont('helvetica', 'bold');
-      doc.text('Reserve Bank of India', 20, y);
-      y += 6;
-      doc.setFont('helvetica', 'normal');
-      doc.text('Department of Consumer Education and Protection', 20, y);
-      y += 14;
+        const bodyPara2 = `2. ${this.facade.closureLetterPara2()}`;
+        const lines2 = doc.splitTextToSize(bodyPara2, pw - 40);
+        doc.text(lines2, 20, y);
+        y += lines2.length * 6 + 6;
+
+        const bodyPara3 = `3. Accordingly, we regret to inform you that your present grievance against ${entityName} cannot be registered under the Scheme. In case the response was furnished erroneously, you may submit a fresh complaint.`;
+        const lines3 = doc.splitTextToSize(bodyPara3, pw - 40);
+        doc.text(lines3, 20, y);
+        y += lines3.length * 6 + 14;
+
+        doc.text('Regards,', 20, y);
+        y += 7;
+        doc.setFont('helvetica', 'bold');
+        doc.text('RBI CMS Team.', 20, y);
+        y += 14;
+        doc.setFont('helvetica', 'normal');
+        doc.text('This is a system-generated letter and does not require a signature.', 20, y);
+        y += 14;
+      }
 
       doc.setDrawColor(0, 100, 0);
       doc.setFillColor(240, 255, 240);
@@ -741,7 +764,7 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
       doc.text('DIGITALLY SIGNED | RBI CMS Digital Certificate Authority', 25, y + 8);
       doc.setTextColor(0);
 
-      doc.save(`Closure_Letter_${this.facade.nonMaintainableCaseId}.pdf`);
+      doc.save('Closure_Letter.pdf');
     });
   }
 

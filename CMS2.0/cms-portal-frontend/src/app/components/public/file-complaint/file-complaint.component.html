@@ -273,19 +273,9 @@
       <!-- Blocked / Non-Maintainable -->
       @if (eligibilityBlocked()) {
         <div class="block-note">
-          <p>
-            {{ 'eligibility.block_indicated' | translate }}
-            <strong>"{{ eligibilityAnswers[currentQuestion.key] === 'no' ? ('eligibility.opt_no' | translate) : ('eligibility.opt_yes' | translate) }}"</strong>
-            {{ 'eligibility.block_in_response' | translate }}
-            {{ eligibilityBlockMessageKey() ? (eligibilityBlockMessageKey() | translate) : eligibilityBlockMessage() }}
-            <strong>{{ 'eligibility.block_written_required' | translate }}</strong>
-          </p>
-          <p>
-            {{ 'eligibility.block_regret' | translate }}
-            <strong>{{ selectedEntityName }}</strong>
-            {{ 'eligibility.block_cannot_register' | translate }}
-          </p>
-          <p>{{ 'eligibility.block_regards' | translate }}</p>
+          @for (para of eligibilityBlockMessage().split('\n'); track $index) {
+            <p>{{ para }}</p>
+          }
           @if (currentQuestion.nonMaintainable) {
             <button class="btn-show-closure" (click)="nextEligibility()">
               <i class="pi pi-download"></i> {{ 'eligibility.show_closure_letter' | translate }}
@@ -1222,19 +1212,19 @@
     <div class="nm-card">
       <div class="nm-icon"><i class="pi pi-exclamation-triangle"></i></div>
       <h2>{{ 'nm.title' | translate }}</h2>
-      <div class="nm-details">
-        <div class="nm-row">
-          <span class="nm-label">{{ 'nm.case_id' | translate }}</span>
-          <span class="nm-value">{{ nonMaintainableCaseId }}</span>
-        </div>
-        <div class="nm-row">
-          <span class="nm-label">{{ 'nm.date' | translate }}</span>
-          <span class="nm-value">{{ today }}</span>
-        </div>
-      </div>
       <div class="nm-reason">
-        <h4>{{ 'nm.reason' | translate }}</h4>
-        <p>{{ eligibilityBlockMessage() }}</p>
+        @if (isCEPCEntity) {
+          @for (para of facade.closureLetterPara2().split('\n'); track $index) {
+            <p>{{ para }}</p>
+          }
+          <p>Regards,<br>RBI CMS Team.</p>
+        } @else {
+          <p><strong>Dear {{ facade.complainantDetailsForm.get('firstName')?.value || '' }} {{ facade.complainantDetailsForm.get('lastName')?.value || '' }},</strong></p>
+          <p>Please refer to your representation alleging deficiency in service on the part of {{ selectedEntityName }}.</p>
+          <p>2. {{ facade.closureLetterPara2() }}</p>
+          <p>3. Accordingly, we regret to inform you that your present grievance against {{ selectedEntityName }} cannot be registered under the Scheme. In case the response was furnished erroneously, you may submit a fresh complaint.</p>
+          <p>Regards,<br>RBI CMS Team.</p>
+        }
       </div>
       <div class="nm-actions">
         <button class="btn-primary" (click)="downloadClosureLetter()">

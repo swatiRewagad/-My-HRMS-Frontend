@@ -8,6 +8,9 @@ export interface EligibilityQuestion {
   blockMessage: string;
   blockMessageKey?: string;
   nonMaintainable?: boolean;
+  closureLetterPara2?: string;
+  cepcBlockMessage?: string;
+  cepcClosureLetter?: string;
   simplifiedText?: string;
   simplifiedTextKey?: string;
 }
