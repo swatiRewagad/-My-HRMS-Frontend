@@ -176,21 +176,39 @@ export class ComplaintDetailComponent implements OnInit {
     });
   }
 
+  private readonly WITHDRAW_ALLOWED_TYPES = [
+    'application/pdf', 'image/jpeg',
+    'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  ];
+  private readonly WITHDRAW_ALLOWED_EXTENSIONS = ['.pdf', '.jpg', '.jpeg', '.doc', '.docx'];
+  private readonly WITHDRAW_MAX_TOTAL_BYTES = 5 * 1024 * 1024;
+
+  private validateWithdrawalFile(file: File): string | null {
+    const ext = '.' + file.name.split('.').pop()?.toLowerCase();
+    if (!this.WITHDRAW_ALLOWED_EXTENSIONS.includes(ext)) {
+      return `File type "${ext}" is not allowed. Supported: PDF, JPG, DOC, DOCX.`;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      return 'File size exceeds the 2MB per file limit.';
+    }
+    const currentTotal = this.withdrawalDocs.reduce((sum, f) => sum + f.size, 0);
+    if (currentTotal + file.size > this.WITHDRAW_MAX_TOTAL_BYTES) {
+      return 'File size exceeds the 5 MB limit. Total upload size cannot exceed 5MB.';
+    }
+    return null;
+  }
+
   onWithdrawalFilesSelected(event: Event) {
     const input = event.target as HTMLInputElement;
     if (!input.files) return;
     this.fileUploadError.set('');
     for (let i = 0; i < input.files.length; i++) {
-      const file = input.files[i];
-      if (file.size > 2 * 1024 * 1024) {
-        this.fileUploadError.set('File size exceeds limit (2MB).');
+      const error = this.validateWithdrawalFile(input.files[i]);
+      if (error) {
+        this.fileUploadError.set(error);
         continue;
       }
-      if (!['application/pdf', 'image/jpeg', 'image/png'].includes(file.type)) {
-        this.fileUploadError.set('Invalid file type. Supported: PDF, JPG, PNG.');
-        continue;
-      }
-      this.withdrawalDocs.push(file);
+      this.withdrawalDocs.push(input.files[i]);
     }
     input.value = '';
   }
@@ -201,16 +219,12 @@ export class ComplaintDetailComponent implements OnInit {
     if (!event.dataTransfer?.files?.length) return;
     this.fileUploadError.set('');
     for (let i = 0; i < event.dataTransfer.files.length; i++) {
-      const file = event.dataTransfer.files[i];
-      if (file.size > 2 * 1024 * 1024) {
-        this.fileUploadError.set('File size exceeds limit (2MB).');
+      const error = this.validateWithdrawalFile(event.dataTransfer.files[i]);
+      if (error) {
+        this.fileUploadError.set(error);
         continue;
       }
-      if (!['application/pdf', 'image/jpeg', 'image/png'].includes(file.type)) {
-        this.fileUploadError.set('Invalid file type. Supported: PDF, JPG, PNG.');
-        continue;
-      }
-      this.withdrawalDocs.push(file);
+      this.withdrawalDocs.push(event.dataTransfer.files[i]);
     }
   }
 
