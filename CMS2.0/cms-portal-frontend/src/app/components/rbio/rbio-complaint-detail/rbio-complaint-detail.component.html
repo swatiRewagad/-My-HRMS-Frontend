@@ -45,35 +45,59 @@
     <!-- Complaint Summary Strip -->
     <div class="complaint-strip">
       <button class="btn-back" (click)="goBack()"><i class="pi pi-arrow-left"></i></button>
+
       <div class="strip-item">
-        <span class="strip-label">Complaint Number</span>
-        <span class="strip-value">{{ c.complaintNumber }}</span>
+        <i class="strip-icon pi pi-chart-bar icon-blue"></i>
+        <div class="strip-item-content">
+          <span class="strip-label">Complaint Number <i class="pi pi-info-circle"></i></span>
+          <span class="strip-value">{{ c.complaintNumber }}</span>
+        </div>
       </div>
+
       <div class="strip-item">
-        <span class="strip-label">Complainant Name</span>
-        <span class="strip-value">{{ c.complainantName }}</span>
+        <i class="strip-icon pi pi-user icon-dark"></i>
+        <div class="strip-item-content">
+          <span class="strip-label">Complainant Name <i class="pi pi-info-circle"></i></span>
+          <span class="strip-value">{{ c.complainantName }}</span>
+        </div>
       </div>
+
       <div class="strip-item">
-        <span class="strip-label">Entity Name</span>
-        <span class="strip-value">{{ c.entityName }}</span>
+        <i class="strip-icon pi pi-chart-bar icon-blue"></i>
+        <div class="strip-item-content">
+          <span class="strip-label">Entity Name <i class="pi pi-info-circle"></i></span>
+          <span class="strip-value">{{ c.entityName }}</span>
+        </div>
       </div>
+
       <div class="strip-item">
-        <span class="strip-label">Status</span>
-        <span class="status-badge" [attr.data-status]="c.status">{{ getStatusLabel(c.status) }}</span>
+        <i class="strip-icon pi pi-circle-fill icon-blue"></i>
+        <div class="strip-item-content">
+          <span class="strip-label">Status <i class="pi pi-info-circle"></i></span>
+          <span class="status-badge" [attr.data-status]="c.status">{{ getStatusLabel(c.status) }}</span>
+        </div>
       </div>
+
       <div class="strip-item">
-        <span class="strip-label">Complaint Category</span>
-        <span class="strip-value">{{ c.category }}</span>
+        <i class="strip-icon pi pi-th-large icon-green"></i>
+        <div class="strip-item-content">
+          <span class="strip-label">Complaint Category <i class="pi pi-info-circle"></i></span>
+          <span class="strip-value">{{ c.category }}</span>
+        </div>
       </div>
+
       <div class="strip-item">
-        <span class="strip-label">SLA Breach In</span>
-        <span class="sla-badge" [class.breach]="c.slaBreachHours < 48">{{ c.slaBreachHours }} hrs</span>
+        <i class="strip-icon pi pi-clock icon-red"></i>
+        <div class="strip-item-content">
+          <span class="strip-label">SLA Breach In <i class="pi pi-info-circle"></i></span>
+          <span class="sla-badge" [class.breach]="c.slaBreachHours < 48">{{ getSlaDisplay(c.slaBreachHours) }}</span>
+        </div>
       </div>
+
       <div class="strip-actions">
         @if (isViewOnly()) {
           <span class="readonly-badge"><i class="pi pi-lock"></i> View Only</span>
         } @else {
-          <button class="btn-edit" (click)="editMode.set(!editMode())"><i class="pi pi-pencil"></i> Edit</button>
           <div class="approval-wrapper">
             <button
               class="btn-approval"
@@ -81,7 +105,7 @@
               [title]="isClosureBlocked() ? 'Closure blocked: upload link is active' : ''"
               (click)="!isClosureBlocked() && showWorkflowDropdown.set(!showWorkflowDropdown())"
             >
-              Workflow Action <i class="pi pi-chevron-down"></i>
+              Send for Approval <i class="pi pi-chevron-down"></i>
             </button>
             @if (showWorkflowDropdown()) {
               <div class="approval-dropdown">
@@ -97,6 +121,7 @@
             }
           </div>
         }
+        <button class="btn-save" title="Save"><i class="pi pi-save"></i></button>
         <button class="btn-more"><i class="pi pi-ellipsis-v"></i></button>
       </div>
 

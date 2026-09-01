@@ -21,6 +21,14 @@ public class DemoDataSeeder implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
+        try {
+            seedInternal();
+        } catch (Exception e) {
+            log.warn("Demo data seeding skipped due to: {}", e.getMessage());
+        }
+    }
+
+    private void seedInternal() {
         if (complaintRepo.count() >= 80) {
             log.info("Demo data already seeded ({} complaints exist), skipping.", complaintRepo.count());
             return;

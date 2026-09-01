@@ -18,6 +18,11 @@ cms:
     host: ${OPENSEARCH_HOST:localhost}
     port: ${OPENSEARCH_PORT:9200}
     scheme: ${OPENSEARCH_SCHEME:http}
+  backend:
+    base-url: ${CMS_BACKEND_URL:http://localhost:8082}
+  officer-cache:
+    ttl-minutes: 5
+    max-size: 500
 
 management:
   endpoints:

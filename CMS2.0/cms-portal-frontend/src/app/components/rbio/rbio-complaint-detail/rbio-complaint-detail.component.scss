@@ -51,44 +51,81 @@
 
 // ═══ COMPLAINT STRIP ═══
 .complaint-strip {
-  display: flex; align-items: center; gap: 20px; padding: 14px 24px;
+  display: flex; align-items: center; gap: 24px; padding: 12px 24px;
   background: #fff; border-bottom: 1px solid #e2e8f0;
-  .btn-back { background: none; border: none; cursor: pointer; font-size: 16px; color: #64748b;
-    &:hover { color: #1e293b; }
+
+  .btn-back {
+    background: none; border: none; cursor: pointer; font-size: 18px; color: #1e293b;
+    padding: 4px; display: flex; align-items: center; justify-content: center;
+    &:hover { color: #3b82f6; }
   }
+
   .strip-item {
-    display: flex; flex-direction: column;
-    .strip-label { font-size: 10px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.3px; }
-    .strip-value { font-size: 13px; font-weight: 600; color: #1e293b; }
+    display: flex; align-items: center; gap: 10px;
+
+    .strip-icon {
+      font-size: 16px; width: 32px; height: 32px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+      &.icon-blue { color: #3b82f6; background: #eff6ff; }
+      &.icon-dark { color: #1e293b; background: #f1f5f9; }
+      &.icon-green { color: #22c55e; background: #f0fdf4; }
+      &.icon-red { color: #ef4444; background: #fef2f2; }
+    }
+
+    .strip-item-content {
+      display: flex; flex-direction: column; gap: 2px;
+
+      .strip-label {
+        font-size: 11px; color: #94a3b8; font-weight: 400; white-space: nowrap;
+        display: flex; align-items: center; gap: 4px;
+        i.pi-info-circle { font-size: 10px; color: #cbd5e1; cursor: help; }
+      }
+
+      .strip-value {
+        font-size: 13px; font-weight: 700; color: #1e293b; white-space: nowrap;
+        overflow: hidden; text-overflow: ellipsis; max-width: 180px;
+      }
+    }
   }
+
   .status-badge {
-    padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 4px 12px; border-radius: 14px; font-size: 12px; font-weight: 600; white-space: nowrap;
+    background: #d1fae5; color: #065f46;
     &[data-status="NEW"] { background: #d1fae5; color: #065f46; }
     &[data-status="DRAFT"] { background: #fef3c7; color: #92400e; }
     &[data-status="IN_PROGRESS"] { background: #dbeafe; color: #1e40af; }
+    &[data-status="SENT_TO_REVIEWER"] { background: #dbeafe; color: #1e40af; }
+    &[data-status="CLOSED"] { background: #f1f5f9; color: #475569; }
   }
+
   .sla-badge {
-    padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 700;
-    background: #fee2e2; color: #991b1b;
-    &.breach { background: #fee2e2; color: #991b1b; }
+    display: inline-flex; align-items: center;
+    padding: 4px 12px; border-radius: 14px; font-size: 12px; font-weight: 700; white-space: nowrap;
+    background: #fce4ec; color: #c62828;
+    &.breach { background: #fce4ec; color: #c62828; }
   }
+
   .strip-actions {
-    margin-left: auto; display: flex; align-items: center; gap: 8px;
+    margin-left: auto; display: flex; align-items: center; gap: 10px;
+
     > .readonly-badge {
       display: inline-flex; align-items: center; gap: 6px;
       padding: 6px 14px; border-radius: 6px; border: 1px solid #e2e8f0;
       background: #f8fafc; color: #64748b; font-size: 13px; font-weight: 500;
       i { font-size: 12px; }
     }
-    .btn-edit { padding: 8px 16px; border: 1px solid #e2e8f0; border-radius: 6px; background: white;
-      font-size: 13px; cursor: pointer; color: #475569; display: flex; align-items: center; gap: 6px;
-      &:hover { border-color: #3b82f6; color: #3b82f6; }
-    }
+
     .approval-wrapper { position: relative; }
-    .btn-approval { padding: 8px 16px; border: none; border-radius: 6px; background: #22c55e;
-      font-size: 13px; cursor: pointer; color: white; font-weight: 600; display: flex; align-items: center; gap: 6px;
+
+    .btn-approval {
+      padding: 10px 20px; border: none; border-radius: 8px; background: #22c55e;
+      font-size: 13px; cursor: pointer; color: white; font-weight: 600;
+      display: flex; align-items: center; gap: 8px; white-space: nowrap;
       &:hover { background: #16a34a; }
+      &:disabled { background: #a7f3d0; cursor: not-allowed; }
     }
+
     .approval-dropdown {
       position: absolute; top: 100%; right: 0; margin-top: 4px; background: white;
       border: 1px solid #e2e8f0; border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.12);
@@ -98,7 +135,20 @@
         &:hover { background: #f8fafc; }
       }
     }
-    .btn-more { background: none; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 10px; cursor: pointer; color: #64748b; }
+
+    .btn-save {
+      background: none; border: 1px solid #e2e8f0; border-radius: 6px;
+      padding: 8px 10px; cursor: pointer; color: #64748b; font-size: 16px;
+      display: flex; align-items: center; justify-content: center;
+      &:hover { border-color: #3b82f6; color: #3b82f6; }
+    }
+
+    .btn-more {
+      background: none; border: 1px solid #e2e8f0; border-radius: 6px;
+      padding: 8px 10px; cursor: pointer; color: #64748b; font-size: 16px;
+      display: flex; align-items: center; justify-content: center;
+      &:hover { border-color: #94a3b8; color: #1e293b; }
+    }
   }
 }
 
