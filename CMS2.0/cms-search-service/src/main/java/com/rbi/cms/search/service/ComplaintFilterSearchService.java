@@ -7,12 +7,16 @@ import lombok.extern.slf4j.Slf4j;
 import org.opensearch.client.opensearch.OpenSearchClient;
 import org.opensearch.client.opensearch._types.FieldValue;
 import org.opensearch.client.opensearch._types.SortOrder;
+import org.opensearch.client.opensearch._types.aggregations.Aggregate;
+import org.opensearch.client.opensearch._types.aggregations.Aggregation;
 import org.opensearch.client.opensearch._types.query_dsl.BoolQuery;
 import org.opensearch.client.opensearch._types.query_dsl.Query;
 import org.opensearch.client.opensearch.core.SearchRequest;
 import org.opensearch.client.opensearch.core.SearchResponse;
 import org.opensearch.client.opensearch.core.search.Hit;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -28,6 +32,7 @@ import java.util.stream.Collectors;
 public class ComplaintFilterSearchService {
 
     private final OpenSearchClient openSearchClient;
+    private final SearchAggregationService aggregationService;
 
     private static final List<String> CLOSED_STATUSES = List.of(
             "COMPLAINT_CLOSED", "COMPLAINT_SETTLED", "COMPLAINT_WITHDRAWN", "COMPLAINT_REJECTED"
@@ -37,12 +42,12 @@ public class ComplaintFilterSearchService {
             "SENT_BACK_TO_DO", "SENT_BACK_TO_REVIEWER", "SENT_BACK_TO_DEPUTY_OMBUDSMAN"
     );
 
-    public PagedResponse<ComplaintListResponse> search(ComplaintSearchRequestDTO request, String currentOfficer) {
+    public ComplaintSearchResponse search(ComplaintSearchRequestDTO request, OfficerContext officer, Pageable pageable) {
         ComplaintQueryBuilder qb = new ComplaintQueryBuilder();
 
-        applyKpiFilter(qb, request.getKpiCards(), currentOfficer);
-        applyTabsFilter(qb, request.getTabs());
-        applyStatusCode(qb, request.getStatusCode());
+        applyKpiFilter(qb, request.getKpiCards(), officer);
+        applyTabsFilter(qb, request.getTabs(), officer);
+        applyStatusCode(qb, request.getStatusCode(), officer);
         applyAdvancedSearch(qb, request.getAdvancedSearch());
         applyFilters(qb, request.getFilters());
         applyInlineSearch(qb, request.getSearch());
@@ -55,74 +60,144 @@ public class ComplaintFilterSearchService {
         }
 
         BoolQuery boolQuery = qb.build();
-        return executeSearchWithNodalJoin(boolQuery, request);
+        Map<String, Aggregation> aggregations = aggregationService.buildAggregations(officer);
+
+        return executeSearchWithNodalJoin(boolQuery, aggregations, officer, pageable);
     }
 
-    private void applyKpiFilter(ComplaintQueryBuilder qb, String kpiCards, String currentOfficer) {
+    private void applyKpiFilter(ComplaintQueryBuilder qb, String kpiCards, OfficerContext officer) {
         if (kpiCards == null || kpiCards.isBlank()) return;
 
         switch (kpiCards.toLowerCase().trim()) {
-            case "total pending complaints" -> qb.mustNotTerms("status", CLOSED_STATUSES);
+            case "total pending complaints" -> {
+                qb.mustNotTerms("status", CLOSED_STATUSES);
+                applyRegionalScope(qb, officer);
+            }
 
             case "pending with me" -> {
                 qb.mustNotTerms("status", CLOSED_STATUSES);
-                if (currentOfficer != null && !currentOfficer.isBlank()) {
-                    qb.termFilter("assignedOfficer", currentOfficer);
+                if (hasValue(officer.getUserId())) {
+                    qb.termFilter("assignedOfficer", officer.getUserId());
                 }
             }
 
             case "pending with re" -> {
                 qb.mustNotTerms("status", CLOSED_STATUSES);
-                // TODO: Add RE-specific filter logic
+                qb.termFilter("assignedRole", "RE");
             }
 
             case "pending at meeting scheduled" -> {
-                // TODO: Add meeting scheduled filter logic
+                qb.termFilter("status", "MEETING_SCHEDULED");
+                applyRegionalScope(qb, officer);
             }
 
             case "sla breached" -> {
                 qb.mustNotTerms("status", CLOSED_STATUSES);
                 qb.dateRange("slaDeadline", null, LocalDate.now().minusDays(1));
+                applyRegionalScope(qb, officer);
             }
 
             default -> log.warn("Unknown kpi_cards value: {}", kpiCards);
         }
     }
 
-    private void applyTabsFilter(ComplaintQueryBuilder qb, String tabs) {
+    private void applyTabsFilter(ComplaintQueryBuilder qb, String tabs, OfficerContext officer) {
         if (tabs == null || tabs.isBlank()) return;
 
         switch (tabs.toLowerCase().trim()) {
             case "all" -> { /* no additional filter */ }
             case "draft" -> qb.termFilter("status", "DRAFT");
-            case "meeting scheduled", "meeting_scheduled" -> {
-                // TODO: Custom logic for meeting scheduled tab
+            case "meeting scheduled", "meeting_scheduled" ->
+                    qb.termFilter("status", "MEETING_SCHEDULED");
+            case "sent back to me", "sent_back_to_me" -> {
+                qb.termsFilter("status", SENT_BACK_STATUSES);
+                if (hasValue(officer.getUserId())) {
+                    qb.termFilter("assignedOfficer", officer.getUserId());
+                }
             }
-            case "sent back to me", "sent_back_to_me" -> qb.termsFilter("status", SENT_BACK_STATUSES);
             default -> log.warn("Unknown tabs value: {}", tabs);
         }
     }
 
-    private void applyStatusCode(ComplaintQueryBuilder qb, String statusCode) {
+    private void applyStatusCode(ComplaintQueryBuilder qb, String statusCode, OfficerContext officer) {
         if (statusCode == null || statusCode.isBlank()) return;
-        String normalizedStatus = statusCode.toUpperCase().replace(" ", "_");
-        qb.termFilter("status", normalizedStatus);
+
+        String normalized = statusCode.trim().toLowerCase();
+        switch (normalized) {
+            case "all complaints", "all_complaints" ->
+                    applyRegionalScope(qb, officer);
+
+            case "complaints assigned to me", "assigned_to_me" -> {
+                if (hasValue(officer.getUserId())) {
+                    qb.termFilter("assignedOfficer", officer.getUserId());
+                }
+            }
+
+            case "complaints created by me", "created_by_me" -> {
+                if (hasValue(officer.getUserId())) {
+                    qb.termFilter("createdBy", officer.getUserId());
+                }
+            }
+
+            default -> {
+                String enumStatus = statusCode.toUpperCase().replace(" ", "_");
+                qb.termFilter("status", enumStatus);
+            }
+        }
     }
 
     private void applyAdvancedSearch(ComplaintQueryBuilder qb, AdvancedSearchDTO adv) {
         if (adv == null) return;
 
+        qb.wildcardMatch("complaintNumber", adv.getComplaintNumber());
+        qb.termFilterLong("id", adv.getId());
+        qb.termFilter("status", normalizeStatus(adv.getStatusCode()));
         qb.wildcardMatch("complainantName", adv.getComplainantName());
-        qb.termFilter("status", normalizeStatus(adv.getStatus()));
-        qb.wildcardMatch("entityName", adv.getEntityName());
-        qb.wildcardMatch("categoryName", adv.getComplaintCategory());
-        qb.dateRange("createdAt", adv.getCreatedDateStart(), adv.getCreatedDateEnd());
-        qb.dateRange("resolvedAt", adv.getResolvedDateStart(), adv.getResolvedDateEnd());
-        qb.termFilter("priority", adv.getPriority());
-        qb.termFilter("slaPriority", adv.getSeverity());
-        qb.wildcardMatch("department", adv.getRegion());
-        qb.termFilter("entityCode", adv.getBranchCode());
-        qb.termFilter("workflowStage", adv.getEscalationLevel());
+        qb.termFilter("complainantPhone", adv.getComplainantPhone());
+        qb.termFilter("complainantEmail", adv.getComplainantEmail());
+        qb.termFilter("filingType", adv.getFilingType());
+        qb.termFilter("entityCode", adv.getEntityCode());
+        qb.wildcardMatch("subject", adv.getSubject());
+        qb.termFilterLong("categoryId", adv.getCategoryId());
+        qb.dateRange("filedAt", adv.getFiledAtStart(), adv.getFiledAtEnd());
+        qb.termFilter("fromEmailId", adv.getFromEmailId());
+
+        applyNodalOfficerFilter(qb, adv.getNodalOfficerName());
+    }
+
+    private void applyNodalOfficerFilter(ComplaintQueryBuilder qb, String nodalOfficerName) {
+        if (!hasValue(nodalOfficerName)) return;
+
+        try {
+            String pattern = "*" + nodalOfficerName.toLowerCase() + "*";
+            SearchRequest nodalRequest = SearchRequest.of(b -> b
+                    .index(ComplaintSearchService.NODAL_OFFICER_INDEX)
+                    .query(Query.of(q -> q
+                            .wildcard(w -> w
+                                    .field("nodalOfficerName")
+                                    .value(pattern)
+                                    .caseInsensitive(true))))
+                    .size(1000)
+                    .source(s -> s.filter(f -> f.includes("complaintNumber"))));
+
+            SearchResponse<Map> response = openSearchClient.search(nodalRequest, Map.class);
+
+            List<String> complaintNumbers = response.hits().hits().stream()
+                    .map(Hit::source)
+                    .filter(Objects::nonNull)
+                    .map(source -> source.get("complaintNumber"))
+                    .filter(Objects::nonNull)
+                    .map(Object::toString)
+                    .toList();
+
+            if (!complaintNumbers.isEmpty()) {
+                qb.termsFilter("complaintNumber", complaintNumbers);
+            } else {
+                qb.termFilter("complaintNumber", "__NO_MATCH__");
+            }
+        } catch (IOException e) {
+            log.warn("Failed to search nodal officer index for name '{}': {}", nodalOfficerName, e.getMessage());
+        }
     }
 
     private void applyFilters(ComplaintQueryBuilder qb, FiltersDTO filters) {
@@ -161,27 +236,29 @@ public class ComplaintFilterSearchService {
         }
     }
 
-    /**
-     * Executes the complaint search and enriches results with nodal officer data
-     * by querying the nodal officer index using complaint numbers.
-     */
-    private PagedResponse<ComplaintListResponse> executeSearchWithNodalJoin(
-            BoolQuery boolQuery, ComplaintSearchRequestDTO request) {
+    private ComplaintSearchResponse executeSearchWithNodalJoin(
+            BoolQuery boolQuery, Map<String, Aggregation> aggregations,
+            OfficerContext officer, Pageable pageable) {
 
-        int from = request.getPage() * request.getSize();
-        int size = request.getSize();
-        String sortField = request.getSortField() != null ? request.getSortField() : "createdAt";
-        SortOrder sortOrder = "asc".equalsIgnoreCase(request.getSortOrder()) ? SortOrder.Asc : SortOrder.Desc;
+        int from = pageable.getPageNumber() * pageable.getPageSize();
+        int size = pageable.getPageSize();
 
         try {
-            // Step 1: Search complaints index
-            SearchRequest complaintsRequest = SearchRequest.of(b -> b
-                    .index(ComplaintSearchService.COMPLAINTS_INDEX)
-                    .query(Query.of(q -> q.bool(boolQuery)))
-                    .from(from)
-                    .size(size)
-                    .sort(s -> s.field(f -> f.field(sortField).order(sortOrder)))
-                    .trackTotalHits(th -> th.enabled(true)));
+            SearchRequest complaintsRequest = SearchRequest.of(b -> {
+                b.index(ComplaintSearchService.COMPLAINTS_INDEX)
+                        .query(Query.of(q -> q.bool(boolQuery)))
+                        .from(from)
+                        .size(size)
+                        .trackTotalHits(th -> th.enabled(true))
+                        .aggregations(aggregations);
+
+                for (Sort.Order order : pageable.getSort()) {
+                    SortOrder sortOrder = order.isAscending() ? SortOrder.Asc : SortOrder.Desc;
+                    b.sort(s -> s.field(f -> f.field(order.getProperty()).order(sortOrder)));
+                }
+
+                return b;
+            });
 
             SearchResponse<Map> complaintsResponse = openSearchClient.search(complaintsRequest, Map.class);
 
@@ -191,7 +268,6 @@ public class ComplaintFilterSearchService {
 
             List<Hit<Map>> hits = complaintsResponse.hits().hits();
 
-            // Step 2: Collect complaint numbers from results
             List<String> complaintNumbers = hits.stream()
                     .map(Hit::source)
                     .filter(Objects::nonNull)
@@ -199,40 +275,50 @@ public class ComplaintFilterSearchService {
                     .filter(Objects::nonNull)
                     .toList();
 
-            // Step 3: Fetch matching nodal officer records by complaint numbers
             Map<String, Map<String, Object>> nodalOfficerMap = fetchNodalOfficerRecords(complaintNumbers);
 
-            // Step 4: Map and join results
-            List<ComplaintListResponse> content = hits.stream()
+            List<ComplaintRowDTO> content = hits.stream()
                     .map(hit -> mapHitWithNodalData(hit, nodalOfficerMap))
                     .toList();
 
-            return PagedResponse.<ComplaintListResponse>builder()
+            PagedResponse<ComplaintRowDTO> pagedResponse = PagedResponse.<ComplaintRowDTO>builder()
                     .content(content)
-                    .page(request.getPage())
+                    .page(pageable.getPageNumber())
                     .size(size)
                     .totalElements(totalElements)
                     .totalPages(totalPages)
-                    .last((request.getPage() + 1) >= totalPages)
+                    .last((pageable.getPageNumber() + 1) >= totalPages)
+                    .build();
+
+            Map<String, Aggregate> aggs = complaintsResponse.aggregations();
+            KpiCountsDTO kpiCounts = aggregationService.parseKpiCounts(aggs);
+            TabCountsDTO tabCounts = aggregationService.parseTabCounts(aggs);
+
+            return ComplaintSearchResponse.builder()
+                    .complaints(pagedResponse)
+                    .kpiCounts(kpiCounts)
+                    .tabCounts(tabCounts)
                     .build();
 
         } catch (IOException e) {
             log.error("OpenSearch query failed: {}", e.getMessage(), e);
-            return PagedResponse.<ComplaintListResponse>builder()
+            PagedResponse<ComplaintRowDTO> emptyPage = PagedResponse.<ComplaintRowDTO>builder()
                     .content(List.of())
-                    .page(request.getPage())
+                    .page(pageable.getPageNumber())
                     .size(size)
                     .totalElements(0)
                     .totalPages(0)
                     .last(true)
                     .build();
+
+            return ComplaintSearchResponse.builder()
+                    .complaints(emptyPage)
+                    .kpiCounts(KpiCountsDTO.builder().build())
+                    .tabCounts(TabCountsDTO.builder().build())
+                    .build();
         }
     }
 
-    /**
-     * Queries the nodal officer index for records matching the given complaint numbers.
-     * Returns a map of complaintNumber -> nodal officer document.
-     */
     @SuppressWarnings("unchecked")
     private Map<String, Map<String, Object>> fetchNodalOfficerRecords(List<String> complaintNumbers) {
         if (complaintNumbers == null || complaintNumbers.isEmpty()) {
@@ -270,20 +356,19 @@ public class ComplaintFilterSearchService {
     }
 
     @SuppressWarnings("unchecked")
-    private ComplaintListResponse mapHitWithNodalData(Hit<Map> hit, Map<String, Map<String, Object>> nodalOfficerMap) {
+    private ComplaintRowDTO mapHitWithNodalData(Hit<Map> hit, Map<String, Map<String, Object>> nodalOfficerMap) {
         Map<String, Object> source = hit.source();
         if (source == null) {
-            return ComplaintListResponse.builder().build();
+            return ComplaintRowDTO.builder().build();
         }
 
         String complaintNumber = toStr(source.get("complaintNumber"));
 
-        // Get nodal officer data for this complaint
         Map<String, Object> nodalData = complaintNumber != null
                 ? nodalOfficerMap.getOrDefault(complaintNumber, Collections.emptyMap())
                 : Collections.emptyMap();
 
-        return ComplaintListResponse.builder()
+        return ComplaintRowDTO.builder()
                 .complaintId(toLong(source.get("id")))
                 .complaintNumber(complaintNumber)
                 .assignedTo(toStr(source.get("assignedOfficer")))
@@ -297,14 +382,18 @@ public class ComplaintFilterSearchService {
                 .lastUpdatedDate(toLocalDate(source.get("updatedAt")))
                 .priority(toStr(source.get("priority")))
                 .subject(toStr(source.get("subject")))
-                // Nodal officer fields from joined index
                 .nodalOfficer(toStr(nodalData.get("nodalOfficerName")))
                 .principalNodalOfficer(toStr(nodalData.get("pnoName")))
-                // Computed fields (placeholder logic)
                 .complaintColor(null)
-                .isRead(null)
+                .isRead(toBool(source.get("isRead")))
                 .slaColor(determineSlaColor(toStr(source.get("slaDeadline"))))
                 .build();
+    }
+
+    private void applyRegionalScope(ComplaintQueryBuilder qb, OfficerContext officer) {
+        if (hasValue(officer.getRegionalOffice())) {
+            qb.termFilter("regionalOffice", officer.getRegionalOffice());
+        }
     }
 
     private String calculateSlaBreachIn(String slaDeadlineStr) {
@@ -314,7 +403,7 @@ public class ComplaintFilterSearchService {
             long days = java.time.temporal.ChronoUnit.DAYS.between(LocalDate.now(), slaDate);
             if (days < 0) return Math.abs(days) + " Days Breached";
             if (days == 0) return "Today";
-            if (days == 1) return "1 Day";
+            if (days <= 1) return days + " Day";
             return days + " Days";
         } catch (Exception e) {
             return null;
@@ -339,6 +428,10 @@ public class ComplaintFilterSearchService {
         return status.toUpperCase().replace(" ", "_");
     }
 
+    private boolean hasValue(String value) {
+        return value != null && !value.isBlank();
+    }
+
     private String toStr(Object value) {
         return value != null ? value.toString() : null;
     }
@@ -351,6 +444,12 @@ public class ComplaintFilterSearchService {
         } catch (NumberFormatException e) {
             return null;
         }
+    }
+
+    private Boolean toBool(Object value) {
+        if (value == null) return null;
+        if (value instanceof Boolean bool) return bool;
+        return Boolean.parseBoolean(value.toString());
     }
 
     private LocalDate toLocalDate(Object value) {

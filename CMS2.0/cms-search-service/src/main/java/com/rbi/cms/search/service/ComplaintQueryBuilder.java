@@ -82,6 +82,20 @@ public class ComplaintQueryBuilder {
         return this;
     }
 
+    public ComplaintQueryBuilder termFilterLong(String field, Long value) {
+        if (value == null) return this;
+        filterQueries.add(Query.of(q -> q
+                .term(t -> t.field(field).value(FieldValue.of(value)))));
+        return this;
+    }
+
+    public ComplaintQueryBuilder existsFilter(String field) {
+        if (!hasValue(field)) return this;
+        filterQueries.add(Query.of(q -> q
+                .exists(e -> e.field(field))));
+        return this;
+    }
+
     public ComplaintQueryBuilder multiMatch(String value, String... fields) {
         if (!hasValue(value)) return this;
         mustQueries.add(Query.of(q -> q

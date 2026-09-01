@@ -24,9 +24,4 @@ public class ComplaintSearchRequestDTO {
     private Boolean unread;
     private Boolean withoutAttachments;
     private SearchFieldsDTO search;
-
-    private int page = 0;
-    private int size = 10;
-    private String sortField = "createdAt";
-    private String sortOrder = "desc";
 }

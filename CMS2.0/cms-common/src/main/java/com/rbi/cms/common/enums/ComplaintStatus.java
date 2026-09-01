@@ -14,6 +14,7 @@ public enum ComplaintStatus {
     COMPLAINT_SETTLED("Complaint Settled"),
     COMPLAINT_WITHDRAWN("Complaint Withdrawn"),
     COMPLAINT_CLOSED("Complaint Closed"),
+    MEETING_SCHEDULED("Meeting Scheduled"),
     ADVISORY_COMPLIED("Advisory Complied"),
     SENT_BACK_TO_DEPUTY_OMBUDSMAN("Sent Back To Deputy Ombudsman"),
     SENT_BACK_TO_REVIEWER("Sent Back To Reviewer"),
@@ -26,7 +27,7 @@ public enum ComplaintStatus {
 
     private final String value;
 
-    Priority(String value) { this.value = value; }
+    ComplaintStatus(String value) { this.value = value; }
 
     public String getValue() { return this.value; }
 }

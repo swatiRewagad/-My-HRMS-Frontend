@@ -7,7 +7,7 @@ import java.time.LocalDate;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ComplaintListResponse {
+public class ComplaintRowDTO {
 
     private Long complaintId;
     private String complaintNumber;

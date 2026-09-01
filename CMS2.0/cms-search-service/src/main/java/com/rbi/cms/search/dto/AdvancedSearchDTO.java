@@ -14,17 +14,18 @@ import java.time.LocalDate;
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public class AdvancedSearchDTO {
 
+    private String complaintNumber;
+    private Long id;
+    private String statusCode;
     private String complainantName;
-    private String status;
-    private String entityName;
-    private String complaintCategory;
-    private LocalDate createdDateStart;
-    private LocalDate createdDateEnd;
-    private LocalDate resolvedDateStart;
-    private LocalDate resolvedDateEnd;
-    private String priority;
-    private String severity;
-    private String region;
-    private String branchCode;
-    private String escalationLevel;
+    private String complainantPhone;
+    private String complainantEmail;
+    private String filingType;
+    private String entityCode;
+    private String subject;
+    private Long categoryId;
+    private LocalDate filedAtStart;
+    private LocalDate filedAtEnd;
+    private String nodalOfficerName;
+    private String fromEmailId;
 }
