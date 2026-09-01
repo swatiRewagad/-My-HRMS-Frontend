@@ -52,6 +52,7 @@ export class PhysicalLetterComponent implements OnInit {
   pdfExpanded = signal(false);
   pdfPage = signal(1);
   pdfPreviewUrl = signal<SafeResourceUrl | null>(null);
+  imagePreviewUrl = signal<string | null>(null);
 
   // Form fields
   subject = '';
@@ -61,11 +62,30 @@ export class PhysicalLetterComponent implements OnInit {
   receivedDate = '';
   letterDate = '';
   category = '';
+  proposedComplaintType: 'NEW_COMPLAINT' | 'NOT_A_COMPLAINT' = 'NEW_COMPLAINT';
+  notComplaintReason = '';
   complaintType = 'COMPLAINT';
   isRbiEComplaint = 'NO';
   nonEComplaintReason = '';
+
+  // Eligibility questions
+  eligibilityQuestions = [
+    { key: 'isEntityRegulated', label: 'Is Entity regulated by RBI?', answer: '' },
+    { key: 'notAddressedToOmbudsman', label: 'The Complaint not directly addressed to Ombudsman', answer: '' },
+    { key: 'notRegisteredWithEntity', label: 'Is the Complaint not registered with Entity (FRC)?', answer: '' },
+    { key: 'isFrivolous', label: 'Is the complainant frivolous, vexatious, and threatening?', answer: '' },
+    { key: 'isSubJudice', label: 'Is the Complaint Sub-Judice or under arbitration?', answer: '' },
+    { key: 'isAdvocate', label: 'Is the complainant an advocate?', answer: '' },
+    { key: 'alreadyDealt', label: 'Has already been dealt with or is under process on the same ground with the ombudsman?', answer: '' },
+    { key: 'againstManagement', label: 'Does the complaint involve general complaints against management or executives of a RE?', answer: '' },
+    { key: 'disputeBetweenREs', label: 'Does it involve disputes between REs?', answer: '' },
+    { key: 'staffEmployer', label: 'Is from staff of an RE and involves employer-employee relationship?', answer: '' },
+  ];
+  markAllEligible = false;
   entityName = '';
   entityType = 'BANK';
+  entityCategory = '';
+  entityTypeDetail = '';
   entitySearchText = '';
   entitySearchResults = signal<{ id: number; name: string; department: string; entityType: string }[]>([]);
   entitySearchLoading = signal(false);
@@ -73,6 +93,23 @@ export class PhysicalLetterComponent implements OnInit {
   private entitySearchTimeout: any = null;
   branchName = '';
   branchPincode = '';
+  entityBsrCode = '';
+  entityPincode = '';
+  entityCountry = '';
+  entityState = '';
+  entityDistrict = '';
+  entityCity = '';
+  entityBranchName = '';
+  entityBranchCategory = '';
+  pincodePostOffices: { Name: string; BranchType: string }[] = [];
+  showBranchDropdown = false;
+  entityAddress = '';
+  entityBranchCenterName = '';
+  cosmosCode = '';
+  assetSize: number | null = null;
+  isDepositTaking = '';
+  isAssetAbove100Cr = '';
+  isLiquidated = '';
   complainantName = '';
   complainantPhone = '';
   complainantEmail = '';
@@ -82,6 +119,52 @@ export class PhysicalLetterComponent implements OnInit {
   complainantPincode = '';
   amountInvolved: number | null = null;
   transactionDate = '';
+
+  // Basic Identification
+  otherEntityName = '';
+  dateOfRegistrationWithRBI = '';
+
+  // Complaint Classification
+  complaintCategory = '';
+  complaintSubCategory1 = '';
+  complaintSubCategory2 = '';
+  dateOfFilingComplaint = '';
+  complaintRegDateValid = 'YES';
+
+  // Reminder & Financial Details
+  reminderSentByComplainant = 'YES';
+  disputedAmountInvolved: number | null = null;
+  dateOfFilingForFinancial = '';
+  compensationSought = 'YES';
+
+  // Legal & Case Details
+  legalCaseFiled = 'YES';
+  legalDateOfFiling = '';
+  preEnquiryReceived = 'YES';
+  highPriorityComplaint = 'NO';
+
+  // Additional Information
+  additionalComments = '';
+  crpcProposedAction = 'Maintainable';
+  vernacularLanguageDetail = '';
+  additionalDateOfFiling = '';
+
+  // Loan / Disposal Account
+  loanDisposalAmount: number | null = null;
+
+  // Flags & Indicators
+  isRegardingPension = 'YES';
+  isAgainstBusinessCorrespondent = 'YES';
+  isAtmCreditDebitCard = 'NO';
+  schemeFlag = '';
+
+  // Complaint Linkage
+  isFreeMarkedComplaint = 'YES';
+  currentComplaintNumber = '';
+  receivedReplyWithin30Days = 'NOT_APPLICABLE';
+
+  // Declaration
+  declarationAccepted = false;
 
   // Right panel
   suggestions = signal<Suggestion[]>([]);
@@ -98,6 +181,7 @@ export class PhysicalLetterComponent implements OnInit {
   selectedReviewerId = '';
   selectedReviewerName = 'CRPC Reviewer';
   reviewers = signal<ReviewerUser[]>([]);
+  showAssignmentDialog = signal(false);
 
   // Section collapse state
   collapsedSections: Record<string, boolean> = {};
@@ -109,6 +193,8 @@ export class PhysicalLetterComponent implements OnInit {
   saving = signal(false);
   submitting = signal(false);
   submitted = signal(false);
+  draftSaved = signal(false);
+  editMode = signal(true);
   draftId = signal('');
 
   // Reference data
@@ -242,8 +328,56 @@ export class PhysicalLetterComponent implements OnInit {
     }
   }
 
+  onEntityPincodeInput(value: string) {
+    this.entityPincode = value;
+    this.pincodePostOffices = [];
+    this.showBranchDropdown = false;
+    if (!value || value.length !== 6 || !/^\d{6}$/.test(value)) return;
+
+    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/location/pincode/${value}`).subscribe({
+      next: (res: any) => {
+        if (res?.[0]?.Status === 'Success' && res[0].PostOffice?.length) {
+          const offices = res[0].PostOffice;
+          const po = offices[0];
+          if (po.State) this.entityState = po.State;
+          if (po.District) this.entityDistrict = po.District;
+          this.entityCity = po.Region || po.Division || '';
+          this.entityCountry = 'India';
+          if (offices.length === 1) {
+            this.entityBranchName = po.Name;
+            this.entityBranchCategory = po.BranchType || '';
+          } else {
+            this.pincodePostOffices = offices.map((o: any) => ({ Name: o.Name, BranchType: o.BranchType || '' }));
+            this.showBranchDropdown = true;
+            this.entityBranchName = '';
+          }
+        }
+      },
+      error: () => {}
+    });
+  }
+
+  selectBranch(branch: { Name: string; BranchType: string }) {
+    this.entityBranchName = branch.Name;
+    this.entityBranchCategory = branch.BranchType;
+    this.showBranchDropdown = false;
+  }
+
   toggleSection(section: string) {
     this.collapsedSections[section] = !this.collapsedSections[section];
+  }
+
+  toggleMarkAllEligible() {
+    this.markAllEligible = !this.markAllEligible;
+    if (this.markAllEligible) {
+      this.eligibilityQuestions.forEach((q, i) => q.answer = i === 0 ? 'YES' : 'NO');
+    } else {
+      this.eligibilityQuestions.forEach(q => q.answer = '');
+    }
+  }
+
+  areRemainingQuestionsOptional(): boolean {
+    return this.eligibilityQuestions[0]?.answer === 'YES' && this.eligibilityQuestions[1]?.answer === 'YES';
   }
 
   onEntitySearchInput(value: string) {
@@ -303,11 +437,7 @@ export class PhysicalLetterComponent implements OnInit {
 
     this.scannedFile = file;
     this.scanError = '';
-
-    if (file.type === 'application/pdf') {
-      const url = URL.createObjectURL(file);
-      this.pdfPreviewUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(url));
-    }
+    this.setFilePreview(file);
   }
 
   onFileDrop(event: DragEvent) {
@@ -325,15 +455,25 @@ export class PhysicalLetterComponent implements OnInit {
     }
     this.scannedFile = file;
     this.scanError = '';
+    this.setFilePreview(file);
+  }
+
+  private setFilePreview(file: File) {
     if (file.type === 'application/pdf') {
       const url = URL.createObjectURL(file);
       this.pdfPreviewUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(url));
+      this.imagePreviewUrl.set(null);
+    } else if (file.type.startsWith('image/')) {
+      const url = URL.createObjectURL(file);
+      this.imagePreviewUrl.set(url);
+      this.pdfPreviewUrl.set(null);
     }
   }
 
   removeFile() {
     this.scannedFile = null;
     this.pdfPreviewUrl.set(null);
+    this.imagePreviewUrl.set(null);
     this.ocrComplete.set(false);
   }
 
@@ -345,41 +485,43 @@ export class PhysicalLetterComponent implements OnInit {
     const formData = new FormData();
     formData.append('file', this.scannedFile);
 
-    this.http.post<any>(`${environment.apiBaseUrl}/api/v1/ocr/extract`, formData)
+    this.http.post<any>(`${environment.ocrServiceUrl}/v1/documents`, formData)
       .subscribe({
         next: (res) => {
-          const data = res?.data || {};
-          const fieldCount = Object.keys(data).length;
-
-          if (fieldCount === 0) {
+          const envelope = res?.result;
+          if (!envelope) {
             this.ocrInProgress.set(false);
-            this.scanError = 'AI extraction returned no data. API quota may be exhausted. Please fill manually or try again later.';
+            this.scanError = 'AI extraction returned no data. Please fill manually or try again later.';
             return;
           }
 
-          if (data.complainantName) this.complainantName = data.complainantName;
-          if (data.complainantAddress) this.complainantAddress = data.complainantAddress;
-          if (data.complainantState) this.complainantState = data.complainantState;
-          if (data.complainantDistrict) this.complainantDistrict = data.complainantDistrict;
-          if (data.complainantPincode) this.complainantPincode = data.complainantPincode;
-          if (data.complainantPhone) this.complainantPhone = data.complainantPhone;
-          if (data.complainantEmail) this.complainantEmail = data.complainantEmail;
-          if (data.subject) this.subject = data.subject;
-          if (data.description) this.description = data.description;
-          if (data.entityName) this.entityName = data.entityName;
-          if (data.entityType) this.entityType = data.entityType;
-          if (data.category) this.category = data.category;
-          if (data.branchName) this.branchName = data.branchName;
-          if (data.amountInvolved) this.amountInvolved = Number(data.amountInvolved) || null;
-          if (data.letterDate) this.letterDate = data.letterDate;
-          if (data.transactionDate) this.transactionDate = data.transactionDate;
+          if (envelope.bounce_decision?.decision === 'bounce') {
+            this.ocrInProgress.set(false);
+            this.scanError = `Document rejected: ${envelope.bounce_decision.detail || envelope.bounce_decision.reason || 'Quality too low'}`;
+            return;
+          }
 
-          // Build suggestions from extracted data
+          const fields = envelope.document?.fields || {};
+          const summary = envelope.document?.complaint_summary;
+
+          if (fields.complainant_name?.value) this.complainantName = fields.complainant_name.value_en || fields.complainant_name.value;
+          if (fields.bank_name?.value) this.entityName = fields.bank_name.value;
+          if (fields.amount?.normalized) this.amountInvolved = Number(fields.amount.normalized) || null;
+          if (fields.transaction_date?.normalized) this.transactionDate = fields.transaction_date.normalized;
+          if (fields.complainant_address?.value) this.complainantAddress = fields.complainant_address.value_en || fields.complainant_address.value;
+          if (fields.complainant_phone?.value) this.complainantPhone = fields.complainant_phone.value;
+          if (fields.complainant_email?.value) this.complainantEmail = fields.complainant_email.value;
+          if (fields.complainant_state?.value) this.complainantState = fields.complainant_state.value;
+          if (fields.complainant_district?.value) this.complainantDistrict = fields.complainant_district.value;
+          if (fields.complainant_pincode?.value) this.complainantPincode = fields.complainant_pincode.value;
+          if (fields.prior_complaint_reference?.value) this.subject = `Ref: ${fields.prior_complaint_reference.value}`;
+          if (summary?.text) this.description = summary.text;
+
           const suggs: Suggestion[] = [];
-          if (data.entityName) suggs.push({ id: '1', field: 'Entity', value: data.entityName });
-          if (data.category) suggs.push({ id: '2', field: 'Category', value: data.category });
-          if (data.amountInvolved) suggs.push({ id: '3', field: 'Amount', value: `₹${data.amountInvolved}` });
-          if (data.subject) suggs.push({ id: '4', field: 'Subject', value: data.subject });
+          if (fields.bank_name?.value) suggs.push({ id: '1', field: 'Entity', value: fields.bank_name.value });
+          if (fields.amount?.normalized) suggs.push({ id: '2', field: 'Amount', value: `₹${fields.amount.normalized}` });
+          if (fields.ifsc_code?.value) suggs.push({ id: '3', field: 'IFSC', value: fields.ifsc_code.value });
+          if (fields.account_number?.value) suggs.push({ id: '4', field: 'Account', value: fields.account_number.value });
           this.suggestions.set(suggs);
 
           this.ocrInProgress.set(false);
@@ -388,7 +530,7 @@ export class PhysicalLetterComponent implements OnInit {
         error: (err) => {
           console.error('OCR extraction failed:', err);
           this.ocrInProgress.set(false);
-          this.scanError = 'AI extraction failed: ' + (err.error?.message || 'Service unavailable. Please fill manually.');
+          this.scanError = 'AI extraction failed: ' + (err.error?.detail || err.error?.message || 'Service unavailable. Please fill manually.');
         }
       });
   }
@@ -429,6 +571,21 @@ export class PhysicalLetterComponent implements OnInit {
       this.fieldErrors['branchPincode'] = 'Enter a valid 6-digit pincode.';
     }
 
+    // Eligibility questions validation
+    if (this.proposedComplaintType === 'NEW_COMPLAINT') {
+      const first = this.eligibilityQuestions[0]?.answer;
+      const second = this.eligibilityQuestions[1]?.answer;
+      if (!first) this.fieldErrors['eq_0'] = 'First eligibility question is required.';
+      if (!second) this.fieldErrors['eq_1'] = 'Second eligibility question is required.';
+      if (!this.areRemainingQuestionsOptional()) {
+        this.eligibilityQuestions.forEach((q, i) => {
+          if (i >= 2 && !q.answer) {
+            this.fieldErrors[`eq_${i}`] = `"${q.label}" is required.`;
+          }
+        });
+      }
+    }
+
     return Object.keys(this.fieldErrors).length === 0;
   }
 
@@ -442,7 +599,13 @@ export class PhysicalLetterComponent implements OnInit {
     this.saving.set(true);
     setTimeout(() => {
       this.saving.set(false);
+      this.draftSaved.set(true);
+      this.editMode.set(false);
     }, 800);
+  }
+
+  enterEditMode() {
+    this.editMode.set(true);
   }
 
   submitDraft() {
@@ -454,30 +617,7 @@ export class PhysicalLetterComponent implements OnInit {
     const username = loggedInUser?.id || this.auth.currentUser()?.username || '';
 
     const formData = new FormData();
-    formData.append('complainantName', this.complainantName);
-    formData.append('complainantPhone', this.complainantPhone);
-    formData.append('senderEmail', this.complainantEmail);
-    formData.append('complainantAddress', this.complainantAddress);
-    formData.append('complainantState', this.complainantState);
-    formData.append('complainantDistrict', this.complainantDistrict);
-    formData.append('complainantPincode', this.complainantPincode);
-    formData.append('category', this.category);
-    formData.append('entityName', this.entityName);
-    formData.append('entityType', this.entityType);
-    formData.append('subject', this.subject);
-    formData.append('body', this.description);
-    if (this.amountInvolved) formData.append('amountInvolved', String(this.amountInvolved));
-    if (this.transactionDate) formData.append('transactionDate', this.transactionDate);
-    if (this.letterDate) formData.append('letterDate', this.letterDate);
-    formData.append('modeOfReceipt', this.modeOfReceipt || 'PHYSICAL_LETTER');
-    formData.append('status', 'DRAFT');
-    formData.append('assignedTo', username);
-    formData.append('processedBy', username);
-    formData.append('receivedAt', (this.receivedDate || new Date().toISOString().split('T')[0]) + 'T00:00:00');
-
-    if (this.scannedFile) {
-      formData.append('attachment', this.scannedFile);
-    }
+    this.appendAllFieldsToFormData(formData, 'DRAFT', username);
 
     this.http.post<any>(`${environment.apiBaseUrl}/api/v1/email-syndication/drafts/physical-letter`, formData)
       .subscribe({
@@ -572,6 +712,16 @@ export class PhysicalLetterComponent implements OnInit {
     this.pastComplaintDetail.set(null);
   }
 
+  private storeEligibilityData(draftId: string) {
+    const eqMap: Record<string, string> = {};
+    this.eligibilityQuestions.forEach(q => { if (q.answer) eqMap[q.key] = q.answer; });
+    sessionStorage.setItem(`draft_eligibility_${draftId}`, JSON.stringify({
+      proposedComplaintType: this.proposedComplaintType,
+      notComplaintReason: this.notComplaintReason,
+      eligibilityQuestions: eqMap,
+    }));
+  }
+
   onAssignmentModeChange() {
     if (this.assignmentMode === 'AUTOMATIC') {
       const auto = this.reviewers().find(r => r.isActive && !r.isOnLeave);
@@ -595,14 +745,11 @@ export class PhysicalLetterComponent implements OnInit {
     return rev?.isOnLeave || false;
   }
 
-  confirmAssignment() {
-    if (!this.selectedReviewerId.trim()) return;
-    this.submitting.set(true);
-
+  private appendAllFieldsToFormData(formData: FormData, status: string, assignedTo: string) {
     const loggedInUser = JSON.parse(sessionStorage.getItem('crpc_user') || '{}');
     const username = loggedInUser?.id || this.auth.currentUser()?.username || '';
 
-    const formData = new FormData();
+    // Basic complainant
     formData.append('complainantName', this.complainantName);
     formData.append('complainantPhone', this.complainantPhone);
     formData.append('senderEmail', this.complainantEmail);
@@ -619,28 +766,110 @@ export class PhysicalLetterComponent implements OnInit {
     if (this.transactionDate) formData.append('transactionDate', this.transactionDate);
     if (this.letterDate) formData.append('letterDate', this.letterDate);
     formData.append('modeOfReceipt', this.modeOfReceipt || 'PHYSICAL_LETTER');
-    formData.append('status', 'SENT_TO_REVIEWER');
-    formData.append('assignedTo', this.selectedReviewerId);
+    formData.append('status', status);
+    formData.append('assignedTo', assignedTo);
     formData.append('processedBy', username);
     formData.append('receivedAt', (this.receivedDate || new Date().toISOString().split('T')[0]) + 'T00:00:00');
 
+    // Eligibility
+    formData.append('proposedComplaintType', this.proposedComplaintType);
+    formData.append('notComplaintReason', this.proposedComplaintType === 'NOT_A_COMPLAINT' ? this.notComplaintReason : '');
+    const eqMap: Record<string, string> = {};
+    this.eligibilityQuestions.forEach(q => { if (q.answer) eqMap[q.key] = q.answer; });
+    formData.append('eligibilityQuestions', JSON.stringify(eqMap));
+
+    // Entity details
+    formData.append('entityCategory', this.entityCategory);
+    formData.append('entityTypeDetail', this.entityTypeDetail);
+    formData.append('entityBsrCode', this.entityBsrCode);
+    formData.append('entityPincode', this.entityPincode);
+    formData.append('entityCountry', this.entityCountry);
+    formData.append('entityState', this.entityState);
+    formData.append('entityDistrict', this.entityDistrict);
+    formData.append('entityCity', this.entityCity);
+    formData.append('entityBranchName', this.entityBranchName);
+    formData.append('entityBranchCategory', this.entityBranchCategory);
+    formData.append('entityAddress', this.entityAddress);
+    formData.append('entityBranchCenterName', this.entityBranchCenterName);
+    formData.append('cosmosCode', this.cosmosCode);
+    formData.append('assetSize', this.assetSize != null ? String(this.assetSize) : '');
+    formData.append('isDepositTaking', this.isDepositTaking === 'YES' ? 'true' : this.isDepositTaking === 'NO' ? 'false' : '');
+    formData.append('isAssetAbove100Cr', this.isAssetAbove100Cr === 'YES' ? 'true' : this.isAssetAbove100Cr === 'NO' ? 'false' : '');
+    formData.append('isLiquidated', this.isLiquidated === 'YES' ? 'true' : this.isLiquidated === 'NO' ? 'false' : '');
+
+    // Complainant extended - Basic Identification
+    formData.append('otherEntityName', this.otherEntityName);
+    formData.append('dateOfRegistrationWithRBI', this.dateOfRegistrationWithRBI);
+
+    // Complaint Classification
+    formData.append('complaintCategory', this.complaintCategory);
+    formData.append('complaintSubCategory1', this.complaintSubCategory1);
+    formData.append('complaintSubCategory2', this.complaintSubCategory2);
+    formData.append('dateOfFilingComplaint', this.dateOfFilingComplaint);
+    formData.append('complaintRegDateValid', this.complaintRegDateValid);
+
+    // Reminder & Financial
+    formData.append('reminderSentByComplainant', this.reminderSentByComplainant);
+    formData.append('disputedAmountInvolved', this.disputedAmountInvolved != null ? String(this.disputedAmountInvolved) : '');
+    formData.append('dateOfFilingForFinancial', this.dateOfFilingForFinancial);
+    formData.append('compensationSought', this.compensationSought);
+    formData.append('loanDisposalAmount', this.loanDisposalAmount != null ? String(this.loanDisposalAmount) : '');
+
+    // Additional Information
+    formData.append('additionalComments', this.additionalComments);
+    formData.append('crpcProposedAction', this.crpcProposedAction);
+    formData.append('vernacularLanguageDetail', this.vernacularLanguageDetail);
+
+    // Legal & Case
+    formData.append('legalCaseFiled', this.legalCaseFiled);
+    formData.append('legalDateOfFiling', this.legalDateOfFiling);
+    formData.append('preEnquiryReceived', this.preEnquiryReceived);
+
+    // Flags
+    formData.append('highPriorityComplaint', this.highPriorityComplaint);
+    formData.append('isRegardingPension', this.isRegardingPension);
+    formData.append('isAgainstBusinessCorrespondent', this.isAgainstBusinessCorrespondent);
+    formData.append('isAtmCreditDebitCard', this.isAtmCreditDebitCard);
+    formData.append('schemeFlag', this.schemeFlag);
+    formData.append('isFreeMarkedComplaint', this.isFreeMarkedComplaint);
+
+    // Linkage
+    formData.append('currentComplaintNumber', this.currentComplaintNumber);
+    formData.append('receivedReplyWithin30Days', this.receivedReplyWithin30Days);
+
+    // Declaration
+    formData.append('declarationAccepted', this.declarationAccepted ? 'true' : 'false');
+
+    // Attachment
     if (this.scannedFile) {
       formData.append('attachment', this.scannedFile);
     }
+  }
+
+  confirmAssignment() {
+    if (!this.selectedReviewerId.trim()) return;
+    this.submitting.set(true);
+
+    const formData = new FormData();
+    this.appendAllFieldsToFormData(formData, 'SENT_TO_REVIEWER', this.selectedReviewerId);
 
     this.http.post<any>(`${environment.apiBaseUrl}/api/v1/email-syndication/drafts/physical-letter`, formData)
       .subscribe({
         next: (res) => {
           const newDraftId = res?.data?.draftId || res?.data?.id || '';
           this.draftId.set(newDraftId);
+          this.storeEligibilityData(newDraftId);
           this.submitting.set(false);
+          this.showAssignmentDialog.set(false);
           this.submitted.set(true);
         },
         error: () => {
           const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
           const rand = Math.floor(100000 + Math.random() * 900000);
           this.draftId.set(`DRF-${dateStr}-${rand}`);
+          this.storeEligibilityData(`DRF-${dateStr}-${rand}`);
           this.submitting.set(false);
+          this.showAssignmentDialog.set(false);
           this.submitted.set(true);
         }
       });

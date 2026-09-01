@@ -9,6 +9,7 @@ import com.hrms.cms.entity.EmailDraftAttachment;
 import com.hrms.cms.repository.ComplaintRepository;
 import com.hrms.cms.repository.EmailDraftAttachmentRepository;
 import com.hrms.cms.repository.EmailDraftRepository;
+import com.hrms.cms.service.ComplaintNumberGeneratorService;
 import com.hrms.cms.service.ComplaintRoutingService;
 import com.hrms.cms.service.ComplaintService;
 import com.hrms.cms.service.EmailSimulationService;
@@ -47,6 +48,7 @@ public class EmailSyndicationApiController {
     private final ComplaintRepository complaintRepository;
     private final ComplaintRoutingService routingService;
     private final ComplaintService complaintService;
+    private final ComplaintNumberGeneratorService complaintNumberGenerator;
     private final ObjectMapper objectMapper;
 
     @Value("${cms.attachments.root-path:C:/cms-attachments}")
@@ -416,6 +418,56 @@ public class EmailSyndicationApiController {
             @RequestParam(value = "assignedTo", required = false, defaultValue = "") String assignedTo,
             @RequestParam(value = "processedBy", required = false, defaultValue = "") String processedBy,
             @RequestParam(value = "receivedAt", required = false, defaultValue = "") String receivedAt,
+            // ─── Eligibility fields ───
+            @RequestParam(value = "proposedComplaintType", required = false, defaultValue = "") String proposedComplaintType,
+            @RequestParam(value = "notComplaintReason", required = false, defaultValue = "") String notComplaintReason,
+            @RequestParam(value = "eligibilityQuestions", required = false, defaultValue = "") String eligibilityQuestions,
+            // ─── Entity detail fields ───
+            @RequestParam(value = "entityCategory", required = false, defaultValue = "") String entityCategory,
+            @RequestParam(value = "entityTypeDetail", required = false, defaultValue = "") String entityTypeDetail,
+            @RequestParam(value = "entityBsrCode", required = false, defaultValue = "") String entityBsrCode,
+            @RequestParam(value = "entityPincode", required = false, defaultValue = "") String entityPincode,
+            @RequestParam(value = "entityCountry", required = false, defaultValue = "") String entityCountry,
+            @RequestParam(value = "entityState", required = false, defaultValue = "") String entityState,
+            @RequestParam(value = "entityDistrict", required = false, defaultValue = "") String entityDistrict,
+            @RequestParam(value = "entityCity", required = false, defaultValue = "") String entityCity,
+            @RequestParam(value = "entityBranchName", required = false, defaultValue = "") String entityBranchName,
+            @RequestParam(value = "entityBranchCategory", required = false, defaultValue = "") String entityBranchCategory,
+            @RequestParam(value = "entityAddress", required = false, defaultValue = "") String entityAddress,
+            @RequestParam(value = "entityBranchCenterName", required = false, defaultValue = "") String entityBranchCenterName,
+            @RequestParam(value = "cosmosCode", required = false, defaultValue = "") String cosmosCode,
+            @RequestParam(value = "assetSize", required = false, defaultValue = "") String assetSize,
+            @RequestParam(value = "isDepositTaking", required = false) String isDepositTaking,
+            @RequestParam(value = "isAssetAbove100Cr", required = false) String isAssetAbove100Cr,
+            @RequestParam(value = "isLiquidated", required = false) String isLiquidated,
+            // ─── Complainant extended fields ───
+            @RequestParam(value = "otherEntityName", required = false, defaultValue = "") String otherEntityName,
+            @RequestParam(value = "dateOfRegistrationWithRBI", required = false, defaultValue = "") String dateOfRegistrationWithRBI,
+            @RequestParam(value = "complaintCategory", required = false, defaultValue = "") String complaintCategory,
+            @RequestParam(value = "complaintSubCategory1", required = false, defaultValue = "") String complaintSubCategory1,
+            @RequestParam(value = "complaintSubCategory2", required = false, defaultValue = "") String complaintSubCategory2,
+            @RequestParam(value = "dateOfFilingComplaint", required = false, defaultValue = "") String dateOfFilingComplaint,
+            @RequestParam(value = "complaintRegDateValid", required = false, defaultValue = "") String complaintRegDateValid,
+            @RequestParam(value = "reminderSentByComplainant", required = false, defaultValue = "") String reminderSentByComplainant,
+            @RequestParam(value = "disputedAmountInvolved", required = false, defaultValue = "") String disputedAmountInvolved,
+            @RequestParam(value = "dateOfFilingForFinancial", required = false, defaultValue = "") String dateOfFilingForFinancial,
+            @RequestParam(value = "compensationSought", required = false, defaultValue = "") String compensationSought,
+            @RequestParam(value = "loanDisposalAmount", required = false, defaultValue = "") String loanDisposalAmount,
+            @RequestParam(value = "additionalComments", required = false, defaultValue = "") String additionalComments,
+            @RequestParam(value = "crpcProposedAction", required = false, defaultValue = "") String crpcProposedAction,
+            @RequestParam(value = "vernacularLanguageDetail", required = false, defaultValue = "") String vernacularLanguageDetail,
+            @RequestParam(value = "legalCaseFiled", required = false, defaultValue = "") String legalCaseFiled,
+            @RequestParam(value = "legalDateOfFiling", required = false, defaultValue = "") String legalDateOfFiling,
+            @RequestParam(value = "preEnquiryReceived", required = false, defaultValue = "") String preEnquiryReceived,
+            @RequestParam(value = "highPriorityComplaint", required = false, defaultValue = "") String highPriorityComplaint,
+            @RequestParam(value = "isRegardingPension", required = false, defaultValue = "") String isRegardingPension,
+            @RequestParam(value = "isAgainstBusinessCorrespondent", required = false, defaultValue = "") String isAgainstBusinessCorrespondent,
+            @RequestParam(value = "isAtmCreditDebitCard", required = false, defaultValue = "") String isAtmCreditDebitCard,
+            @RequestParam(value = "schemeFlag", required = false, defaultValue = "") String schemeFlag,
+            @RequestParam(value = "isFreeMarkedComplaint", required = false, defaultValue = "") String isFreeMarkedComplaint,
+            @RequestParam(value = "currentComplaintNumber", required = false, defaultValue = "") String currentComplaintNumber,
+            @RequestParam(value = "receivedReplyWithin30Days", required = false, defaultValue = "") String receivedReplyWithin30Days,
+            @RequestParam(value = "declarationAccepted", required = false) String declarationAccepted,
             @RequestParam(value = "attachment", required = false) MultipartFile attachment) {
 
         try {
@@ -445,6 +497,60 @@ public class EmailSyndicationApiController {
                     .amountInvolved(parseAmount(amountInvolved != null ? amountInvolved : ""))
                     .isDuplicate(false)
                     .ocrProcessed(true)
+                    // Eligibility
+                    .proposedComplaintType(proposedComplaintType)
+                    .notComplaintReason(notComplaintReason)
+                    .eligibilityQuestionsJson(eligibilityQuestions)
+                    // Entity details
+                    .entityCategory(entityCategory)
+                    .entityTypeDetail(entityTypeDetail)
+                    .entityBsrCode(entityBsrCode)
+                    .entityPincode(entityPincode)
+                    .entityCountry(entityCountry)
+                    .entityState(entityState)
+                    .entityDistrict(entityDistrict)
+                    .entityCity(entityCity)
+                    .entityBranchName(entityBranchName)
+                    .entityBranchCategory(entityBranchCategory)
+                    .entityAddress(entityAddress)
+                    .entityBranchCenterName(entityBranchCenterName)
+                    .cosmosCode(cosmosCode)
+                    .assetSize(assetSize)
+                    .isDepositTaking(parseBoolean(isDepositTaking))
+                    .isAssetAbove100Cr(parseBoolean(isAssetAbove100Cr))
+                    .isLiquidated(parseBoolean(isLiquidated))
+                    // Complainant extended
+                    .otherEntityName(otherEntityName)
+                    .dateOfRegistrationWithRBI(dateOfRegistrationWithRBI)
+                    .complaintCategory(complaintCategory)
+                    .complaintSubCategory1(complaintSubCategory1)
+                    .complaintSubCategory2(complaintSubCategory2)
+                    .dateOfFilingComplaint(dateOfFilingComplaint)
+                    .complaintRegDateValid(complaintRegDateValid)
+                    .reminderSentByComplainant(reminderSentByComplainant)
+                    .disputedAmountInvolved(disputedAmountInvolved)
+                    .dateOfFilingForFinancial(dateOfFilingForFinancial)
+                    .compensationSought(compensationSought)
+                    .loanDisposalAmount(loanDisposalAmount)
+                    .additionalComments(additionalComments)
+                    .crpcProposedAction(crpcProposedAction)
+                    .vernacularLanguageDetail(vernacularLanguageDetail)
+                    // Legal
+                    .legalCaseFiled(legalCaseFiled)
+                    .legalDateOfFiling(legalDateOfFiling)
+                    .preEnquiryReceived(preEnquiryReceived)
+                    // Flags
+                    .highPriorityComplaint(highPriorityComplaint)
+                    .isRegardingPension(isRegardingPension)
+                    .isAgainstBusinessCorrespondent(isAgainstBusinessCorrespondent)
+                    .isAtmCreditDebitCard(isAtmCreditDebitCard)
+                    .schemeFlag(schemeFlag)
+                    .isFreeMarkedComplaint(isFreeMarkedComplaint)
+                    // Linkage
+                    .currentComplaintNumber(currentComplaintNumber)
+                    .receivedReplyWithin30Days(receivedReplyWithin30Days)
+                    // Declaration
+                    .declarationAccepted(parseBoolean(declarationAccepted))
                     .receivedAt(java.time.LocalDateTime.now())
                     .build();
 
@@ -571,6 +677,67 @@ public class EmailSyndicationApiController {
         if (request.containsKey("suggestionDepartment")) draft.setSuggestionDepartment((String) request.get("suggestionDepartment"));
         if (request.containsKey("suggestionNature")) draft.setSuggestionNature((String) request.get("suggestionNature"));
 
+        // Eligibility
+        if (request.containsKey("proposedComplaintType")) draft.setProposedComplaintType((String) request.get("proposedComplaintType"));
+        if (request.containsKey("notComplaintReason")) draft.setNotComplaintReason((String) request.get("notComplaintReason"));
+        if (request.containsKey("eligibilityQuestionsJson")) draft.setEligibilityQuestionsJson((String) request.get("eligibilityQuestionsJson"));
+
+        // Entity details
+        if (request.containsKey("entityCategory")) draft.setEntityCategory((String) request.get("entityCategory"));
+        if (request.containsKey("entityTypeDetail")) draft.setEntityTypeDetail((String) request.get("entityTypeDetail"));
+        if (request.containsKey("entityBsrCode")) draft.setEntityBsrCode((String) request.get("entityBsrCode"));
+        if (request.containsKey("entityPincode")) draft.setEntityPincode((String) request.get("entityPincode"));
+        if (request.containsKey("entityCountry")) draft.setEntityCountry((String) request.get("entityCountry"));
+        if (request.containsKey("entityState")) draft.setEntityState((String) request.get("entityState"));
+        if (request.containsKey("entityDistrict")) draft.setEntityDistrict((String) request.get("entityDistrict"));
+        if (request.containsKey("entityCity")) draft.setEntityCity((String) request.get("entityCity"));
+        if (request.containsKey("entityBranchName")) draft.setEntityBranchName((String) request.get("entityBranchName"));
+        if (request.containsKey("entityBranchCategory")) draft.setEntityBranchCategory((String) request.get("entityBranchCategory"));
+        if (request.containsKey("entityAddress")) draft.setEntityAddress((String) request.get("entityAddress"));
+        if (request.containsKey("entityBranchCenterName")) draft.setEntityBranchCenterName((String) request.get("entityBranchCenterName"));
+        if (request.containsKey("cosmosCode")) draft.setCosmosCode((String) request.get("cosmosCode"));
+        if (request.containsKey("assetSize")) draft.setAssetSize((String) request.get("assetSize"));
+        if (request.containsKey("isDepositTaking")) draft.setIsDepositTaking(Boolean.TRUE.equals(request.get("isDepositTaking")));
+        if (request.containsKey("isAssetAbove100Cr")) draft.setIsAssetAbove100Cr(Boolean.TRUE.equals(request.get("isAssetAbove100Cr")));
+        if (request.containsKey("isLiquidated")) draft.setIsLiquidated(Boolean.TRUE.equals(request.get("isLiquidated")));
+
+        // Complainant extended
+        if (request.containsKey("otherEntityName")) draft.setOtherEntityName((String) request.get("otherEntityName"));
+        if (request.containsKey("dateOfRegistrationWithRBI")) draft.setDateOfRegistrationWithRBI((String) request.get("dateOfRegistrationWithRBI"));
+        if (request.containsKey("complaintCategory")) draft.setComplaintCategory((String) request.get("complaintCategory"));
+        if (request.containsKey("complaintSubCategory1")) draft.setComplaintSubCategory1((String) request.get("complaintSubCategory1"));
+        if (request.containsKey("complaintSubCategory2")) draft.setComplaintSubCategory2((String) request.get("complaintSubCategory2"));
+        if (request.containsKey("dateOfFilingComplaint")) draft.setDateOfFilingComplaint((String) request.get("dateOfFilingComplaint"));
+        if (request.containsKey("complaintRegDateValid")) draft.setComplaintRegDateValid((String) request.get("complaintRegDateValid"));
+        if (request.containsKey("reminderSentByComplainant")) draft.setReminderSentByComplainant((String) request.get("reminderSentByComplainant"));
+        if (request.containsKey("disputedAmountInvolved")) draft.setDisputedAmountInvolved((String) request.get("disputedAmountInvolved"));
+        if (request.containsKey("dateOfFilingForFinancial")) draft.setDateOfFilingForFinancial((String) request.get("dateOfFilingForFinancial"));
+        if (request.containsKey("compensationSought")) draft.setCompensationSought((String) request.get("compensationSought"));
+        if (request.containsKey("loanDisposalAmount")) draft.setLoanDisposalAmount((String) request.get("loanDisposalAmount"));
+        if (request.containsKey("additionalComments")) draft.setAdditionalComments((String) request.get("additionalComments"));
+        if (request.containsKey("crpcProposedAction")) draft.setCrpcProposedAction((String) request.get("crpcProposedAction"));
+        if (request.containsKey("vernacularLanguageDetail")) draft.setVernacularLanguageDetail((String) request.get("vernacularLanguageDetail"));
+
+        // Legal
+        if (request.containsKey("legalCaseFiled")) draft.setLegalCaseFiled((String) request.get("legalCaseFiled"));
+        if (request.containsKey("legalDateOfFiling")) draft.setLegalDateOfFiling((String) request.get("legalDateOfFiling"));
+        if (request.containsKey("preEnquiryReceived")) draft.setPreEnquiryReceived((String) request.get("preEnquiryReceived"));
+
+        // Flags
+        if (request.containsKey("highPriorityComplaint")) draft.setHighPriorityComplaint((String) request.get("highPriorityComplaint"));
+        if (request.containsKey("isRegardingPension")) draft.setIsRegardingPension((String) request.get("isRegardingPension"));
+        if (request.containsKey("isAgainstBusinessCorrespondent")) draft.setIsAgainstBusinessCorrespondent((String) request.get("isAgainstBusinessCorrespondent"));
+        if (request.containsKey("isAtmCreditDebitCard")) draft.setIsAtmCreditDebitCard((String) request.get("isAtmCreditDebitCard"));
+        if (request.containsKey("schemeFlag")) draft.setSchemeFlag((String) request.get("schemeFlag"));
+        if (request.containsKey("isFreeMarkedComplaint")) draft.setIsFreeMarkedComplaint((String) request.get("isFreeMarkedComplaint"));
+
+        // Linkage
+        if (request.containsKey("currentComplaintNumber")) draft.setCurrentComplaintNumber((String) request.get("currentComplaintNumber"));
+        if (request.containsKey("receivedReplyWithin30Days")) draft.setReceivedReplyWithin30Days((String) request.get("receivedReplyWithin30Days"));
+
+        // Declaration
+        if (request.containsKey("declarationAccepted")) draft.setDeclarationAccepted(Boolean.TRUE.equals(request.get("declarationAccepted")));
+
         draftRepository.save(draft);
 
         // When reviewer approves → create a Complaint record and route to RBIO/CEPC
@@ -612,10 +779,21 @@ public class EmailSyndicationApiController {
             }
         }
 
-        // Generate complaint number
-        String dateStr = LocalDateTime.now().toString().substring(0, 10).replace("-", "");
-        String rand = String.valueOf((int) (100000 + Math.random() * 900000));
-        String complaintNumber = "CMP-" + dateStr + "-" + rand;
+        // Generate complaint number using RBIO-style sequence (N + FY + OfficeCode + Seq)
+        String complaintNumber;
+        try {
+            complaintNumber = complaintNumberGenerator.generateComplaintNumber(
+                    department,
+                    draft.getComplainantState() != null ? draft.getComplainantState() : "",
+                    draft.getComplainantDistrict() != null ? draft.getComplainantDistrict() : "",
+                    true
+            );
+        } catch (Exception e) {
+            log.warn("Complaint number generator failed, using fallback: {}", e.getMessage());
+            String dateStr = LocalDateTime.now().toString().substring(0, 10).replace("-", "");
+            String rand = String.valueOf((int) (100000 + Math.random() * 900000));
+            complaintNumber = "CMP-" + dateStr + "-" + rand;
+        }
 
         Complaint complaint = Complaint.builder()
                 .complaintNumber(complaintNumber)
@@ -963,6 +1141,67 @@ public class EmailSyndicationApiController {
         response.put("isVernacular", draft.isVernacular());
         response.put("translationConfidence", draft.getTranslationConfidence());
 
+        // Eligibility
+        response.put("proposedComplaintType", draft.getProposedComplaintType());
+        response.put("notComplaintReason", draft.getNotComplaintReason());
+        response.put("eligibilityQuestionsJson", draft.getEligibilityQuestionsJson());
+
+        // Entity details (expanded)
+        response.put("entityCategory", draft.getEntityCategory());
+        response.put("entityTypeDetail", draft.getEntityTypeDetail());
+        response.put("entityBsrCode", draft.getEntityBsrCode());
+        response.put("entityPincode", draft.getEntityPincode());
+        response.put("entityCountry", draft.getEntityCountry());
+        response.put("entityState", draft.getEntityState());
+        response.put("entityDistrict", draft.getEntityDistrict());
+        response.put("entityCity", draft.getEntityCity());
+        response.put("entityBranchName", draft.getEntityBranchName());
+        response.put("entityBranchCategory", draft.getEntityBranchCategory());
+        response.put("entityAddress", draft.getEntityAddress());
+        response.put("entityBranchCenterName", draft.getEntityBranchCenterName());
+        response.put("cosmosCode", draft.getCosmosCode());
+        response.put("assetSize", draft.getAssetSize());
+        response.put("isDepositTaking", draft.getIsDepositTaking());
+        response.put("isAssetAbove100Cr", draft.getIsAssetAbove100Cr());
+        response.put("isLiquidated", draft.getIsLiquidated());
+
+        // Complainant extended
+        response.put("otherEntityName", draft.getOtherEntityName());
+        response.put("dateOfRegistrationWithRBI", draft.getDateOfRegistrationWithRBI());
+        response.put("complaintCategory", draft.getComplaintCategory());
+        response.put("complaintSubCategory1", draft.getComplaintSubCategory1());
+        response.put("complaintSubCategory2", draft.getComplaintSubCategory2());
+        response.put("dateOfFilingComplaint", draft.getDateOfFilingComplaint());
+        response.put("complaintRegDateValid", draft.getComplaintRegDateValid());
+        response.put("reminderSentByComplainant", draft.getReminderSentByComplainant());
+        response.put("disputedAmountInvolved", draft.getDisputedAmountInvolved());
+        response.put("dateOfFilingForFinancial", draft.getDateOfFilingForFinancial());
+        response.put("compensationSought", draft.getCompensationSought());
+        response.put("loanDisposalAmount", draft.getLoanDisposalAmount());
+        response.put("additionalComments", draft.getAdditionalComments());
+        response.put("crpcProposedAction", draft.getCrpcProposedAction());
+        response.put("vernacularLanguageDetail", draft.getVernacularLanguageDetail());
+
+        // Legal & Case
+        response.put("legalCaseFiled", draft.getLegalCaseFiled());
+        response.put("legalDateOfFiling", draft.getLegalDateOfFiling());
+        response.put("preEnquiryReceived", draft.getPreEnquiryReceived());
+
+        // Flags
+        response.put("highPriorityComplaint", draft.getHighPriorityComplaint());
+        response.put("isRegardingPension", draft.getIsRegardingPension());
+        response.put("isAgainstBusinessCorrespondent", draft.getIsAgainstBusinessCorrespondent());
+        response.put("isAtmCreditDebitCard", draft.getIsAtmCreditDebitCard());
+        response.put("schemeFlag", draft.getSchemeFlag());
+        response.put("isFreeMarkedComplaint", draft.getIsFreeMarkedComplaint());
+
+        // Linkage
+        response.put("currentComplaintNumber", draft.getCurrentComplaintNumber());
+        response.put("receivedReplyWithin30Days", draft.getReceivedReplyWithin30Days());
+
+        // Declaration
+        response.put("declarationAccepted", draft.getDeclarationAccepted());
+
         // OCR extracted fields
         if (draft.isOcrProcessed() && draft.getOcrExtractedFieldsJson() != null && !draft.getOcrExtractedFieldsJson().isEmpty()) {
             try {
@@ -1034,5 +1273,10 @@ public class EmailSyndicationApiController {
         } catch (NumberFormatException e) {
             return null;
         }
+    }
+
+    private Boolean parseBoolean(String value) {
+        if (value == null || value.isEmpty()) return null;
+        return "true".equalsIgnoreCase(value) || "yes".equalsIgnoreCase(value) || "1".equals(value);
     }
 }

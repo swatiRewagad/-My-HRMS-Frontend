@@ -132,6 +132,9 @@
                   </td>
                   <td>
                     <div class="action-btns">
+                      <button class="btn-action edit-btn" (click)="openEditModal(officer)" title="Edit">
+                        <i class="pi pi-pencil"></i>
+                      </button>
                       @if (officer.active) {
                         <button class="btn-action" [class.leave-btn]="!officer.onLeave" [class.return-btn]="officer.onLeave" (click)="toggleLeave(officer)" [title]="officer.onLeave ? 'Mark Returned' : 'Mark On Leave'">
                           <i [class]="officer.onLeave ? 'pi pi-replay' : 'pi pi-calendar-times'"></i>
@@ -184,12 +187,9 @@
           <div class="form-field">
             <label>Regional Office</label>
             <select [(ngModel)]="newOfficer.regionalOffice">
-              <option value="MUMBAI">Mumbai</option>
-              <option value="DELHI">Delhi</option>
-              <option value="CHENNAI">Chennai</option>
-              <option value="KOLKATA">Kolkata</option>
-              <option value="HYDERABAD">Hyderabad</option>
-              <option value="AHMEDABAD">Ahmedabad</option>
+              @for (office of officeOptions; track office) {
+                <option [value]="office">{{ office }}</option>
+              }
             </select>
           </div>
           <div class="form-field">
@@ -201,6 +201,39 @@
           <button class="btn-cancel" (click)="showAddModal.set(false)">Cancel</button>
           <button class="btn-save" (click)="addOfficer()" [disabled]="!newOfficer.userId || !newOfficer.displayName">
             <i class="pi pi-check"></i> Add Officer
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Edit Officer Modal -->
+  @if (showEditModal()) {
+    <div class="modal-overlay" (click)="showEditModal.set(false)">
+      <div class="modal-dialog" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h3>Edit Officer — {{ editingOfficer?.displayName }}</h3>
+          <button class="modal-close" (click)="showEditModal.set(false)"><i class="pi pi-times"></i></button>
+        </div>
+        <div class="modal-body">
+          <div class="form-field">
+            <label>Regional Office</label>
+            <select [(ngModel)]="editForm.officeCode">
+              <option value="">— Select —</option>
+              @for (office of officeOptions; track office) {
+                <option [value]="office">{{ office }}</option>
+              }
+            </select>
+          </div>
+          <div class="form-field">
+            <label>Max Workload</label>
+            <input type="number" [(ngModel)]="editForm.maxWorkload" min="1" max="100" />
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-cancel" (click)="showEditModal.set(false)">Cancel</button>
+          <button class="btn-save" (click)="saveEdit()">
+            <i class="pi pi-check"></i> Save
           </button>
         </div>
       </div>

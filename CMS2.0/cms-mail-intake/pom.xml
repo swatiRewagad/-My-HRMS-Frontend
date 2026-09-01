@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.rbi.cms</groupId>
+        <artifactId>cms-parent</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>cms-mail-intake</artifactId>
+    <name>CMS Mail Intake Service</name>
+    <description>Embedded SMTP receiver for redirected/forwarded crpc@rbi.org.in mail — durable
+        receipt, MIME parsing, original-sender resolution, and hand-off to the existing
+        cms-ingestion-service email-syndication draft pipeline.</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.rbi.cms</groupId>
+            <artifactId>cms-common</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+        <!-- Stage 5: admin endpoints need real auth. Deliberately NOT copying cms-backend's
+             SecurityConfig (that one is permitAll() everywhere — a known gap, not a pattern to
+             replicate). Validates JWTs directly against Keycloak's JWKS, the same IdP the
+             gateway uses, rather than trusting gateway-forwarded headers over the network. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
+        </dependency>
+
+        <!-- Structured JSON logs (brief: "Structured JSON logs with an ingest correlation ID") —
+             see logback-spring.xml; JSON encoding only in non-dev-local profiles, human-readable
+             pattern locally. -->
+        <dependency>
+            <groupId>net.logstash.logback</groupId>
+            <artifactId>logstash-logback-encoder</artifactId>
+            <version>9.0</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.oracle.database.jdbc</groupId>
+            <artifactId>ojdbc11</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>org.mapstruct</groupId>
+            <artifactId>mapstruct</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-registry-prometheus</artifactId>
+        </dependency>
+
+        <!-- SMTP listener: a small hand-rolled protocol handler on Netty rather than
+             SubEthaSMTP (unmaintained, javax-only) or Apache James (too much server machinery for
+             a single-recipient, no-AUTH listener) — see the Stage 1 discussion. Verified NOT
+             transitively available via spring-boot-starter-web (that pulls in Tomcat, not Netty;
+             Netty only arrives transitively via WebFlux/reactor-netty, which this module doesn't
+             use) — added explicitly. No <version> here deliberately: spring-boot-starter-parent's
+             own dependencyManagement pins every individual io.netty:netty-* artifact to the
+             version it was tested against (4.1.116.Final as of Spring Boot 3.4.1); an explicit
+             version here only overrides the netty-all umbrella POM itself while its real
+             transitive modules (netty-common, netty-handler, etc.) still resolve to Spring Boot's
+             pin regardless — confirmed by inspecting the actual resolved dependency tree. Better
+             to consistently take Boot's tested version everywhere than end up with one artifact
+             pinned newer than the rest for no real benefit. -->
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-all</artifactId>
+        </dependency>
+
+        <!-- MIME parsing — Apache James Mime4j over Jakarta Mail: more tolerant of the malformed/
+             non-conformant messages this listener explicitly has to survive (rule 4 — never
+             fail-closed on parse errors). Version confirmed current as of this writing. -->
+        <dependency>
+            <groupId>org.apache.james</groupId>
+            <artifactId>apache-mime4j-dom</artifactId>
+            <version>0.8.14</version>
+        </dependency>
+
+        <!-- Attachment content-type detection + text extraction. tika-core alone only detects;
+             the standard-package pulls in the actual per-format parsers (PDF, Office, etc.). -->
+        <dependency>
+            <groupId>org.apache.tika</groupId>
+            <artifactId>tika-core</artifactId>
+            <version>3.2.3</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.tika</groupId>
+            <artifactId>tika-parsers-standard-package</artifactId>
+            <version>3.2.3</version>
+        </dependency>
+
+        <!-- HTML body -> text, when a message is HTML-only. -->
+        <dependency>
+            <groupId>org.jsoup</groupId>
+            <artifactId>jsoup</artifactId>
+            <version>1.23.2</version>
+        </dependency>
+
+        <!-- winmail.dat / TNEF decoding — Exchange sends these under some client configurations. -->
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi-scratchpad</artifactId>
+            <version>5.5.1</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>oracle-xe</artifactId>
+            <version>1.20.4</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>1.20.4</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+</project>

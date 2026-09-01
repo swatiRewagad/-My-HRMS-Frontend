@@ -77,63 +77,27 @@
 
       <!-- Stats Cards -->
       <div class="stats-bar">
-        <div class="stat-card" (click)="filterStatus.set('')">
-          <div class="stat-icon blue"><i class="pi pi-inbox"></i></div>
-          <div class="stat-content">
-            <span class="stat-label">Total Complaints</span>
-            <span class="stat-value">{{ stats().total }}</span>
+        @for (kpi of roleStats(); track kpi.label) {
+          <div class="stat-card" (click)="filterStatus.set(kpi.filterValue)">
+            <div class="stat-icon" [class]="kpi.color"><i class="pi" [class]="kpi.icon"></i></div>
+            <div class="stat-content">
+              <span class="stat-label">{{ kpi.label }}</span>
+              <span class="stat-value">{{ kpi.value }}</span>
+            </div>
           </div>
-        </div>
-        <div class="stat-card" (click)="filterStatus.set('pending')">
-          <div class="stat-icon yellow"><i class="pi pi-clock"></i></div>
-          <div class="stat-content">
-            <span class="stat-label">Pending</span>
-            <span class="stat-value">{{ stats().pending }}</span>
-          </div>
-        </div>
-        <div class="stat-card" (click)="filterStatus.set('in_progress')">
-          <div class="stat-icon purple"><i class="pi pi-file-edit"></i></div>
-          <div class="stat-content">
-            <span class="stat-label">Under Examination</span>
-            <span class="stat-value">{{ stats().inProgress }}</span>
-          </div>
-        </div>
-        <div class="stat-card" (click)="filterStatus.set('under_review')">
-          <div class="stat-icon orange"><i class="pi pi-eye"></i></div>
-          <div class="stat-content">
-            <span class="stat-label">Under Review</span>
-            <span class="stat-value">{{ stats().underReview }}</span>
-          </div>
-        </div>
-        <div class="stat-card" (click)="filterStatus.set('escalated')">
-          <div class="stat-icon red"><i class="pi pi-exclamation-triangle"></i></div>
-          <div class="stat-content">
-            <span class="stat-label">Escalated</span>
-            <span class="stat-value">{{ stats().escalated }}</span>
-          </div>
-        </div>
+        }
       </div>
 
       <!-- Status Tabs -->
       <div class="status-tabs">
         <button class="tab" [class.active]="filterStatus() === ''" (click)="filterStatus.set('')">
-          All
+          All <span class="tab-count">{{ complaints().length }}</span>
         </button>
-        <button class="tab" [class.active]="filterStatus() === 'pending'" (click)="filterStatus.set('pending')">
-          Pending <span class="tab-count">{{ stats().pending }}</span>
-        </button>
-        <button class="tab" [class.active]="filterStatus() === 'in_progress'" (click)="filterStatus.set('in_progress')">
-          Under Examination
-        </button>
-        <button class="tab" [class.active]="filterStatus() === 'under_review'" (click)="filterStatus.set('under_review')">
-          Under Review
-        </button>
-        <button class="tab" [class.active]="filterStatus() === 'awaiting_closure'" (click)="filterStatus.set('awaiting_closure')">
-          Awaiting Closure
-        </button>
-        <button class="tab" [class.active]="filterStatus() === 'escalated'" (click)="filterStatus.set('escalated')">
-          Escalated @if (stats().escalated > 0) { <span class="tab-count">{{ stats().escalated }}</span> }
-        </button>
+        @for (tab of roleStatusTabs(); track tab.filterValue) {
+          <button class="tab" [class.active]="filterStatus() === tab.filterValue" (click)="filterStatus.set(tab.filterValue)">
+            {{ tab.label }} @if (tab.count > 0) { <span class="tab-count">{{ tab.count }}</span> }
+          </button>
+        }
       </div>
 
       <!-- Complaints Table -->

@@ -24,6 +24,14 @@ public class OfficeCodeMaster {
 
     @Column(nullable = false)
     @Builder.Default
+    private Integer counter = 0;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Integer threshold = 2;
+
+    @Column(nullable = false)
+    @Builder.Default
     private Boolean isActive = true;
 
     private LocalDateTime createdAt;

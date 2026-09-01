@@ -24,10 +24,10 @@ public class ComplaintDraft {
     @Column(length = 200)
     private String entityName;
 
-    @Column(columnDefinition = "CLOB")
+    @Column(columnDefinition = "TEXT")
     private String formDataJson;
 
-    @Column(columnDefinition = "CLOB")
+    @Column(columnDefinition = "TEXT")
     private String eligibilityAnswersJson;
 
     @Column

@@ -1,0 +1,138 @@
+<div class="crpc-create">
+  <header class="crpc-header">
+    <button class="back-btn" (click)="cancel()"><i class="pi pi-arrow-left"></i></button>
+    <h2>Create CRPC</h2>
+    <span class="subtitle">Counter-Complaint / Reply to Complaint</span>
+  </header>
+
+  @if (errorMessage()) {
+    <div class="error-banner">
+      <i class="pi pi-exclamation-triangle"></i>
+      {{ errorMessage() }}
+    </div>
+  }
+
+  <form class="crpc-form" (ngSubmit)="submit()" #crpcForm="ngForm">
+    <!-- Linked Complaint -->
+    <div class="form-field">
+      <label>Linked Complaint Number</label>
+      <input type="text" [value]="complaintNumber()" readonly class="readonly-field" />
+    </div>
+
+    <!-- Counter-party Name -->
+    <div class="form-field">
+      <label>Counter-party Name <span class="required">*</span></label>
+      <input
+        type="text"
+        [(ngModel)]="counterPartyName"
+        name="counterPartyName"
+        placeholder="Enter counter-party name"
+        required
+      />
+    </div>
+
+    <!-- Counter-party Email -->
+    <div class="form-field">
+      <label>Counter-party Email</label>
+      <input
+        type="email"
+        [(ngModel)]="counterPartyEmail"
+        name="counterPartyEmail"
+        placeholder="Enter email address"
+      />
+    </div>
+
+    <!-- Counter-party Phone -->
+    <div class="form-field">
+      <label>Counter-party Phone</label>
+      <input
+        type="text"
+        [(ngModel)]="counterPartyPhone"
+        name="counterPartyPhone"
+        placeholder="Enter phone number"
+      />
+    </div>
+
+    <!-- Counter-subject -->
+    <div class="form-field">
+      <label>Counter-subject <span class="required">*</span></label>
+      <input
+        type="text"
+        [(ngModel)]="counterSubject"
+        name="counterSubject"
+        placeholder="Enter subject for the counter-complaint"
+        required
+      />
+    </div>
+
+    <!-- Counter-description -->
+    <div class="form-field">
+      <label>Counter-description <span class="required">*</span></label>
+      <textarea
+        [(ngModel)]="counterDescription"
+        name="counterDescription"
+        placeholder="Describe the counter-complaint in detail"
+        rows="5"
+        required
+      ></textarea>
+    </div>
+
+    <!-- Priority -->
+    <div class="form-field">
+      <label>Priority</label>
+      <select [(ngModel)]="priority" name="priority">
+        <option value="LOW">Low</option>
+        <option value="MEDIUM">Medium</option>
+        <option value="HIGH">High</option>
+      </select>
+    </div>
+
+    <!-- Supporting Documents -->
+    <div class="form-field">
+      <label>Supporting Documents <span class="hint">(Max 5 files, 2MB each)</span></label>
+      <div class="file-upload-area">
+        <input
+          type="file"
+          multiple
+          (change)="onFilesSelected($event)"
+          [disabled]="selectedFiles.length >= maxFileCount"
+          #fileInput
+        />
+        <button
+          type="button"
+          class="btn btn-outline upload-btn"
+          (click)="fileInput.click()"
+          [disabled]="selectedFiles.length >= maxFileCount"
+        >
+          <i class="pi pi-upload"></i> Choose Files
+        </button>
+      </div>
+      @if (fileError()) {
+        <span class="file-error">{{ fileError() }}</span>
+      }
+      @if (selectedFiles.length > 0) {
+        <ul class="file-list">
+          @for (file of selectedFiles; track file.name; let i = $index) {
+            <li>
+              <span class="file-name">{{ file.name }}</span>
+              <span class="file-size">({{ (file.size / 1024).toFixed(1) }} KB)</span>
+              <button type="button" class="remove-file" (click)="removeFile(i)"><i class="pi pi-times"></i></button>
+            </li>
+          }
+        </ul>
+      }
+    </div>
+
+    <!-- Actions -->
+    <div class="form-actions">
+      <button type="button" class="btn btn-outline" (click)="cancel()">Cancel</button>
+      <button
+        type="submit"
+        class="btn btn-primary"
+        [disabled]="submitting() || !counterPartyName.trim() || !counterSubject.trim() || !counterDescription.trim()"
+      >
+        {{ submitting() ? 'Submitting...' : 'Create CRPC' }}
+      </button>
+    </div>
+  </form>
+</div>

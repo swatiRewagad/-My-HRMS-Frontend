@@ -1,0 +1,17 @@
+stages:
+  - sonar
+  - cdr_scan
+  - push
+  - cleanup
+
+variables:
+  TARGET_REPO: "https://oauth2:$TARGET_GITLAB_TOKEN@172.17.47.136/cepd/cms-2.0/cms2.0_dev.git"
+  SRC_ARCHIVE: "src.zip"
+  SCAN_RESULT: "scan_result.json"
+  CI_DEBUG_TRACE: "true"
+  GIT_DEPTH: "0"
+
+include:
+  - project: 'devops_internal/gitlabci/java'
+    ref: 'main'
+    file: '.gitlab-ci.yml'

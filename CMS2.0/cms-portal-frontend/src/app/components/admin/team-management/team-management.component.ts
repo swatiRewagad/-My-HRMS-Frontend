@@ -38,6 +38,11 @@ export class TeamManagementComponent implements OnInit {
   sidebarItem = signal('team');
 
   syncing = signal(false);
+  showEditModal = signal(false);
+  editingOfficer: Officer | null = null;
+  editForm: { officeCode: string; maxWorkload: number } = { officeCode: '', maxWorkload: 20 };
+
+  officeOptions = ['MUMBAI', 'DELHI', 'CHENNAI', 'KOLKATA', 'HYDERABAD', 'AHMEDABAD', 'RBIO-MUM', 'RBIO-DEL', 'RBIO-CHN', 'CEPC-MUM', 'CEPC-DEL', 'CEPC-CHN'];
 
   roleGroups = [
     { value: 'CRPC_DEO', label: 'CRPC - DEO', keycloakRole: 'DEO' },
@@ -82,9 +87,24 @@ export class TeamManagementComponent implements OnInit {
 
   loadOfficers() {
     this.loading.set(true);
-    this.http.get<any>(`${environment.apiBaseUrl}/cms-workflow/api/v1/assignment/pool?roleGroup=${this.selectedRoleGroup()}`).subscribe({
+    const group = this.roleGroups.find(r => r.value === this.selectedRoleGroup());
+    const keycloakRole = group?.keycloakRole || this.selectedRoleGroup();
+
+    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/keycloak/users/availability?role=${keycloakRole}`).subscribe({
       next: (res) => {
-        this.officers.set(res.data || res || []);
+        const data = res?.data || res || [];
+        const officers: Officer[] = data.map((u: any, idx: number) => ({
+          id: idx + 1,
+          userId: u.userId || u.username,
+          displayName: u.displayName || `${u.firstName || ''} ${u.lastName || ''}`.trim(),
+          roleGroup: this.selectedRoleGroup(),
+          regionalOffice: u.officeCode || u.regionalOffice || '',
+          active: u.isActive !== false,
+          onLeave: u.isOnLeave === true,
+          currentWorkload: u.currentWorkload || 0,
+          maxWorkload: u.maxWorkload || 20
+        }));
+        this.officers.set(officers);
         this.loading.set(false);
       },
       error: () => {
@@ -101,9 +121,12 @@ export class TeamManagementComponent implements OnInit {
 
   toggleLeave(officer: Officer) {
     const newStatus = !officer.onLeave;
+    const group = this.roleGroups.find(r => r.value === this.selectedRoleGroup());
+    const role = group?.keycloakRole || this.selectedRoleGroup();
+
     this.http.put<any>(
-      `${environment.apiBaseUrl}/cms-workflow/api/v1/assignment/pool/${officer.id}/leave?onLeave=${newStatus}`,
-      {}
+      `${environment.apiBaseUrl}/api/v1/keycloak/users/${officer.userId}/availability`,
+      { role, onLeave: newStatus }
     ).subscribe({
       next: () => {
         this.officers.update(list =>
@@ -120,9 +143,12 @@ export class TeamManagementComponent implements OnInit {
 
   deactivateOfficer(officer: Officer) {
     if (!confirm(`Deactivate ${officer.displayName}? They will no longer receive new assignments.`)) return;
+    const group = this.roleGroups.find(r => r.value === this.selectedRoleGroup());
+    const role = group?.keycloakRole || this.selectedRoleGroup();
+
     this.http.put<any>(
-      `${environment.apiBaseUrl}/cms-workflow/api/v1/assignment/pool/${officer.id}/deactivate`,
-      {}
+      `${environment.apiBaseUrl}/api/v1/keycloak/users/${officer.userId}/availability`,
+      { role, active: false }
     ).subscribe({
       next: () => {
         this.officers.update(list =>
@@ -150,12 +176,25 @@ export class TeamManagementComponent implements OnInit {
 
   addOfficer() {
     if (!this.newOfficer.userId || !this.newOfficer.displayName) return;
-    this.http.post<any>(
-      `${environment.apiBaseUrl}/cms-workflow/api/v1/assignment/pool`,
-      this.newOfficer
+    const group = this.roleGroups.find(r => r.value === this.selectedRoleGroup());
+    const role = group?.keycloakRole || this.selectedRoleGroup();
+
+    this.http.put<any>(
+      `${environment.apiBaseUrl}/api/v1/keycloak/users/${this.newOfficer.userId}/availability`,
+      { role, active: true, onLeave: false, maxWorkload: this.newOfficer.maxWorkload || 20, officeCode: this.newOfficer.regionalOffice || '' }
     ).subscribe({
-      next: (res) => {
-        const added = res.data || res;
+      next: () => {
+        const added: Officer = {
+          id: Date.now(),
+          userId: this.newOfficer.userId!,
+          displayName: this.newOfficer.displayName!,
+          roleGroup: this.newOfficer.roleGroup!,
+          regionalOffice: this.newOfficer.regionalOffice || '',
+          active: true,
+          onLeave: false,
+          currentWorkload: 0,
+          maxWorkload: this.newOfficer.maxWorkload || 20
+        };
         this.officers.update(list => [...list, added]);
         this.showAddModal.set(false);
       },
@@ -169,7 +208,7 @@ export class TeamManagementComponent implements OnInit {
           active: true,
           onLeave: false,
           currentWorkload: 0,
-          maxWorkload: this.newOfficer.maxWorkload || 40
+          maxWorkload: this.newOfficer.maxWorkload || 20
         };
         this.officers.update(list => [...list, mock]);
         this.showAddModal.set(false);
@@ -235,6 +274,37 @@ export class TeamManagementComponent implements OnInit {
       error: () => {
         this.syncing.set(false);
         alert('Failed to fetch users from Keycloak. Ensure backend is running.');
+      }
+    });
+  }
+
+  openEditModal(officer: Officer) {
+    this.editingOfficer = officer;
+    this.editForm = { officeCode: officer.regionalOffice, maxWorkload: officer.maxWorkload };
+    this.showEditModal.set(true);
+  }
+
+  saveEdit() {
+    if (!this.editingOfficer) return;
+    const group = this.roleGroups.find(r => r.value === this.selectedRoleGroup());
+    const role = group?.keycloakRole || this.selectedRoleGroup();
+    const officer = this.editingOfficer;
+
+    this.http.put<any>(
+      `${environment.apiBaseUrl}/api/v1/keycloak/users/${officer.userId}/availability`,
+      { role, officeCode: this.editForm.officeCode, maxWorkload: this.editForm.maxWorkload }
+    ).subscribe({
+      next: () => {
+        this.officers.update(list =>
+          list.map(o => o.id === officer.id ? { ...o, regionalOffice: this.editForm.officeCode, maxWorkload: this.editForm.maxWorkload } : o)
+        );
+        this.showEditModal.set(false);
+      },
+      error: () => {
+        this.officers.update(list =>
+          list.map(o => o.id === officer.id ? { ...o, regionalOffice: this.editForm.officeCode, maxWorkload: this.editForm.maxWorkload } : o)
+        );
+        this.showEditModal.set(false);
       }
     });
   }

@@ -2,15 +2,18 @@ package com.rbi.cms.assignment.listener;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rbi.cms.common.config.KafkaTopics;
+import com.rbi.cms.common.enums.ComplaintStatus;
 import com.rbi.cms.common.event.ComplaintEvent;
 import com.rbi.cms.assignment.service.AssignmentService;
-import com.rbi.cms.common.dto.AssignmentFact;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.stereotype.Component;
+
+import java.time.Instant;
+import java.util.UUID;
 
 @Slf4j
 @Component
@@ -27,7 +30,7 @@ public class ComplaintIngestedAssignmentListener {
             ComplaintEvent event = objectMapper.readValue(message, ComplaintEvent.class);
             log.info("Assignment listener received complaint.ingested: {}", event.getComplaintId());
 
-            AssignmentFact result = assignmentService.assignComplaint(
+            String assignedTo = assignmentService.assignComplaint(
                     event.getComplaintId(),
                     extractCategory(event.getPayload()),
                     extractPriority(event.getPayload()),
@@ -35,12 +38,12 @@ public class ComplaintIngestedAssignmentListener {
             );
 
             ComplaintEvent assignedEvent = ComplaintEvent.builder()
-                    .eventId(java.util.UUID.randomUUID().toString())
+                    .eventId(UUID.randomUUID().toString())
                     .complaintId(event.getComplaintId())
                     .previousStatus(event.getCurrentStatus())
-                    .currentStatus(com.rbi.cms.common.enums.ComplaintStatus.ASSIGNED)
-                    .assignedTo(result.getAssignedTeam())
-                    .occurredAt(java.time.Instant.now())
+                    .currentStatus(ComplaintStatus.ASSIGNED)
+                    .assignedTo(assignedTo)
+                    .occurredAt(Instant.now())
                     .correlationId(event.getCorrelationId())
                     .build();
 
@@ -48,7 +51,7 @@ public class ComplaintIngestedAssignmentListener {
             kafkaTemplate.send(KafkaTopics.COMPLAINT_ASSIGNED, event.getComplaintId(), payload);
 
             ack.acknowledge();
-            log.info("Complaint {} assigned to team: {}", event.getComplaintId(), result.getAssignedTeam());
+            log.info("Complaint {} assigned to: {}", event.getComplaintId(), assignedTo);
         } catch (Exception e) {
             log.error("Failed to process assignment for event: {}", message, e);
             throw new RuntimeException("Assignment processing failed", e);

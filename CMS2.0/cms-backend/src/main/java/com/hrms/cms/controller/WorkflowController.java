@@ -57,7 +57,7 @@ public class WorkflowController {
     private static final List<String> CLOSED_STATUSES = List.of("resolved", "closed", "rejected", "withdrawn", "adjudicated", "conciliated");
 
     @GetMapping("/rbio/tasks")
-    @RbioRoleGuard(roles = {"RBIO_OFFICER", "RBIO_SUPERVISOR", "RBIO_CONCILIATOR", "RBIO_ADJUDICATOR", "RBIO_ADMIN"})
+    @RbioRoleGuard(roles = {"RBIO_OFFICER", "RBIO_SUPERVISOR", "RBIO_CONCILIATOR", "RBIO_ADJUDICATOR", "RBIO_DEPUTY_OMBUDSMAN", "CRPC_HEAD", "RBIO_ADMIN"})
     public ResponseEntity<Map<String, Object>> getRbioTasks(
             @RequestParam(required = false) String role,
             @RequestParam(required = false) String officer) {
@@ -65,7 +65,7 @@ public class WorkflowController {
     }
 
     @GetMapping("/rbio/all-tasks")
-    @RbioRoleGuard(roles = {"RBIO_OFFICER", "RBIO_SUPERVISOR", "RBIO_CONCILIATOR", "RBIO_ADJUDICATOR", "RBIO_ADMIN"})
+    @RbioRoleGuard(roles = {"RBIO_OFFICER", "RBIO_SUPERVISOR", "RBIO_CONCILIATOR", "RBIO_ADJUDICATOR", "RBIO_DEPUTY_OMBUDSMAN", "CRPC_HEAD", "RBIO_ADMIN"})
     public ResponseEntity<Map<String, Object>> getRbioAllTasks(
             @RequestParam(required = false) String officer) {
         return getAllTasksByDepartment("RBIO", officer);
@@ -103,7 +103,7 @@ public class WorkflowController {
     }
 
     @PostMapping("/rbio/action/{complaintNumber}")
-    @RbioRoleGuard(roles = {"RBIO_OFFICER", "RBIO_SUPERVISOR", "RBIO_CONCILIATOR", "RBIO_ADJUDICATOR", "RBIO_ADMIN"})
+    @RbioRoleGuard(roles = {"RBIO_OFFICER", "RBIO_SUPERVISOR", "RBIO_CONCILIATOR", "RBIO_ADJUDICATOR", "RBIO_DEPUTY_OMBUDSMAN", "CRPC_HEAD", "RBIO_ADMIN"})
     public ResponseEntity<Map<String, Object>> rbioAction(
             @PathVariable String complaintNumber,
             @RequestBody Map<String, String> request) {
@@ -119,14 +119,14 @@ public class WorkflowController {
     }
 
     @GetMapping("/rbio/completed")
-    @RbioRoleGuard(roles = {"RBIO_OFFICER", "RBIO_SUPERVISOR", "RBIO_CONCILIATOR", "RBIO_ADJUDICATOR", "RBIO_ADMIN"})
+    @RbioRoleGuard(roles = {"RBIO_OFFICER", "RBIO_SUPERVISOR", "RBIO_CONCILIATOR", "RBIO_ADJUDICATOR", "RBIO_DEPUTY_OMBUDSMAN", "CRPC_HEAD", "RBIO_ADMIN"})
     public ResponseEntity<Map<String, Object>> getRbioCompleted(
             @RequestParam(required = false) String officer) {
         return getCompletedByDepartment("RBIO", officer);
     }
 
     @GetMapping("/rbio/available-actions/{complaintNumber}")
-    @RbioRoleGuard(roles = {"RBIO_OFFICER", "RBIO_SUPERVISOR", "RBIO_CONCILIATOR", "RBIO_ADJUDICATOR", "RBIO_ADMIN"})
+    @RbioRoleGuard(roles = {"RBIO_OFFICER", "RBIO_SUPERVISOR", "RBIO_CONCILIATOR", "RBIO_ADJUDICATOR", "RBIO_DEPUTY_OMBUDSMAN", "CRPC_HEAD", "RBIO_ADMIN"})
     public ResponseEntity<Map<String, Object>> getRbioAvailableActions(
             @PathVariable String complaintNumber,
             @RequestParam String userRole) {
@@ -139,7 +139,7 @@ public class WorkflowController {
     }
 
     @GetMapping("/rbio/sla-stats")
-    @RbioRoleGuard(roles = {"RBIO_OFFICER", "RBIO_SUPERVISOR", "RBIO_CONCILIATOR", "RBIO_ADJUDICATOR", "RBIO_ADMIN"})
+    @RbioRoleGuard(roles = {"RBIO_OFFICER", "RBIO_SUPERVISOR", "RBIO_CONCILIATOR", "RBIO_ADJUDICATOR", "RBIO_DEPUTY_OMBUDSMAN", "CRPC_HEAD", "RBIO_ADMIN"})
     public ResponseEntity<Map<String, Object>> getRbioSlaStats() {
         Map<String, Long> stats = rbioSlaService.getComplianceStats();
         return buildResponse(true, "RBIO SLA compliance stats", stats);
@@ -568,10 +568,24 @@ public class WorkflowController {
                     }
                 }
             }
+            // Also include complaints this officer previously acted on, even if it has since
+            // moved to someone else — shown read-only so the officer keeps visibility of what
+            // they forwarded.
+            List<Long> pastIds = complaintTimelineRepository.findDistinctComplaintIdsByPerformedBy(officer);
+            if (!pastIds.isEmpty()) {
+                List<Complaint> pastTasks = complaintRepository.findAllById(pastIds).stream()
+                        .filter(c -> dept.equals(c.getDepartment()))
+                        .collect(Collectors.toList());
+                for (Complaint pt : pastTasks) {
+                    if (tasks.stream().noneMatch(t -> t.getId().equals(pt.getId()))) {
+                        tasks.add(pt);
+                    }
+                }
+            }
         } else {
             tasks = complaintRepository.findByDepartmentOrderByCreatedAtDesc(dept);
         }
-        return buildResponse(true, "All tasks retrieved", buildTaskList(tasks));
+        return buildResponse(true, "All tasks retrieved", buildTaskList(tasks, officer));
     }
 
     private List<String> resolveRolesForOfficer(String officer) {
@@ -883,6 +897,10 @@ public class WorkflowController {
     }
 
     private List<Map<String, Object>> buildTaskList(List<Complaint> complaints) {
+        return buildTaskList(complaints, null);
+    }
+
+    private List<Map<String, Object>> buildTaskList(List<Complaint> complaints, String requestingOfficer) {
         return complaints.stream().map(c -> {
             Map<String, Object> task = new LinkedHashMap<>();
             task.put("complaintId", c.getId());
@@ -906,6 +924,9 @@ public class WorkflowController {
             task.put("assignedOfficer", c.getAssignedOfficer());
             task.put("triageSignal", c.getTriageSignal());
             task.put("hasAttachments", complaintAttachmentRepository.existsByComplaintId(c.getId()));
+            boolean viewOnly = requestingOfficer != null && !requestingOfficer.isBlank()
+                    && !requestingOfficer.equals(c.getAssignedOfficer());
+            task.put("viewOnly", viewOnly);
             return task;
         }).collect(Collectors.toList());
     }
