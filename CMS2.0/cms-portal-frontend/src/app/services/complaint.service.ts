@@ -17,6 +17,10 @@ export interface DraftPayload {
   phase: string;
   checkedAccountTypes?: string[];
   dateDisplay?: Record<string, string>;
+  declarationChecked?: boolean;
+  declaration2Checked?: boolean;
+  attachmentMeta?: { name: string; type: string; size: number }[];
+  draftVersion?: number;
 }
 
 export interface DraftRecord {
@@ -31,6 +35,10 @@ export interface DraftRecord {
   phase: string;
   checkedAccountTypes?: string[];
   dateDisplay?: Record<string, string>;
+  declarationChecked?: boolean;
+  declaration2Checked?: boolean;
+  attachmentMeta?: { name: string; type: string; size: number }[];
+  draftVersion?: number;
   updatedAt: string;
 }
 

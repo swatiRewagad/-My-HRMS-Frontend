@@ -1,8 +1,8 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { FormBuilder, NonNullableFormBuilder, FormControl, Validators } from '@angular/forms';
-import { Observable, of, Subject } from 'rxjs';
-import { catchError, tap } from 'rxjs/operators';
+import { Observable, of, Subject, ReplaySubject, forkJoin } from 'rxjs';
+import { catchError, tap, take } from 'rxjs/operators';
 import { environment } from '../../../../environments/environment';
 import { ComplaintService } from '../../../services/complaint.service';
 import { PublicAuthService } from '../../../services/public-auth.service';
@@ -18,7 +18,7 @@ import {
 } from '../configs';
 import { validateFile, validateStepQuota } from '../../../utils/file-validator';
 
-const DRAFT_VERSION = 5;
+const DRAFT_VERSION = 6;
 const MAX_FILE_SIZE = 2 * 1024 * 1024;
 
 @Injectable()
@@ -69,6 +69,7 @@ export class ComplaintFacadeService {
   complainantDistricts: string[] = [];
   districts: string[] = [];
   branches: string[] = [];
+  entityBranchOptions: string[] = ['Main Branch', 'North Zone Branch', 'Downtown Branch', 'South Extension Branch'];
   repStates: string[] = [];
   repDistricts: string[] = [];
   repCities: string[] = [];
@@ -122,6 +123,8 @@ export class ComplaintFacadeService {
   entitySelectOptions: SelectOption[] = [];
   nonCoveredEntityOptions: SelectOption[] = [];
 
+  filesNeedReupload = false;
+  private entitiesLoaded$ = new ReplaySubject<void>(1);
   private autoSaveTimer: any = null;
   private recognition: any = null;
 
@@ -1263,6 +1266,10 @@ export class ComplaintFacadeService {
       phase: this.phase(),
       checkedAccountTypes: this.accountTypes.filter(a => a.checked).map(a => a.value),
       dateDisplay: { ...this.dateDisplay },
+      declarationChecked: this.declarationChecked,
+      declaration2Checked: this.declaration2Checked,
+      attachmentMeta: this.attachmentPreviews.map(f => ({ name: f.name, type: f.type, size: f.size })),
+      draftVersion: DRAFT_VERSION,
     }).subscribe({
       next: (res) => { if (res?.draftId) sessionStorage.setItem('cms_draft_id', res.draftId); },
       error: () => {}
@@ -1319,13 +1326,22 @@ export class ComplaintFacadeService {
     this.restoreAccountTypes(draft.checkedAccountTypes);
     this.patchRepAuthorizationFromFormData();
     this.patchEligibilityFromFormData();
+    this.reapplyEligibilityConditionalValidators();
     this.declarationForm.controls.declaration1.setValue(this.declarationChecked, { emitEvent: false });
     this.declarationForm.controls.declaration2.setValue(this.declaration2Checked, { emitEvent: false });
   }
 
   loadDraftFromServer(draftId: string): void {
-    this.complaintService.getDraft(draftId).subscribe({
-      next: (draft) => {
+    forkJoin([
+      this.complaintService.getDraft(draftId),
+      this.entitiesLoaded$.pipe(take(1), catchError(() => of(undefined))),
+    ]).subscribe({
+      next: ([draft]) => {
+        if (draft.draftVersion && draft.draftVersion !== DRAFT_VERSION) {
+          this.loadDraft();
+          return;
+        }
+
         if (draft.formData) {
           const validKeys = Object.keys(this.formData);
           for (const key of validKeys) {
@@ -1343,6 +1359,15 @@ export class ComplaintFacadeService {
           this.eligibilityStep.set(Object.keys(draft.eligibilityAnswers).length + 1);
         }
         if (draft.dateDisplay) this.dateDisplay = { ...this.dateDisplay, ...draft.dateDisplay };
+        if (draft.declarationChecked !== undefined) this.declarationChecked = draft.declarationChecked;
+        if (draft.declaration2Checked !== undefined) this.declaration2Checked = draft.declaration2Checked;
+        if (draft.attachmentMeta?.length) {
+          this.attachmentPreviews = draft.attachmentMeta.map((m: any) => ({
+            name: m.name, type: m.type, size: m.size, url: ''
+          }));
+          this.filesNeedReupload = true;
+        }
+
         sessionStorage.setItem('cms_draft_id', draftId);
         this.restoreAllForms(draft);
       },
@@ -1453,6 +1478,54 @@ export class ComplaintFacadeService {
     if (this.formData['replyDate']) ef.get('replyDate')!.setValue(this.formData['replyDate'], { emitEvent: false });
   }
 
+  private reapplyEligibilityConditionalValidators(): void {
+    const ef = this.eligibilityStageForm;
+
+    if (ef.get('filedWithRE')!.value === 'yes') {
+      ef.get('bankComplaintDate')!.setValidators([Validators.required]);
+      ef.get('complaintFileWithRE')!.setValidators([Validators.required]);
+    } else {
+      ef.get('bankComplaintDate')!.clearValidators();
+      ef.get('complaintFileWithRE')!.clearValidators();
+    }
+    ef.get('bankComplaintDate')!.updateValueAndValidity({ emitEvent: false });
+    ef.get('complaintFileWithRE')!.updateValueAndValidity({ emitEvent: false });
+
+    if (ef.get('receivedReply')!.value === 'yes') {
+      ef.get('replyDate')!.setValidators([Validators.required]);
+      ef.get('replyFileUploaded')!.setValidators([Validators.requiredTrue]);
+    } else {
+      ef.get('replyDate')!.clearValidators();
+      ef.get('replyFileUploaded')!.clearValidators();
+    }
+    ef.get('replyDate')!.updateValueAndValidity({ emitEvent: false });
+    ef.get('replyFileUploaded')!.updateValueAndValidity({ emitEvent: false });
+
+    if (ef.get('sentReminder')!.value === 'yes') {
+      ef.get('reminderDate')!.setValidators([Validators.required]);
+      ef.get('reminderFileUploaded')!.setValidators([Validators.requiredTrue]);
+    } else {
+      ef.get('reminderDate')!.clearValidators();
+      ef.get('reminderFileUploaded')!.clearValidators();
+    }
+    ef.get('reminderDate')!.updateValueAndValidity({ emitEvent: false });
+    ef.get('reminderFileUploaded')!.updateValueAndValidity({ emitEvent: false });
+
+    if (ef.get('throughAdvocateEligibility')!.value === 'yes') {
+      ef.get('isComplainantSelf')!.setValidators([Validators.required]);
+    } else {
+      ef.get('isComplainantSelf')!.clearValidators();
+    }
+    ef.get('isComplainantSelf')!.updateValueAndValidity({ emitEvent: false });
+
+    if (ef.get('employeeOfRE')!.value === 'yes') {
+      ef.get('employerRelationship')!.setValidators([Validators.required]);
+    } else {
+      ef.get('employerRelationship')!.clearValidators();
+    }
+    ef.get('employerRelationship')!.updateValueAndValidity({ emitEvent: false });
+  }
+
   private restoreAccountTypes(checkedValues?: string[]): void {
     if (!checkedValues?.length) return;
     for (const at of this.accountTypes) {
@@ -1552,8 +1625,14 @@ export class ComplaintFacadeService {
         const notCovered = this.banks.filter(b => b.department === 'CEPC');
         this.entitySelectOptions = covered.map(b => ({ label: b.name, value: String(b.id) }));
         this.nonCoveredEntityOptions = notCovered.map(b => ({ label: b.name, value: String(b.id) }));
+        this.entitiesLoaded$.next();
+        this.entitiesLoaded$.complete();
       },
-      error: () => { this.eligibilityQuestions[0].options = []; }
+      error: () => {
+        this.eligibilityQuestions[0].options = [];
+        this.entitiesLoaded$.next();
+        this.entitiesLoaded$.complete();
+      }
     });
   }
 

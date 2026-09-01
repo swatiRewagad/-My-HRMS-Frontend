@@ -90,6 +90,7 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
   get duplicateMessage() { return this.facade.duplicateMessage; }
   get declarationChecked() { return this.facade.declarationChecked; }
   get declaration2Checked() { return this.facade.declaration2Checked; }
+  get filesNeedReupload() { return this.facade.filesNeedReupload; }
   get fileUploadError() { return this.facade.fileUploadError; }
   get eligibilityFieldError() { return this.facade.eligibilityFieldError; }
   get eligibilityFileError() { return this.facade.eligibilityFileError; }
@@ -232,6 +233,7 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
 
   get entityDistricts(): string[] { return this.facade.districts; }
   get entityBranches(): string[] { return this.facade.branches; }
+  get entityBranchOptions(): string[] { return this.facade.entityBranchOptions; }
   get filteredSubCategories() { return this.facade.subCategories[this.facade.formData['complaintCategory']] || []; }
   get radioEligibilityQuestions() { return this.facade.visibleEligibilityQuestions.filter(q => q.type === 'radio'); }
   get today(): string { return new Date().toLocaleDateString('en-IN'); }

@@ -47,19 +47,6 @@ export interface SelectOption {
   entityType?: string;
 }
 
-export interface DraftPayload {
-  phone: string;
-  entityName: string;
-  formData: Record<string, any>;
-  eligibilityAnswers: Record<string, string>;
-  currentStep: number;
-  highestStepReached?: number;
-  eligibilityStep?: number;
-  phase: string;
-  checkedAccountTypes?: string[];
-  dateDisplay?: Record<string, string>;
-}
-
 export interface ComplaintPayload {
   filingType: string;
   category: string;
