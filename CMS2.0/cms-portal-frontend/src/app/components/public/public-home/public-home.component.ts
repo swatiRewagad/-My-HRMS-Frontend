@@ -4,87 +4,176 @@ import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { PublicAuthService } from '../../../services/public-auth.service';
+import { ComplaintService } from '../../../services/complaint.service';
 import { TranslatePipe } from '../../../pipes/translate.pipe';
 import { environment } from '../../../../environments/environment';
-
-interface ComplaintRecord {
-  complaintId: string;
-  entityName: string;
-  complaintDate: string;
-  status: string;
-  comments: string;
-}
+import { Table, TableModule } from 'primeng/table';
+import { Select } from 'primeng/select';
+import { ComplaintRecord } from '../models';
 
 @Component({
   selector: 'app-public-home',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, TranslatePipe],
+  imports: [CommonModule, FormsModule, RouterLink, TranslatePipe, TableModule, Select],
   templateUrl: './public-home.component.html',
   styleUrl: './public-home.component.scss'
 })
 export class PublicHomeComponent implements OnInit {
 
+  @ViewChild('dt') dt!: Table;
+  @ViewChild('eduScroll') eduScroll!: ElementRef;
+
   private http = inject(HttpClient);
   private router = inject(Router);
+  private complaintService = inject(ComplaintService);
   authService = inject(PublicAuthService);
-
-  @ViewChild('eduScroll') eduScroll!: ElementRef;
 
   complaints = signal<ComplaintRecord[]>([]);
   loading = signal(true);
 
-  // Filters
-  filterById = '';
-  filterByEntity = '';
-  filterByDate = '';
-  filterByStatus = '';
-  filterByComments = '';
+  statusOptions = [
+    { label: 'All', value: '' },
+    { label: 'Draft', value: 'DRAFT' },
+    { label: 'Pending', value: 'PENDING' },
+    { label: 'In-Progress', value: 'IN_PROGRESS' },
+    { label: 'Complaint Closed', value: 'CLOSED' },
+    { label: 'Rejected', value: 'REJECTED' }
+  ];
+
+  selectedStatus = '';
+  dateFrom = '';
+  private entityMap: Record<string, string> = {};
 
   ngOnInit() {
     if (this.authService.isAuthenticated()) {
+      this.loadEntities();
       this.loadComplaints();
     } else {
       this.loading.set(false);
     }
   }
 
-  private loadComplaints() {
-    const phone = this.authService.userIdentifier();
-    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/complaints?phone=${phone}`).subscribe({
+  private loadEntities() {
+    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/routing/entities/list`).subscribe({
       next: (res) => {
-        const data = res?.data || res || [];
-        this.complaints.set(Array.isArray(data) ? data.map((c: any) => ({
-          complaintId: c.complaintId || c.id,
-          entityName: c.entityName || '—',
-          complaintDate: c.createdAt || c.complaintDate || c.registeredDate || '—',
-          status: c.status || 'PENDING',
-          comments: c.comments || c.description?.substring(0, 50) || '—'
-        })) : []);
-        this.loading.set(false);
+        const entities = res?.data ?? res ?? [];
+        entities.forEach((e: any) => { this.entityMap[String(e.id)] = e.name; });
       },
-      error: () => {
-        this.complaints.set([]);
-        this.loading.set(false);
-      }
+      error: () => {}
     });
   }
 
-  get filteredComplaints(): ComplaintRecord[] {
-    return this.complaints().filter(c =>
-      (!this.filterById || c.complaintId.toLowerCase().includes(this.filterById.toLowerCase())) &&
-      (!this.filterByEntity || c.entityName.toLowerCase().includes(this.filterByEntity.toLowerCase())) &&
-      (!this.filterByDate || c.complaintDate.includes(this.filterByDate)) &&
-      (!this.filterByStatus || c.status.toLowerCase().includes(this.filterByStatus.toLowerCase())) &&
-      (!this.filterByComments || c.comments.toLowerCase().includes(this.filterByComments.toLowerCase()))
-    );
+  private loadComplaints() {
+    const phone = this.authService.userIdentifier();
+    const allRecords: ComplaintRecord[] = [];
+
+    const localDraft = this.getLocalDraft();
+    if (localDraft) {
+      allRecords.push(localDraft);
+    }
+
+    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/complaints?phone=${phone}`).subscribe({
+      next: (res) => {
+        const data = res?.data || res || [];
+        if (Array.isArray(data)) {
+          allRecords.push(...data.map((c: any) => ({
+            complaintId: c.complaintId || c.id,
+            entityName: c.entityName || c.regulatedEntityName || '—',
+            complaintDate: c.createdAt || c.complaintDate || c.registeredDate || '—',
+            status: c.status || 'PENDING',
+            closureClause: c.closureClause || '',
+            closureDate: c.closureDate || c.complaintClosureDate || '',
+            acknowledgementLetterUrl: c.acknowledgementLetterUrl || c.acknowledgementLetter || '',
+            closureLetterUrl: c.closureLetterUrl || c.closureLetter || '',
+          })));
+        }
+        this.finalizeLoad(allRecords);
+      },
+      error: () => {
+        this.finalizeLoad(allRecords);
+      }
+    });
+
+    this.complaintService.getDrafts(phone).subscribe({
+      next: (drafts) => {
+        const serverDrafts = drafts.map(d => ({
+          complaintId: d.draftId,
+          entityName: d.entityName || '—',
+          complaintDate: d.updatedAt || '—',
+          status: 'DRAFT',
+          isDraft: true,
+          draftId: d.draftId
+        }));
+        if (serverDrafts.length) {
+          this.complaints.update(list => {
+            const withoutLocal = list.filter(l => l.draftId !== 'local');
+            const merged = [...serverDrafts.filter(sd => !withoutLocal.some(l => l.draftId === sd.draftId)), ...withoutLocal];
+            merged.sort((a, b) => {
+              if (a.status === 'DRAFT' && b.status !== 'DRAFT') return -1;
+              if (b.status === 'DRAFT' && a.status !== 'DRAFT') return 1;
+              return 0;
+            });
+            return merged;
+          });
+        }
+      },
+      error: () => {}
+    });
+  }
+
+  private getLocalDraft(): ComplaintRecord | null {
+    const saved = sessionStorage.getItem('cms_complaint_draft');
+    if (!saved) return null;
+    try {
+      const draft = JSON.parse(saved);
+      const entityName = draft.entityName
+        || (draft.eligibilityAnswers?.['regulatedEntity'] ? (this.entityMap[draft.eligibilityAnswers['regulatedEntity']] || '—') : null)
+        || '—';
+      const savedAt = sessionStorage.getItem('cms_draft_saved_at') || new Date().toISOString();
+      return {
+        complaintId: 'DRAFT-LOCAL',
+        entityName,
+        complaintDate: savedAt,
+        status: 'DRAFT',
+        isDraft: true,
+        draftId: 'local'
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  private finalizeLoad(records: ComplaintRecord[]) {
+    records.sort((a, b) => {
+      if (a.status === 'DRAFT' && b.status !== 'DRAFT') return -1;
+      if (b.status === 'DRAFT' && a.status !== 'DRAFT') return 1;
+      return new Date(b.complaintDate).getTime() - new Date(a.complaintDate).getTime();
+    });
+    this.complaints.set(records);
+    this.loading.set(false);
+  }
+
+  onStatusFilter(value: string) {
+    this.selectedStatus = value;
+    this.dt.filter(value, 'status', 'equals');
+  }
+
+  onDateFromChange(event: Event) {
+    this.dateFrom = (event.target as HTMLInputElement).value;
+    if (this.dateFrom) {
+      this.dt.filter(this.dateFrom, 'complaintDate', 'dateAfter');
+    } else {
+      this.dt.filter('', 'complaintDate', 'contains');
+    }
   }
 
   getStatusClass(status: string): string {
     switch (status) {
-      case 'RESOLVED': case 'CLOSED': case 'NON_MAINTAINABLE': return 'status-resolved';
-      case 'IN_PROGRESS': case 'UNDER_REVIEW': return 'status-progress';
-      case 'REQUEST_SENT_BACK': return 'status-sent-back';
-      case 'REJECTED': return 'status-rejected';
+      case 'CLOSED': case 'NON_MAINTAINABLE': case 'APPROVED': return 'status-closed';
+      case 'IN_PROGRESS': return 'status-inprogress';
+      case 'INFORMATION_REQUIRED': case 'REJECTED': return 'status-info-required';
+      case 'PENDING': return 'status-pending';
+      case 'DRAFT': return 'status-draft';
       default: return 'status-pending';
     }
   }
@@ -92,43 +181,63 @@ export class PublicHomeComponent implements OnInit {
   getStatusLabel(status: string): string {
     switch (status) {
       case 'IN_PROGRESS': return 'In-Progress';
-      case 'REQUEST_SENT_BACK': return 'Request Sent Back.';
+      case 'CLOSED': case 'NON_MAINTAINABLE': return 'Complaint Closed';
+      case 'INFORMATION_REQUIRED': return 'Information Required';
+      case 'PENDING': return 'Pending';
+      case 'DRAFT': return 'Draft';
+      case 'APPROVED': return 'Approved';
       case 'REJECTED': return 'Rejected';
-      case 'RESOLVED': return 'Resolved';
-      case 'UNDER_REVIEW': return 'Under Review';
-      case 'NON_MAINTAINABLE': return 'Closed';
       default: return status.replace(/_/g, ' ');
     }
   }
 
-  getActionLabel(status: string): string {
-    switch (status) {
-      case 'IN_PROGRESS': case 'UNDER_REVIEW': case 'PENDING': return 'Withdraw';
-      case 'REQUEST_SENT_BACK': return 'Appeal';
-      case 'REJECTED': return 'Act';
-      default: return 'View';
+  viewComplaint(record: ComplaintRecord) {
+    if (record.isDraft) {
+      this.resumeDraft(record);
+    } else {
+      this.router.navigate(['/public/complaint', record.complaintId]);
     }
   }
 
-  onAction(complaint: ComplaintRecord) {
-    const action = this.getActionLabel(complaint.status);
-    switch (action) {
-      case 'Withdraw':
-        this.router.navigate(['/public/withdraw', complaint.complaintId]);
-        break;
-      case 'Appeal':
-        this.router.navigate(['/public/appeal'], { queryParams: { id: complaint.complaintId } });
-        break;
-      default:
-        this.router.navigate(['/public/track', complaint.complaintId]);
-        break;
+  fileAppeal(record: ComplaintRecord) {
+    this.router.navigate(['/public/file-appeal', record.complaintId]);
+  }
+
+  shareFeedback(record: ComplaintRecord) {
+    this.router.navigate(['/public/feedback', record.complaintId]);
+  }
+
+  resumeDraft(record: ComplaintRecord) {
+    if (record.draftId === 'local') {
+      this.router.navigate(['/public/file-complaint'], { queryParams: { resume: 'true' } });
+    } else if (record.draftId) {
+      this.router.navigate(['/public/file-complaint'], { queryParams: { draftId: record.draftId } });
     }
   }
 
-  formatDate(dateStr: string): string {
+  deleteDraft(record: ComplaintRecord) {
+    if (!record.draftId) return;
+    if (record.draftId === 'local') {
+      sessionStorage.removeItem('cms_complaint_draft');
+      sessionStorage.removeItem('cms_draft_saved_at');
+      sessionStorage.removeItem('cms_draft_id');
+      this.complaints.update(list => list.filter(c => c.draftId !== 'local'));
+    } else {
+      this.complaintService.deleteDraft(record.draftId).subscribe({
+        next: () => {
+          this.complaints.update(list => list.filter(c => c.draftId !== record.draftId));
+        },
+        error: () => {}
+      });
+    }
+  }
+
+  formatDate(dateStr: string | undefined): string {
     if (!dateStr || dateStr === '—') return '—';
     try {
-      return new Date(dateStr).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return '—';
+      return d.toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-');
     } catch {
       return dateStr;
     }

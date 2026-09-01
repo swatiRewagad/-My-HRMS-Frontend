@@ -1,6 +1,9 @@
 import { ApplicationConfig, provideZoneChangeDetection, APP_INITIALIZER, inject } from '@angular/core';
 import { provideRouter, withViewTransitions, withRouterConfig } from '@angular/router';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
+import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
+import { providePrimeNG } from 'primeng/config';
+import Aura from '@primeng/themes/aura';
 import { routes } from './app.routes';
 import { sessionTimeoutInterceptor } from './interceptors/session-timeout.interceptor';
 import { errorHandlerInterceptor } from './interceptors/error-handler.interceptor';
@@ -16,6 +19,12 @@ function initializeApp(configService: RuntimeConfigService) {
 export const appConfig: ApplicationConfig = {
   providers: [
     provideZoneChangeDetection({ eventCoalescing: true }),
+    provideAnimationsAsync(),
+    providePrimeNG({
+      theme: {
+        preset: Aura
+      }
+    }),
     {
       provide: APP_INITIALIZER,
       useFactory: initializeApp,

@@ -12,7 +12,11 @@ export interface DraftPayload {
   formData: Record<string, any>;
   eligibilityAnswers: Record<string, any>;
   currentStep: number;
+  highestStepReached?: number;
+  eligibilityStep?: number;
   phase: string;
+  checkedAccountTypes?: string[];
+  dateDisplay?: Record<string, string>;
 }
 
 export interface DraftRecord {
@@ -22,7 +26,11 @@ export interface DraftRecord {
   formData: Record<string, any>;
   eligibilityAnswers: Record<string, any>;
   currentStep: number;
+  highestStepReached?: number;
+  eligibilityStep?: number;
   phase: string;
+  checkedAccountTypes?: string[];
+  dateDisplay?: Record<string, string>;
   updatedAt: string;
 }
 

@@ -1,35 +1,26 @@
-import { Component, OnInit, OnDestroy, inject, signal, HostListener, ViewChild, ElementRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, HostListener, ViewChild, ElementRef } from '@angular/core';
+import { take } from 'rxjs/operators';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
-import { HttpClient } from '@angular/common/http';
+import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { Router, RouterLink, ActivatedRoute } from '@angular/router';
-import { ComplaintService } from '../../../services/complaint.service';
-import { PublicAuthService } from '../../../services/public-auth.service';
 import { TranslationService } from '../../../services/translation.service';
+import { PublicAuthService } from '../../../services/public-auth.service';
 import { TranslatePipe } from '../../../pipes/translate.pipe';
-import { validateFile, validateFileSet, MAX_FILE_COUNT } from '../../../utils/file-validator';
 import { announceToScreenReader, setPageTitle } from '../../../utils/accessibility';
-import { lookupPincode } from '../../../utils/pincode-data';
-import { environment } from '../../../../environments/environment';
-
-interface EligibilityQuestion {
-  key: string;
-  question: string;
-  translationKey?: string;
-  type: 'select' | 'radio';
-  options: { label: string; value: string; translationKey?: string }[];
-  blockOn: string | null;
-  blockMessage: string;
-  blockMessageKey?: string;
-  nonMaintainable?: boolean;
-  simplifiedText?: string;
-  simplifiedTextKey?: string;
-}
+import { Select } from 'primeng/select';
+import { Toast } from 'primeng/toast';
+import { MessageService } from 'primeng/api';
+import { FormErrorComponent } from '../../../shared/form-error/form-error.component';
+import { FileUploadComponent } from '../../../shared/file-upload/file-upload.component';
+import { ComplaintFacadeService } from '../services';
+import { AccountType } from '../models';
+import { TOOLTIPS, STEP_TITLES, CATEGORY_LABEL_MAP, GENDER_LABEL_MAP } from '../configs';
 
 @Component({
   selector: 'app-public-file-complaint',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, TranslatePipe],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterLink, TranslatePipe, Select, FormErrorComponent, FileUploadComponent, Toast],
+  providers: [ComplaintFacadeService, MessageService],
   templateUrl: './file-complaint.component.html',
   styleUrl: './file-complaint.component.scss'
 })
@@ -37,295 +28,515 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
 
   @ViewChild('formCard') formCard!: ElementRef<HTMLElement>;
 
-  private complaintService = inject(ComplaintService);
-  private http = inject(HttpClient);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   private publicAuth = inject(PublicAuthService);
+  private messageService = inject(MessageService);
+  facade = inject(ComplaintFacadeService);
   translationService = inject(TranslationService);
-  private autoSaveTimer: any = null;
-  lastSavedAt = signal('');
 
-  // FR-G-007: Flow phases — login handled by PublicAuthService + guard
-  phase = signal<'eligibility' | 'form' | 'success' | 'non-maintainable'>('eligibility');
+  readonly tooltips = TOOLTIPS;
+  readonly stepTitles = STEP_TITLES;
+  readonly totalSteps = 6;
+  readonly watermarkRows = Array.from({ length: 80 }, (_, i) => i + 1);
 
-  // Eligibility (FR-G-007 step 2)
-  eligibilityStep = signal(1);
-  eligibilityAnswers: Record<string, string> = {};
-  eligibilityBlocked = signal(false);
-  eligibilityBlockMessage = signal('');
-  eligibilityBlockMessageKey = signal('');
-  nonMaintainableCaseId = '';
-  showSimplified = signal(false);
-
-  banks: { id: number; name: string; department?: string; entityType?: string }[] = [];
-
-  // FR-G-007 step 1: RE selection done in eligibility (9-step as per RBI CMS production)
-  eligibilityQuestions: EligibilityQuestion[] = [
-    {
-      key: 'regulatedEntity',
-      question: 'Select Regulated Entity Name',
-      translationKey: 'eligibility.q_select_re',
-      type: 'select',
-      options: [],
-      blockOn: null,
-      blockMessage: '',
-    },
-    {
-      key: 'filedWithRE',
-      question: 'Have you filed a written / electronic complaint with the <RE Name>?',
-      translationKey: 'eligibility.q_filed_with_re',
-      type: 'radio',
-      options: [{ label: 'Yes', value: 'yes', translationKey: 'eligibility.opt_yes' }, { label: 'No', value: 'no', translationKey: 'eligibility.opt_no' }],
-      blockOn: 'no',
-      blockMessage: 'in terms of clause 10(1)(j) of Reserve Bank – Integrated Ombudsman Scheme, 2026, the complaint cannot be processed under the Scheme.',
-      blockMessageKey: 'eligibility.block_not_filed',
-      nonMaintainable: true,
-    },
-    {
-      key: 'receivedReply',
-      question: 'Have you received any reply from the Entity?',
-      translationKey: 'eligibility.q_received_reply',
-      type: 'radio',
-      options: [{ label: 'Yes', value: 'yes', translationKey: 'eligibility.opt_yes' }, { label: 'No', value: 'no', translationKey: 'eligibility.opt_no' }],
-      blockOn: null,
-      blockMessage: '',
-      nonMaintainable: true,
-    },
-    {
-      key: 'sentReminder',
-      question: 'Have you sent any reminder to the <RE Name>?',
-      translationKey: 'eligibility.q_sent_reminder',
-      type: 'radio',
-      options: [{ label: 'Yes', value: 'yes', translationKey: 'eligibility.opt_yes' }, { label: 'No', value: 'no', translationKey: 'eligibility.opt_no' }],
-      blockOn: null,
-      blockMessage: '',
-      nonMaintainable: true,
-    },
-    {
-      key: 'isSubJudice',
-      question: 'Is the complaint relating to the same grievance which is already pending before any Court, Tribunal, Arbitrator or any other judicial or quasi-judicial forum (excluding criminal proceedings pending or decided before a Court/ Tribunal or any police investigation initiated in a criminal offence)?',
-      translationKey: 'eligibility.q_sub_judice',
-      type: 'radio',
-      options: [{ label: 'Yes', value: 'yes', translationKey: 'eligibility.opt_yes' }, { label: 'No', value: 'no', translationKey: 'eligibility.opt_no' }],
-      blockOn: 'yes',
-      blockMessage: 'As your complaint is sub-judice/under arbitration/already dealt with on merits by a Court/Tribunal/Arbitrator/Authority, it will be closed as Non-Maintainable under clause 10(2)(b)(ii) of the Reserve Bank - Integrated Ombudsman Scheme, 2026.',
-      blockMessageKey: 'eligibility.block_sub_judice',
-      nonMaintainable: true,
-      simplifiedText: 'Have you already taken this exact problem to a court, arbitrator, or another official legal authority (excluding criminal cases or police investigations)?',
-      simplifiedTextKey: 'eligibility.q_sub_judice_simple',
-    },
-    {
-      key: 'alreadySettled',
-      question: 'Is the complaint relating to the same grievance which is already settled or dealt before any Court, Tribunal, Arbitrator or any other judicial or quasi-judicial forum (excluding criminal proceedings pending or decided before a Court/ Tribunal or any police investigation initiated in a criminal offence)?',
-      translationKey: 'eligibility.q_already_settled',
-      type: 'radio',
-      options: [{ label: 'Yes', value: 'yes', translationKey: 'eligibility.opt_yes' }, { label: 'No', value: 'no', translationKey: 'eligibility.opt_no' }],
-      blockOn: 'yes',
-      blockMessage: 'As your complaint has already been settled or dealt with by a Court/Tribunal/Arbitrator/Authority, it will be closed as Non-Maintainable under the Reserve Bank - Integrated Ombudsman Scheme, 2026.',
-      blockMessageKey: 'eligibility.block_already_settled',
-      nonMaintainable: true,
-      simplifiedText: 'Has this exact problem already been resolved by a court, arbitrator, or another official legal authority (excluding criminal cases or police investigations)?',
-      simplifiedTextKey: 'eligibility.q_already_settled_simple',
-    },
-    {
-      key: 'throughAdvocateEligibility',
-      question: 'Is your complaint being made through an advocate?',
-      translationKey: 'eligibility.q_through_advocate',
-      type: 'radio',
-      options: [{ label: 'Yes', value: 'yes', translationKey: 'eligibility.opt_yes' }, { label: 'No', value: 'no', translationKey: 'eligibility.opt_no' }],
-      blockOn: null,
-      blockMessage: '',
-      simplifiedText: '',
-      simplifiedTextKey: '',
-    },
-    {
-      key: 'pendingBeforeOmbudsman',
-      question: 'Is the complaint relating to the same grievance which is already pending before the Ombudsman?',
-      translationKey: 'eligibility.q_pending_ombudsman',
-      type: 'radio',
-      options: [{ label: 'Yes', value: 'yes', translationKey: 'eligibility.opt_yes' }, { label: 'No', value: 'no', translationKey: 'eligibility.opt_no' }],
-      blockOn: 'yes',
-      blockMessage: 'Your complaint is already pending before the Ombudsman on the same grievance. Duplicate complaints cannot be filed.',
-      blockMessageKey: 'eligibility.block_pending_ombudsman',
-      nonMaintainable: true,
-      simplifiedText: '',
-      simplifiedTextKey: '',
-    },
-    {
-      key: 'settledByOmbudsman',
-      question: 'Is the complaint relating to the same grievance which is already settled or dealt with on merits by the Ombudsman?',
-      translationKey: 'eligibility.q_settled_ombudsman',
-      type: 'radio',
-      options: [{ label: 'Yes', value: 'yes', translationKey: 'eligibility.opt_yes' }, { label: 'No', value: 'no', translationKey: 'eligibility.opt_no' }],
-      blockOn: 'yes',
-      blockMessage: 'Your complaint has already been settled or dealt with on merits by the Ombudsman. You cannot file a fresh complaint on the same issue.',
-      blockMessageKey: 'eligibility.block_settled_ombudsman',
-      nonMaintainable: true,
-      simplifiedText: '',
-      simplifiedTextKey: '',
-    },
-    {
-      key: 'staffOfRE',
-      question: 'Is the Complainant a staff of the RE and complaint involves employer-employee relationship?',
-      translationKey: 'eligibility.q_staff_of_re',
-      type: 'radio',
-      options: [{ label: 'Yes', value: 'yes', translationKey: 'eligibility.opt_yes' }, { label: 'No', value: 'no', translationKey: 'eligibility.opt_no' }],
-      blockOn: 'yes',
-      blockMessage: 'As the complaint involves the employer-employee relationship with the Regulated Entity, it cannot be processed under the Integrated Ombudsman Scheme, 2026.',
-      blockMessageKey: 'eligibility.block_staff_of_re',
-      nonMaintainable: true,
-      simplifiedText: '',
-      simplifiedTextKey: '',
-    },
-    {
-      key: 'previouslyFiledWithCEPC',
-      question: 'Have you previously filed a complaint on the same subject matter with CEPC/RBI Ombudsman?',
-      translationKey: 'eligibility.q_previously_filed_cepc',
-      type: 'radio',
-      options: [{ label: 'Yes', value: 'yes', translationKey: 'eligibility.opt_yes' }, { label: 'No', value: 'no', translationKey: 'eligibility.opt_no' }],
-      blockOn: 'yes',
-      blockMessage: 'As your complaint on the same subject matter has already been filed with CEPC/RBI, it will be closed as Non-Maintainable under the Reserve Bank - Integrated Ombudsman Scheme, 2026.',
-      blockMessageKey: 'eligibility.block_previously_filed_cepc',
-      nonMaintainable: true,
-      simplifiedText: '',
-      simplifiedTextKey: '',
-    },
-    {
-      key: 'employeeOfRE',
-      question: 'Are / were you an employee of the Regulated Entity against whom this complaint is being filed?',
-      translationKey: 'eligibility.q_employee_of_re',
-      type: 'radio',
-      options: [{ label: 'Yes', value: 'yes', translationKey: 'eligibility.opt_yes' }, { label: 'No', value: 'no', translationKey: 'eligibility.opt_no' }],
-      blockOn: null,
-      blockMessage: '',
-      nonMaintainable: true,
-      simplifiedText: '',
-      simplifiedTextKey: '',
-    },
-    {
-      key: 'employerRelationship',
-      question: 'If Yes, Is your complaint involves the employee-employer relationship of the Regulated Entity?',
-      translationKey: 'eligibility.q_employer_relationship',
-      type: 'radio',
-      options: [{ label: 'Yes', value: 'yes', translationKey: 'eligibility.opt_yes' }, { label: 'No', value: 'no', translationKey: 'eligibility.opt_no' }],
-      blockOn: 'yes',
-      blockMessage: 'As your complaint involves the employee-employer relationship with the Regulated Entity, it cannot be processed under the Integrated Ombudsman Scheme, 2026.',
-      blockMessageKey: 'eligibility.block_employer_relationship',
-      nonMaintainable: true,
-      simplifiedText: '',
-      simplifiedTextKey: '',
-    },
-  ];
-
-  // FR-G-007: Multi-step form (steps 3-7)
-  // Step 1: Complainant Details, Step 2: Regulated Entity Details, Step 3: Complaint Details,
-  // Step 4: Authorised Representative, Step 5: Declaration & Review, Step 6: Preview/Submit
-  currentStep = signal(1);
-  highestStepReached = signal(1);
-  totalSteps = 6;
-  stepTitles = [
-    'Complainant Details',
-    'Regulated Entity Details',
-    'Complaint Details',
-    'Representative Authorisation',
-    'Declaration',
-    'Review and Submit'
-  ];
-
-  declarationChecked = false;
-  declaration2Checked = false;
-  submitting = signal(false);
-  referenceNumber = '';
-  watermarkRows = Array.from({ length: 80 }, (_, i) => i + 1);
-
-  // Entity search
-  entitySearchText = '';
-  entityDropdownOpen = false;
-  filteredEntityOptions: { label: string; value: string; entityType?: string }[] = [];
-  entitySelectOptions: { label: string; value: string }[] = [];
-  nonCoveredEntityOptions: { label: string; value: string }[] = [];
-
-  // FR-G-020: Duplicate detection
-  showDuplicatePopup = signal(false);
-  duplicateMessage = '';
-  duplicateCheckDone = false;
-
-  // FR-G-008: Draft
-  draftSaved = signal(false);
-
-  // Form data
-  formData: Record<string, any> = {
-    // Complainant
-    firstName: '',
-    middleName: '',
-    lastName: '',
-    age: '',
-    gender: '',
-    email: '',
-    complainantCategory: '',
-    phone: '',
-    state: '',
-    district: '',
-    pincode: '',
-    address: '',
-    organizationName: '',
-    orgLandline: '',
-    // RE Details
-    bankComplaintDate: '',
-    bankComplaintRef: '',
-    disputeDate: '',
-    receivedReplyFromEntity: '',
-    replyDate: '',
-    isWalletComplaint: '',
-    walletName: '',
-    transactionRefNumber: '',
-    isBusinessCorrespondent: '',
-    cardNumber: '',
-    loanAccountNumber: '',
-    // Complaint Details
-    complaintCategory: '',
-    subCategory1: '',
-    subCategory2: '',
-    complaintText: '',
-    hasAccountWithRE: '',
-    accountType: '',
-    savingsAccountNumber: '',
-    atmDebitCardNumber: '',
-    disputeAmount: '',
-    compensationSought: '',
-    reliefSought: '',
-    // RE entity location
-    isCreditCardComplaint: '',
-    entityState: '',
-    entityDistrict: '',
-    entityBranch: '',
-    creditCardNumber: '',
-    reminderDate: '',
-    isComplainantSelf: '',
-    // Auth Rep
-    hasAuthRep: '',
-    throughAdvocate: '',
-    authorizeRepresentative: '',
-    repName: '',
-    repPhone: '',
-    repEmail: '',
-    repPincode: '',
-    repState: '',
-    repDistrict: '',
-    repCity: '',
-    repAddress: '',
-  };
-
-  attachments: File[] = [];
-  attachmentPreviews: { name: string; url: string; type: string; size: number }[] = [];
-
-
-  categories: { label: string; value: string }[] = [];
-
-  accountTypes: { label: string; value: string; checked: boolean }[] = [];
   accountTypeDropdownOpen = false;
+  isDragOver = false;
+  isRepDragOver = false;
 
+  // ── Delegate form accessors for template ──
+  get complaintStepperForm() { return this.facade.complaintStepperForm; }
+  get complainantDetailsForm() { return this.facade.complainantDetailsForm; }
+  get regulatedEntityForm() { return this.facade.regulatedEntityForm; }
+  get complaintDetailsForm() { return this.facade.complaintDetailsForm; }
+  get repAuthorizationForm() { return this.facade.repAuthorizationForm; }
+  get declarationForm() { return this.facade.declarationForm; }
+  get eligibilityStageForm() { return this.facade.eligibilityStageForm; }
+
+  // ── Signal/state pass-throughs for template binding ──
+  get phase() { return this.facade.phase; }
+  get eligibilityStep() { return this.facade.eligibilityStep; }
+  get eligibilityBlocked() { return this.facade.eligibilityBlocked; }
+  get eligibilityBlockMessage() { return this.facade.eligibilityBlockMessage; }
+  get eligibilityBlockMessageKey() { return this.facade.eligibilityBlockMessageKey; }
+  get showSimplified() { return this.facade.showSimplified; }
+  get currentStep() { return this.facade.currentStep; }
+  get highestStepReached() { return this.facade.highestStepReached; }
+  get submitting() { return this.facade.submitting; }
+  get draftSaved() { return this.facade.draftSaved; }
+  get lastSavedAt() { return this.facade.lastSavedAt; }
+  get showDuplicatePopup() { return this.facade.showDuplicatePopup; }
+  get isRecording() { return this.facade.isRecording; }
+
+  get formData() { return this.facade.formData; }
+  get eligibilityAnswers() { return this.facade.eligibilityAnswers; }
+  get validationErrors() { return this.facade.validationErrors; }
+  get categories() { return this.facade.categories; }
+  get accountTypes() { return this.facade.accountTypes; }
+  get banks() { return this.facade.banks; }
+  get attachmentPreviews() { return this.facade.attachmentPreviews; }
+  get complainantStates() { return this.facade.complainantStates; }
+  get complainantDistricts() { return this.facade.complainantDistricts; }
+  get repStates() { return this.facade.repStates; }
+  get repDistricts() { return this.facade.repDistricts; }
+  get repCities() { return this.facade.repCities; }
+  get pincodeLoading() { return this.facade.pincodeLoading; }
+  get repPincodeLoading() { return this.facade.repPincodeLoading; }
+  get dateDisplay() { return this.facade.dateDisplay; }
+  get entitySelectOptions() { return this.facade.entitySelectOptions; }
+  get nonCoveredEntityOptions() { return this.facade.nonCoveredEntityOptions; }
+  get referenceNumber() { return this.facade.referenceNumber; }
+  get nonMaintainableCaseId() { return this.facade.nonMaintainableCaseId; }
+  get duplicateMessage() { return this.facade.duplicateMessage; }
+  get declarationChecked() { return this.facade.declarationChecked; }
+  get declaration2Checked() { return this.facade.declaration2Checked; }
+  get fileUploadError() { return this.facade.fileUploadError; }
+  get eligibilityFieldError() { return this.facade.eligibilityFieldError; }
+  get eligibilityFileError() { return this.facade.eligibilityFileError; }
+  get eligibilityRefError() { return this.facade.eligibilityRefError; }
+  get replyDateError() { return this.facade.replyDateError; }
+  get replyFileError() { return this.facade.replyFileError; }
+  get reminderDateError() { return this.facade.reminderDateError; }
+  get reminderFileError() { return this.facade.reminderFileError; }
+  get complaintFileWithRE() { return this.facade.complaintFileWithRE; }
+  get complaintFileWithREName() { return this.facade.complaintFileWithREName; }
+  get reminderFile() { return this.facade.reminderFile; }
+  get reminderFileName() { return this.facade.reminderFileName; }
+  get replyFile() { return this.facade.replyFile; }
+  get replyFileName() { return this.facade.replyFileName; }
+  get selectedEntityName() { return this.facade.selectedEntityName; }
+  get isCEPCEntity() { return this.facade.isCEPCEntity; }
+  get totalEligibilitySteps() { return this.facade.totalEligibilitySteps; }
+  get currentQuestion() { return this.facade.currentQuestion; }
+
+  // ── Delegated methods for template ──
+  saveDraft() {
+    this.facade.saveDraft();
+    this.messageService.add({ severity: 'success', summary: 'Saved', detail: 'Draft saved successfully.', life: 2000 });
+  }
+  nextStep() { this.facade.nextStep(); }
+  prevStep() { this.facade.prevStep(); }
+  goToStep(step: number) { this.facade.goToStep(step); }
+  goToEligibility() { this.facade.goToEligibility(); }
+  isNextDisabled() { return this.facade.isNextDisabled(); }
+  nextEligibility() { this.facade.nextEligibility(); }
+  prevEligibility() { this.facade.prevEligibility(); }
+  selectEligibilityAnswer(value: string) { this.facade.selectEligibilityAnswer(value); }
+  onEntityStateChange() { this.facade.onEntityStateChange(); }
+  onEntityDistrictChange() { this.facade.onEntityDistrictChange(); }
+  onRepPincodeInput() { this.facade.onRepPincodeInput(); }
+  onDateInput(field: string, event: Event) { this.facade.onDateInput(field, event); }
+  onDatePickerChange(field: string, event: Event) { this.facade.onDatePickerChange(field, event); }
+  onEmployerRelationshipAnswer(value: string) { this.facade.onEmployerRelationshipAnswer(value); }
+  onAdvocateSubAnswer(value: string) { this.facade.onAdvocateSubAnswer(value); }
+  submit() {
+    this.facade.validationErrors['submit'] = '';
+    this.facade.submitResult$.pipe(take(1)).subscribe((result) => {
+      if (result.success) {
+        this.messageService.add({ severity: 'success', summary: 'Success', detail: 'Complaint submitted successfully.', life: 2000 });
+      } else {
+        this.messageService.add({ severity: 'error', summary: 'Error', detail: result.message || 'Failed to submit complaint. Please try again.', life: 2000 });
+      }
+    });
+    this.facade.submit();
+  }
+  dismissDuplicatePopup() { this.facade.dismissDuplicatePopup(); }
+  proceedDespiteDuplicate() { this.facade.proceedDespiteDuplicate(); }
+  toggleRecording() { this.facade.toggleRecording(); }
+  formatDate(iso: string) { return this.facade.formatDate(iso); }
+  amountInWords(value: string) { return this.facade.amountInWords(value); }
+
+  // ── Lifecycle ──
+  ngOnInit(): void {
+    setPageTitle('File a Complaint');
+    this.facade.initialize();
+
+    const draftId = this.route.snapshot.queryParamMap.get('draftId');
+    const resume = this.route.snapshot.queryParamMap.get('resume');
+    if (draftId) {
+      this.facade.loadDraftFromServer(draftId);
+    } else if (resume === 'true') {
+      this.facade.loadDraft();
+    } else {
+      sessionStorage.removeItem('cms_complaint_draft');
+      sessionStorage.removeItem('cms_draft_id');
+      sessionStorage.removeItem('cms_draft_saved_at');
+    }
+  }
+
+  ngOnDestroy(): void {
+    this.facade.destroy();
+  }
+
+  // ── Template helpers ──
+  get sessionMinutes(): string {
+    return this.publicAuth.getFormattedTime();
+  }
+
+  get isComplainantStepValid(): boolean {
+    return this.facade.complainantDetailsForm.valid;
+  }
+
+  get currentQuestionText(): string {
+    const q = this.facade.currentQuestion;
+    const translated = q.translationKey
+      ? this.translationService.translate(q.translationKey)
+      : q.question;
+    const text = (translated !== q.translationKey) ? translated : q.question;
+    return text.replace(/<RE Name>/g, this.facade.selectedEntityName).replace(/\{\{reName\}\}/g, this.facade.selectedEntityName);
+  }
+
+  get isCurrentEligibilityStepValid(): boolean {
+    return this.facade.isCurrentEligibilityStepValid;
+  }
+
+  get isEligibilityStageValid(): boolean {
+    if (this.facade.eligibilityBlocked()) return false;
+    const form = this.facade.eligibilityStageForm;
+    if (!form.get('regulatedEntity')!.value) return false;
+    const visibleKeys = this.facade.visibleEligibilityQuestions.map(q => q.key);
+    for (const key of visibleKeys) {
+      const ctrl = form.get(key);
+      if (ctrl && ctrl.invalid) return false;
+      if (ctrl && !ctrl.value && key !== 'bankComplaintRef') {
+        const q = this.facade.eligibilityQuestions.find(eq => eq.key === key);
+        if (q && q.type === 'radio') return false;
+      }
+    }
+    if (form.get('filedWithRE')!.value === 'yes') {
+      if (!form.get('bankComplaintDate')!.value || !form.get('complaintFileWithRE')!.value) return false;
+    }
+    if (form.get('receivedReply')!.value === 'yes') {
+      if (!form.get('replyDate')!.value || !form.get('replyFileUploaded')!.value) return false;
+    }
+    if (form.get('sentReminder')!.value === 'yes') {
+      if (!form.get('reminderDate')!.value || !form.get('reminderFileUploaded')!.value) return false;
+    }
+    if (form.get('throughAdvocateEligibility')!.value === 'yes') {
+      if (!form.get('isComplainantSelf')!.value) return false;
+    }
+    if (form.get('employeeOfRE')!.value === 'yes') {
+      if (!form.get('employerRelationship')!.value) return false;
+    }
+    return true;
+  }
+
+  get entityStateKeys(): string[] {
+    return this.facade.states.map(s => s.value);
+  }
+
+  entityStateLabel(key: string): string {
+    const state = this.facade.states.find(s => s.value === key);
+    return state?.label || key.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+  }
+
+  get entityDistricts(): string[] { return this.facade.districts; }
+  get entityBranches(): string[] { return this.facade.branches; }
+  get filteredSubCategories() { return this.facade.subCategories[this.facade.formData['complaintCategory']] || []; }
+  get radioEligibilityQuestions() { return this.facade.visibleEligibilityQuestions.filter(q => q.type === 'radio'); }
+  get today(): string { return new Date().toLocaleDateString('en-IN'); }
+  get todayISO(): string { return new Date().toISOString().split('T')[0]; }
+
+  get reviewEligibilityItems(): { num: number; key: string; question: string; answer: string; subItems?: { prefix: string; label: string; value: string }[] }[] {
+    const items: { num: number; key: string; question: string; answer: string; subItems?: { prefix: string; label: string; value: string }[] }[] = [];
+    let num = 1;
+    const ea = this.eligibilityAnswers;
+    const ef = this.facade.eligibilityStageForm;
+    const reName = this.facade.selectedEntityName;
+
+    if (ea['filedWithRE']) {
+      items.push({
+        num: num++, key: 'filedWithRE',
+        question: `Have you filed a written / electronic complaint with the ${reName}?`,
+        answer: ea['filedWithRE'] === 'yes' ? 'Yes' : 'No',
+        subItems: ea['filedWithRE'] === 'yes' ? [
+          { prefix: 'a', label: `Date of complaint filed with ${reName}`, value: this.formatDate(ef.get('bankComplaintDate')?.value || '') || '—' },
+          { prefix: 'b', label: 'Complaint Reference/Acknowledgement Number', value: ef.get('bankComplaintRef')?.value || '—' },
+          { prefix: 'c', label: 'Complaint copy uploaded', value: this.complaintFileWithREName || '—' },
+        ] : undefined,
+      });
+    }
+
+    if (ea['receivedReply']) {
+      items.push({
+        num: num++, key: 'receivedReply',
+        question: 'Have you received any reply from the Entity?',
+        answer: ea['receivedReply'] === 'yes' ? 'Yes' : 'No',
+        subItems: ea['receivedReply'] === 'yes' ? [
+          { prefix: 'a', label: 'Date of reply received', value: this.formatDate(ef.get('replyDate')?.value || '') || '—' },
+          { prefix: 'b', label: 'Reply copy uploaded', value: this.replyFileName || '—' },
+        ] : undefined,
+      });
+    }
+
+    if (ea['sentReminder']) {
+      items.push({
+        num: num++, key: 'sentReminder',
+        question: `Have you sent any reminder to the ${reName}?`,
+        answer: ea['sentReminder'] === 'yes' ? 'Yes' : 'No',
+        subItems: ea['sentReminder'] === 'yes' ? [
+          { prefix: 'a', label: 'Date of reminder sent', value: this.formatDate(ef.get('reminderDate')?.value || '') || '—' },
+          { prefix: 'b', label: 'Reminder copy uploaded', value: this.reminderFileName || '—' },
+        ] : undefined,
+      });
+    }
+
+    const remainingKeys = ['isSubJudice', 'alreadySettled', 'throughAdvocateEligibility', 'pendingBeforeOmbudsman', 'settledByOmbudsman', 'staffOfRE', 'previouslyFiledWithCEPC', 'employeeOfRE'];
+    for (const key of remainingKeys) {
+      const q = this.facade.eligibilityQuestions.find(eq => eq.key === key);
+      if (q && this.facade.isQuestionVisible(q) && ea[key]) {
+        const questionText = q.question.replace(/<RE Name>/g, reName);
+        let subItems: { prefix: string; label: string; value: string }[] | undefined;
+        if (key === 'employeeOfRE' && ea['employeeOfRE'] === 'yes' && ea['employerRelationship']) {
+          subItems = [{ prefix: 'a', label: 'Does your complaint involve employer-employee relationship?', value: ea['employerRelationship'] === 'yes' ? 'Yes' : 'No' }];
+        }
+        if (key === 'throughAdvocateEligibility' && ea['throughAdvocateEligibility'] === 'yes' && ea['isComplainantSelf']) {
+          subItems = [{ prefix: 'a', label: 'Is the complainant filing the complaint himself/herself?', value: ea['isComplainantSelf'] === 'yes' ? 'Yes' : 'No' }];
+        }
+        items.push({ num: num++, key, question: questionText, answer: ea[key] === 'yes' ? 'Yes' : 'No', subItems });
+      }
+    }
+
+    return items;
+  }
+
+  get reviewComplainantFieldItems(): { num: number; label: string; value: string }[] {
+    const items: { num: number; label: string; value: string }[] = [];
+    let num = 2;
+    const f = this.complainantDetailsForm;
+
+    const firstName = f.get('firstName')?.value;
+    if (firstName) items.push({ num: num++, label: 'First Name', value: firstName });
+
+    const middleName = f.get('middleName')?.value;
+    if (middleName) items.push({ num: num++, label: 'Middle Name', value: middleName });
+
+    const lastName = f.get('lastName')?.value;
+    if (lastName) items.push({ num: num++, label: 'Surname', value: lastName });
+
+    const age = f.get('age')?.value;
+    if (age) items.push({ num: num++, label: 'Age', value: String(age) });
+
+    const gender = this.getGenderLabel();
+    if (gender && gender !== '—') items.push({ num: num++, label: 'Gender', value: gender });
+
+    const email = f.get('email')?.value;
+    if (email) items.push({ num: num++, label: 'Email ID', value: email });
+
+    const phone = f.get('phone')?.value;
+    if (phone) items.push({ num: num++, label: 'Mobile Number', value: '+91 ' + phone });
+
+    const pincode = f.get('pincode')?.value;
+    if (pincode) items.push({ num: num++, label: 'Pincode', value: pincode });
+
+    const state = f.get('state')?.value;
+    if (state) items.push({ num: num++, label: 'State', value: state });
+
+    const district = f.get('city')?.value;
+    if (district) items.push({ num: num++, label: 'District', value: district });
+
+    const address = f.get('addressDetails')?.value;
+    if (address) items.push({ num: num++, label: 'Address', value: address });
+
+    return items;
+  }
+
+  get reviewComplainantItems(): { num: number; label: string; value: string }[] {
+    const items: { num: number; label: string; value: string }[] = [];
+    let num = 1;
+    const f = this.complainantDetailsForm;
+
+    const category = this.getCategoryLabel();
+    if (category && category !== '—') items.push({ num: num++, label: 'Complainant Category', value: category });
+
+    const firstName = f.get('firstName')?.value;
+    if (firstName) items.push({ num: num++, label: 'First Name', value: firstName });
+
+    const middleName = f.get('middleName')?.value;
+    if (middleName) items.push({ num: num++, label: 'Middle Name', value: middleName });
+
+    const lastName = f.get('lastName')?.value;
+    if (lastName) items.push({ num: num++, label: 'Surname', value: lastName });
+
+    const age = f.get('age')?.value;
+    if (age) items.push({ num: num++, label: 'Age', value: String(age) });
+
+    const gender = this.getGenderLabel();
+    if (gender && gender !== '—') items.push({ num: num++, label: 'Gender', value: gender });
+
+    const email = f.get('email')?.value;
+    if (email) items.push({ num: num++, label: 'Email ID', value: email });
+
+    const phone = f.get('phone')?.value;
+    if (phone) items.push({ num: num++, label: 'Mobile Number', value: '+91 ' + phone });
+
+    const pincode = f.get('pincode')?.value;
+    if (pincode) items.push({ num: num++, label: 'Pincode', value: pincode });
+
+    const state = f.get('state')?.value;
+    if (state) items.push({ num: num++, label: 'State', value: state });
+
+    const district = f.get('city')?.value;
+    if (district) items.push({ num: num++, label: 'District', value: district });
+
+    const address = f.get('addressDetails')?.value;
+    if (address) items.push({ num: num++, label: 'Address', value: address });
+
+    return items;
+  }
+
+  get reviewRegulatedEntityItems(): { num: number; label: string; value: string }[] {
+    const items: { num: number; label: string; value: string }[] = [];
+    let num = 1;
+    const rf = this.regulatedEntityForm;
+
+    if (this.facade.selectedEntityName) items.push({ num: num++, label: 'Regulated Entity Name', value: this.facade.selectedEntityName });
+
+    const isCreditCard = rf.get('isCreditCardComplaint')?.value;
+    if (isCreditCard) items.push({ num: num++, label: 'Is your complaint related to credit card?', value: isCreditCard === 'yes' ? 'Yes' : 'No' });
+
+    if (isCreditCard === 'no') {
+      const entityState = rf.get('entityState')?.value;
+      if (entityState) items.push({ num: num++, label: 'Entity State', value: entityState });
+
+      const entityDistrict = rf.get('entityDistrict')?.value;
+      if (entityDistrict) items.push({ num: num++, label: 'Entity District', value: entityDistrict });
+
+      const entityBranch = rf.get('entityBranch')?.value;
+      if (entityBranch) items.push({ num: num++, label: 'Entity Branch', value: entityBranch });
+    }
+
+    return items;
+  }
+
+  get reviewComplaintStartNum(): number {
+    let num = 1;
+    if (this.getComplaintCategoryLabel() && this.getComplaintCategoryLabel() !== '—') num++;
+    if (this.facade.formData['subCategory1']) num++;
+    if (this.facade.formData['subCategory2']) num++;
+    return num;
+  }
+
+  get reviewComplaintAmountStart(): number {
+    let num = this.reviewComplaintStartNum;
+    if (this.complaintDetailsForm.get('complaintText')?.value) num++;
+    if (this.complaintDetailsForm.get('hasAccountWithRE')?.value) num++;
+    if (this.complaintDetailsForm.get('isWalletComplaint')?.value) num++;
+    if (this.complaintDetailsForm.get('isBusinessCorrespondent')?.value) num++;
+    return num;
+  }
+
+  get reviewComplaintDocNum(): number {
+    let num = this.reviewComplaintAmountStart;
+    if (this.displayAmount('disputeAmount')) num++;
+    if (this.displayAmount('compensationSought')) num++;
+    if (this.displayAmount('reliefSought')) num++;
+    return num;
+  }
+
+  get reviewComplaintItems(): { num: number; label: string; value: string; fullRow?: boolean }[] {
+    const items: { num: number; label: string; value: string; fullRow?: boolean }[] = [];
+    let num = 1;
+    const cd = this.complaintDetailsForm;
+
+    const category = this.getComplaintCategoryLabel();
+    if (category && category !== '—') items.push({ num: num++, label: 'Complaint Category', value: category });
+
+    const facts = cd.get('complaintText')?.value;
+    if (facts) items.push({ num: num++, label: 'Facts of the complaint', value: facts, fullRow: true });
+
+    const hasAccount = cd.get('hasAccountWithRE')?.value;
+    if (hasAccount) items.push({ num: num++, label: `Do you have an account with ${this.facade.selectedEntityName}?`, value: hasAccount === 'yes' ? 'Yes' : 'No' });
+
+    const isWallet = cd.get('isWalletComplaint')?.value;
+    if (isWallet) items.push({ num: num++, label: 'Is your complaint against a Wallet transaction?', value: isWallet === 'yes' ? 'Yes' : 'No' });
+
+    const isBusiness = cd.get('isBusinessCorrespondent')?.value;
+    if (isBusiness) items.push({ num: num++, label: 'Is your complaint against a Business Correspondent?', value: isBusiness === 'yes' ? 'Yes' : 'No' });
+
+    const dispute = this.displayAmount('disputeAmount');
+    if (dispute) items.push({ num: num++, label: 'Amount Involved in the Dispute, If Any', value: '₹' + dispute });
+
+    const compensation = this.displayAmount('compensationSought');
+    if (compensation) items.push({ num: num++, label: 'Compensation Sought For Dispute, If Any', value: '₹' + compensation });
+
+    const relief = this.displayAmount('reliefSought');
+    if (relief) items.push({ num: num++, label: 'Compensation For Harassment, If Any', value: '₹' + relief });
+
+    return items;
+  }
+
+  get reviewRepItems(): { num: number; label: string; value: string }[] {
+    const items: { num: number; label: string; value: string }[] = [];
+    let num = 1;
+    const ra = this.repAuthorizationForm;
+
+    const hasRep = ra.get('hasAuthRep')?.value;
+    if (hasRep) items.push({ num: num++, label: 'Is the complaint being filed through an Authorised Representative on behalf of you / complainant?', value: hasRep === 'yes' ? 'Yes' : 'No' });
+
+    if (hasRep === 'yes') {
+      const repName = ra.get('repName')?.value;
+      if (repName) items.push({ num: num++, label: 'Representative Name', value: repName });
+
+      const repPhone = ra.get('repPhone')?.value;
+      if (repPhone) items.push({ num: num++, label: 'Phone', value: '+91 ' + repPhone });
+
+      const repEmail = ra.get('repEmail')?.value;
+      if (repEmail) items.push({ num: num++, label: 'Email', value: repEmail });
+
+      const repPincode = ra.get('repPincode')?.value;
+      if (repPincode) items.push({ num: num++, label: 'Pincode', value: repPincode });
+
+      const repState = ra.get('repState')?.value;
+      if (repState) items.push({ num: num++, label: 'State', value: repState });
+
+      const repDistrict = ra.get('repDistrict')?.value;
+      if (repDistrict) items.push({ num: num++, label: 'District', value: repDistrict });
+
+      const repCity = ra.get('repCity')?.value;
+      if (repCity) items.push({ num: num++, label: 'City', value: repCity });
+
+      const repAddress = ra.get('repAddress')?.value;
+      if (repAddress) items.push({ num: num++, label: 'Address', value: repAddress });
+    }
+
+    return items;
+  }
+
+  isIndividualCategory(): boolean {
+    const cat = this.facade.complainantDetailsForm.controls.complaintCategory.value;
+    return cat === 'individual' || cat === 'senior_citizen' || cat === 'pwd';
+  }
+
+  getCategoryLabel(): string {
+    return CATEGORY_LABEL_MAP[this.facade.formData['complainantCategory']] || this.facade.formData['complainantCategory'] || '—';
+  }
+
+  getGenderLabel(): string {
+    return GENDER_LABEL_MAP[this.facade.formData['gender']] || this.facade.formData['gender'] || '—';
+  }
+
+  getComplaintCategoryLabel(): string {
+    const cat = this.facade.categories.find(c => c.value === this.facade.formData['complaintCategory']);
+    return cat?.label || this.facade.formData['complaintCategory'] || '—';
+  }
+
+  getSelectedAccountTypesLabel(): string {
+    const selected = this.facade.accountTypes.filter(a => a.checked);
+    if (selected.length === 0) return '';
+    return selected.map(a => a.label).join(', ');
+  }
+
+  isAccountTypeSelected(type: string): boolean {
+    return this.facade.accountTypes.find(at => at.value === type)?.checked ?? false;
+  }
+
+  displayAmount(field: string): string {
+    const raw = this.facade.complaintDetailsForm.get(field)?.value || '';
+    return raw ? this.facade.formatIndianNumber(raw) : '';
+  }
+
+  // ── Event handlers ──
   @HostListener('document:click', ['$event'])
   onDocumentClick(event: MouseEvent) {
     const target = event.target as HTMLElement;
@@ -334,66 +545,47 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
     }
   }
 
-  getSelectedAccountTypesLabel(): string {
-    const selected = this.accountTypes.filter(a => a.checked);
-    if (selected.length === 0) return '';
-    return selected.map(a => a.label).join(', ');
+  onCategoryChange() {
+    this.facade.formData['subCategory1'] = '';
+    this.facade.formData['subCategory2'] = '';
   }
 
-  formatFileSize(bytes: number): string {
-    if (bytes < 1024) return bytes + 'b';
-    return (bytes / 1024).toFixed(1) + 'kb';
+  get selectAllAccounts() { return this.facade.selectAllAccounts; }
+
+  onAccountTypeToggle(accountType: AccountType) {
+    this.facade.onAccountTypeToggle(accountType);
   }
 
-  formatDate(isoDate: string): string {
-    if (!isoDate) return '—';
-    const parts = isoDate.split('-');
-    if (parts.length !== 3) return isoDate;
-    return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  onSelectAllAccountTypes(event: Event) {
+    const checked = (event.target as HTMLInputElement).checked;
+    this.facade.toggleSelectAllAccountTypes(checked);
   }
 
-  dateDisplay: Record<string, string> = { bankComplaintDate: '', reminderDate: '', replyDate: '' };
-
-  isoToDisplay(iso: string): string {
-    if (!iso) return '';
-    const [y, m, d] = iso.split('-');
-    return `${d}/${m}/${y}`;
-  }
-
-  onDateInput(field: string, event: Event) {
+  onAmountInput(field: string, event: Event) {
     const input = event.target as HTMLInputElement;
-    let val = input.value.replace(/[^0-9]/g, '');
-    if (val.length > 8) val = val.substring(0, 8);
-    let formatted = '';
-    if (val.length > 4) formatted = val.substring(0, 2) + '/' + val.substring(2, 4) + '/' + val.substring(4);
-    else if (val.length > 2) formatted = val.substring(0, 2) + '/' + val.substring(2);
-    else formatted = val;
-    this.dateDisplay[field] = formatted;
-    input.value = formatted;
-
-    if (val.length === 8) {
-      const day = parseInt(val.substring(0, 2), 10);
-      const month = parseInt(val.substring(2, 4), 10);
-      const year = parseInt(val.substring(4, 8), 10);
-      if (day >= 1 && day <= 31 && month >= 1 && month <= 12 && year >= 1900 && year <= 2100) {
-        const iso = `${year}-${val.substring(2, 4)}-${val.substring(0, 2)}`;
-        this.formData[field] = iso;
-        if (field === 'bankComplaintDate') this.onBankComplaintDateChange();
-        else if (field === 'reminderDate') this.onReminderDateChange();
-        else if (field === 'replyDate') this.onReplyDateChange();
-      } else {
-        this.formData[field] = '';
-      }
-    } else {
-      this.formData[field] = '';
+    const raw = input.value.replace(/[^0-9]/g, '');
+    const ctrl = this.facade.complaintDetailsForm.get(field);
+    if (ctrl) {
+      ctrl.setValue(raw, { emitEvent: true });
+      ctrl.markAsTouched();
     }
+    input.value = raw ? this.facade.formatIndianNumber(raw) : '';
+    this.facade.formData[field] = raw ? this.facade.formatIndianNumber(raw) : '';
   }
 
-  initDateDisplays() {
-    for (const field of ['bankComplaintDate', 'reminderDate', 'replyDate']) {
-      if (this.formData[field]) {
-        this.dateDisplay[field] = this.isoToDisplay(this.formData[field]);
-      }
+  validateAge() {
+    const ageStr = String(this.facade.formData['age'] || '');
+    const age = Number(ageStr);
+    if (ageStr && isNaN(age)) {
+      this.facade.validationErrors['age'] = 'Age must be a number';
+    } else if (ageStr.length > 3) {
+      this.facade.validationErrors['age'] = 'Age must not exceed 3 digits';
+    } else if (age < 1 || age > 150) {
+      this.facade.validationErrors['age'] = 'Age must be between 1 and 150';
+    } else if (this.facade.formData['complainantCategory'] === 'senior_citizen' && age < 60) {
+      this.facade.validationErrors['age'] = 'Age must be 60 or above for Senior Citizen';
+    } else {
+      delete this.facade.validationErrors['age'];
     }
   }
 
@@ -403,298 +595,12 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
     if (hiddenInput) hiddenInput.showPicker();
   }
 
-  onDatePickerChange(field: string, event: Event) {
-    const input = event.target as HTMLInputElement;
-    const iso = input.value;
-    if (iso) {
-      this.formData[field] = iso;
-      this.dateDisplay[field] = this.isoToDisplay(iso);
-      if (field === 'bankComplaintDate') this.onBankComplaintDateChange();
-      else if (field === 'reminderDate') this.onReminderDateChange();
-      else if (field === 'replyDate') this.onReplyDateChange();
-    }
+  closeEntityDropdown() {
+    setTimeout(() => this.facade.entityDropdownOpen = false, 200);
   }
 
-  states: { label: string; value: string }[] = [];
-  districts: string[] = [];
-  branches: string[] = [];
-
-  get entityStateKeys(): string[] {
-    return this.states.map(s => s.value);
-  }
-
-  entityStateLabel(key: string): string {
-    const state = this.states.find(s => s.value === key);
-    return state?.label || key.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-  }
-
-  get entityDistricts(): string[] {
-    return this.districts;
-  }
-
-  get entityBranches(): string[] {
-    return this.branches;
-  }
-
-  onEntityStateChange() {
-    this.formData['entityDistrict'] = '';
-    this.formData['entityBranch'] = '';
-    this.districts = [];
-    this.branches = [];
-    const state = this.formData['entityState'];
-    if (state) {
-      this.http.get<any>(`${environment.apiBaseUrl}/api/v1/location/districts`, { params: { state } }).subscribe({
-        next: (res) => { this.districts = res?.data ?? res ?? []; },
-        error: () => {}
-      });
-    }
-  }
-
-  onEntityDistrictChange() {
-    this.formData['entityBranch'] = '';
-    this.branches = [];
-    const district = this.formData['entityDistrict'];
-    if (district) {
-      this.http.get<any>(`${environment.apiBaseUrl}/api/v1/location/branches`, { params: { district } }).subscribe({
-        next: (res) => { this.branches = res?.data ?? res ?? []; },
-        error: () => {}
-      });
-    }
-  }
-
-
-  subCategories: Record<string, { label: string; value: string }[]> = {};
-
-  get filteredSubCategories(): { label: string; value: string }[] {
-    return this.subCategories[this.formData['complaintCategory']] || [];
-  }
-
-  onCategoryChange() {
-    this.formData['subCategory1'] = '';
-    this.formData['subCategory2'] = '';
-  }
-
-  private defaultCategories(): { label: string; value: string }[] {
-    return [
-      { label: 'ATM / Debit Card', value: 'ATM_DEBIT_CARD' },
-      { label: 'Credit Card', value: 'CREDIT_CARD' },
-      { label: 'Internet / Mobile Banking', value: 'INTERNET_MOBILE_BANKING' },
-      { label: 'UPI', value: 'UPI' },
-      { label: 'Loans and Advances', value: 'LOANS_ADVANCES' },
-      { label: 'Deposit Accounts', value: 'DEPOSIT_ACCOUNTS' },
-      { label: 'Remittances (NEFT/RTGS/IMPS)', value: 'REMITTANCES' },
-      { label: 'Insurance', value: 'INSURANCE' },
-      { label: 'Pension', value: 'PENSION' },
-      { label: 'Para Banking', value: 'PARA_BANKING' },
-      { label: 'Others', value: 'OTHERS' }
-    ];
-  }
-
-  private loadAccountTypesFromLocal() {
-    this.http.get<any[]>('/assets/masters/account-types.json').subscribe({
-      next: (data) => {
-        this.accountTypes = (data ?? []).map(a => ({ label: a.label || a.name, value: a.value || a.code, checked: false }));
-      },
-      error: () => {}
-    });
-  }
-
-
-  onAccountTypeToggle(accountType: { label: string; value: string; checked: boolean }) {
-    this.validationErrors['accountType'] = '';
-    if (!accountType.checked) {
-      const fieldMap: Record<string, string> = {
-        savings: 'savingsAccountNumber',
-        loan: 'loanAccountNumber',
-        atm_debit: 'atmDebitCardNumber',
-        credit_card: 'creditCardNumber'
-      };
-      const field = fieldMap[accountType.value];
-      if (field) {
-        this.formData[field] = '';
-        this.validationErrors[field] = '';
-      }
-    }
-  }
-
-  isAccountTypeSelected(type: string): boolean {
-    return this.accountTypes.find(at => at.value === type)?.checked ?? false;
-  }
-
-  complainantStatesList: { label: string; value: string }[] = [];
-
-  // Pincode lookup
-  pincodeLoading = false;
-  complainantStates: string[] = [];
-  complainantDistricts: string[] = [];
-
-  onPincodeInput() {
-    const value = this.formData['pincode'];
-    if (!value) {
-      delete this.validationErrors['pincode'];
-      this.formData['state'] = '';
-      this.formData['district'] = '';
-      this.complainantStates = [];
-      this.complainantDistricts = [];
-    } else if (!/^\d*$/.test(value)) {
-      this.validationErrors['pincode'] = 'Pincode must contain only digits.';
-      this.formData['state'] = '';
-      this.formData['district'] = '';
-      this.complainantStates = [];
-      this.complainantDistricts = [];
-    } else if (value.length < 6) {
-      delete this.validationErrors['pincode'];
-      this.formData['state'] = '';
-      this.formData['district'] = '';
-      this.complainantStates = [];
-      this.complainantDistricts = [];
-    } else if (value.length > 6) {
-      this.validationErrors['pincode'] = 'Pincode must be exactly 6 digits.';
-      this.formData['state'] = '';
-      this.formData['district'] = '';
-      this.complainantStates = [];
-      this.complainantDistricts = [];
-    } else {
-      delete this.validationErrors['pincode'];
-      this.pincodeLoading = true;
-      this.formData['state'] = '';
-      this.formData['district'] = '';
-      this.complainantStates = [];
-      this.complainantDistricts = [];
-
-      this.http.get<any[]>(`${environment.apiBaseUrl}/api/v1/location/pincode/${value}`).subscribe({
-        next: (res) => {
-          this.pincodeLoading = false;
-          if (res && res[0] && res[0].Status === 'Success' && res[0].PostOffice?.length) {
-            const postOffices = res[0].PostOffice;
-            const states = [...new Set(postOffices.map((po: any) => po.State).filter(Boolean))] as string[];
-            const districts = [...new Set(postOffices.map((po: any) => po.District).filter(Boolean))] as string[];
-            this.complainantStates = states;
-            this.complainantDistricts = districts;
-            this.formData['state'] = states[0] || '';
-            this.formData['district'] = districts[0] || '';
-          } else {
-            this.applyLocalPincode(value);
-          }
-        },
-        error: () => {
-          this.pincodeLoading = false;
-          this.applyLocalPincode(value);
-        }
-      });
-    }
-  }
-
-  private applyLocalPincode(value: string) {
-    const entry = lookupPincode(value);
-    if (entry) {
-      this.complainantStates = [entry.state];
-      this.complainantDistricts = [entry.district];
-      this.formData['state'] = entry.state;
-      this.formData['district'] = entry.district;
-      delete this.validationErrors['pincode'];
-    } else {
-      this.validationErrors['pincode'] = 'Invalid pincode. No location found.';
-    }
-  }
-
-  // Representative pincode lookup
-  repPincodeLoading = false;
-  repStates: string[] = [];
-  repDistricts: string[] = [];
-  repCities: string[] = [];
-
-  onRepPincodeInput() {
-    const value = this.formData['repPincode'];
-    if (value && value.length === 6 && /^\d{6}$/.test(value)) {
-      this.repPincodeLoading = true;
-      this.formData['repState'] = '';
-      this.formData['repDistrict'] = '';
-      this.formData['repCity'] = '';
-      this.repStates = [];
-      this.repDistricts = [];
-      this.repCities = [];
-
-      this.http.get<any[]>(`${environment.apiBaseUrl}/api/v1/location/pincode/${value}`).subscribe({
-        next: (res) => {
-          this.repPincodeLoading = false;
-          if (res && res[0] && res[0].Status === 'Success' && res[0].PostOffice?.length) {
-            const postOffices = res[0].PostOffice;
-            const states = [...new Set(postOffices.map((po: any) => po.State).filter(Boolean))] as string[];
-            const districts = [...new Set(postOffices.map((po: any) => po.District).filter(Boolean))] as string[];
-            const cities = [...new Set(postOffices.map((po: any) => po.Name).filter(Boolean))] as string[];
-            this.repStates = states;
-            this.repDistricts = districts;
-            this.repCities = cities;
-            this.formData['repState'] = states[0] || '';
-            this.formData['repDistrict'] = districts[0] || '';
-            this.formData['repCity'] = cities[0] || '';
-          }
-        },
-        error: () => {
-          this.repPincodeLoading = false;
-        }
-      });
-    } else {
-      this.formData['repState'] = '';
-      this.formData['repDistrict'] = '';
-      this.formData['repCity'] = '';
-      this.repStates = [];
-      this.repDistricts = [];
-      this.repCities = [];
-    }
-  }
-
-  // Eligibility file uploads (separate per section)
-  complaintFileWithRE: File | null = null;
-  complaintFileWithREName = '';
-  reminderFile: File | null = null;
-  reminderFileName = '';
-  replyFile: File | null = null;
-  replyFileName = '';
-  repFile: File | null = null;
-  repFileName = '';
-
-  onComplaintFileSelected(event: Event) {
-    const input = event.target as HTMLInputElement;
-    if (input.files && input.files[0]) {
-      if (input.files[0].size > 2 * 1024 * 1024) {
-        this.eligibilityFileError = 'File size exceeds 2MB limit';
-        input.value = '';
-        return;
-      }
-      this.complaintFileWithRE = input.files[0];
-      this.complaintFileWithREName = input.files[0].name;
-      this.eligibilityFileError = '';
-    }
-  }
-
-  onReminderFileSelected(event: Event) {
-    const input = event.target as HTMLInputElement;
-    if (input.files && input.files[0]) {
-      if (input.files[0].size > 2 * 1024 * 1024) {
-        this.reminderFileError = 'File size exceeds 2MB limit';
-        input.value = '';
-        return;
-      }
-      this.reminderFile = input.files[0];
-      this.reminderFileName = input.files[0].name;
-      this.reminderFileError = '';
-    }
-  }
-
-  onReplyFileSelected(event: Event) {
-    const input = event.target as HTMLInputElement;
-    if (input.files && input.files[0]) {
-      if (input.files[0].size > 2 * 1024 * 1024) {
-        this.replyFileError = 'File size exceeds 2MB limit';
-        input.value = '';
-        return;
-      }
-      this.replyFile = input.files[0];
-      this.replyFileName = input.files[0].name;
-      this.replyFileError = '';
-    }
+  selectEntityFromDropdown(value: string) {
+    if (value) this.facade.selectEligibilityAnswer(value);
   }
 
   previewFile(file: File | null) {
@@ -704,398 +610,75 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
     }
   }
 
-  removeComplaintFile() {
-    this.complaintFileWithRE = null;
-    this.complaintFileWithREName = '';
-  }
-
-  removeReminderFile() {
-    this.reminderFile = null;
-    this.reminderFileName = '';
-  }
-
-  removeReplyFile() {
-    this.replyFile = null;
-    this.replyFileName = '';
-  }
-
-  onRepFileSelected(event: Event) {
-    const input = event.target as HTMLInputElement;
-    if (input.files && input.files[0]) {
-      if (input.files[0].size > 2 * 1024 * 1024) {
-        input.value = '';
-        return;
-      }
-      this.repFile = input.files[0];
-      this.repFileName = input.files[0].name;
+  // ── Eligibility file handling (shared component) ──
+  onEligibilityFileChanged(type: 'complaint' | 'reminder' | 'reply', files: File[]) {
+    const file = files.length > 0 ? files[0] : null;
+    switch (type) {
+      case 'complaint':
+        this.facade.complaintFileWithRE = file;
+        this.facade.complaintFileWithREName = file?.name ?? '';
+        this.facade.eligibilityFileError = '';
+        this.facade.eligibilityStageForm.get('complaintFileWithRE')!.setValue(file);
+        break;
+      case 'reminder':
+        this.facade.reminderFile = file;
+        this.facade.reminderFileName = file?.name ?? '';
+        this.facade.reminderFileError = '';
+        this.facade.eligibilityStageForm.get('reminderFileUploaded')!.setValue(!!file);
+        break;
+      case 'reply':
+        this.facade.replyFile = file;
+        this.facade.replyFileName = file?.name ?? '';
+        this.facade.replyFileError = '';
+        this.facade.eligibilityStageForm.get('replyFileUploaded')!.setValue(!!file);
+        break;
     }
   }
+  removeComplaintFile() { this.facade.removeEligibilityFile('complaint'); }
+  removeReminderFile() { this.facade.removeEligibilityFile('reminder'); }
+  removeReplyFile() { this.facade.removeEligibilityFile('reply'); }
 
-  onRepFileDrop(event: DragEvent) {
-    event.preventDefault();
-    if (!event.dataTransfer?.files?.length) return;
-    const file = event.dataTransfer.files[0];
-    if (file.size > 2 * 1024 * 1024) return;
-    this.repFile = file;
-    this.repFileName = file.name;
+  // ── File upload delegates (shared component) ──
+  onAttachmentsChanged(files: File[]) {
+    this.facade.attachments = files;
+    this.facade.attachmentPreviews = files.map(f => ({
+      name: f.name, url: URL.createObjectURL(f), type: f.type, size: f.size
+    }));
+    this.facade.syncFileUploadControl();
+  }
+
+  onAttachmentRemoved(index: number) {
+    if (this.facade.attachmentPreviews[index]?.url) {
+      URL.revokeObjectURL(this.facade.attachmentPreviews[index].url);
+    }
+    this.facade.attachments.splice(index, 1);
+    this.facade.attachmentPreviews.splice(index, 1);
+    this.facade.syncFileUploadControl();
+  }
+
+  onRepFileChanged(files: File[]) {
+    this.facade.repFiles = files;
+    this.facade.syncRepFileUploadControl();
   }
 
   removeRepFile() {
-    this.repFile = null;
-    this.repFileName = '';
+    this.facade.repFiles = [];
+    this.facade.syncRepFileUploadControl();
   }
 
-  // FR-G-013: Speech to text
-  isRecording = signal(false);
-  speechSupported = false;
-  private recognition: any = null;
-
-  ngOnInit() {
-    setPageTitle('File a Complaint');
-    this.loadRegulatedEntities();
-    this.loadMasterData();
-    this.speechSupported = !!(window as any).SpeechRecognition || !!(window as any).webkitSpeechRecognition;
-    this.formData['phone'] = this.publicAuth.userIdentifier() || '';
-
-    const draftId = this.route.snapshot.queryParamMap.get('draftId');
-    const resume = this.route.snapshot.queryParamMap.get('resume');
-    if (draftId) {
-      this.loadDraftFromServer(draftId);
-    } else if (resume === 'true') {
-      this.loadDraft();
-    } else {
-      sessionStorage.removeItem('cms_complaint_draft');
-      sessionStorage.removeItem('cms_draft_id');
-      sessionStorage.removeItem('cms_draft_saved_at');
-    }
-
-    this.startAutoSave();
-  }
-
-  private loadMasterData() {
-    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/masters/categories`).subscribe({
-      next: (res) => {
-        const data = res?.data ?? res ?? [];
-        const categoryMap: Record<string, { label: string; value: string }[]> = {};
-        const categorySet = new Map<string, string>();
-        data.forEach((item: any) => {
-          const catValue = item.categoryName || item.value;
-          const catLabel = item.categoryLabel || item.label || catValue;
-          if (!categorySet.has(catValue)) {
-            categorySet.set(catValue, catLabel);
-          }
-          if (item.subCategory) {
-            if (!categoryMap[catValue]) categoryMap[catValue] = [];
-            categoryMap[catValue].push({ label: item.subCategory, value: item.subCategoryValue || item.subCategory });
-          }
-        });
-        this.categories = Array.from(categorySet.entries()).map(([value, label]) => ({ label, value }));
-        if (this.categories.length === 0) {
-          this.categories = this.defaultCategories();
-        }
-        this.subCategories = categoryMap;
-      },
-      error: () => {
-        this.categories = this.defaultCategories();
-      }
-    });
-
-    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/location/states`).subscribe({
-      next: (res) => {
-        const data = res?.data ?? res ?? [];
-        this.states = data.map((s: any) => typeof s === 'string' ? { label: s, value: s } : { label: s.name || s.label, value: s.value || s.code || s.name });
-        this.complainantStatesList = this.states;
-      },
-      error: () => {}
-    });
-
-    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/masters/account-types`).subscribe({
-      next: (res) => {
-        const data = res?.data ?? res ?? [];
-        this.accountTypes = data.map((a: any) => ({ label: a.label || a.name, value: a.value || a.code, checked: false }));
-        if (this.accountTypes.length === 0) this.loadAccountTypesFromLocal();
-      },
-      error: () => this.loadAccountTypesFromLocal()
-    });
-  }
-
-  private loadDraftFromServer(draftId: string) {
-    this.complaintService.getDraft(draftId).subscribe({
-      next: (draft) => {
-        if (draft.formData) {
-          const validKeys = Object.keys(this.formData);
-          for (const key of validKeys) {
-            if (draft.formData[key] !== undefined) {
-              this.formData[key] = draft.formData[key];
-            }
-          }
-        }
-        if (draft.eligibilityAnswers) {
-          this.eligibilityAnswers = draft.eligibilityAnswers;
-        }
-        if (draft.currentStep) {
-          this.currentStep.set(draft.currentStep);
-          this.highestStepReached.set(draft.currentStep);
-        }
-        if (draft.phase === 'form') {
-          this.phase.set('form');
-        }
-        if (draft.eligibilityAnswers?.['selectedEntity']) {
-          this.eligibilityStep.set(Object.keys(draft.eligibilityAnswers).length + 1);
-        }
-        sessionStorage.setItem('cms_draft_id', draftId);
-      },
-      error: () => {
-        this.loadDraft();
-      }
-    });
-  }
-
-  private loadRegulatedEntities() {
-    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/routing/entities/list`).subscribe({
-      next: (res) => {
-        const entities = res?.data ?? res ?? [];
-        this.banks = entities.map((e: any) => ({
-          id: e.id,
-          name: e.name,
-          department: e.department || 'RBIO',
-          entityType: e.entityType
-        }));
-        this.banks.sort((a, b) => a.name.localeCompare(b.name));
-        this.eligibilityQuestions[0].options = this.banks.map(b => ({ label: b.name, value: String(b.id) }));
-        const covered = this.banks.filter(b => b.department !== 'CEPC');
-        const notCovered = this.banks.filter(b => b.department === 'CEPC');
-        this.entitySelectOptions = covered.map(b => ({ label: b.name, value: String(b.id) }));
-        this.nonCoveredEntityOptions = notCovered.map(b => ({ label: b.name, value: String(b.id) }));
-      },
-      error: () => {
-        this.eligibilityQuestions[0].options = [];
-      }
-    });
-  }
-
-  ngOnDestroy() {
-    if (this.phase() === 'form' || this.phase() === 'eligibility') {
-      this.saveDraft();
-    }
-    this.stopAutoSave();
-    this.stopRecording();
-  }
-
-  get sessionMinutes(): string {
-    return this.publicAuth.getFormattedTime();
-  }
-
-  // ══════ ELIGIBILITY (FR-G-007 step 2) ══════
-  get currentQuestion(): EligibilityQuestion {
-    const visible = this.visibleEligibilityQuestions;
-    const idx = Math.min(this.eligibilityStep() - 1, visible.length - 1);
-    return visible[idx];
-  }
-
-  get totalEligibilitySteps(): number {
-    return this.visibleEligibilityQuestions.length;
-  }
-
-  get selectedEntityName(): string {
-    const val = this.eligibilityAnswers['regulatedEntity'];
-    const opt = this.eligibilityQuestions[0].options.find(o => o.value === val);
-    return opt?.label ?? 'the Regulated Entity';
-  }
-
-  get currentQuestionText(): string {
-    const q = this.currentQuestion;
-    const translated = q.translationKey
-      ? this.translationService.translate(q.translationKey)
-      : q.question;
-    const text = (translated !== q.translationKey) ? translated : q.question;
-    return text.replace(/<RE Name>/g, this.selectedEntityName).replace(/\{\{reName\}\}/g, this.selectedEntityName);
-  }
-
-  selectEligibilityAnswer(value: string) {
-    const q = this.currentQuestion;
-    this.eligibilityAnswers[q.key] = value;
-    if (q.blockOn && value === q.blockOn) {
-      this.eligibilityBlocked.set(true);
-      this.eligibilityBlockMessage.set(q.blockMessage);
-      this.eligibilityBlockMessageKey.set(q.blockMessageKey || '');
-    } else {
-      this.eligibilityBlocked.set(false);
-      this.eligibilityBlockMessage.set('');
-      this.eligibilityBlockMessageKey.set('');
-    }
-
-    // Auto-closure: "No" reply and complaint filed within 30 days
-    if (q.key === 'receivedReply' && value === 'no') {
-      const filedDate = this.formData['bankComplaintDate'];
-      if (filedDate) {
-        const daysSinceFiling = Math.floor((Date.now() - new Date(filedDate).getTime()) / (1000 * 60 * 60 * 24));
-        if (daysSinceFiling <= 30) {
-          this.eligibilityBlocked.set(true);
-          this.eligibilityBlockMessage.set(
-            'As the Regulated Entity has not yet been given 30 days to respond to your complaint, your complaint cannot be registered at this time. Please wait until 30 days have elapsed from the date of filing your complaint with the Regulated Entity.'
-          );
-          this.eligibilityBlockMessageKey.set('eligibility.block_less_than_30_days');
-          this.nonMaintainableCaseId = 'NM-' + Date.now().toString().slice(-8);
-        }
+  // ── Keyboard navigation ──
+  onStepKeydown(event: KeyboardEvent) {
+    if (event.key === 'Tab' && !event.shiftKey) {
+      const focusable = document.querySelectorAll('.step-content input:not([disabled]), .step-content select:not([disabled]), .step-content textarea:not([disabled])');
+      const last = focusable[focusable.length - 1] as HTMLElement;
+      if (document.activeElement === last) {
+        event.preventDefault();
+        if (this.facade.currentStep() < this.totalSteps) this.facade.nextStep();
       }
     }
   }
 
-  filterEntities() {
-    const term = this.entitySearchText.toLowerCase().trim();
-    if (!term) {
-      this.filteredEntityOptions = this.eligibilityQuestions[0].options.slice(0, 50).map(o => ({
-        ...o,
-        entityType: this.banks.find(b => String(b.id) === o.value)?.entityType
-      }));
-      return;
-    }
-    this.filteredEntityOptions = this.eligibilityQuestions[0].options
-      .filter(o => {
-        const bank = this.banks.find(b => String(b.id) === o.value);
-        return o.label.toLowerCase().includes(term) ||
-               (bank?.entityType?.toLowerCase().includes(term));
-      })
-      .slice(0, 50)
-      .map(o => ({
-        ...o,
-        entityType: this.banks.find(b => String(b.id) === o.value)?.entityType
-      }));
-  }
-
-  selectEntityFromSearch(opt: { label: string; value: string }) {
-    this.selectEligibilityAnswer(opt.value);
-    this.entitySearchText = '';
-    this.entityDropdownOpen = false;
-    this.filteredEntityOptions = [];
-  }
-
-  getSelectedEntityLabel(): string {
-    const val = this.eligibilityAnswers['regulatedEntity'];
-    const opt = this.eligibilityQuestions[0].options.find(o => o.value === val);
-    return opt?.label ?? '';
-  }
-
-  clearEntitySelection() {
-    this.eligibilityAnswers['regulatedEntity'] = '';
-    this.entitySearchText = '';
-    this.eligibilityBlocked.set(false);
-  }
-
-  closeEntityDropdown() {
-    setTimeout(() => this.entityDropdownOpen = false, 200);
-  }
-
-  selectEntityFromDropdown(value: string) {
-    if (value) {
-      this.selectEligibilityAnswer(value);
-    }
-  }
-
-  eligibilityFieldError = '';
-  eligibilityFileError = '';
-  eligibilityRefError = '';
-
-  nextEligibility() {
-    if (this.eligibilityBlocked()) {
-      const q = this.currentQuestion;
-      if (q.nonMaintainable) {
-        this.nonMaintainableCaseId = 'NM-' + Date.now().toString().slice(-8);
-        this.phase.set('non-maintainable');
-      }
-      return;
-    }
-    const q = this.currentQuestion;
-    if (!this.eligibilityAnswers[q.key]) return;
-
-    this.eligibilityFieldError = '';
-    this.eligibilityFileError = '';
-    this.eligibilityRefError = '';
-    this.replyFileError = '';
-    this.replyDateError = '';
-    this.reminderFileError = '';
-    this.reminderDateError = '';
-    if (q.key === 'filedWithRE' && this.eligibilityAnswers['filedWithRE'] === 'yes') {
-      if (!this.formData['bankComplaintDate']) {
-        this.eligibilityFieldError = 'Complaint date with RE is required';
-        return;
-      }
-      if (!this.complaintFileWithRE) {
-        this.eligibilityFileError = 'Please upload a copy of the complaint sent to the Regulated Entity';
-        return;
-      }
-    }
-
-    if (q.key === 'receivedReply' && this.eligibilityAnswers['receivedReply'] === 'yes') {
-      if (!this.formData['replyDate']) {
-        this.replyDateError = 'Date on which reply was received is required';
-        return;
-      }
-      if (!this.replyFile) {
-        this.replyFileError = 'Please upload a copy of the reply received from the Regulated Entity';
-        return;
-      }
-    }
-
-    if (q.key === 'sentReminder' && this.eligibilityAnswers['sentReminder'] === 'yes') {
-      if (!this.formData['reminderDate']) {
-        this.reminderDateError = 'Date on which reminder was sent is required';
-        return;
-      }
-      if (!this.reminderFile) {
-        this.reminderFileError = 'Please upload a copy of the reminder sent to the Regulated Entity';
-        return;
-      }
-    }
-
-    if (q.key === 'employeeOfRE' && this.eligibilityAnswers['employeeOfRE'] === 'yes') {
-      if (!this.eligibilityAnswers['employerRelationship']) {
-        return;
-      }
-    }
-
-    // UST11: Block if "No" reply and <=30 days since filing with RE
-    if (q.key === 'receivedReply' && this.eligibilityAnswers['receivedReply'] === 'no') {
-      const filedDate = this.formData['bankComplaintDate'];
-      if (filedDate) {
-        const daysSinceFiling = Math.floor((Date.now() - new Date(filedDate).getTime()) / (1000 * 60 * 60 * 24));
-        if (daysSinceFiling <= 30) {
-          this.eligibilityBlocked.set(true);
-          this.eligibilityBlockMessage.set(
-            'As the Regulated Entity has not yet been given 30 days to respond to your complaint, your complaint cannot be registered at this time. Please wait until 30 days have elapsed from the date of filing your complaint with the Regulated Entity.'
-          );
-          this.eligibilityBlockMessageKey.set('eligibility.block_less_than_30_days');
-          this.nonMaintainableCaseId = 'NM-' + Date.now().toString().slice(-8);
-          this.phase.set('non-maintainable');
-          return;
-        }
-      }
-    }
-
-
-
-    if (this.eligibilityStep() < this.totalEligibilitySteps) {
-      this.showSimplified.set(false);
-      this.eligibilityStep.update(s => s + 1);
-      this.eligibilityBlocked.set(false);
-      this.eligibilityBlockMessage.set('');
-    } else {
-      this.phase.set('form');
-      this.currentStep.set(1);
-    }
-  }
-
-  prevEligibility() {
-    if (this.eligibilityStep() > 1) {
-      this.showSimplified.set(false);
-      this.eligibilityStep.update(s => s - 1);
-      this.eligibilityBlocked.set(false);
-      this.eligibilityBlockMessage.set('');
-    }
-  }
-
-  // FR-G-010: Download closure letter as PDF
+  // ── PDF: Closure letter ──
   downloadClosureLetter() {
     import('jspdf').then(({ jsPDF }) => {
       const doc = new jsPDF();
@@ -1110,49 +693,67 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
       doc.setFont('helvetica', 'normal');
       doc.text('Integrated Ombudsman Scheme, 2026', pw / 2, y, { align: 'center' });
       y += 12;
-
       doc.setDrawColor(0);
       doc.line(20, y, pw - 20, y);
       y += 10;
-
       doc.setFontSize(14);
       doc.setFont('helvetica', 'bold');
       doc.text('CLOSURE LETTER', pw / 2, y, { align: 'center' });
       y += 12;
-
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
-      doc.text(`Case ID: ${this.nonMaintainableCaseId}`, 20, y);
-      y += 7;
       doc.text(`Date: ${new Date().toLocaleDateString('en-IN')}`, 20, y);
       y += 14;
+      const entityName = this.facade.selectedEntityName || 'the Regulated Entity';
 
-      doc.text('Dear Complainant,', 20, y);
-      y += 10;
+      if (this.facade.isCEPCEntity) {
+        const cepcContent = this.facade.closureLetterPara2();
+        const cepcParas = cepcContent.split('\n');
+        for (const para of cepcParas) {
+          const pLines = doc.splitTextToSize(para, pw - 40);
+          doc.text(pLines, 20, y);
+          y += pLines.length * 6 + 6;
+        }
+        y += 8;
+        doc.text('Regards,', 20, y);
+        y += 7;
+        doc.setFont('helvetica', 'bold');
+        doc.text('RBI CMS Team.', 20, y);
+        y += 14;
+        doc.setFont('helvetica', 'normal');
+        doc.text('This is a system-generated letter and does not require a signature.', 20, y);
+        y += 14;
+      } else {
+        const complainantName = this.facade.complainantDetailsForm.get('firstName')?.value
+          ? `${this.facade.complainantDetailsForm.get('firstName')?.value || ''} ${this.facade.complainantDetailsForm.get('lastName')?.value || ''}`.trim()
+          : 'Complainant';
+        doc.text(`Dear ${complainantName},`, 20, y);
+        y += 10;
 
-      const reason = this.eligibilityBlockMessage();
-      const bodyText = `Your complaint has been closed as Non-Maintainable under the provisions of the Reserve Bank - Integrated Ombudsman Scheme, 2026.`;
-      const lines = doc.splitTextToSize(bodyText, pw - 40);
-      doc.text(lines, 20, y);
-      y += lines.length * 6 + 8;
+        const bodyPara1 = `Please refer to your representation alleging deficiency in service on the part of ${entityName}.`;
+        const lines1 = doc.splitTextToSize(bodyPara1, pw - 40);
+        doc.text(lines1, 20, y);
+        y += lines1.length * 6 + 6;
 
-      doc.setFont('helvetica', 'bold');
-      doc.text('Reason:', 20, y);
-      y += 7;
-      doc.setFont('helvetica', 'normal');
-      const reasonLines = doc.splitTextToSize(reason, pw - 40);
-      doc.text(reasonLines, 20, y);
-      y += reasonLines.length * 6 + 14;
+        const bodyPara2 = `2. ${this.facade.closureLetterPara2()}`;
+        const lines2 = doc.splitTextToSize(bodyPara2, pw - 40);
+        doc.text(lines2, 20, y);
+        y += lines2.length * 6 + 6;
 
-      doc.text('This is a system-generated letter and does not require a signature.', 20, y);
-      y += 14;
+        const bodyPara3 = `3. Accordingly, we regret to inform you that your present grievance against ${entityName} cannot be registered under the Scheme. In case the response was furnished erroneously, you may submit a fresh complaint.`;
+        const lines3 = doc.splitTextToSize(bodyPara3, pw - 40);
+        doc.text(lines3, 20, y);
+        y += lines3.length * 6 + 14;
 
-      doc.setFont('helvetica', 'bold');
-      doc.text('Reserve Bank of India', 20, y);
-      y += 6;
-      doc.setFont('helvetica', 'normal');
-      doc.text('Department of Consumer Education and Protection', 20, y);
-      y += 14;
+        doc.text('Regards,', 20, y);
+        y += 7;
+        doc.setFont('helvetica', 'bold');
+        doc.text('RBI CMS Team.', 20, y);
+        y += 14;
+        doc.setFont('helvetica', 'normal');
+        doc.text('This is a system-generated letter and does not require a signature.', 20, y);
+        y += 14;
+      }
 
       doc.setDrawColor(0, 100, 0);
       doc.setFillColor(240, 255, 240);
@@ -1163,166 +764,11 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
       doc.text('DIGITALLY SIGNED | RBI CMS Digital Certificate Authority', 25, y + 8);
       doc.setTextColor(0);
 
-      doc.save(`Closure_Letter_${this.nonMaintainableCaseId}.pdf`);
+      doc.save('Closure_Letter.pdf');
     });
   }
 
-  // FR-G-017: Form Validation
-  validationErrors: Record<string, string> = {};
-
-  onAmountInput(field: string, value: string) {
-    const raw = value.replace(/,/g, '');
-    if (raw && !/^\d*$/.test(raw)) {
-      this.formData[field] = this.formData[field];
-      return;
-    }
-    this.formData[field] = raw ? this.formatIndianNumber(raw) : '';
-    if (field === 'compensationSought') this.validateCompensationSought();
-    if (field === 'reliefSought') this.validateReliefSought();
-  }
-
-  private formatIndianNumber(value: string): string {
-    const num = value.replace(/^0+(?=\d)/, '');
-    if (num.length <= 3) return num;
-    let result = num.slice(-3);
-    let remaining = num.slice(0, -3);
-    while (remaining.length > 0) {
-      result = remaining.slice(-2) + ',' + result;
-      remaining = remaining.slice(0, -2);
-    }
-    return result;
-  }
-
-  amountInWords(value: string): string {
-    const num = parseInt((value || '').replace(/,/g, ''), 10);
-    if (!num || isNaN(num)) return '';
-    return this.convertToWords(num) + ' rupees';
-  }
-
-  private convertToWords(n: number): string {
-    if (n === 0) return 'zero';
-    const ones = ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine',
-      'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen'];
-    const tens = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety'];
-
-    const convert = (num: number): string => {
-      if (num === 0) return '';
-      if (num < 20) return ones[num];
-      if (num < 100) return tens[Math.floor(num / 10)] + (num % 10 ? '-' + ones[num % 10] : '');
-      if (num < 1000) return ones[Math.floor(num / 100)] + ' hundred' + (num % 100 ? ' ' + convert(num % 100) : '');
-      if (num < 100000) return convert(Math.floor(num / 1000)) + ' thousand' + (num % 1000 ? ' ' + convert(num % 1000) : '');
-      if (num < 10000000) return convert(Math.floor(num / 100000)) + ' lakh' + (num % 100000 ? ' ' + convert(num % 100000) : '');
-      return convert(Math.floor(num / 10000000)) + ' crore' + (num % 10000000 ? ' ' + convert(num % 10000000) : '');
-    };
-
-    const words = convert(n);
-    return words.charAt(0).toUpperCase() + words.slice(1);
-  }
-
-  validateCompensationSought() {
-    const amount = parseFloat((this.formData['compensationSought'] || '0').replace(/,/g, ''));
-    if (amount > 3000000) {
-      this.validationErrors['compensationSought'] = 'Compensation for consequential loss can be awarded only up to ₹30 lakh. Please enter an amount up to ₹30 lakh.';
-    } else {
-      this.validationErrors['compensationSought'] = '';
-    }
-  }
-
-  validateReliefSought() {
-    const amount = parseFloat((this.formData['reliefSought'] || '0').replace(/,/g, ''));
-    if (amount > 300000) {
-      this.validationErrors['reliefSought'] = 'Compensation for expenses, harassment, and mental anguish can be awarded only up to ₹3 lakh. Please enter an amount up to ₹3 lakh.';
-    } else {
-      this.validationErrors['reliefSought'] = '';
-    }
-  }
-
-  validateCurrentStep(): boolean {
-    this.validationErrors = {};
-    const step = this.currentStep();
-
-    if (step === 1) {
-      if (!this.formData['firstName']?.trim()) this.validationErrors['name'] = 'First name is required';
-      if (!this.formData['pincode'] || !/^\d{6}$/.test(this.formData['pincode'])) this.validationErrors['pincode'] = 'Valid 6-digit pincode is required';
-      if (!this.formData['state']) this.validationErrors['state'] = 'Enter valid pincode to auto-fill state';
-      if (!this.formData['address']?.trim()) this.validationErrors['address'] = 'Address is required';
-      if (this.formData['email'] && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.formData['email'])) this.validationErrors['email'] = 'Invalid email format';
-    } else if (step === 2) {
-      if (!this.formData['isCreditCardComplaint']) this.validationErrors['isCreditCardComplaint'] = 'Please select Yes or No';
-      if (this.formData['isCreditCardComplaint'] === 'no') {
-        if (!this.formData['entityState']) this.validationErrors['entityState'] = 'Entity state is required';
-        if (!this.formData['entityDistrict']) this.validationErrors['entityDistrict'] = 'Entity district is required';
-        if (!this.formData['entityBranch']?.trim()) this.validationErrors['entityBranch'] = 'Entity branch is required';
-      }
-    } else if (step === 3) {
-      if (!this.formData['complaintCategory']) this.validationErrors['complaintCategory'] = 'Complaint category is required';
-      if (!this.formData['complaintText']?.trim()) this.validationErrors['complaintText'] = 'Facts of the complaint is required';
-      if (!this.formData['hasAccountWithRE']) this.validationErrors['hasAccountWithRE'] = 'Please select Yes or No';
-      if (this.formData['hasAccountWithRE'] === 'yes') {
-        if (!this.accountTypes.some(a => a.checked)) this.validationErrors['accountType'] = 'Please select at least one account type';
-        if (this.isAccountTypeSelected('savings') && !this.formData['savingsAccountNumber']?.trim()) this.validationErrors['savingsAccountNumber'] = 'Savings account number is required';
-        if (this.isAccountTypeSelected('loan') && !this.formData['loanAccountNumber']?.trim()) this.validationErrors['loanAccountNumber'] = 'Loan account number is required';
-        if (this.isAccountTypeSelected('atm_debit') && !this.formData['atmDebitCardNumber']?.trim()) this.validationErrors['atmDebitCardNumber'] = 'ATM/Debit card number is required';
-        if (this.isAccountTypeSelected('credit_card') && !this.formData['creditCardNumber']?.trim()) this.validationErrors['creditCardNumber'] = 'Credit card number is required';
-      }
-      if (!this.formData['isWalletComplaint']) this.validationErrors['isWalletComplaint'] = 'Please select Yes or No';
-      if (this.formData['isWalletComplaint'] === 'yes') {
-        if (!this.formData['walletName']?.trim()) this.validationErrors['walletName'] = 'Name of wallet is required';
-        if (!this.formData['transactionRefNumber']?.trim()) this.validationErrors['transactionRefNumber'] = 'Transaction/Reference number is required';
-      }
-      if (!this.formData['isBusinessCorrespondent']) this.validationErrors['isBusinessCorrespondent'] = 'Please select Yes or No';
-      // UST66: Consequential loss cap ₹30 lakh
-      const compAmount = parseFloat((this.formData['compensationSought'] || '0').replace(/,/g, ''));
-      if (compAmount > 3000000) {
-        this.validationErrors['compensationSought'] = 'Compensation for consequential loss can be awarded only up to ₹30 lakh. Please enter an amount up to ₹30 lakh.';
-      }
-      // UST67: Expenses/Harassment/Mental Anguish cap ₹3 lakh
-      const reliefAmount = parseFloat((this.formData['reliefSought'] || '0').replace(/,/g, ''));
-      if (reliefAmount > 300000) {
-        this.validationErrors['reliefSought'] = 'Compensation for expenses, harassment, and mental anguish can be awarded only up to ₹3 lakh. Please enter an amount up to ₹3 lakh.';
-      }
-    } else if (step === 4) {
-      if (this.formData['authorizeRepresentative'] === 'yes') {
-        if (!this.formData['repName']?.trim()) this.validationErrors['repName'] = 'Representative name is required';
-      }
-    } else if (step === 5) {
-      if (!this.declarationChecked || !this.declaration2Checked) this.validationErrors['declaration'] = 'You must accept all declarations to proceed';
-    }
-
-    return Object.keys(this.validationErrors).length === 0;
-  }
-
-  // FR-G-009: Tooltips
-  tooltips: Record<string, string> = {
-    name: 'Enter your full legal name as it appears on official documents',
-    email: 'Optional. Used for sending updates about your complaint',
-    complainantCategory: 'Select Individual for personal complaints, Business for company-related issues',
-    state: 'Select the state where you reside',
-    pincode: 'Enter 6-digit postal code of your area',
-    bankComplaintRef: 'Reference/acknowledgement number provided by the bank when you filed the complaint',
-    disputeDate: 'Date when the disputed transaction or issue occurred',
-    complaintCategory: 'Select the broad category that best describes your complaint',
-    subCategory1: 'Select specific nature of your complaint within the chosen category',
-    complaintText: 'Describe your complaint in detail including all relevant facts, dates, and amounts',
-    disputeAmount: 'Total monetary amount involved in the dispute (in Indian Rupees)',
-    compensationSought: 'Amount of compensation you are seeking for the loss/inconvenience',
-    reliefSought: 'Describe what action or remedy you expect from the Ombudsman',
-    repName: 'Full name of the person authorised to represent you',
-  };
-
-  // FR-G-016: Tab/keyboard navigation
-  onStepKeydown(event: KeyboardEvent) {
-    if (event.key === 'Tab' && !event.shiftKey) {
-      const focusable = document.querySelectorAll('.step-content input:not([disabled]), .step-content select:not([disabled]), .step-content textarea:not([disabled])');
-      const last = focusable[focusable.length - 1] as HTMLElement;
-      if (document.activeElement === last) {
-        event.preventDefault();
-        if (this.currentStep() < this.totalSteps) this.nextStep();
-      }
-    }
-  }
-
-  // FR-G-019: Download review form as PDF (captures the rendered Review & Submit section)
+  // ── PDF: Download acknowledgement ──
   async downloadAcknowledgement() {
     const element = this.formCard?.nativeElement;
     if (!element) return;
@@ -1333,25 +779,22 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
     const stepHeader = element.querySelector('.step-header') as HTMLElement;
     const navActions = element.closest('.page-container')?.querySelector('.eligibility-actions') as HTMLElement;
     const watermarkEl = element.querySelector('.review-watermark') as HTMLElement;
+    const editButtons = element.querySelectorAll('.rs-edit-btn') as NodeListOf<HTMLElement>;
     if (stepHeader) stepHeader.style.display = 'none';
     if (navActions) navActions.style.display = 'none';
     if (watermarkEl) watermarkEl.style.display = 'none';
+    editButtons.forEach(btn => btn.style.display = 'none');
 
-    const canvas = await html2canvas(element, {
-      scale: 2,
-      useCORS: true,
-      logging: false,
-      backgroundColor: '#ffffff'
-    });
+    const canvas = await html2canvas(element, { scale: 1.5, useCORS: true, logging: false, backgroundColor: '#ffffff' });
 
     if (stepHeader) stepHeader.style.display = '';
     if (navActions) navActions.style.display = '';
     if (watermarkEl) watermarkEl.style.display = '';
+    editButtons.forEach(btn => btn.style.display = '');
 
-    const imgData = canvas.toDataURL('image/png');
+    const imgData = canvas.toDataURL('image/jpeg', 0.75);
     const imgWidth = canvas.width;
     const imgHeight = canvas.height;
-
     const pdfWidth = 210;
     const pdfHeight = 297;
     const margin = 10;
@@ -1376,558 +819,43 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
         const wmCtx = wmCanvas.getContext('2d')!;
         wmCtx.globalAlpha = 0.35;
         wmCtx.drawImage(watermarkImg, 0, 0);
-        const wmData = wmCanvas.toDataURL('image/png');
-        pdf.addImage(wmData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+        const wmData = wmCanvas.toDataURL('image/jpeg', 0.6);
+        pdf.addImage(wmData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
       }
     };
 
     if (scaledHeight <= pageContentHeight) {
-      doc.addImage(imgData, 'PNG', margin, margin, contentWidth, scaledHeight);
+      doc.addImage(imgData, 'JPEG', margin, margin, contentWidth, scaledHeight);
       addWatermark(doc);
     } else {
       let remainingHeight = imgHeight;
       let sourceY = 0;
       let page = 0;
-
       while (remainingHeight > 0) {
         if (page > 0) doc.addPage();
-
         const sliceHeight = Math.min(remainingHeight, (pageContentHeight / contentWidth) * imgWidth);
-
         const sliceCanvas = document.createElement('canvas');
         sliceCanvas.width = imgWidth;
         sliceCanvas.height = sliceHeight;
         const ctx = sliceCanvas.getContext('2d')!;
         ctx.drawImage(canvas, 0, sourceY, imgWidth, sliceHeight, 0, 0, imgWidth, sliceHeight);
-
-        const sliceData = sliceCanvas.toDataURL('image/png');
+        const sliceData = sliceCanvas.toDataURL('image/jpeg', 0.75);
         const sliceScaledHeight = (sliceHeight * contentWidth) / imgWidth;
-        doc.addImage(sliceData, 'PNG', margin, margin, contentWidth, sliceScaledHeight);
+        doc.addImage(sliceData, 'JPEG', margin, margin, contentWidth, sliceScaledHeight);
         addWatermark(doc);
-
         sourceY += sliceHeight;
         remainingHeight -= sliceHeight;
         page++;
       }
     }
 
-    const fileName = this.referenceNumber ? `Complaint_${this.referenceNumber}.pdf` : 'Draft.pdf';
+    const fileName = this.facade.referenceNumber ? `Complaint_${this.facade.referenceNumber}.pdf` : 'Draft.pdf';
     doc.save(fileName);
   }
 
-  // ══════ MULTI-STEP FORM ══════
-  nextStep() {
-    if (!this.validateCurrentStep()) return;
-    if (this.currentStep() < this.totalSteps) {
-      this.currentStep.update(s => s + 1);
-      if (this.currentStep() > this.highestStepReached()) {
-        this.highestStepReached.set(this.currentStep());
-      }
-      this.saveDraft();
-    }
-  }
-
-  prevStep() {
-    if (this.currentStep() > 1) {
-      this.currentStep.update(s => s - 1);
-    }
-  }
-
-  goToStep(step: number) {
-    if (step <= this.highestStepReached()) {
-      this.currentStep.set(step);
-    }
-  }
-
-  private readonly DRAFT_VERSION = 4;
-
-  // FR-G-008: Save Draft
-  saveDraft() {
-    const attachmentMeta = this.attachmentPreviews.map(f => ({ name: f.name, type: f.type, size: f.size }));
-    const draft = { version: this.DRAFT_VERSION, formData: this.formData, eligibilityAnswers: this.eligibilityAnswers, eligibilityStep: this.eligibilityStep(), currentStep: this.currentStep(), phase: this.phase(), entityName: this.getSelectedBankName(), declarationChecked: this.declarationChecked, declaration2Checked: this.declaration2Checked, attachmentMeta };
-    sessionStorage.setItem('cms_complaint_draft', JSON.stringify(draft));
-    sessionStorage.setItem('cms_draft_saved_at', new Date().toISOString());
-    this.draftSaved.set(true);
-    const now = new Date();
-    this.lastSavedAt.set(now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }));
-    setTimeout(() => this.draftSaved.set(false), 2000);
-
-    this.saveDraftToServer();
-  }
-
-  private saveDraftToServer() {
-    const phone = this.publicAuth.userIdentifier();
-    if (!phone) return;
-    this.complaintService.saveDraft({
-      phone,
-      entityName: this.getSelectedBankName(),
-      formData: this.formData,
-      eligibilityAnswers: this.eligibilityAnswers,
-      currentStep: this.currentStep(),
-      phase: this.phase()
-    }).subscribe({
-      next: (res) => {
-        if (res?.draftId) {
-          sessionStorage.setItem('cms_draft_id', res.draftId);
-        }
-      },
-      error: () => {}
-    });
-  }
-
-  private startAutoSave() {
-    this.autoSaveTimer = setInterval(() => {
-      if (this.phase() === 'form' || this.phase() === 'eligibility') {
-        this.saveDraft();
-      }
-    }, 30000);
-  }
-
-  private stopAutoSave() {
-    if (this.autoSaveTimer) { clearInterval(this.autoSaveTimer); this.autoSaveTimer = null; }
-  }
-
-  loadDraft() {
-    const saved = sessionStorage.getItem('cms_complaint_draft');
-    if (saved) {
-      try {
-        const draft = JSON.parse(saved);
-        if (draft.version !== this.DRAFT_VERSION) {
-          sessionStorage.removeItem('cms_complaint_draft');
-          return;
-        }
-        if (draft.phase === 'form') {
-          if (draft.formData) {
-            const validKeys = Object.keys(this.formData);
-            for (const key of validKeys) {
-              if (draft.formData[key] !== undefined) {
-                this.formData[key] = draft.formData[key];
-              }
-            }
-          }
-          if (draft.eligibilityAnswers) {
-            this.eligibilityAnswers = draft.eligibilityAnswers;
-          }
-          if (draft.declarationChecked !== undefined) {
-            this.declarationChecked = draft.declarationChecked;
-          }
-          if (draft.declaration2Checked !== undefined) {
-            this.declaration2Checked = draft.declaration2Checked;
-          }
-          if (draft.attachmentMeta?.length) {
-            this.attachmentPreviews = draft.attachmentMeta.map((m: any) => ({ name: m.name, type: m.type, size: m.size, url: '' }));
-          }
-          this.phase.set('form');
-          if (draft.currentStep) {
-            this.currentStep.set(draft.currentStep);
-            this.highestStepReached.set(draft.currentStep);
-          }
-          this.initDateDisplays();
-        }
-      } catch (e) {}
-    }
-  }
-
-  clearDraft() {
-    sessionStorage.removeItem('cms_complaint_draft');
-    const draftId = sessionStorage.getItem('cms_draft_id');
-    if (draftId) {
-      this.complaintService.deleteDraft(draftId).subscribe({ error: () => {} });
-      sessionStorage.removeItem('cms_draft_id');
-    }
-  }
-
-  // FR-G-012 + NFR-006: File handling with validation and preview
-  isDragOver = false;
-  isRepDragOver = false;
-  fileUploadError = '';
-
-  onFilesSelected(event: Event) {
-    const input = event.target as HTMLInputElement;
-    if (!input.files) return;
-    this.fileUploadError = '';
-
-    const newFiles = Array.from(input.files);
-    const setResult = validateFileSet(newFiles, this.attachments.length);
-    if (!setResult.valid) {
-      this.fileUploadError = setResult.error!;
-      announceToScreenReader(setResult.error!, 'assertive');
-      input.value = '';
-      return;
-    }
-
-    for (const file of newFiles) {
-      const result = validateFile(file);
-      if (!result.valid) {
-        this.fileUploadError = result.error!;
-        announceToScreenReader(result.error!, 'assertive');
-        continue;
-      }
-      this.attachments.push(file);
-      const url = URL.createObjectURL(file);
-      this.attachmentPreviews.push({ name: file.name, url, type: file.type, size: file.size });
-      this.validationErrors['attachments'] = '';
-    }
-    input.value = '';
-  }
-
-  onFileDrop(event: DragEvent) {
-    event.preventDefault();
-    if (!event.dataTransfer?.files?.length) return;
-    this.fileUploadError = '';
-    const newFiles = Array.from(event.dataTransfer.files);
-    const setResult = validateFileSet(newFiles, this.attachments.length);
-    if (!setResult.valid) {
-      this.fileUploadError = setResult.error!;
-      announceToScreenReader(setResult.error!, 'assertive');
-      return;
-    }
-    for (const file of newFiles) {
-      const result = validateFile(file);
-      if (!result.valid) {
-        this.fileUploadError = result.error!;
-        announceToScreenReader(result.error!, 'assertive');
-        continue;
-      }
-      this.attachments.push(file);
-      const url = URL.createObjectURL(file);
-      this.attachmentPreviews.push({ name: file.name, url, type: file.type, size: file.size });
-      this.validationErrors['attachments'] = '';
-    }
-  }
-
-  removeAttachment(index: number) {
-    if (this.attachmentPreviews[index].url) {
-      URL.revokeObjectURL(this.attachmentPreviews[index].url);
-    }
-    if (this.attachments[index]) {
-      this.attachments.splice(index, 1);
-    }
-    this.attachmentPreviews.splice(index, 1);
-  }
-
-  previewAttachment(index: number) {
-    window.open(this.attachmentPreviews[index].url, '_blank');
-  }
-
-  // FR-G-013: Speech to text
-  toggleRecording() {
-    if (this.isRecording()) {
-      this.stopRecording();
-    } else {
-      this.startRecording();
-    }
-  }
-
-  private startRecording() {
-    const SRConstructor = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SRConstructor) return;
-
-    this.recognition = new SRConstructor();
-    this.recognition.lang = 'en-IN';
-    this.recognition.continuous = true;
-    this.recognition.interimResults = true;
-
-    this.recognition.onresult = (event: any) => {
-      let transcript = '';
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        transcript += event.results[i][0].transcript;
-      }
-      this.formData['complaintText'] = (this.formData['complaintText'] || '') + ' ' + transcript;
-    };
-
-    this.recognition.onerror = () => this.isRecording.set(false);
-    this.recognition.onend = () => this.isRecording.set(false);
-
-    this.recognition.start();
-    this.isRecording.set(true);
-  }
-
-  private stopRecording() {
-    if (this.recognition) {
-      this.recognition.stop();
-      this.recognition = null;
-    }
-    this.isRecording.set(false);
-  }
-
-  // ══════ SUBMIT ══════
-  submit() {
-    if (!this.declarationChecked) return;
-
-    if (!this.duplicateCheckDone) {
-      this.checkDuplicate();
-      return;
-    }
-
-    this.duplicateCheckDone = false;
-    this.performSubmit();
-  }
-
-  private checkDuplicate() {
-    const phone = this.formData['phone'];
-    const email = this.formData['email'];
-    const entityName = this.getSelectedBankName();
-    const category = this.formData['complaintCategory'];
-    const disputeDate = this.formData['disputeDate'];
-
-    this.http.post<any>(`${environment.apiBaseUrl}/api/v1/complaints/check-duplicate`, {
-      phone, email, entityName, category, disputeDate
-    }).subscribe({
-      next: (res) => {
-        if (res?.duplicate) {
-          this.duplicateMessage = res.matchedOn === 'email'
-            ? 'Duplicate complaint detected based on email.'
-            : 'Duplicate complaint detected based on mobile number.';
-          this.showDuplicatePopup.set(true);
-        } else {
-          this.duplicateCheckDone = true;
-          this.submit();
-        }
-      },
-      error: () => {
-        this.duplicateCheckDone = true;
-        this.submit();
-      }
-    });
-  }
-
-  dismissDuplicatePopup() {
-    this.showDuplicatePopup.set(false);
-    this.duplicateMessage = '';
-  }
-
-  proceedDespiteDuplicate() {
-    this.showDuplicatePopup.set(false);
-    this.duplicateCheckDone = true;
-    this.submit();
-  }
-
-  private performSubmit() {
-    this.submitting.set(true);
-
-    const selectedEntityId = this.eligibilityAnswers['regulatedEntity'];
-    const selectedBank = this.banks.find(b => String(b.id) === selectedEntityId);
-
-    const payload = {
-      filingType: 'ONLINE',
-      category: this.formData['complaintCategory'] || 'GENERAL',
-      complainantName: [this.formData['firstName'], this.formData['middleName'], this.formData['lastName']].filter(Boolean).join(' '),
-      complainantEmail: this.formData['email'],
-      complainantPhone: this.formData['phone'],
-      complainantAddress: this.formData['address'],
-      complainantState: this.formData['state'] || undefined,
-      complainantDistrict: this.formData['district'] || undefined,
-      entityName: this.getSelectedBankName(),
-      entityType: selectedBank?.entityType || 'BANK',
-      regulatedEntityId: selectedEntityId ? parseInt(selectedEntityId, 10) : undefined,
-      subject: this.formData['subCategory1'] || this.formData['complaintCategory'] || 'General Complaint',
-      description: this.formData['complaintText'],
-      amountInvolved: this.formData['disputeAmount'] ? parseFloat(this.formData['disputeAmount'].replace(/,/g, '')) : undefined,
-      transactionDate: this.formData['disputeDate'] || undefined,
-      priorReComplaint: this.eligibilityAnswers['filedWithRE'] === 'yes',
-      reComplaintDate: this.formData['bankComplaintDate'] || undefined,
-      reComplaintReference: this.formData['bankComplaintRef'] || undefined,
-      reRepliedAndDissatisfied: this.eligibilityAnswers['receivedReply'] === 'yes',
-    };
-
-    this.complaintService.registerComplaint(payload).subscribe({
-      next: (ack) => {
-        this.referenceNumber = ack.complaintId;
-        this.submitting.set(false);
-        this.phase.set('success');
-        this.clearDraft();
-      },
-      error: (err) => {
-        this.submitting.set(false);
-        this.validationErrors['submit'] = err?.error?.message || 'Failed to submit complaint. Please try again.';
-      }
-    });
-  }
-
-  get today(): string {
-    return new Date().toLocaleDateString('en-IN');
-  }
-
-  get todayISO(): string {
-    return new Date().toISOString().split('T')[0];
-  }
-
-  // CEPC vs RBIO entity type detection
-  get selectedEntityType(): string {
-    const val = this.eligibilityAnswers['regulatedEntity'];
-    const bank = this.banks.find(b => String(b.id) === val);
-    return bank?.department?.toUpperCase() || 'RBIO';
-  }
-
-  get isCEPCEntity(): boolean {
-    return this.selectedEntityType === 'CEPC';
-  }
-
-  isIndividualCategory(): boolean {
-    const cat = this.formData['complainantCategory'];
-    return cat === 'individual' || cat === 'senior_citizen';
-  }
-
-  getCategoryLabel(): string {
-    const map: Record<string, string> = {
-      individual: 'Individual', pwd: 'Person with Disabilities', senior_citizen: 'Senior Citizen',
-      individual_business: 'Individual – Business', proprietorship: 'Proprietorship',
-      partnership: 'Partnership', msme: 'MSME', association: 'Association', trust: 'Trust',
-      limited_company: 'Limited Company', government_department: 'Government Department', psu: 'PSU'
-    };
-    return map[this.formData['complainantCategory']] || this.formData['complainantCategory'] || '—';
-  }
-
-  getGenderLabel(): string {
-    const map: Record<string, string> = {
-      male: 'Male', female: 'Female', transgender: 'Transgender',
-      not_disclosed: 'Do not wish to disclose', other: 'Other'
-    };
-    return map[this.formData['gender']] || this.formData['gender'] || '—';
-  }
-
-  getComplaintCategoryLabel(): string {
-    const cat = this.categories.find(c => c.value === this.formData['complaintCategory']);
-    return cat?.label || this.formData['complaintCategory'] || '—';
-  }
-
-  validateAge() {
-    const ageStr = String(this.formData['age'] || '');
-    const age = Number(ageStr);
-    if (ageStr && isNaN(age)) {
-      this.validationErrors['age'] = 'Age must be a number';
-    } else if (ageStr.length > 3) {
-      this.validationErrors['age'] = 'Age must not exceed 3 digits';
-    } else if (age < 1 || age > 150) {
-      this.validationErrors['age'] = 'Age must be between 1 and 150';
-    } else if (this.formData['complainantCategory'] === 'senior_citizen' && age < 60) {
-      this.validationErrors['age'] = 'Age must be 60 or above for Senior Citizen';
-    } else {
-      delete this.validationErrors['age'];
-    }
-  }
-
-  onBankComplaintDateChange() {
-    this.eligibilityFieldError = '';
-    const bankDate = this.formData['bankComplaintDate'];
-    if (bankDate) {
-      const selected = new Date(bankDate);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      if (selected > today) {
-        this.eligibilityFieldError = 'Date cannot be a future date';
-      }
-    }
-  }
-
-  // Auto-closure for reply date within 30 days
-  showReplyDateAutoClosure = signal(false);
-  replyDateAutoCloseMessage = '';
-
-  replyDateError = '';
-  replyFileError = '';
-  reminderDateError = '';
-  reminderFileError = '';
-
-  onReplyDateChange() {
-    this.replyDateError = '';
-    const replyDate = this.formData['replyDate'];
-    const complaintDate = this.formData['bankComplaintDate'];
-    if (replyDate && complaintDate && new Date(replyDate) < new Date(complaintDate)) {
-      this.replyDateError = 'Reply date cannot be earlier than the complaint filing date';
-    }
-  }
-
-  onReminderDateChange() {
-    this.reminderDateError = '';
-    const reminderDate = this.formData['reminderDate'];
-    const complaintDate = this.formData['bankComplaintDate'];
-    if (reminderDate && complaintDate && new Date(reminderDate) < new Date(complaintDate)) {
-      this.reminderDateError = 'Reminder date cannot be earlier than the complaint filing date';
-    }
-  }
-
-  onEmployerRelationshipAnswer(value: string) {
-    this.eligibilityAnswers['employerRelationship'] = value;
-    if (value === 'yes') {
-      this.eligibilityBlocked.set(true);
-      this.eligibilityBlockMessage.set(
-        'As your complaint involves the employee-employer relationship with the Regulated Entity, it cannot be processed under the Integrated Ombudsman Scheme, 2026.'
-      );
-      this.eligibilityBlockMessageKey.set('eligibility.block_employer_relationship');
-    } else {
-      this.eligibilityBlocked.set(false);
-      this.eligibilityBlockMessage.set('');
-    }
-  }
-
-  onAdvocateSubAnswer(value: string) {
-    this.formData['isComplainantSelf'] = value;
-    if (value === 'no') {
-      this.eligibilityBlocked.set(true);
-      this.eligibilityBlockMessage.set(
-        'As per the Integrated Ombudsman Scheme, a complaint filed through an advocate must be filed by the complainant themselves. Since you are not the complainant, this complaint cannot be processed.'
-      );
-      this.eligibilityBlockMessageKey.set('eligibility.block_advocate_not_complainant');
-      this.nonMaintainableCaseId = 'NM-' + Date.now().toString().slice(-8);
-    } else {
-      this.eligibilityBlocked.set(false);
-      this.eligibilityBlockMessage.set('');
-    }
-  }
-
-  // Get visible eligibility questions based on entity type
-  get visibleEligibilityQuestions(): EligibilityQuestion[] {
-    return this.eligibilityQuestions.filter((q, i) => this.isQuestionVisible(q, i));
-  }
-
-  get radioEligibilityQuestions(): EligibilityQuestion[] {
-    return this.visibleEligibilityQuestions.filter(q => q.type === 'radio');
-  }
-
-  isQuestionVisible(q: EligibilityQuestion, _index: number): boolean {
-    if (q.key === 'regulatedEntity') return true;
-    if (q.key === 'filedWithRE') return true;
-    if (q.key === 'receivedReply') return true;
-
-    if (q.key === 'sentReminder') return true;
-
-    // Questions hidden for CEPC (isSubJudice, alreadySettled, pendingBeforeOmbudsman, settledByOmbudsman)
-    if (this.isCEPCEntity) {
-      if (['isSubJudice', 'alreadySettled', 'pendingBeforeOmbudsman', 'settledByOmbudsman'].includes(q.key)) {
-        return false;
-      }
-    }
-
-    // previouslyFiledWithCEPC shown only for CEPC
-    if (q.key === 'previouslyFiledWithCEPC') {
-      return this.isCEPCEntity;
-    }
-
-    // employeeOfRE shown only for CEPC
-    if (q.key === 'employeeOfRE') return this.isCEPCEntity;
-
-    // employerRelationship rendered inline as sub-question of employeeOfRE
-    if (q.key === 'employerRelationship') return false;
-
-    // staffOfRE shown only for RBIO
-    if (q.key === 'staffOfRE') return this.selectedEntityType === 'RBIO';
-
-    // throughAdvocateEligibility shown only for RBIO
-    if (q.key === 'throughAdvocateEligibility') return this.selectedEntityType === 'RBIO';
-
-    return true;
-  }
-
-  getSelectedBankName(): string {
-    const bankId = this.eligibilityAnswers['regulatedEntity'];
-    const bank = this.banks.find(b => String(b.id) === bankId);
-    return bank?.name || '';
-  }
-
+  // ── Navigation ──
   trackComplaint() {
-    this.router.navigate(['/public/track', this.referenceNumber]);
+    this.router.navigate(['/public/track', this.facade.referenceNumber]);
   }
 
   goHome() {
@@ -1935,6 +863,6 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
   }
 
   withdrawComplaint() {
-    this.router.navigate(['/public/withdraw', this.referenceNumber]);
+    this.router.navigate(['/public/withdraw', this.facade.referenceNumber]);
   }
 }

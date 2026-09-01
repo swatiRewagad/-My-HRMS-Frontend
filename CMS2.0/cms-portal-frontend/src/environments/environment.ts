@@ -14,9 +14,10 @@ export const environment = {
 
   // NFR-006: File upload constraints (EAAP guidelines)
   maxFileSizeMB: 2,
-  maxTotalUploadSizeMB: 25,
+  maxApplicationSizeMB: 18,
+  stepQuotaMB: { eligibility: 6, complaintDetails: 10, repAuth: 2 },
   maxFileCount: 10,
-  allowedFileExtensions: ['.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png', '.xls', '.xlsx'],
+  allowedFileExtensions: ['.pdf', '.doc', '.jpg'],
 
   // NFR-007: Concurrency - connection pool settings
   maxConcurrentRequests: 6,
