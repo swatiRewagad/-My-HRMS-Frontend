@@ -282,9 +282,6 @@ public class ComplaintService {
             if (req.getReComplaintDate() == null) {
                 throw new IllegalArgumentException("RE complaint date is required when prior complaint to RE is indicated");
             }
-            if (req.getReComplaintReference() == null || req.getReComplaintReference().isBlank()) {
-                throw new IllegalArgumentException("RE complaint reference is required when prior complaint to RE is indicated");
-            }
             if (req.getReComplaintDate().isAfter(java.time.LocalDate.now())) {
                 throw new IllegalArgumentException("RE complaint date cannot be in the future");
             }

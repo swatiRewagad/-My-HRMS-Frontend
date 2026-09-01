@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal, computed } from '@angular/core';
+import { Component, OnInit, inject, signal, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
@@ -7,25 +7,20 @@ import { environment } from '../../../../environments/environment';
 import { PublicAuthService } from '../../../services/public-auth.service';
 import { ComplaintService, DraftRecord } from '../../../services/complaint.service';
 import { TranslatePipe } from '../../../pipes/translate.pipe';
-
-interface ComplaintRecord {
-  complaintId: string;
-  entityName: string;
-  complaintDate: string;
-  status: string;
-  comments: string;
-  isDraft?: boolean;
-  draftId?: string;
-}
+import { Table, TableModule } from 'primeng/table';
+import { Select } from 'primeng/select';
+import { ComplaintRecord } from '../models';
 
 @Component({
   selector: 'app-complaint-history',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, TranslatePipe],
+  imports: [CommonModule, FormsModule, RouterLink, TranslatePipe, TableModule, Select],
   templateUrl: './complaint-history.component.html',
   styleUrl: './complaint-history.component.scss'
 })
 export class ComplaintHistoryComponent implements OnInit {
+
+  @ViewChild('dt') dt!: Table;
 
   private http = inject(HttpClient);
   private router = inject(Router);
@@ -36,21 +31,35 @@ export class ComplaintHistoryComponent implements OnInit {
   loading = signal(true);
   private entityMap: Record<string, string> = {};
 
-  filters = { complaintId: '', entityName: '', date: '', status: '', comments: '' };
+  statusOptions = [
+    { label: 'All', value: '' },
+    { label: 'Draft', value: 'DRAFT' },
+    { label: 'Pending', value: 'PENDING' },
+    { label: 'In-Progress', value: 'IN_PROGRESS' },
+    { label: 'Complaint Closed', value: 'CLOSED' },
+    { label: 'Rejected', value: 'REJECTED' }
+  ];
 
-  filteredComplaints = computed(() => {
-    return this.complaints().filter(c => {
-      const f = this.filters;
-      return (!f.complaintId || c.complaintId.toLowerCase().includes(f.complaintId.toLowerCase()))
-        && (!f.entityName || c.entityName.toLowerCase().includes(f.entityName.toLowerCase()))
-        && (!f.status || c.status.toLowerCase().includes(f.status.toLowerCase()))
-        && (!f.comments || c.comments.toLowerCase().includes(f.comments.toLowerCase()));
-    });
-  });
+  selectedStatus = '';
+  dateFrom = '';
 
   ngOnInit() {
     this.loadEntities();
     this.loadComplaints();
+  }
+
+  onStatusFilter(value: string) {
+    this.selectedStatus = value;
+    this.dt.filter(value, 'status', 'equals');
+  }
+
+  onDateFromChange(event: Event) {
+    this.dateFrom = (event.target as HTMLInputElement).value;
+    if (this.dateFrom) {
+      this.dt.filter(this.dateFrom, 'complaintDate', 'dateAfter');
+    } else {
+      this.dt.filter('', 'complaintDate', 'contains');
+    }
   }
 
   private loadEntities() {
@@ -67,23 +76,24 @@ export class ComplaintHistoryComponent implements OnInit {
     const phone = this.authService.userIdentifier();
     const allRecords: ComplaintRecord[] = [];
 
-    // Load local draft from sessionStorage
     const localDraft = this.getLocalDraft();
     if (localDraft) {
       allRecords.push(localDraft);
     }
 
-    // Load submitted complaints from server
     this.http.get<any>(`${environment.apiBaseUrl}/api/v1/complaints?phone=${phone}`).subscribe({
       next: (res) => {
         const data = res?.data || res || [];
         if (Array.isArray(data)) {
           allRecords.push(...data.map((c: any) => ({
             complaintId: c.complaintId || c.id,
-            entityName: c.entityName || c.complainantName || '—',
+            entityName: c.entityName || c.regulatedEntityName || c.complainantName || '—',
             complaintDate: c.createdAt || c.complaintDate || c.registeredDate || '—',
             status: c.status || 'PENDING',
-            comments: c.comments || c.description?.substring(0, 50) || '—'
+            closureClause: c.closureClause || '',
+            closureDate: c.closureDate || c.complaintClosureDate || '',
+            acknowledgementLetterUrl: c.acknowledgementLetterUrl || c.acknowledgementLetter || '',
+            closureLetterUrl: c.closureLetterUrl || c.closureLetter || '',
           })));
         }
         this.finalizeLoad(allRecords);
@@ -93,7 +103,6 @@ export class ComplaintHistoryComponent implements OnInit {
       }
     });
 
-    // Also try server-side drafts (if backend available)
     this.complaintService.getDrafts(phone).subscribe({
       next: (drafts) => {
         const serverDrafts = drafts.map(d => ({
@@ -101,13 +110,11 @@ export class ComplaintHistoryComponent implements OnInit {
           entityName: d.entityName || '—',
           complaintDate: d.updatedAt || '—',
           status: 'DRAFT',
-          comments: `Step ${d.currentStep} — ${d.phase === 'eligibility' ? 'Eligibility Check' : 'Form in progress'}`,
           isDraft: true,
           draftId: d.draftId
         }));
         if (serverDrafts.length) {
           this.complaints.update(list => {
-            // Replace local draft with server draft
             const withoutLocal = list.filter(l => l.draftId !== 'local');
             const merged = [...serverDrafts.filter(sd => !withoutLocal.some(l => l.draftId === sd.draftId)), ...withoutLocal];
             merged.sort((a, b) => {
@@ -137,7 +144,6 @@ export class ComplaintHistoryComponent implements OnInit {
         entityName,
         complaintDate: savedAt,
         status: 'DRAFT',
-        comments: draft.formData?.['complaintText']?.substring(0, 50) || 'Complaint in progress',
         isDraft: true,
         draftId: 'local'
       };
@@ -160,12 +166,24 @@ export class ComplaintHistoryComponent implements OnInit {
     this.loading.set(false);
   }
 
+  trackComplaint(record: ComplaintRecord) {
+    this.router.navigate(['/public/complaint', record.complaintId]);
+  }
+
   viewComplaint(record: ComplaintRecord) {
     if (record.isDraft) {
       this.resumeDraft(record);
     } else {
       this.router.navigate(['/public/complaint', record.complaintId]);
     }
+  }
+
+  fileAppeal(record: ComplaintRecord) {
+    this.router.navigate(['/public/file-appeal', record.complaintId]);
+  }
+
+  shareFeedback(record: ComplaintRecord) {
+    this.router.navigate(['/public/feedback', record.complaintId]);
   }
 
   resumeDraft(record: ComplaintRecord) {
@@ -195,9 +213,9 @@ export class ComplaintHistoryComponent implements OnInit {
 
   getStatusClass(status: string): string {
     switch (status) {
-      case 'CLOSED': case 'NON_MAINTAINABLE': return 'status-closed';
+      case 'CLOSED': case 'NON_MAINTAINABLE': case 'APPROVED': return 'status-closed';
       case 'IN_PROGRESS': return 'status-inprogress';
-      case 'INFORMATION_REQUIRED': return 'status-info-required';
+      case 'INFORMATION_REQUIRED': case 'REJECTED': return 'status-info-required';
       case 'PENDING': return 'status-pending';
       case 'DRAFT': return 'status-draft';
       default: return 'status-pending';
@@ -207,18 +225,22 @@ export class ComplaintHistoryComponent implements OnInit {
   getStatusLabel(status: string): string {
     switch (status) {
       case 'IN_PROGRESS': return 'In-Progress';
-      case 'CLOSED': case 'NON_MAINTAINABLE': return 'Closed';
+      case 'CLOSED': case 'NON_MAINTAINABLE': return 'Complaint Closed';
       case 'INFORMATION_REQUIRED': return 'Information Required';
       case 'PENDING': return 'Pending';
       case 'DRAFT': return 'Draft';
+      case 'APPROVED': return 'Approved';
+      case 'REJECTED': return 'Rejected';
       default: return status.replace(/_/g, ' ');
     }
   }
 
-  formatDate(dateStr: string): string {
+  formatDate(dateStr: string | undefined): string {
     if (!dateStr || dateStr === '—') return '—';
     try {
-      return new Date(dateStr).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-');
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return '—';
+      return d.toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-');
     } catch { return dateStr; }
   }
 }

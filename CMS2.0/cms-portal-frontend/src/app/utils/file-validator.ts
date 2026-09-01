@@ -1,5 +1,6 @@
 /**
  * NFR-006: File type validation and size restrictions per EAAP guidelines.
+ * Multi-stage quota: Eligibility=6MB, Complaint Details=10MB, Rep Auth=2MB (Total App Cap=18MB).
  */
 
 export interface FileValidationResult {
@@ -9,20 +10,29 @@ export interface FileValidationResult {
 
 export const ALLOWED_FILE_TYPES: Record<string, string[]> = {
   document: ['application/pdf', 'application/msword'],
-  image: ['image/jpeg', 'image/png'],
+  image: ['image/jpeg'],
 };
 
-export const ALLOWED_EXTENSIONS = ['.pdf', '.doc', '.jpg', '.jpeg', '.png'];
+export const ALLOWED_EXTENSIONS = ['.pdf', '.jpg', '.doc'];
 
 export const MAX_FILE_SIZE_MB = 2;
-export const MAX_TOTAL_SIZE_MB = 25;
 export const MAX_FILE_COUNT = 10;
+
+export const STEP_QUOTA_MB = {
+  eligibility: 6,
+  complaintDetails: 10,
+  repAuth: 2,
+} as const;
+
+export type StepQuotaKey = keyof typeof STEP_QUOTA_MB;
+
+export const MAX_APPLICATION_SIZE_MB = 18;
 
 export function validateFile(file: File): FileValidationResult {
   const extension = '.' + file.name.split('.').pop()?.toLowerCase();
 
   if (!ALLOWED_EXTENSIONS.includes(extension)) {
-    return { valid: false, error: `File type "${extension}" is not allowed. Allowed: PDF, DOC, JPG, PNG` };
+    return { valid: false, error: `File type "${extension}" is not allowed. Allowed: PDF, DOC, JPG` };
   }
 
   const allMimeTypes = Object.values(ALLOWED_FILE_TYPES).flat();
@@ -42,20 +52,35 @@ export function validateFile(file: File): FileValidationResult {
   return { valid: true };
 }
 
-export function validateFileSet(files: File[], existingCount: number = 0): FileValidationResult {
-  if (existingCount + files.length > MAX_FILE_COUNT) {
-    return { valid: false, error: `Maximum ${MAX_FILE_COUNT} files allowed. You have ${existingCount} already.` };
+export function validateFileSet(files: File[], existingCount: number = 0, maxCount: number = MAX_FILE_COUNT): FileValidationResult {
+  if (existingCount + files.length > maxCount) {
+    return { valid: false, error: `Maximum ${maxCount} files allowed. You have ${existingCount} already.` };
   }
 
-  let totalSize = 0;
   for (const file of files) {
     const result = validateFile(file);
     if (!result.valid) return result;
-    totalSize += file.size;
   }
 
-  if (totalSize / (1024 * 1024) > MAX_TOTAL_SIZE_MB) {
-    return { valid: false, error: `Total upload size exceeds ${MAX_TOTAL_SIZE_MB}MB limit.` };
+  return { valid: true };
+}
+
+export function validateStepQuota(
+  newFiles: File[],
+  existingBytesInStep: number,
+  stepKey: StepQuotaKey
+): FileValidationResult {
+  const quotaBytes = STEP_QUOTA_MB[stepKey] * 1024 * 1024;
+  const newTotalBytes = newFiles.reduce((sum, f) => sum + f.size, 0);
+  const projectedTotal = existingBytesInStep + newTotalBytes;
+
+  if (projectedTotal > quotaBytes) {
+    const usedMB = (existingBytesInStep / (1024 * 1024)).toFixed(1);
+    const limitMB = STEP_QUOTA_MB[stepKey];
+    return {
+      valid: false,
+      error: `Total upload size for this section would exceed ${limitMB}MB limit (${usedMB}MB already used).`,
+    };
   }
 
   return { valid: true };

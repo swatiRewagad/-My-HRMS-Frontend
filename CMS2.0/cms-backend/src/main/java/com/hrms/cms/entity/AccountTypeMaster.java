@@ -15,7 +15,7 @@ public class AccountTypeMaster {
     @Column(nullable = false, length = 100)
     private String label;
 
-    @Column(name = "\"value\"", nullable = false, length = 50, unique = true)
+    @Column(name = "\"VALUE\"", nullable = false, length = 50, unique = true)
     private String value;
 
     private boolean active;
