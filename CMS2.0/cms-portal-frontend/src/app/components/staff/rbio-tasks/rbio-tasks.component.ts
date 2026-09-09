@@ -40,15 +40,23 @@ export class RbioTasksComponent implements OnInit {
   loading = signal(false);
   selectedIds = signal<Set<string>>(new Set());
   visitedIds = signal<Set<string>>(new Set(JSON.parse(localStorage.getItem('rbio_visited_ids') || '[]')));
+  // 'mine' = only complaints assigned to the logged-in officer (default); 'all' = every RBIO
+  // complaint regardless of assignee, matching the All/Assigned-to-me split on /crpc/home.
+  queueScope = signal<'mine' | 'all'>('mine');
 
   // Filters
   filterStatus = signal('');
+  filterSlaBreached = signal(false);
   searchText = signal('');
   filterUnread = signal(false);
   filterWithoutAttachments = signal(false);
   filterSatisfiesRules = signal(false);
-  columnFilters: Record<string, string> = {};
-  columnSearchText = '';
+  columnFilters = signal<Record<string, string>>({});
+  columnSearchText = signal('');
+
+  setColumnFilter(key: string, value: string) {
+    this.columnFilters.update(f => ({ ...f, [key]: value }));
+  }
 
   // Sorting
   sortColumn = '';
@@ -71,14 +79,15 @@ export class RbioTasksComponent implements OnInit {
 
   // Column configuration
   allColumns = [
+    { key: 'complaintId', label: 'Complaint Id', visible: true },
     { key: 'complaintNumber', label: 'Complaint Number', visible: true },
-    { key: 'subject', label: 'Subject', visible: true },
-    { key: 'complainantName', label: 'Complainant Name', visible: true },
-    { key: 'entityName', label: 'Entity Name', visible: true },
-    { key: 'priority', label: 'Priority', visible: true },
-    { key: 'status', label: 'Status', visible: true },
     { key: 'assignedOfficer', label: 'Assigned To', visible: true },
-    { key: 'slaDueDate', label: 'SLA Due Date', visible: true },
+    { key: 'slaDueDate', label: 'SLA Breach In', visible: true },
+    { key: 'complainantName', label: 'Complainant Name', visible: true },
+    { key: 'status', label: 'Status', visible: true },
+    { key: 'entityName', label: 'Entity Name', visible: true },
+    { key: 'subject', label: 'Subject', visible: true },
+    { key: 'priority', label: 'Priority', visible: false },
     { key: 'assignedAt', label: 'Assigned At', visible: false },
     { key: 'department', label: 'Department', visible: false },
     { key: 'assignedRole', label: 'Role', visible: false },
@@ -87,8 +96,9 @@ export class RbioTasksComponent implements OnInit {
   visibleColumns = computed(() => this.allColumns.filter(c => c.visible));
 
   filteredColumns = computed(() => {
-    if (!this.columnSearchText) return this.allColumns;
-    const q = this.columnSearchText.toLowerCase();
+    const text = this.columnSearchText();
+    if (!text) return this.allColumns;
+    const q = text.toLowerCase();
     return this.allColumns.filter(c => c.label.toLowerCase().includes(q));
   });
 
@@ -97,6 +107,7 @@ export class RbioTasksComponent implements OnInit {
     const status = this.filterStatus();
     const search = this.searchText();
     if (status) result = result.filter(t => t.status?.toLowerCase() === status.toLowerCase());
+    if (this.filterSlaBreached()) result = result.filter(t => this.slaDaysRemaining(t.slaDueDate) < 0);
     if (search) {
       const q = search.toLowerCase();
       result = result.filter(t =>
@@ -106,7 +117,7 @@ export class RbioTasksComponent implements OnInit {
         t.subject?.toLowerCase().includes(q)
       );
     }
-    for (const [key, val] of Object.entries(this.columnFilters)) {
+    for (const [key, val] of Object.entries(this.columnFilters())) {
       if (val) {
         const q = val.toLowerCase();
         result = result.filter(t => String((t as any)[key] || '').toLowerCase().includes(q));
@@ -154,13 +165,34 @@ export class RbioTasksComponent implements OnInit {
 
   stats = computed(() => {
     const all = this.tasks();
+    const statusIs = (t: ComplaintTask, s: string) => t.status?.toLowerCase() === s;
     return {
       total: all.length,
-      assigned: all.filter(t => t.status?.toLowerCase() === 'assigned').length,
-      inProgress: all.filter(t => t.status?.toLowerCase() === 'in_progress').length,
-      escalated: all.filter(t => t.status?.toLowerCase() === 'escalated').length,
-      resolved: all.filter(t => t.status?.toLowerCase() === 'resolved').length,
-      rejected: all.filter(t => t.status?.toLowerCase() === 'rejected').length,
+      assigned: all.filter(t => statusIs(t, 'assigned')).length,
+      inProgress: all.filter(t => statusIs(t, 'in_progress')).length,
+      escalated: all.filter(t => statusIs(t, 'escalated')).length,
+      resolved: all.filter(t => statusIs(t, 'resolved')).length,
+      rejected: all.filter(t => statusIs(t, 'rejected')).length,
+      // Same KPI set as the RBIO Home dashboard, same status/SLA conventions.
+      totalPending: all.length,
+      pendingWithMe: all.filter(t => statusIs(t, 'assigned') || statusIs(t, 'in_progress')).length,
+      pendingWithRE: all.filter(t => statusIs(t, 'awaiting_response')).length,
+      pendingMeeting: all.filter(t => statusIs(t, 'meeting_scheduled')).length,
+      slaBreach: all.filter(t => this.slaDaysRemaining(t.slaDueDate) < 0).length,
+      slaBreached0to15: all.filter(t => {
+        const d = this.slaDaysRemaining(t.slaDueDate);
+        return d < 0 && d >= -15;
+      }).length,
+      slaBreached16to30: all.filter(t => {
+        const d = this.slaDaysRemaining(t.slaDueDate);
+        return d < -15 && d >= -30;
+      }).length,
+      // Same tab set as the RBIO Home dashboard.
+      draft: all.filter(t => statusIs(t, 'draft') || statusIs(t, 'new')).length,
+      sentBack: all.filter(t => statusIs(t, 'sent_back')).length,
+      // No backend status exists yet for these two - honestly 0 until that workflow stage exists.
+      responseFromRE: all.filter(t => statusIs(t, 'response_from_re')).length,
+      withdrawn: all.filter(t => statusIs(t, 'withdrawn')).length,
     };
   });
 
@@ -175,7 +207,7 @@ export class RbioTasksComponent implements OnInit {
 
   private loadTasks() {
     this.loading.set(true);
-    const officer = this.auth.currentUser()?.username || '';
+    const officer = this.queueScope() === 'all' ? '' : (this.auth.currentUser()?.username || '');
 
     this.http.get<any>(`${environment.apiBaseUrl}/api/v1/workflow/rbio/all-tasks?officer=${officer}`)
       .subscribe({
@@ -188,6 +220,12 @@ export class RbioTasksComponent implements OnInit {
           this.loading.set(false);
         }
       });
+  }
+
+  setQueueScope(scope: 'mine' | 'all') {
+    if (this.queueScope() === scope) return;
+    this.queueScope.set(scope);
+    this.loadTasks();
   }
 
   sortBy(column: string) {
@@ -230,23 +268,82 @@ export class RbioTasksComponent implements OnInit {
 
   applyAdvancedSearch() {
     const q = this.advSearch;
-    let result = this.tasks();
-    if (q.complaintNumber) result = result.filter(t => t.complaintNumber.includes(q.complaintNumber));
-    if (q.complaintId) result = result.filter(t => t.complaintId.includes(q.complaintId));
-    if (q.statusCode) result = result.filter(t => t.status?.toLowerCase() === q.statusCode.toLowerCase());
-    if (q.complainantName) result = result.filter(t => t.complainantName?.toLowerCase().includes(q.complainantName.toLowerCase()));
-    if (q.entityName) result = result.filter(t => t.entityName?.toLowerCase().includes(q.entityName.toLowerCase()));
-    if (q.subject) result = result.filter(t => t.subject?.toLowerCase().includes(q.subject.toLowerCase()));
-    if (q.priority) result = result.filter(t => t.priority?.toLowerCase() === q.priority.toLowerCase());
-    if (q.assignedOfficer) result = result.filter(t => t.assignedOfficer?.toLowerCase().includes(q.assignedOfficer.toLowerCase()));
-    this.searchText.set(JSON.stringify(q));
+    this.filterStatus.set(q.statusCode || '');
+    const filters: Record<string, string> = {};
+    if (q.complaintNumber) filters['complaintNumber'] = q.complaintNumber;
+    if (q.complaintId) filters['complaintId'] = q.complaintId;
+    if (q.complainantName) filters['complainantName'] = q.complainantName;
+    if (q.entityName) filters['entityName'] = q.entityName;
+    if (q.subject) filters['subject'] = q.subject;
+    if (q.priority) filters['priority'] = q.priority;
+    if (q.assignedOfficer) filters['assignedOfficer'] = q.assignedOfficer;
+    this.columnFilters.set(filters);
+    this.searchText.set('');
     this.showAdvancedSearch.set(false);
+  }
+
+  private slaDaysRemaining(slaDueDate: string): number {
+    if (!slaDueDate) return 999;
+    return Math.ceil((new Date(slaDueDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+  }
+
+  // Same rule as the RBIO Home dashboard: a couple of statuses always get a fixed color
+  // regardless of SLA, everything else is colored by SLA severity.
+  getStatusLabel(status: string): string {
+    const map: Record<string, string> = {
+      'draft': 'Draft', 'new': 'New Complaint', 'assigned': 'New Complaint',
+      'in_progress': 'In Progress', 'sent_back': 'Sent Back to DO', 'sent_to_do': 'Sent Back to DO',
+      'meeting_scheduled': 'Meeting Scheduled', 'awaiting_response': 'Information Required',
+      'pending_office_head_approval': 'Sent to Other Office', 'sent_to_reviewer': 'Sent to Reviewer',
+      'escalated': 'Escalated', 'resolved': 'Resolved', 'rejected': 'Rejected',
+      'closed': 'Closed', 'withdrawn': 'Complaint Withdrawn',
+    };
+    return map[status?.toLowerCase()] || status;
+  }
+
+  getStatusIcon(status: string): string {
+    const map: Record<string, string> = {
+      'draft': 'pi-box', 'new': 'pi-send', 'assigned': 'pi-send',
+      'sent_back': 'pi-reply', 'sent_to_do': 'pi-reply', 'awaiting_response': 'pi-exclamation-circle',
+      'pending_office_head_approval': 'pi-arrow-up-right', 'sent_to_reviewer': 'pi-arrow-up-right',
+      'meeting_scheduled': 'pi-calendar', 'resolved': 'pi-verified',
+      'withdrawn': 'pi-inbox',
+    };
+    return map[status?.toLowerCase()] || 'pi-circle-fill';
+  }
+
+  // Pure SLA-breach severity for the "SLA Breach In" pill itself.
+  getSlaClass(slaDueDate: string): string {
+    const days = this.slaDaysRemaining(slaDueDate);
+    if (days < 0) return 'sla-red';
+    if (days <= 15) return 'sla-yellow';
+    return 'sla-green';
+  }
+
+  // Row left-border/background driven purely by workflow status, not SLA days:
+  // white/none for a fresh complaint, red once communication is sent to RE (awaiting their
+  // response), green once RE responds, yellow when sent back to the user, pink if withdrawn.
+  getRowClass(slaDueDate: string, status?: string): string {
+    const s = status?.toLowerCase();
+    if (s === 'withdrawn') return 'sla-pink';
+    if (s === 'sent_back' || s === 'sent_to_do') return 'sla-yellow';
+    if (s === 'response_from_re') return 'sla-green';
+    if (s === 'awaiting_response') return 'sla-red';
+    return '';
+  }
+
+  getSlaLabel(slaDueDate: string): string {
+    if (!slaDueDate) return '—';
+    const days = this.slaDaysRemaining(slaDueDate);
+    if (Math.abs(days) < 2) return `${Math.round(days * 24)} Hrs`;
+    return `${days} Days`;
   }
 
   getCellValue(task: ComplaintTask, key: string): string {
     const val = (task as any)[key];
     if (val === null || val === undefined) return '—';
-    if (key === 'assignedAt' || key === 'slaDueDate') {
+    if (key === 'slaDueDate') return this.getSlaLabel(val);
+    if (key === 'assignedAt') {
       try { return new Date(val).toLocaleDateString('en-IN'); } catch { return val; }
     }
     return String(val);

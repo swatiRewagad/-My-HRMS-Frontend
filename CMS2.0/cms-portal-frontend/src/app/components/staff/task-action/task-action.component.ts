@@ -18,11 +18,14 @@ import { RbioLegalCaseComponent } from '../../rbio/rbio-legal-case/rbio-legal-ca
 import { RbioForwardRegulatoryComponent } from '../../rbio/rbio-forward-regulatory/rbio-forward-regulatory.component';
 import { RbioActionOverrideHistoryComponent } from '../../rbio/rbio-action-override-history/rbio-action-override-history.component';
 import { highlightEmailText, escapeHtml } from '../../../utils/highlight-text.util';
+import { NotificationBellComponent } from '../../../shared/notification-bell/notification-bell.component';
+import { LanguageSelectComponent } from '../../../shared/language-select/language-select.component';
+import { FontSizeControlsComponent } from '../../../shared/font-size-controls/font-size-controls.component';
 
 @Component({
   selector: 'app-task-action',
   standalone: true,
-  imports: [CommonModule, FormsModule, SpeechButtonComponent, RbioConciliationComponent, RbioAdjudicationComponent, RbioAdvisoryComponent, RbioSlaProgressComponent, RbioDeputyDecisionComponent, RbioAddEntityComponent, RbioLegalCaseComponent, RbioForwardRegulatoryComponent, RbioActionOverrideHistoryComponent],
+  imports: [CommonModule, FormsModule, SpeechButtonComponent, RbioConciliationComponent, RbioAdjudicationComponent, RbioAdvisoryComponent, RbioSlaProgressComponent, RbioDeputyDecisionComponent, RbioAddEntityComponent, RbioLegalCaseComponent, RbioForwardRegulatoryComponent, RbioActionOverrideHistoryComponent, NotificationBellComponent, LanguageSelectComponent, FontSizeControlsComponent],
   templateUrl: './task-action.component.html',
   styleUrls: ['./task-action.component.scss']
 })

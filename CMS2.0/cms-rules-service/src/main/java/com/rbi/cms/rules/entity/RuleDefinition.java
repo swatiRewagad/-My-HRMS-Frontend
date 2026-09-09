@@ -27,7 +27,8 @@ public class RuleDefinition {
     @JoinColumn(name = "category_id", nullable = false)
     private RuleCategory category;
 
-    @Column(name = "drl_content", nullable = false, columnDefinition = "CLOB")
+    @Lob
+    @Column(name = "drl_content", nullable = false)
     private String drlContent;
 
     @Column(name = "salience")

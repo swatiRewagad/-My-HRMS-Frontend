@@ -12,6 +12,9 @@ import { RbioLegalCaseComponent } from '../rbio-legal-case/rbio-legal-case.compo
 import { RbioForwardRegulatoryComponent } from '../rbio-forward-regulatory/rbio-forward-regulatory.component';
 import { RbioActionOverrideHistoryComponent } from '../rbio-action-override-history/rbio-action-override-history.component';
 import { environment } from '../../../../environments/environment';
+import { NotificationBellComponent } from '../../../shared/notification-bell/notification-bell.component';
+import { LanguageSelectComponent } from '../../../shared/language-select/language-select.component';
+import { FontSizeControlsComponent } from '../../../shared/font-size-controls/font-size-controls.component';
 
 interface WorkflowAction {
   id: string;
@@ -53,7 +56,7 @@ interface Comment {
 @Component({
   selector: 'app-rbio-complaint-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule, UploadLinkStatusComponent, RbioDeputyDecisionComponent, RbioAddEntityComponent, RbioLegalCaseComponent, RbioForwardRegulatoryComponent, RbioActionOverrideHistoryComponent],
+  imports: [CommonModule, FormsModule, UploadLinkStatusComponent, RbioDeputyDecisionComponent, RbioAddEntityComponent, RbioLegalCaseComponent, RbioForwardRegulatoryComponent, RbioActionOverrideHistoryComponent, NotificationBellComponent, LanguageSelectComponent, FontSizeControlsComponent],
   templateUrl: './rbio-complaint-detail.component.html',
   styleUrl: './rbio-complaint-detail.component.scss'
 })
@@ -183,7 +186,14 @@ export class RbioComplaintDetailComponent implements OnInit {
     if (!isDO) return false;
     const doViewOnlyStatuses = ['SENT_TO_REVIEWER', 'SENT_TO_DEPUTY_OMBUDSMAN', 'SENT_TO_OMBUDSMAN',
       'REVIEWER_REVIEW', 'DEPUTY_REVIEW', 'OMBUDSMAN_REVIEW', 'CLOSED', 'RESOLVED', 'REJECTED', 'WITHDRAWN'];
-    return doViewOnlyStatuses.includes(status);
+    if (doViewOnlyStatuses.includes(status)) return true;
+    // Role + status alone don't establish that THIS complaint belongs to the current officer —
+    // any RBIO_OFFICER could otherwise open a complaint assigned to a different officer (via
+    // direct URL or a list not scoped to "assigned to me") and get full action buttons. No
+    // assignedTo (not yet claimed) is treated as actionable; an explicit mismatch is not.
+    const currentUsername = this.auth.currentUser()?.username || '';
+    const assignedTo = this.complaint()?.assignedTo;
+    return !!assignedTo && assignedTo !== currentUsername;
   });
 
   availableActions = computed<WorkflowAction[]>(() => {

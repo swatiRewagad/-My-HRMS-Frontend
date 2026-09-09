@@ -8,17 +8,17 @@ spring:
     name: cms-assignment-service
 
   datasource:
-    url: jdbc:oracle:thin:@${DB_HOST:localhost}:${DB_PORT:1521}/${DB_SERVICE:CMSDB}
-    username: ${DB_USER:cms_assignment}
+    url: ${DB_URL:jdbc:oracle:thin:@${DB_HOST:localhost}:${DB_PORT:1521}/${DB_SERVICE:CMSDB}}
+    username: ${DB_USERNAME:cms_assignment}
     password: ${DB_PASSWORD:cms_assignment}
-    driver-class-name: oracle.jdbc.OracleDriver
+    driver-class-name: ${DB_DRIVER:oracle.jdbc.OracleDriver}
 
   jpa:
     hibernate:
       ddl-auto: validate
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.OracleDialect
+        dialect: ${DB_DIALECT:org.hibernate.dialect.OracleDialect}
 
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}

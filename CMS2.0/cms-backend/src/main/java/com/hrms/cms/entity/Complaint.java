@@ -31,6 +31,12 @@ public class Complaint {
     @Column(nullable = false, unique = true, length = 50)
     private String complaintNumber;
 
+    // The 6-digit "Complaint Id" the CRPC draft had before it was approved and converted into
+    // this Complaint record - kept so the same identifier stays visible to RBIO/CEPC officers
+    // instead of them seeing this row's own unrelated internal id.
+    @Column(length = 100)
+    private String originDraftId;
+
     @Column(nullable = false, length = 200)
     private String complainantName;
 
@@ -49,11 +55,47 @@ public class Complaint {
     @Column(length = 100)
     private String complainantDistrict;
 
+    @Column(length = 20)
+    private String complainantPincode;
+
     @Column(name = "BANK_ID")
     private Long bankId;
 
     @Column(length = 300)
     private String entityName;
+
+    // Entity/branch detail fields carried over from the CRPC draft (email_drafts has the full
+    // set; Complaint previously only tracked entityName/entityCode/bankBranch, so this data was
+    // silently dropped on approval and RBIO officers never saw it).
+    @Column(length = 100)
+    private String entityCategory;
+
+    @Column(length = 50)
+    private String entityBsrCode;
+
+    @Column(length = 20)
+    private String entityPincode;
+
+    @Column(length = 100)
+    private String entityState;
+
+    @Column(length = 100)
+    private String entityDistrict;
+
+    @Column(length = 100)
+    private String entityCity;
+
+    @Column(length = 300)
+    private String entityBranchName;
+
+    @Column(length = 100)
+    private String entityBranchCategory;
+
+    @Column(length = 500)
+    private String entityAddress;
+
+    @Column(length = 50)
+    private String cosmosCode;
 
     @Column(length = 300)
     private String bankBranch;

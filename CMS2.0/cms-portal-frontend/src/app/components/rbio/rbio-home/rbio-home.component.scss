@@ -180,7 +180,7 @@
 // ═══ STATS BAR ═══
 .stats-bar {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(4, 1fr) 1.8fr;
   gap: 14px;
   margin-bottom: 20px;
 
@@ -197,16 +197,17 @@
     position: relative;
 
     &:hover { border-color: #3b82f6; box-shadow: 0 2px 8px rgba(59,130,246,0.1); }
+    &.active { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.2); }
 
     .stat-icon {
       width: 40px; height: 40px; border-radius: 50%;
       display: flex; align-items: center; justify-content: center;
       font-size: 16px; flex-shrink: 0;
-      &.blue { background: #eff6ff; color: #3b82f6; }
-      &.yellow { background: #fef3c7; color: #f59e0b; }
-      &.red { background: #fee2e2; color: #ef4444; }
-      &.purple { background: #f3e8ff; color: #9333ea; }
-      &.orange { background: #fff7ed; color: #ea580c; }
+      &.blue { background: #dbeafe; color: #2563eb; }
+      &.yellow { background: #fef08a; color: #d97706; }
+      &.red { background: #fecaca; color: #dc2626; }
+      &.purple { background: #e9d5ff; color: #9333ea; }
+      &.orange { background: #fed7aa; color: #c2410c; }
     }
 
     .stat-content {
@@ -217,10 +218,13 @@
     .stat-label { font-size: 11px; color: #64748b; font-weight: 500; }
 
     &.sla-card {
+      gap: 10px;
       .sla-overdue {
-        position: absolute; top: 8px; right: 12px;
         display: flex; flex-direction: column; align-items: center;
-        .overdue-label { font-size: 9px; color: #94a3b8; }
+        margin-left: 8px;
+        padding-left: 10px;
+        border-left: 1px solid #e2e8f0;
+        .overdue-label { font-size: 9px; color: #94a3b8; white-space: nowrap; }
         .overdue-value { font-size: 14px; font-weight: 700; color: #ef4444; }
       }
     }
@@ -246,14 +250,13 @@
     transition: all 0.2s;
     font-weight: 500;
 
-    &.active { color: #3b82f6; border-bottom-color: #3b82f6; font-weight: 600; }
-    &:hover { color: #3b82f6; }
+    &.active { color: #1e293b; border-bottom-color: #f97316; font-weight: 600; }
+    &:hover { color: #1e293b; }
 
     .tab-count {
-      background: #3b82f6; color: #fff; padding: 2px 8px; border-radius: 10px;
+      background: #6366f1; color: #fff; padding: 2px 8px; border-radius: 10px;
       font-size: 11px; margin-left: 6px; font-weight: 600;
     }
-    &:not(.active) .tab-count { background: #e2e8f0; color: #64748b; }
   }
 }
 
@@ -355,8 +358,18 @@
 
     &:hover { background: #f8fafc; }
     &.selected { background: #eff6ff; }
-    td { font-weight: 600; color: #1e293b; }
-    &.visited td { font-weight: 400; color: #64748b; }
+    td { font-weight: 400; color: #1e293b; }
+    &.visited td { color: #64748b; }
+
+    // Left-border accent by SLA urgency (same red/orange/green tiers as the SLA badge itself,
+    // just also applied to the row so a breached/at-risk complaint is visible at a glance
+    // without having to scan the SLA column).
+    // Soft gradient wash from the left edge, fading out by ~1/5 of the row width -
+    // matches the reference design rather than a plain solid border line.
+    &.row-sla-red { border-left: 4px solid #dc2626; background: linear-gradient(to right, rgba(220,38,38,0.12), rgba(220,38,38,0) 20%); }
+    &.row-sla-orange { border-left: 4px solid #f59e0b; background: linear-gradient(to right, rgba(245,158,11,0.12), rgba(245,158,11,0) 20%); }
+    &.row-sla-yellow { border-left: 4px solid #eab308; background: linear-gradient(to right, rgba(234,179,8,0.15), rgba(234,179,8,0) 20%); }
+    &.row-sla-pink { border-left: 4px solid #ec4899; background: linear-gradient(to right, rgba(236,72,153,0.12), rgba(236,72,153,0) 20%); }
 
     td {
       padding: 12px 14px;
@@ -371,14 +384,15 @@
   .checkbox-col { width: 40px; text-align: center; }
 
   .status-badge {
-    padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;
-    display: inline-block;
-    &[data-status="DRAFT"], &[data-status="NEW"] { background: #fef3c7; color: #92400e; }
+    padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;
+    display: inline-flex; align-items: center; gap: 5px;
+    .pi { font-size: 10px; }
+    &[data-status="DRAFT"], &[data-status="NEW"] { background: #dcfce7; color: #15803d; }
     &[data-status="IN_PROGRESS"] { background: #dbeafe; color: #1e40af; }
-    &[data-status="SENT_BACK"] { background: #fce7f3; color: #9d174d; }
+    &[data-status="SENT_BACK"] { background: #fef0dc; color: #b45309; }
     &[data-status="MEETING_SCHEDULED"] { background: #f3e8ff; color: #6b21a8; }
-    &[data-status="ASSESSMENT_COMPLETE"] { background: #d1fae5; color: #065f46; }
-    &[data-status="AWAITING_RESPONSE"] { background: #e0e7ff; color: #3730a3; }
+    &[data-status="ASSESSMENT_COMPLETE"] { background: #fde2e2; color: #b91c1c; }
+    &[data-status="AWAITING_RESPONSE"] { background: #ede9fe; color: #5b21b6; }
     &[data-status="SENT_TO_REVIEWER"] { background: #dbeafe; color: #1e40af; }
     &[data-status="SENT_TO_DEPUTY_OMBUDSMAN"] { background: #fef3c7; color: #92400e; }
     &[data-status="SENT_TO_OMBUDSMAN"] { background: #fef3c7; color: #92400e; }

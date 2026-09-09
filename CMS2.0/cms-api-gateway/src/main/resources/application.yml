@@ -32,12 +32,10 @@ spring:
             filters:
               - PrefixPath=/cms-ingestion
 
-          - id: ingestion-service
-            uri: http://${INGESTION_HOST:localhost}:8082
+          - id: complaint-service
+            uri: http://${BACKEND_HOST:localhost}:${BACKEND_PORT:8082}
             predicates:
               - Path=/api/v1/complaints/**
-            filters:
-              - PrefixPath=/cms-ingestion
 
           - id: admin-dashboard
             uri: http://${INGESTION_HOST:localhost}:8082

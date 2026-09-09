@@ -16,19 +16,17 @@
       <div class="header-icons">
         <button title="Phone"><i class="pi pi-phone"></i></button>
         <span class="acc-divider">|</span>
-        <button title="Decrease font">A-</button>
-        <button title="Normal font">A</button>
-        <button title="Increase font">A+</button>
+        <app-font-size-controls></app-font-size-controls>
         <span class="acc-divider">|</span>
-        <button title="Language">English <i class="pi pi-chevron-down"></i></button>
+        <app-language-select></app-language-select>
         <span class="acc-divider">|</span>
-        <button title="Notifications"><i class="pi pi-bell"></i></button>
+        <app-notification-bell></app-notification-bell>
       </div>
       <div class="header-divider"></div>
       <span class="user-avatar">{{ (loggedInUser?.name || 'R').charAt(0) }}</span>
       <div class="user-details">
         <span class="user-name">{{ loggedInUser?.name || 'Reviewer' }}</span>
-        <span class="user-role">CRPC Reviewer</span>
+        <span class="user-role">{{ 'officer.role.reviewer' | translate }}</span>
       </div>
       <button class="btn-logout" (click)="logout()"><i class="pi pi-sign-out"></i></button>
     </div>
@@ -40,26 +38,26 @@
     <aside class="sidebar" [class.collapsed]="sidebarCollapsed()">
       <div class="sidebar-item active">
         <i class="pi pi-list"></i>
-        <span>CRPC Complaints</span>
+        <span>{{ 'officer.title.crpc_complaints' | translate }}</span>
       </div>
       <div class="sidebar-collapse" (click)="sidebarCollapsed.set(!sidebarCollapsed())">
         <i class="pi pi-angle-double-left"></i>
-        <span>Collapse</span>
+        <span>{{ 'officer.nav.collapse' | translate }}</span>
       </div>
     </aside>
 
     <!-- Main Content -->
     <main class="content">
       <div class="content-header">
-        <h1>CRPC Complaints</h1>
+        <h1>{{ 'officer.title.crpc_complaints' | translate }}</h1>
         <div class="header-actions">
-          <button class="btn btn-link">Advanced Search</button>
+          <button class="btn btn-link" (click)="showAdvancedSearch.set(true)">{{ 'officer.action.advanced_search' | translate }}</button>
           <select class="queue-select">
-            <option>CRPC Complaints</option>
+            <option>{{ 'officer.title.crpc_complaints' | translate }}</option>
           </select>
           <select class="queue-select" (change)="onAssignmentFilterChange($any($event.target).value)">
-            <option value="ASSIGNED_TO_ME">Complaints Assigned To Me</option>
-            <option value="ALL">All Complaints</option>
+            <option value="ASSIGNED_TO_ME">{{ 'officer.filter.assigned_to_me' | translate }}</option>
+            <option value="ALL">{{ 'officer.filter.all_complaints' | translate }}</option>
           </select>
         </div>
       </div>
@@ -69,58 +67,60 @@
         <div class="stat-card" (click)="filterStatus.set('')">
           <div class="stat-icon blue"><i class="pi pi-inbox"></i></div>
           <div class="stat-content">
-            <span class="stat-label">Total Complaints <i class="pi pi-info-circle"></i></span>
+            <span class="stat-label">{{ 'officer.stat.total_complaints' | translate }} <i class="pi pi-info-circle"></i></span>
             <span class="stat-value">{{ stats().total }}</span>
           </div>
         </div>
         <div class="stat-card" (click)="filterStatus.set('')">
           <div class="stat-icon orange"><i class="pi pi-file"></i></div>
           <div class="stat-content">
-            <span class="stat-label">Direct Complaints <i class="pi pi-info-circle"></i></span>
-            <span class="stat-value">{{ stats().pending }}</span>
+            <span class="stat-label">{{ 'officer.stat.direct_complaints' | translate }} <i class="pi pi-info-circle"></i></span>
+            <span class="stat-value">{{ stats().direct }}</span>
           </div>
         </div>
         <div class="stat-card">
           <div class="stat-icon red"><i class="pi pi-envelope"></i></div>
           <div class="stat-content">
-            <span class="stat-label">Complaints via AGR <i class="pi pi-info-circle"></i></span>
-            <span class="stat-value">{{ stats().approved }}</span>
+            <span class="stat-label">{{ 'officer.stat.via_agr' | translate }} <i class="pi pi-info-circle"></i></span>
+            <span class="stat-value">{{ stats().viaAgr }}</span>
           </div>
         </div>
         <div class="stat-card">
           <div class="stat-icon red"><i class="pi pi-globe"></i></div>
           <div class="stat-content">
-            <span class="stat-label">Complaints via RBI Domain <i class="pi pi-info-circle"></i></span>
-            <span class="stat-value">{{ stats().sentBack }}</span>
+            <span class="stat-label">{{ 'officer.stat.via_rbi_domain' | translate }} <i class="pi pi-info-circle"></i></span>
+            <span class="stat-value">{{ stats().viaRbiDomain }}</span>
           </div>
         </div>
         
         <div class="stat-card">
           <div class="stat-icon gray"><i class="pi pi-copy"></i></div>
           <div class="stat-content">
-            <span class="stat-label">CC/BCC Complaints <i class="pi pi-info-circle"></i></span>
-            <span class="stat-value">{{ stats().closedNm }}</span>
+            <span class="stat-label">{{ 'officer.stat.cc_bcc' | translate }} <i class="pi pi-info-circle"></i></span>
+            <span class="stat-value">{{ stats().ccBcc }}</span>
           </div>
         </div>
       </div>
 
       <!-- Status Tabs -->
       <div class="status-tabs">
-        <button class="tab" [class.active]="filterStatus() === ''" (click)="filterStatus.set('')">All</button>
+        <button class="tab" [class.active]="filterStatus() === ''" (click)="filterStatus.set('')">{{ 'officer.tab.all' | translate }}</button>
         <button class="tab" [class.active]="filterStatus() === 'SENT_TO_REVIEWER'" (click)="filterStatus.set('SENT_TO_REVIEWER')">
-          Draft <span class="tab-count">{{ stats().pending }}</span>
+          {{ 'officer.tab.draft' | translate }} <span class="tab-count">{{ stats().pending }}</span>
         </button>
-        <button class="tab" [class.active]="filterStatus() === 'IN_PROGRESS'" (click)="filterStatus.set('IN_PROGRESS')">In Progress</button>
+        <button class="tab" [class.active]="filterStatus() === 'IN_PROGRESS'" (click)="filterStatus.set('IN_PROGRESS')">
+          {{ 'officer.tab.in_progress' | translate }} <span class="tab-count">{{ stats().inProgress }}</span>
+        </button>
         <button class="tab" [class.active]="filterStatus() === 'SENT_BACK'" (click)="filterStatus.set('SENT_BACK')">
-          Sent Back @if (stats().sentBack > 0) { <span class="tab-count">{{ stats().sentBack }}</span> }
+          {{ 'officer.tab.sent_back' | translate }} @if (stats().sentBack > 0) { <span class="tab-count">{{ stats().sentBack }}</span> }
         </button>
-        <button class="tab" [class.active]="filterStatus() === 'APPROVED'" (click)="filterStatus.set('APPROVED')">Assessment Complete</button>
+        <button class="tab" [class.active]="filterStatus() === 'APPROVED'" (click)="filterStatus.set('APPROVED')">{{ 'officer.tab.assessment_complete' | translate }}</button>
       </div>
 
       <!-- Complaints Table -->
       <div class="table-section">
         <div class="table-header-row">
-          <h3>Complaints</h3>
+          <h3>{{ 'officer.table.complaints' | translate }}</h3>
           <button class="btn btn-icon" title="Settings"><i class="pi pi-cog"></i></button>
         </div>
 
@@ -137,7 +137,7 @@
                 <th class="checkbox-col"><input type="checkbox" /></th>
                 @for (col of visibleColumns(); track col.key) {
                   <th (click)="sortBy(col.key)">
-                    {{ col.label }}
+                    {{ col.labelKey | translate }}
                     @if (sortColumn === col.key) {
                       <i class="pi" [class.pi-sort-amount-up]="sortDirection === 'asc'" [class.pi-sort-amount-down]="sortDirection === 'desc'"></i>
                     }
@@ -148,7 +148,7 @@
                 <th></th>
                 @for (col of visibleColumns(); track col.key) {
                   <th>
-                    <input type="text" class="col-search" placeholder="Search" [(ngModel)]="columnFilters[col.key]" />
+                    <input type="text" class="col-search" [placeholder]="'officer.action.search' | translate" [ngModel]="columnFilters()[col.key]" (ngModelChange)="setColumnFilter(col.key, $event)" />
                   </th>
                 }
               </tr>
@@ -173,7 +173,7 @@
                 </tr>
               } @empty {
                 <tr>
-                  <td [attr.colspan]="visibleColumns().length + 1" class="empty-state">No complaints found.</td>
+                  <td [attr.colspan]="visibleColumns().length + 1" class="empty-state">{{ 'officer.table.no_complaints_found' | translate }}</td>
                 </tr>
               }
             </tbody>
@@ -182,7 +182,7 @@
 
         <!-- Pagination -->
         <div class="pagination">
-          <span class="page-info">Showing {{ paginationStart() }} to {{ paginationEnd() }} of {{ filteredDrafts().length }} entries</span>
+          <span class="page-info">{{ 'officer.pagination.showing_of' | translate:{start: paginationStart()+'', end: paginationEnd()+'', total: filteredDrafts().length+''} }}</span>
           <div class="page-controls">
             <button class="page-btn" (click)="currentPage.set(1)" [disabled]="currentPage() === 1">&laquo;</button>
             <button class="page-btn" (click)="currentPage.set(currentPage() - 1)" [disabled]="currentPage() === 1">&lsaquo;</button>
@@ -202,3 +202,92 @@
     </main>
   </div>
 </div>
+
+<!-- Advanced Search Dialog -->
+@if (showAdvancedSearch()) {
+  <div class="modal-overlay" (click)="showAdvancedSearch.set(false)">
+    <div class="modal-dialog search-dialog" (click)="$event.stopPropagation()">
+      <div class="modal-title">
+        {{ 'officer.action.advanced_search' | translate }}
+        <button class="modal-close" (click)="showAdvancedSearch.set(false)">&times;</button>
+      </div>
+      <div class="search-grid">
+        <div class="search-field">
+          <label>{{ 'officer.search.complaint_number' | translate }}</label>
+          <input type="text" [(ngModel)]="advSearch.complaintNumber" [placeholder]="'officer.search.enter_value' | translate" />
+        </div>
+        <div class="search-field">
+          <label>{{ 'officer.search.complaint_id' | translate }}</label>
+          <input type="text" [(ngModel)]="advSearch.complaintId" [placeholder]="'officer.search.enter_value' | translate" />
+        </div>
+        <div class="search-field">
+          <label>{{ 'officer.search.status_code' | translate }}</label>
+          <select [(ngModel)]="advSearch.statusCode">
+            <option value="">{{ 'officer.search.select_value' | translate }}</option>
+            <option value="DRAFT">{{ 'officer.tab.draft' | translate }}</option>
+            <option value="IN_PROGRESS">{{ 'officer.tab.in_progress' | translate }}</option>
+            <option value="SENT_TO_REVIEWER">Sent to Reviewer</option>
+            <option value="APPROVED">{{ 'officer.tab.assessment_complete' | translate }}</option>
+          </select>
+        </div>
+        <div class="search-field">
+          <label>{{ 'officer.search.complainant_name' | translate }}</label>
+          <input type="text" [(ngModel)]="advSearch.complainantName" [placeholder]="'officer.search.enter_value' | translate" />
+        </div>
+        <div class="search-field">
+          <label>{{ 'officer.search.mobile_number' | translate }}</label>
+          <input type="text" [(ngModel)]="advSearch.mobileNumber" [placeholder]="'officer.search.enter_value' | translate" />
+        </div>
+        <div class="search-field">
+          <label>{{ 'officer.search.email' | translate }}</label>
+          <input type="text" [(ngModel)]="advSearch.email" [placeholder]="'officer.search.enter_value' | translate" />
+        </div>
+        <div class="search-field">
+          <label>From Email Id</label>
+          <input type="text" [(ngModel)]="advSearch.fromEmailId" [placeholder]="'officer.search.enter_value' | translate" />
+        </div>
+        <div class="search-field">
+          <label>{{ 'officer.search.mode_of_receipt' | translate }}</label>
+          <select [(ngModel)]="advSearch.modeOfReceipt">
+            <option value="">{{ 'officer.search.select_value' | translate }}</option>
+            <option value="EMAIL">Email</option>
+            <option value="PHYSICAL_LETTER">Physical Letter</option>
+            <option value="PORTAL">Portal</option>
+            <option value="CPGRAMS">CPGRAMS</option>
+          </select>
+        </div>
+        <div class="search-field">
+          <label>{{ 'officer.search.entity_name' | translate }}</label>
+          <input type="text" [(ngModel)]="advSearch.entityName" [placeholder]="'officer.search.select_value' | translate" />
+        </div>
+        <div class="search-field full-width">
+          <label>{{ 'officer.search.subject' | translate }}</label>
+          <input type="text" [(ngModel)]="advSearch.subject" [placeholder]="'officer.search.enter_value' | translate" />
+        </div>
+        <div class="search-field">
+          <label>NDI Contact Person</label>
+          <input type="text" [(ngModel)]="advSearch.ndiContactPerson" [placeholder]="'officer.search.enter_value' | translate" />
+        </div>
+        <div class="search-field">
+          <label>{{ 'officer.search.category' | translate }}</label>
+          <select [(ngModel)]="advSearch.category">
+            <option value="">{{ 'officer.search.select_value' | translate }}</option>
+            <option value="ATM">ATM</option>
+            <option value="CREDIT_CARD">Credit Card</option>
+            <option value="UPI">UPI</option>
+            <option value="LOAN">Loan</option>
+            <option value="DEPOSIT">Deposit</option>
+            <option value="INSURANCE">Insurance</option>
+            <option value="NEFT_RTGS">NEFT/RTGS</option>
+            <option value="GENERAL">General</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-outline" (click)="clearAdvancedSearch(); showAdvancedSearch.set(false)">{{ 'officer.search.clear' | translate }}</button>
+        <button class="btn btn-outline" (click)="showAdvancedSearch.set(false)">{{ 'officer.action.cancel' | translate }}</button>
+        <button class="btn btn-primary" (click)="applyAdvancedSearch()">{{ 'officer.action.search' | translate }}</button>
+      </div>
+    </div>
+  </div>
+}

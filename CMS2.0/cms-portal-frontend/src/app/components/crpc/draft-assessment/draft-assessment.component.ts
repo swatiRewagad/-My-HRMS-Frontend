@@ -11,6 +11,9 @@ import { environment } from '../../../../environments/environment';
 import { SpeechButtonComponent } from '../../../shared/speech-button/speech-button.component';
 import { AutoClosureComponent } from '../auto-closure/auto-closure.component';
 import { highlightEmailText, escapeHtml } from '../../../utils/highlight-text.util';
+import { NotificationBellComponent } from '../../../shared/notification-bell/notification-bell.component';
+import { LanguageSelectComponent } from '../../../shared/language-select/language-select.component';
+import { FontSizeControlsComponent } from '../../../shared/font-size-controls/font-size-controls.component';
 
 interface MaintainabilityQuestion {
   id: string;
@@ -41,7 +44,7 @@ interface EmailCorrespondence {
 @Component({
   selector: 'app-draft-assessment',
   standalone: true,
-  imports: [CommonModule, FormsModule, SpeechButtonComponent, AutoClosureComponent],
+  imports: [CommonModule, FormsModule, SpeechButtonComponent, AutoClosureComponent, NotificationBellComponent, LanguageSelectComponent, FontSizeControlsComponent],
   templateUrl: './draft-assessment.component.html',
   styleUrl: './draft-assessment.component.scss'
 })
@@ -186,6 +189,7 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
 
   draftId = '';
   draftStatus = 'DRAFT';
+  draftAssignedTo = '';
   deoAssessmentRemarks = '';
   deoAssessmentDecision = '';
   loading = signal(true);
@@ -217,6 +221,8 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
   entityCity = '';
   entityBranchName = '';
   entityBranchCategory = '';
+  pincodePostOffices: { Name: string; BranchType: string }[] = [];
+  showBranchDropdown = false;
   entityAddress = '';
   branchCenterName = '';
   cosmosCode = '';
@@ -435,11 +441,19 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
 
   // ─── Read-Only Mode (view-only for statuses beyond DRAFT/ASSIGNED) ───
   get isReadOnly(): boolean {
-    return this.draftStatus === 'SENT_TO_REVIEWER'
+    if (this.draftStatus === 'SENT_TO_REVIEWER'
       || this.draftStatus === 'APPROVED'
       || this.draftStatus === 'APPROVED_ROUTED'
       || this.draftStatus === 'SENT_TO_OTHER_DEPT_FOR_APPROVAL'
-      || this.draftStatus === 'VERNACULAR_FOR_APPROVAL';
+      || this.draftStatus === 'VERNACULAR_FOR_APPROVAL') {
+      return true;
+    }
+    // Beyond the status checks above (which lock it once it's moved past the DEO stage): a DEO
+    // could otherwise open ANY still-in-progress draft — including ones assigned to a different
+    // DEO — via direct URL or the "All" list and get a fully editable screen. View-only unless
+    // it's actually assigned to the current user.
+    const currentUsername = this.auth.currentUser()?.username || '';
+    return this.draftAssignedTo !== currentUsername;
   }
 
   // ─── Mandatory Field Validation ───
@@ -501,8 +515,14 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     const stored = sessionStorage.getItem('crpc_user');
-    if (stored) {
-      this.loggedInUser = JSON.parse(stored);
+    const parsed = stored ? JSON.parse(stored) : null;
+    const currentUsername = this.auth.currentUser()?.username;
+    // Don't trust a crpc_user cache left over from a different account in this browser tab
+    // (e.g. switching test logins without a full logout) — only reuse it when it matches who's
+    // actually logged in right now, otherwise every "assigned to me" check silently uses the
+    // wrong username.
+    if (parsed && parsed.id === currentUsername) {
+      this.loggedInUser = parsed;
     } else {
       const user = this.auth.currentUser();
       if (user) {
@@ -511,20 +531,18 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
         sessionStorage.setItem('crpc_user', JSON.stringify(this.loggedInUser));
       }
     }
-    this.draftId = this.route.snapshot.paramMap.get('id') || '';
-    this.loadDraft();
-    this.loadStates();
-    this.crpcService.getReviewers().subscribe(data => {
-      if (data.length > 0) {
-        this.reviewers.set(data);
-      } else {
-        this.reviewers.set([
-          { id: 'priya.gupta', displayName: 'Priya Gupta', email: 'priya.gupta@rbi.org.in', isActive: true, isOnLeave: false, maxLoad: 25, currentLoad: 0, region: 'West', sortOrder: 1 },
-          { id: 'reviewer.user', displayName: 'A.K. Singh', email: 'reviewer.user@rbi.org.in', isActive: true, isOnLeave: false, maxLoad: 25, currentLoad: 0, region: 'North', sortOrder: 2 },
-          { id: 'reviewer1', displayName: 'Meera Krishnan', email: 'meera.krishnan@rbi.org.in', isActive: true, isOnLeave: false, maxLoad: 25, currentLoad: 0, region: 'South', sortOrder: 3 },
-        ]);
-      }
+    // Reactive subscription, not a one-time snapshot read — Angular reuses this component
+    // instance across navigations that match the same route (crpc/draft-assessment/:id) with
+    // only :id differing, so a snapshot-only read leaves draftId and flow-state signals like
+    // submitted() stuck from whichever draft was loaded first (see the identical fix in
+    // reviewer-assessment.component.ts for the bug this caused there).
+    this.route.paramMap.subscribe(params => {
+      this.draftId = params.get('id') || '';
+      this.submitted.set(false);
+      this.loadDraft();
     });
+    this.loadStates();
+    this.crpcService.getReviewers().subscribe(data => this.reviewers.set(data));
   }
 
   loadStates() {
@@ -571,6 +589,85 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
         error: () => this.pincodeLoading.set(false)
       });
     }
+  }
+
+  onEntityPincodeInput(value: string) {
+    this.entityPincode = value;
+    this.pincodePostOffices = [];
+    this.showBranchDropdown = false;
+    if (!value || value.length !== 6 || !/^\d{6}$/.test(value)) return;
+
+    // Real IFSC-sourced bank branch data takes priority over the generic postal-circle
+    // lookup below, which only knows post office names, not actual bank branches — same
+    // as reviewer-assessment.component.ts's entity pincode handling.
+    if (this.entityName?.trim()) {
+      this.http.get<any>(`${environment.apiBaseUrl}/api/v1/location/bank-branches`, {
+        params: { entityName: this.entityName.trim(), pincode: value }
+      }).subscribe({
+        next: (res) => {
+          if (res?.matchedBank && res.data?.length) {
+            this.applyRealBankBranches(res.data);
+          } else {
+            this.fallbackToEntityPostOfficeLookup(value);
+          }
+        },
+        error: () => this.fallbackToEntityPostOfficeLookup(value)
+      });
+    } else {
+      this.fallbackToEntityPostOfficeLookup(value);
+    }
+  }
+
+  private applyRealBankBranches(branches: { ifsc: string; branchName: string; city: string; district: string; state: string }[]) {
+    const first = branches[0];
+    if (first.state) {
+      this.entityState = first.state;
+      this.loadDistrictsForState(first.state);
+    }
+    if (first.district) this.entityDistrict = first.district;
+    this.entityCity = first.city || '';
+    this.entityCountry = 'India';
+    if (branches.length === 1) {
+      this.entityBranchName = first.branchName;
+      this.entityBranchCategory = first.ifsc;
+    } else {
+      this.pincodePostOffices = branches.map(b => ({ Name: b.branchName, BranchType: b.ifsc }));
+      this.showBranchDropdown = true;
+      this.entityBranchName = '';
+    }
+  }
+
+  private fallbackToEntityPostOfficeLookup(value: string) {
+    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/location/pincode/${value}`).subscribe({
+      next: (res: any) => {
+        if (res?.[0]?.Status === 'Success' && res[0].PostOffice?.length) {
+          const offices = res[0].PostOffice;
+          const po = offices[0];
+          if (po.State) {
+            this.entityState = po.State;
+            this.loadDistrictsForState(po.State);
+          }
+          if (po.District) this.entityDistrict = po.District;
+          this.entityCity = po.Region || po.Division || '';
+          this.entityCountry = 'India';
+          if (offices.length === 1) {
+            this.entityBranchName = po.Name;
+            this.entityBranchCategory = po.BranchType || '';
+          } else {
+            this.pincodePostOffices = offices.map((o: any) => ({ Name: o.Name, BranchType: o.BranchType || '' }));
+            this.showBranchDropdown = true;
+            this.entityBranchName = '';
+          }
+        }
+      },
+      error: () => {}
+    });
+  }
+
+  selectEntityBranch(branch: { Name: string; BranchType: string }) {
+    this.entityBranchName = branch.Name;
+    this.entityBranchCategory = branch.BranchType;
+    this.showBranchDropdown = false;
   }
 
   onEntitySearchInput(value: string) {
@@ -919,6 +1016,7 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
             this.receivedDate = draft.receivedAt ? draft.receivedAt.split('T')[0] : '';
             this.emailType = 'TO';
             this.draftStatus = draft.status || 'ASSIGNED';
+            this.draftAssignedTo = draft.assignedTo || '';
             this.selectedReviewer = draft.assignedTo || '';
             this.deoAssessmentDecision = draft.deoDecision || '';
             this.deoAssessmentRemarks = draft.deoRemarks || '';

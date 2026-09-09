@@ -108,7 +108,7 @@ public class KeycloakUserService {
     }
 
     public List<Map<String, Object>> getReviewers() {
-        return getUsersByRole("REVIEWER");
+        return getUsersByRole("CRPC_REVIEWER");
     }
 
     public List<Map<String, Object>> getAllCrpcUsers() {

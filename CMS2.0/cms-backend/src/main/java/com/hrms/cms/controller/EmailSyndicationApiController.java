@@ -49,6 +49,7 @@ public class EmailSyndicationApiController {
     private final ComplaintRoutingService routingService;
     private final ComplaintService complaintService;
     private final ComplaintNumberGeneratorService complaintNumberGenerator;
+    private final com.hrms.cms.service.DraftIdGeneratorService draftIdGeneratorService;
     private final ObjectMapper objectMapper;
 
     @Value("${cms.attachments.root-path:C:/cms-attachments}")
@@ -223,8 +224,7 @@ public class EmailSyndicationApiController {
             }
         }
 
-        long nextSeq = draftRepository.count() + 1;
-        String generatedDraftId = "DRF-" + String.format("%06d", nextSeq);
+        String generatedDraftId = draftIdGeneratorService.generateDraftId();
 
         EmailDraft draft = EmailDraft.builder()
                 .draftId(generatedDraftId)
@@ -471,8 +471,7 @@ public class EmailSyndicationApiController {
             @RequestParam(value = "attachment", required = false) MultipartFile attachment) {
 
         try {
-            long nextSeq = draftRepository.count() + 1;
-            String draftId = "DRF-" + String.format("%06d", nextSeq);
+            String draftId = draftIdGeneratorService.generateDraftId();
 
             EmailDraft draft = EmailDraft.builder()
                     .draftId(draftId)
@@ -602,8 +601,7 @@ public class EmailSyndicationApiController {
                 draft.setDraftId(draftId);
             } else {
                 draft = new EmailDraft();
-                long nextSeq = draftRepository.count() + 1;
-                draft.setDraftId("DRF-" + String.format("%06d", nextSeq));
+                draft.setDraftId(draftIdGeneratorService.generateDraftId());
             }
             draft.setStatus((String) request.getOrDefault("status", "DRAFT"));
             draft.setSubject((String) request.get("subject"));
@@ -740,9 +738,16 @@ public class EmailSyndicationApiController {
 
         draftRepository.save(draft);
 
-        // When reviewer approves → create a Complaint record and route to RBIO/CEPC
+        // When reviewer approves (any of the 3 approval decisions the reviewer screen offers -
+        // plain approve, approve+route to another dept, or approve+vernacular) → create a
+        // Complaint record, generate its complaint number, and route to RBIO/CEPC. This used to
+        // check only "APPROVED_ROUTED", so approving via the other two decisions silently never
+        // generated a complaint number at all.
         String newStatus = (String) request.get("status");
-        if ("APPROVED_ROUTED".equals(newStatus)) {
+        boolean isApproval = "APPROVED_ROUTED".equals(newStatus)
+                || "APPROVED_SENT_TO_OTHER_DEPT".equals(newStatus)
+                || "APPROVED_VERNACULAR".equals(newStatus);
+        if (isApproval && (draft.getConvertedComplaintId() == null || draft.getConvertedComplaintId().isBlank())) {
             createComplaintFromDraft(draft);
         }
 
@@ -797,12 +802,17 @@ public class EmailSyndicationApiController {
 
         Complaint complaint = Complaint.builder()
                 .complaintNumber(complaintNumber)
+                .originDraftId(draft.getDraftId())
                 .complainantName(draft.getComplainantName() != null ? draft.getComplainantName() : "Unknown")
                 .complainantEmail(draft.getSenderEmail())
                 .complainantPhone(draft.getComplainantPhone())
                 .complainantAddress(draft.getComplainantAddress())
+                .complainantState(draft.getComplainantState())
+                .complainantDistrict(draft.getComplainantDistrict())
+                .complainantPincode(draft.getComplainantPincode())
                 .subject(draft.getSubject() != null ? draft.getSubject() : "Email Complaint")
                 .description(draft.getBody())
+                .categoryName(draft.getCategory())
                 .status("assigned")
                 .priority("medium")
                 .filingType(draft.getModeOfReceipt() != null ? draft.getModeOfReceipt() : "EMAIL")
@@ -810,6 +820,18 @@ public class EmailSyndicationApiController {
                 .assignedRole(assignedRole)
                 .assignedOfficer(assignedUser)
                 .entityCode(entityName)
+                .entityCategory(draft.getEntityCategory())
+                .entityBsrCode(draft.getEntityBsrCode())
+                .entityPincode(draft.getEntityPincode())
+                .entityState(draft.getEntityState())
+                .entityDistrict(draft.getEntityDistrict())
+                .entityCity(draft.getEntityCity())
+                .entityBranchName(draft.getEntityBranchName())
+                .entityBranchCategory(draft.getEntityBranchCategory())
+                .entityAddress(draft.getEntityAddress())
+                .cosmosCode(draft.getCosmosCode())
+                .schemeVersion(draft.getSchemeVersion())
+                .closureClause(draft.getClosureClause())
                 .workflowStage("INITIAL_REVIEW")
                 .build();
 

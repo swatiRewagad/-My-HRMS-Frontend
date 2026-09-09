@@ -38,13 +38,9 @@
         <h1>RBIO Complaints</h1>
         <div class="header-actions">
           <button class="btn btn-link" (click)="showAdvancedSearch.set(true)">Advanced Search</button>
-          <select class="queue-select" [value]="filterStatus()" (change)="filterStatus.set($any($event.target).value)">
-            <option value="">All Complaints</option>
-            <option value="assigned">Assigned</option>
-            <option value="in_progress">In Progress</option>
-            <option value="escalated">Escalated</option>
-            <option value="resolved">Resolved</option>
-            <option value="rejected">Rejected</option>
+          <select class="queue-scope-select" [value]="queueScope()" (change)="setQueueScope($any($event.target).value)">
+            <option value="mine">Assigned to Me</option>
+            <option value="all">All Complaints</option>
           </select>
           <button class="create-btn" (click)="navigateToCreateComplaint()">
             <i class="pi pi-plus"></i> Create Complaint
@@ -54,47 +50,73 @@
 
       <!-- Stats Cards -->
       <div class="stats-bar">
-        <div class="stat-card" (click)="filterStatus.set('')">
-          <span class="stat-value">{{ stats().total }}</span>
-          <span class="stat-label">Total Complaints</span>
+        <div class="stat-card" (click)="filterStatus.set(''); filterSlaBreached.set(false)">
+          <div class="stat-icon blue"><i class="pi pi-inbox"></i></div>
+          <div class="stat-content">
+            <span class="stat-value">{{ stats().totalPending }}</span>
+            <span class="stat-label">Total Pending Complaints</span>
+          </div>
         </div>
-        <div class="stat-card" (click)="filterStatus.set('assigned')">
-          <span class="stat-value">{{ stats().assigned }}</span>
-          <span class="stat-label">Assigned</span>
+        <div class="stat-card" (click)="filterStatus.set('assigned'); filterSlaBreached.set(false)">
+          <div class="stat-icon yellow"><i class="pi pi-user"></i></div>
+          <div class="stat-content">
+            <span class="stat-value">{{ stats().pendingWithMe }}</span>
+            <span class="stat-label">Pending with Me</span>
+          </div>
         </div>
-        <div class="stat-card" (click)="filterStatus.set('in_progress')">
-          <span class="stat-value">{{ stats().inProgress }}</span>
-          <span class="stat-label">In Progress</span>
+        <div class="stat-card" (click)="filterStatus.set('awaiting_response'); filterSlaBreached.set(false)">
+          <div class="stat-icon orange"><i class="pi pi-building"></i></div>
+          <div class="stat-content">
+            <span class="stat-value">{{ stats().pendingWithRE }}</span>
+            <span class="stat-label">Pending with RE</span>
+          </div>
         </div>
-        <div class="stat-card" (click)="filterStatus.set('escalated')">
-          <span class="stat-value">{{ stats().escalated }}</span>
-          <span class="stat-label">Escalated</span>
+        <div class="stat-card" (click)="filterStatus.set('meeting_scheduled'); filterSlaBreached.set(false)">
+          <div class="stat-icon red"><i class="pi pi-calendar"></i></div>
+          <div class="stat-content">
+            <span class="stat-value">{{ stats().pendingMeeting }}</span>
+            <span class="stat-label">Pending at Meeting Scheduled</span>
+          </div>
         </div>
-        <div class="stat-card" (click)="filterStatus.set('resolved')">
-          <span class="stat-value">{{ stats().resolved }}</span>
-          <span class="stat-label">Resolved</span>
+        <div class="stat-card sla-card" [class.active]="filterSlaBreached()" (click)="filterStatus.set(''); filterSlaBreached.set(true)">
+          <div class="stat-icon red"><i class="pi pi-clock"></i></div>
+          <div class="stat-content">
+            <span class="stat-value">{{ stats().slaBreach }}</span>
+            <span class="stat-label">SLA Breached</span>
+          </div>
+          <div class="sla-overdue">
+            <span class="overdue-label">0-15 Days</span>
+            <span class="overdue-value">{{ stats().slaBreached0to15 }}</span>
+          </div>
+          <div class="sla-overdue">
+            <span class="overdue-label">16-30 Days</span>
+            <span class="overdue-value">{{ stats().slaBreached16to30 }}</span>
+          </div>
         </div>
       </div>
 
       <!-- Status Tabs -->
       <div class="status-tabs">
-        <button class="tab" [class.active]="filterStatus() === ''" (click)="filterStatus.set('')">
+        <button class="tab" [class.active]="filterStatus() === '' && !filterSlaBreached()" (click)="filterStatus.set(''); filterSlaBreached.set(false)">
           All <span class="tab-count">{{ stats().total }}</span>
         </button>
-        <button class="tab" [class.active]="filterStatus() === 'assigned'" (click)="filterStatus.set('assigned')">
-          Assigned <span class="tab-count">{{ stats().assigned }}</span>
+        <button class="tab" [class.active]="filterStatus() === 'draft'" (click)="filterStatus.set('draft'); filterSlaBreached.set(false)">
+          Draft <span class="tab-count">{{ stats().draft }}</span>
         </button>
-        <button class="tab" [class.active]="filterStatus() === 'in_progress'" (click)="filterStatus.set('in_progress')">
-          In Progress <span class="tab-count">{{ stats().inProgress }}</span>
+        <button class="tab" [class.active]="filterStatus() === 'meeting_scheduled'" (click)="filterStatus.set('meeting_scheduled'); filterSlaBreached.set(false)">
+          Meeting Scheduled <span class="tab-count">{{ stats().pendingMeeting }}</span>
         </button>
-        <button class="tab" [class.active]="filterStatus() === 'escalated'" (click)="filterStatus.set('escalated')">
-          Escalated <span class="tab-count">{{ stats().escalated }}</span>
+        <button class="tab" [class.active]="filterStatus() === 'sent_back'" (click)="filterStatus.set('sent_back'); filterSlaBreached.set(false)">
+          Sent Back to Me <span class="tab-count">{{ stats().sentBack }}</span>
         </button>
-        <button class="tab" [class.active]="filterStatus() === 'resolved'" (click)="filterStatus.set('resolved')">
-          Resolved <span class="tab-count">{{ stats().resolved }}</span>
+        <button class="tab" [class.active]="filterStatus() === 'awaiting_response'" (click)="filterStatus.set('awaiting_response'); filterSlaBreached.set(false)">
+          Sent to RE <span class="tab-count">{{ stats().pendingWithRE }}</span>
         </button>
-        <button class="tab" [class.active]="filterStatus() === 'rejected'" (click)="filterStatus.set('rejected')">
-          Rejected <span class="tab-count">{{ stats().rejected }}</span>
+        <button class="tab" [class.active]="filterStatus() === 'response_from_re'" (click)="filterStatus.set('response_from_re'); filterSlaBreached.set(false)">
+          Response from RE <span class="tab-count">{{ stats().responseFromRE }}</span>
+        </button>
+        <button class="tab" [class.active]="filterStatus() === 'withdrawn'" (click)="filterStatus.set('withdrawn'); filterSlaBreached.set(false)">
+          Withdrawn Complaints <span class="tab-count">{{ stats().withdrawn }}</span>
         </button>
       </div>
 
@@ -116,13 +138,6 @@
                 <span class="toggle-slider"></span>
               </span>
               Without Attachments
-            </label>
-            <label class="toggle-filter">
-              <span class="toggle-switch" [class.active]="filterSatisfiesRules()">
-                <input type="checkbox" [checked]="filterSatisfiesRules()" (change)="filterSatisfiesRules.set(!filterSatisfiesRules())" />
-                <span class="toggle-slider"></span>
-              </span>
-              Satisfies Rules
             </label>
             <button class="btn btn-icon" (click)="showColumnConfig.set(true)" title="Column Selection">
               <i class="pi pi-cog"></i>
@@ -161,14 +176,14 @@
                 @for (col of visibleColumns(); track col.key) {
                   <th>
                     <input type="text" class="col-search" placeholder="Search"
-                      [(ngModel)]="columnFilters[col.key]" />
+                      [ngModel]="columnFilters()[col.key]" (ngModelChange)="setColumnFilter(col.key, $event)" />
                   </th>
                 }
               </tr>
             </thead>
             <tbody>
               @for (task of paginatedTasks(); track task.complaintNumber) {
-                <tr [class.selected]="selectedIds().has(task.complaintId)" [class.visited]="visitedIds().has(task.complaintId)" (click)="openTask(task)">
+                <tr [class]="'row-' + getRowClass(task.slaDueDate, task.status)" [class.selected]="selectedIds().has(task.complaintId)" [class.visited]="visitedIds().has(task.complaintId)" (click)="openTask(task)">
                   <td class="checkbox-col" (click)="$event.stopPropagation()">
                     <input type="checkbox"
                       [checked]="selectedIds().has(task.complaintId)"
@@ -177,10 +192,9 @@
                   @for (col of visibleColumns(); track col.key) {
                     <td [class]="'cell-' + col.key">
                       @if (col.key === 'status') {
-                        <span class="status-badge" [attr.data-status]="task.status?.toLowerCase()">{{ task.status }}</span>
-                        @if (task.viewOnly) {
-                          <span class="view-only-badge" title="Forwarded on — you can view but not edit">View Only</span>
-                        }
+                        <span class="status-badge" [attr.data-status]="task.status?.toLowerCase()"><i class="pi" [class]="getStatusIcon(task.status)"></i> {{ getStatusLabel(task.status) }}</span>
+                      } @else if (col.key === 'slaDueDate') {
+                        <span class="sla-badge" [class]="getSlaClass(task.slaDueDate)">{{ getSlaLabel(task.slaDueDate) }}</span>
                       } @else if (col.key === 'priority') {
                         <span class="priority-dot" [attr.data-priority]="task.priority?.toUpperCase()"></span> {{ task.priority }}
                       } @else {
@@ -232,7 +246,7 @@
         <button class="modal-close" (click)="showColumnConfig.set(false)">&times;</button>
       </div>
       <p class="modal-subtitle">Select and manage visible columns</p>
-      <input type="text" class="column-search" placeholder="Search Column Name" [(ngModel)]="columnSearchText" />
+      <input type="text" class="column-search" placeholder="Search Column Name" [ngModel]="columnSearchText()" (ngModelChange)="columnSearchText.set($event)" />
       <div class="column-list">
         @for (col of filteredColumns(); track col.key) {
           <label class="column-option">
@@ -270,11 +284,17 @@
           <label>Status</label>
           <select [(ngModel)]="advSearch.statusCode">
             <option value="">Select a Value</option>
-            <option value="assigned">Assigned</option>
+            <option value="draft">Draft</option>
+            <option value="assigned">New Complaint</option>
             <option value="in_progress">In Progress</option>
-            <option value="escalated">Escalated</option>
+            <option value="sent_to_reviewer">Sent to Reviewer</option>
+            <option value="sent_to_do">Sent Back to DO</option>
+            <option value="meeting_scheduled">Meeting Scheduled</option>
+            <option value="awaiting_response">Information Required</option>
+            <option value="pending_office_head_approval">Sent to Other Office</option>
             <option value="resolved">Resolved</option>
-            <option value="rejected">Rejected</option>
+            <option value="closed">Closed</option>
+            <option value="withdrawn">Complaint Withdrawn</option>
           </select>
         </div>
         <div class="search-field">

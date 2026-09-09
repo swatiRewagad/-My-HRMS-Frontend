@@ -8,10 +8,10 @@ spring:
     name: cms-eligibility-service
 
   datasource:
-    url: jdbc:oracle:thin:@${DB_HOST:localhost}:${DB_PORT:1521}/${DB_SERVICE:CMSDB}
-    username: ${DB_USER:cms_eligibility}
+    url: ${DB_URL:jdbc:oracle:thin:@${DB_HOST:localhost}:${DB_PORT:1521}/${DB_SERVICE:CMSDB}}
+    username: ${DB_USERNAME:cms_eligibility}
     password: ${DB_PASSWORD:cms_eligibility}
-    driver-class-name: oracle.jdbc.OracleDriver
+    driver-class-name: ${DB_DRIVER:oracle.jdbc.OracleDriver}
     hikari:
       maximum-pool-size: 20
       minimum-idle: 5
@@ -23,7 +23,7 @@ spring:
     show-sql: false
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.OracleDialect
+        dialect: ${DB_DIALECT:org.hibernate.dialect.OracleDialect}
         format_sql: true
         default_schema: CMS_ELIGIBILITY
 

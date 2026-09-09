@@ -9,6 +9,9 @@ import { CrpcService } from '../../../services/crpc.service';
 import { ReviewerUser } from '../../../models/crpc.model';
 import { lookupPincode } from '../../../utils/pincode-data';
 import { environment } from '../../../../environments/environment';
+import { NotificationBellComponent } from '../../../shared/notification-bell/notification-bell.component';
+import { LanguageSelectComponent } from '../../../shared/language-select/language-select.component';
+import { FontSizeControlsComponent } from '../../../shared/font-size-controls/font-size-controls.component';
 interface Suggestion {
   id: string;
   field: string;
@@ -25,7 +28,7 @@ interface PastComplaint {
 @Component({
   selector: 'app-physical-letter',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, NotificationBellComponent, LanguageSelectComponent, FontSizeControlsComponent],
   templateUrl: './physical-letter.component.html',
   styleUrl: './physical-letter.component.scss'
 })
@@ -220,13 +223,18 @@ export class PhysicalLetterComponent implements OnInit {
   ngOnInit() {
     this.receivedDate = new Date().toISOString().split('T')[0];
     const stored = sessionStorage.getItem('crpc_user');
-    if (stored) {
-      this.loggedInUser = JSON.parse(stored);
+    const parsed = stored ? JSON.parse(stored) : null;
+    const currentUsername = this.auth.currentUser()?.username;
+    // Don't trust a crpc_user cache left over from a different account in this browser tab —
+    // only reuse it when it matches who's actually logged in right now.
+    if (parsed && parsed.id === currentUsername) {
+      this.loggedInUser = parsed;
     } else {
       const user = this.auth.currentUser();
       if (user) {
         const role = this.auth.getRoles().find(r => ['REVIEWER', 'CRPC_HEAD', 'DEO'].includes(r)) || 'DEO';
         this.loggedInUser = { id: user.username, name: `${user.firstName} ${user.lastName}`.trim() || user.username, role };
+        sessionStorage.setItem('crpc_user', JSON.stringify(this.loggedInUser));
       }
     }
     this.loadPastComplaints();
@@ -244,13 +252,7 @@ export class PhysicalLetterComponent implements OnInit {
 
   private loadReviewers() {
     this.crpcService.getReviewers().subscribe(data => {
-      if (data.length > 0) {
-        this.reviewers.set(data);
-      } else {
-        this.reviewers.set([
-          { id: 'reviewer.user', displayName: 'A.K. Singh', email: '', isActive: true, isOnLeave: false, maxLoad: 25, currentLoad: 0, region: '', sortOrder: 1 },
-        ]);
-      }
+      this.reviewers.set(data);
       const auto = this.reviewers().find(r => r.isActive && !r.isOnLeave);
       if (auto) {
         this.selectedReviewerId = auto.id;
@@ -613,8 +615,10 @@ export class PhysicalLetterComponent implements OnInit {
     if (!this.validateForm()) return;
     this.submitting.set(true);
 
-    const loggedInUser = JSON.parse(sessionStorage.getItem('crpc_user') || '{}');
-    const username = loggedInUser?.id || this.auth.currentUser()?.username || '';
+    // Prefer the live Keycloak session over the cached loggedInUser — a stale crpc_user cache
+    // from a different account in this browser tab would otherwise attribute this submission to
+    // the wrong person.
+    const username = this.auth.currentUser()?.username || this.loggedInUser?.id || '';
 
     const formData = new FormData();
     this.appendAllFieldsToFormData(formData, 'DRAFT', username);
@@ -746,8 +750,10 @@ export class PhysicalLetterComponent implements OnInit {
   }
 
   private appendAllFieldsToFormData(formData: FormData, status: string, assignedTo: string) {
-    const loggedInUser = JSON.parse(sessionStorage.getItem('crpc_user') || '{}');
-    const username = loggedInUser?.id || this.auth.currentUser()?.username || '';
+    // Prefer the live Keycloak session over the cached loggedInUser — a stale crpc_user cache
+    // from a different account in this browser tab would otherwise attribute this submission to
+    // the wrong person.
+    const username = this.auth.currentUser()?.username || this.loggedInUser?.id || '';
 
     // Basic complainant
     formData.append('complainantName', this.complainantName);

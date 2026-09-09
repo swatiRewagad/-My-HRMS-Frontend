@@ -18,13 +18,11 @@
       <div class="accessibility-controls">
         <button class="acc-btn" title="Phone"><i class="pi pi-phone"></i></button>
         <span class="acc-divider">|</span>
-        <button class="acc-btn" title="Decrease font">A-</button>
-        <button class="acc-btn acc-btn-mid" title="Normal font">A</button>
-        <button class="acc-btn" title="Increase font">A+</button>
+        <app-font-size-controls></app-font-size-controls>
         <span class="acc-divider">|</span>
-        <button class="acc-btn lang-btn" title="Language">English <i class="pi pi-chevron-down"></i></button>
+        <app-language-select></app-language-select>
         <span class="acc-divider">|</span>
-        <button class="acc-btn" title="Notifications"><i class="pi pi-bell"></i></button>
+        <app-notification-bell></app-notification-bell>
       </div>
       <div class="header-divider"></div>
       <span class="user-avatar">{{ (loggedInUser?.name || 'U').charAt(0) }}</span>
@@ -609,7 +607,7 @@
                   <div class="field-item">
                     <label>Pincode</label>
                     @if (editMode()) {
-                      <input type="text" [(ngModel)]="entityPincode" placeholder="Enter Country name" maxlength="6"
+                      <input type="text" [ngModel]="entityPincode" (ngModelChange)="onEntityPincodeInput($event)" placeholder="Enter pincode" maxlength="6"
                              (focus)="onFieldFocus(entityPincode)" (blur)="onFieldBlur()" />
                     } @else {
                       <span class="field-value focusable-field" tabindex="0"
@@ -670,8 +668,17 @@
                     <label>Entity Branch Name</label>
                     @if (editMode()) {
                       <div class="search-input-wrapper">
-                        <input type="text" [(ngModel)]="entityBranchName" placeholder="Select entity branch name"
-                               (focus)="onFieldFocus(entityBranchName)" (blur)="onFieldBlur()" />
+                        @if (showBranchDropdown && pincodePostOffices.length > 1) {
+                          <select (change)="selectEntityBranch(pincodePostOffices[$any($event.target).selectedIndex - 1])">
+                            <option value="">-- Select Branch --</option>
+                            @for (branch of pincodePostOffices; track branch.Name) {
+                              <option [value]="branch.Name">{{ branch.Name }} ({{ branch.BranchType }})</option>
+                            }
+                          </select>
+                        } @else {
+                          <input type="text" [(ngModel)]="entityBranchName" placeholder="Select entity branch name"
+                                 (focus)="onFieldFocus(entityBranchName)" (blur)="onFieldBlur()" />
+                        }
                       </div>
                     } @else {
                       <span class="field-value focusable-field" tabindex="0"

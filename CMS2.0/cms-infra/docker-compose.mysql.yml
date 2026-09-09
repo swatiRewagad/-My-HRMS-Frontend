@@ -98,8 +98,18 @@ services:
       CMS_ATTACHMENTS_PATH: /cms-attachments
       JAVA_OPTS: "-Xms512m -Xmx1g"
       CMS_CORS_ORIGINS: "http://localhost:4200,http://localhost:4201,http://localhost:4202,http://localhost:4300,http://localhost"
-      KAFKA_BOOTSTRAP: cms-kafka:9092
+      KAFKA_BOOTSTRAP_SERVERS: cms-kafka:9092
       GROQ_API_KEY: "${GROQ_API_KEY:-}"
+      # application-dev-local.yml (the active profile here) hardcodes keycloak.admin.* as
+      # literals (server-url http://localhost:9090, realm "cms") with no placeholder to hook
+      # into, unlike application.yml's KEYCLOAK_URL/KEYCLOAK_REALM placeholders — those env vars
+      # do nothing while dev-local is active. Override via Spring's property-path env var names
+      # instead, which win over any YAML source regardless of profile.
+      KEYCLOAK_ADMIN_SERVER_URL: http://cms-keycloak:8180
+      KEYCLOAK_ADMIN_REALM: rbi-cms
+      KEYCLOAK_ADMIN_CLIENT_ID: admin-cli
+      KEYCLOAK_ADMIN_USERNAME: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
     # Command-line args always win regardless of profile — forces OCR onto your external
     # provider (cms.ocr.external-url has no env-var placeholder in either yml to bind to).
     command:
@@ -116,48 +126,6 @@ services:
         condition: service_healthy
     ports:
       - "8082:8082"
-    deploy:
-      resources:
-        limits:
-          memory: 1536M
-          cpus: '2.0'
-        reservations:
-          memory: 768M
-          cpus: '0.5'
-    networks:
-      - cms-network
-
-  # ── Backend Instance 2 ──
-  cms-backend-2:
-    build:
-      context: ../cms-backend
-      dockerfile: Dockerfile
-    container_name: cms-backend-2
-    restart: unless-stopped
-    environment:
-      SPRING_PROFILES_ACTIVE: dev-local
-      SPRING_DATASOURCE_URL: "jdbc:mysql://cms-mysql:3306/cms_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&rewriteBatchedStatements=true&characterEncoding=UTF-8&useUnicode=true"
-      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:-cms_user}
-      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD:-cms_pass}
-      REDIS_HOST: cms-redis
-      REDIS_PORT: 6379
-      CMS_ATTACHMENTS_PATH: /cms-attachments
-      JAVA_OPTS: "-Xms512m -Xmx1g"
-      CMS_CORS_ORIGINS: "http://localhost:4200,http://localhost:4201,http://localhost:4202,http://localhost:4300,http://localhost"
-      KAFKA_BOOTSTRAP: cms-kafka:9092
-      GROQ_API_KEY: "${GROQ_API_KEY:-}"
-    command:
-      - "--cms.ocr.chain=external"
-      - "--cms.ocr.external-url=${OCR_EXTERNAL_URL:-http://cms-mock-ocr-api:8000}"
-    volumes:
-      - cms-attachments:/cms-attachments
-    depends_on:
-      cms-mysql:
-        condition: service_healthy
-      cms-redis:
-        condition: service_healthy
-      cms-kafka:
-        condition: service_healthy
     deploy:
       resources:
         limits:
@@ -192,7 +160,7 @@ services:
     environment:
       SPRING_PROFILES_ACTIVE: docker
       KEYCLOAK_ISSUER_URI: http://cms-keycloak:8180/realms/cms
-      KAFKA_BOOTSTRAP: cms-kafka:9092
+      KAFKA_BOOTSTRAP_SERVERS: cms-kafka:9092
       SERVER_PORT: 8080
     ports:
       - "8080:8080"
@@ -213,13 +181,21 @@ services:
       dockerfile: cms-infra/Dockerfile.microservice
       args:
         SERVICE_NAME: cms-eligibility-service
+        CONTEXT_PATH: /cms-eligibility
     container_name: cms-eligibility-service
     restart: unless-stopped
     environment:
       SPRING_PROFILES_ACTIVE: docker
-      KAFKA_BOOTSTRAP: cms-kafka:9092
+      DB_URL: "jdbc:mysql://cms-mysql:3306/cms_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC"
+      DB_USERNAME: ${MYSQL_USER:-cms_user}
+      DB_PASSWORD: ${MYSQL_PASSWORD:-cms_pass}
+      DB_DRIVER: com.mysql.cj.jdbc.Driver
+      DB_DIALECT: org.hibernate.dialect.MySQLDialect
+      KAFKA_BOOTSTRAP_SERVERS: cms-kafka:9092
       SERVER_PORT: 8081
     depends_on:
+      cms-mysql:
+        condition: service_healthy
       cms-kafka:
         condition: service_healthy
     deploy:
@@ -236,6 +212,7 @@ services:
       dockerfile: cms-infra/Dockerfile.microservice
       args:
         SERVICE_NAME: cms-ingestion-service
+        CONTEXT_PATH: /cms-ingestion
     container_name: cms-ingestion-service
     restart: unless-stopped
     environment:
@@ -243,7 +220,9 @@ services:
       DB_URL: "jdbc:mysql://cms-mysql:3306/cms_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC"
       DB_USERNAME: ${MYSQL_USER:-cms_user}
       DB_PASSWORD: ${MYSQL_PASSWORD:-cms_pass}
-      KAFKA_BOOTSTRAP: cms-kafka:9092
+      DB_DRIVER: com.mysql.cj.jdbc.Driver
+      DB_DIALECT: org.hibernate.dialect.MySQLDialect
+      KAFKA_BOOTSTRAP_SERVERS: cms-kafka:9092
       SERVER_PORT: 8082
     depends_on:
       cms-mysql:
@@ -264,6 +243,7 @@ services:
       dockerfile: cms-infra/Dockerfile.microservice
       args:
         SERVICE_NAME: cms-workflow-service
+        CONTEXT_PATH: /cms-workflow
     container_name: cms-workflow-service
     restart: unless-stopped
     environment:
@@ -271,7 +251,10 @@ services:
       DB_URL: "jdbc:mysql://cms-mysql:3306/cms_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC"
       DB_USERNAME: ${MYSQL_USER:-cms_user}
       DB_PASSWORD: ${MYSQL_PASSWORD:-cms_pass}
-      KAFKA_BOOTSTRAP: cms-kafka:9092
+      DB_DRIVER: com.mysql.cj.jdbc.Driver
+      DB_DIALECT: org.hibernate.dialect.MySQLDialect
+      KOGITO_DB_DIALECT: mysql
+      KAFKA_BOOTSTRAP_SERVERS: cms-kafka:9092
       SERVER_PORT: 8083
     depends_on:
       cms-mysql:
@@ -292,6 +275,7 @@ services:
       dockerfile: cms-infra/Dockerfile.microservice
       args:
         SERVICE_NAME: cms-rules-service
+        CONTEXT_PATH: /cms-rules
     container_name: cms-rules-service
     restart: unless-stopped
     environment:
@@ -299,7 +283,9 @@ services:
       DB_URL: "jdbc:mysql://cms-mysql:3306/cms_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC"
       DB_USERNAME: ${MYSQL_USER:-cms_user}
       DB_PASSWORD: ${MYSQL_PASSWORD:-cms_pass}
-      KAFKA_BOOTSTRAP: cms-kafka:9092
+      DB_DRIVER: com.mysql.cj.jdbc.Driver
+      DB_DIALECT: org.hibernate.dialect.MySQLDialect
+      KAFKA_BOOTSTRAP_SERVERS: cms-kafka:9092
       SERVER_PORT: 8084
     depends_on:
       cms-mysql:
@@ -320,6 +306,7 @@ services:
       dockerfile: cms-infra/Dockerfile.microservice
       args:
         SERVICE_NAME: cms-assignment-service
+        CONTEXT_PATH: /cms-assignment
     container_name: cms-assignment-service
     restart: unless-stopped
     environment:
@@ -327,7 +314,9 @@ services:
       DB_URL: "jdbc:mysql://cms-mysql:3306/cms_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC"
       DB_USERNAME: ${MYSQL_USER:-cms_user}
       DB_PASSWORD: ${MYSQL_PASSWORD:-cms_pass}
-      KAFKA_BOOTSTRAP: cms-kafka:9092
+      DB_DRIVER: com.mysql.cj.jdbc.Driver
+      DB_DIALECT: org.hibernate.dialect.MySQLDialect
+      KAFKA_BOOTSTRAP_SERVERS: cms-kafka:9092
       SERVER_PORT: 8085
     depends_on:
       cms-mysql:
@@ -348,6 +337,7 @@ services:
       dockerfile: cms-infra/Dockerfile.microservice
       args:
         SERVICE_NAME: cms-sla-monitor-service
+        CONTEXT_PATH: /cms-sla
     container_name: cms-sla-monitor-service
     restart: unless-stopped
     environment:
@@ -355,7 +345,9 @@ services:
       DB_URL: "jdbc:mysql://cms-mysql:3306/cms_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC"
       DB_USERNAME: ${MYSQL_USER:-cms_user}
       DB_PASSWORD: ${MYSQL_PASSWORD:-cms_pass}
-      KAFKA_BOOTSTRAP: cms-kafka:9092
+      DB_DRIVER: com.mysql.cj.jdbc.Driver
+      DB_DIALECT: org.hibernate.dialect.MySQLDialect
+      KAFKA_BOOTSTRAP_SERVERS: cms-kafka:9092
       SERVER_PORT: 8086
     depends_on:
       cms-mysql:
@@ -376,11 +368,12 @@ services:
       dockerfile: cms-infra/Dockerfile.microservice
       args:
         SERVICE_NAME: cms-notification-service
+        CONTEXT_PATH: /cms-notification
     container_name: cms-notification-service
     restart: unless-stopped
     environment:
       SPRING_PROFILES_ACTIVE: docker
-      KAFKA_BOOTSTRAP: cms-kafka:9092
+      KAFKA_BOOTSTRAP_SERVERS: cms-kafka:9092
       SERVER_PORT: 8087
     depends_on:
       cms-kafka:
@@ -399,14 +392,20 @@ services:
       dockerfile: cms-infra/Dockerfile.microservice
       args:
         SERVICE_NAME: cms-audit-service
+        CONTEXT_PATH: /cms-audit
     container_name: cms-audit-service
     restart: unless-stopped
     environment:
       SPRING_PROFILES_ACTIVE: docker
-      DB_URL: "jdbc:mysql://cms-mysql:3306/cms_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC"
-      DB_USERNAME: ${MYSQL_USER:-cms_user}
-      DB_PASSWORD: ${MYSQL_PASSWORD:-cms_pass}
-      KAFKA_BOOTSTRAP: cms-kafka:9092
+      # This service's application.yml hardcodes the Oracle URL/driver/dialect as literals with
+      # no DB_URL-style placeholder to hook into (unlike the other microservices here) — override
+      # via Spring's fully-qualified property-to-env-var names instead, which win regardless.
+      SPRING_DATASOURCE_URL: "jdbc:mysql://cms-mysql:3306/cms_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC"
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:-cms_user}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD:-cms_pass}
+      SPRING_DATASOURCE_DRIVER_CLASS_NAME: com.mysql.cj.jdbc.Driver
+      SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT: org.hibernate.dialect.MySQLDialect
+      KAFKA_BOOTSTRAP_SERVERS: cms-kafka:9092
       SERVER_PORT: 8088
     depends_on:
       cms-mysql:
@@ -431,10 +430,14 @@ services:
     restart: unless-stopped
     environment:
       SPRING_PROFILES_ACTIVE: docker
-      DB_URL: "jdbc:mysql://cms-mysql:3306/cms_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC"
-      DB_USERNAME: ${MYSQL_USER:-cms_user}
-      DB_PASSWORD: ${MYSQL_PASSWORD:-cms_pass}
-      KAFKA_BOOTSTRAP: cms-kafka:9092
+      # Same as cms-audit-service above: no DB_URL-style placeholder here, so override via
+      # Spring's fully-qualified property-to-env-var names instead.
+      SPRING_DATASOURCE_URL: "jdbc:mysql://cms-mysql:3306/cms_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC"
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:-cms_user}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD:-cms_pass}
+      SPRING_DATASOURCE_DRIVER_CLASS_NAME: com.mysql.cj.jdbc.Driver
+      SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT: org.hibernate.dialect.MySQLDialect
+      KAFKA_BOOTSTRAP_SERVERS: cms-kafka:9092
       SERVER_PORT: 8089
     depends_on:
       cms-mysql:
@@ -455,6 +458,7 @@ services:
       dockerfile: cms-infra/Dockerfile.microservice
       args:
         SERVICE_NAME: cms-storage-service
+        CONTEXT_PATH: /cms-storage
     container_name: cms-storage-service
     restart: unless-stopped
     environment:
@@ -477,6 +481,7 @@ services:
       dockerfile: cms-infra/Dockerfile.microservice
       args:
         SERVICE_NAME: cms-search-service
+        CONTEXT_PATH: /cms-search
     container_name: cms-search-service
     restart: unless-stopped
     environment:
@@ -484,7 +489,7 @@ services:
       OPENSEARCH_HOST: cms-opensearch
       OPENSEARCH_PORT: 9200
       OPENSEARCH_SCHEME: http
-      KAFKA_BOOTSTRAP: cms-kafka:9092
+      KAFKA_BOOTSTRAP_SERVERS: cms-kafka:9092
       SERVER_PORT: 8091
     depends_on:
       cms-opensearch:
@@ -684,6 +689,9 @@ services:
         # (browser-side call, separate from cms-backend's own server-side one above).
         NG_CONFIG: docker-local
     container_name: cms-portal-frontend
+    environment:
+      API_BACKEND_HOST: cms-backend-1
+      API_BACKEND_PORT: "8082"
     depends_on:
       - cms-backend-1
     ports:
@@ -697,6 +705,9 @@ services:
       dockerfile: Dockerfile
     container_name: cms-frontend
     restart: unless-stopped
+    environment:
+      API_BACKEND_HOST: cms-backend-1
+      API_BACKEND_PORT: "8082"
     deploy:
       resources:
         limits:
@@ -717,7 +728,6 @@ services:
       - cms-nginx-cache:/var/cache/nginx/cms
     depends_on:
       - cms-backend-1
-      - cms-backend-2
       - cms-frontend
     deploy:
       resources:

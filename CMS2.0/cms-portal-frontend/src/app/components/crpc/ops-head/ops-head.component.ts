@@ -6,6 +6,9 @@ import { HttpClient } from '@angular/common/http';
 import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
 import { environment } from '../../../../environments/environment';
 import { SpeechButtonComponent } from '../../../shared/speech-button/speech-button.component';
+import { NotificationBellComponent } from '../../../shared/notification-bell/notification-bell.component';
+import { LanguageSelectComponent } from '../../../shared/language-select/language-select.component';
+import { FontSizeControlsComponent } from '../../../shared/font-size-controls/font-size-controls.component';
 
 interface TransferComplaint {
   complaintId: string;
@@ -44,7 +47,7 @@ interface OfficeThreshold {
 @Component({
   selector: 'app-ops-head',
   standalone: true,
-  imports: [CommonModule, FormsModule, SpeechButtonComponent],
+  imports: [CommonModule, FormsModule, SpeechButtonComponent, NotificationBellComponent, LanguageSelectComponent, FontSizeControlsComponent],
   templateUrl: './ops-head.component.html',
   styleUrl: './ops-head.component.scss'
 })

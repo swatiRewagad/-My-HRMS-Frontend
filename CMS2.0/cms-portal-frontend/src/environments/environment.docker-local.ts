@@ -16,7 +16,7 @@ export const environment = {
   ocrServiceUrl: 'http://localhost:8000',
 
   keycloakUrl: 'http://localhost:8180',
-  realm: 'cms',
+  realm: 'rbi-cms',
 
   devAutoPopulateOtp: true,
   devDefaultOtp: '123456',

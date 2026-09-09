@@ -5,6 +5,8 @@ import { Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
 import { NotificationBellComponent } from '../../../shared/notification-bell/notification-bell.component';
+import { LanguageSelectComponent } from '../../../shared/language-select/language-select.component';
+import { FontSizeControlsComponent } from '../../../shared/font-size-controls/font-size-controls.component';
 import { SessionTimeoutComponent } from '../../../shared/session-timeout/session-timeout.component';
 import { SpeechButtonComponent } from '../../../shared/speech-button/speech-button.component';
 import { CepcSlaIndicatorComponent } from '../cepc-sla-indicator/cepc-sla-indicator.component';
@@ -44,6 +46,7 @@ interface CepcComplaint {
   modeOfReceipt: string;
   category: string;
   createdAt: string;
+  hasAttachments: boolean;
 }
 
 type CepcRole = 'CEPC_DO' | 'CEPC_REVIEWER' | 'CEPC_INCHARGE' | 'CEPC_CLOSING_AUTHORITY' | 'CEPC_ADMIN' | 'CEPC_CONTACT_PERSON';
@@ -51,7 +54,7 @@ type CepcRole = 'CEPC_DO' | 'CEPC_REVIEWER' | 'CEPC_INCHARGE' | 'CEPC_CLOSING_AU
 @Component({
   selector: 'app-cepc-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule, NotificationBellComponent, SessionTimeoutComponent, SpeechButtonComponent, CepcSlaIndicatorComponent],
+  imports: [CommonModule, FormsModule, NotificationBellComponent, SessionTimeoutComponent, SpeechButtonComponent, CepcSlaIndicatorComponent, LanguageSelectComponent, FontSizeControlsComponent],
   templateUrl: './cepc-dashboard.component.html',
   styleUrl: './cepc-dashboard.component.scss'
 })
@@ -71,8 +74,12 @@ export class CepcDashboardComponent implements OnInit {
   filterQueue = signal<'ASSIGNED_TO_ME' | 'ALL'>('ASSIGNED_TO_ME');
   filterUnread = signal(false);
   filterWithoutAttachments = signal(false);
-  columnFilters: Record<string, string> = {};
-  columnSearchText = '';
+  columnFilters = signal<Record<string, string>>({});
+  columnSearchText = signal('');
+
+  setColumnFilter(key: string, value: string) {
+    this.columnFilters.update(f => ({ ...f, [key]: value }));
+  }
 
   sortColumn = '';
   sortDirection: 'asc' | 'desc' = 'asc';
@@ -133,8 +140,9 @@ export class CepcDashboardComponent implements OnInit {
   visibleColumns = computed(() => this.allColumns().filter(c => c.visible));
 
   filteredColumns = computed(() => {
-    if (!this.columnSearchText) return this.allColumns();
-    const q = this.columnSearchText.toLowerCase();
+    const text = this.columnSearchText();
+    if (!text) return this.allColumns();
+    const q = text.toLowerCase();
     return this.allColumns().filter(c => c.label.toLowerCase().includes(q));
   });
 
@@ -315,7 +323,9 @@ export class CepcDashboardComponent implements OnInit {
       if (q.priority) result = result.filter(d => d.priority === q.priority);
     }
 
-    for (const [key, val] of Object.entries(this.columnFilters)) {
+    if (this.filterWithoutAttachments()) result = result.filter(d => !d.hasAttachments);
+
+    for (const [key, val] of Object.entries(this.columnFilters())) {
       if (val) {
         const q = val.toLowerCase();
         result = result.filter(d => String((d as any)[key] || '').toLowerCase().includes(q));
@@ -444,6 +454,7 @@ export class CepcDashboardComponent implements OnInit {
       modeOfReceipt: c.modeOfReceipt || c.filingType || '',
       category: c.category || '',
       createdAt: c.createdAt || '',
+      hasAttachments: !!c.hasAttachments,
     };
   }
 

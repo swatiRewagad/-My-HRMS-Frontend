@@ -5,7 +5,10 @@ import { Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
 import { NotificationBellComponent } from '../../../shared/notification-bell/notification-bell.component';
+import { LanguageSelectComponent } from '../../../shared/language-select/language-select.component';
+import { FontSizeControlsComponent } from '../../../shared/font-size-controls/font-size-controls.component';
 import { SessionTimeoutComponent } from '../../../shared/session-timeout/session-timeout.component';
+import { TranslatePipe } from '../../../pipes/translate.pipe';
 import { environment } from '../../../../environments/environment';
 
 interface RbioComplaint {
@@ -24,12 +27,13 @@ interface RbioComplaint {
   slaDueDate: string;
   slaBreachDays: number;
   description: string;
+  hasAttachments: boolean;
 }
 
 @Component({
   selector: 'app-rbio-home',
   standalone: true,
-  imports: [CommonModule, FormsModule, NotificationBellComponent, SessionTimeoutComponent],
+  imports: [CommonModule, FormsModule, NotificationBellComponent, SessionTimeoutComponent, LanguageSelectComponent, FontSizeControlsComponent, TranslatePipe],
   templateUrl: './rbio-home.component.html',
   styleUrl: './rbio-home.component.scss'
 })
@@ -45,12 +49,21 @@ export class RbioHomeComponent implements OnInit {
   visitedIds = signal<Set<string>>(new Set());
 
   filterStatus = signal('');
+  // SLA breach is a cross-cutting, time-based filter (not a status value), so it needs
+  // its own toggle rather than being folded into filterStatus.
+  filterSlaBreached = signal(false);
   filterQueue = signal<'ASSIGNED_TO_ME' | 'ALL'>('ASSIGNED_TO_ME');
   searchText = signal('');
   filterUnread = signal(false);
   filterWithoutAttachments = signal(false);
-  columnFilters: Record<string, string> = {};
-  columnSearchText = '';
+  // Both must be signals, not plain properties - computed() only re-runs when a signal it
+  // read changes, so mutating a plain object/string in place never triggered a refilter.
+  columnFilters = signal<Record<string, string>>({});
+  columnSearchText = signal('');
+
+  setColumnFilter(key: string, value: string) {
+    this.columnFilters.update(f => ({ ...f, [key]: value }));
+  }
 
   sortColumn = '';
   sortDirection: 'asc' | 'desc' = 'asc';
@@ -71,26 +84,27 @@ export class RbioHomeComponent implements OnInit {
   };
 
   allColumns = signal([
-    { key: 'complaintId', label: 'Complaint Id', visible: true },
-    { key: 'complaintNumber', label: 'Complaint Number', visible: true },
-    { key: 'fromEmail', label: 'From', visible: true },
-    { key: 'slaBreachDays', label: 'SLA Breach In', visible: true },
-    { key: 'modeOfReceipt', label: 'Mode', visible: true },
-    { key: 'complainantName', label: 'Complainant Name', visible: true },
-    { key: 'status', label: 'Status', visible: true },
-    { key: 'entityName', label: 'Entity Name', visible: true },
-    { key: 'category', label: 'Complaint Category', visible: true },
-    { key: 'createdAt', label: 'Creation Date', visible: true },
-    { key: 'subject', label: 'Subject', visible: false },
-    { key: 'priority', label: 'Priority', visible: false },
-    { key: 'assignedTo', label: 'Assigned To', visible: false },
+    { key: 'complaintId', label: 'Complaint Id', labelKey: 'officer.search.complaint_id', visible: true },
+    { key: 'complaintNumber', label: 'Complaint Number', labelKey: 'officer.search.complaint_number', visible: true },
+    { key: 'assignedTo', label: 'Assigned To', labelKey: 'officer.column.assigned_to', visible: true },
+    { key: 'slaBreachDays', label: 'SLA Breach In', labelKey: 'officer.column.sla_breach_in', visible: true },
+    { key: 'modeOfReceipt', label: 'Mode', labelKey: 'officer.column.mode', visible: true },
+    { key: 'complainantName', label: 'Complainant Name', labelKey: 'officer.search.complainant_name', visible: true },
+    { key: 'status', label: 'Status', labelKey: 'officer.column.status', visible: true },
+    { key: 'entityName', label: 'Entity Name', labelKey: 'officer.search.entity_name', visible: true },
+    { key: 'category', label: 'Complaint Category', labelKey: 'officer.column.complaint_category', visible: true },
+    { key: 'createdAt', label: 'Creation Date', labelKey: 'officer.column.creation_date', visible: true },
+    { key: 'fromEmail', label: 'From', labelKey: 'officer.column.from', visible: false },
+    { key: 'subject', label: 'Subject', labelKey: 'officer.search.subject', visible: false },
+    { key: 'priority', label: 'Priority', labelKey: 'officer.column.priority', visible: false },
   ]);
 
   visibleColumns = computed(() => this.allColumns().filter(c => c.visible));
 
   filteredColumns = computed(() => {
-    if (!this.columnSearchText) return this.allColumns();
-    const q = this.columnSearchText.toLowerCase();
+    const text = this.columnSearchText();
+    if (!text) return this.allColumns();
+    const q = text.toLowerCase();
     return this.allColumns().filter(c => c.label.toLowerCase().includes(q));
   });
 
@@ -98,6 +112,7 @@ export class RbioHomeComponent implements OnInit {
     let result = this.complaints();
     const status = this.filterStatus();
     if (status) result = result.filter(d => d.status === status);
+    if (this.filterSlaBreached()) result = result.filter(d => d.slaBreachDays < 0);
 
     if (this.advSearchActive()) {
       const q = this.advSearch;
@@ -111,7 +126,9 @@ export class RbioHomeComponent implements OnInit {
       if (q.category) result = result.filter(d => d.category === q.category);
     }
 
-    for (const [key, val] of Object.entries(this.columnFilters)) {
+    if (this.filterWithoutAttachments()) result = result.filter(d => !d.hasAttachments);
+
+    for (const [key, val] of Object.entries(this.columnFilters())) {
       if (val) {
         const q = val.toLowerCase();
         result = result.filter(d => String((d as any)[key] || '').toLowerCase().includes(q));
@@ -158,10 +175,16 @@ export class RbioHomeComponent implements OnInit {
     return {
       totalPending: all.length,
       pendingWithMe: all.filter(d => d.status === 'NEW' || d.status === 'ASSIGNED' || d.status === 'IN_PROGRESS').length,
-      pendingContactPerson: all.filter(d => d.status === 'AWAITING_RESPONSE').length,
+      pendingWithRE: all.filter(d => d.status === 'AWAITING_RESPONSE').length,
       pendingMeeting: all.filter(d => d.status === 'MEETING_SCHEDULED').length,
-      slaBreach: all.filter(d => d.slaBreachDays > 0).length,
-      slaOverdue: all.filter(d => d.slaBreachDays > 30).length,
+      // slaBreachDays is now signed days-remaining-until-due (negative = already overdue),
+      // so "breached" means the value has gone negative, not positive as before.
+      slaBreach: all.filter(d => d.slaBreachDays < 0).length,
+      slaBreached0to15: all.filter(d => d.slaBreachDays < 0 && d.slaBreachDays >= -15).length,
+      slaBreached16to30: all.filter(d => d.slaBreachDays < -15 && d.slaBreachDays >= -30).length,
+      // No backend status exists yet for these two - honestly 0 until that workflow stage exists.
+      responseFromRE: all.filter(d => d.status === 'RESPONSE_FROM_RE').length,
+      withdrawn: all.filter(d => d.status === 'WITHDRAWN').length,
       draft: all.filter(d => d.status === 'DRAFT' || d.status === 'NEW').length,
       meetingScheduled: all.filter(d => d.status === 'MEETING_SCHEDULED').length,
       sentBack: all.filter(d => d.status === 'SENT_BACK').length,
@@ -202,14 +225,14 @@ export class RbioHomeComponent implements OnInit {
   loadComplaints() {
     this.loading.set(true);
     const username = this.loggedInUser?.id || '';
-    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/rbio/complaints?assignedTo=${username}`).subscribe({
+    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/workflow/rbio/all-tasks?officer=${username}`).subscribe({
       next: (res) => {
         const items = (res.data || res || []).map((c: any) => this.mapComplaint(c));
         this.complaints.set(items);
         this.loading.set(false);
       },
       error: () => {
-        this.complaints.set(this.generateSampleData());
+        this.complaints.set([]);
         this.loading.set(false);
       }
     });
@@ -218,7 +241,8 @@ export class RbioHomeComponent implements OnInit {
   private mapComplaint(c: any): RbioComplaint {
     const slaDue = c.slaDueDate ? new Date(c.slaDueDate) : new Date();
     const now = new Date();
-    const diffDays = Math.ceil((now.getTime() - slaDue.getTime()) / (1000 * 60 * 60 * 24));
+    // Signed days remaining until the SLA due date - negative once it's overdue.
+    const daysRemaining = Math.ceil((slaDue.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
     const id = c.complaintId || c.complaintNumber || '';
     const cachedStatus = sessionStorage.getItem(`rbio_status_${id}`);
     return {
@@ -233,37 +257,12 @@ export class RbioHomeComponent implements OnInit {
       entityName: c.entityName || '',
       priority: c.priority || 'MEDIUM',
       assignedTo: c.assignedTo || c.assignedOfficer || '',
-      createdAt: c.createdAt || '',
+      createdAt: c.createdAt || c.assignedAt || '',
       slaDueDate: c.slaDueDate || '',
-      slaBreachDays: Math.max(0, diffDays),
+      slaBreachDays: daysRemaining,
       description: c.description || '',
+      hasAttachments: !!c.hasAttachments,
     };
-  }
-
-  private generateSampleData(): RbioComplaint[] {
-    const statuses = ['DRAFT', 'IN_PROGRESS', 'SENT_BACK', 'MEETING_SCHEDULED', 'ASSESSMENT_COMPLETE', 'NEW'];
-    const entities = ['HDFC Bank Ltd', 'ICICI Bank Ltd', 'SBI', 'Axis Bank Ltd', 'Kotak Bank', 'PNB', 'Yes Bank', 'IDFC Bank', 'IndusInd Bank', 'Bank of Baroda'];
-    const categories = ['Account Hold', 'Loan EMI', 'CIBIL Correction', 'Credit Card', 'Transaction Dispute', 'Account Closure', 'Debit Card Issue', 'Interest Rate', 'Loan Processing', 'Statement Error'];
-    const names = ['Varshika Gaur', 'Amit Kumar', 'AGR Team', 'Priya Sharma', 'Rajesh Singh', 'Sunita Verma', 'Anil Kapoor', 'Meena Patel', 'Kumar Reddy', 'Sneha Desai'];
-    const modes = ['Email', 'Letter', 'Email', 'Email', 'Email', 'Letter', 'Email', 'Email', 'Letter', 'Email'];
-
-    return Array.from({ length: 10 }, (_, i) => ({
-      complaintId: `C${String(i + 1).padStart(3, '0')}`,
-      complaintNumber: `183940295${i}`,
-      complainantName: names[i],
-      fromEmail: `${names[i].toLowerCase().replace(' ', '.')}@${i % 3 === 0 ? 'gmail.com' : i % 3 === 1 ? 'yahoo.com' : 'rbi.org.in'}`,
-      subject: categories[i],
-      modeOfReceipt: modes[i],
-      status: statuses[i % statuses.length],
-      category: categories[i],
-      entityName: entities[i],
-      priority: i % 3 === 0 ? 'HIGH' : 'MEDIUM',
-      assignedTo: this.loggedInUser?.id || '',
-      createdAt: `2026-05-${String(14 - i).padStart(2, '0')}`,
-      slaDueDate: `2026-06-${String(14 - i).padStart(2, '0')}`,
-      slaBreachDays: [30, 40, 25, 1, -2, -1, 2, 8, 1, 0][i],
-      description: '',
-    }));
   }
 
   sortBy(column: string) {
@@ -333,8 +332,8 @@ export class RbioHomeComponent implements OnInit {
 
   getStatusLabel(status: string): string {
     const map: Record<string, string> = {
-      'DRAFT': 'Draft', 'NEW': 'Draft', 'IN_PROGRESS': 'In Progress',
-      'SENT_BACK': 'Sent Back', 'MEETING_SCHEDULED': 'Meeting Scheduled',
+      'DRAFT': 'New Complaint', 'NEW': 'New Complaint', 'IN_PROGRESS': 'In Progress',
+      'SENT_BACK': 'Sent Back to DO', 'MEETING_SCHEDULED': 'Meeting Scheduled',
       'ASSESSMENT_COMPLETE': 'Assessment Complete', 'AWAITING_RESPONSE': 'Pending',
       'SENT_TO_REVIEWER': 'Sent to Reviewer',
       'SENT_TO_DEPUTY_OMBUDSMAN': 'Sent to Deputy Ombudsman',
@@ -349,6 +348,17 @@ export class RbioHomeComponent implements OnInit {
     return map[status] || status;
   }
 
+  getStatusIcon(status: string): string {
+    const map: Record<string, string> = {
+      'DRAFT': 'pi-send', 'NEW': 'pi-send',
+      'SENT_BACK': 'pi-reply',
+      'AWAITING_RESPONSE': 'pi-arrow-up-right',
+      'MEETING_SCHEDULED': 'pi-calendar',
+      'ASSESSMENT_COMPLETE': 'pi-verified',
+    };
+    return map[status] || 'pi-circle-fill';
+  }
+
   getCellValue(complaint: RbioComplaint, key: string): string {
     const val = (complaint as any)[key];
     if (val === null || val === undefined) return '—';
@@ -356,15 +366,31 @@ export class RbioHomeComponent implements OnInit {
     return String(val);
   }
 
+  // days is signed days-remaining-until-due (negative = already overdue). Close to the
+  // deadline either way, switch to an hours display to match the "5 Hrs" / "48 Hrs" style.
   getSlaLabel(days: number): string {
-    if (days <= 0) return `${Math.abs(days)} Days`;
+    if (Math.abs(days) < 2) {
+      const hours = Math.round(days * 24);
+      return `${hours} Hrs`;
+    }
     return `${days} Days`;
   }
 
+  // Pure SLA-breach severity for the "SLA Breach In" pill itself: red = already overdue
+  // or breaching within 24h, orange = breaching within 3 days, green = plenty of time left.
   getSlaClass(days: number): string {
-    if (days > 20) return 'sla-red';
-    if (days > 5) return 'sla-orange';
+    if (days < 1) return 'sla-red';
+    if (days <= 3) return 'sla-orange';
     return 'sla-green';
+  }
+
+  // Row left-border: a couple of statuses always get a fixed color regardless of SLA
+  // (a sent-back or withdrawn item needs attention/awareness independent of its due date),
+  // everything else follows the same severity as getSlaClass above.
+  getRowClass(days: number, status?: string): string {
+    if (status === 'SENT_BACK' || status === 'SENT_BACK_TO_DEO') return 'sla-yellow';
+    if (status === 'WITHDRAWN' || status === 'COMPLAINT_WITHDRAWN') return 'sla-pink';
+    return this.getSlaClass(days);
   }
 
   dragIndex: number | null = null;

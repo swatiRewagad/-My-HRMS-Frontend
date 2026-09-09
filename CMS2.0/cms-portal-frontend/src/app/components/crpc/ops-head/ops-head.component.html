@@ -16,13 +16,9 @@
     <div class="header-right">
       <div class="header-icons">
         <button title="Phone"><i class="pi pi-phone"></i></button>
-        <span class="font-size-group">
-          <button title="Decrease font" class="font-btn">A-</button>
-          <button title="Default font" class="font-btn active">A</button>
-          <button title="Increase font" class="font-btn">A+</button>
-        </span>
-        <button class="lang-btn"><i class="pi pi-globe"></i> English <i class="pi pi-angle-down"></i></button>
-        <button title="Notifications"><i class="pi pi-bell"></i></button>
+        <app-font-size-controls></app-font-size-controls>
+        <app-language-select></app-language-select>
+        <app-notification-bell></app-notification-bell>
       </div>
       <div class="user-info-block">
         @if (auth.currentUser(); as user) {
@@ -56,13 +52,11 @@
       <div class="accessibility-controls">
         <button class="acc-btn" title="Phone"><i class="pi pi-phone"></i></button>
         <span class="acc-divider">|</span>
-        <button class="acc-btn" title="Decrease font">A-</button>
-        <button class="acc-btn acc-btn-mid" title="Normal font">A</button>
-        <button class="acc-btn" title="Increase font">A+</button>
+        <app-font-size-controls></app-font-size-controls>
         <span class="acc-divider">|</span>
-        <button class="acc-btn lang-btn" title="Language">English <i class="pi pi-chevron-down"></i></button>
+        <app-language-select></app-language-select>
         <span class="acc-divider">|</span>
-        <button class="acc-btn" title="Notifications"><i class="pi pi-bell"></i></button>
+        <app-notification-bell></app-notification-bell>
       </div>
       <div class="header-divider"></div>
       @if (auth.currentUser(); as user) {
