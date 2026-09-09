@@ -6,6 +6,7 @@ import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.*;
@@ -30,10 +31,24 @@ public class KeycloakUserService {
     @Value("${keycloak.admin.password}")
     private String adminPassword;
 
-    private final RestTemplate restTemplate = new RestTemplate();
+    private final RestTemplate restTemplate;
+
+    public KeycloakUserService() {
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(3_000);
+        factory.setReadTimeout(5_000);
+        this.restTemplate = new RestTemplate(factory);
+    }
+
+    private String sanitize(String value) {
+        if (value == null) return "";
+        return value.replace("'", "").replace("\"", "").trim();
+    }
 
     private String getAdminToken() {
-        String tokenUrl = serverUrl + "/realms/master/protocol/openid-connect/token";
+        String cleanUrl = sanitize(serverUrl);
+        log.info("Keycloak serverUrl=[{}], realm=[{}], clientId=[{}], username=[{}]", cleanUrl, realm, clientId, adminUsername);
+        String tokenUrl = cleanUrl + "/realms/master/protocol/openid-connect/token";
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
