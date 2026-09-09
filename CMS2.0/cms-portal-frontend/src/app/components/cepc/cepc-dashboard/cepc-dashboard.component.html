@@ -15,8 +15,8 @@
     </div>
     <div class="header-right">
       <div class="header-icons">
-        <button title="Font size"><i class="pi pi-text-size"></i></button>
-        <button title="Language"><i class="pi pi-globe"></i></button>
+        <app-font-size-controls></app-font-size-controls>
+        <app-language-select></app-language-select>
         <app-notification-bell></app-notification-bell>
       </div>
       <span class="user-avatar">{{ (loggedInUser?.name || 'C').charAt(0) }}</span>
@@ -156,7 +156,7 @@
                 @for (col of visibleColumns(); track col.key) {
                   <th>
                     <input type="text" class="col-search" placeholder="Search"
-                      [(ngModel)]="columnFilters[col.key]" />
+                      [ngModel]="columnFilters()[col.key]" (ngModelChange)="setColumnFilter(col.key, $event)" />
                   </th>
                 }
               </tr>
@@ -226,7 +226,7 @@
         <button class="modal-close" (click)="showColumnConfig.set(false)">&times;</button>
       </div>
       <p class="modal-subtitle">Select and manage visible columns</p>
-      <input type="text" class="column-search" placeholder="Search Column Name" [(ngModel)]="columnSearchText" />
+      <input type="text" class="column-search" placeholder="Search Column Name" [ngModel]="columnSearchText()" (ngModelChange)="columnSearchText.set($event)" />
       <div class="column-list">
         @for (col of filteredColumns(); track col.key; let i = $index) {
           <label class="column-option"

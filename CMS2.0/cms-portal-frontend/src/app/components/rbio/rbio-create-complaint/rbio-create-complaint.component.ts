@@ -8,6 +8,9 @@ import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
 import { lookupPincode } from '../../../utils/pincode-data';
 import { environment } from '../../../../environments/environment';
 import { SpeechButtonComponent } from '../../../shared/speech-button/speech-button.component';
+import { NotificationBellComponent } from '../../../shared/notification-bell/notification-bell.component';
+import { LanguageSelectComponent } from '../../../shared/language-select/language-select.component';
+import { FontSizeControlsComponent } from '../../../shared/font-size-controls/font-size-controls.component';
 
 interface DeoUser {
   id: string;
@@ -21,7 +24,7 @@ interface DeoUser {
 @Component({
   selector: 'app-rbio-create-complaint',
   standalone: true,
-  imports: [CommonModule, FormsModule, SpeechButtonComponent],
+  imports: [CommonModule, FormsModule, SpeechButtonComponent, NotificationBellComponent, LanguageSelectComponent, FontSizeControlsComponent],
   templateUrl: './rbio-create-complaint.component.html',
   styleUrl: './rbio-create-complaint.component.scss'
 })
@@ -140,6 +143,7 @@ export class RbioCreateComplaintComponent implements OnInit {
   saving = signal(false);
   submitting = signal(false);
   submitted = signal(false);
+  loadError = signal(false);
   draftSaved = signal(false);
   summaryActiveTab = signal<'summary' | 'email'>('summary');
   assessmentTab = signal<string>('summary');
@@ -442,11 +446,9 @@ export class RbioCreateComplaintComponent implements OnInit {
   }
 
   // Nodal Officer Record
-  nodalRecords = signal<{ id: number; recordNumber: string; subject: string; bankName: string; slaDays: number; assignedTo: string; status: string; statusLabel: string; complaintNumber: string; receiptDate: string; complainant: string; mobile: string; email: string; moduleName: string; bankCategory: string; branchCategory: string; branchName: string; pincode: string; city: string; district: string; state: string; country: string; noName: string; noMobile: string; noEmail: string; pnoName: string; pnoMobile: string; pnoEmail: string; atmComplaint: string; designatedOffice: string; processingOffice: string }[]>([
-    { id: 1, recordNumber: '1146110', subject: 'Account debited but no credit', bankName: 'State Bank of India', slaDays: 2, assignedTo: 'Priya Gupta', status: 'INFORMATION_REQUIRED', statusLabel: 'Information Required', complaintNumber: 'N20223317000005', receiptDate: '19-05-2026', complainant: 'Raj Shah', mobile: '9876543210', email: 'raj.shah@email.com', moduleName: 'Deposit', bankCategory: 'Scheduled Commercial Bank', branchCategory: 'Metro', branchName: 'Andheri West', pincode: '400058', city: 'Mumbai', district: 'Mumbai Suburban', state: 'Maharashtra', country: 'India', noName: 'Deepak Verma', noMobile: '9112233445', noEmail: 'deepak.verma@sbi.co.in', pnoName: 'Suresh Kumar', pnoMobile: '9998877665', pnoEmail: 'suresh.kumar@sbi.co.in', atmComplaint: 'No', designatedOffice: 'Mumbai', processingOffice: 'RBIO Mumbai' },
-    { id: 2, recordNumber: '1146111', subject: 'Excess interest charged on loan', bankName: 'HDFC Bank', slaDays: 5, assignedTo: 'A.K. Singh', status: 'PENDING', statusLabel: 'Pending', complaintNumber: 'N20223317000012', receiptDate: '22-05-2026', complainant: 'Meena Kumari', mobile: '9123456780', email: 'meena.k@email.com', moduleName: 'Loan', bankCategory: 'Private Sector Bank', branchCategory: 'Urban', branchName: 'Connaught Place', pincode: '110001', city: 'New Delhi', district: 'Central Delhi', state: 'Delhi', country: 'India', noName: 'Rahul Sharma', noMobile: '9887766554', noEmail: 'rahul.sharma@hdfc.com', pnoName: 'Anita Desai', pnoMobile: '9776655443', pnoEmail: 'anita.desai@hdfc.com', atmComplaint: 'No', designatedOffice: 'Delhi', processingOffice: 'RBIO Delhi' },
-    { id: 3, recordNumber: '1146112', subject: 'ATM withdrawal failed but debited', bankName: 'ICICI Bank', slaDays: 35, assignedTo: 'Meera Krishnan', status: 'INFORMATION_REQUIRED', statusLabel: 'Information Required', complaintNumber: 'N20223317000018', receiptDate: '10-05-2026', complainant: 'Sunil Patil', mobile: '9234567890', email: 'sunil.p@email.com', moduleName: 'ATM/Debit Card', bankCategory: 'Private Sector Bank', branchCategory: 'Semi-Urban', branchName: 'Baner Road', pincode: '411045', city: 'Pune', district: 'Pune', state: 'Maharashtra', country: 'India', noName: 'Vikram Joshi', noMobile: '9665544332', noEmail: 'vikram.joshi@icici.com', pnoName: 'Kavita Nair', pnoMobile: '9554433221', pnoEmail: 'kavita.nair@icici.com', atmComplaint: 'Yes', designatedOffice: 'Pune', processingOffice: 'RBIO Mumbai' },
-  ]);
+  // No backend endpoint exists yet for NodalOfficerRecord (entity + repository + DB table are
+  // there, but nothing exposes them over REST) — starts empty rather than showing fake rows.
+  nodalRecords = signal<{ id: number; recordNumber: string; subject: string; bankName: string; slaDays: number; assignedTo: string; status: string; statusLabel: string; complaintNumber: string; receiptDate: string; complainant: string; mobile: string; email: string; moduleName: string; bankCategory: string; branchCategory: string; branchName: string; pincode: string; city: string; district: string; state: string; country: string; noName: string; noMobile: string; noEmail: string; pnoName: string; pnoMobile: string; pnoEmail: string; atmComplaint: string; designatedOffice: string; processingOffice: string }[]>([]);
   nodalFilterRecordNumber = '';
   nodalFilterSubject = '';
   nodalFilterBank = '';
@@ -589,12 +591,7 @@ export class RbioCreateComplaintComponent implements OnInit {
         this.submitted.set(true);
       },
       error: () => {
-        this.complaintId = id;
-        this.subject = 'ATM_DEBIT_CARD';
-        this.description = 'Complaint loaded from task';
-        this.complainantName = 'Complainant';
-        this.complaintStatus.set('NEW_COMPLAINT');
-        this.submitted.set(true);
+        this.loadError.set(true);
       }
     });
 
@@ -1579,6 +1576,15 @@ export class RbioCreateComplaintComponent implements OnInit {
     if (['SENT_BACK', 'SENT_TO_DO'].includes(status)) return 'orange';
     if (['SENT_TO_REVIEWER', 'SENT_TO_DEPUTY_OMBUDSMAN', 'SENT_TO_OMBUDSMAN', 'SENT'].includes(status)) return 'blue';
     return 'green';
+  }
+
+  // Maintainable and Non Maintainable have entirely disjoint clause lists (see
+  // getAvailableClauses below) - a clause picked under one action is never valid under the
+  // other, so switching the action must clear whatever clause was previously selected.
+  onProposedActionChange(value: string): void {
+    this.proposedAction = value;
+    this.proposedClause = '';
+    this.clauseSearch = '';
   }
 
   getAvailableClauses(): string[] {

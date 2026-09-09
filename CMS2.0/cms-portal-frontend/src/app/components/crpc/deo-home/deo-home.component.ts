@@ -8,7 +8,10 @@ import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
 import { CrpcWorkflowService } from '../../../services/crpc-workflow.service';
 import { NotificationService } from '../../../services/notification.service';
 import { NotificationBellComponent } from '../../../shared/notification-bell/notification-bell.component';
+import { LanguageSelectComponent } from '../../../shared/language-select/language-select.component';
+import { FontSizeControlsComponent } from '../../../shared/font-size-controls/font-size-controls.component';
 import { SessionTimeoutComponent } from '../../../shared/session-timeout/session-timeout.component';
+import { TranslatePipe } from '../../../pipes/translate.pipe';
 
 interface DraftComplaint {
   draftId: string;
@@ -38,7 +41,7 @@ interface DraftComplaint {
 @Component({
   selector: 'app-deo-home',
   standalone: true,
-  imports: [CommonModule, FormsModule, NotificationBellComponent, SessionTimeoutComponent],
+  imports: [CommonModule, FormsModule, NotificationBellComponent, SessionTimeoutComponent, LanguageSelectComponent, FontSizeControlsComponent, TranslatePipe],
   templateUrl: './deo-home.component.html',
   styleUrl: './deo-home.component.scss'
 })
@@ -60,8 +63,12 @@ export class DeoHomeComponent implements OnInit {
   filterWithoutAttachments = signal(false);
   filterSatisfiesRules = signal(false);
   filterVernacular = signal(false);
-  columnFilters: Record<string, string> = {};
-  columnSearchText = '';
+  columnFilters = signal<Record<string, string>>({});
+  columnSearchText = signal('');
+
+  setColumnFilter(key: string, value: string) {
+    this.columnFilters.update(f => ({ ...f, [key]: value }));
+  }
 
   // Role-based module selector
   selectedRoleModule = signal('CRPC_COMPLAINT');
@@ -96,32 +103,33 @@ export class DeoHomeComponent implements OnInit {
 
   // Column configuration
   allColumns = signal([
-    { key: 'displayId', label: 'Complaint Id', visible: true },
-    { key: 'complaintNumber', label: 'Complaint Number', visible: true },
-    { key: 'fromEmailId', label: 'From', visible: true },
-    { key: 'ageing', label: 'Pending', visible: true },
-    { key: 'modeOfReceipt', label: 'Mode', visible: true },
-    { key: 'complainantName', label: 'Complainant Name', visible: true },
-    { key: 'status', label: 'Status', visible: true },
-    { key: 'entityName', label: 'Entity Name', visible: true },
-    { key: 'proposedCategory', label: 'Proposed Com...', visible: true },
-    { key: 'createdAt', label: 'Creation Date', visible: true },
-    { key: 'subject', label: 'Subject', visible: false },
-    { key: 'category', label: 'Category', visible: false },
-    { key: 'priority', label: 'Priority', visible: false },
-    { key: 'slaRemaining', label: 'SLA (hrs)', visible: false },
-    { key: 'state', label: 'State', visible: false },
-    { key: 'district', label: 'District', visible: false },
-    { key: 'systemSuggestion', label: 'System Suggestion', visible: false },
-    { key: 'emailType', label: 'Email Type', visible: false },
-    { key: 'vernacular', label: 'Vernacular', visible: false },
+    { key: 'displayId', label: 'Complaint Id', labelKey: 'officer.search.complaint_id', visible: true },
+    { key: 'complaintNumber', label: 'Complaint Number', labelKey: 'officer.search.complaint_number', visible: true },
+    { key: 'fromEmailId', label: 'From', labelKey: 'officer.column.from', visible: true },
+    { key: 'ageing', label: 'Pending', labelKey: 'officer.stat.pending', visible: true },
+    { key: 'modeOfReceipt', label: 'Mode', labelKey: 'officer.column.mode', visible: true },
+    { key: 'complainantName', label: 'Complainant Name', labelKey: 'officer.search.complainant_name', visible: true },
+    { key: 'status', label: 'Status', labelKey: 'officer.column.status', visible: true },
+    { key: 'entityName', label: 'Entity Name', labelKey: 'officer.search.entity_name', visible: true },
+    { key: 'proposedCategory', label: 'Proposed Com...', labelKey: 'officer.column.proposed_complaint', visible: true },
+    { key: 'createdAt', label: 'Creation Date', labelKey: 'officer.column.creation_date', visible: true },
+    { key: 'subject', label: 'Subject', labelKey: 'officer.search.subject', visible: false },
+    { key: 'category', label: 'Category', labelKey: 'officer.search.category_label', visible: false },
+    { key: 'priority', label: 'Priority', labelKey: 'officer.column.priority', visible: false },
+    { key: 'slaRemaining', label: 'SLA (hrs)', labelKey: 'officer.column.sla_hrs', visible: false },
+    { key: 'state', label: 'State', labelKey: 'officer.column.state', visible: false },
+    { key: 'district', label: 'District', labelKey: 'officer.column.district', visible: false },
+    { key: 'systemSuggestion', label: 'System Suggestion', labelKey: 'officer.column.system_suggestion', visible: false },
+    { key: 'emailType', label: 'Email Type', labelKey: 'officer.column.email_type', visible: false },
+    { key: 'vernacular', label: 'Vernacular', labelKey: 'officer.column.vernacular', visible: false },
   ]);
 
   visibleColumns = computed(() => this.allColumns().filter(c => c.visible));
 
   filteredColumns = computed(() => {
-    if (!this.columnSearchText) return this.allColumns();
-    const q = this.columnSearchText.toLowerCase();
+    const text = this.columnSearchText();
+    if (!text) return this.allColumns();
+    const q = text.toLowerCase();
     return this.allColumns().filter(c => c.label.toLowerCase().includes(q));
   });
 
@@ -159,7 +167,7 @@ export class DeoHomeComponent implements OnInit {
       );
     }
     // Column-level filters
-    for (const [key, val] of Object.entries(this.columnFilters)) {
+    for (const [key, val] of Object.entries(this.columnFilters())) {
       if (val) {
         const q = val.toLowerCase();
         result = result.filter(d => String((d as any)[key] || '').toLowerCase().includes(q));
@@ -248,8 +256,12 @@ export class DeoHomeComponent implements OnInit {
     });
 
     const stored = sessionStorage.getItem('crpc_user');
-    if (stored) {
-      this.loggedInUser = JSON.parse(stored);
+    const parsed = stored ? JSON.parse(stored) : null;
+    const currentUsername = this.auth.currentUser()?.username;
+    // Don't trust a crpc_user cache left over from a different account in this browser tab —
+    // only reuse it when it matches who's actually logged in right now.
+    if (parsed && parsed.id === currentUsername) {
+      this.loggedInUser = parsed;
     } else {
       const user = this.auth.currentUser();
       if (user) {

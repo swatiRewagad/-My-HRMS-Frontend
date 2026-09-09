@@ -15,11 +15,9 @@
     <div class="header-right">
       <div class="header-icons">
         <button title="Refresh"><i class="pi pi-refresh"></i></button>
-        <button title="Font size">A<sup>-</sup></button>
-        <button>A</button>
-        <button>A<sup>+</sup></button>
-        <button title="Language"><i class="pi pi-globe"></i> English</button>
-        <button title="Notifications"><i class="pi pi-bell"></i></button>
+        <app-font-size-controls></app-font-size-controls>
+        <app-language-select></app-language-select>
+        <app-notification-bell></app-notification-bell>
       </div>
       <span class="user-avatar">{{ (loggedInUser?.name || 'R').charAt(0) }}</span>
       <div class="user-details">

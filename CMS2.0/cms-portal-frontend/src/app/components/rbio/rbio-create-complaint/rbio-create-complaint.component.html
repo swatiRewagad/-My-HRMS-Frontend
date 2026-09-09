@@ -18,13 +18,11 @@
       <div class="accessibility-controls">
         <button class="acc-btn" title="Phone"><i class="pi pi-phone"></i></button>
         <span class="acc-divider">|</span>
-        <button class="acc-btn" title="Decrease font">A-</button>
-        <button class="acc-btn acc-btn-mid" title="Normal font">A</button>
-        <button class="acc-btn" title="Increase font">A+</button>
+        <app-font-size-controls></app-font-size-controls>
         <span class="acc-divider">|</span>
-        <button class="acc-btn lang-btn" title="Language">English <i class="pi pi-chevron-down"></i></button>
+        <app-language-select></app-language-select>
         <span class="acc-divider">|</span>
-        <button class="acc-btn" title="Notifications"><i class="pi pi-bell"></i></button>
+        <app-notification-bell></app-notification-bell>
       </div>
       <div class="header-divider"></div>
       <span class="user-avatar">{{ (loggedInUserName || 'R').charAt(0) }}</span>
@@ -36,7 +34,13 @@
     </div>
   </header>
 
-  @if (submitted() && justActioned() && complaintStatus() === 'SENT') {
+  @if (loadError()) {
+    <div class="error-page">
+      <div class="error-icon"><i class="pi pi-exclamation-triangle"></i></div>
+      <h2>Couldn't load this complaint</h2>
+      <p>The complaint could not be fetched from the server. Please check the link and try again.</p>
+    </div>
+  } @else if (submitted() && justActioned() && complaintStatus() === 'SENT') {
     <!-- ═══ SUCCESS PAGE ═══ -->
     <div class="success-page">
       <div class="success-icon"><i class="pi pi-check-circle"></i></div>
@@ -118,42 +122,42 @@
         <div class="meta-row">
           <button class="back-arrow" (click)="goBack()"><i class="pi pi-arrow-left"></i></button>
           <div class="meta-item">
-            <span class="meta-icon"><i class="pi pi-id-card"></i></span>
+            <span class="meta-icon blue"><i class="pi pi-chart-bar"></i></span>
             <div class="meta-text">
               <span class="meta-label">Complaint Number <i class="pi pi-info-circle"></i></span>
-              <span class="meta-value">N{{ complaintId }}</span>
+              <span class="meta-value">{{ complaintId }}</span>
             </div>
           </div>
           <div class="meta-item">
-            <span class="meta-icon"><i class="pi pi-user"></i></span>
+            <span class="meta-icon gray"><i class="pi pi-user"></i></span>
             <div class="meta-text">
               <span class="meta-label">Complainant Name <i class="pi pi-info-circle"></i></span>
               <span class="meta-value">{{ complainantName || 'Not Assigned' }}</span>
             </div>
           </div>
           <div class="meta-item">
-            <span class="meta-icon"><i class="pi pi-building"></i></span>
+            <span class="meta-icon pink"><i class="pi pi-building"></i></span>
             <div class="meta-text">
               <span class="meta-label">Entity Name <i class="pi pi-info-circle"></i></span>
               <span class="meta-value">{{ entityName || 'Not Assigned' }}</span>
             </div>
           </div>
           <div class="meta-item">
-            <span class="meta-icon"><i class="pi pi-chart-bar"></i></span>
+            <span class="meta-icon blue"><i class="pi pi-chart-bar"></i></span>
             <div class="meta-text">
               <span class="meta-label">Status <i class="pi pi-info-circle"></i></span>
               <span class="meta-value"><span class="status-pill" [ngClass]="getStatusClass()">{{ getStatusLabel() }}</span></span>
             </div>
           </div>
           <div class="meta-item">
-            <span class="meta-icon"><i class="pi pi-tag"></i></span>
+            <span class="meta-icon purple"><i class="pi pi-sitemap"></i></span>
             <div class="meta-text">
               <span class="meta-label">Complaint Category <i class="pi pi-info-circle"></i></span>
               <span class="meta-value">{{ category || 'General Banking' }}</span>
             </div>
           </div>
           <div class="meta-item">
-            <span class="meta-icon"><i class="pi pi-clock"></i></span>
+            <span class="meta-icon red"><i class="pi pi-clock"></i></span>
             <div class="meta-text">
               <span class="meta-label">SLA Breach In <i class="pi pi-info-circle"></i></span>
               <span class="meta-value"><span class="sla-badge" [class.breach]="slaDaysRemaining() <= 5">{{ slaDaysRemaining() }} days</span></span>
@@ -239,12 +243,12 @@
         <div class="page-tabs">
           <button class="page-tab" [class.active]="assessmentTab() === 'summary'" (click)="assessmentTab.set('summary')">Summary</button>
           @if (userRole() !== 'HEAD') {
-            <button class="page-tab" [class.active]="assessmentTab() === 'conciliation'" [class.disabled]="!conciliationEnabled() || userRole() === 'REVIEWER' || userRole() === 'DEPUTY_OMBUDSMAN'" [disabled]="!conciliationEnabled() || userRole() === 'REVIEWER' || userRole() === 'DEPUTY_OMBUDSMAN'" (click)="assessmentTab.set('conciliation')">Conciliation</button>
-            <button class="page-tab" [class.active]="assessmentTab() === 'forward'" [class.disabled]="userRole() === 'REVIEWER'" [disabled]="userRole() === 'REVIEWER'" (click)="assessmentTab.set('forward')">Forward</button>
+            <button class="page-tab" [class.active]="assessmentTab() === 'conciliation'" [class.disabled]="!conciliationEnabled() || userRole() === 'DO' || userRole() === 'REVIEWER' || userRole() === 'DEPUTY_OMBUDSMAN'" [disabled]="!conciliationEnabled() || userRole() === 'DO' || userRole() === 'REVIEWER' || userRole() === 'DEPUTY_OMBUDSMAN'" (click)="assessmentTab.set('conciliation')">Conciliation</button>
+            <button class="page-tab" [class.active]="assessmentTab() === 'forward'" [class.disabled]="userRole() === 'DO' || userRole() === 'REVIEWER'" [disabled]="userRole() === 'DO' || userRole() === 'REVIEWER'" (click)="assessmentTab.set('forward')">Forward</button>
             <button class="page-tab" [class.active]="assessmentTab() === 'final-decision'" (click)="assessmentTab.set('final-decision')">Final Decision</button>
-            <button class="page-tab" [class.active]="assessmentTab() === 'nodal-officer'" [class.disabled]="userRole() === 'REVIEWER' || userRole() === 'DEPUTY_OMBUDSMAN'" [disabled]="userRole() === 'REVIEWER' || userRole() === 'DEPUTY_OMBUDSMAN'" (click)="assessmentTab.set('nodal-officer')">Nodal Officer Record</button>
+            <button class="page-tab" [class.active]="assessmentTab() === 'nodal-officer'" [class.disabled]="userRole() === 'DEPUTY_OMBUDSMAN'" [disabled]="userRole() === 'DEPUTY_OMBUDSMAN'" (click)="assessmentTab.set('nodal-officer')">Nodal Officer Record</button>
           }
-          <button class="page-tab" [class.active]="assessmentTab() === 'email'" [class.disabled]="userRole() === 'REVIEWER' || userRole() === 'DEPUTY_OMBUDSMAN'" [disabled]="userRole() === 'REVIEWER' || userRole() === 'DEPUTY_OMBUDSMAN'" (click)="assessmentTab.set('email')">Email Communication</button>
+          <button class="page-tab" [class.active]="assessmentTab() === 'email'" [class.disabled]="userRole() === 'DEPUTY_OMBUDSMAN'" [disabled]="userRole() === 'DEPUTY_OMBUDSMAN'" (click)="assessmentTab.set('email')">Email Communication</button>
         </div>
         }
 
@@ -1469,13 +1473,15 @@
               </div>
             }
 
-            <!-- Proposed Action / Proposed Clause (DO only) -->
-            @if (userRole() === 'DO') {
+            <!-- Proposed Action / Proposed Clause: DO sets these; REVIEWER sees the same editable
+                 controls pre-filled with the DO's selection (loaded in loadComplaint() regardless
+                 of role) so they can review/adjust it before it moves further. -->
+            @if (userRole() === 'DO' || userRole() === 'REVIEWER') {
               <div class="form-row-2col assessment-fields">
                 <div class="form-group">
                   <label>Proposed Action <span class="mandatory">*</span></label>
-                  <select [(ngModel)]="proposedAction">
-                    <option value="">Select Action</option>
+                  <select [ngModel]="proposedAction" (ngModelChange)="onProposedActionChange($event)">
+                    <option value="">Select a Value</option>
                     <option value="MAINTAINABLE">Maintainable</option>
                     <option value="NON_MAINTAINABLE">Non Maintainable</option>
                   </select>
@@ -1520,6 +1526,15 @@
               <div class="textarea-with-speech">
                 <textarea [(ngModel)]="assessmentComment" rows="3" placeholder="Enter text here"></textarea>
                 <app-speech-button (transcription)="assessmentComment = assessmentComment + ' ' + $event"></app-speech-button>
+              </div>
+            </div>
+
+            <!-- Contents of the Speaking Order -->
+            <div class="form-group">
+              <label>Contents of the Speaking Order</label>
+              <div class="textarea-with-speech">
+                <textarea [(ngModel)]="speakingOrderContent" rows="3" placeholder="Enter text here"></textarea>
+                <app-speech-button (transcription)="speakingOrderContent = speakingOrderContent + ' ' + $event"></app-speech-button>
               </div>
             </div>
           </div>

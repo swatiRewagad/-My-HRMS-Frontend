@@ -26,34 +26,6 @@
       <div class="spinner"></div>
       <p>Loading draft...</p>
     </div>
-  } @else if (submitted()) {
-    <div class="success-page">
-      <div class="success-icon"><i class="pi pi-check-circle"></i></div>
-      @if (reviewerDecision === 'APPROVE') {
-        <h2>Complaint Approved</h2>
-        <p>Complaint Number: <strong class="complaint-number">{{ generatedComplaintNumber() }}</strong></p>
-        <p>Routed to: <strong>{{ targetRegionalOffice }}</strong></p>
-        @if (assignedToUser() && assignedToUser() !== targetRegionalOffice) {
-          <p>Assigned to: <strong>{{ assignedToUser() }}</strong></p>
-        }
-      } @else if (reviewerDecision === 'SENT_BACK_TO_DEO') {
-        <h2>Sent Back to DEO</h2>
-        <p>Draft returned to <strong>{{ sentBackToDeoId }}</strong> with comments.</p>
-      } @else if (reviewerDecision === 'NOT_A_COMPLAINT') {
-        <h2>Closed — Not a Complaint</h2>
-        <p>Workflow ended. No further action required.</p>
-      } @else if (reviewerDecision === 'APPROVE_SENT_TO_OTHER_DEPT') {
-        <h2>Approved — Sent to Other Department/Entity</h2>
-        <p>Complaint forwarded to: <strong>{{ targetOtherEntity }}</strong></p>
-      } @else if (reviewerDecision === 'APPROVE_VERNACULAR') {
-        <h2>Approved — Vernacular Complaint</h2>
-        <p>Routed to mapped language office: <strong>{{ vernacularTargetOffice }}</strong></p>
-      } @else {
-        <h2>Closed — Not a Complaint</h2>
-        <p>Disposition: <strong>{{ notComplaintDisposition }}</strong></p>
-      }
-      <button class="btn btn-primary" (click)="goBack()">Back to Home</button>
-    </div>
   } @else {
 
     <!-- ═══ SUB-HEADER TAB ═══ -->
@@ -78,7 +50,7 @@
         <span class="meta-icon purple"><i class="pi pi-file"></i></span>
         <div class="meta-text">
           <span class="meta-label">Complaint Number <i class="pi pi-info-circle"></i></span>
-          <span class="meta-value">Not Generated</span>
+          <span class="meta-value">{{ generatedComplaintNumber() || 'Not Generated' }}</span>
         </div>
       </div>
       <div class="meta-item">
@@ -92,7 +64,7 @@
         <span class="meta-icon orange"><i class="pi pi-chart-bar"></i></span>
         <div class="meta-text">
           <span class="meta-label">Status <i class="pi pi-info-circle"></i></span>
-          <span class="meta-value status-badge-inline">Sent to Reviewer</span>
+          <span class="meta-value status-badge-inline">{{ getStatusLabel(draftStatus) }}</span>
         </div>
       </div>
       <div class="meta-item">
@@ -103,22 +75,26 @@
         </div>
       </div>
       <div class="meta-actions">
-        @if (editMode()) {
-          <button class="btn btn-save" (click)="saveDraft()"><i class="pi pi-save"></i> Save</button>
+        @if (isReadOnly) {
+          <span class="readonly-badge"><i class="pi pi-lock"></i> View Only</span>
         } @else {
-          <button class="btn btn-save" (click)="toggleEditMode()"><i class="pi pi-pencil"></i> Edit</button>
+          @if (editMode()) {
+            <button class="btn btn-save" (click)="saveDraft()"><i class="pi pi-save"></i> Save</button>
+          } @else {
+            <button class="btn btn-save" (click)="toggleEditMode()"><i class="pi pi-pencil"></i> Edit</button>
+          }
+          <button class="btn btn-orange" (click)="openConfirmDialog('SENT_BACK_TO_DEO')"><i class="pi pi-replay"></i> Send Back to DEO</button>
+          @if (draftType === 'NOT_A_COMPLAINT') {
+            <button class="btn btn-green" (click)="openConfirmDialog('NOT_A_COMPLAINT')"><i class="pi pi-check"></i> Approve (Close - Not a Complaint)</button>
+          } @else if (draftType === 'SENT_TO_OTHER_DEPT') {
+            <button class="btn btn-green" (click)="openConfirmDialog('APPROVE_SENT_TO_OTHER_DEPT')"><i class="pi pi-send"></i> Approve (Send to Other Entity)</button>
+          } @else if (draftType === 'VERNACULAR') {
+            <button class="btn btn-green" (click)="openConfirmDialog('APPROVE_VERNACULAR')"><i class="pi pi-globe"></i> Approve (Send to Language Office)</button>
+          } @else {
+            <button class="btn btn-green" (click)="openConfirmDialog('APPROVE')"><i class="pi pi-check"></i> Approve</button>
+          }
+          <button class="btn-more"><i class="pi pi-ellipsis-v"></i></button>
         }
-        <button class="btn btn-orange" (click)="openConfirmDialog('SENT_BACK_TO_DEO')"><i class="pi pi-replay"></i> Send Back to DEO</button>
-        @if (draftType === 'NOT_A_COMPLAINT') {
-          <button class="btn btn-green" (click)="openConfirmDialog('NOT_A_COMPLAINT')"><i class="pi pi-check"></i> Approve (Close - Not a Complaint)</button>
-        } @else if (draftType === 'SENT_TO_OTHER_DEPT') {
-          <button class="btn btn-green" (click)="openConfirmDialog('APPROVE_SENT_TO_OTHER_DEPT')"><i class="pi pi-send"></i> Approve (Send to Other Entity)</button>
-        } @else if (draftType === 'VERNACULAR') {
-          <button class="btn btn-green" (click)="openConfirmDialog('APPROVE_VERNACULAR')"><i class="pi pi-globe"></i> Approve (Send to Language Office)</button>
-        } @else {
-          <button class="btn btn-green" (click)="openConfirmDialog('APPROVE')"><i class="pi pi-check"></i> Approve</button>
-        }
-        <button class="btn-more"><i class="pi pi-ellipsis-v"></i></button>
       </div>
     </div>
 
@@ -141,13 +117,59 @@
 
         <!-- Summary Tab -->
         @if (currentTab() === 'summary') {
+          <div class="main-content-layout two-col" [class.three-col]="showAttachmentsPanel() || showHistoryPanel()">
+
+            <!-- LEFT: Email Syndicate Panel (matches the DO screen's layout) -->
+            <div class="col-email-syndicate">
+              <div class="panel-header">
+                <h3><i class="pi pi-inbox"></i> Email Syndicate</h3>
+              </div>
+              <div class="email-syndicate-body">
+                <h4 class="email-subject-title">{{ subject || 'No Subject' }}</h4>
+                <div class="email-sender-row">
+                  <div class="sender-avatar-circle">{{ (complainantName || 'U').charAt(0) }}</div>
+                  <div class="sender-info">
+                    <span class="sender-name-text">{{ complainantName || 'Unknown' }} &lt;{{ complainantEmail }}&gt;</span>
+                    <span class="sender-meta">To: CRPC, Chandigarh</span>
+                  </div>
+                  <span class="email-date">{{ receivedDate | date:'dd-MM-yyyy' }}</span>
+                </div>
+                @if (attachments().length > 0) {
+                  <div class="email-attachments-bar">
+                    @for (att of attachments(); track att.id) {
+                      <div class="email-att-chip">
+                        <i class="pi pi-file"></i>
+                        <span>{{ att.name }}</span>
+                        <small>{{ att.size }}</small>
+                      </div>
+                    }
+                  </div>
+                }
+                <div class="email-body-display">
+                  <p class="email-body-text">{{ description || 'No email body content.' }}</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- MIDDLE: Complaint Section -->
+            <div class="col-complaint">
+              <div class="panel-header">
+                <h3><i class="pi pi-th-large"></i> Complaint</h3>
+              </div>
+              @if (showAiWarning) {
+                <div class="ai-warning-banner">
+                  <i class="pi pi-exclamation-circle"></i>
+                  <span>Content extraction may not be 100% accurate. Please verify all information against the original document before proceeding.</span>
+                  <button class="banner-close" (click)="showAiWarning = false"><i class="pi pi-times"></i></button>
+                </div>
+              }
           <div class="summary-content">
             <!-- Complaint Section -->
             <div class="section-card">
               <div class="section-header" (click)="sectionOpen.complaint = !sectionOpen.complaint">
                 <h3><i class="pi pi-file-edit"></i> Complaint</h3>
                 <div class="section-header-actions">
-                  @if (!editMode()) {
+                  @if (!editMode() && !isReadOnly) {
                     <button class="btn-edit-inline" (click)="toggleEditMode(); $event.stopPropagation()" title="Edit"><i class="pi pi-pencil"></i> Edit</button>
                   }
                   <button class="expand-btn"><i class="pi pi-expand"></i></button>
@@ -246,16 +268,30 @@
                     </div>
 
                     @if (proposedComplaintType === 'NEW_COMPLAINT') {
+                      @if (editMode()) {
+                        <div class="eligibility-toggle">
+                          <label class="toggle-switch">
+                            <input type="checkbox" [(ngModel)]="markAllEligible" (change)="onMarkAllEligible()" />
+                            <span class="toggle-slider"></span>
+                          </label>
+                          <span class="toggle-label">Mark all as eligible</span>
+                        </div>
+                      }
                       <div class="eligibility-questions-list">
                         @for (q of eligibilityQuestions; track q.key) {
                           <div class="eligibility-q-row">
                             <span class="eq-label">{{ q.label }}</span>
                             @if (editMode()) {
-                              <select [(ngModel)]="q.answer" class="eq-select">
-                                <option value="">—</option>
-                                <option value="YES">Yes</option>
-                                <option value="NO">No</option>
-                              </select>
+                              <div class="eligibility-options">
+                                <label class="radio-option">
+                                  <input type="radio" [name]="q.key" [value]="'YES'" [(ngModel)]="q.answer" />
+                                  <span>Yes</span>
+                                </label>
+                                <label class="radio-option">
+                                  <input type="radio" [name]="q.key" [value]="'NO'" [(ngModel)]="q.answer" />
+                                  <span>No</span>
+                                </label>
+                              </div>
                             } @else {
                               <span class="eq-value" [class.yes]="q.answer === 'YES'" [class.no]="q.answer === 'NO'">{{ q.answer === 'YES' ? 'Yes' : q.answer === 'NO' ? 'No' : '—' }}</span>
                             }
@@ -276,10 +312,32 @@
                 @if (sectionOpen.entity) {
                   <div class="sub-section-body">
                     <div class="field-grid">
-                      <div class="field-item">
+                      <div class="field-item entity-search-group">
                         <label>Entity Name</label>
-                        @if (editMode()) { <input type="text" [(ngModel)]="entityName" /> }
-                        @else { <span class="field-value">{{ entityName || '—' }}</span> }
+                        @if (editMode()) {
+                          <div class="entity-search-wrapper">
+                            <input type="text"
+                              [ngModel]="entitySearchText || entityName"
+                              (ngModelChange)="onEntitySearchInput($event)"
+                              (focus)="onEntitySearchInput(entitySearchText || entityName)"
+                              (blur)="onEntityBlur()"
+                              placeholder="Search bank/entity"
+                              autocomplete="off" />
+                            <i class="pi pi-search entity-search-icon"></i>
+                          </div>
+                          @if (showEntityDropdown() && entitySearchResults().length > 0) {
+                            <ul class="entity-dropdown">
+                              @for (entity of entitySearchResults(); track entity.id) {
+                                <li (mousedown)="selectEntity(entity)">
+                                  <span class="entity-name">{{ entity.name }}</span>
+                                  <span class="entity-dept">{{ entity.department }}</span>
+                                </li>
+                              }
+                            </ul>
+                          }
+                        } @else {
+                          <span class="field-value">{{ entityName || '—' }}</span>
+                        }
                       </div>
                       <div class="field-item">
                         <label>Entity Type</label>
@@ -728,6 +786,69 @@
               </div>
             </div>
           </div>
+            </div>
+
+            @if (showAttachmentsPanel()) {
+              <!-- THIRD PANEL: Attachments -->
+              <div class="col-attachments-panel">
+                <div class="panel-header">
+                  <h3><i class="pi pi-paperclip"></i> Attachments ({{ attachments().length }})</h3>
+                  <button class="expand-btn" (click)="showAttachmentsPanel.set(false)"><i class="pi pi-times"></i></button>
+                </div>
+                @if (attachments().length > 0) {
+                  <div class="att-panel-list">
+                    @for (att of attachments(); track att.id) {
+                      <div class="doc-item">
+                        <div class="doc-icon" [class.doc-icon-pdf]="att.type.includes('pdf')">
+                          @if (att.type.includes('pdf')) { <i class="pi pi-file-pdf"></i> }
+                          @else if (att.type.includes('image')) { <i class="pi pi-image"></i> }
+                          @else { <i class="pi pi-file"></i> }
+                        </div>
+                        <div class="doc-info">
+                          <span class="doc-name">{{ att.name }}</span>
+                          <span class="doc-meta">{{ att.size }}</span>
+                        </div>
+                        <div class="doc-actions">
+                          <button title="Download" (click)="downloadAttachment(att)"><i class="pi pi-download"></i></button>
+                        </div>
+                      </div>
+                    }
+                  </div>
+                } @else {
+                  <p class="sidebar-empty">No attachments</p>
+                }
+              </div>
+            }
+
+            @if (showHistoryPanel()) {
+              <!-- THIRD PANEL: History -->
+              <div class="col-attachments-panel">
+                <div class="panel-header">
+                  <h3><i class="pi pi-history"></i> History</h3>
+                  <button class="expand-btn" (click)="showHistoryPanel.set(false)"><i class="pi pi-times"></i></button>
+                </div>
+                @if (history().length > 0) {
+                  <div class="history-timeline">
+                    @for (entry of history(); track entry.id) {
+                      <div class="history-entry">
+                        <div class="history-status-badge">{{ entry.action.replaceAll('_', ' ') }}</div>
+                        @if (entry.remarks) {
+                          <p class="history-description">{{ entry.remarks }}</p>
+                        }
+                        <div class="history-meta">
+                          <span class="history-date">{{ entry.timestamp | date:'dd-MM-yyyy hh:mm a' }}</span>
+                          <span class="history-by">By: {{ entry.performedBy }} ({{ entry.role }})</span>
+                        </div>
+                      </div>
+                    }
+                  </div>
+                } @else {
+                  <p class="sidebar-empty">No history available</p>
+                }
+              </div>
+            }
+
+          </div>
         }
 
         <!-- Email Communication Tab -->
@@ -756,9 +877,14 @@
 
         <!-- Right Sidebar Icons -->
         <div class="right-sidebar">
-          <button class="sidebar-icon" title="Settings"><i class="pi pi-cog"></i></button>
-          <button class="sidebar-icon" title="Chat"><i class="pi pi-comments"></i></button>
-          <button class="sidebar-icon" title="History" (click)="currentTab.set('history')"><i class="pi pi-clock"></i></button>
+          <button class="sidebar-icon" title="Search"><i class="pi pi-search"></i></button>
+          <button class="sidebar-icon att-icon-btn" [class.active]="showAttachmentsPanel()" title="Attachments ({{ attachments().length }})" (click)="toggleAttachmentsPanel()">
+            <i class="pi pi-paperclip"></i>
+            @if (attachments().length > 0) {
+              <span class="att-badge">{{ attachments().length }}</span>
+            }
+          </button>
+          <button class="sidebar-icon" [class.active]="showHistoryPanel()" title="History" (click)="toggleHistoryPanel()"><i class="pi pi-history"></i></button>
         </div>
       </div>
     </div>

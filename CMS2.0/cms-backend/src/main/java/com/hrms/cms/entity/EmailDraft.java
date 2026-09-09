@@ -314,7 +314,7 @@ public class EmailDraft {
         if (this.updatedAt == null) this.updatedAt = LocalDateTime.now();
         if (this.status == null) this.status = "ASSIGNED";
         if (this.draftId == null || this.draftId.isBlank()) {
-            this.draftId = "DRF-" + String.format("%06d", System.nanoTime() % 1000000);
+            this.draftId = String.format("%06d", Math.abs(System.nanoTime() % 1000000));
         }
     }
 

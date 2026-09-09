@@ -74,7 +74,7 @@ public class DataInitializer implements CommandLineRunner {
 
         // Draft 1: Standard email complaint - ATM issue (assigned to deo.user)
         emailDraftRepo.save(EmailDraft.builder()
-                .draftId("DRF-100001")
+                .draftId("100001")
                 .threadId("THR-EMAIL-001")
                 .senderEmail("ramesh.gupta@gmail.com")
                 .subject("ATM did not dispense cash but Rs 20,000 debited from my account")
@@ -98,7 +98,7 @@ public class DataInitializer implements CommandLineRunner {
 
         // Draft 2: Credit card fraud complaint (assigned to deo.user)
         emailDraftRepo.save(EmailDraft.builder()
-                .draftId("DRF-100002")
+                .draftId("100002")
                 .threadId("THR-EMAIL-002")
                 .senderEmail("priya.mehta@yahoo.com")
                 .subject("Unauthorized credit card transactions - Rs 45,000 charged")
@@ -122,7 +122,7 @@ public class DataInitializer implements CommandLineRunner {
 
         // Draft 3: UPI fraud - PhonePe (CEPC entity, assigned to deo.user)
         emailDraftRepo.save(EmailDraft.builder()
-                .draftId("DRF-100003")
+                .draftId("100003")
                 .threadId("THR-EMAIL-003")
                 .senderEmail("anil.sharma@hotmail.com")
                 .subject("PhonePe unauthorized UPI debit of Rs 8,500")
@@ -146,7 +146,7 @@ public class DataInitializer implements CommandLineRunner {
 
         // Draft 4: Loan harassment - NBFC (assigned to deo.user)
         emailDraftRepo.save(EmailDraft.builder()
-                .draftId("DRF-100004")
+                .draftId("100004")
                 .threadId("THR-EMAIL-004")
                 .senderEmail("sunita.devi@gmail.com")
                 .subject("Harassment by Bajaj Finance recovery agents")
@@ -170,7 +170,7 @@ public class DataInitializer implements CommandLineRunner {
 
         // Draft 5: Vernacular complaint in Hindi (assigned to deo.user)
         emailDraftRepo.save(EmailDraft.builder()
-                .draftId("DRF-100005")
+                .draftId("100005")
                 .threadId("THR-EMAIL-005")
                 .senderEmail("mohan.yadav@gmail.com")
                 .subject("बैंक खाते से अनधिकृत निकासी - कृपया सहायता करें")
@@ -197,7 +197,7 @@ public class DataInitializer implements CommandLineRunner {
 
         // Draft 6: Not a complaint - just a general inquiry (assigned to deo.user)
         emailDraftRepo.save(EmailDraft.builder()
-                .draftId("DRF-100006")
+                .draftId("100006")
                 .threadId("THR-EMAIL-006")
                 .senderEmail("info@techstartup.in")
                 .subject("Inquiry about RBI payment aggregator license process")
@@ -220,7 +220,7 @@ public class DataInitializer implements CommandLineRunner {
 
         // Draft 7: Physical letter - CPGRAMS forwarded (assigned to deo.user)
         emailDraftRepo.save(EmailDraft.builder()
-                .draftId("DRF-100007")
+                .draftId("100007")
                 .threadId("THR-CPGRAMS-001")
                 .senderEmail("cpgrams-forward@gov.in")
                 .subject("CPGRAMS Forwarded: Gold loan ornaments not returned by Muthoot Finance")
@@ -245,7 +245,7 @@ public class DataInitializer implements CommandLineRunner {
 
         // Draft 8: Cooperative bank issue (assigned to deo.user)
         emailDraftRepo.save(EmailDraft.builder()
-                .draftId("DRF-100008")
+                .draftId("100008")
                 .threadId("THR-EMAIL-008")
                 .senderEmail("deepak.patil@gmail.com")
                 .subject("Saraswat Bank refusing to update nominee on FD account")
@@ -273,7 +273,7 @@ public class DataInitializer implements CommandLineRunner {
         for (EmailDraft draft : drafts) {
             boolean changed = false;
             if (draft.getDraftId() != null && draft.getDraftId().contains("-") && draft.getDraftId().length() > 20) {
-                draft.setDraftId("DRF-" + String.format("%06d", draft.getId()));
+                draft.setDraftId(String.format("%06d", draft.getId()));
                 changed = true;
             }
             // Migrate displayName assignments to userId
@@ -595,6 +595,49 @@ public class DataInitializer implements CommandLineRunner {
                 .filingType("WEB_PORTAL").department("RBIO").assignedRole("RBIO_OFFICER")
                 .entityCode("Canara Bank").workflowStage("INITIAL_REVIEW")
                 .createdAt(now.minusDays(6)).updatedAt(now.minusDays(6)).filedAt(now.minusDays(6))
+                .build());
+
+        // ═══ RBIO Complaints — Mumbai officer (rbio_mum1) queue ═══
+        complaintRepo.save(Complaint.builder()
+                .complaintNumber("CMP-20260606-200004")
+                .complainantName("Anjali Deshpande")
+                .complainantEmail("anjali.d@email.com")
+                .complainantPhone("9876600004")
+                .complainantState("Maharashtra").complainantDistrict("Mumbai")
+                .subject("HDFC Bank locker rent deducted twice in same month")
+                .description("HDFC Bank Fort branch deducted locker rent twice within the same billing cycle. Branch acknowledges error but no refund issued in 3 weeks.")
+                .status("assigned").priority("medium")
+                .filingType("WEB_PORTAL").department("RBIO").assignedRole("RBIO_OFFICER").assignedOfficer("rbio_mum1")
+                .entityCode("HDFC Bank").entityState("Maharashtra").entityDistrict("Mumbai").workflowStage("INITIAL_REVIEW")
+                .createdAt(now.minusDays(1)).updatedAt(now.minusDays(1)).filedAt(now.minusDays(1))
+                .build());
+
+        complaintRepo.save(Complaint.builder()
+                .complaintNumber("CMP-20260605-200005")
+                .complainantName("Rohit Shetty")
+                .complainantEmail("rohit.s@email.com")
+                .complainantPhone("9876600005")
+                .complainantState("Maharashtra").complainantDistrict("Mumbai")
+                .subject("ICICI Bank credit card annual fee charged despite waiver offer")
+                .description("Card was issued with a lifetime-free offer in writing. ICICI charged Rs 2,500 annual fee anyway. Branch redirects to call centre with no resolution.")
+                .status("in_progress").priority("high")
+                .filingType("EMAIL").department("RBIO").assignedRole("RBIO_OFFICER").assignedOfficer("rbio_mum1")
+                .entityCode("ICICI Bank").entityState("Maharashtra").entityDistrict("Mumbai").workflowStage("INVESTIGATION")
+                .createdAt(now.minusDays(3)).updatedAt(now.minusHours(12)).filedAt(now.minusDays(3))
+                .build());
+
+        complaintRepo.save(Complaint.builder()
+                .complaintNumber("CMP-20260604-200006")
+                .complainantName("Sneha Kulkarni")
+                .complainantEmail("sneha.k@email.com")
+                .complainantPhone("9876600006")
+                .complainantState("Maharashtra").complainantDistrict("Thane")
+                .subject("Bank of Baroda delaying gold loan disbursement by 2 weeks")
+                .description("Gold loan approved on paper 2 weeks ago against pledged jewellery, but disbursement still pending with no clear reason from Thane branch.")
+                .status("assigned").priority("low")
+                .filingType("WEB_PORTAL").department("RBIO").assignedRole("RBIO_OFFICER").assignedOfficer("rbio_mum1")
+                .entityCode("Bank of Baroda").entityState("Maharashtra").entityDistrict("Thane").workflowStage("INITIAL_REVIEW")
+                .createdAt(now.minusDays(5)).updatedAt(now.minusDays(5)).filedAt(now.minusDays(5))
                 .build());
     }
 

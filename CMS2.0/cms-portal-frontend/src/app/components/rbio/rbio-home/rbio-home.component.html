@@ -15,16 +15,14 @@
     </div>
     <div class="header-right">
       <div class="header-icons">
-        <button class="font-btn" title="Decrease font"><i class="pi pi-minus"></i> A</button>
-        <button class="font-btn active" title="Normal font">A</button>
-        <button class="font-btn" title="Increase font">A<sup>+</sup></button>
-        <button title="Language"><i class="pi pi-globe"></i> English</button>
+        <app-font-size-controls></app-font-size-controls>
+        <app-language-select></app-language-select>
         <app-notification-bell></app-notification-bell>
       </div>
       <span class="user-avatar">{{ (loggedInUser?.name || 'R').charAt(0) }}</span>
       <div class="user-details">
         <span class="user-name">{{ loggedInUser?.name || 'Rahul Jain' }}</span>
-        <span class="user-role">RBIO Dealing Officer</span>
+        <span class="user-role">{{ 'officer.role.rbio_officer' | translate }}</span>
       </div>
       <button class="btn-logout" (click)="logout()"><i class="pi pi-sign-out"></i></button>
     </div>
@@ -36,42 +34,42 @@
     <aside class="sidebar">
       <div class="sidebar-item active">
         <i class="pi pi-list"></i>
-        <span>RBIO Complaints</span>
+        <span>{{ 'officer.title.rbio_complaints' | translate }}</span>
       </div>
       <div class="sidebar-item" (click)="router.navigate(['/admin/dashboard'], {queryParams: {department: 'RBIO'}})">
         <i class="pi pi-chart-bar"></i>
-        <span>Dashboard</span>
+        <span>{{ 'officer.nav.dashboard' | translate }}</span>
       </div>
       <div class="sidebar-collapse">
         <i class="pi pi-angle-double-left"></i>
-        <span>Collapse</span>
+        <span>{{ 'officer.nav.collapse' | translate }}</span>
       </div>
     </aside>
 
     <!-- Main Content -->
     <main class="content">
       <div class="content-header">
-        <h1>RBIO Complaints</h1>
+        <h1>{{ 'officer.title.rbio_complaints' | translate }}</h1>
         <div class="header-actions">
-          <button class="btn btn-link" (click)="showAdvancedSearch.set(true)">Advanced Search</button>
+          <button class="btn btn-link" (click)="showAdvancedSearch.set(true)">{{ 'officer.action.advanced_search' | translate }}</button>
           @if (advSearchActive()) {
-            <button class="btn btn-link danger" (click)="clearAdvancedSearch()">Clear Filters</button>
+            <button class="btn btn-link danger" (click)="clearAdvancedSearch()">{{ 'officer.action.clear_filters' | translate }}</button>
           }
           <select class="queue-select" [value]="filterStatus()" (change)="filterStatus.set($any($event.target).value)">
-            <option value="">RBIO Complaints</option>
-            <option value="DRAFT">Draft</option>
-            <option value="IN_PROGRESS">In Progress</option>
-            <option value="SENT_BACK">Sent Back to Me</option>
-            <option value="ASSESSMENT_COMPLETE">Assessment Complete</option>
+            <option value="">{{ 'officer.title.rbio_complaints' | translate }}</option>
+            <option value="DRAFT">{{ 'officer.tab.draft' | translate }}</option>
+            <option value="IN_PROGRESS">{{ 'officer.tab.in_progress' | translate }}</option>
+            <option value="SENT_BACK">{{ 'officer.tab.sent_back_to_me' | translate }}</option>
+            <option value="ASSESSMENT_COMPLETE">{{ 'officer.tab.assessment_complete' | translate }}</option>
           </select>
           <select class="queue-select" [value]="filterQueue()" (change)="filterQueue.set($any($event.target).value)">
-            <option value="ASSIGNED_TO_ME">Complaints Assigned To Me</option>
-            <option value="ALL">All Complaints</option>
+            <option value="ASSIGNED_TO_ME">{{ 'officer.filter.assigned_to_me' | translate }}</option>
+            <option value="ALL">{{ 'officer.filter.all_complaints' | translate }}</option>
           </select>
-          <button class="btn btn-link" (click)="loadComplaints()"><i class="pi pi-filter"></i> Filters</button>
+          <button class="btn btn-link" (click)="loadComplaints()"><i class="pi pi-filter"></i> {{ 'officer.action.filters' | translate }}</button>
           <div class="create-dropdown-wrapper">
             <button class="btn btn-primary create-btn" (click)="showCreateDropdown.set(!showCreateDropdown())">
-              <i class="pi pi-plus"></i> Create Complaint <i class="pi pi-chevron-down"></i>
+              <i class="pi pi-plus"></i> {{ 'officer.action.create_complaint' | translate }} <i class="pi pi-chevron-down"></i>
             </button>
             @if (showCreateDropdown()) {
               <div class="create-dropdown">
@@ -89,84 +87,94 @@
 
       <!-- Stats Cards -->
       <div class="stats-bar">
-        <div class="stat-card" (click)="filterStatus.set('')">
+        <div class="stat-card" (click)="filterStatus.set(''); filterSlaBreached.set(false)">
           <div class="stat-icon blue"><i class="pi pi-inbox"></i></div>
           <div class="stat-content">
-            <span class="stat-label">Total Pending Complaints</span>
+            <span class="stat-label">{{ 'officer.stat.total_pending' | translate }}</span>
             <span class="stat-value">{{ stats().totalPending }}</span>
           </div>
         </div>
-        <div class="stat-card" (click)="filterStatus.set('')">
+        <div class="stat-card" (click)="filterStatus.set(''); filterSlaBreached.set(false)">
           <div class="stat-icon yellow"><i class="pi pi-user"></i></div>
           <div class="stat-content">
-            <span class="stat-label">Pending with Me</span>
+            <span class="stat-label">{{ 'officer.stat.pending_with_me' | translate }}</span>
             <span class="stat-value">{{ stats().pendingWithMe }}</span>
           </div>
         </div>
-        <div class="stat-card" (click)="filterStatus.set('AWAITING_RESPONSE')">
-          <div class="stat-icon red"><i class="pi pi-users"></i></div>
+        <div class="stat-card" (click)="filterStatus.set('AWAITING_RESPONSE'); filterSlaBreached.set(false)">
+          <div class="stat-icon orange"><i class="pi pi-building"></i></div>
           <div class="stat-content">
-            <span class="stat-label">Pending with Contact Person</span>
-            <span class="stat-value">{{ stats().pendingContactPerson }}</span>
+            <span class="stat-label">{{ 'officer.stat.pending_with_re' | translate }}</span>
+            <span class="stat-value">{{ stats().pendingWithRE }}</span>
           </div>
         </div>
-        <div class="stat-card" (click)="filterStatus.set('MEETING_SCHEDULED')">
-          <div class="stat-icon purple"><i class="pi pi-calendar"></i></div>
+        <div class="stat-card" (click)="filterStatus.set('MEETING_SCHEDULED'); filterSlaBreached.set(false)">
+          <div class="stat-icon red"><i class="pi pi-calendar"></i></div>
           <div class="stat-content">
-            <span class="stat-label">Pending at Meeting Scheduled</span>
+            <span class="stat-label">{{ 'officer.stat.pending_meeting' | translate }}</span>
             <span class="stat-value">{{ stats().pendingMeeting }}</span>
           </div>
         </div>
-        <div class="stat-card sla-card">
-          <div class="stat-icon orange"><i class="pi pi-clock"></i></div>
+        <div class="stat-card sla-card" [class.active]="filterSlaBreached()" (click)="filterStatus.set(''); filterSlaBreached.set(true)">
+          <div class="stat-icon red"><i class="pi pi-clock"></i></div>
           <div class="stat-content">
-            <span class="stat-label">SLA Breach</span>
+            <span class="stat-label">{{ 'officer.stat.sla_breached' | translate }}</span>
             <span class="stat-value">{{ stats().slaBreach }}</span>
           </div>
           <div class="sla-overdue">
-            <span class="overdue-label">Overdue</span>
-            <span class="overdue-value">{{ stats().slaOverdue }}</span>
+            <span class="overdue-label">{{ 'officer.stat.range_0_15' | translate }}</span>
+            <span class="overdue-value">{{ stats().slaBreached0to15 }}</span>
+          </div>
+          <div class="sla-overdue">
+            <span class="overdue-label">{{ 'officer.stat.range_16_30' | translate }}</span>
+            <span class="overdue-value">{{ stats().slaBreached16to30 }}</span>
           </div>
         </div>
       </div>
 
       <!-- Status Tabs -->
       <div class="status-tabs">
-        <button class="tab" [class.active]="filterStatus() === ''" (click)="filterStatus.set('')">
-          All
+        <button class="tab" [class.active]="filterStatus() === '' && !filterSlaBreached()" (click)="filterStatus.set(''); filterSlaBreached.set(false)">
+          {{ 'officer.tab.all' | translate }}
         </button>
-        <button class="tab" [class.active]="filterStatus() === 'DRAFT'" (click)="filterStatus.set('DRAFT')">
-          Draft <span class="tab-count">{{ stats().draft }}</span>
+        <button class="tab" [class.active]="filterStatus() === 'DRAFT'" (click)="filterStatus.set('DRAFT'); filterSlaBreached.set(false)">
+          {{ 'officer.tab.draft' | translate }} <span class="tab-count">{{ stats().draft }}</span>
         </button>
-        <button class="tab" [class.active]="filterStatus() === 'MEETING_SCHEDULED'" (click)="filterStatus.set('MEETING_SCHEDULED')">
-          Meeting Scheduled <span class="tab-count">{{ stats().meetingScheduled }}</span>
+        <button class="tab" [class.active]="filterStatus() === 'MEETING_SCHEDULED'" (click)="filterStatus.set('MEETING_SCHEDULED'); filterSlaBreached.set(false)">
+          {{ 'officer.tab.meeting_scheduled' | translate }} <span class="tab-count">{{ stats().meetingScheduled }}</span>
         </button>
-        <button class="tab" [class.active]="filterStatus() === 'SENT_BACK'" (click)="filterStatus.set('SENT_BACK')">
-          Sent Back to Me <span class="tab-count">{{ stats().sentBack }}</span>
+        <button class="tab" [class.active]="filterStatus() === 'SENT_BACK'" (click)="filterStatus.set('SENT_BACK'); filterSlaBreached.set(false)">
+          {{ 'officer.tab.sent_back_to_me' | translate }} <span class="tab-count">{{ stats().sentBack }}</span>
         </button>
-        <button class="tab" [class.active]="filterStatus() === 'ASSESSMENT_COMPLETE'" (click)="filterStatus.set('ASSESSMENT_COMPLETE')">
-          Assessment Complete
+        <button class="tab" [class.active]="filterStatus() === 'AWAITING_RESPONSE'" (click)="filterStatus.set('AWAITING_RESPONSE'); filterSlaBreached.set(false)">
+          {{ 'officer.tab.sent_to_re' | translate }} <span class="tab-count">{{ stats().pendingWithRE }}</span>
+        </button>
+        <button class="tab" [class.active]="filterStatus() === 'RESPONSE_FROM_RE'" (click)="filterStatus.set('RESPONSE_FROM_RE'); filterSlaBreached.set(false)">
+          {{ 'officer.tab.response_from_re' | translate }} <span class="tab-count">{{ stats().responseFromRE }}</span>
+        </button>
+        <button class="tab" [class.active]="filterStatus() === 'WITHDRAWN'" (click)="filterStatus.set('WITHDRAWN'); filterSlaBreached.set(false)">
+          {{ 'officer.tab.withdrawn' | translate }} <span class="tab-count">{{ stats().withdrawn }}</span>
         </button>
       </div>
 
       <!-- Complaints Table -->
       <div class="table-section">
         <div class="table-header-row">
-          <h3>Complaints</h3>
+          <h3>{{ 'officer.table.complaints' | translate }}</h3>
           <div class="table-actions">
             <label class="toggle-filter">
               <span class="toggle-switch" [class.active]="filterUnread()">
                 <input type="checkbox" [checked]="filterUnread()" (change)="filterUnread.set(!filterUnread())" />
                 <span class="toggle-slider"></span>
               </span>
-              Unread
+              {{ 'officer.table.unread' | translate }}
             </label>
             <label class="toggle-filter">
               <span class="toggle-switch" [class.active]="filterWithoutAttachments()">
                 <input type="checkbox" [checked]="filterWithoutAttachments()" (change)="filterWithoutAttachments.set(!filterWithoutAttachments())" />
                 <span class="toggle-slider"></span>
               </span>
-              Without Attachments
+              {{ 'officer.table.without_attachments' | translate }}
             </label>
             <button class="btn btn-icon" (click)="showColumnConfig.set(true)" title="Column Selection">
               <i class="pi pi-cog"></i>
@@ -177,7 +185,7 @@
         @if (loading()) {
           <div class="loading-overlay">
             <div class="spinner"></div>
-            <span>Loading...</span>
+            <span>{{ 'officer.table.loading' | translate }}</span>
           </div>
         }
 
@@ -192,7 +200,7 @@
                 </th>
                 @for (col of visibleColumns(); track col.key) {
                   <th (click)="sortBy(col.key)">
-                    {{ col.label }}
+                    {{ col.labelKey | translate }}
                     @if (sortColumn === col.key) {
                       <i class="pi" [class.pi-sort-amount-up]="sortDirection === 'asc'" [class.pi-sort-amount-down]="sortDirection === 'desc'"></i>
                     }
@@ -204,15 +212,15 @@
                 <th></th>
                 @for (col of visibleColumns(); track col.key) {
                   <th>
-                    <input type="text" class="col-search" placeholder="Search"
-                      [(ngModel)]="columnFilters[col.key]" />
+                    <input type="text" class="col-search" [placeholder]="'officer.action.search' | translate"
+                      [ngModel]="columnFilters()[col.key]" (ngModelChange)="setColumnFilter(col.key, $event)" />
                   </th>
                 }
               </tr>
             </thead>
             <tbody>
               @for (item of paginatedComplaints(); track item.complaintId) {
-                <tr [class.selected]="selectedIds().has(item.complaintId)" [class.visited]="visitedIds().has(item.complaintId)" (click)="openComplaint(item.complaintId)">
+                <tr [class]="'row-' + getRowClass(item.slaBreachDays, item.status)" [class.selected]="selectedIds().has(item.complaintId)" [class.visited]="visitedIds().has(item.complaintId)" (click)="openComplaint(item.complaintId)">
                   <td class="checkbox-col" (click)="$event.stopPropagation()">
                     <input type="checkbox"
                       [checked]="selectedIds().has(item.complaintId)"
@@ -221,7 +229,7 @@
                   @for (col of visibleColumns(); track col.key) {
                     <td [class]="'cell-' + col.key">
                       @if (col.key === 'status') {
-                        <span class="status-badge" [attr.data-status]="item.status">{{ getStatusLabel(item.status) }}</span>
+                        <span class="status-badge" [attr.data-status]="item.status"><i class="pi" [class]="getStatusIcon(item.status)"></i> {{ getStatusLabel(item.status) }}</span>
                       } @else if (col.key === 'modeOfReceipt') {
                         <span class="mode-badge">{{ item.modeOfReceipt }}</span>
                       } @else if (col.key === 'slaBreachDays') {
@@ -235,7 +243,7 @@
               } @empty {
                 <tr>
                   <td [attr.colspan]="visibleColumns().length + 1" class="empty-state">
-                    No complaints found.
+                    {{ 'officer.table.no_complaints_found' | translate }}
                   </td>
                 </tr>
               }
@@ -245,7 +253,7 @@
 
         <!-- Pagination -->
         <div class="pagination">
-          <span class="page-info">Showing {{ paginationStart() }} to {{ paginationEnd() }} of {{ filteredComplaints().length }} entries</span>
+          <span class="page-info">{{ 'officer.pagination.showing_of' | translate:{start: paginationStart()+'', end: paginationEnd()+'', total: filteredComplaints().length+''} }}</span>
           <div class="page-controls">
             <button class="page-btn" (click)="currentPage.set(1)" [disabled]="currentPage() === 1">&laquo;</button>
             <button class="page-btn" (click)="currentPage.set(currentPage() - 1)" [disabled]="currentPage() === 1">&lsaquo;</button>
@@ -271,11 +279,11 @@
   <div class="modal-overlay" (click)="showColumnConfig.set(false)">
     <div class="modal-dialog column-dialog" (click)="$event.stopPropagation()">
       <div class="modal-title">
-        <i class="pi pi-th-large"></i> Choose columns to see in "Complaints" Table
+        <i class="pi pi-th-large"></i> {{ 'officer.column.choose_title' | translate }}
         <button class="modal-close" (click)="showColumnConfig.set(false)">&times;</button>
       </div>
-      <p class="modal-subtitle">Select and manage visible columns</p>
-      <input type="text" class="column-search" placeholder="Search Column Name" [(ngModel)]="columnSearchText" />
+      <p class="modal-subtitle">{{ 'officer.column.select_manage' | translate }}</p>
+      <input type="text" class="column-search" [placeholder]="'officer.column.search_placeholder' | translate" [ngModel]="columnSearchText()" (ngModelChange)="columnSearchText.set($event)" />
       <div class="column-list">
         @for (col of filteredColumns(); track col.key; let i = $index) {
           <label class="column-option"
@@ -288,13 +296,13 @@
             [class.drag-over]="dragOverIndex === i">
             <i class="pi pi-bars drag-handle"></i>
             <input type="checkbox" [checked]="col.visible" (change)="toggleColumnVisibility(col.key)" />
-            {{ col.label }}
+            {{ col.labelKey | translate }}
           </label>
         }
       </div>
       <div class="modal-actions">
-        <button class="btn btn-outline" (click)="showColumnConfig.set(false)">Cancel</button>
-        <button class="btn btn-primary" (click)="showColumnConfig.set(false)">Save</button>
+        <button class="btn btn-outline" (click)="showColumnConfig.set(false)">{{ 'officer.action.cancel' | translate }}</button>
+        <button class="btn btn-primary" (click)="showColumnConfig.set(false)">{{ 'officer.action.save' | translate }}</button>
       </div>
     </div>
   </div>
@@ -305,49 +313,49 @@
   <div class="modal-overlay" (click)="showAdvancedSearch.set(false)">
     <div class="modal-dialog search-dialog" (click)="$event.stopPropagation()">
       <div class="modal-title">
-        Advanced Search
+        {{ 'officer.action.advanced_search' | translate }}
         <button class="modal-close" (click)="showAdvancedSearch.set(false)">&times;</button>
       </div>
       <div class="search-grid">
         <div class="search-field">
-          <label>Complaint Number</label>
-          <input type="text" [(ngModel)]="advSearch.complaintNumber" placeholder="Enter a value" />
+          <label>{{ 'officer.search.complaint_number' | translate }}</label>
+          <input type="text" [(ngModel)]="advSearch.complaintNumber" [placeholder]="'officer.search.enter_value' | translate" />
         </div>
         <div class="search-field">
-          <label>Complaint Id</label>
-          <input type="text" [(ngModel)]="advSearch.complaintId" placeholder="Enter a value" />
+          <label>{{ 'officer.search.complaint_id' | translate }}</label>
+          <input type="text" [(ngModel)]="advSearch.complaintId" [placeholder]="'officer.search.enter_value' | translate" />
         </div>
         <div class="search-field">
-          <label>Status Code</label>
+          <label>{{ 'officer.search.status_code' | translate }}</label>
           <select [(ngModel)]="advSearch.statusCode">
-            <option value="">Select a Value</option>
-            <option value="DRAFT">Draft</option>
-            <option value="IN_PROGRESS">In Progress</option>
-            <option value="MEETING_SCHEDULED">Meeting Scheduled</option>
-            <option value="SENT_BACK">Sent Back</option>
-            <option value="ASSESSMENT_COMPLETE">Assessment Complete</option>
+            <option value="">{{ 'officer.search.select_value' | translate }}</option>
+            <option value="DRAFT">{{ 'officer.tab.draft' | translate }}</option>
+            <option value="IN_PROGRESS">{{ 'officer.tab.in_progress' | translate }}</option>
+            <option value="MEETING_SCHEDULED">{{ 'officer.tab.meeting_scheduled' | translate }}</option>
+            <option value="SENT_BACK">{{ 'officer.tab.sent_back' | translate }}</option>
+            <option value="ASSESSMENT_COMPLETE">{{ 'officer.tab.assessment_complete' | translate }}</option>
           </select>
         </div>
         <div class="search-field">
-          <label>Complainant Name</label>
-          <input type="text" [(ngModel)]="advSearch.complainantName" placeholder="Enter a value" />
+          <label>{{ 'officer.search.complainant_name' | translate }}</label>
+          <input type="text" [(ngModel)]="advSearch.complainantName" [placeholder]="'officer.search.enter_value' | translate" />
         </div>
         <div class="search-field">
-          <label>Complainant Email</label>
-          <input type="text" [(ngModel)]="advSearch.email" placeholder="Enter a value" />
+          <label>{{ 'officer.search.email' | translate }}</label>
+          <input type="text" [(ngModel)]="advSearch.email" [placeholder]="'officer.search.enter_value' | translate" />
         </div>
         <div class="search-field">
-          <label>Entity Name</label>
-          <input type="text" [(ngModel)]="advSearch.entityName" placeholder="Enter a value" />
+          <label>{{ 'officer.search.entity_name' | translate }}</label>
+          <input type="text" [(ngModel)]="advSearch.entityName" [placeholder]="'officer.search.enter_value' | translate" />
         </div>
         <div class="search-field full-width">
-          <label>Subject</label>
-          <input type="text" [(ngModel)]="advSearch.subject" placeholder="Enter a value" />
+          <label>{{ 'officer.search.subject' | translate }}</label>
+          <input type="text" [(ngModel)]="advSearch.subject" [placeholder]="'officer.search.enter_value' | translate" />
         </div>
         <div class="search-field">
-          <label>Category</label>
+          <label>{{ 'officer.search.category_label' | translate }}</label>
           <select [(ngModel)]="advSearch.category">
-            <option value="">Select a Value</option>
+            <option value="">{{ 'officer.search.select_value' | translate }}</option>
             <option value="ATM">ATM</option>
             <option value="CREDIT_CARD">Credit Card</option>
             <option value="UPI">UPI</option>
@@ -357,9 +365,9 @@
         </div>
       </div>
       <div class="modal-actions">
-        <button class="btn btn-outline" (click)="clearAdvancedSearch(); showAdvancedSearch.set(false)">Clear</button>
-        <button class="btn btn-outline" (click)="showAdvancedSearch.set(false)">Cancel</button>
-        <button class="btn btn-primary" (click)="applyAdvancedSearch()">Search</button>
+        <button class="btn btn-outline" (click)="clearAdvancedSearch(); showAdvancedSearch.set(false)">{{ 'officer.search.clear' | translate }}</button>
+        <button class="btn btn-outline" (click)="showAdvancedSearch.set(false)">{{ 'officer.action.cancel' | translate }}</button>
+        <button class="btn btn-primary" (click)="applyAdvancedSearch()">{{ 'officer.action.search' | translate }}</button>
       </div>
     </div>
   </div>
