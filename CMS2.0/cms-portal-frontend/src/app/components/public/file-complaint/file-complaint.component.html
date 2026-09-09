@@ -381,11 +381,11 @@
       <div class="scheme-links">
         <div class="scheme-link-row">
           <span>Regulated entities <strong>covered</strong> under Reserve Bank-Integrated Ombudsman Scheme, 2026</span>
-          <a href="javascript:void(0)" class="scheme-download-link"><i class="pi pi-download"></i> Download PDF</a>
+          <a href="assets/documents/Ombudsman_Scheme-2026.pdf" download class="scheme-download-link"><i class="pi pi-download"></i> Download PDF</a>
         </div>
         <div class="scheme-link-row">
           <span>Regulated entities <strong>not covered</strong> under Reserve Bank-Integrated Ombudsman Scheme, 2026</span>
-          <a href="javascript:void(0)" class="scheme-download-link"><i class="pi pi-download"></i> Download PDF</a>
+          <a href="assets/documents/Ombudsman_Scheme-2026.pdf" download class="scheme-download-link"><i class="pi pi-download"></i> Download PDF</a>
         </div>
       </div>
     }
@@ -622,8 +622,13 @@
               </div>
               <div class="form-group">
                 <label>{{ 'form.entity_branch' | translate }} <span class="required">*</span></label>
-                <input type="text" class="form-input" formControlName="entityBranch" placeholder="Enter Branch Name"
-                       [class.invalid]="(regulatedEntityForm.controls.entityBranch.touched || regulatedEntityForm.controls.entityBranch.dirty) && regulatedEntityForm.controls.entityBranch.invalid">
+                <select class="form-select" formControlName="entityBranch"
+                        [class.invalid]="(regulatedEntityForm.controls.entityBranch.touched || regulatedEntityForm.controls.entityBranch.dirty) && regulatedEntityForm.controls.entityBranch.invalid">
+                  <option value="">Select Branch</option>
+                  @for (branch of entityBranches; track branch) {
+                    <option [value]="branch">{{ branch }}</option>
+                  }
+                </select>
                 <app-form-error [control]="regulatedEntityForm.controls.entityBranch" label="Entity branch"></app-form-error>
               </div>
             </div>
@@ -1372,7 +1377,7 @@
           @if (currentStep() < totalSteps) {
             <button class="btn-next" (click)="nextStep()" [disabled]="isNextDisabled()">{{ 'form.next' | translate }} <i class="pi pi-chevron-right"></i></button>
           } @else {
-            <button class="btn-download-pdf" (click)="downloadAcknowledgement()">
+            <button class="btn-download-pdf" (click)="downloadAcknowledgement(true)">
               <i class="pi pi-download"></i> {{ 'form.download_pdf' | translate }}
             </button>
             <button class="btn-submit-complaint" (click)="submit()" [disabled]="submitting() || !declarationChecked || !declaration2Checked">
@@ -1441,13 +1446,12 @@
         complaint will be reviewed thoroughly. You can also track the status of your complaint
         using the reference number provided.
       </p>
-      <a href="javascript:void(0)" class="success-download-link" (click)="downloadAcknowledgement()">
+      <a href="javascript:void(0)" class="success-download-link" (click)="downloadStatusReport()">
         <i class="pi pi-download"></i> {{ 'success.download' | translate }}
       </a>
       <div class="success-btn-row">
         <button class="success-action-btn" (click)="trackComplaint()">{{ 'success.track' | translate }}</button>
         <button class="success-action-btn" routerLink="/public/history">{{ 'success.my_complaints' | translate }}</button>
-        <button class="success-action-btn" (click)="goHome()">{{ 'success.share_feedback' | translate }}</button>
       </div>
     </div>
   </div>
