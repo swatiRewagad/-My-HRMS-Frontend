@@ -1,0 +1,136 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cms-mail-intake
+  namespace: rbi-cms
+  labels:
+    app: cms-mail-intake
+    app.kubernetes.io/part-of: rbi-cms
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cms-mail-intake
+  template:
+    metadata:
+      labels:
+        app: cms-mail-intake
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8092"
+        prometheus.io/path: "/cms-mail-intake/actuator/prometheus"
+    spec:
+      containers:
+        - name: cms-mail-intake
+          image: image-registry.openshift-image-registry.svc:5000/rbi-cms/cms-mail-intake:latest
+          ports:
+            - name: http
+              containerPort: 8092
+              protocol: TCP
+            - name: smtp
+              containerPort: 2525
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: cms-mail-intake-config
+            - secretRef:
+                name: cms-mail-intake-secret
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: "openshift"
+          volumeMounts:
+            - name: mail-raw-storage
+              mountPath: /data/cms/mail-intake/raw
+          resources:
+            requests:
+              cpu: 200m
+              memory: 512Mi
+            limits:
+              cpu: 500m
+              memory: 1Gi
+          readinessProbe:
+            httpGet:
+              path: /cms-mail-intake/actuator/health/readiness
+              port: 8092
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /cms-mail-intake/actuator/health/liveness
+              port: 8092
+            initialDelaySeconds: 60
+            periodSeconds: 15
+      volumes:
+        - name: mail-raw-storage
+          persistentVolumeClaim:
+            claimName: cms-mail-intake-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cms-mail-intake
+  namespace: rbi-cms
+  labels:
+    app: cms-mail-intake
+spec:
+  selector:
+    app: cms-mail-intake
+  ports:
+    - name: http
+      port: 8092
+      targetPort: 8092
+      protocol: TCP
+    - name: smtp
+      port: 2525
+      targetPort: 2525
+      protocol: TCP
+  type: ClusterIP
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: cms-mail-intake-pvc
+  namespace: rbi-cms
+  labels:
+    app: cms-mail-intake
+    app.kubernetes.io/part-of: rbi-cms
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+  storageClassName: managed-nfs-storage
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cms-mail-intake-config
+  namespace: rbi-cms
+  labels:
+    app: cms-mail-intake
+    app.kubernetes.io/part-of: rbi-cms
+data:
+  DB_HOST: "oracle-db-service.rbi-cms.svc.cluster.local"
+  DB_PORT: "1521"
+  DB_SERVICE: "CMSDB"
+  DB_USER: "cms_mail_intake"
+  KEYCLOAK_URL: "http://keycloak-service.rbi-cms.svc.cluster.local:8180"
+  CMS_BACKEND_URL: "http://cms-backend.rbi-cms.svc.cluster.local:8080"
+  MAIL_INTAKE_SMTP_PORT: "2525"
+  MAIL_INTAKE_ALLOWLIST_CIDRS: "10.0.0.0/8"
+  MAIL_INTAKE_TLS_REQUIRED: "false"
+  MAIL_INTAKE_STORAGE_PATH: "/data/cms/mail-intake/raw"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cms-mail-intake-secret
+  namespace: rbi-cms
+  labels:
+    app: cms-mail-intake
+    app.kubernetes.io/part-of: rbi-cms
+type: Opaque
+stringData:
+  DB_PASSWORD: "CHANGE_ME"
+  CMS_MAIL_INTAKE_ENCRYPTION_KEY: "CHANGE_ME_BASE64_AES256_KEY"

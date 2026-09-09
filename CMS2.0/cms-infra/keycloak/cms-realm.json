@@ -1,0 +1,132 @@
+{
+  "realm": "cms",
+  "enabled": true,
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "accessTokenLifespan": 1800,
+  "roles": {
+    "realm": [
+      { "name": "ADMIN", "description": "System administrator" },
+      { "name": "DEO", "description": "CRPC Data Entry Operator" },
+      { "name": "REVIEWER", "description": "CRPC draft reviewer/approver" },
+      { "name": "CRPC_HEAD", "description": "CRPC Operations Head" },
+      { "name": "RBIO_OFFICER", "description": "RBIO regional office officer" },
+      { "name": "CEPC_ADMIN", "description": "CEPC Administrator" },
+      { "name": "CEPC_DO", "description": "CEPC Dealing Officer" },
+      { "name": "CEPC_REVIEWER", "description": "CEPC Reviewer" },
+      { "name": "CEPC_INCHARGE", "description": "CEPC In-Charge" },
+      { "name": "CEPC_CLOSING_AUTHORITY", "description": "CEPC Closing Authority" },
+      { "name": "MAIL_INTAKE_ADMIN", "description": "cms-mail-intake admin endpoints — review/replay/force-link quarantined mail" },
+
+      { "name": "DO", "description": "Bare-name duplicate of CEPC_DO — cms-portal-frontend's own role-check code (keycloak-auth.service.ts, staff-dashboard.component.ts) checks unprefixed CEPC role names while the backend's @CepcRoleGuard requires the CEPC_ prefix. This is a real mismatch in the application code, not a config choice — see the setup guide's known-issues note. Test users below carry both forms so testing isn't blocked by it." },
+      { "name": "INCHARGE", "description": "Bare-name duplicate of CEPC_INCHARGE — see the DO role's description" },
+      { "name": "CA", "description": "Bare-name duplicate of CEPC_CLOSING_AUTHORITY — see the DO role's description" },
+      { "name": "CP", "description": "Bare-name duplicate of CEPC_CONTACT_PERSON — see the DO role's description" }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "cms-frontend",
+      "name": "cms-frontend",
+      "enabled": true,
+      "publicClient": true,
+      "protocol": "openid-connect",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "redirectUris": ["http://localhost/*", "http://localhost:4200/*", "http://localhost:4300/*"],
+      "webOrigins": ["http://localhost", "http://localhost:4200", "http://localhost:4300", "+"]
+    },
+    {
+      "clientId": "admin-cli",
+      "enabled": true,
+      "publicClient": true,
+      "directAccessGrantsEnabled": true,
+      "protocol": "openid-connect"
+    }
+  ],
+  "users": [
+    {
+      "username": "cms-admin",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "CMS",
+      "lastName": "Admin",
+      "email": "cms-admin@example.local",
+      "credentials": [{ "type": "password", "value": "Test@123", "temporary": false }],
+      "realmRoles": ["ADMIN", "MAIL_INTAKE_ADMIN"]
+    },
+    {
+      "username": "deo_001",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Amit",
+      "lastName": "Verma",
+      "credentials": [{ "type": "password", "value": "Test@123", "temporary": false }],
+      "realmRoles": ["DEO"]
+    },
+    {
+      "username": "deo_002",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Priya",
+      "lastName": "Sharma",
+      "credentials": [{ "type": "password", "value": "Test@123", "temporary": false }],
+      "realmRoles": ["DEO"]
+    },
+    {
+      "username": "reviewer1",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Meera",
+      "lastName": "Krishnan",
+      "credentials": [{ "type": "password", "value": "Test@123", "temporary": false }],
+      "realmRoles": ["REVIEWER"]
+    },
+    {
+      "username": "crpc_head",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Rajesh",
+      "lastName": "Kumar",
+      "credentials": [{ "type": "password", "value": "Test@123", "temporary": false }],
+      "realmRoles": ["CRPC_HEAD"]
+    },
+    {
+      "username": "rbio_mum1",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Ashok",
+      "lastName": "Patil",
+      "credentials": [{ "type": "password", "value": "Test@123", "temporary": false }],
+      "realmRoles": ["RBIO_OFFICER"]
+    },
+    {
+      "username": "cepc_do1",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Sunita",
+      "lastName": "Desai",
+      "credentials": [{ "type": "password", "value": "Test@123", "temporary": false }],
+      "realmRoles": ["CEPC_DO", "DO"]
+    },
+    {
+      "username": "mail-intake-admin",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Mail",
+      "lastName": "Intake Admin",
+      "credentials": [{ "type": "password", "value": "Test@123", "temporary": false }],
+      "realmRoles": ["MAIL_INTAKE_ADMIN"]
+    },
+    {
+      "username": "mail-intake-checker",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Mail",
+      "lastName": "Intake Checker",
+      "credentials": [{ "type": "password", "value": "Test@123", "temporary": false }],
+      "realmRoles": ["MAIL_INTAKE_ADMIN"]
+    }
+  ]
+}

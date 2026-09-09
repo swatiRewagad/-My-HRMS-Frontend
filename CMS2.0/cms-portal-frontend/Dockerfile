@@ -21,7 +21,7 @@ RUN chmod +x /docker-entrypoint.sh
 COPY --from=builder /app/dist/cms-portal-frontend/browser /usr/share/nginx/html
 
 RUN addgroup -S frontend && adduser -S frontend -G frontend && \
-    chown -R frontend:frontend /var/cache/nginx /var/log/nginx /etc/nginx/conf.d && \
+    chown -R frontend:frontend /var/cache/nginx /var/log/nginx /etc/nginx/conf.d /usr/share/nginx/html && \
     touch /var/run/nginx.pid && chown frontend:frontend /var/run/nginx.pid
 
 USER frontend
@@ -32,6 +32,6 @@ ENV API_BACKEND_PORT=8080
 EXPOSE 80
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD wget -qO- http://localhost:80/healthz || exit 1
+  CMD wget -qO- http://127.0.0.1:80/healthz || exit 1
 
 ENTRYPOINT ["/docker-entrypoint.sh"]

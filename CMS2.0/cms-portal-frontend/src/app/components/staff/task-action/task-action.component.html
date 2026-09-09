@@ -18,13 +18,11 @@
       <div class="accessibility-controls">
         <button class="acc-btn" title="Phone"><i class="pi pi-phone"></i></button>
         <span class="acc-divider">|</span>
-        <button class="acc-btn" title="Decrease font">A-</button>
-        <button class="acc-btn acc-btn-mid" title="Normal font">A</button>
-        <button class="acc-btn" title="Increase font">A+</button>
+        <app-font-size-controls></app-font-size-controls>
         <span class="acc-divider">|</span>
-        <button class="acc-btn lang-btn" title="Language">English <i class="pi pi-chevron-down"></i></button>
+        <app-language-select></app-language-select>
         <span class="acc-divider">|</span>
-        <button class="acc-btn" title="Notifications"><i class="pi pi-bell"></i></button>
+        <app-notification-bell></app-notification-bell>
       </div>
       <div class="header-divider"></div>
       @if (auth.currentUser(); as user) {

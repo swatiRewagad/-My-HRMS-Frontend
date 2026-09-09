@@ -1,6 +1,6 @@
 export const environment = {
   production: true,
-  apiBaseUrl: '',
+  apiUrl: '',
   keycloakUrl: '/auth',
   realm: 'cms',
 };

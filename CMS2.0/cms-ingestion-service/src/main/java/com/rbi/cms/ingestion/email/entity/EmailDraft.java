@@ -32,7 +32,8 @@ public class EmailDraft {
     @Column(name = "SUBJECT", length = 1000)
     private String subject;
 
-    @Column(name = "BODY", columnDefinition = "CLOB")
+    @Lob
+    @Column(name = "BODY")
     private String body;
 
     @Column(name = "COMPLAINANT_NAME", length = 200)

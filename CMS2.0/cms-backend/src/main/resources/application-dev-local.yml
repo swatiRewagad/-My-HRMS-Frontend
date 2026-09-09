@@ -68,7 +68,7 @@ cms:
     azure-endpoint: ""
     azure-api-key: ""
   attachments:
-    root-path: ./cms-attachments
+    root-path: ${CMS_ATTACHMENTS_PATH:./cms-attachments}
     max-file-size: 52428800
     chunk-size: 5242880
     allowed-types: pdf,png,jpg,jpeg,doc,docx,xls,xlsx,txt,csv,zip

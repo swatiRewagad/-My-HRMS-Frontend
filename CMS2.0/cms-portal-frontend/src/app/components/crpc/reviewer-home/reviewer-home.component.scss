@@ -380,3 +380,45 @@
   &-primary { background: #3b82f6; color: #fff; &:hover { background: #2563eb; } }
   &-outline { background: #fff; border: 1px solid #d1d5db; color: #374151; &:hover { background: #f9fafb; } }
 }
+
+// ═══ ADVANCED SEARCH MODAL (matches deo-home.component.scss) ═══
+.modal-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.4); z-index: 9999;
+  display: flex; align-items: center; justify-content: center;
+}
+
+.modal-dialog {
+  background: white; border-radius: 12px; padding: 24px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.2); max-height: 80vh; overflow-y: auto;
+
+  .modal-title {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 15px; font-weight: 600; color: #1e293b; margin-bottom: 4px;
+    .modal-close { margin-left: auto; background: none; border: none; font-size: 20px; cursor: pointer; color: #64748b; }
+  }
+
+  .modal-actions {
+    display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;
+    .btn { padding: 8px 20px; border-radius: 6px; font-size: 13px; cursor: pointer; }
+    .btn-outline { background: white; border: 1px solid #e2e8f0; color: #475569; }
+    .btn-primary { background: #3b82f6; border: none; color: white; }
+  }
+}
+
+.search-dialog {
+  width: 580px;
+
+  .search-grid {
+    display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;
+    .search-field {
+      &.full-width { grid-column: span 3; }
+      label { display: block; font-size: 11px; color: #64748b; margin-bottom: 4px; }
+      input, select {
+        width: 100%; padding: 8px 10px; border: 1px solid #e2e8f0; border-radius: 6px;
+        font-size: 12px;
+        &:focus { outline: none; border-color: #3b82f6; }
+      }
+    }
+  }
+}

@@ -24,7 +24,8 @@ public class RuleVersionHistory {
     @Column(nullable = false)
     private Integer version;
 
-    @Column(name = "drl_content", nullable = false, columnDefinition = "CLOB")
+    @Lob
+    @Column(name = "drl_content", nullable = false)
     private String drlContent;
 
     @Column(name = "change_reason", length = 500)

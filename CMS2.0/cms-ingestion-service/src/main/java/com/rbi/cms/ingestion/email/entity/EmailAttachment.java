@@ -35,7 +35,8 @@ public class EmailAttachment {
     @Column(name = "STORAGE_PATH", length = 1000)
     private String storagePath;
 
-    @Column(name = "OCR_TEXT", columnDefinition = "CLOB")
+    @Lob
+    @Column(name = "OCR_TEXT")
     private String ocrText;
 
     @Column(name = "OCR_CONFIDENCE")

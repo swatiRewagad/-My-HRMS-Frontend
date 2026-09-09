@@ -16,6 +16,7 @@ interface Attachment {
   type: string;
   uploadedAt: string;
   uploadedBy: string;
+  url?: string;
 }
 
 interface HistoryEntry {
@@ -44,8 +45,36 @@ export class ReviewerAssessmentComponent implements OnInit {
   private auth = inject(KeycloakAuthService);
 
   draftId = '';
+  draftStatus = '';
+  draftAssignedTo = '';
+
+  // A reviewer could otherwise open ANY draft URL directly (or via the "All" list) and get a
+  // fully editable/actionable screen regardless of whether it's even reached the review stage
+  // yet or is assigned to them — this only checks completion (submitted()), not workflow stage
+  // or ownership. View-only unless the draft is actually at SENT_TO_REVIEWER and assigned to
+  // the current user.
+  get isReadOnly(): boolean {
+    if (this.submitted()) return true;
+    const currentUsername = this.auth.currentUser()?.username || '';
+    return this.draftStatus !== 'SENT_TO_REVIEWER' || this.draftAssignedTo !== currentUsername;
+  }
   loading = signal(true);
   editMode = signal(false);
+  showAiWarning = true;
+  showAttachmentsPanel = signal(false);
+  showHistoryPanel = signal(false);
+
+  toggleAttachmentsPanel() {
+    this.showAttachmentsPanel.set(!this.showAttachmentsPanel());
+    if (this.showAttachmentsPanel()) this.showHistoryPanel.set(false);
+  }
+
+  toggleHistoryPanel() {
+    this.showHistoryPanel.set(!this.showHistoryPanel());
+    if (this.showHistoryPanel()) this.showAttachmentsPanel.set(false);
+  }
+  pastComplaints = signal<any[]>([]);
+  loadingPastComplaints = signal(false);
 
   currentTab = signal<'summary' | 'email' | 'attachments' | 'history' | 'action'>('summary');
 
@@ -71,6 +100,10 @@ export class ReviewerAssessmentComponent implements OnInit {
   category = '';
   subCategory = '';
   entityName = '';
+  entitySearchText = '';
+  entitySearchResults = signal<{ id: number; name: string; department: string; entityType: string }[]>([]);
+  showEntityDropdown = signal(false);
+  private entitySearchTimeout: any = null;
   entityType = '';
   entityCategory = '';
   entityTypeDetail = '';
@@ -143,6 +176,7 @@ export class ReviewerAssessmentComponent implements OnInit {
   // Eligibility
   proposedComplaintType = '';
   notComplaintReason = '';
+  markAllEligible = false;
   eligibilityQuestions: { key: string; label: string; answer: string }[] = [
     { key: 'isEntityRegulated', label: 'Is Entity regulated by RBI?', answer: '' },
     { key: 'notAddressedToOmbudsman', label: 'The Complaint not directly addressed to Ombudsman', answer: '' },
@@ -225,6 +259,20 @@ export class ReviewerAssessmentComponent implements OnInit {
   generatedComplaintNumber = signal('');
   assignedToUser = signal('');
 
+  getStatusLabel(status: string): string {
+    switch (status) {
+      case 'SENT_TO_REVIEWER': return 'Sent to Reviewer';
+      case 'SENT_TO_OTHER_DEPT_FOR_APPROVAL': return 'Other Dept - Pending Approval';
+      case 'VERNACULAR_FOR_APPROVAL': return 'Vernacular - Pending Approval';
+      case 'APPROVED': case 'APPROVED_ROUTED': return 'Approved';
+      case 'APPROVED_SENT_TO_OTHER_DEPT': return 'Sent to Other Entity';
+      case 'APPROVED_VERNACULAR': return 'Sent to Language Office';
+      case 'SENT_BACK_TO_DEO': case 'SENT_BACK': return 'Sent Back';
+      case 'CLOSED_NM': case 'CLOSED_NOT_A_COMPLAINT': return 'Closed (NM)';
+      default: return status;
+    }
+  }
+
   categories = ['ATM', 'CREDIT_CARD', 'UPI', 'LOAN', 'DEPOSIT', 'INSURANCE', 'NEFT_RTGS', 'GENERAL'];
   statesList = signal<string[]>([]);
   districts = signal<string[]>([]);
@@ -240,8 +288,21 @@ export class ReviewerAssessmentComponent implements OnInit {
   ];
 
   ngOnInit() {
-    this.draftId = this.route.snapshot.paramMap.get('id') || '';
-    this.loadDraft();
+    // Angular reuses this same component instance when navigating between two URLs that match
+    // the same route (crpc/reviewer/draft/:id) with only :id differing — e.g. clicking one
+    // complaint in the queue after another. A one-time snapshot read here means ngOnInit never
+    // re-fires for that second navigation, so draftId and flow-state signals like submitted()
+    // (left `true` after approving a previous draft) stay stuck, showing the wrong draft's
+    // stale "Complaint Approved" screen. Subscribe to paramMap instead so every navigation to
+    // this route — reused instance or not — reloads fresh and resets state.
+    this.route.paramMap.subscribe(params => {
+      this.draftId = params.get('id') || '';
+      this.submitted.set(false);
+      this.editMode.set(false);
+      this.draftStatus = '';
+      this.draftAssignedTo = '';
+      this.loadDraft();
+    });
     this.loadDeos();
     this.loadStates();
     this.crpcWorkflowService.getVernacularOfficeMap().subscribe(map => {
@@ -269,6 +330,84 @@ export class ReviewerAssessmentComponent implements OnInit {
     });
   }
 
+  downloadAttachment(att: { id: string; name: string; url?: string }) {
+    if (!att.url) return;
+    this.http.get(att.url, { responseType: 'blob' }).subscribe({
+      next: (blob) => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = att.name;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      },
+      error: () => window.open(att.url, '_blank')
+    });
+  }
+
+  loadPastComplaints() {
+    if (!this.complainantEmail && !this.complainantPhone) return;
+    this.loadingPastComplaints.set(true);
+
+    const params: any = { excludeId: this.draftId };
+    if (this.complainantEmail) params.email = this.complainantEmail;
+    if (this.complainantPhone) params.phone = this.complainantPhone;
+
+    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/past-complaints/by-complainant`, { params })
+      .subscribe({
+        next: (res) => {
+          this.pastComplaints.set(res?.data || []);
+          this.loadingPastComplaints.set(false);
+        },
+        error: () => this.loadingPastComplaints.set(false)
+      });
+  }
+
+  onMarkAllEligible() {
+    if (this.markAllEligible) {
+      for (const q of this.eligibilityQuestions) {
+        q.answer = q.key === 'isEntityRegulated' ? 'YES' : 'NO';
+      }
+    } else {
+      for (const q of this.eligibilityQuestions) {
+        q.answer = '';
+      }
+    }
+  }
+
+  onEntitySearchInput(value: string) {
+    this.entityName = value;
+    this.entitySearchText = value;
+    if (this.entitySearchTimeout) clearTimeout(this.entitySearchTimeout);
+    if (!value || value.length < 2) {
+      this.showEntityDropdown.set(false);
+      return;
+    }
+    this.entitySearchTimeout = setTimeout(() => {
+      this.http.get<any>(`${environment.apiBaseUrl}/api/v1/routing/entities/list`, {
+        params: { search: value }
+      }).subscribe({
+        next: (res) => {
+          this.entitySearchResults.set(res?.data || []);
+          this.showEntityDropdown.set(true);
+        },
+        error: () => this.entitySearchResults.set([])
+      });
+    }, 300);
+  }
+
+  selectEntity(entity: { id: number; name: string; department: string; entityType: string }) {
+    this.entityName = entity.name;
+    this.entitySearchText = entity.name;
+    this.entityType = entity.entityType || this.entityType;
+    this.showEntityDropdown.set(false);
+    this.computeAutoRouting();
+  }
+
+  onEntityBlur() {
+    setTimeout(() => this.showEntityDropdown.set(false), 200);
+  }
+
   onStateChange(state: string) {
     this.complainantState = state;
     this.complainantDistrict = '';
@@ -289,9 +428,12 @@ export class ReviewerAssessmentComponent implements OnInit {
       .subscribe({
         next: (res) => {
           const draft = res?.data || {};
+          this.draftStatus = draft.status || '';
+          this.draftAssignedTo = draft.assignedTo || '';
           this.complainantName = draft.complainantName || '';
           this.complainantPhone = draft.complainantPhone || '';
           this.complainantEmail = draft.senderEmail || '';
+          this.loadPastComplaints();
           this.complainantAddress = draft.complainantAddress || '';
           this.complainantState = draft.complainantState || '';
           this.complainantDistrict = draft.complainantDistrict || '';
@@ -384,14 +526,19 @@ export class ReviewerAssessmentComponent implements OnInit {
           this.currentComplaintNumber = draft.currentComplaintNumber || '';
           this.receivedReplyWithin30Days = draft.receivedReplyWithin30Days || '';
 
-          const attachments = (draft.attachments || []).map((a: any, i: number) => ({
-            id: a.id || `ATT-${i + 1}`,
-            name: a.fileName || `attachment_${i + 1}`,
-            size: a.fileSize ? this.formatSize(a.fileSize) : 'Unknown',
-            type: a.fileType || 'application/octet-stream',
-            uploadedAt: a.createdAt || new Date().toISOString(),
-            uploadedBy: 'SYSTEM',
-          }));
+          const attachments = (draft.attachments || []).map((a: any, i: number) => {
+            const attId = a.id || `ATT-${i + 1}`;
+            const numericId = String(attId).replace('ATT-', '');
+            return {
+              id: attId,
+              name: a.fileName || `attachment_${i + 1}`,
+              size: a.fileSize ? this.formatSize(a.fileSize) : 'Unknown',
+              type: a.fileType || 'application/octet-stream',
+              uploadedAt: a.createdAt || new Date().toISOString(),
+              uploadedBy: 'SYSTEM',
+              url: `${environment.apiBaseUrl}/api/files/email-draft/${numericId}`,
+            };
+          });
           this.attachments.set(attachments);
 
           this.emailThread.set([{
@@ -423,13 +570,7 @@ export class ReviewerAssessmentComponent implements OnInit {
             this.draftType = 'NEW_COMPLAINT';
           }
 
-          if (draft.convertedComplaintId) {
-            this.generatedComplaintNumber.set(draft.convertedComplaintId);
-            this.reviewerDecision = 'APPROVE';
-            this.targetRegionalOffice = draft.targetOffice || 'CEPC';
-            this.assignedToUser.set(draft.assignedTo || '');
-            this.submitted.set(true);
-          } else if (draft.status === 'SENT_BACK_TO_DEO') {
+          if (draft.status === 'SENT_BACK_TO_DEO') {
             this.reviewerDecision = 'SENT_BACK_TO_DEO';
             this.sentBackToDeoId = draft.processedBy || '';
             this.submitted.set(true);
@@ -437,10 +578,22 @@ export class ReviewerAssessmentComponent implements OnInit {
             this.reviewerDecision = 'NOT_A_COMPLAINT';
             this.submitted.set(true);
           } else if (draft.status === 'APPROVED_SENT_TO_OTHER_DEPT') {
+            // Must be checked before the generic convertedComplaintId branch below — a complaint
+            // approved AND routed to another department still has a real convertedComplaintId,
+            // so that broader check was matching first and showing the plain "Complaint
+            // Approved" screen instead of the correct "Sent to Other Department" one.
             this.reviewerDecision = 'APPROVE_SENT_TO_OTHER_DEPT';
+            this.generatedComplaintNumber.set(draft.convertedComplaintId || '');
             this.submitted.set(true);
           } else if (draft.status === 'APPROVED_VERNACULAR') {
             this.reviewerDecision = 'APPROVE_VERNACULAR';
+            this.generatedComplaintNumber.set(draft.convertedComplaintId || '');
+            this.submitted.set(true);
+          } else if (draft.convertedComplaintId) {
+            this.generatedComplaintNumber.set(draft.convertedComplaintId);
+            this.reviewerDecision = 'APPROVE';
+            this.targetRegionalOffice = draft.targetOffice || 'CEPC';
+            this.assignedToUser.set(draft.assignedTo || '');
             this.submitted.set(true);
           }
 
@@ -531,6 +684,45 @@ export class ReviewerAssessmentComponent implements OnInit {
     this.showBranchDropdown = false;
     if (!value || value.length !== 6 || !/^\d{6}$/.test(value)) return;
 
+    // If the entity is one of the banks we hold real IFSC-sourced branch data for, use that —
+    // /location/pincode below is generic postal-circle data (post office names), not actual bank
+    // branches, so it was showing the wrong thing (e.g. "Kalbadevi Post Office") as "branch name"
+    // for every complaint regardless of whether the entity was even a bank.
+    if (this.entityName?.trim()) {
+      this.http.get<any>(`${environment.apiBaseUrl}/api/v1/location/bank-branches`, {
+        params: { entityName: this.entityName.trim(), pincode: value }
+      }).subscribe({
+        next: (res) => {
+          if (res?.matchedBank && res.data?.length) {
+            this.applyRealBankBranches(res.data);
+          } else {
+            this.fallbackToPostOfficeLookup(value);
+          }
+        },
+        error: () => this.fallbackToPostOfficeLookup(value)
+      });
+    } else {
+      this.fallbackToPostOfficeLookup(value);
+    }
+  }
+
+  private applyRealBankBranches(branches: { ifsc: string; branchName: string; city: string; district: string; state: string }[]) {
+    const first = branches[0];
+    if (first.state) this.entityState = first.state;
+    if (first.district) this.entityDistrict = first.district;
+    this.entityCity = first.city || '';
+    this.entityCountry = 'India';
+    if (branches.length === 1) {
+      this.entityBranchName = first.branchName;
+      this.entityBranchCategory = first.ifsc;
+    } else {
+      this.pincodePostOffices = branches.map(b => ({ Name: b.branchName, BranchType: b.ifsc }));
+      this.showBranchDropdown = true;
+      this.entityBranchName = '';
+    }
+  }
+
+  private fallbackToPostOfficeLookup(value: string) {
     this.http.get<any>(`${environment.apiBaseUrl}/api/v1/location/pincode/${value}`).subscribe({
       next: (res: any) => {
         if (res?.[0]?.Status === 'Success' && res[0].PostOffice?.length) {
