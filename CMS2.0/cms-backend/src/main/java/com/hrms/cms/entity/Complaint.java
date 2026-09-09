@@ -64,6 +64,12 @@ public class Complaint {
     @Column(length = 300)
     private String entityName;
 
+    @Column(length = 100)
+    private String entityType;
+
+    @Column(precision = 15, scale = 2)
+    private BigDecimal amountInvolved;
+
     // Entity/branch detail fields carried over from the CRPC draft (email_drafts has the full
     // set; Complaint previously only tracked entityName/entityCode/bankBranch, so this data was
     // silently dropped on approval and RBIO officers never saw it).

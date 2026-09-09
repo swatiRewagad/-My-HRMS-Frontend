@@ -1,89 +1,150 @@
-.page-container { max-width: 700px; margin: 0 auto; padding: 48px 24px; }
-
-.card {
-  background: #fff; border: 1px solid #e8e8e8; border-radius: 16px; padding: 40px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-  h2 { font-size: 22px; color: #1a1a2e; margin-bottom: 8px; }
+.withdraw-detail-page {
+  font-family: 'Poppins', sans-serif;
+  background: #f5f7ff;
+  min-height: 100vh;
+  padding-bottom: 40px;
 }
-.subtitle { font-size: 14px; color: #666; margin-bottom: 24px; }
+
+.search-container {
+  max-width: 580px;
+  margin: 0 auto;
+  padding: 60px 24px;
+}
+
+.search-card {
+  background: #fff;
+  border: 1px solid #e8e0f4;
+  border-radius: 16px;
+  padding: 40px;
+  box-shadow: 0 4px 24px rgba(100, 80, 180, 0.06);
+  text-align: center;
+
+  h2 {
+    font-size: 22px;
+    font-weight: 600;
+    color: #1a1a2e;
+    margin: 16px 0 8px;
+  }
+}
+
+.search-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #472293, #6a3ece);
+
+  i { font-size: 24px; color: #fff; }
+}
+
+.search-subtitle {
+  font-size: 14px;
+  color: #64748b;
+  margin-bottom: 24px;
+}
+
+.search-actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 24px;
+}
 
 .form-group {
-  margin-bottom: 16px;
-  label { display: block; font-size: 13px; font-weight: 600; color: #333; margin-bottom: 6px; }
-  .required { color: #d32f2f; }
-}
-.form-input, .form-textarea {
-  width: 100%; padding: 10px 14px; border: 1px solid #ddd; border-radius: 8px;
-  font-size: 14px; font-family: inherit;
-  &:focus { outline: none; border-color: #2460b9; box-shadow: 0 0 0 3px rgba(36,96,185,0.1); }
-}
-.form-textarea { resize: vertical; }
+  margin-bottom: 20px;
+  text-align: left;
 
-.radio-group { display: flex; flex-direction: column; gap: 8px; }
-.radio-label {
-  display: flex; align-items: center; gap: 8px; padding: 10px 16px;
-  border: 1px solid #ddd; border-radius: 6px; cursor: pointer; font-size: 14px;
-  input { accent-color: #2460b9; }
-  &.selected { border-color: #2460b9; background: #f0f4ff; }
+  > label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: #334155;
+    margin-bottom: 8px;
+  }
+
+  .required { color: #dc2626; }
 }
 
-.warning-box {
-  display: flex; align-items: flex-start; gap: 12px; padding: 16px;
-  background: #fff3e0; border: 1px solid #ffb74d; border-radius: 8px; margin-bottom: 20px;
-  i { color: #e65100; font-size: 18px; margin-top: 2px; }
-  p { font-size: 14px; color: #555; line-height: 1.5; margin: 0; }
+.input-wrapper {
+  position: relative;
+
+  i {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 14px;
+    color: #94a3b8;
+  }
+}
+
+.form-input {
+  width: 100%;
+  padding: 12px 16px 12px 42px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  font-size: 14px;
+  font-family: 'Poppins', sans-serif;
+  color: #1e293b;
+  background: #fff;
+  box-sizing: border-box;
+
+  &:focus { outline: none; border-color: #7c3aed; box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.08); }
+  &::placeholder { color: #94a3b8; }
 }
 
 .error-msg {
-  color: #d32f2f; font-size: 13px; margin-bottom: 12px; padding: 8px 12px;
-  background: #fdecea; border-radius: 6px;
+  color: #dc2626;
+  font-size: 13px;
+  margin-top: 8px;
+  padding: 8px 12px;
+  background: #fef2f2;
+  border-radius: 6px;
+
   i { margin-right: 6px; }
 }
 
-.form-actions {
-  display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px; padding-top: 20px;
-  border-top: 1px solid #eee;
-  &.center { justify-content: center; }
-}
-
 .btn-primary {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 12px 28px; background: #472293; color: #fff; border: none; border-radius: 8px;
-  font-size: 15px; font-weight: 600; cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 28px;
+  background: #472293;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: 'Poppins', sans-serif;
+  cursor: pointer;
+
   &:hover { background: #3a1b78; }
   &:disabled { opacity: 0.5; cursor: not-allowed; }
 }
+
 .btn-secondary {
-  padding: 12px 28px; background: #fff; color: #472293; border: 1px solid #472293; border-radius: 8px;
-  font-size: 15px; font-weight: 600; cursor: pointer;
-  &:hover { background: #f0f4ff; }
-}
-.btn-submit {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 12px 28px; background: #d32f2f; color: #fff; border: none; border-radius: 8px;
-  font-size: 15px; font-weight: 600; cursor: pointer;
-  &:hover { background: #b71c1c; }
-  &:disabled { opacity: 0.5; cursor: not-allowed; }
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 28px;
+  background: #fff;
+  color: #472293;
+  border: 1px solid #472293;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: 'Poppins', sans-serif;
+  cursor: pointer;
+
+  &:hover { background: #f8f4ff; }
 }
 
-.success-card { text-align: center; }
-.success-icon { margin-bottom: 16px; i { font-size: 56px; color: #4caf50; } }
-.success-card p { font-size: 14px; color: #555; margin-top: 8px; }
+@media (max-width: 768px) {
+  .search-card { padding: 28px 20px; }
+}
 
-.file-input-hidden { display: none; }
-.file-upload-area {
-  border: 1.5px dashed #d1d7e0; border-radius: 8px; padding: 28px 24px;
-  display: flex; align-items: center; justify-content: center;
-  background: #fff; margin-top: 4px; transition: border-color 0.2s, background 0.2s;
-  &:hover { border-color: #146EF5; }
-  &.dragover { border-color: #146EF5; background: rgba(20, 110, 245, 0.04); }
-}
-.file-upload-text { font-size: 14px; color: #555; font-weight: 400; }
-label.file-upload-browse-link {
-  display: inline; margin-bottom: 0; color: #146EF5; font-size: 14px; font-weight: 600; cursor: pointer; text-decoration: underline;
-  &:hover { color: #0d5ad4; }
-}
-.file-upload-meta {
-  display: flex; justify-content: space-between; width: 100%;
-  font-size: 12px; color: #888; margin-top: 8px;
+@media (max-width: 480px) {
+  .search-container { padding: 32px 16px; }
 }
