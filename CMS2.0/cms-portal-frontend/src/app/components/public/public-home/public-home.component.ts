@@ -215,10 +215,10 @@ export class PublicHomeComponent implements OnInit {
   ];
 
   schemeCards = [
-    { icon: 'pi pi-indian-rupee', title: 'Reserve Bank - Integrated Ombudsman Scheme, 2026', hasDownload: true },
-    { icon: 'pi pi-indian-rupee', title: 'Regulated entities not covered under Reserve Bank - Integrated Ombudsman Scheme, 2026', hasDownload: true },
-    { icon: 'pi pi-map-marker', title: 'Address of Centralised Receipt and Processing Centre', hasDownload: false },
-    { icon: 'pi pi-map-marker', title: 'Address of Consumer Education and Protection Cell', hasDownload: false },
+    { icon: 'pi pi-indian-rupee', title: 'Reserve Bank - Integrated Ombudsman Scheme, 2026', hasDownload: true, downloadUrl: 'assets/documents/Ombudsman_Scheme-2026.pdf' },
+    { icon: 'pi pi-indian-rupee', title: 'Regulated entities not covered under Reserve Bank - Integrated Ombudsman Scheme, 2026', hasDownload: true, downloadUrl: 'assets/documents/Ombudsman_Scheme-2026.pdf' },
+    { icon: 'pi pi-map-marker', title: 'Address of Centralised Receipt and Processing Centre', hasDownload: false, downloadUrl: '' },
+    { icon: 'pi pi-map-marker', title: 'Address of Consumer Education and Protection Cell', hasDownload: false, downloadUrl: '' },
   ];
 
   stats = [

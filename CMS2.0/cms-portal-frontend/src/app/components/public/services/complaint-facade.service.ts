@@ -133,6 +133,9 @@ export class ComplaintFacadeService {
   declarationChecked = false;
   declaration2Checked = false;
   referenceNumber = '';
+  submittedStatus = '';
+  submittedAt = '';
+  slaDueDate = '';
   dateDisplay: Record<string, string> = { bankComplaintDate: '', reminderDate: '', replyDate: '' };
 
   entitySearchText = '';
@@ -812,15 +815,19 @@ export class ComplaintFacadeService {
     }
   }
 
+  private readonly MOCK_BRANCHES = ['Main Branch', 'City Branch', 'Regional Office', 'Zonal Office', 'Service Branch', 'Extension Counter'];
+
   onEntityDistrictChange(): void {
     this.regulatedEntityForm.controls.entityBranch.setValue('');
     this.branches = [];
     const district = this.regulatedEntityForm.controls.entityDistrict.value;
     if (district) {
-      this.http.get<any>(`${environment.apiBaseUrl}/api/v1/location/branches`, { params: { district } }).subscribe({
-        next: (res) => { this.branches = res?.data ?? res ?? []; },
-        error: () => {}
-      });
+      // TODO: Replace mock data with API call once branch endpoint is ready
+      // this.http.get<any>(`${environment.apiBaseUrl}/api/v1/location/branches`, { params: { district } }).subscribe({
+      //   next: (res) => { this.branches = res?.data ?? res ?? []; },
+      //   error: () => {}
+      // });
+      this.branches = [...this.MOCK_BRANCHES];
     }
   }
 
@@ -1386,6 +1393,9 @@ export class ComplaintFacadeService {
     this.complaintService.registerComplaint(payload).subscribe({
       next: (ack) => {
         this.referenceNumber = ack.complaintId;
+        this.submittedStatus = ack.status || 'REGISTERED';
+        this.submittedAt = ack.registeredAt || '';
+        this.slaDueDate = ack.slaDueDate || '';
         this.submitting.set(false);
         this.phase.set('success');
         this.clearDraft();

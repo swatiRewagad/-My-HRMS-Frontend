@@ -210,7 +210,7 @@
           </div>
           <div class="ct-regulated-text">
             <strong>{{ 'home.ct_regulated' | translate }}</strong>
-            <a href="javascript:void(0)" class="ct-download-link"><i class="pi pi-download"></i> {{ 'home.ct_download' | translate }}</a>
+            <a href="assets/documents/Ombudsman_Scheme-2026.pdf" download class="ct-download-link"><i class="pi pi-download"></i> {{ 'home.ct_download' | translate }}</a>
           </div>
         </div>
       </div>
@@ -235,7 +235,7 @@
             <div class="scheme-text">
               <h4>{{ scheme.title }}</h4>
               @if (scheme.hasDownload) {
-                <a href="javascript:void(0)" class="scheme-download"><i class="pi pi-download"></i> {{ 'home.ct_download' | translate }}</a>
+                <a [href]="scheme.downloadUrl" download class="scheme-download"><i class="pi pi-download"></i> {{ 'home.ct_download' | translate }}</a>
               }
             </div>
           </div>

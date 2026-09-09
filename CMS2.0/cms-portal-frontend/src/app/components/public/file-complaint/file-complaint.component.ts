@@ -14,6 +14,7 @@ import { MessageService } from 'primeng/api';
 import { FormErrorComponent } from '../../../shared/form-error/form-error.component';
 import { FileUploadComponent } from '../../../shared/file-upload/file-upload.component';
 import { ComplaintFacadeService } from '../services';
+import { ComplaintService } from '../../../services/complaint.service';
 import { AccountType } from '../models';
 import { TOOLTIPS, STEP_TITLES, CATEGORY_LABEL_MAP, GENDER_LABEL_MAP } from '../configs';
 
@@ -33,6 +34,7 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
   private route = inject(ActivatedRoute);
   private publicAuth = inject(PublicAuthService);
   private messageService = inject(MessageService);
+  private complaintService = inject(ComplaintService);
   facade = inject(ComplaintFacadeService);
   translationService = inject(TranslationService);
 
@@ -755,42 +757,227 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
     });
   }
 
-  // ── PDF: Download acknowledgement ──
-  async downloadAcknowledgement() {
-    const element = this.formCard?.nativeElement;
-    if (!element) return;
-
+  // ── PDF: Build off-screen HTML matching step 6 review layout, capture with html2canvas ──
+  async downloadAcknowledgement(isDraft = false) {
     const html2canvas = (await import('html2canvas')).default;
     const { jsPDF } = await import('jspdf');
 
-    const stepHeader = element.querySelector('.step-header') as HTMLElement;
-    const navActions = element.closest('.page-container')?.querySelector('.eligibility-actions') as HTMLElement;
-    const watermarkEl = element.querySelector('.review-watermark') as HTMLElement;
-    const editButtons = element.querySelectorAll('.rs-edit-btn') as NodeListOf<HTMLElement>;
-    if (stepHeader) stepHeader.style.display = 'none';
-    if (navActions) navActions.style.display = 'none';
-    if (watermarkEl) watermarkEl.style.display = 'none';
-    editButtons.forEach(btn => btn.style.display = 'none');
+    const container = document.createElement('div');
+    container.style.cssText = 'position:fixed;left:-9999px;top:0;width:800px;background:#fff;padding:32px;font-family:Poppins,sans-serif;color:#1e293b;';
+    document.body.appendChild(container);
 
-    const canvas = await html2canvas(element, { scale: 1.5, useCORS: true, logging: false, backgroundColor: '#ffffff' });
+    const esc = (v: string) => {
+      const d = document.createElement('div');
+      d.textContent = v;
+      return d.innerHTML;
+    };
 
-    if (stepHeader) stepHeader.style.display = '';
-    if (navActions) navActions.style.display = '';
-    if (watermarkEl) watermarkEl.style.display = '';
-    editButtons.forEach(btn => btn.style.display = '');
+    const buildSection = (title: string, bodyHtml: string) =>
+      `<div style="border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;margin-bottom:16px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 20px;background:rgba(237,249,236,0.85);border-bottom:1px solid #d4edda;">
+          <h3 style="font-size:15px;font-weight:600;color:#1e293b;margin:0;">${esc(title)}</h3>
+        </div>
+        <div style="padding:18px 24px;display:flex;flex-direction:column;gap:16px;">${bodyHtml}</div>
+      </div>`;
 
-    const imgData = canvas.toDataURL('image/jpeg', 0.75);
-    const imgWidth = canvas.width;
-    const imgHeight = canvas.height;
+    const buildNumberedItem = (num: number, label: string, value: string, subHtml = '') =>
+      `<div style="display:flex;flex-direction:column;gap:4px;padding-bottom:16px;border-bottom:1px solid #f1f5f9;">
+        <span style="font-size:13.5px;font-weight:500;color:#475569;"><span style="font-weight:600;margin-right:4px;">${num}.</span> ${esc(label)}</span>
+        <span style="font-size:14px;font-weight:600;color:#1e293b;padding-left:20px;">${esc(value)}</span>
+        ${subHtml}
+      </div>`;
+
+    const buildSubItem = (prefix: string, label: string, value: string) =>
+      `<div style="display:flex;flex-direction:column;gap:2px;">
+        <span style="font-size:13px;font-weight:500;color:#64748b;"><span style="font-weight:600;margin-right:4px;">${esc(prefix)}.</span> ${esc(label)}</span>
+        <span style="font-size:13.5px;font-weight:600;color:#1e293b;padding-left:16px;">${esc(value)}</span>
+      </div>`;
+
+    const buildGridItem = (num: number, label: string, value: string) =>
+      `<div style="display:flex;flex-direction:column;gap:4px;">
+        <span style="font-size:12.5px;font-weight:500;color:#64748b;"><span style="font-weight:600;margin-right:4px;">${num}.</span> ${esc(label)}</span>
+        <span style="font-size:14px;font-weight:500;color:#1e293b;padding-left:20px;">${esc(value)}</span>
+      </div>`;
+
+    let html = '';
+
+    // Header — RBI branding
+    html += `<div style="text-align:center;margin-bottom:8px;">
+      <h1 style="font-size:18px;font-weight:700;color:#000;margin:0 0 4px;letter-spacing:0.5px;">RESERVE BANK OF INDIA</h1>
+      <p style="font-size:12px;color:#333;margin:2px 0;">Integrated Ombudsman Scheme, 2026</p>
+      <h2 style="font-size:15px;font-weight:700;color:#000;margin:6px 0 0;">${isDraft ? 'COMPLAINT DETAILS — DRAFT' : 'COMPLAINT ACKNOWLEDGEMENT'}</h2>
+    </div>
+    <hr style="border:none;border-top:1px solid #000;margin:8px 0 12px;">`;
+
+    // Date row
+    html += `<div style="display:flex;justify-content:flex-end;margin-bottom:16px;font-size:12px;color:#333;">
+      <span>Date: ${new Date().toLocaleDateString('en-IN')}</span>
+    </div>`;
+
+    // Eligibility Details
+    const eligItems = this.reviewEligibilityItems;
+    if (eligItems.length > 0) {
+      let body = '';
+      for (const item of eligItems) {
+        let subHtml = '';
+        if (item.subItems) {
+          subHtml = '<div style="padding-left:24px;margin-top:6px;display:flex;flex-direction:column;gap:6px;">';
+          for (const sub of item.subItems) {
+            subHtml += buildSubItem(sub.prefix, sub.label, sub.fileMeta ? sub.fileMeta.fileName : sub.value);
+          }
+          subHtml += '</div>';
+        }
+        body += buildNumberedItem(item.num, item.question, item.answer, subHtml);
+      }
+      html += buildSection('Eligibility Details', body);
+    }
+
+    // Complainant Details
+    {
+      let body = '';
+      const catLabel = this.getCategoryLabel();
+      if (catLabel && catLabel !== '—') {
+        body += buildNumberedItem(1, 'Complainant Category', catLabel);
+      }
+      const fieldItems = this.reviewComplainantFieldItems;
+      if (fieldItems.length > 0) {
+        body += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px;">';
+        for (const item of fieldItems) {
+          body += buildGridItem(item.num, item.label, item.value);
+        }
+        body += '</div>';
+      }
+      html += buildSection('Complainant Details', body);
+    }
+
+    // Regulated Entity Details
+    {
+      let body = '';
+      const reItems = this.reviewRegulatedEntityItems;
+      for (const item of reItems) {
+        if (item.num <= 2) {
+          body += buildNumberedItem(item.num, item.label, item.value);
+        }
+      }
+      const gridItems = reItems.filter(i => i.num > 2);
+      if (gridItems.length > 0) {
+        body += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px;">';
+        for (const item of gridItems) {
+          body += buildGridItem(item.num, item.label, item.value);
+        }
+        body += '</div>';
+      }
+      html += buildSection('Regulated Entity Details', body);
+    }
+
+    // Complaint Details
+    {
+      let body = '';
+      const cItems = this.reviewComplaintItems;
+      for (const item of cItems) {
+        if (item.fullRow) {
+          body += buildNumberedItem(item.num, item.label, item.value);
+        }
+      }
+      const gridCItems = cItems.filter(i => !i.fullRow);
+      if (gridCItems.length > 0) {
+        body += '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:20px;">';
+        for (const item of gridCItems) {
+          body += buildGridItem(item.num, item.label, item.value);
+        }
+        body += '</div>';
+      }
+      const uploadedDocs = this.complaintDetailsForm.controls.fileUpload.value;
+      if (uploadedDocs && uploadedDocs.length > 0) {
+        body += `<div style="display:flex;flex-direction:column;gap:4px;padding-top:8px;border-top:1px solid #f1f5f9;">
+          <span style="font-size:13.5px;font-weight:500;color:#475569;"><span style="font-weight:600;margin-right:4px;">${this.reviewComplaintDocNum}.</span> Uploaded Documents</span>
+          <div style="display:flex;flex-wrap:wrap;gap:12px;padding-left:20px;">`;
+        for (const f of uploadedDocs) {
+          body += `<div style="display:flex;align-items:center;gap:10px;padding:10px 16px;border-radius:8px;background:#f8fafc;border:1px solid #e2e8f0;">
+            <span style="font-size:13px;font-weight:500;color:#1e293b;">${esc(f.fileName)}</span>
+            ${f.fileSize ? `<span style="font-size:11px;color:#94a3b8;">${(f.fileSize / 1024).toFixed(0)} KB</span>` : ''}
+          </div>`;
+        }
+        body += '</div></div>';
+      }
+      html += buildSection('Complaint Details', body);
+    }
+
+    // Representative Authorisation
+    {
+      const repItems = this.reviewRepItems;
+      if (repItems.length > 0) {
+        let body = '';
+        const fullItem = repItems.find(i => i.num === 1);
+        if (fullItem) body += buildNumberedItem(fullItem.num, fullItem.label, fullItem.value);
+        const gridItems = repItems.filter(i => i.num > 1);
+        if (gridItems.length > 0) {
+          body += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:20px;">';
+          for (const item of gridItems) {
+            body += buildGridItem(item.num, item.label, item.value);
+          }
+          body += '</div>';
+        }
+        const repDocs = this.repAuthorizationForm.controls.repFileUpload?.value;
+        if (repDocs && repDocs.length > 0) {
+          body += `<div style="margin-top:8px;display:flex;flex-direction:column;gap:4px;">
+            <span style="font-size:13.5px;font-weight:500;color:#475569;"><span style="font-weight:600;margin-right:4px;">${repItems.length + 1}.</span> Uploaded Documents</span>
+            <div style="display:flex;flex-wrap:wrap;gap:12px;padding-left:20px;">`;
+          for (const f of repDocs) {
+            body += `<div style="display:flex;align-items:center;gap:10px;padding:10px 16px;border-radius:8px;background:#f8fafc;border:1px solid #e2e8f0;">
+              <span style="font-size:13px;font-weight:500;color:#1e293b;">${esc(f.fileName)}</span>
+              ${f.fileSize ? `<span style="font-size:11px;color:#94a3b8;">${(f.fileSize / 1024).toFixed(0)} KB</span>` : ''}
+            </div>`;
+          }
+          body += '</div></div>';
+        }
+        html += buildSection('Representative Authorisation', body);
+      }
+    }
+
+    // Declaration
+    {
+      let body = '';
+      body += `<div style="display:flex;align-items:flex-start;gap:12px;padding-bottom:12px;">
+        <span style="font-size:18px;color:#409A31;flex-shrink:0;">&#10003;</span>
+        <span style="font-size:14px;color:#334155;line-height:1.7;">
+          (i) I/ We, the complainant/s herein declare that:<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;a) the information furnished above is true and correct; and<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;b) I/We have not concealed or misrepresented any fact stated above and in the documents submitted herewith.
+        </span>
+      </div>`;
+      body += `<div style="display:flex;align-items:flex-start;gap:12px;">
+        <span style="font-size:18px;color:#409A31;flex-shrink:0;">&#10003;</span>
+        <span style="font-size:14px;color:#334155;line-height:1.7;">
+          (ii) The complaint is filed before the expiry of a period of one year reckoned in accordance with the provisions of clause 10 (2) of the Scheme.
+        </span>
+      </div>`;
+      html += buildSection('Declaration', body);
+    }
+
+    container.innerHTML = html;
+
+    const canvas = await html2canvas(container, {
+      scale: 2,
+      useCORS: true,
+      logging: false,
+      backgroundColor: '#ffffff',
+      width: 800,
+    });
+
+    document.body.removeChild(container);
+
     const pdfWidth = 210;
     const pdfHeight = 297;
     const margin = 10;
     const contentWidth = pdfWidth - margin * 2;
+    const imgWidth = canvas.width;
+    const imgHeight = canvas.height;
 
     const doc = new jsPDF('p', 'mm', 'a4');
     const pageContentHeight = pdfHeight - margin * 2;
-    const scaledHeight = (imgHeight * contentWidth) / imgWidth;
 
+    // Prepare watermark: draw it onto a transparent PNG canvas so it won't cover content
     const watermarkImg = new Image();
     watermarkImg.src = 'assets/draft-watermark.jpg';
     await new Promise<void>((resolve) => {
@@ -798,46 +985,116 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
       watermarkImg.onerror = () => resolve();
     });
 
-    const addWatermark = (pdf: any) => {
-      if (watermarkImg.complete && watermarkImg.naturalWidth > 0) {
-        const wmCanvas = document.createElement('canvas');
-        wmCanvas.width = watermarkImg.naturalWidth;
-        wmCanvas.height = watermarkImg.naturalHeight;
-        const wmCtx = wmCanvas.getContext('2d')!;
-        wmCtx.globalAlpha = 0.35;
-        wmCtx.drawImage(watermarkImg, 0, 0);
-        const wmData = wmCanvas.toDataURL('image/jpeg', 0.6);
-        pdf.addImage(wmData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
-      }
-    };
+    let wmData: string | null = null;
+    if (watermarkImg.complete && watermarkImg.naturalWidth > 0) {
+      const wmCanvas = document.createElement('canvas');
+      wmCanvas.width = watermarkImg.naturalWidth;
+      wmCanvas.height = watermarkImg.naturalHeight;
+      const wmCtx = wmCanvas.getContext('2d')!;
+      wmCtx.clearRect(0, 0, wmCanvas.width, wmCanvas.height);
+      wmCtx.globalAlpha = 0.15;
+      wmCtx.drawImage(watermarkImg, 0, 0);
+      wmData = wmCanvas.toDataURL('image/png');
+    }
 
-    if (scaledHeight <= pageContentHeight) {
-      doc.addImage(imgData, 'JPEG', margin, margin, contentWidth, scaledHeight);
-      addWatermark(doc);
-    } else {
-      let remainingHeight = imgHeight;
-      let sourceY = 0;
-      let page = 0;
-      while (remainingHeight > 0) {
-        if (page > 0) doc.addPage();
-        const sliceHeight = Math.min(remainingHeight, (pageContentHeight / contentWidth) * imgWidth);
-        const sliceCanvas = document.createElement('canvas');
-        sliceCanvas.width = imgWidth;
-        sliceCanvas.height = sliceHeight;
-        const ctx = sliceCanvas.getContext('2d')!;
-        ctx.drawImage(canvas, 0, sourceY, imgWidth, sliceHeight, 0, 0, imgWidth, sliceHeight);
-        const sliceData = sliceCanvas.toDataURL('image/jpeg', 0.75);
-        const sliceScaledHeight = (sliceHeight * contentWidth) / imgWidth;
-        doc.addImage(sliceData, 'JPEG', margin, margin, contentWidth, sliceScaledHeight);
-        addWatermark(doc);
-        sourceY += sliceHeight;
-        remainingHeight -= sliceHeight;
-        page++;
+    let remainingHeight = imgHeight;
+    let sourceY = 0;
+    let page = 0;
+    while (remainingHeight > 0) {
+      if (page > 0) doc.addPage();
+
+      // Draw watermark FIRST (background layer) so content renders on top
+      if (wmData) {
+        doc.addImage(wmData, 'PNG', 0, 0, pdfWidth, pdfHeight);
       }
+
+      // Draw content slice on top of watermark
+      const sliceHeight = Math.min(remainingHeight, (pageContentHeight / contentWidth) * imgWidth);
+      const sliceCanvas = document.createElement('canvas');
+      sliceCanvas.width = imgWidth;
+      sliceCanvas.height = sliceHeight;
+      const ctx = sliceCanvas.getContext('2d')!;
+      ctx.drawImage(canvas, 0, sourceY, imgWidth, sliceHeight, 0, 0, imgWidth, sliceHeight);
+      const sliceData = sliceCanvas.toDataURL('image/png');
+      const sliceScaledHeight = (sliceHeight * contentWidth) / imgWidth;
+      doc.addImage(sliceData, 'PNG', margin, margin, contentWidth, sliceScaledHeight);
+
+      sourceY += sliceHeight;
+      remainingHeight -= sliceHeight;
+      page++;
     }
 
     const fileName = this.facade.referenceNumber ? `Complaint_${this.facade.referenceNumber}.pdf` : 'Draft.pdf';
     doc.save(fileName);
+  }
+
+  // ── PDF: Complaint Status Report (success page — same format as tracker) ──
+  downloadStatusReport() {
+    const refNum = this.facade.referenceNumber;
+    if (!refNum) return;
+
+    this.complaintService.trackComplaint(refNum).pipe(take(1)).subscribe({
+      next: (s) => {
+        import('jspdf').then(({ jsPDF }) => {
+          const doc = new jsPDF();
+          const pw = doc.internal.pageSize.getWidth();
+          let y = 20;
+
+          doc.setFontSize(14);
+          doc.setFont('helvetica', 'bold');
+          doc.text('COMPLAINT STATUS REPORT', pw / 2, y, { align: 'center' });
+          y += 10;
+          doc.setFontSize(10);
+          doc.setFont('helvetica', 'normal');
+          doc.text(`Generated: ${new Date().toLocaleString('en-IN')}`, pw / 2, y, { align: 'center' });
+          y += 12;
+
+          const addRow = (label: string, value: string) => {
+            doc.setFont('helvetica', 'bold');
+            doc.text(`${label}:`, 20, y);
+            doc.setFont('helvetica', 'normal');
+            doc.text(value || 'N/A', 70, y);
+            y += 7;
+          };
+
+          addRow('Complaint ID', s.complaintId);
+          addRow('Status', s.status);
+          addRow('Category', s.category);
+          addRow('Registered', s.registeredAt ? new Date(s.registeredAt).toLocaleDateString('en-IN') : '');
+          addRow('SLA Due', s.slaDueDate ? new Date(s.slaDueDate).toLocaleDateString('en-IN') : '');
+          if (s.assignedTeam) addRow('Assigned Team', s.assignedTeam);
+          if (s.resolutionSummary) addRow('Resolution', s.resolutionSummary);
+
+          if (s.timeline && s.timeline.length > 0) {
+            y += 5;
+            doc.setFont('helvetica', 'bold');
+            doc.text('Timeline:', 20, y);
+            y += 7;
+            doc.setFont('helvetica', 'normal');
+            for (const entry of s.timeline) {
+              if (y > 270) { doc.addPage(); y = 20; }
+              doc.text(`${new Date(entry.timestamp).toLocaleDateString('en-IN')} - ${entry.action} (${entry.fromStatus} -> ${entry.toStatus})`, 25, y);
+              y += 6;
+            }
+          }
+
+          y += 10;
+          doc.setDrawColor(0, 100, 0);
+          doc.setFillColor(240, 255, 240);
+          doc.roundedRect(20, y, pw - 40, 14, 2, 2, 'FD');
+          doc.setTextColor(0, 100, 0);
+          doc.setFontSize(8);
+          doc.setFont('helvetica', 'bold');
+          doc.text('DIGITALLY SIGNED | RBI CMS Digital Certificate Authority', 25, y + 9);
+          doc.setTextColor(0);
+
+          doc.save(`Complaint_${s.complaintId}.pdf`);
+        });
+      },
+      error: () => {
+        this.messageService.add({ severity: 'error', summary: 'Error', detail: 'Failed to fetch complaint details for PDF.', life: 3000 });
+      }
+    });
   }
 
   // ── Navigation ──
