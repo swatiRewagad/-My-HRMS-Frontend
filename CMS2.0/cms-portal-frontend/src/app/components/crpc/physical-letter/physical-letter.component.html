@@ -222,9 +222,21 @@
                     </div>
                     <div class="field-item">
                       <label>Physical Letter Receipt Date</label>
-                      <input type="date" [(ngModel)]="receivedDate" placeholder="dd-mm-yyyy" />
+                      <p-datepicker [(ngModel)]="receivedDate" dateFormat="dd-mm-yy" placeholder="DD-MM-YYYY" [showIcon]="true" [readonlyInput]="false" appendTo="body"></p-datepicker>
                     </div>
                   </div>
+                  <div class="cpgram-section">
+                    <label class="cpgram-checkbox">
+                      <input type="checkbox" [(ngModel)]="isComplaintCpgram" />
+                      <span>Is Complaint CPGRAM</span>
+                    </label>
+                  </div>
+                  @if (isComplaintCpgram) {
+                    <div class="field-item">
+                      <label>CPGRAM Number</label>
+                      <input type="text" [(ngModel)]="cpgramNumber" placeholder="Enter CPGRAM number" />
+                    </div>
+                  }
                 </div>
               }
             </div>
@@ -386,9 +398,12 @@
                   </div>
                   <!-- Row 4: Country + State -->
                   <div class="field-grid-2">
-                    <div class="field-item">
+                    <div class="field-item entity-search-group">
                       <label>Country</label>
-                      <input type="text" [(ngModel)]="entityCountry" placeholder="Enter Country name" />
+                      <div class="entity-search-wrapper has-icon">
+                        <input type="text" [(ngModel)]="entityCountry" placeholder="Enter Country name" />
+                      <span> <i class="pi pi-search entity-search-icon"></i></span> 
+                      </div>
                     </div>
                     <div class="field-item entity-search-group">
                       <label>State</label>
@@ -462,7 +477,7 @@
                       <label>Asset Size in Crores</label>
                       <div class="input-with-prefix">
                         <span class="input-prefix">&#8377;</span>
-                        <input type="number" [(ngModel)]="assetSize" placeholder="Enter Amount" />
+                        <input type="text" [ngModel]="assetSizeFormatted" (ngModelChange)="onAmountInput('assetSize', $event)" placeholder="Enter Amount" />
                       </div>
                     </div>
                   </div>
@@ -522,7 +537,7 @@
                     </div>
                     <div class="field-item">
                       <label>Date of Registration with RBI</label>
-                      <input type="date" [(ngModel)]="dateOfRegistrationWithRBI" />
+                      <p-datepicker [(ngModel)]="dateOfRegistrationWithRBI" dateFormat="dd-mm-yy" placeholder="DD-MM-YYYY" [showIcon]="true" [readonlyInput]="false" appendTo="body"></p-datepicker>
                     </div>
                   </div>
 
@@ -574,7 +589,7 @@
                     </div>
                     <div class="field-item">
                       <label>Date of Filing the Complaint</label>
-                      <input type="date" [(ngModel)]="dateOfFilingComplaint" />
+                      <p-datepicker [(ngModel)]="dateOfFilingComplaint" dateFormat="dd-mm-yy" placeholder="DD-MM-YYYY" [showIcon]="true" [readonlyInput]="false" appendTo="body"></p-datepicker>
                     </div>
                   </div>
                   <div class="eligibility-row">
@@ -601,14 +616,14 @@
                       <label>Disputed Amount Involved</label>
                       <div class="input-with-prefix">
                         <span class="input-prefix">&#8377;</span>
-                        <input type="number" [(ngModel)]="disputedAmountInvolved" placeholder="Enter amount" />
+                        <input type="text" [ngModel]="disputedAmountFormatted" (ngModelChange)="onAmountInput('disputedAmountInvolved', $event)" placeholder="Enter amount" />
                       </div>
                     </div>
                   </div>
                   <div class="field-grid-2">
                     <div class="field-item">
                       <label>Date of Filing the Complaint</label>
-                      <input type="date" [(ngModel)]="dateOfFilingForFinancial" />
+                      <p-datepicker [(ngModel)]="dateOfFilingForFinancial" dateFormat="dd-mm-yy" placeholder="DD-MM-YYYY" [showIcon]="true" [readonlyInput]="false" appendTo="body"></p-datepicker>
                     </div>
                     <div class="field-item">
                       <label>Compensation Sought for Expenses Incurred, Harassment and Mental Anguish (if any)</label>
@@ -622,10 +637,7 @@
                   <!-- Loan / Disposal Account -->
                   <div class="field-item" style="margin-top: 12px;">
                     <label>Loan / Disposal Account</label>
-                    <div class="input-with-prefix">
-                      <span class="input-prefix">&#8377;</span>
-                      <input type="number" [(ngModel)]="loanDisposalAmount" placeholder="Enter amount" />
-                    </div>
+                    <input type="text" [(ngModel)]="loanDisposalAmount" placeholder="Enter account number" />
                   </div>
 
                   <div class="section-divider"></div>
@@ -648,7 +660,7 @@
                   </div>
                   <div class="field-item">
                     <label>Date of Filing the Complaint</label>
-                    <input type="date" [(ngModel)]="additionalDateOfFiling" />
+                    <p-datepicker [(ngModel)]="additionalDateOfFiling" dateFormat="dd-mm-yy" placeholder="DD-MM-YYYY" [showIcon]="true" [readonlyInput]="false" appendTo="body"></p-datepicker>
                   </div>
 
                   <div class="section-divider"></div>
@@ -665,7 +677,7 @@
                     </div>
                     <div class="field-item">
                       <label>Date of Filing the Complaint</label>
-                      <input type="date" [(ngModel)]="legalDateOfFiling" />
+                      <p-datepicker [(ngModel)]="legalDateOfFiling" dateFormat="dd-mm-yy" placeholder="DD-MM-YYYY" [showIcon]="true" [readonlyInput]="false" appendTo="body"></p-datepicker>
                     </div>
                   </div>
                   <div class="field-grid-2">

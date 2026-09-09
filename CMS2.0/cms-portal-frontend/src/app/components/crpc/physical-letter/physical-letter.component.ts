@@ -12,6 +12,7 @@ import { environment } from '../../../../environments/environment';
 import { NotificationBellComponent } from '../../../shared/notification-bell/notification-bell.component';
 import { LanguageSelectComponent } from '../../../shared/language-select/language-select.component';
 import { FontSizeControlsComponent } from '../../../shared/font-size-controls/font-size-controls.component';
+import { DatePicker } from 'primeng/datepicker';
 interface Suggestion {
   id: string;
   field: string;
@@ -28,7 +29,7 @@ interface PastComplaint {
 @Component({
   selector: 'app-physical-letter',
   standalone: true,
-  imports: [CommonModule, FormsModule, NotificationBellComponent, LanguageSelectComponent, FontSizeControlsComponent],
+  imports: [CommonModule, FormsModule, NotificationBellComponent, LanguageSelectComponent, FontSizeControlsComponent, DatePicker],
   templateUrl: './physical-letter.component.html',
   styleUrl: './physical-letter.component.scss'
 })
@@ -62,7 +63,7 @@ export class PhysicalLetterComponent implements OnInit {
   description = '';
   comments = '';
   modeOfReceipt = 'PHYSICAL_LETTER';
-  receivedDate = '';
+  receivedDate: Date | null = new Date();
   letterDate = '';
   category = '';
   proposedComplaintType: 'NEW_COMPLAINT' | 'NOT_A_COMPLAINT' = 'NEW_COMPLAINT';
@@ -70,6 +71,9 @@ export class PhysicalLetterComponent implements OnInit {
   complaintType = 'COMPLAINT';
   isRbiEComplaint = 'NO';
   nonEComplaintReason = '';
+
+  isComplaintCpgram = false;
+  cpgramNumber = '';
 
   // Eligibility questions
   eligibilityQuestions = [
@@ -125,24 +129,24 @@ export class PhysicalLetterComponent implements OnInit {
 
   // Basic Identification
   otherEntityName = '';
-  dateOfRegistrationWithRBI = '';
+  dateOfRegistrationWithRBI: Date | null = null;
 
   // Complaint Classification
   complaintCategory = '';
   complaintSubCategory1 = '';
   complaintSubCategory2 = '';
-  dateOfFilingComplaint = '';
+  dateOfFilingComplaint: Date | null = null;
   complaintRegDateValid = 'YES';
 
   // Reminder & Financial Details
   reminderSentByComplainant = 'YES';
   disputedAmountInvolved: number | null = null;
-  dateOfFilingForFinancial = '';
+  dateOfFilingForFinancial: Date | null = null;
   compensationSought = 'YES';
 
   // Legal & Case Details
   legalCaseFiled = 'YES';
-  legalDateOfFiling = '';
+  legalDateOfFiling: Date | null = null;
   preEnquiryReceived = 'YES';
   highPriorityComplaint = 'NO';
 
@@ -150,7 +154,7 @@ export class PhysicalLetterComponent implements OnInit {
   additionalComments = '';
   crpcProposedAction = 'Maintainable';
   vernacularLanguageDetail = '';
-  additionalDateOfFiling = '';
+  additionalDateOfFiling: Date | null = null;
 
   // Loan / Disposal Account
   loanDisposalAmount: number | null = null;
@@ -221,7 +225,6 @@ export class PhysicalLetterComponent implements OnInit {
   protected Math = Math;
 
   ngOnInit() {
-    this.receivedDate = new Date().toISOString().split('T')[0];
     const stored = sessionStorage.getItem('crpc_user');
     const parsed = stored ? JSON.parse(stored) : null;
     const currentUsername = this.auth.currentUser()?.username;
@@ -749,6 +752,34 @@ export class PhysicalLetterComponent implements OnInit {
     return rev?.isOnLeave || false;
   }
 
+  private formatDateISO(d: Date | null): string {
+    if (!d) return '';
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  private formatIndianNumber(value: number | null): string {
+    if (value == null) return '';
+    return value.toLocaleString('en-IN');
+  }
+
+  get assetSizeFormatted(): string {
+    return this.formatIndianNumber(this.assetSize);
+  }
+
+  get disputedAmountFormatted(): string {
+    return this.formatIndianNumber(this.disputedAmountInvolved);
+  }
+
+  onAmountInput(field: 'assetSize' | 'disputedAmountInvolved', value: string) {
+    const raw = value.replace(/,/g, '');
+    const num = raw === '' ? null : Number(raw);
+    if (num !== null && isNaN(num)) return;
+    this[field] = num;
+  }
+
   private appendAllFieldsToFormData(formData: FormData, status: string, assignedTo: string) {
     // Prefer the live Keycloak session over the cached loggedInUser — a stale crpc_user cache
     // from a different account in this browser tab would otherwise attribute this submission to
@@ -775,7 +806,7 @@ export class PhysicalLetterComponent implements OnInit {
     formData.append('status', status);
     formData.append('assignedTo', assignedTo);
     formData.append('processedBy', username);
-    formData.append('receivedAt', (this.receivedDate || new Date().toISOString().split('T')[0]) + 'T00:00:00');
+    formData.append('receivedAt', (this.formatDateISO(this.receivedDate) || new Date().toISOString().split('T')[0]) + 'T00:00:00');
 
     // Eligibility
     formData.append('proposedComplaintType', this.proposedComplaintType);
@@ -805,19 +836,19 @@ export class PhysicalLetterComponent implements OnInit {
 
     // Complainant extended - Basic Identification
     formData.append('otherEntityName', this.otherEntityName);
-    formData.append('dateOfRegistrationWithRBI', this.dateOfRegistrationWithRBI);
+    formData.append('dateOfRegistrationWithRBI', this.formatDateISO(this.dateOfRegistrationWithRBI));
 
     // Complaint Classification
     formData.append('complaintCategory', this.complaintCategory);
     formData.append('complaintSubCategory1', this.complaintSubCategory1);
     formData.append('complaintSubCategory2', this.complaintSubCategory2);
-    formData.append('dateOfFilingComplaint', this.dateOfFilingComplaint);
+    formData.append('dateOfFilingComplaint', this.formatDateISO(this.dateOfFilingComplaint));
     formData.append('complaintRegDateValid', this.complaintRegDateValid);
 
     // Reminder & Financial
     formData.append('reminderSentByComplainant', this.reminderSentByComplainant);
     formData.append('disputedAmountInvolved', this.disputedAmountInvolved != null ? String(this.disputedAmountInvolved) : '');
-    formData.append('dateOfFilingForFinancial', this.dateOfFilingForFinancial);
+    formData.append('dateOfFilingForFinancial', this.formatDateISO(this.dateOfFilingForFinancial));
     formData.append('compensationSought', this.compensationSought);
     formData.append('loanDisposalAmount', this.loanDisposalAmount != null ? String(this.loanDisposalAmount) : '');
 
@@ -828,7 +859,7 @@ export class PhysicalLetterComponent implements OnInit {
 
     // Legal & Case
     formData.append('legalCaseFiled', this.legalCaseFiled);
-    formData.append('legalDateOfFiling', this.legalDateOfFiling);
+    formData.append('legalDateOfFiling', this.formatDateISO(this.legalDateOfFiling));
     formData.append('preEnquiryReceived', this.preEnquiryReceived);
 
     // Flags
@@ -842,6 +873,10 @@ export class PhysicalLetterComponent implements OnInit {
     // Linkage
     formData.append('currentComplaintNumber', this.currentComplaintNumber);
     formData.append('receivedReplyWithin30Days', this.receivedReplyWithin30Days);
+
+    // CPGRAM
+    formData.append('isComplaintCpgram', this.isComplaintCpgram ? 'true' : 'false');
+    if (this.isComplaintCpgram && this.cpgramNumber) formData.append('cpgramNumber', this.cpgramNumber);
 
     // Declaration
     formData.append('declarationAccepted', this.declarationAccepted ? 'true' : 'false');
