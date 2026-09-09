@@ -1,9 +1,10 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router';
 import { SpeechButtonComponent } from '../../../shared/speech-button/speech-button.component';
 import { TranslatePipe } from '../../../pipes/translate.pipe';
+import { FeedbackService } from '../../../services/feedback.service';
 
 @Component({
   selector: 'app-submit-feedback',
@@ -12,9 +13,11 @@ import { TranslatePipe } from '../../../pipes/translate.pipe';
   templateUrl: './submit-feedback.component.html',
   styleUrl: './submit-feedback.component.scss'
 })
-export class SubmitFeedbackComponent {
+export class SubmitFeedbackComponent implements OnInit {
 
   private router = inject(Router);
+  private route = inject(ActivatedRoute);
+  private feedbackService = inject(FeedbackService);
 
   phase = signal<'form' | 'success'>('form');
   submitting = signal(false);
@@ -26,6 +29,13 @@ export class SubmitFeedbackComponent {
   feedbackText = '';
   feedbackTextError = '';
   error = '';
+
+  ngOnInit(): void {
+    const idFromRoute = this.route.snapshot.paramMap.get('id');
+    if (idFromRoute) {
+      this.complaintId = idFromRoute;
+    }
+  }
 
   sourceOfInformation = '';
   sourceOtherText = '';
@@ -124,10 +134,25 @@ export class SubmitFeedbackComponent {
     }
 
     this.submitting.set(true);
-    setTimeout(() => {
-      this.submitting.set(false);
-      this.phase.set('success');
-    }, 1000);
+    this.feedbackService.submitFeedback({
+      complaintNumber: this.complaintId.trim(),
+      easeOfFiling: this.easeOfFiling,
+      grievanceRedressTime: this.grievanceRedressTime,
+      overallRating: this.overallRating,
+      feedbackText: this.feedbackText,
+      sourceOfInformation: this.sourceOfInformation,
+      sourceOtherText: this.sourceOtherText,
+      awarenessHelped: this.awarenessHelped,
+    }).subscribe({
+      next: () => {
+        this.submitting.set(false);
+        this.phase.set('success');
+      },
+      error: (err) => {
+        this.submitting.set(false);
+        this.error = err.error?.message || 'Failed to submit feedback. Please try again.';
+      },
+    });
   }
 
   goHome() {

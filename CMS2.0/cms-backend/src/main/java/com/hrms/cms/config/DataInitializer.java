@@ -7,6 +7,8 @@ import com.hrms.cms.entity.ComplaintCategory;
 import com.hrms.cms.entity.EmailDraft;
 import com.hrms.cms.entity.ExtractionRule;
 import com.hrms.cms.entity.FormConfig;
+import com.hrms.cms.entity.OfficeCodeMaster;
+import com.hrms.cms.entity.OmbudsmanOfficeMaster;
 import com.hrms.cms.entity.RegulatedEntity;
 import com.hrms.cms.repository.AccountTypeMasterRepository;
 import com.hrms.cms.repository.BankRepository;
@@ -15,6 +17,8 @@ import com.hrms.cms.repository.ComplaintRepository;
 import com.hrms.cms.repository.EmailDraftRepository;
 import com.hrms.cms.repository.ExtractionRuleRepository;
 import com.hrms.cms.repository.FormConfigRepository;
+import com.hrms.cms.repository.OfficeCodeMasterRepository;
+import com.hrms.cms.repository.OmbudsmanOfficeMasterRepository;
 import com.hrms.cms.repository.RegulatedEntityRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
@@ -39,6 +43,8 @@ public class DataInitializer implements CommandLineRunner {
     private final EmailDraftRepository emailDraftRepo;
     private final ExtractionRuleRepository extractionRuleRepo;
     private final AccountTypeMasterRepository accountTypeRepo;
+    private final OmbudsmanOfficeMasterRepository ombudsmanOfficeRepo;
+    private final OfficeCodeMasterRepository officeCodeRepo;
 
     @Override
     public void run(String... args) {
@@ -65,6 +71,12 @@ public class DataInitializer implements CommandLineRunner {
         }
         if (emailDraftRepo.count() == 0) {
             seedCrpcEmailDrafts();
+        }
+        if (ombudsmanOfficeRepo.count() == 0) {
+            seedOmbudsmanOfficeMaster();
+        }
+        if (officeCodeRepo.count() == 0) {
+            seedOfficeCodeMaster();
         }
         migrateUuidDraftIds();
     }
@@ -1138,6 +1150,65 @@ public class DataInitializer implements CommandLineRunner {
             AccountTypeMaster.builder().label("Wallet").value("wallet").active(true).sortOrder(8).build(),
             AccountTypeMaster.builder().label("PPF Account").value("ppf").active(true).sortOrder(9).build(),
             AccountTypeMaster.builder().label("Others").value("others").active(true).sortOrder(10).build()
+        ));
+    }
+
+    private void seedOmbudsmanOfficeMaster() {
+        ombudsmanOfficeRepo.saveAll(List.of(
+            OmbudsmanOfficeMaster.builder().id(1).officeName("Ahmedabad").jurisdiction("Gujarat, Union Territories of Dadra and Nagar Haveli, Daman and Diu").build(),
+            OmbudsmanOfficeMaster.builder().id(2).officeName("Bengaluru").jurisdiction("Karnataka").build(),
+            OmbudsmanOfficeMaster.builder().id(3).officeName("Bhopal").jurisdiction("Madhya Pradesh").build(),
+            OmbudsmanOfficeMaster.builder().id(4).officeName("Bhubaneswar").jurisdiction("Odisha").build(),
+            OmbudsmanOfficeMaster.builder().id(5).officeName("Chandigarh").jurisdiction("Punjab and Union Territory of Chandigarh").build(),
+            OmbudsmanOfficeMaster.builder().id(6).officeName("Chennai-I").jurisdiction("Nine districts of Tamil Nadu viz., Thiruvallur, Chennai, Vellore, Ranipet, Kancheepuram, Chengalpattu, Krishnagiri, Tirupathur and Tiruvannamalai; and Union Territory of Andaman and Nicobar Islands").build(),
+            OmbudsmanOfficeMaster.builder().id(7).officeName("Chennai-II").jurisdiction("Tamil Nadu (excluding Districts of Thiruvallur, Chennai, Vellore, Ranipet, Kancheepuram, Chengalpattu, Krishnagiri, Tirupathur and Tiruvannamalai); and Union Territory of Puducherry (except Mahe Region)").build(),
+            OmbudsmanOfficeMaster.builder().id(8).officeName("Dehradun").jurisdiction("Uttarakhand and seven districts of Uttar Pradesh viz., Saharanpur, Shamli (Prabudh Nagar), Muzaffarnagar, Baghpat, Meerut, Bijnor and Amroha (Jyotiba Phule Nagar)").build(),
+            OmbudsmanOfficeMaster.builder().id(9).officeName("Guwahati").jurisdiction("Assam, Arunachal Pradesh, Manipur, Meghalaya, Mizoram, Nagaland and Tripura").build(),
+            OmbudsmanOfficeMaster.builder().id(10).officeName("Hyderabad").jurisdiction("Andhra Pradesh and Telangana").build(),
+            OmbudsmanOfficeMaster.builder().id(11).officeName("Jaipur").jurisdiction("Rajasthan").build(),
+            OmbudsmanOfficeMaster.builder().id(12).officeName("Jammu").jurisdiction("Union Territories of Jammu & Kashmir and Ladakh").build(),
+            OmbudsmanOfficeMaster.builder().id(13).officeName("Kanpur").jurisdiction("Uttar Pradesh (excluding Districts of Ghaziabad, Gautam Buddha Nagar, Saharanpur, Shamli (Prabudh Nagar), Muzaffarnagar, Baghpat, Meerut, Bijnor and Amroha (Jyotiba Phule Nagar))").build(),
+            OmbudsmanOfficeMaster.builder().id(14).officeName("Kolkata-I").jurisdiction("Three districts of West Bengal viz., Kolkata, South 24 Parganas, Howrah; and Sikkim").build(),
+            OmbudsmanOfficeMaster.builder().id(15).officeName("Kolkata-II").jurisdiction("West Bengal (excluding districts of Kolkata, South 24 Parganas and Howrah)").build(),
+            OmbudsmanOfficeMaster.builder().id(16).officeName("Mumbai-I").jurisdiction("Districts of Mumbai, Mumbai Suburban and Thane").build(),
+            OmbudsmanOfficeMaster.builder().id(17).officeName("Mumbai-II").jurisdiction("Goa and Maharashtra (except the districts of Mumbai, Mumbai Suburban and Thane)").build(),
+            OmbudsmanOfficeMaster.builder().id(18).officeName("New Delhi-I").jurisdiction("Delhi").build(),
+            OmbudsmanOfficeMaster.builder().id(19).officeName("New Delhi-II").jurisdiction("Haryana and Ghaziabad and Gautam Buddha Nagar districts of Uttar Pradesh").build(),
+            OmbudsmanOfficeMaster.builder().id(20).officeName("Patna").jurisdiction("Bihar").build(),
+            OmbudsmanOfficeMaster.builder().id(21).officeName("Raipur").jurisdiction("Chhattisgarh").build(),
+            OmbudsmanOfficeMaster.builder().id(22).officeName("Ranchi").jurisdiction("Jharkhand").build(),
+            OmbudsmanOfficeMaster.builder().id(23).officeName("Shimla").jurisdiction("Himachal Pradesh").build(),
+            OmbudsmanOfficeMaster.builder().id(24).officeName("Thiruvananthapuram").jurisdiction("Kerala, Union Territory of Lakshadweep and Union Territory of Puducherry (only Mahe Region)").build()
+        ));
+    }
+
+    private void seedOfficeCodeMaster() {
+        officeCodeRepo.saveAll(List.of(
+            OfficeCodeMaster.builder().officeType("BO").officeName("Ahmedabad").officeCode("001").build(),
+            OfficeCodeMaster.builder().officeType("BO").officeName("Bengaluru").officeCode("002").build(),
+            OfficeCodeMaster.builder().officeType("BO").officeName("Bhubaneswar").officeCode("003").build(),
+            OfficeCodeMaster.builder().officeType("BO").officeName("Bhopal").officeCode("004").build(),
+            OfficeCodeMaster.builder().officeType("BO").officeName("Kolkata-I").officeCode("005").build(),
+            OfficeCodeMaster.builder().officeType("BO").officeName("Chennai-I").officeCode("006").build(),
+            OfficeCodeMaster.builder().officeType("BO").officeName("Chandigarh").officeCode("007").build(),
+            OfficeCodeMaster.builder().officeType("BO").officeName("Guwahati").officeCode("008").build(),
+            OfficeCodeMaster.builder().officeType("BO").officeName("Hyderabad").officeCode("009").build(),
+            OfficeCodeMaster.builder().officeType("BO").officeName("Jaipur").officeCode("010").build(),
+            OfficeCodeMaster.builder().officeType("BO").officeName("Kanpur").officeCode("011").build(),
+            OfficeCodeMaster.builder().officeType("BO").officeName("Patna").officeCode("012").build(),
+            OfficeCodeMaster.builder().officeType("BO").officeName("Mumbai-I").officeCode("013").build(),
+            OfficeCodeMaster.builder().officeType("BO").officeName("New Delhi-I").officeCode("014").build(),
+            OfficeCodeMaster.builder().officeType("BO").officeName("Thiruvananthapuram").officeCode("015").build(),
+            OfficeCodeMaster.builder().officeType("BO").officeName("New Delhi-II").officeCode("016").build(),
+            OfficeCodeMaster.builder().officeType("BO").officeName("Dehradun").officeCode("017").build(),
+            OfficeCodeMaster.builder().officeType("BO").officeName("Ranchi").officeCode("018").build(),
+            OfficeCodeMaster.builder().officeType("BO").officeName("Raipur").officeCode("019").build(),
+            OfficeCodeMaster.builder().officeType("BO").officeName("Jammu").officeCode("020").build(),
+            OfficeCodeMaster.builder().officeType("BO").officeName("Mumbai-II").officeCode("021").build(),
+            OfficeCodeMaster.builder().officeType("BO").officeName("Kolkata-II").officeCode("022").build(),
+            OfficeCodeMaster.builder().officeType("BO").officeName("New Delhi-III").officeCode("023").build(),
+            OfficeCodeMaster.builder().officeType("BO").officeName("Chennai-II").officeCode("024").build(),
+            OfficeCodeMaster.builder().officeType("BO").officeName("Shimla").officeCode("025").build()
         ));
     }
 }

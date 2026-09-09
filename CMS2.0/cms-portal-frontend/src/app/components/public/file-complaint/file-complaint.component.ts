@@ -1,4 +1,5 @@
 import { Component, OnInit, OnDestroy, inject, HostListener, ViewChild, ElementRef } from '@angular/core';
+import { Subscription } from 'rxjs';
 import { take } from 'rxjs/operators';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
@@ -40,6 +41,7 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
   readonly totalSteps = 6;
   readonly watermarkRows = Array.from({ length: 80 }, (_, i) => i + 1);
 
+  private uploadErrorSub!: Subscription;
   accountTypeDropdownOpen = false;
   isDragOver = false;
   isRepDragOver = false;
@@ -91,6 +93,7 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
   get declarationChecked() { return this.facade.declarationChecked; }
   get declaration2Checked() { return this.facade.declaration2Checked; }
   get fileUploadError() { return this.facade.fileUploadError; }
+  get uploading() { return this.facade.uploading; }
   get eligibilityFieldError() { return this.facade.eligibilityFieldError; }
   get eligibilityFileError() { return this.facade.eligibilityFileError; }
   get eligibilityRefError() { return this.facade.eligibilityRefError; }
@@ -151,20 +154,18 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
     setPageTitle('File a Complaint');
     this.facade.initialize();
 
+    this.uploadErrorSub = this.facade.uploadError$.subscribe(msg => {
+      this.messageService.add({ severity: 'error', summary: 'Upload Failed', detail: msg, life: 5000 });
+    });
+
     const draftId = this.route.snapshot.queryParamMap.get('draftId');
-    const resume = this.route.snapshot.queryParamMap.get('resume');
     if (draftId) {
       this.facade.loadDraftFromServer(draftId);
-    } else if (resume === 'true') {
-      this.facade.loadDraft();
-    } else {
-      sessionStorage.removeItem('cms_complaint_draft');
-      sessionStorage.removeItem('cms_draft_id');
-      sessionStorage.removeItem('cms_draft_saved_at');
     }
   }
 
   ngOnDestroy(): void {
+    this.uploadErrorSub?.unsubscribe();
     this.facade.destroy();
   }
 
@@ -207,10 +208,10 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
       if (!form.get('bankComplaintDate')!.value || !form.get('complaintFileWithRE')!.value) return false;
     }
     if (form.get('receivedReply')!.value === 'yes') {
-      if (!form.get('replyDate')!.value || !form.get('replyFileUploaded')!.value) return false;
+      if (!form.get('replyDate')!.value || !form.get('replyFileMeta')!.value) return false;
     }
     if (form.get('sentReminder')!.value === 'yes') {
-      if (!form.get('reminderDate')!.value || !form.get('reminderFileUploaded')!.value) return false;
+      if (!form.get('reminderDate')!.value || !form.get('reminderFileMeta')!.value) return false;
     }
     if (form.get('throughAdvocateEligibility')!.value === 'yes') {
       if (!form.get('isComplainantSelf')!.value) return false;
@@ -237,8 +238,8 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
   get today(): string { return new Date().toLocaleDateString('en-IN'); }
   get todayISO(): string { return new Date().toISOString().split('T')[0]; }
 
-  get reviewEligibilityItems(): { num: number; key: string; question: string; answer: string; subItems?: { prefix: string; label: string; value: string }[] }[] {
-    const items: { num: number; key: string; question: string; answer: string; subItems?: { prefix: string; label: string; value: string }[] }[] = [];
+  get reviewEligibilityItems(): { num: number; key: string; question: string; answer: string; subItems?: { prefix: string; label: string; value: string; fileMeta?: { fileName: string; fileSize: number; viewUrl: string } | null }[] }[] {
+    const items: { num: number; key: string; question: string; answer: string; subItems?: { prefix: string; label: string; value: string; fileMeta?: { fileName: string; fileSize: number; viewUrl: string } | null }[] }[] = [];
     let num = 1;
     const ea = this.eligibilityAnswers;
     const ef = this.facade.eligibilityStageForm;
@@ -252,7 +253,7 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
         subItems: ea['filedWithRE'] === 'yes' ? [
           { prefix: 'a', label: `Date of complaint filed with ${reName}`, value: this.formatDate(ef.get('bankComplaintDate')?.value || '') || '—' },
           { prefix: 'b', label: 'Complaint Reference/Acknowledgement Number', value: ef.get('bankComplaintRef')?.value || '—' },
-          { prefix: 'c', label: 'Complaint copy uploaded', value: this.complaintFileWithREName || '—' },
+          { prefix: 'c', label: 'Complaint copy uploaded', value: this.complaintFileWithREName || '—', fileMeta: this.facade.complaintFileMeta },
         ] : undefined,
       });
     }
@@ -264,7 +265,7 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
         answer: ea['receivedReply'] === 'yes' ? 'Yes' : 'No',
         subItems: ea['receivedReply'] === 'yes' ? [
           { prefix: 'a', label: 'Date of reply received', value: this.formatDate(ef.get('replyDate')?.value || '') || '—' },
-          { prefix: 'b', label: 'Reply copy uploaded', value: this.replyFileName || '—' },
+          { prefix: 'b', label: 'Reply copy uploaded', value: this.replyFileName || '—', fileMeta: this.facade.replyFileMeta },
         ] : undefined,
       });
     }
@@ -276,7 +277,7 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
         answer: ea['sentReminder'] === 'yes' ? 'Yes' : 'No',
         subItems: ea['sentReminder'] === 'yes' ? [
           { prefix: 'a', label: 'Date of reminder sent', value: this.formatDate(ef.get('reminderDate')?.value || '') || '—' },
-          { prefix: 'b', label: 'Reminder copy uploaded', value: this.reminderFileName || '—' },
+          { prefix: 'b', label: 'Reminder copy uploaded', value: this.reminderFileName || '—', fileMeta: this.facade.reminderFileMeta },
         ] : undefined,
       });
     }
@@ -613,57 +614,43 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
   // ── Eligibility file handling (shared component) ──
   onEligibilityFileChanged(type: 'complaint' | 'reminder' | 'reply', files: File[]) {
     const file = files.length > 0 ? files[0] : null;
-    switch (type) {
-      case 'complaint':
-        this.facade.complaintFileWithRE = file;
-        this.facade.complaintFileWithREName = file?.name ?? '';
-        this.facade.eligibilityFileError = '';
-        this.facade.eligibilityStageForm.get('complaintFileWithRE')!.setValue(file);
-        break;
-      case 'reminder':
-        this.facade.reminderFile = file;
-        this.facade.reminderFileName = file?.name ?? '';
-        this.facade.reminderFileError = '';
-        this.facade.eligibilityStageForm.get('reminderFileUploaded')!.setValue(!!file);
-        break;
-      case 'reply':
-        this.facade.replyFile = file;
-        this.facade.replyFileName = file?.name ?? '';
-        this.facade.replyFileError = '';
-        this.facade.eligibilityStageForm.get('replyFileUploaded')!.setValue(!!file);
-        break;
+    if (file) {
+      this.facade.uploadEligibilityFile(type, file);
+    } else {
+      this.facade.removeEligibilityFile(type);
     }
   }
   removeComplaintFile() { this.facade.removeEligibilityFile('complaint'); }
   removeReminderFile() { this.facade.removeEligibilityFile('reminder'); }
   removeReplyFile() { this.facade.removeEligibilityFile('reply'); }
 
-  // ── File upload delegates (shared component) ──
+  previewPersistedFile(url: string) {
+    if (url) window.open(url, '_blank');
+  }
+
+  // ── File upload delegates ──
   onAttachmentsChanged(files: File[]) {
-    this.facade.attachments = files;
-    this.facade.attachmentPreviews = files.map(f => ({
-      name: f.name, url: URL.createObjectURL(f), type: f.type, size: f.size
-    }));
-    this.facade.syncFileUploadControl();
+    const existingCount = this.facade.attachments.length;
+    const newFiles = files.slice(existingCount);
+    if (newFiles.length > 0) {
+      this.facade.uploadAndSyncFiles(newFiles, 'complaintDetails');
+    }
   }
 
   onAttachmentRemoved(index: number) {
-    if (this.facade.attachmentPreviews[index]?.url) {
-      URL.revokeObjectURL(this.facade.attachmentPreviews[index].url);
-    }
-    this.facade.attachments.splice(index, 1);
-    this.facade.attachmentPreviews.splice(index, 1);
-    this.facade.syncFileUploadControl();
+    this.facade.removeUploadedFile('complaintDetails', index);
   }
 
   onRepFileChanged(files: File[]) {
-    this.facade.repFiles = files;
-    this.facade.syncRepFileUploadControl();
+    const existingCount = this.facade.repFiles.length;
+    const newFiles = files.slice(existingCount);
+    if (newFiles.length > 0) {
+      this.facade.uploadAndSyncFiles(newFiles, 'repAuth');
+    }
   }
 
-  removeRepFile() {
-    this.facade.repFiles = [];
-    this.facade.syncRepFileUploadControl();
+  removeRepFile(index: number) {
+    this.facade.removeUploadedFile('repAuth', index);
   }
 
   // ── Keyboard navigation ──

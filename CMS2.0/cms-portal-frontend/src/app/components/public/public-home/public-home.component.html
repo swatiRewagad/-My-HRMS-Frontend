@@ -278,13 +278,13 @@
         <div class="ways-icon"><i class="pi pi-envelope"></i></div>
         <h4>{{ 'home.ways_email_title' | translate }}</h4>
         <p>{{ 'home.ways_email_desc' | translate }}</p>
-        <a href="javascript:void(0)" class="ways-link">{{ 'home.ways_view_details' | translate }} <i class="pi pi-chevron-right"></i></a>
+        <a href="javascript:void(0)" class="ways-link" (click)="openFilingPopup('email')">{{ 'home.ways_view_details' | translate }} <i class="pi pi-chevron-right"></i></a>
       </div>
       <div class="ways-card">
         <div class="ways-icon"><i class="pi pi-file-edit"></i></div>
         <h4>{{ 'home.ways_letter_title' | translate }}</h4>
         <p>{{ 'home.ways_letter_desc' | translate }}</p>
-        <a href="javascript:void(0)" class="ways-link">{{ 'home.ways_view_details' | translate }} <i class="pi pi-chevron-right"></i></a>
+        <a href="javascript:void(0)" class="ways-link" (click)="openFilingPopup('physical')">{{ 'home.ways_view_details' | translate }} <i class="pi pi-chevron-right"></i></a>
       </div>
     </div>
   </div>
@@ -329,6 +329,13 @@
 </section>
 
 
+<!-- Filing Method Popup (Email / Physical Letter) -->
+<app-filing-method-popup
+  [(visible)]="showFilingPopup"
+  [methodType]="filingMethodType"
+  (fileOnPortal)="onFileOnPortal()">
+</app-filing-method-popup>
+
 <!-- FAQ Section -->
 <section class="faq-section">
   <div class="container">
@@ -337,7 +344,7 @@
         <span class="section-tag">{{ 'home.faq_tag' | translate }}</span>
         <h2>{{ 'home.faq_title' | translate }}</h2>
       </div>
-      <a href="javascript:void(0)" class="view-all">{{ 'home.view_all' | translate }}</a>
+      <a routerLink="/public/faq" class="view-all">{{ 'home.view_all' | translate }}</a>
     </div>
     <div class="faq-list">
       @for (faq of faqs; track faq.question; let i = $index) {

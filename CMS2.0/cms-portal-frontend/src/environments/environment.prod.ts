@@ -1,6 +1,7 @@
 export const environment = {
   production: true,
   apiBaseUrl: 'https://cms.rbi.org.in',
+  storageBaseUrl: 'https://cms.rbi.org.in/api/v1/storage',
   ocrServiceUrl: 'https://ocr.rbi.org.in',
   keycloakUrl: 'https://auth.rbi.org.in',
   realm: 'cms',

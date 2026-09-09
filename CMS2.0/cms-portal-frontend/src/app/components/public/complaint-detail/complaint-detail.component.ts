@@ -80,7 +80,12 @@ export class ComplaintDetailComponent implements OnInit {
         const data = res?.data ?? res;
         this.complaint.set(data);
         this.comments.set(data?.comments ?? []);
-        this.statusHistory.set(data?.statusHistory ?? []);
+        const timeline = data?.timeline ?? data?.statusHistory ?? [];
+        this.statusHistory.set(timeline.map((t: any) => ({
+          status: t.toStatus || t.status || '',
+          date: t.timestamp || t.date || '',
+          remarks: t.remarks || t.action || ''
+        })));
         this.loading.set(false);
       },
       error: () => {
@@ -93,9 +98,17 @@ export class ComplaintDetailComponent implements OnInit {
     this.activeTab.set(tab);
   }
 
+  private readonly TERMINAL_STATUSES = ['CLOSED', 'RESOLVED', 'REJECTED', 'WITHDRAWN'];
+
+  isWithdrawable(): boolean {
+    const status = this.complaint()?.status?.toUpperCase() || '';
+    return !this.TERMINAL_STATUSES.includes(status);
+  }
+
   getStatusClass(status: string): string {
     switch (status?.toUpperCase()) {
-      case 'CLOSED': case 'NON_MAINTAINABLE': return 'status-closed';
+      case 'CLOSED': case 'NON_MAINTAINABLE': case 'REJECTED': return 'status-closed';
+      case 'WITHDRAWN': return 'status-closed';
       case 'IN_PROGRESS': case 'INPROGRESS': return 'status-inprogress';
       case 'INFORMATION_REQUIRED': return 'status-info-required';
       case 'DRAFT': return 'status-draft';
@@ -108,6 +121,9 @@ export class ComplaintDetailComponent implements OnInit {
     switch (status?.toUpperCase()) {
       case 'IN_PROGRESS': case 'INPROGRESS': return 'In Progress';
       case 'CLOSED': return 'Closed';
+      case 'WITHDRAWN': return 'Withdrawn';
+      case 'RESOLVED': return 'Resolved';
+      case 'REJECTED': return 'Rejected';
       case 'NON_MAINTAINABLE': return 'Non Maintainable';
       case 'INFORMATION_REQUIRED': return 'Information Required';
       case 'DRAFT': return 'Draft';
@@ -154,11 +170,15 @@ export class ComplaintDetailComponent implements OnInit {
       this.withdrawError.set('Please select a reason for withdrawal.');
       return;
     }
+    if (this.reason === 'Other' && !this.additionalRemarks.trim()) {
+      this.withdrawError.set('Please specify your reason for withdrawal.');
+      return;
+    }
     this.withdrawError.set('');
     this.loading.set(true);
 
     const c = this.complaint();
-    const remarks = this.reason === 'Other' ? this.additionalRemarks : this.reason;
+    const remarks = this.reason === 'Other' ? this.additionalRemarks.trim() : this.reason;
 
     this.complaintService.withdrawComplaint(c.complaintId, this.reason, remarks).subscribe({
       next: () => {
@@ -167,11 +187,10 @@ export class ComplaintDetailComponent implements OnInit {
         this.showWithdrawModal.set(false);
         this.withdrawSuccess.set(true);
       },
-      error: () => {
-        this.withdrawnRef = c.complaintId;
+      error: (err) => {
         this.loading.set(false);
-        this.showWithdrawModal.set(false);
-        this.withdrawSuccess.set(true);
+        const msg = err?.error?.message || 'Failed to withdraw complaint. Please try again.';
+        this.withdrawError.set(msg);
       }
     });
   }

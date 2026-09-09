@@ -50,7 +50,7 @@
         </div>
       </div>
 
-      @if (complaint().status?.toUpperCase() === 'PENDING') {
+      @if (isWithdrawable()) {
         <button class="btn-withdraw" (click)="openWithdrawModal()">Withdraw</button>
       }
     </header>
@@ -137,21 +137,21 @@
               </div>
               <div class="rs-detail-item">
                 <span class="rs-detail-label">Mobile Number</span>
-                <span class="rs-detail-value">{{ complaint().phone || complaint().mobileNumber || '—' }}</span>
+                <span class="rs-detail-value">{{ complaint().complainantPhone || '—' }}</span>
               </div>
               <div class="rs-detail-item">
                 <span class="rs-detail-label">Email (Optional)</span>
-                <span class="rs-detail-value">{{ complaint().email || '—' }}</span>
+                <span class="rs-detail-value">{{ complaint().complainantEmail || '—' }}</span>
               </div>
               <div class="rs-detail-item">
-                <span class="rs-detail-label">Pincode</span>
-                <span class="rs-detail-value">{{ complaint().pincode || '—' }}</span>
+                <span class="rs-detail-label">State</span>
+                <span class="rs-detail-value">{{ complaint().complainantState || '—' }}</span>
               </div>
             </div>
             <div class="rs-detail-grid rs-detail-grid--1">
               <div class="rs-detail-item">
                 <span class="rs-detail-label">Address</span>
-                <span class="rs-detail-value">{{ complaint().address || '—' }}</span>
+                <span class="rs-detail-value">{{ complaint().complainantAddress || '—' }}</span>
               </div>
             </div>
           </div>
@@ -169,41 +169,27 @@
                 <span class="rs-detail-value">{{ complaint().entityName || '—' }}</span>
               </div>
               <div class="rs-detail-item">
-                <span class="rs-detail-label">Complaint Sub-Category 1</span>
-                <span class="rs-detail-value">{{ complaint().subCategory1 || complaint().subCategory || '—' }}</span>
+                <span class="rs-detail-label">Entity Type</span>
+                <span class="rs-detail-value">{{ complaint().entityType || '—' }}</span>
               </div>
               <div class="rs-detail-item">
-                <span class="rs-detail-label">Complaint Sub-Category 2</span>
-                <span class="rs-detail-value">{{ complaint().subCategory2 || '—' }}</span>
+                <span class="rs-detail-label">Branch</span>
+                <span class="rs-detail-value">{{ complaint().bankBranch || '—' }}</span>
               </div>
             </div>
-            <div class="rs-detail-grid rs-detail-grid--1">
-              <div class="rs-detail-item">
-                <span class="rs-detail-label">Facts of the complaint</span>
-                <span class="rs-detail-value rs-detail-value--text">{{ complaint().description || complaint().complaintText || '—' }}</span>
-              </div>
-            </div>
-            <div class="rs-qa-item">
-              <span class="rs-qa-label">If you want to authorize a representative to appear and make submission on your behalf before the Ombudsman, please select 'Yes' and furnish the details of the Authorized Representative</span>
-              <span class="rs-qa-value">{{ complaint().hasRepresentative ? 'Yes' : 'No' }}</span>
-            </div>
-            @if (complaint().attachments?.length) {
-              <div class="rs-detail-grid rs-detail-grid--1">
+            @if (complaint().priorReComplaint) {
+              <div class="rs-detail-grid rs-detail-grid--3">
                 <div class="rs-detail-item">
-                  <span class="rs-detail-label">Attachments</span>
-                  <div class="rs-attachments-row">
-                    @for (file of complaint().attachments; track $index) {
-                      <div class="rs-attachment-chip">
-                        <i class="pi pi-file-pdf"></i>
-                        <div class="rs-attachment-info">
-                          <span class="rs-attachment-name">{{ file.name || file.fileName }}</span>
-                          @if (file.size) {
-                            <span class="rs-attachment-size">{{ file.size }}</span>
-                          }
-                        </div>
-                      </div>
-                    }
-                  </div>
+                  <span class="rs-detail-label">Prior Complaint to RE</span>
+                  <span class="rs-detail-value">Yes</span>
+                </div>
+                <div class="rs-detail-item">
+                  <span class="rs-detail-label">RE Complaint Date</span>
+                  <span class="rs-detail-value">{{ formatDate(complaint().reComplaintDate) }}</span>
+                </div>
+                <div class="rs-detail-item">
+                  <span class="rs-detail-label">RE Complaint Reference</span>
+                  <span class="rs-detail-value">{{ complaint().reComplaintReference || '—' }}</span>
                 </div>
               </div>
             }
@@ -222,26 +208,34 @@
                 <span class="rs-detail-value">{{ complaint().category || '—' }}</span>
               </div>
               <div class="rs-detail-item">
-                <span class="rs-detail-label">Complaint Sub-Category 1</span>
-                <span class="rs-detail-value">{{ complaint().subCategory1 || complaint().subCategory || '—' }}</span>
+                <span class="rs-detail-label">Subject</span>
+                <span class="rs-detail-value">{{ complaint().subject || '—' }}</span>
               </div>
               <div class="rs-detail-item">
-                <span class="rs-detail-label">Complaint Sub-Category 2</span>
-                <span class="rs-detail-value">{{ complaint().subCategory2 || '—' }}</span>
+                <span class="rs-detail-label">Amount Involved</span>
+                <span class="rs-detail-value">{{ complaint().amountInvolved ? ('₹ ' + complaint().amountInvolved) : '—' }}</span>
               </div>
             </div>
             <div class="rs-detail-grid rs-detail-grid--1">
               <div class="rs-detail-item">
                 <span class="rs-detail-label">Facts of the complaint</span>
-                <span class="rs-detail-value rs-detail-value--text">{{ complaint().description || complaint().complaintText || '—' }}</span>
+                <span class="rs-detail-value rs-detail-value--text">{{ complaint().description || '—' }}</span>
               </div>
             </div>
-            @if (complaint().complaintAttachments?.length) {
+            @if (complaint().reliefSought) {
+              <div class="rs-detail-grid rs-detail-grid--1">
+                <div class="rs-detail-item">
+                  <span class="rs-detail-label">Relief Sought</span>
+                  <span class="rs-detail-value rs-detail-value--text">{{ complaint().reliefSought }}</span>
+                </div>
+              </div>
+            }
+            @if (complaint().attachments?.length) {
               <div class="rs-detail-grid rs-detail-grid--1">
                 <div class="rs-detail-item">
                   <span class="rs-detail-label">Attachments</span>
                   <div class="rs-attachments-row">
-                    @for (file of complaint().complaintAttachments; track $index) {
+                    @for (file of complaint().attachments; track $index) {
                       <div class="rs-attachment-chip">
                         <i class="pi pi-file-pdf"></i>
                         <div class="rs-attachment-info">

@@ -114,7 +114,7 @@
               <label><span class="sub-badge">c</span> <span>{{ 'eligibility.sub_upload_complaint' | translate }} {{ selectedEntityName }} <span class="required">*</span></span></label>
               <app-file-upload
                 [multiple]="false"
-                accept=".pdf,.doc,.jpg"
+                accept=".pdf,.doc,.jpg,.jpeg"
                 [maxFiles]="1"
                 label=""
                 hint="Supported formats: PDF, DOC, JPG"
@@ -126,6 +126,24 @@
                 (filesChanged)="onEligibilityFileChanged('complaint', $event)"
                 (fileRemoved)="removeComplaintFile()">
               </app-file-upload>
+              @if (uploading()['eligibility_complaint']) {
+                <div class="upload-status"><i class="pi pi-spinner pi-spin"></i> Uploading...</div>
+              }
+              @if (!facade.complaintFileWithRE && facade.complaintFileMeta) {
+                <div class="persisted-file-list">
+                  <div class="persisted-file-card">
+                    <i class="pi pi-file"></i>
+                    <span class="file-name">{{ facade.complaintFileMeta.fileName }}</span>
+                    <span class="file-size">{{ (facade.complaintFileMeta.fileSize / 1024).toFixed(1) }} KB</span>
+                    <span class="file-actions">
+                      @if (facade.complaintFileMeta.viewUrl) {
+                        <button class="action-btn view-btn" type="button" title="View" (click)="previewPersistedFile(facade.complaintFileMeta!.viewUrl)"><i class="pi pi-eye"></i></button>
+                      }
+                      <button class="action-btn delete-btn" type="button" title="Delete" (click)="removeComplaintFile()"><i class="pi pi-trash"></i></button>
+                    </span>
+                  </div>
+                </div>
+              }
               @if (eligibilityFileError) {
                 <span class="field-error">{{ eligibilityFileError }}</span>
               }
@@ -207,7 +225,7 @@
               <label><span class="sub-badge">b</span> <span>{{ 'eligibility.sub_upload_reminder' | translate }} <span class="required">*</span></span></label>
               <app-file-upload
                 [multiple]="false"
-                accept=".pdf,.doc,.jpg"
+                accept=".pdf,.doc,.jpg,.jpeg"
                 [maxFiles]="1"
                 label=""
                 hint="Supported formats: PDF, DOC, JPG"
@@ -219,10 +237,28 @@
                 (filesChanged)="onEligibilityFileChanged('reminder', $event)"
                 (fileRemoved)="removeReminderFile()">
               </app-file-upload>
+              @if (uploading()['eligibility_reminder']) {
+                <div class="upload-status"><i class="pi pi-spinner pi-spin"></i> Uploading...</div>
+              }
+              @if (!facade.reminderFile && facade.reminderFileMeta) {
+                <div class="persisted-file-list">
+                  <div class="persisted-file-card">
+                    <i class="pi pi-file"></i>
+                    <span class="file-name">{{ facade.reminderFileMeta.fileName }}</span>
+                    <span class="file-size">{{ (facade.reminderFileMeta.fileSize / 1024).toFixed(1) }} KB</span>
+                    <span class="file-actions">
+                      @if (facade.reminderFileMeta.viewUrl) {
+                        <button class="action-btn view-btn" type="button" title="View" (click)="previewPersistedFile(facade.reminderFileMeta!.viewUrl)"><i class="pi pi-eye"></i></button>
+                      }
+                      <button class="action-btn delete-btn" type="button" title="Delete" (click)="removeReminderFile()"><i class="pi pi-trash"></i></button>
+                    </span>
+                  </div>
+                </div>
+              }
               @if (reminderFileError) {
                 <span class="field-error">{{ reminderFileError }}</span>
               }
-              @if (!reminderFileError && eligibilityStageForm.controls.reminderFileUploaded.touched && eligibilityStageForm.controls.reminderFileUploaded.invalid) {
+              @if (!reminderFileError && eligibilityStageForm.controls.reminderFileMeta.touched && eligibilityStageForm.controls.reminderFileMeta.invalid) {
                 <span class="field-error">Please upload a copy of the reminder sent to the Regulated Entity</span>
               }
             </div>
@@ -252,7 +288,7 @@
               <label><span class="sub-badge">b</span> <span>{{ 'eligibility.sub_upload_reply' | translate }} <span class="required">*</span></span></label>
               <app-file-upload
                 [multiple]="false"
-                accept=".pdf,.doc,.jpg"
+                accept=".pdf,.doc,.jpg,.jpeg"
                 [maxFiles]="1"
                 label=""
                 hint="Supported formats: PDF, DOC, JPG"
@@ -264,10 +300,28 @@
                 (filesChanged)="onEligibilityFileChanged('reply', $event)"
                 (fileRemoved)="removeReplyFile()">
               </app-file-upload>
+              @if (uploading()['eligibility_reply']) {
+                <div class="upload-status"><i class="pi pi-spinner pi-spin"></i> Uploading...</div>
+              }
+              @if (!facade.replyFile && facade.replyFileMeta) {
+                <div class="persisted-file-list">
+                  <div class="persisted-file-card">
+                    <i class="pi pi-file"></i>
+                    <span class="file-name">{{ facade.replyFileMeta.fileName }}</span>
+                    <span class="file-size">{{ (facade.replyFileMeta.fileSize / 1024).toFixed(1) }} KB</span>
+                    <span class="file-actions">
+                      @if (facade.replyFileMeta.viewUrl) {
+                        <button class="action-btn view-btn" type="button" title="View" (click)="previewPersistedFile(facade.replyFileMeta!.viewUrl)"><i class="pi pi-eye"></i></button>
+                      }
+                      <button class="action-btn delete-btn" type="button" title="Delete" (click)="removeReplyFile()"><i class="pi pi-trash"></i></button>
+                    </span>
+                  </div>
+                </div>
+              }
               @if (replyFileError) {
                 <span class="field-error">{{ replyFileError }}</span>
               }
-              @if (!replyFileError && eligibilityStageForm.controls.replyFileUploaded.touched && eligibilityStageForm.controls.replyFileUploaded.invalid) {
+              @if (!replyFileError && eligibilityStageForm.controls.replyFileMeta.touched && eligibilityStageForm.controls.replyFileMeta.invalid) {
                 <span class="field-error">Please upload a copy of the reply received from the Regulated Entity</span>
               }
             </div>
@@ -794,7 +848,7 @@
           <div class="form-group full-width">
             <app-file-upload
               [multiple]="true"
-              accept=".pdf,.doc,.jpg"
+              accept=".pdf,.doc,.jpg,.jpeg"
               [maxFiles]="10"
               label="Upload any additional documents relevant to the complaint"
               hint="Supported formats: PDF, DOC, JPG"
@@ -806,6 +860,37 @@
               (filesChanged)="onAttachmentsChanged($event)"
               (fileRemoved)="onAttachmentRemoved($event)">
             </app-file-upload>
+
+            @if (uploading()['fileUpload']) {
+              <div class="upload-status"><i class="pi pi-spinner pi-spin"></i> Uploading...</div>
+            }
+
+            <!-- Persisted files from draft (rendered from FileMeta[] in the form control) -->
+            @if (complaintDetailsForm.controls.fileUpload.value?.length && !facade.attachments.length) {
+              <div class="persisted-file-list">
+                @for (f of complaintDetailsForm.controls.fileUpload.value; track f.fileId || $index; let i = $index) {
+                  <div class="persisted-file-card">
+                    <i class="pi pi-file"></i>
+                    <span class="file-name">{{ f.fileName }}</span>
+                    <span class="file-size">{{ (f.fileSize / 1024).toFixed(1) }} KB</span>
+                    <span class="file-actions">
+                      @if (f.viewUrl) {
+                        <button class="action-btn view-btn" type="button" title="View"
+                                (click)="previewPersistedFile(f.viewUrl)">
+                          <i class="pi pi-eye" aria-hidden="true"></i>
+                        </button>
+                      }
+                      <button class="action-btn delete-btn" type="button"
+                              (click)="onAttachmentRemoved(i)"
+                              [attr.aria-label]="'Delete ' + f.fileName">
+                        <i class="pi pi-trash" aria-hidden="true"></i>
+                      </button>
+                    </span>
+                  </div>
+                }
+              </div>
+            }
+
             <app-form-error [control]="complaintDetailsForm.controls.fileUpload" label="Supporting documents"></app-form-error>
           </div>
 
@@ -913,7 +998,7 @@
             <div class="form-group full-width">
               <app-file-upload
                 [multiple]="true"
-                accept=".pdf,.doc,.jpg"
+                accept=".pdf,.doc,.jpg,.jpeg"
                 [maxFiles]="10"
                 label="{{ 'form.rep_upload' | translate }}"
                 hint="Supported formats: PDF, DOC, JPG"
@@ -923,8 +1008,39 @@
                 [existingFiles]="facade.repFiles"
                 [required]="repAuthorizationForm.controls.hasAuthRep.value === 'yes'"
                 (filesChanged)="onRepFileChanged($event)"
-                (fileRemoved)="removeRepFile()">
+                (fileRemoved)="removeRepFile($event)">
               </app-file-upload>
+
+              @if (uploading()['repFileUpload']) {
+                <div class="upload-status"><i class="pi pi-spinner pi-spin"></i> Uploading...</div>
+              }
+
+              <!-- Persisted files from draft -->
+              @if (repAuthorizationForm.controls.repFileUpload.value?.length && !facade.repFiles.length) {
+                <div class="persisted-file-list">
+                  @for (f of repAuthorizationForm.controls.repFileUpload.value; track f.fileId || $index; let i = $index) {
+                    <div class="persisted-file-card">
+                      <i class="pi pi-file"></i>
+                      <span class="file-name">{{ f.fileName }}</span>
+                      <span class="file-size">{{ (f.fileSize / 1024).toFixed(1) }} KB</span>
+                      <span class="file-actions">
+                        @if (f.viewUrl) {
+                          <button class="action-btn view-btn" type="button" title="View"
+                                  (click)="previewPersistedFile(f.viewUrl)">
+                            <i class="pi pi-eye" aria-hidden="true"></i>
+                          </button>
+                        }
+                        <button class="action-btn delete-btn" type="button"
+                                (click)="removeRepFile(i)"
+                                [attr.aria-label]="'Delete ' + f.fileName">
+                          <i class="pi pi-trash" aria-hidden="true"></i>
+                        </button>
+                      </span>
+                    </div>
+                  }
+                </div>
+              }
+
               <app-form-error [control]="repAuthorizationForm.controls.repFileUpload" label="Authorization document"></app-form-error>
             </div>
           }
@@ -982,7 +1098,28 @@
                       @for (sub of item.subItems; track sub.prefix) {
                         <div class="rs-sub-item">
                           <span class="rs-sub-label"><span class="rs-sub-prefix">{{ sub.prefix }}.</span> {{ sub.label }}</span>
-                          <span class="rs-sub-value">{{ sub.value }}</span>
+                          @if (sub.fileMeta) {
+                            <div class="rs-attachments-row" style="padding-left: 16px; margin-top: 4px;">
+                              <div class="rs-attachment-chip">
+                                <i class="pi pi-file-pdf"></i>
+                                <div class="rs-attachment-info">
+                                  <span class="rs-attachment-name">{{ sub.fileMeta.fileName }}</span>
+                                  @if (sub.fileMeta.fileSize) {
+                                    <span class="rs-attachment-size">{{ (sub.fileMeta.fileSize / 1024).toFixed(0) }} KB</span>
+                                  }
+                                </div>
+                                <span class="file-actions">
+                                  @if (sub.fileMeta.viewUrl) {
+                                    <button class="action-btn view-btn" type="button" title="View" (click)="previewPersistedFile(sub.fileMeta.viewUrl)">
+                                      <i class="pi pi-eye"></i>
+                                    </button>
+                                  }
+                                </span>
+                              </div>
+                            </div>
+                          } @else {
+                            <span class="rs-sub-value">{{ sub.value }}</span>
+                          }
                         </div>
                       }
                     </div>
@@ -1123,19 +1260,26 @@
                 }
               </div>
               <!-- Uploaded Documents -->
-              @if (attachmentPreviews.length > 0) {
+              @if (complaintDetailsForm.controls.fileUpload.value?.length) {
                 <div class="rs-numbered-item">
                   <span class="rs-numbered-label"><span class="rs-num-prefix">{{ reviewComplaintDocNum }}.</span> Uploaded Documents</span>
                   <div class="rs-attachments-row" style="padding-left: 20px;">
-                    @for (f of attachmentPreviews; track $index) {
+                    @for (f of complaintDetailsForm.controls.fileUpload.value; track f.fileId || $index) {
                       <div class="rs-attachment-chip">
                         <i class="pi pi-file-pdf"></i>
                         <div class="rs-attachment-info">
-                          <span class="rs-attachment-name">{{ f.name }}</span>
-                          @if (f.size) {
-                            <span class="rs-attachment-size">{{ (f.size / 1024).toFixed(0) }} KB</span>
+                          <span class="rs-attachment-name">{{ f.fileName }}</span>
+                          @if (f.fileSize) {
+                            <span class="rs-attachment-size">{{ (f.fileSize / 1024).toFixed(0) }} KB</span>
                           }
                         </div>
+                        <span class="file-actions">
+                          @if (f.viewUrl) {
+                            <button class="action-btn view-btn" type="button" title="View" (click)="previewPersistedFile(f.viewUrl)">
+                              <i class="pi pi-eye"></i>
+                            </button>
+                          }
+                        </span>
                       </div>
                     }
                   </div>
@@ -1159,6 +1303,31 @@
                   </div>
                 }
               </div>
+              @if (repAuthorizationForm.controls.repFileUpload.value?.length) {
+                <div class="rs-numbered-item" style="margin-top: 8px;">
+                  <span class="rs-numbered-label"><span class="rs-num-prefix">{{ reviewRepItems.length + 1 }}.</span> Uploaded Documents</span>
+                  <div class="rs-attachments-row" style="padding-left: 20px;">
+                    @for (f of repAuthorizationForm.controls.repFileUpload.value; track f.fileId || $index) {
+                      <div class="rs-attachment-chip">
+                        <i class="pi pi-file-pdf"></i>
+                        <div class="rs-attachment-info">
+                          <span class="rs-attachment-name">{{ f.fileName }}</span>
+                          @if (f.fileSize) {
+                            <span class="rs-attachment-size">{{ (f.fileSize / 1024).toFixed(0) }} KB</span>
+                          }
+                        </div>
+                        <span class="file-actions">
+                          @if (f.viewUrl) {
+                            <button class="action-btn view-btn" type="button" title="View" (click)="previewPersistedFile(f.viewUrl)">
+                              <i class="pi pi-eye"></i>
+                            </button>
+                          }
+                        </span>
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
             </div>
           </section>
 

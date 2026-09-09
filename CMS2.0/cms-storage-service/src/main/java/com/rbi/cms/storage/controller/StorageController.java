@@ -19,6 +19,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/v1/storage")
 @RequiredArgsConstructor
+@CrossOrigin(origins = "*")
 @Tag(name = "Storage", description = "Internal file storage service")
 public class StorageController {
 
@@ -46,6 +47,37 @@ public class StorageController {
                 .contentType(MediaType.APPLICATION_OCTET_STREAM)
                 .contentLength(content.length)
                 .body(resource);
+    }
+
+    @GetMapping("/view")
+    @Operation(summary = "View file inline", description = "Preview a file in the browser")
+    public ResponseEntity<Resource> view(@RequestParam String path) throws IOException {
+        byte[] content = storageService.retrieve(path);
+        ByteArrayResource resource = new ByteArrayResource(content);
+        MediaType mediaType = resolveMediaType(path);
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + extractFileName(path) + "\"")
+                .contentType(mediaType)
+                .contentLength(content.length)
+                .body(resource);
+    }
+
+    private MediaType resolveMediaType(String path) {
+        String lower = path.toLowerCase();
+        if (lower.endsWith(".pdf")) return MediaType.APPLICATION_PDF;
+        if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) return MediaType.IMAGE_JPEG;
+        if (lower.endsWith(".png")) return MediaType.IMAGE_PNG;
+        if (lower.endsWith(".doc") || lower.endsWith(".docx")) return MediaType.APPLICATION_OCTET_STREAM;
+        return MediaType.APPLICATION_OCTET_STREAM;
+    }
+
+    private String extractFileName(String path) {
+        int sep = path.lastIndexOf('/');
+        if (sep < 0) sep = path.lastIndexOf('\\');
+        String name = sep >= 0 ? path.substring(sep + 1) : path;
+        int underscore = name.indexOf('_');
+        return underscore >= 0 ? name.substring(underscore + 1) : name;
     }
 
     @DeleteMapping

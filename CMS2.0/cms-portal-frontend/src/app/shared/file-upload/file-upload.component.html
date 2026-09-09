@@ -39,12 +39,14 @@
           <i class="pi pi-file file-icon"></i>
           <span class="file-name" [title]="f.name">{{ f.name }}</span>
           <span class="file-size">{{ formatSize(f.size) }}</span>
-          <button class="chip-btn preview-btn" (click)="previewFile(i)" type="button" title="Preview">
-            <i class="pi pi-eye"></i>
-          </button>
-          <button class="chip-btn remove-btn" (click)="removeFile(i)" type="button" title="Remove">
-            <i class="pi pi-times"></i>
-          </button>
+          <span class="file-actions">
+            <button class="action-btn view-btn" (click)="previewFile(i)" type="button" title="View">
+              <i class="pi pi-eye"></i>
+            </button>
+            <button class="action-btn delete-btn" (click)="removeFile(i)" type="button" title="Delete">
+              <i class="pi pi-trash"></i>
+            </button>
+          </span>
         </div>
       }
     </div>

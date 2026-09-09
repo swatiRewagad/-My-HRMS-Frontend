@@ -55,6 +55,12 @@ public class Complaint {
     @Column(length = 300)
     private String entityName;
 
+    @Column(length = 100)
+    private String entityType;
+
+    @Column(precision = 15, scale = 2)
+    private BigDecimal amountInvolved;
+
     @Column(length = 300)
     private String bankBranch;
 

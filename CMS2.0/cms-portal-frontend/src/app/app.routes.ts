@@ -309,9 +309,12 @@ export const routes: Routes = [
       { path: 'withdraw', canActivate: [publicAuthGuard], loadComponent: () => import('./components/public/withdraw-complaint/withdraw-complaint.component').then(m => m.WithdrawComplaintComponent) },
       { path: 'withdraw/:id', canActivate: [publicAuthGuard], data: { mode: 'withdraw' }, loadComponent: () => import('./components/public/complaint-detail/complaint-detail.component').then(m => m.ComplaintDetailComponent) },
       { path: 'feedback', canActivate: [publicAuthGuard], loadComponent: () => import('./components/public/submit-feedback/submit-feedback.component').then(m => m.SubmitFeedbackComponent) },
+      { path: 'feedback/:id', canActivate: [publicAuthGuard], loadComponent: () => import('./components/public/submit-feedback/submit-feedback.component').then(m => m.SubmitFeedbackComponent) },
       { path: 'appeal', canActivate: [publicAuthGuard], loadComponent: () => import('./components/public/file-appeal/file-appeal.component').then(m => m.FileAppealComponent) },
+      { path: 'appeal/:id', canActivate: [publicAuthGuard], loadComponent: () => import('./components/public/file-appeal/file-appeal.component').then(m => m.FileAppealComponent) },
       { path: 'history', canActivate: [publicAuthGuard], loadComponent: () => import('./components/public/complaint-history/complaint-history.component').then(m => m.ComplaintHistoryComponent) },
       { path: 'complaint/:id', canActivate: [publicAuthGuard], loadComponent: () => import('./components/public/complaint-detail/complaint-detail.component').then(m => m.ComplaintDetailComponent) },
+      { path: 'faq', loadComponent: () => import('./components/public/faq/faq.component').then(m => m.FaqComponent) },
     ]
   },
   // ── Test / Dev Tools ──
