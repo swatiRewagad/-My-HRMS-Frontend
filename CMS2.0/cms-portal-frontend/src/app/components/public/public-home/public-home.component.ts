@@ -9,13 +9,15 @@ import { TranslatePipe } from '../../../pipes/translate.pipe';
 import { environment } from '../../../../environments/environment';
 import { Table, TableModule } from 'primeng/table';
 import { Select } from 'primeng/select';
+import { DatePicker } from 'primeng/datepicker';
+import { FilterService } from 'primeng/api';
 import { ComplaintRecord } from '../models';
 import { FilingMethodPopupComponent, FilingMethodType } from '../filing-method-popup/filing-method-popup.component';
 
 @Component({
   selector: 'app-public-home',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, TranslatePipe, TableModule, Select, FilingMethodPopupComponent],
+  imports: [CommonModule, FormsModule, RouterLink, TranslatePipe, TableModule, Select, DatePicker, FilingMethodPopupComponent],
   templateUrl: './public-home.component.html',
   styleUrl: './public-home.component.scss'
 })
@@ -27,6 +29,7 @@ export class PublicHomeComponent implements OnInit {
   private http = inject(HttpClient);
   private router = inject(Router);
   private complaintService = inject(ComplaintService);
+  private filterService = inject(FilterService);
   authService = inject(PublicAuthService);
 
   complaints = signal<ComplaintRecord[]>([]);
@@ -42,7 +45,7 @@ export class PublicHomeComponent implements OnInit {
   ];
 
   selectedStatus = '';
-  dateFrom = '';
+  dateFilter: Date | null = null;
 
   showFilingPopup = false;
   filingMethodType: FilingMethodType = 'email';
@@ -57,11 +60,25 @@ export class PublicHomeComponent implements OnInit {
   }
 
   ngOnInit() {
+    this.registerDateEqualsFilter();
     if (this.authService.isAuthenticated()) {
       this.loadComplaints();
     } else {
       this.loading.set(false);
     }
+  }
+
+  private registerDateEqualsFilter() {
+    this.filterService.register('dateEquals', (value: any, filter: any): boolean => {
+      if (!filter) return true;
+      if (!value || value === '—') return false;
+      const rowDate = new Date(value);
+      if (isNaN(rowDate.getTime())) return false;
+      const filterDate = new Date(filter);
+      return rowDate.getFullYear() === filterDate.getFullYear()
+        && rowDate.getMonth() === filterDate.getMonth()
+        && rowDate.getDate() === filterDate.getDate();
+    });
   }
 
   private loadComplaints() {
@@ -131,12 +148,12 @@ export class PublicHomeComponent implements OnInit {
     this.dt.filter(value, 'status', 'equals');
   }
 
-  onDateFromChange(event: Event) {
-    this.dateFrom = (event.target as HTMLInputElement).value;
-    if (this.dateFrom) {
-      this.dt.filter(this.dateFrom, 'complaintDate', 'dateAfter');
+  onDateFilterChange(date: Date | null) {
+    this.dateFilter = date;
+    if (date) {
+      this.dt.filter(date.toISOString(), 'complaintDate', 'dateEquals');
     } else {
-      this.dt.filter('', 'complaintDate', 'contains');
+      this.dt.filter(null, 'complaintDate', 'dateEquals');
     }
   }
 
@@ -201,7 +218,11 @@ export class PublicHomeComponent implements OnInit {
     try {
       const d = new Date(dateStr);
       if (isNaN(d.getTime())) return '—';
-      return d.toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-');
+      return [
+        String(d.getDate()).padStart(2, '0'),
+        String(d.getMonth() + 1).padStart(2, '0'),
+        String(d.getFullYear())
+      ].join('-');
     } catch {
       return dateStr;
     }

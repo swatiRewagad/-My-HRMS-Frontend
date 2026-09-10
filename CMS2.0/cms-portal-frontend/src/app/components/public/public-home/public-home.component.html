@@ -56,7 +56,17 @@
               <input type="text" placeholder="Search" (input)="dt.filter($any($event.target).value, 'complaintId', 'contains')" class="col-filter" />
             </th>
             <th class="col-date">
-              <input type="date" class="col-filter" [value]="dateFrom" (change)="onDateFromChange($event)" title="From date" />
+              <p-datepicker
+                [(ngModel)]="dateFilter"
+                dateFormat="dd/mm/yy"
+                placeholder="dd/mm/yyyy"
+                [showIcon]="true"
+                [showClear]="true"
+                appendTo="body"
+                (onSelect)="onDateFilterChange($event)"
+                (onClear)="onDateFilterChange(null)"
+                styleClass="date-filter-picker">
+              </p-datepicker>
             </th>
             <th class="col-status">
               <p-select

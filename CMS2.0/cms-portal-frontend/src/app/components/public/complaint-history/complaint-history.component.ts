@@ -9,12 +9,14 @@ import { ComplaintService } from '../../../services/complaint.service';
 import { TranslatePipe } from '../../../pipes/translate.pipe';
 import { Table, TableModule } from 'primeng/table';
 import { Select } from 'primeng/select';
+import { DatePicker } from 'primeng/datepicker';
+import { FilterService } from 'primeng/api';
 import { ComplaintRecord } from '../models';
 
 @Component({
   selector: 'app-complaint-history',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, TranslatePipe, TableModule, Select],
+  imports: [CommonModule, FormsModule, RouterLink, TranslatePipe, TableModule, Select, DatePicker],
   templateUrl: './complaint-history.component.html',
   styleUrl: './complaint-history.component.scss'
 })
@@ -26,6 +28,7 @@ export class ComplaintHistoryComponent implements OnInit {
   private router = inject(Router);
   private authService = inject(PublicAuthService);
   private complaintService = inject(ComplaintService);
+  private filterService = inject(FilterService);
 
   complaints = signal<ComplaintRecord[]>([]);
   loading = signal(true);
@@ -40,10 +43,24 @@ export class ComplaintHistoryComponent implements OnInit {
   ];
 
   selectedStatus = '';
-  dateFrom = '';
+  dateFilter: Date | null = null;
 
   ngOnInit() {
+    this.registerDateEqualsFilter();
     this.loadComplaints();
+  }
+
+  private registerDateEqualsFilter() {
+    this.filterService.register('dateEquals', (value: any, filter: any): boolean => {
+      if (!filter) return true;
+      if (!value || value === '—') return false;
+      const rowDate = new Date(value);
+      if (isNaN(rowDate.getTime())) return false;
+      const filterDate = new Date(filter);
+      return rowDate.getFullYear() === filterDate.getFullYear()
+        && rowDate.getMonth() === filterDate.getMonth()
+        && rowDate.getDate() === filterDate.getDate();
+    });
   }
 
   onStatusFilter(value: string) {
@@ -51,12 +68,12 @@ export class ComplaintHistoryComponent implements OnInit {
     this.dt.filter(value, 'status', 'equals');
   }
 
-  onDateFromChange(event: Event) {
-    this.dateFrom = (event.target as HTMLInputElement).value;
-    if (this.dateFrom) {
-      this.dt.filter(this.dateFrom, 'complaintDate', 'dateAfter');
+  onDateFilterChange(date: Date | null) {
+    this.dateFilter = date;
+    if (date) {
+      this.dt.filter(date.toISOString(), 'complaintDate', 'dateEquals');
     } else {
-      this.dt.filter('', 'complaintDate', 'contains');
+      this.dt.filter(null, 'complaintDate', 'dateEquals');
     }
   }
 
@@ -187,7 +204,11 @@ export class ComplaintHistoryComponent implements OnInit {
     try {
       const d = new Date(dateStr);
       if (isNaN(d.getTime())) return '—';
-      return d.toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-');
+      return [
+        String(d.getDate()).padStart(2, '0'),
+        String(d.getMonth() + 1).padStart(2, '0'),
+        String(d.getFullYear())
+      ].join('-');
     } catch { return dateStr; }
   }
 }
