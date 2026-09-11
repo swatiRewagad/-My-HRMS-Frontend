@@ -1,0 +1,70 @@
+<p-drawer [(visible)]="visible" position="right" styleClass="rbio-rich-filter-drawer"
+  [style]="{ width: '320px', height: '100%', display: 'flex', 'flex-direction': 'column' }" [modal]="true">
+
+  <ng-template pTemplate="header">
+    <div class="drawer-header-title">
+      <i class="pi pi-filter"></i>
+      <span> Dashboard Filters</span>
+    </div>
+  </ng-template>
+
+  <div class="filter-split-container">
+    <div class="filter-left-menu">
+      <p-listbox [options]="filterCategories()" [(ngModel)]="selectedCategoryId" optionValue="id"
+        [metaKeySelection]="false"
+        [style]="{ border: 'none', background: 'transparent', width: '100%', height: '100%' }"
+        [listStyle]="{ 'max-height': '100%', 'overflow-y': 'auto' }" styleClass="category-listbox">
+
+        <ng-template pTemplate="item" let-category>
+          <div class="category-item-row">
+            <span class="category-label-text">{{ category.label }}</span>
+            @if (getSelectedCount(category.id) > 0) {
+              <span class="category-count-badge">{{ getSelectedCount(categoryId: category.id) }}</span>
+            }
+          </div>
+        </ng-template>
+      </p-listbox>
+    </div>
+
+    <div class="filter-right-options">
+      <div class="options-scroll-viewport">
+        @if (selectedCategoryId() === 'districts' && loadingDistricts()) {
+          <div class="empty-options-state">
+            <i class="pi pi-spin pi-spinner"></i>
+            <p>Loading districts...</p>
+          </div>
+        }
+        <!-- 💡 Case B: Prompt selection guidelines if states array is empty -->
+        @else if (selectedCategoryId() === 'district' && selectedValues()?.['states']?.length === 0) {
+          <div class="empty-options-state">
+            <i class="pi pi-map-marker"></i>
+            <p>Please select a State first to view districts.</p>
+          </div>
+        }
+        @else {
+          @for (opt of activeCategoryOptions(); track opt.value) {
+            <div class="checkbox-row-item" [class.row-selected]="isOptionChecked(opt.value)">
+              <p-checkbox [binary]="true" [ngModel]="isOptionChecked(opt.value)"
+                (ngModelChange)="onCheckboxChange(opt.value, checked: $event)" [inputId]="opt.value">
+              </p-checkbox>
+              <label [for]="opt.value" class="checkbox-label">{{ opt.label }}</label>
+            </div>
+          } @empty {
+            <div class="empty-options-state">
+              <i class="pi pi-info-circle"></i>
+              <p>No options available</p>
+            </div>
+          }
+        }
+      </div>
+    </div>
+  </div>
+
+  <ng-template pTemplate="footer">
+    <div class="drawer-footer-actions">
+      <button pButton type="button" label="Clear All" [text]="true" severity="secondary" class="clear-all-btn"
+        (click)="clearAll()"></button>
+      <button pButton type="button" label="Apply" class="apply-filters-btn" (click)="applyFilters()"></button>
+    </div>
+  </ng-template>
+</p-drawer>

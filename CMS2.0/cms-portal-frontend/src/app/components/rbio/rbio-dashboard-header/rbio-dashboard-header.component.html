@@ -1,0 +1,34 @@
+<div class="content-header">
+  <h1>RBIO Complaints</h1>
+  <div class="header-actions">
+    <p-button size="small" label="Advanced Search" icon="pi pi-search" variant="text" [loading]="isSearching()"
+      (onClick)="onToggleAdvancedSearch.emit(value: true)" />
+
+    @if (advSearchActive()) {
+      <p-button size="small" label="Clear Search" icon="pi pi-times" [loading]="isSearching()" variant="text"
+        severity="danger" (onClick)="onClearSearch.emit()" />
+    }
+
+    <div class="header-action-container">
+      <p-button size="small" label="Filters" icon="pi pi-filter" [loading]="isSearching()" variant="text"
+        (onClick)="isFilterOpen.set(value: true)" />
+
+      <app-rbio-dashboard-filter [(visible)]="isFilterOpen" (onFilterApply)="onFilterSelectionChanged(selectedFilters: $event)">
+      </app-rbio-dashboard-filter>
+    </div>
+
+    <p-select [options]="statusCodes()" [(ngModel)]="selectedStatusCode" optionLabel="label" optionValue="value"
+      [loading]="isSearching()" (onChange)="onStatusCodeChange(event: $event)" placeholder="Select a status"
+      styleClass="responsive-select" />
+
+    @if (isDOUser()) {
+      <p-button label="Create Complaint" icon="pi pi-plus" [loading]="isSearching()"
+        (onClick)="onCreateComplaint.emit()" [dt]="{
+          fontSize: '0.625rem',
+          paddingY: '0.625rem',
+          paddingX: '0.75rem',
+          borderRadius: '3px'
+        }" />
+    }
+  </div>
+</div>

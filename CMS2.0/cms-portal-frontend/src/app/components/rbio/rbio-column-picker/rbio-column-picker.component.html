@@ -1,0 +1,54 @@
+<p-dialog [visible]="visible()" (visibleChange)="visible.set($event)" (onShow)="initializePicker()" [modal]="true"
+    [closable]="true" [draggable]="false" [resizable]="false" styleClass="rbio-column-picker-dialog" header=" ">
+
+    <div class="dialog-content-body">
+        <div class="dialog-header-title-row">
+            <i class="pi pi-th-large grid-icon"></i>
+            <div class="title-text-group">
+                <h3>Choose columns to see in "{{ tableName() }}" Table</h3>
+                <p>Select and drag items to manage your display order</p>
+            </div>
+        </div>
+
+        <div class="search-input-wrapper">
+            <i class="pi pi-search search-lens-icon"></i>
+            <input type="text" pInputText placeholder="Search column names..." [ngModel]="searchColumnQuery()"
+                (ngModelChange)="searchColumnQuery.set($event)" />
+        </div>
+
+        <div class="quick-bulk-actions">
+            <span class="items-count-indicator">{{ filteredTempColumns().length }} columns found</span>
+            <div class="action-links">
+                <button class="link-btn" (click)="toggleAll(true)">Select All</button>
+                <span class="divider">|</span>
+                <button class="link-btn" (click)="toggleAll(false)">Clear All</button>
+            </div>
+        </div>
+
+        <div class="column-list-scrollway">
+            @for (col of filteredTempColumns(); track col.field; let idx = $index) {
+                <div class="column-list-item-row" [class.is-inactive]="!col.visible"
+                    [class.is-dragging-over]="activeTargetIndex === idx" draggable="true" (dragstart)="onDragStart(idx)"
+                    (dragover)="onLocalDragOver($event, idx)" (dragleave)="activeTargetIndex = null"
+                    (dragend)="onLocalDragEnd()">
+
+                    <i class="pi pi-bars grab-handle-icon"></i>
+                    <p-checkbox [binary]="true" [(ngModel)]="col.visible" [inputId]="col.field"></p-checkbox>
+                    <label [for]="col.field" class="checkbox-title-label">{{ col.header }}</label>
+                </div>
+            } @empty {
+                <div class="empty-search-state">
+                    <i class="pi pi-filter-slash"></i>
+                    <p>No matching columns found</p>
+                </div>
+            }
+        </div>
+
+        <div class="dialog-actions-footer-bar">
+            <button pButton label="Cancel" class="p-button-text cancel-btn" (click)="visible.set(false)"></button>
+            <button pButton label="Save Changes" class="p-button-primary save-btn"
+                (click)="saveColumnConfiguration()"></button>
+        </div>
+    </div>
+
+</p-dialog>

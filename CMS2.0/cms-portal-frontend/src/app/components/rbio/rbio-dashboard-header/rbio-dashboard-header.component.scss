@@ -1,0 +1,59 @@
+:host {
+  display: block;
+  font-family: var(--font-family, system-ui, -apple-system, sans-serif);
+}
+
+.content-header {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  align-items: flex-start;
+
+  h1 {
+    font-size: 1.75rem;
+    font-weight: 700;
+    margin: 0;
+    // DYNAMIC FIX: Changed from #1f2937 to PrimeNG's main
+    // This ensures the title updates cleanly between dark
+    color: var(--p-text-color, #1f2937);
+    transition: color 0.2s ease;
+  }
+
+  @media (min-width: 768px) {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+}
+
+.header-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
+
+  @media (min-width: 768px) {
+    flex-direction: row;
+    align-items: center;
+    width: auto;
+  }
+
+  .responsive-select {
+    width: 100%;
+    border-radius: 3px;
+    padding: 0.2rem;
+    // Targets your exact 1270px laptop window boundary setup s
+    @media screen and (min-width: 1024px) and (max-width:
+      1400px) {
+      width: auto; // Gives plenty of horizontal layout room
+
+      // This clean standard property override lets you adjust
+      // internal labels dynamically without using ::ng-deep
+      --p-select-padding-x: 0.4rem;
+    }
+
+    @media screen and (min-width: 1401px) {
+      width: 18rem;
+    }
+  }
+}

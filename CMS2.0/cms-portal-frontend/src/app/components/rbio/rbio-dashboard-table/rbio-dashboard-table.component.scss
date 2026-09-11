@@ -1,0 +1,506 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
+
+  --p-datatable-header-background: var(--p-content-hover-background, #f8fafc) !important;
+  ;
+  --p-datatable-header-cell-background: var(--p-content-background, #ffffff);
+  --p-datatable-header-cell-border-color: var(--p-content-border-color, #e2e8f0);
+  --p-datatable-body-cell-border-color: var(--p-content-border-color, #f1f5f9);
+  --p-datatable-row-background: var(--p-content-background, #ffffff);
+  --p-datatable-border-color: var(--p-content-border-color, #e2e8f0);
+  --p-datatable-border-radius: var(--p-content-border-radius, 8px);
+  --p-datatable-header-padding: 0px !important;
+}
+
+.table-card-wrapper {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  background: var(--p-content-background, #fff);
+  border-radius: var(--p-content-border-radius, 8px);
+  box-shadow: 0 1px 3px #0000000d;
+}
+
+.rbio-custom-table {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  border: 1px solid var(--p-content-border-color, #e2e8f0);
+  border-radius: 8px;
+
+  // Use ng-deep to bypass Angular's component encapsulation scoping for third-party PrimeNG DOM structures
+  ::ng-deep {
+    .p-datatable-scrollable-body {
+      height: 19.2rem !important;
+      max-height: 19.2rem !important;
+      scrollbar-width: thin;
+      scrollbar-color: var(--p-content-border-color, #cbd5e1) transparent;
+      // ... (keep your webkit-scrollbar code exactly as it is)
+    }
+
+    .p-datatable-thead>tr>th {
+      font-weight: 700;
+      color: var(--p-text-color, #334155) !important;
+    }
+
+    .p-datatable-tbody>tr {
+      position: relative;
+      box-sizing: border-box;
+
+      // Target the actual cell backgrounds directly to prevent the PrimeNG defaults from overriding the row
+      >td {
+        padding: .875rem 1rem !important;
+        border-bottom: 1px solid var(--p-content-border-color, #f1f5f9) !important;
+        font-size: .875rem;
+        line-height: 1.4 !important;
+        background-color: var(--p-content-background, #fff) !important;
+        /* 🌟 Fix: Set cell base background */
+        transition: background-color .15s ease, background .2s ease;
+      }
+
+      &::after {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 4px;
+        z-index: 1;
+        opacity: 0;
+        transition: opacity .2s ease;
+      }
+
+      // Hover effects must target the cell cells to break past table library priorities
+      &:hover:not([class*="cc-row-"])>td {
+        background-color: var(--p-content-hover-background, #f1f5f9) !important;
+      }
+
+      // Typography states
+      &.row-unread>td {
+        font-weight: 700 !important;
+        color: var(--p-text-color, #0f172a) !important;
+      }
+
+      &.row-read>td {
+        font-weight: 400 !important;
+        color: var(--p-text-muted-color, #64748b) !important;
+      }
+
+      // 🔴 RED STATE INDICATOR
+      &.cc-row-red {
+        &::after {
+          opacity: 1;
+          background-color: #ef4444;
+        }
+
+        >td {
+          background-color: #ef444405 !important;
+          /* Base row wash directly applied to elements */
+        }
+
+        >td:nth-child(1) {
+          background: linear-gradient(90deg, #ef44441f 0%, #ef44440f 100%) !important;
+        }
+
+        >td:nth-child(2) {
+          background: linear-gradient(90deg, #ef44440f 0%, transparent 100%) !important;
+        }
+
+        &:hover>td {
+          background-color: #ef44440a !important;
+        }
+
+        &:hover>td:nth-child(1) {
+          background: linear-gradient(90deg, #ef44442e 0%, #ef44441a 100%) !important;
+        }
+
+        &:hover>td:nth-child(2) {
+          background: linear-gradient(90deg, #ef44441a 0%, #ef444405 100%) !important;
+        }
+      }
+
+      // 🟢 GREEN STATE INDICATOR
+      &.cc-row-green {
+        &::after {
+          opacity: 1;
+          background-color: #2e7d32;
+        }
+
+        >td {
+          background-color: #2e7d3205 !important;
+        }
+
+        >td:nth-child(1) {
+          background: linear-gradient(90deg, #2e7d321f 0%, #2e7d320f 100%) !important;
+        }
+
+        >td:nth-child(2) {
+          background: linear-gradient(90deg, #2e7d320f 0%, transparent 100%) !important;
+        }
+
+        &:hover>td {
+          background-color: #2e7d320a !important;
+        }
+
+        &:hover>td:nth-child(1) {
+          background: linear-gradient(90deg, #2e7d322e 0%, #2e7d321a 100%) !important;
+        }
+
+        &:hover>td:nth-child(2) {
+          background: linear-gradient(90deg, #2e7d321a 0%, #2e7d3205 100%) !important;
+        }
+      }
+
+      // 🟡 YELLOW STATE INDICATOR
+      &.cc-row-yellow {
+        &::after {
+          opacity: 1;
+          background-color: #eab308;
+        }
+
+        >td {
+          background-color: #eab30805 !important;
+        }
+
+        >td:nth-child(1) {
+          background: linear-gradient(90deg, #eab30824 0%, #eab30812 100%) !important;
+        }
+
+        >td:nth-child(2) {
+          background: linear-gradient(90deg, #eab30812 0%, transparent 100%) !important;
+        }
+
+        &:hover>td {
+          background-color: #eab3080a !important;
+        }
+
+        &:hover>td:nth-child(1) {
+          background: linear-gradient(90deg, #eab30838 0%, #eab3081f 100%) !important;
+        }
+
+        &:hover>td:nth-child(2) {
+          background: linear-gradient(90deg, #eab3081f 0%, #eab30805 100%) !important;
+        }
+      }
+
+      // 🌸 PINK STATE INDICATOR
+      &.cc-row-pink {
+        &::after {
+          opacity: 1;
+          background-color: #ec4899;
+        }
+
+        >td {
+          background-color: #ec489905 !important;
+        }
+
+        >td:nth-child(1) {
+          background: linear-gradient(90deg, #ec48991f 0%, #ec48990f 100%) !important;
+        }
+
+        >td:nth-child(2) {
+          background: linear-gradient(90deg, #ec48990f 0%, transparent 100%) !important;
+        }
+
+        &:hover>td {
+          background-color: #ec48990a !important;
+        }
+
+        &:hover>td:nth-child(1) {
+          background: linear-gradient(90deg, #ec48992e 0%, #ec48991a 100%) !important;
+        }
+
+        &:hover>td:nth-child(2) {
+          background: linear-gradient(90deg, #ec48991a 0%, #ec489905 100%) !important;
+        }
+      }
+
+      // 🔵 BLUE STATE INDICATOR
+      &.cc-row-blue {
+        &::after {
+          opacity: 1;
+          background-color: #3b82f6;
+        }
+
+        >td {
+          background-color: #3b82f605 !important;
+        }
+
+        >td:nth-child(1) {
+          background: linear-gradient(90deg, #3b82f61f 0%, #3b82f60f 100%) !important;
+        }
+
+        >td:nth-child(2) {
+          background: linear-gradient(90deg, #3b82f60f 0%, transparent 100%) !important;
+        }
+
+        &:hover>td {
+          background-color: #3b82f60a !important;
+        }
+
+        &:hover>td:nth-child(1) {
+          background: linear-gradient(90deg, #3b82f62e 0%, #3b82f61a 100%) !important;
+        }
+
+        &:hover>td:nth-child(2) {
+          background: linear-gradient(90deg, #3b82f61a 0%, #3b82f605 100%) !important;
+        }
+      }
+    }
+  }
+}
+
+.table-header-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+  padding: 0.75rem 0.5rem;
+  background-color: var(--p-content-hover-background, #f8fafc) !important;
+  border-top-left-radius: var(--p-content-border-radius, 8px);
+  border-top-right-radius: var(--p-content-border-radius, 8px);
+  border-bottom: 1px solid var(--p-content-border-color, #e2e8f0);
+}
+
+.table-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--p-text-color);
+  margin: 0;
+}
+
+.table-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.toggle-item {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  white-space: nowrap;
+  color: var(--p-text-muted-color, #475569);
+  font-size: .8125rem;
+  font-weight: 600;
+  user-select: none;
+
+  label {
+    cursor: pointer;
+  }
+}
+
+.header-cell-content {
+  display: flex;
+  align-items: center;
+  gap: .375rem;
+  font-size: .8125rem;
+  font-weight: 700;
+  color: var(--p-text-color, #1e293b);
+  letter-spacing: .025em;
+}
+
+.filter-cell-wrapper {
+  margin-top: .5rem;
+  width: 100%;
+  display: block;
+
+  input {
+    width: 100% !important;
+    font-size: .8125rem !important;
+  }
+}
+
+.cell-text-wrap {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 240px;
+}
+
+.settings-btn {
+  width: 2.25rem;
+  height: 2.25rem;
+}
+
+.empty-table-cell {
+  padding: 4rem 1rem !important;
+  text-align: center;
+  background-color: var(--p-content-background) !important;
+}
+
+.empty-table-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .75rem;
+  color: var(--p-text-muted-color, #94a3b8);
+
+  i {
+    font-size: 2.5rem;
+  }
+
+  p {
+    margin: 0;
+    font-size: .875rem;
+    font-weight: 500;
+  }
+}
+
+// 🏗 High-Fidelity Fluid Responsive Breakpoint Transitions
+@media screen and (max-width: 992px) {
+  .table-header-container {
+    padding: .75rem;
+  }
+
+  .table-header-actions {
+    gap: 1rem;
+  }
+}
+
+@media screen and (max-width: 768px) {
+  .table-header-container {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .table-header-actions {
+    width: 100%;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .toggle-item {
+    font-size: .75rem;
+  }
+
+  .cell-text-wrap {
+    max-width: 160px;
+  }
+}
+
+// 🟢 STATUS PILL BADGE MATRIX CONFIGURATIONS
+.custom-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: .375rem;
+  padding: .25rem .625rem;
+  border-radius: 20px;
+  font-weight: 600;
+  white-space: nowrap;
+  width: max-content;
+
+  i {
+    font-size: .8125rem;
+  }
+
+  &.badge-color-red {
+    background-color: #ef44441f !important;
+    color: #ef4444 !important;
+  }
+
+  &.badge-color-yellow {
+    background-color: #eab30824 !important;
+    color: #eab308 !important;
+  }
+
+  &.badge-color-green {
+    background-color: #2e7d321f !important;
+    color: #2e7d32 !important;
+  }
+
+  &.badge-color-pink {
+    background-color: #ec48991f !important;
+    color: #ec4899 !important;
+  }
+
+  &.badge-color-blue {
+    background-color: #3b82f61f !important;
+    color: #3b82f6 !important;
+  }
+
+  // 1. Sent to Other Office (Light Slate Blue Style)
+  &.status-sent-office {
+    background-color: #5c6bc01f;
+    color: #5c6bc0;
+  }
+
+  // 2. Sent Back to DEO (Deep Soft Amber Orange Style)
+  &.status-back-deo {
+    background-color: #f57c001f;
+    color: #f57c00;
+  }
+
+  // 3. Draft (Muted Steel Slate Style)
+  &.status-draft {
+    background-color: #78909c26;
+    color: #607d8b;
+  }
+
+  // 4. New Complaint (Vibrant Emerald Sage Green Style)
+  &.status-new-complaint {
+    background-color: #4caf5026;
+    color: #2e7d32;
+  }
+
+  // 5. Ombudsman Decision (Soft Brick Red Style)
+  &.status-ombudsman {
+    background-color: #e5737326;
+    color: #c62828;
+  }
+
+  // 6. Meeting Scheduled (Warm Ochre Coral Style)
+  &.status-meeting {
+    background-color: #ffb74d26;
+    color: #ef6c00;
+  }
+
+  // 7. Information Required (Creamy Mustard Amber Style)
+  &.status-info-required {
+    background-color: #ffd54f2e;
+    color: #e65100;
+  }
+
+  // 8. Withdrawn (Bright Hot Magenta Style)
+  &.status-withdrawn {
+    background-color: #f0629220;
+    color: #d81b60;
+  }
+
+  // 9. Delayed (Soft Pastel Coral Rose Style)
+  &.status-delayed {
+    background-color: #ff8a652e;
+    color: #d84315;
+  }
+
+  // 10. 13-1 Notice Issued (Soft Pale Lemon Orange Style)
+  &.status-notice-issued {
+    background-color: #ffe08233;
+    color: #f57f17;
+  }
+
+  // 11. Complaint Closed (Deep Charcoal Blue-Grey Style)
+  &.status-closed {
+    background-color: #90a4ae40;
+    color: #37474f;
+  }
+}
+
+// ⏳ SLA CAPSULE GRAPHICAL PARAMETERS
+.sla-capsule {
+  display: inline-block;
+  padding: .2rem .5rem;
+  border-radius: 12px;
+  font-weight: 600;
+  text-align: center;
+  width: max-content;
+}

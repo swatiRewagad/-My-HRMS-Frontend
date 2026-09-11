@@ -1,0 +1,19 @@
+<app-rbio-dashboard-header [isSearching]="isSearching()" [advSearchActive]="advSearchActive()"
+    [statusCodes]="statusCodes()" [(selectedStatusCode)]="selectedStatusCode"
+    (onToggleAdvancedSearch)="showAdvancedSearch.set(true)" (onClearSearch)="handleAdvancedSearchClear()"
+    (onRefreshFilters)="loadComplaints()" (onCreateComplaint)="navigateToCreateComplaint()"
+    (onStatusFilterSelect)="onStatusCodeChange($event)" (onFiltersChanged)="applyHeaderFilter($event)">
+</app-rbio-dashboard-header>
+
+<app-rbio-dashboard-kpi [metricsInput]="KpiMetricsObject()" [(selectedCardId)]="currentKpiFilter"
+    (onKpiSelectionChange)="handleKpiFilteringChange($event)">
+</app-rbio-dashboard-kpi>
+
+<app-rbio-dashboard-tabs [complaints]="complaints()" [isSearching]="isSearching()" [tabCounts]="dashboardTabCountsObject()"
+    [(activeTab)]="selectedDashboardTab"
+    [totalRecords]="totalRecordsCount()" (tableQueryFields)="executeServerSideSearchLookup($event)">
+</app-rbio-dashboard-tabs>
+
+<rbio-advanced-search #advSearchModal [(visible)]="showAdvancedSearch"
+    (searchTriggered)="executeAdvancedFilterLookup($event)" (searchClear)="handleAdvancedSearchClear()">
+</rbio-advanced-search>

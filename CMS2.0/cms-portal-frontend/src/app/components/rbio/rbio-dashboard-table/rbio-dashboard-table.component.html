@@ -1,0 +1,100 @@
+<div class="table-card-wrapper">
+  <p-table [columns]="selectedColumns()" [value]="complaints()" [loading]="isSearching()" [paginator]="true"
+    [rows]="rowsPerPage()" [rowsPerPageOptions]="[5, 10, 25, 50, 100]" [lazy]="true" [totalRecords]="totalRecords()"
+    [showCurrentPageReport]="true" currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries"
+    (onLazyLoad)="onLazyLoadTable(event: $event)" styleClass="rbio-custom-table" (onFilter)="onTableFilterChange(event: $event)"
+    [scrollable]="true" scrollHeight="flex" [reorderableColumns]="true" (onColumnReorder)="onColumnReorder(event: $event)"
+    [sortField]="'createdDate'" [sortOrder]="-1" scrollHeight="50vh">
+
+    <ng-template pTemplate="paginatorleft"></ng-template>
+
+    <ng-template pTemplate="caption">
+      <div class="table-header-container">
+        <h2 class="table-title">Complaints</h2>
+        <div class="table-header-actions">
+          <div class="toggle-item">
+            <p-toggleswitch inputId="unreadToggle" [ngModel]="showUnreadOnly()"
+              (ngModelChange)="onToggleChange(value: $event, type: 'unread')"></p-toggleswitch>
+            <label for="unreadToggle">Unread Only</label>
+          </div>
+          <div class="toggle-item">
+            <p-toggleswitch inputId="attachmentToggle" [ngModel]="showWithoutAttachments()"
+              (ngModelChange)="onToggleChange(value: $event, type: 'attachments')"></p-toggleswitch>
+            <label for="attachmentToggle">Without Attachments</label>
+          </div>
+
+          <div class="toggle-item settings-icon-btn" (click)="isPickerOpen.set(value: true)">
+            <i class="pi pi-cog" style="font-size:1.5rem; cursor: pointer;"></i>
+          </div>
+        </div>
+      </div>
+    </ng-template>
+
+    <ng-template pTemplate="header" let-columns>
+      <tr>
+        <!-- @if (isNotDoUser()) { -->
+        <th style="width:3rem">
+          <p-tableHeaderCheckbox></p-tableHeaderCheckbox>
+        </th>
+        <!-- } -->
+        @for (col of columns; track col.field) {
+          <th [pSortableColumn]="col.field" pReorderableColumn>
+            <div class="header-cell-content">
+              <span>{{ col.header }}</span>
+              <p-sortIcon [field]="col.field"></p-sortIcon>
+            </div>
+            <div class="filter-cell-wrapper" (click)="$event.stopPropagation()"
+              (keydown.space)="$event.stopPropagation()">
+              <p-columnFilter type="text" [field]="col.field" placeholder="Search..." [showMenu]="false"
+                displayMode="menu" filterOn="input"></p-columnFilter>
+            </div>
+          </th>
+        }
+      </tr>
+    </ng-template>
+
+    <ng-template pTemplate="body" let-rowData let-columns="columns">
+      <tr [ngClass]="[
+        rowData.isRead ? 'row-read' : 'row-unread',
+        rowData.complaintColor ? 'cc-row-' + rowData.complaintColor?.toLowerCase() : ''
+      ]" (click)="navigateToDetail(complaint: rowData)" class="clickable-row">
+        <!-- @if (isNotDoUser()) { -->
+        <td (click)="$event.stopPropagation()">
+          <p-tableCheckbox [value]="rowData"></p-tableCheckbox>
+        </td>
+        <!-- } -->
+
+        @for (col of columns; track col.field) {
+          <td>
+            @if (col.field === 'status') {
+              <div class="custom-status-badge" [class]="'badge-color-' + rowData.statusColor?.toLowerCase()">
+                <span>{{ rowData[col.field] }}</span>
+              </div>
+            } @else if (col.field === 'slaBreachIn') {
+              <span class="sla-capsule"
+                [ngStyle]="{ 'color': rowData.slaColor, 'background-color': 'color-mix(in srgb, ' + rowData.slaColor + ' 12%, transparent)' }">
+                {{ rowData[col.field] }}
+              </span>
+            } @else {
+              <span class="cell-text-wrap">{{ rowData[col.field] }}</span>
+            }
+          </td>
+        }
+      </tr>
+    </ng-template>
+
+    <ng-template pTemplate="emptymessage">
+      <tr>
+        <td [attr.colspan]="selectedColumns().length + (isNotDoUser() ? 1 : 0)" class="empty-table-cell">
+          <div class="empty-table-state">
+            <p>No complaints records found matching current criteria.</p>
+          </div>
+        </td>
+      </tr>
+    </ng-template>
+  </p-table>
+</div>
+
+<app-rbio-column-picker [allColumns]="allColumns" [initiallySelected]="selectedColumns()" tableName="Complaints"
+  [(visible)]="isPickerOpen" (columnsSaved)="applyPickedColumns(updatedColumns: $event)">
+</app-rbio-column-picker>

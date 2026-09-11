@@ -1,0 +1,76 @@
+<header class="cms-header">
+  <div class="header-left">
+    <img src="assets/RBIO_LOGO.svg" alt="RBI" class="rbi-logo">
+    <div class="control-divider-v hide-on-mobile"></div>
+    <div class="rbi-text">
+      <!-- <img src="assets/CMS_LOGO.svg" alt="CMS" class="cms-logo" (error)="hideCmsLogo(event: $event)"> -->
+      <div class="cms-titles">
+        <span class="cms-title-hindi">शिकायत प्रबंध प्रणाली</span>
+        <span class="cms-subtitle-english">Complaint Management System</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="header-right">
+    <div class="header-icons">
+      <button pButton [icon]="isDarkMode() ? 'pi pi-sun' : 'pi pi-moon'" [text]="true" [rounded]="true"
+          severity="secondary" (click)="toggleDarkMode()" title="Toggle Theme"></button>
+      <div class="control-divider-v hide-on-tablet"></div>
+      <div class="font-resize-group hide-on-tablet">
+        <button pButton [text]="true" severity="secondary" label="A-" (click)="decreaseFontSize()"
+            title="Decrease font"></button>
+        <button pButton [text]="true" severity="secondary" label="A" (click)="resetFontSize()"
+            title="Normal font"></button>
+        <button pButton [text]="true" severity="secondary" label="A+" (click)="increaseFontSize()"
+            title="Increase font"></button>
+      </div>
+      <div class="control-divider-v"></div>
+
+      <p-select [options]="languages" [ngModel]="selectedLanguage()" (ngModelChange)="selectedLanguage.set($event)" optionLabel="label" optionValue="code"
+          (onChange)="$event ? onLanguageChange($event) : null" [fluid]="false" styleClass="lang-dropdown" [dt]="{
+            border: { color: 'transparent', hoverColor: 'transparent', focusColor: 'transparent', activeColor: 'transparent' },
+            shadow: 'none',
+            focusRing: { shadow: 'none' }
+          }">
+        <ng-template pTemplate="selectedItem" let-selectedOption>
+          <div class="lang-selected-wrapper">
+            <i class="pi pi-globe"></i>
+            <span class="hide-on-mobile">{{ selectedOption?.label }}</span>
+          </div>
+        </ng-template>
+      </p-select>
+
+      <app-notification-bell></app-notification-bell>
+    </div>
+
+    <div class="profile-menu-container">
+      <button pButton [text]="true" severity="secondary" class="profile-trigger"
+          (click)="profileMenu.toggle($event)">
+        <p-avatar [label]="userInitial()" shape="circle" styleClass="user-avatar"></p-avatar>
+        <div class="user-details hide-on-mobile">
+          <span class="user-name">{{ loggedInUser()?.name || 'Rahul Jain' }}</span>
+          <span class="user-role">{{ loggedInUser()?.role || 'Administrator' }}</span>
+        </div>
+        <i class="pi pi-chevron-down profile-chevron"></i>
+      </button>
+
+      <!-- Modernized template overlay structural wrapper using p-popover -->
+      <p-popover #profileMenu styleClass="profile-flyout-panel">
+        <div class="profile-card-header">
+          <p-avatar [label]="userInitial()" shape="circle" styleClass="menu-avatar"></p-avatar>
+          <div class="meta-info">
+            <span class="full-name" [title]="loggedInUser()?.name || 'Rahul Jain'">{{ loggedInUser()?.name
+                || 'Rahul Jain' }}</span>
+            <span class="official-id">ID: {{ loggedInUser()?.id || 'N/A' }}</span>
+            <span class="email-address" [title]="loggedInUser()?.role || 'Administrator'">{{
+                loggedInUser()?.role || 'Administrator' }}</span>
+          </div>
+        </div>
+        <div class="menu-body-actions">
+          <button pButton [text]="true" severity="danger" icon="pi pi-sign-out" label="Logout"
+              class="logout-action-btn" (click)="logout()"></button>
+        </div>
+      </p-popover>
+    </div>
+  </div>
+</header>

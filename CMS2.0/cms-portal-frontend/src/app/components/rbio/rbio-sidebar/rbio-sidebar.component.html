@@ -1,0 +1,30 @@
+<aside class="sidebar" [ngClass]="{ 'sidebar-collapsed': isCollapsed() }">
+
+  <nav class="sidebar-menu-items">
+    @for (item of navItems; track item.label) {
+      <a class="sidebar-item" [routerLink]="item.routerLink" [queryParams]="item.queryParams || null"
+          routerLinkActive="active" [routerLinkActiveOptions]="{ exact: false }"
+          [pTooltip]="isCollapsed() ? item.label : ''" tooltipPosition="right" [life]="1500">
+
+        <i [class]="item.icon"></i>
+
+        @if (!isCollapsed()) {
+          <span>{{ item.label }}</span>
+        }
+
+      </a>
+    }
+  </nav>
+
+  <button type="button" class="sidebar-collapse" (click)="toggleSidebar()"
+      [pTooltip]="isCollapsed() ? 'Expand Menu' : ''" tooltipPosition="right">
+
+    <i [ngClass]="isCollapsed() ? 'pi pi-angle-double-right' : 'pi pi-angle-double-left'"></i>
+
+    @if (!isCollapsed()) {
+      <span>Collapse</span>
+    }
+
+  </button>
+
+</aside>
