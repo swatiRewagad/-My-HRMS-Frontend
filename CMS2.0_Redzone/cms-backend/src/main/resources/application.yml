@@ -1,0 +1,250 @@
+server:
+  port: 8082
+  error:
+    include-message: always
+    include-stacktrace: never
+  tomcat:
+    threads:
+      max: 400
+      min-spare: 50
+    max-connections: 10000
+    accept-count: 500
+    connection-timeout: 5000
+  compression:
+    enabled: true
+    mime-types: application/json,application/xml,text/html,text/plain
+    min-response-size: 1024
+
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:oracle:thin:@${DB_HOST:localhost}:${DB_PORT:1521}/${DB_SERVICE_NAME:CMSPDB}}
+    username: ${DB_USERNAME:cms_user}
+    password: ${DB_PASSWORD:}
+    driver-class-name: oracle.jdbc.OracleDriver
+    hikari:
+      maximum-pool-size: 50
+      minimum-idle: 10
+      idle-timeout: 300000
+      max-lifetime: 600000
+      connection-timeout: 5000
+      pool-name: CMS-HikariPool
+      leak-detection-threshold: 30000
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.OracleDialect
+        format_sql: true
+        jdbc:
+          batch_size: 30
+        order_inserts: true
+        order_updates: true
+        generate_statistics: false
+    open-in-view: false
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all
+      retries: 3
+      properties:
+        max.block.ms: ${KAFKA_MAX_BLOCK_MS:5000}
+        delivery.timeout.ms: ${KAFKA_DELIVERY_TIMEOUT:10000}
+        request.timeout.ms: ${KAFKA_REQUEST_TIMEOUT:5000}
+  cache:
+    type: hazelcast
+
+keycloak:
+  admin:
+    server-url: ${KEYCLOAK_URL:http://localhost:8180}
+    realm: ${KEYCLOAK_REALM:cms}
+    client-id: ${KEYCLOAK_ADMIN_CLIENT:admin-cli}
+    username: ${KEYCLOAK_ADMIN_USER:admin}
+    password: ${KEYCLOAK_ADMIN_PASSWORD:admin}
+
+cms:
+  ocr:
+    # ── Provider chain (ordered, comma-separated) ──────────────────────────────
+    # Providers are tried left-to-right; first non-empty result wins.
+    # Supported names: groq | paddle | gemini | openai | huggingface | azure
+    # Add your own: implement OcrProvider, annotate @Component, add name here.
+    #
+    # Examples:
+    #   chain: groq, paddle            ← Groq first; PaddleOCR sidecar as fallback
+    #   chain: groq, gemini, paddle    ← three-level chain
+    #   chain: paddle                  ← PaddleOCR only (no external API needed)
+    chain: ${OCR_CHAIN:groq, paddle}
+
+    # ── Groq ──────────────────────────────────────────────────────────────────
+    groq-api-key: ${GROQ_API_KEY:}
+    groq-model: ${GROQ_MODEL:meta-llama/llama-4-scout-17b-16e-instruct}
+
+    # ── PaddleOCR sidecar (self-hosted, no API key needed) ───────────────────
+    # Set to empty string to exclude PaddleOCR from the chain even if listed.
+    paddle-ocr-url: ${PADDLE_OCR_URL:http://cms-paddle-ocr:8100}
+
+    # ── Gemini ────────────────────────────────────────────────────────────────
+    gemini-api-key: ${GEMINI_API_KEY:}
+    gemini-model: ${GEMINI_MODEL:gemini-2.0-flash}
+
+    # ── OpenAI ────────────────────────────────────────────────────────────────
+    openai-api-key: ${OPENAI_API_KEY:}
+    openai-model: ${OPENAI_MODEL:gpt-4o-mini}
+
+    # ── HuggingFace ───────────────────────────────────────────────────────────
+    huggingface-api-key: ${HUGGINGFACE_API_KEY:}
+    huggingface-model: ${HUGGINGFACE_MODEL:microsoft/trocr-large-printed}
+    huggingface-inference-url: ${HUGGINGFACE_URL:https://api-inference.huggingface.co/models/}
+
+    # ── Azure Document Intelligence ───────────────────────────────────────────
+    azure-endpoint: ${AZURE_DOC_ENDPOINT:}
+    azure-api-key: ${AZURE_DOC_API_KEY:}
+    azure-model: ${AZURE_DOC_MODEL:prebuilt-read}
+  attachments:
+    root-path: ${CMS_ATTACHMENTS_PATH:C:/cms-attachments}
+    max-file-size: ${CMS_MAX_FILE_SIZE:52428800}
+    chunk-size: ${CMS_CHUNK_SIZE:5242880}
+    allowed-types: ${CMS_ALLOWED_TYPES:pdf,png,jpg,jpeg,doc,docx,xls,xlsx,txt,csv,zip}
+    max-files-per-complaint: ${CMS_MAX_FILES:10}
+    temp-dir: ${CMS_TEMP_DIR:temp-chunks}
+  rate-limit:
+    complaints-per-minute: ${RATE_LIMIT_CPM:10}
+    api-requests-per-second: ${RATE_LIMIT_RPS:100}
+  encryption:
+    server-secret: ${CMS_ENCRYPTION_SECRET:}
+  anti-automation:
+    velocity-window-seconds: ${ANTI_AUTO_VELOCITY_WINDOW:60}
+    velocity-threshold: ${ANTI_AUTO_VELOCITY_THRESHOLD:30}
+    min-form-submission-ms: ${ANTI_AUTO_MIN_FORM_MS:3000}
+    require-standard-headers: ${ANTI_AUTO_REQUIRE_HEADERS:true}
+  eligibility:
+    # Scheme edition whose questions and clause references are served to citizens.
+    scheme-version: ${ELIGIBILITY_SCHEME_VERSION:RBIOS_2021}
+    # Cited verbatim in the citizen-facing non-maintainable closure letter.
+    scheme-name: ${ELIGIBILITY_SCHEME_NAME:Reserve Bank - Integrated Ombudsman Scheme, 2021}
+  mre:
+    version: ${MRE_VERSION:1}
+    re-window-days: ${MRE_RE_WINDOW:30}
+    npci-window-days: ${MRE_NPCI_WINDOW:30}
+    card-network-window-days: ${MRE_CARD_WINDOW:60}
+    filing-deadline-days: ${MRE_FILING_DEADLINE:90}
+    limitation-period-years: ${MRE_LIMITATION_YEARS:3}
+    window-basis: ${MRE_WINDOW_BASIS:BUSINESS}
+  duplicate-check:
+    lookback-days: ${DUPLICATE_LOOKBACK_DAYS:90}
+    terminal-statuses: ${DUPLICATE_TERMINAL_STATUSES:closed,rejected,withdrawn}
+  cors:
+    allowed-origins: ${CMS_CORS_ORIGINS:http://localhost:4200,http://localhost:4201,http://localhost:4202,http://localhost:4300}
+  similar-cases:
+    enabled: ${SIMILAR_CASES_ENABLED:true}
+    opensearch-url: ${OPENSEARCH_URL:http://localhost:9200}
+    index: ${SIMILAR_CASES_INDEX:complaints}
+  geo:
+    enabled: ${GEO_ENABLED:false}
+    maxmind-db-path: ${GEO_MAXMIND_DB:}
+  tat:
+    business-hour-start: ${TAT_HOUR_START:9}
+    business-hour-end: ${TAT_HOUR_END:18}
+    timezone: ${TAT_TIMEZONE:Asia/Kolkata}
+    default-sla-hours: ${TAT_DEFAULT_SLA:240}
+  auth:
+    otp:
+      length: ${OTP_LENGTH:6}
+      expiry-minutes: ${OTP_EXPIRY_MINUTES:5}
+      max-resend-per-hour: ${OTP_MAX_RESEND_PER_HOUR:5}
+      max-verify-attempts-per-otp: ${OTP_MAX_VERIFY_ATTEMPTS:3}
+      dev-auto-populate: ${OTP_DEV_AUTO_POPULATE:true}
+    captcha:
+      length: ${CAPTCHA_LENGTH:6}
+      expiry-minutes: ${CAPTCHA_EXPIRY_MINUTES:5}
+      image-width: ${CAPTCHA_WIDTH:200}
+      image-height: ${CAPTCHA_HEIGHT:60}
+    cooloff:
+      progression-seconds: ${COOLOFF_PROGRESSION:30,60,120,300,600}
+      max-ceiling-seconds: ${COOLOFF_MAX:600}
+      reset-after-minutes: ${COOLOFF_RESET_MINUTES:60}
+    rate-limit:
+      otp-requests-per-mobile-per-hour: ${OTP_RATE_MOBILE_HOUR:5}
+      otp-requests-per-ip-per-hour: ${OTP_RATE_IP_HOUR:20}
+      login-attempts-per-ip-per-minute: ${LOGIN_RATE_IP_MINUTE:10}
+
+crpc:
+  threshold:
+    max-per-reviewer: ${CRPC_MAX_PER_REVIEWER:30}
+    overflow-target: ${CRPC_OVERFLOW_TARGET:CRPC_HEAD}
+  scheduling:
+    pending-notify-cron: "0 0 9 * * MON-FRI"
+    duplicate-check-cron: "0 30 9 * * MON-FRI"
+    threshold-check-cron: "0 0 10 * * MON-FRI"
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when-authorized
+  metrics:
+    tags:
+      application: cms-backend
+
+logging:
+  level:
+    com.hrms.cms: INFO
+    org.hibernate.SQL: WARN
+
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+  datasource:
+    url: ${DB_URL:jdbc:oracle:thin:@${DB_HOST:localhost}:${DB_PORT:1521}/${DB_SERVICE_NAME:CMSPDB}}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    hikari:
+      maximum-pool-size: 100
+      minimum-idle: 20
+      idle-timeout: 300000
+      max-lifetime: 600000
+      connection-timeout: 3000
+      pool-name: CMS-HikariPool-Prod
+      leak-detection-threshold: 60000
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          batch_size: 50
+  cache:
+    type: hazelcast
+
+server:
+  tomcat:
+    threads:
+      max: 800
+      min-spare: 100
+    max-connections: 20000
+    accept-count: 1000
+
+cms:
+  auth:
+    otp:
+      dev-auto-populate: false
+
+logging:
+  level:
+    com.hrms.cms: WARN
+    org.hibernate.SQL: ERROR

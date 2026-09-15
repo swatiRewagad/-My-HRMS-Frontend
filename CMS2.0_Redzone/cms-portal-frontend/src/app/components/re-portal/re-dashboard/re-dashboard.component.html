@@ -1,0 +1,109 @@
+<div class="re-dashboard">
+  <!-- Profile Section -->
+  <div class="profile-section">
+    <div class="profile-info">
+      <h2 class="welcome-text">Welcome back</h2>
+      <p class="entity-name">{{ entityName() }}</p>
+      @if (nodalOfficer()) {
+        <p class="nodal-info">Nodal Officer: {{ nodalOfficer() }}</p>
+      }
+    </div>
+  </div>
+
+  <!-- Stats Cards -->
+  <div class="stats-grid">
+    <div class="stat-card total">
+      <div class="stat-icon"><i class="pi pi-inbox"></i></div>
+      <div class="stat-content">
+        <span class="stat-value">{{ stats().totalForwarded }}</span>
+        <span class="stat-label">Total Forwarded</span>
+      </div>
+    </div>
+    <div class="stat-card pending">
+      <div class="stat-icon"><i class="pi pi-clock"></i></div>
+      <div class="stat-content">
+        <span class="stat-value">{{ stats().pendingResponse }}</span>
+        <span class="stat-label">Pending Response</span>
+      </div>
+    </div>
+    <div class="stat-card responded">
+      <div class="stat-icon"><i class="pi pi-check-circle"></i></div>
+      <div class="stat-content">
+        <span class="stat-value">{{ stats().responded }}</span>
+        <span class="stat-label">Responded</span>
+      </div>
+    </div>
+    <div class="stat-card breached">
+      <div class="stat-icon"><i class="pi pi-exclamation-triangle"></i></div>
+      <div class="stat-content">
+        <span class="stat-value">{{ stats().breached }}</span>
+        <span class="stat-label">Breached</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Complaints Table -->
+  <div class="complaints-section">
+    <div class="section-header">
+      <h3 class="section-title">Forwarded Complaints</h3>
+      <div class="filter-bar">
+        <select class="status-filter" (change)="onFilterChange($event)" aria-label="Filter by status">
+          <option value="">All Status</option>
+          <option value="pending">Pending Response</option>
+          <option value="responded">Responded</option>
+          <option value="breached">Breached</option>
+          <option value="extension_requested">Extension Requested</option>
+          <option value="clarification_requested">Clarification Requested</option>
+        </select>
+      </div>
+    </div>
+
+    @if (loading()) {
+      <div class="loading-state">
+        <div class="spinner"></div>
+        <p>Loading complaints...</p>
+      </div>
+    } @else if (filteredComplaints().length === 0) {
+      <div class="empty-state">
+        <i class="pi pi-inbox"></i>
+        <p>No complaints found</p>
+      </div>
+    } @else {
+      <div class="table-wrapper">
+        <table class="complaints-table" aria-label="Complaints list">
+          <thead>
+            <tr>
+              <th>Complaint No.</th>
+              <th>Subject</th>
+              <th>Forwarded Date</th>
+              <th>Response Deadline</th>
+              <th>Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (complaint of filteredComplaints(); track complaint.complaintNumber) {
+              <tr class="complaint-row" [class]="getUrgencyClass(complaint)" (click)="openComplaint(complaint)">
+                <td class="complaint-number">{{ complaint.complaintNumber }}</td>
+                <td class="complaint-subject">{{ complaint.subject }}</td>
+                <td>{{ complaint.forwardedDate | date:'dd MMM yyyy' }}</td>
+                <td>
+                  <span class="deadline-text">{{ complaint.responseDeadline | date:'dd MMM yyyy' }}</span>
+                  <span class="days-remaining" [class]="getUrgencyClass(complaint)">{{ getDaysRemaining(complaint.responseDeadline) }}</span>
+                </td>
+                <td>
+                  <span class="status-badge" [class]="'status-' + complaint.status">{{ getStatusLabel(complaint.status) }}</span>
+                </td>
+                <td>
+                  <button class="action-btn" (click)="openComplaint(complaint); $event.stopPropagation()">
+                    <i class="pi pi-eye"></i> View
+                  </button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+</div>

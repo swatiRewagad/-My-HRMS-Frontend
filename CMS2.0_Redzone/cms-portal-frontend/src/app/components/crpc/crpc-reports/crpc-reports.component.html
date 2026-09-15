@@ -1,0 +1,97 @@
+<div class="reports-page">
+  <div class="page-header">
+    <button class="btn-back" (click)="goBack()"><i class="pi pi-arrow-left"></i></button>
+    <div class="header-text">
+      <h2>CRPC Reports</h2>
+      <p class="header-desc">Generate and export operational reports</p>
+    </div>
+  </div>
+
+  <!-- Report Type Selector -->
+  <div class="report-selector">
+    @for (config of reportConfigs; track config.id) {
+      <div class="report-card" [class.active]="selectedReport() === config.id" (click)="onReportChange(config.id)">
+        <span class="report-name">{{ config.name }}</span>
+        <span class="report-desc">{{ config.description }}</span>
+      </div>
+    }
+  </div>
+
+  <!-- Filters Bar -->
+  <div class="filters-bar">
+    <div class="filter-group">
+      <label>From</label>
+      <input type="date" [(ngModel)]="dateFrom" />
+    </div>
+    <div class="filter-group">
+      <label>To</label>
+      <input type="date" [(ngModel)]="dateTo" />
+    </div>
+    <div class="filter-group">
+      <label>Scheme Version</label>
+      <select [(ngModel)]="schemeVersionFilter">
+        <option value="">All</option>
+        <option value="RBIOS_2021">RBIOS 2021</option>
+        <option value="RBIOS_2026">RBIOS 2026</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label>Office</label>
+      <select [(ngModel)]="officeFilter">
+        <option value="">All Offices</option>
+        <option value="CRPC-CHD">CRPC Chandigarh</option>
+        <option value="CRPC-MUM">CRPC Mumbai</option>
+        <option value="CRPC-DEL">CRPC Delhi</option>
+      </select>
+    </div>
+    <button class="btn btn-primary" (click)="generateReport()"><i class="pi pi-refresh"></i> Generate</button>
+    <div class="export-btns">
+      <button class="btn btn-outline btn-sm" (click)="exportCsv()" [disabled]="reportData().length === 0"><i class="pi pi-file"></i> CSV</button>
+      <button class="btn btn-outline btn-sm" (click)="exportExcel()" [disabled]="reportData().length === 0"><i class="pi pi-file-excel"></i> Excel</button>
+    </div>
+  </div>
+
+  <!-- Report Data Table -->
+  <div class="report-content">
+    <div class="report-info">
+      <span class="record-count">{{ totalRecords() }} records</span>
+      <span class="report-title">{{ activeConfig().name }}</span>
+    </div>
+
+    @if (loading()) {
+      <div class="loading"><i class="pi pi-spin pi-spinner"></i> Generating report...</div>
+    } @else {
+      <div class="table-wrapper">
+        <table class="report-table">
+          <thead>
+            <tr>
+              @for (col of activeConfig().columns; track col.key) {
+                <th>{{ col.label }}</th>
+              }
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of paginatedData(); track $index) {
+              <tr>
+                @for (col of activeConfig().columns; track col.key) {
+                  <td>{{ row[col.key] }}</td>
+                }
+              </tr>
+            } @empty {
+              <tr><td [attr.colspan]="activeConfig().columns.length" class="empty-row">No data available for the selected criteria</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination -->
+      @if (totalPages() > 1) {
+        <div class="pagination">
+          <button [disabled]="currentPage() === 1" (click)="currentPage.set(currentPage() - 1)"><i class="pi pi-chevron-left"></i></button>
+          <span>Page {{ currentPage() }} of {{ totalPages() }}</span>
+          <button [disabled]="currentPage() === totalPages()" (click)="currentPage.set(currentPage() + 1)"><i class="pi pi-chevron-right"></i></button>
+        </div>
+      }
+    }
+  </div>
+</div>

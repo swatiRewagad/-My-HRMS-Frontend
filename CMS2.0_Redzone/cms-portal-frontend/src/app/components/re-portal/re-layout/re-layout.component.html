@@ -1,0 +1,82 @@
+<div class="re-layout" [class.sidebar-collapsed]="sidebarCollapsed()">
+  <!-- Sidebar -->
+  <aside class="sidebar" [class.mobile-open]="mobileMenuOpen()">
+    <div class="sidebar-header">
+      <img src="assets/navb2.png" alt="CMS" class="sidebar-logo" />
+      @if (!sidebarCollapsed()) {
+        <span class="sidebar-title">RE Portal</span>
+      }
+      <button class="collapse-btn" (click)="toggleSidebar()" aria-label="Toggle sidebar">
+        <i class="pi" [class.pi-chevron-left]="!sidebarCollapsed()" [class.pi-chevron-right]="sidebarCollapsed()"></i>
+      </button>
+    </div>
+
+    <nav class="sidebar-nav" aria-label="RE Portal navigation">
+      <a routerLink="/re-portal/dashboard" routerLinkActive="active" class="nav-item">
+        <i class="pi pi-th-large"></i>
+        @if (!sidebarCollapsed()) {
+          <span>Dashboard</span>
+        }
+      </a>
+      <a routerLink="/re-portal/dashboard" routerLinkActive="active" [routerLinkActiveOptions]="{exact: false}" class="nav-item complaints-link">
+        <i class="pi pi-file"></i>
+        @if (!sidebarCollapsed()) {
+          <span>Complaints</span>
+          @if (pendingCount() > 0) {
+            <span class="badge">{{ pendingCount() }}</span>
+          }
+        }
+      </a>
+      <a routerLink="/re-portal/profile" routerLinkActive="active" class="nav-item">
+        <i class="pi pi-building"></i>
+        @if (!sidebarCollapsed()) {
+          <span>Profile</span>
+        }
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <button class="logout-btn" (click)="logout()">
+        <i class="pi pi-sign-out"></i>
+        @if (!sidebarCollapsed()) {
+          <span>Logout</span>
+        }
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <div class="main-wrapper">
+    <!-- Header -->
+    <header class="top-header">
+      <div class="header-left">
+        <button class="mobile-menu-btn" (click)="toggleMobileMenu()" aria-label="Toggle navigation">
+          <i class="pi pi-bars"></i>
+        </button>
+        <h2 class="page-title">Regulated Entity Portal</h2>
+      </div>
+      <div class="header-right">
+        <div class="notification-icon" [class.has-notifications]="notificationCount() > 0">
+          <i class="pi pi-bell"></i>
+          @if (notificationCount() > 0) {
+            <span class="notification-badge">{{ notificationCount() }}</span>
+          }
+        </div>
+        <div class="user-info">
+          <span class="user-name">{{ entityName() }}</span>
+          <span class="user-role">{{ roleBadge() }}</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Page Content -->
+    <main class="page-content" role="main">
+      <router-outlet />
+    </main>
+  </div>
+</div>
+
+<!-- Mobile overlay -->
+@if (mobileMenuOpen()) {
+  <div class="mobile-overlay" (click)="toggleMobileMenu()"></div>
+}

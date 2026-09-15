@@ -1,0 +1,46 @@
+# Compiled output
+/dist
+/tmp
+/out-tsc
+
+# Node
+/node_modules
+npm-debug.log
+yarn-error.log
+
+# IDEs and editors
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Angular cache
+.angular/
+
+# Environment files (keep templates, ignore local overrides)
+/src/environments/environment.local.ts
+
+# Test coverage
+/coverage
+
+# E2E
+/e2e/results
+/playwright-report
+/test-results
+
+# Runtime config (generated at container start, not in source)
+/src/assets/config.json
+
+# Misc
+*.log
+*.tgz
+.npmrc

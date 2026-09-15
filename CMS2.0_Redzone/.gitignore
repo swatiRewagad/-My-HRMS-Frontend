@@ -1,0 +1,36 @@
+# Node
+node_modules/
+dist/
+.angular/
+
+# Maven
+target/
+*.jar
+
+# IDE
+.idea/
+.vscode/
+*.iml
+.project
+.classpath
+.settings/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+*.log
+
+# Claude
+.claude/
+
+# Package lock at root (not needed)
+package-lock.json
+
+# Large model/WASM files (served via CDN in production)
+**/public/assets/models/
+**/public/assets/onnx/
+cdn-assets/**/*.onnx
+cdn-assets/**/*.wasm

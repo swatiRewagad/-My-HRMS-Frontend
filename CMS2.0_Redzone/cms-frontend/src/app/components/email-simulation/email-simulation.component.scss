@@ -1,0 +1,546 @@
+.email-page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+// ───── Header ─────
+.email-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.email-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  i { font-size: 24px; color: #2B3990; }
+  h2 { font-size: 20px; font-weight: 600; margin: 0; }
+}
+
+.email-header-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.stat-badges {
+  display: flex;
+  gap: 8px;
+}
+
+.badge {
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+
+  &.total { background: #f3f4f6; color: #333; }
+  &.awaiting { background: #fef3c7; color: #92400e; }
+  &.completed { background: #d1fae5; color: #065f46; }
+}
+
+.compose-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: linear-gradient(135deg, #2B3990, #4a5ac7);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: var(--font-primary);
+  &:hover { opacity: 0.9; }
+}
+
+// ───── Card Container ─────
+.email-card {
+  background: #fff;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  overflow: hidden;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 24px;
+  border-bottom: 1px solid #f3f4f6;
+
+  h3 { font-size: 16px; font-weight: 600; margin: 0; }
+}
+
+.back-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  color: #2B3990;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: var(--font-primary);
+  &:hover { text-decoration: underline; }
+}
+
+.thread-header-info {
+  flex: 1;
+  h3 { margin-bottom: 4px; }
+}
+
+.thread-header-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.complaint-ref {
+  font-size: 12px;
+  color: #666;
+  font-weight: 500;
+}
+
+// ───── Filter Tabs ─────
+.filter-tabs {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+
+  button {
+    padding: 6px 14px;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    background: #fff;
+    font-size: 12px;
+    cursor: pointer;
+    font-family: var(--font-primary);
+
+    &.active { background: #2B3990; color: #fff; border-color: #2B3990; }
+    &:hover:not(.active) { background: #f9fafb; }
+  }
+}
+
+// ───── Empty State ─────
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: #666;
+
+  i { font-size: 48px; color: #d1d5db; margin-bottom: 16px; }
+  h4 { font-size: 16px; font-weight: 600; color: #333; margin-bottom: 8px; }
+  p { font-size: 14px; }
+}
+
+// ───── Thread List ─────
+.thread-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.thread-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 24px;
+  border-bottom: 1px solid #f3f4f6;
+  cursor: pointer;
+  transition: background 0.1s;
+
+  &:hover { background: #f9fafb; }
+  &:last-child { border-bottom: none; }
+}
+
+.thread-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #eef2ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  i { color: #2B3990; font-size: 16px; }
+}
+
+.thread-content { flex: 1; min-width: 0; }
+
+.thread-top {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.thread-from { font-size: 13px; font-weight: 600; color: #333; }
+.thread-date { font-size: 11px; color: #999; }
+
+.thread-subject {
+  font-size: 14px;
+  color: #444;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 6px;
+}
+
+.thread-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.thread-complaint { font-size: 11px; color: #2B3990; font-weight: 500; }
+
+.status-badge {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-weight: 500;
+
+  &.awaiting_form { background: #fef3c7; color: #92400e; }
+  &.completed { background: #d1fae5; color: #065f46; }
+}
+
+.thread-count {
+  font-size: 11px;
+  color: #999;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.thread-arrow { color: #ccc; font-size: 12px; }
+
+// ───── Compose Form ─────
+.compose-form {
+  padding: 24px;
+}
+
+.form-row {
+  margin-bottom: 16px;
+
+  label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    color: #333;
+    margin-bottom: 6px;
+  }
+
+  input, select, textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 13px;
+    font-family: var(--font-primary);
+    color: #333;
+    outline: none;
+    &:focus { border-color: #2B3990; }
+    &::placeholder { color: #9ca3af; }
+  }
+
+  textarea { resize: vertical; }
+}
+
+.to-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: #f0f2ff;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #2B3990;
+  i { font-size: 14px; }
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 16px;
+  border-top: 1px solid #f3f4f6;
+}
+
+// ───── Email Conversation ─────
+.email-conversation {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.email-message {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 16px 20px;
+
+  &.inbound { border-left: 3px solid #2B3990; }
+  &.outbound { border-left: 3px solid #16a34a; background: #f9fffe; }
+}
+
+.message-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.message-from {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  i { color: #2B3990; }
+}
+
+.message-direction { font-size: 11px; color: #999; }
+.message-time { font-size: 11px; color: #999; }
+.message-to { font-size: 12px; color: #666; margin-bottom: 12px; }
+
+.message-body {
+  font-size: 13px;
+  line-height: 1.7;
+  color: #333;
+  white-space: pre-wrap;
+  background: #f9fafb;
+  padding: 14px 16px;
+  border-radius: 8px;
+}
+
+// ───── Attachment ─────
+.message-attachment {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+  padding: 12px 16px;
+  background: #eef2ff;
+  border: 1px solid #d1d5f0;
+  border-radius: 8px;
+
+  > i.pi-file { font-size: 24px; color: #2B3990; }
+}
+
+.attachment-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.attachment-name { font-size: 13px; font-weight: 600; color: #333; }
+.attachment-hint { font-size: 11px; color: #666; }
+
+.download-form-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 16px;
+  background: linear-gradient(135deg, #f97316, #ea580c);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: var(--font-primary);
+  &:hover { opacity: 0.85; }
+}
+
+.attachment-done {
+  font-size: 12px;
+  color: #16a34a;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+// ───── Thread Action ─────
+.thread-action {
+  padding: 24px;
+  border-top: 1px solid #f3f4f6;
+  text-align: center;
+}
+
+.action-steps {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  margin-bottom: 20px;
+}
+
+.action-step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #555;
+}
+
+.step-num {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #2B3990;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+// ───── Reply Section ─────
+.reply-form-section {
+  padding: 24px;
+  border-top: 2px solid #2B3990;
+  background: #fafbff;
+
+  h4 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 6px;
+    color: #2B3990;
+  }
+}
+
+.reply-hint {
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 20px;
+}
+
+.upload-zone {
+  border: 2px dashed #c7d2fe;
+  border-radius: 12px;
+  padding: 32px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.15s;
+  background: #fff;
+
+  &:hover { border-color: #2B3990; background: #f8f9ff; }
+
+  > i {
+    font-size: 36px;
+    color: #2B3990;
+    margin-bottom: 10px;
+  }
+
+  .uploaded-icon { color: #2B5797; }
+
+  p { font-size: 14px; color: #555; margin: 0; }
+  .uploaded-name { font-weight: 600; color: #333; }
+  .uploaded-size { font-size: 12px; color: #999; display: block; margin-top: 4px; }
+}
+
+// ───── Parsed Preview ─────
+.parsed-preview {
+  margin-top: 20px;
+  padding: 16px;
+  background: #ecfdf5;
+  border: 1px solid #d1fae5;
+  border-radius: 10px;
+
+  h5 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #065f46;
+    margin-bottom: 12px;
+    i { color: #16a34a; }
+  }
+}
+
+.parsed-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.parsed-item {
+  label {
+    display: block;
+    font-size: 10px;
+    color: #666;
+    text-transform: capitalize;
+    margin-bottom: 2px;
+  }
+  span {
+    font-size: 12px;
+    font-weight: 500;
+    color: #333;
+    word-break: break-word;
+  }
+}
+
+.reply-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid #e5e7eb;
+}
+
+// ───── Completed Banner ─────
+.completed-banner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 24px;
+  background: #ecfdf5;
+  border-top: 1px solid #d1fae5;
+
+  > i { font-size: 24px; color: #16a34a; }
+  strong { font-size: 14px; display: block; margin-bottom: 2px; }
+  p { font-size: 12px; color: #065f46; margin: 0; }
+}
+
+// ───── Buttons ─────
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 20px;
+  background: linear-gradient(135deg, #f97316, #ea580c);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: var(--font-primary);
+  &:hover { opacity: 0.9; }
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
+}
+
+.btn-secondary {
+  padding: 10px 20px;
+  background: #fff;
+  color: #333;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: var(--font-primary);
+  &:hover { background: #f9fafb; }
+}

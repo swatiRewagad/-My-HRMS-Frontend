@@ -1,0 +1,62 @@
+.cepc-timeline {
+  background: white; border-radius: 8px; padding: 20px; border: 1px solid #e0e0e0;
+}
+
+.timeline-header {
+  display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;
+  h4 { margin: 0; font-size: 14px; color: #1e293b; border-bottom: 1px solid #f0f0f0; padding-bottom: 8px; flex: 1; }
+  .refresh-btn {
+    background: none; border: 1px solid #d1d5db; border-radius: 4px; padding: 4px 10px;
+    font-size: 12px; cursor: pointer; color: #475569;
+    &:hover:not(:disabled) { background: #f1f5f9; }
+    &:disabled { opacity: 0.5; cursor: default; }
+  }
+}
+
+.loading-state { text-align: center; padding: 20px; color: #666; font-size: 13px; }
+.empty-timeline { color: #94a3b8; font-size: 13px; font-style: italic; margin: 8px 0; }
+
+.timeline { display: flex; flex-direction: column; gap: 0; }
+
+.timeline-item {
+  display: flex; gap: 12px; padding: 10px 0; border-left: 2px solid #e0e0e0;
+  margin-left: 14px; padding-left: 16px; position: relative;
+  cursor: pointer; transition: background 0.15s;
+
+  &:hover { background: #f8fafc; border-radius: 0 6px 6px 0; }
+  &.expanded { background: #f0f9ff; border-radius: 0 6px 6px 0; }
+}
+
+.timeline-dot {
+  position: absolute; left: -14px; top: 12px;
+  width: 26px; height: 26px; border-radius: 50%; background: white;
+  border: 2px solid #0d47a1; display: flex; align-items: center; justify-content: center;
+}
+
+.action-icon { font-size: 12px; }
+
+.timeline-content { flex: 1; min-width: 0; }
+
+.timeline-main {
+  display: flex; justify-content: space-between; align-items: center;
+}
+
+.timeline-action { font-weight: 600; font-size: 13px; color: #333; }
+.timeline-time { font-size: 11px; color: #999; white-space: nowrap; }
+.timeline-actor { font-size: 11px; color: #64748b; display: block; margin-top: 2px; }
+
+.timeline-detail {
+  margin-top: 8px; padding: 10px; background: white; border: 1px solid #e2e8f0; border-radius: 6px;
+}
+
+.timeline-remarks { font-size: 12px; color: #555; margin: 0 0 6px; font-style: italic; }
+.timeline-flow { font-size: 11px; color: #888; }
+
+.timeline-docs {
+  margin-top: 8px; display: flex; flex-direction: column; gap: 4px;
+}
+
+.doc-link {
+  font-size: 12px; color: #0d47a1; text-decoration: none;
+  &:hover { text-decoration: underline; }
+}

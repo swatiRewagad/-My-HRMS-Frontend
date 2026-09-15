@@ -1,0 +1,47 @@
+<div class="rbio-sla-progress">
+  <!-- Multi-stage progress bar -->
+  <div class="stage-progress">
+    <div class="stages-bar">
+      @for (stage of stages; track stage.key; let i = $index) {
+        <div class="stage-segment" [class]="stageStatuses()[i]" [class.active-color]="stageStatuses()[i] === 'active'">
+          <div class="stage-fill"
+            [style.width.%]="stageStatuses()[i] === 'completed' ? 100 : (stageStatuses()[i] === 'active' ? stageProgressPercent() : 0)">
+          </div>
+          <div class="stage-marker" [class]="stageStatuses()[i]">
+            @if (stageStatuses()[i] === 'completed') {
+              <span class="marker-icon">&#10003;</span>
+            } @else {
+              <span class="marker-dot"></span>
+            }
+          </div>
+        </div>
+      }
+    </div>
+    <div class="stages-labels">
+      @for (stage of stages; track stage.key; let i = $index) {
+        <div class="stage-label" [class]="stageStatuses()[i]">
+          <span class="label-text">{{ stage.label }}</span>
+          <span class="label-days">({{ stage.days }}d)</span>
+        </div>
+      }
+    </div>
+  </div>
+
+  <!-- Current stage time remaining -->
+  <div class="stage-timer" [class]="stageColorClass()">
+    <span class="timer-label">Current Stage:</span>
+    <span class="timer-value">{{ daysRemainingInStage() }}d remaining</span>
+    <span class="timer-meta">of {{ currentStageDays() }}d</span>
+  </div>
+
+  <!-- Total lifecycle progress -->
+  <div class="total-progress">
+    <div class="total-label">
+      <span>Total Lifecycle (120 days)</span>
+      <span class="total-remaining" [class]="totalColorClass()">{{ totalDaysRemaining() }}d remaining</span>
+    </div>
+    <div class="total-bar">
+      <div class="total-fill" [class]="totalColorClass()" [style.width.%]="totalProgressPercent()"></div>
+    </div>
+  </div>
+</div>

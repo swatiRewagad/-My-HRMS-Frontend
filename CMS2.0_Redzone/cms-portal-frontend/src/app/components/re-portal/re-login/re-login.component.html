@@ -1,0 +1,50 @@
+<div class="re-login-page">
+  <div class="login-container">
+    <div class="login-card">
+      <div class="login-header">
+        <div class="logo-section">
+          <img src="assets/navb2.png" alt="CMS Logo" class="login-logo" />
+        </div>
+        <h1 class="login-title">Regulated Entity Portal</h1>
+        <p class="login-subtitle">Sign in to manage complaints forwarded to your entity</p>
+      </div>
+
+      @if (error()) {
+        <div class="error-banner" role="alert">
+          <i class="pi pi-exclamation-triangle"></i>
+          <span>{{ error() }}</span>
+        </div>
+      }
+
+      @if (entityName()) {
+        <div class="auth-info">
+          <span class="entity-name">{{ entityName() }}</span>
+          @if (userRole()) {
+            <span class="role-badge">{{ userRole() }}</span>
+          }
+        </div>
+      }
+
+      <div class="login-body">
+        <button class="sso-login-btn" (click)="login()" [disabled]="loading()">
+          @if (loading()) {
+            <span class="spinner"></span>
+            <span>Authenticating...</span>
+          } @else {
+            <i class="pi pi-shield"></i>
+            <span>Sign in with SSO</span>
+          }
+        </button>
+
+        <div class="login-info">
+          <p>Use your entity credentials to access the portal. Contact your administrator if you do not have access.</p>
+        </div>
+      </div>
+
+      <div class="login-footer">
+        <p>RBI Complaint Management System</p>
+        <p class="footer-note">For authorized Regulated Entity personnel only</p>
+      </div>
+    </div>
+  </div>
+</div>

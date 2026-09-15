@@ -1,0 +1,119 @@
+.auto-closure {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.ac-header {
+  display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;
+  h3 { margin: 0; font-size: 16px; font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 8px;
+    i { color: #3b82f6; }
+  }
+  .ac-meta { display: flex; gap: 8px; align-items: center; }
+}
+
+.scheme-badge, .entity-badge {
+  padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;
+}
+.scheme-badge { background: #eff6ff; color: #1e40af; }
+.entity-badge { background: #f0fdf4; color: #065f46; }
+.progress-text { font-size: 12px; color: #64748b; font-weight: 500; }
+
+.progress-bar {
+  height: 4px; background: #e2e8f0; border-radius: 4px; margin-bottom: 20px; overflow: hidden;
+  .progress-fill { height: 100%; background: #3b82f6; border-radius: 4px; transition: width 0.3s; }
+}
+
+.ac-loading {
+  display: flex; flex-direction: column; align-items: center; padding: 40px; gap: 12px;
+  .spinner { width: 24px; height: 24px; border: 3px solid #e2e8f0; border-top-color: #3b82f6; border-radius: 50%; animation: spin 0.6s linear infinite; }
+  p { color: #64748b; font-size: 13px; }
+}
+
+.ac-actions-top {
+  margin-bottom: 16px;
+}
+
+.question-card {
+  padding: 24px; background: #f8fafc; border-radius: 10px; border: 1px solid #e2e8f0;
+}
+
+.question-number {
+  font-size: 11px; font-weight: 600; color: #3b82f6; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;
+}
+
+.question-text {
+  font-size: 15px; font-weight: 600; color: #1e293b; margin: 0 0 12px; line-height: 1.5;
+}
+
+.help-text {
+  font-size: 12px; color: #64748b; margin: 0 0 12px; display: flex; align-items: flex-start; gap: 6px;
+  i { color: #94a3b8; margin-top: 2px; }
+}
+
+.clause-ref {
+  display: flex; gap: 10px; margin-bottom: 20px;
+  .clause-badge { padding: 3px 10px; background: #fef3c7; color: #92400e; border-radius: 10px; font-size: 11px; font-weight: 600; }
+  .default-badge { padding: 3px 10px; background: #e2e8f0; color: #475569; border-radius: 10px; font-size: 11px; font-weight: 600; }
+}
+
+.answer-options {
+  display: flex; gap: 12px;
+
+  .answer-btn {
+    flex: 1; padding: 14px; border: 2px solid #e2e8f0; border-radius: 10px;
+    font-size: 14px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;
+    transition: all 0.2s; background: #fff;
+
+    &.yes:hover { border-color: #10b981; background: #f0fdf4; color: #065f46; }
+    &.no:hover { border-color: #ef4444; background: #fef2f2; color: #991b1b; }
+  }
+}
+
+.ac-result {
+  text-align: center; padding: 20px;
+  .result-icon { font-size: 40px; margin-bottom: 12px;
+    &.success i { color: #10b981; }
+    &.rejection i { color: #ef4444; }
+    &.sub-judice i { color: #f59e0b; }
+  }
+  h4 { margin: 0 0 8px; font-size: 18px; color: #1e293b; }
+  .result-clause { font-size: 13px; color: #64748b; margin-bottom: 20px; }
+}
+
+.response-summary {
+  text-align: left; background: #f8fafc; border-radius: 8px; padding: 12px; margin-top: 16px;
+  h5 { margin: 0 0 8px; font-size: 13px; color: #475569; }
+  .response-row { display: flex; align-items: center; gap: 8px; padding: 4px 0; }
+  .q-num { font-size: 12px; color: #94a3b8; width: 30px; }
+  .q-answer { padding: 2px 8px; border-radius: 8px; font-size: 11px; font-weight: 600;
+    &.yes { background: #d1fae5; color: #065f46; }
+    &.no { background: #fee2e2; color: #991b1b; }
+  }
+}
+
+.confirm-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; z-index: 1000;
+}
+.confirm-popup {
+  background: #fff; border-radius: 12px; padding: 24px; width: 400px; max-width: 90vw; box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+  h4 { margin: 0 0 12px; font-size: 16px; color: #1e293b; }
+  p { font-size: 14px; color: #475569; margin: 8px 0; }
+  .popup-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+}
+
+.ac-footer {
+  margin-top: 16px; padding-top: 16px; border-top: 1px solid #e2e8f0;
+}
+
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 16px; border: none; border-radius: 8px;
+  font-size: 13px; font-weight: 500; cursor: pointer;
+  &-primary { background: #3b82f6; color: #fff; &:hover { background: #2563eb; } }
+  &-outline { background: #fff; border: 1px solid #e2e8f0; color: #475569; &:hover { background: #f1f5f9; } }
+  &-sm { padding: 6px 12px; font-size: 12px; }
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }

@@ -1,0 +1,84 @@
+<div class="ignore-list-container">
+  <button class="back-btn" (click)="goBack()">← Back to Queue</button>
+
+  <div class="page-header">
+    <h2>Email Ignore List</h2>
+    <p class="subtitle">Manage email addresses and domains excluded from auto-ingestion</p>
+    <button class="add-btn" (click)="showAddForm.set(true)">+ Add Entry</button>
+  </div>
+
+  @if (error()) {
+    <div class="error-msg">{{ error() }}</div>
+  }
+  @if (success()) {
+    <div class="success-msg">{{ success() }}</div>
+  }
+
+  @if (showAddForm()) {
+    <div class="add-form">
+      <h3>Add to Ignore List</h3>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Email/Domain Pattern</label>
+          <input type="text" [ngModel]="newEntry().emailPattern" (ngModelChange)="updateNewEntry('emailPattern', $event)"
+                 name="pattern" placeholder="e.g. noreply@bank.com or *@mailer.com">
+        </div>
+        <div class="form-group">
+          <label>Pattern Type</label>
+          <select [ngModel]="newEntry().patternType" (ngModelChange)="updateNewEntry('patternType', $event)" name="type">
+            <option value="">Auto-detect</option>
+            <option value="EXACT">Exact Email</option>
+            <option value="DOMAIN">Domain (*&#64;domain)</option>
+            <option value="WILDCARD">Wildcard</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Reason</label>
+        <input type="text" [ngModel]="newEntry().reason" (ngModelChange)="updateNewEntry('reason', $event)"
+               name="reason" placeholder="Why should this be ignored?">
+      </div>
+      <div class="form-actions">
+        <button class="save-btn" (click)="addEntry()" [disabled]="!newEntry().emailPattern">Add</button>
+        <button class="cancel-btn" (click)="showAddForm.set(false)">Cancel</button>
+      </div>
+    </div>
+  }
+
+  <div class="entries-table">
+    <table>
+      <thead>
+        <tr>
+          <th>Email/Pattern</th>
+          <th>Type</th>
+          <th>Reason</th>
+          <th>Added By</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (entry of entries(); track entry.id) {
+          <tr>
+            <td class="pattern">{{ entry.emailPattern }}</td>
+            <td><span class="type-badge">{{ entry.patternType }}</span></td>
+            <td>{{ entry.reason || '—' }}</td>
+            <td>{{ entry.addedBy }}</td>
+            <td>
+              <span class="active-badge" [class.inactive]="!entry.isActive">
+                {{ entry.isActive ? 'Active' : 'Inactive' }}
+              </span>
+            </td>
+            <td>
+              <button class="remove-btn" (click)="removeEntry(entry.id)">Remove</button>
+            </td>
+          </tr>
+        } @empty {
+          <tr>
+            <td colspan="6" class="empty">No entries in ignore list</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</div>

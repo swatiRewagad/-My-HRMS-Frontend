@@ -1,0 +1,241 @@
+$primary: #1565c0;
+$primary-light: #e8f0fe;
+$text-dark: #1f2937;
+$text-muted: #6b7280;
+$border-color: #e5e7eb;
+$success: #16a34a;
+$danger: #dc2626;
+
+.re-profile {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.page-heading {
+  font-size: 22px;
+  font-weight: 700;
+  color: $text-dark;
+  margin: 0 0 28px;
+}
+
+// Profile Card
+.profile-card {
+  background: #fff;
+  border: 1px solid $border-color;
+  border-radius: 12px;
+  margin-bottom: 24px;
+  overflow: hidden;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 24px;
+  border-bottom: 1px solid $border-color;
+  background: #fafbfc;
+}
+
+.card-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: $text-dark;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  i { color: $primary; font-size: 16px; }
+}
+
+.edit-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: $primary-light;
+  color: $primary;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+
+  &:hover { background: #d6e4fc; }
+}
+
+.card-body {
+  padding: 24px;
+}
+
+// Detail Grid
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+}
+
+.detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.detail-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: $text-muted;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.detail-value {
+  font-size: 15px;
+  color: $text-dark;
+  font-weight: 500;
+}
+
+// Edit Form
+.edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+
+  label {
+    font-size: 13px;
+    font-weight: 600;
+    color: $text-dark;
+  }
+
+  input {
+    padding: 10px 14px;
+    border: 1px solid $border-color;
+    border-radius: 8px;
+    font-size: 14px;
+    color: $text-dark;
+    outline: none;
+    transition: border-color 0.2s;
+
+    &:focus {
+      border-color: $primary;
+      box-shadow: 0 0 0 2px rgba(21, 101, 192, 0.1);
+    }
+
+    &::placeholder {
+      color: #9ca3af;
+    }
+  }
+}
+
+.form-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.save-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 20px;
+  background: $primary;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+
+  &:hover:not(:disabled) { background: #0d47a1; }
+  &:disabled { opacity: 0.6; cursor: not-allowed; }
+}
+
+.cancel-btn {
+  padding: 10px 20px;
+  background: #fff;
+  color: $text-dark;
+  border: 1px solid $border-color;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+
+  &:hover { background: #f9fafb; }
+}
+
+// Banners
+.success-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #f0fdf4;
+  border-bottom: 1px solid #bbf7d0;
+  padding: 12px 24px;
+  color: $success;
+  font-size: 14px;
+}
+
+.error-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #fef2f2;
+  border-bottom: 1px solid #fecaca;
+  padding: 12px 24px;
+  color: $danger;
+  font-size: 14px;
+}
+
+// Loading
+.loading-state {
+  text-align: center;
+  padding: 64px 24px;
+  color: $text-muted;
+
+  p { font-size: 14px; margin: 8px 0 0; }
+}
+
+.spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #e5e7eb;
+  border-top-color: $primary;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin: 0 auto 12px;
+}
+
+.spinner-sm {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+// Responsive
+@media (max-width: 768px) {
+  .detail-grid { grid-template-columns: 1fr; }
+  .form-row { grid-template-columns: 1fr; }
+  .card-header { flex-direction: column; gap: 12px; align-items: flex-start; }
+  .form-actions { flex-direction: column; }
+  .save-btn, .cancel-btn { width: 100%; justify-content: center; text-align: center; }
+}

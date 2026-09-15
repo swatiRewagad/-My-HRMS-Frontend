@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CMS 2.0 — Entity-Relationship Diagram</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: #f0f4f8; color: #1e293b; }
+
+        .header {
+            background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%);
+            color: #fff; padding: 32px 48px; text-align: center;
+        }
+        .header h1 { font-size: 28px; font-weight: 700; margin-bottom: 8px; }
+        .header p { font-size: 14px; opacity: 0.85; }
+
+        .controls {
+            background: #fff; border-bottom: 1px solid #e2e8f0; padding: 12px 48px;
+            display: flex; gap: 12px; align-items: center; position: sticky; top: 0; z-index: 100;
+        }
+        .controls button {
+            padding: 6px 14px; border: 1px solid #d1d5db; border-radius: 6px;
+            background: #fff; cursor: pointer; font-size: 13px; transition: all 0.2s;
+        }
+        .controls button:hover { background: #f1f5f9; }
+        .controls button.active { background: #2563eb; color: #fff; border-color: #2563eb; }
+        .controls .zoom-info { margin-left: auto; font-size: 12px; color: #64748b; }
+
+        .legend {
+            background: #fff; border-bottom: 1px solid #e2e8f0; padding: 12px 48px;
+            display: flex; gap: 24px; align-items: center; font-size: 12px;
+        }
+        .legend-item { display: flex; align-items: center; gap: 6px; }
+        .legend-dot { width: 14px; height: 14px; border-radius: 3px; }
+        .legend-dot.core { background: #3b82f6; }
+        .legend-dot.crpc { background: #8b5cf6; }
+        .legend-dot.comms { background: #10b981; }
+        .legend-dot.reference { background: #f59e0b; }
+        .legend-dot.audit { background: #ef4444; }
+        .legend-dot.translation { background: #06b6d4; }
+
+        .canvas-container {
+            width: 100%; overflow: auto; padding: 32px;
+            min-height: calc(100vh - 200px);
+        }
+
+        .er-canvas {
+            position: relative; width: 2200px; height: 1800px;
+            transform-origin: top left; transition: transform 0.3s;
+        }
+
+        .entity {
+            position: absolute; background: #fff; border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08); border: 2px solid #e2e8f0;
+            min-width: 220px; font-size: 12px; transition: box-shadow 0.2s, transform 0.2s;
+        }
+        .entity:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.15); transform: scale(1.02); z-index: 50; }
+        .entity-header {
+            padding: 10px 14px; font-weight: 700; font-size: 13px; border-radius: 8px 8px 0 0;
+            color: #fff; letter-spacing: 0.3px;
+        }
+        .entity.core .entity-header { background: #3b82f6; }
+        .entity.crpc .entity-header { background: #8b5cf6; }
+        .entity.comms .entity-header { background: #10b981; }
+        .entity.reference .entity-header { background: #f59e0b; }
+        .entity.audit .entity-header { background: #ef4444; }
+        .entity.translation .entity-header { background: #06b6d4; }
+
+        .entity-body { padding: 8px 14px; }
+        .entity-body .field { padding: 3px 0; display: flex; align-items: center; gap: 6px; }
+        .field .pk { color: #dc2626; font-weight: 700; font-size: 10px; }
+        .field .fk { color: #7c3aed; font-weight: 700; font-size: 10px; }
+        .field .name { flex: 1; }
+        .field .type { color: #64748b; font-size: 11px; }
+        .field-divider { border-top: 1px solid #f1f5f9; margin: 4px 0; }
+
+        svg.relationships {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; z-index: 0;
+        }
+        svg.relationships path {
+            fill: none; stroke-width: 1.5; opacity: 0.6;
+        }
+        svg.relationships .rel-core { stroke: #3b82f6; }
+        svg.relationships .rel-crpc { stroke: #8b5cf6; }
+        svg.relationships .rel-comms { stroke: #10b981; }
+        svg.relationships .rel-reference { stroke: #f59e0b; }
+        svg.relationships .rel-audit { stroke: #ef4444; }
+
+        .rel-label {
+            position: absolute; font-size: 10px; background: #fff; padding: 1px 5px;
+            border-radius: 3px; color: #475569; border: 1px solid #e2e8f0; z-index: 10;
+        }
+
+        .cardinality {
+            font-size: 11px; font-weight: 700; position: absolute;
+            background: #fef3c7; padding: 1px 4px; border-radius: 3px; color: #92400e;
+        }
+
+        @media print {
+            .controls, .legend { display: none; }
+            .canvas-container { overflow: visible; padding: 0; }
+            .er-canvas { transform: scale(0.6) !important; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>CMS 2.0 — Entity-Relationship Diagram</h1>
+    <p>Complaint Management System | 20 Entities | Generated: 09 July 2026</p>
+</div>
+
+<div class="controls">
+    <button onclick="setZoom(0.5)">50%</button>
+    <button onclick="setZoom(0.65)">65%</button>
+    <button onclick="setZoom(0.8)" class="active">80%</button>
+    <button onclick="setZoom(1)">100%</button>
+    <button onclick="setZoom(1.2)">120%</button>
+    <span class="zoom-info">Scroll to pan | Hover entity for details | Click zoom buttons to resize</span>
+</div>
+
+<div class="legend">
+    <strong>Legend:</strong>
+    <div class="legend-item"><div class="legend-dot core"></div> Core Entities</div>
+    <div class="legend-item"><div class="legend-dot crpc"></div> CRPC Workflow</div>
+    <div class="legend-item"><div class="legend-dot comms"></div> Communication</div>
+    <div class="legend-item"><div class="legend-dot reference"></div> Reference Data</div>
+    <div class="legend-item"><div class="legend-dot audit"></div> Audit & Tracking</div>
+    <div class="legend-item"><div class="legend-dot translation"></div> i18n</div>
+    <div class="legend-item" style="margin-left:24px"><span class="pk" style="color:#dc2626;font-weight:700">PK</span> Primary Key</div>
+    <div class="legend-item"><span class="fk" style="color:#7c3aed;font-weight:700">FK</span> Foreign Key</div>
+</div>
+
+<div class="canvas-container">
+    <div class="er-canvas" id="erCanvas" style="transform: scale(0.8);">
+
+        <!-- SVG Relationships -->
+        <svg class="relationships" xmlns="http://www.w3.org/2000/svg">
+            <!-- COMPLAINTS → BANKS -->
+            <path class="rel-core" d="M 470,310 C 550,310 600,200 680,200" />
+            <!-- COMPLAINTS → COMPLAINT_CATEGORIES -->
+            <path class="rel-core" d="M 470,340 C 580,340 620,420 680,420" />
+            <!-- COMPLAINTS → COMPLAINT_TIMELINE -->
+            <path class="rel-core" d="M 250,460 C 250,530 300,580 350,600" />
+            <!-- COMPLAINTS → COMPLAINT_ATTACHMENTS -->
+            <path class="rel-core" d="M 400,460 C 400,530 450,590 500,620" />
+            <!-- COMPLAINTS → APPEALS -->
+            <path class="rel-core" d="M 150,460 C 150,560 100,620 100,680" />
+            <!-- EMAIL_DRAFTS → EMAIL_DRAFT_ATTACHMENTS -->
+            <path class="rel-crpc" d="M 900,560 C 900,620 950,650 1000,680" />
+            <!-- COMPLAINTS → RE_RESPONSE_TRACKER -->
+            <path class="rel-core" d="M 470,380 C 580,380 620,680 680,680" />
+            <!-- REGULATED_ENTITIES → RE_RESPONSE_TRACKER -->
+            <path class="rel-reference" d="M 900,200 C 900,400 800,600 750,680" />
+            <!-- TRANSLATION_KEYS → TRANSLATIONS -->
+            <path class="rel-comms" d="M 1700,580 C 1700,640 1700,660 1700,700" />
+        </svg>
+
+        <!-- ═══════════ CORE ENTITIES ═══════════ -->
+
+        <!-- COMPLAINTS (center-left) -->
+        <div class="entity core" style="top: 180px; left: 120px; min-width: 340px;">
+            <div class="entity-header">COMPLAINTS</div>
+            <div class="entity-body">
+                <div class="field"><span class="pk">PK</span> <span class="name">id</span> <span class="type">BIGINT AUTO_INCREMENT</span></div>
+                <div class="field"><span class="name">complaint_number</span> <span class="type">VARCHAR(50) UNIQUE</span></div>
+                <div class="field-divider"></div>
+                <div class="field"><span class="name">complainant_name</span> <span class="type">VARCHAR(200)</span></div>
+                <div class="field"><span class="name">complainant_email</span> <span class="type">VARCHAR(200)</span></div>
+                <div class="field"><span class="name">complainant_phone</span> <span class="type">VARCHAR(20)</span></div>
+                <div class="field"><span class="name">complainant_address</span> <span class="type">VARCHAR(500)</span></div>
+                <div class="field-divider"></div>
+                <div class="field"><span class="fk">FK</span> <span class="name">BANK_ID</span> <span class="type">→ BANKS.id</span></div>
+                <div class="field"><span class="name">bank_branch</span> <span class="type">VARCHAR(300)</span></div>
+                <div class="field"><span class="name">account_number</span> <span class="type">VARCHAR(100)</span></div>
+                <div class="field"><span class="fk">FK</span> <span class="name">CATEGORY_ID</span> <span class="type">→ COMPLAINT_CATEGORIES.id</span></div>
+                <div class="field-divider"></div>
+                <div class="field"><span class="name">subject</span> <span class="type">VARCHAR(500)</span></div>
+                <div class="field"><span class="name">description</span> <span class="type">TEXT</span></div>
+                <div class="field"><span class="name">status</span> <span class="type">VARCHAR(30)</span></div>
+                <div class="field"><span class="name">priority</span> <span class="type">VARCHAR(20)</span></div>
+                <div class="field"><span class="name">filing_type</span> <span class="type">VARCHAR(50)</span></div>
+                <div class="field"><span class="name">department</span> <span class="type">VARCHAR(20)</span></div>
+                <div class="field"><span class="name">workflow_stage</span> <span class="type">VARCHAR(50)</span></div>
+                <div class="field"><span class="name">scheme_version</span> <span class="type">VARCHAR(20)</span></div>
+                <div class="field"><span class="name">triage_signal</span> <span class="type">VARCHAR(10)</span></div>
+                <div class="field"><span class="name">maintainability_determination</span> <span class="type">VARCHAR(30)</span></div>
+                <div class="field"><span class="name">sla_deadline</span> <span class="type">DATETIME</span></div>
+                <div class="field"><span class="name">award_amount</span> <span class="type">DECIMAL(15,2)</span></div>
+                <div class="field-divider"></div>
+                <div class="field"><span class="name">created_at / updated_at</span> <span class="type">DATETIME</span></div>
+            </div>
+        </div>
+
+        <!-- BANKS (top-right of complaints) -->
+        <div class="entity reference" style="top: 40px; left: 600px; min-width: 240px;">
+            <div class="entity-header">BANKS</div>
+            <div class="entity-body">
+                <div class="field"><span class="pk">PK</span> <span class="name">id</span> <span class="type">BIGINT</span></div>
+                <div class="field-divider"></div>
+                <div class="field"><span class="name">name</span> <span class="type">VARCHAR(300)</span></div>
+                <div class="field"><span class="name">code</span> <span class="type">VARCHAR(50)</span></div>
+                <div class="field"><span class="name">type</span> <span class="type">VARCHAR(100)</span></div>
+                <div class="field"><span class="name">status</span> <span class="type">VARCHAR(20)</span></div>
+                <div class="field"><span class="name">created_at</span> <span class="type">DATETIME</span></div>
+            </div>
+        </div>
+
+        <!-- COMPLAINT_CATEGORIES -->
+        <div class="entity reference" style="top: 260px; left: 600px; min-width: 260px;">
+            <div class="entity-header">COMPLAINT_CATEGORIES</div>
+            <div class="entity-body">
+                <div class="field"><span class="pk">PK</span> <span class="name">id</span> <span class="type">BIGINT</span></div>
+                <div class="field-divider"></div>
+                <div class="field"><span class="name">name</span> <span class="type">VARCHAR(200)</span></div>
+                <div class="field"><span class="name">description</span> <span class="type">VARCHAR(500)</span></div>
+                <div class="field"><span class="fk">FK</span> <span class="name">PARENT_ID</span> <span class="type">→ self (hierarchy)</span></div>
+                <div class="field"><span class="name">status</span> <span class="type">VARCHAR(20)</span></div>
+                <div class="field"><span class="name">sort_order</span> <span class="type">INT</span></div>
+                <div class="field"><span class="name">created_at</span> <span class="type">DATETIME</span></div>
+            </div>
+        </div>
+
+        <!-- PINCODES -->
+        <div class="entity reference" style="top: 40px; left: 920px; min-width: 240px;">
+            <div class="entity-header">PINCODES</div>
+            <div class="entity-body">
+                <div class="field"><span class="pk">PK</span> <span class="name">id</span> <span class="type">BIGINT</span></div>
+                <div class="field-divider"></div>
+                <div class="field"><span class="name">pincode</span> <span class="type">VARCHAR(6)</span></div>
+                <div class="field"><span class="name">office_name</span> <span class="type">VARCHAR(100)</span></div>
+                <div class="field"><span class="name">district</span> <span class="type">VARCHAR(100)</span></div>
+                <div class="field"><span class="name">state</span> <span class="type">VARCHAR(100)</span></div>
+                <div class="field"><span class="name">region</span> <span class="type">VARCHAR(50)</span></div>
+                <div class="field"><span class="name">division</span> <span class="type">VARCHAR(50)</span></div>
+                <div class="field"><span class="name">office_type</span> <span class="type">VARCHAR(20)</span></div>
+            </div>
+        </div>
+
+        <!-- REGULATED_ENTITIES -->
+        <div class="entity reference" style="top: 40px; left: 1240px; min-width: 260px;">
+            <div class="entity-header">REGULATED_ENTITIES</div>
+            <div class="entity-body">
+                <div class="field"><span class="pk">PK</span> <span class="name">id</span> <span class="type">BIGINT</span></div>
+                <div class="field-divider"></div>
+                <div class="field"><span class="name">name</span> <span class="type">VARCHAR(500)</span></div>
+                <div class="field"><span class="name">name_normalized</span> <span class="type">VARCHAR(500)</span></div>
+                <div class="field"><span class="name">department</span> <span class="type">VARCHAR(10)</span></div>
+                <div class="field"><span class="name">entity_type</span> <span class="type">VARCHAR(100)</span></div>
+                <div class="field"><span class="name">city / state</span> <span class="type">VARCHAR</span></div>
+                <div class="field"><span class="name">nodal_officer_*</span> <span class="type">name, email, phone, designation</span></div>
+                <div class="field"><span class="name">pno_*</span> <span class="type">name, email, phone</span></div>
+                <div class="field"><span class="name">portal_enabled</span> <span class="type">BOOLEAN</span></div>
+                <div class="field"><span class="name">created_at</span> <span class="type">DATETIME</span></div>
+            </div>
+        </div>
+
+        <!-- ═══════════ CRPC WORKFLOW ═══════════ -->
+
+        <!-- EMAIL_DRAFTS -->
+        <div class="entity crpc" style="top: 310px; left: 920px; min-width: 320px;">
+            <div class="entity-header">EMAIL_DRAFTS</div>
+            <div class="entity-body">
+                <div class="field"><span class="pk">PK</span> <span class="name">id</span> <span class="type">BIGINT</span></div>
+                <div class="field"><span class="name">draft_id</span> <span class="type">VARCHAR(100) UNIQUE</span></div>
+                <div class="field"><span class="name">thread_id / message_id</span> <span class="type">VARCHAR</span></div>
+                <div class="field-divider"></div>
+                <div class="field"><span class="name">sender_email</span> <span class="type">VARCHAR(200)</span></div>
+                <div class="field"><span class="name">subject / body</span> <span class="type">VARCHAR / TEXT</span></div>
+                <div class="field"><span class="name">complainant_*</span> <span class="type">name, phone, address, state, district, pincode</span></div>
+                <div class="field"><span class="name">cpgrams_number</span> <span class="type">VARCHAR(50)</span></div>
+                <div class="field-divider"></div>
+                <div class="field"><span class="name">status</span> <span class="type">VARCHAR(30)</span></div>
+                <div class="field"><span class="name">assigned_to</span> <span class="type">VARCHAR(200)</span></div>
+                <div class="field"><span class="name">mode_of_receipt</span> <span class="type">VARCHAR(30)</span></div>
+                <div class="field"><span class="name">deo_decision / deo_remarks</span> <span class="type">VARCHAR / TEXT</span></div>
+                <div class="field"><span class="name">reviewer_assigned_to</span> <span class="type">VARCHAR(200)</span></div>
+                <div class="field"><span class="name">reviewer_decision / remarks</span> <span class="type">VARCHAR / TEXT</span></div>
+                <div class="field"><span class="name">target_office</span> <span class="type">VARCHAR(100)</span></div>
+                <div class="field"><span class="name">converted_complaint_id</span> <span class="type">VARCHAR(50)</span></div>
+                <div class="field-divider"></div>
+                <div class="field"><span class="name">is_vernacular</span> <span class="type">BOOLEAN</span></div>
+                <div class="field"><span class="name">detected_language</span> <span class="type">VARCHAR(50)</span></div>
+                <div class="field"><span class="name">translated_body</span> <span class="type">TEXT</span></div>
+                <div class="field"><span class="name">is_duplicate</span> <span class="type">BOOLEAN</span></div>
+                <div class="field"><span class="name">ocr_processed / ocr_confidence</span> <span class="type">BOOL / INT</span></div>
+                <div class="field"><span class="name">received_at / created_at</span> <span class="type">DATETIME</span></div>
+            </div>
+        </div>
+
+        <!-- EMAIL_DRAFT_ATTACHMENTS -->
+        <div class="entity crpc" style="top: 730px; left: 920px; min-width: 260px;">
+            <div class="entity-header">EMAIL_DRAFT_ATTACHMENTS</div>
+            <div class="entity-body">
+                <div class="field"><span class="pk">PK</span> <span class="name">id</span> <span class="type">BIGINT</span></div>
+                <div class="field"><span class="fk">FK</span> <span class="name">draft_id</span> <span class="type">→ EMAIL_DRAFTS.draft_id</span></div>
+                <div class="field-divider"></div>
+                <div class="field"><span class="name">file_name</span> <span class="type">VARCHAR(300)</span></div>
+                <div class="field"><span class="name">file_path</span> <span class="type">VARCHAR(500)</span></div>
+                <div class="field"><span class="name">file_size</span> <span class="type">BIGINT</span></div>
+                <div class="field"><span class="name">content_type</span> <span class="type">VARCHAR(100)</span></div>
+                <div class="field"><span class="name">ocr_text</span> <span class="type">TEXT</span></div>
+                <div class="field"><span class="name">uploaded_at</span> <span class="type">DATETIME</span></div>
+            </div>
+        </div>
+
+        <!-- ═══════════ COMPLAINT CHILDREN ═══════════ -->
+
+        <!-- COMPLAINT_TIMELINE -->
+        <div class="entity core" style="top: 720px; left: 120px; min-width: 260px;">
+            <div class="entity-header">COMPLAINT_TIMELINE</div>
+            <div class="entity-body">
+                <div class="field"><span class="pk">PK</span> <span class="name">id</span> <span class="type">BIGINT</span></div>
+                <div class="field"><span class="fk">FK</span> <span class="name">COMPLAINT_ID</span> <span class="type">→ COMPLAINTS.id</span></div>
+                <div class="field-divider"></div>
+                <div class="field"><span class="name">action</span> <span class="type">VARCHAR(100)</span></div>
+                <div class="field"><span class="name">performed_by</span> <span class="type">VARCHAR(200)</span></div>
+                <div class="field"><span class="name">performed_at</span> <span class="type">DATETIME</span></div>
+                <div class="field"><span class="name">remarks</span> <span class="type">TEXT</span></div>
+                <div class="field"><span class="name">previous_status / new_status</span> <span class="type">VARCHAR(30)</span></div>
+            </div>
+        </div>
+
+        <!-- COMPLAINT_ATTACHMENTS -->
+        <div class="entity core" style="top: 720px; left: 440px; min-width: 260px;">
+            <div class="entity-header">COMPLAINT_ATTACHMENTS</div>
+            <div class="entity-body">
+                <div class="field"><span class="pk">PK</span> <span class="name">id</span> <span class="type">BIGINT</span></div>
+                <div class="field"><span class="fk">FK</span> <span class="name">COMPLAINT_ID</span> <span class="type">→ COMPLAINTS.id</span></div>
+                <div class="field-divider"></div>
+                <div class="field"><span class="name">file_name</span> <span class="type">VARCHAR(300)</span></div>
+                <div class="field"><span class="name">file_path</span> <span class="type">VARCHAR(500)</span></div>
+                <div class="field"><span class="name">file_size</span> <span class="type">BIGINT</span></div>
+                <div class="field"><span class="name">content_type</span> <span class="type">VARCHAR(100)</span></div>
+                <div class="field"><span class="name">uploaded_by</span> <span class="type">VARCHAR(200)</span></div>
+                <div class="field"><span class="name">uploaded_at</span> <span class="type">DATETIME</span></div>
+            </div>
+        </div>
+
+        <!-- APPEALS -->
+        <div class="entity core" style="top: 960px; left: 120px; min-width: 280px;">
+            <div class="entity-header">APPEALS</div>
+            <div class="entity-body">
+                <div class="field"><span class="pk">PK</span> <span class="name">id</span> <span class="type">BIGINT</span></div>
+                <div class="field"><span class="name">appeal_number</span> <span class="type">VARCHAR(50) UNIQUE</span></div>
+                <div class="field"><span class="fk">FK</span> <span class="name">original_complaint_number</span> <span class="type">→ COMPLAINTS.complaint_number</span></div>
+                <div class="field-divider"></div>
+                <div class="field"><span class="name">appellant_name / email / phone</span> <span class="type">VARCHAR</span></div>
+                <div class="field"><span class="name">grounds_of_appeal</span> <span class="type">TEXT</span></div>
+                <div class="field"><span class="name">relief_sought</span> <span class="type">TEXT</span></div>
+                <div class="field"><span class="name">status</span> <span class="type">VARCHAR(30)</span></div>
+                <div class="field"><span class="name">assigned_role / officer</span> <span class="type">VARCHAR</span></div>
+                <div class="field"><span class="name">hearing_date</span> <span class="type">DATETIME</span></div>
+                <div class="field"><span class="name">order_text / order_date</span> <span class="type">TEXT / DATETIME</span></div>
+                <div class="field"><span class="name">created_at / updated_at</span> <span class="type">DATETIME</span></div>
+            </div>
+        </div>
+
+        <!-- RE_RESPONSE_TRACKER -->
+        <div class="entity core" style="top: 960px; left: 480px; min-width: 260px;">
+            <div class="entity-header">RE_RESPONSE_TRACKER</div>
+            <div class="entity-body">
+                <div class="field"><span class="pk">PK</span> <span class="name">id</span> <span class="type">BIGINT</span></div>
+                <div class="field"><span class="fk">FK</span> <span class="name">complaint_id</span> <span class="type">→ COMPLAINTS.complaint_number</span></div>
+                <div class="field"><span class="fk">FK</span> <span class="name">regulated_entity_id</span> <span class="type">→ REGULATED_ENTITIES.id</span></div>
+                <div class="field-divider"></div>
+                <div class="field"><span class="name">forwarded_at</span> <span class="type">DATETIME</span></div>
+                <div class="field"><span class="name">deadline_at</span> <span class="type">DATETIME</span></div>
+                <div class="field"><span class="name">responded_at</span> <span class="type">DATETIME</span></div>
+                <div class="field"><span class="name">breached</span> <span class="type">BOOLEAN</span></div>
+                <div class="field"><span class="name">response_text</span> <span class="type">TEXT</span></div>
+            </div>
+        </div>
+
+        <!-- ═══════════ COMMUNICATION ═══════════ -->
+
+        <!-- IN_APP_NOTIFICATIONS -->
+        <div class="entity comms" style="top: 310px; left: 1580px; min-width: 260px;">
+            <div class="entity-header">IN_APP_NOTIFICATIONS</div>
+            <div class="entity-body">
+                <div class="field"><span class="pk">PK</span> <span class="name">id</span> <span class="type">BIGINT</span></div>
+                <div class="field-divider"></div>
+                <div class="field"><span class="name">target_user_id</span> <span class="type">VARCHAR(100)</span></div>
+                <div class="field"><span class="name">type</span> <span class="type">VARCHAR(50)</span></div>
+                <div class="field"><span class="name">title</span> <span class="type">VARCHAR(500)</span></div>
+                <div class="field"><span class="name">message</span> <span class="type">TEXT</span></div>
+                <div class="field"><span class="name">related_entity_id</span> <span class="type">VARCHAR(100)</span></div>
+                <div class="field"><span class="name">related_entity_type</span> <span class="type">VARCHAR(50)</span></div>
+                <div class="field"><span class="name">action_url</span> <span class="type">VARCHAR(200)</span></div>
+                <div class="field"><span class="name">is_read / read_at</span> <span class="type">BOOLEAN / DATETIME</span></div>
+                <div class="field"><span class="name">created_at</span> <span class="type">DATETIME</span></div>
+            </div>
+        </div>
+
+        <!-- COMMUNICATION_TEMPLATES -->
+        <div class="entity comms" style="top: 590px; left: 1580px; min-width: 260px;">
+            <div class="entity-header">COMMUNICATION_TEMPLATES</div>
+            <div class="entity-body">
+                <div class="field"><span class="pk">PK</span> <span class="name">id</span> <span class="type">BIGINT</span></div>
+                <div class="field-divider"></div>
+                <div class="field"><span class="name">template_name</span> <span class="type">VARCHAR(200)</span></div>
+                <div class="field"><span class="name">mode</span> <span class="type">VARCHAR(20) [EMAIL|SMS|LETTER]</span></div>
+                <div class="field"><span class="name">trigger_condition</span> <span class="type">VARCHAR(100)</span></div>
+                <div class="field"><span class="name">scheme_version</span> <span class="type">VARCHAR(20)</span></div>
+                <div class="field"><span class="name">subject_template</span> <span class="type">TEXT</span></div>
+                <div class="field"><span class="name">body_template</span> <span class="type">TEXT</span></div>
+                <div class="field"><span class="name">description</span> <span class="type">VARCHAR(500)</span></div>
+                <div class="field"><span class="name">category</span> <span class="type">VARCHAR(50)</span></div>
+                <div class="field"><span class="name">active</span> <span class="type">BOOLEAN</span></div>
+                <div class="field"><span class="name">created_by / created_at</span> <span class="type">VARCHAR / DATETIME</span></div>
+            </div>
+        </div>
+
+        <!-- COMMENT_TEMPLATES -->
+        <div class="entity comms" style="top: 870px; left: 1580px; min-width: 260px;">
+            <div class="entity-header">COMMENT_TEMPLATES</div>
+            <div class="entity-body">
+                <div class="field"><span class="pk">PK</span> <span class="name">id</span> <span class="type">BIGINT</span></div>
+                <div class="field-divider"></div>
+                <div class="field"><span class="name">title</span> <span class="type">VARCHAR(200)</span></div>
+                <div class="field"><span class="name">description</span> <span class="type">VARCHAR(500)</span></div>
+                <div class="field"><span class="name">content</span> <span class="type">TEXT</span></div>
+                <div class="field"><span class="name">mode_of_receipt</span> <span class="type">VARCHAR(30)</span></div>
+                <div class="field"><span class="name">category</span> <span class="type">VARCHAR(50)</span></div>
+                <div class="field"><span class="name">active</span> <span class="type">BOOLEAN</span></div>
+                <div class="field"><span class="name">created_by / created_at</span> <span class="type">VARCHAR / DATETIME</span></div>
+            </div>
+        </div>
+
+        <!-- ═══════════ AUDIT ═══════════ -->
+
+        <!-- AUDIT_LOG -->
+        <div class="entity audit" style="top: 960px; left: 820px; min-width: 250px;">
+            <div class="entity-header">AUDIT_LOG</div>
+            <div class="entity-body">
+                <div class="field"><span class="pk">PK</span> <span class="name">id</span> <span class="type">BIGINT</span></div>
+                <div class="field-divider"></div>
+                <div class="field"><span class="name">complaint_number</span> <span class="type">VARCHAR(50)</span></div>
+                <div class="field"><span class="name">action</span> <span class="type">VARCHAR(100)</span></div>
+                <div class="field"><span class="name">actor</span> <span class="type">VARCHAR(200)</span></div>
+                <div class="field"><span class="name">timestamp</span> <span class="type">DATETIME</span></div>
+                <div class="field"><span class="name">details</span> <span class="type">TEXT</span></div>
+                <div class="field"><span class="name">ip_address</span> <span class="type">VARCHAR(50)</span></div>
+            </div>
+        </div>
+
+        <!-- ═══════════ REFERENCE / CONFIG ═══════════ -->
+
+        <!-- EMAIL_IGNORE_LIST -->
+        <div class="entity reference" style="top: 500px; left: 600px; min-width: 240px;">
+            <div class="entity-header">EMAIL_IGNORE_LIST</div>
+            <div class="entity-body">
+                <div class="field"><span class="pk">PK</span> <span class="name">id</span> <span class="type">BIGINT</span></div>
+                <div class="field-divider"></div>
+                <div class="field"><span class="name">email_pattern</span> <span class="type">VARCHAR(300)</span></div>
+                <div class="field"><span class="name">pattern_type</span> <span class="type">VARCHAR(20)</span></div>
+                <div class="field"><span class="name">reason</span> <span class="type">VARCHAR(500)</span></div>
+                <div class="field"><span class="name">added_by</span> <span class="type">VARCHAR(100)</span></div>
+                <div class="field"><span class="name">is_active</span> <span class="type">BOOLEAN</span></div>
+                <div class="field"><span class="name">created_at</span> <span class="type">DATETIME</span></div>
+            </div>
+        </div>
+
+        <!-- EXTRACTION_RULE -->
+        <div class="entity reference" style="top: 730px; left: 600px; min-width: 250px;">
+            <div class="entity-header">EXTRACTION_RULE</div>
+            <div class="entity-body">
+                <div class="field"><span class="pk">PK</span> <span class="name">id</span> <span class="type">BIGINT</span></div>
+                <div class="field-divider"></div>
+                <div class="field"><span class="name">rule_name</span> <span class="type">VARCHAR(200)</span></div>
+                <div class="field"><span class="name">rule_code</span> <span class="type">VARCHAR(100) UNIQUE</span></div>
+                <div class="field"><span class="name">description</span> <span class="type">VARCHAR(500)</span></div>
+                <div class="field"><span class="name">pattern_type</span> <span class="type">VARCHAR(20)</span></div>
+                <div class="field"><span class="name">pattern</span> <span class="type">TEXT</span></div>
+                <div class="field"><span class="name">target_field</span> <span class="type">VARCHAR(100)</span></div>
+                <div class="field"><span class="name">priority</span> <span class="type">INT</span></div>
+                <div class="field"><span class="name">is_active</span> <span class="type">BOOLEAN</span></div>
+                <div class="field"><span class="name">source_scope</span> <span class="type">VARCHAR(20)</span></div>
+            </div>
+        </div>
+
+        <!-- HOLIDAYS -->
+        <div class="entity reference" style="top: 1160px; left: 120px; min-width: 220px;">
+            <div class="entity-header">HOLIDAYS</div>
+            <div class="entity-body">
+                <div class="field"><span class="pk">PK</span> <span class="name">id</span> <span class="type">BIGINT</span></div>
+                <div class="field-divider"></div>
+                <div class="field"><span class="name">holiday_date</span> <span class="type">DATE UNIQUE</span></div>
+                <div class="field"><span class="name">name</span> <span class="type">VARCHAR(200)</span></div>
+                <div class="field"><span class="name">description</span> <span class="type">VARCHAR(500)</span></div>
+                <div class="field"><span class="name">year</span> <span class="type">INT</span></div>
+                <div class="field"><span class="name">is_national</span> <span class="type">BOOLEAN</span></div>
+            </div>
+        </div>
+
+        <!-- ═══════════ TRANSLATION ═══════════ -->
+
+        <!-- TRANSLATION_KEYS -->
+        <div class="entity translation" style="top: 1100px; left: 820px; min-width: 250px;">
+            <div class="entity-header">TRANSLATION_KEYS</div>
+            <div class="entity-body">
+                <div class="field"><span class="pk">PK</span> <span class="name">id</span> <span class="type">BIGINT</span></div>
+                <div class="field-divider"></div>
+                <div class="field"><span class="name">code</span> <span class="type">VARCHAR(200) UNIQUE</span></div>
+                <div class="field"><span class="name">module</span> <span class="type">VARCHAR(50)</span></div>
+                <div class="field"><span class="name">description</span> <span class="type">VARCHAR(500)</span></div>
+                <div class="field"><span class="name">default_value</span> <span class="type">TEXT</span></div>
+                <div class="field"><span class="name">created_at / updated_at</span> <span class="type">DATETIME</span></div>
+            </div>
+        </div>
+
+        <!-- TRANSLATIONS -->
+        <div class="entity translation" style="top: 1320px; left: 820px; min-width: 250px;">
+            <div class="entity-header">TRANSLATIONS</div>
+            <div class="entity-body">
+                <div class="field"><span class="pk">PK</span> <span class="name">id</span> <span class="type">BIGINT</span></div>
+                <div class="field"><span class="fk">FK</span> <span class="name">translation_key_id</span> <span class="type">→ TRANSLATION_KEYS.id</span></div>
+                <div class="field-divider"></div>
+                <div class="field"><span class="name">locale</span> <span class="type">VARCHAR(10)</span></div>
+                <div class="field"><span class="name">value</span> <span class="type">TEXT</span></div>
+                <div class="field"><span class="name">updated_at</span> <span class="type">DATETIME</span></div>
+            </div>
+        </div>
+
+        <!-- ═══════════ RELATIONSHIP LABELS ═══════════ -->
+        <div class="cardinality" style="top: 290px; left: 500px;">1</div>
+        <div class="cardinality" style="top: 180px; left: 640px;">N</div>
+
+        <div class="cardinality" style="top: 330px; left: 500px;">1</div>
+        <div class="cardinality" style="top: 400px; left: 640px;">N</div>
+
+        <div class="rel-label" style="top: 665px; left: 250px;">1 complaint → N timeline entries</div>
+        <div class="rel-label" style="top: 665px; left: 530px;">1 complaint → N attachments</div>
+        <div class="rel-label" style="top: 930px; left: 150px;">1 complaint → N appeals</div>
+        <div class="rel-label" style="top: 930px; left: 520px;">1 complaint → N RE responses</div>
+        <div class="rel-label" style="top: 710px; left: 1000px;">1 draft → N attachments</div>
+        <div class="rel-label" style="top: 1290px; left: 860px;">1 key → N translations</div>
+
+        <!-- Relationship Flow Diagram -->
+        <div style="position: absolute; top: 1440px; left: 120px; width: 1700px; background: #fff; border-radius: 12px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+            <h3 style="font-size: 16px; margin-bottom: 16px; color: #1e3a5f;">Relationship Summary</h3>
+            <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                <thead>
+                    <tr style="background: #f8fafc;">
+                        <th style="padding: 8px 12px; text-align: left; border-bottom: 2px solid #e2e8f0;">Parent Entity</th>
+                        <th style="padding: 8px 12px; text-align: left; border-bottom: 2px solid #e2e8f0;">Child Entity</th>
+                        <th style="padding: 8px 12px; text-align: left; border-bottom: 2px solid #e2e8f0;">FK Column</th>
+                        <th style="padding: 8px 12px; text-align: left; border-bottom: 2px solid #e2e8f0;">Cardinality</th>
+                        <th style="padding: 8px 12px; text-align: left; border-bottom: 2px solid #e2e8f0;">Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">BANKS</td><td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">COMPLAINTS</td><td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">BANK_ID</td><td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">1:N</td><td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">Each bank can have many complaints filed against it</td></tr>
+                    <tr><td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">COMPLAINT_CATEGORIES</td><td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">COMPLAINTS</td><td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">CATEGORY_ID</td><td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">1:N</td><td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">Each category has many complaints</td></tr>
+                    <tr><td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">COMPLAINT_CATEGORIES</td><td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">COMPLAINT_CATEGORIES</td><td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">PARENT_ID</td><td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">1:N (self)</td><td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">Hierarchical categories (parent → sub-categories)</td></tr>
+                    <tr><td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">COMPLAINTS</td><td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">COMPLAINT_TIMELINE</td><td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">COMPLAINT_ID</td><td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">1:N</td><td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">Each complaint has multiple timeline/history entries</td></tr>
+                    <tr><td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">COMPLAINTS</td><td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">COMPLAINT_ATTACHMENTS</td><td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">COMPLAINT_ID</td><td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">1:N</td><td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">Each complaint can have multiple file attachments</td></tr>
+                    <tr><td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">COMPLAINTS</td><td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">APPEALS</td><td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">original_complaint_number</td><td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">1:N</td><td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">Complainant may file appeal against complaint resolution</td></tr>
+                    <tr><td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">COMPLAINTS</td><td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">RE_RESPONSE_TRACKER</td><td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">complaint_id</td><td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">1:N</td><td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">Tracks RE responses for forwarded complaints</td></tr>
+                    <tr><td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">REGULATED_ENTITIES</td><td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">RE_RESPONSE_TRACKER</td><td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">regulated_entity_id</td><td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">1:N</td><td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">Each RE may respond to many forwarded complaints</td></tr>
+                    <tr><td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">EMAIL_DRAFTS</td><td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">EMAIL_DRAFT_ATTACHMENTS</td><td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">draft_id</td><td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">1:N</td><td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">Each email draft can have multiple attachments</td></tr>
+                    <tr><td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">EMAIL_DRAFTS</td><td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">COMPLAINTS</td><td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">converted_complaint_id</td><td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">1:1</td><td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">Approved draft converts to one complaint</td></tr>
+                    <tr><td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">TRANSLATION_KEYS</td><td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">TRANSLATIONS</td><td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">translation_key_id</td><td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">1:N</td><td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">Each key has translations in multiple locales</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- CRPC Workflow State Diagram -->
+        <div style="position: absolute; top: 1680px; left: 120px; width: 1700px; background: #fff; border-radius: 12px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+            <h3 style="font-size: 16px; margin-bottom: 16px; color: #1e3a5f;">CRPC Email Draft — State Machine (EMAIL_DRAFTS.status)</h3>
+            <div style="display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; padding: 20px;">
+                <div style="background: #dbeafe; padding: 10px 18px; border-radius: 8px; font-weight: 600; font-size: 13px; border: 2px solid #3b82f6;">ASSIGNED</div>
+                <div style="font-size: 20px; color: #64748b;">→</div>
+                <div style="background: #fef3c7; padding: 10px 18px; border-radius: 8px; font-weight: 600; font-size: 13px; border: 2px solid #f59e0b;">SENT_FOR_APPROVAL</div>
+                <div style="font-size: 20px; color: #64748b;">→</div>
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                    <div style="background: #dcfce7; padding: 10px 18px; border-radius: 8px; font-weight: 600; font-size: 13px; border: 2px solid #10b981;">APPROVED</div>
+                    <div style="background: #fee2e2; padding: 10px 18px; border-radius: 8px; font-weight: 600; font-size: 13px; border: 2px solid #ef4444;">SENT_BACK</div>
+                </div>
+                <div style="font-size: 20px; color: #64748b;">→</div>
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                    <div style="background: #f0fdf4; padding: 10px 18px; border-radius: 8px; font-weight: 600; font-size: 13px; border: 2px solid #22c55e;">NEW_COMPLAINT</div>
+                    <div style="background: #fef2f2; padding: 10px 18px; border-radius: 8px; font-weight: 600; font-size: 13px; border: 2px solid #dc2626;">NOT_A_COMPLAINT</div>
+                </div>
+            </div>
+            <div style="text-align: center; font-size: 12px; color: #64748b; margin-top: 8px;">
+                ASSIGNED → SENT_FOR_APPROVAL (DEO forwards) | SENT_FOR_APPROVAL → APPROVED / SENT_BACK (Reviewer decides) | APPROVED → NEW_COMPLAINT (converts to complaint) | ASSIGNED/SENT_BACK → NOT_A_COMPLAINT (rejection)
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    let currentZoom = 0.8;
+
+    function setZoom(level) {
+        currentZoom = level;
+        document.getElementById('erCanvas').style.transform = `scale(${level})`;
+        document.querySelectorAll('.controls button').forEach(btn => btn.classList.remove('active'));
+        event.target.classList.add('active');
+    }
+</script>
+
+</body>
+</html>

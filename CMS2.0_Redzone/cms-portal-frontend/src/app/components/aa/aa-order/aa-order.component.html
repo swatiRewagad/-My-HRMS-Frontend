@@ -1,0 +1,76 @@
+<div class="order-panel">
+  <h5>Pass Order</h5>
+
+  @if (success()) {
+    <div class="success-msg">{{ success() }}</div>
+  } @else if (showPreview()) {
+    <!-- Order Preview -->
+    <div class="order-preview">
+      <div class="preview-header">
+        <strong>ORDER PREVIEW</strong>
+      </div>
+      <div class="preview-body">
+        <p><strong>Appeal No:</strong> {{ appeal?.appealNumber }}</p>
+        <p><strong>Classification:</strong> {{ appeal?.classification }}</p>
+        <p><strong>Outcome:</strong>
+          <span class="outcome-badge" [attr.data-outcome]="outcome">{{ outcome }}</span>
+        </p>
+        @if (isModified) {
+          <p><strong>Original Award:</strong> {{ originalAwardAmount }}</p>
+          <p><strong>Modified Amount:</strong> &#8377;{{ modifiedAmount }}</p>
+        }
+        <p><strong>Order Summary:</strong></p>
+        <div class="preview-summary">{{ orderSummary }}</div>
+      </div>
+      <div class="preview-actions">
+        <button class="submit-btn" [disabled]="submitting()" (click)="submitOrder()">
+          @if (submitting()) { Submitting... } @else { Confirm & Pass Order }
+        </button>
+        <button class="cancel-btn" (click)="showPreview.set(false)">Edit</button>
+      </div>
+    </div>
+  } @else {
+    <!-- Order Form -->
+    <div class="reference-info">
+      <span class="ref-label">Original Award Amount:</span>
+      <span class="ref-value">{{ originalAwardAmount }}</span>
+    </div>
+
+    <div class="form-field">
+      <label>Outcome</label>
+      <div class="outcome-options">
+        @for (o of outcomes; track o.value) {
+          <label class="outcome-option" [class.selected]="outcome === o.value">
+            <input type="radio" name="outcome" [value]="o.value" [(ngModel)]="outcome">
+            <div class="outcome-info">
+              <span class="outcome-label">{{ o.label }}</span>
+              <span class="outcome-desc">{{ o.description }}</span>
+            </div>
+          </label>
+        }
+      </div>
+    </div>
+
+    @if (isModified) {
+      <div class="form-field">
+        <label>Modified Amount (INR)</label>
+        <input type="number" [(ngModel)]="modifiedAmount" placeholder="Enter modified award amount" min="0" />
+      </div>
+    }
+
+    <div class="form-field">
+      <label>Order Summary</label>
+      <textarea [(ngModel)]="orderSummary" rows="5"
+                placeholder="Provide detailed order summary including reasoning..."></textarea>
+    </div>
+
+    @if (error()) {
+      <div class="error-msg">{{ error() }}</div>
+    }
+
+    <div class="form-actions">
+      <button class="preview-btn" (click)="previewOrder()">Preview Order</button>
+      <button class="cancel-btn" (click)="cancel()">Cancel</button>
+    </div>
+  }
+</div>

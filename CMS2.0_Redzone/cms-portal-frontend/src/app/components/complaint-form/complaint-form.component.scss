@@ -1,0 +1,112 @@
+.complaint-form-container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 2rem;
+
+  h2 { color: #1a237e; }
+  .subtitle { color: #666; margin-bottom: 2rem; }
+}
+
+.form-section {
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+
+  h3 { color: #1565c0; margin-bottom: 1rem; font-size: 1.1rem; }
+}
+
+.form-row { display: flex; gap: 1rem; }
+.form-row .form-group { flex: 1; }
+
+.form-group {
+  margin-bottom: 1rem;
+
+  label {
+    display: block;
+    font-weight: 500;
+    margin-bottom: 0.4rem;
+    color: #333;
+    .required { color: #d32f2f; }
+  }
+
+  input, select, textarea {
+    width: 100%;
+    padding: 0.7rem;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    &:focus { outline: none; border-color: #1565c0; box-shadow: 0 0 0 2px rgba(21,101,192,0.1); }
+  }
+
+  textarea { resize: vertical; }
+}
+
+.file-count { color: #666; font-size: 0.85rem; margin-top: 0.5rem; }
+
+.submit-btn {
+  display: block;
+  width: 100%;
+  padding: 1rem;
+  background: #1565c0;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+
+  &:disabled { background: #bdbdbd; cursor: not-allowed; }
+  &:hover:not(:disabled) { background: #0d47a1; }
+}
+
+.acknowledgement-container {
+  display: flex;
+  justify-content: center;
+  padding: 3rem 1rem;
+}
+
+.ack-card {
+  background: #e8f5e9;
+  border: 2px solid #4caf50;
+  border-radius: 16px;
+  padding: 3rem;
+  text-align: center;
+  max-width: 600px;
+
+  .ack-icon { font-size: 4rem; color: #2e7d32; }
+  h2 { color: #2e7d32; margin: 1rem 0; }
+
+  .ack-details {
+    background: #fff;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin: 1.5rem 0;
+    text-align: left;
+    p { margin: 0.5rem 0; }
+  }
+
+  .ack-message { color: #333; margin: 1rem 0; }
+}
+
+.track-btn {
+  margin-top: 1.5rem;
+  padding: 0.8rem 2rem;
+  background: #1565c0;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 1rem;
+  cursor: pointer;
+  &:hover { background: #0d47a1; }
+}
+
+.error-message {
+  background: #fff3e0;
+  border: 1px solid #ff9800;
+  padding: 1rem;
+  border-radius: 6px;
+  color: #e65100;
+  margin-bottom: 1rem;
+}

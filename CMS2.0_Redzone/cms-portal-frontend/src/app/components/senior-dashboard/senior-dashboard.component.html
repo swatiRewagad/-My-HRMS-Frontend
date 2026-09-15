@@ -1,0 +1,146 @@
+<div class="senior-dashboard">
+  <header class="page-header">
+    <div class="header-left">
+      <h1>Senior Dashboard</h1>
+      <p class="subtitle">TAT, Pipeline & Bottleneck Analytics</p>
+    </div>
+    <div class="header-right">
+      <button class="btn btn-outline btn-sm" (click)="navigate('/staff/reports')">Report Builder</button>
+    </div>
+  </header>
+
+  @if (loading()) {
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <p>Loading analytics...</p>
+    </div>
+  }
+
+  @if (error()) {
+    <div class="error-banner">{{ error() }}</div>
+  }
+
+  @if (!loading() && pipeline()) {
+    <!-- KPI Cards -->
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <span class="kpi-value">{{ pipeline()!.total }}</span>
+        <span class="kpi-label">Total Complaints</span>
+      </div>
+      <div class="kpi-card accent-blue">
+        <span class="kpi-value">{{ pipeline()!.activeBacklog }}</span>
+        <span class="kpi-label">Active Backlog</span>
+      </div>
+      <div class="kpi-card accent-green">
+        <span class="kpi-value">{{ pipeline()!.resolutionRate }}%</span>
+        <span class="kpi-label">Resolution Rate</span>
+      </div>
+      <div class="kpi-card" [class.accent-red]="tat()!.breachRate > 20" [class.accent-gold]="tat()!.breachRate <= 20">
+        <span class="kpi-value">{{ tat()!.breachRate }}%</span>
+        <span class="kpi-label">SLA Breach Rate</span>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-value">{{ tat()!.avgElapsedDays }}d</span>
+        <span class="kpi-label">Avg Elapsed (Business Days)</span>
+      </div>
+      <div class="kpi-card accent-red">
+        <span class="kpi-value">{{ tat()!.breached }}</span>
+        <span class="kpi-label">Breached</span>
+      </div>
+    </div>
+
+    <!-- Pipeline Status -->
+    <div class="pipeline-bar">
+      <div class="pipeline-segment pending" [style.flex]="pipeline()!.pending">
+        <span class="seg-label">Pending {{ pipeline()!.pending }}</span>
+      </div>
+      <div class="pipeline-segment in-progress" [style.flex]="pipeline()!.inProgress">
+        <span class="seg-label">In Progress {{ pipeline()!.inProgress }}</span>
+      </div>
+      <div class="pipeline-segment escalated" [style.flex]="pipeline()!.escalated">
+        <span class="seg-label">Escalated {{ pipeline()!.escalated }}</span>
+      </div>
+      <div class="pipeline-segment resolved" [style.flex]="pipeline()!.resolved">
+        <span class="seg-label">Resolved {{ pipeline()!.resolved }}</span>
+      </div>
+      <div class="pipeline-segment closed" [style.flex]="pipeline()!.closed">
+        <span class="seg-label">Closed {{ pipeline()!.closed }}</span>
+      </div>
+    </div>
+
+    <!-- Charts Grid - Row 1 -->
+    <div class="charts-grid">
+      <div class="chart-card wide">
+        <h3>Weekly Filing vs Resolution Trend (12 weeks)</h3>
+        <div class="chart-container tall">
+          <canvas #trendChart></canvas>
+        </div>
+      </div>
+
+      <div class="chart-card">
+        <h3>TAT Health Distribution</h3>
+        <div class="chart-container square">
+          <canvas #tatPieChart></canvas>
+        </div>
+      </div>
+
+      <div class="chart-card">
+        <h3>Priority Distribution</h3>
+        <div class="chart-container square">
+          <canvas #priorityRadarChart></canvas>
+        </div>
+      </div>
+
+      <div class="chart-card wide">
+        <h3>RE Performance — Volume vs Resolution vs SLA Breach</h3>
+        <div class="chart-container tall">
+          <canvas #entityVolumeChart></canvas>
+        </div>
+      </div>
+
+      <div class="chart-card">
+        <h3>Backlog by Department</h3>
+        <div class="chart-container">
+          <canvas #deptBarChart></canvas>
+        </div>
+      </div>
+
+      <div class="chart-card">
+        <h3>Status Distribution by Department</h3>
+        <div class="chart-container">
+          <canvas #stackedDeptChart></canvas>
+        </div>
+      </div>
+
+      <div class="chart-card wide">
+        <h3>Top Categories by Backlog</h3>
+        <div class="chart-container">
+          <canvas #categoryBarChart></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottleneck Alerts -->
+    @if (bottlenecks()) {
+      <div class="bottleneck-section">
+        <h3>Unassigned Complaints by Department</h3>
+        <div class="bottleneck-grid">
+          @for (entry of getUnassignedEntries(); track entry.key) {
+            <div class="bottleneck-card" [class.critical]="entry.value > 50">
+              <span class="bn-dept">{{ entry.key }}</span>
+              <span class="bn-count">{{ entry.value }}</span>
+              <span class="bn-label">unassigned</span>
+            </div>
+          }
+          @if (getUnassignedEntries().length === 0) {
+            <p class="no-bottleneck">No unassigned backlogs detected.</p>
+          }
+        </div>
+      </div>
+    }
+
+    <div class="footer-meta">
+      Data computed at {{ pipeline()!.computedAt | date:'medium' }} · Auto-refreshes every 2 minutes
+    </div>
+  }
+</div>

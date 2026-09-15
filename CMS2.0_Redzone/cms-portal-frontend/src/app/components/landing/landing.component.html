@@ -1,0 +1,87 @@
+<div class="landing-page">
+  @if (!showEligibility()) {
+    <section class="hero">
+      <div class="hero-content">
+        <img src="assets/rbi-logo.jpg" alt="RBI" class="rbi-logo" onerror="this.src='assets/rbi-logo.svg'">
+        <h1>RBI Complaint Management System</h1>
+        <p class="tagline">Integrated Ombudsman Scheme - File and Track Complaints Against Regulated Entities</p>
+
+        <div class="action-cards">
+
+<div class="action-card search-card" (click)="navigateToSearch()">
+            <i class="pi pi-search"></i>
+            <h3>Search Complaints</h3>
+            <p>Full-text search across all complaints with advanced filters</p>
+          </div>
+
+          <div class="action-card simulator-card" (click)="navigateToEmailSimulator()">
+            <i class="pi pi-bolt"></i>
+            <h3>Email Simulation</h3>
+            <p>Simulate incoming emails to test ingestion, OCR, and Round Robin assignment</p>
+          </div>
+
+<div class="action-card staff-card" (click)="navigateToStaffPortal()">
+            <i class="pi pi-lock"></i>
+            <h3>Staff Portal (SSO)</h3>
+            <p>RBIO / CEPC officers — Keycloak SSO login for complaint processing</p>
+          </div>
+
+          <div class="action-card public-card" (click)="navigateToPublicPortal()">
+            <i class="pi pi-globe"></i>
+            <h3>Public Portal 1</h3>
+            <p>Standard complaint filing — eligibility check, multi-step form, track, withdraw, appeal</p>
+          </div>
+
+          <div class="action-card public-card portal2-card" (click)="navigateToPortal2()">
+            <i class="pi pi-question-circle"></i>
+            <h3>Public Portal 2</h3>
+            <p>"Can RBI help?" — guided eligibility wizard with timeline visualization before filing</p>
+          </div>
+
+          <div class="action-card keycloak-card" (click)="navigateToKeycloakAdmin()">
+            <i class="pi pi-users"></i>
+            <h3>Keycloak Admin</h3>
+            <p>Manage users, roles, realm settings, and department access mappings</p>
+          </div>
+
+          <div class="action-card rules-card" (click)="navigateToRulesConfig()">
+            <i class="pi pi-book"></i>
+            <h3>Rule Engine</h3>
+            <p>Configure routing, escalation, priority, and SLA rules with DRL editor</p>
+          </div>
+
+          <div class="action-card report-card" (click)="navigateToReportBuilder()">
+            <i class="pi pi-chart-bar"></i>
+            <h3>Report Query Builder</h3>
+            <p>Build custom reports, add widgets, schedule exports and visualize KPIs</p>
+          </div>
+
+
+        </div>
+      </div>
+    </section>
+
+    <section class="info-section">
+      <h2>Before You File</h2>
+      <div class="info-grid">
+        <div class="info-item">
+          <i class="pi pi-building"></i>
+          <h4>Approach Your Bank First</h4>
+          <p>You must first approach your bank/financial institution with your grievance.</p>
+        </div>
+        <div class="info-item">
+          <i class="pi pi-clock"></i>
+          <h4>Wait 30 Days</h4>
+          <p>Allow 30 days for the bank to respond before filing with RBI.</p>
+        </div>
+        <div class="info-item">
+          <i class="pi pi-check-square"></i>
+          <h4>Eligibility Check</h4>
+          <p>An eligibility questionnaire will verify your complaint meets RBI criteria.</p>
+        </div>
+      </div>
+    </section>
+  } @else {
+    <app-eligibility-questionnaire (eligible)="onEligible()"/>
+  }
+</div>

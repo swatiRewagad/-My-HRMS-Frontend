@@ -1,0 +1,94 @@
+<div class="faq-page">
+  <header class="faq-page-header">
+    <h1>{{ 'faq.page_title' | translate }}</h1>
+    <p class="faq-page-subtitle">{{ 'faq.page_subtitle' | translate }}</p>
+  </header>
+
+  <!-- Search and Filter Bar -->
+  <div class="faq-toolbar">
+    <div class="faq-search">
+      <i class="pi pi-search" aria-hidden="true"></i>
+      <input
+        type="text"
+        [ngModel]="searchTerm()"
+        (ngModelChange)="onSearchInput($event)"
+        [placeholder]="'faq.search_placeholder' | translate"
+        class="faq-search-input"
+        aria-label="Search FAQs"
+      />
+    </div>
+
+    <div class="faq-categories">
+      <button
+        class="category-btn"
+        [class.active]="selectedCategory() === ''"
+        (click)="filterByCategory('')"
+      >
+        {{ 'faq.all_categories' | translate }}
+      </button>
+      @for (cat of categories(); track cat) {
+        <button
+          class="category-btn"
+          [class.active]="selectedCategory() === cat"
+          (click)="filterByCategory(cat)"
+        >
+          {{ cat }}
+        </button>
+      }
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  @if (loading()) {
+    <div class="faq-loading">
+      <i class="pi pi-spinner pi-spin"></i>
+      <span>{{ 'faq.loading' | translate }}</span>
+    </div>
+  }
+
+  <!-- Error State -->
+  @if (error()) {
+    <div class="faq-error">
+      <i class="pi pi-exclamation-triangle"></i>
+      <span>{{ error() | translate }}</span>
+    </div>
+  }
+
+  <!-- Empty State -->
+  @if (!loading() && !error() && filteredFaqs().length === 0) {
+    <div class="faq-empty">
+      <i class="pi pi-info-circle"></i>
+      <span>{{ 'faq.empty_state' | translate }}</span>
+    </div>
+  }
+
+  <!-- FAQ List -->
+  @if (!loading() && filteredFaqs().length > 0) {
+    <div class="faq-list">
+      @for (faq of filteredFaqs(); track faq.id) {
+        <div class="faq-item" [class.open]="isExpanded(faq.id)">
+          <button
+            class="faq-question"
+            (click)="toggleFaq(faq.id)"
+            [attr.aria-expanded]="isExpanded(faq.id)"
+            [attr.aria-controls]="'faq-answer-' + faq.id"
+          >
+            <span>{{ faq.questionKey | translate }}</span>
+            <i class="pi" [class.pi-chevron-up]="isExpanded(faq.id)" [class.pi-chevron-down]="!isExpanded(faq.id)" aria-hidden="true"></i>
+          </button>
+          @if (isExpanded(faq.id)) {
+            <div class="faq-answer" [id]="'faq-answer-' + faq.id" role="region">
+              <p>{{ faq.answerKey | translate }}</p>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  }
+
+  <div class="faq-back">
+    <a routerLink="/public" class="back-link">
+      <i class="pi pi-arrow-left"></i> {{ 'faq.back_to_home' | translate }}
+    </a>
+  </div>
+</div>

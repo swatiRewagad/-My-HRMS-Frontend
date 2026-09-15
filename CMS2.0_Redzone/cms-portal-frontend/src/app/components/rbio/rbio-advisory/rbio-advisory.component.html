@@ -1,0 +1,82 @@
+<div class="rbio-advisory">
+  <h4>Advisory Opinion</h4>
+
+  <!-- Form -->
+  @if (showForm()) {
+    <div class="advisory-form">
+      <div class="form-grid">
+        <div class="form-field full">
+          <label>Subject *</label>
+          <input type="text" [(ngModel)]="advisorySubject" placeholder="Advisory subject line..." />
+        </div>
+        <div class="form-field full">
+          <label>Classification *</label>
+          <select [(ngModel)]="advisoryClassification">
+            <option value="OPERATIONAL">Operational</option>
+            <option value="PROCEDURAL">Procedural</option>
+            <option value="POLICY">Policy</option>
+          </select>
+        </div>
+        <div class="form-field full">
+          <label>Advisory Text *</label>
+          <textarea [(ngModel)]="advisoryText" rows="8" placeholder="Detailed advisory opinion text..."></textarea>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="submit-btn preview-btn" [disabled]="!isFormValid" (click)="openPreview()">
+          Preview Advisory
+        </button>
+      </div>
+    </div>
+  }
+
+  <!-- Preview Mode -->
+  @if (showPreview()) {
+    <div class="advisory-preview">
+      <div class="preview-header">
+        <span class="preview-badge">PREVIEW</span>
+        <span class="classification-badge" [attr.data-type]="advisoryClassification">
+          {{ advisoryClassification }}
+        </span>
+      </div>
+      <div class="preview-content">
+        <div class="preview-field">
+          <span class="preview-label">Subject:</span>
+          <span class="preview-value">{{ advisorySubject }}</span>
+        </div>
+        <div class="preview-field">
+          <span class="preview-label">Classification:</span>
+          <span class="preview-value">{{ advisoryClassification }}</span>
+        </div>
+        <div class="preview-field">
+          <span class="preview-label">Complaint:</span>
+          <span class="preview-value">{{ complaint?.complaintNumber || complaint?.complaintId }}</span>
+        </div>
+        <div class="preview-field">
+          <span class="preview-label">Issued By:</span>
+          <span class="preview-value">{{ auth.currentUser()?.firstName }} {{ auth.currentUser()?.lastName }}</span>
+        </div>
+        <div class="preview-body">
+          <span class="preview-label">Advisory Text:</span>
+          <p class="preview-text">{{ advisoryText }}</p>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="submit-btn" [disabled]="processing()" (click)="submitAdvisory()">
+          @if (processing()) { Submitting... } @else { Confirm &amp; Issue Advisory }
+        </button>
+        <button class="cancel-btn" (click)="editForm()">Edit</button>
+      </div>
+    </div>
+  }
+
+  <!-- Result -->
+  @if (resultMessage()) {
+    <div class="result-msg" [class.success]="resultSuccess()" [class.error]="!resultSuccess()">
+      {{ resultMessage() }}
+      @if (resultSuccess()) {
+        <button class="reset-btn" (click)="resetForm()">Issue Another Advisory</button>
+      }
+    </div>
+  }
+</div>
