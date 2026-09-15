@@ -1,5 +1,6 @@
 package com.hrms.cms.controller;
 
+import com.rbi.cms.common.dto.ApiResponse;
 import com.hrms.cms.dto.EmailReplyWithFormRequest;
 import com.hrms.cms.dto.IncomingEmailRequest;
 import com.hrms.cms.entity.SimulatedEmail;
@@ -34,8 +35,9 @@ public class EmailSimulationController {
     }
 
     @GetMapping("/threads/{threadId}")
-    public ResponseEntity<Map<String, Object>> getThread(@PathVariable String threadId) {
-        return ResponseEntity.ok(emailService.getThread(threadId));
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getThread(@PathVariable String threadId) {
+        Map<String, Object> thread = emailService.getThread(threadId);
+        return ResponseEntity.ok(ApiResponse.success(thread));
     }
 
     @GetMapping("/inbox")
@@ -56,5 +58,12 @@ public class EmailSimulationController {
     @GetMapping("/stats")
     public ResponseEntity<Map<String, Object>> getStats() {
         return ResponseEntity.ok(emailService.getStats());
+    }
+
+    @GetMapping("/complaints/{complaintNumber}/threads")
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getEmailThreadsByComplaint(
+            @PathVariable String complaintNumber) {
+        List<Map<String, Object>> threads = emailService.getThreadsByComplaintNumber(complaintNumber);
+        return ResponseEntity.ok(ApiResponse.success(threads));
     }
 }

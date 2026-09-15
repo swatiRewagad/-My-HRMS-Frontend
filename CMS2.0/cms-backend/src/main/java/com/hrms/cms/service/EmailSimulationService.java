@@ -193,6 +193,33 @@ public class EmailSimulationService {
     }
 
     @Transactional(readOnly = true)
+    public List<Map<String, Object>> getThreadsByComplaintNumber(String complaintNumber) {
+        List<SimulatedEmail> emails = emailRepository.findByComplaintNumberOrderBySentAtAsc(complaintNumber);
+
+        Map<String, List<SimulatedEmail>> grouped = emails.stream()
+                .collect(Collectors.groupingBy(SimulatedEmail::getThreadId, LinkedHashMap::new, Collectors.toList()));
+
+        List<Map<String, Object>> threads = new ArrayList<>();
+        for (Map.Entry<String, List<SimulatedEmail>> entry : grouped.entrySet()) {
+            List<SimulatedEmail> threadEmails = entry.getValue();
+            SimulatedEmail first = threadEmails.stream()
+                    .min(Comparator.comparing(SimulatedEmail::getSentAt))
+                    .orElse(threadEmails.get(0));
+
+            Map<String, Object> thread = new LinkedHashMap<>();
+            thread.put("threadId", entry.getKey());
+            thread.put("complaintNumber", first.getComplaintNumber());
+            thread.put("fromEmail", first.getFromEmail());
+            thread.put("subject", first.getSubject());
+            thread.put("sentAt", first.getSentAt());
+            thread.put("emailCount", threadEmails.size());
+            thread.put("status", first.getStatus());
+            threads.add(thread);
+        }
+        return threads;
+    }
+
+    @Transactional(readOnly = true)
     public Map<String, Object> getThread(String threadId) {
         List<SimulatedEmail> emails = emailRepository.findByThreadIdOrderBySentAtAsc(threadId);
         if (emails.isEmpty()) throw new RuntimeException("Thread not found");
