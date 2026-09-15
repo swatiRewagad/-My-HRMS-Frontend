@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.HexFormat;
 import java.util.Optional;
@@ -24,8 +25,27 @@ public class OtpService {
     private final AuthSecurityProperties authProps;
     private final SecureRandom secureRandom = new SecureRandom();
 
+    /**
+     * UST8: seconds the caller must still wait before another OTP may be requested, or 0 when a request
+     * is allowed now. The browser timer alone is no control — a scripted client simply skips it.
+     */
+    public int resendCooldownRemaining(String mobileNumber) {
+        int cooldown = authProps.getOtp().getResendCooldownSeconds();
+        if (cooldown <= 0) return 0;
+        return otpAttemptRepository.findTopByMobileNumberOrderByCreatedAtDesc(mobileNumber)
+                .map(last -> {
+                    long elapsed = Duration.between(last.getCreatedAt(), LocalDateTime.now()).toSeconds();
+                    return elapsed >= cooldown ? 0 : (int) (cooldown - elapsed);
+                })
+                .orElse(0);
+    }
+
     @Transactional
     public String generateOtp(String mobileNumber, String sessionId, String channel, String email) {
+        // UST8: without this an earlier OTP stays valid alongside the new one, so a regenerated code
+        // does not actually retire the code that was already sent.
+        otpAttemptRepository.invalidateActiveOtps(mobileNumber, LocalDateTime.now());
+
         String otp = authProps.getOtp().isDevAutoPopulate() ? "123456" : generateSecureOtp();
         String otpHash = hashValue(otp);
 

@@ -132,6 +132,9 @@ cms:
     scheme-version: ${ELIGIBILITY_SCHEME_VERSION:RBIOS_2021}
     # Cited verbatim in the citizen-facing non-maintainable closure letter.
     scheme-name: ${ELIGIBILITY_SCHEME_NAME:Reserve Bank - Integrated Ombudsman Scheme, 2021}
+    # UST12: days from the RE complaint date within which the grievance may be brought to the
+    # Ombudsman (one year and thirty days minus the 30-day RE window under the 2021 Scheme).
+    grievance-filing-window-days: ${ELIGIBILITY_FILING_WINDOW_DAYS:310}
   mre:
     version: ${MRE_VERSION:1}
     re-window-days: ${MRE_RE_WINDOW:30}
@@ -163,6 +166,8 @@ cms:
       expiry-minutes: ${OTP_EXPIRY_MINUTES:5}
       max-resend-per-hour: ${OTP_MAX_RESEND_PER_HOUR:5}
       max-verify-attempts-per-otp: ${OTP_MAX_VERIFY_ATTEMPTS:3}
+      # UST8: minimum gap between OTP requests for the same mobile, enforced server-side.
+      resend-cooldown-seconds: ${OTP_RESEND_COOLDOWN_SECONDS:120}
       dev-auto-populate: ${OTP_DEV_AUTO_POPULATE:true}
     captcha:
       length: ${CAPTCHA_LENGTH:6}
@@ -177,6 +182,10 @@ cms:
       otp-requests-per-mobile-per-hour: ${OTP_RATE_MOBILE_HOUR:5}
       otp-requests-per-ip-per-hour: ${OTP_RATE_IP_HOUR:20}
       login-attempts-per-ip-per-minute: ${LOGIN_RATE_IP_MINUTE:10}
+    consent:
+      # UST5: bump this whenever the DPDP notice wording changes. Prior consents then stop counting
+      # as current, so citizens are re-asked instead of being bound by a notice they never saw.
+      version: ${CONSENT_VERSION:DPDP_2023_V1}
 
 crpc:
   threshold:

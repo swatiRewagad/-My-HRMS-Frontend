@@ -8,6 +8,14 @@ import java.time.LocalDate;
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor
 public class FileComplaintRequest {
 
+    /**
+     * UST17: the reference is echoed back to the Regulated Entity, so it is restricted to the characters
+     * REs actually issue. Blank is allowed because the field itself is optional.
+     */
+    static final String RE_REFERENCE_PATTERN = "^[A-Za-z0-9/_-]*$";
+    static final String RE_REFERENCE_MESSAGE =
+            "Reference number may contain only letters, digits, hyphen, underscore and slash";
+
     @NotBlank(message = "Complainant name is required")
     @Size(max = 200, message = "Name must not exceed 200 characters")
     private String complainantName;
@@ -64,6 +72,7 @@ public class FileComplaintRequest {
     private String filingType;
 
     @Size(max = 100)
+    @Pattern(regexp = RE_REFERENCE_PATTERN, message = RE_REFERENCE_MESSAGE)
     private String bankComplaintReference;
 
     private String bankComplaintDate;
@@ -73,10 +82,24 @@ public class FileComplaintRequest {
     @PastOrPresent
     private LocalDate reComplaintDate;
 
-    @Size(max = 200)
+    @Size(max = 100, message = "Reference number must not exceed 100 characters")
+    @Pattern(regexp = RE_REFERENCE_PATTERN, message = RE_REFERENCE_MESSAGE)
     private String reComplaintReference;
 
     private Boolean reRepliedAndDissatisfied;
+
+    /**
+     * UST5: the wizard's step-5 declarations. Only ONLINE filings carry them — a complaint arriving by
+     * email or physical letter was never shown a checkbox, and rejecting those would drop legitimate
+     * intake on the floor.
+     */
+    private Boolean declarationAccepted;
+
+    @AssertTrue(message = "You must accept the declaration and data processing consent to file a complaint")
+    public boolean isDeclarationAcceptedWhenRequired() {
+        if (filingType != null && !"ONLINE".equalsIgnoreCase(filingType)) return true;
+        return Boolean.TRUE.equals(declarationAccepted);
+    }
 
     // ═══ Authorised Representative (D7) ═══
     // The wizard already enforces these as mandatory once hasAuthRep is "yes", so the server mirrors

@@ -19,6 +19,8 @@ export interface ComplaintRegistrationRequest {
   reComplaintDate?: string;
   reComplaintReference?: string;
   reRepliedAndDissatisfied?: boolean;
+  /** UST5: required by the server for ONLINE filings — see FileComplaintRequest.isDeclarationAcceptedWhenRequired. */
+  declarationAccepted?: boolean;
 }
 
 export interface ComplaintAcknowledgement {

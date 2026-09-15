@@ -33,6 +33,9 @@ class FileStorageServiceTest {
     @TempDir
     Path tempDir;
 
+    /** Uploads are now signature-checked, so .pdf fixtures must actually start like a PDF. */
+    private static final byte[] PDF = "%PDF-1.7 stub content".getBytes();
+
     @BeforeEach
     void setUp() throws IOException {
         config = new FileStorageConfig();
@@ -45,7 +48,7 @@ class FileStorageServiceTest {
 
         Files.createDirectories(tempDir.resolve("temp-chunks"));
 
-        fileStorageService = new FileStorageService(config, attachmentRepository);
+        fileStorageService = new FileStorageService(config, attachmentRepository, new FileUploadValidator(config));
     }
 
     @Nested
@@ -97,22 +100,8 @@ class FileStorageServiceTest {
                 return a;
             });
 
-            String uploadId = "upload-complete";
-            for (int i = 0; i < 2; i++) {
-                MockMultipartFile chunk = new MockMultipartFile("file", "doc.pdf", "application/pdf",
-                        ("chunk" + i).getBytes());
-                fileStorageService.handleChunkUpload(chunk, uploadId, i, 2, "doc.pdf", "CMS-002", 2L, 100L);
-            }
-
-            // After second chunk, should be complete
-            MockMultipartFile lastChunk = new MockMultipartFile("file", "doc.pdf", "application/pdf", "last".getBytes());
-            // Re-upload chunk index 1 to trigger assembly
-            Path chunkDir = config.getTempChunkDir().resolve(uploadId);
-            // Chunks already exist from loop above, verify response
-            // The second iteration of the loop already assembled, let's test fresh:
-
             String freshUploadId = "fresh-upload";
-            MockMultipartFile c0 = new MockMultipartFile("file", "report.pdf", "application/pdf", "part1".getBytes());
+            MockMultipartFile c0 = new MockMultipartFile("file", "report.pdf", "application/pdf", PDF);
             ChunkUploadResponse r0 = fileStorageService.handleChunkUpload(c0, freshUploadId, 0, 2, "report.pdf", "CMS-003", 3L, 100L);
             assertThat(r0.isComplete()).isFalse();
 
@@ -141,7 +130,7 @@ class FileStorageServiceTest {
 
         @Test
         void shouldUploadFileSuccessfully() throws IOException {
-            MockMultipartFile file = new MockMultipartFile("file", "report.pdf", "application/pdf", "pdf-content".getBytes());
+            MockMultipartFile file = new MockMultipartFile("file", "report.pdf", "application/pdf", PDF);
             when(attachmentRepository.findByComplaintId(1L)).thenReturn(Collections.emptyList());
             when(attachmentRepository.save(any(ComplaintAttachment.class))).thenAnswer(inv -> {
                 ComplaintAttachment a = inv.getArgument(0);
@@ -162,8 +151,8 @@ class FileStorageServiceTest {
             MockMultipartFile file = new MockMultipartFile("file", "virus.exe", "application/octet-stream", "data".getBytes());
 
             assertThatThrownBy(() -> fileStorageService.handleSingleUpload(file, "CMS-001", 1L))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessage("File type not allowed");
+                    .isInstanceOf(FileUploadValidator.InvalidUploadException.class)
+                    .hasMessageContaining("not allowed");
         }
 
         @Test
@@ -172,14 +161,24 @@ class FileStorageServiceTest {
             MockMultipartFile file = new MockMultipartFile("file", "big.pdf", "application/pdf", "a".repeat(100).getBytes());
 
             assertThatThrownBy(() -> fileStorageService.handleSingleUpload(file, "CMS-001", 1L))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessage("File exceeds max size");
+                    .isInstanceOf(FileUploadValidator.InvalidUploadException.class)
+                    .hasMessageContaining("maximum size");
+        }
+
+        @Test
+        void shouldRejectDisguisedExecutable() {
+            MockMultipartFile file = new MockMultipartFile("file", "payload.pdf", "application/pdf",
+                    new byte[]{'M', 'Z', (byte) 0x90, 0x00});
+
+            assertThatThrownBy(() -> fileStorageService.handleSingleUpload(file, "CMS-001", 1L))
+                    .isInstanceOf(FileUploadValidator.InvalidUploadException.class)
+                    .hasMessageContaining("do not match");
         }
 
         @Test
         void shouldRejectWhenMaxFilesReached() {
             config.setMaxFilesPerComplaint(2);
-            MockMultipartFile file = new MockMultipartFile("file", "doc.pdf", "application/pdf", "data".getBytes());
+            MockMultipartFile file = new MockMultipartFile("file", "doc.pdf", "application/pdf", PDF);
 
             ComplaintAttachment existing1 = ComplaintAttachment.builder().id(1L).build();
             ComplaintAttachment existing2 = ComplaintAttachment.builder().id(2L).build();

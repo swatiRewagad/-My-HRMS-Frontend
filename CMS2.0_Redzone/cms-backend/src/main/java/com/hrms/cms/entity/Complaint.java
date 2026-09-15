@@ -109,6 +109,12 @@ public class Complaint {
 
     private Boolean reRepliedAndDissatisfied;
 
+    /**
+     * UST5: the step-5 declaration accepted at filing time. Null for intake channels that never
+     * showed a checkbox (email, physical letter, walk-in), so absence is not a compliance gap.
+     */
+    private Boolean declarationAccepted;
+
     // Maintainability triage (Phase 2/5)
     @Column(length = 10)
     private String triageSignal;

@@ -132,6 +132,7 @@ public class ComplaintService {
                 .reComplaintDate(req.getReComplaintDate())
                 .reComplaintReference(req.getReComplaintReference())
                 .reRepliedAndDissatisfied(req.getReRepliedAndDissatisfied())
+                .declarationAccepted(req.getDeclarationAccepted())
                 .hasAuthRep(req.getHasAuthRep())
                 .throughAdvocate(req.getThroughAdvocate())
                 .repName(req.getRepName())
@@ -277,9 +278,8 @@ public class ComplaintService {
             if (req.getReComplaintDate() == null) {
                 throw new IllegalArgumentException("RE complaint date is required when prior complaint to RE is indicated");
             }
-            if (req.getReComplaintReference() == null || req.getReComplaintReference().isBlank()) {
-                throw new IllegalArgumentException("RE complaint reference is required when prior complaint to RE is indicated");
-            }
+            // UST17: the acknowledgement number is optional — not every RE issues one, and requiring it
+            // here rejected complaints the wizard had legitimately accepted.
             if (req.getReComplaintDate().isAfter(java.time.LocalDate.now())) {
                 throw new IllegalArgumentException("RE complaint date cannot be in the future");
             }

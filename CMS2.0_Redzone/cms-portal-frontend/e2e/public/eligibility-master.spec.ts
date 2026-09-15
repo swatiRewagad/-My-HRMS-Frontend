@@ -21,6 +21,17 @@ const LOCALES = ['en', 'hi', 'mr', 'bn', 'te', 'ta', 'gu', 'ur', 'kn', 'ml'];
 const WRONG_YEARS = ['2026', '২০২৬'];
 
 /**
+ * Blocking questions whose Scheme clause has NOT been verified against the published Scheme text.
+ * They are allowed to carry a null clauseReference precisely because the alternative — inventing a
+ * plausible-looking citation — would put unverified legal text in front of a citizen being denied
+ * statutory recourse. Remove a key from this list as soon as the authoritative clause is supplied.
+ *
+ * isComplainantSelf (BRD row 15): the clause barring an advocate-filed complaint where the filer is
+ * not the complainant is still to be confirmed by the business owner.
+ */
+const CLAUSE_PENDING_VERIFICATION = ['isComplainantSelf'];
+
+/**
  * The dev server's environment.ts API base is fixed at build time. When API_BASE_URL points
  * somewhere else, redirect the app's calls so the UI tests exercise the intended backend.
  * Registered in beforeEach so per-test fault-injection routes still take precedence.
@@ -59,9 +70,27 @@ test.describe('FR-G-007 — Eligibility questions are master data (D14)', () => 
       expect(['select', 'radio']).toContain(q.questionType);
       expect(q.questionText).toBeTruthy();
       if (q.blockOn) {
-        expect(q.clauseReference, `${q.questionKey} blocks but cites no clause`).toBeTruthy();
         expect(q.blockMessage, `${q.questionKey} blocks with no message`).toBeTruthy();
+        if (!CLAUSE_PENDING_VERIFICATION.includes(q.questionKey)) {
+          expect(q.clauseReference, `${q.questionKey} blocks but cites no clause`).toBeTruthy();
+        }
       }
+    }
+  });
+
+  test('the clause-pending exceptions are still genuinely uncited, not quietly guessed', async ({ request }) => {
+    // Guards the exception list from both directions: a guessed clause must not appear on a row whose
+    // clause is unverified, and once the authoritative clause IS supplied the row must be removed from
+    // CLAUSE_PENDING_VERIFICATION so the main assertion covers it again.
+    const body = await (await request.get(`${API_BASE}/api/v1/eligibility/questions`)).json();
+    const byKey = new Map<string, any>(body.data.map((q: any) => [q.questionKey, q]));
+
+    for (const key of CLAUSE_PENDING_VERIFICATION) {
+      const q = byKey.get(key);
+      if (!q) continue;
+      expect(q.clauseReference,
+        `${key} now cites a clause — supply it deliberately and drop ${key} from CLAUSE_PENDING_VERIFICATION`)
+        .toBeFalsy();
     }
   });
 

@@ -26,6 +26,12 @@ public class EligibilityWizardController {
     @Value("${cms.mre.filing-deadline-days:90}")
     private int filingDeadlineDays;
 
+    @Value("${cms.mre.limitation-period-years:3}")
+    private int limitationPeriodYears;
+
+    @Value("${cms.eligibility.grievance-filing-window-days:310}")
+    private int grievanceFilingWindowDays;
+
     @Value("${cms.eligibility.scheme-version:RBIOS_2021}")
     private String schemeVersion;
 
@@ -48,6 +54,12 @@ public class EligibilityWizardController {
         body.put("success", true);
         body.put("schemeVersion", scheme);
         body.put("schemeName", schemeName);
+        // UST11/UST12: the wizard must not carry its own copy of the Scheme's timing rules, or a
+        // change to cms.mre.* would silently apply on the server and not in the citizen's browser.
+        body.put("reWindowDays", reWindowDays);
+        body.put("filingDeadlineDays", filingDeadlineDays);
+        body.put("grievanceFilingWindowDays", grievanceFilingWindowDays);
+        body.put("limitationPeriodYears", limitationPeriodYears);
         body.put("data", questions);
         return ResponseEntity.ok(body);
     }

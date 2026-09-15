@@ -86,6 +86,7 @@ public class PortalFullTranslationSeeder implements CommandLineRunner {
         seed("layout.session_expires", "layout", "Session expires in:");
         seed("layout.logout", "layout", "Logout");
         seed("layout.need_help", "layout", "Need help ?");
+        seed("nav.help", "nav", "Help");
         seed("layout.need_assistance", "layout", "Need Assistance? Call 14448");
         seed("layout.assistance_desc", "layout", "The contact center (#14448) with Interactive Voice Response System (IVRS) is available 24x7, while the facility to connect to Contact Centre personnel is available from Monday to Saturday except for National Holidays, between 8:00 AM to 10:00 PM for English, Hindi, and ten regional languages.");
 
@@ -370,6 +371,7 @@ public class PortalFullTranslationSeeder implements CommandLineRunner {
         m.put("layout.session_expires", "सत्र समाप्त होने में:");
         m.put("layout.logout", "लॉगआउट");
         m.put("layout.need_help", "मदद चाहिए?");
+        m.put("nav.help", "सहायता");
         m.put("layout.need_assistance", "सहायता चाहिए? 14448 पर कॉल करें");
 
         m.put("login.page_title", "सत्यापन");
@@ -644,6 +646,7 @@ public class PortalFullTranslationSeeder implements CommandLineRunner {
         m.put("layout.session_expires", "सत्र संपण्यात:");
         m.put("layout.logout", "लॉगआउट");
         m.put("layout.need_help", "मदत हवी?");
+        m.put("nav.help", "मदत");
         m.put("layout.need_assistance", "मदत हवी? 14448 वर कॉल करा");
 
         m.put("login.page_title", "सत्यापन");
@@ -826,6 +829,7 @@ public class PortalFullTranslationSeeder implements CommandLineRunner {
         m.put("layout.session_expires", "সেশন শেষ হবে:");
         m.put("layout.logout", "লগআউট");
         m.put("layout.need_help", "সাহায্য প্রয়োজন?");
+        m.put("nav.help", "সহায়তা");
         m.put("layout.need_assistance", "সাহায্য প্রয়োজন? 14448 নম্বরে কল করুন");
 
         m.put("login.page_title", "যাচাইকরণ");
@@ -1087,6 +1091,7 @@ public class PortalFullTranslationSeeder implements CommandLineRunner {
         m.put("layout.session_expires", "సెషన్ ముగుస్తుంది:");
         m.put("layout.logout", "లాగ్‌అవుట్");
         m.put("layout.need_help", "సహాయం కావాలా?");
+        m.put("nav.help", "సహాయం");
         m.put("layout.need_assistance", "సహాయం కావాలా? 14448కు కాల్ చేయండి");
 
         m.put("login.page_title", "ధృవీకరణ");
@@ -1348,6 +1353,7 @@ public class PortalFullTranslationSeeder implements CommandLineRunner {
         m.put("layout.session_expires", "அமர்வு முடிவடைகிறது:");
         m.put("layout.logout", "வெளியேறு");
         m.put("layout.need_help", "உதவி வேண்டுமா?");
+        m.put("nav.help", "உதவி");
         m.put("layout.need_assistance", "உதவி வேண்டுமா? 14448 ஐ அழைக்கவும்");
 
         m.put("login.page_title", "சரிபார்ப்பு");
@@ -1609,6 +1615,7 @@ public class PortalFullTranslationSeeder implements CommandLineRunner {
         m.put("layout.session_expires", "સત્ર સમાપ્ત થશે:");
         m.put("layout.logout", "લૉગઆઉટ");
         m.put("layout.need_help", "મદદ જોઈએ?");
+        m.put("nav.help", "મદદ");
         m.put("layout.need_assistance", "મદદ જોઈએ? 14448 પર કૉલ કરો");
 
         m.put("login.page_title", "ચકાસણી");
@@ -1870,6 +1877,7 @@ public class PortalFullTranslationSeeder implements CommandLineRunner {
         m.put("layout.session_expires", "سیشن ختم ہو گا:");
         m.put("layout.logout", "لاگ آؤٹ");
         m.put("layout.need_help", "مدد چاہیے؟");
+        m.put("nav.help", "مدد");
         m.put("layout.need_assistance", "مدد چاہیے؟ 14448 پر کال کریں");
 
         m.put("login.page_title", "تصدیق");
@@ -2131,6 +2139,7 @@ public class PortalFullTranslationSeeder implements CommandLineRunner {
         m.put("layout.session_expires", "ಸೆಷನ್ ಮುಗಿಯುತ್ತದೆ:");
         m.put("layout.logout", "ಲಾಗ್‌ಔಟ್");
         m.put("layout.need_help", "ಸಹಾಯ ಬೇಕೇ?");
+        m.put("nav.help", "ಸಹಾಯ");
         m.put("layout.need_assistance", "ಸಹಾಯ ಬೇಕೇ? 14448 ಗೆ ಕರೆ ಮಾಡಿ");
 
         m.put("login.page_title", "ಪರಿಶೀಲನೆ");
@@ -2392,6 +2401,7 @@ public class PortalFullTranslationSeeder implements CommandLineRunner {
         m.put("layout.session_expires", "സെഷൻ അവസാനിക്കും:");
         m.put("layout.logout", "ലോഗൗട്ട്");
         m.put("layout.need_help", "സഹായം വേണോ?");
+        m.put("nav.help", "സഹായം");
         m.put("layout.need_assistance", "സഹായം വേണോ? 14448 ൽ വിളിക്കുക");
 
         m.put("login.page_title", "സ്ഥിരീകരണം");

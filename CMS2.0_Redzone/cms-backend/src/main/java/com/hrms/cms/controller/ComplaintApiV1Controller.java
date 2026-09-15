@@ -114,6 +114,9 @@ public class ComplaintApiV1Controller {
         if (request.get("reRepliedAndDissatisfied") != null) {
             req.setReRepliedAndDissatisfied(Boolean.valueOf(request.get("reRepliedAndDissatisfied").toString()));
         }
+        if (request.get("declarationAccepted") != null) {
+            req.setDeclarationAccepted(Boolean.valueOf(request.get("declarationAccepted").toString()));
+        }
 
         // D7: the wizard validates nine representative fields as mandatory and then the payload was
         // discarded here, leaving an officer no way to reach or verify the representative.

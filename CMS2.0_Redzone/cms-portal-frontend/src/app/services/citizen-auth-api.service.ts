@@ -44,15 +44,17 @@ export class CitizenAuthApiService {
     });
   }
 
-  sendOtp(mobile: string, captchaToken: string, captchaAnswer: string): Observable<SendOtpResponse> {
+  sendOtp(mobile: string, captchaToken: string, captchaAnswer: string,
+          consentGiven: boolean, locale: string): Observable<SendOtpResponse> {
     return this.http.post<SendOtpResponse>(`${this.baseUrl}/send-otp`, {
-      mobile, captchaToken, captchaAnswer
+      mobile, captchaToken, captchaAnswer, consentGiven: String(consentGiven), locale
     }, { withCredentials: true });
   }
 
-  sendOtpViaEmail(mobile: string, email: string, captchaToken: string, captchaAnswer: string): Observable<SendOtpResponse> {
+  sendOtpViaEmail(mobile: string, email: string, captchaToken: string, captchaAnswer: string,
+                  consentGiven: boolean, locale: string): Observable<SendOtpResponse> {
     return this.http.post<SendOtpResponse>(`${this.baseUrl}/send-otp-email`, {
-      mobile, email, captchaToken, captchaAnswer
+      mobile, email, captchaToken, captchaAnswer, consentGiven: String(consentGiven), locale
     }, { withCredentials: true });
   }
 

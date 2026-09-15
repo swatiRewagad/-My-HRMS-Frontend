@@ -103,7 +103,9 @@
             </div>
             <div class="sub-field">
               <label><span class="sub-badge">b</span> Complaint Reference/Acknowledgement Number</label>
-              <input type="text" class="form-input" [(ngModel)]="formData['bankComplaintRef']" name="bankComplaintRef"
+              <input type="text" class="form-input" [class.invalid]="eligibilityRefError"
+                     [(ngModel)]="formData['bankComplaintRef']" name="bankComplaintRef" maxlength="100"
+                     (input)="validateComplaintRef()"
                      placeholder="Enter reference number provided by {{ selectedEntityName }}">
               @if (eligibilityRefError) { <span class="field-error">{{ eligibilityRefError }}</span> }
             </div>
@@ -135,43 +137,47 @@
         }
 
         <!-- Sub-question 5a: employer-relationship when "Yes" to employee of RE -->
-        @if (currentQuestionKey === 'employeeOfRE' && eligibilityAnswers['employeeOfRE'] === 'yes') {
+        @if (currentQuestionKey === 'employeeOfRE' && eligibilityAnswers['employeeOfRE'] === 'yes' && hasSubQuestion('employerRelationship')) {
           <div class="sub-question-block">
             <div class="sub-question-label">
               <span class="sub-badge">a</span>
-              <span>If Yes, Is your complaint involves the employee-employer relationship of the Regulated Entity?</span>
+              <span>{{ subQuestionText('employerRelationship') }}</span>
             </div>
             <div class="sub-question-options">
               <label class="radio-option" [class.selected]="eligibilityAnswers['employerRelationship'] === 'yes'">
                 <input type="radio" name="employerRelationship" value="yes"
                        [ngModel]="eligibilityAnswers['employerRelationship']"
                        (ngModelChange)="onEmployerRelationshipAnswer($event)">
-                <span>Yes</span>
+                <span>{{ 'eligibility.opt_yes' | translate }}</span>
               </label>
               <label class="radio-option" [class.selected]="eligibilityAnswers['employerRelationship'] === 'no'">
                 <input type="radio" name="employerRelationship" value="no"
                        [ngModel]="eligibilityAnswers['employerRelationship']"
                        (ngModelChange)="onEmployerRelationshipAnswer($event)">
-                <span>No</span>
+                <span>{{ 'eligibility.opt_no' | translate }}</span>
               </label>
             </div>
           </div>
         }
 
         <!-- Sub-fields when "Yes" to advocate question -->
-        @if (currentQuestionKey === 'throughAdvocateEligibility' && eligibilityAnswers['throughAdvocateEligibility'] === 'yes') {
+        @if (currentQuestionKey === 'throughAdvocateEligibility' && eligibilityAnswers['throughAdvocateEligibility'] === 'yes' && hasSubQuestion('isComplainantSelf')) {
           <div class="sub-question-block">
             <div class="sub-question-label">
               <span class="sub-badge">a</span>
-              <span>If Yes, then are you the Complainant?</span>
+              <span>{{ subQuestionText('isComplainantSelf') }}</span>
             </div>
             <div class="sub-question-options">
-              <label class="radio-option" [class.selected]="formData['isComplainantSelf'] === 'yes'">
-                <input type="radio" name="isComplainantSelf" value="yes" (change)="onAdvocateSubAnswer('yes')">
+              <label class="radio-option" [class.selected]="eligibilityAnswers['isComplainantSelf'] === 'yes'">
+                <input type="radio" name="isComplainantSelf" value="yes"
+                       [ngModel]="eligibilityAnswers['isComplainantSelf']"
+                       (ngModelChange)="onAdvocateSubAnswer($event)">
                 <span>{{ 'eligibility.opt_yes' | translate }}</span>
               </label>
-              <label class="radio-option" [class.selected]="formData['isComplainantSelf'] === 'no'">
-                <input type="radio" name="isComplainantSelf" value="no" (change)="onAdvocateSubAnswer('no')">
+              <label class="radio-option" [class.selected]="eligibilityAnswers['isComplainantSelf'] === 'no'">
+                <input type="radio" name="isComplainantSelf" value="no"
+                       [ngModel]="eligibilityAnswers['isComplainantSelf']"
+                       (ngModelChange)="onAdvocateSubAnswer($event)">
                 <span>{{ 'eligibility.opt_no' | translate }}</span>
               </label>
             </div>
@@ -260,6 +266,18 @@
           </div>
         }
 
+        @if (timeBarredWarning()) {
+          <p class="time-barred-warning" role="alert">
+            <i class="pi pi-exclamation-triangle"></i> {{ timeBarredWarning() }}
+          </p>
+        }
+
+        @if (mandatoryResponseError()) {
+          <p class="mandatory-response-error" id="eligibility-mandatory-error" role="alert" tabindex="-1">
+            <i class="pi pi-exclamation-circle"></i> {{ mandatoryResponseError() }}
+          </p>
+        }
+
       </div>
 
       <!-- Blocked / Non-Maintainable -->
@@ -269,7 +287,7 @@
             {{ 'eligibility.block_indicated' | translate }}
             <strong>"{{ eligibilityAnswers[currentQuestionKey] === 'no' ? ('eligibility.opt_no' | translate) : ('eligibility.opt_yes' | translate) }}"</strong>
             {{ 'eligibility.block_in_response' | translate }}
-            {{ eligibilityBlockMessageKey() ? (eligibilityBlockMessageKey() | translate) : eligibilityBlockMessage() }}
+            {{ resolvedBlockMessage() }}
             <strong>{{ 'eligibility.block_written_required' | translate }}</strong>
           </p>
           <p>
@@ -314,8 +332,13 @@
             <button class="btn-go-back" (click)="prevEligibility()" [disabled]="eligibilityStep() === 1">
               <i class="pi pi-chevron-left"></i> {{ 'form.back' | translate }}
             </button>
+            <!-- UST14/18/21/24-30 Scenario 3: Next stays enabled so an unanswered question surfaces
+                 "Response is mandatory." rather than a dead button with no explanation. D14 is the one
+                 exception — with no question master there is no question to answer, and advancing would
+                 mean guessing a maintainability rule. -->
             <button class="btn-next" (click)="nextEligibility()"
-                    [disabled]="!eligibilityAnswers[currentQuestionKey] || (currentQuestionKey === 'employeeOfRE' && eligibilityAnswers['employeeOfRE'] === 'yes' && !eligibilityAnswers['employerRelationship'])">
+                    [disabled]="questionsLoadFailed()"
+                    [attr.aria-describedby]="mandatoryResponseError() ? 'eligibility-mandatory-error' : null">
               {{ eligibilityStep() === totalEligibilitySteps ? ('form.next' | translate) : ('form.next' | translate) }} <i class="pi pi-chevron-right"></i>
             </button>
           </div>
@@ -922,6 +945,7 @@
                   <button type="button" class="remove-file-btn" (click)="removeRepFile()"><i class="pi pi-times"></i></button>
                 </div>
               }
+              @if (repFileError) { <span class="field-error" role="alert">{{ repFileError }}</span> }
               @if (validationErrors['repFile']) { <span class="field-error">{{ validationErrors['repFile'] }}</span> }
             </div>
           }
@@ -999,7 +1023,7 @@
                 <div class="rs-row-full"><span class="rs-number">6.</span><span class="rs-label">Is your complaint made through an advocate (unless you are yourself an advocate)?</span><span class="rs-value">{{ eligibilityAnswers['throughAdvocateEligibility'] === 'yes' ? 'Yes' : 'No' }}</span></div>
                 @if (eligibilityAnswers['throughAdvocateEligibility'] === 'yes') {
                   <div class="rs-sub-rows">
-                    <div class="rs-row-full"><span class="rs-number">a.</span><span class="rs-label">If Yes, then are you the Complainant?</span><span class="rs-value">{{ formData['isComplainantSelf'] === 'yes' ? 'Yes' : (formData['isComplainantSelf'] === 'no' ? 'No' : '—') }}</span></div>
+                    <div class="rs-row-full"><span class="rs-number">a.</span><span class="rs-label">{{ subQuestionText('isComplainantSelf') || ('eligibility.sub_are_you_complainant' | translate) }}</span><span class="rs-value">{{ eligibilityAnswers['isComplainantSelf'] === 'yes' ? ('eligibility.opt_yes' | translate) : (eligibilityAnswers['isComplainantSelf'] === 'no' ? ('eligibility.opt_no' | translate) : '—') }}</span></div>
                   </div>
                 }
                 <div class="rs-row-full"><span class="rs-number">7.</span><span class="rs-label">Is the complaint relating to the same grievance which is already pending before the Ombudsman?</span><span class="rs-value">{{ eligibilityAnswers['pendingBeforeOmbudsman'] === 'yes' ? 'Yes' : 'No' }}</span></div>
@@ -1012,7 +1036,7 @@
                 <div class="rs-row-full"><span class="rs-number">4.</span><span class="rs-label">Have you previously filed a complaint on the same subject matter with CEPC/RBI Ombudsman?</span><span class="rs-value">{{ eligibilityAnswers['previouslyFiledWithCEPC'] === 'yes' ? 'Yes' : 'No' }}</span></div>
                 <div class="rs-row-full"><span class="rs-number">5.</span><span class="rs-label">Are / were you an employee of the Regulated Entity against whom this complaint is being filed?</span><span class="rs-value">{{ eligibilityAnswers['employeeOfRE'] === 'yes' ? 'Yes' : 'No' }}</span></div>
                 @if (eligibilityAnswers['employeeOfRE'] === 'yes') {
-                  <div class="rs-row-full rs-sub-row"><span class="rs-number">a.</span><span class="rs-label">If Yes, Is your complaint involves the employee-employer relationship of the Regulated Entity?</span><span class="rs-value">{{ eligibilityAnswers['employerRelationship'] === 'yes' ? 'Yes' : (eligibilityAnswers['employerRelationship'] === 'no' ? 'No' : '—') }}</span></div>
+                  <div class="rs-row-full rs-sub-row"><span class="rs-number">a.</span><span class="rs-label">{{ subQuestionText('employerRelationship') || ('eligibility.q_employer_relationship' | translate) }}</span><span class="rs-value">{{ eligibilityAnswers['employerRelationship'] === 'yes' ? ('eligibility.opt_yes' | translate) : (eligibilityAnswers['employerRelationship'] === 'no' ? ('eligibility.opt_no' | translate) : '—') }}</span></div>
                 }
               }
             </div>
@@ -1214,7 +1238,7 @@
       </div>
       <div class="nm-reason">
         <h4>{{ 'nm.reason' | translate }}</h4>
-        <p>{{ eligibilityBlockMessage() }}</p>
+        <p>{{ resolvedBlockMessage() }}</p>
       </div>
       <div class="nm-actions">
         <button class="btn-primary" (click)="downloadClosureLetter()">

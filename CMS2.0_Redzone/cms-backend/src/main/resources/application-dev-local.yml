@@ -87,6 +87,7 @@ cms:
   eligibility:
     scheme-version: RBIOS_2021
     scheme-name: "Reserve Bank - Integrated Ombudsman Scheme, 2021"
+    grievance-filing-window-days: 310
   mre:
     version: 1
     re-window-days: 30
@@ -114,6 +115,8 @@ cms:
       expiry-minutes: 10
       max-resend-per-hour: 99
       max-verify-attempts-per-otp: 99
+      # Relaxed like the other dev limits so repeated manual and E2E logins are not blocked.
+      resend-cooldown-seconds: 0
       dev-auto-populate: true
     captcha:
       length: 6

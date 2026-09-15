@@ -21,6 +21,8 @@ interface EligibilityQuestion {
   blockOn: string | null;
   blockMessage: string;
   blockMessageKey?: string;
+  /** Scheme clause the block is issued under, interpolated into the message as {{clause}}. */
+  clauseReference?: string;
   nonMaintainable?: boolean;
   simplifiedText?: string;
   simplifiedTextKey?: string;
@@ -33,6 +35,19 @@ interface EligibilityQuestion {
 const YES_NO_OPTIONS = [
   { label: 'Yes', value: 'yes', translationKey: 'eligibility.opt_yes' },
   { label: 'No', value: 'no', translationKey: 'eligibility.opt_no' },
+];
+
+/**
+ * Sub-answers that exist only while their parent gate holds `revealOn`. When the gate flips away the
+ * sub-answer is no longer on screen, so leaving it in eligibilityAnswers would persist a maintainability
+ * response the citizen can neither see nor correct — and it reaches the server on the next draft save.
+ *
+ * BRD row 15 (isComplainantSelf) has no ELIGIBILITY_QUESTION_MASTER row yet, so the linkage is declared
+ * here rather than read from the master's inlineSubQuestion column.
+ */
+const DEPENDENT_SUB_ANSWERS: { parent: string; revealOn: string; dependents: string[] }[] = [
+  { parent: 'employeeOfRE', revealOn: 'yes', dependents: ['employerRelationship'] },
+  { parent: 'throughAdvocateEligibility', revealOn: 'yes', dependents: ['isComplainantSelf'] },
 ];
 
 @Component({
@@ -64,6 +79,12 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
   eligibilityBlocked = signal(false);
   eligibilityBlockMessage = signal('');
   eligibilityBlockMessageKey = signal('');
+  /**
+   * Scheme clause for the active block, from ELIGIBILITY_QUESTION_MASTER.clauseReference. The clause is
+   * interpolated into the block message as {{clause}} rather than being baked into the translated prose,
+   * so correcting a citation is one DB UPDATE instead of an edit in each of the ten locales.
+   */
+  eligibilityBlockClause = signal('');
   nonMaintainableCaseId = '';
   showSimplified = signal(false);
 
@@ -76,6 +97,12 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
   questionsLoadFailed = signal(false);
   /** Scheme cited in the non-maintainable closure letter; comes from cms.eligibility.scheme-name. */
   schemeName = '';
+
+  // UST11/UST12: Scheme timing rules come from GET /api/v1/eligibility/questions (cms.mre.* and
+  // cms.eligibility.*). These are only the values used before that response arrives.
+  reWindowDays = 30;
+  grievanceFilingWindowDays = 310;
+  filingDeadlineDays = 90;
 
   // FR-G-007: Multi-step form (steps 3-7)
   // Step 1: Complainant Details, Step 2: Regulated Entity Details, Step 3: Complaint Details,
@@ -221,6 +248,34 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
     return `${d}/${m}/${y}`;
   }
 
+  /** Rejects 31/02, 30/02 and 29/02 in non-leap years, which a range check on d/m/y lets through. */
+  private isRealCalendarDate(year: number, month: number, day: number): boolean {
+    if (year < 1900 || year > 2100 || month < 1 || month > 12 || day < 1) return false;
+    const d = new Date(year, month - 1, day);
+    return d.getFullYear() === year && d.getMonth() === month - 1 && d.getDate() === day;
+  }
+
+  /**
+   * A malformed date leaves formData empty, so without this the citizen would be told the date is
+   * "required" for a field they visibly filled in. Kept per field and outlives nextEligibility()'s
+   * error reset so the format message wins over the required message.
+   */
+  dateFormatError: Record<string, string> = {};
+
+  /** UST15/19/22: routes a date error to the field's own error slot so it renders next to the input. */
+  private setDateError(field: string, message: string) {
+    this.dateFormatError[field] = message;
+    if (field === 'replyDate') this.replyDateError = message;
+    else if (field === 'reminderDate') this.reminderDateError = message;
+    else this.eligibilityFieldError = message;
+  }
+
+  private revalidateDate(field: string) {
+    if (field === 'bankComplaintDate') this.onBankComplaintDateChange();
+    else if (field === 'reminderDate') this.onReminderDateChange();
+    else if (field === 'replyDate') this.onReplyDateChange();
+  }
+
   onDateInput(field: string, event: Event) {
     const input = event.target as HTMLInputElement;
     let val = input.value.replace(/[^0-9]/g, '');
@@ -232,22 +287,70 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
     this.dateDisplay[field] = formatted;
     input.value = formatted;
 
+    this.formData[field] = '';
+    this.setDateError(field, '');
+
     if (val.length === 8) {
       const day = parseInt(val.substring(0, 2), 10);
       const month = parseInt(val.substring(2, 4), 10);
       const year = parseInt(val.substring(4, 8), 10);
-      if (day >= 1 && day <= 31 && month >= 1 && month <= 12 && year >= 1900 && year <= 2100) {
-        const iso = `${year}-${val.substring(2, 4)}-${val.substring(0, 2)}`;
-        this.formData[field] = iso;
-        if (field === 'bankComplaintDate') this.onBankComplaintDateChange();
-        else if (field === 'reminderDate') this.onReminderDateChange();
-        else if (field === 'replyDate') this.onReplyDateChange();
+      if (this.isRealCalendarDate(year, month, day)) {
+        this.formData[field] = `${year}-${val.substring(2, 4)}-${val.substring(0, 2)}`;
+        this.revalidateDate(field);
       } else {
-        this.formData[field] = '';
+        // Silently dropping the value left dateDisplay showing "31/02/2026" with no explanation and
+        // a downstream "date is required" error the citizen could not act on.
+        this.setDateError(field, this.t('validation.date_invalid', 'Enter a valid date in dd/mm/yyyy format'));
       }
-    } else {
-      this.formData[field] = '';
+    } else if (val.length > 0) {
+      this.setDateError(field, this.t('validation.date_incomplete', 'Enter the full date as dd/mm/yyyy'));
     }
+  }
+
+  /** Translation with an English fallback, so a missing key never renders as a raw code to a citizen. */
+  private t(key: string, fallback: string): string {
+    const value = this.translationService.translate(key);
+    return value === key ? fallback : value;
+  }
+
+  /**
+   * The block message a citizen is shown, translated and with the Scheme clause interpolated.
+   *
+   * Single resolver for all three surfaces (the block note, the non-maintainable card and the PDF
+   * closure letter) so they cannot drift apart. The clause comes from the master rather than from the
+   * prose, and interpolation is a global regex rather than TranslationService's params argument:
+   * translate() uses String.replace with a string pattern, which substitutes only the FIRST {{clause}}.
+   *
+   * If no clause is known the placeholder is removed rather than left visible — showing a citizen a
+   * literal "{{clause}}" in a legal determination is worse than omitting the citation.
+   */
+  resolvedBlockMessage(): string {
+    const key = this.eligibilityBlockMessageKey();
+    const translated = key ? this.translationService.translate(key) : '';
+    const text = (translated && translated !== key) ? translated : this.eligibilityBlockMessage();
+    return this.interpolateClause(text, this.eligibilityBlockClause());
+  }
+
+  private interpolateClause(text: string, clause: string): string {
+    if (!text.includes('{{clause}}')) return text;
+    if (clause) return text.replace(/\{\{clause\}\}/g, clause);
+    // Collapse "under clause  of the Scheme" style gaps left by removing the placeholder.
+    return text.replace(/\s*\{\{clause\}\}/g, '').replace(/\s{2,}/g, ' ');
+  }
+
+  /** Raises a block from a master row, carrying its clause so the message can cite it. */
+  private applyBlockFrom(q: EligibilityQuestion) {
+    this.eligibilityBlocked.set(true);
+    this.eligibilityBlockMessage.set(q.blockMessage);
+    this.eligibilityBlockMessageKey.set(q.blockMessageKey || '');
+    this.eligibilityBlockClause.set(q.clauseReference || '');
+  }
+
+  private clearBlock() {
+    this.eligibilityBlocked.set(false);
+    this.eligibilityBlockMessage.set('');
+    this.eligibilityBlockMessageKey.set('');
+    this.eligibilityBlockClause.set('');
   }
 
   initDateDisplays() {
@@ -270,9 +373,8 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
     if (iso) {
       this.formData[field] = iso;
       this.dateDisplay[field] = this.isoToDisplay(iso);
-      if (field === 'bankComplaintDate') this.onBankComplaintDateChange();
-      else if (field === 'reminderDate') this.onReminderDateChange();
-      else if (field === 'replyDate') this.onReplyDateChange();
+      this.setDateError(field, '');
+      this.revalidateDate(field);
     }
   }
 
@@ -516,46 +618,55 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
   repFile: File | null = null;
   repFileName = '';
 
+  /**
+   * UST16/20/23: the eligibility uploads previously checked size only, so a renamed .exe or an
+   * oversized-name traversal attempt passed. The `accept` attribute is a picker hint, not a control.
+   */
+  private readonly ELIGIBILITY_UPLOAD_EXTENSIONS = ['.pdf', '.jpg', '.jpeg', '.png'];
+
+  private acceptEligibilityFile(input: HTMLInputElement): File | string {
+    const file = input.files![0];
+    const result = validateFile(file);
+    if (!result.valid) {
+      input.value = '';
+      return result.error!;
+    }
+    const extension = '.' + file.name.split('.').pop()!.toLowerCase();
+    if (!this.ELIGIBILITY_UPLOAD_EXTENSIONS.includes(extension)) {
+      input.value = '';
+      return this.t('validation.file_type_not_allowed', 'Only PDF, JPG and PNG files are allowed');
+    }
+    return file;
+  }
+
   onComplaintFileSelected(event: Event) {
     const input = event.target as HTMLInputElement;
-    if (input.files && input.files[0]) {
-      if (input.files[0].size > 2 * 1024 * 1024) {
-        this.eligibilityFileError = 'File size exceeds 2MB limit';
-        input.value = '';
-        return;
-      }
-      this.complaintFileWithRE = input.files[0];
-      this.complaintFileWithREName = input.files[0].name;
-      this.eligibilityFileError = '';
-    }
+    if (!input.files?.length) return;
+    const result = this.acceptEligibilityFile(input);
+    if (typeof result === 'string') { this.eligibilityFileError = result; return; }
+    this.complaintFileWithRE = result;
+    this.complaintFileWithREName = result.name;
+    this.eligibilityFileError = '';
   }
 
   onReminderFileSelected(event: Event) {
     const input = event.target as HTMLInputElement;
-    if (input.files && input.files[0]) {
-      if (input.files[0].size > 2 * 1024 * 1024) {
-        this.reminderFileError = 'File size exceeds 2MB limit';
-        input.value = '';
-        return;
-      }
-      this.reminderFile = input.files[0];
-      this.reminderFileName = input.files[0].name;
-      this.reminderFileError = '';
-    }
+    if (!input.files?.length) return;
+    const result = this.acceptEligibilityFile(input);
+    if (typeof result === 'string') { this.reminderFileError = result; return; }
+    this.reminderFile = result;
+    this.reminderFileName = result.name;
+    this.reminderFileError = '';
   }
 
   onReplyFileSelected(event: Event) {
     const input = event.target as HTMLInputElement;
-    if (input.files && input.files[0]) {
-      if (input.files[0].size > 2 * 1024 * 1024) {
-        this.replyFileError = 'File size exceeds 2MB limit';
-        input.value = '';
-        return;
-      }
-      this.replyFile = input.files[0];
-      this.replyFileName = input.files[0].name;
-      this.replyFileError = '';
-    }
+    if (!input.files?.length) return;
+    const result = this.acceptEligibilityFile(input);
+    if (typeof result === 'string') { this.replyFileError = result; return; }
+    this.replyFile = result;
+    this.replyFileName = result.name;
+    this.replyFileError = '';
   }
 
   previewFile(file: File | null) {
@@ -580,30 +691,38 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
     this.replyFileName = '';
   }
 
+  repFileError = '';
+
   onRepFileSelected(event: Event) {
     const input = event.target as HTMLInputElement;
-    if (input.files && input.files[0]) {
-      if (input.files[0].size > 2 * 1024 * 1024) {
-        input.value = '';
-        return;
-      }
-      this.repFile = input.files[0];
-      this.repFileName = input.files[0].name;
+    if (!input.files?.length) return;
+    const file = input.files[0];
+    const result = validateFile(file);
+    if (!result.valid) {
+      input.value = '';
+      this.repFileError = result.error!;
+      return;
     }
+    this.repFile = file;
+    this.repFileName = file.name;
+    this.repFileError = '';
   }
 
   onRepFileDrop(event: DragEvent) {
     event.preventDefault();
     if (!event.dataTransfer?.files?.length) return;
     const file = event.dataTransfer.files[0];
-    if (file.size > 2 * 1024 * 1024) return;
+    const result = validateFile(file);
+    if (!result.valid) { this.repFileError = result.error!; return; }
     this.repFile = file;
     this.repFileName = file.name;
+    this.repFileError = '';
   }
 
   removeRepFile() {
     this.repFile = null;
     this.repFileName = '';
+    this.repFileError = '';
   }
 
   // FR-G-013: Speech to text
@@ -728,6 +847,9 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
           return;
         }
         this.schemeName = res?.schemeName || '';
+        if (res?.reWindowDays) this.reWindowDays = res.reWindowDays;
+        if (res?.grievanceFilingWindowDays) this.grievanceFilingWindowDays = res.grievanceFilingWindowDays;
+        if (res?.filingDeadlineDays) this.filingDeadlineDays = res.filingDeadlineDays;
         this.eligibilityQuestions = rows.map((r: any) => ({
           key: r.questionKey,
           question: r.questionText,
@@ -737,6 +859,7 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
           blockOn: r.blockOn || null,
           blockMessage: r.blockMessage || '',
           blockMessageKey: r.blockMessageKey || undefined,
+          clauseReference: r.clauseReference || undefined,
           nonMaintainable: !!r.nonMaintainable,
           simplifiedText: r.simplifiedText || undefined,
           simplifiedTextKey: r.simplifiedTextKey || undefined,
@@ -817,6 +940,12 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
     return this.currentQuestion?.key ?? '';
   }
 
+  /** 1-based wizard step showing the given question, or undefined when it is not visible. */
+  private stepOfQuestion(key: string): number | undefined {
+    const idx = this.visibleEligibilityQuestions.findIndex(q => q.key === key);
+    return idx < 0 ? undefined : idx + 1;
+  }
+
   get currentQuestionSimplifiedText(): string {
     const q = this.currentQuestion;
     if (!q?.simplifiedText) return '';
@@ -845,35 +974,110 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
     return text.replace(/<RE Name>/g, this.selectedEntityName).replace(/\{\{reName\}\}/g, this.selectedEntityName);
   }
 
+  /**
+   * Drops sub-answers whose parent gate no longer reveals them, so a withdrawn response cannot survive
+   * into the review summary, the session draft or the server draft.
+   */
+  private clearOrphanedSubAnswers(parentKey: string, parentValue: string) {
+    for (const link of DEPENDENT_SUB_ANSWERS) {
+      if (link.parent !== parentKey || parentValue === link.revealOn) continue;
+      for (const dependent of link.dependents) {
+        delete this.eligibilityAnswers[dependent];
+        // formData declares isComplainantSelf up front, so reset rather than remove to keep its shape.
+        if (dependent in this.formData) this.formData[dependent] = '';
+      }
+      // The orphaned answer may have been the one that issued a closure id.
+      this.nonMaintainableCaseId = '';
+    }
+  }
+
+  /**
+   * Text for an inline sub-question, resolved from its ELIGIBILITY_QUESTION_MASTER row and translated.
+   * Returns '' when the master row is absent so the template can hide the sub-question rather than
+   * render an untranslated English literal.
+   */
+  subQuestionText(key: string): string {
+    const q = this.eligibilityQuestions.find(x => x.key === key);
+    if (!q) return '';
+    const translated = q.translationKey ? this.translationService.translate(q.translationKey) : q.question;
+    const text = (q.translationKey && translated !== q.translationKey) ? translated : q.question;
+    return text.replace(/<RE Name>/g, this.selectedEntityName).replace(/\{\{reName\}\}/g, this.selectedEntityName);
+  }
+
+  hasSubQuestion(key: string): boolean {
+    return this.eligibilityQuestions.some(x => x.key === key);
+  }
+
   selectEligibilityAnswer(value: string) {
     const q = this.currentQuestion;
     if (!q) return;
     this.eligibilityAnswers[q.key] = value;
+    this.clearOrphanedSubAnswers(q.key, value);
+    this.mandatoryResponseError.set('');
     if (q.blockOn && value === q.blockOn) {
-      this.eligibilityBlocked.set(true);
-      this.eligibilityBlockMessage.set(q.blockMessage);
-      this.eligibilityBlockMessageKey.set(q.blockMessageKey || '');
+      this.applyBlockFrom(q);
     } else {
-      this.eligibilityBlocked.set(false);
-      this.eligibilityBlockMessage.set('');
-      this.eligibilityBlockMessageKey.set('');
+      this.clearBlock();
     }
 
-    // Auto-closure: "No" reply and complaint filed within 30 days
     if (q.key === 'receivedReply' && value === 'no') {
-      const filedDate = this.formData['bankComplaintDate'];
-      if (filedDate) {
-        const daysSinceFiling = Math.floor((Date.now() - new Date(filedDate).getTime()) / (1000 * 60 * 60 * 24));
-        if (daysSinceFiling <= 30) {
-          this.eligibilityBlocked.set(true);
-          this.eligibilityBlockMessage.set(
-            'As the Regulated Entity has not yet been given 30 days to respond to your complaint, your complaint cannot be registered at this time. Please wait until 30 days have elapsed from the date of filing your complaint with the Regulated Entity.'
-          );
-          this.eligibilityBlockMessageKey.set('eligibility.block_less_than_30_days');
-          this.nonMaintainableCaseId = 'NM-' + Date.now().toString().slice(-8);
-        }
-      }
+      this.applyReWindowBlock();
     }
+  }
+
+  /** Whole days elapsed since an ISO date, counted from midnight so a time-of-day never shifts it. */
+  private daysSince(iso: string): number {
+    const from = new Date(iso);
+    from.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return Math.floor((today.getTime() - from.getTime()) / (1000 * 60 * 60 * 24));
+  }
+
+  /**
+   * UST11: the RE is entitled to reWindowDays to respond. On day 30 exactly the window has elapsed,
+   * so the complaint is maintainable — the previous `<= 30` wrongly closed complaints a day early.
+   * Returns true when the citizen is blocked.
+   */
+  private applyReWindowBlock(): boolean {
+    const filedDate = this.formData['bankComplaintDate'];
+    if (!filedDate) return false;
+    if (this.daysSince(filedDate) >= this.reWindowDays) return false;
+
+    this.eligibilityBlocked.set(true);
+    this.eligibilityBlockMessage.set(
+      `As the Regulated Entity has not yet been given ${this.reWindowDays} days to respond to your ` +
+      `complaint, your complaint cannot be registered at this time. Please wait until ` +
+      `${this.reWindowDays} days have elapsed from the date of filing your complaint with the ` +
+      `Regulated Entity.`
+    );
+    this.eligibilityBlockMessageKey.set('eligibility.block_less_than_30_days');
+    // Sourced from the master row that owns this rule rather than from a literal in this method.
+    this.eligibilityBlockClause.set(
+      this.eligibilityQuestions.find(q => q.key === 'receivedReply')?.clauseReference || '');
+    this.nonMaintainableCaseId = 'NM-' + Date.now().toString().slice(-8);
+    return true;
+  }
+
+  /**
+   * UST12: a grievance brought more than grievanceFilingWindowDays after the RE complaint is
+   * time-barred under the Scheme. Warned rather than blocked, because the Ombudsman may still
+   * condone the delay — the decision is not the wizard's to make.
+   */
+  timeBarredWarning = signal('');
+
+  private applyFilingWindowBlock(): boolean {
+    this.timeBarredWarning.set('');
+    const filedDate = this.formData['bankComplaintDate'];
+    if (!filedDate) return false;
+    if (this.daysSince(filedDate) <= this.grievanceFilingWindowDays) return false;
+
+    this.timeBarredWarning.set(this.t('eligibility.time_barred_warning',
+      `Your complaint to the Regulated Entity was filed more than ${this.grievanceFilingWindowDays} ` +
+      `days ago. The filing window under the Scheme has elapsed, so your complaint may be closed as ` +
+      `time-barred. You may still proceed.`));
+    announceToScreenReader(this.timeBarredWarning(), 'assertive');
+    return false;
   }
 
   filterEntities() {
@@ -930,6 +1134,12 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
   eligibilityFieldError = '';
   eligibilityFileError = '';
   eligibilityRefError = '';
+  mandatoryResponseError = signal('');
+
+  private failMandatory() {
+    this.mandatoryResponseError.set(this.t('eligibility.response_mandatory', 'Response is mandatory.'));
+    announceToScreenReader(this.mandatoryResponseError(), 'assertive');
+  }
 
   nextEligibility() {
     const q = this.currentQuestion;
@@ -941,7 +1151,11 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
       }
       return;
     }
-    if (!this.eligibilityAnswers[q.key]) return;
+    if (!this.eligibilityAnswers[q.key]) {
+      this.failMandatory();
+      return;
+    }
+    this.mandatoryResponseError.set('');
 
     this.eligibilityFieldError = '';
     this.eligibilityFileError = '';
@@ -951,69 +1165,98 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
     this.reminderFileError = '';
     this.reminderDateError = '';
     if (q.key === 'filedWithRE' && this.eligibilityAnswers['filedWithRE'] === 'yes') {
+      if (this.dateFormatError['bankComplaintDate']) {
+        this.eligibilityFieldError = this.dateFormatError['bankComplaintDate'];
+        return;
+      }
       if (!this.formData['bankComplaintDate']) {
-        this.eligibilityFieldError = 'Complaint date with RE is required';
+        this.eligibilityFieldError = this.t('validation.complaint_date_required',
+          'Complaint date with RE is required');
         return;
       }
+      this.onBankComplaintDateChange();
+      if (this.eligibilityFieldError) return;
       if (!this.complaintFileWithRE) {
-        this.eligibilityFileError = 'Please upload a copy of the complaint sent to the Regulated Entity';
+        this.eligibilityFileError = this.t('validation.complaint_copy_required',
+          'Please upload a copy of the complaint sent to the Regulated Entity');
         return;
       }
+      if (!this.validateComplaintRef()) return;
     }
 
     if (q.key === 'receivedReply' && this.eligibilityAnswers['receivedReply'] === 'yes') {
-      if (!this.formData['replyDate']) {
-        this.replyDateError = 'Date on which reply was received is required';
+      if (this.dateFormatError['replyDate']) {
+        this.replyDateError = this.dateFormatError['replyDate'];
         return;
       }
+      if (!this.formData['replyDate']) {
+        this.replyDateError = this.t('validation.reply_date_required',
+          'Date on which reply was received is required');
+        return;
+      }
+      this.onReplyDateChange();
+      if (this.replyDateError) return;
       if (!this.replyFile) {
-        this.replyFileError = 'Please upload a copy of the reply received from the Regulated Entity';
+        this.replyFileError = this.t('validation.reply_copy_required',
+          'Please upload a copy of the reply received from the Regulated Entity');
         return;
       }
     }
 
     if (q.key === 'sentReminder' && this.eligibilityAnswers['sentReminder'] === 'yes') {
-      if (!this.formData['reminderDate']) {
-        this.reminderDateError = 'Date on which reminder was sent is required';
+      if (this.dateFormatError['reminderDate']) {
+        this.reminderDateError = this.dateFormatError['reminderDate'];
         return;
       }
+      if (!this.formData['reminderDate']) {
+        this.reminderDateError = this.t('validation.reminder_date_required',
+          'Date on which reminder was sent is required');
+        return;
+      }
+      this.onReminderDateChange();
+      if (this.reminderDateError) return;
       if (!this.reminderFile) {
-        this.reminderFileError = 'Please upload a copy of the reminder sent to the Regulated Entity';
+        this.reminderFileError = this.t('validation.reminder_copy_required',
+          'Please upload a copy of the reminder sent to the Regulated Entity');
         return;
       }
     }
 
     if (q.key === 'employeeOfRE' && this.eligibilityAnswers['employeeOfRE'] === 'yes') {
       if (!this.eligibilityAnswers['employerRelationship']) {
+        this.failMandatory();
         return;
       }
     }
 
-    // UST11: Block if "No" reply and <=30 days since filing with RE
-    if (q.key === 'receivedReply' && this.eligibilityAnswers['receivedReply'] === 'no') {
-      const filedDate = this.formData['bankComplaintDate'];
-      if (filedDate) {
-        const daysSinceFiling = Math.floor((Date.now() - new Date(filedDate).getTime()) / (1000 * 60 * 60 * 24));
-        if (daysSinceFiling <= 30) {
-          this.eligibilityBlocked.set(true);
-          this.eligibilityBlockMessage.set(
-            'As the Regulated Entity has not yet been given 30 days to respond to your complaint, your complaint cannot be registered at this time. Please wait until 30 days have elapsed from the date of filing your complaint with the Regulated Entity.'
-          );
-          this.eligibilityBlockMessageKey.set('eligibility.block_less_than_30_days');
-          this.nonMaintainableCaseId = 'NM-' + Date.now().toString().slice(-8);
-          this.phase.set('non-maintainable');
-          return;
-        }
+    // UST27: the advocate follow-up decides maintainability, so it is as mandatory as its parent.
+    if (q.key === 'throughAdvocateEligibility' && this.eligibilityAnswers['throughAdvocateEligibility'] === 'yes') {
+      if (!this.eligibilityAnswers['isComplainantSelf']) {
+        this.failMandatory();
+        return;
       }
     }
 
-
+    if (q.key === 'receivedReply' && this.eligibilityAnswers['receivedReply'] === 'no') {
+      // The RE window can only be assessed against a filing date, so demand it rather than letting
+      // an unanswered date wave the complaint through.
+      if (!this.formData['bankComplaintDate']) {
+        this.eligibilityFieldError = this.t('validation.complaint_date_required',
+          'Complaint date with RE is required');
+        this.eligibilityStep.set(this.stepOfQuestion('filedWithRE') ?? this.eligibilityStep());
+        return;
+      }
+      if (this.applyReWindowBlock()) {
+        this.phase.set('non-maintainable');
+        return;
+      }
+      if (this.applyFilingWindowBlock()) return;
+    }
 
     if (this.eligibilityStep() < this.totalEligibilitySteps) {
       this.showSimplified.set(false);
       this.eligibilityStep.update(s => s + 1);
-      this.eligibilityBlocked.set(false);
-      this.eligibilityBlockMessage.set('');
+      this.clearBlock();
     } else {
       this.phase.set('form');
       this.currentStep.set(1);
@@ -1022,10 +1265,10 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
 
   prevEligibility() {
     if (this.eligibilityStep() > 1) {
+      this.mandatoryResponseError.set('');
       this.showSimplified.set(false);
       this.eligibilityStep.update(s => s - 1);
-      this.eligibilityBlocked.set(false);
-      this.eligibilityBlockMessage.set('');
+      this.clearBlock();
     }
   }
 
@@ -1064,7 +1307,7 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
       doc.text('Dear Complainant,', 20, y);
       y += 10;
 
-      const reason = this.eligibilityBlockMessage();
+      const reason = this.resolvedBlockMessage();
       const bodyText = `Your complaint has been closed as Non-Maintainable under the provisions of the ${this.schemeName}.`;
       const lines = doc.splitTextToSize(bodyText, pw - 40);
       doc.text(lines, 20, y);
@@ -1704,6 +1947,9 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
       reComplaintDate: this.formData['bankComplaintDate'] || undefined,
       reComplaintReference: this.formData['bankComplaintRef'] || undefined,
       reRepliedAndDissatisfied: this.eligibilityAnswers['receivedReply'] === 'yes',
+      // UST5: the server re-checks this, so it has to travel with the payload rather than living
+      // only in the disabled state of the Submit button.
+      declarationAccepted: this.declarationChecked && this.declaration2Checked,
       // D7: step 4 validates these as mandatory, so they must reach the server rather than be
       // collected and dropped — an officer has to be able to contact the representative.
       hasAuthRep: this.formData['hasAuthRep'] === 'yes',
@@ -1795,16 +2041,17 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
     }
   }
 
+  private isFutureDate(iso: string): boolean {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return new Date(iso) > today;
+  }
+
   onBankComplaintDateChange() {
     this.eligibilityFieldError = '';
     const bankDate = this.formData['bankComplaintDate'];
-    if (bankDate) {
-      const selected = new Date(bankDate);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      if (selected > today) {
-        this.eligibilityFieldError = 'Date cannot be a future date';
-      }
+    if (bankDate && this.isFutureDate(bankDate)) {
+      this.eligibilityFieldError = this.t('validation.date_future', 'Date cannot be a future date');
     }
   }
 
@@ -1821,8 +2068,12 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
     this.replyDateError = '';
     const replyDate = this.formData['replyDate'];
     const complaintDate = this.formData['bankComplaintDate'];
-    if (replyDate && complaintDate && new Date(replyDate) < new Date(complaintDate)) {
-      this.replyDateError = 'Reply date cannot be earlier than the complaint filing date';
+    if (!replyDate) return;
+    if (this.isFutureDate(replyDate)) {
+      this.replyDateError = this.t('validation.date_future', 'Date cannot be a future date');
+    } else if (complaintDate && new Date(replyDate) < new Date(complaintDate)) {
+      this.replyDateError = this.t('validation.reply_before_complaint',
+        'Reply date cannot be earlier than the complaint filing date');
     }
   }
 
@@ -1830,9 +2081,36 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
     this.reminderDateError = '';
     const reminderDate = this.formData['reminderDate'];
     const complaintDate = this.formData['bankComplaintDate'];
-    if (reminderDate && complaintDate && new Date(reminderDate) < new Date(complaintDate)) {
-      this.reminderDateError = 'Reminder date cannot be earlier than the complaint filing date';
+    if (!reminderDate) return;
+    if (this.isFutureDate(reminderDate)) {
+      this.reminderDateError = this.t('validation.date_future', 'Date cannot be a future date');
+    } else if (complaintDate && new Date(reminderDate) < new Date(complaintDate)) {
+      this.reminderDateError = this.t('validation.reminder_before_complaint',
+        'Reminder date cannot be earlier than the complaint filing date');
     }
+  }
+
+  /**
+   * UST17: the reference number is optional, but when supplied it is quoted back to the Regulated
+   * Entity, so it is bounded and restricted to the characters REs actually issue.
+   */
+  static readonly COMPLAINT_REF_MAX = 100;
+
+  validateComplaintRef(): boolean {
+    this.eligibilityRefError = '';
+    const ref = String(this.formData['bankComplaintRef'] ?? '').trim();
+    if (!ref) return true;
+    if (ref.length > PublicFileComplaintComponent.COMPLAINT_REF_MAX) {
+      this.eligibilityRefError = this.t('validation.ref_too_long',
+        `Reference number must not exceed ${PublicFileComplaintComponent.COMPLAINT_REF_MAX} characters`);
+      return false;
+    }
+    if (!/^[A-Za-z0-9/_-]+$/.test(ref)) {
+      this.eligibilityRefError = this.t('validation.ref_invalid_chars',
+        'Reference number may contain only letters, digits, hyphen, underscore and slash');
+      return false;
+    }
+    return true;
   }
 
   onEmployerRelationshipAnswer(value: string) {
@@ -1840,27 +2118,23 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
     // Inline sub-question, so its block comes from its own master row rather than the current step's.
     const q = this.eligibilityQuestions.find(x => x.key === 'employerRelationship');
     if (q?.blockOn && value === q.blockOn) {
-      this.eligibilityBlocked.set(true);
-      this.eligibilityBlockMessage.set(q.blockMessage);
-      this.eligibilityBlockMessageKey.set(q.blockMessageKey ?? '');
+      this.applyBlockFrom(q);
     } else {
-      this.eligibilityBlocked.set(false);
-      this.eligibilityBlockMessage.set('');
+      this.clearBlock();
     }
   }
 
   onAdvocateSubAnswer(value: string) {
+    this.eligibilityAnswers['isComplainantSelf'] = value;
     this.formData['isComplainantSelf'] = value;
-    if (value === 'no') {
-      this.eligibilityBlocked.set(true);
-      this.eligibilityBlockMessage.set(
-        'As per the Integrated Ombudsman Scheme, a complaint filed through an advocate must be filed by the complainant themselves. Since you are not the complainant, this complaint cannot be processed.'
-      );
-      this.eligibilityBlockMessageKey.set('eligibility.block_advocate_not_complainant');
+    this.mandatoryResponseError.set('');
+    // Inline sub-question, so its block comes from its own master row rather than the current step's.
+    const q = this.eligibilityQuestions.find(x => x.key === 'isComplainantSelf');
+    if (q?.blockOn && value === q.blockOn) {
+      this.applyBlockFrom(q);
       this.nonMaintainableCaseId = 'NM-' + Date.now().toString().slice(-8);
     } else {
-      this.eligibilityBlocked.set(false);
-      this.eligibilityBlockMessage.set('');
+      this.clearBlock();
     }
   }
 

@@ -16,6 +16,7 @@ public class AuthSecurityProperties {
     private Captcha captcha = new Captcha();
     private Cooloff cooloff = new Cooloff();
     private RateLimit rateLimit = new RateLimit();
+    private Consent consent = new Consent();
 
     @Getter @Setter
     public static class Otp {
@@ -23,6 +24,8 @@ public class AuthSecurityProperties {
         private int expiryMinutes = 5;
         private int maxResendPerHour = 5;
         private int maxVerifyAttemptsPerOtp = 3;
+        /** UST8: minimum gap between OTP requests for the same mobile. */
+        private int resendCooldownSeconds = 120;
         private boolean devAutoPopulate = false;
     }
 
@@ -46,5 +49,15 @@ public class AuthSecurityProperties {
         private int otpRequestsPerMobilePerHour = 5;
         private int otpRequestsPerIpPerHour = 20;
         private int loginAttemptsPerIpPerMinute = 10;
+    }
+
+    @Getter @Setter
+    public static class Consent {
+        /**
+         * UST5: bump this whenever the DPDP notice wording changes. Existing consents then stop
+         * counting as current, so citizens are re-asked instead of being bound by a notice they
+         * never saw.
+         */
+        private String version = "DPDP_2023_V1";
     }
 }

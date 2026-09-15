@@ -324,6 +324,34 @@
   }
 }
 
+.time-barred-warning {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 14px 0 0;
+  padding: 10px 14px;
+  border-left: 3px solid #ed6c02;
+  border-radius: 4px;
+  background: #fff4e5;
+  color: #7a3e00;
+  font-size: 14px;
+}
+
+.mandatory-response-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 14px 0 0;
+  padding: 10px 14px;
+  border-left: 3px solid #d32f2f;
+  border-radius: 4px;
+  background: #fdecea;
+  color: #b71c1c;
+  font-size: 14px;
+  font-weight: 600;
+  &:focus { outline: 2px solid #d32f2f; outline-offset: 2px; }
+}
+
 .btn-save-link {
   background: none;
   border: none;

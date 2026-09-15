@@ -3,6 +3,7 @@ package com.hrms.cms.controller;
 import com.hrms.cms.config.AuthSecurityProperties;
 import com.hrms.cms.service.CaptchaService;
 import com.hrms.cms.service.CaptchaService.CaptchaChallenge;
+import com.hrms.cms.service.ConsentService;
 import com.hrms.cms.service.CooloffService;
 import com.hrms.cms.service.CooloffService.CooloffStatus;
 import com.hrms.cms.service.CitizenSessionService;
@@ -35,6 +36,7 @@ public class CitizenAuthController {
     private final CooloffService cooloffService;
     private final CitizenSessionService sessionService;
     private final EncryptionKeyService encryptionKeyService;
+    private final ConsentService consentService;
     private final AuthSecurityProperties authProps;
 
     private static final String FINGERPRINT_COOKIE = "cms_fp";
@@ -71,15 +73,12 @@ public class CitizenAuthController {
                     "message", "Enter a valid 10-digit Indian mobile number starting with 6-9."));
         }
 
-        if (!captchaService.verifyCaptcha(captchaToken, captchaAnswer)) {
-            return ResponseEntity.badRequest().body(Map.of(
-                    "error", "INVALID_CAPTCHA",
-                    "message", "Invalid CAPTCHA. Please try again."));
-        }
-
         String fingerprint = resolveFingerprint(request, response);
         String clientIp = getClientIp(request);
 
+        // UST4/UST6: cool-off is checked before the CAPTCHA so a locked-out client cannot keep burning
+        // through challenges, and a wrong CAPTCHA now counts as a failed attempt — otherwise the
+        // CAPTCHA could be brute-forced indefinitely without ever tripping the lockout.
         CooloffStatus cooloff = cooloffService.checkCooloff(fingerprint, clientIp, mobile);
         if (cooloff.active()) {
             return ResponseEntity.status(429).body(Map.of(
@@ -88,10 +87,35 @@ public class CitizenAuthController {
                     "retryAfterSeconds", cooloff.remainingSeconds()));
         }
 
+        if (!captchaService.verifyCaptcha(captchaToken, captchaAnswer)) {
+            cooloffService.recordFailedAttempt(fingerprint, clientIp, mobile);
+            CooloffStatus afterFailure = cooloffService.checkCooloff(fingerprint, clientIp, mobile);
+            return ResponseEntity.badRequest().body(Map.of(
+                    "error", "INVALID_CAPTCHA",
+                    "message", "Invalid CAPTCHA. Please try again.",
+                    "cooloffActive", afterFailure.active(),
+                    "retryAfterSeconds", afterFailure.remainingSeconds()));
+        }
+
         if (otpService.isRateLimitedByMobile(mobile)) {
             return ResponseEntity.status(429).body(Map.of(
                     "error", "RATE_LIMITED",
                     "message", "OTP request limit reached. Try again later."));
+        }
+
+        int resendWait = otpService.resendCooldownRemaining(mobile);
+        if (resendWait > 0) {
+            return ResponseEntity.status(429).body(Map.of(
+                    "error", "RESEND_COOLDOWN",
+                    "message", "Please wait before requesting another OTP.",
+                    "retryAfterSeconds", resendWait));
+        }
+
+        // UST5: this endpoint also serves the complaint tracker, where no consent is collected because
+        // no new personal data is processed. Consent is therefore recorded when offered, and *enforced*
+        // at complaint submission — the point at which processing actually begins.
+        if (consentGiven(body)) {
+            consentService.recordConsent(mobile, body.get("locale"), clientIp, request.getHeader("User-Agent"));
         }
 
         String sessionId = UUID.randomUUID().toString();
@@ -136,18 +160,6 @@ public class CitizenAuthController {
                     "message", "Enter a valid email address."));
         }
 
-        if (!captchaService.verifyCaptcha(captchaToken, captchaAnswer)) {
-            return ResponseEntity.badRequest().body(Map.of(
-                    "error", "INVALID_CAPTCHA",
-                    "message", "Invalid CAPTCHA. Please try again."));
-        }
-
-        if (!sessionService.isEmailVerifiedForMobile(mobile, email)) {
-            return ResponseEntity.status(403).body(Map.of(
-                    "error", "EMAIL_NOT_VERIFIED",
-                    "message", "This email has not been verified for this mobile number. Please verify your email first."));
-        }
-
         String fingerprint = resolveFingerprint(request, response);
         String clientIp = getClientIp(request);
 
@@ -159,10 +171,38 @@ public class CitizenAuthController {
                     "retryAfterSeconds", cooloff.remainingSeconds()));
         }
 
+        if (!captchaService.verifyCaptcha(captchaToken, captchaAnswer)) {
+            cooloffService.recordFailedAttempt(fingerprint, clientIp, mobile);
+            CooloffStatus afterFailure = cooloffService.checkCooloff(fingerprint, clientIp, mobile);
+            return ResponseEntity.badRequest().body(Map.of(
+                    "error", "INVALID_CAPTCHA",
+                    "message", "Invalid CAPTCHA. Please try again.",
+                    "cooloffActive", afterFailure.active(),
+                    "retryAfterSeconds", afterFailure.remainingSeconds()));
+        }
+
+        if (!sessionService.isEmailVerifiedForMobile(mobile, email)) {
+            return ResponseEntity.status(403).body(Map.of(
+                    "error", "EMAIL_NOT_VERIFIED",
+                    "message", "This email has not been verified for this mobile number. Please verify your email first."));
+        }
+
         if (otpService.isRateLimitedByMobile(mobile)) {
             return ResponseEntity.status(429).body(Map.of(
                     "error", "RATE_LIMITED",
                     "message", "OTP request limit reached. Try again later."));
+        }
+
+        int resendWait = otpService.resendCooldownRemaining(mobile);
+        if (resendWait > 0) {
+            return ResponseEntity.status(429).body(Map.of(
+                    "error", "RESEND_COOLDOWN",
+                    "message", "Please wait before requesting another OTP.",
+                    "retryAfterSeconds", resendWait));
+        }
+
+        if (consentGiven(body)) {
+            consentService.recordConsent(mobile, body.get("locale"), clientIp, request.getHeader("User-Agent"));
         }
 
         String sessionId = UUID.randomUUID().toString();
@@ -306,6 +346,10 @@ public class CitizenAuthController {
             sessionService.invalidateSession(token);
         }
         return ResponseEntity.ok(Map.of("success", true));
+    }
+
+    private boolean consentGiven(Map<String, String> body) {
+        return "true".equalsIgnoreCase(body.get("consentGiven"));
     }
 
     private String resolveFingerprint(HttpServletRequest request, HttpServletResponse response) {
