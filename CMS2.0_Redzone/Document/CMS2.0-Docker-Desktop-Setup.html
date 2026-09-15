@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CMS 2.0 — Docker Desktop Local Setup Guide</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+            line-height: 1.7;
+            color: #1e293b;
+            background: #f8fafc;
+            padding: 40px 20px;
+        }
+        .container {
+            max-width: 960px;
+            margin: 0 auto;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+            padding: 48px 56px;
+        }
+        h1 {
+            font-size: 28px;
+            color: #1a237e;
+            border-bottom: 3px solid #3b82f6;
+            padding-bottom: 12px;
+            margin-bottom: 32px;
+        }
+        h2 {
+            font-size: 20px;
+            color: #1e40af;
+            margin-top: 40px;
+            margin-bottom: 16px;
+            padding-top: 20px;
+            border-top: 1px solid #e2e8f0;
+        }
+        h2:first-of-type { border-top: none; padding-top: 0; }
+        h3 {
+            font-size: 16px;
+            color: #334155;
+            margin-top: 24px;
+            margin-bottom: 10px;
+        }
+        p { margin-bottom: 12px; }
+        ul, ol {
+            margin-bottom: 16px;
+            padding-left: 24px;
+        }
+        li { margin-bottom: 6px; }
+        strong { color: #1e293b; }
+        code {
+            background: #f1f5f9;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Cascadia Code', 'Fira Code', Consolas, monospace;
+            font-size: 13px;
+            color: #d946ef;
+        }
+        pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 16px 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin-bottom: 16px;
+            font-family: 'Cascadia Code', 'Fira Code', Consolas, monospace;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+        pre code {
+            background: none;
+            color: inherit;
+            padding: 0;
+        }
+        .comment { color: #6b7280; }
+        .keyword { color: #7dd3fc; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+        th {
+            background: #1e40af;
+            color: #fff;
+            padding: 10px 14px;
+            text-align: left;
+            font-weight: 600;
+        }
+        td {
+            padding: 9px 14px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        tr:nth-child(even) td { background: #f8fafc; }
+        tr:hover td { background: #eff6ff; }
+        .note {
+            background: #fffbeb;
+            border-left: 4px solid #f59e0b;
+            padding: 12px 16px;
+            border-radius: 0 6px 6px 0;
+            margin-bottom: 16px;
+            font-size: 14px;
+        }
+        .note strong { color: #92400e; }
+        .tip {
+            background: #f0fdf4;
+            border-left: 4px solid #22c55e;
+            padding: 12px 16px;
+            border-radius: 0 6px 6px 0;
+            margin-bottom: 16px;
+            font-size: 14px;
+        }
+        .arch-diagram {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            font-family: 'Cascadia Code', Consolas, monospace;
+            font-size: 12px;
+            white-space: pre;
+            overflow-x: auto;
+            line-height: 1.5;
+        }
+        hr {
+            border: none;
+            border-top: 1px solid #e2e8f0;
+            margin: 32px 0;
+        }
+        a { color: #2563eb; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        .badge {
+            display: inline-block;
+            background: #dbeafe;
+            color: #1e40af;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .header-meta {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+        .header-meta .badge { font-size: 11px; }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <h1>CMS 2.0 — Docker Desktop Local Setup Guide</h1>
+
+    <div class="header-meta">
+        <span class="badge">Docker Desktop</span>
+        <span class="badge">Spring Boot 3.4</span>
+        <span class="badge">Angular 21</span>
+        <span class="badge">Oracle XE 21</span>
+        <span class="badge">Keycloak 26</span>
+        <span class="badge">Kafka 3.7</span>
+    </div>
+
+    <h2>Prerequisites</h2>
+    <ul>
+        <li><strong>Docker Desktop</strong> installed and running (Windows/Mac)</li>
+        <li><strong>Java 21</strong> (for running Spring Boot services natively)</li>
+        <li><strong>Node.js 20+</strong> and Angular CLI (for frontend)</li>
+        <li><strong>Maven 3.9+</strong> (for building Java services)</li>
+        <li>At least <strong>8 GB RAM</strong> allocated to Docker Desktop (Settings &gt; Resources)</li>
+    </ul>
+
+    <hr>
+
+    <h2>Architecture Overview</h2>
+    <div class="arch-diagram">&#9484;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9488;
+&#9474;  <strong>Docker Desktop (Infrastructure)</strong>                                 &#9474;
+&#9474;  &#9484;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9488; &#9484;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9488; &#9484;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9488; &#9484;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9488; &#9484;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9488;&#9474;
+&#9474;  &#9474;Oracle XE &#9474; &#9474; Kafka &#9474; &#9474;Keycloak  &#9474; &#9474;OpenSearch&#9474; &#9474;Kafka UI &#9474;&#9474;
+&#9474;  &#9474;  :1521   &#9474; &#9474; :9092 &#9474; &#9474;  :8180   &#9474; &#9474;  :9200   &#9474; &#9474;  :8090  &#9474;&#9474;
+&#9474;  &#9492;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9496; &#9492;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9496; &#9492;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9496; &#9492;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9496; &#9492;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9496;&#9474;
+&#9474;  &#9484;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9488; &#9484;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9488;                                      &#9474;
+&#9474;  &#9474;Prometheus&#9474; &#9474; Grafana &#9474;                                       &#9474;
+&#9474;  &#9474;  :9090   &#9474; &#9474;  :3000  &#9474;                                       &#9474;
+&#9474;  &#9492;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9496; &#9492;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9496;                                       &#9474;
+&#9492;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9496;
+
+&#9484;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9488;
+&#9474;  <strong>Host Machine (Services — run natively with Maven)</strong>               &#9474;
+&#9474;  &#9484;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9488; &#9484;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9488; &#9484;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9488;         &#9474;
+&#9474;  &#9474;cms-api-gateway&#9474; &#9474;cms-backend &#9474; &#9474;cms-portal-frontend&#9474;         &#9474;
+&#9474;  &#9474;    :8080      &#9474; &#9474;   :8082    &#9474; &#9474;      :4200        &#9474;         &#9474;
+&#9474;  &#9492;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9496; &#9492;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9496; &#9492;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9496;         &#9474;
+&#9492;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9496;</div>
+
+    <hr>
+
+    <h2>Step 1: Start Infrastructure with Docker Compose</h2>
+    <pre><code><span class="comment"># Navigate to docker directory</span>
+cd CMS2.0/deployment/docker
+
+<span class="comment"># Start all infrastructure containers</span>
+docker-compose up -d</code></pre>
+
+    <p>This starts the following services:</p>
+    <table>
+        <thead>
+            <tr><th>Service</th><th>Port</th><th>URL / Connection String</th></tr>
+        </thead>
+        <tbody>
+            <tr><td>Oracle XE 21</td><td>1521</td><td><code>jdbc:oracle:thin:@localhost:1521/XEPDB1</code></td></tr>
+            <tr><td>Kafka (KRaft)</td><td>9092</td><td><code>localhost:9092</code></td></tr>
+            <tr><td>Keycloak 26</td><td>8180</td><td><a href="http://localhost:8180">http://localhost:8180</a></td></tr>
+            <tr><td>OpenSearch</td><td>9200</td><td><a href="http://localhost:9200">http://localhost:9200</a></td></tr>
+            <tr><td>OpenSearch Dashboards</td><td>5601</td><td><a href="http://localhost:5601">http://localhost:5601</a></td></tr>
+            <tr><td>Kafka UI</td><td>8090</td><td><a href="http://localhost:8090">http://localhost:8090</a></td></tr>
+            <tr><td>Prometheus</td><td>9090</td><td><a href="http://localhost:9090">http://localhost:9090</a></td></tr>
+            <tr><td>Grafana</td><td>3000</td><td><a href="http://localhost:3000">http://localhost:3000</a> (admin/admin)</td></tr>
+        </tbody>
+    </table>
+
+    <p>Wait for all containers to be healthy:</p>
+    <pre><code>docker-compose ps</code></pre>
+
+    <div class="note">
+        <strong>Note:</strong> Oracle takes ~2-3 minutes to start. Wait until <code>cms-oracle</code> shows <code>healthy</code>.
+    </div>
+
+    <hr>
+
+    <h2>Step 2: Initialize Oracle Database</h2>
+    <p>Once Oracle is healthy, run the schema scripts:</p>
+
+    <pre><code><span class="comment"># Connect to Oracle container</span>
+docker exec -it cms-oracle sqlplus cms_app/cms_app_password@//localhost:1521/XEPDB1
+
+<span class="comment"># Inside sqlplus, run V5 (the latest consolidated DDL+DML):</span>
+@/path/to/CMS2.0/database/oracle/V5__complete_ddl_dml.sql</code></pre>
+
+    <p><strong>Alternative — Copy file into container and run:</strong></p>
+    <pre><code><span class="comment"># Copy and run V5 schema</span>
+docker cp ../../database/oracle/V5__complete_ddl_dml.sql cms-oracle:/tmp/
+docker exec -it cms-oracle bash -c "sqlplus cms_app/cms_app_password@//localhost:1521/XEPDB1 @/tmp/V5__complete_ddl_dml.sql"
+
+<span class="comment"># Copy and run V6 migration (new columns added since V5)</span>
+docker cp ../../database/oracle/V6__alter_tables_new_columns.sql cms-oracle:/tmp/
+docker exec -it cms-oracle bash -c "sqlplus cms_app/cms_app_password@//localhost:1521/XEPDB1 @/tmp/V6__alter_tables_new_columns.sql"</code></pre>
+
+    <hr>
+
+    <h2>Step 3: Configure Keycloak</h2>
+    <ol>
+        <li>Open <a href="http://localhost:8180">http://localhost:8180</a> &rarr; Admin Console &rarr; Login: <code>admin</code> / <code>admin</code></li>
+        <li>Create Realm: <code>cms</code></li>
+        <li>Create Clients:</li>
+    </ol>
+
+    <h3>Client: <code>cms-portal</code></h3>
+    <ul>
+        <li>Client type: OpenID Connect</li>
+        <li>Root URL: <code>http://localhost:4200</code></li>
+        <li>Valid redirect URIs: <code>http://localhost:4200/*</code></li>
+        <li>Web origins: <code>http://localhost:4200</code></li>
+        <li>Access type: Public</li>
+        <li>PKCE: Enabled (S256)</li>
+    </ul>
+
+    <h3>Client: <code>cms-officer-portal</code></h3>
+    <ul>
+        <li>Client type: OpenID Connect</li>
+        <li>Root URL: <code>http://localhost:4201</code></li>
+        <li>Valid redirect URIs: <code>http://localhost:4201/*</code></li>
+        <li>Web origins: <code>http://localhost:4201</code></li>
+        <li>Access type: Public</li>
+        <li>PKCE: Enabled (S256)</li>
+    </ul>
+
+    <h3>4. Create Realm Roles</h3>
+    <pre><code>CEPC: DO, REVIEWER, INCHARGE, CA, ADMIN, CP
+RBIO: RBIO_OFFICER, RBIO_SUPERVISOR, RBIO_CONCILIATOR, RBIO_ADJUDICATOR, RBIO_ADMIN
+RE:   RE_NODAL_OFFICER, RE_PNO
+AA:   AA_REGISTRAR, AA_BENCH_OFFICER, AA_AUTHORITY, AA_ADMIN</code></pre>
+
+    <h3>5. Create Test Users</h3>
+    <table>
+        <thead>
+            <tr><th>Username</th><th>Password</th><th>Roles</th></tr>
+        </thead>
+        <tbody>
+            <tr><td>deo1</td><td>password</td><td>DO</td></tr>
+            <tr><td>reviewer1</td><td>password</td><td>REVIEWER</td></tr>
+            <tr><td>incharge1</td><td>password</td><td>INCHARGE</td></tr>
+            <tr><td>rbio_officer1</td><td>password</td><td>RBIO_OFFICER</td></tr>
+            <tr><td>rbio_admin1</td><td>password</td><td>RBIO_ADMIN</td></tr>
+        </tbody>
+    </table>
+
+    <hr>
+
+    <h2>Step 4: Start Backend Services</h2>
+
+    <h3>Option A: Dev-Local Profile (H2 — No Oracle needed, simplest)</h3>
+    <p>If you just want to run the frontend with a working backend, use H2 in-memory mode:</p>
+    <pre><code>cd CMS2.0/cms-backend
+mvn spring-boot:run -Dspring-boot.run.profiles=dev-local</code></pre>
+    <p>This runs on port 8082 with H2, Kafka on localhost:9092, Keycloak on localhost:9090.</p>
+
+    <div class="note">
+        <strong>Note:</strong> For dev-local, change Keycloak port in <code>application-dev-local.yml</code> from 9090 to 8180 (Docker compose Keycloak port), or run Keycloak natively on 9090.
+    </div>
+
+    <h3>Option B: Full Stack with Oracle (Docker)</h3>
+    <p>Set environment variables and run without dev-local profile:</p>
+    <pre><code><span class="comment"># Terminal 1: API Gateway</span>
+cd CMS2.0/cms-api-gateway
+set KEYCLOAK_ISSUER_URI=http://localhost:8180/realms/cms
+set KEYCLOAK_JWK_URI=http://localhost:8180/realms/cms/protocol/openid-connect/certs
+mvn spring-boot:run
+
+<span class="comment"># Terminal 2: Backend (Oracle mode)</span>
+cd CMS2.0/cms-backend
+set DB_HOST=localhost
+set DB_PORT=1521
+set DB_SERVICE_NAME=XEPDB1
+set DB_USERNAME=cms_app
+set DB_PASSWORD=cms_app_password
+set KAFKA_BOOTSTRAP_SERVERS=localhost:9092
+set KEYCLOAK_URL=http://localhost:8180
+set CMS_ENCRYPTION_SECRET=docker-local-secret-key-min16
+mvn spring-boot:run</code></pre>
+
+    <hr>
+
+    <h2>Step 5: Start Frontend</h2>
+    <pre><code><span class="comment"># Public Portal</span>
+cd CMS2.0/cms-portal-frontend
+npm install
+ng serve --port 4200
+
+<span class="comment"># Officer Portal (separate terminal)</span>
+cd CMS2.0/cms-frontend
+npm install
+ng serve --port 4201</code></pre>
+
+    <hr>
+
+    <h2>Step 6: Update Frontend Environment (if needed)</h2>
+    <p>If using Docker Keycloak on port 8180, update <code>environment.ts</code>:</p>
+    <pre><code><span class="comment">// src/environments/environment.ts</span>
+export const environment = {
+  ...
+  keycloakUrl: '<span class="keyword">http://localhost:8180</span>',  <span class="comment">// Docker Keycloak port</span>
+  ...
+};</code></pre>
+
+    <hr>
+
+    <h2>Access Points</h2>
+    <table>
+        <thead>
+            <tr><th>Service</th><th>URL</th></tr>
+        </thead>
+        <tbody>
+            <tr><td>Public Portal</td><td><a href="http://localhost:4200">http://localhost:4200</a></td></tr>
+            <tr><td>Officer Portal</td><td><a href="http://localhost:4201">http://localhost:4201</a></td></tr>
+            <tr><td>API Gateway</td><td><a href="http://localhost:8080">http://localhost:8080</a></td></tr>
+            <tr><td>Backend (direct)</td><td><a href="http://localhost:8082">http://localhost:8082</a></td></tr>
+            <tr><td>H2 Console (dev-local)</td><td><a href="http://localhost:8082/h2-console">http://localhost:8082/h2-console</a></td></tr>
+            <tr><td>Keycloak Admin</td><td><a href="http://localhost:8180">http://localhost:8180</a></td></tr>
+            <tr><td>Kafka UI</td><td><a href="http://localhost:8090">http://localhost:8090</a></td></tr>
+            <tr><td>OpenSearch</td><td><a href="http://localhost:9200">http://localhost:9200</a></td></tr>
+            <tr><td>Grafana</td><td><a href="http://localhost:3000">http://localhost:3000</a></td></tr>
+        </tbody>
+    </table>
+
+    <hr>
+
+    <h2>Docker Commands Reference</h2>
+    <pre><code><span class="comment"># Start all infrastructure</span>
+docker-compose up -d
+
+<span class="comment"># Stop all</span>
+docker-compose down
+
+<span class="comment"># Stop and remove volumes (DELETES DATA)</span>
+docker-compose down -v
+
+<span class="comment"># View logs</span>
+docker-compose logs -f oracle-db
+docker-compose logs -f keycloak
+docker-compose logs -f kafka
+
+<span class="comment"># Check health status</span>
+docker-compose ps
+
+<span class="comment"># Restart specific service</span>
+docker-compose restart keycloak
+
+<span class="comment"># Shell into Oracle container</span>
+docker exec -it cms-oracle bash
+
+<span class="comment"># Shell into Kafka container</span>
+docker exec -it cms-kafka bash</code></pre>
+
+    <hr>
+
+    <h2>Troubleshooting</h2>
+
+    <h3>Oracle container not starting</h3>
+    <ul>
+        <li>Ensure Docker has at least 4GB RAM allocated</li>
+        <li>Check logs: <code>docker-compose logs oracle-db</code></li>
+        <li>If port 1521 is in use: <code>netstat -an | findstr 1521</code></li>
+    </ul>
+
+    <h3>Kafka connection refused</h3>
+    <ul>
+        <li>Wait 30 seconds after container starts</li>
+        <li>Verify: <code>docker exec cms-kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list</code></li>
+    </ul>
+
+    <h3>Keycloak errors</h3>
+    <ul>
+        <li>Ensure <code>keycloak-db</code> (Postgres) is healthy before Keycloak starts</li>
+        <li>Admin console: <a href="http://localhost:8180/admin">http://localhost:8180/admin</a> (admin/admin)</li>
+    </ul>
+
+    <h3>Frontend CORS errors</h3>
+    <ul>
+        <li>Ensure <code>cms.cors.allowed-origins</code> in backend includes <code>http://localhost:4200</code></li>
+        <li>For dev-local profile this is already configured</li>
+    </ul>
+
+    <h3>Backend CMS_ENCRYPTION_SECRET error</h3>
+    <ul>
+        <li>Always use <code>dev-local</code> profile for local development, OR</li>
+        <li>Set env: <code>set CMS_ENCRYPTION_SECRET=any-string-min-16-chars</code></li>
+    </ul>
+
+    <hr>
+
+    <h2>Minimal Quick Start (Fastest Path)</h2>
+    <div class="tip">
+        <strong>Tip:</strong> For the fastest path, you don't need Oracle, OpenSearch, or Prometheus. The backend uses H2 in-memory database and all features work except full-text search.
+    </div>
+
+    <pre><code><span class="comment"># 1. Start Docker infrastructure (only Kafka + Keycloak)</span>
+cd CMS2.0/deployment/docker
+docker-compose up -d kafka keycloak keycloak-db
+
+<span class="comment"># 2. Start backend with H2 (no Oracle needed)</span>
+cd CMS2.0/cms-backend
+mvn spring-boot:run -Dspring-boot.run.profiles=dev-local
+
+<span class="comment"># 3. Start frontend</span>
+cd CMS2.0/cms-portal-frontend
+npm install && ng serve --port 4200
+
+<span class="comment"># 4. Open browser</span>
+<span class="comment"># http://localhost:4200</span></code></pre>
+
+</div>
+</body>
+</html>

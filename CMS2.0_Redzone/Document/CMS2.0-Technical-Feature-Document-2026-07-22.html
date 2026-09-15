@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CMS 2.0 - Technical Feature Document</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; line-height: 1.6; color: #333; background: #f5f7fa; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #4a148c, #6a1b9a); color: white; padding: 40px; border-radius: 12px; margin-bottom: 30px; }
+        .header h1 { font-size: 2em; margin-bottom: 10px; }
+        .header p { opacity: 0.9; font-size: 1.1em; }
+        .meta { display: flex; gap: 20px; margin-top: 15px; font-size: 0.9em; opacity: 0.8; }
+        .section { background: white; border-radius: 10px; padding: 30px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+        .section h2 { color: #4a148c; border-bottom: 2px solid #f3e5f5; padding-bottom: 10px; margin-bottom: 20px; }
+        .section h3 { color: #6a1b9a; margin: 20px 0 10px; }
+        .section h4 { color: #7b1fa2; margin: 15px 0 8px; }
+        pre { background: #1e1e1e; color: #d4d4d4; padding: 20px; border-radius: 8px; overflow-x: auto; margin: 15px 0; font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 0.85em; line-height: 1.5; }
+        pre .comment { color: #6a9955; }
+        pre .keyword { color: #569cd6; }
+        pre .string { color: #ce9178; }
+        pre .type { color: #4ec9b0; }
+        pre .annotation { color: #dcdcaa; }
+        code { background: #f0f0f0; padding: 2px 6px; border-radius: 4px; font-size: 0.88em; }
+        table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+        th, td { padding: 10px 14px; text-align: left; border: 1px solid #e0e0e0; }
+        th { background: #f3e5f5; color: #4a148c; font-weight: 600; }
+        tr:nth-child(even) { background: #fafbfc; }
+        .tech-card { border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; margin: 15px 0; }
+        .tech-card h4 { margin-top: 0; color: #6a1b9a; border-bottom: 1px solid #f3e5f5; padding-bottom: 8px; }
+        .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 0.75em; font-weight: 600; margin: 2px 4px 2px 0; }
+        .badge-java { background: #fff3e0; color: #e65100; }
+        .badge-angular { background: #fce4ec; color: #c62828; }
+        .badge-kafka { background: #e8f5e9; color: #2e7d32; }
+        .badge-db { background: #e3f2fd; color: #1565c0; }
+        .badge-api { background: #f3e5f5; color: #6a1b9a; }
+        .badge-security { background: #efebe9; color: #4e342e; }
+        .info { background: #e3f2fd; border-left: 4px solid #2196f3; padding: 12px 16px; margin: 15px 0; border-radius: 4px; }
+        ul, ol { padding-left: 20px; margin: 10px 0; }
+        li { margin: 5px 0; }
+        .file-ref { font-family: monospace; color: #6a1b9a; background: #f3e5f5; padding: 1px 5px; border-radius: 3px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>CMS 2.0 - Technical Feature Document</h1>
+        <p>Implementation details, APIs, services, entities, and code structure for each feature</p>
+        <div class="meta">
+            <span>Document Date: 22 July 2026</span>
+            <span>Version: 2.0</span>
+            <span>Tech Stack: Angular 21 + Spring Boot 3.4 + Oracle + Kafka</span>
+        </div>
+    </div>
+
+    <!-- FEATURE 1: COMPLAINT FILING -->
+    <div class="section">
+        <h2>1. Public Complaint Filing</h2>
+        <span class="badge badge-angular">Angular</span>
+        <span class="badge badge-java">Spring Boot</span>
+        <span class="badge badge-db">Oracle</span>
+
+        <div class="tech-card">
+            <h4>Frontend Implementation</h4>
+            <table>
+                <tr><th>Component</th><th>File</th><th>Purpose</th></tr>
+                <tr><td>PublicFileComplaintComponent</td><td><span class="file-ref">components/public/file-complaint/file-complaint.component.ts</span></td><td>Multi-step form with validation</td></tr>
+                <tr><td>EligibilityWizardComponent</td><td><span class="file-ref">components/public/eligibility-wizard/eligibility-wizard.component.ts</span></td><td>9-question eligibility check</td></tr>
+                <tr><td>PublicLoginComponent</td><td><span class="file-ref">components/public/public-login/public-login.component.ts</span></td><td>OTP-based citizen auth</td></tr>
+                <tr><td>PublicLayoutComponent</td><td><span class="file-ref">components/public/public-layout/public-layout.component.ts</span></td><td>Shell layout for public routes</td></tr>
+            </table>
+            <p><strong>Route Guard:</strong> <code>publicAuthGuard</code> - verifies active citizen session (15-min TTL)</p>
+        </div>
+
+        <div class="tech-card">
+            <h4>Backend Implementation</h4>
+            <table>
+                <tr><th>Class</th><th>Endpoint</th><th>Purpose</th></tr>
+                <tr><td>ComplaintController</td><td><code>POST /api/complaints</code></td><td>Submit complaint</td></tr>
+                <tr><td>ComplaintApiV1Controller</td><td><code>POST /api/v1/complaints</code></td><td>Public API version</td></tr>
+                <tr><td>EligibilityWizardController</td><td><code>POST /api/eligibility/check</code></td><td>Validate eligibility</td></tr>
+                <tr><td>CitizenAuthController</td><td><code>POST /api/auth/otp</code><br><code>POST /api/auth/verify</code></td><td>OTP generation & verification</td></tr>
+                <tr><td>LocationController</td><td><code>GET /api/locations/pincode/{pin}</code></td><td>Pincode to state/district lookup</td></tr>
+                <tr><td>BankController</td><td><code>GET /api/banks</code></td><td>Regulated Entity master data</td></tr>
+                <tr><td>CategoryController</td><td><code>GET /api/categories</code></td><td>Complaint categories</td></tr>
+            </table>
+        </div>
+
+        <div class="tech-card">
+            <h4>Key Services</h4>
+            <table>
+                <tr><th>Service</th><th>Responsibility</th></tr>
+                <tr><td>ComplaintService</td><td>Core complaint CRUD, number generation (CMS-YYYYMMDD-XXXXXX), status transitions</td></tr>
+                <tr><td>ComplaintRoutingService</td><td>Routes to RBIO/CEPC based on entity type, assigns officer via round-robin</td></tr>
+                <tr><td>OtpService</td><td>OTP generation, storage, verification, expiry management</td></tr>
+                <tr><td>CaptchaService</td><td>Image CAPTCHA generation (200x60px, 6 chars)</td></tr>
+                <tr><td>CitizenSessionService</td><td>15-minute session management, X-Session-Id validation</td></tr>
+                <tr><td>CooloffService</td><td>Progressive cooldown (5s, 10s, 20s) on failed attempts</td></tr>
+            </table>
+        </div>
+
+        <div class="tech-card">
+            <h4>Entity Model</h4>
+            <pre><span class="annotation">@Entity</span>
+<span class="keyword">public class</span> <span class="type">Complaint</span> {
+    <span class="annotation">@Id @GeneratedValue</span>
+    <span class="keyword">private</span> Long id;
+    <span class="keyword">private</span> String complaintNumber;    <span class="comment">// CMS-20260722-A1B2C3</span>
+    <span class="keyword">private</span> String subject;
+    <span class="keyword">private</span> String description;
+    <span class="keyword">private</span> String status;             <span class="comment">// FILED, ASSIGNED, IN_PROGRESS, etc.</span>
+    <span class="keyword">private</span> String priority;            <span class="comment">// HIGH, MEDIUM, LOW</span>
+    <span class="keyword">private</span> String department;          <span class="comment">// RBIO, CEPC</span>
+    <span class="keyword">private</span> String entityCode;          <span class="comment">// RE identifier</span>
+    <span class="keyword">private</span> Long categoryId;
+    <span class="keyword">private</span> String assignedTo;          <span class="comment">// Keycloak username</span>
+    <span class="keyword">private</span> String triageSignal;        <span class="comment">// HIGH, MEDIUM, LOW</span>
+    <span class="keyword">private</span> String maintainabilityDetermination; <span class="comment">// MRE verdict</span>
+    <span class="keyword">private boolean</span> priorReComplaint;
+    <span class="keyword">private</span> LocalDateTime reComplaintDate;
+    <span class="keyword">private</span> String reComplaintReference;
+    <span class="keyword">private boolean</span> reRepliedAndDissatisfied;
+    <span class="keyword">private</span> LocalDateTime createdAt;
+    <span class="keyword">private</span> LocalDateTime filedAt;
+    <span class="keyword">private</span> LocalDateTime resolvedAt;
+    <span class="keyword">private</span> LocalDateTime closedAt;
+    <span class="comment">// ... 40+ additional fields for complainant PII, entity details, etc.</span>
+}</pre>
+        </div>
+
+        <div class="tech-card">
+            <h4>Anti-Automation Pipeline</h4>
+            <pre><span class="comment">// Request validation pipeline (in order):</span>
+1. Rate Limiter     → complaints-per-minute: 100, api-requests-per-second: 1000
+2. CAPTCHA Check    → Image CAPTCHA solved correctly
+3. Honeypot        → X-HP-Field header must be empty
+4. Velocity Check   → Max 100 requests per 60s window from same IP
+5. Timing Check    → min-form-submission-ms (>0 in prod)
+6. Standard Headers → Requires standard browser headers (prod only)
+7. Session Bind    → X-Session-Id must match active session</pre>
+        </div>
+    </div>
+
+    <!-- FEATURE 2: MRE -->
+    <div class="section">
+        <h2>2. Maintainability Rules Engine (MRE)</h2>
+        <span class="badge badge-java">Spring Boot</span>
+        <span class="badge badge-api">Rules Engine</span>
+
+        <div class="tech-card">
+            <h4>Implementation Files</h4>
+            <table>
+                <tr><th>File</th><th>Purpose</th></tr>
+                <tr><td><span class="file-ref">service/mre/MaintainabilityRulesEngine.java</span></td><td>Core engine - evaluates 6 grounds</td></tr>
+                <tr><td><span class="file-ref">service/mre/ComplaintFacts.java</span></td><td>Input DTO assembled from complaint data</td></tr>
+                <tr><td><span class="file-ref">service/mre/MreGround.java</span></td><td>Enum of 6 grounds</td></tr>
+                <tr><td><span class="file-ref">service/mre/GroundVerdict.java</span></td><td>Per-ground result (PASS/FAIL/INSUFFICIENT)</td></tr>
+                <tr><td><span class="file-ref">service/mre/MreVerdict.java</span></td><td>Overall verdict container</td></tr>
+                <tr><td><span class="file-ref">service/mre/MreProperties.java</span></td><td>Configurable thresholds from YAML</td></tr>
+                <tr><td><span class="file-ref">service/mre/MreEntityCoverageService.java</span></td><td>Checks entity against regulated_entities table</td></tr>
+                <tr><td><span class="file-ref">controller/MreController.java</span></td><td>REST API endpoint</td></tr>
+            </table>
+        </div>
+
+        <div class="tech-card">
+            <h4>API Contract</h4>
+            <pre><span class="comment">// POST /api/mre/evaluate</span>
+<span class="comment">// Request:</span>
+{
+  "entityCode": "SBI001",
+  "priorReComplaint": true,
+  "reComplaintDate": "2026-05-15",
+  "reResponseDate": "2026-06-01",
+  "filedDate": "2026-07-20",
+  "pendingInForum": false
+}
+
+<span class="comment">// Response:</span>
+{
+  "overallSignal": "MAINTAINABLE",
+  "grounds": [
+    { "ground": "ENTITY_NOT_COVERED", "verdict": "PASS", "reason": "Entity SBI001 is covered" },
+    { "ground": "NO_PRIOR_RE_COMPLAINT", "verdict": "PASS", "reason": "Prior complaint confirmed" },
+    { "ground": "FILED_BEFORE_WINDOW", "verdict": "PASS", "reason": "30-day window elapsed" },
+    { "ground": "FILED_BEYOND_DEADLINE", "verdict": "PASS", "reason": "Within 90 days of RE response" },
+    { "ground": "RE_COMPLAINT_BEYOND_LIMITATION", "verdict": "PASS", "reason": "Within 3-year limitation" },
+    { "ground": "SAME_GRIEVANCE_PENDING", "verdict": "PASS", "reason": "Not pending in any forum" }
+  ]
+}</pre>
+        </div>
+
+        <div class="tech-card">
+            <h4>Configuration</h4>
+            <pre><span class="comment"># application.yml</span>
+cms:
+  mre:
+    version: 1
+    re-window-days: 30           <span class="comment"># Wait period after filing with RE</span>
+    npci-window-days: 30         <span class="comment"># NPCI dispute window</span>
+    card-network-window-days: 60 <span class="comment"># Card network (Visa/MC) window</span>
+    filing-deadline-days: 90     <span class="comment"># Max days to file after RE response</span>
+    limitation-period-years: 3   <span class="comment"># Overall limitation</span>
+    window-basis: BUSINESS       <span class="comment"># BUSINESS or CALENDAR days</span></pre>
+        </div>
+    </div>
+
+    <!-- FEATURE 3: ROUND ROBIN ASSIGNMENT -->
+    <div class="section">
+        <h2>3. Round-Robin Officer Assignment</h2>
+        <span class="badge badge-java">Spring Boot</span>
+        <span class="badge badge-security">Keycloak</span>
+
+        <div class="tech-card">
+            <h4>Implementation</h4>
+            <table>
+                <tr><th>File</th><th>Purpose</th></tr>
+                <tr><td><span class="file-ref">service/ComplaintRoutingService.java</span></td><td>Main routing logic + assignment</td></tr>
+                <tr><td><span class="file-ref">service/KeycloakUserService.java</span></td><td>Fetches users by role from Keycloak Admin API</td></tr>
+                <tr><td><span class="file-ref">controller/ComplaintRoutingController.java</span></td><td>Manual routing/reassignment endpoints</td></tr>
+            </table>
+        </div>
+
+        <div class="tech-card">
+            <h4>Assignment Algorithm</h4>
+            <pre><span class="comment">// ComplaintRoutingService.assignOfficerByRole()</span>
+<span class="keyword">public</span> String <span class="type">assignOfficerByRole</span>(String role) {
+    <span class="comment">// 1. Query Keycloak for all users with the given role</span>
+    List&lt;String&gt; officers = keycloakUserService.getUsersByRole(role);
+
+    <span class="comment">// 2. If Keycloak is unreachable or no users found → fallback</span>
+    <span class="keyword">if</span> (officers.isEmpty()) {
+        <span class="keyword">return</span> role.replace("_", " ") + " Team"; <span class="comment">// e.g. "RBIO OFFICER Team"</span>
+    }
+
+    <span class="comment">// 3. Atomic counter for round-robin (survives restarts via DB)</span>
+    <span class="keyword">int</span> index = counter.getAndIncrement() % officers.size();
+
+    <span class="comment">// 4. Return selected officer's username</span>
+    <span class="keyword">return</span> officers.get(index);
+}
+
+<span class="comment">// Routing decision:</span>
+<span class="comment">// WEB_PORTAL source → always RBIO (direct assignment)</span>
+<span class="comment">// EMAIL/PHYSICAL_LETTER → CRPC first, then route based on entity type:</span>
+<span class="comment">//   Banking entity → RBIO</span>
+<span class="comment">//   Non-banking entity → CEPC</span></pre>
+        </div>
+    </div>
+
+    <!-- FEATURE 4: KAFKA OUTBOX -->
+    <div class="section">
+        <h2>4. Transactional Outbox Pattern (Kafka)</h2>
+        <span class="badge badge-kafka">Kafka</span>
+        <span class="badge badge-java">Spring Boot</span>
+        <span class="badge badge-db">Oracle</span>
+
+        <div class="tech-card">
+            <h4>How It Works</h4>
+            <ol>
+                <li><strong>Write phase:</strong> Business service saves complaint data + outbox event in same DB transaction</li>
+                <li><strong>Poll phase:</strong> <code>cms-outbox-publisher</code> polls <code>OUTBOX_EVENTS</code> table every 5 seconds</li>
+                <li><strong>Publish phase:</strong> Publishes events to Kafka topics</li>
+                <li><strong>Mark phase:</strong> Updates status to PUBLISHED in DB</li>
+                <li><strong>Retry:</strong> Max 5 retries with exponential backoff</li>
+                <li><strong>DLQ:</strong> After 5 failures, moved to <code>complaint.dlq</code> topic</li>
+            </ol>
+        </div>
+
+        <div class="tech-card">
+            <h4>Kafka Topics</h4>
+            <table>
+                <tr><th>Topic</th><th>Producer</th><th>Consumers</th><th>Purpose</th></tr>
+                <tr><td>complaint.ingested</td><td>Outbox Publisher</td><td>Assignment, SLA, Search, Audit, Notification</td><td>New complaint filed</td></tr>
+                <tr><td>complaint.assigned</td><td>Outbox Publisher</td><td>Notification, Audit</td><td>Officer assigned</td></tr>
+                <tr><td>complaint.inprogress</td><td>Outbox Publisher</td><td>SLA, Audit</td><td>Work started</td></tr>
+                <tr><td>complaint.escalated</td><td>SLA Monitor</td><td>Notification, Audit</td><td>SLA breach escalation</td></tr>
+                <tr><td>complaint.resolved</td><td>Outbox Publisher</td><td>Notification, Audit, Search</td><td>Resolution provided</td></tr>
+                <tr><td>complaint.closed</td><td>Outbox Publisher</td><td>Notification, Audit, Search</td><td>Final closure</td></tr>
+                <tr><td>complaint.dlq</td><td>Outbox Publisher</td><td>Admin alerting</td><td>Failed events</td></tr>
+            </table>
+        </div>
+
+        <div class="tech-card">
+            <h4>Outbox Table Schema</h4>
+            <pre><span class="keyword">CREATE TABLE</span> OUTBOX_EVENTS (
+    id           NUMBER PRIMARY KEY,
+    topic        VARCHAR2(100) NOT NULL,
+    payload      CLOB NOT NULL,
+    status       VARCHAR2(20) DEFAULT 'PENDING',  <span class="comment">-- PENDING, PUBLISHED, FAILED</span>
+    retry_count  NUMBER DEFAULT 0,
+    created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    published_at TIMESTAMP,
+    error_msg    VARCHAR2(500)
+);</pre>
+        </div>
+    </div>
+
+    <!-- FEATURE 5: CRPC WORKFLOW -->
+    <div class="section">
+        <h2>5. CRPC Module (Email/Letter Processing)</h2>
+        <span class="badge badge-angular">Angular</span>
+        <span class="badge badge-java">Spring Boot</span>
+        <span class="badge badge-api">OCR</span>
+
+        <div class="tech-card">
+            <h4>Frontend Components</h4>
+            <table>
+                <tr><th>Component</th><th>Route</th><th>Purpose</th></tr>
+                <tr><td>DeoHomeComponent</td><td>/crpc/home</td><td>DEO queue dashboard</td></tr>
+                <tr><td>PhysicalLetterComponent</td><td>/crpc/physical-letter</td><td>Physical letter intake form</td></tr>
+                <tr><td>DraftAssessmentComponent</td><td>/crpc/draft/:id</td><td>Draft editing with MRE copilot</td></tr>
+                <tr><td>ReviewerHomeComponent</td><td>/crpc/reviewer</td><td>Reviewer queue</td></tr>
+                <tr><td>ReviewerAssessmentComponent</td><td>/crpc/reviewer/draft/:id</td><td>Reviewer approval/rejection</td></tr>
+                <tr><td>InChargeDashboardComponent</td><td>/crpc/in-charge</td><td>Workload management</td></tr>
+                <tr><td>OpsHeadComponent</td><td>/crpc/ops-head</td><td>Operations overview</td></tr>
+                <tr><td>HelpDeskComponent</td><td>/crpc/help-desk</td><td>Citizen inquiry handling</td></tr>
+            </table>
+        </div>
+
+        <div class="tech-card">
+            <h4>Backend APIs</h4>
+            <table>
+                <tr><th>Controller</th><th>Key Endpoints</th></tr>
+                <tr><td>CrpcWorkflowController</td><td><code>GET /api/crpc/queue</code> — DEO queue<br><code>POST /api/crpc/draft/{id}/submit</code> — Submit for review<br><code>POST /api/crpc/draft/{id}/approve</code> — Reviewer approve<br><code>POST /api/crpc/draft/{id}/reject</code> — Reviewer reject</td></tr>
+                <tr><td>CrpcDraftEnhancementController</td><td><code>POST /api/crpc/enhance/{draftId}</code> — Run OCR on draft attachments<br><code>GET /api/crpc/copilot/{draftId}</code> — MRE copilot assessment</td></tr>
+                <tr><td>CrpcInChargeController</td><td><code>GET /api/crpc/workload</code> — Team workload<br><code>POST /api/crpc/reassign</code> — Reassign draft</td></tr>
+            </table>
+        </div>
+
+        <div class="tech-card">
+            <h4>CRPC Workflow States</h4>
+            <pre>EmailDraft.status:
+  PENDING          → Just received, in queue
+  IN_PROGRESS      → DEO is working on it
+  SUBMITTED        → DEO submitted for review
+  APPROVED         → Reviewer approved → creates Complaint entity
+  REJECTED         → Reviewer rejected → back to DEO
+  NON_MAINTAINABLE → Determined as not maintainable
+  IGNORED          → Spam/irrelevant (from ignore list)</pre>
+        </div>
+
+        <div class="tech-card">
+            <h4>Threshold Management</h4>
+            <pre><span class="comment"># application.yml</span>
+crpc:
+  threshold:
+    max-per-reviewer: 50          <span class="comment"># Max complaints per reviewer</span>
+    overflow-target: CRPC_HEAD    <span class="comment"># Overflow target when threshold hit</span>
+  scheduling:
+    pending-notify-cron: "0 0 9 * * MON-FRI"     <span class="comment"># Daily pending notification</span>
+    duplicate-check-cron: "0 30 9 * * MON-FRI"   <span class="comment"># Duplicate detection</span>
+    threshold-check-cron: "0 0 10 * * MON-FRI"   <span class="comment"># Threshold monitoring</span></pre>
+        </div>
+    </div>
+
+    <!-- FEATURE 6: OCR PIPELINE -->
+    <div class="section">
+        <h2>6. OCR Pipeline (Multi-Provider)</h2>
+        <span class="badge badge-java">Spring Boot</span>
+        <span class="badge badge-api">AI/ML</span>
+
+        <div class="tech-card">
+            <h4>Implementation Files</h4>
+            <table>
+                <tr><th>File</th><th>Purpose</th></tr>
+                <tr><td><span class="file-ref">service/OcrExtractionService.java</span></td><td>Orchestrator - selects provider based on config</td></tr>
+                <tr><td><span class="file-ref">service/ocr/OcrProvider.java</span></td><td>Interface for all OCR providers</td></tr>
+                <tr><td><span class="file-ref">service/ocr/GroqOcrProvider.java</span></td><td>Groq/LLaMA 4 Scout implementation</td></tr>
+                <tr><td><span class="file-ref">service/ocr/PaddleOcrProvider.java</span></td><td>PaddleOCR HTTP client</td></tr>
+                <tr><td><span class="file-ref">service/ocr/GeminiOcrProvider.java</span></td><td>Google Gemini implementation</td></tr>
+                <tr><td><span class="file-ref">service/ocr/AzureDocIntelligenceOcrProvider.java</span></td><td>Azure Document Intelligence</td></tr>
+                <tr><td><span class="file-ref">service/ocr/OpenAiOcrProvider.java</span></td><td>OpenAI GPT-4 Vision</td></tr>
+                <tr><td><span class="file-ref">service/ocr/HuggingFaceOcrProvider.java</span></td><td>HuggingFace models</td></tr>
+                <tr><td><span class="file-ref">service/ocr/OcrPrompts.java</span></td><td>Prompt templates for AI providers</td></tr>
+                <tr><td><span class="file-ref">service/ocr/OcrResponseParser.java</span></td><td>JSON response parsing & field mapping</td></tr>
+                <tr><td><span class="file-ref">controller/OcrController.java</span></td><td>REST API: POST /api/ocr/extract</td></tr>
+            </table>
+        </div>
+
+        <div class="tech-card">
+            <h4>Provider Selection</h4>
+            <pre><span class="comment"># Configuration determines active provider:</span>
+cms:
+  ocr:
+    chain: groq              <span class="comment"># Options: groq, paddle, gemini, azure, openai, huggingface</span>
+    groq-api-key: gsk_...
+    groq-model: meta-llama/llama-4-scout-17b-16e-instruct
+    paddle-ocr-url: http://cms-paddle-ocr:8100/ocr
+    gemini-api-key: ...
+    azure-endpoint: ...
+    azure-api-key: ...
+    openai-api-key: ...
+    huggingface-api-key: ...
+
+<span class="comment"># Extraction output: structured JSON with fields:</span>
+{
+  "complainantName": "...",
+  "mobileNumber": "...",
+  "entityName": "...",
+  "complaintSubject": "...",
+  "complaintDate": "...",
+  "disputeAmount": "...",
+  "confidence": 0.85
+}</pre>
+        </div>
+    </div>
+
+    <!-- FEATURE 7: REPORT BUILDER -->
+    <div class="section">
+        <h2>7. Report Builder (Semantic Query Engine)</h2>
+        <span class="badge badge-angular">Angular</span>
+        <span class="badge badge-java">Spring Boot</span>
+        <span class="badge badge-db">JPA Criteria</span>
+
+        <div class="tech-card">
+            <h4>Implementation</h4>
+            <table>
+                <tr><th>File</th><th>Purpose</th></tr>
+                <tr><td><span class="file-ref">service/report/SemanticModelRegistry.java</span></td><td>Defines allowed subjects, fields, group-by options</td></tr>
+                <tr><td><span class="file-ref">service/report/QueryCompiler.java</span></td><td>Translates semantic query → JPA CriteriaQuery</td></tr>
+                <tr><td><span class="file-ref">service/report/ReportQuery.java</span></td><td>Query DTO (subjectId, filters, groupByField)</td></tr>
+                <tr><td><span class="file-ref">service/report/ReportSchedulerService.java</span></td><td>Scheduled report execution</td></tr>
+                <tr><td><span class="file-ref">controller/ReportBuilderController.java</span></td><td>REST API: POST /api/reports/query</td></tr>
+                <tr><td><span class="file-ref">components/report-builder/report-builder.component.ts</span></td><td>Widget dashboard with Chart.js</td></tr>
+            </table>
+        </div>
+
+        <div class="tech-card">
+            <h4>Semantic Model</h4>
+            <pre><span class="comment">// Subjects (what to measure):</span>
+"count"  → cb.count(root)           <span class="comment">// Count of complaints</span>
+"list"   → Full complaint details    <span class="comment">// Auto-converts to count if grouped</span>
+"avgtat" → cb.avg(root.get("id"))   <span class="comment">// Average TAT (placeholder)</span>
+"medtat" → cb.count(root)           <span class="comment">// Median TAT (fallback)</span>
+
+<span class="comment">// Group-by fields (semantic → JPA mapping):</span>
+"reName"      → entityCode
+"entityType"  → entityCode
+"region"      → department
+"status"      → status
+"priority"    → priority
+"department"  → department
+"category"    → categoryId
+"month"       → createdAt
+
+<span class="comment">// Filters (time ranges):</span>
+THIS_WEEK, THIS_MONTH, LAST_MONTH, LAST_30D, LAST_90D, THIS_YEAR, LAST_YEAR
+
+<span class="comment">// Output format for charts:</span>
+[
+  { "group": "RBIO", "value": 45 },
+  { "group": "CEPC", "value": 23 },
+  { "group": "Unknown", "value": 5 }
+]</pre>
+        </div>
+
+        <div class="tech-card">
+            <h4>Security: Auth-Scoped Queries</h4>
+            <pre><span class="comment">// QueryCompiler.buildAuthScope():</span>
+<span class="comment">// - ADMIN / SENIOR roles → see ALL complaints (no filter)</span>
+<span class="comment">// - Other roles → filtered by department</span>
+<span class="keyword">if</span> (!"ADMIN".equals(userRole) && !"SENIOR".equals(userRole)) {
+    <span class="keyword">return</span> cb.equal(root.get("department"), userDepartment);
+}
+<span class="keyword">return</span> cb.conjunction(); <span class="comment">// no filter (see all)</span></pre>
+        </div>
+    </div>
+
+    <!-- FEATURE 8: SLA MONITORING -->
+    <div class="section">
+        <h2>8. SLA Monitoring & TAT Calculation</h2>
+        <span class="badge badge-java">Spring Boot</span>
+        <span class="badge badge-kafka">Kafka</span>
+
+        <div class="tech-card">
+            <h4>Implementation</h4>
+            <table>
+                <tr><th>File</th><th>Purpose</th></tr>
+                <tr><td><span class="file-ref">service/TatCalculationService.java</span></td><td>Business-hours TAT calculation</td></tr>
+                <tr><td><span class="file-ref">service/BusinessHoursService.java</span></td><td>Business hour rules (9-18, Mon-Fri, excluding holidays)</td></tr>
+                <tr><td><span class="file-ref">service/RbioSlaService.java</span></td><td>RBIO-specific SLA rules</td></tr>
+                <tr><td><span class="file-ref">service/CepcSlaService.java</span></td><td>CEPC-specific SLA rules</td></tr>
+                <tr><td><span class="file-ref">controller/TatController.java</span></td><td>TAT API endpoint</td></tr>
+                <tr><td><span class="file-ref">entity/Holiday.java</span></td><td>Holiday calendar entity</td></tr>
+            </table>
+        </div>
+
+        <div class="tech-card">
+            <h4>Configuration</h4>
+            <pre>cms:
+  tat:
+    business-hour-start: 9       <span class="comment"># 9 AM</span>
+    business-hour-end: 18        <span class="comment"># 6 PM</span>
+    timezone: Asia/Kolkata
+    default-sla-hours: 240       <span class="comment"># 30 business days (30 × 8 hours)</span></pre>
+        </div>
+    </div>
+
+    <!-- FEATURE 9: EMAIL SYNDICATION -->
+    <div class="section">
+        <h2>9. Email Syndication</h2>
+        <span class="badge badge-angular">Angular</span>
+        <span class="badge badge-java">Spring Boot</span>
+
+        <div class="tech-card">
+            <h4>Implementation</h4>
+            <table>
+                <tr><th>Component/Service</th><th>Purpose</th></tr>
+                <tr><td>EmailSyndicationApiController</td><td>Email queue management, draft CRUD</td></tr>
+                <tr><td>EmailSimulationService / Controller</td><td>Dev tool: simulate incoming complaint emails</td></tr>
+                <tr><td>RuleBasedExtractor</td><td>Regex/NLP-based field extraction from email body</td></tr>
+                <tr><td>ExtractionRuleService</td><td>Configurable extraction rule CRUD</td></tr>
+                <tr><td>EmailQueueComponent</td><td>UI: email queue with status filters</td></tr>
+                <tr><td>DraftDetailComponent</td><td>UI: side-by-side email ↔ extracted data</td></tr>
+                <tr><td>IgnoreListComponent</td><td>UI: manage spam/ignore list</td></tr>
+                <tr><td>EmailSimulatorComponent</td><td>UI: test email simulation</td></tr>
+            </table>
+        </div>
+
+        <div class="tech-card">
+            <h4>Entities</h4>
+            <pre><span class="annotation">@Entity</span> EmailDraft {
+    id, emailFrom, emailSubject, emailBody, receivedAt,
+    status, <span class="comment">// PENDING, IN_PROGRESS, SUBMITTED, APPROVED, REJECTED</span>
+    assignedDeo, assignedReviewer,
+    extractedData (JSON), <span class="comment">// OCR/NLP extracted fields</span>
+    complaintId <span class="comment">// links to Complaint after approval</span>
+}
+
+<span class="annotation">@Entity</span> EmailDraftAttachment {
+    id, draftId, fileName, filePath, fileSize, contentType
+}
+
+<span class="annotation">@Entity</span> EmailIgnoreEntry {
+    id, emailAddress, pattern, reason, createdAt
+}
+
+<span class="annotation">@Entity</span> SimulatedEmail {
+    id, fromAddress, subject, body, attachments, simulatedAt
+}</pre>
+        </div>
+    </div>
+
+    <!-- FEATURE 10: APPELLATE AUTHORITY -->
+    <div class="section">
+        <h2>10. Appellate Authority (AA) Module</h2>
+        <span class="badge badge-angular">Angular</span>
+        <span class="badge badge-java">Spring Boot</span>
+
+        <div class="tech-card">
+            <h4>Implementation</h4>
+            <table>
+                <tr><th>File</th><th>Purpose</th></tr>
+                <tr><td>AppealController</td><td><code>POST /api/appeals</code> — File appeal<br><code>GET /api/appeals/{number}</code> — Get appeal detail</td></tr>
+                <tr><td>AppealEligibilityService</td><td>Validates appeal eligibility (30-day window, valid complaint)</td></tr>
+                <tr><td>AppealWorkflowService</td><td>Appeal state machine: FILED → HEARING → ORDER_ISSUED</td></tr>
+                <tr><td>AaDashboardComponent</td><td>Appeal dashboard UI</td></tr>
+                <tr><td>AaAppealDetailComponent</td><td>Appeal detail with hearing management</td></tr>
+                <tr><td>AaHearingComponent</td><td>Hearing scheduling and proceedings</td></tr>
+                <tr><td>AaOrderComponent</td><td>Appellate order generation</td></tr>
+            </table>
+        </div>
+
+        <div class="tech-card">
+            <h4>Entity</h4>
+            <pre><span class="annotation">@Entity</span> Appeal {
+    id, appealNumber, <span class="comment">// AA-YYYYMMDD-XXXXXX</span>
+    complaintId, complaintNumber,
+    status, <span class="comment">// FILED, UNDER_REVIEW, HEARING_SCHEDULED, ORDER_ISSUED, CLOSED</span>
+    grounds, <span class="comment">// Reason for appeal</span>
+    hearingDate, hearingOutcome,
+    orderText, orderDate,
+    filedAt, closedAt
+}
+
+<span class="annotation">@Entity</span> AppealTimeline {
+    id, appealId, event, description, createdAt, createdBy
+}</pre>
+        </div>
+    </div>
+
+    <!-- FEATURE 11: RE PORTAL -->
+    <div class="section">
+        <h2>11. RE Portal (Regulated Entity)</h2>
+        <span class="badge badge-angular">Angular</span>
+        <span class="badge badge-java">Spring Boot</span>
+        <span class="badge badge-security">Keycloak</span>
+
+        <div class="tech-card">
+            <h4>Implementation</h4>
+            <table>
+                <tr><th>File</th><th>Purpose</th></tr>
+                <tr><td>RePortalController</td><td><code>GET /api/re-portal/complaints</code> — Complaints against this RE<br><code>POST /api/re-portal/respond/{id}</code> — Submit response</td></tr>
+                <tr><td>RePortalService</td><td>Filter complaints by RE entity code from JWT</td></tr>
+                <tr><td>ReNotificationService</td><td>Notify RE of new complaints/notices</td></tr>
+                <tr><td>ReResponseTracker (Entity)</td><td>Tracks RE response SLA compliance</td></tr>
+                <tr><td>ReDashboardComponent</td><td>RE dashboard with complaint metrics</td></tr>
+                <tr><td>ReComplaintDetailComponent</td><td>Complaint detail + response form</td></tr>
+                <tr><td>ReProfileComponent</td><td>RE profile/contact management</td></tr>
+            </table>
+        </div>
+    </div>
+
+    <!-- FEATURE 12: ENCRYPTION -->
+    <div class="section">
+        <h2>12. PII Encryption</h2>
+        <span class="badge badge-java">Spring Boot</span>
+        <span class="badge badge-security">Security</span>
+
+        <div class="tech-card">
+            <h4>Implementation</h4>
+            <pre><span class="comment">// EncryptionKeyService.java</span>
+<span class="comment">// - AES-256 encryption for PII fields (mobile, email, address)</span>
+<span class="comment">// - Key derived from CMS_ENCRYPTION_SECRET env var (min 16 chars)</span>
+<span class="comment">// - Encrypted at rest in DB, decrypted on read</span>
+<span class="comment">// - Field-level encryption (not full-table)</span>
+
+<span class="comment">// Configuration:</span>
+cms:
+  encryption:
+    server-secret: ${CMS_ENCRYPTION_SECRET}  <span class="comment"># REQUIRED in prod</span>
+
+<span class="comment">// Dev-local uses hardcoded key: "dev-local-secret-key-do-not-use-in-prod"</span></pre>
+        </div>
+    </div>
+
+    <!-- FEATURE 13: TRIAGE -->
+    <div class="section">
+        <h2>13. AI Triage (Intake Priority Scoring)</h2>
+        <span class="badge badge-java">Spring Boot</span>
+        <span class="badge badge-api">AI</span>
+
+        <div class="tech-card">
+            <h4>Implementation</h4>
+            <table>
+                <tr><th>File</th><th>Purpose</th></tr>
+                <tr><td><span class="file-ref">service/triage/IntakeTriageService.java</span></td><td>Main triage scoring engine</td></tr>
+                <tr><td><span class="file-ref">service/triage/CompensationPrecedentService.java</span></td><td>Historical compensation analysis</td></tr>
+                <tr><td><span class="file-ref">service/triage/ReResponsivenessService.java</span></td><td>RE response history scoring</td></tr>
+                <tr><td><span class="file-ref">controller/TriageController.java</span></td><td><code>POST /api/triage/score</code></td></tr>
+            </table>
+            <p><strong>Factors:</strong> Dispute amount, complaint category, RE past behavior, urgency keywords in text, elderly/vulnerable citizen flag.</p>
+            <p><strong>Output:</strong> <code>triageSignal</code> = HIGH | MEDIUM | LOW (stored on Complaint entity)</p>
+        </div>
+    </div>
+
+    <!-- FEATURE 14: NOTIFICATIONS -->
+    <div class="section">
+        <h2>14. Notification System</h2>
+        <span class="badge badge-java">Spring Boot</span>
+        <span class="badge badge-kafka">Kafka</span>
+
+        <div class="tech-card">
+            <h4>Implementation</h4>
+            <table>
+                <tr><th>File</th><th>Purpose</th></tr>
+                <tr><td>NotificationService</td><td>Dispatch logic (email, SMS, in-app)</td></tr>
+                <tr><td>NotificationController</td><td><code>GET /api/notifications</code> — In-app notifications<br><code>PUT /api/notifications/{id}/read</code> — Mark read</td></tr>
+                <tr><td>CommunicationTemplateService</td><td>Template management with variable substitution</td></tr>
+                <tr><td>InAppNotification (Entity)</td><td>Persistent in-app notifications per user</td></tr>
+            </table>
+        </div>
+
+        <div class="tech-card">
+            <h4>Template Variables</h4>
+            <pre><span class="comment">// Available template variables:</span>
+{{complaintNumber}}    — CMS-20260722-A1B2C3
+{{citizenName}}        — Complainant's name
+{{entityName}}         — RE name (e.g., "State Bank of India")
+{{status}}             — Current complaint status
+{{officerName}}        — Assigned officer name
+{{slaDeadline}}        — SLA deadline date
+{{portalUrl}}          — Complaint tracking URL
+{{appealDeadline}}     — Last date to file appeal</pre>
+        </div>
+    </div>
+
+    <!-- FEATURE 15: WORKFLOW ENGINE -->
+    <div class="section">
+        <h2>15. Workflow Engine (BPMN)</h2>
+        <span class="badge badge-java">Spring Boot</span>
+        <span class="badge badge-api">Camunda/Drools</span>
+
+        <div class="tech-card">
+            <h4>Implementation</h4>
+            <table>
+                <tr><th>File</th><th>Purpose</th></tr>
+                <tr><td>WorkflowController</td><td>Task CRUD: claim, complete, delegate, escalate</td></tr>
+                <tr><td>RbioWorkflowService</td><td>RBIO lifecycle: assign → investigate → conciliate → adjudicate → close</td></tr>
+                <tr><td>CepcWorkflowService</td><td>CEPC lifecycle with different stage gates</td></tr>
+                <tr><td>CrpcWorkflowService</td><td>CRPC: draft → submit → review → approve/reject</td></tr>
+                <tr><td>RbioTasksComponent</td><td>Staff UI: RBIO task list with filters</td></tr>
+                <tr><td>CepcTasksComponent</td><td>Staff UI: CEPC task list</td></tr>
+                <tr><td>TaskActionComponent</td><td>Staff UI: Perform action on a task</td></tr>
+            </table>
+        </div>
+
+        <div class="tech-card">
+            <h4>State Transitions</h4>
+            <pre><span class="comment">// Valid transitions (enforced in service layer):</span>
+FILED           → ASSIGNED
+ASSIGNED        → IN_PROGRESS
+IN_PROGRESS     → AWAITING_RE_RESPONSE | CONCILIATION | ESCALATED | RESOLVED
+AWAITING_RE     → IN_PROGRESS | CONCILIATION | ESCALATED
+CONCILIATION    → RESOLVED | ADJUDICATION
+ADJUDICATION    → RESOLVED | CLOSED
+RESOLVED        → CLOSED
+ESCALATED       → IN_PROGRESS | CLOSED
+
+<span class="comment">// Invalid transitions throw IllegalStateException</span></pre>
+        </div>
+    </div>
+
+    <!-- FEATURE 16: ADMIN FEATURES -->
+    <div class="section">
+        <h2>16. Admin Features</h2>
+        <span class="badge badge-angular">Angular</span>
+        <span class="badge badge-java">Spring Boot</span>
+        <span class="badge badge-security">Keycloak</span>
+
+        <div class="tech-card">
+            <h4>Rules Management</h4>
+            <table>
+                <tr><th>Controller</th><th>Endpoints</th></tr>
+                <tr><td>RulesApiController</td><td><code>GET /api/rules</code> — List all rules<br><code>POST /api/rules</code> — Create rule<br><code>PUT /api/rules/{id}</code> — Update rule<br><code>POST /api/rules/test</code> — Test rule against sample</td></tr>
+                <tr><td>ExtractionRuleController</td><td><code>GET /api/extraction-rules</code><br><code>POST /api/extraction-rules</code><br><code>PUT /api/extraction-rules/{id}</code></td></tr>
+            </table>
+        </div>
+
+        <div class="tech-card">
+            <h4>Team Management</h4>
+            <pre><span class="comment">// KeycloakUserController endpoints:</span>
+GET  /api/keycloak/users              <span class="comment">// List all users in cms realm</span>
+GET  /api/keycloak/users/role/{role}  <span class="comment">// Users by role</span>
+POST /api/keycloak/users              <span class="comment">// Create user</span>
+PUT  /api/keycloak/users/{id}/roles   <span class="comment">// Assign roles</span>
+PUT  /api/keycloak/users/{id}/status  <span class="comment">// Enable/disable</span></pre>
+        </div>
+
+        <div class="tech-card">
+            <h4>Template Management</h4>
+            <pre><span class="comment">// CommentTemplateController:</span>
+GET  /api/comment-templates              <span class="comment">// List templates</span>
+POST /api/comment-templates              <span class="comment">// Create template</span>
+
+<span class="comment">// CommunicationTemplateController:</span>
+GET  /api/communication-templates        <span class="comment">// List email/SMS templates</span>
+POST /api/communication-templates        <span class="comment">// Create template</span>
+POST /api/communication-templates/send   <span class="comment">// Send using template</span></pre>
+        </div>
+    </div>
+
+    <!-- FEATURE 17: SEARCH -->
+    <div class="section">
+        <h2>17. Full-Text Search (OpenSearch)</h2>
+        <span class="badge badge-java">Spring Boot</span>
+        <span class="badge badge-api">OpenSearch</span>
+
+        <div class="tech-card">
+            <h4>Implementation</h4>
+            <table>
+                <tr><th>File</th><th>Purpose</th></tr>
+                <tr><td>SimilarCasesService</td><td>Orchestrator: delegates to provider</td></tr>
+                <tr><td>OpenSearchSimilarCasesProvider</td><td>OpenSearch More-Like-This implementation</td></tr>
+                <tr><td>SimilarCasesProvider (Interface)</td><td>Provider abstraction</td></tr>
+                <tr><td>SimilarCasesController</td><td><code>POST /api/similar-cases</code></td></tr>
+                <tr><td>SearchComponent (Frontend)</td><td>Search UI with filters and results</td></tr>
+            </table>
+        </div>
+
+        <div class="tech-card">
+            <h4>Configuration</h4>
+            <pre>cms:
+  similar-cases:
+    enabled: true                    <span class="comment"># false in dev-local (no OpenSearch)</span>
+    opensearch-url: http://localhost:9200
+    index: complaints               <span class="comment"># OpenSearch index name</span></pre>
+        </div>
+    </div>
+
+    <!-- FEATURE 18: FILE STORAGE -->
+    <div class="section">
+        <h2>18. File Storage & Chunked Upload</h2>
+        <span class="badge badge-java">Spring Boot</span>
+        <span class="badge badge-angular">Angular</span>
+
+        <div class="tech-card">
+            <h4>Implementation</h4>
+            <table>
+                <tr><th>File</th><th>Purpose</th></tr>
+                <tr><td>FileUploadController</td><td><code>POST /api/files/upload</code> — Upload chunk<br><code>POST /api/files/complete</code> — Finalize upload<br><code>GET /api/files/{id}</code> — Download file</td></tr>
+                <tr><td>FileStorageService</td><td>Disk I/O, chunk assembly, virus scan hook</td></tr>
+                <tr><td>ComplaintAttachment (Entity)</td><td>File metadata stored in DB</td></tr>
+            </table>
+        </div>
+
+        <div class="tech-card">
+            <h4>Configuration</h4>
+            <pre>cms:
+  attachments:
+    root-path: ./cms-attachments     <span class="comment"># Base storage path</span>
+    max-file-size: 52428800          <span class="comment"># 50 MB per file</span>
+    chunk-size: 5242880              <span class="comment"># 5 MB chunks</span>
+    allowed-types: pdf,png,jpg,jpeg,doc,docx,xls,xlsx,txt,csv,zip
+    max-files-per-complaint: 10
+    temp-dir: temp-chunks            <span class="comment"># Temp directory for chunk assembly</span></pre>
+        </div>
+    </div>
+
+    <!-- FEATURE 19: I18N -->
+    <div class="section">
+        <h2>19. Internationalization (i18n)</h2>
+        <span class="badge badge-java">Spring Boot</span>
+        <span class="badge badge-angular">Angular</span>
+        <span class="badge badge-db">Oracle</span>
+
+        <div class="tech-card">
+            <h4>Implementation</h4>
+            <table>
+                <tr><th>File</th><th>Purpose</th></tr>
+                <tr><td>TranslationService</td><td>Fetch translations by locale</td></tr>
+                <tr><td>LanguageTranslationService</td><td>AI-powered translation (Groq)</td></tr>
+                <tr><td>TranslationController</td><td><code>GET /api/translations/{locale}</code></td></tr>
+                <tr><td>SupportedLocale (Entity)</td><td>List of enabled locales</td></tr>
+                <tr><td>TranslationKey (Entity)</td><td>Translation key registry</td></tr>
+                <tr><td>Translation (Entity)</td><td>Key-value per locale</td></tr>
+                <tr><td>LanguageSwitcherComponent</td><td>UI: Language selection dropdown</td></tr>
+            </table>
+        </div>
+    </div>
+
+    <!-- FEATURE 20: SECURITY -->
+    <div class="section">
+        <h2>20. Security Architecture</h2>
+        <span class="badge badge-security">Security</span>
+        <span class="badge badge-java">Spring Security</span>
+
+        <div class="tech-card">
+            <h4>Authentication Layers</h4>
+            <table>
+                <tr><th>Layer</th><th>Mechanism</th><th>Implementation</th></tr>
+                <tr><td>Public Portal (Citizens)</td><td>OTP + CAPTCHA + Session</td><td>CitizenAuthController, CitizenSessionService</td></tr>
+                <tr><td>Staff Portal (Officers)</td><td>Keycloak OIDC/PKCE</td><td>keycloak-js (frontend), Spring Security OAuth2 Resource Server (backend)</td></tr>
+                <tr><td>Backend API</td><td>JWT Bearer Token</td><td>Spring Security filter chain, issuer-uri validation</td></tr>
+                <tr><td>Inter-service</td><td>Internal network (no auth)</td><td>Docker network / OpenShift service mesh</td></tr>
+            </table>
+        </div>
+
+        <div class="tech-card">
+            <h4>Role-Based Access Control</h4>
+            <pre><span class="comment">// JWT token contains realm_access.roles[]</span>
+<span class="comment">// Backend extracts with ROLE_ prefix:</span>
+<span class="comment">//   "RBIO_OFFICER" → ROLE_RBIO_OFFICER</span>
+
+<span class="comment">// Endpoint security (examples):</span>
+/api/complaints         → permitAll (public filing)
+/api/crpc/**            → hasRole('DO') or hasRole('REVIEWER')
+/api/re-portal/**       → hasRole('RE_NODAL_OFFICER')
+/api/reports/**         → hasAnyRole('ADMIN','SENIOR','RBIO_OFFICER')
+/api/admin/**           → hasRole('ADMIN')
+/api/keycloak/users     → hasRole('ADMIN')
+/api/aa/**              → hasAnyRole('AA_REGISTRAR','AA_AUTHORITY')
+
+<span class="comment">// Frontend guard: staffAuthGuard</span>
+<span class="comment">// Checks Keycloak token exists and is valid, redirects to /staff/login otherwise</span></pre>
+        </div>
+
+        <div class="tech-card">
+            <h4>CORS Configuration</h4>
+            <pre>cms:
+  cors:
+    allowed-origins: http://localhost:4200,http://localhost:4201
+    allowed-methods: GET,POST,PUT,DELETE,PATCH,OPTIONS
+    allowed-headers: Authorization,Content-Type,X-Requested-With,
+                     X-Session-Id,X-Form-Start,X-HP-Field,Accept,
+                     Origin,Cache-Control,X-User-Roles,X-User-Role
+    allow-credentials: true
+    max-age: 3600</pre>
+        </div>
+    </div>
+
+    <!-- FEATURE 21: MONITORING -->
+    <div class="section">
+        <h2>21. Monitoring & Observability</h2>
+        <span class="badge badge-java">Spring Boot Actuator</span>
+        <span class="badge badge-api">Prometheus + Grafana</span>
+
+        <div class="tech-card">
+            <h4>Endpoints</h4>
+            <pre><span class="comment"># Actuator endpoints exposed:</span>
+/actuator/health     <span class="comment">— Service health (DB, Kafka, disk)</span>
+/actuator/info       <span class="comment">— Application info (version, build)</span>
+/actuator/metrics    <span class="comment">— Micrometer metrics (JVM, HTTP, custom)</span>
+
+<span class="comment"># Prometheus scrapes all services every 15s</span>
+<span class="comment"># Grafana dashboards: API latency, JVM memory, Kafka lag, SLA metrics</span>
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always</pre>
+        </div>
+    </div>
+
+    <!-- SUMMARY -->
+    <div class="section">
+        <h2>Summary: Technical Stack Per Feature</h2>
+        <table>
+            <tr><th>#</th><th>Feature</th><th>Frontend</th><th>Backend</th><th>Data</th><th>External</th></tr>
+            <tr><td>1</td><td>Complaint Filing</td><td>Angular form</td><td>ComplaintService</td><td>Complaint entity</td><td>-</td></tr>
+            <tr><td>2</td><td>MRE Engine</td><td>Copilot panel</td><td>MaintainabilityRulesEngine</td><td>RegulatedEntity</td><td>-</td></tr>
+            <tr><td>3</td><td>Assignment</td><td>Dashboard</td><td>ComplaintRoutingService</td><td>Complaint.assignedTo</td><td>Keycloak Admin API</td></tr>
+            <tr><td>4</td><td>Events</td><td>-</td><td>OutboxPublisher</td><td>OUTBOX_EVENTS</td><td>Kafka</td></tr>
+            <tr><td>5</td><td>CRPC</td><td>5 components</td><td>CrpcWorkflowService</td><td>EmailDraft</td><td>-</td></tr>
+            <tr><td>6</td><td>OCR</td><td>Draft enhancement</td><td>OcrExtractionService</td><td>-</td><td>Groq/PaddleOCR</td></tr>
+            <tr><td>7</td><td>Reports</td><td>Chart.js widgets</td><td>QueryCompiler</td><td>Complaint (criteria)</td><td>-</td></tr>
+            <tr><td>8</td><td>SLA</td><td>SLA indicators</td><td>TatCalculationService</td><td>Holiday</td><td>-</td></tr>
+            <tr><td>9</td><td>Email Syndication</td><td>4 components</td><td>EmailSyndicationApi</td><td>EmailDraft</td><td>SMTP</td></tr>
+            <tr><td>10</td><td>Appeals</td><td>AA module</td><td>AppealWorkflowService</td><td>Appeal</td><td>-</td></tr>
+            <tr><td>11</td><td>RE Portal</td><td>RE module</td><td>RePortalService</td><td>ReResponseTracker</td><td>Keycloak</td></tr>
+            <tr><td>12</td><td>Encryption</td><td>-</td><td>EncryptionKeyService</td><td>PII fields</td><td>-</td></tr>
+            <tr><td>13</td><td>Triage</td><td>Signal display</td><td>IntakeTriageService</td><td>triageSignal</td><td>-</td></tr>
+            <tr><td>14</td><td>Notifications</td><td>Bell icon</td><td>NotificationService</td><td>InAppNotification</td><td>SMTP/SMS</td></tr>
+            <tr><td>15</td><td>Workflow</td><td>Task list</td><td>RbioWorkflowService</td><td>ComplaintTimeline</td><td>Camunda/Drools</td></tr>
+            <tr><td>16</td><td>Admin</td><td>Admin module</td><td>Multiple controllers</td><td>Rules/Templates</td><td>Keycloak</td></tr>
+            <tr><td>17</td><td>Search</td><td>SearchComponent</td><td>OpenSearchProvider</td><td>complaints index</td><td>OpenSearch</td></tr>
+            <tr><td>18</td><td>File Storage</td><td>Upload widget</td><td>FileStorageService</td><td>ComplaintAttachment</td><td>Filesystem</td></tr>
+            <tr><td>19</td><td>i18n</td><td>LangSwitcher</td><td>TranslationService</td><td>Translation entities</td><td>-</td></tr>
+            <tr><td>20</td><td>Security</td><td>Auth guards</td><td>Spring Security</td><td>OTP/Session</td><td>Keycloak</td></tr>
+            <tr><td>21</td><td>Monitoring</td><td>-</td><td>Actuator</td><td>-</td><td>Prometheus+Grafana</td></tr>
+        </table>
+    </div>
+
+    <div class="section" style="text-align: center; padding: 20px;">
+        <p style="color: #666;">Document generated on 22 July 2026 | CMS 2.0 - Technical Feature Document</p>
+    </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8">
+  <title>ATM रसीद — SBI</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #c8c8c8;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 30px 16px 60px;
+      font-family: 'Share Tech Mono', 'Courier New', monospace;
+    }
+
+    /* ── Thermal paper slip ── */
+    .slip {
+      width: 80mm;
+      background: #fffef9;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.25), inset 0 0 1px #e8e8e0;
+      padding: 0;
+      position: relative;
+      /* Simulate slightly yellowed thermal paper */
+      filter: sepia(6%);
+    }
+
+    /* Torn top edge */
+    .slip::before {
+      content: '';
+      display: block;
+      height: 8px;
+      background: repeating-linear-gradient(
+        90deg,
+        #c8c8c8 0px, #c8c8c8 4px,
+        #fffef9 4px, #fffef9 10px
+      );
+    }
+
+    /* Torn bottom edge */
+    .slip::after {
+      content: '';
+      display: block;
+      height: 8px;
+      background: repeating-linear-gradient(
+        90deg,
+        #c8c8c8 0px, #c8c8c8 6px,
+        #fffef9 6px, #fffef9 11px
+      );
+    }
+
+    .slip-inner { padding: 10px 12px 14px; }
+
+    /* ── Bank logo line ── */
+    .bank-header {
+      text-align: center;
+      border-bottom: 1px dashed #aaa;
+      padding-bottom: 8px;
+      margin-bottom: 8px;
+    }
+
+    .bank-name {
+      font-family: 'Noto Sans Devanagari', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      line-height: 1.4;
+    }
+
+    .bank-name-en {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 2px;
+    }
+
+    .bank-tagline {
+      font-size: 9px;
+      color: #555;
+      margin-top: 2px;
+      font-family: 'Share Tech Mono', monospace;
+    }
+
+    /* ── Section divider ── */
+    .divider {
+      border: none;
+      border-top: 1px dashed #aaa;
+      margin: 7px 0;
+    }
+
+    /* ── Row layout ── */
+    .row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      font-size: 10px;
+      margin: 3px 0;
+      line-height: 1.5;
+    }
+
+    .row .lbl {
+      color: #444;
+      flex-shrink: 0;
+      font-family: 'Noto Sans Devanagari', sans-serif;
+      font-size: 9.5px;
+    }
+
+    .row .val {
+      text-align: right;
+      font-weight: 700;
+      max-width: 55%;
+      word-break: break-all;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px;
+    }
+
+    /* ── Full-width center text ── */
+    .center { text-align: center; }
+
+    .section-title {
+      font-family: 'Noto Sans Devanagari', sans-serif;
+      font-size: 9.5px;
+      font-weight: 700;
+      text-align: center;
+      letter-spacing: 0.5px;
+      color: #222;
+      margin: 5px 0 4px;
+    }
+
+    /* ── Status box ── */
+    .status-failed {
+      border: 1.5px solid #333;
+      text-align: center;
+      padding: 5px 4px;
+      margin: 8px 0;
+    }
+
+    .status-failed .status-hi {
+      font-family: 'Noto Sans Devanagari', sans-serif;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 1px;
+    }
+
+    .status-failed .status-en {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 2px;
+    }
+
+    .status-failed .status-code {
+      font-size: 9px;
+      color: #555;
+      margin-top: 2px;
+    }
+
+    /* ── Amount ── */
+    .amount-line {
+      text-align: center;
+      font-size: 17px;
+      font-weight: 700;
+      font-family: 'Share Tech Mono', monospace;
+      letter-spacing: 1px;
+      margin: 4px 0;
+    }
+
+    .amount-words {
+      font-family: 'Noto Sans Devanagari', sans-serif;
+      font-size: 9px;
+      text-align: center;
+      color: #555;
+      margin-bottom: 4px;
+    }
+
+    /* ── Balance line ── */
+    .balance-note {
+      font-family: 'Noto Sans Devanagari', sans-serif;
+      font-size: 9px;
+      text-align: center;
+      color: #333;
+      margin-top: 3px;
+      line-height: 1.6;
+    }
+
+    /* ── Footer ── */
+    .footer-msg {
+      font-family: 'Noto Sans Devanagari', sans-serif;
+      font-size: 9px;
+      text-align: center;
+      color: #444;
+      line-height: 1.7;
+      margin-top: 6px;
+      border-top: 1px dashed #aaa;
+      padding-top: 6px;
+    }
+
+    .helpline {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px;
+      font-weight: 700;
+      text-align: center;
+      margin-top: 3px;
+    }
+
+    /* ── Print button ── */
+    .print-ui {
+      margin-top: 24px;
+      text-align: center;
+      font-family: sans-serif;
+    }
+
+    .print-btn {
+      padding: 10px 26px;
+      background: #1a237e;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    .print-hint { color: #555; font-size: 12px; margin-top: 8px; }
+
+    @media print {
+      body { background: white; padding: 0; }
+      .slip { box-shadow: none; filter: none; width: 80mm; margin: 0 auto; }
+      .print-ui { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="slip">
+  <div class="slip-inner">
+
+    <!-- Bank header -->
+    <div class="bank-header">
+      <div class="bank-name">भारतीय स्टेट बैंक</div>
+      <div class="bank-name-en">STATE BANK OF INDIA</div>
+      <div class="bank-tagline">The Banker to Every Indian</div>
+    </div>
+
+    <!-- ATM details -->
+    <div class="section-title">ATM लेनदेन रसीद / TRANSACTION RECEIPT</div>
+
+    <div class="row">
+      <span class="lbl">ATM आईडी</span>
+      <span class="val">SBI-ATM-7890</span>
+    </div>
+    <div class="row">
+      <span class="lbl">स्थान</span>
+      <span class="val">CIVIL LINES, JAIPUR</span>
+    </div>
+    <div class="row">
+      <span class="lbl">टर्मिनल</span>
+      <span class="val">TID: 00987654</span>
+    </div>
+
+    <hr class="divider">
+
+    <!-- Date / Time -->
+    <div class="row">
+      <span class="lbl">दिनांक</span>
+      <span class="val">25/05/2026</span>
+    </div>
+    <div class="row">
+      <span class="lbl">समय</span>
+      <span class="val">21:32:47</span>
+    </div>
+    <div class="row">
+      <span class="lbl">संदर्भ संख्या</span>
+      <span class="val">TXN202605252147789</span>
+    </div>
+    <div class="row">
+      <span class="lbl">अनुक्रम संख्या</span>
+      <span class="val">000456</span>
+    </div>
+
+    <hr class="divider">
+
+    <!-- Card / account -->
+    <div class="row">
+      <span class="lbl">कार्ड संख्या</span>
+      <span class="val">**** **** **** 6782</span>
+    </div>
+    <div class="row">
+      <span class="lbl">खाता प्रकार</span>
+      <span class="val">बचत खाता / SB</span>
+    </div>
+    <div class="row">
+      <span class="lbl">खाता संख्या</span>
+      <span class="val">XXXX XX 9012</span>
+    </div>
+
+    <hr class="divider">
+
+    <!-- Transaction type -->
+    <div class="row">
+      <span class="lbl">लेनदेन प्रकार</span>
+      <span class="val">नकद निकासी<br>CASH WITHDRAWAL</span>
+    </div>
+
+    <!-- Amount -->
+    <div class="amount-line">&#x20B9; 10,000.00</div>
+    <div class="amount-words">दस हज़ार रुपए मात्र</div>
+
+    <!-- Status box -->
+    <div class="status-failed">
+      <div class="status-hi">लेनदेन असफल</div>
+      <div class="status-en">TRANSACTION FAILED</div>
+      <div class="status-code">त्रुटि कोड / Error Code: 068 — CASH NOT DISPENSED</div>
+    </div>
+
+    <!-- Balance note -->
+    <div class="balance-note">
+      खाते से ₹10,000 डेबिट हुए किंतु<br>
+      ATM से नकद राशि प्राप्त नहीं हुई।<br>
+      <strong>Amount debited but cash not dispensed.</strong>
+    </div>
+
+    <hr class="divider">
+
+    <!-- Available balance -->
+    <div class="row">
+      <span class="lbl">उपलब्ध शेष</span>
+      <span class="val">₹ 23,456.78</span>
+    </div>
+    <div class="row">
+      <span class="lbl">बुक बैलेंस</span>
+      <span class="val">₹ 33,456.78</span>
+    </div>
+
+    <hr class="divider">
+
+    <!-- Footer message -->
+    <div class="footer-msg">
+      यह रसीद आपकी शिकायत के साथ संलग्न करें।<br>
+      Please retain this receipt for complaint purposes.<br><br>
+      यदि राशि 7 कार्य-दिवस में वापस न हो तो<br>
+      बैंकिंग लोकपाल से संपर्क करें।
+    </div>
+
+    <div class="helpline">
+      शिकायत: 1800-11-2211 (निःशुल्क)
+    </div>
+
+  </div>
+</div>
+
+<!-- Print UI -->
+<div class="print-ui">
+  <button class="print-btn" onclick="window.print()">🖨️ Save as PDF</button>
+  <p class="print-hint">Print dialog → Destination: <strong>Save as PDF</strong></p>
+</div>
+
+</body>
+</html>

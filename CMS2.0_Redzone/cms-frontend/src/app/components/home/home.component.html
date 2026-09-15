@@ -1,0 +1,309 @@
+<!-- ══════ Logged-In Home View ══════ -->
+@if (isLoggedIn) {
+  <section class="dashboard-section" aria-labelledby="dashboard-heading">
+    <div class="dashboard-container">
+      <div class="dashboard-header">
+        <h1 id="dashboard-heading">{{ 'dashboard.home' | translate }}</h1>
+        <a routerLink="/file-complaint" class="file-new-btn">{{ 'dashboard.fileNew' | translate }} <i class="pi pi-arrow-right"></i></a>
+      </div>
+
+      <!-- Complaint History Table -->
+      <div class="complaint-history-card" role="region" aria-labelledby="history-heading">
+        <div class="history-header">
+          <i class="pi pi-list" aria-hidden="true"></i>
+          <h3 id="history-heading">{{ 'dashboard.history' | translate }}</h3>
+        </div>
+
+        <div class="history-table-wrapper">
+          <table class="history-table">
+            <thead>
+              <tr>
+                <th>
+                  <div class="th-content">
+                    <span>{{ 'dashboard.id' | translate }}</span>
+                    <button class="sort-btn" (click)="sortBy('id')"><i class="pi pi-sort-alt"></i></button>
+                  </div>
+                  <div class="th-filter">
+                    <select><option>{{ 'common.search' | translate }}</option></select>
+                  </div>
+                </th>
+                <th>
+                  <div class="th-content">
+                    <span>{{ 'dashboard.against' | translate }}</span>
+                    <button class="sort-btn" (click)="sortBy('complaintAgainst')"><i class="pi pi-sort-alt"></i></button>
+                  </div>
+                  <div class="th-filter">
+                    <select><option>{{ 'common.search' | translate }}</option></select>
+                  </div>
+                </th>
+                <th>
+                  <div class="th-content">
+                    <span>{{ 'dashboard.date' | translate }}</span>
+                    <button class="sort-btn" (click)="sortBy('complaintDate')"><i class="pi pi-sort-alt"></i></button>
+                  </div>
+                  <div class="th-filter">
+                    <input type="text" placeholder="DD-MM-YYYY" />
+                  </div>
+                </th>
+                <th>
+                  <div class="th-content">
+                    <span>{{ 'dashboard.status' | translate }}</span>
+                    <button class="sort-btn" (click)="sortBy('status')"><i class="pi pi-sort-alt"></i></button>
+                  </div>
+                  <div class="th-filter">
+                    <select><option>{{ 'common.search' | translate }}</option></select>
+                  </div>
+                </th>
+                <th>
+                  <div class="th-content">
+                    <span>{{ 'dashboard.comments' | translate }}</span>
+                    <button class="sort-btn" (click)="sortBy('comments')"><i class="pi pi-sort-alt"></i></button>
+                  </div>
+                  <div class="th-filter">
+                    <input type="text" [placeholder]="'common.search' | translate" />
+                  </div>
+                </th>
+                <th>
+                  <span>{{ 'dashboard.action' | translate }}</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (complaint of complaints; track complaint.id + $index) {
+                <tr>
+                  <td>{{ complaint.id }}</td>
+                  <td>{{ complaint.complaintAgainst }}</td>
+                  <td>{{ complaint.complaintDate }}</td>
+                  <td>
+                    <span class="status-badge" [class]="'status-badge status-' + complaint.status">
+                      <span class="status-dot"></span>
+                      {{ complaint.statusLabel }}
+                    </span>
+                  </td>
+                  <td>{{ complaint.comments }}</td>
+                  <td>
+                    <button class="action-btn" [class]="'action-btn action-' + complaint.action">
+                      {{ complaint.action === 'withdraw' ? translate.t('dashboard.withdraw') : complaint.action === 'appeal' ? translate.t('dashboard.appeal') : translate.t('dashboard.act') }}
+                    </button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Floating buttons -->
+    <div class="dashboard-fab">
+      <button class="need-help-fab">
+        <span class="dot-indicator"></span>
+        <span>{{ 'hero.needHelp' | translate }}</span>
+      </button>
+      <button class="accessibility-fab"><i class="pi pi-user"></i></button>
+    </div>
+  </section>
+}
+
+<!-- ══════ Landing Page (Not Logged In) ══════ -->
+@if (!isLoggedIn) {
+<!-- Hero Section -->
+<section class="hero" aria-labelledby="hero-title">
+  <div class="hero-decorations" aria-hidden="true">
+    <div class="hero-img hero-img-1"></div>
+    <div class="hero-img hero-img-2"></div>
+    <div class="hero-dot hero-dot-1"></div>
+    <div class="hero-dot hero-dot-2"></div>
+    <div class="hero-dot hero-dot-3"></div>
+    <div class="hero-img hero-img-3"></div>
+    <div class="hero-img hero-img-4"></div>
+  </div>
+
+  <div class="container hero-layout">
+    <div class="hero-content">
+      <h1 id="hero-title">{{ 'hero.title' | translate }}<br><span>{{ 'hero.titleHighlight' | translate }}</span></h1>
+      <p>{{ 'hero.subtitle' | translate }}</p>
+      <a routerLink="/file-complaint" class="hero-btn">{{ 'hero.fileComplaint' | translate }} <i class="pi pi-arrow-right"></i></a>
+
+      <div class="hero-bottom">
+        <span class="already-filed">{{ 'hero.alreadyFiled' | translate }}</span>
+        <div class="hero-links-bar">
+          <a routerLink="/track-complaint">{{ 'hero.trackOrWithdraw' | translate }}</a>
+          <span class="link-dot"></span>
+          <a href="javascript:void(0)">{{ 'hero.fileAppeal' | translate }}</a>
+          <span class="link-dot"></span>
+          <a href="javascript:void(0)">{{ 'hero.shareFeedback' | translate }}</a>
+        </div>
+        <div class="hero-links-bar">
+          <a routerLink="/email-simulation">{{ 'hero.emailSimulation' | translate }}</a>
+        </div>
+      </div>
+    </div>
+    <div class="hero-circle-image">
+      <img src="farmer.png" alt="Farmer with turban and phone" />
+    </div>
+  </div>
+
+  <div class="hero-fab">
+    <button class="need-help-btn">{{ 'hero.needHelp' | translate }}</button>
+    <button class="accessibility-btn"><i class="pi pi-user"></i></button>
+  </div>
+</section>
+
+<!-- Scroll Indicator -->
+<div class="scroll-indicator" aria-hidden="true">
+  <div class="scroll-chevron"><i class="pi pi-chevron-down"></i><i class="pi pi-chevron-down"></i></div>
+</div>
+
+<!-- Complaint Types Section -->
+<section class="complaint-types-section" aria-labelledby="ct-title">
+  <div class="container ct-layout">
+    <div class="ct-left">
+      <span class="ct-tag">{{ 'ct.findInstitution' | translate }}</span>
+      <h2 id="ct-title">{{ 'ct.title' | translate }}</h2>
+      <div class="ct-icons">
+        @for (type of complaintTypes; track type.label) {
+          <div class="ct-icon-card">
+            <div class="ct-icon-circle"><i [class]="type.icon"></i></div>
+            <span>{{ type.translationKey ? (type.translationKey | translate) : type.label }}</span>
+          </div>
+        }
+      </div>
+      <div class="ct-search">
+        <div class="ct-search-input">
+          <i class="pi pi-search"></i>
+          <input type="text" [placeholder]="'ct.searchPlaceholder' | translate" />
+        </div>
+        <p class="ct-search-hint"><i class="pi pi-info-circle"></i> {{ 'ct.searchHint' | translate }}</p>
+      </div>
+    </div>
+    <div class="ct-right">
+      <div class="ct-image-box">
+        <img src="complaint-section.png" alt="Indian citizens using mobile banking" />
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- What We Do + Statistics Section -->
+<section class="section whatwedo-section" aria-labelledby="whatwedo-title">
+  <div class="container">
+    <div class="whatwedo-layout">
+      <div class="whatwedo-image">
+        <img src="whatwedo-video.png" alt="RBI Team" />
+        <div class="play-btn" role="button" aria-label="Play video" tabindex="0"><i class="pi pi-play" aria-hidden="true"></i></div>
+      </div>
+      <div class="whatwedo-content">
+        <span class="whatwedo-tag">{{ 'whatwedo.tag' | translate }}</span>
+        <h2 id="whatwedo-title">{{ 'whatwedo.title' | translate }}</h2>
+        <p>{{ 'whatwedo.desc' | translate }}</p>
+        <div class="whatwedo-actions">
+          <a routerLink="/file-complaint" class="btn-orange">{{ 'whatwedo.howToFile' | translate }}</a>
+          <a href="javascript:void(0)" class="btn-outline">{{ 'whatwedo.whatWeCanHelp' | translate }}</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="stats-block">
+      <span class="stats-tag">{{ 'stats.tag' | translate }}</span>
+      <div class="stats-grid">
+        @for (stat of stats; track stat.labelKey) {
+          <div class="stat-item">
+            <span class="stat-value">{{ stat.valueKey | translate }}</span>
+            <span class="stat-label">{{ stat.labelKey | translate }}</span>
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Press Releases -->
+<section class="section press-section" aria-labelledby="press-heading">
+  <div class="container">
+    <div class="section-header">
+      <h2 id="press-heading">{{ 'press.title' | translate }}</h2>
+      <a href="javascript:void(0)" class="view-all">{{ 'press.viewAll' | translate }}</a>
+    </div>
+    <div class="press-grid">
+      @for (pr of pressReleases; track pr.titleKey) {
+        <div class="press-card">
+          <div class="press-date-col">
+            <span class="press-day">{{ pr.day }}</span>
+            <span class="press-month">{{ pr.monthKey | translate }}</span>
+          </div>
+          <div class="press-content">
+            <h4>{{ pr.titleKey | translate }}</h4>
+            <p>{{ pr.descKey | translate }}</p>
+            <a href="javascript:void(0)" class="read-more">{{ 'press.readMore' | translate }}</a>
+          </div>
+        </div>
+      }
+    </div>
+  </div>
+</section>
+
+<!-- Education & Awareness -->
+<section class="section education-section" aria-labelledby="edu-heading">
+  <div class="container">
+    <div class="section-header">
+      <div>
+        <span class="section-tag">{{ 'edu.tag' | translate }}</span>
+        <h2 id="edu-heading">{{ 'edu.title' | translate }}</h2>
+      </div>
+      <a href="javascript:void(0)" class="view-all">{{ 'press.viewAll' | translate }}</a>
+    </div>
+    <div class="education-grid">
+      @for (card of educationCards; track $index) {
+        <div class="education-card">
+          <div class="education-thumb">
+            <img [src]="card.image" alt="" />
+          </div>
+          <div class="education-overlay">
+            <div class="edu-text">
+              <h4>{{ card.titleKey | translate }}</h4>
+              <p>{{ card.subtitleKey | translate }}</p>
+            </div>
+            <button class="edu-btn">
+              <i [class]="card.type === 'WATCH' ? 'pi pi-play-circle' : 'pi pi-book'"></i>
+              {{ card.type === 'WATCH' ? translate.t('edu.watch') : translate.t('edu.read') }}
+            </button>
+          </div>
+        </div>
+      }
+    </div>
+  </div>
+</section>
+
+<!-- FAQ Section -->
+<section class="section faq-section" aria-labelledby="faq-heading">
+  <div class="container">
+    <div class="section-header">
+      <div>
+        <span class="section-tag">{{ 'faq.tag' | translate }}</span>
+        <h2 id="faq-heading">{{ 'faq.title' | translate }}</h2>
+      </div>
+      <a href="javascript:void(0)" class="view-all">{{ 'press.viewAll' | translate }}</a>
+    </div>
+    <div class="faq-list" role="region" aria-label="FAQ accordion">
+      @for (faq of faqs; track faq.questionKey; let i = $index) {
+        <div class="faq-item" [class.open]="faq.open">
+          <button
+            class="faq-question"
+            (click)="toggleFaq(i)"
+            [attr.aria-expanded]="faq.open"
+            [attr.aria-controls]="'faq-answer-' + i">
+            <span>{{ faq.questionKey | translate }}</span>
+            <i class="pi" [class.pi-chevron-up]="faq.open" [class.pi-chevron-down]="!faq.open" aria-hidden="true"></i>
+          </button>
+          @if (faq.open) {
+            <div class="faq-answer" [id]="'faq-answer-' + i" role="region" [attr.aria-label]="faq.questionKey | translate">
+              <p>{{ faq.answerKey | translate }}</p>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  </div>
+</section>
+}

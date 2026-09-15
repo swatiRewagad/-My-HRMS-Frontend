@@ -1,0 +1,205 @@
+.page-container { max-width: 750px; margin: 0 auto; padding: 48px 24px; }
+
+.card {
+  background: #fff; border: 1px solid #e8e8e8; border-radius: 16px; padding: 40px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  h2 { font-size: 22px; color: #1a1a2e; margin-bottom: 8px; }
+}
+.subtitle { font-size: 14px; color: #666; margin-bottom: 24px; }
+
+.info-box {
+  display: flex; gap: 12px; padding: 16px; background: #e3f2fd; border: 1px solid #90caf9;
+  border-radius: 8px; margin-bottom: 24px;
+  i { color: #1565c0; font-size: 18px; margin-top: 2px; }
+  strong { display: block; font-size: 14px; color: #1a1a2e; margin-bottom: 6px; }
+  ul { margin: 0; padding-left: 16px; font-size: 13px; color: #555; line-height: 1.7; }
+}
+
+.form-group {
+  margin-bottom: 16px;
+  label { display: block; font-size: 13px; font-weight: 600; color: #333; margin-bottom: 6px; }
+  .required { color: #d32f2f; }
+}
+.form-input, .form-textarea {
+  width: 100%; padding: 10px 14px; border: 1px solid #ddd; border-radius: 8px;
+  font-size: 14px; font-family: inherit;
+  &:focus { outline: none; border-color: #2460b9; box-shadow: 0 0 0 3px rgba(36,96,185,0.1); }
+}
+.form-textarea { resize: vertical; }
+
+.radio-group { display: flex; flex-direction: column; gap: 8px; }
+.radio-label {
+  display: flex; align-items: center; gap: 8px; padding: 10px 16px;
+  border: 1px solid #ddd; border-radius: 6px; cursor: pointer; font-size: 14px;
+  input { accent-color: #2460b9; }
+  &.selected { border-color: #2460b9; background: #f0f4ff; }
+}
+
+.file-input-hidden { display: none; }
+.file-upload-area {
+  border: 1.5px dashed #d1d7e0; border-radius: 8px; padding: 28px 24px;
+  display: flex; align-items: center; justify-content: center;
+  background: #fff; margin-top: 4px; transition: border-color 0.2s, background 0.2s;
+  &:hover { border-color: #146EF5; }
+  &.dragover { border-color: #146EF5; background: rgba(20, 110, 245, 0.04); }
+}
+.file-upload-text { font-size: 14px; color: #555; font-weight: 400; }
+label.file-upload-browse-link {
+  display: inline; margin-bottom: 0; color: #146EF5; font-size: 14px; font-weight: 600; cursor: pointer; text-decoration: underline;
+  &:hover { color: #0d5ad4; }
+}
+.file-upload-meta {
+  display: flex; justify-content: space-between; width: 100%;
+  font-size: 12px; color: #888; margin-top: 8px;
+}
+.file-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.file-chip {
+  display: flex; align-items: center; gap: 6px; padding: 6px 12px;
+  background: #f5f5f5; border: 1px solid #e0e0e0; border-radius: 6px; font-size: 13px;
+  .remove-file { background: none; border: none; cursor: pointer; color: #999; &:hover { color: #d32f2f; } }
+}
+
+.declaration-box {
+  padding: 16px; background: #f9f9f9; border: 1px solid #e0e0e0; border-radius: 8px; margin-bottom: 16px;
+}
+.checkbox-label {
+  display: flex; align-items: flex-start; gap: 8px; cursor: pointer; font-size: 13px; color: #555; line-height: 1.5;
+  input { margin-top: 3px; accent-color: #2460b9; }
+}
+
+.error-msg {
+  color: #d32f2f; font-size: 13px; margin-bottom: 12px; padding: 8px 12px;
+  background: #fdecea; border-radius: 6px;
+  i { margin-right: 6px; }
+}
+
+.form-actions {
+  display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px; padding-top: 20px;
+  border-top: 1px solid #eee;
+  &.center { justify-content: center; }
+}
+
+.btn-primary {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 12px 28px; background: #472293; color: #fff; border: none; border-radius: 8px;
+  font-size: 15px; font-weight: 600; cursor: pointer;
+  &:hover { background: #3a1b78; }
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
+}
+.btn-secondary {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 12px 28px; background: #fff; color: #472293; border: 1px solid #472293; border-radius: 8px;
+  font-size: 15px; font-weight: 600; cursor: pointer;
+  &:hover { background: #f0f4ff; }
+}
+
+.success-card { text-align: center; }
+.success-icon { margin-bottom: 16px; i { font-size: 56px; color: #4caf50; } }
+.ref-label { font-size: 14px; color: #666; margin-top: 8px; margin-bottom: 4px; }
+.ref-number {
+  font-size: 24px; font-weight: 700; color: #2460b9; margin-bottom: 16px;
+  padding: 10px 20px; background: #f0f4ff; border-radius: 8px; display: inline-block;
+}
+.success-card > p { font-size: 14px; color: #555; margin-top: 8px; }
+
+// ── Eligibility Result ──
+.eligibility-result {
+  display: flex; align-items: center; gap: 16px; padding: 20px;
+  border-radius: 8px; margin-bottom: 20px;
+  &.eligible { background: #e8f5e9; border: 1px solid #a5d6a7; }
+  &.ineligible { background: #fbe9e7; border: 1px solid #ef9a9a; }
+  .eligibility-icon {
+    font-size: 36px;
+    i { color: inherit; }
+  }
+  &.eligible .eligibility-icon { color: #2e7d32; }
+  &.ineligible .eligibility-icon { color: #d32f2f; }
+  .eligibility-info {
+    h3 { margin: 0 0 4px; font-size: 16px; }
+    p { margin: 0; font-size: 13px; color: #555; }
+  }
+  &.eligible .eligibility-info h3 { color: #2e7d32; }
+  &.ineligible .eligibility-info h3 { color: #d32f2f; }
+}
+
+// ── Classification ──
+.classification-info {
+  display: flex; align-items: center; gap: 10px; padding: 14px 16px;
+  background: #f5f7fa; border-radius: 8px; margin-bottom: 20px;
+  label { font-size: 13px; font-weight: 600; color: #475569; }
+  .immutable-note { font-size: 11px; color: #94a3b8; font-style: italic; }
+}
+
+.classification-badge {
+  display: inline-block; padding: 3px 10px; border-radius: 4px; font-size: 12px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.5px;
+  &[data-classification="APPEAL"] { background: #dbeafe; color: #1e40af; }
+  &[data-classification="REPRESENTATION"] { background: #d1fae5; color: #065f46; }
+}
+
+.classification-banner {
+  display: flex; align-items: center; gap: 10px; padding: 12px 16px;
+  background: #f0f4ff; border: 1px solid #c7d2fe; border-radius: 8px; margin-bottom: 20px;
+  .classification-note { font-size: 12px; color: #475569; }
+}
+
+.classification-result {
+  margin-top: 12px; font-size: 14px; color: #333;
+}
+
+// ── Complaint Summary ──
+.complaint-summary {
+  background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 16px; margin-bottom: 20px;
+  h4 { margin: 0 0 12px; font-size: 14px; color: #1e293b; }
+}
+.summary-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+}
+.summary-field {
+  label { display: block; font-size: 11px; text-transform: uppercase; color: #888; font-weight: 600; margin-bottom: 2px; }
+  span { font-size: 14px; color: #333; }
+}
+
+// UST112: Speaking Order section
+.speaking-order-section {
+  margin-bottom: 20px;
+  h4 {
+    font-size: 14px; color: #1e293b; margin: 0 0 10px; display: flex; align-items: center; gap: 8px;
+    i { color: #d32f2f; font-size: 16px; }
+  }
+}
+
+.readonly-box {
+  background: #f8f9fa; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px;
+  pointer-events: none; user-select: text;
+  p { margin: 0; font-size: 14px; color: #475569; line-height: 1.6; }
+}
+
+// UST112: Complaint details in appeal (read-only)
+.complaint-details-readonly {
+  margin-bottom: 20px;
+  h4 { font-size: 14px; color: #1e293b; margin: 0 0 10px; }
+  .readonly-box {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+  }
+  .detail-field {
+    label { display: block; font-size: 11px; text-transform: uppercase; color: #888; font-weight: 600; margin-bottom: 2px; }
+    span { font-size: 14px; color: #333; }
+    &.full-width { grid-column: 1 / -1; }
+  }
+}
+
+// Delay notice
+.delay-notice {
+  display: flex; align-items: flex-start; gap: 10px; padding: 14px 16px;
+  background: #fff3e0; border: 1px solid #ffcc80; border-radius: 8px; margin-bottom: 16px;
+  i { color: #e65100; font-size: 18px; margin-top: 2px; }
+  p { margin: 0; font-size: 13px; color: #bf360c; line-height: 1.5; }
+}
+
+.char-count { font-size: 11px; color: #999; float: right; margin-top: 4px; }
+
+.textarea-with-speech {
+  position: relative;
+  app-speech-button { position: absolute; right: 10px; bottom: 10px; }
+}

@@ -1,0 +1,9 @@
+<div class="sla-indicator" [class]="colorClass()">
+  @if (isOverdue()) {
+    <span class="breached-badge">BREACHED</span>
+  }
+  <div class="progress-bar">
+    <div class="progress-fill" [style.width.%]="progressPercent()"></div>
+  </div>
+  <span class="days-text">{{ daysText() }}</span>
+</div>

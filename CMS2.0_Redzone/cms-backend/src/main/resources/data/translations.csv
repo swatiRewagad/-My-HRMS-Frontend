@@ -1,0 +1,435 @@
+code,module,description,default_value,locale,value
+common.app_title,common,Application title,Complaint Management System,en,Complaint Management System
+common.app_title,common,Application title,Complaint Management System,hi,शिकायत प्रबंधन प्रणाली
+common.app_title,common,Application title,Complaint Management System,bn,অভিযোগ ব্যবস্থাপনা সিস্টেম
+common.app_title,common,Application title,Complaint Management System,mr,तक्रार व्यवस्थापना प्रणाली
+common.app_title,common,Application title,Complaint Management System,te,ఫిర్యాదు నిర్వహణ వ్యవస్థ
+common.app_title,common,Application title,Complaint Management System,ta,புகார் மேலாண்மை அமைப்பு
+common.app_title,common,Application title,Complaint Management System,gu,ફરિયાદ વ્યવસ્થાપન સિસ્ટમ
+common.app_title,common,Application title,Complaint Management System,ur,شکایت مینجمنٹ سسٹم
+common.app_title,common,Application title,Complaint Management System,kn,ದೂರು ನಿರ್ವಹಣಾ ವ್ಯವಸ್ಥೆ
+common.app_title,common,Application title,Complaint Management System,ml,പരാതി മാനേജ്‌മെന്റ് സിസ്റ്റം
+common.home,common,Home navigation,Home,en,Home
+common.home,common,Home navigation,Home,hi,होम
+common.home,common,Home navigation,Home,bn,হোম
+common.home,common,Home navigation,Home,mr,मुख्यपृष्ठ
+common.home,common,Home navigation,Home,te,హోమ్
+common.home,common,Home navigation,Home,ta,முகப்பு
+common.home,common,Home navigation,Home,gu,હોમ
+common.home,common,Home navigation,Home,ur,ہوم
+common.home,common,Home navigation,Home,kn,ಮುಖಪುಟ
+common.home,common,Home navigation,Home,ml,ഹോം
+common.back,common,Back button,Back,en,Back
+common.back,common,Back button,Back,hi,वापस
+common.back,common,Back button,Back,bn,পিছনে
+common.back,common,Back button,Back,mr,मागे
+common.back,common,Back button,Back,te,వెనుకకు
+common.back,common,Back button,Back,ta,பின்செல்
+common.back,common,Back button,Back,gu,પાછળ
+common.back,common,Back button,Back,ur,واپس
+common.back,common,Back button,Back,kn,ಹಿಂದೆ
+common.back,common,Back button,Back,ml,പിന്നിലേക്ക്
+common.next,common,Next button,Next,en,Next
+common.next,common,Next button,Next,hi,अगला
+common.next,common,Next button,Next,bn,পরবর্তী
+common.next,common,Next button,Next,mr,पुढे
+common.next,common,Next button,Next,te,తదుపరి
+common.next,common,Next button,Next,ta,அடுத்து
+common.next,common,Next button,Next,gu,આગળ
+common.next,common,Next button,Next,ur,اگلا
+common.next,common,Next button,Next,kn,ಮುಂದೆ
+common.next,common,Next button,Next,ml,അടുത്തത്
+common.submit,common,Submit button,Submit,en,Submit
+common.submit,common,Submit button,Submit,hi,जमा करें
+common.submit,common,Submit button,Submit,bn,জমা দিন
+common.submit,common,Submit button,Submit,mr,सादर करा
+common.submit,common,Submit button,Submit,te,సమర్పించండి
+common.submit,common,Submit button,Submit,ta,சமர்ப்பிக்கவும்
+common.submit,common,Submit button,Submit,gu,સબમિટ કરો
+common.submit,common,Submit button,Submit,ur,جمع کرائیں
+common.submit,common,Submit button,Submit,kn,ಸಲ್ಲಿಸಿ
+common.submit,common,Submit button,Submit,ml,സമർപ്പിക്കുക
+common.cancel,common,Cancel button,Cancel,en,Cancel
+common.cancel,common,Cancel button,Cancel,hi,रद्द करें
+common.cancel,common,Cancel button,Cancel,bn,বাতিল
+common.cancel,common,Cancel button,Cancel,mr,रद्द करा
+common.cancel,common,Cancel button,Cancel,te,రద్దు
+common.cancel,common,Cancel button,Cancel,ta,ரத்து
+common.cancel,common,Cancel button,Cancel,gu,રદ કરો
+common.cancel,common,Cancel button,Cancel,ur,منسوخ
+common.cancel,common,Cancel button,Cancel,kn,ರದ್ದು
+common.cancel,common,Cancel button,Cancel,ml,റദ്ദാക്കുക
+common.save,common,Save button,Save,en,Save
+common.save,common,Save button,Save,hi,सहेजें
+common.close,common,Close button,Close,en,Close
+common.close,common,Close button,Close,hi,बंद करें
+common.loading,common,Loading indicator,Loading...,en,Loading...
+common.loading,common,Loading indicator,Loading...,hi,लोड हो रहा है...
+common.loading,common,Loading indicator,Loading...,bn,লোড হচ্ছে...
+common.loading,common,Loading indicator,Loading...,mr,लोड होत आहे...
+common.loading,common,Loading indicator,Loading...,te,లోడ్ అవుతోంది...
+common.loading,common,Loading indicator,Loading...,ta,ஏற்றுகிறது...
+common.loading,common,Loading indicator,Loading...,gu,લોડ થઈ રહ્યું છે...
+common.loading,common,Loading indicator,Loading...,ur,لوڈ ہو رہا ہے...
+common.loading,common,Loading indicator,Loading...,kn,ಲೋಡ್ ಆಗುತ್ತಿದೆ...
+common.loading,common,Loading indicator,Loading...,ml,ലോഡ് ചെയ്യുന്നു...
+common.error,common,Generic error,An error occurred,en,An error occurred
+common.error,common,Generic error,An error occurred,hi,एक त्रुटि हुई
+common.success,common,Generic success,Success,en,Success
+common.success,common,Generic success,Success,hi,सफल
+common.required_field,common,Required field message,This field is required,en,This field is required
+common.required_field,common,Required field message,This field is required,hi,यह फ़ील्ड आवश्यक है
+common.yes,common,Yes option,Yes,en,Yes
+common.yes,common,Yes option,Yes,hi,हाँ
+common.yes,common,Yes option,Yes,bn,হ্যাঁ
+common.yes,common,Yes option,Yes,mr,होय
+common.yes,common,Yes option,Yes,te,అవును
+common.yes,common,Yes option,Yes,ta,ஆம்
+common.yes,common,Yes option,Yes,gu,હા
+common.yes,common,Yes option,Yes,ur,ہاں
+common.yes,common,Yes option,Yes,kn,ಹೌದು
+common.yes,common,Yes option,Yes,ml,അതെ
+common.no,common,No option,No,en,No
+common.no,common,No option,No,hi,नहीं
+common.no,common,No option,No,bn,না
+common.no,common,No option,No,mr,नाही
+common.no,common,No option,No,te,కాదు
+common.no,common,No option,No,ta,இல்லை
+common.no,common,No option,No,gu,ના
+common.no,common,No option,No,ur,نہیں
+common.no,common,No option,No,kn,ಇಲ್ಲ
+common.no,common,No option,No,ml,ഇല്ല
+common.select_option,common,Select placeholder,Select an option,en,Select an option
+common.select_option,common,Select placeholder,Select an option,hi,एक विकल्प चुनें
+common.search,common,Search placeholder,Search,en,Search
+common.search,common,Search placeholder,Search,hi,खोजें
+common.logout,common,Logout,Logout,en,Logout
+common.logout,common,Logout,Logout,hi,लॉग आउट
+common.language,common,Language selector label,Language,en,Language
+common.language,common,Language selector label,Language,hi,भाषा
+common.language,common,Language selector label,Language,bn,ভাষা
+common.language,common,Language selector label,Language,mr,भाषा
+common.language,common,Language selector label,Language,te,భాష
+common.language,common,Language selector label,Language,ta,மொழி
+common.language,common,Language selector label,Language,gu,ભાષા
+common.language,common,Language selector label,Language,ur,زبان
+common.language,common,Language selector label,Language,kn,ಭಾಷೆ
+common.language,common,Language selector label,Language,ml,ഭാഷ
+nav.about_us,nav,About us nav link,About us,en,About us
+nav.about_us,nav,About us nav link,About us,hi,हमारे बारे में
+nav.about_us,nav,About us nav link,About us,bn,আমাদের সম্পর্কে
+nav.about_us,nav,About us nav link,About us,mr,आमच्याबद्दल
+nav.public_awareness,nav,Public awareness nav link,Public Awareness,en,Public Awareness
+nav.public_awareness,nav,Public awareness nav link,Public Awareness,hi,जन जागरूकता
+nav.public_awareness,nav,Public awareness nav link,Public Awareness,bn,জনসচেতনতা
+nav.public_awareness,nav,Public awareness nav link,Public Awareness,mr,जनजागृती
+nav.my_complaints,nav,My complaints nav link,My Complaints,en,My Complaints
+nav.my_complaints,nav,My complaints nav link,My Complaints,hi,मेरी शिकायतें
+nav.my_complaints,nav,My complaints nav link,My Complaints,bn,আমার অভিযোগ
+nav.my_complaints,nav,My complaints nav link,My Complaints,mr,माझ्या तक्रारी
+nav.login,nav,Login nav link,Login,en,Login
+nav.login,nav,Login nav link,Login,hi,लॉगिन
+nav.login,nav,Login nav link,Login,bn,লগইন
+nav.login,nav,Login nav link,Login,mr,लॉगिन
+home.hero_title,home,Hero title,Making complaint resolution,en,Making complaint resolution
+home.hero_title,home,Hero title,Making complaint resolution,hi,शिकायत समाधान को
+home.hero_title,home,Hero title,Making complaint resolution,bn,অভিযোগ সমাধান
+home.hero_title,home,Hero title,Making complaint resolution,mr,तक्रार निवारण
+home.hero_highlight,home,Hero highlight word,Easier,en,Easier
+home.hero_highlight,home,Hero highlight word,Easier,hi,आसान बनाना
+home.hero_highlight,home,Hero highlight word,Easier,bn,সহজ করা
+home.hero_highlight,home,Hero highlight word,Easier,mr,सोपे करणे
+home.hero_subtitle,home,Hero subtitle,"Reserve Bank of India's trusted platform for complaint resolution - effortlessly file and track grievances against Regulated Entities.",en,"Reserve Bank of India's trusted platform for complaint resolution - effortlessly file and track grievances against Regulated Entities."
+home.hero_subtitle,home,Hero subtitle,"Reserve Bank of India's trusted platform for complaint resolution - effortlessly file and track grievances against Regulated Entities.",hi,भारतीय रिज़र्व बैंक का विश्वसनीय शिकायत समाधान मंच - विनियमित संस्थाओं के खिलाफ शिकायत दर्ज करें और ट्रैक करें।
+home.hero_subtitle,home,Hero subtitle,"Reserve Bank of India's trusted platform for complaint resolution - effortlessly file and track grievances against Regulated Entities.",bn,ভারতীয় রিজার্ভ ব্যাংকের বিশ্বস্ত অভিযোগ সমাধান মঞ্চ - নিয়ন্ত্রিত সংস্থাগুলির বিরুদ্ধে অভিযোগ দায়ের এবং ট্র্যাক করুন।
+home.hero_subtitle,home,Hero subtitle,"Reserve Bank of India's trusted platform for complaint resolution - effortlessly file and track grievances against Regulated Entities.",mr,भारतीय रिझर्व्ह बँकेचे विश्वासार्ह तक्रार निवारण व्यासपीठ - नियामित संस्थांविरुद्ध तक्रार दाखल करा आणि ट्रॅक करा.
+home.file_complaint,home,File complaint button,File a Complaint,en,File a Complaint
+home.file_complaint,home,File complaint button,File a Complaint,hi,शिकायत दर्ज करें
+home.file_complaint,home,File complaint button,File a Complaint,bn,অভিযোগ দায়ের করুন
+home.file_complaint,home,File complaint button,File a Complaint,mr,तक्रार दाखल करा
+home.already_filed,home,Already filed text,Already Filed A Complaint?,en,Already Filed A Complaint?
+home.already_filed,home,Already filed text,Already Filed A Complaint?,hi,पहले से शिकायत दर्ज है?
+home.already_filed,home,Already filed text,Already Filed A Complaint?,bn,ইতিমধ্যে অভিযোগ দায়ের করেছেন?
+home.already_filed,home,Already filed text,Already Filed A Complaint?,mr,आधीच तक्रार दाखल केली?
+home.track_withdraw,home,Track/withdraw button,Track or Withdraw Complaint,en,Track or Withdraw Complaint
+home.track_withdraw,home,Track/withdraw button,Track or Withdraw Complaint,hi,शिकायत ट्रैक या वापस लें
+home.track_withdraw,home,Track/withdraw button,Track or Withdraw Complaint,bn,অভিযোগ ট্র্যাক বা প্রত্যাহার
+home.track_withdraw,home,Track/withdraw button,Track or Withdraw Complaint,mr,तक्रार ट्रॅक किंवा मागे घ्या
+home.file_appeal,home,File appeal button,File an Appeal,en,File an Appeal
+home.file_appeal,home,File appeal button,File an Appeal,hi,अपील दायर करें
+home.file_appeal,home,File appeal button,File an Appeal,bn,আপিল দায়ের করুন
+home.file_appeal,home,File appeal button,File an Appeal,mr,अपील दाखल करा
+home.share_feedback,home,Share feedback button,Share Your Feedback,en,Share Your Feedback
+home.share_feedback,home,Share feedback button,Share Your Feedback,hi,अपनी प्रतिक्रिया दें
+home.share_feedback,home,Share feedback button,Share Your Feedback,bn,আপনার মতামত দিন
+home.share_feedback,home,Share feedback button,Share Your Feedback,mr,आपला अभिप्राय द्या
+login.title,login,Login page title,Verification,en,Verification
+login.title,login,Login page title,Verification,hi,सत्यापन
+login.title,login,Login page title,Verification,bn,যাচাইকরণ
+login.title,login,Login page title,Verification,mr,पडताळणी
+login.title,login,Login page title,Verification,te,ధృవీకరణ
+login.title,login,Login page title,Verification,ta,சரிபார்ப்பு
+login.title,login,Login page title,Verification,gu,ચકાસણી
+login.title,login,Login page title,Verification,ur,تصدیق
+login.title,login,Login page title,Verification,kn,ಪರಿಶೀಲನೆ
+login.title,login,Login page title,Verification,ml,പരിശോധന
+login.verify_phone,login,Verify phone heading,Verify Phone Number,en,Verify Phone Number
+login.verify_phone,login,Verify phone heading,Verify Phone Number,hi,फ़ोन नंबर सत्यापित करें
+login.verify_phone,login,Verify phone heading,Verify Phone Number,bn,ফোন নম্বর যাচাই করুন
+login.verify_phone,login,Verify phone heading,Verify Phone Number,mr,फोन नंबर पडताळा
+login.verify_phone,login,Verify phone heading,Verify Phone Number,te,ఫోన్ నంబర్ ధృవీకరించండి
+login.verify_phone,login,Verify phone heading,Verify Phone Number,ta,தொலைபேசி எண்ணை சரிபார்க்கவும்
+login.verify_phone,login,Verify phone heading,Verify Phone Number,gu,ફોન નંબર ચકાસો
+login.verify_phone,login,Verify phone heading,Verify Phone Number,ur,فون نمبر کی تصدیق کریں
+login.verify_phone,login,Verify phone heading,Verify Phone Number,kn,ಫೋನ್ ಸಂಖ್ಯೆ ಪರಿಶೀಲಿಸಿ
+login.verify_phone,login,Verify phone heading,Verify Phone Number,ml,ഫോൺ നമ്പർ പരിശോധിക്കുക
+login.mobile_label,login,Mobile field label,Mobile Number,en,Mobile Number
+login.mobile_label,login,Mobile field label,Mobile Number,hi,मोबाइल नंबर
+login.mobile_label,login,Mobile field label,Mobile Number,bn,মোবাইল নম্বর
+login.mobile_label,login,Mobile field label,Mobile Number,mr,मोबाईल नंबर
+login.mobile_label,login,Mobile field label,Mobile Number,te,మొబైల్ నంబర్
+login.mobile_label,login,Mobile field label,Mobile Number,ta,மொபைல் எண்
+login.mobile_label,login,Mobile field label,Mobile Number,gu,મોબાઇલ નંબર
+login.mobile_label,login,Mobile field label,Mobile Number,ur,موبائل نمبر
+login.mobile_label,login,Mobile field label,Mobile Number,kn,ಮೊಬೈಲ್ ಸಂಖ್ಯೆ
+login.mobile_label,login,Mobile field label,Mobile Number,ml,മൊബൈൽ നമ്പർ
+login.mobile_placeholder,login,Mobile field placeholder,Enter Mobile Number,en,Enter Mobile Number
+login.mobile_placeholder,login,Mobile field placeholder,Enter Mobile Number,hi,मोबाइल नंबर दर्ज करें
+login.send_otp,login,Send OTP button,Send OTP,en,Send OTP
+login.send_otp,login,Send OTP button,Send OTP,hi,OTP भेजें
+login.send_otp,login,Send OTP button,Send OTP,bn,OTP পাঠান
+login.send_otp,login,Send OTP button,Send OTP,mr,OTP पाठवा
+login.send_otp,login,Send OTP button,Send OTP,te,OTP పంపండి
+login.send_otp,login,Send OTP button,Send OTP,ta,OTP அனுப்பு
+login.send_otp,login,Send OTP button,Send OTP,gu,OTP મોકલો
+login.send_otp,login,Send OTP button,Send OTP,ur,OTP بھیجیں
+login.send_otp,login,Send OTP button,Send OTP,kn,OTP ಕಳುಹಿಸಿ
+login.send_otp,login,Send OTP button,Send OTP,ml,OTP അയയ്ക്കുക
+login.verify_otp,login,Verify OTP button,Verify OTP,en,Verify OTP
+login.verify_otp,login,Verify OTP button,Verify OTP,hi,OTP सत्यापित करें
+login.verify_otp,login,Verify OTP button,Verify OTP,bn,OTP যাচাই করুন
+login.verify_otp,login,Verify OTP button,Verify OTP,mr,OTP पडताळा
+login.resend_otp,login,Resend OTP link,Resend OTP,en,Resend OTP
+login.resend_otp,login,Resend OTP link,Resend OTP,hi,OTP पुनः भेजें
+login.otp_sent,login,OTP sent message,OTP sent to your mobile number,en,OTP sent to your mobile number
+login.otp_sent,login,OTP sent message,OTP sent to your mobile number,hi,आपके मोबाइल नंबर पर OTP भेजा गया
+login.otp_label,login,OTP input label,Enter OTP,en,Enter OTP
+login.otp_label,login,OTP input label,Enter OTP,hi,OTP दर्ज करें
+login.otp_placeholder,login,OTP input placeholder,Enter 6-digit OTP,en,Enter 6-digit OTP
+login.otp_placeholder,login,OTP input placeholder,Enter 6-digit OTP,hi,6 अंकों का OTP दर्ज करें
+login.captcha_visual,login,CAPTCHA visual label,Enter the text shown below,en,Enter the text shown below
+login.captcha_visual,login,CAPTCHA visual label,Enter the text shown below,hi,नीचे दिखाया गया पाठ दर्ज करें
+login.captcha_math,login,CAPTCHA math label,Answer the question,en,Answer the question
+login.captcha_math,login,CAPTCHA math label,Answer the question,hi,प्रश्न का उत्तर दें
+login.captcha_placeholder,login,CAPTCHA input placeholder,Enter text,en,Enter text
+login.try_math,login,Switch to math CAPTCHA,Try math question instead,en,Try math question instead
+login.try_visual,login,Switch to visual CAPTCHA,Try visual CAPTCHA instead,en,Try visual CAPTCHA instead
+login.refresh_captcha,login,Refresh CAPTCHA,Refresh,en,Refresh
+login.email_fallback,login,Email fallback label,Verify via Email instead,en,Verify via Email instead
+login.email_placeholder,login,Email input placeholder,Enter registered email,en,Enter registered email
+login.cooloff_message,login,Cooloff message,"Too many attempts. Please wait",en,"Too many attempts. Please wait"
+login.cooloff_message,login,Cooloff message,"Too many attempts. Please wait",hi,बहुत अधिक प्रयास। कृपया प्रतीक्षा करें
+login.cooloff_remaining,login,Cooloff time remaining,remaining,en,remaining
+login.cooloff_remaining,login,Cooloff time remaining,remaining,hi,शेष
+complaint.title,complaint,Complaint form title,Raise a Complaint,en,Raise a Complaint
+complaint.title,complaint,Complaint form title,Raise a Complaint,hi,शिकायत दर्ज करें
+complaint.title,complaint,Complaint form title,Raise a Complaint,bn,অভিযোগ দায়ের করুন
+complaint.title,complaint,Complaint form title,Raise a Complaint,mr,तक्रार नोंदवा
+complaint.title,complaint,Complaint form title,Raise a Complaint,te,ఫిర్యాదు దాఖలు చేయండి
+complaint.title,complaint,Complaint form title,Raise a Complaint,ta,புகார் பதிவு செய்யவும்
+complaint.title,complaint,Complaint form title,Raise a Complaint,gu,ફરિયાદ નોંધાવો
+complaint.title,complaint,Complaint form title,Raise a Complaint,ur,شکایت درج کریں
+complaint.title,complaint,Complaint form title,Raise a Complaint,kn,ದೂರು ದಾಖಲಿಸಿ
+complaint.title,complaint,Complaint form title,Raise a Complaint,ml,പരാതി സമർപ്പിക്കുക
+complaint.step1_title,complaint,Step 1 title,Tell Us About You,en,Tell Us About You
+complaint.step1_title,complaint,Step 1 title,Tell Us About You,hi,अपने बारे में बताएं
+complaint.step1_title,complaint,Step 1 title,Tell Us About You,bn,আপনার সম্পর্কে বলুন
+complaint.step1_title,complaint,Step 1 title,Tell Us About You,mr,स्वतःबद्दल सांगा
+complaint.step1_title,complaint,Step 1 title,Tell Us About You,te,మీ గురించి చెప్పండి
+complaint.step1_title,complaint,Step 1 title,Tell Us About You,ta,உங்களைப் பற்றி சொல்லுங்கள்
+complaint.step1_title,complaint,Step 1 title,Tell Us About You,gu,તમારા વિશે જણાવો
+complaint.step1_title,complaint,Step 1 title,Tell Us About You,ur,اپنے بارے میں بتائیں
+complaint.step1_title,complaint,Step 1 title,Tell Us About You,kn,ನಿಮ್ಮ ಬಗ್ಗೆ ಹೇಳಿ
+complaint.step1_title,complaint,Step 1 title,Tell Us About You,ml,നിങ്ങളെക്കുറിച്ച് പറയൂ
+complaint.step1_desc,complaint,Step 1 description,Share some basic details about yourself to help us contact you regarding your complaint.,en,Share some basic details about yourself to help us contact you regarding your complaint.
+complaint.step1_desc,complaint,Step 1 description,Share some basic details about yourself to help us contact you regarding your complaint.,hi,आपकी शिकायत के संबंध में संपर्क करने में सहायता के लिए कुछ बुनियादी विवरण साझा करें।
+complaint.step2_title,complaint,Step 2 title,Entity Details,en,Entity Details
+complaint.step2_title,complaint,Step 2 title,Entity Details,hi,संस्था विवरण
+complaint.step2_title,complaint,Step 2 title,Entity Details,bn,প্রতিষ্ঠানের বিবরণ
+complaint.step2_title,complaint,Step 2 title,Entity Details,mr,संस्थेचे तपशील
+complaint.step2_title,complaint,Step 2 title,Entity Details,te,సంస్థ వివరాలు
+complaint.step2_title,complaint,Step 2 title,Entity Details,ta,நிறுவன விவரங்கள்
+complaint.step2_title,complaint,Step 2 title,Entity Details,gu,સંસ્થાની વિગતો
+complaint.step2_title,complaint,Step 2 title,Entity Details,ur,ادارے کی تفصیلات
+complaint.step2_title,complaint,Step 2 title,Entity Details,kn,ಸಂಸ್ಥೆಯ ವಿವರಗಳು
+complaint.step2_title,complaint,Step 2 title,Entity Details,ml,സ്ഥാപന വിശദാംശങ്ങൾ
+complaint.step2_desc,complaint,Step 2 description,Tell us about the bank or financial institution you want to complain against.,en,Tell us about the bank or financial institution you want to complain against.
+complaint.step2_desc,complaint,Step 2 description,Tell us about the bank or financial institution you want to complain against.,hi,जिस बैंक या वित्तीय संस्था के खिलाफ शिकायत करना चाहते हैं उसके बारे में बताएं।
+complaint.step3_title,complaint,Step 3 title,Share Your Complaint,en,Share Your Complaint
+complaint.step3_title,complaint,Step 3 title,Share Your Complaint,hi,अपनी शिकायत साझा करें
+complaint.step3_title,complaint,Step 3 title,Share Your Complaint,bn,আপনার অভিযোগ জানান
+complaint.step3_title,complaint,Step 3 title,Share Your Complaint,mr,तुमची तक्रार सामायिक करा
+complaint.step3_title,complaint,Step 3 title,Share Your Complaint,te,మీ ఫిర్యాదు పంచుకోండి
+complaint.step3_title,complaint,Step 3 title,Share Your Complaint,ta,உங்கள் புகாரை பகிரவும்
+complaint.step3_title,complaint,Step 3 title,Share Your Complaint,gu,તમારી ફરિયાદ શેર કરો
+complaint.step3_title,complaint,Step 3 title,Share Your Complaint,ur,اپنی شکایت شیئر کریں
+complaint.step3_title,complaint,Step 3 title,Share Your Complaint,kn,ನಿಮ್ಮ ದೂರು ಹಂಚಿಕೊಳ್ಳಿ
+complaint.step3_title,complaint,Step 3 title,Share Your Complaint,ml,നിങ്ങളുടെ പരാതി പങ്കിടുക
+complaint.step3_desc,complaint,Step 3 description,"Describe your complaint, actions taken, responses received, and include supporting documents.",en,"Describe your complaint, actions taken, responses received, and include supporting documents."
+complaint.step3_desc,complaint,Step 3 description,"Describe your complaint, actions taken, responses received, and include supporting documents.",hi,"अपनी शिकायत, की गई कार्रवाई, प्राप्त उत्तर और सहायक दस्तावेज़ शामिल करें।"
+complaint.name,complaint,Name field,Name,en,Name
+complaint.name,complaint,Name field,Name,hi,नाम
+complaint.name,complaint,Name field,Name,bn,নাম
+complaint.name,complaint,Name field,Name,mr,नाव
+complaint.name,complaint,Name field,Name,te,పేరు
+complaint.name,complaint,Name field,Name,ta,பெயர்
+complaint.name,complaint,Name field,Name,gu,નામ
+complaint.name,complaint,Name field,Name,ur,نام
+complaint.name,complaint,Name field,Name,kn,ಹೆಸರು
+complaint.name,complaint,Name field,Name,ml,പേര്
+complaint.email,complaint,Email field,Email (Optional),en,Email (Optional)
+complaint.email,complaint,Email field,Email (Optional),hi,ईमेल (वैकल्पिक)
+complaint.email,complaint,Email field,Email (Optional),bn,ইমেইল (ঐচ্ছিক)
+complaint.email,complaint,Email field,Email (Optional),mr,ईमेल (ऐच्छिक)
+complaint.email,complaint,Email field,Email (Optional),te,ఇమెయిల్ (ఐచ్ఛికం)
+complaint.email,complaint,Email field,Email (Optional),ta,மின்னஞ்சல் (விருப்பமானது)
+complaint.email,complaint,Email field,Email (Optional),gu,ઇમેઇલ (વૈકલ્પિક)
+complaint.email,complaint,Email field,Email (Optional),ur,ای میل (اختیاری)
+complaint.email,complaint,Email field,Email (Optional),kn,ಇಮೇಲ್ (ಐಚ್ಛಿಕ)
+complaint.email,complaint,Email field,Email (Optional),ml,ഇമെയിൽ (ഓപ്ഷണൽ)
+complaint.pincode,complaint,Pincode field,Pincode,en,Pincode
+complaint.pincode,complaint,Pincode field,Pincode,hi,पिनकोड
+complaint.pincode,complaint,Pincode field,Pincode,bn,পিনকোড
+complaint.pincode,complaint,Pincode field,Pincode,mr,पिनकोड
+complaint.district,complaint,District field,District,en,District
+complaint.district,complaint,District field,District,hi,जिला
+complaint.district,complaint,District field,District,bn,জেলা
+complaint.district,complaint,District field,District,mr,जिल्हा
+complaint.state,complaint,State field,State,en,State
+complaint.state,complaint,State field,State,hi,राज्य
+complaint.state,complaint,State field,State,bn,রাজ্য
+complaint.state,complaint,State field,State,mr,राज्य
+complaint.address,complaint,Address field,Address,en,Address
+complaint.address,complaint,Address field,Address,hi,पता
+complaint.address,complaint,Address field,Address,bn,ঠিকানা
+complaint.address,complaint,Address field,Address,mr,पत्ता
+complaint.entity_type,complaint,Entity type field,Entity Type,en,Entity Type
+complaint.entity_type,complaint,Entity type field,Entity Type,hi,संस्था प्रकार
+complaint.entity_name,complaint,Entity name field,Entity Name,en,Entity Name
+complaint.entity_name,complaint,Entity name field,Entity Name,hi,संस्था का नाम
+complaint.branch,complaint,Branch field,Branch (if applicable),en,Branch (if applicable)
+complaint.account_number,complaint,Account number field,Account Number (if applicable),en,Account Number (if applicable)
+complaint.category,complaint,Category field,Complaint Category,en,Complaint Category
+complaint.category,complaint,Category field,Complaint Category,hi,शिकायत श्रेणी
+complaint.subcategory,complaint,Sub-category field,Complaint Sub-Category,en,Complaint Sub-Category
+complaint.facts,complaint,Facts field,Facts of the complaint,en,Facts of the complaint
+complaint.facts,complaint,Facts field,Facts of the complaint,hi,शिकायत का विवरण
+complaint.attachments,complaint,Attachments field,Attachments,en,Attachments
+complaint.attachments,complaint,Attachments field,Attachments,hi,संलग्नक
+complaint.attachment_hint,complaint,Attachment hint,"Support formats: PDF, JPG, PNG. Maximum size: 5MB",en,"Support formats: PDF, JPG, PNG. Maximum size: 5MB"
+complaint.complainant_category,complaint,Complainant category field,Complainant Category,en,Complainant Category
+complaint.individual,complaint,Individual option,Individual,en,Individual
+complaint.business,complaint,Business option,Business,en,Business
+complaint.other,complaint,Other option,Other,en,Other
+complaint.sub_judice,complaint,Sub-judice question,"Is your complaint sub-judice/under arbitration/already dealt with on merits by a Court/Tribunal/Arbitrator/Authority?",en,"Is your complaint sub-judice/under arbitration/already dealt with on merits by a Court/Tribunal/Arbitrator/Authority?"
+complaint.through_advocate,complaint,Through advocate question,Is your complaint made through an advocate (unless you are yourself an advocate)?,en,Is your complaint made through an advocate (unless you are yourself an advocate)?
+complaint.already_with_ombudsman,complaint,Already with ombudsman,Has your complaint already been dealt with or is under process on the same ground with the Ombudsman?,en,Has your complaint already been dealt with or is under process on the same ground with the Ombudsman?
+complaint.regulated_entity_staff,complaint,Regulated entity staff question,Is complaint from the staff of a regulated entity and involves employer employee relationship?,en,Is complaint from the staff of a regulated entity and involves employer employee relationship?
+complaint.authorize_representative,complaint,Authorize representative,"If you want to authorize a representative to appear and make submission on your behalf before the Ombudsman, please select 'Yes' and furnish the details",en,"If you want to authorize a representative to appear and make submission on your behalf before the Ombudsman, please select 'Yes' and furnish the details"
+complaint.submitted_success,complaint,Complaint submitted message,Your complaint has been submitted successfully,en,Your complaint has been submitted successfully
+complaint.submitted_success,complaint,Complaint submitted message,Your complaint has been submitted successfully,hi,आपकी शिकायत सफलतापूर्वक जमा हो गई है
+complaint.submitted_success,complaint,Complaint submitted message,Your complaint has been submitted successfully,bn,আপনার অভিযোগ সফলভাবে জমা হয়েছে
+complaint.submitted_success,complaint,Complaint submitted message,Your complaint has been submitted successfully,mr,तुमची तक्रार यशस्वीपणे सादर झाली आहे
+complaint.submitted_success,complaint,Complaint submitted message,Your complaint has been submitted successfully,te,మీ ఫిర్యాదు విజయవంతంగా సమర్పించబడింది
+complaint.submitted_success,complaint,Complaint submitted message,Your complaint has been submitted successfully,ta,உங்கள் புகார் வெற்றிகரமாக சமர்ப்பிக்கப்பட்டது
+complaint.submitted_success,complaint,Complaint submitted message,Your complaint has been submitted successfully,gu,તમારી ફરિયાદ સફળતાપૂર્વક સબમિટ થઈ ગઈ છે
+complaint.submitted_success,complaint,Complaint submitted message,Your complaint has been submitted successfully,ur,آپ کی شکایت کامیابی سے جمع ہو گئی ہے
+complaint.submitted_success,complaint,Complaint submitted message,Your complaint has been submitted successfully,kn,ನಿಮ್ಮ ದೂರು ಯಶಸ್ವಿಯಾಗಿ ಸಲ್ಲಿಸಲಾಗಿದೆ
+complaint.submitted_success,complaint,Complaint submitted message,Your complaint has been submitted successfully,ml,നിങ്ങളുടെ പരാതി വിജയകരമായി സമർപ്പിച്ചു
+complaint.complaint_number,complaint,Complaint number label,Complaint Number,en,Complaint Number
+complaint.complaint_number,complaint,Complaint number label,Complaint Number,hi,शिकायत संख्या
+prefiling.title,complaint,Pre-filing modal title,Before Filing a Complaint,en,Before Filing a Complaint
+prefiling.subtitle,complaint,Pre-filing subtitle,SELECT WHICHEVER IS APPLICABLE,en,SELECT WHICHEVER IS APPLICABLE
+prefiling.not_contacted,complaint,Not contacted option,I have not contacted my bank or financial institution,en,I have not contacted my bank or financial institution
+prefiling.not_contacted_desc,complaint,Not contacted description,Select this option if you have not filed a complaint with your bank or financial institution yet.,en,Select this option if you have not filed a complaint with your bank or financial institution yet.
+prefiling.already_filed,complaint,Already filed option,I have filed a complaint with bank or financial institution,en,I have filed a complaint with bank or financial institution
+prefiling.already_filed_desc,complaint,Already filed description,"Select this option if you are not satisfied with the reply provided by your bank or financial institute or if they have not provided a response to your complaint in 30 days.",en,"Select this option if you are not satisfied with the reply provided by your bank or financial institute or if they have not provided a response to your complaint in 30 days."
+prefiling.complaint_date,complaint,Complaint date field,When did you first file the complaint with your bank or financial institution?,en,When did you first file the complaint with your bank or financial institution?
+prefiling.received_reply,complaint,Received reply field,Have you received any reply from your bank or financial institution?,en,Have you received any reply from your bank or financial institution?
+history.title,history,History page title,Complaint History,en,Complaint History
+history.title,history,History page title,Complaint History,hi,शिकायत इतिहास
+history.status,history,Status column,Status,en,Status
+history.status,history,Status column,Status,hi,स्थिति
+history.date_filed,history,Date filed column,Date Filed,en,Date Filed
+history.date_filed,history,Date filed column,Date Filed,hi,दायर करने की तिथि
+history.subject,history,Subject column,Subject,en,Subject
+history.subject,history,Subject column,Subject,hi,विषय
+history.no_complaints,history,No complaints message,No complaints found,en,No complaints found
+history.no_complaints,history,No complaints message,No complaints found,hi,कोई शिकायत नहीं मिली
+history.track_complaint,history,Track complaint,Track Complaint,en,Track Complaint
+history.view_details,history,View details button,View Details,en,View Details
+status.pending,status,Pending status,Pending,en,Pending
+status.pending,status,Pending status,Pending,hi,लंबित
+status.pending,status,Pending status,Pending,bn,মুলতুবি
+status.pending,status,Pending status,Pending,mr,प्रलंबित
+status.pending,status,Pending status,Pending,te,పెండింగ్
+status.pending,status,Pending status,Pending,ta,நிலுவையில்
+status.pending,status,Pending status,Pending,gu,બાકી
+status.pending,status,Pending status,Pending,ur,زیر التوا
+status.pending,status,Pending status,Pending,kn,ಬಾಕಿ
+status.pending,status,Pending status,Pending,ml,തീർപ്പുകൽപ്പിക്കാത്ത
+status.in_progress,status,In progress status,In Progress,en,In Progress
+status.in_progress,status,In progress status,In Progress,hi,प्रगति में
+status.in_progress,status,In progress status,In Progress,bn,প্রক্রিয়াধীন
+status.in_progress,status,In progress status,In Progress,mr,प्रगतीत
+status.in_progress,status,In progress status,In Progress,te,ప్రగతిలో
+status.in_progress,status,In progress status,In Progress,ta,நடைபெறுகிறது
+status.in_progress,status,In progress status,In Progress,gu,પ્રક્રિયામાં
+status.in_progress,status,In progress status,In Progress,ur,جاری
+status.in_progress,status,In progress status,In Progress,kn,ಪ್ರಗತಿಯಲ್ಲಿ
+status.in_progress,status,In progress status,In Progress,ml,പുരോഗതിയിൽ
+status.resolved,status,Resolved status,Resolved,en,Resolved
+status.resolved,status,Resolved status,Resolved,hi,हल किया गया
+status.resolved,status,Resolved status,Resolved,bn,সমাধান হয়েছে
+status.resolved,status,Resolved status,Resolved,mr,निराकरण झाले
+status.resolved,status,Resolved status,Resolved,te,పరిష్కరించబడింది
+status.resolved,status,Resolved status,Resolved,ta,தீர்க்கப்பட்டது
+status.resolved,status,Resolved status,Resolved,gu,ઉકેલાયેલ
+status.resolved,status,Resolved status,Resolved,ur,حل ہو گیا
+status.resolved,status,Resolved status,Resolved,kn,ಪರಿಹರಿಸಲಾಗಿದೆ
+status.resolved,status,Resolved status,Resolved,ml,പരിഹരിച്ചു
+status.closed,status,Closed status,Closed,en,Closed
+status.closed,status,Closed status,Closed,hi,बंद
+status.closed,status,Closed status,Closed,bn,বন্ধ
+status.closed,status,Closed status,Closed,mr,बंद
+status.escalated,status,Escalated status,Escalated,en,Escalated
+status.escalated,status,Escalated status,Escalated,hi,उच्चस्तरीय
+status.under_review,status,Under review status,Under Review,en,Under Review
+status.assigned,status,Assigned status,Assigned,en,Assigned
+footer.rbi_ombudsman,footer,RBI Ombudsman text,Reserve Bank of India - Integrated Ombudsman Scheme,en,Reserve Bank of India - Integrated Ombudsman Scheme
+footer.rbi_ombudsman,footer,RBI Ombudsman text,Reserve Bank of India - Integrated Ombudsman Scheme,hi,भारतीय रिज़र्व बैंक - एकीकृत लोकपाल योजना
+footer.rbi_ombudsman,footer,RBI Ombudsman text,Reserve Bank of India - Integrated Ombudsman Scheme,bn,ভারতীয় রিজার্ভ ব্যাংক - সমন্বিত লোকপাল প্রকল্প
+footer.rbi_ombudsman,footer,RBI Ombudsman text,Reserve Bank of India - Integrated Ombudsman Scheme,mr,भारतीय रिझर्व्ह बँक - एकात्मिक लोकपाल योजना
+footer.rbi_ombudsman,footer,RBI Ombudsman text,Reserve Bank of India - Integrated Ombudsman Scheme,te,భారతీయ రిజర్వ్ బ్యాంక్ - సమగ్ర లోకపాల్ పథకం
+footer.rbi_ombudsman,footer,RBI Ombudsman text,Reserve Bank of India - Integrated Ombudsman Scheme,ta,இந்திய ரிசர்வ் வங்கி - ஒருங்கிணைந்த குறைதீர்ப்பாளர் திட்டம்
+footer.rbi_ombudsman,footer,RBI Ombudsman text,Reserve Bank of India - Integrated Ombudsman Scheme,gu,ભારતીય રિઝર્વ બેંક - સંકલિત લોકપાલ યોજના
+footer.rbi_ombudsman,footer,RBI Ombudsman text,Reserve Bank of India - Integrated Ombudsman Scheme,ur,ریزرو بینک آف انڈیا - مربوط لوک پال اسکیم
+footer.rbi_ombudsman,footer,RBI Ombudsman text,Reserve Bank of India - Integrated Ombudsman Scheme,kn,ಭಾರತೀಯ ರಿಸರ್ವ್ ಬ್ಯಾಂಕ್ - ಸಮಗ್ರ ಲೋಕಪಾಲ ಯೋಜನೆ
+footer.rbi_ombudsman,footer,RBI Ombudsman text,Reserve Bank of India - Integrated Ombudsman Scheme,ml,റിസർവ് ബാങ്ക് ഓഫ് ഇന്ത്യ - സംയോജിത ലോക്‌പാൽ പദ്ധതി
+footer.helpline,footer,Helpline text,Toll-Free Helpline,en,Toll-Free Helpline
+footer.helpline,footer,Helpline text,Toll-Free Helpline,hi,टोल-फ्री हेल्पलाइन
+footer.privacy_policy,footer,Privacy policy link,Privacy Policy,en,Privacy Policy
+footer.terms,footer,Terms link,Terms & Conditions,en,Terms & Conditions
+footer.disclaimer,footer,Disclaimer link,Disclaimer,en,Disclaimer
+error.invalid_mobile,error,Invalid mobile,Please enter a valid 10-digit mobile number,en,Please enter a valid 10-digit mobile number
+error.invalid_mobile,error,Invalid mobile,Please enter a valid 10-digit mobile number,hi,कृपया एक वैध 10 अंकों का मोबाइल नंबर दर्ज करें
+error.invalid_otp,error,Invalid OTP,Invalid OTP. Please try again,en,Invalid OTP. Please try again
+error.invalid_otp,error,Invalid OTP,Invalid OTP. Please try again,hi,अमान्य OTP। कृपया पुनः प्रयास करें
+error.otp_expired,error,OTP expired,OTP has expired. Please request a new one,en,OTP has expired. Please request a new one
+error.otp_expired,error,OTP expired,OTP has expired. Please request a new one,hi,OTP की समय सीमा समाप्त हो गई। कृपया नया अनुरोध करें
+error.max_attempts,error,Max attempts reached,Maximum attempts reached. Please try again later,en,Maximum attempts reached. Please try again later
+error.server_error,error,Server error,Server error. Please try again later,en,Server error. Please try again later
+error.network_error,error,Network error,Network error. Please check your connection,en,Network error. Please check your connection
+error.captcha_failed,error,CAPTCHA failed,CAPTCHA verification failed. Please try again,en,CAPTCHA verification failed. Please try again
+error.session_expired,error,Session expired,Your session has expired. Please log in again,en,Your session has expired. Please log in again
+error.session_expired,error,Session expired,Your session has expired. Please log in again,hi,आपका सत्र समाप्त हो गया है। कृपया पुनः लॉगिन करें

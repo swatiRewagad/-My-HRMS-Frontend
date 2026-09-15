@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CMS Assignment Service - Technical Documentation</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.7; color: #2d3748; background: #f7fafc; }
+        .container { max-width: 960px; margin: 0 auto; padding: 40px 24px; }
+        h1 { font-size: 2.2rem; color: #1a237e; margin-bottom: 8px; border-bottom: 3px solid #1a237e; padding-bottom: 12px; }
+        .subtitle { color: #666; font-size: 1rem; margin-bottom: 32px; }
+        h2 { font-size: 1.5rem; color: #283593; margin-top: 40px; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid #e2e8f0; }
+        h3 { font-size: 1.2rem; color: #37474f; margin-top: 24px; margin-bottom: 12px; }
+        p { margin-bottom: 14px; }
+        ul, ol { margin-bottom: 16px; padding-left: 28px; }
+        li { margin-bottom: 8px; }
+        code { background: #edf2f7; padding: 2px 6px; border-radius: 4px; font-family: 'Consolas', 'Fira Code', monospace; font-size: 0.9em; color: #c62828; }
+        pre { background: #1e293b; color: #e2e8f0; padding: 20px; border-radius: 8px; overflow-x: auto; margin: 16px 0; font-size: 0.85rem; line-height: 1.6; }
+        pre code { background: none; color: inherit; padding: 0; }
+        .info-box { background: #e3f2fd; border-left: 4px solid #1565c0; padding: 16px 20px; border-radius: 4px; margin: 16px 0; }
+        .warn-box { background: #fff3e0; border-left: 4px solid #ef6c00; padding: 16px 20px; border-radius: 4px; margin: 16px 0; }
+        table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 0.9rem; }
+        th, td { border: 1px solid #e2e8f0; padding: 10px 14px; text-align: left; }
+        th { background: #eef2ff; color: #1a237e; font-weight: 600; }
+        tr:nth-child(even) { background: #f8fafc; }
+        .flow-diagram { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 24px; margin: 20px 0; text-align: center; }
+        .flow-step { display: inline-block; background: #e8eaf6; border: 2px solid #3f51b5; border-radius: 8px; padding: 10px 16px; margin: 8px; font-size: 0.85rem; font-weight: 600; color: #283593; }
+        .flow-arrow { display: inline-block; font-size: 1.4rem; color: #3f51b5; vertical-align: middle; margin: 0 4px; }
+        .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; }
+        .badge-blue { background: #e3f2fd; color: #1565c0; }
+        .badge-green { background: #e8f5e9; color: #2e7d32; }
+        .badge-orange { background: #fff3e0; color: #e65100; }
+        .toc { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px 28px; margin-bottom: 32px; }
+        .toc h3 { margin-top: 0; color: #1a237e; }
+        .toc ol { margin-bottom: 0; }
+        .toc a { color: #1565c0; text-decoration: none; }
+        .toc a:hover { text-decoration: underline; }
+        .meta { display: flex; gap: 24px; color: #666; font-size: 0.85rem; margin-bottom: 24px; }
+        .meta span { display: flex; align-items: center; gap: 4px; }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <h1>CMS Assignment Service</h1>
+    <p class="subtitle">Automated Complaint Assignment & Routing Engine</p>
+    <div class="meta">
+        <span>Service Port: <code>8085</code></span>
+        <span>Context Path: <code>/cms-assignment</code></span>
+        <span>Spring Boot Microservice</span>
+    </div>
+
+    <div class="toc">
+        <h3>Table of Contents</h3>
+        <ol>
+            <li><a href="#overview">Overview</a></li>
+            <li><a href="#architecture">Architecture & Integration</a></li>
+            <li><a href="#flow">Assignment Flow</a></li>
+            <li><a href="#rules-engine">Drools Rules Engine</a></li>
+            <li><a href="#assignment-rules">Assignment Rules (DRL)</a></li>
+            <li><a href="#round-robin">Round-Robin DEO Assignment</a></li>
+            <li><a href="#data-model">Data Model</a></li>
+            <li><a href="#kafka">Kafka Event Integration</a></li>
+            <li><a href="#configuration">Configuration</a></li>
+            <li><a href="#escalation">Escalation Logic</a></li>
+        </ol>
+    </div>
+
+    <h2 id="overview">1. Overview</h2>
+    <p>The <strong>CMS Assignment Service</strong> is a Spring Boot microservice responsible for automatically assigning incoming complaints to the appropriate team and officer based on configurable business rules. It uses <strong>Drools (KIE)</strong> as a rules engine to evaluate complaint attributes and determine the best assignment.</p>
+
+    <div class="info-box">
+        <strong>Key Responsibilities:</strong>
+        <ul style="margin-top: 8px; margin-bottom: 0;">
+            <li>Listen for <code>complaint.ingested</code> Kafka events</li>
+            <li>Evaluate complaint category, priority, and amount against Drools rules</li>
+            <li>Assign complaint to the correct team (ATM_TEAM, DIGITAL_TEAM, etc.)</li>
+            <li>Auto-escalate HIGH/CRITICAL priority complaints</li>
+            <li>Publish <code>complaint.assigned</code> Kafka event for downstream services</li>
+        </ul>
+    </div>
+
+    <h2 id="architecture">2. Architecture & Integration</h2>
+    <p>The Assignment Service operates as an event-driven microservice within the CMS ecosystem:</p>
+
+    <table>
+        <thead>
+            <tr><th>Component</th><th>Role</th><th>Technology</th></tr>
+        </thead>
+        <tbody>
+            <tr><td>AssignmentService</td><td>Core assignment logic using Drools rules engine</td><td>Spring Boot + KIE (Drools)</td></tr>
+            <tr><td>ComplaintIngestedAssignmentListener</td><td>Kafka consumer that triggers assignment</td><td>Spring Kafka</td></tr>
+            <tr><td>RoundRobinAssignmentService</td><td>DEO-level assignment for email ingestion</td><td>AtomicInteger pointer + JPA</td></tr>
+            <tr><td>assignment-rules.drl</td><td>Business rules for team routing</td><td>Drools Rule Language</td></tr>
+            <tr><td>AssignmentFact</td><td>Shared DTO carrying assignment input/output</td><td>Lombok DTO (cms-common)</td></tr>
+        </tbody>
+    </table>
+
+    <h2 id="flow">3. Assignment Flow</h2>
+    <div class="flow-diagram">
+        <div class="flow-step">Complaint Filed<br><small>(Web/Email/Physical)</small></div>
+        <span class="flow-arrow">&#8594;</span>
+        <div class="flow-step">Kafka Event<br><code>complaint.ingested</code></div>
+        <span class="flow-arrow">&#8594;</span>
+        <div class="flow-step">Assignment Listener<br><small>Consumes event</small></div>
+        <span class="flow-arrow">&#8594;</span>
+        <div class="flow-step">Drools Rules<br><small>Evaluate category/priority</small></div>
+        <span class="flow-arrow">&#8594;</span>
+        <div class="flow-step">Team Assigned<br><small>+ escalation check</small></div>
+        <span class="flow-arrow">&#8594;</span>
+        <div class="flow-step">Kafka Event<br><code>complaint.assigned</code></div>
+    </div>
+
+    <h3>Detailed Steps:</h3>
+    <ol>
+        <li><strong>Complaint Ingested:</strong> A new complaint is filed through any channel (web portal, email, physical letter). The ingestion service publishes a <code>complaint.ingested</code> event to Kafka.</li>
+        <li><strong>Listener Receives Event:</strong> <code>ComplaintIngestedAssignmentListener</code> consumes the event, extracts <code>category</code> and <code>priority</code> from the payload.</li>
+        <li><strong>AssignmentService Invoked:</strong> Creates an <code>AssignmentFact</code> with complaint attributes and fires Drools rules.</li>
+        <li><strong>Rules Evaluated:</strong> Drools rules match on category and priority, setting <code>assignedTeam</code>, <code>assignedOfficer</code>, and <code>escalated</code> flag.</li>
+        <li><strong>Result Published:</strong> A <code>complaint.assigned</code> event is published to Kafka with the assignment result, updating the complaint status to <code>ASSIGNED</code>.</li>
+    </ol>
+
+    <h2 id="rules-engine">4. Drools Rules Engine</h2>
+    <p>The service uses <strong>KIE (Knowledge Is Everything)</strong> container from the Drools framework. Rules are loaded from <code>src/main/resources/rules/assignment-rules.drl</code>.</p>
+
+    <h3>How it works:</h3>
+    <pre><code>// 1. Create a new KIE session
+KieSession kieSession = kieContainer.newKieSession();
+
+// 2. Insert the fact (complaint data)
+kieSession.insert(fact);  // AssignmentFact with category, priority, amount
+
+// 3. Fire all matching rules
+kieSession.fireAllRules();
+
+// 4. Read results from the mutated fact
+// fact.getAssignedTeam() -> "ATM_TEAM"
+// fact.isEscalated() -> true/false
+
+// 5. Dispose session
+kieSession.dispose();</code></pre>
+
+    <div class="info-box">
+        <strong>Rule Salience (Priority):</strong> Rules with higher salience values fire first. Category rules have salience <code>100</code>, escalation rules have <code>50</code>, and the default fallback has <code>10</code>. This ensures category-specific assignment happens before escalation check, and the default only fires if no category matched.
+    </div>
+
+    <h2 id="assignment-rules">5. Assignment Rules (DRL)</h2>
+    <p>The following rules are defined in <code>assignment-rules.drl</code>:</p>
+
+    <table>
+        <thead>
+            <tr><th>Rule Name</th><th>Condition</th><th>Assigned Team</th><th>Salience</th></tr>
+        </thead>
+        <tbody>
+            <tr><td>ATM Complaints</td><td><code>category == "ATM"</code></td><td><span class="badge badge-blue">ATM_TEAM</span></td><td>100</td></tr>
+            <tr><td>UPI Complaints</td><td><code>category == "UPI"</code></td><td><span class="badge badge-blue">DIGITAL_TEAM</span></td><td>100</td></tr>
+            <tr><td>NEFT/RTGS Complaints</td><td><code>category == "NEFT_RTGS"</code></td><td><span class="badge badge-blue">PAYMENT_SYSTEMS_TEAM</span></td><td>100</td></tr>
+            <tr><td>Loan Complaints</td><td><code>category == "LOAN"</code></td><td><span class="badge badge-blue">LENDING_TEAM</span></td><td>100</td></tr>
+            <tr><td>Credit Card Complaints</td><td><code>category == "CREDIT_CARD"</code></td><td><span class="badge badge-blue">CARDS_TEAM</span></td><td>100</td></tr>
+            <tr><td>High Priority Escalation</td><td><code>priority == "HIGH" || "CRITICAL"</code></td><td><span class="badge badge-orange">Escalated (Level 1)</span></td><td>50</td></tr>
+            <tr><td>Default Assignment</td><td><code>assignedTeam == null</code></td><td><span class="badge badge-green">GENERAL_TEAM</span></td><td>10</td></tr>
+        </tbody>
+    </table>
+
+    <h3>Rule Execution Example:</h3>
+    <pre><code>// Input: category="ATM", priority="HIGH"
+
+// Rule 1 fires (salience 100): ATM Complaints
+//   -> assignedTeam = "ATM_TEAM"
+
+// Rule 6 fires (salience 50): High Priority - Auto Escalate
+//   -> escalated = true, escalationLevel = 1
+
+// Rule 7 does NOT fire: assignedTeam is already set
+
+// Final Result:
+//   assignedTeam = "ATM_TEAM"
+//   escalated = true
+//   escalationLevel = 1</code></pre>
+
+    <h2 id="round-robin">6. Round-Robin DEO Assignment</h2>
+    <p>For <strong>email-ingested complaints</strong>, the system additionally assigns a Data Entry Operator (DEO) using a round-robin algorithm. This is handled by <code>RoundRobinAssignmentService</code> in the ingestion service.</p>
+
+    <h3>Algorithm:</h3>
+    <pre><code>public String assignNextDeo() {
+    // 1. Get all eligible DEOs (active, not on leave, below threshold)
+    List&lt;DeoUser&gt; eligible = deoUserRepository.findEligibleDeos();
+
+    // 2. Use atomic pointer for thread-safe round-robin
+    int pointer = nextPointer.getAndUpdate(i -> (i + 1) % eligible.size());
+    int index = pointer % eligible.size();
+
+    // 3. Select DEO and increment their assigned count
+    DeoUser selected = eligible.get(index);
+    selected.setCurrentAssignedCount(selected.getCurrentAssignedCount() + 1);
+    deoUserRepository.save(selected);
+
+    return selected.getUserId();
+}</code></pre>
+
+    <h3>DEO Eligibility Criteria:</h3>
+    <ul>
+        <li><strong>Active:</strong> <code>isActive = true</code></li>
+        <li><strong>Not on Leave:</strong> <code>isOnLeave = false</code></li>
+        <li><strong>Below Threshold:</strong> <code>currentAssignedCount &lt; maxThreshold</code></li>
+    </ul>
+
+    <div class="warn-box">
+        <strong>Thread Safety:</strong> The round-robin pointer uses <code>AtomicInteger</code> to ensure thread-safe assignment even under concurrent Kafka message processing. However, the DEO count update is transactional at the database level.
+    </div>
+
+    <h3>Round-Robin Operations:</h3>
+    <table>
+        <thead>
+            <tr><th>Operation</th><th>Method</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+            <tr><td>Assign Next</td><td><code>assignNextDeo()</code></td><td>Picks next eligible DEO, increments count</td></tr>
+            <tr><td>Decrement Count</td><td><code>decrementCount(userId)</code></td><td>Called when DEO completes a draft (frees capacity)</td></tr>
+            <tr><td>Increment Count</td><td><code>incrementCount(userId)</code></td><td>Manual reassignment count adjustment</td></tr>
+            <tr><td>Reset Pointer</td><td><code>resetPointer()</code></td><td>Resets the round-robin position to 0</td></tr>
+        </tbody>
+    </table>
+
+    <h2 id="data-model">7. Data Model</h2>
+    <h3>AssignmentFact (Input/Output DTO)</h3>
+    <table>
+        <thead>
+            <tr><th>Field</th><th>Type</th><th>Direction</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+            <tr><td><code>complaintId</code></td><td>String</td><td>Input</td><td>Unique complaint identifier</td></tr>
+            <tr><td><code>category</code></td><td>String</td><td>Input</td><td>Complaint category (ATM, UPI, LOAN, etc.)</td></tr>
+            <tr><td><code>priority</code></td><td>String</td><td>Input</td><td>Priority level (LOW, MEDIUM, HIGH, CRITICAL)</td></tr>
+            <tr><td><code>jurisdictionCode</code></td><td>String</td><td>Input</td><td>Regional jurisdiction (reserved for future use)</td></tr>
+            <tr><td><code>amountInvolved</code></td><td>Double</td><td>Input</td><td>Monetary amount in dispute</td></tr>
+            <tr><td><code>assignedTeam</code></td><td>String</td><td>Output</td><td>Team assigned by rules engine</td></tr>
+            <tr><td><code>assignedOfficer</code></td><td>String</td><td>Output</td><td>Specific officer (if applicable)</td></tr>
+            <tr><td><code>escalated</code></td><td>boolean</td><td>Output</td><td>Whether auto-escalation was triggered</td></tr>
+            <tr><td><code>escalationLevel</code></td><td>int</td><td>Output</td><td>Escalation tier (0 = none, 1 = senior, 2 = manager)</td></tr>
+        </tbody>
+    </table>
+
+    <h2 id="kafka">8. Kafka Event Integration</h2>
+    <h3>Consumed Events:</h3>
+    <table>
+        <thead>
+            <tr><th>Topic</th><th>Consumer Group</th><th>Action</th></tr>
+        </thead>
+        <tbody>
+            <tr><td><code>complaint.ingested</code></td><td><code>cms-assignment-group</code></td><td>Triggers assignment logic</td></tr>
+        </tbody>
+    </table>
+
+    <h3>Published Events:</h3>
+    <table>
+        <thead>
+            <tr><th>Topic</th><th>Key</th><th>Payload</th></tr>
+        </thead>
+        <tbody>
+            <tr><td><code>complaint.assigned</code></td><td>complaintId</td><td>ComplaintEvent with status=ASSIGNED, assignedTo=team</td></tr>
+        </tbody>
+    </table>
+
+    <h3>Event Payload Structure (ComplaintEvent):</h3>
+    <pre><code>{
+    "eventId": "uuid",
+    "complaintId": "CMS-20260601-A1B2C3",
+    "previousStatus": "INGESTED",
+    "currentStatus": "ASSIGNED",
+    "assignedTo": "ATM_TEAM",
+    "occurredAt": "2026-06-01T10:30:00Z",
+    "correlationId": "correlation-uuid"
+}</code></pre>
+
+    <h2 id="configuration">9. Configuration</h2>
+    <pre><code># application.yml
+server:
+  port: 8085
+  servlet:
+    context-path: /cms-assignment
+
+spring:
+  application:
+    name: cms-assignment-service
+  datasource:
+    url: jdbc:oracle:thin:@${DB_HOST:localhost}:${DB_PORT:1521}/${DB_SERVICE:CMSDB}
+    username: ${DB_USER:cms_assignment}
+    password: ${DB_PASSWORD:cms_assignment}
+    driver-class-name: oracle.jdbc.OracleDriver
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: cms-assignment-group
+      auto-offset-reset: earliest
+      enable-auto-commit: false</code></pre>
+
+    <h3>Environment Variables:</h3>
+    <table>
+        <thead>
+            <tr><th>Variable</th><th>Default</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+            <tr><td><code>DB_HOST</code></td><td>localhost</td><td>Oracle DB host</td></tr>
+            <tr><td><code>DB_PORT</code></td><td>1521</td><td>Oracle DB port</td></tr>
+            <tr><td><code>DB_SERVICE</code></td><td>CMSDB</td><td>Oracle service name</td></tr>
+            <tr><td><code>DB_USER</code></td><td>cms_assignment</td><td>Database username</td></tr>
+            <tr><td><code>DB_PASSWORD</code></td><td>cms_assignment</td><td>Database password</td></tr>
+            <tr><td><code>KAFKA_BOOTSTRAP_SERVERS</code></td><td>localhost:9092</td><td>Kafka broker address</td></tr>
+        </tbody>
+    </table>
+
+    <h2 id="escalation">10. Escalation Logic</h2>
+    <p>Escalation is determined by the Drools rules engine and operates independently of team assignment:</p>
+
+    <table>
+        <thead>
+            <tr><th>Condition</th><th>Escalation Level</th><th>Effect</th></tr>
+        </thead>
+        <tbody>
+            <tr><td>Priority = HIGH or CRITICAL</td><td>Level 1</td><td>Flagged for senior officer review</td></tr>
+            <tr><td>Amount &gt; threshold (configurable)</td><td>Level 1-2</td><td>Reserved for future rules</td></tr>
+            <tr><td>SLA breached (30+ days)</td><td>Level 2</td><td>Handled by separate SLA service</td></tr>
+        </tbody>
+    </table>
+
+    <div class="info-box">
+        <strong>Adding New Rules:</strong> To add a new assignment rule, edit <code>src/main/resources/rules/assignment-rules.drl</code>. No code changes or redeployment required if using KIE hot-reload. Set appropriate salience to control rule priority.
+    </div>
+
+    <h3>Example: Adding a new category rule</h3>
+    <pre><code>rule "Insurance Complaints - Assign to Insurance Team"
+    salience 100
+    when
+        $fact : AssignmentFact(category == "INSURANCE")
+    then
+        $fact.setAssignedTeam("INSURANCE_TEAM");
+        $fact.setAssignedOfficer(null);
+        update($fact);
+end</code></pre>
+
+    <hr style="margin-top: 48px; border: none; border-top: 1px solid #e2e8f0;">
+    <p style="color: #999; font-size: 0.8rem; margin-top: 16px; text-align: center;">
+        CMS Assignment Service Documentation | Generated: June 2026 | Reserve Bank of India - Complaint Management System
+    </p>
+
+</div>
+</body>
+</html>

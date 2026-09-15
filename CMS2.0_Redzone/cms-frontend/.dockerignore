@@ -1,0 +1,13 @@
+node_modules/
+dist/
+.git
+.gitignore
+.idea
+.vscode
+*.md
+.angular/
+.env
+*.log
+.DS_Store
+coverage/
+e2e/

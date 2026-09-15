@@ -1,0 +1,35 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:cms_rules;DB_CLOSE_DELAY=-1;MODE=Oracle
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+        default_schema: PUBLIC
+    show-sql: true
+    defer-datasource-initialization: true
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+  sql:
+    init:
+      mode: always
+      platform: h2
+
+server:
+  error:
+    include-stacktrace: always
+    include-message: always
+
+logging:
+  level:
+    com.rbi.cms: DEBUG
+    org.drools: DEBUG
+    org.springframework.web: DEBUG
+    org.hibernate: WARN

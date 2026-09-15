@@ -1,0 +1,95 @@
+<div class="eligibility-container">
+  <h2>Pre-Complaint Eligibility Check</h2>
+  <p class="subtitle">Please answer the following questions to determine if you are eligible to file a complaint with RBI.</p>
+
+  @if (loading()) {
+    <div class="loading-spinner">
+      <i class="pi pi-spin pi-spinner"></i> Loading...
+    </div>
+  }
+
+  @if (error()) {
+    <div class="error-message">
+      <i class="pi pi-exclamation-triangle"></i> {{ error() }}
+    </div>
+  }
+
+  @if (!result()) {
+    <div class="questions-form">
+      @for (question of questions(); track question.questionCode) {
+        <div class="question-card" [class.invalid]="question.mandatory && isUnanswered(question.questionCode)">
+          <label class="question-label">
+            {{ question.displayOrder }}. {{ question.questionText }}
+            @if (question.mandatory) {
+              <span class="required">*</span>
+            }
+          </label>
+
+          @if (question.questionType === 'YES_NO') {
+            <div class="options-row">
+              <button class="option-btn"
+                      [class.selected]="answers()[question.questionCode] === 'YES'"
+                      (click)="setAnswer(question.questionCode, 'YES')">
+                Yes
+              </button>
+              <button class="option-btn"
+                      [class.selected]="answers()[question.questionCode] === 'NO'"
+                      (click)="setAnswer(question.questionCode, 'NO')">
+                No
+              </button>
+            </div>
+          }
+
+          @if (question.questionType === 'SINGLE_CHOICE') {
+            <div class="options-row">
+              @for (option of question.options; track option) {
+                <button class="option-btn choice-btn"
+                        [class.selected]="answers()[question.questionCode] === option"
+                        (click)="setAnswer(question.questionCode, option)">
+                  {{ option }}
+                </button>
+              }
+            </div>
+          }
+
+          @if (question.mandatory && isUnanswered(question.questionCode)) {
+            <span class="validation-msg">This question is required</span>
+          }
+        </div>
+      }
+
+      <button class="submit-btn"
+              [disabled]="loading()"
+              (click)="submitCheck()">
+        Check Eligibility
+      </button>
+    </div>
+  }
+
+  @if (result(); as res) {
+    <div class="result-card" [class.eligible]="res.outcome === 'ELIGIBLE'" [class.not-eligible]="res.outcome === 'NOT_ELIGIBLE'">
+      @if (res.outcome === 'ELIGIBLE') {
+        <div class="result-header">
+          <i class="pi pi-check-circle"></i>
+          <h3>You are Eligible</h3>
+        </div>
+        <p>You meet all the criteria to file a complaint. Please proceed to the complaint registration form.</p>
+        <button class="proceed-btn" (click)="eligible.emit(true)">
+          Proceed to File Complaint <i class="pi pi-arrow-right"></i>
+        </button>
+      } @else {
+        <div class="result-header">
+          <i class="pi pi-times-circle"></i>
+          <h3>Not Eligible</h3>
+        </div>
+        <p class="reason">{{ res.standardMessage }}</p>
+        @if (res.reference) {
+          <p class="reference"><strong>Reference:</strong> {{ res.reference }}</p>
+        }
+        <button class="retry-btn" (click)="result.set(null)">
+          <i class="pi pi-refresh"></i> Try Again
+        </button>
+      }
+    </div>
+  }
+</div>

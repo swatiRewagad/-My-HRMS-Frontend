@@ -1,0 +1,72 @@
+package com.rbi.cms.rules.assignment;
+
+import com.rbi.cms.common.dto.AssignmentFact;
+
+rule "ATM Complaints - Assign to ATM Team"
+    salience 100
+    when
+        $fact : AssignmentFact(category == "ATM")
+    then
+        $fact.setAssignedTeam("ATM_TEAM");
+        $fact.setAssignedOfficer(null);
+        update($fact);
+end
+
+rule "UPI Complaints - Assign to Digital Team"
+    salience 100
+    when
+        $fact : AssignmentFact(category == "UPI")
+    then
+        $fact.setAssignedTeam("DIGITAL_TEAM");
+        $fact.setAssignedOfficer(null);
+        update($fact);
+end
+
+rule "NEFT/RTGS Complaints - Assign to Payment Systems Team"
+    salience 100
+    when
+        $fact : AssignmentFact(category == "NEFT_RTGS")
+    then
+        $fact.setAssignedTeam("PAYMENT_SYSTEMS_TEAM");
+        $fact.setAssignedOfficer(null);
+        update($fact);
+end
+
+rule "Loan Complaints - Assign to Lending Team"
+    salience 100
+    when
+        $fact : AssignmentFact(category == "LOAN")
+    then
+        $fact.setAssignedTeam("LENDING_TEAM");
+        $fact.setAssignedOfficer(null);
+        update($fact);
+end
+
+rule "Credit Card Complaints - Assign to Cards Team"
+    salience 100
+    when
+        $fact : AssignmentFact(category == "CREDIT_CARD")
+    then
+        $fact.setAssignedTeam("CARDS_TEAM");
+        $fact.setAssignedOfficer(null);
+        update($fact);
+end
+
+rule "High Priority - Auto Escalate to Senior Officer"
+    salience 50
+    when
+        $fact : AssignmentFact(priority == "HIGH" || priority == "CRITICAL")
+    then
+        $fact.setEscalated(true);
+        $fact.setEscalationLevel(1);
+        update($fact);
+end
+
+rule "Default Assignment - General Team"
+    salience 10
+    when
+        $fact : AssignmentFact(assignedTeam == null)
+    then
+        $fact.setAssignedTeam("GENERAL_TEAM");
+        update($fact);
+end

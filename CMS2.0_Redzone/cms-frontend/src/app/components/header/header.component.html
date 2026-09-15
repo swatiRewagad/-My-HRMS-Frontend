@@ -1,0 +1,85 @@
+<div class="top-strip" role="toolbar" aria-label="Accessibility toolbar">
+  <div class="container top-strip-inner">
+    <div class="top-left">
+      <button
+        class="contrast-btn"
+        (click)="a11y.toggleHighContrast()"
+        [attr.aria-pressed]="a11y.highContrast()"
+        aria-label="Toggle high contrast mode">
+        <i class="pi pi-moon"></i>
+      </button>
+      <div class="divider" aria-hidden="true"></div>
+      <div class="accessibility" role="group" aria-label="Font size controls">
+        <button class="access-btn" (click)="a11y.decreaseFontSize()" aria-label="Decrease font size">A-</button>
+        <button class="access-btn" (click)="a11y.resetFontSize()" aria-label="Reset font size">A</button>
+        <button class="access-btn" (click)="a11y.increaseFontSize()" aria-label="Increase font size">A+</button>
+      </div>
+      <div class="divider" aria-hidden="true"></div>
+      <label class="sr-only" for="lang-select">Select language</label>
+      <select
+        id="lang-select"
+        class="lang-native-select"
+        (change)="switchLanguage($any($event.target).value)"
+        [attr.aria-label]="'Select language'">
+        @for (lang of languages; track lang.code) {
+          <option [value]="lang.code" [selected]="translate.lang() === lang.code">{{ lang.nativeLabel }} ({{ lang.label }})</option>
+        }
+      </select>
+    </div>
+    <div class="top-right">
+      <div class="user-info" aria-label="User information">
+        <div class="user-avatar" aria-hidden="true">
+          <i class="pi pi-user"></i>
+        </div>
+        <div class="user-details">
+          <span class="user-name">Rahul Jain</span>
+          <span class="user-last-login">{{ 'header.lastSignedIn' | translate }} 12/02/2024 01:00</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<header class="main-header" role="banner">
+  <div class="container header-inner">
+    <a class="brand" routerLink="/" aria-label="CMS - Complaint Management System - Home">
+      <div class="logo-group">
+        <div class="emblem-seal" aria-hidden="true">
+          <img src="rbi-seal.svg" alt="" />
+        </div>
+        <div class="emblem-seal" aria-hidden="true">
+          <img src="rbi-logo.svg" alt="" />
+        </div>
+        <div class="brand-text">
+          <span class="brand-hindi">{{ 'header.brandHindi' | translate }}</span>
+          <span class="brand-english">{{ 'header.brandEnglish' | translate }}</span>
+        </div>
+      </div>
+    </a>
+    <button
+      class="hamburger-btn"
+      (click)="mobileMenuOpen = !mobileMenuOpen"
+      [attr.aria-expanded]="mobileMenuOpen"
+      aria-controls="main-navigation"
+      aria-label="Toggle navigation menu">
+      <i class="pi" [class.pi-bars]="!mobileMenuOpen" [class.pi-times]="mobileMenuOpen"></i>
+    </button>
+    <nav
+      id="main-navigation"
+      class="main-nav"
+      [class.mobile-open]="mobileMenuOpen"
+      (click)="mobileMenuOpen = false"
+      role="navigation"
+      aria-label="Main navigation">
+      <a routerLink="/" class="active" aria-current="page">{{ 'header.home' | translate }}</a>
+      <a href="javascript:void(0)">{{ 'header.aboutUs' | translate }}</a>
+      <a href="javascript:void(0)">{{ 'header.publicAwareness' | translate }}</a>
+      <a href="javascript:void(0)">{{ 'header.contact' | translate }}</a>
+      <a routerLink="/physical-complaint">{{ 'header.physicalFiling' | translate }}</a>
+      <button class="nav-search-btn" aria-label="Search"><i class="pi pi-search"></i></button>
+      <div class="nav-call-box" role="complementary" aria-label="Helpline number">
+        <i class="pi pi-phone" aria-hidden="true"></i>
+        <span>14448</span>
+      </div>
+    </nav>
+  </div>
+</header>

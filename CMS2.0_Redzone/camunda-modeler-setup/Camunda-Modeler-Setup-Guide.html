@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Camunda Modeler Setup — CMS 2.0</title>
+    <style>
+        :root {
+            --primary: #1a1a2e;
+            --accent: #fc5d0d;
+            --accent-light: #fff3ed;
+            --success: #059669;
+            --info: #2563eb;
+            --warning: #d97706;
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --border: #e2e8f0;
+            --text: #1e293b;
+            --muted: #64748b;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+        }
+
+        .container { max-width: 1100px; margin: 0 auto; padding: 2rem; }
+
+        .hero {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            color: white;
+            padding: 3rem 2rem;
+            border-radius: 16px;
+            margin-bottom: 2rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::after {
+            content: '';
+            position: absolute;
+            top: -30%;
+            right: -10%;
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, rgba(252, 93, 13, 0.2) 0%, transparent 70%);
+            border-radius: 50%;
+        }
+
+        .hero h1 { font-size: 2rem; font-weight: 700; position: relative; }
+        .hero p { opacity: 0.85; margin-top: 0.5rem; position: relative; }
+        .hero .camunda-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(252, 93, 13, 0.2);
+            border: 1px solid rgba(252, 93, 13, 0.4);
+            padding: 0.4rem 1rem;
+            border-radius: 20px;
+            margin-top: 1rem;
+            font-size: 0.85rem;
+            position: relative;
+        }
+
+        /* Steps */
+        .setup-steps { counter-reset: setup-step; }
+
+        .setup-step {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+            position: relative;
+            padding-left: 5rem;
+        }
+
+        .setup-step::before {
+            counter-increment: setup-step;
+            content: counter(setup-step);
+            position: absolute;
+            left: 1.5rem;
+            top: 2rem;
+            width: 40px;
+            height: 40px;
+            background: var(--accent);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+
+        .setup-step h2 { font-size: 1.2rem; margin-bottom: 0.5rem; color: var(--primary); }
+        .setup-step p { color: var(--muted); margin-bottom: 1rem; }
+
+        .download-box {
+            background: var(--accent-light);
+            border: 2px solid var(--accent);
+            border-radius: 8px;
+            padding: 1.25rem;
+            margin: 1rem 0;
+        }
+
+        .download-box h3 { color: var(--accent); font-size: 0.9rem; margin-bottom: 0.5rem; }
+        .download-box .url {
+            font-family: monospace;
+            background: white;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            display: inline-block;
+            font-size: 0.9rem;
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        .download-box ul {
+            margin: 0.75rem 0 0 1.2rem;
+            font-size: 0.9rem;
+        }
+
+        .path-box {
+            background: #1e293b;
+            color: #e2e8f0;
+            border-radius: 8px;
+            padding: 1rem 1.25rem;
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
+            font-size: 0.85rem;
+            margin: 1rem 0;
+            overflow-x: auto;
+        }
+
+        .path-box .comment { color: #94a3b8; }
+        .path-box .highlight { color: #fbbf24; font-weight: 600; }
+
+        /* Feature Cards */
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.25rem;
+            margin: 1.5rem 0;
+        }
+
+        .feature-card {
+            background: #fafbfc;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1.25rem;
+        }
+
+        .feature-card h4 {
+            font-size: 0.9rem;
+            color: var(--primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .feature-card p { font-size: 0.85rem; color: var(--muted); }
+
+        /* Info boxes */
+        .tip-box {
+            border-radius: 8px;
+            padding: 1rem 1.25rem;
+            margin: 1rem 0;
+            font-size: 0.88rem;
+        }
+
+        .tip-box.info { background: #eff6ff; border-left: 4px solid var(--info); }
+        .tip-box.warning { background: #fffbeb; border-left: 4px solid var(--warning); }
+        .tip-box.success { background: #f0fdf4; border-left: 4px solid var(--success); }
+
+        .tip-box strong { display: block; margin-bottom: 0.3rem; }
+
+        /* Properties table */
+        .props-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+            font-size: 0.85rem;
+        }
+
+        .props-table th {
+            background: #f1f5f9;
+            padding: 0.6rem 0.8rem;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 2px solid var(--border);
+        }
+
+        .props-table td {
+            padding: 0.5rem 0.8rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .props-table code {
+            background: #f1f5f9;
+            padding: 0.1rem 0.4rem;
+            border-radius: 3px;
+            font-size: 0.8rem;
+        }
+
+        /* Workflow Diagram */
+        .workflow-visual {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 2rem;
+            margin: 1.5rem 0;
+            text-align: center;
+        }
+
+        .workflow-visual h3 {
+            font-size: 1rem;
+            color: var(--primary);
+            margin-bottom: 1.5rem;
+        }
+
+        .bpmn-flow {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 0.3rem;
+        }
+
+        .bpmn-node {
+            padding: 0.5rem 0.8rem;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-align: center;
+            min-width: 80px;
+        }
+
+        .bpmn-node.start { background: #d1fae5; color: #065f46; border: 2px solid #059669; border-radius: 50%; min-width: 50px; padding: 0.5rem; }
+        .bpmn-node.end { background: #fecaca; color: #991b1b; border: 2px solid #dc2626; border-radius: 50%; min-width: 50px; padding: 0.5rem; }
+        .bpmn-node.rule { background: #fef3c7; color: #92400e; border: 1px solid #d97706; }
+        .bpmn-node.human { background: #dbeafe; color: #1e40af; border: 1px solid #2563eb; }
+        .bpmn-node.gateway { background: #ede9fe; color: #5b21b6; border: 1px solid #7c3aed; transform: rotate(0deg); }
+        .bpmn-node.service { background: #d1fae5; color: #065f46; border: 1px solid #059669; }
+        .bpmn-node.timer { background: #fef3c7; color: #92400e; border: 1px solid #d97706; border-radius: 50%; min-width: 50px; }
+
+        .bpmn-arrow { color: var(--muted); font-weight: bold; }
+
+        /* Checklist */
+        .checklist {
+            list-style: none;
+            margin: 1rem 0;
+        }
+
+        .checklist li {
+            padding: 0.5rem 0 0.5rem 2rem;
+            position: relative;
+            font-size: 0.9rem;
+        }
+
+        .checklist li::before {
+            content: '☐';
+            position: absolute;
+            left: 0;
+            font-size: 1.1rem;
+        }
+
+        /* Keyboard shortcuts */
+        kbd {
+            background: #f1f5f9;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+            padding: 0.15rem 0.5rem;
+            font-size: 0.8rem;
+            font-family: monospace;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+
+        /* Section divider */
+        .divider {
+            height: 3px;
+            background: linear-gradient(90deg, var(--accent), #fbbf24, var(--success));
+            border-radius: 2px;
+            margin: 2.5rem 0;
+            opacity: 0.5;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 2rem;
+            color: var(--muted);
+            font-size: 0.85rem;
+            border-top: 1px solid var(--border);
+            margin-top: 2rem;
+        }
+
+        @media (max-width: 768px) {
+            .container { padding: 1rem; }
+            .setup-step { padding-left: 4rem; }
+            .bpmn-flow { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+
+    <!-- Hero -->
+    <div class="hero">
+        <h1>Camunda Modeler Setup Guide</h1>
+        <p>Visual BPMN Workflow Editor for CMS 2.0 Complaint Lifecycle</p>
+        <div class="camunda-badge">Camunda Modeler (Free & Open Source)</div>
+    </div>
+
+    <!-- Current Workflow Diagram -->
+    <div class="workflow-visual">
+        <h3>Current CMS 2.0 Workflow: complaint-lifecycle.bpmn2</h3>
+        <div class="bpmn-flow">
+            <span class="bpmn-node start">Start</span>
+            <span class="bpmn-arrow">→</span>
+            <span class="bpmn-node rule">Assignment<br>(Drools)</span>
+            <span class="bpmn-arrow">→</span>
+            <span class="bpmn-node human">Officer<br>Review</span>
+            <span class="bpmn-arrow">→</span>
+            <span class="bpmn-node gateway">Gateway</span>
+            <span class="bpmn-arrow">→</span>
+            <span class="bpmn-node human">Resolution /<br>Escalation</span>
+            <span class="bpmn-arrow">→</span>
+            <span class="bpmn-node service">Notify<br>Customer</span>
+            <span class="bpmn-arrow">→</span>
+            <span class="bpmn-node timer">7d</span>
+            <span class="bpmn-arrow">→</span>
+            <span class="bpmn-node end">End</span>
+        </div>
+        <p style="margin-top: 1rem; font-size: 0.8rem; color: var(--muted);">
+            + 30-day SLA boundary timer attached to Officer Review task
+        </p>
+    </div>
+
+    <!-- Setup Steps -->
+    <div class="setup-steps">
+
+        <!-- Step 1: Download -->
+        <div class="setup-step">
+            <h2>Download Camunda Modeler</h2>
+            <p>Free, open-source BPMN visual editor — no license required</p>
+
+            <div class="download-box">
+                <h3>Download URL</h3>
+                <span class="url">https://camunda.com/download/modeler/</span>
+                <ul>
+                    <li>Select <strong>Windows (64-bit)</strong></li>
+                    <li>Download the .zip file (~100 MB)</li>
+                    <li>Extract to <code>C:\Tools\CamundaModeler\</code></li>
+                    <li>Run <code>Camunda Modeler.exe</code></li>
+                </ul>
+            </div>
+
+            <div class="tip-box info">
+                <strong>Alternative: VS Code Extension</strong>
+                If you prefer staying in VS Code, install the "BPMN Editor" extension by Red Hat.
+                It provides basic BPMN viewing/editing but with fewer features than Camunda Modeler.
+            </div>
+        </div>
+
+        <!-- Step 2: Open Existing -->
+        <div class="setup-step">
+            <h2>Open Existing Workflow</h2>
+            <p>Open the current complaint lifecycle process in the visual editor</p>
+
+            <div class="path-box">
+<span class="comment"># File to open in Camunda Modeler:</span>
+<span class="highlight">C:\Projects\My-HRMS-Frontend\CMS2.0\cms-workflow-service\src\main\resources\processes\complaint-lifecycle.bpmn2</span>
+
+<span class="comment"># Steps:</span>
+<span class="comment"># 1. File → Open (or Ctrl+O)</span>
+<span class="comment"># 2. Navigate to the path above</span>
+<span class="comment"># 3. The workflow will render visually</span>
+            </div>
+
+            <div class="tip-box success">
+                <strong>What you'll see</strong>
+                A visual diagram with: Start Event → Assignment Task → Officer Review (with SLA timer) → Gateway → Resolution paths → Notification → Closure Timer → End
+            </div>
+        </div>
+
+        <!-- Step 3: Understand Elements -->
+        <div class="setup-step">
+            <h2>Understand the BPMN Elements</h2>
+            <p>Each visual element maps to behavior in the jBPM engine</p>
+
+            <table class="props-table">
+                <thead>
+                    <tr><th>Visual Shape</th><th>BPMN Type</th><th>What It Does</th><th>Key Property</th></tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Green circle</td>
+                        <td>Start Event</td>
+                        <td>Process begins here</td>
+                        <td>—</td>
+                    </tr>
+                    <tr>
+                        <td>Yellow box (gear icon)</td>
+                        <td>Business Rule Task</td>
+                        <td>Calls Drools rules automatically</td>
+                        <td><code>ruleFlowGroup="assignment"</code></td>
+                    </tr>
+                    <tr>
+                        <td>Blue box (person icon)</td>
+                        <td>User Task</td>
+                        <td>Waits for human action</td>
+                        <td><code>potentialOwner: #{assignedTeam}</code></td>
+                    </tr>
+                    <tr>
+                        <td>Diamond</td>
+                        <td>Exclusive Gateway</td>
+                        <td>Routes to one path based on condition</td>
+                        <td>Condition on outgoing flows</td>
+                    </tr>
+                    <tr>
+                        <td>Green box (gear icon)</td>
+                        <td>Service Task</td>
+                        <td>Calls Java code automatically</td>
+                        <td><code>implementation: java class</code></td>
+                    </tr>
+                    <tr>
+                        <td>Clock on border</td>
+                        <td>Boundary Timer Event</td>
+                        <td>Fires after duration (non-interrupting)</td>
+                        <td><code>timeDuration: P30D</code></td>
+                    </tr>
+                    <tr>
+                        <td>Clock (standalone)</td>
+                        <td>Intermediate Timer</td>
+                        <td>Pauses process for duration</td>
+                        <td><code>timeDuration: P7D</code></td>
+                    </tr>
+                    <tr>
+                        <td>Red circle (thick border)</td>
+                        <td>End Event</td>
+                        <td>Process instance terminates</td>
+                        <td>—</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Step 4: Common Edits -->
+        <div class="setup-step">
+            <h2>Common Edits You'll Make</h2>
+            <p>The most frequent workflow changes and how to do them in Camunda Modeler</p>
+
+            <div class="features-grid">
+                <div class="feature-card">
+                    <h4>Change SLA Timer (30 days → 15 days)</h4>
+                    <p>1. Click the clock icon on Officer Review<br>
+                    2. In Properties Panel → Timer → Duration<br>
+                    3. Change <code>P30D</code> to <code>P15D</code><br>
+                    4. Save</p>
+                </div>
+                <div class="feature-card">
+                    <h4>Change Auto-Close Timer</h4>
+                    <p>1. Click the standalone timer (after Notify)<br>
+                    2. Properties → Timer → Duration<br>
+                    3. Change <code>P7D</code> to <code>P14D</code><br>
+                    4. Save</p>
+                </div>
+                <div class="feature-card">
+                    <h4>Add a New Step (e.g., "Manager Approval")</h4>
+                    <p>1. From left palette, drag User Task<br>
+                    2. Place between existing steps<br>
+                    3. Delete old flow, draw new connections<br>
+                    4. Set properties (name, owner)<br>
+                    5. Save</p>
+                </div>
+                <div class="feature-card">
+                    <h4>Add Parallel Processing</h4>
+                    <p>1. Add Parallel Gateway (+ icon)<br>
+                    2. Draw flows to multiple tasks<br>
+                    3. Add joining Parallel Gateway<br>
+                    4. All paths must complete before join</p>
+                </div>
+                <div class="feature-card">
+                    <h4>Change Gateway Condition</h4>
+                    <p>1. Click the arrow leaving a gateway<br>
+                    2. Properties → Condition<br>
+                    3. Edit expression (MVEL syntax)<br>
+                    4. Example: <code>#{amount > 100000}</code></p>
+                </div>
+                <div class="feature-card">
+                    <h4>Add Notification at Any Step</h4>
+                    <p>1. Drag Service Task from palette<br>
+                    2. Set implementation = java<br>
+                    3. Set class = NotificationHandler<br>
+                    4. Connect into the flow</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 5: Properties -->
+        <div class="setup-step">
+            <h2>Critical Properties to Configure</h2>
+            <p>When editing, these properties MUST be set correctly</p>
+
+            <table class="props-table">
+                <thead><tr><th>Property</th><th>Location</th><th>Value</th><th>Why It Matters</th></tr></thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Process ID</strong></td>
+                        <td>Process properties (click canvas background)</td>
+                        <td><code>com.rbi.cms.complaint-lifecycle</code></td>
+                        <td>Code references this ID to start the process</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Is Executable</strong></td>
+                        <td>Process properties</td>
+                        <td><code>true</code></td>
+                        <td>jBPM won't execute non-executable processes</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Package Name</strong></td>
+                        <td>Process properties (tns:packageName)</td>
+                        <td><code>com.rbi.cms.workflow</code></td>
+                        <td>Drools package for rule resolution</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Rule Flow Group</strong></td>
+                        <td>Business Rule Task properties</td>
+                        <td><code>assignment</code></td>
+                        <td>Matches ruleFlowGroup in .drl files</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Potential Owner</strong></td>
+                        <td>User Task → Assignments</td>
+                        <td><code>#{assignedTeam}</code></td>
+                        <td>MVEL expression → evaluates at runtime</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Timer Duration</strong></td>
+                        <td>Timer Event → Timer Definition</td>
+                        <td><code>P30D</code> (ISO 8601)</td>
+                        <td>P = period, D = days, H = hours, M = minutes</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="tip-box warning">
+                <strong>Important: Process ID Must Not Change</strong>
+                The Java code in <code>WorkflowService.java</code> uses <code>PROCESS_ID = "com.rbi.cms.complaint-lifecycle"</code> to start the workflow. If you change the Process ID in Camunda Modeler, you MUST update the Java constant too.
+            </div>
+        </div>
+
+        <!-- Step 6: Deploy -->
+        <div class="setup-step">
+            <h2>Save & Deploy Changes</h2>
+            <p>How to get your changes from Camunda Modeler into the running system</p>
+
+            <div class="path-box">
+<span class="comment"># After editing in Camunda Modeler:</span>
+
+<span class="comment"># Step 1: Save the file (Ctrl+S)</span>
+<span class="comment"># → Saves to: cms-workflow-service/src/main/resources/processes/complaint-lifecycle.bpmn2</span>
+
+<span class="comment"># Step 2: Restart Workflow Service</span>
+cd C:/Projects/My-HRMS-Frontend/CMS2.0/cms-workflow-service
+mvn spring-boot:run -Dspring-boot.run.profiles=dev-local
+
+<span class="comment"># Step 3: Verify (check logs for)</span>
+<span class="highlight">"Deployed process: com.rbi.cms.complaint-lifecycle [version N]"</span>
+
+<span class="comment"># Future (Phase 2): Hot-deploy via REST API (no restart needed)</span>
+<span class="comment"># POST http://localhost:8083/api/v1/workflow/deploy</span>
+<span class="comment"># Body: multipart/form-data with .bpmn2 file</span>
+            </div>
+
+            <div class="tip-box success">
+                <strong>Git Workflow for BPMN Changes</strong>
+                <ol style="margin: 0.5rem 0 0 1.2rem; font-size: 0.85rem;">
+                    <li>Edit in Camunda Modeler</li>
+                    <li>Save → file updates in repo</li>
+                    <li><code>git diff</code> to review XML changes</li>
+                    <li><code>git commit -m "Update SLA timer from 30 to 15 days"</code></li>
+                    <li>PR review → merge → deploy</li>
+                </ol>
+            </div>
+        </div>
+
+        <!-- Step 7: Keyboard Shortcuts -->
+        <div class="setup-step">
+            <h2>Keyboard Shortcuts & Tips</h2>
+            <p>Speed up your workflow editing</p>
+
+            <table class="props-table">
+                <thead><tr><th>Action</th><th>Shortcut</th></tr></thead>
+                <tbody>
+                    <tr><td>Open file</td><td><kbd>Ctrl</kbd> + <kbd>O</kbd></td></tr>
+                    <tr><td>Save</td><td><kbd>Ctrl</kbd> + <kbd>S</kbd></td></tr>
+                    <tr><td>Undo</td><td><kbd>Ctrl</kbd> + <kbd>Z</kbd></td></tr>
+                    <tr><td>Redo</td><td><kbd>Ctrl</kbd> + <kbd>Y</kbd></td></tr>
+                    <tr><td>Delete element</td><td><kbd>Delete</kbd></td></tr>
+                    <tr><td>Toggle properties panel</td><td><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>P</kbd></td></tr>
+                    <tr><td>Fit to viewport</td><td><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>1</kbd></td></tr>
+                    <tr><td>Export as image (PNG/SVG)</td><td><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>E</kbd></td></tr>
+                    <tr><td>Append Task (from selected)</td><td><kbd>T</kbd></td></tr>
+                    <tr><td>Append Gateway</td><td><kbd>G</kbd></td></tr>
+                    <tr><td>Append End Event</td><td><kbd>E</kbd></td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Step 8: Create New Workflow -->
+        <div class="setup-step">
+            <h2>Creating a NEW Workflow (e.g., Loan Complaints)</h2>
+            <p>Step-by-step guide for adding a completely new process</p>
+
+            <ul class="checklist">
+                <li>In Camunda Modeler: File → New → BPMN Diagram</li>
+                <li>Click canvas → Set Process ID: <code>com.rbi.cms.loan-complaint-lifecycle</code></li>
+                <li>Set Is Executable = <code>true</code></li>
+                <li>Set Package Name = <code>com.rbi.cms.workflow</code></li>
+                <li>Design your workflow (start → tasks → end)</li>
+                <li>Save to: <code>cms-workflow-service/src/main/resources/processes/loan-complaint-lifecycle.bpmn2</code></li>
+                <li>Update <code>ComplaintIngestedListener.java</code> to route to new process by category</li>
+                <li>Create matching rules in Admin UI (category: LOAN_ASSIGNMENT)</li>
+                <li>Restart workflow service</li>
+                <li>Test end-to-end with a loan complaint</li>
+            </ul>
+
+            <div class="path-box">
+<span class="comment"># New file location:</span>
+cms-workflow-service/
+└── src/main/resources/
+    └── processes/
+        ├── complaint-lifecycle.bpmn2            <span class="comment"># existing (general)</span>
+        └── <span class="highlight">loan-complaint-lifecycle.bpmn2</span>    <span class="comment"># new workflow</span>
+            </div>
+        </div>
+
+    </div><!-- end setup-steps -->
+
+    <div class="divider"></div>
+
+    <!-- ISO 8601 Duration Reference -->
+    <div style="background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 2rem; margin: 1.5rem 0;">
+        <h2 style="font-size: 1.2rem; margin-bottom: 1rem; color: var(--primary);">ISO 8601 Duration Reference (Timer Values)</h2>
+        <table class="props-table">
+            <thead><tr><th>Duration</th><th>Meaning</th><th>Use Case</th></tr></thead>
+            <tbody>
+                <tr><td><code>PT30M</code></td><td>30 minutes</td><td>Quick acknowledgment SLA</td></tr>
+                <tr><td><code>PT2H</code></td><td>2 hours</td><td>First response time</td></tr>
+                <tr><td><code>P1D</code></td><td>1 day</td><td>Next-day follow-up</td></tr>
+                <tr><td><code>P7D</code></td><td>7 days</td><td>Auto-close after resolution</td></tr>
+                <tr><td><code>P15D</code></td><td>15 days</td><td>High-priority SLA</td></tr>
+                <tr><td><code>P30D</code></td><td>30 days</td><td>Standard complaint SLA</td></tr>
+                <tr><td><code>P90D</code></td><td>90 days</td><td>RBI regulatory deadline</td></tr>
+                <tr><td><code>P1DT12H</code></td><td>1 day 12 hours</td><td>Combined period</td></tr>
+            </tbody>
+        </table>
+        <p style="margin-top: 0.75rem; font-size: 0.85rem; color: var(--muted);"><strong>Format:</strong> P = period start, T = time start. P[years]Y[months]M[days]DT[hours]H[minutes]M[seconds]S</p>
+    </div>
+
+    <!-- BPMN vs Rules Decision Guide -->
+    <div style="background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 2rem; margin: 1.5rem 0;">
+        <h2 style="font-size: 1.2rem; margin-bottom: 1rem; color: var(--primary);">Decision Guide: Change in BPMN or Rules Admin UI?</h2>
+        <table class="props-table">
+            <thead><tr><th>Change Needed</th><th>Where</th><th>Tool</th><th>Restart?</th></tr></thead>
+            <tbody>
+                <tr><td>Which team handles ATM complaints</td><td>Rules</td><td>Admin UI</td><td>No</td></tr>
+                <tr><td>Add new complaint category</td><td>Rules</td><td>Admin UI</td><td>No</td></tr>
+                <tr><td>Change escalation threshold</td><td>Rules</td><td>Admin UI</td><td>No</td></tr>
+                <tr><td>Change SLA from 30 to 15 days</td><td>BPMN</td><td>Camunda Modeler</td><td>Yes</td></tr>
+                <tr><td>Add a new approval step</td><td>BPMN</td><td>Camunda Modeler</td><td>Yes</td></tr>
+                <tr><td>Change auto-close from 7 to 14 days</td><td>BPMN</td><td>Camunda Modeler</td><td>Yes</td></tr>
+                <tr><td>Add parallel review path</td><td>BPMN</td><td>Camunda Modeler</td><td>Yes</td></tr>
+                <tr><td>Change notification trigger point</td><td>BPMN</td><td>Camunda Modeler</td><td>Yes</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+        <p><strong>CMS 2.0</strong> — Camunda Modeler Setup Guide</p>
+        <p>Tool: Camunda Modeler (Open Source, MIT License) | Engine: jBPM 7.x</p>
+        <p style="margin-top: 0.5rem;">Generated 2026-05-27</p>
+    </div>
+
+</div>
+
+</body>
+</html>
