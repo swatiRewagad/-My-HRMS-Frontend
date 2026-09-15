@@ -5,6 +5,7 @@ import { Router, ActivatedRoute } from '@angular/router';
 import { PublicAuthService } from '../../../services/public-auth.service';
 import { CitizenAuthApiService, CaptchaResponse } from '../../../services/citizen-auth-api.service';
 import { TranslatePipe } from '../../../pipes/translate.pipe';
+import { TranslationService } from '../../../services/translation.service';
 import { environment } from '../../../../environments/environment';
 
 @Component({
@@ -20,6 +21,7 @@ export class PublicLoginComponent implements OnDestroy {
   private route = inject(ActivatedRoute);
   private authService = inject(PublicAuthService);
   private authApi = inject(CitizenAuthApiService);
+  private translation = inject(TranslationService);
 
   mobile = '';
   captchaInput = '';
@@ -123,8 +125,14 @@ export class PublicLoginComponent implements OnDestroy {
       return;
     }
 
+    if (!this.consentChecked) {
+      this.loginError = 'You must accept the data processing declaration to continue.';
+      return;
+    }
+
     this.loading.set(true);
-    this.authApi.sendOtp(this.mobile, captcha.token, this.captchaInput.trim()).subscribe({
+    this.authApi.sendOtp(this.mobile, captcha.token, this.captchaInput.trim(),
+                         this.consentChecked, this.translation.currentLocale()).subscribe({
       next: (res) => {
         this.sessionId = res.sessionId;
         this.otpSent.set(true);
@@ -145,9 +153,18 @@ export class PublicLoginComponent implements OnDestroy {
           this.startCooloff(body.retryAfterSeconds);
         } else if (body?.error === 'RATE_LIMITED') {
           this.loginError = body.message || 'Too many OTP requests. Try again later.';
+        } else if (body?.error === 'RESEND_COOLDOWN') {
+          // The server owns the cooldown, so re-show the OTP step with its remaining time rather than
+          // stranding the citizen on the mobile step with no way back to the code they already have.
+          this.otpSent.set(true);
+          this.startResendTimer(body.retryAfterSeconds);
+          this.loginError = `Please wait ${body.retryAfterSeconds} seconds before requesting another OTP.`;
         } else if (body?.error === 'INVALID_CAPTCHA') {
           this.loginError = 'Invalid CAPTCHA. Please try again.';
           this.loadCaptcha();
+          // UST4/UST6: a wrong CAPTCHA now counts towards lockout, so the wait must be shown here too
+          // or the citizen would keep retrying into a silent 429.
+          if (body.cooloffActive) this.startCooloff(body.retryAfterSeconds);
         } else {
           this.loginError = body?.message || 'Failed to send OTP. Please try again.';
         }
@@ -170,8 +187,14 @@ export class PublicLoginComponent implements OnDestroy {
       return;
     }
 
+    if (!this.consentChecked) {
+      this.loginError = 'You must accept the data processing declaration to continue.';
+      return;
+    }
+
     this.loading.set(true);
-    this.authApi.sendOtpViaEmail(this.mobile, this.emailForOtp, captcha.token, this.captchaInput.trim()).subscribe({
+    this.authApi.sendOtpViaEmail(this.mobile, this.emailForOtp, captcha.token, this.captchaInput.trim(),
+                                 this.consentChecked, this.translation.currentLocale()).subscribe({
       next: (res) => {
         this.sessionId = res.sessionId;
         this.otpSent.set(true);
@@ -192,6 +215,14 @@ export class PublicLoginComponent implements OnDestroy {
           this.loginError = 'Email not verified. Please verify your email first.';
         } else if (body?.error === 'COOLOFF_ACTIVE') {
           this.startCooloff(body.retryAfterSeconds);
+        } else if (body?.error === 'RESEND_COOLDOWN') {
+          this.otpSent.set(true);
+          this.startResendTimer(body.retryAfterSeconds);
+          this.loginError = `Please wait ${body.retryAfterSeconds} seconds before requesting another OTP.`;
+        } else if (body?.error === 'INVALID_CAPTCHA') {
+          this.loginError = 'Invalid CAPTCHA. Please try again.';
+          this.loadCaptcha();
+          if (body.cooloffActive) this.startCooloff(body.retryAfterSeconds);
         } else {
           this.loginError = body?.message || 'Failed to send OTP via email.';
         }
@@ -311,9 +342,10 @@ export class PublicLoginComponent implements OnDestroy {
     }
   }
 
-  private startResendTimer() {
+  /** UST8: seconds are taken from the server when it reports them, so both sides agree on the wait. */
+  private startResendTimer(seconds = 120) {
     this.clearResendTimer();
-    this.resendTimer = 120;
+    this.resendTimer = seconds;
     this.resendInterval = setInterval(() => {
       this.resendTimer--;
       if (this.resendTimer <= 0) this.clearResendTimer();

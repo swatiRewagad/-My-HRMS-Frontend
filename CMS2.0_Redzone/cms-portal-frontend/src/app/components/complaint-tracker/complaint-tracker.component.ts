@@ -188,7 +188,9 @@ export class ComplaintTrackerComponent implements OnInit {
 
     this.loading.set(true);
     this.error.set('');
-    this.authApi.sendOtp(this.mobileNumber, captcha.token, this.captchaInput.trim()).subscribe({
+    // Tracking only reads back a complaint the citizen already filed, so no new DPDP consent is
+    // collected here — the consent recorded at filing time still governs.
+    this.authApi.sendOtp(this.mobileNumber, captcha.token, this.captchaInput.trim(), false, 'en').subscribe({
       next: (res) => {
         this.sessionId = res.sessionId;
         this.otpCode = '';

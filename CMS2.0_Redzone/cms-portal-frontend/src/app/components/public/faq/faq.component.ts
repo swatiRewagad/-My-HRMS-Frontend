@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { FaqService, Faq } from '../../../services/faq.service';
 import { TranslatePipe } from '../../../pipes/translate.pipe';
+import { TranslationService } from '../../../services/translation.service';
 
 @Component({
   selector: 'app-faq',
@@ -15,6 +16,7 @@ import { TranslatePipe } from '../../../pipes/translate.pipe';
 export class FaqComponent implements OnInit {
 
   private faqService = inject(FaqService);
+  private translationService = inject(TranslationService);
 
   faqs = signal<Faq[]>([]);
   loading = signal(true);
@@ -39,13 +41,19 @@ export class FaqComponent implements OnInit {
     }
     const term = this.searchTerm().toLowerCase().trim();
     if (term) {
+      // Matching the translated text, not the key: a citizen searching in Hindi would otherwise
+      // only ever match the English key fragments and see an empty result.
       result = result.filter(f =>
-        f.questionKey.toLowerCase().includes(term) ||
-        f.answerKey.toLowerCase().includes(term)
+        this.translationService.translate(f.questionKey).toLowerCase().includes(term) ||
+        this.translationService.translate(f.answerKey).toLowerCase().includes(term)
       );
     }
     return result;
   });
+
+  categoryLabel(category: string): string {
+    return this.translationService.translate(`faq.cat_${category}`);
+  }
 
   ngOnInit() {
     this.loadFaqs();

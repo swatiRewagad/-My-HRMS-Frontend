@@ -95,7 +95,14 @@
         </div>
       </div>
 
-      <button type="submit" class="submit-btn" [disabled]="!isValid || submitting()">
+      <div class="form-section">
+        <label class="consent-label">
+          <input type="checkbox" [(ngModel)]="declarationAccepted" name="declarationAccepted" />
+          <span>{{ 'consent.dpdp_notice' | translate }}</span>
+        </label>
+      </div>
+
+      <button type="submit" class="submit-btn" [disabled]="!isValid || !declarationAccepted || submitting()">
         @if (submitting()) {
           <i class="pi pi-spin pi-spinner"></i> Submitting...
         } @else {

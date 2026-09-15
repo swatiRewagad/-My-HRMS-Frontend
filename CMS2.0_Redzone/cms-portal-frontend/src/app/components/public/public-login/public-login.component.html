@@ -71,7 +71,10 @@
         <div class="consent-section">
           <label class="consent-label">
             <input type="checkbox" [(ngModel)]="consentChecked" />
-            <span>I consent to RBI using my personal data for registering and resolving my complaint in line with applicable laws and the Digital Personal Data Protection Act, 2023.</span>
+            <!-- UST5: this exact text is snapshotted onto the CITIZEN_CONSENTS row, so it must resolve
+                 from TRANSLATIONS rather than be hardcoded — otherwise a non-English citizen's consent
+                 record would not match the notice they actually read. -->
+            <span>{{ 'consent.dpdp_notice' | translate }}</span>
           </label>
         </div>
 

@@ -98,10 +98,12 @@ test.describe('FAQ — Dedicated Page', () => {
       const filteredCount = await page.locator('.faq-item').count();
       expect(filteredCount).toBeLessThanOrEqual(allCount);
 
-      // Click "All" again to restore
+      // Click "All" again to restore. The list count has to be polled rather than read straight
+      // after the click: toHaveClass resolves on the button's own re-render, which can land before
+      // the @for over filteredFaqs() has been re-projected.
       await categoryBtns.first().click();
-      const restoredCount = await page.locator('.faq-item').count();
-      expect(restoredCount).toBe(allCount);
+      await expect(categoryBtns.first()).toHaveClass(/active/);
+      await expect.poll(() => page.locator('.faq-item').count()).toBe(allCount);
     }
   });
 
@@ -148,5 +150,50 @@ test.describe('FAQ — Dedicated Page', () => {
     await backLink.click();
 
     await page.waitForURL('**/public', { timeout: 10000 });
+  });
+
+  test('no FAQ renders a raw translation key', async ({ page }) => {
+    // The FAQ table stores translation keys, not text. Rows seeded by V8 pointed at keys that were
+    // never created, so the portal displayed 'faq.q1.question' verbatim to citizens.
+    await expect(page.locator('.faq-loading')).not.toBeVisible({ timeout: 10000 });
+
+    const questions = await page.locator('.faq-question span').allInnerTexts();
+    expect(questions.length).toBeGreaterThan(0);
+    for (const q of questions) {
+      expect(q.trim()).not.toMatch(/^faq\./);
+    }
+
+    // Category buttons resolve via faq.cat_<code>; an unmapped code would surface the bare code.
+    const cats = await page.locator('.category-btn').allInnerTexts();
+    for (const c of cats) {
+      expect(c.trim()).not.toMatch(/^faq\./);
+      expect(c.trim()).not.toMatch(/^(filing|eligibility|tracking|privacy)$/);
+    }
+  });
+
+  test('search matches the translated text, not the key', async ({ page }) => {
+    // 'fee' appears in the answer text but in no questionKey/answerKey, so a key-based filter
+    // would return nothing here.
+    await expect(page.locator('.faq-loading')).not.toBeVisible({ timeout: 10000 });
+
+    await page.locator('.faq-search-input').fill('fee');
+    await page.waitForTimeout(300);
+
+    expect(await page.locator('.faq-item').count()).toBeGreaterThan(0);
+  });
+});
+
+test.describe('FAQ — Help navigation', () => {
+
+  test('the header Help link reaches the FAQ page, not the home wildcard', async ({ page }) => {
+    // Regression: the link pointed at /public/help, which has no route, so the '**' wildcard
+    // silently redirected the citizen back to the home page.
+    await page.goto('/public', { waitUntil: 'domcontentloaded' });
+    await page.waitForLoadState('networkidle');
+
+    await page.locator('#main-nav a', { hasText: /help|सहायता|मदत/i }).first().click();
+
+    await page.waitForURL('**/public/faq', { timeout: 10000 });
+    await expect(page.locator('.faq-list')).toBeVisible({ timeout: 10000 });
   });
 });

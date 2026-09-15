@@ -5,11 +5,12 @@ import { Router } from '@angular/router';
 import { ComplaintService } from '../../services/complaint.service';
 import { ComplaintRegistrationRequest, ComplaintAcknowledgement, ComplaintCategory } from '../../models/complaint.model';
 import { SpeechButtonComponent } from '../../shared/speech-button/speech-button.component';
+import { TranslatePipe } from '../../pipes/translate.pipe';
 
 @Component({
   selector: 'app-complaint-form',
   standalone: true,
-  imports: [CommonModule, FormsModule, SpeechButtonComponent],
+  imports: [CommonModule, FormsModule, SpeechButtonComponent, TranslatePipe],
   templateUrl: './complaint-form.component.html',
   styleUrl: './complaint-form.component.scss'
 })
@@ -36,6 +37,9 @@ export class ComplaintFormComponent {
     jurisdictionCode: undefined
   });
 
+  /** UST5: ONLINE filings must carry the DPDP declaration; the server rejects the payload without it. */
+  declarationAccepted = false;
+
   attachments = signal<File[]>([]);
   submitting = signal(false);
   acknowledgement = signal<ComplaintAcknowledgement | null>(null);
@@ -56,7 +60,10 @@ export class ComplaintFormComponent {
     this.submitting.set(true);
     this.error.set('');
 
-    this.complaintService.registerComplaint(this.form()).subscribe({
+    this.complaintService.registerComplaint({
+      ...this.form(),
+      declarationAccepted: this.declarationAccepted
+    }).subscribe({
       next: (ack) => {
         if (this.attachments().length > 0) {
           this.complaintService.uploadAttachments(ack.complaintId, this.attachments()).subscribe({

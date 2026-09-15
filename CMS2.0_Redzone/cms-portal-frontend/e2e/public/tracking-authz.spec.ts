@@ -18,6 +18,11 @@ const APP_BASE = process.env['APP_BASE_URL'] || 'http://localhost:4200';
 
 const OWNER_PHONE = '9876500011';
 const OTHER_PHONE = '9876500022';
+// UST4/UST6 cool-off is keyed on fingerprint+IP *and* on the mobile number, so any test that
+// deliberately fails a CAPTCHA must use a number no other test relies on — otherwise the next
+// send-otp for that number returns 429 COOLOFF_ACTIVE instead of the status under test.
+const CAPTCHA_PROBE_PHONE = '9876500077';
+const UI_CAPTCHA_PROBE_PHONE = '9876500088';
 
 test.describe('UST98 — Tracking authorization (D1)', () => {
 
@@ -239,7 +244,7 @@ test.describe('UST98 — Tracker OTP flow uses a real CAPTCHA (D2/D3)', () => {
     // itself renders immediately, and loadCaptcha() clears any answer typed early.
     await expect(page.locator('button[aria-label="Refresh CAPTCHA"]')).toBeVisible({ timeout: 15000 });
 
-    await page.locator('input[aria-label="Mobile number"]').fill(OWNER_PHONE);
+    await page.locator('input[aria-label="Mobile number"]').fill(UI_CAPTCHA_PROBE_PHONE);
     await page.locator('input[aria-label="CAPTCHA answer"]').fill('WRONG1');
     await page.locator('button:has-text("Send OTP")').click();
 
@@ -292,7 +297,9 @@ test.describe('UST98 — Tracker OTP flow uses a real CAPTCHA (D2/D3)', () => {
   test('a VISUAL CAPTCHA never returns its own answer (D16)', async ({ request }) => {
     // Regression: the response used to carry the plaintext answer in audioQuestion, so any
     // script could solve the challenge without ever rendering the image.
-    // A wrong CAPTCHA is rejected before the cooloff check, so repeating this incurs no penalty.
+    // Issuing challenges is free, so the shape is checked across several to catch a leak that
+    // only shows up for some generated images.
+    let lastToken = '';
     for (let i = 0; i < 3; i++) {
       const res = await request.get(`${API_BASE}/api/v1/citizen/auth/captcha?type=VISUAL`);
       expect(res.status()).toBe(200);
@@ -304,15 +311,18 @@ test.describe('UST98 — Tracker OTP flow uses a real CAPTCHA (D2/D3)', () => {
 
       // No extra field may be smuggled in alongside the four known keys.
       expect(Object.keys(body).sort()).toEqual(['audioQuestion', 'imageData', 'token', 'type']);
-
-      // The token must not be usable as the answer either.
-      const otp = await request.post(`${API_BASE}/api/v1/citizen/auth/send-otp`, {
-        data: { mobile: OWNER_PHONE, captchaToken: body.token, captchaAnswer: body.token },
-        headers: { 'Content-Type': 'application/json' },
-      });
-      expect(otp.status()).toBe(400);
-      expect((await otp.json()).error).toBe('INVALID_CAPTCHA');
+      lastToken = body.token;
     }
+
+    // The token must not be usable as the answer either. UST4/UST6 made a wrong CAPTCHA count
+    // towards the lockout, so this is attempted exactly once — a second attempt would return 429
+    // from the cool-off rather than 400, and would prove nothing about the leak.
+    const otp = await request.post(`${API_BASE}/api/v1/citizen/auth/send-otp`, {
+      data: { mobile: CAPTCHA_PROBE_PHONE, captchaToken: lastToken, captchaAnswer: lastToken },
+      headers: { 'Content-Type': 'application/json' },
+    });
+    expect(otp.status()).toBe(400);
+    expect((await otp.json()).error).toBe('INVALID_CAPTCHA');
   });
 
   test('a MATH CAPTCHA returns a speakable question but not the answer (D16)', async ({ request }) => {

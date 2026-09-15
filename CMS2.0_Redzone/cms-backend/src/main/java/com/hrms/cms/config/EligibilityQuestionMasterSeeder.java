@@ -50,7 +50,7 @@ public class EligibilityQuestionMasterSeeder implements CommandLineRunner {
                 .translationKey("eligibility.q_filed_with_re")
                 .blockOn("no")
                 .clauseReference("10(1)(j)")
-                .blockMessage("in terms of clause 10(1)(j) of Reserve Bank – Integrated Ombudsman Scheme, 2021, "
+                .blockMessage("in terms of clause {{clause}} of " + SCHEME_NAME + ", "
                         + "the complaint cannot be processed under the Scheme.")
                 .blockMessageKey("eligibility.block_not_filed")
                 .nonMaintainable(true)
@@ -79,7 +79,7 @@ public class EligibilityQuestionMasterSeeder implements CommandLineRunner {
         seed(EligibilityQuestionMaster.builder()
                 .questionNumber(++n)
                 .questionKey("isSubJudice")
-                .applicableEntityType("NON_CEPC")
+                .applicableEntityType("RBIO")
                 .questionType("radio")
                 .questionText("Is the complaint relating to the same grievance which is already pending before any "
                         + "Court, Tribunal, Arbitrator or any other judicial or quasi-judicial forum (excluding "
@@ -90,7 +90,7 @@ public class EligibilityQuestionMasterSeeder implements CommandLineRunner {
                 .clauseReference("10(2)(b)(ii)")
                 .blockMessage("As your complaint is sub-judice/under arbitration/already dealt with on merits by a "
                         + "Court/Tribunal/Arbitrator/Authority, it will be closed as Non-Maintainable under clause "
-                        + "10(2)(b)(ii) of the " + SCHEME_NAME + ".")
+                        + "{{clause}} of the " + SCHEME_NAME + ".")
                 .blockMessageKey("eligibility.block_sub_judice")
                 .nonMaintainable(true)
                 .simplifiedText("Have you already taken this exact problem to a court, arbitrator, or another "
@@ -101,7 +101,7 @@ public class EligibilityQuestionMasterSeeder implements CommandLineRunner {
         seed(EligibilityQuestionMaster.builder()
                 .questionNumber(++n)
                 .questionKey("alreadySettled")
-                .applicableEntityType("NON_CEPC")
+                .applicableEntityType("RBIO")
                 .questionType("radio")
                 .questionText("Is the complaint relating to the same grievance which is already settled or dealt "
                         + "before any Court, Tribunal, Arbitrator or any other judicial or quasi-judicial forum "
@@ -132,7 +132,7 @@ public class EligibilityQuestionMasterSeeder implements CommandLineRunner {
         seed(EligibilityQuestionMaster.builder()
                 .questionNumber(++n)
                 .questionKey("pendingBeforeOmbudsman")
-                .applicableEntityType("NON_CEPC")
+                .applicableEntityType("RBIO")
                 .questionType("radio")
                 .questionText("Is the complaint relating to the same grievance which is already pending before the "
                         + "Ombudsman?")
@@ -148,7 +148,7 @@ public class EligibilityQuestionMasterSeeder implements CommandLineRunner {
         seed(EligibilityQuestionMaster.builder()
                 .questionNumber(++n)
                 .questionKey("settledByOmbudsman")
-                .applicableEntityType("NON_CEPC")
+                .applicableEntityType("RBIO")
                 .questionType("radio")
                 .questionText("Is the complaint relating to the same grievance which is already settled or dealt "
                         + "with on merits by the Ombudsman?")
@@ -193,6 +193,10 @@ public class EligibilityQuestionMasterSeeder implements CommandLineRunner {
                 .nonMaintainable(true)
                 .build());
 
+        // BRD rows 20/21 contradict each other: row 20 says "Yes" to employment auto-closes, which
+        // would make row 21 unreachable. Employment alone is not a bar under the Scheme — only a
+        // grievance *arising from* the employer-employee relationship is. So 20 is a gate that merely
+        // reveals 21, and 21 carries the block. Do not add blockOn to this row.
         seed(EligibilityQuestionMaster.builder()
                 .questionNumber(++n)
                 .questionKey("employeeOfRE")
@@ -217,6 +221,28 @@ public class EligibilityQuestionMasterSeeder implements CommandLineRunner {
                 .blockMessage("As your complaint involves the employee-employer relationship with the Regulated "
                         + "Entity, it cannot be processed under the Integrated Ombudsman Scheme, 2021.")
                 .blockMessageKey("eligibility.block_employer_relationship")
+                .nonMaintainable(true)
+                .inlineSubQuestion(true)
+                .build());
+
+        // BRD row 15: the advocate follow-up. Previously hardcoded in the Angular template with no
+        // master row and no translation key at all, so it rendered in English in all ten locales.
+        seed(EligibilityQuestionMaster.builder()
+                .questionNumber(++n)
+                .questionKey("isComplainantSelf")
+                .applicableEntityType("RBIO")
+                .questionType("radio")
+                .questionText("If Yes, then are you the Complainant?")
+                .translationKey("eligibility.sub_are_you_complainant")
+                .blockOn("no")
+                // clauseReference deliberately left null: the Scheme clause barring an advocate-filed
+                // complaint where the filer is not the complainant has NOT been verified. Do not guess
+                // one — an unverified citation on a closure denies statutory recourse. Awaiting the
+                // authoritative value from the business owner.
+                .blockMessage("As per the Integrated Ombudsman Scheme, a complaint filed through an advocate must "
+                        + "be filed by the complainant themselves. Since you are not the complainant, this "
+                        + "complaint cannot be processed.")
+                .blockMessageKey("eligibility.block_advocate_not_complainant")
                 .nonMaintainable(true)
                 .inlineSubQuestion(true)
                 .build());

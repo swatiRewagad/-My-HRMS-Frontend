@@ -44,6 +44,7 @@ class OtpServiceTest {
         otpProps.setLength(6);
         otpProps.setExpiryMinutes(5);
         otpProps.setMaxVerifyAttemptsPerOtp(3);
+        otpProps.setResendCooldownSeconds(120);
 
         rateLimitProps = new AuthSecurityProperties.RateLimit();
         rateLimitProps.setOtpRequestsPerMobilePerHour(5);
@@ -88,6 +89,67 @@ class OtpServiceTest {
 
             assertThat(captor.getValue().getOtpHash()).isNotEqualTo(otp);
             assertThat(captor.getValue().getOtpHash()).hasSize(64);
+        }
+
+        @Test
+        @DisplayName("UST8: should invalidate any earlier live OTP for the same mobile")
+        void shouldSupersedeEarlierOtps() {
+            when(otpAttemptRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+
+            otpService.generateOtp("9876543210", "session-2", "SMS", null);
+
+            verify(otpAttemptRepository).invalidateActiveOtps(eq("9876543210"), any());
+        }
+    }
+
+    @Nested
+    @DisplayName("resendCooldownRemaining (UST8)")
+    class ResendCooldown {
+
+        @Test
+        @DisplayName("should allow the first ever request")
+        void shouldAllowFirstRequest() {
+            when(otpAttemptRepository.findTopByMobileNumberOrderByCreatedAtDesc("9876543210"))
+                    .thenReturn(Optional.empty());
+
+            assertThat(otpService.resendCooldownRemaining("9876543210")).isZero();
+        }
+
+        @Test
+        @DisplayName("should report the remaining wait when an OTP was just issued")
+        void shouldReportRemainingWait() {
+            OtpAttempt recent = OtpAttempt.builder().mobileNumber("9876543210").build();
+            recent.setCreatedAt(LocalDateTime.now().minusSeconds(30));
+
+            when(otpAttemptRepository.findTopByMobileNumberOrderByCreatedAtDesc("9876543210"))
+                    .thenReturn(Optional.of(recent));
+
+            assertThat(otpService.resendCooldownRemaining("9876543210")).isBetween(85, 90);
+        }
+
+        @Test
+        @DisplayName("should allow once the cooldown has elapsed")
+        void shouldAllowAfterCooldown() {
+            OtpAttempt old = OtpAttempt.builder().mobileNumber("9876543210").build();
+            old.setCreatedAt(LocalDateTime.now().minusSeconds(121));
+
+            when(otpAttemptRepository.findTopByMobileNumberOrderByCreatedAtDesc("9876543210"))
+                    .thenReturn(Optional.of(old));
+
+            assertThat(otpService.resendCooldownRemaining("9876543210")).isZero();
+        }
+
+        @Test
+        @DisplayName("should be disabled when configured to zero, as in dev-local")
+        void shouldBeDisabledWhenZero() {
+            otpProps.setResendCooldownSeconds(0);
+            OtpAttempt recent = OtpAttempt.builder().mobileNumber("9876543210").build();
+            recent.setCreatedAt(LocalDateTime.now());
+
+            when(otpAttemptRepository.findTopByMobileNumberOrderByCreatedAtDesc("9876543210"))
+                    .thenReturn(Optional.of(recent));
+
+            assertThat(otpService.resendCooldownRemaining("9876543210")).isZero();
         }
     }
 

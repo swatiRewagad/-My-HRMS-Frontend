@@ -32,7 +32,7 @@
           [class.active]="selectedCategory() === cat"
           (click)="filterByCategory(cat)"
         >
-          {{ cat }}
+          {{ categoryLabel(cat) }}
         </button>
       }
     </div>

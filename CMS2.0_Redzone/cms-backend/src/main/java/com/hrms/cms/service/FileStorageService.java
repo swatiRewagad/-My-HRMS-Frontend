@@ -26,6 +26,7 @@ public class FileStorageService {
 
     private final FileStorageConfig config;
     private final ComplaintAttachmentRepository attachmentRepository;
+    private final FileUploadValidator uploadValidator;
 
     public ChunkUploadResponse handleChunkUpload(
             MultipartFile chunk,
@@ -38,9 +39,11 @@ public class FileStorageService {
             long totalFileSize
     ) throws IOException {
 
-        if (!config.isAllowedType(fileName)) {
+        try {
+            uploadValidator.validateName(fileName);
+        } catch (FileUploadValidator.InvalidUploadException e) {
             return ChunkUploadResponse.builder()
-                    .message("File type not allowed. Allowed: " + config.getAllowedTypes())
+                    .message(e.getMessage())
                     .complete(false)
                     .build();
         }
@@ -88,6 +91,17 @@ public class FileStorageService {
         // Cleanup temp chunks
         cleanupChunkDir(chunkDir);
 
+        // The magic bytes only exist once every chunk has landed, so a disguised payload can only be
+        // caught here — and must be deleted, not merely reported, or it stays on disk unreferenced.
+        String signatureError = uploadValidator.checkAssembledSignature(finalPath, fileName);
+        if (signatureError != null) {
+            Files.deleteIfExists(finalPath);
+            return ChunkUploadResponse.builder()
+                    .message(signatureError)
+                    .complete(false)
+                    .build();
+        }
+
         String checksum = computeChecksum(finalPath);
 
         ComplaintAttachment attachment = ComplaintAttachment.builder()
@@ -122,13 +136,7 @@ public class FileStorageService {
             Long complaintId
     ) throws IOException {
 
-        if (!config.isAllowedType(file.getOriginalFilename())) {
-            throw new IllegalArgumentException("File type not allowed");
-        }
-
-        if (file.getSize() > config.getMaxFileSize()) {
-            throw new IllegalArgumentException("File exceeds max size");
-        }
+        uploadValidator.validate(file);
 
         long existingCount = attachmentRepository.findByComplaintId(complaintId).size();
         if (existingCount >= config.getMaxFilesPerComplaint()) {
