@@ -417,4 +417,12 @@ public class RePortalController {
         log.warn("No entity code found in request headers or JWT - using default");
         return "UNKNOWN_ENTITY";
     }
+
+    @GetMapping("/stream")
+    public ResponseEntity<Page<NodalOfficerRecord>> streamNodalOfficers(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "100") int size) {
+        Page<NodalOfficerRecord> recordsPage = rePortalService.streamNodalOfficers(page, size);
+        return ResponseEntity.ok(recordsPage);
+    }
 }

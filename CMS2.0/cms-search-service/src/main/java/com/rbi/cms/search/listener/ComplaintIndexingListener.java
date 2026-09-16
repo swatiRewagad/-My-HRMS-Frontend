@@ -3,6 +3,7 @@ package com.rbi.cms.search.listener;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rbi.cms.common.config.KafkaTopics;
 import com.rbi.cms.common.event.ComplaintEvent;
+import com.rbi.cms.search.service.ComplaintDocumentNormalizer;
 import com.rbi.cms.search.service.ComplaintSearchService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,17 +26,19 @@ public class ComplaintIndexingListener {
 
     @KafkaListener(topics = KafkaTopics.COMPLAINT_INGESTED, groupId = "cms-search-group")
     public void onComplaintIngested(String message, Acknowledgment ack) {
+        ComplaintEvent event = parseOrDrop(message, ack);
+        if (event == null) {
+            return;
+        }
+
         try {
-            ComplaintEvent event = objectMapper.readValue(message, ComplaintEvent.class);
-            log.info("Indexing new complaint: {}", event.getComplaintId());
-
-            Map<String, Object> document = buildDocument(event);
-            searchService.indexComplaint(event.getComplaintId(), document);
-
+            searchService.indexComplaint(event.getComplaintId(), buildDocument(event));
             ack.acknowledge();
             log.info("Indexed complaint: {}", event.getComplaintId());
         } catch (Exception e) {
-            log.error("Failed to index complaint from event: {}", message, e);
+            // Left unacknowledged on purpose: the write may succeed on redelivery.
+            log.error("Failed to index complaint {}, leaving offset uncommitted for retry",
+                    event.getComplaintId(), e);
         }
     }
 
@@ -45,30 +48,63 @@ public class ComplaintIndexingListener {
             groupId = "cms-search-group"
     )
     public void onComplaintStatusChange(String message, Acknowledgment ack) {
+        ComplaintEvent event = parseOrDrop(message, ack);
+        if (event == null) {
+            return;
+        }
+
+        log.info("Updating index for complaint: {} -> status: {}", event.getComplaintId(), event.getCurrentStatus());
+
+        Map<String, Object> changedFields = new HashMap<>();
+        changedFields.put("status", event.getCurrentStatus().name());
+        changedFields.put("updatedAt", event.getOccurredAt().toString());
+        if (event.getAssignedTo() != null) {
+            changedFields.put(ComplaintDocumentNormalizer.FIELD_ASSIGNED_OFFICER, event.getAssignedTo());
+        }
+        if (event.getDepartment() != null) {
+            changedFields.put(ComplaintDocumentNormalizer.FIELD_DEPARTMENT, event.getDepartment());
+        }
+
         try {
-            ComplaintEvent event = objectMapper.readValue(message, ComplaintEvent.class);
-            log.info("Updating index for complaint: {} -> status: {}", event.getComplaintId(), event.getCurrentStatus());
-
-            Map<String, Object> partialUpdate = new HashMap<>();
-            partialUpdate.put("status", event.getCurrentStatus().name());
-            partialUpdate.put("updatedAt", event.getOccurredAt().toString());
-            if (event.getAssignedTo() != null) {
-                partialUpdate.put("assignedTo", event.getAssignedTo());
-            }
-
-            searchService.indexComplaint(event.getComplaintId(), partialUpdate);
-
+            // Must be a partial update: a full index write here would erase every field the event
+            // does not carry, including the department the search scope filter depends on.
+            searchService.partialUpdate(event.getComplaintId(), changedFields);
             ack.acknowledge();
         } catch (Exception e) {
-            log.error("Failed to update index for event: {}", message, e);
+            log.error("Failed to update index for complaint {}, leaving offset uncommitted for retry",
+                    event.getComplaintId(), e);
         }
+    }
+
+    /**
+     * Acknowledges and drops messages that can never succeed, so a single poison record does not
+     * block the partition on every restart. Returns null when the message was dropped.
+     */
+    private ComplaintEvent parseOrDrop(String message, Acknowledgment ack) {
+        ComplaintEvent event;
+        try {
+            event = objectMapper.readValue(message, ComplaintEvent.class);
+        } catch (Exception e) {
+            log.error("Dropping unparseable complaint event: {}", message, e);
+            ack.acknowledge();
+            return null;
+        }
+
+        if (event.getComplaintId() == null || event.getComplaintId().isBlank()) {
+            log.error("Dropping complaint event with no complaintId: {}", message);
+            ack.acknowledge();
+            return null;
+        }
+        if (event.getCurrentStatus() == null) {
+            log.error("Dropping complaint event {} with no currentStatus", event.getComplaintId());
+            ack.acknowledge();
+            return null;
+        }
+        return event;
     }
 
     private Map<String, Object> buildDocument(ComplaintEvent event) {
         Map<String, Object> doc = new HashMap<>();
-        doc.put("complaintId", event.getComplaintId());
-        doc.put("status", event.getCurrentStatus().name());
-        doc.put("createdAt", event.getOccurredAt().toString());
 
         if (event.getPayload() != null) {
             try {
@@ -78,6 +114,17 @@ public class ComplaintIndexingListener {
             } catch (Exception e) {
                 doc.put("rawPayload", event.getPayload());
             }
+        }
+
+        // Event fields win over the payload copy: they are the authoritative version of this change.
+        doc.put(ComplaintDocumentNormalizer.FIELD_COMPLAINT_NUMBER, event.getComplaintId());
+        doc.put("status", event.getCurrentStatus().name());
+        doc.putIfAbsent("createdAt", event.getOccurredAt().toString());
+        if (event.getAssignedTo() != null) {
+            doc.put(ComplaintDocumentNormalizer.FIELD_ASSIGNED_OFFICER, event.getAssignedTo());
+        }
+        if (event.getDepartment() != null) {
+            doc.put(ComplaintDocumentNormalizer.FIELD_DEPARTMENT, event.getDepartment());
         }
 
         return doc;

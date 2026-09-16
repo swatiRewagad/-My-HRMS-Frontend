@@ -39,6 +39,18 @@ public class KeycloakUserController {
         return wrapResponse(offices);
     }
 
+    /**
+     * Flat {@code username -> displayName} map for the whole realm.
+     *
+     * <p>Returned bare rather than inside {@link #wrapResponse}: the consumer is
+     * {@code cms-search-service}, which denormalizes these names into its index, so an envelope would
+     * only add a layer to unwrap. Names are not sensitive — they are already shown on every complaint.
+     */
+    @GetMapping("/users/directory")
+    public Map<String, String> getUserDirectory() {
+        return keycloakUserService.getUserDirectory();
+    }
+
     @GetMapping("/users/deos")
     public Map<String, Object> getDeos() {
         List<Map<String, Object>> deos = keycloakUserService.getDeos();

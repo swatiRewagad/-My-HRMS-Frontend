@@ -2,6 +2,7 @@ package com.hrms.cms.controller;
 
 import com.hrms.cms.entity.Complaint;
 import com.hrms.cms.event.ComplaintEventPublisher;
+import com.rbi.cms.common.enums.DepartmentConstants;
 import com.hrms.cms.repository.BankRepository;
 import com.hrms.cms.repository.ComplaintAttachmentRepository;
 import com.hrms.cms.repository.ComplaintRepository;
@@ -416,7 +417,19 @@ public class WorkflowController {
         }
 
         Complaint c = opt.get();
-        String department = request.getOrDefault("department", "RBIO");
+
+        // Department is the search service's tenancy boundary, so an arbitrary caller-supplied value
+        // here would move a complaint into or out of another department's visibility. Reject anything
+        // outside the known set rather than writing it through.
+        String requestedDepartment = request.getOrDefault("department", DepartmentConstants.DEPT_RBIO);
+        String department = DepartmentConstants.canonicalize(requestedDepartment);
+        if (department == null) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "Unknown department '" + requestedDepartment + "'. Allowed: "
+                            + DepartmentConstants.ALL_DEPARTMENTS));
+        }
+
         String role = request.getOrDefault("role", department + "_OFFICER");
         String officer = request.getOrDefault("officer", "");
 

@@ -25,6 +25,7 @@ public class ComplaintEvent {
     @JsonDeserialize(using = ComplaintStatusDeserializer.class)
     private ComplaintStatus currentStatus;
     private String assignedTo;
+    private String department;
     private String payload;
     private Instant occurredAt;
     private String correlationId;
