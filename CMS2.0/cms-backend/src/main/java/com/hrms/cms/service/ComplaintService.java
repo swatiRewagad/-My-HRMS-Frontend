@@ -8,7 +8,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,6 +30,7 @@ public class ComplaintService {
     private final ComplaintEventPublisher eventPublisher;
     private final ComplaintRoutingService routingService;
     private final ComplaintNumberGeneratorService complaintNumberGenerator;
+    private final ComplaintCommentRepository complaintCommentRepository;
 
     @Cacheable(value = "dashboard", unless = "#result == null")
     @Transactional(readOnly = true)
@@ -330,6 +333,29 @@ public class ComplaintService {
                 throw new IllegalArgumentException("RE complaint date cannot be in the future");
             }
         }
+    }
+
+    /**
+     * Paged full-table walk feeding the search service's reindex.
+     *
+     * <p>Sorted by primary key rather than a timestamp: the sort must be unique and monotonic, or rows
+     * inserted while the reindexer is paging shift later pages and some complaints are visited twice
+     * while others are skipped entirely. {@code createdAt} is neither unique nor stable under
+     * concurrent writes.
+     */
+    @Transactional(readOnly = true)
+    public Page<Complaint> getStreamedComplaints(int page, int size) {
+        return complaintRepository.findAll(
+                PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "id"))
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public List<ComplaintComment> getCommentsByComplaintNumber(String complaintNumber) {
+        if (complaintNumber == null || complaintNumber.isBlank()) {
+            throw new IllegalArgumentException("Complaint number cannot be empty");
+        }
+        return complaintCommentRepository.findByComplaintNumberOrderByCreatedAtDesc(complaintNumber);
     }
 
 }

@@ -137,6 +137,50 @@ public class KeycloakUserService {
         return all;
     }
 
+    /**
+     * Every realm user as {@code username -> displayName}, for consumers that only need to render a name.
+     *
+     * <p>Deliberately not built from {@link #getAllCrpcUsers()}: that covers only DEO, CRPC_REVIEWER and
+     * CRPC_HEAD, so no RBIO officer appears in it. Fetching per role instead would need a complete role
+     * inventory that does not exist anywhere in the codebase, so this reads the realm's user list once.
+     *
+     * <p>Returns an empty map rather than throwing when Keycloak is unreachable — the caller uses this to
+     * decorate output and has a username to fall back on.
+     */
+    public Map<String, String> getUserDirectory() {
+        String token = getAdminToken();
+        if (token == null) {
+            log.warn("Cannot fetch user directory - no admin token available");
+            return Collections.emptyMap();
+        }
+
+        // Keycloak defaults to 100 users per page, which silently truncates a larger realm.
+        String url = serverUrl + "/admin/realms/" + realm + "/users?briefRepresentation=true&max=10000";
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(token);
+
+        try {
+            ResponseEntity<List> response =
+                    restTemplate.exchange(url, HttpMethod.GET, new HttpEntity<>(headers), List.class);
+            if (response.getBody() == null) {
+                return Collections.emptyMap();
+            }
+
+            Map<String, String> directory = new LinkedHashMap<>();
+            for (Map<String, Object> keycloakUser : (List<Map<String, Object>>) response.getBody()) {
+                String username = (String) keycloakUser.get("username");
+                if (username != null && !username.isBlank()) {
+                    directory.put(username, buildDisplayName(keycloakUser));
+                }
+            }
+            return directory;
+        } catch (Exception e) {
+            log.error("Failed to fetch user directory: {}", e.getMessage());
+            return Collections.emptyMap();
+        }
+    }
+
     private Map<String, Object> mapUser(Map<String, Object> keycloakUser) {
         Map<String, Object> user = new LinkedHashMap<>();
         user.put("userId", keycloakUser.get("username"));

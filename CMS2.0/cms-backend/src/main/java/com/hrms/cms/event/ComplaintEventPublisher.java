@@ -53,6 +53,11 @@ public class ComplaintEventPublisher {
             event.put("complaintId", complaint.getComplaintNumber());
             event.put("previousStatus", prevStatus);
             event.put("currentStatus", currentStatus);
+            // Top-level, not only inside the payload: consumers applying a partial update read these
+            // fields directly, and department is the tenancy boundary the search index filters on, so
+            // a reassignment or transfer must travel with every event rather than only a full rewrite.
+            event.put("department", complaint.getDepartment());
+            event.put("assignedTo", complaint.getAssignedOfficer());
             event.put("occurredAt", Instant.now().toString());
             event.put("correlationId", UUID.randomUUID().toString());
 

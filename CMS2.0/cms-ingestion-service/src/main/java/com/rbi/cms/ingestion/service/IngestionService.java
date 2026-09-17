@@ -13,6 +13,7 @@ import com.rbi.cms.ingestion.repository.*;
 import com.rbi.cms.ingestion.validator.ComplaintValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -37,6 +38,15 @@ public class IngestionService {
     private final ObjectMapper objectMapper;
 
     private static final int SLA_DAYS = 30;
+
+    /**
+     * Complaints registered here have no department of their own — {@code ComplaintMaster} has no such
+     * column — but department is the tenancy boundary the search service filters every query on, so an
+     * event without one produces a complaint no officer can see. Stamp the intake department instead,
+     * following the same null-means-CRPC convention the admin dashboards already apply.
+     */
+    @Value("${cms.ingestion.intake-department:" + DepartmentConstants.DEPT_CRPC + "}")
+    private String intakeDepartment;
 
     @Transactional
     public ComplaintRegistrationResponse registerComplaint(ComplaintRegistrationRequest request) {
@@ -156,6 +166,8 @@ public class IngestionService {
                     .complaintId(complaint.getComplaintId())
                     .previousStatus(previousStatus)
                     .currentStatus(newStatus)
+                    .department(intakeDepartment)
+                    .assignedTo(complaint.getAssignedTo())
                     .payload(payload)
                     .correlationId(UUID.randomUUID().toString())
                     .occurredAt(Instant.now())
@@ -232,6 +244,7 @@ public class IngestionService {
                 .complaintId(complaint.getComplaintId())
                 .previousStatus(null)
                 .currentStatus(ComplaintStatus.NEW)
+                .department(intakeDepartment)
                 .payload(payload)
                 .correlationId(UUID.randomUUID().toString())
                 .occurredAt(Instant.now())

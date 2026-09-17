@@ -2,6 +2,12 @@ server:
   port: 8091
   servlet:
     context-path: /cms-search
+  tomcat:
+    threads:
+      max: 100
+    accept-count: 100
+    max-connections: 2000
+    connection-timeout: 20s
 
 spring:
   application:
@@ -12,12 +18,53 @@ spring:
     consumer:
       group-id: cms-search-group
       auto-offset-reset: earliest
+    listener:
+      # The listeners inject Acknowledgment and ack explicitly; without this the container
+      # commits offsets itself and a failed index write is silently marked as consumed.
+      ack-mode: manual
+
+  data:
+    web:
+      pageable:
+        default-page-size: 10
+        max-page-size: 100
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8180/realms/cms}
 
 cms:
   opensearch:
     host: ${OPENSEARCH_HOST:localhost}
     port: ${OPENSEARCH_PORT:9200}
     scheme: ${OPENSEARCH_SCHEME:http}
+    connect-timeout-ms: 5000
+    socket-timeout-ms: 30000
+    max-connections: 50
+    max-connections-per-route: 20
+
+  backend:
+    base-url: ${CMS_BACKEND_BASE_URL:http://localhost:8082}
+    connect-timeout-ms: 5000
+    read-timeout-ms: 30000
+
+  search:
+    max-page-size: 100
+    # OpenSearch index.max_result_window; deep pages beyond this are rejected rather than
+    # surfacing as an empty result set.
+    max-result-window: 10000
+
+  officer-directory:
+    refresh-interval-minutes: 10
+
+  reindex:
+    page-size: 500
+    max-pages: 20000
+    max-records: 5000000
+    concurrency: 2
+    job-retention-hours: 24
 
 management:
   endpoints:

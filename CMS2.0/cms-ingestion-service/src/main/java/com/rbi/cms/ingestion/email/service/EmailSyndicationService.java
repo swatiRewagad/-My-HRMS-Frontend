@@ -3,6 +3,7 @@ package com.rbi.cms.ingestion.email.service;
 import com.rbi.cms.common.enums.Channel;
 import com.rbi.cms.common.enums.ComplaintCategory;
 import com.rbi.cms.common.enums.ComplaintStatus;
+import com.rbi.cms.common.enums.DepartmentConstants;
 import com.rbi.cms.common.enums.Priority;
 import com.rbi.cms.common.event.ComplaintEvent;
 import com.rbi.cms.common.util.ComplaintIdGenerator;
@@ -14,6 +15,7 @@ import com.rbi.cms.ingestion.repository.ComplaintMasterRepository;
 import com.rbi.cms.ingestion.service.EventPublisher;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,6 +36,10 @@ public class EmailSyndicationService {
     private final ComplaintMasterRepository complaintRepository;
     private final RoundRobinAssignmentService assignmentService;
     private final EventPublisher eventPublisher;
+
+    /** See {@code IngestionService.intakeDepartment} — same reason, same property. */
+    @Value("${cms.ingestion.intake-department:" + DepartmentConstants.DEPT_CRPC + "}")
+    private String intakeDepartment;
 
     @Transactional
     public EmailDraftResponse ingestEmail(EmailIngestRequest request) {
@@ -167,6 +173,7 @@ public class EmailSyndicationService {
                 .eventId(java.util.UUID.randomUUID().toString())
                 .complaintId(complaintId)
                 .currentStatus(ComplaintStatus.NEW)
+                .department(intakeDepartment)
                 .occurredAt(java.time.Instant.now())
                 .correlationId(draftId)
                 .build();

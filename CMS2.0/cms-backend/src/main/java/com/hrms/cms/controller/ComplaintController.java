@@ -73,4 +73,12 @@ public class ComplaintController {
     public List<ComplaintTimeline> getTimeline(@PathVariable Long id) {
         return complaintService.getTimeline(id);
     }
+
+    @GetMapping("/stream")
+    public ResponseEntity<Page<Complaint>> streamAllComplaints(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "100") int size) {
+        Page<Complaint> complaintPage = complaintService.getStreamedComplaints(page, size);
+        return ResponseEntity.ok(complaintPage);
+    }
 }

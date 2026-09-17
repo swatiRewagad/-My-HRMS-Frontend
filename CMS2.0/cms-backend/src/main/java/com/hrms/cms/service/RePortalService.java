@@ -5,7 +5,9 @@ import com.hrms.cms.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,6 +30,7 @@ public class RePortalService {
     private final ReResponseTrackerRepository trackerRepository;
     private final RegulatedEntityRepository regulatedEntityRepository;
     private final NotificationService notificationService;
+    private final NodalOfficerRecordRepository nodalOfficerRecordRepository;
 
     private static final int DEFAULT_RESPONSE_WINDOW_DAYS = 15;
 
@@ -260,5 +263,11 @@ public class RePortalService {
         int windowDays = tracker.getWindowDays() > 0 ? tracker.getWindowDays() : DEFAULT_RESPONSE_WINDOW_DAYS;
         LocalDateTime deadline = tracker.getForwardedAt().plusDays(windowDays);
         return LocalDateTime.now().isBefore(deadline);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<NodalOfficerRecord> streamNodalOfficers(int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
+        return nodalOfficerRecordRepository.findAll(pageable);
     }
 }
