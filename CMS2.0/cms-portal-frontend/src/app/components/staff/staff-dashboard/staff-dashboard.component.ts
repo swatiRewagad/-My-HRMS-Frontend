@@ -38,7 +38,7 @@ import { environment } from '../../../../environments/environment';
 
           <div class="action-grid">
             @if (user()!.department === 'RBIO') {
-              <div class="action-card" (click)="navigate('/staff/rbio/tasks')">
+              <div class="action-card" (click)="navigate('/rbio')">
                 <h3>My Tasks</h3>
                 <p>View assigned complaints pending your action</p>
                 @if (pendingCount() > 0) { <span class="badge">{{ pendingCount() }}</span> }
@@ -204,7 +204,7 @@ export class StaffDashboardComponent implements OnInit, OnDestroy {
       return;
     }
     if (dept === 'RBIO' || roles.some(r => r.startsWith('RBIO_'))) {
-      this.router.navigate(['/staff/rbio/tasks']);
+      this.router.navigate(['/rbio']);
       return;
     }
     if (dept === 'CEPC' || roles.some(r => ['CEPC_DO', 'CEPC_REVIEWER', 'CEPC_INCHARGE', 'CEPC_CLOSING_AUTHORITY', 'CEPC_CONTACT_PERSON'].includes(r))) {

@@ -1,3 +1,10 @@
+cms:
+  opensearch:
+    host: localhost
+    port: 9200
+    scheme: http
+    enabled: false
+
 spring:
   kafka:
     bootstrap-servers: localhost:9092
@@ -9,13 +16,9 @@ spring:
       type: single
       missing-topics-fatal: false
       ack-mode: manual
-
-cms:
-  opensearch:
-    host: localhost
-    port: 9200
-    scheme: http
-    enabled: true
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration
 
 logging:
   level:

@@ -16,6 +16,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/v1/search")
 @RequiredArgsConstructor
+@CrossOrigin(value="http://localhost:4300")
 @Tag(name = "Search", description = "Full-text complaint search via OpenSearch")
 @ConditionalOnProperty(name = "cms.opensearch.enabled", havingValue = "true", matchIfMissing = true)
 public class SearchController {

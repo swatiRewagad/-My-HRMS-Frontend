@@ -33,9 +33,9 @@ kpi-card-surface {
   &.kpi-selected {
     border-color: var(--p-primary-color, #3b82f6);
     background-color: rgba(var(--p-primary-50-rgb,
-      59, 130, 246), 0.05);
+          59, 130, 246), 0.05);
     box-shadow: 0 0 0 2px rgba(var(--p-primary-color-rgb,
-      59, 130, 246), 0.15);
+          59, 130, 246), 0.15);
   }
 }
 
@@ -45,8 +45,7 @@ kpi-card-surface {
   height: 100%;
   padding: 0.6rem 0.5rem;
 
-  @media screen and (min-width: 1024px) and (max-width:
-    1400px) {
+  @media screen and (min-width: 1024px) and (max-width: 1400px) {
     padding: 0px;
   }
 }
@@ -58,8 +57,7 @@ kpi-card-surface {
   min-width: 0;
   width: 100%;
 
-  @media screen and (min-width: 1024px) and (max-width:
-    1400px) {
+  @media screen and (min-width: 1024px) and (max-width: 1400px) {
     gap: 0.4rem;
   }
 }
@@ -113,10 +111,6 @@ kpi-card-surface {
   word-wrap: break-word;
   font-size: 0.875rem;
 
-  @media (min-width: 1400px) {
-    font-size: 1.1rem;
-  }
-
   @media screen and (min-width: 1024px) and (max-width: 1400px) {
     font-size: 0.75rem;
   }
@@ -153,9 +147,6 @@ kpi-card-surface {
     font-size: 0.72rem;
   }
 
-  @media (min-width: 1400px) {
-    font-size: 1.1rem;
-  }
 }
 
 .metric-col-value {

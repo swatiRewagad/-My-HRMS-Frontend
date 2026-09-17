@@ -24,7 +24,7 @@ test.describe.serial('RBIO Adjudication Workflow', () => {
     try {
       await advanceRbioToStatus(request, complaintNumber, 'adjudication');
 
-      await loginAsRbioRole(page, 'RBIO_ADJUDICATOR', '/staff/rbio/tasks');
+      await loginAsRbioRole(page, 'RBIO_OMBUDSMAN', '/rbio');
       await page.waitForSelector('.rbio-home', { timeout: 15000 });
       await page.waitForSelector('.data-grid, .empty-state', { timeout: 15000 });
 
@@ -46,7 +46,7 @@ test.describe.serial('RBIO Adjudication Workflow', () => {
     try {
       await advanceRbioToStatus(request, complaintNumber, 'adjudication');
 
-      await loginAsRbioRole(page, 'RBIO_ADJUDICATOR', `/staff/rbio/task/${complaintNumber}`);
+      await loginAsRbioRole(page, 'RBIO_OMBUDSMAN', `/staff/rbio/task/${complaintNumber}`);
       await page.waitForSelector('.task-action-page', { timeout: 15000 });
 
       // Adjudicator actions: "Award (Adjudication)", "Reject"
@@ -72,7 +72,7 @@ test.describe.serial('RBIO Adjudication Workflow', () => {
     try {
       await advanceRbioToStatus(request, complaintNumber, 'adjudication');
 
-      await loginAsRbioRole(page, 'RBIO_ADJUDICATOR', `/staff/rbio/task/${complaintNumber}`);
+      await loginAsRbioRole(page, 'RBIO_OMBUDSMAN', `/staff/rbio/task/${complaintNumber}`);
       await page.waitForSelector('.task-action-page', { timeout: 15000 });
 
       // Verify complaint details are loaded
@@ -96,7 +96,7 @@ test.describe.serial('RBIO Adjudication Workflow', () => {
     try {
       await advanceRbioToStatus(request, complaintNumber, 'adjudication');
 
-      await loginAsRbioRole(page, 'RBIO_ADJUDICATOR', `/staff/rbio/task/${complaintNumber}`);
+      await loginAsRbioRole(page, 'RBIO_OMBUDSMAN', `/staff/rbio/task/${complaintNumber}`);
       await page.waitForSelector('.task-action-page', { timeout: 15000 });
 
       const awardBtn = page.locator('button.action-btn:has-text("Award")');
@@ -133,7 +133,7 @@ test.describe.serial('RBIO Adjudication Workflow', () => {
     try {
       await advanceRbioToStatus(request, complaintNumber, 'adjudication');
 
-      await loginAsRbioRole(page, 'RBIO_ADJUDICATOR', `/staff/rbio/task/${complaintNumber}`);
+      await loginAsRbioRole(page, 'RBIO_OMBUDSMAN', `/staff/rbio/task/${complaintNumber}`);
       await page.waitForSelector('.task-action-page', { timeout: 15000 });
 
       const awardBtn = page.locator('button.action-btn:has-text("Award")');
@@ -163,7 +163,7 @@ test.describe.serial('RBIO Adjudication Workflow', () => {
     try {
       await advanceRbioToStatus(request, complaintNumber, 'adjudication');
 
-      await loginAsRbioRole(page, 'RBIO_ADJUDICATOR', `/staff/rbio/task/${complaintNumber}`);
+      await loginAsRbioRole(page, 'RBIO_OMBUDSMAN', `/staff/rbio/task/${complaintNumber}`);
       await page.waitForSelector('.task-action-page', { timeout: 15000 });
 
       const awardBtn = page.locator('button.action-btn:has-text("Award")');
@@ -189,7 +189,7 @@ test.describe.serial('RBIO Adjudication Workflow', () => {
     try {
       await advanceRbioToStatus(request, complaintNumber, 'adjudication');
 
-      await loginAsRbioRole(page, 'RBIO_ADJUDICATOR', `/staff/rbio/task/${complaintNumber}`);
+      await loginAsRbioRole(page, 'RBIO_OMBUDSMAN', `/rbio/${complaintNumber}`);
       await page.waitForSelector('.task-action-page', { timeout: 15000 });
 
       const rejectBtn = page.locator('button.action-btn:has-text("Reject")');

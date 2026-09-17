@@ -287,7 +287,7 @@ export class DeoHomeComponent implements OnInit {
     if (allRoles.some(r => ['DEO', 'REVIEWER', 'CRPC_HEAD', 'INCHARGE'].includes(r))) {
       roleModules.push({ value: 'CRPC_COMPLAINT', label: 'CRPC Complaints' });
     }
-    if (allRoles.some(r => ['RBIO_OFFICER', 'RBIO_SUPERVISOR'].includes(r))) {
+    if (allRoles.some(r => ['RBIO_DO', 'RBIO_REVIWER'].includes(r))) {
       roleModules.push({ value: 'RBIO', label: 'RBIO' });
     }
     if (allRoles.some(r => ['CEPC_OFFICER', 'CEPC_SUPERVISOR'].includes(r))) {

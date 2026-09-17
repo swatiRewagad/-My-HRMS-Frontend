@@ -24,7 +24,7 @@ test.describe.serial('RBIO Conciliation Workflow', () => {
     try {
       await advanceRbioToStatus(request, complaintNumber, 'conciliation');
 
-      await loginAsRbioRole(page, 'RBIO_CONCILIATOR', '/staff/rbio/tasks');
+      await loginAsRbioRole(page, 'RBIO_DEPUTY_OMBUDSMAN', '/rbio');
       await page.waitForSelector('.rbio-home', { timeout: 15000 });
       await page.waitForSelector('.data-grid, .empty-state', { timeout: 15000 });
 
@@ -46,7 +46,7 @@ test.describe.serial('RBIO Conciliation Workflow', () => {
     try {
       await advanceRbioToStatus(request, complaintNumber, 'conciliation');
 
-      await loginAsRbioRole(page, 'RBIO_CONCILIATOR', `/staff/rbio/task/${complaintNumber}`);
+      await loginAsRbioRole(page, 'RBIO_DEPUTY_OMBUDSMAN', `/staff/rbio/task/${complaintNumber}`);
       await page.waitForSelector('.task-action-page', { timeout: 15000 });
 
       // Conciliator actions: "Conciliation Success", "Conciliation Failed"
@@ -72,7 +72,7 @@ test.describe.serial('RBIO Conciliation Workflow', () => {
     try {
       await advanceRbioToStatus(request, complaintNumber, 'conciliation');
 
-      await loginAsRbioRole(page, 'RBIO_CONCILIATOR', `/staff/rbio/task/${complaintNumber}`);
+      await loginAsRbioRole(page, 'RBIO_DEPUTY_OMBUDSMAN', `/staff/rbio/task/${complaintNumber}`);
       await page.waitForSelector('.task-action-page', { timeout: 15000 });
 
       const successBtn = page.locator('button.action-btn:has-text("Conciliation Success")');
@@ -109,7 +109,7 @@ test.describe.serial('RBIO Conciliation Workflow', () => {
     try {
       await advanceRbioToStatus(request, complaintNumber, 'conciliation');
 
-      await loginAsRbioRole(page, 'RBIO_CONCILIATOR', `/staff/rbio/task/${complaintNumber}`);
+      await loginAsRbioRole(page, 'RBIO_DEPUTY_OMBUDSMAN', `/rbio/${complaintNumber}`);
       await page.waitForSelector('.task-action-page', { timeout: 15000 });
 
       const failedBtn = page.locator('button.action-btn:has-text("Conciliation Failed")');
@@ -141,7 +141,7 @@ test.describe.serial('RBIO Conciliation Workflow', () => {
     try {
       await advanceRbioToStatus(request, complaintNumber, 'conciliation');
 
-      await loginAsRbioRole(page, 'RBIO_CONCILIATOR', `/staff/rbio/task/${complaintNumber}`);
+      await loginAsRbioRole(page, 'RBIO_DEPUTY_OMBUDSMAN', `/rbio/${complaintNumber}`);
       await page.waitForSelector('.task-action-page', { timeout: 15000 });
 
       const successBtn = page.locator('button.action-btn:has-text("Conciliation Success")');

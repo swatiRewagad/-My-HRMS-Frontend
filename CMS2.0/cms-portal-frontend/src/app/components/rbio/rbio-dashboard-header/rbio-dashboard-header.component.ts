@@ -1,68 +1,80 @@
-import { Component, computed, inject, input, model, output, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, computed, inject, input, model, output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
-import { SelectModule } from 'primeng/select';
-
-// 1. Import the specific event interface from PrimeNG
-import { SelectChangeEvent } from 'primeng/select';
+import { ChipModule } from 'primeng/chip';
+import { SelectModule, SelectChangeEvent } from 'primeng/select';
 import { RbioDashboardFilterComponent } from '../rbio-dashboard-filter/rbio-dashboard-filter.component';
 import { SelectedFilters } from '../../../models/rbio.model';
 import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
 
-export interface StatusCodeOption {
-  label: string;
-  value: string | number;
-}
+const EMPTY_FILTERS: SelectedFilters = {
+  states: [], districts: [], years: [], quarters: [], meetingTypes: [], documentTypes: []
+};
+
+const CATEGORY_LABELS: Record<string, string> = {
+  states: 'State', districts: 'District', years: 'Year',
+  quarters: 'Quarter', meetingTypes: 'Meeting', documentTypes: 'Document'
+};
 
 @Component({
   selector: 'app-rbio-dashboard-header',
   standalone: true,
   imports: [
-    CommonModule,
     FormsModule,
     RbioDashboardFilterComponent,
     ButtonModule,
+    ChipModule,
     SelectModule
   ],
   templateUrl: './rbio-dashboard-header.component.html',
   styleUrl: './rbio-dashboard-header.component.scss',
 })
 export class RbioDashboardHeaderComponent {
-  readonly auth = inject(KeycloakAuthService);
-  isDOUser = computed(() => !!this.auth?.currentUser()?.roles?.includes('RBIO_DO'));
+  private readonly auth = inject(KeycloakAuthService);
 
-  isFilterOpen = signal<boolean>(false);
-  onFiltersChanged = output<SelectedFilters>();
+  isDOUser = computed(() => this.auth.currentUser()?.roles?.includes('RBIO_DO') ?? false);
 
-  // Input signals fed down from the parent dashboard
+  isFilterOpen = model<boolean>(false);
+
   readonly isSearching = input<boolean>(false);
   readonly advSearchActive = input<boolean>(false);
-  readonly statusCodes = input<StatusCodeOption[]>([]);
+  readonly statusCodes = input<{ label: string; value: string }[]>([]);
+  readonly activeFilterCount = input<number>(0);
+  readonly activeFilters = input<SelectedFilters | null>(null);
 
-  // Model signal matching selection modifications back up automatically
-  readonly selectedStatusCode = model<string | number | null>(null);
+  readonly selectedStatusCode = model<string | null>(null);
 
-  // Structural execution intent notifications sent back up to parent components
-  readonly onToggleAdvancedSearch = output<boolean>();
-  readonly onClearSearch = output<void>();
-  readonly onRefreshFilters = output<void>();
-  readonly onCreateComplaint = output<void>();
+  readonly toggleAdvancedSearch = output<boolean>();
+  readonly clearSearch = output<void>();
+  readonly createComplaint = output<void>();
+  readonly statusFilterSelect = output<SelectChangeEvent>();
+  readonly filtersChanged = output<SelectedFilters>();
+  readonly filterRemoved = output<SelectedFilters>();
 
-  // 2. Strong-typed output emitter matching PrimeNG's structural signature
-  readonly onStatusFilterSelect = output<SelectChangeEvent>();
+  readonly filterChips = computed(() => {
+    const filters = this.activeFilters();
+    if (!filters) return [];
+    const chips: { category: string; value: string; label: string }[] = [];
+    for (const [category, values] of Object.entries(filters)) {
+      const prefix = CATEGORY_LABELS[category] || category;
+      for (const value of values) {
+        chips.push({ category, value, label: `${prefix}: ${value}` });
+      }
+    }
+    return chips;
+  });
 
-  /**
-   * Forwards PrimeNG select dropdown choice modifications upstream
-   */
-  onStatusCodeChange(event: SelectChangeEvent): void {
-    this.onStatusFilterSelect.emit(event);
+  removeChip(category: string, value: string): void {
+    const current = this.activeFilters();
+    if (!current) return;
+    const updated = {
+      ...current,
+      [category]: current[category as keyof SelectedFilters].filter((v: string) => v !== value)
+    };
+    this.filterRemoved.emit(updated);
   }
 
-  onFilterSelectionChanged(selectedFilters: SelectedFilters): void {
-    console.log('Applied Filter Dataset Model:', selectedFilters);
-
-    // Forward the structured filter object payload to your dashboard table context
-    this.onFiltersChanged.emit(selectedFilters);
+  clearAllFilters(): void {
+    this.filterRemoved.emit({ ...EMPTY_FILTERS });
   }
 }

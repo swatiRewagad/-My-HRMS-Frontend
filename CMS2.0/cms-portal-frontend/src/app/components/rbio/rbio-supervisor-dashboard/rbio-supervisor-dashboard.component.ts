@@ -151,6 +151,6 @@ export class RbioSupervisorDashboardComponent implements OnInit {
   }
 
   goBack() {
-    this.router.navigate(['/staff/rbio/tasks']);
+    this.router.navigate(['/rbio']);
   }
 }

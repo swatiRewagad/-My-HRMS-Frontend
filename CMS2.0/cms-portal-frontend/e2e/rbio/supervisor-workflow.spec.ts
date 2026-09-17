@@ -24,7 +24,7 @@ test.describe.serial('RBIO Supervisor Workflow', () => {
     try {
       await advanceRbioToStatus(request, complaintNumber, 'escalated');
 
-      await loginAsRbioRole(page, 'RBIO_SUPERVISOR', '/staff/rbio/tasks');
+      await loginAsRbioRole(page, 'RBIO_REVIEWER', '/rbio');
       await page.waitForSelector('.rbio-home', { timeout: 15000 });
       await page.waitForSelector('.data-grid, .empty-state', { timeout: 15000 });
 
@@ -46,7 +46,7 @@ test.describe.serial('RBIO Supervisor Workflow', () => {
     try {
       await advanceRbioToStatus(request, complaintNumber, 'escalated');
 
-      await loginAsRbioRole(page, 'RBIO_SUPERVISOR', `/staff/rbio/task/${complaintNumber}`);
+      await loginAsRbioRole(page, 'RBIO_REVIEWER', `/staff/rbio/task/${complaintNumber}`);
       await page.waitForSelector('.task-action-page', { timeout: 15000 });
 
       // Supervisor actions: "Approve & Escalate", "Return to Officer", "Resolve"
@@ -79,7 +79,7 @@ test.describe.serial('RBIO Supervisor Workflow', () => {
     try {
       await advanceRbioToStatus(request, complaintNumber, 'escalated');
 
-      await loginAsRbioRole(page, 'RBIO_SUPERVISOR', `/staff/rbio/task/${complaintNumber}`);
+      await loginAsRbioRole(page, 'RBIO_REVIEWER', `/staff/rbio/task/${complaintNumber}`);
       await page.waitForSelector('.task-action-page', { timeout: 15000 });
 
       const returnBtn = page.locator('button.action-btn:has-text("Return to Officer")');
@@ -111,7 +111,7 @@ test.describe.serial('RBIO Supervisor Workflow', () => {
     try {
       await advanceRbioToStatus(request, complaintNumber, 'escalated');
 
-      await loginAsRbioRole(page, 'RBIO_SUPERVISOR', `/staff/rbio/task/${complaintNumber}`);
+      await loginAsRbioRole(page, 'RBIO_REVIEWER', `/rbio/${complaintNumber}`);
       await page.waitForSelector('.task-action-page', { timeout: 15000 });
 
       // "Approve & Escalate" is the primary action — supervisor approves escalation path
@@ -144,7 +144,7 @@ test.describe.serial('RBIO Supervisor Workflow', () => {
     try {
       await advanceRbioToStatus(request, complaintNumber, 'escalated');
 
-      await loginAsRbioRole(page, 'RBIO_SUPERVISOR', `/staff/rbio/task/${complaintNumber}`);
+      await loginAsRbioRole(page, 'RBIO_REVIEWER', `/rbio/${complaintNumber}`);
       await page.waitForSelector('.task-action-page', { timeout: 15000 });
 
       // Resolve action from supervisor's perspective
@@ -171,7 +171,7 @@ test.describe.serial('RBIO Supervisor Workflow', () => {
   test('Supervisor dashboard shows SLA compliance stats', async ({ page }) => {
     test.skip(!keycloakUp, 'Keycloak is not available');
 
-    await loginAsRbioRole(page, 'RBIO_SUPERVISOR', '/rbio/supervisor-dashboard');
+    await loginAsRbioRole(page, 'RBIO_REVIEWER', '/rbio/supervisor-dashboard');
     await page.waitForSelector('.rbio-supervisor-dashboard, .rbio-home', { timeout: 15000 });
 
     const heading = page.locator('h2, h1').filter({ hasText: /Supervisor|Dashboard|SLA|Escalated/i });

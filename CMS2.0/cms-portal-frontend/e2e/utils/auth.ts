@@ -19,7 +19,7 @@ import { Page, expect } from '@playwright/test';
  */
 
 export type CepcRoleKey = 'DO' | 'REVIEWER' | 'INCHARGE' | 'CA' | 'ADMIN' | 'CP';
-export type RbioRoleKey = 'RBIO_OFFICER' | 'RBIO_SUPERVISOR' | 'RBIO_CONCILIATOR' | 'RBIO_ADJUDICATOR' | 'RBIO_ADMIN';
+export type RbioRoleKey = 'RBIO_DO' | 'RBIO_REVIEWER' | 'RBIO_DEPUTY_OMBUDSMAN' | 'RBIO_OMBUDSMAN' | 'RBIO_ADMIN';
 export type ReRoleKey = 'RE_NODAL_OFFICER' | 'RE_PNO';
 export type AaRoleKey = 'AA_REGISTRAR' | 'AA_BENCH_OFFICER' | 'AA_AUTHORITY' | 'AA_ADMIN';
 
@@ -155,25 +155,25 @@ export async function loginAsCepcRole(
 // ────────────────────────────────────────────────────────────────────────────
 
 const RBIO_ENV_MAP: Record<RbioRoleKey, { userEnv: string; passEnv: string; defaults: Credentials }> = {
-  RBIO_OFFICER: {
-    userEnv: 'RBIO_OFFICER_USER',
-    passEnv: 'RBIO_OFFICER_PASS',
-    defaults: { username: 'rbio_officer_001', password: 'test123' },
+  RBIO_DO: {
+    userEnv: 'RBIO_DO_USER',
+    passEnv: 'RBIO_DO_PASS',
+    defaults: { username: 'rbio_do_001', password: 'test123' },
   },
-  RBIO_SUPERVISOR: {
-    userEnv: 'RBIO_SUPERVISOR_USER',
-    passEnv: 'RBIO_SUPERVISOR_PASS',
-    defaults: { username: 'rbio_supervisor_001', password: 'test123' },
+  RBIO_REVIEWER: {
+    userEnv: 'RBIO_REVIEWER_USER',
+    passEnv: 'RBIO_REVIEWER_PASS',
+    defaults: { username: 'rbio_reviewer_001', password: 'test123' },
   },
-  RBIO_CONCILIATOR: {
-    userEnv: 'RBIO_CONCILIATOR_USER',
-    passEnv: 'RBIO_CONCILIATOR_PASS',
-    defaults: { username: 'rbio_conciliator_001', password: 'test123' },
+  RBIO_DEPUTY_OMBUDSMAN: {
+    userEnv: 'RBIO_DEPUTY_OMBUDSMAN_USER',
+    passEnv: 'RBIO_DEPUTY_OMBUDSMAN_PASS',
+    defaults: { username: 'rbio_deputy_ombudsman_001', password: 'test123' },
   },
-  RBIO_ADJUDICATOR: {
-    userEnv: 'RBIO_ADJUDICATOR_USER',
-    passEnv: 'RBIO_ADJUDICATOR_PASS',
-    defaults: { username: 'rbio_adjudicator_001', password: 'test123' },
+  RBIO_OMBUDSMAN: {
+    userEnv: 'RBIO_OMBUDSMAN_USER',
+    passEnv: 'RBIO_OMBUDSMAN_PASS',
+    defaults: { username: 'rbio_ombudsman_001', password: 'test123' },
   },
   RBIO_ADMIN: {
     userEnv: 'RBIO_ADMIN_USER',
@@ -193,14 +193,14 @@ function getRbioCredentials(role: RbioRoleKey): Credentials {
 /**
  * Logs in via Keycloak SSO redirect flow for RBIO roles.
  *
- * 1. Navigate to the target URL (defaults to /staff/rbio/tasks).
+ * 1. Navigate to the target URL (defaults to /rbio).
  * 2. If Keycloak redirects to its login page, fill the form and submit.
  * 3. Wait until the app is loaded after redirect back.
  */
 export async function loginAsRbioRole(
   page: Page,
   role: RbioRoleKey,
-  targetUrl = '/staff/rbio/tasks'
+  targetUrl = '/rbio'
 ): Promise<void> {
   const creds = getRbioCredentials(role);
 

@@ -28,7 +28,7 @@ test.describe('RBIO Admin — Reopen & Reassign', () => {
     try {
       await advanceRbioToStatus(request, complaintNumber, 'closed');
 
-      await loginAsRbioRole(page, 'RBIO_ADMIN', `/staff/rbio/task/${complaintNumber}`);
+      await loginAsRbioRole(page, 'RBIO_ADMIN', `/rbio/${complaintNumber}`);
       await page.waitForSelector('.task-action-page', { timeout: 15000 });
 
       const closedBanner = page.locator('.closed-banner');
@@ -66,7 +66,7 @@ test.describe('RBIO Admin — Reopen & Reassign', () => {
       await advanceRbioToStatus(request, complaintNumber, 'closed');
       await performRbioAction(request, complaintNumber, 'REOPEN', 'rbio.admin', 'Reopening for verification');
 
-      await loginAsRbioRole(page, 'RBIO_OFFICER', `/staff/rbio/task/${complaintNumber}`);
+      await loginAsRbioRole(page, 'RBIO_DO', `/rbio/${complaintNumber}`);
       await page.waitForSelector('.task-action-page', { timeout: 15000 });
 
       const closedBanner = page.locator('.closed-banner');
@@ -100,7 +100,7 @@ test.describe('RBIO Admin — Reopen & Reassign', () => {
     try {
       await advanceRbioToStatus(request, complaintNumber, 'in_progress');
 
-      await loginAsRbioRole(page, 'RBIO_ADMIN', `/staff/rbio/task/${complaintNumber}`);
+      await loginAsRbioRole(page, 'RBIO_ADMIN', `/rbio/${complaintNumber}`);
       await page.waitForSelector('.task-action-page', { timeout: 15000 });
 
       const reassignBtn = page.locator('.action-card:has-text("Reassign")');
@@ -135,7 +135,7 @@ test.describe('RBIO Admin — Reopen & Reassign', () => {
     }
 
     try {
-      await loginAsRbioRole(page, 'RBIO_ADMIN', '/staff/rbio/tasks');
+      await loginAsRbioRole(page, 'RBIO_ADMIN', '/rbio');
       await page.waitForSelector('.rbio-home', { timeout: 15000 });
       await page.waitForSelector('.data-grid, .empty-state', { timeout: 15000 });
 

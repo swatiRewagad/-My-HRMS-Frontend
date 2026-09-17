@@ -20,6 +20,8 @@ import com.hrms.cms.repository.FormConfigRepository;
 import com.hrms.cms.repository.OfficeCodeMasterRepository;
 import com.hrms.cms.repository.OmbudsmanOfficeMasterRepository;
 import com.hrms.cms.repository.RegulatedEntityRepository;
+import com.hrms.cms.repository.SimulatedEmailRepository;
+import com.hrms.cms.entity.SimulatedEmail;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Profile;
@@ -45,6 +47,7 @@ public class DataInitializer implements CommandLineRunner {
     private final AccountTypeMasterRepository accountTypeRepo;
     private final OmbudsmanOfficeMasterRepository ombudsmanOfficeRepo;
     private final OfficeCodeMasterRepository officeCodeRepo;
+    private final SimulatedEmailRepository simulatedEmailRepo;
 
     @Override
     public void run(String... args) {
@@ -78,7 +81,167 @@ public class DataInitializer implements CommandLineRunner {
         if (officeCodeRepo.count() == 0) {
             seedOfficeCodeMaster();
         }
+        if (simulatedEmailRepo.count() == 0) {
+            seedSimulatedEmails();
+        }
         migrateUuidDraftIds();
+    }
+
+    private void seedSimulatedEmails() {
+        LocalDateTime now = LocalDateTime.now();
+        String cmsEmail = "complaints@cms.rbi.org.in";
+
+        // ── Complaint CMS-20260601-A1B2C3 (Rajesh Kumar, ATM issue) — 2 threads ──
+
+        // Thread 1: Initial complaint email exchange
+        simulatedEmailRepo.save(SimulatedEmail.builder()
+                .messageId("MSG-001").threadId("THR-001")
+                .fromEmail("rajesh.kumar@email.com").toEmail(cmsEmail)
+                .subject("ATM did not dispense cash but account debited Rs. 10,000")
+                .body("Dear Sir,\n\nI tried to withdraw Rs 10,000 from SBI ATM near MG Road on 1st June. Machine showed error but amount was debited from my account.\n\nPlease help.\n\nRajesh Kumar\nPhone: 9876543210")
+                .direction("INBOUND").status("PROCESSED")
+                .complaintId(1L).complaintNumber("CMS-20260601-A1B2C3")
+                .sentAt(now.minusDays(2)).receivedAt(now.minusDays(2)).processedAt(now.minusDays(2))
+                .build());
+
+        simulatedEmailRepo.save(SimulatedEmail.builder()
+                .messageId("MSG-002").threadId("THR-001")
+                .fromEmail(cmsEmail).toEmail("rajesh.kumar@email.com")
+                .subject("Re: ATM did not dispense cash | Complaint #CMS-20260601-A1B2C3")
+                .body("Dear Rajesh Kumar,\n\nYour complaint has been registered (Ref: CMS-20260601-A1B2C3). Please provide your ATM transaction receipt and bank statement for the date.\n\nRegards,\nCMS - RBI")
+                .direction("OUTBOUND").status("SENT")
+                .complaintId(1L).complaintNumber("CMS-20260601-A1B2C3")
+                .sentAt(now.minusDays(2).plusHours(1)).receivedAt(now.minusDays(2).plusHours(1))
+                .build());
+
+        simulatedEmailRepo.save(SimulatedEmail.builder()
+                .messageId("MSG-003").threadId("THR-001")
+                .fromEmail("rajesh.kumar@email.com").toEmail(cmsEmail)
+                .subject("Re: ATM did not dispense cash | Complaint #CMS-20260601-A1B2C3")
+                .body("Dear Sir,\n\nPlease find attached the ATM slip and bank statement. The transaction reference is SBI/ATM/20260601/78934.\n\nRajesh Kumar")
+                .direction("INBOUND").status("PROCESSED")
+                .complaintId(1L).complaintNumber("CMS-20260601-A1B2C3")
+                .attachmentUrl("/api/files/atm-slip-rajesh.pdf")
+                .sentAt(now.minusDays(1).plusHours(3)).receivedAt(now.minusDays(1).plusHours(3)).processedAt(now.minusDays(1).plusHours(3))
+                .build());
+
+        // Thread 2: Follow-up from bank
+        simulatedEmailRepo.save(SimulatedEmail.builder()
+                .messageId("MSG-004").threadId("THR-002")
+                .fromEmail(cmsEmail).toEmail("grievance@sbi.co.in")
+                .subject("CMS Inquiry: ATM Non-Dispensation | CMS-20260601-A1B2C3")
+                .body("Dear SBI Grievance Cell,\n\nWe have received a complaint regarding ATM non-dispensation. Kindly investigate and respond within 7 working days.\n\nComplaint Ref: CMS-20260601-A1B2C3\nTransaction Date: 01-Jun-2026\nAmount: Rs 10,000\n\nRegards,\nCMS - RBI")
+                .direction("OUTBOUND").status("SENT")
+                .complaintId(1L).complaintNumber("CMS-20260601-A1B2C3")
+                .sentAt(now.minusDays(1).plusHours(5)).receivedAt(now.minusDays(1).plusHours(5))
+                .build());
+
+        simulatedEmailRepo.save(SimulatedEmail.builder()
+                .messageId("MSG-005").threadId("THR-002")
+                .fromEmail("grievance@sbi.co.in").toEmail(cmsEmail)
+                .subject("Re: CMS Inquiry: ATM Non-Dispensation | CMS-20260601-A1B2C3")
+                .body("Dear CMS Team,\n\nWe acknowledge receipt of the complaint. Our ATM reconciliation team is investigating. Preliminary findings indicate a switch-level mismatch. Reversal will be processed within 5 working days.\n\nRef: SBI/GR/2026/45678\n\nSBI Grievance Cell")
+                .direction("INBOUND").status("PROCESSED")
+                .complaintId(1L).complaintNumber("CMS-20260601-A1B2C3")
+                .sentAt(now.minusHours(18)).receivedAt(now.minusHours(18)).processedAt(now.minusHours(18))
+                .build());
+
+        // ── Complaint CMS-20260601-D4E5F6 (Priya Sharma, UPI failure) — 1 thread ──
+
+        simulatedEmailRepo.save(SimulatedEmail.builder()
+                .messageId("MSG-006").threadId("THR-003")
+                .fromEmail("priya.sharma@email.com").toEmail(cmsEmail)
+                .subject("UPI transaction failed but Rs. 5,000 debited from account")
+                .body("Dear Sir/Madam,\n\nI made a UPI payment of Rs 5,000 to a merchant on 27th May. Transaction shows failed but money was debited. No refund received in 7 days.\n\nUPI Ref: 202605279012345\n\nPriya Sharma\n9123456789")
+                .direction("INBOUND").status("PROCESSED")
+                .complaintId(2L).complaintNumber("CMS-20260601-D4E5F6")
+                .sentAt(now.minusDays(5)).receivedAt(now.minusDays(5)).processedAt(now.minusDays(5))
+                .build());
+
+        simulatedEmailRepo.save(SimulatedEmail.builder()
+                .messageId("MSG-007").threadId("THR-003")
+                .fromEmail(cmsEmail).toEmail("priya.sharma@email.com")
+                .subject("Re: UPI transaction failed | Complaint #CMS-20260601-D4E5F6")
+                .body("Dear Priya Sharma,\n\nYour complaint is registered (Ref: CMS-20260601-D4E5F6). We have forwarded this to HDFC Bank's nodal officer. You will be updated within 7 working days.\n\nRegards,\nCMS - RBI")
+                .direction("OUTBOUND").status("SENT")
+                .complaintId(2L).complaintNumber("CMS-20260601-D4E5F6")
+                .sentAt(now.minusDays(5).plusHours(2)).receivedAt(now.minusDays(5).plusHours(2))
+                .build());
+
+        simulatedEmailRepo.save(SimulatedEmail.builder()
+                .messageId("MSG-008").threadId("THR-003")
+                .fromEmail(cmsEmail).toEmail("nodal.officer@hdfcbank.com")
+                .subject("CMS Notice: UPI Failed Transaction | CMS-20260601-D4E5F6")
+                .body("Dear HDFC Bank Nodal Officer,\n\nPlease investigate the following UPI transaction failure and provide a response within 7 working days.\n\nUPI Ref: 202605279012345\nAmount: Rs 5,000\nDate: 27-May-2026\n\nRegards,\nCMS - RBI")
+                .direction("OUTBOUND").status("SENT")
+                .complaintId(2L).complaintNumber("CMS-20260601-D4E5F6")
+                .sentAt(now.minusDays(4)).receivedAt(now.minusDays(4))
+                .build());
+
+        // ── Complaint CMS-20260528-J1K2L3 (Sunita Devi, Credit card fraud) — 1 thread ──
+
+        simulatedEmailRepo.save(SimulatedEmail.builder()
+                .messageId("MSG-009").threadId("THR-004")
+                .fromEmail("sunita.d@email.com").toEmail(cmsEmail)
+                .subject("Unauthorized credit card transaction of Rs. 25,000")
+                .body("Dear Sir,\n\nI found an unauthorized transaction of Rs 25,000 on my PNB credit card ending 4567 on 28th May. Card was with me at all times. I have blocked the card.\n\nSunita Devi\nPhone: 9876501234")
+                .direction("INBOUND").status("PROCESSED")
+                .complaintId(4L).complaintNumber("CMS-20260528-J1K2L3")
+                .sentAt(now.minusDays(12)).receivedAt(now.minusDays(12)).processedAt(now.minusDays(12))
+                .build());
+
+        simulatedEmailRepo.save(SimulatedEmail.builder()
+                .messageId("MSG-010").threadId("THR-004")
+                .fromEmail(cmsEmail).toEmail("sunita.d@email.com")
+                .subject("Re: Unauthorized credit card transaction | Complaint #CMS-20260528-J1K2L3")
+                .body("Dear Sunita Devi,\n\nYour complaint has been registered and escalated due to the nature of fraud. Ref: CMS-20260528-J1K2L3.\n\nPlease share a copy of your credit card statement and the FIR if filed.\n\nRegards,\nCMS - RBI")
+                .direction("OUTBOUND").status("SENT")
+                .complaintId(4L).complaintNumber("CMS-20260528-J1K2L3")
+                .sentAt(now.minusDays(12).plusHours(2)).receivedAt(now.minusDays(12).plusHours(2))
+                .build());
+
+        simulatedEmailRepo.save(SimulatedEmail.builder()
+                .messageId("MSG-011").threadId("THR-004")
+                .fromEmail("sunita.d@email.com").toEmail(cmsEmail)
+                .subject("Re: Unauthorized credit card transaction | Complaint #CMS-20260528-J1K2L3")
+                .body("Dear Sir,\n\nAttached is the credit card statement and FIR copy (FIR No: 234/2026, PS Kotwali). The fraudulent transaction was made on an e-commerce site from an IP address in another state.\n\nSunita Devi")
+                .direction("INBOUND").status("PROCESSED")
+                .complaintId(4L).complaintNumber("CMS-20260528-J1K2L3")
+                .attachmentUrl("/api/files/fir-sunita.pdf")
+                .sentAt(now.minusDays(11)).receivedAt(now.minusDays(11)).processedAt(now.minusDays(11))
+                .build());
+
+        simulatedEmailRepo.save(SimulatedEmail.builder()
+                .messageId("MSG-012").threadId("THR-004")
+                .fromEmail(cmsEmail).toEmail("fraud.cell@pnb.co.in")
+                .subject("CMS Escalation: Credit Card Fraud | CMS-20260528-J1K2L3")
+                .body("Dear PNB Fraud Cell,\n\nThis is an escalated complaint regarding unauthorized credit card usage. FIR has been filed. Immediate investigation and temporary credit is requested.\n\nRegards,\nCMS - RBI")
+                .direction("OUTBOUND").status("SENT")
+                .complaintId(4L).complaintNumber("CMS-20260528-J1K2L3")
+                .sentAt(now.minusDays(10)).receivedAt(now.minusDays(10))
+                .build());
+
+        // ── Complaint CMS-20260515-V4W5X6 (Anita Mishra, Pension not credited) — 1 thread ──
+
+        simulatedEmailRepo.save(SimulatedEmail.builder()
+                .messageId("MSG-013").threadId("THR-005")
+                .fromEmail("anita.m@email.com").toEmail(cmsEmail)
+                .subject("Pension amount not credited for 3 months")
+                .body("Respected Sir/Madam,\n\nMy monthly pension from PNB (A/C: 3456789012) has not been credited for April, May, and June 2026. I am a retired government employee and this is my sole source of income.\n\nI visited the branch multiple times but no resolution.\n\nAnita Mishra\nPhone: 9988001122")
+                .direction("INBOUND").status("PROCESSED")
+                .complaintId(8L).complaintNumber("CMS-20260515-V4W5X6")
+                .sentAt(now.minusDays(35)).receivedAt(now.minusDays(35)).processedAt(now.minusDays(35))
+                .build());
+
+        simulatedEmailRepo.save(SimulatedEmail.builder()
+                .messageId("MSG-014").threadId("THR-005")
+                .fromEmail(cmsEmail).toEmail("anita.m@email.com")
+                .subject("Re: Pension not credited | Complaint #CMS-20260515-V4W5X6")
+                .body("Dear Anita Mishra,\n\nWe understand the urgency. Your complaint has been registered (Ref: CMS-20260515-V4W5X6) and escalated to PNB's pension department with a 7-day deadline.\n\nRegards,\nCMS - RBI")
+                .direction("OUTBOUND").status("SENT")
+                .complaintId(8L).complaintNumber("CMS-20260515-V4W5X6")
+                .sentAt(now.minusDays(35).plusHours(1)).receivedAt(now.minusDays(35).plusHours(1))
+                .build());
     }
 
     private void seedCrpcEmailDrafts() {

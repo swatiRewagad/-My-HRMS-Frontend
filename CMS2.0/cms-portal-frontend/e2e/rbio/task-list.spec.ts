@@ -28,7 +28,7 @@ test.describe('RBIO Task List', () => {
 
   test('page loads showing RBIO task list heading', async ({ page }) => {
     test.skip(!keycloakUp, 'Keycloak is not available');
-    await loginAsRbioRole(page, 'RBIO_OFFICER', '/staff/rbio/tasks');
+    await loginAsRbioRole(page, 'RBIO_DO', '/rbio');
     await page.waitForSelector('.rbio-home', { timeout: 15000 });
 
     const heading = page.locator('h1:has-text("RBIO Complaints")');
@@ -39,7 +39,7 @@ test.describe('RBIO Task List', () => {
 
   test('stats display (total, assigned, in progress, escalated, resolved)', async ({ page }) => {
     test.skip(!keycloakUp, 'Keycloak is not available');
-    await loginAsRbioRole(page, 'RBIO_OFFICER', '/staff/rbio/tasks');
+    await loginAsRbioRole(page, 'RBIO_DO', '/rbio');
     await page.waitForSelector('.rbio-home', { timeout: 15000 });
 
     const statsBar = page.locator('.stats-bar');
@@ -62,7 +62,7 @@ test.describe('RBIO Task List', () => {
 
   test('task table renders with correct columns', async ({ page }) => {
     test.skip(!keycloakUp, 'Keycloak is not available');
-    await loginAsRbioRole(page, 'RBIO_OFFICER', '/staff/rbio/tasks');
+    await loginAsRbioRole(page, 'RBIO_DO', '/rbio');
     await page.waitForSelector('.rbio-home', { timeout: 15000 });
 
     await page.waitForSelector('.data-grid, .empty-state', { timeout: 15000 });
@@ -81,7 +81,7 @@ test.describe('RBIO Task List', () => {
 
   test('search filters by complaint number/name/entity', async ({ page }) => {
     test.skip(!keycloakUp, 'Keycloak is not available');
-    await loginAsRbioRole(page, 'RBIO_OFFICER', '/staff/rbio/tasks');
+    await loginAsRbioRole(page, 'RBIO_DO', '/rbio');
     await page.waitForSelector('.rbio-home', { timeout: 15000 });
     await page.waitForSelector('.data-grid, .empty-state', { timeout: 15000 });
 
@@ -104,7 +104,7 @@ test.describe('RBIO Task List', () => {
 
   test('status filter works', async ({ page }) => {
     test.skip(!keycloakUp, 'Keycloak is not available');
-    await loginAsRbioRole(page, 'RBIO_OFFICER', '/staff/rbio/tasks');
+    await loginAsRbioRole(page, 'RBIO_DO', '/rbio');
     await page.waitForSelector('.rbio-home', { timeout: 15000 });
     await page.waitForSelector('.data-grid, .empty-state', { timeout: 15000 });
 
@@ -127,7 +127,7 @@ test.describe('RBIO Task List', () => {
 
   test('column configuration toggle shows/hides columns', async ({ page }) => {
     test.skip(!keycloakUp, 'Keycloak is not available');
-    await loginAsRbioRole(page, 'RBIO_OFFICER', '/staff/rbio/tasks');
+    await loginAsRbioRole(page, 'RBIO_DO', '/rbio');
     await page.waitForSelector('.rbio-home', { timeout: 15000 });
     await page.waitForSelector('.data-grid, .empty-state', { timeout: 15000 });
 
@@ -161,7 +161,7 @@ test.describe('RBIO Task List', () => {
 
   test('advanced search dialog opens and filters', async ({ page }) => {
     test.skip(!keycloakUp, 'Keycloak is not available');
-    await loginAsRbioRole(page, 'RBIO_OFFICER', '/staff/rbio/tasks');
+    await loginAsRbioRole(page, 'RBIO_DO', '/rbio');
     await page.waitForSelector('.rbio-home', { timeout: 15000 });
 
     const advSearchBtn = page.locator('button:has-text("Advanced Search")');
@@ -185,7 +185,7 @@ test.describe('RBIO Task List', () => {
 
   test('pagination controls work', async ({ page }) => {
     test.skip(!keycloakUp, 'Keycloak is not available');
-    await loginAsRbioRole(page, 'RBIO_OFFICER', '/staff/rbio/tasks');
+    await loginAsRbioRole(page,'RBIO_DO', '/rbio');
     await page.waitForSelector('.rbio-home', { timeout: 15000 });
     await page.waitForSelector('.data-grid, .empty-state', { timeout: 15000 });
 
@@ -202,7 +202,7 @@ test.describe('RBIO Task List', () => {
 
   test('click task navigates to detail page', async ({ page }) => {
     test.skip(!keycloakUp, 'Keycloak is not available');
-    await loginAsRbioRole(page, 'RBIO_OFFICER', '/staff/rbio/tasks');
+    await loginAsRbioRole(page, 'RBIO_DO', '/rbio');
     await page.waitForSelector('.rbio-home', { timeout: 15000 });
     await page.waitForSelector('.data-grid tbody tr', { timeout: 15000 });
 
@@ -217,7 +217,7 @@ test.describe('RBIO Task List', () => {
 
   test('unread indicator clears after visiting task', async ({ page }) => {
     test.skip(!keycloakUp, 'Keycloak is not available');
-    await loginAsRbioRole(page, 'RBIO_OFFICER', '/staff/rbio/tasks');
+    await loginAsRbioRole(page, 'RBIO_DO', '/rbio');
     await page.waitForSelector('.rbio-home', { timeout: 15000 });
     await page.waitForSelector('.data-grid tbody tr', { timeout: 15000 });
 

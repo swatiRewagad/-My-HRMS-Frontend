@@ -1,6 +1,6 @@
 @for (card of computedRoleCards(); track card.id) {
   <p-card [styleClass]="selectedCardId() === card.id ? 'kpi-card-surface kpi-selected' : 'kpi-card-surface'"
-    (click)="handleCardSelection(cardId: card.id)">
+    (click)="handleCardSelection(card.id)">
 
     <ng-template pTemplate="content">
       <div class="kpi-flex-container">

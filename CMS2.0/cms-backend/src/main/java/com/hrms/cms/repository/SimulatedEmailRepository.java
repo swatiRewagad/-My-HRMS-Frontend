@@ -12,4 +12,5 @@ public interface SimulatedEmailRepository extends JpaRepository<SimulatedEmail, 
     Optional<SimulatedEmail> findByMessageId(String messageId);
     long countByDirectionAndStatus(String direction, String status);
     List<SimulatedEmail> findByComplaintNumberOrderBySentAtDesc(String complaintNumber);
+    List<SimulatedEmail> findByComplaintNumberOrderBySentAtAsc(String complaintNumber);
 }

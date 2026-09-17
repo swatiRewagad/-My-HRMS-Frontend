@@ -51,10 +51,10 @@ export class TeamManagementComponent implements OnInit {
   roleGroups = [
     { value: 'CRPC_DEO', label: 'CRPC - DEO', keycloakRole: 'CRPC_DEO' },
     { value: 'CRPC_REVIEWER', label: 'CRPC - Reviewer', keycloakRole: 'CRPC_REVIEWER' },
-    { value: 'RBIO_OFFICER', label: 'RBIO - Officer', keycloakRole: 'RBIO_OFFICER' },
-    { value: 'RBIO_SUPERVISOR', label: 'RBIO - Supervisor', keycloakRole: 'RBIO_SUPERVISOR' },
-    { value: 'RBIO_CONCILIATOR', label: 'RBIO - Conciliator', keycloakRole: 'RBIO_CONCILIATOR' },
-    { value: 'RBIO_ADJUDICATOR', label: 'RBIO - Adjudicator', keycloakRole: 'RBIO_ADJUDICATOR' },
+    { value: 'RBIO_DO', label: 'RBIO - Officer', keycloakRole: 'RBIO_DO' },
+    { value: 'RBIO_REVIEWER', label: 'RBIO - Supervisor', keycloakRole: 'RBIO_REVIEWER'},
+    { value: 'RBIO_DEPUTY_OMBUDSMAN', label: 'RBIO - Conciliator', keycloakRole: 'RBIO_DEPUTY_OMBUDSMAN' },
+    { value: 'RBIO_OMBUDSMAN', label: 'RBIO - Adjudicator', keycloakRole: 'RBIO_OMBUDSMAN' },
     { value: 'CEPC_OFFICER', label: 'CEPC - Officer', keycloakRole: 'CEPC_DO' },
     { value: 'CEPC_SUPERVISOR', label: 'CEPC - Supervisor', keycloakRole: 'CEPC_INCHARGE' },
   ];

@@ -4,7 +4,7 @@ export const environment = {
   storageBaseUrl: '/api/v1/storage',
   ocrServiceUrl: 'http://localhost:8000',
   keycloakUrl: 'http://localhost:9090',
-  realm: 'rbi-cms',
+  realm: 'cms',
 
   // Dev mode: auto-populate OTP with default value for testing
   devAutoPopulateOtp: true,

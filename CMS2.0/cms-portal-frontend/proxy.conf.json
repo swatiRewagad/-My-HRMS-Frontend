@@ -7,6 +7,11 @@
       "^/api/pincode": "/pincode"
     }
   },
+  "/cms-search": {
+    "target": "http://localhost:9200",
+    "secure": false,
+    "changeOrigin": true
+  },
   "/cms-assignment": {
     "target": "http://localhost:8085",
     "secure": false,

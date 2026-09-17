@@ -1,5 +1,4 @@
-import { Component, model, output, signal, computed, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, model, output, signal, computed, inject, input, effect } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DrawerModule } from 'primeng/drawer';
 import { ListboxModule } from 'primeng/listbox';
@@ -9,10 +8,26 @@ import { firstValueFrom } from 'rxjs';
 import { FilterCategory, SelectedFilters } from '../../../models/rbio.model';
 import { ApiService } from '../../../services/api.service';
 
+const EMPTY_FILTERS: SelectedFilters = {
+  states: [],
+  districts: [],
+  years: [],
+  quarters: [],
+  meetingTypes: [],
+  documentTypes: []
+};
+
+const QUARTER_OPTIONS = [
+  { label: 'Quarter 1 (Apr - Jun)', value: 'Q1' },
+  { label: 'Quarter 2 (Jul - Sep)', value: 'Q2' },
+  { label: 'Quarter 3 (Oct - Dec)', value: 'Q3' },
+  { label: 'Quarter 4 (Jan - Mar)', value: 'Q4' }
+] as const;
+
 @Component({
   selector: 'app-rbio-dashboard-filter',
   standalone: true,
-  imports: [CommonModule, FormsModule, DrawerModule, ListboxModule, CheckboxModule, ButtonModule],
+  imports: [FormsModule, DrawerModule, ListboxModule, CheckboxModule, ButtonModule],
   templateUrl: './rbio-dashboard-filter.component.html',
   styleUrl: './rbio-dashboard-filter.component.scss'
 })
@@ -20,49 +35,54 @@ export class RbioDashboardFilterComponent {
   private apiService = inject(ApiService);
 
   visible = model<boolean>(false);
+  selectedCategoryId = model<string>('states');
+  readonly activeFilters = input<SelectedFilters | null>(null);
 
-  onFilterApply = output<SelectedFilters>();
+  filterApply = output<SelectedFilters>();
 
-  selectedCategoryId = signal<string>('states');
-
-  selectedValues = signal<SelectedFilters>({
-    states: [],
-    districts: [],
-    years: [],
-    quarters: [],
-    meetingTypes: [],
-    documentTypes: []
-  });
+  selectedValues = signal<SelectedFilters>({ ...EMPTY_FILTERS });
 
   readonly stateOptions = signal<{ label: string; value: string }[]>([]);
   readonly districtOptions = signal<{ label: string; value: string }[]>([]);
-  readonly loadingDistricts = signal<boolean>(false);
+  readonly loadingDistricts = signal(false);
   private districtCache = new Map<string, { label: string; value: string }[]>();
+
+  private readonly yearOptions = this.generateFinancialYears(5);
 
   readonly filterCategories = computed<FilterCategory[]>(() => [
     { id: 'states', label: 'State', options: this.stateOptions() },
     { id: 'districts', label: 'District', options: this.districtOptions() },
-    { id: 'year', label: 'Year', options: this.generateFinancialYears(5) },
-    {
-      id: 'quarter',
-      label: 'Quarter',
-      options: [
-        { label: 'Quarter 1 (Apr - Jun)', value: 'Q1' },
-        { label: 'Quarter 2 (Jul - Sep)', value: 'Q2' },
-        { label: 'Quarter 3 (Oct - Dec)', value: 'Q3' },
-        { label: 'Quarter 4 (Jan - Mar)', value: 'Q4' }
-      ]
-    }
+    { id: 'years', label: 'Year', options: this.yearOptions },
+    { id: 'quarters', label: 'Quarter', options: [...QUARTER_OPTIONS] }
   ]);
 
   activeCategoryOptions = computed(() => {
-    const currentId = this.selectedCategoryId();
-    const match = this.filterCategories().find(c => c.id === currentId);
-    return match ? match.options : [];
+    const match = this.filterCategories().find(c => c.id === this.selectedCategoryId());
+    return match?.options ?? [];
+  });
+
+  totalSelectedCount = computed(() => {
+    const vals = this.selectedValues();
+    return Object.values(vals).reduce((sum, arr) => sum + arr.length, 0);
+  });
+
+  isAllActiveCategorySelected = computed(() => {
+    const options = this.activeCategoryOptions();
+    if (options.length === 0) return false;
+    const categoryId = this.selectedCategoryId() as keyof SelectedFilters;
+    const selected = this.selectedValues()[categoryId] ?? [];
+    return options.every(opt => selected.includes(opt.value));
   });
 
   constructor() {
     this.loadStates();
+
+    effect(() => {
+      if (this.visible()) {
+        const parent = this.activeFilters();
+        this.selectedValues.set(parent ? { ...parent } : { ...EMPTY_FILTERS });
+      }
+    });
   }
 
   private async loadStates(): Promise<void> {
@@ -72,37 +92,35 @@ export class RbioDashboardFilterComponent {
           `/location/states`
         )
       );
-
       this.stateOptions.set(response.data.map(state => ({ label: state, value: state })));
     } catch (error) {
-      console.error('Failed to resolve States configuration master data', error);
+      console.error('Failed to load states:', error);
     }
   }
 
   async onCheckboxChange(value: string, checked: boolean): Promise<void> {
-    const currentId = this.selectedCategoryId() as keyof SelectedFilters;
+    const categoryId = this.selectedCategoryId() as keyof SelectedFilters;
 
     this.selectedValues.update(store => {
-      const currentSelection = [...(store[currentId] || [])];
-
+      const current = [...(store[categoryId] || [])];
       if (checked) {
-        if (!currentSelection.includes(value)) currentSelection.push(value);
+        if (!current.includes(value)) current.push(value);
       } else {
-        const index = currentSelection.indexOf(value);
-        if (index > -1) currentSelection.splice(index, 1);
+        const index = current.indexOf(value);
+        if (index > -1) current.splice(index, 1);
       }
-      return { ...store, [currentId]: currentSelection };
+      return { ...store, [categoryId]: current };
     });
 
-    if (currentId === 'states' || currentId === ('states' as any)) {
+    if (categoryId === 'states') {
       await this.handleStateSelectionChange();
     }
   }
 
   private async handleStateSelectionChange(): Promise<void> {
-    const selectedStates = this.selectedValues()['states'];
+    const selectedStates = this.selectedValues().states;
 
-    if (!selectedStates || selectedStates.length === 0) {
+    if (selectedStates.length === 0) {
       this.districtOptions.set([]);
       this.clearOrphanDistricts([]);
       return;
@@ -110,32 +128,27 @@ export class RbioDashboardFilterComponent {
 
     this.loadingDistricts.set(true);
     try {
-      const aggregatedDistricts: { label: string; value: string }[] = [];
-
-      for (const stateName of selectedStates) {
-        if (this.districtCache.has(stateName)) {
-          aggregatedDistricts.push(...this.districtCache.get(stateName)!);
-        } else {
+      const results = await Promise.all(
+        selectedStates.map(async (stateName) => {
+          if (this.districtCache.has(stateName)) {
+            return this.districtCache.get(stateName)!;
+          }
           const response = await firstValueFrom(
             this.apiService.get<{ success: boolean; message: string; data: string[] }>(
               `/location/districts?state=${encodeURIComponent(stateName)}`
             )
           );
+          const districts = response.data.map(d => ({ label: d, value: d }));
+          this.districtCache.set(stateName, districts);
+          return districts;
+        })
+      );
 
-          const formattedDistricts = response.data.map(district => ({
-            label: district,
-            value: district
-          }));
-
-          this.districtCache.set(stateName, formattedDistricts);
-          aggregatedDistricts.push(...formattedDistricts);
-        }
-      }
-
-      this.districtOptions.set(aggregatedDistricts);
-      this.clearOrphanDistricts(aggregatedDistricts);
+      const aggregated = results.flat();
+      this.districtOptions.set(aggregated);
+      this.clearOrphanDistricts(aggregated);
     } catch (error) {
-      console.error('Failed to load dependent districts code', error);
+      console.error('Failed to load districts:', error);
     } finally {
       this.loadingDistricts.set(false);
     }
@@ -143,46 +156,59 @@ export class RbioDashboardFilterComponent {
 
   private clearOrphanDistricts(validDistricts: { label: string; value: string }[]): void {
     const validSet = new Set(validDistricts.map(d => d.value));
-    this.selectedValues.update(store => {
-      const activeDistricts = (store?.['districts'] || []).filter(d => validSet.has(d));
-      return { ...store, districts: activeDistricts };
+    this.selectedValues.update(store => ({
+      ...store,
+      districts: store.districts.filter(d => validSet.has(d))
+    }));
+  }
+
+  private generateFinancialYears(count: number): { label: string; value: string }[] {
+    const today = new Date();
+    const fyStart = today.getMonth() >= 3 ? today.getFullYear() : today.getFullYear() - 1;
+
+    return Array.from({ length: count }, (_, i) => {
+      const start = fyStart - i;
+      const end = start + 1;
+      return { label: `FY ${start}-${String(end).slice(-2)}`, value: `${start}-${end}` };
     });
   }
 
-  private generateFinancialYears(numberOfYears: number): { label: string; value: string }[] {
-    const options: { label: string; value: string }[] = [];
-    const today = new Date();
-    const currentYear = today.getFullYear();
-    const currentMonth = today.getMonth();
-    let currentFinancialYearStart = currentMonth >= 3 ? currentYear : currentYear - 1;
+  async toggleAllActiveCategory(): Promise<void> {
+    const categoryId = this.selectedCategoryId() as keyof SelectedFilters;
+    const options = this.activeCategoryOptions();
 
-    for (let i = 0; i < numberOfYears; i++) {
-      const startYear = currentFinancialYearStart - i;
-      const endYear = startYear + 1;
-      const shortEndYear = String(endYear).slice(-2);
-      options.push({ label: `FY ${startYear}-${shortEndYear}`, value: `${startYear}-${endYear}` });
+    if (this.isAllActiveCategorySelected()) {
+      this.selectedValues.update(store => ({ ...store, [categoryId]: [] }));
+    } else {
+      this.selectedValues.update(store => ({
+        ...store,
+        [categoryId]: options.map(o => o.value)
+      }));
     }
 
-    return options;
+    if (categoryId === 'states') {
+      await this.handleStateSelectionChange();
+    }
   }
 
   isOptionChecked(value: string): boolean {
-    const currentId = this.selectedCategoryId() as keyof SelectedFilters;
-    return this.selectedValues()[currentId]?.includes(value) || false;
+    const categoryId = this.selectedCategoryId() as keyof SelectedFilters;
+    return this.selectedValues()[categoryId]?.includes(value) ?? false;
   }
 
   clearAll(): void {
     this.districtOptions.set([]);
-    this.selectedValues.set({ states: [], districts: [], meetingTypes: [], years: [], quarters: [], documentTypes: [] });
-    this.onFilterApply.emit(this.selectedValues());
+    this.selectedValues.set({ ...EMPTY_FILTERS });
+    this.filterApply.emit(this.selectedValues());
   }
 
   applyFilters(): void {
-    this.onFilterApply.emit(this.selectedValues());
+    this.filterApply.emit(this.selectedValues());
     this.visible.set(false);
   }
 
-  getSelectedCount(categoryId: keyof SelectedFilters): number {
-    return this.selectedValues()[categoryId]?.length || 0;
+  getSelectedCount(categoryId: string): number {
+    const vals = this.selectedValues();
+    return (vals[categoryId as keyof SelectedFilters] ?? []).length;
   }
 }

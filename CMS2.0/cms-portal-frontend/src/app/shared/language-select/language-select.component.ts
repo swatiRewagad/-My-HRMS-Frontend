@@ -1,53 +1,55 @@
 import { Component, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { SelectModule } from 'primeng/select';
 import { TranslationService } from '../../services/translation.service';
 
 @Component({
   selector: 'app-language-select',
   standalone: true,
-  imports: [CommonModule],
+  imports: [FormsModule, SelectModule],
   template: `
-    <div class="lang-wrapper">
-      <i class="pi pi-globe"></i>
-      <select class="lang-select" (change)="changeLanguage($event)" [value]="translationService.currentLocale()" aria-label="Select language">
-        @for (locale of translationService.locales(); track locale.code) {
-          <option [value]="locale.code" [selected]="locale.code === translationService.currentLocale()">
-            {{ locale.nativeName }}
-          </option>
-        }
-      </select>
-    </div>
+    <p-select
+      [options]="translationService.locales()"
+      [ngModel]="translationService.currentLocale()"
+      (ngModelChange)="translationService.setLocale($event)"
+      optionLabel="nativeName"
+      optionValue="code"
+      [fluid]="false"
+      styleClass="lang-dropdown"
+      [dt]="{
+        border: { color: 'transparent', hoverColor: 'transparent', focusColor: 'transparent', activeColor: 'transparent' },
+        shadow: 'none',
+        focusRing: { shadow: 'none' }
+      }">
+      <ng-template pTemplate="selectedItem" let-selected>
+        <div class="lang-selected">
+          <i class="pi pi-globe"></i>
+          <span>{{ selected?.nativeName }}</span>
+        </div>
+      </ng-template>
+      <ng-template pTemplate="item" let-locale>
+        <span>{{ locale.nativeName }}</span>
+      </ng-template>
+    </p-select>
   `,
   styles: [`
-    .lang-wrapper {
+    :host {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
-      padding: 4px 8px;
-      border: 1px solid #d1d5db;
-      border-radius: 6px;
-      background: #fff;
     }
-    .lang-wrapper i {
-      font-size: 14px;
-      color: #6b7280;
+    .lang-selected {
+      display: flex;
+      align-items: center;
+      gap: 0.375rem;
+      font-size: 0.8125rem;
+      color: var(--p-text-color);
     }
-    .lang-select {
-      border: none;
-      background: transparent;
-      font-size: 13px;
-      color: #374151;
-      cursor: pointer;
-      outline: none;
-      max-width: 110px;
+    .lang-selected i {
+      font-size: 0.875rem;
+      color: var(--p-text-muted-color);
     }
   `]
 })
 export class LanguageSelectComponent {
   protected translationService = inject(TranslationService);
-
-  changeLanguage(event: Event): void {
-    const select = event.target as HTMLSelectElement;
-    this.translationService.setLocale(select.value);
-  }
 }

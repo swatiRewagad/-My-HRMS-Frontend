@@ -25,7 +25,7 @@ test.describe.serial('RBIO Officer Workflow', () => {
     const complaintNumber = result.complaintNumber;
 
     try {
-      await loginAsRbioRole(page, 'RBIO_OFFICER', `/staff/rbio/task/${complaintNumber}`);
+      await loginAsRbioRole(page, 'RBIO_DO', `/rbio/${complaintNumber}`);
       await page.waitForSelector('.task-action-page', { timeout: 15000 });
 
       const statusBadge = page.locator('.status-badge');
@@ -67,7 +67,7 @@ test.describe.serial('RBIO Officer Workflow', () => {
     const complaintNumber = result.complaintNumber;
 
     try {
-      await loginAsRbioRole(page, 'RBIO_OFFICER', `/staff/rbio/task/${complaintNumber}`);
+      await loginAsRbioRole(page, 'RBIO_DO', `/rbio/${complaintNumber}`);
       await page.waitForSelector('.task-action-page', { timeout: 15000 });
 
       const resolveBtn = page.locator('button.action-btn:has-text("Resolve")');
@@ -104,7 +104,7 @@ test.describe.serial('RBIO Officer Workflow', () => {
     const complaintNumber = result.complaintNumber;
 
     try {
-      await loginAsRbioRole(page, 'RBIO_OFFICER', `/staff/rbio/task/${complaintNumber}`);
+      await loginAsRbioRole(page, 'RBIO_DO', `/rbio/${complaintNumber}`);
       await page.waitForSelector('.task-action-page', { timeout: 15000 });
 
       const rejectBtn = page.locator('button.action-btn:has-text("Reject")');
@@ -141,7 +141,7 @@ test.describe.serial('RBIO Officer Workflow', () => {
     const complaintNumber = result.complaintNumber;
 
     try {
-      await loginAsRbioRole(page, 'RBIO_OFFICER', `/staff/rbio/task/${complaintNumber}`);
+      await loginAsRbioRole(page, 'RBIO_DO', `/rbio/${complaintNumber}`);
       await page.waitForSelector('.task-action-page', { timeout: 15000 });
 
       const escalateBtn = page.locator('button.action-btn:has-text("Escalate")');
@@ -178,7 +178,7 @@ test.describe.serial('RBIO Officer Workflow', () => {
     const complaintNumber = result.complaintNumber;
 
     try {
-      await loginAsRbioRole(page, 'RBIO_OFFICER', `/staff/rbio/task/${complaintNumber}`);
+      await loginAsRbioRole(page, 'RBIO_DO', `/rbio/${complaintNumber}`);
       await page.waitForSelector('.task-action-page', { timeout: 15000 });
 
       // RBIO officer doesn't have a dedicated "Request Info" button in current UI.
@@ -213,7 +213,7 @@ test.describe.serial('RBIO Officer Workflow', () => {
     const complaintNumber = result.complaintNumber;
 
     try {
-      await loginAsRbioRole(page, 'RBIO_OFFICER', `/staff/rbio/task/${complaintNumber}`);
+      await loginAsRbioRole(page, 'RBIO_DO', `/rbio/${complaintNumber}`);
       await page.waitForSelector('.task-action-page', { timeout: 15000 });
 
       // Current UI actions for RBIO_OFFICER: Escalate, Resolve, Reject
@@ -252,7 +252,7 @@ test.describe.serial('RBIO Officer Workflow', () => {
     const complaintNumber = result.complaintNumber;
 
     try {
-      await loginAsRbioRole(page, 'RBIO_OFFICER', `/staff/rbio/task/${complaintNumber}`);
+      await loginAsRbioRole(page, 'RBIO_DO', `/rbio/${complaintNumber}`);
       await page.waitForSelector('.task-action-page', { timeout: 15000 });
 
       // The advisory panel is a separate form section in the task-action page
@@ -301,7 +301,7 @@ test.describe.serial('RBIO Officer Workflow', () => {
       await performRbioAction(request, complaintNumber, 'ACCEPT', 'rbio_officer_001', 'Accepting complaint');
       await performRbioAction(request, complaintNumber, 'ESCALATE', 'rbio_officer_001', 'Escalating to supervisor');
 
-      await loginAsRbioRole(page, 'RBIO_SUPERVISOR', `/staff/rbio/task/${complaintNumber}`);
+      await loginAsRbioRole(page, 'RBIO_REVIEWER', `/rbio/${complaintNumber}`);
       await page.waitForSelector('.task-action-page', { timeout: 15000 });
 
       // Timeline section in the task-action component

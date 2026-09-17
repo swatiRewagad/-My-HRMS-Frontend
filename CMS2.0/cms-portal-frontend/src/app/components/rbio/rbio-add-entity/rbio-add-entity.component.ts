@@ -35,7 +35,7 @@ export class RbioAddEntityComponent implements OnInit {
 
   get canAddEntity(): boolean {
     const roles = this.auth.getRoles();
-    const allowedRoles = ['RBIO_OFFICER', 'RBIO_SUPERVISOR', 'RBIO_DEPUTY_OMBUDSMAN'];
+    const allowedRoles = ['RBIO_DO', 'RBIO_REVIEWER', 'RBIO_DEPUTY_OMBUDSMAN'];
     return roles.some(r => allowedRoles.includes(r));
   }
 

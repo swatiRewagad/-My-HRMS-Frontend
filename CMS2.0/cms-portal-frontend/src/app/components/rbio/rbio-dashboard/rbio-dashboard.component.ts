@@ -4,10 +4,11 @@ import {
   OnDestroy,
   inject,
   signal,
+  computed,
   ViewChild,
   DestroyRef,
 } from "@angular/core";
-import { HttpParams } from "@angular/common/http";
+import { HttpClient, HttpParams } from "@angular/common/http";
 import { Router } from "@angular/router";
 import { of, Subject } from "rxjs";
 import { catchError, debounceTime, finalize, switchMap } from "rxjs/operators";
@@ -47,12 +48,13 @@ type FilterType = 'AdvancedSearchFilter' | 'DashboardFilter' | 'StatusCodeFilter
 export class RbioDashboardComponent implements OnInit, OnDestroy {
   @ViewChild("advSearchModal") advSearchModal!: RbioAdvancedSearchComponent;
 
+  private readonly http = inject(HttpClient);
   private readonly apiService = inject(ApiService);
   private readonly router = inject(Router);
   private readonly auth = inject(KeycloakAuthService);
   private readonly destroyRef = inject(DestroyRef);
 
-  private readonly complaintsSearchUrl = "http://localhost:8091/cms-search/api/v1/search/complaints/search";
+  private readonly complaintsSearchUrl = "/cms-search/api/v1/search/complaints/search";
 
   private readonly masterQueryStream$ = new Subject<void>();
 
@@ -94,7 +96,13 @@ export class RbioDashboardComponent implements OnInit, OnDestroy {
 
   private cachedColumnFilters: ComplaintColumnFilters | null = null;
   private cachedAdvancedSearchPayload: AdvancedSearchCriteria | null = null;
-  private cachedSelectedFilter: SelectedFilters | null = null;
+  readonly cachedSelectedFilter = signal<SelectedFilters | null>(null);
+
+  readonly activeFilterCount = computed(() => {
+    const f = this.cachedSelectedFilter();
+    if (!f) return 0;
+    return Object.values(f).reduce((sum, arr) => sum + arr.length, 0);
+  });
 
   readonly visitedIds = signal<Set<string>>(new Set());
   readonly selectedIds = signal<Set<string>>(new Set());
@@ -162,12 +170,12 @@ export class RbioDashboardComponent implements OnInit, OnDestroy {
               fromEmailId: this.cachedAdvancedSearchPayload?.fromEmailId || null
             },
             filters: {
-              states: this.cachedSelectedFilter?.states || [],
-              districts: this.cachedSelectedFilter?.districts || [],
-              years: this.cachedSelectedFilter?.years || [],
-              quarters: this.cachedSelectedFilter?.quarters || [],
-              meetingTypes: this.cachedSelectedFilter?.meetingTypes || [],
-              documentTypes: this.cachedSelectedFilter?.documentTypes || []
+              states: this.cachedSelectedFilter()?.states || [],
+              districts: this.cachedSelectedFilter()?.districts || [],
+              years: this.cachedSelectedFilter()?.years || [],
+              quarters: this.cachedSelectedFilter()?.quarters || [],
+              meetingTypes: this.cachedSelectedFilter()?.meetingTypes || [],
+              documentTypes: this.cachedSelectedFilter()?.documentTypes || []
             },
             statusCode: this.selectedStatusCode(),
             kpi_cards: this.currentKpiFilter(),
@@ -193,7 +201,7 @@ export class RbioDashboardComponent implements OnInit, OnDestroy {
 
           const unifiedRequestBodyPayload = cleanPayloadKeys(rawPayload);
 
-          return this.apiService
+          return this.http
             .post<any>(
               this.complaintsSearchUrl,
               unifiedRequestBodyPayload,
@@ -257,19 +265,20 @@ export class RbioDashboardComponent implements OnInit, OnDestroy {
 
   private clearAlternativeFilters(activeType: FilterType): void {
     if (activeType !== 'AdvancedSearchFilter') {
-      this.handleAdvancedSearchClear();
+      this.cachedAdvancedSearchPayload = null;
+      this.advSearchActive.set(false);
+      if (this.advSearchModal) {
+        this.advSearchModal.clearAllFilters();
+      }
     }
     if (activeType !== 'DashboardFilter') {
-      this.cachedSelectedFilter = null;
+      this.cachedSelectedFilter.set(null);
     }
     if (activeType !== 'StatusCodeFilter') {
       this.selectedStatusCode.set(null);
     }
   }
 
-  /**
-   * Fired from app-rbio-dashboard-header dropdown selects
-   */
   onStatusCodeChange(event: { value: any }): void {
     this.clearAlternativeFilters('StatusCodeFilter');
     this.selectedStatusCode.set(event.value);
@@ -277,18 +286,12 @@ export class RbioDashboardComponent implements OnInit, OnDestroy {
     this.triggerUnifiedSearch();
   }
 
-  /**
-   * Fired from app-rbio-dashboard-kpi selection clicks
-   */
   handleKpiFilteringChange(selectedKpiCardId: string | null): void {
     this.currentKpiFilter.set(selectedKpiCardId);
     this.currentPage.set(1);
     this.triggerUnifiedSearch();
   }
 
-  /**
-   * Fired from the rbio-advanced-search pop-up overlay modal submit
-   */
   executeAdvancedFilterLookup(
     advancedSearchPayload: AdvancedSearchCriteria,
   ): void {
@@ -299,25 +302,27 @@ export class RbioDashboardComponent implements OnInit, OnDestroy {
     this.triggerUnifiedSearch();
   }
 
-  /**
-   * Reset filter handlers safely across modules
-   */
   handleAdvancedSearchClear(): void {
     this.cachedAdvancedSearchPayload = null;
     this.advSearchActive.set(false);
-    this.currentPage.set(1);
-
     if (this.advSearchModal) {
       this.advSearchModal.clearAllFilters();
     }
-
-    this.clearAlternativeFilters('StatusCodeFilter');
+    this.currentPage.set(1);
     this.triggerUnifiedSearch();
   }
 
-  applyHeaderFilter(event: any): void {
+  applyHeaderFilter(event: SelectedFilters): void {
     this.clearAlternativeFilters('DashboardFilter');
-    this.cachedSelectedFilter = event;
+    const isEmpty = Object.values(event).every(arr => arr.length === 0);
+    this.cachedSelectedFilter.set(isEmpty ? null : event);
+    this.currentPage.set(1);
+    this.triggerUnifiedSearch();
+  }
+
+  handleFilterRemoval(updated: SelectedFilters): void {
+    const isEmpty = Object.values(updated).every(arr => arr.length === 0);
+    this.cachedSelectedFilter.set(isEmpty ? null : updated);
     this.currentPage.set(1);
     this.triggerUnifiedSearch();
   }
@@ -348,27 +353,32 @@ export class RbioDashboardComponent implements OnInit, OnDestroy {
   private loadStatusCodes(): void {
     const role = this.loggedInUser?.role || "RBIO_DO";
     this.isSearching.set(true);
-    this.apiService.get<[]>(`/role/${role}/status-codes`).subscribe({
-      next: (response) => {
-        this.statusCodes.set(
-          response.map((status) => ({
-            label: status,
-            value: status,
-          })),
-        );
-        this.isSearching.set(false);
-      },
-      error: () => {
-        this.statusCodes.set([
-          {
-            label: "Complaint Assigned To Me",
-            value: "Complaint Assigned To Me",
-          },
-          { label: "All Complaints", value: "All Complaints" },
-        ]);
-        this.isSearching.set(false);
-      },
-    });
+    this.apiService
+      .get<{ success: boolean; message: string; data: string[] }>(
+        `/departments/RBIO/role-status`,
+        { params: { role } },
+      )
+      .subscribe({
+        next: (response) => {
+          this.statusCodes.set(
+            (response.data || []).map((status) => ({
+              label: status,
+              value: status,
+            })),
+          );
+          this.isSearching.set(false);
+        },
+        error: () => {
+          this.statusCodes.set([
+            {
+              label: "Complaint Assigned To Me",
+              value: "Complaint Assigned To Me",
+            },
+            { label: "All Complaints", value: "All Complaints" },
+          ]);
+          this.isSearching.set(false);
+        },
+      });
   }
 
   private hydrateUserAndSessionState(): void {

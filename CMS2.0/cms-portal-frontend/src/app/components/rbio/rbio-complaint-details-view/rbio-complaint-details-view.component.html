@@ -1,1 +1,3534 @@
-<p>rbio-complaint-details-view works!</p>
+<div class="draft-assessment">
+  <!-- ═══ HEADER BAR ═══ -->
+  <header class="cms-header">
+    <div class="header-left">
+      <img src="assets/corporates-rbi-logo.png" alt="RBI" class="rbi-logo" />
+      <div class="rbi-text">
+        <span class="rbi-hindi">भारतीय रिज़र्व बैंक</span>
+        <span class="rbi-english">RESERVE BANK OF INDIA</span>
+      </div>
+      <div class="header-divider-v"></div>
+      <img src="assets/rbi-logo.png" alt="CMS" class="cms-logo" onerror="this.style.display='none'" />
+      <div class="header-brand">
+        <span class="cms-title">CMS</span>
+        <span class="cms-subtitle">Complaint Management System</span>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="accessibility-controls">
+        <button class="acc-btn" title="Phone"><i class="pi pi-phone"></i></button>
+        <span class="acc-divider">|</span>
+        <button class="acc-btn" title="Decrease font">A-</button>
+        <button class="acc-btn acc-btn-mid" title="Normal font">A</button>
+        <button class="acc-btn" title="Increase font">A+</button>
+        <span class="acc-divider">|</span>
+        <button class="acc-btn lang-btn" title="Language">English <i class="pi pi-chevron-down"></i></button>
+        <span class="acc-divider">|</span>
+        <button class="acc-btn" title="Notifications"><i class="pi pi-bell"></i></button>
+      </div>
+      <div class="header-divider"></div>
+      <span class="user-avatar">{{ (loggedInUserName || 'R').charAt(0) }}</span>
+      <div class="user-details">
+        <span class="user-name">{{ loggedInUserName || 'Rahul Jain' }}</span>
+        <span class="user-role">{{ userRole() === 'HEAD' ? 'CRPC Head' : 'RBIO ' + (userRole() === 'DO' ? 'Dealing Officer' : userRole() === 'REVIEWER' ? 'Reviewer' : userRole() === 'DEPUTY_OMBUDSMAN' ? 'Deputy Ombudsman' : 'Ombudsman') }}</span>
+      </div>
+      <button class="btn-logout" (click)="goBack()"><i class="pi pi-sign-out"></i></button>
+    </div>
+  </header>
+
+  @if (submitted() && justActioned() && complaintStatus() === 'SENT') {
+    <!-- ═══ SUCCESS PAGE ═══ -->
+    <div class="success-page">
+      <div class="success-icon"><i class="pi pi-check-circle"></i></div>
+      <h2>Assessment Sent for Approval</h2>
+      <p>Complaint <strong>{{ complaintId }}</strong> has been routed to
+        <strong>{{ approvalSentTo() }}</strong>
+      </p>
+      <button class="btn btn-primary" (click)="goBack()">Back to Home</button>
+    </div>
+  } @else if (submitted() && justActioned() && complaintStatus() === 'SENT_BACK') {
+    <!-- ═══ SENT BACK SUCCESS PAGE ═══ -->
+    <div class="success-page">
+      <div class="success-icon"><i class="pi pi-check-circle" style="color: #f59e0b;"></i></div>
+      <h2>Complaint Sent Back</h2>
+      <p>Complaint <strong>{{ complaintId }}</strong> has been routed to
+        <strong>{{ approvalSentTo() }}</strong>
+      </p>
+      <button class="btn btn-primary" (click)="goBack()">Back to Home</button>
+    </div>
+  } @else if (submitted() && justActioned() && complaintStatus() === 'SENT_TO_OFFICE') {
+    <!-- ═══ FORWARDED TO OFFICE SUCCESS PAGE ═══ -->
+    <div class="success-page">
+      <div class="success-icon"><i class="pi pi-check-circle"></i></div>
+      <h2>Complaint Forwarded</h2>
+      <p>Complaint <strong>{{ complaintId }}</strong> has been transferred to
+        <strong>{{ approvalSentTo() }}</strong>, pending CRPC Head approval.
+      </p>
+      <button class="btn btn-primary" (click)="goBack()">Back to Home</button>
+    </div>
+  } @else if (submitted() && justActioned() && complaintStatus() === 'CLOSED') {
+    <!-- ═══ CLOSED SUCCESS PAGE ═══ -->
+    <div class="success-page">
+      <div class="success-icon"><i class="pi pi-check-circle" style="color: #16a34a;"></i></div>
+      <h2>Complaint Closed</h2>
+      <p>Complaint <strong>{{ complaintId }}</strong> has been closed successfully.</p>
+      <button class="btn btn-primary" (click)="goBack()">Back to Home</button>
+    </div>
+  } @else if (submitted() && justActioned() && complaintStatus() === 'VIEW_ONLY') {
+    <!-- ═══ VIEW ONLY (already sent/processed) ═══ -->
+    <div class="success-page">
+      <div class="success-icon"><i class="pi pi-lock" style="color: #64748b;"></i></div>
+      <h2>Complaint Already Processed</h2>
+      <p>Complaint <strong>{{ complaintId }}</strong> has already been sent for approval and is in <strong>View Only</strong> mode.</p>
+      <button class="btn btn-primary" (click)="goBack()">Back to Home</button>
+    </div>
+  } @else if (submitted()) {
+    <!-- ═══ ASSESSMENT VIEW ═══ -->
+    <div class="assessment-container">
+      <!-- Dark Blue Vertical Sidebar Nav -->
+      <nav class="side-nav">
+        <button class="side-nav-btn active" title="Complaint view"><i class="pi pi-file"></i></button>
+        <button class="side-nav-btn" title="Dashboard" (click)="goBack()"><i class="pi pi-chart-bar"></i></button>
+        <button class="side-nav-btn" title="Expand"><i class="pi pi-arrows-alt"></i></button>
+      </nav>
+
+      <!-- Main Frame (tab bar + content) -->
+      <div class="main-frame">
+        <!-- Tab Bar -->
+        <div class="sub-header">
+          <div class="complaint-tab active">
+            <i class="pi pi-file"></i>
+            Complaint {{ complaintId }}
+          </div>
+          <div class="complaint-tab add-tab" (click)="goBack()" title="Back to RBIO">
+            <i class="pi pi-plus"></i>
+          </div>
+          <!-- <button class="sidebar-toggle-btn" (click)="toggleRightSidebar()" [title]="rightSidebarOpen() ? 'Hide sidebar' : 'Show sidebar'">
+            <i class="pi" [class.pi-chevron-right]="!rightSidebarOpen()" [class.pi-chevron-left]="rightSidebarOpen()"></i>
+          </button> -->
+        </div>
+
+        <!-- ═══ PAGE BODY ═══ -->
+        <div class="page-body-layout" [class.has-sidebar]="rightSidebarOpen()">
+
+      <!-- LEFT MAIN AREA -->
+      <div class="left-main-area" [class.view-only-locked]="isReadOnlyViewer()">
+
+        <!-- ═══ META ROW ═══ -->
+        <!-- Hidden when viewing a NO Record's own detail sub-page: that view renders its own
+             meta-row below, and showing both stacked duplicates Complaint Number/Complainant Name. -->
+        @if (!nodalDetailView()) {
+        <div class="meta-row">
+          <button class="back-arrow" (click)="goBack()"><i class="pi pi-arrow-left"></i></button>
+          <div class="meta-item">
+            <span class="meta-icon complaint-number"><i class="pi pi-id-card"></i></span>
+            <div class="meta-text">
+              <span class="meta-label">Complaint Number <i class="pi pi-info-circle"></i></span>
+              <span class="meta-value">N{{ complaintId }}</span>
+            </div>
+          </div>
+          <div class="meta-item">
+            <span class="meta-icon complainant-name"><i class="pi pi-user"></i></span>
+            <div class="meta-text">
+              <span class="meta-label">Complainant Name <i class="pi pi-info-circle"></i></span>
+              <span class="meta-value">{{ complainantName || 'Not Assigned' }}</span>
+            </div>
+          </div>
+          <div class="meta-item">
+            <span class="meta-icon entity-name"><i class="pi pi-building"></i></span>
+            <div class="meta-text">
+              <span class="meta-label">Entity Name <i class="pi pi-info-circle"></i></span>
+              <span class="meta-value">{{ entityName || 'Not Assigned' }}</span>
+            </div>
+          </div>
+          <div class="meta-item">
+            <span class="meta-icon status-icon"><i class="pi pi-chart-bar"></i></span>
+            <div class="meta-text">
+              <span class="meta-label">Status <i class="pi pi-info-circle"></i></span>
+              <span class="meta-value"><span class="status-pill"  [attr.data-status]="complaintStatusNav" [ngClass]="getStatusClass()">{{complaintStatusNav}}</span></span>
+            </div>
+          </div>
+          <div class="meta-item">
+            <span class="meta-icon category-icon"><i class="pi pi-tag"></i></span>
+            <div class="meta-text">
+              <span class="meta-label">Complaint Category <i class="pi pi-info-circle"></i></span>
+              <span class="meta-value">{{ category || 'General Banking' }}</span>
+            </div>
+          </div>
+          <div class="meta-item">
+            <span class="meta-icon sla-icon"><i class="pi pi-clock"></i></span>
+            <div class="meta-text">
+              <span class="meta-label">SLA Breach In <i class="pi pi-info-circle"></i></span>
+              <span class="meta-value"><span class="sla-badge" [class.breach]="slaDaysRemaining() <= 5">{{ sla }} </span></span>
+            </div>
+          </div>
+          <div class="meta-actions">
+            @if (userRole() === 'HEAD') {
+              @if (complaintStatus() === 'PENDING_OFFICE_HEAD_APPROVAL') {
+                <button class="btn btn-outline btn-sm" (click)="openOfficeHeadDialog('REJECT')">Reject</button>
+                <button class="btn btn-confirm" (click)="openOfficeHeadDialog('APPROVE')">Approve</button>
+              } @else {
+                <span class="readonly-badge"><i class="pi pi-lock"></i> View Only</span>
+              }
+            } @else if (isReadOnlyViewer()) {
+              <span class="readonly-badge"><i class="pi pi-eye"></i> View Only</span>
+            } @else if (complaintStatus() !== 'VIEW_ONLY' && complaintStatus() !== 'SENT_BACK' && complaintStatus() !== 'SENT' && complaintStatus() !== 'CLOSED' && assessmentTab() !== 'final-decision' && assessmentTab() !== 'forward' && assessmentTab() !== 'nodal-officer') {
+              @if (userRole() !== 'DO') {
+                <div class="send-back-wrapper">
+                  <button class="btn btn-send-back" (click)="toggleSendBackMenu($event)">
+                    Send Back <i class="pi pi-chevron-down"></i>
+                  </button>
+                  @if (showSendBackMenu()) {
+                    <div class="approval-dropdown" [style.top.px]="sendBackMenuPos().top" [style.left.px]="sendBackMenuPos().left">
+                      <button (click)="openSendBack('DEALING_OFFICER')">to RBIO <strong>Dealing Officer</strong></button>
+                      @if (userRole() === 'DEPUTY_OMBUDSMAN' || userRole() === 'OMBUDSMAN') {
+                        <button (click)="openSendBack('REVIEWER')">to RBIO <strong>Reviewer</strong></button>
+                      }
+                    </div>
+                  }
+                </div>
+              }
+              <div class="send-approval-wrapper">
+                <!-- <button class="btn btn-send-approval" (click)="toggleApprovalMenu($event)">
+                  Send for Approval <i class="pi pi-chevron-down"></i>
+                </button> -->
+                @if (complaintStatus() === 'NEW_COMPLAINT') {
+                  <button class="btn btn-send-approval" (click)="toggleApprovalMenu($event)">
+                    Send for Approval <i class="pi pi-chevron-down"></i>
+                  </button>
+                }
+                @if (showApprovalMenu()) {
+                  <div class="approval-dropdown" [style.top.px]="approvalMenuPos().top" [style.left.px]="approvalMenuPos().left">
+                    @if (userRole() === 'DO') {
+                      <button (click)="sendForApproval('REVIEWER')">Send to RBIO <strong>Reviewer</strong></button>
+                      <button (click)="sendForApproval('DEPUTY_OMBUDSMAN')">Send to RBIO <strong>Deputy Ombudsman</strong></button>
+                      <button (click)="sendForApproval('OMBUDSMAN')">Send to RBIO <strong>Ombudsman</strong></button>
+                    } @else if (userRole() === 'REVIEWER') {
+                      <button (click)="sendForApproval('DEPUTY_OMBUDSMAN')">to RBIO <strong>Deputy Ombudsman</strong></button>
+                      <button (click)="sendForApproval('OMBUDSMAN')">to RBIO <strong>Ombudsman</strong></button>
+                    } @else if (userRole() === 'DEPUTY_OMBUDSMAN') {
+                      <button (click)="sendForApproval('OMBUDSMAN')">to RBIO <strong>Ombudsman</strong></button>
+                    }
+                  </div>
+                }
+              </div>
+            } @else if (complaintStatus() === 'SENT_BACK') {
+              <span class="readonly-badge sent-back-badge"><i class="pi pi-arrow-left"></i> Sent Back</span>
+            } @else if (complaintStatus() === 'SENT') {
+              <span class="readonly-badge sent-badge"><i class="pi pi-check"></i> Sent for Approval</span>
+            } @else if (assessmentTab() !== 'final-decision' && assessmentTab() !== 'forward' && assessmentTab() !== 'nodal-officer') {
+              <span class="readonly-badge"><i class="pi pi-lock"></i> View Only</span>
+            }
+            @if (!isReadOnlyViewer() && userRole() !== 'HEAD') {
+              @if (assessmentTab() === 'final-decision') {
+                <button class="btn btn-confirm" [disabled]="!finalDecisionAction" (click)="showFinalDecisionPreview.set(true)">
+                  Confirm
+                </button>
+              } @else if (assessmentTab() === 'forward') {
+                <button class="btn btn-forward" (click)="openForwardConfirm()">Forward</button>
+              } @else if (assessmentTab() === 'nodal-officer' && !nodalDetailView()) {
+                <button class="btn btn-primary" (click)="addNodalRecord()"><i class="pi pi-plus"></i> Add NO Record</button>
+              } @else if (assessmentTab() === 'email') {
+                @if (emailComposeMode()) {
+                  <button class="btn btn-outline btn-sm" (click)="saveEmailDraft()"><i class="pi pi-save"></i> Save Draft</button>
+                  <button class="btn btn-primary btn-sm" (click)="sendEmail()"><i class="pi pi-send"></i> Send Email</button>
+                } @else {
+                  <button class="btn btn-primary btn-sm" (click)="createNewEmail()"><i class="pi pi-plus"></i> Create New Email</button>
+                }
+              } @else {
+                <button class="btn btn-icon" title="Save"><i class="pi pi-save"></i></button>
+              }
+            }
+            <button class="btn-more" title="More options"><i class="pi pi-ellipsis-v"></i></button>
+          </div>
+        </div>
+
+        <!-- Assessment Tabs -->
+        <div class="page-tabs">
+          <button class="page-tab" [class.active]="assessmentTab() === 'summary'" (click)="assessmentTab.set('summary')">Summary</button>
+          @if (userRole() !== 'HEAD') {
+            <button class="page-tab" [class.active]="assessmentTab() === 'conciliation'" [class.disabled]="!conciliationEnabled() || userRole() === 'REVIEWER' || userRole() === 'DEPUTY_OMBUDSMAN'" [disabled]="!conciliationEnabled() || userRole() === 'REVIEWER' || userRole() === 'DEPUTY_OMBUDSMAN'" (click)="assessmentTab.set('conciliation')">Conciliation</button>
+            <button class="page-tab" [class.active]="assessmentTab() === 'forward'" [class.disabled]="userRole() === 'REVIEWER'" [disabled]="userRole() === 'REVIEWER'" (click)="assessmentTab.set('forward')">Forward</button>
+            <button class="page-tab" [class.active]="assessmentTab() === 'final-decision'" (click)="assessmentTab.set('final-decision')">Final Decision</button>
+            <button class="page-tab" [class.active]="assessmentTab() === 'nodal-officer'" [class.disabled]="userRole() === 'REVIEWER' || userRole() === 'DEPUTY_OMBUDSMAN'" [disabled]="userRole() === 'REVIEWER' || userRole() === 'DEPUTY_OMBUDSMAN'" (click)="assessmentTab.set('nodal-officer')">Nodal Officer Record</button>
+          }
+          <button class="page-tab" [class.active]="assessmentTab() === 'email'" [class.disabled]="userRole() === 'REVIEWER' || userRole() === 'DEPUTY_OMBUDSMAN'" [disabled]="userRole() === 'REVIEWER' || userRole() === 'DEPUTY_OMBUDSMAN'" (click)="assessmentTab.set('email')">Email Communication</button>
+        </div>
+        }
+
+    <!-- CONTENT -->
+    @if (assessmentTab() === 'nodal-officer') {
+      <!-- ═══ NODAL OFFICER RECORD TAB ═══ -->
+      @if (nodalDetailView()) {
+        <!-- NODAL OFFICER RECORD DETAIL VIEW -->
+        <div class="nodal-detail-view">
+          <div class="meta-row">
+            <button class="back-arrow" (click)="closeNodalDetail()"><i class="pi pi-arrow-left"></i></button>
+            <div class="meta-item">
+              <span class="meta-icon blue"><i class="pi pi-file"></i></span>
+              <div class="meta-text">
+                <span class="meta-label">NO Record Number</span>
+                <span class="meta-value">{{ selectedNodalRecord()?.recordNumber }}</span>
+              </div>
+            </div>
+            <div class="meta-item">
+              <span class="meta-icon blue"><i class="pi pi-file"></i></span>
+              <div class="meta-text">
+                <span class="meta-label">Complaint Number</span>
+                <span class="meta-value link" (click)="closeNodalDetail()" title="Back to complaint">{{ selectedNodalRecord()?.complaintNumber }} <i class="pi pi-external-link" style="font-size: 10px;"></i></span>
+              </div>
+            </div>
+            <div class="meta-item">
+              <span class="meta-icon blue"><i class="pi pi-calendar"></i></span>
+              <div class="meta-text">
+                <span class="meta-label">Bank Complaint Receipt Date</span>
+                <span class="meta-value">{{ selectedNodalRecord()?.receiptDate }}</span>
+              </div>
+            </div>
+            <div class="meta-item">
+              <span class="meta-icon blue"><i class="pi pi-user"></i></span>
+              <div class="meta-text">
+                <span class="meta-label">Complainant Name</span>
+                <span class="meta-value">{{ selectedNodalRecord()?.complainant }}</span>
+              </div>
+            </div>
+            <div class="meta-item">
+              <span class="meta-icon blue"><i class="pi pi-chart-bar"></i></span>
+              <div class="meta-text">
+                <span class="meta-label">Status</span>
+                <span class="meta-value"><span class="status-pill info-required">{{ selectedNodalRecord()?.statusLabel }}</span></span>
+              </div>
+            </div>
+            <div class="meta-item">
+              <span class="meta-icon blue"><i class="pi pi-clock"></i></span>
+              <div class="meta-text">
+                <span class="meta-label">SLA Breach In</span>
+                <span class="meta-value"><span class="sla-badge" [class.breach]="selectedNodalRecord()?.slaDays > 30">{{ selectedNodalRecord()?.slaDays }} days</span></span>
+              </div>
+            </div>
+            <div class="meta-actions">
+              <button class="btn btn-primary" (click)="sendToRE()"><i class="pi pi-send"></i> Send to RE</button>
+              <button class="btn btn-icon" title="Save"><i class="pi pi-save"></i></button>
+              <button class="btn-more" title="More options"><i class="pi pi-ellipsis-v"></i></button>
+            </div>
+          </div>
+
+          <!-- Detail Tabs -->
+          <div class="summary-tabs">
+            <button class="summary-tab active">Summary</button>
+            <button class="summary-tab">Conciliation</button>
+            <button class="summary-tab">Email Communication</button>
+          </div>
+
+          <!-- Detail Content: Two Panels -->
+          <div class="content-box">
+            <div class="main-content-layout two-col">
+              <!-- LEFT: Key Information -->
+              <div class="col-email-syndicate">
+                <div class="panel-header">
+                  <h3><i class="pi pi-th-large"></i> Key Information</h3>
+                  <!-- <button class="expand-btn"><i class="pi pi-window-maximize"></i></button> -->
+                </div>
+                <div class="form-scroll">
+                  <section class="form-section">
+                    <h5 class="section-title expanded">
+                      <i class="pi pi-list"></i> Summary
+                    </h5>
+                    <div class="summary-fields">
+                      <div class="summary-row">
+                        <div class="summary-field"><span class="summary-label">Complainant Name</span><span class="summary-value">{{ selectedNodalRecord()?.complainant }}</span></div>
+                        <div class="summary-field"><span class="summary-label">Mobile</span><span class="summary-value">{{ selectedNodalRecord()?.mobile }}</span></div>
+                      </div>
+                      <div class="summary-row">
+                        <div class="summary-field"><span class="summary-label">Email</span><span class="summary-value">{{ selectedNodalRecord()?.email }}</span></div>
+                        <div class="summary-field"><span class="summary-label">Subject</span><span class="summary-value">{{ selectedNodalRecord()?.subject }}</span></div>
+                      </div>
+                      <div class="summary-row">
+                        <div class="summary-field"><span class="summary-label">Date of Receipt</span><span class="summary-value">{{ selectedNodalRecord()?.receiptDate }}</span></div>
+                        <div class="summary-field"><span class="summary-label">Module Name</span><span class="summary-value">{{ selectedNodalRecord()?.moduleName }}</span></div>
+                      </div>
+                      <div class="summary-row">
+                        <div class="summary-field"><span class="summary-label">Assigned To</span><span class="summary-value">{{ selectedNodalRecord()?.assignedTo }}</span></div>
+                        <div class="summary-field"><span class="summary-label">Bank Category</span><span class="summary-value">{{ selectedNodalRecord()?.bankCategory }}</span></div>
+                      </div>
+                      <div class="summary-row">
+                        <div class="summary-field"><span class="summary-label">Bank Name</span><span class="summary-value">{{ selectedNodalRecord()?.bankName }}</span></div>
+                        <div class="summary-field"><span class="summary-label">Bank Branch Category</span><span class="summary-value">{{ selectedNodalRecord()?.branchCategory }}</span></div>
+                      </div>
+                      <div class="summary-row">
+                        <div class="summary-field"><span class="summary-label">Bank Branch Name</span><span class="summary-value">{{ selectedNodalRecord()?.branchName }}</span></div>
+                        <div class="summary-field"><span class="summary-label">Pincode</span><span class="summary-value">{{ selectedNodalRecord()?.pincode }}</span></div>
+                      </div>
+                      <div class="summary-row">
+                        <div class="summary-field"><span class="summary-label">City</span><span class="summary-value">{{ selectedNodalRecord()?.city }}</span></div>
+                        <div class="summary-field"><span class="summary-label">District</span><span class="summary-value">{{ selectedNodalRecord()?.district }}</span></div>
+                      </div>
+                      <div class="summary-row">
+                        <div class="summary-field"><span class="summary-label">State</span><span class="summary-value">{{ selectedNodalRecord()?.state }}</span></div>
+                        <div class="summary-field"><span class="summary-label">Country</span><span class="summary-value">{{ selectedNodalRecord()?.country }}</span></div>
+                      </div>
+                      <div class="summary-row">
+                        <div class="summary-field"><span class="summary-label">NO Name</span><span class="summary-value">{{ selectedNodalRecord()?.noName }}</span></div>
+                        <div class="summary-field"><span class="summary-label">NO Mobile</span><span class="summary-value">{{ selectedNodalRecord()?.noMobile }}</span></div>
+                      </div>
+                      <div class="summary-row">
+                        <div class="summary-field"><span class="summary-label">NO Email</span><span class="summary-value">{{ selectedNodalRecord()?.noEmail }}</span></div>
+                        <div class="summary-field"><span class="summary-label">PNO Name</span><span class="summary-value">{{ selectedNodalRecord()?.pnoName }}</span></div>
+                      </div>
+                      <div class="summary-row">
+                        <div class="summary-field"><span class="summary-label">PNO Mobile</span><span class="summary-value">{{ selectedNodalRecord()?.pnoMobile }}</span></div>
+                        <div class="summary-field"><span class="summary-label">PNO Email</span><span class="summary-value">{{ selectedNodalRecord()?.pnoEmail }}</span></div>
+                      </div>
+                      <div class="summary-row">
+                        <div class="summary-field"><span class="summary-label">ATM Complaint</span><span class="summary-value">{{ selectedNodalRecord()?.atmComplaint }}</span></div>
+                        <div class="summary-field"><span class="summary-label">Designated Office</span><span class="summary-value">{{ selectedNodalRecord()?.designatedOffice }}</span></div>
+                      </div>
+                      <div class="summary-row">
+                        <div class="summary-field"><span class="summary-label">Processing Office</span><span class="summary-value">{{ selectedNodalRecord()?.processingOffice }}</span></div>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+              </div>
+
+              <!-- RIGHT: Assessment Panel -->
+              <div class="col-complaint-form assessment-panel">
+                <div class="panel-header">
+                  <h3><i class="pi pi-clipboard"></i> Assessment</h3>
+                  <!-- <button class="expand-btn"><i class="pi pi-window-maximize"></i></button> -->
+                </div>
+                <div class="form-scroll assessment-scroll">
+                  <!-- Status Code -->
+                  <div class="nodal-status-codes">
+                    <h4 class="comments-title">Status Code</h4>
+                    <div class="status-radio-group">
+                      <label class="radio-option" [class.active]="nodalStatusCode === 'INFORMATION_REQUIRED'">
+                        <input type="radio" name="nodalStatus" value="INFORMATION_REQUIRED" [(ngModel)]="nodalStatusCode" />
+                        <span>Information Required</span>
+                      </label>
+                      <label class="radio-option" [class.active]="nodalStatusCode === 'ADVISORY_ISSUED'">
+                        <input type="radio" name="nodalStatus" value="ADVISORY_ISSUED" [(ngModel)]="nodalStatusCode" />
+                        <span>Advisory Issued</span>
+                      </label>
+                      <label class="radio-option" [class.active]="nodalStatusCode === 'AWARD_PASS'">
+                        <input type="radio" name="nodalStatus" value="AWARD_PASS" [(ngModel)]="nodalStatusCode" />
+                        <span>Award Pass</span>
+                      </label>
+                      <label class="radio-option" [class.active]="nodalStatusCode === '13_1_NOTICE'">
+                        <input type="radio" name="nodalStatus" value="13_1_NOTICE" [(ngModel)]="nodalStatusCode" />
+                        <span>13:1 Notice Issued</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  <!-- Award Passed fields -->
+                  @if (nodalStatusCode === 'AWARD_PASS') {
+                    <div class="advisory-fields">
+                      <div class="form-row-2col">
+                        <div class="form-group">
+                          <label>Date of Implementation of Award by the Bank</label>
+                          <input type="date" [(ngModel)]="nodalAwardImplementationDate" />
+                        </div>
+                        <div class="form-group">
+                          <label>Date of Acceptance of Award by the Complainant</label>
+                          <input type="date" [(ngModel)]="nodalAwardAcceptanceDate" />
+                        </div>
+                      </div>
+                    </div>
+                  }
+
+                  <!-- Advisory Issued fields: editable while in that stage, become a read-only -->
+                  <!-- record of what was captured once the record moves on to Award Passed. -->
+                  @if (nodalStatusCode === 'ADVISORY_ISSUED') {
+                    <div class="advisory-fields">
+                      <div class="form-row-2col">
+                        <div class="form-group">
+                          <label>Date by Which Advisory to be Complied</label>
+                          <input type="date" [(ngModel)]="nodalAdvisoryDate" />
+                        </div>
+                        <div class="form-group">
+                          <label>Dispute Amount Involved</label>
+                          <div class="amount-input-wrapper">
+                            <span class="currency-prefix">₹</span>
+                            <input type="number" [(ngModel)]="nodalDisputeAmount" placeholder="0" />
+                          </div>
+                          @if (nodalDisputeAmount) {
+                            <span class="amount-words">{{ amountToWords(nodalDisputeAmount) }}</span>
+                          }
+                        </div>
+                      </div>
+                      <div class="form-row-2col">
+                        <div class="form-group">
+                          <label>Compensation Due to Loss</label>
+                          <div class="amount-input-wrapper">
+                            <span class="currency-prefix">₹</span>
+                            <input type="number" [(ngModel)]="nodalCompensationLoss" placeholder="0" />
+                          </div>
+                          @if (nodalCompensationLoss) {
+                            <span class="amount-words">{{ amountToWords(nodalCompensationLoss) }}</span>
+                          }
+                        </div>
+                        <div class="form-group">
+                          <label>Compensation Due to Mental Harassment</label>
+                          <div class="amount-input-wrapper">
+                            <span class="currency-prefix">₹</span>
+                            <input type="number" [(ngModel)]="nodalCompensationMental" placeholder="0" />
+                          </div>
+                          @if (nodalCompensationMental) {
+                            <span class="amount-words">{{ amountToWords(nodalCompensationMental) }}</span>
+                          }
+                        </div>
+                      </div>
+                    </div>
+                  } @else if (nodalStatusCode === 'AWARD_PASS') {
+                    <div class="advisory-fields">
+                      <div class="form-row-2col">
+                        <div class="form-group">
+                          <label>Date by Which Advisory to be Complied</label>
+                          <div class="static-value">{{ nodalAdvisoryDate || '—' }}</div>
+                        </div>
+                        <div class="form-group">
+                          <label>Dispute Amount Involved</label>
+                          <div class="static-value">₹ {{ nodalDisputeAmount || 0 }}</div>
+                          @if (nodalDisputeAmount) {
+                            <span class="amount-words">{{ amountToWords(nodalDisputeAmount) }}</span>
+                          }
+                        </div>
+                      </div>
+                      <div class="form-row-2col">
+                        <div class="form-group">
+                          <label>Compensation Due to Loss</label>
+                          <div class="static-value">₹ {{ nodalCompensationLoss || 0 }}</div>
+                          @if (nodalCompensationLoss) {
+                            <span class="amount-words">{{ amountToWords(nodalCompensationLoss) }}</span>
+                          }
+                        </div>
+                        <div class="form-group">
+                          <label>Compensation Due to Mental Harassment</label>
+                          <div class="static-value">₹ {{ nodalCompensationMental || 0 }}</div>
+                          @if (nodalCompensationMental) {
+                            <span class="amount-words">{{ amountToWords(nodalCompensationMental) }}</span>
+                          }
+                        </div>
+                      </div>
+                    </div>
+                  }
+
+                  <!-- 13-1 Notice fields -->
+                  @if (nodalStatusCode === '13_1_NOTICE') {
+                    <div class="advisory-fields notice-131">
+                      <h4 class="notice-131-title">13-1 Notice</h4>
+                      <p class="notice-131-text">As per Clause 13(1), in the event of failure of a Regulated Entity to comply with the requisition without sufficient cause, the Ombudsman may draw an inference that the Regulated Entity has no information to furnish.</p>
+                      <div class="form-group">
+                        <label>Date by Which Nodal Officer Should Comply</label>
+                        <div class="static-value">{{ nodal131ComplyDate }}</div>
+                      </div>
+                    </div>
+                  }
+
+                  <!-- Comments -->
+                  <div class="assessment-comments">
+                    <h4 class="comments-title">Comments</h4>
+                    @for (comment of nodalComments(); track comment.id) {
+                      <div class="comment-card">
+                        <div class="comment-header">
+                          <span class="comment-avatar" [style.background]="comment.color">{{ comment.initials }}</span>
+                          <span class="comment-author">{{ comment.author }}</span>
+                          <span class="comment-timestamp">{{ nodalCommentTimeAgo(comment.createdAt) }}</span>
+                          <span class="comment-target-badge" [class.no-badge]="comment.target === 'NO'" [class.pno-badge]="comment.target === 'PNO'">Comment to {{ comment.target }}</span>
+                        </div>
+                        <p class="comment-body">{{ comment.text }}</p>
+                      </div>
+                    } @empty {
+                      <p class="no-comments-text">No comments yet.</p>
+                    }
+                  </div>
+
+                  <!-- Add Comment to NO -->
+                  <div class="add-comment-section">
+                    <div class="comment-label-row">
+                      <label class="comment-label">Comment to NO</label>
+                      <button class="bookmark-btn" title="Bookmark"><i class="pi pi-bookmark"></i></button>
+                    </div>
+                    <div class="textarea-with-speech">
+                      <textarea [(ngModel)]="nodalCommentToNO" rows="3" placeholder="Post your comment here"></textarea>
+                      <app-speech-button (transcription)="nodalCommentToNO = nodalCommentToNO + ' ' + $event"></app-speech-button>
+                    </div>
+                    <button class="btn-add-comment" [disabled]="!nodalCommentToNO.trim() || nodalCommentsSubmitting" (click)="postNodalComment('NO')"><i class="pi pi-send"></i> Post</button>
+                  </div>
+
+                  <!-- Add Comment to PNO -->
+                  <div class="add-comment-section">
+                    <div class="comment-label-row">
+                      <label class="comment-label">Comment to PNO</label>
+                      <button class="bookmark-btn" title="Bookmark"><i class="pi pi-bookmark"></i></button>
+                    </div>
+                    <div class="textarea-with-speech">
+                      <textarea [(ngModel)]="nodalCommentToPNO" rows="3" placeholder="Post your comment here"></textarea>
+                      <app-speech-button (transcription)="nodalCommentToPNO = nodalCommentToPNO + ' ' + $event"></app-speech-button>
+                    </div>
+                    <button class="btn-add-comment" [disabled]="!nodalCommentToPNO.trim() || nodalCommentsSubmitting" (click)="postNodalComment('PNO')"><i class="pi pi-send"></i> Post</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      } @else {
+        <!-- NODAL OFFICER RECORD TABLE VIEW -->
+        <div class="content-box nodal-officer-content">
+          <div class="data-table-wrapper">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th class="col-checkbox"><input type="checkbox" /></th>
+                  <th class="col-sortable">Record Number <i class="pi pi-sort-alt"></i></th>
+                  <th class="col-sortable">Subject <i class="pi pi-sort-alt"></i></th>
+                  <th class="col-sortable">Bank Name <i class="pi pi-sort-alt"></i></th>
+                  <th class="col-sortable">SLA Breach In <i class="pi pi-sort-alt"></i></th>
+                  <th class="col-sortable">Assigned To <i class="pi pi-sort-alt"></i></th>
+                  <th class="col-sortable">Status <i class="pi pi-sort-alt"></i></th>
+                </tr>
+                <tr class="filter-row">
+                  <td></td>
+                  <td><input type="text" placeholder="Search" [(ngModel)]="nodalFilterRecordNumber" /></td>
+                  <td><input type="text" placeholder="Search" [(ngModel)]="nodalFilterSubject" /></td>
+                  <td><input type="text" placeholder="Search" [(ngModel)]="nodalFilterBank" /></td>
+                  <td><input type="text" placeholder="Search" [(ngModel)]="nodalFilterSla" /></td>
+                  <td><input type="text" placeholder="Search" [(ngModel)]="nodalFilterAssigned" /></td>
+                  <td><input type="text" placeholder="Search" [(ngModel)]="nodalFilterStatus" /></td>
+                </tr>
+              </thead>
+              <tbody>
+                @for (record of nodalRecords(); track record.id) {
+                  <tr class="clickable-row" (click)="openNodalDetail(record)">
+                    <td><input type="checkbox" (click)="$event.stopPropagation()" /></td>
+                    <td>{{ record.recordNumber }}</td>
+                    <td class="cell-subject">{{ record.subject }}</td>
+                    <td>{{ record.bankName }}</td>
+                    <td><span class="sla-badge" [class.breach]="record.slaDays > 30">{{ record.slaDays }} Days</span></td>
+                    <td>{{ record.assignedTo }}</td>
+                    <td><span class="status-pill" [class.info-required]="record.status === 'INFORMATION_REQUIRED'" [class.pending]="record.status === 'PENDING'">{{ record.statusLabel }}</span></td>
+                  </tr>
+                } @empty {
+                  <tr><td colspan="7" class="empty-row">No Nodal Officer records found</td></tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      }
+    } @else if (assessmentTab() === 'forward') {
+
+    <!-- ═══ FORWARD TAB ═══ -->
+    <div class="content-box">
+      <div class="main-content-layout two-col">
+        <!-- LEFT: Read-only Complaint Summary -->
+        <div class="col-email-syndicate">
+          <div class="panel-header">
+            <h3><i class="pi pi-th-large"></i> Complaint</h3>
+            <!-- <button class="expand-btn"><i class="pi pi-window-maximize"></i></button> -->
+          </div>
+          <div class="form-scroll">
+            <section class="form-section">
+              <h5 class="section-title expanded" [class.expanded]="summarySections.basic" (click)="summarySections.basic = !summarySections.basic">
+                <i class="pi pi-chart-bar"></i> Basic Details
+                <i class="pi section-chevron" [class.pi-chevron-up]="summarySections.basic" [class.pi-chevron-down]="!summarySections.basic"></i>
+              </h5>
+              @if (summarySections.basic) {
+                <div class="summary-fields">
+                  <div class="summary-row">
+                    <div class="summary-field">
+                      <span class="summary-label">Complainant Name</span>
+                      <span class="summary-value">{{ complainantName || '—' }}</span>
+                    </div>
+                    <div class="summary-field">
+                      <span class="summary-label">Email ID</span>
+                      <span class="summary-value">{{ complainantEmail || '—' }}</span>
+                    </div>
+                  </div>
+                  <div class="summary-field full">
+                    <span class="summary-label">Subject</span>
+                    <span class="summary-value">{{ subject || '—' }}</span>
+                  </div>
+                  <div class="summary-field full">
+                    <span class="summary-label">Complaint Details</span>
+                    <span class="summary-value">{{ description || '—' }}</span>
+                  </div>
+                  <div class="summary-field full">
+                    <span class="summary-label">Comments</span>
+                    <span class="summary-value">{{ comments || '—' }}</span>
+                  </div>
+                  <div class="summary-row">
+                    <div class="summary-field">
+                      <span class="summary-label">Mode of Receipt</span>
+                      <span class="summary-value">{{ modeOfReceipt || '—' }}</span>
+                    </div>
+                    <div class="summary-field">
+                      <span class="summary-label">Receipt Date</span>
+                      <span class="summary-value">{{ receivedDate || '—' }}</span>
+                    </div>
+                  </div>
+                  <div class="summary-field full cpgram-checkbox-row">
+                    <label class="cpgram-checkbox-label">
+                      <input type="checkbox" [checked]="isCpgram" disabled />
+                      <span>Is Complaint CPGRAM</span>
+                    </label>
+                  </div>
+                  @if (isCpgram) {
+                    <div class="summary-field full">
+                      <span class="summary-label">CPGRAM Number</span>
+                      <span class="summary-value cpgram-number">{{ cpgramsNumber || '—' }}</span>
+                    </div>
+                  }
+                </div>
+              }
+            </section>
+
+            <section class="form-section eligibility-section">
+              <h5 class="section-title expanded" [class.expanded]="summarySections.eligibility" (click)="summarySections.eligibility = !summarySections.eligibility">
+                <i class="pi pi-chart-bar"></i> Eligibility
+                <i class="pi section-chevron" [class.pi-chevron-up]="summarySections.eligibility" [class.pi-chevron-down]="!summarySections.eligibility"></i>
+              </h5>
+              @if (summarySections.eligibility) {
+                <div class="summary-fields">
+                  <div class="summary-row">
+                    <div class="summary-field">
+                      <span class="summary-label">Proposed Complaint Type</span>
+                      <span class="summary-value">{{ complaintStatusNav || '—' }}</span>
+                    </div>
+                    <div class="summary-field">
+                      <span class="summary-label">Entity Name</span>
+                      <span class="summary-value">{{ eligibilityEntityName || '—' }}</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="eligibility-questions readonly">
+                  @for (q of eligibilityQuestions; track q.key) {
+                    <div class="eligibility-row" [class.date-row]="q.type === 'date'">
+                      <span class="eligibility-question">{{ q.label }}</span>
+                      @if (q.type === 'radio') {
+                        <div class="eligibility-options">
+                          <label class="radio-option">
+                            <input type="radio" [name]="'fwd_' + q.key" [value]="true" [(ngModel)]="q.answer" disabled />
+                            <span>Yes</span>
+                          </label>
+                          <label class="radio-option">
+                            <input type="radio" [name]="'fwd_' + q.key" [value]="false" [(ngModel)]="q.answer" disabled />
+                            <span>No</span>
+                          </label>
+                        </div>
+                      } @else if (q.type === 'date') {
+                        <div class="eligibility-date-input">
+                          <input type="date" [name]="'fwd_' + q.key" [(ngModel)]="q.dateValue" disabled />
+                          <i class="pi pi-calendar date-icon"></i>
+                        </div>
+                      }
+                    </div>
+                  }
+                </div>
+              }
+            </section>
+          </div>
+        </div>
+
+        <!-- RIGHT: Forward Panel -->
+        <div class="col-complaint-form forward-panel">
+          <div class="panel-header">
+            <h3><i class="pi pi-arrow-up-right"></i> Forward</h3>
+            <!-- <button class="expand-btn"><i class="pi pi-window-maximize"></i></button> -->
+          </div>
+
+          <div class="form-scroll">
+            <label class="forward-to-label">Forward To</label>
+            <div class="forward-target-cards">
+              <div class="forward-target-card" [class.selected]="forwardTarget() === 'REGULATORY_BODIES'" (click)="selectForwardTarget('REGULATORY_BODIES')">
+                <span class="radio-dot" [class.checked]="forwardTarget() === 'REGULATORY_BODIES'"></span>
+                Other Regulatory Bodies
+              </div>
+              <div class="forward-target-card" [class.selected]="forwardTarget() === 'RBI_DEPARTMENT'" (click)="selectForwardTarget('RBI_DEPARTMENT')">
+                <span class="radio-dot" [class.checked]="forwardTarget() === 'RBI_DEPARTMENT'"></span>
+                Other RBI Department
+              </div>
+              <div class="forward-target-card" [class.selected]="forwardTarget() === 'OFFICE'" (click)="selectForwardTarget('OFFICE')">
+                <span class="radio-dot" [class.checked]="forwardTarget() === 'OFFICE'"></span>
+                Other Office
+              </div>
+            </div>
+
+            @if (forwardTarget() === 'REGULATORY_BODIES') {
+              <div class="form-row-2col">
+                <div class="form-group">
+                  <label>Name of Regulator</label>
+                  <div class="deo-select-wrapper">
+                    <input type="text" [(ngModel)]="forwardRegulatorName" placeholder="Search" autocomplete="off" />
+                    <i class="pi pi-search"></i>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label>Email id of the Regulator</label>
+                  <input type="text" [(ngModel)]="forwardRegulatorEmail" placeholder="Enter a value" />
+                </div>
+              </div>
+            } @else if (forwardTarget() === 'RBI_DEPARTMENT') {
+              <div class="form-row-2col">
+                <div class="form-group">
+                  <label>Name of Department</label>
+                  <div class="deo-select-wrapper">
+                    <input type="text" [(ngModel)]="forwardDepartmentName" placeholder="Search" autocomplete="off" />
+                    <i class="pi pi-search"></i>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label>Email id of the Department</label>
+                  <input type="text" [(ngModel)]="forwardDepartmentEmail" placeholder="Enter a value" />
+                </div>
+              </div>
+            } @else if (forwardTarget() === 'OFFICE') {
+              <div class="form-row-2col">
+                <div class="form-group">
+                  <label>Name of Office</label>
+                  <select [ngModel]="forwardOfficeCode" (ngModelChange)="onForwardOfficeSelected($event)">
+                    <option value="" disabled selected>Select an office</option>
+                    @for (office of officeList(); track office.officeCode) {
+                      <option [value]="office.officeCode">{{ office.officeName }} ({{ office.officeType }})</option>
+                    }
+                  </select>
+                  @if (officeList().length === 0) {
+                    <span class="field-hint">Loading offices…</span>
+                  }
+                </div>
+              </div>
+            }
+
+            <!-- All Comments -->
+            <div class="assessment-comments">
+              <h4 class="comments-title">All Comments</h4>
+
+              @for (comment of assessmentComments(); track comment.id) {
+                <div class="comment-card">
+                  <div class="comment-header">
+                    <span class="comment-avatar" [style.background]="comment.color">{{ comment.initials }}</span>
+                    <span class="comment-author">{{ comment.author }}</span>
+                    <span class="comment-timestamp">{{ formatCommentDate(comment.createdAt || '') }}</span>
+                  </div>
+                  <p class="comment-body">{{ comment.text }}</p>
+                </div>
+              } @empty {
+                <div class="comment-card-No-comments">
+                  No comments
+                </div>
+              }
+            </div>
+
+            <!-- Add Comment -->
+            <div class="add-comment-section">
+              <label class="comment-label">Comments </label>
+              <div class="textarea-with-speech">
+                <textarea [(ngModel)]="assessmentComment" rows="3" placeholder="Enter text here"></textarea>
+                <app-speech-button (transcription)="assessmentComment = assessmentComment + ' ' + $event"></app-speech-button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    } @else if (assessmentTab() === 'email') {
+
+    <!-- ═══ EMAIL COMMUNICATION TAB ═══ -->
+    <div class="email-comm-layout">
+      <!-- Left Sidebar: Activity List -->
+      <div class="email-sidebar">
+        <div class="email-sidebar-section">
+          <div class="email-sidebar-header" (click)="emailOpenActivitiesExpanded = !emailOpenActivitiesExpanded">
+            <i class="pi" [class.pi-chevron-down]="emailOpenActivitiesExpanded" [class.pi-chevron-right]="!emailOpenActivitiesExpanded"></i>
+            <span>Open Activities</span>
+          </div>
+          @if (emailOpenActivitiesExpanded) {
+            <div class="email-activity-list">
+              @for (activity of emailActivities(); track activity.id) {
+                <div class="email-activity-item" [class.active]="selectedEmailActivity()?.id === activity.id" (click)="selectEmailActivity(activity)">
+                  <span class="email-activity-title">{{ activity.subject || 'Untitled' }}</span>
+                  <span class="email-activity-date">{{ activity.date }}</span>
+                </div>
+              }
+              @if (emailActivities().length === 0) {
+                <div class="email-activity-item empty">No open activities</div>
+              }
+            </div>
+          }
+        </div>
+        <div class="email-sidebar-section">
+          <div class="email-sidebar-header" (click)="emailDraftExpanded = !emailDraftExpanded">
+            <i class="pi" [class.pi-chevron-down]="emailDraftExpanded" [class.pi-chevron-right]="!emailDraftExpanded"></i>
+            <span>Draft Emails</span>
+          </div>
+          @if (emailDraftExpanded) {
+            <div class="email-activity-list">
+              @for (draft of emailDrafts(); track draft.id) {
+                <div class="email-activity-item" [class.active]="selectedEmailActivity()?.id === draft.id" (click)="selectEmailActivity(draft)">
+                  <span class="email-activity-title">{{ draft.subject || 'Untitled Draft' }}</span>
+                  <span class="email-activity-date">{{ draft.date }}</span>
+                </div>
+              }
+              @if (emailDrafts().length === 0) {
+                <div class="email-activity-item empty">No drafts</div>
+              }
+            </div>
+          }
+        </div>
+        <div class="email-sidebar-section">
+          <div class="email-sidebar-header" (click)="emailClosedExpanded = !emailClosedExpanded">
+            <i class="pi" [class.pi-chevron-down]="emailClosedExpanded" [class.pi-chevron-right]="!emailClosedExpanded"></i>
+            <span>Closed Activities</span>
+          </div>
+          @if (emailClosedExpanded) {
+            <div class="email-activity-list">
+              @for (activity of emailClosedActivities(); track activity.id) {
+                <div class="email-activity-item" (click)="selectEmailActivity(activity)">
+                  <span class="email-activity-title">{{ activity.subject }}</span>
+                  <span class="email-activity-date">{{ activity.date }}</span>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Right: Email Content / Compose -->
+      <div class="email-main-content">
+        @if (emailComposeMode()) {
+          <!-- COMPOSE MODE -->
+          <div class="email-compose">
+            <div class="email-compose-actions">
+              <button class="btn btn-outline btn-sm" (click)="emailComposeMode.set(false)"><i class="pi pi-list"></i> Select Template</button>
+              <button class="btn btn-outline btn-sm"><i class="pi pi-paperclip"></i> Add Attachment</button>
+              <button class="btn btn-outline btn-sm btn-close-compose" (click)="emailComposeMode.set(false)" title="Close"><i class="pi pi-times"></i></button>
+            </div>
+            <div class="email-compose-form">
+              <div class="email-field">
+                <label>From</label>
+                <input type="text" [(ngModel)]="emailFrom" placeholder="cmssupportngp@rbi.org.in" />
+              </div>
+              <div class="email-field">
+                <label>To</label>
+                <input type="text" [(ngModel)]="emailTo" placeholder="Enter recipient email" />
+              </div>
+              <div class="email-field">
+                <label>CC</label>
+                <input type="text" [(ngModel)]="emailCc" placeholder="Add CC recipients" />
+              </div>
+              <div class="email-field">
+                <label>BCC</label>
+                <input type="text" [(ngModel)]="emailBcc" placeholder="Add BCC recipients" />
+              </div>
+              <div class="email-field">
+                <label>Subject</label>
+                <input type="text" [(ngModel)]="emailSubject" placeholder="Enter subject" />
+              </div>
+              <div class="email-toolbar">
+                <button class="toolbar-btn"><b>B</b></button>
+                <button class="toolbar-btn"><i>I</i></button>
+                <button class="toolbar-btn"><u>U</u></button>
+                <button class="toolbar-btn">12</button>
+                <button class="toolbar-btn"><span class="color-swatch"></span></button>
+                <button class="toolbar-btn"><i class="pi pi-link"></i></button>
+                <button class="toolbar-btn"><i class="pi pi-paperclip"></i></button>
+                <button class="toolbar-btn"><i class="pi pi-face-smile"></i></button>
+              </div>
+              <textarea class="email-body-input" [(ngModel)]="emailBody" rows="10" placeholder="Enter your email here"></textarea>
+            </div>
+          </div>
+        } @else {
+          <!-- VIEW MODE: Show selected email -->
+          @if (selectedEmailActivity()) {
+            <div class="email-view">
+              <div class="email-view-subject">
+                <h3>{{ selectedEmailActivity()?.subject }}</h3>
+              </div>
+              <div class="email-view-header">
+                <div class="email-sender-info">
+                  <span class="email-avatar">RB</span>
+                  <div class="email-sender-details">
+                    <span class="email-sender-name">{{ selectedEmailActivity()?.fromEmail || 'rbiteamcms@rbi.org.in' }}</span>
+                    <span class="email-sender-to">To: {{ selectedEmailActivity()?.toEmail || 'cmssupportngp@rbi.org.in' }}</span>
+                  </div>
+                </div>
+                <div class="email-view-meta">
+                  <div class="email-meta-item">
+                    <span class="email-meta-label">Assigned To</span>
+                    <span class="email-meta-value">{{ selectedEmailActivity()?.assignedTo || '—' }}</span>
+                  </div>
+                  <div class="email-meta-item">
+                    <span class="email-meta-label">Created On</span>
+                    <span class="email-meta-value">{{ selectedEmailActivity()?.sentAt }}</span>
+                  </div>
+                  <div class="email-meta-item">
+                    <span class="email-meta-label">Due Date</span>
+                    <span class="email-meta-value">{{ selectedEmailActivity()?.dueDate || '—' }}</span>
+                  </div>
+                  <span class="email-status-badge open"><i class="pi pi-info-circle"></i> {{ selectedEmailActivity()?.status || 'Open' }}</span>
+                  <button class="btn btn-outline btn-sm"><i class="pi pi-reply"></i> Reply</button>
+                </div>
+              </div>
+              @if (selectedEmailActivity()?.attachments?.length) {
+                <div class="email-attachments">
+                  @for (att of selectedEmailActivity()?.attachments || []; track att.name) {
+                    <div class="email-attachment-chip">
+                      <i class="pi pi-file-excel"></i>
+                      <span>{{ att.name }}</span>
+                      <span class="att-size">{{ att.size }}</span>
+                      <button class="att-btn"><i class="pi pi-eye"></i></button>
+                      <button class="att-btn"><i class="pi pi-download"></i></button>
+                    </div>
+                  }
+                </div>
+              }
+              <div class="email-view-body">
+                <div class="email-rbi-header">
+                  <img src="assets/Email_Communication_Sign.svg" alt="RBI" class="email-rbi-logo" onerror="this.style.display='none'" />
+                  <div class="email-rbi-text">
+                    <span>केंद्रीय प्राप्ति और प्रसंस्करण केंद्र (सीआरपीसी)</span>
+                    <span>Centralised Receipt and Processing Centre(CRPC)</span>
+                    <span>भारतीय रिज़र्व बैंक / Reserve Bank of India</span>
+                  </div>
+                </div>
+                <div class="email-body-content" [innerHTML]="selectedEmailActivity()?.body || ''"></div>
+              </div>
+            </div>
+          } @else {
+            <div class="email-empty-state">
+              <i class="pi pi-envelope" style="font-size: 48px; color: #cbd5e1;"></i>
+              <p>Select an activity to view email or click "Create New Email"</p>
+            </div>
+          }
+        }
+      </div>
+
+      <!-- Email side panels (expand/collapse) -->
+      <div class="email-side-panels" [class.has-panels]="emailPanels().form || emailPanels().attachments || emailPanels().history || emailPanels().settings">
+        @if (emailPanels().form) {
+          <div class="side-panel-section">
+            <h4 class="panel-section-title"><i class="pi pi-file-edit"></i> Document Details</h4>
+            <p class="panel-placeholder">No document details available.</p>
+          </div>
+        }
+        @if (emailPanels().attachments) {
+          <div class="side-panel-section">
+            <h4 class="panel-section-title"><i class="pi pi-paperclip"></i> Attachments</h4>
+            <p class="panel-placeholder">No attachments available.</p>
+          </div>
+        }
+        @if (emailPanels().history) {
+          <div class="side-panel-section">
+            <h4 class="panel-section-title"><i class="pi pi-history"></i> History</h4>
+            <p class="panel-placeholder">No history available.</p>
+          </div>
+        }
+        @if (emailPanels().settings) {
+          <div class="side-panel-section">
+            <h4 class="panel-section-title"><i class="pi pi-cog"></i> Settings</h4>
+            <p class="panel-placeholder">No additional settings available.</p>
+          </div>
+        }
+      </div>
+
+      <!-- Right Sidebar Icons -->
+      <div class="email-right-icons">
+        <button class="sidebar-icon-btn" [class.active]="rightSidebarOpen()" (click)="toggleRightSidebar()" title="Past Complaints"><i class="pi pi-eye"></i></button>
+        <!-- <button class="sidebar-icon-btn" [class.active]="attachmentsPanelOpen()" (click)="toggleAttachmentsPanel()" title="Attachments"><i class="pi pi-paperclip"></i></button> -->
+        <button class="sidebar-icon-btn" 
+        [class.active]="attachmentsPanelOpen()" 
+        (click)="handleAttachmentsClick()" 
+        title="Attachments">
+  <i class="pi pi-paperclip"></i>
+</button>
+
+        <!-- <button class="sidebar-icon-btn" [class.active]="emailPanels().history" (click)="togglePanel(emailPanels, 'history')" title="History"><i class="pi pi-history"></i></button> -->
+         <button class="sidebar-icon-btn" 
+        [class.active]="showHistoryPanel()" 
+        (click)="handleHistoryClick()" 
+        title="History">
+  <i class="pi pi-history"></i>
+</button>
+        <button class="sidebar-icon-btn" [class.active]="emailPanels().settings" (click)="togglePanel(emailPanels, 'settings')" title="Settings"><i class="pi pi-cog"></i></button>
+      </div>
+    </div>
+
+    } @else {
+
+    <!-- ═══ SUMMARY / OTHER TABS: Two panels (Assessment) ═══ -->
+    <div class="content-box">
+      <div class="main-content-layout two-col">
+        <!-- LEFT: Complaint Summary -->
+        <div class="col-email-syndicate">
+          <div class="panel-header">
+            <h3><i class="pi pi-th-large"></i> Complaint</h3>
+            <div class="panel-header-actions">
+              @if (editMode()) {
+                <p-button [outlined]="true" severity="secondary" size="small" (onClick)="cancelEdit()">
+                  <i class="pi pi-times"></i> Cancel
+                </p-button>
+                <p-button severity="primary" size="small" (onClick)="updateComplaint()" [loading]="saving()">
+                  <i class="pi pi-check"></i> Update
+                </p-button>
+              } @else {
+                <p-button [outlined]="true" class="editButton" severity="secondary" size="small" (onClick)="enterEditMode()">
+                  <i class="pi pi-pencil "></i> Edit
+                </p-button>
+              }
+              <!-- <button class="expand-btn" (click)="pdfExpanded.set(!pdfExpanded())" title="Full Screen">
+                <i class="pi pi-window-maximize"></i>
+              </button> -->
+            </div>
+          </div>
+
+          <div class="form-scroll">
+            <!-- Basic Details -->
+            <section class="form-section">
+              <h5 class="section-title expanded" [class.expanded]="summarySections.basic" (click)="summarySections.basic = !summarySections.basic">
+                <i class="pi pi-chart-bar"></i> Basic Details
+                <i class="pi section-chevron" [class.pi-chevron-up]="summarySections.basic" [class.pi-chevron-down]="!summarySections.basic"></i>
+              </h5>
+              @if (summarySections.basic) {
+                <div class="summary-fields">
+                  <div class="summary-row">
+                    <div class="summary-field">
+                      <span class="summary-label">Complainant Name</span>
+                      @if (editMode()) {
+                        <input type="text" [(ngModel)]="complainantName" class="summary-edit-input" />
+                      } @else {
+                        <span class="summary-value">{{ complainantName || '—' }}</span>
+                      }
+                    </div>
+                    <div class="summary-field">
+                      <span class="summary-label">Email ID</span>
+                      @if (editMode()) {
+                        <input type="text" [(ngModel)]="complainantEmail" class="summary-edit-input" />
+                      } @else {
+                        <span class="summary-value">{{ complainantEmail || '—' }}</span>
+                      }
+                    </div>
+                  </div>
+                  <div class="summary-field full">
+                    <span class="summary-label">Subject</span>
+                    @if (editMode()) {
+                      <input type="text" [(ngModel)]="subject" class="summary-edit-input" />
+                    } @else {
+                      <span class="summary-value">{{ subject || '—' }}</span>
+                    }
+                  </div>
+                  <div class="summary-field full">
+                    <span class="summary-label">Complaint Details</span>
+                    @if (editMode()) {
+                      <textarea [(ngModel)]="description" rows="3" class="summary-edit-input"></textarea>
+                    } @else {
+                      <span class="summary-value">{{ description || '—' }}</span>
+                    }
+                  </div>
+                  <div class="summary-field full">
+                    <span class="summary-label">Comments</span>
+                    @if (editMode()) {
+                      <textarea [(ngModel)]="comments" rows="2" class="summary-edit-input"></textarea>
+                    } @else {
+                      <span class="summary-value">{{ comments || '—' }}</span>
+                    }
+                  </div>
+                  <div class="summary-row">
+                    <div class="summary-field">
+                      <span class="summary-label">Mode of Receipt</span>
+                      @if (editMode()) {
+                        <select [(ngModel)]="modeOfReceipt" class="summary-edit-input">
+                          <option value="PHYSICAL_LETTER">Physical Letter</option>
+                          <option value="EMAIL">Email</option>
+                          <option value="PORTAL">Portal</option>
+                          <option value="CPGRAMS">CPGRAMS</option>
+                        </select>
+                      } @else {
+                        <span class="summary-value">{{ modeOfReceipt || '—' }}</span>
+                      }
+                    </div>
+                    <div class="summary-field">
+                      <span class="summary-label">Receipt Date</span>
+                      @if (editMode()) {
+                        <input type="date" [(ngModel)]="receivedDate" class="summary-edit-input" />
+                      } @else {
+                        <span class="summary-value">{{ receivedDate || '—' }}</span>
+                      }
+                    </div>
+                  </div>
+                  <div class="summary-field full cpgram-checkbox-row">
+                    <div class="cpgram-value-checkbox">
+                      @if (editMode()) {  
+                          <label class="cpgram-checkbox-label">
+                              <input type="checkbox" [checked]="isCpgram" [(ngModel)]="isCpgram" />
+                              <span>Is Complaint CPGRAM</span>
+                           </label> 
+                          @if (isCpgram) {
+                              <div class="summary-field full">
+                                <span class="summary-label">CPGRAM Number</span>
+                                <input type="text" [(ngModel)]="receivedDate" class="summary-valuecpgram-number" class="summary-edit-input" />
+                              </div>
+                          }
+                        } @else {
+                          <label class="cpgram-checkbox-label">
+                              <input type="checkbox" [checked]="isCpgram" disabled [(ngModel)]="isCpgram" />
+                              <span>Is Complaint CPGRAM</span>
+                           </label> 
+                          @if (isCpgram) {
+                              <div class="summary-field full">
+                                <span class="summary-label">CPGRAM Number</span>
+                                <span class="summary-value cpgram-number">{{ cpgramsNumber || '—' }}</span>
+                              </div>
+                          }
+                        }
+                      </div>
+                  </div>
+                </div>
+              }
+            </section>
+
+            <!-- Eligibility -->
+            <section class="form-section eligibility-section">
+              <h5 class="section-title" [class.expanded]="summarySections.eligibility" (click)="summarySections.eligibility = !summarySections.eligibility">
+                <i class="pi pi-chart-bar"></i> Eligibility
+                <i class="pi section-chevron" [class.pi-chevron-up]="summarySections.eligibility" [class.pi-chevron-down]="!summarySections.eligibility"></i>
+              </h5>
+
+              @if (summarySections.eligibility) {
+                <div class="summary-fields">
+                  <div class="summary-row">
+                    <div class="summary-field">
+                      <span class="summary-label">Proposed Complaint Type</span>
+                      @if (editMode()) {
+                        <select [(ngModel)]="proposedComplaintType" class="summary-edit-input">
+                          <option value="NEW_COMPLAINT">Maintainable</option>
+                          <option value="SUGGESTION">Non-Maintanable</option>
+                        </select>
+                      } @else {
+                        <span class="summary-value">{{ proposedComplaintType || '—' }}</span>
+                      }
+                    </div>
+                    <div class="summary-field">
+                      <span class="summary-label">Entity Name</span>
+                      @if (editMode()) {
+                        <input type="text" [(ngModel)]="eligibilityEntityName" class="summary-edit-input" />
+                      } @else {
+                        <span class="summary-value">{{ eligibilityEntityName || '—' }}</span>
+                      }
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  @if (editMode()) {
+                      <label class="">
+                          <span class="" [class.active]="true">
+                            <input type="checkbox" [checked]="true"/>
+                            <span class=""></span>
+                          </span>
+                          Mark all as Eligible
+                      </label>
+                    } @else {
+                      <label class="">
+                          <span class="" [class.active]="true">
+                            <input type="checkbox" [checked]="true" disabled/>
+                            <span class=""></span>
+                          </span>
+                          Mark all as Eligible
+                      </label>
+                    }
+                </div>
+                <div class="eligibility-questions" [class.readonly]="!editMode()">
+                  @for (q of eligibilityQuestions; track q.key) {
+                    <div class="eligibility-row" [class.date-row]="q.type === 'date'">
+                      <span class="eligibility-question">{{ q.label }}</span>
+                      @if (q.type === 'radio') {
+                        <div class="eligibility-options">
+                          <label class="radio-option">
+                            <input type="radio" [name]="'sum_' + q.key" [value]="true" [(ngModel)]="q.answer" [disabled]="!editMode()" />
+                            <span>Yes</span>
+                          </label>
+                          <label class="radio-option">
+                            <input type="radio" [name]="'sum_' + q.key" [value]="false" [(ngModel)]="q.answer" [disabled]="!editMode()" />
+                            <span>No</span>
+                          </label>
+                        </div>
+                      } @else if (q.type === 'date') {
+                        <div class="eligibility-date-input">
+                          <input type="date" [name]="'sum_' + q.key" [(ngModel)]="q.dateValue" [disabled]="!editMode()" />
+                          <i class="pi pi-calendar date-icon"></i>
+                        </div>
+                      }
+                    </div>
+                  }
+                </div>
+              }
+            </section>
+
+            <!-- Entity Details -->
+            <section class="form-section">
+              <h5 class="section-title" [class.expanded]="summarySections.entity" (click)="summarySections.entity = !summarySections.entity">
+                <i class="pi pi-chart-bar"></i> Entity Details
+                <i class="pi section-chevron" [class.pi-chevron-up]="summarySections.entity" [class.pi-chevron-down]="!summarySections.entity"></i>
+              </h5>
+              @if (summarySections.entity) {
+                <div class="summary-fields">
+                  <div class="summary-row">
+                    <div class="summary-field">
+                      <span class="summary-label">Entity Name</span>
+                      @if (editMode()) {
+                        <input type="text" [(ngModel)]="entityName" class="summary-edit-input" />
+                      } @else {
+                        <span class="summary-value">{{ entityName || '—' }}</span>
+                      }
+                    </div>
+                    <div class="summary-field">
+                      <span class="summary-label">Module Name</span>
+                      @if (editMode()) {
+                        <input type="text" [(ngModel)]="entityType" class="summary-edit-input" />
+                      } @else {
+                        <span class="summary-value">{{ moduleName || '—' }}</span>
+                      }
+                    </div>
+                  </div>
+                  <div class="summary-row">
+                    <div class="summary-field">
+                      <span class="summary-label">Entity Category</span>
+                      @if (editMode()) {
+                        <input type="text" [(ngModel)]="entityCategory" class="summary-edit-input" />
+                      } @else {
+                        <span class="summary-value">{{ entityCategory || '—' }}</span>
+                      }
+                    </div>
+                    <div class="summary-field">
+                      <span class="summary-label">Entity Type</span>
+                      @if (editMode()) {
+                        <input type="text" [(ngModel)]="bsrCode" class="summary-edit-input" />
+                      } @else {
+                        <span class="summary-value">{{ entityType || '—' }}</span>
+                      }
+                    </div>
+                  </div>
+                  <div class="summary-row">
+                      <div class="summary-field">
+                          <span class="summary-label">BSR Code</span>
+                          @if (editMode()) {
+                            <input type="text" [(ngModel)]="bsrCode" class="summary-edit-input" />
+                          } @else {
+                            <span class="summary-value">{{ bsrCode || '—' }}</span>
+                          }
+                        </div>
+                    <div class="summary-field">
+                      <span class="summary-label">Pincode</span>
+                      @if (editMode()) {
+                        <input type="text" [(ngModel)]="entityPincode" class="summary-edit-input" maxlength="6" />
+                      } @else {
+                        <span class="summary-value">{{ entityPincode || '—' }}</span>
+                      }
+                    </div>
+                    
+                  </div>
+                  <div class="summary-row">
+                      <div class="summary-field">
+                          <span class="summary-label">Country</span>
+                          @if (editMode()) {
+                            <input type="text" [(ngModel)]="entityState" class="summary-edit-input" />
+                          } @else {
+                            <span class="summary-value">{{ entityCountry || '—' }}</span>
+                          }
+                        </div>
+                      <div class="summary-field">
+                          <span class="summary-label">State</span>
+                          @if (editMode()) {
+                            <input type="text" [(ngModel)]="entityState" class="summary-edit-input" />
+                          } @else {
+                            <span class="summary-value">{{ entityState || '—' }}</span>
+                          }
+                        </div>
+                  </div>
+                  <div class="summary-row">
+                      <div class="summary-field">
+                          <span class="summary-label">District</span>
+                          @if (editMode()) {
+                            <input type="text" [(ngModel)]="entityDistrict" class="summary-edit-input" />
+                          } @else {
+                            <span class="summary-value">{{ entityDistrict || '—' }}</span>
+                          }
+                        </div>
+                        <div class="summary-field">
+                          <span class="summary-label">City</span>
+                          @if (editMode()) {
+                            <input type="text" [(ngModel)]="entityCity" class="summary-edit-input" />
+                          } @else {
+                            <span class="summary-value">{{ entityCity || '—' }}</span>
+                          }
+                        </div>
+                    <div class="summary-field">
+                      <span class="summary-label">Entity Branch Name</span>
+                      @if (editMode()) {
+                        <input type="text" [(ngModel)]="entityBranchName" class="summary-edit-input" />
+                      } @else {
+                        <span class="summary-value">{{ entityBranchName || '—' }}</span>
+                      }
+                    </div>
+                    <div class="summary-field">
+                      <span class="summary-label"> Entity Branch Category</span>
+                      @if (editMode()) {
+                        <input type="text" [(ngModel)]="entityBranchCategory" class="summary-edit-input" />
+                      } @else {
+                        <span class="summary-value">{{ entityBranchCategory || '—' }}</span>
+                      }
+                    </div>
+                  </div>
+                  <div class="summary-field full">
+                    <span class="summary-label">Entity Address</span>
+                    @if (editMode()) {
+                      <input type="text" [(ngModel)]="entityAddress" class="summary-edit-input" />
+                    } @else {
+                      <span class="summary-value">{{ entityAddress || '—' }}</span>
+                    }
+                  </div>
+                  <div class="summary-row">
+                      <div class="summary-field">
+                          <span class="summary-label">District</span>
+                          @if (editMode()) {
+                            <input type="text" [(ngModel)]="entityDistrict" class="summary-edit-input" />
+                          } @else {
+                            <span class="summary-value">{{ entityDistrict || '—' }}</span>
+                          }
+                        </div>
+                        <div class="summary-field">
+                          <span class="summary-label">City</span>
+                          @if (editMode()) {
+                            <input type="text" [(ngModel)]="entityCity" class="summary-edit-input" />
+                          } @else {
+                            <span class="summary-value">{{ entityCity || '—' }}</span>
+                          }
+                        </div>
+                  </div>
+
+                  <div class="summary-row">
+                      <div class="summary-field">
+                          <span class="summary-label">District</span>
+                          @if (editMode()) {
+                            <input type="text" [(ngModel)]="entityDistrict" class="summary-edit-input" />
+                          } @else {
+                            <span class="summary-value">{{ entityDistrict || '—' }}</span>
+                          }
+                        </div>
+                        <div class="summary-field">
+                          <span class="summary-label">City</span>
+                          @if (editMode()) {
+                            <input type="text" [(ngModel)]="entityCity" class="summary-edit-input" />
+                          } @else {
+                            <span class="summary-value">{{ entityCity || '—' }}</span>
+                          }
+                        </div>
+                  </div>
+
+
+
+                 
+                  <div class="summary-row">
+                    <div class="summary-field">
+                      <span class="summary-label">COSMOS Code</span>
+                      @if (editMode()) {
+                        <input type="text" [(ngModel)]="cosmosCode" class="summary-edit-input" />
+                      } @else {
+                        <span class="summary-value">{{ cosmosCode || '—' }}</span>
+                      }
+                    </div>
+                    <div class="summary-field">
+                      <span class="summary-label">Assest Size in Crores</span>
+                      @if (editMode()) {
+                        <input type="text" [(ngModel)]="cosmosCode" class="summary-edit-input" />
+                      } @else {
+                        <span class="summary-value">{{ cosmosCode || '—' }}</span>
+                      }
+                    </div>
+                  </div>
+                </div>
+                
+              }
+            </section>
+
+            <!-- Complainant Details -->
+            <section class="form-section">
+              <h5 class="section-title" [class.expanded]="summarySections.complainant" (click)="summarySections.complainant = !summarySections.complainant">
+                <i class="pi pi-chart-bar"></i> Complainant Details
+                <i class="pi section-chevron" [class.pi-chevron-up]="summarySections.complainant" [class.pi-chevron-down]="!summarySections.complainant"></i>
+              </h5>
+              @if (summarySections.complainant) {
+                <div class="summary-fields">
+
+                  <!-- Basic Identification -->
+                  <h4 class="sub-section-title">Basic Identification</h4>
+                  <div class="summary-row">
+                    <div class="summary-field">
+                      <span class="summary-label">Email ID</span>
+                      @if (editMode()) {
+                        <input type="email" [(ngModel)]="complainantEmail" class="summary-edit-input" placeholder="Enter email" />
+                      } @else {
+                        <span class="summary-value">{{ complainantEmail || '—' }}</span>
+                      }
+                    </div>
+                    <div class="summary-field">
+                      <span class="summary-label">Entity Name</span>
+                      <span class="summary-value">{{ entityName || '—' }}</span>
+                    </div>
+                  </div>
+                  <div class="summary-row">
+                    <div class="summary-field">
+                      <span class="summary-label">Other Entity Name <small>(Optional)</small></span>
+                      @if (editMode()) {
+                        <input type="text" [(ngModel)]="otherEntityName" class="summary-edit-input" placeholder="Enter other entity name" />
+                      } @else {
+                        <span class="summary-value">{{ otherEntityName || '—' }}</span>
+                      }
+                    </div>
+                    <div class="summary-field">
+                      <span class="summary-label">Date of Registration with RBI</span>
+                      @if (editMode()) {
+                        <input type="date" [(ngModel)]="registrationWithRbiDate" class="summary-edit-input" />
+                      } @else {
+                        <span class="summary-value">{{ registrationWithRbiDate || '—' }}</span>
+                      }
+                    </div>
+                  </div>
+
+                  <hr class="sub-section-divider" />
+
+                  <!-- Complaint Classification -->
+                  <h4 class="sub-section-title">Complaint Classification</h4>
+                  <div class="summary-row">
+                    <div class="summary-field">
+                      <span class="summary-label">Complaint Category</span>
+                      @if (editMode()) {
+                        <input type="text" [(ngModel)]="complaintCategory" class="summary-edit-input" placeholder="e.g. Loan" />
+                      } @else {
+                        <span class="summary-value">{{ complaintCategory || '—' }}</span>
+                      }
+                    </div>
+                    <div class="summary-field">
+                      <span class="summary-label">Complaint Sub-Category 1</span>
+                      @if (editMode()) {
+                        <input type="text" [(ngModel)]="complaintSubCategory1" class="summary-edit-input" placeholder="Sub-category" />
+                      } @else {
+                        <span class="summary-value">{{ complaintSubCategory1 || '—' }}</span>
+                      }
+                    </div>
+                  </div>
+                  <div class="summary-row">
+                    <div class="summary-field">
+                      <span class="summary-label">Complaint Sub-Category 2</span>
+                      @if (editMode()) {
+                        <input type="text" [(ngModel)]="complaintSubCategory2" class="summary-edit-input" placeholder="Sub-category 2" />
+                      } @else {
+                        <span class="summary-value">{{ complaintSubCategory2 || '—' }}</span>
+                      }
+                    </div>
+                    <div class="summary-field">
+                      <span class="summary-label">Date of Filing the Complaint</span>
+                      @if (editMode()) {
+                        <input type="date" [(ngModel)]="filingDate" class="summary-edit-input" />
+                      } @else {
+                        <span class="summary-value">{{ filingDate || '—' }}</span>
+                      }
+                    </div>
+                  </div>
+                  <div class="summary-row">
+                    <div class="summary-field">
+                      <span class="summary-label">Complaint Registration Date Valid</span>
+                      @if (editMode()) {
+                        <div class="radio-group">
+                          <label class="radio-label"><input type="radio" [ngModel]="registrationDateValid" [value]="true" (ngModelChange)="registrationDateValid = $event" name="registrationDateValid" /> Yes</label>
+                          <label class="radio-label"><input type="radio" [ngModel]="registrationDateValid" [value]="false" (ngModelChange)="registrationDateValid = $event" name="registrationDateValid" /> No</label>
+                        </div>
+                      } @else {
+                        <div class="radio-group">
+                          <label class="radio-label"><input type="radio" [checked]="registrationDateValid" disabled /> Yes</label>
+                          <label class="radio-label"><input type="radio" [checked]="!registrationDateValid" disabled /> No</label>
+                        </div>
+                      }
+                    </div>
+                  </div>
+
+                  <hr class="sub-section-divider" />
+
+                  <!-- Reminder & Financial Details -->
+                  <h4 class="sub-section-title">Reminder & Financial Details</h4>
+                  <div class="summary-row">
+                    <div class="summary-field">
+                      <span class="summary-label">Whether any Reminder was sent by the Complainant</span>
+                      @if (editMode()) {
+                        <div class="radio-group">
+                          <label class="radio-label"><input type="radio" [ngModel]="reminderSent" [value]="true" (ngModelChange)="reminderSent = $event" name="reminderSent" /> Yes</label>
+                          <label class="radio-label"><input type="radio" [ngModel]="reminderSent" [value]="false" (ngModelChange)="reminderSent = $event" name="reminderSent" /> No</label>
+                        </div>
+                      } @else {
+                        <div class="radio-group">
+                          <label class="radio-label"><input type="radio" [checked]="reminderSent" disabled /> Yes</label>
+                          <label class="radio-label"><input type="radio" [checked]="!reminderSent" disabled /> No</label>
+                        </div>
+                      }
+                    </div>
+                    <div class="summary-field">
+                      <span class="summary-label">Disputed Amount Involved</span>
+                      @if (editMode()) {
+                        <div class="amount-edit-wrapper">
+                          <span class="amount-edit-prefix">₹</span>
+                          <input type="number" [(ngModel)]="disputedAmount" class="amount-edit-input" placeholder="Enter Amount" />
+                        </div>
+                      } @else {
+                        <div class="amount-display">
+                          <span class="amount-value">₹  {{ disputedAmount ? disputedAmount.toLocaleString('en-IN') : '—' }}</span>
+                          @if (disputedAmount) {
+                            <span class="amount-words">{{ amountToWords(disputedAmount) }}</span>
+                          }
+                        </div>
+                      }
+                    </div>
+                  </div>
+                  <div class="summary-row">
+                    <div class="summary-field">
+                      <span class="summary-label">Date of Filing the Complaint</span>
+                      @if (editMode()) {
+                        <input type="date" [(ngModel)]="filingDate" class="summary-edit-input" />
+                      } @else {
+                        <span class="summary-value">{{ filingDate || '—' }}</span>
+                      }
+                    </div>
+                    <div class="summary-field">
+                      <span class="summary-label">Compensation Sought for Expenses Incurred, Harassment and Mental Anguish (if any)</span>
+                      @if (editMode()) {
+                        <div class="radio-group">
+                          <label class="radio-label"><input type="radio" [ngModel]="compensationSoughtYesNo" [value]="true" (ngModelChange)="compensationSoughtYesNo = $event" name="compensationSought" /> Yes</label>
+                          <label class="radio-label"><input type="radio" [ngModel]="compensationSoughtYesNo" [value]="false" (ngModelChange)="compensationSoughtYesNo = $event" name="compensationSought" /> No</label>
+                        </div>
+                      } @else {
+                        <div class="radio-group">
+                          <label class="radio-label"><input type="radio" [checked]="compensationSoughtYesNo" disabled /> Yes</label>
+                          <label class="radio-label"><input type="radio" [checked]="!compensationSoughtYesNo" disabled /> No</label>
+                        </div>
+                      }
+                    </div>
+                  </div>
+
+                  <hr class="sub-section-divider" />
+
+                  <!-- Legal & Case Details -->
+                  <h4 class="sub-section-title">Legal & Case Details</h4>
+                  <div class="summary-row">
+                    <div class="summary-field">
+                      <span class="summary-label">Whether Legal Case is Filed</span>
+                      @if (editMode()) {
+                        <div class="radio-group">
+                          <label class="radio-label"><input type="radio" [ngModel]="legalCaseFiled" [value]="true" (ngModelChange)="legalCaseFiled = $event" name="legalCaseFiled" /> Yes</label>
+                          <label class="radio-label"><input type="radio" [ngModel]="legalCaseFiled" [value]="false" (ngModelChange)="legalCaseFiled = $event" name="legalCaseFiled" /> No</label>
+                        </div>
+                      } @else {
+                        <div class="radio-group">
+                          <label class="radio-label"><input type="radio" [checked]="legalCaseFiled" disabled /> Yes</label>
+                          <label class="radio-label"><input type="radio" [checked]="!legalCaseFiled" disabled /> No</label>
+                        </div>
+                      }
+                    </div>
+                    <div class="summary-field">
+                      <span class="summary-label">Date of Filing the Complaint</span>
+                      <span class="summary-value">{{ filingDate || '—' }}</span>
+                    </div>
+                  </div>
+                  <div class="summary-row">
+                    <div class="summary-field">
+                      <span class="summary-label">Pre Enquiry Received</span>
+                      @if (editMode()) {
+                        <div class="radio-group">
+                          <label class="radio-label"><input type="radio" [ngModel]="preEnquiryReceived" [value]="true" (ngModelChange)="preEnquiryReceived = $event" name="preEnquiryReceived" /> Yes</label>
+                          <label class="radio-label"><input type="radio" [ngModel]="preEnquiryReceived" [value]="false" (ngModelChange)="preEnquiryReceived = $event" name="preEnquiryReceived" /> No</label>
+                        </div>
+                      } @else {
+                        <div class="radio-group">
+                          <label class="radio-label"><input type="radio" [checked]="preEnquiryReceived" disabled /> Yes</label>
+                          <label class="radio-label"><input type="radio" [checked]="!preEnquiryReceived" disabled /> No</label>
+                        </div>
+                      }
+                    </div>
+                    <div class="summary-field">
+                      <span class="summary-label">High Priority Complaint</span>
+                      @if (editMode()) {
+                        <div class="radio-group">
+                          <label class="radio-label"><input type="radio" [ngModel]="highPriority" [value]="true" (ngModelChange)="highPriority = $event" name="highPriority" /> Yes</label>
+                          <label class="radio-label"><input type="radio" [ngModel]="highPriority" [value]="false" (ngModelChange)="highPriority = $event" name="highPriority" /> No</label>
+                        </div>
+                      } @else {
+                        <div class="radio-group">
+                          <label class="radio-label"><input type="radio" [checked]="highPriority" disabled /> Yes</label>
+                          <label class="radio-label"><input type="radio" [checked]="!highPriority" disabled /> No</label>
+                        </div>
+                      }
+                    </div>
+                  </div>
+                  <div class="summary-field full">
+                    <span class="summary-label">Loan / Disposal Account</span>
+                    @if (editMode()) {
+                      <div class="amount-edit-wrapper">
+                        <span class="amount-edit-prefix">₹</span>
+                        <input type="number" [(ngModel)]="loanDisposalAmount" class="amount-edit-input" placeholder="Enter Amount" />
+                      </div>
+                    } @else {
+                      <div class="amount-display">
+                        <span class="amount-value">₹  {{ loanDisposalAmount ? loanDisposalAmount.toLocaleString('en-IN') : '—' }}</span>
+                        @if (loanDisposalAmount) {
+                          <span class="amount-words">{{ amountToWords(loanDisposalAmount) }}</span>
+                        }
+                      </div>
+                    }
+                  </div>
+
+                  <hr class="sub-section-divider" />
+
+                  <!-- Additional Information -->
+                  <h4 class="sub-section-title">Additional Information</h4>
+                  <div class="summary-row">
+                    <div class="summary-field">
+                      <span class="summary-label">Additional Comments</span>
+                      @if (editMode()) {
+                        <input type="text" [(ngModel)]="additionalComments" class="summary-edit-input" placeholder="Comments" />
+                      } @else {
+                        <span class="summary-value summary-value-bold">{{ additionalComments || '—' }}</span>
+                      }
+                    </div>
+                    <div class="summary-field">
+                      <span class="summary-label">CRPC Proposed Action</span>
+                      @if (editMode()) {
+                        <select [(ngModel)]="crpcProposedAction" class="summary-edit-input">
+                          <option value="">Select</option>
+                          <option value="Maintainable">Maintainable</option>
+                          <option value="Non-Maintainable">Non-Maintainable</option>
+                          <option value="NEW_COMPLAINT">New Complaint</option>
+                          <option value="NOT_A_COMPLAINT">Not a Complaint</option>
+                          <option value="DUPLICATE">Duplicate</option>
+                        </select>
+                      } @else {
+                        <span class="summary-value summary-value-bold">{{ crpcProposedAction || '—' }}</span>
+                      }
+                    </div>
+                  </div>
+                  <div class="summary-row">
+                    <div class="summary-field">
+                      <span class="summary-label">Vernacular Language</span>
+                      @if (editMode()) {
+                        <select [(ngModel)]="vernacularLanguage" class="summary-edit-input">
+                          <option value="">Select language</option>
+                          @for (lang of vernacularLanguages; track lang) {
+                            <option [value]="lang">{{ lang }}</option>
+                          }
+                        </select>
+                      } @else {
+                        <span class="summary-value">{{ vernacularLanguage || '—' }}</span>
+                      }
+                    </div>
+                    <div class="summary-field">
+                      <span class="summary-label">Date of Filing the Complaint</span>
+                      @if (editMode()) {
+                        <input type="date" [(ngModel)]="filingDate" class="summary-edit-input" />
+                      } @else {
+                        <span class="summary-value">{{ filingDate || '—' }}</span>
+                      }
+                    </div>
+                  </div>
+
+                  <hr class="sub-section-divider" />
+
+                  <!-- Flags & Indicators -->
+                  <h4 class="sub-section-title">Flags & Indicators</h4>
+                  <div class="summary-row">
+                    <div class="summary-field">
+                      <span class="summary-label">Is Complaint Regarding Pension</span>
+                      @if (editMode()) {
+                        <div class="radio-group">
+                          <label class="radio-label"><input type="radio" [ngModel]="pensionComplaint" [value]="true" (ngModelChange)="pensionComplaint = $event" name="pensionComplaint" /> Yes</label>
+                          <label class="radio-label"><input type="radio" [ngModel]="pensionComplaint" [value]="false" (ngModelChange)="pensionComplaint = $event" name="pensionComplaint" /> No</label>
+                        </div>
+                      } @else {
+                        <div class="radio-group">
+                          <label class="radio-label"><input type="radio" [checked]="pensionComplaint" disabled /> Yes</label>
+                          <label class="radio-label"><input type="radio" [checked]="!pensionComplaint" disabled /> No</label>
+                        </div>
+                      }
+                    </div>
+                    <div class="summary-field">
+                      <span class="summary-label">Is Complaint Against a Business Correspondent</span>
+                      @if (editMode()) {
+                        <div class="radio-group">
+                          <label class="radio-label"><input type="radio" [ngModel]="businessCorrespondent" [value]="true" (ngModelChange)="businessCorrespondent = $event" name="businessCorrespondent" /> Yes</label>
+                          <label class="radio-label"><input type="radio" [ngModel]="businessCorrespondent" [value]="false" (ngModelChange)="businessCorrespondent = $event" name="businessCorrespondent" /> No</label>
+                        </div>
+                      } @else {
+                        <div class="radio-group">
+                          <label class="radio-label"><input type="radio" [checked]="businessCorrespondent" disabled /> Yes</label>
+                          <label class="radio-label"><input type="radio" [checked]="!businessCorrespondent" disabled /> No</label>
+                        </div>
+                      }
+                    </div>
+                  </div>
+                  <div class="summary-row">
+                    <div class="summary-field">
+                      <span class="summary-label">ATM / Credit / Debit Card</span>
+                      @if (editMode()) {
+                        <div class="radio-group">
+                          <label class="radio-label"><input type="radio" [ngModel]="atmCreditDebitCard" [value]="true" (ngModelChange)="atmCreditDebitCard = $event" name="atmCreditDebitCard" /> Yes</label>
+                          <label class="radio-label"><input type="radio" [ngModel]="atmCreditDebitCard" [value]="false" (ngModelChange)="atmCreditDebitCard = $event" name="atmCreditDebitCard" /> No</label>
+                        </div>
+                      } @else {
+                        <div class="radio-group">
+                          <label class="radio-label"><input type="radio" [checked]="atmCreditDebitCard" disabled /> Yes</label>
+                          <label class="radio-label"><input type="radio" [checked]="!atmCreditDebitCard" disabled /> No</label>
+                        </div>
+                      }
+                    </div>
+                    <div class="summary-field">
+                      <span class="summary-label">Scheme Flag</span>
+                      @if (editMode()) {
+                        <input type="text" [(ngModel)]="schemeFlag" class="summary-edit-input" placeholder="Enter scheme flag" />
+                      } @else {
+                        <span class="summary-value">{{ schemeFlag || '—' }}</span>
+                      }
+                    </div>
+                  </div>
+                  <div class="summary-row">
+                    <div class="summary-field">
+                      <span class="summary-label">RBO CGPC (Old)</span>
+                      @if (editMode()) {
+                        <input type="text" [(ngModel)]="rboCgpcOld" class="summary-edit-input" placeholder="Enter RBO CGPC" />
+                      } @else {
+                        <span class="summary-value">{{ rboCgpcOld || '—' }}</span>
+                      }
+                    </div>
+                    <div class="summary-field">
+                      <span class="summary-label">Grounds Flag</span>
+                      @if (editMode()) {
+                        <input type="text" [(ngModel)]="groundsFlag" class="summary-edit-input" placeholder="Enter grounds flag" />
+                      } @else {
+                        <span class="summary-value">{{ groundsFlag || '—' }}</span>
+                      }
+                    </div>
+                  </div>
+
+                  <hr class="sub-section-divider" />
+
+                  <!-- Complaint Linkage -->
+                  <h4 class="sub-section-title">Complaint Linkage</h4>
+                  <div class="summary-row">
+                    <div class="summary-field">
+                      <span class="summary-label">Is Complaint Pertaining to a Free Marked Complaint</span>
+                      @if (editMode()) {
+                        <div class="radio-group">
+                          <label class="radio-label"><input type="radio" [ngModel]="freeMarkedComplaint" [value]="true" (ngModelChange)="freeMarkedComplaint = $event" name="freeMarkedComplaint" /> Yes</label>
+                          <label class="radio-label"><input type="radio" [ngModel]="freeMarkedComplaint" [value]="false" (ngModelChange)="freeMarkedComplaint = $event" name="freeMarkedComplaint" /> No</label>
+                        </div>
+                      } @else {
+                        <div class="radio-group">
+                          <label class="radio-label"><input type="radio" [checked]="freeMarkedComplaint" disabled /> Yes</label>
+                          <label class="radio-label"><input type="radio" [checked]="!freeMarkedComplaint" disabled /> No</label>
+                        </div>
+                      }
+                    </div>
+                    <div class="summary-field">
+                      <span class="summary-label">Current Complaint Number</span>
+                      @if (editMode()) {
+                        <input type="text" [(ngModel)]="currentComplaintNumber" class="summary-edit-input" placeholder="Enter complaint number" />
+                      } @else {
+                        <span class="summary-value">{{ currentComplaintNumber || '—' }}</span>
+                      }
+                    </div>
+                  </div>
+                  <div class="summary-field full">
+                    <span class="summary-label">Received any Reply within 30 Days (or within time stipulated by RBI / NPCI / Card Network)</span>
+                    @if (editMode()) {
+                      <div class="radio-group">
+                        <label class="radio-label"><input type="radio" [ngModel]="replyWithin30Days" value="Yes" (ngModelChange)="replyWithin30Days = $event" name="replyWithin30Days" /> Yes</label>
+                        <label class="radio-label"><input type="radio" [ngModel]="replyWithin30Days" value="No" (ngModelChange)="replyWithin30Days = $event" name="replyWithin30Days" /> No</label>
+                        <label class="radio-label"><input type="radio" [ngModel]="replyWithin30Days" value="Not Applicable" (ngModelChange)="replyWithin30Days = $event" name="replyWithin30Days" /> Not Applicable</label>
+                      </div>
+                    } @else {
+                      <div class="radio-group">
+                        <label class="radio-label"><input type="radio" [checked]="replyWithin30Days === 'Yes'" disabled /> Yes</label>
+                        <label class="radio-label"><input type="radio" [checked]="replyWithin30Days === 'No'" disabled /> No</label>
+                        <label class="radio-label"><input type="radio" [checked]="replyWithin30Days === 'Not Applicable'" disabled /> Not Applicable</label>
+                      </div>
+                    }
+                  </div>
+                  <p class="field-hint">After the Regulated Entity received the complaint, or if the Complainant is not satisfied with the reply / resolution provided by the Regulated Entity.</p>
+
+                </div>
+              }
+            </section>
+
+            <!-- Declaration -->
+            <section class="form-section">
+              <h5 class="section-title" [class.expanded]="summarySections.declaration" (click)="summarySections.declaration = !summarySections.declaration">
+                <i class="pi pi-chart-bar"></i> Declaration
+                <i class="pi section-chevron" [class.pi-chevron-up]="summarySections.declaration" [class.pi-chevron-down]="!summarySections.declaration"></i>
+              </h5>
+              @if (summarySections.declaration) {
+                <div class="declaration-content">
+                  <label class="declaration-checkbox-label">
+                    <input type="checkbox" [(ngModel)]="declarationAccepted" [disabled]="!editMode()" />
+                    <span>All data/information entered by me in the system is correct as per my understanding</span>
+                  </label>
+                </div>
+              }
+            </section>
+          </div>
+        </div>
+
+        <!-- RIGHT: Assessment / Final Decision Panel -->
+        <div class="col-complaint-form assessment-panel">
+          @if (userRole() === 'HEAD') {
+          <div class="panel-header">
+            <h3><i class="pi pi-arrow-up-right"></i> Forward</h3>
+            <!-- <button class="expand-btn"><i class="pi pi-window-maximize"></i></button> -->
+          </div>
+          <div class="form-scroll assessment-scroll">
+            <div class="transfer-summary-card">
+              <h4 class="transfer-summary-title">Transfer Request Summary</h4>
+              <div class="summary-row">
+                <div class="summary-field">
+                  <span class="summary-label">Transfer From Office</span>
+                  <span class="summary-value">{{ transferPreRole ? preForwardRoleLabel : '—' }}</span>
+                </div>
+                <div class="summary-field">
+                  <span class="summary-label">Transfer Target Office</span>
+                  <span class="summary-value">{{ transferOfficeName || '—' }}</span>
+                </div>
+              </div>
+              <div class="summary-field full">
+                <span class="summary-label">Comment</span>
+                <span class="summary-value">{{ subject || '—' }}</span>
+              </div>
+            </div>
+
+            <div class="territory-reassign-section">
+              <label class="checkbox-label">
+                <input type="checkbox" [(ngModel)]="changeTerritory" (ngModelChange)="onChangeTerritoryToggle()" />
+                Do you want to change the Territory?
+              </label>
+              @if (changeTerritory) {
+                <div class="form-group">
+                  <label>Reassign Territory</label>
+                  <select [(ngModel)]="reassignOfficeCode">
+                    <option value="">Select an office</option>
+                    @for (office of officeList(); track office.officeCode) {
+                      <option [value]="office.officeCode">{{ office.officeName }} ({{ office.officeType }})</option>
+                    }
+                  </select>
+                </div>
+              }
+            </div>
+          </div>
+          } @else if (assessmentTab() === 'final-decision') {
+          <div class="panel-header">
+            <h3><i class="pi pi-check-circle"></i> Final Decision</h3>
+            <!-- <button class="expand-btn"><i class="pi pi-window-maximize"></i></button> -->
+          </div>
+          <div class="form-scroll assessment-scroll">
+            <div class="final-decision-panel">
+              <p class="final-decision-label">Select Action</p>
+              <div class="final-decision-actions">
+                <button class="final-action-btn" [class.selected]="finalDecisionAction === 'CLOSE'" (click)="finalDecisionAction = 'CLOSE'">
+                  <span class="action-radio"></span> Close Complaint
+                </button>
+              </div>
+
+              @if (finalDecisionAction === 'CLOSE') {
+                <div class="final-decision-form">
+                  <div class="form-group">
+                    <label>Closure Clause</label>
+                    <div class="searchable-select">
+                      <div class="search-input-wrapper">
+                        <input type="text" [(ngModel)]="closureClauseSearch" (focus)="closureClauseDropdownOpen = true" (input)="closureClauseDropdownOpen = true" (blur)="closureClauseDropdownOpen = false" [placeholder]="closureClause || 'Search'" autocomplete="off" />
+                        <i class="pi pi-search"></i>
+                      </div>
+                      @if (closureClauseDropdownOpen && getFilteredClosureClauses().length > 0) {
+                        <div class="search-dropdown">
+                          @for (clause of getFilteredClosureClauses(); track clause) {
+                            <div class="search-dropdown-item" [class.selected]="closureClause === clause" (mousedown)="closureClause = clause; closureClauseSearch = clause; closureClauseDropdownOpen = false">{{ clause }}</div>
+                          }
+                        </div>
+                      }
+                    </div>
+                  </div>
+
+                  <div class="form-group">
+                    <label>Closure Clause Description</label>
+                    <div class="textarea-with-speech">
+                      <textarea [(ngModel)]="closureClauseDescription" rows="3" placeholder="Enter text here"></textarea>
+                      <app-speech-button (transcription)="closureClauseDescription = closureClauseDescription + ' ' + $event"></app-speech-button>
+                    </div>
+                  </div>
+
+                  <div class="form-row-2col">
+                    <div class="form-group">
+                      <label>Complaint Status on Portal</label>
+                      <div class="searchable-select">
+                        <input type="text" [(ngModel)]="complaintStatusOnPortal" placeholder="Search" />
+                        <i class="pi pi-search"></i>
+                      </div>
+                    </div>
+                    <div class="form-group">
+                      <label>Speaking order generated?</label>
+                      <div class="radio-group">
+                        <label class="radio-label"><input type="radio" name="speakingOrder" value="Yes" [(ngModel)]="speakingOrderGenerated" /> Yes</label>
+                        <label class="radio-label"><input type="radio" name="speakingOrder" value="No" [(ngModel)]="speakingOrderGenerated" /> No</label>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="form-row-2col">
+                    <div class="form-group">
+                      <label>Gist of the Case</label>
+                      <div class="searchable-select">
+                        <input type="text" [(ngModel)]="gistOfCase" placeholder="Search" />
+                        <i class="pi pi-search"></i>
+                      </div>
+                    </div>
+                    <div class="form-group">
+                      <label>Gist of the Case in regional language</label>
+                      <div class="searchable-select">
+                        <input type="text" [(ngModel)]="gistOfCaseRegional" placeholder="Search" />
+                        <i class="pi pi-search"></i>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              }
+
+              <!-- All Comments -->
+              <div class="assessment-comments">
+                <h4 class="comments-title">All Comments</h4>
+                @for (comment of assessmentComments(); track comment.id) {
+                  <div class="comment-card">
+                    <div class="comment-header">
+                      <span class="comment-avatar" [style.background]="comment.color">{{ comment.initials }}</span>
+                      <span class="comment-author">{{ comment.author }}</span>
+                      <span class="comment-timestamp">{{ formatCommentDate(comment.createdAt || '') }}</span>
+                    </div>
+                    <p class="comment-body">{{ comment.text }}</p>
+                  </div>
+                }
+              </div>
+
+              <!-- Add Comment -->
+              <div class="add-comment-section">
+                <label class="comment-label">Comments <i class="pi pi-expand"></i></label>
+                <div class="textarea-with-speech">
+                  <textarea [(ngModel)]="assessmentComment" rows="3" placeholder="Enter text here"></textarea>
+                  <app-speech-button (transcription)="assessmentComment = assessmentComment + ' ' + $event"></app-speech-button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          } @else {
+          <div class="panel-header">
+            <h3><i class="pi pi-clipboard"></i> Assessment</h3>
+            <!-- <button class="expand-btn"><i class="pi pi-window-maximize"></i></button> -->
+          </div>
+
+          @if (assessmentPanels().form) {
+          <div class="form-scroll assessment-scroll">
+            <!-- Deputy Ombudsman Decision checkbox: only for Deputy Ombudsman/Ombudsman -->
+            @if (userRole() === 'DEPUTY_OMBUDSMAN' || userRole() === 'OMBUDSMAN') {
+              <div class="assessment-decision">
+                <label class="assessment-checkbox" [class.disabled]="isReadOnlyViewer()">
+                  <input type="checkbox" [(ngModel)]="sendToDeputy" [disabled]="isReadOnlyViewer()" />
+                  <span>Do you want to add and send <strong>Deputy Ombudsman Decision</strong> to Dealing Officer?</span>
+                </label>
+              </div>
+            }
+
+            <!-- Deputy Ombudsman fields (shown when checkbox is checked) -->
+            @if (sendToDeputy && userRole() !== 'DO') {
+              <div class="deputy-decision-section">
+                <div class="form-group">
+                  <label>Deputy Ombudsman Decision</label>
+                  <div class="select-with-avatar">
+                    <select [(ngModel)]="deputyOmbudsmanDecision">
+                      <option value="NON_MAINTAINABLE">Non Maintainable</option>
+                      <option value="MAINTAINABLE">Maintainable</option>
+                      <option value="PARTIALLY_MAINTAINABLE">Partially Maintainable</option>
+                    </select>
+                    <span class="field-avatar orange">A</span>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label>Deputy Ombudsman Decision Comments <i class="pi pi-expand"></i></label>
+                  <div class="textarea-with-speech">
+                    <textarea [(ngModel)]="deputyOmbudsmanComments" rows="3" placeholder="Enter text here"></textarea>
+                    <app-speech-button (transcription)="deputyOmbudsmanComments = deputyOmbudsmanComments + ' ' + $event"></app-speech-button>
+                  </div>
+                </div>
+              </div>
+            }
+
+            <!-- Proposed Action / Proposed Clause -->
+              <div class="form-row-2col assessment-fields">
+                <div class="form-group">
+                  <label>Proposed Action <span class="mandatory">*</span></label>
+                  <select [(ngModel)]="proposedAction">
+                    <option value="">Select a Value</option>
+                    <option value="MAINTAINABLE">Maintainable</option>
+                    <option value="NON_MAINTAINABLE">Non Maintainable</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Proposed Clause <span class="mandatory">*</span></label>
+                  <div class="searchable-select">
+                    <div class="search-input-wrapper">
+                      <input type="text" [(ngModel)]="clauseSearch" (focus)="clauseDropdownOpen = true" (input)="clauseDropdownOpen = true" (blur)="clauseDropdownOpen = false" [placeholder]="proposedClause || 'Search'" autocomplete="off" />
+                      <i class="pi pi-search"></i>
+                    </div>
+                    @if (clauseDropdownOpen && getFilteredClauses().length > 0) {
+                      <div class="search-dropdown">
+                        @for (clause of getFilteredClauses(); track clause) {
+                          <div class="search-dropdown-item" [class.selected]="proposedClause === clause" (mousedown)="proposedClause = clause; clauseSearch = clause; clauseDropdownOpen = false">{{ clause }}</div>
+                        }
+                      </div>
+                    }
+                  </div>
+                </div>
+              </div>
+
+            <!-- All Comments -->
+            <div class="assessment-comments">
+              <h4 class="comments-title">All Comments</h4>
+              @for (comment of assessmentComments(); track comment.id) {
+                <div class="comment-card">
+                  <div class="comment-header">
+                    <span class="comment-avatar" [style.background]="comment.color">{{ comment.initials }}</span>
+                    <span class="comment-author">{{ comment.author }}</span>
+                    <span class="comment-timestamp">{{ formatCommentDate(comment.createdAt || '') }}</span>
+                  </div>
+                  <p class="comment-body">{{ comment.text }}</p>
+                </div>
+              }
+            </div>
+
+            <!-- Add Comment -->
+            <div class="add-comment-section">
+              <label class="comment-label">Comments</label>
+              <div class="textarea-with-speech">
+                <textarea [(ngModel)]="assessmentComment" rows="3" placeholder="Enter text here"></textarea>
+                <app-speech-button (transcription)="assessmentComment = assessmentComment + ' ' + $event"></app-speech-button>
+              </div>
+            </div>
+
+            <!-- Contents of the Speaking Order -->
+            <div class="add-comment-section">
+              <label class="comment-label">Contents of the Speaking Order </label>
+              <div class="textarea-with-speech">
+                <textarea [(ngModel)]="speakingOrderContent" rows="3" placeholder="Enter text here"></textarea>
+                <app-speech-button (transcription)="speakingOrderContent = speakingOrderContent + ' ' + $event"></app-speech-button>
+              </div>
+            </div>
+          </div>
+          }
+          @if (assessmentPanels().attachments) {
+          <div class="form-scroll assessment-scroll">
+            <div class="attachment-panel">
+              <h4 class="comments-title">Attachments</h4>
+              <div class="attachment-empty">
+                <i class="pi pi-paperclip" style="font-size: 32px; color: #94a3b8; margin-bottom: 8px;"></i>
+                <p style="color: #94a3b8; font-size: 13px;">No attachments available for this complaint.</p>
+              </div>
+            </div>
+          </div>
+          }
+          @if (assessmentPanels().settings) {
+          <div class="form-scroll assessment-scroll">
+            <div class="settings-panel">
+              <h4 class="comments-title">Settings</h4>
+              <p style="color: #94a3b8; font-size: 13px;">No additional settings available.</p>
+            </div>
+          </div>
+          }
+          }
+        </div>
+      </div>
+      <!-- Right sidebar icons (extreme right) -->
+      <div class="form-sidebar-icons">
+        <button class="sidebar-icon-btn" [class.active]="rightSidebarOpen()" (click)="toggleRightSidebar()" title="Past Complaints"><i class="pi pi-eye"></i></button>
+        <button class="sidebar-icon-btn" [class.active]="attachmentsPanelOpen()" (click)="toggleAttachmentsPanel()" title="Attachments"><i class="pi pi-paperclip"></i></button>
+        <!-- <button class="sidebar-icon-btn" [class.active]="showHistoryPanel()" (click)="toggleHistoryPanel()"  title="History"><i class="pi pi-history"></i></button> -->
+        <button class="sidebar-icon-btn" 
+        [class.active]="showHistoryPanel()" 
+        (click)="handleHistoryClick()" 
+        title="History">
+  <i class="pi pi-history"></i>
+</button>
+        <button class="sidebar-icon-btn" [class.active]="assessmentPanels().settings" title="Settings">
+          <img src="assets/gavel.svg" width="24px" height="24px" />
+        </button>
+      </div>
+    </div>
+
+    }
+
+      </div><!-- /left-main-area -->
+
+      <!-- ═══ RIGHT SIDEBAR ═══ -->
+      @if (rightSidebarOpen()) {
+        <div class="col-right-sidebar">
+          <!-- Reference Section -->
+          <div class="sidebar-section">
+            <div class="sidebar-section-header">
+              <h4><i class="pi pi-cog"></i> Reference</h4>
+              <button class="sidebar-expand-btn"><i class="pi pi-chevron-right"></i></button>
+            </div>
+          </div>
+
+          <!-- Past Complaints Section -->
+          <div class="sidebar-section">
+            <div class="sidebar-section-header">
+              <h4><img src="assets/pastComplint.png" alt="" class="sidebar-icon-img" /> Past Complaints <span class="sidebar-count-badge">{{ pastComplaints().length }}</span></h4>
+              <button class="sidebar-expand-btn" (click)="loadPastComplaints()"><i class="pi pi-refresh"></i></button>
+            </div>
+            <div class="sidebar-section-body">
+              <div class="sidebar-search">
+                <i class="pi pi-search"></i>
+                <input type="text" placeholder="Search" />
+              </div>
+              @if (loadingPastComplaints()) {
+                <p class="sidebar-loading"><i class="pi pi-spin pi-spinner"></i> Loading...</p>
+              } @else if (pastComplaints().length > 0) {
+                @for (pc of pastComplaints(); track pc.complaintId; let idx = $index) {
+                  <div class="past-complaint-card"
+                       [class.pc-active-card]="pc.status !== 'COMPLETED' && pc.status !== 'RESOLVED'"
+                       [class.pc-completed-card]="pc.status === 'COMPLETED' || pc.status === 'RESOLVED'">
+                    <div class="pc-status-row">
+                      <span class="pc-status"
+                            [class.active]="pc.status !== 'COMPLETED' && pc.status !== 'RESOLVED'"
+                            [class.completed]="pc.status === 'COMPLETED' || pc.status === 'RESOLVED'">
+                        @if (pc.status === 'COMPLETED' || pc.status === 'RESOLVED') {
+                          <i class="pi pi-file"></i> Completed
+                        } @else {
+                          <i class="pi pi-check-circle"></i> Active
+                        }
+                      </span>
+                      @if (pc.status === 'COMPLETED' || pc.status === 'RESOLVED') {
+                        <span class="pc-clock-icon"><i class="pi pi-history"></i></span>
+                      }
+                    </div>
+                    <div class="pc-details">
+                      <span class="pc-field">Complaint Id: <strong>{{ pc.complaintNumber }}</strong></span>
+                      <span class="pc-field">Modified Date: <strong>{{ pc.updatedAt }}</strong></span>
+                      <span class="pc-field">Processing Office: <strong>{{ pc.department || complaintOffice || '—' }}</strong></span>
+                    </div>
+                    <p class="pc-entity">Entity: <strong>{{ pc.entityName || '—' }}</strong></p>
+                    <p class="pc-subject">{{ pc.subject }}</p>
+                  </div>
+                }
+              } @else {
+                <p class="sidebar-empty">No past complaints found</p>
+              }
+            </div>
+          </div>
+
+          <!-- Documents Section -->
+          <div class="sidebar-section">
+            <div class="sidebar-section-header">
+              <h4><i class="pi pi-file"></i> Documents</h4>
+            </div>
+            <div class="sidebar-section-body">
+              <div class="sidebar-search">
+                <i class="pi pi-search"></i>
+                <input type="text" placeholder="Search" />
+              </div>
+              @if (loadingSidebarAttachments()) {
+                <p class="sidebar-loading"><i class="pi pi-spin pi-spinner"></i> Loading...</p>
+              } @else if (sidebarAttachments().length > 0) {
+                @for (att of sidebarAttachments(); track att.id) {
+                  <div class="doc-item">
+                    <div class="doc-icon" [class.doc-icon-pdf]="att.type.includes('pdf')">
+                      @if (att.type.includes('pdf')) { <i class="pi pi-file-pdf"></i> }
+                      @else if (att.type.includes('image')) { <i class="pi pi-image"></i> }
+                      @else if (att.type.includes('sheet') || att.type.includes('excel') || att.name.endsWith('.xls') || att.name.endsWith('.xlsx')) { <i class="pi pi-file-excel"></i> }
+                      @else { <i class="pi pi-file"></i> }
+                    </div>
+                    <div class="doc-info">
+                      <span class="doc-name">{{ att.name }}</span>
+                      <span class="doc-meta">{{ att.size }} Uploaded by {{ att.uploadedBy || '—' }}</span>
+                    </div>
+                    <div class="doc-actions">
+                      <button title="View"><i class="pi pi-eye"></i></button>
+                      <button title="Download" (click)="downloadSidebarAttachment(att)"><i class="pi pi-download"></i></button>
+                    </div>
+                  </div>
+                }
+              } @else {
+                <p class="sidebar-empty">No documents attached</p>
+              }
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- ═══ ATTACHMENTS PANEL (toggled by paperclip icon) ═══ -->
+      @if (attachmentsPanelOpen()) {
+        <div class="col-attachments-panel">
+          <div class="attachments-panel-wrapper">
+            <div class="attachment-panel-header">
+              <h4><i class="pi pi-paperclip"></i> Attachments</h4>
+              <button class="sidebar-expand-btn" (click)="toggleAttachmentsPanel()"><i class="pi pi-chevron-right"></i></button>
+            </div>
+            <label class="attach-new-btn">
+              <input type="file" (change)="onDocumentUpload($event)" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx" multiple hidden />
+              <i class="pi pi-plus"></i> Attach New Document
+            </label>
+            <div class="attachment-list">
+              @if (loadingSidebarAttachments() || uploadingDocument()) {
+                <p class="sidebar-loading"><i class="pi pi-spin pi-spinner"></i> {{ uploadingDocument() ? 'Uploading...' : 'Loading...' }}</p>
+              } @else if (sidebarAttachments().length > 0) {
+                @for (att of sidebarAttachments(); track att.id) {
+                  <div class="doc-item">
+                    <div class="doc-icon" [class.doc-icon-pdf]="att.type.includes('pdf')">
+                      @if (att.type.includes('pdf')) { <i class="pi pi-file-pdf"></i> }
+                      @else if (att.type.includes('image')) { <i class="pi pi-image"></i> }
+                      @else if (att.type.includes('sheet') || att.type.includes('excel') || att.name.endsWith('.xls') || att.name.endsWith('.xlsx')) { <i class="pi pi-file-excel"></i> }
+                      @else { <i class="pi pi-file"></i> }
+                    </div>
+                    <div class="doc-info">
+                      <span class="doc-name">{{ att.name }}</span>
+                      <span class="doc-meta">{{ att.size }} {{ att.uploadedBy ? 'Uploaded by ' + att.uploadedBy : '' }}</span>
+                    </div>
+                    <div class="doc-actions">
+                      <!-- <button title="View"><i class="pi pi-eye"></i></button> -->
+                      <button title="View" (click)="previewSidebarAttachment(att)"><i class="pi pi-eye"></i></button>
+                      <button title="Download" (click)="downloadSidebarAttachment(att)"><i class="pi pi-download"></i></button>
+                    </div>
+                  </div>
+                }
+                <div class="download-all-link">
+                  <a (click)="downloadAllAttachments()"><i class="pi pi-download"></i> Download All</a>
+                </div>
+              } @else {
+                <p class="sidebar-empty">No attachments</p>
+              }
+            </div>
+          </div>
+        </div>
+      }
+
+      @if (showHistoryPanel()) {
+        <div class="history-slide-panel">
+          <div class="history-panel-header">
+            <h3><i class="pi pi-history"></i> History</h3>
+            <div class="history-panel-actions">
+              <button class="hide-comments-toggle" (click)="hideComments.set(!hideComments())" [class.active]="hideComments()">
+                <i class="pi" [class.pi-eye-slash]="hideComments()" [class.pi-eye]="!hideComments()"></i>
+                {{ hideComments() ? 'Show Comments' : 'Hide Comments' }}
+              </button>
+              <button class="sidebar-expand-btn" (click)="showHistoryPanel.set(false)" title="Close">
+                <i class="pi pi-chevron-right"></i>
+              </button>
+            </div>
+          </div>
+      
+          @if (loadingHistory()) {
+            <div class="history-loading">
+              <i class="pi pi-spin pi-spinner"></i> Loading history...
+            </div>
+          } @else if (historyEntries().length === 0) {
+            <div class="history-empty">
+              <i class="pi pi-info-circle"></i>
+              <p>No history available for this complaint.</p>
+            </div>
+          } @else {
+            <div class="history-entries">
+              
+              @for (entry of historyEntries(); track entry.id) {
+                <!-- Individual cards hook into the vertical line container above -->
+                <div class="history-entry-card">
+                  
+                  <div class="entry-status-row">
+                    <!-- <span class="entry-status-dot"></span>
+                    <span class="entry-status-badge" [style.background]="entry.statusColor + '1a'" [style.color]="entry.statusColor"> -->
+                      <!-- {{ entry.statusLabel }} -->
+                    <!-- </span> -->
+
+                    <span class="entry-status-dot" 
+                    [style.background]="entry.statusColor" 
+                    [style.boxShadow]="' 0 0 0 1px ' + entry.statusColor">
+                    </span>
+            
+
+              <span class="entry-status-badge" 
+                    [style.background]="entry.statusColor + '1a'" 
+                    [style.color]="entry.statusColor">
+                {{ entry.statusLabel }}
+              </span>
+              
+                  </div>
+      
+                  <div class="entry-detail-row">
+                    <div class="entry-detail-item">
+                      <span class="entry-detail-label">Modified On</span>
+                      <span class="entry-detail-value">{{ entry.modifiedOn }}</span> 
+                    </div>
+                    <div class="entry-detail-item">
+                      <span class="entry-detail-label">Modified By</span>
+                      <span class="entry-detail-value">{{ entry.modifiedBy }}</span>
+                    </div>
+                  </div>
+      
+                  <div class="entry-officer-row">
+                    <span class="officer-avatar" [style.background]="entry.officerAvatarColor || '#8b5cf6'">
+                      {{ entry.assignedOfficer.substring(0, 2) }}
+                    </span>
+                    <div class="officer-info">
+                      <span class="entry-detail-label">Assigned To:</span>
+                      <span class="officer-name">{{ entry.assignedOfficer }}</span>
+                    </div>
+                  </div>
+      
+                  @if (!hideComments() && entry.description) {
+                    <div class="entry-comments">
+                      <p>
+                        {{ entry.description.length > 150 ? entry.description.substring(0, 150) : entry.description }}
+                        @if (entry.description.length > 150) {
+                          <a class="read-more">...read more</a>
+                        }
+                      </p>
+                    </div>
+                  }
+                </div>
+              } <!-- /@for loop ends -->
+      
+            </div> <!-- /history-entries container ends -->
+          }
+        </div>
+      }
+      
+        </div><!-- /page-body-layout -->
+      </div><!-- /main-frame -->
+    </div><!-- /assessment-container -->
+
+  } @else if (draftSaved()) {
+    <!-- ═══ SAVED SUMMARY VIEW ═══ -->
+    <div class="sub-header">
+      <div class="complaint-tab active">
+        <i class="pi pi-file"></i>
+        Complaint {{ complaintId }}
+      </div>
+      <div class="complaint-tab add-tab" (click)="goBack()" title="Back to RBIO">
+        <i class="pi pi-plus"></i>
+      </div>
+    </div>
+
+    <!-- Summary / Email Communication tabs -->
+    <div class="summary-tabs">
+      <button class="summary-tab" [class.active]="summaryActiveTab() === 'summary'" (click)="summaryActiveTab.set('summary')">Summary</button>
+      <button class="summary-tab" [class.active]="summaryActiveTab() === 'email'" (click)="summaryActiveTab.set('email')">Email Communication</button>
+    </div>
+
+    <!-- CONTENT: Two panels (Summary mode) -->
+    <div class="content-box">
+      <div class="main-content-layout two-col">
+        <!-- LEFT: Complaint Copy (PDF) -->
+        <div class="col-email-syndicate" [class.panel-expanded]="pdfExpanded()">
+          <div class="panel-header">
+            <h3><i class="pi pi-file-pdf"></i> Complaint Copy</h3>
+            <button class="expand-btn" (click)="pdfExpanded.set(!pdfExpanded())">
+              @if (pdfExpanded()) { <i class="pi pi-window-minimize"></i> } @else { <i class="pi pi-window-maximize"></i> }
+            </button>
+          </div>
+          <div class="document-viewer-body">
+            @if (pdfPreviewUrl()) {
+              <div class="pdf-toolbar">
+                <span class="file-name-label">{{ scannedFile?.name }}</span>
+                <div class="pdf-nav">
+                  <button class="icon-btn" (click)="pdfPage.set(Math.max(1, pdfPage() - 1))"><i class="pi pi-chevron-left"></i></button>
+                  <span class="page-info">{{ pdfPage() }} / {{ pdfTotalPages() }}</span>
+                  <button class="icon-btn" (click)="pdfPage.set(pdfPage() + 1)"><i class="pi pi-chevron-right"></i></button>
+                </div>
+              </div>
+              <div class="pdf-viewer">
+                <iframe [src]="pdfPreviewUrl()" class="pdf-frame"></iframe>
+              </div>
+            } @else {
+              <div class="no-document">
+                <i class="pi pi-file-pdf"></i>
+                <p>No document uploaded</p>
+              </div>
+            }
+          </div>
+        </div>
+
+        <!-- RIGHT: Read-only Complaint Summary -->
+        <div class="col-complaint-form" [class.panel-hidden]="pdfExpanded()">
+          <div class="panel-header">
+            <h3><i class="pi pi-th-large"></i> Complaint</h3>
+          </div>
+
+          <div class="form-scroll">
+            <!-- Basic Details (read-only) -->
+            <section class="form-section">
+              <h5 class="section-title expanded" [class.expanded]="summarySections.basic" (click)="summarySections.basic = !summarySections.basic">
+                <i class="pi pi-chart-bar"></i> Basic Details
+                <i class="pi section-chevron" [class.pi-chevron-up]="summarySections.basic" [class.pi-chevron-down]="!summarySections.basic"></i>
+              </h5>
+              @if (summarySections.basic) {
+                <div class="summary-fields">
+                  <div class="summary-row">
+                    <div class="summary-field">
+                      <span class="summary-label">Complainant Name</span>
+                      <span class="summary-value">{{ complainantName || '—' }}</span>
+                    </div>
+                    <div class="summary-field">
+                      <span class="summary-label">Email ID</span>
+                      <span class="summary-value">{{ complainantEmail || '—' }}</span>
+                    </div>
+                  </div>
+                  <div class="summary-field full">
+                    <span class="summary-label">Subject</span>
+                    <span class="summary-value">{{ subject || '—' }}</span>
+                  </div>
+                  <div class="summary-field full">
+                    <span class="summary-label">Complaint Details</span>
+                    <span class="summary-value">{{ description || '—' }}</span>
+                  </div>
+                  <div class="summary-field full">
+                    <span class="summary-label">Comments</span>
+                    <span class="summary-value">{{ comments || '—' }}</span>
+                  </div>
+                  <div class="summary-row">
+                    <div class="summary-field">
+                      <span class="summary-label">Mode of Receipt</span>
+                      <span class="summary-value summary-value-with-icon">
+                        <span class="avatar-circle">{{ (complainantName || 'A').charAt(0) }}</span>
+                        {{ modeOfReceipt || '—' }}
+                      </span>
+                    </div>
+                    <div class="summary-field">
+                      <span class="summary-label">Receipt Date</span>
+                      <span class="summary-value">{{ receivedDate || '—' }}</span>
+                    </div>
+                  </div>
+                  <div class="summary-field full cpgram-checkbox-row">
+                    <label class="cpgram-checkbox-label">
+                      <input type="checkbox" [checked]="isCpgram" disabled />
+                      <span>Is Complaint CPGRAM</span>
+                    </label>
+                  </div>
+                  @if (isCpgram) {
+                    <div class="summary-field full">
+                      <span class="summary-label">CPGRAM Number</span>
+                      <span class="summary-value cpgram-number">{{ cpgramsNumber || '—' }}</span>
+                    </div>
+                  }
+                </div>
+              }
+            </section>
+
+            <!-- Eligibility (read-only) -->
+            <section class="form-section eligibility-section">
+              <h5 class="section-title" [class.expanded]="summarySections.eligibility" (click)="summarySections.eligibility = !summarySections.eligibility">
+                <i class="pi pi-chart-bar"></i> Eligibility
+                <i class="pi section-chevron" [class.pi-chevron-up]="summarySections.eligibility" [class.pi-chevron-down]="!summarySections.eligibility"></i>
+              </h5>
+              @if (summarySections.eligibility) {
+                <div class="summary-fields">
+                  <div class="summary-row">
+                    <div class="summary-field">
+                      <span class="summary-label">Proposed Complaint Type</span>
+                      <span class="summary-value">{{ proposedComplaintType || '—' }}</span>
+                    </div>
+                    <div class="summary-field">
+                      <span class="summary-label">Entity Name</span>
+                      <span class="summary-value">{{ eligibilityEntityName || '—' }}</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="eligibility-questions readonly">
+                  @for (q of eligibilityQuestions; track q.key) {
+                    <div class="eligibility-row" [class.date-row]="q.type === 'date'">
+                      <span class="eligibility-question">{{ q.label }}</span>
+                      @if (q.type === 'radio') {
+                        <div class="eligibility-options">
+                          <label class="radio-option">
+                            <input type="radio" [name]="'draft_' + q.key" [value]="true" [(ngModel)]="q.answer" disabled />
+                            <span>Yes</span>
+                          </label>
+                          <label class="radio-option">
+                            <input type="radio" [name]="'draft_' + q.key" [value]="false" [(ngModel)]="q.answer" disabled />
+                            <span>No</span>
+                          </label>
+                        </div>
+                      } @else if (q.type === 'date') {
+                        <div class="eligibility-date-input">
+                          <input type="date" [name]="'draft_' + q.key" [(ngModel)]="q.dateValue" disabled />
+                          <i class="pi pi-calendar date-icon"></i>
+                        </div>
+                      }
+                    </div>
+                  }
+                </div>
+              }
+            </section>
+
+            <!-- Entity Details (read-only) -->
+            <section class="form-section">
+              <h5 class="section-title" [class.expanded]="summarySections.entity" (click)="summarySections.entity = !summarySections.entity">
+                <i class="pi pi-chart-bar"></i> Entity Details
+                <i class="pi section-chevron" [class.pi-chevron-up]="summarySections.entity" [class.pi-chevron-down]="!summarySections.entity"></i>
+              </h5>
+            </section>
+
+            <!-- Complainant Details (read-only) -->
+            <section class="form-section">
+              <h5 class="section-title" [class.expanded]="summarySections.complainant" (click)="summarySections.complainant = !summarySections.complainant">
+                <i class="pi pi-chart-bar"></i> Complainant Details
+                <i class="pi section-chevron" [class.pi-chevron-up]="summarySections.complainant" [class.pi-chevron-down]="!summarySections.complainant"></i>
+              </h5>
+            </section>
+
+            <!-- Declaration (read-only) -->
+            <section class="form-section">
+              <h5 class="section-title" [class.expanded]="summarySections.declaration" (click)="summarySections.declaration = !summarySections.declaration">
+                <i class="pi pi-chart-bar"></i> Declaration
+                <i class="pi section-chevron" [class.pi-chevron-up]="summarySections.declaration" [class.pi-chevron-down]="!summarySections.declaration"></i>
+              </h5>
+              @if (summarySections.declaration) {
+                <div class="declaration-content">
+                  <label class="declaration-checkbox-label">
+                    <input type="checkbox" [checked]="declarationAccepted" disabled />
+                    <span>All data/information entered by me in the system is correct as per my understanding</span>
+                  </label>
+                </div>
+              }
+            </section>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  } 
+
+    <!-- ═══ SUB-HEADER TAB BAR ═══ -->
+    <!-- <div class="sub-header">
+      <div class="complaint-tab active">
+        <i class="pi pi-file"></i>
+        Complaint {{ complaintId }}
+      </div>
+      <div class="complaint-tab add-tab" (click)="goBack()" title="Back to RBIO">
+        <i class="pi pi-plus"></i>
+      </div>
+    </div> -->
+
+    <!-- ═══ META / KPI ROW ═══ -->
+    <!-- <div class="meta-row">
+      <button class="close-btn" (click)="goBack()"><i class="pi pi-times"></i></button>
+      <div class="meta-item">
+        <span class="meta-icon blue"><i class="pi pi-id-card"></i></span>
+        <div class="meta-text">
+          <span class="meta-label">Complaint ID <i class="pi pi-info-circle"></i></span>
+          <span class="meta-value">Not Assigned</span>
+        </div>
+      </div>
+      <div class="meta-item">
+        <span class="meta-icon blue"><i class="pi pi-file"></i></span>
+        <div class="meta-text">
+          <span class="meta-label">Complaint Number <i class="pi pi-info-circle"></i></span>
+          <span class="meta-value">Not Assigned</span>
+        </div>
+      </div>
+      <div class="meta-item">
+        <span class="meta-icon red"><i class="pi pi-envelope"></i></span>
+        <div class="meta-text">
+          <span class="meta-label">Mode of Receipt <i class="pi pi-info-circle"></i></span>
+          <span class="meta-value">Not Assigned</span>
+        </div>
+      </div>
+      <div class="meta-item">
+        <span class="meta-icon blue"><i class="pi pi-chart-bar"></i></span>
+        <div class="meta-text">
+          <span class="meta-label">Status <i class="pi pi-info-circle"></i></span>
+          <span class="meta-value"><i class="pi pi-flag status-flag"></i> Draft</span>
+        </div>
+      </div>
+      <div class="meta-item">
+        <span class="meta-icon dark"><i class="pi pi-user"></i></span>
+        <div class="meta-text">
+          <span class="meta-label">Complaint Owner <i class="pi pi-info-circle"></i></span>
+          <span class="meta-value">Not Assigned</span>
+        </div>
+      </div>
+      <div class="meta-actions">
+        <button class="btn btn-save" (click)="saveDraft()" [disabled]="saving()">
+          @if (saving()) { Saving... } @else { <i class="pi pi-save"></i> Save }
+        </button>
+      </div>
+    </div> -->
+
+    <!-- ═══ CONTENT: Two panels ═══ -->
+    <!-- <div class="content-box">
+      <div class="main-content-layout two-col"> -->
+
+        <!-- ════ LEFT: Reference Complaint Copy ════ -->
+        <!-- <div class="col-email-syndicate" [class.panel-expanded]="pdfExpanded()">
+          <div class="panel-header">
+            <h3><i class="pi pi-file-pdf"></i> Reference Complaint Copy</h3>
+            <button class="expand-btn" (click)="pdfExpanded.set(!pdfExpanded())">
+              @if (pdfExpanded()) { <i class="pi pi-window-minimize"></i> } @else { <i class="pi pi-window-maximize"></i> }
+            </button>
+          </div>
+
+          <div class="document-viewer-body">
+            <p class="scan-instruction"><strong>Scan and Upload Physical Letter Copy</strong> <i class="pi pi-info-circle"></i></p>
+
+            @if (!scannedFile) {
+              <div class="upload-area" [class.dragover]="isDragOver"
+                   (dragover)="onDragOver($event); isDragOver = true"
+                   (dragenter)="$event.preventDefault(); isDragOver = true"
+                   (dragleave)="isDragOver = false"
+                   (drop)="isDragOver = false; onFileDrop($event)">
+                <input id="fileInput" type="file" (change)="onFileSelected($event)"
+                       accept=".pdf,.jpg,.jpeg,.png,.tiff,.tif" class="file-hidden" />
+                <span class="file-upload-text">Drag and Drop or <label for="fileInput" class="file-upload-browse-link">Browse</label> File</span>
+              </div>
+              <div class="upload-meta-row">
+                <span>Support formats: PDF, DOC, JPG, PNG</span>
+                <span>Maximum Size of All Files: 2MB</span>
+              </div>
+            } @else {
+              @if (pdfPreviewUrl()) {
+                <div class="pdf-toolbar">
+                  <span class="file-name-label">{{ scannedFile.name }}</span>
+                  <div class="pdf-nav">
+                    <button class="icon-btn" (click)="pdfPage.set(Math.max(1, pdfPage() - 1))"><i class="pi pi-chevron-left"></i></button>
+                    <span class="page-info">{{ pdfPage() }} / {{ pdfTotalPages() }}</span>
+                    <button class="icon-btn" (click)="pdfPage.set(pdfPage() + 1)"><i class="pi pi-chevron-right"></i></button>
+                  </div>
+                </div>
+                <div class="pdf-viewer">
+                  <iframe [src]="pdfPreviewUrl()" class="pdf-frame"></iframe>
+                </div>
+              } @else {
+                <div class="file-info-card">
+                  <i class="pi pi-file-pdf"></i>
+                  <div class="file-details">
+                    <span class="file-name">{{ scannedFile.name }}</span>
+                    <span class="file-size">{{ (scannedFile.size / 1024 / 1024).toFixed(2) }} MB</span>
+                  </div>
+                </div>
+              }
+
+              <div class="doc-actions-bar">
+                @if (!ocrComplete()) {
+                  <button class="btn btn-ai-extract" (click)="runOcr()" [disabled]="ocrInProgress()">
+                    @if (ocrInProgress()) { <span class="spinner-sm"></span> Extracting... } @else { <i class="pi pi-bolt"></i> AI Extract }
+                  </button>
+                  <button class="btn btn-outline" (click)="skipOcr()">Skip</button>
+                } @else {
+                  <span class="ocr-done"><i class="pi pi-check-circle"></i> Extraction complete</span>
+                }
+                <button class="btn btn-outline btn-danger" (click)="removeFile()"><i class="pi pi-times"></i> Remove File</button>
+              </div>
+            }
+
+            @if (scanError) {
+              <p class="error-text">{{ scanError }}</p>
+            }
+          </div>
+        </div> -->
+
+        <!-- ════ RIGHT: Complaint Form ════ -->
+        <!-- <div class="col-complaint-form" [class.panel-hidden]="pdfExpanded()">
+          <div class="panel-header">
+            <h3><i class="pi pi-file-edit"></i> Complaint</h3>
+          </div> -->
+
+          <!-- Right sidebar icons -->
+          <!-- <div class="form-sidebar-icons">
+            <button class="sidebar-icon-btn" [class.active]="rightSidebarOpen()" (click)="toggleRightSidebar()" title="Past Complaints"><i class="pi pi-eye"></i></button>
+            <button class="sidebar-icon-btn" [class.active]="attachmentsPanelOpen()" (click)="toggleAttachmentsPanel()" title="Attachments"><i class="pi pi-paperclip"></i></button>
+            <button class="sidebar-icon-btn" [class.active]="createPanels().history" (click)="togglePanel(createPanels, 'history')" title="History"><i class="pi pi-history"></i></button>
+            <button class="sidebar-icon-btn" [class.active]="createPanels().settings" (click)="togglePanel(createPanels, 'settings')" title="Settings"><i class="pi pi-cog"></i></button>
+          </div> -->
+
+          <!-- @if (createPanels().form) {
+          @if (ocrComplete()) {
+            <div class="ocr-notice">
+              <i class="pi pi-exclamation-triangle"></i>
+              Content extraction may not be 100% accurate. Please verify all information.
+              <button class="dismiss-btn" (click)="ocrComplete.set(false)">&times;</button>
+            </div>
+          } -->
+
+          <!-- <div class="form-scroll">
+            Basic Details
+            <section class="form-section">
+              <h5 class="section-title" [class.expanded]="sectionExpanded.basic" (click)="sectionExpanded.basic = !sectionExpanded.basic">
+                <i class="pi pi-list"></i> Basic Details
+                <i class="pi section-chevron" [class.pi-chevron-up]="sectionExpanded.basic" [class.pi-chevron-down]="!sectionExpanded.basic"></i>
+              </h5>
+              @if (sectionExpanded.basic) {
+                <div class="form-group full-width" [class.has-error]="formSubmitAttempted && fieldErrors['subject']">
+                  <label>Subject <span class="required">*</span></label>
+                  <textarea [(ngModel)]="subject" rows="2" placeholder="Enter text here"></textarea>
+                  @if (formSubmitAttempted && fieldErrors['subject']) {
+                    <span class="field-error">{{ fieldErrors['subject'] }}</span>
+                  }
+                </div>
+
+                <div class="form-group full-width" [class.has-error]="formSubmitAttempted && fieldErrors['description']">
+                  <label>Complaint Details <span class="required">*</span></label>
+                  <textarea [(ngModel)]="description" rows="3" placeholder="Enter text here"></textarea>
+                  @if (formSubmitAttempted && fieldErrors['description']) {
+                    <span class="field-error">{{ fieldErrors['description'] }}</span>
+                  }
+                </div>
+
+                <div class="form-group full-width">
+                  <label>Comments</label>
+                  <div class="textarea-with-speech">
+                    <textarea [(ngModel)]="comments" rows="2" placeholder="Enter text here" maxlength="3072"></textarea>
+                    <app-speech-button (transcription)="comments = comments + ' ' + $event"></app-speech-button>
+                  </div>
+                </div>
+
+                <div class="form-row-2col">
+                  <div class="form-group" [class.has-error]="formSubmitAttempted && fieldErrors['modeOfReceipt']">
+                    <label>Mode of Receipt <span class="required">*</span></label>
+                    <select [(ngModel)]="modeOfReceipt">
+                      <option value="">Enter a value</option>
+                      <option value="PHYSICAL_LETTER">Physical Letter</option>
+                      <option value="EMAIL">Email</option>
+                      <option value="PORTAL">Portal</option>
+                      <option value="CPGRAMS">CPGRAMS</option>
+                    </select>
+                    @if (formSubmitAttempted && fieldErrors['modeOfReceipt']) {
+                      <span class="field-error">{{ fieldErrors['modeOfReceipt'] }}</span>
+                    }
+                  </div>
+                  <div class="form-group" [class.has-error]="formSubmitAttempted && fieldErrors['receivedDate']">
+                    <label>Physical Letter Receipt Date</label>
+                    <input type="date" [(ngModel)]="receivedDate" placeholder="dd-mm-yyyy" />
+                    @if (formSubmitAttempted && fieldErrors['receivedDate']) {
+                      <span class="field-error">{{ fieldErrors['receivedDate'] }}</span>
+                    }
+                  </div>
+                </div>
+                <div class="form-group full-width cpgram-checkbox-row">
+                  <label class="cpgram-checkbox-label">
+                    <input type="checkbox" [(ngModel)]="isCpgram" />
+                    <span>Is Complaint CPGRAM</span>
+                  </label>
+                </div>
+                @if (isCpgram) {
+                  <div class="form-group full-width">
+                    <label>CPGRAM Number</label>
+                    <input type="text" [(ngModel)]="cpgramsNumber" placeholder="Enter CPGRAM number" />
+                  </div>
+                }
+              }
+            </section>
+ -->
+            <!-- Eligibility -->
+            <!-- <section class="form-section eligibility-section">
+              <h5 class="section-title" [class.expanded]="sectionExpanded.eligibility" (click)="sectionExpanded.eligibility = !sectionExpanded.eligibility">
+                <i class="pi pi-verified"></i> Eligibility
+                <i class="pi section-chevron" [class.pi-chevron-up]="sectionExpanded.eligibility" [class.pi-chevron-down]="!sectionExpanded.eligibility"></i>
+              </h5>
+              @if (sectionExpanded.eligibility) {
+                <div class="form-row-2col">
+                  <div class="form-group">
+                    <label>Proposed Complaint Type</label>
+                    <select [(ngModel)]="proposedComplaintType">
+                      <option value="NEW_COMPLAINT">New Complaint</option>
+                      <option value="SUGGESTION">Suggestion</option>
+                      <option value="QUERY">Query</option>
+                    </select>
+                  </div>
+                  <div class="form-group entity-search-group">
+                    <label>Entity Name</label>
+                    <div class="entity-search-wrapper">
+                      <input type="text"
+                        [ngModel]="eligibilityEntitySearch || eligibilityEntityName"
+                        (ngModelChange)="onEligibilityEntitySearch($event)"
+                        (focus)="onEligibilityEntitySearch(eligibilityEntitySearch || eligibilityEntityName)"
+                        (blur)="onEligibilityEntityBlur()"
+                        placeholder="Select a Value"
+                        autocomplete="off" />
+                      <i class="pi pi-search entity-search-icon"></i>
+                    </div>
+                    @if (showEligibilityEntityDropdown() && eligibilityEntityResults().length > 0) {
+                      <ul class="entity-dropdown">
+                        @for (entity of eligibilityEntityResults(); track entity.id) {
+                          <li (mousedown)="selectEligibilityEntity(entity)">
+                            <span class="entity-name">{{ entity.name }}</span>
+                            <span class="entity-dept">{{ entity.department }}</span>
+                          </li>
+                        }
+                      </ul>
+                    }
+                  </div>
+                </div>
+
+                <div class="eligibility-toggle">
+                  <label class="toggle-switch">
+                    <input type="checkbox" [(ngModel)]="markAllEligible" (change)="onMarkAllEligible()" />
+                    <span class="toggle-slider"></span>
+                  </label>
+                  <span class="toggle-label">Mark all as eligible</span>
+                </div>
+
+                <div class="eligibility-questions">
+                  @for (q of eligibilityQuestions; track q.key) {
+                    <div class="eligibility-row" [class.date-row]="q.type === 'date'">
+                      <span class="eligibility-question">{{ q.label }}</span>
+                      @if (q.type === 'radio') {
+                        <div class="eligibility-options">
+                          <label class="radio-option">
+                            <input type="radio" [name]="q.key" [value]="true" [(ngModel)]="q.answer" />
+                            <span>Yes</span>
+                          </label>
+                          <label class="radio-option">
+                            <input type="radio" [name]="q.key" [value]="false" [(ngModel)]="q.answer" />
+                            <span>No</span>
+                          </label>
+                        </div>
+                      } @else if (q.type === 'date') {
+                        <div class="eligibility-date-input">
+                          <input type="date" [name]="q.key" [(ngModel)]="q.dateValue" placeholder="dd-mm-yyyy" />
+                          <i class="pi pi-calendar date-icon"></i>
+                        </div>
+                      }
+                    </div>
+                  }
+                </div>
+              }
+            </section> -->
+
+            <!-- Entity Details -->
+            <!-- <section class="form-section">
+              <h5 class="section-title" [class.expanded]="sectionExpanded.entity" (click)="sectionExpanded.entity = !sectionExpanded.entity">
+                <i class="pi pi-building"></i> Entity Details
+                <i class="pi section-chevron" [class.pi-chevron-up]="sectionExpanded.entity" [class.pi-chevron-down]="!sectionExpanded.entity"></i>
+              </h5>
+              @if (sectionExpanded.entity) { -->
+                <!-- Read-only entity info -->
+                <!-- <div class="form-row-2col">
+                  <div class="form-group">
+                    <label class="readonly-label">Entity Name</label>
+                    <span class="readonly-value">{{ entityName || '—' }}</span>
+                  </div>
+                  <div class="form-group">
+                    <label class="readonly-label">Module Name</label>
+                    <span class="readonly-value">{{ moduleName || '—' }}</span>
+                  </div>
+                </div>
+                <div class="form-row-2col">
+                  <div class="form-group">
+                    <label class="readonly-label">Entity Category</label>
+                    <span class="readonly-value">{{ entityCategory || '—' }}</span>
+                  </div>
+                  <div class="form-group">
+                    <label class="readonly-label">Entity Type</label>
+                    <span class="readonly-value">{{ entityTypeDisplay || '—' }}</span>
+                  </div>
+                </div>
+ -->
+                <!-- Editable fields -->
+                <!-- <div class="form-row-2col">
+                  <div class="form-group">
+                    <label>BSR Code</label>
+                    <input type="text" [(ngModel)]="bsrCode" placeholder="Enter BSR code" />
+                  </div>
+                  <div class="form-group" [class.has-error]="fieldErrors['entityPincode']">
+                    <label>Pincode</label>
+                    <input type="text" [(ngModel)]="entityPincode" (ngModelChange)="onEntityPincodeInput($event)" placeholder="Enter pincode" maxlength="6" />
+                    @if (fieldErrors['entityPincode']) {
+                      <span class="field-error">{{ fieldErrors['entityPincode'] }}</span>
+                    }
+                  </div>
+                </div>
+                <div class="form-row-2col">
+                  <div class="form-group">
+                    <label>Country</label>
+                    <input type="text" [(ngModel)]="entityCountry" placeholder="Enter Country name" />
+                  </div>
+                  <div class="form-group entity-search-group">
+                    <label>State</label>
+                    <div class="entity-search-wrapper">
+                      <input type="text" [(ngModel)]="entityState" placeholder="Select state name" autocomplete="off" />
+                      <i class="pi pi-search entity-search-icon"></i>
+                    </div>
+                  </div>
+                </div>
+                <div class="form-row-2col">
+                  <div class="form-group entity-search-group">
+                    <label>District</label>
+                    <div class="entity-search-wrapper">
+                      <input type="text" [(ngModel)]="entityDistrict" placeholder="Select district name" autocomplete="off" />
+                      <i class="pi pi-search entity-search-icon"></i>
+                    </div>
+                  </div>
+                  <div class="form-group entity-search-group">
+                    <label>City</label>
+                    <div class="entity-search-wrapper">
+                      <input type="text" [(ngModel)]="entityCity" placeholder="Select city name" autocomplete="off" />
+                      <i class="pi pi-search entity-search-icon"></i>
+                    </div>
+                  </div>
+                </div>
+                <div class="form-row-2col">
+                  <div class="form-group entity-search-group">
+                    <label>Entity Branch Name</label>
+                    <div class="entity-search-wrapper">
+                      <input type="text" [(ngModel)]="entityBranchName" placeholder="Select entity branch name" autocomplete="off" />
+                      <i class="pi pi-search entity-search-icon"></i>
+                    </div>
+                  </div>
+                  <div class="form-group entity-search-group">
+                    <label>Entity Branch Category</label>
+                    <div class="entity-search-wrapper">
+                      <input type="text" [(ngModel)]="entityBranchCategory" placeholder="Select entity branch category" autocomplete="off" />
+                      <i class="pi pi-search entity-search-icon"></i>
+                    </div>
+                  </div>
+                </div>
+                <div class="form-row-2col">
+                  <div class="form-group">
+                    <label>Entity Address</label>
+                    <input type="text" [(ngModel)]="entityAddress" placeholder="Enter entity address" />
+                  </div>
+                  <div class="form-group">
+                    <label>Branch Center Name</label>
+                    <input type="text" [(ngModel)]="branchCenterName" placeholder="Enter branch center name" />
+                  </div>
+                </div>
+                <div class="form-row-2col">
+                  <div class="form-group">
+                    <label>COSMOS Code</label>
+                    <input type="text" [(ngModel)]="cosmosCode" placeholder="Enter Country name" />
+                  </div>
+                  <div class="form-group">
+                    <label>Asset Size in Crores</label>
+                    <div class="amount-input-wrapper">
+                      <span class="currency-prefix">₹</span>
+                      <input type="number" [(ngModel)]="assetSizeInCrores" placeholder="Enter Amount" />
+                    </div>
+                  </div>
+                </div> -->
+
+                <!-- Entity Yes/No questions -->
+                <!-- <div class="eligibility-questions entity-questions">
+                  @for (q of entityQuestions; track q.key) {
+                    <div class="eligibility-row">
+                      <span class="eligibility-question">{{ q.label }}</span>
+                      <div class="eligibility-options">
+                        <label class="radio-option">
+                          <input type="radio" [name]="q.key" [value]="true" [(ngModel)]="q.answer" />
+                          <span>Yes</span>
+                        </label>
+                        <label class="radio-option">
+                          <input type="radio" [name]="q.key" [value]="false" [(ngModel)]="q.answer" />
+                          <span>No</span>
+                        </label>
+                      </div>
+                    </div>
+                  }
+                </div>
+              }
+            </section> -->
+
+            <!-- Complainant Details -->
+            <!-- <section class="form-section">
+              <h5 class="section-title" [class.expanded]="sectionExpanded.complainant" (click)="sectionExpanded.complainant = !sectionExpanded.complainant">
+                <i class="pi pi-user"></i> Complainant Details
+                <i class="pi section-chevron" [class.pi-chevron-up]="sectionExpanded.complainant" [class.pi-chevron-down]="!sectionExpanded.complainant"></i>
+              </h5>
+              @if (sectionExpanded.complainant) {
+                <div class="form-row-2col">
+                  <div class="form-group" [class.has-error]="formSubmitAttempted && fieldErrors['complainantName']">
+                    <label>Name <span class="required">*</span></label>
+                    <input type="text" [(ngModel)]="complainantName" placeholder="Full name" />
+                    @if (formSubmitAttempted && fieldErrors['complainantName']) {
+                      <span class="field-error">{{ fieldErrors['complainantName'] }}</span>
+                    }
+                  </div>
+                  <div class="form-group" [class.has-error]="formSubmitAttempted && fieldErrors['complainantEmail']">
+                    <label>Email</label>
+                    <input type="email" [(ngModel)]="complainantEmail" placeholder="Email address" />
+                    @if (formSubmitAttempted && fieldErrors['complainantEmail']) {
+                      <span class="field-error">{{ fieldErrors['complainantEmail'] }}</span>
+                    }
+                  </div>
+                </div>
+                <div class="form-row-2col">
+                  <div class="form-group" [class.has-error]="formSubmitAttempted && fieldErrors['complainantPhone']">
+                    <label>Phone</label>
+                    <input type="tel" [(ngModel)]="complainantPhone" maxlength="10" placeholder="10-digit mobile" />
+                    @if (formSubmitAttempted && fieldErrors['complainantPhone']) {
+                      <span class="field-error">{{ fieldErrors['complainantPhone'] }}</span>
+                    }
+                  </div>
+                  <div class="form-group" [class.has-error]="fieldErrors['complainantPincode']">
+                    <label>Pincode</label>
+                    <div class="pincode-field">
+                      <input type="text" [ngModel]="complainantPincode" (ngModelChange)="onPincodeInput($event)" maxlength="6" placeholder="6-digit pincode" />
+                      @if (pincodeLoading()) { <span class="pincode-spinner">...</span> }
+                    </div>
+                    @if (fieldErrors['complainantPincode']) {
+                      <span class="field-error">{{ fieldErrors['complainantPincode'] }}</span>
+                    }
+                  </div>
+                </div>
+                <div class="form-row-2col">
+                  <div class="form-group">
+                    <label>State</label>
+                    <select [ngModel]="complainantState" (ngModelChange)="onStateChange($event)">
+                      <option value="">Select State</option>
+                      @for (s of states(); track s) {
+                        <option [value]="s">{{ s }}</option>
+                      }
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label>District</label>
+                    <select [(ngModel)]="complainantDistrict">
+                      <option value="">Select District</option>
+                      @for (d of districts(); track d) {
+                        <option [value]="d">{{ d }}</option>
+                      }
+                    </select>
+                  </div>
+                </div>
+                <div class="form-group full-width">
+                  <label>Address</label>
+                  <textarea [(ngModel)]="complainantAddress" rows="2" placeholder="Full address"></textarea>
+                </div>
+              }
+            </section> -->
+
+            <!-- Action Buttons -->
+            <!-- <div class="form-actions">
+              <button class="btn btn-primary" (click)="openAssignmentDialog()" [disabled]="!canSubmit()">
+                <i class="pi pi-send"></i> Send
+              </button>
+              <button class="btn btn-outline" (click)="saveDraft()" [disabled]="saving()">
+                <i class="pi pi-pencil"></i> Edit
+              </button>
+            </div>
+          </div>
+          }
+
+          @if (createPanels().attachments) {
+          <div class="form-scroll expandable-section">
+            <div class="attachment-panel">
+              <h4 class="comments-title">Attachments</h4>
+              <div class="attachment-empty">
+                <i class="pi pi-paperclip" style="font-size: 32px; color: #94a3b8; margin-bottom: 8px;"></i>
+                <p style="color: #94a3b8; font-size: 13px;">No attachments yet. Upload files after saving.</p>
+              </div>
+            </div>
+          </div>
+          }
+
+          @if (createPanels().history) {
+          <div class="form-scroll expandable-section">
+            <div class="history-panel">
+              <h4 class="comments-title">History / Timeline</h4>
+              <p style="color: #94a3b8; font-size: 13px;">No history available. Save the complaint to begin tracking.</p>
+            </div>
+          </div>
+          }
+
+          @if (createPanels().settings) {
+          <div class="form-scroll expandable-section">
+            <div class="settings-panel">
+              <h4 class="comments-title">Settings</h4>
+              <p style="color: #94a3b8; font-size: 13px;">No additional settings available.</p>
+            </div>
+          </div>
+          }
+
+        </div>
+      </div>
+    </div> -->
+  
+</div>
+
+<!-- Assignment Confirmation Dialog -->
+@if (showConfirmDialog()) {
+  <div class="modal-overlay" (click)="cancelAssignment()">
+    <div class="modal-content assignment-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <span class="modal-title">Assignment</span>
+      </div>
+      <div class="modal-body">
+        <div class="confirmation-header">
+          <i class="pi pi-info-circle confirmation-icon"></i>
+          <div class="confirmation-text">
+            <strong>Confirmation</strong>
+            <p>Are you sure you want to <strong>send the request to CRPC DEO</strong> ?</p>
+          </div>
+          <button class="modal-close" (click)="cancelAssignment()">&times;</button>
+        </div>
+
+        <div class="assignment-form">
+          <div class="form-row-2col">
+            <div class="form-group">
+              <label>Assignment</label>
+              <select [(ngModel)]="assignmentMode" (change)="onAssignmentModeChange()">
+                <option value="AUTOMATIC">Automatic</option>
+                <option value="MANUAL">Manual</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Name of CRPC DEO</label>
+              <div class="deo-select-wrapper">
+                <input type="text" [value]="selectedDeoName || 'CRPC DEO'" [disabled]="assignmentMode === 'AUTOMATIC'" readonly />
+                <i class="pi pi-search"></i>
+              </div>
+            </div>
+          </div>
+
+          @if (deoOnLeave()) {
+            <div class="leave-warning">
+              <span class="leave-dot"></span> Assigned user is on Leave
+            </div>
+          }
+
+          <div class="status-change">
+            <span class="status-label">Expected Status Change <i class="pi pi-info-circle"></i></span>
+            <div class="status-flow">
+              <span class="status-badge create"><i class="pi pi-plus-circle"></i> Create</span>
+              <i class="pi pi-arrow-right flow-arrow"></i>
+              <span class="status-badge draft"><i class="pi pi-file"></i> Draft</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" (click)="cancelAssignment()">Cancel</button>
+        <button class="btn btn-primary" (click)="confirmAssignment()" [disabled]="!selectedDeoId.trim() || submitting()">
+          @if (submitting()) { <span class="spinner-sm"></span> Sending... } @else { Confirm }
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Send for Approval Dialog -->
+@if (showApprovalDialog()) {
+  <div class="modal-overlay" (click)="cancelApproval()">
+    <div class="modal-content assignment-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header-bar">
+        <span>Assignment - {{ approvalTargetLabel }}</span>
+      </div>
+      <div class="modal-body">
+        <div class="confirmation-header">
+          <i class="pi pi-info-circle confirmation-icon"></i>
+          <div class="confirmation-text">
+            <strong>Confirmation</strong>
+            @if (isOmbudsmanDecisionDialog) {
+              <p>Are you sure you want to <strong>send the request to {{ approvalTargetLabel }} with Ombudsman Decision</strong> ?</p>
+            } @else {
+              <p>Are you sure you want to <strong>send the request to {{ approvalTargetLabel }}</strong> ?</p>
+            }
+          </div>
+          <button class="modal-close" (click)="cancelApproval()">&times;</button>
+        </div>
+
+        <div class="assignment-form">
+          <div class="form-row-2col">
+            <div class="form-group">
+              <label>Assignment</label>
+              <select [(ngModel)]="approvalAssignmentMode" (ngModelChange)="onApprovalAssignmentChange()">
+                <option value="AUTOMATIC">Automatic</option>
+                <option value="MANUAL">Manual</option>
+              </select>
+            </div>
+            <div class="form-group entity-search-group">
+              <label>Name of {{ approvalTargetLabel }}</label>
+              <div class="deo-select-wrapper">
+                <input type="text" [(ngModel)]="approvalSelectedName" [placeholder]="approvalTargetLabel + ' Name'" [disabled]="approvalAssignmentMode === 'AUTOMATIC'" (input)="filterApprovalUsers()" (focus)="filterApprovalUsers()" autocomplete="off" />
+                <i class="pi pi-search"></i>
+              </div>
+              @if (approvalAssignmentMode === 'MANUAL' && approvalFilteredUsers.length > 0) {
+                <ul class="entity-dropdown">
+                  @for (user of approvalFilteredUsers; track user.id) {
+                    <li (click)="selectApprovalUser(user)">{{ user.name }}</li>
+                  }
+                </ul>
+              }
+            </div>
+          </div>
+
+          @if (approvalTarget() === 'OMBUDSMAN') {
+            <div class="form-row-2col">
+              <div class="form-group">
+                <label>CRPC Proposed Action</label>
+                <select [(ngModel)]="approvalCrpcAction">
+                  <option value="">Select a Value</option>
+                  <option value="ACCEPT">Accept</option>
+                  <option value="REJECT">Reject</option>
+                  <option value="PARTIAL_ACCEPT">Partial Accept</option>
+                  <option value="REFER_BACK">Refer Back</option>
+                </select>
+              </div>
+              <div class="form-group entity-search-group">
+                <label>CRPC Proposed Clause</label>
+                <div class="entity-search-wrapper">
+                  <input type="text" [(ngModel)]="approvalCrpcClause" placeholder="Search" autocomplete="off" />
+                  <i class="pi pi-search entity-search-icon"></i>
+                </div>
+              </div>
+            </div>
+            <div class="systemic-issue-row">
+              <label>Systemic Issue?</label>
+              <div class="radio-inline">
+                <label class="radio-option"><input type="radio" name="systemicIssue" value="YES" [(ngModel)]="systemicIssue" /><span>Yes</span></label>
+                <label class="radio-option"><input type="radio" name="systemicIssue" value="NO" [(ngModel)]="systemicIssue" /><span>No</span></label>
+              </div>
+            </div>
+          }
+
+          <div class="status-change">
+            <span class="status-label">Expected Status Change <i class="pi pi-info-circle"></i></span>
+            <div class="status-flow">
+              <span class="status-badge create"><i class="pi pi-circle-fill"></i> New Complaint</span>
+              <i class="pi pi-arrow-right flow-arrow"></i>
+              <span class="status-badge sent-approval"><i class="pi pi-pencil"></i> Sent to {{ approvalTargetLabel }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" (click)="cancelApproval()">Cancel</button>
+        <button class="btn btn-primary" (click)="confirmApproval()" [disabled]="approvalSubmitting()">
+          @if (approvalSubmitting()) { <span class="spinner-sm"></span> Sending... } @else { Confirm }
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Send Back Dialog -->
+@if (showOfficeHeadDialog()) {
+  <div class="modal-overlay" (click)="cancelOfficeHeadDialog()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-body">
+        <div class="confirmation-header">
+          <i class="pi pi-info-circle confirmation-icon"></i>
+          <div class="confirmation-text">
+            <strong>Confirmation</strong>
+            @if (officeHeadDecisionType() === 'APPROVE') {
+              <p>Are you sure you want to <strong>approve</strong> the request ?</p>
+            } @else {
+              <p>Are you sure you want to <strong>reject</strong> the request ?</p>
+            }
+          </div>
+          <button class="modal-close" (click)="cancelOfficeHeadDialog()">&times;</button>
+        </div>
+
+        <div class="form-group">
+          <label>Comments</label>
+          <div class="textarea-with-speech">
+            <textarea [(ngModel)]="officeHeadComment" rows="3" placeholder="Enter text here"></textarea>
+            <app-speech-button (transcription)="officeHeadComment = officeHeadComment + ' ' + $event"></app-speech-button>
+          </div>
+        </div>
+
+        <div class="status-change">
+          <span class="status-label">Expected Status Change <i class="pi pi-info-circle"></i></span>
+          <div class="status-flow">
+            <span class="status-badge sent-back"><i class="pi pi-arrow-up-right"></i> Sent to Other Office</span>
+            <i class="pi pi-arrow-right flow-arrow"></i>
+            @if (officeHeadDecisionType() === 'APPROVE') {
+              <span class="status-badge sent-back"><i class="pi pi-arrow-up-right"></i> Sent to Dealing Officer</span>
+            } @else {
+              <span class="status-badge create"><i class="pi pi-arrow-left"></i> Sent Back to {{ preForwardRoleLabel }}</span>
+            }
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" (click)="cancelOfficeHeadDialog()">Cancel</button>
+        <button class="btn" [class.btn-primary]="officeHeadDecisionType() === 'APPROVE'" [class.btn-confirm]="officeHeadDecisionType() === 'APPROVE'"
+                (click)="confirmOfficeHeadDecision()" [disabled]="officeHeadSubmitting()">
+          @if (officeHeadSubmitting()) { <span class="spinner-sm"></span> Submitting... } @else { Confirm }
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (showForwardConfirm()) {
+  <div class="modal-overlay" (click)="cancelForwardConfirm()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-body">
+        <div class="confirmation-header">
+          <i class="pi pi-info-circle confirmation-icon"></i>
+          <div class="confirmation-text">
+            <strong>Confirmation</strong>
+            <p>Are you sure you want to <strong>forward the complaint</strong> ?</p>
+          </div>
+          <button class="modal-close" (click)="cancelForwardConfirm()">&times;</button>
+        </div>
+
+        <div class="status-change">
+          <span class="status-label">Expected Status Change <i class="pi pi-info-circle"></i></span>
+          <div class="status-flow">
+            <span class="status-badge create"><i class="pi pi-circle-fill"></i> {{ complaintStatus() || 'New Complaint' }}</span>
+            <i class="pi pi-arrow-right flow-arrow"></i>
+            <span class="status-badge sent-back"><i class="pi pi-arrow-up-right"></i> Sent to {{ forwardTargetLabel }}</span>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" (click)="cancelForwardConfirm()">Cancel</button>
+        <button class="btn btn-primary" (click)="confirmForward()" [disabled]="forwardSubmitting()">
+          @if (forwardSubmitting()) { <span class="spinner-sm"></span> Sending... } @else { Confirm }
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (showSendBackDialog()) {
+  <div class="modal-overlay" (click)="cancelSendBack()">
+    <div class="modal-content assignment-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header-bar">
+        <span>Assignment - {{ sendBackTargetLabel }}</span>
+      </div>
+      <div class="modal-body">
+        <div class="confirmation-header">
+          <i class="pi pi-info-circle confirmation-icon"></i>
+          <div class="confirmation-text">
+            <strong>Confirmation</strong>
+            <p>Are you sure you want to <strong>send back the request to {{ sendBackTargetLabel }}</strong> ?</p>
+          </div>
+          <button class="modal-close" (click)="cancelSendBack()">&times;</button>
+        </div>
+
+        <div class="assignment-form">
+          <div class="form-row-2col">
+            <div class="form-group">
+              <label>Assignment</label>
+              <select [(ngModel)]="sendBackAssignmentMode" (ngModelChange)="onSendBackAssignmentChange()">
+                <option value="AUTOMATIC">Automatic</option>
+                <option value="MANUAL">Manual</option>
+              </select>
+            </div>
+            <div class="form-group entity-search-group">
+              <label>Name of {{ sendBackTargetLabel }}</label>
+              <div class="deo-select-wrapper">
+                <input type="text" [(ngModel)]="sendBackSelectedName" [placeholder]="sendBackTargetLabel + ' Name'" [disabled]="sendBackAssignmentMode === 'AUTOMATIC'" (input)="filterSendBackUsers()" (focus)="filterSendBackUsers()" autocomplete="off" />
+                <i class="pi pi-search"></i>
+              </div>
+              @if (sendBackAssignmentMode === 'MANUAL' && sendBackFilteredUsers.length > 0) {
+                <ul class="entity-dropdown">
+                  @for (user of sendBackFilteredUsers; track user.id) {
+                    <li (click)="selectSendBackUser(user)">{{ user.name }}</li>
+                  }
+                </ul>
+              }
+            </div>
+          </div>
+
+          <div class="status-change">
+            <span class="status-label">Expected Status Change <i class="pi pi-info-circle"></i></span>
+            <div class="status-flow">
+              <span class="status-badge create"><i class="pi pi-circle-fill"></i> {{ complaintStatus() || 'New Complaint' }}</span>
+              <i class="pi pi-arrow-right flow-arrow"></i>
+              <span class="status-badge sent-back"><i class="pi pi-arrow-left"></i> {{ sendBackStatusLabel }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" (click)="cancelSendBack()">Cancel</button>
+        <button class="btn btn-primary" (click)="confirmSendBack()" [disabled]="sendBackSubmitting()">
+          @if (sendBackSubmitting()) { <span class="spinner-sm"></span> Sending... } @else { Confirm }
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ═══ FINAL DECISION: Preview and Confirm Modal ═══ -->
+@if (showFinalDecisionPreview()) {
+  <div class="modal-overlay" (click)="showFinalDecisionPreview.set(false)">
+    <div class="modal-dialog final-decision-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-header-content">
+          <h3><i class="pi pi-info-circle"></i> Preview and Confirm</h3>
+          <span class="modal-subtitle">Are you sure you want to <strong>close the complaint</strong> ?</span>
+        </div>
+        <button class="modal-close" (click)="showFinalDecisionPreview.set(false)"><i class="pi pi-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="status-change-row">
+          <span class="status-change-label">Expected Status Change <i class="pi pi-info-circle"></i></span>
+          <div class="status-flow">
+            <span class="status-pill green"><i class="pi pi-check-circle"></i> {{ getStatusLabel() }}</span>
+            <i class="pi pi-arrow-right"></i>
+            <span class="status-pill grey"><i class="pi pi-replay"></i> Complaint Closed</span>
+          </div>
+        </div>
+
+        <div class="preview-section">
+          <h4 class="preview-section-title"><i class="pi pi-chart-bar"></i> Final Decision</h4>
+          <div class="preview-fields">
+            <div class="preview-row">
+              <div class="preview-field">
+                <span class="preview-label">Action</span>
+                <span class="preview-value">Close Complaint</span>
+              </div>
+              <div class="preview-field">
+                <span class="preview-label">Closure Clause</span>
+                <span class="preview-value">{{ closureClause || '—' }}</span>
+              </div>
+            </div>
+            <div class="preview-field full">
+              <span class="preview-label">Closure Clause Description</span>
+              <span class="preview-value description-text">{{ closureClauseDescription || '—' }}</span>
+            </div>
+            <div class="preview-row">
+              <div class="preview-field">
+                <span class="preview-label">Complaint Status on Portal</span>
+                <span class="preview-value">{{ complaintStatusOnPortal || '—' }}</span>
+              </div>
+              <div class="preview-field">
+                <span class="preview-label">Speaking order generated?</span>
+                <span class="preview-value">{{ speakingOrderGenerated || '—' }}</span>
+              </div>
+            </div>
+            <div class="preview-row">
+              <div class="preview-field">
+                <span class="preview-label">Gist of the Case</span>
+                <span class="preview-value">{{ gistOfCase || '—' }}</span>
+              </div>
+              <div class="preview-field">
+                <span class="preview-label">Gist of the Case in regional language</span>
+                <span class="preview-value">{{ gistOfCaseRegional || '—' }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" (click)="showFinalDecisionPreview.set(false)">Cancel</button>
+        <button class="btn btn-confirm" [disabled]="finalDecisionSubmitting()" (click)="confirmCloseComplaint()">
+          @if (finalDecisionSubmitting()) { Closing... } @else { Confirm }
+        </button>
+      </div>
+    </div>
+  </div>
+}

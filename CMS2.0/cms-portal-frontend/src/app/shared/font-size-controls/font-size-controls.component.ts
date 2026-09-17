@@ -1,5 +1,5 @@
 import { Component, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { ButtonModule } from 'primeng/button';
 
 const STORAGE_KEY = 'cms_font_scale';
 const MIN_SCALE = 80;
@@ -10,37 +10,31 @@ const DEFAULT_SCALE = 100;
 @Component({
   selector: 'app-font-size-controls',
   standalone: true,
-  imports: [CommonModule],
+  imports: [ButtonModule],
   template: `
     <div class="font-size-controls">
-      <button type="button" class="fsc-btn" title="Decrease font size" (click)="decrease()">A-</button>
-      <button type="button" class="fsc-btn fsc-mid" title="Reset font size" (click)="reset()">A</button>
-      <button type="button" class="fsc-btn" title="Increase font size" (click)="increase()">A+</button>
+      <button pButton [text]="true" severity="secondary" label="A-"
+          title="Decrease font size" [disabled]="scale() <= ${MIN_SCALE}" (click)="decrease()"></button>
+      <button pButton [text]="true" severity="secondary" label="A"
+          title="Reset font size" (click)="reset()"></button>
+      <button pButton [text]="true" severity="secondary" label="A+"
+          title="Increase font size" [disabled]="scale() >= ${MAX_SCALE}" (click)="increase()"></button>
     </div>
   `,
   styles: [`
+    :host {
+      display: inline-flex;
+      align-items: center;
+    }
     .font-size-controls {
       display: inline-flex;
       align-items: center;
-      gap: 2px;
+      gap: 0.125rem;
     }
-    .fsc-btn {
-      border: 1px solid #d1d5db;
-      background: #fff;
-      color: #374151;
-      border-radius: 4px;
-      padding: 4px 8px;
-      font-size: 12px;
+    .font-size-controls :host ::ng-deep .p-button {
+      padding: 0.25rem 0.5rem;
       font-weight: 600;
-      cursor: pointer;
-      line-height: 1;
-    }
-    .fsc-btn:hover {
-      border-color: #2563eb;
-      color: #2563eb;
-    }
-    .fsc-mid {
-      font-size: 13px;
+      min-width: 2rem;
     }
   `]
 })

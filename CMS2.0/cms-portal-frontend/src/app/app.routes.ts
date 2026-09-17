@@ -98,12 +98,12 @@ export const routes: Routes = [
     path: 'staff/unauthorized',
     loadComponent: () => import('./components/staff/staff-unauthorized/staff-unauthorized.component').then(m => m.StaffUnauthorizedComponent)
   },
-  {
-    path: 'staff/rbio/tasks',
-    canActivate: [staffAuthGuard],
-    runGuardsAndResolvers: 'always',
-    loadComponent: () => import('./components/staff/rbio-tasks/rbio-tasks.component').then(m => m.RbioTasksComponent)
-  },
+  // {
+  //   path: 'staff/rbio/tasks',
+  //   canActivate: [staffAuthGuard],
+  //   runGuardsAndResolvers: 'always',
+  //   loadComponent: () => import('./components/staff/rbio-tasks/rbio-tasks.component').then(m => m.RbioTasksComponent)
+  // },
   {
     path: 'staff/rbio/task/:id',
     canActivate: [staffAuthGuard],

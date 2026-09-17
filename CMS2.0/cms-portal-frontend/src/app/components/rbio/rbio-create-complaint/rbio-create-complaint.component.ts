@@ -1704,7 +1704,7 @@ export class RbioCreateComplaintComponent implements OnInit {
   }
 
   goBack() {
-    this.router.navigate(['/staff/rbio/tasks']);
+    this.router.navigate(['/rbio']);
   }
 
   goToDraft() {

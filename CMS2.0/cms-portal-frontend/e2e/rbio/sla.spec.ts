@@ -22,7 +22,7 @@ test.describe('RBIO SLA Indicators', () => {
     const complaintNumber = result.complaintNumber;
 
     try {
-      await loginAsRbioRole(page, 'RBIO_OFFICER', `/staff/rbio/task/${complaintNumber}`);
+      await loginAsRbioRole(page, 'RBIO_DO', `/rbio/${complaintNumber}`);
       await page.waitForSelector('.task-action-page', { timeout: 15000 });
 
       // TAT timer bar shows remaining days
@@ -46,7 +46,7 @@ test.describe('RBIO SLA Indicators', () => {
     const complaintNumber = result.complaintNumber;
 
     try {
-      await loginAsRbioRole(page, 'RBIO_OFFICER', `/staff/rbio/task/${complaintNumber}`);
+      await loginAsRbioRole(page, 'RBIO_DO', `/rbio/${complaintNumber}`);
       await page.waitForSelector('.task-action-page', { timeout: 15000 });
 
       // RBIO SLA progress component shows stages: Officer, Conciliation, Adjudication
@@ -71,7 +71,7 @@ test.describe('RBIO SLA Indicators', () => {
   test('Breached complaint shows red indicator', async ({ page }) => {
     test.skip(!keycloakUp, 'Keycloak is not available');
 
-    await loginAsRbioRole(page, 'RBIO_OFFICER', '/staff/rbio/tasks');
+    await loginAsRbioRole(page, 'RBIO_DO', '/rbio');
     await page.waitForSelector('.rbio-home', { timeout: 15000 });
     await page.waitForSelector('.data-grid, .empty-state', { timeout: 15000 });
 
@@ -98,7 +98,7 @@ test.describe('RBIO SLA Indicators', () => {
     const complaintNumber = result.complaintNumber;
 
     try {
-      await loginAsRbioRole(page, 'RBIO_OFFICER', `/staff/rbio/task/${complaintNumber}`);
+      await loginAsRbioRole(page, 'RBIO_DO', `/rbio/${complaintNumber}`);
       await page.waitForSelector('.task-action-page', { timeout: 15000 });
 
       // The SLA progress component shows "Total Lifecycle (120 days)"

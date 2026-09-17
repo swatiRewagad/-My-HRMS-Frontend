@@ -1,8 +1,10 @@
 <app-rbio-dashboard-header [isSearching]="isSearching()" [advSearchActive]="advSearchActive()"
     [statusCodes]="statusCodes()" [(selectedStatusCode)]="selectedStatusCode"
-    (onToggleAdvancedSearch)="showAdvancedSearch.set(true)" (onClearSearch)="handleAdvancedSearchClear()"
-    (onRefreshFilters)="loadComplaints()" (onCreateComplaint)="navigateToCreateComplaint()"
-    (onStatusFilterSelect)="onStatusCodeChange($event)" (onFiltersChanged)="applyHeaderFilter($event)">
+    [activeFilterCount]="activeFilterCount()" [activeFilters]="cachedSelectedFilter()"
+    (toggleAdvancedSearch)="showAdvancedSearch.set(true)" (clearSearch)="handleAdvancedSearchClear()"
+    (createComplaint)="navigateToCreateComplaint()"
+    (statusFilterSelect)="onStatusCodeChange($event)" (filtersChanged)="applyHeaderFilter($event)"
+    (filterRemoved)="handleFilterRemoval($event)">
 </app-rbio-dashboard-header>
 
 <app-rbio-dashboard-kpi [metricsInput]="KpiMetricsObject()" [(selectedCardId)]="currentKpiFilter"

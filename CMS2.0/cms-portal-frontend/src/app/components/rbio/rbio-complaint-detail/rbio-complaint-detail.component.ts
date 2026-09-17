@@ -182,7 +182,7 @@ export class RbioComplaintDetailComponent implements OnInit {
     const status = (this.complaint()?.status || '').toUpperCase();
     const role = (this.loggedInUser?.role || '').toUpperCase();
     const keycloakRoles = this.auth.getRoles().map(r => r.toUpperCase());
-    const isDO = role === 'DEALING_OFFICIAL' || role === 'RBIO_OFFICER' || role === 'DO' || keycloakRoles.includes('RBIO_OFFICER');
+    const isDO = role === 'DEALING_OFFICIAL' || role === 'RBIO_DO' || role === 'DO' || keycloakRoles.includes('RBIO_OFFICER');
     if (!isDO) return false;
     const doViewOnlyStatuses = ['SENT_TO_REVIEWER', 'SENT_TO_DEPUTY_OMBUDSMAN', 'SENT_TO_OMBUDSMAN',
       'REVIEWER_REVIEW', 'DEPUTY_REVIEW', 'OMBUDSMAN_REVIEW', 'CLOSED', 'RESOLVED', 'REJECTED', 'WITHDRAWN'];
@@ -202,7 +202,7 @@ export class RbioComplaintDetailComponent implements OnInit {
     const role = (this.loggedInUser?.role || '').toUpperCase();
     const keycloakRoles = this.auth.getRoles().map(r => r.toUpperCase());
 
-    if (role === 'DEALING_OFFICIAL' || role === 'RBIO_OFFICER' || role === 'DO' || keycloakRoles.includes('RBIO_OFFICER')) {
+    if (role === 'DEALING_OFFICIAL' || role === 'RBIO_DO' || role === 'DO' || keycloakRoles.includes('RBIO_OFFICER')) {
       return this.dealingOfficialActions;
     }
     if (role === 'REVIEWER' || role === 'RBIO_REVIEWER' || keycloakRoles.includes('RBIO_REVIEWER')) {

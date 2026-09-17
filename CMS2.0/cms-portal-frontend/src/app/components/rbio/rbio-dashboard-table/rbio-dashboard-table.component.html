@@ -2,8 +2,8 @@
   <p-table [columns]="selectedColumns()" [value]="complaints()" [loading]="isSearching()" [paginator]="true"
     [rows]="rowsPerPage()" [rowsPerPageOptions]="[5, 10, 25, 50, 100]" [lazy]="true" [totalRecords]="totalRecords()"
     [showCurrentPageReport]="true" currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries"
-    (onLazyLoad)="onLazyLoadTable(event: $event)" styleClass="rbio-custom-table" (onFilter)="onTableFilterChange(event: $event)"
-    [scrollable]="true" scrollHeight="flex" [reorderableColumns]="true" (onColumnReorder)="onColumnReorder(event: $event)"
+    (onLazyLoad)="onLazyLoadTable($event)" styleClass="rbio-custom-table" (onFilter)="onTableFilterChange($event)"
+    [scrollable]="true" scrollHeight="flex" [reorderableColumns]="true" (onColumnReorder)="onColumnReorder($event)"
     [sortField]="'createdDate'" [sortOrder]="-1" scrollHeight="50vh">
 
     <ng-template pTemplate="paginatorleft"></ng-template>
@@ -14,16 +14,16 @@
         <div class="table-header-actions">
           <div class="toggle-item">
             <p-toggleswitch inputId="unreadToggle" [ngModel]="showUnreadOnly()"
-              (ngModelChange)="onToggleChange(value: $event, type: 'unread')"></p-toggleswitch>
+              (ngModelChange)="onToggleChange($event, 'unread')"></p-toggleswitch>
             <label for="unreadToggle">Unread Only</label>
           </div>
           <div class="toggle-item">
             <p-toggleswitch inputId="attachmentToggle" [ngModel]="showWithoutAttachments()"
-              (ngModelChange)="onToggleChange(value: $event, type: 'attachments')"></p-toggleswitch>
+              (ngModelChange)="onToggleChange($event, 'attachments')"></p-toggleswitch>
             <label for="attachmentToggle">Without Attachments</label>
           </div>
 
-          <div class="toggle-item settings-icon-btn" (click)="isPickerOpen.set(value: true)">
+          <div class="toggle-item settings-icon-btn" (click)="isPickerOpen.set(true)">
             <i class="pi pi-cog" style="font-size:1.5rem; cursor: pointer;"></i>
           </div>
         </div>
@@ -57,7 +57,7 @@
       <tr [ngClass]="[
         rowData.isRead ? 'row-read' : 'row-unread',
         rowData.complaintColor ? 'cc-row-' + rowData.complaintColor?.toLowerCase() : ''
-      ]" (click)="navigateToDetail(complaint: rowData)" class="clickable-row">
+      ]" (click)="navigateToDetail(rowData)" class="clickable-row">
         <!-- @if (isNotDoUser()) { -->
         <td (click)="$event.stopPropagation()">
           <p-tableCheckbox [value]="rowData"></p-tableCheckbox>
@@ -96,5 +96,5 @@
 </div>
 
 <app-rbio-column-picker [allColumns]="allColumns" [initiallySelected]="selectedColumns()" tableName="Complaints"
-  [(visible)]="isPickerOpen" (columnsSaved)="applyPickedColumns(updatedColumns: $event)">
+  [(visible)]="isPickerOpen" (columnsSaved)="applyPickedColumns($event)">
 </app-rbio-column-picker>
