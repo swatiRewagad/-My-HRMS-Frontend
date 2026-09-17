@@ -5,13 +5,18 @@ import com.hrms.cms.dto.FileComplaintRequest;
 import com.hrms.cms.dto.UpdateComplaintRequest;
 import com.hrms.cms.entity.Complaint;
 import com.hrms.cms.entity.ComplaintTimeline;
+import com.hrms.cms.security.RequestIdentityResolver;
 import com.hrms.cms.service.ComplaintService;
+import com.hrms.cms.service.PiiMaskingService;
+import com.hrms.cms.service.SystemConfigService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import com.hrms.cms.support.ControllerSliceTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -28,17 +33,37 @@ import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@WebMvcTest(ComplaintController.class)
+// addFilters = false: these assert controller behaviour, not the security chain. @WebMvcTest does not
+// load the app's @Configuration, so the default auto-config chain would 401/403 endpoints that are
+// reachable in production.
+//
+// The REAL PiiMaskingService is imported rather than mocked: a mock returns null from
+// maskComplaint(...), which would turn every response body into "null" and make the masking
+// assertions below vacuous. Only its SystemConfigService is mocked, so the service falls back to its
+// DEFAULT_MASKED_FIELDS and the masking actually executed here is the production algorithm (UST875).
+@ControllerSliceTest(ComplaintController.class)
+@AutoConfigureMockMvc(addFilters = false)
+@Import(PiiMaskingService.class)
 class ComplaintControllerTest {
 
     @Autowired private MockMvc mockMvc;
     @Autowired private ObjectMapper objectMapper;
     @MockBean private ComplaintService complaintService;
+    @MockBean private RequestIdentityResolver requestIdentityResolver;
+    @MockBean private SystemConfigService systemConfigService;
 
     private Complaint sampleComplaint;
 
     @BeforeEach
     void setUp() {
+        // A bare mock returns false/null, which would silently switch masking OFF and let these tests
+        // pass against unmasked PII. Returning the caller's fallback makes the service use its real
+        // production defaults.
+        when(systemConfigService.getBoolean(eq(PiiMaskingService.CFG_MASKING_ENABLED), anyBoolean()))
+                .thenAnswer(inv -> inv.getArgument(1));
+        when(systemConfigService.getSet(eq(PiiMaskingService.CFG_MASKED_FIELDS), any()))
+                .thenAnswer(inv -> inv.getArgument(1));
+
         sampleComplaint = Complaint.builder()
                 .id(1L)
                 .complaintNumber("CMS-20260515-ABC123")
@@ -150,7 +175,11 @@ class ComplaintControllerTest {
             mockMvc.perform(get("/api/complaints/1"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.id").value(1))
-                    .andExpect(jsonPath("$.complainantName").value("John Doe"));
+                    // UST875: this endpoint now returns a masked view, so the real "John Doe" must not
+                    // appear on the wire. piiMasked locks in that masking was actually applied — without
+                    // it, a regression that stopped masking would still satisfy a bare value assertion.
+                    .andExpect(jsonPath("$.complainantName").value("J*****"))
+                    .andExpect(jsonPath("$.piiMasked").value(true));
         }
 
         @Test
@@ -184,7 +213,13 @@ class ComplaintControllerTest {
             request.setComplainantName("Jane Doe");
             request.setComplainantEmail("jane@test.com");
             request.setSubject("Loan Issue");
+            // description is @NotBlank on the DTO and the endpoint is @Valid, so omitting it makes the
+            // request fail bean validation with 400 before the controller runs.
+            request.setDescription("The loan EMI was debited twice in the same month.");
             request.setPriority("high");
+            // UST5: an ONLINE filing must carry the step-5 declaration consent (@AssertTrue). filingType
+            // is null here, which the DTO treats as ONLINE, so the flag is mandatory.
+            request.setDeclarationAccepted(true);
 
             when(complaintService.fileComplaint(any(FileComplaintRequest.class))).thenReturn(sampleComplaint);
 

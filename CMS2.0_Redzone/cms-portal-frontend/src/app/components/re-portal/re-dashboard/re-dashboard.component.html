@@ -92,7 +92,7 @@
                   <span class="days-remaining" [class]="getUrgencyClass(complaint)">{{ getDaysRemaining(complaint.responseDeadline) }}</span>
                 </td>
                 <td>
-                  <span class="status-badge" [class]="'status-' + complaint.status">{{ getStatusLabel(complaint.status) }}</span>
+                  <app-status-badge [status]="complaint.status" />
                 </td>
                 <td>
                   <button class="action-btn" (click)="openComplaint(complaint); $event.stopPropagation()">

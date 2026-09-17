@@ -50,18 +50,10 @@ $danger: #dc2626;
   margin: 0;
 }
 
-.status-badge {
-  padding: 4px 12px;
-  border-radius: 12px;
-  font-size: 12px;
-  font-weight: 600;
-
-  &.status-pending { background: #fff3e0; color: #e65100; }
-  &.status-responded { background: #e8f5e9; color: #2e7d32; }
-  &.status-breached { background: #fef2f2; color: $danger; }
-  &.status-extension_requested { background: #ede7f6; color: #4527a0; }
-  &.status-clarification_requested { background: $primary-light; color: $primary; }
-}
+// Status badge styling moved to the shared app-status-badge component (UST847). The five selectors
+// that were here matched nothing: they expected "responded" while the server writes "re_responded",
+// and the `[class]` binding feeding them replaced the base class outright, so even the padding was
+// lost at runtime.
 
 .deadline-countdown {
   display: flex;

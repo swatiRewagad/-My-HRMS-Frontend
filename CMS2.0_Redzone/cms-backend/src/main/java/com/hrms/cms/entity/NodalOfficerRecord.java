@@ -9,7 +9,9 @@ import java.time.LocalDateTime;
     @Index(name = "idx_no_complaint", columnList = "complaintNumber"),
     @Index(name = "idx_no_entity", columnList = "entityName"),
     @Index(name = "idx_no_status", columnList = "status"),
-    @Index(name = "idx_no_last_modified", columnList = "lastModifiedAt")
+    @Index(name = "idx_no_last_modified", columnList = "lastModifiedAt"),
+    @Index(name = "idx_no_entity_code_assigned", columnList = "entityCode,assignedTo"),
+    @Index(name = "idx_no_entity_code_status", columnList = "entityCode,status")
 })
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class NodalOfficerRecord {
@@ -17,6 +19,32 @@ public class NodalOfficerRecord {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    /**
+     * Optimistic lock guarding concurrent reassignment (UST839).
+     *
+     * <p>Two PNOs looking at the same stale list must not both succeed: without this, the second
+     * write silently overwrites the first and the record ends up with an owner neither of them
+     * chose, while both see a success message. The client echoes the version it read back on the
+     * reassign call, and a mismatch is reported as a conflict naming the record.
+     *
+     * <p>This is the first {@code @Version} column in cms-backend. Existing rows start NULL;
+     * Hibernate treats a NULL version as unversioned and seeds it on first write, so no backfill is
+     * required and legacy writers (NotificationScheduledTasks) keep working unchanged.
+     */
+    @Version
+    private Long version;
+
+    /**
+     * The scoping key for server-side authorisation, added because {@code entityName} is free text.
+     *
+     * <p>{@code RequestIdentity} supplies an entity <em>code</em> only, so authorising an RE caller
+     * against {@code entityName} is not possible — near-identical entity names would let one entity
+     * read and reassign another's records. Nullable because historical rows predate the column; a
+     * row with no code is never visible to an entity-scoped caller.
+     */
+    @Column(length = 50)
+    private String entityCode;
 
     @Column(nullable = false, length = 50)
     private String complaintNumber;

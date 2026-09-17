@@ -333,19 +333,7 @@
 
   .checkbox-col { width: 40px; text-align: center; }
 
-  .status-badge {
-    padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;
-    display: inline-block;
-    &[data-status="assigned"], &[data-status="pending"], &[data-status="new"] { background: #fef3c7; color: #92400e; }
-    &[data-status="in_progress"] { background: #dbeafe; color: #1e40af; }
-    &[data-status="under_review"], &[data-status="reviewer_review"], &[data-status="incharge_review"] { background: #ede9fe; color: #5b21b6; }
-    &[data-status="awaiting_closure"] { background: #d1fae5; color: #065f46; }
-    &[data-status="escalated"] { background: #fee2e2; color: #991b1b; }
-    &[data-status="sent_back"] { background: #fce7f3; color: #9d174d; }
-    &[data-status="info_requested"] { background: #e0e7ff; color: #3730a3; }
-    &[data-status="forwarded"], &[data-status="forwarded_to_contact"] { background: #ccfbf1; color: #134e4a; }
-    &[data-status="closed"], &[data-status="resolved"] { background: #f3f4f6; color: #4b5563; }
-  }
+  // Status badge styling moved to the shared app-status-badge component (UST847).
 
   .priority-badge {
     padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; text-transform: uppercase;

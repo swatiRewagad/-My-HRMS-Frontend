@@ -1,0 +1,140 @@
+.aa-appeal-search {
+  min-height: 100vh;
+  background: #f4f6f9;
+  padding: 24px 20px;
+
+  h2 { margin: 0 0 16px; font-size: 18px; color: #1a237e; }
+}
+
+.search-filters {
+  background: #fff;
+  border: 1px solid #dfe4ec;
+  border-radius: 6px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.filter-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 16px;
+}
+
+.filter-field {
+  display: flex;
+  flex-direction: column;
+
+  label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #45536b;
+    margin-bottom: 6px;
+  }
+
+  input,
+  select {
+    padding: 8px 10px;
+    border: 1px solid #c8d0dc;
+    border-radius: 4px;
+    font-size: 14px;
+
+    &:focus {
+      outline: none;
+      border-color: #1a237e;
+      box-shadow: 0 0 0 2px rgba(26, 35, 126, 0.15);
+    }
+  }
+}
+
+.filter-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.btn-primary,
+.btn-secondary {
+  padding: 8px 18px;
+  border-radius: 4px;
+  font-size: 14px;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.btn-primary {
+  background: #1a237e;
+  color: #fff;
+
+  &:disabled {
+    background: #9ba3cd;
+    cursor: not-allowed;
+  }
+}
+
+.btn-secondary {
+  background: #fff;
+  color: #1a237e;
+  border-color: #1a237e;
+}
+
+.btn-link {
+  background: none;
+  border: none;
+  color: #1a237e;
+  cursor: pointer;
+  font-size: 13px;
+  text-decoration: underline;
+  padding: 0;
+}
+
+.search-error {
+  background: #fdecec;
+  border: 1px solid #f0b4b4;
+  color: #97231f;
+  padding: 11px 14px;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.search-loading,
+.search-empty {
+  color: #5f6368;
+  padding: 11px 0;
+  font-size: 14px;
+}
+
+.results-count {
+  font-size: 13px;
+  color: #45536b;
+  margin-bottom: 8px;
+}
+
+.results-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  border: 1px solid #dfe4ec;
+
+  th,
+  td {
+    text-align: left;
+    padding: 10px 12px;
+    border-bottom: 1px solid #eef1f6;
+    font-size: 13px;
+  }
+
+  th {
+    background: #f5f7fa;
+    color: #45536b;
+    font-weight: 600;
+  }
+
+  tbody tr:hover {
+    background: #f9fbfd;
+  }
+}
+
+.muted {
+  color: #8a97ab;
+  font-style: italic;
+}

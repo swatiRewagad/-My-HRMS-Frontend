@@ -47,16 +47,7 @@
   &[data-priority="MEDIUM"], &[data-priority="medium"] { background: #fef3c7; color: #92400e; }
   &[data-priority="LOW"], &[data-priority="low"] { background: #d1fae5; color: #065f46; }
 }
-.status-badge {
-  padding: 3px 10px; border-radius: 4px; font-size: 12px; font-weight: 500;
-  &[data-status="assigned"], &[data-status="pending"] { background: #fef3c7; color: #92400e; }
-  &[data-status="in_progress"] { background: #dbeafe; color: #1e40af; }
-  &[data-status="under_review"], &[data-status="reviewer_review"], &[data-status="incharge_review"] { background: #ede9fe; color: #5b21b6; }
-  &[data-status="awaiting_closure"] { background: #d1fae5; color: #065f46; }
-  &[data-status="escalated"] { background: #fee2e2; color: #991b1b; }
-  &[data-status="sent_back"] { background: #fce7f3; color: #9d174d; }
-  &[data-status="closed"], &[data-status="resolved"] { background: #f3f4f6; color: #4b5563; }
-}
+// Status badge styling moved to the shared app-status-badge component (UST847).
 
 // ── Timeline ──
 .timeline { display: flex; flex-direction: column; gap: 0; }

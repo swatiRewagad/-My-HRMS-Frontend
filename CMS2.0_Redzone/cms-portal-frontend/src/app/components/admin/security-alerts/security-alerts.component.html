@@ -1,0 +1,190 @@
+<div class="security-console">
+  <header class="console-header">
+    <h2>{{ 'security.alerts_title' | translate }}</h2>
+    @if (openCount() > 0) {
+      <span class="open-badge" data-testid="open-alert-count">{{ openCount() }}</span>
+    }
+  </header>
+
+  @if (notAuthorised()) {
+    <p class="error-banner" data-testid="not-authorised">{{ errorMessage() }}</p>
+  } @else {
+    <nav class="console-tabs">
+      <button [class.active]="activeTab() === 'alerts'" (click)="selectTab('alerts')" data-testid="tab-alerts">
+        {{ 'security.alerts_title' | translate }}
+      </button>
+      <button [class.active]="activeTab() === 'reveals'" (click)="selectTab('reveals')" data-testid="tab-reveals">
+        PII reveals
+      </button>
+      <button [class.active]="activeTab() === 'retention'" (click)="selectTab('retention')" data-testid="tab-retention">
+        Retention
+      </button>
+    </nav>
+
+    @if (errorMessage()) {
+      <p class="error-banner" data-testid="console-error">{{ errorMessage() }}</p>
+    }
+
+    <!-- ─────────── Alerts (UST873) ─────────── -->
+    @if (activeTab() === 'alerts') {
+      <div class="filter-row">
+        <label for="statusFilter">Status</label>
+        <select id="statusFilter" [ngModel]="statusFilter()" (ngModelChange)="onStatusFilterChange($event)">
+          <option value="OPEN">{{ 'security.status_open' | translate }}</option>
+          <option value="ACKNOWLEDGED">{{ 'security.acknowledged' | translate }}</option>
+          <option value="">All</option>
+        </select>
+      </div>
+
+      @if (loadingAlerts()) {
+        <p class="loading"><i class="pi pi-spin pi-spinner"></i> Loading…</p>
+      } @else {
+        <table class="data-table" data-testid="alerts-table">
+          <thead>
+            <tr>
+              <th>{{ 'security.severity' | translate }}</th>
+              <th>{{ 'security.alert_type' | translate }}</th>
+              <th>{{ 'security.subject' | translate }}</th>
+              <th>{{ 'security.event_count' | translate }}</th>
+              <th>{{ 'security.raised_at' | translate }}</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (alert of alerts(); track alert.id) {
+              <tr [attr.data-testid]="'alert-row-' + alert.id">
+                <td><span class="severity-chip" [class]="severityClass(alert.severity)">{{ alert.severity }}</span></td>
+                <td>
+                  <span class="alert-type">{{ alert.alertType }}</span>
+                  <span class="alert-detail">{{ alert.details }}</span>
+                </td>
+                <td>
+                  {{ alert.subject }}
+                  @if (alert.ipAddress) { <span class="ip">{{ alert.ipAddress }}</span> }
+                </td>
+                <td>{{ alert.eventCount }} / {{ alert.threshold }}</td>
+                <td>{{ alert.raisedAt }}</td>
+                <td>
+                  @if (alert.status === 'OPEN') {
+                    <button class="btn-ack" (click)="acknowledge(alert, '')"
+                            [attr.data-testid]="'ack-' + alert.id">
+                      {{ 'security.acknowledge' | translate }}
+                    </button>
+                  } @else {
+                    <span class="acked">{{ 'security.acknowledged' | translate }}</span>
+                  }
+                </td>
+              </tr>
+            } @empty {
+              <tr><td colspan="6" class="empty-state" data-testid="alerts-empty">
+                {{ 'security.alerts_empty' | translate }}
+              </td></tr>
+            }
+          </tbody>
+        </table>
+      }
+    }
+
+    <!-- ─────────── PII reveal trail (UST875) ─────────── -->
+    @if (activeTab() === 'reveals') {
+      <div class="filter-row">
+        <input type="text" placeholder="Filter by user id"
+               [ngModel]="revealUserFilter()" (ngModelChange)="revealUserFilter.set($event)"
+               data-testid="reveal-user-filter" />
+        <button class="btn-secondary" (click)="loadReveals()">Search</button>
+      </div>
+
+      @if (loadingReveals()) {
+        <p class="loading"><i class="pi pi-spin pi-spinner"></i> Loading…</p>
+      } @else {
+        <table class="data-table" data-testid="reveals-table">
+          <thead>
+            <tr>
+              <th>User</th>
+              <th>Complaint</th>
+              <th>Fields</th>
+              <th>Reason</th>
+              <th>When</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (entry of reveals(); track entry.id) {
+              <tr>
+                <td>
+                  {{ entry.displayName || entry.userId }}
+                  <span class="user-id">{{ entry.userId }}</span>
+                </td>
+                <td>{{ entry.complaintNumber }}</td>
+                <td class="fields-cell">{{ entry.fieldsRevealed }}</td>
+                <td class="reason-cell">{{ entry.justification }}</td>
+                <td>{{ entry.revealedAt }}</td>
+              </tr>
+            } @empty {
+              <tr><td colspan="5" class="empty-state" data-testid="reveals-empty">
+                No PII reveals recorded
+              </td></tr>
+            }
+          </tbody>
+        </table>
+      }
+    }
+
+    <!-- ─────────── Retention (UST890) ─────────── -->
+    @if (activeTab() === 'retention') {
+      @if (!destructiveEnabled()) {
+        <p class="info-banner" data-testid="dry-run-banner">
+          <i class="pi pi-info-circle"></i>
+          Retention is in dry-run mode. Policies report what they would remove; nothing is deleted.
+        </p>
+      } @else {
+        <p class="warning-banner" data-testid="destructive-banner">
+          <i class="pi pi-exclamation-triangle"></i>
+          Destructive retention is ENABLED. Scheduled runs permanently delete data.
+        </p>
+      }
+
+      <div class="filter-row">
+        <button class="btn-secondary" (click)="runRetentionPreview()" data-testid="run-retention">
+          Evaluate now
+        </button>
+        @if (retentionMessage()) {
+          <span class="retention-message" data-testid="retention-message">{{ retentionMessage() }}</span>
+        }
+      </div>
+
+      @if (loadingPolicies()) {
+        <p class="loading"><i class="pi pi-spin pi-spinner"></i> Loading…</p>
+      } @else {
+        <table class="data-table" data-testid="retention-table">
+          <thead>
+            <tr>
+              <th>Category</th>
+              <th>Table</th>
+              <th>Retention</th>
+              <th>Type</th>
+              <th>Past retention</th>
+              <th>Enabled</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (policy of policies(); track policy.id) {
+              <tr>
+                <td>
+                  {{ policy.category }}
+                  @if (policy.auditCategory) { <span class="audit-chip">audit</span> }
+                </td>
+                <td>{{ policy.targetTable }}</td>
+                <td>{{ policy.retentionDays }} days</td>
+                <td>{{ policy.redactInsteadOfDelete ? 'Redact' : 'Delete' }}</td>
+                <td>{{ policy.rowsPastRetention ?? '—' }}</td>
+                <td>{{ policy.enabled ? 'Yes' : 'No' }}</td>
+              </tr>
+            } @empty {
+              <tr><td colspan="6" class="empty-state">No retention policies configured</td></tr>
+            }
+          </tbody>
+        </table>
+      }
+    }
+  }
+</div>

@@ -1,0 +1,194 @@
+.security-console {
+  padding: 1.5rem;
+}
+
+.console-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+
+  h2 {
+    margin: 0;
+    font-size: 1.35rem;
+  }
+}
+
+.open-badge {
+  background: #b91c1c;
+  color: #fff;
+  border-radius: 999px;
+  padding: 0.1rem 0.6rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.console-tabs {
+  display: flex;
+  gap: 0.25rem;
+  border-bottom: 1px solid #e2e8f0;
+  margin-bottom: 1rem;
+
+  button {
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    padding: 0.6rem 1rem;
+    cursor: pointer;
+    font-size: 0.9rem;
+    color: #475569;
+
+    &.active {
+      border-bottom-color: #1d4ed8;
+      color: #1d4ed8;
+      font-weight: 600;
+    }
+  }
+}
+
+.filter-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+
+  select,
+  input[type='text'] {
+    padding: 0.4rem 0.6rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+  }
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+
+  th,
+  td {
+    text-align: left;
+    padding: 0.6rem 0.75rem;
+    border-bottom: 1px solid #eef2f7;
+    vertical-align: top;
+  }
+
+  th {
+    background: #f8fafc;
+    font-weight: 600;
+    color: #334155;
+  }
+}
+
+.severity-chip {
+  display: inline-block;
+  padding: 0.1rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 700;
+
+  &.sev-high {
+    background: #fee2e2;
+    color: #991b1b;
+  }
+
+  &.sev-medium {
+    background: #fef3c7;
+    color: #92400e;
+  }
+
+  &.sev-low {
+    background: #e0f2fe;
+    color: #075985;
+  }
+}
+
+.alert-type {
+  display: block;
+  font-weight: 600;
+}
+
+.alert-detail,
+.ip,
+.user-id {
+  display: block;
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.audit-chip {
+  margin-left: 0.4rem;
+  background: #ede9fe;
+  color: #5b21b6;
+  border-radius: 4px;
+  padding: 0.05rem 0.35rem;
+  font-size: 0.7rem;
+}
+
+.fields-cell,
+.reason-cell {
+  max-width: 22rem;
+  word-break: break-word;
+}
+
+.btn-ack,
+.btn-secondary {
+  background: #1d4ed8;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 0.35rem 0.75rem;
+  cursor: pointer;
+  font-size: 0.8rem;
+
+  &:hover {
+    background: #1e40af;
+  }
+}
+
+.acked {
+  color: #059669;
+  font-size: 0.8rem;
+}
+
+.empty-state {
+  text-align: center;
+  color: #64748b;
+  padding: 1.5rem;
+}
+
+.loading {
+  color: #475569;
+}
+
+.error-banner,
+.info-banner,
+.warning-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.7rem 0.9rem;
+  border-radius: 4px;
+  margin-bottom: 1rem;
+  font-size: 0.875rem;
+}
+
+.error-banner {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.info-banner {
+  background: #e0f2fe;
+  color: #075985;
+}
+
+.warning-banner {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.retention-message {
+  font-size: 0.8rem;
+  color: #475569;
+}

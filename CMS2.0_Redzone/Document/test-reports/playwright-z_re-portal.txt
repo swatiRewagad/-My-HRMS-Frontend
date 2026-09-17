@@ -1,0 +1,124 @@
+
+Running 91 tests using 1 worker
+
+[1/91] [chromium] › e2e\re-portal\activity-status.spec.ts:89:7 › RE Activity Status — derived from RE actions (UST846) › opening the detail records the record as Opened
+[2/91] [chromium] › e2e\re-portal\activity-status.spec.ts:111:7 › RE Activity Status — derived from RE actions (UST846) › the ladder never regresses when the record is re-opened
+[3/91] [chromium] › e2e\re-portal\activity-status.spec.ts:138:7 › RE Activity Status — derived from RE actions (UST846) › an empty draft means Under Review; a draft with text means Response Being Prepared
+[4/91] [chromium] › e2e\re-portal\activity-status.spec.ts:165:7 › RE Activity Status — read-only to the RE (UST852) › the RE cannot set the activity status directly
+[5/91] [chromium] › e2e\re-portal\activity-status.spec.ts:183:7 › RE Activity Status — read-only to the RE (UST852) › claiming RESPONSE_SUBMITTED by hand does not change the stored status
+[6/91] [chromium] › e2e\re-portal\activity-status.spec.ts:207:7 › Activity history carries an automatic/manual discriminator (UST848) › timeline entries declare their source explicitly
+[7/91] [chromium] › e2e\re-portal\activity-status.spec.ts:238:7 › Nudge threshold maker-checker (UST851) › a threshold change is staged, not applied immediately
+[8/91] [chromium] › e2e\re-portal\activity-status.spec.ts:264:7 › Nudge threshold maker-checker (UST851) › the requester cannot approve their own change
+[9/91] [chromium] › e2e\re-portal\activity-status.spec.ts:283:7 › Nudge threshold maker-checker (UST851) › a different administrator can approve, and the value then takes effect
+[10/91] [chromium] › e2e\re-portal\activity-status.spec.ts:304:7 › Nudge threshold maker-checker (UST851) › an out-of-range threshold is refused at request time
+[11/91] [chromium] › e2e\re-portal\activity-status.spec.ts:314:7 › Nudge threshold maker-checker (UST851) › an unknown config key is refused
+[12/91] [chromium] › e2e\re-portal\activity-status.spec.ts:323:7 › Nudge threshold maker-checker (UST851) › an unidentified caller cannot stage a change
+[13/91] [chromium] › e2e\re-portal\activity-status.spec.ts:338:7 › Staff-side visibility is read-only and gated (UST852) › the public tracker does not expose the entity activity status
+[14/91] [chromium] › e2e\re-portal\activity-status.spec.ts:354:7 › Staff-side visibility is read-only and gated (UST852) › a bare bearer token does not by itself unlock the activity status
+[15/91] [chromium] › e2e\re-portal\activity-status.spec.ts:369:7 › Staff-side visibility is read-only and gated (UST852) › a staff caller sees the status, its snapshot threshold, and a read-only marker
+[16/91] [chromium] › e2e\re-portal\dashboard.spec.ts:24:7 › RE Portal Dashboard › RE portal login and dashboard loads
+  1) [chromium] › e2e\re-portal\dashboard.spec.ts:24:7 › RE Portal Dashboard › RE portal login and dashboard loads 
+
+    TimeoutError: page.waitForSelector: Timeout 15000ms exceeded.
+    Call log:
+      - waiting for locator('.re-dashboard') to be visible
+
+
+      23 |
+      24 |   test('RE portal login and dashboard loads', async ({ page }) => {
+    > 25 |     await page.waitForSelector('.re-dashboard', { timeout: 15000 });
+         |                ^
+      26 |     const welcome = page.locator('.welcome-text');
+      27 |     await expect(welcome).toBeVisible();
+      28 |     expect(page.url()).toContain('/re-portal/dashboard');
+        at C:\Projects\My-HRMS-Frontend\CMS2.0_Redzone\cms-portal-frontend\e2e\re-portal\dashboard.spec.ts:25:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\re-portal-dashboard-RE-Por-7411c-l-login-and-dashboard-loads-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\re-portal-dashboard-RE-Por-7411c-l-login-and-dashboard-loads-chromium\error-context.md
+
+
+[17/91] [chromium] › e2e\re-portal\dashboard.spec.ts:31:7 › RE Portal Dashboard › Stats cards show (Total, Pending, Responded, Breached)
+[18/91] [chromium] › e2e\re-portal\dashboard.spec.ts:42:7 › RE Portal Dashboard › Complaint table renders forwarded complaints
+[19/91] [chromium] › e2e\re-portal\dashboard.spec.ts:58:7 › RE Portal Dashboard › Status filter works
+[20/91] [chromium] › e2e\re-portal\dashboard.spec.ts:78:7 › RE Portal Dashboard › Deadline countdown shows for pending complaints
+[21/91] [chromium] › e2e\re-portal\dashboard.spec.ts:92:7 › RE Portal Dashboard › Click navigates to complaint detail
+[22/91] [chromium] › e2e\re-portal\profile.spec.ts:24:7 › RE Portal - Profile › Profile page shows entity info
+[23/91] [chromium] › e2e\re-portal\profile.spec.ts:40:7 › RE Portal - Profile › Update nodal officer details succeeds
+[24/91] [chromium] › e2e\re-portal\profile.spec.ts:69:7 › RE Portal - Profile › Cancel edit reverts changes
+[25/91] [chromium] › e2e\re-portal\query-threads.spec.ts:80:7 › Query threads — creation and listing › RE raises a clarification; thread is pending with RBI (UST856)
+[26/91] [chromium] › e2e\re-portal\query-threads.spec.ts:103:7 › Query threads — creation and listing › the same thread reads as awaiting-me for the RBI side (UST856)
+[27/91] [chromium] › e2e\re-portal\query-threads.spec.ts:123:7 › Query threads — creation and listing › the awaiting-my-response count matches the filtered list (UST856)
+[28/91] [chromium] › e2e\re-portal\query-threads.spec.ts:137:7 › Query threads — creation and listing › a request with no resolvable identity is refused
+[29/91] [chromium] › e2e\re-portal\query-threads.spec.ts:144:7 › Query threads — creation and listing › an RE user of another entity cannot read the thread list
+[30/91] [chromium] › e2e\re-portal\query-threads.spec.ts:156:7 › Tamper-evident history (UST857) › a reply appends a message and flips who the thread awaits
+[31/91] [chromium] › e2e\re-portal\query-threads.spec.ts:186:7 › Tamper-evident history (UST857) › there is no endpoint that edits or deletes a posted message
+[32/91] [chromium] › e2e\re-portal\query-threads.spec.ts:236:7 › Extension requests (UST853) › an extension request opens as PENDING with the proposed deadline recorded
+[33/91] [chromium] › e2e\re-portal\query-threads.spec.ts:247:7 › Extension requests (UST853) › the RE side cannot decide its own extension request
+[34/91] [chromium] › e2e\re-portal\query-threads.spec.ts:260:7 › Extension requests (UST853) › approval records the granted deadline
+[35/91] [chromium] › e2e\re-portal\query-threads.spec.ts:275:7 › Extension requests (UST853) › rejection requires a reason
+[36/91] [chromium] › e2e\re-portal\query-threads.spec.ts:288:7 › Extension requests (UST853) › an already-decided request cannot be decided twice
+[37/91] [chromium] › e2e\re-portal\query-threads.spec.ts:306:7 › Extension requests (UST853) › a past-dated deadline is refused
+[38/91] [chromium] › e2e\re-portal\query-threads.spec.ts:320:7 › Extension requests (UST853) › a deadline beyond the configured maximum is refused
+[39/91] [chromium] › e2e\re-portal\query-threads.spec.ts:348:7 › Document requests (UST854) › a document request carries its checklist
+[40/91] [chromium] › e2e\re-portal\query-threads.spec.ts:359:7 › Document requests (UST854) › a checklist item cannot be marked provided without an attachment
+[41/91] [chromium] › e2e\re-portal\query-threads.spec.ts:377:7 › Document requests (UST854) › a checklist item resolves once a document is attached
+[42/91] [chromium] › e2e\re-portal\query-threads.spec.ts:392:7 › Document requests (UST854) › a document request must name at least one document
+[43/91] [chromium] › e2e\re-portal\query-threads.spec.ts:429:7 › Meeting requests (UST855) › a meeting request records its purpose and slots
+[44/91] [chromium] › e2e\re-portal\query-threads.spec.ts:442:7 › Meeting requests (UST855) › accepting a slot settles the thread and supersedes the alternatives
+[45/91] [chromium] › e2e\re-portal\query-threads.spec.ts:464:7 › Meeting requests (UST855) › declining requires a reason
+[46/91] [chromium] › e2e\re-portal\query-threads.spec.ts:477:7 › Meeting requests (UST855) › a counter-proposal supersedes the original slots and keeps the thread open
+[47/91] [chromium] › e2e\re-portal\query-threads.spec.ts:495:7 › Meeting requests (UST855) › a meeting request must propose at least one time
+[48/91] [chromium] › e2e\re-portal\query-threads.spec.ts:511:7 › Entity-only internal notes (UST860) › an RE user can add and read a note
+[49/91] [chromium] › e2e\re-portal\query-threads.spec.ts:531:7 › Entity-only internal notes (UST860) › an RBI user cannot read internal notes
+[50/91] [chromium] › e2e\re-portal\query-threads.spec.ts:539:7 › Entity-only internal notes (UST860) › an RBI user cannot post an internal note
+[51/91] [chromium] › e2e\re-portal\query-threads.spec.ts:547:7 › Entity-only internal notes (UST860) › an RE user of another entity cannot read the notes
+[52/91] [chromium] › e2e\re-portal\query-threads.spec.ts:555:7 › Entity-only internal notes (UST860) › only the author may edit their note
+[53/91] [chromium] › e2e\re-portal\query-threads.spec.ts:573:7 › Entity-only internal notes (UST860) › the author may edit inside the window, and the edit is marked
+[54/91] [chromium] › e2e\re-portal\query-threads.spec.ts:598:7 › Entity-only internal notes (UST860) › the server decides editability, and it is per-author
+[55/91] [chromium] › e2e\re-portal\reassignment.spec.ts:88:7 › UST838 — workload formula › popup and dashboard report the same workload for the same officer
+[chromium] › e2e\re-portal\reassignment.spec.ts:88:7 › UST838 — workload formula › popup and dashboard report the same workload for the same officer
+[reassignment] auth mode: headers, backend: http://localhost:8095
+
+[56/91] [chromium] › e2e\re-portal\reassignment.spec.ts:111:7 › UST838 — workload formula › workload excludes closed records
+[57/91] [chromium] › e2e\re-portal\reassignment.spec.ts:129:7 › UST838 — workload formula › an officer with no records is still listed, with zero
+[58/91] [chromium] › e2e\re-portal\reassignment.spec.ts:140:7 › UST841 — candidate filtering › inactive officers are never offered as a target
+[59/91] [chromium] › e2e\re-portal\reassignment.spec.ts:151:7 › UST841 — candidate filtering › role filter narrows the list server-side
+[60/91] [chromium] › e2e\re-portal\reassignment.spec.ts:165:7 › UST841 — candidate filtering › search matches on name, and returns nothing for an absent term
+[61/91] [chromium] › e2e\re-portal\reassignment.spec.ts:181:7 › authorization — enforced server-side, not in the browser › no identity is rejected
+[62/91] [chromium] › e2e\re-portal\reassignment.spec.ts:186:7 › authorization — enforced server-side, not in the browser › an RE caller cannot name another entity
+[63/91] [chromium] › e2e\re-portal\reassignment.spec.ts:200:7 › authorization — enforced server-side, not in the browser › an RE caller with no entity code is refused, not defaulted
+[64/91] [chromium] › e2e\re-portal\reassignment.spec.ts:209:7 › authorization — enforced server-side, not in the browser › an ADMIN must name an entity rather than defaulting to all
+[65/91] [chromium] › e2e\re-portal\reassignment.spec.ts:218:7 › authorization — enforced server-side, not in the browser › a plain nodal officer cannot read the PNO approval queue
+[66/91] [chromium] › e2e\re-portal\reassignment.spec.ts:229:7 › authorization — enforced server-side, not in the browser › a plain nodal officer cannot decide requests
+[67/91] [chromium] › e2e\re-portal\reassignment.spec.ts:242:7 › UST840 — immutable reason, append-only clarifications › a reason below the configured minimum is refused
+[68/91] [chromium] › e2e\re-portal\reassignment.spec.ts:257:7 › UST840 — immutable reason, append-only clarifications › an empty clarification is refused
+[69/91] [chromium] › e2e\re-portal\reassignment.spec.ts:273:7 › UST840 — immutable reason, append-only clarifications › a clarification is appended with server-resolved attribution
+[70/91] [chromium] › e2e\re-portal\reassignment.spec.ts:305:7 › UST840 — immutable reason, append-only clarifications › the original reason is unchanged after a clarification is added
+[71/91] [chromium] › e2e\re-portal\reassignment.spec.ts:330:7 › UST839 — optimistic locking and conflict-safe bulk actions › a stale version is refused with a conflict naming the record
+[72/91] [chromium] › e2e\re-portal\reassignment.spec.ts:353:7 › UST839 — optimistic locking and conflict-safe bulk actions › one conflicting record does not roll back the rest of the batch
+[73/91] [chromium] › e2e\re-portal\reassignment.spec.ts:383:7 › UST839 — optimistic locking and conflict-safe bulk actions › a batch over the configured maximum is refused before anything is applied
+[74/91] [chromium] › e2e\re-portal\reassignment.spec.ts:401:7 › UST839 — optimistic locking and conflict-safe bulk actions › an empty selection is refused
+[75/91] [chromium] › e2e\re-portal\reassignment.spec.ts:412:7 › UST839 — optimistic locking and conflict-safe bulk actions › rejecting without a comment is refused
+[76/91] [chromium] › e2e\re-portal\reassignment.spec.ts:426:7 › UST842/UST843 — request lifecycle › a request can be raised, appears in My Requests, and blocks a duplicate
+[77/91] [chromium] › e2e\re-portal\reassignment.spec.ts:461:7 › UST842/UST843 — request lifecycle › reassigning to the record current owner is refused
+[78/91] [chromium] › e2e\re-portal\reassignment.spec.ts:478:7 › UST842/UST843 — request lifecycle › an inactive target is refused
+[79/91] [chromium] › e2e\re-portal\reassignment.spec.ts:504:7 › UST844 — reassignment history report › history is entity-scoped and readable
+[80/91] [chromium] › e2e\re-portal\reassignment.spec.ts:520:7 › UST844 — reassignment history report › an RE caller cannot read another entity history
+[81/91] [chromium] › e2e\re-portal\reassignment.spec.ts:531:7 › UST844 — reassignment history report › summary inbound and outbound totals agree with the row count
+[82/91] [chromium] › e2e\re-portal\reassignment.spec.ts:551:7 › UST844 — reassignment history report › an invalid date is refused rather than silently ignored
+[83/91] [chromium] › e2e\re-portal\reassignment.spec.ts:565:7 › UST845 — notification delivery log › the delivery log is ADMIN-only
+[84/91] [chromium] › e2e\re-portal\reassignment.spec.ts:575:7 › UST845 — notification delivery log › reassign-in and reassign-out attempts are both logged
+[85/91] [chromium] › e2e\re-portal\reassignment.spec.ts:599:7 › i18n — all ten locales › every reassignment key resolves in every locale
+[86/91] [chromium] › e2e\re-portal\reassignment.spec.ts:614:7 › i18n — all ten locales › non-English text is genuinely translated, not English fallback
+[87/91] [chromium] › e2e\re-portal\respond.spec.ts:33:7 › RE Portal - Respond to Complaint › Complaint detail page loads with complaint info
+[88/91] [chromium] › e2e\re-portal\respond.spec.ts:64:8 › RE Portal - Respond to Complaint › Response form shows when within 15-day window
+[89/91] [chromium] › e2e\re-portal\respond.spec.ts:86:8 › RE Portal - Respond to Complaint › Submit response succeeds (status changes)
+[90/91] [chromium] › e2e\re-portal\respond.spec.ts:106:7 › RE Portal - Respond to Complaint › Response disabled after window expiry
+[91/91] [chromium] › e2e\re-portal\respond.spec.ts:136:8 › RE Portal - Respond to Complaint › Raise query/clarification works
+  1 failed
+    [chromium] › e2e\re-portal\dashboard.spec.ts:24:7 › RE Portal Dashboard › RE portal login and dashboard loads 
+  67 skipped
+  23 passed (2.8m)

@@ -56,6 +56,28 @@ public class ReResponseTracker {
 
     private Integer extensionDays;
 
+    // ═══ SLA clock pause (UST853) ═══
+    // The clock keeps running while an extension request is pending and is paused only once the
+    // request is approved. slaPauseMinutes accumulates so a second approved extension does not
+    // discard the first pause. Written only by ComplaintQueryService.pauseSlaClock.
+    @Builder.Default
+    private Boolean slaPaused = false;
+
+    private LocalDateTime slaPausedAt;
+
+    @Builder.Default
+    private Long slaPauseMinutes = 0L;
+
+    // ═══ Draft response (UST846) ═══
+    // Kept separate from responseText: a draft is entity-private working material, whereas
+    // responseText is the submitted answer RBI acts on. Conflating them would make an unfinished
+    // draft look like a response on the staff side.
+    @Column(name = "draft_response_text", columnDefinition = "TEXT")
+    private String draftResponseText;
+
+    @Column(name = "draft_saved_at")
+    private LocalDateTime draftSavedAt;
+
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 

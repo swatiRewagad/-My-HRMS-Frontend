@@ -176,7 +176,7 @@ VALUES ('eligibility.sub_are_you_complainant', 'eligibility', 'Sub: are you comp
 MERGE INTO TRANSLATION_KEY tk
 USING (SELECT 'eligibility.block_not_filed' AS code FROM DUAL) src ON (tk.CODE = src.code)
 WHEN NOT MATCHED THEN INSERT (CODE, MODULE, DESCRIPTION, DEFAULT_VALUE)
-VALUES ('eligibility.block_not_filed', 'eligibility', 'Block: not filed', 'in terms of clause 10(1)(j) of Reserve Bank - Integrated Ombudsman Scheme, 2026, the complaint cannot be processed under the Scheme.');
+VALUES ('eligibility.block_not_filed', 'eligibility', 'Block: not filed', 'in terms of clause 10(1)(j) of Reserve Bank - Integrated Ombudsman Scheme, 2021, the complaint cannot be processed under the Scheme.');
 
 MERGE INTO TRANSLATION_KEY tk
 USING (SELECT 'eligibility.block_sub_judice' AS code FROM DUAL) src ON (tk.CODE = src.code)
@@ -378,7 +378,7 @@ WHEN NOT MATCHED THEN INSERT (TRANSLATION_KEY_ID, LOCALE, VALUE) VALUES (src.tk_
 MERGE INTO TRANSLATION t
 USING (SELECT tk.ID AS tk_id, 'hi' AS locale FROM TRANSLATION_KEY tk WHERE tk.CODE = 'eligibility.block_not_filed') src
 ON (t.TRANSLATION_KEY_ID = src.tk_id AND t.LOCALE = src.locale)
-WHEN NOT MATCHED THEN INSERT (TRANSLATION_KEY_ID, LOCALE, VALUE) VALUES (src.tk_id, src.locale, N'रिज़र्व बैंक – एकीकृत लोकपाल योजना, 2026 के खंड 10(1)(j) के अनुसार, शिकायत को योजना के तहत संसाधित नहीं किया जा सकता।');
+WHEN NOT MATCHED THEN INSERT (TRANSLATION_KEY_ID, LOCALE, VALUE) VALUES (src.tk_id, src.locale, N'रिज़र्व बैंक – एकीकृत लोकपाल योजना, 2021 के खंड 10(1)(j) के अनुसार, शिकायत को योजना के तहत संसाधित नहीं किया जा सकता।');
 
 MERGE INTO TRANSLATION t
 USING (SELECT tk.ID AS tk_id, 'hi' AS locale FROM TRANSLATION_KEY tk WHERE tk.CODE = 'eligibility.block_sub_judice') src
@@ -475,7 +475,7 @@ WHEN NOT MATCHED THEN INSERT (TRANSLATION_KEY_ID, LOCALE, VALUE) VALUES (src.tk_
 MERGE INTO TRANSLATION t
 USING (SELECT tk.ID AS tk_id, 'mr' AS locale FROM TRANSLATION_KEY tk WHERE tk.CODE = 'eligibility.block_not_filed') src
 ON (t.TRANSLATION_KEY_ID = src.tk_id AND t.LOCALE = src.locale)
-WHEN NOT MATCHED THEN INSERT (TRANSLATION_KEY_ID, LOCALE, VALUE) VALUES (src.tk_id, src.locale, N'रिझर्व्ह बँक – एकीकृत लोकपाल योजना, 2026 च्या कलम 10(1)(j) नुसार, तक्रार योजनेअंतर्गत प्रक्रिया करता येत नाही.');
+WHEN NOT MATCHED THEN INSERT (TRANSLATION_KEY_ID, LOCALE, VALUE) VALUES (src.tk_id, src.locale, N'रिझर्व्ह बँक – एकीकृत लोकपाल योजना, 2021 च्या कलम 10(1)(j) नुसार, तक्रार योजनेअंतर्गत प्रक्रिया करता येत नाही.');
 
 MERGE INTO TRANSLATION t
 USING (SELECT tk.ID AS tk_id, 'mr' AS locale FROM TRANSLATION_KEY tk WHERE tk.CODE = 'eligibility.block_pending_ombudsman') src
@@ -547,7 +547,7 @@ WHEN NOT MATCHED THEN INSERT (TRANSLATION_KEY_ID, LOCALE, VALUE) VALUES (src.tk_
 MERGE INTO TRANSLATION t
 USING (SELECT tk.ID AS tk_id, 'bn' AS locale FROM TRANSLATION_KEY tk WHERE tk.CODE = 'eligibility.block_not_filed') src
 ON (t.TRANSLATION_KEY_ID = src.tk_id AND t.LOCALE = src.locale)
-WHEN NOT MATCHED THEN INSERT (TRANSLATION_KEY_ID, LOCALE, VALUE) VALUES (src.tk_id, src.locale, N'রিজার্ভ ব্যাংক – সমন্বিত ওম্বডসম্যান স্কিম, ২০২৬-এর ধারা ১০(১)(জে) অনুসারে, এই অভিযোগ স্কিমের অধীনে প্রক্রিয়া করা যাবে না।');
+WHEN NOT MATCHED THEN INSERT (TRANSLATION_KEY_ID, LOCALE, VALUE) VALUES (src.tk_id, src.locale, N'রিজার্ভ ব্যাংক – সমন্বিত ওম্বডসম্যান স্কিম, ২০২১-এর ধারা ১০(১)(জে) অনুসারে, এই অভিযোগ স্কিমের অধীনে প্রক্রিয়া করা যাবে না।');
 
 MERGE INTO TRANSLATION t
 USING (SELECT tk.ID AS tk_id, 'bn' AS locale FROM TRANSLATION_KEY tk WHERE tk.CODE = 'eligibility.block_pending_ombudsman') src
@@ -589,7 +589,7 @@ WHEN NOT MATCHED THEN INSERT (TRANSLATION_KEY_ID, LOCALE, VALUE) VALUES (src.tk_
 MERGE INTO TRANSLATION t
 USING (SELECT tk.ID AS tk_id, 'te' AS locale FROM TRANSLATION_KEY tk WHERE tk.CODE = 'eligibility.block_not_filed') src
 ON (t.TRANSLATION_KEY_ID = src.tk_id AND t.LOCALE = src.locale)
-WHEN NOT MATCHED THEN INSERT (TRANSLATION_KEY_ID, LOCALE, VALUE) VALUES (src.tk_id, src.locale, N'రిజర్వ్ బ్యాంక్ – సమగ్ర ఓంబుడ్స్‌మన్ పథకం, 2026 క్లాజ్ 10(1)(j) ప్రకారం, ఫిర్యాదును పథకం కింద ప్రాసెస్ చేయడం సాధ్యం కాదు.');
+WHEN NOT MATCHED THEN INSERT (TRANSLATION_KEY_ID, LOCALE, VALUE) VALUES (src.tk_id, src.locale, N'రిజర్వ్ బ్యాంక్ – సమగ్ర ఓంబుడ్స్‌మన్ పథకం, 2021 క్లాజ్ 10(1)(j) ప్రకారం, ఫిర్యాదును పథకం కింద ప్రాసెస్ చేయడం సాధ్యం కాదు.');
 
 -- ===================== TAMIL (ta) =====================
 
@@ -616,7 +616,7 @@ WHEN NOT MATCHED THEN INSERT (TRANSLATION_KEY_ID, LOCALE, VALUE) VALUES (src.tk_
 MERGE INTO TRANSLATION t
 USING (SELECT tk.ID AS tk_id, 'ta' AS locale FROM TRANSLATION_KEY tk WHERE tk.CODE = 'eligibility.block_not_filed') src
 ON (t.TRANSLATION_KEY_ID = src.tk_id AND t.LOCALE = src.locale)
-WHEN NOT MATCHED THEN INSERT (TRANSLATION_KEY_ID, LOCALE, VALUE) VALUES (src.tk_id, src.locale, N'ரிசர்வ் வங்கி – ஒருங்கிணைந்த குறைதீர்ப்பாளர் திட்டம், 2026 பிரிவு 10(1)(j) படி, புகார் திட்டத்தின் கீழ் செயல்படுத்த முடியாது.');
+WHEN NOT MATCHED THEN INSERT (TRANSLATION_KEY_ID, LOCALE, VALUE) VALUES (src.tk_id, src.locale, N'ரிசர்வ் வங்கி – ஒருங்கிணைந்த குறைதீர்ப்பாளர் திட்டம், 2021 பிரிவு 10(1)(j) படி, புகார் திட்டத்தின் கீழ் செயல்படுத்த முடியாது.');
 
 -- ===================== GUJARATI (gu) =====================
 
@@ -643,7 +643,7 @@ WHEN NOT MATCHED THEN INSERT (TRANSLATION_KEY_ID, LOCALE, VALUE) VALUES (src.tk_
 MERGE INTO TRANSLATION t
 USING (SELECT tk.ID AS tk_id, 'gu' AS locale FROM TRANSLATION_KEY tk WHERE tk.CODE = 'eligibility.block_not_filed') src
 ON (t.TRANSLATION_KEY_ID = src.tk_id AND t.LOCALE = src.locale)
-WHEN NOT MATCHED THEN INSERT (TRANSLATION_KEY_ID, LOCALE, VALUE) VALUES (src.tk_id, src.locale, N'રિઝર્વ બેંક – સંકલિત ઓમ્બડ્સમેન યોજના, 2026 ની કલમ 10(1)(j) મુજબ, ફરિયાદ યોજના હેઠળ પ્રક્રિયા કરી શકાતી નથી.');
+WHEN NOT MATCHED THEN INSERT (TRANSLATION_KEY_ID, LOCALE, VALUE) VALUES (src.tk_id, src.locale, N'રિઝર્વ બેંક – સંકલિત ઓમ્બડ્સમેન યોજના, 2021 ની કલમ 10(1)(j) મુજબ, ફરિયાદ યોજના હેઠળ પ્રક્રિયા કરી શકાતી નથી.');
 
 -- ===================== URDU (ur) =====================
 
@@ -670,7 +670,7 @@ WHEN NOT MATCHED THEN INSERT (TRANSLATION_KEY_ID, LOCALE, VALUE) VALUES (src.tk_
 MERGE INTO TRANSLATION t
 USING (SELECT tk.ID AS tk_id, 'ur' AS locale FROM TRANSLATION_KEY tk WHERE tk.CODE = 'eligibility.block_not_filed') src
 ON (t.TRANSLATION_KEY_ID = src.tk_id AND t.LOCALE = src.locale)
-WHEN NOT MATCHED THEN INSERT (TRANSLATION_KEY_ID, LOCALE, VALUE) VALUES (src.tk_id, src.locale, N'ریزرو بینک – مربوط اومبڈزمین اسکیم، 2026 کی شق 10(1)(j) کے مطابق، شکایت اسکیم کے تحت عملدرآمد نہیں ہو سکتی۔');
+WHEN NOT MATCHED THEN INSERT (TRANSLATION_KEY_ID, LOCALE, VALUE) VALUES (src.tk_id, src.locale, N'ریزرو بینک – مربوط اومبڈزمین اسکیم، 2021 کی شق 10(1)(j) کے مطابق، شکایت اسکیم کے تحت عملدرآمد نہیں ہو سکتی۔');
 
 -- ===================== KANNADA (kn) =====================
 
@@ -697,7 +697,7 @@ WHEN NOT MATCHED THEN INSERT (TRANSLATION_KEY_ID, LOCALE, VALUE) VALUES (src.tk_
 MERGE INTO TRANSLATION t
 USING (SELECT tk.ID AS tk_id, 'kn' AS locale FROM TRANSLATION_KEY tk WHERE tk.CODE = 'eligibility.block_not_filed') src
 ON (t.TRANSLATION_KEY_ID = src.tk_id AND t.LOCALE = src.locale)
-WHEN NOT MATCHED THEN INSERT (TRANSLATION_KEY_ID, LOCALE, VALUE) VALUES (src.tk_id, src.locale, N'ರಿಸರ್ವ್ ಬ್ಯಾಂಕ್ – ಸಮಗ್ರ ಲೋಕಪಾಲ ಯೋಜನೆ, 2026 ಕಲಂ 10(1)(j) ಪ್ರಕಾರ, ದೂರನ್ನು ಯೋಜನೆಯಡಿ ಪ್ರಕ್ರಿಯೆಗೊಳಿಸಲು ಸಾಧ್ಯವಿಲ್ಲ.');
+WHEN NOT MATCHED THEN INSERT (TRANSLATION_KEY_ID, LOCALE, VALUE) VALUES (src.tk_id, src.locale, N'ರಿಸರ್ವ್ ಬ್ಯಾಂಕ್ – ಸಮಗ್ರ ಲೋಕಪಾಲ ಯೋಜನೆ, 2021 ಕಲಂ 10(1)(j) ಪ್ರಕಾರ, ದೂರನ್ನು ಯೋಜನೆಯಡಿ ಪ್ರಕ್ರಿಯೆಗೊಳಿಸಲು ಸಾಧ್ಯವಿಲ್ಲ.');
 
 -- ===================== MALAYALAM (ml) =====================
 
@@ -724,7 +724,7 @@ WHEN NOT MATCHED THEN INSERT (TRANSLATION_KEY_ID, LOCALE, VALUE) VALUES (src.tk_
 MERGE INTO TRANSLATION t
 USING (SELECT tk.ID AS tk_id, 'ml' AS locale FROM TRANSLATION_KEY tk WHERE tk.CODE = 'eligibility.block_not_filed') src
 ON (t.TRANSLATION_KEY_ID = src.tk_id AND t.LOCALE = src.locale)
-WHEN NOT MATCHED THEN INSERT (TRANSLATION_KEY_ID, LOCALE, VALUE) VALUES (src.tk_id, src.locale, N'റിസർവ് ബാങ്ക് – സംയോജിത ഓംബുഡ്സ്മാൻ സ്കീം, 2026 ക്ലോസ് 10(1)(j) പ്രകാരം, പരാതി സ്കീമിന് കീഴിൽ പ്രോസസ്സ് ചെയ്യാൻ കഴിയില്ല.');
+WHEN NOT MATCHED THEN INSERT (TRANSLATION_KEY_ID, LOCALE, VALUE) VALUES (src.tk_id, src.locale, N'റിസർവ് ബാങ്ക് – സംയോജിത ഓംബുഡ്സ്മാൻ സ്കീം, 2021 ക്ലോസ് 10(1)(j) പ്രകാരം, പരാതി സ്കീമിന് കീഴിൽ പ്രോസസ്സ് ചെയ്യാൻ കഴിയില്ല.');
 
 COMMIT;
 -- ============================================================

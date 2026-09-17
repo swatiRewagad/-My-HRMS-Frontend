@@ -1,6 +1,9 @@
 export const environment = {
   production: false,
   apiBaseUrl: 'http://localhost:8082',
+  // cms-workflow-service runs separately on 8083 with a /cms-workflow context path. Officer-pool
+  // calls were previously sent to apiBaseUrl, which never serves /cms-workflow/** and 404'd.
+  workflowBaseUrl: 'http://localhost:8083',
   keycloakUrl: 'http://localhost:9090',
   realm: 'cms',
 

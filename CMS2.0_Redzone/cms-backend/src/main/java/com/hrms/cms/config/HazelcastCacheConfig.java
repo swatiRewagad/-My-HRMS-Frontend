@@ -5,6 +5,7 @@ import com.hazelcast.config.MapConfig;
 import com.hazelcast.core.Hazelcast;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.spring.cache.HazelcastCacheManager;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.CacheManager;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -12,12 +13,24 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class HazelcastCacheConfig {
 
+    @Value("${cms.hazelcast.cluster-name:cms-cluster}")
+    private String clusterName;
+
     @Bean
     public Config hazelcastConfig() {
         Config config = new Config();
         config.setInstanceName("cms-hazelcast");
+
+        // Multicast and TCP/IP joins are both off below, so this node is meant to stand alone — but
+        // Hazelcast's auto-detection join is enabled by default and silently forms a cluster anyway.
+        // A second instance on the same host then shares these caches, so a value written by one node
+        // is served to the other: a deliberately corrupted DB row read back clean through the API
+        // because the other node's cached bundle answered. Disabling auto-detection and namespacing
+        // the cluster keeps a locally-run instance genuinely isolated.
         config.getNetworkConfig().getJoin().getMulticastConfig().setEnabled(false);
         config.getNetworkConfig().getJoin().getTcpIpConfig().setEnabled(false);
+        config.getNetworkConfig().getJoin().getAutoDetectionConfig().setEnabled(false);
+        config.setClusterName(clusterName);
 
         config.addMapConfig(new MapConfig("dashboard")
                 .setTimeToLiveSeconds(120));

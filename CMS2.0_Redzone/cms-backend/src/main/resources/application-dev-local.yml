@@ -7,6 +7,12 @@ server:
   port: 8082
 
 spring:
+  # Local development drives the API with X-User-* identity headers and no Keycloak token, so the
+  # resource-server autoconfig is excluded: it would otherwise demand a reachable JWKS endpoint at
+  # startup. DevLocalSecurityConfig (@Profile("dev-local")) supplies the permissive chain.
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.security.oauth2.resource.servlet.OAuth2ResourceServerAutoConfiguration
   datasource:
     url: jdbc:mysql://localhost:3306/cms_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&rewriteBatchedStatements=true&characterEncoding=UTF-8&useUnicode=true
     username: cms_user
@@ -57,6 +63,11 @@ keycloak:
     password: admin
 
 cms:
+  security:
+    # Lets the E2E suites and local tooling declare an identity via X-User-* headers. Deliberately
+    # NOT set in application.yml: a deployed instance must derive AA role and actor from the verified
+    # JWT only, otherwise any caller could name their own AA role and act as anyone.
+    allow-dev-identity-headers: true
   ocr:
     chain: groq
     groq-api-key: ${GROQ_API_KEY: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}
@@ -69,7 +80,9 @@ cms:
     azure-api-key: ""
   attachments:
     root-path: ./cms-attachments
-    max-file-size: 52428800
+    # NFR-006 limits must match production, or a file that passes locally fails in SIT.
+    max-file-size: 2097152
+    max-total-size: 26214400
     chunk-size: 5242880
     allowed-types: pdf,png,jpg,jpeg,doc,docx,xls,xlsx,txt,csv,zip
     max-files-per-complaint: 10

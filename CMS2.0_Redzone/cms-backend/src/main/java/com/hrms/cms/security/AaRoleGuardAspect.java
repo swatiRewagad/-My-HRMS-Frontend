@@ -13,6 +13,7 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.util.*;
 
@@ -29,6 +30,10 @@ public class AaRoleGuardAspect {
 
     private final ObjectMapper objectMapper;
 
+    /** True only under dev-local; the enforcing profile ignores X-User-Role(s) entirely. */
+    @Value("${cms.security.allow-dev-identity-headers:false}")
+    private boolean allowDevIdentityHeaders;
+
     @Around("@annotation(aaRoleGuard)")
     public Object checkRole(ProceedingJoinPoint joinPoint, AaRoleGuard aaRoleGuard) throws Throwable {
         String[] allowedRoles = aaRoleGuard.roles();
@@ -36,9 +41,10 @@ public class AaRoleGuardAspect {
         Set<String> userRoles = extractUserRoles();
 
         if (userRoles.isEmpty()) {
-            // If no roles can be extracted (e.g., dev mode, no token), allow through
-            log.debug("No roles found in request - allowing through (dev mode or missing token)");
-            return joinPoint.proceed();
+            log.warn("AA access denied: no roles present on the request for {}",
+                    joinPoint.getSignature().toShortString());
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Access denied: insufficient role permissions for this AA action");
         }
 
         for (String allowedRole : allowedRoles) {
@@ -59,23 +65,14 @@ public class AaRoleGuardAspect {
         HttpServletRequest request = attrs.getRequest();
         Set<String> roles = new HashSet<>();
 
-        // Check X-User-Roles header (comma-separated)
-        String rolesHeader = request.getHeader("X-User-Roles");
-        if (rolesHeader != null && !rolesHeader.isBlank()) {
-            for (String role : rolesHeader.split(",")) {
-                roles.add(role.trim());
-            }
-            return roles;
-        }
-
-        // Check single X-User-Role header
-        String singleRole = request.getHeader("X-User-Role");
-        if (singleRole != null && !singleRole.isBlank()) {
-            roles.add(singleRole.trim());
-            return roles;
-        }
-
-        // Try to decode JWT from Authorization header
+        // The JWT is authoritative and is read FIRST.
+        //
+        // This previously checked X-User-Roles / X-User-Role ahead of the token and returned
+        // immediately, so the JWT was never decoded: any caller who could set that header
+        // self-asserted arbitrary AA roles, and a token carrying only RBIO_OFFICER was irrelevant if
+        // the header said AA_DO. cms-backend is reached directly by both browsers (the gateway has no
+        // route to it, see SecurityConfig), so there is no trusted upstream hop to strip those
+        // headers. They are now honoured only under dev-local, where the E2E suites rely on them.
         String authHeader = request.getHeader("Authorization");
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             try {
@@ -115,6 +112,26 @@ public class AaRoleGuardAspect {
             } catch (Exception e) {
                 log.debug("Failed to decode JWT for role extraction: {}", e.getMessage());
             }
+        }
+
+        if (!roles.isEmpty() || !allowDevIdentityHeaders) {
+            return roles;
+        }
+
+        // Dev-local only. The E2E suites drive this API with X-User-Roles via identityHeadersFor().
+        String rolesHeader = request.getHeader("X-User-Roles");
+        if (rolesHeader != null && !rolesHeader.isBlank()) {
+            for (String role : rolesHeader.split(",")) {
+                if (!role.isBlank()) {
+                    roles.add(role.trim());
+                }
+            }
+            return roles;
+        }
+
+        String singleRole = request.getHeader("X-User-Role");
+        if (singleRole != null && !singleRole.isBlank()) {
+            roles.add(singleRole.trim());
         }
 
         return roles;

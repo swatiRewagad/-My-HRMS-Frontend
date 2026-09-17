@@ -2,12 +2,14 @@ package com.hrms.cms.controller;
 
 import com.hrms.cms.dto.ChunkUploadResponse;
 import com.hrms.cms.entity.ComplaintAttachment;
+import com.hrms.cms.repository.EmailDraftAttachmentRepository;
 import com.hrms.cms.service.FileStorageService;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import com.hrms.cms.support.ControllerSliceTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
@@ -21,11 +23,16 @@ import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@WebMvcTest(FileUploadController.class)
+// addFilters = false: these assert controller behaviour, not the security chain. @WebMvcTest does not
+// load the app's @Configuration, so the default auto-config chain would 401 endpoints that
+// SecurityConfig makes public in production.
+@ControllerSliceTest(FileUploadController.class)
+@AutoConfigureMockMvc(addFilters = false)
 class FileUploadControllerTest {
 
     @Autowired private MockMvc mockMvc;
     @MockBean private FileStorageService fileStorageService;
+    @MockBean private EmailDraftAttachmentRepository draftAttachmentRepository;
 
     @TempDir
     Path tempDir;

@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../fixtures';
 import { loginAsRbioRole, isKeycloakAvailable, logout } from '../utils/auth';
 import {
   createRbioComplaint,
@@ -50,7 +50,9 @@ test.describe('RBIO SLA Indicators', () => {
       await page.waitForSelector('.task-action-page', { timeout: 15000 });
 
       // RBIO SLA progress component shows stages: Officer, Conciliation, Adjudication
-      const slaProgress = page.locator('app-rbio-sla-progress, .rbio-sla-progress');
+      // The comma selector matches the component's host tag AND its own class on that same
+      // element, so it resolves to 2 nodes and trips Playwright strict mode.
+      const slaProgress = page.locator('app-rbio-sla-progress, .rbio-sla-progress').first();
       await expect(slaProgress).toBeVisible({ timeout: 5000 });
 
       const stageText = await slaProgress.textContent();
@@ -106,7 +108,9 @@ test.describe('RBIO SLA Indicators', () => {
       await expect(lifecycleText).toBeVisible({ timeout: 5000 });
 
       // Should show remaining days
-      const slaProgress = page.locator('app-rbio-sla-progress, .rbio-sla-progress');
+      // The comma selector matches the component's host tag AND its own class on that same
+      // element, so it resolves to 2 nodes and trips Playwright strict mode.
+      const slaProgress = page.locator('app-rbio-sla-progress, .rbio-sla-progress').first();
       const text = await slaProgress.textContent();
       expect(text).toMatch(/\d+d remaining/);
       expect(text).toContain('120');

@@ -1,12 +1,19 @@
 <div class="aa-detail">
   <header class="topbar">
     <div class="topbar-left">
-      <button class="back-btn" (click)="goBack()">&larr;</button>
-      <h2>Appeal Examination</h2>
+      <button type="button" class="back-btn" data-testid="back-to-dashboard" (click)="goBack()">
+        <span aria-hidden="true">&larr;</span>
+      </button>
+      <h2>{{ 'aa.detail.title' | translate }}</h2>
     </div>
     <div class="topbar-right">
       @if (auth.currentUser(); as user) {
-        <span class="role-badge">{{ roleLabels[userRole()] }}</span>
+        <span class="role-badge" data-testid="role-badge">{{ roleLabelKey() | translate }}</span>
+        @if (reviewerTier(); as tier) {
+          <span class="role-badge" data-testid="reviewer-tier">
+            {{ 'aa.detail.reviewer_tier' | translate }}: {{ tier }}
+          </span>
+        }
         <span>{{ user.firstName }} {{ user.lastName }}</span>
       }
     </div>
@@ -14,9 +21,9 @@
 
   <main class="content">
     @if (loading()) {
-      <div class="loading">Loading appeal details...</div>
+      <div class="loading" data-testid="detail-loading">{{ 'aa.detail.loading' | translate }}</div>
     } @else if (!appeal()) {
-      <div class="error-state">Appeal not found.</div>
+      <div class="error-state" data-testid="detail-not-found">{{ 'aa.detail.not_found' | translate }}</div>
     } @else {
       <div class="detail-layout">
         <!-- Left: Appeal Details -->
@@ -25,118 +32,205 @@
           <div class="appeal-header">
             <div class="header-left">
               <h3>{{ appeal().appealNumber }}</h3>
-              <span class="classification-badge" [attr.data-classification]="appeal().classification">
-                {{ appeal().classification }}
-              </span>
-              <span class="immutable-tag">IMMUTABLE</span>
-              <span class="status-badge" [attr.data-status]="appeal().status">{{ getStatusLabel(appeal().status) }}</span>
+              <app-status-badge [status]="appeal().classification" keyPrefix="classification" />
+              @if (appeal().classificationOverridden) {
+                <span class="override-tag" [title]="appeal().classificationOverrideReason || ''">
+                  {{ 'aa.overridden' | translate }}
+                </span>
+              }
+              <app-status-badge [status]="appeal().status" />
             </div>
             <div class="header-meta">
-              <span>Filed: {{ appeal().filedDate | date:'dd MMM yyyy' }}</span>
+              <span>{{ 'aa.detail.filed' | translate }}: {{ appeal().filedAt | date:'dd MMM yyyy' }}</span>
             </div>
           </div>
 
+          <!--
+            Stage SLA, exactly as the server computed it. daysRemaining is NEGATIVE once the deadline has
+            passed, so the overdue branch renders its absolute value against a different key.
+          -->
+          @if (sla()?.tracked) {
+            <div class="sla-banner"
+                 [class.error-banner]="sla()!.breached"
+                 [class.warning-banner]="!sla()!.breached"
+                 [attr.data-testid]="sla()!.breached ? 'sla-overdue' : 'sla-status'"
+                 role="status"
+                 aria-live="polite">
+              @if (sla()!.breached) {
+                <span class="sla-icon" aria-hidden="true">&#9888;</span>
+              }
+              <span class="sla-status-label">{{ sla()!.statusKey | translate }}</span>
+              <span class="sla-deadline">
+                {{ 'aa.detail.sla_deadline' | translate }}:
+                {{ sla()!.deadline ? (sla()!.deadline | date:'dd MMM yyyy') : ('aa.detail.not_available' | translate) }}
+              </span>
+              @if (sla()!.daysRemaining !== null) {
+                @if (sla()!.breached) {
+                  <span class="sla-days">
+                    {{ 'aa.detail.sla_overdue_by' | translate }}: {{ 0 - sla()!.daysRemaining! }}
+                  </span>
+                } @else {
+                  <span class="sla-days">
+                    {{ 'aa.detail.sla_days_remaining' | translate }}: {{ sla()!.daysRemaining }}
+                  </span>
+                }
+              }
+            </div>
+          }
+
           <!-- Appeal Info -->
           <section class="detail-section">
-            <h4>Appeal Information</h4>
+            <h4>{{ 'aa.detail.appeal_information' | translate }}</h4>
             <div class="field-grid">
               <div class="field">
-                <label>Ground for Appeal</label>
-                <span>{{ appeal().ground || '—' }}</span>
+                <span class="field-label">{{ 'aa.detail.ground_for_appeal' | translate }}</span>
+                <span data-testid="appeal-ground">{{ appeal().appealGround || '—' }}</span>
               </div>
               <div class="field">
-                <label>Relief Sought</label>
-                <span>{{ appeal().reliefSought || '—' }}</span>
+                <span class="field-label">{{ 'aa.detail.relief_sought' | translate }}</span>
+                <span data-testid="relief-sought">{{ appeal().reliefSought || '—' }}</span>
               </div>
               <div class="field">
-                <label>Filed Date</label>
-                <span>{{ appeal().filedDate | date:'dd MMM yyyy' }}</span>
+                <span class="field-label">{{ 'aa.detail.filed_date' | translate }}</span>
+                <span data-testid="filed-at">{{ appeal().filedAt | date:'dd MMM yyyy' }}</span>
               </div>
               <div class="field">
-                <label>Original Complaint</label>
-                <span class="complaint-link">{{ appeal().originalComplaintNumber }}</span>
+                <span class="field-label">{{ 'aa.detail.original_complaint' | translate }}</span>
+                <span class="complaint-link" data-testid="original-complaint">{{ appeal().originalComplaintNumber || '—' }}</span>
               </div>
+              <div class="field">
+                <span class="field-label">{{ 'aa.detail.closure_clause' | translate }}</span>
+                <span data-testid="closure-clause">{{ appeal().closureClause || '—' }}</span>
+              </div>
+              <div class="field">
+                <span class="field-label">{{ 'aa.detail.mode_of_receipt' | translate }}</span>
+                <span data-testid="mode-of-receipt">{{ appeal().modeOfReceipt || '—' }}</span>
+              </div>
+              @if (appeal().reasonForDelay) {
+                <div class="field full-width">
+                  <span class="field-label">{{ 'aa.detail.reason_for_delay' | translate }}</span>
+                  <p class="description-text" data-testid="reason-for-delay">{{ appeal().reasonForDelay }}</p>
+                </div>
+              }
             </div>
           </section>
 
           <!-- Appellant Info -->
           <section class="detail-section">
-            <h4>Appellant Details</h4>
+            <h4>{{ 'aa.detail.appellant_details' | translate }}</h4>
             <div class="field-grid">
               <div class="field">
-                <label>Name</label>
-                <span>{{ appeal().appellantName || '—' }}</span>
+                <span class="field-label">{{ 'aa.detail.name' | translate }}</span>
+                <span data-testid="appellant-name">{{ appeal().appellantName || '—' }}</span>
               </div>
               <div class="field">
-                <label>Email</label>
-                <span>{{ appeal().appellantEmail || '—' }}</span>
+                <span class="field-label">{{ 'aa.detail.email' | translate }}</span>
+                <span data-testid="appellant-email">{{ appeal().appellantEmail || '—' }}</span>
               </div>
               <div class="field">
-                <label>Phone</label>
-                <span>{{ appeal().appellantPhone || '—' }}</span>
+                <span class="field-label">{{ 'aa.detail.phone' | translate }}</span>
+                <span data-testid="appellant-phone">{{ appeal().appellantPhone || '—' }}</span>
               </div>
               <div class="field">
-                <label>Assigned To</label>
-                <span>{{ appeal().assignedTo || '—' }}</span>
+                <span class="field-label">{{ 'aa.detail.entity' | translate }}</span>
+                <span data-testid="entity-code">{{ appeal().entityCode || '—' }}</span>
+              </div>
+              <div class="field">
+                <span class="field-label">{{ 'aa.detail.filed_by' | translate }}</span>
+                <span data-testid="appeal-filed-by">{{ appeal().appealFiledBy || '—' }}</span>
               </div>
             </div>
           </section>
 
-          <!-- Hearing Info -->
+          <!-- Assignment -->
           <section class="detail-section">
-            <h4>Hearing Information</h4>
+            <h4>{{ 'aa.detail.assignment' | translate }}</h4>
             <div class="field-grid">
               <div class="field">
-                <label>Scheduled Date</label>
-                <span>{{ appeal().hearingDate ? (appeal().hearingDate | date:'dd MMM yyyy, HH:mm') : 'Not scheduled' }}</span>
+                <span class="field-label">{{ 'aa.detail.assigned_role' | translate }}</span>
+                <span data-testid="assigned-role">{{ appeal().assignedRole || '—' }}</span>
               </div>
               <div class="field">
-                <label>Venue</label>
-                <span>{{ appeal().hearingVenue || '—' }}</span>
+                <span class="field-label">{{ 'aa.detail.assigned_officer' | translate }}</span>
+                <span data-testid="assigned-officer">{{ appeal().assignedOfficer || '—' }}</span>
+              </div>
+              <div class="field">
+                <span class="field-label">{{ 'aa.detail.workflow_stage' | translate }}</span>
+                <span data-testid="workflow-stage">{{ appeal().workflowStage || '—' }}</span>
+              </div>
+              <div class="field">
+                <span class="field-label">{{ 'aa.detail.priority' | translate }}</span>
+                <span data-testid="priority">{{ appeal().priority || '—' }}</span>
               </div>
             </div>
-            @if (appeal().hearingHistory && appeal().hearingHistory.length > 0) {
-              <div class="hearing-history">
-                <h5>Past Hearings</h5>
-                <table class="history-table">
-                  <thead>
-                    <tr>
-                      <th>Date</th>
-                      <th>Venue</th>
-                      <th>Outcome</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    @for (h of appeal().hearingHistory; track h.date) {
-                      <tr>
-                        <td>{{ h.date | date:'dd MMM yyyy' }}</td>
-                        <td>{{ h.venue }}</td>
-                        <td>{{ h.outcome || 'Adjourned' }}</td>
-                      </tr>
-                    }
-                  </tbody>
-                </table>
-              </div>
-            }
           </section>
 
-          <!-- Order Section (if order passed) -->
-          @if (appeal().order) {
-            <section class="detail-section order-section">
-              <h4>Order Details</h4>
+          <!-- Hearing -->
+          <section class="detail-section">
+            <h4>{{ 'aa.detail.hearing' | translate }}</h4>
+            <div class="field-grid">
+              <div class="field">
+                <span class="field-label">{{ 'aa.detail.hearing_date' | translate }}</span>
+                <span data-testid="hearing-date">
+                  {{ appeal().hearingDate ? (appeal().hearingDate | date:'dd MMM yyyy, HH:mm') : ('aa.detail.not_scheduled' | translate) }}
+                </span>
+              </div>
+              <div class="field">
+                <span class="field-label">{{ 'aa.detail.hearing_venue' | translate }}</span>
+                <span data-testid="hearing-venue">{{ appeal().hearingVenue || '—' }}</span>
+              </div>
+            </div>
+          </section>
+
+          <!--
+            Order details are FLAT on the detail payload; there is no nested `order` object, which is why
+            this section never rendered before.
+          -->
+          @if (appeal().orderOutcome) {
+            <section class="detail-section order-section" data-testid="order-section">
+              <h4>{{ 'aa.detail.order' | translate }}</h4>
               <div class="field-grid">
                 <div class="field">
-                  <label>Outcome</label>
-                  <span class="outcome-badge" [attr.data-outcome]="appeal().order.outcome">{{ appeal().order.outcome }}</span>
+                  <span class="field-label">{{ 'aa.detail.order_outcome' | translate }}</span>
+                  <span class="outcome-badge" data-testid="order-outcome" [attr.data-outcome]="appeal().orderOutcome">
+                    {{ appeal().orderOutcome }}
+                  </span>
                 </div>
                 <div class="field">
-                  <label>Modified Amount</label>
-                  <span>{{ appeal().order.modifiedAmount ? '\u20B9' + appeal().order.modifiedAmount : '—' }}</span>
+                  <span class="field-label">{{ 'aa.detail.order_date' | translate }}</span>
+                  <span data-testid="order-date">
+                    {{ appeal().orderDate ? (appeal().orderDate | date:'dd MMM yyyy') : '—' }}
+                  </span>
+                </div>
+                <div class="field">
+                  <span class="field-label">{{ 'aa.detail.award_amount' | translate }}</span>
+                  <span data-testid="award-modified-amount">
+                    {{ appeal().awardModifiedAmount ? '₹' + appeal().awardModifiedAmount : '—' }}
+                  </span>
                 </div>
               </div>
               <div class="field full-width">
-                <label>Order Summary</label>
-                <p class="description-text">{{ appeal().order.summary }}</p>
+                <span class="field-label">{{ 'aa.detail.order_summary' | translate }}</span>
+                <p class="description-text" data-testid="order-summary">{{ appeal().orderSummary || '—' }}</p>
+              </div>
+            </section>
+          }
+
+          <!-- Closure -->
+          @if (appeal().closureCause || appeal().closedAt) {
+            <section class="detail-section" data-testid="closure-section">
+              <h4>{{ 'aa.detail.closure' | translate }}</h4>
+              <div class="field-grid">
+                <div class="field">
+                  <span class="field-label">{{ 'aa.detail.closure_cause' | translate }}</span>
+                  <span data-testid="closure-cause">{{ appeal().closureCause || '—' }}</span>
+                </div>
+                <div class="field">
+                  <span class="field-label">{{ 'aa.detail.closed_at' | translate }}</span>
+                  <span data-testid="closed-at">
+                    {{ appeal().closedAt ? (appeal().closedAt | date:'dd MMM yyyy, HH:mm') : '—' }}
+                  </span>
+                </div>
               </div>
             </section>
           }
@@ -144,31 +238,33 @@
           <!-- Timeline -->
           <section class="detail-section">
             <div class="timeline-header">
-              <h4>Appeal Timeline</h4>
+              <h4>{{ 'aa.detail.timeline' | translate }}</h4>
             </div>
             @if (timelineLoading()) {
-              <div class="loading-inline">Loading timeline...</div>
+              <div class="loading-inline" data-testid="timeline-loading">{{ 'aa.detail.timeline_loading' | translate }}</div>
             } @else if (timeline().length === 0) {
-              <p class="empty-timeline">No timeline entries yet.</p>
+              <p class="empty-timeline" data-testid="timeline-empty">{{ 'aa.detail.timeline_empty' | translate }}</p>
             } @else {
-              <div class="timeline">
-                @for (entry of timeline(); track entry.timestamp; let i = $index) {
+              <div class="timeline" data-testid="timeline">
+                @for (entry of timeline(); track entry.timestamp) {
                   <div class="timeline-item">
                     <div class="timeline-dot">
-                      <span class="action-icon">{{ getTimelineIcon(entry.action) }}</span>
+                      <span class="action-icon" aria-hidden="true">{{ getTimelineIcon(entry.action) }}</span>
                     </div>
                     <div class="timeline-content">
                       <div class="timeline-main">
-                        <span class="timeline-action">{{ getTimelineLabel(entry.action) }}</span>
+                        <span class="timeline-action">{{ getTimelineLabelKey(entry.action) | translate }}</span>
                         <span class="timeline-time">{{ entry.timestamp | date:'dd MMM yyyy HH:mm' }}</span>
                       </div>
                       @if (entry.performedBy) {
-                        <span class="timeline-actor">By: {{ entry.performedBy }}</span>
+                        <span class="timeline-actor">{{ entry.performedBy }}</span>
                       }
                       @if (entry.remarks) {
                         <p class="timeline-remarks">{{ entry.remarks }}</p>
                       }
-                      <span class="timeline-flow">{{ entry.fromStatus }} &rarr; {{ entry.toStatus }}</span>
+                      <span class="timeline-flow">
+                        {{ entry.fromStatus }} <span aria-hidden="true">&rarr;</span> {{ entry.toStatus }}
+                      </span>
                     </div>
                   </div>
                 }
@@ -180,32 +276,30 @@
         <!-- Right: Action Panel -->
         <div class="action-panel">
           @if (isTerminalState()) {
-            <div class="closed-banner">
-              <span class="closed-icon">&#10003;</span>
-              <h4>Appeal {{ appeal().status | uppercase }}</h4>
-              <p>This appeal has reached its final state. No further actions available.</p>
+            <div class="closed-banner" data-testid="no-actions">
+              <span class="closed-icon" aria-hidden="true">&#10003;</span>
+              <h4>{{ 'aa.detail.no_actions_available' | translate }}</h4>
+              <app-status-badge [status]="appeal().status" />
+              <p>{{ 'aa.detail.no_actions_hint' | translate }}</p>
             </div>
-            @if (userRole() === 'AA_ADMIN') {
-              <div class="admin-actions">
-                @for (action of availableActions(); track action.id) {
-                  <button class="action-card" [class]="action.style" (click)="selectAction(action)">
-                    <span class="action-label">{{ action.label }}</span>
-                    <span class="action-desc">{{ action.description }}</span>
-                  </button>
-                }
-              </div>
-            }
           } @else {
-            <h4>Available Actions</h4>
-            <p class="action-hint">Select an action to perform on this appeal.</p>
+            <h4>{{ 'aa.detail.available_actions' | translate }}</h4>
+            <p class="action-hint">{{ 'aa.detail.available_actions_hint' | translate }}</p>
 
-            <div class="action-list">
+            <!--
+              Server-driven: the cards are exactly the ids the API returned in availableActions, rendered
+              through their translation keys. Nothing here decides eligibility.
+            -->
+            <div class="action-list" data-testid="action-list">
               @for (action of availableActions(); track action.id) {
-                <button class="action-card" [class]="action.style"
+                <button type="button" class="action-card" [class]="action.style"
                         [class.selected]="selectedAction()?.id === action.id"
+                        [attr.data-testid]="'action-' + action.id"
                         (click)="selectAction(action)">
-                  <span class="action-label">{{ action.label }}</span>
-                  <span class="action-desc">{{ action.description }}</span>
+                  <span class="action-label">{{ action.labelKey | translate }}</span>
+                  @if (action.descriptionKey) {
+                    <span class="action-desc">{{ action.descriptionKey | translate }}</span>
+                  }
                 </button>
               }
             </div>
@@ -222,14 +316,14 @@
 
             <!-- Generic Action Form -->
             @if (selectedAction(); as action) {
-              <div class="action-form">
-                <h5>{{ action.label }}</h5>
+              <div class="action-form" data-testid="action-form">
+                <h5>{{ action.labelKey | translate }}</h5>
 
                 @if (action.requiresTarget && action.targetType === 'user') {
                   <div class="form-field">
-                    <label>Assign To</label>
-                    <select [(ngModel)]="targetUser">
-                      <option value="">Select Officer</option>
+                    <label for="action-target-user">{{ 'aa.detail.assign_to' | translate }}</label>
+                    <select id="action-target-user" data-testid="action-target-user" [(ngModel)]="targetUser">
+                      <option value="">{{ 'aa.detail.select_officer' | translate }}</option>
                       @for (officer of aaOfficers(); track officer.id) {
                         <option [value]="officer.id">{{ officer.name }}</option>
                       }
@@ -239,25 +333,36 @@
 
                 @if (action.requiresRemarks) {
                   <div class="form-field">
-                    <label>Remarks</label>
-                    <textarea [(ngModel)]="remarks" rows="4"
-                              placeholder="Enter remarks..."></textarea>
+                    <label for="action-remarks">{{ 'aa.detail.remarks' | translate }}</label>
+                    <textarea id="action-remarks" data-testid="action-remarks" rows="4"
+                              [(ngModel)]="remarks"
+                              [attr.placeholder]="'aa.detail.remarks_placeholder' | translate"></textarea>
                   </div>
                 }
 
                 <div class="form-actions">
-                  <button class="submit-btn" [disabled]="processing() || (action.requiresRemarks && !remarks.trim())"
+                  <button type="button" class="submit-btn" data-testid="submit-action"
+                          [disabled]="processing() || (action.requiresRemarks && !remarks.trim())"
+                          [attr.aria-busy]="processing()"
                           (click)="submitAction()">
-                    @if (processing()) { Processing... } @else { Confirm {{ action.label }} }
+                    @if (processing()) {
+                      {{ 'aa.detail.processing' | translate }}
+                    } @else {
+                      {{ 'aa.detail.confirm' | translate }}
+                    }
                   </button>
-                  <button class="cancel-btn" (click)="cancelAction()">Cancel</button>
+                  <button type="button" class="cancel-btn" data-testid="cancel-action" (click)="cancelAction()">
+                    {{ 'aa.detail.cancel' | translate }}
+                  </button>
                 </div>
               </div>
             }
 
+            <!-- actionResult holds a translation KEY, never prose: the server picks the message. -->
             @if (actionResult()) {
-              <div class="result-msg" [class.success]="actionSuccess()" [class.error]="!actionSuccess()">
-                {{ actionResult() }}
+              <div class="result-msg" role="status" aria-live="polite" data-testid="action-result"
+                   [class.success]="actionSuccess()" [class.error]="!actionSuccess()">
+                {{ actionResult() | translate }}
               </div>
             }
           }

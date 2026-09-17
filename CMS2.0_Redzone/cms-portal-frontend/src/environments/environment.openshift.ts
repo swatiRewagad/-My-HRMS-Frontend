@@ -1,6 +1,8 @@
 export const environment = {
   production: true,
   apiBaseUrl: '',
+  // Same origin; the ingress routes /cms-workflow/** to the workflow service.
+  workflowBaseUrl: '',
   keycloakUrl: '/auth',
   realm: 'cms',
 

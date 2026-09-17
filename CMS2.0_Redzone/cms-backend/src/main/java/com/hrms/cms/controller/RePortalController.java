@@ -1,7 +1,10 @@
 package com.hrms.cms.controller;
 
+import com.hrms.cms.config.FileStorageConfig;
 import com.hrms.cms.entity.*;
 import com.hrms.cms.security.ReRoleGuard;
+import com.hrms.cms.service.FileStorageService;
+import com.hrms.cms.service.FileUploadValidator;
 import com.hrms.cms.service.ReNotificationService;
 import com.hrms.cms.service.RePortalService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -12,9 +15,14 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -31,6 +39,13 @@ public class RePortalController {
 
     private final RePortalService rePortalService;
     private final ReNotificationService reNotificationService;
+    private final FileStorageService fileStorageService;
+    private final FileUploadValidator fileUploadValidator;
+    private final FileStorageConfig fileStorageConfig;
+
+    /** True only under dev-local; the enforcing profile ignores X-Entity-Code entirely. */
+    @Value("${cms.security.allow-dev-identity-headers:false}")
+    private boolean allowDevIdentityHeaders;
 
     // ═══════════════════════════════════════════════════════════════
     // Complaint listing
@@ -62,6 +77,7 @@ public class RePortalController {
             item.put("priority", c.getPriority());
             item.put("createdAt", c.getCreatedAt() != null ? c.getCreatedAt().toString() : null);
             item.put("filingType", c.getFilingType());
+            putActivityStatus(item, c);
             return item;
         }).collect(Collectors.toList());
 
@@ -93,7 +109,8 @@ public class RePortalController {
         String entityCode = extractEntityCode(request);
 
         try {
-            Complaint c = rePortalService.getComplaintDetail(complaintNumber, entityCode);
+            // Opening the detail is itself the "Opened" signal (UST846).
+            Complaint c = rePortalService.openComplaintDetail(complaintNumber, entityCode, extractActor(request));
 
             Map<String, Object> detail = new LinkedHashMap<>();
             detail.put("complaintNumber", c.getComplaintNumber());
@@ -107,6 +124,7 @@ public class RePortalController {
             detail.put("createdAt", c.getCreatedAt() != null ? c.getCreatedAt().toString() : null);
             detail.put("entityCode", c.getEntityCode());
             detail.put("withinResponseWindow", rePortalService.isWithinResponseWindow(complaintNumber));
+            putActivityStatus(detail, c);
 
             Map<String, Object> response = new LinkedHashMap<>();
             response.put("success", true);
@@ -128,29 +146,106 @@ public class RePortalController {
     // ═══════════════════════════════════════════════════════════════
 
     /**
-     * RE submits response to a complaint.
+     * RE submits response to a complaint, optionally with supporting documents.
      */
-    @PostMapping("/complaints/{complaintNumber}/respond")
+    @PostMapping(value = "/complaints/{complaintNumber}/respond", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @ReRoleGuard(roles = {"RE_NODAL_OFFICER", "RE_PNO", "RE_ADMIN"})
     public ResponseEntity<Map<String, Object>> respondToComplaint(
+            @PathVariable String complaintNumber,
+            @RequestParam(value = "responseText", required = false) String responseText,
+            @RequestParam(value = "documents", required = false) MultipartFile[] documents,
+            @RequestParam(value = "respondedBy", required = false) String respondedBy,
+            HttpServletRequest request) {
+
+        return submitResponse(complaintNumber, responseText, respondedBy, documents, request);
+    }
+
+    /**
+     * JSON variant retained for existing API/automation callers that send no documents.
+     */
+    @PostMapping(value = "/complaints/{complaintNumber}/respond", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @ReRoleGuard(roles = {"RE_NODAL_OFFICER", "RE_PNO", "RE_ADMIN"})
+    public ResponseEntity<Map<String, Object>> respondToComplaintJson(
             @PathVariable String complaintNumber,
             @RequestBody Map<String, Object> body,
             HttpServletRequest request) {
 
-        String entityCode = extractEntityCode(request);
         String responseText = (String) body.get("response");
-        String respondedBy = (String) body.getOrDefault("respondedBy", "RE_USER");
+        if (responseText == null) {
+            responseText = (String) body.get("responseText");
+        }
+
+        String respondedBy = (String) body.get("respondedBy");
+        if (respondedBy == null) {
+            respondedBy = (String) body.get("actor");
+        }
+
+        return submitResponse(complaintNumber, responseText, respondedBy, null, request);
+    }
+
+    private ResponseEntity<Map<String, Object>> submitResponse(
+            String complaintNumber,
+            String responseText,
+            String respondedBy,
+            MultipartFile[] documents,
+            HttpServletRequest request) {
+
+        String entityCode = extractEntityCode(request);
+        String actor = (respondedBy == null || respondedBy.isBlank()) ? "RE_USER" : respondedBy;
 
         if (responseText == null || responseText.isBlank()) {
             return ResponseEntity.badRequest()
                     .body(Map.of("success", false, "message", "Response text is required"));
         }
 
+        List<MultipartFile> files = new ArrayList<>();
+        if (documents != null) {
+            for (MultipartFile file : documents) {
+                if (file != null && !file.isEmpty()) {
+                    files.add(file);
+                }
+            }
+        }
+
         try {
             // Validate entity ownership
-            rePortalService.getComplaintDetail(complaintNumber, entityCode);
+            Complaint complaint = rePortalService.getComplaintDetail(complaintNumber, entityCode);
 
-            ReResponseTracker tracker = rePortalService.respondToComplaint(complaintNumber, responseText, respondedBy);
+            // Every file is validated before anything is written, so a rejected attachment
+            // cannot leave earlier ones persisted against an unrecorded response.
+            if (!files.isEmpty()) {
+                int maxFiles = fileStorageConfig.getMaxFilesPerComplaint();
+                int existing = fileStorageService.getAttachments(complaint.getId()).size();
+                if (existing + files.size() > maxFiles) {
+                    return ResponseEntity.badRequest().body(Map.of("success", false,
+                            "message", "Max files per complaint reached (" + maxFiles + ")"));
+                }
+                for (MultipartFile file : files) {
+                    fileUploadValidator.validate(file);
+                }
+            }
+
+            ReResponseTracker tracker = rePortalService.respondToComplaint(complaintNumber, responseText, actor);
+
+            List<Map<String, Object>> attachments = new ArrayList<>();
+            for (MultipartFile file : files) {
+                ComplaintAttachment saved = fileStorageService.handleSingleUpload(
+                        file, complaintNumber, complaint.getId());
+
+                Map<String, Object> item = new LinkedHashMap<>();
+                item.put("id", saved.getId());
+                item.put("originalName", saved.getOriginalName());
+                item.put("contentType", saved.getContentType());
+                item.put("fileSize", saved.getFileSize());
+                attachments.add(item);
+            }
+
+            // Recorded only after the files are actually stored, so a failed upload cannot advance
+            // the ladder. RESPONSE_SUBMITTED already outranks DOCUMENTS_UPLOADED, so the forward-only
+            // rule discards this when documents accompany a submission — the history keeps both.
+            if (!attachments.isEmpty()) {
+                rePortalService.recordDocumentsUploaded(complaint, attachments.size(), actor);
+            }
 
             // Notify
             reNotificationService.notifyResponseReceived(complaintNumber, entityCode);
@@ -159,6 +254,58 @@ public class RePortalController {
             response.put("success", true);
             response.put("message", "Response submitted successfully");
             response.put("respondedAt", tracker.getRespondedAt().toString());
+            response.put("attachments", attachments);
+            response.put("timestamp", LocalDateTime.now().toString());
+
+            return ResponseEntity.ok(response);
+        } catch (FileUploadValidator.InvalidUploadException | IllegalArgumentException e) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("success", false, "message", e.getMessage()));
+        } catch (NoSuchElementException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("success", false, "message", e.getMessage()));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("success", false, "message", e.getMessage()));
+        } catch (SecurityException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("success", false, "message", e.getMessage()));
+        } catch (IOException e) {
+            log.error("Failed to store RE response attachment for complaint {}: {}", complaintNumber, e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("success", false, "message", "Failed to store attachment"));
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // Draft response (UST846)
+    // ═══════════════════════════════════════════════════════════════
+
+    /**
+     * RE saves a working draft. An empty draft records the entity as reviewing; a draft with text
+     * records it as preparing a response.
+     */
+    @PostMapping("/complaints/{complaintNumber}/draft")
+    @ReRoleGuard(roles = {"RE_NODAL_OFFICER", "RE_PNO", "RE_ADMIN"})
+    public ResponseEntity<Map<String, Object>> saveDraft(
+            @PathVariable String complaintNumber,
+            @RequestBody Map<String, Object> body,
+            HttpServletRequest request) {
+
+        String entityCode = extractEntityCode(request);
+        String draftText = (String) body.get("draftText");
+
+        try {
+            ReResponseTracker tracker = rePortalService.saveDraft(
+                    complaintNumber, entityCode, draftText, extractActor(request));
+            Complaint c = rePortalService.getComplaintDetail(complaintNumber, entityCode);
+
+            Map<String, Object> response = new LinkedHashMap<>();
+            response.put("success", true);
+            response.put("message", "Draft saved");
+            response.put("draftSavedAt", tracker.getDraftSavedAt() != null
+                    ? tracker.getDraftSavedAt().toString() : null);
+            putActivityStatus(response, c);
             response.put("timestamp", LocalDateTime.now().toString());
 
             return ResponseEntity.ok(response);
@@ -172,6 +319,23 @@ public class RePortalController {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(Map.of("success", false, "message", e.getMessage()));
         }
+    }
+
+    /**
+     * Rejects any attempt to set the activity status directly (UST852).
+     *
+     * The ladder is derived from what the entity actually did. Exposing this endpoint purely to
+     * refuse it is deliberate: an RE integration that guesses the URL gets an explicit,
+     * documented 403 instead of a 404 that invites retrying a different path.
+     */
+    @PutMapping("/complaints/{complaintNumber}/activity-status")
+    @ReRoleGuard(roles = {"RE_NODAL_OFFICER", "RE_PNO", "RE_ADMIN"})
+    public ResponseEntity<Map<String, Object>> rejectManualActivityStatus(
+            @PathVariable String complaintNumber) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
+                "success", false,
+                "message", "RE Activity Status is derived from your actions and cannot be set directly.",
+                "messageKey", "re.activity.manual_set_forbidden"));
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -378,43 +542,90 @@ public class RePortalController {
     // ═══════════════════════════════════════════════════════════════
 
     /**
-     * Extracts entity code from the request JWT or headers.
-     * Checks X-Entity-Code header first, then falls back to JWT claim.
+     * Adds the RE Activity Status to a response payload (UST846, UST847).
+     *
+     * The value is the enum name so both portals can key off one vocabulary, and the label is a
+     * translation key rather than English text — the badge has to render identically on the RE and
+     * RBI sides and both are localised.
+     */
+    private void putActivityStatus(Map<String, Object> target, Complaint complaint) {
+        ReActivityStatus status = complaint.getReActivityStatus() == null
+                ? ReActivityStatus.NOT_OPENED
+                : complaint.getReActivityStatus();
+        target.put("reActivityStatus", status.name());
+        target.put("reActivityStatusKey", status.translationKey());
+        target.put("reActivityChangedAt", complaint.getReActivityChangedAt() != null
+                ? complaint.getReActivityChangedAt().toString() : null);
+    }
+
+    /** Best-effort actor for attribution. Falls back to a marker rather than inventing a username. */
+    private String extractActor(HttpServletRequest request) {
+        String userId = request.getHeader("X-User-Id");
+        return (userId == null || userId.isBlank()) ? "RE_USER" : userId.trim();
+    }
+
+    /**
+     * Resolves the caller's regulated entity, JWT claim FIRST.
+     *
+     * This previously trusted the X-Entity-Code header ahead of the token and, failing everything,
+     * returned the literal "UNKNOWN_ENTITY". Both were serious: every RE endpoint scopes its query by
+     * this value, so any authenticated RE user could set one header and read another bank's
+     * complaints, and the sentinel silently turned a failed resolution into a real-looking scope.
+     *
+     * The claim now wins. Headers are honoured only under dev-local (the E2E suites drive the API
+     * with them), and an unresolvable entity throws instead of defaulting — a caller whose entity
+     * cannot be established must receive no data rather than someone else's. This mirrors
+     * RequestIdentityResolver, which already resolves RE identity claim-first for the same reason.
      */
     private String extractEntityCode(HttpServletRequest request) {
-        // Check direct header
-        String entityCode = request.getHeader("X-Entity-Code");
-        if (entityCode != null && !entityCode.isBlank()) {
-            return entityCode.trim();
+        String fromToken = entityCodeFromJwt(request);
+        if (fromToken != null) {
+            return fromToken;
         }
 
-        // Check X-User-Entity header (alternative)
-        entityCode = request.getHeader("X-User-Entity");
-        if (entityCode != null && !entityCode.isBlank()) {
-            return entityCode.trim();
-        }
-
-        // Fallback: try extracting from JWT
-        String authHeader = request.getHeader("Authorization");
-        if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            try {
-                String token = authHeader.substring(7);
-                String[] parts = token.split("\\.");
-                if (parts.length >= 2) {
-                    String payload = new String(Base64.getUrlDecoder().decode(parts[1]));
-                    @SuppressWarnings("unchecked")
-                    Map<String, Object> claims = new com.fasterxml.jackson.databind.ObjectMapper()
-                            .readValue(payload, Map.class);
-                    Object code = claims.get("entity_code");
-                    if (code != null) return code.toString();
-                }
-            } catch (Exception e) {
-                log.debug("Failed to extract entity_code from JWT: {}", e.getMessage());
+        if (allowDevIdentityHeaders) {
+            String header = firstNonBlankHeader(request, "X-Entity-Code", "X-User-Entity");
+            if (header != null) {
+                return header;
             }
         }
 
-        // Default fallback for dev mode
-        log.warn("No entity code found in request headers or JWT - using default");
-        return "UNKNOWN_ENTITY";
+        log.warn("Entity code could not be resolved for {} — rejecting request", request.getRequestURI());
+        throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                "Your regulated entity could not be determined from your session. Please sign in again.");
+    }
+
+    private String entityCodeFromJwt(HttpServletRequest request) {
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            return null;
+        }
+        try {
+            String[] parts = authHeader.substring(7).split("\\.");
+            if (parts.length < 2) {
+                return null;
+            }
+            String payload = new String(Base64.getUrlDecoder().decode(parts[1]));
+            @SuppressWarnings("unchecked")
+            Map<String, Object> claims = new com.fasterxml.jackson.databind.ObjectMapper()
+                    .readValue(payload, Map.class);
+            Object code = claims.get("entity_code");
+            if (code != null && !code.toString().isBlank()) {
+                return code.toString().trim();
+            }
+        } catch (Exception e) {
+            log.debug("Failed to extract entity_code from JWT: {}", e.getMessage());
+        }
+        return null;
+    }
+
+    private String firstNonBlankHeader(HttpServletRequest request, String... names) {
+        for (String name : names) {
+            String value = request.getHeader(name);
+            if (value != null && !value.isBlank()) {
+                return value.trim();
+            }
+        }
+        return null;
     }
 }

@@ -1,0 +1,77 @@
+<div class="internal-notes-panel">
+  <h3 class="section-title">{{ 'query.notes.section_title' | translate }}</h3>
+
+  <div class="entity-only-notice" role="note">
+    <i class="pi pi-eye-slash"></i>
+    <span>{{ 'query.notes.entity_only_notice' | translate }}</span>
+  </div>
+
+  @if (error()) {
+    <div class="error-banner" role="alert">
+      <i class="pi pi-exclamation-triangle"></i>
+      <span>{{ error() | translate }}</span>
+    </div>
+  }
+
+  <div class="add-note">
+    <textarea
+      id="newInternalNote"
+      class="note-input"
+      rows="2"
+      [ngModel]="newNote()"
+      (ngModelChange)="newNote.set($event)"
+      [attr.placeholder]="'query.notes.add_placeholder' | translate"></textarea>
+    <button type="button" class="add-note-btn" (click)="addNote()" [disabled]="posting()">
+      {{ 'query.notes.add_button' | translate }}
+    </button>
+    <p class="edit-window-hint">{{ 'query.notes.edit_window_notice' | translate }}</p>
+  </div>
+
+  @if (loading()) {
+    <div class="loading-state"><span class="spinner-sm"></span></div>
+  } @else if (notes().length === 0) {
+    <p class="empty-state">{{ 'query.notes.none_yet' | translate }}</p>
+  } @else {
+    <ul class="note-list">
+      @for (note of notes(); track note.id) {
+        <li class="note-item" [attr.data-note-id]="note.id">
+          <div class="note-meta">
+            <span class="note-author">{{ note.authorName }}</span>
+            <time class="note-time">{{ note.createdAt }}</time>
+            @if (note.editCount > 0) {
+              <span class="edited-marker">({{ 'query.notes.edited_marker' | translate }})</span>
+            }
+          </div>
+
+          @if (editingId() === note.id) {
+            <textarea
+              class="note-edit-input"
+              rows="2"
+              [ngModel]="editBody()"
+              (ngModelChange)="editBody.set($event)"></textarea>
+            <div class="edit-actions">
+              <button type="button" class="save-btn" (click)="saveEdit(note.id)" [disabled]="posting()">
+                {{ 'query.notes.save_button' | translate }}
+              </button>
+              <button type="button" class="cancel-btn" (click)="cancelEdit()">
+                {{ 'query.cancel_button' | translate }}
+              </button>
+            </div>
+          } @else {
+            <div class="note-body">{{ note.body }}</div>
+
+            @if (note.editable) {
+              <button type="button" class="edit-btn" (click)="startEdit(note)">
+                <i class="pi pi-pencil"></i> {{ 'query.notes.edit_button' | translate }}
+              </button>
+            } @else {
+              <span class="locked-marker">
+                <i class="pi pi-lock"></i> {{ 'query.notes.locked' | translate }}
+              </span>
+            }
+          }
+        </li>
+      }
+    </ul>
+  }
+</div>

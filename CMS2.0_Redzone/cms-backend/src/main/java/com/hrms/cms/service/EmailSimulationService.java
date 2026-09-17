@@ -72,6 +72,21 @@ public class EmailSimulationService {
                 .toStatus("awaiting_details")
                 .build());
 
+        // Acknowledgement is now conditional. It used to be built and saved unconditionally, which
+        // sent a citizen-facing receipt to internal RBI senders and let two RBI mailboxes
+        // acknowledge each other in a loop.
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("threadId", threadId);
+        result.put("complaintNumber", complaintNumber);
+        result.put("status", "AWAITING_FORM");
+
+        if (request.isSuppressAcknowledgement()) {
+            result.put("acknowledgementSent", false);
+            result.put("acknowledgementSuppressedReason", "INTERNAL_SENDER");
+            result.put("emails", List.of(toEmailMap(inbound)));
+            return result;
+        }
+
         String replyBody = buildAutoReplyBody(request.getFromName(), complaintNumber);
         SimulatedEmail outbound = SimulatedEmail.builder()
                 .messageId(UUID.randomUUID().toString())
@@ -88,12 +103,50 @@ public class EmailSimulationService {
                 .build();
         emailRepository.save(outbound);
 
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("threadId", threadId);
-        result.put("complaintNumber", complaintNumber);
-        result.put("status", "AWAITING_FORM");
+        result.put("acknowledgementSent", true);
         result.put("emails", List.of(toEmailMap(inbound), toEmailMap(outbound)));
         return result;
+    }
+
+    /**
+     * Records an inbound email against an EXISTING complaint without creating a new one. Used when a
+     * duplicate is detected: the correspondence must reach the parent's email thread, but a second
+     * complaint record would double-count the citizen's grievance.
+     *
+     * @return the number of email rows written.
+     */
+    @CacheEvict(value = "email-stats", allEntries = true)
+    @Transactional
+    public int linkEmailToComplaint(IncomingEmailRequest request, String complaintNumber) {
+        Optional<Complaint> parent = complaintRepository.findByComplaintNumber(complaintNumber);
+        if (parent.isEmpty()) {
+            return 0;
+        }
+
+        SimulatedEmail inbound = SimulatedEmail.builder()
+                .messageId(UUID.randomUUID().toString())
+                .threadId(UUID.randomUUID().toString())
+                .fromEmail(request.getFromEmail())
+                .toEmail(CMS_EMAIL)
+                .subject(request.getSubject())
+                .body(request.getBody())
+                .direction("INBOUND")
+                .status("LINKED_DUPLICATE")
+                .complaintId(parent.get().getId())
+                .complaintNumber(complaintNumber)
+                .processedAt(LocalDateTime.now())
+                .build();
+        emailRepository.save(inbound);
+
+        timelineRepository.save(ComplaintTimeline.builder()
+                .complaintId(parent.get().getId())
+                .action("duplicate_email_linked")
+                .performedBy("Email System")
+                .remarks("Duplicate email from " + request.getFromEmail()
+                        + " linked to this complaint; no new draft was created")
+                .build());
+
+        return 1;
     }
 
     @CacheEvict(value = "email-stats", allEntries = true)

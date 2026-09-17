@@ -142,9 +142,7 @@
                 <td>{{ c.categoryName || '--' }}</td>
                 <td>{{ c.entityName || '--' }}</td>
                 <td>
-                  <span class="status-badge" [class]="getStatusClass(c.status)" [attr.data-status]="c.status">
-                    {{ c.status }}
-                  </span>
+                  <app-status-badge [status]="c.status" />
                 </td>
                 <td>{{ c.closureClause || '--' }}</td>
                 <td>{{ c.closedAtFormatted || formatDate(c.closedAt) || '--' }}</td>
@@ -187,7 +185,7 @@
           <button class="btn-refresh" (click)="refreshStatus()" [disabled]="loading()" title="Refresh status">
             <i class="pi pi-refresh" [class.pi-spin]="loading()"></i>
           </button>
-          <span class="status-badge" [attr.data-status]="s.status">{{ s.status }}</span>
+          <app-status-badge [status]="s.status" />
         </div>
       </div>
 

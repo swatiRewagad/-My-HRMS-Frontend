@@ -24,6 +24,20 @@ public interface EmailDraftRepository extends JpaRepository<EmailDraft, Long> {
     List<EmailDraft> findByIsVernacularTrueOrderByCreatedAtDesc();
     List<EmailDraft> findByAssignedToAndIsVernacularTrueOrderByCreatedAtDesc(String assignedTo);
 
+    Optional<EmailDraft> findByMessageId(String messageId);
+    boolean existsByMessageId(String messageId);
+    long countByStatusIn(List<String> statuses);
+    long countByIsDuplicateTrue();
+
+    /** Duplicate detection: same sender AND exactly equal subject. */
+    List<EmailDraft> findBySenderEmailIgnoreCaseAndSubjectOrderByCreatedAtDesc(String senderEmail, String subject);
+
+    /**
+     * Candidate related drafts for the same complainant, excluding the draft in hand. Ordering is
+     * newest-first so the DO sees the most recent related matter first.
+     */
+    List<EmailDraft> findBySenderEmailIgnoreCaseAndDraftIdNotOrderByCreatedAtDesc(String senderEmail, String draftId);
+
     @Query("SELECT d.assignedTo AS deo, COUNT(d) AS total, " +
            "SUM(CASE WHEN d.status = 'ASSIGNED' THEN 1 ELSE 0 END) AS pending, " +
            "SUM(CASE WHEN d.status = 'SENT_FOR_APPROVAL' THEN 1 ELSE 0 END) AS sentForApproval, " +

@@ -81,3 +81,17 @@
 .error-msg {
   padding: 8px 12px; background: #fbe9e7; color: #d32f2f; border-radius: 6px; font-size: 13px; margin-top: 8px;
 }
+
+// A visible focus indicator, restoring what `outline: none` removed.
+.form-field {
+  input, select, textarea {
+    &:focus-visible { outline: 2px solid #1a237e; outline-offset: 1px; }
+  }
+}
+
+// fieldset/legend replace the bare <label> over the radio group, so they need the same look as a
+// .form-field label rather than the browser's default fieldset chrome.
+fieldset.form-field {
+  border: none; padding: 0; margin: 0 0 12px;
+  legend { font-size: 12px; font-weight: 600; color: #555; margin-bottom: 4px; padding: 0; }
+}

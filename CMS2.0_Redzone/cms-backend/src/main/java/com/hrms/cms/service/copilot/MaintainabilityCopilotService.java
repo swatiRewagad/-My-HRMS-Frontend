@@ -12,6 +12,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
@@ -30,6 +31,16 @@ public class MaintainabilityCopilotService {
     private final ComplaintService complaintService;
     private final IntakeTriageService triageService;
     private final CompensationPrecedentService compensationService;
+
+    /**
+     * The Scheme named in the drafted rationale an officer reviews and may issue.
+     *
+     * Configuration-sourced for the same reason as in MaintainabilityRulesEngine: this text said
+     * "RB-IOS 2026", and an officer accepting a pre-drafted rationale would sign off a determination
+     * citing a Scheme that is not in force.
+     */
+    @Value("${cms.eligibility.scheme-name:Reserve Bank - Integrated Ombudsman Scheme, 2021}")
+    private String schemeName;
 
     @Cacheable(value = "copilot-precedent", key = "'copilot-' + #complaintId")
     public CopilotResponse generateSuggestion(Long complaintId) {
@@ -129,7 +140,8 @@ public class MaintainabilityCopilotService {
 
         rationale.append("\n3. SUGGESTED DETERMINATION: ").append(suggestion).append("\n");
         rationale.append("\n4. RATIONALE:\n");
-        rationale.append("   Based on the objective analysis under RB-IOS 2026 and precedent from similar cases, ");
+        rationale.append("   Based on the objective analysis under the ").append(schemeName)
+                 .append(" and precedent from similar cases, ");
         rationale.append("the complaint ").append(
                 "NON_MAINTAINABLE".equals(suggestion) ?
                         "does not meet the maintainability criteria on objective grounds." :

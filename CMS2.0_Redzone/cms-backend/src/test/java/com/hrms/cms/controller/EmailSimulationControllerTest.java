@@ -8,7 +8,8 @@ import com.hrms.cms.service.EmailSimulationService;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import com.hrms.cms.support.ControllerSliceTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
@@ -23,7 +24,11 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@WebMvcTest(EmailSimulationController.class)
+// addFilters = false: these assert controller behaviour, not the security chain. @WebMvcTest does not
+// load the app's @Configuration, so the default auto-config chain 401s GETs and 403s POSTs (CSRF) on
+// endpoints that are reachable in production.
+@ControllerSliceTest(EmailSimulationController.class)
+@AutoConfigureMockMvc(addFilters = false)
 class EmailSimulationControllerTest {
 
     @Autowired private MockMvc mockMvc;

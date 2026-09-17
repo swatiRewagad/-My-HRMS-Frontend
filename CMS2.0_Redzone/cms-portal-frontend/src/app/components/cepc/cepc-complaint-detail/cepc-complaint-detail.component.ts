@@ -9,6 +9,7 @@ import { SpeechButtonComponent } from '../../../shared/speech-button/speech-butt
 import { CepcSlaIndicatorComponent } from '../cepc-sla-indicator/cepc-sla-indicator.component';
 import { CepcTimelineComponent } from '../cepc-timeline/cepc-timeline.component';
 import { CepcConciliationComponent } from '../cepc-conciliation/cepc-conciliation.component';
+import { StatusBadgeComponent } from '../../shared/status-badge/status-badge.component';
 
 interface TimelineEntry {
   action: string;
@@ -34,7 +35,7 @@ interface ActionDef {
 @Component({
   selector: 'app-cepc-complaint-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule, SpeechButtonComponent, CepcSlaIndicatorComponent, CepcTimelineComponent, CepcConciliationComponent],
+  imports: [CommonModule, FormsModule, SpeechButtonComponent, CepcSlaIndicatorComponent, CepcTimelineComponent, CepcConciliationComponent, StatusBadgeComponent],
   templateUrl: './cepc-complaint-detail.component.html',
   styleUrl: './cepc-complaint-detail.component.scss'
 })
@@ -290,19 +291,6 @@ export class CepcComplaintDetailComponent implements OnInit {
   isTerminalState(): boolean {
     const status = (this.complaint()?.status || '').toLowerCase();
     return ['closed', 'resolved', 'rejected', 'withdrawn'].includes(status);
-  }
-
-  getStatusLabel(status: string): string {
-    const labels: Record<string, string> = {
-      'assigned': 'Assigned', 'pending': 'Pending', 'new': 'New',
-      'in_progress': 'Under Examination', 'under_review': 'Under Review',
-      'reviewer_review': 'Reviewer Review', 'incharge_review': 'In Charge Review',
-      'awaiting_closure': 'Awaiting Closure', 'escalated': 'Escalated',
-      'sent_back': 'Sent Back', 'info_requested': 'Info Requested',
-      'forwarded': 'Forwarded to Dept', 'forwarded_to_contact': 'With Contact Person',
-      'closed': 'Closed', 'resolved': 'Resolved',
-    };
-    return labels[status?.toLowerCase()] || status;
   }
 
   goBack() {

@@ -202,19 +202,7 @@ $border-color: #e5e7eb;
   &.urgency-breached { color: #7c2d12; background: #fee2e2; }
 }
 
-.status-badge {
-  display: inline-block;
-  padding: 4px 10px;
-  border-radius: 12px;
-  font-size: 12px;
-  font-weight: 600;
-
-  &.status-pending { background: #fff3e0; color: #e65100; }
-  &.status-responded { background: #e8f5e9; color: #2e7d32; }
-  &.status-breached { background: #fef2f2; color: #dc2626; }
-  &.status-extension_requested { background: #ede7f6; color: #4527a0; }
-  &.status-clarification_requested { background: $primary-light; color: $primary; }
-}
+// Status badge styling moved to the shared app-status-badge component (UST847).
 
 .action-btn {
   display: inline-flex;

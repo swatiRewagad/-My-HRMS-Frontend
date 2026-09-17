@@ -102,14 +102,16 @@
                 <td class="appeal-num">{{ a.appealNumber }}</td>
                 <td class="complaint-link">{{ a.originalComplaintNumber }}</td>
                 <td>
-                  <span class="classification-badge" [attr.data-classification]="a.classification">
-                    {{ a.classification }}
-                  </span>
-                  <span class="immutable-label">IMMUTABLE</span>
+                  <app-status-badge [status]="a.classification" keyPrefix="classification" />
+                  @if (a.classificationOverridden) {
+                    <span class="override-label" [title]="'aa.classification_overridden' | translate">
+                      {{ 'aa.overridden' | translate }}
+                    </span>
+                  }
                 </td>
                 <td>{{ a.appellantName }}</td>
                 <td>
-                  <span class="status-badge" [attr.data-status]="a.status">{{ getStatusLabel(a.status) }}</span>
+                  <app-status-badge [status]="a.status" />
                 </td>
                 <td>{{ a.hearingDate ? (a.hearingDate | date:'dd MMM yyyy') : '—' }}</td>
                 <td>{{ a.assignedTo || '—' }}</td>

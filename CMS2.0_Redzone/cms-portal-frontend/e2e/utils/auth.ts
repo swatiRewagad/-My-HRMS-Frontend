@@ -16,12 +16,28 @@ import { Page, expect } from '@playwright/test';
  *   RBIO_CONCILIATOR_USER / RBIO_CONCILIATOR_PASS — RBIO Conciliator
  *   RBIO_ADJUDICATOR_USER / RBIO_ADJUDICATOR_PASS — RBIO Adjudicator
  *   RBIO_ADMIN_USER / RBIO_ADMIN_PASS             — RBIO Admin
+ *
+ * Keycloak location:
+ *   KEYCLOAK_URL   — default http://localhost:9090
+ *   KEYCLOAK_REALM — default cms
  */
+
+/**
+ * Single source of truth for the Keycloak base URL and realm.
+ *
+ * Keycloak for this project runs on port 9090 (see src/environments/environment.ts,
+ * which sets keycloakUrl: 'http://localhost:9090' and realm: 'cms').
+ * Override with KEYCLOAK_URL / KEYCLOAK_REALM in CI.
+ */
+export const KEYCLOAK_URL = (process.env['KEYCLOAK_URL'] || 'http://localhost:9090').replace(/\/+$/, '');
+export const KEYCLOAK_REALM = process.env['KEYCLOAK_REALM'] || 'cms';
+export const KEYCLOAK_REALM_URL = `${KEYCLOAK_URL}/realms/${KEYCLOAK_REALM}`;
 
 export type CepcRoleKey = 'DO' | 'REVIEWER' | 'INCHARGE' | 'CA' | 'ADMIN' | 'CP';
 export type RbioRoleKey = 'RBIO_OFFICER' | 'RBIO_SUPERVISOR' | 'RBIO_CONCILIATOR' | 'RBIO_ADJUDICATOR' | 'RBIO_ADMIN';
 export type ReRoleKey = 'RE_NODAL_OFFICER' | 'RE_PNO';
-export type AaRoleKey = 'AA_REGISTRAR' | 'AA_BENCH_OFFICER' | 'AA_AUTHORITY' | 'AA_ADMIN';
+export type AaRoleKey = 'AA_DO' | 'AA_REVIEWER_1' | 'AA_REVIEWER_2' | 'AA_SECRETARIAT' | 'AA_ADMIN';
+export type OrbioRoleKey = 'ORBIO_ADMIN' | 'ORBIO_OFFICER';
 
 interface Credentials {
   username: string;
@@ -32,32 +48,32 @@ const ENV_MAP: Record<CepcRoleKey, { userEnv: string; passEnv: string; defaults:
   DO: {
     userEnv: 'CEPC_DO_USER',
     passEnv: 'CEPC_DO_PASS',
-    defaults: { username: 'cepc_do_001', password: 'test123' },
+    defaults: { username: 'cepc_do1', password: 'password' },
   },
   REVIEWER: {
     userEnv: 'CEPC_REVIEWER_USER',
     passEnv: 'CEPC_REVIEWER_PASS',
-    defaults: { username: 'cepc_reviewer_001', password: 'test123' },
+    defaults: { username: 'cepc_reviewer1', password: 'password' },
   },
   INCHARGE: {
     userEnv: 'CEPC_INCHARGE_USER',
     passEnv: 'CEPC_INCHARGE_PASS',
-    defaults: { username: 'cepc_incharge_001', password: 'test123' },
+    defaults: { username: 'cepc_incharge1', password: 'password' },
   },
   CA: {
     userEnv: 'CEPC_CA_USER',
     passEnv: 'CEPC_CA_PASS',
-    defaults: { username: 'cepc_closing_001', password: 'test123' },
+    defaults: { username: 'cepc_closing1', password: 'password' },
   },
   ADMIN: {
     userEnv: 'CEPC_ADMIN_USER',
     passEnv: 'CEPC_ADMIN_PASS',
-    defaults: { username: 'cepc_admin_001', password: 'test123' },
+    defaults: { username: 'cepc_admin1', password: 'password' },
   },
   CP: {
     userEnv: 'CEPC_CP_USER',
     passEnv: 'CEPC_CP_PASS',
-    defaults: { username: 'cepc_contact_001', password: 'test123' },
+    defaults: { username: 'contact_person1', password: 'password' },
   },
 };
 
@@ -96,10 +112,14 @@ async function waitForAuthAndNavigate(page: Page, targetUrl: string): Promise<vo
 /**
  * Checks whether Keycloak is reachable.
  * Returns false if the server does not respond within 5 seconds.
+ *
+ * Probes KEYCLOAK_REALM_URL (default http://localhost:9090/realms/cms).
+ * Previously this hardcoded port 8180, which nothing in this project listens on,
+ * so every staff suite silently reported "skipped but passing".
  */
 export async function isKeycloakAvailable(page: Page): Promise<boolean> {
   try {
-    const response = await page.request.get('http://localhost:8180/realms/cms', {
+    const response = await page.request.get(KEYCLOAK_REALM_URL, {
       timeout: 5000,
     });
     return response.ok();
@@ -158,27 +178,30 @@ const RBIO_ENV_MAP: Record<RbioRoleKey, { userEnv: string; passEnv: string; defa
   RBIO_OFFICER: {
     userEnv: 'RBIO_OFFICER_USER',
     passEnv: 'RBIO_OFFICER_PASS',
-    defaults: { username: 'rbio_officer_001', password: 'test123' },
+    defaults: { username: 'rbio.officer', password: 'Test@1234' },
   },
   RBIO_SUPERVISOR: {
     userEnv: 'RBIO_SUPERVISOR_USER',
     passEnv: 'RBIO_SUPERVISOR_PASS',
-    defaults: { username: 'rbio_supervisor_001', password: 'test123' },
+    defaults: { username: 'rbio.supervisor', password: 'Test@1234' },
   },
+  // NOTE: rbio.conciliator / rbio.adjudicator exist in the realm but return
+  // "Account is not fully set up" — they have no usable password credential.
+  // CEPC equivalents hold the same conciliator/adjudicator realm roles and do work.
   RBIO_CONCILIATOR: {
     userEnv: 'RBIO_CONCILIATOR_USER',
     passEnv: 'RBIO_CONCILIATOR_PASS',
-    defaults: { username: 'rbio_conciliator_001', password: 'test123' },
+    defaults: { username: 'cepc.conciliator', password: 'password' },
   },
   RBIO_ADJUDICATOR: {
     userEnv: 'RBIO_ADJUDICATOR_USER',
     passEnv: 'RBIO_ADJUDICATOR_PASS',
-    defaults: { username: 'rbio_adjudicator_001', password: 'test123' },
+    defaults: { username: 'cepc.adjudicator', password: 'password' },
   },
   RBIO_ADMIN: {
     userEnv: 'RBIO_ADMIN_USER',
     passEnv: 'RBIO_ADMIN_PASS',
-    defaults: { username: 'admin_001', password: 'test123' },
+    defaults: { username: 'cms.admin', password: 'Test@1234' },
   },
 };
 
@@ -234,10 +257,21 @@ export async function loginAsRbioRole(
 // ────────────────────────────────────────────────────────────────────────────
 
 const RE_ENV_MAP: Record<ReRoleKey, { userEnv: string; passEnv: string; defaults: Credentials }> = {
+  // A real RE account now exists: `re_pno_001`, seeded by deployment/provision-aa-roles.sh with the
+  // RE_PNO realm role and attribute entity_code=HDFC0001.
+  //
+  // These previously defaulted to `cms.admin`, on the reasoning that /re-portal is guarded only by
+  // staffAuthGuard so any authenticated staff account would do. That is no longer true: the RE portal
+  // endpoints are entity-scoped, and `cms.admin` carries no RE role and no entity code, so the API
+  // returns nothing and the page renders "Complaint not found" — a real-looking UI failure caused
+  // purely by signing in as the wrong person.
+  //
+  // The realm defines RE_PNO but NOT RE_NODAL_OFFICER, so both keys map to the one real RE account.
+  // Override per-role once a nodal-officer account is seeded.
   RE_NODAL_OFFICER: {
     userEnv: 'RE_NODAL_USER',
     passEnv: 'RE_NODAL_PASS',
-    defaults: { username: 're_nodal_001', password: 'test123' },
+    defaults: { username: 're_pno_001', password: 'test123' },
   },
   RE_PNO: {
     userEnv: 'RE_PNO_USER',
@@ -294,21 +328,36 @@ export async function loginAsReRole(
 // AA (Appellate Authority) Role Login
 // ────────────────────────────────────────────────────────────────────────────
 
+/**
+ * Real AA accounts, provisioned by deployment/provision-aa-roles.sh.
+ *
+ * These previously all defaulted to `cms.admin` because the realm had no AA_* roles, which meant
+ * every AA test authenticated as the same generic staff account and no role-restriction could
+ * possibly be exercised. Run the provisioning script if these logins fail.
+ *
+ * Reviewer 1 vs Reviewer 2 are the SAME role (AA_REVIEWER) distinguished by a `reviewer_tier`
+ * claim, because routing has to name a specific reviewer and a role cannot express that.
+ */
 const AA_ENV_MAP: Record<AaRoleKey, { userEnv: string; passEnv: string; defaults: Credentials }> = {
-  AA_REGISTRAR: {
-    userEnv: 'AA_REGISTRAR_USER',
-    passEnv: 'AA_REGISTRAR_PASS',
-    defaults: { username: 'aa_registrar_001', password: 'test123' },
+  AA_DO: {
+    userEnv: 'AA_DO_USER',
+    passEnv: 'AA_DO_PASS',
+    defaults: { username: 'aa_do_001', password: 'test123' },
   },
-  AA_BENCH_OFFICER: {
-    userEnv: 'AA_BENCH_USER',
-    passEnv: 'AA_BENCH_PASS',
-    defaults: { username: 'aa_bench_001', password: 'test123' },
+  AA_REVIEWER_1: {
+    userEnv: 'AA_REVIEWER_1_USER',
+    passEnv: 'AA_REVIEWER_1_PASS',
+    defaults: { username: 'aa_reviewer_001', password: 'test123' },
   },
-  AA_AUTHORITY: {
-    userEnv: 'AA_AUTHORITY_USER',
-    passEnv: 'AA_AUTHORITY_PASS',
-    defaults: { username: 'aa_authority_001', password: 'test123' },
+  AA_REVIEWER_2: {
+    userEnv: 'AA_REVIEWER_2_USER',
+    passEnv: 'AA_REVIEWER_2_PASS',
+    defaults: { username: 'aa_reviewer_002', password: 'test123' },
+  },
+  AA_SECRETARIAT: {
+    userEnv: 'AA_SECRETARIAT_USER',
+    passEnv: 'AA_SECRETARIAT_PASS',
+    defaults: { username: 'aa_secretariat_001', password: 'test123' },
   },
   AA_ADMIN: {
     userEnv: 'AA_ADMIN_USER',
@@ -316,6 +365,31 @@ const AA_ENV_MAP: Record<AaRoleKey, { userEnv: string; passEnv: string; defaults
     defaults: { username: 'aa_admin_001', password: 'test123' },
   },
 };
+
+/**
+ * ORBIO means the Ombudsman from the RBIO module — not a separate office. ORBIO Admin is
+ * RBIO_ADMIN and ORBIO officer is RBIO_OFFICER; there is deliberately no ORBIO_* role.
+ */
+const ORBIO_ENV_MAP: Record<OrbioRoleKey, { userEnv: string; passEnv: string; defaults: Credentials }> = {
+  ORBIO_ADMIN: {
+    userEnv: 'ORBIO_ADMIN_USER',
+    passEnv: 'ORBIO_ADMIN_PASS',
+    defaults: { username: 'orbio_admin_001', password: 'test123' },
+  },
+  ORBIO_OFFICER: {
+    userEnv: 'ORBIO_OFFICER_USER',
+    passEnv: 'ORBIO_OFFICER_PASS',
+    defaults: { username: 'orbio_officer_001', password: 'test123' },
+  },
+};
+
+export function getOrbioCredentials(role: OrbioRoleKey): Credentials {
+  const cfg = ORBIO_ENV_MAP[role];
+  return {
+    username: process.env[cfg.userEnv] || cfg.defaults.username,
+    password: process.env[cfg.passEnv] || cfg.defaults.password,
+  };
+}
 
 function getAaCredentials(role: AaRoleKey): Credentials {
   const cfg = AA_ENV_MAP[role];

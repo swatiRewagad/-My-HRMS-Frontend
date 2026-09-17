@@ -1,5 +1,5 @@
 .ignore-list-container {
-  max-width: 1000px;
+  max-width: 1400px;
   margin: 0 auto;
   padding: 2rem;
 }
@@ -91,3 +91,77 @@
 
 .error-msg { background: #fce4ec; border: 1px solid #e53935; padding: 0.75rem 1rem; border-radius: 6px; color: #c62828; margin-bottom: 1rem; }
 .success-msg { background: #e8f5e9; border: 1px solid #4caf50; padding: 0.75rem 1rem; border-radius: 6px; color: #2e7d32; margin-bottom: 1rem; }
+.loading-msg { color: #666; font-size: 0.9rem; margin-bottom: 0.75rem; }
+
+.link-btn {
+  padding: 0.5rem 1rem; background: #fff; color: #1565c0; border: 1px solid #1565c0;
+  border-radius: 6px; cursor: pointer; font-weight: 500;
+  &:hover { background: #e3f2fd; }
+}
+
+.semantics-note {
+  background: #fff8e1;
+  border: 1px solid #ffe082;
+  border-radius: 8px;
+  padding: 0.85rem 1rem;
+  margin-bottom: 1.25rem;
+  font-size: 0.85rem;
+  color: #5d4037;
+
+  strong { display: block; margin-bottom: 0.4rem; }
+  ul { margin: 0; padding-left: 1.2rem; }
+  li { margin-bottom: 0.2rem; }
+}
+
+.add-form {
+  h4 { margin: 1rem 0 0.25rem; font-size: 0.95rem; color: #1a237e; }
+  .group-hint { font-size: 0.8rem; color: #666; margin: 0 0 0.75rem; }
+}
+
+.form-group {
+  small { display: block; font-size: 0.75rem; color: #777; margin-top: 0.25rem; }
+}
+
+.checkbox-group label {
+  display: flex; align-items: center; gap: 0.5rem; font-weight: 600;
+  input { width: auto; }
+}
+
+.exception-group input { border-color: #ffb300; }
+
+.field-badge {
+  padding: 0.2rem 0.5rem; background: #e0f2f1; color: #00695c; border-radius: 4px; font-size: 0.75rem; font-weight: 500;
+}
+
+.exception-badge {
+  padding: 0.2rem 0.5rem; background: #fff3e0; color: #e65100; border-radius: 4px; font-size: 0.75rem; font-family: monospace;
+}
+
+.criteria-cell {
+  font-size: 0.8rem;
+  .criteria-key { font-weight: 600; color: #555; }
+  .and-note { margin-top: 0.2rem; font-size: 0.7rem; color: #8d6e63; text-transform: uppercase; letter-spacing: 0.03em; }
+}
+
+.count-cell { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+
+.muted { color: #aaa; }
+
+.inactive-row { background: #fafafa; color: #888; }
+
+.actions-cell {
+  white-space: nowrap;
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.edit-btn {
+  padding: 0.3rem 0.75rem; border: 1px solid #1565c0; background: #fff; color: #1565c0; border-radius: 4px; cursor: pointer; font-size: 0.8rem;
+  &:hover { background: #e3f2fd; }
+}
+
+.toggle-btn {
+  padding: 0.3rem 0.75rem; border: 1px solid #6d4c41; background: #fff; color: #6d4c41; border-radius: 4px; cursor: pointer; font-size: 0.8rem;
+  &:hover { background: #efebe9; }
+}

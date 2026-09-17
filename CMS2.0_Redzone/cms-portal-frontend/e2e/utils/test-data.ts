@@ -3,6 +3,59 @@ import { APIRequestContext, Page } from '@playwright/test';
 const API_BASE = process.env.API_BASE_URL || 'http://localhost:8082';
 
 /**
+ * Dev identity headers for an actor, derived from the actor's own name.
+ *
+ * The AOP role guards used to fail open — a request with no roles was allowed straight through — so
+ * these helpers never had to say who they were. Now that a roleless request is correctly rejected,
+ * each call has to identify itself.
+ *
+ * The role is derived from the actor rather than hardcoded so a step run as `cepc_reviewer_001`
+ * still authenticates AS a reviewer. Hardcoding one privileged role would let a test pass while
+ * silently exercising the wrong identity, which would hide real authorization regressions.
+ *
+ * The backend honours X-User-* only under the dev-local profile; the enforcing profile ignores them.
+ */
+export type WorkflowScope = 'CEPC' | 'RBIO' | 'AA' | 'RE';
+
+export function identityHeadersFor(actor: string, scope: WorkflowScope = 'CEPC'): Record<string, string> {
+  const a = (actor || '').toLowerCase();
+
+  // The actor name alone is ambiguous: `admin_001` drives both CEPC and RBIO workflows, and each
+  // office's guard accepts only its own roles. The calling helper knows which endpoint it is hitting,
+  // so the scope disambiguates. Specific names still win over the scope default.
+  let role: string;
+  if (a.includes('re_pno') || a.includes('pno')) role = 'RE_PNO';
+  else if (a.startsWith('re_') || a.startsWith('re.') || a.includes('nodal')) role = 'RE_NODAL_OFFICER';
+  // AA is matched before the generic `reviewer`/`authority`/`admin` arms below, because the real
+  // accounts are aa_reviewer_001 / aa_secretariat_001 / aa_admin_001: `aa_reviewer_001` would
+  // otherwise fall through to CEPC_REVIEWER and be rejected by the AA guard, and the failure would
+  // look like a broken assertion rather than a wrong identity.
+  else if (a.includes('aa_secretariat') || a.includes('secretariat') || a.includes('authority')) role = 'AA_SECRETARIAT';
+  else if (a.includes('aa_reviewer') || a.includes('bench')) role = 'AA_REVIEWER';
+  else if (a.includes('aa_admin')) role = 'AA_ADMIN';
+  else if (a.includes('aa_do') || a.includes('registrar')) role = 'AA_DO';
+  // ORBIO is the RBIO-module Ombudsman, so ORBIO actors carry RBIO roles by design.
+  else if (a.includes('orbio_admin')) role = 'RBIO_ADMIN';
+  else if (a.includes('orbio')) role = 'RBIO_OFFICER';
+  else if (a.includes('conciliator')) role = scope === 'CEPC' ? 'CEPC_CONCILIATOR' : 'RBIO_CONCILIATOR';
+  else if (a.includes('adjudicator')) role = scope === 'CEPC' ? 'CEPC_ADJUDICATOR' : 'RBIO_ADJUDICATOR';
+  else if (a.includes('supervisor')) role = scope === 'CEPC' ? 'CEPC_SUPERVISOR' : 'RBIO_SUPERVISOR';
+  else if (a.includes('reviewer')) role = 'CEPC_REVIEWER';
+  else if (a.includes('incharge')) role = 'CEPC_INCHARGE';
+  else if (a.includes('closing')) role = 'CEPC_CLOSING_AUTHORITY';
+  else if (a.includes('contact')) role = 'CEPC_CONTACT_PERSON';
+  else if (a.includes('rbio')) role = 'RBIO_OFFICER';
+  else if (a.includes('admin')) role = `${scope}_ADMIN`;
+  else role = scope === 'CEPC' ? 'CEPC_DO' : `${scope}_OFFICER`;
+
+  return {
+    'X-User-Id': actor,
+    'X-User-Name': actor,
+    'X-User-Roles': role,
+  };
+}
+
+/**
  * Default complaint payload for CEPC workflow tests.
  */
 export interface CreateComplaintPayload {
@@ -49,8 +102,14 @@ export async function createTestComplaint(
   token?: string
 ): Promise<{ complaintNumber: string; complaintId: string; status: string; [key: string]: unknown }> {
   const payload = buildComplaint(overrides);
+  // The CEPC role guard used to fail open: a request carrying no roles was allowed through. It now
+  // rejects one, which is the whole point of the control — so seeding has to identify itself the way
+  // a real CEPC user would. A caller supplying `token` overrides this with a real JWT.
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
+    'X-User-Id': 'cepc_do1',
+    'X-User-Name': 'CEPC Dealing Officer',
+    'X-User-Roles': 'CEPC_DO',
   };
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
@@ -139,6 +198,7 @@ export async function performAction(
 ): Promise<{ newStatus: string; [key: string]: unknown }> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
+    ...identityHeadersFor(actor),
   };
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
@@ -290,8 +350,13 @@ export async function createRbioComplaint(
     ...overrides,
   };
 
+  // Same reason as createTestComplaint: the RBIO guard no longer fails open on a roleless request.
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
+    ...identityHeadersFor('rbio.officer', 'RBIO'),
+    'X-User-Id': 'rbio.officer',
+    'X-User-Name': 'RBIO Officer',
+    'X-User-Roles': 'RBIO_OFFICER',
   };
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
@@ -325,6 +390,7 @@ export async function performRbioAction(
 ): Promise<{ newStatus: string; [key: string]: unknown }> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
+    ...identityHeadersFor(actor, 'RBIO'),
   };
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
@@ -379,6 +445,63 @@ export async function cleanupRbioComplaint(
 // ────────────────────────────────────────────────────────────────────────────
 
 /**
+ * Resolves a REGULATED_ENTITIES row id from its name via the RE portal profile endpoint.
+ *
+ * The name → id mapping is not exposed by any admin/lookup endpoint, but /re-portal/profile
+ * already performs exactly this lookup (findByNameNormalized) and returns the row, so it doubles
+ * as the resolver. Dev identity headers are used because seeding has no JWT of its own.
+ */
+export async function resolveRegulatedEntityId(
+  request: APIRequestContext,
+  entityCode: string,
+  token?: string
+): Promise<number | null> {
+  const headers: Record<string, string> = {
+    ...identityHeadersFor('re_pno_001', 'RE'),
+    'X-Entity-Code': entityCode,
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const res = await request.get(`${API_BASE}/api/v1/re-portal/profile`, { headers });
+  if (!res.ok()) return null;
+  const json = await res.json();
+  const id = (json.data || json)?.id;
+  return typeof id === 'number' ? id : null;
+}
+
+/**
+ * Creates the ReResponseTracker row that every RE-portal read and write depends on.
+ *
+ * No CEPC/RBIO workflow action creates this row — FORWARD_DEPT only flips status to 'forwarded'.
+ * The only writer in the codebase is ReResponsivenessService.trackForwarding, reachable solely via
+ * POST /api/v1/triage/re-track/{complaintId}. Without it, GET /re-portal/complaints/{n} 404s with
+ * "No response tracker for complaint", the detail page renders "Complaint not found", and the
+ * respond endpoint 404s too. Seeding it here reproduces what a production forward is expected to do.
+ */
+export async function seedReResponseTracker(
+  request: APIRequestContext,
+  complaintId: number | string,
+  entityCode: string,
+  token?: string
+): Promise<boolean> {
+  const entityId = await resolveRegulatedEntityId(request, entityCode, token);
+  if (entityId == null) return false;
+
+  const headers: Record<string, string> = {};
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const res = await request.post(
+    `${API_BASE}/api/v1/triage/re-track/${complaintId}?regulatedEntityId=${entityId}`,
+    { headers }
+  );
+  return res.ok();
+}
+
+/**
  * Creates a complaint and forwards it to a Regulated Entity.
  * Returns the complaint data with status forwarded_to_re.
  */
@@ -398,6 +521,7 @@ export async function createForwardedComplaint(
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
+    ...identityHeadersFor('cepc_do_001'),
   };
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
@@ -431,6 +555,13 @@ export async function createForwardedComplaint(
     throw new Error(`Failed to forward complaint to RE: ${response.status()} - ${body}`);
   }
 
+  // FORWARD_DEPT sets status='forwarded' but does NOT create the ReResponseTracker that the whole
+  // RE portal is keyed on, so the complaint would be invisible to the entity it was just forwarded
+  // to. Seeded explicitly here so RE-side tests exercise the portal rather than that gap.
+  if (result.complaintId != null) {
+    await seedReResponseTracker(request, result.complaintId as string | number, entityCode, token);
+  }
+
   const json = await response.json();
   return { ...result, status: json.data?.newStatus || 'forwarded', ...(json.data || json) };
 }
@@ -442,10 +573,17 @@ export async function respondToComplaint(
   request: APIRequestContext,
   complaintNumber: string,
   responseText: string,
-  token?: string
+  token?: string,
+  entityCode?: string
 ): Promise<{ newStatus: string; [key: string]: unknown }> {
+  // RE callers are entity-scoped, and the portal correctly refuses a complaint belonging to a
+  // different entity — so the code has to match the complaint. It cannot be discovered from the API
+  // (the complaint detail response does not expose entityCode), so the caller passes it; the default
+  // matches createForwardedComplaint's own default entity.
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
+    ...identityHeadersFor('re_nodal_001', 'RE'),
+    'X-Entity-Code': entityCode || process.env['RE_ENTITY_CODE'] || 'TEST_BANK_001',
   };
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
@@ -509,15 +647,24 @@ export async function fileAppeal(
     ...overrides,
   };
 
+  // POST /api/v1/appeals/file is a multipart endpoint: text fields bind via @RequestParam and files
+  // via @RequestPart. Posting a JSON body meant `complaintNumber` was never bound, so the request
+  // failed argument resolution before reaching the controller. Sent as form fields instead.
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+    ...identityHeadersFor('aa_registrar_001', 'AA'),
   };
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
   const response = await request.post(`${API_BASE}/api/v1/appeals/file`, {
-    data: payload,
+    multipart: {
+      complaintNumber: payload.originalComplaintNumber,
+      ground: payload.appealGround,
+      details: payload.reliefSought,
+      reliefSought: payload.reliefSought,
+      classification: payload.classificationType,
+    },
     headers,
   });
 
@@ -540,8 +687,14 @@ export async function performAppealAction(
   params: Record<string, unknown> = {},
   token?: string
 ): Promise<{ newStatus: string; [key: string]: unknown }> {
+  // This helper takes no actor argument, so the identity comes from the caller's own `params.actor`
+  // when supplied, falling back to the registrar who owns most AA transitions.
+  const appealActor = typeof params['actor'] === 'string' && params['actor']
+    ? (params['actor'] as string)
+    : 'aa_registrar_001';
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
+    ...identityHeadersFor(appealActor, 'AA'),
   };
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;

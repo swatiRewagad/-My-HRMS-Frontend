@@ -12,6 +12,7 @@ import { RbioLegalCaseComponent } from '../rbio-legal-case/rbio-legal-case.compo
 import { RbioForwardRegulatoryComponent } from '../rbio-forward-regulatory/rbio-forward-regulatory.component';
 import { RbioActionOverrideHistoryComponent } from '../rbio-action-override-history/rbio-action-override-history.component';
 import { environment } from '../../../../environments/environment';
+import { StatusBadgeComponent } from '../../shared/status-badge/status-badge.component';
 
 interface ComplaintDetail {
   complaintId: string;
@@ -45,7 +46,7 @@ interface Comment {
 @Component({
   selector: 'app-rbio-complaint-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule, UploadLinkStatusComponent, RbioDeputyDecisionComponent, RbioAddEntityComponent, RbioLegalCaseComponent, RbioForwardRegulatoryComponent, RbioActionOverrideHistoryComponent],
+  imports: [CommonModule, FormsModule, UploadLinkStatusComponent, RbioDeputyDecisionComponent, RbioAddEntityComponent, RbioLegalCaseComponent, RbioForwardRegulatoryComponent, RbioActionOverrideHistoryComponent, StatusBadgeComponent],
   templateUrl: './rbio-complaint-detail.component.html',
   styleUrl: './rbio-complaint-detail.component.scss'
 })

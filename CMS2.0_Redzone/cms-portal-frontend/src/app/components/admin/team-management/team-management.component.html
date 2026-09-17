@@ -137,7 +137,8 @@
                           <i [class]="officer.onLeave ? 'pi pi-replay' : 'pi pi-calendar-times'"></i>
                           {{ officer.onLeave ? 'Return' : 'On Leave' }}
                         </button>
-                        <button class="btn-action deactivate-btn" (click)="deactivateOfficer(officer)" title="Deactivate">
+                        <button class="btn-action deactivate-btn" (click)="openDeactivateDialog(officer)"
+                                [title]="'team.deactivate_title' | translate">
                           <i class="pi pi-ban"></i>
                         </button>
                       }
@@ -201,6 +202,98 @@
           <button class="btn-cancel" (click)="showAddModal.set(false)">Cancel</button>
           <button class="btn-save" (click)="addOfficer()" [disabled]="!newOfficer.userId || !newOfficer.displayName">
             <i class="pi pi-check"></i> Add Officer
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- UST887: Safe deactivation. Open records must be transferred before the officer is removed
+       from rotation; the server enforces this too, so closing the dialog cannot bypass it. -->
+  @if (showDeactivateModal()) {
+    <div class="modal-overlay" (click)="closeDeactivateDialog()">
+      <div class="modal-dialog" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h3>{{ 'team.deactivate_title' | translate }}</h3>
+          <button class="modal-close" (click)="closeDeactivateDialog()"><i class="pi pi-times"></i></button>
+        </div>
+
+        <div class="modal-body">
+          <p class="deactivate-subject">
+            <strong>{{ deactivateTarget()?.displayName }}</strong>
+            <span class="user-id">{{ deactivateTarget()?.userId }}</span>
+          </p>
+
+          @if (loadingOpenRecords()) {
+            <p class="checking-records"><i class="pi pi-spin pi-spinner"></i> Checking open complaints…</p>
+          } @else if (openRecords().length > 0) {
+            <div class="warning-banner" data-testid="open-records-warning">
+              <i class="pi pi-exclamation-triangle"></i>
+              <div>
+                <p>{{ 'team.deactivate_open_records' | translate }}</p>
+                <p class="record-count">
+                  {{ 'team.open_records_count' | translate }}: <strong>{{ openRecords().length }}</strong>
+                </p>
+                <ul class="record-list">
+                  @for (rec of openRecords().slice(0, 8); track rec) {
+                    <li>{{ rec }}</li>
+                  }
+                </ul>
+                @if (openRecords().length > 8) {
+                  <p class="record-more">+ {{ openRecords().length - 8 }} more</p>
+                }
+              </div>
+            </div>
+
+            <div class="form-field">
+              <label for="reassignTo">{{ 'team.reassign_to_label' | translate }} *</label>
+              <select id="reassignTo" data-testid="reassign-select"
+                      [ngModel]="reassignTo()" (ngModelChange)="reassignTo.set($event)">
+                <option value="">—</option>
+                @for (candidate of reassignCandidates(); track candidate.id) {
+                  <option [value]="candidate.userId">
+                    {{ candidate.displayName }} ({{ candidate.currentWorkload }}/{{ candidate.maxWorkload }})
+                  </option>
+                }
+              </select>
+              @if (reassignCandidates().length === 0) {
+                <p class="field-hint no-candidates">
+                  No other active officer is available in this role group. Add or return one before deactivating.
+                </p>
+              }
+            </div>
+          } @else {
+            <p class="no-open-records">
+              <i class="pi pi-check-circle"></i>
+              This officer holds no open complaints. They can be deactivated safely.
+            </p>
+          }
+
+          <label class="checkbox-field">
+            <input type="checkbox" data-testid="revoke-access-checkbox"
+                   [ngModel]="alsoRevokeAccess()" (ngModelChange)="alsoRevokeAccess.set($event)" />
+            {{ 'team.revoke_access_label' | translate }}
+          </label>
+
+          @if (deactivateError()) {
+            <p class="error-banner" data-testid="deactivate-error">{{ deactivateError() }}</p>
+          }
+        </div>
+
+        <div class="modal-footer">
+          <button class="btn-cancel" (click)="closeDeactivateDialog()">
+            {{ 'team.deactivate_cancel' | translate }}
+          </button>
+          <button class="btn-save btn-danger" data-testid="confirm-deactivate"
+                  (click)="confirmDeactivate()"
+                  [disabled]="deactivating() || loadingOpenRecords()
+                              || (openRecords().length > 0 && !reassignTo())">
+            @if (deactivating()) {
+              <i class="pi pi-spin pi-spinner"></i>
+            } @else {
+              <i class="pi pi-ban"></i>
+            }
+            {{ 'team.deactivate_confirm' | translate }}
           </button>
         </div>
       </div>

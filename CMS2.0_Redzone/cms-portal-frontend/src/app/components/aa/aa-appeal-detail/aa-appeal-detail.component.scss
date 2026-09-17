@@ -26,28 +26,13 @@
   .header-meta { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: #666; text-align: right; }
 }
 
-.classification-badge {
-  padding: 3px 10px; border-radius: 4px; font-size: 12px; font-weight: 700; text-transform: uppercase;
-  &[data-classification="APPEAL"] { background: #dbeafe; color: #1e40af; }
-  &[data-classification="REPRESENTATION"] { background: #d1fae5; color: #065f46; }
-}
 .immutable-tag {
   display: inline-block; padding: 2px 6px; border-radius: 3px;
   font-size: 9px; font-weight: 700; color: #94a3b8; background: #f1f5f9;
   letter-spacing: 0.5px; border: 1px solid #e2e8f0;
 }
 
-.status-badge {
-  padding: 3px 10px; border-radius: 4px; font-size: 12px; font-weight: 500;
-  &[data-status="filed"], &[data-status="under_review"] { background: #fef3c7; color: #92400e; }
-  &[data-status="accepted"], &[data-status="assigned"] { background: #dbeafe; color: #1e40af; }
-  &[data-status="rejected"], &[data-status="dismissed"] { background: #fee2e2; color: #991b1b; }
-  &[data-status="hearing_scheduled"], &[data-status="hearing_completed"] { background: #ede9fe; color: #5b21b6; }
-  &[data-status="order_reserved"], &[data-status="order_passed"] { background: #d1fae5; color: #065f46; }
-  &[data-status="remanded"] { background: #fce7f3; color: #9d174d; }
-  &[data-status="closed"] { background: #f3f4f6; color: #4b5563; }
-  &[data-status="documents_requested"] { background: #e0e7ff; color: #3730a3; }
-}
+// Status badge styling moved to the shared app-status-badge component (UST847).
 
 .detail-section {
   background: white; border-radius: 8px; padding: 20px; border: 1px solid #e0e0e0;
@@ -146,9 +131,32 @@
   label { display: block; font-size: 12px; font-weight: 600; color: #555; margin-bottom: 4px; }
   select, textarea, input {
     width: 100%; padding: 8px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 13px; font-family: inherit;
-    &:focus { outline: none; border-color: #1a237e; }
+    // A visible focus indicator, not just a colour change. `outline: none` with a border tint alone
+    // fails WCAG 2.4.7 and 1.4.11 — a keyboard user could not tell where they were.
+    &:focus-visible { outline: 2px solid #1a237e; outline-offset: 1px; border-color: #1a237e; }
   }
   textarea { resize: vertical; }
+}
+
+// Display-only field captions. These were <label> elements with no control, which told a screen reader
+// there was a form field where there is only text; they are now spans and need their own rule because
+// the `.field label` selector no longer matches them.
+.field .field-label {
+  display: block; font-size: 12px; font-weight: 600; color: #555; margin-bottom: 4px;
+}
+
+// Per-stage SLA, computed server-side. Overdue must be unmistakable, not a subtle tint: an officer
+// scanning a queue should not have to read a number to notice a breached statutory deadline.
+.sla-banner {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 8px 12px; border-radius: 6px; font-size: 12px; margin-top: 8px;
+  background: #e8f5e9; color: #1b5e20; border: 1px solid #a5d6a7;
+
+  &.at-risk { background: #fff8e1; color: #e65100; border-color: #ffcc80; }
+  &.breached {
+    background: #ffebee; color: #b71c1c; border-color: #ef9a9a; font-weight: 700;
+  }
+  .sla-days { font-weight: 700; }
 }
 .form-actions { display: flex; gap: 10px; }
 .submit-btn {
@@ -177,4 +185,12 @@
 @media (max-width: 1024px) {
   .detail-layout { grid-template-columns: 1fr; }
   .action-panel { position: static; }
+}
+
+// Marks a record whose clause-derived classification was manually overridden. Deliberately quiet:
+// it annotates the badge rather than competing with it.
+.override-tag {
+  display: inline-block; margin-left: 6px; padding: 1px 5px; border-radius: 3px;
+  font-size: 9px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+  color: #92400e; background: #fef3c7; cursor: help;
 }

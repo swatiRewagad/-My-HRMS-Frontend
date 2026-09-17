@@ -5,11 +5,14 @@ import { Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
 import { environment } from '../../../../environments/environment';
+import { StatusBadgeComponent } from '../../shared/status-badge/status-badge.component';
+import { TranslatePipe } from '../../../pipes/translate.pipe';
 
 interface AppealSummary {
   appealNumber: string;
   originalComplaintNumber: string;
   classification: 'APPEAL' | 'REPRESENTATION';
+  classificationOverridden?: boolean;
   appellantName: string;
   status: string;
   hearingDate: string | null;
@@ -25,12 +28,12 @@ interface AppealStats {
   closed: number;
 }
 
-type AaRole = 'AA_REGISTRAR' | 'AA_BENCH_OFFICER' | 'AA_AUTHORITY' | 'AA_ADMIN';
+type AaRole = 'AA_DO' | 'AA_REVIEWER' | 'AA_SECRETARIAT' | 'AA_ADMIN';
 
 @Component({
   selector: 'app-aa-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, StatusBadgeComponent, TranslatePipe],
   templateUrl: './aa-dashboard.component.html',
   styleUrl: './aa-dashboard.component.scss'
 })
@@ -41,7 +44,16 @@ export class AaDashboardComponent implements OnInit {
 
   appeals = signal<AppealSummary[]>([]);
   loading = signal(true);
-  userRole = signal<AaRole>('AA_REGISTRAR');
+  loadError = signal(false);
+  userRole = signal<AaRole>('AA_DO');
+
+  /**
+   * The AA home views. Server-side filters, because "open" and "assigned to me" need the status
+   * vocabulary and the caller's identity, neither of which the browser should decide.
+   */
+  viewFilter = signal<'all' | 'assigned-to-me' | 'created-by-me'>('all');
+  classificationFilter = signal<'' | 'APPEAL' | 'REPRESENTATION'>('');
+  openOnly = signal(false);
 
   stats = signal<AppealStats>({ total: 0, pendingReview: 0, hearingsScheduled: 0, ordersPassed: 0, closed: 0 });
 
@@ -55,12 +67,32 @@ export class AaDashboardComponent implements OnInit {
   pageSize = 15;
   Math = Math;
 
+  // Translation keys, not English literals: these are user-facing role names.
   roleLabels: Record<AaRole, string> = {
-    'AA_REGISTRAR': 'Registrar',
-    'AA_BENCH_OFFICER': 'Bench Officer',
-    'AA_AUTHORITY': 'Appellate Authority',
-    'AA_ADMIN': 'AA Admin'
+    'AA_DO': 'aa.role_do',
+    'AA_REVIEWER': 'aa.role_reviewer',
+    'AA_SECRETARIAT': 'aa.role_secretariat',
+    'AA_ADMIN': 'aa.role_admin'
   };
+
+  /** Switches the active home view and refetches; filtering happens server-side. */
+  setView(view: 'all' | 'assigned-to-me' | 'created-by-me') {
+    this.viewFilter.set(view);
+    this.currentPage.set(1);
+    this.loadAppeals();
+  }
+
+  setClassificationFilter(value: '' | 'APPEAL' | 'REPRESENTATION') {
+    this.classificationFilter.set(value);
+    this.currentPage.set(1);
+    this.loadAppeals();
+  }
+
+  toggleOpenOnly() {
+    this.openOnly.set(!this.openOnly());
+    this.currentPage.set(1);
+    this.loadAppeals();
+  }
 
   filteredAppeals = computed(() => {
     let result = this.appeals();
@@ -105,9 +137,9 @@ export class AaDashboardComponent implements OnInit {
 
     const roles = this.auth.getRoles();
     if (roles.includes('AA_ADMIN')) this.userRole.set('AA_ADMIN');
-    else if (roles.includes('AA_AUTHORITY')) this.userRole.set('AA_AUTHORITY');
-    else if (roles.includes('AA_BENCH_OFFICER')) this.userRole.set('AA_BENCH_OFFICER');
-    else this.userRole.set('AA_REGISTRAR');
+    else if (roles.includes('AA_SECRETARIAT')) this.userRole.set('AA_SECRETARIAT');
+    else if (roles.includes('AA_REVIEWER')) this.userRole.set('AA_REVIEWER');
+    else this.userRole.set('AA_DO');
 
     this.loadStats();
     this.loadAppeals();
@@ -124,10 +156,18 @@ export class AaDashboardComponent implements OnInit {
 
   loadAppeals() {
     this.loading.set(true);
-    const role = this.userRole();
-    const officer = this.auth.currentUser()?.username || '';
+    this.loadError.set(false);
 
-    let url = `${environment.apiBaseUrl}/api/v1/appeals?role=${role}&officer=${officer}`;
+    // The previous call passed role= and officer= to GET /api/v1/appeals, which had no handler at all;
+    // the silent error branch below then left the grid empty and indistinguishable from "no appeals".
+    // Assignment scoping is now expressed as assignedOfficer=me and resolved server-side.
+    const params = new URLSearchParams();
+    if (this.viewFilter() === 'assigned-to-me') params.set('assignedOfficer', 'me');
+    if (this.viewFilter() === 'created-by-me') params.set('createdBy', 'me');
+    if (this.classificationFilter()) params.set('classification', this.classificationFilter());
+    if (this.openOnly()) params.set('openOnly', 'true');
+
+    const url = `${environment.apiBaseUrl}/api/v1/appeals?${params.toString()}`;
 
     this.http.get<any>(url).subscribe({
       next: (res) => {
@@ -135,7 +175,9 @@ export class AaDashboardComponent implements OnInit {
         this.loading.set(false);
       },
       error: () => {
+        // Surfaced, not swallowed: an empty grid must not be able to hide a broken endpoint.
         this.appeals.set([]);
+        this.loadError.set(true);
         this.loading.set(false);
       }
     });
@@ -152,25 +194,6 @@ export class AaDashboardComponent implements OnInit {
       this.sortColumn = column;
       this.sortDirection = 'asc';
     }
-  }
-
-  getStatusLabel(status: string): string {
-    const labels: Record<string, string> = {
-      'filed': 'Filed',
-      'under_review': 'Under Review',
-      'accepted': 'Accepted',
-      'rejected': 'Rejected',
-      'hearing_scheduled': 'Hearing Scheduled',
-      'hearing_completed': 'Hearing Completed',
-      'order_reserved': 'Order Reserved',
-      'order_passed': 'Order Passed',
-      'remanded': 'Remanded',
-      'dismissed': 'Dismissed',
-      'closed': 'Closed',
-      'assigned': 'Assigned',
-      'documents_requested': 'Documents Requested',
-    };
-    return labels[status] || status;
   }
 
   async logout() {

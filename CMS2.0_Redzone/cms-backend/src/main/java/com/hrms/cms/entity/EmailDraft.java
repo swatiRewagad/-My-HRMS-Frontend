@@ -24,11 +24,37 @@ public class EmailDraft {
     @Column(length = 100)
     private String threadId;
 
-    @Column(length = 200)
+    /**
+     * Unique so a redelivered message cannot create a second draft. cms-mail-intake supplies a
+     * stable "mail-intake-<id>", which makes this idempotency real across restarts.
+     */
+    @Column(length = 200, unique = true)
     private String messageId;
 
     @Column(length = 200)
     private String senderEmail;
+
+    // Recipient headers. Previously accepted by the API and discarded, which left every
+    // ignore-list rule on To/CC/BCC unenforceable.
+    @Column(length = 1000)
+    private String toRecipients;
+
+    @Column(length = 1000)
+    private String ccRecipients;
+
+    @Column(length = 1000)
+    private String bccRecipients;
+
+    @Column(length = 200)
+    private String replyTo;
+
+    @Column(length = 500)
+    private String inReplyTo;
+
+    @Column(columnDefinition = "TEXT")
+    private String emailReferences;
+
+    private Integer attachmentCount;
 
     @Column(length = 500)
     private String subject;
@@ -155,6 +181,28 @@ public class EmailDraft {
     @Column(columnDefinition = "TEXT")
     private String translatedBody;
 
+    /**
+     * Why OCR did not run, or why its output was not used to prefill. Null when OCR prefilled
+     * normally. Drives the manual-entry routing shown to the DEO.
+     */
+    @Column(length = 40)
+    private String ocrSkipReason;
+
+    /** Set when vernacular or low-confidence content must be keyed by a human. */
+    private boolean requiresManualEntry;
+
+    // Suggested-related decision, persisted so the DO's accept/dismiss survives a reload.
+    @Column(length = 100)
+    private String suggestedRelatedDraftId;
+
+    @Column(length = 20)
+    private String suggestedRelatedDecision;
+
+    @Column(length = 200)
+    private String suggestedRelatedDecidedBy;
+
+    private LocalDateTime suggestedRelatedDecidedAt;
+
     private LocalDateTime receivedAt;
 
     private LocalDateTime createdAt;
@@ -165,9 +213,11 @@ public class EmailDraft {
     protected void onCreate() {
         if (this.createdAt == null) this.createdAt = LocalDateTime.now();
         if (this.updatedAt == null) this.updatedAt = LocalDateTime.now();
-        if (this.status == null) this.status = "ASSIGNED";
+        if (this.status == null) this.status = DraftStatus.ASSIGNED.name();
         if (this.draftId == null || this.draftId.isBlank()) {
-            this.draftId = "DRF-" + String.format("%06d", System.nanoTime() % 1000000);
+            // A UUID suffix, not a truncated nanoTime: the old form collided under concurrent
+            // ingests and draftId is unique.
+            this.draftId = "DRF-" + java.util.UUID.randomUUID().toString().substring(0, 12).toUpperCase();
         }
     }
 

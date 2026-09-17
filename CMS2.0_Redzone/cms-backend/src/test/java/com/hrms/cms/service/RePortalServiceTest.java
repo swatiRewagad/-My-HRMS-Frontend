@@ -38,6 +38,8 @@ class RePortalServiceTest {
     @Mock private ComplaintTimelineRepository timelineRepository;
     @Mock private ReResponseTrackerRepository trackerRepository;
     @Mock private RegulatedEntityRepository regulatedEntityRepository;
+    @Mock private NotificationService notificationService;
+    @Mock private ReActivityStatusService activityStatusService;
 
     @InjectMocks
     private RePortalService rePortalService;

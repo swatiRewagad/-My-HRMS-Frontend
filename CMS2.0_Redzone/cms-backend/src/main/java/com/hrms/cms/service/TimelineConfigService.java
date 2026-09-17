@@ -94,7 +94,7 @@ public class TimelineConfigService {
      * Get audit log for a config key, ordered by changedAt descending.
      */
     public List<ConfigAuditLog> getAuditLog(String key) {
-        return configAuditLogRepository.findByConfigKeyOrderByChangedAtDesc(key);
+        return configAuditLogRepository.findByConfigKeyOrderByChangedAtDescIdDesc(key);
     }
 
     private String getDefaultValue(String key) {

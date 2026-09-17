@@ -4,6 +4,7 @@ import com.hrms.cms.dto.DashboardResponse;
 import com.hrms.cms.dto.FileComplaintRequest;
 import com.hrms.cms.dto.UpdateComplaintRequest;
 import com.hrms.cms.entity.*;
+import com.hrms.cms.event.ComplaintEventPublisher;
 import com.hrms.cms.repository.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -33,6 +34,9 @@ class ComplaintServiceTest {
     @Mock private BankRepository bankRepository;
     @Mock private ComplaintTimelineRepository timelineRepository;
     @Mock private ComplaintAttachmentRepository attachmentRepository;
+    @Mock private ComplaintEventPublisher eventPublisher;
+    @Mock private ComplaintRoutingService routingService;
+    @Mock private ComplaintNumberGeneratorService complaintNumberGenerator;
 
     @InjectMocks
     private ComplaintService complaintService;
@@ -244,6 +248,26 @@ class ComplaintServiceTest {
 
     @Nested
     class FileComplaint {
+
+        /**
+         * fileComplaint() always delegates number generation and routing, so every test in
+         * this class needs both collaborators stubbed (a bare mock would return null and
+         * NPE on routing.getDepartment()).
+         */
+        @BeforeEach
+        void stubRoutingAndNumbering() {
+            when(routingService.resolveDepartment(anyString())).thenReturn("RBIO");
+            when(complaintNumberGenerator.generateComplaintNumber(anyString(), any(), any()))
+                    .thenReturn("CMS-20260515-XYZ789");
+            when(routingService.routeComplaint(any(Complaint.class), anyString()))
+                    .thenReturn(ComplaintRoutingService.RoutingDecision.builder()
+                            .department("RBIO")
+                            .assignedRole("RBIO_OFFICER")
+                            .assignedOfficer("rbio-officer-1")
+                            .stage("INITIAL_REVIEW")
+                            .reason("Default routing for unit test")
+                            .build());
+        }
 
         @Test
         void shouldCreateComplaintWithGeneratedNumber() {

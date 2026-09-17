@@ -5,6 +5,9 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
 import { environment } from '../../../../environments/environment';
+import { QueryThreadComponent } from '../../shared/query-thread/query-thread.component';
+import { InternalNotesComponent } from '../../shared/internal-notes/internal-notes.component';
+import { StatusBadgeComponent } from '../../shared/status-badge/status-badge.component';
 
 interface ComplaintDetail {
   complaintNumber: string;
@@ -17,6 +20,12 @@ interface ComplaintDetail {
   responseDeadline: string;
   status: string;
   entityName: string;
+  entityCode?: string;
+  // UST846: derived from the entity's own actions. Displayed here but never settable — the server
+  // refuses a direct write, so this is presentation only.
+  reActivityStatus?: string;
+  reActivityStatusKey?: string;
+  reActivityChangedAt?: string | null;
 }
 
 interface TimelineEntry {
@@ -29,7 +38,7 @@ interface TimelineEntry {
 @Component({
   selector: 'app-re-complaint-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, QueryThreadComponent, InternalNotesComponent, StatusBadgeComponent],
   templateUrl: './re-complaint-detail.component.html',
   styleUrl: './re-complaint-detail.component.scss'
 })
@@ -50,13 +59,12 @@ export class ReComplaintDetailComponent implements OnInit {
   responseSuccess = signal('');
   responseError = signal('');
 
-  // Query form
-  showQueryForm = signal(false);
-  queryType = signal<'clarification' | 'extension'>('clarification');
-  queryText = signal('');
-  submittingQuery = signal(false);
-  querySuccess = signal('');
-  queryError = signal('');
+  /**
+   * Passed to the query and notes panels so their requests carry the entity scope. The server
+   * prefers the JWT's entity_code claim over this, so it is a convenience for the dev-header mode
+   * rather than the access control itself.
+   */
+  entityCode = computed(() => this.complaint()?.entityCode ?? null);
 
   // Computed
   deadlineCountdown = computed(() => {
@@ -147,42 +155,6 @@ export class ReComplaintDetailComponent implements OnInit {
       error: (err) => {
         this.submittingResponse.set(false);
         this.responseError.set(err.error?.message || 'Failed to submit response.');
-      }
-    });
-  }
-
-  toggleQueryForm() {
-    this.showQueryForm.set(!this.showQueryForm());
-    this.querySuccess.set('');
-    this.queryError.set('');
-  }
-
-  submitQuery() {
-    if (!this.queryText().trim()) {
-      this.queryError.set('Please enter your query details.');
-      return;
-    }
-
-    this.submittingQuery.set(true);
-    this.queryError.set('');
-    this.querySuccess.set('');
-
-    const complaintNumber = this.complaint()?.complaintNumber;
-    const payload = {
-      type: this.queryType(),
-      text: this.queryText()
-    };
-
-    this.http.post<any>(`${environment.apiBaseUrl}/api/v1/re-portal/complaints/${complaintNumber}/query`, payload).subscribe({
-      next: () => {
-        this.submittingQuery.set(false);
-        this.querySuccess.set(`${this.queryType() === 'extension' ? 'Extension' : 'Clarification'} request submitted.`);
-        this.queryText.set('');
-        if (complaintNumber) this.loadComplaint(complaintNumber);
-      },
-      error: (err) => {
-        this.submittingQuery.set(false);
-        this.queryError.set(err.error?.message || 'Failed to submit query.');
       }
     });
   }

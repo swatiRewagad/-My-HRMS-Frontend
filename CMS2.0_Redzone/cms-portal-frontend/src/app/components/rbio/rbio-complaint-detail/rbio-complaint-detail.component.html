@@ -59,7 +59,7 @@
       </div>
       <div class="strip-item">
         <span class="strip-label">Status</span>
-        <span class="status-badge" [attr.data-status]="c.status">{{ c.status === 'NEW' ? 'New Complaint' : c.status }}</span>
+        <app-status-badge [status]="c.status" />
       </div>
       <div class="strip-item">
         <span class="strip-label">Complaint Category</span>

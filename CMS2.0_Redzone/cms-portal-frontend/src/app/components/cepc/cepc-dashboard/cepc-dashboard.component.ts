@@ -9,6 +9,7 @@ import { SessionTimeoutComponent } from '../../../shared/session-timeout/session
 import { SpeechButtonComponent } from '../../../shared/speech-button/speech-button.component';
 import { CepcSlaIndicatorComponent } from '../cepc-sla-indicator/cepc-sla-indicator.component';
 import { environment } from '../../../../environments/environment';
+import { StatusBadgeComponent } from '../../shared/status-badge/status-badge.component';
 
 interface CepcComplaint {
   complaintId: string;
@@ -37,7 +38,7 @@ type CepcRole = 'CEPC_DO' | 'CEPC_REVIEWER' | 'CEPC_INCHARGE' | 'CEPC_CLOSING_AU
 @Component({
   selector: 'app-cepc-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule, NotificationBellComponent, SessionTimeoutComponent, SpeechButtonComponent, CepcSlaIndicatorComponent],
+  imports: [CommonModule, FormsModule, NotificationBellComponent, SessionTimeoutComponent, SpeechButtonComponent, CepcSlaIndicatorComponent, StatusBadgeComponent],
   templateUrl: './cepc-dashboard.component.html',
   styleUrl: './cepc-dashboard.component.scss'
 })
@@ -417,19 +418,6 @@ export class CepcDashboardComponent implements OnInit {
           this.createError.set(err.error?.message || 'Failed to create complaint.');
         }
       });
-  }
-
-  getStatusLabel(status: string): string {
-    const labels: Record<string, string> = {
-      'assigned': 'Assigned', 'pending': 'Pending', 'new': 'New',
-      'in_progress': 'Under Examination', 'under_review': 'Under Review',
-      'reviewer_review': 'Reviewer Review', 'incharge_review': 'In Charge Review',
-      'awaiting_closure': 'Awaiting Closure', 'escalated': 'Escalated',
-      'sent_back': 'Sent Back', 'info_requested': 'Info Requested',
-      'forwarded': 'Forwarded to Dept', 'forwarded_to_contact': 'With Contact Person',
-      'closed': 'Closed', 'resolved': 'Resolved',
-    };
-    return labels[status] || status;
   }
 
   async logout() {

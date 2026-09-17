@@ -1,6 +1,9 @@
 import { test, expect } from '@playwright/test';
 
-const API_BASE = 'http://localhost:8082';
+// Honours API_BASE_URL like every other spec. Hardcoding 8082 meant this spec always hit whichever
+// backend happened to own that port, and failed with ECONNREFUSED when it was down — regardless of
+// the instance actually under test.
+const API_BASE = process.env['API_BASE_URL'] || 'http://localhost:8082';
 
 test.describe('Timeline Config — Admin API (UST115)', () => {
 
@@ -136,7 +139,10 @@ test.describe('Timeline Config — Admin API (UST115)', () => {
 
     const configKey = configs[0].configKey;
     const originalValue = configs[0].configValue;
-    const newValue = originalValue === '30' ? '60' : '30';
+    // Derived from the value actually read, not from an assumed 30/60 pair. An earlier test in this
+    // file writes 45, so a hardcoded "30 means 60, otherwise 30" flipped to a value that was already
+    // stored — the update became a no-op and the audit row never carried the expected newValue.
+    const newValue = String(Number(originalValue) === 55 ? 56 : 55);
 
     // Make a change
     await request.put(`${API_BASE}/api/v1/admin/config/timelines/${configKey}`, {

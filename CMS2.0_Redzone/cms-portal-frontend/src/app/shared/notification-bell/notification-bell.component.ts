@@ -2,47 +2,65 @@ import { Component, inject, OnInit, OnDestroy, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { NotificationService, InAppNotification } from '../../services/notification.service';
+import { TranslationService } from '../../services/translation.service';
+import { TranslatePipe } from '../../pipes/translate.pipe';
 
 @Component({
   selector: 'app-notification-bell',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, TranslatePipe],
   template: `
-    <div class="notification-bell" (click)="toggleDropdown()">
+    <div class="notification-bell" (click)="toggleDropdown()"
+         data-testid="notification-bell"
+         [attr.data-connected]="notificationService.connected()"
+         [attr.data-unread-count]="notificationService.unreadCount()"
+         [attr.aria-label]="'notifications.title' | translate">
       <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
         <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
       </svg>
       @if (notificationService.hasUnread()) {
-        <span class="badge">{{ notificationService.unreadCount() }}</span>
+        <span class="badge" data-testid="notification-badge">{{ notificationService.unreadCount() }}</span>
       }
     </div>
 
     @if (isOpen()) {
       <div class="dropdown-overlay" (click)="isOpen.set(false)"></div>
-      <div class="dropdown">
+      <div class="dropdown" data-testid="notification-dropdown">
         <div class="dropdown-header">
-          <h4>Notifications</h4>
+          <h4>{{ 'notifications.title' | translate }}</h4>
           @if (notificationService.hasUnread()) {
-            <button class="mark-all-btn" (click)="markAllRead()">Mark all read</button>
+            <button class="mark-all-btn" data-testid="notification-mark-all"
+                    (click)="markAllRead()">{{ 'notifications.mark_all_read' | translate }}</button>
           }
         </div>
+        <!-- Shown only while the live channel is down, so a stale badge is never mistaken for
+             "no new work". -->
+        @if (!notificationService.connected()) {
+          <div class="offline-notice" data-testid="notification-offline">
+            {{ 'notifications.live_updates_unavailable' | translate }}
+          </div>
+        }
         <div class="dropdown-body">
           @for (n of notificationService.notifications(); track n.id) {
-            <div class="notification-item" [class.unread]="!n.isRead" (click)="onNotificationClick(n)">
+            <div class="notification-item" [class.unread]="!n.isRead"
+                 [attr.data-testid]="'notification-item-' + n.id"
+                 (click)="onNotificationClick(n)">
               <div class="notif-icon" [attr.data-type]="n.type">
                 {{ getIcon(n.type) }}
               </div>
               <div class="notif-content">
-                <p class="notif-title">{{ n.title }}</p>
+                <p class="notif-title">{{ resolveText(n.title) }}</p>
                 <span class="notif-type-badge">{{ formatType(n.type) }}</span>
-                <p class="notif-message">{{ n.message }}</p>
+                <p class="notif-message">{{ resolveText(n.message) }}</p>
                 <span class="notif-time">{{ formatTime(n.createdAt) }}</span>
               </div>
             </div>
           } @empty {
-            <div class="empty-state">No notifications</div>
+            <div class="empty-state" data-testid="notification-empty">
+              {{ 'notifications.empty' | translate }}
+            </div>
           }
         </div>
       </div>
@@ -61,6 +79,8 @@ import { NotificationService, InAppNotification } from '../../services/notificat
     .dropdown-header { display: flex; align-items: center; justify-content: space-between; padding: 16px; border-bottom: 1px solid #f1f5f9; }
     .dropdown-header h4 { margin: 0; font-size: 16px; font-weight: 600; }
     .mark-all-btn { background: none; border: none; color: #3b82f6; cursor: pointer; font-size: 13px; font-weight: 500; }
+    .offline-notice { padding: 8px 16px; font-size: 11px; color: #92400e; background: #fef3c7;
+                      border-bottom: 1px solid #fde68a; }
     .dropdown-body { overflow-y: auto; max-height: 400px; }
     .notification-item { display: flex; gap: 12px; padding: 12px 16px; cursor: pointer; transition: background 0.15s; }
     .notification-item:hover { background: #f8fafc; }
@@ -80,17 +100,30 @@ import { NotificationService, InAppNotification } from '../../services/notificat
 })
 export class NotificationBellComponent implements OnInit, OnDestroy {
   readonly notificationService = inject(NotificationService);
+  private translation = inject(TranslationService);
   private router = inject(Router);
 
   isOpen = signal(false);
 
   ngOnInit(): void {
-    this.notificationService.loadUnreadCount();
-    this.notificationService.getUnread().subscribe();
+    this.notificationService.refresh();
+    // The live channel had no caller at all before this, which is why the badge only ever moved on a
+    // page load. ngOnDestroy already tore a connection down; nothing ever opened one.
+    this.notificationService.connectWebSocket();
   }
 
   ngOnDestroy(): void {
     this.notificationService.disconnectWebSocket();
+  }
+
+  /**
+   * Notification title/message are a mix: newer producers write translation keys
+   * (`aa.assignment.assigned`, `notification.reassign.in`) while older ones still write English
+   * prose. translate() returns the key unchanged when it is not a known key, so passing everything
+   * through resolves the keys and leaves legacy prose readable.
+   */
+  resolveText(value: string | null | undefined): string {
+    return value ? this.translation.translate(value) : '';
   }
 
   toggleDropdown(): void {
@@ -144,20 +177,25 @@ export class NotificationBellComponent implements OnInit, OnDestroy {
     return icons[type] || '\u{1F514}';
   }
 
+  /**
+   * The type badge resolves `notifications.type.<lowercased type>` and falls back to the humanised
+   * enum, so a type added by the backend before its key is seeded still renders something legible
+   * rather than a raw key.
+   */
   formatType(type: string): string {
-    return type.replace(/_/g, ' ').toLowerCase();
+    const key = `notifications.type.${type.toLowerCase()}`;
+    const resolved = this.translation.translate(key);
+    return resolved === key ? type.replace(/_/g, ' ').toLowerCase() : resolved;
   }
 
   formatTime(dateStr: string): string {
-    const date = new Date(dateStr);
-    const now = new Date();
-    const diff = now.getTime() - date.getTime();
+    const diff = Date.now() - new Date(dateStr).getTime();
     const minutes = Math.floor(diff / 60000);
-    if (minutes < 1) return 'Just now';
-    if (minutes < 60) return `${minutes}m ago`;
+    if (minutes < 1) return this.translation.translate('notifications.time.just_now');
+    if (minutes < 60) return this.translation.translate('notifications.time.minutes_ago', { count: String(minutes) });
     const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours}h ago`;
+    if (hours < 24) return this.translation.translate('notifications.time.hours_ago', { count: String(hours) });
     const days = Math.floor(hours / 24);
-    return `${days}d ago`;
+    return this.translation.translate('notifications.time.days_ago', { count: String(days) });
   }
 }

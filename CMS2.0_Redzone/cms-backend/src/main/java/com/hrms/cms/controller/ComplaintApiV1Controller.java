@@ -5,6 +5,7 @@ import com.hrms.cms.dto.FileComplaintRequest;
 import com.hrms.cms.entity.Bank;
 import com.hrms.cms.entity.Complaint;
 import com.hrms.cms.entity.ComplaintTimeline;
+import com.hrms.cms.entity.ReActivityStatus;
 import com.hrms.cms.repository.BankRepository;
 import com.hrms.cms.repository.ComplaintCategoryRepository;
 import com.hrms.cms.repository.ComplaintRepository;
@@ -12,6 +13,11 @@ import com.hrms.cms.service.CepcAuditService;
 import com.hrms.cms.service.CitizenSessionService;
 import com.hrms.cms.service.CitizenStageMapper;
 import com.hrms.cms.service.ComplaintService;
+import com.hrms.cms.service.AnomalyDetectionService;
+import com.hrms.cms.service.PiiMaskingService;
+import com.hrms.cms.service.PiiRevealService;
+import com.hrms.cms.security.RequestIdentity;
+import com.hrms.cms.security.RequestIdentityResolver;
 import com.hrms.cms.service.triage.IntakeTriageService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolation;
@@ -43,6 +49,10 @@ public class ComplaintApiV1Controller {
     private final CepcAuditService auditService;
     private final DuplicateCheckProperties duplicateCheckProps;
     private final Validator validator;
+    private final RequestIdentityResolver requestIdentityResolver;
+    private final PiiMaskingService piiMaskingService;
+    private final PiiRevealService piiRevealService;
+    private final AnomalyDetectionService anomalyDetectionService;
 
     private static final String CITIZEN_TOKEN_HEADER = "X-Citizen-Token";
 
@@ -269,6 +279,10 @@ public class ComplaintApiV1Controller {
         if (phone != null && !phone.isBlank() && !phone.equals(sessionMobile)) {
             auditService.logActionAsync("N/A", "TRACK_LIST_DENIED", sessionMobile, "CITIZEN",
                     "Attempted to list complaints for a different mobile number", null, null, null);
+            // UST873: counted, so repeated probing for other people's complaints raises an alert
+            // instead of only leaving an audit row nobody aggregates.
+            anomalyDetectionService.recordOwnershipDenial(sessionMobile, null,
+                    "Attempted to list complaints for a different mobile number", request);
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(
                     errorBody("FORBIDDEN", "You can only view complaints filed with your own mobile number."));
         }
@@ -353,11 +367,16 @@ public class ComplaintApiV1Controller {
         }
 
         // UST98/UST99: tracking by reference number stays public, but complainant PII is only
-        // returned to the owning citizen (verified session) or to a staff caller.
+        // returned in full to the owning citizen (verified session).
+        //
+        // UST875: staff no longer get full PII by simply being staff. Presence of an Authorization
+        // header used to be the whole test, so any non-empty string unmasked a complainant's name
+        // and phone. Staff now receive masked values and must ask for a reveal, which is audited.
         String sessionMobile = resolveCitizenMobile(request);
         boolean isOwner = sessionMobile != null && sessionMobile.equals(c.getComplainantPhone());
-        boolean isStaff = request.getHeader("Authorization") != null;
-        boolean piiAllowed = isOwner || isStaff;
+        RequestIdentity identity = requestIdentityResolver.resolve(request);
+        boolean isStaff = identity != null && !identity.isRe();
+        boolean piiAllowed = isOwner;
 
         auditService.logActionAsync(complaintNumber, "TRACK_VIEWED",
                 isOwner ? sessionMobile : (isStaff ? "STAFF" : "ANONYMOUS"),
@@ -393,8 +412,16 @@ public class ComplaintApiV1Controller {
         detail.put("status", c.getStatus() != null ? c.getStatus().toUpperCase() : "NEW");
         detail.put("subject", c.getSubject());
         detail.put("description", c.getDescription());
-        detail.put("complainantName", piiAllowed ? c.getComplainantName() : maskName(c.getComplainantName()));
-        detail.put("complainantPhone", piiAllowed ? c.getComplainantPhone() : maskPhone(c.getComplainantPhone()));
+        detail.put("complainantName",
+                piiMaskingService.apply("complainantName", c.getComplainantName(), piiAllowed));
+        detail.put("complainantPhone",
+                piiMaskingService.apply("complainantPhone", c.getComplainantPhone(), piiAllowed));
+        detail.put("complainantEmail",
+                piiMaskingService.apply("complainantEmail", c.getComplainantEmail(), piiAllowed));
+        detail.put("accountNumber",
+                piiMaskingService.apply("accountNumber", c.getAccountNumber(), piiAllowed));
+        detail.put("piiMasked", !piiAllowed && piiMaskingService.isMaskingEnabled());
+        detail.put("canRevealPii", piiMaskingService.canReveal(identity));
         detail.put("entityName", bankName);
         detail.put("entityType", "BANK");
         detail.put("amountInvolved", 0);
@@ -418,8 +445,49 @@ public class ComplaintApiV1Controller {
             tm.put("action", t.getAction());
             tm.put("timestamp", t.getPerformedAt() != null ? t.getPerformedAt().toString() : "");
             tm.put("remarks", t.getRemarks());
+            // UST848: lets the UI separate what a person did from what the system derived, instead
+            // of inferring it from the three different casings of "SYSTEM" in performedBy.
+            tm.put("eventSource", t.getEventSource() != null ? t.getEventSource().name() : "MANUAL");
             return tm;
         }).collect(Collectors.toList()));
+
+        // ═══ UST852: RE Activity Status — staff-only, and read-only ═══
+        // This endpoint also serves the public tracker, so the entity's internal progress is gated on
+        // the staff check above: telling a complainant their bank "has not opened" the record invites
+        // a conversation RBI has not agreed to have. There is deliberately no setter anywhere on the
+        // staff side — the ladder is derived from RE actions only.
+        if (isStaff) {
+            ReActivityStatus activity = c.getReActivityStatus() == null
+                    ? ReActivityStatus.NOT_OPENED
+                    : c.getReActivityStatus();
+
+            Map<String, Object> reActivity = new LinkedHashMap<>();
+            reActivity.put("status", activity.name());
+            reActivity.put("labelKey", activity.translationKey());
+            reActivity.put("changedAt", c.getReActivityChangedAt() != null
+                    ? c.getReActivityChangedAt().toString() : null);
+            reActivity.put("nudgeThresholdDays", c.getReActivityNudgeDays());
+            reActivity.put("nudgedAt", c.getReActivityNudgedAt() != null
+                    ? c.getReActivityNudgedAt().toString() : null);
+            reActivity.put("readOnly", true);
+            detail.put("reActivity", reActivity);
+
+            // Ladder movements only, so staff can read the progression without wading through the
+            // whole workflow timeline (UST852).
+            detail.put("reActivityHistory", timeline.stream()
+                    .filter(t -> t.getAction() != null && t.getAction().startsWith("RE_ACTIVITY_"))
+                    .map(t -> {
+                        Map<String, Object> h = new LinkedHashMap<>();
+                        h.put("fromStatus", t.getFromStatus());
+                        h.put("toStatus", t.getToStatus());
+                        h.put("performedBy", t.getPerformedBy());
+                        h.put("eventSource", t.getEventSource() != null ? t.getEventSource().name() : "MANUAL");
+                        h.put("remarks", t.getRemarks());
+                        h.put("timestamp", t.getPerformedAt() != null ? t.getPerformedAt().toString() : "");
+                        return h;
+                    })
+                    .collect(Collectors.toList()));
+        }
         detail.put("communications", List.of());
         detail.put("documents", List.of());
         detail.put("triageSignal", c.getTriageSignal());
@@ -434,6 +502,51 @@ public class ComplaintApiV1Controller {
         response.put("timestamp", LocalDateTime.now().toString());
 
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * UST875: explicit, audited reveal of complainant PII.
+     *
+     * Deliberately a POST even though it reads data — a reveal writes an audit row and is not
+     * safely repeatable-without-trace, and a GET would end up in browser history and proxy logs.
+     */
+    @PostMapping("/{complaintNumber}/reveal-pii")
+    public ResponseEntity<Map<String, Object>> revealPii(@PathVariable String complaintNumber,
+                                                        @RequestBody(required = false) Map<String, String> body,
+                                                        HttpServletRequest request) {
+        RequestIdentity identity = requestIdentityResolver.resolve(request);
+        if (identity == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(
+                    errorBody("UNAUTHENTICATED", "Sign in to view complainant details."));
+        }
+
+        Complaint complaint;
+        try {
+            complaint = complaintService.getByComplaintNumber(complaintNumber);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+                    errorBody("NOT_FOUND", "Complaint number not found, please check and try again."));
+        }
+
+        String justification = body == null ? null : body.get("justification");
+        try {
+            Map<String, Object> revealed = piiRevealService.reveal(
+                    complaint, identity, justification, "COMPLAINT_DETAIL", request);
+
+            Map<String, Object> response = new LinkedHashMap<>();
+            response.put("success", true);
+            response.put("message", "Complainant details revealed and recorded");
+            response.put("data", revealed);
+            response.put("correlationId", UUID.randomUUID().toString());
+            response.put("timestamp", LocalDateTime.now().toString());
+            return ResponseEntity.ok(response);
+        } catch (PiiRevealService.RevealNotPermittedException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(
+                    errorBody("REVEAL_NOT_PERMITTED", e.getMessage()));
+        } catch (PiiRevealService.JustificationRequiredException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+                    errorBody("JUSTIFICATION_REQUIRED", e.getMessage()));
+        }
     }
 
     // ═══ UST105/107/108: Withdraw complaint ═══
@@ -468,6 +581,8 @@ public class ComplaintApiV1Controller {
         if (!sessionMobile.equals(complaint.getComplainantPhone())) {
             auditService.logActionAsync(complaintNumber, "WITHDRAW_DENIED", sessionMobile, "CITIZEN",
                     "Attempted to withdraw a complaint filed by another mobile number", null, null, null);
+            anomalyDetectionService.recordOwnershipDenial(sessionMobile, complaintNumber,
+                    "Attempted to withdraw a complaint filed by another mobile number", request);
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(
                     errorBody("FORBIDDEN", "You can only withdraw complaints filed with your own mobile number."));
         }
@@ -557,7 +672,9 @@ public class ComplaintApiV1Controller {
             item.put("complaintNumber", c.getComplaintNumber());
             item.put("subject", c.getSubject());
             item.put("entityName", bankName);
-            item.put("complainantName", c.getComplainantName());
+            // UST875: this endpoint is anonymous, so it returned every recent complainant's real name
+            // to any caller — a bulk harvest. Masked unconditionally; no caller here is identified.
+            item.put("complainantName", piiMaskingService.apply("complainantName", c.getComplainantName(), false));
             item.put("status", c.getStatus());
             item.put("date", c.getCreatedAt() != null ? c.getCreatedAt().format(fmt) : "");
             return item;

@@ -2,6 +2,12 @@ import { Routes } from '@angular/router';
 import { publicAuthGuard } from './guards/public-auth.guard';
 import { staffAuthGuard, staffRoleGuard } from './guards/staff-auth.guard';
 
+/**
+ * Roles admitted to the Appellate Authority module. ADMIN is included because it is the
+ * cross-module superuser already accepted by every other staff route in this file.
+ */
+const AA_ROLES = ['AA_DO', 'AA_REVIEWER', 'AA_SECRETARIAT', 'AA_ADMIN', 'ADMIN'];
+
 export const routes: Routes = [
   {
     path: '',
@@ -235,6 +241,13 @@ export const routes: Routes = [
     canActivate: [staffRoleGuard(['ADMIN', 'CRPC_ADMIN', 'CRPC_HEAD'])],
     loadComponent: () => import('./components/admin/team-management/team-management.component').then(m => m.TeamManagementComponent)
   },
+  // ── Admin — Security console (UST873, UST875, UST890) ──
+  // The route guard only hides the screen; every endpoint it calls is ADMIN-enforced server-side.
+  {
+    path: 'admin/security',
+    canActivate: [staffRoleGuard(['ADMIN'])],
+    loadComponent: () => import('./components/admin/security-alerts/security-alerts.component').then(m => m.SecurityAlertsComponent)
+  },
   // ── Admin — Template Management ──
   {
     path: 'admin/comment-templates',
@@ -265,18 +278,59 @@ export const routes: Routes = [
       { path: 'dashboard', loadComponent: () => import('./components/re-portal/re-dashboard/re-dashboard.component').then(m => m.ReDashboardComponent) },
       { path: 'complaints/:complaintNumber', loadComponent: () => import('./components/re-portal/re-complaint-detail/re-complaint-detail.component').then(m => m.ReComplaintDetailComponent) },
       { path: 'profile', loadComponent: () => import('./components/re-portal/re-profile/re-profile.component').then(m => m.ReProfileComponent) },
+      // Reassignment (UST838, UST842, UST843, UST844). Guarded with staffAuthGuard only, matching the
+      // sibling routes above: the PNO-only rules are enforced server-side from the resolved identity,
+      // so a route guard here would be a convenience, not the access control. Adding a role guard as
+      // well would also lock out ADMIN callers, who legitimately administer any entity.
+      { path: 'reassignment/my-requests', loadComponent: () => import('./components/re-portal/reassignment/my-requests/my-requests.component').then(m => m.MyRequestsComponent) },
+      { path: 'reassignment/approvals', loadComponent: () => import('./components/re-portal/reassignment/pno-approvals/pno-approvals.component').then(m => m.PnoApprovalsComponent) },
+      { path: 'pno-dashboard', loadComponent: () => import('./components/re-portal/pno-dashboard/pno-dashboard.component').then(m => m.PnoDashboardComponent) },
     ]
   },
   // ── Appellate Authority (AA) Module ──
+  // These used bare staffAuthGuard, i.e. authentication only, so any authenticated staff member --
+  // a CEPC contact person, an RE nodal officer -- could open the AA queue and appeal detail. The
+  // backend @AaRoleGuard would refuse the API calls, but the route itself must not be reachable.
   {
     path: 'aa/dashboard',
-    canActivate: [staffAuthGuard],
+    canActivate: [staffRoleGuard(AA_ROLES)],
     loadComponent: () => import('./components/aa/aa-dashboard/aa-dashboard.component').then(m => m.AaDashboardComponent)
   },
   {
     path: 'aa/appeal/:appealNumber',
-    canActivate: [staffAuthGuard],
+    canActivate: [staffRoleGuard(AA_ROLES)],
     loadComponent: () => import('./components/aa/aa-appeal-detail/aa-appeal-detail.component').then(m => m.AaAppealDetailComponent)
+  },
+  // ── AA routes pre-wired for the parallel S2A / S2B / S2C sessions ──
+  // Registered up front, pointing at intentionally inert placeholder components, so that three
+  // sessions working on the AA module in parallel never have to edit THIS file. Concurrent edits to a
+  // shared route table silently lose work, and the loser only finds out when their component 404s.
+  // Each session fleshes out its own component and must keep the class name, selector and file path
+  // unchanged — these imports already point at them.
+  {
+    // S2A — parent-complaint search feeding appeal registration.
+    path: 'aa/search',
+    canActivate: [staffRoleGuard(AA_ROLES)],
+    loadComponent: () => import('./components/aa/aa-appeal-search/aa-appeal-search.component').then(m => m.AaAppealSearchComponent)
+  },
+  {
+    // S2A — Register milestone. :complaintNumber is the parent being escalated.
+    path: 'aa/register/:complaintNumber',
+    canActivate: [staffRoleGuard(AA_ROLES)],
+    loadComponent: () => import('./components/aa/aa-register/aa-register.component').then(m => m.AaRegisterComponent)
+  },
+  {
+    // S2B — AA DO assessment of an email/letter-origin draft.
+    path: 'aa/draft/:draftId',
+    canActivate: [staffRoleGuard(AA_ROLES)],
+    loadComponent: () => import('./components/aa/aa-draft-assessment/aa-draft-assessment.component').then(m => m.AaDraftAssessmentComponent)
+  },
+  {
+    // S2C — assignment pool, per-DO thresholds, bulk activate/deactivate. AA_ADMIN only: this
+    // console changes who receives work, so it is deliberately narrower than the other AA routes.
+    path: 'aa/admin',
+    canActivate: [staffRoleGuard(['AA_ADMIN', 'ADMIN'])],
+    loadComponent: () => import('./components/aa/aa-admin-console/aa-admin-console.component').then(m => m.AaAdminConsoleComponent)
   },
   // ── Public Upload Link (no auth guard — OTP-verified) ──
   {

@@ -2,15 +2,28 @@ import { Component, Input, Output, EventEmitter, inject, signal } from '@angular
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
-import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
 import { environment } from '../../../../environments/environment';
+import { TranslatePipe } from '../../../pipes/translate.pipe';
 
 type OrderOutcome = 'UPHELD' | 'MODIFIED' | 'SET_ASIDE' | 'REMANDED' | 'DISMISSED';
 
+/**
+ * Issues the final order on an appeal.
+ *
+ * Posts to the dedicated order endpoint rather than the generic /action route. That matters for more
+ * than tidiness: the order endpoint validates the outcome against the five permitted values, persists an
+ * immutable order record with a revision number, and returns the stored order — whereas /action accepted
+ * any string as an outcome and stored it unvalidated.
+ *
+ * The previous version sent `outcome`/`modifiedAmount` while /action read `orderOutcome`/
+ * `awardModifiedAmount`, so every submission was rejected. Worse, the rejection arrived as HTTP 200 with
+ * success:false, which Angular does not treat as an error — so this screen reported "Order passed
+ * successfully" for orders the server had thrown away. Both are fixed here.
+ */
 @Component({
   selector: 'app-aa-order',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, TranslatePipe],
   templateUrl: './aa-order.component.html',
   styleUrl: './aa-order.component.scss'
 })
@@ -20,77 +33,88 @@ export class AaOrderComponent {
   @Output() cancelled = new EventEmitter<void>();
 
   private http = inject(HttpClient);
-  private auth = inject(KeycloakAuthService);
 
   submitting = signal(false);
-  error = signal('');
-  success = signal('');
+  errorKey = signal('');
+  successKey = signal('');
   showPreview = signal(false);
 
-  // Form fields
   outcome: OrderOutcome | '' = '';
-  modifiedAmount: number | null = null;
+  awardAmount: number | null = null;
   orderSummary = '';
 
-  outcomes: { value: OrderOutcome; label: string; description: string }[] = [
-    { value: 'UPHELD', label: 'Upheld', description: 'Appeal upheld - original order stands' },
-    { value: 'MODIFIED', label: 'Modified', description: 'Award modified with changes' },
-    { value: 'SET_ASIDE', label: 'Set Aside', description: 'Original order set aside' },
-    { value: 'REMANDED', label: 'Remanded', description: 'Remanded back for fresh consideration' },
-    { value: 'DISMISSED', label: 'Dismissed', description: 'Appeal dismissed - no merit found' },
+  /** Labels are translation keys; the values are the server's vocabulary and must not be localised. */
+  outcomes: { value: OrderOutcome; labelKey: string; descriptionKey: string }[] = [
+    { value: 'UPHELD', labelKey: 'aa.order.outcome_upheld', descriptionKey: 'aa.order.outcome_upheld_desc' },
+    { value: 'MODIFIED', labelKey: 'aa.order.outcome_modified', descriptionKey: 'aa.order.outcome_modified_desc' },
+    { value: 'SET_ASIDE', labelKey: 'aa.order.outcome_set_aside', descriptionKey: 'aa.order.outcome_set_aside_desc' },
+    { value: 'REMANDED', labelKey: 'aa.order.outcome_remanded', descriptionKey: 'aa.order.outcome_remanded_desc' },
+    { value: 'DISMISSED', labelKey: 'aa.order.outcome_dismissed', descriptionKey: 'aa.order.outcome_dismissed_desc' },
   ];
 
-  get originalAwardAmount(): string {
-    return this.appeal?.originalAwardAmount ? '\u20B9' + this.appeal.originalAwardAmount : 'Not specified';
-  }
-
-  get isModified(): boolean {
-    return this.outcome === 'MODIFIED';
+  /**
+   * Outcomes that can carry a monetary award.
+   *
+   * Mirrors the server's own rule: an award submitted with any other outcome is silently dropped, so
+   * offering the field would invite an officer to enter a figure that never gets stored.
+   */
+  get awardBearing(): boolean {
+    return this.outcome === 'MODIFIED' || this.outcome === 'UPHELD';
   }
 
   previewOrder() {
-    this.error.set('');
+    this.errorKey.set('');
     if (!this.outcome) {
-      this.error.set('Please select an outcome.');
+      this.errorKey.set('aa.order.error_outcome_required');
       return;
     }
     if (!this.orderSummary.trim()) {
-      this.error.set('Please provide an order summary.');
+      this.errorKey.set('aa.order.error_summary_required');
       return;
     }
-    if (this.isModified && (this.modifiedAmount === null || this.modifiedAmount < 0)) {
-      this.error.set('Please enter a valid modified amount.');
+    if (this.awardBearing && this.awardAmount !== null && this.awardAmount < 0) {
+      this.errorKey.set('aa.order.error_amount_invalid');
       return;
     }
     this.showPreview.set(true);
   }
 
   submitOrder() {
-    this.error.set('');
+    this.errorKey.set('');
     this.submitting.set(true);
 
     const appealNumber = this.appeal?.appealNumber;
-    const body = {
-      action: 'PASS_ORDER',
+    const body: Record<string, unknown> = {
       outcome: this.outcome,
-      modifiedAmount: this.isModified ? this.modifiedAmount : null,
       orderSummary: this.orderSummary,
-      actor: this.auth.currentUser()?.username || '',
-      remarks: `Order passed: ${this.outcome}`
     };
+    // Only sent when the outcome can actually carry one.
+    if (this.awardBearing && this.awardAmount !== null) {
+      body['awardAmount'] = this.awardAmount;
+    }
 
     this.http.post<any>(
-      `${environment.apiBaseUrl}/api/v1/appeals/${appealNumber}/action`,
+      `${environment.apiBaseUrl}/api/v1/appeals/${appealNumber}/order`,
       body
     ).subscribe({
-      next: () => {
-        this.success.set('Order passed successfully.');
+      next: (res) => {
         this.submitting.set(false);
-        setTimeout(() => this.orderPassed.emit(), 1500);
+
+        // A refused write arrives as 200 with success:false. Reporting it as success is how a passed
+        // order that was never stored looked like a completed one.
+        if (res?.success === false) {
+          this.errorKey.set(res.messageKey || 'aa.order.error_failed');
+          this.showPreview.set(false);
+          return;
+        }
+
+        this.successKey.set(res?.messageKey || 'aa.order.passed');
+        setTimeout(() => this.orderPassed.emit(), 1200);
       },
       error: (err) => {
-        this.error.set(err.error?.message || 'Failed to pass order.');
         this.submitting.set(false);
+        this.showPreview.set(false);
+        this.errorKey.set(err.error?.messageKey || err.error?.message || 'aa.order.error_failed');
       }
     });
   }

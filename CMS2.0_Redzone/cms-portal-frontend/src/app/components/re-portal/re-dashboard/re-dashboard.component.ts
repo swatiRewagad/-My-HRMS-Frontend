@@ -5,6 +5,7 @@ import { Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
 import { environment } from '../../../../environments/environment';
+import { StatusBadgeComponent } from '../../shared/status-badge/status-badge.component';
 
 interface DashboardStats {
   totalForwarded: number;
@@ -25,7 +26,7 @@ interface ReComplaint {
 @Component({
   selector: 'app-re-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, StatusBadgeComponent],
   templateUrl: './re-dashboard.component.html',
   styleUrl: './re-dashboard.component.scss'
 })
@@ -95,17 +96,6 @@ export class ReDashboardComponent implements OnInit {
     if (days < 0) return `${Math.abs(days)}d overdue`;
     if (days === 0) return 'Due today';
     return `${days}d remaining`;
-  }
-
-  getStatusLabel(status: string): string {
-    const labels: Record<string, string> = {
-      'pending': 'Pending Response',
-      'responded': 'Responded',
-      'breached': 'Breached',
-      'extension_requested': 'Extension Requested',
-      'clarification_requested': 'Clarification Requested'
-    };
-    return labels[status] || status;
   }
 
   openComplaint(complaint: ReComplaint) {

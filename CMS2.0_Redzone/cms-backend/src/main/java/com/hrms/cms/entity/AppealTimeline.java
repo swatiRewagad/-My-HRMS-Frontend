@@ -37,6 +37,23 @@ public class AppealTimeline {
     @Column(length = 30)
     private String toStatus;
 
+    /**
+     * Field-level audit, for changes that are not status transitions.
+     *
+     * The timeline could previously only express "status went from X to Y", so a classification
+     * override — a change to one field, which a later reviewer must be able to reconstruct — had
+     * nowhere to record what actually changed. AuditLog was no better: its previousState/newState are
+     * length-50 and status-shaped, with no field name at all.
+     */
+    @Column(length = 60)
+    private String fieldName;
+
+    @Column(columnDefinition = "TEXT")
+    private String oldValue;
+
+    @Column(columnDefinition = "TEXT")
+    private String newValue;
+
     private LocalDateTime performedAt;
 
     @PrePersist

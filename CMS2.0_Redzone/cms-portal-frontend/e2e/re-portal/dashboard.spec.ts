@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../fixtures';
 import { loginAsReRole, isKeycloakAvailable, logout } from '../utils/auth';
 
 test.describe('RE Portal Dashboard', () => {

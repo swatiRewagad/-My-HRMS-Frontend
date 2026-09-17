@@ -4,6 +4,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hrms.cms.entity.Appeal;
 import com.hrms.cms.entity.AppealTimeline;
 import com.hrms.cms.repository.AppealRepository;
+import com.hrms.cms.security.AaAccessDeniedException;
+import com.hrms.cms.security.AaIdentityResolver;
+import com.hrms.cms.service.AaStageSlaService;
 import com.hrms.cms.service.AppealEligibilityService;
 import com.hrms.cms.service.AppealWorkflowService;
 import com.hrms.cms.service.EncryptionKeyService;
@@ -13,7 +16,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import com.hrms.cms.support.ControllerSliceTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
@@ -33,7 +36,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Tests for the Appellate Authority (AA) Appeal Controller.
  * Endpoints: /api/v1/appeals/
  */
-@WebMvcTest(AppealController.class)
+@ControllerSliceTest(AppealController.class)
 @AutoConfigureMockMvc(addFilters = false)
 class AppealControllerTest {
 
@@ -44,6 +47,18 @@ class AppealControllerTest {
     @MockBean private AppealWorkflowService appealWorkflowService;
     @MockBean private AppealEligibilityService appealEligibilityService;
     @MockBean private EncryptionKeyService encryptionKeyService;
+    /**
+     * The controller now resolves the caller server-side instead of trusting request params, so the
+     * slice needs the resolver. Stubbed per-test to express who is calling.
+     */
+    @MockBean private AaIdentityResolver aaIdentityResolver;
+    /**
+     * Per-stage SLA is computed server-side and returned on the appeal detail, so the slice needs it.
+     * A @WebMvcTest only instantiates the controller, so every constructor dependency must be a bean
+     * here or the context fails to start — which is why its absence broke all 46 tests in this class
+     * rather than only the ones asserting SLA.
+     */
+    @MockBean private AaStageSlaService stageSlaService;
 
     private Appeal sampleAppeal;
 
@@ -61,7 +76,7 @@ class AppealControllerTest {
                 .appellantPhone("9876543210")
                 .status("filed")
                 .priority("high")
-                .assignedRole("AA_REGISTRAR")
+                .assignedRole("AA_DO")
                 .assignedOfficer("registrar-1")
                 .workflowStage("FILED")
                 .filedAt(LocalDateTime.now())
@@ -74,34 +89,47 @@ class AppealControllerTest {
     // POST /file — file appeal
     // ═══════════════════════════════════════════════════════════════════
 
+    /**
+     * POST /file is a multipart form endpoint, not a JSON one: it declares
+     * {@code @RequestParam complaintNumber/ground/details} plus {@code @RequestPart attachments}.
+     * Posting a JSON body leaves those request parameters unbound, so Spring raises
+     * MissingServletRequestParameterException before the controller body runs. These tests therefore
+     * send form parameters, and expect 201 CREATED on success (the controller's documented status).
+     */
     @Nested
     @DisplayName("POST /api/v1/appeals/file")
     class FileAppeal {
 
+        /** The controller consults eligibility before filing, so the happy path needs it to pass. */
+        private void givenEligible() {
+            Map<String, Object> eligibility = new LinkedHashMap<>();
+            eligibility.put("eligible", true);
+            eligibility.put("suggestedType", "APPEAL");
+            when(appealEligibilityService.checkEligibility(anyString())).thenReturn(eligibility);
+        }
+
         @Test
         @DisplayName("should file appeal successfully and return appeal data")
         void shouldFileAppealSuccessfully() throws Exception {
+            givenEligible();
+
             Map<String, Object> result = new LinkedHashMap<>();
             result.put("appealNumber", "APL-20260706-ABC123");
             result.put("classificationType", "APPEAL");
             result.put("status", "filed");
-            result.put("assignedRole", "AA_REGISTRAR");
+            result.put("assignedRole", "AA_DO");
             result.put("assignedOfficer", "registrar-1");
             result.put("filedAt", LocalDateTime.now().toString());
 
-            when(appealWorkflowService.fileAppeal(any())).thenReturn(result);
+            when(appealWorkflowService.fileAppeal(any(), any())).thenReturn(result);
 
-            Map<String, String> request = new LinkedHashMap<>();
-            request.put("originalComplaintNumber", "CMP-20260601-100001");
-            request.put("classificationType", "APPEAL");
-            request.put("appellantName", "Test Appellant");
-            request.put("appealGround", "Dissatisfied with closure");
-            request.put("reliefSought", "Full refund");
-
-            mockMvc.perform(post("/api/v1/appeals/file")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(request)))
-                    .andExpect(status().isOk())
+            mockMvc.perform(multipart("/api/v1/appeals/file")
+                            .param("complaintNumber", "CMP-20260601-100001")
+                            .param("classification", "APPEAL")
+                            .param("ground", "Dissatisfied with closure")
+                            .param("details", "The closure did not address the disputed debit.")
+                            .param("reliefSought", "Full refund"))
+                    .andExpect(status().isCreated())
                     .andExpect(jsonPath("$.success").value(true))
                     .andExpect(jsonPath("$.message").value("Appeal filed successfully"))
                     .andExpect(jsonPath("$.data.appealNumber").value("APL-20260706-ABC123"))
@@ -112,26 +140,24 @@ class AppealControllerTest {
         @Test
         @DisplayName("should file REPRESENTATION type appeal successfully")
         void shouldFileRepresentationSuccessfully() throws Exception {
+            givenEligible();
+
             Map<String, Object> result = new LinkedHashMap<>();
             result.put("appealNumber", "APL-20260706-DEF456");
             result.put("classificationType", "REPRESENTATION");
             result.put("status", "filed");
-            result.put("assignedRole", "AA_REGISTRAR");
+            result.put("assignedRole", "AA_DO");
             result.put("assignedOfficer", "registrar-1");
             result.put("filedAt", LocalDateTime.now().toString());
 
-            when(appealWorkflowService.fileAppeal(any())).thenReturn(result);
+            when(appealWorkflowService.fileAppeal(any(), any())).thenReturn(result);
 
-            Map<String, String> request = new LinkedHashMap<>();
-            request.put("originalComplaintNumber", "CMP-20260605-200001");
-            request.put("classificationType", "REPRESENTATION");
-            request.put("appellantName", "Advisory Appellant");
-            request.put("appealGround", "Advisory outcome not satisfactory");
-
-            mockMvc.perform(post("/api/v1/appeals/file")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(request)))
-                    .andExpect(status().isOk())
+            mockMvc.perform(multipart("/api/v1/appeals/file")
+                            .param("complaintNumber", "CMP-20260605-200001")
+                            .param("classification", "REPRESENTATION")
+                            .param("ground", "Advisory outcome not satisfactory")
+                            .param("details", "The advisory did not consider the submitted evidence."))
+                    .andExpect(status().isCreated())
                     .andExpect(jsonPath("$.success").value(true))
                     .andExpect(jsonPath("$.data.classificationType").value("REPRESENTATION"));
         }
@@ -139,17 +165,15 @@ class AppealControllerTest {
         @Test
         @DisplayName("should return error when service throws IllegalArgumentException")
         void shouldReturnErrorOnIllegalArgument() throws Exception {
-            when(appealWorkflowService.fileAppeal(any()))
+            givenEligible();
+            when(appealWorkflowService.fileAppeal(any(), any()))
                     .thenThrow(new IllegalArgumentException("originalComplaintNumber is required"));
 
-            Map<String, String> request = new LinkedHashMap<>();
-            request.put("appellantName", "Test");
-            request.put("appealGround", "Grounds");
-
-            mockMvc.perform(post("/api/v1/appeals/file")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(request)))
-                    .andExpect(status().isOk())
+            mockMvc.perform(multipart("/api/v1/appeals/file")
+                            .param("complaintNumber", "CMP-20260601-100001")
+                            .param("ground", "Grounds")
+                            .param("details", "Details of the grievance."))
+                    .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.success").value(false))
                     .andExpect(jsonPath("$.message", containsString("originalComplaintNumber is required")));
         }
@@ -157,39 +181,38 @@ class AppealControllerTest {
         @Test
         @DisplayName("should return error when appeal not eligible")
         void shouldReturnErrorWhenNotEligible() throws Exception {
-            when(appealWorkflowService.fileAppeal(any()))
-                    .thenThrow(new IllegalArgumentException("Appeal not eligible: Filing deadline exceeded"));
+            // Eligibility is now enforced by the controller before it calls the workflow service.
+            Map<String, Object> eligibility = new LinkedHashMap<>();
+            eligibility.put("eligible", false);
+            eligibility.put("reason", "Filing deadline exceeded");
+            when(appealEligibilityService.checkEligibility(anyString())).thenReturn(eligibility);
 
-            Map<String, String> request = new LinkedHashMap<>();
-            request.put("originalComplaintNumber", "CMP-OLD");
-            request.put("classificationType", "APPEAL");
-            request.put("appellantName", "Late Appellant");
-            request.put("appealGround", "Late grounds");
-
-            mockMvc.perform(post("/api/v1/appeals/file")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(request)))
-                    .andExpect(status().isOk())
+            mockMvc.perform(multipart("/api/v1/appeals/file")
+                            .param("complaintNumber", "CMP-OLD")
+                            .param("classification", "APPEAL")
+                            .param("ground", "Late grounds")
+                            .param("details", "Filed outside the permitted window."))
+                    .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.success").value(false))
                     .andExpect(jsonPath("$.message", containsString("not eligible")));
+
+            // An ineligible appeal must never reach the workflow service.
+            verify(appealWorkflowService, never()).fileAppeal(any(), any());
         }
 
         @Test
         @DisplayName("should return error for invalid classificationType")
         void shouldReturnErrorForInvalidClassificationType() throws Exception {
-            when(appealWorkflowService.fileAppeal(any()))
+            givenEligible();
+            when(appealWorkflowService.fileAppeal(any(), any()))
                     .thenThrow(new IllegalArgumentException("classificationType must be APPEAL or REPRESENTATION"));
 
-            Map<String, String> request = new LinkedHashMap<>();
-            request.put("originalComplaintNumber", "CMP-20260601-100001");
-            request.put("classificationType", "INVALID_TYPE");
-            request.put("appellantName", "Test");
-            request.put("appealGround", "Grounds");
-
-            mockMvc.perform(post("/api/v1/appeals/file")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(request)))
-                    .andExpect(status().isOk())
+            mockMvc.perform(multipart("/api/v1/appeals/file")
+                            .param("complaintNumber", "CMP-20260601-100001")
+                            .param("classification", "INVALID_TYPE")
+                            .param("ground", "Grounds")
+                            .param("details", "Details of the grievance."))
+                    .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.success").value(false))
                     .andExpect(jsonPath("$.message", containsString("classificationType must be")));
         }
@@ -338,15 +361,15 @@ class AppealControllerTest {
         @DisplayName("should return tasks filtered by role")
         void shouldReturnTasksByRole() throws Exception {
             when(appealRepository.findByAssignedRoleAndStatusNotInOrderByCreatedAtDesc(
-                    eq("AA_REGISTRAR"), any()))
+                    eq("AA_DO"), any()))
                     .thenReturn(List.of(sampleAppeal));
 
             mockMvc.perform(get("/api/v1/appeals/tasks")
-                            .param("role", "AA_REGISTRAR"))
+                            .param("role", "AA_DO"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.success").value(true))
                     .andExpect(jsonPath("$.data", hasSize(1)))
-                    .andExpect(jsonPath("$.data[0].assignedRole").value("AA_REGISTRAR"));
+                    .andExpect(jsonPath("$.data[0].assignedRole").value("AA_DO"));
         }
 
         @Test
@@ -380,15 +403,233 @@ class AppealControllerTest {
         @DisplayName("should return empty list when no tasks match")
         void shouldReturnEmptyWhenNoTasks() throws Exception {
             when(appealRepository.findByAssignedRoleAndStatusNotInOrderByCreatedAtDesc(
-                    eq("AA_BENCH_OFFICER"), any()))
+                    eq("AA_REVIEWER"), any()))
                     .thenReturn(Collections.emptyList());
 
             mockMvc.perform(get("/api/v1/appeals/tasks")
-                            .param("role", "AA_BENCH_OFFICER"))
+                            .param("role", "AA_REVIEWER"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.success").value(true))
                     .andExpect(jsonPath("$.data", hasSize(0)));
         }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // GET / — filterable appeal list (new endpoint)
+    // ═══════════════════════════════════════════════════════════════════
+
+    /**
+     * This mapping did not exist: the dashboard called GET /api/v1/appeals, got no handler, and its
+     * error branch swallowed the failure so the grid silently rendered empty.
+     */
+    @Nested
+    @DisplayName("GET /api/v1/appeals")
+    class ListAppeals {
+
+        @Test
+        @DisplayName("should return the appeal list with both classification keys populated")
+        void shouldReturnAppealList() throws Exception {
+            when(appealRepository.findForView(any(), any(), any(), any(), any(), anyBoolean(), any()))
+                    .thenReturn(List.of(sampleAppeal));
+
+            mockMvc.perform(get("/api/v1/appeals").header("X-User-Roles", "AA_DO"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.success").value(true))
+                    .andExpect(jsonPath("$.data", hasSize(1)))
+                    .andExpect(jsonPath("$.data[0].appealNumber").value("APL-20260706-ABC123"))
+                    // Both keys, because the frontend binds `classification` and existing consumers
+                    // read `classificationType`; the mismatch is why both badges rendered blank.
+                    .andExpect(jsonPath("$.data[0].classificationType").value("APPEAL"))
+                    .andExpect(jsonPath("$.data[0].classification").value("APPEAL"))
+                    .andExpect(jsonPath("$.data[0].status").value("FILED"));
+        }
+
+        @Test
+        @DisplayName("should pass the composed filters through to the repository")
+        void shouldPassFiltersThrough() throws Exception {
+            when(appealRepository.findForView(any(), any(), any(), any(), any(), anyBoolean(), any()))
+                    .thenReturn(Collections.emptyList());
+
+            mockMvc.perform(get("/api/v1/appeals")
+                            .header("X-User-Roles", "AA_DO")
+                            .param("classification", "REPRESENTATION")
+                            .param("openOnly", "true"))
+                    .andExpect(status().isOk());
+
+            verify(appealRepository).findForView(
+                    eq("REPRESENTATION"), isNull(), isNull(), isNull(), isNull(), eq(true), any());
+        }
+
+        /**
+         * "me" resolves server-side, so a caller cannot substitute another user's id and read their
+         * queue by naming it directly.
+         */
+        @Test
+        @DisplayName("should resolve 'me' to the authenticated caller, not a client-named id")
+        void shouldResolveMeToCaller() throws Exception {
+            when(aaIdentityResolver.resolveActor()).thenReturn("aa_do_001");
+            when(appealRepository.findForView(any(), any(), any(), any(), any(), anyBoolean(), any()))
+                    .thenReturn(Collections.emptyList());
+
+            mockMvc.perform(get("/api/v1/appeals")
+                            .header("X-User-Roles", "AA_DO")
+                            .param("assignedOfficer", "me")
+                            .param("createdBy", "me"))
+                    .andExpect(status().isOk());
+
+            verify(appealRepository).findForView(
+                    isNull(), eq("aa_do_001"), isNull(), eq("aa_do_001"), isNull(), eq(false), any());
+        }
+
+        // NOTE: the @AaRoleGuard 403 path is NOT asserted here. AaRoleGuardAspect is a plain
+        // @Component/@Aspect, so a @WebMvcTest slice never instantiates it and every request would
+        // pass the guard regardless — an assertion of isForbidden() here would only ever be testing
+        // the absence of the aspect. Importing it would force an X-User-Roles header onto every other
+        // test in this class. The guard has no test of its own anywhere; that gap needs an
+        // AaRoleGuardAspect test, which is outside these two files.
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // GET /{appealNumber}/timeline — new endpoint
+    // ═══════════════════════════════════════════════════════════════════
+
+    /**
+     * The detail component already called this URL; there was no handler, so the History panel was
+     * permanently empty.
+     */
+    @Nested
+    @DisplayName("GET /api/v1/appeals/{appealNumber}/timeline")
+    class GetTimeline {
+
+        @Test
+        @DisplayName("should return the timeline including field-level override values")
+        void shouldReturnTimelineWithFieldAudit() throws Exception {
+            when(appealRepository.findByAppealNumber("APL-20260706-ABC123"))
+                    .thenReturn(Optional.of(sampleAppeal));
+
+            AppealTimeline override = AppealTimeline.builder()
+                    .appealNumber("APL-20260706-ABC123")
+                    .action("CLASSIFICATION_OVERRIDE")
+                    .performedBy("aa_do_001")
+                    .performedByRole("AA_DO")
+                    .remarks("Clause mapping was wrong for this closure category")
+                    .fieldName("classificationType")
+                    .oldValue("APPEAL")
+                    .newValue("REPRESENTATION")
+                    .performedAt(LocalDateTime.now())
+                    .build();
+
+            when(appealWorkflowService.getTimeline("APL-20260706-ABC123"))
+                    .thenReturn(List.of(override));
+
+            mockMvc.perform(get("/api/v1/appeals/APL-20260706-ABC123/timeline")
+                            .header("X-User-Roles", "AA_DO"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.success").value(true))
+                    .andExpect(jsonPath("$.data.appealNumber").value("APL-20260706-ABC123"))
+                    .andExpect(jsonPath("$.data.timeline", hasSize(1)))
+                    .andExpect(jsonPath("$.data.timeline[0].action").value("CLASSIFICATION_OVERRIDE"))
+                    .andExpect(jsonPath("$.data.timeline[0].performedBy").value("aa_do_001"))
+                    .andExpect(jsonPath("$.data.timeline[0].fieldName").value("classificationType"))
+                    .andExpect(jsonPath("$.data.timeline[0].oldValue").value("APPEAL"))
+                    .andExpect(jsonPath("$.data.timeline[0].newValue").value("REPRESENTATION"));
+        }
+
+        @Test
+        @DisplayName("should report not found for a non-existent appeal")
+        void shouldReportNotFound() throws Exception {
+            when(appealRepository.findByAppealNumber("APL-NONEXIST")).thenReturn(Optional.empty());
+
+            mockMvc.perform(get("/api/v1/appeals/APL-NONEXIST/timeline")
+                            .header("X-User-Roles", "AA_DO"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.success").value(false))
+                    .andExpect(jsonPath("$.message", containsString("not found")));
+
+            verify(appealWorkflowService, never()).getTimeline(anyString());
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // PUT /{appealNumber}/classification — new endpoint
+    // ═══════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("PUT /api/v1/appeals/{appealNumber}/classification")
+    class OverrideClassification {
+
+        private static final String REASON = "Clause mapping was wrong for this closure category";
+
+        @Test
+        @DisplayName("should override the classification and return the audit values")
+        void shouldOverrideClassification() throws Exception {
+            Map<String, Object> result = new LinkedHashMap<>();
+            result.put("appealNumber", "APL-20260706-ABC123");
+            result.put("previousClassification", "APPEAL");
+            result.put("classificationType", "REPRESENTATION");
+            result.put("overriddenBy", "aa_do_001");
+            result.put("reason", REASON);
+
+            when(appealWorkflowService.overrideClassification(
+                    "APL-20260706-ABC123", "REPRESENTATION", REASON)).thenReturn(result);
+
+            Map<String, String> request = Map.of(
+                    "classificationType", "REPRESENTATION", "reason", REASON);
+
+            mockMvc.perform(put("/api/v1/appeals/APL-20260706-ABC123/classification")
+                            .header("X-User-Roles", "AA_DO")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.success").value(true))
+                    .andExpect(jsonPath("$.message").value("Classification overridden"))
+                    .andExpect(jsonPath("$.data.previousClassification").value("APPEAL"))
+                    .andExpect(jsonPath("$.data.classificationType").value("REPRESENTATION"))
+                    .andExpect(jsonPath("$.data.overriddenBy").value("aa_do_001"));
+        }
+
+        @Test
+        @DisplayName("should return 400 when the reason is rejected")
+        void shouldReturnBadRequestForShortReason() throws Exception {
+            when(appealWorkflowService.overrideClassification(anyString(), anyString(), anyString()))
+                    .thenThrow(new IllegalArgumentException(
+                            "A reason of at least 10 characters is required to override the classification"));
+
+            Map<String, String> request = Map.of(
+                    "classificationType", "REPRESENTATION", "reason", "short");
+
+            mockMvc.perform(put("/api/v1/appeals/APL-20260706-ABC123/classification")
+                            .header("X-User-Roles", "AA_DO")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.success").value(false))
+                    .andExpect(jsonPath("$.message", containsString("at least 10 characters")));
+        }
+
+        @Test
+        @DisplayName("should return 403 when the service denies the override")
+        void shouldReturnForbiddenWhenDenied() throws Exception {
+            when(appealWorkflowService.overrideClassification(anyString(), anyString(), anyString()))
+                    .thenThrow(new AaAccessDeniedException(
+                            "Classification override requires one of [AA_DO, AA_REVIEWER, AA_ADMIN]"));
+
+            Map<String, String> request = Map.of(
+                    "classificationType", "REPRESENTATION", "reason", REASON);
+
+            mockMvc.perform(put("/api/v1/appeals/APL-20260706-ABC123/classification")
+                            .header("X-User-Roles", "AA_DO")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.success").value(false))
+                    .andExpect(jsonPath("$.message", containsString("override requires")));
+        }
+
+        // AA_SECRETARIAT exclusion is enforced twice: by @AaRoleGuard on the method and by
+        // OVERRIDE_ROLES in the service. Only the service check is assertable here (see
+        // shouldReturnForbiddenWhenDenied above and AppealWorkflowServiceTest.secretariatMayNotOverride);
+        // the aspect is not instantiated in a @WebMvcTest slice.
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -480,14 +721,14 @@ class AppealControllerTest {
             result.put("appealNumber", "APL-20260706-ABC123");
             result.put("action", "ACCEPT");
             result.put("newStatus", "under_review");
-            result.put("assignedRole", "AA_REGISTRAR");
+            result.put("assignedRole", "AA_DO");
             result.put("assignedOfficer", "registrar-1");
             result.put("workflowStage", "UNDER_REVIEW");
 
             when(appealWorkflowService.performAction(eq("APL-20260706-ABC123"), eq("ACCEPT"), any()))
                     .thenReturn(result);
 
-            Map<String, String> request = Map.of("action", "ACCEPT", "actor", "registrar-1", "actorRole", "AA_REGISTRAR", "remarks", "Accepted");
+            Map<String, String> request = Map.of("action", "ACCEPT", "actor", "registrar-1", "actorRole", "AA_DO", "remarks", "Accepted");
 
             mockMvc.perform(post("/api/v1/appeals/APL-20260706-ABC123/action")
                             .contentType(MediaType.APPLICATION_JSON)
@@ -505,7 +746,7 @@ class AppealControllerTest {
             result.put("appealNumber", "APL-20260706-ABC123");
             result.put("action", "REJECT");
             result.put("newStatus", "rejected");
-            result.put("assignedRole", "AA_REGISTRAR");
+            result.put("assignedRole", "AA_DO");
             result.put("assignedOfficer", "registrar-1");
             result.put("workflowStage", "REJECTED");
 
@@ -515,7 +756,7 @@ class AppealControllerTest {
             Map<String, String> request = new HashMap<>();
             request.put("action", "REJECT");
             request.put("actor", "registrar-1");
-            request.put("actorRole", "AA_REGISTRAR");
+            request.put("actorRole", "AA_DO");
             request.put("remarks", "Time-barred");
 
             mockMvc.perform(post("/api/v1/appeals/APL-20260706-ABC123/action")
@@ -532,7 +773,7 @@ class AppealControllerTest {
             result.put("appealNumber", "APL-20260706-ABC123");
             result.put("action", "ASSIGN_TO_BENCH");
             result.put("newStatus", "under_review");
-            result.put("assignedRole", "AA_BENCH_OFFICER");
+            result.put("assignedRole", "AA_REVIEWER");
             result.put("assignedOfficer", "bench-officer-1");
             result.put("workflowStage", "ASSIGNED_TO_BENCH");
 
@@ -542,14 +783,14 @@ class AppealControllerTest {
             Map<String, String> request = new HashMap<>();
             request.put("action", "ASSIGN_TO_BENCH");
             request.put("actor", "registrar-1");
-            request.put("actorRole", "AA_REGISTRAR");
+            request.put("actorRole", "AA_DO");
             request.put("remarks", "Assigning to Bench");
 
             mockMvc.perform(post("/api/v1/appeals/APL-20260706-ABC123/action")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.data.assignedRole").value("AA_BENCH_OFFICER"))
+                    .andExpect(jsonPath("$.data.assignedRole").value("AA_REVIEWER"))
                     .andExpect(jsonPath("$.data.workflowStage").value("ASSIGNED_TO_BENCH"));
         }
 
@@ -560,7 +801,7 @@ class AppealControllerTest {
             result.put("appealNumber", "APL-20260706-ABC123");
             result.put("action", "SCHEDULE_HEARING");
             result.put("newStatus", "hearing_scheduled");
-            result.put("assignedRole", "AA_BENCH_OFFICER");
+            result.put("assignedRole", "AA_REVIEWER");
             result.put("assignedOfficer", "bench-officer-1");
             result.put("workflowStage", "HEARING_SCHEDULED");
 
@@ -570,7 +811,7 @@ class AppealControllerTest {
             Map<String, String> request = new HashMap<>();
             request.put("action", "SCHEDULE_HEARING");
             request.put("actor", "bench-officer-1");
-            request.put("actorRole", "AA_BENCH_OFFICER");
+            request.put("actorRole", "AA_REVIEWER");
             request.put("hearingDate", "2026-07-20T10:00:00");
             request.put("hearingVenue", "Conference Room B");
 
@@ -589,7 +830,7 @@ class AppealControllerTest {
             result.put("appealNumber", "APL-20260706-ABC123");
             result.put("action", "FORWARD_TO_AUTHORITY");
             result.put("newStatus", "hearing_scheduled");
-            result.put("assignedRole", "AA_AUTHORITY");
+            result.put("assignedRole", "AA_SECRETARIAT");
             result.put("assignedOfficer", "authority-1");
             result.put("workflowStage", "FORWARDED_TO_AUTHORITY");
 
@@ -597,13 +838,13 @@ class AppealControllerTest {
                     .thenReturn(result);
 
             Map<String, String> request = Map.of("action", "FORWARD_TO_AUTHORITY", "actor", "bench-officer-1",
-                    "actorRole", "AA_BENCH_OFFICER", "remarks", "Forwarding to AA");
+                    "actorRole", "AA_REVIEWER", "remarks", "Forwarding to AA");
 
             mockMvc.perform(post("/api/v1/appeals/APL-20260706-ABC123/action")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.data.assignedRole").value("AA_AUTHORITY"))
+                    .andExpect(jsonPath("$.data.assignedRole").value("AA_SECRETARIAT"))
                     .andExpect(jsonPath("$.data.workflowStage").value("FORWARDED_TO_AUTHORITY"));
         }
 
@@ -614,7 +855,7 @@ class AppealControllerTest {
             result.put("appealNumber", "APL-20260706-ABC123");
             result.put("action", "PASS_ORDER");
             result.put("newStatus", "order_passed");
-            result.put("assignedRole", "AA_AUTHORITY");
+            result.put("assignedRole", "AA_SECRETARIAT");
             result.put("assignedOfficer", "authority-1");
             result.put("workflowStage", "ORDER_PASSED");
 
@@ -624,7 +865,7 @@ class AppealControllerTest {
             Map<String, String> request = new HashMap<>();
             request.put("action", "PASS_ORDER");
             request.put("actor", "authority-1");
-            request.put("actorRole", "AA_AUTHORITY");
+            request.put("actorRole", "AA_SECRETARIAT");
             request.put("orderOutcome", "UPHELD");
             request.put("orderSummary", "Original order upheld");
 
@@ -643,7 +884,7 @@ class AppealControllerTest {
             result.put("appealNumber", "APL-20260706-ABC123");
             result.put("action", "REMAND_TO_OMBUDSMAN");
             result.put("newStatus", "closed");
-            result.put("assignedRole", "AA_AUTHORITY");
+            result.put("assignedRole", "AA_SECRETARIAT");
             result.put("assignedOfficer", "authority-1");
             result.put("workflowStage", "REMANDED");
 
@@ -651,7 +892,7 @@ class AppealControllerTest {
                     .thenReturn(result);
 
             Map<String, String> request = Map.of("action", "REMAND_TO_OMBUDSMAN", "actor", "authority-1",
-                    "actorRole", "AA_AUTHORITY", "remarks", "Remanding for fresh consideration");
+                    "actorRole", "AA_SECRETARIAT", "remarks", "Remanding for fresh consideration");
 
             mockMvc.perform(post("/api/v1/appeals/APL-20260706-ABC123/action")
                             .contentType(MediaType.APPLICATION_JSON)
@@ -668,7 +909,7 @@ class AppealControllerTest {
             result.put("appealNumber", "APL-20260706-ABC123");
             result.put("action", "DISMISS");
             result.put("newStatus", "closed");
-            result.put("assignedRole", "AA_AUTHORITY");
+            result.put("assignedRole", "AA_SECRETARIAT");
             result.put("assignedOfficer", "authority-1");
             result.put("workflowStage", "DISMISSED");
 
@@ -676,7 +917,7 @@ class AppealControllerTest {
                     .thenReturn(result);
 
             Map<String, String> request = Map.of("action", "DISMISS", "actor", "authority-1",
-                    "actorRole", "AA_AUTHORITY", "remarks", "Not maintainable");
+                    "actorRole", "AA_SECRETARIAT", "remarks", "Not maintainable");
 
             mockMvc.perform(post("/api/v1/appeals/APL-20260706-ABC123/action")
                             .contentType(MediaType.APPLICATION_JSON)
@@ -731,6 +972,48 @@ class AppealControllerTest {
                     .andExpect(jsonPath("$.message", containsString("not found")));
         }
 
+        /**
+         * A denial answers 403, not a 200 carrying success=false. The old code could not distinguish
+         * "you may not do this" from "that field was wrong", so the UI showed both as a validation
+         * message and the bypass was invisible in the logs.
+         */
+        @Test
+        @DisplayName("should return 403 when the service denies the action")
+        void shouldReturnForbiddenOnAccessDenied() throws Exception {
+            when(appealWorkflowService.performAction(eq("APL-20260706-ABC123"), eq("PASS_ORDER"), any()))
+                    .thenThrow(new AaAccessDeniedException(
+                            "Action PASS_ORDER is not permitted for role AA_DO"));
+
+            Map<String, String> request = Map.of("action", "PASS_ORDER", "orderOutcome", "UPHELD");
+
+            mockMvc.perform(post("/api/v1/appeals/APL-20260706-ABC123/action")
+                            .header("X-User-Roles", "AA_DO")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.success").value(false))
+                    .andExpect(jsonPath("$.message", containsString("not permitted for role")));
+        }
+
+        @Test
+        @DisplayName("should return 403 when no AA role is present on the request")
+        void shouldReturnForbiddenWhenNoAaRole() throws Exception {
+            when(appealWorkflowService.performAction(eq("APL-20260706-ABC123"), eq("ACCEPT"), any()))
+                    .thenThrow(new AaAccessDeniedException("No AA role present on the request"));
+
+            // The old spoofable payload: a self-declared actorRole in the body must not be honoured.
+            Map<String, String> request = Map.of(
+                    "action", "ACCEPT", "actor", "attacker", "actorRole", "AA_SECRETARIAT");
+
+            mockMvc.perform(post("/api/v1/appeals/APL-20260706-ABC123/action")
+                            .header("X-User-Roles", "AA_DO")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.success").value(false))
+                    .andExpect(jsonPath("$.message", containsString("No AA role")));
+        }
+
         @Test
         @DisplayName("should return error when classificationType change attempted")
         void shouldReturnErrorWhenClassificationTypeChangeAttempted() throws Exception {
@@ -759,30 +1042,55 @@ class AppealControllerTest {
     @DisplayName("GET /api/v1/appeals/{appealNumber}/available-actions")
     class GetAvailableActions {
 
+        /**
+         * userRole is no longer a request param: the reported role comes from the resolver, so the
+         * action set the UI renders cannot disagree with what performAction will allow.
+         */
         @Test
-        @DisplayName("should return available actions for role")
+        @DisplayName("should return available actions for the resolved caller role")
         void shouldReturnAvailableActionsForRole() throws Exception {
-            when(appealWorkflowService.getAvailableActions("APL-20260706-ABC123", "AA_REGISTRAR"))
+            when(aaIdentityResolver.resolveAaRole()).thenReturn("AA_DO");
+            when(appealWorkflowService.getAvailableActions("APL-20260706-ABC123"))
                     .thenReturn(List.of("ACCEPT", "REJECT", "ASSIGN_TO_BENCH", "REQUEST_DOCUMENTS"));
 
             mockMvc.perform(get("/api/v1/appeals/APL-20260706-ABC123/available-actions")
-                            .param("userRole", "AA_REGISTRAR"))
+                            .header("X-User-Roles", "AA_DO"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.success").value(true))
                     .andExpect(jsonPath("$.data.appealNumber").value("APL-20260706-ABC123"))
-                    .andExpect(jsonPath("$.data.userRole").value("AA_REGISTRAR"))
+                    .andExpect(jsonPath("$.data.userRole").value("AA_DO"))
                     .andExpect(jsonPath("$.data.availableActions", hasSize(4)))
                     .andExpect(jsonPath("$.data.availableActions", hasItem("ACCEPT")));
+        }
+
+        /** A client-supplied userRole must not influence the answer any more. */
+        @Test
+        @DisplayName("should ignore a userRole request param and report the resolved role")
+        void shouldIgnoreUserRoleParam() throws Exception {
+            when(aaIdentityResolver.resolveAaRole()).thenReturn("AA_DO");
+            when(appealWorkflowService.getAvailableActions("APL-20260706-ABC123"))
+                    .thenReturn(List.of("ACCEPT", "REJECT", "ASSIGN_TO_BENCH", "REQUEST_DOCUMENTS"));
+
+            mockMvc.perform(get("/api/v1/appeals/APL-20260706-ABC123/available-actions")
+                            .header("X-User-Roles", "AA_DO")
+                            .param("userRole", "AA_SECRETARIAT"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.userRole").value("AA_DO"))
+                    .andExpect(jsonPath("$.data.availableActions", hasItem("ACCEPT")))
+                    .andExpect(jsonPath("$.data.availableActions", not(hasItem("PASS_ORDER"))));
+
+            verify(appealWorkflowService).getAvailableActions("APL-20260706-ABC123");
         }
 
         @Test
         @DisplayName("should return empty list for closed appeal (non-admin)")
         void shouldReturnEmptyForClosedAppeal() throws Exception {
-            when(appealWorkflowService.getAvailableActions("APL-20260706-ABC123", "AA_BENCH_OFFICER"))
+            when(aaIdentityResolver.resolveAaRole()).thenReturn("AA_REVIEWER");
+            when(appealWorkflowService.getAvailableActions("APL-20260706-ABC123"))
                     .thenReturn(Collections.emptyList());
 
             mockMvc.perform(get("/api/v1/appeals/APL-20260706-ABC123/available-actions")
-                            .param("userRole", "AA_BENCH_OFFICER"))
+                            .header("X-User-Roles", "AA_REVIEWER"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data.availableActions", hasSize(0)));
         }
@@ -840,17 +1148,21 @@ class AppealControllerTest {
             fileResult.put("appealNumber", "APL-20260706-ABC123");
             fileResult.put("classificationType", "APPEAL");
             fileResult.put("status", "filed");
-            fileResult.put("assignedRole", "AA_REGISTRAR");
+            fileResult.put("assignedRole", "AA_DO");
             fileResult.put("assignedOfficer", "registrar-1");
             fileResult.put("filedAt", LocalDateTime.now().toString());
-            when(appealWorkflowService.fileAppeal(any())).thenReturn(fileResult);
+            when(appealWorkflowService.fileAppeal(any(), any())).thenReturn(fileResult);
 
-            mockMvc.perform(post("/api/v1/appeals/file")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(Map.of(
-                                    "originalComplaintNumber", "CMP-20260601-100001",
-                                    "classificationType", "APPEAL",
-                                    "appellantName", "Test", "appealGround", "Grounds"))))
+            Map<String, Object> eligibility = new LinkedHashMap<>();
+            eligibility.put("eligible", true);
+            when(appealEligibilityService.checkEligibility(anyString())).thenReturn(eligibility);
+
+            // Multipart form params, not JSON — see the FileAppeal nested class comment.
+            mockMvc.perform(multipart("/api/v1/appeals/file")
+                            .param("complaintNumber", "CMP-20260601-100001")
+                            .param("classification", "APPEAL")
+                            .param("ground", "Grounds")
+                            .param("details", "Details of the grievance."))
                     .andExpect(jsonPath("$.data.status").value("filed"));
 
             // Step 2: Accept
@@ -858,7 +1170,7 @@ class AppealControllerTest {
             acceptResult.put("appealNumber", "APL-20260706-ABC123");
             acceptResult.put("action", "ACCEPT");
             acceptResult.put("newStatus", "under_review");
-            acceptResult.put("assignedRole", "AA_REGISTRAR");
+            acceptResult.put("assignedRole", "AA_DO");
             acceptResult.put("assignedOfficer", "registrar-1");
             acceptResult.put("workflowStage", "UNDER_REVIEW");
             when(appealWorkflowService.performAction(eq("APL-20260706-ABC123"), eq("ACCEPT"), any()))
@@ -875,7 +1187,7 @@ class AppealControllerTest {
             assignResult.put("appealNumber", "APL-20260706-ABC123");
             assignResult.put("action", "ASSIGN_TO_BENCH");
             assignResult.put("newStatus", "under_review");
-            assignResult.put("assignedRole", "AA_BENCH_OFFICER");
+            assignResult.put("assignedRole", "AA_REVIEWER");
             assignResult.put("assignedOfficer", "bench-1");
             assignResult.put("workflowStage", "ASSIGNED_TO_BENCH");
             when(appealWorkflowService.performAction(eq("APL-20260706-ABC123"), eq("ASSIGN_TO_BENCH"), any()))
@@ -885,14 +1197,14 @@ class AppealControllerTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(Map.of(
                                     "action", "ASSIGN_TO_BENCH", "actor", "registrar-1", "remarks", "Assigning"))))
-                    .andExpect(jsonPath("$.data.assignedRole").value("AA_BENCH_OFFICER"));
+                    .andExpect(jsonPath("$.data.assignedRole").value("AA_REVIEWER"));
 
             // Step 4: Schedule hearing
             Map<String, Object> hearingResult = new LinkedHashMap<>();
             hearingResult.put("appealNumber", "APL-20260706-ABC123");
             hearingResult.put("action", "SCHEDULE_HEARING");
             hearingResult.put("newStatus", "hearing_scheduled");
-            hearingResult.put("assignedRole", "AA_BENCH_OFFICER");
+            hearingResult.put("assignedRole", "AA_REVIEWER");
             hearingResult.put("assignedOfficer", "bench-1");
             hearingResult.put("workflowStage", "HEARING_SCHEDULED");
             when(appealWorkflowService.performAction(eq("APL-20260706-ABC123"), eq("SCHEDULE_HEARING"), any()))
@@ -914,7 +1226,7 @@ class AppealControllerTest {
             orderResult.put("appealNumber", "APL-20260706-ABC123");
             orderResult.put("action", "PASS_ORDER");
             orderResult.put("newStatus", "order_passed");
-            orderResult.put("assignedRole", "AA_AUTHORITY");
+            orderResult.put("assignedRole", "AA_SECRETARIAT");
             orderResult.put("assignedOfficer", "authority-1");
             orderResult.put("workflowStage", "ORDER_PASSED");
             when(appealWorkflowService.performAction(eq("APL-20260706-ABC123"), eq("PASS_ORDER"), any()))

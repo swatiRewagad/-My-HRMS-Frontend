@@ -1,0 +1,916 @@
+
+Running 68 tests using 1 worker
+
+[1/68] [chromium] › e2e\aa\backlog-traceable.spec.ts:30:7 › AA-US-001: Search parent & create Appeal/Representation › TC-00101: Happy path — search closed parent, create appeal with pre-populated data
+  1) [chromium] › e2e\aa\backlog-traceable.spec.ts:30:7 › AA-US-001: Search parent & create Appeal/Representation › TC-00101: Happy path — search closed parent, create appeal with pre-populated data 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: locator('text=CMP-20260916-160124').first()
+    Expected: visible
+    Timeout: 10000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" locator('text=CMP-20260916-160124').first() with timeout 10000ms
+      - waiting for locator('text=CMP-20260916-160124').first()
+
+
+      42 |
+      43 |     const parentRow = page.locator(`text=${complaint.complaintNumber}`).first();
+    > 44 |     await expect(parentRow).toBeVisible({ timeout: 10000 });
+         |                             ^
+      45 |     await parentRow.click();
+      46 |
+      47 |     const createBtn = page.locator('button:has-text("Create Appeal"), button:has-text("File Appeal")');
+        at C:\Projects\My-HRMS-Frontend\CMS2.0_Redzone\cms-portal-frontend\e2e\aa\backlog-traceable.spec.ts:44:29
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\aa-backlog-traceable-AA-US-7962a-eal-with-pre-populated-data-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\aa-backlog-traceable-AA-US-7962a-eal-with-pre-populated-data-chromium\error-context.md
+
+
+[2/68] [chromium] › e2e\aa\backlog-traceable.spec.ts:60:7 › AA-US-001: Search parent & create Appeal/Representation › TC-00102: Negative — AA Admin cannot create appeals (no button visible)
+[3/68] [chromium] › e2e\aa\backlog-traceable.spec.ts:70:7 › AA-US-001: Search parent & create Appeal/Representation › TC-00103: Edge — search returns only closed/reopened complaints
+[4/68] [chromium] › e2e\aa\backlog-traceable.spec.ts:101:7 › AA-US-002: Immutable classification (Appeal vs Representation) › TC-00201: Happy path — classification auto-set from closure clause, badge visible
+  2) [chromium] › e2e\aa\backlog-traceable.spec.ts:101:7 › AA-US-002: Immutable classification (Appeal vs Representation) › TC-00201: Happy path — classification auto-set from closure clause, badge visible 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: locator('.classification-badge, .badge-appeal, [class*="classification"]').first()
+    Expected: visible
+    Timeout: 10000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" locator('.classification-badge, .badge-appeal, [class*="classification"]').first() with timeout 10000ms
+      - waiting for locator('.classification-badge, .badge-appeal, [class*="classification"]').first()
+
+
+      114 |
+      115 |     const badge = page.locator('.classification-badge, .badge-appeal, [class*="classification"]');
+    > 116 |     await expect(badge.first()).toBeVisible({ timeout: 10000 });
+          |                                 ^
+      117 |
+      118 |     const badgeText = await badge.first().textContent();
+      119 |     expect(badgeText?.toUpperCase()).toMatch(/APPEAL|REPRESENTATION/);
+        at C:\Projects\My-HRMS-Frontend\CMS2.0_Redzone\cms-portal-frontend\e2e\aa\backlog-traceable.spec.ts:116:33
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\aa-backlog-traceable-AA-US-9a024-losure-clause-badge-visible-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\aa-backlog-traceable-AA-US-9a024-losure-clause-badge-visible-chromium\error-context.md
+
+
+[5/68] [chromium] › e2e\aa\backlog-traceable.spec.ts:122:7 › AA-US-002: Immutable classification (Appeal vs Representation) › TC-00202: Negative — classification field not editable after creation
+  3) [chromium] › e2e\aa\backlog-traceable.spec.ts:122:7 › AA-US-002: Immutable classification (Appeal vs Representation) › TC-00202: Negative — classification field not editable after creation 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: locator('.classification-badge, [class*="immutable"]').first()
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" locator('.classification-badge, [class*="immutable"]').first() with timeout 5000ms
+      - waiting for locator('.classification-badge, [class*="immutable"]').first()
+
+
+      139 |     } else {
+      140 |       const readOnlyBadge = page.locator('.classification-badge, [class*="immutable"]');
+    > 141 |       await expect(readOnlyBadge.first()).toBeVisible();
+          |                                           ^
+      142 |     }
+      143 |   });
+      144 |
+        at C:\Projects\My-HRMS-Frontend\CMS2.0_Redzone\cms-portal-frontend\e2e\aa\backlog-traceable.spec.ts:141:43
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\aa-backlog-traceable-AA-US-e94ee-not-editable-after-creation-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\aa-backlog-traceable-AA-US-e94ee-not-editable-after-creation-chromium\error-context.md
+
+
+[6/68] [chromium] › e2e\aa\backlog-traceable.spec.ts:145:7 › AA-US-002: Immutable classification (Appeal vs Representation) › TC-00203: Edge — API rejects classification change attempt
+  4) [chromium] › e2e\aa\backlog-traceable.spec.ts:145:7 › AA-US-002: Immutable classification (Appeal vs Representation) › TC-00203: Edge — API rejects classification change attempt 
+
+    Error: expect(received).toContain(expected) // indexOf
+
+    Expected value: 500
+    Received array: [400, 403, 404, 405]
+
+      157 |     );
+      158 |
+    > 159 |     expect([400, 403, 404, 405]).toContain(response.status());
+          |                                  ^
+      160 |   });
+      161 | });
+      162 |
+        at C:\Projects\My-HRMS-Frontend\CMS2.0_Redzone\cms-portal-frontend\e2e\aa\backlog-traceable.spec.ts:159:34
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\aa-backlog-traceable-AA-US-bac56-assification-change-attempt-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\aa-backlog-traceable-AA-US-bac56-assification-change-attempt-chromium\error-context.md
+
+
+[7/68] [chromium] › e2e\aa\backlog-traceable.spec.ts:176:7 › AA-US-003: Auto-creation of NO Record › TC-00301: Happy path — NO Record created on appeal registration
+  5) [chromium] › e2e\aa\backlog-traceable.spec.ts:176:7 › AA-US-003: Auto-creation of NO Record › TC-00301: Happy path — NO Record created on appeal registration 
+
+    Error: expect(received).toContain(expected) // indexOf
+
+    Expected value: 500
+    Received array: [200, 201, 404]
+
+      188 |       expect(data).toBeTruthy();
+      189 |     } else {
+    > 190 |       expect([200, 201, 404]).toContain(response.status());
+          |                               ^
+      191 |     }
+      192 |   });
+      193 |
+        at C:\Projects\My-HRMS-Frontend\CMS2.0_Redzone\cms-portal-frontend\e2e\aa\backlog-traceable.spec.ts:190:31
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\aa-backlog-traceable-AA-US-f19a5-ated-on-appeal-registration-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\aa-backlog-traceable-AA-US-f19a5-ated-on-appeal-registration-chromium\error-context.md
+
+
+[8/68] [chromium] › e2e\aa\backlog-traceable.spec.ts:194:7 › AA-US-003: Auto-creation of NO Record › TC-00302: Negative — AA Admin cannot edit NO Record content
+[9/68] [chromium] › e2e\aa\backlog-traceable.spec.ts:230:7 › AA-US-004: Multi-channel registration › TC-00401: Happy path — PNO creates appeal with CMD approval fields
+  6) [chromium] › e2e\aa\backlog-traceable.spec.ts:230:7 › AA-US-004: Multi-channel registration › TC-00401: Happy path — PNO creates appeal with CMD approval fields 
+
+    Error: expect(received).toBeGreaterThan(expected)
+
+    Expected: > 0
+    Received:   0
+
+      247 |     const mandatoryFields = page.locator('[required], .required-field');
+      248 |     const count = await mandatoryFields.count();
+    > 249 |     expect(count).toBeGreaterThan(0);
+          |                   ^
+      250 |   });
+      251 |
+      252 |   test('TC-00402: Negative — account numbers masked in display', async ({ page, request }) => {
+        at C:\Projects\My-HRMS-Frontend\CMS2.0_Redzone\cms-portal-frontend\e2e\aa\backlog-traceable.spec.ts:249:19
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\aa-backlog-traceable-AA-US-ad2cc-al-with-CMD-approval-fields-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\aa-backlog-traceable-AA-US-ad2cc-al-with-CMD-approval-fields-chromium\error-context.md
+
+
+[10/68] [chromium] › e2e\aa\backlog-traceable.spec.ts:252:7 › AA-US-004: Multi-channel registration › TC-00402: Negative — account numbers masked in display
+[11/68] [chromium] › e2e\aa\backlog-traceable.spec.ts:286:7 › AA-US-005: AA DO milestone-based workflow › TC-00501: Happy path — AA DO sees correct status options (Register + Process)
+  7) [chromium] › e2e\aa\backlog-traceable.spec.ts:286:7 › AA-US-005: AA DO milestone-based workflow › TC-00501: Happy path — AA DO sees correct status options (Register + Process) 
+
+    Error: expect(received).toBeGreaterThan(expected)
+
+    Expected: > 0
+    Received:   0
+
+      297 |     const actionDropdown = page.locator('select[name="action"], .action-buttons button, .next-steps button');
+      298 |     const count = await actionDropdown.count();
+    > 299 |     expect(count).toBeGreaterThan(0);
+          |                   ^
+      300 |   });
+      301 |
+      302 |   test('TC-00502: Negative — AA DO cannot access Close milestone', async ({ page, request }) => {
+        at C:\Projects\My-HRMS-Frontend\CMS2.0_Redzone\cms-portal-frontend\e2e\aa\backlog-traceable.spec.ts:299:19
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\aa-backlog-traceable-AA-US-9bfd6-s-options-Register-Process--chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\aa-backlog-traceable-AA-US-9bfd6-s-options-Register-Process--chromium\error-context.md
+
+
+[12/68] [chromium] › e2e\aa\backlog-traceable.spec.ts:302:7 › AA-US-005: AA DO milestone-based workflow › TC-00502: Negative — AA DO cannot access Close milestone
+[13/68] [chromium] › e2e\aa\backlog-traceable.spec.ts:332:7 › AA-US-006: AA Reviewer workflow + bulk close › TC-00601: Happy path — Reviewer sees review options
+[14/68] [chromium] › e2e\aa\backlog-traceable.spec.ts:351:7 › AA-US-006: AA Reviewer workflow + bulk close › TC-00602: Negative — non-Reviewer role cannot bulk close
+[15/68] [chromium] › e2e\aa\backlog-traceable.spec.ts:376:7 › AA-US-008: Appellate Authority final decision › TC-00801: Happy path — AA Authority sees all closure options
+[16/68] [chromium] › e2e\aa\backlog-traceable.spec.ts:399:7 › AA-US-008: Appellate Authority final decision › TC-00802: Negative — AA DO cannot access Close milestone decisions
+[17/68] [chromium] › e2e\aa\backlog-traceable.spec.ts:429:7 › AA-US-009: AA Admin reassign & reopen › TC-00901: Happy path — Admin can reassign and reopen appeals
+[18/68] [chromium] › e2e\aa\backlog-traceable.spec.ts:447:7 › AA-US-009: AA Admin reassign & reopen › TC-00902: Negative — Admin cannot edit complaint content
+[19/68] [chromium] › e2e\aa\backlog-traceable.spec.ts:478:7 › AA-US-011: Advisory mechanism (RBIOS 2026) › TC-01101: Happy path — Issue Advisory action available to AA Authority
+[20/68] [chromium] › e2e\aa\backlog-traceable.spec.ts:495:7 › AA-US-011: Advisory mechanism (RBIOS 2026) › TC-01102: Negative — AA DO cannot issue advisory
+[21/68] [chromium] › e2e\aa\backlog-traceable.spec.ts:511:7 › AA-US-011: Advisory mechanism (RBIOS 2026) › TC-01103: Edge — Advisory via API captures status transitions
+  8) [chromium] › e2e\aa\backlog-traceable.spec.ts:511:7 › AA-US-011: Advisory mechanism (RBIOS 2026) › TC-01103: Edge — Advisory via API captures status transitions 
+
+    Error: expect(received).toBeTruthy()
+
+    Received: undefined
+
+      521 |
+      522 |     if (!('error' in result)) {
+    > 523 |       expect(result.newStatus).toBeTruthy();
+          |                                ^
+      524 |     }
+      525 |   });
+      526 | });
+        at C:\Projects\My-HRMS-Frontend\CMS2.0_Redzone\cms-portal-frontend\e2e\aa\backlog-traceable.spec.ts:523:32
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\aa-backlog-traceable-AA-US-dfdf1-captures-status-transitions-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\aa-backlog-traceable-AA-US-dfdf1-captures-status-transitions-chromium\error-context.md
+
+
+[22/68] [chromium] › e2e\aa\backlog-traceable.spec.ts:541:7 › AA-US-012: Award cap validation › TC-01201: Happy path — Award within cap is accepted
+  9) [chromium] › e2e\aa\backlog-traceable.spec.ts:541:7 › AA-US-012: Award cap validation › TC-01201: Happy path — Award within cap is accepted 
+
+    Error: expect(received).toBeTruthy()
+
+    Received: undefined
+
+      552 |
+      553 |     if (!('error' in result)) {
+    > 554 |       expect(result.newStatus).toBeTruthy();
+          |                                ^
+      555 |     }
+      556 |   });
+      557 |
+        at C:\Projects\My-HRMS-Frontend\CMS2.0_Redzone\cms-portal-frontend\e2e\aa\backlog-traceable.spec.ts:554:32
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\aa-backlog-traceable-AA-US-a3748-ward-within-cap-is-accepted-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\aa-backlog-traceable-AA-US-a3748-ward-within-cap-is-accepted-chromium\error-context.md
+
+
+[23/68] [chromium] › e2e\aa\backlog-traceable.spec.ts:558:7 › AA-US-012: Award cap validation › TC-01203: Edge — Award exceeding 30L consequential cap is blocked
+  10) [chromium] › e2e\aa\backlog-traceable.spec.ts:558:7 › AA-US-012: Award cap validation › TC-01203: Edge — Award exceeding 30L consequential cap is blocked 
+
+    Error: expect(received).toContain(expected) // indexOf
+
+    Expected value: 403
+    Received array: [400, 422]
+
+      576 |     );
+      577 |
+    > 578 |     expect([400, 422]).toContain(response.status());
+          |                        ^
+      579 |     const body = await response.text();
+      580 |     expect(body.toLowerCase()).toMatch(/cap|limit|exceed|maximum/);
+      581 |   });
+        at C:\Projects\My-HRMS-Frontend\CMS2.0_Redzone\cms-portal-frontend\e2e\aa\backlog-traceable.spec.ts:578:24
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\aa-backlog-traceable-AA-US-9becd-onsequential-cap-is-blocked-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\aa-backlog-traceable-AA-US-9becd-onsequential-cap-is-blocked-chromium\error-context.md
+
+
+[24/68] [chromium] › e2e\aa\backlog-traceable.spec.ts:583:7 › AA-US-012: Award cap validation › TC-01204: Edge — Award at exact cap boundary (30L) passes
+  11) [chromium] › e2e\aa\backlog-traceable.spec.ts:583:7 › AA-US-012: Award cap validation › TC-01204: Edge — Award at exact cap boundary (30L) passes 
+
+    Error: expect(received).toBeTruthy()
+
+    Received: undefined
+
+      594 |
+      595 |     if (!('error' in result)) {
+    > 596 |       expect(result.newStatus).toBeTruthy();
+          |                                ^
+      597 |     }
+      598 |   });
+      599 |
+        at C:\Projects\My-HRMS-Frontend\CMS2.0_Redzone\cms-portal-frontend\e2e\aa\backlog-traceable.spec.ts:596:32
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\aa-backlog-traceable-AA-US-696a5-act-cap-boundary-30L-passes-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\aa-backlog-traceable-AA-US-696a5-act-cap-boundary-30L-passes-chromium\error-context.md
+
+
+[25/68] [chromium] › e2e\aa\backlog-traceable.spec.ts:600:7 › AA-US-012: Award cap validation › TC-01205: Edge — Harassment cap breach (>3L) is blocked
+  12) [chromium] › e2e\aa\backlog-traceable.spec.ts:600:7 › AA-US-012: Award cap validation › TC-01205: Edge — Harassment cap breach (>3L) is blocked 
+
+    Error: expect(received).toContain(expected) // indexOf
+
+    Expected value: 403
+    Received array: [400, 422]
+
+      618 |     );
+      619 |
+    > 620 |     expect([400, 422]).toContain(response.status());
+          |                        ^
+      621 |   });
+      622 | });
+      623 |
+        at C:\Projects\My-HRMS-Frontend\CMS2.0_Redzone\cms-portal-frontend\e2e\aa\backlog-traceable.spec.ts:620:24
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\aa-backlog-traceable-AA-US-604a7-nt-cap-breach-3L-is-blocked-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\aa-backlog-traceable-AA-US-604a7-nt-cap-breach-3L-is-blocked-chromium\error-context.md
+
+
+[26/68] [chromium] › e2e\aa\backlog-traceable.spec.ts:637:7 › AA-US-013: Hearing management + adjournment history › TC-01301: Happy path — schedule hearing with date and venue
+[27/68] [chromium] › e2e\aa\backlog-traceable.spec.ts:667:7 › AA-US-013: Hearing management + adjournment history › TC-01303: Edge — hearing date change creates adjournment entry
+  13) [chromium] › e2e\aa\backlog-traceable.spec.ts:667:7 › AA-US-013: Hearing management + adjournment history › TC-01303: Edge — hearing date change creates adjournment entry 
+
+    Error: expect(received).toBeTruthy()
+
+    Received: undefined
+
+      685 |
+      686 |     if (!('error' in result)) {
+    > 687 |       expect(result.newStatus).toBeTruthy();
+          |                                ^
+      688 |     }
+      689 |   });
+      690 | });
+        at C:\Projects\My-HRMS-Frontend\CMS2.0_Redzone\cms-portal-frontend\e2e\aa\backlog-traceable.spec.ts:687:32
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\aa-backlog-traceable-AA-US-5369b-e-creates-adjournment-entry-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\aa-backlog-traceable-AA-US-5369b-e-creates-adjournment-entry-chromium\error-context.md
+
+
+[28/68] [chromium] › e2e\aa\backlog-traceable.spec.ts:705:7 › AA-US-014: Legal cases / sub-judice › TC-01401: Happy path — Legal Cases tab visible to operational roles
+[29/68] [chromium] › e2e\aa\backlog-traceable.spec.ts:721:7 › AA-US-014: Legal cases / sub-judice › TC-01403: Edge — sub-judice blocks final Award without override
+[30/68] [chromium] › e2e\aa\backlog-traceable.spec.ts:770:7 › AA-US-016: Bulk close Representations › TC-01601: Happy path — Bulk close via API succeeds for Representations
+  14) [chromium] › e2e\aa\backlog-traceable.spec.ts:770:7 › AA-US-016: Bulk close Representations › TC-01601: Happy path — Bulk close via API succeeds for Representations 
+
+    Error: expect(received).toContain(expected) // indexOf
+
+    Expected value: 500
+    Received array: [200, 207, 404]
+
+      786 |     });
+      787 |
+    > 788 |     expect([200, 207, 404]).toContain(response.status());
+          |                             ^
+      789 |   });
+      790 |
+      791 |   test('TC-01602: Negative — cannot bulk close Appeals (only Representations)', async ({ request }) => {
+        at C:\Projects\My-HRMS-Frontend\CMS2.0_Redzone\cms-portal-frontend\e2e\aa\backlog-traceable.spec.ts:788:29
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\aa-backlog-traceable-AA-US-a6714-ucceeds-for-Representations-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\aa-backlog-traceable-AA-US-a6714-ucceeds-for-Representations-chromium\error-context.md
+
+
+[31/68] [chromium] › e2e\aa\backlog-traceable.spec.ts:791:7 › AA-US-016: Bulk close Representations › TC-01602: Negative — cannot bulk close Appeals (only Representations)
+  15) [chromium] › e2e\aa\backlog-traceable.spec.ts:791:7 › AA-US-016: Bulk close Representations › TC-01602: Negative — cannot bulk close Appeals (only Representations) 
+
+    Error: expect(received).toContain(expected) // indexOf
+
+    Expected value: 500
+    Received array: [400, 403, 422]
+
+      803 |     });
+      804 |
+    > 805 |     expect([400, 403, 422]).toContain(response.status());
+          |                             ^
+      806 |   });
+      807 | });
+      808 |
+        at C:\Projects\My-HRMS-Frontend\CMS2.0_Redzone\cms-portal-frontend\e2e\aa\backlog-traceable.spec.ts:805:29
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\aa-backlog-traceable-AA-US-5b6a3-peals-only-Representations--chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\aa-backlog-traceable-AA-US-5b6a3-peals-only-Representations--chromium\error-context.md
+
+
+[32/68] [chromium] › e2e\aa\backlog-traceable.spec.ts:822:7 › AA-US-017: Reports › TC-01701: Happy path — Reports page loads with filters
+[33/68] [chromium] › e2e\aa\backlog-traceable.spec.ts:835:7 › AA-US-017: Reports › TC-01702: Negative — role-based data visibility in reports
+[34/68] [chromium] › e2e\aa\backlog-traceable.spec.ts:861:7 › AA-US-018: RBAC + milestone security › TC-01801: Happy path — milestone edit enforced per role
+[35/68] [chromium] › e2e\aa\backlog-traceable.spec.ts:871:7 › AA-US-018: RBAC + milestone security › TC-01802: Negative — API rejects unauthorized milestone access
+[36/68] [chromium] › e2e\aa\backlog-traceable.spec.ts:893:7 › AA-US-018: RBAC + milestone security › TC-01803: Edge — session timeout after 15 min inactivity
+[37/68] [chromium] › e2e\aa\backlog-traceable.spec.ts:912:7 › AA-US-019: Performance › TC-01901: Page load under 3 seconds at 95th percentile
+[38/68] [chromium] › e2e\aa\backlog-traceable.spec.ts:946:7 › AA-US-042: Email communication templates › TC-04201: Happy path — communication tab shows template selection
+[39/68] [chromium] › e2e\aa\backlog-traceable.spec.ts:968:7 › AA-US-042: Email communication templates › TC-04202: Negative — AA Admin and PNO cannot access email communication
+[40/68] [chromium] › e2e\aa\dashboard.spec.ts:20:7 › AA Dashboard › AA dashboard loads with stats
+[41/68] [chromium] › e2e\aa\dashboard.spec.ts:37:7 › AA Dashboard › Appeals table shows filed appeals
+[42/68] [chromium] › e2e\aa\dashboard.spec.ts:57:7 › AA Dashboard › Classification badge (APPEAL/REPRESENTATION) displays correctly
+[43/68] [chromium] › e2e\aa\dashboard.spec.ts:81:7 › AA Dashboard › Status filter works
+[44/68] [chromium] › e2e\aa\dashboard.spec.ts:100:7 › AA Dashboard › Search by appeal number works
+[45/68] [chromium] › e2e\aa\dashboard.spec.ts:120:7 › AA Dashboard › Role-based view: Registrar sees unassigned, Authority sees forwarded
+  16) [chromium] › e2e\aa\dashboard.spec.ts:120:7 › AA Dashboard › Role-based view: Registrar sees unassigned, Authority sees forwarded 
+
+    Error: expect(received).toMatch(expected)
+
+    Expected pattern: /authority/
+    Received string:  "registrar"
+
+      137 |     await expect(authorityBadge).toBeVisible();
+      138 |     const authorityRole = await authorityBadge.textContent();
+    > 139 |     expect(authorityRole?.toLowerCase()).toMatch(/authority/);
+          |                                          ^
+      140 |   });
+      141 | });
+      142 |
+        at C:\Projects\My-HRMS-Frontend\CMS2.0_Redzone\cms-portal-frontend\e2e\aa\dashboard.spec.ts:139:42
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\aa-dashboard-AA-Dashboard--65a9d-ed-Authority-sees-forwarded-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\aa-dashboard-AA-Dashboard--65a9d-ed-Authority-sees-forwarded-chromium\error-context.md
+
+
+[46/68] [chromium] › e2e\aa\file-appeal.spec.ts:17:7 › AA - File Appeal › Eligibility check for complaint <30 days shows eligible
+  17) [chromium] › e2e\aa\file-appeal.spec.ts:17:7 › AA - File Appeal › Eligibility check for complaint <30 days shows eligible 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: locator('.form-input')
+    Expected: visible
+    Timeout: 10000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" locator('.form-input') with timeout 10000ms
+      - waiting for locator('.form-input')
+
+
+      27 |
+      28 |     const searchInput = page.locator('.form-input');
+    > 29 |     await expect(searchInput).toBeVisible({ timeout: 10000 });
+         |                               ^
+      30 |     await searchInput.fill(complaint.complaintNumber);
+      31 |
+      32 |     const searchBtn = page.locator('.btn-primary:has-text("Check Eligibility")');
+        at C:\Projects\My-HRMS-Frontend\CMS2.0_Redzone\cms-portal-frontend\e2e\aa\file-appeal.spec.ts:29:31
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\aa-file-appeal-AA---File-A-f292f-aint-30-days-shows-eligible-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\aa-file-appeal-AA---File-A-f292f-aint-30-days-shows-eligible-chromium\error-context.md
+
+
+[47/68] [chromium] › e2e\aa\file-appeal.spec.ts:45:7 › AA - File Appeal › Eligibility check for complaint 31-60 days shows delayed eligible with reason required
+  18) [chromium] › e2e\aa\file-appeal.spec.ts:45:7 › AA - File Appeal › Eligibility check for complaint 31-60 days shows delayed eligible with reason required 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: locator('.form-input')
+    Expected: visible
+    Timeout: 10000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" locator('.form-input') with timeout 10000ms
+      - waiting for locator('.form-input')
+
+
+      56 |
+      57 |     const searchInput = page.locator('.form-input');
+    > 58 |     await expect(searchInput).toBeVisible({ timeout: 10000 });
+         |                               ^
+      59 |     await searchInput.fill(complaint.complaintNumber);
+      60 |
+      61 |     const searchBtn = page.locator('.btn-primary:has-text("Check Eligibility")');
+        at C:\Projects\My-HRMS-Frontend\CMS2.0_Redzone\cms-portal-frontend\e2e\aa\file-appeal.spec.ts:58:31
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\aa-file-appeal-AA---File-A-34e8f-igible-with-reason-required-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\aa-file-appeal-AA---File-A-34e8f-igible-with-reason-required-chromium\error-context.md
+
+
+[48/68] [chromium] › e2e\aa\file-appeal.spec.ts:85:7 › AA - File Appeal › Eligibility check for complaint >60 days shows not eligible
+  19) [chromium] › e2e\aa\file-appeal.spec.ts:85:7 › AA - File Appeal › Eligibility check for complaint >60 days shows not eligible 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: locator('.form-input')
+    Expected: visible
+    Timeout: 10000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" locator('.form-input') with timeout 10000ms
+      - waiting for locator('.form-input')
+
+
+       96 |
+       97 |     const searchInput = page.locator('.form-input');
+    >  98 |     await expect(searchInput).toBeVisible({ timeout: 10000 });
+          |                               ^
+       99 |     await searchInput.fill(complaint.complaintNumber);
+      100 |
+      101 |     const searchBtn = page.locator('.btn-primary:has-text("Check Eligibility")');
+        at C:\Projects\My-HRMS-Frontend\CMS2.0_Redzone\cms-portal-frontend\e2e\aa\file-appeal.spec.ts:98:31
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\aa-file-appeal-AA---File-A-e54ed--60-days-shows-not-eligible-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\aa-file-appeal-AA---File-A-e54ed--60-days-shows-not-eligible-chromium\error-context.md
+
+
+[49/68] [chromium] › e2e\aa\file-appeal.spec.ts:114:7 › AA - File Appeal › Submit appeal without required fields shows validation errors
+  20) [chromium] › e2e\aa\file-appeal.spec.ts:114:7 › AA - File Appeal › Submit appeal without required fields shows validation errors 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: locator('.form-input')
+    Expected: visible
+    Timeout: 10000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" locator('.form-input') with timeout 10000ms
+      - waiting for locator('.form-input')
+
+
+      125 |     // Search phase
+      126 |     const searchInput = page.locator('.form-input');
+    > 127 |     await expect(searchInput).toBeVisible({ timeout: 10000 });
+          |                               ^
+      128 |     await searchInput.fill(complaint.complaintNumber);
+      129 |
+      130 |     const searchBtn = page.locator('.btn-primary:has-text("Check Eligibility")');
+        at C:\Projects\My-HRMS-Frontend\CMS2.0_Redzone\cms-portal-frontend\e2e\aa\file-appeal.spec.ts:127:31
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\aa-file-appeal-AA---File-A-42e11-lds-shows-validation-errors-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\aa-file-appeal-AA---File-A-42e11-lds-shows-validation-errors-chromium\error-context.md
+
+
+[50/68] [chromium] › e2e\aa\file-appeal.spec.ts:156:7 › AA - File Appeal › File >2MB shows error message instead of being silently dropped
+  21) [chromium] › e2e\aa\file-appeal.spec.ts:156:7 › AA - File Appeal › File >2MB shows error message instead of being silently dropped 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: locator('.form-input')
+    Expected: visible
+    Timeout: 10000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" locator('.form-input') with timeout 10000ms
+      - waiting for locator('.form-input')
+
+
+      167 |     // Navigate to form phase
+      168 |     const searchInput = page.locator('.form-input');
+    > 169 |     await expect(searchInput).toBeVisible({ timeout: 10000 });
+          |                               ^
+      170 |     await searchInput.fill(complaint.complaintNumber);
+      171 |
+      172 |     const searchBtn = page.locator('.btn-primary:has-text("Check Eligibility")');
+        at C:\Projects\My-HRMS-Frontend\CMS2.0_Redzone\cms-portal-frontend\e2e\aa\file-appeal.spec.ts:169:31
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\aa-file-appeal-AA---File-A-bcb86-d-of-being-silently-dropped-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\aa-file-appeal-AA---File-A-bcb86-d-of-being-silently-dropped-chromium\error-context.md
+
+
+[51/68] [chromium] › e2e\aa\file-appeal.spec.ts:204:7 › AA - File Appeal › Successful submission displays appeal number
+  22) [chromium] › e2e\aa\file-appeal.spec.ts:204:7 › AA - File Appeal › Successful submission displays appeal number 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: locator('.form-input')
+    Expected: visible
+    Timeout: 10000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" locator('.form-input') with timeout 10000ms
+      - waiting for locator('.form-input')
+
+
+      215 |     // Search
+      216 |     const searchInput = page.locator('.form-input');
+    > 217 |     await expect(searchInput).toBeVisible({ timeout: 10000 });
+          |                               ^
+      218 |     await searchInput.fill(complaint.complaintNumber);
+      219 |
+      220 |     const searchBtn = page.locator('.btn-primary:has-text("Check Eligibility")');
+        at C:\Projects\My-HRMS-Frontend\CMS2.0_Redzone\cms-portal-frontend\e2e\aa\file-appeal.spec.ts:217:31
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\aa-file-appeal-AA---File-A-254a4-sion-displays-appeal-number-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\aa-file-appeal-AA---File-A-254a4-sion-displays-appeal-number-chromium\error-context.md
+
+
+[52/68] [chromium] › e2e\aa\file-appeal.spec.ts:269:7 › AA - File Appeal › Citizen can search for closed complaint
+  23) [chromium] › e2e\aa\file-appeal.spec.ts:269:7 › AA - File Appeal › Citizen can search for closed complaint 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: locator('.form-input')
+    Expected: visible
+    Timeout: 10000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" locator('.form-input') with timeout 10000ms
+      - waiting for locator('.form-input')
+
+
+      279 |
+      280 |     const searchInput = page.locator('.form-input');
+    > 281 |     await expect(searchInput).toBeVisible({ timeout: 10000 });
+          |                               ^
+      282 |     await searchInput.fill(complaint.complaintNumber);
+      283 |
+      284 |     const searchBtn = page.locator('.btn-primary:has-text("Check Eligibility")');
+        at C:\Projects\My-HRMS-Frontend\CMS2.0_Redzone\cms-portal-frontend\e2e\aa\file-appeal.spec.ts:281:31
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\aa-file-appeal-AA---File-A-f9ef0-search-for-closed-complaint-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\aa-file-appeal-AA---File-A-f9ef0-search-for-closed-complaint-chromium\error-context.md
+
+
+[53/68] [chromium] › e2e\aa\file-appeal.spec.ts:291:7 › AA - File Appeal › Filing when ineligible (active complaint) shows error message
+  24) [chromium] › e2e\aa\file-appeal.spec.ts:291:7 › AA - File Appeal › Filing when ineligible (active complaint) shows error message 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: locator('.form-input')
+    Expected: visible
+    Timeout: 10000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" locator('.form-input') with timeout 10000ms
+      - waiting for locator('.form-input')
+
+
+      301 |
+      302 |     const searchInput = page.locator('.form-input');
+    > 303 |     await expect(searchInput).toBeVisible({ timeout: 10000 });
+          |                               ^
+      304 |     await searchInput.fill(complaint.complaintNumber);
+      305 |
+      306 |     const searchBtn = page.locator('.btn-primary:has-text("Check Eligibility")');
+        at C:\Projects\My-HRMS-Frontend\CMS2.0_Redzone\cms-portal-frontend\e2e\aa\file-appeal.spec.ts:303:31
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\aa-file-appeal-AA---File-A-7115d-mplaint-shows-error-message-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\aa-file-appeal-AA---File-A-7115d-mplaint-shows-error-message-chromium\error-context.md
+
+
+[54/68] [chromium] › e2e\aa\hearing.spec.ts:25:7 › AA - Hearing Management › Schedule hearing form works (date + venue)
+  25) [chromium] › e2e\aa\hearing.spec.ts:25:7 › AA - Hearing Management › Schedule hearing form works (date + venue) 
+
+    TimeoutError: page.waitForSelector: Timeout 15000ms exceeded.
+    Call log:
+      - waiting for locator('.aa-detail .detail-layout') to be visible
+
+
+      35 |
+      36 |     await loginAsAaRole(page, 'AA_BENCH_OFFICER', `/aa/appeal/${appeal.appealNumber}`);
+    > 37 |     await page.waitForSelector('.aa-detail .detail-layout', { timeout: 15000 });
+         |                ^
+      38 |
+      39 |     const scheduleBtn = page.locator('.action-card:has-text("Schedule Hearing")');
+      40 |     await expect(scheduleBtn).toBeVisible({ timeout: 5000 });
+        at C:\Projects\My-HRMS-Frontend\CMS2.0_Redzone\cms-portal-frontend\e2e\aa\hearing.spec.ts:37:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\aa-hearing-AA---Hearing-Ma-c5feb-ring-form-works-date-venue--chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\aa-hearing-AA---Hearing-Ma-c5feb-ring-form-works-date-venue--chromium\error-context.md
+
+
+[55/68] [chromium] › e2e\aa\hearing.spec.ts:85:7 › AA - Hearing Management › Hearing appears in hearing history
+  26) [chromium] › e2e\aa\hearing.spec.ts:85:7 › AA - Hearing Management › Hearing appears in hearing history 
+
+    Error: AA Action SCHEDULE_HEARING failed: 400 - {"timestamp":"2026-09-16T12:51:42.045969900","status":400,"error":"Bad Request","message":"Text '2026-09-30' could not be parsed at index 10"}
+
+       at utils\test-data.ts:637
+
+      635 |   if (!response.ok()) {
+      636 |     const text = await response.text();
+    > 637 |     throw new Error(`AA Action ${action} failed: ${response.status()} - ${text}`);
+          |           ^
+      638 |   }
+      639 |
+      640 |   const json = await response.json();
+        at performAppealAction (C:\Projects\My-HRMS-Frontend\CMS2.0_Redzone\cms-portal-frontend\e2e\utils\test-data.ts:637:11)
+        at C:\Projects\My-HRMS-Frontend\CMS2.0_Redzone\cms-portal-frontend\e2e\aa\hearing.spec.ts:99:5
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\aa-hearing-AA---Hearing-Ma-860bd--appears-in-hearing-history-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\aa-hearing-AA---Hearing-Ma-860bd--appears-in-hearing-history-chromium\error-context.md
+
+
+[56/68] [chromium] › e2e\aa\hearing.spec.ts:118:7 › AA - Hearing Management › Multiple hearings can be scheduled
+  27) [chromium] › e2e\aa\hearing.spec.ts:118:7 › AA - Hearing Management › Multiple hearings can be scheduled 
+
+    Error: AA Action SCHEDULE_HEARING failed: 400 - {"timestamp":"2026-09-16T12:51:46.146165800","status":400,"error":"Bad Request","message":"Text '2026-09-23' could not be parsed at index 10"}
+
+       at utils\test-data.ts:637
+
+      635 |   if (!response.ok()) {
+      636 |     const text = await response.text();
+    > 637 |     throw new Error(`AA Action ${action} failed: ${response.status()} - ${text}`);
+          |           ^
+      638 |   }
+      639 |
+      640 |   const json = await response.json();
+        at performAppealAction (C:\Projects\My-HRMS-Frontend\CMS2.0_Redzone\cms-portal-frontend\e2e\utils\test-data.ts:637:11)
+        at C:\Projects\My-HRMS-Frontend\CMS2.0_Redzone\cms-portal-frontend\e2e\aa\hearing.spec.ts:132:5
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\aa-hearing-AA---Hearing-Ma-71a74-e-hearings-can-be-scheduled-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\aa-hearing-AA---Hearing-Ma-71a74-e-hearings-can-be-scheduled-chromium\error-context.md
+
+
+[57/68] [chromium] › e2e\aa\order.spec.ts:37:7 › AA - Order Management › Order form shows outcome options
+  28) [chromium] › e2e\aa\order.spec.ts:37:7 › AA - Order Management › Order form shows outcome options 
+
+    TimeoutError: page.waitForSelector: Timeout 15000ms exceeded.
+    Call log:
+      - waiting for locator('.aa-detail .detail-layout') to be visible
+
+
+      41 |
+      42 |     await loginAsAaRole(page, 'AA_AUTHORITY', `/aa/appeal/${appealNumber}`);
+    > 43 |     await page.waitForSelector('.aa-detail .detail-layout', { timeout: 15000 });
+         |                ^
+      44 |
+      45 |     const orderBtn = page.locator('.action-card:has-text("Pass Order")');
+      46 |     await expect(orderBtn).toBeVisible({ timeout: 5000 });
+        at C:\Projects\My-HRMS-Frontend\CMS2.0_Redzone\cms-portal-frontend\e2e\aa\order.spec.ts:43:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\aa-order-AA---Order-Manage-92929--form-shows-outcome-options-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\aa-order-AA---Order-Manage-92929--form-shows-outcome-options-chromium\error-context.md
+
+
+[58/68] [chromium] › e2e\aa\order.spec.ts:65:7 › AA - Order Management › MODIFIED outcome requires amount input
+  29) [chromium] › e2e\aa\order.spec.ts:65:7 › AA - Order Management › MODIFIED outcome requires amount input 
+
+    TimeoutError: page.waitForSelector: Timeout 15000ms exceeded.
+    Call log:
+      - waiting for locator('.aa-detail .detail-layout') to be visible
+
+
+      69 |
+      70 |     await loginAsAaRole(page, 'AA_AUTHORITY', `/aa/appeal/${appealNumber}`);
+    > 71 |     await page.waitForSelector('.aa-detail .detail-layout', { timeout: 15000 });
+         |                ^
+      72 |
+      73 |     const orderBtn = page.locator('.action-card:has-text("Pass Order")');
+      74 |     await expect(orderBtn).toBeVisible({ timeout: 5000 });
+        at C:\Projects\My-HRMS-Frontend\CMS2.0_Redzone\cms-portal-frontend\e2e\aa\order.spec.ts:71:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\aa-order-AA---Order-Manage-64f0b-tcome-requires-amount-input-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\aa-order-AA---Order-Manage-64f0b-tcome-requires-amount-input-chromium\error-context.md
+
+
+[59/68] [chromium] › e2e\aa\order.spec.ts:90:7 › AA - Order Management › Order submission succeeds
+  30) [chromium] › e2e\aa\order.spec.ts:90:7 › AA - Order Management › Order submission succeeds ───
+
+    TimeoutError: page.waitForSelector: Timeout 15000ms exceeded.
+    Call log:
+      - waiting for locator('.aa-detail .detail-layout') to be visible
+
+
+      94 |
+      95 |     await loginAsAaRole(page, 'AA_AUTHORITY', `/aa/appeal/${appealNumber}`);
+    > 96 |     await page.waitForSelector('.aa-detail .detail-layout', { timeout: 15000 });
+         |                ^
+      97 |
+      98 |     const orderBtn = page.locator('.action-card:has-text("Pass Order")');
+      99 |     await expect(orderBtn).toBeVisible({ timeout: 5000 });
+        at C:\Projects\My-HRMS-Frontend\CMS2.0_Redzone\cms-portal-frontend\e2e\aa\order.spec.ts:96:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\aa-order-AA---Order-Management-Order-submission-succeeds-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\aa-order-AA---Order-Management-Order-submission-succeeds-chromium\error-context.md
+
+
+[60/68] [chromium] › e2e\aa\order.spec.ts:126:7 › AA - Order Management › Order details display after submission
+  31) [chromium] › e2e\aa\order.spec.ts:126:7 › AA - Order Management › Order details display after submission 
+
+    TimeoutError: page.waitForSelector: Timeout 15000ms exceeded.
+    Call log:
+      - waiting for locator('.aa-detail .detail-layout') to be visible
+
+
+      137 |
+      138 |     await loginAsAaRole(page, 'AA_AUTHORITY', `/aa/appeal/${appealNumber}`);
+    > 139 |     await page.waitForSelector('.aa-detail .detail-layout', { timeout: 15000 });
+          |                ^
+      140 |
+      141 |     // Order section should be visible (rendered when appeal().order exists)
+      142 |     const orderSection = page.locator('.order-section');
+        at C:\Projects\My-HRMS-Frontend\CMS2.0_Redzone\cms-portal-frontend\e2e\aa\order.spec.ts:139:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\aa-order-AA---Order-Manage-b5e35-ls-display-after-submission-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\aa-order-AA---Order-Manage-b5e35-ls-display-after-submission-chromium\error-context.md
+
+
+[61/68] [chromium] › e2e\aa\workflow.spec.ts:32:7 › AA Workflow › Registrar accepts appeal (status -> under_review)
+  32) [chromium] › e2e\aa\workflow.spec.ts:32:7 › AA Workflow › Registrar accepts appeal (status -> under_review) 
+
+    TimeoutError: page.waitForSelector: Timeout 15000ms exceeded.
+    Call log:
+      - waiting for locator('.aa-detail .detail-layout') to be visible
+
+
+      34 |
+      35 |     await loginAsAaRole(page, 'AA_REGISTRAR', `/aa/appeal/${appealNumber}`);
+    > 36 |     await page.waitForSelector('.aa-detail .detail-layout', { timeout: 15000 });
+         |                ^
+      37 |
+      38 |     const acceptBtn = page.locator('.action-card:has-text("Accept Appeal")');
+      39 |     await expect(acceptBtn).toBeVisible({ timeout: 5000 });
+        at C:\Projects\My-HRMS-Frontend\CMS2.0_Redzone\cms-portal-frontend\e2e\aa\workflow.spec.ts:36:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\aa-workflow-AA-Workflow-Re-4362a-peal-status---under-review--chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\aa-workflow-AA-Workflow-Re-4362a-peal-status---under-review--chromium\error-context.md
+
+
+[62/68] [chromium] › e2e\aa\workflow.spec.ts:57:7 › AA Workflow › Registrar rejects appeal (status -> rejected)
+[63/68] [chromium] › e2e\aa\workflow.spec.ts:90:7 › AA Workflow › Registrar assigns to bench (role change)
+[64/68] [chromium] › e2e\aa\workflow.spec.ts:126:7 › AA Workflow › Bench officer schedules hearing (date set)
+[65/68] [chromium] › e2e\aa\workflow.spec.ts:181:7 › AA Workflow › Bench forwards to authority
+[66/68] [chromium] › e2e\aa\workflow.spec.ts:204:7 › AA Workflow › Authority passes order with UPHELD outcome
+[67/68] [chromium] › e2e\aa\workflow.spec.ts:252:7 › AA Workflow › Authority passes order with MODIFIED amount
+[68/68] [chromium] › e2e\aa\workflow.spec.ts:305:7 › AA Workflow › Authority dismisses appeal
+  32 failed
+    [chromium] › e2e\aa\backlog-traceable.spec.ts:30:7 › AA-US-001: Search parent & create Appeal/Representation › TC-00101: Happy path — search closed parent, create appeal with pre-populated data 
+    [chromium] › e2e\aa\backlog-traceable.spec.ts:101:7 › AA-US-002: Immutable classification (Appeal vs Representation) › TC-00201: Happy path — classification auto-set from closure clause, badge visible 
+    [chromium] › e2e\aa\backlog-traceable.spec.ts:122:7 › AA-US-002: Immutable classification (Appeal vs Representation) › TC-00202: Negative — classification field not editable after creation 
+    [chromium] › e2e\aa\backlog-traceable.spec.ts:145:7 › AA-US-002: Immutable classification (Appeal vs Representation) › TC-00203: Edge — API rejects classification change attempt 
+    [chromium] › e2e\aa\backlog-traceable.spec.ts:176:7 › AA-US-003: Auto-creation of NO Record › TC-00301: Happy path — NO Record created on appeal registration 
+    [chromium] › e2e\aa\backlog-traceable.spec.ts:230:7 › AA-US-004: Multi-channel registration › TC-00401: Happy path — PNO creates appeal with CMD approval fields 
+    [chromium] › e2e\aa\backlog-traceable.spec.ts:286:7 › AA-US-005: AA DO milestone-based workflow › TC-00501: Happy path — AA DO sees correct status options (Register + Process) 
+    [chromium] › e2e\aa\backlog-traceable.spec.ts:511:7 › AA-US-011: Advisory mechanism (RBIOS 2026) › TC-01103: Edge — Advisory via API captures status transitions 
+    [chromium] › e2e\aa\backlog-traceable.spec.ts:541:7 › AA-US-012: Award cap validation › TC-01201: Happy path — Award within cap is accepted 
+    [chromium] › e2e\aa\backlog-traceable.spec.ts:558:7 › AA-US-012: Award cap validation › TC-01203: Edge — Award exceeding 30L consequential cap is blocked 
+    [chromium] › e2e\aa\backlog-traceable.spec.ts:583:7 › AA-US-012: Award cap validation › TC-01204: Edge — Award at exact cap boundary (30L) passes 
+    [chromium] › e2e\aa\backlog-traceable.spec.ts:600:7 › AA-US-012: Award cap validation › TC-01205: Edge — Harassment cap breach (>3L) is blocked 
+    [chromium] › e2e\aa\backlog-traceable.spec.ts:667:7 › AA-US-013: Hearing management + adjournment history › TC-01303: Edge — hearing date change creates adjournment entry 
+    [chromium] › e2e\aa\backlog-traceable.spec.ts:770:7 › AA-US-016: Bulk close Representations › TC-01601: Happy path — Bulk close via API succeeds for Representations 
+    [chromium] › e2e\aa\backlog-traceable.spec.ts:791:7 › AA-US-016: Bulk close Representations › TC-01602: Negative — cannot bulk close Appeals (only Representations) 
+    [chromium] › e2e\aa\dashboard.spec.ts:120:7 › AA Dashboard › Role-based view: Registrar sees unassigned, Authority sees forwarded 
+    [chromium] › e2e\aa\file-appeal.spec.ts:17:7 › AA - File Appeal › Eligibility check for complaint <30 days shows eligible 
+    [chromium] › e2e\aa\file-appeal.spec.ts:45:7 › AA - File Appeal › Eligibility check for complaint 31-60 days shows delayed eligible with reason required 
+    [chromium] › e2e\aa\file-appeal.spec.ts:85:7 › AA - File Appeal › Eligibility check for complaint >60 days shows not eligible 
+    [chromium] › e2e\aa\file-appeal.spec.ts:114:7 › AA - File Appeal › Submit appeal without required fields shows validation errors 
+    [chromium] › e2e\aa\file-appeal.spec.ts:156:7 › AA - File Appeal › File >2MB shows error message instead of being silently dropped 
+    [chromium] › e2e\aa\file-appeal.spec.ts:204:7 › AA - File Appeal › Successful submission displays appeal number 
+    [chromium] › e2e\aa\file-appeal.spec.ts:269:7 › AA - File Appeal › Citizen can search for closed complaint 
+    [chromium] › e2e\aa\file-appeal.spec.ts:291:7 › AA - File Appeal › Filing when ineligible (active complaint) shows error message 
+    [chromium] › e2e\aa\hearing.spec.ts:25:7 › AA - Hearing Management › Schedule hearing form works (date + venue) 
+    [chromium] › e2e\aa\hearing.spec.ts:85:7 › AA - Hearing Management › Hearing appears in hearing history 
+    [chromium] › e2e\aa\hearing.spec.ts:118:7 › AA - Hearing Management › Multiple hearings can be scheduled 
+    [chromium] › e2e\aa\order.spec.ts:37:7 › AA - Order Management › Order form shows outcome options 
+    [chromium] › e2e\aa\order.spec.ts:65:7 › AA - Order Management › MODIFIED outcome requires amount input 
+    [chromium] › e2e\aa\order.spec.ts:90:7 › AA - Order Management › Order submission succeeds ─────
+    [chromium] › e2e\aa\order.spec.ts:126:7 › AA - Order Management › Order details display after submission 
+    [chromium] › e2e\aa\workflow.spec.ts:32:7 › AA Workflow › Registrar accepts appeal (status -> under_review) 
+  1 skipped
+  7 did not run
+  28 passed (14.1m)

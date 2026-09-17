@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { map } from 'rxjs/operators';
+import { map, tap } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
 import { ApiResponse } from '../models/api-response.model';
 import {
@@ -10,9 +10,17 @@ import {
   EmailDraftUpdateRequest,
   IgnoreListEntry,
   IgnoreListRequest,
+  IgnoredEmailReport,
   DeoUser,
   EmailQueueStats
 } from '../models/email-syndication.model';
+
+export interface IgnoredEmailFilters {
+  senderEmail?: string;
+  ruleId?: number | string | null;
+  from?: string;
+  to?: string;
+}
 
 @Injectable({ providedIn: 'root' })
 export class EmailSyndicationService {
@@ -95,6 +103,50 @@ export class EmailSyndicationService {
   removeFromIgnoreList(id: number): Observable<void> {
     return this.http.delete<ApiResponse<void>>(`${this.baseUrl}/ignore-list/${id}`)
       .pipe(map(res => res.data));
+  }
+
+  // Suppression report (emails blocked by the Exceptional Email Master)
+  getIgnoredEmails(filters: IgnoredEmailFilters = {}): Observable<IgnoredEmailReport> {
+    return this.http.get<ApiResponse<IgnoredEmailReport>>(`${this.baseUrl}/ignored-emails`, {
+      params: this.buildIgnoredEmailParams(filters)
+    }).pipe(map(res => res.data));
+  }
+
+  /** Fetches the CSV as a Blob (never JSON-parsed) so it can be saved locally. */
+  exportIgnoredEmails(filters: IgnoredEmailFilters = {}): Observable<Blob> {
+    return this.http.get(`${this.baseUrl}/ignored-emails/export`, {
+      params: this.buildIgnoredEmailParams(filters),
+      responseType: 'blob'
+    });
+  }
+
+  /**
+   * Triggers a browser download of the suppression report CSV.
+   * Subscribe once; the file is saved as a side effect when the blob arrives.
+   */
+  downloadIgnoredEmailsCsv(filters: IgnoredEmailFilters = {}, fileName = 'ignored-emails.csv'): Observable<Blob> {
+    return this.exportIgnoredEmails(filters)
+      .pipe(tap(blob => this.saveBlob(blob, fileName)));
+  }
+
+  private saveBlob(blob: Blob, fileName: string): void {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
+  private buildIgnoredEmailParams(filters: IgnoredEmailFilters): Record<string, string> {
+    const params: Record<string, string> = {};
+    if (filters.senderEmail) params['senderEmail'] = filters.senderEmail;
+    if (filters.ruleId !== undefined && filters.ruleId !== null && `${filters.ruleId}` !== '') {
+      params['ruleId'] = `${filters.ruleId}`;
+    }
+    if (filters.from) params['from'] = filters.from;
+    if (filters.to) params['to'] = filters.to;
+    return params;
   }
 
   // DEO Management

@@ -4,7 +4,8 @@ import com.hrms.cms.dto.DashboardResponse;
 import com.hrms.cms.service.ComplaintService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import com.hrms.cms.support.ControllerSliceTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -12,7 +13,11 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@WebMvcTest(DashboardController.class)
+// addFilters = false: this asserts controller behaviour, not the security chain. @WebMvcTest does not
+// load the app's @Configuration, so the default auto-config chain 401s an endpoint that is reachable
+// in production.
+@ControllerSliceTest(DashboardController.class)
+@AutoConfigureMockMvc(addFilters = false)
 class DashboardControllerTest {
 
     @Autowired private MockMvc mockMvc;

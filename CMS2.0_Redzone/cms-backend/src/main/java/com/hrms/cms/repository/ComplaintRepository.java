@@ -1,9 +1,11 @@
 package com.hrms.cms.repository;
 
 import com.hrms.cms.entity.Complaint;
+import com.hrms.cms.entity.ReActivityStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -12,7 +14,14 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
-public interface ComplaintRepository extends JpaRepository<Complaint, Long> {
+/**
+ * JpaSpecificationExecutor is required by the AA parent-complaint search: its filters (RBIO office,
+ * closure clause, category, ground, appellant name/mobile/email) are independently optional and
+ * freely combinable, which a fixed set of derived finders cannot express without a combinatorial
+ * explosion of methods. See AaParentComplaintSearchService for the predicate builder.
+ */
+public interface ComplaintRepository
+        extends JpaRepository<Complaint, Long>, JpaSpecificationExecutor<Complaint> {
     Optional<Complaint> findByComplaintNumber(String complaintNumber);
     List<Complaint> findByStatusOrderByCreatedAtDesc(String status);
     List<Complaint> findByComplainantEmailOrderByCreatedAtDesc(String email);
@@ -66,6 +75,30 @@ public interface ComplaintRepository extends JpaRepository<Complaint, Long> {
 
     Page<Complaint> findByEntityCodeAndStatusOrderByCreatedAtDesc(String entityCode, String status, Pageable pageable);
 
+    /**
+     * Entity-scoped lookup across a SET of statuses (UST-S2A, story 5).
+     *
+     * The single-status variant above cannot express the PNO's parent-complaint search, which must
+     * return complaints that are closed OR reopened — and reopen is recorded as
+     * workflow_stage='REOPENED' with the status moved back to in_progress, so it is not a status value
+     * at all. Both halves are therefore matched here.
+     *
+     * entityCode is compared case-insensitively because COMPLAINTS.entity_code is dirty: the same
+     * regulated entity appears as a full name ('Punjab National Bank') and as a short code ('PNB'),
+     * so an exact binary match would silently under-return a PNO's own complaints. Scoping remains a
+     * server-side equality test on the caller's resolved claim — never a client-supplied value.
+     */
+    @Query("""
+           SELECT c FROM Complaint c
+           WHERE UPPER(TRIM(c.entityCode)) = UPPER(TRIM(:entityCode))
+             AND (LOWER(c.status) IN :statuses OR UPPER(c.workflowStage) = :reopenedStage)
+           ORDER BY c.createdAt DESC
+           """)
+    Page<Complaint> findByEntityCodeAndStatusInOrReopened(@Param("entityCode") String entityCode,
+                                                         @Param("statuses") List<String> statuses,
+                                                         @Param("reopenedStage") String reopenedStage,
+                                                         Pageable pageable);
+
     // Scheduled notification queries
     List<Complaint> findByStatusAndLastStatusChangeDateBefore(String status, LocalDateTime cutoff);
 
@@ -108,4 +141,23 @@ public interface ComplaintRepository extends JpaRepository<Complaint, Long> {
                                             @Param("categoryId") Long categoryId,
                                             @Param("terminalStatuses") List<String> terminalStatuses,
                                             @Param("since") LocalDateTime since);
+
+    /**
+     * Records sitting in an early RE activity status that have not yet been nudged for it (UST850).
+     *
+     * The age comparison is deliberately NOT in this query: the threshold is snapshotted per record
+     * in reActivityNudgeDays, so "too old" is a per-row question that SQL cannot answer with a
+     * single bind parameter. reActivityNudgedAt IS NULL keeps an already-nudged record out until it
+     * next transitions, which is what stops the sweep re-notifying on every run.
+     */
+    @Query("""
+           SELECT c FROM Complaint c
+           WHERE c.reActivityStatus IN :statuses
+             AND c.reActivityNudgedAt IS NULL
+             AND c.reActivityChangedAt IS NOT NULL
+             AND c.reActivityNudgeDays IS NOT NULL
+           ORDER BY c.reActivityChangedAt ASC
+           """)
+    List<Complaint> findNudgeCandidates(@Param("statuses") List<ReActivityStatus> statuses,
+                                        Pageable pageable);
 }

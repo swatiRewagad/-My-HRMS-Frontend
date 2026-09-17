@@ -28,6 +28,7 @@ public class RePortalService {
     private final ReResponseTrackerRepository trackerRepository;
     private final RegulatedEntityRepository regulatedEntityRepository;
     private final NotificationService notificationService;
+    private final ReActivityStatusService activityStatusService;
 
     private static final int DEFAULT_RESPONSE_WINDOW_DAYS = 15;
 
@@ -58,6 +59,69 @@ public class RePortalService {
             throw new SecurityException("Access denied: complaint does not belong to entity " + entityCode);
         }
         return complaint;
+    }
+
+    /**
+     * Detail fetch that also records the RE having opened the record (UST846, UST847).
+     *
+     * Separate from {@link #getComplaintDetail} on purpose: that method is reused as an
+     * ownership check by the respond, timeline and query paths, and marking OPENED from there
+     * would attribute an "opened" event to an entity that only submitted a form. Only the
+     * genuine detail-view endpoint calls this one.
+     */
+    @Transactional(readOnly = true)
+    public Complaint openComplaintDetail(String complaintNumber, String entityCode, String actor) {
+        Complaint complaint = getComplaintDetail(complaintNumber, entityCode);
+        activityStatusService.recordActivity(complaint.getId(), ReActivityStatus.OPENED, actor,
+                TimelineEventSource.MANUAL, "Regulated entity opened the record");
+        return complaint;
+    }
+
+    /**
+     * RE saves a working draft of its response (UST846).
+     *
+     * The ladder distinguishes a draft that is merely open from one being written: an empty draft
+     * means the entity is reviewing, a draft with text means it is preparing a response. That is
+     * the distinction the story asks for and it cannot be derived from the save event alone.
+     */
+    @Transactional
+    public ReResponseTracker saveDraft(String complaintNumber, String entityCode, String draftText, String actor) {
+        Complaint complaint = getComplaintDetail(complaintNumber, entityCode);
+        ReResponseTracker tracker = requireTracker(complaint, complaintNumber);
+
+        if (tracker.getRespondedAt() != null) {
+            throw new IllegalStateException("Complaint already responded to on: " + tracker.getRespondedAt());
+        }
+
+        tracker.setDraftResponseText(draftText);
+        tracker.setDraftSavedAt(LocalDateTime.now());
+        trackerRepository.save(tracker);
+
+        ReActivityStatus target = (draftText == null || draftText.isBlank())
+                ? ReActivityStatus.UNDER_REVIEW
+                : ReActivityStatus.RESPONSE_BEING_PREPARED;
+
+        activityStatusService.recordActivity(complaint, target, actor,
+                TimelineEventSource.MANUAL, "Regulated entity saved a draft response");
+
+        return tracker;
+    }
+
+    /**
+     * Records that supporting documents were attached (UST846). Called after the upload has been
+     * persisted, so a rejected file cannot advance the badge.
+     */
+    @Transactional
+    public void recordDocumentsUploaded(Complaint complaint, int fileCount, String actor) {
+        activityStatusService.recordActivity(complaint, ReActivityStatus.DOCUMENTS_UPLOADED, actor,
+                TimelineEventSource.MANUAL,
+                "Regulated entity uploaded " + fileCount + (fileCount == 1 ? " document" : " documents"));
+    }
+
+    private ReResponseTracker requireTracker(Complaint complaint, String complaintNumber) {
+        return trackerRepository.findByComplaintId(complaint.getId())
+                .orElseThrow(() -> new NoSuchElementException(
+                        "No response tracker found for complaint: " + complaintNumber));
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -101,8 +165,14 @@ public class RePortalService {
                 .remarks("Regulated entity submitted response")
                 .fromStatus(previousStatus)
                 .toStatus("re_responded")
+                .eventSource(TimelineEventSource.MANUAL)
                 .build();
         timelineRepository.save(timeline);
+
+        // Ladder reaches its terminal RE-driven level in the same transaction as the response, so a
+        // rolled-back submission cannot leave the entity reported as having answered (UST846).
+        activityStatusService.recordActivity(complaint, ReActivityStatus.RESPONSE_SUBMITTED, respondedBy,
+                TimelineEventSource.MANUAL, "Regulated entity submitted its formal response");
 
         // UST668: RE_RESPONSE — notify complaint owner (bell only)
         String complaintOwner = complaint.getAssignedOfficer();
@@ -190,6 +260,7 @@ public class RePortalService {
                 .remarks(queryType + ": " + queryText)
                 .fromStatus(complaint.getStatus())
                 .toStatus(complaint.getStatus()) // status unchanged for queries
+                .eventSource(TimelineEventSource.MANUAL)
                 .build();
         timelineRepository.save(timeline);
 

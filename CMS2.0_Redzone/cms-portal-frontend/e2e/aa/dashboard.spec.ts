@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../fixtures';
 import { loginAsAaRole, isKeycloakAvailable, logout } from '../utils/auth';
 import { createTestComplaint, advanceToStatus, fileAppeal } from '../utils/test-data';
 
@@ -20,7 +20,7 @@ test.describe('AA Dashboard', () => {
   test('AA dashboard loads with stats', async ({ page }) => {
     test.skip(!keycloakUp, 'Keycloak is not available');
 
-    await loginAsAaRole(page, 'AA_REGISTRAR');
+    await loginAsAaRole(page, 'AA_DO');
     await page.waitForSelector('.aa-dashboard', { timeout: 15000 });
 
     const heading = page.locator('h2:has-text("Appellate Authority")');
@@ -37,7 +37,7 @@ test.describe('AA Dashboard', () => {
   test('Appeals table shows filed appeals', async ({ page }) => {
     test.skip(!keycloakUp, 'Keycloak is not available');
 
-    await loginAsAaRole(page, 'AA_REGISTRAR');
+    await loginAsAaRole(page, 'AA_DO');
     await page.waitForSelector('.aa-dashboard', { timeout: 15000 });
 
     await page.waitForSelector('.appeals-table, .empty-state', { timeout: 15000 });
@@ -63,7 +63,7 @@ test.describe('AA Dashboard', () => {
     await advanceToStatus(request, complaint.complaintNumber, 'closed');
     await fileAppeal(request, complaint.complaintNumber, { classificationType: 'APPEAL' });
 
-    await loginAsAaRole(page, 'AA_REGISTRAR');
+    await loginAsAaRole(page, 'AA_DO');
     await page.waitForSelector('.aa-dashboard', { timeout: 15000 });
     await page.waitForSelector('.appeals-table, .empty-state', { timeout: 15000 });
 
@@ -81,7 +81,7 @@ test.describe('AA Dashboard', () => {
   test('Status filter works', async ({ page }) => {
     test.skip(!keycloakUp, 'Keycloak is not available');
 
-    await loginAsAaRole(page, 'AA_REGISTRAR');
+    await loginAsAaRole(page, 'AA_DO');
     await page.waitForSelector('.aa-dashboard', { timeout: 15000 });
     await page.waitForSelector('.appeals-table, .empty-state', { timeout: 15000 });
 
@@ -100,7 +100,7 @@ test.describe('AA Dashboard', () => {
   test('Search by appeal number works', async ({ page }) => {
     test.skip(!keycloakUp, 'Keycloak is not available');
 
-    await loginAsAaRole(page, 'AA_REGISTRAR');
+    await loginAsAaRole(page, 'AA_DO');
     await page.waitForSelector('.aa-dashboard', { timeout: 15000 });
     await page.waitForSelector('.appeals-table, .empty-state', { timeout: 15000 });
 
@@ -120,7 +120,7 @@ test.describe('AA Dashboard', () => {
   test('Role-based view: Registrar sees unassigned, Authority sees forwarded', async ({ page }) => {
     test.skip(!keycloakUp, 'Keycloak is not available');
 
-    await loginAsAaRole(page, 'AA_REGISTRAR');
+    await loginAsAaRole(page, 'AA_DO');
     await page.waitForSelector('.aa-dashboard', { timeout: 15000 });
 
     const registrarBadge = page.locator('.role-badge');
@@ -130,7 +130,7 @@ test.describe('AA Dashboard', () => {
 
     await logout(page);
 
-    await loginAsAaRole(page, 'AA_AUTHORITY');
+    await loginAsAaRole(page, 'AA_SECRETARIAT');
     await page.waitForSelector('.aa-dashboard', { timeout: 15000 });
 
     const authorityBadge = page.locator('.role-badge');

@@ -60,7 +60,7 @@ BEGIN
     ek('eligibility.sub_reply_date','eligibility','Sub: reply date','Date on which reply was received');
     ek('eligibility.sub_upload_reply','eligibility','Sub: upload reply','Upload Reply Copy');
     ek('eligibility.sub_are_you_complainant','eligibility','Sub: are you complainant','If Yes, then are you the Complainant?');
-    ek('eligibility.block_not_filed','eligibility','Block: not filed','in terms of clause 10(1)(j) of Reserve Bank - Integrated Ombudsman Scheme, 2026, the complaint cannot be processed under the Scheme.');
+    ek('eligibility.block_not_filed','eligibility','Block: not filed','in terms of clause 10(1)(j) of Reserve Bank - Integrated Ombudsman Scheme, 2021, the complaint cannot be processed under the Scheme.');
     ek('eligibility.block_sub_judice','eligibility','Block: sub-judice','As your complaint is sub-judice/under arbitration/already dealt with on merits by a Court/Tribunal/Arbitrator/Authority, it will be closed as Non-Maintainable under clause 10(2)(b)(ii) of the Reserve Bank - Integrated Ombudsman Scheme, 2021.');
     ek('eligibility.block_already_settled','eligibility','Block: already settled','As your complaint has already been settled or dealt with by a Court/Tribunal/Arbitrator/Authority, it will be closed as Non-Maintainable under the Reserve Bank - Integrated Ombudsman Scheme, 2021.');
     ek('eligibility.block_pending_ombudsman','eligibility','Block: pending ombudsman','Your complaint is already pending before the Ombudsman on the same grievance. Duplicate complaints cannot be filed.');
@@ -82,7 +82,7 @@ BEGIN
     ek('home.no_complaints','home','home.no_complaints','No complaints found');
     ek('home.ct_tag','home','home.ct_tag','FIND YOUR FINANCIAL INSTITUTION');
     ek('home.ct_heading','home','home.ct_heading','You can file complaints about');
-    ek('home.ct_regulated','home','home.ct_regulated','Regulated entities covered under Reserve Bank-Integrated Ombudsman Scheme, 2026');
+    ek('home.ct_regulated','home','home.ct_regulated','Regulated entities covered under Reserve Bank-Integrated Ombudsman Scheme, 2021');
     ek('home.ct_download','home','home.ct_download','Download PDF');
     ek('home.scheme_title','home','home.scheme_title','Details of the Ombudsmen Scheme');
     ek('home.wwd_tag','home','home.wwd_tag','WHAT WE DO');
@@ -412,7 +412,7 @@ BEGIN
     et('eligibility.sub_reply_date','hi','जिस तारीख को उत्तर प्राप्त हुआ');
     et('eligibility.sub_upload_reply','hi','उत्तर की प्रति अपलोड करें');
     et('eligibility.sub_are_you_complainant','hi','यदि हाँ, तो क्या आप स्वयं शिकायतकर्ता हैं?');
-    et('eligibility.block_not_filed','hi','रिज़र्व बैंक – एकीकृत लोकपाल योजना, 2026 के खंड 10(1)(j) के अनुसार, शिकायत को योजना के तहत संसाधित नहीं किया जा सकता।');
+    et('eligibility.block_not_filed','hi','रिज़र्व बैंक – एकीकृत लोकपाल योजना, 2021 के खंड 10(1)(j) के अनुसार, शिकायत को योजना के तहत संसाधित नहीं किया जा सकता।');
     et('eligibility.block_sub_judice','hi','चूंकि आपकी शिकायत न्यायालय/न्यायाधिकरण/मध्यस्थ/प्राधिकरण के समक्ष लंबित है, इसे रिज़र्व बैंक - एकीकृत लोकपाल योजना, 2021 के खंड 10(2)(b)(ii) के तहत अस्वीकार्य के रूप में बंद किया जाएगा।');
     et('eligibility.block_already_settled','hi','चूंकि आपकी शिकायत पहले ही न्यायालय/न्यायाधिकरण/मध्यस्थ/प्राधिकरण द्वारा निपटाई जा चुकी है, इसे रिज़र्व बैंक - एकीकृत लोकपाल योजना, 2021 के तहत अस्वीकार्य के रूप में बंद किया जाएगा।');
     et('eligibility.block_pending_ombudsman','hi','आपकी शिकायत पहले से उसी विवाद पर लोकपाल के समक्ष लंबित है। डुप्लिकेट शिकायत दर्ज नहीं की जा सकती।');
@@ -448,7 +448,7 @@ BEGIN
     et('home.no_complaints','hi','कोई शिकायत नहीं मिली');
     et('home.ct_tag','hi','अपनी वित्तीय संस्था खोजें');
     et('home.ct_heading','hi','आप इनके बारे में शिकायत दर्ज कर सकते हैं');
-    et('home.ct_regulated','hi','रिज़र्व बैंक-एकीकृत लोकपाल योजना, 2026 के तहत विनियमित संस्थाएँ');
+    et('home.ct_regulated','hi','रिज़र्व बैंक-एकीकृत लोकपाल योजना, 2021 के तहत विनियमित संस्थाएँ');
     et('home.ct_download','hi','PDF डाउनलोड करें');
     et('home.scheme_title','hi','लोकपाल योजना का विवरण');
     et('home.wwd_tag','hi','हम क्या करते हैं');
@@ -739,7 +739,7 @@ BEGIN
     et('eligibility.sub_reply_date','mr','ज्या तारखेला उत्तर प्राप्त झाले');
     et('eligibility.sub_upload_reply','mr','उत्तराची प्रत अपलोड करा');
     et('eligibility.sub_are_you_complainant','mr','होय असल्यास, तुम्ही स्वतः तक्रारदार आहात का?');
-    et('eligibility.block_not_filed','mr','रिझर्व्ह बँक – एकीकृत लोकपाल योजना, 2026 च्या कलम 10(1)(j) नुसार, तक्रार योजनेअंतर्गत प्रक्रिया करता येत नाही.');
+    et('eligibility.block_not_filed','mr','रिझर्व्ह बँक – एकीकृत लोकपाल योजना, 2021 च्या कलम 10(1)(j) नुसार, तक्रार योजनेअंतर्गत प्रक्रिया करता येत नाही.');
     et('eligibility.block_sub_judice','mr','तुमची तक्रार न्यायालय/न्यायाधिकरण/लवाद/प्राधिकरणासमोर प्रलंबित असल्याने, ती रिझर्व्ह बँक - एकीकृत लोकपाल योजना, 2021 च्या कलम 10(2)(b)(ii) अंतर्गत अस्वीकार्य म्हणून बंद केली जाईल.');
     et('eligibility.block_already_settled','mr','तुमची तक्रार आधीच न्यायालय/न्यायाधिकरण/लवाद/प्राधिकरणाद्वारे निकाली काढली गेली असल्याने, ती रिझर्व्ह बँक - एकीकृत लोकपाल योजना, 2021 अंतर्गत अस्वीकार्य म्हणून बंद केली जाईल.');
     et('eligibility.block_pending_ombudsman','mr','तुमची तक्रार आधीच त्याच तक्रारीवर लोकपालासमोर प्रलंबित आहे. डुप्लिकेट तक्रार दाखल करता येत नाही.');
@@ -775,7 +775,7 @@ BEGIN
     et('home.no_complaints','mr','कोणतीही तक्रार सापडली नाही');
     et('home.ct_tag','mr','तुमची वित्तीय संस्था शोधा');
     et('home.ct_heading','mr','तुम्ही याबद्दल तक्रार दाखल करू शकता');
-    et('home.ct_regulated','mr','रिझर्व्ह बँक-एकीकृत लोकपाल योजना, 2026 अंतर्गत नियमित संस्था');
+    et('home.ct_regulated','mr','रिझर्व्ह बँक-एकीकृत लोकपाल योजना, 2021 अंतर्गत नियमित संस्था');
     et('home.ct_download','mr','PDF डाउनलोड करा');
     et('home.scheme_title','mr','लोकपाल योजनेचे तपशील');
     et('home.wwd_tag','mr','आम्ही काय करतो');
@@ -970,7 +970,7 @@ BEGIN
     et('eligibility.sub_reply_date','bn','যে তারিখে উত্তর পাওয়া গেছে');
     et('eligibility.sub_upload_reply','bn','উত্তরের অনুলিপি আপলোড করুন');
     et('eligibility.sub_are_you_complainant','bn','হ্যাঁ হলে, আপনি কি নিজে অভিযোগকারী?');
-    et('eligibility.block_not_filed','bn','রিজার্ভ ব্যাংক – সমন্বিত ওম্বডসম্যান স্কিম, ২০২৬-এর ধারা ১০(১)(জে) অনুসারে, এই অভিযোগ স্কিমের অধীনে প্রক্রিয়া করা যাবে না।');
+    et('eligibility.block_not_filed','bn','রিজার্ভ ব্যাংক – সমন্বিত ওম্বডসম্যান স্কিম, ২০২১-এর ধারা ১০(১)(জে) অনুসারে, এই অভিযোগ স্কিমের অধীনে প্রক্রিয়া করা যাবে না।');
     et('eligibility.block_sub_judice','bn','আপনার অভিযোগ আদালত/ট্রাইব্যুনাল/সালিশ/কর্তৃপক্ষের কাছে বিচারাধীন থাকায়, এটি রিজার্ভ ব্যাংক - সমন্বিত ওম্বডসম্যান স্কিম, ২০২১-এর ধারা ১০(২)(খ)(ii) অনুসারে অগ্রহণযোগ্য হিসেবে বন্ধ করা হবে।');
     et('eligibility.block_pending_ombudsman','bn','আপনার অভিযোগ ইতিমধ্যে একই বিষয়ে ওম্বডসম্যানের কাছে বিচারাধীন। ডুপ্লিকেট অভিযোগ দায়ের করা যাবে না।');
     et('eligibility.block_settled_ombudsman','bn','আপনার অভিযোগ ইতিমধ্যে ওম্বডসম্যান দ্বারা গুণবিচারে নিষ্পত্তি হয়েছে। একই বিষয়ে নতুন অভিযোগ দায়ের করা যাবে না।');
@@ -1003,7 +1003,7 @@ BEGIN
     et('home.no_complaints','bn','কোনো অভিযোগ পাওয়া যায়নি');
     et('home.ct_tag','bn','আপনার আর্থিক প্রতিষ্ঠান খুঁজুন');
     et('home.ct_heading','bn','আপনি এদের সম্পর্কে অভিযোগ দায়ের করতে পারেন');
-    et('home.ct_regulated','bn','রিজার্ভ ব্যাংক-সমন্বিত লোকপাল প্রকল্প, ২০২৬-এর অধীনে নিয়ন্ত্রিত সংস্থাসমূহ');
+    et('home.ct_regulated','bn','রিজার্ভ ব্যাংক-সমন্বিত লোকপাল প্রকল্প, ২০২১-এর অধীনে নিয়ন্ত্রিত সংস্থাসমূহ');
     et('home.ct_download','bn','PDF ডাউনলোড করুন');
     et('home.scheme_title','bn','লোকপাল প্রকল্পের বিবরণ');
     et('home.wwd_tag','bn','আমরা কী করি');
@@ -1276,7 +1276,7 @@ BEGIN
     et('eligibility.sub_reply_date','te','సమాధానం అందిన తేదీ');
     et('eligibility.sub_upload_reply','te','సమాధానం కాపీ అప్‌లోడ్ చేయండి');
     et('eligibility.sub_are_you_complainant','te','అవును అయితే, మీరే ఫిర్యాదుదారులా?');
-    et('eligibility.block_not_filed','te','రిజర్వ్ బ్యాంక్ – సమగ్ర ఓంబుడ్స్‌మన్ పథకం, 2026 క్లాజ్ 10(1)(j) ప్రకారం, ఫిర్యాదును పథకం కింద ప్రాసెస్ చేయడం సాధ్యం కాదు.');
+    et('eligibility.block_not_filed','te','రిజర్వ్ బ్యాంక్ – సమగ్ర ఓంబుడ్స్‌మన్ పథకం, 2021 క్లాజ్ 10(1)(j) ప్రకారం, ఫిర్యాదును పథకం కింద ప్రాసెస్ చేయడం సాధ్యం కాదు.');
     et('eligibility.block_sub_judice','te','మీ ఫిర్యాదు న్యాయస్థానం/ట్రిబ్యునల్/మధ్యవర్తి/అధికారం ముందు పెండింగ్‌లో ఉన్నందున, ఇది అనర్హంగా మూసివేయబడుతుంది.');
     et('eligibility.block_pending_ombudsman','te','మీ ఫిర్యాదు ఇప్పటికే అదే విషయంపై ఓంబుడ్స్‌మన్ ముందు పెండింగ్‌లో ఉంది. డూప్లికేట్ ఫిర్యాదు దాఖలు చేయలేరు.');
     et('eligibility.block_settled_ombudsman','te','మీ ఫిర్యాదు ఇప్పటికే ఓంబుడ్స్‌మన్ చేత పరిష్కరించబడింది. అదే విషయంపై కొత్త ఫిర్యాదు దాఖలు చేయలేరు.');
@@ -1309,7 +1309,7 @@ BEGIN
     et('home.no_complaints','te','ఫిర్యాదులు కనుగొనబడలేదు');
     et('home.ct_tag','te','మీ ఆర్థిక సంస్థను కనుగొనండి');
     et('home.ct_heading','te','మీరు వీరి గురించి ఫిర్యాదు దాఖలు చేయవచ్చు');
-    et('home.ct_regulated','te','రిజర్వ్ బ్యాంక్-సమగ్ర లోకపాల్ పథకం, 2026 కింద నియంత్రిత సంస్థలు');
+    et('home.ct_regulated','te','రిజర్వ్ బ్యాంక్-సమగ్ర లోకపాల్ పథకం, 2021 కింద నియంత్రిత సంస్థలు');
     et('home.ct_download','te','PDF డౌన్‌లోడ్ చేయండి');
     et('home.scheme_title','te','లోకపాల్ పథకం వివరాలు');
     et('home.wwd_tag','te','మేము ఏమి చేస్తాము');

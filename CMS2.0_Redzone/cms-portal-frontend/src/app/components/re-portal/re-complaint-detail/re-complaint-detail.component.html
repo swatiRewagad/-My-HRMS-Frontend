@@ -14,9 +14,13 @@
     <div class="detail-header">
       <div class="header-left">
         <h2 class="complaint-number">{{ complaint()!.complaintNumber }}</h2>
-        <span class="status-badge" [class]="'status-' + complaint()!.status">
-          {{ complaint()!.status | titlecase }}
-        </span>
+        <app-status-badge [status]="complaint()!.status" />
+        @if (complaint()!.reActivityStatus) {
+          <!-- UST846/847: the RBI side renders this through the same component, so both agree. -->
+          <app-status-badge
+            [status]="complaint()!.reActivityStatus!"
+            [labelKey]="complaint()!.reActivityStatusKey ?? null" />
+        }
       </div>
       <div class="deadline-countdown" [class.expired]="deadlineCountdown().expired">
         @if (deadlineCountdown().expired) {
@@ -146,11 +150,6 @@
               <i class="pi pi-send"></i> Submit Response
             }
           </button>
-
-          <button class="query-btn" (click)="toggleQueryForm()">
-            <i class="pi pi-question-circle"></i>
-            {{ showQueryForm() ? 'Cancel Query' : 'Raise Query' }}
-          </button>
         </div>
 
         @if (!isResponseWindowOpen()) {
@@ -162,55 +161,16 @@
       </div>
     </div>
 
-    <!-- Query Form -->
-    @if (showQueryForm()) {
-      <div class="query-section">
-        <h3 class="section-title">Raise Query</h3>
+    <!-- Queries & Correspondence (UST853-857) -->
+    <app-query-thread
+      [complaintNumber]="complaint()!.complaintNumber"
+      side="RE"
+      [entityCode]="entityCode()" />
 
-        @if (querySuccess()) {
-          <div class="success-banner">
-            <i class="pi pi-check-circle"></i>
-            <span>{{ querySuccess() }}</span>
-          </div>
-        }
-
-        @if (queryError()) {
-          <div class="error-banner">
-            <i class="pi pi-exclamation-triangle"></i>
-            <span>{{ queryError() }}</span>
-          </div>
-        }
-
-        <div class="query-form">
-          <div class="form-group">
-            <label for="queryType">Query Type</label>
-            <select id="queryType" [ngModel]="queryType()" (ngModelChange)="queryType.set($event)">
-              <option value="clarification">Clarification Request</option>
-              <option value="extension">Extension Request</option>
-            </select>
-          </div>
-
-          <div class="form-group">
-            <label for="queryText">Details</label>
-            <textarea
-              id="queryText"
-              [ngModel]="queryText()"
-              (ngModelChange)="queryText.set($event)"
-              placeholder="Provide details for your query..."
-              rows="4"
-            ></textarea>
-          </div>
-
-          <button class="submit-btn secondary" (click)="submitQuery()" [disabled]="submittingQuery()">
-            @if (submittingQuery()) {
-              <span class="spinner-sm"></span> Submitting...
-            } @else {
-              <i class="pi pi-send"></i> Submit Query
-            }
-          </button>
-        </div>
-      </div>
-    }
+    <!-- Internal Notes (UST860) — entity-side only -->
+    <app-internal-notes
+      [complaintNumber]="complaint()!.complaintNumber"
+      [entityCode]="entityCode()" />
 
     <!-- Timeline -->
     <div class="timeline-section">

@@ -1,6 +1,8 @@
 export const environment = {
   production: true,
   apiBaseUrl: 'https://cms.rbi.org.in',
+  // Same host in production; the gateway forwards /cms-workflow/** to the workflow service.
+  workflowBaseUrl: 'https://cms.rbi.org.in',
   keycloakUrl: 'https://auth.rbi.org.in',
   realm: 'cms',
 

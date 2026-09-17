@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../fixtures';
 import { loginAsAaRole, isKeycloakAvailable, logout } from '../utils/auth';
 import {
   createTestComplaint,
@@ -32,7 +32,7 @@ test.describe.serial('AA Workflow', () => {
   test('Registrar accepts appeal (status -> under_review)', async ({ page }) => {
     test.skip(!keycloakUp, 'Keycloak is not available');
 
-    await loginAsAaRole(page, 'AA_REGISTRAR', `/aa/appeal/${appealNumber}`);
+    await loginAsAaRole(page, 'AA_DO', `/aa/appeal/${appealNumber}`);
     await page.waitForSelector('.aa-detail .detail-layout', { timeout: 15000 });
 
     const acceptBtn = page.locator('.action-card:has-text("Accept Appeal")');
@@ -63,7 +63,7 @@ test.describe.serial('AA Workflow', () => {
     await advanceToStatus(request, complaint.complaintNumber, 'closed');
     const appeal = await fileAppeal(request, complaint.complaintNumber);
 
-    await loginAsAaRole(page, 'AA_REGISTRAR', `/aa/appeal/${appeal.appealNumber}`);
+    await loginAsAaRole(page, 'AA_DO', `/aa/appeal/${appeal.appealNumber}`);
     await page.waitForSelector('.aa-detail .detail-layout', { timeout: 15000 });
 
     const rejectBtn = page.locator('.action-card:has-text("Reject Appeal")');
@@ -90,7 +90,7 @@ test.describe.serial('AA Workflow', () => {
   test('Registrar assigns to bench (role change)', async ({ page }) => {
     test.skip(!keycloakUp, 'Keycloak is not available');
 
-    await loginAsAaRole(page, 'AA_REGISTRAR', `/aa/appeal/${appealNumber}`);
+    await loginAsAaRole(page, 'AA_DO', `/aa/appeal/${appealNumber}`);
     await page.waitForSelector('.aa-detail .detail-layout', { timeout: 15000 });
 
     const assignBtn = page.locator('.action-card:has-text("Assign to Bench")');
@@ -126,7 +126,7 @@ test.describe.serial('AA Workflow', () => {
   test('Bench officer schedules hearing (date set)', async ({ page }) => {
     test.skip(!keycloakUp, 'Keycloak is not available');
 
-    await loginAsAaRole(page, 'AA_BENCH_OFFICER', `/aa/appeal/${appealNumber}`);
+    await loginAsAaRole(page, 'AA_REVIEWER_1', `/aa/appeal/${appealNumber}`);
     await page.waitForSelector('.aa-detail .detail-layout', { timeout: 15000 });
 
     const scheduleBtn = page.locator('.action-card:has-text("Schedule Hearing")');
@@ -181,7 +181,7 @@ test.describe.serial('AA Workflow', () => {
   test('Bench forwards to authority', async ({ page }) => {
     test.skip(!keycloakUp, 'Keycloak is not available');
 
-    await loginAsAaRole(page, 'AA_BENCH_OFFICER', `/aa/appeal/${appealNumber}`);
+    await loginAsAaRole(page, 'AA_REVIEWER_1', `/aa/appeal/${appealNumber}`);
     await page.waitForSelector('.aa-detail .detail-layout', { timeout: 15000 });
 
     const forwardBtn = page.locator('.action-card:has-text("Forward to Authority")');
@@ -214,7 +214,7 @@ test.describe.serial('AA Workflow', () => {
     await performAppealAction(request, appeal.appealNumber, 'ASSIGN_TO_BENCH', { actor: 'aa.registrar' });
     await performAppealAction(request, appeal.appealNumber, 'FORWARD_TO_AUTHORITY', { actor: 'aa.bench' });
 
-    await loginAsAaRole(page, 'AA_AUTHORITY', `/aa/appeal/${appeal.appealNumber}`);
+    await loginAsAaRole(page, 'AA_SECRETARIAT', `/aa/appeal/${appeal.appealNumber}`);
     await page.waitForSelector('.aa-detail .detail-layout', { timeout: 15000 });
 
     const orderBtn = page.locator('.action-card:has-text("Pass Order")');
@@ -264,7 +264,7 @@ test.describe.serial('AA Workflow', () => {
     await performAppealAction(request, appeal.appealNumber, 'ASSIGN_TO_BENCH', { actor: 'aa.registrar' });
     await performAppealAction(request, appeal.appealNumber, 'FORWARD_TO_AUTHORITY', { actor: 'aa.bench' });
 
-    await loginAsAaRole(page, 'AA_AUTHORITY', `/aa/appeal/${appeal.appealNumber}`);
+    await loginAsAaRole(page, 'AA_SECRETARIAT', `/aa/appeal/${appeal.appealNumber}`);
     await page.waitForSelector('.aa-detail .detail-layout', { timeout: 15000 });
 
     const orderBtn = page.locator('.action-card:has-text("Pass Order")');
@@ -315,7 +315,7 @@ test.describe.serial('AA Workflow', () => {
     await performAppealAction(request, appeal.appealNumber, 'ASSIGN_TO_BENCH', { actor: 'aa.registrar' });
     await performAppealAction(request, appeal.appealNumber, 'FORWARD_TO_AUTHORITY', { actor: 'aa.bench' });
 
-    await loginAsAaRole(page, 'AA_AUTHORITY', `/aa/appeal/${appeal.appealNumber}`);
+    await loginAsAaRole(page, 'AA_SECRETARIAT', `/aa/appeal/${appeal.appealNumber}`);
     await page.waitForSelector('.aa-detail .detail-layout', { timeout: 15000 });
 
     const dismissBtn = page.locator('.action-card:has-text("Dismiss Appeal")');

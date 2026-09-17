@@ -99,6 +99,21 @@ public class Complaint {
     @Column(length = 50)
     private String workflowStage;
 
+    /**
+     * Originating RBIO office, resolved from OFFICE_CODE_MASTER (V36/V34).
+     *
+     * The office was previously only recoverable by substringing the complaint number
+     * (N{FY:6}{office:3}{seq:6}), which is unindexable and mis-parses the legacy 'CMP-'/'CMS-DEMO-'
+     * formats. NULL is a legitimate value: legacy numbers carry no office at all, and a guessed office
+     * would be a guessed territorial jurisdiction on a citizen's complaint.
+     */
+    @Column(name = "rbio_office_code", length = 10)
+    private String rbioOfficeCode;
+
+    /** FK to GROUND_OF_COMPLAINT_MASTER (V36/V34). Held as an id, matching categoryId/bankId here. */
+    @Column(name = "ground_of_complaint_id")
+    private Long groundOfComplaintId;
+
     // Prior RE complaint details (RB-IOS Q16/Q17/Q18)
     private Boolean priorReComplaint;
 
@@ -193,6 +208,14 @@ public class Complaint {
     @Column(name = "last_reopened_at")
     private LocalDateTime lastReopenedAt;
 
+    /**
+     * Explicit reopen timestamp (V31/V29). Distinct from lastReopenedAt, which only the CEPC/RBIO
+     * reopen paths maintain; this column exists so the AA parent search can order and filter on
+     * reopening without depending on which module performed it.
+     */
+    @Column(name = "reopened_at")
+    private LocalDateTime reopenedAt;
+
     // ═══ RBIO-specific fields ═══
     @Column(name = "advisory_text", columnDefinition = "TEXT")
     private String advisoryText;
@@ -224,6 +247,28 @@ public class Complaint {
 
     @Column(name = "last_status_change_date")
     private LocalDateTime lastStatusChangeDate;
+
+    // ═══ RE Activity Status ladder (UST846, UST850) ═══
+    // Distinct from `status` above: this is the entity's progress signal, not the regulatory state.
+    // Written only through ReActivityStatusService so the forward-only rule and the paired timeline
+    // entry cannot be bypassed by a stray setter call.
+    @Enumerated(EnumType.STRING)
+    @Column(name = "re_activity_status", length = 30)
+    private ReActivityStatus reActivityStatus;
+
+    @Column(name = "re_activity_changed_at")
+    private LocalDateTime reActivityChangedAt;
+
+    // The nudge threshold in force when the record ENTERED its current activity status, snapshotted
+    // so that later editing of the SYSTEM_CONFIG default cannot retroactively make historical
+    // records nudge-due, nor silently forgive ones already past due.
+    @Column(name = "re_activity_nudge_days")
+    private Integer reActivityNudgeDays;
+
+    // Set when a nudge has been sent for the CURRENT status, cleared on every transition, so a
+    // record that legitimately advances becomes nudgeable again at the next level.
+    @Column(name = "re_activity_nudged_at")
+    private LocalDateTime reActivityNudgedAt;
 
     // ═══ Authorised Representative (D7) ═══
     // The filing wizard validates nine representative fields as mandatory once the citizen answers

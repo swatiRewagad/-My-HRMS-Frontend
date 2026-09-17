@@ -3,6 +3,7 @@ package com.hrms.cms.service.mre;
 import com.hrms.cms.service.BusinessHoursService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
@@ -18,6 +19,17 @@ public class MaintainabilityRulesEngine {
     private final MreProperties config;
     private final BusinessHoursService businessHoursService;
     private final MreEntityCoverageService entityCoverageService;
+
+    /**
+     * The Scheme cited to the citizen when a complaint is found non-maintainable.
+     *
+     * Read from configuration, not written in the code: this text used to say "RB-IOS 2026", naming a
+     * Scheme that is not in force, in the very sentence that tells a citizen why their complaint is
+     * being rejected. cms.eligibility.scheme-name is the single source of truth for the Scheme in
+     * force, so when a new Scheme is notified this sentence follows it without a code change.
+     */
+    @Value("${cms.eligibility.scheme-name:Reserve Bank - Integrated Ombudsman Scheme, 2021}")
+    private String schemeName;
 
     @Cacheable(value = "mre-rules", key = "'version-' + #root.target.config.version")
     public int getCachedRuleVersion() {
@@ -55,7 +67,7 @@ public class MaintainabilityRulesEngine {
         boolean covered = entityCoverageService.isEntityCovered(facts.getEntityCode(), facts.getEntityType());
         if (!covered) {
             return GroundVerdict.fail(MreGround.ENTITY_NOT_COVERED,
-                    "Entity '" + facts.getEntityCode() + "' is not covered under the RB-IOS 2026 Scheme");
+                    "Entity '" + facts.getEntityCode() + "' is not covered under the " + schemeName);
         }
         return GroundVerdict.pass(MreGround.ENTITY_NOT_COVERED, "Entity is covered under the Scheme");
     }

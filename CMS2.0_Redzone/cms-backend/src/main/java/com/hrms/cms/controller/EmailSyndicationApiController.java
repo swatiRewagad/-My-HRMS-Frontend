@@ -4,16 +4,26 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hrms.cms.dto.IncomingEmailRequest;
 import com.hrms.cms.entity.Complaint;
+import com.hrms.cms.entity.DraftStatus;
 import com.hrms.cms.entity.EmailDraft;
 import com.hrms.cms.entity.EmailDraftAttachment;
+import com.hrms.cms.entity.EmailIgnoreEntry;
+import com.hrms.cms.entity.IgnoredEmailLog;
 import com.hrms.cms.repository.ComplaintRepository;
 import com.hrms.cms.repository.EmailDraftAttachmentRepository;
 import com.hrms.cms.repository.EmailDraftRepository;
+import com.hrms.cms.repository.EmailIgnoreEntryRepository;
+import com.hrms.cms.repository.IgnoredEmailLogRepository;
+import com.hrms.cms.service.AcknowledgementPolicyService;
 import com.hrms.cms.service.ComplaintRoutingService;
 import com.hrms.cms.service.ComplaintService;
+import com.hrms.cms.service.EmailDeduplicationService;
+import com.hrms.cms.service.EmailIgnoreListService;
 import com.hrms.cms.service.EmailSimulationService;
+import com.hrms.cms.service.IntakeAttachmentValidator;
 import com.hrms.cms.service.KeycloakUserService;
 import com.hrms.cms.service.LanguageTranslationService;
+import com.hrms.cms.service.OcrEligibilityService;
 import com.hrms.cms.service.OcrExtractionService;
 import com.hrms.cms.service.RuleBasedExtractor;
 import lombok.RequiredArgsConstructor;
@@ -48,13 +58,21 @@ public class EmailSyndicationApiController {
     private final ComplaintRoutingService routingService;
     private final ComplaintService complaintService;
     private final ObjectMapper objectMapper;
+    private final EmailIgnoreListService ignoreListService;
+    private final EmailIgnoreEntryRepository ignoreRepository;
+    private final IgnoredEmailLogRepository ignoredEmailLogRepository;
+    private final AcknowledgementPolicyService ackPolicyService;
+    private final OcrEligibilityService ocrEligibilityService;
+    private final EmailDeduplicationService deduplicationService;
+    private final IntakeAttachmentValidator intakeAttachmentValidator;
+
+    @Value("${cms.eligibility.scheme-version:RBIOS_2021}")
+    private String schemeVersion;
 
     @Value("${cms.attachments.root-path:C:/cms-attachments}")
     private String attachmentsRootPath;
 
     private final AtomicInteger roundRobinPointer = new AtomicInteger(0);
-    private final List<Map<String, Object>> ignoreListStore = Collections.synchronizedList(new ArrayList<>());
-    private final AtomicInteger ignoreIdSeq = new AtomicInteger(1);
 
     private List<Map<String, Object>> getDeoPool() {
         List<Map<String, Object>> keycloakDeos = keycloakUserService.getDeos();
@@ -110,7 +128,11 @@ public class EmailSyndicationApiController {
             return wrapResponse(autoClosedResult);
         }
 
-        return processIngest(senderEmail, subject, body, messageId, null);
+        return processIngest(senderEmail, subject, body, messageId, null,
+                toRecipients, ccRecipients, bccRecipients,
+                (String) request.getOrDefault("replyTo", ""),
+                (String) request.getOrDefault("inReplyTo", ""),
+                (String) request.getOrDefault("references", ""));
     }
 
     @PostMapping(value = "/ingest-with-attachment", consumes = "multipart/form-data")
@@ -119,24 +141,82 @@ public class EmailSyndicationApiController {
             @RequestParam("subject") String subject,
             @RequestParam(value = "body", required = false, defaultValue = "") String body,
             @RequestParam(value = "messageId", required = false, defaultValue = "") String messageId,
+            @RequestParam(value = "toRecipients", required = false, defaultValue = "") String toRecipients,
+            @RequestParam(value = "ccRecipients", required = false, defaultValue = "") String ccRecipients,
+            @RequestParam(value = "bccRecipients", required = false, defaultValue = "") String bccRecipients,
             @RequestParam("attachment") MultipartFile attachment) {
 
-        return processIngest(senderEmail, subject, body, messageId, attachment);
+        // NFR-006 before anything is stored or OCR'd. Client-declared content type is not trusted.
+        intakeAttachmentValidator.validateSingle(attachment);
+
+        return processIngest(senderEmail, subject, body, messageId, attachment,
+                toRecipients, ccRecipients, bccRecipients, "", "", "");
     }
 
     private Map<String, Object> processIngest(String senderEmail, String subject, String body,
-                                               String messageId, MultipartFile attachment) {
-        // Check ignore list — auto-close if sender matches
-        if (isOnIgnoreList(senderEmail)) {
-            log.info("Email from {} is on ignore list — auto-closing as Non-Complaint", senderEmail);
+                                               String messageId, MultipartFile attachment,
+                                               String toRecipients, String ccRecipients, String bccRecipients,
+                                               String replyTo, String inReplyTo, String references) {
+        // ── GATE 1: ignore list ──────────────────────────────────────────────
+        // Runs before ANY side effect. The former order created a complaint and an acknowledgement
+        // first, so a suppressed sender still produced both.
+        Optional<EmailIgnoreEntry> matchedRule = ignoreListService.findMatchingRule(
+                new EmailIgnoreListService.MatchContext(senderEmail, subject, toRecipients, ccRecipients, bccRecipients));
+        if (matchedRule.isPresent()) {
+            EmailIgnoreEntry rule = matchedRule.get();
+            log.info("Email from {} suppressed by ignore rule id={} field={} pattern='{}' — no draft created",
+                    senderEmail, rule.getId(), rule.getMatchField(), rule.getEmailPattern());
+
+            ignoredEmailLogRepository.save(IgnoredEmailLog.builder()
+                    .senderEmail(senderEmail)
+                    .subject(subject)
+                    .toRecipients(toRecipients)
+                    .ccRecipients(ccRecipients)
+                    .bccRecipients(bccRecipients)
+                    .messageId(messageId)
+                    .matchedRuleId(rule.getId())
+                    .matchedRulePattern(rule.getEmailPattern())
+                    .matchedRuleField(rule.getMatchField())
+                    .matchedRuleType(rule.getPatternType())
+                    .matchedRuleReason(rule.getReason())
+                    .receivedAt(LocalDateTime.now())
+                    .build());
+
             Map<String, Object> ignoredResult = new LinkedHashMap<>();
-            ignoredResult.put("status", "NON_COMPLAINT");
-            ignoredResult.put("reason", "Sender is on ignore list");
+            ignoredResult.put("status", DraftStatus.IGNORED.name());
+            ignoredResult.put("draftCreated", false);
+            ignoredResult.put("messageKey", "intake.email_suppressed_by_rule");
+            ignoredResult.put("matchedRuleId", rule.getId());
+            ignoredResult.put("matchedRulePattern", rule.getEmailPattern());
+            ignoredResult.put("matchedRuleField", rule.getMatchField());
             ignoredResult.put("senderEmail", senderEmail);
             ignoredResult.put("subject", subject);
-            ignoredResult.put("autoClosed", true);
-            ignoredResult.put("closedAt", LocalDateTime.now().toString());
+            ignoredResult.put("suppressedAt", LocalDateTime.now().toString());
             return wrapResponse(ignoredResult);
+        }
+
+        // ── GATE 2: idempotency on messageId ─────────────────────────────────
+        // A redelivered message must not create a second draft. messageId is now unique.
+        if (messageId != null && !messageId.isBlank()) {
+            Optional<EmailDraft> already = draftRepository.findByMessageId(messageId);
+            if (already.isPresent()) {
+                log.info("messageId {} already ingested as draft {} — returning existing draft",
+                        messageId, already.get().getDraftId());
+                Map<String, Object> existing = toResponseMap(already.get());
+                existing.put("duplicateDelivery", true);
+                existing.put("messageKey", "intake.duplicate_delivery_ignored");
+                return wrapResponse(existing);
+            }
+        }
+
+        // ── GATE 3: duplicate of a CLOSED parent complaint ───────────────────
+        // Same sender AND exactly equal subject, parent CLOSED. No new draft: the email and its
+        // attachments are linked to the existing parent instead.
+        Optional<EmailDeduplicationService.DuplicateMatch> duplicate =
+                deduplicationService.findDuplicate(senderEmail, subject);
+        if (duplicate.isPresent()) {
+            return wrapResponse(linkDuplicateToParent(duplicate.get(), senderEmail, subject, body,
+                    messageId, attachment, toRecipients, ccRecipients, bccRecipients));
         }
 
         IncomingEmailRequest emailReq = new IncomingEmailRequest();
@@ -144,6 +224,8 @@ public class EmailSyndicationApiController {
         emailReq.setFromName(extractName(senderEmail));
         emailReq.setSubject(subject);
         emailReq.setBody(body);
+        // Story: suppress the automatic acknowledgement for internal RBI senders.
+        emailReq.setSuppressAcknowledgement(!ackPolicyService.shouldAcknowledge(senderEmail));
 
         Map<String, Object> result = emailService.receiveEmail(emailReq);
 
@@ -166,46 +248,84 @@ public class EmailSyndicationApiController {
         String category = ruleExtracted.getOrDefault("category", "General");
         String complaintSummary = ruleExtracted.getOrDefault("subject", subject);
 
-        if (attachment != null && !attachment.isEmpty()) {
-            String contentType = attachment.getContentType();
-            Set<String> allowedTypes = Set.of("application/pdf", "image/jpeg", "image/png", "image/tiff");
+        // ── Language detection FIRST, so it can actually gate OCR ────────────
+        // Previously OCR ran before detection, so vernacular content could never be excluded, and
+        // the detected translation was written into the body as the record of the complaint.
+        OcrEligibilityService.Assessment assessment = ocrEligibilityService.assessText(
+                (subject == null ? "" : subject) + "\n" + (body == null ? "" : body));
+        boolean isVernacular = assessment.vernacular();
+        String ocrSkipReason = null;
+        boolean requiresManualEntry = false;
 
-            if (contentType != null && allowedTypes.contains(contentType)) {
+        if (isVernacular) {
+            // No OCR, no machine translation into the body. A skilled DEO handles it.
+            ocrSkipReason = "VERNACULAR";
+            requiresManualEntry = true;
+            log.info("Vernacular content detected ({}) — OCR suppressed, routing to manual entry",
+                    assessment.languageName());
+        }
+
+        if (attachment != null && !attachment.isEmpty() && assessment.ocrAllowed()) {
+            String contentType = attachment.getContentType();
+            Set<String> ocrableTypes = Set.of("application/pdf", "image/jpeg", "image/png", "image/tiff");
+
+            if (contentType != null && ocrableTypes.contains(contentType)) {
                 try {
                     byte[] fileBytes = attachment.getBytes();
                     ocrExtracted = ocrService.extractFromImage(fileBytes, contentType);
 
                     if (!ocrExtracted.isEmpty()) {
-                        ocrProcessed = true;
-                        ocrConfidence = 85;
+                        // Second gate on the EXTRACTED text: a vernacular scanned letter behind an
+                        // English covering email is invisible to a body-only check.
+                        String extractedText = String.join("\n", ocrExtracted.values());
+                        Integer providerConfidence = readProviderConfidence(ocrExtracted);
+                        OcrEligibilityService.Assessment extractedAssessment =
+                                ocrEligibilityService.assessExtractedText(extractedText, providerConfidence);
 
-                        if (ocrExtracted.containsKey("complainantName") && !ocrExtracted.get("complainantName").isEmpty()) {
-                            complainantName = ocrExtracted.get("complainantName");
-                        }
-                        if (ocrExtracted.containsKey("complainantPhone") && !ocrExtracted.get("complainantPhone").isEmpty()) {
-                            complainantPhone = ocrExtracted.get("complainantPhone");
-                        }
-                        if (ocrExtracted.containsKey("category") && !ocrExtracted.get("category").isEmpty()) {
-                            category = ocrExtracted.get("category");
-                        }
-                        if (ocrExtracted.containsKey("subject") && !ocrExtracted.get("subject").isEmpty()) {
-                            complaintSummary = ocrExtracted.get("subject");
-                        }
+                        if (extractedAssessment.requiresManualEntry()) {
+                            ocrSkipReason = extractedAssessment.decision().name();
+                            requiresManualEntry = true;
+                            ocrExtracted = Collections.emptyMap();
+                            log.info("OCR output rejected for prefill ({}) — routing draft to manual entry",
+                                    extractedAssessment.decision());
+                        } else {
+                            ocrProcessed = true;
+                            ocrConfidence = providerConfidence == null ? 0 : providerConfidence;
+                            ocrExtracted = withoutProviderMetadata(ocrExtracted);
 
-                        log.info("OCR extracted {} fields from attachment for complaint {}",
-                                ocrExtracted.size(), complaintNumber);
+                            if (nonBlank(ocrExtracted.get("complainantName"))) {
+                                complainantName = ocrExtracted.get("complainantName");
+                            }
+                            if (nonBlank(ocrExtracted.get("complainantPhone"))) {
+                                complainantPhone = ocrExtracted.get("complainantPhone");
+                            }
+                            if (nonBlank(ocrExtracted.get("category"))) {
+                                category = ocrExtracted.get("category");
+                            }
+                            if (nonBlank(ocrExtracted.get("subject"))) {
+                                complaintSummary = ocrExtracted.get("subject");
+                            }
+
+                            log.info("OCR extracted {} fields (confidence {}) from attachment for complaint {}",
+                                    ocrExtracted.size(), ocrConfidence, complaintNumber);
+                        }
                     }
                 } catch (Exception e) {
+                    // Fail closed: a human keys it rather than the record carrying a guess.
+                    ocrSkipReason = "OCR_FAILED";
+                    requiresManualEntry = true;
                     log.error("OCR processing failed for attachment: {}", e.getMessage());
                 }
+            } else if (contentType != null) {
+                ocrSkipReason = "UNSUPPORTED_TYPE";
             }
-
+        } else if (attachment != null && !attachment.isEmpty()) {
+            log.info("Attachment present but OCR suppressed: {}", ocrSkipReason);
         }
 
-        // Language detection and translation
-        Map<String, Object> languageResult = translationService.detectAndTranslate(body);
-        boolean isVernacular = (boolean) languageResult.getOrDefault("isVernacular", false);
-        String translatedBody = (String) languageResult.getOrDefault("translatedText", body);
+        Map<String, Object> languageResult = new LinkedHashMap<>();
+        languageResult.put("detectedLanguage", assessment.detectedLanguage());
+        languageResult.put("languageName", assessment.languageName());
 
         // Merge: OCR fields as base, rule-extracted fields override
         Map<String, String> mergedFields = new LinkedHashMap<>(ocrExtracted);
@@ -221,16 +341,24 @@ public class EmailSyndicationApiController {
             }
         }
 
-        long nextSeq = draftRepository.count() + 1;
-        String generatedDraftId = "DRF-" + String.format("%06d", nextSeq);
-
         EmailDraft draft = EmailDraft.builder()
-                .draftId(generatedDraftId)
+                .draftId(nextDraftId())
                 .threadId(threadId)
                 .messageId(messageId == null || messageId.isEmpty() ? UUID.randomUUID().toString() : messageId)
                 .senderEmail(senderEmail)
                 .subject(subject)
-                .body(isVernacular ? translatedBody : body)
+                // The citizen's own words are the record. A machine translation must never replace
+                // the body of a complaint; it is offered alongside for the officer's convenience.
+                .body(body)
+                .toRecipients(toRecipients)
+                .ccRecipients(ccRecipients)
+                .bccRecipients(bccRecipients)
+                .replyTo(replyTo)
+                .inReplyTo(inReplyTo)
+                .emailReferences(references)
+                .attachmentCount(attachment != null && !attachment.isEmpty() ? 1 : 0)
+                .ocrSkipReason(ocrSkipReason)
+                .requiresManualEntry(requiresManualEntry)
                 .complainantName(complainantName)
                 .complainantPhone(complainantPhone)
                 .complainantAddress(mergedFields.getOrDefault("complainantAddress", ""))
@@ -241,7 +369,7 @@ public class EmailSyndicationApiController {
                 .complaintSummary(complaintSummary)
                 .category(category)
                 .modeOfReceipt("EMAIL")
-                .status("ASSIGNED")
+                .status(requiresManualEntry ? DraftStatus.PENDING_MANUAL_ENTRY.name() : DraftStatus.ASSIGNED.name())
                 .assignedTo(assignedTo)
                 .parentComplaintId(complaintNumber)
                 .isDuplicate(false)
@@ -256,14 +384,17 @@ public class EmailSyndicationApiController {
                 .detectedLanguage((String) languageResult.get("detectedLanguage"))
                 .languageName((String) languageResult.get("languageName"))
                 .isVernacular(isVernacular)
-                .translationConfidence(languageResult.get("confidence") != null ?
-                        ((Number) languageResult.get("confidence")).doubleValue() : null)
-                .translatedBody(isVernacular ? body : null)
+                .translationConfidence(null)
+                // Left null deliberately: no machine translation is stored for a vernacular
+                // complaint. The original body IS the record and a human reads it.
+                .translatedBody(null)
                 .receivedAt(LocalDateTime.now())
                 .build();
 
-        // Stamp scheme version at creation time (UST190)
-        draft.setSchemeVersion("RBIOS_2026");
+        // Scheme version comes from configuration. It was hardcoded "RBIOS_2026" — a Scheme year
+        // that is not in force; the Scheme currently in force is the Integrated Ombudsman Scheme 2021
+        // and its clause numbers are the only ones seeded in CLOSURE_CLAUSE_MASTER.
+        draft.setSchemeVersion(schemeVersion);
 
         EmailDraft saved = draftRepository.save(draft);
         log.info("Draft saved to DB: id={}, draftId={}, assignedTo={}", saved.getId(), saved.getDraftId(), saved.getAssignedTo());
@@ -419,32 +550,108 @@ public class EmailSyndicationApiController {
             @RequestParam(value = "attachment", required = false) MultipartFile attachment) {
 
         try {
-            long nextSeq = draftRepository.count() + 1;
-            String draftId = "DRF-" + String.format("%06d", nextSeq);
+            // NFR-006 on the scanned image before it is stored or read.
+            if (attachment != null && !attachment.isEmpty()) {
+                intakeAttachmentValidator.validateSingle(attachment);
+            }
+
+            // The scan is actually OCR'd here. This endpoint used to set ocrProcessed(true) while
+            // storing ocrText("") and ocrConfidence(0) — it claimed an extraction that never ran.
+            Map<String, String> ocrExtracted = Collections.emptyMap();
+            boolean ocrProcessed = false;
+            int ocrConfidence = 0;
+            String ocrSkipReason = null;
+            boolean requiresManualEntry = false;
+            String detectedLanguage = "en";
+            String languageName = "English";
+            boolean isVernacular = false;
+
+            if (attachment != null && !attachment.isEmpty()) {
+                String contentType = attachment.getContentType();
+                Set<String> ocrableTypes = Set.of("application/pdf", "image/jpeg", "image/png", "image/tiff");
+                if (contentType != null && ocrableTypes.contains(contentType)) {
+                    try {
+                        Map<String, String> extracted =
+                                ocrService.extractFromImage(attachment.getBytes(), contentType);
+                        if (extracted.isEmpty()) {
+                            ocrSkipReason = "OCR_NO_TEXT";
+                            requiresManualEntry = true;
+                        } else {
+                            String extractedText = String.join("\n", extracted.values());
+                            Integer providerConfidence = readProviderConfidence(extracted);
+                            OcrEligibilityService.Assessment letterAssessment =
+                                    ocrEligibilityService.assessExtractedText(extractedText, providerConfidence);
+                            detectedLanguage = letterAssessment.detectedLanguage();
+                            languageName = letterAssessment.languageName();
+                            isVernacular = letterAssessment.vernacular();
+
+                            if (letterAssessment.requiresManualEntry()) {
+                                // Vernacular or low-confidence scans are keyed by a human; prefill
+                                // from an unreliable read would put a guess into a legal record.
+                                ocrSkipReason = letterAssessment.decision().name();
+                                requiresManualEntry = true;
+                            } else {
+                                ocrExtracted = withoutProviderMetadata(extracted);
+                                ocrProcessed = true;
+                                ocrConfidence = providerConfidence == null ? 0 : providerConfidence;
+                            }
+                        }
+                    } catch (Exception e) {
+                        ocrSkipReason = "OCR_FAILED";
+                        requiresManualEntry = true;
+                        log.error("Physical letter OCR failed: {}", e.getMessage());
+                    }
+                } else {
+                    ocrSkipReason = "UNSUPPORTED_TYPE";
+                    requiresManualEntry = true;
+                }
+            }
+
+            // OCR prefills only the fields the operator left blank, so keyed values always win.
+            String ocrJson = "";
+            if (!ocrExtracted.isEmpty()) {
+                try {
+                    ocrJson = objectMapper.writeValueAsString(ocrExtracted);
+                } catch (Exception e) {
+                    ocrJson = "";
+                }
+            }
+
+            String effectiveStatus = requiresManualEntry ? DraftStatus.PENDING_MANUAL_ENTRY.name()
+                    : (DraftStatus.isValid(status) ? status : DraftStatus.DRAFT.name());
 
             EmailDraft draft = EmailDraft.builder()
-                    .draftId(draftId)
+                    .draftId(nextDraftId())
                     .threadId(UUID.randomUUID().toString())
                     .messageId(UUID.randomUUID().toString())
                     .senderEmail(senderEmail)
                     .subject(subject)
                     .body(body)
-                    .complainantName(complainantName)
-                    .complainantPhone(complainantPhone)
-                    .complainantAddress(complainantAddress)
-                    .complainantState(complainantState)
-                    .complainantDistrict(complainantDistrict)
-                    .complainantPincode(complainantPincode)
-                    .category(category)
-                    .entityName(entityName)
+                    .complainantName(firstNonBlank(complainantName, ocrExtracted.get("complainantName")))
+                    .complainantPhone(firstNonBlank(complainantPhone, ocrExtracted.get("complainantPhone")))
+                    .complainantAddress(firstNonBlank(complainantAddress, ocrExtracted.get("complainantAddress")))
+                    .complainantState(firstNonBlank(complainantState, ocrExtracted.get("complainantState")))
+                    .complainantDistrict(firstNonBlank(complainantDistrict, ocrExtracted.get("complainantDistrict")))
+                    .complainantPincode(firstNonBlank(complainantPincode, ocrExtracted.get("complainantPincode")))
+                    .category(firstNonBlank(category, ocrExtracted.get("category")))
+                    .entityName(firstNonBlank(entityName, ocrExtracted.get("entityName")))
                     .entityType(entityType)
                     .modeOfReceipt(modeOfReceipt)
-                    .status(status)
+                    .status(effectiveStatus)
                     .assignedTo(assignedTo)
                     .processedBy(processedBy)
                     .amountInvolved(parseAmount(amountInvolved != null ? amountInvolved : ""))
                     .isDuplicate(false)
-                    .ocrProcessed(true)
+                    .ocrProcessed(ocrProcessed)
+                    .ocrConfidence(ocrConfidence)
+                    .ocrExtractedFieldsJson(ocrJson)
+                    .ocrSkipReason(ocrSkipReason)
+                    .requiresManualEntry(requiresManualEntry)
+                    .detectedLanguage(detectedLanguage)
+                    .languageName(languageName)
+                    .isVernacular(isVernacular)
+                    .attachmentCount(attachment != null && !attachment.isEmpty() ? 1 : 0)
+                    .schemeVersion(schemeVersion)
                     .receivedAt(java.time.LocalDateTime.now())
                     .build();
 
@@ -472,8 +679,10 @@ public class EmailSyndicationApiController {
                         .fileType(attachment.getContentType())
                         .fileSize(attachment.getSize())
                         .storagePath(storagePath)
-                        .ocrText("")
-                        .ocrConfidence(0)
+                        // The scanned image is the source document, so its extracted text and the
+                        // provider's real confidence are stored rather than "" and 0.
+                        .ocrText(ocrExtracted.isEmpty() ? "" : String.join("\n", ocrExtracted.values()))
+                        .ocrConfidence(ocrConfidence)
                         .uploadedBy(assignedTo.isEmpty() ? "DEO" : assignedTo)
                         .build();
                 draftAttachmentRepository.save(att);
@@ -674,32 +883,116 @@ public class EmailSyndicationApiController {
         }
     }
 
-    private boolean isOnIgnoreList(String senderEmail) {
-        if (senderEmail == null || senderEmail.isBlank()) return false;
-        String emailLower = senderEmail.toLowerCase().trim();
-        for (Map<String, Object> entry : ignoreListStore) {
-            Object activeFlag = entry.getOrDefault("isActive", true);
-            if (Boolean.FALSE.equals(activeFlag)) continue;
-            String status = (String) entry.getOrDefault("status", "active");
-            if (!"active".equalsIgnoreCase(status)) continue;
-            String pattern = ((String) entry.getOrDefault("pattern",
-                    (String) entry.getOrDefault("emailPattern", ""))).toLowerCase().trim();
-            if (pattern.isEmpty()) continue;
-            String type = ((String) entry.getOrDefault("type",
-                    (String) entry.getOrDefault("patternType", "EXACT"))).toUpperCase();
-            switch (type) {
-                case "EXACT":
-                    if (emailLower.equals(pattern)) return true;
-                    break;
-                case "DOMAIN":
-                    if (emailLower.endsWith("@" + pattern) || emailLower.endsWith("." + pattern)) return true;
-                    break;
-                case "CONTAINS":
-                    if (emailLower.contains(pattern)) return true;
-                    break;
-            }
+    private boolean nonBlank(String value) {
+        return value != null && !value.isBlank();
+    }
+
+    /** Operator-keyed values win over OCR: a human correction must never be overwritten. */
+    private String firstNonBlank(String preferred, String fallback) {
+        if (nonBlank(preferred)) return preferred;
+        return fallback == null ? "" : fallback;
+    }
+
+    /**
+     * draftId generation. The former "count() + 1" raced under concurrent ingests and draftId is
+     * unique, so two simultaneous emails could collide and one would be rejected.
+     */
+    private String nextDraftId() {
+        return "DRF-" + UUID.randomUUID().toString().substring(0, 12).toUpperCase();
+    }
+
+    /**
+     * Confidence as reported by the OCR provider. Returns null when the provider gave none, so the
+     * caller can fail closed rather than inherit the old hardcoded 85.
+     */
+    private Integer readProviderConfidence(Map<String, String> ocrExtracted) {
+        String raw = ocrExtracted.get("_confidence");
+        if (raw == null || raw.isBlank()) {
+            return null;
         }
-        return false;
+        try {
+            double value = Double.parseDouble(raw.trim());
+            // Providers report either 0-1 or 0-100.
+            return (int) Math.round(value <= 1.0 ? value * 100 : value);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    /** Provider metadata (_confidence, _typedDigital, _ocrSource) is not a complaint field. */
+    private Map<String, String> withoutProviderMetadata(Map<String, String> extracted) {
+        return extracted.entrySet().stream()
+                .filter(e -> !e.getKey().startsWith("_"))
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue,
+                        (a, b) -> a, LinkedHashMap::new));
+    }
+
+    /**
+     * Story: on a confirmed duplicate create NO new draft; link the email and its attachments to the
+     * existing parent complaint's attachment and email-communication records.
+     */
+    private Map<String, Object> linkDuplicateToParent(
+            EmailDeduplicationService.DuplicateMatch match, String senderEmail, String subject,
+            String body, String messageId, MultipartFile attachment,
+            String toRecipients, String ccRecipients, String bccRecipients) {
+
+        String parentNumber = match.parentComplaintNumber();
+        String originDraftId = match.existingDraft().getDraftId();
+
+        log.info("Duplicate email from {} (subject='{}') linked to CLOSED parent {} — no new draft created",
+                senderEmail, subject, parentNumber);
+
+        // Record the correspondence against the parent so the officer sees it in the email thread.
+        IncomingEmailRequest emailReq = new IncomingEmailRequest();
+        emailReq.setFromEmail(senderEmail);
+        emailReq.setFromName(extractName(senderEmail));
+        emailReq.setSubject(subject);
+        emailReq.setBody(body);
+        emailReq.setSuppressAcknowledgement(!ackPolicyService.shouldAcknowledge(senderEmail));
+        emailReq.setLinkedComplaintNumber(parentNumber);
+        int linkedEmails = emailService.linkEmailToComplaint(emailReq, parentNumber);
+
+        int linkedAttachments = 0;
+        if (attachment != null && !attachment.isEmpty()) {
+            String safeFileName = sanitizeFileName(attachment.getOriginalFilename());
+            String storagePath = "";
+            try {
+                Path parentDir = Paths.get(attachmentsRootPath, "complaints", parentNumber);
+                Files.createDirectories(parentDir);
+                Path targetFile = parentDir.resolve(safeFileName);
+                attachment.transferTo(targetFile.toFile());
+                storagePath = targetFile.toString();
+            } catch (IOException e) {
+                log.error("Failed to store duplicate-email attachment for parent {}", parentNumber);
+            }
+
+            draftAttachmentRepository.save(EmailDraftAttachment.builder()
+                    .draftId(originDraftId)
+                    .linkedComplaintNumber(parentNumber)
+                    .fileName(safeFileName)
+                    .fileType(attachment.getContentType())
+                    .fileSize(attachment.getSize())
+                    .storagePath(storagePath)
+                    .ocrText("")
+                    .ocrConfidence(0)
+                    .uploadedBy("SYSTEM")
+                    .build());
+            linkedAttachments = 1;
+        }
+
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("status", DraftStatus.DUPLICATE.name());
+        response.put("draftCreated", false);
+        response.put("isDuplicate", true);
+        response.put("messageKey", "intake.duplicate_linked_to_parent");
+        response.put("parentComplaintNumber", parentNumber);
+        response.put("originDraftId", originDraftId);
+        response.put("linkedAttachments", linkedAttachments);
+        response.put("linkedEmails", linkedEmails);
+        response.put("senderEmail", senderEmail);
+        response.put("subject", subject);
+        response.put("linkedAt", LocalDateTime.now().toString());
+        return response;
     }
 
     @PostMapping("/drafts/{draftId}/convert")
@@ -738,58 +1031,105 @@ public class EmailSyndicationApiController {
 
         Map<String, Object> stats = new LinkedHashMap<>();
         stats.put("totalDrafts", total);
-        stats.put("pendingCount", 0);
+        // These three were hardcoded zeros. ignoredCount in particular meant the suppression report
+        // could never show that anything had been suppressed.
+        stats.put("pendingCount", draftRepository.countByStatus(DraftStatus.PENDING_MANUAL_ENTRY.name()));
         stats.put("assignedCount", assigned);
         stats.put("inProgressCount", inProgress);
         stats.put("convertedCount", converted);
-        stats.put("duplicateCount", 0);
-        stats.put("ignoredCount", 0);
+        stats.put("duplicateCount", draftRepository.countByIsDuplicateTrue());
+        stats.put("ignoredCount", ignoredEmailLogRepository.count());
+        stats.put("manualEntryCount", draftRepository.countByStatus(DraftStatus.PENDING_MANUAL_ENTRY.name()));
         stats.put("activeDeoCount", getDeoPool().size());
 
         return wrapResponse(stats);
     }
 
+    // ─── Exceptional Email Master (ignore list) ───
+    // Persisted in email_ignore_list. Rules were previously held in a synchronized ArrayList in this
+    // controller and vanished on restart, so an admin's suppression silently stopped applying.
+
     @GetMapping("/ignore-list")
     public Map<String, Object> getIgnoreList() {
-        return wrapResponse(new ArrayList<>(ignoreListStore));
+        List<Map<String, Object>> entries = ignoreRepository.findAll().stream()
+                .map(this::toIgnoreEntryMap)
+                .collect(Collectors.toList());
+        return wrapResponse(entries);
     }
 
     @PostMapping("/ignore-list")
-    public Map<String, Object> addToIgnoreList(@RequestBody Map<String, Object> request) {
-        String pattern = (String) request.getOrDefault("pattern",
-                request.getOrDefault("emailPattern", ""));
-        String type = (String) request.getOrDefault("type",
-                request.getOrDefault("patternType", "EXACT"));
-        Map<String, Object> entry = new LinkedHashMap<>();
-        entry.put("id", ignoreIdSeq.getAndIncrement());
-        entry.put("pattern", pattern);
-        entry.put("emailPattern", pattern);
-        entry.put("type", type);
-        entry.put("patternType", type);
-        entry.put("reason", request.getOrDefault("reason", ""));
-        entry.put("addedBy", "admin");
-        entry.put("status", "active");
-        entry.put("isActive", true);
-        entry.put("createdAt", LocalDateTime.now().toString());
-        ignoreListStore.add(entry);
-        return wrapResponse(entry);
+    public Map<String, Object> addToIgnoreList(@RequestBody Map<String, Object> request,
+                                               jakarta.servlet.http.HttpServletRequest httpRequest) {
+        EmailIgnoreEntry saved = ignoreRepository.save(buildIgnoreEntry(new EmailIgnoreEntry(), request, httpRequest));
+        log.info("Ignore rule {} created by {}", saved.getId(), saved.getAddedBy());
+        return wrapResponse(toIgnoreEntryMap(saved));
     }
 
     @PostMapping("/ignore-list/bulk")
-    public Map<String, Object> bulkAddIgnoreList(@RequestBody List<Map<String, Object>> requests) {
+    public Map<String, Object> bulkAddIgnoreList(@RequestBody List<Map<String, Object>> requests,
+                                                 jakarta.servlet.http.HttpServletRequest httpRequest) {
         List<Map<String, Object>> entries = new ArrayList<>();
-        for (int i = 0; i < requests.size(); i++) {
-            Map<String, Object> entry = new LinkedHashMap<>();
-            entry.put("id", i + 1);
-            entry.put("emailPattern", requests.get(i).getOrDefault("emailPattern", ""));
-            entry.put("patternType", requests.get(i).getOrDefault("patternType", "EXACT"));
-            entry.put("reason", requests.get(i).getOrDefault("reason", ""));
-            entry.put("addedBy", "admin");
-            entry.put("isActive", true);
-            entry.put("createdAt", LocalDateTime.now().toString());
-            entries.add(entry);
+        for (Map<String, Object> request : requests) {
+            EmailIgnoreEntry saved = ignoreRepository.save(
+                    buildIgnoreEntry(new EmailIgnoreEntry(), request, httpRequest));
+            entries.add(toIgnoreEntryMap(saved));
         }
         return wrapResponse(entries);
+    }
+
+    private EmailIgnoreEntry buildIgnoreEntry(EmailIgnoreEntry entry, Map<String, Object> request,
+                                              jakarta.servlet.http.HttpServletRequest httpRequest) {
+        String pattern = (String) request.getOrDefault("emailPattern", request.getOrDefault("pattern", ""));
+        String type = (String) request.getOrDefault("patternType", request.getOrDefault("type", "EXACT"));
+
+        entry.setEmailPattern(pattern);
+        entry.setPatternType(type == null ? "EXACT" : type.toUpperCase());
+        entry.setMatchField(((String) request.getOrDefault("matchField", "FROM")).toUpperCase());
+        entry.setToPattern((String) request.get("toPattern"));
+        entry.setCcPattern((String) request.get("ccPattern"));
+        entry.setBccPattern((String) request.get("bccPattern"));
+        entry.setSubjectPattern((String) request.get("subjectPattern"));
+        entry.setExceptionPattern((String) request.get("exceptionPattern"));
+        entry.setReason((String) request.getOrDefault("reason", ""));
+        if (request.containsKey("isActive")) {
+            entry.setIsActive(Boolean.TRUE.equals(request.get("isActive")));
+        } else if (entry.getIsActive() == null) {
+            entry.setIsActive(true);
+        }
+        // Attributed to the caller, not the literal "admin" the old code stored for every row.
+        if (entry.getId() == null) {
+            entry.setAddedBy(resolveActor(httpRequest));
+        }
+        return entry;
+    }
+
+    private Map<String, Object> toIgnoreEntryMap(EmailIgnoreEntry entry) {
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("id", entry.getId());
+        map.put("emailPattern", entry.getEmailPattern());
+        map.put("pattern", entry.getEmailPattern());
+        map.put("patternType", entry.getPatternType());
+        map.put("type", entry.getPatternType());
+        map.put("matchField", entry.getMatchField());
+        map.put("toPattern", entry.getToPattern());
+        map.put("ccPattern", entry.getCcPattern());
+        map.put("bccPattern", entry.getBccPattern());
+        map.put("subjectPattern", entry.getSubjectPattern());
+        map.put("exceptionPattern", entry.getExceptionPattern());
+        map.put("reason", entry.getReason());
+        map.put("addedBy", entry.getAddedBy());
+        map.put("isActive", Boolean.TRUE.equals(entry.getIsActive()));
+        map.put("status", Boolean.TRUE.equals(entry.getIsActive()) ? "active" : "inactive");
+        map.put("suppressedCount", entry.getId() == null ? 0
+                : ignoredEmailLogRepository.countByMatchedRuleId(entry.getId()));
+        map.put("createdAt", entry.getCreatedAt() != null ? entry.getCreatedAt().toString() : "");
+        return map;
+    }
+
+    private String resolveActor(jakarta.servlet.http.HttpServletRequest httpRequest) {
+        if (httpRequest == null) return "system";
+        String user = httpRequest.getHeader("X-User-Id");
+        return user == null || user.isBlank() ? "system" : user;
     }
 
     @GetMapping("/deo")
@@ -869,19 +1209,207 @@ public class EmailSyndicationApiController {
     }
 
     @DeleteMapping("/ignore-list/{id}")
-    public Map<String, Object> removeIgnoreEntry(@PathVariable int id) {
-        ignoreListStore.removeIf(e -> Integer.valueOf(id).equals(e.get("id")));
-        return wrapResponse(null);
+    public Map<String, Object> removeIgnoreEntry(@PathVariable Long id) {
+        // Actually deletes. The previous implementation removed from an in-memory list, so the rule
+        // reappeared on the next restart.
+        if (!ignoreRepository.existsById(id)) {
+            return wrapResponse(Map.of("deleted", false, "messageKey", "intake.ignore_rule_not_found"));
+        }
+        ignoreRepository.deleteById(id);
+        log.info("Ignore rule {} deleted", id);
+        return wrapResponse(Map.of("deleted", true, "id", id));
     }
 
     @PutMapping("/ignore-list/{id}")
-    public Map<String, Object> updateIgnoreEntry(@PathVariable int id, @RequestBody Map<String, Object> request) {
-        Map<String, Object> entry = new LinkedHashMap<>(request);
-        entry.put("id", id);
-        entry.put("addedBy", "admin");
-        entry.put("isActive", true);
-        entry.put("createdAt", LocalDateTime.now().toString());
-        return wrapResponse(entry);
+    public Map<String, Object> updateIgnoreEntry(@PathVariable Long id, @RequestBody Map<String, Object> request,
+                                                 jakarta.servlet.http.HttpServletRequest httpRequest) {
+        // Previously an echo stub: it returned the request body and persisted nothing.
+        EmailIgnoreEntry existing = ignoreRepository.findById(id).orElse(null);
+        if (existing == null) {
+            return wrapResponse(Map.of("updated", false, "messageKey", "intake.ignore_rule_not_found"));
+        }
+        EmailIgnoreEntry saved = ignoreRepository.save(buildIgnoreEntry(existing, request, httpRequest));
+        log.info("Ignore rule {} updated", saved.getId());
+        return wrapResponse(toIgnoreEntryMap(saved));
+    }
+
+    // ─── Ignored-email report (story: sender, subject, timestamp, matched rule + CSV export) ───
+
+    @GetMapping("/ignored-emails")
+    public Map<String, Object> getIgnoredEmails(
+            @RequestParam(required = false) String senderEmail,
+            @RequestParam(required = false) Long ruleId,
+            @RequestParam(required = false) String from,
+            @RequestParam(required = false) String to) {
+
+        List<IgnoredEmailLog> rows = ignoredEmailLogRepository.search(
+                blankToNull(senderEmail), ruleId, parseDateTime(from, true), parseDateTime(to, false));
+
+        List<Map<String, Object>> entries = rows.stream().map(this::toIgnoredEmailMap).collect(Collectors.toList());
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("total", entries.size());
+        payload.put("entries", entries);
+        return wrapResponse(payload);
+    }
+
+    @GetMapping(value = "/ignored-emails/export", produces = "text/csv")
+    public org.springframework.http.ResponseEntity<String> exportIgnoredEmails(
+            @RequestParam(required = false) String senderEmail,
+            @RequestParam(required = false) Long ruleId,
+            @RequestParam(required = false) String from,
+            @RequestParam(required = false) String to) {
+
+        List<IgnoredEmailLog> rows = ignoredEmailLogRepository.search(
+                blankToNull(senderEmail), ruleId, parseDateTime(from, true), parseDateTime(to, false));
+
+        StringBuilder csv = new StringBuilder();
+        csv.append("Sender,Subject,Received At,Matched Rule ID,Matched Field,Matched Pattern,Pattern Type,Reason\n");
+        for (IgnoredEmailLog row : rows) {
+            csv.append(csvCell(row.getSenderEmail())).append(',')
+               .append(csvCell(row.getSubject())).append(',')
+               .append(csvCell(row.getReceivedAt() == null ? "" : row.getReceivedAt().toString())).append(',')
+               .append(csvCell(row.getMatchedRuleId() == null ? "" : row.getMatchedRuleId().toString())).append(',')
+               .append(csvCell(row.getMatchedRuleField())).append(',')
+               .append(csvCell(row.getMatchedRulePattern())).append(',')
+               .append(csvCell(row.getMatchedRuleType())).append(',')
+               .append(csvCell(row.getMatchedRuleReason())).append('\n');
+        }
+
+        return org.springframework.http.ResponseEntity.ok()
+                .header("Content-Disposition", "attachment; filename=\"ignored-emails.csv\"")
+                .header("Content-Type", "text/csv; charset=UTF-8")
+                .body(csv.toString());
+    }
+
+    private Map<String, Object> toIgnoredEmailMap(IgnoredEmailLog row) {
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("id", row.getId());
+        map.put("senderEmail", row.getSenderEmail());
+        map.put("subject", row.getSubject());
+        map.put("toRecipients", row.getToRecipients());
+        map.put("ccRecipients", row.getCcRecipients());
+        map.put("bccRecipients", row.getBccRecipients());
+        map.put("messageId", row.getMessageId());
+        map.put("matchedRuleId", row.getMatchedRuleId());
+        map.put("matchedRulePattern", row.getMatchedRulePattern());
+        map.put("matchedRuleField", row.getMatchedRuleField());
+        map.put("matchedRuleType", row.getMatchedRuleType());
+        map.put("matchedRuleReason", row.getMatchedRuleReason());
+        map.put("receivedAt", row.getReceivedAt() == null ? "" : row.getReceivedAt().toString());
+        return map;
+    }
+
+    /**
+     * RFC 4180 quoting. A subject containing a comma or a quote would otherwise shift every later
+     * column in the exported report.
+     */
+    private String csvCell(String value) {
+        if (value == null || value.isEmpty()) return "";
+        String escaped = value.replace("\"", "\"\"").replace("\r", " ").replace("\n", " ");
+        return '"' + escaped + '"';
+    }
+
+    private String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value;
+    }
+
+    private LocalDateTime parseDateTime(String value, boolean startOfDay) {
+        if (value == null || value.isBlank()) return null;
+        try {
+            if (value.length() <= 10) {
+                java.time.LocalDate date = java.time.LocalDate.parse(value);
+                return startOfDay ? date.atStartOfDay() : date.atTime(23, 59, 59);
+            }
+            return LocalDateTime.parse(value);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    // ─── Suggested related appeal (accept / dismiss) ───
+
+    @PostMapping("/drafts/{draftId}/suggested-related")
+    public Map<String, Object> decideSuggestedRelated(
+            @PathVariable String draftId,
+            @RequestBody Map<String, Object> request,
+            jakarta.servlet.http.HttpServletRequest httpRequest) {
+
+        EmailDraft draft = draftRepository.findByDraftId(draftId).orElse(null);
+        if (draft == null) {
+            return wrapResponse(Map.of("error", "Draft not found", "messageKey", "intake.draft_not_found"));
+        }
+
+        String decision = String.valueOf(request.getOrDefault("decision", "")).toUpperCase();
+        if (!"ACCEPTED".equals(decision) && !"DISMISSED".equals(decision)) {
+            return wrapResponse(Map.of("error", "decision must be ACCEPTED or DISMISSED",
+                    "messageKey", "intake.suggested_related_invalid_decision"));
+        }
+
+        draft.setSuggestedRelatedDraftId((String) request.get("relatedDraftId"));
+        draft.setSuggestedRelatedDecision(decision);
+        draft.setSuggestedRelatedDecidedBy(resolveActor(httpRequest));
+        draft.setSuggestedRelatedDecidedAt(LocalDateTime.now());
+        draftRepository.save(draft);
+
+        return wrapResponse(toResponseMap(draft));
+    }
+
+    /**
+     * Candidate related drafts: same complainant, similar matter. Was a hardcoded empty list.
+     * Similarity is scored on the subject so an unrelated matter from the same sender ranks lower.
+     */
+    private List<Map<String, Object>> findSuggestedRelated(EmailDraft draft) {
+        if (draft.getSenderEmail() == null || draft.getSenderEmail().isBlank()) {
+            return List.of();
+        }
+        List<EmailDraft> candidates = draftRepository
+                .findBySenderEmailIgnoreCaseAndDraftIdNotOrderByCreatedAtDesc(
+                        draft.getSenderEmail(), draft.getDraftId());
+
+        return candidates.stream()
+                .map(c -> {
+                    Map<String, Object> map = new LinkedHashMap<>();
+                    map.put("draftId", c.getDraftId());
+                    map.put("subject", c.getSubject());
+                    map.put("category", c.getCategory());
+                    map.put("status", c.getStatus());
+                    map.put("modeOfReceipt", c.getModeOfReceipt());
+                    map.put("parentComplaintId", c.getParentComplaintId());
+                    map.put("convertedComplaintId", c.getConvertedComplaintId());
+                    map.put("createdAt", c.getCreatedAt() == null ? "" : c.getCreatedAt().toString());
+                    map.put("similarityScore", similarityScore(draft, c));
+                    map.put("link", "/aa/draft/" + c.getDraftId());
+                    return map;
+                })
+                .sorted((a, b) -> Double.compare(
+                        (Double) b.get("similarityScore"), (Double) a.get("similarityScore")))
+                .limit(5)
+                .collect(Collectors.toList());
+    }
+
+    /** Token overlap on subject, plus a bonus for the same category. */
+    private double similarityScore(EmailDraft a, EmailDraft b) {
+        double score = 0;
+        if (a.getCategory() != null && a.getCategory().equalsIgnoreCase(b.getCategory())) {
+            score += 0.4;
+        }
+        Set<String> tokensA = subjectTokens(a.getSubject());
+        Set<String> tokensB = subjectTokens(b.getSubject());
+        if (!tokensA.isEmpty() && !tokensB.isEmpty()) {
+            Set<String> shared = new HashSet<>(tokensA);
+            shared.retainAll(tokensB);
+            Set<String> union = new HashSet<>(tokensA);
+            union.addAll(tokensB);
+            score += 0.6 * ((double) shared.size() / union.size());
+        }
+        return Math.round(score * 100) / 100.0;
+    }
+
+    private Set<String> subjectTokens(String subject) {
+        if (subject == null || subject.isBlank()) return Set.of();
+        return Arrays.stream(subject.toLowerCase().replaceAll("^(re|fwd|fw)\\s*:\\s*", "").split("[^a-z0-9]+"))
+                .filter(t -> t.length() > 3)
+                .collect(Collectors.toSet());
     }
 
     // ─── Helper methods ───
@@ -935,7 +1463,25 @@ public class EmailSyndicationApiController {
         response.put("processedBy", draft.getProcessedBy());
         response.put("convertedComplaintId", draft.getConvertedComplaintId());
         response.put("attachments", attachmentList);
-        response.put("suggestedRelated", List.of());
+        response.put("attachmentCount", draft.getAttachmentCount() != null
+                ? draft.getAttachmentCount() : attachmentList.size());
+        response.put("suggestedRelated", findSuggestedRelated(draft));
+        response.put("suggestedRelatedDraftId", draft.getSuggestedRelatedDraftId());
+        response.put("suggestedRelatedDecision", draft.getSuggestedRelatedDecision());
+        response.put("suggestedRelatedDecidedBy", draft.getSuggestedRelatedDecidedBy());
+        response.put("suggestedRelatedDecidedAt", draft.getSuggestedRelatedDecidedAt() == null ? ""
+                : draft.getSuggestedRelatedDecidedAt().toString());
+
+        // Recipient headers, now persisted so ignore rules on them are enforceable.
+        response.put("toRecipients", draft.getToRecipients());
+        response.put("ccRecipients", draft.getCcRecipients());
+        response.put("bccRecipients", draft.getBccRecipients());
+        response.put("replyTo", draft.getReplyTo());
+        response.put("inReplyTo", draft.getInReplyTo());
+
+        // OCR gating outcome, so the DO screen can explain why a field was not prefilled.
+        response.put("ocrSkipReason", draft.getOcrSkipReason());
+        response.put("requiresManualEntry", draft.isRequiresManualEntry());
 
         // DEO assessment
         response.put("deoDecision", draft.getDeoDecision());

@@ -29,6 +29,9 @@ class CepcWorkflowServiceTest {
     @Mock private KeycloakUserService keycloakUserService;
     @Mock private CepcSlaService cepcSlaService;
     @Mock private CepcAuditService cepcAuditService;
+    @Mock private ClosureLetterService closureLetterService;
+    @Mock private CommunicationTemplateService communicationTemplateService;
+    @Mock private NotificationService notificationService;
 
     @InjectMocks
     private CepcWorkflowService cepcWorkflowService;

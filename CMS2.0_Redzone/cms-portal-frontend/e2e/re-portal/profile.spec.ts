@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../fixtures';
 import { loginAsReRole, isKeycloakAvailable, logout } from '../utils/auth';
 
 test.describe('RE Portal - Profile', () => {
@@ -31,7 +31,9 @@ test.describe('RE Portal - Profile', () => {
     const entityName = page.locator('.detail-item:has(.detail-label:has-text("Entity Name")) .detail-value');
     await expect(entityName).toBeVisible();
 
-    const nodalCard = page.locator('.card-title:has-text("Nodal Officer")');
+    // "Nodal Officer" is a substring of "Principal Nodal Officer", so :has-text matched both cards
+    // and tripped strict mode. Scoped to the first match, which is the Nodal Officer card.
+    const nodalCard = page.locator('.card-title:has-text("Nodal Officer")').first();
     await expect(nodalCard).toBeVisible();
   });
 
@@ -41,6 +43,16 @@ test.describe('RE Portal - Profile', () => {
     const editBtn = page.locator('.edit-btn');
     await expect(editBtn).toBeVisible({ timeout: 5000 });
     await editBtn.click();
+
+    // Name and email are mandatory, and the seeded entity has neither, so filling only the phone
+    // makes the form fail validation ("Name and email are required.") and no success banner appears.
+    // All three required fields are supplied so this test exercises a successful save.
+    const nameInput = page.locator('#nodalName');
+    await expect(nameInput).toBeVisible({ timeout: 5000 });
+    await nameInput.fill('E2E Nodal Officer');
+
+    const emailInput = page.locator('#nodalEmail');
+    await emailInput.fill('e2e.nodal@example.test');
 
     const phoneInput = page.locator('#nodalPhone');
     await expect(phoneInput).toBeVisible({ timeout: 5000 });

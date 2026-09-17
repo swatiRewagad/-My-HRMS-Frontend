@@ -97,7 +97,7 @@ BEGIN
   cms_seed_key('eligibility.sub_reply_date', 'eligibility', 'Sub: reply date', 'Date on which reply was received');
   cms_seed_key('eligibility.sub_upload_reply', 'eligibility', 'Sub: upload reply', 'Upload Reply Copy');
   cms_seed_key('eligibility.sub_are_you_complainant', 'eligibility', 'Sub: are you complainant', 'If Yes, then are you the Complainant?');
-  cms_seed_key('eligibility.block_not_filed', 'eligibility', 'Block: not filed', 'in terms of clause 10(1)(j) of Reserve Bank - Integrated Ombudsman Scheme, 2026, the complaint cannot be processed under the Scheme.');
+  cms_seed_key('eligibility.block_not_filed', 'eligibility', 'Block: not filed', 'in terms of clause 10(1)(j) of Reserve Bank - Integrated Ombudsman Scheme, 2021, the complaint cannot be processed under the Scheme.');
   cms_seed_key('eligibility.block_sub_judice', 'eligibility', 'Block: sub-judice', 'As your complaint is sub-judice/under arbitration/already dealt with on merits by a Court/Tribunal/Arbitrator/Authority, it will be closed as Non-Maintainable under clause 10(2)(b)(ii) of the Reserve Bank - Integrated Ombudsman Scheme, 2021.');
   cms_seed_key('eligibility.block_already_settled', 'eligibility', 'Block: already settled', 'As your complaint has already been settled or dealt with by a Court/Tribunal/Arbitrator/Authority, it will be closed as Non-Maintainable under the Reserve Bank - Integrated Ombudsman Scheme, 2021.');
   cms_seed_key('eligibility.block_pending_ombudsman', 'eligibility', 'Block: pending ombudsman', 'Your complaint is already pending before the Ombudsman on the same grievance. Duplicate complaints cannot be filed.');
@@ -125,7 +125,7 @@ BEGIN
   cms_seed_key('home.no_complaints', 'home', 'home.no_complaints', 'No complaints found');
   cms_seed_key('home.ct_tag', 'home', 'home.ct_tag', 'FIND YOUR FINANCIAL INSTITUTION');
   cms_seed_key('home.ct_heading', 'home', 'home.ct_heading', 'You can file complaints about');
-  cms_seed_key('home.ct_regulated', 'home', 'home.ct_regulated', 'Regulated entities covered under Reserve Bank-Integrated Ombudsman Scheme, 2026');
+  cms_seed_key('home.ct_regulated', 'home', 'home.ct_regulated', 'Regulated entities covered under Reserve Bank-Integrated Ombudsman Scheme, 2021');
   cms_seed_key('home.ct_download', 'home', 'home.ct_download', 'Download PDF');
   cms_seed_key('home.scheme_title', 'home', 'home.scheme_title', 'Details of the Ombudsmen Scheme');
   cms_seed_key('home.wwd_tag', 'home', 'home.wwd_tag', 'WHAT WE DO');
@@ -420,7 +420,7 @@ BEGIN
   cms_seed_translation('eligibility.sub_reply_date', 'hi', N'जिस तारीख को उत्तर प्राप्त हुआ');
   cms_seed_translation('eligibility.sub_upload_reply', 'hi', N'उत्तर की प्रति अपलोड करें');
   cms_seed_translation('eligibility.sub_are_you_complainant', 'hi', N'यदि हाँ, तो क्या आप स्वयं शिकायतकर्ता हैं?');
-  cms_seed_translation('eligibility.block_not_filed', 'hi', N'रिज़र्व बैंक – एकीकृत लोकपाल योजना, 2026 के खंड 10(1)(j) के अनुसार, शिकायत को योजना के तहत संसाधित नहीं किया जा सकता।');
+  cms_seed_translation('eligibility.block_not_filed', 'hi', N'रिज़र्व बैंक – एकीकृत लोकपाल योजना, 2021 के खंड 10(1)(j) के अनुसार, शिकायत को योजना के तहत संसाधित नहीं किया जा सकता।');
   cms_seed_translation('eligibility.block_sub_judice', 'hi', N'चूंकि आपकी शिकायत न्यायालय/न्यायाधिकरण/मध्यस्थ/प्राधिकरण के समक्ष लंबित है, इसे रिज़र्व बैंक - एकीकृत लोकपाल योजना, 2021 के खंड 10(2)(b)(ii) के तहत अस्वीकार्य के रूप में बंद किया जाएगा।');
   cms_seed_translation('eligibility.block_already_settled', 'hi', N'चूंकि आपकी शिकायत पहले ही न्यायालय/न्यायाधिकरण/मध्यस्थ/प्राधिकरण द्वारा निपटाई जा चुकी है, इसे रिज़र्व बैंक - एकीकृत लोकपाल योजना, 2021 के तहत अस्वीकार्य के रूप में बंद किया जाएगा।');
   cms_seed_translation('eligibility.block_pending_ombudsman', 'hi', N'आपकी शिकायत पहले से उसी विवाद पर लोकपाल के समक्ष लंबित है। डुप्लिकेट शिकायत दर्ज नहीं की जा सकती।');
@@ -466,7 +466,7 @@ BEGIN
   cms_seed_translation('eligibility.sub_reply_date', 'mr', N'ज्या तारखेला उत्तर प्राप्त झाले');
   cms_seed_translation('eligibility.sub_upload_reply', 'mr', N'उत्तराची प्रत अपलोड करा');
   cms_seed_translation('eligibility.sub_are_you_complainant', 'mr', N'होय असल्यास, तुम्ही स्वतः तक्रारदार आहात का?');
-  cms_seed_translation('eligibility.block_not_filed', 'mr', N'रिझर्व्ह बँक – एकीकृत लोकपाल योजना, 2026 च्या कलम 10(1)(j) नुसार, तक्रार योजनेअंतर्गत प्रक्रिया करता येत नाही.');
+  cms_seed_translation('eligibility.block_not_filed', 'mr', N'रिझर्व्ह बँक – एकीकृत लोकपाल योजना, 2021 च्या कलम 10(1)(j) नुसार, तक्रार योजनेअंतर्गत प्रक्रिया करता येत नाही.');
   cms_seed_translation('eligibility.block_sub_judice', 'mr', N'तुमची तक्रार न्यायालय/न्यायाधिकरण/लवाद/प्राधिकरणासमोर प्रलंबित असल्याने, ती रिझर्व्ह बँक - एकीकृत लोकपाल योजना, 2021 च्या कलम 10(2)(b)(ii) अंतर्गत अस्वीकार्य म्हणून बंद केली जाईल.');
   cms_seed_translation('eligibility.block_already_settled', 'mr', N'तुमची तक्रार आधीच न्यायालय/न्यायाधिकरण/लवाद/प्राधिकरणाद्वारे निकाली काढली गेली असल्याने, ती रिझर्व्ह बँक - एकीकृत लोकपाल योजना, 2021 अंतर्गत अस्वीकार्य म्हणून बंद केली जाईल.');
   cms_seed_translation('eligibility.block_pending_ombudsman', 'mr', N'तुमची तक्रार आधीच त्याच तक्रारीवर लोकपालासमोर प्रलंबित आहे. डुप्लिकेट तक्रार दाखल करता येत नाही.');
@@ -509,7 +509,7 @@ BEGIN
   cms_seed_translation('home.no_complaints', 'hi', N'कोई शिकायत नहीं मिली');
   cms_seed_translation('home.ct_tag', 'hi', N'अपनी वित्तीय संस्था खोजें');
   cms_seed_translation('home.ct_heading', 'hi', N'आप इनके बारे में शिकायत दर्ज कर सकते हैं');
-  cms_seed_translation('home.ct_regulated', 'hi', N'रिज़र्व बैंक-एकीकृत लोकपाल योजना, 2026 के तहत विनियमित संस्थाएँ');
+  cms_seed_translation('home.ct_regulated', 'hi', N'रिज़र्व बैंक-एकीकृत लोकपाल योजना, 2021 के तहत विनियमित संस्थाएँ');
   cms_seed_translation('home.ct_download', 'hi', N'PDF डाउनलोड करें');
   cms_seed_translation('home.scheme_title', 'hi', N'लोकपाल योजना का विवरण');
   cms_seed_translation('home.wwd_tag', 'hi', N'हम क्या करते हैं');

@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../fixtures';
 import {
   loginAsAaRole,
   isKeycloakAvailable,
@@ -33,7 +33,7 @@ test.describe('AA-US-001: Search parent & create Appeal/Representation', () => {
     const complaint = await createTestComplaint(request, { subject: 'AA-US-001 Parent' });
     await advanceToStatus(request, complaint.complaintNumber, 'closed');
 
-    await loginAsAaRole(page, 'AA_REGISTRAR');
+    await loginAsAaRole(page, 'AA_DO');
     await page.waitForSelector('.aa-dashboard', { timeout: 15000 });
 
     const searchInput = page.locator('.search-box input, input[placeholder*="Search"], input[aria-label*="search"]');
@@ -72,7 +72,7 @@ test.describe('AA-US-001: Search parent & create Appeal/Representation', () => {
 
     const openComplaint = await createTestComplaint(request, { subject: 'AA-US-001 Open' });
 
-    await loginAsAaRole(page, 'AA_REGISTRAR');
+    await loginAsAaRole(page, 'AA_DO');
     await page.waitForSelector('.aa-dashboard', { timeout: 15000 });
 
     const searchInput = page.locator('.search-box input, input[placeholder*="Search"]');
@@ -105,7 +105,7 @@ test.describe('AA-US-002: Immutable classification (Appeal vs Representation)', 
     await advanceToStatus(request, complaint.complaintNumber, 'closed');
     const appeal = await fileAppeal(request, complaint.complaintNumber, { classificationType: 'APPEAL' });
 
-    await loginAsAaRole(page, 'AA_REGISTRAR');
+    await loginAsAaRole(page, 'AA_DO');
     await page.waitForSelector('.aa-dashboard', { timeout: 15000 });
 
     const searchInput = page.locator('.search-box input, input[placeholder*="Search"]');
@@ -126,7 +126,7 @@ test.describe('AA-US-002: Immutable classification (Appeal vs Representation)', 
     await advanceToStatus(request, complaint.complaintNumber, 'closed');
     const appeal = await fileAppeal(request, complaint.complaintNumber, { classificationType: 'APPEAL' });
 
-    await loginAsAaRole(page, 'AA_REGISTRAR');
+    await loginAsAaRole(page, 'AA_DO');
     await page.waitForSelector('.aa-dashboard', { timeout: 15000 });
 
     await page.goto(`/aa/appeals/${appeal.appealNumber}`, { waitUntil: 'networkidle' });
@@ -233,7 +233,7 @@ test.describe('AA-US-004: Multi-channel registration', () => {
     const complaint = await createTestComplaint(request, { subject: 'AA-US-004 PNO Create' });
     await advanceToStatus(request, complaint.complaintNumber, 'closed');
 
-    await loginAsAaRole(page, 'AA_REGISTRAR');
+    await loginAsAaRole(page, 'AA_DO');
     await page.waitForSelector('.aa-dashboard', { timeout: 15000 });
 
     await page.goto('/aa/create-appeal', { waitUntil: 'networkidle' });
@@ -256,7 +256,7 @@ test.describe('AA-US-004: Multi-channel registration', () => {
     await advanceToStatus(request, complaint.complaintNumber, 'closed');
     const appeal = await fileAppeal(request, complaint.complaintNumber);
 
-    await loginAsAaRole(page, 'AA_REGISTRAR');
+    await loginAsAaRole(page, 'AA_DO');
     await page.goto(`/aa/appeals/${appeal.appealNumber}`, { waitUntil: 'networkidle' });
     await page.waitForTimeout(2000);
 
@@ -290,7 +290,7 @@ test.describe('AA-US-005: AA DO milestone-based workflow', () => {
     await advanceToStatus(request, complaint.complaintNumber, 'closed');
     const appeal = await fileAppeal(request, complaint.complaintNumber);
 
-    await loginAsAaRole(page, 'AA_REGISTRAR');
+    await loginAsAaRole(page, 'AA_DO');
     await page.goto(`/aa/appeals/${appeal.appealNumber}`, { waitUntil: 'networkidle' });
     await page.waitForTimeout(2000);
 
@@ -306,7 +306,7 @@ test.describe('AA-US-005: AA DO milestone-based workflow', () => {
     await advanceToStatus(request, complaint.complaintNumber, 'closed');
     const appeal = await fileAppeal(request, complaint.complaintNumber);
 
-    await loginAsAaRole(page, 'AA_REGISTRAR');
+    await loginAsAaRole(page, 'AA_DO');
     await page.goto(`/aa/appeals/${appeal.appealNumber}`, { waitUntil: 'networkidle' });
     await page.waitForTimeout(2000);
 
@@ -341,7 +341,7 @@ test.describe('AA-US-006: AA Reviewer workflow + bulk close', () => {
       targetReviewer: 'aa_bench_001',
     }).catch(() => {});
 
-    await loginAsAaRole(page, 'AA_BENCH_OFFICER');
+    await loginAsAaRole(page, 'AA_REVIEWER_1');
     await page.waitForSelector('.aa-dashboard', { timeout: 15000 });
 
     const dashboard = page.locator('.aa-dashboard, .review-queue');
@@ -351,7 +351,7 @@ test.describe('AA-US-006: AA Reviewer workflow + bulk close', () => {
   test('TC-00602: Negative — non-Reviewer role cannot bulk close', async ({ page }) => {
     test.skip(!keycloakUp, 'Keycloak not available');
 
-    await loginAsAaRole(page, 'AA_REGISTRAR');
+    await loginAsAaRole(page, 'AA_DO');
     await page.waitForSelector('.aa-dashboard', { timeout: 15000 });
 
     const bulkCloseBtn = page.locator('button:has-text("Bulk Close"), button:has-text("Close Selected")');
@@ -380,7 +380,7 @@ test.describe('AA-US-008: Appellate Authority final decision', () => {
     await advanceToStatus(request, complaint.complaintNumber, 'closed');
     const appeal = await fileAppeal(request, complaint.complaintNumber);
 
-    await loginAsAaRole(page, 'AA_AUTHORITY');
+    await loginAsAaRole(page, 'AA_SECRETARIAT');
     await page.goto(`/aa/appeals/${appeal.appealNumber}`, { waitUntil: 'networkidle' });
     await page.waitForTimeout(2000);
 
@@ -403,7 +403,7 @@ test.describe('AA-US-008: Appellate Authority final decision', () => {
     await advanceToStatus(request, complaint.complaintNumber, 'closed');
     const appeal = await fileAppeal(request, complaint.complaintNumber);
 
-    await loginAsAaRole(page, 'AA_REGISTRAR');
+    await loginAsAaRole(page, 'AA_DO');
     await page.goto(`/aa/appeals/${appeal.appealNumber}`, { waitUntil: 'networkidle' });
     await page.waitForTimeout(2000);
 
@@ -482,7 +482,7 @@ test.describe('AA-US-011: Advisory mechanism (RBIOS 2026)', () => {
     await advanceToStatus(request, complaint.complaintNumber, 'closed');
     const appeal = await fileAppeal(request, complaint.complaintNumber);
 
-    await loginAsAaRole(page, 'AA_AUTHORITY');
+    await loginAsAaRole(page, 'AA_SECRETARIAT');
     await page.goto(`/aa/appeals/${appeal.appealNumber}`, { waitUntil: 'networkidle' });
     await page.waitForTimeout(2000);
 
@@ -499,7 +499,7 @@ test.describe('AA-US-011: Advisory mechanism (RBIOS 2026)', () => {
     await advanceToStatus(request, complaint.complaintNumber, 'closed');
     const appeal = await fileAppeal(request, complaint.complaintNumber);
 
-    await loginAsAaRole(page, 'AA_REGISTRAR');
+    await loginAsAaRole(page, 'AA_DO');
     await page.goto(`/aa/appeals/${appeal.appealNumber}`, { waitUntil: 'networkidle' });
     await page.waitForTimeout(2000);
 
@@ -641,7 +641,7 @@ test.describe('AA-US-013: Hearing management + adjournment history', () => {
     await advanceToStatus(request, complaint.complaintNumber, 'closed');
     const appeal = await fileAppeal(request, complaint.complaintNumber);
 
-    await loginAsAaRole(page, 'AA_REGISTRAR');
+    await loginAsAaRole(page, 'AA_DO');
     await page.goto(`/aa/appeals/${appeal.appealNumber}`, { waitUntil: 'networkidle' });
     await page.waitForTimeout(2000);
 
@@ -709,7 +709,7 @@ test.describe('AA-US-014: Legal cases / sub-judice', () => {
     await advanceToStatus(request, complaint.complaintNumber, 'closed');
     const appeal = await fileAppeal(request, complaint.complaintNumber);
 
-    await loginAsAaRole(page, 'AA_REGISTRAR');
+    await loginAsAaRole(page, 'AA_DO');
     await page.goto(`/aa/appeals/${appeal.appealNumber}`, { waitUntil: 'networkidle' });
     await page.waitForTimeout(2000);
 
@@ -835,7 +835,7 @@ test.describe('AA-US-017: Reports', () => {
   test('TC-01702: Negative — role-based data visibility in reports', async ({ page }) => {
     test.skip(!keycloakUp, 'Keycloak not available');
 
-    await loginAsAaRole(page, 'AA_REGISTRAR');
+    await loginAsAaRole(page, 'AA_DO');
     await page.goto('/aa/reports', { waitUntil: 'networkidle' });
     await page.waitForTimeout(2000);
 
@@ -861,7 +861,7 @@ test.describe('AA-US-018: RBAC + milestone security', () => {
   test('TC-01801: Happy path — milestone edit enforced per role', async ({ page }) => {
     test.skip(!keycloakUp, 'Keycloak not available');
 
-    await loginAsAaRole(page, 'AA_REGISTRAR');
+    await loginAsAaRole(page, 'AA_DO');
     await page.waitForSelector('.aa-dashboard', { timeout: 15000 });
 
     const roleBadge = page.locator('.role-badge, .user-role');
@@ -912,7 +912,7 @@ test.describe('AA-US-019: Performance', () => {
   test('TC-01901: Page load under 3 seconds at 95th percentile', async ({ page }) => {
     test.skip(!keycloakUp, 'Keycloak not available');
 
-    await loginAsAaRole(page, 'AA_REGISTRAR');
+    await loginAsAaRole(page, 'AA_DO');
 
     const loadTimes: number[] = [];
     for (let i = 0; i < 5; i++) {
@@ -950,7 +950,7 @@ test.describe('AA-US-042: Email communication templates', () => {
     await advanceToStatus(request, complaint.complaintNumber, 'closed');
     const appeal = await fileAppeal(request, complaint.complaintNumber);
 
-    await loginAsAaRole(page, 'AA_REGISTRAR');
+    await loginAsAaRole(page, 'AA_DO');
     await page.goto(`/aa/appeals/${appeal.appealNumber}`, { waitUntil: 'networkidle' });
     await page.waitForTimeout(2000);
 

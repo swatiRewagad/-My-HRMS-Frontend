@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../fixtures';
 import { loginAsAaRole, isKeycloakAvailable, logout } from '../utils/auth';
 import {
   createTestComplaint,
@@ -39,7 +39,7 @@ test.describe('AA - Order Management', () => {
 
     const appealNumber = await setupAppealForOrder(request);
 
-    await loginAsAaRole(page, 'AA_AUTHORITY', `/aa/appeal/${appealNumber}`);
+    await loginAsAaRole(page, 'AA_SECRETARIAT', `/aa/appeal/${appealNumber}`);
     await page.waitForSelector('.aa-detail .detail-layout', { timeout: 15000 });
 
     const orderBtn = page.locator('.action-card:has-text("Pass Order")');
@@ -67,7 +67,7 @@ test.describe('AA - Order Management', () => {
 
     const appealNumber = await setupAppealForOrder(request);
 
-    await loginAsAaRole(page, 'AA_AUTHORITY', `/aa/appeal/${appealNumber}`);
+    await loginAsAaRole(page, 'AA_SECRETARIAT', `/aa/appeal/${appealNumber}`);
     await page.waitForSelector('.aa-detail .detail-layout', { timeout: 15000 });
 
     const orderBtn = page.locator('.action-card:has-text("Pass Order")');
@@ -92,7 +92,7 @@ test.describe('AA - Order Management', () => {
 
     const appealNumber = await setupAppealForOrder(request);
 
-    await loginAsAaRole(page, 'AA_AUTHORITY', `/aa/appeal/${appealNumber}`);
+    await loginAsAaRole(page, 'AA_SECRETARIAT', `/aa/appeal/${appealNumber}`);
     await page.waitForSelector('.aa-detail .detail-layout', { timeout: 15000 });
 
     const orderBtn = page.locator('.action-card:has-text("Pass Order")');
@@ -135,7 +135,7 @@ test.describe('AA - Order Management', () => {
       orderRemarks: 'E2E: Order passed via API for display verification.',
     });
 
-    await loginAsAaRole(page, 'AA_AUTHORITY', `/aa/appeal/${appealNumber}`);
+    await loginAsAaRole(page, 'AA_SECRETARIAT', `/aa/appeal/${appealNumber}`);
     await page.waitForSelector('.aa-detail .detail-layout', { timeout: 15000 });
 
     // Order section should be visible (rendered when appeal().order exists)

@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../fixtures';
 import { loginAsAaRole, isKeycloakAvailable, logout } from '../utils/auth';
 import {
   createTestComplaint,
@@ -33,7 +33,7 @@ test.describe('AA - Hearing Management', () => {
     await performAppealAction(request, appeal.appealNumber, 'ACCEPT', { actor: 'aa.registrar' });
     await performAppealAction(request, appeal.appealNumber, 'ASSIGN_TO_BENCH', { actor: 'aa.registrar' });
 
-    await loginAsAaRole(page, 'AA_BENCH_OFFICER', `/aa/appeal/${appeal.appealNumber}`);
+    await loginAsAaRole(page, 'AA_REVIEWER_1', `/aa/appeal/${appeal.appealNumber}`);
     await page.waitForSelector('.aa-detail .detail-layout', { timeout: 15000 });
 
     const scheduleBtn = page.locator('.action-card:has-text("Schedule Hearing")');
@@ -102,7 +102,7 @@ test.describe('AA - Hearing Management', () => {
       venue: 'API-Scheduled Test Room',
     });
 
-    await loginAsAaRole(page, 'AA_BENCH_OFFICER', `/aa/appeal/${appeal.appealNumber}`);
+    await loginAsAaRole(page, 'AA_REVIEWER_1', `/aa/appeal/${appeal.appealNumber}`);
     await page.waitForSelector('.aa-detail .detail-layout', { timeout: 15000 });
 
     // Look for hearing history in the detail panel
@@ -143,7 +143,7 @@ test.describe('AA - Hearing Management', () => {
       venue: 'Room B',
     });
 
-    await loginAsAaRole(page, 'AA_BENCH_OFFICER', `/aa/appeal/${appeal.appealNumber}`);
+    await loginAsAaRole(page, 'AA_REVIEWER_1', `/aa/appeal/${appeal.appealNumber}`);
     await page.waitForSelector('.aa-detail .detail-layout', { timeout: 15000 });
 
     const hearingHistory = page.locator('.hearing-history');

@@ -6,7 +6,8 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "EMAIL_DRAFT_ATTACHMENTS", indexes = {
-    @Index(name = "idx_draft_att_draft", columnList = "draftId")
+    @Index(name = "idx_draft_att_draft", columnList = "draftId"),
+    @Index(name = "idx_draft_att_parent", columnList = "linkedComplaintNumber")
 })
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class EmailDraftAttachment {
@@ -36,6 +37,13 @@ public class EmailDraftAttachment {
 
     @Column(length = 200)
     private String uploadedBy;
+
+    /**
+     * Set when a duplicate email's attachments are linked to the existing parent complaint instead
+     * of to a new draft. draftId stays populated for provenance.
+     */
+    @Column(length = 50)
+    private String linkedComplaintNumber;
 
     private LocalDateTime createdAt;
 

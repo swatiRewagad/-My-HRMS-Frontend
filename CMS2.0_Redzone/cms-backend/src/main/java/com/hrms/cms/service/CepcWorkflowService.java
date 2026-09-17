@@ -4,6 +4,7 @@ import com.hrms.cms.entity.Complaint;
 import com.hrms.cms.repository.ComplaintRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,6 +30,18 @@ public class CepcWorkflowService {
     private final ClosureLetterService closureLetterService;
     private final CommunicationTemplateService communicationTemplateService;
     private final NotificationService notificationService;
+
+    /**
+     * Scheme used when a complaint carries no scheme_version of its own.
+     *
+     * This fallback was the literal "RBIOS_2026". Every complaint in the database has a NULL
+     * scheme_version, so the fallback fires on EVERY auto-dispatched closure letter — meaning the
+     * letter selected its template for, and cited, a Scheme that is not in force. A closure letter is
+     * the document that tells a citizen their case is over and what recourse remains, so the wrong
+     * Scheme there misstates their statutory position.
+     */
+    @Value("${cms.eligibility.scheme-version:RBIOS_2021}")
+    private String defaultSchemeVersion;
 
     private final Map<String, Integer> roundRobinCounters = new java.util.concurrent.ConcurrentHashMap<>();
 
@@ -574,7 +587,9 @@ public class CepcWorkflowService {
         String email = complaint.getComplainantEmail();
         if (email != null && !email.isBlank()) {
             try {
-                String schemeVersion = complaint.getSchemeVersion() != null ? complaint.getSchemeVersion() : "RBIOS_2026";
+                String schemeVersion = complaint.getSchemeVersion() != null
+                        ? complaint.getSchemeVersion()
+                        : defaultSchemeVersion;
                 closureLetterService.generateClosureLetter(complaint.getComplaintNumber(), schemeVersion);
                 complaint.setClosureLetterSentAt(LocalDateTime.now());
                 log.info("Closure letter auto-dispatched for complaint {} to {}", complaint.getComplaintNumber(), email);

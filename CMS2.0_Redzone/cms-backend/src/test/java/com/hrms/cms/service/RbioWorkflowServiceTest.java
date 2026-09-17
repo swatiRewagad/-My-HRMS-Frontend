@@ -33,6 +33,7 @@ class RbioWorkflowServiceTest {
     @Mock private RbioSlaService rbioSlaService;
     @Mock private RbioCompensationService rbioCompensationService;
     @Mock private CepcAuditService auditService;
+    @Mock private NotificationService notificationService;
 
     @InjectMocks
     private RbioWorkflowService rbioWorkflowService;
@@ -378,7 +379,9 @@ class RbioWorkflowServiceTest {
 
             Map<String, Object> result = rbioWorkflowService.performAction("CMP-20260706-789012", "APPROVE", params);
 
-            assertThat(result.get("newStatus")).isEqualTo("approved");
+            // getNextRole maps RBIO_SUPERVISOR -> RBIO_CONCILIATOR, and executeAction sets
+            // status "conciliation" for the conciliator branch (not a generic "approved").
+            assertThat(result.get("newStatus")).isEqualTo("conciliation");
             assertThat(sampleComplaint.getAssignedRole()).isEqualTo("RBIO_CONCILIATOR");
         }
 

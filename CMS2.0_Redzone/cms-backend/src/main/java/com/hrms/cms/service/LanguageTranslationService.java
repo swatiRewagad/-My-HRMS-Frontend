@@ -27,6 +27,9 @@ public class LanguageTranslationService {
 
     private final RestTemplate restTemplate = new RestTemplate();
 
+    /** Share of letters that must belong to a script before the text counts as that language. */
+    private static final double SCRIPT_DETECTION_THRESHOLD = 0.15;
+
     private static final Map<String, String> SCRIPT_PATTERNS = new LinkedHashMap<>();
 
     static {
@@ -93,8 +96,18 @@ public class LanguageTranslationService {
         return result;
     }
 
+    public String languageName(String localeCode) {
+        return LANGUAGE_NAMES.getOrDefault(localeCode, "Unknown");
+    }
+
     public String detectLanguage(String text) {
         if (text == null || text.isBlank()) return "en";
+
+        // Ratio is taken over letters only. Dividing by the raw length let whitespace and Latin
+        // punctuation dilute a genuinely vernacular message below the threshold, so a short
+        // Devanagari line inside a formatted email was silently classified English.
+        long letterCount = text.chars().filter(Character::isLetter).count();
+        if (letterCount == 0) return "en";
 
         for (Map.Entry<String, String> entry : SCRIPT_PATTERNS.entrySet()) {
             Pattern pattern = Pattern.compile(entry.getValue());
@@ -103,7 +116,7 @@ public class LanguageTranslationService {
                     .filter(s -> pattern.matcher(s).matches())
                     .count();
 
-            if (matches > text.length() * 0.15) {
+            if (matches > letterCount * SCRIPT_DETECTION_THRESHOLD) {
                 return entry.getKey();
             }
         }

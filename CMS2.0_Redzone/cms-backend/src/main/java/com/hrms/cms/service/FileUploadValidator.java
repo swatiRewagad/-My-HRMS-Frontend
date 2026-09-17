@@ -75,6 +75,51 @@ public class FileUploadValidator {
         validateSignature(file, extensionOf(file.getOriginalFilename()));
     }
 
+    /**
+     * NFR-006 for a whole upload batch: at most 10 files, at most 2MB each, at most 25MB in total.
+     *
+     * Per-file validation alone cannot enforce NFR-006 — twenty 2MB files each pass validate() while
+     * together breaching both the count and the aggregate cap, and no aggregate cap existed anywhere in
+     * the product. The count and total are checked BEFORE per-file work so an oversized batch is
+     * rejected without reading every payload.
+     *
+     * existingCount and existingBytes carry what the record already holds, so the caps apply to the
+     * record rather than to one request: ten separate single-file uploads must not bypass a ten-file
+     * limit.
+     */
+    public void validateBatch(List<MultipartFile> files, int existingCount, long existingBytes) {
+        if (files == null || files.isEmpty()) {
+            return;
+        }
+
+        long incomingCount = files.stream().filter(f -> f != null && !f.isEmpty()).count();
+        if (existingCount + incomingCount > config.getMaxFilesPerComplaint()) {
+            throw new InvalidUploadException(
+                    "A maximum of " + config.getMaxFilesPerComplaint() + " files may be attached");
+        }
+
+        long incomingBytes = files.stream()
+                .filter(f -> f != null && !f.isEmpty())
+                .mapToLong(MultipartFile::getSize)
+                .sum();
+        if (existingBytes + incomingBytes > config.getMaxTotalSize()) {
+            throw new InvalidUploadException(
+                    "Attachments exceed the total size limit of "
+                            + (config.getMaxTotalSize() / 1048576) + "MB");
+        }
+
+        for (MultipartFile file : files) {
+            if (file != null && !file.isEmpty()) {
+                validate(file);
+            }
+        }
+    }
+
+    /** Convenience for the common case of a first upload against an empty record. */
+    public void validateBatch(List<MultipartFile> files) {
+        validateBatch(files, 0, 0L);
+    }
+
     /** Name-and-extension checks for the chunked path, where no bytes are available up front. */
     public void validateName(String fileName) {
         if (fileName == null || fileName.isBlank()) {

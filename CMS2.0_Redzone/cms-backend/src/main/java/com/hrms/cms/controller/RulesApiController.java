@@ -19,7 +19,10 @@ public class RulesApiController {
             Map.of("id", 4, "code", "CATEGORIZATION", "name", "Categorization Rules", "description", "Rules for auto-categorizing complaints based on keywords"),
             Map.of("id", 5, "code", "SLA", "name", "SLA Rules", "description", "Rules for computing SLA deadlines per category and priority"),
             Map.of("id", 6, "code", "NOTIFICATION", "name", "Notification Rules", "description", "Rules for triggering notifications and alerts"),
-            Map.of("id", 7, "code", "MAINTAINABILITY", "name", "Maintainability Rules", "description", "Rules for RB-IOS 2026 objective maintainability (Q13/Q16/Q17 grounds)"),
+            // No Scheme year here: this is a static field initialised before any configuration is
+            // available, and the Q13/Q16/Q17 grounds are not year-specific. It used to read 2026,
+            // naming a Scheme that is not in force.
+            Map.of("id", 7, "code", "MAINTAINABILITY", "name", "Maintainability Rules", "description", "Rules for objective maintainability under the Scheme (Q13/Q16/Q17 grounds)"),
             Map.of("id", 8, "code", "COMPENSATION", "name", "Compensation Rules", "description", "Rules for computing compensation bands (RB-IOS Q22/Q23 caps)")
     );
 
@@ -55,9 +58,9 @@ public class RulesApiController {
         rules.add(createRule(9, "NOT-001", "SMS on complaint registration", "NOTIFICATION",
                 "rule \"Registration SMS\"\n  when\n    $c : Complaint(status == \"pending\", isNew == true)\n  then\n    notify(\"SMS\", $c.getComplainantPhone(), \"Your complaint \" + $c.getComplaintNumber() + \" has been registered.\");\nend",
                 5, "INACTIVE", "admin"));
-        // Maintainability Rules (RB-IOS 2026)
+        // Maintainability Rules (Q13/Q16/Q17 objective grounds)
         rules.add(createRule(10, "MRE-001", "Entity coverage check (Q13)", "MAINTAINABILITY",
-                "rule \"Entity coverage check - Q13\"\n  salience 100\n  when\n    $c : Complaint(entityCode != null)\n    $e : EntityRegistry(code == $c.entityCode, coveredUnderScheme == false)\n  then\n    $c.addMreGround(\"ENTITY_NOT_COVERED\", \"FAIL\", \"Q13\", \"Entity not covered under RB-IOS 2026\");\n    $c.setObjectivelyNonMaintainable(true);\nend",
+                "rule \"Entity coverage check - Q13\"\n  salience 100\n  when\n    $c : Complaint(entityCode != null)\n    $e : EntityRegistry(code == $c.entityCode, coveredUnderScheme == false)\n  then\n    $c.addMreGround(\"ENTITY_NOT_COVERED\", \"FAIL\", \"Q13\", \"Entity not covered under the Scheme\");\n    $c.setObjectivelyNonMaintainable(true);\nend",
                 100, "ACTIVE", "admin"));
         rules.add(createRule(11, "MRE-002", "Prior RE complaint requirement (Q16)", "MAINTAINABILITY",
                 "rule \"Prior RE complaint check - Q16\"\n  salience 95\n  when\n    $c : Complaint(priorReComplaint == false || priorReComplaint == null)\n  then\n    $c.addMreGround(\"NO_PRIOR_RE_COMPLAINT\", \"FAIL\", \"Q16\", \"Not first approached RE\");\n    $c.setObjectivelyNonMaintainable(true);\nend",

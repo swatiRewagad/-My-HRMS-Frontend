@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
+import { TranslatePipe } from '../../../pipes/translate.pipe';
 import { environment } from '../../../../environments/environment';
 
 interface Officer {
@@ -21,7 +22,7 @@ interface Officer {
 @Component({
   selector: 'app-team-management',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, TranslatePipe],
   templateUrl: './team-management.component.html',
   styleUrl: './team-management.component.scss'
 })
@@ -38,6 +39,16 @@ export class TeamManagementComponent implements OnInit {
   sidebarItem = signal('team');
 
   syncing = signal(false);
+
+  // UST887 safe-deactivation dialog state
+  showDeactivateModal = signal(false);
+  deactivateTarget = signal<Officer | null>(null);
+  openRecords = signal<string[]>([]);
+  loadingOpenRecords = signal(false);
+  reassignTo = signal('');
+  alsoRevokeAccess = signal(false);
+  deactivating = signal(false);
+  deactivateError = signal('');
 
   roleGroups = [
     { value: 'CRPC_DEO', label: 'CRPC - DEO', keycloakRole: 'DEO' },
@@ -82,7 +93,7 @@ export class TeamManagementComponent implements OnInit {
 
   loadOfficers() {
     this.loading.set(true);
-    this.http.get<any>(`${environment.apiBaseUrl}/cms-workflow/api/v1/assignment/pool?roleGroup=${this.selectedRoleGroup()}`).subscribe({
+    this.http.get<any>(`${environment.workflowBaseUrl}/cms-workflow/api/v1/assignment/pool?roleGroup=${this.selectedRoleGroup()}`).subscribe({
       next: (res) => {
         this.officers.set(res.data || res || []);
         this.loading.set(false);
@@ -102,7 +113,7 @@ export class TeamManagementComponent implements OnInit {
   toggleLeave(officer: Officer) {
     const newStatus = !officer.onLeave;
     this.http.put<any>(
-      `${environment.apiBaseUrl}/cms-workflow/api/v1/assignment/pool/${officer.id}/leave?onLeave=${newStatus}`,
+      `${environment.workflowBaseUrl}/cms-workflow/api/v1/assignment/pool/${officer.id}/leave?onLeave=${newStatus}`,
       {}
     ).subscribe({
       next: () => {
@@ -118,24 +129,108 @@ export class TeamManagementComponent implements OnInit {
     });
   }
 
-  deactivateOfficer(officer: Officer) {
-    if (!confirm(`Deactivate ${officer.displayName}? They will no longer receive new assignments.`)) return;
-    this.http.put<any>(
-      `${environment.apiBaseUrl}/cms-workflow/api/v1/assignment/pool/${officer.id}/deactivate`,
-      {}
+  /**
+   * UST887: opens the safe-deactivation dialog.
+   *
+   * The old flow was a native confirm() followed by an optimistic update that ran in BOTH the
+   * success and error handlers, so a failed deactivation still looked deactivated on screen. The
+   * server decides here, and open records must be transferred first.
+   */
+  openDeactivateDialog(officer: Officer) {
+    this.deactivateTarget.set(officer);
+    this.deactivateError.set('');
+    this.reassignTo.set('');
+    this.alsoRevokeAccess.set(false);
+    this.openRecords.set([]);
+    this.loadingOpenRecords.set(true);
+    this.showDeactivateModal.set(true);
+
+    this.http.get<any>(
+      `${environment.workflowBaseUrl}/cms-workflow/api/v1/assignment/pool/${officer.id}/open-records`
     ).subscribe({
-      next: () => {
-        this.officers.update(list =>
-          list.map(o => o.id === officer.id ? { ...o, active: false } : o)
-        );
+      next: (res) => {
+        this.openRecords.set(res?.data?.openComplaints ?? []);
+        this.loadingOpenRecords.set(false);
       },
       error: () => {
-        this.officers.update(list =>
-          list.map(o => o.id === officer.id ? { ...o, active: false } : o)
-        );
+        // Failing to load must not imply "nothing to reassign" — the server still enforces it,
+        // but the operator is told the check could not run.
+        this.loadingOpenRecords.set(false);
+        this.deactivateError.set(
+          'Could not check whether this officer still holds open complaints. Try again.');
       }
     });
   }
+
+  closeDeactivateDialog() {
+    this.showDeactivateModal.set(false);
+    this.deactivateTarget.set(null);
+    this.deactivateError.set('');
+  }
+
+  confirmDeactivate() {
+    const officer = this.deactivateTarget();
+    if (!officer) return;
+
+    if (this.openRecords().length > 0 && !this.reassignTo()) {
+      this.deactivateError.set('Choose an officer to receive the open complaints.');
+      return;
+    }
+
+    this.deactivating.set(true);
+    this.deactivateError.set('');
+
+    this.http.put<any>(
+      `${environment.workflowBaseUrl}/cms-workflow/api/v1/assignment/pool/${officer.id}/deactivate`,
+      { reassignTo: this.reassignTo() || null }
+    ).subscribe({
+      next: (res) => {
+        this.officers.update(list =>
+          list.map(o => o.id === officer.id ? { ...o, active: false, currentWorkload: 0 } : o)
+        );
+        this.deactivating.set(false);
+
+        if (this.alsoRevokeAccess()) {
+          this.revokeAccess(officer);
+        } else {
+          this.closeDeactivateDialog();
+        }
+        this.loadOfficers();
+      },
+      error: (err) => {
+        this.deactivating.set(false);
+        // 409 carries the open-record list, so the dialog can ask for a successor instead of
+        // failing opaquely.
+        if (err?.status === 409 && err?.error?.data?.openComplaints) {
+          this.openRecords.set(err.error.data.openComplaints);
+        }
+        this.deactivateError.set(
+          err?.error?.message || 'The team member could not be deactivated.');
+      }
+    });
+  }
+
+  /** UST877: stops the officer signing in again, not just receiving new assignments. */
+  private revokeAccess(officer: Officer) {
+    this.http.post<any>(`${environment.apiBaseUrl}/api/v1/admin/security/revocations`, {
+      username: officer.userId,
+      reason: 'DEACTIVATION',
+      notes: `Access revoked alongside pool deactivation of ${officer.displayName}`
+    }).subscribe({
+      next: () => this.closeDeactivateDialog(),
+      error: (err) => this.deactivateError.set(
+        err?.error?.message
+        || 'The officer was deactivated, but sign-in access could not be revoked. Revoke it from the security console.')
+    });
+  }
+
+  /** Candidate successors: same role group, active, and available. */
+  reassignCandidates = computed(() => {
+    const target = this.deactivateTarget();
+    if (!target) return [];
+    return this.officers().filter(o =>
+      o.id !== target.id && o.active && !o.onLeave && o.roleGroup === target.roleGroup);
+  });
 
   openAddModal() {
     this.newOfficer = {
@@ -151,7 +246,7 @@ export class TeamManagementComponent implements OnInit {
   addOfficer() {
     if (!this.newOfficer.userId || !this.newOfficer.displayName) return;
     this.http.post<any>(
-      `${environment.apiBaseUrl}/cms-workflow/api/v1/assignment/pool`,
+      `${environment.workflowBaseUrl}/cms-workflow/api/v1/assignment/pool`,
       this.newOfficer
     ).subscribe({
       next: (res) => {
@@ -200,7 +295,7 @@ export class TeamManagementComponent implements OnInit {
           };
 
           this.http.post<any>(
-            `${environment.apiBaseUrl}/cms-workflow/api/v1/assignment/pool`,
+            `${environment.workflowBaseUrl}/cms-workflow/api/v1/assignment/pool`,
             officer
           ).subscribe({
             next: (res) => {

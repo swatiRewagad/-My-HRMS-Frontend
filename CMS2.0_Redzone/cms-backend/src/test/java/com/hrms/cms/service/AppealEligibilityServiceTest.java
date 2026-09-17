@@ -3,7 +3,10 @@ package com.hrms.cms.service;
 import com.hrms.cms.entity.Appeal;
 import com.hrms.cms.entity.Complaint;
 import com.hrms.cms.repository.AppealRepository;
+import com.hrms.cms.repository.BankRepository;
+import com.hrms.cms.repository.ComplaintCategoryRepository;
 import com.hrms.cms.repository.ComplaintRepository;
+import com.hrms.cms.repository.SystemConfigRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -32,12 +35,16 @@ class AppealEligibilityServiceTest {
 
     @Mock private ComplaintRepository complaintRepository;
     @Mock private AppealRepository appealRepository;
+    @Mock private SystemConfigRepository systemConfigRepository;
+    @Mock private BankRepository bankRepository;
+    @Mock private ComplaintCategoryRepository complaintCategoryRepository;
 
     @InjectMocks
     private AppealEligibilityService appealEligibilityService;
 
     private Complaint closedComplaintWithin30Days;
-    private Complaint closedComplaintBeyond30Days;
+    private Complaint closedComplaintBeyondExtendedWindow;
+    private Complaint closedComplaintInDelayedWindow;
     private Complaint openComplaint;
     private Complaint advisoryClosedComplaint;
     private Complaint nonAdvisoryClosedComplaint;
@@ -56,11 +63,25 @@ class AppealEligibilityServiceTest {
                 .updatedAt(LocalDateTime.now().minusDays(10))
                 .build();
 
-        closedComplaintBeyond30Days = Complaint.builder()
+        // Beyond the 60-day extended window (tier 3 = ineligible)
+        closedComplaintBeyondExtendedWindow = Complaint.builder()
                 .id(2L)
                 .complaintNumber("CMP-20260501-002")
                 .complainantName("Late Citizen")
                 .subject("Account closure issue")
+                .status("closed")
+                .department("RBIO")
+                .closedAt(LocalDateTime.now().minusDays(70))
+                .createdAt(LocalDateTime.now().minusDays(100))
+                .updatedAt(LocalDateTime.now().minusDays(70))
+                .build();
+
+        // Between 30 and 60 days (tier 2 = eligible but delayed filing)
+        closedComplaintInDelayedWindow = Complaint.builder()
+                .id(6L)
+                .complaintNumber("CMP-20260501-006")
+                .complainantName("Delayed Citizen")
+                .subject("Delayed filing")
                 .status("closed")
                 .department("RBIO")
                 .closedAt(LocalDateTime.now().minusDays(45))
@@ -181,8 +202,23 @@ class AppealEligibilityServiceTest {
             assertThat(result.get("suggestedType")).isEqualTo("APPEAL");
         }
 
+        @Test
+        @DisplayName("should be eligible with delayedFiling between 30 and 60 days")
+        void shouldBeEligibleWithDelayedFilingInExtendedWindow() {
+            when(complaintRepository.findByComplaintNumber("CMP-20260501-006"))
+                    .thenReturn(Optional.of(closedComplaintInDelayedWindow));
+            when(appealRepository.findByOriginalComplaintNumber("CMP-20260501-006"))
+                    .thenReturn(Collections.emptyList());
+
+            Map<String, Object> result = appealEligibilityService.checkEligibility("CMP-20260501-006");
+
+            assertThat(result.get("eligible")).isEqualTo(true);
+            assertThat(result.get("delayedFiling")).isEqualTo(true);
+            assertThat(result.get("reason").toString()).contains("reason for delay");
+        }
+
         @ParameterizedTest
-        @ValueSource(strings = {"closed", "resolved", "rejected", "adjudicated", "conciliated", "withdrawn"})
+        @ValueSource(strings = {"closed", "resolved", "rejected", "adjudicated", "conciliated"})
         @DisplayName("should be eligible for all terminal statuses within 30 days")
         void shouldBeEligibleForAllTerminalStatuses(String terminalStatus) {
             Complaint complaint = Complaint.builder()
@@ -239,10 +275,10 @@ class AppealEligibilityServiceTest {
         }
 
         @Test
-        @DisplayName("should be ineligible when outside 30-day window")
-        void shouldBeIneligibleWhenOutside30DayWindow() {
+        @DisplayName("should be ineligible when outside 60-day extended window")
+        void shouldBeIneligibleWhenOutsideExtendedWindow() {
             when(complaintRepository.findByComplaintNumber("CMP-20260501-002"))
-                    .thenReturn(Optional.of(closedComplaintBeyond30Days));
+                    .thenReturn(Optional.of(closedComplaintBeyondExtendedWindow));
 
             Map<String, Object> result = appealEligibilityService.checkEligibility("CMP-20260501-002");
 
@@ -373,7 +409,7 @@ class AppealEligibilityServiceTest {
                     .complaintNumber("CMP-UPDATED")
                     .complainantName("Citizen")
                     .subject("Test")
-                    .status("withdrawn")
+                    .status("conciliated")
                     .closedAt(null)
                     .resolvedAt(null)
                     .updatedAt(LocalDateTime.now().minusDays(10))

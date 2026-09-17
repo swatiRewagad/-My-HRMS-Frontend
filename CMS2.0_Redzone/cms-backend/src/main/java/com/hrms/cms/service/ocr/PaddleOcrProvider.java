@@ -101,8 +101,21 @@ public class PaddleOcrProvider implements OcrProvider {
             if (!val.isEmpty()) result.put(e.getKey(), val);
         });
 
-        log.info("PaddleOCR extracted {} fields (raw_text length: {} chars)",
-                result.size(), root.path("raw_text").asText("").length());
+        // The sidecar's real confidence, so callers can fail closed on a poor scan instead of
+        // inheriting a hardcoded constant. Underscore-prefixed to keep it out of the prefill fields.
+        if (root.has("confidence")) {
+            result.put("_confidence", String.valueOf(root.path("confidence").asInt(0)));
+        }
+        if (root.has("typed_digital")) {
+            result.put("_typedDigital", String.valueOf(root.path("typed_digital").asBoolean(false)));
+        }
+        if (root.has("source")) {
+            result.put("_ocrSource", root.path("source").asText(""));
+        }
+
+        log.info("PaddleOCR extracted {} fields (raw_text length: {} chars, confidence {})",
+                result.size(), root.path("raw_text").asText("").length(),
+                root.path("confidence").asInt(0));
         return result;
     }
 }

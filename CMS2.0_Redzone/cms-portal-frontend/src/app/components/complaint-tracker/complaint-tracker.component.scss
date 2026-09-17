@@ -187,20 +187,7 @@
   h3 { margin: 0; color: #1a237e; }
 }
 
-.status-badge {
-  padding: 0.4rem 1rem;
-  border-radius: 20px;
-  font-weight: 600;
-  font-size: 0.85rem;
-
-  &[data-status="NEW"] { background: #e3f2fd; color: #1565c0; }
-  &[data-status="ASSIGNED"] { background: #fff3e0; color: #e65100; }
-  &[data-status="IN_PROGRESS"] { background: #fff9c4; color: #f57f17; }
-  &[data-status="UNDER_REVIEW"] { background: #f3e5f5; color: #7b1fa2; }
-  &[data-status="ESCALATED"] { background: #fce4ec; color: #c62828; }
-  &[data-status="RESOLVED"] { background: #e8f5e9; color: #2e7d32; }
-  &[data-status="CLOSED"] { background: #eceff1; color: #455a64; }
-}
+// Status badge styling moved to the shared app-status-badge component (UST847).
 
 .status-details {
   padding: 1.5rem;

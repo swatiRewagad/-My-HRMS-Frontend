@@ -164,7 +164,9 @@ class FileStorageConfigTest {
         void shouldHaveCorrectDefaults() {
             FileStorageConfig defaults = new FileStorageConfig();
 
-            assertThat(defaults.getMaxFileSize()).isEqualTo(52428800L);
+            // 2MB, not the former 50MB: NFR-006 caps a single attachment at 2MB. See the field comment
+            // in FileStorageConfig and cms.attachments.max-file-size in application.yml.
+            assertThat(defaults.getMaxFileSize()).isEqualTo(2097152L);
             assertThat(defaults.getChunkSize()).isEqualTo(5242880L);
             assertThat(defaults.getMaxFilesPerComplaint()).isEqualTo(10);
             assertThat(defaults.getRootPath()).isEqualTo("/data/cms-attachments");

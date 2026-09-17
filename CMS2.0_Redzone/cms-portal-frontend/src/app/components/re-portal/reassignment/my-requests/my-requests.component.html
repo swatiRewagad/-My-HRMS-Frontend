@@ -1,0 +1,183 @@
+<div class="my-requests">
+  <div class="section-header">
+    <h3 class="section-title">{{ 're.reassign.my_requests_title' | translate }}</h3>
+    @if (totalElements() > 0) {
+      <span class="total-count">{{ totalElements() }}</span>
+    }
+  </div>
+
+  @if (actionError()) {
+    <div class="banner banner-error" role="alert">
+      <i class="pi pi-exclamation-circle"></i>
+      <span>{{ actionError() | translate }}</span>
+    </div>
+  }
+  @if (actionSuccess()) {
+    <div class="banner banner-success" role="status">
+      <i class="pi pi-check-circle"></i>
+      <span>{{ actionSuccess() | translate }}</span>
+    </div>
+  }
+
+  @if (loading()) {
+    <div class="loading-state">
+      <div class="spinner"></div>
+    </div>
+  } @else if (loadError()) {
+    <div class="banner banner-error" role="alert">
+      <i class="pi pi-exclamation-triangle"></i>
+      <span>{{ loadError() | translate }}</span>
+    </div>
+  } @else if (requests().length === 0) {
+    <div class="empty-state">
+      <i class="pi pi-inbox"></i>
+      <p>{{ 're.reassign.my_requests_none' | translate }}</p>
+    </div>
+  } @else {
+    <div class="request-list">
+      @for (request of requests(); track request.id) {
+        <div class="request-card" [class.expanded]="expandedId() === request.id">
+          <div class="request-head">
+            <div class="request-identity">
+              <span class="complaint-number">{{ request.complaintNumber }}</span>
+              <app-status-badge [status]="request.status" keyPrefix="re.reassign.status" />
+            </div>
+            <button
+              type="button"
+              class="expand-btn"
+              [attr.aria-expanded]="expandedId() === request.id"
+              (click)="toggleExpanded(request)">
+              <i class="pi" [class.pi-chevron-down]="expandedId() !== request.id"
+                 [class.pi-chevron-up]="expandedId() === request.id"></i>
+            </button>
+          </div>
+
+          <div class="request-meta">
+            <div class="meta-item">
+              <span class="meta-label">{{ 're.reassign.from_officer' | translate }}</span>
+              <span class="meta-value">{{ request.fromUserName || request.fromUserId || '-' }}</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">{{ 're.reassign.to_officer' | translate }}</span>
+              <span class="meta-value">{{ request.toUserName || request.toUserId }}</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">{{ 're.reassign.requested_at' | translate }}</span>
+              <span class="meta-value">{{ request.requestedAt ? (request.requestedAt | date:'dd MMM yyyy, HH:mm') : '-' }}</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">{{ 're.reassign.decided_at' | translate }}</span>
+              <span class="meta-value">{{ request.decidedAt ? (request.decidedAt | date:'dd MMM yyyy, HH:mm') : '-' }}</span>
+            </div>
+          </div>
+
+          <!-- UST840: read-only by design. There is no edit control here, and the notice below says
+               why, so the missing affordance reads as a rule rather than as an oversight. -->
+          <div class="reason-block">
+            <span class="meta-label">{{ 're.reassign.original_reason_label' | translate }}</span>
+            <p class="reason-text">{{ request.reason || '-' }}</p>
+            <p class="immutable-notice">
+              <i class="pi pi-lock"></i>
+              {{ 're.reassign.reason_immutable_notice' | translate }}
+            </p>
+          </div>
+
+          @if (request.decisionComment) {
+            <div class="decision-block">
+              <span class="meta-label">{{ 're.reassign.decision_comment_label' | translate }}</span>
+              <p class="decision-text">{{ request.decisionComment }}</p>
+            </div>
+          }
+
+          <div class="request-actions">
+            @if (canWithdraw(request)) {
+              @if (withdrawConfirmId() === request.id) {
+                <div class="confirm-inline">
+                  <button
+                    type="button"
+                    class="btn btn-danger"
+                    [disabled]="withdrawing()"
+                    (click)="confirmWithdraw(request)">
+                    <i class="pi pi-check"></i>
+                    {{ 're.reassign.withdraw_button' | translate }}
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn-plain"
+                    [disabled]="withdrawing()"
+                    (click)="cancelWithdraw()">
+                    {{ 're.reassign.cancel_button' | translate }}
+                  </button>
+                </div>
+              } @else {
+                <button type="button" class="btn btn-outline-danger" (click)="askWithdraw(request)">
+                  <i class="pi pi-times-circle"></i>
+                  {{ 're.reassign.withdraw_button' | translate }}
+                </button>
+              }
+            }
+          </div>
+
+          @if (expandedId() === request.id) {
+            <div class="clarification-panel">
+              <h4 class="clarification-title">{{ 're.reassign.clarification_title' | translate }}</h4>
+
+              @if (clarificationsLoading()) {
+                <div class="loading-state small">
+                  <div class="spinner"></div>
+                </div>
+              } @else if (clarifications().length === 0) {
+                <p class="clarification-none">{{ 're.reassign.clarification_none' | translate }}</p>
+              } @else {
+                <ul class="clarification-thread">
+                  @for (note of clarifications(); track note.id) {
+                    <li class="clarification-item" [attr.data-side]="note.addedBySide">
+                      <div class="clarification-head">
+                        <span class="clarification-author">{{ note.addedByName || note.addedBy }}</span>
+                        @if (note.addedAt) {
+                          <span class="clarification-time">{{ note.addedAt | date:'dd MMM yyyy, HH:mm' }}</span>
+                        }
+                      </div>
+                      <p class="clarification-note">{{ note.note }}</p>
+                    </li>
+                  }
+                </ul>
+              }
+
+              <!-- Append-only: submitting adds a note, it never replaces one. -->
+              <div class="clarification-form">
+                <textarea
+                  rows="3"
+                  class="clarification-input"
+                  [placeholder]="'re.reassign.clarification_add_placeholder' | translate"
+                  [ngModel]="clarificationDraft()"
+                  (ngModelChange)="clarificationDraft.set($event)"
+                  [disabled]="savingClarification()"></textarea>
+                <button
+                  type="button"
+                  class="btn btn-primary"
+                  [disabled]="savingClarification() || clarificationDraft().trim().length === 0"
+                  (click)="addClarification(request.id)">
+                  <i class="pi pi-plus"></i>
+                  {{ 're.reassign.clarification_add_button' | translate }}
+                </button>
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </div>
+
+    @if (totalPages() > 1) {
+      <div class="pager">
+        <button type="button" class="btn btn-plain" [disabled]="!hasPrev()" (click)="prevPage()">
+          <i class="pi pi-chevron-left"></i>
+        </button>
+        <span class="pager-status">{{ page() + 1 }} / {{ totalPages() }}</span>
+        <button type="button" class="btn btn-plain" [disabled]="!hasNext()" (click)="nextPage()">
+          <i class="pi pi-chevron-right"></i>
+        </button>
+      </div>
+    }
+  }
+</div>

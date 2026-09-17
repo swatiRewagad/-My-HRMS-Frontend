@@ -55,10 +55,18 @@ async def ocr(file: UploadFile = File(...), mime_type: str = Form("application/o
     log.info("Received %d bytes, mime=%s", len(file_bytes), mime_type)
 
     try:
-        raw_text = extract_text(file_bytes, mime_type)
+        _reset_confidence()
+        raw_text, embedded_text_used = extract_text(file_bytes, mime_type)
         fields = extract_fields(raw_text)
-        log.info("Extracted %d fields, raw_text=%d chars", len(fields), len(raw_text))
-        return JSONResponse({"success": True, "fields": fields, "raw_text": raw_text})
+        summary = confidence_summary(embedded_text_used)
+        log.info("Extracted %d fields, raw_text=%d chars, confidence=%s",
+                 len(fields), len(raw_text), summary)
+        return JSONResponse({
+            "success": True,
+            "fields": fields,
+            "raw_text": raw_text,
+            **summary,
+        })
     except Exception as e:
         log.exception("OCR failed")
         return JSONResponse({"success": False, "error": str(e), "fields": {}, "raw_text": ""}, status_code=200)
@@ -66,16 +74,17 @@ async def ocr(file: UploadFile = File(...), mime_type: str = Form("application/o
 
 # ── Text extraction ────────────────────────────────────────────────────────────
 
-def extract_text(file_bytes: bytes, mime_type: str) -> str:
+def extract_text(file_bytes: bytes, mime_type: str) -> tuple:
+    """Returns (text, embedded_text_used). The flag is the typed-digital proof."""
     if mime_type == "application/pdf":
         text = extract_pdf_text(file_bytes)
         if len(text.strip()) > 30:
-            log.info("Used pdfplumber for PDF (%d chars)", len(text))
-            return text
+            log.info("Used pdfplumber for PDF (%d chars) — document has a text layer", len(text))
+            return text, True
         log.info("PDF text too short (%d chars) — falling back to PaddleOCR on rendered pages", len(text))
-        return extract_pdf_via_ocr(file_bytes)
+        return extract_pdf_via_ocr(file_bytes), False
     else:
-        return extract_image_text(file_bytes)
+        return extract_image_text(file_bytes), False
 
 
 def extract_pdf_text(file_bytes: bytes) -> str:
@@ -114,9 +123,48 @@ def run_paddle_ocr(img_array: np.ndarray) -> str:
     if result and result[0]:
         for line in result[0]:
             text, confidence = line[1]
+            _record_confidence(confidence)
             if confidence > 0.5:
                 lines.append(text)
     return "\n".join(lines)
+
+
+# Per-line confidence was computed and then discarded, so the caller had no signal to gate on and
+# fabricated a constant 85 instead. It is collected here and returned on the response so the backend
+# can fail closed on a poor scan rather than prefill a legal record from an unreliable read.
+_confidences: list = []
+
+
+def _reset_confidence() -> None:
+    _confidences.clear()
+
+
+def _record_confidence(confidence: float) -> None:
+    _confidences.append(float(confidence))
+
+
+def confidence_summary(embedded_text_used: bool) -> dict:
+    """
+    embedded_text_used means pdfplumber found a real text layer, which is positive proof that the
+    document is digitally typed rather than scanned. That is the only trustworthy typed/scanned
+    signal available here. It is NOT handwriting detection.
+    """
+    if embedded_text_used:
+        return {"confidence": 100, "source": "EMBEDDED_TEXT", "typed_digital": True, "line_count": 0}
+    if not _confidences:
+        return {"confidence": 0, "source": "NO_TEXT", "typed_digital": False, "line_count": 0}
+    mean = sum(_confidences) / len(_confidences)
+    ordered = sorted(_confidences)
+    p10 = ordered[max(0, int(len(ordered) * 0.10) - 1)]
+    return {
+        "confidence": round(mean * 100),
+        # The 10th percentile exposes a document whose mean looks acceptable while a significant
+        # minority of lines were barely read at all.
+        "confidence_p10": round(p10 * 100),
+        "source": "PADDLE_OCR",
+        "typed_digital": False,
+        "line_count": len(_confidences),
+    }
 
 
 # ── Rule-based field extraction ────────────────────────────────────────────────

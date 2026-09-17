@@ -25,6 +25,33 @@ public class EmailIgnoreEntry {
     @Builder.Default
     private String patternType = "EXACT";
 
+    /**
+     * Which header the pattern is matched against. FROM preserves the historical sender-only
+     * behaviour, so existing rows keep working without a data migration.
+     */
+    @Column(name = "match_field", nullable = false, length = 20)
+    @Builder.Default
+    private String matchField = "FROM";
+
+    @Column(name = "to_pattern", length = 300)
+    private String toPattern;
+
+    @Column(name = "cc_pattern", length = 300)
+    private String ccPattern;
+
+    @Column(name = "bcc_pattern", length = 300)
+    private String bccPattern;
+
+    @Column(name = "subject_pattern", length = 500)
+    private String subjectPattern;
+
+    /**
+     * A counter-rule: when this matches, the ignore rule is overridden and the draft IS created.
+     * Lets an admin suppress a whole domain while still admitting named senders.
+     */
+    @Column(name = "exception_pattern", length = 500)
+    private String exceptionPattern;
+
     @Column(length = 500)
     private String reason;
 

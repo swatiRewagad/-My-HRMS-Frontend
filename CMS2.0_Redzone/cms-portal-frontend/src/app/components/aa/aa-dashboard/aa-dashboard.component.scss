@@ -83,28 +83,13 @@
 .appeal-num { font-weight: 600; color: #1a237e; }
 .complaint-link { font-size: 12px; color: #1565c0; }
 
-.classification-badge {
-  padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; text-transform: uppercase;
-  &[data-classification="APPEAL"] { background: #dbeafe; color: #1e40af; }
-  &[data-classification="REPRESENTATION"] { background: #d1fae5; color: #065f46; }
-}
 .immutable-label {
   display: inline-block; margin-left: 4px; padding: 1px 4px; border-radius: 3px;
   font-size: 9px; font-weight: 700; color: #94a3b8; background: #f1f5f9;
   letter-spacing: 0.5px; vertical-align: middle;
 }
 
-.status-badge {
-  padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500;
-  &[data-status="filed"], &[data-status="under_review"] { background: #fef3c7; color: #92400e; }
-  &[data-status="accepted"], &[data-status="assigned"] { background: #dbeafe; color: #1e40af; }
-  &[data-status="rejected"], &[data-status="dismissed"] { background: #fee2e2; color: #991b1b; }
-  &[data-status="hearing_scheduled"], &[data-status="hearing_completed"] { background: #ede9fe; color: #5b21b6; }
-  &[data-status="order_reserved"], &[data-status="order_passed"] { background: #d1fae5; color: #065f46; }
-  &[data-status="remanded"] { background: #fce7f3; color: #9d174d; }
-  &[data-status="closed"] { background: #f3f4f6; color: #4b5563; }
-  &[data-status="documents_requested"] { background: #e0e7ff; color: #3730a3; }
-}
+// Status badge styling moved to the shared app-status-badge component (UST847).
 
 .action-link {
   background: none; border: none; color: #1a237e; cursor: pointer; font-size: 12px; font-weight: 600;
@@ -127,4 +112,12 @@
 
 @media (max-width: 1024px) {
   .stats-row { grid-template-columns: repeat(3, 1fr); }
+}
+
+// Marks a record whose clause-derived classification was manually overridden. Deliberately quiet:
+// it annotates the badge rather than competing with it.
+.override-label {
+  display: inline-block; margin-left: 6px; padding: 1px 5px; border-radius: 3px;
+  font-size: 9px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+  color: #92400e; background: #fef3c7; cursor: help;
 }

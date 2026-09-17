@@ -36,10 +36,10 @@ public class CepcRoleGuardAspect {
         Set<String> userRoles = extractUserRoles();
 
         if (userRoles.isEmpty()) {
-            // If no roles can be extracted (e.g., dev mode, no token), allow through
-            // This preserves backward compatibility for existing setups without full security
-            log.debug("No roles found in request - allowing through (dev mode or missing token)");
-            return joinPoint.proceed();
+            log.warn("CEPC access denied: no roles present on the request for {}",
+                    joinPoint.getSignature().toShortString());
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Access denied: insufficient role permissions for this CEPC action");
         }
 
         for (String allowedRole : allowedRoles) {

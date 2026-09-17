@@ -13,11 +13,12 @@ import { ComplaintStatus } from '../../models/complaint.model';
 import { environment } from '../../../environments/environment';
 import { TableModule } from 'primeng/table';
 import { ComplaintTimelineComponent } from '../../shared/complaint-timeline/complaint-timeline.component';
+import { StatusBadgeComponent } from '../shared/status-badge/status-badge.component';
 
 @Component({
   selector: 'app-complaint-tracker',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, TableModule, ComplaintTimelineComponent],
+  imports: [CommonModule, FormsModule, RouterModule, TableModule, ComplaintTimelineComponent, StatusBadgeComponent],
   templateUrl: './complaint-tracker.component.html',
   styleUrl: './complaint-tracker.component.scss'
 })
@@ -399,23 +400,6 @@ export class ComplaintTrackerComponent implements OnInit {
       return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
     } catch {
       return dateStr;
-    }
-  }
-
-  getStatusClass(status: string): string {
-    if (!status) return '';
-    const s = status.toUpperCase();
-    switch (s) {
-      case 'NEW':
-      case 'PENDING': return 'status-new';
-      case 'ASSIGNED': return 'status-assigned';
-      case 'IN_PROGRESS': return 'status-in-progress';
-      case 'UNDER_REVIEW': return 'status-under-review';
-      case 'ESCALATED': return 'status-escalated';
-      case 'RESOLVED': return 'status-resolved';
-      case 'CLOSED': return 'status-closed';
-      case 'WITHDRAWN': return 'status-withdrawn';
-      default: return '';
     }
   }
 

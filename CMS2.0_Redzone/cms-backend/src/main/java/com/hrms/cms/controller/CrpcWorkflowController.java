@@ -5,6 +5,7 @@ import com.hrms.cms.entity.EmailDraft;
 import com.hrms.cms.service.ClosureLetterService;
 import com.hrms.cms.service.CrpcWorkflowService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -23,6 +24,17 @@ public class CrpcWorkflowController {
 
     private final CrpcWorkflowService workflowService;
     private final ClosureLetterService closureLetterService;
+
+    /**
+     * Scheme used for a closure letter when the caller does not name one.
+     *
+     * Was the literal "RBIOS_2026" in @RequestParam(defaultValue = ...), which an annotation attribute
+     * forces to be a compile-time constant. The closure letter selects its template by scheme version
+     * and cites the Scheme to the citizen, so the wrong value here misstates the legal basis on which
+     * their case was closed.
+     */
+    @Value("${cms.eligibility.scheme-version:RBIOS_2021}")
+    private String defaultSchemeVersion;
 
     @PostMapping("/send-for-approval")
     @PreAuthorize("hasAnyRole('DEO', 'CRPC_DEO')")
@@ -90,8 +102,11 @@ public class CrpcWorkflowController {
     @PreAuthorize("hasAnyRole('REVIEWER', 'CRPC_REVIEWER', 'CRPC_HEAD', 'ADMIN')")
     public ResponseEntity<byte[]> generateClosureLetter(
             @RequestParam String complaintNumber,
-            @RequestParam(defaultValue = "RBIOS_2026") String schemeVersion) {
-        byte[] pdf = closureLetterService.generateClosureLetter(complaintNumber, schemeVersion);
+            @RequestParam(required = false) String schemeVersion) {
+        String scheme = (schemeVersion == null || schemeVersion.isBlank())
+                ? defaultSchemeVersion
+                : schemeVersion;
+        byte[] pdf = closureLetterService.generateClosureLetter(complaintNumber, scheme);
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=closure-" + complaintNumber + ".html")
                 .contentType(MediaType.TEXT_HTML)

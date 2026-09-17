@@ -7,17 +7,32 @@ import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
 import { environment } from '../../../../environments/environment';
 import { AaHearingComponent } from '../aa-hearing/aa-hearing.component';
 import { AaOrderComponent } from '../aa-order/aa-order.component';
+import { StatusBadgeComponent } from '../../shared/status-badge/status-badge.component';
+import { TranslatePipe } from '../../../pipes/translate.pipe';
 
-type AaRole = 'AA_REGISTRAR' | 'AA_BENCH_OFFICER' | 'AA_AUTHORITY' | 'AA_ADMIN';
+type AaRole = 'AA_DO' | 'AA_REVIEWER' | 'AA_SECRETARIAT' | 'AA_ADMIN';
 
 interface ActionDef {
   id: string;
-  label: string;
-  description: string;
+  /** Translation keys, not text: every user-facing string in this module resolves through the API. */
+  labelKey: string;
+  descriptionKey: string;
   style: string;
   requiresRemarks: boolean;
   requiresTarget?: boolean;
   targetType?: 'user' | 'date';
+}
+
+/** Server-computed stage SLA, as returned on the appeal detail. */
+interface AppealSla {
+  stage: string;
+  stageAllowedDays: number;
+  tracked: boolean;
+  deadline: string | null;
+  /** Negative when overdue. */
+  daysRemaining: number | null;
+  breached: boolean;
+  statusKey: string;
 }
 
 interface TimelineEntry {
@@ -32,7 +47,7 @@ interface TimelineEntry {
 @Component({
   selector: 'app-aa-appeal-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule, AaHearingComponent, AaOrderComponent],
+  imports: [CommonModule, FormsModule, AaHearingComponent, AaOrderComponent, StatusBadgeComponent, TranslatePipe],
   templateUrl: './aa-appeal-detail.component.html',
   styleUrl: './aa-appeal-detail.component.scss'
 })
@@ -45,7 +60,7 @@ export class AaAppealDetailComponent implements OnInit {
   appeal = signal<any>(null);
   loading = signal(true);
   processing = signal(false);
-  userRole = signal<AaRole>('AA_REGISTRAR');
+  userRole = signal<AaRole>('AA_DO');
 
   timeline = signal<TimelineEntry[]>([]);
   timelineLoading = signal(true);
@@ -66,59 +81,68 @@ export class AaAppealDetailComponent implements OnInit {
   // Officers for reassignment
   aaOfficers = signal<{ id: string; name: string }[]>([]);
 
-  roleLabels: Record<AaRole, string> = {
-    'AA_REGISTRAR': 'Registrar',
-    'AA_BENCH_OFFICER': 'Bench Officer',
-    'AA_AUTHORITY': 'Appellate Authority',
-    'AA_ADMIN': 'AA Admin'
+  /**
+   * Translation keys for the acting role, reusing the aa.role_* keys S1 already seeded in all ten
+   * locales rather than the English literals that were here.
+   */
+  private static readonly ROLE_LABEL_KEYS: Record<AaRole, string> = {
+    'AA_DO': 'aa.role_do',
+    'AA_REVIEWER': 'aa.role_reviewer',
+    'AA_SECRETARIAT': 'aa.role_secretariat',
+    'AA_ADMIN': 'aa.role_admin'
   };
 
-  availableActions = computed<ActionDef[]>(() => {
-    const role = this.userRole();
-    const status = (this.appeal()?.status || '').toLowerCase();
-    const actions: ActionDef[] = [];
+  roleLabelKey = computed(() => AaAppealDetailComponent.ROLE_LABEL_KEYS[this.userRole()]);
 
-    if (this.isTerminalState()) return [];
+  /**
+   * Presentation metadata ONLY. Whether an action is offered is decided by the SERVER; this map merely
+   * says how to render one the server already offered.
+   *
+   * This replaced a client-side derivation that gated on six statuses the backend cannot produce
+   * (accepted, assigned, hearing_completed, order_reserved, documents_requested, dismissed). The real
+   * status after ACCEPT is under_review, so an AA_REVIEWER was shown ZERO actions and the workflow
+   * dead-ended at step two. Any client-side action list can drift from what the server will accept;
+   * this one had, silently, in production.
+   */
+  private static readonly ACTION_PRESENTATION: Record<string, Omit<ActionDef, 'id'>> = {
+    ACCEPT: { labelKey: 'aa.action.accept', descriptionKey: 'aa.action.accept_desc', style: 'primary', requiresRemarks: false },
+    REJECT: { labelKey: 'aa.action.reject', descriptionKey: 'aa.action.reject_desc', style: 'close', requiresRemarks: true },
+    ASSIGN_TO_BENCH: { labelKey: 'aa.action.assign_to_bench', descriptionKey: 'aa.action.assign_to_bench_desc', style: 'forward', requiresRemarks: true },
+    REQUEST_DOCUMENTS: { labelKey: 'aa.action.request_documents', descriptionKey: 'aa.action.request_documents_desc', style: 'info', requiresRemarks: true },
+    PREPARE_BRIEF: { labelKey: 'aa.action.prepare_brief', descriptionKey: 'aa.action.prepare_brief_desc', style: 'info', requiresRemarks: true },
+    ESCALATE_TO_TIER2: { labelKey: 'aa.action.escalate_to_tier2', descriptionKey: 'aa.action.escalate_to_tier2_desc', style: 'escalate', requiresRemarks: true },
+    SCHEDULE_HEARING: { labelKey: 'aa.action.schedule_hearing', descriptionKey: 'aa.action.schedule_hearing_desc', style: 'primary', requiresRemarks: false },
+    FORWARD_TO_AUTHORITY: { labelKey: 'aa.action.forward_to_authority', descriptionKey: 'aa.action.forward_to_authority_desc', style: 'forward', requiresRemarks: true },
+    SEND_BACK_REGISTRAR: { labelKey: 'aa.action.send_back_registrar', descriptionKey: 'aa.action.send_back_registrar_desc', style: 'return', requiresRemarks: true },
+    PASS_ORDER: { labelKey: 'aa.action.pass_order', descriptionKey: 'aa.action.pass_order_desc', style: 'primary', requiresRemarks: false },
+    REMAND_TO_OMBUDSMAN: { labelKey: 'aa.action.remand_to_ombudsman', descriptionKey: 'aa.action.remand_to_ombudsman_desc', style: 'escalate', requiresRemarks: true },
+    DISMISS: { labelKey: 'aa.action.dismiss', descriptionKey: 'aa.action.dismiss_desc', style: 'close', requiresRemarks: true },
+    REASSIGN: { labelKey: 'aa.action.reassign', descriptionKey: 'aa.action.reassign_desc', style: 'info', requiresRemarks: true, requiresTarget: true, targetType: 'user' },
+    CLOSE: { labelKey: 'aa.action.close', descriptionKey: 'aa.action.close_desc', style: 'close', requiresRemarks: true },
+    REOPEN: { labelKey: 'aa.action.reopen', descriptionKey: 'aa.action.reopen_desc', style: 'escalate', requiresRemarks: true },
+  };
 
-    if (role === 'AA_REGISTRAR') {
-      if (['filed', 'under_review'].includes(status)) {
-        actions.push({ id: 'ACCEPT', label: 'Accept Appeal', description: 'Accept and register the appeal for processing', style: 'primary', requiresRemarks: false });
-        actions.push({ id: 'REJECT', label: 'Reject Appeal', description: 'Reject appeal (ineligible or out of time)', style: 'close', requiresRemarks: true });
-        actions.push({ id: 'ASSIGN_BENCH', label: 'Assign to Bench', description: 'Assign to a Bench Officer for processing', style: 'forward', requiresRemarks: true, requiresTarget: true, targetType: 'user' });
-        actions.push({ id: 'REQUEST_DOCUMENTS', label: 'Request Documents', description: 'Request additional documents from appellant', style: 'info', requiresRemarks: true });
-      }
-    }
+  /**
+   * Exactly what the server says this caller may do, in the server's order.
+   *
+   * An action the server offers but this map does not know how to render is still shown, labelled with
+   * its raw id — failing visible beats hiding a legitimate action because the frontend is out of date.
+   */
+  availableActions = computed<ActionDef[]>(() =>
+    ((this.appeal()?.availableActions as string[] | undefined) ?? []).map(id => ({
+      id,
+      ...(AaAppealDetailComponent.ACTION_PRESENTATION[id] ?? {
+        labelKey: id,
+        descriptionKey: '',
+        style: 'info',
+        requiresRemarks: true,
+      }),
+    })));
 
-    if (role === 'AA_BENCH_OFFICER') {
-      if (['accepted', 'assigned', 'hearing_completed', 'documents_requested'].includes(status)) {
-        actions.push({ id: 'SCHEDULE_HEARING', label: 'Schedule Hearing', description: 'Schedule a hearing date and venue', style: 'primary', requiresRemarks: true });
-        actions.push({ id: 'PREPARE_BRIEF', label: 'Prepare Brief', description: 'Prepare case brief for the Authority', style: 'info', requiresRemarks: true });
-        actions.push({ id: 'FORWARD_AUTHORITY', label: 'Forward to Authority', description: 'Forward case to Appellate Authority for decision', style: 'forward', requiresRemarks: true });
-        actions.push({ id: 'SEND_BACK_REGISTRAR', label: 'Send Back to Registrar', description: 'Return to Registrar for additional processing', style: 'return', requiresRemarks: true });
-      }
-    }
+  /** Server-computed SLA. Never recalculated here: working-day maths belongs with the holiday master. */
+  sla = computed<AppealSla | null>(() => this.appeal()?.sla ?? null);
 
-    if (role === 'AA_AUTHORITY') {
-      if (['order_reserved', 'hearing_completed', 'accepted', 'assigned'].includes(status)) {
-        actions.push({ id: 'PASS_ORDER', label: 'Pass Order', description: 'Pass final order on the appeal', style: 'primary', requiresRemarks: false });
-        actions.push({ id: 'SCHEDULE_HEARING', label: 'Schedule Hearing', description: 'Schedule a hearing date', style: 'info', requiresRemarks: true });
-        actions.push({ id: 'REMAND_OMBUDSMAN', label: 'Remand to Ombudsman', description: 'Remand case back to Ombudsman for fresh consideration', style: 'escalate', requiresRemarks: true });
-        actions.push({ id: 'DISMISS', label: 'Dismiss Appeal', description: 'Dismiss the appeal', style: 'close', requiresRemarks: true });
-      }
-    }
-
-    if (role === 'AA_ADMIN') {
-      if (!this.isTerminalState()) {
-        actions.push({ id: 'REASSIGN', label: 'Reassign', description: 'Reassign to another officer', style: 'info', requiresRemarks: true, requiresTarget: true, targetType: 'user' });
-        actions.push({ id: 'CLOSE', label: 'Close Appeal', description: 'Administratively close the appeal', style: 'close', requiresRemarks: true });
-      }
-      if (['closed', 'dismissed', 'rejected'].includes(status)) {
-        actions.push({ id: 'REOPEN', label: 'Reopen Appeal', description: 'Reopen a closed/dismissed appeal', style: 'escalate', requiresRemarks: true });
-      }
-    }
-
-    return actions;
-  });
+  slaOverdue = computed(() => this.sla()?.breached === true);
 
   async ngOnInit() {
     const authenticated = await this.auth.init();
@@ -129,9 +153,9 @@ export class AaAppealDetailComponent implements OnInit {
 
     const roles = this.auth.getRoles();
     if (roles.includes('AA_ADMIN')) this.userRole.set('AA_ADMIN');
-    else if (roles.includes('AA_AUTHORITY')) this.userRole.set('AA_AUTHORITY');
-    else if (roles.includes('AA_BENCH_OFFICER')) this.userRole.set('AA_BENCH_OFFICER');
-    else this.userRole.set('AA_REGISTRAR');
+    else if (roles.includes('AA_SECRETARIAT')) this.userRole.set('AA_SECRETARIAT');
+    else if (roles.includes('AA_REVIEWER')) this.userRole.set('AA_REVIEWER');
+    else this.userRole.set('AA_DO');
 
     const appealNumber = this.route.snapshot.params['appealNumber'];
     this.loadAppeal(appealNumber);
@@ -168,7 +192,7 @@ export class AaAppealDetailComponent implements OnInit {
   }
 
   private loadOfficers() {
-    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/keycloak/users/by-role?role=AA_BENCH_OFFICER`).subscribe({
+    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/keycloak/users/by-role?role=AA_REVIEWER`).subscribe({
       next: (res) => {
         const users = (res || []).map((u: any) => ({ id: u.username || u.userId, name: u.displayName || `${u.firstName} ${u.lastName}` }));
         this.aaOfficers.set(users);
@@ -228,18 +252,49 @@ export class AaAppealDetailComponent implements OnInit {
       body
     ).subscribe({
       next: (res) => {
-        this.actionSuccess.set(true);
-        this.actionResult.set(`Action "${action.label}" completed successfully. New status: ${res?.data?.newStatus || 'updated'}.`);
         this.processing.set(false);
+
+        // A REFUSED action arrives as HTTP 200 with success:false — that is this API's convention for a
+        // rejected write, so Angular's error callback never fires. Treating any 200 as success is why
+        // this screen reported "Order passed successfully" for orders the server had thrown away.
+        if (res?.success === false) {
+          this.actionSuccess.set(false);
+          this.actionResult.set(res.messageKey || res.message || 'aa.action.failed');
+          return;
+        }
+
+        this.actionSuccess.set(true);
+        this.actionResult.set('aa.action.completed');
         this.selectedAction.set(null);
         this.loadAppeal(appealNumber);
         this.loadTimeline(appealNumber);
+        this.restoreFocusToActions();
       },
       error: (err) => {
         this.actionSuccess.set(false);
-        this.actionResult.set(`Failed: ${err.error?.message || err.message || 'Unknown error'}`);
+        // 409 CONFLICT means the appeal moved on: the server returns the actions that ARE legal now, so
+        // refreshing shows the caller the truth instead of leaving a stale card set on screen.
+        if (err?.status === 409) {
+          this.actionResult.set(err.error?.messageKey || 'aa.workflow.error_illegal_transition');
+          this.loadAppeal(appealNumber);
+        } else {
+          this.actionResult.set(err.error?.messageKey || err.error?.message || 'aa.action.failed');
+        }
         this.processing.set(false);
       }
+    });
+  }
+
+  /**
+   * Returns focus to the action list after a panel closes.
+   *
+   * The panels are @if-gated inline blocks, so when one is removed the focused element vanishes and focus
+   * falls to the document body — a keyboard user loses their place entirely.
+   */
+  private restoreFocusToActions(): void {
+    setTimeout(() => {
+      const target = document.querySelector<HTMLElement>('[data-testid="action-list"] button');
+      target?.focus();
     });
   }
 
@@ -261,42 +316,34 @@ export class AaAppealDetailComponent implements OnInit {
     }
   }
 
+  /**
+   * True when the server offers this caller nothing.
+   *
+   * Derived from the server's own answer rather than a hardcoded terminal-status list. The old list
+   * included `dismissed`, which the backend never sets \u2014 DISMISS produces `closed` \u2014 so it was both
+   * wrong and a second place the vocabulary could drift.
+   */
   isTerminalState(): boolean {
-    const status = (this.appeal()?.status || '').toLowerCase();
-    return ['closed', 'dismissed', 'rejected', 'order_passed'].includes(status);
-  }
-
-  getStatusLabel(status: string): string {
-    const labels: Record<string, string> = {
-      'filed': 'Filed',
-      'under_review': 'Under Review',
-      'accepted': 'Accepted',
-      'rejected': 'Rejected',
-      'hearing_scheduled': 'Hearing Scheduled',
-      'hearing_completed': 'Hearing Completed',
-      'order_reserved': 'Order Reserved',
-      'order_passed': 'Order Passed',
-      'remanded': 'Remanded',
-      'dismissed': 'Dismissed',
-      'closed': 'Closed',
-      'assigned': 'Assigned',
-      'documents_requested': 'Documents Requested',
-    };
-    return labels[status] || status;
+    return this.availableActions().length === 0;
   }
 
   getTimelineIcon(action: string): string {
     const icons: Record<string, string> = {
+      'FILED': '\u{1F4E5}',
       'ACCEPT': '\u2705',
       'REJECT': '\u274C',
-      'ASSIGN_BENCH': '\u{1F4E4}',
+      // Keyed on the real action ids from AaWorkflowTransition. These were ASSIGN_BENCH /
+      // FORWARD_AUTHORITY / REMAND_OMBUDSMAN \u2014 names the server never emits \u2014 so those rows silently
+      // fell through to the default icon and a raw action string.
+      'ASSIGN_TO_BENCH': '\u{1F4E4}',
       'REQUEST_DOCUMENTS': '\u2753',
       'SCHEDULE_HEARING': '\u{1F4C5}',
       'PREPARE_BRIEF': '\u{1F4DD}',
-      'FORWARD_AUTHORITY': '\u27A1\uFE0F',
+      'ESCALATE_TO_TIER2': '\u2B06\uFE0F',
+      'FORWARD_TO_AUTHORITY': '\u27A1\uFE0F',
       'SEND_BACK_REGISTRAR': '\u21A9\uFE0F',
       'PASS_ORDER': '\u{1F4DC}',
-      'REMAND_OMBUDSMAN': '\u{1F501}',
+      'REMAND_TO_OMBUDSMAN': '\u{1F501}',
       'DISMISS': '\u{1F6AB}',
       'REASSIGN': '\u{1F501}',
       'CLOSE': '\u{1F512}',
@@ -305,26 +352,30 @@ export class AaAppealDetailComponent implements OnInit {
     return icons[action] || '\u{1F4CB}';
   }
 
-  getTimelineLabel(action: string): string {
-    const labels: Record<string, string> = {
-      'ACCEPT': 'Appeal Accepted',
-      'REJECT': 'Appeal Rejected',
-      'ASSIGN_BENCH': 'Assigned to Bench Officer',
-      'REQUEST_DOCUMENTS': 'Documents Requested',
-      'SCHEDULE_HEARING': 'Hearing Scheduled',
-      'PREPARE_BRIEF': 'Brief Prepared',
-      'FORWARD_AUTHORITY': 'Forwarded to Authority',
-      'SEND_BACK_REGISTRAR': 'Sent Back to Registrar',
-      'PASS_ORDER': 'Order Passed',
-      'REMAND_OMBUDSMAN': 'Remanded to Ombudsman',
-      'DISMISS': 'Appeal Dismissed',
-      'REASSIGN': 'Reassigned',
-      'CLOSE': 'Appeal Closed',
-      'REOPEN': 'Appeal Reopened',
-      'FILE_APPEAL': 'Appeal Filed',
-    };
-    return labels[action] || action;
+  /** Translation key for a timeline action; the raw id is the fallback so a new action still reads. */
+  getTimelineLabelKey(action: string): string {
+    const known = [
+      'FILED', 'ACCEPT', 'REJECT', 'ASSIGN_TO_BENCH', 'REQUEST_DOCUMENTS', 'SCHEDULE_HEARING',
+      'PREPARE_BRIEF', 'ESCALATE_TO_TIER2', 'FORWARD_TO_AUTHORITY', 'SEND_BACK_REGISTRAR',
+      'PASS_ORDER', 'REMAND_TO_OMBUDSMAN', 'DISMISS', 'REASSIGN', 'CLOSE', 'REOPEN',
+    ];
+    return known.includes(action) ? `aa.timeline.${action.toLowerCase()}` : action;
   }
+
+  /**
+   * The acting reviewer's tier, from the token claim.
+   *
+   * reviewer_tier is a real claim (aa_reviewer_001 = 1, aa_reviewer_002 = 2) that nothing in the UI has
+   * ever surfaced, so a tier-1 reviewer had no way to know escalation was open to them.
+   */
+  reviewerTier = computed<string | null>(() => {
+    if (this.userRole() !== 'AA_REVIEWER') {
+      return null;
+    }
+    const claims = this.auth.currentUser() as Record<string, unknown> | null;
+    const tier = claims?.['reviewer_tier'];
+    return tier == null ? null : String(tier);
+  });
 
   goBack() {
     this.router.navigate(['/aa/dashboard']);

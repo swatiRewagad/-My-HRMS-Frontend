@@ -1,0 +1,82 @@
+
+Running 57 tests using 1 worker
+
+[1/57] [chromium] › e2e\admin\masking.spec.ts:29:7 › UST875 — complainant PII is masked by default › anonymous tracker gets masked name and phone
+[2/57] [chromium] › e2e\admin\masking.spec.ts:47:7 › UST875 — complainant PII is masked by default › a garbage Authorization header does not unmask PII
+[3/57] [chromium] › e2e\admin\masking.spec.ts:60:7 › UST875 — complainant PII is masked by default › the legacy raw-entity tracker is masked too
+[4/57] [chromium] › e2e\admin\masking.spec.ts:74:7 › UST875 — complainant PII is masked by default › the public recent list does not leak real names in bulk
+[5/57] [chromium] › e2e\admin\masking.spec.ts:85:7 › UST875 — complainant PII is masked by default › staff see masked values by default, but may reveal
+[6/57] [chromium] › e2e\admin\masking.spec.ts:101:7 › UST875 — reveal is gated and recorded › reveal without a justification is rejected
+[7/57] [chromium] › e2e\admin\masking.spec.ts:113:7 › UST875 — reveal is gated and recorded › a too-short justification is rejected (boundary)
+[8/57] [chromium] › e2e\admin\masking.spec.ts:124:7 › UST875 — reveal is gated and recorded › an unauthenticated caller cannot reveal
+[9/57] [chromium] › e2e\admin\masking.spec.ts:135:7 › UST875 — reveal is gated and recorded › an RE role cannot reveal complainant PII
+[10/57] [chromium] › e2e\admin\masking.spec.ts:151:7 › UST875 — reveal is gated and recorded › a role without reveal permission is refused
+[11/57] [chromium] › e2e\admin\masking.spec.ts:162:7 › UST875 — reveal is gated and recorded › an authorised reveal returns unmasked values and is auditable
+[12/57] [chromium] › e2e\admin\masking.spec.ts:200:7 › UST875 — the reveal trail is admin-only › a non-admin cannot read the reveal trail
+[13/57] [chromium] › e2e\admin\masking.spec.ts:207:7 › UST875 — the reveal trail is admin-only › an anonymous caller cannot read the reveal trail
+[14/57] [chromium] › e2e\admin\retention.spec.ts:17:7 › UST890 — retention policies › policies exist for operational and audit data
+[15/57] [chromium] › e2e\admin\retention.spec.ts:34:7 › UST890 — retention policies › audit categories are retained for 7 years, independently
+[16/57] [chromium] › e2e\admin\retention.spec.ts:54:7 › UST890 — retention policies › retention defaults to dry-run so nothing is destroyed
+[17/57] [chromium] › e2e\admin\retention.spec.ts:60:7 › UST890 — retention policies › a dry run reports candidates and deletes nothing
+[18/57] [chromium] › e2e\admin\retention.spec.ts:83:7 › UST890 — retention policies › the deletion log marks dry runs distinctly
+[19/57] [chromium] › e2e\admin\retention.spec.ts:99:7 › UST890 — retention policies › a retention period must be positive
+[20/57] [chromium] › e2e\admin\retention.spec.ts:106:7 › UST890 — retention policies › an unknown category cannot be updated
+[21/57] [chromium] › e2e\admin\retention.spec.ts:113:7 › UST890 — retention policies › retention is admin-only
+[22/57] [chromium] › e2e\admin\retention.spec.ts:125:7 › UST890 — retention policies › anonymous callers cannot trigger retention
+[23/57] [chromium] › e2e\admin\safe-deactivation.spec.ts:39:7 › UST887 — deactivation cannot strand open work › an officer with no open records deactivates cleanly
+[24/57] [chromium] › e2e\admin\safe-deactivation.spec.ts:58:7 › UST887 — deactivation cannot strand open work › an unknown officer returns 404 rather than silently succeeding
+[25/57] [chromium] › e2e\admin\safe-deactivation.spec.ts:68:7 › UST887 — deactivation cannot strand open work › an officer cannot be their own successor
+[26/57] [chromium] › e2e\admin\safe-deactivation.spec.ts:82:7 › UST887 — deactivation cannot strand open work › a successor outside the role group is rejected
+[27/57] [chromium] › e2e\admin\safe-deactivation.spec.ts:95:7 › UST887 — deactivation cannot strand open work › the open-records endpoint reports what must move
+[28/57] [chromium] › e2e\admin\safe-deactivation.spec.ts:110:7 › UST887 — deactivation cannot strand open work › a deactivated officer leaves the assignment rotation
+[29/57] [chromium] › e2e\admin\security-enforcement.spec.ts:31:9 › B1 — the admin surface is role-gated server-side › anonymous is refused /api/v1/admin/security/alerts
+[30/57] [chromium] › e2e\admin\security-enforcement.spec.ts:36:9 › B1 — the admin surface is role-gated server-side › a non-admin staff role is refused /api/v1/admin/security/alerts
+[31/57] [chromium] › e2e\admin\security-enforcement.spec.ts:31:9 › B1 — the admin surface is role-gated server-side › anonymous is refused /api/v1/admin/security/events
+[32/57] [chromium] › e2e\admin\security-enforcement.spec.ts:36:9 › B1 — the admin surface is role-gated server-side › a non-admin staff role is refused /api/v1/admin/security/events
+[33/57] [chromium] › e2e\admin\security-enforcement.spec.ts:31:9 › B1 — the admin surface is role-gated server-side › anonymous is refused /api/v1/admin/security/pii-reveals
+[34/57] [chromium] › e2e\admin\security-enforcement.spec.ts:36:9 › B1 — the admin surface is role-gated server-side › a non-admin staff role is refused /api/v1/admin/security/pii-reveals
+[35/57] [chromium] › e2e\admin\security-enforcement.spec.ts:31:9 › B1 — the admin surface is role-gated server-side › anonymous is refused /api/v1/admin/security/revocations
+[36/57] [chromium] › e2e\admin\security-enforcement.spec.ts:36:9 › B1 — the admin surface is role-gated server-side › a non-admin staff role is refused /api/v1/admin/security/revocations
+[37/57] [chromium] › e2e\admin\security-enforcement.spec.ts:31:9 › B1 — the admin surface is role-gated server-side › anonymous is refused /api/v1/admin/security/retention/policies
+[38/57] [chromium] › e2e\admin\security-enforcement.spec.ts:36:9 › B1 — the admin surface is role-gated server-side › a non-admin staff role is refused /api/v1/admin/security/retention/policies
+[39/57] [chromium] › e2e\admin\security-enforcement.spec.ts:31:9 › B1 — the admin surface is role-gated server-side › anonymous is refused /api/v1/admin/security/config
+[40/57] [chromium] › e2e\admin\security-enforcement.spec.ts:36:9 › B1 — the admin surface is role-gated server-side › a non-admin staff role is refused /api/v1/admin/security/config
+[41/57] [chromium] › e2e\admin\security-enforcement.spec.ts:44:7 › B1 — the admin surface is role-gated server-side › an ADMIN reaches the console
+[42/57] [chromium] › e2e\admin\security-enforcement.spec.ts:54:7 › B1 — the admin surface is role-gated server-side › an invented SECURITY_ADMIN role grants nothing
+[43/57] [chromium] › e2e\admin\security-enforcement.spec.ts:64:7 › UST873 — repeated denials raise a counted alert › unauthorised reveal attempts cross the threshold and raise one alert
+[44/57] [chromium] › e2e\admin\security-enforcement.spec.ts:102:7 › UST873 — repeated denials raise a counted alert › an alert can be acknowledged, and acknowledgement is attributed
+[45/57] [chromium] › e2e\admin\security-enforcement.spec.ts:120:7 › UST873 — repeated denials raise a counted alert › thresholds are tunable without a code change
+[46/57] [chromium] › e2e\admin\security-enforcement.spec.ts:130:7 › UST873 — repeated denials raise a counted alert › config edits are confined to the cms.security namespace
+[47/57] [chromium] › e2e\admin\security-enforcement.spec.ts:140:7 › UST877 — revocation blocks a still-valid session › a revoked user is refused, and restoring lets them back in
+[48/57] [chromium] › e2e\admin\security-enforcement.spec.ts:172:7 › UST877 — revocation blocks a still-valid session › an administrator cannot revoke their own access
+[49/57] [chromium] › e2e\admin\security-enforcement.spec.ts:180:7 › UST877 — revocation blocks a still-valid session › a revocation request needs a username
+[50/57] [chromium] › e2e\admin\security-enforcement.spec.ts:188:7 › UST877 — revocation blocks a still-valid session › a non-admin cannot revoke anyone
+[51/57] [chromium] › e2e\admin\timeline-config.spec.ts:7:7 › Timeline Config — Admin API (UST115) › admin sees current timeline values
+  1) [chromium] › e2e\admin\timeline-config.spec.ts:7:7 › Timeline Config — Admin API (UST115) › admin sees current timeline values 
+
+    Error: expect(received).toBeTruthy()
+
+    Received: false
+
+      15 |     const timelineKeys = configs.map((c: any) => c.configKey);
+      16 |     const hasTimelineKey = timelineKeys.some((key: string) => key.startsWith('timeline.'));
+    > 17 |     expect(hasTimelineKey).toBeTruthy();
+         |                            ^
+      18 |
+      19 |     // Each config should have required fields
+      20 |     for (const config of configs) {
+        at C:\Projects\My-HRMS-Frontend\CMS2.0_Redzone\cms-portal-frontend\e2e\admin\timeline-config.spec.ts:17:28
+
+    Error Context: test-results\admin-timeline-config-Time-06a8d-ees-current-timeline-values-chromium\error-context.md
+
+
+[52/57] [chromium] › e2e\admin\timeline-config.spec.ts:27:7 › Timeline Config — Admin API (UST115) › admin updates a timeline value successfully
+[53/57] [chromium] › e2e\admin\timeline-config.spec.ts:58:7 › Timeline Config — Admin API (UST115) › invalid value (0) returns validation error
+[54/57] [chromium] › e2e\admin\timeline-config.spec.ts:78:7 › Timeline Config — Admin API (UST115) › invalid value (-1) returns validation error
+[55/57] [chromium] › e2e\admin\timeline-config.spec.ts:95:7 › Timeline Config — Admin API (UST115) › invalid value (999) returns validation error
+[56/57] [chromium] › e2e\admin\timeline-config.spec.ts:112:7 › Timeline Config — Admin API (UST115) › non-numeric value returns validation error
+[57/57] [chromium] › e2e\admin\timeline-config.spec.ts:129:7 › Timeline Config — Admin API (UST115) › audit log shows the change after update
+  1 failed
+    [chromium] › e2e\admin\timeline-config.spec.ts:7:7 › Timeline Config — Admin API (UST115) › admin sees current timeline values 
+  6 skipped
+  50 passed (30.4s)

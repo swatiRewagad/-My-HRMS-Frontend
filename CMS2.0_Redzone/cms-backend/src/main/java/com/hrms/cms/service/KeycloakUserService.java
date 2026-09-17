@@ -8,6 +8,8 @@ import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -120,6 +122,128 @@ public class KeycloakUserService {
         all.addAll(heads);
 
         return all;
+    }
+
+    /** Looks up the internal Keycloak user id for a username; null when the user does not exist. */
+    public String findUserId(String username) {
+        String token = getAdminToken();
+        if (token == null) {
+            return null;
+        }
+        String url = serverUrl + "/admin/realms/" + realm + "/users?username="
+                + URLEncoder.encode(username, StandardCharsets.UTF_8) + "&exact=true";
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(token);
+
+        try {
+            ResponseEntity<List> response = restTemplate.exchange(
+                    url, HttpMethod.GET, new HttpEntity<>(headers), List.class);
+            List<Map<String, Object>> users = response.getBody();
+            if (users != null && !users.isEmpty()) {
+                return (String) users.get(0).get("id");
+            }
+        } catch (Exception e) {
+            log.error("Failed to look up Keycloak user {}: {}", username, e.getMessage());
+        }
+        return null;
+    }
+
+    public Map<String, Object> getUserById(String keycloakUserId) {
+        String token = getAdminToken();
+        if (token == null) {
+            return null;
+        }
+        String url = serverUrl + "/admin/realms/" + realm + "/users/" + keycloakUserId;
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(token);
+
+        try {
+            ResponseEntity<Map> response = restTemplate.exchange(
+                    url, HttpMethod.GET, new HttpEntity<>(headers), Map.class);
+            return response.getBody();
+        } catch (Exception e) {
+            log.error("Failed to read Keycloak user {}: {}", keycloakUserId, e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Disables the account so no new token can be issued (UST877).
+     *
+     * Returns false rather than throwing so the caller can decide: a revocation that silently
+     * "succeeded" while the account stayed enabled would be the worst outcome here.
+     */
+    public boolean setUserEnabled(String keycloakUserId, boolean enabled) {
+        String token = getAdminToken();
+        if (token == null) {
+            log.error("Cannot change enabled state for {} - no admin token", keycloakUserId);
+            return false;
+        }
+        String url = serverUrl + "/admin/realms/" + realm + "/users/" + keycloakUserId;
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(token);
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        try {
+            restTemplate.exchange(url, HttpMethod.PUT,
+                    new HttpEntity<>(Map.of("enabled", enabled), headers), Void.class);
+            log.info("Keycloak user {} enabled={}", keycloakUserId, enabled);
+            return true;
+        } catch (Exception e) {
+            log.error("Failed to set enabled={} for Keycloak user {}: {}", enabled, keycloakUserId, e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Terminates every active session, invalidating the refresh tokens behind them.
+     *
+     * Disabling alone is not revocation: this API is stateless and does not introspect on each
+     * request, so an already-issued access token keeps working until it expires. Killing the
+     * sessions stops the refresh cycle that would otherwise keep renewing access indefinitely.
+     */
+    public boolean logoutAllSessions(String keycloakUserId) {
+        String token = getAdminToken();
+        if (token == null) {
+            log.error("Cannot log out sessions for {} - no admin token", keycloakUserId);
+            return false;
+        }
+        String url = serverUrl + "/admin/realms/" + realm + "/users/" + keycloakUserId + "/logout";
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(token);
+
+        try {
+            restTemplate.exchange(url, HttpMethod.POST, new HttpEntity<>(headers), Void.class);
+            log.info("All Keycloak sessions terminated for user {}", keycloakUserId);
+            return true;
+        } catch (Exception e) {
+            log.error("Failed to terminate sessions for Keycloak user {}: {}", keycloakUserId, e.getMessage());
+            return false;
+        }
+    }
+
+    public int countActiveSessions(String keycloakUserId) {
+        String token = getAdminToken();
+        if (token == null) {
+            return -1;
+        }
+        String url = serverUrl + "/admin/realms/" + realm + "/users/" + keycloakUserId + "/sessions";
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(token);
+
+        try {
+            ResponseEntity<List> response = restTemplate.exchange(
+                    url, HttpMethod.GET, new HttpEntity<>(headers), List.class);
+            return response.getBody() == null ? 0 : response.getBody().size();
+        } catch (Exception e) {
+            log.error("Failed to count sessions for Keycloak user {}: {}", keycloakUserId, e.getMessage());
+            return -1;
+        }
     }
 
     private Map<String, Object> mapUser(Map<String, Object> keycloakUser) {

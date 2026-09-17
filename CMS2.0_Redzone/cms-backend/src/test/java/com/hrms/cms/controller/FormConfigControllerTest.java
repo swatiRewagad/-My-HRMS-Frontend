@@ -7,7 +7,8 @@ import com.hrms.cms.service.FormConfigService;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import com.hrms.cms.support.ControllerSliceTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
@@ -18,7 +19,11 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@WebMvcTest(FormConfigController.class)
+// addFilters = false: these assert controller behaviour, not the security chain. @WebMvcTest does not
+// load the app's @Configuration, so the default auto-config chain 401s/403s /api/form-config/**, which
+// SecurityConfig makes public in production.
+@ControllerSliceTest(FormConfigController.class)
+@AutoConfigureMockMvc(addFilters = false)
 class FormConfigControllerTest {
 
     @Autowired private MockMvc mockMvc;

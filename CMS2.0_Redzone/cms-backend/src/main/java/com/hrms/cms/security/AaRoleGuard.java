@@ -12,7 +12,7 @@ import java.lang.annotation.*;
 public @interface AaRoleGuard {
 
     /**
-     * Allowed roles (e.g., "AA_REGISTRAR", "AA_AUTHORITY").
+     * Allowed roles (e.g., "AA_DO", "AA_SECRETARIAT").
      * The user must have at least one of these roles.
      */
     String[] roles();

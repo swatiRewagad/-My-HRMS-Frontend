@@ -5,26 +5,35 @@ import com.hrms.cms.entity.Complaint;
 import com.hrms.cms.entity.ComplaintTimeline;
 import com.hrms.cms.entity.ReResponseTracker;
 import com.hrms.cms.entity.RegulatedEntity;
+import com.hrms.cms.config.FileStorageConfig;
 import com.hrms.cms.service.EncryptionKeyService;
+import com.hrms.cms.service.FileStorageService;
+import com.hrms.cms.service.FileUploadValidator;
 import com.hrms.cms.service.ReNotificationService;
 import com.hrms.cms.service.RePortalService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import com.hrms.cms.support.ControllerSliceTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.NestedTestConfiguration;
+import org.springframework.test.context.NestedTestConfiguration.EnclosingConfiguration;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.*;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -35,9 +44,19 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Tests for the RE (Regulated Entity) Portal Controller.
  * Endpoints: /api/v1/re-portal/
+ *
+ * The identity headers (X-Entity-Code / X-User-Entity) are only honoured when
+ * {@code cms.security.allow-dev-identity-headers} is true, which is the case under dev-local where
+ * the Playwright suites drive the API with them. This slice does not load application-dev-local.yml,
+ * so the flag is switched on here explicitly: these cases exist to exercise listing, filtering,
+ * submission, dashboard, timeline, queries and profile maintenance, not identity resolution.
+ *
+ * Identity resolution itself — claim-first precedence and the refusal to invent a scope — is pinned
+ * by {@link EntityScopeSecurity}, which runs with the flag at its production default.
  */
-@WebMvcTest(RePortalController.class)
+@ControllerSliceTest(RePortalController.class)
 @AutoConfigureMockMvc(addFilters = false)
+@TestPropertySource(properties = "cms.security.allow-dev-identity-headers=true")
 class RePortalControllerTest {
 
     @Autowired private MockMvc mockMvc;
@@ -46,6 +65,9 @@ class RePortalControllerTest {
     @MockBean private RePortalService rePortalService;
     @MockBean private ReNotificationService reNotificationService;
     @MockBean private EncryptionKeyService encryptionKeyService;
+    @MockBean private FileStorageService fileStorageService;
+    @MockBean private FileUploadValidator fileUploadValidator;
+    @MockBean private FileStorageConfig fileStorageConfig;
 
     private Complaint sampleComplaint;
     private RegulatedEntity sampleEntity;
@@ -148,11 +170,14 @@ class RePortalControllerTest {
         void shouldReturnEmptyForNoMatchingComplaints() throws Exception {
             Page<Complaint> emptyPage = new PageImpl<>(Collections.emptyList());
 
-            when(rePortalService.getComplaintsForEntity(eq("UNKNOWN_ENTITY"), any(), any(Pageable.class)))
+            // Deliberately not "UNKNOWN_ENTITY": that string used to be the controller's silent
+            // fallback scope, and reusing it here would read as an endorsement of the sentinel.
+            // This case is about a real entity that simply has no complaints yet.
+            when(rePortalService.getComplaintsForEntity(eq("KKBK001"), any(), any(Pageable.class)))
                     .thenReturn(emptyPage);
 
             mockMvc.perform(get("/api/v1/re-portal/complaints")
-                            .header("X-Entity-Code", "UNKNOWN_ENTITY"))
+                            .header("X-Entity-Code", "KKBK001"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.success").value(true))
                     .andExpect(jsonPath("$.data", hasSize(0)))
@@ -187,7 +212,10 @@ class RePortalControllerTest {
         @Test
         @DisplayName("should return single complaint detail")
         void shouldReturnComplaintDetail() throws Exception {
-            when(rePortalService.getComplaintDetail(eq("CMP-20260706-100001"), eq("HDFC001")))
+            // Opening the detail is itself the "Opened" signal (UST846), so the controller calls
+            // openComplaintDetail(number, entity, actor) — not getComplaintDetail. Stubbing the latter
+            // left the former returning null, which NPE'd into a 400.
+            when(rePortalService.openComplaintDetail(eq("CMP-20260706-100001"), eq("HDFC001"), anyString()))
                     .thenReturn(sampleComplaint);
             when(rePortalService.isWithinResponseWindow(eq("CMP-20260706-100001")))
                     .thenReturn(true);
@@ -204,7 +232,7 @@ class RePortalControllerTest {
         @Test
         @DisplayName("should return 404 when complaint not found")
         void shouldReturn404WhenNotFound() throws Exception {
-            when(rePortalService.getComplaintDetail(eq("NON-EXISTENT"), eq("HDFC001")))
+            when(rePortalService.openComplaintDetail(eq("NON-EXISTENT"), eq("HDFC001"), anyString()))
                     .thenThrow(new NoSuchElementException("Complaint not found: NON-EXISTENT"));
 
             mockMvc.perform(get("/api/v1/re-portal/complaints/NON-EXISTENT")
@@ -217,7 +245,7 @@ class RePortalControllerTest {
         @Test
         @DisplayName("should return 403 for complaint belonging to different entity")
         void shouldReturn403ForDifferentEntityComplaint() throws Exception {
-            when(rePortalService.getComplaintDetail(eq("CMP-20260706-100001"), eq("OTHER_ENTITY")))
+            when(rePortalService.openComplaintDetail(eq("CMP-20260706-100001"), eq("OTHER_ENTITY"), anyString()))
                     .thenThrow(new SecurityException("Access denied: complaint does not belong to entity OTHER_ENTITY"));
 
             mockMvc.perform(get("/api/v1/re-portal/complaints/CMP-20260706-100001")
@@ -660,5 +688,210 @@ class RePortalControllerTest {
                     .andExpect(jsonPath("$.success").value(false))
                     .andExpect(jsonPath("$.message", containsString("Nodal officer name is required")));
         }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // Entity-scope resolution — the actual cross-entity data leak
+    // ═══════════════════════════════════════════════════════════════════
+
+    /**
+     * Claim precedence where the dev headers ARE honoured — i.e. the dev-local/E2E configuration.
+     *
+     * Enabling the headers for the Playwright suites must not re-open the hole, so precedence is
+     * pinned on both sides of the flag: here with it on, and in {@link EntityScopeSecurity} with it at
+     * its production default.
+     */
+    @Nested
+    @DisplayName("Entity scope resolution (dev identity headers ENABLED)")
+    class EntityScopeWithDevHeadersEnabled {
+
+        /**
+         * The vulnerability in its original form: the header used to be read BEFORE the claim, so an
+         * authenticated HDFC user could send X-Entity-Code: SBI0001 and page through SBI's complaints.
+         * The claim must win even while the headers are trusted as a fallback.
+         */
+        @Test
+        @DisplayName("SECURITY: JWT entity_code must beat a conflicting X-Entity-Code even when dev headers are enabled")
+        void jwtClaimMustOutrankConflictingHeaderEvenWhenDevHeadersEnabled() throws Exception {
+            when(rePortalService.getComplaintsForEntity(anyString(), any(), any(Pageable.class)))
+                    .thenReturn(new PageImpl<>(List.of(sampleComplaint)));
+
+            mockMvc.perform(get("/api/v1/re-portal/complaints")
+                            .header("Authorization", bearerWithEntityCode("HDFC0001"))
+                            .header("X-Entity-Code", "SBI0001"))
+                    .andExpect(status().isOk());
+
+            ArgumentCaptor<String> scoped = ArgumentCaptor.forClass(String.class);
+            verify(rePortalService).getComplaintsForEntity(scoped.capture(), any(), any(Pageable.class));
+            assertThat(scoped.getValue()).isEqualTo("HDFC0001");
+            verify(rePortalService, never())
+                    .getComplaintsForEntity(eq("SBI0001"), any(), any(Pageable.class));
+        }
+
+        /** Sanity check that this context really does still honour the header on its own. */
+        @Test
+        @DisplayName("header-only caller is accepted here, confirming the flag is genuinely ON in this context")
+        void headerOnlyCallerIsAcceptedWhenDevHeadersEnabled() throws Exception {
+            when(rePortalService.getDashboardStats(eq("SBI0001"))).thenReturn(Map.of("pending", 1L));
+
+            mockMvc.perform(get("/api/v1/re-portal/dashboard")
+                            .header("X-Entity-Code", "SBI0001"))
+                    .andExpect(status().isOk());
+
+            verify(rePortalService).getDashboardStats(eq("SBI0001"));
+        }
+    }
+
+    /**
+     * Identity resolution under the ENFORCING configuration.
+     *
+     * The nested class re-declares {@code cms.security.allow-dev-identity-headers} as false, i.e. the
+     * production default that every profile except dev-local uses, so these cases see the same
+     * behaviour a deployed environment does. They exist because the controller previously trusted
+     * X-Entity-Code ahead of the token and, failing everything, scoped the query to the literal
+     * "UNKNOWN_ENTITY" — a spoofable header and a sentinel that made a failed resolution look like a
+     * real one. Every RE endpoint scopes its DB query by this value.
+     *
+     * {@code @NestedTestConfiguration(OVERRIDE)} is essential and not stylistic: by default a nested
+     * class MERGES the enclosing class's {@code @TestPropertySource}, and the enclosing declaration
+     * wins — so without it these cases silently ran with the dev headers still enabled and passed for
+     * the wrong reason. Overriding means the slice configuration is re-declared below, and the flag
+     * genuinely takes its production default here.
+     */
+    @Nested
+    @DisplayName("Entity scope resolution (dev identity headers DISABLED)")
+    @NestedTestConfiguration(EnclosingConfiguration.OVERRIDE)
+    @ControllerSliceTest(RePortalController.class)
+    @AutoConfigureMockMvc(addFilters = false)
+    @TestPropertySource(properties = "cms.security.allow-dev-identity-headers=false")
+    class EntityScopeSecurity {
+
+        // Overriding the enclosing configuration also discards its @MockBean declarations, so the
+        // controller's collaborators are re-declared for this context. These shadow the outer fields
+        // deliberately: they belong to a different, enforcing ApplicationContext.
+        @Autowired private MockMvc mockMvc;
+        @Autowired private ObjectMapper objectMapper;
+
+        @MockBean private RePortalService rePortalService;
+        @MockBean private ReNotificationService reNotificationService;
+        @MockBean private EncryptionKeyService encryptionKeyService;
+        @MockBean private FileStorageService fileStorageService;
+        @MockBean private FileUploadValidator fileUploadValidator;
+        @MockBean private FileStorageConfig fileStorageConfig;
+
+        @Test
+        @DisplayName("SECURITY: X-Entity-Code alone must not establish scope — 403, no query issued")
+        void headerAloneMustNotEstablishScope() throws Exception {
+            mockMvc.perform(get("/api/v1/re-portal/complaints")
+                            .header("X-Entity-Code", "SBI0001"))
+                    .andExpect(status().isForbidden());
+
+            // Not merely "no data" — the service must never have been consulted at all, so there is
+            // no scope for a header-only caller to widen.
+            verify(rePortalService, never()).getComplaintsForEntity(anyString(), any(), any(Pageable.class));
+        }
+
+        @Test
+        @DisplayName("SECURITY: legacy X-User-Entity header alone must not establish scope either")
+        void legacyUserEntityHeaderAloneMustNotEstablishScope() throws Exception {
+            mockMvc.perform(get("/api/v1/re-portal/dashboard")
+                            .header("X-User-Entity", "SBI0001"))
+                    .andExpect(status().isForbidden());
+
+            verify(rePortalService, never()).getDashboardStats(anyString());
+        }
+
+        @Test
+        @DisplayName("SECURITY: JWT entity_code claim wins over a conflicting X-Entity-Code header")
+        void jwtClaimMustWinOverConflictingHeader() throws Exception {
+            when(rePortalService.getComplaintsForEntity(anyString(), any(), any(Pageable.class)))
+                    .thenReturn(new PageImpl<>(List.of(sampleComplaint)));
+
+            mockMvc.perform(get("/api/v1/re-portal/complaints")
+                            .header("Authorization", bearerWithEntityCode("HDFC0001"))
+                            .header("X-Entity-Code", "SBI0001"))
+                    .andExpect(status().isOk());
+
+            // The captured argument is the only thing that proves which bank's rows were read.
+            ArgumentCaptor<String> scoped = ArgumentCaptor.forClass(String.class);
+            verify(rePortalService).getComplaintsForEntity(scoped.capture(), any(), any(Pageable.class));
+            assertThat(scoped.getValue()).isEqualTo("HDFC0001");
+            verify(rePortalService, never()).getComplaintsForEntity(eq("SBI0001"), any(), any(Pageable.class));
+        }
+
+        @Test
+        @DisplayName("SECURITY: a valid claim is still honoured with no headers present")
+        void validClaimIsHonouredWithoutHeaders() throws Exception {
+            when(rePortalService.getDashboardStats(eq("HDFC0001")))
+                    .thenReturn(Map.of("totalForwarded", 3L));
+
+            mockMvc.perform(get("/api/v1/re-portal/dashboard")
+                            .header("Authorization", bearerWithEntityCode("HDFC0001")))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.totalForwarded").value(3));
+
+            verify(rePortalService).getDashboardStats(eq("HDFC0001"));
+        }
+
+        @Test
+        @DisplayName("SECURITY: unresolvable entity is refused with 403 and never falls back to UNKNOWN_ENTITY")
+        void unresolvableEntityIsRefusedAndNeverFallsBackToSentinel() throws Exception {
+            mockMvc.perform(get("/api/v1/re-portal/complaints"))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.message",
+                            containsString("regulated entity could not be determined")));
+
+            // The old sentinel must be gone rather than hidden: if it were still being computed, the
+            // query would run scoped to a string no real entity owns.
+            verify(rePortalService, never())
+                    .getComplaintsForEntity(eq("UNKNOWN_ENTITY"), any(), any(Pageable.class));
+            verify(rePortalService, never())
+                    .getComplaintsForEntity(anyString(), any(), any(Pageable.class));
+        }
+
+        @Test
+        @DisplayName("SECURITY: a token whose entity_code claim is blank is unresolvable, not empty scope")
+        void blankClaimIsUnresolvable() throws Exception {
+            mockMvc.perform(get("/api/v1/re-portal/profile")
+                            .header("Authorization", bearerWithEntityCode("   ")))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.message",
+                            containsString("regulated entity could not be determined")));
+
+            verify(rePortalService, never()).getEntityProfile(anyString());
+        }
+
+        @Test
+        @DisplayName("SECURITY: writes are refused too — no unscoped nodal-officer update")
+        void writeEndpointsAreAlsoRefusedWhenEntityUnresolvable() throws Exception {
+            Map<String, Object> request = new LinkedHashMap<>();
+            request.put("name", "Jane Smith");
+            request.put("email", "jane.smith@hdfc.com");
+
+            mockMvc.perform(put("/api/v1/re-portal/profile/nodal-officer")
+                            .header("X-Entity-Code", "SBI0001")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isForbidden());
+
+            verify(rePortalService, never())
+                    .updateNodalOfficer(anyString(), anyString(), any(), any(), any());
+        }
+    }
+
+    /**
+     * Builds an unsigned-but-well-formed bearer token carrying an {@code entity_code} claim.
+     *
+     * The controller only base64url-decodes the payload — signature verification is Spring Security's
+     * job upstream — so a real signature is not needed to exercise claim precedence.
+     */
+    private String bearerWithEntityCode(String entityCode) throws Exception {
+        String payload = objectMapper.writeValueAsString(Map.of(
+                "sub", "re-user-1",
+                "preferred_username", "hdfc.nodal",
+                "entity_code", entityCode));
+        String encoded = Base64.getUrlEncoder().withoutPadding()
+                .encodeToString(payload.getBytes(StandardCharsets.UTF_8));
+        return "Bearer x." + encoded + ".y";
     }
 }

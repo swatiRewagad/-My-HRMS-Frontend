@@ -4,8 +4,9 @@ import com.hrms.cms.entity.ComplaintCategory;
 import com.hrms.cms.service.ComplaintService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import com.hrms.cms.support.ControllerSliceTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
@@ -15,7 +16,12 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@WebMvcTest(CategoryController.class)
+/**
+ * See {@link BankControllerTest} — the slice keeps its security filter chain, so the tests supply an
+ * authenticated OFFICER (a real cms-realm role, part of SecurityConfig's STAFF_ROLES).
+ */
+@ControllerSliceTest(CategoryController.class)
+@WithMockUser(roles = "OFFICER")
 class CategoryControllerTest {
 
     @Autowired private MockMvc mockMvc;

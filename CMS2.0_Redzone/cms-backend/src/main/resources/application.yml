@@ -63,6 +63,12 @@ spring:
         request.timeout.ms: ${KAFKA_REQUEST_TIMEOUT:5000}
   cache:
     type: hazelcast
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:9090/realms/cms}
+          jwk-set-uri: ${KEYCLOAK_JWK_URI:http://localhost:9090/realms/cms/protocol/openid-connect/certs}
 
 keycloak:
   admin:
@@ -112,7 +118,9 @@ cms:
     azure-model: ${AZURE_DOC_MODEL:prebuilt-read}
   attachments:
     root-path: ${CMS_ATTACHMENTS_PATH:C:/cms-attachments}
-    max-file-size: ${CMS_MAX_FILE_SIZE:52428800}
+    # NFR-006: 2MB per file, 25MB total, 10 files. Was 50MB/none/10.
+    max-file-size: ${CMS_MAX_FILE_SIZE:2097152}
+    max-total-size: ${CMS_MAX_TOTAL_SIZE:26214400}
     chunk-size: ${CMS_CHUNK_SIZE:5242880}
     allowed-types: ${CMS_ALLOWED_TYPES:pdf,png,jpg,jpeg,doc,docx,xls,xlsx,txt,csv,zip}
     max-files-per-complaint: ${CMS_MAX_FILES:10}

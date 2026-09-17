@@ -6,11 +6,12 @@ import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../environments/environment';
 import { SpeechButtonComponent } from '../../../shared/speech-button/speech-button.component';
 import { TranslatePipe } from '../../../pipes/translate.pipe';
+import { StatusBadgeComponent } from '../../shared/status-badge/status-badge.component';
 
 @Component({
   selector: 'app-file-appeal',
   standalone: true,
-  imports: [CommonModule, FormsModule, SpeechButtonComponent, TranslatePipe],
+  imports: [CommonModule, FormsModule, SpeechButtonComponent, TranslatePipe, StatusBadgeComponent],
   templateUrl: './file-appeal.component.html',
   styleUrl: './file-appeal.component.scss'
 })

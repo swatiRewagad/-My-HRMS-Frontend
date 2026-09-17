@@ -36,8 +36,22 @@ public class ComplaintTimeline {
 
     private LocalDateTime performedAt;
 
+    // ═══ Automatic-vs-manual discriminator (UST848) ═══
+    // Before this existed, the only way to tell a system event from a user action was to guess from
+    // performedBy, which is written as "SYSTEM", "System" and "system" by different services — so
+    // "show me only what the entity actually did" could not be answered reliably. Nullable rather
+    // than NOT NULL because pre-existing rows have no recoverable answer; the migration backfills
+    // them from performedBy and leaves genuinely ambiguous ones MANUAL.
+    @Enumerated(EnumType.STRING)
+    @Column(name = "event_source", length = 20)
+    @Builder.Default
+    private TimelineEventSource eventSource = TimelineEventSource.MANUAL;
+
     @PrePersist
     protected void onCreate() {
         this.performedAt = LocalDateTime.now();
+        if (this.eventSource == null) {
+            this.eventSource = TimelineEventSource.MANUAL;
+        }
     }
 }

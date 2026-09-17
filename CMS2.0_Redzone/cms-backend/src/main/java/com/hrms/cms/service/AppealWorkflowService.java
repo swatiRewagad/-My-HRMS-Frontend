@@ -2,11 +2,19 @@ package com.hrms.cms.service;
 
 import com.hrms.cms.entity.Appeal;
 import com.hrms.cms.entity.AppealTimeline;
+import com.hrms.cms.entity.ClosureClauseMaster.AppealParty;
 import com.hrms.cms.entity.Complaint;
 import com.hrms.cms.entity.ComplaintAttachment;
+import com.hrms.cms.entity.ComplaintTimeline;
+import com.hrms.cms.entity.TimelineEventSource;
+import com.hrms.cms.repository.ComplaintTimelineRepository;
 import com.hrms.cms.repository.AppealRepository;
 import com.hrms.cms.repository.AppealTimelineRepository;
 import com.hrms.cms.repository.ComplaintRepository;
+import com.hrms.cms.dto.AaAssignmentRequest;
+import com.hrms.cms.dto.AaAssignmentResult;
+import com.hrms.cms.security.AaAccessDeniedException;
+import com.hrms.cms.security.AaIdentityResolver;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -30,21 +38,24 @@ public class AppealWorkflowService {
     private final ComplaintRepository complaintRepository;
     private final KeycloakUserService keycloakUserService;
     private final FileStorageService fileStorageService;
+    private final AaIdentityResolver aaIdentityResolver;
+    private final AppealClassificationService classificationService;
+    private final AaAssignmentEngine assignmentEngine;
+    private final AaWorkflowNotifier workflowNotifier;
+    private final AaHearingPort hearingPort;
+    private final ComplaintTimelineRepository complaintTimelineRepository;
+    private final AaOutboxPublisher outboxPublisher;
 
-    private final Map<String, Integer> roundRobinCounters = new java.util.concurrent.ConcurrentHashMap<>();
+    // The in-memory round-robin counter that used to live here is gone. It was a ConcurrentHashMap over
+    // Keycloak users: lost on restart, divergent per pod, and blind to every workload threshold. All
+    // assignment now goes through AaAssignmentEngine, which persists its pointer and enforces caps.
 
-    private static final List<String> CLOSED_STATUSES = List.of("closed", "rejected", "order_passed");
+    /** Roles permitted to set aside the clause-derived classification. */
+    private static final Set<String> OVERRIDE_ROLES = Set.of("AA_DO", "AA_REVIEWER", "AA_ADMIN");
 
-    // ═══════════════════════════════════════════════════════════
-    // Role -> Allowed actions mapping
-    // ═══════════════════════════════════════════════════════════
-
-    private static final Map<String, List<String>> ROLE_ACTIONS = Map.of(
-            "AA_REGISTRAR", List.of("ACCEPT", "REJECT", "ASSIGN_TO_BENCH", "REQUEST_DOCUMENTS"),
-            "AA_BENCH_OFFICER", List.of("SCHEDULE_HEARING", "PREPARE_BRIEF", "FORWARD_TO_AUTHORITY", "SEND_BACK_REGISTRAR"),
-            "AA_AUTHORITY", List.of("PASS_ORDER", "SCHEDULE_HEARING", "REMAND_TO_OMBUDSMAN", "DISMISS"),
-            "AA_ADMIN", List.of("REASSIGN", "CLOSE", "REOPEN")
-    );
+    // The role matrix and the terminal-status list that used to live here are gone. Both are now
+    // declared once in AaWorkflowTransition, and the terminal codes come from AppealStatus.TERMINAL_CODES
+    // rather than a third hand-rolled copy of the same three strings.
 
     // ═══════════════════════════════════════════════════════════
     // File Appeal (legacy signature for backward compatibility)
@@ -62,7 +73,6 @@ public class AppealWorkflowService {
     @Transactional
     public Map<String, Object> fileAppeal(Map<String, String> request, MultipartFile[] attachments) {
         String originalComplaintNumber = request.get("originalComplaintNumber");
-        String classificationType = request.get("classificationType");
         String appealGround = request.get("appealGround");
         String reliefSought = request.get("reliefSought");
         String appellantName = request.get("appellantName");
@@ -74,27 +84,36 @@ public class AppealWorkflowService {
         if (originalComplaintNumber == null || originalComplaintNumber.isBlank()) {
             throw new IllegalArgumentException("originalComplaintNumber is required");
         }
-        if (classificationType == null || classificationType.isBlank()) {
-            throw new IllegalArgumentException("classificationType is required");
-        }
-        if (!"APPEAL".equals(classificationType) && !"REPRESENTATION".equals(classificationType)) {
-            throw new IllegalArgumentException("classificationType must be APPEAL or REPRESENTATION");
+
+        Complaint parent = complaintRepository.findByComplaintNumber(originalComplaintNumber)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Parent complaint not found: " + originalComplaintNumber));
+
+        if (appellantName == null || appellantName.isBlank()) {
+            appellantName = parent.getComplainantName();
+            if (appellantEmail == null || appellantEmail.isBlank()) {
+                appellantEmail = parent.getComplainantEmail();
+            }
+            if (appellantPhone == null || appellantPhone.isBlank()) {
+                appellantPhone = parent.getComplainantPhone();
+            }
         }
         if (appellantName == null || appellantName.isBlank()) {
-            // Try to derive from original complaint
-            Optional<Complaint> complaintOpt = complaintRepository.findByComplaintNumber(originalComplaintNumber);
-            if (complaintOpt.isPresent()) {
-                Complaint complaint = complaintOpt.get();
-                appellantName = complaint.getComplainantName();
-                if (appellantEmail == null || appellantEmail.isBlank()) {
-                    appellantEmail = complaint.getComplainantEmail();
-                }
-                if (appellantPhone == null || appellantPhone.isBlank()) {
-                    appellantPhone = complaint.getComplainantPhone();
-                }
-            } else {
-                throw new IllegalArgumentException("appellantName is required");
-            }
+            throw new IllegalArgumentException("appellantName is required");
+        }
+
+        // Classification is DERIVED, never accepted from the caller. It used to come straight from a
+        // request parameter defaulting to "APPEAL", which let the browser decide a legal question:
+        // whether the citizen gets an appeal or only a representation. Any client-supplied value is
+        // ignored, and an unmapped clause fails closed inside the classification service.
+        AppealParty party = resolveParty(request);
+        String classificationType = classificationService.classify(parent, party);
+
+        String requestedClassification = request.get("classificationType");
+        if (requestedClassification != null && !requestedClassification.isBlank()
+                && !requestedClassification.equalsIgnoreCase(classificationType)) {
+            log.warn("Ignoring client-supplied classification '{}' for complaint {}: clause-derived value is {}",
+                    requestedClassification, originalComplaintNumber, classificationType);
         }
         if (appealGround == null || appealGround.isBlank()) {
             throw new IllegalArgumentException("appealGround is required");
@@ -121,13 +140,37 @@ public class AppealWorkflowService {
                 .appellantEmail(appellantEmail)
                 .appellantPhone(appellantPhone)
                 .status("filed")
-                .assignedRole("AA_REGISTRAR")
-                .assignedOfficer(assignByRole("AA_REGISTRAR"))
+                .assignedRole("AA_DO")
+                // Officer is set AFTER the save: the engine records a placement against the appeal
+                // number, so the appeal has to exist first.
                 .priority("high")
                 .workflowStage("FILED")
+                // Provenance, so the "Created By Me" view can attribute this record. A citizen filing
+                // on the portal has no AA role, so createdBy is their own id and createdByRole null.
+                .createdBy(aaIdentityResolver.resolveActor())
+                .createdByRole(aaIdentityResolver.resolveAaRole())
+                .appealFiledBy(party.name())
+                .entityCode(parent.getEntityCode())
+                .closureClause(parent.getClosureClause())
                 .build();
 
         Appeal saved = appealRepository.save(appeal);
+
+        // Place the appeal with a real AA_DO through the engine, which enforces per-officer thresholds.
+        // An unassignable pool leaves assignedOfficer null and the appeal visible in the AA_DO role queue
+        // rather than fabricating an assignee.
+        String initialOfficer = assignThroughEngine(saved.getAppealNumber(), "AA_DO", saved);
+        if (initialOfficer != null) {
+            saved.setAssignedOfficer(initialOfficer);
+            saved = appealRepository.save(saved);
+            workflowNotifier.notifyOfficer(initialOfficer, saved.getAppealNumber(),
+                    AaWorkflowEvent.FILED);
+        }
+
+        // The appellant is a citizen: this records the obligation to tell them, which the delivery log
+        // fulfils. It is deliberately not a bell notification — they have no inbox here.
+        workflowNotifier.notifyAppellant(saved.getAppealNumber(), AaWorkflowEvent.FILED);
+        outboxPublisher.publish(saved, AaWorkflowEvent.FILED, saved.getCreatedBy());
 
         // Handle file attachments using the existing FileStorageService
         // Attachments are stored as ComplaintAttachments linked to the appeal's
@@ -167,17 +210,38 @@ public class AppealWorkflowService {
         Appeal appeal = appealRepository.findByAppealNumber(appealNumber)
                 .orElseThrow(() -> new IllegalArgumentException("Appeal not found: " + appealNumber));
 
-        String actor = params.getOrDefault("actor", "");
-        String actorRole = params.getOrDefault("actorRole", "");
+        // Identity is resolved by the server, never taken from the request body. Previously both
+        // `actor` and `actorRole` were read out of params and the role matrix was enforced only when
+        // actorRole was non-blank — and the Angular client never sent it, so the AA role check was
+        // skipped on every real request and attribution was whatever the caller typed.
+        String actorRole = aaIdentityResolver.resolveAaRole();
+        if (actorRole == null) {
+            throw new AaAccessDeniedException(
+                    "No AA role present on the request; this action requires one of " + AaIdentityResolver.AA_ROLES);
+        }
+        String resolvedActor = aaIdentityResolver.resolveActor();
+        String actor = resolvedActor != null ? resolvedActor : "UNKNOWN";
         String remarks = params.getOrDefault("remarks", "");
         String prevStatus = appeal.getStatus();
 
-        // Validate action is allowed for the role
-        if (!actorRole.isBlank()) {
-            List<String> allowedActions = ROLE_ACTIONS.getOrDefault(actorRole, Collections.emptyList());
-            if (!allowedActions.contains(action.toUpperCase())) {
-                throw new IllegalArgumentException("Action " + action + " is not permitted for role " + actorRole);
-            }
+        // Both halves of the gate come from ONE table, AaWorkflowTransition, which getAvailableActions
+        // also reads. Previously the role was checked here while the status rules lived only in that
+        // read-only helper, so the server enforced half of its own workflow: a freshly filed appeal
+        // could be driven straight to order_passed, a passed order could be overwritten, and a disposed
+        // appeal could be pulled back to under_review.
+        AaWorkflowTransition transition = AaWorkflowTransition.find(action)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown action: " + action));
+
+        if (!transition.permits(actorRole)) {
+            throw new AaAccessDeniedException(
+                    "Action " + action + " is not permitted for role " + actorRole);
+        }
+
+        // The from-status guard. An illegal transition is a client error with a translation key, not a
+        // 500 and not a silent success.
+        if (!transition.allowedFrom(prevStatus)) {
+            throw new AaIllegalTransitionException(transition.name(), prevStatus,
+                    AaWorkflowTransition.availableFor(actorRole, prevStatus));
         }
 
         // Validate classificationType immutability - reject any attempt to change it
@@ -188,7 +252,7 @@ public class AppealWorkflowService {
             }
         }
 
-        switch (action.toUpperCase()) {
+        switch (action.toUpperCase(Locale.ROOT)) {
             case "ACCEPT":
                 appeal.setStatus("under_review");
                 appeal.setWorkflowStage("UNDER_REVIEW");
@@ -204,8 +268,8 @@ public class AppealWorkflowService {
                 break;
 
             case "ASSIGN_TO_BENCH":
-                appeal.setAssignedRole("AA_BENCH_OFFICER");
-                appeal.setAssignedOfficer(assignByRole("AA_BENCH_OFFICER"));
+                appeal.setAssignedRole("AA_REVIEWER");
+                appeal.setAssignedOfficer(assignThroughEngine(appealNumber, "AA_REVIEWER", appeal));
                 appeal.setWorkflowStage("ASSIGNED_TO_BENCH");
                 break;
 
@@ -231,15 +295,22 @@ public class AppealWorkflowService {
                 break;
 
             case "FORWARD_TO_AUTHORITY":
-                appeal.setAssignedRole("AA_AUTHORITY");
-                appeal.setAssignedOfficer(assignByRole("AA_AUTHORITY"));
+                appeal.setAssignedRole("AA_SECRETARIAT");
+                appeal.setAssignedOfficer(assignThroughEngine(appealNumber, "AA_SECRETARIAT", appeal));
                 appeal.setWorkflowStage("FORWARDED_TO_AUTHORITY");
                 break;
 
             case "SEND_BACK_REGISTRAR":
-                appeal.setAssignedRole("AA_REGISTRAR");
-                appeal.setAssignedOfficer(assignByRole("AA_REGISTRAR"));
+                appeal.setAssignedRole("AA_DO");
+                // Back to the DO who ROUTED it, not to a fresh round-robin pick. Sending a file back to
+                // an arbitrary DO was a real defect: the officer who raised the query is the one holding
+                // the context, and the record already remembers who that was.
+                appeal.setAssignedOfficer(returnToRouter(appealNumber, appeal));
                 appeal.setWorkflowStage("SENT_BACK_TO_REGISTRAR");
+                break;
+
+            case "ESCALATE_TO_TIER2":
+                escalateToTier2(appealNumber, appeal, actor, actorRole, remarks);
                 break;
 
             case "PASS_ORDER":
@@ -270,7 +341,7 @@ public class AppealWorkflowService {
                 appeal.setWorkflowStage("REMANDED");
 
                 // Reopen the original complaint
-                reopenOriginalComplaint(appeal.getOriginalComplaintNumber(), actor);
+                reopenOriginalComplaint(appeal.getOriginalComplaintNumber(), appealNumber, actor);
                 break;
 
             case "DISMISS":
@@ -283,8 +354,27 @@ public class AppealWorkflowService {
             case "REASSIGN":
                 String newRole = params.getOrDefault("role", appeal.getAssignedRole());
                 String newOfficer = params.getOrDefault("officer", "");
+
+                // The requested role is validated against the AA vocabulary. It used to be written
+                // straight through from the request body, so an admin could park an appeal on
+                // assignedRole="RE_PNO" or a typo and every task query keyed on assignedRole would lose
+                // it permanently, with no error and no way back short of a SQL fix.
+                if (!AaIdentityResolver.AA_ROLES.contains(newRole)) {
+                    throw new IllegalArgumentException(
+                            "aa.workflow.error_invalid_target_role");
+                }
                 appeal.setAssignedRole(newRole);
-                appeal.setAssignedOfficer(newOfficer.isBlank() ? assignByRole(newRole) : newOfficer);
+
+                if (newOfficer.isBlank()) {
+                    appeal.setAssignedOfficer(assignThroughEngine(appealNumber, newRole, appeal));
+                } else {
+                    // A named target is an explicit admin override: routed through the engine's audited
+                    // manual path so the threshold bypass is recorded with an actor and a reason, rather
+                    // than silently written to the column.
+                    AaAssignmentResult manual = assignmentEngine.assignManually(appealNumber, newOfficer,
+                            remarks.isBlank() ? "AA_ADMIN reassignment" : remarks);
+                    appeal.setAssignedOfficer(manual.getAssignedUserId());
+                }
                 appeal.setWorkflowStage("REASSIGNED");
                 break;
 
@@ -296,6 +386,11 @@ public class AppealWorkflowService {
                 break;
 
             case "REOPEN":
+                // Reviving a disposed appeal is the one way out of a terminal state, so it demands a
+                // reason: an unexplained reopen of a passed order is indistinguishable from an error.
+                if (remarks.isBlank()) {
+                    throw new IllegalArgumentException("aa.workflow.error_reopen_reason_required");
+                }
                 appeal.setStatus("under_review");
                 appeal.setClosedAt(null);
                 appeal.setClosureCause(null);
@@ -303,21 +398,43 @@ public class AppealWorkflowService {
                 break;
 
             default:
-                throw new IllegalArgumentException("Unknown action: " + action);
+                // Unreachable: AaWorkflowTransition.find already rejected an unknown action above. Kept
+                // so adding a transition to the table without handling it here fails loudly.
+                throw new IllegalArgumentException("Action " + action + " is declared but not implemented");
         }
 
         appealRepository.save(appeal);
 
         // Add timeline entry
-        addTimeline(appealNumber, action.toUpperCase(), actor, actorRole, remarks, prevStatus, appeal.getStatus());
+        addTimeline(appealNumber, action.toUpperCase(Locale.ROOT), actor, actorRole, remarks, prevStatus,
+                appeal.getStatus());
+
+        // Announce it. The event vocabulary decides who hears about what, so no call site has to reason
+        // about whether a citizen cares — and both calls are deferred to after commit inside the
+        // notifier, so nothing is announced for a transition that then rolls back.
+        AaWorkflowEvent event = transition.getEvent();
+        if (event != null) {
+            // Same transaction as the change, so the two are atomic.
+            outboxPublisher.publish(appeal, event, actor);
+            if (appeal.getAssignedOfficer() != null && !appeal.getAssignedOfficer().isBlank()) {
+                workflowNotifier.notifyOfficer(appeal.getAssignedOfficer(), appealNumber, event);
+            }
+            if (event.notifiesAppellant()) {
+                workflowNotifier.notifyAppellant(appealNumber, event);
+            }
+        }
 
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("appealNumber", appeal.getAppealNumber());
-        result.put("action", action.toUpperCase());
+        result.put("action", action.toUpperCase(Locale.ROOT));
         result.put("newStatus", appeal.getStatus());
         result.put("assignedRole", appeal.getAssignedRole());
         result.put("assignedOfficer", appeal.getAssignedOfficer());
         result.put("workflowStage", appeal.getWorkflowStage());
+        // So a client never has to guess what it may do next, and can never offer something the server
+        // would refuse.
+        result.put("availableActions",
+                AaWorkflowTransition.availableFor(actorRole, appeal.getStatus()));
 
         return result;
     }
@@ -326,18 +443,26 @@ public class AppealWorkflowService {
     // Available Actions
     // ═══════════════════════════════════════════════════════════
 
-    public List<String> getAvailableActions(String appealNumber, String userRole) {
+    /**
+     * Actions the CURRENT caller may perform, resolved from their token.
+     *
+     * The role is no longer accepted as a parameter: it was a client-supplied query param, so the UI
+     * could ask for — and be shown — another role's action set, and the buttons it rendered then
+     * disagreed with what performAction would actually allow.
+     */
+    public List<String> getAvailableActions(String appealNumber) {
         Optional<Appeal> opt = appealRepository.findByAppealNumber(appealNumber);
         if (opt.isEmpty()) return Collections.emptyList();
 
-        Appeal appeal = opt.get();
-
-        // If appeal is in a terminal state, no actions available (except for ADMIN)
-        if (CLOSED_STATUSES.contains(appeal.getStatus()) && !"AA_ADMIN".equals(userRole)) {
+        String userRole = aaIdentityResolver.resolveAaRole();
+        if (userRole == null) {
             return Collections.emptyList();
         }
 
-        return ROLE_ACTIONS.getOrDefault(userRole, Collections.emptyList());
+        // Derived from the SAME table performAction enforces, so the two can no longer disagree. The
+        // terminal-state rule is not special-cased here any more: it falls out of the table, because the
+        // only transition declaring a terminal from-status is AA_ADMIN's REOPEN.
+        return AaWorkflowTransition.availableFor(userRole, opt.get().getStatus());
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -378,6 +503,30 @@ public class AppealWorkflowService {
         return appealTimelineRepository.findByAppealNumberOrderByPerformedAtDesc(appealNumber);
     }
 
+    /**
+     * A timeline row that records a FIELD changing, not just a status moving.
+     *
+     * Reuses the fieldName/oldValue/newValue columns the classification override already writes, so
+     * escalations and reassignments are answerable at the same granularity rather than appearing as an
+     * opaque action name.
+     */
+    private void addFieldTimeline(String appealNumber, String action, String performedBy,
+                                 String performedByRole, String remarks, String status,
+                                 String fieldName, String oldValue, String newValue) {
+        appealTimelineRepository.save(AppealTimeline.builder()
+                .appealNumber(appealNumber)
+                .action(action)
+                .performedBy(performedBy)
+                .performedByRole(performedByRole)
+                .remarks(remarks)
+                .fromStatus(status)
+                .toStatus(status)
+                .fieldName(fieldName)
+                .oldValue(oldValue)
+                .newValue(newValue)
+                .build());
+    }
+
     // ═══════════════════════════════════════════════════════════
     // Private helpers
     // ═══════════════════════════════════════════════════════════
@@ -402,15 +551,151 @@ public class AppealWorkflowService {
         }
     }
 
-    private void reopenOriginalComplaint(String complaintNumber, String actor) {
-        complaintRepository.findByComplaintNumber(complaintNumber).ifPresent(complaint -> {
-            complaint.setStatus("in_progress");
-            complaint.setClosedAt(null);
-            complaint.setReopenCount(complaint.getReopenCount() != null ? complaint.getReopenCount() + 1 : 1);
-            complaint.setLastReopenedAt(LocalDateTime.now());
-            complaintRepository.save(complaint);
-            log.info("Reopened original complaint {} due to REMAND_TO_OMBUDSMAN by {}", complaintNumber, actor);
-        });
+    /**
+     * Hands the parent complaint back to the ombudsman side after a remand.
+     *
+     * Previously this set the status and nothing else, using ifPresent — so a missing parent silently
+     * no-opped while the appeal still closed as REMANDED, and even when the parent existed it landed in
+     * in_progress with a stale workflow stage and whatever assignee it had before closure. Since RBIO and
+     * CEPC queues are keyed on the workflow stage, a remanded complaint was invisible to every officer
+     * queue: legally reopened, operationally lost.
+     *
+     * Now: hard-fails on a missing parent, sets a stage the queues actually select on, writes a
+     * complaint-side timeline row, and notifies whoever holds it.
+     */
+    private void reopenOriginalComplaint(String complaintNumber, String appealNumber, String actor) {
+        Complaint complaint = complaintRepository.findByComplaintNumber(complaintNumber)
+                .orElseThrow(() -> new IllegalStateException(
+                        "aa.workflow.error_remand_parent_missing"));
+
+        String previousStatus = complaint.getStatus();
+        complaint.setStatus("in_progress");
+        complaint.setWorkflowStage("REMANDED_BY_AA");
+        complaint.setClosedAt(null);
+        complaint.setClosureClause(null);
+        complaint.setReopenCount(complaint.getReopenCount() != null ? complaint.getReopenCount() + 1 : 1);
+        complaint.setLastReopenedAt(LocalDateTime.now());
+        complaintRepository.save(complaint);
+
+        // A complaint-side row, because someone reading the COMPLAINT's history must see why it reopened
+        // — the appeal timeline is a different record they may never look at. Note ComplaintTimeline has
+        // no performedByRole and no field-level columns, so the detail goes in remarks.
+        complaintTimelineRepository.save(ComplaintTimeline.builder()
+                .complaintId(complaint.getId())
+                .action("REMANDED_BY_AA")
+                .performedBy(actor == null || actor.isBlank() ? "AA_MODULE" : actor)
+                .remarks("Remanded by the Appellate Authority under appeal " + appealNumber)
+                .fromStatus(previousStatus)
+                .toStatus("in_progress")
+                // AUTOMATIC, not MANUAL: a person passed the remand order, but the complaint-side reopen
+                // is a side effect the system derived. Defaulting to MANUAL would attribute an ombudsman
+                // action to an AA officer who never touched the complaint.
+                .eventSource(TimelineEventSource.AUTOMATIC)
+                .build());
+
+        // Tell the holder. If nobody holds it, that is reported rather than passed over in silence —
+        // an unowned reopened complaint is precisely what went unnoticed before.
+        workflowNotifier.notifyRemandTarget(complaint.getAssignedOfficer(), complaintNumber, appealNumber);
+
+        log.info("Remanded complaint {} back to the ombudsman under appeal {} by {} (holder: {})",
+                complaintNumber, appealNumber, actor,
+                complaint.getAssignedOfficer() == null ? "UNASSIGNED" : complaint.getAssignedOfficer());
+    }
+
+    /**
+     * Who is raising this escalation. Drives appealability: a complainant may appeal under 15(1)(a)
+     * or 15(1)(b), an entity only under 15(1)(b).
+     *
+     * Derived from the caller's own roles, not from a request field — an RE user must not be able to
+     * claim complainant standing and obtain an appeal their entity is not entitled to.
+     */
+    private AppealParty resolveParty(Map<String, String> request) {
+        Set<String> roles = aaIdentityResolver.resolveRoles();
+        if (roles.contains("RE_PNO") || roles.contains("RE_NODAL_OFFICER") || roles.contains("RE_ADMIN")) {
+            return AppealParty.ENTITY;
+        }
+        // Staff registering an escalation on a party's behalf must say for whom; a citizen filing on
+        // the portal carries no RE role and is a complainant by default.
+        String declared = request.get("appealFiledBy");
+        if (declared != null && declared.trim().equalsIgnoreCase("ENTITY")) {
+            return AppealParty.ENTITY;
+        }
+        return AppealParty.COMPLAINANT;
+    }
+
+    /**
+     * Manually re-classifies an appeal, with a mandatory reason and a full audit record.
+     *
+     * Separate from performAction deliberately: performAction REJECTS any classification change to
+     * keep the value immutable in the ordinary flow, so an override needs its own explicitly-audited
+     * path rather than a hole in that guard. Restricted to AA_DO / AA_REVIEWER / AA_ADMIN.
+     */
+    @Transactional
+    public Map<String, Object> overrideClassification(String appealNumber, String newClassification,
+                                                      String reason) {
+        Appeal appeal = appealRepository.findByAppealNumber(appealNumber)
+                .orElseThrow(() -> new IllegalArgumentException("Appeal not found: " + appealNumber));
+
+        String actorRole = aaIdentityResolver.resolveAaRole();
+        if (actorRole == null || !OVERRIDE_ROLES.contains(actorRole)) {
+            throw new AaAccessDeniedException(
+                    "Classification override requires one of " + OVERRIDE_ROLES);
+        }
+
+        if (newClassification == null || newClassification.isBlank()) {
+            throw new IllegalArgumentException("newClassification is required");
+        }
+        String target = newClassification.trim().toUpperCase();
+        if (!AppealClassificationService.APPEAL.equals(target)
+                && !AppealClassificationService.REPRESENTATION.equals(target)) {
+            throw new IllegalArgumentException("classification must be APPEAL or REPRESENTATION");
+        }
+        // Mandatory: an override without a stated reason is unauditable, and this is the record a
+        // later reviewer relies on to understand why the derived clause mapping was set aside.
+        if (reason == null || reason.trim().length() < 10) {
+            throw new IllegalArgumentException(
+                    "A reason of at least 10 characters is required to override the classification");
+        }
+
+        String oldClassification = appeal.getClassificationType();
+        if (target.equals(oldClassification)) {
+            throw new IllegalArgumentException("Appeal is already classified as " + target);
+        }
+
+        String actor = Optional.ofNullable(aaIdentityResolver.resolveActor()).orElse("UNKNOWN");
+
+        appeal.setClassificationType(target);
+        appeal.setClassificationOverridden(true);
+        appeal.setClassificationOverrideReason(reason.trim());
+        appeal.setClassificationOverriddenBy(actor);
+        appeal.setClassificationOverriddenAt(LocalDateTime.now());
+        appealRepository.save(appeal);
+
+        // Field-level old -> new, which the status-only timeline could not express on its own.
+        AppealTimeline entry = AppealTimeline.builder()
+                .appealNumber(appealNumber)
+                .action("CLASSIFICATION_OVERRIDE")
+                .performedBy(actor)
+                .performedByRole(actorRole)
+                .remarks(reason.trim())
+                .fromStatus(appeal.getStatus())
+                .toStatus(appeal.getStatus())
+                .fieldName("classificationType")
+                .oldValue(oldClassification)
+                .newValue(target)
+                .build();
+        appealTimelineRepository.save(entry);
+
+        log.info("Classification of {} overridden {} -> {} by {} ({})",
+                appealNumber, oldClassification, target, actor, actorRole);
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("appealNumber", appealNumber);
+        result.put("previousClassification", oldClassification);
+        result.put("classificationType", target);
+        result.put("overriddenBy", actor);
+        result.put("reason", reason.trim());
+        return result;
     }
 
     private String generateAppealNumber() {
@@ -419,18 +704,109 @@ public class AppealWorkflowService {
         return "APL-" + date + "-" + uuid;
     }
 
-    private String assignByRole(String role) {
-        try {
-            List<Map<String, Object>> users = keycloakUserService.getUsersByRole(role);
-            if (users.isEmpty()) return null;
-            int index = roundRobinCounters.getOrDefault(role, 0);
-            if (index >= users.size()) index = 0;
-            String userId = (String) users.get(index).get("userId");
-            roundRobinCounters.put(role, index + 1);
-            return userId;
-        } catch (Exception e) {
-            log.debug("Failed to assign by role {}: {}", role, e.getMessage());
+    /**
+     * Places the appeal with an officer of {@code roleGroup} using the real assignment engine.
+     *
+     * Replaces an in-memory ConcurrentHashMap round robin over Keycloak users, which was lost on restart,
+     * diverged per pod, and honoured no workload threshold whatsoever. The engine persists its pointer,
+     * enforces per-officer thresholds under a row lock, and records every placement.
+     *
+     * Returns null when the pool cannot take the work. An exhausted or empty pool is a legitimate
+     * outcome, NOT an error: leaving the appeal unassigned and visible is safer than fabricating an
+     * assignee who is over capacity, and the previous code's habit of silently picking someone is what
+     * made overload invisible.
+     */
+    private String assignThroughEngine(String appealNumber, String roleGroup, Appeal appeal) {
+        AaAssignmentResult result = assignmentEngine.assign(AaAssignmentRequest.builder()
+                .appealNumber(appealNumber)
+                .roleGroup(roleGroup)
+                .regionalOffice(appeal.getEntityRegion())
+                .build());
+
+        if (!result.isAssigned()) {
+            log.warn("AA workflow: {} could not be placed with a {} — outcome {}. Left unassigned.",
+                    appealNumber, roleGroup, result.getOutcome());
             return null;
         }
+        return result.getAssignedUserId();
+    }
+
+    /**
+     * Returns a sent-back appeal to the DO who routed it, falling back to the pool only if that officer
+     * is no longer available.
+     */
+    private String returnToRouter(String appealNumber, Appeal appeal) {
+        String router = appeal.getRoutedByUserId();
+        if (router != null && !router.isBlank()) {
+            try {
+                AaAssignmentResult result = assignmentEngine.assignManually(appealNumber, router,
+                        "returned to the routing officer on SEND_BACK_REGISTRAR");
+                return result.getAssignedUserId();
+            } catch (RuntimeException e) {
+                // The original router may have left, gone on leave or been deactivated. Falling back to
+                // the pool is correct; silently dropping the appeal is not.
+                log.warn("AA workflow: cannot return {} to its router {} ({}), falling back to the pool",
+                        appealNumber, router, e.getMessage());
+            }
+        }
+        return assignThroughEngine(appealNumber, "AA_DO", appeal);
+    }
+
+    /**
+     * Story 5: a tier-1 reviewer escalates to a tier-2 reviewer.
+     *
+     * The acting reviewer's tier comes from the JWT claim ONLY. Accepting it from the request body would
+     * let a tier-1 reviewer declare themselves tier 2 — the same self-declared-identity flaw that has
+     * been closed four separate times in this module.
+     *
+     * Escalation-only by ruling: tier 2 is not a mandatory second review.
+     */
+    private void escalateToTier2(String appealNumber, Appeal appeal, String actor, String actorRole,
+                                 String remarks) {
+        String tier = aaIdentityResolver.resolveReviewerTier();
+        if (tier == null || tier.isBlank()) {
+            throw new IllegalArgumentException("aa.workflow.error_reviewer_tier_unknown");
+        }
+        // A tier-2 reviewer has nowhere to escalate to. Allowing it would loop the appeal between peers
+        // and read, in the audit trail, as progress.
+        if (!"1".equals(tier.trim())) {
+            throw new AaAccessDeniedException("aa.workflow.error_already_tier2");
+        }
+
+        String tier2Officer = findTier2Reviewer(appealNumber, appeal);
+        if (tier2Officer == null) {
+            throw new IllegalStateException("aa.workflow.error_no_tier2_reviewer");
+        }
+
+        appeal.setAssignedRole("AA_REVIEWER");
+        appeal.setAssignedOfficer(tier2Officer);
+        appeal.setWorkflowStage("ESCALATED_TO_TIER2");
+
+        // Field-level audit, so the escalation is answerable later: who escalated, from whom, to whom.
+        addFieldTimeline(appealNumber, "ESCALATE_TO_TIER2", actor, actorRole, remarks,
+                appeal.getStatus(), "reviewerTier", "1", "2");
+    }
+
+    /**
+     * Finds an available tier-2 reviewer.
+     *
+     * Tier lives in a Keycloak user attribute rather than the officer pool, so the pool alone cannot
+     * express it. Candidates are taken from Keycloak and placed through the engine, which still applies
+     * the threshold — an escalation must not overload the one senior reviewer.
+     */
+    private String findTier2Reviewer(String appealNumber, Appeal appeal) {
+        try {
+            for (Map<String, Object> user : keycloakUserService.getUsersByRole("AA_REVIEWER")) {
+                Object tierAttr = user.get("reviewer_tier");
+                String candidate = (String) user.get("userId");
+                if (tierAttr != null && "2".equals(tierAttr.toString().trim())
+                        && candidate != null && !candidate.equals(appeal.getAssignedOfficer())) {
+                    return candidate;
+                }
+            }
+        } catch (Exception e) {
+            log.warn("AA workflow: could not read AA_REVIEWER tiers from Keycloak: {}", e.getMessage());
+        }
+        return null;
     }
 }

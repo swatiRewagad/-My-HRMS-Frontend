@@ -36,8 +36,10 @@ public class ReRoleGuardAspect {
         Set<String> userRoles = extractUserRoles();
 
         if (userRoles.isEmpty()) {
-            log.debug("No roles found in request - allowing through (dev mode or missing token)");
-            return joinPoint.proceed();
+            log.warn("RE Portal access denied: no roles present on the request for {}",
+                    joinPoint.getSignature().toShortString());
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Access denied: insufficient role permissions for this RE portal action");
         }
 
         for (String allowedRole : allowedRoles) {

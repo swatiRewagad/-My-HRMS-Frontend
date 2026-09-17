@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../fixtures';
 import { isKeycloakAvailable, logout } from '../utils/auth';
 import { createTestComplaint, advanceToStatus } from '../utils/test-data';
 
