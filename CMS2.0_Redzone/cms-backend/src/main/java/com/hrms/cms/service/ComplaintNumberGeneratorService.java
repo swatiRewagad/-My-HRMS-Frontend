@@ -25,19 +25,53 @@ public class ComplaintNumberGeneratorService {
     private final OfficeCodeMasterRepository officeCodeRepo;
     private final ComplaintNumberSequenceRepository sequenceRepo;
 
+    /**
+     * The office a complaint was numbered against, alongside the number itself.
+     *
+     * <p>This type exists because the office was previously computed and then thrown away. The
+     * generator resolved (state, district) to an office name and code, formatted them into the
+     * complaint number string, and returned only that string — so the caller never learned which
+     * office had been chosen and COMPLAINTS.rbio_office_code was left NULL on every complaint filed
+     * since the V36 backfill. Recovering the office meant substringing the complaint number, which is
+     * exactly what V36's comments describe as the problem it set out to remove.
+     */
+    public record NumberedComplaint(String complaintNumber, String officeName, String officeCode) {}
+
     @Transactional
     public String generateComplaintNumber(String department, String complainantState, String complainantDistrict) {
+        return generateForOffice(department, complainantState, complainantDistrict).complaintNumber();
+    }
+
+    /**
+     * Generates the complaint number AND reports the office it was allocated against, so the caller
+     * can persist the office on the complaint rather than losing it.
+     */
+    @Transactional
+    public NumberedComplaint generateForOffice(String department, String complainantState, String complainantDistrict) {
         String officeName = resolveOfficeName(department, complainantState, complainantDistrict);
         String officeCode = resolveOfficeCode(officeName);
         String financialYear = computeFinancialYear(LocalDate.now());
         int nextSequence = getNextSequence(officeCode, financialYear);
 
         String complaintNumber = String.format("N%s%s%06d", financialYear, officeCode, nextSequence);
-        log.info("Generated complaint number: {} (office={}, FY={}, seq={})", complaintNumber, officeName, financialYear, nextSequence);
-        return complaintNumber;
+        log.info("Generated complaint number: {} (office={}, code={}, FY={}, seq={})",
+                complaintNumber, officeName, officeCode, financialYear, nextSequence);
+        return new NumberedComplaint(complaintNumber, officeName, officeCode);
     }
 
-    private String resolveOfficeName(String department, String state, String district) {
+    /**
+     * Resolves the ombudsman office for a (state, district) against OMBUDSMAN_OFFICE_MASTER.
+     *
+     * <p>Public so that anything needing to name a citizen's office uses THIS resolver rather than its
+     * own copy. GeoLocationController previously carried a hardcoded 16-office switch that disagreed
+     * with the master table for at least six states — it sent Chhattisgarh to Bhopal (not Raipur),
+     * Jharkhand to Patna (not Ranchi), Himachal to Chandigarh (not Shimla), Uttarakhand to Kanpur (not
+     * Dehradun), J&amp;K to New Delhi (not Jammu) and Andaman to Kolkata (not Chennai-I), collapsed every
+     * Mumbai/Chennai/Kolkata/New Delhi split, and could emit "Central Office", which is not an office
+     * in any master table. Telling a citizen the wrong office is telling them the wrong statutory
+     * forum, so there is now one resolver and one answer.
+     */
+    public String resolveOfficeName(String department, String state, String district) {
         if (state == null || state.isBlank()) {
             return getDefaultOffice(department);
         }

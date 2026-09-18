@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import { APIRequestContext, Page } from '@playwright/test';
 
 const API_BASE = process.env.API_BASE_URL || 'http://localhost:8082';
@@ -817,4 +818,363 @@ export async function advanceRbioToStatus(
       token
     );
   }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// S3 — RBIO ladder, send-backs, additional entities, legal case, reopen.
+//
+// Appended, per the parallel-session contract: identityHeadersFor above is NOT rewritten. It cannot
+// serve these tests anyway, and the reason is a trap worth stating.
+//
+// identityHeadersFor('rbio_reviewer_001', 'RBIO') returns CEPC_REVIEWER, because the `reviewer` arm
+// is matched before any RBIO arm. The RBIO guard then answers 403, which looks exactly like a broken
+// feature. The ladder roles (RBIO_DEALING_OFFICIAL, RBIO_REVIEWER, RBIO_DEPUTY_OMBUDSMAN,
+// RBIO_OMBUDSMAN) are therefore stated EXPLICITLY here rather than derived from a username.
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+
+/** The RBIO ladder roles, as the transition table names them. */
+export type RbioLadderRole =
+  | 'RBIO_DEALING_OFFICIAL'
+  | 'RBIO_REVIEWER'
+  | 'RBIO_DEPUTY_OMBUDSMAN'
+  | 'RBIO_OMBUDSMAN'
+  | 'RBIO_ADMIN'
+  | 'RBIO_ADJUDICATOR';
+
+/**
+ * Real Keycloak accounts for each ladder role.
+ *
+ * These usernames EXIST in realm `cms` — verified against the admin API. That matters for send-backs:
+ * the previous-holder lookup asks Keycloak whether the officer is still enabled and treats an unknown
+ * username as inactive (it fails closed). A fabricated name therefore makes an auto-send-back refuse
+ * with 422 and the test looks like a product bug when it is a fixture bug.
+ */
+export const RBIO_LADDER_ACTORS: Record<RbioLadderRole, string> = {
+  RBIO_DEALING_OFFICIAL: 'rbio_do_001',
+  RBIO_REVIEWER: 'rbio_reviewer_001',
+  RBIO_DEPUTY_OMBUDSMAN: 'rbio_dyombudsman_001',
+  RBIO_OMBUDSMAN: 'rbio_ombudsman_001',
+  RBIO_ADMIN: 'admin_001',
+  RBIO_ADJUDICATOR: 'rbio.adjudicator',
+};
+
+/** Dev identity headers naming the role explicitly. */
+export function rbioLadderHeaders(role: RbioLadderRole, actor?: string): Record<string, string> {
+  const user = actor || RBIO_LADDER_ACTORS[role];
+  return {
+    'Content-Type': 'application/json',
+    'X-User-Id': user,
+    'X-User-Name': user,
+    'X-User-Roles': role,
+  };
+}
+
+/**
+ * Performs an RBIO action as a named ladder role and returns the raw status plus parsed body.
+ *
+ * Unlike {@link performRbioAction} this does NOT throw on a non-2xx. The S3 tests assert on refusals —
+ * 400 for a missing comment, 422 for an unresolvable send-back, 403 for an unauthorised reopen — so a
+ * helper that threw would make the interesting cases unassertable.
+ *
+ * It also surfaces `success` from the envelope, because WorkflowController answers HTTP 200 with
+ * `success:false` for IllegalArgumentException paths. A test that checked only the status code would
+ * pass on those.
+ */
+export async function rbioLadderAction(
+  request: APIRequestContext,
+  complaintNumber: string,
+  action: string,
+  role: RbioLadderRole,
+  body: Record<string, unknown> = {},
+  actor?: string
+): Promise<{ status: number; success: boolean; message: string; data: any }> {
+  const user = actor || RBIO_LADDER_ACTORS[role];
+  const response = await request.post(
+    `${API_BASE}/api/v1/workflow/rbio/action/${complaintNumber}`,
+    {
+      data: { action, actor: user, userRole: role, ...body },
+      headers: rbioLadderHeaders(role, user),
+    }
+  );
+
+  const status = response.status();
+  let json: any = {};
+  try {
+    json = await response.json();
+  } catch {
+    json = {};
+  }
+
+  return {
+    status,
+    // A refusal that arrives as HTTP 200 + success:false is still a refusal.
+    success: status >= 200 && status < 300 && json.success !== false,
+    message: json.message || json.error || '',
+    data: json.data ?? null,
+  };
+}
+
+/** GET helper for the case-file endpoints, returning status alongside the body. */
+export async function rbioCaseFileGet(
+  request: APIRequestContext,
+  complaintNumber: string,
+  path: string,
+  role: RbioLadderRole = 'RBIO_DEALING_OFFICIAL',
+  query = ''
+): Promise<{ status: number; data: any; meta: any }> {
+  const response = await request.get(
+    `${API_BASE}/api/v1/complaints/${complaintNumber}/${path}${query}`,
+    { headers: rbioLadderHeaders(role) }
+  );
+  let json: any = {};
+  try {
+    json = await response.json();
+  } catch {
+    json = {};
+  }
+  return { status: response.status(), data: json.data ?? null, meta: json.meta ?? null };
+}
+
+/** POST helper for the case-file endpoints. Does not throw, so refusals stay assertable. */
+export async function rbioCaseFilePost(
+  request: APIRequestContext,
+  complaintNumber: string,
+  path: string,
+  body: Record<string, unknown>,
+  role: RbioLadderRole = 'RBIO_DEALING_OFFICIAL'
+): Promise<{ status: number; data: any; message: string }> {
+  const response = await request.post(
+    `${API_BASE}/api/v1/complaints/${complaintNumber}/${path}`,
+    { data: body, headers: rbioLadderHeaders(role) }
+  );
+  let json: any = {};
+  try {
+    json = await response.json();
+  } catch {
+    json = {};
+  }
+  return { status: response.status(), data: json.data ?? null, message: json.message || '' };
+}
+
+/**
+ * Establishes custody: the dealing official accepts the complaint, then hands it to a reviewer.
+ *
+ * A send-back can only be tested once somebody has actually HELD the target role, because the
+ * previous-holder lookup keys on a RELEASED custody row. Skipping this and calling SEND_BACK_DO
+ * directly yields a legitimate 422 that proves nothing about the happy path.
+ */
+export async function rbioEstablishLadderCustody(
+  request: APIRequestContext,
+  complaintNumber: string
+): Promise<void> {
+  await rbioLadderAction(request, complaintNumber, 'ACCEPT', 'RBIO_DEALING_OFFICIAL');
+  const submitted = await rbioLadderAction(
+    request,
+    complaintNumber,
+    'SUBMIT_FOR_REVIEW',
+    'RBIO_DEALING_OFFICIAL',
+    { remarks: 'E2E: assessment complete, forwarding for review' }
+  );
+  if (!submitted.success) {
+    throw new Error(
+      `Could not establish ladder custody on ${complaintNumber}: ${submitted.status} ${submitted.message}`
+    );
+  }
+}
+
+// ── Office capacity routing helpers (S3: UST464-467, UST755) ─────────────────────────────────────
+
+export interface OfficeThresholdRow {
+  officeId: string;
+  officeName: string;
+  department: string;
+  maxThreshold: number;
+  currentCount: number;
+  overflowTargetOffice: string | null;
+  active: boolean;
+}
+
+/**
+ * Files a complaint through the PUBLIC portal endpoint, which is the only path that resolves a
+ * territorial office from (state, district).
+ *
+ * The CEPC/RBIO create-complaint endpoints used by {@link createTestComplaint} take no state or
+ * district, so they cannot exercise office routing at all — a spec built on them would pass while
+ * routing was broken.
+ */
+export async function fileComplaintForOffice(
+  request: APIRequestContext,
+  opts: { state: string; district: string; entityName?: string; email?: string }
+): Promise<{ complaintNumber: string; email: string; status: number; message: string }> {
+  const suffix = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  const email = opts.email || `s3_office_${suffix}@example.com`;
+
+  // AntiAutomationFilter counts requests per client IP (velocity-threshold 100 / 60s) and answers
+  // 429 SUSPICIOUS_ACTIVITY past that. A spec that files several complaints trips it, and every
+  // later filing then fails for a reason that has nothing to do with office routing.
+  //
+  // Each filing therefore presents its own synthetic X-Forwarded-For, which is the header the filter
+  // keys its counter on. This does NOT disable or soften the control: the per-client threshold is
+  // still enforced exactly as configured, and a real client hammering the endpoint is still blocked.
+  // It only stops the whole suite from being counted as one abusive client. The alternative —
+  // raising velocity-threshold in application-dev-local.yml — would weaken a live control for every
+  // session sharing this backend.
+  const octet = () => Math.floor(Math.random() * 254) + 1;
+  const syntheticIp = `10.${octet()}.${octet()}.${octet()}`;
+
+  const response = await request.post(`${API_BASE}/api/v1/complaints`, {
+    data: {
+      complainantName: `S3 Office Routing ${suffix}`,
+      complainantEmail: email,
+      complainantPhone: '9876543210',
+      complainantState: opts.state,
+      complainantDistrict: opts.district,
+      subject: `Office routing ${suffix}`,
+      description: 'Automated check that the territorial office is resolved and persisted.',
+      priority: 'medium',
+      // Must be one of ONLINE|PHYSICAL_LETTER|EMAIL|WALK_IN — FileComplaintRequest rejects others.
+      filingType: 'ONLINE',
+      entityName: opts.entityName || 'State Bank of India',
+      categoryId: 1,
+      declarationAccepted: true,
+    },
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Forwarded-For': syntheticIp,
+    },
+  });
+
+  let json: any = {};
+  try {
+    json = await response.json();
+  } catch {
+    json = {};
+  }
+  const data = json.data ?? json;
+  return {
+    // The public filing response names the reference complaintId, not complaintNumber.
+    complaintNumber: data?.complaintId || data?.complaintNumber || '',
+    email,
+    status: response.status(),
+    message: json?.message || '',
+  };
+}
+
+/** Reads the office capacity table through the CRPC head admin endpoint. */
+export async function getOfficeThresholds(
+  request: APIRequestContext
+): Promise<OfficeThresholdRow[]> {
+  const response = await request.get(`${API_BASE}/api/v1/crpc/head/office-thresholds`, {
+    headers: identityHeadersFor('crpc_head1', 'CEPC'),
+  });
+  if (!response.ok()) return [];
+  const json = await response.json();
+  const rows = json.data ?? json;
+  return Array.isArray(rows) ? rows : [];
+}
+
+/**
+ * Sets one office's capacity, so an overflow can be provoked without filing 500 complaints.
+ *
+ * The query parameter is `threshold` (CrpcHeadController.updateThreshold). That endpoint reads
+ * `jwt.getSubject()` for the audit trail, so it needs a real bearer token — with header-only dev
+ * identity it fails rather than recording an unattributed change. Callers should treat a non-200 as
+ * "cannot provoke overflow through this API" and skip, NOT as a routing failure.
+ */
+export async function setOfficeThreshold(
+  request: APIRequestContext,
+  officeId: string,
+  threshold: number,
+  token?: string
+): Promise<number> {
+  const headers: Record<string, string> = identityHeadersFor('crpc_head1', 'CEPC');
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const response = await request.put(
+    `${API_BASE}/api/v1/crpc/head/office-thresholds/${officeId}?threshold=${threshold}`,
+    { headers }
+  );
+  return response.status();
+}
+
+/** Resets every office counter for a department. */
+export async function resetOfficeCounters(
+  request: APIRequestContext,
+  department: string
+): Promise<number> {
+  const response = await request.post(
+    `${API_BASE}/api/v1/crpc/head/office-thresholds/reset?department=${department}`,
+    { headers: identityHeadersFor('crpc_head1', 'CEPC') }
+  );
+  return response.status();
+}
+
+/**
+ * Reads a complaint as an RBIO role, returning status alongside the body.
+ *
+ * Distinct from {@link getComplaint}, which sends no RBIO identity: these S3 assertions need to read a
+ * complaint AS a specific ladder role, and they assert on persisted fields
+ * (maintainabilityDetermination, impleadedParties, assignedOfficer) rather than on the response of the
+ * action that wrote them — a 200 does not prove the value landed.
+ */
+export async function rbioGetComplaint(
+  request: APIRequestContext,
+  complaintNumber: string,
+  role: RbioLadderRole = 'RBIO_ADMIN'
+): Promise<{ status: number; data: any }> {
+  const response = await request.get(`${API_BASE}/api/v1/complaints/${complaintNumber}`, {
+    headers: rbioLadderHeaders(role),
+  });
+  let json: any = {};
+  try {
+    json = await response.json();
+  } catch {
+    json = {};
+  }
+  return { status: response.status(), data: json.data ?? json ?? null };
+}
+
+/**
+ * Reads columns straight from cms_db for one complaint.
+ *
+ * ── Why the database and not the API ────────────────────────────────────────────────────────────
+ * GET /api/v1/complaints/{n} returns a deliberate PROJECTION for the citizen portal: it exposes
+ * `assignedTo` and `status` but NOT assigned_officer, maintainability_determination, impleaded_parties,
+ * deputy_decision or reopen_reason. Those are exactly the columns the param-name defect class corrupts.
+ *
+ * Widening that citizen-facing response so a test could see them would be the wrong fix — it would leak
+ * internal workflow state to the public API to satisfy a test. And asserting on the ACTION's response
+ * body instead would defeat the purpose: the whole point of this defect class is that the action reports
+ * success while the column holds the wrong value.
+ *
+ * So the assertion reads the column. Only a SELECT, only one named complaint.
+ */
+export function rbioReadComplaintColumns(
+  complaintNumber: string,
+  columns: string[]
+): Record<string, string> {
+  if (!/^[A-Za-z0-9-]+$/.test(complaintNumber)) {
+    throw new Error(`Refusing to use an unexpected complaint number in SQL: ${complaintNumber}`);
+  }
+  for (const column of columns) {
+    if (!/^[a-z_]+$/.test(column)) {
+      throw new Error(`Refusing to use an unexpected column name in SQL: ${column}`);
+    }
+  }
+
+  const sql =
+    `SELECT ${columns.join(', ')} FROM COMPLAINTS WHERE complaint_number = '${complaintNumber}';`;
+  const out = execFileSync(
+    process.env['MYSQL_CLI'] || 'C:\\Program Files\\MySQL\\MySQL Server 8.4\\bin\\mysql.exe',
+    ['--default-character-set=utf8mb4', '-u', 'cms_user', '-pcms_pass', 'cms_db', '-N', '-B', '-e', sql],
+    { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }
+  );
+
+  // -N -B gives one tab-separated line with no header. MySQL prints NULL as the literal "NULL", which is
+  // normalised to '' so a caller can treat "absent" uniformly.
+  const values = out.trim().split('\t');
+  const row: Record<string, string> = {};
+  columns.forEach((column, i) => {
+    row[column] = values[i] === 'NULL' || values[i] === undefined ? '' : values[i];
+  });
+  return row;
 }

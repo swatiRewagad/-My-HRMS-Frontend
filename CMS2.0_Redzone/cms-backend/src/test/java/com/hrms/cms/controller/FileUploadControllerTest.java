@@ -129,7 +129,9 @@ class FileUploadControllerTest {
                     .originalName("doc.pdf").contentType("application/pdf")
                     .fileSize(1024L).storagePath("CMS-001/stored.pdf").build();
 
-            when(fileStorageService.handleSingleUpload(any(), eq("CMS-001"), eq(1L)))
+            // The controller now calls the provenance-aware overload (UST589), which records WHO supplied
+            // the document and in what capacity — something the three-argument form cannot express.
+            when(fileStorageService.handleSingleUpload(any(), eq("CMS-001"), eq(1L), any(), any(), any()))
                     .thenReturn(attachment);
 
             MockMultipartFile file = new MockMultipartFile("file", "doc.pdf", "application/pdf", "content".getBytes());

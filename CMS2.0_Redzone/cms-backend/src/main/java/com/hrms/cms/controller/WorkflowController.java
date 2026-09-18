@@ -17,6 +17,7 @@ import com.hrms.cms.service.KeycloakUserService;
 import com.hrms.cms.service.NotificationService;
 import com.hrms.cms.service.RbioCompensationService;
 import com.hrms.cms.service.RbioSlaService;
+import com.hrms.cms.service.RbioStatusVocabulary;
 import com.hrms.cms.service.RbioWorkflowService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -54,10 +55,43 @@ public class WorkflowController {
 
     private final Map<String, Integer> roundRobinCounters = new ConcurrentHashMap<>();
 
-    private static final List<String> CLOSED_STATUSES = List.of("resolved", "closed", "rejected", "withdrawn", "adjudicated", "conciliated");
+    /**
+     * The closed-status vocabulary, from RBIO_STATUS_MASTER rather than a literal.
+     *
+     * <p>This was one of the hardcoded copies. Two genuinely disagreed: this one held six values while
+     * {@code NotificationScheduledTasks} held four, omitting {@code adjudicated} and {@code conciliated}
+     * — so a complaint closed by an award or a successful conciliation was treated as OPEN by the
+     * reminder scheduler and kept generating nudges about a case that was already decided.
+     * RBIO_STATUS_MASTER.IS_CLOSED is now the authority; see the contract report for the mapping.
+     *
+     * <p>Resolved per call rather than cached in a static: the table is operator-editable, and a static
+     * would freeze the vocabulary at class-load and need a redeploy to correct.
+     */
+    private List<String> closedStatuses() {
+        return rbioStatusVocabulary != null
+                ? rbioStatusVocabulary.closedStatuses()
+                : RbioStatusVocabulary.legacyClosedStatuses();
+    }
+
+    /**
+     * Setter-injected and OPTIONAL, matching the precedent set by {@code GlobalExceptionHandler}.
+     *
+     * <p>This controller is covered by {@code @ControllerSliceTest} slices, which load the web layer but
+     * NOT {@code @Service} beans. A mandatory constructor dependency therefore made every slice context
+     * fail to start, erroring every test method in those classes for a reason unrelated to the controller
+     * under test. Falling back to the legacy vocabulary keeps the slice tests meaningful and is
+     * behaviour-identical to the literal this replaced.
+     */
+    private RbioStatusVocabulary rbioStatusVocabulary;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setRbioStatusVocabulary(RbioStatusVocabulary vocabulary) {
+        this.rbioStatusVocabulary = vocabulary;
+    }
 
     @GetMapping("/rbio/tasks")
-    @RbioRoleGuard(roles = {"RBIO_OFFICER", "RBIO_SUPERVISOR", "RBIO_CONCILIATOR", "RBIO_ADJUDICATOR", "RBIO_ADMIN"})
+    @RbioRoleGuard(roles = {"RBIO_OFFICER", "RBIO_SUPERVISOR", "RBIO_CONCILIATOR", "RBIO_ADJUDICATOR", "RBIO_ADMIN",
+            "RBIO_DEALING_OFFICIAL", "RBIO_REVIEWER", "RBIO_DEPUTY_OMBUDSMAN", "RBIO_OMBUDSMAN"})
     public ResponseEntity<Map<String, Object>> getRbioTasks(
             @RequestParam(required = false) String role,
             @RequestParam(required = false) String officer) {
@@ -65,7 +99,8 @@ public class WorkflowController {
     }
 
     @GetMapping("/rbio/all-tasks")
-    @RbioRoleGuard(roles = {"RBIO_OFFICER", "RBIO_SUPERVISOR", "RBIO_CONCILIATOR", "RBIO_ADJUDICATOR", "RBIO_ADMIN"})
+    @RbioRoleGuard(roles = {"RBIO_OFFICER", "RBIO_SUPERVISOR", "RBIO_CONCILIATOR", "RBIO_ADJUDICATOR", "RBIO_ADMIN",
+            "RBIO_DEALING_OFFICIAL", "RBIO_REVIEWER", "RBIO_DEPUTY_OMBUDSMAN", "RBIO_OMBUDSMAN"})
     public ResponseEntity<Map<String, Object>> getRbioAllTasks(
             @RequestParam(required = false) String officer) {
         return getAllTasksByDepartment("RBIO", officer);
@@ -87,7 +122,8 @@ public class WorkflowController {
     }
 
     @PostMapping("/rbio/assign/{complaintNumber}")
-    @RbioRoleGuard(roles = {"RBIO_OFFICER", "RBIO_SUPERVISOR", "RBIO_ADMIN"})
+    @RbioRoleGuard(roles = {"RBIO_OFFICER", "RBIO_SUPERVISOR", "RBIO_ADMIN",
+            "RBIO_DEALING_OFFICIAL", "RBIO_REVIEWER", "RBIO_DEPUTY_OMBUDSMAN", "RBIO_OMBUDSMAN"})
     public ResponseEntity<Map<String, Object>> assignToRbio(
             @PathVariable String complaintNumber,
             @RequestBody Map<String, String> request) {
@@ -103,7 +139,8 @@ public class WorkflowController {
     }
 
     @PostMapping("/rbio/action/{complaintNumber}")
-    @RbioRoleGuard(roles = {"RBIO_OFFICER", "RBIO_SUPERVISOR", "RBIO_CONCILIATOR", "RBIO_ADJUDICATOR", "RBIO_ADMIN"})
+    @RbioRoleGuard(roles = {"RBIO_OFFICER", "RBIO_SUPERVISOR", "RBIO_CONCILIATOR", "RBIO_ADJUDICATOR", "RBIO_ADMIN",
+            "RBIO_DEALING_OFFICIAL", "RBIO_REVIEWER", "RBIO_DEPUTY_OMBUDSMAN", "RBIO_OMBUDSMAN"})
     public ResponseEntity<Map<String, Object>> rbioAction(
             @PathVariable String complaintNumber,
             @RequestBody Map<String, String> request) {
@@ -119,14 +156,16 @@ public class WorkflowController {
     }
 
     @GetMapping("/rbio/completed")
-    @RbioRoleGuard(roles = {"RBIO_OFFICER", "RBIO_SUPERVISOR", "RBIO_CONCILIATOR", "RBIO_ADJUDICATOR", "RBIO_ADMIN"})
+    @RbioRoleGuard(roles = {"RBIO_OFFICER", "RBIO_SUPERVISOR", "RBIO_CONCILIATOR", "RBIO_ADJUDICATOR", "RBIO_ADMIN",
+            "RBIO_DEALING_OFFICIAL", "RBIO_REVIEWER", "RBIO_DEPUTY_OMBUDSMAN", "RBIO_OMBUDSMAN"})
     public ResponseEntity<Map<String, Object>> getRbioCompleted(
             @RequestParam(required = false) String officer) {
         return getCompletedByDepartment("RBIO", officer);
     }
 
     @GetMapping("/rbio/available-actions/{complaintNumber}")
-    @RbioRoleGuard(roles = {"RBIO_OFFICER", "RBIO_SUPERVISOR", "RBIO_CONCILIATOR", "RBIO_ADJUDICATOR", "RBIO_ADMIN"})
+    @RbioRoleGuard(roles = {"RBIO_OFFICER", "RBIO_SUPERVISOR", "RBIO_CONCILIATOR", "RBIO_ADJUDICATOR", "RBIO_ADMIN",
+            "RBIO_DEALING_OFFICIAL", "RBIO_REVIEWER", "RBIO_DEPUTY_OMBUDSMAN", "RBIO_OMBUDSMAN"})
     public ResponseEntity<Map<String, Object>> getRbioAvailableActions(
             @PathVariable String complaintNumber,
             @RequestParam String userRole) {
@@ -139,14 +178,15 @@ public class WorkflowController {
     }
 
     @GetMapping("/rbio/sla-stats")
-    @RbioRoleGuard(roles = {"RBIO_OFFICER", "RBIO_SUPERVISOR", "RBIO_CONCILIATOR", "RBIO_ADJUDICATOR", "RBIO_ADMIN"})
+    @RbioRoleGuard(roles = {"RBIO_OFFICER", "RBIO_SUPERVISOR", "RBIO_CONCILIATOR", "RBIO_ADJUDICATOR", "RBIO_ADMIN",
+            "RBIO_DEALING_OFFICIAL", "RBIO_REVIEWER", "RBIO_DEPUTY_OMBUDSMAN", "RBIO_OMBUDSMAN"})
     public ResponseEntity<Map<String, Object>> getRbioSlaStats() {
         Map<String, Long> stats = rbioSlaService.getComplianceStats();
         return buildResponse(true, "RBIO SLA compliance stats", stats);
     }
 
     @PostMapping("/rbio/validate-award")
-    @RbioRoleGuard(roles = {"RBIO_ADJUDICATOR", "RBIO_ADMIN"})
+    @RbioRoleGuard(roles = {"RBIO_ADJUDICATOR", "RBIO_ADMIN", "RBIO_OMBUDSMAN"})
     public ResponseEntity<Map<String, Object>> validateRbioAward(
             @RequestBody Map<String, String> request) {
         String amountStr = request.getOrDefault("amount", "0");
@@ -204,10 +244,10 @@ public class WorkflowController {
         List<Complaint> tasks;
         if (officer != null && !officer.isBlank()) {
             tasks = complaintRepository.findByDepartmentAndAssignedRoleAndAssignedOfficerAndStatusNotInOrderByCreatedAtDesc(
-                    "CEPC", "CEPC_CONTACT_PERSON", officer, CLOSED_STATUSES);
+                    "CEPC", "CEPC_CONTACT_PERSON", officer, closedStatuses());
         } else {
             tasks = complaintRepository.findByDepartmentAndAssignedRoleAndStatusNotInOrderByCreatedAtDesc(
-                    "CEPC", "CEPC_CONTACT_PERSON", CLOSED_STATUSES);
+                    "CEPC", "CEPC_CONTACT_PERSON", closedStatuses());
         }
         return buildResponse(true, "Contact Person tasks", buildTaskList(tasks));
     }
@@ -255,7 +295,8 @@ public class WorkflowController {
     }
 
     @PostMapping("/rbio/create-complaint")
-    @RbioRoleGuard(roles = {"RBIO_OFFICER", "RBIO_SUPERVISOR", "RBIO_ADMIN"})
+    @RbioRoleGuard(roles = {"RBIO_OFFICER", "RBIO_SUPERVISOR", "RBIO_ADMIN",
+            "RBIO_DEALING_OFFICIAL", "RBIO_REVIEWER", "RBIO_DEPUTY_OMBUDSMAN", "RBIO_OMBUDSMAN"})
     public ResponseEntity<Map<String, Object>> rbioCreateComplaint(
             @RequestBody Map<String, String> request) {
         String number = "CMP-" + java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd").format(java.time.LocalDate.now())
@@ -592,11 +633,11 @@ public class WorkflowController {
     private ResponseEntity<Map<String, Object>> getCompletedByDepartment(String dept, String officer) {
         List<Complaint> completed = new java.util.ArrayList<>();
         if (officer != null && !officer.isBlank()) {
-            for (String status : CLOSED_STATUSES) {
+            for (String status : closedStatuses()) {
                 completed.addAll(complaintRepository.findByDepartmentAndAssignedOfficerAndStatusOrderByCreatedAtDesc(dept, officer, status));
             }
         } else {
-            for (String status : CLOSED_STATUSES) {
+            for (String status : closedStatuses()) {
                 completed.addAll(complaintRepository.findByDepartmentAndStatusOrderByCreatedAtDesc(dept, status));
             }
         }
@@ -608,12 +649,12 @@ public class WorkflowController {
 
         if (officer != null && !officer.isBlank()) {
             tasks = complaintRepository.findByDepartmentAndAssignedOfficerAndStatusNotInOrderByCreatedAtDesc(
-                    dept, officer, CLOSED_STATUSES);
+                    dept, officer, closedStatuses());
         } else if (role != null && !role.isBlank()) {
             tasks = complaintRepository.findByDepartmentAndAssignedRoleAndStatusNotInOrderByCreatedAtDesc(
-                    dept, role, CLOSED_STATUSES);
+                    dept, role, closedStatuses());
         } else {
-            tasks = complaintRepository.findByDepartmentAndStatusNotInOrderByCreatedAtDesc(dept, CLOSED_STATUSES);
+            tasks = complaintRepository.findByDepartmentAndStatusNotInOrderByCreatedAtDesc(dept, closedStatuses());
         }
 
         return buildResponse(true, "Tasks retrieved", buildTaskList(tasks));

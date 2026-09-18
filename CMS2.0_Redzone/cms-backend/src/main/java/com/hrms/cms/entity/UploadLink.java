@@ -46,6 +46,19 @@ public class UploadLink {
 
     private LocalDateTime documentsSubmittedAt;
 
+    /**
+     * When both one-time passwords were verified (UST599).
+     *
+     * <p>Server-side state, deliberately. Whether the OTPs had been satisfied previously existed only as
+     * an Angular signal, while {@code POST /upload/{token}} performed no OTP check at all — so the
+     * verification was decorative and the upload endpoint was open to anyone holding the token. The
+     * upload path now refuses while this is null.
+     *
+     * <p>Nullable: existing rows predate the dual OTP and must not be treated as verified.
+     */
+    @Column(name = "otp_verified_at")
+    private LocalDateTime otpVerifiedAt;
+
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 

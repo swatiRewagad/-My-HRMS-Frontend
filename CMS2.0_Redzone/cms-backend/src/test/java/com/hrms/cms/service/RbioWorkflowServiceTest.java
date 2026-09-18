@@ -96,14 +96,42 @@ class RbioWorkflowServiceTest {
             assertThat(rbioWorkflowService.isRbioAction(null)).isFalse();
         }
 
+        /**
+         * SUBMIT_FOR_REVIEW and SEND_BACK_DO were REMOVED from this list by S3.
+         *
+         * <p>They were listed as "CEPC-only" because RBIO genuinely had no ladder: it owned a single
+         * generic RETURN_TO_OFFICER with no notion of WHICH role to return to. UST514 and
+         * UST523/524/529/530 require RBIO to have its own Send-to-Reviewer and three distinct send-backs,
+         * so these two codes are now legitimately RBIO actions — declared in {@code RbioLadderActions} and
+         * seeded as rows by {@code RbioLadderTransitionSeeder}.
+         *
+         * <p>The rest of the list still matters and is deliberately unchanged: APPROVE_REVIEW,
+         * FORWARD_TO_CONTACT and CONTACT_RESPONSE belong to CEPC's Incharge/Contact-Person flow, which RBIO
+         * does not have, so an RBIO complaint must still refuse them.
+         */
         @ParameterizedTest
         @ValueSource(strings = {
-                "INVALID_ACTION", "", "SUBMIT_FOR_REVIEW", "APPROVE_REVIEW",
-                "SEND_BACK_DO", "FORWARD_TO_CONTACT", "CONTACT_RESPONSE"
+                "INVALID_ACTION", "", "APPROVE_REVIEW", "FORWARD_TO_CONTACT", "CONTACT_RESPONSE"
         })
         @DisplayName("should return false for CEPC-only and unknown actions")
         void shouldReturnFalseForCepcAndUnknownActions(String action) {
             assertThat(rbioWorkflowService.isRbioAction(action)).isFalse();
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {
+                "SUBMIT_FOR_REVIEW", "FORWARD_TO_DEPUTY_OMBUDSMAN", "FORWARD_TO_OMBUDSMAN",
+                "SEND_BACK_DO", "SEND_BACK_REVIEWER", "SEND_BACK_DEPUTY",
+                "DECIDE_MAINTAINABLE", "DECIDE_NON_MAINTAINABLE", "DEPUTY_OMBUDSMAN_DECISION",
+                "ADVISORY_COMPLIED", "FACILITATION", "SETTLED", "WITHDRAWN", "NOT_A_COMPLAINT",
+                "FORWARD_TO_REGULATORY_BODY", "ISSUE_13_1_NOTICE"
+        })
+        @DisplayName("should recognise the S3 ladder and milestone actions")
+        void shouldRecogniseLadderActions(String action) {
+            // Without recognition here, WorkflowController's dispatch never routes these to
+            // RbioWorkflowService at all, and the sixteen codes the frontend already sends keep failing as
+            // "Unknown RBIO action" no matter what the transition table contains.
+            assertThat(rbioWorkflowService.isRbioAction(action)).isTrue();
         }
     }
 
@@ -697,6 +725,16 @@ class RbioWorkflowServiceTest {
             assertThat(sampleComplaint.getClosureCause()).isEqualTo("ADMIN_CLOSED");
         }
 
+        /**
+         * Now names the acting role. UST550 restricts reopening to the Ombudsman, enforced on the SERVER
+         * because hiding the control is not a control — so a REOPEN that states no authority is refused,
+         * and this test previously stated none.
+         *
+         * <p>RBIO_ADMIN is used rather than RBIO_OMBUDSMAN to keep pinning the ADMINISTRATIVE reopen: the
+         * admin path predates UST551, carries no reason or justification, and must keep working exactly as
+         * it did. A complaint reopened administratively therefore still records no reason — asserted below,
+         * because the alternative (quietly inventing one) would put an unfounded reason on a case file.
+         */
         @Test
         @DisplayName("REOPEN should clear resolvedAt/closedAt, increment reopenCount, and set in_progress")
         void reopenShouldClearDatesAndReset() {
@@ -704,7 +742,8 @@ class RbioWorkflowServiceTest {
             sampleComplaint.setResolvedAt(LocalDateTime.now().minusDays(1));
             sampleComplaint.setClosedAt(LocalDateTime.now().minusDays(1));
             sampleComplaint.setReopenCount(0);
-            Map<String, String> params = Map.of("action", "REOPEN", "actor", "rbio-admin-1", "remarks", "New evidence");
+            Map<String, String> params = Map.of("action", "REOPEN", "actor", "rbio-admin-1",
+                    "remarks", "New evidence", "userRole", RbioRoles.ADMIN);
 
             Map<String, Object> result = rbioWorkflowService.performAction("CMP-20260706-789012", "REOPEN", params);
 
@@ -714,7 +753,75 @@ class RbioWorkflowServiceTest {
             assertThat(sampleComplaint.getWorkflowStage()).isEqualTo("REOPENED");
             assertThat(sampleComplaint.getReopenCount()).isEqualTo(1);
             assertThat(sampleComplaint.getLastReopenedAt()).isNotNull();
+            assertThat(sampleComplaint.getReopenReason()).isNull();
             verify(rbioSlaService).applyStageSla(sampleComplaint, "OFFICER_ASSESSMENT");
+        }
+
+        @Test
+        @DisplayName("REOPEN by a role without the authority is refused and the closure is left intact")
+        void reopenShouldBeRefusedWithoutOmbudsmanAuthority() {
+            sampleComplaint.setStatus("closed");
+            LocalDateTime closedAt = LocalDateTime.now().minusDays(1);
+            sampleComplaint.setResolvedAt(closedAt);
+            sampleComplaint.setClosedAt(closedAt);
+            sampleComplaint.setReopenCount(0);
+
+            // A Reviewer holds no reopen authority. UST550 is enforced here rather than by hiding the
+            // button, because the endpoint accepts a direct POST from any authenticated staff user.
+            Map<String, String> params = Map.of("action", "REOPEN", "actor", "rbio-reviewer-1",
+                    "remarks", "Trying to reopen", "userRole", RbioRoles.REVIEWER);
+
+            // The exception TYPE is deliberately not pinned. A Reviewer is refused twice over: the
+            // role/action matrix rejects it first (IllegalArgumentException, "not authorized"), and the
+            // reopen authority check would reject it second (SecurityException, "Only the Ombudsman").
+            // Asserting one type would make this test fail if the order of two correct controls changed.
+            // What must hold is that it is REFUSED and the closure survives.
+            assertThatThrownBy(() ->
+                    rbioWorkflowService.performAction("CMP-20260706-789012", "REOPEN", params))
+                    .isInstanceOfAny(SecurityException.class, IllegalArgumentException.class);
+
+            // The refusal must leave the closure untouched: the reopen arm nulls these, so a check that
+            // ran too late would clear a lawful closure on a refused request.
+            assertThat(sampleComplaint.getStatus()).isEqualTo("closed");
+            assertThat(sampleComplaint.getClosedAt()).isEqualTo(closedAt);
+            assertThat(sampleComplaint.getReopenCount()).isZero();
+        }
+
+        @Test
+        @DisplayName("an Ombudsman REOPEN records the reason and justification (UST551)")
+        void reopenByOmbudsmanShouldRecordReasonAndJustification() {
+            sampleComplaint.setStatus("closed");
+            sampleComplaint.setResolvedAt(LocalDateTime.now().minusDays(1));
+            sampleComplaint.setClosedAt(LocalDateTime.now().minusDays(1));
+            sampleComplaint.setReopenCount(0);
+
+            Map<String, String> params = Map.of("action", "REOPEN", "actor", "rbio-ombudsman-1",
+                    "remarks", "Reopening", "userRole", RbioRoles.OMBUDSMAN,
+                    "reopenReason", "court order", "reopenJustification", "Order dated 2026-09-10");
+
+            rbioWorkflowService.performAction("CMP-20260706-789012", "REOPEN", params);
+
+            // Normalised to the configured vocabulary, so a UI that sends "court order" and one that sends
+            // COURT_ORDER cannot produce two different stored values for one reason.
+            assertThat(sampleComplaint.getReopenReason()).isEqualTo("COURT_ORDER");
+            assertThat(sampleComplaint.getReopenJustification()).isEqualTo("Order dated 2026-09-10");
+        }
+
+        @Test
+        @DisplayName("an Ombudsman REOPEN without a justification is refused (UST551)")
+        void reopenByOmbudsmanWithoutJustificationShouldBeRefused() {
+            sampleComplaint.setStatus("closed");
+            sampleComplaint.setClosedAt(LocalDateTime.now().minusDays(1));
+
+            Map<String, String> params = Map.of("action", "REOPEN", "actor", "rbio-ombudsman-1",
+                    "remarks", "Reopening", "userRole", RbioRoles.OMBUDSMAN,
+                    "reopenReason", "COURT_ORDER");
+
+            assertThatThrownBy(() ->
+                    rbioWorkflowService.performAction("CMP-20260706-789012", "REOPEN", params))
+                    .hasMessageContaining("justification");
+
+            assertThat(sampleComplaint.getStatus()).isEqualTo("closed");
         }
 
         @Test
@@ -754,8 +861,13 @@ class RbioWorkflowServiceTest {
             rbioWorkflowService.performAction("CMP-20260706-789012", "REQUEST_INFO", params);
 
             verify(complaintRepository).save(sampleComplaint);
-            verify(complaintService).addTimeline(eq(1L), eq("REQUEST_INFO"), eq("rbio-officer-1"),
-                    eq("Need docs"), eq("in_progress"), eq("info_requested"));
+            // addDetailedTimeline, not addTimeline: the timeline row now carries the actor's ROLE and,
+            // for a reassignment, the old AND new owner (UST596). The previous six-argument call had
+            // nowhere to put them, so a reassignment record could not show who held the complaint
+            // before — the assignee is overwritten before the row is written.
+            verify(complaintService).addDetailedTimeline(eq(1L), eq("REQUEST_INFO"), eq("rbio-officer-1"),
+                    isNull(), eq("Need docs"), eq("in_progress"), eq("info_requested"),
+                    isNull(), isNull(), isNull(), isNull(), isNull(), any());
         }
 
         @Test

@@ -93,6 +93,21 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/v1/complaints/*/withdraw").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/complaints/track/**").permitAll()
 
+                // Secure upload link: the COMPLAINANT-facing half only (UST598-600).
+                //
+                // These three must be anonymous because the recipient is a citizen following a link from
+                // an email — they have no Keycloak account and never will. The whole feature was
+                // unreachable without this: /api/v1/upload-link/** sits in the staff block below, so
+                // every request from the citizen page was rejected before it reached the controller.
+                //
+                // The TOKEN is the credential, and it is not sufficient on its own: request-otp and
+                // validate-otp enforce the dual OTP, and /upload refuses until otpVerifiedAt is set.
+                // /send and /revoke are deliberately NOT listed — creating or killing a link is a staff
+                // action and stays behind the staff matcher.
+                .requestMatchers(HttpMethod.POST, "/api/v1/upload-link/request-otp").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/v1/upload-link/validate-otp").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/v1/upload-link/upload/*").permitAll()
+
                 // ── Administrative: user management, config, security console ───────────
                 .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                 .requestMatchers("/api/v1/keycloak/**").hasRole("ADMIN")

@@ -30,4 +30,30 @@ public interface OtpAttemptRepository extends JpaRepository<OtpAttempt, Long> {
     int invalidateActiveOtps(@Param("mobile") String mobileNumber, @Param("now") LocalDateTime now);
 
     List<OtpAttempt> findByExpiresAtBefore(LocalDateTime cutoff);
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Dual-channel OTP for the secure upload link (UST599)
+    //
+    // UST599 requires TWO independent codes — one emailed, one texted — and BOTH must
+    // verify before the upload page opens. That is not expressible with the methods
+    // above, because invalidateActiveOtps matches on MOBILE ALONE, ignoring channel
+    // and sessionId. Issuing the email code and then the mobile code therefore retires
+    // the first, so only the second could ever verify.
+    //
+    // These scope both invalidation and lookup by sessionId + channel. The upload-link
+    // TOKEN is used as the sessionId: it is unique, already generated per link, and no
+    // existing query reads sessionId — so this is additive and cannot affect the
+    // citizen-login OTP flow.
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /** Retires live OTPs for ONE channel of ONE session, leaving the other channel's code valid. */
+    @Modifying
+    @Query("UPDATE OtpAttempt o SET o.used = true, o.usedAt = :now "
+         + "WHERE o.sessionId = :sessionId AND o.channel = :channel AND o.used = false")
+    int invalidateActiveOtpsForSessionChannel(@Param("sessionId") String sessionId,
+                                              @Param("channel") String channel,
+                                              @Param("now") LocalDateTime now);
+
+    Optional<OtpAttempt> findTopBySessionIdAndChannelAndUsedFalseAndExpiresAtAfterOrderByCreatedAtDesc(
+            String sessionId, String channel, LocalDateTime now);
 }

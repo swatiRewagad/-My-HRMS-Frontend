@@ -52,6 +52,19 @@ public class SimulatedEmail {
     @Column(length = 500)
     private String attachmentUrl;
 
+    /**
+     * The communication template this message was rendered from (UST593).
+     *
+     * <p>UST593 requires the email log to name the template used. Nullable because inbound mail and
+     * hand-written replies have none, and because every pre-existing row predates the column.
+     */
+    @Column(name = "template_used", length = 200)
+    private String templateUsed;
+
+    /** CC recipients, comma-separated (UST591 Reply All). Nullable on every pre-existing row. */
+    @Column(name = "cc_recipients", length = 1000)
+    private String ccRecipients;
+
     private LocalDateTime sentAt;
     private LocalDateTime receivedAt;
     private LocalDateTime processedAt;

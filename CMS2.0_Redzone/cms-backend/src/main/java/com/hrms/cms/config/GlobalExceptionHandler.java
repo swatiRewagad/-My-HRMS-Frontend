@@ -1,9 +1,12 @@
 package com.hrms.cms.config;
 
+import com.hrms.cms.exception.UploadLinkActiveException;
 import com.hrms.cms.service.AppealClassificationService;
 import com.hrms.cms.service.ClauseConfigurationAlertService;
+import jakarta.persistence.OptimisticLockException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -104,6 +107,61 @@ public class GlobalExceptionHandler {
         response.put("clauseCode", ex.getClauseCode());
         response.put("timestamp", LocalDateTime.now().toString());
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(response);
+    }
+
+    /**
+     * A closure or restricted forward was refused because a secure upload link is still live
+     * (UST603-604).
+     *
+     * <p>409 CONFLICT rather than 400: the request is well-formed and the caller is authorised — it
+     * conflicts with the CURRENT STATE of the complaint, and becomes valid once the link lapses or is
+     * revoked. Carries a translation key so the refusal renders in the officer's own language, plus the
+     * link expiry so they know when the block lifts rather than having to guess.
+     */
+    @ExceptionHandler(UploadLinkActiveException.class)
+    public ResponseEntity<Map<String, Object>> handleUploadLinkActive(UploadLinkActiveException ex) {
+        log.warn("Action refused for complaint {} — secure upload link active until {}",
+                ex.getComplaintNumber(), ex.getLinkExpiresAt());
+
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("success", false);
+        response.put("message", ex.getMessage());
+        response.put("messageKey", ex.getMessageKey());
+        response.put("complaintNumber", ex.getComplaintNumber());
+        response.put("linkExpiresAt", ex.getLinkExpiresAt());
+        response.put("timestamp", LocalDateTime.now().toString());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+    }
+
+    /**
+     * A concurrent edit lost the race (UST675 record locking).
+     *
+     * <p>Spring dispatches on the most specific exception type, not on declaration order, so this wins
+     * over the RuntimeException handler below. That distinction is the reason the handler exists:
+     * {@code OptimisticLockingFailureException} IS a RuntimeException, so without this it fell into the
+     * generic 400 and became indistinguishable from a validation error — the UI could only tell the
+     * officer their input was bad, when in fact their input was fine and a colleague had saved first.
+     *
+     * <p>409 CONFLICT is the point: it is the one status meaning "reload, then retry", which is the only
+     * recovery available. {@code retryable} is true only AFTER a reload — repeating the identical request
+     * with the same stale version will conflict again.
+     *
+     * <p>{@code OptimisticLockingFailureException} rather than its
+     * {@code ObjectOptimisticLockingFailureException} subclass so that the non-Hibernate and
+     * hand-thrown Spring-data variants are covered too.
+     */
+    @ExceptionHandler({OptimisticLockingFailureException.class, OptimisticLockException.class})
+    public ResponseEntity<Map<String, Object>> handleOptimisticLock(Exception ex) {
+        log.warn("Optimistic lock conflict: {}", ex.getMessage());
+
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("success", false);
+        response.put("message", "This record was changed by someone else while you were working on it."
+                + " Please reload to see the latest version before saving again.");
+        response.put("messageKey", "common.error_record_changed");
+        response.put("retryable", true);
+        response.put("timestamp", LocalDateTime.now().toString());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
     }
 
     @ExceptionHandler(RuntimeException.class)

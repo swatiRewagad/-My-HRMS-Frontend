@@ -20,6 +20,7 @@ import org.springframework.data.domain.Pageable;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.*;
@@ -37,6 +38,7 @@ class ComplaintServiceTest {
     @Mock private ComplaintEventPublisher eventPublisher;
     @Mock private ComplaintRoutingService routingService;
     @Mock private ComplaintNumberGeneratorService complaintNumberGenerator;
+    @Mock private OfficeRoutingService officeRoutingService;
 
     @InjectMocks
     private ComplaintService complaintService;
@@ -250,15 +252,16 @@ class ComplaintServiceTest {
     class FileComplaint {
 
         /**
-         * fileComplaint() always delegates number generation and routing, so every test in
-         * this class needs both collaborators stubbed (a bare mock would return null and
-         * NPE on routing.getDepartment()).
+         * fileComplaint() always delegates number generation, department routing and office capacity
+         * routing, so every test in this class needs all three collaborators stubbed (a bare mock
+         * would return null and NPE on routing.getDepartment()).
          */
         @BeforeEach
         void stubRoutingAndNumbering() {
             when(routingService.resolveDepartment(anyString())).thenReturn("RBIO");
-            when(complaintNumberGenerator.generateComplaintNumber(anyString(), any(), any()))
-                    .thenReturn("CMS-20260515-XYZ789");
+            when(complaintNumberGenerator.generateForOffice(anyString(), any(), any()))
+                    .thenReturn(new ComplaintNumberGeneratorService.NumberedComplaint(
+                            "CMS-20260515-XYZ789", "Mumbai-I", "013"));
             when(routingService.routeComplaint(any(Complaint.class), anyString()))
                     .thenReturn(ComplaintRoutingService.RoutingDecision.builder()
                             .department("RBIO")
@@ -267,6 +270,70 @@ class ComplaintServiceTest {
                             .stage("INITIAL_REVIEW")
                             .reason("Default routing for unit test")
                             .build());
+            when(officeRoutingService.routeToOffice(anyString(), anyBoolean()))
+                    .thenReturn(Map.of("officeId", "013",
+                            "status", OfficeRoutingService.STATUS_ASSIGNED,
+                            "currentCount", 1));
+        }
+
+        @Test
+        void shouldPersistTheOfficeThatAcceptedTheComplaint() {
+            FileComplaintRequest request = minimalRequest();
+            when(complaintRepository.save(any(Complaint.class))).thenAnswer(inv -> inv.getArgument(0));
+
+            Complaint result = complaintService.fileComplaint(request);
+
+            // The office must land on the row, not merely inside the complaint number string.
+            assertThat(result.getRbioOfficeCode()).isEqualTo("013");
+        }
+
+        @Test
+        void shouldRecordTheOverflowOfficeWhenPrimaryOfficeIsFull() {
+            // An overflow diversion changes which Ombudsman office holds the case, so the complaint
+            // must carry the office that ACCEPTED it, not the one it was numbered against.
+            when(officeRoutingService.routeToOffice(anyString(), anyBoolean()))
+                    .thenReturn(Map.of("officeId", "014",
+                            "status", OfficeRoutingService.STATUS_OVERFLOW,
+                            "primaryOfficeId", "013",
+                            "currentCount", 1));
+            when(complaintRepository.save(any(Complaint.class))).thenAnswer(inv -> {
+                Complaint c = inv.getArgument(0);
+                c.setId(7L);
+                return c;
+            });
+
+            Complaint result = complaintService.fileComplaint(minimalRequest());
+
+            assertThat(result.getRbioOfficeCode()).isEqualTo("014");
+            assertThat(result.getComplaintNumber()).isEqualTo("CMS-20260515-XYZ789");
+        }
+
+        @Test
+        void shouldFallBackToTheNumberedOfficeWhenCapacityRowIsMissing() {
+            // Fail-closed: an unconfigured office must not silently place the complaint elsewhere.
+            when(officeRoutingService.routeToOffice(anyString(), anyBoolean()))
+                    .thenReturn(Map.of("officeId", "013",
+                            "status", OfficeRoutingService.STATUS_NOT_FOUND,
+                            "reason", "Office not configured or inactive"));
+            when(complaintRepository.save(any(Complaint.class))).thenAnswer(inv -> inv.getArgument(0));
+
+            Complaint result = complaintService.fileComplaint(minimalRequest());
+
+            assertThat(result.getRbioOfficeCode()).isEqualTo("013");
+        }
+
+        private FileComplaintRequest minimalRequest() {
+            FileComplaintRequest request = new FileComplaintRequest();
+            request.setComplainantName("Jane Doe");
+            request.setComplainantEmail("jane@example.com");
+            request.setComplainantPhone("9876543211");
+            request.setSubject("Loan Issue");
+            request.setDescription("Incorrect interest rate");
+            request.setPriority("high");
+            request.setBankId(2L);
+            request.setCategoryId(3L);
+            request.setFilingType("online");
+            return request;
         }
 
         @Test

@@ -13,6 +13,7 @@ import org.springframework.core.io.support.ResourceRegion;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -58,18 +59,54 @@ public class FileUploadController {
 
     /**
      * Single file upload for small files (< chunk size).
+     *
+     * <p>Records the uploader and source when supplied (UST589). Both are optional so the existing
+     * callers that pass neither keep working; when absent, provenance is recorded as an OFFICER upload
+     * attributed to the authenticated user, which is what every caller of this endpoint actually is.
      */
     @PostMapping("/upload")
     public ResponseEntity<ComplaintAttachment> uploadSingle(
             @RequestParam("file") MultipartFile file,
             @RequestParam("complaintNumber") String complaintNumber,
-            @RequestParam("complaintId") Long complaintId
+            @RequestParam("complaintId") Long complaintId,
+            @RequestParam(value = "documentType", required = false) String documentType,
+            @RequestHeader(value = "X-User-Name", required = false) String userName
     ) throws IOException {
 
         ComplaintAttachment attachment = fileStorageService.handleSingleUpload(
-                file, complaintNumber, complaintId
+                file, complaintNumber, complaintId,
+                userName, ComplaintAttachment.SOURCE_OFFICER, documentType
         );
         return ResponseEntity.ok(attachment);
+    }
+
+    /**
+     * GET /api/files/complaint/{complaintId}/bundle — every attachment as one ZIP (UST588).
+     *
+     * <p>No bundle capability existed anywhere in the product: {@code java.util.zip} appeared in zero
+     * backend files, so an officer wanting a case's documents downloaded them one at a time.
+     *
+     * <p>Streamed rather than buffered, and the story's "must omit no valid attachment" requirement is
+     * enforced in {@link FileStorageService#writeAttachmentBundle} — a row whose file is missing from
+     * disk is reported inside the archive rather than silently skipped, because a short zip with no
+     * warning would let a reader believe they held the complete record.
+     */
+    @GetMapping("/complaint/{complaintId}/bundle")
+    public ResponseEntity<StreamingResponseBody> downloadBundle(
+            @PathVariable Long complaintId,
+            @RequestParam(value = "complaintNumber", required = false) String complaintNumber) {
+
+        String reference = complaintNumber == null ? String.valueOf(complaintId) : complaintNumber;
+        String safeReference = reference.replaceAll("[^A-Za-z0-9._-]", "_");
+
+        StreamingResponseBody body = out -> fileStorageService
+                .writeAttachmentBundle(complaintId, reference, out);
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"complaint-" + safeReference + "-documents.zip\"")
+                .body(body);
     }
 
     /**

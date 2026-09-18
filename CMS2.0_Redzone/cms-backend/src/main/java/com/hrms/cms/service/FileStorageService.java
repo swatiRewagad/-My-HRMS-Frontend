@@ -135,13 +135,43 @@ public class FileStorageService {
             String complaintNumber,
             Long complaintId
     ) throws IOException {
+        return handleSingleUpload(file, complaintNumber, complaintId, null, null, null);
+    }
+
+    /**
+     * Stores one file, recording WHO supplied it and in what capacity (UST589).
+     *
+     * <p>The three-argument overload above delegates here with nulls, so every existing caller keeps
+     * its current behaviour and no call site silently starts claiming a provenance it does not know.
+     *
+     * @param uploadedBy   the uploader's identity; null when genuinely unknown
+     * @param source       ComplaintAttachment.SOURCE_* — the capacity the uploader acted in
+     * @param documentType optional classification, e.g. MEETING_MINUTES
+     */
+    @Transactional
+    public ComplaintAttachment handleSingleUpload(
+            MultipartFile file,
+            String complaintNumber,
+            Long complaintId,
+            String uploadedBy,
+            String source,
+            String documentType
+    ) throws IOException {
 
         uploadValidator.validate(file);
 
-        long existingCount = attachmentRepository.findByComplaintId(complaintId).size();
-        if (existingCount >= config.getMaxFilesPerComplaint()) {
+        List<ComplaintAttachment> existing = attachmentRepository.findByComplaintId(complaintId);
+        if (existing.size() >= config.getMaxFilesPerComplaint()) {
             throw new IllegalArgumentException("Max files per complaint reached (" + config.getMaxFilesPerComplaint() + ")");
         }
+
+        // The AGGREGATE cap, which handleSingleUpload previously did not apply at all: ten separate
+        // single-file uploads could each pass the per-file check and together exceed the record's total
+        // budget. validateBatch already expressed this rule and had no production caller.
+        long existingBytes = existing.stream()
+                .mapToLong(a -> a.getFileSize() == null ? 0L : a.getFileSize())
+                .sum();
+        uploadValidator.validateBatch(List.of(file), existing.size(), existingBytes);
 
         Path complaintDir = config.getComplaintDir(complaintNumber);
         Files.createDirectories(complaintDir);
@@ -160,9 +190,79 @@ public class FileStorageService {
                 .contentType(file.getContentType())
                 .fileSize(file.getSize())
                 .storagePath(complaintNumber + "/" + storedName)
+                .uploadedBy(uploadedBy)
+                .source(source)
+                .documentType(documentType)
                 .build();
 
         return attachmentRepository.save(attachment);
+    }
+
+    /**
+     * Streams every attachment on a complaint as one ZIP (UST588).
+     *
+     * <p>Written to an OutputStream rather than assembled in memory: the per-record budget is 25MB and
+     * buffering that per concurrent request is avoidable waste.
+     *
+     * <p>MUST OMIT NO VALID ATTACHMENT, which is the story's explicit requirement — so a row whose file
+     * is missing from disk does not abort the bundle. It is recorded in a MANIFEST entry instead,
+     * because silently returning a short zip would let a reader believe they had everything. A caller
+     * who receives 9 of 10 documents and no warning is worse off than one who is told which is missing.
+     *
+     * @return the number of files successfully written
+     */
+    @Transactional(readOnly = true)
+    public int writeAttachmentBundle(Long complaintId, String complaintNumber, OutputStream out)
+            throws IOException {
+
+        List<ComplaintAttachment> attachments = attachmentRepository.findByComplaintId(complaintId);
+        int written = 0;
+        StringBuilder missing = new StringBuilder();
+
+        try (java.util.zip.ZipOutputStream zip = new java.util.zip.ZipOutputStream(out)) {
+            java.util.Set<String> usedNames = new java.util.HashSet<>();
+
+            for (ComplaintAttachment a : attachments) {
+                Path source = Paths.get(config.getRootPath(), a.getStoragePath());
+                if (!Files.exists(source) || !Files.isReadable(source)) {
+                    missing.append(a.getOriginalName()).append(" (id ").append(a.getId()).append(")\n");
+                    log.warn("Attachment {} for complaint {} is recorded but missing on disk at {}",
+                            a.getId(), complaintNumber, source);
+                    continue;
+                }
+
+                // Two documents may legitimately share an original filename; a duplicate zip entry name
+                // would throw and abort the whole bundle.
+                String entryName = uniqueEntryName(a, usedNames);
+                zip.putNextEntry(new java.util.zip.ZipEntry(entryName));
+                Files.copy(source, zip);
+                zip.closeEntry();
+                written++;
+            }
+
+            if (missing.length() > 0) {
+                zip.putNextEntry(new java.util.zip.ZipEntry("MISSING-FILES.txt"));
+                zip.write(("These attachments are recorded against complaint " + complaintNumber
+                        + " but their stored files could not be read. Report this to support:\n\n"
+                        + missing).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                zip.closeEntry();
+            }
+        }
+        return written;
+    }
+
+    private String uniqueEntryName(ComplaintAttachment a, java.util.Set<String> used) {
+        String base = sanitizeFileName(a.getOriginalName() == null ? a.getFileName() : a.getOriginalName());
+        String candidate = base;
+        int suffix = 2;
+        while (!used.add(candidate)) {
+            int dot = base.lastIndexOf('.');
+            candidate = dot > 0
+                    ? base.substring(0, dot) + "(" + suffix + ")" + base.substring(dot)
+                    : base + "(" + suffix + ")";
+            suffix++;
+        }
+        return candidate;
     }
 
     public String getRootPath() {

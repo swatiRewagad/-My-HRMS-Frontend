@@ -97,6 +97,80 @@ public class OtpService {
         return OtpVerificationResult.INVALID;
     }
 
+    /**
+     * Issues an OTP scoped to a session AND a channel, so two codes can be live at once (UST599).
+     *
+     * <p>Differs from {@link #generateOtp} in exactly one respect: invalidation is scoped to
+     * {@code sessionId + channel} instead of to the mobile number. {@code generateOtp} retires every
+     * live code for a mobile, which makes a dual-channel OTP impossible — the second code issued would
+     * silently kill the first, so the user could never satisfy both inputs.
+     *
+     * <p>A separate method rather than a flag on the existing one: the citizen-login flow depends on
+     * mobile-wide invalidation (UST8, a re-sent code must retire the previous one), and that behaviour
+     * must not become conditional on a parameter a caller might get wrong.
+     *
+     * @param sessionId the upload-link token — unique per link and unused by any other query
+     * @param channel   SMS or EMAIL; part of the lookup key, not merely metadata as elsewhere
+     */
+    @Transactional
+    public String generateSessionOtp(String mobileNumber, String sessionId, String channel, String email) {
+        otpAttemptRepository.invalidateActiveOtpsForSessionChannel(sessionId, channel, LocalDateTime.now());
+
+        String otp = authProps.getOtp().isDevAutoPopulate() ? "123456" : generateSecureOtp();
+
+        otpAttemptRepository.save(OtpAttempt.builder()
+                .mobileNumber(mobileNumber)
+                .otpHash(hashValue(otp))
+                .channel(channel)
+                .email(email)
+                .sessionId(sessionId)
+                .used(false)
+                .attemptCount(0)
+                .expiresAt(LocalDateTime.now().plusMinutes(authProps.getOtp().getExpiryMinutes()))
+                .build());
+
+        log.info("Session OTP generated for session {} via {}", sessionId, channel);
+        return otp;
+    }
+
+    /**
+     * Verifies one channel's OTP for a session (UST599).
+     *
+     * <p>Attempt counting, expiry and max-attempt lockout behave exactly as in {@link #verifyOtp} —
+     * deliberately identical, so the two channels cannot be brute-forced under a weaker rule than the
+     * login flow. Each channel carries its own attempt counter because they are separate rows.
+     */
+    @Transactional
+    public OtpVerificationResult verifySessionOtp(String sessionId, String channel, String otpInput) {
+        Optional<OtpAttempt> activeOtp = otpAttemptRepository
+                .findTopBySessionIdAndChannelAndUsedFalseAndExpiresAtAfterOrderByCreatedAtDesc(
+                        sessionId, channel, LocalDateTime.now());
+
+        if (activeOtp.isEmpty()) {
+            return OtpVerificationResult.EXPIRED_OR_NOT_FOUND;
+        }
+
+        OtpAttempt attempt = activeOtp.get();
+
+        if (attempt.getAttemptCount() >= authProps.getOtp().getMaxVerifyAttemptsPerOtp()) {
+            attempt.setUsed(true);
+            otpAttemptRepository.save(attempt);
+            return OtpVerificationResult.MAX_ATTEMPTS_EXCEEDED;
+        }
+
+        attempt.setAttemptCount(attempt.getAttemptCount() + 1);
+
+        if (hashValue(otpInput).equals(attempt.getOtpHash())) {
+            attempt.setUsed(true);
+            attempt.setUsedAt(LocalDateTime.now());
+            otpAttemptRepository.save(attempt);
+            return OtpVerificationResult.SUCCESS;
+        }
+
+        otpAttemptRepository.save(attempt);
+        return OtpVerificationResult.INVALID;
+    }
+
     public boolean isRateLimitedByMobile(String mobileNumber) {
         long recentCount = otpAttemptRepository.countRecentByMobile(
                 mobileNumber, LocalDateTime.now().minusHours(1));

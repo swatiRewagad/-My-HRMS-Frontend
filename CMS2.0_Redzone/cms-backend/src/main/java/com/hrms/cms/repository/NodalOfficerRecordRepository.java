@@ -67,4 +67,29 @@ public interface NodalOfficerRecordRepository extends JpaRepository<NodalOfficer
                                                                                    Pageable pageable);
 
     List<NodalOfficerRecord> findByEntityCodeAndAssignedTo(String entityCode, String assignedTo);
+
+    /**
+     * Stale nodal-officer records whose PARENT COMPLAINT is still open (UST611).
+     *
+     * <p>Replaces {@link #findByStatusAndLastModifiedAtBefore} for the staleness scan, which checked
+     * only the NO record's own status and never looked at the complaint. A complaint closed while its
+     * NO record still read INFORMATION_REQUIRED therefore kept generating escalations forever — the
+     * record never changes again, so the cutoff recedes indefinitely and the reminder never stops.
+     *
+     * <p>Correlated on {@code complaintNumber} because {@link NodalOfficerRecord} has no FK to
+     * {@code Complaint}; it carries the complaint NUMBER as a loose string. EXISTS rather than a join
+     * is deliberate — a NO record whose complaint number matches nothing is orphaned data, and nagging
+     * officers about a complaint that cannot be opened is worse than staying silent.
+     */
+    @Query("""
+           SELECT r FROM NodalOfficerRecord r
+            WHERE r.status = :status
+              AND r.lastModifiedAt < :cutoff
+              AND EXISTS (SELECT 1 FROM Complaint c
+                           WHERE c.complaintNumber = r.complaintNumber
+                             AND c.status NOT IN :closedStatuses)
+           """)
+    List<NodalOfficerRecord> findStaleWithOpenComplaint(@Param("status") String status,
+                                                        @Param("cutoff") LocalDateTime cutoff,
+                                                        @Param("closedStatuses") Collection<String> closedStatuses);
 }

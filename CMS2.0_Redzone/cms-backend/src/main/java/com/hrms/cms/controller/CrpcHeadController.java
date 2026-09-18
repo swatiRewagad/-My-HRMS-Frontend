@@ -74,13 +74,32 @@ public class CrpcHeadController {
         return ResponseEntity.ok(officeRoutingService.getAllOfficeConfigs());
     }
 
+    /**
+     * Changes an office's capacity.
+     *
+     * <p>The actor is resolved without dereferencing the JWT directly. Previously this called
+     * {@code jwt.getSubject()} on an {@code @AuthenticationPrincipal} that is null whenever the
+     * request carries dev identity headers instead of a bearer token, which surfaced as
+     * {@code 400 Cannot invoke "Jwt.getSubject()" because "jwt" is null} — an NPE presented as a
+     * client error, so an operator could not tell a missing token from a bad threshold value.
+     *
+     * <p>The JWT subject is still PREFERRED over the header, so a real token remains authoritative
+     * for the audit trail and a caller cannot attribute a capacity change to someone else by
+     * setting a header. Capacity is an operational limit, not a statutory determination, so falling
+     * back to the dev-identity header is acceptable here; it is recorded as-is rather than being
+     * silently replaced with a literal like "admin".
+     */
     @PutMapping("/office-thresholds/{officeId}")
     public ResponseEntity<Map<String, Object>> updateThreshold(
             @PathVariable String officeId,
             @RequestParam int threshold,
-            @AuthenticationPrincipal Jwt jwt) {
-        officeRoutingService.updateThreshold(officeId, threshold, jwt.getSubject());
-        return ResponseEntity.ok(Map.of("status", "updated", "officeId", officeId, "newThreshold", threshold));
+            @AuthenticationPrincipal Jwt jwt,
+            @RequestHeader(value = "X-User-Id", required = false) String headerUser) {
+        String actor = jwt != null ? jwt.getSubject()
+                : (headerUser != null && !headerUser.isBlank() ? headerUser : "unknown");
+        officeRoutingService.updateThreshold(officeId, threshold, actor);
+        return ResponseEntity.ok(Map.of("status", "updated", "officeId", officeId,
+                "newThreshold", threshold, "updatedBy", actor));
     }
 
     @PostMapping("/office-thresholds/reset")

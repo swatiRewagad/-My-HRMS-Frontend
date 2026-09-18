@@ -1,5 +1,6 @@
 package com.hrms.cms.controller;
 
+import com.hrms.cms.service.ComplaintNumberGeneratorService;
 import com.hrms.cms.service.GeoLocationService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.CacheControl;
@@ -15,9 +16,12 @@ import java.util.Map;
 public class GeoLocationController {
 
     private final GeoLocationService geoLocationService;
+    private final ComplaintNumberGeneratorService officeResolver;
 
-    public GeoLocationController(GeoLocationService geoLocationService) {
+    public GeoLocationController(GeoLocationService geoLocationService,
+                                 ComplaintNumberGeneratorService officeResolver) {
         this.geoLocationService = geoLocationService;
+        this.officeResolver = officeResolver;
     }
 
     @GetMapping("/locate")
@@ -54,12 +58,17 @@ public class GeoLocationController {
 
         return geoLocationService.lookup(ip)
             .map(result -> {
-                String ombudsmanOffice = mapStateToOmbudsmanOffice(result.getState());
+                // Resolved against OMBUDSMAN_OFFICE_MASTER, the same resolver the complaint-numbering
+                // path uses, so this hint cannot contradict the office a filed complaint lands in.
+                // The city is passed as the district so split jurisdictions (Mumbai-I/II, Chennai-I/II)
+                // resolve rather than collapsing to one name.
+                String ombudsmanOffice = officeResolver.resolveOfficeName(
+                        "RBIO", result.getState(), result.getCity());
                 return ResponseEntity.ok(Map.<String, Object>of(
                     "resolved", true,
                     "state", result.getState() != null ? result.getState() : "",
                     "city", result.getCity() != null ? result.getCity() : "",
-                    "ombudsmanOffice", ombudsmanOffice
+                    "ombudsmanOffice", ombudsmanOffice != null ? ombudsmanOffice : ""
                 ));
             })
             .orElse(ResponseEntity.ok(Map.of("resolved", false)));
@@ -77,25 +86,4 @@ public class GeoLocationController {
         return request.getRemoteAddr();
     }
 
-    private String mapStateToOmbudsmanOffice(String state) {
-        if (state == null) return "Central Office";
-        return switch (state) {
-            case "Maharashtra", "Goa" -> "Mumbai";
-            case "Delhi", "Haryana", "Jammu and Kashmir", "Ladakh" -> "New Delhi";
-            case "Karnataka" -> "Bengaluru";
-            case "Tamil Nadu", "Puducherry" -> "Chennai";
-            case "West Bengal", "Sikkim", "Andaman and Nicobar Islands" -> "Kolkata";
-            case "Telangana", "Andhra Pradesh" -> "Hyderabad";
-            case "Gujarat", "Dadra and Nagar Haveli and Daman and Diu" -> "Ahmedabad";
-            case "Rajasthan" -> "Jaipur";
-            case "Madhya Pradesh", "Chhattisgarh" -> "Bhopal";
-            case "Uttar Pradesh", "Uttarakhand" -> "Kanpur";
-            case "Bihar", "Jharkhand" -> "Patna";
-            case "Punjab", "Chandigarh", "Himachal Pradesh" -> "Chandigarh";
-            case "Kerala", "Lakshadweep" -> "Thiruvananthapuram";
-            case "Odisha" -> "Bhubaneswar";
-            case "Assam", "Meghalaya", "Arunachal Pradesh", "Nagaland", "Manipur", "Mizoram", "Tripura" -> "Guwahati";
-            default -> "Central Office";
-        };
-    }
 }

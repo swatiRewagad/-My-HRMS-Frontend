@@ -334,9 +334,37 @@
       </div>
     }
 
+    <!-- <<< [S6] START >>> -->
+
+    <!-- ═══ Email Communication Tab (UST590-593, UST656-657) ═══
+         The tab existed in the tab strip with NO body block, so clicking it showed nothing. -->
+    @if (activeTab() === 'email') {
+      <div class="tab-content-section">
+        <app-rbio-email-communication [complaintNumber]="c.complaintNumber">
+        </app-rbio-email-communication>
+      </div>
+    }
+
+    <!-- ═══ Attachments Tab (UST585-589) — new tab; none existed ═══ -->
+    @if (activeTab() === 'attachments') {
+      <div class="tab-content-section">
+        <app-rbio-attachments [complaintNumber]="c.complaintNumber" [complaintId]="c.complaintId">
+        </app-rbio-attachments>
+      </div>
+    }
+
+    <!-- <<< [S6] END >>> -->
+
     <!-- ═══ Complaint History Tab (includes Action Override History UST639-642) ═══ -->
     @if (activeTab() === 'history') {
       <div class="tab-content-section">
+        <!-- <<< [S6] START >>> UST594-596: the REAL status/milestone history, from COMPLAINT_TIMELINE.
+             The action-override component below it calls an endpoint that does not exist in
+             cms-backend and swallows the 404, so it rendered "no records" for every complaint. It is
+             left in place because session S3 owns building that endpoint. -->
+        <app-rbio-complaint-history [complaintNumber]="c.complaintNumber">
+        </app-rbio-complaint-history>
+        <!-- <<< [S6] END >>> -->
         <app-rbio-action-override-history [complaint]="complaint()"></app-rbio-action-override-history>
       </div>
     }

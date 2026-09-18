@@ -13,6 +13,11 @@ import { RbioForwardRegulatoryComponent } from '../rbio-forward-regulatory/rbio-
 import { RbioActionOverrideHistoryComponent } from '../rbio-action-override-history/rbio-action-override-history.component';
 import { environment } from '../../../../environments/environment';
 import { StatusBadgeComponent } from '../../shared/status-badge/status-badge.component';
+// <<< [S6] START >>>
+import { RbioEmailCommunicationComponent } from '../rbio-email-communication/rbio-email-communication.component';
+import { RbioAttachmentsComponent } from '../rbio-attachments/rbio-attachments.component';
+import { RbioComplaintHistoryComponent } from '../rbio-complaint-history/rbio-complaint-history.component';
+// <<< [S6] END >>>
 
 interface ComplaintDetail {
   complaintId: string;
@@ -46,7 +51,11 @@ interface Comment {
 @Component({
   selector: 'app-rbio-complaint-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule, UploadLinkStatusComponent, RbioDeputyDecisionComponent, RbioAddEntityComponent, RbioLegalCaseComponent, RbioForwardRegulatoryComponent, RbioActionOverrideHistoryComponent, StatusBadgeComponent],
+  imports: [CommonModule, FormsModule, UploadLinkStatusComponent, RbioDeputyDecisionComponent, RbioAddEntityComponent, RbioLegalCaseComponent, RbioForwardRegulatoryComponent, RbioActionOverrideHistoryComponent, StatusBadgeComponent,
+    // <<< [S6] START >>>
+    RbioEmailCommunicationComponent, RbioAttachmentsComponent, RbioComplaintHistoryComponent,
+    // <<< [S6] END >>>
+  ],
   templateUrl: './rbio-complaint-detail.component.html',
   styleUrl: './rbio-complaint-detail.component.scss'
 })
@@ -108,6 +117,9 @@ export class RbioComplaintDetailComponent implements OnInit {
     { key: 'conciliation', label: 'Conciliation' },
     { key: 'forward', label: 'Forward' },
     { key: 'email', label: 'Email Communication' },
+    // <<< [S6] START >>> UST585-589: there was no attachments tab at all.
+    { key: 'attachments', label: 'Attachments' },
+    // <<< [S6] END >>>
     { key: 'final', label: 'Final Decision' },
     { key: 'legal', label: 'Legal Case' },
     { key: 'history', label: 'Complaint History' },

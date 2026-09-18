@@ -199,17 +199,35 @@ export class RbioHomeComponent implements OnInit {
     this.auth.logout();
   }
 
+  // Surfaced so the template can tell an empty queue apart from a failed load. Silence on error is what
+  // let the fabricated sample data pass for real complaints.
+  loadError = signal<string | null>(null);
+
   loadComplaints() {
     this.loading.set(true);
+    this.loadError.set(null);
     const username = this.loggedInUser?.id || '';
-    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/rbio/complaints?assignedTo=${username}`).subscribe({
+    const url = `${environment.apiBaseUrl}/api/v1/rbio/complaints?assignedTo=${encodeURIComponent(username)}`;
+
+    this.http.get<any>(url).subscribe({
       next: (res) => {
-        const items = (res.data || res || []).map((c: any) => this.mapComplaint(c));
-        this.complaints.set(items);
+        // The endpoint returns {success, data:{content, totalElements, ...}}. The bare-array and
+        // bare-data forms are tolerated because the older shapes are still served by some environments.
+        const page = res?.data ?? res;
+        const rows = Array.isArray(page) ? page : (page?.content ?? []);
+        this.complaints.set(rows.map((c: any) => this.mapComplaint(c)));
         this.loading.set(false);
       },
-      error: () => {
-        this.complaints.set(this.generateSampleData());
+      error: (err) => {
+        // Previously this rendered ten fabricated complaints, so a broken or unauthorised backend was
+        // indistinguishable from a working one and the screen demoed perfectly while showing nothing
+        // real. An officer must never be shown invented case data.
+        this.complaints.set([]);
+        this.loadError.set(
+          err?.status === 403
+            ? 'You do not have permission to view RBIO complaints.'
+            : 'Could not load complaints. Please retry; if this persists, contact support.'
+        );
         this.loading.set(false);
       }
     });
@@ -236,32 +254,6 @@ export class RbioHomeComponent implements OnInit {
       slaBreachDays: Math.max(0, diffDays),
       description: c.description || '',
     };
-  }
-
-  private generateSampleData(): RbioComplaint[] {
-    const statuses = ['DRAFT', 'IN_PROGRESS', 'SENT_BACK', 'MEETING_SCHEDULED', 'ASSESSMENT_COMPLETE', 'NEW'];
-    const entities = ['HDFC Bank Ltd', 'ICICI Bank Ltd', 'SBI', 'Axis Bank Ltd', 'Kotak Bank', 'PNB', 'Yes Bank', 'IDFC Bank', 'IndusInd Bank', 'Bank of Baroda'];
-    const categories = ['Account Hold', 'Loan EMI', 'CIBIL Correction', 'Credit Card', 'Transaction Dispute', 'Account Closure', 'Debit Card Issue', 'Interest Rate', 'Loan Processing', 'Statement Error'];
-    const names = ['Varshika Gaur', 'Amit Kumar', 'AGR Team', 'Priya Sharma', 'Rajesh Singh', 'Sunita Verma', 'Anil Kapoor', 'Meena Patel', 'Kumar Reddy', 'Sneha Desai'];
-    const modes = ['Email', 'Letter', 'Email', 'Email', 'Email', 'Letter', 'Email', 'Email', 'Letter', 'Email'];
-
-    return Array.from({ length: 10 }, (_, i) => ({
-      complaintId: `C${String(i + 1).padStart(3, '0')}`,
-      complaintNumber: `183940295${i}`,
-      complainantName: names[i],
-      fromEmail: `${names[i].toLowerCase().replace(' ', '.')}@${i % 3 === 0 ? 'gmail.com' : i % 3 === 1 ? 'yahoo.com' : 'rbi.org.in'}`,
-      subject: categories[i],
-      modeOfReceipt: modes[i],
-      status: statuses[i % statuses.length],
-      category: categories[i],
-      entityName: entities[i],
-      priority: i % 3 === 0 ? 'HIGH' : 'MEDIUM',
-      assignedTo: this.loggedInUser?.id || '',
-      createdAt: `2026-05-${String(14 - i).padStart(2, '0')}`,
-      slaDueDate: `2026-06-${String(14 - i).padStart(2, '0')}`,
-      slaBreachDays: [30, 40, 25, 1, -2, -1, 2, 8, 1, 0][i],
-      description: '',
-    }));
   }
 
   sortBy(column: string) {

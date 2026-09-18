@@ -1,11 +1,16 @@
 package com.hrms.cms.service;
 
 import com.hrms.cms.entity.Complaint;
+import com.hrms.cms.entity.RbioWorkflowTransition;
+import com.hrms.cms.entity.TimelineEventSource;
 import com.hrms.cms.repository.ComplaintRepository;
+import com.hrms.cms.repository.RbioWorkflowTransitionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -33,41 +38,65 @@ public class RbioWorkflowService {
 
     private final Map<String, Integer> roundRobinCounters = new ConcurrentHashMap<>();
 
-    // ═══ Role -> Allowed Actions mapping ═══
-    private static final Map<String, Set<String>> ROLE_ACTIONS = Map.of(
-            "RBIO_OFFICER", Set.of(
-                    "ACCEPT", "TAKE_ACTION", "RESOLVE", "REJECT", "ESCALATE",
-                    "REQUEST_INFO", "SCHEDULE_MEETING", "FORWARD_TO_CONCILIATION", "ISSUE_ADVISORY"
-            ),
-            "RBIO_SUPERVISOR", Set.of(
-                    "APPROVE", "RETURN_TO_OFFICER", "RESOLVE", "ESCALATE",
-                    "FORWARD_TO_ADJUDICATION", "FORWARD_TO_CONCILIATION", "REASSIGN", "ISSUE_ADVISORY"
-            ),
-            "RBIO_CONCILIATOR", Set.of(
-                    "CONCILIATION_SUCCESS", "CONCILIATION_FAILED", "SCHEDULE_MEETING", "ESCALATE_TO_ADJUDICATION"
-            ),
-            "RBIO_ADJUDICATOR", Set.of(
-                    "ADJUDICATION_AWARD", "ADJUDICATION_REJECT", "ISSUE_NOTICE_13_1", "IMPLEAD_PARTY"
-            ),
-            "RBIO_ADMIN", Set.of(
-                    "REASSIGN", "ESCALATE", "CLOSE_COMPLAINT", "REOPEN", "BULK_ASSIGN"
-            )
-    );
+    /**
+     * Optional so that {@code RbioWorkflowServiceTest} can construct this service with its seven
+     * collaborators and no database. When absent — or when the table holds no matching row — resolution
+     * falls back to {@link RbioTransitionRegistry}. See that class for why the fallback is required
+     * rather than merely convenient.
+     */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private RbioWorkflowTransitionRepository transitionRepository;
 
-    // All recognized RBIO actions
-    private static final Set<String> ALL_RBIO_ACTIONS;
+    /**
+     * Optional for the same reason as {@link #transitionRepository}: {@code RbioWorkflowServiceTest}
+     * constructs this service directly with no Spring context. Absent means no upload-link restriction
+     * is applied, which is correct for a unit test that has no links — but note the guard is what makes
+     * UST603-604 enforceable, so its absence in PRODUCTION would silently restore the bypass. It is a
+     * real bean; nothing conditions it away.
+     */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private UploadLinkGuardService uploadLinkGuardService;
 
-    static {
-        Set<String> all = new HashSet<>();
-        ROLE_ACTIONS.values().forEach(all::addAll);
-        ALL_RBIO_ACTIONS = Collections.unmodifiableSet(all);
-    }
+    /**
+     * Custody tracking for send-backs and reopens. Optional for the same reason as the repository above:
+     * {@code RbioWorkflowServiceTest} builds this service with its declared collaborators and no Spring
+     * context, and every pre-existing action must keep working without it.
+     *
+     * <p>The PREVIOUS_HOLDER strategy is the one path that cannot degrade gracefully when this is absent —
+     * it refuses rather than guessing an assignee. See {@link #applyAssignee}.
+     */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private RbioCaseAssignmentHistoryService assignmentHistoryService;
+
+    /**
+     * Configurable reopen vocabulary and authority (UST550-551). Optional for the same test-construction
+     * reason as the two above; the compiled-in defaults apply when it is absent, so the Ombudsman-only
+     * restriction holds even with no configuration present.
+     */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private SystemConfigService systemConfigService;
+
+    /**
+     * Token-first identity, so the reopen authority check cannot be steered by a request body.
+     *
+     * <p>Optional like the collaborators above. When absent the check falls back to the body's
+     * {@code userRole}, which is the pre-existing behaviour of every other action in this service — and
+     * still refuses a blank role, so an unidentified caller cannot reopen.
+     */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.hrms.cms.security.RbioIdentityResolver identityResolver;
 
     /**
      * Check if an action is an RBIO-specific action.
      */
     public boolean isRbioAction(String action) {
-        return action != null && ALL_RBIO_ACTIONS.contains(action.toUpperCase());
+        if (action == null) return false;
+        String upper = action.toUpperCase();
+        // The S3 ladder actions are recognised alongside Wave 0's. Without this, WorkflowController's
+        // dispatch (`isRbioAction` gate) would never route them here at all, and the fifteen action codes
+        // the frontend already sends would keep failing as "unknown" no matter what the table contains.
+        return RbioTransitionRegistry.allActions().contains(upper)
+                || RbioLadderActions.allActions().contains(upper);
     }
 
     /**
@@ -89,20 +118,63 @@ public class RbioWorkflowService {
         String previousStatus = complaint.getStatus();
         String previousStage = complaint.getWorkflowStage();
 
+        // Captured BEFORE applyTransition, which overwrites the assignee. Reading it afterwards yields
+        // the NEW owner, which is why the reassignment timeline row could never show who held the
+        // complaint before (UST596).
+        String previousOfficer = complaint.getAssignedOfficer();
+
         // Validate role authorization
         if (!userRole.isBlank() && !validateRoleAuthorization(userRole, action)) {
             throw new IllegalArgumentException(
                     String.format("Role '%s' is not authorized to perform action '%s'", userRole, action));
         }
 
-        // Execute the state transition
-        executeAction(complaint, action.toUpperCase(), params);
+        // Execute the state transition, resolved from RBIO_WORKFLOW_TRANSITION.
+        //
+        // A BLANK userRole skips the check above rather than failing it, and still executes — so the
+        // transition is looked up by role when one was supplied and by action alone when it was not.
+        // Requiring a role here would refuse every existing role-less caller.
+        RbioWorkflowTransition transition = resolveTransition(action.toUpperCase(), userRole);
+        if (transition == null) {
+            throw new IllegalArgumentException("Unknown RBIO action: " + action.toUpperCase());
+        }
+        applyTransition(complaint, transition, action.toUpperCase(), params);
 
         // Save the complaint
         complaintRepository.save(complaint);
 
-        // Add timeline entry
-        complaintService.addTimeline(complaint.getId(), action, actor, remarks, previousStatus, complaint.getStatus());
+        // Record custody AFTER the save, so history never claims an officer holds a file whose assignment
+        // was rolled back. Recorded for EVERY action rather than only the handovers, because a gap in the
+        // trail is indistinguishable from "never held" and would silently degrade a later send-back to
+        // manual selection.
+        if (assignmentHistoryService != null) {
+            assignmentHistoryService.recordAssignment(complaint, custodyRoleFor(complaint, transition, params),
+                    complaint.getAssignedOfficer(), action.toUpperCase(), actor);
+        }
+
+        // Add timeline entry, carrying the old→new owner for a reassignment and the clause for a
+        // closure (UST596). Both are otherwise unrecoverable: the assignee has already been overwritten
+        // above, and Complaint.closureClause is mutable so a later re-closure destroys the original.
+        String newOfficer = complaint.getAssignedOfficer();
+        boolean ownerChanged = !Objects.equals(previousOfficer, newOfficer);
+
+        complaintService.addDetailedTimeline(
+                complaint.getId(),
+                action,
+                actor,
+                userRole.isBlank() ? null : userRole,
+                remarks,
+                previousStatus,
+                complaint.getStatus(),
+                ownerChanged ? "assignedOfficer" : null,
+                ownerChanged ? previousOfficer : null,
+                ownerChanged ? newOfficer : null,
+                // The clause supplied WITH THIS ACTION, not the complaint's current value: a reopened
+                // complaint still carries the clause of its previous closure, and copying that onto an
+                // unrelated event would attribute a clause to an action that was not made under one.
+                params.get("closureClause"),
+                params.get("destinationOffice"),
+                TimelineEventSource.MANUAL);
 
         // Add audit log
         Map<String, Object> auditMetadata = new LinkedHashMap<>();
@@ -212,10 +284,26 @@ public class RbioWorkflowService {
     public boolean validateRoleAuthorization(String userRole, String action) {
         if (userRole == null || action == null) return false;
 
-        Set<String> allowedActions = ROLE_ACTIONS.get(userRole.toUpperCase());
-        if (allowedActions == null) return false;
+        // The DB table is authoritative for any role it knows, so a session that grants an action by
+        // INSERTing a row — or revokes one by deactivating its rows — takes effect with no code change.
+        // The registry answers only when the table has never heard of the role: an unseeded database, or
+        // a role nobody has configured.
+        if (transitionRepository != null) {
+            try {
+                if (transitionRepository.knowsRole(userRole)) {
+                    return transitionRepository.existsForActionAndRole(action, userRole);
+                }
+            } catch (Exception e) {
+                log.debug("Transition table unavailable, using registry: {}", e.getMessage());
+            }
+        }
 
-        return allowedActions.contains(action.toUpperCase());
+        // Both compiled-in declarations are consulted, for the same reason the registry is: on a database
+        // where the ladder rows were never seeded, an S3 action must still be authorised rather than
+        // refused outright.
+        String upper = action.toUpperCase();
+        return RbioTransitionRegistry.actionsFor(userRole).contains(upper)
+                || RbioLadderActions.actionsFor(userRole).contains(upper);
     }
 
     /**
@@ -232,366 +320,527 @@ public class RbioWorkflowService {
         if (opt.isEmpty()) return Collections.emptyList();
 
         Complaint complaint = opt.get();
-        Set<String> roleActions = ROLE_ACTIONS.getOrDefault(userRole.toUpperCase(), Collections.emptySet());
+        Set<String> roleActions = availableActionCodes(userRole);
 
-        // Filter actions based on the current complaint state
+        // Filter actions based on the current complaint state.
+        //
+        // An S3 ladder action is judged by ITS OWN from-status list. Falling through to the registry would
+        // return `true` for every ladder action (the registry's default for an action it does not know),
+        // so a send-back would be advertised on a complaint that has never been up the ladder — exactly
+        // the advertise/enforce disagreement the transition table exists to prevent.
         return roleActions.stream()
-                .filter(action -> isActionValidForState(complaint, action))
+                .filter(action -> RbioLadderActions.allActions().contains(action.toUpperCase())
+                        ? RbioLadderActions.validForState(action, complaint.getStatus())
+                        : RbioTransitionRegistry.validForState(action, complaint.getStatus()))
                 .sorted()
                 .collect(Collectors.toList());
     }
 
+    /** Actions the role may perform, from the table when it knows the role, else from the registry. */
+    private Set<String> availableActionCodes(String userRole) {
+        if (transitionRepository != null) {
+            try {
+                if (transitionRepository.knowsRole(userRole)) {
+                    return transitionRepository.findByIsActive("Y").stream()
+                            .filter(t -> t.getRoleName().equalsIgnoreCase(userRole))
+                            .map(RbioWorkflowTransition::getActionCode)
+                            .collect(Collectors.toCollection(LinkedHashSet::new));
+                }
+            } catch (Exception e) {
+                log.debug("Transition table unavailable, using registry: {}", e.getMessage());
+            }
+        }
+        Set<String> actions = new LinkedHashSet<>(RbioTransitionRegistry.actionsFor(userRole));
+        actions.addAll(RbioLadderActions.actionsFor(userRole));
+        return actions;
+    }
+
     // ═══ Private: State transition execution ═══
 
-    private void executeAction(Complaint complaint, String action, Map<String, String> params) {
-        switch (action) {
-            case "ACCEPT":
-            case "TAKE_ACTION":
-                complaint.setStatus("in_progress");
-                complaint.setAssignedOfficer(params.getOrDefault("actor", complaint.getAssignedOfficer()));
-                complaint.setWorkflowStage("EXAMINATION");
-                rbioSlaService.applyStageSla(complaint, "OFFICER_ASSESSMENT");
-                break;
-
-            case "APPROVE":
-                String approveNextRole = getNextRole(complaint.getAssignedRole());
-                complaint.setAssignedRole(approveNextRole);
-                if ("RBIO_CONCILIATOR".equals(approveNextRole)) {
-                    complaint.setStatus("conciliation");
-                    complaint.setWorkflowStage("CONCILIATION");
-                    String approvedConciliator = assignByRole("RBIO_CONCILIATOR");
-                    if (approvedConciliator != null) {
-                        complaint.setAssignedOfficer(approvedConciliator);
-                    }
-                    rbioSlaService.applyStageSla(complaint, "CONCILIATION");
-                } else if ("RBIO_ADJUDICATOR".equals(approveNextRole)) {
-                    complaint.setStatus("adjudication");
-                    complaint.setWorkflowStage("ADJUDICATION");
-                    String approvedAdjudicator = assignByRole("RBIO_ADJUDICATOR");
-                    if (approvedAdjudicator != null) {
-                        complaint.setAssignedOfficer(approvedAdjudicator);
-                    }
-                    rbioSlaService.applyStageSla(complaint, "ADJUDICATION");
-                } else {
-                    complaint.setStatus("escalated");
-                    complaint.setWorkflowStage("ESCALATED");
-                    String approvedNext = assignByRole(approveNextRole);
-                    if (approvedNext != null) {
-                        complaint.setAssignedOfficer(approvedNext);
-                    }
+    /**
+     * The transition for this action, from RBIO_WORKFLOW_TRANSITION when available.
+     *
+     * <p>Falls back to {@link RbioTransitionRegistry} when the table has no row — see that class for why
+     * the fallback is required and not merely convenient. A blank role resolves the action's effect
+     * alone, because {@code performAction} has always executed for callers that supplied no role.
+     */
+    private RbioWorkflowTransition resolveTransition(String action, String userRole) {
+        if (transitionRepository != null && userRole != null && !userRole.isBlank()) {
+            try {
+                List<RbioWorkflowTransition> rows = transitionRepository.findByActionCodeAndRoleNameAndIsActive(
+                        action, userRole, "Y");
+                if (!rows.isEmpty()) {
+                    return rows.get(0);
                 }
-                break;
+            } catch (Exception e) {
+                log.debug("Transition table unavailable, using registry: {}", e.getMessage());
+            }
+        }
 
-            case "REJECT":
-                complaint.setStatus("rejected");
-                complaint.setResolvedAt(LocalDateTime.now());
-                complaint.setClosureCause("REJECTED");
-                complaint.setWorkflowStage("CLOSED");
-                break;
+        boolean roleless = (userRole == null || userRole.isBlank());
 
-            case "ESCALATE":
-                complaint.setStatus("escalated");
-                complaint.setEscalatedAt(LocalDateTime.now());
-                String nextRole = getNextRole(complaint.getAssignedRole());
-                complaint.setAssignedRole(nextRole);
-                complaint.setWorkflowStage("ESCALATED");
-                String escalateTo = assignByRole(nextRole);
-                if (escalateTo != null) {
-                    complaint.setAssignedOfficer(escalateTo);
-                }
-                break;
+        RbioWorkflowTransition fromRegistry = roleless
+                ? RbioTransitionRegistry.effectOf(action)
+                : RbioTransitionRegistry.resolve(action, userRole);
+        if (fromRegistry != null) return fromRegistry;
 
-            case "RETURN_TO_OFFICER":
-                complaint.setStatus("returned");
-                complaint.setAssignedRole("RBIO_OFFICER");
-                complaint.setWorkflowStage("RETURNED_TO_OFFICER");
-                String targetOfficer = params.getOrDefault("targetUser", "");
-                if (!targetOfficer.isEmpty()) {
-                    complaint.setAssignedOfficer(targetOfficer);
-                }
-                break;
+        // Then the S3 ladder declarations, for a database where the ladder rows were never seeded.
+        RbioWorkflowTransition fromLadder = roleless
+                ? RbioLadderActions.effectOf(action)
+                : RbioLadderActions.resolve(action, userRole);
+        if (fromLadder != null) return fromLadder;
 
-            case "RESOLVE":
-                complaint.setStatus("resolved");
-                complaint.setResolvedAt(LocalDateTime.now());
-                complaint.setWorkflowStage("RESOLVED");
-                complaint.setClosureCause(params.getOrDefault("closureCause", "RESOLVED"));
-                break;
+        // A role that is authorised (checked before this point) but whose action has no declared effect
+        // means the two declarations have drifted. Resolve the effect by action alone rather than
+        // refusing, so an authorised action never fails for a reason the caller cannot act on.
+        RbioWorkflowTransition byActionAlone = RbioTransitionRegistry.effectOf(action);
+        return byActionAlone != null ? byActionAlone : RbioLadderActions.effectOf(action);
+    }
 
-            case "REQUEST_INFO":
-                complaint.setStatus("info_requested");
-                complaint.setWorkflowStage("AWAITING_INFO");
-                break;
+    /**
+     * Applies a resolved transition to the complaint.
+     *
+     * <p>Replaces the {@code executeAction} switch. The column writes are driven by the row; the effects
+     * a table cannot express (monetary parsing and cap validation, timestamp stamping, list append,
+     * ladder-dependent status) are named in {@code sideEffect} and applied in {@link #applySideEffects}.
+     *
+     * <p>Ordering matters and is not arbitrary: required params are checked FIRST, before any mutation,
+     * because a missing award amount must leave the complaint untouched and unsaved. The award cap is
+     * validated inside the AWARD side effect, also before the status is written.
+     */
+    private void applyTransition(Complaint complaint, RbioWorkflowTransition transition,
+                                 String action, Map<String, String> params) {
+        requireParams(transition, params);
+        requireComment(transition, params);
 
-            case "SCHEDULE_MEETING":
-                complaint.setWorkflowStage("MEETING_SCHEDULED");
-                String meetingDate = params.getOrDefault("meetingDate", "");
-                if (!meetingDate.isEmpty()) {
-                    try {
-                        complaint.setConciliationDate(LocalDateTime.parse(meetingDate));
-                    } catch (Exception e) {
-                        log.debug("Could not parse meetingDate: {}", meetingDate);
-                    }
-                }
-                break;
+        // UST603-604: refuse a closure, or a forward to a deciding authority, while a secure
+        // document-upload link is still live. Placed here — after the transition is resolved and its
+        // params validated, but before the FIRST setter — so a refusal leaves the complaint unchanged.
+        // Previously enforced only in the browser, and therefore bypassable by calling the API directly.
+        if (uploadLinkGuardService != null) {
+            uploadLinkGuardService.assertActionAllowed(
+                    complaint.getComplaintNumber(), transition, params.get("targetRole"));
+        }
 
-            case "ISSUE_ADVISORY":
-                complaint.setStatus("advisory_issued");
-                complaint.setWorkflowStage("ADVISORY_ISSUED");
-                complaint.setClosureCause("ADVISORY");
-                String advisoryText = params.getOrDefault("advisoryText", params.getOrDefault("remarks", ""));
-                complaint.setAdvisoryText(advisoryText);
-                complaint.setAdvisoryIssuedAt(LocalDateTime.now());
-                break;
+        String assignedRole = resolveAssignedRole(complaint, transition);
+        if (assignedRole != null) {
+            complaint.setAssignedRole(assignedRole);
+        }
 
-            case "FORWARD_TO_CONCILIATION":
-                complaint.setStatus("conciliation");
-                complaint.setAssignedRole("RBIO_CONCILIATOR");
-                complaint.setWorkflowStage("CONCILIATION");
-                String conciliator = assignByRole("RBIO_CONCILIATOR");
-                if (conciliator != null) {
-                    complaint.setAssignedOfficer(conciliator);
-                }
-                rbioSlaService.applyStageSla(complaint, "CONCILIATION");
-                break;
+        applySideEffects(complaint, transition, action, params, assignedRole);
 
-            case "FORWARD_TO_ADJUDICATION":
-                complaint.setStatus("adjudication");
-                complaint.setAssignedRole("RBIO_ADJUDICATOR");
-                complaint.setWorkflowStage("ADJUDICATION");
-                String adjudicator = assignByRole("RBIO_ADJUDICATOR");
-                if (adjudicator != null) {
-                    complaint.setAssignedOfficer(adjudicator);
-                }
-                rbioSlaService.applyStageSla(complaint, "ADJUDICATION");
-                break;
+        // A NULL toStatus means "unchanged" — SCHEDULE_MEETING, ISSUE_NOTICE_13_1 and IMPLEAD_PARTY all
+        // move only the stage. Writing it through would blank a live complaint's status.
+        //
+        // Skipped when a side effect already set the status, which only APPROVE does: its status depends
+        // on which rank the file lands on, so the table cannot carry a literal.
+        if (transition.getToStatus() != null && !hasSideEffect(transition, RbioTransitionRegistry.FX_APPROVE_LADDER)) {
+            complaint.setStatus(transition.getToStatus());
+        }
+        if (transition.getToStage() != null && !hasSideEffect(transition, RbioTransitionRegistry.FX_APPROVE_LADDER)) {
+            complaint.setWorkflowStage(transition.getToStage());
+        }
+        if (transition.getToMilestone() != null) {
+            complaint.setMilestone(transition.getToMilestone());
+        }
 
-            case "ESCALATE_TO_ADJUDICATION":
-                complaint.setStatus("adjudication");
-                complaint.setAssignedRole("RBIO_ADJUDICATOR");
-                complaint.setWorkflowStage("ADJUDICATION");
-                complaint.setConciliationOutcome("FAILED");
-                String adjudicatorEsc = assignByRole("RBIO_ADJUDICATOR");
-                if (adjudicatorEsc != null) {
-                    complaint.setAssignedOfficer(adjudicatorEsc);
-                }
-                rbioSlaService.applyStageSla(complaint, "ADJUDICATION");
-                break;
+        applyAssignee(complaint, transition, params, assignedRole);
 
-            case "CONCILIATION_SUCCESS":
-                complaint.setStatus("conciliated");
-                complaint.setResolvedAt(LocalDateTime.now());
-                complaint.setConciliationOutcome("SUCCESS");
-                complaint.setConciliationDate(LocalDateTime.now());
-                complaint.setWorkflowStage("CONCILIATION_COMPLETE");
-                complaint.setClosureCause("CONCILIATION_SUCCESS");
-                break;
+        if (transition.getClosureCause() != null) {
+            String cause = hasSideEffect(transition, RbioTransitionRegistry.FX_CLOSURE_FROM_PARAM)
+                    ? params.getOrDefault("closureCause", transition.getClosureCause())
+                    : transition.getClosureCause();
+            complaint.setClosureCause(cause);
+        }
 
-            case "CONCILIATION_FAILED":
-                complaint.setStatus("escalated");
-                complaint.setAssignedRole("RBIO_ADJUDICATOR");
-                complaint.setConciliationOutcome("FAILED");
-                complaint.setConciliationDate(LocalDateTime.now());
-                complaint.setWorkflowStage("CONCILIATION_FAILED");
-                String adjAfterFail = assignByRole("RBIO_ADJUDICATOR");
-                if (adjAfterFail != null) {
-                    complaint.setAssignedOfficer(adjAfterFail);
-                }
-                rbioSlaService.applyStageSla(complaint, "ADJUDICATION");
-                break;
-
-            case "ADJUDICATION_AWARD":
-                // Validate compensation cap BEFORE allowing the award.
-                //
-                // `compensationAmount` is accepted as well as `awardAmount` because the adjudication
-                // screen sends the former (rbio-adjudication.component.ts). Reading only `awardAmount`
-                // meant the UI's amount NEVER bound: it defaulted to "0", sailed through the cap check
-                // however large the operator had typed, and the award was persisted as 0.00 — the
-                // citizen's compensation silently recorded as nothing, on an irreversible statutory
-                // act. Absence is now refused outright rather than defaulted, so a field-name drift
-                // can never again be mistaken for a lawful zero award.
-                String amountStr = firstNonBlankParam(params, "awardAmount", "compensationAmount");
-                String compensationType = params.getOrDefault("compensationType",
-                        complaint.getCompensationType() != null ? complaint.getCompensationType() : "COMBINED");
-                if (amountStr == null) {
-                    throw new IllegalArgumentException(
-                            "An award amount is required to issue an award (send awardAmount)");
-                }
-                BigDecimal awardAmount;
-                try {
-                    awardAmount = new BigDecimal(amountStr);
-                } catch (NumberFormatException e) {
-                    throw new IllegalArgumentException("Invalid award amount: " + amountStr);
-                }
-                // This will throw IllegalArgumentException if cap exceeded (BLOCKING)
-                rbioCompensationService.validateAward(awardAmount, compensationType);
-
-                complaint.setStatus("adjudicated");
-                complaint.setResolvedAt(LocalDateTime.now());
-                complaint.setAwardAmount(awardAmount);
-                complaint.setCompensationType(compensationType);
-                complaint.setAdjudicationDate(LocalDateTime.now());
-                complaint.setAdjudicationOutcome("AWARD_ISSUED");
-                complaint.setWorkflowStage("AWARD_ISSUED");
-                complaint.setClosureCause("ADJUDICATION_AWARD");
-                break;
-
-            case "ADJUDICATION_REJECT":
-                complaint.setStatus("rejected");
-                complaint.setResolvedAt(LocalDateTime.now());
-                complaint.setAdjudicationDate(LocalDateTime.now());
-                complaint.setAdjudicationOutcome("REJECTED");
-                complaint.setWorkflowStage("ADJUDICATION_REJECTED");
-                complaint.setClosureCause("ADJUDICATION_REJECTED");
-                break;
-
-            case "ISSUE_NOTICE_13_1":
-                complaint.setWorkflowStage("NOTICE_13_1_ISSUED");
-                complaint.setNotice131IssuedAt(LocalDateTime.now());
-                // Timeline entry serves as the notice record
-                break;
-
-            case "IMPLEAD_PARTY":
-                String partyName = params.getOrDefault("partyName", "");
-                if (partyName.isBlank()) {
-                    throw new IllegalArgumentException("partyName is required for IMPLEAD_PARTY action");
-                }
-                String existing = complaint.getImpleadedParties();
-                if (existing == null || existing.isBlank()) {
-                    complaint.setImpleadedParties(partyName);
-                } else {
-                    complaint.setImpleadedParties(existing + "," + partyName);
-                }
-                complaint.setWorkflowStage("PARTY_IMPLEADED");
-                break;
-
-            case "REASSIGN":
-                String targetUser = params.getOrDefault("targetUser", "");
-                if (!targetUser.isEmpty()) {
-                    complaint.setAssignedOfficer(targetUser);
-                }
-                String targetRole = params.getOrDefault("targetRole", "");
-                if (!targetRole.isEmpty()) {
-                    complaint.setAssignedRole(targetRole);
-                }
-                complaint.setStatus("assigned");
-                complaint.setWorkflowStage("REASSIGNED");
-                break;
-
-            case "CLOSE_COMPLAINT":
-                complaint.setStatus("closed");
-                complaint.setClosedAt(LocalDateTime.now());
-                complaint.setResolvedAt(LocalDateTime.now());
-                complaint.setWorkflowStage("CLOSED");
-                complaint.setClosureCause(params.getOrDefault("closureCause", "ADMIN_CLOSED"));
-                break;
-
-            case "REOPEN":
-                complaint.setStatus("in_progress");
-                complaint.setResolvedAt(null);
-                complaint.setClosedAt(null);
-                complaint.setWorkflowStage("REOPENED");
-                int currentReopenCount = complaint.getReopenCount() != null ? complaint.getReopenCount() : 0;
-                complaint.setReopenCount(currentReopenCount + 1);
-                complaint.setLastReopenedAt(LocalDateTime.now());
-                // Re-apply SLA from reopen time
-                rbioSlaService.applyStageSla(complaint, "OFFICER_ASSESSMENT");
-                break;
-
-            case "BULK_ASSIGN":
-                // Bulk assign is handled at the controller level; individual action simply reassigns
-                String bulkTarget = params.getOrDefault("targetUser", "");
-                String bulkRole = params.getOrDefault("targetRole", "RBIO_OFFICER");
-                if (!bulkTarget.isEmpty()) {
-                    complaint.setAssignedOfficer(bulkTarget);
-                }
-                complaint.setAssignedRole(bulkRole);
-                complaint.setStatus("assigned");
-                complaint.setWorkflowStage("BULK_ASSIGNED");
-                break;
-
-            default:
-                throw new IllegalArgumentException("Unknown RBIO action: " + action);
+        if (transition.getSlaStage() != null) {
+            rbioSlaService.applyStageSla(complaint, transition.getSlaStage());
         }
     }
 
     /**
-     * Determine if an action is valid given the current complaint state.
+     * Refuses the action when a declared-required param is absent.
+     *
+     * <p>A pipe-separated group means "at least one of". This is the award-amount refusal: the
+     * adjudication screen sends {@code compensationAmount} while the API contract says
+     * {@code awardAmount}, and reading only one of them persisted a citizen's compensation as 0.00 on an
+     * irreversible statutory act. Absence is refused, never defaulted.
      */
-    private boolean isActionValidForState(Complaint complaint, String action) {
-        String status = complaint.getStatus();
-        if (status == null) return false;
+    private void requireParams(RbioWorkflowTransition transition, Map<String, String> params) {
+        String required = transition.getRequiredParams();
+        if (required == null || required.isBlank()) return;
 
-        switch (action) {
-            case "ACCEPT":
-            case "TAKE_ACTION":
-                return "assigned".equals(status) || "returned".equals(status);
-
-            case "APPROVE":
-                return "in_progress".equals(status);
-
-            case "REJECT":
-                return "in_progress".equals(status) || "assigned".equals(status);
-
-            case "ESCALATE":
-                return "in_progress".equals(status) || "assigned".equals(status);
-
-            case "RETURN_TO_OFFICER":
-                return "escalated".equals(status) || "in_progress".equals(status);
-
-            case "RESOLVE":
-                return "in_progress".equals(status);
-
-            case "REQUEST_INFO":
-            case "SCHEDULE_MEETING":
-                return "in_progress".equals(status) || "assigned".equals(status) || "conciliation".equals(status);
-
-            case "ISSUE_ADVISORY":
-                return "in_progress".equals(status) || "assigned".equals(status);
-
-            case "FORWARD_TO_CONCILIATION":
-                return "in_progress".equals(status) || "escalated".equals(status);
-
-            case "FORWARD_TO_ADJUDICATION":
-                return "in_progress".equals(status) || "escalated".equals(status);
-
-            case "ESCALATE_TO_ADJUDICATION":
-                return "conciliation".equals(status) || "escalated".equals(status);
-
-            case "CONCILIATION_SUCCESS":
-            case "CONCILIATION_FAILED":
-                return "conciliation".equals(status);
-
-            case "ADJUDICATION_AWARD":
-            case "ADJUDICATION_REJECT":
-            case "ISSUE_NOTICE_13_1":
-            case "IMPLEAD_PARTY":
-                return "adjudication".equals(status);
-
-            case "REASSIGN":
-            case "BULK_ASSIGN":
-                return !List.of("closed", "resolved", "rejected", "withdrawn", "adjudicated", "conciliated").contains(status);
-
-            case "CLOSE_COMPLAINT":
-                return !List.of("closed").contains(status);
-
-            case "REOPEN":
-                return "closed".equals(status) || "resolved".equals(status) ||
-                        "adjudicated".equals(status) || "conciliated".equals(status);
-
-            default:
-                return true;
+        for (String group : required.split(",")) {
+            String[] alternatives = withAliases(group.trim().split("\\|"));
+            if (firstNonBlankParam(params, alternatives) == null) {
+                // The message names the canonical alternative, matching what the API contract documents.
+                String canonical = alternatives[0];
+                if ("awardAmount".equals(canonical)) {
+                    throw new IllegalArgumentException(
+                            "An award amount is required to issue an award (send awardAmount)");
+                }
+                throw new IllegalArgumentException(canonical + " is required for " + transition.getActionCode() + " action");
+            }
         }
     }
 
-    private String getNextRole(String currentRole) {
-        if (currentRole == null) return "RBIO_OFFICER";
-        Map<String, String> escalation = Map.of(
-                "RBIO_OFFICER", "RBIO_SUPERVISOR",
-                "RBIO_SUPERVISOR", "RBIO_CONCILIATOR",
-                "RBIO_CONCILIATOR", "RBIO_ADJUDICATOR"
-        );
-        return escalation.getOrDefault(currentRole, currentRole);
+    /**
+     * Refuses the action when the row demands a comment and none was supplied.
+     *
+     * <p>{@code REQUIRES_COMMENT} has existed since Wave 0 with a helper to read it and NO caller — every
+     * row seeded "N" and nothing ever checked it. UST516-517 and 531 require mandatory comments on the
+     * send-backs, so this activates the column rather than adding a parallel mechanism beside it.
+     *
+     * <p>Checked before any mutation, alongside {@link #requireParams}: a refused action must leave the
+     * complaint untouched and unsaved.
+     */
+    private void requireComment(RbioWorkflowTransition transition, Map<String, String> params) {
+        if (!transition.commentRequired()) return;
+
+        // "comments" is accepted as an alias because the shared task-action screen posts `remarks` while
+        // some RBIO components post `comments`; requiring only one name would refuse a comment the user
+        // demonstrably typed.
+        if (firstNonBlankParam(params, "remarks", "comments") == null) {
+            // ResponseStatusException, NOT IllegalArgumentException. WorkflowController.performAction
+            // catches IllegalArgumentException and answers HTTP 200 with success:false, which the Angular
+            // clients cannot see: their error branch never fires on a 200, so a refused send-back renders
+            // as a successful one. A 400 reaches catchError. The shared catch block is left alone because
+            // CEPC depends on its current behaviour.
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "A comment is required for the " + transition.getActionCode() + " action");
+        }
+    }
+
+    /** The role the file moves to: a literal, or one step along the ladder for the relative moves. */
+    private String resolveAssignedRole(Complaint complaint, RbioWorkflowTransition transition) {
+        String target = transition.getAssignToRole();
+        if (target == null) return null;
+        if (RbioTransitionRegistry.NEXT_RANK.equals(target)) {
+            return RbioRoles.nextRank(complaint.getAssignedRole());
+        }
+        if (RbioTransitionRegistry.PREVIOUS_RANK.equals(target)) {
+            return RbioRoles.previousRank(complaint.getAssignedRole());
+        }
+        return target;
+    }
+
+    /** Sets the officer per the row's strategy. */
+    private void applyAssignee(Complaint complaint, RbioWorkflowTransition transition,
+                               Map<String, String> params, String assignedRole) {
+        String strategy = transition.getAssignStrategy();
+        if (strategy == null) return;
+
+        switch (strategy) {
+            case RbioTransitionRegistry.ACTOR ->
+                    complaint.setAssignedOfficer(params.getOrDefault("actor", complaint.getAssignedOfficer()));
+
+            // targetUserId is accepted as an alias of targetUser because the reassignment screen sends
+            // that name (rbio-workflow.service.ts:93) while this method has only ever read targetUser.
+            // The action declares no required params, so the mismatch answered 200 OK and left the
+            // complaint with its ORIGINAL officer — the award-amount defect's shape, applied to identity.
+            // Refusing an absent target is handled by the row's requiredParams, not by silence here.
+            case RbioTransitionRegistry.TARGET_PARAM -> {
+                String target = firstNonBlankParam(params, "targetUser", "targetUserId");
+                if (target != null) {
+                    complaint.setAssignedOfficer(target);
+                }
+            }
+
+            case RbioTransitionRegistry.ROUND_ROBIN -> {
+                // A null return leaves the existing officer in place: an unreachable Keycloak must not
+                // orphan a live complaint by blanking its owner.
+                String picked = assignByRole(assignedRole != null ? assignedRole : complaint.getAssignedRole());
+                if (picked != null) {
+                    complaint.setAssignedOfficer(picked);
+                }
+            }
+
+            // A send-back returns the file to whoever previously held the target role. An explicit
+            // target still wins, which is how the forced-manual-selection retry works.
+            //
+            // When no ACTIVE previous holder exists the action is REFUSED rather than degraded to
+            // round-robin or left with the sender. Both of those silently give the file to someone the
+            // process does not name — the CEPC send-back bug, where the role drops to the dealing
+            // official while the reviewer who sent it back remains its owner.
+            case RbioTransitionRegistry.PREVIOUS_HOLDER -> {
+                String explicit = firstNonBlankParam(params, "targetUser", "targetUserId");
+                if (explicit != null) {
+                    complaint.setAssignedOfficer(explicit);
+                    break;
+                }
+
+                String targetRole = assignedRole != null ? assignedRole : complaint.getAssignedRole();
+                if (assignmentHistoryService == null) {
+                    throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
+                            "Send-back requires the assignment history service; name the officer explicitly (targetUser)");
+                }
+
+                RbioCaseAssignmentHistoryService.Outcome outcome =
+                        assignmentHistoryService.previousHolderFor(complaint.getComplaintNumber(), targetRole);
+                if (!outcome.assignable()) {
+                    // 422 rather than 400: the request is well-formed, but the state cannot satisfy it and
+                    // the client must respond by prompting for manual selection. A distinct status lets the
+                    // UI tell "you sent something invalid" apart from "now pick an officer".
+                    //
+                    // ResponseStatusException so this reaches the client as a real error status — see
+                    // requireComment for why an IllegalArgumentException would surface as HTTP 200.
+                    throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
+                            switch (outcome.availability()) {
+                        case INACTIVE -> "The previous " + targetRole + " (" + outcome.officerId()
+                                + ") is no longer active. Select an officer to send this complaint back to.";
+                        default -> "No previous " + targetRole
+                                + " held this complaint. Select an officer to send it back to.";
+                    });
+                }
+                complaint.setAssignedOfficer(outcome.officerId());
+            }
+
+            default -> log.warn("Unknown RBIO assign strategy '{}' on action {}", strategy, transition.getActionCode());
+        }
+    }
+
+    /** Effects that a table cannot express. */
+    private void applySideEffects(Complaint complaint, RbioWorkflowTransition transition, String action,
+                                 Map<String, String> params, String assignedRole) {
+        String effects = transition.getSideEffect();
+        if (effects == null || effects.isBlank()) return;
+
+        LocalDateTime now = LocalDateTime.now();
+
+        for (String raw : effects.split(",")) {
+            String effect = raw.trim();
+            switch (effect) {
+                case RbioTransitionRegistry.FX_RESOLVED_AT -> complaint.setResolvedAt(now);
+                case RbioTransitionRegistry.FX_CLOSED_AT -> complaint.setClosedAt(now);
+                case RbioTransitionRegistry.FX_STAMP_ESCALATED -> complaint.setEscalatedAt(now);
+
+                // Closure cause is read from the param in applyTransition; nothing to do here.
+                case RbioTransitionRegistry.FX_CLOSURE_FROM_PARAM -> { }
+
+                // APPROVE: the status depends on which rank the file lands on. Reproduces the old
+                // branch exactly, including that a landing outside conciliation/adjudication yields
+                // "escalated" rather than a generic "approved".
+                case RbioTransitionRegistry.FX_APPROVE_LADDER -> {
+                    if (RbioRoles.CONCILIATOR.equals(assignedRole)) {
+                        complaint.setStatus("conciliation");
+                        complaint.setWorkflowStage("CONCILIATION");
+                        rbioSlaService.applyStageSla(complaint, "CONCILIATION");
+                    } else if (RbioRoles.ADJUDICATOR.equals(assignedRole)) {
+                        complaint.setStatus("adjudication");
+                        complaint.setWorkflowStage("ADJUDICATION");
+                        rbioSlaService.applyStageSla(complaint, "ADJUDICATION");
+                    } else {
+                        complaint.setStatus("escalated");
+                        complaint.setWorkflowStage("ESCALATED");
+                    }
+                }
+
+                case RbioTransitionRegistry.FX_MEETING_DATE -> {
+                    String meetingDate = params.getOrDefault("meetingDate", "");
+                    if (!meetingDate.isEmpty()) {
+                        try {
+                            complaint.setConciliationDate(LocalDateTime.parse(meetingDate));
+                        } catch (Exception e) {
+                            log.debug("Could not parse meetingDate: {}", meetingDate);
+                        }
+                    }
+                }
+
+                case RbioTransitionRegistry.FX_ADVISORY_TEXT -> {
+                    complaint.setAdvisoryText(params.getOrDefault("advisoryText", params.getOrDefault("remarks", "")));
+                    complaint.setAdvisoryIssuedAt(now);
+                }
+
+                // Cap validation happens BEFORE any status write, so an over-cap award leaves the
+                // complaint untouched and unsaved.
+                case RbioTransitionRegistry.FX_AWARD -> {
+                    String amountStr = firstNonBlankParam(params, "awardAmount", "compensationAmount");
+                    String compensationType = params.getOrDefault("compensationType",
+                            complaint.getCompensationType() != null ? complaint.getCompensationType() : "COMBINED");
+                    BigDecimal awardAmount;
+                    try {
+                        awardAmount = new BigDecimal(amountStr);
+                    } catch (NumberFormatException e) {
+                        throw new IllegalArgumentException("Invalid award amount: " + amountStr);
+                    }
+                    rbioCompensationService.validateAward(awardAmount, compensationType);
+
+                    complaint.setAwardAmount(awardAmount);
+                    complaint.setCompensationType(compensationType);
+                    complaint.setAdjudicationDate(now);
+                    complaint.setAdjudicationOutcome("AWARD_ISSUED");
+                }
+
+                case RbioTransitionRegistry.FX_ADJUDICATION_REJECT -> {
+                    complaint.setAdjudicationDate(now);
+                    complaint.setAdjudicationOutcome("REJECTED");
+                }
+
+                case RbioTransitionRegistry.FX_CONCILIATION_SUCCESS -> {
+                    complaint.setConciliationOutcome("SUCCESS");
+                    complaint.setConciliationDate(now);
+                }
+
+                case RbioTransitionRegistry.FX_CONCILIATION_FAILED -> {
+                    complaint.setConciliationOutcome("FAILED");
+                    // ESCALATE_TO_ADJUDICATION sets the outcome but NOT the date; CONCILIATION_FAILED
+                    // sets both. Reproduced exactly rather than unified.
+                    if ("CONCILIATION_FAILED".equals(action)) {
+                        complaint.setConciliationDate(now);
+                    }
+                }
+
+                case RbioTransitionRegistry.FX_NOTICE_13_1 -> complaint.setNotice131IssuedAt(now);
+
+                // impleadPartyName is accepted as an alias: rbio-adjudication.component.ts:153-159 sends
+                // that name while this arm has only ever read partyName. The IMPLEAD_PARTY row declares
+                // partyName required, so the mismatch surfaced as a 400 rather than persisting a blank
+                // party — but only by luck, and the frontend's impleading screen could never succeed.
+                case RbioTransitionRegistry.FX_IMPLEAD -> {
+                    String partyName = firstNonBlankParam(params, "partyName", "impleadPartyName");
+                    if (partyName == null) {
+                        throw new IllegalArgumentException("partyName is required to implead a party");
+                    }
+                    String existing = complaint.getImpleadedParties();
+                    complaint.setImpleadedParties(
+                            (existing == null || existing.isBlank()) ? partyName : existing + "," + partyName);
+                }
+
+                // REASSIGN takes its target role from a param, so it overrides the row's assignToRole.
+                case RbioTransitionRegistry.FX_REASSIGN_ROLE -> {
+                    String targetRole = params.getOrDefault("targetRole", "");
+                    if (!targetRole.isEmpty()) {
+                        complaint.setAssignedRole(targetRole);
+                    }
+                }
+
+                case RbioTransitionRegistry.FX_BULK_ROLE ->
+                        complaint.setAssignedRole(params.getOrDefault("targetRole", RbioRoles.OFFICER));
+
+                case RbioTransitionRegistry.FX_REOPEN -> {
+                    // UST550-552. Validated BEFORE any field is cleared: a refused reopen must leave the
+                    // closure intact, and this arm nulls resolvedAt/closedAt.
+                    String reopenedByRole = requireReopenAuthority(params);
+
+                    // UST551's reason-and-justification requirement is the OMBUDSMAN's reopen — the
+                    // statutory act of reversing a concluded proceeding, which has to say on whose
+                    // authority and why.
+                    //
+                    // RBIO_ADMIN's reopen is an administrative correction of a mis-closure and predates
+                    // this story; it carried no reason field and no caller supplies one. Demanding one
+                    // here would break every existing administrative reopen — a behaviour change to a
+                    // working path, smuggled in under a new story. When an admin DOES supply a reason it
+                    // is still validated and recorded, so nothing is silently accepted either.
+                    boolean reasonMandatory = !RbioRoles.ADMIN.equals(reopenedByRole);
+                    boolean reasonSupplied = firstNonBlankParam(params, "reopenReason", "reason") != null;
+
+                    String reason = null;
+                    String justification = null;
+                    if (reasonMandatory || reasonSupplied) {
+                        reason = requireReopenReason(params);
+                        justification = firstNonBlankParam(params, "reopenJustification", "justification");
+                        if (justification == null) {
+                            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                                    "A justification is required to reopen a complaint");
+                        }
+                    }
+
+                    complaint.setReopenReason(reason);
+                    complaint.setReopenJustification(justification);
+                    complaint.setResolvedAt(null);
+                    complaint.setClosedAt(null);
+                    int current = complaint.getReopenCount() != null ? complaint.getReopenCount() : 0;
+                    complaint.setReopenCount(current + 1);
+                    complaint.setLastReopenedAt(now);
+                    complaint.setReopenedAt(now);
+
+                    // UST552: the file returns to the official who ORIGINALLY processed it, with all prior
+                    // history intact — nothing here touches the timeline, attachments or closure clause.
+                    // The originally-processing DO is not necessarily the last holder, so this is the
+                    // earliest custody row for the dealing rank, not the most recent one.
+                    if (assignmentHistoryService != null) {
+                        String dealingRole = complaint.getAssignedRole() != null
+                                && RbioRoles.OFFICER.equals(complaint.getAssignedRole())
+                                ? RbioRoles.OFFICER : RbioRoles.DEALING_OFFICIAL;
+
+                        RbioCaseAssignmentHistoryService.Outcome original =
+                                assignmentHistoryService.originalHolderFor(complaint.getComplaintNumber(), dealingRole);
+                        if (!original.assignable() && RbioRoles.DEALING_OFFICIAL.equals(dealingRole)) {
+                            // Legacy complaints were held under the OFFICER name; fall back to it before
+                            // giving up, so a reopen on an old file still finds its original owner.
+                            original = assignmentHistoryService.originalHolderFor(
+                                    complaint.getComplaintNumber(), RbioRoles.OFFICER);
+                        }
+                        if (original.assignable()) {
+                            complaint.setAssignedOfficer(original.officerId());
+                        }
+                    }
+                }
+
+                // ═══ S3 ladder effects ═══
+
+                // The determination is taken from the ACTION, not from a param, for the two explicit
+                // DECIDE_* actions — the action code IS the decision, so a contradicting param must not be
+                // able to record the opposite of the action performed. DEPUTY_OMBUDSMAN_DECISION is the
+                // exception: it carries the finding in a param because one action expresses both outcomes.
+                case RbioLadderActions.FX_MAINTAINABILITY -> {
+                    String determination = switch (action) {
+                        case RbioLadderActions.DECIDE_MAINTAINABLE -> "MAINTAINABLE";
+                        case RbioLadderActions.DECIDE_NON_MAINTAINABLE -> "NON_MAINTAINABLE";
+                        default -> normalisedMaintainability(params.get("maintainability"));
+                    };
+                    if (determination == null) {
+                        throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                                "maintainability must be MAINTAINABLE or NON_MAINTAINABLE");
+                    }
+                    complaint.setMaintainabilityDetermination(determination);
+                    complaint.setMaintainabilityDeterminedBy(params.getOrDefault("actor", ""));
+                    complaint.setMaintainabilityDeterminedAt(now);
+                }
+
+                case RbioLadderActions.FX_DEPUTY_DECISION -> {
+                    String determination = normalisedMaintainability(params.get("maintainability"));
+                    if (determination == null) {
+                        throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                                "maintainability must be MAINTAINABLE or NON_MAINTAINABLE");
+                    }
+                    String decision = params.getOrDefault("decision", "").trim().toUpperCase();
+                    if (!"FACILITATION".equals(decision) && !"REJECTION".equals(decision)) {
+                        throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                                "decision must be FACILITATION or REJECTION");
+                    }
+                    complaint.setMaintainabilityDetermination(determination);
+                    complaint.setMaintainabilityDeterminedBy(params.getOrDefault("actor", ""));
+                    complaint.setMaintainabilityDeterminedAt(now);
+                    complaint.setDeputyDecision(decision);
+                }
+
+                case RbioLadderActions.FX_ADVISORY_COMPLIED -> complaint.setAdvisoryCompliedAt(now);
+
+                // The body is recorded in its own column rather than written into assignedOfficer, which
+                // is what the CEPC external-forward arms do — that leaves a non-user string in a user
+                // column and the complaint apparently owned by an organisation.
+                case RbioLadderActions.FX_REGULATORY_BODY -> {
+                    String body = firstNonBlankParam(params, "regulatoryBodyName", "regulatoryBodyId");
+                    if (body == null) {
+                        throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                                "regulatoryBodyName is required to forward to a regulatory body");
+                    }
+                    complaint.setRegulatoryBodyName(body);
+                }
+
+                default -> log.warn("Unknown RBIO side effect '{}' on action {}", effect, action);
+            }
+        }
+    }
+
+    private static boolean hasSideEffect(RbioWorkflowTransition transition, String effect) {
+        String effects = transition.getSideEffect();
+        if (effects == null) return false;
+        for (String candidate : effects.split(",")) {
+            if (candidate.trim().equals(effect)) return true;
+        }
+        return false;
     }
 
     private String assignByRole(String role) {
@@ -607,6 +856,148 @@ public class RbioWorkflowService {
             log.warn("Failed to assign user by role {}: {}", role, e.getMessage());
             return null;
         }
+    }
+
+    /**
+     * The role to record custody under — the role the officer actually HOLDS the file in.
+     *
+     * <p>Usually {@code complaint.assignedRole}, but not always, and the exception is load-bearing.
+     * ACCEPT declares no {@code assignToRole} (its strategy is ACTOR: the performer takes ownership), so
+     * it leaves the complaint's role at whatever it was. A complaint created with the legacy
+     * {@code RBIO_OFFICER} role and then accepted by a Dealing Official therefore still reads
+     * {@code RBIO_OFFICER}, and recording custody under that role means a later SEND_BACK_DO — which
+     * looks up {@code RBIO_DEALING_OFFICIAL} — finds no previous holder and refuses.
+     *
+     * <p>So when the row does not redirect the file to another role, the ACTING role is authoritative:
+     * the officer holds it in the capacity they acted in. When the row DOES name a target role
+     * (SUBMIT_FOR_REVIEW → RBIO_REVIEWER), that target is the capacity the new holder takes it in, and
+     * the actor's own role is irrelevant.
+     */
+    private static String custodyRoleFor(Complaint complaint, RbioWorkflowTransition transition,
+                                        Map<String, String> params) {
+        if (transition.getAssignToRole() != null) {
+            return complaint.getAssignedRole();
+        }
+        String actingRole = params.getOrDefault("userRole", "").trim();
+        return actingRole.isBlank() ? complaint.getAssignedRole() : actingRole.toUpperCase();
+    }
+
+    /** SYSTEM_CONFIG key holding the permitted reopen reasons (UST551). */
+    static final String REOPEN_REASONS_KEY = "cms.rbio.reopen.reasons";
+
+    /** SYSTEM_CONFIG key holding the roles permitted to reopen (UST550). */
+    static final String REOPEN_ROLES_KEY = "cms.rbio.reopen.roles";
+
+    /**
+     * The reasons a complaint may be reopened, from configuration.
+     *
+     * <p>The fallback is the three UST551 names. It is a fallback and not a hardcoded list: an operator
+     * adds a reason with a SYSTEM_CONFIG row, no release required.
+     */
+    private static final Set<String> DEFAULT_REOPEN_REASONS =
+            Set.of("APPELLATE_AUTHORITY", "COURT_ORDER", "CORRECTION_REQUIRED");
+
+    /**
+     * Refuses a reopen by anyone but the Ombudsman (UST550).
+     *
+     * <p>Enforced HERE and not merely by hiding the control: the story says the Ombudsman alone may
+     * reopen, and a hidden button is not a restriction — the endpoint accepts a direct POST.
+     *
+     * <p>ADMIN retains the ability because it held it before this change and removing it would break
+     * administrative correction of a mis-closure; the configuration key can revoke it without a release.
+     * A BLANK role is refused rather than waved through, unlike elsewhere in this service: every other
+     * action's worst case is a mis-routed live file, whereas this one reverses a concluded proceeding.
+     */
+    private String requireReopenAuthority(Map<String, String> params) {
+        Set<String> permitted = systemConfigService != null
+                ? systemConfigService.getSet(REOPEN_ROLES_KEY, Set.of(RbioRoles.OMBUDSMAN, RbioRoles.ADMIN))
+                : Set.of(RbioRoles.OMBUDSMAN, RbioRoles.ADMIN);
+
+        // The TOKEN is authoritative, and the body param is only a fallback for callers that supply no
+        // identity at all. Reading `userRole` from the request body first would let any caller reopen a
+        // concluded proceeding by naming a role they do not hold — the precedence bug this codebase has
+        // already had to fix five times elsewhere. identityResolver is token-first by construction.
+        String actingRole = null;
+        if (identityResolver != null) {
+            try {
+                actingRole = identityResolver.resolveRbioRole();
+            } catch (Exception e) {
+                log.debug("Could not resolve RBIO role for reopen: {}", e.getMessage());
+            }
+        }
+        if (actingRole == null || actingRole.isBlank()) {
+            actingRole = params.getOrDefault("userRole", "").trim();
+        }
+
+        if (actingRole.isBlank() || !permitted.contains(actingRole.toUpperCase())) {
+            throw new SecurityException("Only the Ombudsman may reopen a closed complaint");
+        }
+        return actingRole.toUpperCase();
+    }
+
+    /** The supplied reopen reason, refused when it is absent or outside the configured vocabulary. */
+    private String requireReopenReason(Map<String, String> params) {
+        String reason = firstNonBlankParam(params, "reopenReason", "reason");
+        if (reason == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A reopen reason is required");
+        }
+
+        Set<String> permitted = systemConfigService != null
+                ? systemConfigService.getSet(REOPEN_REASONS_KEY, DEFAULT_REOPEN_REASONS)
+                : DEFAULT_REOPEN_REASONS;
+
+        String normalised = reason.trim().toUpperCase().replace(' ', '_').replace('-', '_');
+        if (!permitted.contains(normalised)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "'" + reason + "' is not a permitted reopen reason. Permitted: " + permitted);
+        }
+        return normalised;
+    }
+
+    /**
+     * Param names the client may send for the same value, keyed by the canonical name.
+     *
+     * <p>Declared in ONE place so the requirement check and the side effect that reads the value can never
+     * disagree. They did: {@code IMPLEAD_PARTY} declares {@code partyName} required while the impleading
+     * screen sends {@code impleadPartyName}, so accepting the alias only inside the side effect would
+     * still have been refused by {@link #requireParams} before reaching it.
+     *
+     * <p>This is deliberately NOT a general "accept anything similar" rule. Each entry is a specific
+     * client/server disagreement that exists in this codebase, and the canonical name stays first so error
+     * messages continue to name what the API contract documents.
+     */
+    private static final Map<String, String[]> PARAM_ALIASES = Map.of(
+            "partyName",  new String[]{"impleadPartyName"},
+            "targetUser", new String[]{"targetUserId"},
+            "remarks",    new String[]{"comments"});
+
+    /** {@code alternatives} plus any declared aliases of them. */
+    private static String[] withAliases(String[] alternatives) {
+        List<String> expanded = new ArrayList<>(Arrays.asList(alternatives));
+        for (String name : alternatives) {
+            String[] aliases = PARAM_ALIASES.get(name);
+            if (aliases != null) {
+                expanded.addAll(Arrays.asList(aliases));
+            }
+        }
+        return expanded.toArray(new String[0]);
+    }
+
+    /**
+     * MAINTAINABLE / NON_MAINTAINABLE from a supplied value, or null when it is neither.
+     *
+     * <p>Returns null rather than defaulting, so the caller refuses. A maintainability finding decides
+     * whether a citizen keeps their statutory recourse; guessing one from an unrecognised string would be
+     * the worst possible defaulting in this module.
+     */
+    private static String normalisedMaintainability(String raw) {
+        if (raw == null) return null;
+        String value = raw.trim().toUpperCase().replace('-', '_').replace(' ', '_');
+        return switch (value) {
+            case "MAINTAINABLE" -> "MAINTAINABLE";
+            case "NON_MAINTAINABLE", "NOT_MAINTAINABLE" -> "NON_MAINTAINABLE";
+            default -> null;
+        };
     }
 
     /** The first of {@code keys} present and non-blank in {@code params}, or null when none is. */

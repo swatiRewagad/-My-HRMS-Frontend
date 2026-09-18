@@ -8,6 +8,19 @@ import { staffAuthGuard, staffRoleGuard } from './guards/staff-auth.guard';
  */
 const AA_ROLES = ['AA_DO', 'AA_REVIEWER', 'AA_SECRETARIAT', 'AA_ADMIN', 'ADMIN'];
 
+/**
+ * Roles admitted to the RBIO module: the four ranks, the two stage roles, the two legacy ranks, and
+ * ADMIN as the cross-module superuser already accepted by every other staff route here.
+ *
+ * Conciliator and Adjudicator are STAGES, not ranks — they appear in this list because they hold case
+ * files, not because they sit above the Reviewer in a hierarchy.
+ */
+const RBIO_ROLES = [
+  'RBIO_DEALING_OFFICIAL', 'RBIO_REVIEWER', 'RBIO_DEPUTY_OMBUDSMAN', 'RBIO_OMBUDSMAN',
+  'RBIO_OFFICER', 'RBIO_SUPERVISOR', 'RBIO_CONCILIATOR', 'RBIO_ADJUDICATOR',
+  'RBIO_ADMIN', 'ADMIN'
+];
+
 export const routes: Routes = [
   {
     path: '',
@@ -120,23 +133,65 @@ export const routes: Routes = [
     canActivate: [staffAuthGuard],
     loadComponent: () => import('./components/staff/rbio-tasks/rbio-tasks.component').then(m => m.RbioTasksComponent)
   },
+  // ── RBIO Module ──
+  // These three had NO canActivate at all: the RBIO home, the complaint-creation screen and the
+  // complaint DETAIL view were reachable by anyone who knew the URL, with no login. The detail view is
+  // the serious one — it renders a named citizen's complaint, so this was an unauthenticated PII
+  // disclosure, not merely an unguarded dashboard. A role guard, not just staffAuthGuard: any
+  // authenticated staff member (a CEPC officer, an RE nodal officer) could otherwise read RBIO case files.
   {
     path: 'rbio',
+    canActivate: [staffRoleGuard(RBIO_ROLES)],
     loadComponent: () => import('./components/rbio/rbio-home/rbio-home.component').then(m => m.RbioHomeComponent)
   },
   {
     path: 'rbio/create-complaint',
+    canActivate: [staffRoleGuard(RBIO_ROLES)],
     loadComponent: () => import('./components/rbio/rbio-create-complaint/rbio-create-complaint.component').then(m => m.RbioCreateComplaintComponent)
   },
   {
     path: 'rbio/complaint/:id',
+    canActivate: [staffRoleGuard(RBIO_ROLES)],
     loadComponent: () => import('./components/rbio/rbio-complaint-detail/rbio-complaint-detail.component').then(m => m.RbioComplaintDetailComponent)
   },
   {
     path: 'rbio/supervisor-dashboard',
-    canActivate: [staffAuthGuard],
+    canActivate: [staffRoleGuard(RBIO_ROLES)],
     loadComponent: () => import('./components/rbio/rbio-supervisor-dashboard/rbio-supervisor-dashboard.component').then(m => m.RbioSupervisorDashboardComponent)
   },
+
+  // ═══════════════════════════════════════════════════════════════════════════════════════════════
+  // RBIO parallel-session route blocks (S1-S7).
+  //
+  // Each session adds its routes ONLY between its own markers and edits nothing outside them.
+  // Concurrent edits to a shared route table silently lose work, and the loser finds out only when
+  // their component 404s at demo time.
+  //
+  // Use `canActivate: [staffRoleGuard(RBIO_ROLES)]` unless the story genuinely needs a narrower list;
+  // bare staffAuthGuard admits every authenticated staff member, including non-RBIO ones.
+  // ═══════════════════════════════════════════════════════════════════════════════════════════════
+
+  // <<< S1 START >>>
+  // <<< S1 END >>>
+
+  // <<< S2 START >>>
+  // <<< S2 END >>>
+
+  // <<< S3 START >>>
+  // <<< S3 END >>>
+
+  // <<< S4 START >>>
+  // <<< S4 END >>>
+
+  // <<< S5 START >>>
+  // <<< S5 END >>>
+
+  // <<< S6 START >>>
+  // <<< S6 END >>>
+
+  // <<< S7 START >>>
+  // <<< S7 END >>>
+
   {
     path: 'staff/cepc/tasks',
     canActivate: [staffAuthGuard],

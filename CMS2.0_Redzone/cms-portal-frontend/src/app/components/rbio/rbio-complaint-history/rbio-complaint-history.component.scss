@@ -1,0 +1,159 @@
+.history-panel {
+  padding: 0.5rem 0;
+}
+
+.history-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.section-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0;
+  color: #1f2937;
+}
+
+.filter-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  color: #4b5563;
+  cursor: pointer;
+}
+
+.loading-state,
+.empty-state {
+  padding: 1rem;
+  color: #6b7280;
+  font-size: 0.875rem;
+  text-align: center;
+}
+
+.error-state {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid #fca5a5;
+  background: #fef2f2;
+  color: #991b1b;
+  border-radius: 4px;
+  font-size: 0.875rem;
+
+  .retry-btn {
+    border: 1px solid #991b1b;
+    background: #fff;
+    color: #991b1b;
+    padding: 0.25rem 0.75rem;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 0.8rem;
+  }
+}
+
+.timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0 1rem;
+  border-left: 2px solid #e5e7eb;
+}
+
+.timeline-entry {
+  position: relative;
+  padding: 0.6rem 0 0.9rem 1rem;
+  font-size: 0.85rem;
+
+  &::before {
+    content: '';
+    position: absolute;
+    left: -1.42rem;
+    top: 0.95rem;
+    width: 0.6rem;
+    height: 0.6rem;
+    border-radius: 50%;
+    background: #2563eb;
+    border: 2px solid #fff;
+  }
+
+  // System events are visually de-emphasised so an officer's own actions stand out.
+  &.automatic::before {
+    background: #9ca3af;
+  }
+}
+
+.entry-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.entry-action {
+  font-weight: 600;
+  color: #111827;
+}
+
+.entry-time {
+  color: #6b7280;
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.entry-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.15rem;
+  color: #4b5563;
+  font-size: 0.78rem;
+}
+
+.entry-badge {
+  background: #f3f4f6;
+  color: #4b5563;
+  border-radius: 10px;
+  padding: 0.05rem 0.5rem;
+  font-size: 0.7rem;
+}
+
+.entry-status {
+  margin-top: 0.3rem;
+  color: #374151;
+  font-size: 0.8rem;
+}
+
+.entry-change,
+.entry-clause,
+.entry-destination {
+  margin-top: 0.3rem;
+  font-size: 0.8rem;
+  color: #374151;
+}
+
+.entry-change {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+
+  .change-field { color: #6b7280; }
+  .change-old { color: #991b1b; text-decoration: line-through; }
+  .change-arrow { color: #6b7280; }
+  .change-new { color: #065f46; font-weight: 600; }
+}
+
+.entry-remarks {
+  margin-top: 0.35rem;
+  padding: 0.4rem 0.6rem;
+  background: #f9fafb;
+  border-radius: 3px;
+  color: #374151;
+  font-size: 0.8rem;
+  white-space: pre-wrap;
+}

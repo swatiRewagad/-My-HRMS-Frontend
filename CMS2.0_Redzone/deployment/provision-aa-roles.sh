@@ -75,6 +75,19 @@ AA_ROLES=(
   "AA_ADMIN:Appellate Authority Administrator - assignment, thresholds, overrides"
   "RE_PNO:Regulated Entity Principal Nodal Officer"
   "RBIO_ADMIN:RBIO Administrator - also acts as ORBIO Admin for AA routing"
+  # ── RBIO rank ladder ──
+  # These four are RANKS: a position in the escalation hierarchy
+  # (DEALING_OFFICIAL -> REVIEWER -> DEPUTY_OMBUDSMAN -> OMBUDSMAN).
+  #
+  # RBIO_CONCILIATOR and RBIO_ADJUDICATOR are deliberately NOT part of this ladder. They are STAGES —
+  # a function a ranked officer performs at a point in the process. Conflating the two is what the
+  # existing hardcoded ladder does (OFFICER->SUPERVISOR->CONCILIATOR->ADJUDICATOR), which asserts that
+  # being an adjudicator is senior to being a conciliator; it is not, they are different activities.
+  # The frontend already assumes these names exist and 403s against them today.
+  "RBIO_DEALING_OFFICIAL:RBIO Dealing Official - first-level case handling (rank)"
+  "RBIO_REVIEWER:RBIO Reviewer - reviews the Dealing Official's assessment (rank)"
+  "RBIO_DEPUTY_OMBUDSMAN:RBIO Deputy Ombudsman - decides within delegated authority (rank)"
+  "RBIO_OMBUDSMAN:RBIO Ombudsman - final decision and appealable orders (rank)"
 )
 
 for entry in "${AA_ROLES[@]}"; do
@@ -105,6 +118,12 @@ AA_USERS=(
   "re_pno_001|RE_PNO|attributes.entity_code=HDFC Bank"
   "orbio_admin_001|RBIO_ADMIN|"
   "orbio_officer_001|RBIO_OFFICER|"
+  # RBIO rank ladder test users, one per rank, so an E2E test can log in AS a rank rather than
+  # asserting against a role it granted itself with a header.
+  "rbio_do_001|RBIO_DEALING_OFFICIAL|"
+  "rbio_reviewer_001|RBIO_REVIEWER|"
+  "rbio_dyombudsman_001|RBIO_DEPUTY_OMBUDSMAN|"
+  "rbio_ombudsman_001|RBIO_OMBUDSMAN|"
 )
 
 for entry in "${AA_USERS[@]}"; do
