@@ -274,14 +274,37 @@ export async function cleanupComplaint(
 }
 
 /**
+ * The clause a CEPC closure is recorded under when a test does not care which one.
+ *
+ * 15(1)(a) exists in CLOSURE_CLAUSE_MASTER and is appealable by a complainant, so a complaint closed
+ * through this helper can actually be appealed afterwards.
+ *
+ * WHY THIS IS NEEDED: CepcWorkflowService treats `closureClause` as OPTIONAL on CLOSE_COMPLAINT
+ * (CepcWorkflowService.java:386-389 only sets it when non-empty), so a complaint closed without one
+ * has closure_clause = NULL. AA then correctly FAILS CLOSED — the clause is the entire input to
+ * deciding Appeal vs Representation — and POST /appeals/file answers 503
+ * appeal.error_clause_not_configured. Every test that closed a complaint here and then filed an
+ * appeal was failing for this SETUP reason, not for the behaviour it was asserting.
+ *
+ * This helper fixes the TESTS. The same gap in real data (1646 of 1647 closed complaints carry no
+ * clause and therefore cannot be appealed at all) is a PRODUCT defect, escalated separately: which
+ * clause is mandatory at closure is a legal question, not one for a test fixture to settle.
+ */
+export const DEFAULT_CLOSURE_CLAUSE = '15(1)(a)';
+
+/**
  * Utility to advance a complaint through the workflow to a target status.
  * Useful for setting up preconditions in tests.
+ *
+ * `extras` is merged into the FINAL step's params, so a caller can override the closure clause (or
+ * pass anything else that action accepts) without restating the transition path.
  */
 export async function advanceToStatus(
   request: APIRequestContext,
   complaintNumber: string,
   targetStatus: string,
-  token?: string
+  token?: string,
+  extras: Record<string, string> = {}
 ): Promise<void> {
   const transitions: Record<string, { action: string; actor: string }[]> = {
     in_progress: [
@@ -316,8 +339,18 @@ export async function advanceToStatus(
     throw new Error(`No predefined transition path to status: ${targetStatus}`);
   }
 
-  for (const step of steps) {
-    await performAction(request, complaintNumber, step.action, step.actor, 'E2E advance', {}, token);
+  for (let i = 0; i < steps.length; i++) {
+    const step = steps[i];
+
+    const params: Record<string, string> = {};
+    if (step.action === 'CLOSE_COMPLAINT') {
+      params['closureClause'] = DEFAULT_CLOSURE_CLAUSE;
+    }
+    if (i === steps.length - 1) {
+      Object.assign(params, extras);
+    }
+
+    await performAction(request, complaintNumber, step.action, step.actor, 'E2E advance', params, token);
   }
 }
 

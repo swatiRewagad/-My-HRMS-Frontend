@@ -1,4 +1,5 @@
 import { test, expect, APIRequestContext } from '../fixtures';
+import { createForwardedComplaint } from '../utils/test-data';
 
 /**
  * RE Activity Status ladder — UST846, UST847, UST848, UST849, UST850, UST851, UST852.
@@ -40,32 +41,47 @@ function adminHeaders(userId: string, name = 'E2E Admin') {
 }
 
 /**
- * Discovers a complaint that already carries an entity code rather than hardcoding a number that may
- * not exist in a given database. A wrong entity guess yields 403 and we move on.
+ * The entity the seeded complaint belongs to. Must resolve to a REGULATED_ENTITIES row by normalised
+ * name — the backend looks entities up that way, so an opaque code like 'HDFC0001' matches nothing.
  */
-async function findScopedComplaint(request: APIRequestContext):
-    Promise<{ complaintNumber: string; entityCode: string } | null> {
-  const candidates: Array<[string, string]> = [
-    ['CMP-20260605-100001', 'Bajaj Finance Limited'],
-    ['CMP-20260604-100002', 'Muthoot Finance Ltd'],
-    ['CMP-20260603-100003', 'PhonePe Private Limited'],
-  ];
+const RE_ENTITY = process.env['RE_ENTITY_CODE'] || 'HDFC Bank';
 
-  for (const [complaintNumber, entityCode] of candidates) {
-    const res = await request.get(`${RE_PORTAL}/complaints/${complaintNumber}`, {
-      headers: {
-        'X-User-Id': 'e2e_probe',
-        'X-User-Roles': 'RE_NODAL_OFFICER',
-        'X-Entity-Code': entityCode,
-      },
-      failOnStatusCode: false,
-    });
-    if (!res.ok()) continue;
-    const body = await res.json().catch(() => null);
-    const resolved = body?.data?.entityCode;
-    if (resolved) return { complaintNumber, entityCode: resolved };
-  }
-  return null;
+/**
+ * Seeds a complaint forwarded to the entity, together with the ReResponseTracker row every RE-portal
+ * read depends on, and returns it.
+ *
+ * WAS DISCOVERY, NOW SEEDING. The previous findScopedComplaint probed three hardcoded complaint
+ * numbers (CMP-20260605-100001 / …604-100002 / …603-100003). All three exist in cms_db but NONE has a
+ * RE_RESPONSE_TRACKER row, and their statuses are assigned/in_progress/reviewer_review rather than
+ * forwarded — so GET /re-portal/complaints/{n} 404s for every one of them, discovery returned null,
+ * and NINE of this file's fifteen tests skipped. The whole UST846–852 activity ladder reported green
+ * having executed nothing.
+ *
+ * createForwardedComplaint is the shared helper that already does this correctly: create → ACCEPT →
+ * FORWARD_DEPT → seed the tracker. Using it means this spec cannot drift from the forwarding path the
+ * rest of the RE suite exercises.
+ */
+async function seedScopedComplaint(request: APIRequestContext):
+    Promise<{ complaintNumber: string; entityCode: string }> {
+  const complaint = await createForwardedComplaint(request, RE_ENTITY, {
+    subject: `Activity ladder fixture ${Date.now()}`,
+  });
+
+  // The tracker must exist, or every detail read 404s with "No response tracker for complaint" and
+  // the failure looks like a broken ladder rather than a missing fixture.
+  const probe = await request.get(`${RE_PORTAL}/complaints/${complaint.complaintNumber}`, {
+    headers: reHeaders(RE_ENTITY),
+    failOnStatusCode: false,
+  });
+  expect(
+    probe.status(),
+    `the seeded complaint ${complaint.complaintNumber} must be readable through the RE portal — ` +
+      'createForwardedComplaint also seeds its ReResponseTracker'
+  ).toBe(200);
+  const resolved = (await probe.json())?.data?.entityCode;
+  expect(resolved, 'the seeded complaint must carry an entity code').toBeTruthy();
+
+  return { complaintNumber: complaint.complaintNumber, entityCode: resolved };
 }
 
 const LADDER = [
@@ -78,17 +94,23 @@ const LADDER = [
   'OVERDUE',
 ];
 
-let scoped: { complaintNumber: string; entityCode: string } | null = null;
+/**
+ * A shared record for the read-only assertions, plus a per-test fresh one wherever the ladder is
+ * mutated. The ladder only ever moves FORWARD, so one shared record would let an earlier test push it
+ * past the state a later test needs — and the later test would then "pass" against the wrong rung.
+ */
+let scoped: { complaintNumber: string; entityCode: string };
 
 test.beforeAll(async ({ request }) => {
-  scoped = await findScopedComplaint(request);
+  scoped = await seedScopedComplaint(request);
 });
 
 test.describe('RE Activity Status — derived from RE actions (UST846)', () => {
 
   test('opening the detail records the record as Opened', async ({ request }) => {
-    test.skip(!scoped, 'No entity-scoped complaint available');
-    const { complaintNumber, entityCode } = scoped!;
+    // A record nobody has opened yet, so NOT_OPENED → OPENED is genuinely observed rather than
+    // inferred from a record that some earlier test already advanced.
+    const { complaintNumber, entityCode } = await seedScopedComplaint(request);
 
     const res = await request.get(`${RE_PORTAL}/complaints/${complaintNumber}`, {
       headers: reHeaders(entityCode),
@@ -109,20 +131,24 @@ test.describe('RE Activity Status — derived from RE actions (UST846)', () => {
   });
 
   test('the ladder never regresses when the record is re-opened', async ({ request }) => {
-    test.skip(!scoped, 'No entity-scoped complaint available');
-    const { complaintNumber, entityCode } = scoped!;
+    const { complaintNumber, entityCode } = await seedScopedComplaint(request);
 
-    // Advance past OPENED first.
-    await request.post(`${RE_PORTAL}/complaints/${complaintNumber}/draft`, {
+    // Advance past OPENED first. Asserted: if the draft is refused the record never leaves OPENED and
+    // the "does not regress" check below becomes vacuous.
+    const draft = await request.post(`${RE_PORTAL}/complaints/${complaintNumber}/draft`, {
       headers: reHeaders(entityCode),
       data: { draftText: 'Working notes towards a response.' },
       failOnStatusCode: false,
     });
+    expect(draft.status(), 'the fixture must be advanced past OPENED for this test to mean anything')
+      .toBe(200);
 
     const after = await request.get(`${RE_PORTAL}/complaints/${complaintNumber}`, {
       headers: reHeaders(entityCode),
     });
     const status = (await after.json()).data.reActivityStatus;
+    expect(LADDER.indexOf(status), 'the draft must have moved the record above OPENED')
+      .toBeGreaterThan(LADDER.indexOf('OPENED'));
 
     // Re-fetching is an "Opened" event again. A naive implementation would write OPENED back over
     // the higher level and the badge would appear to go backwards to staff.
@@ -137,20 +163,17 @@ test.describe('RE Activity Status — derived from RE actions (UST846)', () => {
 
   test('an empty draft means Under Review; a draft with text means Response Being Prepared',
       async ({ request }) => {
-    test.skip(!scoped, 'No entity-scoped complaint available');
-    const { complaintNumber, entityCode } = scoped!;
+    // Freshly seeded, so it cannot already have been responded to. The old `if (409) test.skip` was
+    // the only handling of that case, which meant a record left responded-to by a previous run
+    // silently removed this assertion from the suite.
+    const { complaintNumber, entityCode } = await seedScopedComplaint(request);
 
     const res = await request.post(`${RE_PORTAL}/complaints/${complaintNumber}/draft`, {
       headers: reHeaders(entityCode),
       data: { draftText: 'Drafting our reply on the disputed transaction.' },
       failOnStatusCode: false,
     });
-
-    // A record whose response is already submitted legitimately refuses a new draft.
-    if (res.status() === 409) {
-      test.skip(true, 'Complaint already responded to — draft path not applicable');
-    }
-    expect(res.status()).toBe(200);
+    expect(res.status(), await res.text()).toBe(200);
 
     const body = await res.json();
     expect(body.draftSavedAt).toBeTruthy();
@@ -163,8 +186,7 @@ test.describe('RE Activity Status — derived from RE actions (UST846)', () => {
 test.describe('RE Activity Status — read-only to the RE (UST852)', () => {
 
   test('the RE cannot set the activity status directly', async ({ request }) => {
-    test.skip(!scoped, 'No entity-scoped complaint available');
-    const { complaintNumber, entityCode } = scoped!;
+    const { complaintNumber, entityCode } = scoped;
 
     const res = await request.put(`${RE_PORTAL}/complaints/${complaintNumber}/activity-status`, {
       headers: reHeaders(entityCode),
@@ -181,8 +203,7 @@ test.describe('RE Activity Status — read-only to the RE (UST852)', () => {
   });
 
   test('claiming RESPONSE_SUBMITTED by hand does not change the stored status', async ({ request }) => {
-    test.skip(!scoped, 'No entity-scoped complaint available');
-    const { complaintNumber, entityCode } = scoped!;
+    const { complaintNumber, entityCode } = scoped;
 
     const before = await request.get(`${RE_PORTAL}/complaints/${complaintNumber}`, {
       headers: reHeaders(entityCode),
@@ -205,8 +226,7 @@ test.describe('RE Activity Status — read-only to the RE (UST852)', () => {
 test.describe('Activity history carries an automatic/manual discriminator (UST848)', () => {
 
   test('timeline entries declare their source explicitly', async ({ request }) => {
-    test.skip(!scoped, 'No entity-scoped complaint available');
-    const { complaintNumber, entityCode } = scoped!;
+    const { complaintNumber, entityCode } = scoped;
 
     // Guarantee at least one ladder entry exists.
     await request.get(`${RE_PORTAL}/complaints/${complaintNumber}`, { headers: reHeaders(entityCode) });
@@ -336,13 +356,15 @@ test.describe('Nudge threshold maker-checker (UST851)', () => {
 test.describe('Staff-side visibility is read-only and gated (UST852)', () => {
 
   test('the public tracker does not expose the entity activity status', async ({ request }) => {
-    test.skip(!scoped, 'No entity-scoped complaint available');
-    const { complaintNumber } = scoped!;
+    const { complaintNumber } = scoped;
 
     const res = await request.get(`${API_BASE}/api/v1/complaints/${complaintNumber}`, {
       failOnStatusCode: false,
     });
-    test.skip(!res.ok(), 'Tracker endpoint unavailable for this complaint');
+    // ASSERTED, not skipped. A 403/404/500 from the tracker on a complaint this suite seeded itself
+    // is a broken endpoint, and `test.skip(!res.ok())` reported that as a pass — the leak assertions
+    // below all hold trivially on a body that was never returned.
+    expect(res.status(), `GET /api/v1/complaints/${complaintNumber} must be readable`).toBe(200);
 
     const detail = (await res.json()).data;
     // A complainant learning that their bank "has not opened" the record invites a conversation RBI
@@ -352,8 +374,7 @@ test.describe('Staff-side visibility is read-only and gated (UST852)', () => {
   });
 
   test('a bare bearer token does not by itself unlock the activity status', async ({ request }) => {
-    test.skip(!scoped, 'No entity-scoped complaint available');
-    const { complaintNumber } = scoped!;
+    const { complaintNumber } = scoped;
 
     // Guards against a regression to the old `Authorization != null` staff test, which would have
     // let any caller inventing a token read the entity's progress.
@@ -361,15 +382,17 @@ test.describe('Staff-side visibility is read-only and gated (UST852)', () => {
       headers: { Authorization: 'Bearer not-a-real-token' },
       failOnStatusCode: false,
     });
-    test.skip(!res.ok(), 'Tracker endpoint unavailable for this complaint');
+    // ASSERTED, not skipped. A 403/404/500 from the tracker on a complaint this suite seeded itself
+    // is a broken endpoint, and `test.skip(!res.ok())` reported that as a pass — the leak assertions
+    // below all hold trivially on a body that was never returned.
+    expect(res.status(), `GET /api/v1/complaints/${complaintNumber} must be readable`).toBe(200);
 
     expect((await res.json()).data.reActivity).toBeUndefined();
   });
 
   test('a staff caller sees the status, its snapshot threshold, and a read-only marker',
       async ({ request }) => {
-    test.skip(!scoped, 'No entity-scoped complaint available');
-    const { complaintNumber } = scoped!;
+    const { complaintNumber } = scoped;
 
     // A bare bearer token is NOT enough: the endpoint resolves a real identity and treats only a
     // non-RE identity as staff, so the dev identity headers are what make this caller staff.
@@ -381,7 +404,10 @@ test.describe('Staff-side visibility is read-only and gated (UST852)', () => {
       },
       failOnStatusCode: false,
     });
-    test.skip(!res.ok(), 'Tracker endpoint unavailable for this complaint');
+    // ASSERTED, not skipped. A 403/404/500 from the tracker on a complaint this suite seeded itself
+    // is a broken endpoint, and `test.skip(!res.ok())` reported that as a pass — the leak assertions
+    // below all hold trivially on a body that was never returned.
+    expect(res.status(), `GET /api/v1/complaints/${complaintNumber} must be readable`).toBe(200);
 
     const detail = (await res.json()).data;
     expect(detail.reActivity).toBeDefined();

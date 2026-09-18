@@ -1,19 +1,51 @@
 import { test, expect } from '../fixtures';
+import { installCorsShim, assertBrowserCanReachApi } from '../public/browser-api';
+
+/**
+ * Public-portal language switching.
+ *
+ * ── WHY THE WHOLE FILE WAS FAILING ──────────────────────────────────────────────────────────────
+ *
+ * Seven of nine tests were red for one environmental reason, not a product one: the browser's calls
+ * to /api/v1/i18n/locales and /api/v1/i18n/translations/{locale} were blocked by CORS whenever the
+ * dev server runs on a port outside cms-backend's allow-list. The selector then had ZERO options and
+ * every locale assertion failed. See ./../public/browser-api.ts for the full chain. Fixed in the
+ * harness.
+ *
+ * ── ANNOTATIONS ARE NOT ASSERTIONS ──────────────────────────────────────────────────────────────
+ *
+ * The RTL test ended in `test.info().annotations.push({ type: 'info', ... })` when Urdu was absent.
+ * An annotation does not affect exit status: the test passed, reporting that RTL support was fine,
+ * having verified nothing. Urdu IS configured (GET /api/v1/i18n/locales returns 10 locales including
+ * ur with rtl: true), so the branch was dead code hiding a real assertion. The locale list is now
+ * asserted and `dir` is checked unconditionally.
+ */
+
+/** Every locale the portal claims to support. Asserted, so a silently dropped locale fails. */
+const EXPECTED_LOCALES = ['en', 'hi', 'mr', 'bn', 'te', 'ta', 'gu', 'ur', 'kn', 'ml'];
+
+/** Locales whose script is Devanagari, used by the "text actually changed" assertions. */
+const DEVANAGARI = /[ऀ-ॿ]/;
 
 test.describe('i18n Language Switching', () => {
 
   test.beforeEach(async ({ page }) => {
-    await page.goto('/public', { waitUntil: 'domcontentloaded' });
-    await page.waitForLoadState('networkidle');
+    await installCorsShim(page);
+    await assertBrowserCanReachApi(page, '/public');
   });
 
   test('language selector is visible with multiple options', async ({ page }) => {
     const langSelect = page.locator('.lang-select');
     await expect(langSelect).toBeVisible({ timeout: 10000 });
 
-    const options = langSelect.locator('option');
-    const count = await options.count();
-    expect(count).toBeGreaterThanOrEqual(2);
+    const values = await langSelect.locator('option').evaluateAll((els) =>
+      els.map((el) => (el as HTMLOptionElement).value)
+    );
+    // Named, not merely counted. `>= 2` passed on a selector offering English and one other, which
+    // would mean eight statutory languages had silently vanished from a citizen-facing portal.
+    for (const locale of EXPECTED_LOCALES) {
+      expect(values, `locale ${locale} is missing from the selector`).toContain(locale);
+    }
   });
 
   test('default language is English', async ({ page }) => {
@@ -29,107 +61,102 @@ test.describe('i18n Language Switching', () => {
     await expect(langSelect).toBeVisible({ timeout: 10000 });
 
     // Capture current English text in nav
-    const navLinks = page.locator('.main-nav a');
+    const navLinks = page.locator('#main-nav a');
     const englishText = await navLinks.first().textContent();
+    expect(englishText?.trim(), 'the nav must render text before the switch').toBeTruthy();
+    expect(englishText).not.toMatch(DEVANAGARI);
 
     // Switch to Hindi
     await langSelect.selectOption('hi');
-    await page.waitForTimeout(1000);
 
-    // Nav text should change to Hindi
+    // Nav text should change to Hindi. Polled rather than slept on: a fixed waitForTimeout either
+    // flakes or hides a slow bundle load behind a passing assertion.
+    await expect(navLinks.first()).toHaveText(DEVANAGARI, { timeout: 10000 });
     const hindiText = await navLinks.first().textContent();
     expect(hindiText).not.toBe(englishText);
-    // Hindi text should contain Devanagari characters
-    expect(hindiText).toMatch(/[\u0900-\u097F]/);
   });
 
   test('Hindi locale persists across page navigation', async ({ page }) => {
     const langSelect = page.locator('.lang-select');
     await expect(langSelect).toBeVisible({ timeout: 10000 });
 
-    // Switch to Hindi
     await langSelect.selectOption('hi');
-    await page.waitForTimeout(1500);
+    await expect(page.locator('#main-nav a').first()).toHaveText(DEVANAGARI, { timeout: 10000 });
 
     // Navigate to another page (track complaint)
     await page.goto('/public/track', { waitUntil: 'domcontentloaded' });
     await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(1000);
 
     // Language should still be Hindi (persisted in localStorage as cms_locale)
-    const currentLang = await page.locator('.lang-select').inputValue();
-    expect(currentLang).toBe('hi');
-
-    // Nav links should contain Hindi text (Devanagari)
-    const navLinks = page.locator('.main-nav a');
-    const navText = await navLinks.first().textContent();
-    expect(navText).toMatch(/[\u0900-\u097F]/);
+    await expect(page.locator('.lang-select')).toHaveValue('hi', { timeout: 10000 });
+    await expect(page.locator('#main-nav a').first()).toHaveText(DEVANAGARI, { timeout: 10000 });
+    expect(await page.evaluate(() => localStorage.getItem('cms_locale'))).toBe('hi');
   });
 
   test('switching to Marathi changes text', async ({ page }) => {
     const langSelect = page.locator('.lang-select');
     await expect(langSelect).toBeVisible({ timeout: 10000 });
 
-    // Switch to Marathi
+    const englishText = await page.locator('#main-nav a').first().textContent();
+
     await langSelect.selectOption('mr');
-    await page.waitForTimeout(1000);
 
     // Page text should contain Devanagari (Marathi uses same script)
-    const navLinks = page.locator('.main-nav a');
-    const marathiText = await navLinks.first().textContent();
-    expect(marathiText).toMatch(/[\u0900-\u097F]/);
+    await expect(page.locator('#main-nav a').first()).toHaveText(DEVANAGARI, { timeout: 10000 });
+    // And it must differ from the English, or Devanagari alone would not prove a switch happened.
+    expect(await page.locator('#main-nav a').first().textContent()).not.toBe(englishText);
   });
 
   test('switching back to English restores original text', async ({ page }) => {
     const langSelect = page.locator('.lang-select');
     await expect(langSelect).toBeVisible({ timeout: 10000 });
 
-    // Switch to Hindi first
+    const navFirst = page.locator('#main-nav a').first();
+    const original = await navFirst.textContent();
+
     await langSelect.selectOption('hi');
-    await page.waitForTimeout(1000);
+    await expect(navFirst).toHaveText(DEVANAGARI, { timeout: 10000 });
 
-    // Switch back to English
     await langSelect.selectOption('en');
-    await page.waitForTimeout(1000);
-
-    // Nav text should be in English
-    const navLinks = page.locator('.main-nav a');
-    const englishText = await navLinks.first().textContent();
-    // Should NOT contain Devanagari
-    expect(englishText).not.toMatch(/[\u0900-\u097F]/);
+    // Restored to the exact original string, not merely "no longer Devanagari" — a blank label also
+    // satisfies not.toMatch.
+    await expect(navFirst).toHaveText(String(original).trim(), { timeout: 10000 });
+    expect(await navFirst.textContent()).not.toMatch(DEVANAGARI);
   });
 
   test('RTL language (Urdu) sets dir attribute', async ({ page }) => {
     const langSelect = page.locator('.lang-select');
     await expect(langSelect).toBeVisible({ timeout: 10000 });
 
-    // Check if Urdu is available
-    const options = await langSelect.locator('option').allTextContents();
-    const hasUrdu = options.some(o => o.includes('اردو'));
+    // Urdu's presence is ASSERTED. The previous version branched on it and, when absent, pushed an
+    // annotation instead — which does not fail a test, so a portal with no RTL support at all
+    // reported green.
+    const values = await langSelect.locator('option').evaluateAll((els) =>
+      els.map((el) => (el as HTMLOptionElement).value)
+    );
+    expect(values, 'Urdu must be offered — it is the only RTL locale in the scheme').toContain('ur');
 
-    if (hasUrdu) {
-      await langSelect.selectOption('ur');
-      await page.waitForTimeout(1000);
+    await langSelect.selectOption('ur');
 
-      // The navbar-bg should have dir="rtl"
-      const navbarBg = page.locator('.navbar-bg');
-      const dir = await navbarBg.getAttribute('dir');
-      expect(dir).toBe('rtl');
-    } else {
-      test.info().annotations.push({
-        type: 'info',
-        description: 'Urdu locale not available in current configuration',
-      });
-    }
+    // The navbar-bg should have dir="rtl"
+    await expect(page.locator('.navbar-bg')).toHaveAttribute('dir', 'rtl', { timeout: 10000 });
+
+    // And switching away must clear it, or every subsequent page stays mirrored. The attribute is
+    // REMOVED rather than set to 'ltr': public-layout.component.html:2 binds
+    // [attr.dir]="translationService.isRtl() ? 'rtl' : null", and a null attr binding removes the
+    // attribute so direction inherits normally. Asserting 'ltr' here would be the test being wrong
+    // about the product, not a defect.
+    await langSelect.selectOption('en');
+    await expect(page.locator('.navbar-bg')).not.toHaveAttribute('dir', 'rtl', { timeout: 10000 });
+    expect(await page.locator('.navbar-bg').getAttribute('dir')).toBeNull();
   });
 
   test('language preference stored in localStorage', async ({ page }) => {
     const langSelect = page.locator('.lang-select');
     await expect(langSelect).toBeVisible({ timeout: 10000 });
 
-    // Switch to Hindi
     await langSelect.selectOption('hi');
-    await page.waitForTimeout(1000);
+    await expect(page.locator('#main-nav a').first()).toHaveText(DEVANAGARI, { timeout: 10000 });
 
     // Check localStorage (key is 'cms_locale')
     const storedLocale = await page.evaluate(() => localStorage.getItem('cms_locale'));
@@ -143,18 +170,25 @@ test.describe('i18n Language Switching', () => {
     const options = await langSelect.locator('option').evaluateAll(
       (els) => els.map(el => (el as HTMLOptionElement).value)
     );
+    expect(options.length, 'no locales to iterate').toBeGreaterThan(1);
 
     for (const locale of options) {
       await langSelect.selectOption(locale);
-      await page.waitForTimeout(500);
+
+      // Verify the select still shows the correct value
+      await expect(langSelect).toHaveValue(locale, { timeout: 10000 });
 
       // Verify no error state
       const errorMsg = page.locator('.error-msg, .translation-error');
       await expect(errorMsg).not.toBeVisible();
 
-      // Verify the select still shows the correct value
-      const currentValue = await langSelect.inputValue();
-      expect(currentValue).toBe(locale);
+      // And the nav actually rendered SOMETHING — an unresolved bundle leaves the raw key visible,
+      // which is not an "error state" the app reports but is a broken page for the citizen.
+      const navText = (await page.locator('#main-nav a').first().textContent())?.trim() ?? '';
+      expect(navText.length, `nav is empty in locale ${locale}`).toBeGreaterThan(0);
+      expect(navText, `locale ${locale} is rendering a raw translation key`).not.toMatch(
+        /^[a-z_]+\.[a-z_.]+$/
+      );
     }
   });
 });

@@ -1,17 +1,33 @@
-import { test, expect } from '../fixtures';
+import { test, expect } from '../rbio/harness';
 import { loginAsCepcRole, isKeycloakAvailable, logout } from '../utils/auth';
-import { createTestComplaint, cleanupComplaint, advanceToStatus, performAction } from '../utils/test-data';
+import { createTestComplaint, cleanupComplaint, advanceToStatus } from '../utils/test-data';
+
+const API = (process.env['API_BASE_URL'] || 'http://localhost:8082').replace(/\/+$/, '');
+
+async function fetchComplaint(
+  request: import('@playwright/test').APIRequestContext,
+  complaintNumber: string
+): Promise<Record<string, any>> {
+  const res = await request.get(`${API}/api/v1/complaints/${complaintNumber}`, {
+    headers: { 'X-User-Id': 'cepc_do1', 'X-User-Roles': 'CEPC_DO' },
+  });
+  expect(res.ok()).toBe(true);
+  return (await res.json()).data;
+}
 
 /**
  * CEPC Contact Person Workflow Tests
  *
- * Tests the flow where a Dealing Officer forwards a complaint to a Contact Person
- * (typically at the regulated entity), the Contact Person responds, and the complaint
- * returns to the Dealing Officer.
+ * A Dealing Officer forwards a complaint to a Contact Person at the regulated entity, the Contact
+ * Person responds, and the complaint returns to the Dealing Officer.
+ *
+ * `.serial` is retained deliberately here — unlike the other suites, these four tests are genuinely
+ * sequential stages of ONE complaint's life and cannot be reordered.
  */
 test.describe.serial('CEPC Contact Person Workflow', () => {
   let keycloakUp: boolean;
   let complaintNumber: string;
+  let selectedContactPerson: string;
 
   test.beforeAll(async ({ browser, request }) => {
     const page = await browser.newPage();
@@ -19,9 +35,8 @@ test.describe.serial('CEPC Contact Person Workflow', () => {
     await page.close();
 
     if (keycloakUp) {
-      // Create a complaint and advance it to in_progress (DO accepted)
       const result = await createTestComplaint(request, {
-        subject: 'E2E Contact Person Flow Test',
+        subject: 'S4-CEPC Contact Person Flow Test',
         complainantName: 'Contact Person Test Citizen',
         entityName: 'Sample Regulated Bank',
       });
@@ -36,128 +51,168 @@ test.describe.serial('CEPC Contact Person Workflow', () => {
     }
   });
 
-  test('DO forwards complaint to Contact Person', async ({ page }) => {
+  test('DO forwards the complaint to a named Contact Person', async ({ page, request }) => {
     test.skip(!keycloakUp, 'Keycloak is not available');
     await loginAsCepcRole(page, 'DO', `/cepc/complaint/${complaintNumber}`);
 
     await page.waitForSelector('.cepc-detail .detail-layout', { timeout: 15000 });
 
-    // Click "Forward to Contact Person"
     const forwardBtn = page.locator('.action-card:has-text("Forward to Contact Person")');
     await expect(forwardBtn).toBeVisible({ timeout: 5000 });
     await forwardBtn.click();
 
-    // The action form should appear with a target user dropdown
     const actionForm = page.locator('.action-form');
     await expect(actionForm).toBeVisible();
 
-    // Select a contact person from dropdown (if available)
     const targetSelect = actionForm.locator('select');
     await expect(targetSelect).toBeVisible();
 
-    // Try to select the first available contact person
-    const options = targetSelect.locator('option');
-    const optionCount = await options.count();
-    if (optionCount > 1) {
-      // Select second option (first is placeholder "Select Contact Person")
-      await targetSelect.selectOption({ index: 1 });
-    }
+    // The old version read `if (optionCount > 1) { selectOption(1) }` and then submitted regardless,
+    // so on an empty dropdown NO contact person was chosen and the test still expected success — a
+    // forward to nobody would have passed. The dropdown must be populated and a person must be chosen.
+    const options = await targetSelect.locator('option').all();
+    expect(
+      options.length,
+      'the contact-person dropdown must be populated — forwarding to nobody is not a forward'
+    ).toBeGreaterThan(1);
 
-    // Fill remarks
-    const remarksField = actionForm.locator('textarea');
-    await remarksField.fill('Please provide information regarding the complaint from your branch.');
+    selectedContactPerson = (await options[1].getAttribute('value')) ?? '';
+    expect(selectedContactPerson, 'the chosen contact person must have a value').not.toBe('');
+    await targetSelect.selectOption(selectedContactPerson);
 
-    // Submit action
-    const confirmBtn = actionForm.locator('.submit-btn');
-    await confirmBtn.click();
+    await actionForm.locator('textarea')
+      .fill('Please provide information regarding the complaint from your branch.');
+    await actionForm.locator('.submit-btn').click();
 
-    // Wait for result
     const resultMsg = page.locator('.result-msg.success');
     await expect(resultMsg).toBeVisible({ timeout: 10000 });
     await expect(resultMsg).toContainText('completed successfully');
 
+    // A banner is not evidence. The server must show the complaint actually parked with that person.
+    const complaint = await fetchComplaint(request, complaintNumber);
+    expect(String(complaint.status).toLowerCase()).toBe('forwarded_to_contact');
+    expect(String(complaint.assignedTo)).toBe(selectedContactPerson);
+
     await logout(page);
   });
 
-  test('Contact Person sees the task in their queue', async ({ page }) => {
+  test('the forwarded complaint appears in the Contact Person queue', async ({ request }) => {
     test.skip(!keycloakUp, 'Keycloak is not available');
-    await loginAsCepcRole(page, 'CP', '/cepc/dashboard');
 
-    await page.waitForSelector('.cepc-dashboard .content', { timeout: 15000 });
+    // The old version was `if (await complaintRow.isVisible()) { assert status }` with the comment
+    // "If not visible, the complaint might be on a different page" — so the test passed when the
+    // complaint was ABSENT from the queue, which is the exact failure it existed to catch.
+    //
+    // Asserted against the queue endpoint the CP dashboard reads, so paging cannot hide the row.
+    const res = await request.get(
+      `${API}/api/v1/workflow/cepc/contact-person/tasks?officer=${encodeURIComponent(selectedContactPerson)}`,
+      {
+        headers: {
+          'X-User-Id': selectedContactPerson,
+          'X-User-Name': selectedContactPerson,
+          'X-User-Roles': 'CEPC_CONTACT_PERSON',
+        },
+      }
+    );
+    expect(res.ok(), `the contact-person queue must be readable, got ${res.status()}`).toBe(true);
 
-    // Wait for complaints to load
-    await page.waitForSelector('.complaints-table, .empty-state', { timeout: 15000 });
-
-    // The forwarded complaint should appear in the Contact Person's queue
-    const complaintRow = page.locator(`.complaints-table tbody tr:has-text("${complaintNumber}")`);
-
-    if (await complaintRow.isVisible()) {
-      // The status should be "With Contact Person"
-      const statusBadge = complaintRow.locator('.status-badge');
-      await expect(statusBadge).toContainText('With Contact Person');
-    }
-    // If not visible, the complaint might be on a different page or the CP user might not match
-
-    await logout(page);
+    const tasks = (await res.json()).data as any[];
+    const mine = tasks.find(t => t.complaintNumber === complaintNumber);
+    expect(
+      mine,
+      `the complaint forwarded to ${selectedContactPerson} must appear in that person's queue`
+    ).toBeTruthy();
+    expect(String(mine.status).toLowerCase()).toBe('forwarded_to_contact');
   });
 
-  test('Contact Person submits response', async ({ page }) => {
+  test('Contact Person submits a response and it is recorded', async ({ page, request }) => {
     test.skip(!keycloakUp, 'Keycloak is not available');
     await loginAsCepcRole(page, 'CP', `/cepc/complaint/${complaintNumber}`);
 
     await page.waitForSelector('.cepc-detail .detail-layout', { timeout: 15000 });
 
-    // Click "Submit Response"
     const responseBtn = page.locator('.action-card:has-text("Submit Response")');
     await expect(responseBtn).toBeVisible({ timeout: 5000 });
     await responseBtn.click();
 
-    // Fill response remarks
+    const remarks =
+      'We have investigated the matter at our branch. The transaction was processed as per guidelines.';
     const remarksField = page.locator('.action-form textarea');
     await expect(remarksField).toBeVisible();
-    await remarksField.fill(
-      'We have investigated the matter at our branch. The transaction was processed as per guidelines. ' +
-      'Attached supporting documents for reference.'
-    );
+    await remarksField.fill(remarks);
 
-    // Submit
-    const confirmBtn = page.locator('.action-form .submit-btn');
-    await confirmBtn.click();
+    await page.locator('.action-form .submit-btn').click();
 
     const resultMsg = page.locator('.result-msg.success');
     await expect(resultMsg).toBeVisible({ timeout: 10000 });
 
+    // The response is only real if it is persisted — there is no send capability to assert against.
+    const complaint = await fetchComplaint(request, complaintNumber);
+    const entry = (complaint.timeline as any[]).find(e => e.action === 'CONTACT_RESPONSE');
+    expect(entry, 'a contact-person response must leave a timeline record').toBeTruthy();
+    expect(entry.remarks).toContain('investigated the matter');
+
     await logout(page);
   });
 
-  test('complaint returns to DO after Contact Person response', async ({ page }) => {
+  test('the complaint returns to the DO after the Contact Person responds', async ({ page, request }) => {
     test.skip(!keycloakUp, 'Keycloak is not available');
-    await loginAsCepcRole(page, 'DO', `/cepc/complaint/${complaintNumber}`);
 
+    // Asserted on the server first: CONTACT_RESPONSE must hand the complaint back to the DO.
+    const complaint = await fetchComplaint(request, complaintNumber);
+    expect(String(complaint.status).toLowerCase()).toBe('in_progress');
+    // Ownership is asserted separately — it does NOT currently move back. See the fixme below.
+
+    await loginAsCepcRole(page, 'DO', `/cepc/complaint/${complaintNumber}`);
     await page.waitForSelector('.cepc-detail .detail-layout', { timeout: 15000 });
 
-    // After Contact Person submits response, status should return to in_progress
-    const statusBadge = page.locator('.complaint-header .status-badge');
-    await expect(statusBadge).toBeVisible();
+    await expect(page.locator('.complaint-header .status-badge')).toBeVisible();
+    await expect(page.locator('.action-list')).toBeVisible();
 
-    // The complaint should be actionable by DO again
-    const actionList = page.locator('.action-list');
-    await expect(actionList).toBeVisible();
-
-    // DO should have actions available (e.g., Forward to Reviewer)
-    const actions = page.locator('.action-card');
-    const actionCount = await actions.count();
-    expect(actionCount).toBeGreaterThan(0);
-
-    // Check timeline for Contact Person response entry
-    const timeline = page.locator('.timeline');
-    if (await timeline.isVisible()) {
-      const contactEntry = page.locator('.timeline-item:has-text("CONTACT_RESPONSE")');
-      if (await contactEntry.isVisible()) {
-        await expect(contactEntry).toBeVisible();
-      }
-    }
+    // The DO must be able to move it forward again.
+    const actionLabels = await page.locator('.action-card').allTextContents();
+    expect(actionLabels.length, 'the DO must have actions available again').toBeGreaterThan(0);
+    expect(
+      actionLabels.join('|'),
+      'the DO must be able to forward the complaint onward for review'
+    ).toContain('Forward to Reviewer');
 
     await logout(page);
   });
+
+  test.fixme(
+    'responding hands ownership of the complaint back to the Dealing Officer',
+    async () => {
+      // FIXME — PRODUCTION DEFECT (ownership is never returned). CepcWorkflowService's
+      // CONTACT_RESPONSE branch (CepcWorkflowService.java:432) sets status='in_progress' and
+      // assignedRole='CEPC_DO' but NEVER touches assignedOfficer, so the complaint stays owned by the
+      // contact person at the regulated entity after they have finished with it. Verified: after the
+      // response, `assignedTo` is still 'contact_person1' while the status reads IN_PROGRESS.
+      //
+      // Consequences: the complaint does not return to any DO's "Assigned To Me" queue, and an
+      // external entity user remains its recorded owner. FORWARD_TO_CONTACT does not stash the
+      // previous officer anywhere, so the DO to hand it back to is not currently recoverable.
+      // Un-fixme once assignedOfficer is restored to the forwarding DO.
+    }
+  );
+
+  test.fixme(
+    'the Contact Person response is shown in the complaint audit trail',
+    async () => {
+      // FIXME — PRODUCTION DEFECT: the CEPC audit-trail panel is permanently empty. CepcTimelineComponent
+      // fetches GET /api/v1/complaints/{n}/timeline (cepc-timeline.component.ts:48), and that endpoint
+      // DOES NOT EXIST — verified: it returns 404 "The requested resource does not exist." The component
+      // swallows the error (`error: () => this.entries.set([])`, line 54), so the panel silently renders
+      // "No timeline entries yet." for every complaint, forever.
+      //
+      // The timeline data itself is present — it is embedded in GET /api/v1/complaints/{n} as
+      // `data.timeline`, which is what the assertions in this file use — so this is purely the CEPC
+      // screen calling a URL that was never built.
+      //
+      // The old test hid this behind `if (await timeline.isVisible()) { if (await contactEntry.isVisible())
+      // { await expect(contactEntry).toBeVisible() } }` — a tautology (asserting an element is visible
+      // immediately after checking it is visible) nested inside two guards, so it could never fail.
+      // Un-fixme once /timeline exists or the component reads the embedded timeline.
+    }
+  );
 });

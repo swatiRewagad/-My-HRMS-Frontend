@@ -1,11 +1,42 @@
-import { test, expect } from '../fixtures';
-import { loginAsRbioRole, isKeycloakAvailable, logout } from '../utils/auth';
+import { test, expect } from './harness';
+import { isKeycloakAvailable } from '../utils/auth';
 import {
   createRbioComplaint,
   cleanupRbioComplaint,
   advanceRbioToStatus,
-  performRbioAction,
 } from '../utils/test-data';
+
+const API = (process.env['API_BASE_URL'] || 'http://localhost:8082').replace(/\/+$/, '');
+
+const ADMIN_HEADERS = {
+  'Content-Type': 'application/json',
+  'X-User-Id': 'admin_001',
+  'X-User-Name': 'admin_001',
+  'X-User-Roles': 'RBIO_ADMIN',
+};
+
+async function postAdminAction(
+  request: import('@playwright/test').APIRequestContext,
+  complaintNumber: string,
+  body: Record<string, unknown>
+): Promise<{ success: boolean; message: string; data: Record<string, unknown> | null }> {
+  const res = await request.post(`${API}/api/v1/workflow/rbio/action/${complaintNumber}`, {
+    data: body,
+    headers: ADMIN_HEADERS,
+    failOnStatusCode: false,
+  });
+  const json = await res.json();
+  return { success: json.success === true, message: json.message ?? '', data: json.data ?? null };
+}
+
+async function fetchComplaint(
+  request: import('@playwright/test').APIRequestContext,
+  complaintNumber: string
+): Promise<Record<string, any>> {
+  const res = await request.get(`${API}/api/v1/complaints/${complaintNumber}`, { headers: ADMIN_HEADERS });
+  expect(res.ok()).toBe(true);
+  return (await res.json()).data;
+}
 
 test.describe('RBIO Admin — Reopen & Reassign', () => {
   let keycloakUp: boolean;
@@ -16,7 +47,7 @@ test.describe('RBIO Admin — Reopen & Reassign', () => {
     await page.close();
   });
 
-  test('Admin reopens closed complaint', async ({ page, request }) => {
+  test('Admin reopens a closed complaint (status leaves the closed state)', async ({ request }) => {
     test.skip(!keycloakUp, 'Keycloak is not available');
 
     const result = await createRbioComplaint(request, {
@@ -27,157 +58,123 @@ test.describe('RBIO Admin — Reopen & Reassign', () => {
 
     try {
       await advanceRbioToStatus(request, complaintNumber, 'closed');
+      const before = await fetchComplaint(request, complaintNumber);
+      expect(String(before.status).toLowerCase()).toBe('closed');
 
-      await loginAsRbioRole(page, 'RBIO_ADMIN', `/staff/rbio/task/${complaintNumber}`);
-      await page.waitForSelector('.task-action-page', { timeout: 15000 });
+      const reopened = await postAdminAction(request, complaintNumber, {
+        action: 'REOPEN',
+        remarks: 'Reopening complaint based on new evidence submitted by the complainant.',
+        actor: 'admin_001',
+      });
+      expect(reopened.success, `REOPEN was refused: ${reopened.message}`).toBe(true);
 
-      const closedBanner = page.locator('.closed-banner');
-      await expect(closedBanner).toBeVisible({ timeout: 5000 });
-
-      const reopenBtn = page.locator('.action-card:has-text("Reopen")');
-      await expect(reopenBtn).toBeVisible({ timeout: 5000 });
-      await reopenBtn.click();
-
-      const remarksField = page.locator('.remarks-section textarea');
-      await expect(remarksField).toBeVisible();
-      await remarksField.fill('Reopening complaint based on new evidence submitted by complainant.');
-
-      const confirmBtn = page.locator('.confirm-actions .btn-primary');
-      await confirmBtn.click();
-
-      const resultMsg = page.locator('.result-msg.success');
-      await expect(resultMsg).toBeVisible({ timeout: 10000 });
-
-      await logout(page);
+      const after = await fetchComplaint(request, complaintNumber);
+      expect(String(after.status).toLowerCase()).not.toBe('closed');
+      const entry = (after.timeline as any[]).find(e => e.action === 'REOPEN');
+      expect(entry, 'reopening must leave a timeline record').toBeTruthy();
+      expect(entry.fromStatus).toBe('closed');
     } finally {
       await cleanupRbioComplaint(request, complaintNumber);
     }
   });
 
-  test('Reopened complaint returns to in_progress', async ({ page, request }) => {
+  test('Reopened complaint returns to in_progress and is actionable again', async ({ request }) => {
     test.skip(!keycloakUp, 'Keycloak is not available');
 
-    const result = await createRbioComplaint(request, {
-      subject: 'E2E RBIO Reopen Status Test',
-    });
+    const result = await createRbioComplaint(request, { subject: 'E2E RBIO Reopen Status Test' });
     const complaintNumber = result.complaintNumber;
 
     try {
       await advanceRbioToStatus(request, complaintNumber, 'closed');
-      await performRbioAction(request, complaintNumber, 'REOPEN', 'rbio.admin', 'Reopening for verification');
+      const reopened = await postAdminAction(request, complaintNumber, {
+        action: 'REOPEN',
+        remarks: 'Reopening for verification.',
+        actor: 'admin_001',
+      });
+      expect(reopened.success, `REOPEN was refused: ${reopened.message}`).toBe(true);
 
-      await loginAsRbioRole(page, 'RBIO_OFFICER', `/staff/rbio/task/${complaintNumber}`);
-      await page.waitForSelector('.task-action-page', { timeout: 15000 });
+      // Tightened from /in.progress|assigned|reopened|active/, which accepted four different
+      // statuses — including 'assigned', which would mean the complaint had lost its examination
+      // history. Only in_progress is correct.
+      expect(String(reopened.data?.['newStatus'])).toBe('in_progress');
 
-      const closedBanner = page.locator('.closed-banner');
-      await expect(closedBanner).not.toBeVisible();
+      const complaint = await fetchComplaint(request, complaintNumber);
+      expect(String(complaint.status).toLowerCase()).toBe('in_progress');
+      expect(complaint.closedAt, 'a reopened complaint must no longer be closed').toBeFalsy();
 
-      const actionSection = page.locator('.action-section');
-      await expect(actionSection).toBeVisible();
-
-      const actions = page.locator('button.action-btn');
-      const actionCount = await actions.count();
-      expect(actionCount).toBeGreaterThan(0);
-
-      const statusBadge = page.locator('.status-badge');
-      const statusText = await statusBadge.textContent();
-      expect(statusText?.toLowerCase()).toMatch(/in.progress|assigned|reopened|active/);
-
-      await logout(page);
+      // Being out of the closed state is only useful if actions are available again.
+      const actionsRes = await request.get(
+        `${API}/api/v1/workflow/rbio/available-actions/${complaintNumber}?userRole=RBIO_OFFICER`,
+        { headers: ADMIN_HEADERS }
+      );
+      expect(actionsRes.ok()).toBe(true);
+      const actions = (await actionsRes.json()).data?.availableActions as string[];
+      expect(Array.isArray(actions), 'available-actions must return a list').toBe(true);
+      expect(actions.length, 'a reopened complaint must offer actions again').toBeGreaterThan(0);
     } finally {
       await cleanupRbioComplaint(request, complaintNumber);
     }
   });
 
-  test('Admin reassigns complaint to different officer', async ({ page, request }) => {
+  test('Admin reassigns a complaint to a different officer', async ({ request }) => {
     test.skip(!keycloakUp, 'Keycloak is not available');
 
-    const result = await createRbioComplaint(request, {
-      subject: 'E2E RBIO Admin Reassign Test',
-    });
+    const result = await createRbioComplaint(request, { subject: 'E2E RBIO Admin Reassign Test' });
     const complaintNumber = result.complaintNumber;
 
     try {
       await advanceRbioToStatus(request, complaintNumber, 'in_progress');
+      const before = await fetchComplaint(request, complaintNumber);
+      const originalOwner = String(before.assignedTo ?? '');
 
-      await loginAsRbioRole(page, 'RBIO_ADMIN', `/staff/rbio/task/${complaintNumber}`);
-      await page.waitForSelector('.task-action-page', { timeout: 15000 });
+      const target = 'rbio.supervisor';
+      const reassigned = await postAdminAction(request, complaintNumber, {
+        action: 'REASSIGN',
+        remarks: 'Admin reassigning to an officer with the relevant domain expertise.',
+        actor: 'admin_001',
+        targetUser: target,
+      });
+      expect(reassigned.success, `REASSIGN was refused: ${reassigned.message}`).toBe(true);
 
-      const reassignBtn = page.locator('.action-card:has-text("Reassign")');
-      await expect(reassignBtn).toBeVisible({ timeout: 5000 });
-      await reassignBtn.click();
-
-      const remarksField = page.locator('.remarks-section textarea');
-      await expect(remarksField).toBeVisible();
-      await remarksField.fill('Admin reassigning to officer with relevant domain expertise.');
-
-      const confirmBtn = page.locator('.confirm-actions .btn-primary');
-      await confirmBtn.click();
-
-      const resultMsg = page.locator('.result-msg.success');
-      await expect(resultMsg).toBeVisible({ timeout: 10000 });
-
-      await logout(page);
+      // A reassignment that does not change the owner is not a reassignment.
+      const after = await fetchComplaint(request, complaintNumber);
+      expect(String(after.assignedTo)).toBe(target);
+      expect(String(after.assignedTo)).not.toBe(originalOwner);
     } finally {
       await cleanupRbioComplaint(request, complaintNumber);
     }
   });
 
-  test('Admin performs bulk assign (if available)', async ({ page, request }) => {
-    test.skip(!keycloakUp, 'Keycloak is not available');
-
-    const complaints: string[] = [];
-    for (let i = 0; i < 2; i++) {
-      const result = await createRbioComplaint(request, {
-        subject: `E2E RBIO Bulk Assign Test ${i + 1}`,
-      });
-      complaints.push(result.complaintNumber);
+  test.fixme(
+    'Admin performs bulk assign from the task list',
+    async () => {
+      // FIXME — THE FEATURE DOES NOT EXIST. There is no bulk-assign control anywhere in the RBIO task
+      // list: rbio-tasks.component.html has row checkboxes and a `selectedIds` signal, but no
+      // "Bulk Assign" / "Assign Selected" button and no handler (verified — no match for
+      // /Bulk Assign|Assign Selected/ in the component, and the button count is 0 in the browser).
+      // BULK_ASSIGN is listed among RBIO_ADMIN's allowed actions server-side
+      // (RbioWorkflowService.java:53) but no case handles it in performAction, so it falls through to
+      // "Unknown action".
+      //
+      // The old test was three nested `if (isVisible)` blocks whose else branches only pushed
+      // annotations, so it passed whether or not the feature existed — and its inner assertion
+      // (`expect(dialog).toBeVisible()` immediately after checking the trigger was visible) was a
+      // tautology that could never fail. Un-fixme when bulk assign is actually built.
     }
+  );
 
-    try {
-      await loginAsRbioRole(page, 'RBIO_ADMIN', '/staff/rbio/tasks');
-      await page.waitForSelector('.rbio-home', { timeout: 15000 });
-      await page.waitForSelector('.data-grid, .empty-state', { timeout: 15000 });
-
-      const checkboxes = page.locator('tbody input[type="checkbox"]');
-
-      if (await checkboxes.first().isVisible({ timeout: 3000 }).catch(() => false)) {
-        const checkCount = Math.min(await checkboxes.count(), 2);
-        for (let i = 0; i < checkCount; i++) {
-          await checkboxes.nth(i).check();
-        }
-
-        const bulkBtn = page.locator('button:has-text("Bulk Assign"), button:has-text("Assign Selected")');
-
-        if (await bulkBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-          await bulkBtn.click();
-
-          const dialog = page.locator('[role="dialog"], .modal-overlay');
-          await expect(dialog).toBeVisible({ timeout: 5000 });
-
-          const confirmBtn = dialog.locator('button:has-text("Confirm"), button:has-text("Assign")');
-          await confirmBtn.click();
-
-          const resultMsg = page.locator('.result-msg.success');
-          await expect(resultMsg).toBeVisible({ timeout: 10000 });
-        } else {
-          test.info().annotations.push({
-            type: 'info',
-            description: 'Bulk assign button not visible — feature may not be implemented',
-          });
-        }
-      } else {
-        test.info().annotations.push({
-          type: 'info',
-          description: 'Row checkboxes not available — bulk assign feature may not be implemented',
-        });
-      }
-
-      await logout(page);
-    } finally {
-      for (const num of complaints) {
-        await cleanupRbioComplaint(request, num);
-      }
+  test.fixme(
+    'Admin drives reopen and reassign through the browser UI',
+    async () => {
+      // FIXME — no usable RBIO_ADMIN browser login. The RBIO_ADMIN key maps to `cms.admin`, whose only
+      // realm role is `ADMIN` (verified from its token: ["default-roles-cms", "offline_access",
+      // "uma_authorization", "ADMIN"]) — not RBIO_ADMIN. The task screen therefore offers it no
+      // actions at all (verified: 0 `.action-btn`, 0 `.action-card`, and the page renders the closed
+      // banner with "No actions available for your role"), so the Reopen and Reassign cards the old
+      // test clicked never appear.
+      //
+      // Both behaviours ARE covered above against the API, which is where the transition is enforced.
+      // Un-fixme once an account holding the RBIO_ADMIN realm role can log in.
     }
-  });
+  );
 });

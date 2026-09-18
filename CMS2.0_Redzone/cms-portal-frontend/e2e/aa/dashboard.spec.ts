@@ -61,21 +61,32 @@ test.describe('AA Dashboard', () => {
       subject: 'E2E Classification Badge Test',
     });
     await advanceToStatus(request, complaint.complaintNumber, 'closed');
-    await fileAppeal(request, complaint.complaintNumber, { classificationType: 'APPEAL' });
+    const appeal = await fileAppeal(request, complaint.complaintNumber, {
+      classificationType: 'APPEAL',
+    });
 
     await loginAsAaRole(page, 'AA_DO');
     await page.waitForSelector('.aa-dashboard', { timeout: 15000 });
     await page.waitForSelector('.appeals-table, .empty-state', { timeout: 15000 });
 
-    const badges = page.locator('.classification-badge');
-    const count = await badges.count();
+    // Two defects fixed here.
+    //
+    // 1. DEAD SELECTOR: the previous '.classification-badge' matched NOTHING — the shared
+    //    <app-status-badge> renders class="status-badge" for both the status and the classification
+    //    (they differ only by keyPrefix), and '.classification-badge' exists only in an unrelated
+    //    RBIO component.
+    // 2. VACUOUS: the assertions sat inside `if (count > 0)` with no else, so zero badges — i.e.
+    //    exactly the broken case — passed. The row is now located explicitly and required to exist.
+    //
+    // Scoped to THIS appeal's row, and to the classification cell specifically, so a status badge
+    // ("Filed") cannot satisfy a classification assertion.
+    const row = page.locator('tbody tr', { hasText: appeal.appealNumber });
+    await expect(row, 'the freshly filed appeal must appear in the dashboard grid').toBeVisible({
+      timeout: 15000,
+    });
 
-    if (count > 0) {
-      for (let i = 0; i < count; i++) {
-        const text = await badges.nth(i).textContent();
-        expect(text?.toUpperCase()).toMatch(/APPEAL|REPRESENTATION/);
-      }
-    }
+    const classificationText = await row.locator('.status-badge').first().textContent();
+    expect(classificationText?.toUpperCase()).toMatch(/APPEAL|REPRESENTATION/);
   });
 
   test('Status filter works', async ({ page }) => {
@@ -117,25 +128,37 @@ test.describe('AA Dashboard', () => {
     await page.waitForTimeout(500);
   });
 
-  test('Role-based view: Registrar sees unassigned, Authority sees forwarded', async ({ page }) => {
+  /**
+   * The badge must show the signed-in officer's role, resolved through i18n.
+   *
+   * This asserted /registrar/ and /authority/, which are OBSOLETE names — the AA vocabulary is
+   * AA_DO -> "Dealing Officer" and AA_SECRETARIAT -> "Secretariat" (aa.role_do / aa.role_secretariat).
+   * It also caught a real defect on the way through: the template interpolated `roleLabels[...]`
+   * WITHOUT the translate pipe, so the badge rendered the literal key "aa.role_do" to staff. The pipe
+   * is now applied, and asserting the key never appears is what keeps it applied.
+   */
+  test('Role badge shows the signed-in AA role, translated', async ({ page }) => {
     test.skip(!keycloakUp, 'Keycloak is not available');
 
     await loginAsAaRole(page, 'AA_DO');
     await page.waitForSelector('.aa-dashboard', { timeout: 15000 });
 
-    const registrarBadge = page.locator('.role-badge');
-    await expect(registrarBadge).toBeVisible();
-    const registrarRole = await registrarBadge.textContent();
-    expect(registrarRole?.toLowerCase()).toMatch(/registrar/);
+    const doBadge = page.locator('.role-badge');
+    await expect(doBadge).toBeVisible();
+    const doText = (await doBadge.textContent())?.trim() ?? '';
+    expect(doText.toLowerCase()).toContain('dealing officer');
+    // A raw key leaking to the screen is the specific regression guarded against here.
+    expect(doText).not.toMatch(/^aa\.role_/);
 
     await logout(page);
 
     await loginAsAaRole(page, 'AA_SECRETARIAT');
     await page.waitForSelector('.aa-dashboard', { timeout: 15000 });
 
-    const authorityBadge = page.locator('.role-badge');
-    await expect(authorityBadge).toBeVisible();
-    const authorityRole = await authorityBadge.textContent();
-    expect(authorityRole?.toLowerCase()).toMatch(/authority/);
+    const secretariatBadge = page.locator('.role-badge');
+    await expect(secretariatBadge).toBeVisible();
+    const secretariatText = (await secretariatBadge.textContent())?.trim() ?? '';
+    expect(secretariatText.toLowerCase()).toContain('secretariat');
+    expect(secretariatText).not.toMatch(/^aa\.role_/);
   });
 });

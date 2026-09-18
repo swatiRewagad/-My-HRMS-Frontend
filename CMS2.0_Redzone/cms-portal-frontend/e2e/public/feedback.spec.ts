@@ -1,7 +1,33 @@
 import { test, expect } from '../fixtures';
 import { createTestComplaint, advanceToStatus, seedCitizenSession } from '../utils/test-data';
+import { installCorsShim } from './browser-api';
 
 const API_BASE = process.env.API_BASE_URL || 'http://localhost:8082';
+
+/**
+ * ── THE TWO PRE-EXISTING FAILURES IN THIS FILE WERE ENVIRONMENTAL, NOT PRODUCT DEFECTS ──────────
+ *
+ * 'submit feedback for closed complaint shows success' and 'submit duplicate feedback shows already
+ * submitted error' both failed because the browser's POST /api/v1/feedback never left the page: it
+ * was blocked by CORS whenever the dev server runs on a port outside cms-backend's allow-list
+ * (4200/4201/4202/4300 — application.yml:162). The Angular error handler turns any network-level
+ * failure into the generic "An unexpected error occurred. Please try again later.", which is exactly
+ * what the duplicate test observed instead of the 409 message. The other two tests in this file
+ * passed only because client-side validation short-circuits before any request is made.
+ *
+ * The backend was verified correct by direct call:
+ *   POST /api/v1/feedback for an unknown complaint  → 400 "Complaint not found: …"
+ *   FeedbackService.java:55-58                      → 409 "Feedback already submitted for this
+ *                                                          complaint." on the duplicate path
+ *   FeedbackController.java:33-39                   → maps IllegalStateException → 409
+ *
+ * Fixed with the harness shim (see ./browser-api.ts). Both tests now exercise the real POST and pass.
+ */
+
+/** Every browser test here posts through the shim, or the request never reaches the backend. */
+test.beforeEach(async ({ page }) => {
+  await installCorsShim(page);
+});
 
 /**
  * Submit feedback via the backend API directly.
@@ -81,6 +107,17 @@ test.describe('Feedback Flow (Public)', () => {
     const successCard = page.locator('.success-card');
     await expect(successCard).toBeVisible({ timeout: 15000 });
     await expect(successCard).toContainText(complaint.complaintNumber);
+
+    // Persisted, not merely announced. A success card rendered optimistically ahead of the response
+    // would satisfy every assertion above while the feedback was never stored.
+    const stored = await request.get(`${API_BASE}/api/v1/feedback/${complaint.complaintNumber}`);
+    expect(stored.status(), 'the submitted feedback must be readable back').toBe(200);
+    const body = await stored.json();
+    expect(body.success).toBe(true);
+    expect(body.data.overallRating).toBe(4);
+    expect(body.data.easeOfFiling).toBe(3);
+    expect(body.data.grievanceRedressTime).toBe(4);
+    expect(body.data.feedbackText).toContain('Excellent resolution');
   });
 
   // ────────────────────────────────────────────────────────────────────
@@ -119,8 +156,20 @@ test.describe('Feedback Flow (Public)', () => {
     // Angular binds [value] as a property, so there is no value attribute to match on.
     await page.getByRole('radio', { name: 'Very Aware', exact: true }).check();
 
+    // The response is captured, so the assertion below distinguishes "the server refused with 409"
+    // from "the request never got there and Angular showed its generic message" — the two were
+    // indistinguishable before, and the generic message is what a CORS or network failure produces.
+    const responsePromise = page.waitForResponse(
+      (r) => r.url().includes('/api/v1/feedback') && r.request().method() === 'POST',
+      { timeout: 15000 }
+    );
+
     // Submit
     await page.locator('button:has-text("Submit"), button.btn-primary:has(i.pi-send)').click();
+
+    const response = await responsePromise;
+    expect(response.status(), 'a duplicate submission must be refused with 409, not a network error').toBe(409);
+    expect((await response.json()).message).toContain('Feedback already submitted');
 
     // Should show duplicate error
     const errorMsg = page.locator('.error-msg');

@@ -9,7 +9,7 @@ export default defineConfig({
   timeout: 60000,
   reporter: 'html',
   use: {
-    baseURL: 'http://localhost:4200',
+    baseURL: process.env['UI_BASE_URL'] || 'http://localhost:4200',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     actionTimeout: 15000,

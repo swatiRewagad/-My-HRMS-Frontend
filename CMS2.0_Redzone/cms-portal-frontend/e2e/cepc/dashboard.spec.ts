@@ -1,14 +1,38 @@
-import { test, expect } from '../fixtures';
+import { test, expect, ageComplaintPastSla } from '../rbio/harness';
 import { loginAsCepcRole, isKeycloakAvailable, logout } from '../utils/auth';
-import { createTestComplaint, cleanupComplaint } from '../utils/test-data';
+import { createTestComplaint, cleanupComplaint, advanceToStatus } from '../utils/test-data';
 
+/**
+ * Several tests here previously guarded their only assertion behind an `if` with no `else` — one
+ * carried the comment "If no overdue complaints, that is also a valid state (just skip assertion)".
+ * Those preconditions are now seeded so the assertions always run.
+ *
+ * The selectors were also wrong throughout: the dashboard renders `.data-grid`, `.stats-bar`,
+ * `.queue-select` and `h1`, not `.complaints-table`, `.stats-row`, `.filter-select` or an
+ * `h2:has-text("CEPC - Complaint Management")`. Those tests were failing for the wrong reason.
+ */
 test.describe('CEPC Dashboard', () => {
   let keycloakUp: boolean;
+  let seededComplaint: string;
 
-  test.beforeAll(async ({ browser }) => {
+  test.beforeAll(async ({ browser, request }) => {
     const page = await browser.newPage();
     keycloakUp = await isKeycloakAvailable(page);
     await page.close();
+
+    if (keycloakUp) {
+      // Every grid assertion below needs at least one row that belongs to this DO, otherwise it is
+      // asserting against an empty table and cannot fail.
+      const result = await createTestComplaint(request, { subject: 'S4-CEPC Dashboard Fixture' });
+      seededComplaint = result.complaintNumber;
+      await advanceToStatus(request, seededComplaint, 'in_progress');
+    }
+  });
+
+  test.afterAll(async ({ request }) => {
+    if (seededComplaint) {
+      await cleanupComplaint(request, seededComplaint);
+    }
   });
 
   test.beforeEach(async ({ page }) => {
@@ -22,200 +46,236 @@ test.describe('CEPC Dashboard', () => {
     }
   });
 
-  test('page loads and shows CEPC dashboard title', async ({ page }) => {
-    const heading = page.locator('h2:has-text("CEPC - Complaint Management")');
-    await expect(heading).toBeVisible({ timeout: 15000 });
+  test('page loads and shows the CEPC complaints heading', async ({ page }) => {
+    await expect(page.locator('h1:has-text("CEPC Complaints")')).toBeVisible({ timeout: 15000 });
   });
 
-  test('stats cards display (Total, Pending, Under Examination, etc.)', async ({ page }) => {
-    const statsRow = page.locator('.stats-row');
-    await expect(statsRow).toBeVisible({ timeout: 10000 });
+  test('stats cards display and carry numeric counts', async ({ page }) => {
+    const statsBar = page.locator('.stats-bar');
+    await expect(statsBar).toBeVisible({ timeout: 10000 });
 
-    // Verify each stat card
-    await expect(page.locator('.stat-card:has(.stat-label:has-text("Total"))')).toBeVisible();
-    await expect(page.locator('.stat-card:has(.stat-label:has-text("Pending"))')).toBeVisible();
-    await expect(page.locator('.stat-card:has(.stat-label:has-text("Under Examination"))')).toBeVisible();
-    await expect(page.locator('.stat-card:has(.stat-label:has-text("Under Review"))')).toBeVisible();
-    await expect(page.locator('.stat-card:has(.stat-label:has-text("Awaiting Closure"))')).toBeVisible();
-    await expect(page.locator('.stat-card:has(.stat-label:has-text("Escalated"))')).toBeVisible();
-  });
+    const labels = (await statsBar.locator('.stat-label').allTextContents()).map(l => l.trim());
+    expect(labels).toEqual(
+      expect.arrayContaining(['Total Complaints', 'Pending', 'Under Examination', 'Under Review', 'Escalated'])
+    );
 
-  test('complaint table renders with expected columns', async ({ page }) => {
-    // Wait for loading to complete
-    await page.waitForSelector('.complaints-table, .empty-state', { timeout: 15000 });
-
-    // If there are complaints, verify table headers
-    const table = page.locator('.complaints-table');
-    if (await table.isVisible()) {
-      const headers = table.locator('thead th');
-      await expect(headers.nth(0)).toContainText('Complaint No.');
-      await expect(headers.nth(1)).toContainText('Complainant');
-      await expect(headers.nth(2)).toContainText('Entity');
-      await expect(headers.nth(3)).toContainText('Subject');
-      await expect(headers.nth(4)).toContainText('Priority');
-      await expect(headers.nth(5)).toContainText('Status');
-      await expect(headers.nth(6)).toContainText('SLA Due');
-      await expect(headers.nth(7)).toContainText('Actions');
-    } else {
-      // Empty state is also valid
-      await expect(page.locator('.empty-state')).toBeVisible();
-    }
-  });
-
-  test('search filters complaints by number or name', async ({ page }) => {
-    await page.waitForSelector('.complaints-table, .empty-state', { timeout: 15000 });
-
-    const searchInput = page.locator('.search-box input');
-    await expect(searchInput).toBeVisible();
-
-    // Type a search query
-    await searchInput.fill('NONEXISTENT_QUERY_12345');
-    await page.waitForTimeout(500);
-
-    // Should show empty state or filtered results
-    const filteredRows = page.locator('.complaints-table tbody tr');
-    const emptyState = page.locator('.empty-state');
-
-    const rowCount = await filteredRows.count();
-    if (rowCount === 0) {
-      await expect(emptyState).toBeVisible();
+    // A stat card showing a blank or NaN is a failure, not a pass.
+    const values = await statsBar.locator('.stat-value').allTextContents();
+    expect(values.length).toBe(labels.length);
+    for (const v of values) {
+      expect(v.trim(), `a stat card read "${v}"`).toMatch(/^\d+$/);
     }
 
-    // Clear search
-    await searchInput.clear();
-    await page.waitForTimeout(500);
+    // The seeded complaint must be counted.
+    const total = Number((await statsBar.locator('.stat-card').first().locator('.stat-value').textContent())?.trim());
+    expect(total, 'the total must include the seeded complaint').toBeGreaterThan(0);
   });
 
-  test('status filter dropdown works', async ({ page }) => {
-    await page.waitForSelector('.complaints-table, .empty-state', { timeout: 15000 });
+  test('complaint table renders with the expected columns', async ({ page }) => {
+    await page.waitForSelector('.data-grid, .empty-state', { timeout: 15000 });
 
-    const filterSelect = page.locator('.filter-select');
-    await expect(filterSelect).toBeVisible();
+    // Previously `if (await table.isVisible()) {...} else { expect(empty-state) }` — an empty grid
+    // satisfied it. A row is seeded in beforeAll, so the grid must be populated.
+    const rows = page.locator('.data-grid tbody tr:not(:has(.empty-state))');
+    await expect
+      .poll(async () => rows.count(), { message: 'the seeded complaint must appear in the grid' })
+      .toBeGreaterThan(0);
 
-    // Select "Under Examination"
-    await filterSelect.selectOption('in_progress');
-    await page.waitForTimeout(500);
+    const headers = (await page.locator('.data-grid thead tr:first-child th').allTextContents())
+      .map(h => h.trim())
+      .filter(h => h !== '');
+    expect(headers).toEqual(
+      expect.arrayContaining([
+        'Complaint Number', 'Complainant', 'Entity', 'Subject', 'Priority', 'Status', 'SLA Due',
+      ])
+    );
+  });
 
-    // All visible status badges should be "Under Examination" (or empty state)
-    const statusBadges = page.locator('.complaints-table tbody .status-badge');
-    const count = await statusBadges.count();
-    for (let i = 0; i < count; i++) {
-      await expect(statusBadges.nth(i)).toContainText('Under Examination');
+  test('advanced search narrows the grid to the searched complaint', async ({ page }) => {
+    await page.waitForSelector('.data-grid, .empty-state', { timeout: 15000 });
+
+    const rows = page.locator('.data-grid tbody tr:not(:has(.empty-state))');
+    await expect
+      .poll(async () => rows.count(), { message: 'rows must exist before filtering is meaningful' })
+      .toBeGreaterThan(0);
+
+    // Searching the seeded number must leave exactly that row. The old test only checked that an
+    // empty result showed the empty state, which an always-empty grid satisfied.
+    await page.locator('button:has-text("Advanced Search")').click();
+    const dialog = page.locator('.modal-dialog.search-dialog');
+    await expect(dialog).toBeVisible({ timeout: 5000 });
+    await dialog.locator('.search-field:has(label:text-is("Complaint Number")) input').fill(seededComplaint);
+    await dialog.locator('button:has-text("Search")').click();
+    await expect(dialog).not.toBeVisible({ timeout: 5000 });
+
+    await expect
+      .poll(
+        async () => (await rows.allTextContents()).filter(t => !t.includes(seededComplaint)).length,
+        { message: 'searching a complaint number must exclude every other row', timeout: 8000 }
+      )
+      .toBe(0);
+    await expect(rows, 'the searched complaint itself must remain').toHaveCount(1);
+
+    await page.locator('button:has-text("Clear Filters")').click();
+    await expect.poll(async () => rows.count(), { timeout: 8000 }).toBeGreaterThan(1);
+  });
+
+  test.fixme(
+    'per-column search boxes filter the grid',
+    async () => {
+      // FIXME — PRODUCTION DEFECT (missing reactivity), identical to the RBIO task list.
+      // `columnFilters` is a PLAIN OBJECT (cepc-dashboard.component.ts:61) read inside the
+      // `filteredComplaints` computed (line 165). `[(ngModel)]="columnFilters[col.key]"` mutates a
+      // property of that object, which no signal observes, so the computed never recomputes.
+      // Verified in the browser: typing an impossible value into the first `.col-search` box leaves
+      // all 10 rows on screen.
+      //
+      // Note the contrast — `allColumns` on this same component IS a signal and its toggle correctly
+      // uses `.update(...)` (line 345), so the column config works while the column search does not.
+      // Un-fixme once `columnFilters` is a signal.
     }
+  );
 
-    // Reset
-    await filterSelect.selectOption('');
-  });
+  test.fixme(
+    'status filter narrows the grid to the chosen status',
+    async () => {
+      // FIXME — PRODUCTION DEFECT (case mismatch). The status dropdown emits lowercase values
+      // (`<option value="in_progress">`, cepc-dashboard.component.html:61) and `filteredComplaints`
+      // compares them with `c.status === status` (component ts:150), but the tasks endpoint returns
+      // status UPPERCASED — `task.put("status", c.getStatus().toUpperCase())`,
+      // WorkflowController.java:893, verified live: ["RE_RESPONDED","FORWARDED","ASSIGNED",
+      // "IN_PROGRESS","INFO_REQUESTED"]. 'IN_PROGRESS' === 'in_progress' is false, so selecting
+      // "Under Examination" empties the grid even though 2 such complaints are present.
+      //
+      // The 'pending' and 'under_review' options use `.includes()` against lowercase arrays and are
+      // broken the same way. Un-fixme once the comparison is case-normalised.
+    }
+  );
 
-  test('pagination works (prev/next buttons)', async ({ page }) => {
-    await page.waitForSelector('.complaints-table, .empty-state', { timeout: 15000 });
+  test('pagination reports a page range and disables Previous on page one', async ({ page }) => {
+    await page.waitForSelector('.data-grid, .empty-state', { timeout: 15000 });
 
+    // Previously the whole body was inside `if (await pagination.isVisible())`, so a missing
+    // pagination bar passed.
     const pagination = page.locator('.pagination');
-    if (await pagination.isVisible()) {
-      const pageInfo = page.locator('.page-info');
-      await expect(pageInfo).toBeVisible();
+    await expect(pagination, 'the dashboard must render a pagination bar').toBeVisible({ timeout: 10000 });
 
-      // Check the next page button
-      const nextBtn = page.locator('.page-controls .page-btn:last-child');
-      const prevBtn = page.locator('.page-controls .page-btn:first-child');
+    const infoText = (await page.locator('.page-info').textContent())?.trim() ?? '';
+    expect(infoText, `page info read "${infoText}"`).toMatch(/Showing \d+ to \d+ of \d+ entries/);
+    // "Showing 0 to 0 of 0 entries" would mean the grid never loaded.
+    expect(infoText, 'the grid must have entries to paginate').not.toMatch(/of 0 entries/);
 
-      // Prev should be disabled on first page
-      await expect(prevBtn).toBeDisabled();
-
-      // If there is a next page, click it
-      if (!(await nextBtn.isDisabled())) {
-        await nextBtn.click();
-        await page.waitForTimeout(300);
-        // Prev should now be enabled
-        await expect(prevBtn).toBeEnabled();
-      }
-    }
+    const prevBtn = page.locator('.page-controls .page-btn').first();
+    await expect(prevBtn, 'Previous must be disabled on the first page').toBeDisabled();
   });
 
-  test('Create Complaint dialog opens and submits successfully', async ({ page }) => {
-    await page.waitForSelector('.toolbar', { timeout: 15000 });
-
+  test('Create Complaint dialog opens and creates a complaint', async ({ page, request }) => {
     const createBtn = page.locator('.create-btn');
-    await expect(createBtn).toBeVisible();
+    await expect(createBtn).toBeVisible({ timeout: 15000 });
     await createBtn.click();
 
-    // Dialog should be visible
     const modal = page.locator('.modal-overlay');
     await expect(modal).toBeVisible();
 
-    const modalHeader = page.locator('.modal-header h3');
-    await expect(modalHeader).toHaveText('Create New CEPC Complaint');
+    const dialog = page.locator('.modal-dialog.create-dialog');
+    await expect(dialog).toBeVisible();
 
-    // Fill required fields
-    await page.locator('.modal-body input[placeholder="Full name"]').fill('E2E Test Citizen');
-    await page.locator('.modal-body input[placeholder*="subject" i]').fill('E2E Dashboard Submit Test');
-    await page.locator('.modal-body input[placeholder*="email" i]').fill('e2e@test.com');
-    await page.locator('.modal-body textarea').fill('Automated test from Playwright');
+    const subject = `S4-CEPC Dashboard Create ${Date.now().toString(36)}`;
+    await dialog.locator('input[placeholder="Full name"]').fill('S4 Test Citizen');
+    await dialog.locator('input[placeholder*="subject" i]').fill(subject);
+    await dialog.locator('input[placeholder*="Email address" i]').fill('s4@test.com');
+    await dialog.locator('textarea').fill('Automated test from Playwright');
 
-    // Submit
-    const submitBtn = page.locator('.modal-body .submit-btn');
-    await submitBtn.click();
+    await dialog.locator('button:has-text("Create Complaint")').click();
 
-    // Wait for success message or error (both are acceptable outcomes)
+    // The old version accepted `successMsg.or(errorMsg)` — "both are acceptable outcomes" — so a
+    // creation that failed outright passed. Only success is acceptable.
     const successMsg = page.locator('.success-msg');
-    const errorMsg = page.locator('.error-msg');
-    await expect(successMsg.or(errorMsg)).toBeVisible({ timeout: 15000 });
+    await expect(successMsg, 'creating a complaint must report success, not an error')
+      .toBeVisible({ timeout: 15000 });
+    await expect(page.locator('.error-msg')).toHaveCount(0);
 
-    // Close the modal so afterEach logout can proceed
+    // And it must actually exist server-side, not merely flash a banner.
+    const listRes = await request.get(
+      `${(process.env['API_BASE_URL'] || 'http://localhost:8082').replace(/\/+$/, '')}/api/v1/workflow/cepc/tasks?role=CEPC_DO`,
+      { headers: { 'X-User-Id': 'cepc_do1', 'X-User-Roles': 'CEPC_DO' } }
+    );
+    expect(listRes.ok()).toBe(true);
+    const created = ((await listRes.json()).data as any[]).find(c => c.subject === subject);
+    expect(created, 'the newly created complaint must be persisted and visible to the DO').toBeTruthy();
+
+    if (created?.complaintNumber) {
+      await cleanupComplaint(request, created.complaintNumber);
+    }
     await page.keyboard.press('Escape');
   });
 
   test('Create Complaint validates required fields (name, subject)', async ({ page }) => {
-    await page.waitForSelector('.toolbar', { timeout: 15000 });
-
     const createBtn = page.locator('.create-btn');
+    await expect(createBtn).toBeVisible({ timeout: 15000 });
     await createBtn.click();
 
-    const modal = page.locator('.modal-overlay');
-    await expect(modal).toBeVisible();
+    const dialog = page.locator('.modal-dialog.create-dialog');
+    await expect(dialog).toBeVisible();
 
-    // Try to submit without filling required fields
-    const submitBtn = page.locator('.modal-body .submit-btn');
-    await submitBtn.click();
+    await dialog.locator('button:has-text("Create Complaint")').click();
 
-    // Should show validation error
     const errorMsg = page.locator('.error-msg');
     await expect(errorMsg).toBeVisible();
     await expect(errorMsg).toContainText('Complainant Name and Subject are required');
+    // The dialog must stay open so the user can correct the input, and nothing may be reported created.
+    await expect(dialog).toBeVisible();
+    await expect(page.locator('.success-msg')).toHaveCount(0);
 
-    // Close dialog
-    const closeBtn = page.locator('.modal-header .close-btn');
-    await closeBtn.click();
+    await dialog.locator('.modal-close').click();
+    await expect(dialog).not.toBeVisible();
   });
 
-  test('SLA overdue complaints show visual indicator', async ({ page }) => {
-    await page.waitForSelector('.complaints-table, .empty-state', { timeout: 15000 });
+  test('an overdue complaint is flagged on the dashboard', async ({ page, request }) => {
+    // The old version was `if (count > 0) { assert }` with the comment "If no overdue complaints,
+    // that is also a valid state (just skip assertion)". The overdue complaint is now seeded.
+    const result = await createTestComplaint(request, { subject: 'S4-CEPC Dashboard Overdue Test' });
+    const overdueNumber = result.complaintNumber;
 
-    // Check if any rows have the .overdue class
-    const overdueRows = page.locator('.complaints-table tbody tr.overdue');
-    const count = await overdueRows.count();
+    try {
+      await advanceToStatus(request, overdueNumber, 'in_progress');
+      const seeded = ageComplaintPastSla(overdueNumber, 45);
+      expect(seeded, 'could not seed an overdue complaint (MySQL client unavailable)').toBe(true);
 
-    if (count > 0) {
-      // Overdue rows should also have .overdue-text in the SLA cell
-      const firstOverdue = overdueRows.first();
-      const slaCell = firstOverdue.locator('.sla-cell');
-      await expect(slaCell).toHaveClass(/overdue-text/);
+      await page.reload();
+      await page.waitForSelector('.data-grid, .empty-state', { timeout: 15000 });
+
+      // Advanced search is used rather than the per-column boxes, which do not filter (see the fixme
+      // above), so the seeded row can be located deterministically instead of hoping it is on page 1.
+      await page.locator('button:has-text("Advanced Search")').click();
+      const dialog = page.locator('.modal-dialog.search-dialog');
+      await expect(dialog).toBeVisible({ timeout: 5000 });
+      await dialog.locator('.search-field:has(label:text-is("Complaint Number")) input').fill(overdueNumber);
+      await dialog.locator('button:has-text("Search")').click();
+
+      const row = page.locator(`.data-grid tbody tr:has-text("${overdueNumber}")`);
+      await expect(row, 'the overdue complaint must be listed').toBeVisible({ timeout: 10000 });
+
+      const indicator = row.locator('.sla-indicator');
+      await expect(indicator, 'an overdue complaint must be flagged red').toHaveClass(/red/);
+      await expect(indicator.locator('.days-text')).toHaveText(/\d+ days? overdue/);
+    } finally {
+      await cleanupComplaint(request, overdueNumber);
     }
-    // If no overdue complaints, that is also a valid state (just skip assertion)
   });
 
-  test('clicking a complaint navigates to detail page', async ({ page }) => {
-    await page.waitForSelector('.complaints-table, .empty-state', { timeout: 15000 });
+  test('clicking a complaint navigates to its detail page', async ({ page }) => {
+    await page.waitForSelector('.data-grid, .empty-state', { timeout: 15000 });
 
-    const firstRow = page.locator('.complaints-table tbody tr').first();
-    if (await firstRow.isVisible()) {
-      const complaintNum = await firstRow.locator('.complaint-num').textContent();
-      await firstRow.click();
+    // Previously wrapped in `if (await firstRow.isVisible())`, so an empty grid skipped the whole test.
+    const firstRow = page.locator('.data-grid tbody tr:not(:has(.empty-state))').first();
+    await expect(firstRow, 'a row must be present to click').toBeVisible({ timeout: 10000 });
+    await firstRow.click();
 
-      // Should navigate to complaint detail
-      await page.waitForURL(/\/cepc\/complaint\//, { timeout: 10000 });
-      expect(page.url()).toContain('/cepc/complaint/');
-    }
+    await page.waitForURL(/\/cepc\/complaint\//, { timeout: 10000 });
+    expect(page.url()).toContain('/cepc/complaint/');
+    // Navigating is only useful if the target actually renders.
+    await expect(page.locator('.cepc-detail .detail-layout')).toBeVisible({ timeout: 15000 });
   });
 });
 
@@ -232,9 +292,8 @@ test.describe('CEPC Dashboard - Role-based visibility', () => {
     test.skip(!keycloakUp, 'Keycloak is not available');
     await loginAsCepcRole(page, 'DO');
 
-    await page.waitForSelector('.toolbar', { timeout: 15000 });
-    const createBtn = page.locator('.create-btn');
-    await expect(createBtn).toBeVisible();
+    await expect(page.locator('h1:has-text("CEPC Complaints")')).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('.create-btn')).toBeVisible();
 
     await logout(page);
   });
@@ -243,9 +302,10 @@ test.describe('CEPC Dashboard - Role-based visibility', () => {
     test.skip(!keycloakUp, 'Keycloak is not available');
     await loginAsCepcRole(page, 'REVIEWER');
 
-    await page.waitForSelector('.toolbar', { timeout: 15000 });
-    const createBtn = page.locator('.create-btn');
-    await expect(createBtn).not.toBeVisible();
+    // Asserting the page loaded first matters: `not.toBeVisible()` is trivially true on a blank page,
+    // so without this the test would pass if the dashboard failed to render at all.
+    await expect(page.locator('h1:has-text("CEPC Complaints")')).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('.create-btn')).toHaveCount(0);
 
     await logout(page);
   });

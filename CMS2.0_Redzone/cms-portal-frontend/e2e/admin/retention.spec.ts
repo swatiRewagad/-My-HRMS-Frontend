@@ -44,10 +44,27 @@ test.describe('UST890 — retention policies', () => {
       expect(policy.retentionDays).toBe(2555);
     }
 
+    // Asserted, not guarded. `if (operational)` meant the whole operational-vs-audit comparison
+    // vanished the moment the category went missing — and a missing operational policy is itself the
+    // defect: with no shorter policy, operational data would inherit the 7-year audit retention and
+    // the statutory distinction this test exists to prove would not exist in the data at all.
     const operational = policies.find((p: any) => p.category === 'IN_APP_NOTIFICATION');
-    if (operational) {
-      // Operational data is shorter-lived than the audit trail.
-      expect(operational.retentionDays).toBeLessThan(2555);
+    expect(
+      operational,
+      'IN_APP_NOTIFICATION policy is missing, so nothing separates operational data from the audit trail'
+    ).toBeTruthy();
+    // Operational data is shorter-lived than the audit trail.
+    expect(operational.retentionDays).toBeLessThan(2555);
+    expect(operational.auditCategory).toBe(false);
+
+    // And the general rule, over every non-audit policy that is not deliberately a record-shell
+    // redaction: an operational category retained as long as the audit trail defeats the point.
+    for (const policy of policies.filter((p: any) => !p.auditCategory)) {
+      if (policy.redactInsteadOfDelete) continue; // COMPLAINT_PII keeps the shell for 7 years by design
+      expect(
+        policy.retentionDays,
+        `${policy.category} is operational but retained as long as the audit trail`
+      ).toBeLessThan(2555);
     }
   });
 
@@ -81,12 +98,26 @@ test.describe('UST890 — retention policies', () => {
   });
 
   test('the deletion log marks dry runs distinctly', async ({ request }) => {
+    // A run of our own, so the log is guaranteed to contain a row this test caused. The previous
+    // `test.skip(entries.length === 0)` meant an engine that recorded nothing at all — the exact
+    // failure that makes a dry run unreviewable — read as a pass.
+    const run = await request.post(
+      `${API_BASE}/api/v1/admin/security/retention/run`, { headers: ADMIN, data: {} });
+    expect(run.ok()).toBeTruthy();
+    expect((await run.json()).dryRun, 'this must remain a dry run — cms_db is shared').toBe(true);
+
     const res = await request.get(
       `${API_BASE}/api/v1/admin/security/retention/deletion-log?size=20`, { headers: ADMIN });
     expect(res.ok()).toBeTruthy();
 
     const entries = (await res.json()).data ?? [];
-    test.skip(entries.length === 0, 'no retention runs recorded yet');
+    expect(
+      entries.length,
+      'a dry run just completed, so the deletion log must hold at least one row'
+    ).toBeGreaterThan(0);
+    // At least one entry must be marked as a dry run, or the flag is not being recorded and a real
+    // purge would be indistinguishable from a rehearsal in the audit record.
+    expect(entries.some((e: any) => e.dryRun === true)).toBeTruthy();
 
     for (const entry of entries) {
       expect(entry).toHaveProperty('category');
