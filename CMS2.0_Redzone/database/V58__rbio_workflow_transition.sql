@@ -141,6 +141,21 @@ CALL w0b_add_column('COMPLAINTS', 'record_version', 'BIGINT NULL DEFAULT 0');
 -- never null in the database either.
 UPDATE COMPLAINTS SET record_version = 0 WHERE record_version IS NULL;
 
+-- The DEFAULT above only applies when THIS migration created the column. On a shared dev database
+-- `ddl-auto: update` usually creates it first, from the entity, with NO default — and then the
+-- guarded ADD COLUMN above is skipped, so the default never lands. The column is then nullable with
+-- default NULL, and any INSERT that omits it writes a NULL. Hibernate reads that NULL into a
+-- primitive `long` and fails the request with
+--   Null value was assigned to a property [Complaint.recordVersion] of primitive type (setter)
+--
+-- That is not hypothetical: seven E2E specs seed COMPLAINTS with raw INSERTs that legitimately do
+-- not list record_version (e2e/aa/*.spec.ts, e2e/aa/aa-shared-fixtures.ts,
+-- e2e/admin/safe-deactivation.spec.ts), and every appeal filed against such a row returned HTTP 400
+-- — 76 AA tests failed for a reason unrelated to anything they assert. Setting the default
+-- unconditionally makes the column behave the same whether Hibernate or this migration created it,
+-- so a fixture that omits the column gets 0 rather than NULL.
+ALTER TABLE COMPLAINTS ALTER COLUMN record_version SET DEFAULT 0;
+
 CALL w0b_add_index('COMPLAINTS', 'idx_complaint_milestone', 'milestone');
 
 DROP PROCEDURE IF EXISTS w0b_add_index;

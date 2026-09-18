@@ -80,6 +80,14 @@ BEGIN
     -- pre-existing complaint. This makes the stored data agree so the version is never null in the DB.
     EXECUTE IMMEDIATE 'UPDATE COMPLAINTS SET RECORD_VERSION = 0 WHERE RECORD_VERSION IS NULL';
 
+    -- The DEFAULT above only applies when THIS script created the column. Where `ddl-auto: update`
+    -- created it first from the entity there is no default, so any INSERT omitting the column writes
+    -- NULL, Hibernate reads NULL into a primitive `long`, and the request fails with
+    --   Null value was assigned to a property [Complaint.recordVersion] of primitive type (setter)
+    -- Observed on MySQL as 76 AA E2E failures caused solely by fixtures that omit the column.
+    -- Applying the default unconditionally makes the column behave identically however it was created.
+    ddl('ALTER TABLE COMPLAINTS MODIFY (RECORD_VERSION DEFAULT 0)');
+
     seed_milestone('REGISTER',       'Register',       'rbio.milestone.register',       1);
     seed_milestone('ASSESSMENT',     'Assessment',     'rbio.milestone.assessment',     2);
     seed_milestone('CONCILIATION',   'Conciliation',   'rbio.milestone.conciliation',   3);
