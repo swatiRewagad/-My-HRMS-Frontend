@@ -54,7 +54,8 @@ export class RbioDashboardComponent implements OnInit, OnDestroy {
   private readonly auth = inject(KeycloakAuthService);
   private readonly destroyRef = inject(DestroyRef);
 
-  private readonly complaintsSearchUrl = "/cms-search/api/v1/search/complaints/search";
+  // private readonly complaintsSearchUrl = "/cms-search/api/v1/search/complaints/search";
+  private readonly complaintsSearchUrl = "http://localhost:8091/cms-search/api/v1/search/complaints/search";
 
   private readonly masterQueryStream$ = new Subject<void>();
 

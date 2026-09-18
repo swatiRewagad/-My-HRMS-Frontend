@@ -40,9 +40,9 @@ public class SecurityConfig {
                         // A reindex rewrites the whole corpus and is expensive enough to be a
                         // denial-of-service primitive on its own, so it is admin-only.
                         .requestMatchers(HttpMethod.POST, "/api/v1/search/complaints/reindex/**")
-                                .hasRole(RoleConstants.RBIO_ADMIN)
+                                .hasRole(RoleConstants.RBIO_DO)
                         .requestMatchers("/api/v1/search/complaints/reindex/jobs/**")
-                                .hasRole(RoleConstants.RBIO_ADMIN)
+                                .hasRole(RoleConstants.RBIO_DO)
                         .requestMatchers("/api/v1/search/**").authenticated()
                         // Default-deny, so a newly added endpoint is unreachable until it is
                         // deliberately classified rather than being exposed by omission.

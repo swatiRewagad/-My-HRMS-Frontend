@@ -29,10 +29,10 @@ public class CurrentOfficerArgumentResolver implements HandlerMethodArgumentReso
 
     private final Environment environment;
 
-    @Value("${cms.dev.officer-username:dev-officer}")
+    @Value("${cms.dev.officer-username:rbio_do_user1}")
     private String devUserName;
 
-    @Value("${cms.dev.officer-department:" + DepartmentConstants.DEPT_CRPC + "}")
+    @Value("${cms.dev.officer-department:" + DepartmentConstants.DEPT_RBIO + "}")
     private String devDepartment;
 
     @Override

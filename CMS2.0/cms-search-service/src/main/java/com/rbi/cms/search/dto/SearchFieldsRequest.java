@@ -17,7 +17,6 @@ import java.time.LocalDate;
  * <p>The text fields feed wildcard queries whose expansion cost scales with pattern length, which is
  * why the {@code @Size} bounds matter beyond tidiness.
  */
-@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public record SearchFieldsRequest(
 
         @Size(max = 20, message = "must be at most 20 characters")

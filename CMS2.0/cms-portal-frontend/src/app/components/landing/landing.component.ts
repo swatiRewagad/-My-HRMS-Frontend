@@ -65,7 +65,7 @@ export class LandingComponent {
   }
 
   navigateToKeycloakAdmin() {
-    window.open('http://localhost:9090/admin', '_blank');
+    window.open('http://localhost:8180/admin', '_blank');
   }
 
   navigateToRulesConfig() {

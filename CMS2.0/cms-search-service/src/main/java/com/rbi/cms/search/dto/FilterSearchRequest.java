@@ -13,7 +13,6 @@ import java.util.List;
  * <p>The compact constructor null-normalizes to {@code List.of()}, so {@code @Size(max)} composes
  * without needing to tolerate null.
  */
-@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public record FilterSearchRequest(
         @Size(max = 200, message = "must contain at most 200 values")
         List<String> states,

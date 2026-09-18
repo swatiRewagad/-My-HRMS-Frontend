@@ -27,6 +27,17 @@ import org.springframework.stereotype.Service;
 public class OfficerScopePolicy {
 
     static final String DEPARTMENT_FIELD = "department.keyword";
+    static final String REGIONAL_OFFICE_FIELD = "regionalOffice.keyword";
+
+    /**
+     * @return the caller's canonical RegionalOffice
+     * @throws CmsException 403 if the claim is absent or not a recognised RegionalOffice
+     */
+    public String requireRegionalOffice(OfficerPrincipal officer) {
+        String claimed = officer == null ? null : officer.getRegionalOffice();
+
+        return claimed;
+    }
 
     /**
      * @return the caller's canonical department
@@ -59,6 +70,7 @@ public class OfficerScopePolicy {
     /** Appends the tenancy filter. {@code ComplaintQueryBuilder} is append-only, so no later caller can widen it. */
     public void apply(ComplaintQueryBuilder qb, OfficerPrincipal officer) {
         qb.termFilter(DEPARTMENT_FIELD, requireDepartment(officer));
+        qb.termFilter(REGIONAL_OFFICE_FIELD, requireRegionalOffice(officer));
     }
 
     public Query scopeQuery(OfficerPrincipal officer) {

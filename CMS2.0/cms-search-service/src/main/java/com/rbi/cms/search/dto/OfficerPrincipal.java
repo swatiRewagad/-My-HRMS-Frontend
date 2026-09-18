@@ -38,6 +38,8 @@ public class OfficerPrincipal {
      */
     private final String department;
 
+    private final String regionalOffice;
+
     public boolean hasRole(String role) {
         return roles != null && roles.contains(role);
     }

@@ -20,7 +20,6 @@ import java.time.LocalDate;
  * document, and they are what stops an authenticated caller spending cluster CPU on an unbounded
  * pattern.
  */
-@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public record AdvancedSearchRequest(
 
         @Size(max = 50, message = "must be at most 50 characters")

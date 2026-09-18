@@ -12,7 +12,6 @@ import jakarta.validation.constraints.Size;
  * <p>Violation keys are the Java property path ({@code search.status}), not the snake_case wire name,
  * because {@code FieldError#getField} reports the Java path regardless of Jackson naming.
  */
-@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public record ComplaintSearchRequest(
         @Valid AdvancedSearchRequest advancedSearch,
         @Valid FilterSearchRequest filters,

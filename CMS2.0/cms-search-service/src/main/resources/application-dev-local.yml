@@ -3,7 +3,7 @@ cms:
     host: localhost
     port: 9200
     scheme: http
-    enabled: false
+    enabled: true
 
 spring:
   kafka:
