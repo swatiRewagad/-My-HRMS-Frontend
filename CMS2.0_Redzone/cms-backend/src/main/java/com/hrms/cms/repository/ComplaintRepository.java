@@ -113,6 +113,25 @@ public interface ComplaintRepository
     List<Complaint> findPastReResponseDeadline(@Param("today") LocalDate today,
                                               @Param("closedStatuses") List<String> closedStatuses);
 
+    /**
+     * Every complaint carrying a response deadline, whether overdue or not.
+     *
+     * <p>The sweep needs the ones that are NO LONGER overdue as well as the ones that are, because it clears
+     * the flag as well as setting it — that is what makes the highlight disappear once the entity responds
+     * (UST637). A query restricted to overdue rows could only ever set the flag, never remove it.
+     */
+    @Query("SELECT c FROM Complaint c WHERE c.reResponseDeadline IS NOT NULL")
+    List<Complaint> findWithReResponseDeadline();
+
+    /**
+     * Complaints currently flagged overdue, for counts that do not re-derive the rule.
+     *
+     * <p>Reads the persisted flag rather than recomputing the comparison, so a dashboard count and the grid's
+     * highlight can never disagree about who is late.
+     */
+    @Query("SELECT c FROM Complaint c WHERE c.reResponseOverdue = TRUE AND c.reResponseDeadline < :today")
+    List<Complaint> findOverdueReResponses(@Param("today") LocalDate today);
+
     // Citizen portal: paginated queries by phone
     Page<Complaint> findByComplainantPhone(String phone, Pageable pageable);
 

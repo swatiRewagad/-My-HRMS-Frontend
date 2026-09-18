@@ -89,6 +89,24 @@ public class NodalOfficerRecord {
     @Column(length = 100)
     private String processingOffice;
 
+    /**
+     * UST780: the date this entity must answer the current communication by.
+     *
+     * <p>Held here as well as on the complaint because the staleness escalations read the NO record, and a
+     * deadline only on the complaint would be invisible to the job meant to chase the entity. The two are
+     * written together whenever a notice or information request sets one.
+     *
+     * <p>A LocalDate, not a timestamp: the officer picks a calendar day and the Scheme speaks in days, so
+     * storing a time would invent a precision nobody decided. Nullable — most complaints have no
+     * outstanding communication.
+     */
+    @Column(name = "re_response_deadline")
+    private java.time.LocalDate reResponseDeadline;
+
+    /** Which communication set the deadline — a 13(1) Notice, or an information request. */
+    @Column(length = 50)
+    private String deadlineCommunication;
+
     @Column(length = 30, nullable = false)
     @Builder.Default
     private String status = "INFORMATION_REQUIRED";

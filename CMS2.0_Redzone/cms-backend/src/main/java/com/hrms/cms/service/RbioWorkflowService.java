@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -85,6 +86,33 @@ public class RbioWorkflowService {
      */
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     private com.hrms.cms.security.RbioIdentityResolver identityResolver;
+
+    /**
+     * Sets the entity's response deadline when a 13(1) notice is issued (UST780).
+     *
+     * <p>Optional for the same reason as the collaborators above: this service is constructed directly in
+     * unit tests, and a required dependency would force every existing test to supply one. When absent the
+     * notice still records its date and target party, so the statutory act is never lost — only the
+     * deadline is skipped.
+     */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private ReResponseDeadlineService reResponseDeadlineService;
+
+    /**
+     * Parses an officer-supplied deadline, treating an unparseable value as absent.
+     *
+     * <p>Absent means "use the configured window", which is the safe direction: refusing the whole notice
+     * because a date field was malformed would block a statutory communication over a formatting problem.
+     */
+    private static LocalDate parseDeadlineParam(String raw) {
+        if (raw == null || raw.isBlank()) return null;
+        try {
+            return LocalDate.parse(raw.trim());
+        } catch (java.time.format.DateTimeParseException e) {
+            log.warn("Ignoring unparseable response deadline '{}'; using the configured window", raw);
+            return null;
+        }
+    }
 
     /**
      * Check if an action is an RBIO-specific action.
@@ -329,11 +357,55 @@ public class RbioWorkflowService {
         // so a send-back would be advertised on a complaint that has never been up the ladder — exactly
         // the advertise/enforce disagreement the transition table exists to prevent.
         return roleActions.stream()
-                .filter(action -> RbioLadderActions.allActions().contains(action.toUpperCase())
-                        ? RbioLadderActions.validForState(action, complaint.getStatus())
-                        : RbioTransitionRegistry.validForState(action, complaint.getStatus()))
+                .filter(action -> validForState(action, complaint.getStatus(), userRole))
                 .sorted()
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * Whether {@code action} should be offered to {@code userRole} on a complaint in {@code status}.
+     *
+     * <p>The TABLE is consulted first, so a session that grants an action from a new status by INSERTing a
+     * row gets it advertised without a code change — which is the whole point of the transition table being
+     * authoritative. Previously only the compiled-in from-status lists were consulted here, so a seeded row
+     * could authorise an action that the UI would never offer: the table said yes and the screen said no.
+     *
+     * <p>UST779 is exactly that case. {@code ISSUE_NOTICE_13_1} is compiled in as valid only from
+     * {@code adjudication}, but the Dealing Official must be able to issue it at Assessment. With the table
+     * consulted, the grant is a seeded row rather than an edit to a registry another session owns.
+     *
+     * <p>Falls back to the compiled-in lists when the table has no row for this (action, role) — an
+     * unseeded database still behaves exactly as before.
+     */
+    private boolean validForState(String action, String status, String userRole) {
+        if (action == null || status == null) return false;
+
+        if (transitionRepository != null && userRole != null) {
+            try {
+                List<RbioWorkflowTransition> rows = transitionRepository.findByIsActive("Y").stream()
+                        .filter(t -> t.getActionCode().equalsIgnoreCase(action))
+                        .filter(t -> t.getRoleName().equalsIgnoreCase(userRole))
+                        .toList();
+                if (!rows.isEmpty()) {
+                    // A NULL from-status means "any status", which is how the table expresses an action that
+                    // is not state-restricted. Matching it against the status string would silently make such
+                    // a row unreachable.
+                    return rows.stream().anyMatch(t -> t.getFromStatus() == null
+                            || t.getFromStatus().isBlank()
+                            || t.getFromStatus().equalsIgnoreCase(status));
+                }
+            } catch (Exception e) {
+                log.debug("Transition table unavailable for state check, using registry: {}", e.getMessage());
+            }
+        }
+
+        // An S3 ladder action is judged by ITS OWN from-status list. Falling through to the registry would
+        // return `true` for every ladder action (the registry's default for an action it does not know), so
+        // a send-back would be advertised on a complaint that has never been up the ladder — exactly the
+        // advertise/enforce disagreement the transition table exists to prevent.
+        return RbioLadderActions.allActions().contains(action.toUpperCase())
+                ? RbioLadderActions.validForState(action, status)
+                : RbioTransitionRegistry.validForState(action, status);
     }
 
     /** Actions the role may perform, from the table when it knows the role, else from the registry. */
@@ -690,7 +762,34 @@ public class RbioWorkflowService {
                     }
                 }
 
-                case RbioTransitionRegistry.FX_NOTICE_13_1 -> complaint.setNotice131IssuedAt(now);
+                case RbioTransitionRegistry.FX_NOTICE_13_1 -> {
+                    complaint.setNotice131IssuedAt(now);
+
+                    // UST780: a 13(1) notice starts the entity's response clock. Before this, the effect
+                    // stamped a date and nothing else — re_response_deadline stayed NULL, so the sweep that
+                    // chases an unresponsive entity filtered the complaint straight out and nobody was
+                    // chased. The officer's chosen date is used when supplied, otherwise the configured
+                    // window.
+                    //
+                    // targetParty is also persisted. The impleading screen has always sent it and this arm
+                    // has never read it, so who the notice was addressed to was silently discarded on a
+                    // statutory communication.
+                    if (reResponseDeadlineService != null) {
+                        LocalDate chosen = parseDeadlineParam(params.get("responseDeadline"));
+                        ReResponseDeadlineService.DeadlineResult result =
+                                reResponseDeadlineService.setDeadline(complaint, chosen, "13(1) Notice");
+                        if (!result.accepted()) {
+                            // Refused rather than silently adjusted: an officer who typed the wrong date on a
+                            // statutory notice must be told, not have a different one substituted.
+                            throw new IllegalArgumentException(result.reason());
+                        }
+                    }
+
+                    String targetParty = firstNonBlankParam(params, "targetParty", "noticeTargetParty");
+                    if (targetParty != null) {
+                        complaint.setNotice131TargetParty(targetParty);
+                    }
+                }
 
                 // impleadPartyName is accepted as an alias: rbio-adjudication.component.ts:153-159 sends
                 // that name while this arm has only ever read partyName. The IMPLEAD_PARTY row declares

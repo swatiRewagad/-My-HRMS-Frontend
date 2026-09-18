@@ -303,6 +303,16 @@ public class Complaint {
     @Column(name = "notice_13_1_issued_at")
     private LocalDateTime notice131IssuedAt;
 
+    /**
+     * Who the 13(1) notice was addressed to.
+     *
+     * <p>The impleading screen has always sent {@code targetParty} and the side effect never read it, so the
+     * addressee of a statutory communication was discarded while the request answered 200. A notice whose
+     * recipient is unrecorded cannot be evidenced later.
+     */
+    @Column(name = "notice_13_1_target_party", length = 250)
+    private String notice131TargetParty;
+
     @Column(name = "impleaded_parties", length = 1000)
     private String impleadedParties;
 
@@ -345,6 +355,24 @@ public class Complaint {
     // ═══ RE Response & Status Tracking ═══
     @Column(name = "re_response_deadline")
     private LocalDate reResponseDeadline;
+
+    /**
+     * UST637: whether the entity has missed its response deadline, decided on the SERVER.
+     *
+     * <p>Persisted rather than computed per request for two reasons. The complaint grid whitelists sortable
+     * columns, so an overdue value derived in Java after the page is fetched could not be ordered by the
+     * database — "show the overdue ones first" would silently not work. And a browser comparing two dates
+     * can be wrong about the timezone or working from a stale page, which is not a basis for a statutory
+     * window.
+     *
+     * <p>Maintained by the sweep, which CLEARS it as well as setting it, so the highlight disappears by
+     * itself once the entity responds rather than needing a separate step somebody could forget.
+     *
+     * <p>{@code Boolean} rather than {@code boolean}: the column is nullable on a shared ddl-auto database,
+     * and NULL legitimately means "never evaluated" on a complaint with no deadline.
+     */
+    @Column(name = "re_response_overdue")
+    private Boolean reResponseOverdue;
 
     @Column(name = "last_status_change_date")
     private LocalDateTime lastStatusChangeDate;
