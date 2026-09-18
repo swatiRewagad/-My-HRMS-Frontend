@@ -24,6 +24,7 @@ public class CrpcWorkflowService {
     private final NotificationService notificationService;
     private final CommunicationTemplateService communicationTemplateService;
     private final ComplaintRoutingService complaintRoutingService;
+    private final RbioComplaintSummaryService rbioComplaintSummaryService;
 
     private static final Map<String, Set<String>> VALID_TRANSITIONS = Map.ofEntries(
             Map.entry("ASSIGNED", Set.of("SENT_FOR_APPROVAL", "NOT_A_COMPLAINT", "SENT_TO_OTHER_DEPT_FOR_APPROVAL", "VERNACULAR_FOR_APPROVAL")),
@@ -287,6 +288,7 @@ public class CrpcWorkflowService {
                 .priority("medium")
                 .build();
         complaint = complaintRepository.save(complaint);
+        rbioComplaintSummaryService.backfillFromEmailDraft(draft, complaint.getId());
 
         draft.setStatus("NEW_COMPLAINT");
         draft.setConvertedComplaintId(complaint.getComplaintNumber());

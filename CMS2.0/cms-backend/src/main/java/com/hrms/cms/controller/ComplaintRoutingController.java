@@ -64,12 +64,13 @@ public class ComplaintRoutingController {
         String complaintNumber = (String) request.getOrDefault("complaintNumber", "");
         String entityCode = (String) request.getOrDefault("entityCode", "");
         String filingType = (String) request.getOrDefault("filingType", "WEB_PORTAL");
+        String officeCode = (String) request.get("officeCode");
 
         Complaint complaint = new Complaint();
         complaint.setComplaintNumber(complaintNumber);
         complaint.setFilingType(filingType);
 
-        RoutingDecision decision = routingService.routeComplaint(complaint, entityCode);
+        RoutingDecision decision = routingService.routeComplaint(complaint, entityCode, officeCode);
 
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("complaintNumber", complaintNumber);

@@ -5,6 +5,7 @@ import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.Map;
 
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor
 public class FileComplaintRequest {
@@ -29,6 +30,9 @@ public class FileComplaintRequest {
     @Size(max = 100)
     private String complainantDistrict;
 
+    @Size(max = 20)
+    private String complainantPincode;
+
     private Long bankId;
 
     private Long regulatedEntityId;
@@ -39,13 +43,27 @@ public class FileComplaintRequest {
     @Size(max = 100)
     private String entityType;
 
-    private BigDecimal amountInvolved;
+    @Size(max = 100)
+    private String entityState;
+
+    @Size(max = 100)
+    private String entityDistrict;
+
+    @Pattern(regexp = "^\\d{6}$", message = "Entity pincode must be 6 digits")
+    private String entityPincode;
+
+    @Size(max = 300)
+    private String entityBranchName;
 
     @Size(max = 200)
     private String bankBranch;
 
     @Size(max = 50)
     private String accountNumber;
+
+    @DecimalMin(value = "0.0", message = "Amount involved cannot be negative")
+    @Digits(integer = 13, fraction = 2, message = "Amount involved must have at most 13 digits and 2 decimals")
+    private BigDecimal amountInvolved;
 
     private Long categoryId;
     private String categoryName;
@@ -81,4 +99,12 @@ public class FileComplaintRequest {
     private String reComplaintReference;
 
     private Boolean reRepliedAndDissatisfied;
+
+    @Size(max = 50)
+    private String draftId;
+
+    /** Raw wizard state, persisted to the COMPLAINT_* child tables during registration. */
+    private Map<String, Object> formData;
+
+    private Map<String, String> eligibilityAnswers;
 }

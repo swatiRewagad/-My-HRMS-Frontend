@@ -40,11 +40,29 @@ public class ComplaintRoutingService {
             });
         }
         if (officeMatched.isEmpty()) {
+            log.info("No officer for role {} is attached to office {}, falling back to role-wide assignment",
+                    role, officeCode);
             return assignOfficerByRole(role);
         }
-        String picked = assignOfficerByRole(role);
-        boolean pickedInOffice = officeMatched.stream().anyMatch(o -> picked.equals(o.get("userId")));
-        return pickedInOffice ? picked : (String) officeMatched.get(0).get("userId");
+
+        List<Map<String, Object>> available = filterAvailableOfficers(officeMatched, role);
+        if (available.isEmpty()) {
+            log.warn("All officers for role {} in office {} are inactive/on-leave, using full office pool",
+                    role, officeCode);
+            available = officeMatched;
+        }
+
+        available.sort(Comparator.comparingInt(o -> getWorkload((String) o.get("userId"), role)));
+
+        AtomicInteger counter = roundRobinCounters.computeIfAbsent(role + "|" + officeCode, k -> new AtomicInteger(0));
+        int index = Math.abs(counter.getAndIncrement()) % available.size();
+        String assignedOfficer = (String) available.get(index).get("userId");
+
+        incrementWorkload(assignedOfficer, role);
+
+        log.info("Round-robin assigned role={} in office={} to officer={} (index {} of {} available)",
+                role, officeCode, assignedOfficer, index, available.size());
+        return assignedOfficer;
     }
 
     public String assignOfficerByRole(String role) {
@@ -122,42 +140,45 @@ public class ComplaintRoutingService {
         availabilityRepository.save(avail);
     }
 
-    public RoutingDecision routeComplaint(Complaint complaint, String entityCode) {
+    public RoutingDecision routeComplaint(Complaint complaint, String entityCode, String officeCode) {
         String filingType = complaint.getFilingType();
 
         if ("EMAIL".equals(filingType) || "PHYSICAL_LETTER".equals(filingType)) {
-            return routeFromCrpc(complaint, entityCode);
+            return routeFromCrpc(complaint, entityCode, officeCode);
         }
 
-        return routeFromPublicPortal(complaint);
+        return routeFromPublicPortal(complaint, officeCode);
     }
 
-    private RoutingDecision routeFromPublicPortal(Complaint complaint) {
+    private RoutingDecision routeFromPublicPortal(Complaint complaint, String officeCode) {
         String assignedRole = "RBIO_OFFICER";
-        String assignedOfficer = assignOfficerByRole(assignedRole);
+        String assignedOfficer = assignOfficerByRoleAndOffice(assignedRole, officeCode);
 
-        log.info("Public portal complaint {} routed to RBIO, assigned to {}", complaint.getComplaintNumber(), assignedOfficer);
+        log.info("Public portal complaint {} routed to RBIO office {}, assigned to {}",
+                complaint.getComplaintNumber(), officeCode, assignedOfficer);
 
         return RoutingDecision.builder()
                 .department("RBIO")
                 .assignedRole(assignedRole)
                 .assignedOfficer(assignedOfficer)
+                .officeCode(officeCode)
                 .stage("INITIAL_REVIEW")
                 .reason("Public portal filing - round-robin assigned to " + assignedOfficer)
                 .build();
     }
 
-    private RoutingDecision routeFromCrpc(Complaint complaint, String entityCode) {
+    private RoutingDecision routeFromCrpc(Complaint complaint, String entityCode, String officeCode) {
         String assignedRole = "DEO";
-        String assignedOfficer = assignOfficerByRole(assignedRole);
+        String assignedOfficer = assignOfficerByRoleAndOffice(assignedRole, officeCode);
 
-        log.info("Email/Physical complaint {} routed to CRPC, assigned to DEO {}",
-                complaint.getComplaintNumber(), assignedOfficer);
+        log.info("Email/Physical complaint {} routed to CRPC office {}, assigned to DEO {}",
+                complaint.getComplaintNumber(), officeCode, assignedOfficer);
 
         return RoutingDecision.builder()
                 .department("CRPC")
                 .assignedRole(assignedRole)
                 .assignedOfficer(assignedOfficer)
+                .officeCode(officeCode)
                 .stage("DATA_ENTRY")
                 .targetDepartment(resolveDepartment(entityCode))
                 .reason("Email/Physical letter - round-robin assigned to DEO " + assignedOfficer)
@@ -297,6 +318,7 @@ public class ComplaintRoutingService {
         private String department;
         private String assignedRole;
         private String assignedOfficer;
+        private String officeCode;
         private String stage;
         private String targetDepartment;
         private String previousDepartment;

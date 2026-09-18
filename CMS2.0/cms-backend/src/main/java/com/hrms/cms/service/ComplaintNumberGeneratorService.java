@@ -129,7 +129,7 @@ public class ComplaintNumberGeneratorService {
                 .orElse(2);
     }
 
-    private String resolveOfficeName(String department, String state, String district) {
+    public String resolveOfficeName(String department, String state, String district) {
         if (state == null || state.isBlank()) {
             return getDefaultOffice(department);
         }

@@ -7,6 +7,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 
 import java.time.Instant;
 import java.util.LinkedHashMap;
@@ -26,9 +28,12 @@ public class ComplaintEventPublisher {
     private final KafkaTemplate<String, String> kafkaTemplate;
     private final ObjectMapper objectMapper;
 
+    // fallbackExecution: the CRPC email-intake path saves outside any transaction, so by the time it
+    // raises this event the row is already committed and the event must fire immediately, not be dropped.
     @Async("taskExecutor")
-    public void publishComplaintIngested(Complaint complaint) {
-        publishEvent(TOPIC_COMPLAINT_INGESTED, complaint, null, "NEW", null);
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
+    public void onComplaintCreated(ComplaintCreatedEvent event) {
+        publishEvent(TOPIC_COMPLAINT_INGESTED, event.complaint(), null, "NEW", null);
     }
 
     @Async("taskExecutor")
@@ -63,11 +68,16 @@ public class ComplaintEventPublisher {
             event.put("correlationId", UUID.randomUUID().toString());
 
             Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("complaintNumber", complaint.getComplaintNumber());
             payload.put("subject", complaint.getSubject());
             payload.put("priority", complaint.getPriority());
             payload.put("category", "GENERAL");
             payload.put("bankId", complaint.getBankId());
             payload.put("complainantName", complaint.getComplainantName());
+            // cms-notification-service dispatches the complainant's acknowledgement; without contact
+            // details on the event it has no addressee and no DB of its own to look one up in.
+            payload.put("complainantEmail", complaint.getComplainantEmail());
+            payload.put("complainantPhone", complaint.getComplainantPhone());
             payload.put("channel", complaint.getFilingType());
             payload.put("filingType", complaint.getFilingType());
             payload.put("entityCode", complaint.getEntityCode() != null ? complaint.getEntityCode() : "");

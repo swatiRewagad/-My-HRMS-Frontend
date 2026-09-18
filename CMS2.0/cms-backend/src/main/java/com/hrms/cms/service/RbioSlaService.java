@@ -6,7 +6,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 
 /**
@@ -37,6 +39,16 @@ public class RbioSlaService {
 
     /** Total complaint lifecycle: 120 business days */
     private static final int TOTAL_LIFECYCLE_DAYS = 120;
+
+    /**
+     * Statuses at which the SLA clock stops. Held uppercase and compared case-insensitively because
+     * this backend writes lowercase statuses ({@code "closed"}) while portal/search payloads carry
+     * the uppercase enum names ({@code "COMPLAINT_CLOSED"}).
+     */
+    private static final Set<String> TERMINAL_STATUSES = Set.of(
+            "RESOLVED", "CLOSED", "REJECTED", "WITHDRAWN", "ADJUDICATED", "CONCILIATED",
+            "COMPLAINT_CLOSED", "COMPLAINT_SETTLED", "COMPLAINT_WITHDRAWN", "COMPLAINT_REJECTED"
+    );
 
     private static final Map<String, Integer> STAGE_BUSINESS_DAYS = Map.of(
             "OFFICER_ASSESSMENT", OFFICER_ASSESSMENT_DAYS,
@@ -171,7 +183,25 @@ public class RbioSlaService {
         return stats;
     }
 
-    private LocalDateTime getEffectiveDeadline(Complaint complaint) {
+    /**
+     * Render the remaining SLA time the way the officer portal displays it, e.g. {@code "-12 Days"}
+     * once breached. Returns {@code "Closed"} for terminal statuses and {@code null} when no
+     * deadline can be established - never a misleading {@code "0 Days"}.
+     */
+    public String formatBreachIn(Complaint complaint) {
+        String status = complaint.getStatus();
+        if (status != null && TERMINAL_STATUSES.contains(status.toUpperCase())) {
+            return "Closed";
+        }
+
+        LocalDateTime deadline = getEffectiveDeadline(complaint);
+        if (deadline == null) return null;
+
+        long days = ChronoUnit.DAYS.between(LocalDate.now(), deadline.toLocalDate());
+        return days + (Math.abs(days) == 1 ? " Day" : " Days");
+    }
+
+    public LocalDateTime getEffectiveDeadline(Complaint complaint) {
         // Use pre-calculated currentStageDeadline if available
         if (complaint.getCurrentStageDeadline() != null) {
             return complaint.getCurrentStageDeadline();

@@ -1,5 +1,6 @@
 package com.hrms.cms.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hrms.cms.dto.DashboardResponse;
 import com.hrms.cms.dto.FileComplaintRequest;
 import com.hrms.cms.dto.UpdateComplaintRequest;
@@ -11,14 +12,18 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.*;
@@ -33,6 +38,16 @@ class ComplaintServiceTest {
     @Mock private BankRepository bankRepository;
     @Mock private ComplaintTimelineRepository timelineRepository;
     @Mock private ComplaintAttachmentRepository attachmentRepository;
+    @Mock private ComplaintCreationFinalizer creationFinalizer;
+    @Mock private ComplaintRoutingService routingService;
+    @Mock private ComplaintNumberGeneratorService complaintNumberGenerator;
+    @Mock private ComplaintCommentRepository complaintCommentRepository;
+    @Mock private RegulatedEntityRepository regulatedEntityRepository;
+    @Mock private ComplaintDraftRepository complaintDraftRepository;
+    @Mock private ComplaintEligibilityAnswerRepository eligibilityAnswerRepository;
+    @Mock private ComplaintAdditionalDetailRepository additionalDetailRepository;
+    @Mock private ComplaintRepresentativeRepository representativeRepository;
+    @Spy private ObjectMapper objectMapper = new ObjectMapper();
 
     @InjectMocks
     private ComplaintService complaintService;
@@ -245,6 +260,20 @@ class ComplaintServiceTest {
     @Nested
     class FileComplaint {
 
+        @BeforeEach
+        void stubRouting() {
+            when(routingService.resolveDepartment(anyString())).thenReturn("RBIO");
+            when(creationFinalizer.applyOffice(any(Complaint.class), anyString()))
+                    .thenReturn(new ComplaintOfficeResolutionService.OfficeResolution(
+                            "Mumbai-I", "001", "Mumbai", "Maharashtra", "ENTITY_LOCATION"));
+            when(routingService.routeComplaint(any(Complaint.class), anyString(), any()))
+                    .thenReturn(ComplaintRoutingService.RoutingDecision.builder()
+                            .department("RBIO").assignedRole("RBIO_OFFICER")
+                            .assignedOfficer("officer-1").stage("INTAKE").reason("test").build());
+            when(complaintNumberGenerator.generateComplaintNumber(anyString(), any(), any(), anyBoolean()))
+                    .thenReturn("CMS-20260515-TEST01");
+        }
+
         @Test
         void shouldCreateComplaintWithGeneratedNumber() {
             FileComplaintRequest request = new FileComplaintRequest();
@@ -320,6 +349,126 @@ class ComplaintServiceTest {
                     "filed".equals(timeline.getAction()) &&
                     "pending".equals(timeline.getToStatus())
             ));
+        }
+
+        @Test
+        void shouldWriteNoChildRowsWhenNoWizardState() {
+            FileComplaintRequest request = new FileComplaintRequest();
+            request.setComplainantName("Test");
+            request.setSubject("Test");
+
+            when(complaintRepository.save(any(Complaint.class))).thenAnswer(inv -> inv.getArgument(0));
+
+            complaintService.fileComplaint(request);
+
+            verify(eligibilityAnswerRepository, never()).save(any());
+            verify(additionalDetailRepository, never()).save(any());
+            verify(representativeRepository, never()).save(any());
+        }
+
+        @Test
+        void shouldWriteNoRepresentativeRowForSelfFiledComplaint() {
+            FileComplaintRequest request = new FileComplaintRequest();
+            request.setComplainantName("Test");
+            request.setSubject("Test");
+            request.setFormData(Map.of("hasAuthRep", "no", "gender", "female"));
+            request.setEligibilityAnswers(Map.of());
+
+            when(complaintRepository.save(any(Complaint.class))).thenAnswer(inv -> inv.getArgument(0));
+
+            complaintService.fileComplaint(request);
+
+            verify(additionalDetailRepository).save(any());
+            verify(representativeRepository, never()).save(any());
+            verify(eligibilityAnswerRepository, never()).save(any());
+        }
+
+        @Test
+        void shouldPersistWizardStateFromPayload() {
+            FileComplaintRequest request = new FileComplaintRequest();
+            request.setComplainantName("Test");
+            request.setSubject("Test");
+            request.setDraftId("DRAFT-1");
+            request.setFormData(Map.of(
+                    "pincode", "560034",
+                    "entityBranch", "Hebbal",
+                    "age", "42",
+                    "compensationSought", "90,000",
+                    "disputeDate", "2026-01-15",
+                    "hasAuthRep", "yes",
+                    "repName", "Adv. Rao"));
+            request.setEligibilityAnswers(Map.of("filedWithRE", "yes", "isSubJudice", "no"));
+
+            when(complaintRepository.save(any(Complaint.class))).thenAnswer(inv -> {
+                Complaint c = inv.getArgument(0);
+                c.setId(7L);
+                return c;
+            });
+
+            Complaint result = complaintService.fileComplaint(request);
+
+            assertThat(result.getComplainantPincode()).isEqualTo("560034");
+            assertThat(result.getEntityBranchName()).isEqualTo("Hebbal");
+            verify(eligibilityAnswerRepository).save(argThat(a ->
+                    a.getComplaintId().equals(7L) &&
+                    "yes".equals(a.getFiledWithRe()) &&
+                    "no".equals(a.getIsSubJudice())
+            ));
+            verify(additionalDetailRepository).save(argThat(d ->
+                    d.getAge() == 42 &&
+                    d.getCompensationSought().compareTo(new BigDecimal("90000")) == 0 &&
+                    LocalDate.of(2026, 1, 15).equals(d.getDisputeDate())
+            ));
+            verify(representativeRepository).save(argThat(r -> "Adv. Rao".equals(r.getRepName())));
+        }
+
+        @Test
+        void shouldTolerateBlankAndUnparseableWizardValues() {
+            FileComplaintRequest request = new FileComplaintRequest();
+            request.setComplainantName("Test");
+            request.setSubject("Test");
+            request.setFormData(Map.of(
+                    "age", "",
+                    "disputeDate", "",
+                    "compensationSought", "abc",
+                    "gender", "male"));
+            request.setEligibilityAnswers(Map.of());
+
+            when(complaintRepository.save(any(Complaint.class))).thenAnswer(inv -> inv.getArgument(0));
+
+            complaintService.fileComplaint(request);
+
+            verify(additionalDetailRepository).save(argThat(d ->
+                    d.getAge() == null &&
+                    d.getDisputeDate() == null &&
+                    d.getCompensationSought() == null &&
+                    "male".equals(d.getGender())
+            ));
+        }
+
+        @Test
+        void shouldFallBackToDraftWhenPayloadOmitsWizardState() {
+            FileComplaintRequest request = new FileComplaintRequest();
+            request.setComplainantName("Test");
+            request.setSubject("Test");
+            request.setComplainantPhone("9876543210");
+
+            when(complaintDraftRepository.findByPhoneOrderByUpdatedAtDesc("9876543210"))
+                    .thenReturn(List.of(ComplaintDraft.builder()
+                            .draftId("DRAFT-9")
+                            .phone("9876543210")
+                            .formDataJson("{\"pincode\":\"560034\",\"gender\":\"male\"}")
+                            .eligibilityAnswersJson("{\"staffOfRE\":\"no\"}")
+                            .build()));
+            when(complaintRepository.save(any(Complaint.class))).thenAnswer(inv -> inv.getArgument(0));
+
+            Complaint result = complaintService.fileComplaint(request);
+
+            assertThat(result.getComplainantPincode()).isEqualTo("560034");
+            verify(eligibilityAnswerRepository).save(argThat(a ->
+                    "no".equals(a.getStaffOfRe()) && "DRAFT-9".equals(a.getDraftId())
+            ));
+            verify(additionalDetailRepository).save(argThat(d -> "male".equals(d.getGender())));
         }
     }
 

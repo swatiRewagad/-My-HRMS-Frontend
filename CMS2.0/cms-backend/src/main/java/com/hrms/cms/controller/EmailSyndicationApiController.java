@@ -9,6 +9,7 @@ import com.hrms.cms.entity.EmailDraftAttachment;
 import com.hrms.cms.repository.ComplaintRepository;
 import com.hrms.cms.repository.EmailDraftAttachmentRepository;
 import com.hrms.cms.repository.EmailDraftRepository;
+import com.hrms.cms.service.ComplaintCreationFinalizer;
 import com.hrms.cms.service.ComplaintNumberGeneratorService;
 import com.hrms.cms.service.ComplaintRoutingService;
 import com.hrms.cms.service.ComplaintService;
@@ -16,6 +17,7 @@ import com.hrms.cms.service.EmailSimulationService;
 import com.hrms.cms.service.KeycloakUserService;
 import com.hrms.cms.service.LanguageTranslationService;
 import com.hrms.cms.service.OcrExtractionService;
+import com.hrms.cms.service.RbioComplaintSummaryService;
 import com.hrms.cms.service.RuleBasedExtractor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -49,6 +51,8 @@ public class EmailSyndicationApiController {
     private final ComplaintRoutingService routingService;
     private final ComplaintService complaintService;
     private final ComplaintNumberGeneratorService complaintNumberGenerator;
+    private final RbioComplaintSummaryService rbioComplaintSummaryService;
+    private final ComplaintCreationFinalizer creationFinalizer;
     private final com.hrms.cms.service.DraftIdGeneratorService draftIdGeneratorService;
     private final ObjectMapper objectMapper;
 
@@ -835,7 +839,11 @@ public class EmailSyndicationApiController {
                 .workflowStage("INITIAL_REVIEW")
                 .build();
 
+        creationFinalizer.applyOffice(complaint, department);
+
         Complaint saved = complaintRepository.save(complaint);
+        rbioComplaintSummaryService.backfillFromEmailDraft(draft, saved.getId());
+        creationFinalizer.afterSave(saved);
 
         // Update draft with generated complaint number and assignment
         draft.setConvertedComplaintId(complaintNumber);
