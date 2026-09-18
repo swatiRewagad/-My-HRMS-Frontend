@@ -308,7 +308,7 @@ class RequestConstraintsTest {
         @DisplayName("an entirely empty request is valid")
         void allNullIsValid() {
             assertThat(validator.validate(
-                    new ComplaintSearchRequest(null, null, null, null, null, null, null, null)))
+                    new ComplaintSearchRequest(null, null, null, null, null, null, null, null, null)))
                     .isEmpty();
         }
 
@@ -324,7 +324,8 @@ class RequestConstraintsTest {
                     new FilterSearchRequest(Collections.nCopies(201, "MH"), null, null, null, null, null),
                     null, null, null, null, null,
                     new SearchFieldsRequest(null, null, null, null, null, null, null, null,
-                            null, null, null, "URGENT", null));
+                            null, null, null, "URGENT", null),
+                    null);
 
             assertThat(paths(request)).containsExactlyInAnyOrder(
                     "advancedSearch.complaintNumber", "filters.states", "search.priority");
@@ -342,16 +343,25 @@ class RequestConstraintsTest {
         }
 
         private ComplaintSearchRequest root(String statusCode) {
-            return new ComplaintSearchRequest(null, null, statusCode, null, null, null, null, null);
+            return new ComplaintSearchRequest(null, null, statusCode, null, null, null, null, null, null);
         }
 
         @Test
         @DisplayName("over-length kpiCards and tabs are rejected")
         void overLengthPhrasesRejected() {
             ComplaintSearchRequest request = new ComplaintSearchRequest(
-                    null, null, null, repeat(61), repeat(61), null, null, null);
+                    null, null, null, repeat(61), repeat(61), null, null, null, null);
 
             assertThat(paths(request)).containsExactlyInAnyOrder("kpiCards", "tabs");
+        }
+
+        @Test
+        @DisplayName("over-length assignedOfficer is rejected")
+        void overLengthAssignedOfficerRejected() {
+            ComplaintSearchRequest request = new ComplaintSearchRequest(
+                    null, null, null, null, null, null, null, null, repeat(101));
+
+            assertThat(paths(request)).containsExactly("assignedOfficer");
         }
     }
 }

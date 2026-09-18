@@ -29,6 +29,7 @@ class OfficerScopePolicyTest {
                 .displayName("Officer One")
                 .roles(List.of(roles))
                 .department(department)
+                .regionalOffice("Mumbai")
                 .build();
     }
 
@@ -65,6 +66,40 @@ class OfficerScopePolicyTest {
     void departmentIsCanonicalised(String claimed) {
         assertThat(policy.requireDepartment(officer(claimed)))
                 .isEqualTo(DepartmentConstants.DEPT_RBIO);
+    }
+
+    @ParameterizedTest
+    @NullAndEmptySource
+    @ValueSource(strings = {"   "})
+    @DisplayName("A missing or blank regionalOffice claim is a 403, never an unscoped search")
+    void blankRegionalOfficeIsForbidden(String regionalOffice) {
+        OfficerPrincipal off = OfficerPrincipal.builder()
+                .userName("officer1").subject("sub-1").displayName("Officer One")
+                .roles(List.of()).department(DepartmentConstants.DEPT_RBIO)
+                .regionalOffice(regionalOffice)
+                .build();
+        assertThatThrownBy(() -> policy.requireRegionalOffice(off))
+                .isInstanceOf(CmsException.class)
+                .hasFieldOrPropertyWithValue("status", HttpStatus.FORBIDDEN);
+    }
+
+    @Test
+    @DisplayName("A null principal in requireRegionalOffice is a 403")
+    void nullOfficerRegionalOfficeIsForbidden() {
+        assertThatThrownBy(() -> policy.requireRegionalOffice(null))
+                .isInstanceOf(CmsException.class)
+                .hasFieldOrPropertyWithValue("status", HttpStatus.FORBIDDEN);
+    }
+
+    @Test
+    @DisplayName("A valid regionalOffice is returned stripped")
+    void validRegionalOfficeIsReturned() {
+        OfficerPrincipal off = OfficerPrincipal.builder()
+                .userName("officer1").subject("sub-1").displayName("Officer One")
+                .roles(List.of()).department(DepartmentConstants.DEPT_RBIO)
+                .regionalOffice("  Mumbai  ")
+                .build();
+        assertThat(policy.requireRegionalOffice(off)).isEqualTo("Mumbai");
     }
 
     @Test
@@ -119,18 +154,29 @@ class OfficerScopePolicyTest {
         BoolQuery result = policy.scoped(officer(DepartmentConstants.DEPT_CEPC), own).bool();
 
         assertThat(result.filter()).hasSize(2);
-        assertThat(result.filter()).anyMatch(OfficerScopePolicyTest::isDepartmentTerm);
+        // scopeQuery() now returns a bool with department + regionalOffice filters
+        assertThat(result.filter()).anyMatch(q -> q.isBool()
+                && q.bool().filter().stream().anyMatch(OfficerScopePolicyTest::isDepartmentTerm));
+        assertThat(result.filter()).anyMatch(q -> q.isTerm()
+                && "status.keyword".equals(q.term().field()));
         assertThat(result.should()).isEmpty();
         assertThat(result.must()).isEmpty();
     }
 
     @Test
-    @DisplayName("scopeQuery targets the keyword subfield, or a term filter would never match")
-    void scopeQueryTargetsKeywordSubfield() {
+    @DisplayName("scopeQuery includes both department and regionalOffice keyword subfields")
+    void scopeQueryTargetsBothKeywordSubfields() {
         Query scope = policy.scopeQuery(officer(DepartmentConstants.DEPT_RBIO));
 
-        assertThat(scope.term().field()).isEqualTo("department.keyword");
-        assertThat(scope.term().value().stringValue()).isEqualTo(DepartmentConstants.DEPT_RBIO);
+        assertThat(scope.isBool()).isTrue();
+        List<Query> filters = scope.bool().filter();
+        assertThat(filters).hasSize(2);
+        assertThat(filters).anyMatch(q -> q.isTerm()
+                && OfficerScopePolicy.DEPARTMENT_FIELD.equals(q.term().field())
+                && DepartmentConstants.DEPT_RBIO.equals(q.term().value().stringValue()));
+        assertThat(filters).anyMatch(q -> q.isTerm()
+                && OfficerScopePolicy.REGIONAL_OFFICE_FIELD.equals(q.term().field())
+                && "Mumbai".equals(q.term().value().stringValue()));
     }
 
     private static boolean isDepartmentTerm(Query query) {

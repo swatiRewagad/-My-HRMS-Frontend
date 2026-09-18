@@ -32,6 +32,8 @@ public class ComplaintDocumentNormalizer {
     public static final String FIELD_ASSIGNED_OFFICER = "assignedOfficer";
     public static final String FIELD_ASSIGNED_OFFICER_NAME = "assignedOfficerName";
     public static final String FIELD_DEPARTMENT = "department";
+    public static final String FIELD_REGIONAL_OFFICE = "regionalOffice";
+    public static final String FIELD_CREATED_BY = "createdBy";
     public static final String FIELD_STATUS = "status";
 
     /**
@@ -62,6 +64,14 @@ public class ComplaintDocumentNormalizer {
         // The query layer filters and aggregates on assignedOfficer; upstream events call it assignedTo.
         if (!doc.containsKey(FIELD_ASSIGNED_OFFICER) && doc.get("assignedTo") != null) {
             doc.put(FIELD_ASSIGNED_OFFICER, doc.get("assignedTo"));
+        }
+        copyStringField(source, doc, FIELD_REGIONAL_OFFICE);
+        copyStringField(source, doc, FIELD_CREATED_BY);
+        if (source.get("hasAttachment") != null) {
+            doc.put("hasAttachment", Boolean.valueOf(source.get("hasAttachment").toString()));
+        }
+        if (source.get("isRead") != null) {
+            doc.put("isRead", Boolean.valueOf(source.get("isRead").toString()));
         }
 
         canonicalizeStatus(doc);
@@ -126,10 +136,18 @@ public class ComplaintDocumentNormalizer {
      * something else. The username stays in {@code assignedOfficer} as the stable identity that the
      * scope and tab filters authorize against; display names are neither unique nor immutable.
      *
-     * <p>The field is left unset when the name cannot be resolved, so readers fall back to the username
-     * rather than showing an empty column.
+     * <p>Prefers the value already present in the source (the DB column carried by the reindex path and
+     * the Kafka payload) so a Keycloak outage or directory-cache miss does not blank out a name that
+     * the database already knows. Falls back to a Keycloak directory lookup when the source has no
+     * value, and leaves the field unset when neither source can resolve it.
      */
     private void enrichAssignedOfficerName(Map<String, Object> doc) {
+        Object existing = doc.get(FIELD_ASSIGNED_OFFICER_NAME);
+        if (existing != null && !existing.toString().isBlank()) {
+            doc.put(FIELD_ASSIGNED_OFFICER_NAME, existing.toString().strip());
+            return;
+        }
+
         Object assignedOfficer = doc.get(FIELD_ASSIGNED_OFFICER);
         if (assignedOfficer == null || assignedOfficer.toString().isBlank()) {
             return;
@@ -163,6 +181,13 @@ public class ComplaintDocumentNormalizer {
         } catch (DateTimeParseException e) {
             log.debug("Unparseable date value '{}', leaving date-only field unset", text);
             return null;
+        }
+    }
+
+    private static void copyStringField(Map<String, Object> source, Map<String, Object> doc, String key) {
+        Object value = source.get(key);
+        if (value != null && !value.toString().isBlank()) {
+            doc.put(key, value.toString().strip());
         }
     }
 

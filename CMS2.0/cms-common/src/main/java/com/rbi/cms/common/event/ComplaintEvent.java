@@ -26,6 +26,7 @@ public class ComplaintEvent {
     private ComplaintStatus currentStatus;
     private String assignedTo;
     private String department;
+    private String regionalOffice;
     private String payload;
     private Instant occurredAt;
     private String correlationId;

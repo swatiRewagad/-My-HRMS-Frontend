@@ -39,6 +39,7 @@ public class OfficerJwtAuthenticationConverter implements Converter<Jwt, Abstrac
     private static final String CLAIM_USERNAME = "preferred_username";
     private static final String CLAIM_NAME = "name";
     private static final String CLAIM_DEPARTMENT = "department";
+    private static final String CLAIM_REGIONAL_OFFICE = "regional_office";
 
     private final JwtGrantedAuthoritiesConverter scopeAuthoritiesConverter = new JwtGrantedAuthoritiesConverter();
 
@@ -59,33 +60,30 @@ public class OfficerJwtAuthenticationConverter implements Converter<Jwt, Abstrac
                 .subject(jwt.getSubject())
                 .displayName(displayName != null && !displayName.isBlank() ? displayName : userName)
                 .roles(roles)
-                .department(extractDepartment(jwt))
+                .department(extractSingleClaim(jwt, CLAIM_DEPARTMENT))
+                .regionalOffice(extractSingleClaim(jwt, CLAIM_REGIONAL_OFFICE))
                 .build();
 
         return new OfficerAuthenticationToken(jwt, authorities, officer);
     }
 
     /**
-     * Reads the department claim, tolerating the single-element array a multivalued mapper produces.
-     *
-     * <p>The tolerance is worth the few lines: leaving the mapper's "Multivalued" toggle on is an easy
-     * misconfiguration, and the symptom would otherwise be every officer getting a 403 with nothing in
-     * the logs pointing at the realm.
+     * Reads a single-valued claim, tolerating the single-element array a multivalued mapper produces.
      *
      * <p>Returns null when absent. Deliberately not defaulted — an unscoped principal would read the
      * whole corpus.
      */
-    private String extractDepartment(Jwt jwt) {
-        Object raw = jwt.getClaim(CLAIM_DEPARTMENT);
+    private String extractSingleClaim(Jwt jwt, String claimName) {
+        Object raw = jwt.getClaim(claimName);
 
         if (raw instanceof String text) {
             return text.isBlank() ? null : text;
         }
         if (raw instanceof Collection<?> values) {
             if (values.size() > 1) {
-                log.warn("Token for '{}' carries {} department values; the mapper should be single-valued. "
+                log.warn("Token for '{}' carries {} {} values; the mapper should be single-valued. "
                                 + "Refusing to guess which one applies.",
-                        jwt.getClaimAsString(CLAIM_USERNAME), values.size());
+                        jwt.getClaimAsString(CLAIM_USERNAME), values.size(), claimName);
                 return null;
             }
             return values.stream()
@@ -96,8 +94,8 @@ public class OfficerJwtAuthenticationConverter implements Converter<Jwt, Abstrac
                     .orElse(null);
         }
         if (raw != null) {
-            log.warn("Unexpected department claim type {} for '{}'",
-                    raw.getClass().getSimpleName(), jwt.getClaimAsString(CLAIM_USERNAME));
+            log.warn("Unexpected {} claim type {} for '{}'",
+                    claimName, raw.getClass().getSimpleName(), jwt.getClaimAsString(CLAIM_USERNAME));
         }
         return null;
     }

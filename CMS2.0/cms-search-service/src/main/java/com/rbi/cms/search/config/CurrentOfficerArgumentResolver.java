@@ -35,6 +35,9 @@ public class CurrentOfficerArgumentResolver implements HandlerMethodArgumentReso
     @Value("${cms.dev.officer-department:" + DepartmentConstants.DEPT_RBIO + "}")
     private String devDepartment;
 
+    @Value("${cms.dev.officer-regional-office:Bangalore}")
+    private String devRegionalOffice;
+
     @Override
     public boolean supportsParameter(MethodParameter parameter) {
         return parameter.hasParameterAnnotation(CurrentOfficer.class)
@@ -54,14 +57,15 @@ public class CurrentOfficerArgumentResolver implements HandlerMethodArgumentReso
         // Local profiles run a permitAll chain, so there is no token to convert. Substituting a fixed
         // principal keeps the endpoint usable there without a second code path in the service.
         if (isLocalProfile()) {
-            log.warn("No authenticated officer; substituting the '{}' development principal for department {}",
-                    devUserName, devDepartment);
+            log.warn("No authenticated officer; substituting the '{}' development principal for department {}, regional office {}",
+                    devUserName, devDepartment, devRegionalOffice);
             return OfficerPrincipal.builder()
                     .userName(devUserName)
                     .subject(devUserName)
                     .displayName(devUserName)
                     .roles(List.of())
                     .department(devDepartment)
+                    .regionalOffice(devRegionalOffice)
                     .build();
         }
 

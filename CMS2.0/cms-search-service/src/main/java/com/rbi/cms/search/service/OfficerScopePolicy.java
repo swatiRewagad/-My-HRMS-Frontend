@@ -10,7 +10,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 /**
- * Sole owner of the department tenancy filter.
+ * Sole owner of the department and regional-office tenancy filters.
  *
  * <p>Every complaint read is confined to the caller's own department, with no role exemption —
  * {@code RBIO_ADMIN} included. A cross-department view, if it is ever wanted, belongs here as an
@@ -30,13 +30,22 @@ public class OfficerScopePolicy {
     static final String REGIONAL_OFFICE_FIELD = "regionalOffice.keyword";
 
     /**
-     * @return the caller's canonical RegionalOffice
-     * @throws CmsException 403 if the claim is absent or not a recognised RegionalOffice
+     * @return the caller's regional office, stripped
+     * @throws CmsException 403 if the claim is absent or blank
      */
     public String requireRegionalOffice(OfficerPrincipal officer) {
         String claimed = officer == null ? null : officer.getRegionalOffice();
 
-        return claimed;
+        if (claimed == null || claimed.isBlank()) {
+            log.warn("Rejecting search for officer '{}': no regionalOffice claim on the token. "
+                            + "Check the Keycloak regionalOffice protocol mapper and the user's attributes.",
+                    officer == null ? "<none>" : officer.getUserName());
+            throw new CmsException(
+                    "Your account has no valid regional office assigned, so complaints cannot be searched. "
+                            + "Contact an administrator.", HttpStatus.FORBIDDEN);
+        }
+
+        return claimed.strip();
     }
 
     /**
@@ -75,7 +84,10 @@ public class OfficerScopePolicy {
 
     public Query scopeQuery(OfficerPrincipal officer) {
         String department = requireDepartment(officer);
-        return Query.of(q -> q.term(t -> t.field(DEPARTMENT_FIELD).value(FieldValue.of(department))));
+        String regionalOffice = requireRegionalOffice(officer);
+        return Query.of(q -> q.bool(b -> b
+                .filter(Query.of(fq -> fq.term(t -> t.field(DEPARTMENT_FIELD).value(FieldValue.of(department)))))
+                .filter(Query.of(fq -> fq.term(t -> t.field(REGIONAL_OFFICE_FIELD).value(FieldValue.of(regionalOffice)))))));
     }
 
     /**

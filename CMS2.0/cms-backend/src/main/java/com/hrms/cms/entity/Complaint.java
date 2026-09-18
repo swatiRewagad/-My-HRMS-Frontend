@@ -293,17 +293,20 @@ public class Complaint {
     @Column(name = "last_status_change_date")
     private LocalDateTime lastStatusChangeDate;
 
-//    @Column(name = "regional_office", length = 100)
-//    private String regionalOffice;
-//
-//    @Column(name = "is_read", nullable = false)
-//    private Boolean isRead = false;
-//
-//    @Column(name = "has_attachment", nullable = false)
-//    private Boolean hasAttachment = false;
-//
-//    @Column(name = "created_by", length = 200)
-//    private String createdBy;
+    @Column(name = "assigned_officer_name", length = 250)
+    private String assignedOfficerName;
+
+    @Column(name = "regional_office", length = 100)
+    private String regionalOffice;
+
+    @Column(name = "is_read", nullable = false)
+    private Boolean isRead = false;
+
+    @Column(name = "has_attachment", nullable = false)
+    private Boolean hasAttachment = false;
+
+    @Column(name = "created_by", length = 200)
+    private String createdBy;
 
     // ═══ Timestamps ═══
     private LocalDateTime filedAt;

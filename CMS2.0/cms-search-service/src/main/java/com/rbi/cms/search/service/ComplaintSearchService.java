@@ -195,8 +195,14 @@ public class ComplaintSearchService {
                     String id = String.valueOf(noRecord.get("complaintNumber"));
                     Map<String, Object> doc = new HashMap<>(noRecord);
 
-                    if (doc.get("status") != null) {
-                        doc.put("status", doc.get("status"));
+                    String canonical = ComplaintDocumentNormalizer.canonicalStatus(
+                            doc.get("status") != null ? doc.get("status").toString() : null);
+                    if (canonical != null) {
+                        doc.put("status", canonical);
+                    }
+
+                    if (doc.get("assignedTo") != null && !doc.containsKey("assignedOfficer")) {
+                        doc.put("assignedOfficer", doc.get("assignedTo"));
                     }
 
                     // 2. Queue the item into bulk operations

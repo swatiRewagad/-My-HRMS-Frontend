@@ -58,6 +58,7 @@ public class ComplaintEventPublisher {
             // a reassignment or transfer must travel with every event rather than only a full rewrite.
             event.put("department", complaint.getDepartment());
             event.put("assignedTo", complaint.getAssignedOfficer());
+            event.put("regionalOffice", complaint.getRegionalOffice());
             event.put("occurredAt", Instant.now().toString());
             event.put("correlationId", UUID.randomUUID().toString());
 
@@ -73,6 +74,9 @@ public class ComplaintEventPublisher {
             payload.put("department", complaint.getDepartment());
             payload.put("assignedOfficer", complaint.getAssignedOfficer());
             payload.put("assignedRole", complaint.getAssignedRole());
+            payload.put("regionalOffice", complaint.getRegionalOffice());
+            payload.put("createdBy", complaint.getCreatedBy());
+            payload.put("assignedOfficerName", complaint.getAssignedOfficerName());
             if (actor != null) {
                 payload.put("actor", actor);
             }

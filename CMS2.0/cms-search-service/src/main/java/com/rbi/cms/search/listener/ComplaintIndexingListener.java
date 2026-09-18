@@ -64,6 +64,9 @@ public class ComplaintIndexingListener {
         if (event.getDepartment() != null) {
             changedFields.put(ComplaintDocumentNormalizer.FIELD_DEPARTMENT, event.getDepartment());
         }
+        if (event.getRegionalOffice() != null) {
+            changedFields.put(ComplaintDocumentNormalizer.FIELD_REGIONAL_OFFICE, event.getRegionalOffice());
+        }
 
         try {
             // Must be a partial update: a full index write here would erase every field the event
@@ -125,6 +128,9 @@ public class ComplaintIndexingListener {
         }
         if (event.getDepartment() != null) {
             doc.put(ComplaintDocumentNormalizer.FIELD_DEPARTMENT, event.getDepartment());
+        }
+        if (event.getRegionalOffice() != null) {
+            doc.put(ComplaintDocumentNormalizer.FIELD_REGIONAL_OFFICE, event.getRegionalOffice());
         }
 
         return doc;
