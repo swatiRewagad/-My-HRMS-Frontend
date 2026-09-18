@@ -33,6 +33,7 @@ public class ComplaintService {
     private final ComplaintNumberGeneratorService complaintNumberGenerator;
     private final OfficeRoutingService officeRoutingService;
     private final NodalOfficerRecordService nodalOfficerRecordService;
+    private final OfficeAssignmentStrategyService officeAssignmentStrategyService;
 
     @Cacheable(value = "dashboard", unless = "#result == null")
     @Transactional(readOnly = true)
@@ -183,6 +184,23 @@ public class ComplaintService {
             complaint.setRbioOfficeCode(acceptingOffice.isBlank() ? numbered.officeCode() : acceptingOffice);
         }
 
+        // UST468-472: the office that ACCEPTED the complaint decides how its Dealing Officer is chosen —
+        // rotation, entity mapping, or category mapping. This runs after office routing because an overflow
+        // diversion changes which office's configuration applies, and it overrides the generic officer
+        // routeComplaint picked, which knows nothing about per-office policy.
+        //
+        // Only RBIO complaints are re-resolved. CRPC intake assigns a DEO by its own rota and CEPC has its
+        // own ladder, so re-deciding those here would silently take over two workflows this story does not
+        // cover.
+        OfficeAssignmentStrategyService.Resolution officerChoice = null;
+        if ("RBIO".equals(routing.getDepartment()) && complaint.getRbioOfficeCode() != null) {
+            officerChoice = officeAssignmentStrategyService.resolveOfficer(
+                    complaint.getRbioOfficeCode(), entityCode, req.getCategoryId());
+            if (officerChoice.isAssigned()) {
+                complaint.setAssignedOfficer(officerChoice.officerId());
+            }
+        }
+
         Complaint saved = complaintRepository.save(complaint);
 
         addTimeline(saved.getId(), "filed", "System",
@@ -196,6 +214,17 @@ public class ComplaintService {
             addTimeline(saved.getId(), "office_routing", "System",
                     "Office " + numbered.officeCode() + " (" + numbered.officeName() + ") at capacity: "
                             + officeStatus + "; complaint held at office " + saved.getRbioOfficeCode(),
+                    null, null);
+        }
+
+        // UST469/UST472: the assignment lookup must be traceable per complaint, not only in a log file.
+        // Recorded whenever the office ran a mapping strategy or fell back, because those are the cases
+        // where somebody later asks "why did this land on an admin instead of the named officer?" — a
+        // plain rotation needs no explanation and would only add noise to every timeline.
+        if (officerChoice != null
+                && !OfficeAssignmentStrategyService.Resolution.OUTCOME_ROTATED.equals(officerChoice.outcome())) {
+            addTimeline(saved.getId(), "assignment_lookup", "System",
+                    officerChoice.strategy() + " / " + officerChoice.outcome() + ": " + officerChoice.reason(),
                     null, null);
         }
 

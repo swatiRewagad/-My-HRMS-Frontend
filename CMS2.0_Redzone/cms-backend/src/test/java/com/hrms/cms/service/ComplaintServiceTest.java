@@ -40,6 +40,7 @@ class ComplaintServiceTest {
     @Mock private ComplaintNumberGeneratorService complaintNumberGenerator;
     @Mock private OfficeRoutingService officeRoutingService;
     @Mock private NodalOfficerRecordService nodalOfficerRecordService;
+    @Mock private OfficeAssignmentStrategyService officeAssignmentStrategyService;
 
     @InjectMocks
     private ComplaintService complaintService;
@@ -275,6 +276,43 @@ class ComplaintServiceTest {
                     .thenReturn(Map.of("officeId", "013",
                             "status", OfficeRoutingService.STATUS_ASSIGNED,
                             "currentCount", 1));
+            // Per-office strategy defaults to rotation in these tests, matching an unconfigured office.
+            when(officeAssignmentStrategyService.resolveOfficer(anyString(), any(), any()))
+                    .thenReturn(new OfficeAssignmentStrategyService.Resolution(
+                            "rbio-officer-1", OfficeAssignmentStrategy.ROUND_ROBIN,
+                            OfficeAssignmentStrategyService.Resolution.OUTCOME_ROTATED, "rotated"));
+        }
+
+        @Test
+        void shouldLetTheOfficeStrategyDecideTheOfficer() {
+            // UST468-472. The generic router picks an officer knowing nothing about per-office policy, so
+            // the office's own logic must be able to override it — otherwise configuring an office to route
+            // by entity would change nothing and the feature would be inert.
+            when(officeAssignmentStrategyService.resolveOfficer(anyString(), any(), any()))
+                    .thenReturn(new OfficeAssignmentStrategyService.Resolution(
+                            "rbio.officer.mum", OfficeAssignmentStrategy.ENTITY_MAPPING,
+                            OfficeAssignmentStrategyService.Resolution.OUTCOME_MAPPED,
+                            "Mapped HDFC Bank to rbio.officer.mum"));
+            when(complaintRepository.save(any(Complaint.class))).thenAnswer(inv -> inv.getArgument(0));
+
+            Complaint result = complaintService.fileComplaint(minimalRequest());
+
+            assertThat(result.getAssignedOfficer()).isEqualTo("rbio.officer.mum");
+        }
+
+        @Test
+        void shouldKeepTheRoutedOfficerWhenTheOfficeStrategyCannotAssign() {
+            // An unassignable office strategy must not blank an officer the router already found: that
+            // would take a complaint away from someone able to act on it.
+            when(officeAssignmentStrategyService.resolveOfficer(anyString(), any(), any()))
+                    .thenReturn(new OfficeAssignmentStrategyService.Resolution(
+                            null, OfficeAssignmentStrategy.ENTITY_MAPPING,
+                            OfficeAssignmentStrategyService.Resolution.OUTCOME_UNASSIGNED, "no admin"));
+            when(complaintRepository.save(any(Complaint.class))).thenAnswer(inv -> inv.getArgument(0));
+
+            Complaint result = complaintService.fileComplaint(minimalRequest());
+
+            assertThat(result.getAssignedOfficer()).isEqualTo("rbio-officer-1");
         }
 
         @Test
