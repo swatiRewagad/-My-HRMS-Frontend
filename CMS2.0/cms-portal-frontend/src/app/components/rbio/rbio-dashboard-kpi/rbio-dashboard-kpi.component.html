@@ -1,27 +1,26 @@
 @for (card of computedRoleCards(); track card.id) {
-  <p-card [styleClass]="selectedCardId() === card.id ? 'kpi-card-surface kpi-selected' : 'kpi-card-surface'"
-    (click)="handleCardSelection(card.id)">
+  <p-card [class]="selectedCardId() === card.id ? 'kpi-card-surface kpi-selected' : 'kpi-card-surface'"
+    tabindex="0"
+    role="button"
+    [attr.aria-pressed]="selectedCardId() === card.id"
+    [attr.aria-label]="card.title"
+    (click)="handleCardSelection(card.id)"
+    (keydown.enter)="handleCardSelection(card.id)"
+    (keydown.space)="handleCardSelection(card.id); $event.preventDefault()">
 
     <ng-template pTemplate="content">
       <div class="kpi-flex-container">
         <div class="kpi-left-section">
 
-          <!-- Icon Circular Indicator -->
           <div class="kpi-icon-circle" [ngClass]="card.styleClass">
             <i [class]="card.icon"></i>
           </div>
 
-          <!-- Layout Content Container -->
           <div class="kpi-text-block">
-
-            <!-- Render single title ONLY for 1:1 Cards -->
             @if (card.layout === '1:1') {
               <span class="kpi-label-title">{{ card.title }}</span>
               <h3 class="metric-col-value">{{ card.metrics[0].value }}</h3>
-            }
-
-            <!-- Multi-Metric Grid System (2:1, 3:1, 4:1) -->
-            @if (card.layout !== '1:1') {
+            } @else {
               <div class="metric-grid" [ngClass]="'layout-' + card.layout">
                 @for (metric of card.metrics; track metric.label) {
                   <div class="metric-column">
@@ -33,7 +32,6 @@
                 }
               </div>
             }
-
           </div>
         </div>
       </div>

@@ -26,7 +26,7 @@ export class RbioDashboardKpiComponent {
         title: 'Total Pending Complaints',
         icon: 'pi pi-copy',
         styleClass: 'bg-blue',
-        infoBubble: false,
+
         requiredRoles: ['RBIO_DO', 'RBIO_REVIEWER', 'RBIO_DEPUTY_OMBUDSMAN', 'RBIO_OMBUDSMAN', 'RBIO_ADMIN'],
         layout: '1:1',
         metrics: [{ label: 'Total Pending Complaints', value: d?.totalPendingComplaints ?? 0 }]
@@ -36,7 +36,7 @@ export class RbioDashboardKpiComponent {
         title: 'Pending with Me',
         icon: 'pi pi-user',
         styleClass: 'bg-orange',
-        infoBubble: false,
+
         requiredRoles: ['RBIO_DO', 'RBIO_REVIEWER', 'RBIO_DEPUTY_OMBUDSMAN', 'RBIO_OMBUDSMAN', 'RBIO_ADMIN'],
         layout: '1:1',
         metrics: [{ label: 'Pending with Me', value: d?.pendingWithMe ?? 0 }]
@@ -46,7 +46,7 @@ export class RbioDashboardKpiComponent {
         title: 'Pending with RE',
         icon: 'pi pi-building',
         styleClass: 'bg-orange',
-        infoBubble: false,
+
         requiredRoles: ['RBIO_DO', 'RBIO_REVIEWER', 'RBIO_DEPUTY_OMBUDSMAN', 'RBIO_OMBUDSMAN', 'RBIO_ADMIN'],
         layout: '1:1',
         metrics: [{ label: 'Pending with RE', value: d?.pendingWithRe ?? 0 }]
@@ -56,7 +56,7 @@ export class RbioDashboardKpiComponent {
         title: 'Pending at Meeting Scheduled',
         icon: 'pi pi-calendar',
         styleClass: 'bg-orange',
-        infoBubble: false,
+
         requiredRoles: ['RBIO_DO', 'RBIO_REVIEWER', 'RBIO_DEPUTY_OMBUDSMAN', 'RBIO_OMBUDSMAN', 'RBIO_ADMIN'],
         layout: '1:1',
         metrics: [{ label: 'Pending at Meeting Scheduled', value: d?.pendingAtMeetingSchedule ?? 0 }]
@@ -66,7 +66,7 @@ export class RbioDashboardKpiComponent {
         title: 'SLA Analysis Tracking',
         icon: 'pi pi-clock',
         styleClass: 'bg-red',
-        infoBubble: false,
+
         requiredRoles: ['RBIO_DO', 'RBIO_REVIEWER', 'RBIO_DEPUTY_OMBUDSMAN', 'RBIO_OMBUDSMAN', 'RBIO_ADMIN'],
         layout: '3:1',
         metrics: [

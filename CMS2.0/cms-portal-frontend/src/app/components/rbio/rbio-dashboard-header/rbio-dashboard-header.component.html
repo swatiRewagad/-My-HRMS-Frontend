@@ -11,7 +11,7 @@
 
     <div class="header-action-container">
       <p-button size="small"
-          [label]="activeFilterCount() > 0 ? 'Filters (' + activeFilterCount() + ')' : 'Filters'"
+          [label]="activeFilterCount() > 0 ? 'Filter (' + activeFilterCount() + ')' : 'Filter'"
           icon="pi pi-filter"
           [variant]="activeFilterCount() > 0 ? 'outlined' : 'text'"
           [severity]="activeFilterCount() > 0 ? 'info' : 'secondary'"
@@ -24,7 +24,7 @@
 
     <p-select [options]="statusCodes()" [(ngModel)]="selectedStatusCode" optionLabel="label"
         optionValue="value" [loading]="isSearching()" (onChange)="statusFilterSelect.emit($event)"
-        placeholder="Select a status" styleClass="responsive-select" />
+        placeholder="Select a status" class="responsive-select" />
 
     @if (isDOUser()) {
       <p-button size="small" label="Create Complaint" icon="pi pi-plus"
@@ -41,7 +41,7 @@
     @for (chip of filterChips(); track chip.category + chip.value) {
       <p-chip [label]="chip.label" [removable]="true" (onRemove)="removeChip(chip.category, chip.value)" />
     }
-    <p-button [text]="true" severity="danger" label="Clear All" size="small"
+    <p-button variant="text" severity="danger" label="Clear All" size="small"
         (onClick)="advSearchActive() ? clearSearch.emit() : clearAllFilters()" />
   </div>
 }

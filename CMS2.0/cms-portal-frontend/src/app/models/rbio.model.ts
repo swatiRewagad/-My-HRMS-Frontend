@@ -128,7 +128,7 @@ export interface UnifiedDashboardSearchQuery {
 export interface MetricItem {
     label: string;
     value: number;
-    colorClass?: string;
+    colorClass?: 'color-red' | 'color-orange' | 'color-green';
 }
 
 export interface InternalKpiConfig {
@@ -136,7 +136,7 @@ export interface InternalKpiConfig {
     title: string;
     icon: string;
     styleClass: 'bg-blue' | 'bg-orange' | 'bg-red';
-    infoBubble: boolean;
+
     requiredRoles: string[];
     layout: '1:1' | '2:1' | '3:1' | '4:1';
     metrics: MetricItem[];

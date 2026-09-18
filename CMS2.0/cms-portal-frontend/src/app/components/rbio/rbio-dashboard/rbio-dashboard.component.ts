@@ -32,6 +32,7 @@ import { RbioDashboardTabsComponent } from "../rbio-dashboard-tabs/rbio-dashboar
 import { ApiService } from "../../../services/api.service";
 
 type FilterType = 'AdvancedSearchFilter' | 'DashboardFilter' | 'StatusCodeFilter';
+const DEFAULT_STATUS_CODE = 'Complaint Assigned To Me';
 
 @Component({
   selector: "app-rbio-dashboard",
@@ -85,7 +86,7 @@ export class RbioDashboardComponent implements OnInit, OnDestroy {
   });
 
   readonly selectedDashboardTab = signal<string | number>("0");
-  readonly selectedStatusCode = signal<string | null>("Complaint Assigned To Me");
+  readonly selectedStatusCode = signal<string | null>(DEFAULT_STATUS_CODE);
   readonly currentKpiFilter = signal<string | null>(null);
   readonly showUnreadOnly = signal<boolean>(false);
   readonly showWithoutAttachments = signal<boolean>(false);
@@ -309,6 +310,8 @@ export class RbioDashboardComponent implements OnInit, OnDestroy {
     if (this.advSearchModal) {
       this.advSearchModal.clearAllFilters();
     }
+    this.cachedSelectedFilter.set(null);
+    this.selectedStatusCode.set(DEFAULT_STATUS_CODE);
     this.currentPage.set(1);
     this.triggerUnifiedSearch();
   }
@@ -324,6 +327,14 @@ export class RbioDashboardComponent implements OnInit, OnDestroy {
   handleFilterRemoval(updated: SelectedFilters): void {
     const isEmpty = Object.values(updated).every(arr => arr.length === 0);
     this.cachedSelectedFilter.set(isEmpty ? null : updated);
+    if (isEmpty) {
+      this.cachedAdvancedSearchPayload = null;
+      this.advSearchActive.set(false);
+      if (this.advSearchModal) {
+        this.advSearchModal.clearAllFilters();
+      }
+      this.selectedStatusCode.set(DEFAULT_STATUS_CODE);
+    }
     this.currentPage.set(1);
     this.triggerUnifiedSearch();
   }
