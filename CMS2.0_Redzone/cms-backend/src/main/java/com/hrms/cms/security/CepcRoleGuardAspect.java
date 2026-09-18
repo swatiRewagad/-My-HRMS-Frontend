@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.RequestContextHolder;
@@ -28,6 +29,10 @@ import java.util.*;
 public class CepcRoleGuardAspect {
 
     private final ObjectMapper objectMapper;
+
+    /** True only under dev-local; the enforcing profile leaves it false and headers are ignored. */
+    @Value("${cms.security.allow-dev-identity-headers:false}")
+    private boolean allowDevIdentityHeaders;
 
     @Around("@annotation(cepcRoleGuard)")
     public Object checkRole(ProceedingJoinPoint joinPoint, CepcRoleGuard cepcRoleGuard) throws Throwable {
@@ -67,23 +72,8 @@ public class CepcRoleGuardAspect {
         HttpServletRequest request = attrs.getRequest();
         Set<String> roles = new HashSet<>();
 
-        // Check X-User-Roles header (comma-separated)
-        String rolesHeader = request.getHeader("X-User-Roles");
-        if (rolesHeader != null && !rolesHeader.isBlank()) {
-            for (String role : rolesHeader.split(",")) {
-                roles.add(role.trim());
-            }
-            return roles;
-        }
-
-        // Check single X-User-Role header
-        String singleRole = request.getHeader("X-User-Role");
-        if (singleRole != null && !singleRole.isBlank()) {
-            roles.add(singleRole.trim());
-            return roles;
-        }
-
-        // Try to decode JWT from Authorization header
+        // The JWT is authoritative and is decoded FIRST. Header-first extraction meant any caller
+        // could grant themselves a CEPC role with a single header, in every profile.
         String authHeader = request.getHeader("Authorization");
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             try {
@@ -122,6 +112,24 @@ public class CepcRoleGuardAspect {
             } catch (Exception e) {
                 log.debug("Failed to decode JWT for role extraction: {}", e.getMessage());
             }
+        }
+
+        if (!roles.isEmpty() || !allowDevIdentityHeaders) {
+            return roles;
+        }
+
+        // dev-local only: X-User-Roles (comma-separated), then the single-role variant.
+        String rolesHeader = request.getHeader("X-User-Roles");
+        if (rolesHeader != null && !rolesHeader.isBlank()) {
+            for (String role : rolesHeader.split(",")) {
+                roles.add(role.trim());
+            }
+            return roles;
+        }
+
+        String singleRole = request.getHeader("X-User-Role");
+        if (singleRole != null && !singleRole.isBlank()) {
+            roles.add(singleRole.trim());
         }
 
         return roles;

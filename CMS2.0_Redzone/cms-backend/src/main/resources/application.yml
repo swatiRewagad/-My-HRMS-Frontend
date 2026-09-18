@@ -79,6 +79,10 @@ keycloak:
     password: ${KEYCLOAK_ADMIN_PASSWORD:admin}
 
 cms:
+  security:
+    # X-User-* identity headers are a dev-local convenience ONLY. Stated explicitly rather than
+    # relying on the annotation default, so switching it on is always a visible config change.
+    allow-dev-identity-headers: false
   ocr:
     # ── Provider chain (ordered, comma-separated) ──────────────────────────────
     # Providers are tried left-to-right; first non-empty result wins.
