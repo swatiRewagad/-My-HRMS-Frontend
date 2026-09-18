@@ -355,6 +355,7 @@ export class RbioComplaintDetailsView implements OnInit {
 
     this.complaintDetail = this.activatedRoute.snapshot.queryParamMap.get("complaintDetail");
     this.actualComplaintNumber = JSON.parse(this.complaintDetail)?.complaintNumber;
+    this.complaintId = JSON.parse(this.complaintDetail)?.complaintId;
     effect(() => {
       const isOpen = this.attachmentsPanelOpen();
       console.log('--- [SIGNAL EFFECT] attachmentsPanelOpen changed to:', isOpen);
@@ -717,7 +718,7 @@ export class RbioComplaintDetailsView implements OnInit {
 
   loadHistory() {
     this.loadingHistory.set(true);
-    this.http.get<any>(`${environment.apiBaseUrl}/api/complaints/${this.complaint()?.id}/timeline`).subscribe({
+    this.http.get<any>(`${environment.apiBaseUrl}/api/complaints/${this.complaintId}/timeline`).subscribe({
       next: (res) => {
         const data = res?.data || res || [];
         if (Array.isArray(data) && data.length > 0) {
@@ -912,7 +913,6 @@ private getStatusColor(status: string): string {
   }
 
   ngOnInit() {
-    this.complaintId = this.generateComplaintId();
     this.receivedDate = new Date().toISOString().split('T')[0];
     const user = this.auth.currentUser();
     this.loggedInUserName = user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username : '';
@@ -922,9 +922,9 @@ private getStatusColor(status: string): string {
     this.loadDeos();
     this.loadComplaints();
 
-    const taskId = this.route.snapshot.paramMap.get('id');
-    if (taskId) {
-      this.loadExistingComplaint(taskId);
+    // const taskId = this.route.snapshot.paramMap.get('id');
+    if (this.complaintId) {
+      this.loadExistingComplaint(this.complaintId);
     }
   }
 
@@ -936,8 +936,8 @@ private getStatusColor(status: string): string {
         this.assignedOfficer = data.assignedOfficer || '';
         console.log('assigned office',this.assignedOfficer);
 
-        this.complaintId =
-          data.navBarDto?.complaintNumber || data.id || id;
+        // this.complaintId =
+        //   data.navBarDto?.complaintNumber || data.id || id;
 
         // console.log(this.complaintId)
 
@@ -2276,7 +2276,7 @@ private getStatusColor(status: string): string {
   
   fetchAttachments(): void {
     let trackingId = this.complaintNumber ? this.complaintNumber.trim() : '';
-    const fallbackId = this.complaintId ? this.complaintId.trim() : '';
+    const fallbackId = this.complaintId || '';
   
     if (!trackingId || trackingId === 'Not Assigned' || trackingId === `N${fallbackId}`) {
       trackingId = fallbackId;
@@ -2286,7 +2286,7 @@ private getStatusColor(status: string): string {
   
     this.loadingSidebarAttachments.set(true);
   
-    this.http.get<any[]>(`http://localhost:8082/api/files/complaint/${this.complaint()?.id}`)
+    this.http.get<any[]>(`http://localhost:8082/api/files/complaint/${this.complaintId}`)
       .subscribe({
         next: (data) => {
           const files = (data as any)?.data || data || [];
@@ -2323,7 +2323,7 @@ private getStatusColor(status: string): string {
    
     const formData = new FormData();
     formData.append('complaintNumber', this.complaintNumber ? this.complaintNumber.trim() : '');
-    let id = this.complaint()?.id ?? ''
+    let id = this.complaintId ?? ''
     formData.append('complaintId', id as string);
     
      formData.append('file', fileList[0]); 
@@ -2382,7 +2382,8 @@ handleHistoryClick(): void {
 
 
 fetchComplaintHistory(): void {
-  const targetId = this.complaint()?.id ?? '';
+  const targetId = this.complaintId ?? '';
+  console.log('targeId',targetId);
 
   if (!targetId) {
     console.warn('History API Blocked: No valid complaintId found.');

@@ -157,6 +157,6 @@ export class RbioDashboardTableComponent {
 
   navigateToDetail(complaint: any): void {
     const id = complaint.complaintId || complaint.complaintNumber;
-    this.router.navigate(['/rbio/complaint', id]);
+    this.router.navigate(['/rbio/complaint', id], { queryParams: { complaintDetail: JSON.stringify(complaint) } });
   }
 }

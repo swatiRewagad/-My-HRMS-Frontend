@@ -130,7 +130,7 @@ export const routes: Routes = [
   },
   {
     path: 'rbio/complaint/:id',
-    loadComponent: () => import('./components/rbio/rbio-complaint-detail/rbio-complaint-detail.component').then(m => m.RbioComplaintDetailComponent)
+    loadComponent: () => import('./components/rbio/rbio-complaint-details-view/rbio-complaint-details-view.component').then(m => m.RbioComplaintDetailsView)
   },
   {
     path: 'rbio/supervisor-dashboard',
