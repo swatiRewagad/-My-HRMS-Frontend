@@ -456,6 +456,10 @@ public class AppealController {
         data.put("modeOfReceipt", a.getModeOfReceipt());
         data.put("appealFiledBy", a.getAppealFiledBy());
         data.put("closureClause", a.getClosureClause());
+        // Captured at registration (AaAppealRegisterService) and stored on APPEALS, but previously
+        // never returned — so the flag was write-only and no screen could show that a matter is before
+        // a court. Emitted as a plain boolean: false, not null, when nothing was declared.
+        data.put("hasRelatedCourtTrial", Boolean.TRUE.equals(a.getHasRelatedCourtTrial()));
         data.put("appealGround", a.getAppealGround());
         data.put("reliefSought", a.getReliefSought());
         data.put("reasonForDelay", a.getReasonForDelay());

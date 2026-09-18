@@ -39,6 +39,10 @@ public class AaAppealOrderService {
 
     static final String CFG_REQUIRE_ED_APPROVAL = "cms.aa.order.require_ed_approval";
     static final String CFG_SCHEME_VERSION = "cms.aa.order.scheme_version";
+    /** Statutory award ceiling in rupees. 0 or absent = unenforced. See {@link #validateAward}. */
+    static final String CFG_MAX_AWARD_AMOUNT = "cms.aa.order.max_award_amount";
+    /** Refuse an order on a declared sub-judice matter without a stated ground. Default false. */
+    static final String CFG_BLOCK_SUB_JUDICE = "cms.aa.order.block_sub_judice";
 
     private static final String DEFAULT_SCHEME_VERSION = "RBIOS_2021";
 
@@ -68,6 +72,25 @@ public class AaAppealOrderService {
     /** Raised when ED approval is required by configuration but has not been recorded. */
     public static class EdApprovalRequiredException extends RuntimeException {
         public EdApprovalRequiredException(String message) {
+            super(message);
+        }
+    }
+
+    /**
+     * Raised when an award exceeds the configured statutory ceiling.
+     *
+     * <p>A distinct type rather than a bare IllegalArgumentException so the ceiling can be reported to
+     * the operator as a refusal on legal grounds, and so a test can prove the cap specifically fired.
+     */
+    public static class AwardCapExceededException extends RuntimeException {
+        public AwardCapExceededException(String message) {
+            super(message);
+        }
+    }
+
+    /** Raised when an order would issue on a matter declared to be before a court. */
+    public static class SubJudiceException extends RuntimeException {
+        public SubJudiceException(String message) {
             super(message);
         }
     }
@@ -103,6 +126,8 @@ public class AaAppealOrderService {
             throw new EdApprovalRequiredException(
                     "ED approval has not been recorded on " + appealNumber + ", so an order cannot issue");
         }
+
+        requireNotSubJudice(appeal, ground);
 
         AppealOrder order = orderRepository.save(AppealOrder.builder()
                 .appealNumber(appealNumber)
@@ -258,11 +283,21 @@ public class AaAppealOrderService {
     }
 
     /**
-     * A negative award is always a mistake; an award on a non-award outcome is dropped.
+     * A negative award is always a mistake; an award on a non-award outcome is dropped; and an award
+     * above the configured statutory ceiling is REFUSED.
      *
-     * <p>Dropping rather than rejecting because a UI that leaves a stale amount in a hidden field
-     * should not block a dismissal, but the amount must not be recorded against an outcome that awards
-     * nothing.
+     * <p>Dropping rather than rejecting a non-award outcome because a UI that leaves a stale amount in
+     * a hidden field should not block a dismissal, but the amount must not be recorded against an
+     * outcome that awards nothing.
+     *
+     * <p><b>The ceiling is configuration, not a constant, and is DISABLED by default.</b> AA previously
+     * enforced no cap at all, so an Appellate Authority could record an award of any size. The
+     * mechanism now exists and is exercised by tests, but the VALUE is a question of Scheme law rather
+     * than engineering: hardcoding a guess would either block lawful awards or permit unlawful ones,
+     * both worse than the status quo. Set {@code cms.aa.order.max_award_amount} to a positive value to
+     * arm it (0 or absent = no ceiling), following the same config-gated pattern as
+     * {@code cms.aa.order.require_ed_approval}. Until it is set, an over-ceiling award is still
+     * recorded — this is reported as requiring legal sign-off, not silently resolved.
      */
     private BigDecimal validateAward(String outcome, BigDecimal awardAmount) {
         if (awardAmount == null) return null;
@@ -273,7 +308,47 @@ public class AaAppealOrderService {
             log.debug("AA order: award amount ignored for outcome {}", outcome);
             return null;
         }
+
+        long ceiling = systemConfigService.getLong(CFG_MAX_AWARD_AMOUNT, 0L);
+        if (ceiling > 0 && awardAmount.compareTo(BigDecimal.valueOf(ceiling)) > 0) {
+            throw new AwardCapExceededException(String.format(
+                    "Award amount Rs %s exceeds the maximum permitted cap of Rs %s. "
+                            + "Per the RBI Integrated Ombudsman Scheme, this award cannot be issued.",
+                    awardAmount.toPlainString(), BigDecimal.valueOf(ceiling).toPlainString()));
+        }
         return awardAmount;
+    }
+
+    /**
+     * Refuses an order on a matter declared to be before a court, unless an override reason is stated.
+     *
+     * <p>The appellant declares a related court trial at registration and it is stored on APPEALS, but
+     * nothing ever read it: an order could be passed on a sub-judice matter with no record that anyone
+     * considered the point. There is no Legal Cases module in this product, so the declared flag is the
+     * only signal available — this deliberately does NOT pretend to track case numbers or hearings.
+     *
+     * <p>The override is the {@code ground} text, which is persisted on the order, so a deliberate
+     * decision to proceed is auditable rather than silent. <b>Disabled by default</b>
+     * ({@code cms.aa.order.block_sub_judice}) because whether the AA may proceed on a sub-judice matter,
+     * and who may authorise it, is a question of Scheme law — arming it on a guess could block lawful
+     * orders. The mechanism and its tests exist so that switching it on is a config change, not a build.
+     */
+    private void requireNotSubJudice(Appeal appeal, String ground) {
+        if (!systemConfigService.getBoolean(CFG_BLOCK_SUB_JUDICE, false)) {
+            return;
+        }
+        if (!Boolean.TRUE.equals(appeal.getHasRelatedCourtTrial())) {
+            return;
+        }
+        if (ground != null && !ground.isBlank()) {
+            log.warn("AA order: proceeding on sub-judice appeal {} with a recorded override: {}",
+                    appeal.getAppealNumber(), ground);
+            return;
+        }
+        throw new SubJudiceException(
+                "Appeal " + appeal.getAppealNumber() + " is recorded as having a related court trial. "
+                        + "State the ground on which the Appellate Authority proceeds, or do not issue "
+                        + "an order while the matter is sub-judice.");
     }
 
     private Appeal requireAppeal(String appealNumber) {

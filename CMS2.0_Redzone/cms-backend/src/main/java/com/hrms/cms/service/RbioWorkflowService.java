@@ -401,10 +401,22 @@ public class RbioWorkflowService {
                 break;
 
             case "ADJUDICATION_AWARD":
-                // Validate compensation cap BEFORE allowing the award
-                String amountStr = params.getOrDefault("awardAmount", "0");
+                // Validate compensation cap BEFORE allowing the award.
+                //
+                // `compensationAmount` is accepted as well as `awardAmount` because the adjudication
+                // screen sends the former (rbio-adjudication.component.ts). Reading only `awardAmount`
+                // meant the UI's amount NEVER bound: it defaulted to "0", sailed through the cap check
+                // however large the operator had typed, and the award was persisted as 0.00 — the
+                // citizen's compensation silently recorded as nothing, on an irreversible statutory
+                // act. Absence is now refused outright rather than defaulted, so a field-name drift
+                // can never again be mistaken for a lawful zero award.
+                String amountStr = firstNonBlankParam(params, "awardAmount", "compensationAmount");
                 String compensationType = params.getOrDefault("compensationType",
                         complaint.getCompensationType() != null ? complaint.getCompensationType() : "COMBINED");
+                if (amountStr == null) {
+                    throw new IllegalArgumentException(
+                            "An award amount is required to issue an award (send awardAmount)");
+                }
                 BigDecimal awardAmount;
                 try {
                     awardAmount = new BigDecimal(amountStr);
@@ -595,5 +607,16 @@ public class RbioWorkflowService {
             log.warn("Failed to assign user by role {}: {}", role, e.getMessage());
             return null;
         }
+    }
+
+    /** The first of {@code keys} present and non-blank in {@code params}, or null when none is. */
+    private static String firstNonBlankParam(Map<String, String> params, String... keys) {
+        for (String key : keys) {
+            String value = params.get(key);
+            if (value != null && !value.isBlank()) {
+                return value.trim();
+            }
+        }
+        return null;
     }
 }

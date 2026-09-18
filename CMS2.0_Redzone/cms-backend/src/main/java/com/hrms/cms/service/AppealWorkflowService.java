@@ -46,6 +46,13 @@ public class AppealWorkflowService {
     private final ComplaintTimelineRepository complaintTimelineRepository;
     private final AaOutboxPublisher outboxPublisher;
 
+    /**
+     * Who a notice is owed to when a hearing is fixed through the workflow action, which — unlike
+     * S3C's own endpoint — carries no party list. Matches that endpoint's default: the appellant has a
+     * statutory interest in being told and must not be dropped because the caller omitted the field.
+     */
+    private static final List<String> HEARING_NOTICE_PARTIES = List.of("appellant");
+
     // The in-memory round-robin counter that used to live here is gone. It was a ConcurrentHashMap over
     // Keycloak users: lost on restart, divergent per pod, and blind to every workload threshold. All
     // assignment now goes through AaAssignmentEngine, which persists its pointer and enforces caps.
@@ -284,7 +291,25 @@ public class AppealWorkflowService {
                 if (hearingDateStr == null || hearingDateStr.isBlank()) {
                     throw new IllegalArgumentException("hearingDate is required for SCHEDULE_HEARING action");
                 }
-                appeal.setHearingDate(LocalDateTime.parse(hearingDateStr));
+                LocalDateTime hearingWhen = parseHearingDate(hearingDateStr);
+
+                // Route through the hearing port so BOTH scheduling paths -- this action and S3C's own
+                // /hearings endpoint -- append to APPEAL_HEARING. Setting the fields directly (as this
+                // did) left no history row, so a hearing fixed here was invisible to the history view
+                // and a later reschedule silently erased the vacated sitting: an audit failure on a
+                // statutory hearing. The port also owns the notice obligations.
+                boolean alreadyFixed = hearingPort.current(appealNumber) != null;
+                if (alreadyFixed) {
+                    String moveReason = firstNonBlank(params.get("reason"), remarks,
+                            "Rescheduled via workflow action");
+                    hearingPort.reschedule(appealNumber, hearingWhen, hearingVenue,
+                            params.get("hearingMode"), moveReason, HEARING_NOTICE_PARTIES);
+                } else {
+                    hearingPort.schedule(appealNumber, hearingWhen, hearingVenue,
+                            params.get("hearingMode"), HEARING_NOTICE_PARTIES);
+                }
+
+                appeal.setHearingDate(hearingWhen);
                 appeal.setHearingVenue(hearingVenue);
                 appeal.setStatus("hearing_scheduled");
                 appeal.setWorkflowStage("HEARING_SCHEDULED");
@@ -794,6 +819,35 @@ public class AppealWorkflowService {
      * express it. Candidates are taken from Keycloak and placed through the engine, which still applies
      * the threshold — an escalation must not overload the one senior reviewer.
      */
+    /**
+     * Accepts either a full timestamp or a date-only value.
+     *
+     * A bare LocalDateTime.parse threw DateTimeParseException on "2026-09-30", which no caller catches
+     * and which surfaced as a 500 rather than a 400. A date-only hearing means the start of that day.
+     */
+    private static LocalDateTime parseHearingDate(String raw) {
+        String value = raw.trim();
+        try {
+            return LocalDateTime.parse(value);
+        } catch (java.time.format.DateTimeParseException e) {
+            try {
+                return LocalDate.parse(value).atStartOfDay();
+            } catch (java.time.format.DateTimeParseException e2) {
+                throw new IllegalArgumentException(
+                        "hearingDate must be an ISO date or date-time, got: " + raw);
+            }
+        }
+    }
+
+    private static String firstNonBlank(String... values) {
+        for (String value : values) {
+            if (value != null && !value.isBlank()) {
+                return value;
+            }
+        }
+        return null;
+    }
+
     private String findTier2Reviewer(String appealNumber, Appeal appeal) {
         try {
             for (Map<String, Object> user : keycloakUserService.getUsersByRole("AA_REVIEWER")) {

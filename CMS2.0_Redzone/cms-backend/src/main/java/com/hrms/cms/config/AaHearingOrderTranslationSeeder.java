@@ -125,6 +125,16 @@ public class AaHearingOrderTranslationSeeder implements CommandLineRunner {
         m.put("aa.order.error_ed_approval_required",
               "Approval from the Executive Director is required before this order can be issued");
         m.put("aa.order.error_invalid_request", "The order details are incomplete or invalid");
+        // Both refusals are ENGLISH-ONLY on purpose. They state a legal ground for refusing to issue an
+        // order, so their nine translations need the same sign-off as the clause labels; until then the
+        // TranslationService falls back to the English default, which is correct rather than a raw key.
+        m.put("aa.order.error_award_cap_exceeded",
+              "The award exceeds the maximum compensation permitted by the Scheme, so this order "
+                      + "cannot be issued");
+        m.put("aa.order.error_sub_judice",
+              "This appeal is recorded as having a related court trial. State the ground on which the "
+                      + "Appellate Authority proceeds, or do not issue an order while the matter is "
+                      + "sub-judice");
         m.put("aa.order.error_no_order_to_correct", "There is no issued order on this appeal to correct");
 
         // ═══ Hearing history, notice log and order labels ═══

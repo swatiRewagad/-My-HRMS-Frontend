@@ -236,6 +236,14 @@ public class AaHearingOrderController {
         } catch (AaAppealOrderService.EdApprovalRequiredException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body(error("aa.order.error_ed_approval_required", e.getMessage()));
+        } catch (AaAppealOrderService.AwardCapExceededException e) {
+            // 422, not 400: the request is well-formed but the award is not permissible. A distinct
+            // status and key let the screen tell the operator the ceiling was the reason.
+            return ResponseEntity.unprocessableEntity()
+                    .body(error("aa.order.error_award_cap_exceeded", e.getMessage()));
+        } catch (AaAppealOrderService.SubJudiceException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(error("aa.order.error_sub_judice", e.getMessage()));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(error("aa.order.error_invalid_request", e.getMessage()));
         }

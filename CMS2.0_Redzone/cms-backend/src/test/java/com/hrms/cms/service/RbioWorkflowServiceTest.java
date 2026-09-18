@@ -524,6 +524,55 @@ class RbioWorkflowServiceTest {
             verify(complaintRepository, never()).save(any(Complaint.class));
         }
 
+        /**
+         * The adjudication screen sends {@code compensationAmount}, not {@code awardAmount}
+         * (rbio-adjudication.component.ts:211). Reading only {@code awardAmount} meant the operator's
+         * figure never bound: it defaulted to "0", passed the cap check however large the typed value,
+         * and the award persisted as 0.00 — a citizen's statutory compensation silently recorded as
+         * nothing while the workflow reported success.
+         *
+         * Every pre-existing test in this class supplies {@code awardAmount}, which is exactly why the
+         * defect survived to the final QA gate.
+         */
+        @Test
+        @DisplayName("ADJUDICATION_AWARD binds the amount the UI actually sends (compensationAmount)")
+        void adjudicationAwardShouldAcceptCompensationAmountFromTheUi() {
+            sampleComplaint.setStatus("adjudication");
+            sampleComplaint.setAssignedRole("RBIO_ADJUDICATOR");
+            Map<String, String> params = new HashMap<>();
+            params.put("action", "ADJUDICATION_AWARD");
+            params.put("actor", "rbio-adjudicator-1");
+            params.put("remarks", "Award issued from the adjudication screen");
+            params.put("compensationAmount", "750000");
+            params.put("compensationType", "CONSEQUENTIAL_LOSS");
+
+            rbioWorkflowService.performAction("CMP-20260706-789012", "ADJUDICATION_AWARD", params);
+
+            assertThat(sampleComplaint.getAwardAmount()).isEqualByComparingTo(new BigDecimal("750000"));
+            // The cap must be validated against the REAL figure, never a defaulted zero.
+            verify(rbioCompensationService).validateAward(new BigDecimal("750000"), "CONSEQUENTIAL_LOSS");
+        }
+
+        @Test
+        @DisplayName("ADJUDICATION_AWARD refuses an award with no amount rather than recording zero")
+        void adjudicationAwardShouldRefuseAMissingAmount() {
+            sampleComplaint.setStatus("adjudication");
+            sampleComplaint.setAssignedRole("RBIO_ADJUDICATOR");
+            Map<String, String> params = new HashMap<>();
+            params.put("action", "ADJUDICATION_AWARD");
+            params.put("actor", "rbio-adjudicator-1");
+            params.put("remarks", "No amount supplied at all");
+            params.put("compensationType", "CONSEQUENTIAL_LOSS");
+
+            assertThatThrownBy(() ->
+                    rbioWorkflowService.performAction("CMP-20260706-789012", "ADJUDICATION_AWARD", params))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("award amount is required");
+
+            verify(complaintRepository, never()).save(any(Complaint.class));
+            assertThat(sampleComplaint.getAwardAmount()).isNull();
+        }
+
         @Test
         @DisplayName("ADJUDICATION_REJECT should set rejected with ADJUDICATION_REJECTED cause")
         void adjudicationRejectShouldTransition() {
