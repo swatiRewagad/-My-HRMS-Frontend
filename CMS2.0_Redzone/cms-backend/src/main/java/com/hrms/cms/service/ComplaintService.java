@@ -32,6 +32,7 @@ public class ComplaintService {
     private final ComplaintRoutingService routingService;
     private final ComplaintNumberGeneratorService complaintNumberGenerator;
     private final OfficeRoutingService officeRoutingService;
+    private final NodalOfficerRecordService nodalOfficerRecordService;
 
     @Cacheable(value = "dashboard", unless = "#result == null")
     @Transactional(readOnly = true)
@@ -197,6 +198,16 @@ public class ComplaintService {
                             + officeStatus + "; complaint held at office " + saved.getRbioOfficeCode(),
                     null, null);
         }
+
+        // UST569: the complaint now exists against an entity, so the Nodal Officer record it will be
+        // answered through must exist too. Synchronous and inside this transaction, because a complaint
+        // committed without its NO record is invisible to the staleness escalations that chase the entity
+        // — nothing downstream would ever notice the omission.
+        //
+        // The office is re-resolved from the same jurisdiction inputs the complaint number used, so the
+        // NO/PNO lookup is scoped to the office that will actually process the complaint (UST773).
+        nodalOfficerRecordService.ensureRecordExists(
+                saved.getId(), saved.getComplaintNumber(), entityCode, numbered.officeName());
 
         eventPublisher.publishComplaintIngested(saved);
 

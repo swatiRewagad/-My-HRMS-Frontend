@@ -5,13 +5,24 @@ import lombok.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "NODAL_OFFICER_RECORDS", indexes = {
+@Table(name = "NODAL_OFFICER_RECORDS",
+    uniqueConstraints = {
+        // UST569 auto-creates a record on complaint registration, so two concurrent registrations for
+        // the SAME complaint — a retried POST, a duplicated Kafka delivery — would both find "no record"
+        // and both insert. Duplicate rows each get their own 15/20-day staleness clock, so the entity is
+        // chased twice for one complaint and a reassignment could move only one of them. There is no
+        // other guard: the create-if-absent check cannot be atomic without this key.
+        // Safe to add now because the table is empty; it would not be once rows exist.
+        @UniqueConstraint(name = "uk_no_complaint", columnNames = {"complaintNumber"})
+    },
+    indexes = {
     @Index(name = "idx_no_complaint", columnList = "complaintNumber"),
     @Index(name = "idx_no_entity", columnList = "entityName"),
     @Index(name = "idx_no_status", columnList = "status"),
     @Index(name = "idx_no_last_modified", columnList = "lastModifiedAt"),
     @Index(name = "idx_no_entity_code_assigned", columnList = "entityCode,assignedTo"),
-    @Index(name = "idx_no_entity_code_status", columnList = "entityCode,status")
+    @Index(name = "idx_no_entity_code_status", columnList = "entityCode,status"),
+    @Index(name = "idx_no_processing_office", columnList = "processingOffice")
 })
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class NodalOfficerRecord {
@@ -66,6 +77,17 @@ public class NodalOfficerRecord {
 
     @Column(length = 20)
     private String phone;
+
+    /**
+     * UST773: the Ombudsman office whose (entity, office) mapping supplied these contacts.
+     *
+     * <p>Nullable on purpose, twice over. Some complaint-creation paths have no office in scope, and a
+     * record with an unknown office is still worth having — no record at all means nobody is chasing the
+     * entity. And the shared dev database runs ddl-auto=update, where adding a NOT NULL column would
+     * fail against existing rows and would be permanent for every other session.
+     */
+    @Column(length = 100)
+    private String processingOffice;
 
     @Column(length = 30, nullable = false)
     @Builder.Default

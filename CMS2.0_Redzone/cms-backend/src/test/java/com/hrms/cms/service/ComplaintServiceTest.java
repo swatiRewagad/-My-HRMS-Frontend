@@ -39,6 +39,7 @@ class ComplaintServiceTest {
     @Mock private ComplaintRoutingService routingService;
     @Mock private ComplaintNumberGeneratorService complaintNumberGenerator;
     @Mock private OfficeRoutingService officeRoutingService;
+    @Mock private NodalOfficerRecordService nodalOfficerRecordService;
 
     @InjectMocks
     private ComplaintService complaintService;
@@ -320,6 +321,25 @@ class ComplaintServiceTest {
             Complaint result = complaintService.fileComplaint(minimalRequest());
 
             assertThat(result.getRbioOfficeCode()).isEqualTo("013");
+        }
+
+        @Test
+        void shouldEnsureANodalOfficerRecordExistsForTheFiledComplaint() {
+            // UST569. Asserted here rather than only in NodalOfficerRecordServiceTest because the defect
+            // being guarded is the HOOK going missing: the service can be perfectly correct and still never
+            // be called, leaving the complaint invisible to the staleness escalations that chase the entity.
+            when(complaintRepository.save(any(Complaint.class))).thenAnswer(inv -> {
+                Complaint c = inv.getArgument(0);
+                c.setId(11L);
+                return c;
+            });
+
+            Complaint result = complaintService.fileComplaint(minimalRequest());
+
+            // The office passed must be the one the complaint was numbered against, so the NO/PNO lookup
+            // is scoped to the office that will actually process it (UST773).
+            verify(nodalOfficerRecordService).ensureRecordExists(
+                    eq(11L), eq(result.getComplaintNumber()), anyString(), eq("Mumbai-I"));
         }
 
         private FileComplaintRequest minimalRequest() {

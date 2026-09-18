@@ -10,10 +10,22 @@ import org.springframework.data.repository.query.Param;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 public interface NodalOfficerRecordRepository extends JpaRepository<NodalOfficerRecord, Long> {
 
     List<NodalOfficerRecord> findByComplaintNumber(String complaintNumber);
+
+    /**
+     * The uniqueness check behind UST569's create-if-absent.
+     *
+     * <p>Keyed on complaintNumber alone and deliberately NOT on (entityCode, complaintNumber):
+     * entity_code holds free-text entity NAMES, so including it would let a name differing only by
+     * punctuation or spacing defeat the check and produce a second record for the same complaint.
+     */
+    Optional<NodalOfficerRecord> findFirstByComplaintNumber(String complaintNumber);
+
+    boolean existsByComplaintNumber(String complaintNumber);
 
     List<NodalOfficerRecord> findByStatus(String status);
 
