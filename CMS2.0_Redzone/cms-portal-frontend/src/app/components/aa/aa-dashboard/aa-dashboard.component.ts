@@ -57,11 +57,20 @@ export class AaDashboardComponent implements OnInit {
 
   stats = signal<AppealStats>({ total: 0, pendingReview: 0, hearingsScheduled: 0, ordersPassed: 0, closed: 0 });
 
-  filterStatus = '';
-  filterClassification = '';
-  searchText = '';
-  sortColumn = '';
-  sortDirection: 'asc' | 'desc' = 'asc';
+  /**
+   * SIGNALS, not plain fields.
+   *
+   * {@link filteredAppeals} is a `computed()`, and a computed only re-evaluates when a SIGNAL it read
+   * changes. Reading plain properties registered no dependency at all, so the grid NEVER re-filtered:
+   * typing in the search box did nothing, the status and classification dropdowns did nothing, and
+   * clicking a column header never reordered the rows. The same defect class was found in the RBIO task
+   * list and the CEPC dashboard.
+   */
+  filterStatus = signal('');
+  filterClassification = signal('');
+  searchText = signal('');
+  sortColumn = signal('');
+  sortDirection = signal<'asc' | 'desc'>('asc');
 
   currentPage = signal(1);
   pageSize = 15;
@@ -96,26 +105,35 @@ export class AaDashboardComponent implements OnInit {
 
   filteredAppeals = computed(() => {
     let result = this.appeals();
-    if (this.filterStatus) {
-      result = result.filter(a => a.status === this.filterStatus);
+
+    const status = this.filterStatus();
+    if (status) {
+      result = result.filter(a => a.status === status);
     }
-    if (this.filterClassification) {
-      result = result.filter(a => a.classification === this.filterClassification);
+
+    const classification = this.filterClassification();
+    if (classification) {
+      result = result.filter(a => a.classification === classification);
     }
-    if (this.searchText) {
-      const q = this.searchText.toLowerCase();
+
+    const search = this.searchText();
+    if (search) {
+      const q = search.toLowerCase();
       result = result.filter(a =>
         a.appealNumber.toLowerCase().includes(q) ||
         a.originalComplaintNumber.toLowerCase().includes(q) ||
-        a.appellantName.toLowerCase().includes(q)
+        (a.appellantName ?? '').toLowerCase().includes(q)
       );
     }
-    if (this.sortColumn) {
+
+    const column = this.sortColumn();
+    if (column) {
+      const direction = this.sortDirection();
       result = [...result].sort((a, b) => {
-        const av = (a as any)[this.sortColumn] || '';
-        const bv = (b as any)[this.sortColumn] || '';
+        const av = (a as any)[column] || '';
+        const bv = (b as any)[column] || '';
         const cmp = String(av).localeCompare(String(bv), undefined, { numeric: true });
-        return this.sortDirection === 'asc' ? cmp : -cmp;
+        return direction === 'asc' ? cmp : -cmp;
       });
     }
     return result;
@@ -188,12 +206,18 @@ export class AaDashboardComponent implements OnInit {
   }
 
   sortBy(column: string) {
-    if (this.sortColumn === column) {
-      this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
+    if (this.sortColumn() === column) {
+      this.sortDirection.set(this.sortDirection() === 'asc' ? 'desc' : 'asc');
     } else {
-      this.sortColumn = column;
-      this.sortDirection = 'asc';
+      this.sortColumn.set(column);
+      this.sortDirection.set('asc');
     }
+  }
+
+  /** Used by the stat cards, which double as status filters. */
+  setStatusFilter(status: string) {
+    this.filterStatus.set(status);
+    this.currentPage.set(1);
   }
 
   async logout() {

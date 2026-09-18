@@ -4,12 +4,12 @@
       <button class="back-btn" (click)="goBack()">&larr;</button>
       <div class="title-block">
         <h2>Appellate Authority - Appeals Management</h2>
-        <span class="subtitle">{{ roleLabels[userRole()] }}</span>
+        <span class="subtitle">{{ roleLabels[userRole()] | translate }}</span>
       </div>
     </div>
     <div class="topbar-right">
       @if (auth.currentUser(); as user) {
-        <span class="role-badge">{{ roleLabels[userRole()] }}</span>
+        <span class="role-badge">{{ roleLabels[userRole()] | translate }}</span>
         <span class="user-name">{{ user.firstName }} {{ user.lastName }}</span>
       }
       <button class="logout-btn" (click)="logout()">Logout</button>
@@ -19,23 +19,23 @@
   <main class="content">
     <!-- Stats Row -->
     <div class="stats-row">
-      <div class="stat-card" [class.active]="filterStatus === ''" (click)="filterStatus = ''">
+      <div class="stat-card" [class.active]="filterStatus() === ''" (click)="setStatusFilter('')">
         <span class="stat-value">{{ stats().total }}</span>
         <span class="stat-label">Total Appeals</span>
       </div>
-      <div class="stat-card pending" [class.active]="filterStatus === 'under_review'" (click)="filterStatus = 'under_review'">
+      <div class="stat-card pending" [class.active]="filterStatus() === 'under_review'" (click)="setStatusFilter('under_review')">
         <span class="stat-value">{{ stats().pendingReview }}</span>
         <span class="stat-label">Pending Review</span>
       </div>
-      <div class="stat-card hearing" [class.active]="filterStatus === 'hearing_scheduled'" (click)="filterStatus = 'hearing_scheduled'">
+      <div class="stat-card hearing" [class.active]="filterStatus() === 'hearing_scheduled'" (click)="setStatusFilter('hearing_scheduled')">
         <span class="stat-value">{{ stats().hearingsScheduled }}</span>
         <span class="stat-label">Hearings Scheduled</span>
       </div>
-      <div class="stat-card order" [class.active]="filterStatus === 'order_passed'" (click)="filterStatus = 'order_passed'">
+      <div class="stat-card order" [class.active]="filterStatus() === 'order_passed'" (click)="setStatusFilter('order_passed')">
         <span class="stat-value">{{ stats().ordersPassed }}</span>
         <span class="stat-label">Orders Passed</span>
       </div>
-      <div class="stat-card closed" [class.active]="filterStatus === 'closed'" (click)="filterStatus = 'closed'">
+      <div class="stat-card closed" [class.active]="filterStatus() === 'closed'" (click)="setStatusFilter('closed')">
         <span class="stat-value">{{ stats().closed }}</span>
         <span class="stat-label">Closed</span>
       </div>
@@ -45,9 +45,9 @@
     <div class="toolbar">
       <div class="search-box">
         <input type="text" placeholder="Search by appeal no, complaint no, appellant name..."
-               [(ngModel)]="searchText" />
+               [ngModel]="searchText()" (ngModelChange)="searchText.set($event)" />
       </div>
-      <select class="filter-select" [(ngModel)]="filterStatus">
+      <select class="filter-select" [ngModel]="filterStatus()" (ngModelChange)="filterStatus.set($event)">
         <option value="">All Status</option>
         <option value="filed">Filed</option>
         <option value="under_review">Under Review</option>
@@ -61,7 +61,7 @@
         <option value="dismissed">Dismissed</option>
         <option value="closed">Closed</option>
       </select>
-      <select class="filter-select" [(ngModel)]="filterClassification">
+      <select class="filter-select" [ngModel]="filterClassification()" (ngModelChange)="filterClassification.set($event)">
         <option value="">All Classifications</option>
         <option value="APPEAL">Appeal</option>
         <option value="REPRESENTATION">Representation</option>
