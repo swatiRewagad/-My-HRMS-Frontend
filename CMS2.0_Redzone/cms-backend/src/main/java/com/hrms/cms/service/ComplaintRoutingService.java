@@ -8,8 +8,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
 
 @Slf4j
 @Service
@@ -17,23 +15,31 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class ComplaintRoutingService {
 
     private final RegulatedEntityRepository regulatedEntityRepo;
-    private final KeycloakUserService keycloakUserService;
+    private final DurableRoundRobinAssigner roundRobinAssigner;
 
-    private final ConcurrentHashMap<String, AtomicInteger> roundRobinCounters = new ConcurrentHashMap<>();
-
+    /**
+     * Picks the next officer for a role, or returns null when nobody is available.
+     *
+     * <p>Delegates to {@link DurableRoundRobinAssigner} (UST471/UST450). The previous implementation
+     * kept a {@code ConcurrentHashMap<String,AtomicInteger>} on this bean, which meant the rotation
+     * position was per-JVM: every pod started at officer one, and a restart reset it. It also applied
+     * no active/on-leave filter, so UST450 was unimplemented on this path.
+     *
+     * <p><b>Returns null rather than a placeholder.</b> This used to synthesise
+     * {@code role.replace("_"," ") + " Team"} — literally {@code "RBIO OFFICER Team"} — and that string
+     * was written into {@code Complaint.assignedOfficer}. A complaint then looked assigned to a person
+     * who does not exist, no dashboard could distinguish it from a real assignment, and the officer who
+     * should have picked it up never saw it. A null officer is honest and is already tolerated by the
+     * persistence path: {@code routeFromCrpcToApproval} and {@code transferBetweenDepartments} have
+     * always returned a decision with no officer.
+     */
     public String assignOfficerByRole(String role) {
-        List<Map<String, Object>> officers = keycloakUserService.getUsersByRole(role);
-        if (officers.isEmpty()) {
-            log.warn("No officers found in Keycloak for role: {}, using default team name", role);
-            return role.replace("_", " ") + " Team";
+        DurableRoundRobinAssigner.Assignment assignment = roundRobinAssigner.assignNext(role);
+        if (!assignment.isAssigned()) {
+            log.warn("No officer assigned for role {}: {}", role, assignment.reason());
+            return null;
         }
-
-        AtomicInteger counter = roundRobinCounters.computeIfAbsent(role, k -> new AtomicInteger(0));
-        int index = Math.abs(counter.getAndIncrement()) % officers.size();
-        String assignedOfficer = (String) officers.get(index).get("userId");
-
-        log.info("Round-robin assigned role={} to officer={} (index {} of {})", role, assignedOfficer, index, officers.size());
-        return assignedOfficer;
+        return assignment.officerId();
     }
 
     public RoutingDecision routeComplaint(Complaint complaint, String entityCode) {
@@ -50,14 +56,15 @@ public class ComplaintRoutingService {
         String assignedRole = "RBIO_OFFICER";
         String assignedOfficer = assignOfficerByRole(assignedRole);
 
-        log.info("Public portal complaint {} routed to RBIO, assigned to {}", complaint.getComplaintNumber(), assignedOfficer);
+        log.info("Public portal complaint {} routed to RBIO, assigned to {}",
+                complaint.getComplaintNumber(), assignedOfficer != null ? assignedOfficer : "nobody (unassigned)");
 
         return RoutingDecision.builder()
                 .department("RBIO")
                 .assignedRole(assignedRole)
                 .assignedOfficer(assignedOfficer)
                 .stage("INITIAL_REVIEW")
-                .reason("Public portal filing - round-robin assigned to " + assignedOfficer)
+                .reason(assignmentReason("Public portal filing", assignedRole, assignedOfficer))
                 .build();
     }
 
@@ -66,7 +73,7 @@ public class ComplaintRoutingService {
         String assignedOfficer = assignOfficerByRole(assignedRole);
 
         log.info("Email/Physical complaint {} routed to CRPC, assigned to DEO {}",
-                complaint.getComplaintNumber(), assignedOfficer);
+                complaint.getComplaintNumber(), assignedOfficer != null ? assignedOfficer : "nobody (unassigned)");
 
         return RoutingDecision.builder()
                 .department("CRPC")
@@ -74,8 +81,21 @@ public class ComplaintRoutingService {
                 .assignedOfficer(assignedOfficer)
                 .stage("DATA_ENTRY")
                 .targetDepartment(resolveDepartment(entityCode))
-                .reason("Email/Physical letter - round-robin assigned to DEO " + assignedOfficer)
+                .reason(assignmentReason("Email/Physical letter", assignedRole, assignedOfficer))
                 .build();
+    }
+
+    /**
+     * The human-readable reason recorded on the complaint timeline.
+     *
+     * <p>Spells out an unassigned outcome instead of interpolating "null" into the narrative, so the
+     * timeline says why nobody holds the complaint and the role that still owes it work.
+     */
+    private String assignmentReason(String source, String assignedRole, String assignedOfficer) {
+        if (assignedOfficer == null) {
+            return source + " - awaiting assignment: no active " + assignedRole + " available";
+        }
+        return source + " - round-robin assigned to " + assignedOfficer;
     }
 
     public RoutingDecision routeFromCrpcToApproval(Complaint complaint, String entityCode) {
