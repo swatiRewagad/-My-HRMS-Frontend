@@ -6,6 +6,7 @@ import com.hrms.cms.dto.UpdateComplaintRequest;
 import com.hrms.cms.entity.*;
 import com.hrms.cms.event.ComplaintEventPublisher;
 import com.hrms.cms.repository.*;
+import com.hrms.cms.service.mre.MreEntityCoverageService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -260,7 +261,12 @@ class ComplaintServiceTest {
          */
         @BeforeEach
         void stubRoutingAndNumbering() {
-            when(routingService.resolveDepartment(anyString())).thenReturn("RBIO");
+            // UST473: filing now asks for the COVERAGE determination, not just a department string, because
+            // the check result is recorded on the complaint.
+            when(routingService.resolveCoverage(anyString())).thenReturn(
+                    new MreEntityCoverageService.Coverage(
+                            MreEntityCoverageService.CoverageStatus.COVERED, "RBIO",
+                            "State Bank of India", "Exact match on State Bank of India", "RBIOS_2021"));
             when(complaintNumberGenerator.generateForOffice(anyString(), any(), any()))
                     .thenReturn(new ComplaintNumberGeneratorService.NumberedComplaint(
                             "CMS-20260515-XYZ789", "Mumbai-I", "013"));
@@ -281,6 +287,62 @@ class ComplaintServiceTest {
                     .thenReturn(new OfficeAssignmentStrategyService.Resolution(
                             "rbio-officer-1", OfficeAssignmentStrategy.ROUND_ROBIN,
                             OfficeAssignmentStrategyService.Resolution.OUTCOME_ROTATED, "rotated"));
+        }
+
+        @Test
+        void shouldRecordTheSchemeCoverageDeterminationOnTheComplaint() {
+            // UST473 requires the CHECK RESULT on the complaint, not merely implied by the department:
+            // RBIO and CEPC are both reachable by manual transfer, so the department alone cannot tell a
+            // reviewer whether a machine determined coverage or a human moved the file.
+            when(complaintRepository.save(any(Complaint.class))).thenAnswer(inv -> inv.getArgument(0));
+
+            Complaint result = complaintService.fileComplaint(minimalRequest());
+
+            assertThat(result.getSchemeCoverageStatus()).isEqualTo("COVERED");
+            assertThat(result.getSchemeCoverageReason()).contains("State Bank of India");
+            // schemeVersion had no writer anywhere before this, so a complaint could not say which
+            // Scheme's rules had been applied to it.
+            assertThat(result.getSchemeVersion()).isEqualTo("RBIOS_2021");
+        }
+
+        @Test
+        void shouldRouteAnUncoveredEntityToCepcAndSaySo() {
+            // The whole point of UST473. The old code returned RBIO for anything it could not match, which
+            // admitted entities to the Ombudsman Scheme that are outside it.
+            when(routingService.resolveCoverage(anyString())).thenReturn(
+                    new MreEntityCoverageService.Coverage(
+                            MreEntityCoverageService.CoverageStatus.NOT_COVERED, "CEPC",
+                            "Bajaj Finance", "not covered under the Scheme, handled by CEPC", "RBIOS_2021"));
+            when(complaintRepository.save(any(Complaint.class))).thenAnswer(inv -> inv.getArgument(0));
+
+            Complaint result = complaintService.fileComplaint(minimalRequest());
+
+            assertThat(result.getSchemeCoverageStatus()).isEqualTo("NOT_COVERED");
+            // The complaint number is generated for the resolved department, so CEPC must reach the
+            // generator too — otherwise the number would claim an RBIO office for a CEPC complaint.
+            verify(complaintNumberGenerator).generateForOffice(eq("CEPC"), any(), any());
+        }
+
+        @Test
+        void shouldFlagAnAmbiguousEntityForReviewOnTheTimeline() {
+            // An ambiguous entity routes to CEPC but must be visibly pending confirmation, because the
+            // citizen's forum was decided without the entity actually being identified.
+            when(routingService.resolveCoverage(anyString())).thenReturn(
+                    new MreEntityCoverageService.Coverage(
+                            MreEntityCoverageService.CoverageStatus.AMBIGUOUS, "CEPC", null,
+                            "'HDFC' matches 3 entities in different departments", "RBIOS_2021"));
+            when(complaintRepository.save(any(Complaint.class))).thenAnswer(inv -> {
+                Complaint c = inv.getArgument(0);
+                c.setId(21L);
+                return c;
+            });
+
+            complaintService.fileComplaint(minimalRequest());
+
+            verify(timelineRepository).save(argThat(t ->
+                    "scheme_coverage_check".equals(t.getAction())
+                            && t.getRemarks() != null
+                            && t.getRemarks().contains("AMBIGUOUS")));
         }
 
         @Test

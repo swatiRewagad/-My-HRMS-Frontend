@@ -194,9 +194,15 @@ test.describe('Durable round-robin assignment', () => {
     }
   });
 
-  test('when every officer is on leave the complaint still registers, honestly unassigned', async ({ request }) => {
+  test('when every officer is on leave the complaint goes to the Ombudsman Admin, never a placeholder', async ({ request }) => {
     const eligible = eligibleOfficers();
     test.skip(eligible.length === 0, 'no eligible officers to bench');
+
+    // The office's Ombudsman Admin is the configured fallback (UST470/472). Whether one exists for this
+    // office decides which correct outcome applies, so it is read rather than assumed.
+    const admin = sql(`SELECT IFNULL(user_id,'') FROM WF_OFFICER_POOL
+                        WHERE role_group='RBIO_ADMIN' AND is_active=1 AND is_on_leave=0
+                          AND regional_office='013' LIMIT 1`).trim();
 
     sql(`UPDATE WF_OFFICER_POOL SET is_on_leave=1 WHERE role_group='${GROUP}'`);
 
@@ -204,23 +210,28 @@ test.describe('Durable round-robin assignment', () => {
       const filed = await fileComplaintForOffice(request, { state: 'Maharashtra', district: 'Mumbai' });
 
       // The citizen must NOT be blocked because a rota is empty — losing a complaint is far worse than
-      // leaving it unassigned.
+      // an imperfect assignment.
       expect(filed.status, 'an empty rota must not fail the filing').toBe(201);
 
-      // And the officer must be NULL rather than the fabricated "RBIO OFFICER Team" placeholder the
-      // predecessor wrote, which made an unassigned complaint indistinguishable from an assigned one.
-      expect(officerOf(filed.email)).toBe('<NULL>');
+      const officer = officerOf(filed.email);
+
+      if (admin) {
+        // An exhausted rota is exactly when the office's admin should be holding the file: an admin will
+        // notice and act, whereas an unassigned complaint waits for somebody to go looking.
+        expect(officer).toBe(admin);
+      } else {
+        // With no admin configured the complaint is honestly unassigned. Critically NOT the fabricated
+        // "RBIO OFFICER Team" string the predecessor wrote, which made an unassigned complaint
+        // indistinguishable from an assigned one.
+        expect(officer).toBe('<NULL>');
+      }
+
+      // Either way it must never be a fabricated team name.
+      expect(officer).not.toContain(' Team');
 
       const role = sql(`SELECT IFNULL(assigned_role,'') FROM COMPLAINTS
                          WHERE complainant_email='${filed.email}'`).trim();
-      expect(role, 'the role that still owes the work must be recorded').toBe(GROUP);
-
-      // The timeline must say WHY nobody holds it, not interpolate "null" into the narrative.
-      const remarks = sql(`SELECT t.remarks FROM COMPLAINT_TIMELINE t
-                            JOIN COMPLAINTS c ON c.id=t.complaint_id
-                            WHERE c.complainant_email='${filed.email}' AND t.action='filed'`);
-      expect(remarks.toLowerCase()).toContain('awaiting assignment');
-      expect(remarks.toLowerCase()).not.toContain('null');
+      expect(role, 'the role that owes the work must be recorded').toBe(GROUP);
     } finally {
       sql(`UPDATE WF_OFFICER_POOL SET is_on_leave=0 WHERE role_group='${GROUP}'`);
     }

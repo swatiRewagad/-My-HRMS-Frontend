@@ -312,6 +312,30 @@ public class Complaint {
     @Column(name = "scheme_version", length = 20)
     private String schemeVersion;
 
+    /**
+     * UST473: the Scheme-coverage determination that decided this complaint's department.
+     *
+     * <p>COVERED, NOT_COVERED, AMBIGUOUS or UNKNOWN — see {@code MreEntityCoverageService.CoverageStatus}.
+     * Recorded because the story requires the CHECK RESULT on the complaint, not merely implied by the
+     * department: RBIO and CEPC are also reachable by manual transfer, so the department alone cannot tell
+     * a reviewer whether a machine determined coverage or a human moved the file.
+     *
+     * <p>Deliberately NOT folded into {@code maintainabilityDetermination}. That column is a two-value
+     * human decision (MAINTAINABLE / NON_MAINTAINABLE) read by Drools compensation-cap rules, so a third
+     * value would silently fall out of every {@code == "MAINTAINABLE"} guard. It also carries a
+     * {@code determinedBy} naming a person, whereas this is a server determination made before any officer
+     * sees the file.
+     *
+     * <p>Nullable: the shared dev database runs ddl-auto=update, where NOT NULL would be permanent for
+     * every other session and would break their inserts. NULL means the complaint predates this check.
+     */
+    @Column(name = "scheme_coverage_status", length = 20)
+    private String schemeCoverageStatus;
+
+    /** Why coverage resolved as it did — which entity matched, or why no single entity could be. */
+    @Column(name = "scheme_coverage_reason", length = 500)
+    private String schemeCoverageReason;
+
     @Column(name = "current_stage_deadline")
     private LocalDateTime currentStageDeadline;
 

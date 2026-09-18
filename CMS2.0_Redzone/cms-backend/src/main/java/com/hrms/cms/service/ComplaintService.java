@@ -4,6 +4,7 @@ import com.hrms.cms.dto.*;
 import com.hrms.cms.entity.*;
 import com.hrms.cms.event.ComplaintEventPublisher;
 import com.hrms.cms.repository.*;
+import com.hrms.cms.service.mre.MreEntityCoverageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
@@ -109,7 +110,12 @@ public class ComplaintService {
             entityCode = bankRepository.findById(req.getBankId())
                     .map(Bank::getCode).orElse("");
         }
-        String department = routingService.resolveDepartment(entityCode);
+        // UST473: an entity outside the Scheme belongs to CEPC, not RBIO. The determination is captured
+        // rather than reduced to a department string, because the story requires the CHECK RESULT to be
+        // recorded on the complaint and because an AMBIGUOUS or UNKNOWN entity must be visible as such —
+        // both route to CEPC, but for a reason a human has to confirm rather than because CEPC was chosen.
+        MreEntityCoverageService.Coverage coverage = routingService.resolveCoverage(entityCode);
+        String department = coverage.department();
 
         // Generate complaint number: N + FY + OfficeCode + Sequence.
         // The resolved office is captured rather than discarded, so it can be persisted on the
@@ -157,6 +163,14 @@ public class ComplaintService {
                 .build();
 
         complaint.setEntityCode(entityCode);
+
+        // UST473: record the determination and the Scheme it was made under. schemeVersion had no writer
+        // anywhere before this — it was a column every reader fell back off — so a complaint could not say
+        // which Scheme's rules had been applied to it.
+        complaint.setSchemeCoverageStatus(coverage.status().name());
+        complaint.setSchemeCoverageReason(coverage.reason());
+        complaint.setSchemeVersion(coverage.schemeVersion());
+
         ComplaintRoutingService.RoutingDecision routing = routingService.routeComplaint(complaint, entityCode);
         complaint.setDepartment(routing.getDepartment());
         complaint.setAssignedRole(routing.getAssignedRole());
@@ -214,6 +228,17 @@ public class ComplaintService {
             addTimeline(saved.getId(), "office_routing", "System",
                     "Office " + numbered.officeCode() + " (" + numbered.officeName() + ") at capacity: "
                             + officeStatus + "; complaint held at office " + saved.getRbioOfficeCode(),
+                    null, null);
+        }
+
+        // UST473: an entity that could not be identified to ONE regulated entity is on the citizen's record
+        // as needing confirmation. Only the review cases are written: a clean COVERED/NOT_COVERED
+        // determination is already on the complaint's own columns, and repeating it here would bury the
+        // cases that actually need somebody to look.
+        if (coverage.needsReview()) {
+            addTimeline(saved.getId(), "scheme_coverage_check", "System",
+                    coverage.status() + ": " + coverage.reason()
+                            + " Routed to " + department + " pending confirmation of the entity.",
                     null, null);
         }
 
