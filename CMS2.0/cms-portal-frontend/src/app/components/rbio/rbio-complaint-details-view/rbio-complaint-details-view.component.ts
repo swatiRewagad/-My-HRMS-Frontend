@@ -158,13 +158,37 @@ interface HistoryEntry {
   description: string;
 }
 
+// Shape of GET /api/v1/email-syndication/deo. Keycloak owns the roster; OFFICER_AVAILABILITY owns
+// leave state and the per-officer threshold, and currentLoad is a live count of drafts already sitting
+// with that DEO — which is what automatic assignment balances on.
 interface DeoUser {
   id: string;
   displayName: string;
+  email: string;
   isActive: boolean;
   isOnLeave: boolean;
+  leaveReason: string;
+  officeCode: string;
   currentLoad: number;
   maxLoad: number;
+}
+
+// One CONCILIATION_MEETINGS row, as returned by /api/complaints/rbio/{id}/conciliation. The newest row
+// is the live meeting; the earlier rows are the reschedule trail and are read-only.
+interface ConciliationMeeting {
+  id: number | null;
+  meetingStatus: string;
+  meetingDate: string | null;
+  meetingTime: string | null;
+  acceptedByComplainant: boolean | null;
+  acceptedByEntity: boolean | null;
+  conductedThroughVc: boolean | null;
+  meetingComments: string | null;
+  comments: string | null;
+  createdBy: string | null;
+  createdAt: string | null;
+  updatedBy: string | null;
+  updatedAt: string | null;
 }
 
 interface Attachment {
@@ -175,6 +199,29 @@ interface Attachment {
   uploadedAt: string;
   uploadedBy: string;
   url?: string;
+}
+
+/** A row from the entity typeahead, GET /api/v1/routing/entities/list. */
+interface EntitySearchResult {
+  id: number;
+  name: string;
+  department: string;
+  entityType: string;
+  city?: string | null;
+  state?: string | null;
+}
+
+/** One entity in full, GET /api/v1/routing/entities/{id}. */
+interface EntityDetail extends EntitySearchResult {
+  status?: string | null;
+  portalEnabled?: boolean | null;
+  nodalOfficerName?: string | null;
+  nodalOfficerEmail?: string | null;
+  nodalOfficerPhone?: string | null;
+  nodalOfficerDesignation?: string | null;
+  pnoName?: string | null;
+  pnoEmail?: string | null;
+  pnoPhone?: string | null;
 }
 
 @Component({
@@ -263,10 +310,21 @@ export class RbioComplaintDetailsView implements OnInit {
   // Entity Details
   entityName = '';
   entityType = 'BANK';
+  // The complaint's regulated entity. Sent back as entityDetails.id on save, which is what actually
+  // moves the complaint to a different entity — the name alone is only a label, and leaving the id
+  // behind points the nodal officer record at the previous entity.
+  regulatedEntityId: number | null = null;
   entitySearchText = '';
-  entitySearchResults = signal<{ id: number; name: string; department: string; entityType: string }[]>([]);
+  entitySearchResults = signal<EntitySearchResult[]>([]);
   entitySearchLoading = signal(false);
   showEntityDropdown = signal(false);
+  // The selected entity's own contact details, read-only. These are what the complaint gets
+  // forwarded to, so the officer needs to see whose desk a change of entity moves it to.
+  entityContact = signal<EntityDetail | null>(null);
+  entityContactLoading = signal(false);
+  // Names the fields that were cleared because they described the previous entity, so the reset is
+  // visible rather than silent.
+  entityResetNotice = signal('');
   private entitySearchTimeout: any = null;
   moduleName = '';
   entityCategory = '';
@@ -337,9 +395,29 @@ export class RbioComplaintDetailsView implements OnInit {
   // Assignment
   assignmentMode = 'AUTOMATIC';
   selectedDeoId = '';
-  selectedDeoName = 'CRPC DEO';
+  selectedDeoName = '';
   deos = signal<DeoUser[]>([]);
+  loadingDeos = signal(false);
+  deoLoadError = signal('');
+  deoSearch = signal('');
+  showDeoDropdown = signal(false);
+  assignError = signal('');
   showConfirmDialog = signal(false);
+
+  /** Only a DEO who is enabled and not on leave can take new work. */
+  availableDeos = computed(() => this.deos().filter(d => d.isActive && !d.isOnLeave));
+
+  selectedDeo = computed(() => this.deos().find(d => d.id === this.selectedDeoId) || null);
+
+  /** Manual mode searches the live roster by name, email or office. */
+  filteredDeos = computed(() => {
+    const term = this.deoSearch().trim().toLowerCase();
+    const pool = this.deos();
+    if (!term) return pool;
+    return pool.filter(d => d.displayName.toLowerCase().includes(term)
+      || d.email.toLowerCase().includes(term)
+      || (d.officeCode || '').toLowerCase().includes(term));
+  });
 
   // Pincode lookup
   pincodeLoading = signal(false);
@@ -417,6 +495,45 @@ export class RbioComplaintDetailsView implements OnInit {
     if (excludedStatuses.includes(status)) return false;
     return action === 'MAINTAINABLE';
   });
+  // ═══ Conciliation tab ═══
+  readonly conciliationStatuses = [
+    { value: 'SCHEDULED', label: 'Scheduled' },
+    { value: 'RESCHEDULED', label: 'Rescheduled' },
+    { value: 'COMPLETED', label: 'Completed' },
+    { value: 'CANCELLED', label: 'Cancelled' },
+  ];
+  meetingStatus = 'SCHEDULED';
+  meetingDate = '';
+  meetingTime = '';
+  acceptedByComplainant: boolean | null = null;
+  acceptedByEntity: boolean | null = null;
+  conductedThroughVc: boolean | null = null;
+  meetingComments = '';
+  conciliationComments = '';
+  conciliationCurrent = signal<ConciliationMeeting | null>(null);
+  conciliationHistory = signal<ConciliationMeeting[]>([]);
+  conciliationLoading = signal(false);
+  conciliationSaving = signal(false);
+  conciliationError = signal('');
+  conciliationSaved = signal(false);
+  conciliationFieldErrors = signal<Record<string, string>>({});
+  private conciliationLoadedFor = '';
+
+  // Getters, not computed(): meetingStatus is an ngModel field rather than a signal.
+
+  /** Picking RESCHEDULED opens a new meeting server-side, preserving the current one's minutes. */
+  get conciliationOpensNewMeeting(): boolean {
+    const current = this.conciliationCurrent();
+    if (!current) return true;
+    if (this.meetingStatus === 'RESCHEDULED') return true;
+    return current.meetingStatus === 'COMPLETED' || current.meetingStatus === 'CANCELLED';
+  }
+
+  /** The backend requires a date and time while the meeting is still live. */
+  get conciliationRequiresSchedule(): boolean {
+    return this.meetingStatus === 'SCHEDULED' || this.meetingStatus === 'RESCHEDULED';
+  }
+
   approvalSentTo = signal('');
   showApprovalMenu = signal(false);
   showSendBackMenu = signal(false);
@@ -433,6 +550,14 @@ export class RbioComplaintDetailsView implements OnInit {
       if (isOpen) {
         console.log('[SIGNAL EFFECT] Panel is open. Executing initial GET API call...');
         this.fetchAttachments();
+      }
+    });
+
+    // Fetched when the tab is first opened rather than with the complaint, so the panel is never
+    // paid for on screens that never show it.
+    effect(() => {
+      if (this.assessmentTab() === 'conciliation') {
+        this.loadConciliation();
       }
     });
   }
@@ -1032,6 +1157,18 @@ private getStatusColor(status: string): string {
         this.entityName =
           data.navBarDto?.entityName || '';
 
+        this.entitySearchText =
+          data.navBarDto?.entityName || '';
+
+        this.regulatedEntityId =
+          data.entityDetails?.id ?? null;
+        this.entityResetNotice.set('');
+        if (this.regulatedEntityId) {
+          this.loadEntityContact(this.regulatedEntityId);
+        } else {
+          this.entityContact.set(null);
+        }
+
         this.entityType =
           data.entityDetails?.entityType || '';
 
@@ -1200,25 +1337,46 @@ private getStatusColor(status: string): string {
     return String(Math.floor(10000000 + Math.random() * 90000000));
   }
 
-  private loadDeos() {
-    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/email-syndication/deo`).subscribe({
-      next: (res) => {
-        this.deos.set((res?.data || []).map((d: any) => ({
-          id: d.userId || d.id,
-          displayName: d.displayName || d.userId,
-          isActive: d.isActive !== false,
-          isOnLeave: d.isOnLeave === true,
-          currentLoad: d.currentLoad || 0,
-          maxLoad: d.maxThreshold || 20
-        })));
-        const auto = this.deos().find(d => d.isActive && !d.isOnLeave);
-        if (auto) {
-          this.selectedDeoId = auto.id;
-          this.selectedDeoName = auto.displayName;
+  loadDeos() {
+    this.loadingDeos.set(true);
+    this.deoLoadError.set('');
+    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/email-syndication/deo`)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (res) => {
+          this.deos.set((res?.data || []).map((d: any) => ({
+            id: d.userId || String(d.id),
+            displayName: d.displayName || d.userId,
+            email: d.email || '',
+            isActive: d.isActive !== false,
+            isOnLeave: d.isOnLeave === true,
+            leaveReason: d.leaveReason || '',
+            officeCode: d.officeCode || '',
+            currentLoad: d.currentLoad ?? 0,
+            maxLoad: d.maxThreshold || 20
+          })));
+          this.loadingDeos.set(false);
+          if (this.assignmentMode === 'AUTOMATIC') this.applyAutomaticDeo();
+        },
+        error: () => {
+          this.deos.set([]);
+          this.loadingDeos.set(false);
+          this.deoLoadError.set('Could not load the DEO roster. Retry, or pick a DEO manually once it loads.');
         }
-      },
-      error: () => this.deos.set([])
-    });
+      });
+  }
+
+  /**
+   * Automatic assignment goes to the available DEO with the most headroom, so a DEO already at their
+   * threshold is not handed more work while a colleague sits idle.
+   */
+  private applyAutomaticDeo() {
+    const pick = [...this.availableDeos()].sort((a, b) => {
+      const headroom = (d: DeoUser) => (d.maxLoad || 20) - d.currentLoad;
+      return headroom(b) - headroom(a) || a.displayName.localeCompare(b.displayName);
+    })[0];
+    this.selectedDeoId = pick?.id || '';
+    this.selectedDeoName = pick?.displayName || '';
   }
 
   private loadStates() {
@@ -1367,11 +1525,74 @@ private getStatusColor(status: string): string {
     });
   }
 
-  selectEntity(entity: { id: number; name: string; department: string; entityType: string }) {
+  selectEntity(entity: EntitySearchResult) {
+    const changed = this.regulatedEntityId !== entity.id;
+
+    this.regulatedEntityId = entity.id;
     this.entityName = entity.name;
     this.entitySearchText = entity.name;
     this.entityType = entity.entityType || 'BANK';
+    this.entityTypeDisplay = entity.entityType || '';
     this.showEntityDropdown.set(false);
+
+    if (changed) {
+      this.resetEntityDependentFields();
+      // The typeahead already carries these two, so they are filled from the picked row rather than
+      // waiting on the detail call.
+      this.entityState = entity.state || '';
+      this.entityCity = entity.city || '';
+    }
+
+    this.loadEntityContact(entity.id);
+  }
+
+  /**
+   * Clears the fields that described the *previous* entity. Keeping them would silently file the new
+   * entity under the old one's BSR code, branch and address, which reads as real data rather than as
+   * a leftover — so they are cleared and the officer is told which ones went.
+   */
+  private resetEntityDependentFields() {
+    const cleared: string[] = [];
+    const clear = (label: string, current: string, set: () => void) => {
+      if (current) {
+        cleared.push(label);
+        set();
+      }
+    };
+
+    clear('BSR code', this.bsrCode, () => (this.bsrCode = ''));
+    clear('pincode', this.entityPincode, () => (this.entityPincode = ''));
+    clear('state', this.entityState, () => (this.entityState = ''));
+    clear('district', this.entityDistrict, () => (this.entityDistrict = ''));
+    clear('city', this.entityCity, () => (this.entityCity = ''));
+    clear('branch name', this.entityBranchName, () => (this.entityBranchName = ''));
+    clear('branch category', this.entityBranchCategory, () => (this.entityBranchCategory = ''));
+    clear('address', this.entityAddress, () => (this.entityAddress = ''));
+    clear('entity category', this.entityCategory, () => (this.entityCategory = ''));
+
+    this.entityResetNotice.set(cleared.length
+      ? `Cleared for the new entity — please re-enter: ${cleared.join(', ')}.`
+      : '');
+  }
+
+  /**
+   * The entity's own nodal officer contact details, which the summary payload does not carry. Shown
+   * read-only because they belong to the entity record rather than to this complaint: correcting them
+   * is entity master maintenance, not complaint editing.
+   */
+  private loadEntityContact(entityId: number) {
+    this.entityContactLoading.set(true);
+    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/routing/entities/${entityId}`).subscribe({
+      next: (res) => {
+        this.entityContact.set(res?.data || null);
+        this.entityContactLoading.set(false);
+      },
+      error: () => {
+        // The entity is still selected and still saveable; only the contact panel is unavailable.
+        this.entityContact.set(null);
+        this.entityContactLoading.set(false);
+      }
+    });
   }
 
   onEntityBlur() {
@@ -1852,34 +2073,51 @@ private getStatusColor(status: string): string {
       }
       return;
     }
+    this.assignError.set('');
+    this.showDeoDropdown.set(false);
+    this.deoSearch.set('');
+    // Refreshed on open so leave state and workload are current at the moment of assignment, not from
+    // whenever the screen happened to load.
+    this.loadDeos();
     this.showConfirmDialog.set(true);
   }
 
   onAssignmentModeChange() {
+    this.assignError.set('');
+    this.showDeoDropdown.set(false);
+    this.deoSearch.set('');
     if (this.assignmentMode === 'AUTOMATIC') {
-      const auto = this.deos().find(d => d.isActive && !d.isOnLeave);
-      this.selectedDeoId = auto?.id || '';
-      this.selectedDeoName = auto?.displayName || 'CRPC DEO';
+      this.applyAutomaticDeo();
     } else {
       this.selectedDeoId = '';
       this.selectedDeoName = '';
     }
   }
 
-  onDeoSelect(deoId: string) {
-    this.selectedDeoId = deoId;
-    const deo = this.deos().find(d => d.id === deoId);
-    this.selectedDeoName = deo?.displayName || '';
+  selectDeo(deo: DeoUser) {
+    this.selectedDeoId = deo.id;
+    this.selectedDeoName = deo.displayName;
+    this.deoSearch.set(deo.displayName);
+    this.showDeoDropdown.set(false);
+    this.assignError.set('');
   }
 
   deoOnLeave(): boolean {
-    if (!this.selectedDeoId) return false;
-    const deo = this.deos().find(d => d.id === this.selectedDeoId);
-    return deo?.isOnLeave || false;
+    return this.selectedDeo()?.isOnLeave === true;
+  }
+
+  /** Percentage of the DEO's own threshold already consumed, for the load bar. */
+  deoLoadPercent(deo: DeoUser): number {
+    const max = deo.maxLoad || 20;
+    return Math.min(100, Math.round((deo.currentLoad / max) * 100));
   }
 
   confirmAssignment() {
-    if (!this.selectedDeoId.trim()) return;
+    if (!this.selectedDeoId.trim()) {
+      this.assignError.set('Select a DEO to assign this complaint to.');
+      return;
+    }
+    this.assignError.set('');
     this.submitting.set(true);
 
     const username = this.auth.currentUser()?.username || '';
@@ -1919,17 +2157,139 @@ private getStatusColor(status: string): string {
         this.submitted.set(true);
         this.showConfirmDialog.set(false);
       },
-      error: () => {
-        this.createdComplaintId.set(this.complaintId);
+      // The dialog stays open on failure: reporting success for a draft the server never stored loses
+      // the officer's work silently.
+      error: (err) => {
         this.submitting.set(false);
-        this.submitted.set(true);
-        this.showConfirmDialog.set(false);
+        this.assignError.set(err?.error?.message || err?.error?.error
+          || 'Could not assign the complaint. Check your connection and try again.');
       }
     });
   }
 
   cancelAssignment() {
     this.showConfirmDialog.set(false);
+    this.assignError.set('');
+    this.showDeoDropdown.set(false);
+  }
+
+  // ═══════════════════════ Conciliation ═══════════════════════
+
+  loadConciliation(force = false) {
+    const id = this.complaintId;
+    if (!id) return;
+    if (!force && this.conciliationLoadedFor === String(id)) return;
+
+    this.conciliationLoading.set(true);
+    this.conciliationError.set('');
+    this.http.get<any>(`${environment.apiBaseUrl}/api/complaints/rbio/${id}/conciliation`)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (res) => {
+          this.conciliationLoadedFor = String(id);
+          this.applyConciliation(res?.data || {});
+          this.conciliationLoading.set(false);
+        },
+        error: (err) => {
+          this.conciliationLoading.set(false);
+          this.conciliationError.set(err?.status === 404
+            ? 'This complaint could not be found.'
+            : 'Could not load the conciliation details. Retry.');
+        }
+      });
+  }
+
+  private applyConciliation(data: any) {
+    const current: ConciliationMeeting | null = data.current || null;
+    this.conciliationCurrent.set(current);
+    // Newest first, and the live meeting is edited in the form above rather than listed as history.
+    this.conciliationHistory.set(((data.history || []) as ConciliationMeeting[])
+      .filter(m => !current || m.id !== current.id)
+      .reverse());
+
+    this.meetingStatus = current?.meetingStatus || 'SCHEDULED';
+    this.meetingDate = (current?.meetingDate || '').substring(0, 10);
+    this.meetingTime = (current?.meetingTime || '').substring(0, 5);
+    this.acceptedByComplainant = current?.acceptedByComplainant ?? null;
+    this.acceptedByEntity = current?.acceptedByEntity ?? null;
+    this.conductedThroughVc = current?.conductedThroughVc ?? null;
+    this.meetingComments = current?.meetingComments || '';
+    this.conciliationComments = current?.comments || '';
+    this.conciliationFieldErrors.set({});
+  }
+
+  private validateConciliation(): boolean {
+    const errors: Record<string, string> = {};
+    if (this.conciliationRequiresSchedule) {
+      if (!this.meetingDate) errors['meetingDate'] = 'Meeting date is required while the meeting is open.';
+      if (!this.meetingTime) errors['meetingTime'] = 'Meeting time is required while the meeting is open.';
+    }
+    if (this.meetingComments.length > 4000) errors['meetingComments'] = 'Maximum 4000 characters.';
+    if (this.conciliationComments.length > 4000) errors['comments'] = 'Maximum 4000 characters.';
+    this.conciliationFieldErrors.set(errors);
+    return Object.keys(errors).length === 0;
+  }
+
+  saveConciliation() {
+    if (this.isReadOnlyViewer() || !this.complaintId) return;
+    this.conciliationSaved.set(false);
+    this.conciliationError.set('');
+    if (!this.validateConciliation()) return;
+
+    // Every field is sent so clearing one actually clears it: the backend treats an absent key as
+    // "leave alone" and a present null as "clear".
+    const payload = {
+      meetingStatus: this.meetingStatus,
+      meetingDate: this.meetingDate || null,
+      meetingTime: this.meetingTime || null,
+      acceptedByComplainant: this.acceptedByComplainant,
+      acceptedByEntity: this.acceptedByEntity,
+      conductedThroughVc: this.conductedThroughVc,
+      meetingComments: this.meetingComments || null,
+      comments: this.conciliationComments || null,
+    };
+
+    this.conciliationSaving.set(true);
+    this.http.put<any>(`${environment.apiBaseUrl}/api/complaints/rbio/${this.complaintId}/conciliation`, payload)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (res) => {
+          this.applyConciliation(res?.data || {});
+          this.conciliationSaving.set(false);
+          this.conciliationSaved.set(true);
+        },
+        error: (err) => {
+          this.conciliationSaving.set(false);
+          this.conciliationError.set(err?.error?.message
+            || 'Could not save the conciliation details. Check the fields and try again.');
+        }
+      });
+  }
+
+  resetConciliation() {
+    this.applyConciliation({
+      current: this.conciliationCurrent(),
+      history: this.conciliationHistory(),
+    });
+    this.conciliationError.set('');
+    this.conciliationSaved.set(false);
+  }
+
+  /** Appends dictated text without the stray leading space an inline concat binding leaves behind. */
+  appendSpeech(field: 'meetingComments' | 'conciliationComments', text: string) {
+    const spoken = (text || '').trim();
+    if (!spoken) return;
+    const existing = this[field];
+    this[field] = existing ? `${existing} ${spoken}` : spoken;
+  }
+
+  conciliationStatusLabel(status: string | null | undefined): string {
+    return this.conciliationStatuses.find(s => s.value === status)?.label || status || '—';
+  }
+
+  yesNoLabel(value: boolean | null | undefined): string {
+    if (value === null || value === undefined) return 'Not answered';
+    return value ? 'Yes' : 'No';
   }
 
   private buildPayload(status: string): Record<string, string> {
@@ -2252,7 +2612,10 @@ private getStatusColor(status: string): string {
       'complainantState', 'complainantDistrict', 'complainantPincode',
       'subject', 'description', 'comments', 'modeOfReceipt', 'receivedDate',
       'isCpgram', 'cpgramsNumber', 'proposedComplaintType', 'eligibilityEntityName',
-      'entityName', 'entityType', 'entityCategory', 'bsrCode', 'entityPincode',
+      // regulatedEntityId belongs here with entityName: restoring the name but not the id would leave
+      // a cancelled edit pointing at the entity the officer backed out of.
+      'entityName', 'regulatedEntityId', 'entitySearchText', 'entityTypeDisplay',
+      'entityType', 'entityCategory', 'bsrCode', 'entityPincode',
       'entityState', 'entityDistrict', 'entityCity', 'entityBranchName',
       'entityBranchCategory', 'entityAddress', 'cosmosCode',
       'otherEntityName', 'registrationWithRbiDate',
@@ -2271,17 +2634,25 @@ private getStatusColor(status: string): string {
     }
     snapshot['eligibilityQuestions'] = this.eligibilityQuestions.map(q => ({ ...q }));
     this.editSnapshot = snapshot;
+    this.entityResetNotice.set('');
     this.editMode.set(true);
   }
 
   cancelEdit() {
     if (this.editSnapshot) {
+      const pickedEntityId = this.regulatedEntityId;
       for (const key of this.getSummaryEditableFields()) {
         (this as any)[key] = this.editSnapshot[key];
       }
       this.eligibilityQuestions = (this.editSnapshot['eligibilityQuestions'] as any[]).map(q => ({ ...q }));
       this.editSnapshot = null;
+      if (pickedEntityId !== this.regulatedEntityId) {
+        if (this.regulatedEntityId) this.loadEntityContact(this.regulatedEntityId);
+        else this.entityContact.set(null);
+      }
     }
+    this.entityResetNotice.set('');
+    this.showEntityDropdown.set(false);
     this.editMode.set(false);
   }
 
@@ -2329,6 +2700,9 @@ private getStatusColor(status: string): string {
       },
       eligibility,
       entityDetails: {
+        // Without this the entity name changes but regulatedEntityId does not, so entityType keeps
+        // resolving from the old entity and the nodal officer record is created against it.
+        id: this.regulatedEntityId,
         entityName: this.entityName || null,
         moduleName: this.moduleName || null,
         entityCategory: this.entityCategory || null,

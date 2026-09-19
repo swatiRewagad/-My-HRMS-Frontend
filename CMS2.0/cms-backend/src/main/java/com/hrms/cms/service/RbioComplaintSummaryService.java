@@ -5,6 +5,7 @@ import com.hrms.cms.entity.ComplaintAdditionalDetail;
 import com.hrms.cms.entity.ComplaintEligibilityAnswer;
 import com.hrms.cms.entity.ComplaintRbioFormData;
 import com.hrms.cms.entity.EmailDraft;
+import com.hrms.cms.entity.RegulatedEntity;
 import com.hrms.cms.repository.ComplaintAdditionalDetailRepository;
 import com.hrms.cms.repository.ComplaintCategoryRepository;
 import com.hrms.cms.repository.ComplaintEligibilityAnswerRepository;
@@ -337,11 +338,35 @@ public class RbioComplaintSummaryService {
         setIfPresent(entity, "branchName", v -> c.setEntityBranchName(str(v, "branchName")));
         setIfPresent(entity, "branchCategory", v -> c.setEntityBranchCategory(str(v, "branchCategory")));
         setIfPresent(entity, "entityAddress", v -> c.setEntityAddress(str(v, "entityAddress")));
-        setIfPresent(entity, "id", v -> c.setRegulatedEntityId(longVal(v, "entityDetails.id")));
+        // Last, so the name it derives wins over any entityName sent in the same payload.
+        setIfPresent(entity, "id", v -> applyRegulatedEntity(c, longVal(v, "entityDetails.id")));
 
         setIfPresent(classification, "complaintCategory", v -> c.setCategoryName(str(v, "complaintCategory")));
         setIfPresent(financial, "disputedAmount", v -> c.setAmountInvolved(decimal(v, "disputedAmount")));
         setIfPresent(additional, "crpcProposedAction", v -> c.setProposedAction(str(v, "crpcProposedAction")));
+    }
+
+    /**
+     * Moves the complaint to a different regulated entity, taking the name from the entity record
+     * rather than from the request.
+     *
+     * <p>The id is what the rest of the application acts on — {@code entityDetails.entityType} is read
+     * back through it, and NodalOfficerRecordService resolves the forwarding address by it first — so
+     * an id and a name that disagree mean the screen shows one entity while the complaint is forwarded
+     * to another. Deriving the name here makes that impossible regardless of what the caller sent.
+     */
+    private void applyRegulatedEntity(Complaint c, Long entityId) {
+        if (entityId == null) {
+            c.setRegulatedEntityId(null);
+            return;
+        }
+
+        RegulatedEntity entity = regulatedEntityRepository.findById(entityId)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Field 'entityDetails.id' does not match any regulated entity: " + entityId));
+
+        c.setRegulatedEntityId(entity.getId());
+        c.setEntityName(entity.getName());
     }
 
     private void applyToEligibility(Long complaintId, Map<String, Object> e, Map<String, Object> financial) {

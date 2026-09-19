@@ -11,7 +11,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -19,6 +22,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -40,6 +44,9 @@ class RbioConciliationServiceTest {
     @Mock private ConciliationMeetingRepository meetingRepository;
     @Mock private ComplaintService complaintService;
     @Mock private CepcAuditService auditService;
+    // Real instance, not a mock: the assignment rule that decides who may record the meeting lives
+    // inside it, and stubbing it away would make every test here pass regardless of that rule.
+    @Spy private RbioHierarchyService rbioHierarchyService = new RbioHierarchyService();
 
     @InjectMocks
     private RbioConciliationService service;
@@ -174,7 +181,7 @@ class RbioConciliationServiceTest {
                     "acceptedByComplainant", true,
                     "acceptedByEntity", "no",
                     "conductedThroughVc", true,
-                    "meetingComments", "Both parties briefed"), "officer1");
+                    "meetingComments", "Both parties briefed"), "officer1", Set.of());
 
             ArgumentCaptor<ConciliationMeeting> saved = ArgumentCaptor.forClass(ConciliationMeeting.class);
             verify(meetingRepository).save(saved.capture());
@@ -205,7 +212,7 @@ class RbioConciliationServiceTest {
             stubSaveAssigningId(99L);
             stubHistory(live);
 
-            service.saveMeeting(ID, payload("meetingComments", "Entity sought two more weeks"), "officer1");
+            service.saveMeeting(ID, payload("meetingComments", "Entity sought two more weeks"), "officer1", Set.of());
 
             ArgumentCaptor<ConciliationMeeting> saved = ArgumentCaptor.forClass(ConciliationMeeting.class);
             verify(meetingRepository).save(saved.capture());
@@ -227,7 +234,7 @@ class RbioConciliationServiceTest {
             service.saveMeeting(ID, payload(
                     "meetingStatus", "RESCHEDULED",
                     "meetingDate", "2026-04-09",
-                    "meetingTime", "15:00"), "officer1");
+                    "meetingTime", "15:00"), "officer1", Set.of());
 
             ArgumentCaptor<ConciliationMeeting> saved = ArgumentCaptor.forClass(ConciliationMeeting.class);
             verify(meetingRepository).save(saved.capture());
@@ -250,7 +257,7 @@ class RbioConciliationServiceTest {
             service.saveMeeting(ID, payload(
                     "meetingStatus", "SCHEDULED",
                     "meetingDate", "2026-05-02",
-                    "meetingTime", "11:00"), "officer1");
+                    "meetingTime", "11:00"), "officer1", Set.of());
 
             ArgumentCaptor<ConciliationMeeting> saved = ArgumentCaptor.forClass(ConciliationMeeting.class);
             verify(meetingRepository).save(saved.capture());
@@ -269,7 +276,7 @@ class RbioConciliationServiceTest {
             service.saveMeeting(ID, payload(
                     "meetingStatus", "COMPLETED",
                     "acceptedByEntity", true,
-                    "meetingComments", "Entity agreed to refund"), "officer1");
+                    "meetingComments", "Entity agreed to refund"), "officer1", Set.of());
 
             // CONCILIATION_SUCCESS/FAILED own the outcome and stage; a tab edit must not pre-empt them.
             assertThat(complaint.getWorkflowStage()).isNull();
@@ -288,7 +295,7 @@ class RbioConciliationServiceTest {
 
             service.saveMeeting(ID, payload(
                     "meetingDate", "2026-04-01",
-                    "meetingTime", "09:05:00"), "officer1");
+                    "meetingTime", "09:05:00"), "officer1", Set.of());
 
             ArgumentCaptor<ConciliationMeeting> saved = ArgumentCaptor.forClass(ConciliationMeeting.class);
             verify(meetingRepository).save(saved.capture());
@@ -304,7 +311,7 @@ class RbioConciliationServiceTest {
 
             assertThatThrownBy(() -> service.saveMeeting(ID, payload(
                     "meetingStatus", "SCHEDULED",
-                    "meetingComments", "to be fixed"), "officer1"))
+                    "meetingComments", "to be fixed"), "officer1", Set.of()))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("meetingDate");
 
@@ -315,7 +322,7 @@ class RbioConciliationServiceTest {
         void rejectsAStatusOutsideTheMeetingLifecycle() {
             stubComplaint();
 
-            assertThatThrownBy(() -> service.saveMeeting(ID, payload("meetingStatus", "SETTLED"), "officer1"))
+            assertThatThrownBy(() -> service.saveMeeting(ID, payload("meetingStatus", "SETTLED"), "officer1", Set.of()))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("meetingStatus");
 
@@ -327,7 +334,7 @@ class RbioConciliationServiceTest {
         void rejectsAnUnrecognisedField() {
             stubComplaint();
 
-            assertThatThrownBy(() -> service.saveMeeting(ID, payload("mettingStatus", "SCHEDULED"), "officer1"))
+            assertThatThrownBy(() -> service.saveMeeting(ID, payload("mettingStatus", "SCHEDULED"), "officer1", Set.of()))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("Unknown field: mettingStatus");
 
@@ -341,7 +348,7 @@ class RbioConciliationServiceTest {
 
             assertThatThrownBy(() -> service.saveMeeting(ID, payload(
                     "meetingDate", "2026-04-01",
-                    "meetingTime", "25:99"), "officer1"))
+                    "meetingTime", "25:99"), "officer1", Set.of()))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("meetingTime");
         }
@@ -350,11 +357,40 @@ class RbioConciliationServiceTest {
         void rejectsAnUnknownComplaintBeforeTouchingTheMeetingTable() {
             when(complaintRepository.findById(ID)).thenReturn(Optional.empty());
 
-            assertThatThrownBy(() -> service.saveMeeting(ID, payload("meetingStatus", "CANCELLED"), "officer1"))
+            assertThatThrownBy(() -> service.saveMeeting(ID, payload("meetingStatus", "CANCELLED"), "officer1", Set.of()))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageStartingWith("Complaint not found");
 
             verify(meetingRepository, never()).save(any());
+        }
+
+        @Test
+        void refusesAnOfficerTheComplaintIsNotAssignedTo() {
+            complaint.setAssignedOfficer("rbio_mum1");
+            stubComplaint();
+
+            assertThatThrownBy(() -> service.saveMeeting(ID,
+                    payload("meetingStatus", "CANCELLED"), "rbio_mum2", Set.of("RBIO_OFFICER")))
+                    .isInstanceOf(ResponseStatusException.class)
+                    .hasFieldOrPropertyWithValue("statusCode", HttpStatus.FORBIDDEN);
+
+            verify(meetingRepository, never()).save(any());
+        }
+
+        @Test
+        void letsAnAdminRecordAMeetingOnSomebodyElsesComplaint() {
+            complaint.setAssignedOfficer("rbio_mum1");
+            stubComplaint();
+            when(meetingRepository.findFirstByComplaintIdOrderByIdDesc(ID)).thenReturn(Optional.empty());
+            stubSaveAssigningId(7L);
+            stubHistory(meeting(7L, "SCHEDULED", "2026-04-01", "10:30"));
+
+            service.saveMeeting(ID, payload(
+                    "meetingStatus", "SCHEDULED",
+                    "meetingDate", "2026-04-01",
+                    "meetingTime", "10:30"), "rbio_admin1", Set.of("ROLE_RBIO_ADMIN"));
+
+            verify(meetingRepository).save(any(ConciliationMeeting.class));
         }
     }
 }

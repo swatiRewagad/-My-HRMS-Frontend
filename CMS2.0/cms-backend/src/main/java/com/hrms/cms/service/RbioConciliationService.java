@@ -7,13 +7,16 @@ import com.hrms.cms.repository.ConciliationMeetingRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeParseException;
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -42,6 +45,7 @@ public class RbioConciliationService {
     private final ConciliationMeetingRepository meetingRepository;
     private final ComplaintService complaintService;
     private final CepcAuditService auditService;
+    private final RbioHierarchyService rbioHierarchyService;
 
     private static final Set<String> FIELD_KEYS = Set.of(
             "meetingStatus", "meetingDate", "meetingTime", "acceptedByComplainant",
@@ -101,9 +105,16 @@ public class RbioConciliationService {
      */
     @Transactional
     @CacheEvict(value = "dashboard", allEntries = true)
-    public Map<String, Object> saveMeeting(Long complaintId, Map<String, Object> payload, String actor) {
+    public Map<String, Object> saveMeeting(Long complaintId, Map<String, Object> payload, String actor,
+                                           Collection<String> actorRoles) {
         Complaint c = complaintRepository.findById(complaintId)
                 .orElseThrow(() -> new IllegalArgumentException("Complaint not found: " + complaintId));
+
+        if (!rbioHierarchyService.canEdit(c.getAssignedOfficer(), actor, actorRoles)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Complaint " + c.getComplaintNumber()
+                    + " is assigned to " + c.getAssignedOfficer()
+                    + "; only that officer or RBIO_ADMIN may record the conciliation. You have view access.");
+        }
 
         validateKeys(payload);
 

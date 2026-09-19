@@ -153,7 +153,9 @@ public class ComplaintController {
      * Conciliation tab: the live meeting plus the reschedule trail behind it.
      */
     @GetMapping("/rbio/{id}/conciliation")
-    @RbioRoleGuard(roles = {"RBIO_OFFICER", "RBIO_SUPERVISOR", "RBIO_CONCILIATOR", "RBIO_ADJUDICATOR", "RBIO_DEPUTY_OMBUDSMAN", "CRPC_HEAD", "RBIO_ADMIN"})
+    @RbioRoleGuard(roles = {RoleConstants.RBIO_DO, RoleConstants.RBIO_REVIEWER,
+            RoleConstants.RBIO_DEPUTY_OMBUDSMAN, RoleConstants.RBIO_OMBUDSMAN, RoleConstants.RBIO_ADMIN,
+            "RBIO_OFFICER", "RBIO_SUPERVISOR", "RBIO_CONCILIATOR", "RBIO_ADJUDICATOR", "CRPC_HEAD"})
     public ResponseEntity<Map<String, Object>> getRbioConciliation(@PathVariable Long id) {
         try {
             return ResponseEntity.ok(envelope(true, "OK", rbioConciliationService.getConciliation(id)));
@@ -169,14 +171,20 @@ public class ComplaintController {
      * been completed or cancelled, opens a new meeting instead so the previous one is preserved.
      */
     @PutMapping("/rbio/{id}/conciliation")
-    @RbioRoleGuard(roles = {"RBIO_OFFICER", "RBIO_SUPERVISOR", "RBIO_CONCILIATOR", "RBIO_ADMIN"})
+    @RbioRoleGuard(roles = {RoleConstants.RBIO_DO, RoleConstants.RBIO_REVIEWER,
+            RoleConstants.RBIO_DEPUTY_OMBUDSMAN, RoleConstants.RBIO_OMBUDSMAN, RoleConstants.RBIO_ADMIN,
+            "RBIO_OFFICER", "RBIO_SUPERVISOR", "RBIO_CONCILIATOR"})
     public ResponseEntity<Map<String, Object>> updateRbioConciliation(
             @PathVariable Long id,
             @RequestBody Map<String, Object> payload,
             @RequestHeader(value = "X-User-Id", defaultValue = "system") String userId) {
         try {
-            Map<String, Object> updated = rbioConciliationService.saveMeeting(id, payload, userId);
+            String actor = Objects.requireNonNullElse(callerIdentity.username(), userId);
+            Map<String, Object> updated = rbioConciliationService.saveMeeting(
+                    id, payload, actor, callerIdentity.roles());
             return ResponseEntity.ok(envelope(true, "Conciliation updated", updated));
+        } catch (ResponseStatusException e) {
+            return ResponseEntity.status(e.getStatusCode()).body(envelope(false, e.getReason(), null));
         } catch (IllegalArgumentException e) {
             HttpStatus status = e.getMessage() != null && e.getMessage().startsWith("Complaint not found")
                     ? HttpStatus.NOT_FOUND

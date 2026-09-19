@@ -5,6 +5,7 @@ import com.hrms.cms.entity.ComplaintAdditionalDetail;
 import com.hrms.cms.entity.ComplaintEligibilityAnswer;
 import com.hrms.cms.entity.ComplaintRbioFormData;
 import com.hrms.cms.entity.EmailDraft;
+import com.hrms.cms.entity.RegulatedEntity;
 import com.hrms.cms.repository.ComplaintAdditionalDetailRepository;
 import com.hrms.cms.repository.ComplaintCategoryRepository;
 import com.hrms.cms.repository.ComplaintEligibilityAnswerRepository;
@@ -294,6 +295,48 @@ class RbioComplaintSummaryServiceTest {
             verify(complaintService).addTimeline(eq(92L), any(), eq("officer1"), any(), any(), any());
             verify(auditService).logAction(eq("CMS-PNB-1234"), any(), eq("officer1"), any(), any(), any());
         }
+
+        @Test
+        void movesTheComplaintToTheEntityTheIdPointsAt() {
+            when(regulatedEntityRepository.findById(7L)).thenReturn(Optional.of(RegulatedEntity.builder()
+                    .id(7L).name("HDFC Bank Limited").department("RBIO").entityType("Private Sector Bank")
+                    .build()));
+
+            service.updateSummary(92L, nest("entityDetails", Map.of("id", 7)), "officer1", Set.of());
+
+            assertThat(complaint.getRegulatedEntityId()).isEqualTo(7L);
+            assertThat(complaint.getEntityName()).isEqualTo("HDFC Bank Limited");
+        }
+
+        @Test
+        void takesTheEntityNameFromTheEntityRatherThanTheRequest() {
+            // An id and a name that disagree would show one entity on screen while the complaint is
+            // forwarded to the other, so the entity record wins.
+            when(regulatedEntityRepository.findById(7L)).thenReturn(Optional.of(RegulatedEntity.builder()
+                    .id(7L).name("HDFC Bank Limited").department("RBIO")
+                    .build()));
+
+            Map<String, Object> entity = new LinkedHashMap<>();
+            entity.put("id", 7);
+            entity.put("entityName", "Some Other Bank");
+
+            service.updateSummary(92L, nest("entityDetails", entity), "officer1", Set.of());
+
+            assertThat(complaint.getEntityName()).isEqualTo("HDFC Bank Limited");
+        }
+
+        @Test
+        void clearsTheEntityWhenTheIdIsSentAsNull() {
+            complaint.setRegulatedEntityId(7L);
+            Map<String, Object> entity = new HashMap<>();
+            entity.put("id", null);
+
+            service.updateSummary(92L, nest("entityDetails", entity), "officer1", Set.of());
+
+            assertThat(complaint.getRegulatedEntityId()).isNull();
+            // The name is a free-text label on the complaint, so clearing the link must not erase it.
+            assertThat(complaint.getEntityName()).isEqualTo("Punjab National Bank");
+        }
     }
 
     @Nested
@@ -306,6 +349,18 @@ class RbioComplaintSummaryServiceTest {
             assertThatThrownBy(() -> service.updateSummary(92L, nest("bogusSection", Map.of("a", 1)), "officer1", Set.of()))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("Unknown section");
+            verify(complaintRepository, never()).save(any());
+        }
+
+        @Test
+        void rejectsAnEntityIdThatMatchesNoEntity() {
+            stubComplaint();
+            when(regulatedEntityRepository.findById(404L)).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service.updateSummary(92L,
+                    nest("entityDetails", Map.of("id", 404)), "officer1", Set.of()))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("does not match any regulated entity");
             verify(complaintRepository, never()).save(any());
         }
 

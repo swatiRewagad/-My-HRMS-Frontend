@@ -1259,10 +1259,38 @@
               @if (summarySections.entity) {
                 <div class="summary-fields">
                   <div class="summary-row">
-                    <div class="summary-field">
+                    <div class="summary-field entity-search-group">
                       <span class="summary-label">Entity Name</span>
                       @if (editMode()) {
-                        <input type="text" [(ngModel)]="entityName" class="summary-edit-input" />
+                        <div class="entity-search-wrapper">
+                          <input type="text"
+                            class="summary-edit-input"
+                            [ngModel]="entitySearchText"
+                            (ngModelChange)="onEntitySearchInput($event)"
+                            (blur)="onEntityBlur()"
+                            placeholder="Search the entity by name"
+                            autocomplete="off" />
+                          <i class="pi entity-search-icon"
+                            [class.pi-search]="!entitySearchLoading()"
+                            [class.pi-spinner]="entitySearchLoading()"
+                            [class.pi-spin]="entitySearchLoading()"></i>
+                        </div>
+                        @if (showEntityDropdown() && !entitySearchLoading() && entitySearchResults().length === 0) {
+                          <ul class="entity-dropdown">
+                            <li class="entity-dropdown-empty">No entity matches that name</li>
+                          </ul>
+                        }
+                        @if (showEntityDropdown() && entitySearchResults().length > 0) {
+                          <ul class="entity-dropdown">
+                            @for (entity of entitySearchResults(); track entity.id) {
+                              <!-- mousedown, not click: blur fires first and closes the list. -->
+                              <li (mousedown)="selectEntity(entity)">
+                                <span class="entity-name">{{ entity.name }}</span>
+                                <span class="entity-dept">{{ entity.department }}</span>
+                              </li>
+                            }
+                          </ul>
+                        }
                       } @else {
                         <span class="summary-value">{{ entityName || '—' }}</span>
                       }
@@ -1276,6 +1304,12 @@
                       }
                     </div>
                   </div>
+                  @if (editMode() && entityResetNotice()) {
+                    <div class="entity-reset-notice">
+                      <i class="pi pi-exclamation-triangle"></i>
+                      <span>{{ entityResetNotice() }}</span>
+                    </div>
+                  }
                   <div class="summary-row">
                     <div class="summary-field">
                       <span class="summary-label">Entity Category</span>
@@ -1432,6 +1466,65 @@
                       }
                     </div>
                   </div>
+
+                  <!-- Read-only: these belong to the entity master, not to this complaint. They are
+                       shown because changing the entity changes who the complaint gets forwarded to. -->
+                  @if (entityContactLoading()) {
+                    <div class="entity-contact-panel loading">
+                      <i class="pi pi-spinner pi-spin"></i> Loading entity contact details…
+                    </div>
+                  } @else if (entityContact()) {
+                    <div class="entity-contact-panel">
+                      <h6>Entity Contact Details</h6>
+                      <div class="summary-row">
+                        <div class="summary-field">
+                          <span class="summary-label">Nodal Officer</span>
+                          <span class="summary-value">{{ entityContact()?.nodalOfficerName || '—' }}</span>
+                        </div>
+                        <div class="summary-field">
+                          <span class="summary-label">Designation</span>
+                          <span class="summary-value">{{ entityContact()?.nodalOfficerDesignation || '—' }}</span>
+                        </div>
+                      </div>
+                      <div class="summary-row">
+                        <div class="summary-field">
+                          <span class="summary-label">Nodal Officer Email</span>
+                          <span class="summary-value">{{ entityContact()?.nodalOfficerEmail || '—' }}</span>
+                        </div>
+                        <div class="summary-field">
+                          <span class="summary-label">Nodal Officer Phone</span>
+                          <span class="summary-value">{{ entityContact()?.nodalOfficerPhone || '—' }}</span>
+                        </div>
+                      </div>
+                      <div class="summary-row">
+                        <div class="summary-field">
+                          <span class="summary-label">Principal Nodal Officer</span>
+                          <span class="summary-value">{{ entityContact()?.pnoName || '—' }}</span>
+                        </div>
+                        <div class="summary-field">
+                          <span class="summary-label">Principal Nodal Officer Email</span>
+                          <span class="summary-value">{{ entityContact()?.pnoEmail || '—' }}</span>
+                        </div>
+                      </div>
+                      <div class="summary-row">
+                        <div class="summary-field">
+                          <span class="summary-label">Principal Nodal Officer Phone</span>
+                          <span class="summary-value">{{ entityContact()?.pnoPhone || '—' }}</span>
+                        </div>
+                        <div class="summary-field">
+                          <span class="summary-label">Portal Enabled</span>
+                          <span class="summary-value">{{ entityContact()?.portalEnabled ? 'Yes' : 'No' }}</span>
+                        </div>
+                      </div>
+                      @if (!entityContact()?.nodalOfficerEmail && !entityContact()?.pnoEmail) {
+                        <p class="entity-contact-warning">
+                          <i class="pi pi-exclamation-triangle"></i>
+                          This entity has no nodal officer on record, so forwarding the complaint to it
+                          will have no recipient. Update the entity master first.
+                        </p>
+                      }
+                    </div>
+                  }
                 </div>
                 
               }
@@ -2013,6 +2106,168 @@
                 </div>
               </div>
             </div>
+          </div>
+
+          } @else if (assessmentTab() === 'conciliation') {
+          <div class="panel-header">
+            <h3><i class="pi pi-users"></i> Conciliation Meeting</h3>
+          </div>
+          <div class="form-scroll assessment-scroll">
+            @if (conciliationLoading()) {
+              <div class="conciliation-loading"><i class="pi pi-spin pi-spinner"></i> Loading conciliation details…</div>
+            } @else {
+              @if (conciliationError()) {
+                <div class="conciliation-alert error" role="alert">
+                  <i class="pi pi-exclamation-triangle"></i>
+                  <span>{{ conciliationError() }}</span>
+                  <button type="button" class="btn-link" (click)="loadConciliation(true)">Retry</button>
+                </div>
+              }
+              @if (conciliationSaved()) {
+                <div class="conciliation-alert success" role="status">
+                  <i class="pi pi-check-circle"></i> <span>Conciliation details saved.</span>
+                </div>
+              }
+
+              @if (conciliationCurrent(); as current) {
+                <div class="conciliation-current-meta">
+                  <span class="conciliation-chip" [class]="'conciliation-chip st-' + current.meetingStatus">{{ conciliationStatusLabel(current.meetingStatus) }}</span>
+                  <span class="conciliation-meta-text">
+                    Last updated by {{ current.updatedBy || current.createdBy || '—' }}@if (current.updatedAt) { on {{ formatCommentDate(current.updatedAt) }} }
+                  </span>
+                </div>
+              } @else {
+                <p class="conciliation-meta-text">No conciliation meeting has been scheduled for this complaint yet.</p>
+              }
+
+              <div class="form-group">
+                <label>Meeting Status <span class="required">*</span></label>
+                <select [(ngModel)]="meetingStatus" name="meetingStatus" [disabled]="isReadOnlyViewer()">
+                  @for (status of conciliationStatuses; track status.value) {
+                    <option [value]="status.value">{{ status.label }}</option>
+                  }
+                </select>
+              </div>
+
+              @if (conciliationOpensNewMeeting && conciliationCurrent()) {
+                <div class="conciliation-alert info">
+                  <i class="pi pi-info-circle"></i>
+                  <span>Saving this will start a new meeting. The current meeting is kept, unchanged, in the history below.</span>
+                </div>
+              }
+
+              <div class="form-row-2col">
+                <div class="form-group">
+                  <label>Meeting Date @if (conciliationRequiresSchedule) { <span class="required">*</span> }</label>
+                  <input type="date" [(ngModel)]="meetingDate" name="meetingDate" [disabled]="isReadOnlyViewer()" />
+                  @if (conciliationFieldErrors()['meetingDate']) {
+                    <span class="field-error">{{ conciliationFieldErrors()['meetingDate'] }}</span>
+                  }
+                </div>
+                <div class="form-group">
+                  <label>Meeting Time @if (conciliationRequiresSchedule) { <span class="required">*</span> }</label>
+                  <input type="time" [(ngModel)]="meetingTime" name="meetingTime" [disabled]="isReadOnlyViewer()" />
+                  @if (conciliationFieldErrors()['meetingTime']) {
+                    <span class="field-error">{{ conciliationFieldErrors()['meetingTime'] }}</span>
+                  }
+                </div>
+              </div>
+
+              <div class="conciliation-consent">
+                <div class="conciliation-consent-row">
+                  <span class="conciliation-consent-label">Accepted by Complainant</span>
+                  <div class="conciliation-radios">
+                    <label><input type="radio" [ngModel]="acceptedByComplainant" [value]="true" (ngModelChange)="acceptedByComplainant = $event" name="acceptedByComplainant" [disabled]="isReadOnlyViewer()" /> Yes</label>
+                    <label><input type="radio" [ngModel]="acceptedByComplainant" [value]="false" (ngModelChange)="acceptedByComplainant = $event" name="acceptedByComplainant" [disabled]="isReadOnlyViewer()" /> No</label>
+                  </div>
+                </div>
+                <div class="conciliation-consent-row">
+                  <span class="conciliation-consent-label">Accepted by Regulated Entity</span>
+                  <div class="conciliation-radios">
+                    <label><input type="radio" [ngModel]="acceptedByEntity" [value]="true" (ngModelChange)="acceptedByEntity = $event" name="acceptedByEntity" [disabled]="isReadOnlyViewer()" /> Yes</label>
+                    <label><input type="radio" [ngModel]="acceptedByEntity" [value]="false" (ngModelChange)="acceptedByEntity = $event" name="acceptedByEntity" [disabled]="isReadOnlyViewer()" /> No</label>
+                  </div>
+                </div>
+                <div class="conciliation-consent-row">
+                  <span class="conciliation-consent-label">Conducted through Video Conference</span>
+                  <div class="conciliation-radios">
+                    <label><input type="radio" [ngModel]="conductedThroughVc" [value]="true" (ngModelChange)="conductedThroughVc = $event" name="conductedThroughVc" [disabled]="isReadOnlyViewer()" /> Yes</label>
+                    <label><input type="radio" [ngModel]="conductedThroughVc" [value]="false" (ngModelChange)="conductedThroughVc = $event" name="conductedThroughVc" [disabled]="isReadOnlyViewer()" /> No</label>
+                  </div>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label>Meeting Minutes</label>
+                <div class="textarea-with-speech">
+                  <textarea [(ngModel)]="meetingComments" name="meetingComments" rows="4" maxlength="4000"
+                            [disabled]="isReadOnlyViewer()" placeholder="What was discussed and agreed in the meeting"></textarea>
+                  @if (!isReadOnlyViewer()) {
+                    <app-speech-button [disabled]="isReadOnlyViewer()" (transcription)="appendSpeech('meetingComments', $event)"></app-speech-button>
+                  }
+                </div>
+                <div class="conciliation-counter">{{ meetingComments.length }}/4000</div>
+                @if (conciliationFieldErrors()['meetingComments']) {
+                  <span class="field-error">{{ conciliationFieldErrors()['meetingComments'] }}</span>
+                }
+              </div>
+
+              <div class="form-group">
+                <label>Conciliation Remarks</label>
+                <div class="textarea-with-speech">
+                  <textarea [(ngModel)]="conciliationComments" name="conciliationComments" rows="3" maxlength="4000"
+                            [disabled]="isReadOnlyViewer()" placeholder="Officer's remarks on the conciliation"></textarea>
+                  @if (!isReadOnlyViewer()) {
+                    <app-speech-button [disabled]="isReadOnlyViewer()" (transcription)="appendSpeech('conciliationComments', $event)"></app-speech-button>
+                  }
+                </div>
+                <div class="conciliation-counter">{{ conciliationComments.length }}/4000</div>
+                @if (conciliationFieldErrors()['comments']) {
+                  <span class="field-error">{{ conciliationFieldErrors()['comments'] }}</span>
+                }
+              </div>
+
+              @if (!isReadOnlyViewer()) {
+                <div class="conciliation-actions">
+                  <button type="button" class="btn btn-outline" (click)="resetConciliation()" [disabled]="conciliationSaving()">Reset</button>
+                  <button type="button" class="btn btn-primary" (click)="saveConciliation()" [disabled]="conciliationSaving()">
+                    @if (conciliationSaving()) {
+                      <i class="pi pi-spin pi-spinner"></i> Saving…
+                    } @else {
+                      <i class="pi pi-save"></i> Save Conciliation
+                    }
+                  </button>
+                </div>
+              } @else {
+                <p class="conciliation-meta-text"><i class="pi pi-lock"></i> You have view access to this complaint. Only the assigned officer can update the conciliation.</p>
+              }
+
+              @if (conciliationHistory().length) {
+                <h4 class="conciliation-section-title">Previous Meetings</h4>
+                <div class="conciliation-history">
+                  @for (meeting of conciliationHistory(); track meeting.id) {
+                    <div class="conciliation-history-card">
+                      <div class="conciliation-history-head">
+                        <span class="conciliation-chip" [class]="'conciliation-chip st-' + meeting.meetingStatus">{{ conciliationStatusLabel(meeting.meetingStatus) }}</span>
+                        <span class="conciliation-meta-text">{{ meeting.meetingDate || '—' }} {{ meeting.meetingTime || '' }}</span>
+                      </div>
+                      <div class="conciliation-history-grid">
+                        <span>Complainant: <strong>{{ yesNoLabel(meeting.acceptedByComplainant) }}</strong></span>
+                        <span>Entity: <strong>{{ yesNoLabel(meeting.acceptedByEntity) }}</strong></span>
+                        <span>Video Conference: <strong>{{ yesNoLabel(meeting.conductedThroughVc) }}</strong></span>
+                      </div>
+                      @if (meeting.meetingComments) {
+                        <p class="conciliation-history-text">{{ meeting.meetingComments }}</p>
+                      }
+                      @if (meeting.comments) {
+                        <p class="conciliation-history-text muted">{{ meeting.comments }}</p>
+                      }
+                      <span class="conciliation-meta-text">Recorded by {{ meeting.updatedBy || meeting.createdBy || '—' }}</span>
+                    </div>
+                  }
+                </div>
+              }
+            }
           </div>
 
           } @else {
@@ -3159,7 +3414,8 @@
           <i class="pi pi-info-circle confirmation-icon"></i>
           <div class="confirmation-text">
             <strong>Confirmation</strong>
-            <p>Are you sure you want to <strong>send the request to CRPC DEO</strong> ?</p>
+            <p>Are you sure you want to <strong>send the request to
+              {{ selectedDeoName || 'a CRPC DEO' }}</strong> ?</p>
           </div>
           <button class="modal-close" (click)="cancelAssignment()">&times;</button>
         </div>
@@ -3174,28 +3430,89 @@
               </select>
             </div>
             <div class="form-group">
-              <label>Name of CRPC DEO</label>
+              <label>Name of CRPC DEO @if (assignmentMode === 'MANUAL') { <span class="required">*</span> }</label>
               <div class="deo-select-wrapper">
-                <input type="text" [value]="selectedDeoName || 'CRPC DEO'" [disabled]="assignmentMode === 'AUTOMATIC'" readonly />
-                <i class="pi pi-search"></i>
+                @if (assignmentMode === 'AUTOMATIC') {
+                  <input type="text" [value]="selectedDeoName || 'No DEO available'" disabled readonly />
+                  <i class="pi pi-bolt"></i>
+                } @else {
+                  <input type="text" [ngModel]="deoSearch()" (ngModelChange)="deoSearch.set($event)"
+                         (focus)="showDeoDropdown.set(true)" placeholder="Search DEO by name, email or office"
+                         autocomplete="off" />
+                  <i class="pi pi-search"></i>
+                  @if (showDeoDropdown()) {
+                    <div class="deo-dropdown">
+                      @if (loadingDeos()) {
+                        <div class="deo-option muted"><span class="spinner-sm"></span> Loading roster...</div>
+                      } @else if (filteredDeos().length === 0) {
+                        <div class="deo-option muted">No DEO matches that search.</div>
+                      } @else {
+                        @for (deo of filteredDeos(); track deo.id) {
+                          <button type="button" class="deo-option"
+                                  [class.selected]="deo.id === selectedDeoId"
+                                  [class.unavailable]="!deo.isActive || deo.isOnLeave"
+                                  [disabled]="!deo.isActive"
+                                  (click)="selectDeo(deo)">
+                            <span class="deo-option-main">
+                              <span class="deo-name">{{ deo.displayName }}</span>
+                              @if (deo.officeCode) { <span class="deo-office">{{ deo.officeCode }}</span> }
+                              @if (deo.isOnLeave) { <span class="deo-tag leave">On leave</span> }
+                              @if (!deo.isActive) { <span class="deo-tag inactive">Inactive</span> }
+                            </span>
+                            <span class="deo-option-load">
+                              <span class="deo-load-bar">
+                                <span class="deo-load-fill" [style.width.%]="deoLoadPercent(deo)"></span>
+                              </span>
+                              <span class="deo-load-text">{{ deo.currentLoad }}/{{ deo.maxLoad }}</span>
+                            </span>
+                          </button>
+                        }
+                      }
+                    </div>
+                  }
+                }
               </div>
             </div>
           </div>
 
+          @if (deoLoadError()) {
+            <div class="assign-error">
+              <i class="pi pi-exclamation-triangle"></i> {{ deoLoadError() }}
+              <button type="button" class="btn-link" (click)="loadDeos()">Retry</button>
+            </div>
+          }
+
+          @if (selectedDeo(); as deo) {
+            <div class="deo-summary">
+              <span><i class="pi pi-user"></i> {{ deo.displayName }}</span>
+              @if (deo.email) { <span><i class="pi pi-envelope"></i> {{ deo.email }}</span> }
+              <span><i class="pi pi-briefcase"></i> Workload {{ deo.currentLoad }} of {{ deo.maxLoad }}</span>
+              @if (deo.currentLoad >= deo.maxLoad) {
+                <span class="deo-tag over">At threshold</span>
+              }
+            </div>
+          }
+
           @if (deoOnLeave()) {
             <div class="leave-warning">
-              <span class="leave-dot"></span> Assigned user is on Leave
+              <span class="leave-dot"></span> Assigned user is on Leave{{ selectedDeo()?.leaveReason ? ' — ' + selectedDeo()?.leaveReason : '' }}
             </div>
           }
 
           <div class="status-change">
             <span class="status-label">Expected Status Change <i class="pi pi-info-circle"></i></span>
             <div class="status-flow">
-              <span class="status-badge create"><i class="pi pi-plus-circle"></i> Create</span>
+              <span class="status-badge create"><i class="pi pi-plus-circle"></i> {{ formatStatusLabel(complaintStatus()) }}</span>
               <i class="pi pi-arrow-right flow-arrow"></i>
               <span class="status-badge draft"><i class="pi pi-file"></i> Draft</span>
             </div>
           </div>
+
+          @if (assignError()) {
+            <div class="assign-error" role="alert">
+              <i class="pi pi-times-circle"></i> {{ assignError() }}
+            </div>
+          }
         </div>
       </div>
       <div class="modal-footer">

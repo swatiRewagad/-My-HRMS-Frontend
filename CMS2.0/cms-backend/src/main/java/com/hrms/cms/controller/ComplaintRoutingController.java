@@ -207,6 +207,41 @@ public class ComplaintRoutingController {
         return wrapResponse(result);
     }
 
+    /**
+     * One entity in full, for when the officer changes the regulated entity on a complaint and the
+     * dependent fields have to be reloaded.
+     *
+     * <p>Separate from {@code /entities/list} rather than an extension of it: the list is a typeahead
+     * that can return thousands of rows, so widening it to carry the nodal officer block would make
+     * every keystroke pay for data only the one selected row needs. The nodal officer details are the
+     * reason this exists — they are what NodalOfficerRecordService snapshots onto the record, so an
+     * officer changing the entity is changing who the complaint gets forwarded to.
+     */
+    @GetMapping("/entities/{id}")
+    public Map<String, Object> getEntity(@PathVariable Long id) {
+        RegulatedEntity entity = regulatedEntityRepo.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("No regulated entity with id " + id));
+
+        Map<String, Object> item = new LinkedHashMap<>();
+        item.put("id", entity.getId());
+        item.put("name", entity.getName());
+        item.put("department", entity.getDepartment());
+        item.put("entityType", entity.getEntityType());
+        item.put("city", entity.getCity());
+        item.put("state", entity.getState());
+        item.put("status", entity.getStatus());
+        item.put("portalEnabled", entity.getPortalEnabled());
+        item.put("nodalOfficerName", entity.getNodalOfficerName());
+        item.put("nodalOfficerEmail", entity.getNodalOfficerEmail());
+        item.put("nodalOfficerPhone", entity.getNodalOfficerPhone());
+        item.put("nodalOfficerDesignation", entity.getNodalOfficerDesignation());
+        item.put("pnoName", entity.getPnoName());
+        item.put("pnoEmail", entity.getPnoEmail());
+        item.put("pnoPhone", entity.getPnoPhone());
+
+        return wrapResponse(item);
+    }
+
     private Map<String, Object> wrapResponse(Object data) {
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("success", true);
