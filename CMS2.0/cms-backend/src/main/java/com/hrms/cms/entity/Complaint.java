@@ -61,6 +61,9 @@ public class Complaint {
     @Column(name = "BANK_ID")
     private Long bankId;
 
+    @Column(name = "REGULATED_ENTITY_ID")
+    private Long regulatedEntityId;
+
     @Column(length = 300)
     private String entityName;
 
