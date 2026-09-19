@@ -62,6 +62,16 @@ public class RbioComplaintListService {
     private final RbioStatusMasterRepository statusRepo;
     private final RbioStatusRoleVisibilityRepository visibilityRepo;
 
+    /**
+     * Shortest term accepted for a substring search (UST441).
+     *
+     * <p>A one-character LIKE '%a%' scans the whole table and returns most of it, which is both useless to
+     * the officer and an easy way to pull the entire complaint set one page at a time. Exact-match fields
+     * are exempt because they are selective by construction. Copied from the AA parent search, which set
+     * this precedent for the same reason.
+     */
+    private static final int MIN_PARTIAL_TERM = 2;
+
     /** A request for a page of the RBIO list. */
     public record ListQuery(
             String statusCode,
@@ -77,7 +87,74 @@ public class RbioComplaintListService {
             Integer page,
             Integer size,
             String sortBy,
-            String sortDir) {
+            String sortDir,
+            AdvancedSearch advanced) {
+
+        /** Backwards-compatible constructor for callers with no advance-search criteria. */
+        public ListQuery(String statusCode, String search, String entityName, String priority,
+                         String milestone, String assignedOfficer, String assignedRole, String officeCode,
+                         String callerUserId, String callerRole, Integer page, Integer size,
+                         String sortBy, String sortDir) {
+            this(statusCode, search, entityName, priority, milestone, assignedOfficer, assignedRole,
+                    officeCode, callerUserId, callerRole, page, size, sortBy, sortDir, null);
+        }
+    }
+
+    /**
+     * The UST439 advance-search criteria, matched SERVER-side.
+     *
+     * <h2>Which fields are partial and which are exact, and why</h2>
+     * Name and entity name are substring matches, because UST441 asks for them and an officer searching
+     * for "Sharma" cannot be expected to know the full recorded name. Mobile and email are EXACT. That is
+     * not an oversight: a partial search over a phone number is a PII enumeration primitive — it lets a
+     * caller harvest complainants' numbers prefix by prefix and confirm whether a particular citizen has
+     * complained. The AA parent search made the same call for the same reason.
+     *
+     * <p>{@code complaintId} is a numeric primary key, so it is parsed and matched exactly. The old client
+     * lower-cased it and did a substring match, which is meaningless against a number.
+     */
+    public record AdvancedSearch(
+            String complaintNumber,
+            String complainantName,
+            String complainantMobile,
+            String complainantEmail,
+            String statusCode,
+            String complaintId,
+            String fromEmailId,
+            String subject,
+            String modeOfReceipt,
+            String entityName,
+            String nodalOfficerName,
+            String categoryId,
+            String reportedFrom,
+            String reportedTo) {
+
+        /** Whether the officer supplied anything at all. */
+        public boolean any() {
+            return notBlank(complaintNumber) || notBlank(complainantName) || notBlank(complainantMobile)
+                    || notBlank(complainantEmail) || notBlank(statusCode) || notBlank(complaintId)
+                    || notBlank(fromEmailId) || notBlank(subject) || notBlank(modeOfReceipt)
+                    || notBlank(entityName) || notBlank(nodalOfficerName) || notBlank(categoryId)
+                    || notBlank(reportedFrom) || notBlank(reportedTo);
+        }
+
+        /** The partial-match fields whose term is too short to run. */
+        public List<String> tooShortTerms() {
+            List<String> bad = new ArrayList<>();
+            if (notBlank(complainantName) && complainantName.trim().length() < MIN_PARTIAL_TERM) {
+                bad.add("complainantName");
+            }
+            if (notBlank(entityName) && entityName.trim().length() < MIN_PARTIAL_TERM) {
+                bad.add("entityName");
+            }
+            if (notBlank(subject) && subject.trim().length() < MIN_PARTIAL_TERM) {
+                bad.add("subject");
+            }
+            if (notBlank(nodalOfficerName) && nodalOfficerName.trim().length() < MIN_PARTIAL_TERM) {
+                bad.add("nodalOfficerName");
+            }
+            return bad;
+        }
     }
 
     public Page<Complaint> search(ListQuery q) {
@@ -134,8 +211,137 @@ public class RbioComplaintListService {
                 and.add(cb.equal(root.get("rbioOfficeCode"), q.officeCode().trim()));
             }
 
+            applyAdvancedSearch(q.advanced(), root, cb, and);
+
             return cb.and(and.toArray(new Predicate[0]));
         };
+    }
+
+    /**
+     * Applies the UST439-441 advance-search criteria.
+     *
+     * <p>Every criterion is ANDed, so adding a field narrows the result rather than widening it. A field
+     * the schema cannot answer is REFUSED by the controller rather than silently ignored here — an ignored
+     * criterion produces a result set that looks like an answer to a question nobody asked, which is worse
+     * than an error message.
+     */
+    private void applyAdvancedSearch(AdvancedSearch a,
+                                     jakarta.persistence.criteria.Root<Complaint> root,
+                                     jakarta.persistence.criteria.CriteriaBuilder cb,
+                                     List<Predicate> and) {
+        if (a == null) {
+            return;
+        }
+
+        // Complaint number: exact, case-folded. A complaint number is quoted in full or not at all.
+        if (notBlank(a.complaintNumber())) {
+            and.add(cb.equal(cb.upper(cb.trim(root.get("complaintNumber"))),
+                    a.complaintNumber().trim().toUpperCase(Locale.ROOT)));
+        }
+
+        // UST441: partial match on complainant name.
+        if (notBlank(a.complainantName())) {
+            and.add(cb.like(cb.lower(root.get("complainantName")),
+                    "%" + a.complainantName().trim().toLowerCase(Locale.ROOT) + "%"));
+        }
+
+        // EXACT, deliberately — see the AdvancedSearch javadoc on PII enumeration.
+        if (notBlank(a.complainantMobile())) {
+            and.add(cb.equal(cb.trim(root.get("complainantPhone")), a.complainantMobile().trim()));
+        }
+        if (notBlank(a.complainantEmail())) {
+            and.add(cb.equal(cb.lower(cb.trim(root.get("complainantEmail"))),
+                    a.complainantEmail().trim().toLowerCase(Locale.ROOT)));
+        }
+
+        // From Email ID has no column of its own on COMPLAINTS; the address a complaint arrived from is
+        // the complainant's email. Matched against that rather than left inert, and exact for the same
+        // PII reason.
+        if (notBlank(a.fromEmailId())) {
+            and.add(cb.equal(cb.lower(cb.trim(root.get("complainantEmail"))),
+                    a.fromEmailId().trim().toLowerCase(Locale.ROOT)));
+        }
+
+        if (notBlank(a.subject())) {
+            and.add(cb.like(cb.lower(root.get("subject")),
+                    "%" + a.subject().trim().toLowerCase(Locale.ROOT) + "%"));
+        }
+
+        // UST441: partial match on entity name. NOTE this matches ENTITY_CODE, the only entity column on
+        // COMPLAINTS, whose data is dirty — it holds 'HDFC Bank' on some rows and 'PNB' on others, and is
+        // NULL on many. So a name search here under-returns, and that is a data problem this query cannot
+        // fix. Reported rather than papered over with a join that would silently drop unmapped entities.
+        if (notBlank(a.entityName())) {
+            and.add(cb.like(cb.lower(root.get("entityCode")),
+                    "%" + a.entityName().trim().toLowerCase(Locale.ROOT) + "%"));
+        }
+
+        // Mode of receipt is backed by FILING_TYPE. Exact because it is a controlled value, not prose.
+        if (notBlank(a.modeOfReceipt())) {
+            and.add(cb.equal(cb.lower(cb.trim(root.get("filingType"))),
+                    a.modeOfReceipt().trim().toLowerCase(Locale.ROOT)));
+        }
+
+        if (notBlank(a.statusCode())) {
+            statusRepo.findById(a.statusCode().trim().toUpperCase(Locale.ROOT)).ifPresentOrElse(
+                    status -> {
+                        if (notBlank(status.getLegacyValue())) {
+                            and.add(cb.equal(cb.lower(root.get("status")),
+                                    status.getLegacyValue().toLowerCase(Locale.ROOT)));
+                        } else {
+                            and.add(cb.disjunction());
+                        }
+                    },
+                    () -> {
+                        log.warn("Advance search used unknown status code '{}' — returning no rows",
+                                a.statusCode());
+                        and.add(cb.disjunction());
+                    });
+        }
+
+        // Numeric primary key. An unparseable value matches nothing rather than being dropped: the
+        // officer typed something into the Complaint Id box and deserves an empty result, not a silently
+        // unfiltered list of every complaint.
+        if (notBlank(a.complaintId())) {
+            try {
+                and.add(cb.equal(root.get("id"), Long.parseLong(a.complaintId().trim())));
+            } catch (NumberFormatException e) {
+                log.debug("Advance search complaintId '{}' is not numeric", a.complaintId());
+                and.add(cb.disjunction());
+            }
+        }
+
+        if (notBlank(a.categoryId())) {
+            try {
+                and.add(cb.equal(root.get("categoryId"), Long.parseLong(a.categoryId().trim())));
+            } catch (NumberFormatException e) {
+                log.debug("Advance search categoryId '{}' is not numeric", a.categoryId());
+                and.add(cb.disjunction());
+            }
+        }
+
+        // Reported On, as an inclusive day range. The end bound is the START of the following day so a
+        // complaint filed at 16:20 on the closing date is included — comparing against the date itself
+        // would silently exclude everything filed after midnight on that day.
+        if (notBlank(a.reportedFrom())) {
+            parseDate(a.reportedFrom()).ifPresentOrElse(
+                    from -> and.add(cb.greaterThanOrEqualTo(root.get("createdAt"), from.atStartOfDay())),
+                    () -> and.add(cb.disjunction()));
+        }
+        if (notBlank(a.reportedTo())) {
+            parseDate(a.reportedTo()).ifPresentOrElse(
+                    to -> and.add(cb.lessThan(root.get("createdAt"), to.plusDays(1).atStartOfDay())),
+                    () -> and.add(cb.disjunction()));
+        }
+    }
+
+    private static Optional<java.time.LocalDate> parseDate(String raw) {
+        try {
+            return Optional.of(java.time.LocalDate.parse(raw.trim()));
+        } catch (Exception e) {
+            log.debug("Advance search date '{}' is not an ISO date", raw);
+            return Optional.empty();
+        }
     }
 
     /**

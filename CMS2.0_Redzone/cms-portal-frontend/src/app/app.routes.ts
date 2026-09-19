@@ -111,26 +111,31 @@ export const routes: Routes = [
     path: 'staff/unauthorized',
     loadComponent: () => import('./components/staff/staff-unauthorized/staff-unauthorized.component').then(m => m.StaffUnauthorizedComponent)
   },
+  // These four are RBIO case-working screens and carried only staffAuthGuard, which admits EVERY
+  // authenticated staff member — a CEPC officer, a CRPC DEO, an RE nodal officer. staff/rbio/task/:id
+  // renders a named complainant's details, so this was cross-module PII exposure rather than merely an
+  // untidy guard. The note above the /rbio routes below already said to use a role guard here; these
+  // four were missed when it was applied.
   {
     path: 'staff/rbio/tasks',
-    canActivate: [staffAuthGuard],
+    canActivate: [staffRoleGuard(RBIO_ROLES)],
     runGuardsAndResolvers: 'always',
     loadComponent: () => import('./components/staff/rbio-tasks/rbio-tasks.component').then(m => m.RbioTasksComponent)
   },
   {
     path: 'staff/rbio/task/:id',
-    canActivate: [staffAuthGuard],
+    canActivate: [staffRoleGuard(RBIO_ROLES)],
     loadComponent: () => import('./components/staff/task-action/task-action.component').then(m => m.TaskActionComponent)
   },
   {
     path: 'staff/rbio/history',
-    canActivate: [staffAuthGuard],
+    canActivate: [staffRoleGuard(RBIO_ROLES)],
     runGuardsAndResolvers: 'always',
     loadComponent: () => import('./components/staff/rbio-tasks/rbio-tasks.component').then(m => m.RbioTasksComponent)
   },
   {
     path: 'staff/rbio/escalations',
-    canActivate: [staffAuthGuard],
+    canActivate: [staffRoleGuard(RBIO_ROLES)],
     loadComponent: () => import('./components/staff/rbio-tasks/rbio-tasks.component').then(m => m.RbioTasksComponent)
   },
   // ── RBIO Module ──

@@ -57,18 +57,25 @@
           @if (advSearchActive()) {
             <button class="btn btn-link danger" (click)="clearAdvancedSearch()">Clear Filters</button>
           }
-          <select class="queue-select" [value]="filterStatus()" (change)="filterStatus.set($any($event.target).value)">
-            <option value="">RBIO Complaints</option>
-            <option value="DRAFT">Draft</option>
-            <option value="IN_PROGRESS">In Progress</option>
-            <option value="SENT_BACK">Sent Back to Me</option>
-            <option value="ASSESSMENT_COMPLETE">Assessment Complete</option>
+          <!-- UST426-433: options come from RBIO_STATUS_MASTER for THIS role. No hardcoded list, so a
+               status outside the role's visibility is not rendered and therefore not selectable. -->
+          <select class="queue-select" [value]="filterStatus()"
+                  (change)="selectStatus($any($event.target).value)"
+                  [attr.aria-label]="'rbio.grid.filter_status' | translate">
+            <option value="">{{ 'rbio.grid.all_statuses' | translate }}</option>
+            @for (f of statusFilters(); track f.statusCode) {
+              <option [value]="f.statusCode">{{ f.translationKey | translate }}</option>
+            }
           </select>
-          <select class="queue-select" [value]="filterQueue()" (change)="filterQueue.set($any($event.target).value)">
-            <option value="ASSIGNED_TO_ME">Complaints Assigned To Me</option>
-            <option value="ALL">All Complaints</option>
+          <select class="queue-select" [value]="filterQueue()"
+                  (change)="setQueue($any($event.target).value)"
+                  [attr.aria-label]="'rbio.grid.filter_queue' | translate">
+            <option value="ASSIGNED_TO_ME">{{ 'rbio.grid.queue_assigned_to_me' | translate }}</option>
+            <option value="ALL">{{ 'rbio.grid.queue_all' | translate }}</option>
           </select>
-          <button class="btn btn-link" (click)="loadComplaints()"><i class="pi pi-filter"></i> Filters</button>
+          <button class="btn btn-link" (click)="loadComplaints()">
+            <i class="pi pi-refresh"></i> {{ 'rbio.grid.refresh' | translate }}
+          </button>
           <div class="create-dropdown-wrapper">
             <button class="btn btn-primary create-btn" (click)="showCreateDropdown.set(!showCreateDropdown())">
               <i class="pi pi-plus"></i> Create Complaint <i class="pi pi-chevron-down"></i>
@@ -89,64 +96,86 @@
 
       <!-- Stats Cards -->
       <div class="stats-bar">
-        <div class="stat-card" (click)="filterStatus.set('')">
+        <!-- The first card is the server's total for the current filter. The rest count THIS PAGE only,
+             because the endpoint returns no per-status totals — so they are labelled as page counts
+             rather than presented as queue totals they are not. -->
+        <div class="stat-card" (click)="selectStatus('')">
           <div class="stat-icon blue"><i class="pi pi-inbox"></i></div>
           <div class="stat-content">
-            <span class="stat-label">Total Pending Complaints</span>
+            <span class="stat-label">{{ 'rbio.stats.total_pending' | translate }}</span>
             <span class="stat-value">{{ stats().totalPending }}</span>
           </div>
         </div>
-        <div class="stat-card" (click)="filterStatus.set('')">
+        <div class="stat-card">
           <div class="stat-icon yellow"><i class="pi pi-user"></i></div>
           <div class="stat-content">
-            <span class="stat-label">Pending with Me</span>
+            <span class="stat-label">{{ 'rbio.stats.pending_with_me_page' | translate }}</span>
             <span class="stat-value">{{ stats().pendingWithMe }}</span>
           </div>
         </div>
-        <div class="stat-card" (click)="filterStatus.set('AWAITING_RESPONSE')">
+        <div class="stat-card">
           <div class="stat-icon red"><i class="pi pi-users"></i></div>
           <div class="stat-content">
-            <span class="stat-label">Pending with Contact Person</span>
+            <span class="stat-label">{{ 'rbio.stats.pending_contact_page' | translate }}</span>
             <span class="stat-value">{{ stats().pendingContactPerson }}</span>
           </div>
         </div>
-        <div class="stat-card" (click)="filterStatus.set('MEETING_SCHEDULED')">
+        <div class="stat-card">
           <div class="stat-icon purple"><i class="pi pi-calendar"></i></div>
           <div class="stat-content">
-            <span class="stat-label">Pending at Meeting Scheduled</span>
+            <span class="stat-label">{{ 'rbio.stats.pending_meeting_page' | translate }}</span>
             <span class="stat-value">{{ stats().pendingMeeting }}</span>
           </div>
         </div>
         <div class="stat-card sla-card">
           <div class="stat-icon orange"><i class="pi pi-clock"></i></div>
           <div class="stat-content">
-            <span class="stat-label">SLA Breach</span>
+            <span class="stat-label">{{ 'rbio.stats.sla_breach_page' | translate }}</span>
             <span class="stat-value">{{ stats().slaBreach }}</span>
           </div>
           <div class="sla-overdue">
-            <span class="overdue-label">Overdue</span>
+            <span class="overdue-label">{{ 'rbio.stats.re_overdue' | translate }}</span>
             <span class="overdue-value">{{ stats().slaOverdue }}</span>
           </div>
         </div>
       </div>
 
-      <!-- Status Tabs -->
+      <!-- Status Tabs — UST426-433, data-driven from RBIO_STATUS_MASTER per role. UST434: selecting one
+           refreshes the grid immediately via selectStatus(). -->
       <div class="status-tabs">
-        <button class="tab" [class.active]="filterStatus() === ''" (click)="filterStatus.set('')">
-          All
+        <button class="tab" [class.active]="filterStatus() === ''" (click)="selectStatus('')">
+          {{ 'rbio.grid.all_statuses' | translate }}
         </button>
-        <button class="tab" [class.active]="filterStatus() === 'DRAFT'" (click)="filterStatus.set('DRAFT')">
-          Draft <span class="tab-count">{{ stats().draft }}</span>
-        </button>
-        <button class="tab" [class.active]="filterStatus() === 'MEETING_SCHEDULED'" (click)="filterStatus.set('MEETING_SCHEDULED')">
-          Meeting Scheduled <span class="tab-count">{{ stats().meetingScheduled }}</span>
-        </button>
-        <button class="tab" [class.active]="filterStatus() === 'SENT_BACK'" (click)="filterStatus.set('SENT_BACK')">
-          Sent Back to Me <span class="tab-count">{{ stats().sentBack }}</span>
-        </button>
-        <button class="tab" [class.active]="filterStatus() === 'ASSESSMENT_COMPLETE'" (click)="filterStatus.set('ASSESSMENT_COMPLETE')">
-          Assessment Complete
-        </button>
+        @for (f of statusTabs(); track f.statusCode) {
+          <button class="tab" [class.active]="filterStatus() === f.statusCode"
+                  (click)="selectStatus(f.statusCode)">
+            {{ f.translationKey | translate }}
+          </button>
+        }
+      </div>
+
+      @if (filterLoadError()) {
+        <div class="filter-error">
+          <i class="pi pi-exclamation-triangle"></i> {{ filterLoadError()! | translate }}
+        </div>
+      }
+
+      <!-- UST436/437: colour bands. Selecting bands INTERSECTS with the status filter rather than
+           replacing it, so a band cannot resurrect a row the status filter excluded. -->
+      <div class="band-legend">
+        <span class="band-legend-label">{{ 'rbio.band.legend' | translate }}</span>
+        @for (b of availableBands(); track b.code) {
+          <button class="band-chip" [class.active]="selectedBands().has(b.code)"
+                  [style.background]="b.colour" (click)="toggleBand(b.code)"
+                  [attr.aria-pressed]="selectedBands().has(b.code)">
+            {{ b.labelKey | translate }}
+          </button>
+        }
+        @if (selectedBands().size > 0) {
+          <button class="btn btn-link danger" (click)="clearBands()">
+            {{ 'rbio.band.clear' | translate }}
+          </button>
+        }
       </div>
 
       <!-- Complaints Table -->
@@ -161,13 +190,11 @@
               </span>
               Unread
             </label>
-            <label class="toggle-filter">
-              <span class="toggle-switch" [class.active]="filterWithoutAttachments()">
-                <input type="checkbox" [checked]="filterWithoutAttachments()" (change)="filterWithoutAttachments.set(!filterWithoutAttachments())" />
-                <span class="toggle-slider"></span>
-              </span>
-              Without Attachments
-            </label>
+<!-- The "Without Attachments" toggle was removed rather than left in place. It was bound to a signal
+     that no filter ever read, so it rendered, animated and did nothing — and the list response carries
+     no attachment count, so there is nothing to filter on client-side. A control that visibly does
+     nothing teaches officers to distrust the ones that work. It returns when the endpoint reports
+     attachments. -->
             <button class="btn btn-icon" (click)="showColumnConfig.set(true)" title="Column Selection">
               <i class="pi pi-cog"></i>
             </button>
@@ -187,32 +214,40 @@
               <tr>
                 <th class="checkbox-col">
                   <input type="checkbox"
-                    [checked]="selectedIds().size === filteredComplaints().length && filteredComplaints().length > 0"
+                    [checked]="selectedIds().size === visibleRows().length && visibleRows().length > 0"
                     (change)="toggleSelectAll()" />
                 </th>
                 @for (col of visibleColumns(); track col.key) {
                   <th (click)="sortBy(col.key)">
-                    {{ col.label }}
-                    @if (sortColumn === col.key) {
-                      <i class="pi" [class.pi-sort-amount-up]="sortDirection === 'asc'" [class.pi-sort-amount-down]="sortDirection === 'desc'"></i>
+                    {{ col.label | translate }}
+                    @if (sortColumn() === col.key) {
+                      <i class="pi" [class.pi-sort-amount-up]="sortDirection() === 'asc'" [class.pi-sort-amount-down]="sortDirection() === 'desc'"></i>
                     }
                   </th>
                 }
               </tr>
-              <!-- Column Search Row -->
+              <!-- Column Search Row. Bound through setColumnFilter() into a SIGNAL: [(ngModel)] onto a
+                   plain object registered no dependency, so typing here filtered nothing at all. -->
               <tr class="filter-row">
                 <th></th>
                 @for (col of visibleColumns(); track col.key) {
                   <th>
-                    <input type="text" class="col-search" placeholder="Search"
-                      [(ngModel)]="columnFilters[col.key]" />
+                    <input type="text" class="col-search"
+                      [attr.placeholder]="'rbio.grid.search' | translate"
+                      [value]="columnFilters()[col.key] || ''"
+                      (input)="setColumnFilter(col.key, $any($event.target).value)" />
                   </th>
                 }
               </tr>
             </thead>
             <tbody>
-              @for (item of paginatedComplaints(); track item.complaintId) {
-                <tr [class.selected]="selectedIds().has(item.complaintId)" [class.visited]="visitedIds().has(item.complaintId)" (click)="openComplaint(item.complaintId)">
+              @for (item of visibleRows(); track item.complaintId) {
+                <!-- UST436: the row band is derived from current state at render time, never stored. -->
+                <tr [class.selected]="selectedIds().has(item.complaintId)"
+                    [class.visited]="visitedIds().has(item.complaintId)"
+                    [class]="'band-' + bandFor(item).toLowerCase()"
+                    [attr.data-band]="bandFor(item)"
+                    (click)="openComplaint(item.complaintId)">
                   <td class="checkbox-col" (click)="$event.stopPropagation()">
                     <input type="checkbox"
                       [checked]="selectedIds().has(item.complaintId)"
@@ -221,9 +256,13 @@
                   @for (col of visibleColumns(); track col.key) {
                     <td [class]="'cell-' + col.key">
                       @if (col.key === 'status') {
-                        <span class="status-badge" [attr.data-status]="item.status">{{ getStatusLabel(item.status) }}</span>
+                        <!-- Through the translate pipe: interpolating a label map directly renders the
+                             raw key to staff. -->
+                        <span class="status-badge" [attr.data-status]="item.status">
+                          {{ statusLabelKey(item.status) | translate }}
+                        </span>
                       } @else if (col.key === 'modeOfReceipt') {
-                        <span class="mode-badge">{{ item.modeOfReceipt }}</span>
+                        <span class="mode-badge">{{ item.modeOfReceipt || '—' }}</span>
                       } @else if (col.key === 'slaBreachDays') {
                         <span class="sla-badge" [class]="getSlaClass(item.slaBreachDays)">{{ getSlaLabel(item.slaBreachDays) }}</span>
                       } @else {
@@ -235,7 +274,32 @@
               } @empty {
                 <tr>
                   <td [attr.colspan]="visibleColumns().length + 1" class="empty-state">
-                    No complaints found.
+                    @if (loadError()) {
+                      <span class="error-text">
+                        <i class="pi pi-exclamation-triangle"></i> {{ loadError()! | translate }}
+                      </span>
+                      <button class="btn btn-link" (click)="loadComplaints()">
+                        {{ 'rbio.grid.retry' | translate }}
+                      </button>
+                    } @else if (advSearchActive()) {
+                      <!-- UST442: the criteria are PRESERVED and shown, so the officer can adjust and
+                           retry rather than re-entering everything from scratch. -->
+                      <span>{{ 'rbio.search.no_results' | translate }}</span>
+                      <div class="search-criteria-echo">
+                        <strong>{{ 'rbio.search.criteria_used' | translate }}:</strong>
+                        {{ lastSearchSummary() }}
+                      </div>
+                      <button class="btn btn-link" (click)="showAdvancedSearch.set(true)">
+                        {{ 'rbio.search.adjust' | translate }}
+                      </button>
+                      <button class="btn btn-link danger" (click)="clearAdvancedSearch()">
+                        {{ 'rbio.search.clear' | translate }}
+                      </button>
+                    } @else if (refinementActive() || selectedBands().size > 0) {
+                      <span>{{ 'rbio.grid.no_rows_after_refine' | translate }}</span>
+                    } @else {
+                      <span>{{ 'rbio.grid.no_complaints' | translate }}</span>
+                    }
                   </td>
                 </tr>
               }
@@ -244,20 +308,33 @@
         </div>
 
         <!-- Pagination -->
+        <!-- UST435: server-side paging. The count is the server's totalElements, not the length of the
+             rows that happen to be loaded — this footer used to report "of 20" because 20 was the
+             backend's default page size, whatever the real total was. -->
         <div class="pagination">
-          <span class="page-info">Showing {{ paginationStart() }} to {{ paginationEnd() }} of {{ filteredComplaints().length }} entries</span>
-          <div class="page-controls">
-            <button class="page-btn" (click)="currentPage.set(1)" [disabled]="currentPage() === 1">&laquo;</button>
-            <button class="page-btn" (click)="currentPage.set(currentPage() - 1)" [disabled]="currentPage() === 1">&lsaquo;</button>
-            @for (p of pageNumbers(); track p) {
-              <button class="page-btn" [class.active]="p === currentPage()" (click)="currentPage.set(p)">{{ p }}</button>
+          <span class="page-info">
+            {{ 'rbio.grid.showing' | translate }} {{ paginationStart() }}–{{ paginationEnd() }}
+            {{ 'rbio.grid.of' | translate }} {{ totalElements() }}
+            @if (refinementActive() || selectedBands().size > 0) {
+              <!-- Said plainly: the page-local refinement has narrowed what is VISIBLE, and that count is
+                   not comparable with the server-wide total beside it. -->
+              <em class="refine-note">
+                ({{ visibleRows().length }} {{ 'rbio.grid.shown_after_refine' | translate }})
+              </em>
             }
-            <button class="page-btn" (click)="currentPage.set(currentPage() + 1)" [disabled]="currentPage() === totalPages()">&rsaquo;</button>
-            <button class="page-btn" (click)="currentPage.set(totalPages())" [disabled]="currentPage() === totalPages()">&raquo;</button>
-            <select class="page-size-select" [value]="pageSize" (change)="changePageSize(+$any($event.target).value)">
-              <option [value]="10">10</option>
-              <option [value]="25">25</option>
-              <option [value]="50">50</option>
+          </span>
+          <div class="page-controls">
+            <button class="page-btn" (click)="goToPage(1)" [disabled]="currentPage() === 1">&laquo;</button>
+            <button class="page-btn" (click)="goToPage(currentPage() - 1)" [disabled]="currentPage() === 1">&lsaquo;</button>
+            @for (p of pageNumbers(); track p) {
+              <button class="page-btn" [class.active]="p === currentPage()" (click)="goToPage(p)">{{ p }}</button>
+            }
+            <button class="page-btn" (click)="goToPage(currentPage() + 1)" [disabled]="currentPage() === totalPages()">&rsaquo;</button>
+            <button class="page-btn" (click)="goToPage(totalPages())" [disabled]="currentPage() === totalPages()">&raquo;</button>
+            <select class="page-size-select" [value]="pageSize()" (change)="changePageSize(+$any($event.target).value)">
+              @for (s of pageSizes; track s) {
+                <option [value]="s">{{ s }}</option>
+              }
             </select>
           </div>
         </div>
@@ -275,7 +352,10 @@
         <button class="modal-close" (click)="showColumnConfig.set(false)">&times;</button>
       </div>
       <p class="modal-subtitle">Select and manage visible columns</p>
-      <input type="text" class="column-search" placeholder="Search Column Name" [(ngModel)]="columnSearchText" />
+      <input type="text" class="column-search"
+             [attr.placeholder]="'rbio.grid.search_column' | translate"
+             [value]="columnSearchText()"
+             (input)="columnSearchText.set($any($event.target).value)" />
       <div class="column-list">
         @for (col of filteredColumns(); track col.key; let i = $index) {
           <label class="column-option"
@@ -288,7 +368,7 @@
             [class.drag-over]="dragOverIndex === i">
             <i class="pi pi-bars drag-handle"></i>
             <input type="checkbox" [checked]="col.visible" (change)="toggleColumnVisibility(col.key)" />
-            {{ col.label }}
+            {{ col.label | translate }}
           </label>
         }
       </div>
@@ -308,58 +388,103 @@
         Advanced Search
         <button class="modal-close" (click)="showAdvancedSearch.set(false)">&times;</button>
       </div>
+      <!-- UST439: the full field list, matched SERVER-side. Every input writes into a signal via
+           setAdvSearchField, and every value is sent as a query parameter the backend actually reads —
+           mobileNumber, fromEmailId and modeOfReceipt previously existed in the model with no input and
+           no filter logic at all. -->
       <div class="search-grid">
         <div class="search-field">
-          <label>Complaint Number</label>
-          <input type="text" [(ngModel)]="advSearch.complaintNumber" placeholder="Enter a value" />
+          <label>{{ 'rbio.search.complaint_number' | translate }}</label>
+          <input type="text" [value]="advSearch()['complaintNumber']"
+                 (input)="setAdvSearchField('complaintNumber', $any($event.target).value)" />
         </div>
         <div class="search-field">
-          <label>Complaint Id</label>
-          <input type="text" [(ngModel)]="advSearch.complaintId" placeholder="Enter a value" />
+          <label>{{ 'rbio.search.complaint_id' | translate }}</label>
+          <input type="text" inputmode="numeric" [value]="advSearch()['complaintId']"
+                 (input)="setAdvSearchField('complaintId', $any($event.target).value)" />
         </div>
         <div class="search-field">
-          <label>Status Code</label>
-          <select [(ngModel)]="advSearch.statusCode">
-            <option value="">Select a Value</option>
-            <option value="DRAFT">Draft</option>
-            <option value="IN_PROGRESS">In Progress</option>
-            <option value="MEETING_SCHEDULED">Meeting Scheduled</option>
-            <option value="SENT_BACK">Sent Back</option>
-            <option value="ASSESSMENT_COMPLETE">Assessment Complete</option>
+          <label>{{ 'rbio.search.status_code' | translate }}</label>
+          <!-- From RBIO_STATUS_MASTER for this role, so the dialog cannot offer a status the grid
+               would then refuse (UST433). -->
+          <select [value]="advSearch()['statusCode']"
+                  (change)="setAdvSearchField('statusCode', $any($event.target).value)">
+            <option value="">{{ 'rbio.search.select_value' | translate }}</option>
+            @for (f of statusFilters(); track f.statusCode) {
+              @if (f.filterKind === 'STATUS') {
+                <option [value]="f.statusCode">{{ f.translationKey | translate }}</option>
+              }
+            }
           </select>
         </div>
         <div class="search-field">
-          <label>Complainant Name</label>
-          <input type="text" [(ngModel)]="advSearch.complainantName" placeholder="Enter a value" />
+          <label>{{ 'rbio.search.complainant_name' | translate }}</label>
+          <input type="text" [value]="advSearch()['complainantName']"
+                 (input)="setAdvSearchField('complainantName', $any($event.target).value)" />
+          <small class="field-hint">{{ 'rbio.search.hint_partial' | translate }}</small>
         </div>
         <div class="search-field">
-          <label>Complainant Email</label>
-          <input type="text" [(ngModel)]="advSearch.email" placeholder="Enter a value" />
+          <label>{{ 'rbio.search.complainant_mobile' | translate }}</label>
+          <input type="text" inputmode="tel" [value]="advSearch()['complainantMobile']"
+                 (input)="setAdvSearchField('complainantMobile', $any($event.target).value)" />
+          <!-- Exact by design: a partial phone search would let this box be used to harvest
+               complainants' numbers prefix by prefix. -->
+          <small class="field-hint">{{ 'rbio.search.hint_exact' | translate }}</small>
         </div>
         <div class="search-field">
-          <label>Entity Name</label>
-          <input type="text" [(ngModel)]="advSearch.entityName" placeholder="Enter a value" />
+          <label>{{ 'rbio.search.complainant_email' | translate }}</label>
+          <input type="text" inputmode="email" [value]="advSearch()['complainantEmail']"
+                 (input)="setAdvSearchField('complainantEmail', $any($event.target).value)" />
+          <small class="field-hint">{{ 'rbio.search.hint_exact' | translate }}</small>
+        </div>
+        <div class="search-field">
+          <label>{{ 'rbio.search.from_email' | translate }}</label>
+          <input type="text" inputmode="email" [value]="advSearch()['fromEmailId']"
+                 (input)="setAdvSearchField('fromEmailId', $any($event.target).value)" />
+        </div>
+        <div class="search-field">
+          <label>{{ 'rbio.search.mode_of_receipt' | translate }}</label>
+          <input type="text" [value]="advSearch()['modeOfReceipt']"
+                 (input)="setAdvSearchField('modeOfReceipt', $any($event.target).value)" />
+        </div>
+        <div class="search-field">
+          <label>{{ 'rbio.search.entity_name' | translate }}</label>
+          <input type="text" [value]="advSearch()['entityName']"
+                 (input)="setAdvSearchField('entityName', $any($event.target).value)" />
+          <small class="field-hint">{{ 'rbio.search.hint_partial' | translate }}</small>
+        </div>
+        <div class="search-field">
+          <label>{{ 'rbio.search.category' | translate }}</label>
+          <input type="text" inputmode="numeric" [value]="advSearch()['categoryId']"
+                 (input)="setAdvSearchField('categoryId', $any($event.target).value)" />
+        </div>
+        <div class="search-field">
+          <label>{{ 'rbio.search.reported_from' | translate }}</label>
+          <input type="date" [value]="advSearch()['reportedFrom']"
+                 (input)="setAdvSearchField('reportedFrom', $any($event.target).value)" />
+        </div>
+        <div class="search-field">
+          <label>{{ 'rbio.search.reported_to' | translate }}</label>
+          <input type="date" [value]="advSearch()['reportedTo']"
+                 (input)="setAdvSearchField('reportedTo', $any($event.target).value)" />
         </div>
         <div class="search-field full-width">
-          <label>Subject</label>
-          <input type="text" [(ngModel)]="advSearch.subject" placeholder="Enter a value" />
-        </div>
-        <div class="search-field">
-          <label>Category</label>
-          <select [(ngModel)]="advSearch.category">
-            <option value="">Select a Value</option>
-            <option value="ATM">ATM</option>
-            <option value="CREDIT_CARD">Credit Card</option>
-            <option value="UPI">UPI</option>
-            <option value="LOAN">Loan</option>
-            <option value="DEPOSIT">Deposit</option>
-          </select>
+          <label>{{ 'rbio.search.subject' | translate }}</label>
+          <input type="text" [value]="advSearch()['subject']"
+                 (input)="setAdvSearchField('subject', $any($event.target).value)" />
         </div>
       </div>
       <div class="modal-actions">
-        <button class="btn btn-outline" (click)="clearAdvancedSearch(); showAdvancedSearch.set(false)">Clear</button>
-        <button class="btn btn-outline" (click)="showAdvancedSearch.set(false)">Cancel</button>
-        <button class="btn btn-primary" (click)="applyAdvancedSearch()">Search</button>
+        <button class="btn btn-outline" (click)="clearAdvancedSearch(); showAdvancedSearch.set(false)">
+          {{ 'rbio.search.clear' | translate }}
+        </button>
+        <button class="btn btn-outline" (click)="showAdvancedSearch.set(false)">
+          {{ 'rbio.search.cancel' | translate }}
+        </button>
+        <button class="btn btn-primary" (click)="applyAdvancedSearch()"
+                [disabled]="advSearchFieldCount() === 0">
+          {{ 'rbio.search.search' | translate }}
+        </button>
       </div>
     </div>
   </div>

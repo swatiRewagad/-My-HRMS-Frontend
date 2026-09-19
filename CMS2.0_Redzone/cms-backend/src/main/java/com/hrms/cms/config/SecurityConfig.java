@@ -36,7 +36,24 @@ import java.util.List;
 public class SecurityConfig {
 
     private static final String[] RBIO_ROLES = {
-            "RBIO_OFFICER", "RBIO_SUPERVISOR", "RBIO_CONCILIATOR", "RBIO_ADJUDICATOR", "ADMIN"
+            "RBIO_OFFICER", "RBIO_SUPERVISOR", "RBIO_CONCILIATOR", "RBIO_ADJUDICATOR",
+            "RBIO_ADMIN", "ADMIN"
+    };
+
+    /**
+     * Who may CHANGE master data (UST456).
+     *
+     * <p>Reference data is readable anonymously — the citizen filing wizard needs the category list
+     * before anybody has logged in. Writing it is a different act entirely: DEPARTMENT_ROUTING_MASTER
+     * decides which office a complaint reaches and CATEGORY_MASTER drives maintainability, so an
+     * unauthenticated write here misroutes or wrongly closes real complaints.
+     *
+     * <p>RBIO_ADMIN is the Ombudsman Admin of UST456. CRPC_ADMIN is retained because the existing
+     * (dead) {@code @PreAuthorize} on {@link com.hrms.cms.controller.MasterDataController} named it, and
+     * silently narrowing an existing permission while fixing a hole would break CRPC master upkeep.
+     */
+    private static final String[] MASTER_ADMIN_ROLES = {
+            "RBIO_ADMIN", "CRPC_ADMIN", "ADMIN"
     };
 
     private static final String[] CEPC_ROLES = {
@@ -79,7 +96,24 @@ public class SecurityConfig {
                 .requestMatchers("/api/v1/faq/**").permitAll()
                 .requestMatchers("/api/v1/i18n/**", "/api/v1/translations/**").permitAll()
                 .requestMatchers("/api/v1/geo/**", "/api/v1/location/**", "/api/v1/pincodes/**").permitAll()
+                // Master data: anonymous READ, authenticated ADMIN WRITE (UST456).
+                //
+                // These three write matchers MUST precede the permitAll below — the first matching rule
+                // wins, so listing them afterwards would leave the hole exactly as it was while looking
+                // like it had been fixed. Before this, /api/v1/masters/** was permitAll for every verb:
+                // an anonymous caller could POST, PUT or DELETE CATEGORY_MASTER and
+                // DEPARTMENT_ROUTING_MASTER. The @PreAuthorize on the controller did not stop it because
+                // @EnableMethodSecurity is not enabled anywhere in this application, so those
+                // annotations are inert. The filter chain is the only control that actually runs.
+                .requestMatchers(HttpMethod.POST, "/api/v1/masters/**").hasAnyRole(MASTER_ADMIN_ROLES)
+                .requestMatchers(HttpMethod.PUT, "/api/v1/masters/**").hasAnyRole(MASTER_ADMIN_ROLES)
+                .requestMatchers(HttpMethod.DELETE, "/api/v1/masters/**").hasAnyRole(MASTER_ADMIN_ROLES)
                 .requestMatchers("/api/v1/masters/**", "/api/v1/entities/**", "/api/v1/categories/**").permitAll()
+                // Same shape as the masters block above, and for a sharper reason: FORM_CONFIG is the
+                // SCHEMA of the citizen filing form. PUT /api/form-config/{formKey} carried no
+                // authorization of any kind and sat under permitAll, so an anonymous caller could
+                // rewrite the fields, validation and labels a complainant files against.
+                .requestMatchers(HttpMethod.PUT, "/api/form-config/**").hasAnyRole(MASTER_ADMIN_ROLES)
                 .requestMatchers("/api/categories/**", "/api/banks/**", "/api/form-config/**").permitAll()
                 .requestMatchers("/api/v1/feedback/**").permitAll()
                 .requestMatchers("/api/v1/complaints/drafts/**").permitAll()
@@ -108,9 +142,20 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/v1/upload-link/validate-otp").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/v1/upload-link/upload/*").permitAll()
 
+                // HOLIDAYS is master data, not a staff workspace. Any of the ~22 STAFF_ROLES could
+                // previously add or delete a gazetted holiday, and BusinessHoursService reads that table
+                // for every statutory deadline in the system — the RE response window, TAT, SLA. One
+                // spurious holiday row silently moves every deadline for every complaint, so this is
+                // narrowed to the master administrators. Reads stay open to all staff.
+                .requestMatchers(HttpMethod.POST, "/api/v1/tat/holidays/**").hasAnyRole(MASTER_ADMIN_ROLES)
+                .requestMatchers(HttpMethod.DELETE, "/api/v1/tat/holidays/**").hasAnyRole(MASTER_ADMIN_ROLES)
+
                 // ── Administrative: user management, config, security console ───────────
                 .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
-                .requestMatchers("/api/v1/keycloak/**").hasRole("ADMIN")
+                // RBIO_ADMIN is the Ombudsman Admin who owns RBIO user administration (UST443-455), so
+                // they need the user directory. Restricting this to ADMIN would have forced the new
+                // screens to run as a realm super-admin, which is a wider grant than the story asks for.
+                .requestMatchers("/api/v1/keycloak/**").hasAnyRole("RBIO_ADMIN", "ADMIN")
                 .requestMatchers("/actuator/**").hasRole("ADMIN")
 
                 // ── Workflow, scoped per office ─────────────────────────────────────────

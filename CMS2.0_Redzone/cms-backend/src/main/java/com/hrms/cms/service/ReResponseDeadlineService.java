@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 /**
@@ -50,9 +51,10 @@ public class ReResponseDeadlineService {
      * Days the RE gets to respond when no explicit date is chosen.
      *
      * <p>Read from SYSTEM_CONFIG so RBI can change the window without a release. The key was seeded long
-     * ago with a value of 15 and read by NOTHING — meanwhile {@code ReResponsivenessService} hardcodes 30.
-     * Those two disagreed silently; this uses the configured one, and names the conflict so it is fixed
-     * rather than duplicated.
+     * ago with a value of 15 and read by NOTHING — meanwhile {@code ReResponsivenessService} hardcoded 30,
+     * so the two disagreed about the same statutory window. That is now resolved by making this class the
+     * single definition: see {@link #responseWindowDays()} and {@link #windowEndFrom(LocalDateTime)}, which
+     * the responsiveness tracker calls rather than keeping its own copy.
      */
     public static final String CFG_RESPONSE_DAYS = "timeline.re.response_deadline_days";
     private static final int DEFAULT_RESPONSE_DAYS = 15;
@@ -151,20 +153,46 @@ public class ReResponseDeadlineService {
     }
 
     /**
-     * The configured window from today, skipping non-working days.
+     * The statutory window, in days, that a Regulated Entity gets to respond.
      *
-     * <p>Uses {@link BusinessHoursService#getBusinessHoursPerDay()} rather than a hardcoded multiplier.
-     * {@code ReResponsivenessService} multiplies its window by a literal 8 while that method returns 9 by
-     * default, so its nominal 30-day window is quietly about 26.7 business days. That defect is left alone
-     * here rather than copied.
+     * <p>Public because it is the ONE definition of that window. {@code ReResponsivenessService} previously
+     * hardcoded 30 while this key is seeded 15, so an entity was chased on one schedule and judged breached
+     * on another. Both now read this.
      */
-    private LocalDate defaultDeadline() {
-        int days = systemConfigService != null
+    public int responseWindowDays() {
+        return systemConfigService != null
                 ? systemConfigService.getInt(CFG_RESPONSE_DAYS, DEFAULT_RESPONSE_DAYS)
                 : DEFAULT_RESPONSE_DAYS;
-        return businessHoursService
-                .calculateDueDate(LocalDate.now().atStartOfDay(), days * businessHoursService.getBusinessHoursPerDay())
-                .toLocalDate();
+    }
+
+    /**
+     * When the configured window, started at {@code from}, runs out — holidays and weekends excluded.
+     *
+     * <p>The multiplier is {@link BusinessHoursService#getBusinessHoursPerDay()}, never a literal. A literal
+     * 8 against a 9-hour working day (the configured default is 09:00–18:00) silently shortens the window by
+     * an eighth: a nominal 30 days becomes about 26.7. Since this value decides both when an entity is
+     * chased and when a complaint may proceed without their reply, a short window can cost the entity its
+     * chance to answer.
+     */
+    public LocalDateTime windowEndFrom(LocalDateTime from) {
+        return windowEndFrom(from, responseWindowDays());
+    }
+
+    /**
+     * The same calculation for a window the caller has ALREADY read.
+     *
+     * <p>Exists so a caller that also stores the day count can read the config exactly once. Reading it
+     * twice would let a mid-request config change produce a stored window length that disagrees with the
+     * stored expiry date — a smaller version of the very split-brain this class was introduced to end.
+     */
+    public LocalDateTime windowEndFrom(LocalDateTime from, int windowDays) {
+        return businessHoursService.calculateDueDate(
+                from, windowDays * businessHoursService.getBusinessHoursPerDay());
+    }
+
+    /** The configured window from today, skipping non-working days. */
+    private LocalDate defaultDeadline() {
+        return windowEndFrom(LocalDate.now().atStartOfDay()).toLocalDate();
     }
 
     private LocalDate nextBusinessDay(LocalDate from) {

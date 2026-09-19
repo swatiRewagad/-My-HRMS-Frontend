@@ -4,14 +4,32 @@ import com.hrms.cms.entity.CategoryMaster;
 import com.hrms.cms.entity.DepartmentRoutingMaster;
 import com.hrms.cms.repository.CategoryMasterRepository;
 import com.hrms.cms.repository.DepartmentRoutingMasterRepository;
+import com.hrms.cms.security.CmsAuthority;
+import com.hrms.cms.security.RequiresAuthority;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Master data: anonymous READ, authority-guarded WRITE (UST456-459).
+ *
+ * <h2>Why the annotations changed</h2>
+ * Every write here carried {@code @PreAuthorize("hasAnyRole('ADMIN','CRPC_ADMIN')")} and NONE of them ran:
+ * {@code @EnableMethodSecurity} is absent from this application, so all six were inert. Combined with
+ * {@code /api/v1/masters/**} being {@code permitAll} in the filter chain, an anonymous caller could rewrite
+ * CATEGORY_MASTER and DEPARTMENT_ROUTING_MASTER — the tables that decide which office a complaint reaches
+ * and whether it is maintainable.
+ *
+ * <p>Two controls now apply, deliberately. The filter chain restricts the write VERBS to the master-admin
+ * roles, and {@link RequiresAuthority} requires the {@code MASTER_DATA_WRITE} authority granted by the SSO.
+ * The chain is coarse and role-based; the authority is the control that survives a role being renamed or
+ * split in the SSO without a change here, since user administration is delegated to the SSO.
+ *
+ * <p>Reads stay anonymous: the citizen filing wizard needs the category list before anyone signs in.
+ */
 @RestController
 @RequestMapping("/api/v1/masters")
 @RequiredArgsConstructor
@@ -35,14 +53,14 @@ public class MasterDataController {
     }
 
     @PostMapping("/categories")
-    @PreAuthorize("hasAnyRole('ADMIN', 'CRPC_ADMIN')")
+    @RequiresAuthority(CmsAuthority.MASTER_DATA_WRITE)
     public ResponseEntity<CategoryMaster> createCategory(@RequestBody CategoryMaster category) {
         category.setActive(true);
         return ResponseEntity.ok(categoryRepo.save(category));
     }
 
     @PutMapping("/categories/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'CRPC_ADMIN')")
+    @RequiresAuthority(CmsAuthority.MASTER_DATA_WRITE)
     public ResponseEntity<CategoryMaster> updateCategory(@PathVariable Long id, @RequestBody CategoryMaster category) {
         CategoryMaster existing = categoryRepo.findById(id).orElseThrow();
         existing.setCategoryName(category.getCategoryName());
@@ -55,7 +73,7 @@ public class MasterDataController {
     }
 
     @DeleteMapping("/categories/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'CRPC_ADMIN')")
+    @RequiresAuthority(CmsAuthority.MASTER_DATA_WRITE)
     public ResponseEntity<Void> deleteCategory(@PathVariable Long id) {
         CategoryMaster existing = categoryRepo.findById(id).orElseThrow();
         existing.setActive(false);
@@ -74,14 +92,14 @@ public class MasterDataController {
     }
 
     @PostMapping("/department-routing")
-    @PreAuthorize("hasAnyRole('ADMIN', 'CRPC_ADMIN')")
+    @RequiresAuthority(CmsAuthority.MASTER_DATA_WRITE)
     public ResponseEntity<DepartmentRoutingMaster> createRoutingRule(@RequestBody DepartmentRoutingMaster rule) {
         rule.setActive(true);
         return ResponseEntity.ok(routingRepo.save(rule));
     }
 
     @PutMapping("/department-routing/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'CRPC_ADMIN')")
+    @RequiresAuthority(CmsAuthority.MASTER_DATA_WRITE)
     public ResponseEntity<DepartmentRoutingMaster> updateRoutingRule(@PathVariable Long id, @RequestBody DepartmentRoutingMaster rule) {
         DepartmentRoutingMaster existing = routingRepo.findById(id).orElseThrow();
         existing.setEntityName(rule.getEntityName());
@@ -93,7 +111,7 @@ public class MasterDataController {
     }
 
     @DeleteMapping("/department-routing/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'CRPC_ADMIN')")
+    @RequiresAuthority(CmsAuthority.MASTER_DATA_WRITE)
     public ResponseEntity<Void> deleteRoutingRule(@PathVariable Long id) {
         DepartmentRoutingMaster existing = routingRepo.findById(id).orElseThrow();
         existing.setActive(false);

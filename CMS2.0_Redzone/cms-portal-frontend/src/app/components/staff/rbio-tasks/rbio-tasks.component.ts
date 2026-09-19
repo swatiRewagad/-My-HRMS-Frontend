@@ -46,16 +46,20 @@ export class RbioTasksComponent implements OnInit {
   filterUnread = signal(false);
   filterWithoutAttachments = signal(false);
   filterSatisfiesRules = signal(false);
-  columnFilters: Record<string, string> = {};
-  columnSearchText = '';
+  // EVERY piece of filter/sort/paging state is a signal. A computed() only re-evaluates when a SIGNAL it
+  // read changes; reading a plain class field registers no dependency at all. These four were plain fields,
+  // which is why the per-column search boxes, the column sorting and the page-size selector did nothing —
+  // the values changed and no view ever recomputed.
+  columnFilters = signal<Record<string, string>>({});
+  columnSearchText = signal('');
 
   // Sorting
-  sortColumn = '';
-  sortDirection: 'asc' | 'desc' = 'asc';
+  sortColumn = signal('');
+  sortDirection = signal<'asc' | 'desc'>('asc');
 
   // Pagination
   currentPage = signal(1);
-  pageSize = 10;
+  pageSize = signal(25);
 
   // Dialogs
   showColumnConfig = signal(false);
@@ -68,8 +72,22 @@ export class RbioTasksComponent implements OnInit {
     priority: '', assignedOfficer: ''
   };
 
+  /** Whether the advance-search criteria are being applied. */
+  advSearchActive = signal(false);
+
+  /**
+   * Bumped whenever a criterion changes, so the filter computed re-runs.
+   *
+   * {@code advSearch} is a plain object, and a computed() reading it registers no dependency — the same
+   * defect that made the per-column filters inert. This revision counter is the signal the computed
+   * actually depends on.
+   */
+  advSearchRevision = signal(0);
+
   // Column configuration
-  allColumns = [
+  // A signal, so toggling visibility actually repaints. As a plain array, toggleColumnVisibility mutated
+  // an object in place and visibleColumns() never re-ran, so the column chooser was inert.
+  allColumns = signal([
     { key: 'complaintNumber', label: 'Complaint Number', visible: true },
     { key: 'subject', label: 'Subject', visible: true },
     { key: 'complainantName', label: 'Complainant Name', visible: true },
@@ -81,14 +99,14 @@ export class RbioTasksComponent implements OnInit {
     { key: 'assignedAt', label: 'Assigned At', visible: false },
     { key: 'department', label: 'Department', visible: false },
     { key: 'assignedRole', label: 'Role', visible: false },
-  ];
+  ]);
 
-  visibleColumns = computed(() => this.allColumns.filter(c => c.visible));
+  visibleColumns = computed(() => this.allColumns().filter(c => c.visible));
 
   filteredColumns = computed(() => {
-    if (!this.columnSearchText) return this.allColumns;
-    const q = this.columnSearchText.toLowerCase();
-    return this.allColumns.filter(c => c.label.toLowerCase().includes(q));
+    const q = this.columnSearchText().toLowerCase();
+    if (!q) return this.allColumns();
+    return this.allColumns().filter(c => c.label.toLowerCase().includes(q));
   });
 
   filteredTasks = computed(() => {
@@ -105,7 +123,23 @@ export class RbioTasksComponent implements OnInit {
         t.subject?.toLowerCase().includes(q)
       );
     }
-    for (const [key, val] of Object.entries(this.columnFilters)) {
+    // Advance-search criteria (UST439). Reading advSearchRevision() is what registers the dependency —
+    // without it this block would read a plain object and never re-run, which is exactly how the dialog
+    // came to compute a filtered list and discard it.
+    if (this.advSearchActive()) {
+      this.advSearchRevision();
+      const a = this.advSearch;
+      if (a.complaintNumber) result = result.filter(t => t.complaintNumber?.toLowerCase().includes(a.complaintNumber.toLowerCase()));
+      if (a.complaintId) result = result.filter(t => String(t.complaintId ?? '').includes(a.complaintId));
+      if (a.statusCode) result = result.filter(t => t.status?.toLowerCase() === a.statusCode.toLowerCase());
+      if (a.complainantName) result = result.filter(t => t.complainantName?.toLowerCase().includes(a.complainantName.toLowerCase()));
+      if (a.entityName) result = result.filter(t => t.entityName?.toLowerCase().includes(a.entityName.toLowerCase()));
+      if (a.subject) result = result.filter(t => t.subject?.toLowerCase().includes(a.subject.toLowerCase()));
+      if (a.priority) result = result.filter(t => t.priority?.toLowerCase() === a.priority.toLowerCase());
+      if (a.assignedOfficer) result = result.filter(t => t.assignedOfficer?.toLowerCase().includes(a.assignedOfficer.toLowerCase()));
+    }
+
+    for (const [key, val] of Object.entries(this.columnFilters())) {
       if (val) {
         const q = val.toLowerCase();
         result = result.filter(t => String((t as any)[key] || '').toLowerCase().includes(q));
@@ -120,26 +154,28 @@ export class RbioTasksComponent implements OnInit {
     if (this.filterSatisfiesRules()) {
       result = result.filter(t => t.triageSignal === 'OBJECTIVELY_CLEAR');
     }
-    if (this.sortColumn) {
+    const sortBy = this.sortColumn();
+    if (sortBy) {
+      const dir = this.sortDirection();
       result = [...result].sort((a, b) => {
-        const av = (a as any)[this.sortColumn] || '';
-        const bv = (b as any)[this.sortColumn] || '';
+        const av = (a as any)[sortBy] || '';
+        const bv = (b as any)[sortBy] || '';
         const cmp = String(av).localeCompare(String(bv), undefined, { numeric: true });
-        return this.sortDirection === 'asc' ? cmp : -cmp;
+        return dir === 'asc' ? cmp : -cmp;
       });
     }
     return result;
   });
 
-  totalPages = computed(() => Math.max(1, Math.ceil(this.filteredTasks().length / this.pageSize)));
+  totalPages = computed(() => Math.max(1, Math.ceil(this.filteredTasks().length / this.pageSize())));
 
   paginatedTasks = computed(() => {
-    const start = (this.currentPage() - 1) * this.pageSize;
-    return this.filteredTasks().slice(start, start + this.pageSize);
+    const start = (this.currentPage() - 1) * this.pageSize();
+    return this.filteredTasks().slice(start, start + this.pageSize());
   });
 
-  paginationStart = computed(() => this.filteredTasks().length === 0 ? 0 : (this.currentPage() - 1) * this.pageSize + 1);
-  paginationEnd = computed(() => Math.min(this.currentPage() * this.pageSize, this.filteredTasks().length));
+  paginationStart = computed(() => this.filteredTasks().length === 0 ? 0 : (this.currentPage() - 1) * this.pageSize() + 1);
+  paginationEnd = computed(() => Math.min(this.currentPage() * this.pageSize(), this.filteredTasks().length));
 
   pageNumbers = computed(() => {
     const total = this.totalPages();
@@ -172,8 +208,12 @@ export class RbioTasksComponent implements OnInit {
     this.loadTasks();
   }
 
+  /** Surfaced so the template can tell an empty queue apart from a failed load. */
+  loadError = signal<string | null>(null);
+
   private loadTasks() {
     this.loading.set(true);
+    this.loadError.set(null);
     const officer = this.auth.currentUser()?.username || '';
 
     this.http.get<any>(`${environment.apiBaseUrl}/api/v1/workflow/rbio/all-tasks?officer=${officer}`)
@@ -182,20 +222,30 @@ export class RbioTasksComponent implements OnInit {
           this.tasks.set(res?.data || []);
           this.loading.set(false);
         },
-        error: () => {
+        error: (err) => {
+          // The error was previously swallowed into an empty array, so a 403 or an outage was
+          // indistinguishable from "you have no tasks" — an officer would close the tab believing their
+          // queue was clear. Surfaced with a retry instead.
           this.tasks.set([]);
+          this.loadError.set(
+            err?.status === 403
+              ? 'rbio.grid.error_forbidden'
+              : 'rbio.grid.error_load_failed'
+          );
           this.loading.set(false);
         }
       });
   }
 
   sortBy(column: string) {
-    if (this.sortColumn === column) {
-      this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
+    if (this.sortColumn() === column) {
+      this.sortDirection.update(d => (d === 'asc' ? 'desc' : 'asc'));
     } else {
-      this.sortColumn = column;
-      this.sortDirection = 'asc';
+      this.sortColumn.set(column);
+      this.sortDirection.set('asc');
     }
+    // Re-sorting reorders the whole result, so staying on page 5 would show an arbitrary slice of it.
+    this.currentPage.set(1);
   }
 
   openTask(task: ComplaintTask) {
@@ -223,23 +273,49 @@ export class RbioTasksComponent implements OnInit {
   }
 
   toggleColumnVisibility(key: string) {
-    const col = this.allColumns.find(c => c.key === key);
-    if (col) col.visible = !col.visible;
+    this.allColumns.update(cols => cols.map(c => c.key === key ? { ...c, visible: !c.visible } : c));
   }
 
+  setColumnFilter(key: string, value: string) {
+    this.columnFilters.update(f => ({ ...f, [key]: value }));
+  }
+
+  changePageSize(size: number) {
+    this.pageSize.set(Math.min(size, 100));
+    this.currentPage.set(1);
+  }
+
+  /**
+   * Activates the advance-search criteria (UST439).
+   *
+   * The previous version computed a filtered `result` into a LOCAL VARIABLE and discarded it, then stuffed
+   * the criteria as JSON into `searchText` — so the free-text filter matched a JSON blob against complaint
+   * fields and nothing ever matched. The criteria now drive the `filteredTasks` computed through a signal,
+   * which is what makes the dialog actually filter.
+   */
   applyAdvancedSearch() {
-    const q = this.advSearch;
-    let result = this.tasks();
-    if (q.complaintNumber) result = result.filter(t => t.complaintNumber.includes(q.complaintNumber));
-    if (q.complaintId) result = result.filter(t => t.complaintId.includes(q.complaintId));
-    if (q.statusCode) result = result.filter(t => t.status?.toLowerCase() === q.statusCode.toLowerCase());
-    if (q.complainantName) result = result.filter(t => t.complainantName?.toLowerCase().includes(q.complainantName.toLowerCase()));
-    if (q.entityName) result = result.filter(t => t.entityName?.toLowerCase().includes(q.entityName.toLowerCase()));
-    if (q.subject) result = result.filter(t => t.subject?.toLowerCase().includes(q.subject.toLowerCase()));
-    if (q.priority) result = result.filter(t => t.priority?.toLowerCase() === q.priority.toLowerCase());
-    if (q.assignedOfficer) result = result.filter(t => t.assignedOfficer?.toLowerCase().includes(q.assignedOfficer.toLowerCase()));
-    this.searchText.set(JSON.stringify(q));
+    this.advSearchActive.set(true);
+    this.currentPage.set(1);
+    // Deliberately NOT written into searchText: that field is the free-text box, and putting JSON in it
+    // made the two filters fight each other.
+    this.searchText.set('');
     this.showAdvancedSearch.set(false);
+  }
+
+  clearAdvancedSearch() {
+    this.advSearch = {
+      complaintNumber: '', complaintId: '', statusCode: '', complainantName: '',
+      entityName: '', subject: '', priority: '', assignedOfficer: ''
+    };
+    this.advSearchActive.set(false);
+    this.currentPage.set(1);
+  }
+
+  setAdvSearchField(key: string, value: string) {
+    this.advSearch = { ...this.advSearch, [key]: value };
+    // The criteria object is a plain field, so bump a signal to make the computed re-run. Without this the
+    // dialog's inputs would be as inert as the column filters were.
+    this.advSearchRevision.update(v => v + 1);
   }
 
   getCellValue(task: ComplaintTask, key: string): string {
