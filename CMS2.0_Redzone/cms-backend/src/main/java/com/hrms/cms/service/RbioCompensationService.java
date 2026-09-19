@@ -1,6 +1,7 @@
 package com.hrms.cms.service;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -13,19 +14,90 @@ import java.math.BigDecimal;
  * - Consequential loss: max 30,00,000 (30 Lakh)
  * - Time/harassment: max 3,00,000 (3 Lakh)
  * - Combined total: must not exceed 30,00,000
+ *
+ * <p>THE CAPS ARE CONFIGURATION, NOT CONSTANTS (UST541-542). They were {@code private static final}
+ * literals, so amending a statutory figure required a code change and a redeploy — and the same numbers
+ * were independently duplicated in seven other places, so any change would have been applied
+ * inconsistently. They now read from SYSTEM_CONFIG through {@link SystemConfigService}, making an
+ * amendment a one-row update that takes effect within that service's 30-second TTL.
+ *
+ * <p>THE DEFAULTS ARE THE CURRENT VALUES, DELIBERATELY. With no config rows present this service behaves
+ * exactly as it did before, so introducing the indirection cannot change a single award outcome. The
+ * values themselves carry no verified statutory provenance — {@code database/V56__aa_order_statutory_guards.sql}
+ * already records that concern — so they are preserved rather than "corrected" here. Changing them is a
+ * legal decision, and it is now a config change rather than a release.
+ *
+ * <p>The band boundaries are configurable alongside the caps for the same reason: {@code MAXIMUM} means
+ * "at or near the ceiling", so raising a cap while leaving the bands fixed would silently redefine what
+ * the reporting bands mean.
  */
 @Service
 @Slf4j
 public class RbioCompensationService {
 
-    /** Maximum compensation for consequential loss (Rs 30 Lakh) */
-    private static final BigDecimal MAX_CONSEQUENTIAL_LOSS = new BigDecimal("3000000");
+    static final String CFG_MAX_CONSEQUENTIAL_LOSS = "cms.rbio.compensation.max_consequential_loss";
+    static final String CFG_MAX_TIME_HARASSMENT = "cms.rbio.compensation.max_time_harassment";
+    static final String CFG_MAX_COMBINED = "cms.rbio.compensation.max_combined";
+    static final String CFG_BAND_LOW_UPTO = "cms.rbio.compensation.band_low_upto";
+    static final String CFG_BAND_MEDIUM_UPTO = "cms.rbio.compensation.band_medium_upto";
+    static final String CFG_BAND_HIGH_UPTO = "cms.rbio.compensation.band_high_upto";
 
-    /** Maximum compensation for mental agony/time/harassment (Rs 3 Lakh) */
-    private static final BigDecimal MAX_TIME_HARASSMENT = new BigDecimal("300000");
+    /** Default cap for consequential loss (Rs 30 Lakh) — the behaviour-neutral fallback. */
+    static final BigDecimal DEFAULT_MAX_CONSEQUENTIAL_LOSS = new BigDecimal("3000000");
 
-    /** Maximum combined compensation (Rs 30 Lakh) */
-    private static final BigDecimal MAX_COMBINED = new BigDecimal("3000000");
+    /** Default cap for mental agony/time/harassment (Rs 3 Lakh) — the behaviour-neutral fallback. */
+    static final BigDecimal DEFAULT_MAX_TIME_HARASSMENT = new BigDecimal("300000");
+
+    /** Default combined cap (Rs 30 Lakh) — the behaviour-neutral fallback. */
+    static final BigDecimal DEFAULT_MAX_COMBINED = new BigDecimal("3000000");
+
+    static final BigDecimal DEFAULT_BAND_LOW_UPTO = new BigDecimal("100000");
+    static final BigDecimal DEFAULT_BAND_MEDIUM_UPTO = new BigDecimal("1000000");
+    static final BigDecimal DEFAULT_BAND_HIGH_UPTO = new BigDecimal("2000000");
+
+    /**
+     * Null means "no config available, use the documented defaults" — the same behaviour as an empty
+     * SYSTEM_CONFIG table. Kept nullable so the service stays constructible without a Spring context;
+     * a blocking validator that cannot be unit-tested in isolation would be a worse trade.
+     */
+    private final SystemConfigService systemConfigService;
+
+    public RbioCompensationService() {
+        this(null);
+    }
+
+    @Autowired
+    public RbioCompensationService(SystemConfigService systemConfigService) {
+        this.systemConfigService = systemConfigService;
+    }
+
+    /**
+     * Reads a configured amount, falling back to the statutory default.
+     *
+     * <p>A non-positive or unparseable value falls back rather than throwing. {@link SystemConfigService}
+     * already logs the offending row, and refusing every award because of one bad config value would be a
+     * worse failure than continuing with the documented default.
+     */
+    private BigDecimal configuredAmount(String key, BigDecimal fallback) {
+        if (systemConfigService == null) {
+            return fallback;
+        }
+        String raw = systemConfigService.getString(key, null);
+        if (raw == null || raw.isBlank()) {
+            return fallback;
+        }
+        try {
+            BigDecimal value = new BigDecimal(raw.trim());
+            if (value.compareTo(BigDecimal.ZERO) <= 0) {
+                log.warn("SYSTEM_CONFIG {} is not positive: '{}' — falling back to {}", key, raw, fallback);
+                return fallback;
+            }
+            return value;
+        } catch (NumberFormatException e) {
+            log.warn("SYSTEM_CONFIG {} is not a number: '{}' — falling back to {}", key, raw, fallback);
+            return fallback;
+        }
+    }
 
     /**
      * Validates the award amount against RBI Ombudsman caps.
@@ -67,13 +139,13 @@ public class RbioCompensationService {
         if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
             return "NONE";
         }
-        if (amount.compareTo(new BigDecimal("100000")) <= 0) {
+        if (amount.compareTo(configuredAmount(CFG_BAND_LOW_UPTO, DEFAULT_BAND_LOW_UPTO)) <= 0) {
             return "LOW";
         }
-        if (amount.compareTo(new BigDecimal("1000000")) <= 0) {
+        if (amount.compareTo(configuredAmount(CFG_BAND_MEDIUM_UPTO, DEFAULT_BAND_MEDIUM_UPTO)) <= 0) {
             return "MEDIUM";
         }
-        if (amount.compareTo(new BigDecimal("2000000")) <= 0) {
+        if (amount.compareTo(configuredAmount(CFG_BAND_HIGH_UPTO, DEFAULT_BAND_HIGH_UPTO)) <= 0) {
             return "HIGH";
         }
         return "MAXIMUM";
@@ -92,9 +164,11 @@ public class RbioCompensationService {
         }
 
         return switch (compensationType.toUpperCase()) {
-            case "CONSEQUENTIAL_LOSS" -> MAX_CONSEQUENTIAL_LOSS;
-            case "TIME_HARASSMENT" -> MAX_TIME_HARASSMENT;
-            case "COMBINED" -> MAX_COMBINED;
+            case "CONSEQUENTIAL_LOSS" ->
+                    configuredAmount(CFG_MAX_CONSEQUENTIAL_LOSS, DEFAULT_MAX_CONSEQUENTIAL_LOSS);
+            case "TIME_HARASSMENT" ->
+                    configuredAmount(CFG_MAX_TIME_HARASSMENT, DEFAULT_MAX_TIME_HARASSMENT);
+            case "COMBINED" -> configuredAmount(CFG_MAX_COMBINED, DEFAULT_MAX_COMBINED);
             default -> throw new IllegalArgumentException(
                     "Unknown compensation type: " + compensationType +
                             ". Valid types are: CONSEQUENTIAL_LOSS, TIME_HARASSMENT, COMBINED");

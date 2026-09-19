@@ -2,6 +2,7 @@ package com.hrms.cms.service.triage;
 
 import com.hrms.cms.entity.Complaint;
 import com.hrms.cms.repository.ComplaintRepository;
+import com.hrms.cms.service.RbioCompensationService;
 import com.hrms.cms.service.SimilarCasesService;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -22,12 +23,32 @@ import java.util.*;
 @RequiredArgsConstructor
 public class CompensationPrecedentService {
 
-    private static final BigDecimal MAX_CONSEQUENTIAL_LOSS = new BigDecimal("3000000");
-    private static final BigDecimal MAX_TIME_HARASSMENT = new BigDecimal("300000");
-    private static final BigDecimal MAX_TOTAL_COMPENSATION = MAX_CONSEQUENTIAL_LOSS.add(MAX_TIME_HARASSMENT);
-
     private final ComplaintRepository complaintRepository;
     private final SimilarCasesService similarCasesService;
+
+    /**
+     * The caps are read from {@link RbioCompensationService} rather than redeclared here.
+     *
+     * <p>This class previously held its own copies of 3000000 / 300000 and, worse, derived a total by
+     * ADDING them — 3300000 — while {@code RbioCompensationService.MAX_COMBINED} was 3000000. Two services
+     * therefore disagreed about the combined ceiling, and this one is the copilot that SUGGESTS an amount
+     * to an Ombudsman, so it could advise a figure the blocking validator would then refuse. Displayed
+     * guidance must come from the same source as the enforcement.
+     */
+    private final RbioCompensationService rbioCompensationService;
+
+    private BigDecimal maxConsequentialLoss() {
+        return rbioCompensationService.getMaxAllowed("CONSEQUENTIAL_LOSS");
+    }
+
+    private BigDecimal maxTimeHarassment() {
+        return rbioCompensationService.getMaxAllowed("TIME_HARASSMENT");
+    }
+
+    /** The COMBINED cap as enforced, not the sum of the two component caps. */
+    private BigDecimal maxTotalCompensation() {
+        return rbioCompensationService.getMaxAllowed("COMBINED");
+    }
 
     @Cacheable(value = "copilot-precedent", key = "'comp-band-' + #complaint.id")
     public CompensationBand getCompensationBand(Complaint complaint) {
@@ -37,8 +58,8 @@ public class CompensationPrecedentService {
             return CompensationBand.builder()
                     .available(false)
                     .message("No comparable awarded cases found for precedent analysis")
-                    .maxConsequentialLoss(MAX_CONSEQUENTIAL_LOSS)
-                    .maxTimeHarassment(MAX_TIME_HARASSMENT)
+                    .maxConsequentialLoss(maxConsequentialLoss())
+                    .maxTimeHarassment(maxTimeHarassment())
                     .build();
         }
 
@@ -53,12 +74,12 @@ public class CompensationPrecedentService {
         return CompensationBand.builder()
                 .available(true)
                 .minAward(minAward)
-                .maxAward(maxAward.min(MAX_TOTAL_COMPENSATION))
+                .maxAward(maxAward.min(maxTotalCompensation()))
                 .averageAward(avgAward)
                 .medianAward(medianAward)
                 .sampleSize(historicalAwards.size())
-                .maxConsequentialLoss(MAX_CONSEQUENTIAL_LOSS)
-                .maxTimeHarassment(MAX_TIME_HARASSMENT)
+                .maxConsequentialLoss(maxConsequentialLoss())
+                .maxTimeHarassment(maxTimeHarassment())
                 .message(String.format("Based on %d comparable awarded cases (range: ₹%s – ₹%s)",
                         historicalAwards.size(), formatAmount(minAward), formatAmount(maxAward)))
                 .build();

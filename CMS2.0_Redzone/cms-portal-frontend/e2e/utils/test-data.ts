@@ -1178,3 +1178,105 @@ export function rbioReadComplaintColumns(
   });
   return row;
 }
+
+/**
+ * Reads the rows a complaint has queued in COMMUNICATION_OUTBOX (S4, UST504-509, 506).
+ *
+ * <p>SQL rather than an API call, for the same reason as {@link rbioReadComplaintColumns}: the defect class
+ * being guarded against is an action that reports success while persisting nothing. Before this batch the
+ * CEPC path generated closure-letter bytes, discarded them, stamped a "sent" timestamp and logged — so any
+ * assertion made against the action's own response would have passed against a system that communicated
+ * nothing at all. Only the table can distinguish the two.
+ *
+ * Returns one entry per row, oldest first.
+ */
+export function readCommunicationOutbox(
+  complaintNumber: string
+): Array<{ communicationType: string; channel: string; recipient: string; sent: string }> {
+  if (!/^[A-Za-z0-9-]+$/.test(complaintNumber)) {
+    throw new Error(`Refusing to use an unexpected complaint number in SQL: ${complaintNumber}`);
+  }
+
+  const sql =
+    `SELECT communication_type, channel, recipient, sent FROM COMMUNICATION_OUTBOX ` +
+    `WHERE related_reference = '${complaintNumber}' ORDER BY id ASC;`;
+  const out = execFileSync(
+    process.env['MYSQL_CLI'] || 'C:\\Program Files\\MySQL\\MySQL Server 8.4\\bin\\mysql.exe',
+    ['--default-character-set=utf8mb4', '-u', 'cms_user', '-pcms_pass', 'cms_db', '-N', '-B', '-e', sql],
+    { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }
+  );
+
+  return out
+    .trim()
+    .split('\n')
+    .filter((line) => line.trim().length > 0)
+    .map((line) => {
+      const [communicationType, channel, recipient, sent] = line.split('\t');
+      return { communicationType, channel, recipient, sent };
+    });
+}
+
+/**
+ * Reads the impleaded parties recorded against a complaint (S4, UST544-546).
+ *
+ * <p>Impleading previously only appended a name to a CSV column on COMPLAINTS, so there was nothing
+ * per-party to assert on and the partyType the UI collected was discarded outright. These rows are what
+ * closure validation checks, so the test reads them directly.
+ */
+export function readImpleadedParties(
+  complaintNumber: string
+): Array<{ partyName: string; partyType: string; dataStatus: string; closureClause: string }> {
+  if (!/^[A-Za-z0-9-]+$/.test(complaintNumber)) {
+    throw new Error(`Refusing to use an unexpected complaint number in SQL: ${complaintNumber}`);
+  }
+
+  const sql =
+    `SELECT party_name, COALESCE(party_type,''), data_status, COALESCE(closure_clause,'') ` +
+    `FROM IMPLEADED_PARTY WHERE complaint_number = '${complaintNumber}' ORDER BY id ASC;`;
+  const out = execFileSync(
+    process.env['MYSQL_CLI'] || 'C:\\Program Files\\MySQL\\MySQL Server 8.4\\bin\\mysql.exe',
+    ['--default-character-set=utf8mb4', '-u', 'cms_user', '-pcms_pass', 'cms_db', '-N', '-B', '-e', sql],
+    { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }
+  );
+
+  return out
+    .trim()
+    .split('\n')
+    .filter((line) => line.trim().length > 0)
+    .map((line) => {
+      const [partyName, partyType, dataStatus, closureClause] = line.split('\t');
+      return { partyName, partyType, dataStatus, closureClause };
+    });
+}
+
+/**
+ * Flips a SYSTEM_CONFIG row and waits out SystemConfigService's 30-second TTL (S4).
+ *
+ * <p>The wait is the point. SystemConfigService caches values in a short-TTL local map, so a test that
+ * changes a row and asserts immediately reads the OLD value and passes or fails for the wrong reason. The
+ * statutory guards in this area are seeded OFF, so every test of an armed guard has to arm it first.
+ *
+ * <p>Always restore the previous value in a finally/afterEach — cms_db is shared and persistent, and a
+ * guard left armed would refuse closures in every other session's suite.
+ */
+export async function setSystemConfig(key: string, value: string): Promise<void> {
+  if (!/^[A-Za-z0-9._]+$/.test(key)) {
+    throw new Error(`Refusing to use an unexpected config key in SQL: ${key}`);
+  }
+  if (!/^[A-Za-z0-9._-]*$/.test(value)) {
+    throw new Error(`Refusing to use an unexpected config value in SQL: ${value}`);
+  }
+
+  const sql =
+    `INSERT INTO SYSTEM_CONFIG (config_key, config_value, updated_by, updated_at) ` +
+    `VALUES ('${key}', '${value}', 'e2e', NOW()) ` +
+    `ON DUPLICATE KEY UPDATE config_value = '${value}', updated_by = 'e2e', updated_at = NOW();`;
+  execFileSync(
+    process.env['MYSQL_CLI'] || 'C:\\Program Files\\MySQL\\MySQL Server 8.4\\bin\\mysql.exe',
+    ['--default-character-set=utf8mb4', '-u', 'cms_user', '-pcms_pass', 'cms_db', '-N', '-B', '-e', sql],
+    { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }
+  );
+
+  // 35s, not 30: the TTL is measured from the last read, so the boundary itself is not safe to race.
+  await new Promise((resolve) => setTimeout(resolve, 35_000));
+}

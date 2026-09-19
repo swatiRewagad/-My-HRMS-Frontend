@@ -1,8 +1,11 @@
 package com.hrms.cms.config;
 
+import com.hrms.cms.exception.ClosureCommunicationIncompleteException;
+import com.hrms.cms.exception.ImpleadedPartyIncompleteException;
 import com.hrms.cms.exception.UploadLinkActiveException;
 import com.hrms.cms.service.AppealClassificationService;
 import com.hrms.cms.service.ClauseConfigurationAlertService;
+import com.hrms.cms.service.ClosureClauseAccessService;
 import jakarta.persistence.OptimisticLockException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -129,6 +132,75 @@ public class GlobalExceptionHandler {
         response.put("messageKey", ex.getMessageKey());
         response.put("complaintNumber", ex.getComplaintNumber());
         response.put("linkExpiresAt", ex.getLinkExpiresAt());
+        response.put("timestamp", LocalDateTime.now().toString());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+    }
+
+    /**
+     * A closure was refused because its statutory communication requirements are unmet
+     * (UST507-509, 520, 549, 764).
+     *
+     * <p>409 CONFLICT for the same reason as the upload-link refusal above: the request is well-formed and
+     * the caller authorised, but it conflicts with the complaint's current state and becomes valid once the
+     * Date of Sending is recorded or the signed letter uploaded. {@code missingRequirement} names the single
+     * unmet condition so the UI can focus the right field instead of re-deriving it.
+     */
+    @ExceptionHandler(ClosureCommunicationIncompleteException.class)
+    public ResponseEntity<Map<String, Object>> handleClosureCommunicationIncomplete(
+            ClosureCommunicationIncompleteException ex) {
+        log.warn("Closure refused for complaint {} — missing {}",
+                ex.getComplaintNumber(), ex.getMissingRequirement());
+
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("success", false);
+        response.put("message", ex.getMessage());
+        response.put("messageKey", ex.getMessageKey());
+        response.put("complaintNumber", ex.getComplaintNumber());
+        response.put("missingRequirement", ex.getMissingRequirement());
+        response.put("timestamp", LocalDateTime.now().toString());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+    }
+
+    /**
+     * A closure cited a clause the acting role may not use, or one absent from CLOSURE_CLAUSE_MASTER
+     * (UST581-584).
+     *
+     * <p>409 CONFLICT: the request is well-formed and the caller authorised, but the clause is not theirs to
+     * cite. Failing closed on an UNKNOWN clause is deliberate — accepting it would persist a clause that
+     * cannot be classified, which silently denies the citizen an appeal.
+     */
+    @ExceptionHandler(ClosureClauseAccessService.ClauseNotPermittedException.class)
+    public ResponseEntity<Map<String, Object>> handleClauseNotPermitted(
+            ClosureClauseAccessService.ClauseNotPermittedException ex) {
+        log.warn("Closure clause '{}' refused for role '{}'", ex.getClauseCode(), ex.getRole());
+
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("success", false);
+        response.put("message", ex.getMessage());
+        response.put("messageKey", ex.getMessageKey());
+        response.put("clauseCode", ex.getClauseCode());
+        response.put("timestamp", LocalDateTime.now().toString());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+    }
+
+    /**
+     * A closure was refused because an impleaded party's required data is outstanding (UST546).
+     *
+     * <p>409 CONFLICT, and the outstanding party names are returned so an officer can act on the refusal
+     * rather than hunting for which party is incomplete.
+     */
+    @ExceptionHandler(ImpleadedPartyIncompleteException.class)
+    public ResponseEntity<Map<String, Object>> handleImpleadedPartyIncomplete(
+            ImpleadedPartyIncompleteException ex) {
+        log.warn("Closure refused for complaint {} — incomplete impleaded parties: {}",
+                ex.getComplaintNumber(), ex.getIncompleteParties());
+
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("success", false);
+        response.put("message", ex.getMessage());
+        response.put("messageKey", ex.getMessageKey());
+        response.put("complaintNumber", ex.getComplaintNumber());
+        response.put("incompleteParties", ex.getIncompleteParties());
         response.put("timestamp", LocalDateTime.now().toString());
         return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
     }

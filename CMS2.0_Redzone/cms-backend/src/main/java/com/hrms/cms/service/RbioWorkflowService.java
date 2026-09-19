@@ -1,6 +1,8 @@
 package com.hrms.cms.service;
 
 import com.hrms.cms.entity.Complaint;
+import com.hrms.cms.entity.CommunicationOutbox;
+import com.hrms.cms.entity.RbioMeeting;
 import com.hrms.cms.entity.RbioWorkflowTransition;
 import com.hrms.cms.entity.TimelineEventSource;
 import com.hrms.cms.repository.ComplaintRepository;
@@ -38,6 +40,15 @@ public class RbioWorkflowService {
     private final NotificationService notificationService;
 
     private final Map<String, Integer> roundRobinCounters = new ConcurrentHashMap<>();
+
+    /**
+     * Server-side limit on the officer's custom closure text (UST576).
+     *
+     * <p>Matches {@code Complaint.customClosureText}'s column length. Previously enforced only by a
+     * {@code maxlength} attribute in two templates, so an API caller could exceed it and the overflow
+     * surfaced as a database error instead of a validation message.
+     */
+    static final int CUSTOM_CLOSURE_TEXT_MAX_LENGTH = 2000;
 
     /**
      * Optional so that {@code RbioWorkflowServiceTest} can construct this service with its seven
@@ -99,6 +110,83 @@ public class RbioWorkflowService {
     private ReResponseDeadlineService reResponseDeadlineService;
 
     /**
+     * Impleading into a real child table, so each added party carries its own closure data (UST544-546).
+     *
+     * <p>Optional for the same test-construction reason as the collaborators above. When absent, impleading
+     * still maintains the legacy CSV column on the complaint, so no pre-existing behaviour or test depends
+     * on this bean — but the per-party row that closure validates is only written when it is present, which
+     * is why the closure gate treats an absent service as "nothing recorded to verify" rather than passing a
+     * complaint it was unable to check.
+     */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private RbioImpleadService impleadService;
+
+    /**
+     * Queues closure email and SMS instead of dispatching inline (UST504-509, 549, 757, 763-764, 506).
+     *
+     * <p>Optional for the same reason. Absent means nothing is queued, which is the pre-existing behaviour;
+     * present means the communication obligation is recorded durably and survives a gateway outage.
+     */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private CommunicationOutboxService communicationOutboxService;
+
+    /**
+     * Refuses a closure whose communication requirements are unmet (UST507-509, 520, 549, 764).
+     *
+     * <p>Optional for the same test-construction reason as the collaborators above. Absent means no gate is
+     * applied, which is the pre-existing behaviour — but note that its absence in PRODUCTION would restore
+     * the bypass this guard exists to close. It is a real bean; nothing conditions it away.
+     */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private ClosureCommunicationGuardService closureCommunicationGuardService;
+
+    /**
+     * Conciliation meeting history and its mandatory-field rules (UST496-503, 643-651).
+     *
+     * <p>Optional for the same test-construction reason as the collaborators above. Note what absence means
+     * here: the meeting event is NOT recorded, and the mandatory-field validation does not run. That is the
+     * pre-existing behaviour (which persisted nothing at all), but it is not silently tolerated — see
+     * {@link #recordMeetingEvent}, which refuses the action rather than letting it appear to succeed.
+     */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private RbioMeetingService rbioMeetingService;
+
+    /**
+     * The inter-office transfer queue, so an RBIO forward enters the CRPC Head's approval queue rather than
+     * moving the complaint itself (UST557, 560, 564).
+     *
+     * <p>Optional for the same reason; absence refuses the forward rather than performing a partial one.
+     */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private InterOfficeTransferService interOfficeTransferService;
+
+    /**
+     * The RBI-department and regulatory-body masters, so a forward target is validated against master data
+     * rather than accepted as free text (UST761, 766).
+     */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private ForwardTargetService forwardTargetService;
+
+    /**
+     * Enforces the per-role closure-clause tier (UST581-584) and validates the clause against
+     * CLOSURE_CLAUSE_MASTER.
+     *
+     * <p>Optional for the same test-construction reason as the collaborators above. Absent means the clause is
+     * accepted unvalidated, which is the pre-existing behaviour — it is a real bean, and its absence in
+     * PRODUCTION would restore both the tier bypass and the unconfigured-clause hole.
+     */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private ClosureClauseAccessService closureClauseAccessService;
+
+    /**
+     * Whether this transition closes the complaint, read from the row's own metadata rather than a hardcoded
+     * action list, so a closing action added as a table row is covered automatically.
+     */
+    private boolean isClosureTransition(RbioWorkflowTransition transition) {
+        return transition != null && (transition.getClosureCause() != null || transition.terminal());
+    }
+
+    /**
      * Parses an officer-supplied deadline, treating an unparseable value as absent.
      *
      * <p>Absent means "use the configured window", which is the safe direction: refusing the whole notice
@@ -124,7 +212,12 @@ public class RbioWorkflowService {
         // dispatch (`isRbioAction` gate) would never route them here at all, and the fifteen action codes
         // the frontend already sends would keep failing as "unknown" no matter what the table contains.
         return RbioTransitionRegistry.allActions().contains(upper)
-                || RbioLadderActions.allActions().contains(upper);
+                || RbioLadderActions.allActions().contains(upper)
+                // S5's meeting and forwarding actions, for the same reason. RESCHEDULE_MEETING and
+                // COMPLETE_MEETING are new, while FORWARD_TO_OTHER_OFFICE and FORWARD_TO_OTHER_RBI_DEPT are
+                // already POSTed by task-action.component.ts on the RBIO route — where, existing only in
+                // CepcWorkflowService, they threw "Unknown RBIO action".
+                || RbioMeetingTransferActions.allActions().contains(upper);
     }
 
     /**
@@ -278,6 +371,10 @@ public class RbioWorkflowService {
             case "ADJUDICATION_AWARD":
             case "ADJUDICATION_REJECT":
             case "CLOSE_COMPLAINT":
+            // UST536-538: ADVISORY_COMPLIED closes the complaint and is terminal, but was absent from this
+            // arm — so it fell to default and notified nobody. A compliance auto-close follows the same
+            // closure-communication rules as any other closure, which is exactly what the story requires.
+            case "ADVISORY_COMPLIED":
                 // UST663: COMPLAINT_CLOSED — notify owner
                 if (c.getAssignedOfficer() != null && !c.getAssignedOfficer().isBlank() && !c.getAssignedOfficer().equals(actor)) {
                     notificationService.send(c.getAssignedOfficer(), "COMPLAINT_CLOSED",
@@ -331,7 +428,8 @@ public class RbioWorkflowService {
         // refused outright.
         String upper = action.toUpperCase();
         return RbioTransitionRegistry.actionsFor(userRole).contains(upper)
-                || RbioLadderActions.actionsFor(userRole).contains(upper);
+                || RbioLadderActions.actionsFor(userRole).contains(upper)
+                || RbioMeetingTransferActions.actionsFor(userRole).contains(upper);
     }
 
     /**
@@ -403,9 +501,17 @@ public class RbioWorkflowService {
         // return `true` for every ladder action (the registry's default for an action it does not know), so
         // a send-back would be advertised on a complaint that has never been up the ladder — exactly the
         // advertise/enforce disagreement the transition table exists to prevent.
-        return RbioLadderActions.allActions().contains(action.toUpperCase())
-                ? RbioLadderActions.validForState(action, status)
-                : RbioTransitionRegistry.validForState(action, status);
+        if (RbioLadderActions.allActions().contains(action.toUpperCase())) {
+            return RbioLadderActions.validForState(action, status);
+        }
+        // S5's actions are judged by their own from-status lists for the same reason. SCHEDULE_MEETING is
+        // declared by BOTH Wave 0 and S5; S5's list is the wider one, so it is consulted first and the
+        // registry answers only for actions S5 does not declare.
+        if (RbioMeetingTransferActions.allActions().contains(action.toUpperCase())) {
+            return RbioMeetingTransferActions.validForState(action, status)
+                    || RbioTransitionRegistry.validForState(action, status);
+        }
+        return RbioTransitionRegistry.validForState(action, status);
     }
 
     /** Actions the role may perform, from the table when it knows the role, else from the registry. */
@@ -424,6 +530,7 @@ public class RbioWorkflowService {
         }
         Set<String> actions = new LinkedHashSet<>(RbioTransitionRegistry.actionsFor(userRole));
         actions.addAll(RbioLadderActions.actionsFor(userRole));
+        actions.addAll(RbioMeetingTransferActions.actionsFor(userRole));
         return actions;
     }
 
@@ -462,11 +569,19 @@ public class RbioWorkflowService {
                 : RbioLadderActions.resolve(action, userRole);
         if (fromLadder != null) return fromLadder;
 
+        // Then S5's meeting and forwarding declarations, for the same reason.
+        RbioWorkflowTransition fromS5 = roleless
+                ? RbioMeetingTransferActions.effectOf(action)
+                : RbioMeetingTransferActions.resolve(action, userRole);
+        if (fromS5 != null) return fromS5;
+
         // A role that is authorised (checked before this point) but whose action has no declared effect
         // means the two declarations have drifted. Resolve the effect by action alone rather than
         // refusing, so an authorised action never fails for a reason the caller cannot act on.
         RbioWorkflowTransition byActionAlone = RbioTransitionRegistry.effectOf(action);
-        return byActionAlone != null ? byActionAlone : RbioLadderActions.effectOf(action);
+        if (byActionAlone != null) return byActionAlone;
+        RbioWorkflowTransition ladderByAction = RbioLadderActions.effectOf(action);
+        return ladderByAction != null ? ladderByAction : RbioMeetingTransferActions.effectOf(action);
     }
 
     /**
@@ -492,6 +607,31 @@ public class RbioWorkflowService {
         if (uploadLinkGuardService != null) {
             uploadLinkGuardService.assertActionAllowed(
                     complaint.getComplaintNumber(), transition, params.get("targetRole"));
+        }
+
+        // UST507-509/520/549/764: refuse a closure whose communication requirements are unmet. Placed
+        // alongside the upload-link guard and before the first setter for the same reason — a refusal must
+        // leave the complaint untouched. dateOfSending was previously posted by the UI and dropped here.
+        if (closureCommunicationGuardService != null) {
+            closureCommunicationGuardService.assertClosureCommunicationComplete(
+                    complaint, transition, firstNonBlankParam(params, "dateOfSending", "sendDate"));
+        }
+
+        // UST546: a closure must cover every impleaded party. The frontend's implead-validation call had no
+        // server behind it and swallowed its own 404 as {valid:true}, so closure could finalise over parties
+        // whose required data was never recorded.
+        if (impleadService != null && isClosureTransition(transition)) {
+            List<String> incomplete =
+                    impleadService.findIncompleteParties(complaint.getComplaintNumber());
+            if (!incomplete.isEmpty()) {
+                throw new com.hrms.cms.exception.ImpleadedPartyIncompleteException(
+                        "rbio.implead.error_incomplete_parties",
+                        "This complaint cannot be closed until the closure clause and compensation are "
+                                + "recorded for every impleaded party. Outstanding: "
+                                + String.join(", ", incomplete) + ".",
+                        complaint.getComplaintNumber(),
+                        incomplete);
+            }
         }
 
         String assignedRole = resolveAssignedRole(complaint, transition);
@@ -528,6 +668,119 @@ public class RbioWorkflowService {
         if (transition.getSlaStage() != null) {
             rbioSlaService.applyStageSla(complaint, transition.getSlaStage());
         }
+
+        applyClosureCommunication(complaint, transition, params);
+    }
+
+    /**
+     * Persists the closure clause, the custom closure text and the Date of Sending, and queues the closure
+     * communications (UST504-509, 520, 548, 576, 757, 762-764).
+     *
+     * <p>THE CLAUSE WAS NEVER PERSISTED BY THE RBIO PATH. {@code grep setClosureClause} found four call sites
+     * and none of them was RBIO: the clause reached only a timeline row, so {@code COMPLAINTS.closure_clause}
+     * stayed NULL after every RBIO closure and an appeal against it then failed closed with
+     * {@code appeal.error_clause_not_configured}. Writing it here is what makes a closed RBIO complaint
+     * appealable at all.
+     *
+     * <p>THE 2000-CHARACTER LIMIT IS ENFORCED HERE. It was a {@code maxlength} attribute and a counter getter
+     * in two templates and nothing else, so an API caller could exceed it and the column's own
+     * {@code length = 2000} would surface as a database error rather than a validation message. Modelled on
+     * {@code ConsentService.NOTICE_MAX_LENGTH}, which is the established pattern for the same problem.
+     *
+     * <p>THE SEND DATE IS WRITE-ONCE. UST757/763 require it to be non-editable once recorded, which was
+     * previously satisfied only by the accident of there being no setter anywhere. It is written only while
+     * null, so a later action cannot revise when the citizen was told.
+     */
+    private void applyClosureCommunication(Complaint complaint, RbioWorkflowTransition transition,
+                                           Map<String, String> params) {
+        String clause = firstNonBlankParam(params, "closureClause");
+        if (clause != null) {
+            // UST584: refuse a clause this role may not cite, and any clause absent from the master. Checked
+            // before the write so a refused clause leaves the complaint untouched.
+            if (closureClauseAccessService != null) {
+                closureClauseAccessService.assertRoleMayUseClause(
+                        complaint, clause, params.getOrDefault("userRole", ""));
+            }
+            complaint.setClosureClause(clause);
+        }
+
+        String customText = firstNonBlankParam(params, "customClosureText");
+        if (customText != null) {
+            if (customText.length() > CUSTOM_CLOSURE_TEXT_MAX_LENGTH) {
+                throw new IllegalArgumentException(
+                        "The custom closure text may not exceed " + CUSTOM_CLOSURE_TEXT_MAX_LENGTH
+                                + " characters (received " + customText.length() + ").");
+            }
+            complaint.setCustomClosureText(customText);
+        }
+
+        if (!isClosureTransition(transition)) {
+            return;
+        }
+
+        String sendDate = firstNonBlankParam(params, "dateOfSending", "sendDate");
+        if (sendDate != null && complaint.getDateOfSending() == null) {
+            try {
+                complaint.setDateOfSending(java.time.LocalDate.parse(sendDate.trim()));
+            } catch (java.time.format.DateTimeParseException e) {
+                // Refused rather than dropped. This is the field that evidences when the complainant was
+                // informed, and silently discarding an unparseable value is exactly the defect being fixed.
+                throw new IllegalArgumentException(
+                        "dateOfSending must be an ISO date (yyyy-MM-dd); received '" + sendDate + "'");
+            }
+        }
+
+        queueClosureCommunications(complaint);
+    }
+
+    /**
+     * Queues the closure letter email and the closure SMS (UST504-506, 549, 757, 763-764, 577-578).
+     *
+     * <p>Queued rather than sent: the row commits with the closure, and a sender drains it afterwards, so a
+     * gateway outage delays the message instead of losing the obligation. Previously the CEPC path generated
+     * letter bytes, discarded them and stamped a "sent" timestamp, while RBIO did nothing at all.
+     *
+     * <p>Idempotent per complaint and channel, so a retried closure does not queue a second letter to the
+     * same citizen.
+     */
+    private void queueClosureCommunications(Complaint complaint) {
+        if (communicationOutboxService == null) {
+            return;
+        }
+        String complaintNumber = complaint.getComplaintNumber();
+
+        String email = complaint.getComplainantEmail();
+        if (email != null && !email.isBlank()
+                && !communicationOutboxService.alreadyQueued(complaintNumber,
+                        CommunicationOutbox.TYPE_CLOSURE_LETTER, CommunicationOutbox.CHANNEL_EMAIL)) {
+            communicationOutboxService.queue(CommunicationOutbox.builder()
+                    .communicationType(CommunicationOutbox.TYPE_CLOSURE_LETTER)
+                    .channel(CommunicationOutbox.CHANNEL_EMAIL)
+                    .recipient(email)
+                    .subject("Closure of your complaint " + complaintNumber)
+                    // The letter body is rendered by ClosureLetterService from an editable template; the
+                    // reference is carried here so the sender can attach the generated letter.
+                    .body("Your complaint " + complaintNumber
+                            + " has been closed. The closure letter is attached.")
+                    .relatedReference(complaintNumber)
+                    .build());
+        }
+
+        String phone = complaint.getComplainantPhone();
+        if (phone != null && !phone.isBlank()
+                && !communicationOutboxService.alreadyQueued(complaintNumber,
+                        CommunicationOutbox.TYPE_CLOSURE_SMS, CommunicationOutbox.CHANNEL_SMS)) {
+            communicationOutboxService.queue(CommunicationOutbox.builder()
+                    .communicationType(CommunicationOutbox.TYPE_CLOSURE_SMS)
+                    .channel(CommunicationOutbox.CHANNEL_SMS)
+                    .recipient(phone)
+                    // Stored as a resolved string here; the text itself is registered as a translation key
+                    // (rbio.closure.sms_closed) so it is translatable across the ten supported locales.
+                    .smsText("Your complaint " + complaintNumber
+                            + " has been closed by the RBI Ombudsman. Please check your email for the closure letter.")
+                    .relatedReference(complaintNumber)
+                    .build());
+        }
     }
 
     /**
@@ -551,9 +804,48 @@ public class RbioWorkflowService {
                     throw new IllegalArgumentException(
                             "An award amount is required to issue an award (send awardAmount)");
                 }
+
+                // S5's meeting actions refuse with a real 4xx and a translation key, because
+                // WorkflowController.performAction catches IllegalArgumentException and answers HTTP 200 with
+                // success:false — which the Angular clients cannot see, since their error branch never fires
+                // on a 200. A mandatory-field rule that surfaces as a success is worse than no rule: the
+                // officer believes a meeting was convened when nothing was recorded.
+                //
+                // Scoped to the meeting actions rather than changed for every action, because the existing
+                // 200-with-success:false shape is depended upon by CEPC and by other sessions' tests.
+                if (RbioMeetingTransferActions.allActions().contains(transition.getActionCode())) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                            meetingParamMessage(canonical, transition.getActionCode()));
+                }
+
                 throw new IllegalArgumentException(canonical + " is required for " + transition.getActionCode() + " action");
             }
         }
+    }
+
+    /**
+     * The translatable refusal for a missing meeting or forwarding param.
+     *
+     * <p>The key matches what {@code RbioMeetingService} emits for the same field, so the client sees one
+     * message whichever guard fires first — the table backstop or the service's own validation.
+     */
+    private static String meetingParamMessage(String canonical, String action) {
+        return switch (canonical) {
+            case "meetingDate" -> "rbio.meeting.error.date_required: a meeting date is required (send meetingDate)";
+            case "meetingTime" -> "rbio.meeting.error.time_required: a meeting time is required (send meetingTime)";
+            case "participants" -> "rbio.meeting.error.participants_required: participants must be one of "
+                    + "ENTITY, COMPLAINANT or BOTH";
+            case "rescheduleReason" -> "rbio.meeting.error.reason_required: a reason is required to "
+                    + "reschedule a meeting";
+            case "entityAccepted" -> "rbio.meeting.error.acceptance_required: record whether the entity "
+                    + "accepted (Yes/No)";
+            case "minutesOfMeeting" -> "rbio.meeting.error.minutes_required: the minutes of the meeting are "
+                    + "required";
+            case "targetOffice" -> "rbio.forward.error.office_required: a destination office is required";
+            case "transferReason" -> "rbio.forward.error.reason_required: a reason for transfer is required";
+            case "targetDepartment" -> "rbio.forward.error.department_required: a target department is required";
+            default -> canonical + " is required for " + action + " action";
+        };
     }
 
     /**
@@ -707,16 +999,37 @@ public class RbioWorkflowService {
                     }
                 }
 
-                case RbioTransitionRegistry.FX_MEETING_DATE -> {
-                    String meetingDate = params.getOrDefault("meetingDate", "");
-                    if (!meetingDate.isEmpty()) {
-                        try {
-                            complaint.setConciliationDate(LocalDateTime.parse(meetingDate));
-                        } catch (Exception e) {
-                            log.debug("Could not parse meetingDate: {}", meetingDate);
-                        }
-                    }
-                }
+                // Wave 0's meeting effect, now delegating to the meeting history (UST496-503).
+                //
+                // WHAT THIS REPLACES. The arm read `meetingDate` while its only client sent `hearingDate`,
+                // so nothing was ever persisted; and even a correctly-named value failed, because
+                // LocalDateTime.parse rejects the date-only yyyy-MM-dd an <input type=date> sends. Both
+                // failures were swallowed at log.debug, so every schedule reported success and recorded
+                // nothing.
+                //
+                // Delegating from WAVE 0's effect name matters: SCHEDULE_MEETING is declared by both Wave 0
+                // and S5, and Wave 0's row resolves first for the roles it already grants. Validating only
+                // inside S5's own arm would leave the original path unguarded — the mandatory fields would
+                // apply to some callers and not others.
+                case RbioTransitionRegistry.FX_MEETING_DATE,
+                     RbioMeetingTransferActions.FX_MEETING_SCHEDULED ->
+                        recordMeetingEvent(complaint, RbioMeeting.EVENT_SCHEDULED, params);
+
+                case RbioMeetingTransferActions.FX_MEETING_RESCHEDULED ->
+                        recordMeetingEvent(complaint, RbioMeeting.EVENT_RESCHEDULED, params);
+
+                case RbioMeetingTransferActions.FX_MEETING_COMPLETED ->
+                        recordMeetingEvent(complaint, RbioMeeting.EVENT_COMPLETED, params);
+
+                // UST557/560/564: a forward to another office REQUESTS a transfer and waits for the CRPC
+                // Head. It does not move the complaint to the destination, and it does not write an office
+                // code into assignedOfficer — which is what the CEPC arms do.
+                case RbioMeetingTransferActions.FX_TRANSFER_REQUEST ->
+                        requestOfficeTransfer(complaint, params);
+
+                // UST761: a forward to an RBI department records the department and routes inside it.
+                case RbioMeetingTransferActions.FX_FORWARD_DEPARTMENT ->
+                        forwardToDepartment(complaint, params);
 
                 case RbioTransitionRegistry.FX_ADVISORY_TEXT -> {
                     complaint.setAdvisoryText(params.getOrDefault("advisoryText", params.getOrDefault("remarks", "")));
@@ -741,6 +1054,11 @@ public class RbioWorkflowService {
                     complaint.setCompensationType(compensationType);
                     complaint.setAdjudicationDate(now);
                     complaint.setAdjudicationOutcome("AWARD_ISSUED");
+
+                    // UST543: a dedicated Award Passed date. adjudicationDate above is shared with award
+                    // REJECTION, so it cannot answer "when was an award passed" without also matching
+                    // rejections — which is what the implemented/lapse reporting fields hang off.
+                    complaint.setAwardPassedDate(now.toLocalDate());
                 }
 
                 case RbioTransitionRegistry.FX_ADJUDICATION_REJECT -> {
@@ -800,9 +1118,24 @@ public class RbioWorkflowService {
                     if (partyName == null) {
                         throw new IllegalArgumentException("partyName is required to implead a party");
                     }
+
+                    // The CSV column is still maintained. Six other sessions read this schema and several
+                    // tests assert on it, so it stays authoritative for existing readers while
+                    // IMPLEADED_PARTY becomes authoritative for per-party facts. Dropping it is a separate,
+                    // coordinated change.
                     String existing = complaint.getImpleadedParties();
                     complaint.setImpleadedParties(
                             (existing == null || existing.isBlank()) ? partyName : existing + "," + partyName);
+
+                    // partyType was collected by the impleading screen and persisted by nothing before this.
+                    String partyType = firstNonBlankParam(params, "partyType", "impleadPartyType");
+
+                    if (impleadService != null) {
+                        impleadService.implead(complaint, partyName, partyType,
+                                params.getOrDefault("remarks", ""),
+                                params.getOrDefault("actor", ""),
+                                params.getOrDefault("userRole", ""));
+                    }
                 }
 
                 // REASSIGN takes its target role from a param, so it overrides the row's assignToRole.
@@ -925,12 +1258,209 @@ public class RbioWorkflowService {
                         throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                                 "regulatoryBodyName is required to forward to a regulatory body");
                     }
+
+                    // UST766: restricted to the VALIDATED master list WITH VERIFIED EMAIL IDS. Previously
+                    // any free-text string was accepted, because the master this was supposed to be checked
+                    // against did not exist — the frontend called an endpoint no controller implements and
+                    // turned the 404 into an empty dropdown while telling the officer that only validated
+                    // bodies could be selected.
+                    //
+                    // Resolved rather than merely checked, so the recorded name is the master's canonical
+                    // one and not whatever spelling the caller sent.
+                    if (forwardTargetService != null) {
+                        body = forwardTargetService.resolveRegulatoryBodyName(body);
+                    }
                     complaint.setRegulatoryBodyName(body);
+
+                    // UST766: an awareness email goes to the complainant automatically. The UI has told
+                    // officers "Awareness email sent to complainant" since it was written, and no such email
+                    // existed anywhere — the citizen was never informed that their complaint had left RBI's
+                    // jurisdiction, while the file recorded that they had been.
+                    queueRegulatoryBodyAwarenessEmail(complaint, body);
                 }
 
                 default -> log.warn("Unknown RBIO side effect '{}' on action {}", effect, action);
             }
         }
+    }
+
+    /**
+     * Records a meeting event and mirrors its date onto the complaint (UST496-503, 643-651).
+     *
+     * <p>{@code conciliation_date} is still maintained because existing readers depend on it — the
+     * conciliation notification reads it, and six other sessions read this schema. RBIO_MEETING is
+     * authoritative for meeting FACTS; the scalar remains a convenience mirror of the operative date.
+     *
+     * <p><b>Refuses when the meeting service is absent rather than proceeding.</b> Without it the mandatory
+     * date/time/participants rules would not run and no meeting row would be written, so the action would
+     * move the workflow stage and record nothing — which is precisely the silent-success defect this batch
+     * exists to remove. A 503 tells the officer to retry; a success message would not.
+     */
+    private void recordMeetingEvent(Complaint complaint, String eventType, Map<String, String> params) {
+        if (rbioMeetingService == null) {
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
+                    "rbio.meeting.error.unavailable: the meeting service is unavailable, so the meeting was "
+                            + "not recorded. Please retry.");
+        }
+
+        RbioMeeting meeting = rbioMeetingService.record(complaint, eventType, params,
+                params.getOrDefault("actor", ""), params.getOrDefault("userRole", ""));
+
+        if (meeting.getMeetingDate() != null) {
+            // Time is folded in only for the mirror column, which is a LocalDateTime. The authoritative
+            // values stay in their own columns on the meeting row.
+            java.time.LocalTime time = java.time.LocalTime.MIDNIGHT;
+            if (meeting.getMeetingTime() != null && !meeting.getMeetingTime().isBlank()) {
+                try {
+                    time = java.time.LocalTime.parse(meeting.getMeetingTime());
+                } catch (java.time.format.DateTimeParseException e) {
+                    // Unreachable: the service validates the shape before persisting. Left deliberate rather
+                    // than propagating, because the mirror column must never be the reason a validated
+                    // meeting fails to record.
+                    log.debug("Meeting time '{}' not parseable for the mirror column", meeting.getMeetingTime());
+                }
+            }
+            complaint.setConciliationDate(LocalDateTime.of(meeting.getMeetingDate(), time));
+        }
+    }
+
+    /**
+     * Requests an inter-office transfer instead of performing one (UST557, 560, 564, 770).
+     *
+     * <p><b>Why this does not move the complaint.</b> UST564 requires the transfer to enter the CRPC Head's
+     * approval queue BEFORE reaching the destination Dealing Officer. So the action records a PENDING
+     * transfer and sets the complaint to "Sent to Other Office"; the destination officer is resolved only on
+     * approval. The CEPC arm this replaces moved the complaint immediately and never created a transfer row
+     * at all, so the Head's queue was never populated and no approval was ever possible.
+     *
+     * <p>The destination office is validated against the office master, because a transfer to an office that
+     * does not exist would leave the complaint in a status nobody owns.
+     */
+    private void requestOfficeTransfer(Complaint complaint, Map<String, String> params) {
+        if (interOfficeTransferService == null) {
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
+                    "rbio.forward.error.unavailable: the transfer service is unavailable, so the transfer was "
+                            + "not requested. Please retry.");
+        }
+
+        String targetOffice = firstNonBlankParam(params, "targetOffice", "toOffice", "transferOffice");
+        if (targetOffice == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "rbio.forward.error.office_required: a destination office is required");
+        }
+
+        String reason = firstNonBlankParam(params, "transferReason", "reason", "remarks");
+        if (reason == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "rbio.forward.error.reason_required: a reason for transfer is required");
+        }
+
+        if (forwardTargetService != null) {
+            forwardTargetService.assertOfficeExists(targetOffice);
+        }
+
+        interOfficeTransferService.requestTransfer(
+                complaint.getComplaintNumber(),
+                // The office the complaint currently sits in, which is the jurisdiction key and not the
+                // department. Falls back to the department only when the office code was never set.
+                complaint.getRbioOfficeCode() != null ? complaint.getRbioOfficeCode() : complaint.getDepartment(),
+                targetOffice,
+                transferTypeFor(complaint, targetOffice),
+                reason,
+                params.getOrDefault("actor", ""),
+                firstNonBlankParam(params, "language", "preferredLanguage"));
+    }
+
+    /**
+     * The transfer type, derived from the layout on each side of the move.
+     *
+     * <p>Recorded as data because {@code InterOfficeTransfer.transferType} is a free-text column whose
+     * documented values (RBIO_RBIO, RBIO_CEPC, ...) were never validated or written consistently.
+     */
+    private String transferTypeFor(Complaint complaint, String targetOffice) {
+        String from = complaint.getDepartment() == null ? "RBIO" : complaint.getDepartment().toUpperCase();
+        String to = forwardTargetService != null
+                ? forwardTargetService.layoutForOffice(targetOffice)
+                : "RBIO";
+        return from + "_" + to;
+    }
+
+    /**
+     * Forwards to an RBI department, validating it against the department master (UST761, 534, 527-528).
+     *
+     * <p>The department is recorded in its own column. The CEPC arm this replaces wrote the department STRING
+     * into {@code assignedOfficer} — a non-user value in a user column — and read it from {@code targetDept}
+     * while the client sent {@code targetDepartment}, so the destination was silently dropped on every call.
+     */
+    private void forwardToDepartment(Complaint complaint, Map<String, String> params) {
+        String department = firstNonBlankParam(params, "targetDepartment", "targetDept");
+        if (department == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "rbio.forward.error.department_required: a target department is required");
+        }
+
+        // Validated against RBI_DEPARTMENT_MASTER rather than accepted as free text. The only department
+        // list in the product was a hardcoded nine-element array in a CEPC component, including a literal
+        // 'Other'.
+        String resolved = forwardTargetService != null
+                ? forwardTargetService.resolveDepartmentName(department)
+                : department;
+
+        complaint.setForwardedToDepartment(resolved);
+
+        // UST761: assignment inside the target department follows the CRPC Head round-robin. Resolved
+        // through the shared durable assigner, never an in-memory counter — there are already four of those
+        // and each is per-pod.
+        if (forwardTargetService != null) {
+            String officer = forwardTargetService.resolveDepartmentOfficer(resolved);
+            if (officer != null) {
+                complaint.setAssignedOfficer(officer);
+                notificationService.send(officer, "NEW_ASSIGNMENT",
+                        "Complaint forwarded to your department",
+                        "Complaint " + complaint.getComplaintNumber() + " has been forwarded to " + resolved
+                                + " and assigned to you.",
+                        complaint.getComplaintNumber(), "COMPLAINT",
+                        "/workflow/rbio/complaint/" + complaint.getComplaintNumber());
+            }
+        }
+    }
+
+    /**
+     * Queues the awareness email UST766 promises the complainant.
+     *
+     * <p>Queued through the outbox rather than sent inline, so the obligation commits with the forward and
+     * survives a gateway outage — the pattern the closure communications already use. Idempotent per
+     * complaint and channel, so a retried forward does not email the citizen twice.
+     *
+     * <p>When there is no email address, nothing is queued and nothing is claimed. The UI's unconditional
+     * "Awareness email sent to complainant" message is corrected separately; a promise the server cannot
+     * keep must not be made on either side.
+     */
+    private void queueRegulatoryBodyAwarenessEmail(Complaint complaint, String bodyName) {
+        if (communicationOutboxService == null) {
+            return;
+        }
+        String email = complaint.getComplainantEmail();
+        if (email == null || email.isBlank()) {
+            log.warn("Complaint {} forwarded to {} but the complainant has no email address on file — "
+                    + "no awareness email queued", complaint.getComplaintNumber(), bodyName);
+            return;
+        }
+        String complaintNumber = complaint.getComplaintNumber();
+        if (communicationOutboxService.alreadyQueued(complaintNumber,
+                CommunicationOutbox.TYPE_FORWARD_AWARENESS, CommunicationOutbox.CHANNEL_EMAIL)) {
+            return;
+        }
+        communicationOutboxService.queue(CommunicationOutbox.builder()
+                .communicationType(CommunicationOutbox.TYPE_FORWARD_AWARENESS)
+                .channel(CommunicationOutbox.CHANNEL_EMAIL)
+                .recipient(email)
+                .subject("Your complaint " + complaintNumber + " has been referred to " + bodyName)
+                .body("Your complaint " + complaintNumber + " concerns a matter outside the jurisdiction of "
+                        + "the Reserve Bank - Integrated Ombudsman Scheme, 2021 and has been referred to "
+                        + bodyName + " for further action. You may wish to contact them directly for updates.")
+                .relatedReference(complaintNumber)
+                .build());
     }
 
     private static boolean hasSideEffect(RbioWorkflowTransition transition, String effect) {

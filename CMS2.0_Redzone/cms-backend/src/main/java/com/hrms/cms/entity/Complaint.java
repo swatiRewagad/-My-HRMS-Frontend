@@ -203,6 +203,16 @@ public class Complaint {
     @Column(name = "regulatory_body_name", length = 200)
     private String regulatoryBodyName;
 
+    /**
+     * The RBI department a complaint was forwarded to (UST761, 534, 527-528).
+     *
+     * <p>Its own column rather than {@code assignedOfficer}, which is what the CEPC forward arms use — that
+     * leaves a department NAME in a user column, so the complaint appears to be owned by a department and
+     * "who is working on this" has no answer. Nullable, like every column added on this shared database.
+     */
+    @Column(name = "forwarded_to_department", length = 100)
+    private String forwardedToDepartment;
+
     /** When the advisory issued under this complaint was confirmed complied with (UST535-538). */
     @Column(name = "advisory_complied_at")
     private LocalDateTime advisoryCompliedAt;
@@ -239,6 +249,43 @@ public class Complaint {
 
     @Column(name = "closure_letter_sent_at")
     private LocalDateTime closureLetterSentAt;
+
+    /**
+     * Date of Sending of the closure letter (UST507-509, 757, 763).
+     *
+     * <p>The closure screen collected and POSTed this from the outset, but the server never read it —
+     * {@code dateOfSending} appeared nowhere in cms-backend — so it was silently dropped on every closure.
+     * This is the date that evidences when the complainant was informed, so it has to be durable.
+     *
+     * <p>Nullable because this runs on a shared database under {@code ddl-auto: update} where closed
+     * complaints already exist, and because the requirement is armed by configuration rather than applied
+     * retroactively. UST757/763 require it to be non-editable once recorded, so
+     * {@code RbioWorkflowService} writes it only when it is currently null.
+     */
+    @Column(name = "date_of_sending")
+    private java.time.LocalDate dateOfSending;
+
+    /**
+     * When the Award Passed status was recorded (UST543).
+     *
+     * <p>Distinct from {@link #adjudicationDate}, which is shared with award REJECTION and so cannot answer
+     * "when was an award passed" without also matching rejections. The implemented/not-implemented/lapse
+     * dates below hang off this one for reporting.
+     */
+    @Column(name = "award_passed_date")
+    private java.time.LocalDate awardPassedDate;
+
+    /** When the entity confirmed it had implemented the award (UST543). */
+    @Column(name = "award_implemented_date")
+    private java.time.LocalDate awardImplementedDate;
+
+    /** When the award was recorded as not implemented (UST543). */
+    @Column(name = "award_not_implemented_date")
+    private java.time.LocalDate awardNotImplementedDate;
+
+    /** When the award lapsed (UST543). */
+    @Column(name = "award_lapse_date")
+    private java.time.LocalDate awardLapseDate;
 
     @Column(name = "closure_clause", length = 100)
     private String closureClause;

@@ -322,4 +322,91 @@ class RbioCompensationServiceTest {
                     .isEqualByComparingTo(new BigDecimal("300000"));
         }
     }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // Caps sourced from SYSTEM_CONFIG (UST541-542)
+    //
+    // Every assertion above constructs the service with no config reader, which is the same code path as
+    // an empty SYSTEM_CONFIG table — so those tests prove the DEFAULTS are unchanged but say nothing about
+    // whether the configured value is ever actually read. Without the cases below, the caps could be
+    // ignored entirely and the suite would stay green.
+    // ═══════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("caps read from SYSTEM_CONFIG")
+    class ConfiguredCaps {
+
+        private RbioCompensationService withConfig(String key, String value) {
+            SystemConfigService config = org.mockito.Mockito.mock(SystemConfigService.class);
+            // getString(key, null) is the accessor the service uses; everything else must fall through to
+            // the documented default rather than returning a Mockito null-for-everything.
+            org.mockito.Mockito.when(config.getString(org.mockito.ArgumentMatchers.anyString(),
+                            org.mockito.ArgumentMatchers.isNull()))
+                    .thenReturn(null);
+            org.mockito.Mockito.when(config.getString(org.mockito.ArgumentMatchers.eq(key),
+                            org.mockito.ArgumentMatchers.isNull()))
+                    .thenReturn(value);
+            return new RbioCompensationService(config);
+        }
+
+        @Test
+        @DisplayName("a configured consequential-loss cap overrides the default and blocks a larger award")
+        void configuredCapIsEnforced() {
+            RbioCompensationService service =
+                    withConfig(RbioCompensationService.CFG_MAX_CONSEQUENTIAL_LOSS, "500000");
+
+            assertThat(service.getMaxAllowed("CONSEQUENTIAL_LOSS"))
+                    .isEqualByComparingTo(new BigDecimal("500000"));
+
+            // An amount that the hardcoded 30L cap would have allowed must now be refused.
+            assertThatThrownBy(() -> service.validateAward(
+                    new BigDecimal("600000"), "CONSEQUENTIAL_LOSS"))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("exceeds the maximum permitted cap");
+        }
+
+        @Test
+        @DisplayName("a configured time/harassment cap is applied independently of the other caps")
+        void configuredTimeHarassmentCapIsIndependent() {
+            RbioCompensationService service =
+                    withConfig(RbioCompensationService.CFG_MAX_TIME_HARASSMENT, "50000");
+
+            assertThat(service.getMaxAllowed("TIME_HARASSMENT"))
+                    .isEqualByComparingTo(new BigDecimal("50000"));
+            // Untouched keys must still fall back, not inherit the configured one.
+            assertThat(service.getMaxAllowed("CONSEQUENTIAL_LOSS"))
+                    .isEqualByComparingTo(RbioCompensationService.DEFAULT_MAX_CONSEQUENTIAL_LOSS);
+        }
+
+        @Test
+        @DisplayName("a configured band boundary changes the reported band")
+        void configuredBandBoundaryIsApplied() {
+            RbioCompensationService service =
+                    withConfig(RbioCompensationService.CFG_BAND_LOW_UPTO, "500000");
+
+            // 200000 is MEDIUM under the default 1L LOW boundary; LOW once the boundary moves to 5L.
+            assertThat(service.calculateCompensationBand(new BigDecimal("200000"))).isEqualTo("LOW");
+        }
+
+        @Test
+        @DisplayName("a non-numeric configured cap falls back to the default rather than blocking all awards")
+        void malformedConfigFallsBack() {
+            RbioCompensationService service =
+                    withConfig(RbioCompensationService.CFG_MAX_CONSEQUENTIAL_LOSS, "not-a-number");
+
+            assertThat(service.getMaxAllowed("CONSEQUENTIAL_LOSS"))
+                    .isEqualByComparingTo(RbioCompensationService.DEFAULT_MAX_CONSEQUENTIAL_LOSS);
+        }
+
+        @Test
+        @DisplayName("a zero or negative configured cap falls back, so a typo cannot forbid every award")
+        void nonPositiveConfigFallsBack() {
+            assertThat(withConfig(RbioCompensationService.CFG_MAX_COMBINED, "0")
+                    .getMaxAllowed("COMBINED"))
+                    .isEqualByComparingTo(RbioCompensationService.DEFAULT_MAX_COMBINED);
+            assertThat(withConfig(RbioCompensationService.CFG_MAX_COMBINED, "-100")
+                    .getMaxAllowed("COMBINED"))
+                    .isEqualByComparingTo(RbioCompensationService.DEFAULT_MAX_COMBINED);
+        }
+    }
 }

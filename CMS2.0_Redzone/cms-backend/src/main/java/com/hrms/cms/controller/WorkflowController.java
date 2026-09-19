@@ -1,5 +1,6 @@
 package com.hrms.cms.controller;
 
+import com.hrms.cms.entity.ClosureClauseMaster;
 import com.hrms.cms.entity.Complaint;
 import com.hrms.cms.event.ComplaintEventPublisher;
 import com.hrms.cms.repository.BankRepository;
@@ -10,6 +11,7 @@ import com.hrms.cms.security.CepcRoleGuard;
 import com.hrms.cms.security.RbioRoleGuard;
 import com.hrms.cms.service.CepcSlaService;
 import com.hrms.cms.service.CepcWorkflowService;
+import com.hrms.cms.service.ClosureClauseAccessService;
 import com.hrms.cms.service.ClosureLetterService;
 import com.hrms.cms.service.CommunicationTemplateService;
 import com.hrms.cms.service.ComplaintService;
@@ -87,6 +89,23 @@ public class WorkflowController {
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     public void setRbioStatusVocabulary(RbioStatusVocabulary vocabulary) {
         this.rbioStatusVocabulary = vocabulary;
+    }
+
+    /**
+     * Setter-injected and OPTIONAL, for the same reason as {@link #rbioStatusVocabulary} above.
+     *
+     * <p>A mandatory CONSTRUCTOR dependency here broke every {@code @WebMvcTest} slice covering this
+     * controller — 76 errors — because a slice loads the web layer but not {@code @Service} beans, so the
+     * context failed to start and errored every test method for a reason unrelated to the controller. The
+     * clause endpoint degrades to an empty list when absent, which is honest: with no access service there is
+     * no authority to decide which clauses a role may cite, and serving a guessed set would be worse than
+     * serving none. Nothing conditions the bean away in production.
+     */
+    private ClosureClauseAccessService closureClauseAccessService;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setClosureClauseAccessService(ClosureClauseAccessService service) {
+        this.closureClauseAccessService = service;
     }
 
     @GetMapping("/rbio/tasks")
@@ -492,43 +511,62 @@ public class WorkflowController {
         return buildResponse(true, "Complaint routed successfully", data);
     }
 
-    // ═══ UST581-584: Closure Clauses filtered by role ═══
+    /**
+     * The closure clauses a role may cite (UST581-584, 769, 774).
+     *
+     * <p>Now served from CLOSURE_CLAUSE_MASTER via {@link ClosureClauseAccessService}. It previously built a
+     * hardcoded {@code List<Map>} and never read that table, even though the table already models
+     * {@code restricted_to_roles}, appealability per party, scheme version and effective dates. The Deputy
+     * branch was an empty block and the Reviewer branch two comment lines, so both received the Ombudsman's
+     * full list — UST582/583 unimplemented, UST584 violated.
+     *
+     * <p>Two invented clauses, 16(5) and 16(6), were served here unconditionally and flagged
+     * {@code newIn2026}. They exist in no migration and no seeder, the seeder explicitly refuses to invent
+     * 2026 codes pending RBI notification, and a complaint closed under an unconfigured clause can never be
+     * appealed. They are REMOVED. The date-gated mechanism that will serve a 2026 set is in place; the clause
+     * text must come from the gazette.
+     *
+     * <p>{@code role} is still accepted for backward compatibility but is no longer trusted on its own: when
+     * a complaint number is supplied the clause set is scoped to that complaint's own scheme version, and the
+     * closure path independently refuses a clause the role may not cite. A filtered picker is a courtesy, not
+     * a control.
+     */
     @GetMapping("/closure-clauses")
-    public ResponseEntity<Map<String, Object>> getClosureClauses(@RequestParam String role) {
-        List<Map<String, Object>> clauses = new ArrayList<>();
+    public ResponseEntity<Map<String, Object>> getClosureClauses(
+            @RequestParam String role,
+            @RequestParam(required = false) String complaintNumber,
+            @RequestParam(required = false) String schemeVersion) {
 
-        // Base clauses available to all
-        clauses.add(Map.of("code", "16(1)", "label", "Resolved to satisfaction", "category", "RESOLUTION"));
-        clauses.add(Map.of("code", "16(2)(a)", "label", "Not maintainable - time barred", "category", "NON_MAINTAINABLE"));
-        clauses.add(Map.of("code", "16(2)(b)", "label", "Not maintainable - frivolous/vexatious", "category", "NON_MAINTAINABLE"));
-        clauses.add(Map.of("code", "16(2)(g)", "label", "Not maintainable - anonymous", "category", "NON_MAINTAINABLE"));
-        clauses.add(Map.of("code", "16(2)(h)", "label", "Not maintainable - insufficient information", "category", "NON_MAINTAINABLE"));
-        clauses.add(Map.of("code", "16(3)", "label", "Closed - complainant not responding", "category", "CLOSURE"));
-        clauses.add(Map.of("code", "16(4)", "label", "Closed - matter settled", "category", "CLOSURE"));
-
-        // Appellable clauses - only Ombudsman can use
-        if ("OMBUDSMAN".equalsIgnoreCase(role) || "RBIO_ADMIN".equalsIgnoreCase(role)) {
-            clauses.add(Map.of("code", "16(2)(c)", "label", "Not maintainable - sub-judice", "category", "NON_MAINTAINABLE", "appellable", true));
-            clauses.add(Map.of("code", "16(2)(d)", "label", "Not maintainable - outside jurisdiction", "category", "NON_MAINTAINABLE", "appellable", true));
-            clauses.add(Map.of("code", "16(2)(e)", "label", "Not maintainable - already settled by RBI", "category", "NON_MAINTAINABLE", "appellable", true));
-            clauses.add(Map.of("code", "16(2)(f)", "label", "Not maintainable - covered by other dispute mechanism", "category", "NON_MAINTAINABLE", "appellable", true));
-            clauses.add(Map.of("code", "15(1)(a)", "label", "Award - full relief", "category", "AWARD", "appellable", true));
-            clauses.add(Map.of("code", "15(1)(b)", "label", "Award - partial relief with compensation", "category", "AWARD", "appellable", true));
+        if (closureClauseAccessService == null) {
+            return buildResponse(true, "Closure clauses for role: " + role, List.of());
         }
 
-        // Deputy Ombudsman: non-appealable subset
-        if ("DEPUTY_OMBUDSMAN".equalsIgnoreCase(role)) {
-            // Excludes 16(2)(c)-(f) and 15(1)(a)/(b) - already not added for this role
+        List<ClosureClauseMaster> clauses;
+        if (complaintNumber != null && !complaintNumber.isBlank()) {
+            Complaint complaint = complaintRepository.findByComplaintNumber(complaintNumber).orElse(null);
+            clauses = closureClauseAccessService.clausesFor(complaint, role);
+        } else {
+            clauses = closureClauseAccessService.clausesForScheme(schemeVersion, role);
         }
 
-        // Reviewer: only delegated non-maintainable clauses (excludes 16(2)(c)-(f), 15(1)(a)/(b))
-        // Already handled by not adding them for roles other than OMBUDSMAN
+        // Both the legacy RBIO shape (code/label/category/appellable) and the AA masters shape
+        // (clauseCode/appealableBy*) are emitted. Two callers already read the first and a contract test
+        // asserts the second, so serving both retires the hand-built endpoint without breaking either.
+        List<Map<String, Object>> payload = clauses.stream().map(c -> {
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("code", c.getClauseCode());
+            row.put("clauseCode", c.getClauseCode());
+            row.put("label", c.getLabel());
+            row.put("labelKey", c.getLabelKey());
+            row.put("category", c.getCategory());
+            row.put("appellable", c.isAppealableByComplainant() || c.isAppealableByEntity());
+            row.put("appealableByComplainant", c.isAppealableByComplainant());
+            row.put("appealableByEntity", c.isAppealableByEntity());
+            row.put("schemeVersion", c.getSchemeVersion());
+            return row;
+        }).collect(Collectors.toList());
 
-        // RBIOS 2026 new clauses
-        clauses.add(Map.of("code", "16(5)", "label", "Closed - entity licence cancelled/surrendered", "category", "CLOSURE", "newIn2026", true));
-        clauses.add(Map.of("code", "16(6)", "label", "Closed - complaint withdrawn by complainant", "category", "CLOSURE", "newIn2026", true));
-
-        return buildResponse(true, "Closure clauses for role: " + role, clauses);
+        return buildResponse(true, "Closure clauses for role: " + role, payload);
     }
 
     // ═══ UST656: Email Validation - RBI Domain Only ═══
