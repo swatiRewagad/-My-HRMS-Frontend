@@ -54,6 +54,11 @@ public class ComplaintSearchService {
      */
     public void indexComplaint(String complaintId, Map<String, Object> document) throws IOException {
         Map<String, Object> doc = documentNormalizer.normalize(document);
+        // A newly indexed complaint is unread. Defaulted here rather than in the normalizer because
+        // partialUpdate shares it, and writing a default there would silently un-read every complaint
+        // whose status later changes. The dashboard's "Unread Only" filter is a term match on false, so
+        // a document missing the field entirely would never appear in it.
+        doc.putIfAbsent(ComplaintDocumentNormalizer.FIELD_IS_READ, Boolean.FALSE);
         IndexRequest<Map<String, Object>> request = IndexRequest.of(b -> b
                 .index(COMPLAINTS_INDEX)
                 .id(complaintId)

@@ -4,12 +4,19 @@ describe('FileUploadService', () => {
   let service: FileUploadService;
   let httpMock: any;
 
+  // getAttachments chains .pipe() to unwrap the ApiResponse envelope, so the stub has to be chainable.
+  const observableStub = () => {
+    const stub: any = { subscribe: jest.fn() };
+    stub.pipe = jest.fn(() => stub);
+    return stub;
+  };
+
   beforeEach(() => {
     httpMock = {
-      get: jest.fn().mockReturnValue({ subscribe: jest.fn() }),
-      post: jest.fn().mockReturnValue({ subscribe: jest.fn() }),
-      delete: jest.fn().mockReturnValue({ subscribe: jest.fn() }),
-      request: jest.fn().mockReturnValue({ subscribe: jest.fn() }),
+      get: jest.fn(observableStub),
+      post: jest.fn(observableStub),
+      delete: jest.fn(observableStub),
+      request: jest.fn(observableStub),
     };
     // FileUploadService uses inject() for InputSanitizerService, which won't work in unit tests.
     // We test the API-calling methods and utility logic instead.
@@ -40,6 +47,16 @@ describe('FileUploadService', () => {
       service.downloadAttachment(5);
       expect(httpMock.get).toHaveBeenCalledWith(
         expect.stringContaining('/files/download/5'),
+        expect.objectContaining({ responseType: 'blob' })
+      );
+    });
+  });
+
+  describe('downloadAllAttachments', () => {
+    it('should call GET download-all with responseType blob', () => {
+      service.downloadAllAttachments(10);
+      expect(httpMock.get).toHaveBeenCalledWith(
+        expect.stringContaining('/files/complaint/10/download-all'),
         expect.objectContaining({ responseType: 'blob' })
       );
     });

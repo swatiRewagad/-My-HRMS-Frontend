@@ -5,6 +5,7 @@ import com.hrms.cms.dto.FileComplaintRequest;
 import com.hrms.cms.dto.UpdateComplaintRequest;
 import com.hrms.cms.entity.Complaint;
 import com.hrms.cms.entity.ComplaintTimeline;
+import com.hrms.cms.event.ComplaintEventPublisher;
 import com.hrms.cms.service.ComplaintService;
 import com.hrms.cms.service.RbioComplaintSummaryService;
 import com.hrms.cms.service.RbioConciliationService;
@@ -38,6 +39,7 @@ class ComplaintControllerTest {
     @MockBean private ComplaintService complaintService;
     @MockBean private RbioComplaintSummaryService rbioComplaintSummaryService;
     @MockBean private RbioConciliationService rbioConciliationService;
+    @MockBean private ComplaintEventPublisher complaintEventPublisher;
 
     private Complaint sampleComplaint;
 

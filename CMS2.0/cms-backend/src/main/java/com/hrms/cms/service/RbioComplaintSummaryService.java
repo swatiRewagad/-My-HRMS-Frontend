@@ -26,6 +26,7 @@ import java.time.format.DateTimeParseException;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Consumer;
 
@@ -145,17 +146,25 @@ public class RbioComplaintSummaryService {
     }
 
     private Map<String, Object> entityDetails(Complaint c, ComplaintRbioFormData fd) {
-        String entityType = c.getRegulatedEntityId() != null
-                ? regulatedEntityRepository.findById(c.getRegulatedEntityId())
-                        .map(re -> re.getEntityType()).orElse(null)
+        RegulatedEntity re = c.getRegulatedEntityId() != null
+                ? regulatedEntityRepository.findById(c.getRegulatedEntityId()).orElse(null)
                 : null;
+        String masterCategory = re != null ? re.getEntityType() : null;
+        String storedModule = fd != null ? fd.getModuleName() : null;
 
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("id", c.getRegulatedEntityId());
         m.put("entityName", c.getEntityName());
-        m.put("moduleName", fd != null ? fd.getModuleName() : null);
-        m.put("entityCategory", c.getEntityCategory());
-        m.put("entityType", entityType);
+        // Both are stored per complaint but derivable from the entity, so the master is the fallback:
+        // complaints filed before the entity picker wrote them would otherwise show these fields blank
+        // even though the entity they point at determines them.
+        m.put("moduleName", storedModule != null ? storedModule : RegulatedEntity.moduleNameFor(masterCategory));
+        m.put("entityCategory", c.getEntityCategory() != null
+                ? c.getEntityCategory()
+                : RegulatedEntity.entityCategoryFor(masterCategory));
+        // The NBFC sub-classification, which belongs to the entity and not to the complaint — so it is
+        // read back from the master and never persisted from the payload.
+        m.put("entityType", re != null ? re.getEntityTypeDetail() : null);
         m.put("bsrCode", c.getEntityBsrCode());
         m.put("pincode", c.getEntityPincode());
         m.put("country", fd != null ? fd.getEntityCountry() : null);
@@ -244,6 +253,26 @@ public class RbioComplaintSummaryService {
     }
 
     // ---------------------------------------------------------------- write
+
+    /**
+     * Flips the unread flag the dashboard grid styles its rows by, once a complaint has been opened.
+     * Kept out of {@link #getSummary} so that read stays read-only, and a no-op once already read so
+     * reopening a complaint neither writes nor re-announces on every view.
+     *
+     * @return the complaint number when this call was the one that flipped the flag, so the caller can
+     *         publish the change to the search index after the transaction commits; empty otherwise.
+     */
+    @Transactional
+    @CacheEvict(value = "dashboard", allEntries = true)
+    public Optional<String> markRead(Long complaintId) {
+        return complaintRepository.findById(complaintId)
+                .filter(c -> !Boolean.TRUE.equals(c.getIsRead()))
+                .map(c -> {
+                    c.setIsRead(Boolean.TRUE);
+                    complaintRepository.save(c);
+                    return c.getComplaintNumber();
+                });
+    }
 
     /**
      * Apply an officer's edits. Accepts the same nested shape {@link #getSummary} returns; a section

@@ -1,5 +1,6 @@
 package com.hrms.cms.config;
 
+import com.hrms.cms.exception.FileStorageException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -15,6 +16,14 @@ import java.util.Map;
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    @ExceptionHandler(FileStorageException.class)
+    public ResponseEntity<Map<String, Object>> handleFileStorage(FileStorageException ex) {
+        log.warn("Attachment failure [{}]: {}", ex.getErrorCode(), ex.getMessage());
+        Map<String, Object> body = body(ex.getStatus(), ex.getMessage());
+        body.put("errorCode", ex.getErrorCode());
+        return ResponseEntity.status(ex.getStatus()).body(body);
+    }
 
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<Map<String, Object>> handleRuntimeException(RuntimeException ex) {
@@ -47,11 +56,15 @@ public class GlobalExceptionHandler {
     }
 
     private ResponseEntity<Map<String, Object>> buildResponse(HttpStatus status, String message) {
+        return ResponseEntity.status(status).body(body(status, message));
+    }
+
+    private Map<String, Object> body(HttpStatus status, String message) {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("timestamp", LocalDateTime.now().toString());
         body.put("status", status.value());
         body.put("error", status.getReasonPhrase());
         body.put("message", message);
-        return ResponseEntity.status(status).body(body);
+        return body;
     }
 }

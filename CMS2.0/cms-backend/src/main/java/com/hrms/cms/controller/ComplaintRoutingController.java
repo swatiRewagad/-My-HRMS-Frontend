@@ -199,6 +199,12 @@ public class ComplaintRoutingController {
             item.put("name", e.getName());
             item.put("department", e.getDepartment());
             item.put("entityType", e.getEntityType());
+            // The three fields the complaint screens fill from a picked row. Carried here rather than
+            // left to the detail call because they are what the officer checks before committing to the
+            // row, so they have to arrive with the dropdown.
+            item.put("moduleName", RegulatedEntity.moduleNameFor(e.getEntityType()));
+            item.put("entityCategory", RegulatedEntity.entityCategoryFor(e.getEntityType()));
+            item.put("entityTypeDetail", e.getEntityTypeDetail());
             item.put("city", e.getCity());
             item.put("state", e.getState());
             return item;
@@ -227,6 +233,9 @@ public class ComplaintRoutingController {
         item.put("name", entity.getName());
         item.put("department", entity.getDepartment());
         item.put("entityType", entity.getEntityType());
+        item.put("moduleName", RegulatedEntity.moduleNameFor(entity.getEntityType()));
+        item.put("entityCategory", RegulatedEntity.entityCategoryFor(entity.getEntityType()));
+        item.put("entityTypeDetail", entity.getEntityTypeDetail());
         item.put("city", entity.getCity());
         item.put("state", entity.getState());
         item.put("status", entity.getStatus());

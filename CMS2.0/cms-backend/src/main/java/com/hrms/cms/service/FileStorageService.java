@@ -3,21 +3,27 @@ package com.hrms.cms.service;
 import com.hrms.cms.config.FileStorageConfig;
 import com.hrms.cms.dto.ChunkUploadResponse;
 import com.hrms.cms.entity.ComplaintAttachment;
+import com.hrms.cms.exception.FileStorageException;
 import com.hrms.cms.repository.ComplaintAttachmentRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
 import java.io.*;
 import java.nio.channels.FileChannel;
 import java.nio.file.*;
-import java.security.MessageDigest;
-import java.util.HexFormat;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Stream;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 @Service
 @RequiredArgsConstructor
@@ -26,7 +32,9 @@ public class FileStorageService {
 
     private final FileStorageConfig config;
     private final ComplaintAttachmentRepository attachmentRepository;
+    private final StorageServiceClient storageServiceClient;
 
+    @Transactional
     public ChunkUploadResponse handleChunkUpload(
             MultipartFile chunk,
             String uploadId,
@@ -39,17 +47,10 @@ public class FileStorageService {
     ) throws IOException {
 
         if (!config.isAllowedType(fileName)) {
-            return ChunkUploadResponse.builder()
-                    .message("File type not allowed. Allowed: " + config.getAllowedTypes())
-                    .complete(false)
-                    .build();
+            throw FileStorageException.unsupportedType(config.getAllowedTypes());
         }
-
         if (totalFileSize > config.getMaxFileSize()) {
-            return ChunkUploadResponse.builder()
-                    .message("File exceeds maximum size of " + (config.getMaxFileSize() / 1048576) + "MB")
-                    .complete(false)
-                    .build();
+            throw FileStorageException.fileTooLarge(config.getMaxFileSize());
         }
 
         String actualUploadId = uploadId != null ? uploadId : UUID.randomUUID().toString();
@@ -62,9 +63,12 @@ public class FileStorageService {
             Files.copy(in, chunkFile, StandardCopyOption.REPLACE_EXISTING);
         }
 
-        long receivedChunks = Files.list(chunkDir)
-                .filter(p -> p.getFileName().toString().startsWith("chunk_"))
-                .count();
+        long receivedChunks;
+        try (Stream<Path> entries = Files.list(chunkDir)) {
+            receivedChunks = entries
+                    .filter(p -> p.getFileName().toString().startsWith("chunk_"))
+                    .count();
+        }
 
         if (receivedChunks < totalChunks) {
             return ChunkUploadResponse.builder()
@@ -76,32 +80,31 @@ public class FileStorageService {
                     .build();
         }
 
-        // All chunks received — assemble
-        Path complaintDir = config.getComplaintDir(complaintNumber);
-        Files.createDirectories(complaintDir);
+        // All chunks received — assemble into a scratch file, hand the bytes to the storage
+        // service, then drop the scratch file. Nothing permanent stays on local disk.
+        Path assembled = chunkDir.resolve("assembled.tmp");
+        byte[] content;
+        try {
+            assembleChunks(chunkDir, assembled, totalChunks);
+            content = Files.readAllBytes(assembled);
+        } finally {
+            cleanupChunkDir(chunkDir);
+        }
 
         String storedName = UUID.randomUUID() + "_" + sanitizeFileName(fileName);
-        Path finalPath = complaintDir.resolve(storedName);
+        String contentType = detectContentType(fileName);
+        String objectId = storageServiceClient.store(content, storedName, contentType, complaintNumber);
 
-        assembleChunks(chunkDir, finalPath, totalChunks);
-
-        // Cleanup temp chunks
-        cleanupChunkDir(chunkDir);
-
-        String checksum = computeChecksum(finalPath);
-
-        ComplaintAttachment attachment = ComplaintAttachment.builder()
+        ComplaintAttachment saved = attachmentRepository.save(ComplaintAttachment.builder()
                 .complaintId(complaintId)
                 .fileName(storedName)
                 .originalName(fileName)
-                .contentType(detectContentType(fileName))
-                .fileSize(Files.size(finalPath))
-                .storagePath(complaintNumber + "/" + storedName)
-                .build();
+                .contentType(contentType)
+                .fileSize((long) content.length)
+                .storagePath(objectId)
+                .build());
 
-        ComplaintAttachment saved = attachmentRepository.save(attachment);
-
-        log.info("File assembled: {} -> {} (checksum: {})", fileName, finalPath, checksum);
+        log.info("Assembled {} chunks of {} into storage objectId={}", totalChunks, fileName, objectId);
 
         return ChunkUploadResponse.builder()
                 .uploadId(actualUploadId)
@@ -122,39 +125,30 @@ public class FileStorageService {
             Long complaintId
     ) throws IOException {
 
-        if (!config.isAllowedType(file.getOriginalFilename())) {
-            throw new IllegalArgumentException("File type not allowed");
-        }
+        String originalName = file.getOriginalFilename();
 
+        if (!config.isAllowedType(originalName)) {
+            throw FileStorageException.unsupportedType(config.getAllowedTypes());
+        }
         if (file.getSize() > config.getMaxFileSize()) {
-            throw new IllegalArgumentException("File exceeds max size");
+            throw FileStorageException.fileTooLarge(config.getMaxFileSize());
+        }
+        if (attachmentRepository.findByComplaintId(complaintId).size() >= config.getMaxFilesPerComplaint()) {
+            throw FileStorageException.attachmentLimitReached(config.getMaxFilesPerComplaint());
         }
 
-        long existingCount = attachmentRepository.findByComplaintId(complaintId).size();
-        if (existingCount >= config.getMaxFilesPerComplaint()) {
-            throw new IllegalArgumentException("Max files per complaint reached (" + config.getMaxFilesPerComplaint() + ")");
-        }
+        String storedName = UUID.randomUUID() + "_" + sanitizeFileName(originalName);
+        String contentType = file.getContentType() != null ? file.getContentType() : detectContentType(originalName);
+        String objectId = storageServiceClient.store(file.getBytes(), storedName, contentType, complaintNumber);
 
-        Path complaintDir = config.getComplaintDir(complaintNumber);
-        Files.createDirectories(complaintDir);
-
-        String storedName = UUID.randomUUID() + "_" + sanitizeFileName(file.getOriginalFilename());
-        Path target = complaintDir.resolve(storedName);
-
-        try (InputStream in = file.getInputStream()) {
-            Files.copy(in, target, StandardCopyOption.REPLACE_EXISTING);
-        }
-
-        ComplaintAttachment attachment = ComplaintAttachment.builder()
+        return attachmentRepository.save(ComplaintAttachment.builder()
                 .complaintId(complaintId)
                 .fileName(storedName)
-                .originalName(file.getOriginalFilename())
-                .contentType(file.getContentType())
+                .originalName(originalName)
+                .contentType(contentType)
                 .fileSize(file.getSize())
-                .storagePath(complaintNumber + "/" + storedName)
-                .build();
-
-        return attachmentRepository.save(attachment);
+                .storagePath(objectId)
+                .build());
     }
 
     public String getRootPath() {
@@ -162,25 +156,57 @@ public class FileStorageService {
     }
 
     @Transactional(readOnly = true)
-    public Path getFilePath(Long attachmentId) {
-        ComplaintAttachment attachment = attachmentRepository.findById(attachmentId)
-                .orElseThrow(() -> new RuntimeException("Attachment not found"));
-        return Paths.get(config.getRootPath(), attachment.getStoragePath());
+    public ComplaintAttachment getAttachmentMetadata(Long attachmentId) {
+        return attachmentRepository.findById(attachmentId)
+                .orElseThrow(() -> FileStorageException.attachmentNotFound(attachmentId));
+    }
+
+    public byte[] getFileBytes(Long attachmentId) {
+        return storageServiceClient.fetch(getAttachmentMetadata(attachmentId).getStoragePath());
     }
 
     @Transactional
-    public void deleteAttachment(Long attachmentId) throws IOException {
-        ComplaintAttachment attachment = attachmentRepository.findById(attachmentId)
-                .orElseThrow(() -> new RuntimeException("Attachment not found"));
-
-        Path filePath = Paths.get(config.getRootPath(), attachment.getStoragePath());
-        Files.deleteIfExists(filePath);
+    public void deleteAttachment(Long attachmentId) {
+        ComplaintAttachment attachment = getAttachmentMetadata(attachmentId);
+        storageServiceClient.delete(attachment.getStoragePath());
         attachmentRepository.delete(attachment);
     }
 
     @Transactional(readOnly = true)
     public List<ComplaintAttachment> getAttachments(Long complaintId) {
         return attachmentRepository.findByComplaintId(complaintId);
+    }
+
+    /**
+     * Metadata is read up front; each payload is pulled from the storage service only as its zip
+     * entry is written, so a complaint's attachments are never all held in memory at once.
+     */
+    @Transactional(readOnly = true)
+    public StreamingResponseBody downloadAllAttachmentsAsZip(Long complaintId) {
+        List<ComplaintAttachment> attachments = attachmentRepository.findByComplaintId(complaintId);
+        if (attachments.isEmpty()) {
+            throw new FileStorageException("No attachments found for complaint " + complaintId,
+                    HttpStatus.NOT_FOUND, "NO_ATTACHMENTS");
+        }
+
+        return outputStream -> {
+            Set<String> usedNames = new HashSet<>();
+            try (ZipOutputStream zip = new ZipOutputStream(outputStream)) {
+                for (ComplaintAttachment attachment : attachments) {
+                    byte[] content;
+                    try {
+                        content = storageServiceClient.fetch(attachment.getStoragePath());
+                    } catch (FileStorageException e) {
+                        log.warn("Skipping attachment {} in zip for complaint {}: {}",
+                                attachment.getId(), complaintId, e.getMessage());
+                        continue;
+                    }
+                    zip.putNextEntry(new ZipEntry(uniqueEntryName(usedNames, attachment)));
+                    zip.write(content);
+                    zip.closeEntry();
+                }
+            }
+        };
     }
 
     @Async("taskExecutor")
@@ -201,6 +227,19 @@ public class FileStorageService {
         } catch (IOException e) {
             log.warn("Failed to clean stale uploads", e);
         }
+    }
+
+    private static String uniqueEntryName(Set<String> usedNames, ComplaintAttachment attachment) {
+        String name = attachment.getOriginalName() != null ? attachment.getOriginalName() : attachment.getFileName();
+        if (usedNames.add(name)) {
+            return name;
+        }
+        int dot = name.lastIndexOf('.');
+        String base = dot > 0 ? name.substring(0, dot) : name;
+        String ext = dot > 0 ? name.substring(dot) : "";
+        String unique = base + "_" + attachment.getId() + ext;
+        usedNames.add(unique);
+        return unique;
     }
 
     private void assembleChunks(Path chunkDir, Path target, int totalChunks) throws IOException {
@@ -224,22 +263,6 @@ public class FileStorageService {
                 }
             }
             Files.deleteIfExists(dir);
-        }
-    }
-
-    private String computeChecksum(Path file) {
-        try {
-            MessageDigest md = MessageDigest.getInstance("SHA-256");
-            try (InputStream is = Files.newInputStream(file)) {
-                byte[] buf = new byte[8192];
-                int read;
-                while ((read = is.read(buf)) != -1) {
-                    md.update(buf, 0, read);
-                }
-            }
-            return HexFormat.of().formatHex(md.digest()).substring(0, 16);
-        } catch (Exception e) {
-            return "unknown";
         }
     }
 

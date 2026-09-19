@@ -26,7 +26,7 @@ public class ComplaintIndexingListener {
 
     @KafkaListener(topics = KafkaTopics.COMPLAINT_INGESTED, groupId = "cms-search-group")
     public void onComplaintIngested(String message, Acknowledgment ack) {
-        ComplaintEvent event = parseOrDrop(message, ack);
+        ComplaintEvent event = parseOrDrop(message, ack, true);
         if (event == null) {
             return;
         }
@@ -48,7 +48,7 @@ public class ComplaintIndexingListener {
             groupId = "cms-search-group"
     )
     public void onComplaintStatusChange(String message, Acknowledgment ack) {
-        ComplaintEvent event = parseOrDrop(message, ack);
+        ComplaintEvent event = parseOrDrop(message, ack, true);
         if (event == null) {
             return;
         }
@@ -79,11 +79,36 @@ public class ComplaintIndexingListener {
         }
     }
 
+    @KafkaListener(topics = KafkaTopics.COMPLAINT_READ, groupId = "cms-search-group")
+    public void onComplaintRead(String message, Acknowledgment ack) {
+        ComplaintEvent event = parseOrDrop(message, ack, false);
+        if (event == null) {
+            return;
+        }
+
+        try {
+            // partialUpdate upserts, so the complaint number travels with the flag: a complaint opened
+            // before it was ever indexed would otherwise create a document carrying nothing else, with
+            // no identifier for the grid to key or filter on.
+            searchService.partialUpdate(event.getComplaintId(), Map.of(
+                    ComplaintDocumentNormalizer.FIELD_COMPLAINT_NUMBER, event.getComplaintId(),
+                    ComplaintDocumentNormalizer.FIELD_IS_READ, Boolean.TRUE));
+            ack.acknowledge();
+        } catch (Exception e) {
+            log.error("Failed to mark complaint {} read in the index, leaving offset uncommitted for retry",
+                    event.getComplaintId(), e);
+        }
+    }
+
     /**
      * Acknowledges and drops messages that can never succeed, so a single poison record does not
      * block the partition on every restart. Returns null when the message was dropped.
+     *
+     * @param requireStatus whether a missing {@code currentStatus} makes the message undeliverable.
+     *                      True for the indexing paths that write the status field; false for
+     *                      {@code complaint.read}, which carries no status by design.
      */
-    private ComplaintEvent parseOrDrop(String message, Acknowledgment ack) {
+    private ComplaintEvent parseOrDrop(String message, Acknowledgment ack, boolean requireStatus) {
         ComplaintEvent event;
         try {
             event = objectMapper.readValue(message, ComplaintEvent.class);
@@ -98,7 +123,7 @@ public class ComplaintIndexingListener {
             ack.acknowledge();
             return null;
         }
-        if (event.getCurrentStatus() == null) {
+        if (requireStatus && event.getCurrentStatus() == null) {
             log.error("Dropping complaint event {} with no currentStatus", event.getComplaintId());
             ack.acknowledge();
             return null;

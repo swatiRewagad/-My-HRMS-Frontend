@@ -117,6 +117,12 @@ cms:
     allowed-types: ${CMS_ALLOWED_TYPES:pdf,png,jpg,jpeg,doc,docx,xls,xlsx,txt,csv,zip}
     max-files-per-complaint: ${CMS_MAX_FILES:10}
     temp-dir: ${CMS_TEMP_DIR:temp-chunks}
+  # Attachment payloads live in cms-storage-service's STORAGE_BLOBS table; only the
+  # returned objectId is kept locally in COMPLAINT_ATTACHMENTS.storage_path.
+  storage-service:
+    base-url: ${CMS_STORAGE_SERVICE_URL:http://localhost:8090/cms-storage}
+    connect-timeout-ms: ${CMS_STORAGE_CONNECT_TIMEOUT:5000}
+    read-timeout-ms: ${CMS_STORAGE_READ_TIMEOUT:60000}
   rate-limit:
     complaints-per-minute: ${RATE_LIMIT_CPM:10}
     api-requests-per-second: ${RATE_LIMIT_RPS:100}

@@ -11,5 +11,6 @@ public final class KafkaTopics {
     public static final String COMPLAINT_ESCALATED = "complaint.escalated";
     public static final String COMPLAINT_RESOLVED = "complaint.resolved";
     public static final String COMPLAINT_CLOSED = "complaint.closed";
+    public static final String COMPLAINT_READ = "complaint.read";
     public static final String COMPLAINT_DLQ = "complaint.dlq";
 }

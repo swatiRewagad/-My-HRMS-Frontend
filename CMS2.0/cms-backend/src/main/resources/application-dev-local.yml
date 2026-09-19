@@ -90,6 +90,10 @@ cms:
     allowed-types: pdf,png,jpg,jpeg,doc,docx,xls,xlsx,txt,csv,zip
     max-files-per-complaint: 10
     temp-dir: temp-chunks
+  storage-service:
+    base-url: ${CMS_STORAGE_SERVICE_URL:http://localhost:8090/cms-storage}
+    connect-timeout-ms: 5000
+    read-timeout-ms: 60000
   rate-limit:
     complaints-per-minute: 100
     api-requests-per-second: 1000

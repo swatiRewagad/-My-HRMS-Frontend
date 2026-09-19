@@ -1,18 +1,20 @@
 package com.hrms.cms.controller;
 
+import com.hrms.cms.dto.ApiResponse;
 import com.hrms.cms.dto.ChunkUploadResponse;
 import com.hrms.cms.entity.ComplaintAttachment;
 import com.hrms.cms.entity.EmailDraftAttachment;
 import com.hrms.cms.repository.EmailDraftAttachmentRepository;
 import com.hrms.cms.service.FileStorageService;
-import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.ResourceRegion;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -24,6 +26,8 @@ import java.util.List;
 @RequestMapping("/api/files")
 @RequiredArgsConstructor
 public class FileUploadController {
+
+    private static final long DEFAULT_PREVIEW_CHUNK = 1024L * 1024L;
 
     private final FileStorageService fileStorageService;
     private final EmailDraftAttachmentRepository draftAttachmentRepository;
@@ -44,16 +48,10 @@ public class FileUploadController {
             @RequestParam("totalFileSize") long totalFileSize
     ) throws IOException {
 
-        ChunkUploadResponse response = fileStorageService.handleChunkUpload(
+        return ResponseEntity.ok(fileStorageService.handleChunkUpload(
                 chunk, uploadId, chunkIndex, totalChunks,
                 fileName, complaintNumber, complaintId, totalFileSize
-        );
-
-        if (response.getMessage() != null && response.getMessage().contains("not allowed")) {
-            return ResponseEntity.badRequest().body(response);
-        }
-
-        return ResponseEntity.ok(response);
+        ));
     }
 
     /**
@@ -66,32 +64,37 @@ public class FileUploadController {
             @RequestParam("complaintId") Long complaintId
     ) throws IOException {
 
-        ComplaintAttachment attachment = fileStorageService.handleSingleUpload(
-                file, complaintNumber, complaintId
-        );
-        return ResponseEntity.ok(attachment);
+        return ResponseEntity.ok(fileStorageService.handleSingleUpload(file, complaintNumber, complaintId));
+    }
+
+    /**
+     * List attachments for a complaint.
+     */
+    @GetMapping("/complaint/{complaintId}")
+    public ResponseEntity<ApiResponse<List<ComplaintAttachment>>> listAttachments(@PathVariable Long complaintId) {
+        List<ComplaintAttachment> attachments = fileStorageService.getAttachments(complaintId);
+        return ResponseEntity.ok(ApiResponse.<List<ComplaintAttachment>>builder()
+                .success(true)
+                .message("Attachments fetched successfully")
+                .data(attachments)
+                .totalCount((long) attachments.size())
+                .build());
     }
 
     /**
      * Download an attachment by ID — supports forced download.
      */
     @GetMapping("/download/{attachmentId}")
-    public ResponseEntity<Resource> download(@PathVariable Long attachmentId) throws IOException {
-        Path filePath = fileStorageService.getFilePath(attachmentId);
-
-        if (!Files.exists(filePath)) {
-            return ResponseEntity.notFound().build();
-        }
-
-        Resource resource = new FileSystemResource(filePath);
-        String contentType = Files.probeContentType(filePath);
-        if (contentType == null) contentType = "application/octet-stream";
+    public ResponseEntity<Resource> download(@PathVariable Long attachmentId) {
+        ComplaintAttachment attachment = fileStorageService.getAttachmentMetadata(attachmentId);
+        byte[] content = fileStorageService.getFileBytes(attachmentId);
 
         return ResponseEntity.ok()
-                .contentType(MediaType.parseMediaType(contentType))
+                .contentType(mediaTypeOf(attachment))
+                .contentLength(content.length)
                 .header(HttpHeaders.CONTENT_DISPOSITION,
-                        "attachment; filename=\"" + filePath.getFileName().toString() + "\"")
-                .body(resource);
+                        "attachment; filename=\"" + attachment.getOriginalName() + "\"")
+                .body(new ByteArrayResource(content));
     }
 
     /**
@@ -101,52 +104,49 @@ public class FileUploadController {
     public ResponseEntity<ResourceRegion> stream(
             @PathVariable Long attachmentId,
             @RequestHeader HttpHeaders headers
-    ) throws IOException {
-        Path filePath = fileStorageService.getFilePath(attachmentId);
-
-        if (!Files.exists(filePath)) {
-            return ResponseEntity.notFound().build();
-        }
-
-        Resource resource = new FileSystemResource(filePath);
-        long fileLength = resource.contentLength();
-        String contentType = Files.probeContentType(filePath);
-        if (contentType == null) contentType = "application/octet-stream";
+    ) {
+        ComplaintAttachment attachment = fileStorageService.getAttachmentMetadata(attachmentId);
+        Resource resource = new ByteArrayResource(fileStorageService.getFileBytes(attachmentId));
+        long fileLength = ((ByteArrayResource) resource).getByteArray().length;
 
         ResourceRegion region;
         List<HttpRange> ranges = headers.getRange();
-
         if (!ranges.isEmpty()) {
             HttpRange range = ranges.get(0);
             long start = range.getRangeStart(fileLength);
             long end = range.getRangeEnd(fileLength);
-            long rangeLength = Math.min(end - start + 1, fileLength);
-
-            region = new ResourceRegion(resource, start, rangeLength);
+            region = new ResourceRegion(resource, start, Math.min(end - start + 1, fileLength));
         } else {
-            long chunkSize = Math.min(1024 * 1024, fileLength);
-            region = new ResourceRegion(resource, 0, chunkSize);
+            region = new ResourceRegion(resource, 0, Math.min(DEFAULT_PREVIEW_CHUNK, fileLength));
         }
 
         return ResponseEntity.status(HttpStatus.PARTIAL_CONTENT)
-                .contentType(MediaType.parseMediaType(contentType))
+                .contentType(mediaTypeOf(attachment))
                 .header(HttpHeaders.ACCEPT_RANGES, "bytes")
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "inline; filename=\"" + attachment.getOriginalName() + "\"")
                 .body(region);
     }
 
     /**
-     * List attachments for a complaint.
+     * Download every attachment of a complaint as a single zip.
      */
-    @GetMapping("/complaint/{complaintId}")
-    public ResponseEntity<List<ComplaintAttachment>> listAttachments(@PathVariable Long complaintId) {
-        return ResponseEntity.ok(fileStorageService.getAttachments(complaintId));
+    @GetMapping("/complaint/{complaintId}/download-all")
+    public ResponseEntity<StreamingResponseBody> downloadAll(@PathVariable Long complaintId) {
+        StreamingResponseBody body = fileStorageService.downloadAllAttachmentsAsZip(complaintId);
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType("application/zip"))
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"complaint_" + complaintId + "_attachments.zip\"")
+                .body(body);
     }
 
     /**
      * Delete an attachment.
      */
     @DeleteMapping("/{attachmentId}")
-    public ResponseEntity<Void> deleteAttachment(@PathVariable Long attachmentId) throws IOException {
+    public ResponseEntity<Void> deleteAttachment(@PathVariable Long attachmentId) {
         fileStorageService.deleteAttachment(attachmentId);
         return ResponseEntity.noContent().build();
     }
@@ -155,7 +155,7 @@ public class FileUploadController {
      * Serve an email-draft attachment file by its DB id.
      */
     @GetMapping("/email-draft/{attachmentId}")
-    public ResponseEntity<Resource> downloadDraftAttachment(@PathVariable Long attachmentId) throws IOException {
+    public ResponseEntity<Resource> downloadDraftAttachment(@PathVariable Long attachmentId) {
         EmailDraftAttachment att = draftAttachmentRepository.findById(attachmentId).orElse(null);
         if (att == null || att.getStoragePath() == null || att.getStoragePath().isEmpty()) {
             return ResponseEntity.notFound().build();
@@ -196,5 +196,16 @@ public class FileUploadController {
     public ResponseEntity<String> cleanup() {
         fileStorageService.cleanupStaleTempUploads();
         return ResponseEntity.ok("Cleanup initiated");
+    }
+
+    private static MediaType mediaTypeOf(ComplaintAttachment attachment) {
+        if (attachment.getContentType() == null || attachment.getContentType().isBlank()) {
+            return MediaType.APPLICATION_OCTET_STREAM;
+        }
+        try {
+            return MediaType.parseMediaType(attachment.getContentType());
+        } catch (InvalidMediaTypeException e) {
+            return MediaType.APPLICATION_OCTET_STREAM;
+        }
     }
 }

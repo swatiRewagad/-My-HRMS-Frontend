@@ -215,7 +215,7 @@
         <div class="page-tabs">
           <button class="page-tab" [class.active]="assessmentTab() === 'summary'" (click)="assessmentTab.set('summary')">Summary</button>
           @if (userRole() !== 'HEAD') {
-            <button class="page-tab" [class.active]="assessmentTab() === 'conciliation'" [class.disabled]="!conciliationEnabled() || userRole() === 'REVIEWER' || userRole() === 'DEPUTY_OMBUDSMAN'" [disabled]="!conciliationEnabled() || userRole() === 'REVIEWER' || userRole() === 'DEPUTY_OMBUDSMAN'" (click)="assessmentTab.set('conciliation')">Conciliation</button>
+            <button class="page-tab" [class.active]="assessmentTab() === 'conciliation'" [class.disabled]="!conciliationEnabled()" [disabled]="!conciliationEnabled()" (click)="assessmentTab.set('conciliation')">Conciliation</button>
             <button class="page-tab" [class.active]="assessmentTab() === 'forward'" [class.disabled]="userRole() === 'REVIEWER'" [disabled]="userRole() === 'REVIEWER'" (click)="assessmentTab.set('forward')">Forward</button>
             <button class="page-tab" [class.active]="assessmentTab() === 'final-decision'" (click)="assessmentTab.set('final-decision')">Final Decision</button>
             <button class="page-tab" [class.active]="assessmentTab() === 'nodal-officer'" [class.disabled]="userRole() === 'REVIEWER' || userRole() === 'DEPUTY_OMBUDSMAN'" [disabled]="userRole() === 'REVIEWER' || userRole() === 'DEPUTY_OMBUDSMAN'" (click)="openNodalOfficerTab()">Nodal Officer Record</button>
@@ -1194,10 +1194,38 @@
                         <span class="summary-value">{{ proposedComplaintType || '—' }}</span>
                       }
                     </div>
-                    <div class="summary-field">
+                    <div class="summary-field entity-search-group">
                       <span class="summary-label">Entity Name</span>
                       @if (editMode()) {
-                        <input type="text" [(ngModel)]="eligibilityEntityName" class="summary-edit-input" />
+                        <div class="entity-search-wrapper">
+                          <input type="text"
+                            class="summary-edit-input"
+                            [ngModel]="entitySearchText"
+                            (ngModelChange)="onEntitySearchInput($event)"
+                            (blur)="onEntityBlur()"
+                            placeholder="Select a Value"
+                            autocomplete="off" />
+                          <i class="pi entity-search-icon"
+                            [class.pi-search]="!entitySearchLoading()"
+                            [class.pi-spinner]="entitySearchLoading()"
+                            [class.pi-spin]="entitySearchLoading()"></i>
+                        </div>
+                        @if (showEntityDropdown() && !entitySearchLoading() && entitySearchResults().length === 0) {
+                          <ul class="entity-dropdown">
+                            <li class="entity-dropdown-empty">No entity matches that name</li>
+                          </ul>
+                        }
+                        @if (showEntityDropdown() && entitySearchResults().length > 0) {
+                          <ul class="entity-dropdown">
+                            @for (entity of entitySearchResults(); track entity.id) {
+                              <!-- mousedown, not click: blur fires first and closes the list. -->
+                              <li (mousedown)="selectEntity(entity)">
+                                <span class="entity-name">{{ entity.name }}</span>
+                                <span class="entity-dept">{{ entity.department }}</span>
+                              </li>
+                            }
+                          </ul>
+                        }
                       } @else {
                         <span class="summary-value">{{ eligibilityEntityName || '—' }}</span>
                       }
@@ -1259,49 +1287,16 @@
               @if (summarySections.entity) {
                 <div class="summary-fields">
                   <div class="summary-row">
-                    <div class="summary-field entity-search-group">
+                    <!-- These four describe the regulated entity itself, so they are read-only in edit
+                         mode too: they follow the entity picked in the Eligibility section above, and
+                         typing over them here would disagree with the entity the complaint points at. -->
+                    <div class="summary-field">
                       <span class="summary-label">Entity Name</span>
-                      @if (editMode()) {
-                        <div class="entity-search-wrapper">
-                          <input type="text"
-                            class="summary-edit-input"
-                            [ngModel]="entitySearchText"
-                            (ngModelChange)="onEntitySearchInput($event)"
-                            (blur)="onEntityBlur()"
-                            placeholder="Search the entity by name"
-                            autocomplete="off" />
-                          <i class="pi entity-search-icon"
-                            [class.pi-search]="!entitySearchLoading()"
-                            [class.pi-spinner]="entitySearchLoading()"
-                            [class.pi-spin]="entitySearchLoading()"></i>
-                        </div>
-                        @if (showEntityDropdown() && !entitySearchLoading() && entitySearchResults().length === 0) {
-                          <ul class="entity-dropdown">
-                            <li class="entity-dropdown-empty">No entity matches that name</li>
-                          </ul>
-                        }
-                        @if (showEntityDropdown() && entitySearchResults().length > 0) {
-                          <ul class="entity-dropdown">
-                            @for (entity of entitySearchResults(); track entity.id) {
-                              <!-- mousedown, not click: blur fires first and closes the list. -->
-                              <li (mousedown)="selectEntity(entity)">
-                                <span class="entity-name">{{ entity.name }}</span>
-                                <span class="entity-dept">{{ entity.department }}</span>
-                              </li>
-                            }
-                          </ul>
-                        }
-                      } @else {
-                        <span class="summary-value">{{ entityName || '—' }}</span>
-                      }
+                      <span class="summary-value">{{ entityName || '—' }}</span>
                     </div>
                     <div class="summary-field">
                       <span class="summary-label">Module Name</span>
-                      @if (editMode()) {
-                        <input type="text" [(ngModel)]="entityType" class="summary-edit-input" />
-                      } @else {
-                        <span class="summary-value">{{ moduleName || '—' }}</span>
-                      }
+                      <span class="summary-value">{{ moduleName || '—' }}</span>
                     </div>
                   </div>
                   @if (editMode() && entityResetNotice()) {
@@ -1313,19 +1308,11 @@
                   <div class="summary-row">
                     <div class="summary-field">
                       <span class="summary-label">Entity Category</span>
-                      @if (editMode()) {
-                        <input type="text" [(ngModel)]="entityCategory" class="summary-edit-input" />
-                      } @else {
-                        <span class="summary-value">{{ entityCategory || '—' }}</span>
-                      }
+                      <span class="summary-value">{{ entityCategory || '—' }}</span>
                     </div>
                     <div class="summary-field">
                       <span class="summary-label">Entity Type</span>
-                      @if (editMode()) {
-                        <input type="text" [(ngModel)]="bsrCode" class="summary-edit-input" />
-                      } @else {
-                        <span class="summary-value">{{ entityType || '—' }}</span>
-                      }
+                      <span class="summary-value">{{ entityTypeDisplay || '—' }}</span>
                     </div>
                   </div>
                   <div class="summary-row">

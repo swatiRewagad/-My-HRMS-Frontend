@@ -206,7 +206,13 @@ interface EntitySearchResult {
   id: number;
   name: string;
   department: string;
+  /** The entity's category as the master stores it, e.g. "Public Sector Bank". */
   entityType: string;
+  moduleName?: string | null;
+  /** The category as the complaint screens label it, e.g. "Nationalised Bank". */
+  entityCategory?: string | null;
+  /** RBI's sub-classification below the category, e.g. "Loan Company". NBFCs only. */
+  entityTypeDetail?: string | null;
   city?: string | null;
   state?: string | null;
 }
@@ -279,10 +285,6 @@ export class RbioComplaintDetailsView implements OnInit {
   proposedComplaintType = 'NEW_COMPLAINT';
   category = '';
   eligibilityEntityName = '';
-  eligibilityEntitySearch = '';
-  eligibilityEntityResults = signal<{ id: number; name: string; department: string; entityType: string }[]>([]);
-  showEligibilityEntityDropdown = signal(false);
-  private eligibilityEntityTimeout: any = null;
   markAllEligible = false;
   eligibilityQuestions: EligibilityQuestionItem[] = [
     { key: 'entityRegulatedByRbi', label: 'Is Entity regulated by RBI?', type: 'radio', answer: null, dateValue: null },
@@ -487,8 +489,9 @@ export class RbioComplaintDetailsView implements OnInit {
   isReadOnlyViewer = signal(false);
   justActioned = signal(false);
   workflowAction = signal('');
+  // Conciliation is the DO's own step; every other rung on the ladder only ever reads its outcome.
   conciliationEnabled = computed(() => {
-    if (this.userRole() !== 'DO') return true;
+    if (this.userRole() !== 'DO') return false;
     const action = this.workflowAction();
     const status = this.complaintStatus();
     const excludedStatuses = ['ADVISORY_COMPLIED', 'COMPLAINT_SETTLED', 'COMPLAINT_WITHDRAWN', 'COMPLAINT_REJECTED', 'AWARD_PASSED', 'OMBUDSMAN_DECISION'];
@@ -1160,6 +1163,9 @@ private getStatusColor(status: string): string {
         this.entitySearchText =
           data.navBarDto?.entityName || '';
 
+        this.eligibilityEntityName =
+          data.navBarDto?.entityName || '';
+
         this.regulatedEntityId =
           data.entityDetails?.id ?? null;
         this.entityResetNotice.set('');
@@ -1169,8 +1175,13 @@ private getStatusColor(status: string): string {
           this.entityContact.set(null);
         }
 
-        this.entityType =
+        // Not this.entityType: that carries the coarse BANK/NBFC kind the intake flow submits, whereas
+        // entityDetails.entityType is the entity's sub-classification and is display-only here.
+        this.entityTypeDisplay =
           data.entityDetails?.entityType || '';
+
+        this.moduleName =
+          data.entityDetails?.moduleName || '';
 
         this.entityCategory =
           data.entityDetails?.entityCategory || '';
@@ -1450,36 +1461,6 @@ private getStatusColor(status: string): string {
     }
   }
 
-  onEligibilityEntitySearch(value: string) {
-    this.eligibilityEntitySearch = value;
-    if (this.eligibilityEntityTimeout) clearTimeout(this.eligibilityEntityTimeout);
-    if (!value || value.length < 2) {
-      this.showEligibilityEntityDropdown.set(false);
-      return;
-    }
-    this.eligibilityEntityTimeout = setTimeout(() => {
-      this.http.get<any>(`${environment.apiBaseUrl}/api/v1/routing/entities/list`, {
-        params: { search: value }
-      }).subscribe({
-        next: (res) => {
-          this.eligibilityEntityResults.set(res?.data || []);
-          this.showEligibilityEntityDropdown.set(true);
-        },
-        error: () => this.eligibilityEntityResults.set([])
-      });
-    }, 300);
-  }
-
-  selectEligibilityEntity(entity: { id: number; name: string; department: string; entityType: string }) {
-    this.eligibilityEntityName = entity.name;
-    this.eligibilityEntitySearch = entity.name;
-    this.showEligibilityEntityDropdown.set(false);
-  }
-
-  onEligibilityEntityBlur() {
-    setTimeout(() => this.showEligibilityEntityDropdown.set(false), 200);
-  }
-
   onMarkAllEligible() {
     if (this.markAllEligible) {
       for (const q of this.eligibilityQuestions) {
@@ -1530,10 +1511,15 @@ private getStatusColor(status: string): string {
 
     this.regulatedEntityId = entity.id;
     this.entityName = entity.name;
+    this.eligibilityEntityName = entity.name;
     this.entitySearchText = entity.name;
-    this.entityType = entity.entityType || 'BANK';
-    this.entityTypeDisplay = entity.entityType || '';
     this.showEntityDropdown.set(false);
+
+    // The four read-only Entity Details fields. All are properties of the entity, so the picked row is
+    // their only source — the officer never types them.
+    this.moduleName = entity.moduleName || '';
+    this.entityCategory = entity.entityCategory || '';
+    this.entityTypeDisplay = entity.entityTypeDetail || '';
 
     if (changed) {
       this.resetEntityDependentFields();
@@ -1568,7 +1554,6 @@ private getStatusColor(status: string): string {
     clear('branch name', this.entityBranchName, () => (this.entityBranchName = ''));
     clear('branch category', this.entityBranchCategory, () => (this.entityBranchCategory = ''));
     clear('address', this.entityAddress, () => (this.entityAddress = ''));
-    clear('entity category', this.entityCategory, () => (this.entityCategory = ''));
 
     this.entityResetNotice.set(cleared.length
       ? `Cleared for the new entity — please re-enter: ${cleared.join(', ')}.`
@@ -2615,7 +2600,8 @@ private getStatusColor(status: string): string {
       // regulatedEntityId belongs here with entityName: restoring the name but not the id would leave
       // a cancelled edit pointing at the entity the officer backed out of.
       'entityName', 'regulatedEntityId', 'entitySearchText', 'entityTypeDisplay',
-      'entityType', 'entityCategory', 'bsrCode', 'entityPincode',
+      // Picking an entity rewrites the read-only Entity Details fields, so they have to be restorable.
+      'entityType', 'moduleName', 'entityCategory', 'bsrCode', 'entityPincode',
       'entityState', 'entityDistrict', 'entityCity', 'entityBranchName',
       'entityBranchCategory', 'entityAddress', 'cosmosCode',
       'otherEntityName', 'registrationWithRbiDate',

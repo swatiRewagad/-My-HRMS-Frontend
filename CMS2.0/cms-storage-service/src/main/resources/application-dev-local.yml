@@ -1,6 +1,35 @@
+# ============================================================
+# CMS Storage Service — Dev Local Profile
+# Activate: mvn spring-boot:run -Dspring-boot.run.profiles=dev-local
+# Points at the same MySQL schema cms-backend uses on dev-local.
+# ============================================================
+
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/CMS_DB?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&rewriteBatchedStatements=true&characterEncoding=UTF-8&useUnicode=true
+    username: root
+    password: root
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      pool-name: CMS-Storage-Dev-Pool
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+        format_sql: true
+    open-in-view: false
+
 cms:
   storage:
     base-path: ./dev-uploads
+    blob:
+      max-file-size: 52428800
+      allowed-types: pdf,png,jpg,jpeg,doc,docx,xls,xlsx,txt,csv,zip
 
 logging:
   level:

@@ -189,8 +189,9 @@ export class RbioCreateComplaintComponent implements OnInit {
   // already-forwarded complaint shows the full read-only detail view instead.
   justActioned = signal(false);
   workflowAction = signal('');
+  // Conciliation is the DO's own step; every other rung on the ladder only ever reads its outcome.
   conciliationEnabled = computed(() => {
-    if (this.userRole() !== 'DO') return true;
+    if (this.userRole() !== 'DO') return false;
     const action = this.workflowAction();
     const status = this.complaintStatus();
     const excludedStatuses = ['ADVISORY_COMPLIED', 'COMPLAINT_SETTLED', 'COMPLAINT_WITHDRAWN', 'COMPLAINT_REJECTED', 'AWARD_PASSED', 'OMBUDSMAN_DECISION'];

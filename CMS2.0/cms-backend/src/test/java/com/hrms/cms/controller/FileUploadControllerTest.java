@@ -2,51 +2,60 @@ package com.hrms.cms.controller;
 
 import com.hrms.cms.dto.ChunkUploadResponse;
 import com.hrms.cms.entity.ComplaintAttachment;
+import com.hrms.cms.exception.FileStorageException;
+import com.hrms.cms.repository.EmailDraftAttachmentRepository;
+import com.hrms.cms.service.EncryptionKeyService;
 import com.hrms.cms.service.FileStorageService;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.http.HttpHeaders;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.List;
 
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(FileUploadController.class)
+@AutoConfigureMockMvc(addFilters = false)
 class FileUploadControllerTest {
 
     @Autowired private MockMvc mockMvc;
     @MockBean private FileStorageService fileStorageService;
+    @MockBean private EmailDraftAttachmentRepository draftAttachmentRepository;
 
-    @TempDir
-    Path tempDir;
+    // PiiDecryptionFilter is a Filter bean, so @WebMvcTest pulls it into the slice while leaving its
+    // @Service dependency out. Without this the context fails to start.
+    @MockBean private EncryptionKeyService encryptionKeyService;
+
+    private static ComplaintAttachment attachment(Long id, String name, String contentType) {
+        return ComplaintAttachment.builder()
+                .id(id).complaintId(5L).fileName("stored_" + name).originalName(name)
+                .contentType(contentType).fileSize(11L).storagePath("object-uuid-" + id).build();
+    }
 
     @Nested
     class UploadChunk {
 
         @Test
         void shouldReturnOkForValidChunk() throws Exception {
-            ChunkUploadResponse response = ChunkUploadResponse.builder()
-                    .uploadId("upload-1").chunkIndex(0).totalChunks(3)
-                    .complete(false).message("Chunk 1/3 received").build();
-
             when(fileStorageService.handleChunkUpload(any(), eq("upload-1"), eq(0), eq(3),
                     eq("test.pdf"), eq("CMS-001"), eq(1L), eq(5000L)))
-                    .thenReturn(response);
-
-            MockMultipartFile chunk = new MockMultipartFile("file", "test.pdf", "application/pdf", "chunk-data".getBytes());
+                    .thenReturn(ChunkUploadResponse.builder()
+                            .uploadId("upload-1").chunkIndex(0).totalChunks(3)
+                            .complete(false).message("Chunk 1/3 received").build());
 
             mockMvc.perform(multipart("/api/files/upload/chunk")
-                            .file(chunk)
+                            .file(new MockMultipartFile("file", "test.pdf", "application/pdf", "chunk-data".getBytes()))
                             .param("uploadId", "upload-1")
                             .param("chunkIndex", "0")
                             .param("totalChunks", "3")
@@ -60,19 +69,13 @@ class FileUploadControllerTest {
         }
 
         @Test
-        void shouldReturnBadRequestForDisallowedType() throws Exception {
-            ChunkUploadResponse response = ChunkUploadResponse.builder()
-                    .message("File type not allowed. Allowed: pdf,png,jpg")
-                    .complete(false).build();
-
+        void shouldReturn415ForDisallowedType() throws Exception {
             when(fileStorageService.handleChunkUpload(any(), any(), anyInt(), anyInt(),
                     any(), any(), anyLong(), anyLong()))
-                    .thenReturn(response);
-
-            MockMultipartFile chunk = new MockMultipartFile("file", "bad.exe", "application/octet-stream", "data".getBytes());
+                    .thenThrow(FileStorageException.unsupportedType("pdf,png,jpg"));
 
             mockMvc.perform(multipart("/api/files/upload/chunk")
-                            .file(chunk)
+                            .file(new MockMultipartFile("file", "bad.exe", "application/octet-stream", "data".getBytes()))
                             .param("uploadId", "up-1")
                             .param("chunkIndex", "0")
                             .param("totalChunks", "1")
@@ -80,25 +83,22 @@ class FileUploadControllerTest {
                             .param("complaintNumber", "CMS-001")
                             .param("complaintId", "1")
                             .param("totalFileSize", "100"))
-                    .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("not allowed")));
+                    .andExpect(status().isUnsupportedMediaType())
+                    .andExpect(jsonPath("$.errorCode").value("UNSUPPORTED_FILE_TYPE"))
+                    .andExpect(jsonPath("$.message").value(containsString("not allowed")));
         }
 
         @Test
         void shouldReturnCompleteWhenAllChunksReceived() throws Exception {
-            ChunkUploadResponse response = ChunkUploadResponse.builder()
-                    .uploadId("upload-1").chunkIndex(2).totalChunks(3)
-                    .complete(true).attachmentId(10L).fileName("report.pdf")
-                    .storagePath("CMS-001/stored.pdf").message("Upload complete").build();
-
             when(fileStorageService.handleChunkUpload(any(), any(), anyInt(), anyInt(),
                     any(), any(), anyLong(), anyLong()))
-                    .thenReturn(response);
-
-            MockMultipartFile chunk = new MockMultipartFile("file", "report.pdf", "application/pdf", "last".getBytes());
+                    .thenReturn(ChunkUploadResponse.builder()
+                            .uploadId("upload-1").chunkIndex(2).totalChunks(3)
+                            .complete(true).attachmentId(10L).fileName("report.pdf")
+                            .storagePath("object-uuid-10").message("Upload complete").build());
 
             mockMvc.perform(multipart("/api/files/upload/chunk")
-                            .file(chunk)
+                            .file(new MockMultipartFile("file", "report.pdf", "application/pdf", "last".getBytes()))
                             .param("uploadId", "upload-1")
                             .param("chunkIndex", "2")
                             .param("totalChunks", "3")
@@ -108,7 +108,8 @@ class FileUploadControllerTest {
                             .param("totalFileSize", "300"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.complete").value(true))
-                    .andExpect(jsonPath("$.attachmentId").value(10));
+                    .andExpect(jsonPath("$.attachmentId").value(10))
+                    .andExpect(jsonPath("$.storagePath").value("object-uuid-10"));
         }
     }
 
@@ -116,24 +117,50 @@ class FileUploadControllerTest {
     class UploadSingle {
 
         @Test
-        void shouldReturnAttachment() throws Exception {
-            ComplaintAttachment attachment = ComplaintAttachment.builder()
-                    .id(1L).complaintId(1L).fileName("stored.pdf")
-                    .originalName("doc.pdf").contentType("application/pdf")
-                    .fileSize(1024L).storagePath("CMS-001/stored.pdf").build();
-
+        void shouldReturnAttachmentCarryingTheStorageObjectId() throws Exception {
             when(fileStorageService.handleSingleUpload(any(), eq("CMS-001"), eq(1L)))
-                    .thenReturn(attachment);
-
-            MockMultipartFile file = new MockMultipartFile("file", "doc.pdf", "application/pdf", "content".getBytes());
+                    .thenReturn(attachment(1L, "doc.pdf", "application/pdf"));
 
             mockMvc.perform(multipart("/api/files/upload")
-                            .file(file)
+                            .file(new MockMultipartFile("file", "doc.pdf", "application/pdf", "content".getBytes()))
                             .param("complaintNumber", "CMS-001")
                             .param("complaintId", "1"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.originalName").value("doc.pdf"))
-                    .andExpect(jsonPath("$.storagePath").value("CMS-001/stored.pdf"));
+                    .andExpect(jsonPath("$.storagePath").value("object-uuid-1"));
+        }
+
+        @Test
+        void shouldReturn409WhenAttachmentLimitReached() throws Exception {
+            when(fileStorageService.handleSingleUpload(any(), any(), anyLong()))
+                    .thenThrow(FileStorageException.attachmentLimitReached(10));
+
+            mockMvc.perform(multipart("/api/files/upload")
+                            .file(new MockMultipartFile("file", "doc.pdf", "application/pdf", "content".getBytes()))
+                            .param("complaintNumber", "CMS-001")
+                            .param("complaintId", "1"))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.errorCode").value("ATTACHMENT_LIMIT_REACHED"));
+        }
+    }
+
+    @Nested
+    class ListAttachments {
+
+        @Test
+        void shouldWrapAttachmentsWithTotalCount() throws Exception {
+            when(fileStorageService.getAttachments(5L)).thenReturn(List.of(
+                    attachment(1L, "file.pdf", "application/pdf"),
+                    attachment(2L, "scan.png", "image/png")));
+
+            mockMvc.perform(get("/api/files/complaint/5"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.success").value(true))
+                    .andExpect(jsonPath("$.message").value("Attachments fetched successfully"))
+                    .andExpect(jsonPath("$.totalCount").value(2))
+                    .andExpect(jsonPath("$.data", hasSize(2)))
+                    .andExpect(jsonPath("$.data[0].originalName").value("file.pdf"))
+                    .andExpect(jsonPath("$.data[0].storagePath").value("object-uuid-1"));
         }
     }
 
@@ -141,24 +168,26 @@ class FileUploadControllerTest {
     class Download {
 
         @Test
-        void shouldReturnFileResource() throws Exception {
-            Path file = tempDir.resolve("test.pdf");
-            Files.writeString(file, "PDF Content");
-
-            when(fileStorageService.getFilePath(1L)).thenReturn(file);
+        void shouldReturnBlobBytesAsAttachment() throws Exception {
+            when(fileStorageService.getAttachmentMetadata(1L)).thenReturn(attachment(1L, "test.pdf", "application/pdf"));
+            when(fileStorageService.getFileBytes(1L)).thenReturn("PDF Content".getBytes());
 
             mockMvc.perform(get("/api/files/download/1"))
                     .andExpect(status().isOk())
-                    .andExpect(header().exists("Content-Disposition"));
+                    .andExpect(content().contentType("application/pdf"))
+                    .andExpect(header().string(HttpHeaders.CONTENT_DISPOSITION, containsString("attachment;")))
+                    .andExpect(header().string(HttpHeaders.CONTENT_DISPOSITION, containsString("test.pdf")))
+                    .andExpect(content().bytes("PDF Content".getBytes()));
         }
 
         @Test
-        void shouldReturn404WhenFileNotExists() throws Exception {
-            Path nonExistent = tempDir.resolve("missing.pdf");
-            when(fileStorageService.getFilePath(99L)).thenReturn(nonExistent);
+        void shouldReturn404WhenAttachmentMissing() throws Exception {
+            when(fileStorageService.getAttachmentMetadata(99L))
+                    .thenThrow(FileStorageException.attachmentNotFound(99L));
 
             mockMvc.perform(get("/api/files/download/99"))
-                    .andExpect(status().isNotFound());
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.errorCode").value("ATTACHMENT_NOT_FOUND"));
         }
     }
 
@@ -167,32 +196,30 @@ class FileUploadControllerTest {
 
         @Test
         void shouldReturn206ForRangeRequest() throws Exception {
-            Path file = tempDir.resolve("video.mp4");
-            Files.write(file, new byte[10240]);
+            when(fileStorageService.getAttachmentMetadata(1L)).thenReturn(attachment(1L, "video.mp4", "video/mp4"));
+            when(fileStorageService.getFileBytes(1L)).thenReturn(new byte[10240]);
 
-            when(fileStorageService.getFilePath(1L)).thenReturn(file);
-
-            mockMvc.perform(get("/api/files/stream/1")
-                            .header("Range", "bytes=0-1023"))
+            mockMvc.perform(get("/api/files/stream/1").header("Range", "bytes=0-1023"))
                     .andExpect(status().isPartialContent())
-                    .andExpect(header().string("Accept-Ranges", "bytes"));
+                    .andExpect(header().string("Accept-Ranges", "bytes"))
+                    .andExpect(header().string(HttpHeaders.CONTENT_DISPOSITION, containsString("inline;")))
+                    .andExpect(header().longValue(HttpHeaders.CONTENT_LENGTH, 1024L));
         }
 
         @Test
-        void shouldReturn206WithoutRangeHeader() throws Exception {
-            Path file = tempDir.resolve("audio.mp3");
-            Files.write(file, new byte[5000]);
-
-            when(fileStorageService.getFilePath(2L)).thenReturn(file);
+        void shouldReturn206WithFirstMegabyteWhenNoRangeHeader() throws Exception {
+            when(fileStorageService.getAttachmentMetadata(2L)).thenReturn(attachment(2L, "audio.mp3", "audio/mpeg"));
+            when(fileStorageService.getFileBytes(2L)).thenReturn(new byte[5000]);
 
             mockMvc.perform(get("/api/files/stream/2"))
-                    .andExpect(status().isPartialContent());
+                    .andExpect(status().isPartialContent())
+                    .andExpect(header().longValue(HttpHeaders.CONTENT_LENGTH, 5000L));
         }
 
         @Test
-        void shouldReturn404WhenStreamFileNotExists() throws Exception {
-            Path missing = tempDir.resolve("ghost.mp4");
-            when(fileStorageService.getFilePath(99L)).thenReturn(missing);
+        void shouldReturn404WhenAttachmentMissing() throws Exception {
+            when(fileStorageService.getAttachmentMetadata(99L))
+                    .thenThrow(FileStorageException.attachmentNotFound(99L));
 
             mockMvc.perform(get("/api/files/stream/99"))
                     .andExpect(status().isNotFound());
@@ -200,18 +227,29 @@ class FileUploadControllerTest {
     }
 
     @Nested
-    class ListAttachments {
+    class DownloadAll {
 
         @Test
-        void shouldReturnAttachmentsForComplaint() throws Exception {
-            ComplaintAttachment att = ComplaintAttachment.builder()
-                    .id(1L).complaintId(5L).originalName("file.pdf").build();
-            when(fileStorageService.getAttachments(5L)).thenReturn(List.of(att));
+        void shouldStreamZipNamedAfterTheComplaint() throws Exception {
+            when(fileStorageService.downloadAllAttachmentsAsZip(5L))
+                    .thenReturn(outputStream -> outputStream.write("zip-bytes".getBytes()));
 
-            mockMvc.perform(get("/api/files/complaint/5"))
-                    .andExpect(status().isOk())
-                    .andExpect(jsonPath("$", org.hamcrest.Matchers.hasSize(1)))
-                    .andExpect(jsonPath("$[0].originalName").value("file.pdf"));
+            mockMvc.perform(get("/api/files/complaint/5/download-all"))
+                    .andExpect(request().asyncStarted())
+                    .andExpect(header().string(HttpHeaders.CONTENT_DISPOSITION,
+                            containsString("complaint_5_attachments.zip")))
+                    .andExpect(header().string(HttpHeaders.CONTENT_TYPE, "application/zip"));
+        }
+
+        @Test
+        void shouldReturn404WhenComplaintHasNoAttachments() throws Exception {
+            when(fileStorageService.downloadAllAttachmentsAsZip(7L))
+                    .thenThrow(new FileStorageException("No attachments found for complaint 7",
+                            org.springframework.http.HttpStatus.NOT_FOUND, "NO_ATTACHMENTS"));
+
+            mockMvc.perform(get("/api/files/complaint/7/download-all"))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.errorCode").value("NO_ATTACHMENTS"));
         }
     }
 
@@ -220,8 +258,6 @@ class FileUploadControllerTest {
 
         @Test
         void shouldReturnNoContent() throws Exception {
-            doNothing().when(fileStorageService).deleteAttachment(1L);
-
             mockMvc.perform(delete("/api/files/1"))
                     .andExpect(status().isNoContent());
 
@@ -234,8 +270,6 @@ class FileUploadControllerTest {
 
         @Test
         void shouldReturnOkMessage() throws Exception {
-            doNothing().when(fileStorageService).cleanupStaleTempUploads();
-
             mockMvc.perform(post("/api/files/cleanup"))
                     .andExpect(status().isOk())
                     .andExpect(content().string("Cleanup initiated"));

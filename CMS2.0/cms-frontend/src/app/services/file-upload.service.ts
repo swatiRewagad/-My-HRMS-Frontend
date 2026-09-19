@@ -211,11 +211,19 @@ export class FileUploadService {
   }
 
   getAttachments(complaintId: number): Observable<any[]> {
-    return this.http.get<any[]>(`${this.api}/files/complaint/${complaintId}`);
+    return this.http
+      .get<{ data?: any[] }>(`${this.api}/files/complaint/${complaintId}`)
+      .pipe(map((res: { data?: any[] }) => res?.data ?? []));
   }
 
   downloadAttachment(attachmentId: number): Observable<Blob> {
     return this.http.get(`${this.api}/files/download/${attachmentId}`, {
+      responseType: 'blob',
+    });
+  }
+
+  downloadAllAttachments(complaintId: number): Observable<Blob> {
+    return this.http.get(`${this.api}/files/complaint/${complaintId}/download-all`, {
       responseType: 'blob',
     });
   }

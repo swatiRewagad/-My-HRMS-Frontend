@@ -61,6 +61,14 @@ public class KafkaTopicConfig {
     }
 
     @Bean
+    public NewTopic complaintReadTopic() {
+        return TopicBuilder.name(KafkaTopics.COMPLAINT_READ)
+                .partitions(PARTITIONS)
+                .replicas(REPLICAS)
+                .build();
+    }
+
+    @Bean
     public NewTopic complaintDlqTopic() {
         return TopicBuilder.name(KafkaTopics.COMPLAINT_DLQ)
                 .partitions(3)

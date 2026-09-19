@@ -2,6 +2,7 @@ package com.hrms.cms.event;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hrms.cms.entity.Complaint;
+import com.rbi.cms.common.config.KafkaTopics;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -51,6 +52,25 @@ public class ComplaintEventPublisher {
         publishEvent(TOPIC_COMPLAINT_ESCALATED, complaint, prevStatus, "ESCALATED", actor);
     }
 
+    /**
+     * Announces that an officer has opened the complaint, so the search index can clear its unread
+     * flag. Deliberately carries no status: the only consumer flips one boolean, and a stored status
+     * with no {@code ComplaintStatus} constant would otherwise get the whole event dropped.
+     */
+    @Async("taskExecutor")
+    public void publishComplaintRead(String complaintNumber) {
+        try {
+            Map<String, Object> event = new LinkedHashMap<>();
+            event.put("eventId", UUID.randomUUID().toString());
+            event.put("complaintId", complaintNumber);
+            event.put("occurredAt", Instant.now().toString());
+            event.put("correlationId", UUID.randomUUID().toString());
+            send(KafkaTopics.COMPLAINT_READ, complaintNumber, objectMapper.writeValueAsString(event));
+        } catch (Exception e) {
+            log.error("Error publishing {} event: {}", KafkaTopics.COMPLAINT_READ, e.getMessage(), e);
+        }
+    }
+
     private void publishEvent(String topic, Complaint complaint, String prevStatus, String currentStatus, String actor) {
         try {
             Map<String, Object> event = new LinkedHashMap<>();
@@ -92,20 +112,21 @@ public class ComplaintEventPublisher {
             }
             event.put("payload", objectMapper.writeValueAsString(payload));
 
-            String message = objectMapper.writeValueAsString(event);
-
-            kafkaTemplate.send(topic, complaint.getComplaintNumber(), message)
-                    .whenComplete((result, ex) -> {
-                        if (ex != null) {
-                            log.error("Failed to publish {} for {}: {}",
-                                    topic, complaint.getComplaintNumber(), ex.getMessage());
-                        } else {
-                            log.info("Published {} for {} to partition {}",
-                                    topic, complaint.getComplaintNumber(), result.getRecordMetadata().partition());
-                        }
-                    });
+            send(topic, complaint.getComplaintNumber(), objectMapper.writeValueAsString(event));
         } catch (Exception e) {
             log.error("Error publishing {} event: {}", topic, e.getMessage(), e);
         }
+    }
+
+    private void send(String topic, String complaintNumber, String message) {
+        kafkaTemplate.send(topic, complaintNumber, message)
+                .whenComplete((result, ex) -> {
+                    if (ex != null) {
+                        log.error("Failed to publish {} for {}: {}", topic, complaintNumber, ex.getMessage());
+                    } else {
+                        log.info("Published {} for {} to partition {}",
+                                topic, complaintNumber, result.getRecordMetadata().partition());
+                    }
+                });
     }
 }

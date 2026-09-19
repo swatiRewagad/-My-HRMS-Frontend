@@ -3,6 +3,7 @@ package com.hrms.cms.entity;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
+import java.util.Map;
 
 @Entity
 @Table(name = "REGULATED_ENTITIES", indexes = {
@@ -28,6 +29,11 @@ public class RegulatedEntity {
 
     @Column(length = 100)
     private String entityType;
+
+    /** RBI's sub-classification below the category — "Loan Company", "Housing Finance Company" and the
+     *  like. Only NBFCs have one, so it is null for a bank rather than empty by omission. */
+    @Column(length = 100)
+    private String entityTypeDetail;
 
     @Column(length = 100)
     private String city;
@@ -87,5 +93,37 @@ public class RegulatedEntity {
                 .replaceAll("[^A-Z0-9 ]", "")
                 .replaceAll("\\s+", " ")
                 .trim();
+    }
+
+    /**
+     * The complaint screens show Module Name, Entity Category and Entity Type as three fields, but they
+     * are one hierarchy and only the middle level was ever stored: {@code entityType} holds the category
+     * ("Public Sector Bank"). The module above it is derived here rather than stored, because a category
+     * determines it; the type below it cannot be derived and lives in {@code entityTypeDetail}.
+     */
+    private static final Map<String, String> MODULE_BY_CATEGORY = Map.ofEntries(
+            Map.entry("Public Sector Bank", "Bank"),
+            Map.entry("Private Sector Bank", "Bank"),
+            Map.entry("Foreign Bank", "Bank"),
+            Map.entry("Cooperative Bank", "Bank"),
+            Map.entry("Regional Rural Bank", "Bank"),
+            Map.entry("Small Finance Bank", "Bank"),
+            Map.entry("Payments Bank", "Bank"),
+            Map.entry("NBFC", "NBFC"),
+            Map.entry("Payment Infrastructure", "Payment System Operator"));
+
+    /** Where the master's wording differs from the label the complaint screens offer. */
+    private static final Map<String, String> CATEGORY_LABELS = Map.of(
+            "Public Sector Bank", "Nationalised Bank",
+            "Private Sector Bank", "Private Bank",
+            "Payments Bank", "Payment Bank");
+
+    /** Null for a category that places the entity in no module, rather than a guess from the name. */
+    public static String moduleNameFor(String entityType) {
+        return entityType == null ? null : MODULE_BY_CATEGORY.get(entityType);
+    }
+
+    public static String entityCategoryFor(String entityType) {
+        return entityType == null ? null : CATEGORY_LABELS.getOrDefault(entityType, entityType);
     }
 }

@@ -4,6 +4,7 @@ import com.hrms.cms.dto.FileComplaintRequest;
 import com.hrms.cms.dto.UpdateComplaintRequest;
 import com.hrms.cms.entity.Complaint;
 import com.hrms.cms.entity.ComplaintTimeline;
+import com.hrms.cms.event.ComplaintEventPublisher;
 import com.hrms.cms.security.CallerIdentity;
 import com.hrms.cms.security.RbioRoleGuard;
 import com.hrms.cms.service.ComplaintService;
@@ -37,6 +38,7 @@ public class ComplaintController {
     private final RbioComplaintSummaryService rbioComplaintSummaryService;
     private final RbioConciliationService rbioConciliationService;
     private final RbioHierarchyService rbioHierarchyService;
+    private final ComplaintEventPublisher complaintEventPublisher;
     private final CallerIdentity callerIdentity;
 
     @GetMapping
@@ -114,6 +116,10 @@ public class ComplaintController {
             // Lets the screen render read-only rather than let the officer fill a form the PUT will reject.
             summary.put("canEdit", rbioHierarchyService.canEdit(
                     (String) summary.get("assignedOfficer"), callerIdentity.username(), callerIdentity.roles()));
+            // Opening the complaint is what marks it read. Announced only once the flag actually flipped,
+            // and after markRead's own transaction has committed, so the index never runs ahead of the row.
+            rbioComplaintSummaryService.markRead(id)
+                    .ifPresent(complaintEventPublisher::publishComplaintRead);
             return ResponseEntity.ok(envelope(true, "OK", summary));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -171,9 +177,7 @@ public class ComplaintController {
      * been completed or cancelled, opens a new meeting instead so the previous one is preserved.
      */
     @PutMapping("/rbio/{id}/conciliation")
-    @RbioRoleGuard(roles = {RoleConstants.RBIO_DO, RoleConstants.RBIO_REVIEWER,
-            RoleConstants.RBIO_DEPUTY_OMBUDSMAN, RoleConstants.RBIO_OMBUDSMAN, RoleConstants.RBIO_ADMIN,
-            "RBIO_OFFICER", "RBIO_SUPERVISOR", "RBIO_CONCILIATOR"})
+    @RbioRoleGuard(roles = {RoleConstants.RBIO_DO, RoleConstants.RBIO_ADMIN})
     public ResponseEntity<Map<String, Object>> updateRbioConciliation(
             @PathVariable Long id,
             @RequestBody Map<String, Object> payload,

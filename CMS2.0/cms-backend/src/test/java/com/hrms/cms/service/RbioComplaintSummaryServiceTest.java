@@ -458,6 +458,40 @@ class RbioComplaintSummaryServiceTest {
         }
     }
 
+    @Nested
+    class MarkRead {
+
+        @Test
+        void flipsTheFlagAndReturnsTheComplaintNumberToAnnounce() {
+            complaint.setIsRead(Boolean.FALSE);
+            stubComplaint();
+
+            assertThat(service.markRead(92L)).contains("CMS-PNB-1234");
+
+            assertThat(complaint.getIsRead()).isTrue();
+            verify(complaintRepository).save(complaint);
+        }
+
+        @Test
+        void reopeningAnAlreadyReadComplaintNeitherWritesNorAnnounces() {
+            complaint.setIsRead(Boolean.TRUE);
+            stubComplaint();
+
+            assertThat(service.markRead(92L)).isEmpty();
+
+            verify(complaintRepository, never()).save(any());
+        }
+
+        @Test
+        void treatsAMissingComplaintAsNothingToMark() {
+            when(complaintRepository.findById(404L)).thenReturn(Optional.empty());
+
+            assertThat(service.markRead(404L)).isEmpty();
+
+            verify(complaintRepository, never()).save(any());
+        }
+    }
+
     @SuppressWarnings("unchecked")
     private static Map<String, Object> section(Map<String, Object> parent, String key) {
         return (Map<String, Object>) parent.get(key);
