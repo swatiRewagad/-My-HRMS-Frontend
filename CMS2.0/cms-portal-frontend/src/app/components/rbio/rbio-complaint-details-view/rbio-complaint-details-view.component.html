@@ -7,7 +7,7 @@
     <div class="success-page">
       <div class="success-icon"><i class="pi pi-check-circle"></i></div>
       <h2>Assessment Sent for Approval</h2>
-      <p>Complaint <strong>{{ complaintId }}</strong> has been routed to
+      <p>Complaint <strong>{{ complaintNumber || complaintId }}</strong> has been routed to
         <strong>{{ approvalSentTo() }}</strong>
       </p>
       <button class="btn btn-primary" (click)="goBack()">Back to Home</button>
@@ -17,7 +17,7 @@
     <div class="success-page">
       <div class="success-icon"><i class="pi pi-check-circle" style="color: #f59e0b;"></i></div>
       <h2>Complaint Sent Back</h2>
-      <p>Complaint <strong>{{ complaintId }}</strong> has been routed to
+      <p>Complaint <strong>{{ complaintNumber || complaintId }}</strong> has been routed to
         <strong>{{ approvalSentTo() }}</strong>
       </p>
       <button class="btn btn-primary" (click)="goBack()">Back to Home</button>
@@ -27,7 +27,7 @@
     <div class="success-page">
       <div class="success-icon"><i class="pi pi-check-circle"></i></div>
       <h2>Complaint Forwarded</h2>
-      <p>Complaint <strong>{{ complaintId }}</strong> has been transferred to
+      <p>Complaint <strong>{{ complaintNumber || complaintId }}</strong> has been transferred to
         <strong>{{ approvalSentTo() }}</strong>, pending CRPC Head approval.
       </p>
       <button class="btn btn-primary" (click)="goBack()">Back to Home</button>
@@ -37,7 +37,7 @@
     <div class="success-page">
       <div class="success-icon"><i class="pi pi-check-circle" style="color: #16a34a;"></i></div>
       <h2>Complaint Closed</h2>
-      <p>Complaint <strong>{{ complaintId }}</strong> has been closed successfully.</p>
+      <p>Complaint <strong>{{ complaintNumber || complaintId }}</strong> has been closed successfully.</p>
       <button class="btn btn-primary" (click)="goBack()">Back to Home</button>
     </div>
   } @else if (submitted() && justActioned() && complaintStatus() === 'VIEW_ONLY') {
@@ -45,7 +45,7 @@
     <div class="success-page">
       <div class="success-icon"><i class="pi pi-lock" style="color: #64748b;"></i></div>
       <h2>Complaint Already Processed</h2>
-      <p>Complaint <strong>{{ complaintId }}</strong> has already been sent for approval and is in <strong>View Only</strong> mode.</p>
+      <p>Complaint <strong>{{ complaintNumber || complaintId }}</strong> has already been sent for approval and is in <strong>View Only</strong> mode.</p>
       <button class="btn btn-primary" (click)="goBack()">Back to Home</button>
     </div>
   } @else if (submitted()) {
@@ -64,7 +64,7 @@
         <div class="sub-header">
           <div class="complaint-tab active">
             <i class="pi pi-file"></i>
-            Complaint {{ complaintId }}
+            Complaint {{ complaintNumber || complaintId }}
           </div>
           <div class="complaint-tab add-tab" (click)="goBack()" title="Back to RBIO">
             <i class="pi pi-plus"></i>
@@ -90,7 +90,7 @@
             <span class="meta-icon complaint-number"><i class="pi pi-id-card"></i></span>
             <div class="meta-text">
               <span class="meta-label">Complaint Number <i class="pi pi-info-circle"></i></span>
-              <span class="meta-value">N{{ complaintId }}</span>
+              <span class="meta-value">{{ complaintNumber || complaintId }}</span>
             </div>
           </div>
           <div class="meta-item">
@@ -1152,7 +1152,7 @@
                           @if (isCpgram) {
                               <div class="summary-field full">
                                 <span class="summary-label">CPGRAM Number</span>
-                                <input type="text" [(ngModel)]="receivedDate" class="summary-valuecpgram-number" class="summary-edit-input" />
+                                <input type="text" [(ngModel)]="cpgramsNumber" class="summary-edit-input" />
                               </div>
                           }
                         } @else {
@@ -2405,7 +2405,7 @@
     <div class="sub-header">
       <div class="complaint-tab active">
         <i class="pi pi-file"></i>
-        Complaint {{ complaintId }}
+        Complaint {{ complaintNumber || complaintId }}
       </div>
       <div class="complaint-tab add-tab" (click)="goBack()" title="Back to RBIO">
         <i class="pi pi-plus"></i>

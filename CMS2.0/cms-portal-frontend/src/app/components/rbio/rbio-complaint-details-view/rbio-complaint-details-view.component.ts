@@ -1,7 +1,8 @@
-import { Component, OnInit, inject, signal, computed, WritableSignal, effect } from '@angular/core';
+import { Component, OnInit, inject, signal, computed, WritableSignal, effect, DestroyRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { HttpClient } from '@angular/common/http';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { ButtonModule } from 'primeng/button';
@@ -186,11 +187,11 @@ interface Attachment {
 export class RbioComplaintDetailsView implements OnInit {
 
   private router = inject(Router);
-  private route = inject(ActivatedRoute);
   private http = inject(HttpClient);
   private sanitizer = inject(DomSanitizer);
   private auth = inject(KeycloakAuthService);
   activatedRoute = inject(ActivatedRoute)
+  private destroyRef = inject(DestroyRef);
 
 
   // Header
@@ -422,14 +423,9 @@ export class RbioComplaintDetailsView implements OnInit {
   approvalMenuPos = signal({ top: 0, left: 0 });
   sendBackMenuPos = signal({ top: 0, left: 0 });
 
-  complaintDetail: any;
   actualComplaintNumber: any;
 
   constructor() {
-
-    this.complaintDetail = this.activatedRoute.snapshot.queryParamMap.get("complaintDetail");
-    this.actualComplaintNumber = JSON.parse(this.complaintDetail)?.complaintNumber;
-    this.complaintId = JSON.parse(this.complaintDetail)?.complaintId;
     effect(() => {
       const isOpen = this.attachmentsPanelOpen();
       console.log('--- [SIGNAL EFFECT] attachmentsPanelOpen changed to:', isOpen);
@@ -951,12 +947,17 @@ private getStatusColor(status: string): string {
     this.detectUserOffice(user?.username || '');
     this.loadStates();
     this.loadDeos();
-    this.loadComplaints();
 
-    // const taskId = this.route.snapshot.paramMap.get('id');
-    if (this.complaintId) {
-      this.loadExistingComplaint(this.complaintId);
-    }
+    this.activatedRoute.paramMap
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(params => {
+        const id = params.get('id');
+        if (id) {
+          this.complaintId = id;
+          this.loadComplaints();
+          this.loadExistingComplaint(id);
+        }
+      });
   }
 
   private loadExistingComplaint(id: string) {
@@ -986,6 +987,9 @@ private getStatusColor(status: string): string {
         // The summary is editable only by the officer holding it; everyone else reads it. canEdit comes
         // from the server so the form matches what the PUT will actually accept.
         this.isReadOnlyViewer.set(data.canEdit === false || data.navBarDto?.status === 'CLOSED');
+
+        this.complaintNumber = data.navBarDto?.complaintNumber || '';
+        this.actualComplaintNumber = data.navBarDto?.complaintNumber || '';
 
         this.category = data.navBarDto?.complaintCategory;
 
@@ -1705,7 +1709,7 @@ private getStatusColor(status: string): string {
       performedByRole: this.userRole()
     };
 
-    this.http.post(`${environment.apiBaseUrl}/api/v1/complaints/${this.complaintId}/send-for-approval`, payload).subscribe({
+    this.http.post(`${environment.apiBaseUrl}/api/v1/complaints/${this.complaintNumber}/send-for-approval`, payload).subscribe({
       next: () => {
         this.sendBackSubmitting.set(false);
         this.showSendBackDialog.set(false);
@@ -1777,7 +1781,7 @@ private getStatusColor(status: string): string {
       proposedClause: this.proposedClause || null
     };
 
-    this.http.post(`${environment.apiBaseUrl}/api/v1/complaints/${this.complaintId}/send-for-approval`, payload).subscribe({
+    this.http.post(`${environment.apiBaseUrl}/api/v1/complaints/${this.complaintNumber}/send-for-approval`, payload).subscribe({
       next: () => {
         this.approvalSubmitting.set(false);
         this.showApprovalDialog.set(false);
@@ -1819,7 +1823,7 @@ private getStatusColor(status: string): string {
       performedBy: this.auth.currentUser()?.username || ''
     };
 
-    this.http.post(`${environment.apiBaseUrl}/api/v1/complaints/${this.complaintId}/send-for-approval`, payload).subscribe({
+    this.http.post(`${environment.apiBaseUrl}/api/v1/complaints/${this.complaintNumber}/send-for-approval`, payload).subscribe({
       next: () => {
         this.finalDecisionSubmitting.set(false);
         this.showFinalDecisionPreview.set(false);
@@ -2354,7 +2358,7 @@ private getStatusColor(status: string): string {
         financialDetails: {
           reminderSent: this.reminderSent,
           disputedAmount: this.disputedAmount,
-          compensationSought: this.compensationSoughtYesNo
+          compensationSought: this.compensationSoughtYesNo ? 1 : 0
         },
         legalCaseDetails: {
           legalCaseFiled: this.legalCaseFiled,
