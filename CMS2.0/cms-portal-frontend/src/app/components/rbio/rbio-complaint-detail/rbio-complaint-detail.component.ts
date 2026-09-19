@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
+import { NavigationService } from '../../../services/navigation.service';
 import { RbioWorkflowService } from '../../../services/rbio-workflow.service';
 import { UploadLinkStatusComponent } from '../../../shared/upload-link-status/upload-link-status.component';
 import { RbioDeputyDecisionComponent } from '../rbio-deputy-decision/rbio-deputy-decision.component';
@@ -64,6 +65,7 @@ export class RbioComplaintDetailComponent implements OnInit {
 
   private route = inject(ActivatedRoute);
   private router = inject(Router);
+  private navService = inject(NavigationService);
   private http = inject(HttpClient);
   private auth = inject(KeycloakAuthService);
   private rbioWorkflow = inject(RbioWorkflowService);
@@ -299,7 +301,7 @@ export class RbioComplaintDetailComponent implements OnInit {
   }
 
   goBack() {
-    this.router.navigate(['/rbio']);
+    this.navService.goBack(['/rbio']);
   }
 
   openWorkflowAction(action: WorkflowAction) {

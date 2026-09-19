@@ -2,8 +2,9 @@
   display: block;
   width: 100%;
 
-  --p-tabs-tablist-background: var(--p-content-hover-background, #f8fafc);
-  --p-tabs-tab-font-weight: 400;
+  --p-tabs-tablist-background: transparent;
+  --p-tabs-tab-font-weight: 500;
+  --p-tabs-active-bar-background: var(--p-primary-color);
 }
 
 .dashboard-tabs-container {
@@ -22,23 +23,13 @@
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-
-  --p-badge-border-radius: 4px;
-  --p-badge-padding: 0 6px;
 }
 
-.custom-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+.tab-count-badge {
+  font-size: 0.7rem;
   min-width: 1.25rem;
   height: 1.25rem;
-  padding: 0 0.3rem;
-  border-radius: 3px;
-  font-size: 0.875rem;
-  font-weight: 700;
-  line-height: 1;
-  text-align: center;
-  color: #ffffff;
-  background-color: var(--p-primary-color, #0f4c9c);
+  line-height: 1.25rem;
+  border-radius: 10px;
+  padding: 0 0.35rem;
 }

@@ -96,5 +96,5 @@
 </div>
 
 <app-rbio-column-picker [allColumns]="allColumns" [initiallySelected]="selectedColumns()" tableName="Complaints"
-  [(visible)]="isPickerOpen" (columnsSaved)="applyPickedColumns($event)">
+  [(visible)]="isPickerOpen" (columnsSaved)="applyPickedColumns($event)" (columnsReset)="resetColumnsToDefault()">
 </app-rbio-column-picker>

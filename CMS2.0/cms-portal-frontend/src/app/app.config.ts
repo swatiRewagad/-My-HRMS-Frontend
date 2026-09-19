@@ -30,6 +30,7 @@ import { securityHeadersInterceptor } from './interceptors/security-headers.inte
 import { keycloakTokenInterceptor } from './interceptors/keycloak-token.interceptor';
 import { antiAutomationInterceptor } from './interceptors/anti-automation.interceptor';
 import { RuntimeConfigService } from './services/runtime-config.service';
+import { NavigationService } from './services/navigation.service';
 
 function initializeApp(configService: RuntimeConfigService) {
   return () => configService.load();
@@ -51,6 +52,14 @@ export const appConfig: ApplicationConfig = {
       provide: APP_INITIALIZER,
       useFactory: initializeApp,
       deps: [RuntimeConfigService],
+      multi: true
+    },
+    {
+      provide: APP_INITIALIZER,
+      useFactory: () => {
+        inject(NavigationService);
+        return () => {};
+      },
       multi: true
     },
     provideRouter(

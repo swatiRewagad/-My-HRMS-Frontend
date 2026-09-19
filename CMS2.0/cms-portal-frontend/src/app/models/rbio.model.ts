@@ -155,7 +155,7 @@ export interface KpiCounts {
     totalPendingComplaints: number;
     pendingWithMe: number;
     pendingWithRe: number;
-    pendingAtMeetingSchedule: number;
+    pendingAtMeetingScheduled: number;
     slaBreached: number;
     sla0To15Days: number;
     sla16To30Days: number;

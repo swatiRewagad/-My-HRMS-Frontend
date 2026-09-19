@@ -1,24 +1,24 @@
 import { Component, signal } from '@angular/core';
-import { ButtonModule } from 'primeng/button';
+import { Button } from 'primeng/button';
 
-const STORAGE_KEY = 'cms_font_scale';
-const MIN_SCALE = 80;
-const MAX_SCALE = 140;
-const STEP = 10;
-const DEFAULT_SCALE = 100;
+const STORAGE_KEY = 'cms_font_size';
+const MIN_SIZE = 12;
+const MAX_SIZE = 18;
+const DEFAULT_SIZE = 14;
+const STEP = 1;
 
 @Component({
   selector: 'app-font-size-controls',
   standalone: true,
-  imports: [ButtonModule],
+  imports: [Button],
   template: `
     <div class="font-size-controls">
-      <button pButton [text]="true" severity="secondary" label="A-"
-          title="Decrease font size" [disabled]="scale() <= ${MIN_SCALE}" (click)="decrease()"></button>
-      <button pButton [text]="true" severity="secondary" label="A"
-          title="Reset font size" (click)="reset()"></button>
-      <button pButton [text]="true" severity="secondary" label="A+"
-          title="Increase font size" [disabled]="scale() >= ${MAX_SCALE}" (click)="increase()"></button>
+      <p-button [text]="true" severity="secondary" label="A-"
+          title="Decrease font size" [disabled]="fontSize() <= ${MIN_SIZE}" (onClick)="decrease()" />
+      <p-button [text]="true" severity="secondary" label="A"
+          title="Reset font size (14px)" (onClick)="reset()" />
+      <p-button [text]="true" severity="secondary" label="A+"
+          title="Increase font size" [disabled]="fontSize() >= ${MAX_SIZE}" (onClick)="increase()" />
     </div>
   `,
   styles: [`
@@ -31,44 +31,39 @@ const DEFAULT_SCALE = 100;
       align-items: center;
       gap: 0.125rem;
     }
-    .font-size-controls :host ::ng-deep .p-button {
-      padding: 0.25rem 0.5rem;
-      font-weight: 600;
-      min-width: 2rem;
-    }
   `]
 })
 export class FontSizeControlsComponent {
-  protected scale = signal(this.getStoredScale());
+  protected fontSize = signal(this.getStoredSize());
 
   constructor() {
-    this.applyScale(this.scale());
+    this.applySize(this.fontSize());
   }
 
   increase(): void {
-    this.setScale(Math.min(this.scale() + STEP, MAX_SCALE));
+    this.setSize(Math.min(this.fontSize() + STEP, MAX_SIZE));
   }
 
   decrease(): void {
-    this.setScale(Math.max(this.scale() - STEP, MIN_SCALE));
+    this.setSize(Math.max(this.fontSize() - STEP, MIN_SIZE));
   }
 
   reset(): void {
-    this.setScale(DEFAULT_SCALE);
+    this.setSize(DEFAULT_SIZE);
   }
 
-  private setScale(value: number): void {
-    this.scale.set(value);
+  private setSize(value: number): void {
+    this.fontSize.set(value);
     localStorage.setItem(STORAGE_KEY, String(value));
-    this.applyScale(value);
+    this.applySize(value);
   }
 
-  private applyScale(value: number): void {
-    document.body.style.zoom = `${value}%`;
+  private applySize(value: number): void {
+    document.documentElement.style.setProperty('--app-text-scale', `${value}px`);
   }
 
-  private getStoredScale(): number {
+  private getStoredSize(): number {
     const stored = Number(localStorage.getItem(STORAGE_KEY));
-    return stored >= MIN_SCALE && stored <= MAX_SCALE ? stored : DEFAULT_SCALE;
+    return stored >= MIN_SIZE && stored <= MAX_SIZE ? stored : DEFAULT_SIZE;
   }
 }

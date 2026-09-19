@@ -1,8 +1,9 @@
 import { Component, computed, inject, input, model, output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ButtonModule } from 'primeng/button';
-import { ChipModule } from 'primeng/chip';
-import { SelectModule, SelectChangeEvent } from 'primeng/select';
+import { Button } from 'primeng/button';
+import { Chip } from 'primeng/chip';
+import { Select, SelectChangeEvent } from 'primeng/select';
+import { Tag } from 'primeng/tag';
 import { RbioDashboardFilterComponent } from '../rbio-dashboard-filter/rbio-dashboard-filter.component';
 import { SelectedFilters } from '../../../models/rbio.model';
 import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
@@ -22,9 +23,10 @@ const CATEGORY_LABELS: Record<string, string> = {
   imports: [
     FormsModule,
     RbioDashboardFilterComponent,
-    ButtonModule,
-    ChipModule,
-    SelectModule
+    Button,
+    Chip,
+    Select,
+    Tag
   ],
   templateUrl: './rbio-dashboard-header.component.html',
   styleUrl: './rbio-dashboard-header.component.scss',

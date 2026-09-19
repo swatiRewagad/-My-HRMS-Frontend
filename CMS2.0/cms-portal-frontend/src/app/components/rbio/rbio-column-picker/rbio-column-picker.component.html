@@ -1,54 +1,103 @@
 <p-dialog [visible]="visible()" (visibleChange)="visible.set($event)" (onShow)="initializePicker()" [modal]="true"
-    [closable]="true" [draggable]="false" [resizable]="false" styleClass="rbio-column-picker-dialog" header=" ">
+  [closable]="true" [draggable]="false" [resizable]="false" styleClass="cp-dialog" header=" ">
 
-    <div class="dialog-content-body">
-        <div class="dialog-header-title-row">
-            <i class="pi pi-th-large grid-icon"></i>
-            <div class="title-text-group">
-                <h3>Choose columns to see in "{{ tableName() }}" Table</h3>
-                <p>Select and drag items to manage your display order</p>
-            </div>
-        </div>
+  <div class="cp">
 
-        <div class="search-input-wrapper">
-            <i class="pi pi-search search-lens-icon"></i>
-            <input type="text" pInputText placeholder="Search column names..." [ngModel]="searchColumnQuery()"
-                (ngModelChange)="searchColumnQuery.set($event)" />
-        </div>
-
-        <div class="quick-bulk-actions">
-            <span class="items-count-indicator">{{ filteredTempColumns().length }} columns found</span>
-            <div class="action-links">
-                <button class="link-btn" (click)="toggleAll(true)">Select All</button>
-                <span class="divider">|</span>
-                <button class="link-btn" (click)="toggleAll(false)">Clear All</button>
-            </div>
-        </div>
-
-        <div class="column-list-scrollway">
-            @for (col of filteredTempColumns(); track col.field; let idx = $index) {
-                <div class="column-list-item-row" [class.is-inactive]="!col.visible"
-                    [class.is-dragging-over]="activeTargetIndex === idx" draggable="true" (dragstart)="onDragStart(idx)"
-                    (dragover)="onLocalDragOver($event, idx)" (dragleave)="activeTargetIndex = null"
-                    (dragend)="onLocalDragEnd()">
-
-                    <i class="pi pi-bars grab-handle-icon"></i>
-                    <p-checkbox [binary]="true" [(ngModel)]="col.visible" [inputId]="col.field"></p-checkbox>
-                    <label [for]="col.field" class="checkbox-title-label">{{ col.header }}</label>
-                </div>
-            } @empty {
-                <div class="empty-search-state">
-                    <i class="pi pi-filter-slash"></i>
-                    <p>No matching columns found</p>
-                </div>
-            }
-        </div>
-
-        <div class="dialog-actions-footer-bar">
-            <button pButton label="Cancel" class="p-button-text cancel-btn" (click)="visible.set(false)"></button>
-            <button pButton label="Save Changes" class="p-button-primary save-btn"
-                (click)="saveColumnConfiguration()"></button>
-        </div>
+    <!-- Header -->
+    <div class="cp-header">
+      <div class="cp-header__badge">
+        <i class="pi pi-objects-column"></i>
+      </div>
+      <div class="cp-header__text">
+        <h3>Manage Columns</h3>
+        <p>Choose which columns to display in "{{ tableName() }}" table</p>
+      </div>
     </div>
+
+    <!-- Search — PrimeNG IconField + InputIcon -->
+    <div class="cp-search-wrap">
+      <p-iconfield class="cp-search">
+        <p-inputicon styleClass="pi pi-search" />
+        <input type="text" pInputText placeholder="Find a column..." [ngModel]="searchQuery()"
+          (ngModelChange)="searchQuery.set($event)" class="cp-search__input" />
+      </p-iconfield>
+      @if (isSearchActive()) {
+        <button class="cp-search-wrap__clear" (click)="searchQuery.set('')" type="button"
+          pTooltip="Clear search" tooltipPosition="left">
+          <i class="pi pi-times"></i>
+        </button>
+      }
+    </div>
+
+    <!-- Toolbar -->
+    <div class="cp-toolbar">
+      <span class="cp-toolbar__stat">
+        <strong>{{ selectedCount() }}</strong> / {{ totalCount() }} selected
+      </span>
+      <div class="cp-toolbar__actions">
+        @if (!allFilteredSelected()) {
+          <p-button [text]="true" severity="primary" size="small" icon="pi pi-check-square"
+            label="Select All" (onClick)="toggleAll(true)" styleClass="cp-toolbar__btn" />
+        }
+        @if (!noneFilteredSelected()) {
+          <p-button [text]="true" severity="secondary" size="small" icon="pi pi-minus-circle"
+            label="Deselect" (onClick)="toggleAll(false)" styleClass="cp-toolbar__btn" />
+        }
+      </div>
+    </div>
+
+    <!-- Column list -->
+    <div class="cp-list" [class.cp-list--locked]="isSearchActive()">
+      @for (col of filteredItems(); track col.field) {
+        <div class="cp-row"
+          [class.cp-row--active]="col.visible"
+          [class.cp-row--inactive]="!col.visible"
+          [class.cp-row--drop-target]="dropTargetField === col.field"
+          [attr.draggable]="!isSearchActive()"
+          (dragstart)="onDragStart(col.field)"
+          (dragover)="onDragOver($event, col.field)"
+          (dragleave)="dropTargetField = null"
+          (dragend)="onDragEnd()">
+
+          @if (!isSearchActive()) {
+            <span class="cp-row__grip" pTooltip="Drag to reorder" tooltipPosition="left" [tooltipOptions]="{showDelay: 600}">
+              <i class="pi pi-ellipsis-v"></i>
+              <i class="pi pi-ellipsis-v"></i>
+            </span>
+          }
+
+          <p-checkbox [binary]="true" [ngModel]="col.visible" (ngModelChange)="toggleItem(col.field)"
+            [inputId]="'cp-' + col.field" />
+
+          <label [for]="'cp-' + col.field" class="cp-row__name">{{ col.header }}</label>
+
+          @if (col.visible) {
+            <p-tag value="ON" severity="info" [rounded]="true" styleClass="cp-row__tag" />
+          }
+        </div>
+      } @empty {
+        <div class="cp-empty">
+          <i class="pi pi-search"></i>
+          <span>No columns match "{{ searchQuery() }}"</span>
+        </div>
+      }
+    </div>
+
+    <p-divider />
+
+    <!-- Footer -->
+    <div class="cp-footer">
+      <p-button [text]="true" severity="secondary" size="small" icon="pi pi-history"
+        label="Reset to Default" (onClick)="resetToDefault()"
+        pTooltip="Restore all columns to default order and visibility" tooltipPosition="top" styleClass="cp-footer__reset" />
+
+      <div class="cp-footer__end">
+        <p-button [text]="true" severity="secondary" label="Cancel" (onClick)="cancel()" styleClass="cp-footer__cancel" />
+        <p-button severity="primary" icon="pi pi-check" label="Apply" (onClick)="save()"
+          [disabled]="selectedCount() === 0" styleClass="cp-footer__apply" />
+      </div>
+    </div>
+
+  </div>
 
 </p-dialog>

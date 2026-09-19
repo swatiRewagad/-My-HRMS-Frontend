@@ -1,17 +1,21 @@
 import { Component, input, model, output, DestroyRef, inject, computed, } from "@angular/core";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { CommonModule } from "@angular/common";
-import { TabsModule } from "primeng/tabs";
+import { Tabs } from "primeng/tabs";
+import { TabList } from "primeng/tabs";
+import { Tab } from "primeng/tabs";
+import { TabPanels } from "primeng/tabs";
+import { TabPanel } from "primeng/tabs";
+import { Badge } from "primeng/badge";
 import { Subject } from "rxjs";
 import { debounceTime, distinctUntilChanged } from "rxjs/operators";
 import { RbioDashboardTableComponent } from "../rbio-dashboard-table/rbio-dashboard-table.component";
 import { ComplaintColumn, TabConfig, TabCounts, TableQueryMetadata, } from "../../../models/rbio.model";
-import { BadgeModule } from "primeng/badge";
 
 @Component({
   selector: "app-rbio-dashboard-tabs",
   standalone: true,
-  imports: [CommonModule, RbioDashboardTableComponent, TabsModule, BadgeModule],
+  imports: [CommonModule, RbioDashboardTableComponent, Tabs, TabList, Tab, TabPanels, TabPanel, Badge],
   templateUrl: "./rbio-dashboard-tabs.component.html",
   styleUrl: "./rbio-dashboard-tabs.component.scss",
 })

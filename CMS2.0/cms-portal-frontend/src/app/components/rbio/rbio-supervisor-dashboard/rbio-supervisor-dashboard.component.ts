@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
+import { NavigationService } from '../../../services/navigation.service';
 import { environment } from '../../../../environments/environment';
 
 interface SupervisorComplaint {
@@ -29,6 +30,7 @@ interface SupervisorComplaint {
 })
 export class RbioSupervisorDashboardComponent implements OnInit {
   private router = inject(Router);
+  private navService = inject(NavigationService);
   private http = inject(HttpClient);
   auth = inject(KeycloakAuthService);
 
@@ -151,6 +153,6 @@ export class RbioSupervisorDashboardComponent implements OnInit {
   }
 
   goBack() {
-    this.router.navigate(['/rbio']);
+    this.navService.goBack(['/rbio']);
   }
 }

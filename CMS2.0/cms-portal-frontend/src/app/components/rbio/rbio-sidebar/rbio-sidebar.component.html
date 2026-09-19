@@ -1,30 +1,28 @@
-<aside class="sidebar" [ngClass]="{ 'sidebar-collapsed': isCollapsed() }">
+<aside class="sb" [@sidebarWidth]="isCollapsed() ? 'collapsed' : 'expanded'">
 
-  <nav class="sidebar-menu-items">
+  <nav class="sb-nav">
     @for (item of navItems; track item.label) {
-      <a class="sidebar-item" [routerLink]="item.routerLink" [queryParams]="item.queryParams || null"
-          routerLinkActive="active" [routerLinkActiveOptions]="{ exact: false }"
-          [pTooltip]="isCollapsed() ? item.label : ''" tooltipPosition="right" [life]="1500">
+      <a class="sb-item" [routerLink]="item.routerLink" [queryParams]="item.queryParams || null"
+        routerLinkActive="sb-item--active" [routerLinkActiveOptions]="{ exact: false }"
+        [pTooltip]="isCollapsed() ? item.label : ''" tooltipPosition="right">
 
-        <i [class]="item.icon"></i>
+        <i [class]="item.icon" class="sb-item__icon"></i>
 
-        @if (!isCollapsed()) {
-          <span>{{ item.label }}</span>
-        }
-
+        <span class="sb-item__label" [@fadeText]="isCollapsed() ? 'hidden' : 'visible'">
+          {{ item.label }}
+        </span>
       </a>
     }
   </nav>
 
-  <button type="button" class="sidebar-collapse" (click)="toggleSidebar()"
-      [pTooltip]="isCollapsed() ? 'Expand Menu' : ''" tooltipPosition="right">
+  <button type="button" class="sb-toggle" (click)="toggleSidebar()"
+    [pTooltip]="isCollapsed() ? 'Expand' : ''" tooltipPosition="right">
 
-    <i [ngClass]="isCollapsed() ? 'pi pi-angle-double-right' : 'pi pi-angle-double-left'"></i>
+    <i class="pi" [ngClass]="isCollapsed() ? 'pi-chevron-right' : 'pi-chevron-left'"></i>
 
-    @if (!isCollapsed()) {
-      <span>Collapse</span>
-    }
-
+    <span class="sb-toggle__label" [@fadeText]="isCollapsed() ? 'hidden' : 'visible'">
+      Collapse
+    </span>
   </button>
 
 </aside>

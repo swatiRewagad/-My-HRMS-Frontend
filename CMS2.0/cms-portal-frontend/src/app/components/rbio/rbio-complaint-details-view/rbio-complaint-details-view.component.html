@@ -215,8 +215,8 @@
         <div class="page-tabs">
           <button class="page-tab" [class.active]="assessmentTab() === 'summary'" (click)="assessmentTab.set('summary')">Summary</button>
           @if (userRole() !== 'HEAD') {
-            <button class="page-tab" [class.active]="assessmentTab() === 'conciliation'" [class.disabled]="!conciliationEnabled()" [disabled]="!conciliationEnabled()" (click)="assessmentTab.set('conciliation')">Conciliation</button>
-            <button class="page-tab" [class.active]="assessmentTab() === 'forward'" [class.disabled]="userRole() === 'REVIEWER'" [disabled]="userRole() === 'REVIEWER'" (click)="assessmentTab.set('forward')">Forward</button>
+            <button class="page-tab" [class.active]="assessmentTab() === 'conciliation'" [class.disabled]="!conciliationEnabled() || userRole() === 'REVIEWER' || userRole() === 'DEPUTY_OMBUDSMAN'" [disabled]="!conciliationEnabled() || userRole() === 'REVIEWER' || userRole() === 'DEPUTY_OMBUDSMAN'" (click)="assessmentTab.set('conciliation')">Conciliation</button>
+            <button class="page-tab" [class.active]="assessmentTab() === 'forward'" [class.disabled]="userRole() !== 'OMBUDSMAN' && userRole() !== 'DEPUTY_OMBUDSMAN'" [disabled]="userRole() !== 'OMBUDSMAN' && userRole() !== 'DEPUTY_OMBUDSMAN'" (click)="assessmentTab.set('forward')">Forward</button>
             <button class="page-tab" [class.active]="assessmentTab() === 'final-decision'" (click)="assessmentTab.set('final-decision')">Final Decision</button>
             <button class="page-tab" [class.active]="assessmentTab() === 'nodal-officer'" [class.disabled]="userRole() === 'REVIEWER' || userRole() === 'DEPUTY_OMBUDSMAN'" [disabled]="userRole() === 'REVIEWER' || userRole() === 'DEPUTY_OMBUDSMAN'" (click)="openNodalOfficerTab()">Nodal Officer Record</button>
           }
@@ -1292,11 +1292,11 @@
                          typing over them here would disagree with the entity the complaint points at. -->
                     <div class="summary-field">
                       <span class="summary-label">Entity Name</span>
-                      <span class="summary-value">{{ entityName || '—' }}</span>
+                        <span class="summary-value">{{ entityName || '—' }}</span>
                     </div>
                     <div class="summary-field">
                       <span class="summary-label">Module Name</span>
-                      <span class="summary-value">{{ moduleName || '—' }}</span>
+                        <span class="summary-value">{{ moduleName || '—' }}</span>
                     </div>
                   </div>
                   @if (editMode() && entityResetNotice()) {
@@ -1308,7 +1308,7 @@
                   <div class="summary-row">
                     <div class="summary-field">
                       <span class="summary-label">Entity Category</span>
-                      <span class="summary-value">{{ entityCategory || '—' }}</span>
+                        <span class="summary-value">{{ entityCategory || '—' }}</span>
                     </div>
                     <div class="summary-field">
                       <span class="summary-label">Entity Type</span>
@@ -3426,7 +3426,7 @@
                   <input type="text" [ngModel]="deoSearch()" (ngModelChange)="deoSearch.set($event)"
                          (focus)="showDeoDropdown.set(true)" placeholder="Search DEO by name, email or office"
                          autocomplete="off" />
-                  <i class="pi pi-search"></i>
+                <i class="pi pi-search"></i>
                   @if (showDeoDropdown()) {
                     <div class="deo-dropdown">
                       @if (loadingDeos()) {

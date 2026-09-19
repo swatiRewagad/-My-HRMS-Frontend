@@ -59,7 +59,7 @@ export class RbioDashboardKpiComponent {
 
         requiredRoles: ['RBIO_DO', 'RBIO_REVIEWER', 'RBIO_DEPUTY_OMBUDSMAN', 'RBIO_OMBUDSMAN', 'RBIO_ADMIN'],
         layout: '1:1',
-        metrics: [{ label: 'Pending at Meeting Scheduled', value: d?.pendingAtMeetingSchedule ?? 0 }]
+        metrics: [{ label: 'Pending at Meeting Scheduled', value: d?.pendingAtMeetingScheduled ?? 0 }]
       },
       {
         id: 'SLA Breached',

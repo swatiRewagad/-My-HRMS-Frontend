@@ -6,9 +6,7 @@
           <span class="tab-label-wrapper">
             {{ tab.label }}
             @if (tab?.count !== undefined && tab?.count !== null) {
-              <span class="custom-badge">
-                {{ tab.count }}
-              </span>
+              <p-badge [value]="'' + tab.count" styleClass="tab-count-badge" />
             }
           </span>
         </p-tab>

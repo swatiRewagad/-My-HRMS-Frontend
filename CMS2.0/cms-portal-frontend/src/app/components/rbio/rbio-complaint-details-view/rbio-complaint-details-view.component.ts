@@ -7,6 +7,7 @@ import { HttpClient } from '@angular/common/http';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { ButtonModule } from 'primeng/button';
 import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
+import { NavigationService } from '../../../services/navigation.service';
 import { environment } from '../../../../environments/environment';
 import { SpeechButtonComponent } from '../../../shared/speech-button/speech-button.component';
 import { RbioHeaderComponent } from '../rbio-header/rbio-header.component';
@@ -240,6 +241,7 @@ interface EntityDetail extends EntitySearchResult {
 export class RbioComplaintDetailsView implements OnInit {
 
   private router = inject(Router);
+  private navService = inject(NavigationService);
   private http = inject(HttpClient);
   private sanitizer = inject(DomSanitizer);
   private auth = inject(KeycloakAuthService);
@@ -285,6 +287,10 @@ export class RbioComplaintDetailsView implements OnInit {
   proposedComplaintType = 'NEW_COMPLAINT';
   category = '';
   eligibilityEntityName = '';
+  eligibilityEntitySearch = '';
+  eligibilityEntityResults = signal<{ id: number; name: string; department: string; entityType: string }[]>([]);
+  showEligibilityEntityDropdown = signal(false);
+  private eligibilityEntityTimeout: any = null;
   markAllEligible = false;
   eligibilityQuestions: EligibilityQuestionItem[] = [
     { key: 'entityRegulatedByRbi', label: 'Is Entity regulated by RBI?', type: 'radio', answer: null, dateValue: null },
@@ -1354,18 +1360,18 @@ private getStatusColor(status: string): string {
     this.http.get<any>(`${environment.apiBaseUrl}/api/v1/email-syndication/deo`)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (res) => {
-          this.deos.set((res?.data || []).map((d: any) => ({
+      next: (res) => {
+        this.deos.set((res?.data || []).map((d: any) => ({
             id: d.userId || String(d.id),
-            displayName: d.displayName || d.userId,
+          displayName: d.displayName || d.userId,
             email: d.email || '',
-            isActive: d.isActive !== false,
-            isOnLeave: d.isOnLeave === true,
+          isActive: d.isActive !== false,
+          isOnLeave: d.isOnLeave === true,
             leaveReason: d.leaveReason || '',
             officeCode: d.officeCode || '',
             currentLoad: d.currentLoad ?? 0,
-            maxLoad: d.maxThreshold || 20
-          })));
+          maxLoad: d.maxThreshold || 20
+        })));
           this.loadingDeos.set(false);
           if (this.assignmentMode === 'AUTOMATIC') this.applyAutomaticDeo();
         },
@@ -1459,6 +1465,36 @@ private getStatusColor(status: string): string {
     } else {
       delete this.fieldErrors['entityPincode'];
     }
+  }
+
+  onEligibilityEntitySearch(value: string) {
+    this.eligibilityEntitySearch = value;
+    if (this.eligibilityEntityTimeout) clearTimeout(this.eligibilityEntityTimeout);
+    if (!value || value.length < 2) {
+      this.showEligibilityEntityDropdown.set(false);
+      return;
+    }
+    this.eligibilityEntityTimeout = setTimeout(() => {
+      this.http.get<any>(`${environment.apiBaseUrl}/api/v1/routing/entities/list`, {
+        params: { search: value }
+      }).subscribe({
+        next: (res) => {
+          this.eligibilityEntityResults.set(res?.data || []);
+          this.showEligibilityEntityDropdown.set(true);
+        },
+        error: () => this.eligibilityEntityResults.set([])
+      });
+    }, 300);
+  }
+
+  selectEligibilityEntity(entity: { id: number; name: string; department: string; entityType: string }) {
+    this.eligibilityEntityName = entity.name;
+    this.eligibilityEntitySearch = entity.name;
+    this.showEligibilityEntityDropdown.set(false);
+  }
+
+  onEligibilityEntityBlur() {
+    setTimeout(() => this.showEligibilityEntityDropdown.set(false), 200);
   }
 
   onMarkAllEligible() {
@@ -2635,7 +2671,7 @@ private getStatusColor(status: string): string {
       if (pickedEntityId !== this.regulatedEntityId) {
         if (this.regulatedEntityId) this.loadEntityContact(this.regulatedEntityId);
         else this.entityContact.set(null);
-      }
+    }
     }
     this.entityResetNotice.set('');
     this.showEntityDropdown.set(false);
@@ -2837,7 +2873,7 @@ private getStatusColor(status: string): string {
   }
 
   goBack() {
-    this.router.navigate(['/rbio']);
+    this.navService.goBack(['/rbio']);
   }
 
   goToDraft() {

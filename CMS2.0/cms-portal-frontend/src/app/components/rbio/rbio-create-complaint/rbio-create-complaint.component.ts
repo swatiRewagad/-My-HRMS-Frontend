@@ -5,6 +5,7 @@ import { Router, ActivatedRoute } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
+import { NavigationService } from '../../../services/navigation.service';
 import { lookupPincode } from '../../../utils/pincode-data';
 import { environment } from '../../../../environments/environment';
 import { SpeechButtonComponent } from '../../../shared/speech-button/speech-button.component';
@@ -31,6 +32,7 @@ interface DeoUser {
 export class RbioCreateComplaintComponent implements OnInit {
 
   private router = inject(Router);
+  private navService = inject(NavigationService);
   private route = inject(ActivatedRoute);
   private http = inject(HttpClient);
   private sanitizer = inject(DomSanitizer);
@@ -189,9 +191,8 @@ export class RbioCreateComplaintComponent implements OnInit {
   // already-forwarded complaint shows the full read-only detail view instead.
   justActioned = signal(false);
   workflowAction = signal('');
-  // Conciliation is the DO's own step; every other rung on the ladder only ever reads its outcome.
   conciliationEnabled = computed(() => {
-    if (this.userRole() !== 'DO') return false;
+    if (this.userRole() !== 'DO') return true;
     const action = this.workflowAction();
     const status = this.complaintStatus();
     const excludedStatuses = ['ADVISORY_COMPLIED', 'COMPLAINT_SETTLED', 'COMPLAINT_WITHDRAWN', 'COMPLAINT_REJECTED', 'AWARD_PASSED', 'OMBUDSMAN_DECISION'];
@@ -1707,7 +1708,7 @@ export class RbioCreateComplaintComponent implements OnInit {
   }
 
   goBack() {
-    this.router.navigate(['/rbio']);
+    this.navService.goBack(['/rbio']);
   }
 
   goToDraft() {

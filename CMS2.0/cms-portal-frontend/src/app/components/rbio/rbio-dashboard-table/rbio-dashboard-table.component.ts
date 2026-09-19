@@ -9,6 +9,7 @@ import { ToggleSwitchModule } from 'primeng/toggleswitch';
 import { ColumnDefinition, ComplaintColumn, ComplaintColumnFilters, TableQueryMetadata } from '../../../models/rbio.model';
 import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
 import { Router } from '@angular/router';
+import { NavigationService } from '../../../services/navigation.service';
 import { RbioColumnPickerComponent } from '../rbio-column-picker/rbio-column-picker.component';
 
 @Component({
@@ -30,6 +31,7 @@ import { RbioColumnPickerComponent } from '../rbio-column-picker/rbio-column-pic
 export class RbioDashboardTableComponent {
   readonly auth = inject(KeycloakAuthService);
   private readonly router = inject(Router);
+  private readonly navService = inject(NavigationService);
 
   readonly isNotDoUser = computed(() => !this.auth?.currentUser()?.roles?.includes('RBIO_DO'));
   readonly tabConfig = input.required<any>();
@@ -78,17 +80,24 @@ export class RbioDashboardTableComponent {
   });
 
   readonly selectedColumns = signal<ColumnDefinition[]>([]);
+  private columnsInitialized = false;
 
   constructor() {
-    console.log(this.auth.currentUser());
-
     effect(() => {
-      this.selectedColumns.set([...this.columnsToDisplay()]);
+      const defaults = this.columnsToDisplay();
+      if (!this.columnsInitialized) {
+        this.columnsInitialized = true;
+        this.selectedColumns.set([...defaults]);
+      }
     });
   }
 
   applyPickedColumns(updatedColumns: ColumnDefinition[]): void {
     this.selectedColumns.set(updatedColumns);
+  }
+
+  resetColumnsToDefault(): void {
+    this.selectedColumns.set([...this.columnsToDisplay()]);
   }
 
   onColumnReorder(event: any): void {
@@ -157,6 +166,6 @@ export class RbioDashboardTableComponent {
 
   navigateToDetail(complaint: any): void {
     const id = complaint.complaintId || complaint.complaintNumber;
-    this.router.navigate(['/rbio/complaint', id]);
+    this.navService.navigate(['/rbio/complaint', id]);
   }
 }

@@ -70,8 +70,8 @@ export class RbioAdvancedSearchComponent implements OnInit, OnDestroy {
   isEntityLoading = false;
   isMasterDataLoading = false;
 
-  private readonly bankApiUrl = '/api/banks';
-  private readonly categoriesUrl = '/api/categories';
+  private readonly bankApiUrl = '/banks';
+  private readonly categoriesUrl = '/categories';
 
   advSearch: AdvancedSearchCriteria = this.getInitialSearchState();
 

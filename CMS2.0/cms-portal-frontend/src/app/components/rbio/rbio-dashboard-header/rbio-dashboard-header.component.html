@@ -1,47 +1,44 @@
-<div class="content-header">
-  <h1>RBIO Complaints</h1>
-  <div class="header-actions">
-    <p-button size="small" label="Advanced Search" icon="pi pi-search" variant="text"
-        [loading]="isSearching()" (onClick)="toggleAdvancedSearch.emit(true)" />
+<div class="dh">
+  <h1 class="dh-title">RBIO Complaints</h1>
+
+  <div class="dh-actions">
+    <p-button size="small" label="Advanced Search" icon="pi pi-search" [text]="true"
+      [loading]="isSearching()" (onClick)="toggleAdvancedSearch.emit(true)" />
 
     @if (advSearchActive()) {
-      <p-button size="small" label="Clear Search" icon="pi pi-times" variant="text"
-          severity="danger" [loading]="isSearching()" (onClick)="clearSearch.emit()" />
+      <p-button size="small" label="Clear Search" icon="pi pi-times" [text]="true"
+        severity="danger" [loading]="isSearching()" (onClick)="clearSearch.emit()" />
     }
 
-    <div class="header-action-container">
-      <p-button size="small"
-          [label]="activeFilterCount() > 0 ? 'Filter (' + activeFilterCount() + ')' : 'Filter'"
-          icon="pi pi-filter"
-          [variant]="activeFilterCount() > 0 ? 'outlined' : 'text'"
-          [severity]="activeFilterCount() > 0 ? 'info' : 'secondary'"
-          [loading]="isSearching()" (onClick)="isFilterOpen.set(true)" />
+    <div class="dh-filter-group">
+      <p-button size="small" icon="pi pi-filter"
+        [label]="activeFilterCount() > 0 ? 'Filter (' + activeFilterCount() + ')' : 'Filter'"
+        [outlined]="activeFilterCount() > 0"
+        [text]="activeFilterCount() === 0"
+        [loading]="isSearching()" (onClick)="isFilterOpen.set(true)" />
 
       <app-rbio-dashboard-filter [(visible)]="isFilterOpen"
-          [activeFilters]="activeFilters()"
-          (filterApply)="filtersChanged.emit($event)" />
+        [activeFilters]="activeFilters()"
+        (filterApply)="filtersChanged.emit($event)" />
     </div>
 
     <p-select [options]="statusCodes()" [(ngModel)]="selectedStatusCode" optionLabel="label"
-        optionValue="value" [loading]="isSearching()" (onChange)="statusFilterSelect.emit($event)"
-        placeholder="Select a status" class="responsive-select" />
+      optionValue="value" [loading]="isSearching()" (onChange)="statusFilterSelect.emit($event)"
+      placeholder="Select a status" styleClass="dh-select" />
 
     @if (isDOUser()) {
-      <p-button size="small" label="Create Complaint" icon="pi pi-plus"
-          [loading]="isSearching()" (onClick)="createComplaint.emit()" />
+      <p-button label="Create Complaint" icon="pi pi-plus"
+        [loading]="isSearching()" (onClick)="createComplaint.emit()" />
     }
   </div>
 </div>
 
-@if (filterChips().length > 0 || advSearchActive()) {
-  <div class="active-filter-strip">
-    @if (advSearchActive()) {
-      <p-chip label="Advanced Search" [removable]="true" (onRemove)="clearSearch.emit()" />
-    }
+@if (filterChips().length > 0) {
+  <div class="dh-chips">
     @for (chip of filterChips(); track chip.category + chip.value) {
       <p-chip [label]="chip.label" [removable]="true" (onRemove)="removeChip(chip.category, chip.value)" />
     }
-    <p-button variant="text" severity="danger" label="Clear All" size="small"
-        (onClick)="advSearchActive() ? clearSearch.emit() : clearAllFilters()" />
+    <p-button [text]="true" severity="danger" label="Clear All" size="small"
+      (onClick)="clearAllFilters()" />
   </div>
 }

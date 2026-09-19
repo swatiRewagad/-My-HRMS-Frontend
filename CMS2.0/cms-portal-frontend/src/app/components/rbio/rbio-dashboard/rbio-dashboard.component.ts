@@ -13,6 +13,7 @@ import { Router } from "@angular/router";
 import { of, Subject } from "rxjs";
 import { catchError, debounceTime, finalize, switchMap } from "rxjs/operators";
 import { KeycloakAuthService } from "../../../services/keycloak-auth.service";
+import { NavigationService } from "../../../services/navigation.service";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import {
   AdvancedSearchCriteria,
@@ -52,6 +53,7 @@ export class RbioDashboardComponent implements OnInit, OnDestroy {
   private readonly http = inject(HttpClient);
   private readonly apiService = inject(ApiService);
   private readonly router = inject(Router);
+  private readonly navService = inject(NavigationService);
   private readonly auth = inject(KeycloakAuthService);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -70,7 +72,7 @@ export class RbioDashboardComponent implements OnInit, OnDestroy {
     totalPendingComplaints: 0,
     pendingWithMe: 0,
     pendingWithRe: 0,
-    pendingAtMeetingSchedule: 0,
+    pendingAtMeetingScheduled: 0,
     slaBreached: 0,
     sla0To15Days: 0,
     sla16To30Days: 0
@@ -433,11 +435,11 @@ export class RbioDashboardComponent implements OnInit, OnDestroy {
       localStorage.setItem("rbio_visitedComplaintIds", JSON.stringify([...s]));
       return s;
     });
-    this.router.navigate(["/rbio/complaint", complaintId]);
+    this.navService.navigate(["/rbio/complaint", complaintId]);
   }
 
   navigateToCreateComplaint(): void {
-    this.router.navigate(["/rbio/create-complaint"]);
+    this.navService.navigate(["/rbio/create-complaint"]);
   }
 
   ngOnDestroy(): void {

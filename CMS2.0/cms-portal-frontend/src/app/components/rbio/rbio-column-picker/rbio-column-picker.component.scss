@@ -1,254 +1,317 @@
-:host ::ng-deep .rbio-column-picker-dialog {
-    width: 440px !important;
-    max-width: 90vw;
-    border-radius: var(--p-content-border-radius, 12px) !important;
-    overflow: hidden;
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.15),
-        0 10px 10px -5px rgba(0, 0, 0, 0.05) !important;
+// ════════════════════════════════════════════════════════════════
+//  Column Picker — PrimeNG 21 Dialog
+// ════════════════════════════════════════════════════════════════
 
-    .p-dialog-header {
-        padding: 1.25rem 1.25rem 0 1.25rem !important;
-        border: none !important;
-        background: var(--p-content-background) !important;
-        justify-content: flex-end !important;
-    }
+:host ::ng-deep .cp-dialog {
+  width: 460px !important;
+  max-width: 92vw;
+  border-radius: 14px !important;
+  overflow: hidden;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.04),
+    0 24px 48px -12px rgba(0, 0, 0, 0.16) !important;
 
-    .p-dialog-content {
-        padding: 0 1.75rem 1.75rem 1.75rem !important;
-        background: var(--p-content-background) !important;
-    }
+  .p-dialog-header {
+    padding: 0.625rem 0.875rem 0 !important;
+    border: none !important;
+    background: var(--p-content-background) !important;
+    justify-content: flex-end !important;
+    min-height: unset !important;
+  }
+
+  .p-dialog-content {
+    padding: 0 !important;
+    background: var(--p-content-background) !important;
+  }
 }
 
-.dialog-content-body {
-    display: flex;
-    flex-direction: column;
-    gap: 1.15rem;
+.cp {
+  display: flex;
+  flex-direction: column;
+  padding: 0 1.5rem 1.25rem;
 }
 
-.dialog-header-title-row {
-    display: flex;
-    align-items: flex-start;
-    gap: 0.85rem;
+// ── Header ──────────────────────────────────────────────────────
 
-    .grid-icon {
-        font-size: 1.35rem;
-        color: var(--p-primary-color);
-    }
-
-    .title-text-group {
-        h3 {
-            margin: 0;
-            font-size: 1.1rem;
-            font-weight: 700;
-            color: var(--p-text-color);
-            line-height: 1.4;
-        }
-
-        p {
-            margin: 0.15rem 0 0;
-            font-size: 0.825rem;
-            color: var(--p-text-muted-color);
-        }
-    }
+.cp-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.125rem;
 }
 
-.search-input-wrapper {
-    position: relative;
-    width: 100%;
+.cp-header__badge {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--p-primary-color) 10%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 
-    .search-lens-icon {
-        position: absolute;
-        left: 0.75rem;
-        top: 50%;
-        transform: translateY(-50%);
-        color: var(--p-text-muted-color);
-        font-size: 0.9rem;
-        pointer-events: none;
-        z-index: 10;
-    }
-
-    input {
-        width: 100% !important;
-        padding: 0.625rem 0.75rem 0.625rem 2.25rem !important;
-        font-size: 0.875rem !important;
-        border: 1px solid var(--p-content-border-color) !important;
-        border-radius: var(--p-content-border-radius, 6px);
-        background: var(--p-content-hover-background) !important;
-        color: var(--p-text-color) !important;
-        transition: all 0.15s ease-in-out;
-
-        &:focus {
-            background: var(--p-content-background) !important;
-            border-color: var(--p-primary-color) !important;
-            box-shadow: 0 0 0 3px var(--p-primary-100, rgba(59, 130, 246, 0.15));
-        }
-    }
+  i {
+    font-size: 1.05rem;
+    color: var(--p-primary-color);
+  }
 }
 
-.quick-bulk-actions {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+.cp-header__text {
+  h3 {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--p-text-color);
+    line-height: 1.3;
+  }
+
+  p {
+    margin: 0.125rem 0 0;
     font-size: 0.775rem;
-    padding: 0 0.25rem;
-    margin-bottom: -0.25rem;
-
-    .items-count-indicator {
-        color: var(--p-text-muted-color);
-        font-weight: 500;
-    }
-
-    .action-links {
-        display: flex;
-        align-items: center;
-        gap: 0.35rem;
-        color: var(--p-content-border-color);
-
-        .link-btn {
-            background: none;
-            border: none;
-            padding: 0;
-            color: var(--p-primary-color);
-            font-weight: 600;
-            cursor: pointer;
-            transition: opacity 0.15s ease;
-
-            &:hover {
-                text-decoration: underline;
-                opacity: 0.8;
-            }
-        }
-    }
+    color: var(--p-text-muted-color);
+    line-height: 1.35;
+  }
 }
 
-.column-list-scrollway {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-    max-height: 260px;
-    overflow-y: auto;
-    padding-right: 0.25rem;
-    scrollbar-width: thin;
-    scrollbar-color: var(--p-content-border-color) transparent;
+// ── Search (PrimeNG IconField) ──────────────────────────────────
 
-    &::-webkit-scrollbar {
-        width: 5px;
-    }
-
-    &::-webkit-scrollbar-thumb {
-        background: var(--p-content-border-color);
-        border-radius: 4px;
-    }
+.cp-search-wrap {
+  position: relative;
+  margin-bottom: 0.625rem;
 }
 
-.column-list-item-row {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 0.55rem 0.625rem;
-    border-radius: var(--p-content-border-radius, 6px);
+.cp-search {
+  width: 100%;
+
+  .cp-search__input {
+    width: 100% !important;
+    font-size: 0.8rem !important;
+    border-radius: 8px;
+  }
+}
+
+.cp-search-wrap__clear {
+  position: absolute;
+  right: 0.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--p-text-muted-color);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+  transition: background 0.12s, color 0.12s;
+
+  i { font-size: 0.6rem; }
+
+  &:hover {
+    background: var(--p-content-hover-background);
+    color: var(--p-text-color);
+  }
+}
+
+// ── Toolbar ─────────────────────────────────────────────────────
+
+.cp-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 0.125rem;
+  margin-bottom: 0.5rem;
+}
+
+.cp-toolbar__stat {
+  font-size: 0.725rem;
+  color: var(--p-text-muted-color);
+  font-weight: 500;
+
+  strong {
+    font-weight: 700;
+    color: var(--p-primary-color);
+  }
+}
+
+.cp-toolbar__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.125rem;
+}
+
+:host ::ng-deep .cp-toolbar__btn {
+  font-size: 0.7rem !important;
+  padding: 0.2rem 0.5rem !important;
+  gap: 0.25rem !important;
+
+  .p-button-icon {
+    font-size: 0.65rem !important;
+  }
+}
+
+// ── Column list ─────────────────────────────────────────────────
+
+.cp-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 310px;
+  overflow-y: auto;
+  padding: 4px;
+  border-radius: 10px;
+  background: var(--p-content-hover-background);
+  border: 1px solid var(--p-content-border-color);
+
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--p-text-muted-color) 22%, transparent) transparent;
+
+  &::-webkit-scrollbar { width: 4px; }
+  &::-webkit-scrollbar-track { background: transparent; }
+
+  &::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, var(--p-text-muted-color) 22%, transparent);
+    border-radius: 10px;
+
+    &:hover {
+      background: color-mix(in srgb, var(--p-text-muted-color) 36%, transparent);
+    }
+  }
+}
+
+// ── Row ─────────────────────────────────────────────────────────
+
+.cp-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4375rem 0.5rem;
+  border-radius: 7px;
+  border: 1.5px solid transparent;
+  cursor: grab;
+  transition: background 0.12s, border-color 0.12s, box-shadow 0.12s;
+  user-select: none;
+
+  &:active {
+    cursor: grabbing;
+  }
+
+  &:hover {
+    .cp-row__grip { opacity: 0.7; }
+  }
+
+  &--active {
     background: var(--p-content-background);
-    border: 1px solid transparent;
-    transition: all 0.15s ease;
-    cursor: grab;
 
-    &:active {
-        cursor: grabbing;
-        background: var(--p-content-hover-background);
+    &:hover {
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+    }
+  }
+
+  &--inactive {
+    background: transparent;
+
+    .cp-row__name {
+      color: var(--p-text-muted-color);
+      font-weight: 400;
     }
 
     &:hover {
-        background: var(--p-content-hover-background);
-
-        .grab-handle-icon {
-            color: var(--p-text-color);
-        }
+      background: color-mix(in srgb, var(--p-content-background) 60%, transparent);
     }
+  }
 
-    &.is-inactive {
-        .checkbox-title-label {
-            color: var(--p-text-muted-color) !important;
-            opacity: 0.7;
-            font-weight: 400 !important;
-        }
-    }
-
-    &.is-dragging-over {
-        background: var(--p-content-hover-background);
-        border-color: var(--p-primary-color);
-        transform: scale(0.99);
-    }
+  &--drop-target {
+    border-color: var(--p-primary-color);
+    background: color-mix(in srgb, var(--p-primary-color) 4%, var(--p-content-background));
+  }
 }
 
-.grab-handle-icon {
-    font-size: 0.825rem;
+.cp-list--locked .cp-row {
+  cursor: default;
+  &:active { cursor: default; }
+}
+
+.cp-row__grip {
+  display: flex;
+  gap: 1px;
+  opacity: 0.25;
+  transition: opacity 0.12s;
+  flex-shrink: 0;
+  width: 10px;
+  justify-content: center;
+
+  i {
+    font-size: 0.55rem;
     color: var(--p-text-muted-color);
-    transition: color 0.15s ease;
+  }
 }
 
-.checkbox-title-label {
-    font-size: 0.875rem !important;
-    color: var(--p-text-color) !important;
-    font-weight: 500 !important;
-    cursor: pointer;
-    user-select: none;
-    width: 100%;
+.cp-row__name {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--p-text-color);
+  cursor: pointer;
+  user-select: none;
+  flex: 1;
+  line-height: 1.35;
 }
 
-.empty-search-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    padding: 2.5rem 1rem;
-    color: var(--p-text-muted-color);
-
-    i {
-        font-size: 1.75rem;
-    }
-
-    p {
-        margin: 0;
-        font-size: 0.85rem;
-        font-weight: 500;
-    }
+:host ::ng-deep .cp-row__tag {
+  font-size: 0.55rem !important;
+  padding: 0.1rem 0.4rem !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.04em;
 }
 
-.dialog-actions-footer-bar {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 0.75rem;
-    margin-top: 0.35rem;
-    padding-top: 1rem;
-    border-top: 1px solid var(--p-content-border-color);
+// ── Empty state ─────────────────────────────────────────────────
 
-    .cancel-btn {
-        color: var(--p-text-muted-color) !important;
-        font-weight: 600 !important;
-        font-size: 0.875rem;
-        padding: 0.5rem 1rem !important;
-        border-radius: var(--p-content-border-radius, 6px) !important;
+.cp-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 2rem 1rem;
+  color: var(--p-text-muted-color);
 
-        &:hover {
-            background: var(--p-content-hover-background) !important;
-        }
-    }
+  i {
+    font-size: 1.25rem;
+    opacity: 0.35;
+  }
 
-    .save-btn {
-        background: var(--p-primary-color) !important;
-        border: 1px solid var(--p-primary-color) !important;
-        color: var(--p-primary-contrast-color, #ffffff) !important;
-        font-weight: 600 !important;
-        font-size: 0.875rem !important;
-        padding: 0.5rem 1.25rem !important;
-        border-radius: var(--p-content-border-radius, 6px) !important;
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+  span {
+    font-size: 0.8rem;
+    font-weight: 500;
+  }
+}
 
-        &:hover {
-            background: var(--p-primary-hover-color) !important;
-            border-color: var(--p-primary-hover-color) !important;
-        }
-    }
+// ── Footer ──────────────────────────────────────────────────────
+
+.cp-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.cp-footer__end {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+:host ::ng-deep .cp-footer__reset {
+  font-size: 0.75rem !important;
+  gap: 0.3rem !important;
+}
+
+:host ::ng-deep .cp-footer__cancel {
+  font-size: 0.8rem !important;
+}
+
+:host ::ng-deep .cp-footer__apply {
+  font-size: 0.8rem !important;
+  gap: 0.3rem !important;
 }
