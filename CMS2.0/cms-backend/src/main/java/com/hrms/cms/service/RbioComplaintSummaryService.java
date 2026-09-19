@@ -14,12 +14,15 @@ import com.hrms.cms.repository.RegulatedEntityRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
@@ -47,6 +50,7 @@ public class RbioComplaintSummaryService {
     private final RbioSlaService rbioSlaService;
     private final ComplaintService complaintService;
     private final CepcAuditService auditService;
+    private final RbioHierarchyService rbioHierarchyService;
 
     private static final Set<String> SECTION_KEYS = Set.of(
             "navBarDto", "basicDetailsDto", "eligibility", "entityDetails", "complainDetailsDto");
@@ -68,6 +72,11 @@ public class RbioComplaintSummaryService {
 
         Map<String, Object> summary = new LinkedHashMap<>();
         summary.put("id", c.getId());
+        // Surfaced at the top level because the screens use it to decide between an editable form and a
+        // read-only view; only the holder may write (see RbioHierarchyService#canEdit).
+        summary.put("assignedOfficer", c.getAssignedOfficer());
+        summary.put("assignedOfficerName", c.getAssignedOfficerName());
+        summary.put("assignedRole", c.getAssignedRole());
         summary.put("navBarDto", navBar(c));
         summary.put("basicDetailsDto", basicDetails(c, fd));
         summary.put("eligibility", eligibility(c, elig, add, fd));
@@ -120,6 +129,7 @@ public class RbioComplaintSummaryService {
         m.put("sameGrievancePendingBeforeOmbudsman", e != null ? yesNo(e.getPendingBeforeOmbudsman()) : null);
         m.put("alreadyDealtWithByOmbudsman", e != null ? yesNo(e.getSettledByOmbudsman()) : null);
         m.put("complaintAgainstManagement", e != null ? yesNo(e.getComplaintAgainstManagement()) : null);
+        m.put("staffOfREEmployerRelationship", e != null ? yesNo(e.getStaffOfRe()) : null);
         // The officer's own answer wins; fall back to what the public wizard recorded.
         Boolean filedWithCepc = e != null ? yesNo(e.getComplaintFiledWithCepcOrRbi()) : null;
         if (filedWithCepc == null && e != null) filedWithCepc = yesNo(e.getPreviouslyFiledWithCepc());
@@ -195,7 +205,7 @@ public class RbioComplaintSummaryService {
 
         Map<String, Object> additional = new LinkedHashMap<>();
         additional.put("id", fdId);
-        additional.put("comments", fd != null ? fd.getComments() : null);
+        additional.put("comments", fd != null ? fd.getAdditionalComments() : null);
         additional.put("crpcProposedAction", c.getProposedAction());
         additional.put("vernacularLanguage", fd != null ? fd.getVernacularLanguage() : null);
         additional.put("dateOfFiling", dateOfFiling);
@@ -241,9 +251,16 @@ public class RbioComplaintSummaryService {
      */
     @Transactional
     @CacheEvict(value = "dashboard", allEntries = true)
-    public Map<String, Object> updateSummary(Long complaintId, Map<String, Object> payload, String actor) {
+    public Map<String, Object> updateSummary(Long complaintId, Map<String, Object> payload, String actor,
+                                             Collection<String> actorRoles) {
         Complaint c = complaintRepository.findById(complaintId)
                 .orElseThrow(() -> new IllegalArgumentException("Complaint not found: " + complaintId));
+
+        if (!rbioHierarchyService.canEdit(c.getAssignedOfficer(), actor, actorRoles)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Complaint " + c.getComplaintNumber()
+                    + " is assigned to " + c.getAssignedOfficer()
+                    + "; only that officer or RBIO_ADMIN may edit it. You have view access.");
+        }
 
         validateSections(payload);
 
@@ -353,6 +370,8 @@ public class RbioComplaintSummaryService {
                 v -> row.setSettledByOmbudsman(toYesNo(v, "alreadyDealtWithByOmbudsman")));
         setIfPresent(e, "complaintAgainstManagement",
                 v -> row.setComplaintAgainstManagement(toYesNo(v, "complaintAgainstManagement")));
+        setIfPresent(e, "staffOfREEmployerRelationship",
+                v -> row.setStaffOfRe(toYesNo(v, "staffOfREEmployerRelationship")));
         setIfPresent(e, "complaintFiledWithCEPCOrRBI",
                 v -> row.setComplaintFiledWithCepcOrRbi(toYesNo(v, "complaintFiledWithCEPCOrRBI")));
         setIfPresent(e, "disputeBetweenREs", v -> row.setDisputeBetweenRes(toYesNo(v, "disputeBetweenREs")));
@@ -415,7 +434,7 @@ public class RbioComplaintSummaryService {
                 v -> row.setHighPriorityComplaint(toYesNo(v, "highPriorityComplaint")));
         setIfPresent(legal, "loanDisposalAmount", v -> row.setLoanDisposalAmount(decimal(v, "loanDisposalAmount")));
 
-        setIfPresent(additional, "comments", v -> row.setComments(str(v, "comments")));
+        setIfPresent(additional, "comments", v -> row.setAdditionalComments(str(v, "comments")));
         setIfPresent(additional, "vernacularLanguage", v -> row.setVernacularLanguage(str(v, "vernacularLanguage")));
 
         setIfPresent(flags, "complaintRegardingPension",
@@ -451,7 +470,7 @@ public class RbioComplaintSummaryService {
         row.setDraftId(draft.getDraftId());
         row.setReceiptDate(draft.getReceivedAt() != null ? draft.getReceivedAt().toLocalDate() : null);
         row.setModeOfReceipt(draft.getModeOfReceipt());
-        row.setComments(draft.getAdditionalComments());
+        row.setAdditionalComments(draft.getAdditionalComments());
         row.setCpgramNumber(draft.getCpgramsNumber());
         row.setEntityCountry(draft.getEntityCountry());
         row.setBranchCenterName(draft.getEntityBranchCenterName());

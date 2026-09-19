@@ -193,7 +193,9 @@
               } @else if (assessmentTab() === 'forward') {
                 <button class="btn btn-forward" (click)="openForwardConfirm()">Forward</button>
               } @else if (assessmentTab() === 'nodal-officer' && !nodalDetailView()) {
-                <button class="btn btn-primary" (click)="addNodalRecord()"><i class="pi pi-plus"></i> Add NO Record</button>
+                <!-- No "Add" here: a nodal officer record is created automatically with the complaint,
+                     one per complaint number, so the only action available is to re-read the list. -->
+                <button class="btn btn-outline" (click)="loadNodalRecords()" [disabled]="loadingNodalRecords()"><i class="pi pi-refresh"></i> Refresh</button>
               } @else if (assessmentTab() === 'email') {
                 @if (emailComposeMode()) {
                   <button class="btn btn-outline btn-sm" (click)="saveEmailDraft()"><i class="pi pi-save"></i> Save Draft</button>
@@ -216,7 +218,7 @@
             <button class="page-tab" [class.active]="assessmentTab() === 'conciliation'" [class.disabled]="!conciliationEnabled() || userRole() === 'REVIEWER' || userRole() === 'DEPUTY_OMBUDSMAN'" [disabled]="!conciliationEnabled() || userRole() === 'REVIEWER' || userRole() === 'DEPUTY_OMBUDSMAN'" (click)="assessmentTab.set('conciliation')">Conciliation</button>
             <button class="page-tab" [class.active]="assessmentTab() === 'forward'" [class.disabled]="userRole() === 'REVIEWER'" [disabled]="userRole() === 'REVIEWER'" (click)="assessmentTab.set('forward')">Forward</button>
             <button class="page-tab" [class.active]="assessmentTab() === 'final-decision'" (click)="assessmentTab.set('final-decision')">Final Decision</button>
-            <button class="page-tab" [class.active]="assessmentTab() === 'nodal-officer'" [class.disabled]="userRole() === 'REVIEWER' || userRole() === 'DEPUTY_OMBUDSMAN'" [disabled]="userRole() === 'REVIEWER' || userRole() === 'DEPUTY_OMBUDSMAN'" (click)="assessmentTab.set('nodal-officer')">Nodal Officer Record</button>
+            <button class="page-tab" [class.active]="assessmentTab() === 'nodal-officer'" [class.disabled]="userRole() === 'REVIEWER' || userRole() === 'DEPUTY_OMBUDSMAN'" [disabled]="userRole() === 'REVIEWER' || userRole() === 'DEPUTY_OMBUDSMAN'" (click)="openNodalOfficerTab()">Nodal Officer Record</button>
           }
           <button class="page-tab" [class.active]="assessmentTab() === 'email'" [class.disabled]="userRole() === 'REVIEWER' || userRole() === 'DEPUTY_OMBUDSMAN'" [disabled]="userRole() === 'REVIEWER' || userRole() === 'DEPUTY_OMBUDSMAN'" (click)="assessmentTab.set('email')">Email Communication</button>
         </div>
@@ -269,15 +271,23 @@
               <span class="meta-icon blue"><i class="pi pi-clock"></i></span>
               <div class="meta-text">
                 <span class="meta-label">SLA Breach In</span>
-                <span class="meta-value"><span class="sla-badge" [class.breach]="selectedNodalRecord()?.slaDays > 30">{{ selectedNodalRecord()?.slaDays }} days</span></span>
+                <span class="meta-value"><span class="sla-badge" [class.breach]="(selectedNodalRecord()?.slaDays ?? 0) > 30">{{ selectedNodalRecord()?.slaDays }} days</span></span>
               </div>
             </div>
+            <!-- One action only. Sending is the save: the assessment is persisted by the same call that
+                 forwards the record, so a separate Save button had nothing of its own to do. -->
             <div class="meta-actions">
-              <button class="btn btn-primary" (click)="sendToRE()"><i class="pi pi-send"></i> Send to RE</button>
-              <button class="btn btn-icon" title="Save"><i class="pi pi-save"></i></button>
-              <button class="btn-more" title="More options"><i class="pi pi-ellipsis-v"></i></button>
+              <button class="btn btn-primary" (click)="sendToRE()"
+                      [disabled]="sendingToRE() || !nodalStatusCode"
+                      [title]="nodalStatusCode ? 'Save the assessment and forward to the regulated entity' : 'Pick a status code first'">
+                <i class="pi" [class.pi-send]="!sendingToRE()" [class.pi-spinner]="sendingToRE()"></i>
+                {{ sendingToRE() ? 'Sending…' : 'Send to RE' }}
+              </button>
             </div>
           </div>
+          @if (sendToREError()) {
+            <div class="inline-error"><i class="pi pi-exclamation-triangle"></i> {{ sendToREError() }}</div>
+          }
 
           <!-- Detail Tabs -->
           <div class="summary-tabs">
@@ -487,7 +497,9 @@
                       <p class="notice-131-text">As per Clause 13(1), in the event of failure of a Regulated Entity to comply with the requisition without sufficient cause, the Ombudsman may draw an inference that the Regulated Entity has no information to furnish.</p>
                       <div class="form-group">
                         <label>Date by Which Nodal Officer Should Comply</label>
-                        <div class="static-value">{{ nodal131ComplyDate }}</div>
+                        <!-- Set once, by the backend, when the notice is issued — so it reads as pending
+                             rather than showing a date that would shift on every page load. -->
+                        <div class="static-value">{{ nodal131ComplyDate || '15 days from the date the notice is issued' }}</div>
                       </div>
                     </div>
                   }
@@ -566,18 +578,24 @@
                 </tr>
               </thead>
               <tbody>
-                @for (record of nodalRecords(); track record.id) {
-                  <tr class="clickable-row" (click)="openNodalDetail(record)">
-                    <td><input type="checkbox" (click)="$event.stopPropagation()" /></td>
-                    <td>{{ record.recordNumber }}</td>
-                    <td class="cell-subject">{{ record.subject }}</td>
-                    <td>{{ record.bankName }}</td>
-                    <td><span class="sla-badge" [class.breach]="record.slaDays > 30">{{ record.slaDays }} Days</span></td>
-                    <td>{{ record.assignedTo }}</td>
-                    <td><span class="status-pill" [class.info-required]="record.status === 'INFORMATION_REQUIRED'" [class.pending]="record.status === 'PENDING'">{{ record.statusLabel }}</span></td>
-                  </tr>
-                } @empty {
-                  <tr><td colspan="7" class="empty-row">No Nodal Officer records found</td></tr>
+                @if (loadingNodalRecords()) {
+                  <tr><td colspan="7" class="empty-row">Loading Nodal Officer records…</td></tr>
+                } @else if (nodalRecordsError()) {
+                  <tr><td colspan="7" class="empty-row">{{ nodalRecordsError() }}</td></tr>
+                } @else {
+                  @for (record of filteredNodalRecords; track record.id) {
+                    <tr class="clickable-row" (click)="openNodalDetail(record)">
+                      <td><input type="checkbox" (click)="$event.stopPropagation()" /></td>
+                      <td>{{ record.recordNumber }}</td>
+                      <td class="cell-subject">{{ record.subject }}</td>
+                      <td>{{ record.bankName }}</td>
+                      <td><span class="sla-badge" [class.breach]="(record.slaDays ?? 0) > 30">{{ record.slaDays }} Days</span></td>
+                      <td>{{ record.assignedTo }}</td>
+                      <td><span class="status-pill" [class.info-required]="record.status === 'INFORMATION_REQUIRED'" [class.pending]="record.status === 'PENDING'">{{ record.statusLabel }}</span></td>
+                    </tr>
+                  } @empty {
+                    <tr><td colspan="7" class="empty-row">No Nodal Officer records found</td></tr>
+                  }
                 }
               </tbody>
             </table>

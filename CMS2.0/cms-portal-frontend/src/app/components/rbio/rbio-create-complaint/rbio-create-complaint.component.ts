@@ -1172,7 +1172,8 @@ export class RbioCreateComplaintComponent implements OnInit {
       assignedTo: selectedUser?.id || '',
       assignedToName: this.sendBackSelectedName,
       assignmentMode: this.sendBackAssignmentMode,
-      performedBy: this.auth.currentUser()?.username || ''
+      performedBy: this.auth.currentUser()?.username || '',
+      performedByRole: this.userRole()
     };
 
     this.http.post(`${environment.apiBaseUrl}/api/v1/complaints/${this.complaintId}/send-for-approval`, payload).subscribe({
@@ -1242,6 +1243,7 @@ export class RbioCreateComplaintComponent implements OnInit {
       crpcClause: this.approvalCrpcClause || null,
       systemicIssue: this.systemicIssue || null,
       performedBy: this.auth.currentUser()?.username || '',
+      performedByRole: this.userRole(),
       proposedAction: this.proposedAction || null,
       proposedClause: this.proposedClause || null
     };

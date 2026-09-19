@@ -1,6 +1,7 @@
 package com.hrms.cms.controller;
 
 import com.hrms.cms.dto.FileComplaintRequest;
+import com.hrms.cms.dto.NodalAssessmentRequest;
 import com.hrms.cms.entity.Complaint;
 import com.hrms.cms.entity.ComplaintComment;
 import com.hrms.cms.entity.ComplaintTimeline;
@@ -11,9 +12,15 @@ import com.hrms.cms.repository.ComplaintCategoryRepository;
 import com.hrms.cms.repository.ComplaintCommentRepository;
 import com.hrms.cms.repository.RegulatedEntityRepository;
 import com.hrms.cms.repository.SimulatedEmailRepository;
+import com.hrms.cms.security.CallerIdentity;
+import com.hrms.cms.security.RbioRoleGuard;
 import com.hrms.cms.service.ComplaintService;
+import com.hrms.cms.service.RbioHierarchyService;
 import com.hrms.cms.service.triage.IntakeTriageService;
+import com.rbi.cms.common.enums.ComplaintStatus;
+import com.rbi.cms.common.enums.RoleConstants;
 import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Valid;
 import jakarta.validation.Validator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -44,6 +51,12 @@ public class ComplaintApiV1Controller {
     private final com.hrms.cms.service.KeycloakUserService keycloakUserService;
     private final com.hrms.cms.repository.OfficerAvailabilityRepository officerAvailabilityRepository;
     private final com.hrms.cms.repository.OfficeCodeMasterRepository officeCodeMasterRepository;
+    private final RbioHierarchyService rbioHierarchyService;
+    private final com.hrms.cms.event.ComplaintEventPublisher complaintEventPublisher;
+    private final com.hrms.cms.service.NodalOfficerRecordService nodalOfficerRecordService;
+    private final com.hrms.cms.service.NotificationService notificationService;
+    private final com.hrms.cms.service.CepcAuditService auditService;
+    private final CallerIdentity callerIdentity;
 
     @PostMapping
     public ResponseEntity<Map<String, Object>> registerComplaint(@RequestBody Map<String, Object> request) {
@@ -457,6 +470,36 @@ public class ComplaintApiV1Controller {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
+    @GetMapping("/nodal-records")
+    public ResponseEntity<Map<String, Object>> getNodalRecords() {
+        List<Map<String, Object>> records = nodalOfficerRecordService.listWorklist();
+
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("success", true);
+        response.put("data", records);
+        response.put("count", records.size());
+        response.put("timestamp", LocalDateTime.now().toString());
+
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/nodal-records/{recordNumber}/forward-to-re")
+    public ResponseEntity<Map<String, Object>> forwardNodalRecordToRe(
+            @PathVariable String recordNumber,
+            @Valid @RequestBody NodalAssessmentRequest request) {
+
+        Map<String, Object> record = nodalOfficerRecordService.forwardToRegulatedEntity(
+                recordNumber, request, callerIdentity.username());
+
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("success", true);
+        response.put("message", "Record forwarded to the regulated entity");
+        response.put("data", record);
+        response.put("timestamp", LocalDateTime.now().toString());
+
+        return ResponseEntity.ok(response);
+    }
+
     @GetMapping("/nodal-records/{recordNumber}/comments")
     public ResponseEntity<Map<String, Object>> getNodalRecordComments(@PathVariable String recordNumber) {
         List<ComplaintComment> comments = complaintCommentRepository.findByNoRecordNumberOrderByCreatedAtDesc(recordNumber);
@@ -527,6 +570,7 @@ public class ComplaintApiV1Controller {
         String assignedToName = (String) request.getOrDefault("assignedToName", "");
         String assignmentMode = (String) request.getOrDefault("assignmentMode", "MANUAL");
         String performedBy = (String) request.getOrDefault("performedBy", assignedTo);
+        String performedByRole = (String) request.get("performedByRole");
         String proposedAction = (String) request.get("proposedAction");
         String proposedClause = (String) request.get("proposedClause");
 
@@ -543,15 +587,22 @@ public class ComplaintApiV1Controller {
         boolean isOfficeForward = "OTHER_OFFICE".equals(target);
         boolean closesImmediately = "OTHER_REGULATORY_BODIES".equals(target) || "OTHER_RBI_DEPARTMENT".equals(target);
         switch (target) {
-            case "REVIEWER": newStatus = "SENT_TO_REVIEWER"; break;
-            case "DEPUTY_OMBUDSMAN": newStatus = "SENT_TO_DEPUTY_OMBUDSMAN"; break;
-            case "OMBUDSMAN": newStatus = "SENT_TO_OMBUDSMAN"; break;
+            case "REVIEWER": newStatus = ComplaintStatus.SENT_TO_REVIEWER.name(); break;
+            case "DEPUTY_OMBUDSMAN": newStatus = ComplaintStatus.SENT_TO_DEPUTY_OMBUDSMAN.name(); break;
+            case "OMBUDSMAN": newStatus = ComplaintStatus.SENT_TO_OMBUDSMAN.name(); break;
             case "DEALING_OFFICER": newStatus = "SENT_TO_DO"; break;
-            case "CLOSE": newStatus = "CLOSED"; break;
+            case "CLOSE": newStatus = ComplaintStatus.CLOSED.name(); break;
             case "OTHER_OFFICE": newStatus = "PENDING_OFFICE_HEAD_APPROVAL"; break;
             default:
-                newStatus = closesImmediately ? "CLOSED" : "SENT_TO_" + target;
+                newStatus = closesImmediately ? ComplaintStatus.CLOSED.name() : "SENT_TO_" + target;
                 break;
+        }
+
+        Optional<RbioHierarchyService.Denial> denial =
+                rbioHierarchyService.validateForward(complaint, target, performedByRole, performedBy, newStatus);
+        if (denial.isPresent()) {
+            return ResponseEntity.status(denial.get().status())
+                    .body(Map.of("success", false, "message", denial.get().message()));
         }
 
         complaint.setStatus(newStatus);
@@ -583,7 +634,6 @@ public class ComplaintApiV1Controller {
                         .body(Map.of("success", false, "message", "officeCode is required when forwarding to Other Office"));
             }
             String headOfficer = complaintRoutingService.assignOfficerByRole("CRPC_HEAD");
-            String performedByRole = (String) request.get("performedByRole");
             complaint.setForwardedOfficeCode(officeCode);
             complaint.setPreForwardOfficer(performedBy);
             complaint.setPreForwardRole(performedByRole != null && !performedByRole.isBlank() ? performedByRole : complaint.getAssignedRole());
@@ -591,6 +641,15 @@ public class ComplaintApiV1Controller {
             complaint.setAssignedOfficer(headOfficer);
         } else {
             complaint.setAssignedOfficer(assignedTo);
+            // Without this the complaint keeps the forwarding officer's role, so the next hop's
+            // hierarchy check would read the wrong rung.
+            String forwardedToRole = rbioHierarchyService.roleForTarget(target);
+            if (forwardedToRole != null && rbioHierarchyService.isRbio(complaint)) {
+                complaint.setAssignedRole(forwardedToRole);
+                if (assignedToName != null && !assignedToName.isBlank()) {
+                    complaint.setAssignedOfficerName(assignedToName);
+                }
+            }
         }
         if (proposedAction != null && !proposedAction.isBlank()) {
             complaint.setProposedAction(proposedAction);
@@ -614,11 +673,24 @@ public class ComplaintApiV1Controller {
         }
         complaintService.addTimeline(complaint.getId(), action, performedBy, remarks, oldStatus, newStatus);
 
+        auditService.logActionAsync(complaintNumber, action, performedBy, performedByRole, remarks,
+                Map.of("target", target, "assignmentMode", assignmentMode,
+                        "assignedRole", String.valueOf(complaint.getAssignedRole())),
+                oldStatus, newStatus);
+
+        if (ComplaintStatus.CLOSED.name().equals(newStatus)) {
+            complaintEventPublisher.publishComplaintClosed(complaint, performedBy, oldStatus);
+        } else {
+            complaintEventPublisher.publishComplaintAssigned(complaint, performedBy);
+            notifyAssignee(complaint, complaintNumber, remarks);
+        }
+
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("complaintNumber", complaintNumber);
         data.put("status", newStatus);
         data.put("assignedTo", assignedTo);
         data.put("assignedToName", assignedToName);
+        data.put("assignedRole", complaint.getAssignedRole());
         data.put("target", target);
 
         Map<String, Object> response = new LinkedHashMap<>();
@@ -628,6 +700,122 @@ public class ComplaintApiV1Controller {
         response.put("timestamp", LocalDateTime.now().toString());
 
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * RBIO_ADMIN-only reassignment: hand the complaint to a different person in the same role when the
+     * current holder is absent, or to a higher official to escalate past a rung. Ordinary officers use
+     * {@code /send-for-approval}, which only climbs one rung at a time.
+     */
+    @PostMapping("/{complaintNumber}/rbio/reassign")
+    @RbioRoleGuard(roles = {RoleConstants.RBIO_ADMIN})
+    public ResponseEntity<Map<String, Object>> rbioReassign(
+            @PathVariable String complaintNumber,
+            @RequestBody Map<String, Object> request) {
+
+        String assignedTo = (String) request.getOrDefault("assignedTo", "");
+        String assignedToName = (String) request.getOrDefault("assignedToName", assignedTo);
+        String performedBy = (String) request.getOrDefault("performedBy", RoleConstants.RBIO_ADMIN);
+        String reason = (String) request.getOrDefault("reason", "");
+
+        Complaint complaint;
+        try {
+            complaint = complaintService.getByComplaintNumber(complaintNumber);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("success", false, "message", "Complaint not found: " + complaintNumber));
+        }
+
+        String previousRole = rbioHierarchyService.normalizeRole(complaint.getAssignedRole());
+        String targetRole = rbioHierarchyService.normalizeRole((String) request.get("targetRole"));
+        if (targetRole == null) {
+            targetRole = previousRole;
+        }
+
+        Optional<RbioHierarchyService.Denial> denial =
+                rbioHierarchyService.validateAdminReassign(complaint, targetRole, assignedTo);
+        if (denial.isPresent()) {
+            return ResponseEntity.status(denial.get().status())
+                    .body(Map.of("success", false, "message", denial.get().message()));
+        }
+
+        String previousOfficer = complaint.getAssignedOfficer();
+        String oldStatus = complaint.getStatus();
+        boolean isEscalation = !targetRole.equals(previousRole);
+
+        String newStatus = oldStatus;
+        if (isEscalation) {
+            String escalatedStatus = rbioHierarchyService.statusForRole(targetRole);
+            if (escalatedStatus != null && !escalatedStatus.equalsIgnoreCase(oldStatus)) {
+                newStatus = escalatedStatus;
+            }
+            complaint.setEscalatedAt(LocalDateTime.now());
+        }
+
+        complaint.setStatus(newStatus);
+        complaint.setAssignedRole(targetRole);
+        complaint.setAssignedOfficer(assignedTo);
+        if (assignedToName != null && !assignedToName.isBlank()) {
+            complaint.setAssignedOfficerName(assignedToName);
+        }
+        complaintService.updateComplaintDirectly(complaint);
+
+        String action = isEscalation ? "ESCALATE" : "REASSIGNED";
+        String remarks = isEscalation
+                ? "Escalated by RBIO_ADMIN from " + previousRole + " to " + targetRole + " (" + assignedToName + ")."
+                : "Reassigned by RBIO_ADMIN from " + previousOfficer + " to " + assignedToName
+                        + " within " + targetRole + ".";
+        if (reason != null && !reason.isBlank()) {
+            remarks = remarks + " Reason: " + reason;
+        }
+        complaintService.addTimeline(complaint.getId(), action, performedBy, remarks, oldStatus, newStatus);
+
+        auditService.logActionAsync(complaintNumber, action, performedBy, RoleConstants.RBIO_ADMIN, remarks,
+                Map.of("previousRole", String.valueOf(previousRole),
+                        "previousOfficer", String.valueOf(previousOfficer),
+                        "targetRole", targetRole),
+                oldStatus, newStatus);
+
+        if (isEscalation) {
+            complaintEventPublisher.publishComplaintEscalated(complaint, performedBy, oldStatus);
+        } else {
+            complaintEventPublisher.publishComplaintAssigned(complaint, performedBy);
+        }
+        notifyAssignee(complaint, complaintNumber, remarks);
+
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("complaintNumber", complaintNumber);
+        data.put("status", newStatus);
+        data.put("assignedTo", assignedTo);
+        data.put("assignedToName", assignedToName);
+        data.put("assignedRole", targetRole);
+        data.put("previousRole", previousRole);
+        data.put("previousOfficer", previousOfficer);
+        data.put("escalation", isEscalation);
+
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("success", true);
+        response.put("message", remarks);
+        response.put("data", data);
+        response.put("timestamp", LocalDateTime.now().toString());
+
+        return ResponseEntity.ok(response);
+    }
+
+    private void notifyAssignee(Complaint complaint, String complaintNumber, String remarks) {
+        String assignee = complaint.getAssignedOfficer();
+        if (assignee == null || assignee.isBlank()) {
+            return;
+        }
+        String dept = complaint.getDepartment() == null ? "rbio" : complaint.getDepartment().toLowerCase();
+        notificationService.send(
+                assignee,
+                "NEW_ASSIGNMENT",
+                "Complaint " + complaintNumber + " assigned to you",
+                remarks,
+                complaintNumber,
+                "COMPLAINT",
+                "/workflow/" + dept + "/complaint/" + complaintNumber);
     }
 
     @PostMapping("/{complaintNumber}/office-head-decision")

@@ -4,9 +4,13 @@ import com.hrms.cms.dto.FileComplaintRequest;
 import com.hrms.cms.dto.UpdateComplaintRequest;
 import com.hrms.cms.entity.Complaint;
 import com.hrms.cms.entity.ComplaintTimeline;
+import com.hrms.cms.security.CallerIdentity;
 import com.hrms.cms.security.RbioRoleGuard;
 import com.hrms.cms.service.ComplaintService;
 import com.hrms.cms.service.RbioComplaintSummaryService;
+import com.hrms.cms.service.RbioConciliationService;
+import com.hrms.cms.service.RbioHierarchyService;
+import com.rbi.cms.common.enums.RoleConstants;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -15,11 +19,13 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 
 @RestController
@@ -29,6 +35,9 @@ public class ComplaintController {
 
     private final ComplaintService complaintService;
     private final RbioComplaintSummaryService rbioComplaintSummaryService;
+    private final RbioConciliationService rbioConciliationService;
+    private final RbioHierarchyService rbioHierarchyService;
+    private final CallerIdentity callerIdentity;
 
     @GetMapping
     public List<Complaint> getAll(@RequestParam(required = false) String status,
@@ -96,10 +105,16 @@ public class ComplaintController {
      * do not expose.
      */
     @GetMapping("/rbio/{id}/summary")
-    @RbioRoleGuard(roles = {"RBIO_OFFICER", "RBIO_SUPERVISOR", "RBIO_CONCILIATOR", "RBIO_ADJUDICATOR", "RBIO_DEPUTY_OMBUDSMAN", "CRPC_HEAD", "RBIO_ADMIN"})
+    @RbioRoleGuard(roles = {RoleConstants.RBIO_DO, RoleConstants.RBIO_REVIEWER,
+            RoleConstants.RBIO_DEPUTY_OMBUDSMAN, RoleConstants.RBIO_OMBUDSMAN, RoleConstants.RBIO_ADMIN,
+            "RBIO_OFFICER", "RBIO_SUPERVISOR", "RBIO_CONCILIATOR", "RBIO_ADJUDICATOR", "CRPC_HEAD"})
     public ResponseEntity<Map<String, Object>> getRbioSummary(@PathVariable Long id) {
         try {
-            return ResponseEntity.ok(envelope(true, "OK", rbioComplaintSummaryService.getSummary(id)));
+            Map<String, Object> summary = rbioComplaintSummaryService.getSummary(id);
+            // Lets the screen render read-only rather than let the officer fill a form the PUT will reject.
+            summary.put("canEdit", rbioHierarchyService.canEdit(
+                    (String) summary.get("assignedOfficer"), callerIdentity.username(), callerIdentity.roles()));
+            return ResponseEntity.ok(envelope(true, "OK", summary));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(envelope(false, e.getMessage(), null));
@@ -112,14 +127,56 @@ public class ComplaintController {
      * cleared.
      */
     @PutMapping("/rbio/{id}/summary")
-    @RbioRoleGuard(roles = {"RBIO_OFFICER", "RBIO_SUPERVISOR", "RBIO_ADMIN"})
+    @RbioRoleGuard(roles = {RoleConstants.RBIO_DO, RoleConstants.RBIO_REVIEWER,
+            RoleConstants.RBIO_DEPUTY_OMBUDSMAN, RoleConstants.RBIO_OMBUDSMAN, RoleConstants.RBIO_ADMIN,
+            "RBIO_OFFICER", "RBIO_SUPERVISOR"})
     public ResponseEntity<Map<String, Object>> updateRbioSummary(
             @PathVariable Long id,
             @RequestBody Map<String, Object> payload,
             @RequestHeader(value = "X-User-Id", defaultValue = "system") String userId) {
         try {
-            Map<String, Object> updated = rbioComplaintSummaryService.updateSummary(id, payload, userId);
+            String actor = Objects.requireNonNullElse(callerIdentity.username(), userId);
+            Map<String, Object> updated = rbioComplaintSummaryService.updateSummary(
+                    id, payload, actor, callerIdentity.roles());
             return ResponseEntity.ok(envelope(true, "Summary updated", updated));
+        } catch (ResponseStatusException e) {
+            return ResponseEntity.status(e.getStatusCode()).body(envelope(false, e.getReason(), null));
+        } catch (IllegalArgumentException e) {
+            HttpStatus status = e.getMessage() != null && e.getMessage().startsWith("Complaint not found")
+                    ? HttpStatus.NOT_FOUND
+                    : HttpStatus.BAD_REQUEST;
+            return ResponseEntity.status(status).body(envelope(false, e.getMessage(), null));
+        }
+    }
+
+    /**
+     * Conciliation tab: the live meeting plus the reschedule trail behind it.
+     */
+    @GetMapping("/rbio/{id}/conciliation")
+    @RbioRoleGuard(roles = {"RBIO_OFFICER", "RBIO_SUPERVISOR", "RBIO_CONCILIATOR", "RBIO_ADJUDICATOR", "RBIO_DEPUTY_OMBUDSMAN", "CRPC_HEAD", "RBIO_ADMIN"})
+    public ResponseEntity<Map<String, Object>> getRbioConciliation(@PathVariable Long id) {
+        try {
+            return ResponseEntity.ok(envelope(true, "OK", rbioConciliationService.getConciliation(id)));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(envelope(false, e.getMessage(), null));
+        }
+    }
+
+    /**
+     * Accepts the flat shape {@code data.current} of {@link #getRbioConciliation} returns. Updates the
+     * live meeting in place; a {@code meetingStatus} of RESCHEDULED, or a live meeting that has already
+     * been completed or cancelled, opens a new meeting instead so the previous one is preserved.
+     */
+    @PutMapping("/rbio/{id}/conciliation")
+    @RbioRoleGuard(roles = {"RBIO_OFFICER", "RBIO_SUPERVISOR", "RBIO_CONCILIATOR", "RBIO_ADMIN"})
+    public ResponseEntity<Map<String, Object>> updateRbioConciliation(
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> payload,
+            @RequestHeader(value = "X-User-Id", defaultValue = "system") String userId) {
+        try {
+            Map<String, Object> updated = rbioConciliationService.saveMeeting(id, payload, userId);
+            return ResponseEntity.ok(envelope(true, "Conciliation updated", updated));
         } catch (IllegalArgumentException e) {
             HttpStatus status = e.getMessage() != null && e.getMessage().startsWith("Complaint not found")
                     ? HttpStatus.NOT_FOUND

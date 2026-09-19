@@ -6,7 +6,6 @@ import { HttpClient } from '@angular/common/http';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { ButtonModule } from 'primeng/button';
 import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
-import { lookupPincode } from '../../../utils/pincode-data';
 import { environment } from '../../../../environments/environment';
 import { SpeechButtonComponent } from '../../../shared/speech-button/speech-button.component';
 import { RbioHeaderComponent } from '../rbio-header/rbio-header.component';
@@ -22,11 +21,85 @@ interface EligibilityQuestionItem {
   dateValue: string | null;
 }
 
+// eligibilityQuestions[].key -> the key the `eligibility` section of /api/complaints/rbio/{id}/summary
+// uses. The two vocabularies differ, and a key missing from this map would be silently dropped on save.
+const ELIGIBILITY_ANSWER_KEYS: Record<string, string> = {
+  entityRegulatedByRbi: 'entityRegulatedByRbi',
+  notDirectlyAddressed: 'complaintNotDirectlyAddressedToOmbudsman',
+  notRegisteredWithEntity: 'complaintNotRegisteredWithEntity',
+  frivolousVexatious: 'frivolousVexatiousThreatening',
+  subJudice: 'subJudiceOrArbitration',
+  subJudicePending: 'sameGrievancePendingBeforeCourt',
+  alreadySettled: 'sameGrievanceSettledBeforeCourt',
+  throughAdvocate: 'complaintMadeThroughAdvocate',
+  isAdvocate: 'complainantIsAdvocate',
+  pendingBeforeOmbudsman: 'sameGrievancePendingBeforeOmbudsman',
+  alreadyDealt: 'alreadyDealtWithByOmbudsman',
+  generalAgainstManagement: 'complaintAgainstManagement',
+  previouslyFiledWithCEPC: 'complaintFiledWithCEPCOrRBI',
+  disputesBetweenREs: 'disputeBetweenREs',
+  staffEmployerRelationship: 'staffOfREEmployerRelationship',
+  incompleteInformation: 'completeInformationUnavailable',
+  filedWrittenComplaint: 'writtenComplaintFiledWithRE',
+  complaintFiledDate: 'firstFiledWithREDate',
+  receivedReplyFromEntity: 'receivedReplyFromEntity',
+  replyDate: 'replyDate',
+};
+
 interface PanelState {
   form: boolean;
   attachments: boolean;
   history: boolean;
   settings: boolean;
+}
+
+// Shape of GET /api/v1/complaints/nodal-records. Only the nodal officer contact fields are stored on
+// the record itself; the rest is joined off the complaint server-side, so everything here is
+// read-only as far as this screen is concerned.
+interface NodalRecord {
+  id: number;
+  recordNumber: string;
+  complaintNumber: string;
+  status: string;
+  statusLabel: string;
+  assignedTo: string;
+  slaDays: number | null;
+  receiptDate: string;
+  subject: string;
+  complainant: string;
+  mobile: string;
+  email: string;
+  bankName: string;
+  bankCategory: string;
+  branchCategory: string;
+  branchName: string;
+  pincode: string;
+  city: string;
+  district: string;
+  state: string;
+  country: string;
+  moduleName: string;
+  atmComplaint: string;
+  designatedOffice: string;
+  processingOffice: string;
+  noName: string;
+  noMobile: string;
+  noEmail: string;
+  noDesignation: string;
+  pnoName: string;
+  pnoMobile: string;
+  pnoEmail: string;
+  // The officer's saved assessment. Dates arrive ISO because the form binds them to native date
+  // inputs; notice131ComplyDate is the exception — it is display-only, so the backend sends it
+  // already formatted.
+  advisoryComplianceDate: string | null;
+  disputeAmount: number | null;
+  compensationLoss: number | null;
+  compensationMental: number | null;
+  awardImplementationDate: string | null;
+  awardAcceptanceDate: string | null;
+  notice131ComplyDate: string | null;
+  forwardedToReAt: string | null;
 }
 
 export interface Complaint {
@@ -272,6 +345,7 @@ export class RbioComplaintDetailsView implements OnInit {
 
   // State
   saving = signal(false);
+  saveError = signal('');
   submitting = signal(false);
   submitted = signal(false);
   draftSaved = signal(false);
@@ -524,19 +598,18 @@ export class RbioComplaintDetailsView implements OnInit {
         this.justActioned.set(true);
         this.complaintStatus.set('CLOSED');
       },
-      error: () => {
+      error: (err) => {
+        // This used to be a copy of the success handler, so a failed forward still told the officer
+        // the complaint had closed while it stayed open in the database. The status is left alone.
         this.forwardSubmitting.set(false);
-        this.showForwardConfirm.set(false);
-        this.approvalSentTo.set(this.forwardTargetLabel);
-        this.justActioned.set(true);
-        this.complaintStatus.set('CLOSED');
+        alert(err?.error?.message || 'Failed to forward this complaint. It has not been closed.');
       }
     });
   }
 
   loadComplaints() {
     const id = this.activatedRoute.snapshot.paramMap.get('id');
-    this.http.get<Complaint>(`http://localhost:8082/api/complaints/rbio/${id}/summary`)
+    this.http.get<Complaint>(`${environment.apiBaseUrl}/api/complaints/rbio/${id}/summary`)
       .subscribe({
         next: (res) => {
           this.complaint.set(res);
@@ -621,19 +694,19 @@ export class RbioComplaintDetailsView implements OnInit {
   }
 
   // Nodal Officer Record
-  nodalRecords = signal<{ id: number; recordNumber: string; subject: string; bankName: string; slaDays: number; assignedTo: string; status: string; statusLabel: string; complaintNumber: string; receiptDate: string; complainant: string; mobile: string; email: string; moduleName: string; bankCategory: string; branchCategory: string; branchName: string; pincode: string; city: string; district: string; state: string; country: string; noName: string; noMobile: string; noEmail: string; pnoName: string; pnoMobile: string; pnoEmail: string; atmComplaint: string; designatedOffice: string; processingOffice: string }[]>([
-    { id: 1, recordNumber: '1146110', subject: 'Account debited but no credit', bankName: 'State Bank of India', slaDays: 2, assignedTo: 'Priya Gupta', status: 'INFORMATION_REQUIRED', statusLabel: 'Information Required', complaintNumber: 'N20223317000005', receiptDate: '19-05-2026', complainant: 'Raj Shah', mobile: '9876543210', email: 'raj.shah@email.com', moduleName: 'Deposit', bankCategory: 'Scheduled Commercial Bank', branchCategory: 'Metro', branchName: 'Andheri West', pincode: '400058', city: 'Mumbai', district: 'Mumbai Suburban', state: 'Maharashtra', country: 'India', noName: 'Deepak Verma', noMobile: '9112233445', noEmail: 'deepak.verma@sbi.co.in', pnoName: 'Suresh Kumar', pnoMobile: '9998877665', pnoEmail: 'suresh.kumar@sbi.co.in', atmComplaint: 'No', designatedOffice: 'Mumbai', processingOffice: 'RBIO Mumbai' },
-    { id: 2, recordNumber: '1146111', subject: 'Excess interest charged on loan', bankName: 'HDFC Bank', slaDays: 5, assignedTo: 'A.K. Singh', status: 'PENDING', statusLabel: 'Pending', complaintNumber: 'N20223317000012', receiptDate: '22-05-2026', complainant: 'Meena Kumari', mobile: '9123456780', email: 'meena.k@email.com', moduleName: 'Loan', bankCategory: 'Private Sector Bank', branchCategory: 'Urban', branchName: 'Connaught Place', pincode: '110001', city: 'New Delhi', district: 'Central Delhi', state: 'Delhi', country: 'India', noName: 'Rahul Sharma', noMobile: '9887766554', noEmail: 'rahul.sharma@hdfc.com', pnoName: 'Anita Desai', pnoMobile: '9776655443', pnoEmail: 'anita.desai@hdfc.com', atmComplaint: 'No', designatedOffice: 'Delhi', processingOffice: 'RBIO Delhi' },
-    { id: 3, recordNumber: '1146112', subject: 'ATM withdrawal failed but debited', bankName: 'ICICI Bank', slaDays: 35, assignedTo: 'Meera Krishnan', status: 'INFORMATION_REQUIRED', statusLabel: 'Information Required', complaintNumber: 'N20223317000018', receiptDate: '10-05-2026', complainant: 'Sunil Patil', mobile: '9234567890', email: 'sunil.p@email.com', moduleName: 'ATM/Debit Card', bankCategory: 'Private Sector Bank', branchCategory: 'Semi-Urban', branchName: 'Baner Road', pincode: '411045', city: 'Pune', district: 'Pune', state: 'Maharashtra', country: 'India', noName: 'Vikram Joshi', noMobile: '9665544332', noEmail: 'vikram.joshi@icici.com', pnoName: 'Kavita Nair', pnoMobile: '9554433221', pnoEmail: 'kavita.nair@icici.com', atmComplaint: 'Yes', designatedOffice: 'Pune', processingOffice: 'RBIO Mumbai' },
-  ]);
+  nodalRecords = signal<NodalRecord[]>([]);
+  loadingNodalRecords = signal(false);
+  nodalRecordsError = signal('');
   nodalFilterRecordNumber = '';
   nodalFilterSubject = '';
   nodalFilterBank = '';
   nodalFilterSla = '';
   nodalFilterAssigned = '';
   nodalFilterStatus = '';
-  selectedNodalRecord = signal<any>(null);
+  selectedNodalRecord = signal<NodalRecord | null>(null);
   nodalDetailView = signal(false);
+  sendingToRE = signal(false);
+  sendToREError = signal('');
   nodalStatusCode = '';
   sla=''
   nodalAdvisoryDate = '';
@@ -665,25 +738,8 @@ export class RbioComplaintDetailsView implements OnInit {
   emailBody = '';
 
   // Reference data
-  categories = [
-    'ATM/Debit Card', 'Credit Card', 'UPI/Mobile Banking', 'Internet Banking',
-    'Loan', 'Deposit', 'Insurance (Mis-selling)', 'NEFT/RTGS/IMPS',
-    'Pension', 'Account Opening/Closure', 'CIBIL/Credit Score',
-    'Cheque/DD', 'Locker', 'General Banking'
-  ];
-
   states = signal<string[]>([]);
   districts = signal<string[]>([]);
-
-  private statesFallback = [
-    'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh', 'Goa', 'Gujarat',
-    'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka', 'Kerala', 'Madhya Pradesh',
-    'Maharashtra', 'Manipur', 'Meghalaya', 'Mizoram', 'Nagaland', 'Odisha', 'Punjab',
-    'Rajasthan', 'Sikkim', 'Tamil Nadu', 'Telangana', 'Tripura', 'Uttar Pradesh',
-    'Uttarakhand', 'West Bengal', 'Andaman and Nicobar Islands', 'Chandigarh',
-    'Dadra and Nagar Haveli and Daman and Diu', 'Delhi', 'Jammu and Kashmir', 'Ladakh',
-    'Lakshadweep', 'Puducherry'
-  ];
 
   protected Math = Math;
 
@@ -879,35 +935,10 @@ private getStatusColor(status: string): string {
           this.loadingPastComplaints.set(false);
         },
         error: () => {
-          this.pastComplaints.set([
-            { complaintId: '06846021', filedDate: '02-03-2026', status: 'NEW_COMPLAINT', entity: 'HDFC Bank', subject: 'Bank credit card fees charged double, request refund.', processingOffice: 'Chandigarh CEPC' },
-            { complaintId: '06846324', filedDate: '22-02-2026', status: 'COMPLETED', entity: 'Axis Bank', subject: 'Home Loan interest is too high, bank not reducing as per Repo Rate change', processingOffice: 'Chandigarh CEPC' },
-          ]);
+          // Empty, not a sample pair. Invented history on this panel reads as the complainant's real
+          // record and would inform a decision about repeat complaints.
+          this.pastComplaints.set([]);
           this.loadingPastComplaints.set(false);
-        }
-      });
-  }
-
-  loadSidebarAttachments(complaintId: string) {
-    this.loadingSidebarAttachments.set(true);
-    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/complaints/${complaintId}/documents`)
-      .subscribe({
-        next: (res) => {
-          const docs = (res?.data || res || []).map((a: any, i: number) => ({
-            id: a.id || `DOC-${i + 1}`,
-            name: a.fileName || a.name || `document_${i + 1}`,
-            size: a.fileSize || a.size || 'Unknown',
-            type: a.fileType || a.type || 'application/octet-stream',
-            uploadedAt: a.createdAt || a.uploadedAt || '',
-            uploadedBy: a.uploadedBy || '—',
-            url: a.url || `${environment.apiBaseUrl}/api/files/${a.id || i}`
-          }));
-          this.sidebarAttachments.set(docs);
-          this.loadingSidebarAttachments.set(false);
-        },
-        error: () => {
-          this.sidebarAttachments.set([]);
-          this.loadingSidebarAttachments.set(false);
         }
       });
   }
@@ -931,17 +962,32 @@ private getStatusColor(status: string): string {
   private loadExistingComplaint(id: string) {
     this.http.get<any>(`${environment.apiBaseUrl}/api/complaints/rbio/${id}/summary`).subscribe({
       next: (res) => {
+        this.applySummary(res?.data || res || {});
+        this.submitted.set(true);
+        this.loadPastComplaints();
+        this.fetchAttachments();
+        this.loadComments();
+        this.loadEmailThreads();
+      },
+      error: (err) => {
+        this.saveError.set(err?.status === 403
+          ? 'You do not have access to this complaint.'
+          : 'Could not load this complaint.');
+      }
+    });
+  }
 
-        const data = res?.data || res || {};
+  /**
+   * Maps the nested summary onto the flat form fields. Shared by the initial GET and by the PUT
+   * response, so a save leaves the form showing exactly what was persisted.
+   */
+  private applySummary(data: any) {
         this.assignedOfficer = data.assignedOfficer || '';
-        console.log('assigned office',this.assignedOfficer);
+        // The summary is editable only by the officer holding it; everyone else reads it. canEdit comes
+        // from the server so the form matches what the PUT will actually accept.
+        this.isReadOnlyViewer.set(data.canEdit === false || data.navBarDto?.status === 'CLOSED');
 
-        // this.complaintId =
-        //   data.navBarDto?.complaintNumber || data.id || id;
-
-        // console.log(this.complaintId)
-
-        this.category = data.navBarDto?.complainCategory;
+        this.category = data.navBarDto?.complaintCategory;
 
         this.sla=data.navBarDto?.slaBreachIn
 
@@ -1061,54 +1107,59 @@ private getStatusColor(status: string): string {
 
         this.loanDisposalAmount =
           data.complainDetailsDto?.legalCaseDetails?.loanDisposalAmount;
-        this.additionalComments = data.additionalComments || '';
-        this.crpcProposedAction = data.crpcProposedAction || '';
-        this.vernacular = !!data.isVernacular;
-        this.vernacularLanguage = data.vernacularLanguageDetail || data.languageName || '';
-        this.pensionComplaint = data.isRegardingPension === 'Yes' || data.isRegardingPension === true;
-        this.businessCorrespondent = data.isAgainstBusinessCorrespondent === 'Yes' || data.isAgainstBusinessCorrespondent === true;
-        this.submitted.set(true);
-        this.loadPastComplaints();
-        this.loadSidebarAttachments(id);
-        this.loadComments();
-        // this.http.get<any>(`${environment.apiBaseUrl}/api/complaints/track/${this.complaintId}/comments`).subscribe({
-        //   next: (res) => this.assessmentComments.set(res || []),
-        //   error: () => this.assessmentComments.set([])
-        // });
-    
-      },
-      error: () => {
-        this.complaintId = 90;
-        this.subject = 'ATM_DEBIT_CARD';
-        this.description = 'Complaint loaded from task';
-        this.complainantName = 'Complainant';
-        this.complaintStatus.set('NEW_COMPLAINT');
-        this.submitted.set(true);
-        this.loadPastComplaints();
-        this.loadSidebarAttachments(id);
-      }
-    });
+        /* Additional Information */
 
+        const additionalInfo = data.complainDetailsDto?.additionalInformation;
+        this.additionalComments = additionalInfo?.comments || '';
+        this.crpcProposedAction = additionalInfo?.crpcProposedAction || '';
+        this.vernacularLanguage = additionalInfo?.vernacularLanguage || '';
+        this.vernacular = !!this.vernacularLanguage;
 
+        /* Flags and Indicators */
 
-    // Load email communications from API
-    this.http.get<any>(`${environment.apiBaseUrl}/api/email-simulation/${this.actualComplaintNumber}/threads`).subscribe({
+        const flags = data.complainDetailsDto?.flagsAndIndicators;
+        this.pensionComplaint = flags?.complaintRegardingPension === true;
+        this.businessCorrespondent = flags?.complaintAgainstBusinessCorrespondent === true;
+        this.atmCreditDebitCard = flags?.atmCreditDebitCard === true;
+        this.schemeFlag = flags?.schemeFlag || '';
+        this.rboCgpcOld = flags?.rboCgpcOld || '';
+        this.groundsFlag = flags?.groundsFlag || '';
+
+        /* Complaint Linkage */
+
+        this.freeMarkedComplaint = data.complainDetailsDto?.complaintLinkage?.freeMarkedComplaint === true;
+        this.currentComplaintNumber = data.complainDetailsDto?.complaintLinkage?.currentComplaintNumber || '';
+
+        this.applyEligibilityAnswers(data.eligibility);
+  }
+
+  private loadEmailThreads() {
+    if (!this.actualComplaintNumber) return;
+    this.http.get<any>(`${environment.apiBaseUrl}/api/email-simulation/complaints/${this.actualComplaintNumber}/threads`).subscribe({
       next: (res) => {
         const emails = res?.data || res || [];
         this.emailActivities.set(emails.filter((e: any) => (e.status !== 'DRAFT' && e.status !== 'SENT')));
         this.emailDrafts.set(emails.filter((e: any) => e.status === 'DRAFT'));
         this.emailClosedActivities.set(emails.filter((e: any) => e.status === 'SENT'));
       },
-      error: () => { }
+      error: () => {
+        this.emailActivities.set([]);
+        this.emailDrafts.set([]);
+        this.emailClosedActivities.set([]);
+      }
     });
   }
 
   
   loadComments() {
-    this.http.get<any>(`${environment.apiBaseUrl}/api/complaints/track/${this.complaintId}/comments`).subscribe({
-    next: (res) => this.assessmentComments.set(res || []),
-    error: () => this.assessmentComments.set([])
-  });
+    if (!this.actualComplaintNumber) {
+      this.assessmentComments.set([]);
+      return;
+    }
+    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/complaints/${this.actualComplaintNumber}/comments`).subscribe({
+      next: (res) => this.assessmentComments.set(res?.data || []),
+      error: () => this.assessmentComments.set([])
+    });
   }
 
   private detectUserRole() {
@@ -1146,46 +1197,33 @@ private getStatusColor(status: string): string {
   }
 
   private loadDeos() {
-    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/email-syndication/deo-pool`).subscribe({
+    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/email-syndication/deo`).subscribe({
       next: (res) => {
-        const data = (res?.data || []).map((d: any) => ({
+        this.deos.set((res?.data || []).map((d: any) => ({
           id: d.userId || d.id,
           displayName: d.displayName || d.userId,
           isActive: d.isActive !== false,
           isOnLeave: d.isOnLeave === true,
           currentLoad: d.currentLoad || 0,
-          maxLoad: d.maxLoad || d.maxThreshold || 20
-        }));
-        if (data.length > 0) {
-          this.deos.set(data);
-        } else {
-          this.deos.set([
-            { id: 'deo.user', displayName: 'Siddharth Joshi', isActive: true, isOnLeave: false, currentLoad: 0, maxLoad: 20 }
-          ]);
-        }
+          maxLoad: d.maxThreshold || 20
+        })));
         const auto = this.deos().find(d => d.isActive && !d.isOnLeave);
         if (auto) {
           this.selectedDeoId = auto.id;
           this.selectedDeoName = auto.displayName;
         }
       },
-      error: () => {
-        this.deos.set([
-          { id: 'deo.user', displayName: 'Siddharth Joshi', isActive: true, isOnLeave: false, currentLoad: 0, maxLoad: 20 }
-        ]);
-        this.selectedDeoId = 'deo.user';
-        this.selectedDeoName = 'Siddharth Joshi';
-      }
+      error: () => this.deos.set([])
     });
   }
 
   private loadStates() {
+    // Sourced from distinct states in PINCODES. An empty dropdown means that table is unseeded,
+    // which is worth seeing rather than papering over with a hardcoded list that would let the
+    // officer pick a state the districts lookup then cannot resolve.
     this.http.get<any>(`${environment.apiBaseUrl}/api/v1/location/states`).subscribe({
-      next: (res) => {
-        const data = res?.data || [];
-        this.states.set(data.length > 0 ? data : this.statesFallback);
-      },
-      error: () => this.states.set(this.statesFallback)
+      next: (res) => this.states.set(res?.data || []),
+      error: () => this.states.set([])
     });
   }
 
@@ -1223,26 +1261,17 @@ private getStatusColor(status: string): string {
             }
             if (po.District) this.complainantDistrict = po.District;
           } else {
-            this.applyLocalPincode(value);
+            this.fieldErrors['complainantPincode'] = 'No location found for this pincode.';
           }
         },
+        // Both paths used to fall back to a bundled 540-row pincode table, which could name a state
+        // and district the PINCODES table disagrees with and then fail the districts lookup that
+        // depends on it. The lookup is the database's answer or none.
         error: () => {
           this.pincodeLoading.set(false);
-          this.applyLocalPincode(value);
+          this.fieldErrors['complainantPincode'] = 'Could not look up this pincode. Please try again.';
         }
       });
-    }
-  }
-
-  private applyLocalPincode(value: string) {
-    const entry = lookupPincode(value);
-    if (entry) {
-      this.complainantState = entry.state;
-      this.onStateChange(entry.state);
-      this.complainantDistrict = entry.district;
-      delete this.fieldErrors['complainantPincode'];
-    } else {
-      this.fieldErrors['complainantPincode'] = 'Invalid pincode. No location found.';
     }
   }
 
@@ -1672,7 +1701,8 @@ private getStatusColor(status: string): string {
       assignedTo: selectedUser?.id || '',
       assignedToName: this.sendBackSelectedName,
       assignmentMode: this.sendBackAssignmentMode,
-      performedBy: this.auth.currentUser()?.username || ''
+      performedBy: this.auth.currentUser()?.username || '',
+      performedByRole: this.userRole()
     };
 
     this.http.post(`${environment.apiBaseUrl}/api/v1/complaints/${this.complaintId}/send-for-approval`, payload).subscribe({
@@ -1742,6 +1772,7 @@ private getStatusColor(status: string): string {
       crpcClause: this.approvalCrpcClause || null,
       systemicIssue: this.systemicIssue || null,
       performedBy: this.auth.currentUser()?.username || '',
+      performedByRole: this.userRole(),
       proposedAction: this.proposedAction || null,
       proposedClause: this.proposedClause || null
     };
@@ -1915,20 +1946,64 @@ private getStatusColor(status: string): string {
     };
   }
 
-  addNodalRecord() {
-    const newId = this.nodalRecords().length + 1;
-    const newRecord = {
-      id: newId, recordNumber: `114611${newId + 2}`, subject: 'New Record', bankName: '', slaDays: 30, assignedTo: this.loggedInUserName || 'Unassigned', status: 'PENDING', statusLabel: 'Pending', complaintNumber: `N${this.complaintId}`, receiptDate: new Date().toLocaleDateString('en-GB').replace(/\//g, '-'), complainant: this.complainantName || '', mobile: this.complainantPhone || '', email: this.complainantEmail || '', moduleName: '', bankCategory: '', branchCategory: '', branchName: '', pincode: '', city: '', district: '', state: '', country: 'India', noName: '', noMobile: '', noEmail: '', pnoName: '', pnoMobile: '', pnoEmail: '', atmComplaint: 'No', designatedOffice: '', processingOffice: ''
-    };
-    this.nodalRecords.set([...this.nodalRecords(), newRecord]);
+  // A getter rather than a computed(): the filter inputs are plain ngModel-bound fields, not signals,
+  // so there is nothing for a computed to track.
+  get filteredNodalRecords(): NodalRecord[] {
+    const matches = (value: unknown, filter: string) =>
+      !filter.trim() || String(value ?? '').toLowerCase().includes(filter.trim().toLowerCase());
+
+    return this.nodalRecords().filter(r =>
+      matches(r.recordNumber, this.nodalFilterRecordNumber) &&
+      matches(r.subject, this.nodalFilterSubject) &&
+      matches(r.bankName, this.nodalFilterBank) &&
+      matches(r.slaDays, this.nodalFilterSla) &&
+      matches(r.assignedTo, this.nodalFilterAssigned) &&
+      matches(r.statusLabel, this.nodalFilterStatus)
+    );
   }
 
-  openNodalDetail(record: any) {
+  openNodalOfficerTab() {
+    this.assessmentTab.set('nodal-officer');
+    this.loadNodalRecords();
+  }
+
+  loadNodalRecords() {
+    this.loadingNodalRecords.set(true);
+    this.nodalRecordsError.set('');
+    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/complaints/nodal-records`).subscribe({
+      next: (res) => {
+        // statusLabel is derived here rather than server-side so the worklist and the status pills
+        // elsewhere on this screen stay driven by one mapping.
+        this.nodalRecords.set((res?.data || []).map((r: any) => ({
+          ...r,
+          statusLabel: this.formatStatusLabel(r.status)
+        })));
+        this.loadingNodalRecords.set(false);
+      },
+      error: () => {
+        this.nodalRecords.set([]);
+        this.nodalRecordsError.set('Could not load nodal officer records.');
+        this.loadingNodalRecords.set(false);
+      }
+    });
+  }
+
+  openNodalDetail(record: NodalRecord) {
     this.selectedNodalRecord.set(record);
-    this.nodalStatusCode = record.status === 'INFORMATION_REQUIRED' ? 'INFORMATION_REQUIRED' : '';
-    const complyBy = new Date();
-    complyBy.setDate(complyBy.getDate() + 15);
-    this.nodal131ComplyDate = `${String(complyBy.getDate()).padStart(2, '0')}-${String(complyBy.getMonth() + 1).padStart(2, '0')}-${complyBy.getFullYear()}`;
+    // Every field is reset from the record rather than left as it was. These are plain component
+    // fields, not per-record state, so without this the previously opened record's amounts stay
+    // sitting in the boxes and look like this record's assessment.
+    this.nodalStatusCode = record.status || '';
+    this.nodalAdvisoryDate = record.advisoryComplianceDate || '';
+    this.nodalDisputeAmount = record.disputeAmount ?? null;
+    this.nodalCompensationLoss = record.compensationLoss ?? null;
+    this.nodalCompensationMental = record.compensationMental ?? null;
+    this.nodalAwardImplementationDate = record.awardImplementationDate || '';
+    this.nodalAwardAcceptanceDate = record.awardAcceptanceDate || '';
+    // Set by the backend when the 13(1) notice is actually issued, so it stays blank until then
+    // instead of showing a rolling "today + 15 days" that moved on every page load.
+    this.nodal131ComplyDate = record.notice131ComplyDate || '';
+    this.sendToREError.set('');
     this.nodalDetailView.set(true);
     this.loadNodalComments(record.recordNumber);
   }
@@ -1983,10 +2058,48 @@ private getStatusColor(status: string): string {
   closeNodalDetail() {
     this.nodalDetailView.set(false);
     this.selectedNodalRecord.set(null);
+    this.sendToREError.set('');
   }
 
   sendToRE() {
-    this.closeNodalDetail();
+    const record = this.selectedNodalRecord();
+    if (!record || !this.nodalStatusCode || this.sendingToRE()) return;
+
+    this.sendingToRE.set(true);
+    this.sendToREError.set('');
+
+    // notice131ComplyDate is not sent: Clause 13(1)'s window is the backend's to set, once, when the
+    // notice is issued.
+    const payload = {
+      status: this.nodalStatusCode,
+      advisoryComplianceDate: this.nodalAdvisoryDate || null,
+      disputeAmount: this.nodalDisputeAmount,
+      compensationLoss: this.nodalCompensationLoss,
+      compensationMental: this.nodalCompensationMental,
+      awardImplementationDate: this.nodalAwardImplementationDate || null,
+      awardAcceptanceDate: this.nodalAwardAcceptanceDate || null
+    };
+
+    this.http.post<any>(
+      `${environment.apiBaseUrl}/api/v1/complaints/nodal-records/${record.recordNumber}/forward-to-re`,
+      payload
+    ).subscribe({
+      next: (res) => {
+        // The response is the updated row, so the worklist is patched in place rather than refetched.
+        const updated: NodalRecord = { ...res.data, statusLabel: this.formatStatusLabel(res.data.status) };
+        this.nodalRecords.set(this.nodalRecords()
+          .map(r => r.recordNumber === updated.recordNumber ? updated : r));
+        this.sendingToRE.set(false);
+        this.closeNodalDetail();
+      },
+      error: (err) => {
+        // Shown, not swallowed: the compensation caps and the required-date rules are enforced on the
+        // server, so this message is the officer's only sight of why the record was refused.
+        this.sendToREError.set(err?.error?.message
+          || 'Could not forward this record to the regulated entity.');
+        this.sendingToRE.set(false);
+      }
+    });
   }
 
   amountToWords(amount: number | null): string {
@@ -2168,19 +2281,123 @@ private getStatusColor(status: string): string {
     this.editMode.set(false);
   }
 
+  private applyEligibilityAnswers(eligibility: any) {
+    if (!eligibility) return;
+    this.proposedComplaintType = eligibility.proposedComplaintType || this.proposedComplaintType;
+    for (const q of this.eligibilityQuestions) {
+      const remoteKey = ELIGIBILITY_ANSWER_KEYS[q.key];
+      if (!remoteKey) continue;
+      const value = eligibility[remoteKey];
+      if (q.type === 'date') {
+        q.dateValue = value || null;
+      } else {
+        q.answer = value === null || value === undefined ? null : value === true;
+      }
+    }
+  }
+
+  /**
+   * Mirrors the nested shape GET /api/complaints/rbio/{id}/summary returns, which is what its PUT
+   * accepts. navBarDto is deliberately omitted: status is workflow-owned and sending it here would let
+   * the form overwrite a transition the officer did not make.
+   */
+  private buildSummaryPayload(): Record<string, any> {
+    const eligibility: Record<string, any> = {
+      proposedComplaintType: this.proposedComplaintType || null
+    };
+    for (const q of this.eligibilityQuestions) {
+      const remoteKey = ELIGIBILITY_ANSWER_KEYS[q.key];
+      if (!remoteKey) continue;
+      eligibility[remoteKey] = q.type === 'date' ? (q.dateValue || null) : q.answer;
+    }
+
+    return {
+      basicDetailsDto: {
+        subject: this.subject || null,
+        emailId: this.complainantEmail || null,
+        complainantName: this.complainantName || null,
+        receiptDate: this.receivedDate || null,
+        modeOfReceipt: this.modeOfReceipt || null,
+        comments: this.comments || null,
+        complaintCpgram: this.isCpgram,
+        cpgramNumber: this.cpgramsNumber || null,
+        complainDetails: this.description || null
+      },
+      eligibility,
+      entityDetails: {
+        entityName: this.entityName || null,
+        moduleName: this.moduleName || null,
+        entityCategory: this.entityCategory || null,
+        bsrCode: this.bsrCode || null,
+        pincode: this.entityPincode || null,
+        country: this.entityCountry || null,
+        state: this.entityState || null,
+        district: this.entityDistrict || null,
+        city: this.entityCity || null,
+        branchName: this.entityBranchName || null,
+        branchCategory: this.entityBranchCategory || null,
+        branchCenterName: this.branchCenterName || null,
+        entityAddress: this.entityAddress || null
+      },
+      complainDetailsDto: {
+        basicIdentificationDto: {
+          otherEntityName: this.otherEntityName || null,
+          registrationWithRbiDate: this.registrationWithRbiDate || null
+        },
+        complaintClassification: {
+          complaintCategory: this.complaintCategory || null,
+          complaintSubCategory1: this.complaintSubCategory1 || null,
+          complaintSubCategory2: this.complaintSubCategory2 || null,
+          complaintRegistrationDateValid: this.registrationDateValid,
+          dateOfFilingComplaint: this.filingDate || null
+        },
+        financialDetails: {
+          reminderSent: this.reminderSent,
+          disputedAmount: this.disputedAmount,
+          compensationSought: this.compensationSoughtYesNo
+        },
+        legalCaseDetails: {
+          legalCaseFiled: this.legalCaseFiled,
+          preEnquiryReceived: this.preEnquiryReceived,
+          highPriorityComplaint: this.highPriority,
+          loanDisposalAmount: this.loanDisposalAmount
+        },
+        additionalInformation: {
+          comments: this.additionalComments || null,
+          crpcProposedAction: this.crpcProposedAction || null,
+          vernacularLanguage: this.vernacular ? (this.vernacularLanguage || null) : null
+        },
+        flagsAndIndicators: {
+          complaintRegardingPension: this.pensionComplaint,
+          complaintAgainstBusinessCorrespondent: this.businessCorrespondent,
+          atmCreditDebitCard: this.atmCreditDebitCard,
+          schemeFlag: this.schemeFlag || null,
+          rboCgpcOld: this.rboCgpcOld || null,
+          groundsFlag: this.groundsFlag || null
+        },
+        complaintLinkage: {
+          freeMarkedComplaint: this.freeMarkedComplaint
+        }
+      }
+    };
+  }
+
   updateComplaint() {
     this.saving.set(true);
-    const payload = this.buildPayload('DRAFT');
-    this.http.put<any>(`${environment.apiBaseUrl}/api/v1/workflow/rbio/update-complaint/${this.complaintId}`, payload).subscribe({
-      next: () => {
+    this.saveError.set('');
+    this.http.put<any>(`${environment.apiBaseUrl}/api/complaints/rbio/${this.complaintId}/summary`,
+      this.buildSummaryPayload()).subscribe({
+      next: (res) => {
         this.saving.set(false);
         this.editSnapshot = null;
         this.editMode.set(false);
+        // The PUT returns the re-read summary, so the form shows what was actually stored rather than
+        // what was typed - dates and amounts come back normalised.
+        if (res?.data) this.applySummary(res.data);
       },
-      error: () => {
+      error: (err) => {
         this.saving.set(false);
-        this.editSnapshot = null;
-        this.editMode.set(false);
+        this.saveError.set(err?.error?.message || 'Could not save the complaint. Your changes are still here.');
       }
     });
   }
@@ -2275,38 +2492,32 @@ private getStatusColor(status: string): string {
   }
   
   fetchAttachments(): void {
-    let trackingId = this.complaintNumber ? this.complaintNumber.trim() : '';
-    const fallbackId = this.complaintId || '';
-  
-    if (!trackingId || trackingId === 'Not Assigned' || trackingId === `N${fallbackId}`) {
-      trackingId = fallbackId;
-    }
-  
-    if (!trackingId) return;
-  
+    // COMPLAINT_ATTACHMENTS is keyed on the numeric complaint id, not the display complaint number.
+    if (!this.complaintId) return;
+
     this.loadingSidebarAttachments.set(true);
-  
-    this.http.get<any[]>(`http://localhost:8082/api/files/complaint/${this.complaintId}`)
+
+    this.http.get<any[]>(`${environment.apiBaseUrl}/api/files/complaint/${this.complaintId}`)
       .subscribe({
         next: (data) => {
           const files = (data as any)?.data || data || [];
-          
+
           const processed = files.map((f: any) => ({
             id: f.id,
-            // FIX 1: Map originalName so the long UUID hash is hidden from view
+            // originalName keeps the stored UUID filename out of the UI.
             name: f.originalName || f.fileName || 'Untitled_File',
-            // FIX 2: Map contentType to match your JSON data payload fields
             type: (f.contentType || '').toLowerCase(),
-            // Convert bytes to clean readable KB sizes
             size: f.fileSize ? `${Math.round(f.fileSize / 1024)} KB` : 'Unknown Size',
+            uploadedAt: f.uploadedAt || '',
             uploadedBy: f.uploadedBy || ''
           }));
-          
+
           this.sidebarAttachments.set(processed);
           this.loadingSidebarAttachments.set(false);
         },
         error: (err) => {
           console.error('Failed to load attachments array:', err);
+          this.sidebarAttachments.set([]);
           this.loadingSidebarAttachments.set(false);
         }
       });
@@ -2329,7 +2540,7 @@ private getStatusColor(status: string): string {
      formData.append('file', fileList[0]); 
 
 
-    this.http.post('http://localhost:8082/api/files/upload', formData)
+    this.http.post(`${environment.apiBaseUrl}/api/files/upload`, formData)
       .subscribe({
         next: (res) => {
           console.log('Upload successful!');
@@ -2349,7 +2560,7 @@ private getStatusColor(status: string): string {
 
   downloadSidebarAttachment(file: any): void {
     if (file.id) {
-      window.open(`http://localhost:8082/api/files/download/${file.id}`, '_blank');
+      window.open(`${environment.apiBaseUrl}/api/files/download/${file.id}`, '_blank');
     }
   }
 
@@ -2365,7 +2576,7 @@ previewSidebarAttachment(file: any): void {
     return;
   }
 
-  const streamUrl = `http://localhost:8082/api/files/stream/${fileId}`;
+  const streamUrl = `${environment.apiBaseUrl}/api/files/stream/${fileId}`;
   console.log(`Routing stream pipeline for file [${fileId}] ->`, streamUrl);
   window.open(streamUrl, '_blank');
 }
@@ -2391,7 +2602,7 @@ fetchComplaintHistory(): void {
   }
 
   this.loadingHistory.set(true);
-  const targetUrl = `http://localhost:8082/api/complaints/${targetId}/timeline`;
+  const targetUrl = `${environment.apiBaseUrl}/api/complaints/${targetId}/timeline`;
 
   this.http.get<any[]>(targetUrl)
     .subscribe({

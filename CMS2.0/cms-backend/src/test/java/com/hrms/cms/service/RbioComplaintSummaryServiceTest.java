@@ -18,6 +18,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
@@ -27,6 +28,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -48,6 +50,8 @@ class RbioComplaintSummaryServiceTest {
     @Mock private RbioSlaService rbioSlaService;
     @Mock private ComplaintService complaintService;
     @Mock private CepcAuditService auditService;
+    // Real instance, not a mock: the permission rule under test lives inside it.
+    @Spy private RbioHierarchyService rbioHierarchyService = new RbioHierarchyService();
 
     @InjectMocks
     private RbioComplaintSummaryService service;
@@ -156,6 +160,37 @@ class RbioComplaintSummaryServiceTest {
         }
 
         @Test
+        void readsTheTwoCommentsBoxesFromTheirOwnColumns() {
+            stubComplaint();
+            when(eligibilityRepository.findByComplaintId(92L)).thenReturn(Optional.empty());
+            when(additionalDetailRepository.findByComplaintId(92L)).thenReturn(Optional.empty());
+            when(formDataRepository.findByComplaintId(92L)).thenReturn(Optional.of(
+                    ComplaintRbioFormData.builder()
+                            .complaintId(92L)
+                            .comments("Keyed in by the officer")
+                            .additionalComments("Escalated by DEO")
+                            .build()));
+
+            Map<String, Object> summary = service.getSummary(92L);
+
+            assertThat(section(summary, "basicDetailsDto").get("comments")).isEqualTo("Keyed in by the officer");
+            assertThat(section(section(summary, "complainDetailsDto"), "additionalInformation").get("comments"))
+                    .isEqualTo("Escalated by DEO");
+        }
+
+        @Test
+        void readsTheStaffEmployerRelationshipAnswer() {
+            stubComplaint();
+            when(eligibilityRepository.findByComplaintId(92L)).thenReturn(Optional.of(
+                    ComplaintEligibilityAnswer.builder().complaintId(92L).staffOfRe("yes").build()));
+            when(additionalDetailRepository.findByComplaintId(92L)).thenReturn(Optional.empty());
+            when(formDataRepository.findByComplaintId(92L)).thenReturn(Optional.empty());
+
+            assertThat(section(service.getSummary(92L), "eligibility").get("staffOfREEmployerRelationship"))
+                    .isEqualTo(true);
+        }
+
+        @Test
         void throwsWhenTheComplaintDoesNotExist() {
             when(complaintRepository.findById(404L)).thenReturn(Optional.empty());
 
@@ -178,7 +213,7 @@ class RbioComplaintSummaryServiceTest {
 
         @Test
         void writesThroughToTheComplaintRow() {
-            service.updateSummary(92L, nest("entityDetails", Map.of("bsrCode", "0123456")), "officer1");
+            service.updateSummary(92L, nest("entityDetails", Map.of("bsrCode", "0123456")), "officer1", Set.of());
 
             assertThat(complaint.getEntityBsrCode()).isEqualTo("0123456");
             verify(complaintRepository).save(complaint);
@@ -190,21 +225,21 @@ class RbioComplaintSummaryServiceTest {
             Map<String, Object> basic = new HashMap<>();
             basic.put("subject", null);
 
-            service.updateSummary(92L, nest("basicDetailsDto", basic), "officer1");
+            service.updateSummary(92L, nest("basicDetailsDto", basic), "officer1", Set.of());
 
             assertThat(complaint.getSubject()).isNull();
         }
 
         @Test
         void leavesAnOmittedFieldUntouched() {
-            service.updateSummary(92L, nest("basicDetailsDto", Map.of("cpgramNumber", "CP-9")), "officer1");
+            service.updateSummary(92L, nest("basicDetailsDto", Map.of("cpgramNumber", "CP-9")), "officer1", Set.of());
 
             assertThat(complaint.getSubject()).isEqualTo("Loan not disbursed");
         }
 
         @Test
         void createsTheChildRowWhenNoneExists() {
-            service.updateSummary(92L, nest("basicDetailsDto", Map.of("cpgramNumber", "CP-9")), "officer1");
+            service.updateSummary(92L, nest("basicDetailsDto", Map.of("cpgramNumber", "CP-9")), "officer1", Set.of());
 
             ArgumentCaptor<ComplaintRbioFormData> captor = ArgumentCaptor.forClass(ComplaintRbioFormData.class);
             verify(formDataRepository).save(captor.capture());
@@ -213,8 +248,38 @@ class RbioComplaintSummaryServiceTest {
         }
 
         @Test
+        void editingAdditionalInformationCommentsLeavesBasicDetailsCommentsAlone() {
+            // Both boxes used to share one column, so saving either wiped the other.
+            when(formDataRepository.findByComplaintId(92L)).thenReturn(Optional.of(
+                    ComplaintRbioFormData.builder()
+                            .complaintId(92L)
+                            .comments("Keyed in by the officer")
+                            .build()));
+
+            service.updateSummary(92L,
+                    nest("complainDetailsDto", nest("additionalInformation", Map.of("comments", "Escalated by DEO"))),
+                    "officer1", Set.of());
+
+            ArgumentCaptor<ComplaintRbioFormData> captor = ArgumentCaptor.forClass(ComplaintRbioFormData.class);
+            verify(formDataRepository).save(captor.capture());
+            assertThat(captor.getValue().getAdditionalComments()).isEqualTo("Escalated by DEO");
+            assertThat(captor.getValue().getComments()).isEqualTo("Keyed in by the officer");
+        }
+
+        @Test
+        void persistsTheStaffEmployerRelationshipAnswer() {
+            service.updateSummary(92L,
+                    nest("eligibility", Map.of("staffOfREEmployerRelationship", true)), "officer1", Set.of());
+
+            ArgumentCaptor<ComplaintEligibilityAnswer> captor =
+                    ArgumentCaptor.forClass(ComplaintEligibilityAnswer.class);
+            verify(eligibilityRepository).save(captor.capture());
+            assertThat(captor.getValue().getStaffOfRe()).isEqualTo("yes");
+        }
+
+        @Test
         void convertsBooleansBackToTheStoredYesNoStrings() {
-            service.updateSummary(92L, nest("eligibility", Map.of("disputeBetweenREs", true)), "officer1");
+            service.updateSummary(92L, nest("eligibility", Map.of("disputeBetweenREs", true)), "officer1", Set.of());
 
             ArgumentCaptor<ComplaintEligibilityAnswer> captor =
                     ArgumentCaptor.forClass(ComplaintEligibilityAnswer.class);
@@ -224,7 +289,7 @@ class RbioComplaintSummaryServiceTest {
 
         @Test
         void recordsATimelineEntryAndAnAuditTrail() {
-            service.updateSummary(92L, nest("basicDetailsDto", Map.of("cpgramNumber", "CP-9")), "officer1");
+            service.updateSummary(92L, nest("basicDetailsDto", Map.of("cpgramNumber", "CP-9")), "officer1", Set.of());
 
             verify(complaintService).addTimeline(eq(92L), any(), eq("officer1"), any(), any(), any());
             verify(auditService).logAction(eq("CMS-PNB-1234"), any(), eq("officer1"), any(), any(), any());
@@ -238,7 +303,7 @@ class RbioComplaintSummaryServiceTest {
         void rejectsAnUnknownSection() {
             stubComplaint();
 
-            assertThatThrownBy(() -> service.updateSummary(92L, nest("bogusSection", Map.of("a", 1)), "officer1"))
+            assertThatThrownBy(() -> service.updateSummary(92L, nest("bogusSection", Map.of("a", 1)), "officer1", Set.of()))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("Unknown section");
             verify(complaintRepository, never()).save(any());
@@ -250,7 +315,7 @@ class RbioComplaintSummaryServiceTest {
 
             assertThatThrownBy(() -> service.updateSummary(92L,
                     nest("complainDetailsDto", Map.of("financialDetails", Map.<String, Object>of("compensationSought", "-5"))),
-                    "officer1"))
+                    "officer1", Set.of()))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("must not be negative");
         }
@@ -260,7 +325,7 @@ class RbioComplaintSummaryServiceTest {
             stubComplaint();
 
             assertThatThrownBy(() -> service.updateSummary(92L,
-                    nest("eligibility", Map.of("disputeBetweenREs", "maybe")), "officer1"))
+                    nest("eligibility", Map.of("disputeBetweenREs", "maybe")), "officer1", Set.of()))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("must be true, false or null");
         }
@@ -270,7 +335,7 @@ class RbioComplaintSummaryServiceTest {
             stubComplaint();
 
             assertThatThrownBy(() -> service.updateSummary(92L,
-                    nest("eligibility", Map.of("firstFiledWithREDate", "15-01-2026")), "officer1"))
+                    nest("eligibility", Map.of("firstFiledWithREDate", "15-01-2026")), "officer1", Set.of()))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("ISO date");
         }
@@ -301,7 +366,10 @@ class RbioComplaintSummaryServiceTest {
             assertThat(row.getDraftId()).isEqualTo("DRF-1");
             assertThat(row.getReceiptDate()).isEqualTo(LocalDate.of(2026, 1, 15));
             assertThat(row.getModeOfReceipt()).isEqualTo("EMAIL");
-            assertThat(row.getComments()).isEqualTo("Escalated by DEO");
+            assertThat(row.getAdditionalComments()).isEqualTo("Escalated by DEO");
+            // The draft carries only one comments field, so Basic Details starts empty for the
+            // officer to fill in rather than being seeded with the Additional Information text.
+            assertThat(row.getComments()).isNull();
             assertThat(row.getCpgramNumber()).isEqualTo("CP-77");
             assertThat(row.getLegalCaseFiled()).isEqualTo("yes");
             assertThat(row.getFreeMarkedComplaint()).isEqualTo("no");

@@ -7,6 +7,7 @@ import com.hrms.cms.entity.Complaint;
 import com.hrms.cms.entity.ComplaintTimeline;
 import com.hrms.cms.service.ComplaintService;
 import com.hrms.cms.service.RbioComplaintSummaryService;
+import com.hrms.cms.service.RbioConciliationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -36,6 +37,7 @@ class ComplaintControllerTest {
     @Autowired private ObjectMapper objectMapper;
     @MockBean private ComplaintService complaintService;
     @MockBean private RbioComplaintSummaryService rbioComplaintSummaryService;
+    @MockBean private RbioConciliationService rbioConciliationService;
 
     private Complaint sampleComplaint;
 

@@ -54,6 +54,7 @@ public class EmailSyndicationApiController {
     private final RbioComplaintSummaryService rbioComplaintSummaryService;
     private final ComplaintCreationFinalizer creationFinalizer;
     private final com.hrms.cms.service.DraftIdGeneratorService draftIdGeneratorService;
+    private final com.hrms.cms.repository.OfficerAvailabilityRepository officerAvailabilityRepository;
     private final ObjectMapper objectMapper;
 
     @Value("${cms.attachments.root-path:C:/cms-attachments}")
@@ -1002,20 +1003,39 @@ public class EmailSyndicationApiController {
 
     @GetMapping("/deo")
     public Map<String, Object> getDeos() {
+        // Keycloak owns the roster; OFFICER_AVAILABILITY owns leave state and the per-officer threshold.
+        // A DEO with no availability row has never been configured in Team Management, so it falls back to
+        // being available on the default threshold rather than being hidden from the pool.
+        Map<String, com.hrms.cms.entity.OfficerAvailability> availabilityByUser =
+                officerAvailabilityRepository.findByRole("DEO").stream()
+                        .filter(a -> a.getUserId() != null)
+                        .collect(Collectors.toMap(
+                                com.hrms.cms.entity.OfficerAvailability::getUserId, a -> a, (a, b) -> a));
+
         List<Map<String, Object>> keycloakDeos = keycloakUserService.getDeos();
         List<Map<String, Object>> deos = new ArrayList<>();
         int sortOrder = 1;
         for (Map<String, Object> kc : keycloakDeos) {
+            String userId = (String) kc.get("userId");
+            com.hrms.cms.entity.OfficerAvailability availability = availabilityByUser.get(userId);
+            // Live count of drafts sitting with this DEO, which is what the assignment screens balance on.
+            int currentLoad = draftRepository.findByAssignedToOrderByCreatedAtDesc(
+                    (String) kc.get("displayName")).size();
+
             Map<String, Object> deo = new LinkedHashMap<>();
             deo.put("id", sortOrder);
-            deo.put("userId", kc.get("userId"));
+            deo.put("userId", userId);
             deo.put("displayName", kc.get("displayName"));
             deo.put("email", kc.getOrDefault("email", ""));
-            deo.put("isActive", Boolean.TRUE.equals(kc.get("enabled")));
-            deo.put("isOnLeave", false);
-            deo.put("maxThreshold", 20);
-            deo.put("currentAssignedCount", draftRepository.findByAssignedToOrderByCreatedAtDesc(
-                    (String) kc.get("displayName")).size());
+            deo.put("isActive", Boolean.TRUE.equals(kc.get("enabled"))
+                    && (availability == null || availability.isActive()));
+            deo.put("isOnLeave", availability != null && availability.isOnLeave());
+            deo.put("leaveReason", availability != null ? availability.getLeaveReason() : null);
+            deo.put("officeCode", availability != null ? availability.getOfficeCode() : null);
+            deo.put("maxThreshold", availability != null && availability.getMaxWorkload() > 0
+                    ? availability.getMaxWorkload() : 20);
+            deo.put("currentLoad", currentLoad);
+            deo.put("currentAssignedCount", currentLoad);
             deo.put("sortOrder", sortOrder++);
             deos.add(deo);
         }

@@ -3721,4 +3721,20 @@
     margin: 2px 0 8px;
     line-height: 1.4;
   }
-  
+
+/* Server-side rejections of an assessment — the compensation caps and the required-date rules — which
+   the officer has no other way of seeing. */
+.inline-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 16px 12px;
+  padding: 10px 12px;
+  border: 1px solid #fecaca;
+  border-left: 3px solid #dc2626;
+  border-radius: 4px;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-size: 13px;
+  line-height: 1.4;
+}

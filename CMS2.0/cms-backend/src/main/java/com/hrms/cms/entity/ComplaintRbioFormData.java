@@ -50,6 +50,11 @@ public class ComplaintRbioFormData {
 
     @Column(name = "vernacular_language", length = 100)     private String vernacularLanguage;
 
+    // Distinct from "comments" above: that one backs Basic Details, this one backs the Additional
+    // Information section further down the same form. They were previously aliased onto one column,
+    // so editing either silently overwrote the other.
+    @Column(name = "additional_comments", length = 4000)    private String additionalComments;
+
     @Column(name = "complaint_regarding_pension", length = 10) private String complaintRegardingPension;
     @Column(name = "atm_credit_debit_card", length = 10)    private String atmCreditDebitCard;
     @Column(name = "scheme_flag", length = 50)              private String schemeFlag;
