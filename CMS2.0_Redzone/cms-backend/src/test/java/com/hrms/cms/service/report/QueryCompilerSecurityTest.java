@@ -8,6 +8,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import com.hrms.cms.service.SystemConfigService;
+
 import jakarta.persistence.EntityManager;
 import java.lang.reflect.Method;
 import java.util.List;
@@ -21,6 +23,12 @@ class QueryCompilerSecurityTest {
     @Mock
     private EntityManager entityManager;
 
+    @Mock
+    private SystemConfigService systemConfigService;
+
+    @Mock
+    private ReportColumnRegistry reportColumnRegistry;
+
     private SemanticModelRegistry semanticModel;
     private QueryCompiler compiler;
 
@@ -30,7 +38,8 @@ class QueryCompilerSecurityTest {
         Method init = SemanticModelRegistry.class.getDeclaredMethod("init");
         init.setAccessible(true);
         init.invoke(semanticModel);
-        compiler = new QueryCompiler(entityManager, semanticModel);
+        compiler = new QueryCompiler(entityManager, semanticModel,
+                new ReportFilterCompiler(systemConfigService), reportColumnRegistry);
     }
 
     @Nested

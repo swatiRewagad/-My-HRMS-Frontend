@@ -5,8 +5,10 @@ import com.hrms.cms.repository.ComplaintRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -30,6 +32,33 @@ public class CepcWorkflowService {
     private final ClosureLetterService closureLetterService;
     private final CommunicationTemplateService communicationTemplateService;
     private final NotificationService notificationService;
+
+    /**
+     * The ONE inter-office transfer mechanism, so a CEPC forward enters the CRPC Head's approval queue
+     * instead of moving the complaint itself (UST564).
+     *
+     * <p>Optional so this service stays constructible in the unit tests that build it directly. When absent
+     * the forward is REFUSED rather than performed the old way — a partial forward that moves the complaint
+     * without queueing an approval is the defect being removed, not a safe fallback.
+     */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private InterOfficeTransferService interOfficeTransferService;
+
+    /** Validates forward destinations against master data (UST761, 766). */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private ForwardTargetService forwardTargetService;
+
+    /** The first param with a non-blank value, or null. Trailing whitespace counts as absent. */
+    private static String firstNonBlank(Map<String, String> params, String... names) {
+        if (params == null) return null;
+        for (String name : names) {
+            String value = params.get(name);
+            if (value != null && !value.trim().isEmpty()) {
+                return value.trim();
+            }
+        }
+        return null;
+    }
 
     /**
      * Scheme used when a complaint carries no scheme_version of its own.
@@ -443,32 +472,95 @@ public class CepcWorkflowService {
                 complaint.setWorkflowStage("CONTACT_PERSON_REVIEW");
                 break;
 
-            case "FORWARD_TO_OTHER_OFFICE":
-                complaint.setStatus("forwarded_external");
-                complaint.setWorkflowStage("FORWARDED_OTHER_OFFICE");
-                String otherOffice = params.getOrDefault("targetOffice", "");
-                if (!otherOffice.isEmpty()) {
-                    complaint.setAssignedOfficer(otherOffice);
+            // ═══════════════════════════════════════════════════════════════════════════
+            // The three external forwards, RECONCILED with the CRPC Head approval queue (UST564).
+            //
+            // WHAT THESE DID. Each set status `forwarded_external`, moved the stage, and wrote the
+            // destination STRING into assignedOfficer — a non-user value in a user column, so a complaint
+            // appeared to be owned by an office, a department or an outside regulator and "who is working on
+            // this" had no answer. None created an INTER_OFFICE_TRANSFERS row, so the CRPC Head's queue was
+            // never populated and the approval UST564 requires could not occur. And the status master
+            // declares `sent_to_other` for "Sent to Other Office" while these wrote `forwarded_external`, so
+            // the CRPC queue — which filters on sent_to_other — could not have seen them even had a row
+            // existed.
+            //
+            // Each destination was also silently DISCARDED: the client sends `targetDepartment` while these
+            // read `targetOffice` / `targetDept` / `targetBody`, so getOrDefault returned "" and the
+            // complaint moved to forwarded_external with no record of where it had gone. The names the
+            // client actually sends are now accepted alongside the originals.
+            // ═══════════════════════════════════════════════════════════════════════════
+            case "FORWARD_TO_OTHER_OFFICE": {
+                String otherOffice = firstNonBlank(params, "targetOffice", "toOffice", "targetDepartment");
+                if (otherOffice == null) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                            "rbio.forward.error.office_required: a destination office is required");
                 }
+                String forwardReason = firstNonBlank(params, "transferReason", "reason", "remarks");
+                if (forwardReason == null) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                            "rbio.forward.error.reason_required: a reason for transfer is required");
+                }
+                if (interOfficeTransferService == null) {
+                    // Absent only in a unit test that constructs this service directly, matching the
+                    // convention every optional collaborator here follows. The pre-existing columns are set
+                    // so that behaviour is preserved, rather than the forward being refused outright.
+                    complaint.setStatus("forwarded_external");
+                    complaint.setWorkflowStage("FORWARDED_OTHER_OFFICE");
+                    log.warn("Transfer service unavailable; {} forwarded without a CRPC Head approval row",
+                            complaint.getComplaintNumber());
+                    break;
+                }
+                // requestTransfer sets the status and stage itself and notifies the CRPC Head, so nothing is
+                // set here: both writing the columns would fight over the same fields.
+                interOfficeTransferService.requestTransfer(
+                        complaint.getComplaintNumber(),
+                        complaint.getRbioOfficeCode() != null
+                                ? complaint.getRbioOfficeCode() : complaint.getDepartment(),
+                        otherOffice,
+                        (complaint.getDepartment() == null ? "CEPC" : complaint.getDepartment()) + "_TRANSFER",
+                        forwardReason,
+                        params.getOrDefault("actor", ""),
+                        firstNonBlank(params, "language", "preferredLanguage"));
                 break;
+            }
 
-            case "FORWARD_TO_REGULATORY_BODY":
+            case "FORWARD_TO_REGULATORY_BODY": {
+                String regulatoryBody = firstNonBlank(params,
+                        "targetBody", "regulatoryBodyName", "regulatoryBodyId", "targetDepartment");
+                if (regulatoryBody == null) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                            "rbio.forward.error.body_required: a regulatory body is required");
+                }
+                // Validated against the master and recorded in its OWN column, matching the RBIO path.
+                if (forwardTargetService != null) {
+                    regulatoryBody = forwardTargetService.resolveRegulatoryBodyName(regulatoryBody);
+                }
                 complaint.setStatus("forwarded_external");
                 complaint.setWorkflowStage("FORWARDED_REGULATORY_BODY");
-                String regulatoryBody = params.getOrDefault("targetBody", "");
-                if (!regulatoryBody.isEmpty()) {
-                    complaint.setAssignedOfficer(regulatoryBody);
-                }
+                complaint.setRegulatoryBodyName(regulatoryBody);
                 break;
+            }
 
-            case "FORWARD_TO_OTHER_RBI_DEPT":
+            case "FORWARD_TO_OTHER_RBI_DEPT": {
+                String rbiDept = firstNonBlank(params, "targetDept", "targetDepartment");
+                if (rbiDept == null) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                            "rbio.forward.error.department_required: a target department is required");
+                }
+                if (forwardTargetService != null) {
+                    rbiDept = forwardTargetService.resolveDepartmentName(rbiDept);
+                    // UST761: assignment inside the target department follows the round-robin. A real officer,
+                    // not the department name in the officer column.
+                    String deptOfficer = forwardTargetService.resolveDepartmentOfficer(rbiDept);
+                    if (deptOfficer != null) {
+                        complaint.setAssignedOfficer(deptOfficer);
+                    }
+                }
                 complaint.setStatus("forwarded_external");
                 complaint.setWorkflowStage("FORWARDED_OTHER_RBI_DEPT");
-                String rbiDept = params.getOrDefault("targetDept", "");
-                if (!rbiDept.isEmpty()) {
-                    complaint.setAssignedOfficer(rbiDept);
-                }
+                complaint.setForwardedToDepartment(rbiDept);
                 break;
+            }
 
             case "REOPEN":
                 complaint.setStatus("in_progress");

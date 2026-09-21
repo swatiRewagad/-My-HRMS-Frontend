@@ -78,11 +78,32 @@ public class RbioStatusMaster {
     @Builder.Default
     private String schemeVersion = "RBIOS_2021";
 
+    /**
+     * Whether a conciliation meeting may NOT be scheduled from this status (UST497, 643, 646, 649).
+     *
+     * <p>A flag here rather than a from-status enumeration in RBIO_WORKFLOW_TRANSITION because the
+     * requirement is a NOT-IN: the meeting option is hidden for six named statuses. Enumerating "every
+     * status except six" as positive transition rows would silently omit any status a later session adds —
+     * the same trap {@code RbioTransitionRegistry} documents for REASSIGN. Inverted as a flag, a new status
+     * defaults to "meetings allowed" and must be opted out deliberately.
+     *
+     * <p>Nullable, and the service treats NULL as "not configured" and fails CLOSED. That matters because
+     * this decides whether an officer may convene a statutory conciliation: guessing "allowed" on an
+     * unseeded database would let a meeting be scheduled on a settled or withdrawn complaint.
+     */
+    @Column(name = "BLOCKS_MEETING", length = 1)
+    private String blocksMeeting;
+
     @Column(name = "CREATED_AT")
     private java.time.LocalDateTime createdAt;
 
     public boolean closed() {
         return "Y".equalsIgnoreCase(isClosed);
+    }
+
+    /** True when this status forbids scheduling a meeting. */
+    public boolean blocksMeeting() {
+        return "Y".equalsIgnoreCase(blocksMeeting);
     }
 
     public boolean citizenVisible() {

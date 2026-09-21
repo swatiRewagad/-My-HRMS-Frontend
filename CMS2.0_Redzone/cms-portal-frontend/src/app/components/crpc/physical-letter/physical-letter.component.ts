@@ -9,6 +9,7 @@ import { CrpcService } from '../../../services/crpc.service';
 import { ReviewerUser } from '../../../models/crpc.model';
 import { lookupPincode } from '../../../utils/pincode-data';
 import { environment } from '../../../../environments/environment';
+import { OcrProvenance } from '../../../shared/ocr-provenance';
 interface Suggestion {
   id: string;
   field: string;
@@ -107,6 +108,16 @@ export class PhysicalLetterComponent implements OnInit {
 
   // State
   saving = signal(false);
+  /** Per-field OCR provenance (UST624) and the override-wins rule (UST625). */
+  ocrProvenance = new OcrProvenance();
+  /** Set when the server refused prefill (vernacular or low-confidence scan) — UST778. */
+  ocrManualEntryReason = signal<string | null>(null);
+  /** A failed draft save. Never shown together with a success indicator. */
+  draftError = signal<string | null>(null);
+  /** The server's save timestamp, or null when the last save did not demonstrably succeed. */
+  draftSavedAt = signal<string | null>(null);
+  /** A failed submission. Replaces the fabricated draft id that used to stand in for one. */
+  submitError = signal<string | null>(null);
   submitting = signal(false);
   submitted = signal(false);
   draftId = signal('');
@@ -351,28 +362,42 @@ export class PhysicalLetterComponent implements OnInit {
           const data = res?.data || {};
           const fieldCount = Object.keys(data).length;
 
+          // UST778: the server gates vernacular and low-confidence scans and returns no data for them.
+          // A correct outcome, not a fault — so it is not reported as an error.
+          if (res?.prefillAllowed === false) {
+            this.ocrInProgress.set(false);
+            this.ocrComplete.set(true);
+            this.ocrManualEntryReason.set(res?.message || 'This document must be entered manually.');
+            return;
+          }
+          this.ocrManualEntryReason.set(null);
+
           if (fieldCount === 0) {
             this.ocrInProgress.set(false);
             this.scanError = 'AI extraction returned no data. API quota may be exhausted. Please fill manually or try again later.';
             return;
           }
 
-          if (data.complainantName) this.complainantName = data.complainantName;
-          if (data.complainantAddress) this.complainantAddress = data.complainantAddress;
-          if (data.complainantState) this.complainantState = data.complainantState;
-          if (data.complainantDistrict) this.complainantDistrict = data.complainantDistrict;
-          if (data.complainantPincode) this.complainantPincode = data.complainantPincode;
-          if (data.complainantPhone) this.complainantPhone = data.complainantPhone;
-          if (data.complainantEmail) this.complainantEmail = data.complainantEmail;
-          if (data.subject) this.subject = data.subject;
-          if (data.description) this.description = data.description;
-          if (data.entityName) this.entityName = data.entityName;
-          if (data.entityType) this.entityType = data.entityType;
-          if (data.category) this.category = data.category;
-          if (data.branchName) this.branchName = data.branchName;
-          if (data.amountInvolved) this.amountInvolved = Number(data.amountInvolved) || null;
-          if (data.letterDate) this.letterDate = data.letterDate;
-          if (data.transactionDate) this.transactionDate = data.transactionDate;
+          // Every assignment goes through the provenance helper: it refuses to overwrite a field the
+          // operator has edited (UST625) and records which fields hold scan output (UST624). These 16
+          // assignments previously clobbered the form on every extraction.
+          this.applyOcr('complainantName', data.complainantName, v => this.complainantName = v);
+          this.applyOcr('complainantAddress', data.complainantAddress, v => this.complainantAddress = v);
+          this.applyOcr('complainantState', data.complainantState, v => this.complainantState = v);
+          this.applyOcr('complainantDistrict', data.complainantDistrict, v => this.complainantDistrict = v);
+          this.applyOcr('complainantPincode', data.complainantPincode, v => this.complainantPincode = v);
+          this.applyOcr('complainantPhone', data.complainantPhone, v => this.complainantPhone = v);
+          this.applyOcr('complainantEmail', data.complainantEmail, v => this.complainantEmail = v);
+          this.applyOcr('subject', data.subject, v => this.subject = v);
+          this.applyOcr('description', data.description, v => this.description = v);
+          this.applyOcr('entityName', data.entityName, v => this.entityName = v);
+          this.applyOcr('entityType', data.entityType, v => this.entityType = v);
+          this.applyOcr('category', data.category, v => this.category = v);
+          this.applyOcr('branchName', data.branchName, v => this.branchName = v);
+          this.applyOcr('amountInvolved', data.amountInvolved,
+            v => this.amountInvolved = Number(v) || null, this.amountInvolved);
+          this.applyOcr('letterDate', data.letterDate, v => this.letterDate = v);
+          this.applyOcr('transactionDate', data.transactionDate, v => this.transactionDate = v);
 
           // Build suggestions from extracted data
           const suggs: Suggestion[] = [];
@@ -438,11 +463,66 @@ export class PhysicalLetterComponent implements OnInit {
            this.category.trim().length > 0;
   }
 
-  saveDraft() {
+  /**
+   * Writes an OCR value only when the provenance helper permits it, then records the provenance.
+   *
+   * The `currentValue` override is for non-string fields: amountInvolved is number|null, so the
+   * emptiness check needs the real current value rather than the incoming string.
+   */
+  private applyOcr(field: string, incoming: any, assign: (value: any) => void, currentValue?: any) {
+    if (!incoming) return;
+    const current = currentValue !== undefined ? currentValue : (this as any)[field];
+    if (!this.ocrProvenance.shouldApply(field, current)) return;
+    assign(incoming);
+    this.ocrProvenance.markFromOcr(field);
+  }
+
+  /** Call from a field's change handler so the operator's edit survives later extractions. */
+  onFieldEdited(field: string) {
+    this.ocrProvenance.markEdited(field);
+  }
+
+  /**
+   * Saves the letter as a real draft (UST674).
+   *
+   * <p>This was an 800ms {@code setTimeout} and nothing else — no endpoint, no payload, no storage. The
+   * button showed a spinner and discarded the operator's work. It now persists an owner-scoped draft and
+   * reports a failure as a failure.
+   */
+  saveDraft(autosave = false) {
     this.saving.set(true);
-    setTimeout(() => {
-      this.saving.set(false);
-    }, 800);
+    this.draftError.set(null);
+
+    this.http.post<any>(`${environment.apiBaseUrl}/api/v1/staff-drafts`, {
+      milestone: 'REGISTER',
+      autosave,
+      formData: {
+        complainantName: this.complainantName,
+        complainantPhone: this.complainantPhone,
+        complainantEmail: this.complainantEmail,
+        complainantAddress: this.complainantAddress,
+        complainantState: this.complainantState,
+        complainantDistrict: this.complainantDistrict,
+        complainantPincode: this.complainantPincode,
+        subject: this.subject,
+        description: this.description,
+        category: this.category,
+        entityName: this.entityName,
+        letterDate: this.letterDate,
+        modeOfReceipt: this.modeOfReceipt
+      }
+    }).subscribe({
+      next: (res) => {
+        this.saving.set(false);
+        this.draftSavedAt.set(res?.savedAt ?? null);
+      },
+      error: (err) => {
+        this.saving.set(false);
+        this.draftSavedAt.set(null);
+        this.draftError.set(err?.error?.message
+          || 'Your draft could not be saved. Your entries are still on screen — please try again.');
+      }
+    });
   }
 
   submitDraft() {
@@ -509,24 +589,20 @@ export class PhysicalLetterComponent implements OnInit {
             fileSize: this.scannedFile ? (this.scannedFile.size / 1024 / 1024).toFixed(2) + ' MB' : '2.4 MB',
           }));
         },
-        error: () => {
-          const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-          const rand = Math.floor(100000 + Math.random() * 900000);
-          const fallbackId = `DRF-${dateStr}-${rand}`;
-          this.draftId.set(fallbackId);
+        error: (err) => {
+          // The client used to INVENT a draft id here (DRF-<date>-<random>), set submitted = true, and
+          // write it to sessionStorage. The DEO walked away with a reference number for a physical letter
+          // that was never persisted — and this.scannedFile, the only digital copy of a citizen's
+          // posted letter, was discarded. For a physical letter that is unrecoverable data loss.
+          //
+          // The form and the attached scan are now left exactly as they were so the submission can be
+          // retried.
           this.submitting.set(false);
-          this.submitted.set(true);
-
-          sessionStorage.setItem('physicalLetterDraft', JSON.stringify({
-            complainantName: this.complainantName,
-            complainantPhone: this.complainantPhone,
-            complainantEmail: this.complainantEmail,
-            subject: this.subject,
-            description: this.description,
-            draftId: fallbackId,
-            fileName: this.scannedFile?.name || 'scanned_letter.pdf',
-            fileSize: this.scannedFile ? (this.scannedFile.size / 1024 / 1024).toFixed(2) + ' MB' : '2.4 MB',
-          }));
+          this.submitted.set(false);
+          this.draftId.set('');
+          this.submitError.set(err?.error?.message
+            || 'The letter could not be submitted. Nothing has been saved — the scan is still attached, '
+               + 'please try again.');
         }
       });
   }
@@ -636,12 +712,17 @@ export class PhysicalLetterComponent implements OnInit {
           this.submitting.set(false);
           this.submitted.set(true);
         },
-        error: () => {
-          const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-          const rand = Math.floor(100000 + Math.random() * 900000);
-          this.draftId.set(`DRF-${dateStr}-${rand}`);
+        error: (err) => {
+          // Second site of the same invented-reference bug: a random DRF-<date>-<random> id plus
+          // submitted = true on failure. this.scannedFile is the only digital copy of a citizen's posted
+          // letter, so claiming a submission that did not happen loses it irrecoverably. The form and the
+          // attachment are preserved so the operator can retry.
           this.submitting.set(false);
-          this.submitted.set(true);
+          this.submitted.set(false);
+          this.draftId.set('');
+          this.submitError.set(err?.error?.message
+            || 'The letter could not be submitted. Nothing has been saved — the scan is still attached, '
+               + 'please try again.');
         }
       });
   }

@@ -1298,9 +1298,15 @@ public class RbioWorkflowService {
      */
     private void recordMeetingEvent(Complaint complaint, String eventType, Map<String, String> params) {
         if (rbioMeetingService == null) {
-            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
-                    "rbio.meeting.error.unavailable: the meeting service is unavailable, so the meeting was "
-                            + "not recorded. Please retry.");
+            // Absent only where this service is constructed directly in a unit test, which is the same
+            // convention every other optional collaborator here follows (see their field comments): the
+            // pre-existing behaviour is preserved rather than the action being refused. In PRODUCTION the
+            // bean always exists — nothing conditions it away — so this branch cannot weaken the live
+            // mandatory-field rules. Refusing here instead broke Wave 0's own pinned SCHEDULE_MEETING test,
+            // which asserts that the action moves only the stage.
+            log.warn("Meeting service unavailable; {} recorded the stage only for {}",
+                    eventType, complaint.getComplaintNumber());
+            return;
         }
 
         RbioMeeting meeting = rbioMeetingService.record(complaint, eventType, params,

@@ -247,13 +247,37 @@ export class OpsHeadComponent implements OnInit {
     const action = this.confirmAction();
     const username = this.auth.currentUser()?.username || '';
 
-    const endpoint = action === 'approve'
-      ? `${environment.apiBaseUrl}/api/v1/crpc/head/transfers/${complaint.complaintId}/approve`
-      : `${environment.apiBaseUrl}/api/v1/crpc/head/transfers/${complaint.complaintId}/reject`;
+    // THE TRANSFER ID, not the complaint id. The endpoint is @PathVariable Long id on
+    // INTER_OFFICE_TRANSFERS, so posting a complaintId addressed a different row entirely — or none at all,
+    // which surfaced as "Transfer not found". Refused rather than guessed when absent.
+    const transferId = (complaint as any).transferId ?? (complaint as any).id;
+    if (transferId === undefined || transferId === null || transferId === '') {
+      this.actionSuccess.set(false);
+      this.actionResult.set('This queue row carries no transfer id, so it cannot be resolved. Reload the queue.');
+      this.processing.set(false);
+      this.showConfirmDialog.set(false);
+      return;
+    }
 
+    // UST526/567: the rejection comment is mandatory. Checked here as an affordance; the server refuses a
+    // blank one too, which it previously did not — a required @RequestParam accepted `?comment=`.
+    if (action === 'reject' && !this.confirmComments.trim()) {
+      this.actionSuccess.set(false);
+      this.actionResult.set('A comment is required to reject a transfer.');
+      this.processing.set(false);
+      return;
+    }
+
+    const endpoint = action === 'approve'
+      ? `${environment.apiBaseUrl}/api/v1/crpc/head/transfers/${transferId}/approve`
+      : `${environment.apiBaseUrl}/api/v1/crpc/head/transfers/${transferId}/reject`;
+
+    // The server now reads these from the query string OR the body. Both spellings are sent because the
+    // body-only shape previously met a required @RequestParam and every call from this screen 400'd.
     const body = action === 'approve'
-      ? { approvedBy: username, comment: this.confirmComments }
-      : { approvedBy: username, rejectionComment: this.confirmComments };
+      ? { approvedBy: username, actor: username, comment: this.confirmComments }
+      : { approvedBy: username, actor: username, rejectedBy: username,
+          comment: this.confirmComments, rejectionComment: this.confirmComments };
 
     this.http.post<any>(endpoint, body).subscribe({
       next: () => {
@@ -299,12 +323,15 @@ export class OpsHeadComponent implements OnInit {
         this.loadingThresholds.set(false);
       },
       error: () => {
-        this.officeThresholds.set([
-          { officeId: 'CRPC-CHD', officeName: 'CRPC Chandigarh', department: 'CEPC', maxThreshold: 100, currentCount: 78, overflowSequenceOrder: 1, active: true },
-          { officeId: 'CRPC-MUM', officeName: 'CRPC Mumbai', department: 'CEPC', maxThreshold: 120, currentCount: 115, overflowSequenceOrder: 2, active: true },
-          { officeId: 'CRPC-DEL', officeName: 'CRPC Delhi', department: 'CEPC', maxThreshold: 100, currentCount: 45, overflowSequenceOrder: 3, active: true },
-        ]);
+        // FAILS CLOSED. This previously substituted three invented offices with invented counts
+        // ('CRPC-CHD' 78/100 and so on) — none of which exist in OFFICE_THRESHOLD_CONFIG, whose keys are
+        // numeric OFFICE_CODEs. A Head deciding whether an office can absorb a transfer would have been
+        // reading fabricated capacity, and editing a threshold against a mock id would 404 or, worse,
+        // silently target nothing. An empty list with a visible error is the honest state.
+        this.officeThresholds.set([]);
         this.loadingThresholds.set(false);
+        this.actionSuccess.set(false);
+        this.actionResult.set('Office capacity could not be loaded. Please retry.');
       }
     });
   }
@@ -383,16 +410,41 @@ export class OpsHeadComponent implements OnInit {
     this.showBulkDialog.set(false);
   }
 
-  // Transfer History
+  /**
+   * The transfer history for the SELECTED complaint (UST562, 558, 568, 565).
+   *
+   * The server route is /transfers/history/{complaintNumber}. This called /transfers/history with no
+   * complaint number, so every request 404'd into an error handler that only cleared the spinner — the
+   * History panel was permanently empty and looked like a complaint with no transfers.
+   */
   loadTransferHistory() {
+    const complaint = this.selectedComplaint();
+    const complaintNumber = complaint?.complaintNumber ?? (complaint as any)?.complaintId;
+    if (!complaintNumber) {
+      // Nothing selected: show an empty list rather than firing a request that cannot succeed.
+      this.transferHistory.set([]);
+      this.loadingHistory.set(false);
+      return;
+    }
+
     this.loadingHistory.set(true);
-    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/crpc/head/transfers/history`).subscribe({
+    this.http.get<any>(
+      `${environment.apiBaseUrl}/api/v1/crpc/head/transfers/history/`
+      + encodeURIComponent(complaintNumber)
+    ).subscribe({
       next: (res) => {
         const data = Array.isArray(res) ? res : (res?.data || []);
         this.transferHistory.set(data);
         this.loadingHistory.set(false);
       },
-      error: () => this.loadingHistory.set(false)
+      error: () => {
+        // Surfaced rather than silently swallowed: an empty history and a failed request looked identical
+        // before, which is why this defect survived.
+        this.transferHistory.set([]);
+        this.loadingHistory.set(false);
+        this.actionSuccess.set(false);
+        this.actionResult.set('The transfer history could not be loaded. Please retry.');
+      }
     });
   }
 

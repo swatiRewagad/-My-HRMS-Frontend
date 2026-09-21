@@ -17,7 +17,7 @@ import { buildComplaint, cleanupComplaint, loginCitizen, seedCitizenSession } fr
  */
 
 const API_BASE = process.env['API_BASE_URL'] || 'http://localhost:8082';
-const APP_BASE = process.env['APP_BASE_URL'] || 'http://localhost:4200';
+const APP_BASE = process.env['APP_BASE_URL'] || process.env['UI_BASE_URL'] || 'http://localhost:4200';
 
 const CITIZEN_PHONE = '9876500033';
 // A distinct number for the wizard test: UST8's resend cooldown is keyed per mobile, so reusing

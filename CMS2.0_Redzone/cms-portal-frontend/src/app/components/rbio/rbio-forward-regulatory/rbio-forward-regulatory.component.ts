@@ -26,7 +26,9 @@ export class RbioForwardRegulatoryComponent implements OnInit {
   loadingBodies = signal(false);
 
   // Form fields
-  selectedBodyId: number | null = null;
+  // number | string: the server sends the id as a String, and a <select> binds strings anyway. Typed
+  // `number` it compared unequal to every option and selectedBody() never resolved.
+  selectedBodyId: number | string | null = null;
   remarks = '';
 
   get selectedBody(): RegulatoryBody | undefined {
@@ -38,15 +40,36 @@ export class RbioForwardRegulatoryComponent implements OnInit {
     this.loadRegulatoryBodies();
   }
 
+  /**
+   * The validated master list (UST766).
+   *
+   * <p>The master now exists. Until this batch {@code getRegulatoryBodies()} called an endpoint no controller
+   * implemented, and a {@code catchError(() => of([]))} turned the 404 into a permanently empty dropdown —
+   * while this same screen told the officer that "only bodies from the validated master list can be
+   * selected". The server returns only bodies whose contact email is VERIFIED, so an empty list means none
+   * has been verified yet. That is surfaced rather than left looking like a loading glitch.
+   */
   loadRegulatoryBodies() {
     this.loadingBodies.set(true);
     this.workflowService.getRegulatoryBodies().subscribe({
       next: (bodies) => {
-        this.regulatoryBodies.set(bodies.filter(b => b.active));
+        // No `active` filter: the server returns only active, forwardable bodies and no longer sends that
+        // field, so filtering on it would silently empty the list now that the endpoint answers.
+        this.regulatoryBodies.set(bodies);
         this.loadingBodies.set(false);
+        if (bodies.length === 0) {
+          this.resultSuccess.set(false);
+          this.resultMessage.set(
+            'No regulatory body has a verified contact email, so a referral cannot be made yet.');
+        }
       },
       error: () => {
+        // Fails closed AND says so: an empty dropdown with no message is indistinguishable from a master
+        // that legitimately has no entries.
+        this.regulatoryBodies.set([]);
         this.loadingBodies.set(false);
+        this.resultSuccess.set(false);
+        this.resultMessage.set('The regulatory body list could not be loaded. Please retry.');
       }
     });
   }
@@ -77,9 +100,23 @@ export class RbioForwardRegulatoryComponent implements OnInit {
       remarks: this.remarks,
       actor
     }).subscribe({
-      next: () => {
+      next: (res: any) => {
+        // A refusal answers HTTP 200 with success:false on this path, so the flag must be checked. An
+        // unverified body is refused server-side (UST766) and would otherwise have read as a success.
+        if (res && res.success === false) {
+          this.resultSuccess.set(false);
+          this.resultMessage.set(res.message || 'Failed to forward complaint.');
+          this.processing.set(false);
+          return;
+        }
         this.resultSuccess.set(true);
-        this.resultMessage.set(`Complaint forwarded to ${body.name}. Awareness email sent to complainant.`);
+        // States what the server actually did. This previously asserted "Awareness email sent to
+        // complainant" unconditionally, and no such email existed anywhere in the backend — the complainant
+        // was never told their complaint had left RBI's jurisdiction while the file recorded that they had.
+        // The email is now QUEUED through the communication outbox, which is a durable obligation rather
+        // than a completed send, so the wording says queued.
+        this.resultMessage.set(
+          `Complaint forwarded to ${body.name}. An awareness email has been queued for the complainant.`);
         this.processing.set(false);
         this.showForm.set(false);
         this.selectedBodyId = null;

@@ -6,6 +6,7 @@ import com.hrms.cms.exception.UploadLinkActiveException;
 import com.hrms.cms.service.AppealClassificationService;
 import com.hrms.cms.service.ClauseConfigurationAlertService;
 import com.hrms.cms.service.ClosureClauseAccessService;
+import com.hrms.cms.service.report.ReportAccessDeniedException;
 import jakarta.persistence.OptimisticLockException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -222,6 +223,30 @@ public class GlobalExceptionHandler {
      * {@code ObjectOptimisticLockingFailureException} subclass so that the non-Hibernate and
      * hand-thrown Spring-data variants are covered too.
      */
+    /**
+     * The caller's role is not configured for report access (UST615, UST669, UST670).
+     *
+     * <p>403 FORBIDDEN, and deliberately NOT an empty result set. Zero rows would be indistinguishable
+     * from "your filters matched nothing", so a denied user would keep adjusting filters instead of
+     * asking an administrator for the grant they actually need.
+     *
+     * <p>This matters because the previous behaviour was the exact opposite: with no access rows
+     * configured, the report endpoints admitted everyone, and the Angular screen's export check fell
+     * through to {@code return true}. An absent permission table granted permission.
+     */
+    @ExceptionHandler(ReportAccessDeniedException.class)
+    public ResponseEntity<Map<String, Object>> handleReportAccessDenied(ReportAccessDeniedException ex) {
+        log.warn("Report access denied: {}", ex.getMessage());
+
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("success", false);
+        response.put("message", ex.getMessage());
+        response.put("messageKey", "reports.error_access_denied");
+        response.put("retryable", false);
+        response.put("timestamp", LocalDateTime.now().toString());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
+    }
+
     @ExceptionHandler({OptimisticLockingFailureException.class, OptimisticLockException.class})
     public ResponseEntity<Map<String, Object>> handleOptimisticLock(Exception ex) {
         log.warn("Optimistic lock conflict: {}", ex.getMessage());

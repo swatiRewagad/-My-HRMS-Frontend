@@ -14,7 +14,7 @@ import { createTestComplaint, cleanupComplaint, loginCitizen } from '../utils/te
  */
 
 const API_BASE = process.env['API_BASE_URL'] || 'http://localhost:8082';
-const APP_BASE = process.env['APP_BASE_URL'] || 'http://localhost:4200';
+const APP_BASE = process.env['APP_BASE_URL'] || process.env['UI_BASE_URL'] || 'http://localhost:4200';
 
 const OWNER_PHONE = '9876500011';
 const OTHER_PHONE = '9876500022';

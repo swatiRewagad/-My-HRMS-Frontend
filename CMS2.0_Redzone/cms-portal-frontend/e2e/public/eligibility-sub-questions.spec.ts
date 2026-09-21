@@ -17,7 +17,7 @@ import { seedCitizenSession } from '../utils/test-data';
  */
 
 const API_BASE = process.env['API_BASE_URL'] || 'http://localhost:8082';
-const APP_BASE = process.env['APP_BASE_URL'] || 'http://localhost:4200';
+const APP_BASE = process.env['APP_BASE_URL'] || process.env['UI_BASE_URL'] || 'http://localhost:4200';
 const APP_API_BASE = 'http://localhost:8082';
 
 const LOCALES = ['en', 'hi', 'mr', 'bn', 'te', 'ta', 'gu', 'ur', 'kn', 'ml'];

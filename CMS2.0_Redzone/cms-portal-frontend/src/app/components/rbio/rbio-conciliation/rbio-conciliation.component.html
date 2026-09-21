@@ -1,52 +1,104 @@
-<div class="rbio-conciliation">
-  <h4>Conciliation Proceedings</h4>
+﻿<div class="rbio-conciliation">
+  <h4>{{ 'rbio.meeting.title' | translate }}</h4>
 
   <!-- Status -->
   <div class="conciliation-status">
-    <span class="status-label">Status:</span>
+    <span class="status-label">{{ 'rbio.meeting.status' | translate }}:</span>
     <span class="status-value" [attr.data-status]="conciliationStatus">
       @switch (conciliationStatus) {
-        @case ('SETTLED') { Settled }
-        @case ('FAILED') { Failed }
-        @case ('IN_PROGRESS') { In Progress }
-        @default { Not Started }
+        @case ('SETTLED') { {{ 'rbio.meeting.status.completed' | translate }} }
+        @case ('FAILED') { {{ 'rbio.meeting.outcome.failed' | translate }} }
+        @case ('IN_PROGRESS') { {{ 'rbio.meeting.status.scheduled' | translate }} }
+        @default { {{ 'rbio.meeting.no_meeting' | translate }} }
       }
     </span>
   </div>
 
-  <!-- Parties Involved -->
-  @if (partiesInvolved.length > 0) {
-    <div class="parties-section">
-      <h5>Parties Involved</h5>
-      <div class="parties-list">
-        @for (party of partiesInvolved; track party.role) {
-          <div class="party-item">
-            <span class="party-role">{{ party.role }}</span>
-            <span class="party-name">{{ party.name }}</span>
-          </div>
+  <!-- Participants (UST498). Confirmed attendees are distinguished from invitees, because the MOM letter
+       must not assert attendance nobody confirmed. -->
+  <div class="parties-section">
+    <h5>{{ 'rbio.meeting.participants' | translate }}</h5>
+    <div class="parties-list">
+      @for (p of participants(); track p.id) {
+        <div class="party-item">
+          <span class="party-role">{{ p.participantType }}</span>
+          <span class="party-name">{{ p.participantName }}</span>
+          <button type="button" class="confirm-toggle"
+                  [class.confirmed]="p.participantConfirmed"
+                  (click)="toggleParticipantConfirmed(p)">
+            @if (p.participantConfirmed) {
+              {{ 'rbio.meeting.participant.confirmed' | translate }}
+            } @else {
+              {{ 'rbio.meeting.participant.invited' | translate }}
+            }
+          </button>
+        </div>
+      }
+      @if (participants().length === 0) {
+        <p class="empty-note">{{ 'rbio.meeting.participants' | translate }}: &mdash;</p>
+      }
+    </div>
+
+    <!-- UST498: additional entity participants, capped at six by the SERVER; this only disables the control. -->
+    @if (!isMeetingStatusExcluded) {
+      <div class="add-participant">
+        <input type="text" [ngModel]="newParticipantName()"
+               (ngModelChange)="newParticipantName.set($event)"
+               [attr.placeholder]="'rbio.meeting.action.add_participant' | translate" />
+        <input type="email" [ngModel]="newParticipantEmail()"
+               (ngModelChange)="newParticipantEmail.set($event)" placeholder="email" />
+        <button type="button" class="action-btn"
+                [disabled]="addingParticipant() || !canAddParticipant() || !newParticipantName().trim()"
+                (click)="addParticipant()">
+          {{ 'rbio.meeting.action.add_participant' | translate }}
+        </button>
+        @if (!canAddParticipant()) {
+          <span class="cap-note">{{ 'rbio.meeting.participant.cap_reached' | translate }}</span>
         }
       </div>
-    </div>
-  }
+    }
+  </div>
 
-  <!-- Scheduled Hearing -->
-  @if (scheduledHearingDate) {
+  <!-- The operative meeting -->
+  @if (currentMeeting(); as current) {
     <div class="next-hearing">
-      <span class="hearing-label">Next Hearing:</span>
-      <span class="hearing-date">{{ scheduledHearingDate }}</span>
+      <span class="hearing-label">{{ 'rbio.meeting.history.current' | translate }}:</span>
+      <span class="hearing-date">{{ current.meetingDate }} {{ current.meetingTime }}</span>
+      <span class="hearing-parties">{{ participantsKey(current.participants) | translate }}</span>
+      @if (current.meetingVenue) {
+        <span class="hearing-venue">{{ current.meetingVenue }}</span>
+      }
     </div>
   }
 
-  <!-- Hearing History -->
-  @if (hearingHistory.length > 0) {
+  <!-- Meeting history. UST502: superseded rows are RETAINED and shown, which is why a reschedule does not
+       destroy the fact that an earlier date was fixed and notified. -->
+  @if (meetingHistory().length > 0) {
     <div class="hearing-history">
-      <h5>Hearing History</h5>
+      <h5>{{ 'rbio.meeting.history' | translate }}</h5>
       <div class="history-list">
-        @for (hearing of hearingHistory; track $index) {
-          <div class="history-item">
-            <span class="history-date">{{ hearing.date }}</span>
-            <span class="history-venue">{{ hearing.venue || 'N/A' }}</span>
-            <span class="history-outcome">{{ hearing.outcome || 'Conducted' }}</span>
+        @for (m of meetingHistory(); track m.id) {
+          <div class="history-item" [class.superseded]="!m.operative">
+            <span class="history-seq">#{{ m.sequenceNo }}</span>
+            <span class="history-type">{{ eventTypeKey(m.eventType) | translate }}</span>
+            <span class="history-date">{{ m.meetingDate }} {{ m.meetingTime }}</span>
+            <span class="history-venue">{{ m.meetingVenue || '&mdash;' }}</span>
+            @if (m.rescheduleReason) {
+              <span class="history-reason">{{ m.rescheduleReason }}</span>
+            }
+            @if (m.eventType === 'COMPLETED') {
+              <span class="history-accepted">
+                {{ 'rbio.meeting.entity_accepted' | translate }}:
+                @if (m.entityAccepted === 'Y') {
+                  {{ 'rbio.meeting.entity_accepted.yes' | translate }}
+                } @else {
+                  {{ 'rbio.meeting.entity_accepted.no' | translate }}
+                }
+              </span>
+            }
+            @if (!m.operative) {
+              <span class="history-superseded">{{ 'rbio.meeting.history.superseded' | translate }}</span>
+            }
           </div>
         }
       </div>
@@ -55,66 +107,134 @@
 
   <!-- Actions -->
   @if (conciliationStatus !== 'SETTLED' && conciliationStatus !== 'FAILED') {
-    <!-- UST497: Hide meeting status for excluded complaint statuses -->
+    <!-- UST497. This is an AFFORDANCE: the server refuses the action from an excluded status regardless. -->
     @if (isMeetingStatusExcluded) {
       <div class="meeting-status-excluded">
         <i class="pi pi-info-circle"></i>
-        <span>Meeting scheduling is not available for complaints in current status ({{ complaint?.status }}).</span>
+        <span>{{ 'rbio.meeting.error.status_excluded' | translate }}</span>
       </div>
     } @else {
       <div class="conciliation-actions">
-        <button class="action-btn schedule" (click)="openScheduleForm()">
-          Schedule Hearing
+        <button class="action-btn schedule" (click)="openMeetingForm('SCHEDULED')">
+          {{ 'rbio.meeting.action.schedule' | translate }}
         </button>
+        @if (currentMeeting()) {
+          <button class="action-btn reschedule" (click)="openMeetingForm('RESCHEDULED')">
+            {{ 'rbio.meeting.action.reschedule' | translate }}
+          </button>
+          <button class="action-btn complete" (click)="openMeetingForm('COMPLETED')">
+            {{ 'rbio.meeting.action.complete' | translate }}
+          </button>
+        }
         <button class="action-btn outcome" (click)="openOutcomeForm()">
-          Record Outcome
+          {{ 'rbio.meeting.outcome.title' | translate }}
         </button>
+
+        <!-- UST500: the generated MOM letter, server-rendered from the editable template. Only offered once a
+             meeting has been COMPLETED, because minutes for an unheld meeting would be a fabricated record. -->
+        <a class="action-btn download" [href]="momLetterUrl()" target="_blank" rel="noopener">
+          {{ 'rbio.meeting.action.download_mom' | translate }}
+        </a>
+
+        <!-- UST501: the SCANNED SIGNED letter, uploaded to the real attachments endpoint. -->
         <label class="action-btn upload">
-          <input type="file" (change)="onMinutesUpload($event)" accept=".pdf,.doc,.docx" hidden />
-          Upload MOM
+          <input type="file" (change)="onMinutesUpload($event)" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg" hidden />
+          {{ 'rbio.meeting.action.upload_signed' | translate }}
         </label>
       </div>
 
       @if (uploadingMinutes()) {
-        <p class="upload-status">Uploading meeting minutes...</p>
+        <p class="upload-status">{{ 'rbio.meeting.action.upload_signed' | translate }}&hellip;</p>
       }
       @if (minutesUploaded()) {
-        <p class="upload-status success">Meeting minutes uploaded successfully.</p>
+        <p class="upload-status success">{{ 'rbio.meeting.saved.uploaded' | translate }}</p>
       }
     }
   }
 
-  <!-- Schedule Hearing Form -->
-  @if (showScheduleForm()) {
+  <!-- Meeting form. One form, three statuses, mandatory fields per status (UST496, 499, 502). -->
+  @if (showMeetingForm()) {
     <div class="form-section">
-      <h5>Schedule Conciliation Hearing</h5>
+      <h5>
+        @switch (meetingStatus()) {
+          @case ('SCHEDULED') { {{ 'rbio.meeting.action.schedule' | translate }} }
+          @case ('RESCHEDULED') { {{ 'rbio.meeting.action.reschedule' | translate }} }
+          @case ('COMPLETED') { {{ 'rbio.meeting.action.complete' | translate }} }
+        }
+      </h5>
+
       <div class="form-grid">
-        <div class="form-field">
-          <label>Date *</label>
-          <input type="date" [(ngModel)]="hearingDate" />
-        </div>
-        <div class="form-field">
-          <label>Time *</label>
-          <input type="time" [(ngModel)]="hearingTime" />
-        </div>
+        @if (meetingStatus() !== 'COMPLETED') {
+          <div class="form-field">
+            <label>{{ 'rbio.meeting.date' | translate }} *</label>
+            <input type="date" [ngModel]="meetingDate()" (ngModelChange)="meetingDate.set($event)" />
+          </div>
+          <div class="form-field">
+            <label>{{ 'rbio.meeting.time' | translate }} *</label>
+            <input type="time" [ngModel]="meetingTime()" (ngModelChange)="meetingTime.set($event)" />
+          </div>
+          <div class="form-field full">
+            <label>{{ 'rbio.meeting.participants' | translate }} *</label>
+            <select [ngModel]="meetingParticipants()" (ngModelChange)="meetingParticipants.set($event)">
+              <option value="">&mdash;</option>
+              <option value="ENTITY">{{ 'rbio.meeting.participants.entity' | translate }}</option>
+              <option value="COMPLAINANT">{{ 'rbio.meeting.participants.complainant' | translate }}</option>
+              <option value="BOTH">{{ 'rbio.meeting.participants.both' | translate }}</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label>{{ 'rbio.meeting.mode' | translate }}</label>
+            <select [ngModel]="meetingMode()" (ngModelChange)="meetingMode.set($event)">
+              <option value="IN_PERSON">IN_PERSON</option>
+              <option value="VIDEO">VIDEO</option>
+              <option value="HYBRID">HYBRID</option>
+            </select>
+          </div>
+          <div class="form-field full">
+            <label>{{ 'rbio.meeting.venue' | translate }}</label>
+            <input type="text" [ngModel]="meetingVenue()" (ngModelChange)="meetingVenue.set($event)" />
+          </div>
+
+          <!-- UST502: save is blocked until the Reason is completed. -->
+          @if (meetingStatus() === 'RESCHEDULED') {
+            <div class="form-field full">
+              <label>{{ 'rbio.meeting.reschedule_reason' | translate }} *</label>
+              <textarea [ngModel]="rescheduleReason()" (ngModelChange)="rescheduleReason.set($event)"
+                        rows="3"></textarea>
+            </div>
+          }
+        }
+
+        <!-- UST499: entity acceptance and a mandatory free-text MOM. -->
+        @if (meetingStatus() === 'COMPLETED') {
+          <div class="form-field full">
+            <label>{{ 'rbio.meeting.entity_accepted' | translate }} *</label>
+            <select [ngModel]="entityAccepted()" (ngModelChange)="entityAccepted.set($event)">
+              <option value="">&mdash;</option>
+              <option value="Y">{{ 'rbio.meeting.entity_accepted.yes' | translate }}</option>
+              <option value="N">{{ 'rbio.meeting.entity_accepted.no' | translate }}</option>
+            </select>
+          </div>
+          <div class="form-field full">
+            <label>{{ 'rbio.meeting.minutes' | translate }} *</label>
+            <textarea [ngModel]="minutesOfMeeting()" (ngModelChange)="minutesOfMeeting.set($event)"
+                      rows="6"></textarea>
+          </div>
+        }
+
         <div class="form-field full">
-          <label>Parties</label>
-          <input type="text" [(ngModel)]="hearingParties" placeholder="Complainant, Entity Representative, Conciliator" />
-        </div>
-        <div class="form-field full">
-          <label>Venue</label>
-          <input type="text" [(ngModel)]="hearingVenue" placeholder="Meeting venue or video conference link" />
-        </div>
-        <div class="form-field full">
-          <label>Notes</label>
-          <textarea [(ngModel)]="hearingNotes" rows="3" placeholder="Additional instructions or agenda..."></textarea>
+          <label>{{ 'rbio.forward.comments' | translate }}</label>
+          <textarea [ngModel]="meetingNotes()" (ngModelChange)="meetingNotes.set($event)" rows="2"></textarea>
         </div>
       </div>
+
       <div class="form-actions">
-        <button class="submit-btn" [disabled]="processing() || !hearingDate || !hearingTime" (click)="submitScheduleHearing()">
-          @if (processing()) { Scheduling... } @else { Confirm Schedule }
+        <button class="submit-btn" [disabled]="processing() || !canSaveMeeting()" (click)="submitMeeting()">
+          {{ 'rbio.meeting.action.save' | translate }}
         </button>
-        <button class="cancel-btn" (click)="cancelForm()">Cancel</button>
+        <button class="cancel-btn" (click)="cancelForm()">
+          {{ 'rbio.meeting.action.cancel' | translate }}
+        </button>
       </div>
     </div>
   }
@@ -122,34 +242,34 @@
   <!-- Outcome Form -->
   @if (showOutcomeForm()) {
     <div class="form-section">
-      <h5>Record Conciliation Outcome</h5>
+      <h5>{{ 'rbio.meeting.outcome.title' | translate }}</h5>
       <div class="form-grid">
         <div class="form-field full">
-          <label>Outcome *</label>
+          <label>{{ 'rbio.meeting.outcome.title' | translate }} *</label>
           <select [(ngModel)]="outcomeType">
-            <option value="SETTLED">Settled</option>
-            <option value="FAILED">Failed</option>
+            <option value="SETTLED">{{ 'rbio.meeting.outcome.settled' | translate }}</option>
+            <option value="FAILED">{{ 'rbio.meeting.outcome.failed' | translate }}</option>
           </select>
         </div>
 
         @if (outcomeType === 'SETTLED') {
           <div class="form-field full">
-            <label>Compensation Type</label>
+            <label>{{ 'rbio.meeting.outcome.compensation_type' | translate }}</label>
             <select [(ngModel)]="compensationType">
               <option value="CONSEQUENTIAL_LOSS">Consequential Loss (Cap: 30L)</option>
               <option value="TIME_HARASSMENT">Time/Harassment (Cap: 3L)</option>
             </select>
           </div>
           <div class="form-field full">
-            <label>Compensation Amount (INR)</label>
-            <input type="number" [(ngModel)]="compensationAmount" placeholder="Amount in INR" min="0" />
-            <!-- Cap validation feedback -->
+            <label>{{ 'rbio.meeting.outcome.compensation_amount' | translate }}</label>
+            <input type="number" [(ngModel)]="compensationAmount" min="0" />
             @if (amountNumeric > 0) {
-              <div class="cap-feedback" [class.warning]="amountApproachesCap" [class.error]="amountExceedsCap" [class.ok]="!amountApproachesCap && !amountExceedsCap">
+              <div class="cap-feedback" [class.warning]="amountApproachesCap" [class.error]="amountExceedsCap"
+                   [class.ok]="!amountApproachesCap && !amountExceedsCap">
                 @if (amountExceedsCap) {
-                  <span class="cap-icon">&#10060;</span> Exceeds cap of {{ formatCurrency(currentCap) }}. Cannot proceed.
+                  <span class="cap-icon">&#10060;</span> Exceeds cap of {{ formatCurrency(currentCap) }}.
                 } @else if (amountApproachesCap) {
-                  <span class="cap-icon">&#9888;</span> {{ amountPercentOfCap | number:'1.0-0' }}% of cap ({{ formatCurrency(currentCap) }}). Approaching limit.
+                  <span class="cap-icon">&#9888;</span> {{ amountPercentOfCap | number:'1.0-0' }}% of cap ({{ formatCurrency(currentCap) }}).
                 } @else {
                   <span class="cap-icon">&#9989;</span> {{ amountPercentOfCap | number:'1.0-0' }}% of cap ({{ formatCurrency(currentCap) }}).
                 }
@@ -157,15 +277,15 @@
             }
           </div>
           <div class="form-field full">
-            <label>Settlement Summary *</label>
-            <textarea [(ngModel)]="summaryNotes" rows="4" placeholder="Describe settlement terms and compensation rationale..."></textarea>
+            <label>{{ 'rbio.meeting.minutes' | translate }} *</label>
+            <textarea [(ngModel)]="summaryNotes" rows="4"></textarea>
           </div>
         }
 
         @if (outcomeType === 'FAILED') {
           <div class="form-field full">
-            <label>Reason for Failure *</label>
-            <textarea [(ngModel)]="failureReason" rows="4" placeholder="Describe why conciliation failed..."></textarea>
+            <label>{{ 'rbio.meeting.reschedule_reason' | translate }} *</label>
+            <textarea [(ngModel)]="failureReason" rows="4"></textarea>
           </div>
         }
       </div>
@@ -173,17 +293,20 @@
         <button class="submit-btn"
           [disabled]="processing() || (outcomeType === 'SETTLED' && (!summaryNotes.trim() || amountExceedsCap)) || (outcomeType === 'FAILED' && !failureReason.trim())"
           (click)="submitOutcome()">
-          @if (processing()) { Recording... } @else { Record Outcome }
+          {{ 'rbio.meeting.outcome.title' | translate }}
         </button>
-        <button class="cancel-btn" (click)="cancelForm()">Cancel</button>
+        <button class="cancel-btn" (click)="cancelForm()">
+          {{ 'rbio.meeting.action.cancel' | translate }}
+        </button>
       </div>
     </div>
   }
 
-  <!-- Result Message -->
+  <!-- Result. The message is a translation KEY when it came from our own code, and a server string when the
+       server refused; translate() echoes an unknown key unchanged, so both render. -->
   @if (resultMessage()) {
     <div class="result-msg" [class.success]="resultSuccess()" [class.error]="!resultSuccess()">
-      {{ resultMessage() }}
+      {{ resultMessage() | translate }}
     </div>
   }
 </div>

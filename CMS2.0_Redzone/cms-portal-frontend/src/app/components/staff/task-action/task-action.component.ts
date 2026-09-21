@@ -39,6 +39,19 @@ export class TaskActionComponent implements OnInit, OnDestroy {
   complaint = signal<any>(null);
   loading = signal(true);
   processing = signal(false);
+
+  // ── Staff drafts, auto-save and concurrency (UST673-675) ──────────────────────────────────────
+  savingDraft = signal(false);
+  /** The server's save timestamp. Null whenever the last save did not demonstrably succeed. */
+  draftSavedAt = signal<string | null>(null);
+  /** A failed draft save, shown instead of any success indicator. */
+  draftError = signal<string | null>(null);
+  /** Set when the server refused the save because a colleague wrote first (HTTP 409). */
+  conflictWarning = signal<string | null>(null);
+  /** Other officers with this complaint open. Advisory: never blocks a save. */
+  otherEditors = signal<{ userId: string; displayName: string; since: string }[]>([]);
+  private autoSaveInterval: any = null;
+  private presenceInterval: any = null;
   selectedAction = signal<string>('');
   actionResult = signal<string>('');
   actionSuccess = signal(false);
@@ -157,6 +170,17 @@ export class TaskActionComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     if (this.tatInterval) clearInterval(this.tatInterval);
+    if (this.autoSaveInterval) clearInterval(this.autoSaveInterval);
+    if (this.presenceInterval) clearInterval(this.presenceInterval);
+    this.releaseEditPresence();
+  }
+
+  /** Reloads after a concurrent-edit conflict, so the retry carries the current version. */
+  reloadAfterConflict() {
+    const complaintNumber = this.complaint()?.complaintId || this.complaint()?.complaintNumber;
+    if (!complaintNumber) return;
+    this.conflictWarning.set(null);
+    this.loadComplaint(complaintNumber);
   }
 
   private loadComplaint(complaintNumber: string) {
@@ -170,6 +194,11 @@ export class TaskActionComponent implements OnInit, OnDestroy {
           this.loadTat(complaintNumber);
           this.loadPastComplaints();
           this.checkFinalDecisionStatus();
+          // After determineActions(), so a restored selectedAction can only be one this role may still
+          // take at the complaint's current status.
+          this.resumeDraft(complaintNumber);
+          this.startEditPresence(complaintNumber);
+          if (!this.autoSaveInterval) this.startAutoSave();
         },
         error: () => {
           this.complaint.set(null);
@@ -499,6 +528,145 @@ export class TaskActionComponent implements OnInit, OnDestroy {
     this.executeWorkflowAction();
   }
 
+  /**
+   * The milestone the current action belongs to, for UST674's five save points.
+   *
+   * <p>Conciliation, Forward and Final Decision all live on THIS component, which had no saveDraft at
+   * all — so three of the five required milestones had no draft surface. The milestone is derived from
+   * the selected action rather than the route, because one screen serves all three.
+   */
+  private draftMilestone(): string {
+    const action = this.selectedAction();
+    if (action.startsWith('CONCILIATION')) return 'CONCILIATION';
+    if (action.startsWith('FORWARD_TO_')) return 'FORWARD';
+    if (action === 'CLOSE_COMPLAINT' || action === 'ADJUDICATION_AWARD') return 'FINAL_DECISION';
+    return 'ASSESSMENT';
+  }
+
+  /**
+   * The in-progress values, hand-enumerated.
+   *
+   * <p>This component has no FormGroup — it binds raw properties and signals through ngModel — so there
+   * is no .value snapshot to serialise. closureLetterFile is deliberately excluded: a File cannot be
+   * JSON-serialised, so a resumed draft re-prompts for the upload rather than appearing to hold it.
+   */
+  private draftFormData(): Record<string, any> {
+    return {
+      selectedAction: this.selectedAction(),
+      remarks: this.remarks,
+      customClosureText: this.customClosureText(),
+      closureClause: this.closureClause(),
+      dateOfSending: this.dateOfSending()
+    };
+  }
+
+  /** UST674: save in draft at Conciliation, Forward and Final Decision. */
+  saveDraft(autosave = false) {
+    const complaintNumber = this.complaint()?.complaintId || this.complaint()?.complaintNumber;
+    if (!complaintNumber) return;
+
+    this.savingDraft.set(true);
+    this.draftError.set(null);
+
+    this.http.post<any>(`${environment.apiBaseUrl}/api/v1/staff-drafts`, {
+      milestone: this.draftMilestone(),
+      complaintNumber,
+      autosave,
+      formData: this.draftFormData()
+    }).subscribe({
+      next: (res) => {
+        this.savingDraft.set(false);
+        this.draftSavedAt.set(res?.savedAt ?? null);
+      },
+      error: (err) => {
+        this.savingDraft.set(false);
+        this.draftSavedAt.set(null);
+        // A failed save says so. The sibling implementations in this codebase either set their success
+        // flag inside the error handler or omit the error handler entirely.
+        this.draftError.set(err?.error?.message
+          || 'Your draft could not be saved. Your entries are still on screen — please try again.');
+      }
+    });
+  }
+
+  /** Restores an in-progress draft for this complaint and milestone (UST674). */
+  private resumeDraft(complaintNumber: string) {
+    const milestone = this.draftMilestone();
+    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/staff-drafts/${milestone}`, {
+      params: { complaintNumber }
+    }).subscribe({
+      next: (res) => {
+        const data = res?.formData;
+        if (!data) return;
+        if (data.remarks) this.remarks = data.remarks;
+        if (data.customClosureText) this.customClosureText.set(data.customClosureText);
+        if (data.closureClause) this.closureClause.set(data.closureClause);
+        if (data.dateOfSending) this.dateOfSending.set(data.dateOfSending);
+        // Restored LAST, and only if still offered: determineActions() re-derives what this role may do
+        // at the complaint's CURRENT status, and a draft may predate a status change.
+        if (data.selectedAction && this.availableActions().some((a: any) => a.code === data.selectedAction)) {
+          this.selectedAction.set(data.selectedAction);
+        }
+        this.draftSavedAt.set(res?.updatedAt ?? null);
+      },
+      error: () => {}
+    });
+  }
+
+  /**
+   * UST673: auto-save on the SYSTEM_CONFIG interval, silently.
+   *
+   * <p>Only fires once the officer has typed something. remarks is mandatory for every action, so it is
+   * the reliable signal that there is work worth preserving; saving an untouched form would replace a
+   * good draft with an empty one.
+   */
+  private startAutoSave() {
+    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/staff-drafts/config`).subscribe({
+      next: (cfg) => {
+        const seconds = Number(cfg?.autosaveIntervalSeconds);
+        if (!cfg?.autosaveEnabled || !Number.isFinite(seconds) || seconds <= 0) return;
+        this.autoSaveInterval = setInterval(() => {
+          if (this.remarks.trim() || this.customClosureText().trim()) {
+            this.saveDraft(true);
+          }
+        }, seconds * 1000);
+      },
+      error: () => {}
+    });
+  }
+
+  /**
+   * UST675: registers this officer as editing, and warns about anyone else who is.
+   *
+   * <p>Advisory only. The save is gated by the @Version check on Complaint, which returns 409 — see the
+   * error handler in executeWorkflowAction. This exists because optimistic locking is detect-on-write:
+   * without it the second officer discovers the conflict only after doing the work.
+   */
+  private startEditPresence(complaintNumber: string) {
+    const beat = () => {
+      this.http.post<any>(
+        `${environment.apiBaseUrl}/api/v1/staff-drafts/presence/${complaintNumber}`, {}
+      ).subscribe({
+        next: (res) => {
+          this.otherEditors.set(res?.otherEditors || []);
+          if (!this.presenceInterval && res?.heartbeatIntervalSeconds > 0) {
+            this.presenceInterval = setInterval(beat, res.heartbeatIntervalSeconds * 1000);
+          }
+        },
+        error: () => {}
+      });
+    };
+    beat();
+  }
+
+  private releaseEditPresence() {
+    const complaintNumber = this.complaint()?.complaintId || this.complaint()?.complaintNumber;
+    if (!complaintNumber) return;
+    this.http.delete(
+      `${environment.apiBaseUrl}/api/v1/staff-drafts/presence/${complaintNumber}`
+    ).subscribe({ next: () => {}, error: () => {} });
+  }
+
   private executeWorkflowAction() {
     const dept = this.auth.currentUser()?.department || 'RBIO';
     const complaintNumber = this.complaint()?.complaintId || this.complaint()?.complaintNumber;
@@ -531,12 +699,35 @@ export class TaskActionComponent implements OnInit, OnDestroy {
         this.actionResult.set(msg);
         this.processing.set(false);
         this.selectedAction.set('');
+        this.conflictWarning.set(null);
+        // UST673: the auto-saved draft is discarded on a successful save-and-proceed. A manually saved
+        // draft is left alone — the server distinguishes the two by SAVE_SOURCE.
+        this.http.post(`${environment.apiBaseUrl}/api/v1/staff-drafts/discard-autosave`,
+          { complaintNumber }).subscribe({ next: () => {}, error: () => {} });
+        this.draftSavedAt.set(null);
         this.loadComplaint(complaintNumber);
       },
       error: (err) => {
         this.actionSuccess.set(false);
-        this.actionResult.set(`Failed: ${err.error?.message || err.message || 'Unknown error'}`);
         this.processing.set(false);
+
+        // UST675: 409 means a colleague saved first. Wave 0 added @Version to Complaint and
+        // GlobalExceptionHandler maps the conflict to 409 with messageKey common.error_record_changed
+        // and retryable:true — but NOTHING consumed it, so the officer saw a generic "Failed: ..." with
+        // no reload affordance and no way to distinguish a conflict from a validation error. Repeating
+        // the request with the same stale version would conflict again, so reload-then-retry is the only
+        // recovery, and the warning has to say so.
+        if (err?.status === 409) {
+          this.conflictWarning.set(err?.error?.message
+            || 'This complaint was changed by someone else while you were working on it. '
+               + 'Reload to see the latest version before saving again.');
+          // Cleared so the generic failure line does not sit alongside the conflict notice, which would
+          // give the officer two different explanations for one refusal.
+          this.actionResult.set('');
+          return;
+        }
+
+        this.actionResult.set(`Failed: ${err.error?.message || err.message || 'Unknown error'}`);
       }
     });
   }
@@ -594,17 +785,53 @@ export class TaskActionComponent implements OnInit, OnDestroy {
     });
   }
 
-  // RBIO component visibility helpers
+  /**
+   * Whether THIS COMPLAINT is an RBIO complaint.
+   *
+   * <p>THE LAYOUT FIX (UST632/633, 771, 772). This read the LOGGED-IN USER's department, not the
+   * complaint's — so this shared screen chose its field set from who was looking rather than what they were
+   * looking at. That is precisely why converting a complaint's layout on transfer approval had no visible
+   * effect: flipping COMPLAINTS.department could not change what an officer saw, because nothing rendered
+   * off it.
+   *
+   * <p>The complaint's own department is now authoritative, with the user's as a fallback only when the
+   * complaint carries none (an older row). "Layout" in this codebase means exactly this — the owning module
+   * plus the status vocabulary it implies; see the V96 migration header for the ruling and its evidence.
+   */
   isRbioComplaint(): boolean {
+    const complaintDept = (this.complaint()?.department || '').toUpperCase();
+    if (complaintDept) {
+      return complaintDept === 'RBIO';
+    }
     const dept = this.auth.currentUser()?.department || '';
     return dept.toUpperCase() === 'RBIO';
   }
 
+  /**
+   * The conciliation milestone (UST643, 646, 649).
+   *
+   * <p>Opened to the four roles those stories name — Dealing Official, Reviewer, Deputy Ombudsman and
+   * Ombudsman — plus the Conciliator whose function this is, and the legacy equivalents. It admitted
+   * {@code RBIO_CONCILIATOR} ALONE, which failed in both directions at once: three roles the server
+   * authorises could never reach the screen, while this browser check protected nothing against a direct
+   * POST.
+   *
+   * <p>The status condition is inverted to the UST497 exclusion set, because a Reviewer holding a file at
+   * {@code reviewer_review} legitimately convenes meetings and the old two-status allow-list refused them.
+   * This list is an AFFORDANCE: the authoritative gate is the server's RBIO_STATUS_MASTER.BLOCKS_MEETING
+   * check, so a wrong entry here cannot admit an unlawful meeting.
+   */
   showRbioConciliation(): boolean {
     if (!this.isRbioComplaint()) return false;
     const roles = this.auth.getRoles();
+    const allowed = ['RBIO_CONCILIATOR', 'RBIO_DEALING_OFFICIAL', 'RBIO_REVIEWER',
+      'RBIO_DEPUTY_OMBUDSMAN', 'RBIO_OMBUDSMAN', 'RBIO_OFFICER', 'RBIO_SUPERVISOR', 'RBIO_ADMIN'];
+    if (!allowed.some(r => roles.includes(r))) return false;
+
+    const excluded = ['advisory_complied', 'settled', 'withdrawn', 'rejected',
+      'award_passed', 'ombudsman_decision', 'conciliated', 'adjudicated', 'closed'];
     const status = (this.complaint()?.status || '').toLowerCase();
-    return roles.includes('RBIO_CONCILIATOR') && (status === 'conciliation' || status === 'escalated');
+    return !excluded.includes(status);
   }
 
   showRbioAdjudication(): boolean {

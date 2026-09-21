@@ -2,10 +2,13 @@ package com.hrms.cms.controller;
 
 import com.hrms.cms.entity.InterOfficeTransfer;
 import com.hrms.cms.entity.OfficeThresholdConfig;
+import com.hrms.cms.service.BulkReassignService;
 import com.hrms.cms.service.InterOfficeTransferService;
 import com.hrms.cms.service.OfficeRoutingService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -22,6 +25,7 @@ public class CrpcHeadController {
 
     private final InterOfficeTransferService transferService;
     private final OfficeRoutingService officeRoutingService;
+    private final BulkReassignService bulkReassignService;
 
     @GetMapping("/transfers/pending")
     public ResponseEntity<List<InterOfficeTransfer>> getPendingTransfers() {
@@ -33,20 +37,45 @@ public class CrpcHeadController {
         return ResponseEntity.ok(Map.of("count", transferService.getPendingCount()));
     }
 
+    /**
+     * Approves a transfer, optionally redirecting it to a different office.
+     *
+     * <p>{@code overrideToOffice} is accepted as EITHER a query parameter or a body field. It was
+     * query-only, while {@code ops-head.component.ts} POSTs a JSON body — so the override silently never
+     * arrived, and the reject endpoint below (whose comment was mandatory) answered HTTP 400 on every call
+     * the UI made.
+     */
     @PostMapping("/transfers/{id}/approve")
     public ResponseEntity<InterOfficeTransfer> approveTransfer(
             @PathVariable Long id,
             @RequestParam(required = false) String overrideToOffice,
+            @RequestBody(required = false) Map<String, String> body,
             @AuthenticationPrincipal Jwt jwt) {
-        return ResponseEntity.ok(transferService.approveTransfer(id, jwt.getSubject(), overrideToOffice));
+        String override = firstNonBlank(overrideToOffice,
+                body == null ? null : body.get("overrideToOffice"),
+                body == null ? null : body.get("toOffice"));
+        return ResponseEntity.ok(transferService.approveTransfer(id, actorOf(jwt, body), override));
     }
 
+    /**
+     * Rejects a transfer with a mandatory comment (UST526, 567).
+     *
+     * <p>The comment is accepted from the query string or the body, for the reason above. It is no longer
+     * declared {@code required}: a required {@code @RequestParam} produced a 400 with no usable message for
+     * the UI's body-shaped request, and a BLANK query value satisfied it anyway. The service now enforces
+     * non-blankness, so "mandatory" means mandatory rather than merely present.
+     */
     @PostMapping("/transfers/{id}/reject")
     public ResponseEntity<InterOfficeTransfer> rejectTransfer(
             @PathVariable Long id,
-            @RequestParam String comment,
+            @RequestParam(required = false) String comment,
+            @RequestBody(required = false) Map<String, String> body,
             @AuthenticationPrincipal Jwt jwt) {
-        return ResponseEntity.ok(transferService.rejectTransfer(id, jwt.getSubject(), comment));
+        String rejectionComment = firstNonBlank(comment,
+                body == null ? null : body.get("comment"),
+                body == null ? null : body.get("rejectionComment"),
+                body == null ? null : body.get("remarks"));
+        return ResponseEntity.ok(transferService.rejectTransfer(id, actorOf(jwt, body), rejectionComment));
     }
 
     @PostMapping("/transfers/request")
@@ -59,8 +88,34 @@ public class CrpcHeadController {
                 request.get("toOffice"),
                 request.get("transferType"),
                 request.get("reason"),
-                jwt.getSubject()
+                actorOf(jwt, request),
+                request.get("language")
         ));
+    }
+
+    /**
+     * The acting user.
+     *
+     * <p>{@code jwt.getSubject()} alone throws an NPE — surfacing as a 400 — on a dev-identity-header
+     * request, which is the same defect {@code updateThreshold} was already fixed for. The JWT remains
+     * authoritative when present; the body value is a fallback for the header-identity path only.
+     */
+    private static String actorOf(Jwt jwt, Map<String, String> body) {
+        if (jwt != null && jwt.getSubject() != null) {
+            return jwt.getSubject();
+        }
+        String fromBody = body == null ? null
+                : firstNonBlank(body.get("approvedBy"), body.get("actor"), body.get("rejectedBy"));
+        return fromBody == null ? "SYSTEM" : fromBody;
+    }
+
+    private static String firstNonBlank(String... values) {
+        for (String value : values) {
+            if (value != null && !value.trim().isEmpty()) {
+                return value.trim();
+            }
+        }
+        return null;
     }
 
     @GetMapping("/transfers/history/{complaintNumber}")
@@ -108,16 +163,69 @@ public class CrpcHeadController {
         return ResponseEntity.ok(Map.of("status", "reset", "department", department));
     }
 
-    // Bulk reassignment
+    /**
+     * Reassigns several complaints to one officer.
+     *
+     * <p><b>This was a stub that persisted nothing.</b> It read {@code complaintIds}, counted them, and
+     * returned {@code {"status":"reassigned","count":N}} without touching a repository — so the ops-head
+     * screen reported N complaints reassigned and none of them moved. It also read {@code targetUser} while
+     * {@code ops-head.component.ts} sends {@code assignTo}, so even the echoed name was null.
+     *
+     * <p>Now each complaint is loaded, reassigned and timelined individually, and the response reports what
+     * actually happened per complaint rather than a count of what was asked. A complaint that cannot be
+     * reassigned is named in {@code failed} instead of being silently included in a success count.
+     */
     @PostMapping("/bulk-reassign")
     public ResponseEntity<Map<String, Object>> bulkReassign(
             @RequestBody Map<String, Object> request,
             @AuthenticationPrincipal Jwt jwt) {
         @SuppressWarnings("unchecked")
-        List<String> complaintIds = (List<String>) request.get("complaintIds");
-        String targetUser = (String) request.get("targetUser");
-        int count = complaintIds != null ? complaintIds.size() : 0;
-        return ResponseEntity.ok(Map.of("status", "reassigned", "count", count, "targetUser", targetUser));
+        List<String> complaintNumbers = (List<String>) request.get("complaintIds");
+        // assignTo is what the ops-head screen actually sends; targetUser is the documented name. Both are
+        // read so neither client is silently ignored.
+        String targetUser = firstNonBlank(
+                stringOf(request.get("assignTo")),
+                stringOf(request.get("targetUser")),
+                stringOf(request.get("targetUserId")));
+
+        if (complaintNumbers == null || complaintNumbers.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "complaintIds is required and must not be empty");
+        }
+        if (targetUser == null) {
+            // Refused rather than defaulted. A bulk reassignment with no target would previously report
+            // success for every complaint while assigning none of them to nobody.
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "A target officer is required (send assignTo)");
+        }
+
+        String actor = actorOf(jwt, null);
+        List<String> reassigned = new java.util.ArrayList<>();
+        Map<String, String> failed = new java.util.LinkedHashMap<>();
+
+        for (String complaintNumber : complaintNumbers) {
+            try {
+                bulkReassignService.reassign(complaintNumber, targetUser, actor);
+                reassigned.add(complaintNumber);
+            } catch (Exception e) {
+                // Collected, not thrown: one unreassignable complaint must not silently abandon the rest of
+                // the batch, and the caller needs to know exactly which ones did not move.
+                failed.put(complaintNumber, e.getMessage());
+            }
+        }
+
+        Map<String, Object> response = new java.util.LinkedHashMap<>();
+        response.put("status", failed.isEmpty() ? "reassigned" : "partially_reassigned");
+        response.put("requested", complaintNumbers.size());
+        response.put("count", reassigned.size());
+        response.put("reassigned", reassigned);
+        response.put("failed", failed);
+        response.put("targetUser", targetUser);
+        return ResponseEntity.ok(response);
+    }
+
+    private static String stringOf(Object value) {
+        return value == null ? null : String.valueOf(value);
     }
 
     // Reopen closed complaint

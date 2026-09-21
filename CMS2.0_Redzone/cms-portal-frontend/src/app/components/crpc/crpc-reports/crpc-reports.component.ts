@@ -70,6 +70,10 @@ export class CrpcReportsComponent implements OnInit {
   // Data
   reportData = signal<ReportRow[]>([]);
   loading = signal(false);
+  /** A real failure. Shown instead of data, never alongside invented data. */
+  error = signal<string | null>(null);
+  /** Set when the server can run the screen but not THIS report, with its stated reason. */
+  unavailableReason = signal<string | null>(null);
   totalRecords = signal(0);
 
   // Pagination
@@ -112,17 +116,39 @@ export class CrpcReportsComponent implements OnInit {
         const data = Array.isArray(res) ? res : (res?.data || []);
         this.reportData.set(data);
         this.totalRecords.set(data.length);
+        // A report the server cannot compute says so, and says why. It does not return a number.
+        this.unavailableReason.set(
+          res?.implemented === false ? (res?.message || 'This report is not available yet.') : null
+        );
+        this.error.set(null);
         this.loading.set(false);
       },
-      error: () => {
-        this.reportData.set(this.getMockData());
-        this.totalRecords.set(this.reportData().length);
+      error: (err) => {
+        // The mock-data fallback that used to live here has been deleted. It filled the table with
+        // fifteen rows of Math.random() on ANY error, so every figure this screen has ever shown was
+        // fabricated — and exportCsv wrote those figures to a file named after a real date range.
+        // An empty table with a visible error is the only honest response to a failed report.
+        this.reportData.set([]);
+        this.totalRecords.set(0);
+        this.unavailableReason.set(null);
+        this.error.set(
+          err?.status === 403
+            ? 'You do not have access to CRPC reports.'
+            : 'The report could not be generated. Please try again.'
+        );
         this.loading.set(false);
       }
     });
   }
 
+  /** Nothing to export when the report could not be run, or returned no rows. */
+  canExportReport = computed(() =>
+    !this.loading() && !this.error() && !this.unavailableReason() && this.reportData().length > 0);
+
   exportCsv() {
+    if (!this.canExportReport()) {
+      return;
+    }
     const config = this.activeConfig();
     const headers = config.columns.map(c => c.label).join(',');
     const rows = this.reportData().map(row =>
@@ -139,6 +165,9 @@ export class CrpcReportsComponent implements OnInit {
   }
 
   exportExcel() {
+    if (!this.canExportReport()) {
+      return;
+    }
     const params: any = { reportType: this.selectedReport(), format: 'excel' };
     if (this.dateFrom) params.dateFrom = this.dateFrom;
     if (this.dateTo) params.dateTo = this.dateTo;
@@ -163,19 +192,4 @@ export class CrpcReportsComponent implements OnInit {
     this.router.navigate(['/crpc/home']);
   }
 
-  private getMockData(): ReportRow[] {
-    const config = this.activeConfig();
-    const rows: ReportRow[] = [];
-    for (let i = 0; i < 15; i++) {
-      const row: ReportRow = {};
-      config.columns.forEach(col => {
-        if (col.key.includes('date') || col.key === 'date') row[col.key] = new Date(Date.now() - i * 86400000).toISOString().split('T')[0];
-        else if (col.key.includes('Name') || col.key.includes('office') || col.key === 'entityName' || col.key === 'clauseRef') row[col.key] = `Sample ${col.label} ${i + 1}`;
-        else if (col.key.includes('percentage') || col.key.includes('Rate')) row[col.key] = (70 + Math.random() * 25).toFixed(1) + '%';
-        else row[col.key] = Math.floor(Math.random() * 50) + 1;
-      });
-      rows.push(row);
-    }
-    return rows;
-  }
 }

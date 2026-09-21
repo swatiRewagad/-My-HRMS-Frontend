@@ -16,12 +16,19 @@ export interface ActionOverride {
 }
 
 export interface RegulatoryBody {
-  id: number;
+  /** String, matching the server payload; it was typed `number` while the server sends String.valueOf(id). */
+  id: number | string;
   name: string;
   code: string;
-  contactEmail: string;
-  address: string;
-  active: boolean;
+  contactEmail: string | null;
+  address: string | null;
+  jurisdiction?: string | null;
+  /** UST766: whether the contact email has been verified. Only verified bodies may receive a referral. */
+  emailVerified?: boolean;
+  /** Whether the server will accept a referral to this body — active AND verified AND has an address. */
+  forwardable?: boolean;
+  /** No longer sent by the server: a body present in the response is active by definition. */
+  active?: boolean;
 }
 
 export interface AdditionalEntity {
@@ -158,18 +165,54 @@ export class RbioWorkflowService {
     );
   }
 
-  // --- Regulatory Bodies Master List ---
+  /**
+   * The validated regulatory-body master (UST766).
+   *
+   * <p>Two corrections. The path is now {@code /masters/...}, where the master controller actually lives —
+   * {@code /master-data/...} matched nothing, and the master itself did not exist until this batch. (The
+   * server also serves the old prefix as an alias, so an un-shipped client keeps working.)
+   *
+   * <p>And {@code catchError(() => of([]))} is GONE. Swallowing the failure is what made a missing endpoint
+   * indistinguishable from an empty master for as long as this screen has existed: the dropdown was empty, no
+   * error appeared, and the UI went on claiming the list was validated. The error now propagates so the
+   * component fails closed and says so.
+   */
   getRegulatoryBodies(): Observable<RegulatoryBody[]> {
     return this.http.get<any>(
-      `${this.baseUrl}/master-data/regulatory-bodies`
+      `${this.baseUrl}/masters/regulatory-bodies`
     ).pipe(
-      map(res => res.data || res || []),
-      catchError(() => of([]))
+      map(res => res?.data ?? res ?? [])
+    );
+  }
+
+  /** RBI departments a complaint may be forwarded to (UST761, 534, 527-528). */
+  getRbiDepartments(): Observable<Array<{ deptCode: string; deptName: string }>> {
+    return this.http.get<any>(
+      `${this.baseUrl}/masters/rbi-departments`
+    ).pipe(
+      map(res => res?.data ?? res ?? [])
+    );
+  }
+
+  /**
+   * Transfer destination offices for a layout (UST556, 563).
+   *
+   * @param layout 'RBIO' or 'CEPC'. UST563 requires the CEPC list when Transfer Office = CEPC; that list had
+   *               no data source at all before, because every office row was typed 'BO'.
+   */
+  getTransferOffices(layout: 'RBIO' | 'CEPC' = 'RBIO'):
+      Observable<Array<{ officeCode: string; officeName: string; layout: string }>> {
+    return this.http.get<any>(
+      `${this.baseUrl}/masters/transfer-offices?layout=${layout}`
+    ).pipe(
+      map(res => res?.data ?? res ?? [])
     );
   }
 
   forwardToRegulatoryBody(complaintId: string, body: {
-    regulatoryBodyId: number;
+    // number | string, matching RegulatoryBody.id: the server sends String.valueOf(id) and resolves a
+    // code, a name or a numeric id, so narrowing this to number would reject the value the payload carries.
+    regulatoryBodyId: number | string;
     regulatoryBodyName: string;
     remarks: string;
     actor: string;

@@ -46,8 +46,8 @@
     </div>
     <button class="btn btn-primary" (click)="generateReport()"><i class="pi pi-refresh"></i> Generate</button>
     <div class="export-btns">
-      <button class="btn btn-outline btn-sm" (click)="exportCsv()" [disabled]="reportData().length === 0"><i class="pi pi-file"></i> CSV</button>
-      <button class="btn btn-outline btn-sm" (click)="exportExcel()" [disabled]="reportData().length === 0"><i class="pi pi-file-excel"></i> Excel</button>
+      <button class="btn btn-outline btn-sm" (click)="exportCsv()" [disabled]="!canExportReport()" data-testid="crpc-export-csv"><i class="pi pi-file"></i> CSV</button>
+      <button class="btn btn-outline btn-sm" (click)="exportExcel()" [disabled]="!canExportReport()" data-testid="crpc-export-excel"><i class="pi pi-file-excel"></i> Excel</button>
     </div>
   </div>
 
@@ -60,6 +60,19 @@
 
     @if (loading()) {
       <div class="loading"><i class="pi pi-spin pi-spinner"></i> Generating report...</div>
+    } @else if (error()) {
+      <!-- A failed report shows the failure. It used to show 15 rows of random numbers. -->
+      <div class="report-error" data-testid="crpc-report-error">
+        <i class="pi pi-exclamation-triangle"></i>
+        <span>{{ error() }}</span>
+        <button class="btn btn-sm btn-outline" (click)="generateReport()">Retry</button>
+      </div>
+    } @else if (unavailableReason()) {
+      <!-- The server can run reports but not this one, and it states why rather than inventing data. -->
+      <div class="report-unavailable" data-testid="crpc-report-unavailable">
+        <i class="pi pi-info-circle"></i>
+        <span>{{ unavailableReason() }}</span>
+      </div>
     } @else {
       <div class="table-wrapper">
         <table class="report-table">

@@ -467,7 +467,18 @@ class CepcWorkflowServiceTest {
 
             assertThat(result.get("newStatus")).isEqualTo("forwarded_external");
             assertThat(sampleComplaint.getWorkflowStage()).isEqualTo("FORWARDED_OTHER_OFFICE");
-            assertThat(sampleComplaint.getAssignedOfficer()).isEqualTo("Mumbai Office");
+
+            // CHANGED DELIBERATELY (S5, UST557/560/564). This previously asserted
+            // assignedOfficer == "Mumbai Office", i.e. it PINNED the defect: an office NAME written into a
+            // USER column, so a forwarded complaint appeared to be owned by an office and "who is working on
+            // this" had no answer. An office is not an officer, so the assertion is inverted.
+            //
+            // In production the forward now creates a PENDING INTER_OFFICE_TRANSFERS row and the destination
+            // officer is resolved only on CRPC Head approval (UST564). This unit test constructs the service
+            // directly, so the transfer collaborator is absent and only the status and stage are set.
+            assertThat(sampleComplaint.getAssignedOfficer())
+                    .as("an office name must never be written into the officer column")
+                    .isNotEqualTo("Mumbai Office");
         }
 
         @Test
@@ -484,7 +495,17 @@ class CepcWorkflowServiceTest {
 
             assertThat(result.get("newStatus")).isEqualTo("forwarded_external");
             assertThat(sampleComplaint.getWorkflowStage()).isEqualTo("FORWARDED_REGULATORY_BODY");
-            assertThat(sampleComplaint.getAssignedOfficer()).isEqualTo("SEBI");
+
+            // CHANGED DELIBERATELY (S5, UST766), for the same reason as the test above: this pinned
+            // assignedOfficer == "SEBI", an outside regulator's name sitting in a user column. The body is now
+            // recorded in COMPLAINTS.regulatory_body_name, which is what the RBIO path has always done and
+            // what makes "which regulator was this referred to" answerable.
+            assertThat(sampleComplaint.getAssignedOfficer())
+                    .as("a regulator's name must never be written into the officer column")
+                    .isNotEqualTo("SEBI");
+            assertThat(sampleComplaint.getRegulatoryBodyName())
+                    .as("the body belongs in its own column")
+                    .isEqualTo("SEBI");
         }
 
         @Test

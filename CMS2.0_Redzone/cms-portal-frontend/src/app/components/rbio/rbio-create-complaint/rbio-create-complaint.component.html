@@ -636,11 +636,36 @@
             <button class="sidebar-icon-btn"><i class="pi pi-history"></i></button>
           </div>
 
-          @if (ocrComplete()) {
-            <div class="ocr-notice">
+          <!-- UST778: the server refused prefill. Distinct from an error — manual entry is correct here. -->
+          @if (ocrManualEntryReason()) {
+            <div class="ocr-manual-entry" data-testid="ocr-manual-entry">
+              <i class="pi pi-info-circle"></i>
+              {{ ocrManualEntryReason() }}
+            </div>
+          }
+
+          <!-- UST624: states HOW MANY fields still hold unverified scan output, so dismissing the
+               banner no longer erases the only indication that OCR touched the form. Per-field badges
+               below survive the dismissal. -->
+          @if (ocrComplete() && ocrProvenance.unverifiedCount() > 0) {
+            <div class="ocr-notice" data-testid="ocr-notice">
               <i class="pi pi-exclamation-triangle"></i>
-              Content extraction may not be 100% accurate. Please verify all information.
+              {{ ocrProvenance.unverifiedCount() }} field(s) were filled from the scan and are not yet
+              verified. Fields you edit are kept and marked as yours.
               <button class="dismiss-btn" (click)="ocrComplete.set(false)">&times;</button>
+            </div>
+          }
+
+          <!-- A failed draft save. Previously this state swapped in a saved-summary view instead. -->
+          @if (draftError()) {
+            <div class="draft-failed-badge" data-testid="draft-failed">
+              <i class="pi pi-times-circle"></i>
+              {{ draftError() }}
+            </div>
+          }
+          @if (draftSavedAt() && !draftError()) {
+            <div class="draft-saved-badge" data-testid="draft-saved-at">
+              Draft saved at {{ draftSavedAt() }}
             </div>
           }
 
@@ -654,7 +679,7 @@
               @if (sectionExpanded.basic) {
                 <div class="form-group full-width" [class.has-error]="formSubmitAttempted && fieldErrors['subject']">
                   <label>Subject <span class="required">*</span></label>
-                  <textarea [(ngModel)]="subject" rows="2" placeholder="Enter text here"></textarea>
+                  <textarea [(ngModel)]="subject" (ngModelChange)="onFieldEdited('subject')" [class.ocr-filled]="ocrProvenance.isFromOcr('subject')" [class.ocr-overridden]="ocrProvenance.isEdited('subject')" [attr.data-ocr-source]="ocrProvenance.isFromOcr('subject') ? 'scan' : null" rows="2" placeholder="Enter text here"></textarea>
                   @if (formSubmitAttempted && fieldErrors['subject']) {
                     <span class="field-error">{{ fieldErrors['subject'] }}</span>
                   }
@@ -662,7 +687,7 @@
 
                 <div class="form-group full-width" [class.has-error]="formSubmitAttempted && fieldErrors['description']">
                   <label>Complaint Details <span class="required">*</span></label>
-                  <textarea [(ngModel)]="description" rows="3" placeholder="Enter text here"></textarea>
+                  <textarea [(ngModel)]="description" (ngModelChange)="onFieldEdited('description')" [class.ocr-filled]="ocrProvenance.isFromOcr('description')" [class.ocr-overridden]="ocrProvenance.isEdited('description')" [attr.data-ocr-source]="ocrProvenance.isFromOcr('description') ? 'scan' : null" rows="3" placeholder="Enter text here"></textarea>
                   @if (formSubmitAttempted && fieldErrors['description']) {
                     <span class="field-error">{{ fieldErrors['description'] }}</span>
                   }
@@ -913,14 +938,14 @@
                 <div class="form-row-2col">
                   <div class="form-group" [class.has-error]="formSubmitAttempted && fieldErrors['complainantName']">
                     <label>Name <span class="required">*</span></label>
-                    <input type="text" [(ngModel)]="complainantName" placeholder="Full name" />
+                    <input type="text" [(ngModel)]="complainantName" (ngModelChange)="onFieldEdited('complainantName')" [class.ocr-filled]="ocrProvenance.isFromOcr('complainantName')" [class.ocr-overridden]="ocrProvenance.isEdited('complainantName')" [attr.data-ocr-source]="ocrProvenance.isFromOcr('complainantName') ? 'scan' : null" placeholder="Full name" />
                     @if (formSubmitAttempted && fieldErrors['complainantName']) {
                       <span class="field-error">{{ fieldErrors['complainantName'] }}</span>
                     }
                   </div>
                   <div class="form-group" [class.has-error]="formSubmitAttempted && fieldErrors['complainantEmail']">
                     <label>Email</label>
-                    <input type="email" [(ngModel)]="complainantEmail" placeholder="Email address" />
+                    <input type="email" [(ngModel)]="complainantEmail" (ngModelChange)="onFieldEdited('complainantEmail')" [class.ocr-filled]="ocrProvenance.isFromOcr('complainantEmail')" [class.ocr-overridden]="ocrProvenance.isEdited('complainantEmail')" [attr.data-ocr-source]="ocrProvenance.isFromOcr('complainantEmail') ? 'scan' : null" placeholder="Email address" />
                     @if (formSubmitAttempted && fieldErrors['complainantEmail']) {
                       <span class="field-error">{{ fieldErrors['complainantEmail'] }}</span>
                     }
@@ -929,7 +954,7 @@
                 <div class="form-row-2col">
                   <div class="form-group" [class.has-error]="formSubmitAttempted && fieldErrors['complainantPhone']">
                     <label>Phone</label>
-                    <input type="tel" [(ngModel)]="complainantPhone" maxlength="10" placeholder="10-digit mobile" />
+                    <input type="tel" [(ngModel)]="complainantPhone" (ngModelChange)="onFieldEdited('complainantPhone')" [class.ocr-filled]="ocrProvenance.isFromOcr('complainantPhone')" [class.ocr-overridden]="ocrProvenance.isEdited('complainantPhone')" [attr.data-ocr-source]="ocrProvenance.isFromOcr('complainantPhone') ? 'scan' : null" maxlength="10" placeholder="10-digit mobile" />
                     @if (formSubmitAttempted && fieldErrors['complainantPhone']) {
                       <span class="field-error">{{ fieldErrors['complainantPhone'] }}</span>
                     }
@@ -957,7 +982,7 @@
                   </div>
                   <div class="form-group">
                     <label>District</label>
-                    <select [(ngModel)]="complainantDistrict">
+                    <select [(ngModel)]="complainantDistrict" (ngModelChange)="onFieldEdited('complainantDistrict')" [class.ocr-filled]="ocrProvenance.isFromOcr('complainantDistrict')" [class.ocr-overridden]="ocrProvenance.isEdited('complainantDistrict')" [attr.data-ocr-source]="ocrProvenance.isFromOcr('complainantDistrict') ? 'scan' : null">
                       <option value="">Select District</option>
                       @for (d of districts(); track d) {
                         <option [value]="d">{{ d }}</option>
@@ -967,7 +992,7 @@
                 </div>
                 <div class="form-group full-width">
                   <label>Address</label>
-                  <textarea [(ngModel)]="complainantAddress" rows="2" placeholder="Full address"></textarea>
+                  <textarea [(ngModel)]="complainantAddress" (ngModelChange)="onFieldEdited('complainantAddress')" [class.ocr-filled]="ocrProvenance.isFromOcr('complainantAddress')" [class.ocr-overridden]="ocrProvenance.isEdited('complainantAddress')" [attr.data-ocr-source]="ocrProvenance.isFromOcr('complainantAddress') ? 'scan' : null" rows="2" placeholder="Full address"></textarea>
                 </div>
               }
             </section>

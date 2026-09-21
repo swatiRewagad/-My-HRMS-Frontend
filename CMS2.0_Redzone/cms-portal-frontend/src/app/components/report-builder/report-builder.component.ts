@@ -110,24 +110,35 @@ export class ReportBuilderComponent implements OnInit, AfterViewChecked {
 
   // Report access roles (UST615, UST622, UST670)
   reportAccessRoles = signal<ReportAccessRole[]>([]);
+  /** True when the access list could not be read, so an empty list means "unknown" not "none". */
+  accessRolesLoadFailed = signal(false);
   showAccessRoleAdmin = signal(false);
   accessRoleAdminLoading = signal(false);
   newAccessRole: Partial<ReportAccessRole> = { reportType: '', roleName: '', canExport: true };
 
-  // Role-based visibility
+  /**
+   * Whether to OFFER export. The server decides whether to permit it.
+   *
+   * Two changes from the previous version:
+   *
+   * 1. No fall-through to `return true`. That default meant an unconfigured — or unreachable —
+   *    access list read as "everyone may export", and because the GET silently 404'd against a
+   *    backend that had no such endpoint, that was the permanent state. Absence of a permission list
+   *    now hides the button instead of showing it.
+   * 2. The hardcoded AA_ADMIN/CEPD_ADMIN pair is gone. Both are rows in REPORT_ACCESS_ROLE with
+   *    CAN_EXPORT='N', so the view-only rule is data. A code copy would let an admin grant export in
+   *    the UI and have it silently overruled here.
+   *
+   * Presentation only: /api/v1/reports/export enforces the same rule server-side, because hiding a
+   * button stops nobody from calling the endpoint.
+   */
   canExport = computed(() => {
     const roles = this.keycloakAuth.getRoles();
     const accessRoles = this.reportAccessRoles();
-    // AA Admin and CEPD Admin are view-only (no export)
-    if (roles.includes('AA_ADMIN') || roles.includes('CEPD_ADMIN')) {
+    if (accessRoles.length === 0) {
       return false;
     }
-    // Check explicit access role config
-    const matchingRoles = accessRoles.filter(ar => roles.includes(ar.roleName));
-    if (matchingRoles.length > 0) {
-      return matchingRoles.some(ar => ar.canExport);
-    }
-    return true;
+    return accessRoles.some(ar => roles.includes(ar.roleName) && ar.canExport);
   });
 
   isAdmin = computed(() => {
@@ -239,12 +250,30 @@ export class ReportBuilderComponent implements OnInit, AfterViewChecked {
     });
   }
 
+  /**
+   * Loads the report access list.
+   *
+   * The error handler was `() => {}`, which is why nobody noticed the endpoint did not exist: the
+   * list stayed empty, the old canExport fell through to true, and the screen showed a reassuring
+   * "No access roles configured" empty state while granting export to everyone. A failure to load a
+   * PERMISSION list is not non-critical — it is exactly the case that must be visible, because
+   * canExport now denies on an empty list and the user needs to know whether that means "not
+   * permitted" or "could not check".
+   */
   private loadReportAccessRoles() {
     this.reportService.getReportAccessRoles().pipe(
       takeUntilDestroyed(this.destroyRef)
     ).subscribe({
-      next: (roles) => this.reportAccessRoles.set(roles),
-      error: () => {} // Non-critical
+      next: (roles) => {
+        this.reportAccessRoles.set(roles);
+        this.accessRolesLoadFailed.set(false);
+      },
+      error: (err) => {
+        this.reportAccessRoles.set([]);
+        // 403 is a legitimate answer for a non-admin: they may run reports without being allowed to
+        // read the permission table. Only a genuine failure is surfaced as one.
+        this.accessRolesLoadFailed.set(err?.status !== 403);
+      }
     });
   }
 

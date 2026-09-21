@@ -293,6 +293,11 @@ export const routes: Routes = [
   // ── CRPC Reports ──
   {
     path: 'crpc/reports',
+    // Was unguarded, unlike its crpc/in-charge sibling. That mattered more than usual: the server gates
+    // /api/v1/crpc/** to CRPC roles, so a non-CRPC visitor received a 403 — and the component's error
+    // handler answered by filling the screen with random numbers. An unauthorised user saw fabricated
+    // report figures instead of an access-denied message.
+    canActivate: [staffAuthGuard],
     loadComponent: () => import('./components/crpc/crpc-reports/crpc-reports.component').then(m => m.CrpcReportsComponent)
   },
   // ── Admin — Team Management ──

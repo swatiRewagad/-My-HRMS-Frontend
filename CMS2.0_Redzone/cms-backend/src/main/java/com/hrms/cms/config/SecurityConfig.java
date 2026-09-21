@@ -158,6 +158,12 @@ public class SecurityConfig {
                 .requestMatchers("/api/v1/keycloak/**").hasAnyRole("RBIO_ADMIN", "ADMIN")
                 .requestMatchers("/actuator/**").hasRole("ADMIN")
 
+                // ── Report access list: administrators only (UST670) ────────────────────
+                // MUST precede the broad /api/v1/reports/** staff grant below. Spring applies the FIRST
+                // matching rule, so without this the table that decides who may view and export reports
+                // would be writable by any of the ~22 STAFF_ROLES — including granting themselves export.
+                .requestMatchers("/api/v1/reports/access-roles/**").hasAnyRole("ADMIN", "RBIO_ADMIN")
+
                 // ── Workflow, scoped per office ─────────────────────────────────────────
                 .requestMatchers("/api/v1/workflow/rbio/**").hasAnyRole(RBIO_ROLES)
                 .requestMatchers("/api/v1/workflow/cepc/**").hasAnyRole(CEPC_ROLES)
@@ -173,6 +179,10 @@ public class SecurityConfig {
                         "/api/v1/comment-templates/**", "/api/v1/communication-templates/**",
                         "/api/v1/extraction-rules/**", "/api/v1/similar-cases/**",
                         "/api/v1/copilot/**", "/api/v1/ocr/**", "/api/v1/re-activity-config/**",
+                        // Staff drafts and edit presence (UST673-675). Every route inside is scoped to
+                        // the caller's own resolved identity, so a broad staff grant here does not let
+                        // one officer read another's draft.
+                        "/api/v1/staff-drafts/**",
                         "/api/complaints/**", "/api/dashboard/**", "/api/files/**",
                         "/api/email-simulation/**").hasAnyRole(STAFF_ROLES)
 

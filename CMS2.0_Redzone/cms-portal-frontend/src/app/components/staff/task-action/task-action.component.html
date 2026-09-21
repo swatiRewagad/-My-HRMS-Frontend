@@ -533,12 +533,53 @@
                             </div>
                           }
 
+                          <!-- UST675: a colleague already has this complaint open. Advisory — the save is
+                               still permitted, and is gated by the version check, not by this notice. -->
+                          @if (otherEditors().length > 0) {
+                            <div class="concurrent-edit-warning" data-testid="concurrent-edit-warning">
+                              <i class="pi pi-users"></i>
+                              @for (editor of otherEditors(); track editor.userId) {
+                                <span>{{ editor.displayName || editor.userId }}</span>
+                              }
+                              is also editing this complaint. Whoever saves second will be asked to reload.
+                            </div>
+                          }
+
+                          @if (draftError()) {
+                            <div class="draft-failed-badge" data-testid="draft-failed">
+                              <i class="pi pi-times-circle"></i> {{ draftError() }}
+                            </div>
+                          }
+                          @if (draftSavedAt() && !draftError()) {
+                            <div class="draft-saved-badge" data-testid="draft-saved-at">
+                              Draft saved at {{ draftSavedAt() }}
+                            </div>
+                          }
+
                           <div class="confirm-actions">
                             <button class="btn btn-primary" [disabled]="!remarks.trim() || processing()" (click)="originalSubmitAction()">
                               @if (processing()) { <i class="pi pi-spin pi-spinner"></i> Processing... } @else { Confirm {{ selectedAction() }} }
                             </button>
+                            <!-- UST674: the Conciliation / Forward / Final Decision save point. This
+                                 component had no draft save at all before. -->
+                            <button class="btn btn-outline" [disabled]="savingDraft() || processing() || !remarks.trim()"
+                                    (click)="saveDraft()" data-testid="save-draft">
+                              @if (savingDraft()) { <i class="pi pi-spin pi-spinner"></i> Saving... } @else { Save in Draft }
+                            </button>
                             <button class="btn btn-outline" (click)="cancelAction()">Cancel</button>
                           </div>
+                        </div>
+                      }
+
+                      <!-- UST675: the concurrent-save refusal. A 409 is not a validation error, so it gets
+                           its own treatment and a reload affordance — repeating the same request with a
+                           stale version would just conflict again. -->
+                      @if (conflictWarning()) {
+                        <div class="conflict-warning" data-testid="record-conflict">
+                          <i class="pi pi-exclamation-triangle"></i>
+                          <span>{{ conflictWarning() }}</span>
+                          <button class="btn btn-sm btn-primary" (click)="reloadAfterConflict()"
+                                  data-testid="reload-after-conflict">Reload</button>
                         </div>
                       }
 
@@ -888,7 +929,7 @@
           <div class="modal-header">
             <div class="modal-icon" style="background:#e3f2fd;"><i class="pi pi-info-circle" style="color:#1565c0;"></i></div>
             <div>
-              <h3>Sample Closure Letter - New RBIOS 2026 Clause</h3>
+              <h3>Sample Closure Letter</h3>
               <p>Please review the sample letter for clause: {{ sampleLetterClause() }}</p>
             </div>
             <button class="modal-close" (click)="acknowledgeSampleLetter()">&times;</button>
@@ -898,7 +939,7 @@
               <p style="text-align:center; font-weight:bold;">RESERVE BANK OF INDIA<br/>Integrated Ombudsman Scheme</p>
               <p><strong>Ref:</strong> [Complaint Number]<br/><strong>Date:</strong> [Date]</p>
               <p>Dear [Complainant Name],</p>
-              <p>With reference to your complaint filed under the Reserve Bank - Integrated Ombudsman Scheme, 2021 (as amended 2026), we wish to inform you that after careful examination of the facts and circumstances of your case, the complaint is being closed under <strong>Clause {{ sampleLetterClause() }}</strong> of the Scheme.</p>
+              <p>With reference to your complaint filed under the Reserve Bank - Integrated Ombudsman Scheme, 2021, we wish to inform you that after careful examination of the facts and circumstances of your case, the complaint is being closed under <strong>Clause {{ sampleLetterClause() }}</strong> of the Scheme.</p>
               <p><em>[Clause-specific reasoning would be inserted here based on the selected closure clause]</em></p>
               <p>You may note that this decision has been taken after due consideration of the submissions made by you and the regulated entity.</p>
               <p>Yours faithfully,<br/>[Authority Name]<br/>[Designation]</p>

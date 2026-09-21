@@ -16,7 +16,7 @@ import { readFileSync } from 'fs';
  * inspected directly without adding a PDF-parsing dependency.
  */
 
-const APP_BASE = process.env['APP_BASE_URL'] || 'http://localhost:4200';
+const APP_BASE = process.env['APP_BASE_URL'] || process.env['UI_BASE_URL'] || 'http://localhost:4200';
 
 /** Strips PDF text-operator syntax so wrapped/kerned strings can be matched as plain prose. */
 function pdfText(buffer: Buffer): string {

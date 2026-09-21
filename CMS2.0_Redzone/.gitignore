@@ -34,3 +34,13 @@ package-lock.json
 **/public/assets/onnx/
 cdn-assets/**/*.onnx
 cdn-assets/**/*.wasm
+
+# Runtime file-upload root (dev-local: cms.attachments.root-path = ./cms-attachments).
+# These are complaint attachments written by the running app and by E2E test uploads, not source.
+cms-backend/cms-attachments/
+
+# Generated test reports (Surefire HTML + Playwright HTML bundle). Regenerate with:
+#   mvn -o test && python scripts/qa/junit_report.py target/surefire-reports ../test-reports/junit-report.html
+test-reports/
+cms-portal-frontend/playwright-report/
+cms-portal-frontend/test-results/

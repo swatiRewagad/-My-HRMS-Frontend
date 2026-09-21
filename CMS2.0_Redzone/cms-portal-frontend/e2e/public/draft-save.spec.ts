@@ -13,7 +13,7 @@ import { seedCitizenSession } from '../utils/test-data';
  * without ever surfacing.
  */
 
-const APP_BASE = process.env['APP_BASE_URL'] || 'http://localhost:4200';
+const APP_BASE = process.env['APP_BASE_URL'] || process.env['UI_BASE_URL'] || 'http://localhost:4200';
 
 /** Must match DRAFT_VERSION in file-complaint.component.ts or the draft is discarded on load. */
 const DRAFT_VERSION = 4;

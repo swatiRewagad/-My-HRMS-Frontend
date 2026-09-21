@@ -842,3 +842,65 @@
     }
   }
 }
+
+/* ── UST675: concurrency (advisory warning + the 409 refusal) ──────────────────────
+   Two distinct states, deliberately styled differently:
+
+   .concurrent-edit-warning is ADVISORY. Someone else has the complaint open; the save
+   is still allowed. Amber, informational, no action button.
+
+   .conflict-warning is a REFUSAL. The server returned 409 because a colleague saved
+   first, and the only recovery is reload-then-retry — so it carries a Reload button.
+   Before this, a 409 fell into the generic `Failed: ...` line, indistinguishable from a
+   validation error, which told the officer their input was bad when it was fine. */
+.concurrent-edit-warning {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 8px 12px;
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+  border-radius: 4px;
+  color: #92400e;
+  font-size: 12px;
+
+  span { font-weight: 600; }
+}
+
+.conflict-warning {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: #fff7ed;
+  border: 1px solid #fb923c;
+  border-radius: 4px;
+  color: #9a3412;
+  font-size: 13px;
+
+  span { flex: 1; }
+}
+
+/* A draft save that FAILED. Never rendered alongside a success indicator — the bug being
+   fixed reported success in the error handler. */
+.draft-failed-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 8px 12px;
+  background: #fef2f2;
+  border: 1px solid #fca5a5;
+  border-radius: 4px;
+  color: #991b1b;
+  font-size: 12px;
+}
+
+.draft-saved-badge {
+  margin-top: 8px;
+  padding: 4px 12px;
+  color: #166534;
+  font-size: 11px;
+}

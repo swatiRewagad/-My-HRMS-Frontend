@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -8,6 +8,7 @@ import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
 import { lookupPincode } from '../../../utils/pincode-data';
 import { environment } from '../../../../environments/environment';
 import { SpeechButtonComponent } from '../../../shared/speech-button/speech-button.component';
+import { OcrProvenance } from '../../../shared/ocr-provenance';
 
 interface DeoUser {
   id: string;
@@ -25,7 +26,7 @@ interface DeoUser {
   templateUrl: './rbio-create-complaint.component.html',
   styleUrl: './rbio-create-complaint.component.scss'
 })
-export class RbioCreateComplaintComponent implements OnInit {
+export class RbioCreateComplaintComponent implements OnInit, OnDestroy {
 
   private router = inject(Router);
   private http = inject(HttpClient);
@@ -45,6 +46,17 @@ export class RbioCreateComplaintComponent implements OnInit {
   scanError = '';
   ocrInProgress = signal(false);
   ocrComplete = signal(false);
+
+  /**
+   * Per-field OCR provenance (UST624) and the override-wins rule (UST625).
+   *
+   * Before this, the 14 assignments below overwrote the form unconditionally on every extraction, and
+   * runOcr() stays reachable while !ocrComplete() — which the banner's dismiss button resets. So an
+   * operator who corrected a field and re-extracted silently lost the correction.
+   */
+  ocrProvenance = new OcrProvenance();
+  /** Set when the server refused prefill (vernacular or low confidence) — UST778. */
+  ocrManualEntryReason = signal<string | null>(null);
   pdfExpanded = signal(false);
   pdfPage = signal(1);
   pdfTotalPages = signal(1);
@@ -137,6 +149,11 @@ export class RbioCreateComplaintComponent implements OnInit {
   submitting = signal(false);
   submitted = signal(false);
   draftSaved = signal(false);
+  /** The server's save timestamp. Null whenever the last save did not demonstrably succeed. */
+  draftSavedAt = signal<string | null>(null);
+  /** A failed draft save, shown instead of the saved-summary view. */
+  draftError = signal<string | null>(null);
+  private autoSaveTimer: any = null;
   summaryActiveTab = signal<'summary' | 'email'>('summary');
   assessmentTab = signal<string>('summary');
   summarySections = { basic: true, eligibility: false, entity: false, complainant: false };
@@ -192,6 +209,70 @@ export class RbioCreateComplaintComponent implements OnInit {
     this.loggedInUserName = user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username : '';
     this.loadStates();
     this.loadDeos();
+    this.resumeDraft();
+    this.startAutoSave();
+  }
+
+  ngOnDestroy() {
+    this.stopAutoSave();
+  }
+
+  /**
+   * Restores a previously saved Register draft (UST674 "resuming must restore all field values").
+   *
+   * <p>There was no resume path at all: ngOnInit only generated a fresh complaint id, so a saved draft
+   * could never be reopened.
+   */
+  private resumeDraft() {
+    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/staff-drafts/REGISTER`).subscribe({
+      next: (res) => {
+        const data = res?.formData;
+        if (!data) return;
+        Object.keys(data).forEach(key => {
+          if (data[key] !== null && data[key] !== undefined && key in this) {
+            (this as any)[key] = data[key];
+            // A resumed value is the operator's own work, not scan output, so it must not be
+            // overwritten by a later extraction.
+            this.ocrProvenance.markEdited(key);
+          }
+        });
+        this.draftSavedAt.set(res?.updatedAt ?? null);
+      },
+      // 204 (no draft) arrives here in some cases and is not a failure worth surfacing: having no draft
+      // is the normal state on a first visit.
+      error: () => {}
+    });
+  }
+
+  /**
+   * UST673: auto-save on an interval that comes from SYSTEM_CONFIG, not a hardcoded literal.
+   *
+   * <p>Silent by design — no prompt, no modal. The only visible effect is the "last saved" timestamp,
+   * and a FAILED autosave surfaces through draftError like any other failed save, because a timer that
+   * fails quietly for a whole session is how a citizen's letter gets lost.
+   */
+  private startAutoSave() {
+    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/staff-drafts/config`).subscribe({
+      next: (cfg) => {
+        const seconds = Number(cfg?.autosaveIntervalSeconds);
+        if (!cfg?.autosaveEnabled || !Number.isFinite(seconds) || seconds <= 0) return;
+        this.autoSaveTimer = setInterval(() => {
+          // Nothing typed yet means nothing worth saving; the server refuses an empty draft anyway, and
+          // sending one would overwrite a good draft with nothing.
+          if (this.canSubmit() || this.complainantName.trim() || this.subject.trim()) {
+            this.saveDraft(true);
+          }
+        }, seconds * 1000);
+      },
+      error: () => {}
+    });
+  }
+
+  private stopAutoSave() {
+    if (this.autoSaveTimer) {
+      clearInterval(this.autoSaveTimer);
+      this.autoSaveTimer = null;
+    }
   }
 
   private generateComplaintId(): string {
@@ -436,10 +517,34 @@ export class RbioCreateComplaintComponent implements OnInit {
     event.preventDefault();
   }
 
+  /**
+   * Writes an OCR value only when the provenance helper permits it, then records the provenance.
+   *
+   * The `currentValue` override exists for non-string fields: amountInvolved is a number|null, so the
+   * emptiness check has to see the real current value rather than the incoming string.
+   */
+  private applyOcr(field: string, incoming: any, assign: (value: any) => void,
+                   currentValue?: any) {
+    if (!incoming) return;
+    const current = currentValue !== undefined ? currentValue : (this as any)[field];
+    if (!this.ocrProvenance.shouldApply(field, current)) return;
+    assign(incoming);
+    this.ocrProvenance.markFromOcr(field);
+  }
+
+  /** Call from a field's change handler so the operator's edit sticks through later extractions. */
+  onFieldEdited(field: string) {
+    this.ocrProvenance.markEdited(field);
+  }
+
   removeFile() {
     this.scannedFile = null;
     this.pdfPreviewUrl.set(null);
     this.ocrComplete.set(false);
+    this.ocrManualEntryReason.set(null);
+    // The previous scan's provenance describes nothing once its file is gone. Typed values are kept:
+    // removing an attachment must not discard the operator's work.
+    this.ocrProvenance.reset();
   }
 
   runOcr() {
@@ -453,29 +558,45 @@ export class RbioCreateComplaintComponent implements OnInit {
     this.http.post<any>(`${environment.apiBaseUrl}/api/v1/ocr/extract`, formData).subscribe({
       next: (res) => {
         const data = res?.data || {};
+
+        // UST778: the server gates vernacular and low-confidence scans and returns NO data for them.
+        // Surfaced as a distinct state, not as an error — routing to manual entry is a correct outcome,
+        // not a fault, and telling the operator why stops them retrying the same scan.
+        if (res?.prefillAllowed === false) {
+          this.ocrInProgress.set(false);
+          this.ocrComplete.set(true);
+          this.ocrManualEntryReason.set(res?.message
+            || 'This document must be entered manually.');
+          return;
+        }
+
         if (Object.keys(data).length === 0) {
           this.ocrInProgress.set(false);
           this.scanError = 'AI extraction returned no data. Please fill manually or try again later.';
           return;
         }
+        this.ocrManualEntryReason.set(null);
 
-        if (data.complainantName) this.complainantName = data.complainantName;
-        if (data.complainantAddress) this.complainantAddress = data.complainantAddress;
-        if (data.complainantState) this.complainantState = data.complainantState;
-        if (data.complainantDistrict) this.complainantDistrict = data.complainantDistrict;
-        if (data.complainantPincode) this.complainantPincode = data.complainantPincode;
-        if (data.complainantPhone) this.complainantPhone = data.complainantPhone;
-        if (data.complainantEmail) this.complainantEmail = data.complainantEmail;
-        if (data.subject) this.subject = data.subject;
-        if (data.description) this.description = data.description;
-        if (data.entityName) {
-          this.entityName = data.entityName;
-          this.entitySearchText = data.entityName;
-        }
-        if (data.entityType) this.entityType = data.entityType;
-        if (data.category) this.category = data.category;
-        if (data.amountInvolved) this.amountInvolved = Number(data.amountInvolved) || null;
-        if (data.transactionDate) this.transactionDate = data.transactionDate;
+        // Each assignment goes through the provenance helper, which refuses to overwrite a field the
+        // operator has edited (UST625) and records which fields hold scan output (UST624).
+        this.applyOcr('complainantName', data.complainantName, v => this.complainantName = v);
+        this.applyOcr('complainantAddress', data.complainantAddress, v => this.complainantAddress = v);
+        this.applyOcr('complainantState', data.complainantState, v => this.complainantState = v);
+        this.applyOcr('complainantDistrict', data.complainantDistrict, v => this.complainantDistrict = v);
+        this.applyOcr('complainantPincode', data.complainantPincode, v => this.complainantPincode = v);
+        this.applyOcr('complainantPhone', data.complainantPhone, v => this.complainantPhone = v);
+        this.applyOcr('complainantEmail', data.complainantEmail, v => this.complainantEmail = v);
+        this.applyOcr('subject', data.subject, v => this.subject = v);
+        this.applyOcr('description', data.description, v => this.description = v);
+        this.applyOcr('entityName', data.entityName, v => {
+          this.entityName = v;
+          this.entitySearchText = v;
+        });
+        this.applyOcr('entityType', data.entityType, v => this.entityType = v);
+        this.applyOcr('category', data.category, v => this.category = v);
+        this.applyOcr('amountInvolved', data.amountInvolved,
+          v => this.amountInvolved = Number(v) || null, this.amountInvolved);
+        this.applyOcr('transactionDate', data.transactionDate, v => this.transactionDate = v);
 
         this.ocrInProgress.set(false);
         this.ocrComplete.set(true);
@@ -521,17 +642,46 @@ export class RbioCreateComplaintComponent implements OnInit {
     return this.subject.trim().length > 0 && this.description.trim().length > 0 && this.complainantName.trim().length > 0;
   }
 
-  saveDraft() {
+  /**
+   * Saves the Register form as a real draft (UST674).
+   *
+   * <p>Two defects fixed here.
+   *
+   * <p><b>It reported success on failure.</b> {@code draftSaved.set(true)} was called in BOTH the next
+   * AND error handlers. That flag does not merely show a badge — it swaps the whole form out for a saved
+   * summary view showing a complaint number, so a rejected save presented the officer with a
+   * confirmation page for a complaint that did not exist. The citizen-side version of this bug was fixed
+   * under UST82; the staff side kept it.
+   *
+   * <p><b>It did not save a draft.</b> It posted to {@code /workflow/rbio/create-complaint}, where
+   * {@code WorkflowController} overrides the submitted {@code status: 'DRAFT'} to {@code "assigned"},
+   * applies an SLA clock and writes a CREATED timeline row — so "save draft" created a live, ASSIGNED
+   * complaint. It now posts to the staff-draft endpoint, which stores a draft owned by this user and
+   * creates no complaint.
+   */
+  saveDraft(autosave = false) {
     this.saving.set(true);
-    const payload = this.buildPayload('DRAFT');
-    this.http.post<any>(`${environment.apiBaseUrl}/api/v1/workflow/rbio/create-complaint`, payload).subscribe({
-      next: () => {
+    this.draftError.set(null);
+
+    this.http.post<any>(`${environment.apiBaseUrl}/api/v1/staff-drafts`, {
+      milestone: 'REGISTER',
+      autosave,
+      formData: this.buildPayload('DRAFT')
+    }).subscribe({
+      next: (res) => {
         this.saving.set(false);
         this.draftSaved.set(true);
+        // The SERVER's timestamp. A locally generated one would assert a save time for a save the
+        // server may never have performed.
+        this.draftSavedAt.set(res?.savedAt ?? null);
       },
-      error: () => {
+      error: (err) => {
         this.saving.set(false);
-        this.draftSaved.set(true);
+        // Explicitly NOT set. A failed save must never look like a successful one.
+        this.draftSaved.set(false);
+        this.draftSavedAt.set(null);
+        this.draftError.set(err?.error?.message
+          || 'Your draft could not be saved. Your entries are still on screen — please try again.');
       }
     });
   }

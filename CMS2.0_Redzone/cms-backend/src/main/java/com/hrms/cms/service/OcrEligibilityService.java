@@ -25,6 +25,17 @@ public class OcrEligibilityService {
     @Value("${cms.ocr.min-confidence-for-prefill:70}")
     private int minConfidenceForPrefill;
 
+    /**
+     * Whether an ABSENT confidence signal blocks prefill on the interactive operator path.
+     *
+     * <p>False by default. See {@link #assessOperatorUpload} for the reasoning: only PaddleOCR reports a
+     * confidence, so making an absent signal blocking would disable operator prefill entirely in any
+     * deployment whose chain is Groq-only — which is the dev-local default. Turning PaddleOCR on is what
+     * should tighten this behaviour.
+     */
+    @Value("${cms.ocr.require-confidence-for-operator-prefill:false}")
+    private boolean requireConfidenceForOperatorPrefill;
+
     public enum Decision {
         /** Typed English: OCR and prefill. */
         OCR_ALLOWED,
@@ -69,6 +80,63 @@ public class OcrEligibilityService {
             return scriptAssessment;
         }
         if (providerConfidence == null || providerConfidence < minConfidenceForPrefill) {
+            return new Assessment(Decision.LOW_CONFIDENCE_MANUAL_ENTRY,
+                    scriptAssessment.detectedLanguage(), scriptAssessment.languageName(), false,
+                    "intake.ocr_low_confidence_manual_entry");
+        }
+        return scriptAssessment;
+    }
+
+    /**
+     * The gate for an INTERACTIVE operator upload — {@code POST /api/v1/ocr/extract} (UST778).
+     *
+     * <h2>Why this path needed its own method</h2>
+     * Until now this service was wired into email ingest ONLY. The direct upload used by the RBIO and
+     * CRPC screens had NO language gate at all, so a Hindi scan pre-filled the form with vernacular text
+     * and was only stamped {@code VERNACULAR_MANUAL_ENTRY} later, at submit time, on a draft the operator
+     * had already filled in.
+     *
+     * <h2>Why it is not simply {@link #assessExtractedText}</h2>
+     * That method treats a null confidence as failing the gate, which is right for ingest: no human is
+     * watching, so an unmeasurable scan must not silently populate a legal record. But only
+     * {@code PaddleOcrProvider} emits a confidence signal, and the dev-local chain is {@code groq} alone
+     * with {@code paddle-ocr-url} empty. Reusing it here would classify EVERY interactive upload as
+     * {@code LOW_CONFIDENCE_MANUAL_ENTRY} and suppress all prefill — a gate that appears to work while
+     * actually just disabling the feature.
+     *
+     * <h2>The distinction being drawn, stated explicitly</h2>
+     * <ul>
+     *   <li>The SCRIPT gate is absolute on both paths. Non-Latin content is never prefilled. That is
+     *       UST778's actual requirement and it does not depend on any provider capability.</li>
+     *   <li>The CONFIDENCE gate is absolute on ingest, and advisory here WHEN NO SIGNAL EXISTS. An
+     *       operator uploading a document is looking at that document and at the form, and every
+     *       prefilled field is marked with its provenance, so they can see what came from OCR. A
+     *       measured-but-low confidence still blocks; an unmeasurable one warns.</li>
+     * </ul>
+     * Set {@code cms.ocr.require-confidence-for-operator-prefill=true} to make an absent signal blocking
+     * here too. It is false by default so that enabling PaddleOCR is what tightens this, rather than a
+     * config change nobody remembers to make.
+     *
+     * @param providerConfidence the provider's confidence, or null when the provider does not report one
+     */
+    public Assessment assessOperatorUpload(String extractedText, Integer providerConfidence) {
+        Assessment scriptAssessment = assessText(extractedText);
+        if (scriptAssessment.requiresManualEntry()) {
+            return scriptAssessment;
+        }
+
+        if (providerConfidence == null) {
+            if (requireConfidenceForOperatorPrefill) {
+                return new Assessment(Decision.LOW_CONFIDENCE_MANUAL_ENTRY,
+                        scriptAssessment.detectedLanguage(), scriptAssessment.languageName(), false,
+                        "intake.ocr_low_confidence_manual_entry");
+            }
+            log.debug("OCR provider reported no confidence; allowing operator prefill with provenance "
+                    + "marking. Enable PaddleOCR for a measured signal.");
+            return scriptAssessment;
+        }
+
+        if (providerConfidence < minConfidenceForPrefill) {
             return new Assessment(Decision.LOW_CONFIDENCE_MANUAL_ENTRY,
                     scriptAssessment.detectedLanguage(), scriptAssessment.languageName(), false,
                     "intake.ocr_low_confidence_manual_entry");

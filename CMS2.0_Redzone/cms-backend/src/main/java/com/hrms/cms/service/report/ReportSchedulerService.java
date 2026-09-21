@@ -25,6 +25,7 @@ public class ReportSchedulerService {
     private final ReportDefinitionRepository reportDefRepo;
     private final QueryCompiler queryCompiler;
     private final ObjectMapper objectMapper;
+    private final ReportAccessService reportAccessService;
 
     @Scheduled(cron = "0 0 22 * * *")
     public void runSlot2200() { processSlot("22:00"); }
@@ -70,7 +71,21 @@ public class ReportSchedulerService {
             return;
         }
 
-        List<Map<String, Object>> results = queryCompiler.execute(query, "SENIOR", null);
+        // The scope is rebuilt from the schedule OWNER, not from the scheduler thread.
+        //
+        // This line used to read `execute(query, "SENIOR", null)`, which under the old signature was the
+        // unrestricted case: EVERY scheduled report ran across all departments regardless of who owned
+        // it, and then emailed its output off-site to a recipient address the requester chose. It was a
+        // standing bulk-PII export that bypassed the scoping the interactive endpoint applied. There is
+        // no bound HTTP request on a @Scheduled thread, so the scope has to be derived from stored state.
+        ReportScope scope = reportAccessService.resolveScopeForOwner(def.getOwnerUsername(), null);
+        if (!scope.canView()) {
+            log.warn("Skipping scheduled report {} — owner '{}' no longer has report access",
+                    def.getId(), def.getOwnerUsername());
+            return;
+        }
+
+        List<Map<String, Object>> results = queryCompiler.execute(query, scope);
 
         byte[] excelBytes = generateExcel(def.getSentence(), results);
 

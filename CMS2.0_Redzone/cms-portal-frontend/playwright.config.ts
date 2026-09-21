@@ -8,10 +8,11 @@ export default defineConfig({
   workers: 1,
   timeout: 60000,
   reporter: 'html',
+  outputDir: process.env['PW_OUTPUT_DIR'] || undefined,
   use: {
     baseURL: process.env['UI_BASE_URL'] || 'http://localhost:4200',
     trace: 'on-first-retry',
-    screenshot: 'only-on-failure',
+    screenshot: (process.env['PW_SCREENSHOT'] as 'on' | 'only-on-failure') || 'only-on-failure',
     actionTimeout: 15000,
   },
   projects: [

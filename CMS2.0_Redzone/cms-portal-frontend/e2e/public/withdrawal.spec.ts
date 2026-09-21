@@ -12,7 +12,7 @@ import { createTestComplaint, cleanupComplaint, advanceToStatus, loginCitizen, s
  */
 
 const API_BASE = process.env['API_BASE_URL'] || 'http://localhost:8082';
-const APP_BASE = process.env['APP_BASE_URL'] || 'http://localhost:4200';
+const APP_BASE = process.env['APP_BASE_URL'] || process.env['UI_BASE_URL'] || 'http://localhost:4200';
 
 // UST105: withdraw requires a verified citizen session owning the complaint,
 // so API-level tests must log in as the complainant's mobile number.

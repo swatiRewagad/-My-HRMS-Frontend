@@ -1107,3 +1107,62 @@ label.file-upload-browse-link {
 }
 
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── UST624: per-field OCR provenance ─────────────────────────────────────────────
+   A prefilled field must be distinguishable from one a person typed. Before this the
+   only signal was a single form-wide banner, which is dismissable — and dismissing it
+   left no indication anywhere that a scan had populated the form.
+
+   Colour is not the only carrier: the field also gets data-ocr-source, which is what
+   the Playwright specs assert and what a screen reader can be pointed at. A purely
+   chromatic cue would be invisible to a colour-blind operator verifying a legal record. */
+input.ocr-filled,
+textarea.ocr-filled,
+select.ocr-filled {
+  background-color: #fffbeb;
+  border-left: 3px solid #f59e0b;
+}
+
+input.ocr-overridden,
+textarea.ocr-overridden,
+select.ocr-overridden {
+  background-color: #f0fdf4;
+  border-left: 3px solid #22c55e;
+}
+
+/* UST778: prefill was refused (vernacular or low-confidence scan). Informational, not an
+   error — routing to manual entry is the correct outcome, so it must not look like a fault. */
+.ocr-manual-entry {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 12px;
+  padding: 10px 12px;
+  background: #eff6ff;
+  border: 1px solid #93c5fd;
+  border-radius: 6px;
+  color: #1e40af;
+  font-size: 13px;
+}
+
+/* A draft save that FAILED. The bug this replaces reported success on failure and swapped
+   the form for a confirmation page showing a complaint number that did not exist. */
+.draft-failed-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 12px;
+  padding: 10px 12px;
+  background: #fef2f2;
+  border: 1px solid #fca5a5;
+  border-radius: 6px;
+  color: #991b1b;
+  font-size: 13px;
+}
+
+.draft-saved-badge {
+  margin: 8px 12px;
+  padding: 6px 12px;
+  color: #166534;
+  font-size: 12px;
+}
