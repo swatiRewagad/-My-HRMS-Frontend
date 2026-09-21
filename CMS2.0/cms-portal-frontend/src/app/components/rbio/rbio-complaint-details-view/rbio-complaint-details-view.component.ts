@@ -500,11 +500,9 @@ export class RbioComplaintDetailsView implements OnInit {
   // Conciliation is the DO's own step; every other rung on the ladder only ever reads its outcome.
   conciliationEnabled = computed(() => {
     if (!this.isRbioDo() || this.userRole() !== 'DO') return false;
-    const action = this.workflowAction();
     const status = this.complaintStatus();
     const excludedStatuses = ['ADVISORY_COMPLIED', 'COMPLAINT_SETTLED', 'COMPLAINT_WITHDRAWN', 'COMPLAINT_REJECTED', 'AWARD_PASSED', 'OMBUDSMAN_DECISION'];
-    if (excludedStatuses.includes(status)) return false;
-    return action === 'MAINTAINABLE';
+    return !excludedStatuses.includes(status);
   });
   // ═══ Conciliation tab ═══
   readonly conciliationStatuses = [
@@ -2892,13 +2890,13 @@ private getStatusColor(status: string): string {
   }
 
   handleAttachmentsClick(): void {
-    this.attachmentsPanelOpen.set(!this.attachmentsPanelOpen());
-  
-    console.log('Sidebar clicked. Is open state:', this.attachmentsPanelOpen());
-  
-    if (this.attachmentsPanelOpen()) {
-      console.log('Sidebar is opening! Triggering GET API call...');
-      this.fetchAttachments(); 
+    const opening = !this.attachmentsPanelOpen();
+    this.attachmentsPanelOpen.set(opening);
+
+    if (opening) {
+      this.rightSidebarOpen.set(false);
+      this.showHistoryPanel.set(false);
+      this.fetchAttachments();
     }
   }
   
@@ -2993,11 +2991,12 @@ previewSidebarAttachment(file: any): void {
 }
 
 handleHistoryClick(): void {
-  // 1. Toggle visibility panel layout display open or closed
-  this.showHistoryPanel.set(!this.showHistoryPanel());
+  const opening = !this.showHistoryPanel();
+  this.showHistoryPanel.set(opening);
 
-  // 2. Automatically load data from backend server if panel has been opened
-  if (this.showHistoryPanel()) {
+  if (opening) {
+    this.rightSidebarOpen.set(false);
+    this.attachmentsPanelOpen.set(false);
     this.fetchComplaintHistory();
   }
 }
