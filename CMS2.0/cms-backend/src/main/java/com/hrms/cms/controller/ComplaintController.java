@@ -116,10 +116,12 @@ public class ComplaintController {
             // Lets the screen render read-only rather than let the officer fill a form the PUT will reject.
             summary.put("canEdit", rbioHierarchyService.canEdit(
                     (String) summary.get("assignedOfficer"), callerIdentity.username(), callerIdentity.roles()));
-            // Opening the complaint is what marks it read. Announced only once the flag actually flipped,
-            // and after markRead's own transaction has committed, so the index never runs ahead of the row.
-            rbioComplaintSummaryService.markRead(id)
-                    .ifPresent(complaintEventPublisher::publishComplaintRead);
+            // Opening the complaint is what marks it read, for this caller only. Announced only once the
+            // receipt was actually written, and after markRead's own transaction has committed, so the
+            // index never runs ahead of the row.
+            String reader = callerIdentity.username();
+            rbioComplaintSummaryService.markRead(id, reader)
+                    .ifPresent(complaintNumber -> complaintEventPublisher.publishComplaintRead(complaintNumber, reader));
             return ResponseEntity.ok(envelope(true, "OK", summary));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)

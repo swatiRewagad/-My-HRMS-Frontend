@@ -57,6 +57,9 @@ public class ComplaintFilterSearchService {
     @Value("${cms.search.max-result-window:10000}")
     private int maxResultWindow;
 
+    /** The dynamically-mapped keyword subfield; a term query against the analyzed parent matches nothing. */
+    private static final String READ_BY_KEYWORD = ComplaintDocumentNormalizer.FIELD_READ_BY + ".keyword";
+
     private static final List<String> CLOSED_STATUSES = List.of(
             COMPLAINT_CLOSED.name(), COMPLAINT_SETTLED.name(), COMPLAINT_WITHDRAWN.name(), COMPLAINT_REJECTED.name()
     );
@@ -99,7 +102,9 @@ public class ComplaintFilterSearchService {
         applyInlineSearch(qb, request.search());
 
         if (Boolean.TRUE.equals(request.unread())) {
-            qb.boolFilter("isRead", false);
+            // Unread to this officer, not unread to everyone: a mustNot rather than a term on a global
+            // flag, and it correctly matches documents with no readBy field at all.
+            qb.mustNotTerm(READ_BY_KEYWORD, officer.getUserName());
         }
         if (Boolean.TRUE.equals(request.withoutAttachments())) {
             qb.boolFilter("hasAttachments", false);
@@ -109,7 +114,7 @@ public class ComplaintFilterSearchService {
 
         Map<String, Aggregation> aggregations = aggregationService.buildAggregations(officer, aggregationBaseQuery);
 
-        return executeSearchWithNodalJoin(searchIntentQuery, aggregations, pageable);
+        return executeSearchWithNodalJoin(searchIntentQuery, aggregations, pageable, officer.getUserName());
     }
 
     /**
@@ -350,7 +355,8 @@ public class ComplaintFilterSearchService {
     }
 
     private ComplaintSearchResponse executeSearchWithNodalJoin(
-            Query openSearchQuery, Map<String, Aggregation> aggregations, Pageable requestedPageable) {
+            Query openSearchQuery, Map<String, Aggregation> aggregations, Pageable requestedPageable,
+            String callerUserName) {
 
         Pageable pageable = resolvePageable(requestedPageable);
         int from = (int) pageable.getOffset();
@@ -431,7 +437,7 @@ public class ComplaintFilterSearchService {
             Map<String, Map<String, Object>> nodalOfficerMap = fetchNodalOfficerRecords(complaintNumbers);
 
             List<ComplaintResponse> content = hits.stream()
-                    .map(hit -> mapHitWithNodalData(hit, nodalOfficerMap))
+                    .map(hit -> mapHitWithNodalData(hit, nodalOfficerMap, callerUserName))
                     .toList();
 
             PagedResponse<ComplaintResponse> pagedResponse = PagedResponse.<ComplaintResponse>builder()
@@ -546,7 +552,8 @@ public class ComplaintFilterSearchService {
     }
 
     @SuppressWarnings("unchecked")
-    private ComplaintResponse mapHitWithNodalData(Hit<Map> hit, Map<String, Map<String, Object>> nodalOfficerMap) {
+    private ComplaintResponse mapHitWithNodalData(Hit<Map> hit, Map<String, Map<String, Object>> nodalOfficerMap,
+                                                  String callerUserName) {
         Map<String, Object> source = hit.source();
         if (source == null) {
             return ComplaintResponse.builder().build();
@@ -588,10 +595,19 @@ public class ComplaintFilterSearchService {
                                 source.get("stageAssignedAt")
                         )
                 )
-                .isRead(toBool(source.get("isRead")))
+                // Whether this caller has read it, not whether anyone has: the grid greys a row out for
+                // the officer who opened it while it stays bold for everyone else.
+                .isRead(hasRead(source.get(ComplaintDocumentNormalizer.FIELD_READ_BY), callerUserName))
                 .slaColor(determineSlaColor(toStr(source.get("slaDeadline"))))
                 .statusColor(setStatusColor(toStr(source.get("status"))))
                 .build();
+    }
+
+    private boolean hasRead(Object readBy, String callerUserName) {
+        if (!(readBy instanceof Collection<?> readers) || callerUserName == null) {
+            return false;
+        }
+        return readers.stream().anyMatch(reader -> callerUserName.equals(toStr(reader)));
     }
 
     private String setComplaintColor(String status, Object createdAtObj, Object assignedAtObj) {
@@ -777,12 +793,6 @@ public class ComplaintFilterSearchService {
         } catch (NumberFormatException e) {
             return null;
         }
-    }
-
-    private Boolean toBool(Object value) {
-        if (value == null) return null;
-        if (value instanceof Boolean bool) return bool;
-        return Boolean.parseBoolean(value.toString());
     }
 
     private LocalDate toLocalDate(Object value) {

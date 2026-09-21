@@ -110,7 +110,10 @@ public class RegulatedEntity {
             Map.entry("Small Finance Bank", "Bank"),
             Map.entry("Payments Bank", "Bank"),
             Map.entry("NBFC", "NBFC"),
-            Map.entry("Payment Infrastructure", "Payment System Operator"));
+            Map.entry("Payment Infrastructure", "Payment System Operator"),
+            // Both wordings are in use as categories in REGULATED_ENTITIES and both belong to the same
+            // module; without this entry every PSO showed a blank Module Name.
+            Map.entry("Payment System Operator", "Payment System Operator"));
 
     /** Where the master's wording differs from the label the complaint screens offer. */
     private static final Map<String, String> CATEGORY_LABELS = Map.of(
@@ -125,5 +128,17 @@ public class RegulatedEntity {
 
     public static String entityCategoryFor(String entityType) {
         return entityType == null ? null : CATEGORY_LABELS.getOrDefault(entityType, entityType);
+    }
+
+    /**
+     * What the complaint screens show as Entity Type. {@code entityTypeDetail} is the NBFC
+     * sub-classification and nothing populates it for a bank, so reading it alone left the field blank
+     * for almost every entity. The master's own {@code entityType} wording is the entity's type at the
+     * level this schema actually records it, so it is the fallback — and it stays distinct from Entity
+     * Category, which shows the relabelled wording the complaint screens use.
+     */
+    public static String entityTypeDisplayFor(String entityType, String entityTypeDetail) {
+        if (entityTypeDetail != null && !entityTypeDetail.isBlank()) return entityTypeDetail;
+        return entityType == null || entityType.isBlank() ? null : entityType;
     }
 }

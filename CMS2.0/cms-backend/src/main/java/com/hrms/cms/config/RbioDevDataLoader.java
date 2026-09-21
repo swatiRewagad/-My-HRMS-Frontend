@@ -35,7 +35,8 @@ import java.util.Objects;
  * curl -X POST http://localhost:8091/cms-search/api/v1/search/complaints/reindex/allnodalofficers
  * </pre>
  * Both pull from cms-backend's own stream endpoints, so the database is the source of truth either
- * way. Without the reindex the details screen works fully and the dashboard grid stays empty.
+ * way. Without the reindex the details screen works fully and the dashboard grid stays empty. The
+ * complaint stream carries the seeded read receipts, so the reindex reproduces read state too.
  *
  * <p>The dashboard also scopes every search to the caller's own department and regional office, with
  * no role exemption, so a complaint whose {@code regionalOffice} does not equal the signed-in
@@ -73,6 +74,7 @@ public class RbioDevDataLoader implements CommandLineRunner {
     private final ComplaintCategoryRepository categoryRepository;
     private final NodalOfficerRecordService nodalOfficerRecordService;
     private final NodalOfficerRecordRepository nodalOfficerRecordRepository;
+    private final ComplaintReadReceiptRepository readReceiptRepository;
 
     /** The signed-in officer these complaints are assigned to. Drives the dashboard's "Assigned to me"
      *  and "Sent back to me" tabs, which filter on assignedOfficer. Defaults to the officer
@@ -84,6 +86,11 @@ public class RbioDevDataLoader implements CommandLineRunner {
      *  Office names come from OFFICE_CODE_MASTER, seeded by DataInitializer. */
     @Value("${cms.dev-data.regional-office:Mumbai-I}")
     private String regionalOffice;
+
+    /** A second officer, seeded only as a reader. Needs no Keycloak account: a read receipt is matched
+     *  on the username string alone, never on a JWT subject. */
+    @Value("${cms.dev-data.colleague:rbio_mum2}")
+    private String colleague;
 
     /**
      * One scenario per dashboard tab. {@code status} uses the UPPERCASE ComplaintStatus constant
@@ -116,6 +123,15 @@ public class RbioDevDataLoader implements CommandLineRunner {
                     "Mis-selling of insurance bundled with a fixed deposit",
                     "NOT_MAINTAINABLE", false, false, false));
 
+    /** Complaints {@code officer} has already opened, so their dashboard rows render read while the
+     *  rest stay unread — the styling difference is visible without opening anything first. */
+    private static final List<String> READ_BY_OFFICER = List.of("000002", "000005");
+
+    /** Opened by {@code colleague} and by nobody else. These must still render unread to
+     *  {@code officer} and still appear under the "Unread Only" toggle, which is precisely what a
+     *  single global flag on the complaint got wrong. */
+    private static final List<String> READ_BY_COLLEAGUE = List.of("000003", "000006");
+
     @Override
     public void run(String... args) {
         String firstNumber = NUMBER_PREFIX + SCENARIOS.get(0).suffix();
@@ -143,9 +159,11 @@ public class RbioDevDataLoader implements CommandLineRunner {
         }
 
         log.info("Seeded {} RBIO dev complaints ({}*) for officer '{}' at regional office '{}'. "
-                        + "The details screen works now; run the cms-search-service reindex to populate "
-                        + "the dashboard grid.",
-                SCENARIOS.size(), NUMBER_PREFIX, officer, regionalOffice);
+                        + "{} are already read by this officer, {} are read by '{}' only and so stay "
+                        + "unread here. The details screen works now; run the cms-search-service reindex "
+                        + "to populate the dashboard grid.",
+                SCENARIOS.size(), NUMBER_PREFIX, officer, regionalOffice,
+                READ_BY_OFFICER, READ_BY_COLLEAGUE, colleague);
     }
 
     /**
@@ -199,6 +217,7 @@ public class RbioDevDataLoader implements CommandLineRunner {
         saveTimeline(complaint, scenario);
         saveComments(complaintNumber);
         saveEmails(complaint, entity);
+        saveReadReceipts(complaint, scenario);
 
         if (scenario.withConciliation()) {
             saveConciliationMeeting(complaint, scenario);
@@ -268,10 +287,9 @@ public class RbioDevDataLoader implements CommandLineRunner {
         complaint.setSlaDeadline(LocalDateTime.now().plusDays(25));
         complaint.setSlaPriority("MEDIUM");
 
-        // Not @Builder.Default on the entity, so a builder would leave these null and the insert
-        // would fail on their NOT NULL constraints. Set explicitly rather than relying on the
-        // field initialisers, which only apply to the no-args constructor.
-        complaint.setIsRead(Boolean.FALSE);
+        // Not @Builder.Default on the entity, so a builder would leave this null and the insert
+        // would fail on its NOT NULL constraint. Set explicitly rather than relying on the field
+        // initialiser, which only applies to the no-args constructor.
         complaint.setHasAttachment(Boolean.FALSE);
 
         return complaintRepository.save(complaint);
@@ -503,6 +521,31 @@ public class RbioDevDataLoader implements CommandLineRunner {
                 .complaintNumber(complaint.getComplaintNumber())
                 .sentAt(now.minusDays(4))
                 .receivedAt(now.minusDays(4))
+                .build());
+    }
+
+    private void saveReadReceipts(Complaint complaint, Scenario scenario) {
+        if (READ_BY_OFFICER.contains(scenario.suffix())) {
+            saveReadReceipt(complaint, officer);
+        }
+        if (!READ_BY_COLLEAGUE.contains(scenario.suffix())) {
+            return;
+        }
+        if (colleague.equals(officer)) {
+            // Both properties resolved to the same person, so these receipts would mark the complaints
+            // read for the signed-in officer and the scenario they exist to show would disappear.
+            log.warn("cms.dev-data.colleague equals cms.dev-data.officer ('{}'), so no complaint will be "
+                    + "left read-by-a-colleague-only. Set them to different usernames.", officer);
+            return;
+        }
+        saveReadReceipt(complaint, colleague);
+    }
+
+    private void saveReadReceipt(Complaint complaint, String username) {
+        readReceiptRepository.save(ComplaintReadReceipt.builder()
+                .complaintId(complaint.getId())
+                .username(username)
+                .readAt(LocalDateTime.now().minusDays(1))
                 .build());
     }
 

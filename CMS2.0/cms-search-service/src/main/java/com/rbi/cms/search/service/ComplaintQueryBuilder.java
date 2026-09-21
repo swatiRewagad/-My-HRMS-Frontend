@@ -85,6 +85,13 @@ public class ComplaintQueryBuilder {
         return this;
     }
 
+    public ComplaintQueryBuilder mustNotTerm(String field, String value) {
+        if (!hasValue(value)) return this;
+        mustNotQueries.add(Query.of(q -> q
+                .term(t -> t.field(field).value(FieldValue.of(value)))));
+        return this;
+    }
+
     public ComplaintQueryBuilder mustNotTerms(String field, List<String> values) {
         if (values == null || values.isEmpty()) return this;
         List<FieldValue> fieldValues = values.stream()

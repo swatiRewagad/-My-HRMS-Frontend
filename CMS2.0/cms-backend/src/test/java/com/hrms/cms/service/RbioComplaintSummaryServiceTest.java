@@ -4,12 +4,14 @@ import com.hrms.cms.entity.Complaint;
 import com.hrms.cms.entity.ComplaintAdditionalDetail;
 import com.hrms.cms.entity.ComplaintEligibilityAnswer;
 import com.hrms.cms.entity.ComplaintRbioFormData;
+import com.hrms.cms.entity.ComplaintReadReceipt;
 import com.hrms.cms.entity.EmailDraft;
 import com.hrms.cms.entity.RegulatedEntity;
 import com.hrms.cms.repository.ComplaintAdditionalDetailRepository;
 import com.hrms.cms.repository.ComplaintCategoryRepository;
 import com.hrms.cms.repository.ComplaintEligibilityAnswerRepository;
 import com.hrms.cms.repository.ComplaintRbioFormDataRepository;
+import com.hrms.cms.repository.ComplaintReadReceiptRepository;
 import com.hrms.cms.repository.ComplaintRepository;
 import com.hrms.cms.repository.RegulatedEntityRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -46,6 +48,7 @@ class RbioComplaintSummaryServiceTest {
     @Mock private ComplaintEligibilityAnswerRepository eligibilityRepository;
     @Mock private ComplaintAdditionalDetailRepository additionalDetailRepository;
     @Mock private ComplaintRbioFormDataRepository formDataRepository;
+    @Mock private ComplaintReadReceiptRepository readReceiptRepository;
     @Mock private RegulatedEntityRepository regulatedEntityRepository;
     @Mock private ComplaintCategoryRepository categoryRepository;
     @Mock private RbioSlaService rbioSlaService;
@@ -462,33 +465,51 @@ class RbioComplaintSummaryServiceTest {
     class MarkRead {
 
         @Test
-        void flipsTheFlagAndReturnsTheComplaintNumberToAnnounce() {
-            complaint.setIsRead(Boolean.FALSE);
+        void recordsAReceiptForTheReaderAndReturnsTheComplaintNumberToAnnounce() {
             stubComplaint();
 
-            assertThat(service.markRead(92L)).contains("CMS-PNB-1234");
+            assertThat(service.markRead(92L, "officer.a")).contains("CMS-PNB-1234");
 
-            assertThat(complaint.getIsRead()).isTrue();
-            verify(complaintRepository).save(complaint);
+            ArgumentCaptor<ComplaintReadReceipt> captor = ArgumentCaptor.forClass(ComplaintReadReceipt.class);
+            verify(readReceiptRepository).save(captor.capture());
+            assertThat(captor.getValue().getComplaintId()).isEqualTo(92L);
+            assertThat(captor.getValue().getUsername()).isEqualTo("officer.a");
         }
 
         @Test
-        void reopeningAnAlreadyReadComplaintNeitherWritesNorAnnounces() {
-            complaint.setIsRead(Boolean.TRUE);
+        void reopeningAComplaintThisOfficerAlreadyReadNeitherWritesNorAnnounces() {
             stubComplaint();
+            when(readReceiptRepository.existsByComplaintIdAndUsername(92L, "officer.a")).thenReturn(true);
 
-            assertThat(service.markRead(92L)).isEmpty();
+            assertThat(service.markRead(92L, "officer.a")).isEmpty();
 
-            verify(complaintRepository, never()).save(any());
+            verify(readReceiptRepository, never()).save(any());
+        }
+
+        @Test
+        void aColleaguesReadDoesNotMarkItReadForThisOfficer() {
+            stubComplaint();
+            when(readReceiptRepository.existsByComplaintIdAndUsername(92L, "officer.b")).thenReturn(false);
+
+            assertThat(service.markRead(92L, "officer.b")).contains("CMS-PNB-1234");
+
+            verify(readReceiptRepository).save(any());
         }
 
         @Test
         void treatsAMissingComplaintAsNothingToMark() {
             when(complaintRepository.findById(404L)).thenReturn(Optional.empty());
 
-            assertThat(service.markRead(404L)).isEmpty();
+            assertThat(service.markRead(404L, "officer.a")).isEmpty();
 
-            verify(complaintRepository, never()).save(any());
+            verify(readReceiptRepository, never()).save(any());
+        }
+
+        @Test
+        void anUnidentifiedCallerRecordsNothing() {
+            assertThat(service.markRead(92L, null)).isEmpty();
+
+            verify(readReceiptRepository, never()).save(any());
         }
     }
 

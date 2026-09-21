@@ -5,6 +5,7 @@ import lombok.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Entity
 @Table(name = "COMPLAINTS", indexes = {
@@ -302,8 +303,14 @@ public class Complaint {
     @Column(name = "regional_office", length = 100)
     private String regionalOffice;
 
-    @Column(name = "is_read", nullable = false)
-    private Boolean isRead = false;
+    /**
+     * Usernames of the officers who have opened this complaint, read from COMPLAINT_READ_RECEIPTS.
+     * Not a mapped column, and populated only on the reindex stream: the search index holds read state
+     * per officer, so a full reindex that did not carry the receipts would mark every complaint unread
+     * for everyone.
+     */
+    @Transient
+    private List<String> readBy;
 
     @Column(name = "has_attachment", nullable = false)
     private Boolean hasAttachment = false;

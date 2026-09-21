@@ -30,6 +30,7 @@ import static org.mockito.Mockito.mock;
 class RbioDevDataLoaderTest {
 
     private static final String OFFICER = "rbio_mum1";
+    private static final String COLLEAGUE = "rbio_mum2";
     private static final String REGIONAL_OFFICE = "Mumbai-I";
 
     @Autowired private ComplaintRepository complaintRepository;
@@ -44,6 +45,7 @@ class RbioDevDataLoaderTest {
     @Autowired private RegulatedEntityRepository regulatedEntityRepository;
     @Autowired private ComplaintCategoryRepository categoryRepository;
     @Autowired private NodalOfficerRecordRepository nodalOfficerRecordRepository;
+    @Autowired private ComplaintReadReceiptRepository readReceiptRepository;
 
     private RbioDevDataLoader loader;
 
@@ -87,9 +89,11 @@ class RbioDevDataLoaderTest {
                 regulatedEntityRepository,
                 categoryRepository,
                 nodalOfficerRecordService,
-                nodalOfficerRecordRepository);
+                nodalOfficerRecordRepository,
+                readReceiptRepository);
 
         ReflectionTestUtils.setField(loader, "officer", OFFICER);
+        ReflectionTestUtils.setField(loader, "colleague", COLLEAGUE);
         ReflectionTestUtils.setField(loader, "regionalOffice", REGIONAL_OFFICE);
     }
 
@@ -247,6 +251,31 @@ class RbioDevDataLoaderTest {
         }
 
         @Test
+        @DisplayName("leaves some complaints read by the officer, some read only by a colleague")
+        void seedsReadReceiptsForBothOfficers() {
+            List<ComplaintReadReceipt> receipts = readReceiptRepository.findAll();
+
+            assertThat(readersOf("N2526DEV000002")).containsExactly(OFFICER);
+            assertThat(readersOf("N2526DEV000005")).containsExactly(OFFICER);
+            // The case a single global flag on the complaint got wrong: a colleague has opened these,
+            // so they must carry a receipt for the colleague and none for the signed-in officer, who
+            // should still see them as unread.
+            assertThat(readersOf("N2526DEV000003")).containsExactly(COLLEAGUE);
+            assertThat(readersOf("N2526DEV000006")).containsExactly(COLLEAGUE);
+            assertThat(readersOf("N2526DEV000001")).isEmpty();
+
+            assertThat(receipts).hasSize(4);
+            assertThat(receipts).allSatisfy(r -> assertThat(r.getReadAt()).isNotNull());
+        }
+
+        private List<String> readersOf(String complaintNumber) {
+            Long id = complaintRepository.findByComplaintNumber(complaintNumber).orElseThrow().getId();
+            return readReceiptRepository.findByComplaintIdIn(List.of(id)).stream()
+                    .map(ComplaintReadReceipt::getUsername)
+                    .toList();
+        }
+
+        @Test
         @DisplayName("leaves regulated entities in other departments alone")
         void leavesOtherDepartmentsAlone() {
             RegulatedEntity cepc = regulatedEntityRepository.findAll().stream()
@@ -263,12 +292,16 @@ class RbioDevDataLoaderTest {
             long complaints = complaintRepository.count();
             long comments = commentRepository.count();
             long records = nodalOfficerRecordRepository.count();
+            long receipts = readReceiptRepository.count();
 
             loader.run();
 
             assertThat(complaintRepository.count()).isEqualTo(complaints);
             assertThat(commentRepository.count()).isEqualTo(comments);
             assertThat(nodalOfficerRecordRepository.count()).isEqualTo(records);
+            // Nothing in the schema stops duplicate receipts — the table deliberately has no unique
+            // constraint — so only this assertion catches a restart doubling them up.
+            assertThat(readReceiptRepository.count()).isEqualTo(receipts);
         }
     }
 

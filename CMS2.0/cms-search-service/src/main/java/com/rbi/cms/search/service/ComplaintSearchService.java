@@ -2,6 +2,7 @@ package com.rbi.cms.search.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.opensearch.client.json.JsonData;
 import org.opensearch.client.opensearch.OpenSearchClient;
 import org.opensearch.client.opensearch.core.BulkRequest;
 import org.opensearch.client.opensearch.core.BulkResponse;
@@ -54,11 +55,6 @@ public class ComplaintSearchService {
      */
     public void indexComplaint(String complaintId, Map<String, Object> document) throws IOException {
         Map<String, Object> doc = documentNormalizer.normalize(document);
-        // A newly indexed complaint is unread. Defaulted here rather than in the normalizer because
-        // partialUpdate shares it, and writing a default there would silently un-read every complaint
-        // whose status later changes. The dashboard's "Unread Only" filter is a term match on false, so
-        // a document missing the field entirely would never appear in it.
-        doc.putIfAbsent(ComplaintDocumentNormalizer.FIELD_IS_READ, Boolean.FALSE);
         IndexRequest<Map<String, Object>> request = IndexRequest.of(b -> b
                 .index(COMPLAINTS_INDEX)
                 .id(complaintId)
@@ -82,6 +78,32 @@ public class ComplaintSearchService {
                         .build();
         openSearchClient.update(request, Map.class);
         log.info("Partially updated complaint {} with fields {}", complaintId, doc.keySet());
+    }
+
+    /**
+     * Adds one officer to the complaint's {@code readBy} list, leaving every other reader intact.
+     *
+     * <p>A script rather than {@link #partialUpdate}: a document merge replaces an array wholesale, so
+     * sending the single new reader would erase everyone who had read it before. The upsert carries the
+     * complaint number because a complaint can be opened before it has ever been indexed, and a document
+     * holding only a reader list gives the grid nothing to key or filter on.
+     */
+    public void recordRead(String complaintId, String username) throws IOException {
+        UpdateRequest<Map, Map<String, Object>> request =
+                new UpdateRequest.Builder<Map, Map<String, Object>>()
+                        .index(COMPLAINTS_INDEX)
+                        .id(complaintId)
+                        .script(s -> s.inline(i -> i
+                                .lang("painless")
+                                .source("if (ctx._source.readBy == null) { ctx._source.readBy = [params.user] } "
+                                        + "else if (!ctx._source.readBy.contains(params.user)) { ctx._source.readBy.add(params.user) }")
+                                .params("user", JsonData.of(username))))
+                        .upsert(Map.of(
+                                ComplaintDocumentNormalizer.FIELD_COMPLAINT_NUMBER, complaintId,
+                                ComplaintDocumentNormalizer.FIELD_READ_BY, List.of(username)))
+                        .build();
+        openSearchClient.update(request, Map.class);
+        log.info("Recorded {} as a reader of complaint {}", username, complaintId);
     }
 
     public Map<String, Object> reindexAllComplaints() {

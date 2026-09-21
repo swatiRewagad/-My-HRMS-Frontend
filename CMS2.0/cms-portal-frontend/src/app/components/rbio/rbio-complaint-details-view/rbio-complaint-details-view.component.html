@@ -740,38 +740,106 @@
               </div>
             </div>
 
+            @if (forwardFieldErrors()['target']) {
+              <span class="field-error">{{ forwardFieldErrors()['target'] }}</span>
+            }
+
             @if (forwardTarget() === 'REGULATORY_BODIES') {
               <div class="form-row-2col">
-                <div class="form-group">
-                  <label>Name of Regulator</label>
-                  <div class="deo-select-wrapper">
-                    <input type="text" [(ngModel)]="forwardRegulatorName" placeholder="Search" autocomplete="off" />
-                    <i class="pi pi-search"></i>
+                <div class="form-group entity-search-group">
+                  <label>Name of Regulator <span class="required">*</span></label>
+                  <div class="entity-search-wrapper">
+                    <input type="text"
+                           [ngModel]="forwardRegulatorName"
+                           (ngModelChange)="onRegulatorSearchInput($event)"
+                           (focus)="openRegulatorDropdown()"
+                           (blur)="onRegulatorBlur()"
+                           placeholder="Search regulators"
+                           autocomplete="off" />
+                    <i class="pi entity-search-icon"
+                       [class.pi-search]="!regulatorSearchLoading()"
+                       [class.pi-spinner]="regulatorSearchLoading()"
+                       [class.pi-spin]="regulatorSearchLoading()"></i>
                   </div>
+                  @if (showRegulatorDropdown() && !regulatorSearchLoading() && regulatorResults().length === 0) {
+                    <ul class="entity-dropdown">
+                      <li class="entity-dropdown-empty">No regulator matches that name</li>
+                    </ul>
+                  }
+                  @if (showRegulatorDropdown() && regulatorResults().length > 0) {
+                    <ul class="entity-dropdown">
+                      @for (regulator of regulatorResults(); track regulator.id) {
+                        <!-- mousedown, not click: blur fires first and closes the list. -->
+                        <li (mousedown)="selectRegulator(regulator)">
+                          <span class="entity-name">{{ regulator.name }}</span>
+                          <span class="entity-dept">{{ regulator.code }}</span>
+                        </li>
+                      }
+                    </ul>
+                  }
+                  @if (forwardFieldErrors()['regulator']) {
+                    <span class="field-error">{{ forwardFieldErrors()['regulator'] }}</span>
+                  }
                 </div>
                 <div class="form-group">
-                  <label>Email id of the Regulator</label>
-                  <input type="text" [(ngModel)]="forwardRegulatorEmail" placeholder="Enter a value" />
+                  <label>Email id of the Regulator <span class="required">*</span></label>
+                  <!-- Filled from the picked master row, editable so a stale address can be corrected. -->
+                  <input type="email" [(ngModel)]="forwardRegulatorEmail" placeholder="Select a regulator above" />
+                  @if (forwardFieldErrors()['regulatorEmail']) {
+                    <span class="field-error">{{ forwardFieldErrors()['regulatorEmail'] }}</span>
+                  }
                 </div>
               </div>
             } @else if (forwardTarget() === 'RBI_DEPARTMENT') {
               <div class="form-row-2col">
-                <div class="form-group">
-                  <label>Name of Department</label>
-                  <div class="deo-select-wrapper">
-                    <input type="text" [(ngModel)]="forwardDepartmentName" placeholder="Search" autocomplete="off" />
-                    <i class="pi pi-search"></i>
+                <div class="form-group entity-search-group">
+                  <label>Name of Department <span class="required">*</span></label>
+                  <div class="entity-search-wrapper">
+                    <input type="text"
+                           [ngModel]="forwardDepartmentName"
+                           (ngModelChange)="onDepartmentSearchInput($event)"
+                           (focus)="openDepartmentDropdown()"
+                           (blur)="onDepartmentBlur()"
+                           placeholder="Search RBI departments"
+                           autocomplete="off" />
+                    <i class="pi entity-search-icon"
+                       [class.pi-search]="!departmentSearchLoading()"
+                       [class.pi-spinner]="departmentSearchLoading()"
+                       [class.pi-spin]="departmentSearchLoading()"></i>
                   </div>
+                  @if (showDepartmentDropdown() && !departmentSearchLoading() && departmentResults().length === 0) {
+                    <ul class="entity-dropdown">
+                      <li class="entity-dropdown-empty">No department matches that name</li>
+                    </ul>
+                  }
+                  @if (showDepartmentDropdown() && departmentResults().length > 0) {
+                    <ul class="entity-dropdown">
+                      @for (department of departmentResults(); track department.id) {
+                        <!-- mousedown, not click: blur fires first and closes the list. -->
+                        <li (mousedown)="selectDepartment(department)">
+                          <span class="entity-name">{{ department.name }}</span>
+                          <span class="entity-dept">{{ department.code }}</span>
+                        </li>
+                      }
+                    </ul>
+                  }
+                  @if (forwardFieldErrors()['department']) {
+                    <span class="field-error">{{ forwardFieldErrors()['department'] }}</span>
+                  }
                 </div>
                 <div class="form-group">
-                  <label>Email id of the Department</label>
-                  <input type="text" [(ngModel)]="forwardDepartmentEmail" placeholder="Enter a value" />
+                  <label>Email id of the Department <span class="required">*</span></label>
+                  <!-- Filled from the picked master row, editable so a stale address can be corrected. -->
+                  <input type="email" [(ngModel)]="forwardDepartmentEmail" placeholder="Select a department above" />
+                  @if (forwardFieldErrors()['departmentEmail']) {
+                    <span class="field-error">{{ forwardFieldErrors()['departmentEmail'] }}</span>
+                  }
                 </div>
               </div>
             } @else if (forwardTarget() === 'OFFICE') {
               <div class="form-row-2col">
                 <div class="form-group">
-                  <label>Name of Office</label>
+                  <label>Name of Office <span class="required">*</span></label>
                   <select [ngModel]="forwardOfficeCode" (ngModelChange)="onForwardOfficeSelected($event)">
                     <option value="" disabled selected>Select an office</option>
                     @for (office of officeList(); track office.officeCode) {
@@ -780,6 +848,9 @@
                   </select>
                   @if (officeList().length === 0) {
                     <span class="field-hint">Loading offices…</span>
+                  }
+                  @if (forwardFieldErrors()['office']) {
+                    <span class="field-error">{{ forwardFieldErrors()['office'] }}</span>
                   }
                 </div>
               </div>
@@ -1057,7 +1128,7 @@
                 <p-button severity="primary" size="small" (onClick)="updateComplaint()" [loading]="saving()">
                   <i class="pi pi-check"></i> Update
                 </p-button>
-              } @else {
+              } @else if (!isReadOnlyViewer()) {
                 <p-button [outlined]="true" class="editButton" severity="secondary" size="small" (onClick)="enterEditMode()">
                   <i class="pi pi-pencil "></i> Edit
                 </p-button>

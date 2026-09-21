@@ -4,12 +4,14 @@ import com.hrms.cms.entity.Complaint;
 import com.hrms.cms.entity.ComplaintAdditionalDetail;
 import com.hrms.cms.entity.ComplaintEligibilityAnswer;
 import com.hrms.cms.entity.ComplaintRbioFormData;
+import com.hrms.cms.entity.ComplaintReadReceipt;
 import com.hrms.cms.entity.EmailDraft;
 import com.hrms.cms.entity.RegulatedEntity;
 import com.hrms.cms.repository.ComplaintAdditionalDetailRepository;
 import com.hrms.cms.repository.ComplaintCategoryRepository;
 import com.hrms.cms.repository.ComplaintEligibilityAnswerRepository;
 import com.hrms.cms.repository.ComplaintRbioFormDataRepository;
+import com.hrms.cms.repository.ComplaintReadReceiptRepository;
 import com.hrms.cms.repository.ComplaintRepository;
 import com.hrms.cms.repository.RegulatedEntityRepository;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +24,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.Collection;
 import java.util.LinkedHashMap;
@@ -47,6 +50,7 @@ public class RbioComplaintSummaryService {
     private final ComplaintEligibilityAnswerRepository eligibilityRepository;
     private final ComplaintAdditionalDetailRepository additionalDetailRepository;
     private final ComplaintRbioFormDataRepository formDataRepository;
+    private final ComplaintReadReceiptRepository readReceiptRepository;
     private final RegulatedEntityRepository regulatedEntityRepository;
     private final ComplaintCategoryRepository categoryRepository;
     private final RbioSlaService rbioSlaService;
@@ -162,9 +166,12 @@ public class RbioComplaintSummaryService {
         m.put("entityCategory", c.getEntityCategory() != null
                 ? c.getEntityCategory()
                 : RegulatedEntity.entityCategoryFor(masterCategory));
-        // The NBFC sub-classification, which belongs to the entity and not to the complaint — so it is
-        // read back from the master and never persisted from the payload.
-        m.put("entityType", re != null ? re.getEntityTypeDetail() : null);
+        // Belongs to the entity and not to the complaint, so it is read back from the master and never
+        // persisted from the payload. Falls back to the master's category wording because nothing
+        // populates the NBFC sub-classification for a bank.
+        m.put("entityType", re != null
+                ? RegulatedEntity.entityTypeDisplayFor(re.getEntityType(), re.getEntityTypeDetail())
+                : null);
         m.put("bsrCode", c.getEntityBsrCode());
         m.put("pincode", c.getEntityPincode());
         m.put("country", fd != null ? fd.getEntityCountry() : null);
@@ -255,21 +262,30 @@ public class RbioComplaintSummaryService {
     // ---------------------------------------------------------------- write
 
     /**
-     * Flips the unread flag the dashboard grid styles its rows by, once a complaint has been opened.
-     * Kept out of {@link #getSummary} so that read stays read-only, and a no-op once already read so
-     * reopening a complaint neither writes nor re-announces on every view.
+     * Records that this officer has opened the complaint, which is what the dashboard grid styles its
+     * rows by. Kept out of {@link #getSummary} so that read stays read-only, and a no-op once this
+     * officer has already read it so reopening neither writes nor re-announces on every view.
      *
-     * @return the complaint number when this call was the one that flipped the flag, so the caller can
-     *         publish the change to the search index after the transaction commits; empty otherwise.
+     * <p>Per officer, not per complaint: the grid must keep showing a complaint as unread to everyone
+     * who has not opened it themselves, however many colleagues have.
+     *
+     * @return the complaint number when this call was the one that recorded the read, so the caller can
+     *         publish it to the search index after the transaction commits; empty otherwise.
      */
     @Transactional
     @CacheEvict(value = "dashboard", allEntries = true)
-    public Optional<String> markRead(Long complaintId) {
+    public Optional<String> markRead(Long complaintId, String username) {
+        if (username == null || username.isBlank()) {
+            return Optional.empty();
+        }
         return complaintRepository.findById(complaintId)
-                .filter(c -> !Boolean.TRUE.equals(c.getIsRead()))
+                .filter(c -> !readReceiptRepository.existsByComplaintIdAndUsername(complaintId, username))
                 .map(c -> {
-                    c.setIsRead(Boolean.TRUE);
-                    complaintRepository.save(c);
+                    readReceiptRepository.save(ComplaintReadReceipt.builder()
+                            .complaintId(complaintId)
+                            .username(username)
+                            .readAt(LocalDateTime.now())
+                            .build());
                     return c.getComplaintNumber();
                 });
     }
