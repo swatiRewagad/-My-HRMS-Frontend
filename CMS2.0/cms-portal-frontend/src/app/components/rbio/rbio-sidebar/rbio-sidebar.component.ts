@@ -1,4 +1,4 @@
-import { Component, signal } from '@angular/core';
+import { Component, input, signal, effect } from '@angular/core';
 import { NgClass } from '@angular/common';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { Tooltip } from 'primeng/tooltip';
@@ -53,7 +53,14 @@ export class RbioSidebarComponent {
     }
   ];
 
+  initialCollapsed = input(false);
   isCollapsed = signal(false);
+
+  constructor() {
+    effect(() => {
+      this.isCollapsed.set(this.initialCollapsed());
+    });
+  }
 
   toggleSidebar(): void {
     this.isCollapsed.update(v => !v);
