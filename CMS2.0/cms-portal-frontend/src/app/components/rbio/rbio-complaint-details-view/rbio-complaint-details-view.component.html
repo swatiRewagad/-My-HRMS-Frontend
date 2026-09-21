@@ -1232,24 +1232,14 @@
                     </div>
                   </div>
                 </div>
-                <div>
-                  @if (editMode()) {
-                      <label class="">
-                          <span class="" [class.active]="true">
-                            <input type="checkbox" [checked]="true"/>
-                            <span class=""></span>
-                          </span>
-                          Mark all as Eligible
-                      </label>
-                    } @else {
-                      <label class="">
-                          <span class="" [class.active]="true">
-                            <input type="checkbox" [checked]="true" disabled/>
-                            <span class=""></span>
-                          </span>
-                          Mark all as Eligible
-                      </label>
-                    }
+                <div class="eligibility-toggle">
+                  <label class="toggle-switch">
+                    <input type="checkbox" [(ngModel)]="markAllEligible"
+                           (ngModelChange)="onMarkAllEligible()"
+                           [disabled]="!editMode()" />
+                    <span class="toggle-slider"></span>
+                  </label>
+                  <span class="toggle-label">Mark all as eligible</span>
                 </div>
                 <div class="eligibility-questions" [class.readonly]="!editMode()">
                   @for (q of eligibilityQuestions; track q.key) {
@@ -2270,7 +2260,7 @@
               <div class="assessment-decision">
                 <label class="assessment-checkbox" [class.disabled]="isReadOnlyViewer()">
                   <input type="checkbox" [(ngModel)]="sendToDeputy" [disabled]="isReadOnlyViewer()" />
-                  <span>Do you want to add and send <strong>Deputy Ombudsman Decision</strong> to Dealing Officer?</span>
+                  <span>Do you want to add and send <strong>{{ decisionLabel }}</strong> to Dealing Officer?</span>
                 </label>
               </div>
             }
@@ -2279,7 +2269,7 @@
             @if (sendToDeputy && userRole() !== 'DO') {
               <div class="deputy-decision-section">
                 <div class="form-group">
-                  <label>Deputy Ombudsman Decision</label>
+                  <label>{{ decisionLabel }}</label>
                   <div class="select-with-avatar">
                     <select [(ngModel)]="deputyOmbudsmanDecision">
                       <option value="NON_MAINTAINABLE">Non Maintainable</option>
@@ -2291,7 +2281,7 @@
                 </div>
 
                 <div class="form-group">
-                  <label>Deputy Ombudsman Decision Comments <i class="pi pi-expand"></i></label>
+                  <label>{{ decisionLabel }} Comments <i class="pi pi-expand"></i></label>
                   <div class="textarea-with-speech">
                     <textarea [(ngModel)]="deputyOmbudsmanComments" rows="3" placeholder="Enter text here"></textarea>
                     <app-speech-button (transcription)="deputyOmbudsmanComments = deputyOmbudsmanComments + ' ' + $event"></app-speech-button>
@@ -3525,7 +3515,7 @@
           <div class="confirmation-text">
             <strong>Confirmation</strong>
             @if (isOmbudsmanDecisionDialog) {
-              <p>Are you sure you want to <strong>send the request to {{ approvalTargetLabel }} with Ombudsman Decision</strong> ?</p>
+              <p>Are you sure you want to <strong>send the request to {{ approvalTargetLabel }} with {{ decisionLabel }}</strong> ?</p>
             } @else {
               <p>Are you sure you want to <strong>send the request to {{ approvalTargetLabel }}</strong> ?</p>
             }

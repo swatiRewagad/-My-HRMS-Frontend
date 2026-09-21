@@ -1982,9 +1982,13 @@ private getStatusColor(status: string): string {
     }
   }
 
+  get decisionLabel(): string {
+    return this.userRole() === 'OMBUDSMAN' ? 'Ombudsman Decision' : 'Deputy Ombudsman Decision';
+  }
+
   get approvalStatusLabel(): string {
     switch (this.approvalTarget()) {
-      case 'DEALING_OFFICER': return 'Deputy Ombudsman Decision';
+      case 'DEALING_OFFICER': return this.decisionLabel;
       case 'REVIEWER': return 'Sent to RBIO Reviewer';
       case 'DEPUTY_OMBUDSMAN': return 'Sent to Deputy Ombudsman';
       case 'OMBUDSMAN': return 'Sent to Ombudsman';
