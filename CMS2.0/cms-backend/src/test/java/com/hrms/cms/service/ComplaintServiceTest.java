@@ -47,6 +47,7 @@ class ComplaintServiceTest {
     @Mock private ComplaintEligibilityAnswerRepository eligibilityAnswerRepository;
     @Mock private ComplaintAdditionalDetailRepository additionalDetailRepository;
     @Mock private ComplaintRepresentativeRepository representativeRepository;
+    @Mock private OfficerDirectoryService officerDirectoryService;
     @Spy private ObjectMapper objectMapper = new ObjectMapper();
 
     @InjectMocks

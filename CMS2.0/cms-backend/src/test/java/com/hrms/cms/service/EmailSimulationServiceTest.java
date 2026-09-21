@@ -2,6 +2,12 @@ package com.hrms.cms.service;
 
 import com.hrms.cms.dto.EmailReplyWithFormRequest;
 import com.hrms.cms.dto.IncomingEmailRequest;
+import com.hrms.cms.dto.simulation.EmailStatsResponse;
+import com.hrms.cms.dto.simulation.EmailThreadResponse;
+import com.hrms.cms.dto.simulation.EmailThreadSummary;
+import com.hrms.cms.dto.simulation.FormFieldDescriptor;
+import com.hrms.cms.dto.simulation.FormTemplateResponse;
+import com.hrms.cms.dto.simulation.SimulatedEmailResponse;
 import com.hrms.cms.entity.Complaint;
 import com.hrms.cms.entity.ComplaintTimeline;
 import com.hrms.cms.entity.SimulatedEmail;
@@ -52,12 +58,14 @@ class EmailSimulationServiceTest {
             when(emailRepository.save(any(SimulatedEmail.class))).thenAnswer(inv -> inv.getArgument(0));
             when(timelineRepository.save(any(ComplaintTimeline.class))).thenAnswer(inv -> inv.getArgument(0));
 
-            Map<String, Object> result = emailService.receiveEmail(request);
+            EmailThreadResponse result = emailService.receiveEmail(request);
 
-            assertThat(result).containsKey("threadId");
-            assertThat(result).containsKey("complaintNumber");
-            assertThat(result.get("status")).isEqualTo("AWAITING_FORM");
-            assertThat((List<?>) result.get("emails")).hasSize(2);
+            assertThat(result.getThreadId()).isNotBlank();
+            assertThat(result.getComplaintNumber()).isNotBlank();
+            assertThat(result.getStatus()).isEqualTo("AWAITING_FORM");
+            assertThat(result.getFromEmail()).isEqualTo("user@example.com");
+            assertThat(result.getSubject()).isEqualTo("ATM Issue");
+            assertThat(result.getEmails()).hasSize(2);
 
             verify(complaintRepository).save(argThat(c ->
                     "user@example.com".equals(c.getComplainantEmail()) &&
@@ -104,9 +112,9 @@ class EmailSimulationServiceTest {
             when(emailRepository.save(any(SimulatedEmail.class))).thenAnswer(inv -> inv.getArgument(0));
             when(timelineRepository.save(any(ComplaintTimeline.class))).thenAnswer(inv -> inv.getArgument(0));
 
-            Map<String, Object> result = emailService.receiveEmail(request);
+            EmailThreadResponse result = emailService.receiveEmail(request);
 
-            String complaintNumber = (String) result.get("complaintNumber");
+            String complaintNumber = result.getComplaintNumber();
             assertThat(complaintNumber).startsWith("CMS-");
             assertThat(complaintNumber).hasSize(19); // CMS-yyyyMMdd-XXXXXX
         }
@@ -199,10 +207,11 @@ class EmailSimulationServiceTest {
             when(emailRepository.save(any(SimulatedEmail.class))).thenAnswer(inv -> inv.getArgument(0));
             when(timelineRepository.save(any(ComplaintTimeline.class))).thenAnswer(inv -> inv.getArgument(0));
 
-            Map<String, Object> result = emailService.receiveFormReply(request);
+            EmailThreadResponse result = emailService.receiveFormReply(request);
 
-            assertThat(result.get("status")).isEqualTo("COMPLETED");
-            assertThat(result.get("complaintNumber")).isEqualTo("CMS-20260515-ABC123");
+            assertThat(result.getStatus()).isEqualTo("COMPLETED");
+            assertThat(result.getComplaintNumber()).isEqualTo("CMS-20260515-ABC123");
+            assertThat(result.getFromEmail()).isEqualTo("user@test.com");
 
             verify(complaintRepository).save(argThat(c ->
                     "John Doe".equals(c.getComplainantName()) &&
@@ -275,11 +284,12 @@ class EmailSimulationServiceTest {
             when(emailRepository.findByThreadIdOrderBySentAtAsc("t-1"))
                     .thenReturn(List.of(email1, email2));
 
-            List<Map<String, Object>> threads = emailService.getAllThreads();
+            List<EmailThreadSummary> threads = emailService.getAllThreads();
 
             assertThat(threads).hasSize(1);
-            assertThat(threads.get(0).get("threadId")).isEqualTo("t-1");
-            assertThat(threads.get(0).get("emailCount")).isEqualTo(2);
+            assertThat(threads.get(0).getThreadId()).isEqualTo("t-1");
+            assertThat(threads.get(0).getEmailCount()).isEqualTo(2);
+            assertThat(threads.get(0).getStatus()).isEqualTo("AWAITING_FORM");
         }
 
         @Test
@@ -287,7 +297,7 @@ class EmailSimulationServiceTest {
             when(emailRepository.findByDirectionOrderBySentAtDesc("INBOUND"))
                     .thenReturn(Collections.emptyList());
 
-            List<Map<String, Object>> threads = emailService.getAllThreads();
+            List<EmailThreadSummary> threads = emailService.getAllThreads();
 
             assertThat(threads).isEmpty();
         }
@@ -306,11 +316,12 @@ class EmailSimulationServiceTest {
             when(emailRepository.findByThreadIdOrderBySentAtAsc("t-1"))
                     .thenReturn(List.of(email));
 
-            Map<String, Object> result = emailService.getThread("t-1");
+            EmailThreadResponse result = emailService.getThread("t-1");
 
-            assertThat(result.get("threadId")).isEqualTo("t-1");
-            assertThat(result.get("complaintNumber")).isEqualTo("CMS-001");
-            assertThat((List<?>) result.get("emails")).hasSize(1);
+            assertThat(result.getThreadId()).isEqualTo("t-1");
+            assertThat(result.getComplaintNumber()).isEqualTo("CMS-001");
+            assertThat(result.getEmails()).hasSize(1);
+            assertThat(result.getEmails().get(0).getDirection()).isEqualTo("INBOUND");
         }
 
         @Test
@@ -333,9 +344,10 @@ class EmailSimulationServiceTest {
             when(emailRepository.findByDirectionOrderBySentAtDesc("INBOUND"))
                     .thenReturn(List.of(inbound));
 
-            List<SimulatedEmail> result = emailService.getInbox();
+            List<SimulatedEmailResponse> result = emailService.getInbox();
 
             assertThat(result).hasSize(1);
+            assertThat(result.get(0).getDirection()).isEqualTo("INBOUND");
         }
 
         @Test
@@ -344,9 +356,10 @@ class EmailSimulationServiceTest {
             when(emailRepository.findByDirectionOrderBySentAtDesc("OUTBOUND"))
                     .thenReturn(List.of(outbound));
 
-            List<SimulatedEmail> result = emailService.getSent();
+            List<SimulatedEmailResponse> result = emailService.getSent();
 
             assertThat(result).hasSize(1);
+            assertThat(result.get(0).getDirection()).isEqualTo("OUTBOUND");
         }
     }
 
@@ -371,11 +384,11 @@ class EmailSimulationServiceTest {
             when(emailRepository.findByThreadIdOrderBySentAtAsc("t-2"))
                     .thenReturn(List.of(completedInbound1, completedInbound2));
 
-            Map<String, Object> stats = emailService.getStats();
+            EmailStatsResponse stats = emailService.getStats();
 
-            assertThat(stats.get("totalThreads")).isEqualTo(2);
-            assertThat(stats.get("awaitingForm")).isEqualTo(1L);
-            assertThat(stats.get("completed")).isEqualTo(1L);
+            assertThat(stats.getTotalThreads()).isEqualTo(2);
+            assertThat(stats.getAwaitingForm()).isEqualTo(1L);
+            assertThat(stats.getCompleted()).isEqualTo(1L);
         }
     }
 
@@ -389,11 +402,14 @@ class EmailSimulationServiceTest {
             when(complaintRepository.findByComplaintNumber("CMS-001"))
                     .thenReturn(Optional.of(complaint));
 
-            Map<String, Object> template = emailService.getFormTemplate("CMS-001");
+            FormTemplateResponse template = emailService.getFormTemplate("CMS-001");
 
-            assertThat(template.get("complaintNumber")).isEqualTo("CMS-001");
-            assertThat(template.get("complainantEmail")).isEqualTo("test@test.com");
-            assertThat((List<?>) template.get("fields")).isNotEmpty();
+            assertThat(template.getComplaintNumber()).isEqualTo("CMS-001");
+            assertThat(template.getComplainantEmail()).isEqualTo("test@test.com");
+            assertThat(template.getFields()).isNotEmpty();
+            assertThat(template.getFields())
+                    .extracting(FormFieldDescriptor::getKey)
+                    .contains("complainantName", "reliefSought");
         }
 
         @Test

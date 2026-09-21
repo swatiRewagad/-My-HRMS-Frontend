@@ -1,23 +1,38 @@
 package com.hrms.cms.controller;
 
+import com.hrms.cms.dto.keycloak.AvailabilityUpdateResponse;
+import com.hrms.cms.dto.keycloak.DeoUserResponse;
+import com.hrms.cms.dto.keycloak.KeycloakUserResponse;
+import com.hrms.cms.dto.keycloak.NextAssigneeResponse;
+import com.hrms.cms.dto.keycloak.OfficeResponse;
+import com.hrms.cms.dto.keycloak.OfficerAvailabilityResponse;
+import com.hrms.cms.dto.keycloak.ReviewerUserResponse;
 import com.hrms.cms.entity.OfficeCodeMaster;
 import com.hrms.cms.entity.OfficerAvailability;
 import com.hrms.cms.repository.OfficeCodeMasterRepository;
 import com.hrms.cms.repository.OfficerAvailabilityRepository;
 import com.hrms.cms.service.ComplaintRoutingService;
 import com.hrms.cms.service.KeycloakUserService;
+import com.rbi.cms.common.dto.ApiResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/v1/keycloak")
 @RequiredArgsConstructor
 public class KeycloakUserController {
+
+    private static final int DEFAULT_DEO_THRESHOLD = 20;
+    private static final int DEFAULT_REVIEWER_LOAD = 25;
+    private static final int DEFAULT_MAX_WORKLOAD = 20;
 
     private final KeycloakUserService keycloakUserService;
     private final ComplaintRoutingService complaintRoutingService;
@@ -25,79 +40,96 @@ public class KeycloakUserController {
     private final OfficeCodeMasterRepository officeCodeMasterRepository;
 
     @GetMapping("/offices")
-    public Map<String, Object> getOffices() {
-        List<Map<String, Object>> offices = officeCodeMasterRepository.findAll().stream()
+    public ResponseEntity<ApiResponse<List<OfficeResponse>>> getOffices() {
+        return wrapResponse(officeCodeMasterRepository.findAll().stream()
                 .filter(OfficeCodeMaster::getIsActive)
-                .map(o -> {
-                    Map<String, Object> m = new LinkedHashMap<>();
-                    m.put("officeCode", o.getOfficeCode());
-                    m.put("officeName", o.getOfficeName());
-                    m.put("officeType", o.getOfficeType());
-                    return m;
-                })
-                .collect(Collectors.toList());
-        return wrapResponse(offices);
+                .map(o -> OfficeResponse.builder()
+                        .officeCode(o.getOfficeCode())
+                        .officeName(o.getOfficeName())
+                        .officeType(o.getOfficeType())
+                        .build())
+                .toList());
     }
 
     /**
-     * Flat {@code username -> displayName} map for the whole realm.
+     * Flat {@code username -> displayName} map for the whole realm. Names are not sensitive — they are
+     * already shown on every complaint.
      *
-     * <p>Returned bare rather than inside {@link #wrapResponse}: the consumer is
-     * {@code cms-search-service}, which denormalizes these names into its index, so an envelope would
-     * only add a layer to unwrap. Names are not sensitive — they are already shown on every complaint.
+     * <p>The only consumer is {@code cms-search-service}, which denormalizes these names into its index.
+     * That service reads the payload out of the envelope, so the two must be released together: it is
+     * built to degrade quietly on failure, and a one-sided deployment would silently replace officer
+     * display names with usernames rather than erroring.
      */
     @GetMapping("/users/directory")
-    public Map<String, String> getUserDirectory() {
-        return keycloakUserService.getUserDirectory();
+    public ResponseEntity<ApiResponse<Map<String, String>>> getUserDirectory() {
+        return wrapResponse(keycloakUserService.getUserDirectory());
     }
 
     @GetMapping("/users/deos")
-    public Map<String, Object> getDeos() {
-        List<Map<String, Object>> deos = keycloakUserService.getDeos();
-        List<Map<String, Object>> enriched = new ArrayList<>();
+    public ResponseEntity<ApiResponse<List<DeoUserResponse>>> getDeos() {
+        List<DeoUserResponse> deos = new ArrayList<>();
         int sortOrder = 1;
-        for (Map<String, Object> deo : deos) {
-            Map<String, Object> enrichedDeo = new LinkedHashMap<>(deo);
-            enrichedDeo.put("isActive", Boolean.TRUE.equals(deo.get("enabled")));
-            enrichedDeo.put("isOnLeave", false);
-            enrichedDeo.put("maxThreshold", 20);
-            enrichedDeo.put("currentAssignedCount", 0);
-            enrichedDeo.put("sortOrder", sortOrder++);
-            enriched.add(enrichedDeo);
+        for (Map<String, Object> deo : keycloakUserService.getDeos()) {
+            deos.add(DeoUserResponse.builder()
+                    .userId(str(deo, "userId"))
+                    .id(str(deo, "id"))
+                    .displayName(str(deo, "displayName"))
+                    .email(str(deo, "email"))
+                    .firstName(str(deo, "firstName"))
+                    .lastName(str(deo, "lastName"))
+                    .enabled(bool(deo, "enabled"))
+                    .officeCode(str(deo, "officeCode"))
+                    .isActive(Boolean.TRUE.equals(deo.get("enabled")))
+                    .isOnLeave(false)
+                    .maxThreshold(DEFAULT_DEO_THRESHOLD)
+                    .currentAssignedCount(0)
+                    .sortOrder(sortOrder++)
+                    .build());
         }
-        return wrapResponse(enriched);
+        return wrapResponse(deos);
     }
 
     @GetMapping("/users/reviewers")
-    public Map<String, Object> getReviewers() {
-        List<Map<String, Object>> reviewers = keycloakUserService.getReviewers();
-        List<Map<String, Object>> enriched = new ArrayList<>();
+    public ResponseEntity<ApiResponse<List<ReviewerUserResponse>>> getReviewers() {
+        List<ReviewerUserResponse> reviewers = new ArrayList<>();
         int sortOrder = 1;
-        for (Map<String, Object> reviewer : reviewers) {
-            Map<String, Object> enrichedReviewer = new LinkedHashMap<>(reviewer);
-            enrichedReviewer.put("isActive", Boolean.TRUE.equals(reviewer.get("enabled")));
-            enrichedReviewer.put("isOnLeave", false);
-            enrichedReviewer.put("maxLoad", 25);
-            enrichedReviewer.put("currentLoad", 0);
-            enrichedReviewer.put("region", "");
-            enrichedReviewer.put("sortOrder", sortOrder++);
-            enriched.add(enrichedReviewer);
+        for (Map<String, Object> reviewer : keycloakUserService.getReviewers()) {
+            reviewers.add(ReviewerUserResponse.builder()
+                    .userId(str(reviewer, "userId"))
+                    .id(str(reviewer, "id"))
+                    .displayName(str(reviewer, "displayName"))
+                    .email(str(reviewer, "email"))
+                    .firstName(str(reviewer, "firstName"))
+                    .lastName(str(reviewer, "lastName"))
+                    .enabled(bool(reviewer, "enabled"))
+                    .officeCode(str(reviewer, "officeCode"))
+                    .isActive(Boolean.TRUE.equals(reviewer.get("enabled")))
+                    .isOnLeave(false)
+                    .maxLoad(DEFAULT_REVIEWER_LOAD)
+                    .currentLoad(0)
+                    .region("")
+                    .sortOrder(sortOrder++)
+                    .build());
         }
-        return wrapResponse(enriched);
+        return wrapResponse(reviewers);
     }
 
     @GetMapping("/users/all")
-    public Map<String, Object> getAllCrpcUsers() {
-        return wrapResponse(keycloakUserService.getAllCrpcUsers());
+    public ResponseEntity<ApiResponse<List<KeycloakUserResponse>>> getAllCrpcUsers() {
+        return wrapResponse(keycloakUserService.getAllCrpcUsers().stream()
+                .map(KeycloakUserController::toUser)
+                .toList());
     }
 
     @GetMapping("/users/by-role")
-    public List<Map<String, Object>> getUsersByRole(@RequestParam String role) {
-        return keycloakUserService.getUsersByRole(role);
+    public ResponseEntity<ApiResponse<List<KeycloakUserResponse>>> getUsersByRole(@RequestParam String role) {
+        return wrapResponse(keycloakUserService.getUsersByRole(role).stream()
+                .map(KeycloakUserController::toUser)
+                .toList());
     }
 
     @GetMapping("/users/next-assignee")
-    public Map<String, Object> getNextAssignee(
+    public ResponseEntity<ApiResponse<NextAssigneeResponse>> getNextAssignee(
             @RequestParam String role,
             @RequestParam(required = false) String office) {
         List<Map<String, Object>> users = keycloakUserService.getUsersByRole(role);
@@ -118,18 +150,17 @@ public class KeycloakUserController {
         if (office != null && !office.isBlank()) {
             List<Map<String, Object>> officeUsers = users.stream()
                     .filter(u -> office.equals(u.get("officeCode")))
-                    .collect(java.util.stream.Collectors.toList());
+                    .toList();
             if (!officeUsers.isEmpty()) {
                 users = officeUsers;
             }
         }
 
         if (users.isEmpty()) {
-            Map<String, Object> response = new LinkedHashMap<>();
-            response.put("success", false);
-            response.put("message", "No users found for role: " + role);
-            response.put("data", null);
-            return response;
+            // Was an HTTP 200 carrying success:false and no timestamp, so this looked like a
+            // successful call returning nobody.
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ApiResponse.error("No users found for role: " + role));
         }
 
         String assignedUserId = complaintRoutingService.assignOfficerByRole(role);
@@ -139,61 +170,68 @@ public class KeycloakUserController {
                 .findFirst()
                 .orElse(users.get(0));
 
-        Map<String, Object> data = new LinkedHashMap<>();
-        data.put("userId", assignedUser.get("userId"));
-        data.put("username", assignedUser.get("userId"));
-        data.put("displayName", assignedUser.getOrDefault("displayName",
-                ((String) assignedUser.getOrDefault("firstName", "")) + " " +
-                ((String) assignedUser.getOrDefault("lastName", ""))).toString().trim());
-        data.put("officeCode", assignedUser.getOrDefault("officeCode", ""));
-        data.put("assignmentMethod", "ROUND_ROBIN");
-        data.put("totalPoolSize", users.size());
+        String displayName = assignedUser.getOrDefault("displayName",
+                assignedUser.getOrDefault("firstName", "") + " "
+                        + assignedUser.getOrDefault("lastName", "")).toString().trim();
 
-        Map<String, Object> response = new LinkedHashMap<>();
-        response.put("success", true);
-        response.put("message", "Next assignee determined via round-robin");
-        response.put("data", data);
-        response.put("timestamp", LocalDateTime.now().toString());
-        return response;
+        return wrapResponse(NextAssigneeResponse.builder()
+                .userId(str(assignedUser, "userId"))
+                .username(str(assignedUser, "userId"))
+                .displayName(displayName)
+                .officeCode(assignedUser.getOrDefault("officeCode", "").toString())
+                .assignmentMethod("ROUND_ROBIN")
+                .totalPoolSize(users.size())
+                .build());
     }
 
     @GetMapping("/users/availability")
-    public Map<String, Object> getOfficerAvailability(@RequestParam String role) {
-        List<Map<String, Object>> users = keycloakUserService.getUsersByRole(role);
-        List<Map<String, Object>> result = new ArrayList<>();
+    public ResponseEntity<ApiResponse<List<OfficerAvailabilityResponse>>> getOfficerAvailability(
+            @RequestParam String role) {
+        List<OfficerAvailabilityResponse> result = new ArrayList<>();
 
-        for (Map<String, Object> user : users) {
+        for (Map<String, Object> user : keycloakUserService.getUsersByRole(role)) {
             String userId = (String) user.get("userId");
             Optional<OfficerAvailability> avail = availabilityRepository.findByUserIdAndRole(userId, role);
 
-            Map<String, Object> entry = new LinkedHashMap<>(user);
+            // officeCode is deliberately not copied from the Keycloak user here: the availability row is
+            // the authority for it, and Team Management is what edits that row.
+            OfficerAvailabilityResponse.OfficerAvailabilityResponseBuilder entry =
+                    OfficerAvailabilityResponse.builder()
+                            .userId(userId)
+                            .id(str(user, "id"))
+                            .displayName(str(user, "displayName"))
+                            .email(str(user, "email"))
+                            .firstName(str(user, "firstName"))
+                            .lastName(str(user, "lastName"))
+                            .enabled(bool(user, "enabled"));
+
             if (avail.isPresent()) {
                 OfficerAvailability oa = avail.get();
-                entry.put("isActive", oa.isActive());
-                entry.put("isOnLeave", oa.isOnLeave());
-                entry.put("leaveStartDate", oa.getLeaveStartDate());
-                entry.put("leaveEndDate", oa.getLeaveEndDate());
-                entry.put("leaveReason", oa.getLeaveReason());
-                entry.put("currentWorkload", oa.getCurrentWorkload());
-                entry.put("maxWorkload", oa.getMaxWorkload());
-                entry.put("officeCode", oa.getOfficeCode());
-                entry.put("available", oa.isAvailable());
+                entry.isActive(oa.isActive())
+                        .isOnLeave(oa.isOnLeave())
+                        .leaveStartDate(oa.getLeaveStartDate())
+                        .leaveEndDate(oa.getLeaveEndDate())
+                        .leaveReason(oa.getLeaveReason())
+                        .currentWorkload(oa.getCurrentWorkload())
+                        .maxWorkload(oa.getMaxWorkload())
+                        .officeCode(oa.getOfficeCode())
+                        .available(oa.isAvailable());
             } else {
-                entry.put("isActive", true);
-                entry.put("isOnLeave", false);
-                entry.put("currentWorkload", 0);
-                entry.put("maxWorkload", 20);
-                entry.put("officeCode", "");
-                entry.put("available", true);
+                entry.isActive(true)
+                        .isOnLeave(false)
+                        .currentWorkload(0)
+                        .maxWorkload(DEFAULT_MAX_WORKLOAD)
+                        .officeCode("")
+                        .available(true);
             }
-            result.add(entry);
+            result.add(entry.build());
         }
 
         return wrapResponse(result);
     }
 
     @PutMapping("/users/{userId}/availability")
-    public Map<String, Object> updateOfficerAvailability(
+    public ResponseEntity<ApiResponse<AvailabilityUpdateResponse>> updateOfficerAvailability(
             @PathVariable String userId,
             @RequestBody Map<String, Object> request) {
 
@@ -201,7 +239,7 @@ public class KeycloakUserController {
         OfficerAvailability avail = availabilityRepository.findByUserIdAndRole(userId, role)
                 .orElseGet(() -> OfficerAvailability.builder()
                         .userId(userId).role(role).active(true).onLeave(false)
-                        .currentWorkload(0).maxWorkload(20).build());
+                        .currentWorkload(0).maxWorkload(DEFAULT_MAX_WORKLOAD).build());
 
         if (request.containsKey("active")) {
             avail.setActive(Boolean.TRUE.equals(request.get("active")));
@@ -227,26 +265,45 @@ public class KeycloakUserController {
 
         availabilityRepository.save(avail);
 
-        Map<String, Object> data = new LinkedHashMap<>();
-        data.put("userId", userId);
-        data.put("role", role);
-        data.put("active", avail.isActive());
-        data.put("onLeave", avail.isOnLeave());
-        data.put("available", avail.isAvailable());
-        data.put("currentWorkload", avail.getCurrentWorkload());
-        data.put("maxWorkload", avail.getMaxWorkload());
-        data.put("officeCode", avail.getOfficeCode());
-
-        return wrapResponse(data);
+        return wrapResponse(AvailabilityUpdateResponse.builder()
+                .userId(userId)
+                .role(role)
+                .isActive(avail.isActive())
+                .isOnLeave(avail.isOnLeave())
+                .available(avail.isAvailable())
+                .currentWorkload(avail.getCurrentWorkload())
+                .maxWorkload(avail.getMaxWorkload())
+                .officeCode(avail.getOfficeCode())
+                .build());
     }
 
-    private Map<String, Object> wrapResponse(Object data) {
-        Map<String, Object> response = new LinkedHashMap<>();
-        response.put("success", true);
-        response.put("message", "OK");
-        response.put("data", data);
-        response.put("correlationId", UUID.randomUUID().toString());
-        response.put("timestamp", LocalDateTime.now().toString());
-        return response;
+    private static KeycloakUserResponse toUser(Map<String, Object> u) {
+        return KeycloakUserResponse.builder()
+                .userId(str(u, "userId"))
+                .id(str(u, "id"))
+                .displayName(str(u, "displayName"))
+                .email(str(u, "email"))
+                .firstName(str(u, "firstName"))
+                .lastName(str(u, "lastName"))
+                .enabled(bool(u, "enabled"))
+                .officeCode(str(u, "officeCode"))
+                .build();
+    }
+
+    private static String str(Map<String, Object> user, String key) {
+        Object value = user.get(key);
+        return value == null ? null : value.toString();
+    }
+
+    private static Boolean bool(Map<String, Object> user, String key) {
+        return user.get(key) instanceof Boolean value ? value : null;
+    }
+
+    /**
+     * Every success from this controller carried the message "OK" back when the envelope was assembled
+     * by hand here, so it is preserved rather than replaced with something per-endpoint.
+     */
+    private static <T> ResponseEntity<ApiResponse<T>> wrapResponse(T data) {
+        return ResponseEntity.ok(ApiResponse.success(data, "OK"));
     }
 }

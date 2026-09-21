@@ -2,6 +2,10 @@ package com.hrms.cms.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.hrms.cms.dto.complaint.PastComplaintDetailResponse;
+import com.hrms.cms.dto.complaint.PastComplaintSummary;
+import com.hrms.cms.dto.complaint.PastComplaintTimelineEntry;
+import com.hrms.cms.dto.complaint.SimilarCasesResponse;
 import com.hrms.cms.entity.Complaint;
 import com.hrms.cms.entity.ComplaintTimeline;
 import com.hrms.cms.repository.ComplaintRepository;
@@ -53,7 +57,7 @@ public class PastComplaintService {
         return new RestTemplate(factory);
     }
 
-    public List<Map<String, Object>> findPastComplaints(String email, String phone, String currentComplaintId) {
+    public List<PastComplaintSummary> findPastComplaints(String email, String phone, String currentComplaintId) {
         Set<Complaint> results = new LinkedHashSet<>();
 
         if (email != null && !email.isBlank()) {
@@ -68,20 +72,20 @@ public class PastComplaintService {
         return results.stream()
                 .filter(c -> !c.getComplaintNumber().equals(currentComplaintId))
                 .limit(20)
-                .map(this::toSummaryMap)
+                .map(this::toSummary)
                 .collect(Collectors.toList());
     }
 
-    public List<Map<String, Object>> findSimilarCases(String subject, String description, String category, String currentComplaintId) {
+    public SimilarCasesResponse findSimilarCases(String subject, String description, String category, String currentComplaintId) {
         if (groqApiKey == null || groqApiKey.isBlank()) {
             log.warn("Groq API key not configured — using keyword fallback");
-            return fallbackKeywordSearch(subject, description, currentComplaintId);
+            return keywordFallback(subject, description, currentComplaintId);
         }
 
         // Circuit breaker: skip Groq entirely while cooling down
         if (Instant.now().isBefore(circuitOpenUntil)) {
             log.warn("Groq circuit open (cooling down) — using keyword fallback");
-            return fallbackKeywordSearch(subject, description, currentComplaintId);
+            return keywordFallback(subject, description, currentComplaintId);
         }
 
         List<Complaint> candidates = complaintRepository.findAllByOrderByCreatedAtDesc();
@@ -90,7 +94,9 @@ public class PastComplaintService {
                 .filter(c -> !c.getComplaintNumber().equals(currentComplaintId))
                 .collect(Collectors.toList());
 
-        if (candidates.isEmpty()) return List.of();
+        if (candidates.isEmpty()) {
+            return SimilarCasesResponse.builder().matchMethod(SimilarCasesResponse.METHOD_NONE).build();
+        }
 
         String candidateList = candidates.stream()
                 .map(c -> c.getComplaintNumber() + " | " + c.getSubject() + " | " + c.getStatus())
@@ -143,11 +149,14 @@ public class PastComplaintService {
                             matchedIds.add(id.asText());
                         }
                         consecutiveFailures = 0;  // success — reset circuit
-                        return matchedIds.stream()
-                                .map(id -> complaintRepository.findByComplaintNumber(id).orElse(null))
-                                .filter(Objects::nonNull)
-                                .map(this::toSummaryMap)
-                                .collect(Collectors.toList());
+                        return SimilarCasesResponse.builder()
+                                .cases(matchedIds.stream()
+                                        .map(id -> complaintRepository.findByComplaintNumber(id).orElse(null))
+                                        .filter(Objects::nonNull)
+                                        .map(this::toSummary)
+                                        .collect(Collectors.toList()))
+                                .matchMethod(SimilarCasesResponse.METHOD_AI)
+                                .build();
                     }
                 }
 
@@ -171,7 +180,14 @@ public class PastComplaintService {
             }
         }
 
-        return fallbackKeywordSearch(subject, description, currentComplaintId);
+        return keywordFallback(subject, description, currentComplaintId);
+    }
+
+    private SimilarCasesResponse keywordFallback(String subject, String description, String currentComplaintId) {
+        return SimilarCasesResponse.builder()
+                .cases(fallbackKeywordSearch(subject, description, currentComplaintId))
+                .matchMethod(SimilarCasesResponse.METHOD_KEYWORD)
+                .build();
     }
 
     private void recordFailure() {
@@ -184,50 +200,48 @@ public class PastComplaintService {
         }
     }
 
-    public Map<String, Object> getComplaintDetail(String complaintNumber) {
+    /** Null when no complaint carries that number — the caller turns that into a 404. */
+    public PastComplaintDetailResponse getComplaintDetail(String complaintNumber) {
         Optional<Complaint> opt = complaintRepository.findByComplaintNumber(complaintNumber);
         if (opt.isEmpty()) return null;
 
         Complaint c = opt.get();
         List<ComplaintTimeline> timeline = timelineRepository.findByComplaintIdOrderByPerformedAtDesc(c.getId());
 
-        Map<String, Object> detail = new LinkedHashMap<>();
-        detail.put("complaintId", c.getComplaintNumber());
-        detail.put("subject", c.getSubject());
-        detail.put("description", c.getDescription());
-        detail.put("status", c.getStatus());
-        detail.put("priority", c.getPriority());
-        detail.put("category", c.getCategoryId());
-        detail.put("complainantName", c.getComplainantName());
-        detail.put("complainantEmail", c.getComplainantEmail());
-        detail.put("complainantPhone", c.getComplainantPhone());
-        detail.put("entityCode", c.getEntityCode());
-        detail.put("department", c.getDepartment());
-        detail.put("assignedRole", c.getAssignedRole());
-        detail.put("assignedOfficer", c.getAssignedOfficer());
-        detail.put("filingType", c.getFilingType());
-        detail.put("filedDate", c.getCreatedAt() != null ? c.getCreatedAt().format(FMT) : "");
-        detail.put("resolvedAt", c.getResolvedAt() != null ? c.getResolvedAt().format(FMT) : null);
-        detail.put("closedAt", c.getClosedAt() != null ? c.getClosedAt().format(FMT) : null);
-        detail.put("escalatedAt", c.getEscalatedAt() != null ? c.getEscalatedAt().format(FMT) : null);
-        detail.put("reliefSought", c.getReliefSought());
-
-        List<Map<String, Object>> timelineList = timeline.stream().map(t -> {
-            Map<String, Object> tm = new LinkedHashMap<>();
-            tm.put("action", t.getAction());
-            tm.put("performedBy", t.getPerformedBy());
-            tm.put("remarks", t.getRemarks());
-            tm.put("fromStatus", t.getFromStatus());
-            tm.put("toStatus", t.getToStatus());
-            tm.put("timestamp", t.getPerformedAt() != null ? t.getPerformedAt().toString() : "");
-            return tm;
-        }).collect(Collectors.toList());
-        detail.put("timeline", timelineList);
-
-        return detail;
+        return PastComplaintDetailResponse.builder()
+                .complaintId(c.getComplaintNumber())
+                .subject(c.getSubject())
+                .description(c.getDescription())
+                .status(c.getStatus())
+                .priority(c.getPriority())
+                .category(c.getCategoryId())
+                .complainantName(c.getComplainantName())
+                .complainantEmail(c.getComplainantEmail())
+                .complainantPhone(c.getComplainantPhone())
+                .entityCode(c.getEntityCode())
+                .department(c.getDepartment())
+                .assignedRole(c.getAssignedRole())
+                .assignedOfficer(c.getAssignedOfficer())
+                .filingType(c.getFilingType())
+                .filedDate(c.getCreatedAt() != null ? c.getCreatedAt().format(FMT) : "")
+                .resolvedAt(c.getResolvedAt() != null ? c.getResolvedAt().format(FMT) : null)
+                .closedAt(c.getClosedAt() != null ? c.getClosedAt().format(FMT) : null)
+                .escalatedAt(c.getEscalatedAt() != null ? c.getEscalatedAt().format(FMT) : null)
+                .reliefSought(c.getReliefSought())
+                .timeline(timeline.stream()
+                        .map(t -> PastComplaintTimelineEntry.builder()
+                                .action(t.getAction())
+                                .performedBy(t.displayActor())
+                                .remarks(t.getRemarks())
+                                .fromStatus(t.getFromStatus())
+                                .toStatus(t.getToStatus())
+                                .timestamp(t.getPerformedAt() != null ? t.getPerformedAt().toString() : "")
+                                .build())
+                        .collect(Collectors.toList()))
+                .build();
     }
 
-    private List<Map<String, Object>> fallbackKeywordSearch(String subject, String description, String currentComplaintId) {
+    private List<PastComplaintSummary> fallbackKeywordSearch(String subject, String description, String currentComplaintId) {
         // Build a meaningful search term: first 4 significant words from subject + first noun phrase from description
         String searchTerm = extractSearchTerms(subject, description);
         if (searchTerm.isBlank()) return List.of();
@@ -248,7 +262,7 @@ public class PastComplaintService {
         return seen.stream()
                 .filter(c -> !c.getComplaintNumber().equals(currentComplaintId))
                 .limit(5)
-                .map(this::toSummaryMap)
+                .map(this::toSummary)
                 .collect(Collectors.toList());
     }
 
@@ -274,16 +288,16 @@ public class PastComplaintService {
                 .collect(Collectors.toList());
     }
 
-    private Map<String, Object> toSummaryMap(Complaint c) {
-        Map<String, Object> map = new LinkedHashMap<>();
-        map.put("complaintId", c.getComplaintNumber());
-        map.put("subject", c.getSubject());
-        map.put("status", c.getStatus());
-        map.put("complainantName", c.getComplainantName());
-        map.put("date", c.getCreatedAt() != null ? c.getCreatedAt().format(FMT) : "");
-        map.put("department", c.getDepartment());
-        map.put("entityCode", c.getEntityCode());
-        return map;
+    private PastComplaintSummary toSummary(Complaint c) {
+        return PastComplaintSummary.builder()
+                .complaintId(c.getComplaintNumber())
+                .subject(c.getSubject())
+                .status(c.getStatus())
+                .complainantName(c.getComplainantName())
+                .filedDate(c.getCreatedAt() != null ? c.getCreatedAt().format(FMT) : "")
+                .department(c.getDepartment())
+                .entityCode(c.getEntityCode())
+                .build();
     }
 
     private String truncate(String text, int max) {

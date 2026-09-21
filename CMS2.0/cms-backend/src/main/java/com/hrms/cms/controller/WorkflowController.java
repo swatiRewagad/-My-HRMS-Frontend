@@ -1,7 +1,21 @@
 package com.hrms.cms.controller;
 
+import com.hrms.cms.dto.workflow.AvailableActionsResponse;
+import com.hrms.cms.dto.workflow.AwardValidationResponse;
+import com.hrms.cms.dto.workflow.ClosureClauseResponse;
+import com.hrms.cms.dto.workflow.ClosureStatusResponse;
+import com.hrms.cms.dto.workflow.ComplaintAssignmentResponse;
+import com.hrms.cms.dto.workflow.ComplaintCreatedResponse;
+import com.hrms.cms.dto.workflow.CrpcTransferResponse;
+import com.hrms.cms.dto.workflow.EmailRecipientValidationResponse;
+import com.hrms.cms.dto.workflow.RoleAuthorizationResponse;
+import com.hrms.cms.dto.workflow.RouteComplaintResponse;
+import com.hrms.cms.dto.workflow.TransferActionResponse;
+import com.hrms.cms.dto.workflow.WorkflowActionResponse;
+import com.hrms.cms.dto.workflow.WorkflowTaskResponse;
 import com.hrms.cms.entity.Complaint;
 import com.hrms.cms.event.ComplaintEventPublisher;
+import com.rbi.cms.common.dto.ApiResponse;
 import com.rbi.cms.common.enums.DepartmentConstants;
 import com.hrms.cms.repository.BankRepository;
 import com.hrms.cms.repository.ComplaintAttachmentRepository;
@@ -59,7 +73,7 @@ public class WorkflowController {
 
     @GetMapping("/rbio/tasks")
     @RbioRoleGuard(roles = {"RBIO_OFFICER", "RBIO_SUPERVISOR", "RBIO_CONCILIATOR", "RBIO_ADJUDICATOR", "RBIO_DEPUTY_OMBUDSMAN", "CRPC_HEAD", "RBIO_ADMIN"})
-    public ResponseEntity<Map<String, Object>> getRbioTasks(
+    public ResponseEntity<ApiResponse<List<WorkflowTaskResponse>>> getRbioTasks(
             @RequestParam(required = false) String role,
             @RequestParam(required = false) String officer) {
         return getTasksByDepartment("RBIO", role, officer);
@@ -67,14 +81,14 @@ public class WorkflowController {
 
     @GetMapping("/rbio/all-tasks")
     @RbioRoleGuard(roles = {"RBIO_OFFICER", "RBIO_SUPERVISOR", "RBIO_CONCILIATOR", "RBIO_ADJUDICATOR", "RBIO_DEPUTY_OMBUDSMAN", "CRPC_HEAD", "RBIO_ADMIN"})
-    public ResponseEntity<Map<String, Object>> getRbioAllTasks(
+    public ResponseEntity<ApiResponse<List<WorkflowTaskResponse>>> getRbioAllTasks(
             @RequestParam(required = false) String officer) {
         return getAllTasksByDepartment("RBIO", officer);
     }
 
     @GetMapping("/cepc/tasks")
     @CepcRoleGuard(roles = {"CEPC_DO", "CEPC_REVIEWER", "CEPC_INCHARGE", "CEPC_CLOSING_AUTHORITY", "CEPC_ADMIN", "CEPC_CONTACT_PERSON"})
-    public ResponseEntity<Map<String, Object>> getCepcTasks(
+    public ResponseEntity<ApiResponse<List<WorkflowTaskResponse>>> getCepcTasks(
             @RequestParam(required = false) String role,
             @RequestParam(required = false) String officer) {
         return getTasksByDepartment("CEPC", role, officer);
@@ -82,14 +96,14 @@ public class WorkflowController {
 
     @GetMapping("/cepc/all-tasks")
     @CepcRoleGuard(roles = {"CEPC_DO", "CEPC_REVIEWER", "CEPC_INCHARGE", "CEPC_CLOSING_AUTHORITY", "CEPC_ADMIN", "CEPC_CONTACT_PERSON"})
-    public ResponseEntity<Map<String, Object>> getCepcAllTasks(
+    public ResponseEntity<ApiResponse<List<WorkflowTaskResponse>>> getCepcAllTasks(
             @RequestParam(required = false) String officer) {
         return getAllTasksByDepartment("CEPC", officer);
     }
 
     @PostMapping("/rbio/assign/{complaintNumber}")
     @RbioRoleGuard(roles = {"RBIO_OFFICER", "RBIO_SUPERVISOR", "RBIO_ADMIN"})
-    public ResponseEntity<Map<String, Object>> assignToRbio(
+    public ResponseEntity<ApiResponse<ComplaintAssignmentResponse>> assignToRbio(
             @PathVariable String complaintNumber,
             @RequestBody Map<String, String> request) {
         return assignComplaint(complaintNumber, "RBIO", request);
@@ -97,7 +111,7 @@ public class WorkflowController {
 
     @PostMapping("/cepc/assign/{complaintNumber}")
     @CepcRoleGuard(roles = {"CEPC_DO", "CEPC_INCHARGE", "CEPC_ADMIN"})
-    public ResponseEntity<Map<String, Object>> assignToCepc(
+    public ResponseEntity<ApiResponse<ComplaintAssignmentResponse>> assignToCepc(
             @PathVariable String complaintNumber,
             @RequestBody Map<String, String> request) {
         return assignComplaint(complaintNumber, "CEPC", request);
@@ -105,7 +119,7 @@ public class WorkflowController {
 
     @PostMapping("/rbio/action/{complaintNumber}")
     @RbioRoleGuard(roles = {"RBIO_OFFICER", "RBIO_SUPERVISOR", "RBIO_CONCILIATOR", "RBIO_ADJUDICATOR", "RBIO_DEPUTY_OMBUDSMAN", "CRPC_HEAD", "RBIO_ADMIN"})
-    public ResponseEntity<Map<String, Object>> rbioAction(
+    public ResponseEntity<ApiResponse<WorkflowActionResponse>> rbioAction(
             @PathVariable String complaintNumber,
             @RequestBody Map<String, String> request) {
         return performAction(complaintNumber, "RBIO", request);
@@ -113,7 +127,7 @@ public class WorkflowController {
 
     @PostMapping("/cepc/action/{complaintNumber}")
     @CepcRoleGuard(roles = {"CEPC_DO", "CEPC_REVIEWER", "CEPC_INCHARGE", "CEPC_CLOSING_AUTHORITY", "CEPC_ADMIN", "CEPC_CONTACT_PERSON"})
-    public ResponseEntity<Map<String, Object>> cepcAction(
+    public ResponseEntity<ApiResponse<WorkflowActionResponse>> cepcAction(
             @PathVariable String complaintNumber,
             @RequestBody Map<String, String> request) {
         return performAction(complaintNumber, "CEPC", request);
@@ -121,34 +135,36 @@ public class WorkflowController {
 
     @GetMapping("/rbio/completed")
     @RbioRoleGuard(roles = {"RBIO_OFFICER", "RBIO_SUPERVISOR", "RBIO_CONCILIATOR", "RBIO_ADJUDICATOR", "RBIO_DEPUTY_OMBUDSMAN", "CRPC_HEAD", "RBIO_ADMIN"})
-    public ResponseEntity<Map<String, Object>> getRbioCompleted(
+    public ResponseEntity<ApiResponse<List<WorkflowTaskResponse>>> getRbioCompleted(
             @RequestParam(required = false) String officer) {
         return getCompletedByDepartment("RBIO", officer);
     }
 
     @GetMapping("/rbio/available-actions/{complaintNumber}")
     @RbioRoleGuard(roles = {"RBIO_OFFICER", "RBIO_SUPERVISOR", "RBIO_CONCILIATOR", "RBIO_ADJUDICATOR", "RBIO_DEPUTY_OMBUDSMAN", "CRPC_HEAD", "RBIO_ADMIN"})
-    public ResponseEntity<Map<String, Object>> getRbioAvailableActions(
+    public ResponseEntity<ApiResponse<AvailableActionsResponse>> getRbioAvailableActions(
             @PathVariable String complaintNumber,
             @RequestParam String userRole) {
         List<String> actions = rbioWorkflowService.getAvailableActions(complaintNumber, userRole);
-        Map<String, Object> data = new LinkedHashMap<>();
-        data.put("complaintNumber", complaintNumber);
-        data.put("userRole", userRole);
-        data.put("availableActions", actions);
-        return buildResponse(true, "Available actions", data);
+        return ResponseEntity.ok(ApiResponse.success(AvailableActionsResponse.builder()
+                .complaintNumber(complaintNumber)
+                .userRole(userRole)
+                .availableActions(actions)
+                .build(), "Available actions"));
     }
 
+    // The stat keys are derived from whatever SLA buckets the service finds, so this payload stays a
+    // Map rather than a DTO that would have to be edited every time a bucket is added.
     @GetMapping("/rbio/sla-stats")
     @RbioRoleGuard(roles = {"RBIO_OFFICER", "RBIO_SUPERVISOR", "RBIO_CONCILIATOR", "RBIO_ADJUDICATOR", "RBIO_DEPUTY_OMBUDSMAN", "CRPC_HEAD", "RBIO_ADMIN"})
-    public ResponseEntity<Map<String, Object>> getRbioSlaStats() {
+    public ResponseEntity<ApiResponse<Map<String, Long>>> getRbioSlaStats() {
         Map<String, Long> stats = rbioSlaService.getComplianceStats();
-        return buildResponse(true, "RBIO SLA compliance stats", stats);
+        return ResponseEntity.ok(ApiResponse.success(stats, "RBIO SLA compliance stats"));
     }
 
     @PostMapping("/rbio/validate-award")
     @RbioRoleGuard(roles = {"RBIO_ADJUDICATOR", "RBIO_ADMIN"})
-    public ResponseEntity<Map<String, Object>> validateRbioAward(
+    public ResponseEntity<ApiResponse<AwardValidationResponse>> validateRbioAward(
             @RequestBody Map<String, String> request) {
         String amountStr = request.getOrDefault("amount", "0");
         String compensationType = request.getOrDefault("compensationType", "COMBINED");
@@ -157,50 +173,54 @@ public class WorkflowController {
             BigDecimal amount = new BigDecimal(amountStr);
             rbioCompensationService.validateAward(amount, compensationType);
 
-            Map<String, Object> data = new LinkedHashMap<>();
-            data.put("amount", amountStr);
-            data.put("compensationType", compensationType);
-            data.put("valid", true);
-            data.put("band", rbioCompensationService.calculateCompensationBand(amount));
-            data.put("maxAllowed", rbioCompensationService.getMaxAllowed(compensationType).toPlainString());
-            return buildResponse(true, "Award amount is within permitted limits", data);
+            return ResponseEntity.ok(ApiResponse.success(AwardValidationResponse.builder()
+                    .amount(amountStr)
+                    .compensationType(compensationType)
+                    .valid(true)
+                    .band(rbioCompensationService.calculateCompensationBand(amount))
+                    .maxAllowed(rbioCompensationService.getMaxAllowed(compensationType).toPlainString())
+                    .build(), "Award amount is within permitted limits"));
         } catch (IllegalArgumentException e) {
-            Map<String, Object> data = new LinkedHashMap<>();
-            data.put("amount", amountStr);
-            data.put("compensationType", compensationType);
-            data.put("valid", false);
-            data.put("reason", e.getMessage());
-            return buildResponse(false, e.getMessage(), data);
+            return ResponseEntity.ok(ApiResponse.<AwardValidationResponse>builder()
+                    .success(false)
+                    .message(e.getMessage())
+                    .data(AwardValidationResponse.builder()
+                            .amount(amountStr)
+                            .compensationType(compensationType)
+                            .valid(false)
+                            .reason(e.getMessage())
+                            .build())
+                    .build());
         }
     }
 
     @GetMapping("/cepc/completed")
     @CepcRoleGuard(roles = {"CEPC_DO", "CEPC_REVIEWER", "CEPC_INCHARGE", "CEPC_CLOSING_AUTHORITY", "CEPC_ADMIN", "CEPC_CONTACT_PERSON"})
-    public ResponseEntity<Map<String, Object>> getCepcCompleted(
+    public ResponseEntity<ApiResponse<List<WorkflowTaskResponse>>> getCepcCompleted(
             @RequestParam(required = false) String officer) {
         return getCompletedByDepartment("CEPC", officer);
     }
 
     @GetMapping("/my-actions")
-    public ResponseEntity<Map<String, Object>> getMyActions(@RequestParam String officer) {
+    public ResponseEntity<ApiResponse<List<WorkflowTaskResponse>>> getMyActions(@RequestParam String officer) {
         List<Long> complaintIds = complaintTimelineRepository.findDistinctComplaintIdsByPerformedBy(officer);
         if (complaintIds.isEmpty()) {
-            return buildResponse(true, "My actions", List.of());
+            return ResponseEntity.ok(ApiResponse.success(List.of(), "My actions"));
         }
         List<Complaint> complaints = complaintRepository.findAllById(complaintIds);
         complaints.sort((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()));
-        return buildResponse(true, "My actions", buildTaskList(complaints));
+        return ResponseEntity.ok(ApiResponse.success(buildTaskList(complaints), "My actions"));
     }
 
     @GetMapping("/unassigned")
-    public ResponseEntity<Map<String, Object>> getUnassigned() {
+    public ResponseEntity<ApiResponse<List<WorkflowTaskResponse>>> getUnassigned() {
         List<Complaint> unassigned = complaintRepository.findByStatusAndDepartmentIsNullOrderByCreatedAtDesc("pending");
-        return buildResponse(true, "Unassigned complaints", buildTaskList(unassigned));
+        return ResponseEntity.ok(ApiResponse.success(buildTaskList(unassigned), "Unassigned complaints"));
     }
 
     @GetMapping("/cepc/contact-person/tasks")
     @CepcRoleGuard(roles = {"CEPC_CONTACT_PERSON", "CEPC_DO", "CEPC_ADMIN"})
-    public ResponseEntity<Map<String, Object>> getContactPersonTasks(
+    public ResponseEntity<ApiResponse<List<WorkflowTaskResponse>>> getContactPersonTasks(
             @RequestParam(required = false) String officer) {
         List<Complaint> tasks;
         if (officer != null && !officer.isBlank()) {
@@ -210,12 +230,12 @@ public class WorkflowController {
             tasks = complaintRepository.findByDepartmentAndAssignedRoleAndStatusNotInOrderByCreatedAtDesc(
                     "CEPC", "CEPC_CONTACT_PERSON", CLOSED_STATUSES);
         }
-        return buildResponse(true, "Contact Person tasks", buildTaskList(tasks));
+        return ResponseEntity.ok(ApiResponse.success(buildTaskList(tasks), "Contact Person tasks"));
     }
 
     @PostMapping("/cepc/create-complaint")
     @CepcRoleGuard(roles = {"CEPC_DO", "CEPC_ADMIN"})
-    public ResponseEntity<Map<String, Object>> cepcCreateComplaint(
+    public ResponseEntity<ApiResponse<ComplaintCreatedResponse>> cepcCreateComplaint(
             @RequestBody Map<String, String> request) {
         String number = "CMP-" + java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd").format(java.time.LocalDate.now())
                 + "-" + (100000 + new Random().nextInt(900000));
@@ -246,18 +266,17 @@ public class WorkflowController {
         complaintService.addTimeline(c.getId(), "CREATED", request.getOrDefault("createdBy", "system"),
                 "Complaint created by CEPC Dealing Official", "new", "assigned");
 
-        Map<String, Object> data = new LinkedHashMap<>();
-        data.put("complaintNumber", number);
-        data.put("complaintId", c.getId());
-        data.put("status", "assigned");
-        data.put("department", "CEPC");
-
-        return buildResponse(true, "Complaint created successfully", data);
+        return ResponseEntity.ok(ApiResponse.success(ComplaintCreatedResponse.builder()
+                .complaintNumber(number)
+                .complaintId(c.getId())
+                .status("assigned")
+                .department("CEPC")
+                .build(), "Complaint created successfully"));
     }
 
     @PostMapping("/rbio/create-complaint")
     @RbioRoleGuard(roles = {"RBIO_OFFICER", "RBIO_SUPERVISOR", "RBIO_ADMIN"})
-    public ResponseEntity<Map<String, Object>> rbioCreateComplaint(
+    public ResponseEntity<ApiResponse<ComplaintCreatedResponse>> rbioCreateComplaint(
             @RequestBody Map<String, String> request) {
         String number = "CMP-" + java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd").format(java.time.LocalDate.now())
                 + "-" + (100000 + new Random().nextInt(900000));
@@ -287,47 +306,43 @@ public class WorkflowController {
         complaintService.addTimeline(c.getId(), "CREATED", request.getOrDefault("createdBy", "system"),
                 "Complaint created for RBIO processing", "new", "assigned");
 
-        Map<String, Object> data = new LinkedHashMap<>();
-        data.put("complaintNumber", number);
-        data.put("complaintId", c.getId());
-        data.put("status", "assigned");
-        data.put("department", "RBIO");
-
-        return buildResponse(true, "RBIO Complaint created successfully", data);
+        return ResponseEntity.ok(ApiResponse.success(ComplaintCreatedResponse.builder()
+                .complaintNumber(number)
+                .complaintId(c.getId())
+                .status("assigned")
+                .department("RBIO")
+                .build(), "RBIO Complaint created successfully"));
     }
 
     @GetMapping("/crpc/transfers")
-    public ResponseEntity<Map<String, Object>> getCrpcTransfers() {
+    public ResponseEntity<ApiResponse<List<CrpcTransferResponse>>> getCrpcTransfers() {
         List<Complaint> transfers = complaintRepository.findByDepartmentAndStatusInOrderByCreatedAtDesc(
                 "CRPC", List.of("sent_to_other", "pending_approval", "sent_back", "forwarded_external"));
-        List<Map<String, Object>> data = transfers.stream().map(c -> {
-            Map<String, Object> item = new LinkedHashMap<>();
-            item.put("complaintId", c.getId() != null ? c.getId().toString() : "");
-            item.put("complaintNumber", c.getComplaintNumber());
-            item.put("from", c.getComplainantEmail());
-            item.put("pending", c.getCreatedAt() != null ?
-                    Duration.between(c.getCreatedAt(), LocalDateTime.now()).toDays() : 0);
-            item.put("fromOffice", c.getDepartment() != null ? c.getDepartment() : "CRPC");
-            item.put("targetOffice", c.getAssignedOfficer() != null ? c.getAssignedOfficer() : "");
-            item.put("status", c.getStatus() != null ? c.getStatus() : "");
-            item.put("entityName", c.getEntityCode() != null ? c.getEntityCode() : "");
-            item.put("proposedCategory", c.getFilingType() != null ? c.getFilingType() : "");
-            item.put("creationDate", c.getCreatedAt() != null ? c.getCreatedAt().toString() : "");
-            item.put("language", "");
-            item.put("territory", "");
-            item.put("subject", c.getSubject());
-            item.put("complainantName", c.getComplainantName());
-            item.put("complainantEmail", c.getComplainantEmail());
-            item.put("complainantPhone", c.getComplainantPhone());
-            item.put("description", c.getDescription());
-            item.put("timeline", List.of());
-            return item;
-        }).collect(Collectors.toList());
-        return buildResponse(true, "Transfer complaints retrieved", data);
+        List<CrpcTransferResponse> data = transfers.stream()
+                .map(c -> CrpcTransferResponse.builder()
+                        .complaintId(c.getId() != null ? c.getId().toString() : "")
+                        .complaintNumber(c.getComplaintNumber())
+                        .from(c.getComplainantEmail())
+                        .pending(c.getCreatedAt() != null
+                                ? Duration.between(c.getCreatedAt(), LocalDateTime.now()).toDays() : 0)
+                        .fromOffice(c.getDepartment() != null ? c.getDepartment() : "CRPC")
+                        .targetOffice(c.getAssignedOfficer() != null ? c.getAssignedOfficer() : "")
+                        .status(c.getStatus() != null ? c.getStatus() : "")
+                        .entityName(c.getEntityCode() != null ? c.getEntityCode() : "")
+                        .proposedCategory(c.getFilingType() != null ? c.getFilingType() : "")
+                        .creationDate(c.getCreatedAt() != null ? c.getCreatedAt().toString() : "")
+                        .subject(c.getSubject())
+                        .complainantName(c.getComplainantName())
+                        .complainantEmail(c.getComplainantEmail())
+                        .complainantPhone(c.getComplainantPhone())
+                        .description(c.getDescription())
+                        .build())
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(ApiResponse.success(data, "Transfer complaints retrieved"));
     }
 
     @PostMapping("/crpc/transfer-action/{complaintId}")
-    public ResponseEntity<Map<String, Object>> crpcTransferAction(
+    public ResponseEntity<ApiResponse<TransferActionResponse>> crpcTransferAction(
             @PathVariable String complaintId,
             @RequestBody Map<String, String> request) {
         Optional<Complaint> opt = complaintRepository.findByComplaintNumber(complaintId);
@@ -352,7 +367,7 @@ public class WorkflowController {
             c.setStatus("sent_back");
             c.setWorkflowStage("TRANSFER_REJECTED");
         } else {
-            return buildResponse(false, "Unknown transfer action: " + action, null);
+            return ResponseEntity.ok(ApiResponse.error("Unknown transfer action: " + action));
         }
 
         complaintRepository.save(c);
@@ -367,48 +382,48 @@ public class WorkflowController {
                     "/workflow/crpc/complaint/" + c.getComplaintNumber());
         }
 
-        Map<String, Object> data = new LinkedHashMap<>();
-        data.put("complaintNumber", c.getComplaintNumber());
-        data.put("action", action);
-        data.put("newStatus", c.getStatus());
-        return buildResponse(true, "Transfer action performed", data);
+        return ResponseEntity.ok(ApiResponse.success(TransferActionResponse.builder()
+                .complaintNumber(c.getComplaintNumber())
+                .action(action)
+                .newStatus(c.getStatus())
+                .build(), "Transfer action performed"));
     }
 
     @GetMapping("/cepc/sla-stats")
     @CepcRoleGuard(roles = {"CEPC_DO", "CEPC_REVIEWER", "CEPC_INCHARGE", "CEPC_CLOSING_AUTHORITY", "CEPC_ADMIN"})
-    public ResponseEntity<Map<String, Object>> getCepcSlaStats() {
+    public ResponseEntity<ApiResponse<Map<String, Long>>> getCepcSlaStats() {
         Map<String, Long> stats = cepcSlaService.getComplianceStats("CEPC");
-        return buildResponse(true, "SLA compliance stats", stats);
+        return ResponseEntity.ok(ApiResponse.success(stats, "SLA compliance stats"));
     }
 
     @GetMapping("/cepc/available-actions/{complaintNumber}")
     @CepcRoleGuard(roles = {"CEPC_DO", "CEPC_REVIEWER", "CEPC_INCHARGE", "CEPC_CLOSING_AUTHORITY", "CEPC_ADMIN", "CEPC_CONTACT_PERSON"})
-    public ResponseEntity<Map<String, Object>> getCepcAvailableActions(
+    public ResponseEntity<ApiResponse<AvailableActionsResponse>> getCepcAvailableActions(
             @PathVariable String complaintNumber,
             @RequestParam String userRole) {
         List<String> actions = cepcWorkflowService.getAvailableActions(complaintNumber, userRole);
-        Map<String, Object> data = new LinkedHashMap<>();
-        data.put("complaintNumber", complaintNumber);
-        data.put("userRole", userRole);
-        data.put("availableActions", actions);
-        return buildResponse(true, "Available actions", data);
+        return ResponseEntity.ok(ApiResponse.success(AvailableActionsResponse.builder()
+                .complaintNumber(complaintNumber)
+                .userRole(userRole)
+                .availableActions(actions)
+                .build(), "Available actions"));
     }
 
     @GetMapping("/cepc/validate-action")
     @CepcRoleGuard(roles = {"CEPC_DO", "CEPC_REVIEWER", "CEPC_INCHARGE", "CEPC_CLOSING_AUTHORITY", "CEPC_ADMIN", "CEPC_CONTACT_PERSON"})
-    public ResponseEntity<Map<String, Object>> validateCepcAction(
+    public ResponseEntity<ApiResponse<RoleAuthorizationResponse>> validateCepcAction(
             @RequestParam String userRole,
             @RequestParam String action) {
         boolean authorized = cepcWorkflowService.validateRoleAuthorization(userRole, action);
-        Map<String, Object> data = new LinkedHashMap<>();
-        data.put("userRole", userRole);
-        data.put("action", action);
-        data.put("authorized", authorized);
-        return buildResponse(true, "Role authorization check", data);
+        return ResponseEntity.ok(ApiResponse.success(RoleAuthorizationResponse.builder()
+                .userRole(userRole)
+                .action(action)
+                .authorized(authorized)
+                .build(), "Role authorization check"));
     }
 
     @PostMapping("/route/{complaintNumber}")
-    public ResponseEntity<Map<String, Object>> routeComplaint(
+    public ResponseEntity<ApiResponse<RouteComplaintResponse>> routeComplaint(
             @PathVariable String complaintNumber,
             @RequestBody Map<String, String> request) {
         Optional<Complaint> opt = complaintRepository.findByComplaintNumber(complaintNumber);
@@ -424,9 +439,8 @@ public class WorkflowController {
         String requestedDepartment = request.getOrDefault("department", DepartmentConstants.DEPT_RBIO);
         String department = DepartmentConstants.canonicalize(requestedDepartment);
         if (department == null) {
-            return ResponseEntity.badRequest().body(Map.of(
-                    "success", false,
-                    "message", "Unknown department '" + requestedDepartment + "'. Allowed: "
+            return ResponseEntity.badRequest().body(ApiResponse.error(
+                    "Unknown department '" + requestedDepartment + "'. Allowed: "
                             + DepartmentConstants.ALL_DEPARTMENTS));
         }
 
@@ -454,38 +468,37 @@ public class WorkflowController {
         // Kafka: complaint.assigned
         complaintEventPublisher.publishComplaintAssigned(c, "system");
 
-        Map<String, Object> data = new LinkedHashMap<>();
-        data.put("complaintNumber", c.getComplaintNumber());
-        data.put("department", department);
-        data.put("assignedRole", role);
-        data.put("assignedOfficer", officer);
-        data.put("status", "assigned");
-
-        return buildResponse(true, "Complaint routed successfully", data);
+        return ResponseEntity.ok(ApiResponse.success(RouteComplaintResponse.builder()
+                .complaintNumber(c.getComplaintNumber())
+                .department(department)
+                .assignedRole(role)
+                .assignedOfficer(officer)
+                .status("assigned")
+                .build(), "Complaint routed successfully"));
     }
 
     // ═══ UST581-584: Closure Clauses filtered by role ═══
     @GetMapping("/closure-clauses")
-    public ResponseEntity<Map<String, Object>> getClosureClauses(@RequestParam String role) {
-        List<Map<String, Object>> clauses = new ArrayList<>();
+    public ResponseEntity<ApiResponse<List<ClosureClauseResponse>>> getClosureClauses(@RequestParam String role) {
+        List<ClosureClauseResponse> clauses = new ArrayList<>();
 
         // Base clauses available to all
-        clauses.add(Map.of("code", "16(1)", "label", "Resolved to satisfaction", "category", "RESOLUTION"));
-        clauses.add(Map.of("code", "16(2)(a)", "label", "Not maintainable - time barred", "category", "NON_MAINTAINABLE"));
-        clauses.add(Map.of("code", "16(2)(b)", "label", "Not maintainable - frivolous/vexatious", "category", "NON_MAINTAINABLE"));
-        clauses.add(Map.of("code", "16(2)(g)", "label", "Not maintainable - anonymous", "category", "NON_MAINTAINABLE"));
-        clauses.add(Map.of("code", "16(2)(h)", "label", "Not maintainable - insufficient information", "category", "NON_MAINTAINABLE"));
-        clauses.add(Map.of("code", "16(3)", "label", "Closed - complainant not responding", "category", "CLOSURE"));
-        clauses.add(Map.of("code", "16(4)", "label", "Closed - matter settled", "category", "CLOSURE"));
+        clauses.add(clause("16(1)", "Resolved to satisfaction", "RESOLUTION"));
+        clauses.add(clause("16(2)(a)", "Not maintainable - time barred", "NON_MAINTAINABLE"));
+        clauses.add(clause("16(2)(b)", "Not maintainable - frivolous/vexatious", "NON_MAINTAINABLE"));
+        clauses.add(clause("16(2)(g)", "Not maintainable - anonymous", "NON_MAINTAINABLE"));
+        clauses.add(clause("16(2)(h)", "Not maintainable - insufficient information", "NON_MAINTAINABLE"));
+        clauses.add(clause("16(3)", "Closed - complainant not responding", "CLOSURE"));
+        clauses.add(clause("16(4)", "Closed - matter settled", "CLOSURE"));
 
         // Appellable clauses - only Ombudsman can use
         if ("OMBUDSMAN".equalsIgnoreCase(role) || "RBIO_ADMIN".equalsIgnoreCase(role)) {
-            clauses.add(Map.of("code", "16(2)(c)", "label", "Not maintainable - sub-judice", "category", "NON_MAINTAINABLE", "appellable", true));
-            clauses.add(Map.of("code", "16(2)(d)", "label", "Not maintainable - outside jurisdiction", "category", "NON_MAINTAINABLE", "appellable", true));
-            clauses.add(Map.of("code", "16(2)(e)", "label", "Not maintainable - already settled by RBI", "category", "NON_MAINTAINABLE", "appellable", true));
-            clauses.add(Map.of("code", "16(2)(f)", "label", "Not maintainable - covered by other dispute mechanism", "category", "NON_MAINTAINABLE", "appellable", true));
-            clauses.add(Map.of("code", "15(1)(a)", "label", "Award - full relief", "category", "AWARD", "appellable", true));
-            clauses.add(Map.of("code", "15(1)(b)", "label", "Award - partial relief with compensation", "category", "AWARD", "appellable", true));
+            clauses.add(appellableClause("16(2)(c)", "Not maintainable - sub-judice", "NON_MAINTAINABLE"));
+            clauses.add(appellableClause("16(2)(d)", "Not maintainable - outside jurisdiction", "NON_MAINTAINABLE"));
+            clauses.add(appellableClause("16(2)(e)", "Not maintainable - already settled by RBI", "NON_MAINTAINABLE"));
+            clauses.add(appellableClause("16(2)(f)", "Not maintainable - covered by other dispute mechanism", "NON_MAINTAINABLE"));
+            clauses.add(appellableClause("15(1)(a)", "Award - full relief", "AWARD"));
+            clauses.add(appellableClause("15(1)(b)", "Award - partial relief with compensation", "AWARD"));
         }
 
         // Deputy Ombudsman: non-appealable subset
@@ -497,15 +510,29 @@ public class WorkflowController {
         // Already handled by not adding them for roles other than OMBUDSMAN
 
         // RBIOS 2026 new clauses
-        clauses.add(Map.of("code", "16(5)", "label", "Closed - entity licence cancelled/surrendered", "category", "CLOSURE", "newIn2026", true));
-        clauses.add(Map.of("code", "16(6)", "label", "Closed - complaint withdrawn by complainant", "category", "CLOSURE", "newIn2026", true));
+        clauses.add(newClause("16(5)", "Closed - entity licence cancelled/surrendered"));
+        clauses.add(newClause("16(6)", "Closed - complaint withdrawn by complainant"));
 
-        return buildResponse(true, "Closure clauses for role: " + role, clauses);
+        return ResponseEntity.ok(ApiResponse.success(clauses, "Closure clauses for role: " + role));
+    }
+
+    private static ClosureClauseResponse clause(String code, String label, String category) {
+        return ClosureClauseResponse.builder().code(code).label(label).category(category).build();
+    }
+
+    private static ClosureClauseResponse appellableClause(String code, String label, String category) {
+        return ClosureClauseResponse.builder()
+                .code(code).label(label).category(category).appellable(true).build();
+    }
+
+    private static ClosureClauseResponse newClause(String code, String label) {
+        return ClosureClauseResponse.builder()
+                .code(code).label(label).category("CLOSURE").newIn2026(true).build();
     }
 
     // ═══ UST656: Email Validation - RBI Domain Only ═══
     @PostMapping("/validate-email-recipients")
-    public ResponseEntity<Map<String, Object>> validateEmailRecipients(
+    public ResponseEntity<ApiResponse<EmailRecipientValidationResponse>> validateEmailRecipients(
             @RequestBody Map<String, Object> request) {
         @SuppressWarnings("unchecked")
         List<String> recipients = (List<String>) request.getOrDefault("recipients", List.of());
@@ -523,19 +550,25 @@ public class WorkflowController {
             }
         }
 
-        Map<String, Object> data = new LinkedHashMap<>();
-        data.put("valid", invalidEmails.isEmpty());
-        data.put("validEmails", validEmails);
-        data.put("invalidEmails", invalidEmails);
-        if (!invalidEmails.isEmpty()) {
-            data.put("error", "Only official RBI email addresses can be used for outbound complaint emails");
-        }
-        return buildResponse(invalidEmails.isEmpty(), invalidEmails.isEmpty() ? "All recipients valid" : "Invalid recipients detected", data);
+        boolean allValid = invalidEmails.isEmpty();
+        return ResponseEntity.ok(ApiResponse.<EmailRecipientValidationResponse>builder()
+                .success(allValid)
+                .message(allValid ? "All recipients valid" : "Invalid recipients detected")
+                .data(EmailRecipientValidationResponse.builder()
+                        .valid(allValid)
+                        .validEmails(validEmails)
+                        .invalidEmails(invalidEmails)
+                        .error(allValid ? null
+                                : "Only official RBI email addresses can be used for outbound complaint emails")
+                        .build())
+                .build());
     }
 
     // ═══ UST655: Get assignable users (exclude SECRETARY) ═══
+    // The user payload stays a Map until KeycloakUserService is retyped — it is the shared producer
+    // for KeycloakUserController's endpoints too, so both move together or neither does.
     @GetMapping("/assignable-users")
-    public ResponseEntity<Map<String, Object>> getAssignableUsers(@RequestParam String role) {
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getAssignableUsers(@RequestParam String role) {
         List<Map<String, Object>> users = keycloakUserService.getUsersByRole(role);
         // Filter out users with SECRETARY role
         users = users.stream()
@@ -545,29 +578,30 @@ public class WorkflowController {
                     return !userId.toLowerCase().contains("secretary");
                 })
                 .collect(Collectors.toList());
-        return buildResponse(true, "Assignable users for role: " + role, users);
+        return ResponseEntity.ok(ApiResponse.success(users, "Assignable users for role: " + role));
     }
 
     // ═══ UST504-505: Check closure letter dispatch status ═══
     @GetMapping("/closure-status/{complaintNumber}")
-    public ResponseEntity<Map<String, Object>> getClosureStatus(@PathVariable String complaintNumber) {
+    public ResponseEntity<ApiResponse<ClosureStatusResponse>> getClosureStatus(@PathVariable String complaintNumber) {
         Optional<Complaint> opt = complaintRepository.findByComplaintNumber(complaintNumber);
         if (opt.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
         Complaint c = opt.get();
-        Map<String, Object> data = new LinkedHashMap<>();
-        data.put("complaintNumber", c.getComplaintNumber());
-        data.put("hasEmail", c.getComplainantEmail() != null && !c.getComplainantEmail().isBlank());
-        data.put("closureLetterSentAt", c.getClosureLetterSentAt() != null ? c.getClosureLetterSentAt().toString() : null);
-        data.put("status", c.getStatus());
-        data.put("closureCause", c.getClosureCause());
-        data.put("closureClause", c.getClosureClause());
-        data.put("customClosureText", c.getCustomClosureText());
-        return buildResponse(true, "Closure status", data);
+        return ResponseEntity.ok(ApiResponse.success(ClosureStatusResponse.builder()
+                .complaintNumber(c.getComplaintNumber())
+                .hasEmail(c.getComplainantEmail() != null && !c.getComplainantEmail().isBlank())
+                .closureLetterSentAt(c.getClosureLetterSentAt() != null
+                        ? c.getClosureLetterSentAt().toString() : null)
+                .status(c.getStatus())
+                .closureCause(c.getClosureCause())
+                .closureClause(c.getClosureClause())
+                .customClosureText(c.getCustomClosureText())
+                .build(), "Closure status"));
     }
 
-    private ResponseEntity<Map<String, Object>> getAllTasksByDepartment(String dept, String officer) {
+    private ResponseEntity<ApiResponse<List<WorkflowTaskResponse>>> getAllTasksByDepartment(String dept, String officer) {
         List<Complaint> tasks;
         if (officer != null && !officer.isBlank()) {
             tasks = complaintRepository.findByDepartmentAndAssignedOfficerOrderByCreatedAtDesc(dept, officer);
@@ -598,7 +632,7 @@ public class WorkflowController {
         } else {
             tasks = complaintRepository.findByDepartmentOrderByCreatedAtDesc(dept);
         }
-        return buildResponse(true, "All tasks retrieved", buildTaskList(tasks, officer));
+        return ResponseEntity.ok(ApiResponse.success(buildTaskList(tasks, officer), "All tasks retrieved"));
     }
 
     private List<String> resolveRolesForOfficer(String officer) {
@@ -616,7 +650,7 @@ public class WorkflowController {
         return roles;
     }
 
-    private ResponseEntity<Map<String, Object>> getCompletedByDepartment(String dept, String officer) {
+    private ResponseEntity<ApiResponse<List<WorkflowTaskResponse>>> getCompletedByDepartment(String dept, String officer) {
         List<Complaint> completed = new java.util.ArrayList<>();
         if (officer != null && !officer.isBlank()) {
             for (String status : CLOSED_STATUSES) {
@@ -627,10 +661,10 @@ public class WorkflowController {
                 completed.addAll(complaintRepository.findByDepartmentAndStatusOrderByCreatedAtDesc(dept, status));
             }
         }
-        return buildResponse(true, "Completed tasks", buildTaskList(completed));
+        return ResponseEntity.ok(ApiResponse.success(buildTaskList(completed), "Completed tasks"));
     }
 
-    private ResponseEntity<Map<String, Object>> getTasksByDepartment(String dept, String role, String officer) {
+    private ResponseEntity<ApiResponse<List<WorkflowTaskResponse>>> getTasksByDepartment(String dept, String role, String officer) {
         List<Complaint> tasks;
 
         if (officer != null && !officer.isBlank()) {
@@ -643,10 +677,10 @@ public class WorkflowController {
             tasks = complaintRepository.findByDepartmentAndStatusNotInOrderByCreatedAtDesc(dept, CLOSED_STATUSES);
         }
 
-        return buildResponse(true, "Tasks retrieved", buildTaskList(tasks));
+        return ResponseEntity.ok(ApiResponse.success(buildTaskList(tasks), "Tasks retrieved"));
     }
 
-    private ResponseEntity<Map<String, Object>> assignComplaint(String complaintNumber, String dept, Map<String, String> request) {
+    private ResponseEntity<ApiResponse<ComplaintAssignmentResponse>> assignComplaint(String complaintNumber, String dept, Map<String, String> request) {
         Optional<Complaint> opt = complaintRepository.findByComplaintNumber(complaintNumber);
         if (opt.isEmpty()) {
             return ResponseEntity.notFound().build();
@@ -678,24 +712,24 @@ public class WorkflowController {
         // Kafka: complaint.assigned
         complaintEventPublisher.publishComplaintAssigned(c, request.getOrDefault("actor", "system"));
 
-        Map<String, Object> data = new LinkedHashMap<>();
-        data.put("complaintNumber", c.getComplaintNumber());
-        data.put("assignedTo", officer);
-        data.put("role", role);
-
-        return buildResponse(true, "Complaint assigned", data);
+        return ResponseEntity.ok(ApiResponse.success(ComplaintAssignmentResponse.builder()
+                .complaintNumber(c.getComplaintNumber())
+                .assignedTo(officer)
+                .role(role)
+                .build(), "Complaint assigned"));
     }
 
-    private ResponseEntity<Map<String, Object>> performAction(String complaintNumber, String dept, Map<String, String> request) {
+    private ResponseEntity<ApiResponse<WorkflowActionResponse>> performAction(String complaintNumber, String dept, Map<String, String> request) {
         String action = request.getOrDefault("action", "").toUpperCase();
 
         // Delegate CEPC-specific actions to CepcWorkflowService
         if ("CEPC".equals(dept) && cepcWorkflowService.isCepcAction(action)) {
             try {
                 Map<String, Object> data = cepcWorkflowService.performAction(complaintNumber, action, request);
-                return buildResponse(true, "Action performed: " + action, data);
+                return ResponseEntity.ok(ApiResponse.success(
+                        WorkflowActionResponse.from(data), "Action performed: " + action));
             } catch (IllegalArgumentException e) {
-                return buildResponse(false, e.getMessage(), null);
+                return ResponseEntity.ok(ApiResponse.error(e.getMessage()));
             }
         }
 
@@ -703,9 +737,10 @@ public class WorkflowController {
         if ("RBIO".equals(dept) && rbioWorkflowService.isRbioAction(action)) {
             try {
                 Map<String, Object> data = rbioWorkflowService.performAction(complaintNumber, action, request);
-                return buildResponse(true, "Action performed: " + action, data);
+                return ResponseEntity.ok(ApiResponse.success(
+                        WorkflowActionResponse.from(data), "Action performed: " + action));
             } catch (IllegalArgumentException e) {
-                return buildResponse(false, e.getMessage(), null);
+                return ResponseEntity.ok(ApiResponse.error(e.getMessage()));
             }
         }
 
@@ -761,7 +796,7 @@ public class WorkflowController {
                 c.setResolvedAt(LocalDateTime.now());
                 break;
             default:
-                return buildResponse(false, "Unknown action: " + action, null);
+                return ResponseEntity.ok(ApiResponse.error("Unknown action: " + action));
         }
 
         complaintRepository.save(c);
@@ -773,14 +808,13 @@ public class WorkflowController {
         // ═══ Kafka event publishing ═══
         publishActionEvent(c, action, actor, prevStatus);
 
-        Map<String, Object> data = new LinkedHashMap<>();
-        data.put("complaintNumber", c.getComplaintNumber());
-        data.put("action", action);
-        data.put("newStatus", c.getStatus());
-        data.put("assignedRole", c.getAssignedRole());
-        data.put("assignedOfficer", c.getAssignedOfficer());
-
-        return buildResponse(true, "Action performed: " + action, data);
+        return ResponseEntity.ok(ApiResponse.success(WorkflowActionResponse.builder()
+                .complaintNumber(c.getComplaintNumber())
+                .action(action)
+                .newStatus(c.getStatus())
+                .assignedRole(c.getAssignedRole())
+                .assignedOfficer(c.getAssignedOfficer())
+                .build(), "Action performed: " + action));
     }
 
     /**
@@ -909,51 +943,43 @@ public class WorkflowController {
         return escalation.getOrDefault(currentRole, currentRole);
     }
 
-    private List<Map<String, Object>> buildTaskList(List<Complaint> complaints) {
+    private List<WorkflowTaskResponse> buildTaskList(List<Complaint> complaints) {
         return buildTaskList(complaints, null);
     }
 
-    private List<Map<String, Object>> buildTaskList(List<Complaint> complaints, String requestingOfficer) {
+    private List<WorkflowTaskResponse> buildTaskList(List<Complaint> complaints, String requestingOfficer) {
         return complaints.stream().map(c -> {
-            Map<String, Object> task = new LinkedHashMap<>();
-            // The 6-digit CRPC draft id if this complaint was converted from one, otherwise
-            // fall back to this row's own internal id (complaints seeded directly into RBIO/CEPC
-            // without ever going through a CRPC draft have no origin draft id to show).
-            task.put("complaintId", c.getOriginDraftId() != null ? c.getOriginDraftId() : c.getId());
-            task.put("complaintNumber", c.getComplaintNumber());
-            task.put("subject", c.getSubject());
-            task.put("complainantName", c.getComplainantName());
-            task.put("priority", c.getPriority() != null ? c.getPriority().toUpperCase() : "MEDIUM");
-            task.put("status", c.getStatus() != null ? c.getStatus().toUpperCase() : "PENDING");
-            task.put("assignedAt", c.getUpdatedAt() != null ? c.getUpdatedAt().toString() : "");
-            task.put("slaDueDate", c.getSlaDeadline() != null ? c.getSlaDeadline().toString()
-                    : (c.getCreatedAt() != null ? c.getCreatedAt().plusDays(30).toString() : ""));
             String entityName = "";
             if (c.getEntityCode() != null && !c.getEntityCode().isBlank()) {
                 entityName = c.getEntityCode();
             } else if (c.getBankId() != null) {
                 entityName = bankRepository.findById(c.getBankId()).map(b -> b.getName()).orElse("");
             }
-            task.put("entityName", entityName);
-            task.put("department", c.getDepartment());
-            task.put("assignedRole", c.getAssignedRole());
-            task.put("assignedOfficer", c.getAssignedOfficer());
-            task.put("triageSignal", c.getTriageSignal());
-            task.put("hasAttachments", complaintAttachmentRepository.existsByComplaintId(c.getId()));
-            boolean viewOnly = requestingOfficer != null && !requestingOfficer.isBlank()
-                    && !requestingOfficer.equals(c.getAssignedOfficer());
-            task.put("viewOnly", viewOnly);
-            return task;
+            // The 6-digit CRPC draft id if this complaint was converted from one, otherwise
+            // fall back to this row's own internal id (complaints seeded directly into RBIO/CEPC
+            // without ever going through a CRPC draft have no origin draft id to show).
+            String complaintId = c.getOriginDraftId() != null ? c.getOriginDraftId()
+                    : (c.getId() != null ? c.getId().toString() : null);
+            return WorkflowTaskResponse.builder()
+                    .complaintId(complaintId)
+                    .complaintNumber(c.getComplaintNumber())
+                    .subject(c.getSubject())
+                    .complainantName(c.getComplainantName())
+                    .priority(c.getPriority() != null ? c.getPriority().toUpperCase() : "MEDIUM")
+                    .status(c.getStatus() != null ? c.getStatus().toUpperCase() : "PENDING")
+                    .assignedAt(c.getUpdatedAt() != null ? c.getUpdatedAt().toString() : "")
+                    .slaDueDate(c.getSlaDeadline() != null ? c.getSlaDeadline().toString()
+                            : (c.getCreatedAt() != null ? c.getCreatedAt().plusDays(30).toString() : ""))
+                    .entityName(entityName)
+                    .department(c.getDepartment())
+                    .assignedRole(c.getAssignedRole())
+                    .assignedOfficer(c.getAssignedOfficer())
+                    .triageSignal(c.getTriageSignal())
+                    .hasAttachments(complaintAttachmentRepository.existsByComplaintId(c.getId()))
+                    .viewOnly(requestingOfficer != null && !requestingOfficer.isBlank()
+                            && !requestingOfficer.equals(c.getAssignedOfficer()))
+                    .build();
         }).collect(Collectors.toList());
-    }
-
-    private ResponseEntity<Map<String, Object>> buildResponse(boolean success, String message, Object data) {
-        Map<String, Object> response = new LinkedHashMap<>();
-        response.put("success", success);
-        response.put("message", message);
-        response.put("data", data);
-        response.put("timestamp", LocalDateTime.now().toString());
-        return ResponseEntity.ok(response);
     }
 
     private String assignByRole(String role) {

@@ -2,6 +2,20 @@ package com.hrms.cms.controller;
 
 import com.hrms.cms.dto.FileComplaintRequest;
 import com.hrms.cms.dto.NodalAssessmentRequest;
+import com.hrms.cms.dto.complaint.ComplaintCommentResponse;
+import com.hrms.cms.dto.complaint.ComplaintDetailResponse;
+import com.hrms.cms.dto.complaint.ComplaintEmailItem;
+import com.hrms.cms.dto.complaint.ComplaintPhoneLookupItem;
+import com.hrms.cms.dto.complaint.ComplaintRegistrationAck;
+import com.hrms.cms.dto.complaint.ComplaintTimelineItem;
+import com.hrms.cms.dto.complaint.EmailAttachmentRef;
+import com.hrms.cms.dto.complaint.EmailSendAck;
+import com.hrms.cms.dto.complaint.ForwardComplaintResponse;
+import com.hrms.cms.dto.complaint.NodalRecordCommentResponse;
+import com.hrms.cms.dto.complaint.NodalRecordRow;
+import com.hrms.cms.dto.complaint.OfficeHeadDecisionResponse;
+import com.hrms.cms.dto.complaint.RbioReassignResponse;
+import com.hrms.cms.dto.complaint.RecentComplaintItem;
 import com.hrms.cms.entity.Complaint;
 import com.hrms.cms.entity.ComplaintComment;
 import com.hrms.cms.entity.ComplaintTimeline;
@@ -17,6 +31,7 @@ import com.hrms.cms.security.RbioRoleGuard;
 import com.hrms.cms.service.ComplaintService;
 import com.hrms.cms.service.RbioHierarchyService;
 import com.hrms.cms.service.triage.IntakeTriageService;
+import com.rbi.cms.common.dto.ApiResponse;
 import com.rbi.cms.common.enums.ComplaintStatus;
 import com.rbi.cms.common.enums.RoleConstants;
 import jakarta.validation.ConstraintViolation;
@@ -52,6 +67,7 @@ public class ComplaintApiV1Controller {
     private final com.hrms.cms.repository.OfficerAvailabilityRepository officerAvailabilityRepository;
     private final com.hrms.cms.repository.OfficeCodeMasterRepository officeCodeMasterRepository;
     private final RbioHierarchyService rbioHierarchyService;
+    private final com.hrms.cms.service.OfficerDirectoryService officerDirectoryService;
     private final com.hrms.cms.event.ComplaintEventPublisher complaintEventPublisher;
     private final com.hrms.cms.service.NodalOfficerRecordService nodalOfficerRecordService;
     private final com.hrms.cms.service.NotificationService notificationService;
@@ -59,7 +75,8 @@ public class ComplaintApiV1Controller {
     private final CallerIdentity callerIdentity;
 
     @PostMapping
-    public ResponseEntity<Map<String, Object>> registerComplaint(@RequestBody Map<String, Object> request) {
+    public ResponseEntity<ApiResponse<ComplaintRegistrationAck>> registerComplaint(
+            @RequestBody Map<String, Object> request) {
         FileComplaintRequest req = new FileComplaintRequest();
         req.setComplainantName((String) request.getOrDefault("complainantName", ""));
         req.setComplainantEmail((String) request.getOrDefault("complainantEmail", ""));
@@ -110,8 +127,8 @@ public class ComplaintApiV1Controller {
             try {
                 req.setAmountInvolved(new java.math.BigDecimal(request.get("amountInvolved").toString()));
             } catch (NumberFormatException e) {
-                return ResponseEntity.badRequest().body(Map.of(
-                        "success", false, "message", "Validation failed: amountInvolved must be a number"));
+                return ResponseEntity.badRequest()
+                        .body(ApiResponse.error("Validation failed: amountInvolved must be a number"));
             }
         }
         if (request.get("priorReComplaint") != null) {
@@ -143,8 +160,7 @@ public class ComplaintApiV1Controller {
             String errors = violations.stream()
                     .map(v -> v.getPropertyPath() + ": " + v.getMessage())
                     .collect(Collectors.joining("; "));
-            return ResponseEntity.badRequest().body(Map.of(
-                    "success", false, "message", "Validation failed: " + errors));
+            return ResponseEntity.badRequest().body(ApiResponse.error("Validation failed: " + errors));
         }
 
         Complaint c = complaintService.fileComplaint(req);
@@ -155,67 +171,55 @@ public class ComplaintApiV1Controller {
             // Triage failure must not block complaint registration
         }
 
-        Map<String, Object> ack = new LinkedHashMap<>();
-        ack.put("complaintId", c.getComplaintNumber());
-        ack.put("status", "REGISTERED");
-        ack.put("registeredAt", c.getCreatedAt() != null ? c.getCreatedAt().toString() : LocalDateTime.now().toString());
-        ack.put("slaDueDate", c.getCreatedAt() != null ? c.getCreatedAt().plusDays(30).toString() : LocalDateTime.now().plusDays(30).toString());
-        ack.put("acknowledgementMessage", "Your complaint has been registered successfully. Use the reference number to track status.");
+        ComplaintRegistrationAck ack = ComplaintRegistrationAck.builder()
+                .complaintId(c.getComplaintNumber())
+                .status("REGISTERED")
+                .registeredAt(c.getCreatedAt() != null ? c.getCreatedAt().toString() : LocalDateTime.now().toString())
+                .slaDueDate(c.getCreatedAt() != null ? c.getCreatedAt().plusDays(30).toString()
+                        : LocalDateTime.now().plusDays(30).toString())
+                .acknowledgementMessage(
+                        "Your complaint has been registered successfully. Use the reference number to track status.")
+                .build();
 
-        Map<String, Object> response = new LinkedHashMap<>();
-        response.put("success", true);
-        response.put("message", "Complaint registered successfully");
-        response.put("data", ack);
-        response.put("correlationId", UUID.randomUUID().toString());
-        response.put("timestamp", LocalDateTime.now().toString());
-
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success(ack, "Complaint registered successfully"));
     }
 
     @GetMapping
-    public ResponseEntity<Map<String, Object>> getComplaintsByPhone(@RequestParam String phone) {
+    public ResponseEntity<ApiResponse<List<ComplaintPhoneLookupItem>>> getComplaintsByPhone(
+            @RequestParam String phone) {
         List<Complaint> complaints = complaintService.getByComplainantPhone(phone);
 
         DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd-MM-yyyy");
 
-        List<Map<String, Object>> items = complaints.stream().map(c -> {
+        List<ComplaintPhoneLookupItem> items = complaints.stream().map(c -> {
             String bankName = "";
             if (c.getBankId() != null) {
                 bankName = bankRepository.findById(c.getBankId())
                         .map(b -> b.getName()).orElse("");
             }
 
-            Map<String, Object> item = new LinkedHashMap<>();
-            item.put("complaintId", c.getComplaintNumber());
-            item.put("entityName", bankName.isEmpty() ? c.getSubject() : bankName);
-            item.put("complaintDate", c.getCreatedAt() != null ? c.getCreatedAt().format(fmt) : "");
-            item.put("status", c.getStatus() != null ? c.getStatus().toUpperCase() : "PENDING");
-            item.put("comments", c.getDescription() != null ? c.getDescription().substring(0, Math.min(c.getDescription().length(), 50)) : "");
-            return item;
+            return ComplaintPhoneLookupItem.builder()
+                    .complaintId(c.getComplaintNumber())
+                    .entityName(bankName.isEmpty() ? c.getSubject() : bankName)
+                    .complaintDate(c.getCreatedAt() != null ? c.getCreatedAt().format(fmt) : "")
+                    .status(c.getStatus() != null ? c.getStatus().toUpperCase() : "PENDING")
+                    .comments(c.getDescription() != null
+                            ? c.getDescription().substring(0, Math.min(c.getDescription().length(), 50)) : "")
+                    .build();
         }).collect(Collectors.toList());
 
-        Map<String, Object> response = new LinkedHashMap<>();
-        response.put("success", true);
-        response.put("message", "Complaints retrieved");
-        response.put("data", items);
-        response.put("timestamp", LocalDateTime.now().toString());
-
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(ApiResponse.success(items, "Complaints retrieved"));
     }
 
     @GetMapping("/{complaintNumber}")
-    public ResponseEntity<Map<String, Object>> getComplaintDetail(@PathVariable String complaintNumber) {
+    public ResponseEntity<ApiResponse<ComplaintDetailResponse>> getComplaintDetail(
+            @PathVariable String complaintNumber) {
         Complaint c;
         try {
             c = complaintService.getByComplaintNumber(complaintNumber);
         } catch (RuntimeException e) {
-            Map<String, Object> error = new LinkedHashMap<>();
-            error.put("success", false);
-            error.put("message", "Complaint not found");
-            error.put("data", null);
-            error.put("correlationId", UUID.randomUUID().toString());
-            error.put("timestamp", LocalDateTime.now().toString());
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error("Complaint not found"));
         }
         List<ComplaintTimeline> timeline = complaintService.getTimeline(c.getId());
 
@@ -242,150 +246,131 @@ public class ComplaintApiV1Controller {
         String registeredAt = c.getCreatedAt() != null ? c.getCreatedAt().toString() : "";
         String slaDueDate = c.getCreatedAt() != null ? c.getCreatedAt().plusDays(30).toString() : "";
 
-        Map<String, Object> detail = new LinkedHashMap<>();
-        detail.put("id", c.getId());
-        detail.put("complaintId", c.getComplaintNumber());
-        detail.put("complaintNumber", c.getComplaintNumber());
-        detail.put("category", categoryName);
-        detail.put("priority", c.getPriority() != null ? c.getPriority().toUpperCase() : "MEDIUM");
-        detail.put("status", c.getStatus() != null ? c.getStatus().toUpperCase() : "NEW");
-        detail.put("subject", c.getSubject());
-        detail.put("description", c.getDescription());
-        detail.put("complainantName", c.getComplainantName());
-        detail.put("complainantEmail", c.getComplainantEmail());
-        detail.put("complainantPhone", c.getComplainantPhone());
-        detail.put("complainantAddress", c.getComplainantAddress());
-        detail.put("complainantState", c.getComplainantState());
-        detail.put("complainantDistrict", c.getComplainantDistrict());
-        detail.put("complainantPincode", c.getComplainantPincode());
-        detail.put("entityName", bankName);
-        detail.put("regulatedEntityId", c.getRegulatedEntityId());
-        detail.put("entityType", regulatedEntity != null ? regulatedEntity.getEntityType() : null);
-        detail.put("entityCategory", c.getEntityCategory());
-        detail.put("bsrCode", c.getEntityBsrCode());
-        detail.put("entityPincode", c.getEntityPincode());
-        detail.put("entityState", c.getEntityState());
-        detail.put("entityDistrict", c.getEntityDistrict());
-        detail.put("entityCity", c.getEntityCity());
-        detail.put("entityBranchName", c.getEntityBranchName());
-        detail.put("entityBranchCategory", c.getEntityBranchCategory());
-        detail.put("entityAddress", c.getEntityAddress());
-        detail.put("cosmosCode", c.getCosmosCode());
-        detail.put("schemeVersion", c.getSchemeVersion());
-        detail.put("amountInvolved", c.getAmountInvolved());
-        detail.put("transactionDate", c.getBankComplaintDate() != null ? c.getBankComplaintDate().toString() : null);
-        detail.put("assignedTeam", c.getAssignedOfficer() != null ? c.getAssignedOfficer() : "Unassigned");
-        detail.put("assignedTo", c.getAssignedOfficer());
-        detail.put("registeredAt", registeredAt);
-        detail.put("createdAt", registeredAt);
-        detail.put("slaDueDate", slaDueDate);
-        detail.put("resolutionSummary", null);
-        detail.put("resolvedAt", c.getResolvedAt() != null ? c.getResolvedAt().toString() : null);
-        detail.put("timeline", timeline.stream().map(t -> {
-            Map<String, Object> tm = new LinkedHashMap<>();
-            tm.put("fromStatus", t.getFromStatus());
-            tm.put("toStatus", t.getToStatus());
-            tm.put("action", t.getAction());
-            tm.put("timestamp", t.getPerformedAt() != null ? t.getPerformedAt().toString() : "");
-            tm.put("remarks", t.getRemarks());
-            return tm;
-        }).collect(Collectors.toList()));
-        detail.put("communications", List.of());
-        detail.put("documents", List.of());
-        detail.put("triageSignal", c.getTriageSignal());
-        detail.put("triageFlags", c.getTriageFlags());
-        detail.put("eligibilityTimeline", c.getEligibilityTimeline());
-        detail.put("closureClause", c.getClosureClause());
-        detail.put("proposedAction", c.getProposedAction());
-        detail.put("proposedClause", c.getProposedClause());
-        detail.put("forwardedOfficeCode", c.getForwardedOfficeCode());
-        detail.put("forwardedOfficeName", c.getForwardedOfficeCode() != null
-                ? officeCodeMasterRepository.findByOfficeCodeAndIsActiveTrue(c.getForwardedOfficeCode())
-                        .map(o -> o.getOfficeName()).orElse(c.getForwardedOfficeCode())
-                : null);
-        detail.put("preForwardOfficer", c.getPreForwardOfficer());
-        detail.put("preForwardRole", c.getPreForwardRole());
-        detail.put("closureClauseDescription", c.getClosureClauseDescription());
-        detail.put("complaintStatusOnPortal", c.getComplaintStatusOnPortal());
-        detail.put("speakingOrderGenerated", c.getSpeakingOrderGenerated());
-        detail.put("gistOfCase", c.getGistOfCase());
-        detail.put("gistOfCaseRegional", c.getGistOfCaseRegional());
+        ComplaintDetailResponse detail = ComplaintDetailResponse.builder()
+                .id(c.getId())
+                .complaintId(c.getComplaintNumber())
+                .complaintNumber(c.getComplaintNumber())
+                .category(categoryName)
+                .priority(c.getPriority() != null ? c.getPriority().toUpperCase() : "MEDIUM")
+                .status(c.getStatus() != null ? c.getStatus().toUpperCase() : "NEW")
+                .subject(c.getSubject())
+                .description(c.getDescription())
+                .complainantName(c.getComplainantName())
+                .complainantEmail(c.getComplainantEmail())
+                .complainantPhone(c.getComplainantPhone())
+                .complainantAddress(c.getComplainantAddress())
+                .complainantState(c.getComplainantState())
+                .complainantDistrict(c.getComplainantDistrict())
+                .complainantPincode(c.getComplainantPincode())
+                .entityName(bankName)
+                .regulatedEntityId(c.getRegulatedEntityId())
+                .entityType(regulatedEntity != null ? regulatedEntity.getEntityType() : null)
+                .entityCategory(c.getEntityCategory())
+                .bsrCode(c.getEntityBsrCode())
+                .entityPincode(c.getEntityPincode())
+                .entityState(c.getEntityState())
+                .entityDistrict(c.getEntityDistrict())
+                .entityCity(c.getEntityCity())
+                .entityBranchName(c.getEntityBranchName())
+                .entityBranchCategory(c.getEntityBranchCategory())
+                .entityAddress(c.getEntityAddress())
+                .cosmosCode(c.getCosmosCode())
+                .schemeVersion(c.getSchemeVersion())
+                .amountInvolved(c.getAmountInvolved())
+                .transactionDate(c.getBankComplaintDate() != null ? c.getBankComplaintDate().toString() : null)
+                .assignedTeam(c.getAssignedOfficerName() != null ? c.getAssignedOfficerName()
+                        : c.getAssignedOfficer() != null ? c.getAssignedOfficer() : "Unassigned")
+                .assignedTo(c.getAssignedOfficer())
+                .assignedToName(c.getAssignedOfficerName())
+                .registeredAt(registeredAt)
+                .createdAt(registeredAt)
+                .slaDueDate(slaDueDate)
+                .resolvedAt(c.getResolvedAt() != null ? c.getResolvedAt().toString() : null)
+                .timeline(timeline.stream().map(t -> ComplaintTimelineItem.builder()
+                                .fromStatus(t.getFromStatus())
+                                .toStatus(t.getToStatus())
+                                .action(t.getAction())
+                                .timestamp(t.getPerformedAt() != null ? t.getPerformedAt().toString() : "")
+                                .remarks(t.getRemarks())
+                                .build())
+                        .collect(Collectors.toList()))
+                .triageSignal(c.getTriageSignal())
+                .triageFlags(c.getTriageFlags())
+                .eligibilityTimeline(c.getEligibilityTimeline())
+                .closureClause(c.getClosureClause())
+                .proposedAction(c.getProposedAction())
+                .proposedClause(c.getProposedClause())
+                .forwardedOfficeCode(c.getForwardedOfficeCode())
+                .forwardedOfficeName(c.getForwardedOfficeCode() != null
+                        ? officeCodeMasterRepository.findByOfficeCodeAndIsActiveTrue(c.getForwardedOfficeCode())
+                                .map(o -> o.getOfficeName()).orElse(c.getForwardedOfficeCode())
+                        : null)
+                .preForwardOfficer(c.getPreForwardOfficer())
+                .preForwardRole(c.getPreForwardRole())
+                .closureClauseDescription(c.getClosureClauseDescription())
+                .complaintStatusOnPortal(c.getComplaintStatusOnPortal())
+                .speakingOrderGenerated(c.getSpeakingOrderGenerated())
+                .gistOfCase(c.getGistOfCase())
+                .gistOfCaseRegional(c.getGistOfCaseRegional())
+                .build();
 
-        Map<String, Object> response = new LinkedHashMap<>();
-        response.put("success", true);
-        response.put("message", "OK");
-        response.put("data", detail);
-        response.put("correlationId", UUID.randomUUID().toString());
-        response.put("timestamp", LocalDateTime.now().toString());
-
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(ApiResponse.success(detail, "OK"));
     }
 
     @GetMapping("/recent")
-    public ResponseEntity<Map<String, Object>> getRecentComplaints(
+    public ResponseEntity<ApiResponse<List<RecentComplaintItem>>> getRecentComplaints(
             @RequestParam(defaultValue = "10") int limit) {
         limit = Math.min(limit, 50);
         List<Complaint> complaints = complaintService.getAllComplaintsPaged(PageRequest.of(0, limit)).getContent();
 
         DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd MMM yyyy");
 
-        List<Map<String, Object>> items = complaints.stream().map(c -> {
+        List<RecentComplaintItem> items = complaints.stream().map(c -> {
             String bankName = "";
             if (c.getBankId() != null) {
                 bankName = bankRepository.findById(c.getBankId())
                         .map(b -> b.getName()).orElse("");
             }
 
-            Map<String, Object> item = new LinkedHashMap<>();
-            item.put("complaintNumber", c.getComplaintNumber());
-            item.put("subject", c.getSubject());
-            item.put("entityName", bankName);
-            item.put("complainantName", c.getComplainantName());
-            item.put("status", c.getStatus());
-            item.put("date", c.getCreatedAt() != null ? c.getCreatedAt().format(fmt) : "");
-            return item;
+            return RecentComplaintItem.builder()
+                    .complaintNumber(c.getComplaintNumber())
+                    .subject(c.getSubject())
+                    .entityName(bankName)
+                    .complainantName(c.getComplainantName())
+                    .status(c.getStatus())
+                    .date(c.getCreatedAt() != null ? c.getCreatedAt().format(fmt) : "")
+                    .build();
         }).collect(Collectors.toList());
 
-        Map<String, Object> response = new LinkedHashMap<>();
-        response.put("success", true);
-        response.put("message", "Recent complaints retrieved");
-        response.put("data", items);
-        response.put("timestamp", LocalDateTime.now().toString());
-
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(ApiResponse.success(items, "Recent complaints retrieved"));
     }
 
     @GetMapping("/{complaintNumber}/emails")
-    public ResponseEntity<Map<String, Object>> getComplaintEmails(@PathVariable String complaintNumber) {
+    public ResponseEntity<ApiResponse<List<ComplaintEmailItem>>> getComplaintEmails(
+            @PathVariable String complaintNumber) {
         List<SimulatedEmail> emails = simulatedEmailRepository.findByComplaintNumberOrderBySentAtDesc(complaintNumber);
 
         DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd-MM-yyyy");
 
-        List<Map<String, Object>> items = emails.stream().map(e -> {
-            Map<String, Object> item = new LinkedHashMap<>();
-            item.put("id", e.getId());
-            item.put("subject", e.getSubject());
-            item.put("from", e.getFromEmail());
-            item.put("to", e.getToEmail());
-            item.put("body", e.getBody());
-            item.put("date", e.getSentAt() != null ? e.getSentAt().format(fmt) : "");
-            item.put("status", e.getStatus());
-            item.put("direction", e.getDirection());
-            item.put("attachments", e.getAttachmentUrl() != null ?
-                List.of(Map.of("name", e.getAttachmentUrl(), "size", "")) : List.of());
-            return item;
-        }).collect(Collectors.toList());
+        List<ComplaintEmailItem> items = emails.stream().map(e -> ComplaintEmailItem.builder()
+                .id(e.getId())
+                .subject(e.getSubject())
+                .from(e.getFromEmail())
+                .to(e.getToEmail())
+                .body(e.getBody())
+                .date(e.getSentAt() != null ? e.getSentAt().format(fmt) : "")
+                .status(e.getStatus())
+                .direction(e.getDirection())
+                .attachments(e.getAttachmentUrl() != null
+                        ? List.of(EmailAttachmentRef.builder().name(e.getAttachmentUrl()).size("").build())
+                        : List.of())
+                .build()).collect(Collectors.toList());
 
-        Map<String, Object> response = new LinkedHashMap<>();
-        response.put("success", true);
-        response.put("data", items);
-        response.put("timestamp", LocalDateTime.now().toString());
-
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(ApiResponse.success(items));
     }
 
     @PostMapping("/{complaintNumber}/emails")
-    public ResponseEntity<Map<String, Object>> sendComplaintEmail(
+    public ResponseEntity<ApiResponse<EmailSendAck>> sendComplaintEmail(
             @PathVariable String complaintNumber,
             @RequestBody Map<String, String> request) {
 
@@ -403,41 +388,52 @@ public class ComplaintApiV1Controller {
 
         simulatedEmailRepository.save(email);
 
-        Map<String, Object> response = new LinkedHashMap<>();
-        response.put("success", true);
-        response.put("message", "Email " + email.getStatus().toLowerCase());
-        response.put("data", Map.of("id", email.getId(), "messageId", email.getMessageId()));
-        response.put("timestamp", LocalDateTime.now().toString());
+        EmailSendAck ack = EmailSendAck.builder()
+                .id(email.getId())
+                .messageId(email.getMessageId())
+                .build();
 
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(ApiResponse.success(ack, "Email " + email.getStatus().toLowerCase()));
     }
 
     @GetMapping("/{complaintNumber}/comments")
-    public ResponseEntity<Map<String, Object>> getComments(@PathVariable String complaintNumber) {
+    public ResponseEntity<ApiResponse<List<ComplaintCommentResponse>>> getComments(
+            @PathVariable String complaintNumber) {
         List<ComplaintComment> comments = complaintCommentRepository.findByComplaintNumberOrderByCreatedAtDesc(complaintNumber);
 
-        List<Map<String, Object>> items = comments.stream().map(c -> {
-            Map<String, Object> item = new LinkedHashMap<>();
-            item.put("id", c.getId());
-            item.put("author", c.getAuthor());
-            item.put("initials", c.getInitials());
-            item.put("text", c.getText());
-            item.put("role", c.getRole());
-            item.put("color", c.getColor());
-            item.put("createdAt", c.getCreatedAt() != null ? c.getCreatedAt().toString() : "");
-            return item;
-        }).collect(Collectors.toList());
+        List<ComplaintCommentResponse> items = comments.stream()
+                .map(ComplaintApiV1Controller::toCommentResponse)
+                .collect(Collectors.toList());
 
-        Map<String, Object> response = new LinkedHashMap<>();
-        response.put("success", true);
-        response.put("data", items);
-        response.put("timestamp", LocalDateTime.now().toString());
+        return ResponseEntity.ok(ApiResponse.success(items));
+    }
 
-        return ResponseEntity.ok(response);
+    private static ComplaintCommentResponse toCommentResponse(ComplaintComment c) {
+        return ComplaintCommentResponse.builder()
+                .id(c.getId())
+                .author(c.getAuthor())
+                .initials(c.getInitials())
+                .text(c.getText())
+                .role(c.getRole())
+                .color(c.getColor())
+                .createdAt(c.getCreatedAt() != null ? c.getCreatedAt().toString() : "")
+                .build();
+    }
+
+    private static NodalRecordCommentResponse toNodalCommentResponse(ComplaintComment c) {
+        return NodalRecordCommentResponse.builder()
+                .id(c.getId())
+                .author(c.getAuthor())
+                .initials(c.getInitials())
+                .text(c.getText())
+                .target(c.getTarget())
+                .color(c.getColor())
+                .createdAt(c.getCreatedAt() != null ? c.getCreatedAt().toString() : "")
+                .build();
     }
 
     @PostMapping("/{complaintNumber}/comments")
-    public ResponseEntity<Map<String, Object>> addComment(
+    public ResponseEntity<ApiResponse<ComplaintCommentResponse>> addComment(
             @PathVariable String complaintNumber,
             @RequestBody Map<String, String> request) {
 
@@ -452,80 +448,40 @@ public class ComplaintApiV1Controller {
 
         complaintCommentRepository.save(comment);
 
-        Map<String, Object> commentData = new LinkedHashMap<>();
-        commentData.put("id", comment.getId());
-        commentData.put("author", comment.getAuthor());
-        commentData.put("initials", comment.getInitials());
-        commentData.put("text", comment.getText());
-        commentData.put("role", comment.getRole());
-        commentData.put("color", comment.getColor());
-        commentData.put("createdAt", comment.getCreatedAt().toString());
-
-        Map<String, Object> response = new LinkedHashMap<>();
-        response.put("success", true);
-        response.put("message", "Comment added");
-        response.put("data", commentData);
-        response.put("timestamp", LocalDateTime.now().toString());
-
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success(toCommentResponse(comment), "Comment added"));
     }
 
     @GetMapping("/nodal-records")
-    public ResponseEntity<Map<String, Object>> getNodalRecords() {
-        List<Map<String, Object>> records = nodalOfficerRecordService.listWorklist();
-
-        Map<String, Object> response = new LinkedHashMap<>();
-        response.put("success", true);
-        response.put("data", records);
-        response.put("count", records.size());
-        response.put("timestamp", LocalDateTime.now().toString());
-
-        return ResponseEntity.ok(response);
+    public ResponseEntity<ApiResponse<List<NodalRecordRow>>> getNodalRecords() {
+        return ResponseEntity.ok(ApiResponse.success(nodalOfficerRecordService.listWorklist()));
     }
 
     @PostMapping("/nodal-records/{recordNumber}/forward-to-re")
-    public ResponseEntity<Map<String, Object>> forwardNodalRecordToRe(
+    public ResponseEntity<ApiResponse<NodalRecordRow>> forwardNodalRecordToRe(
             @PathVariable String recordNumber,
             @Valid @RequestBody NodalAssessmentRequest request) {
 
-        Map<String, Object> record = nodalOfficerRecordService.forwardToRegulatedEntity(
+        NodalRecordRow record = nodalOfficerRecordService.forwardToRegulatedEntity(
                 recordNumber, request, callerIdentity.username());
 
-        Map<String, Object> response = new LinkedHashMap<>();
-        response.put("success", true);
-        response.put("message", "Record forwarded to the regulated entity");
-        response.put("data", record);
-        response.put("timestamp", LocalDateTime.now().toString());
-
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(ApiResponse.success(record, "Record forwarded to the regulated entity"));
     }
 
     @GetMapping("/nodal-records/{recordNumber}/comments")
-    public ResponseEntity<Map<String, Object>> getNodalRecordComments(@PathVariable String recordNumber) {
+    public ResponseEntity<ApiResponse<List<NodalRecordCommentResponse>>> getNodalRecordComments(
+            @PathVariable String recordNumber) {
         List<ComplaintComment> comments = complaintCommentRepository.findByNoRecordNumberOrderByCreatedAtDesc(recordNumber);
 
-        List<Map<String, Object>> items = comments.stream().map(c -> {
-            Map<String, Object> item = new LinkedHashMap<>();
-            item.put("id", c.getId());
-            item.put("author", c.getAuthor());
-            item.put("initials", c.getInitials());
-            item.put("text", c.getText());
-            item.put("target", c.getTarget());
-            item.put("color", c.getColor());
-            item.put("createdAt", c.getCreatedAt() != null ? c.getCreatedAt().toString() : "");
-            return item;
-        }).collect(Collectors.toList());
+        List<NodalRecordCommentResponse> items = comments.stream()
+                .map(ComplaintApiV1Controller::toNodalCommentResponse)
+                .collect(Collectors.toList());
 
-        Map<String, Object> response = new LinkedHashMap<>();
-        response.put("success", true);
-        response.put("data", items);
-        response.put("timestamp", LocalDateTime.now().toString());
-
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(ApiResponse.success(items));
     }
 
     @PostMapping("/nodal-records/{recordNumber}/comments")
-    public ResponseEntity<Map<String, Object>> addNodalRecordComment(
+    public ResponseEntity<ApiResponse<NodalRecordCommentResponse>> addNodalRecordComment(
             @PathVariable String recordNumber,
             @RequestBody Map<String, String> request) {
 
@@ -542,26 +498,12 @@ public class ComplaintApiV1Controller {
 
         complaintCommentRepository.save(comment);
 
-        Map<String, Object> commentData = new LinkedHashMap<>();
-        commentData.put("id", comment.getId());
-        commentData.put("author", comment.getAuthor());
-        commentData.put("initials", comment.getInitials());
-        commentData.put("text", comment.getText());
-        commentData.put("target", comment.getTarget());
-        commentData.put("color", comment.getColor());
-        commentData.put("createdAt", comment.getCreatedAt().toString());
-
-        Map<String, Object> response = new LinkedHashMap<>();
-        response.put("success", true);
-        response.put("message", "Comment added");
-        response.put("data", commentData);
-        response.put("timestamp", LocalDateTime.now().toString());
-
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success(toNodalCommentResponse(comment), "Comment added"));
     }
 
     @PostMapping("/{complaintNumber}/send-for-approval")
-    public ResponseEntity<Map<String, Object>> sendForApproval(
+    public ResponseEntity<ApiResponse<ForwardComplaintResponse>> sendForApproval(
             @PathVariable String complaintNumber,
             @RequestBody Map<String, Object> request) {
 
@@ -579,7 +521,7 @@ public class ComplaintApiV1Controller {
             complaint = complaintService.getByComplaintNumber(complaintNumber);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(Map.of("success", false, "message", "Complaint not found: " + complaintNumber));
+                    .body(ApiResponse.error("Complaint not found: " + complaintNumber));
         }
 
         String oldStatus = complaint.getStatus();
@@ -590,11 +532,22 @@ public class ComplaintApiV1Controller {
             case "REVIEWER": newStatus = ComplaintStatus.SENT_TO_REVIEWER.name(); break;
             case "DEPUTY_OMBUDSMAN": newStatus = ComplaintStatus.SENT_TO_DEPUTY_OMBUDSMAN.name(); break;
             case "OMBUDSMAN": newStatus = ComplaintStatus.SENT_TO_OMBUDSMAN.name(); break;
-            case "DEALING_OFFICER": newStatus = "SENT_TO_DO"; break;
+            case "DEALING_OFFICER": newStatus = ComplaintStatus.SENT_BACK_TO_DO.name(); break;
             case "CLOSE": newStatus = ComplaintStatus.CLOSED.name(); break;
-            case "OTHER_OFFICE": newStatus = "PENDING_OFFICE_HEAD_APPROVAL"; break;
+            case "OTHER_OFFICE": newStatus = ComplaintStatus.PENDING_OFFICE_HEAD_APPROVAL.name(); break;
             default:
-                newStatus = closesImmediately ? ComplaintStatus.CLOSED.name() : "SENT_TO_" + target;
+                if (closesImmediately) {
+                    newStatus = ComplaintStatus.CLOSED.name();
+                    break;
+                }
+                // Concatenating the target used to invent statuses that no ComplaintStatus constant
+                // matches, which the grid then could not colour and the filters could not select.
+                Optional<ComplaintStatus> derived = ComplaintStatus.parse("SENT_TO_" + target);
+                if (derived.isEmpty()) {
+                    return ResponseEntity.badRequest()
+                            .body(ApiResponse.error("Unsupported forward target: " + target));
+                }
+                newStatus = derived.get().name();
                 break;
         }
 
@@ -602,7 +555,7 @@ public class ComplaintApiV1Controller {
                 rbioHierarchyService.validateForward(complaint, target, performedByRole, performedBy, newStatus);
         if (denial.isPresent()) {
             return ResponseEntity.status(denial.get().status())
-                    .body(Map.of("success", false, "message", denial.get().message()));
+                    .body(ApiResponse.error(denial.get().message()));
         }
 
         complaint.setStatus(newStatus);
@@ -631,7 +584,7 @@ public class ComplaintApiV1Controller {
             String officeCode = (String) request.get("officeCode");
             if (officeCode == null || officeCode.isBlank()) {
                 return ResponseEntity.badRequest()
-                        .body(Map.of("success", false, "message", "officeCode is required when forwarding to Other Office"));
+                        .body(ApiResponse.error("officeCode is required when forwarding to Other Office"));
             }
             String headOfficer = complaintRoutingService.assignOfficerByRole("CRPC_HEAD");
             complaint.setForwardedOfficeCode(officeCode);
@@ -639,16 +592,15 @@ public class ComplaintApiV1Controller {
             complaint.setPreForwardRole(performedByRole != null && !performedByRole.isBlank() ? performedByRole : complaint.getAssignedRole());
             complaint.setAssignedRole("CRPC_HEAD");
             complaint.setAssignedOfficer(headOfficer);
+            officerDirectoryService.applyAssigneeDetails(complaint, headOfficer, null);
         } else {
             complaint.setAssignedOfficer(assignedTo);
+            officerDirectoryService.applyAssigneeDetails(complaint, assignedTo, assignedToName);
             // Without this the complaint keeps the forwarding officer's role, so the next hop's
             // hierarchy check would read the wrong rung.
             String forwardedToRole = rbioHierarchyService.roleForTarget(target);
             if (forwardedToRole != null && rbioHierarchyService.isRbio(complaint)) {
                 complaint.setAssignedRole(forwardedToRole);
-                if (assignedToName != null && !assignedToName.isBlank()) {
-                    complaint.setAssignedOfficerName(assignedToName);
-                }
             }
         }
         if (proposedAction != null && !proposedAction.isBlank()) {
@@ -685,21 +637,16 @@ public class ComplaintApiV1Controller {
             notifyAssignee(complaint, complaintNumber, remarks);
         }
 
-        Map<String, Object> data = new LinkedHashMap<>();
-        data.put("complaintNumber", complaintNumber);
-        data.put("status", newStatus);
-        data.put("assignedTo", assignedTo);
-        data.put("assignedToName", assignedToName);
-        data.put("assignedRole", complaint.getAssignedRole());
-        data.put("target", target);
+        ForwardComplaintResponse data = ForwardComplaintResponse.builder()
+                .complaintNumber(complaintNumber)
+                .status(newStatus)
+                .assignedTo(assignedTo)
+                .assignedToName(assignedToName)
+                .assignedRole(complaint.getAssignedRole())
+                .target(target)
+                .build();
 
-        Map<String, Object> response = new LinkedHashMap<>();
-        response.put("success", true);
-        response.put("message", "Complaint forwarded to " + assignedToName);
-        response.put("data", data);
-        response.put("timestamp", LocalDateTime.now().toString());
-
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(ApiResponse.success(data, "Complaint forwarded to " + assignedToName));
     }
 
     /**
@@ -709,7 +656,7 @@ public class ComplaintApiV1Controller {
      */
     @PostMapping("/{complaintNumber}/rbio/reassign")
     @RbioRoleGuard(roles = {RoleConstants.RBIO_ADMIN})
-    public ResponseEntity<Map<String, Object>> rbioReassign(
+    public ResponseEntity<ApiResponse<RbioReassignResponse>> rbioReassign(
             @PathVariable String complaintNumber,
             @RequestBody Map<String, Object> request) {
 
@@ -723,7 +670,7 @@ public class ComplaintApiV1Controller {
             complaint = complaintService.getByComplaintNumber(complaintNumber);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(Map.of("success", false, "message", "Complaint not found: " + complaintNumber));
+                    .body(ApiResponse.error("Complaint not found: " + complaintNumber));
         }
 
         String previousRole = rbioHierarchyService.normalizeRole(complaint.getAssignedRole());
@@ -736,7 +683,7 @@ public class ComplaintApiV1Controller {
                 rbioHierarchyService.validateAdminReassign(complaint, targetRole, assignedTo);
         if (denial.isPresent()) {
             return ResponseEntity.status(denial.get().status())
-                    .body(Map.of("success", false, "message", denial.get().message()));
+                    .body(ApiResponse.error(denial.get().message()));
         }
 
         String previousOfficer = complaint.getAssignedOfficer();
@@ -755,9 +702,7 @@ public class ComplaintApiV1Controller {
         complaint.setStatus(newStatus);
         complaint.setAssignedRole(targetRole);
         complaint.setAssignedOfficer(assignedTo);
-        if (assignedToName != null && !assignedToName.isBlank()) {
-            complaint.setAssignedOfficerName(assignedToName);
-        }
+        officerDirectoryService.applyAssigneeDetails(complaint, assignedTo, assignedToName);
         complaintService.updateComplaintDirectly(complaint);
 
         String action = isEscalation ? "ESCALATE" : "REASSIGNED";
@@ -783,23 +728,18 @@ public class ComplaintApiV1Controller {
         }
         notifyAssignee(complaint, complaintNumber, remarks);
 
-        Map<String, Object> data = new LinkedHashMap<>();
-        data.put("complaintNumber", complaintNumber);
-        data.put("status", newStatus);
-        data.put("assignedTo", assignedTo);
-        data.put("assignedToName", assignedToName);
-        data.put("assignedRole", targetRole);
-        data.put("previousRole", previousRole);
-        data.put("previousOfficer", previousOfficer);
-        data.put("escalation", isEscalation);
+        RbioReassignResponse data = RbioReassignResponse.builder()
+                .complaintNumber(complaintNumber)
+                .status(newStatus)
+                .assignedTo(assignedTo)
+                .assignedToName(assignedToName)
+                .assignedRole(targetRole)
+                .previousRole(previousRole)
+                .previousOfficer(previousOfficer)
+                .escalation(isEscalation)
+                .build();
 
-        Map<String, Object> response = new LinkedHashMap<>();
-        response.put("success", true);
-        response.put("message", remarks);
-        response.put("data", data);
-        response.put("timestamp", LocalDateTime.now().toString());
-
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(ApiResponse.success(data, remarks));
     }
 
     private void notifyAssignee(Complaint complaint, String complaintNumber, String remarks) {
@@ -819,7 +759,7 @@ public class ComplaintApiV1Controller {
     }
 
     @PostMapping("/{complaintNumber}/office-head-decision")
-    public ResponseEntity<Map<String, Object>> officeHeadDecision(
+    public ResponseEntity<ApiResponse<OfficeHeadDecisionResponse>> officeHeadDecision(
             @PathVariable String complaintNumber,
             @RequestBody Map<String, Object> request) {
 
@@ -828,10 +768,10 @@ public class ComplaintApiV1Controller {
         String performedBy = (String) request.getOrDefault("performedBy", "");
 
         if (!"APPROVE".equals(decision) && !"REJECT".equals(decision)) {
-            return ResponseEntity.badRequest().body(Map.of("success", false, "message", "decision must be APPROVE or REJECT"));
+            return ResponseEntity.badRequest().body(ApiResponse.error("decision must be APPROVE or REJECT"));
         }
         if ("REJECT".equals(decision) && (comment == null || comment.isBlank())) {
-            return ResponseEntity.badRequest().body(Map.of("success", false, "message", "A rejection comment is mandatory"));
+            return ResponseEntity.badRequest().body(ApiResponse.error("A rejection comment is mandatory"));
         }
 
         Complaint complaint;
@@ -839,7 +779,7 @@ public class ComplaintApiV1Controller {
             complaint = complaintService.getByComplaintNumber(complaintNumber);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(Map.of("success", false, "message", "Complaint not found: " + complaintNumber));
+                    .body(ApiResponse.error("Complaint not found: " + complaintNumber));
         }
 
         String oldStatus = complaint.getStatus();
@@ -858,6 +798,7 @@ public class ComplaintApiV1Controller {
             newStatus = "assigned";
             complaint.setAssignedRole(role);
             complaint.setAssignedOfficer(assignedOfficer);
+            officerDirectoryService.applyAssigneeDetails(complaint, assignedOfficer, null);
             remarks = "Approved by CRPC Head, assigned to " + assignedOfficer + " at office " + officeCode
                     + (comment != null && !comment.isBlank() ? " — " + comment : "");
         } else {
@@ -865,6 +806,7 @@ public class ComplaintApiV1Controller {
             String role = "CEPC".equals(complaint.getDepartment()) ? "CEPC_OFFICER" : "RBIO_OFFICER";
             complaint.setAssignedRole(role);
             complaint.setAssignedOfficer(complaint.getPreForwardOfficer());
+            officerDirectoryService.applyAssigneeDetails(complaint, complaint.getPreForwardOfficer(), null);
             remarks = "Rejected by CRPC Head, returned to " + complaint.getPreForwardOfficer() + " — " + comment;
         }
 
@@ -872,18 +814,14 @@ public class ComplaintApiV1Controller {
         complaintService.updateComplaintDirectly(complaint);
         complaintService.addTimeline(complaint.getId(), "OFFICE_HEAD_" + decision, performedBy, remarks, oldStatus, newStatus);
 
-        Map<String, Object> data = new LinkedHashMap<>();
-        data.put("complaintNumber", complaintNumber);
-        data.put("status", newStatus);
-        data.put("assignedOfficer", complaint.getAssignedOfficer());
-        data.put("decision", decision);
+        OfficeHeadDecisionResponse data = OfficeHeadDecisionResponse.builder()
+                .complaintNumber(complaintNumber)
+                .status(newStatus)
+                .assignedOfficer(complaint.getAssignedOfficer())
+                .decision(decision)
+                .build();
 
-        Map<String, Object> response = new LinkedHashMap<>();
-        response.put("success", true);
-        response.put("message", remarks);
-        response.put("data", data);
-        response.put("timestamp", LocalDateTime.now().toString());
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(ApiResponse.success(data, remarks));
     }
 
     /**

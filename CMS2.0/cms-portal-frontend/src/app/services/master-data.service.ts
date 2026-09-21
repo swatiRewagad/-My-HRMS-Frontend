@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
+import { ApiResponse } from '../models/api-response.model';
 
 export interface CategoryMaster {
   id: number;
@@ -41,51 +42,61 @@ export class MasterDataService {
   private baseUrl = `${environment.apiBaseUrl}/api/v1/masters`;
   private headUrl = `${environment.apiBaseUrl}/api/v1/crpc/head`;
 
+  // Everything under /api/v1/masters returns the standard { success, data, timestamp } envelope, so
+  // each method below unwraps it and hands callers the payload directly. The office-threshold methods
+  // at the bottom talk to a different controller and are deliberately left alone.
+
   // ─── Categories ───
   getCategories(schemeVersion?: string, entityType?: string): Observable<CategoryMaster[]> {
     const params: any = {};
     if (schemeVersion) params.schemeVersion = schemeVersion;
     if (entityType) params.entityType = entityType;
-    return this.http.get<CategoryMaster[]>(`${this.baseUrl}/categories`, { params })
-      .pipe(catchError(() => of([])));
+    return this.http.get<ApiResponse<CategoryMaster[]>>(`${this.baseUrl}/categories`, { params })
+      .pipe(map(res => res.data), catchError(() => of([])));
   }
 
   createCategory(category: Partial<CategoryMaster>): Observable<CategoryMaster> {
-    return this.http.post<CategoryMaster>(`${this.baseUrl}/categories`, category);
+    return this.http.post<ApiResponse<CategoryMaster>>(`${this.baseUrl}/categories`, category)
+      .pipe(map(res => res.data));
   }
 
   updateCategory(id: number, category: Partial<CategoryMaster>): Observable<CategoryMaster> {
-    return this.http.put<CategoryMaster>(`${this.baseUrl}/categories/${id}`, category);
+    return this.http.put<ApiResponse<CategoryMaster>>(`${this.baseUrl}/categories/${id}`, category)
+      .pipe(map(res => res.data));
   }
 
   deleteCategory(id: number): Observable<void> {
-    return this.http.delete<void>(`${this.baseUrl}/categories/${id}`);
+    return this.http.delete<ApiResponse<void>>(`${this.baseUrl}/categories/${id}`)
+      .pipe(map(() => undefined));
   }
 
   // ─── Department Routing ───
   getRoutingRules(department?: string): Observable<DepartmentRoutingRule[]> {
     const params: any = {};
     if (department) params.department = department;
-    return this.http.get<DepartmentRoutingRule[]>(`${this.baseUrl}/department-routing`, { params })
-      .pipe(catchError(() => of([])));
+    return this.http.get<ApiResponse<DepartmentRoutingRule[]>>(`${this.baseUrl}/department-routing`, { params })
+      .pipe(map(res => res.data), catchError(() => of([])));
   }
 
   createRoutingRule(rule: Partial<DepartmentRoutingRule>): Observable<DepartmentRoutingRule> {
-    return this.http.post<DepartmentRoutingRule>(`${this.baseUrl}/department-routing`, rule);
+    return this.http.post<ApiResponse<DepartmentRoutingRule>>(`${this.baseUrl}/department-routing`, rule)
+      .pipe(map(res => res.data));
   }
 
   updateRoutingRule(id: number, rule: Partial<DepartmentRoutingRule>): Observable<DepartmentRoutingRule> {
-    return this.http.put<DepartmentRoutingRule>(`${this.baseUrl}/department-routing/${id}`, rule);
+    return this.http.put<ApiResponse<DepartmentRoutingRule>>(`${this.baseUrl}/department-routing/${id}`, rule)
+      .pipe(map(res => res.data));
   }
 
   deleteRoutingRule(id: number): Observable<void> {
-    return this.http.delete<void>(`${this.baseUrl}/department-routing/${id}`);
+    return this.http.delete<ApiResponse<void>>(`${this.baseUrl}/department-routing/${id}`)
+      .pipe(map(() => undefined));
   }
 
   checkCancelledEntity(entityName: string): Observable<{ cancelled: boolean; message?: string }> {
-    return this.http.get<{ cancelled: boolean; message?: string }>(
+    return this.http.get<ApiResponse<{ cancelled: boolean; message?: string }>>(
       `${this.baseUrl}/department-routing/check-cancelled/${encodeURIComponent(entityName)}`
-    ).pipe(catchError(() => of({ cancelled: false })));
+    ).pipe(map(res => res.data), catchError(() => of({ cancelled: false })));
   }
 
   // ─── Office Thresholds ───

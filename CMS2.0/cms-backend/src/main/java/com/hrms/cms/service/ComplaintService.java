@@ -44,6 +44,7 @@ public class ComplaintService {
     private final ComplaintAdditionalDetailRepository additionalDetailRepository;
     private final ComplaintRepresentativeRepository representativeRepository;
     private final ComplaintReadReceiptRepository readReceiptRepository;
+    private final OfficerDirectoryService officerDirectoryService;
     private final ObjectMapper objectMapper;
 
     @Cacheable(value = "dashboard", unless = "#result == null")
@@ -192,6 +193,7 @@ public class ComplaintService {
         complaint.setDepartment(routing.getDepartment());
         complaint.setAssignedRole(routing.getAssignedRole());
         complaint.setAssignedOfficer(routing.getAssignedOfficer());
+        officerDirectoryService.applyAssigneeDetails(complaint, routing.getAssignedOfficer(), null);
         complaint.setWorkflowStage(routing.getStage());
 
         Complaint saved = complaintRepository.save(complaint);
@@ -431,7 +433,10 @@ public class ComplaintService {
             if ("escalated".equals(req.getStatus())) complaint.setEscalatedAt(LocalDateTime.now());
         }
         if (req.getPriority() != null) complaint.setPriority(req.getPriority());
-        if (req.getAssignedOfficer() != null) complaint.setAssignedOfficer(req.getAssignedOfficer());
+        if (req.getAssignedOfficer() != null) {
+            complaint.setAssignedOfficer(req.getAssignedOfficer());
+            officerDirectoryService.applyAssigneeDetails(complaint, req.getAssignedOfficer(), null);
+        }
 
         Complaint saved = complaintRepository.save(complaint);
 
@@ -460,27 +465,29 @@ public class ComplaintService {
     @Async("taskExecutor")
     @Transactional
     public void addTimelineAsync(Long complaintId, String action, String performedBy, String remarks, String fromStatus, String toStatus) {
-        ComplaintTimeline entry = ComplaintTimeline.builder()
-                .complaintId(complaintId)
-                .action(action)
-                .performedBy(performedBy)
-                .remarks(remarks)
-                .fromStatus(fromStatus)
-                .toStatus(toStatus)
-                .build();
-        timelineRepository.save(entry);
+        timelineRepository.save(timelineEntry(complaintId, action, performedBy, remarks, fromStatus, toStatus));
     }
 
     public void addTimeline(Long complaintId, String action, String performedBy, String remarks, String fromStatus, String toStatus) {
-        ComplaintTimeline entry = ComplaintTimeline.builder()
+        timelineRepository.save(timelineEntry(complaintId, action, performedBy, remarks, fromStatus, toStatus));
+    }
+
+    /**
+     * Resolves the actor's display name here, at write time, so the row keeps the name the officer had
+     * when they acted — see {@link ComplaintTimeline#getPerformedByName()}. Left null when the actor has
+     * no officer-pool entry, which covers the {@code System} and role-name actors the workflow writes.
+     */
+    private ComplaintTimeline timelineEntry(Long complaintId, String action, String performedBy,
+                                            String remarks, String fromStatus, String toStatus) {
+        return ComplaintTimeline.builder()
                 .complaintId(complaintId)
                 .action(action)
                 .performedBy(performedBy)
+                .performedByName(officerDirectoryService.displayNameFor(performedBy).orElse(null))
                 .remarks(remarks)
                 .fromStatus(fromStatus)
                 .toStatus(toStatus)
                 .build();
-        timelineRepository.save(entry);
     }
 
     @Cacheable(value = "categories", unless = "#result == null || #result.isEmpty()")

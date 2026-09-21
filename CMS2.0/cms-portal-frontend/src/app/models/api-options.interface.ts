@@ -8,11 +8,3 @@ export interface ApiOptions {
   reportProgress?: boolean;
   withCredentials?: boolean;
 }
-
-export interface ApiResponseEnvelope<T> {
-  data: T;
-  message: string;
-  statusCode: number;
-  success: boolean;
-  timestamp: string;
-}

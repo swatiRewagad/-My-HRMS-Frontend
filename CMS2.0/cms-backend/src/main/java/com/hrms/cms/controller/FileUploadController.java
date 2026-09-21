@@ -1,11 +1,11 @@
 package com.hrms.cms.controller;
 
-import com.hrms.cms.dto.ApiResponse;
 import com.hrms.cms.dto.ChunkUploadResponse;
 import com.hrms.cms.entity.ComplaintAttachment;
 import com.hrms.cms.entity.EmailDraftAttachment;
 import com.hrms.cms.repository.EmailDraftAttachmentRepository;
 import com.hrms.cms.service.FileStorageService;
+import com.rbi.cms.common.dto.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.FileSystemResource;
@@ -73,12 +73,7 @@ public class FileUploadController {
     @GetMapping("/complaint/{complaintId}")
     public ResponseEntity<ApiResponse<List<ComplaintAttachment>>> listAttachments(@PathVariable Long complaintId) {
         List<ComplaintAttachment> attachments = fileStorageService.getAttachments(complaintId);
-        return ResponseEntity.ok(ApiResponse.<List<ComplaintAttachment>>builder()
-                .success(true)
-                .message("Attachments fetched successfully")
-                .data(attachments)
-                .totalCount((long) attachments.size())
-                .build());
+        return ResponseEntity.ok(ApiResponse.success(attachments, "Attachments fetched successfully"));
     }
 
     /**

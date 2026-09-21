@@ -170,7 +170,7 @@ export class AaAppealDetailComponent implements OnInit {
   private loadOfficers() {
     this.http.get<any>(`${environment.apiBaseUrl}/api/v1/keycloak/users/by-role?role=AA_BENCH_OFFICER`).subscribe({
       next: (res) => {
-        const users = (res || []).map((u: any) => ({ id: u.username || u.userId, name: u.displayName || `${u.firstName} ${u.lastName}` }));
+        const users = (res?.data || []).map((u: any) => ({ id: u.username || u.userId, name: u.displayName || `${u.firstName} ${u.lastName}` }));
         this.aaOfficers.set(users);
       },
       error: () => this.aaOfficers.set([])

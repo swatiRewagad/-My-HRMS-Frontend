@@ -2,6 +2,7 @@ package com.rbi.cms.search.service;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
+import com.rbi.cms.common.dto.ApiResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
@@ -32,6 +33,7 @@ import java.util.Optional;
 @Service
 public class OfficerDirectoryService {
 
+    /** Serves the map inside an {@link ApiResponse}; cms-backend must not be rolled back past that. */
     private static final String DIRECTORY_PATH = "/api/v1/keycloak/users/directory";
     private static final String CACHE_KEY = "directory";
 
@@ -76,10 +78,11 @@ public class OfficerDirectoryService {
 
     private Map<String, String> fetchDirectory() {
         try {
-            Map<String, String> directory = backendRestClient.get()
+            ApiResponse<Map<String, String>> response = backendRestClient.get()
                     .uri(DIRECTORY_PATH)
                     .retrieve()
-                    .body(new ParameterizedTypeReference<Map<String, String>>() { });
+                    .body(new ParameterizedTypeReference<ApiResponse<Map<String, String>>>() { });
+            Map<String, String> directory = response == null ? null : response.getData();
 
             if (directory == null || directory.isEmpty()) {
                 log.warn("Officer directory at {} returned no entries; assigned-officer names will fall "

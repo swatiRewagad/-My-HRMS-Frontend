@@ -507,13 +507,13 @@ export class ComplaintFacadeService {
       this.complainantStates = [];
       this.complainantDistricts = [];
 
-      this.http.get<any[]>(`${environment.apiBaseUrl}/api/v1/location/pincode/${value}`).subscribe({
+      this.http.get<any>(`${environment.apiBaseUrl}/api/v1/location/pincode/${value}`).subscribe({
         next: (res) => {
           this.pincodeLoading = false;
-          if (res?.[0]?.Status === 'Success' && res[0].PostOffice?.length) {
-            const po = res[0].PostOffice;
-            this.complainantStates = [...new Set(po.map((p: any) => p.State).filter(Boolean))] as string[];
-            this.complainantDistricts = [...new Set(po.map((p: any) => p.District).filter(Boolean))] as string[];
+          if (res?.data?.length) {
+            const po = res.data;
+            this.complainantStates = [...new Set(po.map((p: any) => p.state).filter(Boolean))] as string[];
+            this.complainantDistricts = [...new Set(po.map((p: any) => p.district).filter(Boolean))] as string[];
             cd.controls.state.setValue(this.complainantStates[0] || '');
             cd.controls.city.setValue(this.complainantDistricts[0] || '');
           } else {
@@ -843,14 +843,14 @@ export class ComplaintFacadeService {
       this.repDistricts = [];
       this.repCities = [];
 
-      this.http.get<any[]>(`${environment.apiBaseUrl}/api/v1/location/pincode/${value}`).subscribe({
+      this.http.get<any>(`${environment.apiBaseUrl}/api/v1/location/pincode/${value}`).subscribe({
         next: (res) => {
           this.repPincodeLoading = false;
-          if (res?.[0]?.Status === 'Success' && res[0].PostOffice?.length) {
-            const po = res[0].PostOffice;
-            this.repStates = [...new Set(po.map((p: any) => p.State).filter(Boolean))] as string[];
-            this.repDistricts = [...new Set(po.map((p: any) => p.District).filter(Boolean))] as string[];
-            this.repCities = [...new Set(po.map((p: any) => p.Name).filter(Boolean))] as string[];
+          if (res?.data?.length) {
+            const po = res.data;
+            this.repStates = [...new Set(po.map((p: any) => p.state).filter(Boolean))] as string[];
+            this.repDistricts = [...new Set(po.map((p: any) => p.district).filter(Boolean))] as string[];
+            this.repCities = [...new Set(po.map((p: any) => p.name).filter(Boolean))] as string[];
             ra.controls.repState.setValue(this.repStates[0] || '');
             ra.controls.repDistrict.setValue(this.repDistricts[0] || '');
             ra.controls.repCity.setValue(this.repCities[0] || '');

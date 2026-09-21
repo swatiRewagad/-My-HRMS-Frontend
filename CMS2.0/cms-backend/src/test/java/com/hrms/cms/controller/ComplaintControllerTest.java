@@ -7,12 +7,16 @@ import com.hrms.cms.entity.Complaint;
 import com.hrms.cms.entity.ComplaintTimeline;
 import com.hrms.cms.event.ComplaintEventPublisher;
 import com.hrms.cms.service.ComplaintService;
+import com.hrms.cms.security.CallerIdentity;
+import com.hrms.cms.service.EncryptionKeyService;
+import com.hrms.cms.service.RbioHierarchyService;
 import com.hrms.cms.service.RbioComplaintSummaryService;
 import com.hrms.cms.service.RbioConciliationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.data.domain.Page;
@@ -32,6 +36,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(ComplaintController.class)
+@AutoConfigureMockMvc(addFilters = false)
 class ComplaintControllerTest {
 
     @Autowired private MockMvc mockMvc;
@@ -40,6 +45,10 @@ class ComplaintControllerTest {
     @MockBean private RbioComplaintSummaryService rbioComplaintSummaryService;
     @MockBean private RbioConciliationService rbioConciliationService;
     @MockBean private ComplaintEventPublisher complaintEventPublisher;
+    @MockBean private RbioHierarchyService rbioHierarchyService;
+    @MockBean private CallerIdentity callerIdentity;
+    // Not a collaborator of the controller; PiiDecryptionFilter needs it for the context to load.
+    @MockBean private EncryptionKeyService encryptionKeyService;
 
     private Complaint sampleComplaint;
 
@@ -190,6 +199,7 @@ class ComplaintControllerTest {
             request.setComplainantName("Jane Doe");
             request.setComplainantEmail("jane@test.com");
             request.setSubject("Loan Issue");
+            request.setDescription("Loan was not disbursed after approval.");
             request.setPriority("high");
 
             when(complaintService.fileComplaint(any(FileComplaintRequest.class))).thenReturn(sampleComplaint);

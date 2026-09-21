@@ -1,5 +1,6 @@
 package com.hrms.cms.service;
 
+import com.hrms.cms.dto.complaint.RbioComplaintSummaryResponse;
 import com.hrms.cms.entity.Complaint;
 import com.hrms.cms.entity.ComplaintAdditionalDetail;
 import com.hrms.cms.entity.ComplaintEligibilityAnswer;
@@ -91,15 +92,23 @@ class RbioComplaintSummaryServiceTest {
             when(additionalDetailRepository.findByComplaintId(92L)).thenReturn(Optional.empty());
             when(formDataRepository.findByComplaintId(92L)).thenReturn(Optional.empty());
 
-            Map<String, Object> summary = service.getSummary(92L);
+            RbioComplaintSummaryResponse summary = service.getSummary(92L);
 
-            assertThat(summary).containsKeys(
-                    "id", "navBarDto", "basicDetailsDto", "eligibility", "entityDetails", "complainDetailsDto");
-            assertThat(section(summary, "complainDetailsDto")).containsKeys(
-                    "basicIdentificationDto", "complaintClassification", "financialDetails",
-                    "legalCaseDetails", "additionalInformation", "flagsAndIndicators", "complaintLinkage");
+            assertThat(summary.getId()).isEqualTo(92L);
+            assertThat(summary.getNavBarDto()).isNotNull();
+            assertThat(summary.getBasicDetailsDto()).isNotNull();
+            assertThat(summary.getEligibility()).isNotNull();
+            assertThat(summary.getEntityDetails()).isNotNull();
+            assertThat(summary.getComplainDetailsDto()).isNotNull();
+            assertThat(summary.getComplainDetailsDto().getBasicIdentificationDto()).isNotNull();
+            assertThat(summary.getComplainDetailsDto().getComplaintClassification()).isNotNull();
+            assertThat(summary.getComplainDetailsDto().getFinancialDetails()).isNotNull();
+            assertThat(summary.getComplainDetailsDto().getLegalCaseDetails()).isNotNull();
+            assertThat(summary.getComplainDetailsDto().getAdditionalInformation()).isNotNull();
+            assertThat(summary.getComplainDetailsDto().getFlagsAndIndicators()).isNotNull();
+            assertThat(summary.getComplainDetailsDto().getComplaintLinkage()).isNotNull();
             // A complaint filed with no formData must read as "never answered", not as "answered no".
-            assertThat(section(summary, "eligibility").get("disputeBetweenREs")).isNull();
+            assertThat(summary.getEligibility().getDisputeBetweenREs()).isNull();
         }
 
         @Test
@@ -114,11 +123,11 @@ class RbioComplaintSummaryServiceTest {
             when(additionalDetailRepository.findByComplaintId(92L)).thenReturn(Optional.empty());
             when(formDataRepository.findByComplaintId(92L)).thenReturn(Optional.empty());
 
-            Map<String, Object> eligibility = section(service.getSummary(92L), "eligibility");
+            RbioComplaintSummaryResponse.Eligibility eligibility = service.getSummary(92L).getEligibility();
 
-            assertThat(eligibility.get("writtenComplaintFiledWithRE")).isEqualTo(true);
-            assertThat(eligibility.get("receivedReplyFromEntity")).isEqualTo(false);
-            assertThat(eligibility.get("frivolousVexatiousThreatening")).isNull();
+            assertThat(eligibility.getWrittenComplaintFiledWithRE()).isTrue();
+            assertThat(eligibility.getReceivedReplyFromEntity()).isFalse();
+            assertThat(eligibility.getFrivolousVexatiousThreatening()).isNull();
         }
 
         @Test
@@ -132,8 +141,7 @@ class RbioComplaintSummaryServiceTest {
             when(additionalDetailRepository.findByComplaintId(92L)).thenReturn(Optional.empty());
             when(formDataRepository.findByComplaintId(92L)).thenReturn(Optional.empty());
 
-            assertThat(section(service.getSummary(92L), "eligibility").get("complaintFiledWithCEPCOrRBI"))
-                    .isEqualTo(true);
+            assertThat(service.getSummary(92L).getEligibility().getComplaintFiledWithCEPCOrRBI()).isTrue();
         }
 
         @Test
@@ -148,8 +156,7 @@ class RbioComplaintSummaryServiceTest {
             when(additionalDetailRepository.findByComplaintId(92L)).thenReturn(Optional.empty());
             when(formDataRepository.findByComplaintId(92L)).thenReturn(Optional.empty());
 
-            assertThat(section(service.getSummary(92L), "eligibility").get("complaintFiledWithCEPCOrRBI"))
-                    .isEqualTo(false);
+            assertThat(service.getSummary(92L).getEligibility().getComplaintFiledWithCEPCOrRBI()).isFalse();
         }
 
         @Test
@@ -160,7 +167,7 @@ class RbioComplaintSummaryServiceTest {
             when(formDataRepository.findByComplaintId(92L)).thenReturn(Optional.empty());
             when(rbioSlaService.formatBreachIn(complaint)).thenReturn("-12 Days");
 
-            assertThat(section(service.getSummary(92L), "navBarDto").get("slaBreachIn")).isEqualTo("-12 Days");
+            assertThat(service.getSummary(92L).getNavBarDto().getSlaBreachIn()).isEqualTo("-12 Days");
         }
 
         @Test
@@ -175,10 +182,10 @@ class RbioComplaintSummaryServiceTest {
                             .additionalComments("Escalated by DEO")
                             .build()));
 
-            Map<String, Object> summary = service.getSummary(92L);
+            RbioComplaintSummaryResponse summary = service.getSummary(92L);
 
-            assertThat(section(summary, "basicDetailsDto").get("comments")).isEqualTo("Keyed in by the officer");
-            assertThat(section(section(summary, "complainDetailsDto"), "additionalInformation").get("comments"))
+            assertThat(summary.getBasicDetailsDto().getComments()).isEqualTo("Keyed in by the officer");
+            assertThat(summary.getComplainDetailsDto().getAdditionalInformation().getComments())
                     .isEqualTo("Escalated by DEO");
         }
 
@@ -190,8 +197,7 @@ class RbioComplaintSummaryServiceTest {
             when(additionalDetailRepository.findByComplaintId(92L)).thenReturn(Optional.empty());
             when(formDataRepository.findByComplaintId(92L)).thenReturn(Optional.empty());
 
-            assertThat(section(service.getSummary(92L), "eligibility").get("staffOfREEmployerRelationship"))
-                    .isEqualTo(true);
+            assertThat(service.getSummary(92L).getEligibility().getStaffOfREEmployerRelationship()).isTrue();
         }
 
         @Test
@@ -511,11 +517,6 @@ class RbioComplaintSummaryServiceTest {
 
             verify(readReceiptRepository, never()).save(any());
         }
-    }
-
-    @SuppressWarnings("unchecked")
-    private static Map<String, Object> section(Map<String, Object> parent, String key) {
-        return (Map<String, Object>) parent.get(key);
     }
 
     private static Map<String, Object> nest(String key, Object body) {

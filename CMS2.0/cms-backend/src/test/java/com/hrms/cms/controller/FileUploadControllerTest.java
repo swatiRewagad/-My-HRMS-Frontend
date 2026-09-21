@@ -84,7 +84,7 @@ class FileUploadControllerTest {
                             .param("complaintId", "1")
                             .param("totalFileSize", "100"))
                     .andExpect(status().isUnsupportedMediaType())
-                    .andExpect(jsonPath("$.errorCode").value("UNSUPPORTED_FILE_TYPE"))
+                    .andExpect(jsonPath("$.data.errorCode").value("UNSUPPORTED_FILE_TYPE"))
                     .andExpect(jsonPath("$.message").value(containsString("not allowed")));
         }
 
@@ -140,7 +140,8 @@ class FileUploadControllerTest {
                             .param("complaintNumber", "CMS-001")
                             .param("complaintId", "1"))
                     .andExpect(status().isConflict())
-                    .andExpect(jsonPath("$.errorCode").value("ATTACHMENT_LIMIT_REACHED"));
+                    .andExpect(jsonPath("$.success").value(false))
+                    .andExpect(jsonPath("$.data.errorCode").value("ATTACHMENT_LIMIT_REACHED"));
         }
     }
 
@@ -148,7 +149,7 @@ class FileUploadControllerTest {
     class ListAttachments {
 
         @Test
-        void shouldWrapAttachmentsWithTotalCount() throws Exception {
+        void shouldWrapAttachmentsInApiResponse() throws Exception {
             when(fileStorageService.getAttachments(5L)).thenReturn(List.of(
                     attachment(1L, "file.pdf", "application/pdf"),
                     attachment(2L, "scan.png", "image/png")));
@@ -157,7 +158,6 @@ class FileUploadControllerTest {
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.success").value(true))
                     .andExpect(jsonPath("$.message").value("Attachments fetched successfully"))
-                    .andExpect(jsonPath("$.totalCount").value(2))
                     .andExpect(jsonPath("$.data", hasSize(2)))
                     .andExpect(jsonPath("$.data[0].originalName").value("file.pdf"))
                     .andExpect(jsonPath("$.data[0].storagePath").value("object-uuid-1"));
@@ -187,7 +187,7 @@ class FileUploadControllerTest {
 
             mockMvc.perform(get("/api/files/download/99"))
                     .andExpect(status().isNotFound())
-                    .andExpect(jsonPath("$.errorCode").value("ATTACHMENT_NOT_FOUND"));
+                    .andExpect(jsonPath("$.data.errorCode").value("ATTACHMENT_NOT_FOUND"));
         }
     }
 
@@ -249,7 +249,7 @@ class FileUploadControllerTest {
 
             mockMvc.perform(get("/api/files/complaint/7/download-all"))
                     .andExpect(status().isNotFound())
-                    .andExpect(jsonPath("$.errorCode").value("NO_ATTACHMENTS"));
+                    .andExpect(jsonPath("$.data.errorCode").value("NO_ATTACHMENTS"));
         }
     }
 

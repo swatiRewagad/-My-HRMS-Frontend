@@ -3,12 +3,8 @@ import { HttpClient } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
 import { map, catchError } from 'rxjs/operators';
 import { ReviewerUser } from '../models/crpc.model';
+import { ApiResponse } from '../models/api-response.model';
 import { environment } from '../../environments/environment';
-
-interface ApiResponse<T> {
-  success: boolean;
-  data: T;
-}
 
 interface KeycloakUserResponse {
   userId: string;

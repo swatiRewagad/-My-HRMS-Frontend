@@ -226,7 +226,8 @@ export class TeamManagementComponent implements OnInit {
 
     this.syncing.set(true);
     this.http.get<any>(`${environment.apiBaseUrl}/api/v1/keycloak/users/by-role?role=${group.keycloakRole}`).subscribe({
-      next: (users: any[]) => {
+      next: (res) => {
+        const users: any[] = res?.data || [];
         const existingIds = new Set(this.officers().map(o => o.userId));
         let added = 0;
 

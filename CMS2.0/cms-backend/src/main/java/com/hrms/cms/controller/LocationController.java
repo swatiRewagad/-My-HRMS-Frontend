@@ -1,16 +1,18 @@
 package com.hrms.cms.controller;
 
+import com.hrms.cms.dto.location.BankBranchLookupResponse;
+import com.hrms.cms.dto.location.PostOfficeResponse;
 import com.hrms.cms.entity.Bank;
-import com.hrms.cms.entity.BankBranch;
 import com.hrms.cms.entity.Pincode;
 import com.hrms.cms.repository.BankBranchRepository;
 import com.hrms.cms.repository.BankRepository;
 import com.hrms.cms.repository.PincodeRepository;
+import com.rbi.cms.common.dto.ApiResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/location")
@@ -25,84 +27,78 @@ public class LocationController {
     // pincode — distinct from /pincode/{pincode} below, which only has generic post-office data
     // and was being mislabeled as "branch name" for every entity, not just actual banks.
     @GetMapping("/bank-branches")
-    public Map<String, Object> getBankBranches(@RequestParam String entityName, @RequestParam String pincode) {
+    public ResponseEntity<ApiResponse<BankBranchLookupResponse>> getBankBranches(
+            @RequestParam String entityName, @RequestParam String pincode) {
         List<Bank> banks = bankRepository.findByNameFuzzyMatch(entityName.trim());
-        Map<String, Object> response = new LinkedHashMap<>();
         if (banks.isEmpty()) {
-            response.put("success", true);
-            response.put("matchedBank", false);
-            response.put("data", List.of());
-            return response;
+            return ResponseEntity.ok(ApiResponse.success(
+                    BankBranchLookupResponse.builder().matchedBank(false).build(),
+                    "No regulated entity matched \"" + entityName.trim() + "\""));
         }
 
         Bank bank = banks.get(0);
-        List<BankBranch> branches = bankBranchRepository.findByBankIdAndPincode(bank.getId(), pincode);
-        List<Map<String, Object>> data = branches.stream().map(b -> {
-            Map<String, Object> m = new LinkedHashMap<>();
-            m.put("ifsc", b.getIfsc());
-            m.put("branchName", b.getBranchName());
-            m.put("address", b.getAddress());
-            m.put("city", b.getCity());
-            m.put("district", b.getDistrict());
-            m.put("state", b.getState());
-            m.put("pincode", b.getPincode());
-            return m;
-        }).collect(Collectors.toList());
+        List<BankBranchLookupResponse.Branch> branches =
+                bankBranchRepository.findByBankIdAndPincode(bank.getId(), pincode).stream()
+                        .map(b -> BankBranchLookupResponse.Branch.builder()
+                                .ifsc(b.getIfsc())
+                                .branchName(b.getBranchName())
+                                .address(b.getAddress())
+                                .city(b.getCity())
+                                .district(b.getDistrict())
+                                .state(b.getState())
+                                .pincode(b.getPincode())
+                                .build())
+                        .toList();
 
-        response.put("success", true);
-        response.put("matchedBank", true);
-        response.put("bankName", bank.getName());
-        response.put("data", data);
-        return response;
+        return ResponseEntity.ok(ApiResponse.success(BankBranchLookupResponse.builder()
+                .matchedBank(true)
+                .bankName(bank.getName())
+                .branches(branches)
+                .build(), branches.size() + " branch(es) found"));
     }
 
+    /**
+     * Post offices serving a pincode, newest-first as the table holds them. An unknown pincode is an
+     * empty list rather than an error: the forms fall back to a bundled offline table, and a 404 here
+     * would be retried twice by the client's error interceptor for what is a routine typo.
+     */
     @GetMapping("/pincode/{pincode}")
-    public List<Map<String, Object>> lookupPincode(@PathVariable String pincode) {
+    public ResponseEntity<ApiResponse<List<PostOfficeResponse>>> lookupPincode(@PathVariable String pincode) {
         if (pincode == null || !pincode.matches("^\\d{6}$")) {
-            return List.of(Map.of("Status", "Error", "Message", "Invalid pincode format. Must be 6 digits."));
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("Invalid pincode format. Must be 6 digits."));
         }
 
         List<Pincode> results = pincodeRepository.findByPincode(pincode);
         if (results.isEmpty()) {
-            return List.of(Map.of("Status", "Error", "Message", "No records found for pincode " + pincode));
+            return ResponseEntity.ok(ApiResponse.success(
+                    List.of(), "No records found for pincode " + pincode));
         }
 
-        List<Map<String, Object>> postOffices = results.stream().map(p -> {
-            Map<String, Object> po = new LinkedHashMap<>();
-            po.put("Name", p.getOfficeName());
-            po.put("District", p.getDistrict());
-            po.put("State", p.getState());
-            po.put("Region", p.getRegion());
-            po.put("Division", p.getDivision());
-            po.put("BranchType", p.getOfficeType());
-            po.put("Pincode", p.getPincode());
-            return po;
-        }).collect(Collectors.toList());
+        List<PostOfficeResponse> postOffices = results.stream()
+                .map(p -> PostOfficeResponse.builder()
+                        .name(p.getOfficeName())
+                        .district(p.getDistrict())
+                        .state(p.getState())
+                        .region(p.getRegion())
+                        .division(p.getDivision())
+                        .branchType(p.getOfficeType())
+                        .pincode(p.getPincode())
+                        .build())
+                .toList();
 
-        return List.of(Map.of(
-            "Status", "Success",
-            "Message", "Number of pincode(s) found: " + results.size(),
-            "PostOffice", postOffices
-        ));
+        return ResponseEntity.ok(ApiResponse.success(
+                postOffices, "Number of pincode(s) found: " + results.size()));
     }
 
     @GetMapping("/districts")
-    public Map<String, Object> getDistricts(@RequestParam String state) {
-        List<String> districts = pincodeRepository.findDistinctDistrictsByState(state);
-        Map<String, Object> response = new LinkedHashMap<>();
-        response.put("success", true);
-        response.put("message", "OK");
-        response.put("data", districts);
-        return response;
+    public ResponseEntity<ApiResponse<List<String>>> getDistricts(@RequestParam String state) {
+        return ResponseEntity.ok(ApiResponse.success(
+                pincodeRepository.findDistinctDistrictsByState(state), "OK"));
     }
 
     @GetMapping("/states")
-    public Map<String, Object> getStates() {
-        List<String> states = pincodeRepository.findDistinctStates();
-        Map<String, Object> response = new LinkedHashMap<>();
-        response.put("success", true);
-        response.put("message", "OK");
-        response.put("data", states);
-        return response;
+    public ResponseEntity<ApiResponse<List<String>>> getStates() {
+        return ResponseEntity.ok(ApiResponse.success(pincodeRepository.findDistinctStates(), "OK"));
     }
 }

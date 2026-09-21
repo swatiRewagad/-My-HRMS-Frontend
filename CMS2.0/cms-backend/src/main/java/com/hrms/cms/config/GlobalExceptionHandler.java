@@ -1,6 +1,8 @@
 package com.hrms.cms.config;
 
+import com.hrms.cms.dto.ErrorDetail;
 import com.hrms.cms.exception.FileStorageException;
+import com.rbi.cms.common.dto.ApiResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -9,62 +11,49 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
-import java.time.LocalDateTime;
-import java.util.LinkedHashMap;
-import java.util.Map;
-
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(FileStorageException.class)
-    public ResponseEntity<Map<String, Object>> handleFileStorage(FileStorageException ex) {
+    public ResponseEntity<ApiResponse<ErrorDetail>> handleFileStorage(FileStorageException ex) {
         log.warn("Attachment failure [{}]: {}", ex.getErrorCode(), ex.getMessage());
-        Map<String, Object> body = body(ex.getStatus(), ex.getMessage());
-        body.put("errorCode", ex.getErrorCode());
-        return ResponseEntity.status(ex.getStatus()).body(body);
+        return ResponseEntity.status(ex.getStatus())
+                .body(ApiResponse.<ErrorDetail>builder()
+                        .success(false)
+                        .message(ex.getMessage())
+                        .data(ErrorDetail.builder().errorCode(ex.getErrorCode()).build())
+                        .build());
     }
 
     @ExceptionHandler(RuntimeException.class)
-    public ResponseEntity<Map<String, Object>> handleRuntimeException(RuntimeException ex) {
+    public ResponseEntity<ApiResponse<Void>> handleRuntimeException(RuntimeException ex) {
         log.warn("Runtime exception: {}", ex.getMessage());
-        return buildResponse(HttpStatus.BAD_REQUEST, ex.getMessage());
+        return error(HttpStatus.BAD_REQUEST, ex.getMessage());
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<Map<String, Object>> handleValidation(MethodArgumentNotValidException ex) {
+    public ResponseEntity<ApiResponse<Void>> handleValidation(MethodArgumentNotValidException ex) {
         String message = ex.getBindingResult().getFieldErrors().stream()
                 .map(e -> e.getField() + ": " + e.getDefaultMessage())
                 .reduce((a, b) -> a + "; " + b)
                 .orElse("Validation failed");
-        return buildResponse(HttpStatus.BAD_REQUEST, message);
+        return error(HttpStatus.BAD_REQUEST, message);
     }
 
     @ExceptionHandler(MaxUploadSizeExceededException.class)
-    public ResponseEntity<Map<String, Object>> handleMaxUploadSize(MaxUploadSizeExceededException ex) {
-        return buildResponse(HttpStatus.PAYLOAD_TOO_LARGE, "File size exceeds the allowed limit");
+    public ResponseEntity<ApiResponse<Void>> handleMaxUploadSize(MaxUploadSizeExceededException ex) {
+        return error(HttpStatus.PAYLOAD_TOO_LARGE, "File size exceeds the allowed limit");
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<Map<String, Object>> handleGenericException(Exception ex) {
+    public ResponseEntity<ApiResponse<Void>> handleGenericException(Exception ex) {
+        // Detail stays in the log: exception class names and cause chains disclose internals.
         log.error("Unexpected error", ex);
-        String detail = ex.getClass().getName() + ": " + ex.getMessage();
-        if (ex.getCause() != null) {
-            detail += " | Cause: " + ex.getCause().getClass().getName() + ": " + ex.getCause().getMessage();
-        }
-        return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, detail);
+        return error(HttpStatus.INTERNAL_SERVER_ERROR, "An internal error occurred. Please contact support.");
     }
 
-    private ResponseEntity<Map<String, Object>> buildResponse(HttpStatus status, String message) {
-        return ResponseEntity.status(status).body(body(status, message));
-    }
-
-    private Map<String, Object> body(HttpStatus status, String message) {
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("timestamp", LocalDateTime.now().toString());
-        body.put("status", status.value());
-        body.put("error", status.getReasonPhrase());
-        body.put("message", message);
-        return body;
+    private ResponseEntity<ApiResponse<Void>> error(HttpStatus status, String message) {
+        return ResponseEntity.status(status).body(ApiResponse.error(message));
     }
 }

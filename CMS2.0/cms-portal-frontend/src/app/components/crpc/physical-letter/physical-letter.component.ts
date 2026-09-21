@@ -297,17 +297,17 @@ export class PhysicalLetterComponent implements OnInit {
     } else {
       delete this.fieldErrors['complainantPincode'];
       this.pincodeLoading.set(true);
-      this.http.get<any[]>(`${environment.apiBaseUrl}/api/v1/location/pincode/${value}`).subscribe({
+      this.http.get<any>(`${environment.apiBaseUrl}/api/v1/location/pincode/${value}`).subscribe({
         next: (res) => {
           this.pincodeLoading.set(false);
-          if (res && res[0] && res[0].Status === 'Success' && res[0].PostOffice?.length) {
-            const po = res[0].PostOffice[0];
-            if (po.State) {
-              this.complainantState = po.State;
-              this.onStateChange(po.State);
+          if (res?.data?.length) {
+            const po = res.data[0];
+            if (po.state) {
+              this.complainantState = po.state;
+              this.onStateChange(po.state);
             }
-            if (po.District) {
-              this.complainantDistrict = po.District;
+            if (po.district) {
+              this.complainantDistrict = po.district;
             }
           } else {
             this.fallbackPincodeLookup(value);
@@ -341,18 +341,18 @@ export class PhysicalLetterComponent implements OnInit {
 
     this.http.get<any>(`${environment.apiBaseUrl}/api/v1/location/pincode/${value}`).subscribe({
       next: (res: any) => {
-        if (res?.[0]?.Status === 'Success' && res[0].PostOffice?.length) {
-          const offices = res[0].PostOffice;
+        if (res?.data?.length) {
+          const offices = res.data;
           const po = offices[0];
-          if (po.State) this.entityState = po.State;
-          if (po.District) this.entityDistrict = po.District;
-          this.entityCity = po.Region || po.Division || '';
+          if (po.state) this.entityState = po.state;
+          if (po.district) this.entityDistrict = po.district;
+          this.entityCity = po.region || po.division || '';
           this.entityCountry = 'India';
           if (offices.length === 1) {
-            this.entityBranchName = po.Name;
-            this.entityBranchCategory = po.BranchType || '';
+            this.entityBranchName = po.name;
+            this.entityBranchCategory = po.branchType || '';
           } else {
-            this.pincodePostOffices = offices.map((o: any) => ({ Name: o.Name, BranchType: o.BranchType || '' }));
+            this.pincodePostOffices = offices.map((o: any) => ({ Name: o.name, BranchType: o.branchType || '' }));
             this.showBranchDropdown = true;
             this.entityBranchName = '';
           }

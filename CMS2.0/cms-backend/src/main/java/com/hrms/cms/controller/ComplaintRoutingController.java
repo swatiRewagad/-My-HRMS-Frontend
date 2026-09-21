@@ -1,17 +1,32 @@
 package com.hrms.cms.controller;
 
+import com.hrms.cms.dto.routing.ApprovalForwardResponse;
+import com.hrms.cms.dto.routing.BulkImportResponse;
+import com.hrms.cms.dto.routing.DepartmentResolutionResponse;
+import com.hrms.cms.dto.routing.DepartmentTransferResponse;
+import com.hrms.cms.dto.routing.EntityMappingSummaryResponse;
+import com.hrms.cms.dto.routing.EntityRoutingResponse;
+import com.hrms.cms.dto.routing.EntityStatsResponse;
+import com.hrms.cms.dto.routing.RegulatedEntityDetailResponse;
+import com.hrms.cms.dto.routing.RegulatedEntityListItem;
+import com.hrms.cms.dto.routing.RoutingResultResponse;
+import com.hrms.cms.dto.routing.RoutingRuleResponse;
 import com.hrms.cms.entity.Complaint;
 import com.hrms.cms.entity.RegulatedEntity;
 import com.hrms.cms.repository.RegulatedEntityRepository;
 import com.hrms.cms.service.ComplaintRoutingService;
 import com.hrms.cms.service.ComplaintRoutingService.RoutingDecision;
 import com.hrms.cms.service.ComplaintService;
+import com.rbi.cms.common.dto.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @RestController
@@ -19,48 +34,52 @@ import java.util.*;
 @RequiredArgsConstructor
 public class ComplaintRoutingController {
 
+    private static final int BULK_IMPORT_LIMIT = 1000;
+
     private final ComplaintRoutingService routingService;
     private final ComplaintService complaintService;
     private final RegulatedEntityRepository regulatedEntityRepo;
 
     @GetMapping("/entity-mapping")
-    public Map<String, Object> getEntityDepartmentMapping() {
+    public ResponseEntity<ApiResponse<EntityMappingSummaryResponse>> getEntityDepartmentMapping() {
         return wrapResponse(routingService.getEntityDepartmentMapping());
     }
 
     @GetMapping("/rules")
-    public Map<String, Object> getRoutingRules() {
+    public ResponseEntity<ApiResponse<List<RoutingRuleResponse>>> getRoutingRules() {
         return wrapResponse(routingService.getRoutingRulesSummary());
     }
 
     @GetMapping("/resolve-department")
-    public Map<String, Object> resolveDepartment(@RequestParam String entityCode) {
+    public ResponseEntity<ApiResponse<DepartmentResolutionResponse>> resolveDepartment(
+            @RequestParam String entityCode) {
         String department = routingService.resolveDepartment(entityCode);
-        return wrapResponse(Map.of(
-                "entityCode", entityCode,
-                "department", department,
-                "assignedRole", "CEPC".equals(department) ? "CEPC_OFFICER" : "RBIO_OFFICER",
-                "note", "Entity-based routing applies only to EMAIL/PHYSICAL_LETTER channel. WEB_PORTAL always goes to RBIO."
-        ));
+        return wrapResponse(DepartmentResolutionResponse.builder()
+                .entityCode(entityCode)
+                .department(department)
+                .assignedRole(roleFor(department))
+                .build());
     }
 
     @GetMapping("/resolve-by-name")
-    public Map<String, Object> resolveByEntityName(@RequestParam String entityName) {
+    public ResponseEntity<ApiResponse<EntityRoutingResponse>> resolveByEntityName(
+            @RequestParam String entityName) {
         var result = routingService.resolveEntityRouting(entityName);
-        Map<String, Object> data = new LinkedHashMap<>();
-        data.put("entityName", entityName);
-        data.put("department", result.getDepartment());
-        data.put("matchedEntityName", result.getMatchedEntityName());
-        data.put("entityType", result.getEntityType());
-        data.put("matchType", result.getMatchType());
-        data.put("matchCount", result.getMatchCount());
-        data.put("reason", result.getReason());
-        data.put("assignedRole", "CEPC".equals(result.getDepartment()) ? "CEPC_OFFICER" : "RBIO_OFFICER");
-        return wrapResponse(data);
+        return wrapResponse(EntityRoutingResponse.builder()
+                .entityName(entityName)
+                .department(result.getDepartment())
+                .matchedEntityName(result.getMatchedEntityName())
+                .entityType(result.getEntityType())
+                .matchType(result.getMatchType())
+                .matchCount(result.getMatchCount())
+                .reason(result.getReason())
+                .assignedRole(roleFor(result.getDepartment()))
+                .build());
     }
 
     @PostMapping("/route")
-    public Map<String, Object> routeComplaint(@RequestBody Map<String, Object> request) {
+    public ResponseEntity<ApiResponse<RoutingResultResponse>> routeComplaint(
+            @RequestBody Map<String, Object> request) {
         String complaintNumber = (String) request.getOrDefault("complaintNumber", "");
         String entityCode = (String) request.getOrDefault("entityCode", "");
         String filingType = (String) request.getOrDefault("filingType", "WEB_PORTAL");
@@ -72,20 +91,20 @@ public class ComplaintRoutingController {
 
         RoutingDecision decision = routingService.routeComplaint(complaint, entityCode, officeCode);
 
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("complaintNumber", complaintNumber);
-        result.put("department", decision.getDepartment());
-        result.put("assignedRole", decision.getAssignedRole());
-        result.put("stage", decision.getStage());
-        result.put("targetDepartment", decision.getTargetDepartment());
-        result.put("reason", decision.getReason());
-        result.put("routedAt", LocalDateTime.now().toString());
-
-        return wrapResponse(result);
+        return wrapResponse(RoutingResultResponse.builder()
+                .complaintNumber(complaintNumber)
+                .department(decision.getDepartment())
+                .assignedRole(decision.getAssignedRole())
+                .stage(decision.getStage())
+                .targetDepartment(decision.getTargetDepartment())
+                .reason(decision.getReason())
+                .routedAt(LocalDateTime.now().toString())
+                .build());
     }
 
     @PostMapping("/forward-to-approval")
-    public Map<String, Object> forwardToApproval(@RequestBody Map<String, Object> request) {
+    public ResponseEntity<ApiResponse<ApprovalForwardResponse>> forwardToApproval(
+            @RequestBody Map<String, Object> request) {
         String complaintNumber = (String) request.getOrDefault("complaintNumber", "");
         String entityCode = (String) request.getOrDefault("entityCode", "");
 
@@ -94,19 +113,19 @@ public class ComplaintRoutingController {
 
         RoutingDecision decision = routingService.routeFromCrpcToApproval(complaint, entityCode);
 
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("complaintNumber", complaintNumber);
-        result.put("department", decision.getDepartment());
-        result.put("assignedRole", decision.getAssignedRole());
-        result.put("stage", decision.getStage());
-        result.put("reason", decision.getReason());
-        result.put("forwardedAt", LocalDateTime.now().toString());
-
-        return wrapResponse(result);
+        return wrapResponse(ApprovalForwardResponse.builder()
+                .complaintNumber(complaintNumber)
+                .department(decision.getDepartment())
+                .assignedRole(decision.getAssignedRole())
+                .stage(decision.getStage())
+                .reason(decision.getReason())
+                .forwardedAt(LocalDateTime.now().toString())
+                .build());
     }
 
     @PostMapping("/transfer")
-    public Map<String, Object> transferComplaint(@RequestBody Map<String, Object> request) {
+    public ResponseEntity<ApiResponse<DepartmentTransferResponse>> transferComplaint(
+            @RequestBody Map<String, Object> request) {
         String complaintNumber = (String) request.getOrDefault("complaintNumber", "");
         String fromDepartment = (String) request.getOrDefault("fromDepartment", "");
         String toDepartment = (String) request.getOrDefault("toDepartment", "");
@@ -118,22 +137,25 @@ public class ComplaintRoutingController {
         RoutingDecision decision = routingService.transferBetweenDepartments(
                 complaint, fromDepartment, toDepartment, reason);
 
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("complaintNumber", complaintNumber);
-        result.put("fromDepartment", fromDepartment);
-        result.put("toDepartment", decision.getDepartment());
-        result.put("assignedRole", decision.getAssignedRole());
-        result.put("stage", decision.getStage());
-        result.put("reason", decision.getReason());
-        result.put("transferredAt", LocalDateTime.now().toString());
-
-        return wrapResponse(result);
+        return wrapResponse(DepartmentTransferResponse.builder()
+                .complaintNumber(complaintNumber)
+                .fromDepartment(fromDepartment)
+                .toDepartment(decision.getDepartment())
+                .assignedRole(decision.getAssignedRole())
+                .stage(decision.getStage())
+                .reason(decision.getReason())
+                .transferredAt(LocalDateTime.now().toString())
+                .build());
     }
 
     @PostMapping("/entities/bulk-import")
-    public Map<String, Object> bulkImportEntities(@RequestBody List<Map<String, String>> entities) {
-        if (entities == null || entities.size() > 1000) {
-            return wrapResponse(Map.of("error", "Bulk import limited to 1000 entries"));
+    public ResponseEntity<ApiResponse<BulkImportResponse>> bulkImportEntities(
+            @RequestBody List<Map<String, String>> entities) {
+        if (entities == null || entities.size() > BULK_IMPORT_LIMIT) {
+            // Was an HTTP 200 carrying success:true and an {error: ...} payload, so callers saw a
+            // rejected import as a successful one with no imported count.
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("Bulk import limited to " + BULK_IMPORT_LIMIT + " entries"));
         }
         int imported = 0;
         for (Map<String, String> entry : entities) {
@@ -155,22 +177,26 @@ public class ComplaintRoutingController {
             }
         }
 
-        return wrapResponse(Map.of(
-                "imported", imported,
-                "total", entities.size(),
-                "skipped", entities.size() - imported
-        ));
+        return wrapResponse(BulkImportResponse.builder()
+                .imported(imported)
+                .total(entities.size())
+                .skipped(entities.size() - imported)
+                .build());
     }
 
     @GetMapping("/entities/stats")
-    public Map<String, Object> getEntityStats() {
+    public ResponseEntity<ApiResponse<EntityStatsResponse>> getEntityStats() {
         long cepc = regulatedEntityRepo.countByDepartment("CEPC");
         long rbio = regulatedEntityRepo.countByDepartment("RBIO");
-        return wrapResponse(Map.of("CEPC", cepc, "RBIO", rbio, "total", cepc + rbio));
+        return wrapResponse(EntityStatsResponse.builder()
+                .cepc(cepc)
+                .rbio(rbio)
+                .total(cepc + rbio)
+                .build());
     }
 
     @GetMapping("/entities/list")
-    public Map<String, Object> listEntities(
+    public ResponseEntity<ApiResponse<List<RegulatedEntityListItem>>> listEntities(
             @RequestParam(required = false) String department,
             @RequestParam(required = false) String search,
             @RequestParam(required = false) String entityType) {
@@ -181,7 +207,7 @@ public class ComplaintRoutingController {
             entities = regulatedEntityRepo.searchByNormalizedName(normalized);
             if (department != null && !department.isBlank()) {
                 String dept = department.toUpperCase();
-                entities = entities.stream().filter(e -> dept.equals(e.getDepartment())).collect(java.util.stream.Collectors.toList());
+                entities = entities.stream().filter(e -> dept.equals(e.getDepartment())).toList();
             }
         } else if (department != null && !department.isBlank()) {
             entities = regulatedEntityRepo.findByDepartment(department.toUpperCase());
@@ -190,29 +216,10 @@ public class ComplaintRoutingController {
         }
 
         if (entityType != null && !entityType.isBlank()) {
-            entities = entities.stream().filter(e -> entityType.equalsIgnoreCase(e.getEntityType())).collect(java.util.stream.Collectors.toList());
+            entities = entities.stream().filter(e -> entityType.equalsIgnoreCase(e.getEntityType())).toList();
         }
 
-        List<Map<String, Object>> result = entities.stream().map(e -> {
-            Map<String, Object> item = new LinkedHashMap<>();
-            item.put("id", e.getId());
-            item.put("name", e.getName());
-            item.put("department", e.getDepartment());
-            item.put("entityType", e.getEntityType());
-            // The fields the complaint screens fill from a picked row. Carried here rather than left to
-            // the detail call because they are what the officer checks before committing to the row, so
-            // they have to arrive with the dropdown.
-            item.put("moduleName", RegulatedEntity.moduleNameFor(e.getEntityType()));
-            item.put("entityCategory", RegulatedEntity.entityCategoryFor(e.getEntityType()));
-            item.put("entityTypeDetail", e.getEntityTypeDetail());
-            item.put("entityTypeDisplay",
-                    RegulatedEntity.entityTypeDisplayFor(e.getEntityType(), e.getEntityTypeDetail()));
-            item.put("city", e.getCity());
-            item.put("state", e.getState());
-            return item;
-        }).collect(java.util.stream.Collectors.toList());
-
-        return wrapResponse(result);
+        return wrapResponse(entities.stream().map(ComplaintRoutingController::toListItem).toList());
     }
 
     /**
@@ -226,41 +233,59 @@ public class ComplaintRoutingController {
      * officer changing the entity is changing who the complaint gets forwarded to.
      */
     @GetMapping("/entities/{id}")
-    public Map<String, Object> getEntity(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<RegulatedEntityDetailResponse>> getEntity(@PathVariable Long id) {
         RegulatedEntity entity = regulatedEntityRepo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("No regulated entity with id " + id));
 
-        Map<String, Object> item = new LinkedHashMap<>();
-        item.put("id", entity.getId());
-        item.put("name", entity.getName());
-        item.put("department", entity.getDepartment());
-        item.put("entityType", entity.getEntityType());
-        item.put("moduleName", RegulatedEntity.moduleNameFor(entity.getEntityType()));
-        item.put("entityCategory", RegulatedEntity.entityCategoryFor(entity.getEntityType()));
-        item.put("entityTypeDetail", entity.getEntityTypeDetail());
-        item.put("entityTypeDisplay",
-                RegulatedEntity.entityTypeDisplayFor(entity.getEntityType(), entity.getEntityTypeDetail()));
-        item.put("city", entity.getCity());
-        item.put("state", entity.getState());
-        item.put("status", entity.getStatus());
-        item.put("portalEnabled", entity.getPortalEnabled());
-        item.put("nodalOfficerName", entity.getNodalOfficerName());
-        item.put("nodalOfficerEmail", entity.getNodalOfficerEmail());
-        item.put("nodalOfficerPhone", entity.getNodalOfficerPhone());
-        item.put("nodalOfficerDesignation", entity.getNodalOfficerDesignation());
-        item.put("pnoName", entity.getPnoName());
-        item.put("pnoEmail", entity.getPnoEmail());
-        item.put("pnoPhone", entity.getPnoPhone());
-
-        return wrapResponse(item);
+        return wrapResponse(RegulatedEntityDetailResponse.builder()
+                .id(entity.getId())
+                .name(entity.getName())
+                .department(entity.getDepartment())
+                .entityType(entity.getEntityType())
+                .moduleName(RegulatedEntity.moduleNameFor(entity.getEntityType()))
+                .entityCategory(RegulatedEntity.entityCategoryFor(entity.getEntityType()))
+                .entityTypeDetail(entity.getEntityTypeDetail())
+                .entityTypeDisplay(RegulatedEntity.entityTypeDisplayFor(
+                        entity.getEntityType(), entity.getEntityTypeDetail()))
+                .city(entity.getCity())
+                .state(entity.getState())
+                .status(entity.getStatus())
+                .portalEnabled(entity.getPortalEnabled())
+                .nodalOfficerName(entity.getNodalOfficerName())
+                .nodalOfficerEmail(entity.getNodalOfficerEmail())
+                .nodalOfficerPhone(entity.getNodalOfficerPhone())
+                .nodalOfficerDesignation(entity.getNodalOfficerDesignation())
+                .pnoName(entity.getPnoName())
+                .pnoEmail(entity.getPnoEmail())
+                .pnoPhone(entity.getPnoPhone())
+                .build());
     }
 
-    private Map<String, Object> wrapResponse(Object data) {
-        Map<String, Object> response = new LinkedHashMap<>();
-        response.put("success", true);
-        response.put("message", "OK");
-        response.put("data", data);
-        response.put("timestamp", LocalDateTime.now().toString());
-        return response;
+    private static RegulatedEntityListItem toListItem(RegulatedEntity e) {
+        return RegulatedEntityListItem.builder()
+                .id(e.getId())
+                .name(e.getName())
+                .department(e.getDepartment())
+                .entityType(e.getEntityType())
+                .moduleName(RegulatedEntity.moduleNameFor(e.getEntityType()))
+                .entityCategory(RegulatedEntity.entityCategoryFor(e.getEntityType()))
+                .entityTypeDetail(e.getEntityTypeDetail())
+                .entityTypeDisplay(RegulatedEntity.entityTypeDisplayFor(
+                        e.getEntityType(), e.getEntityTypeDetail()))
+                .city(e.getCity())
+                .state(e.getState())
+                .build();
+    }
+
+    private static String roleFor(String department) {
+        return "CEPC".equals(department) ? "CEPC_OFFICER" : "RBIO_OFFICER";
+    }
+
+    /**
+     * Every success from this controller carried the message "OK" back when the envelope was assembled
+     * by hand here, so it is preserved rather than replaced with something per-endpoint.
+     */
+    private static <T> ResponseEntity<ApiResponse<T>> wrapResponse(T data) {
+        return ResponseEntity.ok(ApiResponse.success(data, "OK"));
     }
 }

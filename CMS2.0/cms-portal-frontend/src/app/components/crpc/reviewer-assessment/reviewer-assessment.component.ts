@@ -693,8 +693,8 @@ export class ReviewerAssessmentComponent implements OnInit {
         params: { entityName: this.entityName.trim(), pincode: value }
       }).subscribe({
         next: (res) => {
-          if (res?.matchedBank && res.data?.length) {
-            this.applyRealBankBranches(res.data);
+          if (res?.data?.matchedBank && res.data.branches?.length) {
+            this.applyRealBankBranches(res.data.branches);
           } else {
             this.fallbackToPostOfficeLookup(value);
           }
@@ -725,18 +725,18 @@ export class ReviewerAssessmentComponent implements OnInit {
   private fallbackToPostOfficeLookup(value: string) {
     this.http.get<any>(`${environment.apiBaseUrl}/api/v1/location/pincode/${value}`).subscribe({
       next: (res: any) => {
-        if (res?.[0]?.Status === 'Success' && res[0].PostOffice?.length) {
-          const offices = res[0].PostOffice;
+        if (res?.data?.length) {
+          const offices = res.data;
           const po = offices[0];
-          if (po.State) this.entityState = po.State;
-          if (po.District) this.entityDistrict = po.District;
-          this.entityCity = po.Region || po.Division || '';
+          if (po.state) this.entityState = po.state;
+          if (po.district) this.entityDistrict = po.district;
+          this.entityCity = po.region || po.division || '';
           this.entityCountry = 'India';
           if (offices.length === 1) {
-            this.entityBranchName = po.Name;
-            this.entityBranchCategory = po.BranchType || '';
+            this.entityBranchName = po.name;
+            this.entityBranchCategory = po.branchType || '';
           } else {
-            this.pincodePostOffices = offices.map((o: any) => ({ Name: o.Name, BranchType: o.BranchType || '' }));
+            this.pincodePostOffices = offices.map((o: any) => ({ Name: o.name, BranchType: o.branchType || '' }));
             this.showBranchDropdown = true;
             this.entityBranchName = '';
           }

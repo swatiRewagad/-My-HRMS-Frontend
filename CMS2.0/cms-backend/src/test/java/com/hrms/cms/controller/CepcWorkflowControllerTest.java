@@ -2,13 +2,18 @@ package com.hrms.cms.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hrms.cms.entity.Complaint;
+import com.hrms.cms.event.ComplaintEventPublisher;
 import com.hrms.cms.repository.BankRepository;
+import com.hrms.cms.repository.ComplaintAttachmentRepository;
 import com.hrms.cms.repository.ComplaintRepository;
 import com.hrms.cms.repository.ComplaintTimelineRepository;
 import com.hrms.cms.service.CepcSlaService;
 import com.hrms.cms.service.CepcWorkflowService;
+import com.hrms.cms.service.ClosureLetterService;
+import com.hrms.cms.service.CommunicationTemplateService;
 import com.hrms.cms.service.ComplaintService;
 import com.hrms.cms.service.EncryptionKeyService;
+import com.hrms.cms.service.NotificationService;
 import com.hrms.cms.service.KeycloakUserService;
 import com.hrms.cms.service.RbioCompensationService;
 import com.hrms.cms.service.RbioSlaService;
@@ -52,6 +57,11 @@ class CepcWorkflowControllerTest {
     @MockBean private RbioWorkflowService rbioWorkflowService;
     @MockBean private RbioSlaService rbioSlaService;
     @MockBean private RbioCompensationService rbioCompensationService;
+    @MockBean private ComplaintAttachmentRepository complaintAttachmentRepository;
+    @MockBean private NotificationService notificationService;
+    @MockBean private ComplaintEventPublisher complaintEventPublisher;
+    @MockBean private ClosureLetterService closureLetterService;
+    @MockBean private CommunicationTemplateService communicationTemplateService;
 
     private Complaint sampleComplaint;
 

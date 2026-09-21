@@ -11,6 +11,7 @@ import { InputText } from 'primeng/inputtext';
 import { Button } from 'primeng/button';
 import { ApiService } from '../../../services/api.service';
 import { AdvancedSearchCriteria, Entity, SelectOption } from '../../../models/rbio.model';
+import { environment } from '../../../../environments/environment';
 
 @Component({
   selector: 'rbio-advanced-search',
@@ -71,7 +72,8 @@ export class RbioAdvancedSearchComponent implements OnInit, OnDestroy {
   isMasterDataLoading = false;
 
   private readonly bankApiUrl = '/banks';
-  private readonly categoriesUrl = '/categories';
+  // Absolute because CategoryController sits under /api, not the /api/v1 prefix ApiService applies.
+  private readonly categoriesUrl = `${environment.apiBaseUrl}/api/categories`;
 
   advSearch: AdvancedSearchCriteria = this.getInitialSearchState();
 

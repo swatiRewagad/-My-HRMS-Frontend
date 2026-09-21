@@ -716,16 +716,16 @@ export class RbioCreateComplaintComponent implements OnInit {
     } else {
       delete this.fieldErrors['complainantPincode'];
       this.pincodeLoading.set(true);
-      this.http.get<any[]>(`${environment.apiBaseUrl}/api/v1/location/pincode/${value}`).subscribe({
+      this.http.get<any>(`${environment.apiBaseUrl}/api/v1/location/pincode/${value}`).subscribe({
         next: (res) => {
           this.pincodeLoading.set(false);
-          if (res && res[0] && res[0].Status === 'Success' && res[0].PostOffice?.length) {
-            const po = res[0].PostOffice[0];
-            if (po.State) {
-              this.complainantState = po.State;
-              this.onStateChange(po.State);
+          if (res?.data?.length) {
+            const po = res.data[0];
+            if (po.state) {
+              this.complainantState = po.state;
+              this.onStateChange(po.state);
             }
-            if (po.District) this.complainantDistrict = po.District;
+            if (po.district) this.complainantDistrict = po.district;
           } else {
             this.applyLocalPincode(value);
           }

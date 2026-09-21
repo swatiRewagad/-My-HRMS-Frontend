@@ -1,5 +1,6 @@
 package com.hrms.cms.service;
 
+import com.hrms.cms.dto.complaint.RbioComplaintSummaryResponse;
 import com.hrms.cms.entity.Complaint;
 import com.hrms.cms.repository.ComplaintAdditionalDetailRepository;
 import com.hrms.cms.repository.ComplaintCategoryRepository;
@@ -151,11 +152,11 @@ class RbioSummaryEditPermissionTest {
         /** The screens read these to decide between an editable form and a read-only view. */
         @Test
         void summaryCarriesTheAssignmentSoTheUiCanGoReadOnly() {
-            Map<String, Object> summary = service.getSummary(92L);
+            RbioComplaintSummaryResponse summary = service.getSummary(92L);
 
-            assertThat(summary).containsEntry("assignedOfficer", "reviewer1")
-                    .containsEntry("assignedOfficerName", "Reviewer One")
-                    .containsEntry("assignedRole", RoleConstants.RBIO_REVIEWER);
+            assertThat(summary.getAssignedOfficer()).isEqualTo("reviewer1");
+            assertThat(summary.getAssignedOfficerName()).isEqualTo("Reviewer One");
+            assertThat(summary.getAssignedRole()).isEqualTo(RoleConstants.RBIO_REVIEWER);
         }
     }
 

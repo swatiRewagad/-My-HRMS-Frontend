@@ -25,6 +25,14 @@ public class AppealTimeline {
     @Column(length = 200)
     private String performedBy;
 
+    /**
+     * The actor's name as it read when the action happened — the point-in-time counterpart to
+     * {@link #getPerformedBy()}. See {@link ComplaintTimeline#getPerformedByName()} for why this is
+     * captured rather than joined at read time. Null when the actor has no officer-pool entry.
+     */
+    @Column(length = 250)
+    private String performedByName;
+
     @Column(length = 50)
     private String performedByRole;
 
@@ -42,5 +50,10 @@ public class AppealTimeline {
     @PrePersist
     protected void onCreate() {
         this.performedAt = LocalDateTime.now();
+    }
+
+    /** See {@link ComplaintTimeline#displayActor()}. */
+    public String displayActor() {
+        return performedByName != null && !performedByName.isBlank() ? performedByName : performedBy;
     }
 }

@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
+import { ApiResponse } from '../models/api-response.model';
 
 export interface RuleCategory {
   id: number;
@@ -76,12 +77,6 @@ export interface ValidationResponse {
   valid: boolean;
   errors: string[];
   warnings: string[];
-}
-
-interface ApiResponse<T> {
-  success: boolean;
-  message: string;
-  data: T;
 }
 
 @Injectable({ providedIn: 'root' })

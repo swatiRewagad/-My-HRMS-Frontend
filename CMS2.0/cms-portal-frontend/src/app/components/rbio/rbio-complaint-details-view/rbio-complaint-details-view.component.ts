@@ -104,49 +104,6 @@ interface NodalRecord {
   forwardedToReAt: string | null;
 }
 
-export interface Complaint {
-
-  id: number;
-
-  complaintNumber: string;
-
-  subject: string;
-
-  complainantEmail: string;
-
-  complainantName: string;
-
-  description: string;
-
-  receiptDate: string;
-
-  filingType: string;
-  sla:string;
-
-  proposedComplaintType: string;
-
-  bankResponseDto: {
-
-    id: number;
-
-    entityName: string;
-
-    bsrCode: string;
-
-  };
-
-  complaintClassification: {
-
-    id: number;
-
-    name: string;
-
-    description: string;
-
-  };
-
-}
-
 interface HistoryEntry {
   id: string;
   status: string;
@@ -481,7 +438,6 @@ export class RbioComplaintDetailsView implements OnInit {
   finalDecisionRemarks = '';
   finalDecisionSubmitting = signal(false);
   showFinalDecisionPreview = signal(false);
-  complaint = signal<Complaint | null>(null);
   closureClause = '';
   closureClauseSearch = '';
   closureClauseDropdownOpen = false;
@@ -878,21 +834,6 @@ export class RbioComplaintDetailsView implements OnInit {
     });
   }
 
-  loadComplaints() {
-    const id = this.activatedRoute.snapshot.paramMap.get('id');
-    this.http.get<Complaint>(`${environment.apiBaseUrl}/api/complaints/rbio/${id}/summary`)
-      .subscribe({
-        next: (res) => {
-          this.complaint.set(res);
-          console.log(res);
-        },
-        error: (err) => {
-          console.error('Error loading complaints:', err);
-        }
-  });
-
-  }
-
   // Office Head Approval (CRPC_HEAD deciding on an "Other Office" forward)
   transferOfficeCode = '';
   transferOfficeName = '';
@@ -1229,7 +1170,6 @@ private getStatusColor(status: string): string {
         const id = params.get('id');
         if (id) {
           this.complaintId = id;
-          this.loadComplaints();
           this.loadExistingComplaint(id);
         }
       });
@@ -1575,16 +1515,16 @@ private getStatusColor(status: string): string {
     } else {
       delete this.fieldErrors['complainantPincode'];
       this.pincodeLoading.set(true);
-      this.http.get<any[]>(`${environment.apiBaseUrl}/api/v1/location/pincode/${value}`).subscribe({
+      this.http.get<any>(`${environment.apiBaseUrl}/api/v1/location/pincode/${value}`).subscribe({
         next: (res) => {
           this.pincodeLoading.set(false);
-          if (res && res[0] && res[0].Status === 'Success' && res[0].PostOffice?.length) {
-            const po = res[0].PostOffice[0];
-            if (po.State) {
-              this.complainantState = po.State;
-              this.onStateChange(po.State);
+          if (res?.data?.length) {
+            const po = res.data[0];
+            if (po.state) {
+              this.complainantState = po.state;
+              this.onStateChange(po.state);
             }
-            if (po.District) this.complainantDistrict = po.District;
+            if (po.district) this.complainantDistrict = po.district;
           } else {
             this.fieldErrors['complainantPincode'] = 'No location found for this pincode.';
           }

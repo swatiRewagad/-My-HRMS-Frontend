@@ -170,14 +170,9 @@ export interface TabCounts {
     withdrawnComplaints: number;
 }
 
+/** The dashboard payload. Wrap it as `ApiResponse<ApiResponseData>` from `models/api-response.model`. */
 export interface ApiResponseData {
     complaints: ComplaintsPageable;
     kpiCounts: KpiCounts;
     tabCounts: TabCounts;
-}
-
-export interface RootApiResponse {
-    success: boolean;
-    data: ApiResponseData;
-    timestamp: string;
 }

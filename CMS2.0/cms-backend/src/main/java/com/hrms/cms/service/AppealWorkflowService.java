@@ -27,6 +27,7 @@ public class AppealWorkflowService {
     private final AppealEligibilityService eligibilityService;
     private final ComplaintRepository complaintRepository;
     private final KeycloakUserService keycloakUserService;
+    private final OfficerDirectoryService officerDirectoryService;
 
     private final Map<String, Integer> roundRobinCounters = new java.util.concurrent.ConcurrentHashMap<>();
 
@@ -325,6 +326,7 @@ public class AppealWorkflowService {
                 .appealNumber(appealNumber)
                 .action(action)
                 .performedBy(performedBy)
+                .performedByName(officerDirectoryService.displayNameFor(performedBy).orElse(null))
                 .performedByRole(performedByRole)
                 .remarks(remarks)
                 .fromStatus(fromStatus)

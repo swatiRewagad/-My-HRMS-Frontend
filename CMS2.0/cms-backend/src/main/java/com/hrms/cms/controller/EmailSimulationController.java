@@ -1,16 +1,19 @@
 package com.hrms.cms.controller;
 
-import com.rbi.cms.common.dto.ApiResponse;
 import com.hrms.cms.dto.EmailReplyWithFormRequest;
 import com.hrms.cms.dto.IncomingEmailRequest;
-import com.hrms.cms.entity.SimulatedEmail;
+import com.hrms.cms.dto.simulation.EmailStatsResponse;
+import com.hrms.cms.dto.simulation.EmailThreadResponse;
+import com.hrms.cms.dto.simulation.EmailThreadSummary;
+import com.hrms.cms.dto.simulation.FormTemplateResponse;
+import com.hrms.cms.dto.simulation.SimulatedEmailResponse;
 import com.hrms.cms.service.EmailSimulationService;
+import com.rbi.cms.common.dto.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/email-simulation")
@@ -20,50 +23,51 @@ public class EmailSimulationController {
     private final EmailSimulationService emailService;
 
     @PostMapping("/receive")
-    public ResponseEntity<Map<String, Object>> receiveEmail(@RequestBody IncomingEmailRequest request) {
-        return ResponseEntity.ok(emailService.receiveEmail(request));
+    public ResponseEntity<ApiResponse<EmailThreadResponse>> receiveEmail(
+            @RequestBody IncomingEmailRequest request) {
+        return ResponseEntity.ok(ApiResponse.success(emailService.receiveEmail(request)));
     }
 
     @PostMapping("/reply-with-form")
-    public ResponseEntity<Map<String, Object>> replyWithForm(@RequestBody EmailReplyWithFormRequest request) {
-        return ResponseEntity.ok(emailService.receiveFormReply(request));
+    public ResponseEntity<ApiResponse<EmailThreadResponse>> replyWithForm(
+            @RequestBody EmailReplyWithFormRequest request) {
+        return ResponseEntity.ok(ApiResponse.success(emailService.receiveFormReply(request)));
     }
 
     @GetMapping("/threads")
-    public ResponseEntity<List<Map<String, Object>>> getAllThreads() {
-        return ResponseEntity.ok(emailService.getAllThreads());
+    public ResponseEntity<ApiResponse<List<EmailThreadSummary>>> getAllThreads() {
+        return ResponseEntity.ok(ApiResponse.success(emailService.getAllThreads()));
     }
 
     @GetMapping("/threads/{threadId}")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> getThread(@PathVariable String threadId) {
-        Map<String, Object> thread = emailService.getThread(threadId);
-        return ResponseEntity.ok(ApiResponse.success(thread));
+    public ResponseEntity<ApiResponse<EmailThreadResponse>> getThread(@PathVariable String threadId) {
+        return ResponseEntity.ok(ApiResponse.success(emailService.getThread(threadId)));
     }
 
     @GetMapping("/inbox")
-    public ResponseEntity<List<SimulatedEmail>> getInbox() {
-        return ResponseEntity.ok(emailService.getInbox());
+    public ResponseEntity<ApiResponse<List<SimulatedEmailResponse>>> getInbox() {
+        return ResponseEntity.ok(ApiResponse.success(emailService.getInbox()));
     }
 
     @GetMapping("/sent")
-    public ResponseEntity<List<SimulatedEmail>> getSent() {
-        return ResponseEntity.ok(emailService.getSent());
+    public ResponseEntity<ApiResponse<List<SimulatedEmailResponse>>> getSent() {
+        return ResponseEntity.ok(ApiResponse.success(emailService.getSent()));
     }
 
     @GetMapping("/form-template/{complaintNumber}")
-    public ResponseEntity<Map<String, Object>> getFormTemplate(@PathVariable String complaintNumber) {
-        return ResponseEntity.ok(emailService.getFormTemplate(complaintNumber));
+    public ResponseEntity<ApiResponse<FormTemplateResponse>> getFormTemplate(
+            @PathVariable String complaintNumber) {
+        return ResponseEntity.ok(ApiResponse.success(emailService.getFormTemplate(complaintNumber)));
     }
 
     @GetMapping("/stats")
-    public ResponseEntity<Map<String, Object>> getStats() {
-        return ResponseEntity.ok(emailService.getStats());
+    public ResponseEntity<ApiResponse<EmailStatsResponse>> getStats() {
+        return ResponseEntity.ok(ApiResponse.success(emailService.getStats()));
     }
 
     @GetMapping("/complaints/{complaintNumber}/threads")
-    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getEmailThreadsByComplaint(
+    public ResponseEntity<ApiResponse<List<EmailThreadSummary>>> getEmailThreadsByComplaint(
             @PathVariable String complaintNumber) {
-        List<Map<String, Object>> threads = emailService.getThreadsByComplaintNumber(complaintNumber);
-        return ResponseEntity.ok(ApiResponse.success(threads));
+        return ResponseEntity.ok(ApiResponse.success(emailService.getThreadsByComplaintNumber(complaintNumber)));
     }
 }

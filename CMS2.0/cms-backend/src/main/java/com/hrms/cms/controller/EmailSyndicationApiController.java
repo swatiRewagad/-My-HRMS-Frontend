@@ -3,6 +3,17 @@ package com.hrms.cms.controller;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hrms.cms.dto.IncomingEmailRequest;
+import com.hrms.cms.dto.simulation.EmailThreadResponse;
+import com.hrms.cms.dto.simulation.SimulatedEmailResponse;
+import com.hrms.cms.dto.syndication.DeoResponse;
+import com.hrms.cms.dto.syndication.DraftCreatedResponse;
+import com.hrms.cms.dto.syndication.EmailAutoCloseResponse;
+import com.hrms.cms.dto.syndication.EmailDraftAttachmentResponse;
+import com.hrms.cms.dto.syndication.EmailDraftResponse;
+import com.hrms.cms.dto.syndication.EmailIngestResult;
+import com.hrms.cms.dto.syndication.IgnoreListEntryResponse;
+import com.hrms.cms.dto.syndication.PointerResetResponse;
+import com.hrms.cms.dto.syndication.SyndicationStatsResponse;
 import com.hrms.cms.entity.Complaint;
 import com.hrms.cms.entity.EmailDraft;
 import com.hrms.cms.entity.EmailDraftAttachment;
@@ -19,9 +30,12 @@ import com.hrms.cms.service.LanguageTranslationService;
 import com.hrms.cms.service.OcrExtractionService;
 import com.hrms.cms.service.RbioComplaintSummaryService;
 import com.hrms.cms.service.RuleBasedExtractor;
+import com.rbi.cms.common.dto.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -61,7 +75,7 @@ public class EmailSyndicationApiController {
     private String attachmentsRootPath;
 
     private final AtomicInteger roundRobinPointer = new AtomicInteger(0);
-    private final List<Map<String, Object>> ignoreListStore = Collections.synchronizedList(new ArrayList<>());
+    private final List<IgnoreListEntryResponse> ignoreListStore = Collections.synchronizedList(new ArrayList<>());
     private final AtomicInteger ignoreIdSeq = new AtomicInteger(1);
 
     private List<Map<String, Object>> getDeoPool() {
@@ -96,7 +110,7 @@ public class EmailSyndicationApiController {
     }
 
     @PostMapping("/ingest")
-    public Map<String, Object> ingestEmail(@RequestBody Map<String, Object> request) {
+    public ResponseEntity<ApiResponse<EmailIngestResult>> ingestEmail(@RequestBody Map<String, Object> request) {
         String senderEmail = (String) request.getOrDefault("senderEmail", "");
         String subject = (String) request.getOrDefault("subject", "");
         String body = (String) request.getOrDefault("body", "");
@@ -108,21 +122,14 @@ public class EmailSyndicationApiController {
         // BRD Rule: If CRPC is only in CC/BCC (not primary TO), categorize as Non-Complaint and auto-close
         if (isCrpcOnlyInCcBcc(toRecipients, ccRecipients, bccRecipients)) {
             log.info("Email from {} has CRPC in CC/BCC only — auto-closing as Non-Complaint", senderEmail);
-            Map<String, Object> autoClosedResult = new LinkedHashMap<>();
-            autoClosedResult.put("status", "NON_COMPLAINT");
-            autoClosedResult.put("reason", "CRPC in CC/BCC — not a direct complaint");
-            autoClosedResult.put("senderEmail", senderEmail);
-            autoClosedResult.put("subject", subject);
-            autoClosedResult.put("autoClosed", true);
-            autoClosedResult.put("closedAt", LocalDateTime.now().toString());
-            return wrapResponse(autoClosedResult);
+            return wrapResponse(autoClosed(senderEmail, subject, "CRPC in CC/BCC — not a direct complaint"));
         }
 
         return processIngest(senderEmail, subject, body, messageId, null);
     }
 
     @PostMapping(value = "/ingest-with-attachment", consumes = "multipart/form-data")
-    public Map<String, Object> ingestEmailWithAttachment(
+    public ResponseEntity<ApiResponse<EmailIngestResult>> ingestEmailWithAttachment(
             @RequestParam("senderEmail") String senderEmail,
             @RequestParam("subject") String subject,
             @RequestParam(value = "body", required = false, defaultValue = "") String body,
@@ -132,19 +139,12 @@ public class EmailSyndicationApiController {
         return processIngest(senderEmail, subject, body, messageId, attachment);
     }
 
-    private Map<String, Object> processIngest(String senderEmail, String subject, String body,
-                                               String messageId, MultipartFile attachment) {
+    private ResponseEntity<ApiResponse<EmailIngestResult>> processIngest(
+            String senderEmail, String subject, String body, String messageId, MultipartFile attachment) {
         // Check ignore list — auto-close if sender matches
         if (isOnIgnoreList(senderEmail)) {
             log.info("Email from {} is on ignore list — auto-closing as Non-Complaint", senderEmail);
-            Map<String, Object> ignoredResult = new LinkedHashMap<>();
-            ignoredResult.put("status", "NON_COMPLAINT");
-            ignoredResult.put("reason", "Sender is on ignore list");
-            ignoredResult.put("senderEmail", senderEmail);
-            ignoredResult.put("subject", subject);
-            ignoredResult.put("autoClosed", true);
-            ignoredResult.put("closedAt", LocalDateTime.now().toString());
-            return wrapResponse(ignoredResult);
+            return wrapResponse(autoClosed(senderEmail, subject, "Sender is on ignore list"));
         }
 
         IncomingEmailRequest emailReq = new IncomingEmailRequest();
@@ -153,10 +153,10 @@ public class EmailSyndicationApiController {
         emailReq.setSubject(subject);
         emailReq.setBody(body);
 
-        Map<String, Object> result = emailService.receiveEmail(emailReq);
+        EmailThreadResponse result = emailService.receiveEmail(emailReq);
 
-        String complaintNumber = (String) result.get("complaintNumber");
-        String threadId = (String) result.get("threadId");
+        String complaintNumber = result.getComplaintNumber();
+        String threadId = result.getThreadId();
         String assignedTo = assignToNextDeo();
 
         // RULE-BASED EXTRACTION: apply admin-defined regex/keyword rules to email text
@@ -303,11 +303,11 @@ public class EmailSyndicationApiController {
             draftAttachmentRepository.save(att);
         }
 
-        return wrapResponse(toResponseMap(saved));
+        return wrapResponse(toDraftResponse(saved));
     }
 
     @GetMapping("/queue")
-    public Map<String, Object> getQueue(
+    public ResponseEntity<ApiResponse<List<EmailDraftResponse>>> getQueue(
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String assignedTo) {
         List<EmailDraft> drafts;
@@ -327,15 +327,13 @@ public class EmailSyndicationApiController {
             drafts = draftRepository.findAllByOrderByCreatedAtDesc();
         }
 
-        List<Map<String, Object>> results = drafts.stream()
-                .map(this::toResponseMap)
-                .collect(Collectors.toList());
-
-        return wrapResponse(results);
+        return wrapResponse(drafts.stream()
+                .map(this::toDraftResponse)
+                .collect(Collectors.toList()));
     }
 
     @GetMapping("/drafts/{draftId}")
-    public Map<String, Object> getDraft(@PathVariable String draftId) {
+    public ResponseEntity<ApiResponse<EmailDraftResponse>> getDraft(@PathVariable String draftId) {
         EmailDraft draft = draftRepository.findByDraftId(draftId).orElse(null);
 
         // Fallback: try looking up by displayId (e.g., C017 → id=17)
@@ -347,62 +345,66 @@ public class EmailSyndicationApiController {
         }
 
         if (draft != null) {
-            Map<String, Object> response = toResponseMap(draft);
-            return wrapResponse(response);
+            return wrapResponse(toDraftResponse(draft));
         }
 
         // Fallback: try to find from email thread (for legacy data before migration)
         try {
-            Map<String, Object> thread = emailService.getThread(draftId);
+            EmailThreadResponse thread = emailService.getThread(draftId);
             String emailBody = "";
-            String senderEmail = (String) thread.get("fromEmail");
+            String senderEmail = thread.getFromEmail();
             String sentAt = "";
-            List<?> emails = (List<?>) thread.get("emails");
-            if (emails != null) {
-                for (Object emailObj : emails) {
-                    @SuppressWarnings("unchecked")
-                    Map<String, Object> email = (Map<String, Object>) emailObj;
-                    if ("INBOUND".equals(email.get("direction"))) {
-                        emailBody = (String) email.getOrDefault("body", "");
-                        if (email.get("sentAt") != null) sentAt = email.get("sentAt").toString();
-                        break;
-                    }
-                }
+            SimulatedEmailResponse inbound = thread.getEmails().stream()
+                    .filter(e -> "INBOUND".equals(e.getDirection()))
+                    .findFirst()
+                    .orElse(null);
+            if (inbound != null) {
+                emailBody = inbound.getBody() != null ? inbound.getBody() : "";
+                if (inbound.getSentAt() != null) sentAt = inbound.getSentAt().toString();
             }
 
-            Map<String, Object> fallback = new LinkedHashMap<>();
-            fallback.put("id", 0);
-            fallback.put("draftId", draftId);
-            fallback.put("messageId", UUID.randomUUID().toString());
-            fallback.put("senderEmail", senderEmail);
-            fallback.put("subject", thread.get("subject"));
-            fallback.put("body", emailBody);
-            fallback.put("complainantName", extractName(senderEmail));
-            fallback.put("complainantPhone", "");
-            fallback.put("cpgramsNumber", "");
-            fallback.put("complaintSummary", thread.get("subject"));
-            fallback.put("category", "General");
-            fallback.put("modeOfReceipt", "EMAIL");
-            fallback.put("status", "ASSIGNED");
-            fallback.put("assignedTo", assignToNextDeo());
-            fallback.put("parentComplaintId", thread.get("complaintNumber"));
-            fallback.put("isDuplicate", false);
-            fallback.put("ocrProcessed", false);
-            fallback.put("ocrConfidence", 0);
-            fallback.put("receivedAt", sentAt.isEmpty() ? LocalDateTime.now().toString() : sentAt);
-            fallback.put("createdAt", sentAt.isEmpty() ? LocalDateTime.now().toString() : sentAt);
-            fallback.put("processedBy", "");
-            fallback.put("convertedComplaintId", "");
-            fallback.put("attachments", List.of());
-            fallback.put("suggestedRelated", List.of());
-            return wrapResponse(fallback);
+            String timestamp = sentAt.isEmpty() ? LocalDateTime.now().toString() : sentAt;
+            // Reconstructed from the thread, so only what the thread can answer is set and the rest stay
+            // null. It used to emit a narrower key set than the row-backed branch above, which meant one
+            // endpoint returned two different shapes; the shape is now the same either way.
+            return wrapResponse(EmailDraftResponse.builder()
+                    .id(0L)
+                    .draftId(draftId)
+                    .messageId(UUID.randomUUID().toString())
+                    .senderEmail(senderEmail)
+                    .subject(thread.getSubject())
+                    .body(emailBody)
+                    .complainantName(extractName(senderEmail))
+                    .complainantPhone("")
+                    .cpgramsNumber("")
+                    .complaintSummary(thread.getSubject())
+                    .category("General")
+                    .modeOfReceipt("EMAIL")
+                    .status("ASSIGNED")
+                    .assignedTo(assignToNextDeo())
+                    .parentComplaintId(thread.getComplaintNumber())
+                    .isDuplicate(false)
+                    .ocrProcessed(false)
+                    .ocrConfidence(0)
+                    .receivedAt(timestamp)
+                    .createdAt(timestamp)
+                    .processedBy("")
+                    .convertedComplaintId("")
+                    .build());
         } catch (Exception e) {
-            return wrapResponse(Map.of("error", "Draft not found: " + draftId));
+            // Was a 200 carrying {error: …} with success=true, so callers could not tell a missing draft
+            // from a real one and silently rendered a blank form.
+            return draftNotFound(draftId);
         }
     }
 
+    private static ResponseEntity<ApiResponse<EmailDraftResponse>> draftNotFound(String draftId) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ApiResponse.error("Draft not found: " + draftId));
+    }
+
     @PostMapping(value = "/drafts/physical-letter", consumes = "multipart/form-data")
-    public Map<String, Object> createPhysicalLetterDraft(
+    public ResponseEntity<ApiResponse<EmailDraftResponse>> createPhysicalLetterDraft(
             @RequestParam(value = "complainantName", required = false, defaultValue = "") String complainantName,
             @RequestParam(value = "complainantPhone", required = false, defaultValue = "") String complainantPhone,
             @RequestParam(value = "senderEmail", required = false, defaultValue = "") String senderEmail,
@@ -589,15 +591,16 @@ public class EmailSyndicationApiController {
                 draftAttachmentRepository.save(att);
             }
 
-            return wrapResponse(toResponseMap(saved));
+            return wrapResponse(toDraftResponse(saved));
         } catch (Exception e) {
-            log.error("Physical letter draft creation failed: {}", e.getMessage());
-            return wrapResponse(Map.of("error", e.getMessage()));
+            log.error("Physical letter draft creation failed", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Could not create the physical letter draft"));
         }
     }
 
     @PostMapping("/drafts")
-    public Map<String, Object> createDraft(@RequestBody Map<String, Object> request) {
+    public ResponseEntity<ApiResponse<DraftCreatedResponse>> createDraft(@RequestBody Map<String, Object> request) {
         try {
             String draftId = (String) request.get("draftId");
             EmailDraft draft;
@@ -630,14 +633,20 @@ public class EmailSyndicationApiController {
             draft.setReceivedAt(java.time.LocalDateTime.now());
 
             draftRepository.save(draft);
-            return wrapResponse(Map.of("draftId", draft.getDraftId(), "status", draft.getStatus()));
+            return wrapResponse(DraftCreatedResponse.builder()
+                    .draftId(draft.getDraftId())
+                    .status(draft.getStatus())
+                    .build());
         } catch (Exception e) {
-            return wrapResponse(Map.of("error", e.getMessage()));
+            log.error("Draft creation failed", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Could not save the draft"));
         }
     }
 
     @PutMapping("/drafts/{draftId}")
-    public Map<String, Object> updateDraft(@PathVariable String draftId, @RequestBody Map<String, Object> request) {
+    public ResponseEntity<ApiResponse<EmailDraftResponse>> updateDraft(
+            @PathVariable String draftId, @RequestBody Map<String, Object> request) {
         EmailDraft draft = draftRepository.findByDraftId(draftId).orElse(null);
         if (draft == null && draftId.matches("C\\d+")) {
             try {
@@ -646,7 +655,7 @@ public class EmailSyndicationApiController {
             } catch (NumberFormatException ignored) {}
         }
         if (draft == null) {
-            return wrapResponse(Map.of("error", "Draft not found"));
+            return draftNotFound(draftId);
         }
 
         if (request.containsKey("subject")) draft.setSubject((String) request.get("subject"));
@@ -756,7 +765,7 @@ public class EmailSyndicationApiController {
             createComplaintFromDraft(draft);
         }
 
-        return wrapResponse(toResponseMap(draft));
+        return wrapResponse(toDraftResponse(draft));
     }
 
     private void createComplaintFromDraft(EmailDraft draft) {
@@ -886,16 +895,13 @@ public class EmailSyndicationApiController {
     private boolean isOnIgnoreList(String senderEmail) {
         if (senderEmail == null || senderEmail.isBlank()) return false;
         String emailLower = senderEmail.toLowerCase().trim();
-        for (Map<String, Object> entry : ignoreListStore) {
-            Object activeFlag = entry.getOrDefault("isActive", true);
-            if (Boolean.FALSE.equals(activeFlag)) continue;
-            String status = (String) entry.getOrDefault("status", "active");
-            if (!"active".equalsIgnoreCase(status)) continue;
-            String pattern = ((String) entry.getOrDefault("pattern",
-                    (String) entry.getOrDefault("emailPattern", ""))).toLowerCase().trim();
+        for (IgnoreListEntryResponse entry : ignoreListStore) {
+            if (Boolean.FALSE.equals(entry.getIsActive())) continue;
+            String pattern = entry.getEmailPattern() == null
+                    ? "" : entry.getEmailPattern().toLowerCase().trim();
             if (pattern.isEmpty()) continue;
-            String type = ((String) entry.getOrDefault("type",
-                    (String) entry.getOrDefault("patternType", "EXACT"))).toUpperCase();
+            String type = entry.getPatternType() == null
+                    ? "EXACT" : entry.getPatternType().toUpperCase();
             switch (type) {
                 case "EXACT":
                     if (emailLower.equals(pattern)) return true;
@@ -912,10 +918,10 @@ public class EmailSyndicationApiController {
     }
 
     @PostMapping("/drafts/{draftId}/convert")
-    public Map<String, Object> convertDraft(@PathVariable String draftId) {
+    public ResponseEntity<ApiResponse<EmailDraftResponse>> convertDraft(@PathVariable String draftId) {
         EmailDraft draft = draftRepository.findByDraftId(draftId).orElse(null);
         if (draft == null) {
-            return wrapResponse(Map.of("error", "Draft not found"));
+            return draftNotFound(draftId);
         }
 
         draft.setStatus("CONVERTED");
@@ -923,86 +929,82 @@ public class EmailSyndicationApiController {
         draft.setProcessedBy("System");
         draftRepository.save(draft);
 
-        return wrapResponse(toResponseMap(draft));
+        return wrapResponse(toDraftResponse(draft));
     }
 
     @PostMapping("/drafts/{draftId}/reassign")
-    public Map<String, Object> reassignDraft(@PathVariable String draftId, @RequestParam String targetDeoId) {
+    public ResponseEntity<ApiResponse<EmailDraftResponse>> reassignDraft(
+            @PathVariable String draftId, @RequestParam String targetDeoId) {
         EmailDraft draft = draftRepository.findByDraftId(draftId).orElse(null);
         if (draft == null) {
-            return wrapResponse(Map.of("error", "Draft not found"));
+            return draftNotFound(draftId);
         }
 
         draft.setAssignedTo(targetDeoId);
         draftRepository.save(draft);
-        return wrapResponse(toResponseMap(draft));
+        return wrapResponse(toDraftResponse(draft));
     }
 
     @GetMapping("/stats")
-    public Map<String, Object> getStats() {
-        long total = draftRepository.count();
-        long assigned = draftRepository.countByStatus("ASSIGNED");
-        long converted = draftRepository.countByStatus("CONVERTED");
-        long inProgress = draftRepository.countByStatus("IN_PROGRESS");
-
-        Map<String, Object> stats = new LinkedHashMap<>();
-        stats.put("totalDrafts", total);
-        stats.put("pendingCount", 0);
-        stats.put("assignedCount", assigned);
-        stats.put("inProgressCount", inProgress);
-        stats.put("convertedCount", converted);
-        stats.put("duplicateCount", 0);
-        stats.put("ignoredCount", 0);
-        stats.put("activeDeoCount", getDeoPool().size());
-
-        return wrapResponse(stats);
+    public ResponseEntity<ApiResponse<SyndicationStatsResponse>> getStats() {
+        return wrapResponse(SyndicationStatsResponse.builder()
+                .totalDrafts(draftRepository.count())
+                .pendingCount(0)
+                .assignedCount(draftRepository.countByStatus("ASSIGNED"))
+                .inProgressCount(draftRepository.countByStatus("IN_PROGRESS"))
+                .convertedCount(draftRepository.countByStatus("CONVERTED"))
+                .duplicateCount(0)
+                .ignoredCount(0)
+                .activeDeoCount(getDeoPool().size())
+                .build());
     }
 
     @GetMapping("/ignore-list")
-    public Map<String, Object> getIgnoreList() {
+    public ResponseEntity<ApiResponse<List<IgnoreListEntryResponse>>> getIgnoreList() {
         return wrapResponse(new ArrayList<>(ignoreListStore));
     }
 
     @PostMapping("/ignore-list")
-    public Map<String, Object> addToIgnoreList(@RequestBody Map<String, Object> request) {
-        String pattern = (String) request.getOrDefault("pattern",
-                request.getOrDefault("emailPattern", ""));
-        String type = (String) request.getOrDefault("type",
-                request.getOrDefault("patternType", "EXACT"));
-        Map<String, Object> entry = new LinkedHashMap<>();
-        entry.put("id", ignoreIdSeq.getAndIncrement());
-        entry.put("pattern", pattern);
-        entry.put("emailPattern", pattern);
-        entry.put("type", type);
-        entry.put("patternType", type);
-        entry.put("reason", request.getOrDefault("reason", ""));
-        entry.put("addedBy", "admin");
-        entry.put("status", "active");
-        entry.put("isActive", true);
-        entry.put("createdAt", LocalDateTime.now().toString());
+    public ResponseEntity<ApiResponse<IgnoreListEntryResponse>> addToIgnoreList(
+            @RequestBody Map<String, Object> request) {
+        IgnoreListEntryResponse entry = IgnoreListEntryResponse.builder()
+                .id(ignoreIdSeq.getAndIncrement())
+                .emailPattern((String) request.getOrDefault("pattern",
+                        request.getOrDefault("emailPattern", "")))
+                .patternType((String) request.getOrDefault("type",
+                        request.getOrDefault("patternType", "EXACT")))
+                .reason((String) request.getOrDefault("reason", ""))
+                .addedBy("admin")
+                .isActive(true)
+                .createdAt(LocalDateTime.now().toString())
+                .build();
         ignoreListStore.add(entry);
         return wrapResponse(entry);
     }
 
     @PostMapping("/ignore-list/bulk")
-    public Map<String, Object> bulkAddIgnoreList(@RequestBody List<Map<String, Object>> requests) {
-        List<Map<String, Object>> entries = new ArrayList<>();
+    public ResponseEntity<ApiResponse<List<IgnoreListEntryResponse>>> bulkAddIgnoreList(
+            @RequestBody List<Map<String, Object>> requests) {
+        // Stub: builds the entries but never adds them to the ignore list, so a bulk import has no
+        // effect on what ingestion auto-closes. Nothing calls this yet.
+        List<IgnoreListEntryResponse> entries = new ArrayList<>();
         for (int i = 0; i < requests.size(); i++) {
-            Map<String, Object> entry = new LinkedHashMap<>();
-            entry.put("id", i + 1);
-            entry.put("emailPattern", requests.get(i).getOrDefault("emailPattern", ""));
-            entry.put("patternType", requests.get(i).getOrDefault("patternType", "EXACT"));
-            entry.put("reason", requests.get(i).getOrDefault("reason", ""));
-            entry.put("addedBy", "admin");
-            entry.put("isActive", true);
-            entry.put("createdAt", LocalDateTime.now().toString());
-            entries.add(entry);
+            Map<String, Object> source = requests.get(i);
+            entries.add(IgnoreListEntryResponse.builder()
+                    .id(i + 1)
+                    .emailPattern((String) source.getOrDefault("emailPattern", ""))
+                    .patternType((String) source.getOrDefault("patternType", "EXACT"))
+                    .reason((String) source.getOrDefault("reason", ""))
+                    .addedBy("admin")
+                    .isActive(true)
+                    .createdAt(LocalDateTime.now().toString())
+                    .build());
         }
         return wrapResponse(entries);
     }
 
     @GetMapping("/deo")
-    public Map<String, Object> getDeos() {
+    public ResponseEntity<ApiResponse<List<DeoResponse>>> getDeos() {
         // Keycloak owns the roster; OFFICER_AVAILABILITY owns leave state and the per-officer threshold.
         // A DEO with no availability row has never been configured in Team Management, so it falls back to
         // being available on the default threshold rather than being hidden from the pool.
@@ -1012,258 +1014,283 @@ public class EmailSyndicationApiController {
                         .collect(Collectors.toMap(
                                 com.hrms.cms.entity.OfficerAvailability::getUserId, a -> a, (a, b) -> a));
 
-        List<Map<String, Object>> keycloakDeos = keycloakUserService.getDeos();
-        List<Map<String, Object>> deos = new ArrayList<>();
+        List<DeoResponse> deos = new ArrayList<>();
         int sortOrder = 1;
-        for (Map<String, Object> kc : keycloakDeos) {
+        for (Map<String, Object> kc : keycloakUserService.getDeos()) {
             String userId = (String) kc.get("userId");
             com.hrms.cms.entity.OfficerAvailability availability = availabilityByUser.get(userId);
             // Live count of drafts sitting with this DEO, which is what the assignment screens balance on.
             int currentLoad = draftRepository.findByAssignedToOrderByCreatedAtDesc(
                     (String) kc.get("displayName")).size();
+            int position = sortOrder++;
 
-            Map<String, Object> deo = new LinkedHashMap<>();
-            deo.put("id", sortOrder);
-            deo.put("userId", userId);
-            deo.put("displayName", kc.get("displayName"));
-            deo.put("email", kc.getOrDefault("email", ""));
-            deo.put("isActive", Boolean.TRUE.equals(kc.get("enabled"))
-                    && (availability == null || availability.isActive()));
-            deo.put("isOnLeave", availability != null && availability.isOnLeave());
-            deo.put("leaveReason", availability != null ? availability.getLeaveReason() : null);
-            deo.put("officeCode", availability != null ? availability.getOfficeCode() : null);
-            deo.put("maxThreshold", availability != null && availability.getMaxWorkload() > 0
-                    ? availability.getMaxWorkload() : 20);
-            deo.put("currentLoad", currentLoad);
-            deo.put("currentAssignedCount", currentLoad);
-            deo.put("sortOrder", sortOrder++);
-            deos.add(deo);
+            deos.add(DeoResponse.builder()
+                    .id(position)
+                    .userId(userId)
+                    .displayName((String) kc.get("displayName"))
+                    .email((String) kc.getOrDefault("email", ""))
+                    .isActive(Boolean.TRUE.equals(kc.get("enabled"))
+                            && (availability == null || availability.isActive()))
+                    .isOnLeave(availability != null && availability.isOnLeave())
+                    .leaveReason(availability != null ? availability.getLeaveReason() : null)
+                    .officeCode(availability != null ? availability.getOfficeCode() : null)
+                    .maxThreshold(availability != null && availability.getMaxWorkload() > 0
+                            ? availability.getMaxWorkload() : 20)
+                    .currentLoad(currentLoad)
+                    .currentAssignedCount(currentLoad)
+                    .sortOrder(position)
+                    .build());
         }
         return wrapResponse(deos);
     }
 
     @GetMapping("/deo/eligible")
-    public Map<String, Object> getEligibleDeos() {
+    public ResponseEntity<ApiResponse<List<DeoResponse>>> getEligibleDeos() {
         return getDeos();
     }
 
     @PostMapping("/deo")
-    public Map<String, Object> addDeo(@RequestBody Map<String, Object> request) {
-        Map<String, Object> deo = new LinkedHashMap<>(request);
-        deo.put("id", 4);
-        deo.put("isActive", true);
-        deo.put("isOnLeave", false);
-        deo.put("currentAssignedCount", 0);
-        deo.put("sortOrder", 4);
-        return wrapResponse(deo);
+    public ResponseEntity<ApiResponse<DeoResponse>> addDeo(@RequestBody Map<String, Object> request) {
+        // Stub: echoes the submitted DEO back with placeholder ids and persists nothing. The roster lives
+        // in Keycloak, so adding one here never had anywhere to write to.
+        return wrapResponse(DeoResponse.builder()
+                .id(4)
+                .userId((String) request.get("userId"))
+                .displayName((String) request.get("displayName"))
+                .email((String) request.get("email"))
+                .isActive(true)
+                .isOnLeave(false)
+                .maxThreshold(request.get("maxThreshold") instanceof Number n ? n.intValue() : null)
+                .currentAssignedCount(0)
+                .sortOrder(4)
+                .build());
     }
 
     @PutMapping("/deo/{userId}/threshold")
-    public Map<String, Object> updateThreshold(@PathVariable String userId, @RequestParam int threshold) {
-        Map<String, Object> deo = Map.of(
-                "id", 1, "userId", userId, "displayName", "Updated User",
-                "email", userId + "@rbi.org.in", "isActive", true, "isOnLeave", false,
-                "maxThreshold", threshold, "currentAssignedCount", 0, "sortOrder", 1
-        );
-        return wrapResponse(deo);
+    public ResponseEntity<ApiResponse<DeoResponse>> updateThreshold(@PathVariable String userId,
+                                                                    @RequestParam int threshold) {
+        // Stub: returns the threshold it was handed without storing it. OFFICER_AVAILABILITY owns the
+        // real value and is written through Team Management.
+        return wrapResponse(placeholderDeo(userId).maxThreshold(threshold).build());
     }
 
     @PutMapping("/deo/{userId}/status")
-    public Map<String, Object> updateDeoStatus(@PathVariable String userId,
+    public ResponseEntity<ApiResponse<DeoResponse>> updateDeoStatus(@PathVariable String userId,
                                                 @RequestParam(required = false) Boolean active,
                                                 @RequestParam(required = false) Boolean onLeave) {
-        Map<String, Object> deo = new LinkedHashMap<>();
-        deo.put("id", 1);
-        deo.put("userId", userId);
-        deo.put("displayName", "Updated User");
-        deo.put("email", userId + "@rbi.org.in");
-        deo.put("isActive", active != null ? active : true);
-        deo.put("isOnLeave", onLeave != null ? onLeave : false);
-        deo.put("maxThreshold", 20);
-        deo.put("currentAssignedCount", 0);
-        deo.put("sortOrder", 1);
-        return wrapResponse(deo);
+        // Stub: reflects the flags back without storing them, as above.
+        return wrapResponse(placeholderDeo(userId)
+                .isActive(active == null || active)
+                .isOnLeave(onLeave != null && onLeave)
+                .maxThreshold(20)
+                .build());
+    }
+
+    private static DeoResponse.DeoResponseBuilder placeholderDeo(String userId) {
+        return DeoResponse.builder()
+                .id(1)
+                .userId(userId)
+                .displayName("Updated User")
+                .email(userId + "@rbi.org.in")
+                .isActive(true)
+                .isOnLeave(false)
+                .currentAssignedCount(0)
+                .sortOrder(1);
     }
 
     @DeleteMapping("/deo/{userId}")
-    public Map<String, Object> removeDeo(@PathVariable String userId) {
+    public ResponseEntity<ApiResponse<Void>> removeDeo(@PathVariable String userId) {
         return wrapResponse(null);
     }
 
     @PostMapping("/deo/reset-pointer")
-    public Map<String, Object> resetPointer() {
+    public ResponseEntity<ApiResponse<PointerResetResponse>> resetPointer() {
         roundRobinPointer.set(0);
-        return wrapResponse(Map.of("message", "Round-robin pointer reset", "pointer", 0));
+        return wrapResponse(PointerResetResponse.builder()
+                .message("Round-robin pointer reset")
+                .pointer(0)
+                .build());
     }
 
     @DeleteMapping("/ignore-list/{id}")
-    public Map<String, Object> removeIgnoreEntry(@PathVariable int id) {
-        ignoreListStore.removeIf(e -> Integer.valueOf(id).equals(e.get("id")));
+    public ResponseEntity<ApiResponse<Void>> removeIgnoreEntry(@PathVariable int id) {
+        ignoreListStore.removeIf(e -> Integer.valueOf(id).equals(e.getId()));
         return wrapResponse(null);
     }
 
     @PutMapping("/ignore-list/{id}")
-    public Map<String, Object> updateIgnoreEntry(@PathVariable int id, @RequestBody Map<String, Object> request) {
-        Map<String, Object> entry = new LinkedHashMap<>(request);
-        entry.put("id", id);
-        entry.put("addedBy", "admin");
-        entry.put("isActive", true);
-        entry.put("createdAt", LocalDateTime.now().toString());
-        return wrapResponse(entry);
+    public ResponseEntity<ApiResponse<IgnoreListEntryResponse>> updateIgnoreEntry(
+            @PathVariable int id, @RequestBody Map<String, Object> request) {
+        // Stub: echoes the submitted entry back and never touches the store, so an edit does not change
+        // what ingestion auto-closes. Nothing calls this yet.
+        return wrapResponse(IgnoreListEntryResponse.builder()
+                .id(id)
+                .emailPattern((String) request.getOrDefault("emailPattern", ""))
+                .patternType((String) request.getOrDefault("patternType", "EXACT"))
+                .reason((String) request.getOrDefault("reason", ""))
+                .addedBy("admin")
+                .isActive(true)
+                .createdAt(LocalDateTime.now().toString())
+                .build());
     }
 
     // ─── Helper methods ───
 
-    private Map<String, Object> toResponseMap(EmailDraft draft) {
-        List<EmailDraftAttachment> attachments = draftAttachmentRepository
-                .findByDraftIdOrderByCreatedAtAsc(draft.getDraftId());
+    private EmailDraftResponse toDraftResponse(EmailDraft draft) {
+        List<EmailDraftAttachmentResponse> attachments = draftAttachmentRepository
+                .findByDraftIdOrderByCreatedAtAsc(draft.getDraftId()).stream()
+                .map(EmailSyndicationApiController::toAttachmentResponse)
+                .collect(Collectors.toList());
 
-        List<Map<String, Object>> attachmentList = attachments.stream().map(a -> {
-            Map<String, Object> att = new LinkedHashMap<>();
-            att.put("id", "ATT-" + a.getId());
-            att.put("fileName", a.getFileName());
-            att.put("fileType", a.getFileType());
-            att.put("fileSize", a.getFileSize());
-            att.put("ocrText", a.getOcrText());
-            att.put("ocrConfidence", a.getOcrConfidence());
-            att.put("createdAt", a.getCreatedAt() != null ? a.getCreatedAt().toString() : "");
-            att.put("uploadedBy", a.getUploadedBy());
-            return att;
-        }).collect(Collectors.toList());
+        return EmailDraftResponse.builder()
+                .id(draft.getId())
+                .draftId(draft.getDraftId())
+                .displayId("C" + String.format("%03d", draft.getId()))
+                .messageId(draft.getMessageId())
+                .senderEmail(draft.getSenderEmail())
+                .subject(draft.getSubject())
+                .body(draft.getBody())
+                .complainantName(draft.getComplainantName())
+                .complainantPhone(draft.getComplainantPhone())
+                .complainantAddress(draft.getComplainantAddress())
+                .complainantState(draft.getComplainantState())
+                .complainantDistrict(draft.getComplainantDistrict())
+                .complainantPincode(draft.getComplainantPincode())
+                .cpgramsNumber(draft.getCpgramsNumber())
+                .complaintSummary(draft.getComplaintSummary())
+                .category(draft.getCategory())
+                .modeOfReceipt(draft.getModeOfReceipt())
+                .status(draft.getStatus())
+                .assignedTo(draft.getAssignedTo())
+                .parentComplaintId(draft.getParentComplaintId())
+                .isDuplicate(draft.isDuplicate())
+                .ocrProcessed(draft.isOcrProcessed())
+                .ocrConfidence(draft.getOcrConfidence())
+                .entityName(draft.getEntityName())
+                .entityType(draft.getEntityType())
+                .amountInvolved(draft.getAmountInvolved())
+                .receivedAt(draft.getReceivedAt() != null ? draft.getReceivedAt().toString() : "")
+                .createdAt(draft.getCreatedAt() != null ? draft.getCreatedAt().toString() : "")
+                .processedBy(draft.getProcessedBy())
+                .convertedComplaintId(draft.getConvertedComplaintId())
+                .attachments(attachments)
 
-        Map<String, Object> response = new LinkedHashMap<>();
-        response.put("id", draft.getId());
-        response.put("draftId", draft.getDraftId());
-        response.put("displayId", "C" + String.format("%03d", draft.getId()));
-        response.put("messageId", draft.getMessageId());
-        response.put("senderEmail", draft.getSenderEmail());
-        response.put("subject", draft.getSubject());
-        response.put("body", draft.getBody());
-        response.put("complainantName", draft.getComplainantName());
-        response.put("complainantPhone", draft.getComplainantPhone());
-        response.put("complainantAddress", draft.getComplainantAddress());
-        response.put("complainantState", draft.getComplainantState());
-        response.put("complainantDistrict", draft.getComplainantDistrict());
-        response.put("complainantPincode", draft.getComplainantPincode());
-        response.put("cpgramsNumber", draft.getCpgramsNumber());
-        response.put("complaintSummary", draft.getComplaintSummary());
-        response.put("category", draft.getCategory());
-        response.put("modeOfReceipt", draft.getModeOfReceipt());
-        response.put("status", draft.getStatus());
-        response.put("assignedTo", draft.getAssignedTo());
-        response.put("parentComplaintId", draft.getParentComplaintId());
-        response.put("isDuplicate", draft.isDuplicate());
-        response.put("ocrProcessed", draft.isOcrProcessed());
-        response.put("ocrConfidence", draft.getOcrConfidence());
-        response.put("entityName", draft.getEntityName());
-        response.put("entityType", draft.getEntityType());
-        response.put("amountInvolved", draft.getAmountInvolved());
-        response.put("receivedAt", draft.getReceivedAt() != null ? draft.getReceivedAt().toString() : "");
-        response.put("createdAt", draft.getCreatedAt() != null ? draft.getCreatedAt().toString() : "");
-        response.put("processedBy", draft.getProcessedBy());
-        response.put("convertedComplaintId", draft.getConvertedComplaintId());
-        response.put("attachments", attachmentList);
-        response.put("suggestedRelated", List.of());
+                // DEO assessment
+                .deoDecision(draft.getDeoDecision())
+                .deoRemarks(draft.getDeoRemarks())
+                .nonMaintainableReason(draft.getNonMaintainableReason())
 
-        // DEO assessment
-        response.put("deoDecision", draft.getDeoDecision());
-        response.put("deoRemarks", draft.getDeoRemarks());
-        response.put("nonMaintainableReason", draft.getNonMaintainableReason());
+                // Reviewer
+                .reviewerDecision(draft.getReviewerDecision())
+                .reviewerRemarks(draft.getReviewerRemarks())
+                .targetOffice(draft.getTargetOffice())
 
-        // Reviewer
-        response.put("reviewerDecision", draft.getReviewerDecision());
-        response.put("reviewerRemarks", draft.getReviewerRemarks());
-        response.put("targetOffice", draft.getTargetOffice());
+                // Scheme & auto-closure
+                .schemeVersion(draft.getSchemeVersion())
+                .closureClause(draft.getClosureClause())
+                .autoClosureResponsesJson(draft.getAutoClosureResponsesJson())
+                .subJudice(draft.isSubJudice())
+                .notAComplaintReason(draft.getNotAComplaintReason())
+                .notAComplaintOthersReason(draft.getNotAComplaintOthersReason())
+                .suggestionDepartment(draft.getSuggestionDepartment())
+                .suggestionNature(draft.getSuggestionNature())
 
-        // Scheme & Auto-closure
-        response.put("schemeVersion", draft.getSchemeVersion());
-        response.put("closureClause", draft.getClosureClause());
-        response.put("autoClosureResponsesJson", draft.getAutoClosureResponsesJson());
-        response.put("subJudice", draft.isSubJudice());
-        response.put("notAComplaintReason", draft.getNotAComplaintReason());
-        response.put("notAComplaintOthersReason", draft.getNotAComplaintOthersReason());
-        response.put("suggestionDepartment", draft.getSuggestionDepartment());
-        response.put("suggestionNature", draft.getSuggestionNature());
+                // Language
+                .detectedLanguage(draft.getDetectedLanguage())
+                .languageName(draft.getLanguageName())
+                .isVernacular(draft.isVernacular())
+                .translationConfidence(draft.getTranslationConfidence())
 
-        // Language info
-        response.put("detectedLanguage", draft.getDetectedLanguage());
-        response.put("languageName", draft.getLanguageName());
-        response.put("isVernacular", draft.isVernacular());
-        response.put("translationConfidence", draft.getTranslationConfidence());
+                // Eligibility
+                .proposedComplaintType(draft.getProposedComplaintType())
+                .notComplaintReason(draft.getNotComplaintReason())
+                .eligibilityQuestionsJson(draft.getEligibilityQuestionsJson())
 
-        // Eligibility
-        response.put("proposedComplaintType", draft.getProposedComplaintType());
-        response.put("notComplaintReason", draft.getNotComplaintReason());
-        response.put("eligibilityQuestionsJson", draft.getEligibilityQuestionsJson());
+                // Entity details
+                .entityCategory(draft.getEntityCategory())
+                .entityTypeDetail(draft.getEntityTypeDetail())
+                .entityBsrCode(draft.getEntityBsrCode())
+                .entityPincode(draft.getEntityPincode())
+                .entityCountry(draft.getEntityCountry())
+                .entityState(draft.getEntityState())
+                .entityDistrict(draft.getEntityDistrict())
+                .entityCity(draft.getEntityCity())
+                .entityBranchName(draft.getEntityBranchName())
+                .entityBranchCategory(draft.getEntityBranchCategory())
+                .entityAddress(draft.getEntityAddress())
+                .entityBranchCenterName(draft.getEntityBranchCenterName())
+                .cosmosCode(draft.getCosmosCode())
+                .assetSize(draft.getAssetSize())
+                .isDepositTaking(draft.getIsDepositTaking())
+                .isAssetAbove100Cr(draft.getIsAssetAbove100Cr())
+                .isLiquidated(draft.getIsLiquidated())
 
-        // Entity details (expanded)
-        response.put("entityCategory", draft.getEntityCategory());
-        response.put("entityTypeDetail", draft.getEntityTypeDetail());
-        response.put("entityBsrCode", draft.getEntityBsrCode());
-        response.put("entityPincode", draft.getEntityPincode());
-        response.put("entityCountry", draft.getEntityCountry());
-        response.put("entityState", draft.getEntityState());
-        response.put("entityDistrict", draft.getEntityDistrict());
-        response.put("entityCity", draft.getEntityCity());
-        response.put("entityBranchName", draft.getEntityBranchName());
-        response.put("entityBranchCategory", draft.getEntityBranchCategory());
-        response.put("entityAddress", draft.getEntityAddress());
-        response.put("entityBranchCenterName", draft.getEntityBranchCenterName());
-        response.put("cosmosCode", draft.getCosmosCode());
-        response.put("assetSize", draft.getAssetSize());
-        response.put("isDepositTaking", draft.getIsDepositTaking());
-        response.put("isAssetAbove100Cr", draft.getIsAssetAbove100Cr());
-        response.put("isLiquidated", draft.getIsLiquidated());
+                // Complainant extended
+                .otherEntityName(draft.getOtherEntityName())
+                .dateOfRegistrationWithRBI(draft.getDateOfRegistrationWithRBI())
+                .complaintCategory(draft.getComplaintCategory())
+                .complaintSubCategory1(draft.getComplaintSubCategory1())
+                .complaintSubCategory2(draft.getComplaintSubCategory2())
+                .dateOfFilingComplaint(draft.getDateOfFilingComplaint())
+                .complaintRegDateValid(draft.getComplaintRegDateValid())
+                .reminderSentByComplainant(draft.getReminderSentByComplainant())
+                .disputedAmountInvolved(draft.getDisputedAmountInvolved())
+                .dateOfFilingForFinancial(draft.getDateOfFilingForFinancial())
+                .compensationSought(draft.getCompensationSought())
+                .loanDisposalAmount(draft.getLoanDisposalAmount())
+                .additionalComments(draft.getAdditionalComments())
+                .crpcProposedAction(draft.getCrpcProposedAction())
+                .vernacularLanguageDetail(draft.getVernacularLanguageDetail())
 
-        // Complainant extended
-        response.put("otherEntityName", draft.getOtherEntityName());
-        response.put("dateOfRegistrationWithRBI", draft.getDateOfRegistrationWithRBI());
-        response.put("complaintCategory", draft.getComplaintCategory());
-        response.put("complaintSubCategory1", draft.getComplaintSubCategory1());
-        response.put("complaintSubCategory2", draft.getComplaintSubCategory2());
-        response.put("dateOfFilingComplaint", draft.getDateOfFilingComplaint());
-        response.put("complaintRegDateValid", draft.getComplaintRegDateValid());
-        response.put("reminderSentByComplainant", draft.getReminderSentByComplainant());
-        response.put("disputedAmountInvolved", draft.getDisputedAmountInvolved());
-        response.put("dateOfFilingForFinancial", draft.getDateOfFilingForFinancial());
-        response.put("compensationSought", draft.getCompensationSought());
-        response.put("loanDisposalAmount", draft.getLoanDisposalAmount());
-        response.put("additionalComments", draft.getAdditionalComments());
-        response.put("crpcProposedAction", draft.getCrpcProposedAction());
-        response.put("vernacularLanguageDetail", draft.getVernacularLanguageDetail());
+                // Legal & case
+                .legalCaseFiled(draft.getLegalCaseFiled())
+                .legalDateOfFiling(draft.getLegalDateOfFiling())
+                .preEnquiryReceived(draft.getPreEnquiryReceived())
 
-        // Legal & Case
-        response.put("legalCaseFiled", draft.getLegalCaseFiled());
-        response.put("legalDateOfFiling", draft.getLegalDateOfFiling());
-        response.put("preEnquiryReceived", draft.getPreEnquiryReceived());
+                // Flags
+                .highPriorityComplaint(draft.getHighPriorityComplaint())
+                .isRegardingPension(draft.getIsRegardingPension())
+                .isAgainstBusinessCorrespondent(draft.getIsAgainstBusinessCorrespondent())
+                .isAtmCreditDebitCard(draft.getIsAtmCreditDebitCard())
+                .schemeFlag(draft.getSchemeFlag())
+                .isFreeMarkedComplaint(draft.getIsFreeMarkedComplaint())
 
-        // Flags
-        response.put("highPriorityComplaint", draft.getHighPriorityComplaint());
-        response.put("isRegardingPension", draft.getIsRegardingPension());
-        response.put("isAgainstBusinessCorrespondent", draft.getIsAgainstBusinessCorrespondent());
-        response.put("isAtmCreditDebitCard", draft.getIsAtmCreditDebitCard());
-        response.put("schemeFlag", draft.getSchemeFlag());
-        response.put("isFreeMarkedComplaint", draft.getIsFreeMarkedComplaint());
+                // Linkage
+                .currentComplaintNumber(draft.getCurrentComplaintNumber())
+                .receivedReplyWithin30Days(draft.getReceivedReplyWithin30Days())
 
-        // Linkage
-        response.put("currentComplaintNumber", draft.getCurrentComplaintNumber());
-        response.put("receivedReplyWithin30Days", draft.getReceivedReplyWithin30Days());
+                // Declaration
+                .declarationAccepted(draft.getDeclarationAccepted())
 
-        // Declaration
-        response.put("declarationAccepted", draft.getDeclarationAccepted());
+                .ocrExtractedFields(parseOcrFields(draft))
+                .build();
+    }
 
-        // OCR extracted fields
-        if (draft.isOcrProcessed() && draft.getOcrExtractedFieldsJson() != null && !draft.getOcrExtractedFieldsJson().isEmpty()) {
-            try {
-                Map<String, String> ocrFields = objectMapper.readValue(
-                        draft.getOcrExtractedFieldsJson(), new TypeReference<Map<String, String>>() {});
-                response.put("ocrExtractedFields", ocrFields);
-            } catch (Exception e) {
-                log.warn("Failed to parse OCR fields JSON for draft {}", draft.getDraftId());
-            }
+    private static EmailDraftAttachmentResponse toAttachmentResponse(EmailDraftAttachment a) {
+        return EmailDraftAttachmentResponse.builder()
+                .id("ATT-" + a.getId())
+                .fileName(a.getFileName())
+                .fileType(a.getFileType())
+                .fileSize(a.getFileSize())
+                .ocrText(a.getOcrText())
+                .ocrConfidence(a.getOcrConfidence())
+                .createdAt(a.getCreatedAt() != null ? a.getCreatedAt().toString() : "")
+                .uploadedBy(a.getUploadedBy())
+                .build();
+    }
+
+    /** Null keeps the key off the wire, which is how the assessment form decides not to show the panel. */
+    private Map<String, String> parseOcrFields(EmailDraft draft) {
+        String json = draft.getOcrExtractedFieldsJson();
+        if (!draft.isOcrProcessed() || json == null || json.isEmpty()) {
+            return null;
         }
-
-        return response;
+        try {
+            return objectMapper.readValue(json, new TypeReference<Map<String, String>>() {});
+        } catch (Exception e) {
+            log.warn("Failed to parse OCR fields JSON for draft {}", draft.getDraftId());
+            return null;
+        }
     }
 
     private boolean isCrpcOnlyInCcBcc(String to, String cc, String bcc) {
@@ -1274,14 +1301,24 @@ public class EmailSyndicationApiController {
         return !inTo && (inCc || inBcc);
     }
 
-    private Map<String, Object> wrapResponse(Object data) {
-        Map<String, Object> response = new LinkedHashMap<>();
-        response.put("success", true);
-        response.put("message", "OK");
-        response.put("data", data);
-        response.put("correlationId", UUID.randomUUID().toString());
-        response.put("timestamp", LocalDateTime.now().toString());
-        return response;
+    /**
+     * Every success from this controller carried the message "OK" back when the envelope was assembled
+     * by hand here, and the CRPC screens were built against that, so it is preserved rather than
+     * replaced with something per-endpoint.
+     */
+    private static <T> ResponseEntity<ApiResponse<T>> wrapResponse(T data) {
+        return ResponseEntity.ok(ApiResponse.success(data, "OK"));
+    }
+
+    private static EmailAutoCloseResponse autoClosed(String senderEmail, String subject, String reason) {
+        return EmailAutoCloseResponse.builder()
+                .status("NON_COMPLAINT")
+                .reason(reason)
+                .senderEmail(senderEmail)
+                .subject(subject)
+                .autoClosed(true)
+                .closedAt(LocalDateTime.now().toString())
+                .build();
     }
 
     private static final Set<String> EMAIL_NOISE_WORDS = Set.of(

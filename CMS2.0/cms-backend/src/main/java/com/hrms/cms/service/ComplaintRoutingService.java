@@ -1,5 +1,7 @@
 package com.hrms.cms.service;
 
+import com.hrms.cms.dto.routing.EntityMappingSummaryResponse;
+import com.hrms.cms.dto.routing.RoutingRuleResponse;
 import com.hrms.cms.entity.Complaint;
 import com.hrms.cms.entity.OfficerAvailability;
 import com.hrms.cms.entity.RegulatedEntity;
@@ -291,25 +293,33 @@ public class ComplaintRoutingService {
                 .build();
     }
 
-    public Map<String, Object> getEntityDepartmentMapping() {
+    public EntityMappingSummaryResponse getEntityDepartmentMapping() {
         long cepcCount = regulatedEntityRepo.countByDepartment("CEPC");
         long rbioCount = regulatedEntityRepo.countByDepartment("RBIO");
 
-        Map<String, Object> mapping = new LinkedHashMap<>();
-        mapping.put("CEPC_count", cepcCount);
-        mapping.put("RBIO_count", rbioCount);
-        mapping.put("total", cepcCount + rbioCount);
-        mapping.put("source", "RBI Official Entity Lists (CEPC_English_Portal + RBIO_English_Portal)");
-        return mapping;
+        return EntityMappingSummaryResponse.builder()
+                .cepcCount(cepcCount)
+                .rbioCount(rbioCount)
+                .total(cepcCount + rbioCount)
+                .source("RBI Official Entity Lists (CEPC_English_Portal + RBIO_English_Portal)")
+                .build();
     }
 
-    public List<Map<String, String>> getRoutingRulesSummary() {
+    public List<RoutingRuleResponse> getRoutingRulesSummary() {
         return List.of(
-                Map.of("source", "Public Portal (WEB_PORTAL)", "initialRoute", "RBIO", "flow", "Direct to RBIO officer"),
-                Map.of("source", "Email (EMAIL)", "initialRoute", "CRPC", "flow", "DEO → Reviewer → RBIO or CEPC (based on entity list match)"),
-                Map.of("source", "Physical Letter (PHYSICAL_LETTER)", "initialRoute", "CRPC", "flow", "DEO → Reviewer → RBIO or CEPC (based on entity list match)"),
-                Map.of("source", "CEPC ↔ RBIO Transfer", "initialRoute", "Target Department", "flow", "Officer can transfer between departments")
+                rule("Public Portal (WEB_PORTAL)", "RBIO", "Direct to RBIO officer"),
+                rule("Email (EMAIL)", "CRPC", "DEO → Reviewer → RBIO or CEPC (based on entity list match)"),
+                rule("Physical Letter (PHYSICAL_LETTER)", "CRPC", "DEO → Reviewer → RBIO or CEPC (based on entity list match)"),
+                rule("CEPC ↔ RBIO Transfer", "Target Department", "Officer can transfer between departments")
         );
+    }
+
+    private static RoutingRuleResponse rule(String source, String initialRoute, String flow) {
+        return RoutingRuleResponse.builder()
+                .source(source)
+                .initialRoute(initialRoute)
+                .flow(flow)
+                .build();
     }
 
     @lombok.Builder

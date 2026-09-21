@@ -2,6 +2,8 @@ package com.hrms.cms.controller;
 
 import com.hrms.cms.dto.FileComplaintRequest;
 import com.hrms.cms.dto.UpdateComplaintRequest;
+import com.hrms.cms.dto.complaint.RbioComplaintSummaryResponse;
+import com.hrms.cms.dto.complaint.RbioConciliationResponse;
 import com.hrms.cms.entity.Complaint;
 import com.hrms.cms.entity.ComplaintTimeline;
 import com.hrms.cms.event.ComplaintEventPublisher;
@@ -11,6 +13,7 @@ import com.hrms.cms.service.ComplaintService;
 import com.hrms.cms.service.RbioComplaintSummaryService;
 import com.hrms.cms.service.RbioConciliationService;
 import com.hrms.cms.service.RbioHierarchyService;
+import com.rbi.cms.common.dto.ApiResponse;
 import com.rbi.cms.common.enums.RoleConstants;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -22,12 +25,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.time.LocalDateTime;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/complaints")
@@ -110,22 +110,22 @@ public class ComplaintController {
     @RbioRoleGuard(roles = {RoleConstants.RBIO_DO, RoleConstants.RBIO_REVIEWER,
             RoleConstants.RBIO_DEPUTY_OMBUDSMAN, RoleConstants.RBIO_OMBUDSMAN, RoleConstants.RBIO_ADMIN,
             "RBIO_OFFICER", "RBIO_SUPERVISOR", "RBIO_CONCILIATOR", "RBIO_ADJUDICATOR", "CRPC_HEAD"})
-    public ResponseEntity<Map<String, Object>> getRbioSummary(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<RbioComplaintSummaryResponse>> getRbioSummary(@PathVariable Long id) {
         try {
-            Map<String, Object> summary = rbioComplaintSummaryService.getSummary(id);
+            RbioComplaintSummaryResponse summary = rbioComplaintSummaryService.getSummary(id);
             // Lets the screen render read-only rather than let the officer fill a form the PUT will reject.
-            summary.put("canEdit", rbioHierarchyService.canEdit(
-                    (String) summary.get("assignedOfficer"), callerIdentity.username(), callerIdentity.roles()));
+            summary.setCanEdit(rbioHierarchyService.canEdit(
+                    summary.getAssignedOfficer(), callerIdentity.username(), callerIdentity.roles()));
             // Opening the complaint is what marks it read, for this caller only. Announced only once the
             // receipt was actually written, and after markRead's own transaction has committed, so the
             // index never runs ahead of the row.
             String reader = callerIdentity.username();
             rbioComplaintSummaryService.markRead(id, reader)
                     .ifPresent(complaintNumber -> complaintEventPublisher.publishComplaintRead(complaintNumber, reader));
-            return ResponseEntity.ok(envelope(true, "OK", summary));
+            return ResponseEntity.ok(ApiResponse.success(summary, "OK"));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(envelope(false, e.getMessage(), null));
+                    .body(ApiResponse.error(e.getMessage()));
         }
     }
 
@@ -138,22 +138,22 @@ public class ComplaintController {
     @RbioRoleGuard(roles = {RoleConstants.RBIO_DO, RoleConstants.RBIO_REVIEWER,
             RoleConstants.RBIO_DEPUTY_OMBUDSMAN, RoleConstants.RBIO_OMBUDSMAN, RoleConstants.RBIO_ADMIN,
             "RBIO_OFFICER", "RBIO_SUPERVISOR"})
-    public ResponseEntity<Map<String, Object>> updateRbioSummary(
+    public ResponseEntity<ApiResponse<RbioComplaintSummaryResponse>> updateRbioSummary(
             @PathVariable Long id,
             @RequestBody Map<String, Object> payload,
             @RequestHeader(value = "X-User-Id", defaultValue = "system") String userId) {
         try {
             String actor = Objects.requireNonNullElse(callerIdentity.username(), userId);
-            Map<String, Object> updated = rbioComplaintSummaryService.updateSummary(
+            RbioComplaintSummaryResponse updated = rbioComplaintSummaryService.updateSummary(
                     id, payload, actor, callerIdentity.roles());
-            return ResponseEntity.ok(envelope(true, "Summary updated", updated));
+            return ResponseEntity.ok(ApiResponse.success(updated, "Summary updated"));
         } catch (ResponseStatusException e) {
-            return ResponseEntity.status(e.getStatusCode()).body(envelope(false, e.getReason(), null));
+            return ResponseEntity.status(e.getStatusCode()).body(ApiResponse.error(e.getReason()));
         } catch (IllegalArgumentException e) {
             HttpStatus status = e.getMessage() != null && e.getMessage().startsWith("Complaint not found")
                     ? HttpStatus.NOT_FOUND
                     : HttpStatus.BAD_REQUEST;
-            return ResponseEntity.status(status).body(envelope(false, e.getMessage(), null));
+            return ResponseEntity.status(status).body(ApiResponse.error(e.getMessage()));
         }
     }
 
@@ -164,12 +164,12 @@ public class ComplaintController {
     @RbioRoleGuard(roles = {RoleConstants.RBIO_DO, RoleConstants.RBIO_REVIEWER,
             RoleConstants.RBIO_DEPUTY_OMBUDSMAN, RoleConstants.RBIO_OMBUDSMAN, RoleConstants.RBIO_ADMIN,
             "RBIO_OFFICER", "RBIO_SUPERVISOR", "RBIO_CONCILIATOR", "RBIO_ADJUDICATOR", "CRPC_HEAD"})
-    public ResponseEntity<Map<String, Object>> getRbioConciliation(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<RbioConciliationResponse>> getRbioConciliation(@PathVariable Long id) {
         try {
-            return ResponseEntity.ok(envelope(true, "OK", rbioConciliationService.getConciliation(id)));
+            return ResponseEntity.ok(ApiResponse.success(rbioConciliationService.getConciliation(id), "OK"));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(envelope(false, e.getMessage(), null));
+                    .body(ApiResponse.error(e.getMessage()));
         }
     }
 
@@ -180,32 +180,22 @@ public class ComplaintController {
      */
     @PutMapping("/rbio/{id}/conciliation")
     @RbioRoleGuard(roles = {RoleConstants.RBIO_DO, RoleConstants.RBIO_ADMIN})
-    public ResponseEntity<Map<String, Object>> updateRbioConciliation(
+    public ResponseEntity<ApiResponse<RbioConciliationResponse>> updateRbioConciliation(
             @PathVariable Long id,
             @RequestBody Map<String, Object> payload,
             @RequestHeader(value = "X-User-Id", defaultValue = "system") String userId) {
         try {
             String actor = Objects.requireNonNullElse(callerIdentity.username(), userId);
-            Map<String, Object> updated = rbioConciliationService.saveMeeting(
+            RbioConciliationResponse updated = rbioConciliationService.saveMeeting(
                     id, payload, actor, callerIdentity.roles());
-            return ResponseEntity.ok(envelope(true, "Conciliation updated", updated));
+            return ResponseEntity.ok(ApiResponse.success(updated, "Conciliation updated"));
         } catch (ResponseStatusException e) {
-            return ResponseEntity.status(e.getStatusCode()).body(envelope(false, e.getReason(), null));
+            return ResponseEntity.status(e.getStatusCode()).body(ApiResponse.error(e.getReason()));
         } catch (IllegalArgumentException e) {
             HttpStatus status = e.getMessage() != null && e.getMessage().startsWith("Complaint not found")
                     ? HttpStatus.NOT_FOUND
                     : HttpStatus.BAD_REQUEST;
-            return ResponseEntity.status(status).body(envelope(false, e.getMessage(), null));
+            return ResponseEntity.status(status).body(ApiResponse.error(e.getMessage()));
         }
-    }
-
-    private static Map<String, Object> envelope(boolean success, String message, Object data) {
-        Map<String, Object> response = new LinkedHashMap<>();
-        response.put("success", success);
-        response.put("message", message);
-        response.put("data", data);
-        response.put("correlationId", UUID.randomUUID().toString());
-        response.put("timestamp", LocalDateTime.now().toString());
-        return response;
     }
 }

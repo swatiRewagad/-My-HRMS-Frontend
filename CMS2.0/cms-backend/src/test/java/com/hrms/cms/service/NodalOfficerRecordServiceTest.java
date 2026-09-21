@@ -6,6 +6,7 @@ import com.hrms.cms.entity.NodalOfficerRecord;
 import com.hrms.cms.entity.RegulatedEntity;
 import com.hrms.cms.entity.ReResponseTracker;
 import com.hrms.cms.dto.NodalAssessmentRequest;
+import com.hrms.cms.dto.complaint.NodalRecordRow;
 import com.hrms.cms.repository.ComplaintRbioFormDataRepository;
 import com.hrms.cms.repository.ComplaintRepository;
 import com.hrms.cms.repository.NodalOfficerRecordRepository;
@@ -231,17 +232,17 @@ class NodalOfficerRecordServiceTest {
                             .entityCountry("India")
                             .build()));
 
-            Map<String, Object> row = service.listWorklist().get(0);
+            NodalRecordRow row = service.listWorklist().get(0);
 
-            assertThat(row.get("recordNumber")).isEqualTo("0000042");
-            assertThat(row.get("subject")).isEqualTo("Loan not disbursed");
-            assertThat(row.get("complainant")).isEqualTo("Ramesh Kumar");
-            assertThat(row.get("city")).isEqualTo("Mumbai");
-            assertThat(row.get("processingOffice")).isEqualTo("RBIO Mumbai");
-            assertThat(row.get("moduleName")).isEqualTo("Loan");
-            assertThat(row.get("country")).isEqualTo("India");
-            assertThat(row.get("pnoEmail")).isEqualTo("pno@pnb.example");
-            assertThat(row.get("slaDays")).isEqualTo(5L);
+            assertThat(row.getRecordNumber()).isEqualTo("0000042");
+            assertThat(row.getSubject()).isEqualTo("Loan not disbursed");
+            assertThat(row.getComplainant()).isEqualTo("Ramesh Kumar");
+            assertThat(row.getCity()).isEqualTo("Mumbai");
+            assertThat(row.getProcessingOffice()).isEqualTo("RBIO Mumbai");
+            assertThat(row.getModuleName()).isEqualTo("Loan");
+            assertThat(row.getCountry()).isEqualTo("India");
+            assertThat(row.getPnoEmail()).isEqualTo("pno@pnb.example");
+            assertThat(row.getSlaDays()).isEqualTo(5L);
         }
 
         @Test
@@ -251,7 +252,7 @@ class NodalOfficerRecordServiceTest {
                     .thenReturn(Optional.of(complaint));
             when(formDataRepository.findByComplaintId(11L)).thenReturn(Optional.empty());
 
-            assertThat(service.listWorklist().get(0).get("slaDays")).isEqualTo(12L);
+            assertThat(service.listWorklist().get(0).getSlaDays()).isEqualTo(12L);
         }
 
         @Test
@@ -261,13 +262,13 @@ class NodalOfficerRecordServiceTest {
             record.setNotice131ComplyDate(LocalDate.of(2026, 10, 4));
             when(complaintRepository.findByComplaintNumber("N2526001000042")).thenReturn(Optional.empty());
 
-            Map<String, Object> row = service.listWorklist().get(0);
+            NodalRecordRow row = service.listWorklist().get(0);
 
             // ISO for the date inputs, which are native <input type="date"> and accept nothing else.
-            assertThat(row.get("advisoryComplianceDate")).isEqualTo("2026-10-01");
-            assertThat(row.get("disputeAmount")).isEqualTo(new BigDecimal("15000.00"));
+            assertThat(row.getAdvisoryComplianceDate()).isEqualTo("2026-10-01");
+            assertThat(row.getDisputeAmount()).isEqualTo(new BigDecimal("15000.00"));
             // Display-only, so it follows the rest of the screen.
-            assertThat(row.get("notice131ComplyDate")).isEqualTo("04-10-2026");
+            assertThat(row.getNotice131ComplyDate()).isEqualTo("04-10-2026");
         }
 
         @Test
@@ -276,12 +277,12 @@ class NodalOfficerRecordServiceTest {
             // complaint has to degrade to a sparse row rather than drop the record from the worklist.
             when(complaintRepository.findByComplaintNumber("N2526001000042")).thenReturn(Optional.empty());
 
-            Map<String, Object> row = service.listWorklist().get(0);
+            NodalRecordRow row = service.listWorklist().get(0);
 
-            assertThat(row.get("recordNumber")).isEqualTo("0000042");
-            assertThat(row.get("subject")).isNull();
-            assertThat(row.get("slaDays")).isNull();
-            assertThat(row.get("noName")).isEqualTo("A. Sharma");
+            assertThat(row.getRecordNumber()).isEqualTo("0000042");
+            assertThat(row.getSubject()).isNull();
+            assertThat(row.getSlaDays()).isNull();
+            assertThat(row.getNoName()).isEqualTo("A. Sharma");
         }
     }
 
@@ -329,10 +330,10 @@ class NodalOfficerRecordServiceTest {
 
         @Test
         void returnsTheUpdatedRowSoTheScreenDoesNotHaveToRefetch() {
-            Map<String, Object> row = service.forwardToRegulatedEntity("0000042", advisory(), "officer-1");
+            NodalRecordRow row = service.forwardToRegulatedEntity("0000042", advisory(), "officer-1");
 
-            assertThat(row.get("recordNumber")).isEqualTo("0000042");
-            assertThat(row.get("status")).isEqualTo("ADVISORY_ISSUED");
+            assertThat(row.getRecordNumber()).isEqualTo("0000042");
+            assertThat(row.getStatus()).isEqualTo("ADVISORY_ISSUED");
         }
 
         @Test

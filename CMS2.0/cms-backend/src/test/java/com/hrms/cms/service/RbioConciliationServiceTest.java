@@ -1,5 +1,6 @@
 package com.hrms.cms.service;
 
+import com.hrms.cms.dto.complaint.RbioConciliationResponse;
 import com.hrms.cms.entity.Complaint;
 import com.hrms.cms.entity.ConciliationMeeting;
 import com.hrms.cms.repository.ComplaintRepository;
@@ -98,16 +99,6 @@ class RbioConciliationServiceTest {
         return m;
     }
 
-    @SuppressWarnings("unchecked")
-    private static Map<String, Object> current(Map<String, Object> result) {
-        return (Map<String, Object>) result.get("current");
-    }
-
-    @SuppressWarnings("unchecked")
-    private static List<Map<String, Object>> history(Map<String, Object> result) {
-        return (List<Map<String, Object>>) result.get("history");
-    }
-
     @Nested
     class GetConciliation {
 
@@ -116,12 +107,12 @@ class RbioConciliationServiceTest {
             stubComplaint();
             stubHistory();
 
-            Map<String, Object> result = service.getConciliation(ID);
+            RbioConciliationResponse result = service.getConciliation(ID);
 
-            assertThat(result).containsEntry("complaintId", ID)
-                    .containsEntry("complaintNumber", "CMS-PNB-1234")
-                    .containsEntry("current", null);
-            assertThat(history(result)).isEmpty();
+            assertThat(result.getComplaintId()).isEqualTo(ID);
+            assertThat(result.getComplaintNumber()).isEqualTo("CMS-PNB-1234");
+            assertThat(result.getCurrent()).isNull();
+            assertThat(result.getHistory()).isEmpty();
         }
 
         @Test
@@ -130,14 +121,14 @@ class RbioConciliationServiceTest {
             stubHistory(meeting(1L, "SCHEDULED", "2026-04-01", "10:30"),
                     meeting(2L, "RESCHEDULED", "2026-04-09", "15:00"));
 
-            Map<String, Object> result = service.getConciliation(ID);
+            RbioConciliationResponse result = service.getConciliation(ID);
 
-            assertThat(current(result)).containsEntry("id", 2L)
-                    .containsEntry("meetingStatus", "RESCHEDULED")
-                    .containsEntry("meetingDate", "2026-04-09")
-                    .containsEntry("meetingTime", "15:00");
-            assertThat(history(result)).hasSize(2);
-            assertThat(history(result).get(0)).containsEntry("meetingDate", "2026-04-01");
+            assertThat(result.getCurrent().getId()).isEqualTo(2L);
+            assertThat(result.getCurrent().getMeetingStatus()).isEqualTo("RESCHEDULED");
+            assertThat(result.getCurrent().getMeetingDate()).isEqualTo("2026-04-09");
+            assertThat(result.getCurrent().getMeetingTime()).isEqualTo("15:00");
+            assertThat(result.getHistory()).hasSize(2);
+            assertThat(result.getHistory().get(0).getMeetingDate()).isEqualTo("2026-04-01");
         }
 
         @Test
@@ -147,11 +138,11 @@ class RbioConciliationServiceTest {
             m.setAcceptedByEntity("no");
             stubHistory(m);
 
-            Map<String, Object> result = service.getConciliation(ID);
+            RbioConciliationResponse.Meeting current = service.getConciliation(ID).getCurrent();
 
-            assertThat(current(result)).containsEntry("acceptedByEntity", false)
-                    .containsEntry("acceptedByComplainant", null)
-                    .containsEntry("conductedThroughVc", null);
+            assertThat(current.getAcceptedByEntity()).isFalse();
+            assertThat(current.getAcceptedByComplainant()).isNull();
+            assertThat(current.getConductedThroughVc()).isNull();
         }
 
         @Test

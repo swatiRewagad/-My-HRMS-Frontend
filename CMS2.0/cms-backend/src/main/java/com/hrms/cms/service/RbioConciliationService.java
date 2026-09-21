@@ -1,5 +1,6 @@
 package com.hrms.cms.service;
 
+import com.hrms.cms.dto.complaint.RbioConciliationResponse;
 import com.hrms.cms.entity.Complaint;
 import com.hrms.cms.entity.ConciliationMeeting;
 import com.hrms.cms.repository.ComplaintRepository;
@@ -17,7 +18,6 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeParseException;
 import java.util.Collection;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -64,36 +64,36 @@ public class RbioConciliationService {
     // ---------------------------------------------------------------- read
 
     @Transactional(readOnly = true)
-    public Map<String, Object> getConciliation(Long complaintId) {
+    public RbioConciliationResponse getConciliation(Long complaintId) {
         Complaint c = complaintRepository.findById(complaintId)
                 .orElseThrow(() -> new IllegalArgumentException("Complaint not found: " + complaintId));
 
         List<ConciliationMeeting> history = meetingRepository.findByComplaintIdOrderByIdAsc(complaintId);
 
-        Map<String, Object> out = new LinkedHashMap<>();
-        out.put("complaintId", c.getId());
-        out.put("complaintNumber", c.getComplaintNumber());
-        out.put("current", history.isEmpty() ? null : toMap(history.get(history.size() - 1)));
-        out.put("history", history.stream().map(RbioConciliationService::toMap).toList());
-        return out;
+        return RbioConciliationResponse.builder()
+                .complaintId(c.getId())
+                .complaintNumber(c.getComplaintNumber())
+                .current(history.isEmpty() ? null : toResponse(history.get(history.size() - 1)))
+                .history(history.stream().map(RbioConciliationService::toResponse).toList())
+                .build();
     }
 
-    private static Map<String, Object> toMap(ConciliationMeeting m) {
-        Map<String, Object> out = new LinkedHashMap<>();
-        out.put("id", m.getId());
-        out.put("meetingStatus", m.getMeetingStatus());
-        out.put("meetingDate", m.getMeetingDate() != null ? m.getMeetingDate().toString() : null);
-        out.put("meetingTime", m.getMeetingTime());
-        out.put("acceptedByComplainant", RbioComplaintSummaryService.yesNo(m.getAcceptedByComplainant()));
-        out.put("acceptedByEntity", RbioComplaintSummaryService.yesNo(m.getAcceptedByEntity()));
-        out.put("conductedThroughVc", RbioComplaintSummaryService.yesNo(m.getConductedThroughVc()));
-        out.put("meetingComments", m.getMeetingComments());
-        out.put("comments", m.getComments());
-        out.put("createdBy", m.getCreatedBy());
-        out.put("createdAt", m.getCreatedAt() != null ? m.getCreatedAt().toString() : null);
-        out.put("updatedBy", m.getUpdatedBy());
-        out.put("updatedAt", m.getUpdatedAt() != null ? m.getUpdatedAt().toString() : null);
-        return out;
+    private static RbioConciliationResponse.Meeting toResponse(ConciliationMeeting m) {
+        return RbioConciliationResponse.Meeting.builder()
+                .id(m.getId())
+                .meetingStatus(m.getMeetingStatus())
+                .meetingDate(m.getMeetingDate() != null ? m.getMeetingDate().toString() : null)
+                .meetingTime(m.getMeetingTime())
+                .acceptedByComplainant(RbioComplaintSummaryService.yesNo(m.getAcceptedByComplainant()))
+                .acceptedByEntity(RbioComplaintSummaryService.yesNo(m.getAcceptedByEntity()))
+                .conductedThroughVc(RbioComplaintSummaryService.yesNo(m.getConductedThroughVc()))
+                .meetingComments(m.getMeetingComments())
+                .comments(m.getComments())
+                .createdBy(m.getCreatedBy())
+                .createdAt(m.getCreatedAt() != null ? m.getCreatedAt().toString() : null)
+                .updatedBy(m.getUpdatedBy())
+                .updatedAt(m.getUpdatedAt() != null ? m.getUpdatedAt().toString() : null)
+                .build();
     }
 
     // ---------------------------------------------------------------- write
@@ -105,8 +105,8 @@ public class RbioConciliationService {
      */
     @Transactional
     @CacheEvict(value = "dashboard", allEntries = true)
-    public Map<String, Object> saveMeeting(Long complaintId, Map<String, Object> payload, String actor,
-                                           Collection<String> actorRoles) {
+    public RbioConciliationResponse saveMeeting(Long complaintId, Map<String, Object> payload, String actor,
+                                                Collection<String> actorRoles) {
         Complaint c = complaintRepository.findById(complaintId)
                 .orElseThrow(() -> new IllegalArgumentException("Complaint not found: " + complaintId));
 

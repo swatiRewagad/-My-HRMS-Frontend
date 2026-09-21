@@ -5,6 +5,7 @@ import com.hrms.cms.entity.ComplaintRbioFormData;
 import com.hrms.cms.entity.NodalOfficerRecord;
 import com.hrms.cms.entity.RegulatedEntity;
 import com.hrms.cms.dto.NodalAssessmentRequest;
+import com.hrms.cms.dto.complaint.NodalRecordRow;
 import com.hrms.cms.repository.ComplaintRbioFormDataRepository;
 import com.hrms.cms.repository.ComplaintRepository;
 import com.hrms.cms.repository.NodalOfficerRecordRepository;
@@ -20,9 +21,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -104,13 +103,13 @@ public class NodalOfficerRecordService {
      * made on the complaint rather than a copy taken when it was forwarded.
      */
     @Transactional(readOnly = true)
-    public List<Map<String, Object>> listWorklist() {
+    public List<NodalRecordRow> listWorklist() {
         return nodalOfficerRecordRepository.findAllByOrderByLastModifiedAtDesc().stream()
                 .map(this::toWorklistRow)
                 .collect(Collectors.toList());
     }
 
-    private Map<String, Object> toWorklistRow(NodalOfficerRecord record) {
+    private NodalRecordRow toWorklistRow(NodalOfficerRecord record) {
         Complaint complaint = complaintRepository.findByComplaintNumber(record.getComplaintNumber()).orElse(null);
         ComplaintRbioFormData formData = complaint != null
                 ? formDataRepository.findByComplaintId(complaint.getId()).orElse(null)
@@ -122,57 +121,53 @@ public class NodalOfficerRecordService {
                         ? complaint.getCreatedAt().toLocalDate()
                         : null;
 
-        Map<String, Object> row = new LinkedHashMap<>();
-        row.put("id", record.getId());
-        row.put("recordNumber", record.getRecordNumber());
-        row.put("complaintNumber", record.getComplaintNumber());
-        row.put("status", record.getStatus());
-        row.put("assignedTo", record.getAssignedTo());
-        // Age of the complaint in the officer's hands, which is what the worklist's breach badge reads.
-        row.put("slaDays", receiptDate != null ? ChronoUnit.DAYS.between(receiptDate, LocalDate.now()) : null);
-        row.put("receiptDate", receiptDate != null ? receiptDate.format(DISPLAY_DATE) : null);
+        return NodalRecordRow.builder()
+                .id(record.getId())
+                .recordNumber(record.getRecordNumber())
+                .complaintNumber(record.getComplaintNumber())
+                .status(record.getStatus())
+                .assignedTo(record.getAssignedTo())
+                .slaDays(receiptDate != null ? ChronoUnit.DAYS.between(receiptDate, LocalDate.now()) : null)
+                .receiptDate(receiptDate != null ? receiptDate.format(DISPLAY_DATE) : null)
 
-        row.put("subject", complaint != null ? complaint.getSubject() : null);
-        row.put("complainant", complaint != null ? complaint.getComplainantName() : null);
-        row.put("mobile", complaint != null ? complaint.getComplainantPhone() : null);
-        row.put("email", complaint != null ? complaint.getComplainantEmail() : null);
-        row.put("bankName", record.getEntityName());
-        row.put("bankCategory", complaint != null ? complaint.getEntityCategory() : null);
-        row.put("branchCategory", complaint != null ? complaint.getEntityBranchCategory() : null);
-        row.put("branchName", complaint != null ? complaint.getEntityBranchName() : null);
-        row.put("pincode", complaint != null ? complaint.getEntityPincode() : null);
-        row.put("city", complaint != null ? complaint.getEntityCity() : null);
-        row.put("district", complaint != null ? complaint.getEntityDistrict() : null);
-        row.put("state", complaint != null ? complaint.getEntityState() : null);
-        row.put("designatedOffice", complaint != null ? complaint.getForwardedOfficeCode() : null);
-        row.put("processingOffice", complaint != null ? complaint.getRegionalOffice() : null);
+                .subject(complaint != null ? complaint.getSubject() : null)
+                .complainant(complaint != null ? complaint.getComplainantName() : null)
+                .mobile(complaint != null ? complaint.getComplainantPhone() : null)
+                .email(complaint != null ? complaint.getComplainantEmail() : null)
+                .bankName(record.getEntityName())
+                .bankCategory(complaint != null ? complaint.getEntityCategory() : null)
+                .branchCategory(complaint != null ? complaint.getEntityBranchCategory() : null)
+                .branchName(complaint != null ? complaint.getEntityBranchName() : null)
+                .pincode(complaint != null ? complaint.getEntityPincode() : null)
+                .city(complaint != null ? complaint.getEntityCity() : null)
+                .district(complaint != null ? complaint.getEntityDistrict() : null)
+                .state(complaint != null ? complaint.getEntityState() : null)
+                .designatedOffice(complaint != null ? complaint.getForwardedOfficeCode() : null)
+                .processingOffice(complaint != null ? complaint.getRegionalOffice() : null)
 
-        row.put("moduleName", formData != null ? formData.getModuleName() : null);
-        row.put("country", formData != null ? formData.getEntityCountry() : null);
-        row.put("atmComplaint", formData != null ? formData.getAtmCreditDebitCard() : null);
+                .moduleName(formData != null ? formData.getModuleName() : null)
+                .country(formData != null ? formData.getEntityCountry() : null)
+                .atmComplaint(formData != null ? formData.getAtmCreditDebitCard() : null)
 
-        row.put("noName", record.getNodalOfficerName());
-        row.put("noMobile", record.getPhone());
-        row.put("noEmail", record.getEmail());
-        row.put("noDesignation", record.getDesignation());
-        row.put("pnoName", record.getPnoName());
-        row.put("pnoMobile", record.getPnoPhone());
-        row.put("pnoEmail", record.getPnoEmail());
+                .noName(record.getNodalOfficerName())
+                .noMobile(record.getPhone())
+                .noEmail(record.getEmail())
+                .noDesignation(record.getDesignation())
+                .pnoName(record.getPnoName())
+                .pnoMobile(record.getPnoPhone())
+                .pnoEmail(record.getPnoEmail())
 
-        // The assessment, so reopening a record shows what was actually saved. The date inputs on the
-        // screen are native <input type="date">, which only accepts ISO, so these stay unformatted
-        // while notice131ComplyDate is display-only and follows the rest of the screen.
-        row.put("advisoryComplianceDate", toIso(record.getAdvisoryComplianceDate()));
-        row.put("disputeAmount", record.getDisputeAmount());
-        row.put("compensationLoss", record.getCompensationLoss());
-        row.put("compensationMental", record.getCompensationMental());
-        row.put("awardImplementationDate", toIso(record.getAwardImplementationDate()));
-        row.put("awardAcceptanceDate", toIso(record.getAwardAcceptanceDate()));
-        row.put("notice131ComplyDate", record.getNotice131ComplyDate() != null
-                ? record.getNotice131ComplyDate().format(DISPLAY_DATE) : null);
-        row.put("forwardedToReAt", record.getForwardedToReAt() != null
-                ? record.getForwardedToReAt().toString() : null);
-        return row;
+                .advisoryComplianceDate(toIso(record.getAdvisoryComplianceDate()))
+                .disputeAmount(record.getDisputeAmount())
+                .compensationLoss(record.getCompensationLoss())
+                .compensationMental(record.getCompensationMental())
+                .awardImplementationDate(toIso(record.getAwardImplementationDate()))
+                .awardAcceptanceDate(toIso(record.getAwardAcceptanceDate()))
+                .notice131ComplyDate(record.getNotice131ComplyDate() != null
+                        ? record.getNotice131ComplyDate().format(DISPLAY_DATE) : null)
+                .forwardedToReAt(record.getForwardedToReAt() != null
+                        ? record.getForwardedToReAt().toString() : null)
+                .build();
     }
 
     private static String toIso(LocalDate date) {
@@ -185,8 +180,8 @@ public class NodalOfficerRecordService {
      * assessment only becomes meaningful once the RE has been told about it.
      */
     @Transactional
-    public Map<String, Object> forwardToRegulatedEntity(String recordNumber, NodalAssessmentRequest request,
-                                                        String actor) {
+    public NodalRecordRow forwardToRegulatedEntity(String recordNumber, NodalAssessmentRequest request,
+                                                   String actor) {
         NodalOfficerRecord record = nodalOfficerRecordRepository.findByRecordNumber(recordNumber)
                 .orElseThrow(() -> new IllegalArgumentException("No nodal officer record " + recordNumber));
 

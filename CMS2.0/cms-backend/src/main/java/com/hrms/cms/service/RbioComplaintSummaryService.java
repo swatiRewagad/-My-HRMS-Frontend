@@ -1,5 +1,6 @@
 package com.hrms.cms.service;
 
+import com.hrms.cms.dto.complaint.RbioComplaintSummaryResponse;
 import com.hrms.cms.entity.Complaint;
 import com.hrms.cms.entity.ComplaintAdditionalDetail;
 import com.hrms.cms.entity.ComplaintEligibilityAnswer;
@@ -27,7 +28,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.Collection;
-import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -68,7 +68,7 @@ public class RbioComplaintSummaryService {
     // ---------------------------------------------------------------- read
 
     @Transactional(readOnly = true)
-    public Map<String, Object> getSummary(Long complaintId) {
+    public RbioComplaintSummaryResponse getSummary(Long complaintId) {
         Complaint c = complaintRepository.findById(complaintId)
                 .orElseThrow(() -> new IllegalArgumentException("Complaint not found: " + complaintId));
 
@@ -76,181 +76,176 @@ public class RbioComplaintSummaryService {
         ComplaintAdditionalDetail add = additionalDetailRepository.findByComplaintId(complaintId).orElse(null);
         ComplaintRbioFormData fd = formDataRepository.findByComplaintId(complaintId).orElse(null);
 
-        Map<String, Object> summary = new LinkedHashMap<>();
-        summary.put("id", c.getId());
-        // Surfaced at the top level because the screens use it to decide between an editable form and a
-        // read-only view; only the holder may write (see RbioHierarchyService#canEdit).
-        summary.put("assignedOfficer", c.getAssignedOfficer());
-        summary.put("assignedOfficerName", c.getAssignedOfficerName());
-        summary.put("assignedRole", c.getAssignedRole());
-        summary.put("navBarDto", navBar(c));
-        summary.put("basicDetailsDto", basicDetails(c, fd));
-        summary.put("eligibility", eligibility(c, elig, add, fd));
-        summary.put("entityDetails", entityDetails(c, fd));
-        summary.put("complainDetailsDto", complainDetails(c, elig, add, fd));
-        return summary;
+        return RbioComplaintSummaryResponse.builder()
+                .id(c.getId())
+                // Surfaced at the top level because the screens use it to decide between an editable form
+                // and a read-only view; only the holder may write (see RbioHierarchyService#canEdit).
+                .assignedOfficer(c.getAssignedOfficer())
+                .assignedOfficerName(c.getAssignedOfficerName())
+                .assignedRole(c.getAssignedRole())
+                .navBarDto(navBar(c))
+                .basicDetailsDto(basicDetails(c, fd))
+                .eligibility(eligibility(c, elig, add))
+                .entityDetails(entityDetails(c, fd))
+                .complainDetailsDto(complainDetails(c, elig, add, fd))
+                .build();
     }
 
-    private Map<String, Object> navBar(Complaint c) {
-        Map<String, Object> m = new LinkedHashMap<>();
-        m.put("complaintNumber", c.getComplaintNumber());
-        m.put("complainantName", c.getComplainantName());
-        m.put("entityName", c.getEntityName());
-        m.put("status", c.getStatus());
-        m.put("complaintCategory", categoryName(c));
-        m.put("slaBreachIn", rbioSlaService.formatBreachIn(c));
-        return m;
+    private RbioComplaintSummaryResponse.NavBar navBar(Complaint c) {
+        return RbioComplaintSummaryResponse.NavBar.builder()
+                .complaintNumber(c.getComplaintNumber())
+                .complainantName(c.getComplainantName())
+                .entityName(c.getEntityName())
+                .status(c.getStatus())
+                .complaintCategory(categoryName(c))
+                .slaBreachIn(rbioSlaService.formatBreachIn(c))
+                .build();
     }
 
-    private Map<String, Object> basicDetails(Complaint c, ComplaintRbioFormData fd) {
-        Map<String, Object> m = new LinkedHashMap<>();
-        m.put("id", fd != null ? fd.getId() : null);
-        m.put("subject", c.getSubject());
-        m.put("emailId", c.getComplainantEmail());
-        m.put("complainantName", c.getComplainantName());
-        m.put("receiptDate", fd != null ? fd.getReceiptDate() : null);
-        m.put("modeOfReceipt", fd != null ? fd.getModeOfReceipt() : null);
-        m.put("comments", fd != null ? fd.getComments() : null);
-        m.put("complaintCpgram", fd != null ? yesNo(fd.getComplaintCpgram()) : null);
-        m.put("cpgramNumber", fd != null ? fd.getCpgramNumber() : null);
-        m.put("complainDetails", c.getDescription());
-        return m;
+    private RbioComplaintSummaryResponse.BasicDetails basicDetails(Complaint c, ComplaintRbioFormData fd) {
+        return RbioComplaintSummaryResponse.BasicDetails.builder()
+                .id(fd != null ? fd.getId() : null)
+                .subject(c.getSubject())
+                .emailId(c.getComplainantEmail())
+                .complainantName(c.getComplainantName())
+                .receiptDate(fd != null ? fd.getReceiptDate() : null)
+                .modeOfReceipt(fd != null ? fd.getModeOfReceipt() : null)
+                .comments(fd != null ? fd.getComments() : null)
+                .complaintCpgram(fd != null ? yesNo(fd.getComplaintCpgram()) : null)
+                .cpgramNumber(fd != null ? fd.getCpgramNumber() : null)
+                .complainDetails(c.getDescription())
+                .build();
     }
 
-    private Map<String, Object> eligibility(Complaint c, ComplaintEligibilityAnswer e,
-                                            ComplaintAdditionalDetail add, ComplaintRbioFormData fd) {
-        Map<String, Object> m = new LinkedHashMap<>();
-        m.put("id", c.getId());
-        m.put("proposedComplaintType", e != null ? e.getProposedComplaintType() : null);
-        m.put("entityRegulatedByRbi", e != null ? yesNo(e.getEntityRegulatedByRbi()) : null);
-        m.put("complaintNotDirectlyAddressedToOmbudsman",
-                e != null ? yesNo(e.getComplaintNotDirectlyAddressedToOmbudsman()) : null);
-        m.put("complaintNotRegisteredWithEntity", e != null ? yesNo(e.getComplaintNotRegisteredWithEntity()) : null);
-        m.put("frivolousVexatiousThreatening", e != null ? yesNo(e.getFrivolousVexatiousThreatening()) : null);
-        m.put("subJudiceOrArbitration", e != null ? yesNo(e.getIsSubJudice()) : null);
-        m.put("sameGrievancePendingBeforeCourt", e != null ? yesNo(e.getSameGrievancePendingBeforeCourt()) : null);
-        m.put("sameGrievanceSettledBeforeCourt", e != null ? yesNo(e.getSameGrievanceSettledBeforeCourt()) : null);
-        m.put("complaintMadeThroughAdvocate", e != null ? yesNo(e.getThroughAdvocate()) : null);
-        m.put("complainantIsAdvocate", e != null ? yesNo(e.getComplainantIsAdvocate()) : null);
-        m.put("sameGrievancePendingBeforeOmbudsman", e != null ? yesNo(e.getPendingBeforeOmbudsman()) : null);
-        m.put("alreadyDealtWithByOmbudsman", e != null ? yesNo(e.getSettledByOmbudsman()) : null);
-        m.put("complaintAgainstManagement", e != null ? yesNo(e.getComplaintAgainstManagement()) : null);
-        m.put("staffOfREEmployerRelationship", e != null ? yesNo(e.getStaffOfRe()) : null);
+    private RbioComplaintSummaryResponse.Eligibility eligibility(Complaint c, ComplaintEligibilityAnswer e,
+                                                                 ComplaintAdditionalDetail add) {
         // The officer's own answer wins; fall back to what the public wizard recorded.
         Boolean filedWithCepc = e != null ? yesNo(e.getComplaintFiledWithCepcOrRbi()) : null;
         if (filedWithCepc == null && e != null) filedWithCepc = yesNo(e.getPreviouslyFiledWithCepc());
-        m.put("complaintFiledWithCEPCOrRBI", filedWithCepc);
-        m.put("disputeBetweenREs", e != null ? yesNo(e.getDisputeBetweenRes()) : null);
-        m.put("completeInformationUnavailable", e != null ? yesNo(e.getCompleteInformationUnavailable()) : null);
-        m.put("writtenComplaintFiledWithRE", e != null ? yesNo(e.getFiledWithRe()) : null);
-        m.put("firstFiledWithREDate", e != null ? e.getFirstFiledWithReDate() : null);
-        m.put("receivedReplyFromEntity", e != null ? yesNo(e.getReceivedReply()) : null);
-        m.put("replyDate", add != null ? add.getReplyDate() : null);
-        return m;
+
+        return RbioComplaintSummaryResponse.Eligibility.builder()
+                .id(c.getId())
+                .proposedComplaintType(e != null ? e.getProposedComplaintType() : null)
+                .entityRegulatedByRbi(e != null ? yesNo(e.getEntityRegulatedByRbi()) : null)
+                .complaintNotDirectlyAddressedToOmbudsman(
+                        e != null ? yesNo(e.getComplaintNotDirectlyAddressedToOmbudsman()) : null)
+                .complaintNotRegisteredWithEntity(e != null ? yesNo(e.getComplaintNotRegisteredWithEntity()) : null)
+                .frivolousVexatiousThreatening(e != null ? yesNo(e.getFrivolousVexatiousThreatening()) : null)
+                .subJudiceOrArbitration(e != null ? yesNo(e.getIsSubJudice()) : null)
+                .sameGrievancePendingBeforeCourt(e != null ? yesNo(e.getSameGrievancePendingBeforeCourt()) : null)
+                .sameGrievanceSettledBeforeCourt(e != null ? yesNo(e.getSameGrievanceSettledBeforeCourt()) : null)
+                .complaintMadeThroughAdvocate(e != null ? yesNo(e.getThroughAdvocate()) : null)
+                .complainantIsAdvocate(e != null ? yesNo(e.getComplainantIsAdvocate()) : null)
+                .sameGrievancePendingBeforeOmbudsman(e != null ? yesNo(e.getPendingBeforeOmbudsman()) : null)
+                .alreadyDealtWithByOmbudsman(e != null ? yesNo(e.getSettledByOmbudsman()) : null)
+                .complaintAgainstManagement(e != null ? yesNo(e.getComplaintAgainstManagement()) : null)
+                .staffOfREEmployerRelationship(e != null ? yesNo(e.getStaffOfRe()) : null)
+                .complaintFiledWithCEPCOrRBI(filedWithCepc)
+                .disputeBetweenREs(e != null ? yesNo(e.getDisputeBetweenRes()) : null)
+                .completeInformationUnavailable(e != null ? yesNo(e.getCompleteInformationUnavailable()) : null)
+                .writtenComplaintFiledWithRE(e != null ? yesNo(e.getFiledWithRe()) : null)
+                .firstFiledWithREDate(e != null ? e.getFirstFiledWithReDate() : null)
+                .receivedReplyFromEntity(e != null ? yesNo(e.getReceivedReply()) : null)
+                .replyDate(add != null ? add.getReplyDate() : null)
+                .build();
     }
 
-    private Map<String, Object> entityDetails(Complaint c, ComplaintRbioFormData fd) {
+    private RbioComplaintSummaryResponse.EntityDetails entityDetails(Complaint c, ComplaintRbioFormData fd) {
         RegulatedEntity re = c.getRegulatedEntityId() != null
                 ? regulatedEntityRepository.findById(c.getRegulatedEntityId()).orElse(null)
                 : null;
         String masterCategory = re != null ? re.getEntityType() : null;
         String storedModule = fd != null ? fd.getModuleName() : null;
 
-        Map<String, Object> m = new LinkedHashMap<>();
-        m.put("id", c.getRegulatedEntityId());
-        m.put("entityName", c.getEntityName());
-        // Both are stored per complaint but derivable from the entity, so the master is the fallback:
-        // complaints filed before the entity picker wrote them would otherwise show these fields blank
-        // even though the entity they point at determines them.
-        m.put("moduleName", storedModule != null ? storedModule : RegulatedEntity.moduleNameFor(masterCategory));
-        m.put("entityCategory", c.getEntityCategory() != null
-                ? c.getEntityCategory()
-                : RegulatedEntity.entityCategoryFor(masterCategory));
-        // Belongs to the entity and not to the complaint, so it is read back from the master and never
-        // persisted from the payload. Falls back to the master's category wording because nothing
-        // populates the NBFC sub-classification for a bank.
-        m.put("entityType", re != null
-                ? RegulatedEntity.entityTypeDisplayFor(re.getEntityType(), re.getEntityTypeDetail())
-                : null);
-        m.put("bsrCode", c.getEntityBsrCode());
-        m.put("pincode", c.getEntityPincode());
-        m.put("country", fd != null ? fd.getEntityCountry() : null);
-        m.put("state", c.getEntityState());
-        m.put("district", c.getEntityDistrict());
-        m.put("city", c.getEntityCity());
-        m.put("branchName", c.getEntityBranchName());
-        m.put("branchCategory", c.getEntityBranchCategory());
-        m.put("branchCenterName", fd != null ? fd.getBranchCenterName() : null);
-        m.put("entityAddress", c.getEntityAddress());
-        return m;
+        return RbioComplaintSummaryResponse.EntityDetails.builder()
+                .id(c.getRegulatedEntityId())
+                .entityName(c.getEntityName())
+                // Both are stored per complaint but derivable from the entity, so the master is the
+                // fallback: complaints filed before the entity picker wrote them would otherwise show these
+                // fields blank even though the entity they point at determines them.
+                .moduleName(storedModule != null ? storedModule : RegulatedEntity.moduleNameFor(masterCategory))
+                .entityCategory(c.getEntityCategory() != null
+                        ? c.getEntityCategory()
+                        : RegulatedEntity.entityCategoryFor(masterCategory))
+                // Belongs to the entity and not to the complaint, so it is read back from the master and
+                // never persisted from the payload. Falls back to the master's category wording because
+                // nothing populates the NBFC sub-classification for a bank.
+                .entityType(re != null
+                        ? RegulatedEntity.entityTypeDisplayFor(re.getEntityType(), re.getEntityTypeDetail())
+                        : null)
+                .bsrCode(c.getEntityBsrCode())
+                .pincode(c.getEntityPincode())
+                .country(fd != null ? fd.getEntityCountry() : null)
+                .state(c.getEntityState())
+                .district(c.getEntityDistrict())
+                .city(c.getEntityCity())
+                .branchName(c.getEntityBranchName())
+                .branchCategory(c.getEntityBranchCategory())
+                .branchCenterName(fd != null ? fd.getBranchCenterName() : null)
+                .entityAddress(c.getEntityAddress())
+                .build();
     }
 
-    private Map<String, Object> complainDetails(Complaint c, ComplaintEligibilityAnswer e,
-                                                ComplaintAdditionalDetail add, ComplaintRbioFormData fd) {
+    private RbioComplaintSummaryResponse.ComplainDetails complainDetails(
+            Complaint c, ComplaintEligibilityAnswer e, ComplaintAdditionalDetail add,
+            ComplaintRbioFormData fd) {
         Long fdId = fd != null ? fd.getId() : null;
         LocalDate dateOfFiling = fd != null ? fd.getDateOfFilingComplaint() : null;
 
-        Map<String, Object> basicId = new LinkedHashMap<>();
-        basicId.put("emailId", c.getComplainantEmail());
-        basicId.put("entityName", c.getEntityName());
-        basicId.put("otherEntityName", fd != null ? fd.getOtherEntityName() : null);
-        basicId.put("registrationWithRbiDate", fd != null ? fd.getRegistrationWithRbiDate() : null);
-
-        Map<String, Object> classification = new LinkedHashMap<>();
-        classification.put("id", c.getCategoryId());
-        classification.put("complaintCategory", categoryName(c));
-        classification.put("complaintSubCategory1", add != null ? add.getSubCategory1() : null);
-        classification.put("complaintSubCategory2", add != null ? add.getSubCategory2() : null);
-        classification.put("complaintRegistrationDateValid",
-                fd != null ? yesNo(fd.getComplaintRegistrationDateValid()) : null);
-        classification.put("dateOfFilingComplaint", dateOfFiling);
-
-        Map<String, Object> financial = new LinkedHashMap<>();
-        financial.put("id", add != null ? add.getId() : null);
-        financial.put("reminderSent", e != null ? yesNo(e.getSentReminder()) : null);
-        financial.put("disputedAmount", c.getAmountInvolved());
-        financial.put("compensationSought", add != null ? add.getCompensationSought() : null);
-        financial.put("dateOfFiling", dateOfFiling);
-
-        Map<String, Object> legal = new LinkedHashMap<>();
-        legal.put("id", fdId);
-        legal.put("legalCaseFiled", fd != null ? yesNo(fd.getLegalCaseFiled()) : null);
-        legal.put("filingDate", fd != null ? fd.getLegalFilingDate() : null);
-        legal.put("preEnquiryReceived", fd != null ? yesNo(fd.getPreEnquiryReceived()) : null);
-        legal.put("highPriorityComplaint", fd != null ? yesNo(fd.getHighPriorityComplaint()) : null);
-        legal.put("loanDisposalAmount", fd != null ? fd.getLoanDisposalAmount() : null);
-
-        Map<String, Object> additional = new LinkedHashMap<>();
-        additional.put("id", fdId);
-        additional.put("comments", fd != null ? fd.getAdditionalComments() : null);
-        additional.put("crpcProposedAction", c.getProposedAction());
-        additional.put("vernacularLanguage", fd != null ? fd.getVernacularLanguage() : null);
-        additional.put("dateOfFiling", dateOfFiling);
-
-        Map<String, Object> flags = new LinkedHashMap<>();
-        flags.put("id", fdId);
-        flags.put("complaintRegardingPension", fd != null ? yesNo(fd.getComplaintRegardingPension()) : null);
-        flags.put("complaintAgainstBusinessCorrespondent",
-                add != null ? yesNo(add.getIsBusinessCorrespondent()) : null);
-        flags.put("atmCreditDebitCard", fd != null ? yesNo(fd.getAtmCreditDebitCard()) : null);
-        flags.put("schemeFlag", fd != null ? fd.getSchemeFlag() : null);
-        flags.put("rboCgpcOld", fd != null ? fd.getRboCgpcOld() : null);
-        flags.put("groundsFlag", fd != null ? fd.getGroundsFlag() : null);
-
-        Map<String, Object> linkage = new LinkedHashMap<>();
-        linkage.put("id", fdId);
-        linkage.put("freeMarkedComplaint", fd != null ? yesNo(fd.getFreeMarkedComplaint()) : null);
-        linkage.put("currentComplaintNumber", c.getComplaintNumber());
-
-        Map<String, Object> m = new LinkedHashMap<>();
-        m.put("basicIdentificationDto", basicId);
-        m.put("complaintClassification", classification);
-        m.put("financialDetails", financial);
-        m.put("legalCaseDetails", legal);
-        m.put("additionalInformation", additional);
-        m.put("flagsAndIndicators", flags);
-        m.put("complaintLinkage", linkage);
-        return m;
+        return RbioComplaintSummaryResponse.ComplainDetails.builder()
+                .basicIdentificationDto(RbioComplaintSummaryResponse.BasicIdentification.builder()
+                        .emailId(c.getComplainantEmail())
+                        .entityName(c.getEntityName())
+                        .otherEntityName(fd != null ? fd.getOtherEntityName() : null)
+                        .registrationWithRbiDate(fd != null ? fd.getRegistrationWithRbiDate() : null)
+                        .build())
+                .complaintClassification(RbioComplaintSummaryResponse.ComplaintClassification.builder()
+                        .id(c.getCategoryId())
+                        .complaintCategory(categoryName(c))
+                        .complaintSubCategory1(add != null ? add.getSubCategory1() : null)
+                        .complaintSubCategory2(add != null ? add.getSubCategory2() : null)
+                        .complaintRegistrationDateValid(
+                                fd != null ? yesNo(fd.getComplaintRegistrationDateValid()) : null)
+                        .dateOfFilingComplaint(dateOfFiling)
+                        .build())
+                .financialDetails(RbioComplaintSummaryResponse.FinancialDetails.builder()
+                        .id(add != null ? add.getId() : null)
+                        .reminderSent(e != null ? yesNo(e.getSentReminder()) : null)
+                        .disputedAmount(c.getAmountInvolved())
+                        .compensationSought(add != null ? add.getCompensationSought() : null)
+                        .dateOfFiling(dateOfFiling)
+                        .build())
+                .legalCaseDetails(RbioComplaintSummaryResponse.LegalCaseDetails.builder()
+                        .id(fdId)
+                        .legalCaseFiled(fd != null ? yesNo(fd.getLegalCaseFiled()) : null)
+                        .filingDate(fd != null ? fd.getLegalFilingDate() : null)
+                        .preEnquiryReceived(fd != null ? yesNo(fd.getPreEnquiryReceived()) : null)
+                        .highPriorityComplaint(fd != null ? yesNo(fd.getHighPriorityComplaint()) : null)
+                        .loanDisposalAmount(fd != null ? fd.getLoanDisposalAmount() : null)
+                        .build())
+                .additionalInformation(RbioComplaintSummaryResponse.AdditionalInformation.builder()
+                        .id(fdId)
+                        .comments(fd != null ? fd.getAdditionalComments() : null)
+                        .crpcProposedAction(c.getProposedAction())
+                        .vernacularLanguage(fd != null ? fd.getVernacularLanguage() : null)
+                        .dateOfFiling(dateOfFiling)
+                        .build())
+                .flagsAndIndicators(RbioComplaintSummaryResponse.FlagsAndIndicators.builder()
+                        .id(fdId)
+                        .complaintRegardingPension(fd != null ? yesNo(fd.getComplaintRegardingPension()) : null)
+                        .complaintAgainstBusinessCorrespondent(
+                                add != null ? yesNo(add.getIsBusinessCorrespondent()) : null)
+                        .atmCreditDebitCard(fd != null ? yesNo(fd.getAtmCreditDebitCard()) : null)
+                        .schemeFlag(fd != null ? fd.getSchemeFlag() : null)
+                        .rboCgpcOld(fd != null ? fd.getRboCgpcOld() : null)
+                        .groundsFlag(fd != null ? fd.getGroundsFlag() : null)
+                        .build())
+                .complaintLinkage(RbioComplaintSummaryResponse.ComplaintLinkage.builder()
+                        .id(fdId)
+                        .freeMarkedComplaint(fd != null ? yesNo(fd.getFreeMarkedComplaint()) : null)
+                        .currentComplaintNumber(c.getComplaintNumber())
+                        .build())
+                .build();
     }
 
     private String categoryName(Complaint c) {
@@ -297,8 +292,8 @@ public class RbioComplaintSummaryService {
      */
     @Transactional
     @CacheEvict(value = "dashboard", allEntries = true)
-    public Map<String, Object> updateSummary(Long complaintId, Map<String, Object> payload, String actor,
-                                             Collection<String> actorRoles) {
+    public RbioComplaintSummaryResponse updateSummary(Long complaintId, Map<String, Object> payload, String actor,
+                                                     Collection<String> actorRoles) {
         Complaint c = complaintRepository.findById(complaintId)
                 .orElseThrow(() -> new IllegalArgumentException("Complaint not found: " + complaintId));
 

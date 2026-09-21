@@ -572,17 +572,17 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
     this.complainantPincode = value;
     if (value && value.length === 6 && /^\d{6}$/.test(value)) {
       this.pincodeLoading.set(true);
-      this.http.get<any[]>(`/api/pincode/${value}`).subscribe({
+      this.http.get<any>(`${environment.apiBaseUrl}/api/v1/location/pincode/${value}`).subscribe({
         next: (res) => {
           this.pincodeLoading.set(false);
-          if (res && res[0] && res[0].Status === 'Success' && res[0].PostOffice?.length) {
-            const po = res[0].PostOffice[0];
-            if (po.State) {
-              this.complainantState = po.State;
-              this.onStateChange(po.State);
+          if (res?.data?.length) {
+            const po = res.data[0];
+            if (po.state) {
+              this.complainantState = po.state;
+              this.onStateChange(po.state);
             }
-            if (po.District) {
-              this.complainantDistrict = po.District;
+            if (po.district) {
+              this.complainantDistrict = po.district;
             }
           }
         },
@@ -605,8 +605,8 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
         params: { entityName: this.entityName.trim(), pincode: value }
       }).subscribe({
         next: (res) => {
-          if (res?.matchedBank && res.data?.length) {
-            this.applyRealBankBranches(res.data);
+          if (res?.data?.matchedBank && res.data.branches?.length) {
+            this.applyRealBankBranches(res.data.branches);
           } else {
             this.fallbackToEntityPostOfficeLookup(value);
           }
@@ -640,21 +640,21 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
   private fallbackToEntityPostOfficeLookup(value: string) {
     this.http.get<any>(`${environment.apiBaseUrl}/api/v1/location/pincode/${value}`).subscribe({
       next: (res: any) => {
-        if (res?.[0]?.Status === 'Success' && res[0].PostOffice?.length) {
-          const offices = res[0].PostOffice;
+        if (res?.data?.length) {
+          const offices = res.data;
           const po = offices[0];
-          if (po.State) {
-            this.entityState = po.State;
-            this.loadDistrictsForState(po.State);
+          if (po.state) {
+            this.entityState = po.state;
+            this.loadDistrictsForState(po.state);
           }
-          if (po.District) this.entityDistrict = po.District;
-          this.entityCity = po.Region || po.Division || '';
+          if (po.district) this.entityDistrict = po.district;
+          this.entityCity = po.region || po.division || '';
           this.entityCountry = 'India';
           if (offices.length === 1) {
-            this.entityBranchName = po.Name;
-            this.entityBranchCategory = po.BranchType || '';
+            this.entityBranchName = po.name;
+            this.entityBranchCategory = po.branchType || '';
           } else {
-            this.pincodePostOffices = offices.map((o: any) => ({ Name: o.Name, BranchType: o.BranchType || '' }));
+            this.pincodePostOffices = offices.map((o: any) => ({ Name: o.name, BranchType: o.branchType || '' }));
             this.showBranchDropdown = true;
             this.entityBranchName = '';
           }
@@ -743,7 +743,7 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
       excludeId: this.draftId
     }).subscribe({
       next: (res) => {
-        this.similarCases.set(res?.data || []);
+        this.similarCases.set(res?.data?.cases || []);
         this.loadingSimilarCases.set(false);
       },
       error: () => this.loadingSimilarCases.set(false)

@@ -217,7 +217,7 @@ public class RePortalController {
             List<Map<String, Object>> items = timeline.stream().map(t -> {
                 Map<String, Object> item = new LinkedHashMap<>();
                 item.put("action", t.getAction());
-                item.put("performedBy", t.getPerformedBy());
+                item.put("performedBy", t.displayActor());
                 item.put("remarks", t.getRemarks());
                 item.put("fromStatus", t.getFromStatus());
                 item.put("toStatus", t.getToStatus());

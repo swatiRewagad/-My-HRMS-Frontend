@@ -37,10 +37,8 @@ public class RbioHierarchyService {
             "DEPUTY_OMBUDSMAN", RoleConstants.RBIO_DEPUTY_OMBUDSMAN,
             "OMBUDSMAN", RoleConstants.RBIO_OMBUDSMAN);
 
-    // RBIO_DO has no SENT_TO_DO constant in ComplaintStatus; the literal is what the column and the
-    // Angular screens already carry for a send-back to the dealing official.
     private static final Map<String, String> ROLE_STATUSES = Map.of(
-            RoleConstants.RBIO_DO, "SENT_TO_DO",
+            RoleConstants.RBIO_DO, ComplaintStatus.SENT_BACK_TO_DO.name(),
             RoleConstants.RBIO_REVIEWER, ComplaintStatus.SENT_TO_REVIEWER.name(),
             RoleConstants.RBIO_DEPUTY_OMBUDSMAN, ComplaintStatus.SENT_TO_DEPUTY_OMBUDSMAN.name(),
             RoleConstants.RBIO_OMBUDSMAN, ComplaintStatus.SENT_TO_OMBUDSMAN.name());

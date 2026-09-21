@@ -118,7 +118,7 @@ public class AppealController {
         data.put("timeline", timeline.stream().map(t -> {
             Map<String, Object> entry = new LinkedHashMap<>();
             entry.put("action", t.getAction());
-            entry.put("performedBy", t.getPerformedBy());
+            entry.put("performedBy", t.displayActor());
             entry.put("performedByRole", t.getPerformedByRole());
             entry.put("remarks", t.getRemarks());
             entry.put("fromStatus", t.getFromStatus());

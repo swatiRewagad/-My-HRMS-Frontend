@@ -54,7 +54,7 @@ class RbioHierarchyServiceTest {
                 RoleConstants.RBIO_DEPUTY_OMBUDSMAN, "dy.user");
 
         assertThat(service.validateForward(complaint, "DEALING_OFFICER", "DEPUTY_OMBUDSMAN", "dy.user",
-                "SENT_TO_DO")).isEmpty();
+                ComplaintStatus.SENT_BACK_TO_DO.name())).isEmpty();
     }
 
     @Test

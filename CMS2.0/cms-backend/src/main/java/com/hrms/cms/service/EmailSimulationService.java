@@ -2,6 +2,12 @@ package com.hrms.cms.service;
 
 import com.hrms.cms.dto.EmailReplyWithFormRequest;
 import com.hrms.cms.dto.IncomingEmailRequest;
+import com.hrms.cms.dto.simulation.EmailStatsResponse;
+import com.hrms.cms.dto.simulation.EmailThreadResponse;
+import com.hrms.cms.dto.simulation.EmailThreadSummary;
+import com.hrms.cms.dto.simulation.FormFieldDescriptor;
+import com.hrms.cms.dto.simulation.FormTemplateResponse;
+import com.hrms.cms.dto.simulation.SimulatedEmailResponse;
 import com.hrms.cms.entity.Complaint;
 import com.hrms.cms.entity.SimulatedEmail;
 import com.hrms.cms.repository.ComplaintRepository;
@@ -32,7 +38,7 @@ public class EmailSimulationService {
 
     @CacheEvict(value = "email-stats", allEntries = true)
     @Transactional
-    public Map<String, Object> receiveEmail(IncomingEmailRequest request) {
+    public EmailThreadResponse receiveEmail(IncomingEmailRequest request) {
         String threadId = UUID.randomUUID().toString();
         String complaintNumber = generateComplaintNumber();
 
@@ -88,17 +94,19 @@ public class EmailSimulationService {
                 .build();
         emailRepository.save(outbound);
 
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("threadId", threadId);
-        result.put("complaintNumber", complaintNumber);
-        result.put("status", "AWAITING_FORM");
-        result.put("emails", List.of(toEmailMap(inbound), toEmailMap(outbound)));
-        return result;
+        return EmailThreadResponse.builder()
+                .threadId(threadId)
+                .complaintNumber(complaintNumber)
+                .fromEmail(inbound.getFromEmail())
+                .subject(inbound.getSubject())
+                .status("AWAITING_FORM")
+                .emails(List.of(toEmailResponse(inbound), toEmailResponse(outbound)))
+                .build();
     }
 
     @CacheEvict(value = "email-stats", allEntries = true)
     @Transactional
-    public Map<String, Object> receiveFormReply(EmailReplyWithFormRequest request) {
+    public EmailThreadResponse receiveFormReply(EmailReplyWithFormRequest request) {
         List<SimulatedEmail> threadEmails = emailRepository.findByThreadIdOrderBySentAtAsc(request.getThreadId());
         if (threadEmails.isEmpty()) {
             throw new RuntimeException("Thread not found: " + request.getThreadId());
@@ -160,125 +168,123 @@ public class EmailSimulationService {
         emailRepository.save(confirmation);
 
         List<SimulatedEmail> allEmails = emailRepository.findByThreadIdOrderBySentAtAsc(request.getThreadId());
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("threadId", request.getThreadId());
-        result.put("complaintNumber", complaintNumber);
-        result.put("status", "COMPLETED");
-        result.put("emails", allEmails.stream().map(this::toEmailMap).collect(Collectors.toList()));
-        return result;
+        return EmailThreadResponse.builder()
+                .threadId(request.getThreadId())
+                .complaintNumber(complaintNumber)
+                .fromEmail(firstEmail.getFromEmail())
+                .subject(firstEmail.getSubject())
+                .status("COMPLETED")
+                .emails(allEmails.stream().map(this::toEmailResponse).collect(Collectors.toList()))
+                .build();
     }
 
     @Transactional(readOnly = true)
-    public List<Map<String, Object>> getAllThreads() {
+    public List<EmailThreadSummary> getAllThreads() {
         List<SimulatedEmail> allEmails = emailRepository.findByDirectionOrderBySentAtDesc("INBOUND");
         Map<String, List<SimulatedEmail>> grouped = allEmails.stream()
                 .collect(Collectors.groupingBy(SimulatedEmail::getThreadId, LinkedHashMap::new, Collectors.toList()));
 
-        List<Map<String, Object>> threads = new ArrayList<>();
+        List<EmailThreadSummary> threads = new ArrayList<>();
         for (Map.Entry<String, List<SimulatedEmail>> entry : grouped.entrySet()) {
             SimulatedEmail first = entry.getValue().get(0);
             List<SimulatedEmail> threadEmails = emailRepository.findByThreadIdOrderBySentAtAsc(entry.getKey());
 
-            Map<String, Object> thread = new LinkedHashMap<>();
-            thread.put("threadId", entry.getKey());
-            thread.put("complaintNumber", first.getComplaintNumber());
-            thread.put("fromEmail", first.getFromEmail());
-            thread.put("subject", first.getSubject());
-            thread.put("sentAt", first.getSentAt());
-            thread.put("emailCount", threadEmails.size());
-            thread.put("status", deriveThreadStatus(threadEmails));
-            threads.add(thread);
+            threads.add(toThreadSummary(entry.getKey(), first, threadEmails.size(),
+                    deriveThreadStatus(threadEmails)));
         }
         return threads;
     }
 
     @Transactional(readOnly = true)
-    public List<Map<String, Object>> getThreadsByComplaintNumber(String complaintNumber) {
+    public List<EmailThreadSummary> getThreadsByComplaintNumber(String complaintNumber) {
         List<SimulatedEmail> emails = emailRepository.findByComplaintNumberOrderBySentAtAsc(complaintNumber);
 
         Map<String, List<SimulatedEmail>> grouped = emails.stream()
                 .collect(Collectors.groupingBy(SimulatedEmail::getThreadId, LinkedHashMap::new, Collectors.toList()));
 
-        List<Map<String, Object>> threads = new ArrayList<>();
+        List<EmailThreadSummary> threads = new ArrayList<>();
         for (Map.Entry<String, List<SimulatedEmail>> entry : grouped.entrySet()) {
             List<SimulatedEmail> threadEmails = entry.getValue();
             SimulatedEmail first = threadEmails.stream()
                     .min(Comparator.comparing(SimulatedEmail::getSentAt))
                     .orElse(threadEmails.get(0));
 
-            Map<String, Object> thread = new LinkedHashMap<>();
-            thread.put("threadId", entry.getKey());
-            thread.put("complaintNumber", first.getComplaintNumber());
-            thread.put("fromEmail", first.getFromEmail());
-            thread.put("subject", first.getSubject());
-            thread.put("sentAt", first.getSentAt());
-            thread.put("emailCount", threadEmails.size());
-            thread.put("status", first.getStatus());
-            threads.add(thread);
+            // first.getStatus() rather than deriveThreadStatus: the complaint details screen buckets
+            // its email activity on the message status SENT. See EmailThreadSummary#status.
+            threads.add(toThreadSummary(entry.getKey(), first, threadEmails.size(), first.getStatus()));
         }
         return threads;
     }
 
     @Transactional(readOnly = true)
-    public Map<String, Object> getThread(String threadId) {
+    public EmailThreadResponse getThread(String threadId) {
         List<SimulatedEmail> emails = emailRepository.findByThreadIdOrderBySentAtAsc(threadId);
         if (emails.isEmpty()) throw new RuntimeException("Thread not found");
 
         SimulatedEmail first = emails.get(0);
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("threadId", threadId);
-        result.put("complaintNumber", first.getComplaintNumber());
-        result.put("fromEmail", first.getFromEmail());
-        result.put("subject", first.getSubject());
-        result.put("status", deriveThreadStatus(emails));
-        result.put("emails", emails.stream().map(this::toEmailMap).collect(Collectors.toList()));
-        return result;
+        return EmailThreadResponse.builder()
+                .threadId(threadId)
+                .complaintNumber(first.getComplaintNumber())
+                .fromEmail(first.getFromEmail())
+                .subject(first.getSubject())
+                .status(deriveThreadStatus(emails))
+                .emails(emails.stream().map(this::toEmailResponse).collect(Collectors.toList()))
+                .build();
     }
 
     @Transactional(readOnly = true)
-    public List<SimulatedEmail> getInbox() {
-        return emailRepository.findByDirectionOrderBySentAtDesc("INBOUND");
+    public List<SimulatedEmailResponse> getInbox() {
+        return mapEmails("INBOUND");
     }
 
     @Transactional(readOnly = true)
-    public List<SimulatedEmail> getSent() {
-        return emailRepository.findByDirectionOrderBySentAtDesc("OUTBOUND");
+    public List<SimulatedEmailResponse> getSent() {
+        return mapEmails("OUTBOUND");
+    }
+
+    private List<SimulatedEmailResponse> mapEmails(String direction) {
+        return emailRepository.findByDirectionOrderBySentAtDesc(direction).stream()
+                .map(this::toEmailResponse)
+                .collect(Collectors.toList());
     }
 
     @Cacheable(value = "email-stats")
     @Transactional(readOnly = true)
-    public Map<String, Object> getStats() {
-        List<Map<String, Object>> threads = getAllThreads();
-        long awaiting = threads.stream().filter(t -> "AWAITING_FORM".equals(t.get("status"))).count();
-        long completed = threads.stream().filter(t -> "COMPLETED".equals(t.get("status"))).count();
-
-        Map<String, Object> stats = new LinkedHashMap<>();
-        stats.put("totalThreads", threads.size());
-        stats.put("awaitingForm", awaiting);
-        stats.put("completed", completed);
-        return stats;
+    public EmailStatsResponse getStats() {
+        List<EmailThreadSummary> threads = getAllThreads();
+        return EmailStatsResponse.builder()
+                .totalThreads(threads.size())
+                .awaitingForm(threads.stream().filter(t -> "AWAITING_FORM".equals(t.getStatus())).count())
+                .completed(threads.stream().filter(t -> "COMPLETED".equals(t.getStatus())).count())
+                .build();
     }
 
     @Transactional(readOnly = true)
-    public Map<String, Object> getFormTemplate(String complaintNumber) {
+    public FormTemplateResponse getFormTemplate(String complaintNumber) {
         Complaint complaint = complaintRepository.findByComplaintNumber(complaintNumber)
                 .orElseThrow(() -> new RuntimeException("Complaint not found"));
 
-        Map<String, Object> template = new LinkedHashMap<>();
-        template.put("complaintNumber", complaintNumber);
-        template.put("complainantEmail", complaint.getComplainantEmail());
-        template.put("fields", List.of(
-                Map.of("key", "complainantName", "label", "Full Name", "type", "text", "required", true),
-                Map.of("key", "complainantPhone", "label", "Mobile Number", "type", "tel", "required", true),
-                Map.of("key", "complainantAddress", "label", "Address", "type", "textarea", "required", true),
-                Map.of("key", "bankId", "label", "Bank / Financial Institution", "type", "select", "required", true),
-                Map.of("key", "bankBranch", "label", "Branch", "type", "text", "required", false),
-                Map.of("key", "accountNumber", "label", "Account Number", "type", "text", "required", false),
-                Map.of("key", "categoryId", "label", "Complaint Category", "type", "select", "required", true),
-                Map.of("key", "description", "label", "Detailed Description", "type", "textarea", "required", true),
-                Map.of("key", "reliefSought", "label", "Relief Sought", "type", "textarea", "required", false)
-        ));
-        return template;
+        return FormTemplateResponse.builder()
+                .complaintNumber(complaintNumber)
+                .complainantEmail(complaint.getComplainantEmail())
+                .fields(FORM_FIELDS)
+                .build();
+    }
+
+    private static final List<FormFieldDescriptor> FORM_FIELDS = List.of(
+            field("complainantName", "Full Name", "text", true),
+            field("complainantPhone", "Mobile Number", "tel", true),
+            field("complainantAddress", "Address", "textarea", true),
+            field("bankId", "Bank / Financial Institution", "select", true),
+            field("bankBranch", "Branch", "text", false),
+            field("accountNumber", "Account Number", "text", false),
+            field("categoryId", "Complaint Category", "select", true),
+            field("description", "Detailed Description", "textarea", true),
+            field("reliefSought", "Relief Sought", "textarea", false)
+    );
+
+    private static FormFieldDescriptor field(String key, String label, String type, boolean required) {
+        return FormFieldDescriptor.builder().key(key).label(label).type(type).required(required).build();
     }
 
     private String deriveThreadStatus(List<SimulatedEmail> emails) {
@@ -356,20 +362,32 @@ public class EmailSimulationService {
                 "Reserve Bank of India";
     }
 
-    private Map<String, Object> toEmailMap(SimulatedEmail email) {
-        Map<String, Object> map = new LinkedHashMap<>();
-        map.put("id", email.getId());
-        map.put("messageId", email.getMessageId());
-        map.put("threadId", email.getThreadId());
-        map.put("fromEmail", email.getFromEmail());
-        map.put("toEmail", email.getToEmail());
-        map.put("subject", email.getSubject());
-        map.put("body", email.getBody());
-        map.put("direction", email.getDirection());
-        map.put("status", email.getStatus());
-        map.put("complaintNumber", email.getComplaintNumber());
-        map.put("attachmentUrl", email.getAttachmentUrl());
-        map.put("sentAt", email.getSentAt());
-        return map;
+    private SimulatedEmailResponse toEmailResponse(SimulatedEmail email) {
+        return SimulatedEmailResponse.builder()
+                .id(email.getId())
+                .messageId(email.getMessageId())
+                .threadId(email.getThreadId())
+                .fromEmail(email.getFromEmail())
+                .toEmail(email.getToEmail())
+                .subject(email.getSubject())
+                .body(email.getBody())
+                .direction(email.getDirection())
+                .status(email.getStatus())
+                .complaintNumber(email.getComplaintNumber())
+                .attachmentUrl(email.getAttachmentUrl())
+                .sentAt(email.getSentAt())
+                .build();
+    }
+
+    private EmailThreadSummary toThreadSummary(String threadId, SimulatedEmail first, int emailCount, String status) {
+        return EmailThreadSummary.builder()
+                .threadId(threadId)
+                .complaintNumber(first.getComplaintNumber())
+                .fromEmail(first.getFromEmail())
+                .subject(first.getSubject())
+                .sentAt(first.getSentAt())
+                .emailCount(emailCount)
+                .status(status)
+                .build();
     }
 }

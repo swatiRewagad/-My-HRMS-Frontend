@@ -36,7 +36,8 @@ public enum ComplaintStatus implements LabeledEnum {
     OMBUDSMAN_DECISION("Ombudsman Decision"),
     SENT_TO_DEPUTY_OMBUDSMAN("Sent To Deputy Ombudsman"),
     SENT_TO_REVIEWER("Sent To Reviewer"),
-    SENT_TO_OMBUDSMAN("Sent To Ombudsman");
+    SENT_TO_OMBUDSMAN("Sent To Ombudsman"),
+    PENDING_OFFICE_HEAD_APPROVAL("Pending Office Head Approval");
 
     private final String value;
 

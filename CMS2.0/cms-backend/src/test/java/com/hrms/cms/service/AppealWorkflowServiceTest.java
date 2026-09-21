@@ -37,6 +37,7 @@ class AppealWorkflowServiceTest {
     @Mock private AppealEligibilityService eligibilityService;
     @Mock private ComplaintRepository complaintRepository;
     @Mock private KeycloakUserService keycloakUserService;
+    @Mock private OfficerDirectoryService officerDirectoryService;
 
     @InjectMocks
     private AppealWorkflowService appealWorkflowService;

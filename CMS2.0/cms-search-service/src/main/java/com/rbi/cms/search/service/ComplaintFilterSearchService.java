@@ -1,6 +1,7 @@
 package com.rbi.cms.search.service;
 
 import com.rbi.cms.common.dto.PagedResponse;
+import com.rbi.cms.common.enums.ComplaintStatus;
 import com.rbi.cms.common.exception.CmsException;
 import com.rbi.cms.search.dto.*;
 import lombok.RequiredArgsConstructor;
@@ -579,7 +580,7 @@ public class ComplaintFilterSearchService {
                 ))
                 .mode(toStr(source.get("filingType")))
                 .complainantName(toStr(source.get("complainantName")))
-                .status(toStr(source.get("status")))
+                .status(displayStatus(toStr(source.get("status"))))
                 .entityName(toStr(source.get("entityName")))
                 .complaintCategory(toStr(source.get("categoryName")))
                 .createdDate(toLocalDate(source.get("createdAt")))
@@ -766,6 +767,28 @@ public class ComplaintFilterSearchService {
      */
     private String normalizeStatus(String status) {
         return ComplaintDocumentNormalizer.canonicalStatus(status);
+    }
+
+    /**
+     * The status as the grid should print it ({@code NEW_COMPLAINT} -> {@code "New Complaint"}).
+     *
+     * <p>Only the response field is translated. The index, the sort key and every {@code status.keyword}
+     * term filter stay on {@code ComplaintStatus.name()}, so the colour helpers on this same object keep
+     * reading the raw value out of {@code source} rather than this one.
+     *
+     * <p>Unknown statuses pass through unchanged instead of throwing, which is why this does not call
+     * {@link ComplaintStatus#getValueFromKey(String)}: {@code ComplaintStatus} is not a complete
+     * inventory of what is stored — {@code pending} (the {@code Complaint} entity's own default),
+     * {@code conciliated} and a dozen others have no constant, and a throw here would fail the whole
+     * page for one unrecognised row.
+     */
+    private String displayStatus(String rawStatus) {
+        if (rawStatus == null || rawStatus.isBlank()) {
+            return rawStatus;
+        }
+        return ComplaintStatus.parse(rawStatus)
+                .map(ComplaintStatus::getValue)
+                .orElse(rawStatus);
     }
 
     private boolean hasValue(String value) {
