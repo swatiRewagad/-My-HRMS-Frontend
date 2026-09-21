@@ -256,6 +256,8 @@ export class RbioComplaintDetailsView implements OnInit {
   complaintOffice = '';
   slaDaysRemaining = signal(30);
   userRole = signal<'DO' | 'REVIEWER' | 'DEPUTY_OMBUDSMAN' | 'OMBUDSMAN' | 'HEAD'>('DO');
+  // userRole falls back to 'DO' for any unrecognised role, so it cannot stand in for holding RBIO_DO.
+  isRbioDo = signal(false);
   activeTab = signal<'creation' | 'assignment'>('creation');
   complaintDetails = {};
   assignedOfficer: string = ''; 
@@ -497,7 +499,7 @@ export class RbioComplaintDetailsView implements OnInit {
   workflowAction = signal('');
   // Conciliation is the DO's own step; every other rung on the ladder only ever reads its outcome.
   conciliationEnabled = computed(() => {
-    if (this.userRole() !== 'DO') return false;
+    if (!this.isRbioDo() || this.userRole() !== 'DO') return false;
     const action = this.workflowAction();
     const status = this.complaintStatus();
     const excludedStatuses = ['ADVISORY_COMPLIED', 'COMPLAINT_SETTLED', 'COMPLAINT_WITHDRAWN', 'COMPLAINT_REJECTED', 'AWARD_PASSED', 'OMBUDSMAN_DECISION'];
@@ -1270,6 +1272,10 @@ private getStatusColor(status: string): string {
         const additionalInfo = data.complainDetailsDto?.additionalInformation;
         this.additionalComments = additionalInfo?.comments || '';
         this.crpcProposedAction = additionalInfo?.crpcProposedAction || '';
+        // Same COMPLAINT column the officer's Proposed Action dropdown writes; it is what decides
+        // whether the complaint reached the maintainable stage that conciliation belongs to.
+        this.workflowAction.set(this.crpcProposedAction);
+        this.proposedAction = this.crpcProposedAction;
         this.vernacularLanguage = additionalInfo?.vernacularLanguage || '';
         this.vernacular = !!this.vernacularLanguage;
 
@@ -1322,6 +1328,7 @@ private getStatusColor(status: string): string {
 
   private detectUserRole() {
     const roles = this.auth.getRoles ? this.auth.getRoles() : [];
+    this.isRbioDo.set(roles.includes('RBIO_DO'));
     if (roles.includes('CRPC_HEAD')) {
       this.userRole.set('HEAD');
     } else if (roles.includes('RBIO_OMBUDSMAN')) {
