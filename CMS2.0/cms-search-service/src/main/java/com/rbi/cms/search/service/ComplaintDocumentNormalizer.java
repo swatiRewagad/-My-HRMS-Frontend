@@ -35,7 +35,8 @@ public class ComplaintDocumentNormalizer {
     public static final String FIELD_REGIONAL_OFFICE = "regionalOffice";
     public static final String FIELD_CREATED_BY = "createdBy";
     public static final String FIELD_STATUS = "status";
-    public static final String FIELD_IS_READ = "isRead";
+    /** Usernames of the officers who have opened the complaint; read state is per officer, not global. */
+    public static final String FIELD_READ_BY = "readBy";
 
     /**
      * The OpenSearch {@code _id} is the business complaint identifier, not the database primary key.
@@ -70,9 +71,6 @@ public class ComplaintDocumentNormalizer {
         copyStringField(source, doc, FIELD_CREATED_BY);
         if (source.get("hasAttachment") != null) {
             doc.put("hasAttachment", Boolean.valueOf(source.get("hasAttachment").toString()));
-        }
-        if (source.get(FIELD_IS_READ) != null) {
-            doc.put(FIELD_IS_READ, Boolean.valueOf(source.get(FIELD_IS_READ).toString()));
         }
 
         canonicalizeStatus(doc);

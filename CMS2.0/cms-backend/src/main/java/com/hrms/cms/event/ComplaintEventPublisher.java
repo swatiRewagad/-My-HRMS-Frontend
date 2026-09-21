@@ -21,11 +21,6 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class ComplaintEventPublisher {
 
-    private static final String TOPIC_COMPLAINT_INGESTED = "complaint.ingested";
-    private static final String TOPIC_COMPLAINT_ASSIGNED = "complaint.assigned";
-    private static final String TOPIC_COMPLAINT_CLOSED = "complaint.closed";
-    private static final String TOPIC_COMPLAINT_ESCALATED = "complaint.escalated";
-
     private final KafkaTemplate<String, String> kafkaTemplate;
     private final ObjectMapper objectMapper;
 
@@ -34,35 +29,37 @@ public class ComplaintEventPublisher {
     @Async("taskExecutor")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     public void onComplaintCreated(ComplaintCreatedEvent event) {
-        publishEvent(TOPIC_COMPLAINT_INGESTED, event.complaint(), null, "NEW", null);
+        publishEvent(KafkaTopics.COMPLAINT_INGESTED, event.complaint(), null, "NEW", null);
     }
 
     @Async("taskExecutor")
     public void publishComplaintAssigned(Complaint complaint, String actor) {
-        publishEvent(TOPIC_COMPLAINT_ASSIGNED, complaint, null, "ASSIGNED", actor);
+        publishEvent(KafkaTopics.COMPLAINT_ASSIGNED, complaint, null, "ASSIGNED", actor);
     }
 
     @Async("taskExecutor")
     public void publishComplaintClosed(Complaint complaint, String actor, String prevStatus) {
-        publishEvent(TOPIC_COMPLAINT_CLOSED, complaint, prevStatus, complaint.getStatus().toUpperCase(), actor);
+        publishEvent(KafkaTopics.COMPLAINT_CLOSED, complaint, prevStatus, complaint.getStatus().toUpperCase(), actor);
     }
 
     @Async("taskExecutor")
     public void publishComplaintEscalated(Complaint complaint, String actor, String prevStatus) {
-        publishEvent(TOPIC_COMPLAINT_ESCALATED, complaint, prevStatus, "ESCALATED", actor);
+        publishEvent(KafkaTopics.COMPLAINT_ESCALATED, complaint, prevStatus, "ESCALATED", actor);
     }
 
     /**
-     * Announces that an officer has opened the complaint, so the search index can clear its unread
-     * flag. Deliberately carries no status: the only consumer flips one boolean, and a stored status
-     * with no {@code ComplaintStatus} constant would otherwise get the whole event dropped.
+     * Announces that {@code readBy} has opened the complaint, so the search index can clear its unread
+     * marker for that officer alone. Deliberately carries no status: the only consumer appends to a
+     * list, and a stored status with no {@code ComplaintStatus} constant would otherwise get the whole
+     * event dropped.
      */
     @Async("taskExecutor")
-    public void publishComplaintRead(String complaintNumber) {
+    public void publishComplaintRead(String complaintNumber, String readBy) {
         try {
             Map<String, Object> event = new LinkedHashMap<>();
             event.put("eventId", UUID.randomUUID().toString());
             event.put("complaintId", complaintNumber);
+            event.put("readBy", readBy);
             event.put("occurredAt", Instant.now().toString());
             event.put("correlationId", UUID.randomUUID().toString());
             send(KafkaTopics.COMPLAINT_READ, complaintNumber, objectMapper.writeValueAsString(event));

@@ -86,13 +86,16 @@ public class ComplaintIndexingListener {
             return;
         }
 
+        // Read state is per officer, so an event that names no reader cannot be applied to anyone and
+        // will not become applicable on redelivery.
+        if (event.getReadBy() == null || event.getReadBy().isBlank()) {
+            log.error("Dropping complaint.read for {} with no readBy", event.getComplaintId());
+            ack.acknowledge();
+            return;
+        }
+
         try {
-            // partialUpdate upserts, so the complaint number travels with the flag: a complaint opened
-            // before it was ever indexed would otherwise create a document carrying nothing else, with
-            // no identifier for the grid to key or filter on.
-            searchService.partialUpdate(event.getComplaintId(), Map.of(
-                    ComplaintDocumentNormalizer.FIELD_COMPLAINT_NUMBER, event.getComplaintId(),
-                    ComplaintDocumentNormalizer.FIELD_IS_READ, Boolean.TRUE));
+            searchService.recordRead(event.getComplaintId(), event.getReadBy());
             ack.acknowledge();
         } catch (Exception e) {
             log.error("Failed to mark complaint {} read in the index, leaving offset uncommitted for retry",

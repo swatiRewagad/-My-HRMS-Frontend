@@ -3,9 +3,13 @@ package com.hrms.cms.controller;
 import com.hrms.cms.entity.AccountTypeMaster;
 import com.hrms.cms.entity.CategoryMaster;
 import com.hrms.cms.entity.DepartmentRoutingMaster;
+import com.hrms.cms.entity.RbiDepartmentMaster;
+import com.hrms.cms.entity.RegulatorMaster;
 import com.hrms.cms.repository.AccountTypeMasterRepository;
 import com.hrms.cms.repository.CategoryMasterRepository;
 import com.hrms.cms.repository.DepartmentRoutingMasterRepository;
+import com.hrms.cms.repository.RbiDepartmentMasterRepository;
+import com.hrms.cms.repository.RegulatorMasterRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -22,6 +26,8 @@ public class MasterDataController {
     private final CategoryMasterRepository categoryRepo;
     private final DepartmentRoutingMasterRepository routingRepo;
     private final AccountTypeMasterRepository accountTypeRepo;
+    private final RegulatorMasterRepository regulatorRepo;
+    private final RbiDepartmentMasterRepository rbiDepartmentRepo;
 
     // ─── Category Master ───
     @GetMapping("/categories")
@@ -108,6 +114,94 @@ public class MasterDataController {
     @GetMapping("/account-types")
     public ResponseEntity<List<AccountTypeMaster>> getAccountTypes() {
         return ResponseEntity.ok(accountTypeRepo.findByActiveTrueOrderBySortOrderAsc());
+    }
+
+    // ─── Forward targets: external regulators and internal RBI departments ───
+
+    /** Backs the RBIO Forward tab's "Name of Regulator" lookup. {@code q} filters server-side. */
+    @GetMapping("/regulators")
+    public ResponseEntity<List<RegulatorMaster>> getRegulators(@RequestParam(required = false) String q) {
+        return ResponseEntity.ok(q == null || q.isBlank()
+                ? regulatorRepo.findByActiveTrueOrderBySortOrderAscNameAsc()
+                : regulatorRepo.search(q.trim()));
+    }
+
+    @PostMapping("/regulators")
+    @PreAuthorize("hasAnyRole('ADMIN', 'CRPC_ADMIN')")
+    public ResponseEntity<RegulatorMaster> createRegulator(@RequestBody RegulatorMaster regulator) {
+        regulator.setActive(true);
+        return ResponseEntity.ok(regulatorRepo.save(regulator));
+    }
+
+    @PutMapping("/regulators/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'CRPC_ADMIN')")
+    public ResponseEntity<RegulatorMaster> updateRegulator(@PathVariable Long id,
+                                                           @RequestBody RegulatorMaster regulator) {
+        return regulatorRepo.findById(id)
+                .map(existing -> {
+                    existing.setCode(regulator.getCode());
+                    existing.setName(regulator.getName());
+                    existing.setEmail(regulator.getEmail());
+                    existing.setSortOrder(regulator.getSortOrder());
+                    return ResponseEntity.ok(regulatorRepo.save(existing));
+                })
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    /** Deactivated rather than deleted so complaints already forwarded keep a resolvable target. */
+    @DeleteMapping("/regulators/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'CRPC_ADMIN')")
+    public ResponseEntity<Void> deactivateRegulator(@PathVariable Long id) {
+        return regulatorRepo.findById(id)
+                .map(existing -> {
+                    existing.setActive(false);
+                    regulatorRepo.save(existing);
+                    return ResponseEntity.noContent().<Void>build();
+                })
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    /** Backs the RBIO Forward tab's "Name of Department" lookup. {@code q} filters server-side. */
+    @GetMapping("/rbi-departments")
+    public ResponseEntity<List<RbiDepartmentMaster>> getRbiDepartments(@RequestParam(required = false) String q) {
+        return ResponseEntity.ok(q == null || q.isBlank()
+                ? rbiDepartmentRepo.findByActiveTrueOrderBySortOrderAscNameAsc()
+                : rbiDepartmentRepo.search(q.trim()));
+    }
+
+    @PostMapping("/rbi-departments")
+    @PreAuthorize("hasAnyRole('ADMIN', 'CRPC_ADMIN')")
+    public ResponseEntity<RbiDepartmentMaster> createRbiDepartment(@RequestBody RbiDepartmentMaster department) {
+        department.setActive(true);
+        return ResponseEntity.ok(rbiDepartmentRepo.save(department));
+    }
+
+    @PutMapping("/rbi-departments/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'CRPC_ADMIN')")
+    public ResponseEntity<RbiDepartmentMaster> updateRbiDepartment(@PathVariable Long id,
+                                                                   @RequestBody RbiDepartmentMaster department) {
+        return rbiDepartmentRepo.findById(id)
+                .map(existing -> {
+                    existing.setCode(department.getCode());
+                    existing.setName(department.getName());
+                    existing.setEmail(department.getEmail());
+                    existing.setSortOrder(department.getSortOrder());
+                    return ResponseEntity.ok(rbiDepartmentRepo.save(existing));
+                })
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    /** Deactivated rather than deleted so complaints already forwarded keep a resolvable target. */
+    @DeleteMapping("/rbi-departments/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'CRPC_ADMIN')")
+    public ResponseEntity<Void> deactivateRbiDepartment(@PathVariable Long id) {
+        return rbiDepartmentRepo.findById(id)
+                .map(existing -> {
+                    existing.setActive(false);
+                    rbiDepartmentRepo.save(existing);
+                    return ResponseEntity.noContent().<Void>build();
+                })
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     // ─── Cancelled RE Auto-Flag lookup ───

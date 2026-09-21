@@ -174,6 +174,16 @@ interface DeoUser {
   maxLoad: number;
 }
 
+// A row from REGULATOR_MASTER or RBI_DEPARTMENT_MASTER, as returned by /api/v1/masters/regulators and
+// /api/v1/masters/rbi-departments. email is nullable: an admin may register a destination before its
+// mailbox is confirmed, and the Forward tab refuses to submit without one.
+interface ForwardRecipient {
+  id: number;
+  code: string;
+  name: string;
+  email: string | null;
+}
+
 // One CONCILIATION_MEETINGS row, as returned by /api/complaints/rbio/{id}/conciliation. The newest row
 // is the live meeting; the earlier rows are the reschedule trail and are read-only.
 interface ConciliationMeeting {
@@ -214,6 +224,8 @@ interface EntitySearchResult {
   entityCategory?: string | null;
   /** RBI's sub-classification below the category, e.g. "Loan Company". NBFCs only. */
   entityTypeDetail?: string | null;
+  /** What Entity Details shows as Entity Type: the sub-classification, or the category if there is none. */
+  entityTypeDisplay?: string | null;
   city?: string | null;
   state?: string | null;
 }
@@ -615,6 +627,16 @@ export class RbioComplaintDetailsView implements OnInit {
   officeList = signal<{ officeCode: string; officeName: string; officeType: string }[]>([]);
   showForwardConfirm = signal(false);
   forwardSubmitting = signal(false);
+  forwardFieldErrors = signal<Record<string, string>>({});
+
+  regulatorResults = signal<ForwardRecipient[]>([]);
+  regulatorSearchLoading = signal(false);
+  showRegulatorDropdown = signal(false);
+  departmentResults = signal<ForwardRecipient[]>([]);
+  departmentSearchLoading = signal(false);
+  showDepartmentDropdown = signal(false);
+  private regulatorSearchTimeout: any = null;
+  private departmentSearchTimeout: any = null;
 
   loadOfficeList() {
     if (this.officeList().length > 0) return;
@@ -624,10 +646,104 @@ export class RbioComplaintDetailsView implements OnInit {
     });
   }
 
+  // ═══ Forward recipient lookups ═══
+  // Both masters are searched server-side. MasterDataController returns a bare array rather than the
+  // {data} envelope the RBIO controllers use, hence the fallback on each unwrap.
+
+  onRegulatorSearchInput(value: string) {
+    this.forwardRegulatorName = value;
+    // A hand-typed name no longer corresponds to the picked row's address, so drop it and make the
+    // officer pick again rather than mailing the previous regulator under a new name.
+    this.forwardRegulatorEmail = '';
+    if (this.regulatorSearchTimeout) clearTimeout(this.regulatorSearchTimeout);
+    this.regulatorSearchTimeout = setTimeout(() => this.searchRegulators(value), 300);
+  }
+
+  private searchRegulators(query: string) {
+    this.regulatorSearchLoading.set(true);
+    this.showRegulatorDropdown.set(true);
+    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/masters/regulators`, {
+      params: query ? { q: query } : {}
+    }).subscribe({
+      next: (res) => {
+        this.regulatorResults.set(res?.data ?? res ?? []);
+        this.regulatorSearchLoading.set(false);
+      },
+      error: () => {
+        this.regulatorResults.set([]);
+        this.regulatorSearchLoading.set(false);
+      }
+    });
+  }
+
+  openRegulatorDropdown() {
+    if (this.regulatorResults().length === 0) this.searchRegulators('');
+    else this.showRegulatorDropdown.set(true);
+  }
+
+  selectRegulator(regulator: ForwardRecipient) {
+    this.forwardRegulatorName = regulator.name;
+    this.forwardRegulatorEmail = regulator.email || '';
+    this.showRegulatorDropdown.set(false);
+    this.clearForwardError('regulator');
+  }
+
+  onRegulatorBlur() {
+    setTimeout(() => this.showRegulatorDropdown.set(false), 200);
+  }
+
+  onDepartmentSearchInput(value: string) {
+    this.forwardDepartmentName = value;
+    this.forwardDepartmentEmail = '';
+    if (this.departmentSearchTimeout) clearTimeout(this.departmentSearchTimeout);
+    this.departmentSearchTimeout = setTimeout(() => this.searchDepartments(value), 300);
+  }
+
+  private searchDepartments(query: string) {
+    this.departmentSearchLoading.set(true);
+    this.showDepartmentDropdown.set(true);
+    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/masters/rbi-departments`, {
+      params: query ? { q: query } : {}
+    }).subscribe({
+      next: (res) => {
+        this.departmentResults.set(res?.data ?? res ?? []);
+        this.departmentSearchLoading.set(false);
+      },
+      error: () => {
+        this.departmentResults.set([]);
+        this.departmentSearchLoading.set(false);
+      }
+    });
+  }
+
+  openDepartmentDropdown() {
+    if (this.departmentResults().length === 0) this.searchDepartments('');
+    else this.showDepartmentDropdown.set(true);
+  }
+
+  selectDepartment(department: ForwardRecipient) {
+    this.forwardDepartmentName = department.name;
+    this.forwardDepartmentEmail = department.email || '';
+    this.showDepartmentDropdown.set(false);
+    this.clearForwardError('department');
+  }
+
+  onDepartmentBlur() {
+    setTimeout(() => this.showDepartmentDropdown.set(false), 200);
+  }
+
+  private clearForwardError(key: string) {
+    const errors = { ...this.forwardFieldErrors() };
+    delete errors[key];
+    delete errors['target'];
+    this.forwardFieldErrors.set(errors);
+  }
+
   onForwardOfficeSelected(officeCode: string) {
     this.forwardOfficeCode = officeCode;
     const office = this.officeList().find(o => o.officeCode === officeCode);
     this.forwardOfficeName = office?.officeName || '';
+    this.clearForwardError('office');
   }
 
   get forwardTargetLabel(): string {
@@ -641,21 +757,44 @@ export class RbioComplaintDetailsView implements OnInit {
 
   selectForwardTarget(target: 'REGULATORY_BODIES' | 'RBI_DEPARTMENT' | 'OFFICE') {
     this.forwardTarget.set(target);
+    this.forwardFieldErrors.set({});
     if (target === 'OFFICE') {
       this.loadOfficeList();
     }
   }
 
-  openForwardConfirm() {
+  /**
+   * The regulator and department branches close the complaint on submit, so an unaddressed forward
+   * would close it having notified nobody. Every branch is checked, not just OFFICE.
+   */
+  private validateForward(): boolean {
+    const errors: Record<string, string> = {};
     const target = this.forwardTarget();
+
     if (!target) {
-      alert('Please select where to forward the complaint.');
-      return;
+      errors['target'] = 'Select where to forward this complaint.';
+    } else if (target === 'OFFICE') {
+      if (!this.forwardOfficeCode) errors['office'] = 'Select an office.';
+    } else if (target === 'REGULATORY_BODIES') {
+      if (!this.forwardRegulatorName.trim()) errors['regulator'] = 'Search for and select a regulator.';
+      else if (!this.forwardRegulatorEmail.trim()) errors['regulatorEmail'] = 'This regulator has no email on record. Pick another or ask an admin to add one.';
+      else if (!this.isValidEmail(this.forwardRegulatorEmail)) errors['regulatorEmail'] = 'Enter a valid email address.';
+    } else if (target === 'RBI_DEPARTMENT') {
+      if (!this.forwardDepartmentName.trim()) errors['department'] = 'Search for and select a department.';
+      else if (!this.forwardDepartmentEmail.trim()) errors['departmentEmail'] = 'This department has no email on record. Pick another or ask an admin to add one.';
+      else if (!this.isValidEmail(this.forwardDepartmentEmail)) errors['departmentEmail'] = 'Enter a valid email address.';
     }
-    if (target === 'OFFICE' && !this.forwardOfficeCode) {
-      alert('Please select an office.');
-      return;
-    }
+
+    this.forwardFieldErrors.set(errors);
+    return Object.keys(errors).length === 0;
+  }
+
+  private isValidEmail(value: string): boolean {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(value.trim());
+  }
+
+  openForwardConfirm() {
+    if (!this.validateForward()) return;
     this.showForwardConfirm.set(true);
   }
 
@@ -1556,11 +1695,15 @@ private getStatusColor(status: string): string {
     this.entitySearchText = entity.name;
     this.showEntityDropdown.set(false);
 
+    // Entity Details starts collapsed, so a pick made in Eligibility filled four fields the officer
+    // could not see and had to go looking for. Opening it puts the result of the pick on screen.
+    this.summarySections.entity = true;
+
     // The four read-only Entity Details fields. All are properties of the entity, so the picked row is
     // their only source — the officer never types them.
     this.moduleName = entity.moduleName || '';
     this.entityCategory = entity.entityCategory || '';
-    this.entityTypeDisplay = entity.entityTypeDetail || '';
+    this.entityTypeDisplay = entity.entityTypeDisplay || entity.entityTypeDetail || '';
 
     if (changed) {
       this.resetEntityDependentFields();

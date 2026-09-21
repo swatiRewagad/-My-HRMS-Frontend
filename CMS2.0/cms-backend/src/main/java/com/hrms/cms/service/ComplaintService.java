@@ -23,6 +23,7 @@ import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -42,6 +43,7 @@ public class ComplaintService {
     private final ComplaintEligibilityAnswerRepository eligibilityAnswerRepository;
     private final ComplaintAdditionalDetailRepository additionalDetailRepository;
     private final ComplaintRepresentativeRepository representativeRepository;
+    private final ComplaintReadReceiptRepository readReceiptRepository;
     private final ObjectMapper objectMapper;
 
     @Cacheable(value = "dashboard", unless = "#result == null")
@@ -555,9 +557,28 @@ public class ComplaintService {
      */
     @Transactional(readOnly = true)
     public Page<Complaint> getStreamedComplaints(int page, int size) {
-        return complaintRepository.findAll(
+        Page<Complaint> complaints = complaintRepository.findAll(
                 PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "id"))
         );
+        attachReadReceipts(complaints.getContent());
+        return complaints;
+    }
+
+    /**
+     * Fills in each complaint's readers, which only this stream needs: cms-search-service rebuilds the
+     * whole index from it, and read state is per officer, so a page without the receipts would reindex
+     * every complaint as unread for everyone who had already opened it.
+     */
+    private void attachReadReceipts(List<Complaint> complaints) {
+        if (complaints.isEmpty()) {
+            return;
+        }
+        Map<Long, List<String>> readersByComplaint = readReceiptRepository
+                .findByComplaintIdIn(complaints.stream().map(Complaint::getId).toList())
+                .stream()
+                .collect(Collectors.groupingBy(ComplaintReadReceipt::getComplaintId,
+                        Collectors.mapping(ComplaintReadReceipt::getUsername, Collectors.toList())));
+        complaints.forEach(c -> c.setReadBy(readersByComplaint.getOrDefault(c.getId(), List.of())));
     }
 
     @Transactional(readOnly = true)

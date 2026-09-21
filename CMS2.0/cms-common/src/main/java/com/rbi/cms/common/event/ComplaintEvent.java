@@ -25,6 +25,11 @@ public class ComplaintEvent {
     @JsonDeserialize(using = ComplaintStatusDeserializer.class)
     private ComplaintStatus currentStatus;
     private String assignedTo;
+    /**
+     * Username of the officer who opened the complaint. Carried only by {@code complaint.read}, where it
+     * is mandatory: read state is per officer, so an event without it cannot be attributed to anyone.
+     */
+    private String readBy;
     private String department;
     private String regionalOffice;
     private String payload;

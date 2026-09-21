@@ -43,7 +43,7 @@ This is a **microservices-based complaint management system** for RBI (Reserve B
 |-------|-----------|
 | Frontend | Angular 21, PrimeNG 21, keycloak-js 26, SCSS |
 | Backend | Java 21, Spring Boot 3.4.1, Spring Security OAuth2 |
-| Database | Oracle (prod/SIT), H2 (dev-local) |
+| Database | Oracle (prod/SIT), MySQL (dev-local), H2 (tests only) |
 | Messaging | Apache Kafka (Transactional Outbox Pattern) |
 | Auth | Keycloak 26 (OIDC/PKCE, realm: `rbi-cms`) |
 | Search | OpenSearch 2.18 |
@@ -98,8 +98,11 @@ complaint.inprogress  → Work started
 complaint.escalated   → SLA breach / manual escalation
 complaint.resolved    → Resolution provided
 complaint.closed      → Final closure
+complaint.read        → An officer opened the complaint (carries readBy; read state is per officer)
 complaint.dlq         → Dead letter (permanently failed)
 ```
+
+Topic names are defined once in `cms-common` `KafkaTopics`; never re-declare them as string literals.
 
 Flow: Service writes to `OUTBOX_EVENTS` table → `cms-outbox-publisher` polls (5s interval, max 5 retries) → publishes to Kafka topic → marks as PUBLISHED.
 
@@ -122,13 +125,19 @@ Backend validates JWT via `spring.security.oauth2.resourceserver.jwt.issuer-uri`
 
 ## Running Locally
 
-### Quick Start (cms-backend only, H2 in-memory)
+### Quick Start (cms-backend only)
 ```bash
 cd cms-backend
 mvn spring-boot:run -Dspring-boot.run.profiles=dev-local
 ```
-- No Kafka/Oracle needed
-- H2 console: http://localhost:8082/h2-console
+- Needs MySQL on `localhost:3306` with schema `CMS_DB` (`application-dev-local.yml`). Without it startup
+  fails at pool initialisation with `Connection refused`. No Kafka/Oracle/Keycloak needed.
+- `ddl-auto: update`, so entity changes reach the schema without running the `database/` migrations.
+  Those still have to be written: prod runs `ddl-auto: validate` and fails startup on a missing table.
+- Seeds itself on first boot: `DataInitializer` (reference data) and `RbioDevDataLoader` (RBIO
+  complaints with all their child rows). Both no-op once the data is there.
+- The RBIO dashboard grid reads OpenSearch, not this database, so it stays empty until
+  `cms-search-service` is up and reindexed — see `RbioDevDataLoader`'s javadoc for the two curls.
 - Encryption secret pre-configured in `application-dev-local.yml`
 
 ### Full Stack (requires Kafka + Oracle on server)
