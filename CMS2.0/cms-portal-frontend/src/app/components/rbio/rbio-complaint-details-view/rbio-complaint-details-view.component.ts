@@ -6,11 +6,14 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { HttpClient } from '@angular/common/http';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { ButtonModule } from 'primeng/button';
+import { ToastModule } from 'primeng/toast';
+import { MessageService } from 'primeng/api';
 import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
 import { NavigationService } from '../../../services/navigation.service';
 import { environment } from '../../../../environments/environment';
 import { SpeechButtonComponent } from '../../../shared/speech-button/speech-button.component';
 import { RbioHeaderComponent } from '../rbio-header/rbio-header.component';
+import { RbioSidebarComponent } from '../rbio-sidebar/rbio-sidebar.component';
 // import { RbioHeader } from '../rbio-header/rbio-header';
 
 
@@ -202,7 +205,8 @@ interface EntityDetail extends EntitySearchResult {
 
 @Component({
   selector: 'app-rbio-complaint-details-view',
-  imports: [CommonModule, FormsModule, ButtonModule, SpeechButtonComponent,RbioHeaderComponent],
+  imports: [CommonModule, FormsModule, ButtonModule, ToastModule, SpeechButtonComponent, RbioHeaderComponent, RbioSidebarComponent],
+  providers: [MessageService],
   templateUrl: './rbio-complaint-details-view.component.html',
   styleUrl: './rbio-complaint-details-view.component.scss',
 })
@@ -214,6 +218,7 @@ export class RbioComplaintDetailsView implements OnInit {
   private http = inject(HttpClient);
   private sanitizer = inject(DomSanitizer);
   private auth = inject(KeycloakAuthService);
+  private messageService = inject(MessageService);
   activatedRoute = inject(ActivatedRoute)
   private destroyRef = inject(DestroyRef);
 
@@ -447,6 +452,20 @@ export class RbioComplaintDetailsView implements OnInit {
   gistOfCase = '';
   gistOfCaseRegional = '';
 
+  // Final Decision — Advisory fields
+  advisoryComplianceDate = '';
+  advisoryDisputeAmount: number | null = null;
+  advisoryCompensationLoss: number | null = null;
+  advisoryCompensationMental: number | null = null;
+
+  // Final Decision — Award fields
+  awardImplementationDate = '';
+  awardAcceptanceDate = '';
+
+  // Final Decision — Reject/Withdraw/Settle
+  rejectWithdrawSettleSubAction: 'REJECT' | 'WITHDRAW' | 'SETTLE' | '' = '';
+  rejectWithdrawSettleReason = '';
+
   // Validation
   formSubmitAttempted = false;
   fieldErrors: Record<string, string> = {};
@@ -456,6 +475,7 @@ export class RbioComplaintDetailsView implements OnInit {
   assessmentComment = '';
   speakingOrderContent = '';
   proposedAction = '';
+  private proposedActionBeforeDeputy = '';
   proposedClause = '';
   clauseSearch = '';
   clauseDropdownOpen = false;
@@ -468,11 +488,9 @@ export class RbioComplaintDetailsView implements OnInit {
   // Conciliation is the DO's own step; every other rung on the ladder only ever reads its outcome.
   conciliationEnabled = computed(() => {
     if (!this.isRbioDo() || this.userRole() !== 'DO') return false;
-    const action = this.workflowAction();
     const status = this.complaintStatus();
     const excludedStatuses = ['ADVISORY_COMPLIED', 'COMPLAINT_SETTLED', 'COMPLAINT_WITHDRAWN', 'COMPLAINT_REJECTED', 'AWARD_PASSED', 'OMBUDSMAN_DECISION'];
-    if (excludedStatuses.includes(status)) return false;
-    return action === 'MAINTAINABLE';
+    return !excludedStatuses.includes(status);
   });
   // ═══ Conciliation tab ═══
   readonly conciliationStatuses = [
@@ -496,6 +514,7 @@ export class RbioComplaintDetailsView implements OnInit {
   conciliationError = signal('');
   conciliationSaved = signal(false);
   conciliationFieldErrors = signal<Record<string, string>>({});
+  showConciliationDialog = signal(false);
   private conciliationLoadedFor = '';
 
   // Getters, not computed(): meetingStatus is an ngModel field rather than a signal.
@@ -573,6 +592,7 @@ export class RbioComplaintDetailsView implements OnInit {
   approvalCrpcClause = '';
   systemicIssue = '';
   assessmentComments = signal<{ id: number;author: string; target:string; complaintNumber:string; initials: string;  time?: string; text: string; color: string; role?: string; noRecordNumber:string; createdAt?: string }[]>([]);
+  expandedComments = new Set<number>();
 
   // Forward Tab
   forwardTarget = signal<'REGULATORY_BODIES' | 'RBI_DEPARTMENT' | 'OFFICE' | ''>('');
@@ -1279,6 +1299,9 @@ private getStatusColor(status: string): string {
         this.entityPincode =
           data.entityDetails?.pincode || '';
 
+        this.entityCountry =
+          data.entityDetails?.country || 'India';
+
         this.entityState =
           data.entityDetails?.state || '';
 
@@ -1296,6 +1319,9 @@ private getStatusColor(status: string): string {
 
         this.entityAddress =
           data.entityDetails?.entityAddress || '';
+
+        this.branchCenterName =
+          data.entityDetails?.branchCenterName || '';
 
         /* Basic Identification */
 
@@ -2049,12 +2075,13 @@ private getStatusColor(status: string): string {
         this.justActioned.set(true);
         this.complaintStatus.set('SENT_BACK');
       },
-      error: () => {
+      error: (err: any) => {
         this.sendBackSubmitting.set(false);
-        this.showSendBackDialog.set(false);
-        this.approvalSentTo.set(this.sendBackSelectedName);
-        this.justActioned.set(true);
-        this.complaintStatus.set('SENT_BACK');
+        this.messageService.add({
+          severity: 'error',
+          summary: 'Send Back Failed',
+          detail: err?.error?.message || 'Could not send back the complaint. Please try again.'
+        });
       }
     });
   }
@@ -2072,9 +2099,13 @@ private getStatusColor(status: string): string {
     }
   }
 
+  get decisionLabel(): string {
+    return this.userRole() === 'OMBUDSMAN' ? 'Ombudsman Decision' : 'Deputy Ombudsman Decision';
+  }
+
   get approvalStatusLabel(): string {
     switch (this.approvalTarget()) {
-      case 'DEALING_OFFICER': return 'Deputy Ombudsman Decision';
+      case 'DEALING_OFFICER': return this.decisionLabel;
       case 'REVIEWER': return 'Sent to RBIO Reviewer';
       case 'DEPUTY_OMBUDSMAN': return 'Sent to Deputy Ombudsman';
       case 'OMBUDSMAN': return 'Sent to Ombudsman';
@@ -2121,12 +2152,13 @@ private getStatusColor(status: string): string {
         this.justActioned.set(true);
         this.complaintStatus.set('SENT');
       },
-      error: () => {
+      error: (err: any) => {
         this.approvalSubmitting.set(false);
-        this.showApprovalDialog.set(false);
-        this.approvalSentTo.set(this.approvalSelectedName);
-        this.justActioned.set(true);
-        this.complaintStatus.set('SENT');
+        this.messageService.add({
+          severity: 'error',
+          summary: 'Approval Failed',
+          detail: err?.error?.message || 'Could not send for approval. Please try again.'
+        });
       }
     });
   }
@@ -2135,40 +2167,161 @@ private getStatusColor(status: string): string {
     this.showApprovalDialog.set(false);
   }
 
-  confirmCloseComplaint() {
+  onSendToDeputyChange(): void {
+    if (this.sendToDeputy) {
+      this.proposedActionBeforeDeputy = this.proposedAction;
+      this.proposedAction = this.deputyOmbudsmanDecision;
+      this.proposedClause = '';
+      this.clauseSearch = '';
+    } else {
+      this.proposedAction = this.proposedActionBeforeDeputy;
+    }
+  }
+
+  onDeputyDecisionChange(): void {
+    if (this.sendToDeputy) {
+      this.proposedAction = this.deputyOmbudsmanDecision;
+    }
+  }
+
+  selectFinalDecisionAction(action: string): void {
+    this.finalDecisionAction = action;
+    this.closureClause = '';
+    this.closureClauseSearch = '';
+    this.closureClauseDescription = '';
+    this.complaintStatusOnPortal = '';
+    this.speakingOrderGenerated = '';
+    this.gistOfCase = '';
+    this.gistOfCaseRegional = '';
+    this.advisoryComplianceDate = '';
+    this.advisoryDisputeAmount = null;
+    this.advisoryCompensationLoss = null;
+    this.advisoryCompensationMental = null;
+    this.awardImplementationDate = '';
+    this.awardAcceptanceDate = '';
+    this.rejectWithdrawSettleSubAction = '';
+    this.rejectWithdrawSettleReason = '';
+  }
+
+  get canConfirmFinalDecision(): boolean {
+    if (!this.finalDecisionAction) return false;
+    if (this.finalDecisionAction === 'REJECT_WITHDRAW_SETTLE' && !this.rejectWithdrawSettleSubAction) return false;
+    return true;
+  }
+
+  getFinalDecisionLabel(): string {
+    switch (this.finalDecisionAction) {
+      case 'CLOSE': return 'Close Complaint';
+      case 'ADVISORY': return 'Compile Advisory';
+      case 'AWARD': return 'Pass Award';
+      case 'REJECT_WITHDRAW_SETTLE':
+        const subLabels: Record<string, string> = {
+          'REJECT': 'Reject Complaint',
+          'WITHDRAW': 'Withdraw Complaint',
+          'SETTLE': 'Settle Complaint'
+        };
+        return subLabels[this.rejectWithdrawSettleSubAction] || 'Reject/Withdraw/Settle';
+      default: return 'Final Decision';
+    }
+  }
+
+  getExpectedStatusAfterDecision(): string {
+    switch (this.finalDecisionAction) {
+      case 'CLOSE': return 'Complaint Closed';
+      case 'ADVISORY': return 'Advisory Complied';
+      case 'AWARD': return 'Award Passed';
+      case 'REJECT_WITHDRAW_SETTLE':
+        const subStatuses: Record<string, string> = {
+          'REJECT': 'Complaint Rejected',
+          'WITHDRAW': 'Complaint Withdrawn',
+          'SETTLE': 'Complaint Settled'
+        };
+        return subStatuses[this.rejectWithdrawSettleSubAction] || '—';
+      default: return '—';
+    }
+  }
+
+  confirmFinalDecision() {
     if (this.finalDecisionSubmitting()) return;
     this.finalDecisionSubmitting.set(true);
 
     this.persistComment();
 
-    const payload = {
-      target: 'CLOSE',
+    const base: Record<string, any> = {
       assignedTo: this.loggedInUserName,
       assignedToName: this.loggedInUserName,
       assignmentMode: 'FINAL_DECISION',
-      remarks: this.closureClauseDescription || this.finalDecisionRemarks,
-      closureClause: this.closureClause,
-      complaintStatusOnPortal: this.complaintStatusOnPortal,
-      speakingOrderGenerated: this.speakingOrderGenerated,
-      gistOfCase: this.gistOfCase,
-      gistOfCaseRegional: this.gistOfCaseRegional,
       performedBy: this.auth.currentUser()?.username || ''
     };
+
+    let payload: Record<string, any>;
+
+    switch (this.finalDecisionAction) {
+      case 'CLOSE':
+        payload = {
+          ...base,
+          target: 'CLOSE',
+          remarks: this.closureClauseDescription || this.finalDecisionRemarks,
+          closureClause: this.closureClause,
+          complaintStatusOnPortal: this.complaintStatusOnPortal,
+          speakingOrderGenerated: this.speakingOrderGenerated,
+          gistOfCase: this.gistOfCase,
+          gistOfCaseRegional: this.gistOfCaseRegional
+        };
+        break;
+      case 'ADVISORY':
+        payload = {
+          ...base,
+          target: 'ADVISORY',
+          advisoryComplianceDate: this.advisoryComplianceDate || null,
+          disputeAmount: this.advisoryDisputeAmount,
+          compensationLoss: this.advisoryCompensationLoss,
+          compensationMental: this.advisoryCompensationMental
+        };
+        break;
+      case 'AWARD':
+        payload = {
+          ...base,
+          target: 'AWARD',
+          awardImplementationDate: this.awardImplementationDate || null,
+          awardAcceptanceDate: this.awardAcceptanceDate || null
+        };
+        break;
+      case 'REJECT_WITHDRAW_SETTLE':
+        payload = {
+          ...base,
+          target: this.rejectWithdrawSettleSubAction,
+          remarks: this.rejectWithdrawSettleReason
+        };
+        break;
+      default:
+        this.finalDecisionSubmitting.set(false);
+        return;
+    }
+
+    const statusMap: Record<string, string> = {
+      'CLOSE': 'CLOSED',
+      'ADVISORY': 'ADVISORY_COMPLIED',
+      'AWARD': 'AWARD_PASSED',
+      'REJECT': 'COMPLAINT_REJECTED',
+      'WITHDRAW': 'COMPLAINT_WITHDRAWN',
+      'SETTLE': 'COMPLAINT_SETTLED'
+    };
+    const targetKey = this.finalDecisionAction === 'REJECT_WITHDRAW_SETTLE'
+      ? this.rejectWithdrawSettleSubAction
+      : this.finalDecisionAction;
+    const newStatus = statusMap[targetKey] || 'CLOSED';
 
     this.http.post(`${environment.apiBaseUrl}/api/v1/complaints/${this.complaintNumber}/send-for-approval`, payload).subscribe({
       next: () => {
         this.finalDecisionSubmitting.set(false);
         this.showFinalDecisionPreview.set(false);
         this.justActioned.set(true);
-        this.complaintStatus.set('CLOSED');
-        this.approvalSentTo.set('CLOSED');
+        this.complaintStatus.set(newStatus);
+        this.approvalSentTo.set(newStatus);
       },
       error: () => {
         this.finalDecisionSubmitting.set(false);
-        this.showFinalDecisionPreview.set(false);
-        this.justActioned.set(true);
-        this.complaintStatus.set('CLOSED');
-        this.approvalSentTo.set('CLOSED');
       }
     });
   }
@@ -2341,14 +2494,21 @@ private getStatusColor(status: string): string {
     return Object.keys(errors).length === 0;
   }
 
-  saveConciliation() {
+  openConciliationDialog() {
     if (this.isReadOnlyViewer() || !this.complaintId) return;
     this.conciliationSaved.set(false);
     this.conciliationError.set('');
     if (!this.validateConciliation()) return;
+    this.showConciliationDialog.set(true);
+  }
 
-    // Every field is sent so clearing one actually clears it: the backend treats an absent key as
-    // "leave alone" and a present null as "clear".
+  cancelConciliationDialog() {
+    this.showConciliationDialog.set(false);
+  }
+
+  confirmConciliationDialog() {
+    if (this.conciliationSaving()) return;
+
     const payload = {
       meetingStatus: this.meetingStatus,
       meetingDate: this.meetingDate || null,
@@ -2368,11 +2528,14 @@ private getStatusColor(status: string): string {
           this.applyConciliation(res?.data || {});
           this.conciliationSaving.set(false);
           this.conciliationSaved.set(true);
+          this.showConciliationDialog.set(false);
+          this.complaintStatus.set('MEETING_SCHEDULED');
         },
         error: (err) => {
           this.conciliationSaving.set(false);
           this.conciliationError.set(err?.error?.message
             || 'Could not save the conciliation details. Check the fields and try again.');
+          this.showConciliationDialog.set(false);
         }
       });
   }
@@ -2644,6 +2807,14 @@ private getStatusColor(status: string): string {
     return `${day} ${mon} ${year}, ${hrs}:${mins}`;
   }
 
+  toggleCommentExpand(commentId: number) {
+    if (this.expandedComments.has(commentId)) {
+      this.expandedComments.delete(commentId);
+    } else {
+      this.expandedComments.add(commentId);
+    }
+  }
+
   getStatusLabel(): string {
     const status = this.complaintStatus();
     const labels: Record<string, string> = {
@@ -2873,6 +3044,15 @@ private getStatusColor(status: string): string {
   }
 
   updateComplaint() {
+    if (!this.declarationAccepted) {
+      this.summarySections.declaration = true;
+      this.messageService.add({
+        severity: 'warn',
+        summary: 'Declaration Required',
+        detail: 'Please accept the declaration before updating the complaint.'
+      });
+      return;
+    }
     this.saving.set(true);
     this.saveError.set('');
     this.http.put<any>(`${environment.apiBaseUrl}/api/complaints/rbio/${this.complaintId}/summary`,
@@ -2971,13 +3151,13 @@ private getStatusColor(status: string): string {
   }
 
   handleAttachmentsClick(): void {
-    this.attachmentsPanelOpen.set(!this.attachmentsPanelOpen());
-  
-    console.log('Sidebar clicked. Is open state:', this.attachmentsPanelOpen());
-  
-    if (this.attachmentsPanelOpen()) {
-      console.log('Sidebar is opening! Triggering GET API call...');
-      this.fetchAttachments(); 
+    const opening = !this.attachmentsPanelOpen();
+    this.attachmentsPanelOpen.set(opening);
+
+    if (opening) {
+      this.rightSidebarOpen.set(false);
+      this.showHistoryPanel.set(false);
+      this.fetchAttachments();
     }
   }
   
@@ -3072,11 +3252,12 @@ previewSidebarAttachment(file: any): void {
 }
 
 handleHistoryClick(): void {
-  // 1. Toggle visibility panel layout display open or closed
-  this.showHistoryPanel.set(!this.showHistoryPanel());
+  const opening = !this.showHistoryPanel();
+  this.showHistoryPanel.set(opening);
 
-  // 2. Automatically load data from backend server if panel has been opened
-  if (this.showHistoryPanel()) {
+  if (opening) {
+    this.rightSidebarOpen.set(false);
+    this.attachmentsPanelOpen.set(false);
     this.fetchComplaintHistory();
   }
 }

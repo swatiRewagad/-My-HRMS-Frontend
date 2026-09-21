@@ -1,3 +1,4 @@
+<p-toast position="top-right"></p-toast>
 <div class="draft-assessment">
   <!-- ═══ HEADER BAR ═══ -->
  <app-rbio-header></app-rbio-header>
@@ -51,12 +52,7 @@
   } @else if (submitted()) {
     <!-- ═══ ASSESSMENT VIEW ═══ -->
     <div class="assessment-container">
-      <!-- Dark Blue Vertical Sidebar Nav -->
-      <nav class="side-nav">
-        <button class="side-nav-btn active" title="Complaint view"><i class="pi pi-file"></i></button>
-        <button class="side-nav-btn" title="Dashboard" (click)="goBack()"><i class="pi pi-chart-bar"></i></button>
-        <button class="side-nav-btn" title="Expand"><i class="pi pi-arrows-alt"></i></button>
-      </nav>
+      <app-rbio-sidebar [initialCollapsed]="true" />
 
       <!-- Main Frame (tab bar + content) -->
       <div class="main-frame">
@@ -138,7 +134,7 @@
               }
             } @else if (isReadOnlyViewer()) {
               <span class="readonly-badge"><i class="pi pi-eye"></i> View Only</span>
-            } @else if (complaintStatus() !== 'VIEW_ONLY' && complaintStatus() !== 'SENT_BACK' && complaintStatus() !== 'SENT' && complaintStatus() !== 'CLOSED' && assessmentTab() !== 'final-decision' && assessmentTab() !== 'forward' && assessmentTab() !== 'nodal-officer') {
+            } @else if (complaintStatus() !== 'VIEW_ONLY' && complaintStatus() !== 'SENT_BACK' && complaintStatus() !== 'SENT' && complaintStatus() !== 'CLOSED' && assessmentTab() !== 'final-decision' && assessmentTab() !== 'forward' && assessmentTab() !== 'nodal-officer' && assessmentTab() !== 'conciliation') {
               @if (userRole() !== 'DO') {
                 <div class="send-back-wrapper">
                   <button class="btn btn-send-back" (click)="toggleSendBackMenu($event)">
@@ -159,7 +155,7 @@
                   Send for Approval <i class="pi pi-chevron-down"></i>
                 </button> -->
                 @if (complaintStatus() === 'NEW_COMPLAINT') {
-                  <button class="btn btn-send-approval" (click)="toggleApprovalMenu($event)">
+                  <button class="btn btn-send-approval" [disabled]="sendToDeputy" (click)="toggleApprovalMenu($event)">
                     Send for Approval <i class="pi pi-chevron-down"></i>
                   </button>
                 }
@@ -182,12 +178,20 @@
               <span class="readonly-badge sent-back-badge"><i class="pi pi-arrow-left"></i> Sent Back</span>
             } @else if (complaintStatus() === 'SENT') {
               <span class="readonly-badge sent-badge"><i class="pi pi-check"></i> Sent for Approval</span>
-            } @else if (assessmentTab() !== 'final-decision' && assessmentTab() !== 'forward' && assessmentTab() !== 'nodal-officer') {
+            } @else if (assessmentTab() !== 'final-decision' && assessmentTab() !== 'forward' && assessmentTab() !== 'nodal-officer' && assessmentTab() !== 'conciliation') {
               <span class="readonly-badge"><i class="pi pi-lock"></i> View Only</span>
             }
-            @if (!isReadOnlyViewer() && userRole() !== 'HEAD') {
+            @if (assessmentTab() === 'conciliation' && !isReadOnlyViewer() && complaintStatus() !== 'VIEW_ONLY') {
+              <button class="btn btn-confirm" (click)="openConciliationDialog()" [disabled]="conciliationSaving()">
+                @if (conciliationSaving()) {
+                  <i class="pi pi-spin pi-spinner"></i> Saving…
+                } @else {
+                  Confirm
+                }
+              </button>
+            } @else if (!isReadOnlyViewer() && userRole() !== 'HEAD') {
               @if (assessmentTab() === 'final-decision') {
-                <button class="btn btn-confirm" [disabled]="!finalDecisionAction" (click)="showFinalDecisionPreview.set(true)">
+                <button class="btn btn-confirm" [disabled]="!canConfirmFinalDecision" (click)="showFinalDecisionPreview.set(true)">
                   Confirm
                 </button>
               } @else if (assessmentTab() === 'forward') {
@@ -215,7 +219,7 @@
         <div class="page-tabs">
           <button class="page-tab" [class.active]="assessmentTab() === 'summary'" (click)="assessmentTab.set('summary')">Summary</button>
           @if (userRole() !== 'HEAD') {
-            <button class="page-tab" [class.active]="assessmentTab() === 'conciliation'" [class.disabled]="!conciliationEnabled() || userRole() === 'REVIEWER' || userRole() === 'DEPUTY_OMBUDSMAN'" [disabled]="!conciliationEnabled() || userRole() === 'REVIEWER' || userRole() === 'DEPUTY_OMBUDSMAN'" (click)="assessmentTab.set('conciliation')">Conciliation</button>
+            <button class="page-tab" [class.active]="assessmentTab() === 'conciliation'" [class.disabled]="!conciliationEnabled()" [disabled]="!conciliationEnabled()" (click)="assessmentTab.set('conciliation')">Conciliation</button>
             <button class="page-tab" [class.active]="assessmentTab() === 'forward'" [class.disabled]="userRole() !== 'OMBUDSMAN' && userRole() !== 'DEPUTY_OMBUDSMAN'" [disabled]="userRole() !== 'OMBUDSMAN' && userRole() !== 'DEPUTY_OMBUDSMAN'" (click)="assessmentTab.set('forward')">Forward</button>
             <button class="page-tab" [class.active]="assessmentTab() === 'final-decision'" (click)="assessmentTab.set('final-decision')">Final Decision</button>
             <button class="page-tab" [class.active]="assessmentTab() === 'nodal-officer'" [class.disabled]="userRole() === 'REVIEWER' || userRole() === 'DEPUTY_OMBUDSMAN'" [disabled]="userRole() === 'REVIEWER' || userRole() === 'DEPUTY_OMBUDSMAN'" (click)="openNodalOfficerTab()">Nodal Officer Record</button>
@@ -515,7 +519,17 @@
                           <span class="comment-timestamp">{{ nodalCommentTimeAgo(comment.createdAt) }}</span>
                           <span class="comment-target-badge" [class.no-badge]="comment.target === 'NO'" [class.pno-badge]="comment.target === 'PNO'">Comment to {{ comment.target }}</span>
                         </div>
-                        <p class="comment-body">{{ comment.text }}</p>
+                        <p class="comment-body">
+                          @if (comment.text.length > 150 && !expandedComments.has(comment.id)) {
+                            {{ comment.text.substring(0, 150) }}
+                            <a class="read-more" (click)="toggleCommentExpand(comment.id)">...read more</a>
+                          } @else {
+                            {{ comment.text }}
+                            @if (comment.text.length > 150) {
+                              <a class="read-more" (click)="toggleCommentExpand(comment.id)">show less</a>
+                            }
+                          }
+                        </p>
                       </div>
                     } @empty {
                       <p class="no-comments-text">No comments yet.</p>
@@ -602,293 +616,6 @@
           </div>
         </div>
       }
-    } @else if (assessmentTab() === 'forward') {
-
-    <!-- ═══ FORWARD TAB ═══ -->
-    <div class="content-box">
-      <div class="main-content-layout two-col">
-        <!-- LEFT: Read-only Complaint Summary -->
-        <div class="col-email-syndicate">
-          <div class="panel-header">
-            <h3><i class="pi pi-th-large"></i> Complaint</h3>
-            <!-- <button class="expand-btn"><i class="pi pi-window-maximize"></i></button> -->
-          </div>
-          <div class="form-scroll">
-            <section class="form-section">
-              <h5 class="section-title expanded" [class.expanded]="summarySections.basic" (click)="summarySections.basic = !summarySections.basic">
-                <i class="pi pi-chart-bar"></i> Basic Details
-                <i class="pi section-chevron" [class.pi-chevron-up]="summarySections.basic" [class.pi-chevron-down]="!summarySections.basic"></i>
-              </h5>
-              @if (summarySections.basic) {
-                <div class="summary-fields">
-                  <div class="summary-row">
-                    <div class="summary-field">
-                      <span class="summary-label">Complainant Name</span>
-                      <span class="summary-value">{{ complainantName || '—' }}</span>
-                    </div>
-                    <div class="summary-field">
-                      <span class="summary-label">Email ID</span>
-                      <span class="summary-value">{{ complainantEmail || '—' }}</span>
-                    </div>
-                  </div>
-                  <div class="summary-field full">
-                    <span class="summary-label">Subject</span>
-                    <span class="summary-value">{{ subject || '—' }}</span>
-                  </div>
-                  <div class="summary-field full">
-                    <span class="summary-label">Complaint Details</span>
-                    <span class="summary-value">{{ description || '—' }}</span>
-                  </div>
-                  <div class="summary-field full">
-                    <span class="summary-label">Comments</span>
-                    <span class="summary-value">{{ comments || '—' }}</span>
-                  </div>
-                  <div class="summary-row">
-                    <div class="summary-field">
-                      <span class="summary-label">Mode of Receipt</span>
-                      <span class="summary-value">{{ modeOfReceipt || '—' }}</span>
-                    </div>
-                    <div class="summary-field">
-                      <span class="summary-label">Receipt Date</span>
-                      <span class="summary-value">{{ receivedDate || '—' }}</span>
-                    </div>
-                  </div>
-                  <div class="summary-field full cpgram-checkbox-row">
-                    <label class="cpgram-checkbox-label">
-                      <input type="checkbox" [checked]="isCpgram" disabled />
-                      <span>Is Complaint CPGRAM</span>
-                    </label>
-                  </div>
-                  @if (isCpgram) {
-                    <div class="summary-field full">
-                      <span class="summary-label">CPGRAM Number</span>
-                      <span class="summary-value cpgram-number">{{ cpgramsNumber || '—' }}</span>
-                    </div>
-                  }
-                </div>
-              }
-            </section>
-
-            <section class="form-section eligibility-section">
-              <h5 class="section-title expanded" [class.expanded]="summarySections.eligibility" (click)="summarySections.eligibility = !summarySections.eligibility">
-                <i class="pi pi-chart-bar"></i> Eligibility
-                <i class="pi section-chevron" [class.pi-chevron-up]="summarySections.eligibility" [class.pi-chevron-down]="!summarySections.eligibility"></i>
-              </h5>
-              @if (summarySections.eligibility) {
-                <div class="summary-fields">
-                  <div class="summary-row">
-                    <div class="summary-field">
-                      <span class="summary-label">Proposed Complaint Type</span>
-                      <span class="summary-value">{{ complaintStatusNav || '—' }}</span>
-                    </div>
-                    <div class="summary-field">
-                      <span class="summary-label">Entity Name</span>
-                      <span class="summary-value">{{ eligibilityEntityName || '—' }}</span>
-                    </div>
-                  </div>
-                </div>
-                <div class="eligibility-questions readonly">
-                  @for (q of eligibilityQuestions; track q.key) {
-                    <div class="eligibility-row" [class.date-row]="q.type === 'date'">
-                      <span class="eligibility-question">{{ q.label }}</span>
-                      @if (q.type === 'radio') {
-                        <div class="eligibility-options">
-                          <label class="radio-option">
-                            <input type="radio" [name]="'fwd_' + q.key" [value]="true" [(ngModel)]="q.answer" disabled />
-                            <span>Yes</span>
-                          </label>
-                          <label class="radio-option">
-                            <input type="radio" [name]="'fwd_' + q.key" [value]="false" [(ngModel)]="q.answer" disabled />
-                            <span>No</span>
-                          </label>
-                        </div>
-                      } @else if (q.type === 'date') {
-                        <div class="eligibility-date-input">
-                          <input type="date" [name]="'fwd_' + q.key" [(ngModel)]="q.dateValue" disabled />
-                          <i class="pi pi-calendar date-icon"></i>
-                        </div>
-                      }
-                    </div>
-                  }
-                </div>
-              }
-            </section>
-          </div>
-        </div>
-
-        <!-- RIGHT: Forward Panel -->
-        <div class="col-complaint-form forward-panel">
-          <div class="panel-header">
-            <h3><i class="pi pi-arrow-up-right"></i> Forward</h3>
-            <!-- <button class="expand-btn"><i class="pi pi-window-maximize"></i></button> -->
-          </div>
-
-          <div class="form-scroll">
-            <label class="forward-to-label">Forward To</label>
-            <div class="forward-target-cards">
-              <div class="forward-target-card" [class.selected]="forwardTarget() === 'REGULATORY_BODIES'" (click)="selectForwardTarget('REGULATORY_BODIES')">
-                <span class="radio-dot" [class.checked]="forwardTarget() === 'REGULATORY_BODIES'"></span>
-                Other Regulatory Bodies
-              </div>
-              <div class="forward-target-card" [class.selected]="forwardTarget() === 'RBI_DEPARTMENT'" (click)="selectForwardTarget('RBI_DEPARTMENT')">
-                <span class="radio-dot" [class.checked]="forwardTarget() === 'RBI_DEPARTMENT'"></span>
-                Other RBI Department
-              </div>
-              <div class="forward-target-card" [class.selected]="forwardTarget() === 'OFFICE'" (click)="selectForwardTarget('OFFICE')">
-                <span class="radio-dot" [class.checked]="forwardTarget() === 'OFFICE'"></span>
-                Other Office
-              </div>
-            </div>
-
-            @if (forwardFieldErrors()['target']) {
-              <span class="field-error">{{ forwardFieldErrors()['target'] }}</span>
-            }
-
-            @if (forwardTarget() === 'REGULATORY_BODIES') {
-              <div class="form-row-2col">
-                <div class="form-group entity-search-group">
-                  <label>Name of Regulator <span class="required">*</span></label>
-                  <div class="entity-search-wrapper">
-                    <input type="text"
-                           [ngModel]="forwardRegulatorName"
-                           (ngModelChange)="onRegulatorSearchInput($event)"
-                           (focus)="openRegulatorDropdown()"
-                           (blur)="onRegulatorBlur()"
-                           placeholder="Search regulators"
-                           autocomplete="off" />
-                    <i class="pi entity-search-icon"
-                       [class.pi-search]="!regulatorSearchLoading()"
-                       [class.pi-spinner]="regulatorSearchLoading()"
-                       [class.pi-spin]="regulatorSearchLoading()"></i>
-                  </div>
-                  @if (showRegulatorDropdown() && !regulatorSearchLoading() && regulatorResults().length === 0) {
-                    <ul class="entity-dropdown">
-                      <li class="entity-dropdown-empty">No regulator matches that name</li>
-                    </ul>
-                  }
-                  @if (showRegulatorDropdown() && regulatorResults().length > 0) {
-                    <ul class="entity-dropdown">
-                      @for (regulator of regulatorResults(); track regulator.id) {
-                        <!-- mousedown, not click: blur fires first and closes the list. -->
-                        <li (mousedown)="selectRegulator(regulator)">
-                          <span class="entity-name">{{ regulator.name }}</span>
-                          <span class="entity-dept">{{ regulator.code }}</span>
-                        </li>
-                      }
-                    </ul>
-                  }
-                  @if (forwardFieldErrors()['regulator']) {
-                    <span class="field-error">{{ forwardFieldErrors()['regulator'] }}</span>
-                  }
-                </div>
-                <div class="form-group">
-                  <label>Email id of the Regulator <span class="required">*</span></label>
-                  <!-- Filled from the picked master row, editable so a stale address can be corrected. -->
-                  <input type="email" [(ngModel)]="forwardRegulatorEmail" placeholder="Select a regulator above" />
-                  @if (forwardFieldErrors()['regulatorEmail']) {
-                    <span class="field-error">{{ forwardFieldErrors()['regulatorEmail'] }}</span>
-                  }
-                </div>
-              </div>
-            } @else if (forwardTarget() === 'RBI_DEPARTMENT') {
-              <div class="form-row-2col">
-                <div class="form-group entity-search-group">
-                  <label>Name of Department <span class="required">*</span></label>
-                  <div class="entity-search-wrapper">
-                    <input type="text"
-                           [ngModel]="forwardDepartmentName"
-                           (ngModelChange)="onDepartmentSearchInput($event)"
-                           (focus)="openDepartmentDropdown()"
-                           (blur)="onDepartmentBlur()"
-                           placeholder="Search RBI departments"
-                           autocomplete="off" />
-                    <i class="pi entity-search-icon"
-                       [class.pi-search]="!departmentSearchLoading()"
-                       [class.pi-spinner]="departmentSearchLoading()"
-                       [class.pi-spin]="departmentSearchLoading()"></i>
-                  </div>
-                  @if (showDepartmentDropdown() && !departmentSearchLoading() && departmentResults().length === 0) {
-                    <ul class="entity-dropdown">
-                      <li class="entity-dropdown-empty">No department matches that name</li>
-                    </ul>
-                  }
-                  @if (showDepartmentDropdown() && departmentResults().length > 0) {
-                    <ul class="entity-dropdown">
-                      @for (department of departmentResults(); track department.id) {
-                        <!-- mousedown, not click: blur fires first and closes the list. -->
-                        <li (mousedown)="selectDepartment(department)">
-                          <span class="entity-name">{{ department.name }}</span>
-                          <span class="entity-dept">{{ department.code }}</span>
-                        </li>
-                      }
-                    </ul>
-                  }
-                  @if (forwardFieldErrors()['department']) {
-                    <span class="field-error">{{ forwardFieldErrors()['department'] }}</span>
-                  }
-                </div>
-                <div class="form-group">
-                  <label>Email id of the Department <span class="required">*</span></label>
-                  <!-- Filled from the picked master row, editable so a stale address can be corrected. -->
-                  <input type="email" [(ngModel)]="forwardDepartmentEmail" placeholder="Select a department above" />
-                  @if (forwardFieldErrors()['departmentEmail']) {
-                    <span class="field-error">{{ forwardFieldErrors()['departmentEmail'] }}</span>
-                  }
-                </div>
-              </div>
-            } @else if (forwardTarget() === 'OFFICE') {
-              <div class="form-row-2col">
-                <div class="form-group">
-                  <label>Name of Office <span class="required">*</span></label>
-                  <select [ngModel]="forwardOfficeCode" (ngModelChange)="onForwardOfficeSelected($event)">
-                    <option value="" disabled selected>Select an office</option>
-                    @for (office of officeList(); track office.officeCode) {
-                      <option [value]="office.officeCode">{{ office.officeName }} ({{ office.officeType }})</option>
-                    }
-                  </select>
-                  @if (officeList().length === 0) {
-                    <span class="field-hint">Loading offices…</span>
-                  }
-                  @if (forwardFieldErrors()['office']) {
-                    <span class="field-error">{{ forwardFieldErrors()['office'] }}</span>
-                  }
-                </div>
-              </div>
-            }
-
-            <!-- All Comments -->
-            <div class="assessment-comments">
-              <h4 class="comments-title">All Comments</h4>
-
-              @for (comment of assessmentComments(); track comment.id) {
-                <div class="comment-card">
-                  <div class="comment-header">
-                    <span class="comment-avatar" [style.background]="comment.color">{{ comment.initials }}</span>
-                    <span class="comment-author">{{ comment.author }}</span>
-                    <span class="comment-timestamp">{{ formatCommentDate(comment.createdAt || '') }}</span>
-                  </div>
-                  <p class="comment-body">{{ comment.text }}</p>
-                </div>
-              } @empty {
-                <div class="comment-card-No-comments">
-                  No comments
-                </div>
-              }
-            </div>
-
-            <!-- Add Comment -->
-            <div class="add-comment-section">
-              <label class="comment-label">Comments </label>
-              <div class="textarea-with-speech">
-                <textarea [(ngModel)]="assessmentComment" rows="3" placeholder="Enter text here"></textarea>
-                <app-speech-button (transcription)="assessmentComment = assessmentComment + ' ' + $event"></app-speech-button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
     } @else if (assessmentTab() === 'email') {
 
     <!-- ═══ EMAIL COMMUNICATION TAB ═══ -->
@@ -1303,24 +1030,14 @@
                     </div>
                   </div>
                 </div>
-                <div>
-                  @if (editMode()) {
-                      <label class="">
-                          <span class="" [class.active]="true">
-                            <input type="checkbox" [checked]="true"/>
-                            <span class=""></span>
-                          </span>
-                          Mark all as Eligible
-                      </label>
-                    } @else {
-                      <label class="">
-                          <span class="" [class.active]="true">
-                            <input type="checkbox" [checked]="true" disabled/>
-                            <span class=""></span>
-                          </span>
-                          Mark all as Eligible
-                      </label>
-                    }
+                <div class="eligibility-toggle">
+                  <label class="toggle-switch">
+                    <input type="checkbox" [(ngModel)]="markAllEligible"
+                           (ngModelChange)="onMarkAllEligible()"
+                           [disabled]="!editMode()" />
+                    <span class="toggle-slider"></span>
+                  </label>
+                  <span class="toggle-label">Mark all as eligible</span>
                 </div>
                 <div class="eligibility-questions" [class.readonly]="!editMode()">
                   @for (q of eligibilityQuestions; track q.key) {
@@ -1409,7 +1126,7 @@
                       <div class="summary-field">
                           <span class="summary-label">Country</span>
                           @if (editMode()) {
-                            <input type="text" [(ngModel)]="entityState" class="summary-edit-input" />
+                            <input type="text" [(ngModel)]="entityCountry" class="summary-edit-input" />
                           } @else {
                             <span class="summary-value">{{ entityCountry || '—' }}</span>
                           }
@@ -1465,43 +1182,6 @@
                       <span class="summary-value">{{ entityAddress || '—' }}</span>
                     }
                   </div>
-                  <div class="summary-row">
-                      <div class="summary-field">
-                          <span class="summary-label">District</span>
-                          @if (editMode()) {
-                            <input type="text" [(ngModel)]="entityDistrict" class="summary-edit-input" />
-                          } @else {
-                            <span class="summary-value">{{ entityDistrict || '—' }}</span>
-                          }
-                        </div>
-                        <div class="summary-field">
-                          <span class="summary-label">City</span>
-                          @if (editMode()) {
-                            <input type="text" [(ngModel)]="entityCity" class="summary-edit-input" />
-                          } @else {
-                            <span class="summary-value">{{ entityCity || '—' }}</span>
-                          }
-                        </div>
-                  </div>
-
-                  <div class="summary-row">
-                      <div class="summary-field">
-                          <span class="summary-label">District</span>
-                          @if (editMode()) {
-                            <input type="text" [(ngModel)]="entityDistrict" class="summary-edit-input" />
-                          } @else {
-                            <span class="summary-value">{{ entityDistrict || '—' }}</span>
-                          }
-                        </div>
-                        <div class="summary-field">
-                          <span class="summary-label">City</span>
-                          @if (editMode()) {
-                            <input type="text" [(ngModel)]="entityCity" class="summary-edit-input" />
-                          } @else {
-                            <span class="summary-value">{{ entityCity || '—' }}</span>
-                          }
-                        </div>
-                  </div>
 
 
 
@@ -1516,11 +1196,11 @@
                       }
                     </div>
                     <div class="summary-field">
-                      <span class="summary-label">Assest Size in Crores</span>
+                      <span class="summary-label">Asset Size in Crores</span>
                       @if (editMode()) {
-                        <input type="text" [(ngModel)]="cosmosCode" class="summary-edit-input" />
+                        <input type="text" [(ngModel)]="assetSizeInCrores" class="summary-edit-input" />
                       } @else {
-                        <span class="summary-value">{{ cosmosCode || '—' }}</span>
+                        <span class="summary-value">{{ assetSizeInCrores || '—' }}</span>
                       }
                     </div>
                   </div>
@@ -1727,14 +1407,6 @@
                   </div>
                   <div class="summary-row">
                     <div class="summary-field">
-                      <span class="summary-label">Date of Filing the Complaint</span>
-                      @if (editMode()) {
-                        <input type="date" [(ngModel)]="filingDate" class="summary-edit-input" />
-                      } @else {
-                        <span class="summary-value">{{ filingDate || '—' }}</span>
-                      }
-                    </div>
-                    <div class="summary-field">
                       <span class="summary-label">Compensation Sought for Expenses Incurred, Harassment and Mental Anguish (if any)</span>
                       @if (editMode()) {
                         <div class="radio-group">
@@ -1862,14 +1534,6 @@
                         </select>
                       } @else {
                         <span class="summary-value">{{ vernacularLanguage || '—' }}</span>
-                      }
-                    </div>
-                    <div class="summary-field">
-                      <span class="summary-label">Date of Filing the Complaint</span>
-                      @if (editMode()) {
-                        <input type="date" [(ngModel)]="filingDate" class="summary-edit-input" />
-                      } @else {
-                        <span class="summary-value">{{ filingDate || '—' }}</span>
                       }
                     </div>
                   </div>
@@ -2072,8 +1736,17 @@
             <div class="final-decision-panel">
               <p class="final-decision-label">Select Action</p>
               <div class="final-decision-actions">
-                <button class="final-action-btn" [class.selected]="finalDecisionAction === 'CLOSE'" (click)="finalDecisionAction = 'CLOSE'">
+                <button class="final-action-btn" [class.selected]="finalDecisionAction === 'CLOSE'" (click)="selectFinalDecisionAction('CLOSE')">
                   <span class="action-radio"></span> Close Complaint
+                </button>
+                <button class="final-action-btn" [class.selected]="finalDecisionAction === 'ADVISORY'" (click)="selectFinalDecisionAction('ADVISORY')">
+                  <span class="action-radio"></span> Compile Advisory
+                </button>
+                <button class="final-action-btn" [class.selected]="finalDecisionAction === 'AWARD'" (click)="selectFinalDecisionAction('AWARD')">
+                  <span class="action-radio"></span> Pass Award
+                </button>
+                <button class="final-action-btn" [class.selected]="finalDecisionAction === 'REJECT_WITHDRAW_SETTLE'" (click)="selectFinalDecisionAction('REJECT_WITHDRAW_SETTLE')">
+                  <span class="action-radio"></span> Reject/Withdraw/Settle Complaint
                 </button>
               </div>
 
@@ -2140,6 +1813,125 @@
                 </div>
               }
 
+              @if (finalDecisionAction === 'ADVISORY') {
+                <div class="final-decision-form">
+                  <div class="advisory-fields">
+                    <div class="form-row-2col">
+                      <div class="form-group">
+                        <label>Date by Which Advisory to be Complied</label>
+                        <input type="date" [(ngModel)]="advisoryComplianceDate" />
+                      </div>
+                      <div class="form-group">
+                        <label>Dispute Amount Involved</label>
+                        <div class="amount-input-wrapper">
+                          <span class="currency-prefix">&#8377;</span>
+                          <input type="number" [(ngModel)]="advisoryDisputeAmount" placeholder="0" />
+                        </div>
+                        @if (advisoryDisputeAmount) {
+                          <span class="amount-words">{{ amountToWords(advisoryDisputeAmount) }}</span>
+                        }
+                      </div>
+                    </div>
+                    <div class="form-row-2col">
+                      <div class="form-group">
+                        <label>Compensation Due to Loss</label>
+                        <div class="amount-input-wrapper">
+                          <span class="currency-prefix">&#8377;</span>
+                          <input type="number" [(ngModel)]="advisoryCompensationLoss" placeholder="0" />
+                        </div>
+                        @if (advisoryCompensationLoss) {
+                          <span class="amount-words">{{ amountToWords(advisoryCompensationLoss) }}</span>
+                        }
+                      </div>
+                      <div class="form-group">
+                        <label>Compensation Due to Mental Harassment</label>
+                        <div class="amount-input-wrapper">
+                          <span class="currency-prefix">&#8377;</span>
+                          <input type="number" [(ngModel)]="advisoryCompensationMental" placeholder="0" />
+                        </div>
+                        @if (advisoryCompensationMental) {
+                          <span class="amount-words">{{ amountToWords(advisoryCompensationMental) }}</span>
+                        }
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              }
+
+              @if (finalDecisionAction === 'AWARD') {
+                <div class="final-decision-form">
+                  <div class="advisory-fields">
+                    <div class="form-row-2col">
+                      <div class="form-group">
+                        <label>Date of Implementation of Award by the Bank</label>
+                        <input type="date" [(ngModel)]="awardImplementationDate" />
+                      </div>
+                      <div class="form-group">
+                        <label>Date of Acceptance of Award by the Complainant</label>
+                        <input type="date" [(ngModel)]="awardAcceptanceDate" />
+                      </div>
+                    </div>
+                    <div class="form-row-2col">
+                      <div class="form-group">
+                        <label>Advisory Compliance Date</label>
+                        <div class="static-value">{{ advisoryComplianceDate || '—' }}</div>
+                      </div>
+                      <div class="form-group">
+                        <label>Dispute Amount Involved</label>
+                        <div class="static-value">&#8377; {{ advisoryDisputeAmount || 0 }}</div>
+                        @if (advisoryDisputeAmount) {
+                          <span class="amount-words">{{ amountToWords(advisoryDisputeAmount) }}</span>
+                        }
+                      </div>
+                    </div>
+                    <div class="form-row-2col">
+                      <div class="form-group">
+                        <label>Compensation Due to Loss</label>
+                        <div class="static-value">&#8377; {{ advisoryCompensationLoss || 0 }}</div>
+                        @if (advisoryCompensationLoss) {
+                          <span class="amount-words">{{ amountToWords(advisoryCompensationLoss) }}</span>
+                        }
+                      </div>
+                      <div class="form-group">
+                        <label>Compensation Due to Mental Harassment</label>
+                        <div class="static-value">&#8377; {{ advisoryCompensationMental || 0 }}</div>
+                        @if (advisoryCompensationMental) {
+                          <span class="amount-words">{{ amountToWords(advisoryCompensationMental) }}</span>
+                        }
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              }
+
+              @if (finalDecisionAction === 'REJECT_WITHDRAW_SETTLE') {
+                <div class="final-decision-form">
+                  <div class="form-group">
+                    <label>Select Sub-Action</label>
+                    <div class="radio-group">
+                      <label class="radio-label">
+                        <input type="radio" name="rws-sub-action" value="REJECT" [(ngModel)]="rejectWithdrawSettleSubAction" /> Reject
+                      </label>
+                      <label class="radio-label">
+                        <input type="radio" name="rws-sub-action" value="WITHDRAW" [(ngModel)]="rejectWithdrawSettleSubAction" /> Withdraw
+                      </label>
+                      <label class="radio-label">
+                        <input type="radio" name="rws-sub-action" value="SETTLE" [(ngModel)]="rejectWithdrawSettleSubAction" /> Settle
+                      </label>
+                    </div>
+                  </div>
+                  @if (rejectWithdrawSettleSubAction) {
+                    <div class="form-group">
+                      <label>Reason / Remarks</label>
+                      <div class="textarea-with-speech">
+                        <textarea [(ngModel)]="rejectWithdrawSettleReason" rows="4" placeholder="Enter reason"></textarea>
+                        <app-speech-button (transcription)="rejectWithdrawSettleReason = rejectWithdrawSettleReason + ' ' + $event"></app-speech-button>
+                      </div>
+                    </div>
+                  }
+                </div>
+              }
+
               <!-- All Comments -->
               <div class="assessment-comments">
                 <h4 class="comments-title">All Comments</h4>
@@ -2147,10 +1939,20 @@
                   <div class="comment-card">
                     <div class="comment-header">
                       <span class="comment-avatar" [style.background]="comment.color">{{ comment.initials }}</span>
-                      <span class="comment-author">{{ comment.author }}</span>
+                      <span class="comment-author">{{ comment.author }} @if (comment.role) { <span class="comment-role-badge">{{ comment.role }}</span>}</span>
                       <span class="comment-timestamp">{{ formatCommentDate(comment.createdAt || '') }}</span>
                     </div>
-                    <p class="comment-body">{{ comment.text }}</p>
+                    <p class="comment-body">
+                      @if (comment.text.length > 150 && !expandedComments.has(comment.id)) {
+                        {{ comment.text.substring(0, 150) }}
+                        <a class="read-more" (click)="toggleCommentExpand(comment.id)">...read more</a>
+                      } @else {
+                        {{ comment.text }}
+                        @if (comment.text.length > 150) {
+                          <a class="read-more" (click)="toggleCommentExpand(comment.id)">show less</a>
+                        }
+                      }
+                    </p>
                   </div>
                 }
               </div>
@@ -2168,7 +1970,7 @@
 
           } @else if (assessmentTab() === 'conciliation') {
           <div class="panel-header">
-            <h3><i class="pi pi-users"></i> Conciliation Meeting</h3>
+            <h3><i class="pi pi-users"></i> Conciliation</h3>
           </div>
           <div class="form-scroll assessment-scroll">
             @if (conciliationLoading()) {
@@ -2285,47 +2087,184 @@
                 }
               </div>
 
-              @if (!isReadOnlyViewer()) {
-                <div class="conciliation-actions">
-                  <button type="button" class="btn btn-outline" (click)="resetConciliation()" [disabled]="conciliationSaving()">Reset</button>
-                  <button type="button" class="btn btn-primary" (click)="saveConciliation()" [disabled]="conciliationSaving()">
-                    @if (conciliationSaving()) {
-                      <i class="pi pi-spin pi-spinner"></i> Saving…
-                    } @else {
-                      <i class="pi pi-save"></i> Save Conciliation
-                    }
-                  </button>
-                </div>
-              } @else {
-                <p class="conciliation-meta-text"><i class="pi pi-lock"></i> You have view access to this complaint. Only the assigned officer can update the conciliation.</p>
-              }
 
-              @if (conciliationHistory().length) {
-                <h4 class="conciliation-section-title">Previous Meetings</h4>
-                <div class="conciliation-history">
-                  @for (meeting of conciliationHistory(); track meeting.id) {
-                    <div class="conciliation-history-card">
-                      <div class="conciliation-history-head">
-                        <span class="conciliation-chip" [class]="'conciliation-chip st-' + meeting.meetingStatus">{{ conciliationStatusLabel(meeting.meetingStatus) }}</span>
-                        <span class="conciliation-meta-text">{{ meeting.meetingDate || '—' }} {{ meeting.meetingTime || '' }}</span>
-                      </div>
-                      <div class="conciliation-history-grid">
-                        <span>Complainant: <strong>{{ yesNoLabel(meeting.acceptedByComplainant) }}</strong></span>
-                        <span>Entity: <strong>{{ yesNoLabel(meeting.acceptedByEntity) }}</strong></span>
-                        <span>Video Conference: <strong>{{ yesNoLabel(meeting.conductedThroughVc) }}</strong></span>
-                      </div>
-                      @if (meeting.meetingComments) {
-                        <p class="conciliation-history-text">{{ meeting.meetingComments }}</p>
+            }
+          </div>
+
+          } @else if (assessmentTab() === 'forward') {
+          <div class="panel-header">
+            <h3><i class="pi pi-arrow-up-right"></i> Forward</h3>
+            <button class="expand-btn"><i class="pi pi-window-maximize"></i></button>
+          </div>
+          <div class="form-scroll assessment-scroll forward-panel">
+            <label class="forward-to-label">Forward To</label>
+            <div class="forward-target-cards">
+              <div class="forward-target-card" [class.selected]="forwardTarget() === 'REGULATORY_BODIES'" (click)="selectForwardTarget('REGULATORY_BODIES')">
+                <span class="radio-dot" [class.checked]="forwardTarget() === 'REGULATORY_BODIES'"></span>
+                Other Regulatory Bodies
+              </div>
+              <div class="forward-target-card" [class.selected]="forwardTarget() === 'RBI_DEPARTMENT'" (click)="selectForwardTarget('RBI_DEPARTMENT')">
+                <span class="radio-dot" [class.checked]="forwardTarget() === 'RBI_DEPARTMENT'"></span>
+                Other RBI Department
+              </div>
+              <div class="forward-target-card" [class.selected]="forwardTarget() === 'OFFICE'" (click)="selectForwardTarget('OFFICE')">
+                <span class="radio-dot" [class.checked]="forwardTarget() === 'OFFICE'"></span>
+                Other Office
+              </div>
+            </div>
+
+            @if (forwardFieldErrors()['target']) {
+              <span class="field-error">{{ forwardFieldErrors()['target'] }}</span>
+            }
+
+            @if (forwardTarget() === 'REGULATORY_BODIES') {
+              <div class="form-row-2col">
+                <div class="form-group entity-search-group">
+                  <label>Name of Regulator <span class="required">*</span></label>
+                  <div class="entity-search-wrapper">
+                    <input type="text"
+                           [ngModel]="forwardRegulatorName"
+                           (ngModelChange)="onRegulatorSearchInput($event)"
+                           (focus)="openRegulatorDropdown()"
+                           (blur)="onRegulatorBlur()"
+                           placeholder="Search"
+                           autocomplete="off" />
+                    <i class="pi entity-search-icon"
+                       [class.pi-search]="!regulatorSearchLoading()"
+                       [class.pi-spinner]="regulatorSearchLoading()"
+                       [class.pi-spin]="regulatorSearchLoading()"></i>
+                  </div>
+                  @if (showRegulatorDropdown() && !regulatorSearchLoading() && regulatorResults().length === 0) {
+                    <ul class="entity-dropdown">
+                      <li class="entity-dropdown-empty">No regulator matches that name</li>
+                    </ul>
+                  }
+                  @if (showRegulatorDropdown() && regulatorResults().length > 0) {
+                    <ul class="entity-dropdown">
+                      @for (regulator of regulatorResults(); track regulator.id) {
+                        <li (mousedown)="selectRegulator(regulator)">
+                          <span class="entity-name">{{ regulator.name }}</span>
+                          <span class="entity-dept">{{ regulator.code }}</span>
+                        </li>
                       }
-                      @if (meeting.comments) {
-                        <p class="conciliation-history-text muted">{{ meeting.comments }}</p>
-                      }
-                      <span class="conciliation-meta-text">Recorded by {{ meeting.updatedBy || meeting.createdBy || '—' }}</span>
-                    </div>
+                    </ul>
+                  }
+                  @if (forwardFieldErrors()['regulator']) {
+                    <span class="field-error">{{ forwardFieldErrors()['regulator'] }}</span>
                   }
                 </div>
-              }
+                <div class="form-group">
+                  <label>Email id of the Regulator <span class="required">*</span></label>
+                  <input type="email" [(ngModel)]="forwardRegulatorEmail" placeholder="Enter a value" />
+                  @if (forwardFieldErrors()['regulatorEmail']) {
+                    <span class="field-error">{{ forwardFieldErrors()['regulatorEmail'] }}</span>
+                  }
+                </div>
+              </div>
+            } @else if (forwardTarget() === 'RBI_DEPARTMENT') {
+              <div class="form-row-2col">
+                <div class="form-group entity-search-group">
+                  <label>Name of Department <span class="required">*</span></label>
+                  <div class="entity-search-wrapper">
+                    <input type="text"
+                           [ngModel]="forwardDepartmentName"
+                           (ngModelChange)="onDepartmentSearchInput($event)"
+                           (focus)="openDepartmentDropdown()"
+                           (blur)="onDepartmentBlur()"
+                           placeholder="Search"
+                           autocomplete="off" />
+                    <i class="pi entity-search-icon"
+                       [class.pi-search]="!departmentSearchLoading()"
+                       [class.pi-spinner]="departmentSearchLoading()"
+                       [class.pi-spin]="departmentSearchLoading()"></i>
+                  </div>
+                  @if (showDepartmentDropdown() && !departmentSearchLoading() && departmentResults().length === 0) {
+                    <ul class="entity-dropdown">
+                      <li class="entity-dropdown-empty">No department matches that name</li>
+                    </ul>
+                  }
+                  @if (showDepartmentDropdown() && departmentResults().length > 0) {
+                    <ul class="entity-dropdown">
+                      @for (department of departmentResults(); track department.id) {
+                        <li (mousedown)="selectDepartment(department)">
+                          <span class="entity-name">{{ department.name }}</span>
+                          <span class="entity-dept">{{ department.code }}</span>
+                        </li>
+                      }
+                    </ul>
+                  }
+                  @if (forwardFieldErrors()['department']) {
+                    <span class="field-error">{{ forwardFieldErrors()['department'] }}</span>
+                  }
+                </div>
+                <div class="form-group">
+                  <label>Email id of the Department <span class="required">*</span></label>
+                  <input type="email" [(ngModel)]="forwardDepartmentEmail" placeholder="Enter a value" />
+                  @if (forwardFieldErrors()['departmentEmail']) {
+                    <span class="field-error">{{ forwardFieldErrors()['departmentEmail'] }}</span>
+                  }
+                </div>
+              </div>
+            } @else if (forwardTarget() === 'OFFICE') {
+              <div class="form-row-2col">
+                <div class="form-group">
+                  <label>Name of Office <span class="required">*</span></label>
+                  <select [ngModel]="forwardOfficeCode" (ngModelChange)="onForwardOfficeSelected($event)">
+                    <option value="" disabled selected>Select an office</option>
+                    @for (office of officeList(); track office.officeCode) {
+                      <option [value]="office.officeCode">{{ office.officeName }} ({{ office.officeType }})</option>
+                    }
+                  </select>
+                  @if (officeList().length === 0) {
+                    <span class="field-hint">Loading offices…</span>
+                  }
+                  @if (forwardFieldErrors()['office']) {
+                    <span class="field-error">{{ forwardFieldErrors()['office'] }}</span>
+                  }
+                </div>
+              </div>
             }
+
+            <!-- All Comments -->
+            <div class="assessment-comments">
+              <h4 class="comments-title">All Comments</h4>
+              @for (comment of assessmentComments(); track comment.id) {
+                <div class="comment-card">
+                  <div class="comment-header">
+                    <span class="comment-avatar" [style.background]="comment.color">{{ comment.initials }}</span>
+                    <span class="comment-author">{{ comment.author }} @if (comment.role) { <span class="comment-role-badge">{{ comment.role }}</span>}</span>
+                    <span class="comment-timestamp">{{ formatCommentDate(comment.createdAt || '') }}</span>
+                  </div>
+                  <p class="comment-body">
+                    @if (comment.text.length > 150 && !expandedComments.has(comment.id)) {
+                      {{ comment.text.substring(0, 150) }}
+                      <a class="read-more" (click)="toggleCommentExpand(comment.id)">...read more</a>
+                    } @else {
+                      {{ comment.text }}
+                      @if (comment.text.length > 150) {
+                        <a class="read-more" (click)="toggleCommentExpand(comment.id)">show less</a>
+                      }
+                    }
+                  </p>
+                </div>
+              } @empty {
+                <div class="comment-card-No-comments">
+                  No comments
+                </div>
+              }
+            </div>
+
+            <!-- Add Comment -->
+            <div class="add-comment-section">
+              <div class="comment-label-row">
+                <label class="comment-label">Comments</label>
+                <button class="bookmark-btn" title="Bookmark"><i class="pi pi-bookmark"></i></button>
+              </div>
+              <div class="textarea-with-speech">
+                <textarea [(ngModel)]="assessmentComment" rows="3" placeholder="Enter text here"></textarea>
+                <app-speech-button (transcription)="assessmentComment = assessmentComment + ' ' + $event"></app-speech-button>
+              </div>
+            </div>
           </div>
 
           } @else {
@@ -2336,12 +2275,12 @@
 
           @if (assessmentPanels().form) {
           <div class="form-scroll assessment-scroll">
-            <!-- Deputy Ombudsman Decision checkbox: only for Deputy Ombudsman/Ombudsman -->
-            @if (userRole() === 'DEPUTY_OMBUDSMAN' || userRole() === 'OMBUDSMAN') {
+            <!-- Deputy Ombudsman Decision checkbox: for Reviewer, Deputy Ombudsman, Ombudsman -->
+            @if (userRole() === 'REVIEWER' || userRole() === 'DEPUTY_OMBUDSMAN' || userRole() === 'OMBUDSMAN') {
               <div class="assessment-decision">
                 <label class="assessment-checkbox" [class.disabled]="isReadOnlyViewer()">
-                  <input type="checkbox" [(ngModel)]="sendToDeputy" [disabled]="isReadOnlyViewer()" />
-                  <span>Do you want to add and send <strong>Deputy Ombudsman Decision</strong> to Dealing Officer?</span>
+                  <input type="checkbox" [(ngModel)]="sendToDeputy" [disabled]="isReadOnlyViewer()" (ngModelChange)="onSendToDeputyChange()" />
+                  <span>Do you want to add and send <strong>{{ decisionLabel }}</strong> to Dealing Officer?</span>
                 </label>
               </div>
             }
@@ -2350,9 +2289,9 @@
             @if (sendToDeputy && userRole() !== 'DO') {
               <div class="deputy-decision-section">
                 <div class="form-group">
-                  <label>Deputy Ombudsman Decision</label>
+                  <label>{{ decisionLabel }}</label>
                   <div class="select-with-avatar">
-                    <select [(ngModel)]="deputyOmbudsmanDecision">
+                    <select [(ngModel)]="deputyOmbudsmanDecision" (ngModelChange)="onDeputyDecisionChange()">
                       <option value="NON_MAINTAINABLE">Non Maintainable</option>
                       <option value="MAINTAINABLE">Maintainable</option>
                       <option value="PARTIALLY_MAINTAINABLE">Partially Maintainable</option>
@@ -2362,7 +2301,7 @@
                 </div>
 
                 <div class="form-group">
-                  <label>Deputy Ombudsman Decision Comments <i class="pi pi-expand"></i></label>
+                  <label>{{ decisionLabel }} Comments <i class="pi pi-expand"></i></label>
                   <div class="textarea-with-speech">
                     <textarea [(ngModel)]="deputyOmbudsmanComments" rows="3" placeholder="Enter text here"></textarea>
                     <app-speech-button (transcription)="deputyOmbudsmanComments = deputyOmbudsmanComments + ' ' + $event"></app-speech-button>
@@ -2372,10 +2311,11 @@
             }
 
             <!-- Proposed Action / Proposed Clause -->
+            @if (userRole() === 'DO' || sendToDeputy) {
               <div class="form-row-2col assessment-fields">
                 <div class="form-group">
                   <label>Proposed Action <span class="mandatory">*</span></label>
-                  <select [(ngModel)]="proposedAction">
+                  <select [(ngModel)]="proposedAction" [disabled]="sendToDeputy">
                     <option value="">Select a Value</option>
                     <option value="MAINTAINABLE">Maintainable</option>
                     <option value="NON_MAINTAINABLE">Non Maintainable</option>
@@ -2385,10 +2325,10 @@
                   <label>Proposed Clause <span class="mandatory">*</span></label>
                   <div class="searchable-select">
                     <div class="search-input-wrapper">
-                      <input type="text" [(ngModel)]="clauseSearch" (focus)="clauseDropdownOpen = true" (input)="clauseDropdownOpen = true" (blur)="clauseDropdownOpen = false" [placeholder]="proposedClause || 'Search'" autocomplete="off" />
+                      <input type="text" [(ngModel)]="clauseSearch" (focus)="clauseDropdownOpen = !sendToDeputy" (input)="clauseDropdownOpen = !sendToDeputy" (blur)="clauseDropdownOpen = false" [placeholder]="proposedClause || 'Search'" autocomplete="off" [disabled]="sendToDeputy" />
                       <i class="pi pi-search"></i>
                     </div>
-                    @if (clauseDropdownOpen && getFilteredClauses().length > 0) {
+                    @if (clauseDropdownOpen && !sendToDeputy && getFilteredClauses().length > 0) {
                       <div class="search-dropdown">
                         @for (clause of getFilteredClauses(); track clause) {
                           <div class="search-dropdown-item" [class.selected]="proposedClause === clause" (mousedown)="proposedClause = clause; clauseSearch = clause; clauseDropdownOpen = false">{{ clause }}</div>
@@ -2398,6 +2338,7 @@
                   </div>
                 </div>
               </div>
+            }
 
             <!-- All Comments -->
             <div class="assessment-comments">
@@ -2406,10 +2347,20 @@
                 <div class="comment-card">
                   <div class="comment-header">
                     <span class="comment-avatar" [style.background]="comment.color">{{ comment.initials }}</span>
-                    <span class="comment-author">{{ comment.author }}</span>
+                    <span class="comment-author">{{ comment.author }} @if (comment.role) { <span class="comment-role-badge">{{ comment.role }}</span>}</span>
                     <span class="comment-timestamp">{{ formatCommentDate(comment.createdAt || '') }}</span>
                   </div>
-                  <p class="comment-body">{{ comment.text }}</p>
+                  <p class="comment-body">
+                    @if (comment.text.length > 150 && !expandedComments.has(comment.id)) {
+                      {{ comment.text.substring(0, 150) }}
+                      <a class="read-more" (click)="toggleCommentExpand(comment.id)">...read more</a>
+                    } @else {
+                      {{ comment.text }}
+                      @if (comment.text.length > 150) {
+                        <a class="read-more" (click)="toggleCommentExpand(comment.id)">show less</a>
+                      }
+                    }
+                  </p>
                 </div>
               }
             </div>
@@ -2466,8 +2417,8 @@
         title="History">
   <i class="pi pi-history"></i>
 </button>
-        <button class="sidebar-icon-btn" [class.active]="assessmentPanels().settings" title="Settings">
-          <img src="assets/gavel.svg" width="24px" height="24px" />
+        <button class="sidebar-icon-btn" [class.active]="assessmentPanels().settings" title="Legal Case">
+          <i class="pi pi-briefcase"></i>
         </button>
       </div>
     </div>
@@ -2645,66 +2596,59 @@
             </div>
           } @else {
             <div class="history-entries">
-              
-              @for (entry of historyEntries(); track entry.id) {
-                <!-- Individual cards hook into the vertical line container above -->
-                <div class="history-entry-card">
-                  
-                  <div class="entry-status-row">
-                    <!-- <span class="entry-status-dot"></span>
-                    <span class="entry-status-badge" [style.background]="entry.statusColor + '1a'" [style.color]="entry.statusColor"> -->
-                      <!-- {{ entry.statusLabel }} -->
-                    <!-- </span> -->
 
-                    <span class="entry-status-dot" 
-                    [style.background]="entry.statusColor" 
-                    [style.boxShadow]="' 0 0 0 1px ' + entry.statusColor">
+              @for (entry of historyEntries(); track entry.id; let isFirst = $first; let isLast = $last) {
+                <div class="history-entry-row">
+                  <div class="timeline-track">
+                    <span class="entry-status-dot">
+                      <i class="pi pi-check"></i>
                     </span>
-            
+                    <hr class="timeline-connector bottom" />
+                  </div>
 
-              <span class="entry-status-badge" 
-                    [style.background]="entry.statusColor + '1a'" 
-                    [style.color]="entry.statusColor">
-                {{ entry.statusLabel }}
-              </span>
-              
-                  </div>
-      
-                  <div class="entry-detail-row">
-                    <div class="entry-detail-item">
-                      <span class="entry-detail-label">Modified On</span>
-                      <span class="entry-detail-value">{{ entry.modifiedOn }}</span> 
-                    </div>
-                    <div class="entry-detail-item">
-                      <span class="entry-detail-label">Modified By</span>
-                      <span class="entry-detail-value">{{ entry.modifiedBy }}</span>
-                    </div>
-                  </div>
-      
-                  <div class="entry-officer-row">
-                    <span class="officer-avatar" [style.background]="entry.officerAvatarColor || '#8b5cf6'">
-                      {{ entry.assignedOfficer.substring(0, 2) }}
+                  <div class="history-entry-card">
+                    <span class="entry-status-badge"
+                          [style.background]="entry.statusColor + '1a'"
+                          [style.color]="entry.statusColor">
+                      {{ entry.statusLabel }}
                     </span>
-                    <div class="officer-info">
-                      <span class="entry-detail-label">Assigned To:</span>
-                      <span class="officer-name">{{ entry.assignedOfficer }}</span>
+
+                    <div class="entry-detail-row">
+                      <div class="entry-detail-item">
+                        <span class="entry-detail-label">Modified On</span>
+                        <span class="entry-detail-value">{{ entry.modifiedOn }}</span>
+                      </div>
+                      <div class="entry-detail-item">
+                        <span class="entry-detail-label">Modified By</span>
+                        <span class="entry-detail-value">{{ entry.modifiedBy }}</span>
+                      </div>
                     </div>
+
+                    <div class="entry-officer-row">
+                      <span class="officer-avatar" [style.background]="entry.officerAvatarColor || '#8b5cf6'">
+                        {{ entry.assignedOfficer.substring(0, 2) }}
+                      </span>
+                      <div class="officer-info">
+                        <span class="entry-detail-label">Assigned To:</span>
+                        <span class="officer-name">{{ entry.assignedOfficer }}</span>
+                      </div>
+                    </div>
+
+                    @if (!hideComments() && entry.description) {
+                      <div class="entry-comments">
+                        <p>
+                          {{ entry.description.length > 150 ? entry.description.substring(0, 150) : entry.description }}
+                          @if (entry.description.length > 150) {
+                            <a class="read-more">...read more</a>
+                          }
+                        </p>
+                      </div>
+                    }
                   </div>
-      
-                  @if (!hideComments() && entry.description) {
-                    <div class="entry-comments">
-                      <p>
-                        {{ entry.description.length > 150 ? entry.description.substring(0, 150) : entry.description }}
-                        @if (entry.description.length > 150) {
-                          <a class="read-more">...read more</a>
-                        }
-                      </p>
-                    </div>
-                  }
                 </div>
-              } <!-- /@for loop ends -->
-      
-            </div> <!-- /history-entries container ends -->
+              }
+
+            </div>
           }
         </div>
       }
@@ -3560,7 +3504,7 @@
           <div class="status-change">
             <span class="status-label">Expected Status Change <i class="pi pi-info-circle"></i></span>
             <div class="status-flow">
-              <span class="status-badge create"><i class="pi pi-plus-circle"></i> {{ formatStatusLabel(complaintStatus()) }}</span>
+              <span class="status-badge create"><i class="pi pi-plus-circle"></i> {{ formatStatusLabel(complaintStatusNav) || formatStatusLabel(complaintStatus()) }}</span>
               <i class="pi pi-arrow-right flow-arrow"></i>
               <span class="status-badge draft"><i class="pi pi-file"></i> Draft</span>
             </div>
@@ -3596,7 +3540,7 @@
           <div class="confirmation-text">
             <strong>Confirmation</strong>
             @if (isOmbudsmanDecisionDialog) {
-              <p>Are you sure you want to <strong>send the request to {{ approvalTargetLabel }} with Ombudsman Decision</strong> ?</p>
+              <p>Are you sure you want to <strong>send the request to {{ approvalTargetLabel }} with {{ decisionLabel }}</strong> ?</p>
             } @else {
               <p>Are you sure you want to <strong>send the request to {{ approvalTargetLabel }}</strong> ?</p>
             }
@@ -3661,7 +3605,7 @@
           <div class="status-change">
             <span class="status-label">Expected Status Change <i class="pi pi-info-circle"></i></span>
             <div class="status-flow">
-              <span class="status-badge create"><i class="pi pi-circle-fill"></i> New Complaint</span>
+              <span class="status-badge create"><i class="pi pi-circle-fill"></i> {{ formatStatusLabel(complaintStatusNav) || 'New Complaint' }}</span>
               <i class="pi pi-arrow-right flow-arrow"></i>
               <span class="status-badge sent-approval"><i class="pi pi-pencil"></i> Sent to {{ approvalTargetLabel }}</span>
             </div>
@@ -3672,6 +3616,42 @@
         <button class="btn btn-outline" (click)="cancelApproval()">Cancel</button>
         <button class="btn btn-primary" (click)="confirmApproval()" [disabled]="approvalSubmitting()">
           @if (approvalSubmitting()) { <span class="spinner-sm"></span> Sending... } @else { Confirm }
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Conciliation Confirmation Dialog -->
+@if (showConciliationDialog()) {
+  <div class="modal-overlay" (click)="cancelConciliationDialog()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-header-bar">
+        <span>Conciliation</span>
+      </div>
+      <div class="modal-body">
+        <div class="confirmation-header">
+          <i class="pi pi-info-circle confirmation-icon"></i>
+          <div class="confirmation-text">
+            <strong>Confirmation</strong>
+            <p>Are you sure you want to <strong>schedule meeting</strong>?</p>
+          </div>
+          <button class="modal-close" (click)="cancelConciliationDialog()">&times;</button>
+        </div>
+
+        <div class="status-change">
+          <span class="status-label">Expected Status Change <i class="pi pi-info-circle"></i></span>
+          <div class="status-flow">
+            <span class="status-badge create"><i class="pi pi-circle-fill"></i> {{ formatStatusLabel(complaintStatusNav) || formatStatusLabel(complaintStatus()) }}</span>
+            <i class="pi pi-arrow-right flow-arrow"></i>
+            <span class="status-badge meeting-scheduled"><i class="pi pi-link"></i> Meeting Scheduled</span>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" (click)="cancelConciliationDialog()">Cancel</button>
+        <button class="btn btn-primary" (click)="confirmConciliationDialog()" [disabled]="conciliationSaving()">
+          @if (conciliationSaving()) { <span class="spinner-sm"></span> Saving... } @else { Confirm }
         </button>
       </div>
     </div>
@@ -3744,7 +3724,7 @@
         <div class="status-change">
           <span class="status-label">Expected Status Change <i class="pi pi-info-circle"></i></span>
           <div class="status-flow">
-            <span class="status-badge create"><i class="pi pi-circle-fill"></i> {{ complaintStatus() || 'New Complaint' }}</span>
+            <span class="status-badge create"><i class="pi pi-circle-fill"></i> {{ formatStatusLabel(complaintStatusNav) || formatStatusLabel(complaintStatus()) }}</span>
             <i class="pi pi-arrow-right flow-arrow"></i>
             <span class="status-badge sent-back"><i class="pi pi-arrow-up-right"></i> Sent to {{ forwardTargetLabel }}</span>
           </div>
@@ -3804,7 +3784,7 @@
           <div class="status-change">
             <span class="status-label">Expected Status Change <i class="pi pi-info-circle"></i></span>
             <div class="status-flow">
-              <span class="status-badge create"><i class="pi pi-circle-fill"></i> {{ complaintStatus() || 'New Complaint' }}</span>
+              <span class="status-badge create"><i class="pi pi-circle-fill"></i> {{ formatStatusLabel(complaintStatusNav) || formatStatusLabel(complaintStatus()) }}</span>
               <i class="pi pi-arrow-right flow-arrow"></i>
               <span class="status-badge sent-back"><i class="pi pi-arrow-left"></i> {{ sendBackStatusLabel }}</span>
             </div>
@@ -3828,7 +3808,7 @@
       <div class="modal-header">
         <div class="modal-header-content">
           <h3><i class="pi pi-info-circle"></i> Preview and Confirm</h3>
-          <span class="modal-subtitle">Are you sure you want to <strong>close the complaint</strong> ?</span>
+          <span class="modal-subtitle">Are you sure you want to <strong>{{ getFinalDecisionLabel() | lowercase }}</strong>?</span>
         </div>
         <button class="modal-close" (click)="showFinalDecisionPreview.set(false)"><i class="pi pi-times"></i></button>
       </div>
@@ -3836,9 +3816,9 @@
         <div class="status-change-row">
           <span class="status-change-label">Expected Status Change <i class="pi pi-info-circle"></i></span>
           <div class="status-flow">
-            <span class="status-pill green"><i class="pi pi-check-circle"></i> {{ getStatusLabel() }}</span>
+            <span class="status-pill green"><i class="pi pi-check-circle"></i> {{ formatStatusLabel(complaintStatusNav) || getStatusLabel() }}</span>
             <i class="pi pi-arrow-right"></i>
-            <span class="status-pill grey"><i class="pi pi-replay"></i> Complaint Closed</span>
+            <span class="status-pill grey"><i class="pi pi-replay"></i> {{ getExpectedStatusAfterDecision() }}</span>
           </div>
         </div>
 
@@ -3848,44 +3828,98 @@
             <div class="preview-row">
               <div class="preview-field">
                 <span class="preview-label">Action</span>
-                <span class="preview-value">Close Complaint</span>
-              </div>
-              <div class="preview-field">
-                <span class="preview-label">Closure Clause</span>
-                <span class="preview-value">{{ closureClause || '—' }}</span>
+                <span class="preview-value">{{ getFinalDecisionLabel() }}</span>
               </div>
             </div>
-            <div class="preview-field full">
-              <span class="preview-label">Closure Clause Description</span>
-              <span class="preview-value description-text">{{ closureClauseDescription || '—' }}</span>
-            </div>
-            <div class="preview-row">
-              <div class="preview-field">
-                <span class="preview-label">Complaint Status on Portal</span>
-                <span class="preview-value">{{ complaintStatusOnPortal || '—' }}</span>
+
+            @if (finalDecisionAction === 'CLOSE') {
+              <div class="preview-row">
+                <div class="preview-field">
+                  <span class="preview-label">Closure Clause</span>
+                  <span class="preview-value">{{ closureClause || '—' }}</span>
+                </div>
               </div>
-              <div class="preview-field">
-                <span class="preview-label">Speaking order generated?</span>
-                <span class="preview-value">{{ speakingOrderGenerated || '—' }}</span>
+              <div class="preview-field full">
+                <span class="preview-label">Closure Clause Description</span>
+                <span class="preview-value description-text">{{ closureClauseDescription || '—' }}</span>
               </div>
-            </div>
-            <div class="preview-row">
-              <div class="preview-field">
-                <span class="preview-label">Gist of the Case</span>
-                <span class="preview-value">{{ gistOfCase || '—' }}</span>
+              <div class="preview-row">
+                <div class="preview-field">
+                  <span class="preview-label">Complaint Status on Portal</span>
+                  <span class="preview-value">{{ complaintStatusOnPortal || '—' }}</span>
+                </div>
+                <div class="preview-field">
+                  <span class="preview-label">Speaking order generated?</span>
+                  <span class="preview-value">{{ speakingOrderGenerated || '—' }}</span>
+                </div>
               </div>
-              <div class="preview-field">
-                <span class="preview-label">Gist of the Case in regional language</span>
-                <span class="preview-value">{{ gistOfCaseRegional || '—' }}</span>
+              <div class="preview-row">
+                <div class="preview-field">
+                  <span class="preview-label">Gist of the Case</span>
+                  <span class="preview-value">{{ gistOfCase || '—' }}</span>
+                </div>
+                <div class="preview-field">
+                  <span class="preview-label">Gist of the Case in regional language</span>
+                  <span class="preview-value">{{ gistOfCaseRegional || '—' }}</span>
+                </div>
               </div>
-            </div>
+            }
+
+            @if (finalDecisionAction === 'ADVISORY') {
+              <div class="preview-row">
+                <div class="preview-field">
+                  <span class="preview-label">Advisory Compliance Date</span>
+                  <span class="preview-value">{{ advisoryComplianceDate || '—' }}</span>
+                </div>
+                <div class="preview-field">
+                  <span class="preview-label">Dispute Amount</span>
+                  <span class="preview-value">&#8377; {{ advisoryDisputeAmount || 0 }}</span>
+                </div>
+              </div>
+              <div class="preview-row">
+                <div class="preview-field">
+                  <span class="preview-label">Compensation (Loss)</span>
+                  <span class="preview-value">&#8377; {{ advisoryCompensationLoss || 0 }}</span>
+                </div>
+                <div class="preview-field">
+                  <span class="preview-label">Compensation (Mental Harassment)</span>
+                  <span class="preview-value">&#8377; {{ advisoryCompensationMental || 0 }}</span>
+                </div>
+              </div>
+            }
+
+            @if (finalDecisionAction === 'AWARD') {
+              <div class="preview-row">
+                <div class="preview-field">
+                  <span class="preview-label">Award Implementation Date</span>
+                  <span class="preview-value">{{ awardImplementationDate || '—' }}</span>
+                </div>
+                <div class="preview-field">
+                  <span class="preview-label">Award Acceptance Date</span>
+                  <span class="preview-value">{{ awardAcceptanceDate || '—' }}</span>
+                </div>
+              </div>
+            }
+
+            @if (finalDecisionAction === 'REJECT_WITHDRAW_SETTLE') {
+              <div class="preview-row">
+                <div class="preview-field">
+                  <span class="preview-label">Sub-Action</span>
+                  <span class="preview-value">{{ rejectWithdrawSettleSubAction }}</span>
+                </div>
+              </div>
+              <div class="preview-field full">
+                <span class="preview-label">Reason / Remarks</span>
+                <span class="preview-value description-text">{{ rejectWithdrawSettleReason || '—' }}</span>
+              </div>
+            }
           </div>
         </div>
       </div>
       <div class="modal-footer">
         <button class="btn btn-outline" (click)="showFinalDecisionPreview.set(false)">Cancel</button>
-        <button class="btn btn-confirm" [disabled]="finalDecisionSubmitting()" (click)="confirmCloseComplaint()">
-          @if (finalDecisionSubmitting()) { Closing... } @else { Confirm }
+        <button class="btn btn-confirm" [disabled]="finalDecisionSubmitting()" (click)="confirmFinalDecision()">
+          @if (finalDecisionSubmitting()) { Submitting... } @else { Confirm }
         </button>
       </div>
     </div>
