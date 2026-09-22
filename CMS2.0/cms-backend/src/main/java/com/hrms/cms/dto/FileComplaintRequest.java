@@ -3,6 +3,7 @@ package com.hrms.cms.dto;
 import jakarta.validation.constraints.*;
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor
@@ -37,6 +38,8 @@ public class FileComplaintRequest {
 
     @Size(max = 100)
     private String entityType;
+
+    private BigDecimal amountInvolved;
 
     @Size(max = 200)
     private String bankBranch;

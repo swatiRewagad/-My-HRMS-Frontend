@@ -1,9 +1,10 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router';
 import { SpeechButtonComponent } from '../../../shared/speech-button/speech-button.component';
 import { TranslatePipe } from '../../../pipes/translate.pipe';
+import { FeedbackService } from '../../../services/feedback.service';
 
 @Component({
   selector: 'app-submit-feedback',
@@ -12,49 +13,81 @@ import { TranslatePipe } from '../../../pipes/translate.pipe';
   templateUrl: './submit-feedback.component.html',
   styleUrl: './submit-feedback.component.scss'
 })
-export class SubmitFeedbackComponent {
+export class SubmitFeedbackComponent implements OnInit {
 
   private router = inject(Router);
+  private route = inject(ActivatedRoute);
+  private feedbackService = inject(FeedbackService);
 
   phase = signal<'form' | 'success'>('form');
   submitting = signal(false);
 
-  // FR-G-030: Feedback form
   complaintId = '';
-  overallRating = 0;
-  timelinessRating = 0;
-  communicationRating = 0;
-  satisfactionRating = 0;
-  feedbackText = '';
-  suggestions = '';
-  error = '';
-
-  // FR-G-038: Full questionnaire (UST109)
   easeOfFiling = 0;
   grievanceRedressTime = 0;
+  overallRating = 0;
+  feedbackText = '';
+  feedbackTextError = '';
+  error = '';
+
+  ngOnInit(): void {
+    const idFromRoute = this.route.snapshot.paramMap.get('id');
+    if (idFromRoute) {
+      this.complaintId = idFromRoute;
+    }
+  }
+
   sourceOfInformation = '';
   sourceOtherText = '';
-  cmsPortalAwareness = '';
+  sourceOtherTextError = '';
+  awarenessHelped = '';
   sourceOptions = [
-    'RBI Website',
-    'Bank/NBFC Branch',
-    'News/Media',
-    'Social Media',
+    'Print Media',
+    'Town Halls/Awareness Campaign by RBI',
+    'Electronic Media/Internet',
+    'Banks',
     'Word of Mouth',
-    'Government Portal',
     'Others',
   ];
-  awarenessOptions = [
-    'Very Aware',
-    'Somewhat Aware',
-    'Not Aware (first time user)',
-  ];
 
-  // FR-G-031: Rating labels
   ratingLabels = ['', 'Very Poor', 'Poor', 'Average', 'Good', 'Excellent'];
 
-  setRating(field: 'overallRating' | 'timelinessRating' | 'communicationRating' | 'satisfactionRating', value: number) {
+  private readonly SPECIAL_CHAR_REGEX = /[^a-zA-Z0-9\s.,;:!?'"\-()\/]/;
+
+  setRating(field: 'easeOfFiling' | 'grievanceRedressTime' | 'overallRating', value: number) {
     this[field] = value;
+    this.clearErrorIfValid();
+  }
+
+  onSourceOtherTextChange() {
+    if (this.SPECIAL_CHAR_REGEX.test(this.sourceOtherText)) {
+      this.sourceOtherTextError = 'Special characters are not allowed.';
+      this.sourceOtherText = this.sourceOtherText.replace(this.SPECIAL_CHAR_REGEX, '');
+    } else {
+      this.sourceOtherTextError = '';
+    }
+    this.clearErrorIfValid();
+  }
+
+  onFeedbackTextChange() {
+    if (this.SPECIAL_CHAR_REGEX.test(this.feedbackText)) {
+      this.feedbackTextError = 'Special characters are not allowed.';
+      this.feedbackText = this.feedbackText.replace(this.SPECIAL_CHAR_REGEX, '');
+    } else {
+      this.feedbackTextError = '';
+    }
+    this.clearErrorIfValid();
+  }
+
+  clearErrorIfValid() {
+    if (!this.error) return;
+    if (!this.complaintId.trim()) return;
+    if (this.easeOfFiling === 0) return;
+    if (this.grievanceRedressTime === 0) return;
+    if (this.overallRating === 0) return;
+    if (!this.sourceOfInformation) return;
+    if (this.sourceOfInformation === 'Others' && !this.sourceOtherText.trim()) return;
+    this.error = '';
   }
 
   submit() {
@@ -63,16 +96,16 @@ export class SubmitFeedbackComponent {
       this.error = 'Complaint reference number is required.';
       return;
     }
-    if (this.overallRating === 0) {
-      this.error = 'Please provide an overall rating.';
-      return;
-    }
     if (this.easeOfFiling === 0) {
-      this.error = 'Please rate the ease of filing.';
+      this.error = 'Please rate the ease of filing and tracking.';
       return;
     }
     if (this.grievanceRedressTime === 0) {
-      this.error = 'Please rate the grievance redress time.';
+      this.error = 'Please rate grievance redressed within a reasonable time.';
+      return;
+    }
+    if (this.overallRating === 0) {
+      this.error = 'Please rate the overall experience with the resolution provided.';
       return;
     }
     if (!this.sourceOfInformation) {
@@ -83,20 +116,43 @@ export class SubmitFeedbackComponent {
       this.error = 'Please specify the source.';
       return;
     }
-    if (!this.cmsPortalAwareness) {
-      this.error = 'Please select CMS Portal awareness level.';
+    if (this.sourceOfInformation === 'Others' && this.SPECIAL_CHAR_REGEX.test(this.sourceOtherText)) {
+      this.error = 'Special characters are not allowed in source specification.';
+      return;
+    }
+    if (this.sourceOfInformation === 'Others' && this.sourceOtherText.length > 500) {
+      this.error = 'Source specification must be within 500 characters.';
       return;
     }
     if (this.feedbackText.length > 500) {
       this.error = 'Feedback must be within 500 characters.';
       return;
     }
+    if (this.SPECIAL_CHAR_REGEX.test(this.feedbackText)) {
+      this.error = 'Special characters are not allowed in feedback.';
+      return;
+    }
 
     this.submitting.set(true);
-    setTimeout(() => {
-      this.submitting.set(false);
-      this.phase.set('success');
-    }, 1000);
+    this.feedbackService.submitFeedback({
+      complaintNumber: this.complaintId.trim(),
+      easeOfFiling: this.easeOfFiling,
+      grievanceRedressTime: this.grievanceRedressTime,
+      overallRating: this.overallRating,
+      feedbackText: this.feedbackText,
+      sourceOfInformation: this.sourceOfInformation,
+      sourceOtherText: this.sourceOtherText,
+      awarenessHelped: this.awarenessHelped,
+    }).subscribe({
+      next: () => {
+        this.submitting.set(false);
+        this.phase.set('success');
+      },
+      error: (err) => {
+        this.submitting.set(false);
+        this.error = err.error?.message || 'Failed to submit feedback. Please try again.';
+      },
+    });
   }
 
   goHome() {

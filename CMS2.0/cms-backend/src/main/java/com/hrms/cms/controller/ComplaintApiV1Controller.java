@@ -2,6 +2,7 @@ package com.hrms.cms.controller;
 
 import com.hrms.cms.dto.FileComplaintRequest;
 import com.hrms.cms.entity.Complaint;
+import com.hrms.cms.entity.ComplaintAttachment;
 import com.hrms.cms.entity.ComplaintComment;
 import com.hrms.cms.entity.ComplaintTimeline;
 import com.hrms.cms.entity.SimulatedEmail;
@@ -76,6 +77,9 @@ public class ComplaintApiV1Controller {
         }
         if (request.get("reRepliedAndDissatisfied") != null) {
             req.setReRepliedAndDissatisfied(Boolean.valueOf(request.get("reRepliedAndDissatisfied").toString()));
+        }
+        if (request.get("amountInvolved") != null) {
+            req.setAmountInvolved(new java.math.BigDecimal(request.get("amountInvolved").toString()));
         }
 
         // Resolve category name to ID
@@ -186,6 +190,18 @@ public class ComplaintApiV1Controller {
         String registeredAt = c.getCreatedAt() != null ? c.getCreatedAt().toString() : "";
         String slaDueDate = c.getCreatedAt() != null ? c.getCreatedAt().plusDays(30).toString() : "";
 
+        List<ComplaintAttachment> attachments = complaintService.getAttachments(c.getId());
+        List<Map<String, Object>> attachmentList = attachments.stream().map(a -> {
+            Map<String, Object> am = new LinkedHashMap<>();
+            am.put("id", a.getId());
+            am.put("fileName", a.getOriginalName());
+            am.put("name", a.getOriginalName());
+            am.put("contentType", a.getContentType());
+            am.put("size", a.getFileSize() != null ? formatFileSize(a.getFileSize()) : null);
+            am.put("uploadedAt", a.getUploadedAt() != null ? a.getUploadedAt().toString() : null);
+            return am;
+        }).collect(Collectors.toList());
+
         Map<String, Object> detail = new LinkedHashMap<>();
         detail.put("id", c.getId());
         detail.put("complaintId", c.getComplaintNumber());
@@ -203,7 +219,7 @@ public class ComplaintApiV1Controller {
         detail.put("complainantDistrict", c.getComplainantDistrict());
         detail.put("complainantPincode", c.getComplainantPincode());
         detail.put("entityName", bankName);
-        detail.put("entityType", "BANK");
+        detail.put("entityType", c.getEntityType() != null ? c.getEntityType() : "BANK");
         detail.put("entityCategory", c.getEntityCategory());
         detail.put("bsrCode", c.getEntityBsrCode());
         detail.put("entityPincode", c.getEntityPincode());
@@ -215,12 +231,22 @@ public class ComplaintApiV1Controller {
         detail.put("entityAddress", c.getEntityAddress());
         detail.put("cosmosCode", c.getCosmosCode());
         detail.put("schemeVersion", c.getSchemeVersion());
-        detail.put("amountInvolved", 0);
+        detail.put("bankBranch", c.getBankBranch());
+        detail.put("accountNumber", c.getAccountNumber());
+        detail.put("amountInvolved", c.getAmountInvolved() != null ? c.getAmountInvolved() : 0);
+        detail.put("reliefSought", c.getReliefSought());
+        detail.put("filingType", c.getFilingType());
+        detail.put("priorReComplaint", c.getPriorReComplaint());
+        detail.put("reComplaintDate", c.getReComplaintDate() != null ? c.getReComplaintDate().toString() : null);
+        detail.put("reComplaintReference", c.getReComplaintReference());
+        detail.put("reRepliedAndDissatisfied", c.getReRepliedAndDissatisfied());
+        detail.put("bankComplaintReference", c.getBankComplaintReference());
         detail.put("transactionDate", c.getBankComplaintDate() != null ? c.getBankComplaintDate().toString() : null);
         detail.put("assignedTeam", c.getAssignedOfficer() != null ? c.getAssignedOfficer() : "Unassigned");
         detail.put("assignedTo", c.getAssignedOfficer());
         detail.put("registeredAt", registeredAt);
         detail.put("createdAt", registeredAt);
+        detail.put("filedAt", c.getFiledAt() != null ? c.getFiledAt().toString() : registeredAt);
         detail.put("slaDueDate", slaDueDate);
         detail.put("resolutionSummary", null);
         detail.put("resolvedAt", c.getResolvedAt() != null ? c.getResolvedAt().toString() : null);
@@ -234,7 +260,8 @@ public class ComplaintApiV1Controller {
             return tm;
         }).collect(Collectors.toList()));
         detail.put("communications", List.of());
-        detail.put("documents", List.of());
+        detail.put("documents", attachmentList);
+        detail.put("attachments", attachmentList);
         detail.put("triageSignal", c.getTriageSignal());
         detail.put("triageFlags", c.getTriageFlags());
         detail.put("eligibilityTimeline", c.getEligibilityTimeline());
@@ -253,6 +280,8 @@ public class ComplaintApiV1Controller {
         detail.put("speakingOrderGenerated", c.getSpeakingOrderGenerated());
         detail.put("gistOfCase", c.getGistOfCase());
         detail.put("gistOfCaseRegional", c.getGistOfCaseRegional());
+        detail.put("department", c.getDepartment());
+        detail.put("workflowStage", c.getWorkflowStage());
 
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("success", true);
@@ -652,6 +681,50 @@ public class ComplaintApiV1Controller {
         response.put("data", data);
         response.put("timestamp", LocalDateTime.now().toString());
         return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/{complaintNumber}/withdraw")
+    public ResponseEntity<Map<String, Object>> withdrawComplaint(
+            @PathVariable String complaintNumber,
+            @RequestBody Map<String, Object> request) {
+
+        String reason = request.getOrDefault("reason", "").toString();
+        String remarks = request.getOrDefault("remarks", "").toString();
+        String callerPhone = request.getOrDefault("phone", "").toString();
+
+        Complaint complaint;
+        try {
+            complaint = complaintService.getByComplaintNumber(complaintNumber);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("success", false, "message", "Complaint not found"));
+        }
+
+        if (callerPhone.isEmpty() || !callerPhone.equals(complaint.getComplainantPhone())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("success", false, "message", "You can only withdraw your own complaint"));
+        }
+
+        Complaint saved = complaintService.withdrawComplaint(complaintNumber, reason, remarks);
+
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("complaintNumber", complaintNumber);
+        data.put("status", "WITHDRAWN");
+        data.put("withdrawnAt", saved.getClosedAt() != null ? saved.getClosedAt().toString() : LocalDateTime.now().toString());
+
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("success", true);
+        response.put("message", "Complaint withdrawn successfully");
+        response.put("data", data);
+        response.put("timestamp", LocalDateTime.now().toString());
+
+        return ResponseEntity.ok(response);
+    }
+
+    private static String formatFileSize(long bytes) {
+        if (bytes < 1024) return bytes + " B";
+        if (bytes < 1024 * 1024) return String.format("%.0f KB", bytes / 1024.0);
+        return String.format("%.1f MB", bytes / (1024.0 * 1024));
     }
 
     /**

@@ -4,43 +4,63 @@ import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { PublicAuthService } from '../../../services/public-auth.service';
+import { ComplaintService } from '../../../services/complaint.service';
 import { TranslatePipe } from '../../../pipes/translate.pipe';
 import { environment } from '../../../../environments/environment';
-
-interface ComplaintRecord {
-  complaintId: string;
-  entityName: string;
-  complaintDate: string;
-  status: string;
-  comments: string;
-}
+import { Table, TableModule } from 'primeng/table';
+import { Select } from 'primeng/select';
+import { DatePicker } from 'primeng/datepicker';
+import { FilterService } from 'primeng/api';
+import { ComplaintRecord } from '../models';
+import { FilingMethodPopupComponent, FilingMethodType } from '../filing-method-popup/filing-method-popup.component';
 
 @Component({
   selector: 'app-public-home',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, TranslatePipe],
+  imports: [CommonModule, FormsModule, RouterLink, TranslatePipe, TableModule, Select, DatePicker, FilingMethodPopupComponent],
   templateUrl: './public-home.component.html',
   styleUrl: './public-home.component.scss'
 })
 export class PublicHomeComponent implements OnInit {
 
+  @ViewChild('dt') dt!: Table;
+  @ViewChild('eduScroll') eduScroll!: ElementRef;
+
   private http = inject(HttpClient);
   private router = inject(Router);
+  private complaintService = inject(ComplaintService);
+  private filterService = inject(FilterService);
   authService = inject(PublicAuthService);
-
-  @ViewChild('eduScroll') eduScroll!: ElementRef;
 
   complaints = signal<ComplaintRecord[]>([]);
   loading = signal(true);
 
-  // Filters
-  filterById = '';
-  filterByEntity = '';
-  filterByDate = '';
-  filterByStatus = '';
-  filterByComments = '';
+  statusOptions = [
+    { label: 'All', value: '' },
+    { label: 'Draft', value: 'DRAFT' },
+    { label: 'Pending', value: 'PENDING' },
+    { label: 'In-Progress', value: 'IN_PROGRESS' },
+    { label: 'Complaint Closed', value: 'CLOSED' },
+    { label: 'Rejected', value: 'REJECTED' }
+  ];
+
+  selectedStatus = '';
+  dateFilter: Date | null = null;
+
+  showFilingPopup = false;
+  filingMethodType: FilingMethodType = 'email';
+
+  openFilingPopup(type: FilingMethodType) {
+    this.filingMethodType = type;
+    this.showFilingPopup = true;
+  }
+
+  onFileOnPortal() {
+    this.router.navigate(['/public/file-complaint']);
+  }
 
   ngOnInit() {
+    this.registerDateEqualsFilter();
     if (this.authService.isAuthenticated()) {
       this.loadComplaints();
     } else {
@@ -48,43 +68,102 @@ export class PublicHomeComponent implements OnInit {
     }
   }
 
-  private loadComplaints() {
-    const phone = this.authService.userIdentifier();
-    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/complaints?phone=${phone}`).subscribe({
-      next: (res) => {
-        const data = res?.data || res || [];
-        this.complaints.set(Array.isArray(data) ? data.map((c: any) => ({
-          complaintId: c.complaintId || c.id,
-          entityName: c.entityName || '—',
-          complaintDate: c.createdAt || c.complaintDate || c.registeredDate || '—',
-          status: c.status || 'PENDING',
-          comments: c.comments || c.description?.substring(0, 50) || '—'
-        })) : []);
-        this.loading.set(false);
-      },
-      error: () => {
-        this.complaints.set([]);
-        this.loading.set(false);
-      }
+  private registerDateEqualsFilter() {
+    this.filterService.register('dateEquals', (value: any, filter: any): boolean => {
+      if (!filter) return true;
+      if (!value || value === '—') return false;
+      const rowDate = new Date(value);
+      if (isNaN(rowDate.getTime())) return false;
+      const filterDate = new Date(filter);
+      return rowDate.getFullYear() === filterDate.getFullYear()
+        && rowDate.getMonth() === filterDate.getMonth()
+        && rowDate.getDate() === filterDate.getDate();
     });
   }
 
-  get filteredComplaints(): ComplaintRecord[] {
-    return this.complaints().filter(c =>
-      (!this.filterById || c.complaintId.toLowerCase().includes(this.filterById.toLowerCase())) &&
-      (!this.filterByEntity || c.entityName.toLowerCase().includes(this.filterByEntity.toLowerCase())) &&
-      (!this.filterByDate || c.complaintDate.includes(this.filterByDate)) &&
-      (!this.filterByStatus || c.status.toLowerCase().includes(this.filterByStatus.toLowerCase())) &&
-      (!this.filterByComments || c.comments.toLowerCase().includes(this.filterByComments.toLowerCase()))
-    );
+  private loadComplaints() {
+    const phone = this.authService.userIdentifier();
+    const allRecords: ComplaintRecord[] = [];
+
+    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/complaints?phone=${phone}`).subscribe({
+      next: (res) => {
+        const data = res?.data || res || [];
+        if (Array.isArray(data)) {
+          allRecords.push(...data.map((c: any) => ({
+            complaintId: c.complaintId || c.id,
+            entityName: c.entityName || c.regulatedEntityName || '—',
+            complaintDate: c.createdAt || c.complaintDate || c.registeredDate || '—',
+            status: c.status || 'PENDING',
+            closureClause: c.closureClause || '',
+            closureDate: c.closureDate || c.complaintClosureDate || '',
+            acknowledgementLetterUrl: c.acknowledgementLetterUrl || c.acknowledgementLetter || '',
+            closureLetterUrl: c.closureLetterUrl || c.closureLetter || '',
+          })));
+        }
+        this.finalizeLoad(allRecords);
+      },
+      error: () => {
+        this.finalizeLoad(allRecords);
+      }
+    });
+
+    this.complaintService.getDrafts(phone).subscribe({
+      next: (drafts) => {
+        const serverDrafts = drafts.map(d => ({
+          complaintId: d.draftId,
+          entityName: d.entityName || '—',
+          complaintDate: d.updatedAt || '—',
+          status: 'DRAFT',
+          isDraft: true,
+          draftId: d.draftId
+        }));
+        if (serverDrafts.length) {
+          this.complaints.update(list => {
+            const merged = [...serverDrafts.filter(sd => !list.some(l => l.draftId === sd.draftId)), ...list];
+            merged.sort((a, b) => {
+              if (a.status === 'DRAFT' && b.status !== 'DRAFT') return -1;
+              if (b.status === 'DRAFT' && a.status !== 'DRAFT') return 1;
+              return 0;
+            });
+            return merged;
+          });
+        }
+      },
+      error: () => {}
+    });
+  }
+
+  private finalizeLoad(records: ComplaintRecord[]) {
+    records.sort((a, b) => {
+      if (a.status === 'DRAFT' && b.status !== 'DRAFT') return -1;
+      if (b.status === 'DRAFT' && a.status !== 'DRAFT') return 1;
+      return new Date(b.complaintDate).getTime() - new Date(a.complaintDate).getTime();
+    });
+    this.complaints.set(records);
+    this.loading.set(false);
+  }
+
+  onStatusFilter(value: string) {
+    this.selectedStatus = value;
+    this.dt.filter(value, 'status', 'equals');
+  }
+
+  onDateFilterChange(date: Date | null) {
+    this.dateFilter = date;
+    if (date) {
+      this.dt.filter(date.toISOString(), 'complaintDate', 'dateEquals');
+    } else {
+      this.dt.filter(null, 'complaintDate', 'dateEquals');
+    }
   }
 
   getStatusClass(status: string): string {
     switch (status) {
-      case 'RESOLVED': case 'CLOSED': case 'NON_MAINTAINABLE': return 'status-resolved';
-      case 'IN_PROGRESS': case 'UNDER_REVIEW': return 'status-progress';
-      case 'REQUEST_SENT_BACK': return 'status-sent-back';
-      case 'REJECTED': return 'status-rejected';
+      case 'CLOSED': case 'NON_MAINTAINABLE': case 'APPROVED': return 'status-closed';
+      case 'IN_PROGRESS': return 'status-inprogress';
+      case 'INFORMATION_REQUIRED': case 'REJECTED': return 'status-info-required';
+      case 'PENDING': return 'status-pending';
+      case 'DRAFT': return 'status-draft';
       default: return 'status-pending';
     }
   }
@@ -92,43 +171,58 @@ export class PublicHomeComponent implements OnInit {
   getStatusLabel(status: string): string {
     switch (status) {
       case 'IN_PROGRESS': return 'In-Progress';
-      case 'REQUEST_SENT_BACK': return 'Request Sent Back.';
+      case 'CLOSED': case 'NON_MAINTAINABLE': return 'Complaint Closed';
+      case 'INFORMATION_REQUIRED': return 'Information Required';
+      case 'PENDING': return 'Pending';
+      case 'DRAFT': return 'Draft';
+      case 'APPROVED': return 'Approved';
       case 'REJECTED': return 'Rejected';
-      case 'RESOLVED': return 'Resolved';
-      case 'UNDER_REVIEW': return 'Under Review';
-      case 'NON_MAINTAINABLE': return 'Closed';
       default: return status.replace(/_/g, ' ');
     }
   }
 
-  getActionLabel(status: string): string {
-    switch (status) {
-      case 'IN_PROGRESS': case 'UNDER_REVIEW': case 'PENDING': return 'Withdraw';
-      case 'REQUEST_SENT_BACK': return 'Appeal';
-      case 'REJECTED': return 'Act';
-      default: return 'View';
+  viewComplaint(record: ComplaintRecord) {
+    if (record.isDraft) {
+      this.resumeDraft(record);
+    } else {
+      this.router.navigate(['/public/complaint', record.complaintId]);
     }
   }
 
-  onAction(complaint: ComplaintRecord) {
-    const action = this.getActionLabel(complaint.status);
-    switch (action) {
-      case 'Withdraw':
-        this.router.navigate(['/public/withdraw', complaint.complaintId]);
-        break;
-      case 'Appeal':
-        this.router.navigate(['/public/appeal'], { queryParams: { id: complaint.complaintId } });
-        break;
-      default:
-        this.router.navigate(['/public/track', complaint.complaintId]);
-        break;
+  fileAppeal(record: ComplaintRecord) {
+    this.router.navigate(['/public/appeal', record.complaintId]);
+  }
+
+  shareFeedback(record: ComplaintRecord) {
+    this.router.navigate(['/public/feedback', record.complaintId]);
+  }
+
+  resumeDraft(record: ComplaintRecord) {
+    if (record.draftId) {
+      this.router.navigate(['/public/file-complaint'], { queryParams: { draftId: record.draftId } });
     }
   }
 
-  formatDate(dateStr: string): string {
+  deleteDraft(record: ComplaintRecord) {
+    if (!record.draftId) return;
+    this.complaintService.deleteDraft(record.draftId).subscribe({
+      next: () => {
+        this.complaints.update(list => list.filter(c => c.draftId !== record.draftId));
+      },
+      error: () => {}
+    });
+  }
+
+  formatDate(dateStr: string | undefined): string {
     if (!dateStr || dateStr === '—') return '—';
     try {
-      return new Date(dateStr).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return '—';
+      return [
+        String(d.getDate()).padStart(2, '0'),
+        String(d.getMonth() + 1).padStart(2, '0'),
+        String(d.getFullYear())
+      ].join('-');
     } catch {
       return dateStr;
     }
@@ -142,10 +236,10 @@ export class PublicHomeComponent implements OnInit {
   ];
 
   schemeCards = [
-    { icon: 'pi pi-indian-rupee', title: 'Reserve Bank - Integrated Ombudsman Scheme, 2026', hasDownload: true },
-    { icon: 'pi pi-indian-rupee', title: 'Regulated entities not covered under Reserve Bank - Integrated Ombudsman Scheme, 2026', hasDownload: true },
-    { icon: 'pi pi-map-marker', title: 'Address of Centralised Receipt and Processing Centre', hasDownload: false },
-    { icon: 'pi pi-map-marker', title: 'Address of Consumer Education and Protection Cell', hasDownload: false },
+    { icon: 'pi pi-indian-rupee', title: 'Reserve Bank - Integrated Ombudsman Scheme, 2026', hasDownload: true, downloadUrl: 'assets/documents/Ombudsman_Scheme-2026.pdf' },
+    { icon: 'pi pi-indian-rupee', title: 'Regulated entities not covered under Reserve Bank - Integrated Ombudsman Scheme, 2026', hasDownload: true, downloadUrl: 'assets/documents/Ombudsman_Scheme-2026.pdf' },
+    { icon: 'pi pi-map-marker', title: 'Address of Centralised Receipt and Processing Centre', hasDownload: false, downloadUrl: '' },
+    { icon: 'pi pi-map-marker', title: 'Address of Consumer Education and Protection Cell', hasDownload: false, downloadUrl: '' },
   ];
 
   stats = [

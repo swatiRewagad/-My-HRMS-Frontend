@@ -1,0 +1,66 @@
+<p-dialog
+  [(visible)]="visible"
+  [modal]="true"
+  [closable]="true"
+  [draggable]="false"
+  [resizable]="false"
+  [style]="{ width: '520px' }"
+  [breakpoints]="{ '600px': '95vw' }"
+  (onHide)="onHide()"
+  styleClass="filing-method-dialog">
+
+  <!-- Custom Header -->
+  <ng-template #header>
+    <div class="popup-header">
+      <i [class]="config.icon" class="popup-header-icon"></i>
+      <h3 class="popup-header-title">{{ config.title }}</h3>
+    </div>
+  </ng-template>
+
+  <!-- Body -->
+  <div class="popup-body">
+    <p class="popup-description">{{ config.description }}</p>
+
+    @if (config.emailId) {
+      <p class="popup-detail">
+        Email id: <strong>{{ config.emailId }}</strong>
+      </p>
+    }
+
+    @if (config.address) {
+      <div class="popup-address">
+        <span class="address-label">Address:</span>
+        @for (line of config.address!.split('\n'); track line) {
+          <strong class="address-line">{{ line }}</strong>
+        }
+      </div>
+    }
+
+    <a class="popup-download-link" (click)="onDownloadForm()">
+      <i class="pi pi-download"></i> {{ config.downloadLabel }}
+    </a>
+
+    <!-- Info Banner -->
+    <div class="popup-info-banner">
+      <div class="popup-info-row">
+        <i class="pi pi-info-circle popup-info-icon"></i>
+        <p class="popup-info-text">{{ config.infoMessage }}</p>
+        <button class="popup-info-dismiss" (click)="null" aria-label="Dismiss">
+          <i class="pi pi-times"></i>
+        </button>
+      </div>
+      <div class="popup-portal-action">
+        <button class="btn-file-on-portal" (click)="onFileOnPortal()">{{ config.cmsPortalLabel }}</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <ng-template #footer>
+    <div class="popup-footer">
+      <button class="btn-cancel" (click)="onCancel()">Cancel</button>
+      <button class="btn-ok" (click)="onOk()">OK</button>
+    </div>
+  </ng-template>
+
+</p-dialog>
