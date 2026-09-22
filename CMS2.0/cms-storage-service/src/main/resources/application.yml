@@ -10,10 +10,10 @@ spring:
   application:
     name: cms-storage-service
   datasource:
-    url: ${DB_URL:jdbc:oracle:thin:@${DB_HOST:localhost}:${DB_PORT:1521}/${DB_SERVICE_NAME:CMSPDB}}
-    username: ${DB_USERNAME:cms_user}
-    password: ${DB_PASSWORD:}
-    driver-class-name: oracle.jdbc.OracleDriver
+    url: jdbc:mysql://localhost:3306/CMS_DB?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&rewriteBatchedStatements=true&characterEncoding=UTF-8&useUnicode=true
+    username: root
+    password: root
+    driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
       maximum-pool-size: 20
       minimum-idle: 5
@@ -28,7 +28,7 @@ spring:
     show-sql: false
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.OracleDialect
+        dialect: org.hibernate.dialect.MySQLDialects
         format_sql: true
     open-in-view: false
   servlet:
