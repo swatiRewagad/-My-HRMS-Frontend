@@ -1,0 +1,111 @@
+<div class="search-page">
+  <header class="search-header">
+    <button class="back-btn" (click)="goBack()">← Back</button>
+    <h1>Complaint Search</h1>
+    <p class="subtitle">Full-text search across all complaints</p>
+  </header>
+
+  <!-- Search Bar -->
+  <section class="search-bar">
+    <div class="search-input-group">
+      <input type="text"
+             [ngModel]="query()"
+             (ngModelChange)="query.set($event)"
+             placeholder="Search by ID, name, subject, description, entity..."
+             (keydown.enter)="search()">
+      <button class="search-btn" (click)="search()" [disabled]="loading()">
+        @if (loading()) { Searching... } @else { Search }
+      </button>
+    </div>
+  </section>
+
+  <!-- Filters -->
+  <section class="filters">
+    <div class="filter-row">
+      <select [ngModel]="categoryFilter()" (ngModelChange)="categoryFilter.set($event)">
+        <option value="">All Categories</option>
+        @for (cat of categories; track cat) {
+          <option [value]="cat">{{ cat }}</option>
+        }
+      </select>
+
+      <select [ngModel]="statusFilter()" (ngModelChange)="statusFilter.set($event)">
+        <option value="">All Statuses</option>
+        @for (s of statuses; track s) {
+          <option [value]="s">{{ s }}</option>
+        }
+      </select>
+
+      <select [ngModel]="priorityFilter()" (ngModelChange)="priorityFilter.set($event)">
+        <option value="">All Priorities</option>
+        @for (p of priorities; track p) {
+          <option [value]="p">{{ p }}</option>
+        }
+      </select>
+
+      <select [ngModel]="teamFilter()" (ngModelChange)="teamFilter.set($event)">
+        <option value="">All Teams</option>
+        @for (t of teams; track t) {
+          <option [value]="t">{{ t }}</option>
+        }
+      </select>
+
+      <button class="clear-btn" (click)="clearFilters()">Clear</button>
+    </div>
+  </section>
+
+  <!-- Reindex -->
+  <section class="reindex-section">
+    <button class="reindex-btn" (click)="reindex()" [disabled]="reindexing()">
+      @if (reindexing()) { Reindexing... } @else { ↻ Reindex All Complaints }
+    </button>
+    @if (reindexMessage()) {
+      <span class="reindex-msg">{{ reindexMessage() }}</span>
+    }
+  </section>
+
+  <!-- Error -->
+  @if (error()) {
+    <div class="error-message">{{ error() }}</div>
+  }
+
+  <!-- Results -->
+  @if (searched() && !loading()) {
+    <section class="results-section">
+      <div class="results-header">
+        <h3>{{ results().length }} result(s) found</h3>
+      </div>
+
+      @if (results().length === 0) {
+        <div class="no-results">
+          <p>No complaints match your search criteria.</p>
+        </div>
+      }
+
+      @for (r of results(); track r.complaintId) {
+        <div class="result-card" (click)="viewComplaint(r.complaintId)">
+          <div class="result-top">
+            <span class="complaint-id">{{ r.complaintId }}</span>
+            <span class="badge status" [attr.data-status]="r.status">{{ r.status }}</span>
+            <span class="badge priority" [attr.data-priority]="r.priority">{{ r.priority }}</span>
+            <span class="badge category">{{ r.category }}</span>
+          </div>
+          <div class="result-subject">{{ r.subject }}</div>
+          @if (r.description) {
+            <div class="result-description">{{ r.description | slice:0:200 }}{{ r.description.length > 200 ? '...' : '' }}</div>
+          }
+          <div class="result-meta">
+            <span>👤 {{ r.complainantName }}</span>
+            <span>🏦 {{ r.entityName }}</span>
+            @if (r.assignedTeam) { <span>👥 {{ r.assignedTeam }}</span> }
+            @if (r.amountInvolved) { <span>₹{{ r.amountInvolved | number }}</span> }
+            @if (r.createdAt) { <span>📅 {{ r.createdAt | date:'dd MMM yyyy' }}</span> }
+          </div>
+          @if (r.resolutionSummary) {
+            <div class="result-resolution">✅ {{ r.resolutionSummary }}</div>
+          }
+        </div>
+      }
+    </section>
+  }
+</div>

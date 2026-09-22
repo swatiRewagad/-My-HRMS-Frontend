@@ -1,0 +1,335 @@
+package com.hrms.cms.service;
+
+import com.hrms.cms.entity.*;
+import com.hrms.cms.repository.*;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
+import java.util.*;
+
+/**
+ * Business logic for the Regulated Entity (RE) portal.
+ * Handles complaint viewing, response submission, dashboard stats,
+ * and query/clarification workflows for RE nodal officers.
+ */
+@Service
+@RequiredArgsConstructor
+@Slf4j
+public class RePortalService {
+
+    private final ComplaintRepository complaintRepository;
+    private final ComplaintTimelineRepository timelineRepository;
+    private final ReResponseTrackerRepository trackerRepository;
+    private final RegulatedEntityRepository regulatedEntityRepository;
+    private final NotificationService notificationService;
+    private final ReActivityStatusService activityStatusService;
+
+    private static final int DEFAULT_RESPONSE_WINDOW_DAYS = 15;
+
+    // ═══════════════════════════════════════════════════════════════
+    // Complaint listing
+    // ═══════════════════════════════════════════════════════════════
+
+    /**
+     * Retrieves paginated complaints forwarded to the specified entity.
+     */
+    @Transactional(readOnly = true)
+    public Page<Complaint> getComplaintsForEntity(String entityCode, String status, Pageable pageable) {
+        if (status != null && !status.isBlank()) {
+            return complaintRepository.findByEntityCodeAndStatusOrderByCreatedAtDesc(entityCode, status, pageable);
+        }
+        return complaintRepository.findByEntityCodeOrderByCreatedAtDesc(entityCode, pageable);
+    }
+
+    /**
+     * Retrieves a single complaint detail by complaint number, validating entity access.
+     */
+    @Transactional(readOnly = true)
+    public Complaint getComplaintDetail(String complaintNumber, String entityCode) {
+        Complaint complaint = complaintRepository.findByComplaintNumber(complaintNumber)
+                .orElseThrow(() -> new NoSuchElementException("Complaint not found: " + complaintNumber));
+
+        if (!entityCode.equals(complaint.getEntityCode())) {
+            throw new SecurityException("Access denied: complaint does not belong to entity " + entityCode);
+        }
+        return complaint;
+    }
+
+    /**
+     * Detail fetch that also records the RE having opened the record (UST846, UST847).
+     *
+     * Separate from {@link #getComplaintDetail} on purpose: that method is reused as an
+     * ownership check by the respond, timeline and query paths, and marking OPENED from there
+     * would attribute an "opened" event to an entity that only submitted a form. Only the
+     * genuine detail-view endpoint calls this one.
+     */
+    @Transactional(readOnly = true)
+    public Complaint openComplaintDetail(String complaintNumber, String entityCode, String actor) {
+        Complaint complaint = getComplaintDetail(complaintNumber, entityCode);
+        activityStatusService.recordActivity(complaint.getId(), ReActivityStatus.OPENED, actor,
+                TimelineEventSource.MANUAL, "Regulated entity opened the record");
+        return complaint;
+    }
+
+    /**
+     * RE saves a working draft of its response (UST846).
+     *
+     * The ladder distinguishes a draft that is merely open from one being written: an empty draft
+     * means the entity is reviewing, a draft with text means it is preparing a response. That is
+     * the distinction the story asks for and it cannot be derived from the save event alone.
+     */
+    @Transactional
+    public ReResponseTracker saveDraft(String complaintNumber, String entityCode, String draftText, String actor) {
+        Complaint complaint = getComplaintDetail(complaintNumber, entityCode);
+        ReResponseTracker tracker = requireTracker(complaint, complaintNumber);
+
+        if (tracker.getRespondedAt() != null) {
+            throw new IllegalStateException("Complaint already responded to on: " + tracker.getRespondedAt());
+        }
+
+        tracker.setDraftResponseText(draftText);
+        tracker.setDraftSavedAt(LocalDateTime.now());
+        trackerRepository.save(tracker);
+
+        ReActivityStatus target = (draftText == null || draftText.isBlank())
+                ? ReActivityStatus.UNDER_REVIEW
+                : ReActivityStatus.RESPONSE_BEING_PREPARED;
+
+        activityStatusService.recordActivity(complaint, target, actor,
+                TimelineEventSource.MANUAL, "Regulated entity saved a draft response");
+
+        return tracker;
+    }
+
+    /**
+     * Records that supporting documents were attached (UST846). Called after the upload has been
+     * persisted, so a rejected file cannot advance the badge.
+     */
+    @Transactional
+    public void recordDocumentsUploaded(Complaint complaint, int fileCount, String actor) {
+        activityStatusService.recordActivity(complaint, ReActivityStatus.DOCUMENTS_UPLOADED, actor,
+                TimelineEventSource.MANUAL,
+                "Regulated entity uploaded " + fileCount + (fileCount == 1 ? " document" : " documents"));
+    }
+
+    private ReResponseTracker requireTracker(Complaint complaint, String complaintNumber) {
+        return trackerRepository.findByComplaintId(complaint.getId())
+                .orElseThrow(() -> new NoSuchElementException(
+                        "No response tracker found for complaint: " + complaintNumber));
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // Response submission
+    // ═══════════════════════════════════════════════════════════════
+
+    /**
+     * Submits RE response to a complaint. Validates the response window.
+     */
+    @Transactional
+    public ReResponseTracker respondToComplaint(String complaintNumber, String response, String respondedBy) {
+        Complaint complaint = complaintRepository.findByComplaintNumber(complaintNumber)
+                .orElseThrow(() -> new NoSuchElementException("Complaint not found: " + complaintNumber));
+
+        ReResponseTracker tracker = trackerRepository.findByComplaintId(complaint.getId())
+                .orElseThrow(() -> new NoSuchElementException("No response tracker found for complaint: " + complaintNumber));
+
+        if (tracker.getRespondedAt() != null) {
+            throw new IllegalStateException("Complaint already responded to on: " + tracker.getRespondedAt());
+        }
+
+        if (!isWithinResponseWindow(tracker)) {
+            log.warn("Response submitted after window expiry for complaint {}", complaintNumber);
+            // Allow response but mark as late
+        }
+
+        tracker.setRespondedAt(LocalDateTime.now());
+        tracker.setResponseText(response);
+        trackerRepository.save(tracker);
+
+        // Update complaint status
+        String previousStatus = complaint.getStatus();
+        complaint.setStatus("re_responded");
+        complaintRepository.save(complaint);
+
+        // Add timeline entry
+        ComplaintTimeline timeline = ComplaintTimeline.builder()
+                .complaintId(complaint.getId())
+                .action("RE_RESPONDED")
+                .performedBy(respondedBy)
+                .remarks("Regulated entity submitted response")
+                .fromStatus(previousStatus)
+                .toStatus("re_responded")
+                .eventSource(TimelineEventSource.MANUAL)
+                .build();
+        timelineRepository.save(timeline);
+
+        // Ladder reaches its terminal RE-driven level in the same transaction as the response, so a
+        // rolled-back submission cannot leave the entity reported as having answered (UST846).
+        activityStatusService.recordActivity(complaint, ReActivityStatus.RESPONSE_SUBMITTED, respondedBy,
+                TimelineEventSource.MANUAL, "Regulated entity submitted its formal response");
+
+        // UST668: RE_RESPONSE — notify complaint owner (bell only)
+        String complaintOwner = complaint.getAssignedOfficer();
+        if (complaintOwner != null && !complaintOwner.isBlank()) {
+            notificationService.send(complaintOwner, "RE_RESPONSE",
+                    "RE has submitted response",
+                    "Regulated entity has responded to complaint " + complaintNumber + ". Review the response.",
+                    complaintNumber, "COMPLAINT",
+                    "/complaint/" + complaintNumber);
+        }
+
+        log.info("RE response submitted for complaint {} by {}", complaintNumber, respondedBy);
+        return tracker;
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // Dashboard stats
+    // ═══════════════════════════════════════════════════════════════
+
+    /**
+     * Computes dashboard statistics for the given entity.
+     */
+    @Transactional(readOnly = true)
+    public Map<String, Object> getDashboardStats(String entityCode) {
+        // Get all trackers for this entity
+        RegulatedEntity entity = regulatedEntityRepository.findByNameNormalized(
+                RegulatedEntity.normalize(entityCode)).orElse(null);
+
+        long totalForwarded = 0;
+        long pending = 0;
+        long responded = 0;
+        long breached = 0;
+        double avgResponseDays = 0.0;
+
+        if (entity != null) {
+            List<ReResponseTracker> trackers = trackerRepository
+                    .findByRegulatedEntityIdOrderByForwardedAtDesc(entity.getId());
+
+            totalForwarded = trackers.size();
+            pending = trackers.stream().filter(t -> t.getRespondedAt() == null && !t.isBreached()).count();
+            responded = trackers.stream().filter(t -> t.getRespondedAt() != null).count();
+            breached = trackers.stream().filter(ReResponseTracker::isBreached).count();
+
+            avgResponseDays = trackers.stream()
+                    .filter(t -> t.getRespondedAt() != null)
+                    .mapToLong(t -> ChronoUnit.DAYS.between(t.getForwardedAt(), t.getRespondedAt()))
+                    .average()
+                    .orElse(0.0);
+        }
+
+        Map<String, Object> stats = new LinkedHashMap<>();
+        stats.put("totalForwarded", totalForwarded);
+        stats.put("pending", pending);
+        stats.put("responded", responded);
+        stats.put("breached", breached);
+        stats.put("avgResponseDays", Math.round(avgResponseDays * 10.0) / 10.0);
+        return stats;
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // Query / Clarification
+    // ═══════════════════════════════════════════════════════════════
+
+    /**
+     * RE raises a query or extension request on a complaint.
+     */
+    @Transactional
+    public void raiseQuery(String complaintNumber, String queryText, String queryType) {
+        Complaint complaint = complaintRepository.findByComplaintNumber(complaintNumber)
+                .orElseThrow(() -> new NoSuchElementException("Complaint not found: " + complaintNumber));
+
+        ReResponseTracker tracker = trackerRepository.findByComplaintId(complaint.getId())
+                .orElseThrow(() -> new NoSuchElementException("No response tracker for complaint: " + complaintNumber));
+
+        tracker.setQueryText(queryText);
+        tracker.setQueryRaisedAt(LocalDateTime.now());
+        trackerRepository.save(tracker);
+
+        // Add timeline entry
+        String action = "EXTENSION_REQUEST".equals(queryType) ? "RE_EXTENSION_REQUEST" : "RE_CLARIFICATION";
+        ComplaintTimeline timeline = ComplaintTimeline.builder()
+                .complaintId(complaint.getId())
+                .action(action)
+                .performedBy("RE_PORTAL")
+                .remarks(queryType + ": " + queryText)
+                .fromStatus(complaint.getStatus())
+                .toStatus(complaint.getStatus()) // status unchanged for queries
+                .eventSource(TimelineEventSource.MANUAL)
+                .build();
+        timelineRepository.save(timeline);
+
+        log.info("RE raised {} for complaint {}", queryType, complaintNumber);
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // Timeline
+    // ═══════════════════════════════════════════════════════════════
+
+    /**
+     * Gets complaint timeline visible to the RE.
+     */
+    @Transactional(readOnly = true)
+    public List<ComplaintTimeline> getTimeline(String complaintNumber, String entityCode) {
+        Complaint complaint = getComplaintDetail(complaintNumber, entityCode);
+        return timelineRepository.findByComplaintIdOrderByPerformedAtDesc(complaint.getId());
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // Profile
+    // ═══════════════════════════════════════════════════════════════
+
+    /**
+     * Gets the RE entity profile.
+     */
+    @Transactional(readOnly = true)
+    public RegulatedEntity getEntityProfile(String entityCode) {
+        return regulatedEntityRepository.findByNameNormalized(RegulatedEntity.normalize(entityCode))
+                .orElseThrow(() -> new NoSuchElementException("Regulated entity not found: " + entityCode));
+    }
+
+    /**
+     * Updates nodal officer contact details.
+     */
+    @Transactional
+    public RegulatedEntity updateNodalOfficer(String entityCode, String name, String email, String phone, String designation) {
+        RegulatedEntity entity = getEntityProfile(entityCode);
+        entity.setNodalOfficerName(name);
+        entity.setNodalOfficerEmail(email);
+        entity.setNodalOfficerPhone(phone);
+        entity.setNodalOfficerDesignation(designation);
+        return regulatedEntityRepository.save(entity);
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // Response window check
+    // ═══════════════════════════════════════════════════════════════
+
+    /**
+     * Checks if the 15-day response window is still open for a complaint.
+     */
+    public boolean isWithinResponseWindow(String complaintNumber) {
+        Complaint complaint = complaintRepository.findByComplaintNumber(complaintNumber)
+                .orElseThrow(() -> new NoSuchElementException("Complaint not found: " + complaintNumber));
+
+        ReResponseTracker tracker = trackerRepository.findByComplaintId(complaint.getId())
+                .orElseThrow(() -> new NoSuchElementException("No response tracker for complaint: " + complaintNumber));
+
+        return isWithinResponseWindow(tracker);
+    }
+
+    private boolean isWithinResponseWindow(ReResponseTracker tracker) {
+        if (tracker.getWindowExpiresAt() != null) {
+            return LocalDateTime.now().isBefore(tracker.getWindowExpiresAt());
+        }
+        // Fallback: check forwardedAt + window days
+        int windowDays = tracker.getWindowDays() > 0 ? tracker.getWindowDays() : DEFAULT_RESPONSE_WINDOW_DAYS;
+        LocalDateTime deadline = tracker.getForwardedAt().plusDays(windowDays);
+        return LocalDateTime.now().isBefore(deadline);
+    }
+}

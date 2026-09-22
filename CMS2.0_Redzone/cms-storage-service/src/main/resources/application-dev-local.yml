@@ -1,0 +1,7 @@
+cms:
+  storage:
+    base-path: ./dev-uploads
+
+logging:
+  level:
+    com.rbi.cms: DEBUG

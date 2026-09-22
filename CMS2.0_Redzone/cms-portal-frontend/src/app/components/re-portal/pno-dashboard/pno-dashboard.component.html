@@ -1,0 +1,158 @@
+<div class="pno-dashboard">
+
+  <!-- ═══ Team workload (UST838) ═══ -->
+  <section class="panel">
+    <div class="section-header">
+      <h3 class="section-title">{{ 're.pno.dashboard_title' | translate }}</h3>
+    </div>
+
+    <!--
+      UST838: the definition of "open records" is not guessable from the number, and a PNO comparing it
+      against a raw record count would conclude the dashboard was wrong. So the exclusion is stated
+      here, beside the figure it qualifies, rather than hidden in a tooltip.
+    -->
+    <p class="definition-notice">
+      <i class="pi pi-info-circle"></i>
+      <span>{{ 're.pno.workload_definition_notice' | translate }}</span>
+    </p>
+
+    <div class="stats-grid">
+      <div class="stat-card total">
+        <div class="stat-icon"><i class="pi pi-inbox"></i></div>
+        <div class="stat-content">
+          <span class="stat-value">{{ totalActiveRecords() }}</span>
+          <span class="stat-label">{{ 're.pno.total_active_records' | translate }}</span>
+        </div>
+      </div>
+
+      <!--
+        A hint rather than a link: no route is registered for the approvals screen in app.routes.ts, and
+        a routerLink to an unregistered path would fail silently on click. The queue is named by its own
+        title so the PNO knows which screen to open.
+      -->
+      <div class="stat-card pending">
+        <div class="stat-icon"><i class="pi pi-clock"></i></div>
+        <div class="stat-content">
+          <span class="stat-value">
+            @if (approvalsLoading()) {
+              <span class="stat-pending-dash">&mdash;</span>
+            } @else {
+              {{ pendingApprovalCount() }}
+            }
+          </span>
+          <span class="stat-label">{{ 're.pno.pending_approvals' | translate }}</span>
+          <span class="stat-hint">{{ 're.reassign.approvals_title' | translate }}</span>
+        </div>
+      </div>
+    </div>
+
+    @if (approvalsError()) {
+      <div class="banner banner-error" role="alert">
+        <i class="pi pi-exclamation-triangle"></i>
+        <span>{{ approvalsError() | translate }}</span>
+      </div>
+    }
+
+    @if (workloadLoading()) {
+      <div class="loading-state">
+        <div class="spinner"></div>
+      </div>
+    } @else if (workloadError()) {
+      <!-- A non-PNO landing here reads the server's own reason, translated, instead of a blank page. -->
+      <div class="banner banner-error" role="alert">
+        <i class="pi pi-exclamation-triangle"></i>
+        <span>{{ workloadError() | translate }}</span>
+      </div>
+    } @else if (sortedOfficers().length === 0) {
+      <div class="empty-state">
+        <i class="pi pi-users"></i>
+        <p>{{ 're.pno.no_officers' | translate }}</p>
+      </div>
+    } @else {
+      <div class="table-wrapper">
+        <table class="workload-table">
+          <thead>
+            <tr>
+              <th>{{ 're.pno.officer_column' | translate }}</th>
+              <th class="col-workload">{{ 're.pno.workload_column' | translate }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!--
+              The workload endpoint returns ids only; the id is shown as-is rather than resolved to a
+              name, because no name is available here and a guessed one would label a real number with
+              the wrong person.
+            -->
+            @for (officer of sortedOfficers(); track officer.userId) {
+              <tr>
+                <td class="col-officer">{{ officer.userId }}</td>
+                <!-- Rendered verbatim: this must equal what the reassignment popup shows (UST838). -->
+                <td class="col-workload">{{ officer.workload }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </section>
+
+  <!-- ═══ Reassignment history summary (UST844) ═══ -->
+  <section class="panel">
+    <div class="section-header">
+      <h3 class="section-title">{{ 're.reassign.history_title' | translate }}</h3>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card moves">
+        <div class="stat-icon"><i class="pi pi-sync"></i></div>
+        <div class="stat-content">
+          <span class="stat-value">{{ totalMoves() }}</span>
+          <!--
+            Deliberately unlabelled: no seeded key names a "total moves" figure, and labelling it with
+            summary_inbound or summary_outbound would state the wrong thing — this counts both
+            directions. The section heading above gives it its context.
+          -->
+          <span class="stat-label"></span>
+        </div>
+      </div>
+    </div>
+
+    @if (historyLoading()) {
+      <div class="loading-state">
+        <div class="spinner"></div>
+      </div>
+    } @else if (historyError()) {
+      <div class="banner banner-error" role="alert">
+        <i class="pi pi-exclamation-triangle"></i>
+        <span>{{ historyError() | translate }}</span>
+      </div>
+    } @else if (hasHistory()) {
+      <div class="table-wrapper">
+        <table class="history-table">
+          <thead>
+            <tr>
+              <th>{{ 're.pno.officer_column' | translate }}</th>
+              <th class="col-count">{{ 're.reassign.summary_inbound' | translate }}</th>
+              <th class="col-count">{{ 're.reassign.summary_outbound' | translate }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- The summary endpoint does carry display names, so these rows name people. -->
+            @for (row of historyRows(); track row.userId) {
+              <tr>
+                <td class="col-officer">{{ row.displayName || row.userId }}</td>
+                <td class="col-count">{{ row.inbound }}</td>
+                <td class="col-count">{{ row.outbound }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+    <!--
+      No table and no empty-state text when there is no history: the seeded key set available to this
+      screen has no "nothing recorded yet" wording, and the total-moves tile above already reads 0,
+      which says the same thing without inventing a string.
+    -->
+  </section>
+</div>

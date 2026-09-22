@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CMS 2.0 - Conceptual & Logical Architecture Diagrams</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f8f9fa; color: #333; line-height: 1.6; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+        h1 { color: #1a237e; font-size: 2.2rem; margin-bottom: 0.5rem; }
+        h2 { color: #1565c0; font-size: 1.6rem; margin: 3rem 0 1.5rem; border-bottom: 3px solid #e3f2fd; padding-bottom: 0.75rem; }
+        h3 { color: #0d47a1; font-size: 1.2rem; margin: 1.5rem 0 0.75rem; }
+        .subtitle { color: #666; font-size: 1rem; margin-bottom: 2rem; }
+
+        /* Diagram Styles */
+        .diagram-container { background: #fff; border: 2px solid #e0e0e0; border-radius: 16px; padding: 2.5rem; margin: 2rem 0; box-shadow: 0 4px 16px rgba(0,0,0,0.06); overflow-x: auto; }
+        .diagram-title { text-align: center; font-size: 1.3rem; font-weight: 700; color: #1a237e; margin-bottom: 2rem; }
+        .diagram-subtitle { text-align: center; font-size: 0.9rem; color: #666; margin-top: -1.5rem; margin-bottom: 2rem; }
+
+        /* Architecture boxes */
+        .arch-grid { display: grid; gap: 1rem; }
+        .layer { border-radius: 12px; padding: 1.25rem; position: relative; }
+        .layer-title { font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.75rem; padding-bottom: 0.5rem; border-bottom: 1px solid rgba(0,0,0,0.1); }
+
+        .layer-presentation { background: #e3f2fd; border: 2px solid #90caf9; }
+        .layer-presentation .layer-title { color: #0d47a1; }
+        .layer-gateway { background: #fff3e0; border: 2px solid #ffcc80; }
+        .layer-gateway .layer-title { color: #e65100; }
+        .layer-services { background: #e8f5e9; border: 2px solid #a5d6a7; }
+        .layer-services .layer-title { color: #2e7d32; }
+        .layer-integration { background: #f3e5f5; border: 2px solid #ce93d8; }
+        .layer-integration .layer-title { color: #6a1b9a; }
+        .layer-data { background: #fce4ec; border: 2px solid #ef9a9a; }
+        .layer-data .layer-title { color: #c62828; }
+        .layer-infra { background: #eceff1; border: 2px solid #b0bec5; }
+        .layer-infra .layer-title { color: #37474f; }
+        .layer-external { background: #fff8e1; border: 2px solid #ffe082; }
+        .layer-external .layer-title { color: #f57f17; }
+
+        .component-grid { display: flex; flex-wrap: wrap; gap: 0.75rem; }
+        .component { background: #fff; border: 1px solid rgba(0,0,0,0.15); border-radius: 8px; padding: 0.5rem 0.85rem; font-size: 0.8rem; font-weight: 500; display: flex; align-items: center; gap: 0.4rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .component .icon { font-size: 1rem; }
+
+        /* Flow arrows */
+        .flow-arrow { text-align: center; padding: 0.5rem 0; font-size: 1.5rem; color: #666; }
+        .flow-arrow-label { font-size: 0.75rem; color: #888; display: block; }
+
+        /* Logical diagram specific */
+        .logical-grid { display: grid; grid-template-columns: 1fr; gap: 0.5rem; }
+        .service-box { background: #fff; border: 2px solid #e0e0e0; border-radius: 10px; padding: 1rem; display: flex; align-items: center; gap: 1rem; transition: all 0.2s; }
+        .service-box:hover { border-color: #1565c0; box-shadow: 0 2px 8px rgba(21,101,192,0.15); }
+        .service-icon { width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; flex-shrink: 0; }
+        .service-info { flex: 1; }
+        .service-name { font-weight: 600; font-size: 0.9rem; color: #333; }
+        .service-desc { font-size: 0.75rem; color: #666; }
+        .service-port { background: #e3f2fd; color: #1565c0; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 600; }
+        .service-tech { background: #f5f5f5; color: #555; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; margin-left: 0.5rem; }
+
+        /* Connection lines in text form */
+        .connections { font-family: 'Consolas', monospace; font-size: 0.78rem; background: #1a1a2e; color: #a0d0a0; padding: 1.5rem; border-radius: 10px; line-height: 1.6; overflow-x: auto; white-space: pre; }
+        .conn-highlight { color: #4ec9b0; }
+        .conn-kafka { color: #ff9800; }
+        .conn-http { color: #64b5f6; }
+        .conn-db { color: #ef5350; }
+        .conn-comment { color: #6a9955; }
+
+        /* Legend */
+        .legend { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 1.5rem; padding: 1rem; background: #f5f5f5; border-radius: 8px; }
+        .legend-item { display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; }
+        .legend-color { width: 20px; height: 12px; border-radius: 3px; }
+
+        /* Data flow */
+        .data-flow { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0; align-items: center; margin: 2rem 0; }
+        .data-flow-step { text-align: center; padding: 0.75rem 0.5rem; }
+        .data-flow-box { background: #fff; border: 2px solid #1565c0; border-radius: 10px; padding: 0.75rem; margin-bottom: 0.5rem; }
+        .data-flow-box h4 { font-size: 0.8rem; color: #1565c0; margin-bottom: 0.25rem; }
+        .data-flow-box p { font-size: 0.7rem; color: #666; }
+        .data-flow-arrow { font-size: 1.5rem; color: #1565c0; }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .data-flow { grid-template-columns: 1fr; }
+            .component-grid { flex-direction: column; }
+        }
+
+        .toc { background: #fff; padding: 1.5rem; border-radius: 10px; border: 1px solid #e0e0e0; margin-bottom: 2rem; }
+        .toc ul { list-style: none; padding-left: 0; }
+        .toc li { padding: 4px 0; }
+        .toc a { color: #1565c0; text-decoration: none; }
+
+        .note-box { background: #e3f2fd; border-left: 4px solid #1565c0; padding: 1rem 1.5rem; border-radius: 0 8px 8px 0; margin: 1rem 0; font-size: 0.9rem; }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <h1>CMS 2.0 - Architecture Diagrams</h1>
+    <p class="subtitle">Conceptual, Logical, and Data Flow Architecture - RBI Complaint Management System</p>
+
+    <div class="toc">
+        <h3>Diagrams</h3>
+        <ul>
+            <li><a href="#conceptual">1. Conceptual Architecture (High-Level)</a></li>
+            <li><a href="#logical">2. Logical Architecture (Services & Components)</a></li>
+            <li><a href="#data-flow">3. Data Flow Architecture</a></li>
+            <li><a href="#deployment">4. Deployment Architecture (Local vs OpenShift)</a></li>
+            <li><a href="#security">5. Security Architecture</a></li>
+            <li><a href="#event-driven">6. Event-Driven Architecture (Kafka)</a></li>
+        </ul>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- CONCEPTUAL ARCHITECTURE -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <h2 id="conceptual">1. Conceptual Architecture (High-Level)</h2>
+
+    <div class="diagram-container">
+        <div class="diagram-title">RBI CMS 2.0 - Conceptual Architecture</div>
+        <div class="diagram-subtitle">Layered view showing major system boundaries and stakeholders</div>
+
+        <div class="arch-grid" style="gap: 0.75rem;">
+
+            <!-- External Actors -->
+            <div class="layer layer-external">
+                <div class="layer-title">External Actors & Channels</div>
+                <div class="component-grid">
+                    <div class="component"><span class="icon">👤</span> Complainant (Public)</div>
+                    <div class="component"><span class="icon">📧</span> Email (Incoming)</div>
+                    <div class="component"><span class="icon">📄</span> Physical Letter (Post)</div>
+                    <div class="component"><span class="icon">🌐</span> CPGRAMS Portal</div>
+                    <div class="component"><span class="icon">📞</span> Toll-Free Helpdesk</div>
+                    <div class="component"><span class="icon">🏦</span> Regulated Entities (Banks/NBFCs)</div>
+                </div>
+            </div>
+
+            <div class="flow-arrow">▼ <span class="flow-arrow-label">Complaint Channels</span></div>
+
+            <!-- Presentation Layer -->
+            <div class="layer layer-presentation">
+                <div class="layer-title">Presentation Layer (User Interfaces)</div>
+                <div class="component-grid">
+                    <div class="component"><span class="icon">🌍</span> Public Portal (File/Track/Appeal)</div>
+                    <div class="component"><span class="icon">👨‍💼</span> Staff Portal (RBIO/CEPC/CRPC)</div>
+                    <div class="component"><span class="icon">📊</span> Admin Dashboard (Analytics/SLA)</div>
+                    <div class="component"><span class="icon">⚙️</span> Rules Config (Business Rules)</div>
+                    <div class="component"><span class="icon">🔍</span> Search Portal (Full-Text)</div>
+                    <div class="component"><span class="icon">📨</span> Email Simulator (Testing)</div>
+                </div>
+            </div>
+
+            <div class="flow-arrow">▼ <span class="flow-arrow-label">REST API / WebSocket</span></div>
+
+            <!-- Gateway Layer -->
+            <div class="layer layer-gateway">
+                <div class="layer-title">API Gateway Layer (Cross-Cutting Concerns)</div>
+                <div class="component-grid">
+                    <div class="component"><span class="icon">🔐</span> Authentication (Keycloak JWT)</div>
+                    <div class="component"><span class="icon">🛡️</span> Authorization (RBAC)</div>
+                    <div class="component"><span class="icon">⏱️</span> Rate Limiting</div>
+                    <div class="component"><span class="icon">📍</span> Request Routing</div>
+                    <div class="component"><span class="icon">📝</span> Audit Logging</div>
+                    <div class="component"><span class="icon">🔄</span> CORS / Headers</div>
+                </div>
+            </div>
+
+            <div class="flow-arrow">▼ <span class="flow-arrow-label">Internal Service Calls</span></div>
+
+            <!-- Business Services Layer -->
+            <div class="layer layer-services">
+                <div class="layer-title">Business Services Layer (Domain Logic)</div>
+                <div class="component-grid">
+                    <div class="component"><span class="icon">📥</span> Ingestion Service</div>
+                    <div class="component"><span class="icon">✅</span> Eligibility Service</div>
+                    <div class="component"><span class="icon">🔄</span> Workflow Service (BPMN)</div>
+                    <div class="component"><span class="icon">📋</span> Assignment Service (Drools)</div>
+                    <div class="component"><span class="icon">⏰</span> SLA Monitor Service</div>
+                    <div class="component"><span class="icon">📢</span> Notification Service</div>
+                    <div class="component"><span class="icon">🔍</span> Search Service</div>
+                    <div class="component"><span class="icon">📦</span> Storage Service</div>
+                    <div class="component"><span class="icon">📜</span> Audit Service</div>
+                    <div class="component"><span class="icon">📤</span> Outbox Publisher</div>
+                    <div class="component"><span class="icon">👁️</span> OCR Service</div>
+                </div>
+            </div>
+
+            <div class="flow-arrow">▼ <span class="flow-arrow-label">Kafka Events / DB Queries</span></div>
+
+            <!-- Integration Layer -->
+            <div class="layer layer-integration">
+                <div class="layer-title">Integration & Messaging Layer</div>
+                <div class="component-grid">
+                    <div class="component"><span class="icon">📨</span> Apache Kafka (Event Bus)</div>
+                    <div class="component"><span class="icon">🗃️</span> Outbox Pattern (Reliability)</div>
+                    <div class="component"><span class="icon">💀</span> Dead Letter Queue (DLQ)</div>
+                    <div class="component"><span class="icon">🔄</span> Consumer Groups</div>
+                </div>
+            </div>
+
+            <div class="flow-arrow">▼ <span class="flow-arrow-label">Persistence</span></div>
+
+            <!-- Data Layer -->
+            <div class="layer layer-data">
+                <div class="layer-title">Data Layer (Persistence & Search)</div>
+                <div class="component-grid">
+                    <div class="component"><span class="icon">🗄️</span> Oracle DB (Production)</div>
+                    <div class="component"><span class="icon">🗄️</span> MySQL (Dev/Staging)</div>
+                    <div class="component"><span class="icon">💾</span> H2 (Local Dev In-Memory)</div>
+                    <div class="component"><span class="icon">🔎</span> OpenSearch (Full-Text Index)</div>
+                    <div class="component"><span class="icon">⚡</span> Redis (Cache)</div>
+                    <div class="component"><span class="icon">📁</span> File Storage (Attachments/OCR)</div>
+                </div>
+            </div>
+
+            <div class="flow-arrow">▼ <span class="flow-arrow-label">Monitoring</span></div>
+
+            <!-- Infrastructure Layer -->
+            <div class="layer layer-infra">
+                <div class="layer-title">Infrastructure & Observability Layer</div>
+                <div class="component-grid">
+                    <div class="component"><span class="icon">🔑</span> Keycloak (IAM/SSO)</div>
+                    <div class="component"><span class="icon">📈</span> Prometheus (Metrics)</div>
+                    <div class="component"><span class="icon">📉</span> Grafana (Dashboards)</div>
+                    <div class="component"><span class="icon">📋</span> Actuator (Health/Info)</div>
+                    <div class="component"><span class="icon">🐳</span> OpenShift / Docker</div>
+                    <div class="component"><span class="icon">📖</span> SpringDoc (API Docs)</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="legend">
+            <div class="legend-item"><div class="legend-color" style="background: #e3f2fd; border: 1px solid #90caf9;"></div> Presentation</div>
+            <div class="legend-item"><div class="legend-color" style="background: #fff3e0; border: 1px solid #ffcc80;"></div> Gateway</div>
+            <div class="legend-item"><div class="legend-color" style="background: #e8f5e9; border: 1px solid #a5d6a7;"></div> Business Services</div>
+            <div class="legend-item"><div class="legend-color" style="background: #f3e5f5; border: 1px solid #ce93d8;"></div> Integration/Messaging</div>
+            <div class="legend-item"><div class="legend-color" style="background: #fce4ec; border: 1px solid #ef9a9a;"></div> Data Stores</div>
+            <div class="legend-item"><div class="legend-color" style="background: #eceff1; border: 1px solid #b0bec5;"></div> Infrastructure</div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- LOGICAL ARCHITECTURE -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <h2 id="logical">2. Logical Architecture (Services & Interactions)</h2>
+
+    <div class="diagram-container">
+        <div class="diagram-title">Logical Architecture - Service Interactions</div>
+        <div class="diagram-subtitle">Shows all microservices, their responsibilities, technologies, and communication patterns</div>
+
+        <div class="connections">
+<span class="conn-comment">╔══════════════════════════════════════════════════════════════════════════════════════════╗</span>
+<span class="conn-comment">║                        RBI CMS 2.0 - LOGICAL ARCHITECTURE                              ║</span>
+<span class="conn-comment">╚══════════════════════════════════════════════════════════════════════════════════════════╝</span>
+
+<span class="conn-comment">┌─────────────────────────────── USER INTERFACES ───────────────────────────────────┐</span>
+│                                                                                     │
+│  ┌─────────────────┐  ┌──────────────────┐  ┌───────────────┐  ┌──────────────┐   │
+│  │  Public Portal  │  │  Staff Portal    │  │  Admin Panel  │  │ Email Sim    │   │
+│  │  (Angular 21)   │  │  (Angular 21)    │  │  (Angular 21) │  │ (Angular 21) │   │
+│  │  Port: 4300     │  │  Keycloak SSO    │  │  Analytics    │  │ Test Tool    │   │
+│  └────────┬────────┘  └────────┬─────────┘  └───────┬───────┘  └──────┬───────┘   │
+│           │                    │                     │                  │            │
+<span class="conn-comment">└───────────┼────────────────────┼─────────────────────┼──────────────────┼────────────┘</span>
+            │                    │                     │                  │
+            └──────────┬─────────┴─────────────────────┴──────────────────┘
+                       │
+                 <span class="conn-http">HTTP/REST</span>
+                       │
+<span class="conn-comment">┌──────────────────────┼──────────────────────── API GATEWAY ──────────────────────────┐</span>
+│                      ▼                                                                │
+│  ┌──────────────────────────────────────────────────────────────────────────────┐    │
+│  │  <span class="conn-highlight">CMS API GATEWAY</span> (Spring Cloud Gateway MVC) — Port 8080                       │    │
+│  │  ┌──────────┐ ┌──────────┐ ┌───────────┐ ┌──────────┐ ┌──────────────────┐  │    │
+│  │  │JWT Verify│ │   RBAC   │ │Rate Limit │ │ Routing  │ │ Request Enrichment│  │    │
+│  │  │(Keycloak)│ │(Roles)   │ │(10 req/s) │ │(Path)    │ │ (Headers/Context) │  │    │
+│  │  └──────────┘ └──────────┘ └───────────┘ └──────────┘ └──────────────────┘  │    │
+│  └──────────────────────────────────────────────────────────────────────────────┘    │
+│                                                                                       │
+<span class="conn-comment">└───────────────────────────────────┬───────────────────────────────────────────────────┘</span>
+                                    │
+                              <span class="conn-http">HTTP (Internal)</span>
+                                    │
+<span class="conn-comment">┌───────────────────────────────────┼──── BUSINESS SERVICES ────────────────────────────┐</span>
+│                                   ▼                                                    │
+│  ┌──────────────────────────────────────────────────────────────┐                     │
+│  │  <span class="conn-highlight">CMS-BACKEND</span> (Spring Boot 3.2.5) — Port 8082                    │                     │
+│  │  • Complaint CRUD, Email Syndication, Workflow Controller     │                     │
+│  │  • OCR (Gemini/OpenAI/Groq/Azure), DEO Round-Robin           │                     │
+│  │  • Kafka Publisher (complaint.ingested)                       │                     │
+│  └──────────────────────────────────┬───────────────────────────┘                     │
+│                                     │                                                  │
+│            ┌────────────────────────┼────────────────────────────┐                    │
+│            │                        │                            │                    │
+│            ▼                        ▼                            ▼                    │
+│  ┌─────────────────┐  ┌──────────────────────┐  ┌────────────────────────┐           │
+│  │ <span class="conn-highlight">INGESTION SVC</span>   │  │ <span class="conn-highlight">ELIGIBILITY SVC</span>       │  │ <span class="conn-highlight">STORAGE SVC</span>            │           │
+│  │ Port: 8083      │  │ Port: 8089           │  │ Port: 8094             │           │
+│  │ • Register      │  │ • Questionnaire      │  │ • File upload/download │           │
+│  │ • Validate      │  │ • 30-day check       │  │ • Chunk management     │           │
+│  │ • Outbox event  │  │ • Bank approach check │  │ • S3/Local storage     │           │
+│  └────────┬────────┘  └──────────────────────┘  └────────────────────────┘           │
+│           │                                                                            │
+│           │ <span class="conn-kafka">Kafka: complaint.ingested</span>                                                  │
+│           │                                                                            │
+│     ┌─────┼──────────────────┬────────────────────┬──────────────────┐                │
+│     │     │                  │                    │                  │                │
+│     ▼     ▼                  ▼                    ▼                  ▼                │
+│  ┌──────────────┐  ┌─────────────────┐  ┌──────────────┐  ┌─────────────────┐       │
+│  │<span class="conn-highlight">WORKFLOW SVC</span>  │  │<span class="conn-highlight">ASSIGNMENT SVC</span>   │  │<span class="conn-highlight">SEARCH SVC</span>    │  │<span class="conn-highlight">NOTIFICATION SVC</span> │       │
+│  │Port: 8084    │  │Port: 8085       │  │Port: 8086    │  │Port: 8087       │       │
+│  │• jBPM BPMN   │  │• Drools Rules   │  │• OpenSearch  │  │• SMS Gateway    │       │
+│  │• State machine│  │• Team routing   │  │• Full-text   │  │• Email (SMTP)   │       │
+│  │• Task mgmt   │  │• Load balance   │  │• Indexing    │  │• Templates      │       │
+│  └──────────────┘  └────────┬────────┘  └──────────────┘  └─────────────────┘       │
+│                              │                                                         │
+│                              │ <span class="conn-kafka">Kafka: complaint.assigned</span>                              │
+│                              ▼                                                         │
+│  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐                    │
+│  │ <span class="conn-highlight">SLA MONITOR SVC</span> │  │ <span class="conn-highlight">AUDIT SVC</span>        │  │ <span class="conn-highlight">OUTBOX PUBLISHER</span> │                    │
+│  │ Port: 8088      │  │ Port: 8091       │  │ Port: 8092       │                    │
+│  │ • Cron job      │  │ • Event logging  │  │ • Transactional  │                    │
+│  │ • Breach detect │  │ • Compliance     │  │ • Reliable pub   │                    │
+│  │ • Auto-escalate │  │ • Trail history  │  │ • Retry logic    │                    │
+│  └──────────────────┘  └──────────────────┘  └──────────────────┘                    │
+│                                                                                        │
+<span class="conn-comment">└────────────────────────────────────────────────────────────────────────────────────────┘</span>
+
+<span class="conn-comment">┌────────────────────────────── DATA & INFRASTRUCTURE ──────────────────────────────────┐</span>
+│                                                                                        │
+│  <span class="conn-db">┌────────────┐</span>  <span class="conn-db">┌────────────┐</span>  <span class="conn-kafka">┌────────────┐</span>  ┌────────────┐  ┌──────────┐  │
+│  <span class="conn-db">│  Oracle DB │</span>  <span class="conn-db">│  MySQL/H2  │</span>  <span class="conn-kafka">│   Kafka    │</span>  │ OpenSearch │  │  Redis   │  │
+│  <span class="conn-db">│  (Prod)    │</span>  <span class="conn-db">│  (Dev)     │</span>  <span class="conn-kafka">│  (Events)  │</span>  │ (Search)   │  │ (Cache)  │  │
+│  <span class="conn-db">│  Port:1521 │</span>  <span class="conn-db">│  3306/Mem  │</span>  <span class="conn-kafka">│  Port:9092 │</span>  │ Port:9200  │  │ Port:6379│  │
+│  <span class="conn-db">└────────────┘</span>  <span class="conn-db">└────────────┘</span>  <span class="conn-kafka">└────────────┘</span>  └────────────┘  └──────────┘  │
+│                                                                                        │
+│  ┌────────────┐  ┌────────────┐  ┌────────────┐  ┌────────────┐                      │
+│  │  Keycloak  │  │ Prometheus │  │  Grafana   │  │ File Store │                      │
+│  │  (IAM)     │  │ (Metrics)  │  │ (Dashboards)│  │ (Attach.)  │                      │
+│  │  Port:8180 │  │ Port:9090  │  │ Port:3000  │  │ /data/cms  │                      │
+│  └────────────┘  └────────────┘  └────────────┘  └────────────┘                      │
+│                                                                                        │
+<span class="conn-comment">└────────────────────────────────────────────────────────────────────────────────────────┘</span>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- DATA FLOW ARCHITECTURE -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <h2 id="data-flow">3. Data Flow Architecture</h2>
+
+    <div class="diagram-container">
+        <div class="diagram-title">Complaint Lifecycle - End-to-End Data Flow</div>
+
+        <div class="connections">
+<span class="conn-comment">═══════════════════════ COMPLAINT LIFECYCLE DATA FLOW ═══════════════════════</span>
+
+<span class="conn-highlight">PHASE 1: INTAKE</span> (No Kafka)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Complainant                    CMS Backend                       Database
+  ──────────                    ───────────                       ────────
+       │                             │                               │
+       │── Email/Portal/Letter ─────▶│                               │
+       │                             │── Save Draft ────────────────▶│
+       │                             │── Assign DEO (Round-Robin) ──▶│
+       │                             │   Status: DRAFT/ASSIGNED      │
+       │                             │                               │
+       │                             │◄── Draft ID ─────────────────│
+       │◄── Acknowledgement ────────│                               │
+
+
+<span class="conn-highlight">PHASE 2: DEO REVIEW & REGISTRATION</span> (Kafka Trigger Point)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  DEO Officer                   CMS Backend / Ingestion             Kafka
+  ───────────                   ───────────────────────            ─────
+       │                             │                               │
+       │── Login (Keycloak SSO) ────▶│                               │
+       │── View Queue ──────────────▶│── Query by assigned DEO ─────▶│(DB)
+       │◄── My Drafts ──────────────│                               │
+       │                             │                               │
+       │── Review & Submit ─────────▶│── Validate ──────────────────│
+       │                             │── Save Complaint (DB) ───────▶│(DB)
+       │                             │── Status: NEW                 │
+       │                             │                               │
+       │                             │══ <span class="conn-kafka">PUBLISH: complaint.ingested</span> ══▶│ <span class="conn-kafka">★ KAFKA TRIGGER</span>
+       │                             │                               │
+
+
+<span class="conn-highlight">PHASE 3: EVENT-DRIVEN PROCESSING</span> (Parallel, Async)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Kafka: complaint.ingested
+       │
+       ├──▶ <span class="conn-highlight">Assignment Service</span> (cms-assignment-group)
+       │         │── Load complaint facts (category, priority, amount)
+       │         │── Fire Drools rules
+       │         │── Result: team=CEPC_TEAM_A, officer=cepc.officer
+       │         │── Update DB: department, assignedRole, assignedOfficer
+       │         │══ <span class="conn-kafka">PUBLISH: complaint.assigned</span> ──▶ Kafka
+       │
+       ├──▶ <span class="conn-highlight">Workflow Service</span> (cms-workflow-group)
+       │         │── Start BPMN process instance
+       │         │── Create human tasks for officer
+       │         └── Track state transitions
+       │
+       ├──▶ <span class="conn-highlight">Search Service</span> (cms-search-group)
+       │         │── Parse event payload
+       │         │── Build document
+       │         └── Index in OpenSearch
+       │
+       └──▶ <span class="conn-highlight">Notification Service</span> (cms-notification-group)
+                 │── Extract complainant email/phone
+                 │── Send SMS: "Complaint registered, ref: CMP-XXXXX"
+                 └── Send Email acknowledgement
+
+
+<span class="conn-highlight">PHASE 4: OFFICER PROCESSING</span>
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  CEPC Officer                  Workflow Controller                  Kafka
+  ────────────                  ──────────────────                  ─────
+       │                             │                               │
+       │── Login (Keycloak SSO) ────▶│                               │
+       │   Token: {CEPC_OFFICER}     │                               │
+       │                             │                               │
+       │── GET /cepc/tasks ─────────▶│── DB: WHERE dept=CEPC        │
+       │◄── My assigned complaints ──│   AND role=CEPC_OFFICER       │
+       │                             │   AND status NOT IN (closed)  │
+       │                             │                               │
+       │── Action: RESOLVE ─────────▶│── Update status=resolved     │
+       │                             │══ <span class="conn-kafka">PUBLISH: complaint.resolved</span> ═▶│
+       │                             │                               │
+       │   OR                        │                               │
+       │── Action: ESCALATE ────────▶│── Promote role (SUPERVISOR)  │
+       │                             │══ <span class="conn-kafka">PUBLISH: complaint.escalated</span> ▶│
+       │                             │                               │
+
+
+<span class="conn-highlight">PHASE 5: SLA MONITORING</span> (Scheduled)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Cron (Every 5 min)            SLA Monitor Service                 Kafka
+  ──────────────────            ───────────────────                 ─────
+       │                             │                               │
+       │── Trigger ─────────────────▶│── Query DB:                  │
+       │                             │   WHERE status NOT IN closed  │
+       │                             │   AND sla_due_date < NOW()    │
+       │                             │                               │
+       │                             │── For each breached:          │
+       │                             │══ <span class="conn-kafka">PUBLISH: complaint.escalated</span> ▶│
+       │                             │                               │
+       │                             │── Notification Service:       │
+       │                             │   SMS to complainant           │
+       │                             │   "Escalated for priority"    │
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- DEPLOYMENT ARCHITECTURE -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <h2 id="deployment">4. Deployment Architecture</h2>
+
+    <div class="diagram-container">
+        <div class="diagram-title">Deployment View - Local Dev vs OpenShift Production</div>
+
+        <div class="connections">
+<span class="conn-comment">═══════════════════════ LOCAL DEVELOPMENT (IntelliJ + VS Code) ═══════════════════════</span>
+
+┌─────────────────────────────────── Developer PC ────────────────────────────────────┐
+│                                                                                      │
+│  ┌─── VS Code ────────┐    ┌─── IntelliJ IDEA ─────────────────────────────────┐   │
+│  │                     │    │                                                    │   │
+│  │  Angular Frontend   │    │  cms-backend (dev profile)                         │   │
+│  │  localhost:4300     │    │  localhost:8082                                     │   │
+│  │                     │    │  DB: H2 in-memory                                  │   │
+│  └─────────────────────┘    │  Cache: simple (no Redis)                          │   │
+│                              │  Kafka: optional                                   │   │
+│                              └───────────────────────────────────────────────────┘   │
+│                                                                                      │
+│  ┌─── Standalone Services ──────────────────────────────────────────────────────┐   │
+│  │  Keycloak        : localhost:8180  (bin\kc.bat start-dev)                     │   │
+│  │  Kafka (optional): localhost:9092  (KRaft mode)                               │   │
+│  │  OpenSearch (opt): localhost:9200  (single-node)                               │   │
+│  └──────────────────────────────────────────────────────────────────────────────┘   │
+│                                                                                      │
+└──────────────────────────────────────────────────────────────────────────────────────┘
+
+
+<span class="conn-comment">═══════════════════════ OPENSHIFT PRODUCTION (rbi-cms namespace) ════════════════════</span>
+
+┌─────────────────────────────── OpenShift Cluster ────────────────────────────────────┐
+│  Namespace: rbi-cms                                                                   │
+│                                                                                       │
+│  ┌── Route ──────────────────────────────────────────────────────────────────────┐   │
+│  │  https://cms.rbi.org.in  →  cms-api-gateway-service:8080 (TLS termination)    │   │
+│  └───────────────────────────────────────────────────────────────────────────────┘   │
+│                                                                                       │
+│  ┌── Pods (Deployments) ─────────────────────────────────────────────────────────┐   │
+│  │                                                                                │   │
+│  │  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐               │   │
+│  │  │ api-gateway (x2)│  │ ingestion (x2)  │  │ workflow (x2)   │               │   │
+│  │  │ 512Mi-1Gi       │  │ 512Mi-1Gi       │  │ 512Mi-1Gi       │               │   │
+│  │  │ 250m-1000m CPU  │  │ 250m-1000m CPU  │  │ 250m-1000m CPU  │               │   │
+│  │  └─────────────────┘  └─────────────────┘  └─────────────────┘               │   │
+│  │                                                                                │   │
+│  │  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐               │   │
+│  │  │ assignment (x2) │  │ notification(x1)│  │ outbox-pub (x1) │               │   │
+│  │  └─────────────────┘  └─────────────────┘  └─────────────────┘               │   │
+│  │                                                                                │   │
+│  │  ┌─────────────────┐                                                          │   │
+│  │  │ portal-frontend │  (nginx container serving Angular build)                  │   │
+│  │  │ (x2 replicas)   │                                                          │   │
+│  │  └─────────────────┘                                                          │   │
+│  └────────────────────────────────────────────────────────────────────────────────┘   │
+│                                                                                       │
+│  ┌── Stateful Services ──────────────────────────────────────────────────────────┐   │
+│  │  Oracle DB   : oracle-db-service.rbi-cms.svc.cluster.local:1521               │   │
+│  │  Kafka       : kafka-service.rbi-cms.svc.cluster.local:9092 (AMQ Streams)     │   │
+│  │  Keycloak    : keycloak-service.rbi-cms.svc.cluster.local:8180                │   │
+│  │  OpenSearch  : opensearch-service.rbi-cms.svc.cluster.local:9200              │   │
+│  │  SMTP Relay  : smtp-relay.rbi-cms.svc.cluster.local:587                       │   │
+│  └────────────────────────────────────────────────────────────────────────────────┘   │
+│                                                                                       │
+│  ┌── Config ─────────────────────────────────────────────────────────────────────┐   │
+│  │  ConfigMap: cms-common-config (DB_HOST, KAFKA_BOOTSTRAP, KEYCLOAK_ISSUER...)   │   │
+│  │  Secret:    cms-db-credentials (DB_USER, DB_PASSWORD, SMTP_USER, SMTP_PASS)    │   │
+│  └────────────────────────────────────────────────────────────────────────────────┘   │
+│                                                                                       │
+└───────────────────────────────────────────────────────────────────────────────────────┘
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- SECURITY ARCHITECTURE -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <h2 id="security">5. Security Architecture</h2>
+
+    <div class="diagram-container">
+        <div class="diagram-title">Security Architecture - Authentication & Authorization Flow</div>
+
+        <div class="connections">
+<span class="conn-comment">═══════════════════════ SECURITY FLOW ═══════════════════════</span>
+
+<span class="conn-highlight">Authentication (Who are you?)</span>
+
+  User (Browser)              Keycloak (Port 8180)           API Gateway
+  ─────────────               ──────────────────            ───────────
+       │                            │                            │
+       │── Login redirect ─────────▶│                            │
+       │                            │── Verify credentials       │
+       │◄── JWT Token (Access) ─────│   (realm: cms)             │
+       │    Contains:               │                            │
+       │    • sub (user ID)         │                            │
+       │    • realm_access.roles    │                            │
+       │    • exp (expiry)          │                            │
+       │                            │                            │
+       │── API Call + Bearer Token ─┼───────────────────────────▶│
+       │                            │                            │── Verify JWT signature
+       │                            │◄── Fetch JWK ─────────────│   (jwk-set-uri)
+       │                            │── Return public key ──────▶│── Validate expiry
+       │                            │                            │── Extract roles
+
+
+<span class="conn-highlight">Authorization (What can you do?)</span>
+
+  API Gateway (SecurityConfig.java)
+  ─────────────────────────────────
+
+  Request Path                        Required Roles
+  ──────────────────────────────────  ────────────────────────────────────────
+  /api/v1/complaints/public/**        permitAll (no auth needed)
+  /api/v1/complaints/*/track          permitAll
+  /api/v1/admin/**                    ADMIN
+  /api/v1/workflow/rbio/**            RBIO_OFFICER, RBIO_SUPERVISOR,
+                                      RBIO_CONCILIATOR, RBIO_ADJUDICATOR, ADMIN
+  /api/v1/workflow/cepc/**            CEPC_OFFICER, CEPC_SUPERVISOR,
+                                      CEPC_CONCILIATOR, CEPC_ADJUDICATOR, ADMIN
+  /api/v1/workflow/**                 OFFICER, DEO, REVIEWER, CRPC_HEAD,
+                                      CRPC_ADMIN, CRPC_INCHARGE, ADMIN
+  /api/v1/assignment/**               OFFICER, ADMIN, RBIO_SUPERVISOR,
+                                      CEPC_SUPERVISOR
+  /api/v1/audit/**                    ADMIN
+
+
+<span class="conn-highlight">Department Detection (Frontend)</span>
+
+  Keycloak Token roles[]              Frontend Department Routing
+  ──────────────────────              ─────────────────────────────────
+  RBIO_*                         ──▶  Department = RBIO  ──▶ /staff/rbio/tasks
+  CEPC_*                         ──▶  Department = CEPC  ──▶ /staff/cepc/tasks
+  CRPC_* | DEO | REVIEWER       ──▶  Department = CRPC  ──▶ /crpc/home
+  ADMIN                          ──▶  Department = ADMIN ──▶ /admin/dashboard
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- EVENT-DRIVEN ARCHITECTURE -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <h2 id="event-driven">6. Event-Driven Architecture (Kafka Topics & Consumer Groups)</h2>
+
+    <div class="diagram-container">
+        <div class="diagram-title">Kafka Event Bus - Topics, Publishers, and Consumers</div>
+
+        <div class="connections">
+<span class="conn-comment">═══════════════════════ KAFKA EVENT BUS ═══════════════════════</span>
+
+<span class="conn-highlight">PUBLISHERS (Who sends events)</span>                   <span class="conn-highlight">TOPICS (6 partitions each)</span>
+
+  ┌──────────────────┐                    ┌───────────────────────────┐
+  │ Ingestion Service│───────────────────▶│ <span class="conn-kafka">complaint.ingested</span>        │
+  └──────────────────┘                    └─────────────┬─────────────┘
+                                                        │
+  ┌──────────────────┐                    ┌─────────────┼─────────────┐
+  │Assignment Service│───────────────────▶│ <span class="conn-kafka">complaint.assigned</span>        │
+  └──────────────────┘                    └─────────────┼─────────────┘
+                                                        │
+  ┌──────────────────┐                    ┌─────────────┼─────────────┐
+  │ SLA Monitor      │───────────────────▶│ <span class="conn-kafka">complaint.escalated</span>       │
+  │ (+ Officer action│                    └─────────────┼─────────────┘
+  └──────────────────┘                                  │
+                                          ┌─────────────┼─────────────┐
+  ┌──────────────────┐                    │ <span class="conn-kafka">complaint.inprogress</span>      │
+  │ Ingestion/       │───────────────────▶│ <span class="conn-kafka">complaint.resolved</span>        │
+  │ Workflow Service  │                    │ <span class="conn-kafka">complaint.closed</span>          │
+  └──────────────────┘                    └─────────────┬─────────────┘
+                                                        │
+                                                        │
+<span class="conn-highlight">CONSUMERS (Who receives events)</span>                       │
+                                                        │
+  ┌───────────────────────────────────────────────────────────────────────┐
+  │                                                                        │
+  │         ┌─────────────────────────────────────────────────────┐       │
+  │         │  SUBSCRIPTIONS MATRIX                                │       │
+  │         │                                                      │       │
+  │         │  Topic              │ Workflow │ Assignment │ Search │ Notif │
+  │         │  ───────────────────┼──────────┼────────────┼────────┼───────│
+  │         │  complaint.ingested │    ✓     │     ✓      │   ✓    │   ✓   │
+  │         │  complaint.assigned │          │            │   ✓    │   ✓   │
+  │         │  complaint.inprogress│         │            │   ✓    │       │
+  │         │  complaint.escalated│          │            │   ✓    │   ✓   │
+  │         │  complaint.resolved │          │            │   ✓    │   ✓   │
+  │         │  complaint.closed   │          │            │   ✓    │       │
+  │         │                                                      │       │
+  │         │  Consumer Group IDs:                                 │       │
+  │         │  • cms-workflow-group                                 │       │
+  │         │  • cms-assignment-group                               │       │
+  │         │  • cms-search-group                                   │       │
+  │         │  • cms-notification-group                             │       │
+  │         │  • cms-audit-group                                    │       │
+  │         └─────────────────────────────────────────────────────┘       │
+  │                                                                        │
+  └───────────────────────────────────────────────────────────────────────┘
+
+
+<span class="conn-highlight">MESSAGE KEY & PARTITION STRATEGY</span>
+
+  Key = complaintNumber (e.g., "CMP-20260605-000012")
+
+  ┌─────────────────────────────────────────────────┐
+  │  Topic: complaint.ingested (6 partitions)        │
+  │                                                  │
+  │  Partition 0: CMP-..001, CMP-..007, CMP-..013   │  ← Same complaint
+  │  Partition 1: CMP-..002, CMP-..008, CMP-..014   │     always same
+  │  Partition 2: CMP-..003, CMP-..009, CMP-..015   │     partition
+  │  Partition 3: CMP-..004, CMP-..010, CMP-..016   │     (ordering
+  │  Partition 4: CMP-..005, CMP-..011, CMP-..017   │      guaranteed)
+  │  Partition 5: CMP-..006, CMP-..012, CMP-..018   │
+  └─────────────────────────────────────────────────┘
+
+  If cms-workflow-group has 3 instances:
+    Instance A → Partitions 0, 1
+    Instance B → Partitions 2, 3
+    Instance C → Partitions 4, 5
+        </div>
+    </div>
+
+    <!-- Summary -->
+    <div class="diagram-container" style="background: #e8eaf6;">
+        <div class="diagram-title">Architecture Summary</div>
+        <table style="width: 100%; border-collapse: collapse;">
+            <tr style="background: #1a237e; color: #fff;">
+                <th style="padding: 12px; text-align: left;">Aspect</th>
+                <th style="padding: 12px; text-align: left;">Technology</th>
+                <th style="padding: 12px; text-align: left;">Pattern</th>
+            </tr>
+            <tr><td style="padding: 10px; border-bottom: 1px solid #ddd;"><strong>Architecture Style</strong></td><td style="padding: 10px; border-bottom: 1px solid #ddd;">Microservices + Event-Driven</td><td style="padding: 10px; border-bottom: 1px solid #ddd;">Domain-Driven Design (DDD)</td></tr>
+            <tr><td style="padding: 10px; border-bottom: 1px solid #ddd;"><strong>Communication</strong></td><td style="padding: 10px; border-bottom: 1px solid #ddd;">REST (sync) + Kafka (async)</td><td style="padding: 10px; border-bottom: 1px solid #ddd;">CQRS + Event Sourcing lite</td></tr>
+            <tr><td style="padding: 10px; border-bottom: 1px solid #ddd;"><strong>Authentication</strong></td><td style="padding: 10px; border-bottom: 1px solid #ddd;">Keycloak + JWT</td><td style="padding: 10px; border-bottom: 1px solid #ddd;">OAuth2 / OIDC</td></tr>
+            <tr><td style="padding: 10px; border-bottom: 1px solid #ddd;"><strong>Authorization</strong></td><td style="padding: 10px; border-bottom: 1px solid #ddd;">Spring Security + Realm Roles</td><td style="padding: 10px; border-bottom: 1px solid #ddd;">RBAC (Role-Based Access Control)</td></tr>
+            <tr><td style="padding: 10px; border-bottom: 1px solid #ddd;"><strong>Business Rules</strong></td><td style="padding: 10px; border-bottom: 1px solid #ddd;">Drools 9.x</td><td style="padding: 10px; border-bottom: 1px solid #ddd;">Rule Engine (externalized logic)</td></tr>
+            <tr><td style="padding: 10px; border-bottom: 1px solid #ddd;"><strong>Workflow</strong></td><td style="padding: 10px; border-bottom: 1px solid #ddd;">jBPM + BPMN 2.0</td><td style="padding: 10px; border-bottom: 1px solid #ddd;">State Machine / Human Task</td></tr>
+            <tr><td style="padding: 10px; border-bottom: 1px solid #ddd;"><strong>Reliability</strong></td><td style="padding: 10px; border-bottom: 1px solid #ddd;">Outbox + DLQ</td><td style="padding: 10px; border-bottom: 1px solid #ddd;">Transactional Outbox Pattern</td></tr>
+            <tr><td style="padding: 10px; border-bottom: 1px solid #ddd;"><strong>Search</strong></td><td style="padding: 10px; border-bottom: 1px solid #ddd;">OpenSearch 2.18</td><td style="padding: 10px; border-bottom: 1px solid #ddd;">CQRS Read Model</td></tr>
+            <tr><td style="padding: 10px; border-bottom: 1px solid #ddd;"><strong>Monitoring</strong></td><td style="padding: 10px; border-bottom: 1px solid #ddd;">Prometheus + Grafana</td><td style="padding: 10px; border-bottom: 1px solid #ddd;">Metrics-based Observability</td></tr>
+            <tr><td style="padding: 10px; border-bottom: 1px solid #ddd;"><strong>Deployment</strong></td><td style="padding: 10px; border-bottom: 1px solid #ddd;">OpenShift / Docker</td><td style="padding: 10px; border-bottom: 1px solid #ddd;">Container Orchestration</td></tr>
+            <tr><td style="padding: 10px;"><strong>Frontend</strong></td><td style="padding: 10px;">Angular 21 + PrimeNG</td><td style="padding: 10px;">SPA + Signals (reactive)</td></tr>
+        </table>
+    </div>
+
+    <div style="text-align: center; margin-top: 3rem; padding: 1.5rem; background: #e8eaf6; border-radius: 10px;">
+        <p style="color: #1a237e; font-weight: 600;">CMS 2.0 - Architecture Diagrams</p>
+        <p style="color: #666; font-size: 0.85rem;">Generated: June 2026 | RBI Complaint Management System</p>
+    </div>
+
+</div>
+</body>
+</html>

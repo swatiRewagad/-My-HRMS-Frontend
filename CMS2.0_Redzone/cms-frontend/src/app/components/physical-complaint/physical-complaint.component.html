@@ -1,0 +1,193 @@
+<div class="physical-page">
+  <!-- Header -->
+  <div class="page-header">
+    <div class="header-left">
+      <i class="pi pi-file-edit"></i>
+      <h2>Physical Complaint Simulation</h2>
+    </div>
+    <p class="header-desc">Upload a scanned handwritten complaint letter (Hindi/English). Our OCR module will extract the details and auto-fill the complaint form.</p>
+  </div>
+
+  <!-- Success Screen -->
+  @if (submitted) {
+    <div class="success-card">
+      <div class="success-icon"><i class="pi pi-check-circle"></i></div>
+      <h3>Complaint Registered Successfully!</h3>
+      <p>Your physical complaint has been processed and registered. Reference number:</p>
+      <div class="ref-number">{{ referenceNumber }}</div>
+      <div class="success-actions">
+        <button class="btn-secondary" (click)="resetForm()"><i class="pi pi-refresh"></i> File Another</button>
+        <button class="btn-primary" (click)="goToTrack()"><i class="pi pi-search"></i> Track Complaint</button>
+      </div>
+    </div>
+  }
+
+  @if (!submitted) {
+    <!-- Step 1: Upload -->
+    <div class="upload-card">
+      <div class="card-title">
+        <span class="step-badge">1</span>
+        <h3>Upload Scanned Letter</h3>
+      </div>
+      <p class="card-desc">Upload a scanned image of the handwritten complaint letter. Supported formats: JPG, PNG, PDF, TIFF</p>
+
+      <div class="upload-zone" (click)="fileInput.click()" [class.has-file]="uploadedFile">
+        <input #fileInput type="file" accept=".jpg,.jpeg,.png,.pdf,.tiff,.tif" (change)="onFileSelected($event)" hidden />
+        @if (!uploadedFile) {
+          <div class="upload-placeholder">
+            <i class="pi pi-cloud-upload"></i>
+            <p>Click or drag & drop your scanned letter here</p>
+            <span class="upload-hint">JPG, PNG, PDF, TIFF — Max 10MB</span>
+          </div>
+        } @else {
+          <div class="uploaded-preview">
+            @if (imagePreview) {
+              <img [src]="imagePreview" alt="Scanned letter preview" class="preview-img" />
+            }
+            <div class="file-info">
+              <i class="pi pi-file-word"></i>
+              <div>
+                <span class="file-name">{{ uploadedFile.name }}</span>
+                <span class="file-size">{{ (uploadedFile.size / 1024).toFixed(0) }} KB</span>
+              </div>
+              <button class="remove-btn" (click)="removeFile(); $event.stopPropagation()"><i class="pi pi-times"></i></button>
+            </div>
+          </div>
+        }
+      </div>
+
+      @if (uploadedFile && !processed) {
+        <div class="upload-actions">
+          <button class="btn-primary" (click)="processOcr()" [disabled]="processing">
+            @if (processing) {
+              <i class="pi pi-spin pi-spinner"></i> Processing OCR...
+            } @else {
+              <i class="pi pi-eye"></i> Extract Text (OCR)
+            }
+          </button>
+        </div>
+      }
+    </div>
+
+    <!-- Processing Animation -->
+    @if (processing) {
+      <div class="processing-card">
+        <div class="processing-spinner">
+          <div class="spinner-ring"></div>
+        </div>
+        <h4>Processing your letter...</h4>
+        <div class="processing-steps">
+          <div class="p-step done"><i class="pi pi-check-circle"></i> Scanning image</div>
+          <div class="p-step active"><i class="pi pi-spin pi-spinner"></i> Running OCR engine</div>
+          <div class="p-step"><i class="pi pi-circle"></i> Detecting language</div>
+          <div class="p-step"><i class="pi pi-circle"></i> Extracting fields</div>
+        </div>
+      </div>
+    }
+
+    <!-- Step 2: OCR Result + Extracted Fields -->
+    @if (processed && ocrResult) {
+      <div class="result-card">
+        <div class="card-title">
+          <span class="step-badge">2</span>
+          <h3>OCR Result</h3>
+          <div class="ocr-meta">
+            <span class="lang-badge">
+              <i class="pi pi-globe"></i> {{ ocrResult.language }}
+            </span>
+            <span class="confidence-badge">
+              <i class="pi pi-chart-bar"></i> {{ ocrResult.confidence }}% confidence
+            </span>
+          </div>
+        </div>
+
+        <div class="raw-text-section">
+          <h4>Extracted Raw Text</h4>
+          <div class="raw-text-box">{{ ocrResult.rawText }}</div>
+        </div>
+
+        @if (ocrResult.language === 'Hindi') {
+          <div class="translation-banner">
+            <i class="pi pi-language"></i>
+            <span>Hindi text detected — auto-translated to English for form filling</span>
+          </div>
+        }
+      </div>
+
+      <!-- Step 3: Editable Form -->
+      <div class="form-card">
+        <div class="card-title">
+          <span class="step-badge">3</span>
+          <h3>Review & Edit Extracted Details</h3>
+        </div>
+        <p class="card-desc">Verify the extracted information below. You can edit any field before submitting.</p>
+
+        <div class="form-grid">
+          <div class="form-field">
+            <label>Full Name</label>
+            <input type="text" [value]="ocrResult.fields['name']" (input)="updateField('name', $event)" />
+          </div>
+          <div class="form-field">
+            <label>Mobile Number</label>
+            <input type="tel" [value]="ocrResult.fields['mobileNumber']" (input)="updateField('mobileNumber', $event)" maxlength="10" />
+          </div>
+          <div class="form-field">
+            <label>Email</label>
+            <input type="email" [value]="ocrResult.fields['email']" (input)="updateField('email', $event)" placeholder="Optional" />
+          </div>
+          <div class="form-field">
+            <label>Bank / Financial Institution</label>
+            <input type="text" [value]="ocrResult.fields['bankName']" (input)="updateField('bankName', $event)" />
+          </div>
+          <div class="form-field">
+            <label>Account Number</label>
+            <input type="text" [value]="ocrResult.fields['accountNumber']" (input)="updateField('accountNumber', $event)" />
+          </div>
+          <div class="form-field">
+            <label>Branch</label>
+            <input type="text" [value]="ocrResult.fields['branch']" (input)="updateField('branch', $event)" />
+          </div>
+          <div class="form-field">
+            <label>State</label>
+            <input type="text" [value]="ocrResult.fields['state']" (input)="updateField('state', $event)" />
+          </div>
+          <div class="form-field">
+            <label>District</label>
+            <input type="text" [value]="ocrResult.fields['district']" (input)="updateField('district', $event)" />
+          </div>
+          <div class="form-field">
+            <label>Pincode</label>
+            <input type="text" [value]="ocrResult.fields['pincode']" (input)="updateField('pincode', $event)" maxlength="6" />
+          </div>
+          <div class="form-field">
+            <label>Dispute Amount (₹)</label>
+            <input type="text" [value]="ocrResult.fields['disputeAmount']" (input)="updateField('disputeAmount', $event)" />
+          </div>
+          <div class="form-field full-width">
+            <label>Address</label>
+            <input type="text" [value]="ocrResult.fields['address']" (input)="updateField('address', $event)" />
+          </div>
+          <div class="form-field full-width">
+            <label>Complaint Category</label>
+            <input type="text" [value]="ocrResult.fields['complaintCategory']" (input)="updateField('complaintCategory', $event)" />
+          </div>
+          <div class="form-field full-width">
+            <label>Facts of Complaint</label>
+            <textarea rows="4" [value]="ocrResult.fields['facts']" (input)="updateField('facts', $event)"></textarea>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button class="btn-secondary" (click)="resetForm()"><i class="pi pi-times"></i> Cancel</button>
+          <button class="btn-primary" (click)="submitComplaint()" [disabled]="submitting">
+            @if (submitting) {
+              <i class="pi pi-spin pi-spinner"></i> Submitting...
+            } @else {
+              <i class="pi pi-check"></i> Submit Complaint
+            }
+          </button>
+        </div>
+      </div>
+    }
+  }
+</div>

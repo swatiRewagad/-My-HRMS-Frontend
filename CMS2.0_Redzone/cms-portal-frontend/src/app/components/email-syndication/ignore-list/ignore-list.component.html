@@ -1,0 +1,225 @@
+<div class="ignore-list-container">
+  <button class="back-btn" (click)="goBack()">&larr; {{ 'intake.back_to_queue' | translate }}</button>
+
+  <div class="page-header">
+    <h2>{{ 'intake.exceptional_email_master_title' | translate }}</h2>
+    <p class="subtitle">{{ 'intake.exceptional_email_master_subtitle' | translate }}</p>
+    <button class="link-btn" (click)="goToReport()">{{ 'intake.ignored_emails_report_title' | translate }}</button>
+    <button class="add-btn" (click)="startCreate()">+ {{ 'intake.ignore_add_rule' | translate }}</button>
+  </div>
+
+  <div class="semantics-note">
+    <strong>{{ 'intake.ignore_semantics_heading' | translate }}</strong>
+    <ul>
+      <li>{{ 'intake.ignore_semantics_match_field' | translate }}</li>
+      <li>{{ 'intake.ignore_semantics_and_logic' | translate }}</li>
+      <li>{{ 'intake.ignore_semantics_exception' | translate }}</li>
+      <li>{{ 'intake.ignore_semantics_inactive' | translate }}</li>
+    </ul>
+  </div>
+
+  @if (error()) {
+    <div class="error-msg">{{ error() | translate }}</div>
+  }
+  @if (success()) {
+    <div class="success-msg">{{ success() | translate }}</div>
+  }
+
+  @if (showAddForm() || editingId() !== null) {
+    <div class="add-form">
+      <h3>
+        @if (editingId() !== null) {
+          {{ 'intake.ignore_edit_rule' | translate }}
+        } @else {
+          {{ 'intake.ignore_add_rule' | translate }}
+        }
+      </h3>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="ignore-pattern">{{ 'intake.ignore_pattern_label' | translate }}</label>
+          <input id="ignore-pattern" type="text" name="emailPattern"
+                 [ngModel]="form().emailPattern"
+                 (ngModelChange)="updateForm('emailPattern', $event)"
+                 [placeholder]="'intake.ignore_pattern_placeholder' | translate">
+          <small>{{ 'intake.ignore_pattern_hint' | translate }}</small>
+        </div>
+        <div class="form-group">
+          <label for="ignore-match-field">{{ 'intake.ignore_match_field_label' | translate }}</label>
+          <select id="ignore-match-field" name="matchField"
+                  [ngModel]="form().matchField"
+                  (ngModelChange)="updateForm('matchField', $event)">
+            @for (field of matchFields; track field) {
+              <option [value]="field">{{ 'intake.match_field_' + field.toLowerCase() | translate }}</option>
+            }
+          </select>
+          <small>{{ 'intake.ignore_match_field_hint' | translate }}</small>
+        </div>
+        <div class="form-group">
+          <label for="ignore-pattern-type">{{ 'intake.ignore_pattern_type_label' | translate }}</label>
+          <select id="ignore-pattern-type" name="patternType"
+                  [ngModel]="form().patternType"
+                  (ngModelChange)="updateForm('patternType', $event)">
+            @for (type of patternTypes; track type) {
+              <option [value]="type">{{ 'intake.pattern_type_' + type.toLowerCase() | translate }}</option>
+            }
+          </select>
+        </div>
+      </div>
+
+      <h4>{{ 'intake.ignore_additional_criteria_heading' | translate }}</h4>
+      <p class="group-hint">{{ 'intake.ignore_additional_criteria_hint' | translate }}</p>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="ignore-to">{{ 'intake.ignore_to_pattern_label' | translate }}</label>
+          <input id="ignore-to" type="text" name="toPattern"
+                 [ngModel]="form().toPattern"
+                 (ngModelChange)="updateForm('toPattern', $event)">
+        </div>
+        <div class="form-group">
+          <label for="ignore-cc">{{ 'intake.ignore_cc_pattern_label' | translate }}</label>
+          <input id="ignore-cc" type="text" name="ccPattern"
+                 [ngModel]="form().ccPattern"
+                 (ngModelChange)="updateForm('ccPattern', $event)">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="ignore-bcc">{{ 'intake.ignore_bcc_pattern_label' | translate }}</label>
+          <input id="ignore-bcc" type="text" name="bccPattern"
+                 [ngModel]="form().bccPattern"
+                 (ngModelChange)="updateForm('bccPattern', $event)">
+        </div>
+        <div class="form-group">
+          <label for="ignore-subject">{{ 'intake.ignore_subject_pattern_label' | translate }}</label>
+          <input id="ignore-subject" type="text" name="subjectPattern"
+                 [ngModel]="form().subjectPattern"
+                 (ngModelChange)="updateForm('subjectPattern', $event)">
+        </div>
+      </div>
+
+      <div class="form-group exception-group">
+        <label for="ignore-exception">{{ 'intake.ignore_exception_pattern_label' | translate }}</label>
+        <input id="ignore-exception" type="text" name="exceptionPattern"
+               [ngModel]="form().exceptionPattern"
+               (ngModelChange)="updateForm('exceptionPattern', $event)"
+               [placeholder]="'intake.ignore_exception_pattern_placeholder' | translate">
+        <small>{{ 'intake.ignore_exception_pattern_hint' | translate }}</small>
+      </div>
+
+      <div class="form-group">
+        <label for="ignore-reason">{{ 'intake.ignore_reason_label' | translate }}</label>
+        <input id="ignore-reason" type="text" name="reason"
+               [ngModel]="form().reason"
+               (ngModelChange)="updateForm('reason', $event)"
+               [placeholder]="'intake.ignore_reason_placeholder' | translate">
+      </div>
+
+      <div class="form-group checkbox-group">
+        <label for="ignore-active">
+          <input id="ignore-active" type="checkbox" name="isActive"
+                 [ngModel]="form().isActive"
+                 (ngModelChange)="updateForm('isActive', $event)">
+          {{ 'intake.ignore_active_label' | translate }}
+        </label>
+        <small>{{ 'intake.ignore_semantics_inactive' | translate }}</small>
+      </div>
+
+      <div class="form-actions">
+        <button class="save-btn" (click)="saveEntry()" [disabled]="!form().emailPattern.trim() || saving()">
+          @if (editingId() !== null) {
+            {{ 'intake.ignore_save_changes' | translate }}
+          } @else {
+            {{ 'intake.ignore_create' | translate }}
+          }
+        </button>
+        <button class="cancel-btn" (click)="cancelForm()">{{ 'intake.cancel' | translate }}</button>
+      </div>
+    </div>
+  }
+
+  @if (loading()) {
+    <div class="loading-msg">{{ 'intake.loading' | translate }}</div>
+  }
+
+  <div class="entries-table">
+    <table>
+      <thead>
+        <tr>
+          <th>{{ 'intake.ignore_col_pattern' | translate }}</th>
+          <th>{{ 'intake.ignore_col_match_field' | translate }}</th>
+          <th>{{ 'intake.ignore_col_type' | translate }}</th>
+          <th>{{ 'intake.ignore_col_additional_criteria' | translate }}</th>
+          <th>{{ 'intake.ignore_col_exception' | translate }}</th>
+          <th>{{ 'intake.ignore_col_reason' | translate }}</th>
+          <th>{{ 'intake.ignore_col_suppressed_count' | translate }}</th>
+          <th>{{ 'intake.ignore_col_added_by' | translate }}</th>
+          <th>{{ 'intake.ignore_col_status' | translate }}</th>
+          <th>{{ 'intake.ignore_col_actions' | translate }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (entry of entries(); track entry.id) {
+          <tr [class.inactive-row]="!entry.isActive">
+            <td class="pattern">{{ entry.emailPattern }}</td>
+            <td><span class="field-badge">{{ 'intake.match_field_' + (entry.matchField || 'FROM').toLowerCase() | translate }}</span></td>
+            <td><span class="type-badge">{{ 'intake.pattern_type_' + (entry.patternType || 'EXACT').toLowerCase() | translate }}</span></td>
+            <td class="criteria-cell">
+              @if (extraCriteriaCount(entry) === 0) {
+                <span class="muted">&mdash;</span>
+              } @else {
+                @if (entry.toPattern) {
+                  <div><span class="criteria-key">{{ 'intake.ignore_to_pattern_label' | translate }}</span> {{ entry.toPattern }}</div>
+                }
+                @if (entry.ccPattern) {
+                  <div><span class="criteria-key">{{ 'intake.ignore_cc_pattern_label' | translate }}</span> {{ entry.ccPattern }}</div>
+                }
+                @if (entry.bccPattern) {
+                  <div><span class="criteria-key">{{ 'intake.ignore_bcc_pattern_label' | translate }}</span> {{ entry.bccPattern }}</div>
+                }
+                @if (entry.subjectPattern) {
+                  <div><span class="criteria-key">{{ 'intake.ignore_subject_pattern_label' | translate }}</span> {{ entry.subjectPattern }}</div>
+                }
+                <div class="and-note">{{ 'intake.ignore_and_logic_badge' | translate }}</div>
+              }
+            </td>
+            <td class="pattern">
+              @if (entry.exceptionPattern) {
+                <span class="exception-badge" [title]="'intake.ignore_semantics_exception' | translate">{{ entry.exceptionPattern }}</span>
+              } @else {
+                <span class="muted">&mdash;</span>
+              }
+            </td>
+            <td>{{ entry.reason || '—' }}</td>
+            <td class="count-cell" [title]="'intake.ignore_col_suppressed_count_hint' | translate">{{ entry.suppressedCount ?? 0 }}</td>
+            <td>{{ entry.addedBy }}</td>
+            <td>
+              <span class="active-badge" [class.inactive]="!entry.isActive">
+                @if (entry.isActive) {
+                  {{ 'intake.ignore_status_active' | translate }}
+                } @else {
+                  {{ 'intake.ignore_status_inactive' | translate }}
+                }
+              </span>
+            </td>
+            <td class="actions-cell">
+              <button class="edit-btn" (click)="startEdit(entry)">{{ 'intake.edit' | translate }}</button>
+              <button class="toggle-btn" (click)="toggleActive(entry)">
+                @if (entry.isActive) {
+                  {{ 'intake.ignore_deactivate' | translate }}
+                } @else {
+                  {{ 'intake.ignore_activate' | translate }}
+                }
+              </button>
+              <button class="remove-btn" (click)="removeEntry(entry)">{{ 'intake.delete' | translate }}</button>
+            </td>
+          </tr>
+        } @empty {
+          <tr>
+            <td colspan="10" class="empty">{{ 'intake.ignore_no_rules' | translate }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</div>

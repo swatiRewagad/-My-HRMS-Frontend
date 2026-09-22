@@ -1,0 +1,207 @@
+// The shared staff chrome. Structure and class vocabulary follow CRPC's deo-home, which was the
+// de-facto reference, so CRPC itself changes least when it adopts this.
+
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: var(--surface-sunken);
+  font-family: var(--font-sans);
+}
+
+.shell-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-4) var(--space-9);
+  background: var(--surface-card);
+  border-bottom: 1px solid var(--border-subtle);
+  height: var(--shell-header-height);
+  flex-shrink: 0;
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    min-width: 0;
+
+    .rbi-logo { height: 38px; border-radius: 50%; }
+
+    .rbi-text {
+      display: flex;
+      flex-direction: column;
+      .rbi-hindi { font-size: var(--text-sm); font-weight: 600; color: var(--brand-primary-strong); }
+      .rbi-english { font-size: 9px; color: var(--text-secondary); letter-spacing: 0.3px; }
+    }
+
+    .header-divider-v {
+      width: 1px;
+      height: 30px;
+      background: var(--border-strong);
+      margin: 0 var(--space-1);
+    }
+
+    .cms-title { font-size: var(--text-xl); font-weight: 700; color: var(--brand-primary-strong); }
+    .cms-subtitle { font-size: var(--text-xs); color: var(--text-muted); white-space: nowrap; }
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: var(--space-7);
+  }
+
+  .user-info-block {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    border-left: 1px solid var(--border-subtle);
+    padding-left: var(--space-7);
+  }
+
+  .user-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--brand-primary);
+    color: var(--text-on-brand);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: var(--text-md);
+    flex-shrink: 0;
+  }
+
+  .user-details {
+    display: flex;
+    flex-direction: column;
+    .user-name { font-size: var(--text-base); font-weight: 600; color: var(--text-heading); }
+    .user-role { font-size: var(--text-xs); color: var(--text-muted); }
+  }
+
+  .btn-logout {
+    background: none;
+    border: none;
+    color: var(--text-subtle);
+    cursor: pointer;
+    font-size: var(--text-md);
+    padding: var(--space-1);
+    &:hover { color: var(--state-danger-solid); }
+  }
+}
+
+.main-layout {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.shell-sidebar {
+  width: var(--shell-sidebar-width);
+  background: var(--surface-inverse);
+  padding: var(--space-5) 0;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  transition: width 0.2s;
+
+  .nav-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .sidebar-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    padding: var(--space-5) var(--space-8);
+    color: var(--text-subtle);
+    font-size: var(--text-base);
+    cursor: pointer;
+    text-decoration: none;
+    transition: background 0.2s, color 0.2s;
+    border-left: 3px solid transparent;
+
+    i { font-size: var(--text-lg); flex-shrink: 0; }
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-on-inverse);
+    }
+
+    &.active {
+      background: rgba(59, 130, 246, 0.15);
+      color: var(--text-on-brand);
+      border-left-color: var(--brand-primary);
+    }
+  }
+
+  .sidebar-collapse {
+    margin-top: auto;
+    padding: var(--space-5) var(--space-8);
+    color: var(--text-muted);
+    font-size: var(--text-sm);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    background: none;
+    border: none;
+    text-align: left;
+    &:hover { color: var(--text-subtle); }
+  }
+
+  &.collapsed {
+    width: var(--shell-sidebar-collapsed);
+    .sidebar-label { display: none; }
+    .sidebar-item { justify-content: center; padding-inline: 0; }
+  }
+}
+
+.shell-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-8) var(--space-9);
+  background: var(--surface-page);
+}
+
+.content-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-5);
+  margin-bottom: var(--space-8);
+  flex-wrap: wrap;
+
+  h1 {
+    font-size: var(--text-2xl);
+    font-weight: 700;
+    color: var(--text-heading);
+    margin: 0;
+  }
+
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 1024px) {
+  .shell-sidebar {
+    width: var(--shell-sidebar-collapsed);
+    .sidebar-label { display: none; }
+    .sidebar-item { justify-content: center; padding-inline: 0; }
+  }
+
+  .shell-header .cms-subtitle,
+  .shell-header .rbi-text { display: none; }
+
+  .content-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

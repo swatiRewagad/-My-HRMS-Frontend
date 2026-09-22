@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CMS 2.0 — OpenShift Individual Service Deployment Guide (2026-07-12)</title>
+    <style>
+        :root { --blue: #1e40af; --green: #059669; --red: #dc2626; --orange: #ea580c; --gray: #475569; --bg: #f8fafc; --purple: #7c3aed; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', -apple-system, sans-serif; background: var(--bg); color: #1e293b; line-height: 1.7; }
+        .container { max-width: 1100px; margin: 0 auto; padding: 30px 40px; }
+        h1 { color: var(--blue); font-size: 26px; margin-bottom: 8px; border-bottom: 3px solid var(--blue); padding-bottom: 12px; }
+        .subtitle { color: var(--gray); font-size: 14px; margin-bottom: 30px; }
+        h2 { color: #0f172a; font-size: 20px; margin: 36px 0 16px; padding: 10px 16px; background: #e2e8f0; border-left: 4px solid var(--blue); border-radius: 4px; }
+        h3 { color: var(--blue); font-size: 16px; margin: 24px 0 10px; }
+        h4 { color: #334155; font-size: 14px; margin: 16px 0 8px; font-weight: 700; }
+        p, li { font-size: 14px; margin-bottom: 6px; }
+        ul, ol { padding-left: 24px; margin-bottom: 14px; }
+        pre { background: #1e293b; color: #e2e8f0; padding: 16px 20px; border-radius: 8px; overflow-x: auto; font-size: 13px; line-height: 1.5; margin: 12px 0 16px; }
+        code { background: #e2e8f0; color: #be185d; padding: 2px 6px; border-radius: 3px; font-size: 13px; }
+        pre code { background: none; color: inherit; padding: 0; }
+        .card { background: white; border: 1px solid #e2e8f0; border-radius: 10px; padding: 20px 24px; margin: 16px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+        .card-green { border-left: 4px solid var(--green); }
+        .card-orange { border-left: 4px solid var(--orange); }
+        .card-red { border-left: 4px solid var(--red); }
+        .card-blue { border-left: 4px solid var(--blue); }
+        .card-purple { border-left: 4px solid var(--purple); }
+        table { width: 100%; border-collapse: collapse; margin: 12px 0 16px; font-size: 13px; }
+        th { background: #1e40af; color: white; padding: 10px 12px; text-align: left; }
+        td { border: 1px solid #e2e8f0; padding: 8px 12px; }
+        tr:nth-child(even) { background: #f8fafc; }
+        .warning { background: #fef3c7; border: 1px solid #fbbf24; border-radius: 8px; padding: 12px 16px; margin: 12px 0; font-size: 13px; }
+        .warning::before { content: "⚠️ "; }
+        .success { background: #d1fae5; border: 1px solid #34d399; border-radius: 8px; padding: 12px 16px; margin: 12px 0; font-size: 13px; }
+        .success::before { content: "✓ "; }
+        .info { background: #dbeafe; border: 1px solid #60a5fa; border-radius: 8px; padding: 12px 16px; margin: 12px 0; font-size: 13px; }
+        .info::before { content: "ℹ️ "; }
+        .toc { background: white; border: 1px solid #e2e8f0; border-radius: 10px; padding: 20px 28px; margin: 20px 0; }
+        .toc h3 { margin-top: 0; }
+        .toc ol { counter-reset: toc; list-style: none; padding-left: 0; }
+        .toc li { counter-increment: toc; margin: 6px 0; }
+        .toc li::before { content: counter(toc) "."; color: var(--blue); font-weight: 700; margin-right: 8px; }
+        .toc a { color: var(--blue); text-decoration: none; }
+        .toc a:hover { text-decoration: underline; }
+        .diagram { background: #1e293b; color: #93c5fd; padding: 20px; border-radius: 8px; font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 12px; line-height: 1.6; overflow-x: auto; white-space: pre; margin: 16px 0; }
+        .phase { display: inline-block; background: var(--blue); color: white; padding: 2px 10px; border-radius: 12px; font-size: 11px; font-weight: 700; margin-right: 6px; }
+        .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+        .badge-green { background: #d1fae5; color: #065f46; }
+        .badge-red { background: #fee2e2; color: #991b1b; }
+        .badge-blue { background: #dbeafe; color: #1e40af; }
+        @media print { body { font-size: 12px; } pre { font-size: 11px; } .container { padding: 10px; } }
+    </style>
+</head>
+<body>
+<div class="container">
+
+<h1>CMS 2.0 — OpenShift Individual Service Deployment Guide</h1>
+<p class="subtitle">Date: 12 July 2026 | Problem: Microservices can't find <code>cms-parent</code> POM when built individually | Solution: Nexus + Flattened POM Strategy</p>
+
+<div class="toc">
+    <h3>Table of Contents</h3>
+    <ol>
+        <li><a href="#problem">The Problem Explained</a></li>
+        <li><a href="#solution">Solution Architecture</a></li>
+        <li><a href="#nexus-setup">Step 1: Nexus Setup on OpenShift</a></li>
+        <li><a href="#publish-parent">Step 2: Publish Parent POM to Nexus</a></li>
+        <li><a href="#publish-common">Step 3: Publish cms-common to Nexus</a></li>
+        <li><a href="#dockerfile">Step 4: Microservice Dockerfile (with Nexus)</a></li>
+        <li><a href="#build-order">Step 5: Build & Deploy Order</a></li>
+        <li><a href="#deploy-all">Step 6: Full Deployment Script</a></li>
+        <li><a href="#tekton">Step 7: Tekton CI/CD Pipeline</a></li>
+        <li><a href="#quick-ref">Quick Reference Card</a></li>
+    </ol>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════ -->
+<h2 id="problem">1. The Problem Explained</h2>
+
+<div class="card card-red">
+<h4>Why Individual Services Fail to Build</h4>
+<p>Each microservice's <code>pom.xml</code> declares this parent:</p>
+<pre><code>&lt;parent&gt;
+    &lt;groupId&gt;com.rbi.cms&lt;/groupId&gt;
+    &lt;artifactId&gt;cms-parent&lt;/artifactId&gt;
+    &lt;version&gt;1.0.0-SNAPSHOT&lt;/version&gt;
+&lt;/parent&gt;</code></pre>
+<p>And depends on this shared library:</p>
+<pre><code>&lt;dependency&gt;
+    &lt;groupId&gt;com.rbi.cms&lt;/groupId&gt;
+    &lt;artifactId&gt;cms-common&lt;/artifactId&gt;
+&lt;/dependency&gt;</code></pre>
+<p><strong>When building locally</strong>, Maven finds both via the parent directory's <code>pom.xml</code> (relative path <code>../pom.xml</code>).</p>
+<p><strong>When building on OpenShift</strong>, each service is in its own pod/pipeline. There is no parent directory — Maven cannot resolve <code>cms-parent</code> or <code>cms-common</code>, and the build fails with:</p>
+<pre><code>ERROR: Non-resolvable parent POM for com.rbi.cms:cms-api-gateway:1.0.0-SNAPSHOT:
+  Could not find artifact com.rbi.cms:cms-parent:pom:1.0.0-SNAPSHOT</code></pre>
+</div>
+
+<div class="diagram">
+┌─────────────────────────────────────────────────────────────────────┐
+│  LOCAL MACHINE (works)                                              │
+│                                                                     │
+│  CMS2.0/                                                            │
+│  ├── pom.xml  ← cms-parent (found via filesystem ../pom.xml)       │
+│  ├── cms-common/        ← built as part of reactor                  │
+│  ├── cms-api-gateway/   ← can reference parent + common            │
+│  ├── cms-rules-service/ ← can reference parent + common            │
+│  └── ...                                                            │
+└─────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────┐
+│  OPENSHIFT (fails without Nexus)                                    │
+│                                                                     │
+│  Pod: cms-rules-service-build                                       │
+│  ├── pom.xml ← references cms-parent... WHERE IS IT?  ❌            │
+│  └── src/                                                           │
+│                                                                     │
+│  Parent POM is NOT in this pod → Maven fails                        │
+│  cms-common JAR is NOT in this pod → Maven fails                    │
+└─────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────┐
+│  OPENSHIFT (works WITH Nexus)                                       │
+│                                                                     │
+│  Pod: cms-rules-service-build                                       │
+│  ├── pom.xml ← references cms-parent → pulls from Nexus  ✅        │
+│  ├── settings.xml ← points Maven to Nexus                          │
+│  └── src/                                                           │
+│                                                                     │
+│  Nexus Repository (central to cluster):                             │
+│  ├── com/rbi/cms/cms-parent/1.0.0-SNAPSHOT/cms-parent.pom  ✅      │
+│  └── com/rbi/cms/cms-common/1.0.0-SNAPSHOT/cms-common.jar  ✅      │
+└─────────────────────────────────────────────────────────────────────┘
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════ -->
+<h2 id="solution">2. Solution Architecture</h2>
+
+<div class="card card-green">
+<h4>The Fix: 3-Phase Build Strategy</h4>
+<table>
+<tr><th>Phase</th><th>What</th><th>Why</th><th>When</th></tr>
+<tr><td><span class="phase">1</span></td><td>Deploy <strong>Nexus</strong> on OpenShift</td><td>Central Maven artifact repository accessible to all build pods</td><td>Once (infra setup)</td></tr>
+<tr><td><span class="phase">2</span></td><td>Publish <strong>cms-parent</strong> POM to Nexus</td><td>So child services can resolve their parent POM</td><td>On every parent POM change</td></tr>
+<tr><td><span class="phase">3</span></td><td>Publish <strong>cms-common</strong> JAR to Nexus</td><td>So all services can resolve their shared dependency</td><td>On every cms-common change</td></tr>
+<tr><td><span class="phase">4</span></td><td>Build individual services (parallel)</td><td>Each service pulls parent + common from Nexus</td><td>On each service's code change</td></tr>
+</table>
+</div>
+
+<div class="info">
+After phases 1-3 are done (one-time), all 12+ microservices can build <strong>independently and in parallel</strong> — each in its own pod, each pulling shared dependencies from Nexus.
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════ -->
+<h2 id="nexus-setup">3. Step 1: Deploy Nexus on OpenShift</h2>
+
+<h3>Option A: Quick Nexus Deployment (Recommended for Dev/Test)</h3>
+<pre><code># Create Nexus deployment
+cat &lt;&lt;'EOF' | oc apply -f -
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nexus-data
+  namespace: rbi-cms
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 20Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nexus
+  namespace: rbi-cms
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nexus
+  template:
+    metadata:
+      labels:
+        app: nexus
+    spec:
+      containers:
+        - name: nexus
+          image: sonatype/nexus3:3.72.0
+          ports:
+            - containerPort: 8081
+          env:
+            - name: INSTALL4J_ADD_VM_PARAMS
+              value: "-Xms512m -Xmx1g -XX:MaxDirectMemorySize=1g"
+          volumeMounts:
+            - name: nexus-storage
+              mountPath: /nexus-data
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1Gi
+            limits:
+              cpu: 2000m
+              memory: 2Gi
+          readinessProbe:
+            httpGet:
+              path: /service/rest/v1/status
+              port: 8081
+            initialDelaySeconds: 60
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /service/rest/v1/status
+              port: 8081
+            initialDelaySeconds: 120
+            periodSeconds: 30
+      volumes:
+        - name: nexus-storage
+          persistentVolumeClaim:
+            claimName: nexus-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nexus
+  namespace: rbi-cms
+spec:
+  selector:
+    app: nexus
+  ports:
+    - port: 8081
+      targetPort: 8081
+  type: ClusterIP
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: nexus
+  namespace: rbi-cms
+spec:
+  to:
+    kind: Service
+    name: nexus
+  port:
+    targetPort: 8081
+EOF</code></pre>
+
+<h3>Get Nexus Admin Password (first time)</h3>
+<pre><code># Wait for Nexus to be ready (~2 min):
+oc rollout status deployment/nexus -n rbi-cms
+
+# Get initial admin password:
+oc exec deployment/nexus -n rbi-cms -- cat /nexus-data/admin.password
+
+# Login at: https://nexus-rbi-cms.apps.your-cluster.com
+# Username: admin
+# Password: (from above command)
+# Change password to: nexus_admin_password (or your choice)</code></pre>
+
+<h3>Create Maven Repositories in Nexus</h3>
+<p>Via Nexus UI (Settings → Repositories → Create):</p>
+<table>
+<tr><th>Repository Name</th><th>Type</th><th>Purpose</th></tr>
+<tr><td>maven-releases</td><td>maven2 (hosted)</td><td>Released artifacts (version policy: Release)</td></tr>
+<tr><td>maven-snapshots</td><td>maven2 (hosted)</td><td>Snapshot artifacts (version policy: Snapshot, allow redeploy)</td></tr>
+<tr><td>maven-central-proxy</td><td>maven2 (proxy)</td><td>Proxy to Maven Central</td></tr>
+<tr><td>maven-public</td><td>maven2 (group)</td><td>Group combining all above (members: releases + snapshots + central-proxy)</td></tr>
+</table>
+
+<div class="warning">
+For <code>maven-snapshots</code>: ensure "Allow Redeploy" is enabled (Deployment Policy = Allow Redeploy). SNAPSHOT versions get re-deployed frequently.
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════ -->
+<h2 id="publish-parent">4. Step 2: Publish Parent POM to Nexus</h2>
+
+<p>This publishes <strong>only the POM file</strong> (no JAR) — it provides dependency versions, plugin config, and properties to all child services.</p>
+
+<h3>From your local machine (or a CI job):</h3>
+<pre><code>cd CMS2.0
+
+# Publish ONLY the parent POM (not child modules):
+mvn deploy -N \
+  -DskipTests \
+  -DaltDeploymentRepository=nexus-snapshots::default::http://nexus.rbi-cms.svc.cluster.local:8081/repository/maven-snapshots/
+
+# -N = non-recursive (parent only, skip modules)
+# This uploads: com/rbi/cms/cms-parent/1.0.0-SNAPSHOT/cms-parent-1.0.0-SNAPSHOT.pom</code></pre>
+
+<h3>Using the provided settings.xml:</h3>
+<pre><code>cd CMS2.0
+
+# Deploy using settings.xml (which already points to Nexus):
+mvn deploy -N -DskipTests -s deployment/maven-settings.xml</code></pre>
+
+<div class="card card-blue">
+<h4>What gets uploaded to Nexus:</h4>
+<pre><code>maven-snapshots/
+└── com/rbi/cms/
+    └── cms-parent/
+        └── 1.0.0-SNAPSHOT/
+            ├── cms-parent-1.0.0-SNAPSHOT.pom      ← the parent POM
+            └── maven-metadata.xml</code></pre>
+<p>This is just a POM file (~5KB). No JAR is produced since <code>&lt;packaging&gt;pom&lt;/packaging&gt;</code>.</p>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════ -->
+<h2 id="publish-common">5. Step 3: Publish cms-common to Nexus</h2>
+
+<p>This publishes the shared library JAR that all microservices depend on.</p>
+
+<pre><code>cd CMS2.0/cms-common
+
+# Build and publish cms-common:
+mvn deploy -DskipTests -s ../deployment/maven-settings.xml</code></pre>
+
+<div class="card card-blue">
+<h4>What gets uploaded to Nexus:</h4>
+<pre><code>maven-snapshots/
+└── com/rbi/cms/
+    ├── cms-parent/1.0.0-SNAPSHOT/cms-parent.pom      (from Step 2)
+    └── cms-common/1.0.0-SNAPSHOT/
+        ├── cms-common-1.0.0-SNAPSHOT.jar              ← shared library
+        ├── cms-common-1.0.0-SNAPSHOT.pom
+        └── maven-metadata.xml</code></pre>
+</div>
+
+<h3>Verify Artifacts in Nexus</h3>
+<pre><code># From any pod in the cluster (or your machine if port-forwarded):
+curl -s http://nexus.rbi-cms.svc.cluster.local:8081/repository/maven-snapshots/com/rbi/cms/cms-parent/1.0.0-SNAPSHOT/
+
+# Should list the POM file. If empty → publish failed.</code></pre>
+
+<div class="success">
+After this step, any microservice can be built independently — Maven will pull <code>cms-parent</code> and <code>cms-common</code> from Nexus.
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════ -->
+<h2 id="dockerfile">6. Step 4: Microservice Dockerfile (with Nexus)</h2>
+
+<p>Each microservice needs a <code>settings.xml</code> file so Maven knows where to find Nexus. The Dockerfile copies it during build.</p>
+
+<h3>settings.xml (place in each service's root directory)</h3>
+<pre><code>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;settings&gt;
+    &lt;mirrors&gt;
+        &lt;mirror&gt;
+            &lt;id&gt;nexus&lt;/id&gt;
+            &lt;mirrorOf&gt;*&lt;/mirrorOf&gt;
+            &lt;url&gt;http://nexus.rbi-cms.svc.cluster.local:8081/repository/maven-public/&lt;/url&gt;
+        &lt;/mirror&gt;
+    &lt;/mirrors&gt;
+    &lt;servers&gt;
+        &lt;server&gt;
+            &lt;id&gt;nexus&lt;/id&gt;
+            &lt;username&gt;admin&lt;/username&gt;
+            &lt;password&gt;nexus_admin_password&lt;/password&gt;
+        &lt;/server&gt;
+    &lt;/servers&gt;
+    &lt;profiles&gt;
+        &lt;profile&gt;
+            &lt;id&gt;nexus&lt;/id&gt;
+            &lt;repositories&gt;
+                &lt;repository&gt;
+                    &lt;id&gt;nexus&lt;/id&gt;
+                    &lt;url&gt;http://nexus.rbi-cms.svc.cluster.local:8081/repository/maven-public/&lt;/url&gt;
+                    &lt;releases&gt;&lt;enabled&gt;true&lt;/enabled&gt;&lt;/releases&gt;
+                    &lt;snapshots&gt;&lt;enabled&gt;true&lt;/enabled&gt;&lt;/snapshots&gt;
+                &lt;/repository&gt;
+            &lt;/repositories&gt;
+        &lt;/profile&gt;
+    &lt;/profiles&gt;
+    &lt;activeProfiles&gt;
+        &lt;activeProfile&gt;nexus&lt;/activeProfile&gt;
+    &lt;/activeProfiles&gt;
+&lt;/settings&gt;</code></pre>
+
+<h3>Dockerfile (for each microservice)</h3>
+<pre><code>FROM eclipse-temurin:21-jdk-alpine AS build
+WORKDIR /app
+
+# Copy Maven settings pointing to Nexus (so parent + common can be resolved)
+COPY settings.xml /root/.m2/settings.xml
+
+# Copy only pom.xml first (Docker layer caching for deps)
+COPY pom.xml .
+RUN apk add --no-cache maven && mvn dependency:go-offline -q || true
+
+# Copy source and build
+COPY src ./src
+RUN mvn clean package -DskipTests -q
+
+# ─── Runtime Stage ───
+FROM eclipse-temurin:21-jre-alpine
+WORKDIR /app
+RUN addgroup -S cms && adduser -S cms -G cms
+
+COPY --from=build /app/target/*.jar app.jar
+USER cms
+
+EXPOSE 8080
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
+  CMD wget -qO- http://localhost:8080/actuator/health || exit 1
+
+ENTRYPOINT ["java", \
+  "-XX:+UseG1GC", \
+  "-XX:MaxGCPauseMillis=200", \
+  "-XX:InitialRAMPercentage=50.0", \
+  "-XX:MaxRAMPercentage=75.0", \
+  "-Djava.security.egd=file:/dev/./urandom", \
+  "-jar", "app.jar"]</code></pre>
+
+<div class="card card-orange">
+<h4>Key Line Explained</h4>
+<pre><code>COPY settings.xml /root/.m2/settings.xml</code></pre>
+<p>This is what makes it work. When Maven runs <code>mvn package</code>, it reads <code>/root/.m2/settings.xml</code>, discovers Nexus as a mirror, and downloads <code>cms-parent</code> POM + <code>cms-common</code> JAR from there — just like it would download Spring Boot starters from Maven Central.</p>
+</div>
+
+<h3>What Each Service Directory Should Contain:</h3>
+<pre><code>cms-api-gateway/
+├── Dockerfile          ← uses settings.xml to resolve parent from Nexus
+├── settings.xml        ← points to Nexus (copy from deployment/maven-settings.xml)
+├── pom.xml             ← references cms-parent as parent
+└── src/
+    └── main/java/...</code></pre>
+
+<h3>Quick Copy Script (copy settings.xml to all services)</h3>
+<pre><code>cd CMS2.0
+
+SERVICES="cms-api-gateway cms-assignment-service cms-audit-service \
+  cms-eligibility-service cms-ingestion-service cms-notification-service \
+  cms-outbox-publisher cms-rules-service cms-search-service \
+  cms-sla-monitor-service cms-storage-service cms-workflow-service"
+
+for svc in $SERVICES; do
+  cp deployment/maven-settings.xml $svc/settings.xml
+  echo "✓ Copied settings.xml to $svc/"
+done</code></pre>
+
+<!-- ════════════════════════════════════════════════════════════════ -->
+<h2 id="build-order">7. Step 5: Build & Deploy Order</h2>
+
+<div class="card card-purple">
+<h4>Critical Build Order</h4>
+<div class="diagram">
+Phase 1: Infrastructure (Nexus, Oracle, Kafka, Keycloak, OpenSearch)
+    │
+    ▼
+Phase 2: Publish to Nexus (MUST complete before Phase 3)
+    ├── mvn deploy -N  (cms-parent POM)
+    └── mvn deploy     (cms-common JAR)
+    │
+    ▼
+Phase 3: Build ALL microservices (can run in PARALLEL)
+    ├── cms-api-gateway         ──┐
+    ├── cms-assignment-service  ──┤
+    ├── cms-audit-service       ──┤
+    ├── cms-eligibility-service ──┤
+    ├── cms-ingestion-service   ──┤  All pull parent + common
+    ├── cms-notification-service──┤  from Nexus automatically
+    ├── cms-outbox-publisher    ──┤
+    ├── cms-rules-service       ──┤
+    ├── cms-search-service      ──┤
+    ├── cms-sla-monitor-service ──┤
+    ├── cms-storage-service     ──┤
+    └── cms-workflow-service    ──┘
+    │
+    ▼
+Phase 4: Build standalone services (no Nexus dependency)
+    ├── cms-backend             (has its own Spring Boot parent)
+    ├── cms-portal-frontend     (Angular, no Maven)
+    ├── cms-frontend            (Angular, no Maven)
+    └── cms-paddle-ocr          (Python, no Maven)
+    │
+    ▼
+Phase 5: Deploy all to OpenShift
+</div>
+</div>
+
+<div class="info">
+<strong>cms-backend</strong> is standalone — its <code>pom.xml</code> uses <code>spring-boot-starter-parent</code> directly, NOT <code>cms-parent</code>. It can be built without Nexus.
+</div>
+
+<h3>Build Images Command Sequence</h3>
+<pre><code># === PHASE 2: Publish shared artifacts to Nexus ===
+cd CMS2.0
+
+# Publish parent POM:
+mvn deploy -N -DskipTests -s deployment/maven-settings.xml
+echo "✓ cms-parent published to Nexus"
+
+# Publish cms-common:
+cd cms-common
+mvn deploy -DskipTests -s ../deployment/maven-settings.xml
+echo "✓ cms-common published to Nexus"
+cd ..
+
+# === PHASE 3: Build microservice images (parallel) ===
+REGISTRY="image-registry.openshift-image-registry.svc:5000/rbi-cms"
+
+# These can all run in parallel:
+podman build -t $REGISTRY/cms-api-gateway:latest         cms-api-gateway/ &
+podman build -t $REGISTRY/cms-assignment-service:latest   cms-assignment-service/ &
+podman build -t $REGISTRY/cms-audit-service:latest        cms-audit-service/ &
+podman build -t $REGISTRY/cms-eligibility-service:latest  cms-eligibility-service/ &
+podman build -t $REGISTRY/cms-ingestion-service:latest    cms-ingestion-service/ &
+podman build -t $REGISTRY/cms-notification-service:latest cms-notification-service/ &
+podman build -t $REGISTRY/cms-outbox-publisher:latest     cms-outbox-publisher/ &
+podman build -t $REGISTRY/cms-rules-service:latest        cms-rules-service/ &
+podman build -t $REGISTRY/cms-search-service:latest       cms-search-service/ &
+podman build -t $REGISTRY/cms-sla-monitor-service:latest  cms-sla-monitor-service/ &
+podman build -t $REGISTRY/cms-storage-service:latest      cms-storage-service/ &
+podman build -t $REGISTRY/cms-workflow-service:latest      cms-workflow-service/ &
+wait
+echo "✓ All microservice images built"
+
+# === PHASE 4: Build standalone services ===
+podman build -t $REGISTRY/cms-backend:latest              cms-backend/ &
+podman build -t $REGISTRY/cms-portal-frontend:latest      cms-portal-frontend/ &
+podman build -t $REGISTRY/cms-paddle-ocr:latest           cms-paddle-ocr/ &
+wait
+echo "✓ Standalone services built"
+
+# === PUSH ALL IMAGES ===
+for img in cms-api-gateway cms-assignment-service cms-audit-service \
+  cms-eligibility-service cms-ingestion-service cms-notification-service \
+  cms-outbox-publisher cms-rules-service cms-search-service \
+  cms-sla-monitor-service cms-storage-service cms-workflow-service \
+  cms-backend cms-portal-frontend cms-paddle-ocr; do
+    podman push $REGISTRY/$img:latest
+    echo "  ✓ Pushed $img"
+done</code></pre>
+
+<!-- ════════════════════════════════════════════════════════════════ -->
+<h2 id="deploy-all">8. Step 6: Full Deployment Script</h2>
+
+<h3>deploy-services.sh (run after images are pushed)</h3>
+<pre><code>#!/bin/bash
+set -e
+OPENSHIFT_DIR="$(dirname "$0")/openshift"
+
+echo "============================================="
+echo "  CMS 2.0 - OpenShift Service Deployment"
+echo "============================================="
+
+# Verify logged in
+oc whoami || { echo "ERROR: Not logged in. Run 'oc login' first."; exit 1; }
+
+echo ""
+echo "[Phase 1] Namespace & ConfigMaps & Secrets"
+echo "---------------------------------------------"
+oc apply -f $OPENSHIFT_DIR/namespace.yaml
+oc apply -f $OPENSHIFT_DIR/configmap-common.yaml
+oc apply -f $OPENSHIFT_DIR/secret-db.yaml
+oc apply -f $OPENSHIFT_DIR/secret-keycloak.yaml
+oc apply -f $OPENSHIFT_DIR/secret-sms.yaml
+oc apply -f $OPENSHIFT_DIR/secret-opensearch.yaml
+oc apply -f $OPENSHIFT_DIR/secret-kafka.yaml
+oc apply -f $OPENSHIFT_DIR/pvc.yaml
+echo "  ✓ Foundation applied"
+
+echo ""
+echo "[Phase 2] Core Services (no inter-service deps)"
+echo "---------------------------------------------"
+oc apply -f $OPENSHIFT_DIR/deployment-audit-service.yaml
+oc apply -f $OPENSHIFT_DIR/deployment-storage-service.yaml
+oc apply -f $OPENSHIFT_DIR/deployment-paddle-ocr.yaml
+oc apply -f $OPENSHIFT_DIR/deployment-notification-service.yaml
+oc apply -f $OPENSHIFT_DIR/deployment-search-service.yaml
+echo "  ✓ Core services deployed"
+
+echo ""
+echo "[Phase 3] Business Logic Services"
+echo "---------------------------------------------"
+oc apply -f $OPENSHIFT_DIR/deployment-rules-service.yaml
+oc apply -f $OPENSHIFT_DIR/deployment-eligibility-service.yaml
+oc apply -f $OPENSHIFT_DIR/deployment-sla-monitor-service.yaml
+oc apply -f $OPENSHIFT_DIR/deployment-assignment-service.yaml
+oc apply -f $OPENSHIFT_DIR/deployment-workflow-service.yaml
+oc apply -f $OPENSHIFT_DIR/deployment-ingestion-service.yaml
+oc apply -f $OPENSHIFT_DIR/deployment-outbox-publisher.yaml
+echo "  ✓ Business services deployed"
+
+echo ""
+echo "[Phase 4] Backend & API Gateway"
+echo "---------------------------------------------"
+oc apply -f $OPENSHIFT_DIR/deployment-backend.yaml
+oc apply -f $OPENSHIFT_DIR/deployment-api-gateway.yaml
+echo "  ✓ Backend + Gateway deployed"
+
+echo ""
+echo "[Phase 5] Frontends"
+echo "---------------------------------------------"
+oc apply -f $OPENSHIFT_DIR/deployment-portal-frontend.yaml
+oc apply -f $OPENSHIFT_DIR/deployment-frontend.yaml
+echo "  ✓ Frontends deployed"
+
+echo ""
+echo "============================================="
+echo "  All 16 services deployed!"
+echo "  Run: oc get pods -n rbi-cms"
+echo "============================================="</code></pre>
+
+<!-- ════════════════════════════════════════════════════════════════ -->
+<h2 id="tekton">9. Step 7: Tekton CI/CD Pipeline (Automated)</h2>
+
+<p>For fully automated builds on every git push, use this updated Tekton pipeline that includes Nexus resolution.</p>
+
+<h3>Pre-requisite: Maven Settings as ConfigMap</h3>
+<pre><code># Create ConfigMap with the settings.xml:
+oc create configmap maven-settings \
+  --from-file=settings.xml=deployment/maven-settings.xml \
+  -n rbi-cms</code></pre>
+
+<h3>Updated Pipeline: cms-java-service-pipeline.yaml</h3>
+<pre><code>apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: cms-java-service-pipeline
+  namespace: rbi-cms
+spec:
+  params:
+    - name: SERVICE_NAME
+      type: string
+    - name: GIT_URL
+      type: string
+    - name: GIT_REVISION
+      type: string
+      default: main
+    - name: IMAGE_TAG
+      type: string
+      default: latest
+  workspaces:
+    - name: shared-workspace
+    - name: maven-settings
+
+  tasks:
+    - name: fetch-source
+      taskRef:
+        name: git-clone
+        kind: ClusterTask
+      workspaces:
+        - name: output
+          workspace: shared-workspace
+      params:
+        - name: url
+          value: $(params.GIT_URL)
+        - name: revision
+          value: $(params.GIT_REVISION)
+
+    - name: copy-maven-settings
+      taskRef:
+        name: openshift-client
+        kind: ClusterTask
+      runAfter: [fetch-source]
+      params:
+        - name: SCRIPT
+          value: |
+            # Copy settings.xml into the workspace for Maven to use
+            cp /workspace/maven-settings/settings.xml /workspace/source/settings.xml
+            # Also place in .m2 for the build stage
+            mkdir -p /workspace/source/.m2
+            cp /workspace/maven-settings/settings.xml /workspace/source/.m2/settings.xml
+
+    - name: build-and-test
+      taskRef:
+        name: maven
+        kind: ClusterTask
+      runAfter: [copy-maven-settings]
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+        - name: maven-settings
+          workspace: maven-settings
+      params:
+        - name: GOALS
+          value:
+            - clean
+            - package
+            - -DskipTests=false
+        - name: MAVEN_IMAGE
+          value: maven:3.9-eclipse-temurin-21-alpine
+
+    - name: build-push-image
+      taskRef:
+        name: buildah
+        kind: ClusterTask
+      runAfter: [build-and-test]
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+      params:
+        - name: IMAGE
+          value: image-registry.openshift-image-registry.svc:5000/rbi-cms/$(params.SERVICE_NAME):$(params.IMAGE_TAG)
+        - name: DOCKERFILE
+          value: ./Dockerfile
+
+    - name: deploy-rollout
+      taskRef:
+        name: openshift-client
+        kind: ClusterTask
+      runAfter: [build-push-image]
+      params:
+        - name: SCRIPT
+          value: |
+            oc rollout restart deployment/$(params.SERVICE_NAME) -n rbi-cms
+            oc rollout status deployment/$(params.SERVICE_NAME) -n rbi-cms --timeout=300s</code></pre>
+
+<h3>Trigger a Pipeline Run</h3>
+<pre><code># Example: Build and deploy cms-rules-service
+cat &lt;&lt;EOF | oc apply -f -
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: cms-rules-service-run-
+  namespace: rbi-cms
+spec:
+  pipelineRef:
+    name: cms-java-service-pipeline
+  params:
+    - name: SERVICE_NAME
+      value: cms-rules-service
+    - name: GIT_URL
+      value: https://github.com/your-org/cms-rules-service.git
+    - name: GIT_REVISION
+      value: main
+    - name: IMAGE_TAG
+      value: "1.0.0"
+  workspaces:
+    - name: shared-workspace
+      volumeClaimTemplate:
+        spec:
+          accessModes: [ReadWriteOnce]
+          resources:
+            requests:
+              storage: 2Gi
+    - name: maven-settings
+      configMap:
+        name: maven-settings
+EOF</code></pre>
+
+<!-- ════════════════════════════════════════════════════════════════ -->
+<h2 id="quick-ref">10. Quick Reference Card</h2>
+
+<div class="card card-green">
+<h4>Complete Deployment Checklist</h4>
+<table>
+<tr><th>#</th><th>Action</th><th>Command</th><th>Frequency</th></tr>
+<tr><td>1</td><td>Deploy Nexus</td><td><code>oc apply -f nexus-deployment.yaml</code></td><td>Once</td></tr>
+<tr><td>2</td><td>Create Nexus repos</td><td>UI: maven-releases, maven-snapshots, maven-public</td><td>Once</td></tr>
+<tr><td>3</td><td>Publish parent POM</td><td><code>mvn deploy -N -s settings.xml</code></td><td>On parent change</td></tr>
+<tr><td>4</td><td>Publish cms-common</td><td><code>cd cms-common && mvn deploy -s settings.xml</code></td><td>On common change</td></tr>
+<tr><td>5</td><td>Copy settings.xml</td><td>Copy to each microservice root</td><td>Once</td></tr>
+<tr><td>6</td><td>Build images</td><td><code>podman build -t registry/svc:tag svc/</code></td><td>On code change</td></tr>
+<tr><td>7</td><td>Push images</td><td><code>podman push registry/svc:tag</code></td><td>On code change</td></tr>
+<tr><td>8</td><td>Deploy services</td><td><code>./deploy-services.sh</code></td><td>On image change</td></tr>
+</table>
+</div>
+
+<div class="card card-blue">
+<h4>Service → Pod Mapping (Each Service = 1 Deployment = 1+ Pods)</h4>
+<table>
+<tr><th>Service</th><th>Replicas</th><th>Port</th><th>Needs Nexus?</th></tr>
+<tr><td>cms-api-gateway</td><td>2</td><td>8080</td><td><span class="badge badge-red">Yes</span></td></tr>
+<tr><td>cms-assignment-service</td><td>2</td><td>8080</td><td><span class="badge badge-red">Yes</span></td></tr>
+<tr><td>cms-audit-service</td><td>2</td><td>8080</td><td><span class="badge badge-red">Yes</span></td></tr>
+<tr><td>cms-eligibility-service</td><td>2</td><td>8080</td><td><span class="badge badge-red">Yes</span></td></tr>
+<tr><td>cms-ingestion-service</td><td>2</td><td>8080</td><td><span class="badge badge-red">Yes</span></td></tr>
+<tr><td>cms-notification-service</td><td>2</td><td>8080</td><td><span class="badge badge-red">Yes</span></td></tr>
+<tr><td>cms-outbox-publisher</td><td>2</td><td>8080</td><td><span class="badge badge-red">Yes</span></td></tr>
+<tr><td>cms-rules-service</td><td>2</td><td>8080</td><td><span class="badge badge-red">Yes</span></td></tr>
+<tr><td>cms-search-service</td><td>2</td><td>8080</td><td><span class="badge badge-red">Yes</span></td></tr>
+<tr><td>cms-sla-monitor-service</td><td>2</td><td>8080</td><td><span class="badge badge-red">Yes</span></td></tr>
+<tr><td>cms-storage-service</td><td>2</td><td>8080</td><td><span class="badge badge-red">Yes</span></td></tr>
+<tr><td>cms-workflow-service</td><td>2</td><td>8080</td><td><span class="badge badge-red">Yes</span></td></tr>
+<tr><td>cms-backend</td><td>2</td><td>8080</td><td><span class="badge badge-green">No</span> (standalone)</td></tr>
+<tr><td>cms-portal-frontend</td><td>2</td><td>80</td><td><span class="badge badge-green">No</span> (Angular)</td></tr>
+<tr><td>cms-frontend</td><td>2</td><td>80</td><td><span class="badge badge-green">No</span> (Angular)</td></tr>
+<tr><td>cms-paddle-ocr</td><td>1</td><td>8100</td><td><span class="badge badge-green">No</span> (Python)</td></tr>
+</table>
+</div>
+
+<div class="card card-orange">
+<h4>Troubleshooting: "Could not find artifact cms-parent"</h4>
+<ol>
+    <li><strong>Verify Nexus is accessible from build pod:</strong>
+        <pre><code>oc exec deployment/nexus -n rbi-cms -- curl -s http://localhost:8081/service/rest/v1/status</code></pre>
+    </li>
+    <li><strong>Verify parent is published:</strong>
+        <pre><code>curl http://nexus-route/repository/maven-snapshots/com/rbi/cms/cms-parent/1.0.0-SNAPSHOT/</code></pre>
+    </li>
+    <li><strong>Verify settings.xml is correct in the service directory:</strong>
+        <pre><code>cat cms-api-gateway/settings.xml | grep -A2 "mirror"
+# Should show: http://nexus.rbi-cms.svc.cluster.local:8081/repository/maven-public/</code></pre>
+    </li>
+    <li><strong>Verify Dockerfile copies settings.xml:</strong>
+        <pre><code>grep "settings.xml" cms-api-gateway/Dockerfile
+# Should show: COPY settings.xml /root/.m2/settings.xml</code></pre>
+    </li>
+    <li><strong>Re-publish if needed:</strong>
+        <pre><code>mvn deploy -N -DskipTests -s deployment/maven-settings.xml</code></pre>
+    </li>
+</ol>
+</div>
+
+<div class="card card-orange">
+<h4>Troubleshooting: "Could not find artifact cms-common"</h4>
+<ol>
+    <li>Ensure cms-common was published AFTER the parent POM (it depends on the parent).</li>
+    <li>Re-publish: <code>cd cms-common && mvn deploy -DskipTests -s ../deployment/maven-settings.xml</code></li>
+    <li>Check Nexus UI → Browse → maven-snapshots → com/rbi/cms/cms-common/ → should have .jar file</li>
+</ol>
+</div>
+
+<div class="card card-orange">
+<h4>Troubleshooting: Nexus unreachable from build pod</h4>
+<pre><code># Check Nexus service exists:
+oc get svc nexus -n rbi-cms
+
+# Check DNS resolution from a build pod:
+oc run test-dns --rm -it --image=alpine --restart=Never -- \
+  nslookup nexus.rbi-cms.svc.cluster.local
+
+# If using external Nexus, update settings.xml URL accordingly</code></pre>
+</div>
+
+<hr style="margin: 40px 0;">
+<p style="text-align: center; color: #94a3b8; font-size: 12px;">
+    CMS 2.0 OpenShift Deployment Guide | Generated: 12 July 2026 | Solution: Nexus as shared Maven repository
+</p>
+
+</div>
+</body>
+</html>

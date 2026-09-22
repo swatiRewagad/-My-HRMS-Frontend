@@ -1,0 +1,68 @@
+<div class="rbio-forward-regulatory">
+  <h4>Forward to Other Regulatory Body</h4>
+
+  @if (!showForm()) {
+    <button class="action-btn forward-btn" (click)="openForm()">
+      <i class="pi pi-external-link"></i> Forward to Regulatory Body
+    </button>
+  }
+
+  @if (showForm()) {
+    <div class="form-section">
+      <h5>Select Regulatory Body (from validated master list)</h5>
+
+      @if (loadingBodies()) {
+        <p class="loading-text">Loading regulatory bodies...</p>
+      } @else if (regulatoryBodies().length === 0) {
+        <p class="empty-text">No regulatory bodies available in master list.</p>
+      } @else {
+        <div class="form-grid">
+          <div class="form-field full">
+            <label>Regulatory Body *</label>
+            <select [(ngModel)]="selectedBodyId">
+              <option [ngValue]="null">Select from master list...</option>
+              @for (body of regulatoryBodies(); track body.id) {
+                <option [ngValue]="body.id">{{ body.name }} ({{ body.code }})</option>
+              }
+            </select>
+            <span class="field-hint">Only bodies from the validated master list can be selected. No free-text entry allowed.</span>
+          </div>
+
+          @if (selectedBody) {
+            <div class="selected-body-info">
+              <div class="info-item"><strong>Name:</strong> {{ selectedBody.name }}</div>
+              <div class="info-item"><strong>Code:</strong> {{ selectedBody.code }}</div>
+              <div class="info-item"><strong>Contact:</strong> {{ selectedBody.contactEmail }}</div>
+              @if (selectedBody.address) {
+                <div class="info-item"><strong>Address:</strong> {{ selectedBody.address }}</div>
+              }
+            </div>
+          }
+
+          <div class="form-field full">
+            <label>Remarks / Reason for Forwarding *</label>
+            <textarea [(ngModel)]="remarks" rows="3" placeholder="Provide reason for forwarding to this regulatory body..."></textarea>
+          </div>
+        </div>
+
+        <div class="auto-email-notice">
+          <i class="pi pi-info-circle"></i>
+          An awareness email will be automatically sent to the complainant upon submission.
+        </div>
+
+        <div class="form-actions">
+          <button class="submit-btn" [disabled]="processing() || !selectedBodyId || !remarks.trim()" (click)="submitForward()">
+            @if (processing()) { Forwarding... } @else { Confirm Forward }
+          </button>
+          <button class="cancel-btn" (click)="cancelForm()">Cancel</button>
+        </div>
+      }
+    </div>
+  }
+
+  @if (resultMessage()) {
+    <div class="result-msg" [class.success]="resultSuccess()" [class.error]="!resultSuccess()">
+      {{ resultMessage() }}
+    </div>
+  }
+</div>

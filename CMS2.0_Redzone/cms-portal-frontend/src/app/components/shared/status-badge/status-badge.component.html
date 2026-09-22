@@ -1,0 +1,14 @@
+@if (normalised()) {
+  <span class="status-badge" [attr.data-status]="normalised()">
+    <!--
+      TranslationService.translate returns the key unchanged when it is not in the bundle, so an
+      unseeded key would otherwise render "re.activity.opened" on screen. Comparing against the key
+      lets the humanised value stand in until the translation lands.
+    -->
+    @if ((resolvedKey() | translate) !== resolvedKey()) {
+      {{ resolvedKey() | translate }}
+    } @else {
+      {{ humanised() }}
+    }
+  </span>
+}

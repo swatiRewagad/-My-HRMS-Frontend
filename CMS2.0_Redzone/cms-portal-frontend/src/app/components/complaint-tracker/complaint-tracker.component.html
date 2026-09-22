@@ -1,0 +1,343 @@
+<div class="tracker-container">
+  <h2>Track Your Complaint</h2>
+  <p class="subtitle">Enter your complaint reference number or verify via mobile number to check the current status.</p>
+
+  <!-- UST98: Mode switcher -->
+  <div class="track-mode-tabs">
+    <button class="mode-tab" [class.active]="trackMode() === 'id'" (click)="switchMode('id')">
+      <i class="pi pi-search"></i> Track by Complaint ID
+    </button>
+    <button class="mode-tab" [class.active]="trackMode() === 'mobile'" (click)="switchMode('mobile')">
+      <i class="pi pi-mobile"></i> Track by Mobile Number
+    </button>
+  </div>
+
+  <!-- Mode: Track by ID -->
+  @if (trackMode() === 'id') {
+    <div class="search-box">
+      <input type="text"
+             [ngModel]="searchId()"
+             (ngModelChange)="searchId.set($event)"
+             placeholder="Enter Complaint ID (e.g., CMS-20260710-ABC123)"
+             (keydown.enter)="track()">
+      <button (click)="track()" [disabled]="!searchId() || loading()">
+        @if (loading()) {
+          <i class="pi pi-spin pi-spinner"></i>
+        } @else {
+          <i class="pi pi-search"></i> Track
+        }
+      </button>
+    </div>
+  }
+
+  <!-- UST98: Mode: Track by Mobile+OTP -->
+  @if (trackMode() === 'mobile') {
+    @if (!mobileVerified()) {
+      <div class="mobile-track-form">
+        @if (!otpSent()) {
+          <div class="search-box">
+            <input type="tel" [(ngModel)]="mobileNumber" maxlength="10"
+                   placeholder="Enter 10-digit mobile number"
+                   aria-label="Mobile number">
+          </div>
+
+          <div class="captcha-section">
+            @if (captchaLoading()) {
+              <span class="captcha-loading"><i class="pi pi-spin pi-spinner"></i> Loading CAPTCHA...</span>
+            } @else if (captchaData(); as captcha) {
+              @if (captcha.type === 'VISUAL') {
+                <img [src]="captcha.imageData" alt="CAPTCHA image" class="captcha-image">
+              } @else {
+                <span class="captcha-math">{{ captcha.audioQuestion }}</span>
+              }
+              <button type="button" class="captcha-icon-btn" (click)="loadCaptcha()" title="Refresh CAPTCHA" aria-label="Refresh CAPTCHA">
+                <i class="pi pi-refresh"></i>
+              </button>
+              <button type="button" class="captcha-icon-btn" (click)="playCaptchaAudio()" title="Play CAPTCHA audio" aria-label="Play CAPTCHA audio">
+                <i class="pi pi-volume-up"></i>
+              </button>
+              <button type="button" class="captcha-icon-btn" (click)="switchCaptchaType()" title="Switch CAPTCHA type" aria-label="Switch CAPTCHA type">
+                <i class="pi pi-sync"></i>
+              </button>
+            }
+            <input type="text" [(ngModel)]="captchaInput" maxlength="10"
+                   placeholder="Enter CAPTCHA" aria-label="CAPTCHA answer"
+                   (keydown.enter)="sendTrackingOtp()">
+          </div>
+
+          <div class="search-box">
+            <button (click)="sendTrackingOtp()" [disabled]="loading()">
+              @if (loading()) {
+                <i class="pi pi-spin pi-spinner"></i>
+              } @else {
+                <i class="pi pi-send"></i> Send OTP
+              }
+            </button>
+          </div>
+        } @else {
+          <div class="otp-track-section">
+            <p class="otp-instruction">Enter OTP sent to *****{{ mobileNumber.slice(-4) }}</p>
+            <div class="search-box">
+              <input type="text" [(ngModel)]="otpCode" maxlength="6"
+                     placeholder="Enter 6-digit OTP" inputmode="numeric"
+                     (keydown.enter)="verifyTrackingOtp()">
+              <button (click)="verifyTrackingOtp()" [disabled]="loading()">
+                @if (loading()) {
+                  <i class="pi pi-spin pi-spinner"></i>
+                } @else {
+                  <i class="pi pi-check"></i> Verify
+                }
+              </button>
+            </div>
+          </div>
+        }
+      </div>
+    } @else {
+      <!-- Complaints list for the verified mobile -->
+      <div class="mobile-complaints-list">
+        <h4>Complaints linked to {{ mobileNumber }}</h4>
+
+        <!-- Status filter dropdown -->
+        <div class="table-filters">
+          <label for="statusFilter">Filter by Status:</label>
+          <select id="statusFilter" [ngModel]="statusFilter()" (ngModelChange)="onStatusFilterChange($event)">
+            @for (opt of statusOptions; track opt.value) {
+              <option [value]="opt.value">{{ opt.label }}</option>
+            }
+          </select>
+        </div>
+
+        @if (mobileComplaints().length > 0) {
+          <p-table
+            [value]="mobileComplaints()"
+            [paginator]="true"
+            [rows]="pageSize()"
+            [totalRecords]="totalRecords()"
+            [lazy]="true"
+            (onLazyLoad)="onTablePage($event)"
+            [rowsPerPageOptions]="[10, 20, 50]"
+            [sortField]="'createdAtFormatted'"
+            [sortOrder]="-1"
+            (onSort)="onTableSort($event)"
+            [tableStyle]="{'min-width': '60rem'}"
+            role="table"
+            styleClass="p-datatable-sm p-datatable-striped"
+            [loading]="loading()">
+            <ng-template pTemplate="header">
+              <tr>
+                <th scope="col">Complaint Number</th>
+                <th scope="col" [pSortableColumn]="'createdAtFormatted'">Date of Registration <p-sortIcon field="createdAtFormatted" /></th>
+                <th scope="col">Category</th>
+                <th scope="col">RE/Bank Name</th>
+                <th scope="col" [pSortableColumn]="'status'">Status <p-sortIcon field="status" /></th>
+                <th scope="col">Closure Clause</th>
+                <th scope="col">Closure Date</th>
+                <th scope="col">Action</th>
+              </tr>
+            </ng-template>
+            <ng-template pTemplate="body" let-c>
+              <tr>
+                <td>{{ c.complaintNumber || c.complaintId }}</td>
+                <td>{{ c.createdAtFormatted || formatDate(c.createdAt) || formatDate(c.complaintDate) || '--' }}</td>
+                <td>{{ c.categoryName || '--' }}</td>
+                <td>{{ c.entityName || '--' }}</td>
+                <td>
+                  <app-status-badge [status]="c.status" />
+                </td>
+                <td>{{ c.closureClause || '--' }}</td>
+                <td>{{ c.closedAtFormatted || formatDate(c.closedAt) || '--' }}</td>
+                <td>
+                  <button class="view-btn" (click)="selectMobileComplaint(c)">
+                    <i class="pi pi-eye"></i> View
+                  </button>
+                </td>
+              </tr>
+            </ng-template>
+            <ng-template pTemplate="emptymessage">
+              <tr>
+                <td colspan="8" class="text-center">No complaints found.</td>
+              </tr>
+            </ng-template>
+          </p-table>
+        }
+      </div>
+    }
+  }
+
+  @if (error()) {
+    <div class="error-message">
+      <i class="pi pi-exclamation-triangle"></i> {{ error() }}
+    </div>
+  }
+
+  <!-- Status change notification toast -->
+  @if (statusChangeNotice()) {
+    <div class="status-change-toast">
+      <i class="pi pi-info-circle"></i> {{ statusChangeNotice() }}
+    </div>
+  }
+
+  @if (status(); as s) {
+    <div class="status-card">
+      <div class="status-header">
+        <h3>{{ s.complaintId }}</h3>
+        <div class="status-header-actions">
+          <button class="btn-refresh" (click)="refreshStatus()" [disabled]="loading()" title="Refresh status">
+            <i class="pi pi-refresh" [class.pi-spin]="loading()"></i>
+          </button>
+          <app-status-badge [status]="s.status" />
+        </div>
+      </div>
+
+      <!-- 4-Stage Progress Timeline -->
+      @if (s.stages && s.stages.length > 0) {
+        <div class="stage-timeline-section">
+          <app-complaint-timeline [stages]="s.stages" [currentStage]="s.currentStage || 1"></app-complaint-timeline>
+        </div>
+      }
+
+      <div class="status-details">
+        <div class="detail-row">
+          <span class="label">Category:</span>
+          <span>{{ s.category }}</span>
+        </div>
+        @if (s.entityName) {
+          <div class="detail-row">
+            <span class="label">Regulated Entity:</span>
+            <span>{{ s.entityName }}</span>
+          </div>
+        }
+        <div class="detail-row">
+          <span class="label">Registered:</span>
+          <span>{{ s.registeredAt | date:'dd MMM yyyy, hh:mm a' }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="label">SLA Due:</span>
+          <span>{{ s.slaDueDate | date:'dd MMM yyyy' }}</span>
+        </div>
+        @if (s.assignedTeam) {
+          <div class="detail-row">
+            <span class="label">Assigned Team:</span>
+            <span>{{ s.assignedTeam }}</span>
+          </div>
+        }
+        @if (s.closureClause) {
+          <div class="detail-row">
+            <span class="label">Closure Clause:</span>
+            <span>{{ s.closureClause }}</span>
+          </div>
+        }
+        @if (s.closedAt) {
+          <div class="detail-row">
+            <span class="label">Closure Date:</span>
+            <span>{{ s.closedAt | date:'dd MMM yyyy' }}</span>
+          </div>
+        }
+        @if (s.resolutionSummary) {
+          <div class="detail-row resolution">
+            <span class="label">Resolution:</span>
+            <span>{{ s.resolutionSummary }}</span>
+          </div>
+        }
+      </div>
+
+      <!-- Detailed Timeline History -->
+      @if (s.timeline && s.timeline.length > 0) {
+        <div class="timeline-section">
+          <h4>Detailed Timeline</h4>
+          <div class="timeline">
+            @for (entry of s.timeline; track entry.timestamp) {
+              <div class="timeline-entry">
+                <div class="timeline-dot"></div>
+                <div class="timeline-content">
+                  <span class="timeline-action">{{ entry.action }}</span>
+                  <span class="timeline-status">{{ entry.fromStatus }} → {{ entry.toStatus }}</span>
+                  <span class="timeline-date">{{ entry.timestamp | date:'dd MMM yyyy, hh:mm a' }}</span>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+      <!-- FR-G-024: Communication History -->
+      @if (s.communications && s.communications.length > 0) {
+        <div class="communications-section">
+          <h4><i class="pi pi-comments"></i> Communication History</h4>
+          <div class="comm-list">
+            @for (comm of s.communications; track comm.id) {
+              <div class="comm-item">
+                <div class="comm-header">
+                  <span class="comm-type" [attr.data-type]="comm.type">{{ comm.type | uppercase }}</span>
+                  <span class="comm-date">{{ comm.timestamp | date:'dd MMM yyyy, hh:mm a' }}</span>
+                </div>
+                <p class="comm-subject"><strong>{{ comm.subject }}</strong></p>
+                <p class="comm-message">{{ comm.message }}</p>
+                <div class="comm-meta">
+                  <span>From: {{ comm.from }}</span> <span>To: {{ comm.to }}</span>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+      <!-- FR-G-025: Documents -->
+      @if (s.documents && s.documents.length > 0) {
+        <div class="documents-section">
+          <h4><i class="pi pi-file"></i> Documents</h4>
+          <div class="doc-list">
+            @for (doc of s.documents; track doc.id) {
+              <div class="doc-item">
+                <i class="pi pi-file-pdf"></i>
+                <div class="doc-info">
+                  <span class="doc-name">{{ doc.name }}</span>
+                  <span class="doc-meta">Uploaded {{ doc.uploadedAt | date:'dd MMM yyyy' }} by {{ doc.uploadedBy }}</span>
+                </div>
+                @if (doc.url) {
+                  <a [href]="doc.url" target="_blank" class="doc-download"><i class="pi pi-download"></i></a>
+                }
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+      <!-- FR-G-034: Download PDF -->
+      <div class="download-section">
+        <button class="btn-download-pdf" (click)="downloadPdf()" [disabled]="pdfLoading()">
+          @if (pdfLoading()) {
+            <i class="pi pi-spin pi-spinner"></i> Generating PDF...
+          } @else {
+            <i class="pi pi-download"></i> Download Complaint Details (PDF)
+          }
+        </button>
+      </div>
+
+      <!-- UST111: File Appeal — visible for closed/resolved/rejected complaints -->
+      @if (isAppealEligibleStatus(s.status)) {
+        <div class="appeal-section">
+          <button class="btn-secondary" (click)="fileAppeal()">
+            <i class="pi pi-replay"></i> File Appeal / Representation
+          </button>
+        </div>
+      }
+
+      <!-- UST105: Withdraw Complaint -->
+      @if (canWithdraw(s.status)) {
+        <div class="withdraw-section">
+          <p>If you wish to withdraw this complaint, you can do so below.</p>
+          <a [routerLink]="'/public/withdraw/' + s.complaintId" class="btn-withdraw">
+            <i class="pi pi-times-circle"></i> Withdraw Complaint
+          </a>
+        </div>
+      }
+
+      <!-- FR-G-026: Feedback link -->
+      <div class="feedback-section">
+        <p>Was your complaint resolved satisfactorily?</p>
+        <a routerLink="/public/feedback" class="feedback-link"><i class="pi pi-star"></i> Share Your Feedback</a>
+      </div>
+    </div>
+  }
+</div>

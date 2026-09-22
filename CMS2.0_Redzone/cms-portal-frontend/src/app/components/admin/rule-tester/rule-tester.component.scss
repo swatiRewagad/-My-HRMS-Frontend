@@ -1,0 +1,126 @@
+.rule-tester {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+  h1 { font-size: 1.5rem; font-weight: 600; color: #1a1a2e; }
+}
+
+.subtitle {
+  color: #64748b;
+  margin-bottom: 1.5rem;
+}
+
+.btn {
+  padding: 0.6rem 1.2rem;
+  border: none;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+
+  &-back { background: transparent; color: #64748b; &:hover { color: #1e293b; } }
+  &-run { background: #059669; color: white; width: 100%; margin-top: 1rem; &:hover { background: #047857; } &:disabled { background: #9ca3af; } }
+}
+
+.alert-error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; padding: 0.75rem; border-radius: 6px; margin-bottom: 1rem; }
+
+.test-container {
+  display: grid;
+  grid-template-columns: 1fr 1.5fr;
+  gap: 2rem;
+}
+
+.input-panel, .output-panel {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 1.5rem;
+
+  h3 { font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem; color: #1e293b; }
+}
+
+.form-group {
+  margin-bottom: 1rem;
+
+  label { display: block; font-weight: 500; color: #374151; margin-bottom: 0.3rem; font-size: 0.85rem; }
+  input, select {
+    width: 100%;
+    padding: 0.5rem 0.7rem;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    &:focus { outline: none; border-color: #2563eb; }
+  }
+  small { color: #9ca3af; font-size: 0.8rem; }
+}
+
+.slider-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.7rem;
+  color: #9ca3af;
+  margin-top: 0.25rem;
+}
+
+.result-card {
+  border-radius: 6px;
+  padding: 1.25rem;
+
+  &.success { background: #f0fdf4; border: 1px solid #bbf7d0; }
+  &.error { background: #fef2f2; border: 1px solid #fecaca; }
+}
+
+.result-header {
+  margin-bottom: 1rem;
+
+  .badge {
+    background: #059669;
+    color: white;
+    padding: 0.3rem 0.7rem;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
+  }
+}
+
+.output-section {
+  margin-bottom: 1.25rem;
+
+  h4 { font-size: 0.85rem; font-weight: 600; color: #475569; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.03em; }
+}
+
+.output-grid {
+  display: grid;
+  gap: 0.5rem;
+
+  .output-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 0.75rem;
+    background: white;
+    border-radius: 4px;
+    border: 1px solid #e2e8f0;
+
+    .key { font-weight: 500; color: #475569; font-size: 0.85rem; }
+    .value { font-family: monospace; color: #64748b; font-size: 0.85rem; &.highlight { color: #059669; font-weight: 600; } }
+  }
+}
+
+.rules-list {
+  margin: 0;
+  padding-left: 1.25rem;
+
+  li { padding: 0.3rem 0; color: #374151; font-size: 0.9rem; }
+}
+
+.placeholder {
+  text-align: center;
+  padding: 3rem;
+  color: #94a3b8;
+}

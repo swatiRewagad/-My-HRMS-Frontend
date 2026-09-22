@@ -1,0 +1,87 @@
+// The one status badge stylesheet (UST847). Every portal's local `.status-badge` block duplicated
+// these five lines and then disagreed about the selectors underneath.
+//
+// Selectors are attribute-based and UPPERCASE. The old `[class]="'status-' + status"` binding on the
+// RE side replaced the entire class attribute, so the base class was destroyed at runtime and the
+// lowercase suffixes it produced matched nothing anyway.
+
+$badge-radius: 12px;
+
+.status-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: $badge-radius;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: nowrap;
+
+  // Unrecognised values still get a legible chip rather than unstyled text. Before this, any status
+  // outside a portal's hardcoded list rendered with no background at all.
+  background: var(--surface-subtle);
+  color: var(--state-neutral-fg);
+
+  // ═══ RE Activity Status ladder (UST846) ═══
+  // Deliberately a cool-to-warm progression: the early levels read as neutral because "not opened"
+  // on day one is not yet a problem, and only OVERDUE is alarming.
+  &[data-status='NOT_OPENED']              { background: var(--surface-subtle); color: #4b5563; }
+  &[data-status='OPENED']                  { background: var(--state-info-bg); color: var(--state-info-fg); }
+  &[data-status='UNDER_REVIEW']            { background: var(--brand-primary-bg-strong); color: var(--brand-primary-strong); }
+  &[data-status='RESPONSE_BEING_PREPARED'] { background: var(--accent-violet-bg); color: var(--accent-violet-fg); }
+  &[data-status='DOCUMENTS_UPLOADED']      { background: var(--accent-teal-bg); color: var(--accent-teal-fg); }
+  &[data-status='RESPONSE_SUBMITTED']      { background: var(--state-success-bg); color: var(--state-success-fg); }
+  &[data-status='OVERDUE']                 { background: var(--state-danger-bg); color: var(--state-danger-fg); }
+
+  // ═══ Complaint workflow status ═══
+  // Both casings of the stored vocabulary resolve here because the component upper-cases before
+  // binding, so "re_responded" from cms-backend and "RE_RESPONDED" from the newer tables land on the
+  // same selector.
+  &[data-status='NEW'],
+  &[data-status='PENDING']            { background: var(--state-warning-bg); color: var(--state-warning-fg); }
+  &[data-status='DRAFT']              { background: var(--state-warning-bg); color: var(--state-warning-fg); }
+  &[data-status='ASSIGNED'],
+  &[data-status='IN_PROGRESS']        { background: var(--brand-primary-bg-strong); color: var(--brand-primary-strong); }
+  &[data-status='UNDER_REVIEW'],
+  &[data-status='REVIEWER_REVIEW'],
+  &[data-status='INCHARGE_REVIEW']    { background: var(--brand-primary-bg-strong); color: var(--brand-primary-strong); }
+  &[data-status='RE_RESPONDED'],
+  &[data-status='RESPONDED']          { background: var(--state-success-bg); color: var(--state-success-fg); }
+  &[data-status='INFO_REQUESTED'],
+  &[data-status='CLARIFICATION_REQUESTED'] { background: var(--brand-primary-bg); color: var(--brand-primary); }
+  &[data-status='EXTENSION_REQUESTED'] { background: #ede7f6; color: #4527a0; }
+  &[data-status='FORWARDED'],
+  &[data-status='FORWARDED_EXTERNAL'],
+  &[data-status='FORWARDED_TO_CONTACT'] { background: var(--state-info-bg); color: var(--state-info-fg); }
+  &[data-status='CONCILIATION'],
+  &[data-status='CONCILIATED'],
+  &[data-status='ADJUDICATION'],
+  &[data-status='ADJUDICATED']        { background: var(--accent-violet-bg); color: var(--accent-violet-fg); }
+  &[data-status='AWAITING_CLOSURE']   { background: var(--state-warning-bg); color: var(--state-warning-fg); }
+  &[data-status='RESOLVED'],
+  &[data-status='APPROVED'],
+  &[data-status='ADVISORY_ISSUED']    { background: var(--state-success-bg); color: var(--state-success-fg); }
+  &[data-status='CLOSED']             { background: var(--border-subtle); color: var(--state-neutral-fg); }
+  &[data-status='ESCALATED'],
+  &[data-status='BREACHED'],
+  &[data-status='REJECTED']           { background: var(--state-danger-bg); color: var(--state-danger-fg); }
+  &[data-status='WITHDRAWN'],
+  &[data-status='SENT_BACK'],
+  &[data-status='RETURNED']           { background: var(--state-danger-bg); color: var(--state-danger-fg); }
+
+  // ═══ Live statuses ABSENT from RBIO_STATUS_MASTER (item 13.7) ═══
+  // 383 complaints carry 13 status strings the master vocabulary does not contain. They are real and
+  // they render today, so the two that had no rule at all get deliberate colours instead of falling
+  // through to the neutral default and looking like an error.
+  //
+  // This is presentation triage, NOT the vocabulary fix: the master table still needs these rows, or
+  // the complaints need migrating onto values it knows. That decision is raised in the report.
+  &[data-status='AWAITING_DETAILS']   { background: var(--state-warning-bg); color: var(--state-warning-fg); }
+  &[data-status='SENT_TO_OTHER']      { background: var(--state-info-bg); color: var(--state-info-fg); }
+
+  // ═══ AA classification (APPEAL / REPRESENTATION) ═══
+  // Red APPEAL, blue REPRESENTATION. The three AA components each carried their own copy of this
+  // rule, and all three used blue/green — so the two record types were distinguished by the
+  // difference between blue and green, which is the per-component drift this component exists to end.
+  &[data-status='APPEAL']         { background: var(--state-danger-bg); color: var(--state-danger-fg); }
+  &[data-status='REPRESENTATION'] { background: var(--brand-primary-bg-strong); color: var(--brand-primary-strong); }
+}

@@ -1,0 +1,124 @@
+<div class="email-panel">
+
+  <div class="email-header">
+    <h3 class="section-title">{{ 'email.section_title' | translate }}</h3>
+    <button type="button" class="compose-btn" (click)="startCompose()" [disabled]="composing()">
+      {{ 'email.compose' | translate }}
+    </button>
+  </div>
+
+  @if (loading()) {
+    <div class="loading-state">{{ 'email.loading' | translate }}</div>
+  }
+
+  @if (error()) {
+    <div class="error-state" role="alert">
+      <span>{{ error()! | translate }}</span>
+      <button type="button" class="retry-btn" (click)="load()">{{ 'email.retry' | translate }}</button>
+    </div>
+  }
+
+  <!-- ═══ Compose / Reply / Reply All / Forward (UST590-592) ═══ -->
+  @if (composing()) {
+    <div class="compose-box">
+      <div class="compose-row">
+        <label>{{ 'email.template' | translate }}</label>
+        <div class="template-picker">
+          <!-- UST590: template search, not just a flat dropdown. -->
+          <input type="text" class="template-search"
+                 [ngModel]="templateSearch()" (ngModelChange)="templateSearch.set($event)"
+                 [attr.placeholder]="'email.template_search_placeholder' | translate" />
+          <select [ngModel]="selectedTemplateId()"
+                  (ngModelChange)="applyTemplate($event)">
+            <option [ngValue]="null">{{ 'email.no_template' | translate }}</option>
+            @for (t of filteredTemplates(); track t.id) {
+              <option [ngValue]="t.id">{{ t.templateName }}</option>
+            }
+          </select>
+        </div>
+      </div>
+
+      <div class="compose-row">
+        <label>{{ 'email.to' | translate }}</label>
+        <!-- UST592: manual entry allowed; format and domain are enforced server-side at send time. -->
+        <input type="text" [ngModel]="recipients()" (ngModelChange)="recipients.set($event)"
+               [attr.placeholder]="'email.to_placeholder' | translate" />
+      </div>
+
+      <div class="compose-row">
+        <label>{{ 'email.subject' | translate }}</label>
+        <input type="text" [ngModel]="subject()" (ngModelChange)="subject.set($event)" />
+      </div>
+
+      <div class="compose-row">
+        <label>{{ 'email.body' | translate }}</label>
+        <textarea rows="8" [ngModel]="body()" (ngModelChange)="body.set($event)"></textarea>
+      </div>
+
+      @if (inReplyToId()) {
+        <div class="thread-note">{{ 'email.thread_preserved' | translate }}</div>
+      }
+
+      @if (sendError()) {
+        <div class="error-state" role="alert">
+          <div>{{ sendError()! | translate }}</div>
+          @if (rejectedRecipients().length) {
+            <ul class="rejected-list">
+              @for (r of rejectedRecipients(); track r) { <li>{{ r }}</li> }
+            </ul>
+          }
+        </div>
+      }
+
+      <div class="compose-actions">
+        <button type="button" class="send-btn" (click)="send()" [disabled]="sending()">
+          {{ (sending() ? 'email.sending' : 'email.send') | translate }}
+        </button>
+        <button type="button" class="cancel-btn" (click)="cancelCompose()" [disabled]="sending()">
+          {{ 'email.cancel' | translate }}
+        </button>
+      </div>
+    </div>
+  }
+
+  <!-- ═══ Chronological log, sent AND received (UST593) ═══ -->
+  @if (!loading() && !error()) {
+    <ul class="email-list">
+      @for (e of emails(); track e.id) {
+        <li class="email-item" [class.inbound]="isInbound(e)">
+          <div class="email-item-head">
+            <span class="direction-badge">
+              {{ (isInbound(e) ? 'email.received' : 'email.sent') | translate }}
+            </span>
+            <span class="email-date">{{ e.sentAt | date:'dd-MMM-yyyy HH:mm' }}</span>
+          </div>
+
+          <div class="email-addresses">
+            <div><strong>{{ 'email.from' | translate }}:</strong> {{ e.from }}</div>
+            <div><strong>{{ 'email.to' | translate }}:</strong> {{ e.to }}</div>
+            @if (e.cc) { <div><strong>{{ 'email.cc' | translate }}:</strong> {{ e.cc }}</div> }
+          </div>
+
+          <div class="email-subject">{{ e.subject }}</div>
+
+          <!-- UST593: which template was used. -->
+          @if (e.templateUsed) {
+            <div class="email-template">
+              {{ 'email.template_used' | translate }}: <em>{{ e.templateUsed }}</em>
+            </div>
+          }
+
+          <div class="email-body">{{ e.body }}</div>
+
+          <div class="email-actions">
+            <button type="button" (click)="startReply(e)">{{ 'email.reply' | translate }}</button>
+            <button type="button" (click)="startReplyAll(e)">{{ 'email.reply_all' | translate }}</button>
+            <button type="button" (click)="startForward(e)">{{ 'email.forward' | translate }}</button>
+          </div>
+        </li>
+      } @empty {
+        <li class="empty-state">{{ 'email.empty' | translate }}</li>
+      }
+    </ul>
+  }
+</div>

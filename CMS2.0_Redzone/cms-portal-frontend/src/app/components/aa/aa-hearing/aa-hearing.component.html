@@ -1,0 +1,176 @@
+<div class="hearing-panel">
+  <h5>
+    @if (isReschedule) {
+      {{ 'aa.hearing.reschedule_title' | translate }}
+    } @else {
+      {{ 'aa.hearing.title' | translate }}
+    }
+  </h5>
+
+  @if (successKey()) {
+    <div class="success-msg" role="status" aria-live="polite" data-testid="hearing-success">
+      {{ successKey() | translate }}
+    </div>
+  } @else if (showPreview()) {
+    <div class="notice-preview" data-testid="notice-preview">
+      <div class="notice-header">
+        <strong>{{ 'aa.hearing.notice_preview' | translate }}</strong>
+      </div>
+      <div class="notice-body">
+        <p><strong>{{ 'aa.hearing.appeal_no' | translate }}:</strong> {{ appeal?.appealNumber }}</p>
+        <p><strong>{{ 'aa.hearing.date' | translate }}:</strong> {{ hearingDate | date:'dd MMMM yyyy' }}</p>
+        <p><strong>{{ 'aa.hearing.time' | translate }}:</strong> {{ hearingTime }}</p>
+        <p><strong>{{ 'aa.hearing.venue' | translate }}:</strong> {{ hearingVenue }}</p>
+        <p><strong>{{ 'aa.hearing.mode' | translate }}:</strong> {{ hearingMode }}</p>
+        <p><strong>{{ 'aa.hearing.parties_to_notify' | translate }}:</strong></p>
+        <ul data-testid="preview-parties">
+          @for (party of partiesToNotify; track party) {
+            <li>{{ party | titlecase }}</li>
+          }
+        </ul>
+        @if (isReschedule && reason) {
+          <p><strong>{{ 'aa.hearing.reason' | translate }}:</strong> {{ reason }}</p>
+        }
+      </div>
+
+      <!-- Says RECORDED, not sent. There is no email or SMS gateway in this deployment, and the server
+           returns noticeStatus=PENDING to say exactly that. -->
+      <p class="notice-caveat" data-testid="notice-caveat">
+        {{ 'aa.hearing.notice_recorded_caveat' | translate }}
+      </p>
+
+      <div class="notice-actions">
+        <button type="button" class="submit-btn" data-testid="confirm-hearing"
+                [disabled]="scheduling()" [attr.aria-busy]="scheduling()"
+                (click)="scheduleHearing()">
+          @if (scheduling()) {
+            {{ 'aa.hearing.scheduling' | translate }}
+          } @else {
+            {{ 'aa.hearing.confirm' | translate }}
+          }
+        </button>
+        <button type="button" class="cancel-btn" data-testid="edit-hearing"
+                (click)="showPreview.set(false)">{{ 'aa.hearing.edit' | translate }}</button>
+      </div>
+    </div>
+  } @else {
+    @if (isReschedule) {
+      <div class="warning-banner" data-testid="reschedule-warning">
+        {{ 'aa.hearing.reschedule_warning' | translate }}
+      </div>
+    }
+
+    <div class="form-field">
+      <label for="hearing-date">{{ 'aa.hearing.date' | translate }}</label>
+      <input id="hearing-date" type="date" data-testid="hearing-date" [(ngModel)]="hearingDate" />
+    </div>
+
+    <div class="form-field">
+      <label for="hearing-time">{{ 'aa.hearing.time' | translate }}</label>
+      <input id="hearing-time" type="time" data-testid="hearing-time" [(ngModel)]="hearingTime" />
+    </div>
+
+    <div class="form-field">
+      <label for="hearing-venue">{{ 'aa.hearing.venue' | translate }}</label>
+      <select id="hearing-venue" data-testid="hearing-venue" [(ngModel)]="hearingVenue">
+        <option value="">{{ 'aa.hearing.select_venue' | translate }}</option>
+        @for (v of venueOptions; track v.value) {
+          <option [value]="v.value">{{ v.labelKey | translate }}</option>
+        }
+      </select>
+    </div>
+
+    <!-- Mode is separate from venue: the server normalises it to IN_PERSON/VIDEO/HYBRID, so a venue
+         string of "Virtual (Video Conference)" could never have set it. -->
+    <div class="form-field">
+      <label for="hearing-mode">{{ 'aa.hearing.mode' | translate }}</label>
+      <select id="hearing-mode" data-testid="hearing-mode" [(ngModel)]="hearingMode">
+        @for (m of modeOptions; track m.value) {
+          <option [value]="m.value">{{ m.labelKey | translate }}</option>
+        }
+      </select>
+    </div>
+
+    <fieldset class="form-field">
+      <legend>{{ 'aa.hearing.parties_to_notify' | translate }}</legend>
+      <div class="checkbox-group">
+        <label class="checkbox-item" for="party-appellant"
+               [class.checked]="isPartySelected('appellant')">
+          <input id="party-appellant" type="checkbox" data-testid="party-appellant"
+                 [checked]="isPartySelected('appellant')" (change)="toggleParty('appellant')">
+          {{ 'aa.hearing.party_appellant' | translate }}
+        </label>
+        <label class="checkbox-item" for="party-respondent"
+               [class.checked]="isPartySelected('respondent')">
+          <input id="party-respondent" type="checkbox" data-testid="party-respondent"
+                 [checked]="isPartySelected('respondent')" (change)="toggleParty('respondent')">
+          {{ 'aa.hearing.party_respondent' | translate }}
+        </label>
+        <label class="checkbox-item" for="party-ombudsman"
+               [class.checked]="isPartySelected('ombudsman')">
+          <input id="party-ombudsman" type="checkbox" data-testid="party-ombudsman"
+                 [checked]="isPartySelected('ombudsman')" (change)="toggleParty('ombudsman')">
+          {{ 'aa.hearing.party_ombudsman' | translate }}
+        </label>
+      </div>
+    </fieldset>
+
+    @if (isReschedule) {
+      <div class="form-field">
+        <label for="hearing-reason">{{ 'aa.hearing.reason' | translate }}</label>
+        <textarea id="hearing-reason" rows="3" data-testid="hearing-reason"
+                  [(ngModel)]="reason"
+                  [attr.placeholder]="'aa.hearing.reason_placeholder' | translate"></textarea>
+      </div>
+    }
+
+    @if (errorKey()) {
+      <div class="error-msg" role="alert" aria-live="assertive" data-testid="hearing-error">
+        {{ errorKey() | translate }}
+      </div>
+    }
+
+    <div class="form-actions">
+      <button type="button" class="preview-btn" data-testid="preview-notice"
+              (click)="previewNotice()">{{ 'aa.hearing.preview_action' | translate }}</button>
+      <button type="button" class="cancel-btn" data-testid="cancel-hearing"
+              (click)="cancel()">{{ 'aa.hearing.cancel' | translate }}</button>
+    </div>
+  }
+
+  <!-- Real hearing history from the hearings endpoint. A reschedule appends rather than overwrites, so
+       a vacated sitting stays visible — the previous binding was to a field no endpoint returned, so
+       this table was permanently empty. -->
+  <div class="past-hearings">
+    <h6>{{ 'aa.hearing.history' | translate }}</h6>
+    @if (historyLoading()) {
+      <p class="loading" data-testid="history-loading">
+        <i class="pi pi-spin pi-spinner" aria-hidden="true"></i>
+      </p>
+    } @else if (history().length === 0) {
+      <p class="empty" data-testid="history-empty">{{ 'aa.hearing.history_empty' | translate }}</p>
+    } @else {
+      <table class="history-table" data-testid="hearing-history">
+        <thead>
+          <tr>
+            <th>{{ 'aa.hearing.date' | translate }}</th>
+            <th>{{ 'aa.hearing.venue' | translate }}</th>
+            <th>{{ 'aa.hearing.event' | translate }}</th>
+            <th>{{ 'aa.hearing.outcome' | translate }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- track h.id, not h.date: a reschedule to the same date would collide on a date key. -->
+          @for (h of history(); track h.id) {
+            <tr [class.superseded]="h.superseded" [attr.data-testid]="'hearing-row-' + h.id">
+              <td>{{ h.date | date:'dd MMM yyyy, HH:mm' }}</td>
+              <td>{{ h.venue || '—' }}</td>
+              <td>{{ h.eventType }}</td>
+              <td>{{ h.outcome || '—' }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    }
+  </div>
+</div>

@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: rbi-cms
+  labels:
+    app.kubernetes.io/part-of: rbi-cms
+    environment: production

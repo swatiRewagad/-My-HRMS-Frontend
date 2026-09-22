@@ -1,0 +1,34 @@
+<div class="language-switcher" (clickOutside)="closeDropdown()">
+  <button
+    class="switcher-btn"
+    (click)="toggleDropdown()"
+    [attr.aria-expanded]="isOpen"
+    aria-haspopup="listbox"
+    aria-label="Select language"
+    type="button">
+    <span class="globe-icon" aria-hidden="true">🌐</span>
+    <span class="current-lang">{{ currentLocaleInfo?.nativeName || 'English' }}</span>
+    <span class="chevron" [class.open]="isOpen" aria-hidden="true">▾</span>
+  </button>
+
+  @if (isOpen) {
+    <ul class="locale-dropdown" role="listbox" aria-label="Available languages">
+      @for (locale of locales; track locale.code) {
+        <li
+          role="option"
+          [attr.aria-selected]="locale.code === currentLocale"
+          [class.active]="locale.code === currentLocale"
+          [attr.dir]="locale.rtl ? 'rtl' : 'ltr'"
+          (click)="selectLocale(locale)"
+          (keydown.enter)="selectLocale(locale)"
+          tabindex="0">
+          <span class="native-name">{{ locale.nativeName }}</span>
+          <span class="english-name">{{ locale.name }}</span>
+          @if (locale.code === currentLocale) {
+            <span class="check" aria-hidden="true">✓</span>
+          }
+        </li>
+      }
+    </ul>
+  }
+</div>

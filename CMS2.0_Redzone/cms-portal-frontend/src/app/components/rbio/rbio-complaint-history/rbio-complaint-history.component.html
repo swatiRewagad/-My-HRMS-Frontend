@@ -1,0 +1,86 @@
+<div class="history-panel">
+
+  <div class="history-header">
+    <h3 class="section-title">{{ 'complaint.history.section_title' | translate }}</h3>
+    <label class="filter-toggle">
+      <input type="checkbox" [checked]="showAutomatic()" (change)="toggleAutomatic()" />
+      {{ 'complaint.history.show_automatic' | translate }}
+    </label>
+  </div>
+
+  @if (loading()) {
+    <div class="loading-state">{{ 'complaint.history.loading' | translate }}</div>
+  }
+
+  <!-- A failed load is reported, never rendered as an empty history. -->
+  @if (error()) {
+    <div class="error-state" role="alert">
+      <span>{{ error()! | translate }}</span>
+      <button type="button" class="retry-btn" (click)="load()">
+        {{ 'complaint.history.retry' | translate }}
+      </button>
+    </div>
+  }
+
+  @if (!loading() && !error()) {
+    <ol class="timeline">
+      @for (entry of visibleEntries(); track entry.id) {
+        <li class="timeline-entry" [class.automatic]="entry.eventSource === 'AUTOMATIC'">
+          <div class="entry-head">
+            <span class="entry-action">{{ actionKey(entry.action) | translate }}</span>
+            <span class="entry-time">{{ entry.performedAt | date:'dd MMM yyyy HH:mm' }}</span>
+          </div>
+
+          <div class="entry-meta">
+            @if (entry.performedBy) {
+              <span class="entry-actor">
+                {{ 'complaint.history.by' | translate }} {{ entry.performedBy }}
+                @if (entry.performedByRole) { <em>({{ entry.performedByRole }})</em> }
+              </span>
+            }
+            @if (entry.eventSource === 'AUTOMATIC') {
+              <span class="entry-badge">{{ 'complaint.history.automatic' | translate }}</span>
+            }
+          </div>
+
+          @if (entry.fromStatus || entry.toStatus) {
+            <div class="entry-status">
+              {{ entry.fromStatus || '—' }} &rarr; {{ entry.toStatus || '—' }}
+            </div>
+          }
+
+          <!-- UST596: a reassignment must show BOTH the previous and the new owner. -->
+          @if (hasOwnerChange(entry)) {
+            <div class="entry-change">
+              <span class="change-field">{{ entry.fieldName }}:</span>
+              <span class="change-old">{{ entry.oldValue || ('complaint.history.none' | translate) }}</span>
+              <span class="change-arrow">&rarr;</span>
+              <span class="change-new">{{ entry.newValue || ('complaint.history.none' | translate) }}</span>
+            </div>
+          }
+
+          <!-- UST596: closure events carry the clause they were made under. -->
+          @if (entry.closureClause) {
+            <div class="entry-clause">
+              {{ 'complaint.history.closure_clause' | translate }}: <strong>{{ entry.closureClause }}</strong>
+            </div>
+          }
+
+          <!-- UST596: routing/transfer events carry the destination office. -->
+          @if (entry.destinationOffice) {
+            <div class="entry-destination">
+              {{ 'complaint.history.destination_office' | translate }}:
+              <strong>{{ entry.destinationOffice }}</strong>
+            </div>
+          }
+
+          @if (entry.remarks) {
+            <div class="entry-remarks">{{ entry.remarks }}</div>
+          }
+        </li>
+      } @empty {
+        <li class="empty-state">{{ 'complaint.history.empty' | translate }}</li>
+      }
+    </ol>
+  }
+</div>

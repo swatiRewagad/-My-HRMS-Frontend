@@ -1,0 +1,487 @@
+$primary: var(--brand-primary);
+$primary-light: var(--brand-primary-bg);
+$text-dark: var(--text-heading);
+$text-muted: var(--text-muted);
+$border-color: var(--border-subtle);
+$success: var(--state-success-solid);
+$danger: var(--state-danger-solid-hover);
+
+.re-complaint-detail {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  color: $primary;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 8px 0;
+  margin-bottom: 20px;
+
+  &:hover { text-decoration: underline; }
+}
+
+// Header
+.detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.complaint-number {
+  font-size: 20px;
+  font-weight: 700;
+  color: $text-dark;
+  margin: 0;
+}
+
+// Status badge styling moved to the shared app-status-badge component (UST847). The five selectors
+// that were here matched nothing: they expected "responded" while the server writes "re_responded",
+// and the `[class]` binding feeding them replaced the base class outright, so even the padding was
+// lost at runtime.
+
+.deadline-countdown {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  background: var(--state-success-bg);
+  color: var(--state-success-fg);
+  font-size: 14px;
+  font-weight: 600;
+
+  &.expired {
+    background: var(--state-danger-bg);
+    color: $danger;
+  }
+}
+
+// Info Grid
+.info-grid {
+  margin-bottom: 28px;
+}
+
+.info-card {
+  background: var(--surface-card);
+  border: 1px solid $border-color;
+  border-radius: 12px;
+  padding: 24px;
+}
+
+.card-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: $text-dark;
+  margin: 0 0 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid $border-color;
+}
+
+.info-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.info-row {
+  display: flex;
+  gap: 16px;
+}
+
+.info-label {
+  min-width: 140px;
+  font-size: 13px;
+  font-weight: 600;
+  color: $text-muted;
+  flex-shrink: 0;
+}
+
+.info-value {
+  font-size: 14px;
+  color: $text-dark;
+
+  &.description {
+    white-space: pre-wrap;
+    line-height: 1.6;
+  }
+
+  &.deadline.expired {
+    color: $danger;
+    font-weight: 600;
+  }
+}
+
+// Response & Query Sections
+.response-section, .query-section {
+  background: var(--surface-card);
+  border: 1px solid $border-color;
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 24px;
+}
+
+.section-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: $text-dark;
+  margin: 0 0 16px;
+}
+
+.form-group {
+  margin-bottom: 16px;
+
+  label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: $text-dark;
+    margin-bottom: 6px;
+  }
+
+  textarea, select {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid $border-color;
+    border-radius: 8px;
+    font-size: 14px;
+    color: $text-dark;
+    resize: vertical;
+    outline: none;
+    font-family: inherit;
+
+    &:focus {
+      border-color: $primary;
+      box-shadow: 0 0 0 2px rgba(21, 101, 192, 0.1);
+    }
+
+    &:disabled {
+      background: var(--surface-subtle);
+      cursor: not-allowed;
+    }
+  }
+
+  select {
+    cursor: pointer;
+  }
+}
+
+// File Upload
+.file-upload-area {
+  position: relative;
+}
+
+.file-input {
+  position: absolute;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+
+  &:disabled + .file-upload-label {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.file-upload-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 24px;
+  border: 2px dashed $border-color;
+  border-radius: 8px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+
+  &:hover {
+    border-color: $primary;
+    background: var(--surface-page);
+  }
+
+  i { font-size: 24px; color: $primary; }
+  span { font-size: 14px; color: $text-muted; }
+  .file-hint { font-size: 12px; color: var(--text-subtle); }
+}
+
+.file-list {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.file-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: var(--surface-subtle);
+  border-radius: 6px;
+  border: 1px solid $border-color;
+
+  i { color: $primary; }
+
+  .file-name {
+    flex: 1;
+    font-size: 13px;
+    color: $text-dark;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .file-size {
+    font-size: 12px;
+    color: $text-muted;
+    flex-shrink: 0;
+  }
+}
+
+.remove-file-btn {
+  background: none;
+  border: none;
+  color: $text-muted;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+
+  &:hover { color: $danger; background: var(--state-danger-bg); }
+}
+
+// Form Actions
+.form-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.submit-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background: $primary;
+  color: var(--surface-card);
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+
+  &:hover:not(:disabled) { background: var(--brand-primary-strong); }
+  &:disabled { opacity: 0.6; cursor: not-allowed; }
+
+  &.secondary {
+    background: var(--surface-subtle);
+    color: $text-dark;
+    border: 1px solid $border-color;
+
+    &:hover:not(:disabled) { background: var(--border-subtle); }
+  }
+}
+
+.query-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background: var(--surface-card);
+  color: $text-dark;
+  border: 1px solid $border-color;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+
+  &:hover { background: var(--surface-subtle); }
+}
+
+.window-expired-notice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+  padding: 12px 16px;
+  background: var(--state-danger-bg);
+  border: 1px solid var(--state-danger-bg);
+  border-radius: 8px;
+  font-size: 13px;
+  color: $danger;
+
+  i { font-size: 16px; }
+}
+
+// Banners
+.success-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--state-success-bg);
+  border: 1px solid var(--state-success-bg);
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  color: $success;
+  font-size: 14px;
+}
+
+.error-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--state-danger-bg);
+  border: 1px solid var(--state-danger-bg);
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  color: $danger;
+  font-size: 14px;
+}
+
+// Timeline
+.timeline-section {
+  background: var(--surface-card);
+  border: 1px solid $border-color;
+  border-radius: 12px;
+  padding: 24px;
+}
+
+.no-timeline {
+  font-size: 14px;
+  color: $text-muted;
+  margin: 0;
+}
+
+.timeline {
+  position: relative;
+  padding-left: 24px;
+
+  &::before {
+    content: '';
+    position: absolute;
+    left: 7px;
+    top: 4px;
+    bottom: 4px;
+    width: 2px;
+    background: $border-color;
+  }
+}
+
+.timeline-item {
+  position: relative;
+  padding-bottom: 20px;
+
+  &:last-child { padding-bottom: 0; }
+}
+
+.timeline-dot {
+  position: absolute;
+  left: -20px;
+  top: 4px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: $primary;
+  border: 2px solid var(--surface-card);
+  box-shadow: 0 0 0 2px $primary-light;
+}
+
+.timeline-content {
+  padding-left: 8px;
+}
+
+.timeline-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+
+.timeline-action {
+  font-size: 14px;
+  font-weight: 600;
+  color: $text-dark;
+}
+
+.timeline-date {
+  font-size: 12px;
+  color: $text-muted;
+}
+
+.timeline-actor {
+  font-size: 12px;
+  color: $text-muted;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.timeline-remarks {
+  font-size: 13px;
+  color: $text-dark;
+  margin: 4px 0 0;
+  line-height: 1.5;
+  background: var(--surface-subtle);
+  padding: 8px 12px;
+  border-radius: 6px;
+}
+
+// Loading / Error States
+.loading-state, .error-state {
+  text-align: center;
+  padding: 64px 24px;
+  color: $text-muted;
+
+  i { font-size: 36px; margin-bottom: 12px; opacity: 0.4; }
+  p { font-size: 15px; margin: 8px 0 16px; }
+}
+
+.spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--border-subtle);
+  border-top-color: $primary;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin: 0 auto 12px;
+}
+
+.spinner-sm {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: var(--surface-card);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+// Responsive
+@media (max-width: 768px) {
+  .detail-header { flex-direction: column; align-items: flex-start; }
+  .info-row { flex-direction: column; gap: 2px; }
+  .info-label { min-width: unset; }
+  .form-actions { flex-direction: column; }
+  .submit-btn, .query-btn { width: 100%; justify-content: center; }
+}

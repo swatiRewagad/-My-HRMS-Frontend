@@ -1,0 +1,256 @@
+<div class="aa-admin-console">
+  <header class="console-header">
+    <h2>{{ heading() | translate }}</h2>
+    <div class="role-group-tabs">
+      @for (group of roleGroups; track group) {
+        <button
+          type="button"
+          class="tab"
+          [class.active]="roleGroup() === group"
+          [attr.data-testid]="'role-group-' + group"
+          (click)="changeRoleGroup(group)">{{ group }}</button>
+      }
+    </div>
+  </header>
+
+  @if (notice()) {
+    <div class="notice-banner" data-testid="console-notice">
+      <span>{{ notice() | translate }}</span>
+      <button type="button" data-testid="dismiss-notice" (click)="dismissNotice()">&times;</button>
+    </div>
+  }
+
+  @if (error()) {
+    <div class="error-banner" data-testid="console-error">
+      <i class="pi pi-exclamation-triangle"></i>
+      <span>{{ error() | translate }}</span>
+      <button type="button" data-testid="dismiss-error" (click)="dismissNotice()">&times;</button>
+    </div>
+  }
+
+  <section class="stat-tiles">
+    <div class="tile">
+      <span class="tile-value" data-testid="stat-eligible">{{ eligibleCount() }}</span>
+      <span class="tile-label">{{ 'aa.admin.eligible' | translate }}</span>
+    </div>
+    <div class="tile">
+      <span class="tile-value" data-testid="stat-at-threshold">{{ atThresholdCount() }}</span>
+      <span class="tile-label">{{ 'aa.admin.at_threshold' | translate }}</span>
+    </div>
+    <div class="tile">
+      <span class="tile-value" data-testid="stat-on-leave">{{ onLeaveCount() }}</span>
+      <span class="tile-label">{{ 'aa.admin.status_on_leave' | translate }}</span>
+    </div>
+    <div class="tile">
+      <span class="tile-value" data-testid="stat-workload">{{ totalWorkload() }}</span>
+      <span class="tile-label">{{ 'aa.admin.current_workload' | translate }}</span>
+    </div>
+  </section>
+
+  <section class="bulk-actions">
+    <span class="selection-count" data-testid="selection-count">{{ selectedCount() }}</span>
+    <button
+      type="button"
+      class="btn btn-primary"
+      data-testid="bulk-activate"
+      [disabled]="selectedCount() === 0 || applyingBulk()"
+      (click)="bulkActivate()">{{ 'aa.admin.bulk_activate' | translate }}</button>
+    <button
+      type="button"
+      class="btn btn-danger"
+      data-testid="bulk-deactivate"
+      [disabled]="selectedCount() === 0 || applyingBulk()"
+      (click)="startBulkDeactivate()">{{ 'aa.admin.bulk_deactivate' | translate }}</button>
+    <button
+      type="button"
+      class="btn btn-secondary"
+      data-testid="rebalance"
+      (click)="rebalance()">{{ 'aa.admin.rebalance' | translate }}</button>
+  </section>
+
+  <section class="pool-section">
+    <h3>{{ 'aa.admin.officer_pool' | translate }}</h3>
+
+    @if (loading()) {
+      <p class="loading" data-testid="pool-loading"><i class="pi pi-spin pi-spinner"></i></p>
+    } @else if (officers().length === 0) {
+      <p class="empty" data-testid="pool-empty">{{ 'aa.admin.no_officers' | translate }}</p>
+    } @else {
+      <table class="pool-table" data-testid="pool-table">
+        <thead>
+          <tr>
+            <th class="select-col">
+              <input
+                type="checkbox"
+                data-testid="select-all"
+                [checked]="allSelected()"
+                (change)="toggleSelectAll()" />
+            </th>
+            <th>{{ 'aa.admin.officer_pool' | translate }}</th>
+            <th>{{ 'aa.admin.status_active' | translate }}</th>
+            <th>{{ 'aa.admin.current_workload' | translate }}</th>
+            <th>{{ 'aa.admin.threshold' | translate }}</th>
+            <th>{{ 'aa.admin.skill_languages' | translate }}</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (officer of officers(); track officer.userId) {
+            <tr [class.at-threshold]="officer.atThreshold" [class.inactive]="!officer.active">
+              <td class="select-col">
+                <input
+                  type="checkbox"
+                  [attr.data-testid]="'select-' + officer.userId"
+                  [checked]="isSelected(officer.userId)"
+                  (change)="toggleSelection(officer.userId)" />
+              </td>
+              <td>
+                <span class="officer-name">{{ officer.displayName || officer.userId }}</span>
+                <span class="officer-id">{{ officer.userId }}</span>
+              </td>
+              <td>
+                <span class="status-pill" [attr.data-testid]="'status-' + officer.userId">
+                  {{ statusKeyFor(officer) | translate }}
+                </span>
+              </td>
+              <td [attr.data-testid]="'workload-' + officer.userId">{{ officer.currentWorkload }}</td>
+              <td [attr.data-testid]="'threshold-' + officer.userId">
+                @if (officer.unlimited) { &infin; } @else { {{ officer.threshold }} }
+              </td>
+              <td [attr.data-testid]="'skills-' + officer.userId">{{ officer.skillLanguages || '-' }}</td>
+              <td>
+                <button
+                  type="button"
+                  class="btn btn-link"
+                  [attr.data-testid]="'edit-threshold-' + officer.userId"
+                  (click)="openThresholdDialog(officer)">{{ 'aa.admin.edit_threshold' | translate }}</button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    }
+  </section>
+
+  <section class="approvals-section">
+    <h3>{{ 'aa.admin.pending_approvals' | translate }}</h3>
+    @if (pendingRequests().length === 0) {
+      <p class="empty" data-testid="no-pending-requests">-</p>
+    } @else {
+      <table class="pool-table" data-testid="pending-requests-table">
+        <tbody>
+          @for (request of pendingRequests(); track request.id) {
+            <tr>
+              <td>{{ request.appealNumber }}</td>
+              <td>{{ request.fromUserId }}</td>
+              <td>{{ request.reason }}</td>
+              <td>
+                <button
+                  type="button"
+                  class="btn btn-primary"
+                  [attr.data-testid]="'approve-' + request.id"
+                  (click)="decideRequest(request.id, true)">{{ 'aa.admin.approve' | translate }}</button>
+                <button
+                  type="button"
+                  class="btn btn-danger"
+                  [attr.data-testid]="'reject-' + request.id"
+                  (click)="decideRequest(request.id, false)">{{ 'aa.admin.reject' | translate }}</button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    }
+  </section>
+</div>
+
+@if (thresholdTarget()) {
+  <div class="modal-overlay" (click)="closeThresholdDialog()">
+    <div class="modal" data-testid="threshold-dialog" (click)="$event.stopPropagation()">
+      <h3>{{ 'aa.admin.edit_threshold' | translate }}</h3>
+      <p class="modal-subject">{{ thresholdTarget()?.userId }}</p>
+
+      <label>
+        {{ 'aa.admin.threshold' | translate }}
+        <input
+          type="number"
+          min="0"
+          data-testid="threshold-input"
+          [ngModel]="thresholdValue()"
+          (ngModelChange)="thresholdValue.set($event)" />
+      </label>
+
+      <label>
+        {{ 'aa.admin.reason' | translate }}
+        <input
+          type="text"
+          data-testid="threshold-reason"
+          [ngModel]="thresholdReason()"
+          (ngModelChange)="thresholdReason.set($event)" />
+      </label>
+
+      <div class="modal-actions">
+        <button
+          type="button"
+          class="btn btn-secondary"
+          data-testid="cancel-threshold"
+          (click)="closeThresholdDialog()">{{ 'aa.admin.cancel' | translate }}</button>
+        <button
+          type="button"
+          class="btn btn-primary"
+          data-testid="save-threshold"
+          [disabled]="savingThreshold()"
+          (click)="saveThreshold()">{{ 'aa.admin.confirm' | translate }}</button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (deactivatePreview()) {
+  <div class="modal-overlay" (click)="cancelDeactivate()">
+    <div class="modal" data-testid="deactivate-dialog" (click)="$event.stopPropagation()">
+      <h3>{{ 'aa.admin.bulk_deactivate' | translate }}</h3>
+
+      <!-- Story 10: pending work is shown BEFORE the status change is applied, and the admin can
+           still cancel from here. -->
+      @if (deactivatePreview()!.requiresConfirmation) {
+        <div class="warning-banner" data-testid="pending-work-warning">
+          <i class="pi pi-exclamation-triangle"></i>
+          <span>{{ deactivatePreview()!.messageKey | translate }}</span>
+        </div>
+        <ul class="impacted-list" data-testid="impacted-officers">
+          @for (officer of deactivatePreview()!.officers; track officer.userId) {
+            <li [attr.data-testid]="'impacted-' + officer.userId">
+              {{ officer.displayName || officer.userId }} &mdash; {{ officer.pendingCount }}
+            </li>
+          }
+        </ul>
+      } @else {
+        <p data-testid="no-pending-work">{{ deactivatePreview()!.messageKey | translate }}</p>
+      }
+
+      <label>
+        {{ 'aa.admin.reason' | translate }}
+        <input
+          type="text"
+          data-testid="deactivate-reason"
+          [ngModel]="deactivateReason()"
+          (ngModelChange)="deactivateReason.set($event)" />
+      </label>
+
+      <div class="modal-actions">
+        <button
+          type="button"
+          class="btn btn-secondary"
+          data-testid="cancel-deactivate"
+          (click)="cancelDeactivate()">{{ 'aa.admin.cancel' | translate }}</button>
+        <button
+          type="button"
+          class="btn btn-danger"
+          data-testid="confirm-deactivate"
+          [disabled]="applyingBulk()"
+          (click)="confirmDeactivate()">{{ 'aa.admin.confirm' | translate }}</button>
+      </div>
+    </div>
+  </div>
+}

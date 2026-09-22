@@ -1,0 +1,942 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CMS 2.0 — Deployment Guide (Option B: Nexus + Separate Repos)</title>
+    <style>
+        :root {
+            --primary: #1a56db;
+            --primary-light: #e8f0fe;
+            --success: #059669;
+            --success-light: #d1fae5;
+            --warning: #d97706;
+            --warning-light: #fef3c7;
+            --danger: #dc2626;
+            --danger-light: #fee2e2;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-800: #1f2937;
+            --gray-900: #111827;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: var(--gray-800);
+            background: var(--gray-50);
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1e3a5f 0%, #1a56db 100%);
+            color: white;
+            padding: 3rem 2.5rem;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .header .badge {
+            display: inline-block;
+            background: rgba(255,255,255,0.2);
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            margin-top: 1rem;
+        }
+
+        .content {
+            padding: 2.5rem;
+        }
+
+        .toc {
+            background: var(--gray-100);
+            border-radius: 8px;
+            padding: 1.5rem 2rem;
+            margin-bottom: 2.5rem;
+        }
+
+        .toc h2 {
+            font-size: 1.1rem;
+            margin-bottom: 0.75rem;
+            color: var(--gray-700);
+        }
+
+        .toc ol {
+            columns: 2;
+            column-gap: 2rem;
+            padding-left: 1.25rem;
+        }
+
+        .toc li {
+            margin-bottom: 0.35rem;
+            font-size: 0.95rem;
+        }
+
+        .toc a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        .toc a:hover { text-decoration: underline; }
+
+        .phase {
+            margin-bottom: 2.5rem;
+            border: 1px solid var(--gray-200);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .phase-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 1rem 1.5rem;
+            background: var(--gray-100);
+            border-bottom: 1px solid var(--gray-200);
+        }
+
+        .phase-number {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            background: var(--primary);
+            color: white;
+            border-radius: 50%;
+            font-weight: 700;
+            font-size: 0.9rem;
+            flex-shrink: 0;
+        }
+
+        .phase-header h2 {
+            font-size: 1.15rem;
+            color: var(--gray-900);
+        }
+
+        .phase-body {
+            padding: 1.5rem;
+        }
+
+        .phase-body p {
+            margin-bottom: 1rem;
+            color: var(--gray-700);
+        }
+
+        .phase-body h3 {
+            font-size: 1rem;
+            color: var(--gray-800);
+            margin: 1.5rem 0 0.75rem;
+        }
+
+        .phase-body ul, .phase-body ol {
+            padding-left: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .phase-body li {
+            margin-bottom: 0.4rem;
+            color: var(--gray-700);
+        }
+
+        pre {
+            background: var(--gray-900);
+            color: #e5e7eb;
+            padding: 1rem 1.25rem;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-size: 0.85rem;
+            line-height: 1.7;
+            margin: 0.75rem 0 1rem;
+        }
+
+        code {
+            font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', Consolas, monospace;
+        }
+
+        .inline-code {
+            background: var(--gray-100);
+            border: 1px solid var(--gray-200);
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.85em;
+            color: var(--danger);
+        }
+
+        .alert {
+            padding: 1rem 1.25rem;
+            border-radius: 6px;
+            margin: 1rem 0;
+            display: flex;
+            gap: 0.75rem;
+            align-items: flex-start;
+        }
+
+        .alert-icon {
+            font-size: 1.2rem;
+            flex-shrink: 0;
+            margin-top: 0.1rem;
+        }
+
+        .alert-warning {
+            background: var(--warning-light);
+            border: 1px solid #fbbf24;
+        }
+
+        .alert-success {
+            background: var(--success-light);
+            border: 1px solid #6ee7b7;
+        }
+
+        .alert-danger {
+            background: var(--danger-light);
+            border: 1px solid #fca5a5;
+        }
+
+        .alert-info {
+            background: var(--primary-light);
+            border: 1px solid #93c5fd;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+        }
+
+        th, td {
+            padding: 0.6rem 0.75rem;
+            text-align: left;
+            border: 1px solid var(--gray-200);
+        }
+
+        th {
+            background: var(--gray-100);
+            font-weight: 600;
+            color: var(--gray-700);
+        }
+
+        tr:hover td { background: var(--gray-50); }
+
+        .diagram {
+            background: var(--gray-900);
+            color: #6ee7b7;
+            padding: 1.5rem;
+            border-radius: 8px;
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
+            font-size: 0.8rem;
+            line-height: 1.5;
+            overflow-x: auto;
+            margin: 1.5rem 0;
+            white-space: pre;
+        }
+
+        .checklist {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .checklist li {
+            padding: 0.4rem 0;
+            padding-left: 1.75rem;
+            position: relative;
+        }
+
+        .checklist li::before {
+            content: '☐';
+            position: absolute;
+            left: 0;
+            font-size: 1.1rem;
+        }
+
+        .footer {
+            background: var(--gray-100);
+            padding: 1.5rem 2.5rem;
+            border-top: 1px solid var(--gray-200);
+            text-align: center;
+            color: var(--gray-600);
+            font-size: 0.85rem;
+        }
+
+        .services-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 0.75rem;
+            margin: 1rem 0;
+        }
+
+        .service-card {
+            background: var(--gray-50);
+            border: 1px solid var(--gray-200);
+            border-radius: 6px;
+            padding: 0.75rem 1rem;
+            font-size: 0.85rem;
+        }
+
+        .service-card strong {
+            display: block;
+            color: var(--gray-900);
+            margin-bottom: 0.25rem;
+        }
+
+        .service-card span {
+            color: var(--gray-600);
+            font-size: 0.8rem;
+        }
+
+        @media (max-width: 768px) {
+            body { padding: 1rem; }
+            .content { padding: 1.5rem; }
+            .toc ol { columns: 1; }
+            .services-grid { grid-template-columns: 1fr; }
+        }
+
+        @media print {
+            body { padding: 0; background: white; }
+            .container { box-shadow: none; }
+            .phase { break-inside: avoid; }
+            pre { white-space: pre-wrap; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>CMS 2.0 — Deployment Guide</h1>
+            <p>Option B: Nexus + Separate Repositories</p>
+            <span class="badge">OpenShift &bull; Namespace: rbi-cms</span>
+        </div>
+
+        <div class="content">
+            <!-- Table of Contents -->
+            <div class="toc">
+                <h2>Table of Contents</h2>
+                <ol>
+                    <li><a href="#phase1">Nexus Repository Setup</a></li>
+                    <li><a href="#phase2">Publish cms-parent to Nexus</a></li>
+                    <li><a href="#phase3">Publish cms-common to Nexus</a></li>
+                    <li><a href="#phase4">Push Microservices to Separate Repos</a></li>
+                    <li><a href="#phase5">Push cms-backend (Standalone)</a></li>
+                    <li><a href="#phase6">Push Frontend Repos</a></li>
+                    <li><a href="#phase7">DevOps Creates Pipelines</a></li>
+                    <li><a href="#phase8">Deploy to OpenShift</a></li>
+                </ol>
+            </div>
+
+            <!-- Architecture Diagram -->
+            <div class="diagram">
+┌───────────────────────────────────────────────────────────────────────────────────┐
+│                          CMS 2.0 — BUILD &amp; DEPLOY FLOW                            │
+├───────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                   │
+│   ┌──────────────┐        ┌───────────────┐        ┌──────────────────┐          │
+│   │  cms-parent   │───────▶│    NEXUS       │◀───────│  cms-common      │          │
+│   │  (pom.xml)    │ deploy │  (Artifacts)  │ deploy │  (shared lib)    │          │
+│   └──────────────┘        └───────┬───────┘        └──────────────────┘          │
+│                                   │                                               │
+│              ┌────────────────────┼────────────────────┐                          │
+│              │ pull deps          │ pull deps           │ pull deps                │
+│              ▼                    ▼                     ▼                          │
+│   ┌──────────────┐    ┌──────────────┐    ┌────────────────────┐                 │
+│   │ cms-rules-   │    │ cms-workflow- │    │ cms-notification-  │  ... x12        │
+│   │ service      │    │ service      │    │ service            │                  │
+│   └──────┬───────┘    └──────┬───────┘    └────────┬───────────┘                 │
+│          │                   │                     │                              │
+│          └───────────────────┼─────────────────────┘                              │
+│                              │ Docker build + push                                 │
+│                              ▼                                                     │
+│                    ┌──────────────────┐         ┌─────────────────┐               │
+│                    │ Container        │────────▶│   OpenShift      │               │
+│                    │ Registry         │  deploy │   (rbi-cms)      │               │
+│                    └──────────────────┘         └─────────────────┘               │
+│                                                                                   │
+│   STANDALONE (no Nexus needed):                                                   │
+│   ┌──────────────┐  ┌──────────────────┐  ┌──────────────┐  ┌──────────────┐    │
+│   │ cms-backend   │  │ cms-portal-fe    │  │ cms-frontend  │  │ cms-paddle-  │    │
+│   │ (Spring Boot) │  │ (Angular)        │  │ (Angular)     │  │ ocr (Python) │    │
+│   └──────────────┘  └──────────────────┘  └──────────────┘  └──────────────┘    │
+│                                                                                   │
+└───────────────────────────────────────────────────────────────────────────────────┘</div>
+
+            <!-- Phase 1 -->
+            <div class="phase" id="phase1">
+                <div class="phase-header">
+                    <span class="phase-number">1</span>
+                    <h2>Nexus Repository Setup</h2>
+                </div>
+                <div class="phase-body">
+                    <p>Set up Sonatype Nexus (or any Maven-compatible repository manager) to host the shared artifacts.</p>
+
+                    <h3>1.1 Create Repositories in Nexus</h3>
+                    <table>
+                        <thead>
+                            <tr><th>Repository Name</th><th>Type</th><th>Purpose</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><code class="inline-code">cms-releases</code></td><td>maven2 (hosted, release)</td><td>Stable release artifacts</td></tr>
+                            <tr><td><code class="inline-code">cms-snapshots</code></td><td>maven2 (hosted, snapshot)</td><td>Development snapshots</td></tr>
+                            <tr><td><code class="inline-code">cms-group</code></td><td>maven2 (group)</td><td>Aggregates releases + snapshots + maven-central proxy</td></tr>
+                        </tbody>
+                    </table>
+
+                    <h3>1.2 Create a Deploy User</h3>
+                    <p>Create a Nexus user (e.g., <code class="inline-code">cms-deployer</code>) with privileges to deploy to <code class="inline-code">cms-releases</code> and <code class="inline-code">cms-snapshots</code>.</p>
+
+                    <h3>1.3 Maven settings.xml</h3>
+                    <p>This file is already provided at <code class="inline-code">deployment/maven-settings.xml</code>. Copy it to each microservice repo:</p>
+                    <pre><code>&lt;settings&gt;
+  &lt;servers&gt;
+    &lt;server&gt;
+      &lt;id&gt;nexus-releases&lt;/id&gt;
+      &lt;username&gt;${env.NEXUS_USER}&lt;/username&gt;
+      &lt;password&gt;${env.NEXUS_PASSWORD}&lt;/password&gt;
+    &lt;/server&gt;
+    &lt;server&gt;
+      &lt;id&gt;nexus-snapshots&lt;/id&gt;
+      &lt;username&gt;${env.NEXUS_USER}&lt;/username&gt;
+      &lt;password&gt;${env.NEXUS_PASSWORD}&lt;/password&gt;
+    &lt;/server&gt;
+  &lt;/servers&gt;
+  &lt;mirrors&gt;
+    &lt;mirror&gt;
+      &lt;id&gt;nexus&lt;/id&gt;
+      &lt;mirrorOf&gt;*&lt;/mirrorOf&gt;
+      &lt;url&gt;https://your-nexus.example.com/repository/cms-group/&lt;/url&gt;
+    &lt;/mirror&gt;
+  &lt;/mirrors&gt;
+  &lt;profiles&gt;
+    &lt;profile&gt;
+      &lt;id&gt;nexus&lt;/id&gt;
+      &lt;repositories&gt;
+        &lt;repository&gt;
+          &lt;id&gt;central&lt;/id&gt;
+          &lt;url&gt;https://your-nexus.example.com/repository/cms-group/&lt;/url&gt;
+        &lt;/repository&gt;
+      &lt;/repositories&gt;
+    &lt;/profile&gt;
+  &lt;/profiles&gt;
+  &lt;activeProfiles&gt;
+    &lt;activeProfile&gt;nexus&lt;/activeProfile&gt;
+  &lt;/activeProfiles&gt;
+&lt;/settings&gt;</code></pre>
+
+                    <div class="alert alert-warning">
+                        <span class="alert-icon">⚠️</span>
+                        <div><strong>Important:</strong> Replace <code class="inline-code">https://your-nexus.example.com</code> with your actual Nexus URL. Set <code class="inline-code">NEXUS_USER</code> and <code class="inline-code">NEXUS_PASSWORD</code> as environment variables in your CI/CD pipeline.</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Phase 2 -->
+            <div class="phase" id="phase2">
+                <div class="phase-header">
+                    <span class="phase-number">2</span>
+                    <h2>Publish cms-parent to Nexus</h2>
+                </div>
+                <div class="phase-body">
+                    <p>The root <code class="inline-code">pom.xml</code> (cms-parent) defines dependency versions and plugin management for all microservices. It must be published to Nexus <strong>first</strong>.</p>
+
+                    <h3>2.1 Create the cms-parent Repo</h3>
+                    <pre><code># Create a new repo with just the parent pom
+mkdir cms-parent &amp;&amp; cd cms-parent
+git init
+
+# Copy the root pom.xml from the monorepo
+cp /path/to/CMS2.0/pom.xml ./pom.xml
+
+git add pom.xml
+git commit -m "feat: initial cms-parent POM"
+git remote add origin https://your-git-server/cms-parent.git
+git push -u origin main</code></pre>
+
+                    <h3>2.2 Deploy to Nexus</h3>
+                    <pre><code># From cms-parent repo root:
+export NEXUS_USER=cms-deployer
+export NEXUS_PASSWORD=&lt;your-password&gt;
+
+mvn deploy -N -s settings.xml
+
+# -N = non-recursive (deploys only the parent POM, no submodules)</code></pre>
+
+                    <h3>2.3 Verify</h3>
+                    <pre><code># Check the artifact is available:
+curl -u $NEXUS_USER:$NEXUS_PASSWORD \
+  "https://your-nexus.example.com/repository/cms-releases/com/hrms/cms/cms-parent/1.0.0/cms-parent-1.0.0.pom"
+
+# Should return HTTP 200 with POM content</code></pre>
+
+                    <div class="alert alert-success">
+                        <span class="alert-icon">✅</span>
+                        <div><strong>Success Criteria:</strong> <code class="inline-code">cms-parent:1.0.0</code> is available in Nexus. All microservice POMs reference this as their <code class="inline-code">&lt;parent&gt;</code>.</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Phase 3 -->
+            <div class="phase" id="phase3">
+                <div class="phase-header">
+                    <span class="phase-number">3</span>
+                    <h2>Publish cms-common to Nexus</h2>
+                </div>
+                <div class="phase-body">
+                    <p>The <code class="inline-code">cms-common</code> library contains shared DTOs, enums, exceptions, and utility classes used by all 12 microservices.</p>
+
+                    <h3>3.1 Create the cms-common Repo</h3>
+                    <pre><code># Create a new repo from the cms-common module
+mkdir cms-common &amp;&amp; cd cms-common
+git init
+
+# Copy everything from the monorepo's cms-common directory
+cp -r /path/to/CMS2.0/cms-common/* .
+cp /path/to/CMS2.0/deployment/maven-settings.xml ./settings.xml
+
+git add .
+git commit -m "feat: initial cms-common library"
+git remote add origin https://your-git-server/cms-common.git
+git push -u origin main</code></pre>
+
+                    <h3>3.2 Deploy to Nexus</h3>
+                    <pre><code>export NEXUS_USER=cms-deployer
+export NEXUS_PASSWORD=&lt;your-password&gt;
+
+mvn deploy -s settings.xml
+
+# This builds the JAR and publishes:
+#   com.hrms.cms:cms-common:1.0.0 → nexus-releases</code></pre>
+
+                    <h3>3.3 Verify</h3>
+                    <pre><code>curl -u $NEXUS_USER:$NEXUS_PASSWORD \
+  "https://your-nexus.example.com/repository/cms-releases/com/hrms/cms/cms-common/1.0.0/cms-common-1.0.0.jar"
+
+# Should return HTTP 200 (or download the JAR)</code></pre>
+
+                    <div class="alert alert-info">
+                        <span class="alert-icon">ℹ️</span>
+                        <div><strong>Note:</strong> Any change to <code class="inline-code">cms-common</code> requires a version bump and re-deploy to Nexus, then update the version in consuming microservices.</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Phase 4 -->
+            <div class="phase" id="phase4">
+                <div class="phase-header">
+                    <span class="phase-number">4</span>
+                    <h2>Push Microservices to Separate Repos</h2>
+                </div>
+                <div class="phase-body">
+                    <p>Each of the 12 microservices gets its own repository. They depend on <code class="inline-code">cms-parent</code> and <code class="inline-code">cms-common</code> from Nexus.</p>
+
+                    <h3>Services to Split</h3>
+                    <div class="services-grid">
+                        <div class="service-card"><strong>cms-api-gateway</strong><span>API Gateway / Routing</span></div>
+                        <div class="service-card"><strong>cms-assignment-service</strong><span>Complaint Assignment</span></div>
+                        <div class="service-card"><strong>cms-audit-service</strong><span>Audit Logging</span></div>
+                        <div class="service-card"><strong>cms-eligibility-service</strong><span>Eligibility Checks</span></div>
+                        <div class="service-card"><strong>cms-ingestion-service</strong><span>Data Ingestion</span></div>
+                        <div class="service-card"><strong>cms-notification-service</strong><span>SMS / Email Alerts</span></div>
+                        <div class="service-card"><strong>cms-outbox-publisher</strong><span>Transactional Outbox</span></div>
+                        <div class="service-card"><strong>cms-rules-service</strong><span>Business Rules Engine</span></div>
+                        <div class="service-card"><strong>cms-search-service</strong><span>OpenSearch Integration</span></div>
+                        <div class="service-card"><strong>cms-sla-monitor-service</strong><span>SLA Monitoring</span></div>
+                        <div class="service-card"><strong>cms-storage-service</strong><span>File Storage</span></div>
+                        <div class="service-card"><strong>cms-workflow-service</strong><span>Workflow Engine</span></div>
+                    </div>
+
+                    <h3>4.1 Steps for Each Service</h3>
+                    <pre><code># Repeat for each service (example: cms-rules-service)
+SERVICE=cms-rules-service
+
+mkdir $SERVICE &amp;&amp; cd $SERVICE
+git init
+
+# Copy source from monorepo
+cp -r /path/to/CMS2.0/$SERVICE/* .
+cp /path/to/CMS2.0/$SERVICE/.dockerignore .
+
+# Copy settings.xml for Nexus access during Docker build
+cp /path/to/CMS2.0/deployment/maven-settings.xml ./settings.xml
+
+git add .
+git commit -m "feat: initial $SERVICE from monorepo"
+git remote add origin https://your-git-server/$SERVICE.git
+git push -u origin main</code></pre>
+
+                    <h3>4.2 Expected Repo Structure</h3>
+                    <pre><code>cms-rules-service/
+├── pom.xml              ← parent = cms-parent (from Nexus)
+├── src/
+│   └── main/java/...
+├── Dockerfile           ← Multi-stage build with settings.xml
+├── .dockerignore
+└── settings.xml         ← Nexus credentials for maven build</code></pre>
+
+                    <h3>4.3 Dockerfile (Already Configured)</h3>
+                    <p>Each microservice Dockerfile already includes:</p>
+                    <pre><code># Inside Dockerfile (build stage):
+COPY settings.xml /root/.m2/settings.xml
+RUN mvn package -DskipTests -s /root/.m2/settings.xml
+
+# This pulls cms-parent + cms-common from Nexus during build</code></pre>
+
+                    <div class="alert alert-danger">
+                        <span class="alert-icon">🚨</span>
+                        <div><strong>Critical:</strong> Nexus must be accessible from the build environment (CI runner or OpenShift build pod). If behind a firewall, configure network policies accordingly.</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Phase 5 -->
+            <div class="phase" id="phase5">
+                <div class="phase-header">
+                    <span class="phase-number">5</span>
+                    <h2>Push cms-backend (Standalone)</h2>
+                </div>
+                <div class="phase-body">
+                    <p><code class="inline-code">cms-backend</code> uses <code class="inline-code">spring-boot-starter-parent</code> directly — it does <strong>NOT</strong> depend on Nexus, cms-parent, or cms-common.</p>
+
+                    <h3>5.1 Create the Repo</h3>
+                    <pre><code>mkdir cms-backend &amp;&amp; cd cms-backend
+git init
+
+cp -r /path/to/CMS2.0/cms-backend/* .
+cp /path/to/CMS2.0/cms-backend/.dockerignore .
+
+git add .
+git commit -m "feat: initial cms-backend (standalone)"
+git remote add origin https://your-git-server/cms-backend.git
+git push -u origin main</code></pre>
+
+                    <h3>5.2 Expected Repo Structure</h3>
+                    <pre><code>cms-backend/
+├── pom.xml              ← parent = spring-boot-starter-parent (no Nexus)
+├── src/
+│   └── main/java/...
+├── Dockerfile           ← Simple multi-stage build
+└── .dockerignore</code></pre>
+
+                    <h3>5.3 Key Environment Variables</h3>
+                    <table>
+                        <thead><tr><th>Variable</th><th>Required</th><th>Description</th></tr></thead>
+                        <tbody>
+                            <tr><td><code class="inline-code">DB_URL</code></td><td>Yes</td><td>MySQL JDBC URL</td></tr>
+                            <tr><td><code class="inline-code">DB_USERNAME</code></td><td>Yes</td><td>Database username</td></tr>
+                            <tr><td><code class="inline-code">DB_PASSWORD</code></td><td>Yes</td><td>Database password</td></tr>
+                            <tr><td><code class="inline-code">CMS_ENCRYPTION_SECRET</code></td><td>Yes</td><td>32-char AES key for PII</td></tr>
+                            <tr><td><code class="inline-code">KAFKA_BOOTSTRAP</code></td><td>No</td><td>Kafka broker (default: localhost:9092)</td></tr>
+                            <tr><td><code class="inline-code">KEYCLOAK_URL</code></td><td>No</td><td>Keycloak server URL</td></tr>
+                            <tr><td><code class="inline-code">SERVER_PORT</code></td><td>No</td><td>HTTP port (default: 8082)</td></tr>
+                        </tbody>
+                    </table>
+
+                    <div class="alert alert-success">
+                        <span class="alert-icon">✅</span>
+                        <div><strong>No Nexus dependency.</strong> This service can be built and deployed independently at any time.</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Phase 6 -->
+            <div class="phase" id="phase6">
+                <div class="phase-header">
+                    <span class="phase-number">6</span>
+                    <h2>Push Frontend Repos</h2>
+                </div>
+                <div class="phase-body">
+                    <p>Both Angular frontends are standalone — no Nexus dependency. They use a multi-stage Docker build (Node → Nginx).</p>
+
+                    <h3>6.1 cms-portal-frontend (Public Portal)</h3>
+                    <pre><code>mkdir cms-portal-frontend &amp;&amp; cd cms-portal-frontend
+git init
+
+cp -r /path/to/CMS2.0/cms-portal-frontend/* .
+cp /path/to/CMS2.0/cms-portal-frontend/.dockerignore .
+
+git add .
+git commit -m "feat: initial cms-portal-frontend"
+git remote add origin https://your-git-server/cms-portal-frontend.git
+git push -u origin main</code></pre>
+
+                    <h3>6.2 cms-frontend (Staff Portal)</h3>
+                    <pre><code>mkdir cms-frontend &amp;&amp; cd cms-frontend
+git init
+
+cp -r /path/to/CMS2.0/cms-frontend/* .
+cp /path/to/CMS2.0/cms-frontend/.dockerignore .
+
+git add .
+git commit -m "feat: initial cms-frontend"
+git remote add origin https://your-git-server/cms-frontend.git
+git push -u origin main</code></pre>
+
+                    <h3>6.3 cms-paddle-ocr (Python Service)</h3>
+                    <pre><code>mkdir cms-paddle-ocr &amp;&amp; cd cms-paddle-ocr
+git init
+
+cp -r /path/to/CMS2.0/cms-paddle-ocr/* .
+cp /path/to/CMS2.0/cms-paddle-ocr/.dockerignore .
+
+git add .
+git commit -m "feat: initial cms-paddle-ocr"
+git remote add origin https://your-git-server/cms-paddle-ocr.git
+git push -u origin main</code></pre>
+
+                    <h3>6.4 Frontend Repo Structure</h3>
+                    <pre><code>cms-portal-frontend/
+├── package.json
+├── package-lock.json
+├── angular.json
+├── tsconfig.json
+├── src/
+│   ├── app/
+│   ├── environments/
+│   │   ├── environment.ts           ← dev (apiBaseUrl: http://localhost:8082)
+│   │   ├── environment.prod.ts      ← production
+│   │   └── environment.openshift.ts ← OpenShift (apiBaseUrl: '' → nginx proxy)
+│   └── ...
+├── nginx.conf               ← Template with ${API_BACKEND_HOST} placeholders
+├── docker-entrypoint.sh     ← envsubst to inject env vars into nginx.conf
+├── Dockerfile               ← Multi-stage: node:22 → nginx:1.27-alpine
+└── .dockerignore</code></pre>
+
+                    <h3>6.5 How Frontend API Routing Works</h3>
+                    <div class="alert alert-info">
+                        <span class="alert-icon">ℹ️</span>
+                        <div>
+                            <p>In OpenShift, <code class="inline-code">environment.openshift.ts</code> sets <code class="inline-code">apiBaseUrl: ''</code> (empty string). Angular makes requests to relative path <code class="inline-code">/api/...</code>. Nginx receives these requests and proxies them to <code class="inline-code">http://${API_BACKEND_HOST}:${API_BACKEND_PORT}/api/...</code>.</p>
+                            <p style="margin-top:0.5rem">The <code class="inline-code">docker-entrypoint.sh</code> script uses <code class="inline-code">envsubst</code> to substitute the env vars into the nginx config at container startup.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Phase 7 -->
+            <div class="phase" id="phase7">
+                <div class="phase-header">
+                    <span class="phase-number">7</span>
+                    <h2>DevOps Creates Pipelines</h2>
+                </div>
+                <div class="phase-body">
+                    <p>DevOps creates a Tekton (or Jenkins/GitHub Actions) pipeline for each service. Templates are provided in <code class="inline-code">deployment/tekton/</code>.</p>
+
+                    <h3>7.1 Pipeline Per Service Type</h3>
+                    <table>
+                        <thead><tr><th>Service Type</th><th>Pipeline Template</th><th>Steps</th></tr></thead>
+                        <tbody>
+                            <tr>
+                                <td>Java Microservice (×12)</td>
+                                <td><code class="inline-code">pipeline-java-service.yaml</code></td>
+                                <td>git-clone → maven-test → maven-package → buildah-push → oc-rollout</td>
+                            </tr>
+                            <tr>
+                                <td>Angular Frontend (×2)</td>
+                                <td><code class="inline-code">pipeline-angular-frontend.yaml</code></td>
+                                <td>git-clone → npm-install → ng-build → buildah-push → oc-rollout</td>
+                            </tr>
+                            <tr>
+                                <td>Python (×1)</td>
+                                <td><code class="inline-code">pipeline-python-ocr.yaml</code></td>
+                                <td>git-clone → buildah-push → oc-rollout</td>
+                            </tr>
+                            <tr>
+                                <td>cms-backend (×1)</td>
+                                <td><code class="inline-code">pipeline-java-service.yaml</code></td>
+                                <td>Same as microservice (no Nexus dependency)</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <h3>7.2 Pipeline Configuration</h3>
+                    <p>Each pipeline needs these parameters:</p>
+                    <pre><code># PipelineRun parameters:
+params:
+  - name: GIT_REPO_URL
+    value: "https://your-git-server/cms-rules-service.git"
+  - name: GIT_REVISION
+    value: "main"
+  - name: IMAGE_NAME
+    value: "image-registry.openshift-image-registry.svc:5000/rbi-cms/cms-rules-service"
+  - name: IMAGE_TAG
+    value: "$(tt.params.git-revision)"  # or "latest"</code></pre>
+
+                    <h3>7.3 Nexus Credentials in Pipeline</h3>
+                    <p>For microservices (not cms-backend or frontends), the pipeline must provide Nexus credentials during the Maven build step:</p>
+                    <pre><code># In Tekton Task (maven-package step):
+env:
+  - name: NEXUS_USER
+    valueFrom:
+      secretKeyRef:
+        name: cms-nexus-secret
+        key: username
+  - name: NEXUS_PASSWORD
+    valueFrom:
+      secretKeyRef:
+        name: cms-nexus-secret
+        key: password</code></pre>
+
+                    <div class="alert alert-warning">
+                        <span class="alert-icon">⚠️</span>
+                        <div><strong>Create Secret:</strong> <code class="inline-code">oc create secret generic cms-nexus-secret --from-literal=username=cms-deployer --from-literal=password=&lt;pw&gt; -n rbi-cms</code></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Phase 8 -->
+            <div class="phase" id="phase8">
+                <div class="phase-header">
+                    <span class="phase-number">8</span>
+                    <h2>Deploy to OpenShift</h2>
+                </div>
+                <div class="phase-body">
+                    <p>Apply the deployment manifests in order. All YAML files are in <code class="inline-code">deployment/openshift/</code>.</p>
+
+                    <h3>8.1 Deployment Order</h3>
+                    <table>
+                        <thead><tr><th>Order</th><th>What to Apply</th><th>Purpose</th></tr></thead>
+                        <tbody>
+                            <tr><td>1</td><td><code class="inline-code">namespace.yaml</code></td><td>Create <code class="inline-code">rbi-cms</code> namespace</td></tr>
+                            <tr><td>2</td><td><code class="inline-code">configmap-common.yaml</code> + all <code class="inline-code">secret-*.yaml</code></td><td>ConfigMap &amp; Secrets</td></tr>
+                            <tr><td>3</td><td><code class="inline-code">pvc.yaml</code></td><td>Persistent Volume Claims</td></tr>
+                            <tr><td>4</td><td>Core services: audit, storage, OCR, notification, search</td><td>Infrastructure layer</td></tr>
+                            <tr><td>5</td><td>Business: rules, eligibility, SLA, assignment, workflow, ingestion, outbox</td><td>Business logic layer</td></tr>
+                            <tr><td>6</td><td><code class="inline-code">deployment-backend.yaml</code></td><td>Main backend API</td></tr>
+                            <tr><td>7</td><td><code class="inline-code">deployment-api-gateway.yaml</code></td><td>API Gateway</td></tr>
+                            <tr><td>8</td><td>Frontends: portal + staff</td><td>UI layer (depends on backend)</td></tr>
+                        </tbody>
+                    </table>
+
+                    <h3>8.2 Quick Deploy Script</h3>
+                    <pre><code># Use the provided deploy-all.sh script:
+cd deployment/
+chmod +x deploy-all.sh
+./deploy-all.sh
+
+# Or apply manually:
+oc apply -f openshift/namespace.yaml
+oc apply -f openshift/configmap-common.yaml
+oc apply -f openshift/secret-db.yaml
+oc apply -f openshift/secret-keycloak.yaml
+oc apply -f openshift/secret-sms.yaml
+oc apply -f openshift/secret-opensearch.yaml
+oc apply -f openshift/secret-kafka.yaml
+oc apply -f openshift/pvc.yaml
+
+# Then apply each deployment YAML...</code></pre>
+
+                    <h3>8.3 Verify Deployment</h3>
+                    <pre><code># Check all pods:
+oc get pods -n rbi-cms
+
+# Check health endpoints:
+for svc in cms-backend cms-api-gateway cms-rules-service cms-workflow-service; do
+  echo "--- $svc ---"
+  oc exec deploy/$svc -n rbi-cms -- wget -qO- http://localhost:8080/actuator/health
+done
+
+# Check frontend:
+curl -k https://&lt;portal-route&gt;/healthz
+curl -k https://&lt;staff-route&gt;/healthz</code></pre>
+                </div>
+            </div>
+
+            <!-- Pre-Deployment Checklist -->
+            <div class="phase" id="checklist">
+                <div class="phase-header">
+                    <span class="phase-number">✓</span>
+                    <h2>Pre-Deployment Checklist</h2>
+                </div>
+                <div class="phase-body">
+                    <h3>Infrastructure Requirements</h3>
+                    <ul class="checklist">
+                        <li>MySQL/Oracle database — accessible from the OpenShift cluster</li>
+                        <li>Keycloak — with <code class="inline-code">cms</code> realm configured (roles, clients, users)</li>
+                        <li>Kafka — 3-node cluster (or single-node for dev/staging)</li>
+                        <li>OpenSearch — for full-text complaint search</li>
+                        <li>Nexus — for hosting cms-parent and cms-common JARs</li>
+                        <li>Persistent Storage (NFS/Ceph) — for attachment and storage PVCs</li>
+                        <li>Container Registry — accessible from build pods</li>
+                    </ul>
+
+                    <h3>Secrets to Configure</h3>
+                    <ul class="checklist">
+                        <li><code class="inline-code">cms-db-secret</code> — DB_USER, DB_PASSWORD, SMTP credentials</li>
+                        <li><code class="inline-code">cms-keycloak-secret</code> — client ID, client secret, admin credentials</li>
+                        <li><code class="inline-code">cms-sms-secret</code> — SMS gateway API key, sender ID, template ID</li>
+                        <li><code class="inline-code">cms-opensearch-secret</code> — OpenSearch username and password</li>
+                        <li><code class="inline-code">cms-kafka-secret</code> — Kafka SASL credentials (if auth enabled)</li>
+                        <li><code class="inline-code">cms-nexus-secret</code> — Nexus deploy user credentials (for build pipeline)</li>
+                    </ul>
+
+                    <h3>Routes to Configure</h3>
+                    <ul class="checklist">
+                        <li>Public portal: Update <code class="inline-code">spec.host</code> in <code class="inline-code">deployment-portal-frontend.yaml</code></li>
+                        <li>Staff portal: Update <code class="inline-code">spec.host</code> in <code class="inline-code">deployment-frontend.yaml</code></li>
+                    </ul>
+
+                    <h3>Database</h3>
+                    <ul class="checklist">
+                        <li>Schema creation: Hibernate <code class="inline-code">ddl-auto: update</code> creates tables on first startup</li>
+                        <li>No manual migration scripts needed — JPA handles DDL</li>
+                        <li>Seed data: DataInitializer seeds reference data automatically in non-prod profiles</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Key Points -->
+            <div class="phase">
+                <div class="phase-header">
+                    <span class="phase-number">!</span>
+                    <h2>Key Points &amp; Gotchas</h2>
+                </div>
+                <div class="phase-body">
+                    <table>
+                        <thead><tr><th>#</th><th>Point</th><th>Detail</th></tr></thead>
+                        <tbody>
+                            <tr><td>1</td><td><strong>Build order matters</strong></td><td>cms-parent → cms-common → (all microservices in parallel)</td></tr>
+                            <tr><td>2</td><td><strong>cms-backend is standalone</strong></td><td>Does NOT need Nexus. Uses spring-boot-starter-parent directly.</td></tr>
+                            <tr><td>3</td><td><strong>Frontends are standalone</strong></td><td>No Java/Nexus dependency. Only need node:22 + nginx.</td></tr>
+                            <tr><td>4</td><td><strong>settings.xml is critical</strong></td><td>Without it, microservices can't resolve cms-common during Docker build.</td></tr>
+                            <tr><td>5</td><td><strong>Environment files</strong></td><td>Angular builds use <code class="inline-code">--configuration=openshift</code> which swaps environment.ts → environment.openshift.ts</td></tr>
+                            <tr><td>6</td><td><strong>CMS_ENCRYPTION_SECRET</strong></td><td>Must be same 32-char key across restarts or encrypted data becomes unreadable.</td></tr>
+                            <tr><td>7</td><td><strong>Nexus URL placeholder</strong></td><td>Replace <code class="inline-code">your-nexus.example.com</code> in all settings.xml files and in the root POM distributionManagement section.</td></tr>
+                            <tr><td>8</td><td><strong>Version bumps</strong></td><td>When cms-common changes: bump version → deploy to Nexus → update version in all consuming POMs.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="footer">
+            <p>CMS 2.0 Deployment Guide — Generated July 2026 | Namespace: <strong>rbi-cms</strong> | 18 Services Total</p>
+            <p style="margin-top:0.5rem">Files provided: <code>deployment/openshift/*.yaml</code> &bull; <code>deployment/tekton/*.yaml</code> &bull; <code>deployment/deploy-all.sh</code> &bull; <code>deployment/maven-settings.xml</code></p>
+        </div>
+    </div>
+</body>
+</html>

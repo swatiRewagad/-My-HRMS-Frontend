@@ -1,0 +1,111 @@
+<div class="rbio-legal-case">
+  <div class="section-header-row">
+    <h4><i class="pi pi-briefcase"></i> Legal Case</h4>
+    @if (isOmbudsmanAdmin && !editing()) {
+      <button class="edit-btn" (click)="startEditing()"><i class="pi pi-pencil"></i> Edit</button>
+    }
+  </div>
+
+  @if (loading()) {
+    <p class="loading-text">Loading legal case details...</p>
+  } @else if (!legalCase() && !editing()) {
+    <div class="empty-state">
+      <p>No legal case associated with this complaint.</p>
+      @if (isOmbudsmanAdmin) {
+        <button class="action-btn" (click)="startEditing()">Add Legal Case</button>
+      }
+    </div>
+  } @else {
+    <div class="legal-case-form" [class.read-only]="!editing()">
+      <div class="form-grid">
+        <div class="form-field">
+          <label>Case Number *</label>
+          @if (editing()) {
+            <input type="text" [(ngModel)]="caseNumber" placeholder="Enter case number" />
+          } @else {
+            <span class="field-value">{{ caseNumber || '—' }}</span>
+          }
+        </div>
+        <div class="form-field">
+          <label>Court Name *</label>
+          @if (editing()) {
+            <input type="text" [(ngModel)]="courtName" placeholder="Court name" />
+          } @else {
+            <span class="field-value">{{ courtName || '—' }}</span>
+          }
+        </div>
+        <div class="form-field">
+          <label>Case Status</label>
+          @if (editing()) {
+            <select [(ngModel)]="caseStatus">
+              <option value="">Select status...</option>
+              <option value="FILED">Filed</option>
+              <option value="PENDING">Pending</option>
+              <option value="HEARING">Hearing in Progress</option>
+              <option value="ADJOURNED">Adjourned</option>
+              <option value="STAYED">Stayed</option>
+              <option value="DISPOSED">Disposed</option>
+              <option value="DISMISSED">Dismissed</option>
+            </select>
+          } @else {
+            <span class="field-value">{{ caseStatus || '—' }}</span>
+          }
+        </div>
+        <div class="form-field">
+          <label>Filing Date</label>
+          @if (editing()) {
+            <input type="date" [(ngModel)]="filingDate" />
+          } @else {
+            <span class="field-value">{{ filingDate || '—' }}</span>
+          }
+        </div>
+        <div class="form-field">
+          <label>Next Hearing Date</label>
+          @if (editing()) {
+            <input type="date" [(ngModel)]="nextHearingDate" />
+          } @else {
+            <span class="field-value">{{ nextHearingDate || '—' }}</span>
+          }
+        </div>
+        <div class="form-field full">
+          <label>Remarks</label>
+          @if (editing()) {
+            <textarea [(ngModel)]="remarks" rows="3" placeholder="Additional notes about the case..."></textarea>
+          } @else {
+            <span class="field-value">{{ remarks || '—' }}</span>
+          }
+        </div>
+      </div>
+
+      @if (legalCase()?.updatedBy) {
+        <div class="audit-info">
+          <span>Last updated by: <strong>{{ legalCase()!.updatedBy }}</strong></span>
+          @if (legalCase()!.updatedAt) {
+            <span> on {{ legalCase()!.updatedAt }}</span>
+          }
+        </div>
+      }
+
+      @if (editing()) {
+        <div class="form-actions">
+          <button class="submit-btn" [disabled]="processing() || !caseNumber.trim() || !courtName.trim()" (click)="saveLegalCase()">
+            @if (processing()) { Saving... } @else { Save Legal Case }
+          </button>
+          <button class="cancel-btn" (click)="cancelEditing()">Cancel</button>
+        </div>
+      }
+
+      @if (isReadOnly && !editing()) {
+        <div class="read-only-notice">
+          <i class="pi pi-lock"></i> Only Ombudsman Admin can edit legal case details.
+        </div>
+      }
+    </div>
+  }
+
+  @if (resultMessage()) {
+    <div class="result-msg" [class.success]="resultSuccess()" [class.error]="!resultSuccess()">
+      {{ resultMessage() }}
+    </div>
+  }
+</div>

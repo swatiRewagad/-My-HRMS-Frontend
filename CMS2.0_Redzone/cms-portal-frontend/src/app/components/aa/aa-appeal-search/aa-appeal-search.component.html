@@ -1,0 +1,164 @@
+<div class="aa-appeal-search">
+  <h2>{{ 'aa.search.heading' | translate }}</h2>
+
+  <form class="search-filters" data-testid="aa-search-form" (ngSubmit)="search()">
+    <div class="filter-grid">
+      <div class="filter-field">
+        <label for="complaintNumber">{{ 'aa.search.complaint_number' | translate }}</label>
+        <input id="complaintNumber" name="complaintNumber" type="text"
+               data-testid="aa-search-complaint-number"
+               [ngModel]="complaintNumber()" (ngModelChange)="complaintNumber.set($event)" />
+      </div>
+
+      <div class="filter-field">
+        <label for="appellantName">{{ 'aa.search.appellant_name' | translate }}</label>
+        <input id="appellantName" name="appellantName" type="text"
+               data-testid="aa-search-appellant-name"
+               [ngModel]="appellantName()" (ngModelChange)="appellantName.set($event)" />
+      </div>
+
+      <div class="filter-field">
+        <label for="appellantMobile">{{ 'aa.search.appellant_mobile' | translate }}</label>
+        <input id="appellantMobile" name="appellantMobile" type="text"
+               data-testid="aa-search-appellant-mobile"
+               [ngModel]="appellantMobile()" (ngModelChange)="appellantMobile.set($event)" />
+      </div>
+
+      <div class="filter-field">
+        <label for="appellantEmail">{{ 'aa.search.appellant_email' | translate }}</label>
+        <input id="appellantEmail" name="appellantEmail" type="email"
+               data-testid="aa-search-appellant-email"
+               [ngModel]="appellantEmail()" (ngModelChange)="appellantEmail.set($event)" />
+      </div>
+
+      <div class="filter-field">
+        <label for="rbioOffice">{{ 'aa.search.rbio_office' | translate }}</label>
+        <select id="rbioOffice" name="rbioOffice"
+                data-testid="aa-search-rbio-office"
+                [ngModel]="rbioOfficeCode()" (ngModelChange)="rbioOfficeCode.set($event)">
+          <option value="">{{ 'aa.search.select_option_all' | translate }}</option>
+          @for (office of offices(); track office.officeCode) {
+            <option [value]="office.officeCode">{{ office.officeName }}</option>
+          }
+        </select>
+      </div>
+
+      <div class="filter-field">
+        <label for="closureClause">{{ 'aa.search.closure_clause' | translate }}</label>
+        <select id="closureClause" name="closureClause"
+                data-testid="aa-search-closure-clause"
+                [ngModel]="closureClause()" (ngModelChange)="closureClause.set($event)">
+          <option value="">{{ 'aa.search.select_option_all' | translate }}</option>
+          @for (clause of clauses(); track clause.clauseCode) {
+            <option [value]="clause.clauseCode">
+              {{ clause.clauseCode }} — {{ clause.labelKey ? (clause.labelKey | translate) : clause.label }}
+            </option>
+          }
+        </select>
+      </div>
+
+      <div class="filter-field">
+        <label for="category">{{ 'aa.search.category' | translate }}</label>
+        <select id="category" name="category"
+                data-testid="aa-search-category"
+                [ngModel]="categoryId()" (ngModelChange)="setCategoryId($event)">
+          <option value="">{{ 'aa.search.select_option_all' | translate }}</option>
+          @for (category of categories(); track category.id) {
+            <option [value]="category.id">{{ category.name }}</option>
+          }
+        </select>
+      </div>
+
+      <div class="filter-field">
+        <label for="ground">{{ 'aa.search.ground_of_complaint' | translate }}</label>
+        <select id="ground" name="ground"
+                data-testid="aa-search-ground"
+                [ngModel]="groundOfComplaintId()" (ngModelChange)="setGroundId($event)">
+          <option value="">{{ 'aa.search.select_option_all' | translate }}</option>
+          @for (ground of grounds(); track ground.id) {
+            <option [value]="ground.id">
+              {{ ground.labelKey ? (ground.labelKey | translate) : ground.label }}
+            </option>
+          }
+        </select>
+      </div>
+    </div>
+
+    <div class="filter-actions">
+      <button type="submit" class="btn-primary"
+              data-testid="aa-search-submit"
+              [disabled]="loading() || !hasAnyFilter()">
+        {{ 'aa.search.button_search' | translate }}
+      </button>
+      <button type="button" class="btn-secondary"
+              data-testid="aa-search-reset" (click)="reset()">
+        {{ 'aa.search.button_reset' | translate }}
+      </button>
+    </div>
+  </form>
+
+  @if (loadError()) {
+    <p class="search-error" data-testid="aa-search-error">
+      {{ (errorMessageKey() ?? 'aa.search.error_failed') | translate }}
+    </p>
+  }
+
+  @if (loading()) {
+    <p class="search-loading" data-testid="aa-search-loading">
+      {{ 'aa.search.loading' | translate }}
+    </p>
+  } @else if (searched() && !loadError() && results().length === 0) {
+    <p class="search-empty" data-testid="aa-search-no-results">
+      {{ 'aa.search.no_results' | translate }}
+    </p>
+  } @else if (results().length > 0) {
+    <p class="results-count" data-testid="aa-search-results-count">
+      {{ 'aa.search.results_count' | translate: { count: totalElements().toString() } }}
+    </p>
+
+    <table class="results-table" data-testid="aa-search-results">
+      <thead>
+        <tr>
+          <th>{{ 'aa.search.complaint_number' | translate }}</th>
+          <th>{{ 'aa.search.appellant_name' | translate }}</th>
+          <th>{{ 'aa.search.appellant_mobile' | translate }}</th>
+          <th>{{ 'aa.search.col_status' | translate }}</th>
+          <th>{{ 'aa.search.closure_clause' | translate }}</th>
+          <th>{{ 'aa.search.col_office' | translate }}</th>
+          <th>{{ 'aa.search.col_closed_on' | translate }}</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (row of results(); track row.complaintNumber) {
+          <tr [attr.data-complaint-number]="row.complaintNumber">
+            <td>{{ row.complaintNumber }}</td>
+            <td>{{ row.complainantName }}</td>
+            <td>{{ row.complainantPhone }}</td>
+            <td>{{ row.status }}</td>
+            <td>{{ row.closureClause }}</td>
+            <td>
+              @if (row.rbioOfficeCode) {
+                {{ officeLabel(row.rbioOfficeCode) }}
+              } @else {
+                <span class="muted">{{ 'aa.search.no_office_recorded' | translate }}</span>
+              }
+            </td>
+            <td>{{ row.closedAt }}</td>
+            <td>
+              <!-- Story 6: only a closed/reopened parent offers the register action. The server
+                   re-checks eligibility at intake, so this is a convenience and not the control. -->
+              @if (row.appealEligible) {
+                <button type="button" class="btn-link"
+                        data-testid="aa-search-create-appeal"
+                        (click)="openRegister(row)">
+                  {{ 'aa.register.create_appeal' | translate }}
+                </button>
+              }
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+</div>

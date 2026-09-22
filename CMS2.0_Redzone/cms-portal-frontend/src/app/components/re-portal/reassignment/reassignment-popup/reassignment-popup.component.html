@@ -1,0 +1,107 @@
+@if (open()) {
+  <div class="modal-overlay" (click)="close()">
+    <div class="modal-dialog" (click)="$event.stopPropagation()" data-testid="reassignment-popup">
+      <div class="modal-header">
+        <h3>{{ 're.reassign.title' | translate }}</h3>
+        <button class="modal-close" type="button" (click)="close()" [attr.aria-label]="'re.reassign.cancel_button' | translate">
+          <i class="pi pi-times"></i>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        @if (error()) {
+          <p class="error-banner" data-testid="reassign-error">
+            <i class="pi pi-exclamation-triangle"></i>
+            {{ error() | translate }}
+          </p>
+        }
+
+        <div class="filter-row">
+          <div class="form-field">
+            <label for="reassignRoleFilter">{{ 're.reassign.role_filter_label' | translate }}</label>
+            <select id="reassignRoleFilter" data-testid="reassign-role-filter"
+                    [value]="roleFilter()" (change)="onRoleChange($event)">
+              <option value="">—</option>
+              @for (role of roleOptions; track role.value) {
+                <option [value]="role.value">{{ role.labelKey | translate }}</option>
+              }
+            </select>
+          </div>
+          <div class="form-field">
+            <label for="reassignSearch">{{ 're.reassign.candidate_label' | translate }}</label>
+            <input id="reassignSearch" type="text" data-testid="reassign-search"
+                   [value]="search()" (input)="onSearchInput($event)"
+                   [attr.placeholder]="'re.reassign.search_placeholder' | translate" />
+          </div>
+        </div>
+
+        <div class="candidate-header">
+          <span class="candidate-header-name">{{ 're.reassign.candidate_label' | translate }}</span>
+          <span class="candidate-header-workload">{{ 're.reassign.workload_column' | translate }}</span>
+        </div>
+
+        @if (loading()) {
+          <div class="loading-state">
+            <div class="spinner"></div>
+          </div>
+        } @else if (candidates().length === 0) {
+          <p class="no-candidates" data-testid="reassign-no-candidates">
+            {{ 're.reassign.no_candidates' | translate }}
+          </p>
+        } @else {
+          <ul class="candidate-list" data-testid="reassign-candidates">
+            @for (candidate of candidates(); track candidate.userId) {
+              <li class="candidate-row" [class.selected]="candidate.userId === selectedUserId()"
+                  (click)="select(candidate)">
+                <input class="candidate-radio" type="radio" name="reassignCandidate"
+                       [attr.aria-label]="candidate.displayName"
+                       [checked]="candidate.userId === selectedUserId()"
+                       (change)="select(candidate)" />
+                <span class="candidate-meta">
+                  <span class="candidate-name">{{ candidate.displayName }}</span>
+                  <span class="candidate-sub">
+                    <span class="candidate-role">{{ roleLabelKey(candidate.reRole) | translate }}</span>
+                    @if (candidate.designation) {
+                      <span class="candidate-designation">{{ candidate.designation }}</span>
+                    }
+                    @if (candidate.territory) {
+                      <span class="candidate-territory">
+                        {{ 're.reassign.territory_label' | translate }}: {{ candidate.territory }}
+                      </span>
+                    }
+                  </span>
+                </span>
+                <span class="workload-chip" [class.workload-high]="candidate.workload >= 10"
+                      [attr.title]="'re.reassign.workload_label' | translate">
+                  <span class="workload-value">{{ candidate.workload }}</span>
+                  <span class="workload-caption">{{ 're.reassign.workload_label' | translate }}</span>
+                </span>
+              </li>
+            }
+          </ul>
+        }
+
+        <div class="form-field reason-field">
+          <label for="reassignReason">{{ 're.reassign.reason_label' | translate }} *</label>
+          <textarea id="reassignReason" rows="3" data-testid="reassign-reason"
+                    [value]="reason()" (input)="onReasonInput($event)"></textarea>
+          <p class="field-hint">
+            <i class="pi pi-info-circle"></i>
+            {{ 're.reassign.reason_immutable_notice' | translate }}
+          </p>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn-cancel" type="button" (click)="close()">
+          {{ 're.reassign.cancel_button' | translate }}
+        </button>
+        <button class="btn-save" type="button" data-testid="reassign-submit"
+                (click)="submit()" [disabled]="!canSubmit()">
+          <i class="pi pi-check"></i>
+          {{ 're.reassign.submit_button' | translate }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
